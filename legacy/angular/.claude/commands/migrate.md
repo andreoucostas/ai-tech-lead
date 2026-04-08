@@ -1,4 +1,4 @@
-Migrate this project from AI Tech Lead Framework v3 to v4. This is a one-time migration that consolidates 9 documents into 3, fixes command/hook formats, and preserves all existing work.
+Migrate this project from AI Tech Lead Framework v3 to v4. This is a one-time migration that consolidates multiple documents into 3, fixes command/hook formats, and preserves all existing work.
 
 ## Input
 $ARGUMENTS
@@ -7,7 +7,21 @@ $ARGUMENTS
 
 ## Execution
 
-### Step 1 — Inventory existing v3 artifacts
+### Step 1 — Pre-flight checks
+
+Before doing anything:
+
+1. **Check for uncommitted changes** — run `git status`. If there are uncommitted changes, STOP and tell the user to commit or stash first. Migration touches many files and must be reversible.
+2. **Recommend a branch** — tell the user: "I recommend running this on a new branch: `git checkout -b migrate-to-v4`. That way you can review everything and merge when you're satisfied." Wait for confirmation before proceeding.
+3. **Verify v3 artifacts exist** — check for at least 2 of these files. If fewer than 2 exist, this project may not have v3 set up — warn the user and confirm before proceeding:
+   - `CLAUDE.md`
+   - `CODEMAP.md`
+   - `docs/CONVENTIONS.md`
+   - `docs/TESTING.md`
+   - `docs/adr/*.md`
+4. **Locate the project root** — find `angular.json` (or `nx.json`/`project.json` for Nx). All paths are relative to this root.
+
+### Step 2 — Inventory existing v3 artifacts
 
 Read and catalogue what exists. Check for each of these files and note which are present and populated:
 
@@ -25,9 +39,15 @@ Read and catalogue what exists. Check for each of these files and note which are
 - `.claude/commands/` — v3 commands (may exist)
 - `.claude/hooks.json` — v3 hooks (wrong format)
 
-Report what was found before proceeding.
+Report what was found before proceeding. Include file sizes for any file over 200 lines — this affects the merge strategy in Phase 2.
 
-### Step 2 — Archive v3 documents that will be folded into CLAUDE.md
+---
+
+## Phase 1 — Automated file operations (safe, reversible)
+
+These steps move files and install new configuration. No content is merged or modified.
+
+### Step 3 — Archive v3 documents
 
 Move these files to `docs/v3-archive/` (do NOT delete them):
 - `CODEMAP.md` → `docs/v3-archive/CODEMAP.md`
@@ -40,35 +60,134 @@ Move these files to `docs/v3-archive/` (do NOT delete them):
 
 If `.claude/skills/` exists, move to `docs/v3-archive/skills/`.
 
-### Step 3 — Enrich CLAUDE.md with content from archived documents
+Only move files that actually exist. Skip missing files silently.
 
-Read the existing CLAUDE.md thoroughly. It already has populated content from the v3 bootstrap. Now MERGE (not replace) content from the archived documents:
+### Step 4 — Install v4 commands
 
-**From CODEMAP.md → into CLAUDE.md "File Structure" section:**
-- If CLAUDE.md already has a Solution/File Structure section, merge the CODEMAP content into it
-- If not, create a "## File Structure" section and paste the CODEMAP content
-- Preserve mermaid diagrams
+The new `.claude/commands/` files should already be in place (copied from the template). Verify these commands exist in `.claude/commands/`:
+- bootstrap.md, feature.md, fix.md, review.md, refactor.md, test.md, design.md, debt.md, docs-sync.md, generate-copilot.md, migrate.md
 
-**From docs/CONVENTIONS.md → into CLAUDE.md "Conventions" section:**
-- For each convention in the CONVENTIONS doc, check if it already exists in CLAUDE.md
-- Add any conventions that are missing, with their do/don't examples converted to rationale format
-- Do not duplicate rules that already exist
+If any v3 commands or skills have project-specific customisations, note them for the user — they may want to port those customisations into the v4 commands manually.
 
-**From docs/adr/*.md → into CLAUDE.md "Architecture Decisions" section:**
-- If CLAUDE.md already has an Architecture Decisions section, merge new ADRs into it
-- If not, create "## Architecture Decisions" section
-- Preserve the full ADR content (Status, Context, Decision, Consequences, Review Notes)
+### Step 5 — Install v4 hooks
 
-**From docs/TESTING.md → into CLAUDE.md "Conventions > Testing" subsection:**
-- Merge testing strategy into the Testing conventions
-- Preserve any exemplar references as "see docs/v3-archive/exemplars/ for examples"
+Create `.claude/settings.json` with the correct hooks format:
 
-### Step 4 — Add v4 sections to CLAUDE.md
-
-If these sections don't already exist in CLAUDE.md, add them:
-
-**## Agentic Workflow** — add the full agentic workflow section:
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "command": "bash -c 'if [[ \"$CLAUDE_FILE_PATH\" == *.ts ]]; then npx tsc --noEmit 2>&1 | tail -20; fi'"
+      }
+    ]
+  }
+}
 ```
+
+**Preserving existing hooks:**
+- `.husky/` and lint-staged config are NOT touched — they're pre-commit hooks, separate from Claude Code hooks.
+- If `.claude/hooks.json` existed (v3 format), it has been archived. Note what hooks it contained in the report so the user can verify nothing important was lost. The v4 hook (type-check on `.ts` file write) replaces the most common v3 hook pattern.
+
+### Step 6 — Preserve untouched artifacts
+
+These files are NOT modified:
+- `TECH_DEBT.md` — keep as-is (same format in v3 and v4)
+- `.github/copilot-instructions.md` — keep for now (will be regenerated after Phase 2)
+- `.husky/` and lint-staged config — pre-commit hooks are separate from Claude Code hooks
+
+### Step 7 — Phase 1 checkpoint
+
+Run `git diff --stat` and show the user what Phase 1 changed. Tell them:
+
+> "Phase 1 complete — files archived and v4 commands/hooks installed. Nothing has been merged yet. Your v3 content is safe in `docs/v3-archive/`.
+>
+> Phase 2 will merge your v3 document content into CLAUDE.md. I'll show you each section before merging so you can review. Ready to proceed?"
+
+**Wait for the user to confirm before starting Phase 2.**
+
+---
+
+## Phase 2 — Content merge (interactive, developer reviews each section)
+
+This phase reads each archived v3 document and merges its content into CLAUDE.md. Each merge is presented to the developer for review before being applied.
+
+**Merge principles:**
+- **Deduplicate** — if content already exists in CLAUDE.md (from v3 bootstrap), don't add it again
+- **Summarise large content** — if a v3 document is over 200 lines, summarise key points rather than pasting verbatim. Reference the archive for full detail: "See `docs/v3-archive/[file]` for full detail."
+- **Preserve structure** — maintain CLAUDE.md's section hierarchy. Merge into existing sections, don't create parallel structures
+- **Keep CLAUDE.md scannable** — target under 300 lines total. If merging would exceed this, summarise more aggressively and reference archives
+
+### Step 8 — Merge CODEMAP into File Structure
+
+Read `docs/v3-archive/CODEMAP.md`. Present the key content to the user:
+
+> "Here's what your CODEMAP contains: [summary]. I'll merge this into CLAUDE.md's **File Structure** section. Here's what the merged section will look like:
+>
+> [show proposed merged content]
+>
+> Does this look right? Any changes before I apply it?"
+
+Apply after confirmation. Preserve mermaid diagrams. If the CODEMAP is large, include the diagram and key navigation notes, and add: "Full module inventory: see `docs/v3-archive/CODEMAP.md`."
+
+### Step 9 — Merge CONVENTIONS into Conventions
+
+Read `docs/v3-archive/CONVENTIONS.md`. For each convention in the v3 doc:
+- Check if it already exists in CLAUDE.md's Conventions section
+- Collect only the conventions that are **missing** from CLAUDE.md
+
+Present to the user:
+
+> "Your v3 CONVENTIONS.md has [N] conventions. [M] already exist in CLAUDE.md. Here are the [N-M] that would be added:
+>
+> [list each new convention with its do/don't converted to rationale format]
+>
+> Should I add all of these, or would you like to adjust any?"
+
+Apply after confirmation.
+
+### Step 10 — Merge ADRs into Architecture Decisions
+
+Read `docs/v3-archive/adr/*.md`. For each ADR:
+- Check if the decision is already recorded in CLAUDE.md
+- Collect missing ADRs
+
+Present to the user:
+
+> "Found [N] ADRs in your v3 archive. Here's a summary of each:
+>
+> [for each ADR: title, decision, one-line consequence]
+>
+> I'll add the missing ones to CLAUDE.md's **Architecture Decisions** section. If any ADR is lengthy, I'll include the decision and key consequences, with a reference to the full ADR in `docs/v3-archive/adr/`.
+>
+> Look right?"
+
+Apply after confirmation.
+
+### Step 11 — Merge TESTING into Testing conventions
+
+Read `docs/v3-archive/TESTING.md`. Compare with CLAUDE.md's Testing subsection under Conventions.
+
+Present to the user:
+
+> "Your v3 TESTING.md contains: [summary of testing strategy, frameworks, patterns].
+>
+> CLAUDE.md's Testing section already covers: [summary of what's there].
+>
+> Here's what I'd add: [list additions]
+>
+> If your v3 setup included test exemplars in `docs/exemplars/`, they're now at `docs/v3-archive/exemplars/` — I'll add a reference: 'See `docs/v3-archive/exemplars/` for example test files.'"
+
+Apply after confirmation.
+
+### Step 12 — Add v4 Agentic Workflow section
+
+If CLAUDE.md doesn't already have an Agentic Workflow section, add it:
+
+```
+## Agentic Workflow
+
 When given any task, follow this execution model:
 
 ### 1. Classify the intent
@@ -117,60 +236,37 @@ At the end of your response, note if:
 - copilot-instructions.md needs regeneration (run `/generate-copilot`)
 ```
 
-**## What We've Learned** — add at the bottom if missing:
+### Step 13 — Add "What We've Learned" section
+
+If missing from CLAUDE.md, add at the bottom:
+
 ```
+## What We've Learned
+
 <!-- This section evolves over time. Add entries when you discover what works and what doesn't. -->
 <!-- Format: [date] observation -->
 ```
 
-### Step 5 — Install v4 commands
-
-The new `.claude/commands/` files should already be in place (they were copied from the template). If any v3 commands or skills exist that have project-specific customisations, merge those customisations into the v4 command files.
-
-Verify these commands exist in `.claude/commands/`:
-- bootstrap.md, feature.md, fix.md, review.md, refactor.md, test.md, design.md, debt.md, docs-sync.md, generate-copilot.md, migrate.md
-
-### Step 6 — Install v4 hooks
-
-Create `.claude/settings.json` with the correct hooks format (replacing any v3 hooks.json):
-
-```json
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit",
-        "command": "bash -c 'if [[ \"$CLAUDE_FILE_PATH\" == *.ts ]]; then npx tsc --noEmit 2>&1 | tail -20; fi'"
-      }
-    ]
-  }
-}
-```
-
-### Step 7 — Preserve existing artifacts
-
-These files should NOT be touched — they're already in v4 format:
-- `TECH_DEBT.md` — keep as-is (same format in v3 and v4)
-- `.github/copilot-instructions.md` — keep as-is (will be regenerated later via `/generate-copilot`)
-- `.husky/` and lint-staged config — keep as-is (pre-commit hooks are separate from Claude Code hooks)
-- `docs/exemplars/` — referenced from archive, still usable
-
-### Step 8 — Regenerate copilot-instructions.md
+### Step 14 — Regenerate copilot-instructions.md
 
 Now that CLAUDE.md has been enriched, run the `/generate-copilot` workflow to produce an updated `.github/copilot-instructions.md` that reflects the consolidated CLAUDE.md.
 
-### Step 9 — Report
+---
+
+## Step 15 — Final report
 
 Show the user:
 - What files were archived (with paths)
-- What content was merged into CLAUDE.md (section by section)
+- What content was merged into CLAUDE.md (section by section, with line counts)
 - What new sections were added to CLAUDE.md
 - What commands are now available
-- What hooks are configured
+- What hooks are configured (and what v3 hooks were replaced, if any)
+- Final CLAUDE.md line count
 - Run `git diff --stat` to show all changes
 
 Remind the user to:
 1. Review the updated CLAUDE.md — especially merged sections
 2. Review the regenerated copilot-instructions.md
 3. Try `/feature` or `/fix` on a small task to verify the v4 workflow
-4. Commit all changes in one commit: "Migrate to AI Tech Lead Framework v4"
+4. Commit all changes: `git add -A && git commit -m "Migrate to AI Tech Lead Framework v4"`
+5. If on a branch: merge to main when satisfied
