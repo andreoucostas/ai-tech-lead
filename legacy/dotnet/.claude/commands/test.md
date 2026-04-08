@@ -5,7 +5,7 @@ Read CLAUDE.md before starting — specifically the Conventions > Testing sectio
 ## Input
 $ARGUMENTS
 
-If no specific target given, identify the files with the weakest test coverage and prioritize those.
+If no specific target given, identify the files with the weakest test coverage and prioritise those.
 
 ## Execution
 

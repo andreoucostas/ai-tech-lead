@@ -47,6 +47,7 @@ Include a text or mermaid diagram showing project dependencies.
 ### Dependency Injection
 - Services: scoped. Factories and stateless helpers: transient. Caches and config: singleton.
 - Register via extension methods per project, not in Program.cs directly.
+- Use `IOptions<T>` for static config, `IOptionsMonitor<T>` for config that can change at runtime, `IOptionsSnapshot<T>` for scoped config refresh.
 
 ### Data Access
 - EF Core with repository pattern only where it adds value (not wrapping DbContext for the sake of it).
@@ -54,9 +55,10 @@ Include a text or mermaid diagram showing project dependencies.
 - Always use `.AsNoTracking()` for read-only queries.
 
 ### API Design
-- Controllers are thin — delegate to services immediately.
+- Controllers are thin — delegate to services immediately. Minimal APIs are acceptable for simple endpoints if the project uses them.
 - Request/response DTOs are separate from domain entities. Never expose domain models in API contracts.
 - Use FluentValidation for request validation. No validation logic in controllers.
+- Background work uses `BackgroundService` or `IHostedService`. No `Task.Run` fire-and-forget in request handlers.
 
 ### Async
 - Propagate `CancellationToken` through every async call chain.

@@ -5,7 +5,7 @@ Read CLAUDE.md and the Conventions section before starting. This is a quality ga
 ## Input
 $ARGUMENTS
 
-If no specific files or PR given, review the most recent uncommitted changes.
+If no specific files or PR given, review the most recent uncommitted changes (both staged and unstaged).
 
 ## Execution
 
@@ -24,7 +24,13 @@ For each changed file:
 - Would the tests catch a regression if the code was changed?
 - Are there missing test cases (edge cases, error paths, boundary conditions)?
 
-### Check 3 — Architecture & Debt Trajectory
+### Check 3 — Verify
+Run the test suite yourself to verify the code passes:
+- Run `dotnet build` — must compile cleanly
+- Run `dotnet test` — all tests must pass
+- Do not trust that the code being reviewed already passes. Verify it.
+
+### Check 4 — Architecture & Debt Trajectory
 - Does this change move the codebase toward or away from the target architecture in CLAUDE.md?
 - Does it introduce new tech debt? If so, flag it for TECH_DEBT.md.
 - Does it resolve existing tech debt? If so, flag the TECH_DEBT.md entry for removal.

@@ -27,6 +27,7 @@ Before touching any production code:
 - Run the regression test — it must now pass
 - Run the full related test suite — nothing else should break
 - Run `dotnet build` to confirm clean compilation
+- Run `dotnet format --verify-no-changes` to confirm style compliance
 
 ### Step 5 — Boy Scout
 Apply Boy Scout Rule improvements (from CLAUDE.md) to files within the blast radius only. Do not boy-scout unrelated files in a bug fix.

@@ -59,5 +59,3 @@ Do NOT apply changes automatically. Present a structured report:
 ```
 
 The developer reviews this report and decides what to update. After approval, they can ask you to apply the changes or run `/generate-copilot` to regenerate copilot-instructions.md.
-
-$ARGUMENTS
