@@ -70,6 +70,30 @@ Every command follows the same execution model:
 
 Hooks in `.claude/settings.json` automatically run `tsc --noEmit` after every `.ts` file write — fast type-checking (1-2 seconds) that catches errors before they compound. Full `ng build` and `ng test` run inside command workflows.
 
+## Migrating from v3
+
+If your team already set up the v3 framework (the HTML playbook), you have populated documents (CLAUDE.md, CODEMAP.md, CONVENTIONS.md, ADRs, TESTING.md, TECH_DEBT.md, etc.) that contain real work. **Don't lose it.**
+
+### Steps
+
+1. **Copy the v4 `.claude/` directory** into your project (overwriting any v3 skills/commands)
+2. **Copy `docs/playbook.md`** into your project
+3. Open Claude Code and run:
+   ```
+   /migrate
+   ```
+
+The migrate command will:
+- Archive your v3 documents to `docs/v3-archive/` (nothing deleted)
+- Fold CODEMAP, CONVENTIONS, ADRs, and TESTING into your existing CLAUDE.md
+- Add the v4 Agentic Workflow section to CLAUDE.md
+- Install correct hooks in `.claude/settings.json`
+- Regenerate copilot-instructions.md from the enriched CLAUDE.md
+
+Your TECH_DEBT.md, pre-commit hooks, and any project-specific customisations are preserved.
+
+---
+
 ## Keeping it alive
 
 - When conventions change: update `CLAUDE.md`, then run `/generate-copilot`
