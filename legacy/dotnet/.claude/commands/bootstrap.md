@@ -134,7 +134,9 @@ Read the now-populated CLAUDE.md. Generate `.github/copilot-instructions.md` as 
 
 ## Phase 4 — Report
 
-Output a summary to the user:
+Run `git diff CLAUDE.md` and `git diff TECH_DEBT.md` to show the user exactly what changed. Present the diff summary before the rest of the report.
+
+Then output:
 - Number of findings per severity
 - Top 3 architectural risks
 - Top 3 quick wins
