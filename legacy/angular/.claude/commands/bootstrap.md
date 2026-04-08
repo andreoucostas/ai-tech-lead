@@ -10,7 +10,7 @@ Execute all phases below in sequence. Do not skip any phase. Do not ask for conf
 ## Pre-flight checks
 
 Before starting analysis:
-1. **Locate the project root** — find `angular.json`. All paths are relative to this root. If it's in a subdirectory (e.g., monorepo with `apps/`), note this and adjust paths in generated output.
+1. **Locate the project root** — find `angular.json`. If not found, check for `nx.json` or `project.json` (Nx workspace). All paths are relative to this root. If it's a monorepo (e.g., `apps/` structure), note which apps/libs exist and adjust paths in generated output.
 2. **Check Angular version** — read `package.json` for `@angular/core` version. Note whether it's 17+ (standalone default, signals, new control flow) or older. Adjust conventions accordingly.
 3. **Check for existing configuration** — if `CLAUDE.md` already has populated content (not just template defaults), back up the existing conventions section and merge your findings with what's already there rather than overwriting. Preserve any entries in the "What We've Learned" section.
 4. **Large codebases** — if the project has more than 200 components, focus analysis on the most actively changed areas (check git log). Note which areas were analysed and which were skipped.

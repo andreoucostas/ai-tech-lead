@@ -30,6 +30,7 @@ Apply Boy Scout Rule improvements from CLAUDE.md to every file you touched.
 ### Step 5 — Verify final state
 - Run full `ng build` — clean compilation
 - Run full `ng test --watch=false --browsers=ChromeHeadless` — all tests pass (including any new baseline tests)
+- Run `ng lint` (if configured) — style compliance
 - No behavior should have changed
 
 ### Step 6 — Present

@@ -36,8 +36,16 @@ Include a text or mermaid diagram showing the module dependency graph.
 ### Angular Version & Tooling
 <!-- Check angular.json, package.json, tsconfig.json. Reference strict mode, build optimisations, and any non-standard config. -->
 
+### Build & Test Commands
+<!-- Populated by /bootstrap — detect the test runner (Karma, Jest, Vitest) and record the exact commands here -->
+- **Build**: `ng build`
+- **Test**: `ng test --watch=false --browsers=ChromeHeadless`
+- **Lint**: `ng lint`
+<!-- If using Jest: "npx jest". If using Vitest: "npx vitest run". Bootstrap should detect and set these. -->
+
 ### Architecture
 - Standalone components as default. NgModules only where the codebase hasn't migrated yet.
+- Use `inject()` function for dependency injection in new code. Constructor injection is acceptable in existing code but don't mix both in the same file.
 - Feature areas are lazy-loaded routes. Eagerly loaded modules should be justified.
 - Barrel files (`index.ts`) only at feature boundaries — not inside feature folders (causes circular deps).
 
@@ -45,6 +53,7 @@ Include a text or mermaid diagram showing the module dependency graph.
 - Smart/container components handle state and orchestration. Dumb/presentational components receive data via `@Input` and emit via `@Output`.
 - `ChangeDetectionStrategy.OnPush` on every component. No exceptions without a documented reason.
 - Templates stay lean — no complex expressions, no business logic. Move logic to the component class or a pipe.
+- Use new control flow syntax (`@if`, `@for`, `@switch`) in new code. Migrate from `*ngIf`/`*ngFor` when touching existing templates.
 - Prefer signals over getter-based reactive state for new code.
 
 ### State Management
@@ -71,10 +80,20 @@ Include a text or mermaid diagram showing the module dependency graph.
 - Interfaces for data shapes. Classes only when behavior is needed.
 - No type assertions (`as`) without a comment explaining why.
 
+### Styling
+- Component styles are encapsulated by default (`ViewEncapsulation.Emulated`). Do not change to `None` without justification.
+- Use `:host` for component-level styling. Avoid styling the component's own tag from the parent.
+- Global styles go in `styles.scss` only. No global styles leaked through component files.
+- Follow the project's CSS methodology (BEM, utility-first, etc.) — bootstrap will detect this.
+
+### SSR / Hydration
+<!-- If using @angular/ssr or Angular Universal, document the constraints here. -->
+<!-- Common rules: no direct DOM access (use Renderer2/inject DOCUMENT), no window/localStorage without isPlatformBrowser check. -->
+
 ### Testing
 - Every public behavior has a test. Test behavior, not implementation details.
 - Component tests use `TestBed` with component harnesses where available.
-- Service tests mock HTTP via `HttpClientTestingModule` or `provideHttpClientTesting`.
+- Service tests mock HTTP via `provideHttpClientTesting` (preferred) or `HttpClientTestingModule` (legacy).
 - Test naming: `should [expected behavior] when [condition]`.
 - No `fdescribe`, `fit`, or `xdescribe`, `xit` committed to main.
 

@@ -7,6 +7,8 @@ $ARGUMENTS
 
 If no area specified, show a summary of TECH_DEBT.md grouped by area and ask which to tackle.
 
+If TECH_DEBT.md is empty or contains only the template placeholder, run a fresh scan of the specified area (or the most actively changed area if none specified) and populate the register before proceeding.
+
 ## Execution
 
 ### Step 1 — Assess
@@ -19,7 +21,7 @@ If no area specified, show a summary of TECH_DEBT.md grouped by area and ask whi
 For each item marked "fix now":
 - Verify existing tests pass before touching anything
 - Apply the fix
-- Run `ng build` and `ng test --watch=false --browsers=ChromeHeadless` after each fix
+- Run `ng build`, `ng test --watch=false --browsers=ChromeHeadless`, and `ng lint` (if configured) after each fix
 - If no tests exist for the affected code, write baseline tests first
 
 ### Step 3 — Update the register

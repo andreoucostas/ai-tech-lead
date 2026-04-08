@@ -27,6 +27,7 @@ Decompose into ordered subtasks. Execute each fully before starting the next:
 After each subtask:
 - Run `ng build` — fix any compilation errors before moving on
 - Run `ng test --watch=false --browsers=ChromeHeadless` — fix any test failures before moving on
+- Run `ng lint` (if configured) — fix any lint violations
 - Never leave the codebase in a broken state between subtasks
 
 ### Step 3 — Boy Scout
