@@ -1,5 +1,8 @@
 Cross-check all documentation against the codebase and between instruction files. Identify drift, contradictions, and stale entries.
 
+## Input
+$ARGUMENTS
+
 Read CLAUDE.md before starting.
 
 ## Execution
@@ -19,13 +22,18 @@ For each section in CLAUDE.md:
 - No contradictions between the two files
 - Flag any rules that exist in one but not the other
 
-### Step 3 — Check TECH_DEBT.md against codebase
+### Step 3 — Check "What We've Learned" section
+- Does it still only say "No entries yet"? If so, prompt the team to add observations.
+- Are existing entries still relevant?
+- Are there learnings from recent work that should be captured?
+
+### Step 4 — Check TECH_DEBT.md against codebase
 - Are resolved items still in the register? Flag for removal.
 - Are there obvious debt patterns in the code not captured in the register? Flag for addition.
 - Are effort estimates still accurate?
 - Is the Trojan Horse Opportunities grouping still correct?
 
-### Step 4 — Report
+### Step 5 — Report
 Do NOT apply changes automatically. Present a structured report:
 
 ```

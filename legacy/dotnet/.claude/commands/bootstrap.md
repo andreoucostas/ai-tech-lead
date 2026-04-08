@@ -1,6 +1,18 @@
 Analyse this .NET codebase and set up the AI Tech Lead framework. This is the one-time bootstrap that makes the repo AI-ready.
 
+## Input
+$ARGUMENTS
+
 Execute all phases below in sequence. Do not skip any phase. Do not ask for confirmation between phases — run the full pipeline.
+
+---
+
+## Pre-flight checks
+
+Before starting analysis:
+1. **Locate the solution root** — find the `.sln` file. All paths are relative to this root. If the `.sln` is in a subdirectory (e.g., `src/`), note this and adjust paths in generated output.
+2. **Check for existing configuration** — if `CLAUDE.md` already has populated content (not just template defaults), back up the existing conventions section and merge your findings with what's already there rather than overwriting. Preserve any entries in the "What We've Learned" section.
+3. **Large codebases** — if the solution has more than 30 projects, focus analysis on the most actively changed projects (check git log). Note which projects were analysed and which were skipped.
 
 ---
 
@@ -127,6 +139,5 @@ Output a summary to the user:
 - Top 3 architectural risks
 - Top 3 quick wins
 - Files generated/modified
-- Suggested first `/feature` or `/fix` command to try
 
-$ARGUMENTS
+**Important**: remind the user to review the generated `CLAUDE.md` before using any other commands. The conventions in that file drive everything else — if they're wrong, every command will follow wrong rules.

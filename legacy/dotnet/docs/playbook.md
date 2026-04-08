@@ -38,7 +38,7 @@ Purpose-built workflows invoked via `/command`. Each encodes a specific methodol
 ### Automated Verification (Hooks)
 **File**: `.claude/settings.json`
 
-Hooks fire automatically after Claude Code writes files. They run targeted `dotnet build` and `dotnet test` commands to catch errors immediately. The agent self-corrects without the developer intervening.
+Hooks fire automatically after Claude Code writes `.cs` files. They run `dotnet build` (solution-level incremental build) to catch compilation errors immediately. The agent sees the build output and self-corrects without the developer intervening. Tests are run explicitly within command workflows, not as hooks — full test suites are too slow for per-file-write execution.
 
 ---
 
@@ -58,7 +58,7 @@ Developer types: "add export button to dashboard"
                     │
                     ▼ (after each file write)
          Hooks (settings.json)
-         dotnet build → catch errors → self-correct
+         dotnet build → catch compilation errors → self-correct
                     │
                     ▼ (on next Copilot interaction)
          copilot-instructions.md (Tier 1)
@@ -88,6 +88,17 @@ The `/review` command checks the code. You check the developer. Use this PR temp
 ```
 
 If a developer consistently can't explain their own code, that's a performance signal. The framework amplifies whatever the developer already is.
+
+---
+
+## When to Skip the Boy Scout Rule
+
+The Boy Scout Rule is mandatory during normal development. Skip it during:
+- **Hotfixes**: production is down, fix the issue, get out
+- **Time-sensitive incidents**: the priority is resolution, not cleanup
+- **Proof-of-concept branches**: throwaway code doesn't need polishing
+
+When skipping, leave a `// TODO: Boy Scout skipped — [reason]` comment. Use `/debt` to clean up later.
 
 ---
 

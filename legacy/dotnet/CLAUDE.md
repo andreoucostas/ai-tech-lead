@@ -29,6 +29,13 @@ Include a text or mermaid diagram showing project dependencies.
 <!-- Populated by /bootstrap — replaces separate CONVENTIONS.md -->
 <!-- Each convention: the rule, then 1-2 sentence rationale -->
 
+> **DEFAULTS BELOW.** Everything in this section is a starting template. When you run
+> `/bootstrap`, these are replaced with conventions observed in your actual codebase.
+> If you haven't run `/bootstrap` yet, do not treat these as authoritative.
+
+### .editorconfig & Analysers
+<!-- Check for .editorconfig, Directory.Build.props, and Roslyn analyser rules. Reference them here so AI tools respect toolchain-enforced conventions. -->
+
 ### Architecture
 - Dependency direction: inward only. API → Application → Domain. Never the reverse.
 - Domain layer has zero external dependencies.
@@ -112,12 +119,13 @@ When touching any file, apply these improvements in priority order if they exist
 1. Add missing `CancellationToken` propagation
 2. Replace string-interpolated log messages with structured logging
 3. Add missing null checks at public boundaries
-4. Replace `var` with explicit types where the type isn't obvious from the right-hand side (or vice versa per project convention)
-5. Add missing `.AsNoTracking()` to read-only queries
-6. Split fat methods (>30 lines) into focused private methods
-7. Add missing unit tests for public methods you're modifying
+4. Add missing `.AsNoTracking()` to read-only queries
+5. Split fat methods (>30 lines) into focused private methods
+6. Add missing unit tests for public methods you're modifying
 
-This is mandatory on every file you modify, not optional.
+This is mandatory on every file you modify during normal development.
+
+**When to skip**: hotfixes, time-sensitive production incidents, and proof-of-concept branches. If skipping, add a comment `// TODO: Boy Scout skipped — [reason]` so it's picked up on the next pass. Use `/debt` to clean up later.
 
 ---
 

@@ -3,11 +3,7 @@
     "PostToolUse": [
       {
         "matcher": "Write|Edit",
-        "command": "bash -c 'FILE=\"$CLAUDE_FILE_PATH\"; if [[ \"$FILE\" == *.cs ]] && [[ \"$FILE\" != *.spec.cs ]] && [[ \"$FILE\" != *Test*.cs ]]; then PROJ=$(find . -name \"*.csproj\" -path \"$(dirname \"$FILE\")/*\" | head -1); if [ -n \"$PROJ\" ]; then dotnet build \"$PROJ\" --no-restore --verbosity quiet 2>&1 | tail -20; else dotnet build --no-restore --verbosity quiet 2>&1 | tail -20; fi; fi'"
-      },
-      {
-        "matcher": "Write|Edit",
-        "command": "bash -c 'FILE=\"$CLAUDE_FILE_PATH\"; if [[ \"$FILE\" == *Test*.cs ]] || [[ \"$FILE\" == *Tests*.cs ]]; then PROJ=$(find . -name \"*.csproj\" -path \"$(dirname \"$FILE\")/*\" | head -1); if [ -n \"$PROJ\" ]; then dotnet test \"$PROJ\" --no-build --verbosity quiet 2>&1 | tail -20; fi; fi'"
+        "command": "bash -c 'if [[ \"$CLAUDE_FILE_PATH\" == *.cs ]]; then dotnet build --verbosity quiet 2>&1 | tail -20; fi'"
       }
     ]
   }

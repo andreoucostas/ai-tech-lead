@@ -1,5 +1,8 @@
 Read the CLAUDE.md file in the project root. Generate (or regenerate) `.github/copilot-instructions.md` as a full derivative.
 
+## Input
+$ARGUMENTS
+
 ## Rules
 
 1. Read every section of CLAUDE.md — Codebase Context, Solution Structure, Conventions, Architecture Decisions, Common Tasks, Boy Scout Rule.
@@ -37,5 +40,3 @@ Read the CLAUDE.md file in the project root. Generate (or regenerate) `.github/c
 6. Do NOT compress or summarise — this is a full derivative, not an abbreviation. Every rule in CLAUDE.md must appear in copilot-instructions.md.
 
 7. Write the file to `.github/copilot-instructions.md`. Create the `.github/` directory if it doesn't exist.
-
-$ARGUMENTS
