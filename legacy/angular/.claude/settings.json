@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "command": "bash -c 'if [[ \"$CLAUDE_FILE_PATH\" == *.ts ]]; then npx tsc --noEmit 2>&1 | tail -20; fi'"
+      }
+    ]
+  }
+}
