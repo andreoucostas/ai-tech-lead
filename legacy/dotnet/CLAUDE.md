@@ -116,16 +116,21 @@ Record significant decisions here. Include accidental decisions that became conv
 
 ## Boy Scout Rule
 
-When touching any file, apply these improvements in priority order if they exist:
+When touching any file, apply these improvements if they exist.
+
+### Always apply (low-effort, low-risk — do these on every touched file):
 
 1. Add missing `CancellationToken` propagation
 2. Replace string-interpolated log messages with structured logging
 3. Add missing null checks at public boundaries
 4. Add missing `.AsNoTracking()` to read-only queries
+
+### Apply only when the file is the primary target of the change:
+
 5. Split fat methods (>30 lines) into focused private methods
 6. Add missing unit tests for public methods you're modifying
 
-This is mandatory on every file you modify during normal development.
+Items 5–6 can significantly expand a diff. Only apply them when the file is what the task is specifically about, not when it's incidentally touched. This keeps PRs focused and reviewable.
 
 **When to skip**: hotfixes, time-sensitive production incidents, and proof-of-concept branches. If skipping, add a comment `// TODO: Boy Scout skipped — [reason]` so it's picked up on the next pass. Use `/debt` to clean up later.
 
