@@ -15,6 +15,13 @@ jobs:
 
       - name: Check AI Tech Lead framework files
         run: |
+          # Skip checks if this repo is the framework template itself.
+          # The marker file is documented to never be copied into consumer repos.
+          if [ -f ".template-repo" ]; then
+            echo "Detected framework template repo (.template-repo marker present). Skipping framework-state checks — they only apply to consumer repos that have run /bootstrap."
+            exit 0
+          fi
+
           FAILED=0
 
           # 1. CLAUDE.md exists and is non-empty

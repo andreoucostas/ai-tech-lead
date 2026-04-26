@@ -7,12 +7,16 @@ A working template that turns Claude Code and GitHub Copilot into a tech lead fo
 ### 1. Copy into your project
 Copy the following into your existing .NET **solution root** (where your `.sln` file lives):
 ```
-.claude/          → Claude Code commands and hooks
-.github/prompts/  → GitHub Copilot Chat workflows (mirror of .claude/commands/)
-AGENTS.md         → pointer for any agent-style tool
-CLAUDE.md         → template, populated by /bootstrap
-TECH_DEBT.md      → template, populated by /bootstrap
+.claude/                            → Claude Code commands and hooks
+.github/prompts/                    → GitHub Copilot Chat workflows (mirror of .claude/commands/)
+.github/workflows/docs-sync-check.yml → CI guardrail for framework state
+.github/PULL_REQUEST_TEMPLATE.md    → PR template with design rationale + Boy Scout checklist
+AGENTS.md                           → pointer for any agent-style tool
+CLAUDE.md                           → template, populated by /bootstrap
+TECH_DEBT.md                        → template, populated by /bootstrap
 ```
+
+**Do not copy** `.template-repo` — it's a marker that exists only in this template repository to disable the CI guardrail here.
 
 All of these files should be committed to version control — they're shared team configuration, not local settings.
 
