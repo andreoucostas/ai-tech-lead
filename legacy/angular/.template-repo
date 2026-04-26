@@ -1,0 +1,9 @@
+This file marks the repository as the AI Tech Lead Framework template itself.
+
+The docs-sync-check CI workflow uses this marker to skip framework-state checks
+that would (correctly) fail against the unbootstrapped template — checks like
+"CLAUDE.md does not contain DEFAULTS BELOW" or "copilot-instructions.md exists"
+are meant for consumer repos that have already run /bootstrap.
+
+DO NOT copy this file when adopting the framework into your project. It must
+exist only in the source-of-truth template repository.
