@@ -14,6 +14,7 @@ Before starting analysis:
 2. **Check .NET version** — read `<TargetFramework>` from csproj files and check for `global.json`. Note whether it's .NET 6/7/8/9. Adjust conventions accordingly (e.g., minimal APIs from .NET 6+, primary constructors from .NET 8+, `required` keyword from C# 11+). Also check for `Directory.Build.props` — it affects build and analyser behaviour across the entire solution.
 3. **Check for existing configuration** — if `CLAUDE.md` already has populated content (not just template defaults), back up the existing conventions section and merge your findings with what's already there rather than overwriting. Preserve any entries in the "What We've Learned" section.
 4. **Large codebases** — if the solution has more than 30 projects, focus analysis on the most actively changed projects (check git log). Note which projects were analysed and which were skipped.
+5. **Mixed-stack detection** — count `.ts` / `.html` / `.scss` files outside `obj/`, `bin/`, `wwwroot/lib/`, and `node_modules/`. If more than ~50 source files of another stack exist, flag this as a mixed-stack repo. After Phase 3 generation, add a note in the final report recommending the user create `.github/instructions/<stack>.instructions.md` with `applyTo:` frontmatter (see README "Mixed-stack repos" section). Do not auto-generate the secondary-stack instructions file — the user picks the rules.
 
 ---
 
@@ -88,7 +89,7 @@ For each item: current pattern → target pattern → brief rationale.
 Read the existing CLAUDE.md template in the project root. Replace every placeholder section with real findings from this codebase:
 
 - **Codebase Context**: what this app does, users, domain concepts, critical journeys
-- **Solution Structure**: actual project layout with dependency diagram
+- **Repository Structure**: actual project layout with dependency diagram
 - **Conventions**: the rules this codebase actually follows (or should follow), with rationale. Keep the subsection structure (Architecture, Naming, DI, Data Access, API, Async, Null Handling, Logging, Testing). Replace template defaults with observed reality.
 - **Architecture Decisions**: every significant decision found — intentional or accidental. Include context, consequences, and honest review notes.
 - **Common Tasks**: real patterns from this codebase for adding endpoints, entities, services

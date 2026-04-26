@@ -73,7 +73,7 @@ Present the inventory to the user as a table:
 |----------|------|------|------------------------|
 | Cursor   | .cursorrules | 2.4KB | Merge → CLAUDE.md > Conventions |
 | ADR      | docs/adr/0001-event-sourcing.md | 1.8KB | Merge → CLAUDE.md > Architecture Decisions |
-| Codemap  | CODEMAP.md | 5.1KB | Merge → CLAUDE.md > Solution Structure |
+| Codemap  | CODEMAP.md | 5.1KB | Merge → CLAUDE.md > Repository Structure |
 | Tech debt| TODO.md | 0.9KB | Merge → TECH_DEBT.md |
 | Toolchain| .editorconfig | — | Reference, don't merge |
 | Unknown  | docs/notes.md | 12KB | Skip (ask user) |
@@ -91,7 +91,7 @@ Based on the inventory, propose a merge plan grouped by canonical target:
 CLAUDE.md will receive:
   > Conventions ← .cursorrules (12 rules), docs/CONVENTIONS.md (8 rules), .windsurfrules (3 rules)
                   Estimated: 18 unique rules after dedup
-  > Solution Structure ← CODEMAP.md (full content)
+  > Repository Structure ← CODEMAP.md (full content)
   > Architecture Decisions ← docs/adr/*.md (6 ADRs)
   > Conventions > Testing ← docs/TESTING.md (summary)
 
@@ -147,13 +147,13 @@ Present to the user:
 >
 > Apply?"
 
-### 4b — Merge into Solution Structure
+### 4b — Merge into Repository Structure
 If `CODEMAP.md`, `ARCHITECTURE.md`, or `docs/architecture/*` exist, extract:
 - Project layout / module dependency diagram (preserve mermaid)
 - Layering strategy
 - Where to put new code
 
-Merge into CLAUDE.md > Solution Structure. Preserve diagrams.
+Merge into CLAUDE.md > Repository Structure. Preserve diagrams.
 
 ### 4c — Merge into Architecture Decisions
 For each ADR found in `docs/adr/*` or `docs/decisions/*`:

@@ -1,8 +1,10 @@
 # [Project Name]
 
 > This file is the single source of truth for AI-assisted development in this repository.
-> It is automatically loaded by Claude Code on every session.
+> It is automatically loaded by Claude Code, by GitHub Copilot's coding agent and CLI, and by any AGENTS.md-aware tool (Codex, Cursor, Aider).
 > Run `/bootstrap` to populate it from your actual codebase.
+>
+> **Per-developer working preferences** (e.g. "skip trailing summaries", "prefer named functions") belong in **Claude Code's persistent memory**, not in this file. Use phrasings like "remember to do X" during sessions; CLAUDE.md is for repo-shared conventions only.
 
 ---
 
@@ -14,7 +16,7 @@ What this application does, who uses it, key domain concepts, and critical user 
 
 ---
 
-## Solution Structure
+## Repository Structure
 
 <!-- Populated by /bootstrap — replaces separate CODEMAP.md -->
 
@@ -183,7 +185,7 @@ Before presenting work as complete:
 At the end of your response, note if:
 - A new pattern was introduced that should be documented here
 - A TECH_DEBT.md entry was resolved or a new one discovered
-- copilot-instructions.md needs regeneration (run `/generate-copilot`)
+- copilot-instructions.md needs regeneration (run `/generate-copilot` in Claude Code, or ask your agent to rewrite it from this file following the rules in `.claude/commands/generate-copilot.md`)
 
 ---
 

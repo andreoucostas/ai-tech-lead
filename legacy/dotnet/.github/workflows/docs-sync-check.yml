@@ -42,12 +42,12 @@ jobs:
 
           # 3. .github/copilot-instructions.md exists and is <= 80 lines
           if [ ! -f ".github/copilot-instructions.md" ]; then
-            echo "FAIL: .github/copilot-instructions.md is missing. Run /generate-copilot to create it."
+            echo "FAIL: .github/copilot-instructions.md is missing. Regenerate it: run /generate-copilot in Claude Code, or have your AI agent rewrite it from CLAUDE.md following the rules in .claude/commands/generate-copilot.md."
             FAILED=1
           else
             LINE_COUNT=$(wc -l < ".github/copilot-instructions.md")
             if [ "$LINE_COUNT" -gt 80 ]; then
-              echo "FAIL: .github/copilot-instructions.md is $LINE_COUNT lines (limit: 80). Run /generate-copilot to regenerate it within the slim limit."
+              echo "FAIL: .github/copilot-instructions.md is $LINE_COUNT lines (limit: 80). Regenerate it within the slim limit (rules in .claude/commands/generate-copilot.md)."
               FAILED=1
             else
               echo "OK: .github/copilot-instructions.md exists and is $LINE_COUNT lines (<= 80)."

@@ -39,7 +39,7 @@ Do **not** copy Common Tasks, Architecture Decisions, or Codebase Context here. 
 
 6. Skip these (the agent reads them from CLAUDE.md):
    - Codebase Context
-   - Solution Structure
+   - Repository Structure
    - Architecture Decisions
    - Common Tasks
    - Agentic Workflow

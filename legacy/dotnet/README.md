@@ -92,8 +92,28 @@ Every command follows the same execution model:
 
 Hooks in `.claude/settings.json` automatically run `dotnet build` after every `.cs` file write, catching compilation errors before they compound. The hook runs a solution-level incremental build (fast) — no fragile project-path detection.
 
+## Mixed-stack repos (.NET + frontend in one repository)
+
+If your repo has significant code in another stack alongside .NET — e.g. a colocated Angular SPA, a Razor/Blazor frontend, or a sizeable JavaScript build pipeline — use **path-scoped Copilot instructions** so each stack gets the right rules.
+
+Create files under `.github/instructions/` with `applyTo:` frontmatter:
+
+```markdown
+---
+applyTo: "**/*.ts"
+---
+# TypeScript / Angular rules
+- Use signals over BehaviorSubject for new code.
+- Prefer the `inject()` function over constructor injection.
+- ...
+```
+
+Copilot's coding agent and inline completions both honour `applyTo` — `.cs` files see the .NET rules from `copilot-instructions.md`, `.ts` files see the TypeScript rules from `.github/instructions/typescript.instructions.md`. The repo-wide rules apply on top of either.
+
+If the secondary stack is Angular, the `ai-tech-lead-angular` template's `copilot-instructions.md` content is a sensible starting point — copy it into a `.github/instructions/typescript.instructions.md` file and add `applyTo: "**/*.{ts,html}"` at the top.
+
 ## Keeping it alive
 
-- When conventions change: update `CLAUDE.md`, then run `/generate-copilot`
-- Quarterly: run `/docs-sync` to find drift
+- When conventions change: update `CLAUDE.md` and ask your agent (or `/generate-copilot`) to refresh `.github/copilot-instructions.md`
+- Quarterly: run `/docs-sync` to find drift, or `/rebootstrap` for a deeper refresh
 - Always: the Boy Scout Rule and Trojan Horse principle mean every change improves the codebase incrementally
