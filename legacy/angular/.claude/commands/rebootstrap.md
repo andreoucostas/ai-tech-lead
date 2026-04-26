@@ -95,7 +95,7 @@ Apply accepted changes section by section:
 - **Boy Scout Rule**: update the priority list based on newly found debt
 - **What We've Learned**: append any new lessons — do not overwrite existing entries
 
-Do NOT touch the Codebase Context or File Structure sections unless a structural change was found (e.g., a new feature module, an Nx migration, a routing restructure).
+Do NOT touch the Codebase Context or Repository Structure sections unless a structural change was found (e.g., a new feature module, an Nx migration, a routing restructure).
 
 ### 3b: Update TECH_DEBT.md
 

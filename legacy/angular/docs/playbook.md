@@ -20,20 +20,20 @@ After three months of this, every actively-developed area is cleaner, better-tes
 
 ## Three-Tier Architecture
 
-### Tier 1 — Passive (Copilot)
-**File**: `.github/copilot-instructions.md`
+### Tier 1 — Passive (inline completions)
+**Files**: `.github/copilot-instructions.md`, plus optional `.github/instructions/*.instructions.md` for path-scoped rules
 
-Auto-loaded by GitHub Copilot on every inline suggestion and chat interaction. Contains terse imperative rules. Handles the small stuff — naming, patterns, imports — without the developer asking.
+Auto-loaded by GitHub Copilot on every inline suggestion. Terse imperative rules — naming, patterns, imports — handled without the developer asking. Token budget is tight here, so the file is ≤80 lines.
 
-### Tier 2 — Directed (Claude Code)
-**File**: `CLAUDE.md`
+### Tier 2 — Directed (agent-mode reasoning)
+**Files**: `CLAUDE.md` (single source of truth), `AGENTS.md` (pointer)
 
-Auto-loaded by Claude Code on every session. The single source of truth: conventions, architecture, agentic workflow rules. When a developer types a natural language request, Claude reads CLAUDE.md and follows the appropriate workflow automatically.
+Auto-loaded by **Claude Code AND by GitHub Copilot's coding agent / CLI** (and any AGENTS.md-aware tool). Conventions, architecture, common tasks, agentic workflow. When a developer types a natural language request, the agent reads CLAUDE.md and follows the appropriate workflow automatically. Per-developer working preferences live in Claude Code's persistent memory, not in CLAUDE.md.
 
-### Tier 3 — Explicit (Commands)
-**Files**: `.claude/commands/*.md`
+### Tier 3 — Explicit (workflow commands)
+**Files**: `.claude/commands/*.md` (canonical), `.github/prompts/*.prompt.md` (Copilot Chat wrappers)
 
-Purpose-built workflows invoked via `/command`. Each encodes a specific methodology: `/feature` decomposes into subtasks, `/fix` writes regression tests first, `/design` forces design thinking before code. Developers can invoke these explicitly, or let CLAUDE.md's agentic workflow route to the right behavior from natural language.
+Purpose-built workflows invoked via `/command` in either Claude Code or Copilot Chat. Each encodes a specific methodology: `/feature` decomposes into subtasks, `/fix` writes regression tests first, `/design` forces design thinking before code. The Copilot prompt files are thin wrappers that delegate to the canonical `.claude/commands/` files — single source of truth per workflow.
 
 ### Automated Verification (Hooks)
 **File**: `.claude/settings.json`

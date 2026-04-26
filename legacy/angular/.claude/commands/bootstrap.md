@@ -14,6 +14,7 @@ Before starting analysis:
 2. **Check Angular version** — read `package.json` for `@angular/core` version. Note whether it's 17+ (standalone default, signals, new control flow) or older. Adjust conventions accordingly.
 3. **Check for existing configuration** — if `CLAUDE.md` already has populated content (not just template defaults), back up the existing conventions section and merge your findings with what's already there rather than overwriting. Preserve any entries in the "What We've Learned" section.
 4. **Large codebases** — if the project has more than 200 components, focus analysis on the most actively changed areas (check git log). Note which areas were analysed and which were skipped.
+5. **Mixed-stack detection** — count `.cs` / `.csproj` / `.sln` files outside `node_modules/` and `dist/`. If a `.sln` exists or more than ~50 `.cs` source files exist, flag this as a mixed-stack repo. After Phase 3 generation, add a note in the final report recommending the user create `.github/instructions/<stack>.instructions.md` with `applyTo:` frontmatter (see README "Mixed-stack repos" section). Do not auto-generate the secondary-stack instructions file — the user picks the rules.
 
 ---
 
@@ -97,7 +98,7 @@ For each item: current pattern → target pattern → brief rationale.
 Read the existing CLAUDE.md template in the project root. Replace every placeholder section with real findings from this codebase:
 
 - **Codebase Context**: what this app does, users, domain concepts, critical journeys
-- **File Structure**: actual folder layout with module dependency diagram
+- **Repository Structure**: actual folder layout with module dependency diagram
 - **Conventions**: the rules this codebase actually follows (or should follow), with rationale. Keep the subsection structure (Angular Version, Architecture, Component Design, State Management, RxJS, API/HTTP, Typing, Testing). Replace template defaults with observed reality. If Angular version is below 17, adjust conventions to match what's available.
 - **Architecture Decisions**: every significant decision found — intentional or accidental. Include context, consequences, and honest review notes.
 - **Common Tasks**: real patterns from this codebase for adding components, services, routes, stores
