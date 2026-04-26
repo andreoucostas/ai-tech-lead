@@ -25,9 +25,9 @@ For each item marked "fix now":
 - If no tests exist for the affected code, write baseline tests first
 
 ### Step 3 — Update the register
-- Remove resolved items from TECH_DEBT.md
+- Remove resolved items from TECH_DEBT.md — items are per-block: to remove a resolved item, delete its `## DEBT-NNN` block. To add a new item, follow the template at the top of TECH_DEBT.md.
 - Update the "Trojan Horse Opportunities" section if feature area groupings changed
-- If you discovered new debt during the fix, add it to the register
+- If you discovered new debt during the fix, add it to the register using the per-block format
 
 ### Step 4 — Boy Scout
 Apply Boy Scout Rule from CLAUDE.md to every file touched during the fix.
