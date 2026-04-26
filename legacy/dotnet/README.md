@@ -60,7 +60,7 @@ Both Claude Code and Copilot Chat use the same slash-command names:
 /debt [area]               — find and fix tech debt
 /docs-sync                 — check documentation for drift
 /adopt                     — ingest existing AI-framework artifacts into this layout
-/generate-copilot          — regenerate copilot-instructions.md (Claude Code only)
+/generate-copilot          — regenerate the slim copilot-instructions.md (for inline completions)
 ```
 
 In **Claude Code**, these are loaded from `.claude/commands/`. In **Copilot Chat**, the same names are loaded from `.github/prompts/` — those files are thin wrappers that delegate to the canonical `.claude/commands/*.md` files, so there's a single source of truth per workflow.
