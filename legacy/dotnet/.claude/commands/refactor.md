@@ -30,7 +30,7 @@ Apply Boy Scout Rule improvements from CLAUDE.md to every file you touched.
 ### Step 5 — Verify final state
 - Run full `dotnet build` — clean compilation
 - Run full `dotnet test` — all tests pass (including any new baseline tests)
-- Run `dotnet format --verify-no-changes` — style compliance
+- Run `dotnet format` — applies project formatting
 - No behavior should have changed
 
 ### Step 6 — Present

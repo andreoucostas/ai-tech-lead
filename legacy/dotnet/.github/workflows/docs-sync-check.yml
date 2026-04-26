@@ -1,0 +1,73 @@
+name: Docs sync check
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  docs-sync-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check AI Tech Lead framework files
+        run: |
+          FAILED=0
+
+          # 1. CLAUDE.md exists and is non-empty
+          if [ ! -s "CLAUDE.md" ]; then
+            echo "FAIL: CLAUDE.md is missing or empty."
+            FAILED=1
+          else
+            echo "OK: CLAUDE.md exists and is non-empty."
+          fi
+
+          # 2. AGENTS.md exists
+          if [ ! -f "AGENTS.md" ]; then
+            echo "FAIL: AGENTS.md is missing. Run /bootstrap to generate it."
+            FAILED=1
+          else
+            echo "OK: AGENTS.md exists."
+          fi
+
+          # 3. .github/copilot-instructions.md exists and is <= 80 lines
+          if [ ! -f ".github/copilot-instructions.md" ]; then
+            echo "FAIL: .github/copilot-instructions.md is missing. Run /generate-copilot to create it."
+            FAILED=1
+          else
+            LINE_COUNT=$(wc -l < ".github/copilot-instructions.md")
+            if [ "$LINE_COUNT" -gt 80 ]; then
+              echo "FAIL: .github/copilot-instructions.md is $LINE_COUNT lines (limit: 80). Run /generate-copilot to regenerate it within the slim limit."
+              FAILED=1
+            else
+              echo "OK: .github/copilot-instructions.md exists and is $LINE_COUNT lines (<= 80)."
+            fi
+          fi
+
+          # 4. TECH_DEBT.md exists
+          if [ ! -f "TECH_DEBT.md" ]; then
+            echo "FAIL: TECH_DEBT.md is missing. Run /bootstrap to generate it."
+            FAILED=1
+          else
+            echo "OK: TECH_DEBT.md exists."
+          fi
+
+          # 5. CLAUDE.md does not contain template default phrase
+          if grep -q "DEFAULTS BELOW" "CLAUDE.md" 2>/dev/null; then
+            echo "FAIL: CLAUDE.md still contains the template defaults phrase 'DEFAULTS BELOW'. Run /bootstrap to populate it from your codebase."
+            FAILED=1
+          else
+            echo "OK: CLAUDE.md does not contain template defaults."
+          fi
+
+          if [ "$FAILED" -ne 0 ]; then
+            echo ""
+            echo "One or more AI Tech Lead framework checks failed. See messages above."
+            exit 1
+          fi
+
+          echo ""
+          echo "All AI Tech Lead framework checks passed."

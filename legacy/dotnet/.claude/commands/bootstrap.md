@@ -103,33 +103,75 @@ Create TECH_DEBT.md in the project root with this structure:
 ```markdown
 # Tech Debt Register
 
-| ID | Category | Severity | Files Affected | Issue | Recommended Fix | Effort |
-|----|----------|----------|----------------|-------|-----------------|--------|
+> One block per item. Sort by severity then effort. Reference items by ID in commit messages and PRs.
+
+---
+
+## DEBT-001: <Short title>
+
+- **Category**: <see list below>
+- **Severity**: Critical | High | Medium | Low
+- **Effort**: S (<1hr) | M (half day) | L (1-2 days) | XL (needs spike)
+- **Files**: `path/to/Foo.cs:42`, `path/to/Bar.cs`
+
+### Issue
+<1-3 sentences on what's wrong and why it matters>
+
+### Recommended fix
+<1-3 sentences on the change and any risks>
+
+---
+
+## Trojan Horse Opportunities
+
+Group DEBT IDs by feature area so developers can bundle cleanup into feature work:
+
+- **Auth**: DEBT-003, DEBT-007
+- **Reporting**: DEBT-002, DEBT-011
 ```
 
 Categories: Architecture, Data Access, DI/Lifetime, API Design, Async, Testing, Types/Nullability, Performance, Dependencies, Security
 Severity: Critical / High / Medium / Low
 Effort: S (< 1hr) / M (half day) / L (1-2 days) / XL (needs spike)
 
-Sort by severity then effort.
+Sort by severity then effort. One `## DEBT-NNN` block per item.
 
-Add a "Trojan Horse Opportunities" section grouping debt items by feature area, so developers can bundle cleanup into feature work.
+### 3c: Ensure AGENTS.md exists
 
-### 3c: Generate copilot-instructions.md
+If `AGENTS.md` is missing from the repo root, write it. Use this exact content (it points all agent-style tools — Copilot coding agent, Codex, Cursor, Aider — at CLAUDE.md):
 
-Read the now-populated CLAUDE.md. Generate `.github/copilot-instructions.md` as a full derivative:
+```markdown
+# Agent Instructions
 
-- Start with: "When generating code in this repo, always follow these rules:"
-- Convert every convention, rule, and pattern from CLAUDE.md into imperative instructions
-- Include all sections: architecture, naming, DI, data access, API, async, null handling, logging, testing, boy scout rule, documentation maintenance
-- Imperative voice throughout
-- Keep every point scannable — one to two lines max
-- Include the documentation maintenance rules:
-  - New pattern → flag CLAUDE.md needs updating
-  - Convention changed → flag CLAUDE.md needs updating
-  - Tech debt resolved → flag TECH_DEBT.md entry for removal
-  - New tech debt found → flag TECH_DEBT.md needs new entry
-  - Implementation contradicts instructions → ask whether to update convention or change implementation
+This repository follows the AI Tech Lead Framework. The single source of truth for conventions, architecture, common tasks, and the agentic workflow lives in **[CLAUDE.md](./CLAUDE.md)** at the repository root.
+
+All AI coding agents (Claude Code, GitHub Copilot coding agent, Codex, Cursor, Aider, etc.) should read `CLAUDE.md` before making changes and treat it as authoritative.
+
+## Quick reference
+
+- **Conventions, architecture, common tasks, boy-scout rules**: see [CLAUDE.md](./CLAUDE.md)
+- **Tech debt register**: see [TECH_DEBT.md](./TECH_DEBT.md)
+- **Inline-completion ruleset**: see [.github/copilot-instructions.md](./.github/copilot-instructions.md)
+- **Reusable workflows for Copilot Chat**: see [.github/prompts/](./.github/prompts/)
+- **Reusable workflows for Claude Code**: see [.claude/commands/](./.claude/commands/)
+
+## Precedence
+
+If anything in this file or in derived files conflicts with `CLAUDE.md`, `CLAUDE.md` wins. Slash commands (`/feature`, `/fix`, etc.) have Copilot equivalents in `.github/prompts/` with the same names.
+```
+
+If `AGENTS.md` already exists, leave it alone.
+
+### 3d: Generate copilot-instructions.md (slim, inline-completions only)
+
+Run the `/generate-copilot` workflow. **Do not** produce a full derivative of CLAUDE.md — Copilot's coding agent reads CLAUDE.md and AGENTS.md directly. The copilot-instructions.md file is now scoped to inline editor completions only:
+
+- Terse imperative one-liners
+- Conventions and Boy Scout (always-apply only)
+- Total under 80 lines
+- No Common Tasks, no Architecture Decisions, no Codebase Context
+
+See `.claude/commands/generate-copilot.md` for the exact rules.
 
 ---
 

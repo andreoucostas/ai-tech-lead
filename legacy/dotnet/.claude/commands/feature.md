@@ -27,7 +27,7 @@ Decompose into ordered subtasks. Execute each fully before starting the next:
 After each subtask:
 - Run `dotnet build` — fix any compilation errors before moving on
 - Run `dotnet test` — fix any test failures before moving on
-- Run `dotnet format --verify-no-changes` — fix any formatting violations
+- Run `dotnet format` — applies project formatting
 - Never leave the codebase in a broken state between subtasks
 
 ### Step 3 — Boy Scout
