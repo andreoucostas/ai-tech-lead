@@ -1,6 +1,4 @@
-Generate tests for code in this Angular codebase.
-
-Read CLAUDE.md before starting — specifically the Conventions > Testing section and the Common Tasks section.
+Generate tests for code in this Angular codebase. Follow CLAUDE.md > Conventions > Testing and the test-related Common Tasks recipes.
 
 ## Input
 $ARGUMENTS

@@ -12,7 +12,7 @@ Execute all phases below in sequence. Do not skip any phase. Do not ask for conf
 Before starting analysis:
 1. **Locate the project root** — find `angular.json`. If not found, check for `nx.json` or `project.json` (Nx workspace). All paths are relative to this root. If it's a monorepo (e.g., `apps/` structure), note which apps/libs exist and adjust paths in generated output.
 2. **Check Angular version** — read `package.json` for `@angular/core` version. Note whether it's 17+ (standalone default, signals, new control flow) or older. Adjust conventions accordingly.
-3. **Check for existing configuration** — if `CLAUDE.md` already has populated content (not just template defaults), back up the existing conventions section and merge your findings with what's already there rather than overwriting. Preserve any entries in the "What We've Learned" section.
+3. **Check for existing configuration** — if `CLAUDE.md` already has populated content (not just template defaults), back up the existing conventions section and merge your findings with what's already there rather than overwriting. Never touch `LEARNINGS.md` — it is append-only.
 4. **Large codebases** — if the project has more than 200 components, focus analysis on the most actively changed areas (check git log). Note which areas were analysed and which were skipped.
 5. **Mixed-stack detection** — count `.cs` / `.csproj` / `.sln` files outside `node_modules/` and `dist/`. If a `.sln` exists or more than ~50 `.cs` source files exist, flag this as a mixed-stack repo. After Phase 3 generation, add a note in the final report recommending the user create `.github/instructions/<stack>.instructions.md` with `applyTo:` frontmatter (see README "Mixed-stack repos" section). Do not auto-generate the secondary-stack instructions file — the user picks the rules.
 
@@ -23,59 +23,59 @@ Before starting analysis:
 Perform six analysis passes. For each, observe and record findings internally. Do not output analysis results to the user — they feed Phase 2.
 
 ### A1: Module Architecture & Lazy Loading
-- Module layout (NgModules vs standalone components — which approach, how consistently applied?)
-- Lazy loading strategy (which routes are lazy loaded, which are eagerly loaded and shouldn't be?)
-- Barrel files (`index.ts`) — are they used? Are they causing circular dependencies or bloated imports?
-- Shared/core module contents — what's in each and is the boundary clear?
-- Routing structure (flat vs nested, guard usage, resolver patterns)
-- Any circular dependencies between modules
+- NgModules vs standalone — split, consistency
+- Lazy vs eager routes — eager justifications
+- Barrel files (`index.ts`) — usage, circular-dep risk
+- Shared/core module boundaries — clarity
+- Routing — flat/nested, guards, resolvers
+- Module-level circular dependencies
 
 ### A2: State Management
-- What approach is used (NgRx, NGXS, Akita, service-based with BehaviorSubjects, signals, or a mix)?
-- Is there a clear distinction between local component state and shared application state?
-- Are there services acting as informal stores with BehaviorSubjects? How consistently?
-- Is there prop drilling (passing data through multiple component layers via @Input)?
-- How is server state handled (caching, stale data, loading states)?
-- If NgRx or similar: are actions, reducers, effects, and selectors well-structured or over-engineered?
+- Approach — NgRx / NGXS / Akita / BehaviorSubjects / signals / mix
+- Local vs shared state — boundary clarity
+- Informal stores — services-with-BehaviorSubjects pattern
+- Prop drilling — through how many levels
+- Server state — caching, staleness, loading/error
+- NgRx/similar — actions/reducers/effects/selectors structure or over-engineered
 
 ### A3: Component Design
-- Smart vs dumb component separation — is it applied? Consistently?
-- Change detection strategy — which components use OnPush? Which should but don't?
-- Template complexity — are there templates with heavy logic, nested conditions, or complex expressions?
-- Component size — are there god components doing too many things?
-- Input/Output patterns — correct use, or are there anti-patterns?
-- Lifecycle hook usage — any misuse of ngOnInit, ngOnChanges, ngOnDestroy?
-- Signal usage — if Angular 16+, are signals adopted? How consistently?
+- Smart vs dumb — applied, consistent
+- OnPush coverage — gaps
+- Template complexity — heavy logic, deep nesting, complex expressions
+- God components
+- `@Input`/`@Output` patterns — anti-patterns
+- Lifecycle hook misuse
+- Signals adoption (Angular 16+)
 
 ### A4: RxJS Hygiene
-- Subscription management — are subscriptions properly cleaned up? What pattern is used (takeUntil, takeUntilDestroyed, async pipe, DestroyRef)?
-- Nested subscribes (subscribe inside subscribe) — where do they occur?
-- Manual subscribe vs async pipe — what's the ratio?
-- Operator usage — any misuse of switchMap/mergeMap/concatMap/exhaustMap?
-- Error handling in streams — are errors caught or do they silently kill streams?
-- Subject usage — appropriate or a crutch?
-- Memory leaks — any observable streams that could leak?
+- Subscription cleanup pattern — takeUntil / takeUntilDestroyed / async pipe / DestroyRef
+- Nested subscribes — locations
+- Manual `.subscribe` vs async pipe — ratio
+- Operator misuse — switchMap/mergeMap/concatMap/exhaustMap choice
+- Stream error handling — caught vs silent death
+- Subject usage — justified or crutch
+- Leak risks
 
 ### A5: API Layer & Error Handling
-- Service structure — how are HTTP services organised?
-- HTTP interceptors — what's intercepted (auth tokens, error handling, loading state, retry)?
-- Request/response models — typed with interfaces, or liberal use of `any`?
-- Error handling strategy — global error handler? Per-service? Inconsistent?
-- Loading and error states — how are they communicated to the UI?
-- Retry logic — does it exist? Is it appropriate?
-- Environment configuration — how are API URLs and keys managed?
+- HTTP service organisation
+- Interceptors — auth/error/loading/retry coverage
+- Request/response typing — interfaces vs `any`
+- Error handling — global/per-service/inconsistent
+- Loading & error UI signalling
+- Retry logic — present, appropriate
+- Environment config — API URLs/keys
 
 ### A6: Build, Testing & Code Quality
-- Angular version — current or behind?
-- angular.json — unusual config, missing optimisation flags?
-- tsconfig — strict mode enabled? Overly permissive overrides?
-- package.json — outdated, deprecated, or redundant dependencies?
-- Bundle size — any obvious bloat?
+- Angular version currency
+- `angular.json` — unusual config, missing optimisation flags
+- tsconfig — strict, permissive overrides
+- `package.json` — outdated/deprecated/redundant
+- Bundle size — obvious bloat
 - Test framework (Karma/Jasmine, Jest, Vitest, Cypress, Playwright)
-- What's tested vs what's not — biggest gaps
-- Test quality — testing behaviour or implementation details?
-- Type safety — how much `any` is used? Strict null checks on?
-- Dead code, unused imports, console.log in production code
+- Coverage gaps
+- Test quality — behaviour vs implementation
+- `any` usage; strict null checks
+- Dead code, unused imports, `console.log`
 
 ---
 
@@ -99,12 +99,12 @@ Read the existing CLAUDE.md template in the project root. Replace every placehol
 
 - **Codebase Context**: what this app does, users, domain concepts, critical journeys
 - **Repository Structure**: actual folder layout with module dependency diagram
-- **Conventions**: the rules this codebase actually follows (or should follow), with rationale. Keep the subsection structure (Angular Version, Architecture, Component Design, State Management, RxJS, API/HTTP, Typing, Testing). Replace template defaults with observed reality. If Angular version is below 17, adjust conventions to match what's available.
+- **Conventions**: the rules this codebase actually follows (or should follow), with rationale. Use the subsection structure from `docs/defaults.md` (Angular Version, Architecture, Component Design, State Management, RxJS, API/HTTP, Typing, Testing) as a starting checklist; record observed reality, deviating from defaults where the codebase does. If Angular version is below 17, adjust conventions to match what's available. **Delete the `BOOTSTRAP_PENDING` HTML comment and the "_Not yet populated_" placeholder line** when this section is filled in.
 - **Architecture Decisions**: every significant decision found — intentional or accidental. Include context, consequences, and honest review notes.
-- **Common Tasks**: real patterns from this codebase for adding components, services, routes, stores
+- **Common Tasks**: do NOT write recipes inline in CLAUDE.md. Instead, audit `.claude/skills/` against this codebase: keep a default skill if its recipe matches reality (adjust steps where they don't); add new skills under `.claude/skills/<name>/SKILL.md` for project-specific recipes (each with `name` + `description` frontmatter); delete defaults that don't apply. Update the Common Tasks bullet list in CLAUDE.md to match the final skill set.
 - **Boy Scout Rule**: priority improvements based on the actual debt found in Phase 2
 
-Preserve the Agentic Workflow and What We've Learned sections as-is.
+Preserve the Agentic Workflow section as-is. Never touch `LEARNINGS.md` — it is append-only.
 
 ### 3b: Generate TECH_DEBT.md
 

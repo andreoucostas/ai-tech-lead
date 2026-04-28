@@ -28,76 +28,11 @@ Include a text or mermaid diagram showing the module dependency graph.
 
 ## Conventions
 
-<!-- Populated by /bootstrap — replaces separate CONVENTIONS.md -->
-<!-- Each convention: the rule, then 1-2 sentence rationale -->
+<!-- BOOTSTRAP_PENDING: run /bootstrap to replace this entire section with conventions observed in the actual codebase. -->
+<!-- Until /bootstrap runs, defer to docs/defaults.md for greenfield Angular 17+ conventions. -->
+<!-- Each convention: the rule, then 1-2 sentence rationale. -->
 
-> **DEFAULTS BELOW.** Everything in this section is a starting template targeting Angular 17+.
-> When you run `/bootstrap`, these are replaced with conventions observed in your actual codebase.
-> If you haven't run `/bootstrap` yet, do not treat these as authoritative.
-
-### Angular Version & Tooling
-<!-- Check angular.json, package.json, tsconfig.json. Reference strict mode, build optimisations, and any non-standard config. -->
-
-### Build & Test Commands
-<!-- Populated by /bootstrap — detect the test runner (Karma, Jest, Vitest) and record the exact commands here -->
-- **Build**: `ng build`
-- **Test**: `ng test --watch=false --browsers=ChromeHeadless`
-- **Lint**: `ng lint`
-<!-- If using Jest: "npx jest". If using Vitest: "npx vitest run". Bootstrap should detect and set these. -->
-
-### Architecture
-- Standalone components as default. NgModules only where the codebase hasn't migrated yet.
-- Use `inject()` function for dependency injection in new code. Constructor injection is acceptable in existing code but don't mix both in the same file.
-- Feature areas are lazy-loaded routes. Eagerly loaded modules should be justified.
-- Barrel files (`index.ts`) only at feature boundaries — not inside feature folders (causes circular deps).
-
-### Component Design
-- Smart/container components handle state and orchestration. Dumb/presentational components receive data via `@Input` and emit via `@Output`.
-- `ChangeDetectionStrategy.OnPush` on every component. No exceptions without a documented reason.
-- Templates stay lean — no complex expressions, no business logic. Move logic to the component class or a pipe.
-- Use new control flow syntax (`@if`, `@for`, `@switch`) in new code. Migrate from `*ngIf`/`*ngFor` when touching existing templates.
-- Prefer signals over getter-based reactive state for new code.
-
-### State Management
-- Local component state: signals or simple properties.
-- Shared state: signals-based service, NgRx, or NGXS — whichever the project uses. Don't mix approaches.
-- No prop drilling through more than 2 component levels — use a service or store instead.
-- Server state: handle loading, error, and success states explicitly. No optimistic assumptions.
-
-### RxJS
-- Prefer `async` pipe over manual `.subscribe()`. Manual subscribes require explicit cleanup.
-- Subscription cleanup via `takeUntilDestroyed(this.destroyRef)` (Angular 16+) or `DestroyRef`. No manual `ngOnDestroy` subject patterns for new code.
-- No nested subscribes. Use `switchMap`, `mergeMap`, `concatMap`, or `exhaustMap` — choose the right operator for the use case.
-- Error handling in every stream. Use `catchError` to prevent stream death.
-
-### API / HTTP
-- One service per backend resource (e.g., `UserService`, `OrderService`).
-- All HTTP return types are typed interfaces — no `any`.
-- Interceptors handle cross-cutting concerns: auth tokens, error handling, retry logic, loading state.
-- Environment config for API URLs. No hardcoded URLs.
-
-### Typing
-- `strict: true` in tsconfig. No overrides weakening strictness.
-- No `any` — use `unknown` if the type is genuinely uncertain, then narrow.
-- Interfaces for data shapes. Classes only when behavior is needed.
-- No type assertions (`as`) without a comment explaining why.
-
-### Styling
-- Component styles are encapsulated by default (`ViewEncapsulation.Emulated`). Do not change to `None` without justification.
-- Use `:host` for component-level styling. Avoid styling the component's own tag from the parent.
-- Global styles go in `styles.scss` only. No global styles leaked through component files.
-- Follow the project's CSS methodology (BEM, utility-first, etc.) — bootstrap will detect this.
-
-### SSR / Hydration
-<!-- If using @angular/ssr or Angular Universal, document the constraints here. -->
-<!-- Common rules: no direct DOM access (use Renderer2/inject DOCUMENT), no window/localStorage without isPlatformBrowser check. -->
-
-### Testing
-- Every public behavior has a test. Test behavior, not implementation details.
-- Component tests use `TestBed` with component harnesses where available.
-- Service tests mock HTTP via `provideHttpClientTesting` (preferred) or `HttpClientTestingModule` (legacy).
-- Test naming: `should [expected behavior] when [condition]`.
-- No `fdescribe`, `fit`, or `xdescribe`, `xit` committed to main.
+_Not yet populated. Until you run `/bootstrap`, the greenfield defaults in [docs/defaults.md](./docs/defaults.md) apply. After bootstrap, this section becomes the authoritative source._
 
 ---
 
@@ -112,31 +47,14 @@ Record significant decisions here. Include accidental decisions that became conv
 
 ## Common Tasks
 
-### Add a new feature component
-1. Create component with `ng generate component` (standalone by default)
-2. Add route in the feature's routing config (lazy-loaded)
-3. Create interfaces/models for the feature's data shapes
-4. Create or extend service for backend communication
-5. Wire up state (signals, store, or service — match existing pattern)
-6. Write component test + service test
+Recipes live in `.claude/skills/` — each is auto-discovered by Claude Code and triggered by the model when relevant. Current skills:
 
-### Add a new service
-1. `ng generate service` in the appropriate feature or core directory
-2. `providedIn: 'root'` for app-wide singletons, feature-level for scoped services
-3. Type all method signatures — no `any` in or out
-4. Write service test with `HttpClientTestingModule`
+- `add-component` — add a new Angular feature component end-to-end
+- `add-service` — add an HTTP / business-logic / signal-store service
+- `add-lazy-route` — add a lazy-loaded route with optional guards/resolvers
+- `add-signal-store` — add a signal-based shared-state store
 
-### Add a new route with lazy loading
-1. Create feature directory with routing config
-2. Add lazy route in parent: `loadComponent` (standalone) or `loadChildren` (module)
-3. Add guards if auth/role-gating needed
-4. Add resolvers only if data must load before render
-
-### Add a new signal-based store
-1. Create service with `signal()` for state and `computed()` for derived values
-2. Expose read-only signals publicly (`asReadonly()`)
-3. Mutations via explicit methods — no external `.set()` calls
-4. Write tests verifying signal state transitions
+`/bootstrap` adds project-specific skills under `.claude/skills/` rather than appending recipes here.
 
 ---
 
@@ -215,7 +133,4 @@ At the end of your response, note if:
 
 ## What We've Learned
 
-<!-- This section evolves over time. Add entries when you discover what works and what doesn't. -->
-<!-- Format: [date] observation -->
-
-_No entries yet. As the team uses this framework, record what works, what causes friction, and what rules need adjusting._
+Long-form learnings live in [LEARNINGS.md](./LEARNINGS.md). Read it when starting non-trivial work; append to it (don't overwrite) when you discover what works, what causes friction, or what rule needs adjusting.

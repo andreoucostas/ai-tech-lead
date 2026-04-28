@@ -3,8 +3,6 @@ Cross-check all documentation against the codebase and between instruction files
 ## Input
 $ARGUMENTS
 
-Read CLAUDE.md before starting.
-
 ## Execution
 
 ### Step 1 — Check CLAUDE.md against codebase
@@ -22,7 +20,7 @@ For each section in CLAUDE.md:
 - No contradictions between the two files
 - Flag any rules that exist in one but not the other
 
-### Step 3 — Check "What We've Learned" section
+### Step 3 — Check LEARNINGS.md
 - Does it still only say "No entries yet"? If so, prompt the team to add observations.
 - Are existing entries still relevant?
 - Are there learnings from recent work that should be captured?

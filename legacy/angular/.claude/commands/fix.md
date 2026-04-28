@@ -1,6 +1,4 @@
-Diagnose and fix a bug in this Angular codebase.
-
-Read CLAUDE.md before starting. Every decision must comply with the conventions and patterns documented there.
+Diagnose and fix a bug in this Angular codebase. Every decision must comply with the conventions and patterns in CLAUDE.md.
 
 ## Input
 $ARGUMENTS
@@ -21,20 +19,19 @@ Before touching any production code:
 
 ### Step 3 — Fix
 - Apply the minimal fix that addresses the root cause
-- Do not refactor unrelated code in the same change (that's what /refactor is for)
+- Do not refactor unrelated code in the same change (that's what `/refactor` is for)
 
 ### Step 4 — Verify
-- Run the regression test — it must now pass
-- Run the full related test suite — nothing else should break
-- Run `ng build` to confirm clean compilation
-- Run `ng lint` (if configured) to confirm style compliance
+Run `ng build`, `ng test --watch=false --browsers=ChromeHeadless` (the regression test must pass and nothing else should break), and `ng lint` (if configured).
 
-### Step 5 — Boy Scout
-Apply Boy Scout Rule improvements (from CLAUDE.md) to files within the blast radius only. Do not boy-scout unrelated files in a bug fix.
+### Step 5 — Boy Scout (blast radius only)
+Apply Boy Scout Rule (CLAUDE.md > Boy Scout Rule) to files within the blast radius only. Do not boy-scout unrelated files in a bug fix.
 
-### Step 6 — Report
+### Step 6 — Wrap up
+@.claude/workflow.md
+
+### Step 7 — Report
 - Root cause: what was wrong and why
 - Fix: what you changed
 - Regression test: what the new test covers
 - Blast radius: what else was affected
-- Flag any TECH_DEBT.md updates needed

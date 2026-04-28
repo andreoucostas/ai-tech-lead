@@ -1,6 +1,6 @@
 Reason through the design of a change before writing any code. This is a thinking exercise, not an implementation task.
 
-Read CLAUDE.md (especially Repository Structure, Conventions, and Architecture Decisions) before starting.
+Anchor the design in CLAUDE.md > Repository Structure, Conventions, and Architecture Decisions.
 
 ## Input
 $ARGUMENTS

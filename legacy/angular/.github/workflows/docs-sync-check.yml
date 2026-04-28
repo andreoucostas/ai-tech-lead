@@ -62,12 +62,12 @@ jobs:
             echo "OK: TECH_DEBT.md exists."
           fi
 
-          # 5. CLAUDE.md does not contain template default phrase
-          if grep -q "DEFAULTS BELOW" "CLAUDE.md" 2>/dev/null; then
-            echo "FAIL: CLAUDE.md still contains the template defaults phrase 'DEFAULTS BELOW'. Run /bootstrap to populate it from your codebase."
+          # 5. CLAUDE.md no longer contains the BOOTSTRAP_PENDING marker
+          if grep -q "BOOTSTRAP_PENDING" "CLAUDE.md" 2>/dev/null; then
+            echo "FAIL: CLAUDE.md still contains the BOOTSTRAP_PENDING marker. Run /bootstrap to populate it from your codebase."
             FAILED=1
           else
-            echo "OK: CLAUDE.md does not contain template defaults."
+            echo "OK: CLAUDE.md has been bootstrapped."
           fi
 
           if [ "$FAILED" -ne 0 ]; then
