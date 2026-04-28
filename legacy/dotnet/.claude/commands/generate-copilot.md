@@ -44,7 +44,7 @@ Do **not** copy Common Tasks, Architecture Decisions, or Codebase Context here. 
    - Common Tasks
    - Agentic Workflow
    - "Apply only when primary target" Boy Scout items
-   - What We've Learned
+   - LEARNINGS.md (separate root file)
 
 7. Write the file to `.github/copilot-instructions.md`. Create the `.github/` directory if it doesn't exist.
 

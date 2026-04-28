@@ -28,57 +28,11 @@ Include a text or mermaid diagram showing project dependencies.
 
 ## Conventions
 
-<!-- Populated by /bootstrap — replaces separate CONVENTIONS.md -->
-<!-- Each convention: the rule, then 1-2 sentence rationale -->
+<!-- BOOTSTRAP_PENDING: run /bootstrap to replace this entire section with conventions observed in the actual codebase. -->
+<!-- Until /bootstrap runs, defer to docs/defaults.md for greenfield .NET conventions. -->
+<!-- Each convention: the rule, then 1-2 sentence rationale. -->
 
-> **DEFAULTS BELOW.** Everything in this section is a starting template. When you run
-> `/bootstrap`, these are replaced with conventions observed in your actual codebase.
-> If you haven't run `/bootstrap` yet, do not treat these as authoritative.
-
-### .editorconfig & Analysers
-<!-- Check for .editorconfig, Directory.Build.props, and Roslyn analyser rules. Reference them here so AI tools respect toolchain-enforced conventions. -->
-
-### Architecture
-- Dependency direction: inward only. API → Application → Domain. Never the reverse.
-- Domain layer has zero external dependencies.
-
-### Naming
-- Classes: PascalCase. Interfaces: `I` prefix. Async methods: `Async` suffix.
-- Files match class names exactly. One public class per file.
-
-### Dependency Injection
-- Services: scoped. Factories and stateless helpers: transient. Caches and config: singleton.
-- Register via extension methods per project, not in Program.cs directly.
-- Use `IOptions<T>` for static config, `IOptionsMonitor<T>` for config that can change at runtime, `IOptionsSnapshot<T>` for scoped config refresh.
-
-### Data Access
-- EF Core with repository pattern only where it adds value (not wrapping DbContext for the sake of it).
-- Queries belong in the application/service layer, not in controllers.
-- Always use `.AsNoTracking()` for read-only queries.
-
-### API Design
-- Controllers are thin — delegate to services immediately. Minimal APIs are acceptable for simple endpoints if the project uses them.
-- Request/response DTOs are separate from domain entities. Never expose domain models in API contracts.
-- Use FluentValidation for request validation. No validation logic in controllers.
-- Background work uses `BackgroundService` or `IHostedService`. No `Task.Run` fire-and-forget in request handlers.
-
-### Async
-- Propagate `CancellationToken` through every async call chain.
-- No `async void`. No sync-over-async. No fire-and-forget without explicit justification.
-
-### Null Handling
-- Nullable reference types enabled project-wide. No suppression (`!`) without a comment explaining why.
-- Guard clauses at public API boundaries. Trust internal code.
-
-### Logging
-- Structured logging only (no string interpolation in log messages).
-- Use `LoggerMessage` source generators for hot paths.
-
-### Testing
-- Every public behavior has a test. Test behavior, not implementation details.
-- Unit tests use xUnit + NSubstitute (or project's chosen stack).
-- Integration tests use `WebApplicationFactory`.
-- Test naming: `MethodName_Scenario_ExpectedResult`.
+_Not yet populated. Until you run `/bootstrap`, the greenfield defaults in [docs/defaults.md](./docs/defaults.md) apply. After bootstrap, this section becomes the authoritative source._
 
 ---
 
@@ -93,26 +47,13 @@ Record significant decisions here. Include accidental decisions that became conv
 
 ## Common Tasks
 
-### Add a new API endpoint end-to-end
-1. Domain entity/value object (if new)
-2. Application service method + interface
-3. Request/response DTOs
-4. FluentValidation validator for the request
-5. Controller action (thin — delegates to service)
-6. Unit tests for service logic
-7. Integration test via WebApplicationFactory
+Recipes live in `.claude/skills/` — each is auto-discovered by Claude Code and triggered by the model when relevant. Current skills:
 
-### Add a new EF Core entity
-1. Entity class in domain layer
-2. Configuration class (`IEntityTypeConfiguration<T>`)
-3. Add `DbSet<T>` to DbContext
-4. Generate migration: `dotnet ef migrations add MigrationName`
-5. Review generated migration SQL before applying
+- `add-endpoint` — add a new HTTP API endpoint end-to-end (domain → service → DTO → validator → controller → integration test)
+- `add-entity` — add a new EF Core entity with configuration and migration review
+- `register-service` — register a new service in DI with the right lifetime
 
-### Register a new service
-1. Create interface + implementation
-2. Add registration in the project's DI extension method
-3. Inject via constructor — never resolve from `IServiceProvider` directly
+`/bootstrap` adds project-specific skills under `.claude/skills/` rather than appending recipes here.
 
 ---
 
@@ -191,7 +132,4 @@ At the end of your response, note if:
 
 ## What We've Learned
 
-<!-- This section evolves over time. Add entries when you discover what works and what doesn't. -->
-<!-- Format: [date] observation -->
-
-_No entries yet. As the team uses this framework, record what works, what causes friction, and what rules need adjusting._
+Long-form learnings live in [LEARNINGS.md](./LEARNINGS.md). Read it when starting non-trivial work; append to it (don't overwrite) when you discover what works, what causes friction, or what rule needs adjusting.

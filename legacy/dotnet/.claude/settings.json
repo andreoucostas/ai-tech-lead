@@ -1,9 +1,24 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "command": "bash .claude/hooks/session-start.sh"
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "command": "bash .claude/hooks/route-prompt.sh"
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit",
         "command": "bash -c 'if [[ \"$CLAUDE_FILE_PATH\" == *.cs ]]; then dotnet build --no-restore --verbosity quiet 2>&1 | tail -20; fi'"
+      }
+    ],
+    "Stop": [
+      {
+        "command": "bash .claude/hooks/boy-scout-check.sh"
       }
     ]
   }

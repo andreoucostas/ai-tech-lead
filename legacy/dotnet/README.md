@@ -13,7 +13,10 @@ Copy the following into your existing .NET **solution root** (where your `.sln` 
 .github/PULL_REQUEST_TEMPLATE.md    → PR template with design rationale + Boy Scout checklist
 AGENTS.md                           → pointer for any agent-style tool
 CLAUDE.md                           → template, populated by /bootstrap
+LEARNINGS.md                        → append-only log of what works/doesn't
 TECH_DEBT.md                        → template, populated by /bootstrap
+docs/defaults.md                    → greenfield .NET conventions (used until /bootstrap runs)
+docs/playbook.md                    → methodology guide
 ```
 
 **Do not copy** `.template-repo` — it's a marker that exists only in this template repository to disable the CI guardrail here.
@@ -40,6 +43,7 @@ This single command:
 - Synthesises findings into priorities
 - Populates `CLAUDE.md` with your actual conventions and patterns
 - Generates `TECH_DEBT.md` with prioritised debt
+- Audits `.claude/skills/` against your codebase, adjusts default Common-Tasks recipes, and adds new skills for project-specific patterns
 - Writes `AGENTS.md` (a pointer at `CLAUDE.md` for Copilot agent / Codex / Cursor / Aider)
 - Generates a slim `.github/copilot-instructions.md` for Copilot inline completions
 
@@ -76,21 +80,35 @@ Or just describe what you want in natural language — `CLAUDE.md` teaches the a
 | `.github/copilot-instructions.md` | **Generated** — slim imperative ruleset (≤80 lines) for Copilot **inline completions** only. The agent reads `CLAUDE.md` directly. |
 | `.github/prompts/*.prompt.md` | Copilot Chat workflows. Thin wrappers that delegate to `.claude/commands/`. |
 | `.claude/commands/*.md` | Canonical workflow definitions (used by Claude Code natively, and by the Copilot prompt files). |
-| `.claude/settings.json` | Hooks — auto-build after `.cs` file writes. Claude Code only — Copilot has no hook system. |
+| `.claude/skills/*/SKILL.md` | Auto-discovered Common Tasks recipes (add-endpoint, add-entity, register-service). Body loads only when triggered. |
+| `.claude/workflow.md` | Shared self-review + flag-drift tail inlined by the workflow commands via `@.claude/workflow.md`. |
+| `.claude/hooks/*.sh` | SessionStart context preload, UserPromptSubmit intent router, Stop-hook Boy Scout scanner. Bash; needs git-bash on Windows. |
+| `.claude/settings.json` | Registers hooks: SessionStart, UserPromptSubmit, PostToolUse (`dotnet build` after `.cs` writes), and Stop. Claude Code only — Copilot has no hook system. |
 | `TECH_DEBT.md` | **Generated** by `/bootstrap` — prioritised debt register with Trojan Horse opportunities. |
+| `LEARNINGS.md` | Append-only log of what worked / what didn't / what rule changed. Read on non-trivial work. |
 | `docs/playbook.md` | Methodology guide (the "why" behind the framework). |
 
 ## How it works
 
-Every command follows the same execution model:
-1. **Read CLAUDE.md** for conventions
-2. **Plan** before coding
-3. **Execute in verified subtasks** (build + test after each)
-4. **Boy Scout** every touched file
-5. **Self-review** against conventions
-6. **Flag drift** in documentation
+Every workflow command follows the same execution model:
+1. **Plan** before coding (CLAUDE.md is auto-loaded — no need to re-read)
+2. **Execute in verified subtasks** (build + test + format after each)
+3. **Boy Scout** every touched file
+4. **Self-review** against conventions (shared `@.claude/workflow.md` tail)
+5. **Flag drift** in documentation
 
-Hooks in `.claude/settings.json` automatically run `dotnet build` after every `.cs` file write, catching compilation errors before they compound. The hook runs a solution-level incremental build (fast) — no fragile project-path detection.
+### Deterministic hooks
+| Hook | When | What it does |
+|------|------|--------------|
+| `SessionStart` | New session | Preloads branch, last 3 commits, `BOOTSTRAP_PENDING` warning, count of TECH_DEBT entries touching files modified in the last 14 days |
+| `UserPromptSubmit` | Every prompt | Regex-classifies natural-language prompts as `fix`/`feature`/`refactor`/`test`/`design`/`debt`/`review` and injects that workflow's hard rules. Skips explicit `/command` invocations |
+| `PostToolUse` (Write/Edit) | After every `.cs` write | Runs solution-level incremental `dotnet build` — catches compilation errors before they compound |
+| `Stop` | End of every turn | Scans modified `.cs` files for the always-apply Boy Scout patterns (async without `CancellationToken`, interpolated logger calls, EF read queries without `AsNoTracking()`, excess null-forgiving `!`); soft-warns the model |
+
+The router hook is the key piece: a developer who types *"the export endpoint is broken"* gets the `/fix` rails (regression-test-first, blast-radius Boy Scout) auto-injected without typing a slash command. Same for the other six workflows.
+
+### Common Tasks via skills
+Recipes for "add a new endpoint end-to-end", "add a new EF Core entity", "register a new service" live as auto-discovered skills in `.claude/skills/`. The model triggers the relevant one when the user describes that kind of task; the body loads only when triggered, keeping main context lean.
 
 ## Mixed-stack repos (.NET + frontend in one repository)
 

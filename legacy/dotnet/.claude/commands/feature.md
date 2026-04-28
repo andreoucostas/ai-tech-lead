@@ -1,6 +1,4 @@
-Implement a new feature in this .NET codebase.
-
-Read CLAUDE.md before starting. Every decision must comply with the conventions and patterns documented there.
+Implement a new feature in this .NET codebase. Every decision must comply with the conventions and patterns in CLAUDE.md.
 
 ## Input
 $ARGUMENTS
@@ -24,22 +22,13 @@ Decompose into ordered subtasks. Execute each fully before starting the next:
 3. **API/controller layer** — DTOs, validators, controller actions + unit tests
 4. **Integration test** — end-to-end verification via WebApplicationFactory
 
-After each subtask:
-- Run `dotnet build` — fix any compilation errors before moving on
-- Run `dotnet test` — fix any test failures before moving on
-- Run `dotnet format` — applies project formatting
-- Never leave the codebase in a broken state between subtasks
+After each subtask, run `dotnet build`, `dotnet test`, and `dotnet format`. Fix any compilation errors, test failures, or formatting violations before starting the next subtask. Never leave the codebase in a broken state.
 
 ### Step 3 — Boy Scout
-For every file you modified, check the Boy Scout Rule in CLAUDE.md. Apply relevant improvements. This is mandatory.
+Apply the Boy Scout Rule (CLAUDE.md > Boy Scout Rule) to every file you modified. Mandatory.
 
-### Step 4 — Self-review
-Before presenting:
-- Review all changes against the Conventions section in CLAUDE.md
-- Verify all tests pass
-- Check: did this introduce a new pattern? → flag that CLAUDE.md may need updating
-- Check: did this resolve a TECH_DEBT.md item? → flag for removal
-- Check: does this contradict any existing convention? → ask before proceeding
+### Step 4 — Wrap up
+@.claude/workflow.md
 
 ### Step 5 — Present
 Summarise what was implemented, what was tested, and any documentation drift to flag.

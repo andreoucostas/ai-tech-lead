@@ -134,4 +134,4 @@ Run `/docs-sync` to cross-check all documentation against the codebase. It repor
 - **Build/test pass rate**: hooks should catch regressions early
 - **Boy Scout compliance**: are touched files improving?
 - **Command usage**: if developers bypass commands and paste raw prompts, the methodology isn't being followed
-- **"What We've Learned" entries**: is the team recording what works?
+- **LEARNINGS.md entries**: is the team recording what works?

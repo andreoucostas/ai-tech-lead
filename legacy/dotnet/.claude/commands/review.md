@@ -1,6 +1,4 @@
-Review code as a senior tech lead.
-
-Read CLAUDE.md and the Conventions section before starting. This is a quality gate, not a rubber stamp.
+Review code as a senior tech lead. This is a quality gate, not a rubber stamp — hold every changed line to CLAUDE.md > Conventions.
 
 ## Input
 $ARGUMENTS

@@ -1,6 +1,4 @@
-Find and fix tech debt in a specific area of this .NET codebase.
-
-Read CLAUDE.md and TECH_DEBT.md before starting.
+Find and fix tech debt in a specific area of this .NET codebase. Read TECH_DEBT.md before starting (CLAUDE.md is already loaded).
 
 ## Input
 $ARGUMENTS
@@ -30,10 +28,12 @@ For each item marked "fix now":
 - If you discovered new debt during the fix, add it to the register using the per-block format
 
 ### Step 4 — Boy Scout
-Apply Boy Scout Rule from CLAUDE.md to every file touched during the fix.
+Apply Boy Scout Rule (CLAUDE.md > Boy Scout Rule) to every file touched during the fix.
 
-### Step 5 — Report
+### Step 5 — Wrap up
+@.claude/workflow.md
+
+### Step 6 — Report
 - What was fixed and what was deferred (with reason)
 - Test results
 - Updated TECH_DEBT.md diff
-- Any CLAUDE.md convention updates needed

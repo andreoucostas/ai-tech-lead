@@ -11,8 +11,8 @@ $ARGUMENTS
 
 Before doing anything else:
 
-1. **Check CLAUDE.md is populated** — read CLAUDE.md. If it still contains the phrase `DEFAULTS BELOW`, abort immediately and tell the user:
-   > "CLAUDE.md still contains template defaults. Run `/bootstrap` first to populate it from your codebase, then return to `/rebootstrap` once the framework is set up."
+1. **Check CLAUDE.md is populated** — read CLAUDE.md. If it still contains the marker `BOOTSTRAP_PENDING`, abort immediately and tell the user:
+   > "CLAUDE.md has not been bootstrapped (BOOTSTRAP_PENDING marker still present). Run `/bootstrap` first to populate it from your codebase, then return to `/rebootstrap` once the framework is set up."
 
 2. **Confirm git is available** — this command uses git history to focus analysis. If the repo has no commits, skip the git log step and proceed with a full scan.
 
@@ -93,7 +93,7 @@ Apply accepted changes section by section:
 - **Architecture Decisions**: add new decisions; mark old decisions as superseded if applicable
 - **Common Tasks**: update patterns to reflect current codebase reality
 - **Boy Scout Rule**: update the priority list based on newly found debt
-- **What We've Learned**: append any new lessons — do not overwrite existing entries
+- **LEARNINGS.md** (root file, no longer in CLAUDE.md): append any new lessons — never overwrite existing entries
 
 Do NOT touch the Codebase Context or Repository Structure sections unless a structural change was found (e.g., a new project layer, a renamed project, a migrated framework).
 
