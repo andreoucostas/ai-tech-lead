@@ -20,7 +20,17 @@ Before starting analysis:
 
 ## Phase 1 — Analysis
 
-Perform six analysis passes. For each, observe and record findings internally. Do not output analysis results to the user — they feed Phase 2.
+Dispatch the six analysis passes (A1–A6) **in parallel** via the `Task` tool, each invoking the `bootstrap-pass` subagent with the pass id as input. Example call shape:
+
+```
+Task(subagent_type="bootstrap-pass", description="Bootstrap pass A1", prompt="Run pass A1.")
+```
+
+Send all six Task calls in a single message so they execute concurrently. Wait for all six to return.
+
+Each subagent returns structured findings; you do **not** redo the analysis. Just collect the six results — they feed Phase 2.
+
+The pass definitions below are the source of truth the subagents read. Do not duplicate the pass logic inline; the subagents read this file directly.
 
 ### A1: Solution Architecture
 - Project layout — count, types, responsibilities

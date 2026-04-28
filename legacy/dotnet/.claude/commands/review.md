@@ -7,32 +7,26 @@ If no specific files or PR given, review the most recent uncommitted changes (bo
 
 ## Execution
 
-### Check 1 — Correctness & Convention Compliance
-For each changed file:
-- Does the code do what it claims to do?
-- Does it follow every convention in CLAUDE.md?
-- Are there edge cases or failure modes not handled?
-- Is the error handling appropriate?
-- Are there security concerns (injection, data exposure, auth bypass)?
+### Step 1 — Dispatch parallel auditors
+In a single message, spawn both subagents via the `Task` tool:
 
-### Check 2 — Test Quality & Coverage
-- Do tests exist for the changed behavior?
-- Do the tests verify behavior, not implementation details?
-- Are test names descriptive (MethodName_Scenario_ExpectedResult)?
-- Would the tests catch a regression if the code was changed?
-- Are there missing test cases (edge cases, error paths, boundary conditions)?
+- `convention-check` — verifies the diff against CLAUDE.md > Conventions and Boy Scout always-apply items.
+- `debt-radar` — surfaces TECH_DEBT.md entries touching the changed files (debt-trajectory signal).
 
-### Check 3 — Verify
-Run the test suite yourself to verify the code passes:
-- Run `dotnet build` — must compile cleanly
-- Run `dotnet test` — all tests must pass
-- Do not trust that the code being reviewed already passes. Verify it.
+Wait for both to return their structured output. Use those findings as the spine of the review — do not redo the convention scan yourself.
 
-### Check 4 — Architecture & Debt Trajectory
-- Does this change move the codebase toward or away from the target architecture in CLAUDE.md?
-- Does it introduce new tech debt? If so, flag it for TECH_DEBT.md.
-- Does it resolve existing tech debt? If so, flag the TECH_DEBT.md entry for removal.
-- Was the Boy Scout Rule applied to touched files?
+### Step 2 — Verify the build yourself
+Run `dotnet build` and `dotnet test`. Do not trust that the code being reviewed already passes. Run `dotnet format --verify-no-changes` to catch formatter drift. Record any failures as high-severity issues.
+
+### Step 3 — Apply senior judgement
+The auditors handle pattern-level checks. You handle:
+- **Correctness**: does the code do what it claims to do?
+- **Failure modes**: edge cases, error paths, race conditions, boundary conditions not covered.
+- **Security**: injection, data exposure, auth bypass, sensitive data in logs — auditors do not check these.
+- **Test quality**: does the test verify behavior or implementation? Would it catch a regression?
+- **Architecture trajectory**: does this move toward or away from the target architecture in CLAUDE.md > Architecture Decisions?
+
+### Step 4 — Synthesise
 
 ## Output Format
 
@@ -42,8 +36,8 @@ Run the test suite yourself to verify the code passes:
 ### Verdict: APPROVE | REQUEST CHANGES
 
 ### Issues
-| # | Severity | File | Line(s) | Issue | Suggestion |
-|---|----------|------|---------|-------|------------|
+| # | Severity | File:line | Issue | Suggestion |
+|---|----------|-----------|-------|------------|
 
 ### Test Coverage
 - Covered: ...
@@ -52,9 +46,11 @@ Run the test suite yourself to verify the code passes:
 ### Architecture Notes
 - Debt trajectory: improving / neutral / degrading
 - Boy Scout applied: yes / no
+- TECH_DEBT entries resolved: <DEBT-IDs from debt-radar's "resolved" list>
+- TECH_DEBT entries newly relevant: <DEBT-IDs from debt-radar that touch changed files>
 
 ### Convention Violations
-List any deviations from CLAUDE.md conventions.
+Summarise convention-check findings (link IDs to issue rows above).
 ```
 
 Be direct. Do not praise code for meeting baseline expectations. Only call out what's good if it's genuinely above the bar.

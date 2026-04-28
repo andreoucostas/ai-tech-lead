@@ -8,11 +8,13 @@ $ARGUMENTS
 ### Step 1 — Design check
 Before writing any code, reason through:
 - Which layers are affected (domain, application/service, API, infrastructure)?
-- What existing patterns should be reused? Check Common Tasks in CLAUDE.md.
+- What existing patterns should be reused? Check Common Tasks in CLAUDE.md and the relevant skill in `.claude/skills/`.
 - What are the failure modes?
 - What tests will verify success?
 
-State the plan: files to create/modify, order of operations, test strategy.
+If the feature touches a clear file or area, spawn the `debt-radar` subagent via `Task` to surface bundleable TECH_DEBT entries before you scope the work. Fold any "Yes — same blast radius" entries into the plan when the marginal effort is small.
+
+State the plan: files to create/modify, order of operations, test strategy, debt being bundled (if any).
 
 ### Step 2 — Execute in subtasks
 Decompose into ordered subtasks. Execute each fully before starting the next:

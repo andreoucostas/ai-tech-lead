@@ -81,6 +81,7 @@ Or just describe what you want in natural language — `CLAUDE.md` teaches the a
 | `.github/prompts/*.prompt.md` | Copilot Chat workflows. Thin wrappers that delegate to `.claude/commands/`. |
 | `.claude/commands/*.md` | Canonical workflow definitions (used by Claude Code natively, and by the Copilot prompt files). |
 | `.claude/skills/*/SKILL.md` | Auto-discovered Common Tasks recipes (add-endpoint, add-entity, register-service). Body loads only when triggered. |
+| `.claude/agents/*.md` | Subagents (convention-check, debt-radar, bootstrap-pass). Run in isolated context; return structured findings to the parent. |
 | `.claude/workflow.md` | Shared self-review + flag-drift tail inlined by the workflow commands via `@.claude/workflow.md`. |
 | `.claude/hooks/*.sh` | SessionStart context preload, UserPromptSubmit intent router, Stop-hook Boy Scout scanner. Bash; needs git-bash on Windows. |
 | `.claude/settings.json` | Registers hooks: SessionStart, UserPromptSubmit, PostToolUse (`dotnet build` after `.cs` writes), and Stop. Claude Code only — Copilot has no hook system. |
@@ -109,6 +110,17 @@ The router hook is the key piece: a developer who types *"the export endpoint is
 
 ### Common Tasks via skills
 Recipes for "add a new endpoint end-to-end", "add a new EF Core entity", "register a new service" live as auto-discovered skills in `.claude/skills/`. The model triggers the relevant one when the user describes that kind of task; the body loads only when triggered, keeping main context lean.
+
+### Subagents for isolated specialist work
+Three subagents live in `.claude/agents/`:
+
+| Agent | Purpose | Invoked by |
+|-------|---------|-----------|
+| `convention-check` | Audits a diff against CLAUDE.md > Conventions; returns a structured findings table. Read-only. | `/review` Step 1; ad-hoc |
+| `debt-radar` | Maps a file path or feature area to TECH_DEBT entries; suggests trojan-horse bundles. Read-only. | `/review` Step 1; `/feature` Step 1; ad-hoc |
+| `bootstrap-pass` | Runs a single bootstrap analysis pass (A1–A6) in isolation. Read-only. | `/bootstrap` Phase 1 (six in parallel) |
+
+Subagents run in isolated context — analysis chatter does not pollute the parent's main conversation. The parent receives one structured message per subagent and synthesises.
 
 ## Mixed-stack repos (.NET + frontend in one repository)
 
