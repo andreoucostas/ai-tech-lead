@@ -108,6 +108,28 @@ Every workflow command follows the same execution model:
 
 The router hook is the key piece: a developer who types *"the export endpoint is broken"* gets the `/fix` rails (regression-test-first, blast-radius Boy Scout) auto-injected without typing a slash command. Same for the other six workflows.
 
+#### Hook compatibility
+
+All hooks are bash scripts. Compatibility per platform:
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| macOS (bash 3.2+) | Works out of the box | `git`, `grep`, `tr`, `printf`, `wc` are all default. |
+| Linux | Works out of the box | Same as macOS. |
+| Windows + Git for Windows (git-bash) | Works | Default installer puts `bash.exe` on PATH. Claude Code finds it automatically. |
+| Windows + WSL only | Not recommended | Path translation between `/mnt/c/...` and Windows-style paths breaks the hooks. Install Git for Windows alongside WSL — Claude Code will pick up git-bash. |
+| Windows + PowerShell only (no git-bash) | Hooks disabled | The hooks won't run. Either install Git for Windows, or remove the hook entries from `.claude/settings.json` to suppress "command not found" warnings. The framework's other layers (CLAUDE.md, slash commands, skills, subagents) still work — you just lose the SessionStart preload, the natural-language router, the post-write `dotnet build`, and the Boy Scout Stop scanner. |
+
+**Verify your setup** after copying the template into your repo:
+
+```bash
+# From your repo root, with bash on PATH:
+echo '{"prompt":"the export endpoint is broken"}' | bash .claude/hooks/route-prompt.sh
+# Expected: "## Routed intent: `fix` ..." plus the fix-workflow rules.
+```
+
+Hooks degrade gracefully — a failing hook doesn't break the session, you just lose that hook's contribution.
+
 ### Common Tasks via skills
 Recipes for "add a new endpoint end-to-end", "add a new EF Core entity", "register a new service" live as auto-discovered skills in `.claude/skills/`. The model triggers the relevant one when the user describes that kind of task; the body loads only when triggered, keeping main context lean.
 
