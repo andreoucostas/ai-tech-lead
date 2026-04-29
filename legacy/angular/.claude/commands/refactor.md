@@ -30,4 +30,4 @@ Run `ng build`, `ng test --watch=false --browsers=ChromeHeadless`, and `ng lint`
 @.claude/workflow.md
 
 ### Step 7 — Present
-Before/after summary: what was refactored and why, what CLAUDE.md patterns were applied, test results confirming no behavior change, any TECH_DEBT.md items resolved.
+Before/after summary: what was refactored and why, what CLAUDE.md patterns were applied, **net LOC delta**, test results confirming no behavior change, any TECH_DEBT.md items resolved. Per CLAUDE.md > Leanness, a refactor that grows the codebase needs an explicit reason in the summary.

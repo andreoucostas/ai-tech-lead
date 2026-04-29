@@ -1,0 +1,109 @@
+# Stop hook -- flag Boy Scout opportunities in modified .ts files.
+# PowerShell equivalent of boy-scout-check.sh, for Windows-only PowerShell teams.
+# Soft-warning by default (plain stdout).
+#
+# Patterns derived from the always-apply items in CLAUDE.md > Boy Scout Rule:
+#   - manual ngOnDestroy subscription cleanup
+#   - missing ChangeDetectionStrategy.OnPush on components
+#   - nested .subscribe()
+#   - explicit `any` / `as any`
+
+$ErrorActionPreference = 'SilentlyContinue'
+
+if (-not (Test-Path .git)) { exit 0 }
+
+$changed = @()
+$changed += git diff --name-only -- '*.ts'
+$changed += git diff --cached --name-only -- '*.ts'
+$changed += git ls-files --others --exclude-standard -- '*.ts'
+
+$files = $changed |
+    Where-Object { $_ -and $_.Trim() } |
+    Sort-Object -Unique |
+    Select-Object -First 30
+
+if (-not $files) { exit 0 }
+
+$findings = New-Object System.Collections.Generic.List[string]
+$checked = 0
+
+foreach ($f in $files) {
+    if ([string]::IsNullOrWhiteSpace($f)) { continue }
+    if (-not (Test-Path $f)) { continue }
+
+    # Skip test files and type declarations
+    if ($f -match '\.(spec|test)\.ts$' -or $f -match '\.d\.ts$') { continue }
+
+    $checked++
+
+    $lines = Get-Content $f
+    if (-not $lines) { continue }
+    $content = $lines -join "`n"
+
+    # 1. ngOnDestroy + manual .subscribe -- likely a candidate for takeUntilDestroyed
+    if ($content -match 'ngOnDestroy' -and $content -match '\.subscribe\(') {
+        $findings.Add("${f}: manual ngOnDestroy with .subscribe -- consider takeUntilDestroyed()")
+    }
+
+    # 2. Component without OnPush
+    if ($f -match '\.component\.ts$') {
+        if ($content -match '@Component\(' -and $content -notmatch 'ChangeDetectionStrategy\.OnPush') {
+            $findings.Add("${f}: @Component without ChangeDetectionStrategy.OnPush")
+        }
+    }
+
+    # 3. Multiple .subscribe( calls -- possible nested subscribe
+    $subMatches = [regex]::Matches($content, '\.subscribe\(')
+    if ($subMatches.Count -ge 3) {
+        $findings.Add("${f}: $($subMatches.Count) .subscribe() calls -- review for nested subscribes (use switchMap/mergeMap/concatMap/exhaustMap)")
+    }
+
+    # 4. Explicit `any` (not in comments)
+    $anyHits = ($lines | Where-Object {
+        ($_ -match ':\s*any\b' -or $_ -match '\bas\s+any\b') -and
+        $_ -notmatch '^\s*//'
+    }).Count
+    if ($anyHits -gt 0) {
+        $findings.Add("${f}: $anyHits explicit ``any`` usage(s) -- replace with proper types or unknown+narrowing")
+    }
+
+    # 5. Commented-out code blocks -- runs of 2+ contiguous code-like // lines
+    $maxRun = 0
+    $run = 0
+    foreach ($line in $lines) {
+        if ($line -match '^\s*//\s*(.*)$') {
+            $stripped = $Matches[1]
+            if ($stripped -match '[;{}=]' -or $stripped -match '[a-zA-Z_]+\(') {
+                $run++
+                if ($run -gt $maxRun) { $maxRun = $run }
+            } else { $run = 0 }
+        } else { $run = 0 }
+    }
+    if ($maxRun -ge 2) {
+        $findings.Add("${f}: commented-out code block ($maxRun+ contiguous lines) -- delete; version control preserves history (CLAUDE.md > Boy Scout > Subtract)")
+    }
+}
+
+if ($findings.Count -eq 0) { exit 0 }
+
+# Dedup: skip output when this finding set matches the last fire's output.
+$null = New-Item -ItemType Directory -Path .claude\.state -Force
+$hashFile = '.claude\.state\last-boy-scout-hash'
+$joined = ($findings | Sort-Object) -join "`n"
+$sha1 = [System.Security.Cryptography.SHA1]::Create()
+$bytes = [System.Text.Encoding]::UTF8.GetBytes($joined)
+$currentHash = -join ($sha1.ComputeHash($bytes) | ForEach-Object { $_.ToString('x2') })
+if (Test-Path $hashFile) {
+    $prev = (Get-Content $hashFile -Raw)
+    if ($prev) { $prev = $prev.Trim() }
+    if ($prev -eq $currentHash) { exit 0 }
+}
+Set-Content -Path $hashFile -Value $currentHash -Encoding ASCII
+
+Write-Output "## Boy Scout candidates ($checked file(s) scanned)"
+Write-Output ''
+foreach ($finding in $findings) { Write-Output "- $finding" }
+Write-Output ''
+Write-Output "_If these touch files you modified this turn, address them per CLAUDE.md > Boy Scout Rule before considering the work complete. Otherwise add a ``// TODO: Boy Scout skipped -- [reason]`` comment._"
+
+exit 0

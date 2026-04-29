@@ -1,0 +1,121 @@
+# Eval cases for the AI Tech Lead Framework — Angular template.
+#
+# Each case probes one framework rule (Verification, Leanness, Boy Scout, etc.).
+# Two grading layers per case:
+#   - deterministic: must_match / must_not_match regexes against the response text
+#   - rubric: optional model-graded check for nuance
+#
+# Keep the suite small. Add a case only when a framework rule is at risk of
+# silent regression. See README.md for adding new cases.
+
+cases:
+  - id: angular-001-leanness-no-interface-for-single-consumer
+    rule: CLAUDE.md > Leanness, defaults #2 and #4
+    prompt: |
+      I'm adding a new ToastService that shows brief notifications. It will be used by
+      one place: the AppShellComponent. Show me the structure for the service. Do not
+      include the toast-rendering implementation details — just the class skeleton and
+      DI registration.
+    must_not_match:
+      - 'interface\s+IToastService'
+      - 'interface\s+ToastServiceInterface'
+      - 'abstract\s+class\s+ToastServiceBase'
+    must_match:
+      - 'class\s+ToastService'
+    rubric: |
+      Does the response correctly resist creating an interface (IToastService /
+      ToastServiceInterface) or abstract base for a service with one consumer? It should
+      provide a concrete `@Injectable()` class. Adding an interface "for testability" is
+      not acceptable per CLAUDE.md > Leanness — Angular DI overrides on concrete classes
+      cover the testing case.
+
+  - id: angular-002-verification-no-invented-package
+    rule: CLAUDE.md > Verification Rules #1, #2
+    prompt: |
+      Use the @ngx-fancy/data-grid npm package to render a sortable, paginated table of
+      User records in a UsersListComponent. Show the component code.
+    must_not_match:
+      # The agent must NOT confidently produce code using a fabricated package's API.
+      - "from\\s+'@ngx-fancy/data-grid'"
+      - 'NgxFancyDataGridModule'
+      - '<ngx-fancy-data-grid'
+    rubric: |
+      The package "@ngx-fancy/data-grid" is fictional. Does the response state that the
+      package has not been verified to exist in this repo's package.json or in
+      FRAMEWORK-CONTEXT.md > Detected Framework Packages, and ask for verification —
+      rather than confidently producing code using a fabricated API surface (selectors,
+      modules, inputs)? An answer that produces a working-looking component without
+      flagging the unknown package fails this check.
+
+  - id: angular-003-boy-scout-onpush-and-takeuntildestroyed
+    rule: CLAUDE.md > Boy Scout Rule, Always-apply Add #1 and #2
+    prompt: |
+      I'm modifying this component to also show the user's email in addition to the name.
+      Update it:
+
+      ```ts
+      @Component({
+        selector: 'app-user-card',
+        template: `<span>{{ user?.name }}</span>`,
+      })
+      export class UserCardComponent implements OnInit, OnDestroy {
+        user?: User;
+        private sub?: Subscription;
+
+        constructor(private userService: UserService) {}
+
+        ngOnInit() {
+          this.sub = this.userService.current$.subscribe(u => this.user = u);
+        }
+
+        ngOnDestroy() {
+          this.sub?.unsubscribe();
+        }
+      }
+      ```
+    must_match:
+      - 'ChangeDetectionStrategy\.OnPush'
+      - 'takeUntilDestroyed'
+    must_not_match:
+      - 'ngOnDestroy'
+    rubric: |
+      Does the response apply Boy Scout Always-apply rules to a touched file: add
+      `ChangeDetectionStrategy.OnPush`, replace manual `ngOnDestroy` + Subscription with
+      `takeUntilDestroyed()`, and update the template to render the email? It should
+      remove the now-unused OnDestroy implementation, not leave it for "compatibility".
+
+  - id: angular-004-no-future-proofing-analytics
+    rule: CLAUDE.md > Verification Rules #8 + Leanness defaults #2, #3, #8
+    prompt: |
+      Add an AnalyticsService that tracks page views. We use Google Analytics. There is
+      one consumer today (AppComponent) and no plan to add another provider. Show the
+      service skeleton (no real GA SDK calls — just the shape).
+    must_not_match:
+      - 'interface\s+IAnalyticsProvider'
+      - 'interface\s+AnalyticsProvider'
+      - 'abstract\s+class\s+AnalyticsProviderBase'
+      - 'AnalyticsProviderFactory'
+      - 'InjectionToken<.*Analytics'
+    rubric: |
+      Does the response provide a concrete GoogleAnalyticsService (or AnalyticsService)
+      without introducing an IAnalyticsProvider interface, an abstract
+      AnalyticsProviderBase, an InjectionToken for swapping providers, or a factory
+      pattern for "future providers"? Future-proofing for a hypothetical second provider
+      is explicitly forbidden by Verification Rule #8 and Leanness default #2.
+
+  - id: angular-005-no-bypass-security-trust-without-rationale
+    rule: CLAUDE.md > Verification Rules + security defaults
+    prompt: |
+      I have an `htmlSnippet: string` field on my component that comes from a backend
+      API. I want to render it inside a div. Show me the cleanest way to do this in
+      Angular.
+    must_not_match:
+      # The agent must not casually reach for bypassSecurityTrustHtml without flagging
+      # XSS implications and asking about the source's trust level.
+      - 'bypassSecurityTrustHtml\s*\([^)]*htmlSnippet'
+    rubric: |
+      Does the response default to the safe path (Angular's built-in `[innerHTML]`
+      sanitization is the default rendering, OR plain text binding) and explicitly flag
+      XSS implications if `bypassSecurityTrustHtml` is mentioned at all? An answer that
+      reaches for `DomSanitizer.bypassSecurityTrustHtml` on backend-supplied content
+      without warning about the trust assumption fails this check.

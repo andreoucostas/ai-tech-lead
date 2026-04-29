@@ -182,7 +182,30 @@ If anything in this file or in derived files conflicts with `CLAUDE.md`, `CLAUDE
 
 If `AGENTS.md` already exists, leave it alone.
 
-### 3d: Generate copilot-instructions.md (slim, inline-completions only)
+### 3d: Populate FRAMEWORK-CONTEXT.md > Detected Framework Packages
+
+Read `package.json` (and `package-lock.json` if present for resolved versions). For each entry in `dependencies` and `peerDependencies`, check whether the package is part of the team's shared framework.
+
+**How to identify framework packages**: read the existing `FRAMEWORK-CONTEXT.md > Shared Libraries` section. Any package whose name matches an entry there is a framework package. If `Shared Libraries` is empty or template, fall back to a heuristic: packages whose name starts with the org/team scope (look at the most common scope among `dependencies` — e.g. `@acme/*`, `@myorg/*`).
+
+Replace the `## Detected Framework Packages` section with a populated table:
+
+```markdown
+## Detected Framework Packages
+
+<!-- Auto-populated by /bootstrap. -->
+
+| Package | Version | Source |
+|---------|---------|--------|
+| @acme/ui-kit | 3.1.0 | package.json (dependencies) |
+| @acme/auth-client | 2.4.7 | package.json (dependencies) |
+```
+
+**Delete the `DETECTED_FRAMEWORK_PACKAGES_PENDING` HTML comment** when this section is populated. If no framework packages were found, replace the table with a single line: `_No framework packages detected in this repo._` and still delete the marker.
+
+Do **not** edit any other section of FRAMEWORK-CONTEXT.md — those are maintainer-curated.
+
+### 3e: Generate copilot-instructions.md (slim, inline-completions only)
 
 Run the `/generate-copilot` workflow. **Do not** produce a full derivative of CLAUDE.md — Copilot's coding agent reads CLAUDE.md and AGENTS.md directly. The copilot-instructions.md file is now scoped to inline editor completions only:
 
