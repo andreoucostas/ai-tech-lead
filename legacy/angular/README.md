@@ -4,6 +4,24 @@ A working template that turns Claude Code and GitHub Copilot into a tech lead fo
 
 Targets **Angular 17+** (standalone components, signals, new control flow, `inject()`, `takeUntilDestroyed`). Bootstrap auto-detects your Angular version and adjusts conventions accordingly.
 
+## Why this framework?
+
+Without it, AI tools give you generic Angular code. The AI doesn't know your team uses signals over BehaviorSubject, `inject()` over constructor injection, or `OnPush` everywhere. It doesn't know you've migrated away from NgModules. It doesn't know about the state management pattern your team settled on after two failed experiments. Every developer gets different AI behaviour. The AI suggests patterns your team has already moved past, adds RxJS complexity where a signal would do, and never cleans up the subscriptions it leaves behind.
+
+This framework fixes that by giving the AI team-level context — your actual conventions, your actual architecture, your actual debt priorities — and enforcing a consistent execution model across every developer and every tool.
+
+**The AI won't hallucinate your codebase.** Verification rules require it to confirm any component, service, route, selector, or npm package exists in your code before referencing it. Version pinning is enforced too — signals, `takeUntilDestroyed`, and the new control flow syntax are version-gated, and the AI won't suggest them against a version that doesn't have them.
+
+**Quality improves as a side effect of normal work.** The Trojan Horse principle bundles cleanup into every feature ticket and bug fix. The AI applies the Boy Scout Rule to every file it touches — replacing manual `ngOnDestroy` subscription cleanup, adding `OnPush`, flattening nested subscribes — and a counterweight leanness rule stops it from adding abstraction you don't need. After three months, every actively-developed area is measurably cleaner — without a single dedicated debt sprint.
+
+**Security becomes systematic, not heroic.** `/security-review` runs a structured OWASP-style audit on every change — XSS via unsafe HTML binding, auth/authz gaps, secrets in source, sensitive data in logs or API responses. It doesn't require anyone to remember to ask.
+
+**Common patterns can't be done wrong.** Skills encode the correct approach for the tasks your team does repeatedly — add a feature component end-to-end, add a service, add a lazy route, add a signal store. The AI follows that recipe, not a generic one. Junior developers get senior-level scaffolding.
+
+**Works with the tools you already have.** The same source of truth drives Claude Code (agentic, skills, hooks) and GitHub Copilot (inline completions, chat, coding agent). You're not locked in to either.
+
+For the full methodology — why the three-tier design, how the Trojan Horse works in practice, design culture guardrails — see [`docs/playbook.md`](./docs/playbook.md).
+
 ## Quick Start
 
 ### 1. Copy into your project

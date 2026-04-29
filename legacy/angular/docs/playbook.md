@@ -1,6 +1,16 @@
 # AI Tech Lead Framework — Playbook
 
-This document explains the methodology behind the framework. It's reference reading for onboarding — the executable artifacts live in `CLAUDE.md`, `.claude/commands/`, and `.claude/settings.json`.
+This document explains the methodology behind the framework. It's the deeper answer to "why should we bother with all this?" — the executable artifacts live in `CLAUDE.md`, `.claude/commands/`, and `.claude/settings.json`.
+
+## The problem this solves
+
+Teams that adopt AI coding tools without a framework hit the same wall after a few months. The AI is fast, but it's generic. It doesn't know that your team uses signals over BehaviorSubject, that you've deprecated NgModules, or that you have a house rule against nested subscribes. It doesn't know about the component that can't use `OnPush` because of a third-party library quirk. It doesn't know that the last three PRs introduced memory leaks that nobody caught in review.
+
+The result: the AI accelerates you in the wrong direction. Code quality drifts. Developers who ask the AI for "an Angular service" get 2019-era patterns. Developers who know better fix it in review; developers who don't know better let it through. Conventions fragment across the team.
+
+The deeper problem is that AI tools are additive by default. They add code, add abstractions, add `Subject`s and `BehaviorSubject`s "for flexibility", add comments to explain what they just wrote. Left unchecked, this produces a codebase that's larger, more complex, and harder to reason about than the one you started with — all while passing tests.
+
+This framework is the counterweight.
 
 ---
 
