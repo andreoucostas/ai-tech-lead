@@ -8,10 +8,36 @@ set -u
 
 input=$(cat)
 
-# Extract the prompt field with bash regex (handles simple, non-escaped JSON values).
+# Extract the prompt field. Prefer jq (handles all JSON escapes correctly),
+# fall back to python3 (typically available on every dev box where bash runs),
+# fall back to a regex that handles escaped quotes as a last resort.
 prompt=""
-if [[ "$input" =~ \"prompt\"[[:space:]]*:[[:space:]]*\"([^\"]*)\" ]]; then
-  prompt="${BASH_REMATCH[1]}"
+if command -v jq >/dev/null 2>&1; then
+  prompt=$(printf '%s' "$input" | jq -r '.prompt // ""' 2>/dev/null)
+elif command -v python3 >/dev/null 2>&1; then
+  prompt=$(printf '%s' "$input" | python3 -c 'import json,sys
+try:
+    d = json.load(sys.stdin)
+    print(d.get("prompt","") if isinstance(d, dict) else "")
+except Exception:
+    pass' 2>/dev/null)
+elif command -v python >/dev/null 2>&1; then
+  prompt=$(printf '%s' "$input" | python -c 'import json,sys
+try:
+    d = json.load(sys.stdin)
+    print(d.get("prompt","") if isinstance(d, dict) else "")
+except Exception:
+    pass' 2>/dev/null)
+else
+  # Last-resort regex: allow backslash-escaped chars inside the captured value.
+  if [[ "$input" =~ \"prompt\"[[:space:]]*:[[:space:]]*\"((\\.|[^\"\\])*)\" ]]; then
+    prompt="${BASH_REMATCH[1]}"
+    # Decode the most common JSON string escapes.
+    prompt="${prompt//\\\"/\"}"
+    prompt="${prompt//\\\\/\\}"
+    prompt="${prompt//\\n/$'\n'}"
+    prompt="${prompt//\\t/$'\t'}"
+  fi
 fi
 [ -z "$prompt" ] && exit 0
 
@@ -60,6 +86,12 @@ EOF
 3. Apply Boy Scout to every file you touch.
 4. Self-review against CLAUDE.md > Conventions; flag new patterns or resolved tech debt.
 5. Present what was implemented and tested.
+
+Leanness constraints (CLAUDE.md > Leanness):
+- Prefer editing existing files over creating new ones.
+- No new interface, abstract class, or generic helper unless a second consumer exists in this change-set. State the second consumer if you add one.
+- Wrappers must add behavior. Inline shallow delegates.
+- No defensive code for impossible states; no comments that restate code; no future-proofing.
 EOF
     ;;
   refactor)
@@ -69,7 +101,12 @@ EOF
 3. Refactor incrementally; build + test after each meaningful change.
 4. Apply Boy Scout to every file you touched.
 5. Verify final state — no behavior should have changed.
-6. Present a before/after summary.
+6. Present a before/after summary INCLUDING net LOC delta.
+
+Leanness constraints (CLAUDE.md > Leanness):
+- Trend toward less code: delete dead branches, inline single-use abstractions, remove now-redundant types.
+- A refactor that grows the codebase needs an explicit reason in the summary.
+- Do not introduce new interfaces, helpers, or wrappers as part of a refactor unless they replace at least as much code as they add.
 EOF
     ;;
   test)

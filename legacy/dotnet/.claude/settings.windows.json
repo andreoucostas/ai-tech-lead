@@ -1,0 +1,26 @@
+{
+  "_comment": "Windows-only PowerShell variant of settings.json. Use when bash (git-bash) is not available. Copy to settings.json (team-wide) or settings.local.json (per-developer). Uses Windows PowerShell 5.1 (preinstalled on every Windows machine) — no extra install required. PowerShell 7 (pwsh) also works; swap 'powershell' for 'pwsh' if preferred.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude\\hooks\\session-start.ps1"
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude\\hooks\\route-prompt.ps1"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude\\hooks\\post-write.ps1"
+      }
+    ],
+    "Stop": [
+      {
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude\\hooks\\boy-scout-check.ps1"
+      }
+    ]
+  }
+}

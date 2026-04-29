@@ -61,9 +61,46 @@ while IFS= read -r f; do
   if [ "$bang_hits" -ge 5 ]; then
     findings+=("$f: $bang_hits null-forgiving (\`!\`) usage(s) — confirm each is justified or add guard clauses")
   fi
+
+  # 5. Commented-out code blocks — runs of 2+ contiguous lines starting with //
+  # whose content looks code-like (contains ;, {, }, =, or a method-call pattern).
+  commented_run=$(awk '
+    BEGIN { run = 0; max = 0 }
+    /^[[:space:]]*\/\// {
+      stripped = $0
+      sub(/^[[:space:]]*\/\/[[:space:]]*/, "", stripped)
+      if (stripped ~ /[;{}=]/ || stripped ~ /[a-zA-Z_]+\(/) {
+        run++
+        if (run > max) max = run
+      } else { run = 0 }
+      next
+    }
+    { run = 0 }
+    END { print max }
+  ' "$f" 2>/dev/null)
+  if [ -n "$commented_run" ] && [ "$commented_run" -ge 2 ]; then
+    findings+=("$f: commented-out code block ($commented_run+ contiguous lines) — delete; version control preserves history (CLAUDE.md > Boy Scout > Subtract)")
+  fi
 done <<< "$files"
 
 [ "${#findings[@]}" -eq 0 ] && exit 0
+
+# Dedup: skip output when this finding set matches the last fire's output.
+# Avoids re-emitting the same warnings on every turn while the user iterates.
+mkdir -p .claude/.state 2>/dev/null
+hash_file=.claude/.state/last-boy-scout-hash
+joined=$(printf '%s\n' "${findings[@]}" | LC_ALL=C sort)
+if command -v sha1sum >/dev/null 2>&1; then
+  current_hash=$(printf '%s' "$joined" | sha1sum | awk '{print $1}')
+elif command -v shasum >/dev/null 2>&1; then
+  current_hash=$(printf '%s' "$joined" | shasum | awk '{print $1}')
+else
+  current_hash=$(printf '%s' "$joined" | wc -c)
+fi
+if [ -f "$hash_file" ] && [ "$(cat "$hash_file" 2>/dev/null)" = "$current_hash" ]; then
+  exit 0
+fi
+printf '%s' "$current_hash" > "$hash_file" 2>/dev/null
 
 echo "## Boy Scout candidates ($checked file(s) scanned)"
 echo

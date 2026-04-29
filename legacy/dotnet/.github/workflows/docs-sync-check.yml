@@ -62,6 +62,17 @@ jobs:
             echo "OK: TECH_DEBT.md exists."
           fi
 
+          # 4b. FRAMEWORK-CONTEXT.md exists and has been bootstrapped
+          if [ ! -f "FRAMEWORK-CONTEXT.md" ]; then
+            echo "FAIL: FRAMEWORK-CONTEXT.md is missing. Copy it from the template."
+            FAILED=1
+          elif grep -q "DETECTED_FRAMEWORK_PACKAGES_PENDING" "FRAMEWORK-CONTEXT.md" 2>/dev/null; then
+            echo "FAIL: FRAMEWORK-CONTEXT.md still contains the DETECTED_FRAMEWORK_PACKAGES_PENDING marker. Run /bootstrap to populate it."
+            FAILED=1
+          else
+            echo "OK: FRAMEWORK-CONTEXT.md exists and detected-packages section has been populated."
+          fi
+
           # 5. CLAUDE.md no longer contains the BOOTSTRAP_PENDING marker
           if grep -q "BOOTSTRAP_PENDING" "CLAUDE.md" 2>/dev/null; then
             echo "FAIL: CLAUDE.md still contains the BOOTSTRAP_PENDING marker. Run /bootstrap to populate it from your codebase."

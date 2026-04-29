@@ -128,6 +128,26 @@ Run `/docs-sync` to cross-check all documentation against the codebase. It repor
 
 ---
 
+## Token Economy & Prompt Caching
+
+Anthropic-API consumers (Claude Code, in-house tooling, eval harness) can dramatically cut cost and latency by structuring requests to hit the prompt cache. The cache TTL is short (~5 minutes) but the cache prefix is keyed on exact bytes — any drift in early content invalidates the whole prefix.
+
+The framework is structured so the cache-friendly prefix is large and stable:
+
+1. **`CLAUDE.md` is mostly stable.** Conventions, architecture decisions, common tasks, agentic workflow, boy-scout rules — these change at human pace, not per-session. Treat the whole file as one cache prefix candidate.
+2. **`FRAMEWORK-CONTEXT.md` is mostly stable.** Maintainer-curated sections rarely change between sessions. The auto-populated "Detected Framework Packages" table changes when csproj/Directory.Packages.props change — usually rare.
+3. **Volatile content lives in hooks, not in `CLAUDE.md`.** `SessionStart` injects branch + recent commits + debt heat at session start; `UserPromptSubmit` injects routed-intent rails; `PostToolUse` injects build output. All of these append AFTER the CLAUDE.md prefix, preserving cache integrity.
+
+When you author or extend `CLAUDE.md`:
+
+- **Do not** paste current branch state, recent commit lists, or per-developer notes into the file. They cause cache misses and belong in hooks or memory.
+- **Do** keep the section ordering stable. Reordering invalidates downstream caches even if content is unchanged.
+- **Do** keep verification rules and conventions terse. The first ~200 lines get re-read most often; that is your highest-leverage real estate.
+
+For tools built on the Anthropic SDK, place the explicit `cache_control` breakpoint at the end of `CLAUDE.md` + `FRAMEWORK-CONTEXT.md`, before per-prompt user content. The eval harness in `tests/evals/` (when added) should follow this pattern as a reference implementation.
+
+---
+
 ## Measuring Progress
 
 - **Tech debt register length**: should trend down over time

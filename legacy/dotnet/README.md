@@ -13,6 +13,7 @@ Copy the following into your existing .NET **solution root** (where your `.sln` 
 .github/PULL_REQUEST_TEMPLATE.md    → PR template with design rationale + Boy Scout checklist
 AGENTS.md                           → pointer for any agent-style tool
 CLAUDE.md                           → template, populated by /bootstrap
+FRAMEWORK-CONTEXT.md                → cross-repo context (shared libs, multi-tenancy, dashboard contracts)
 LEARNINGS.md                        → append-only log of what works/doesn't
 TECH_DEBT.md                        → template, populated by /bootstrap
 docs/defaults.md                    → greenfield .NET conventions (used until /bootstrap runs)
@@ -59,6 +60,7 @@ Both Claude Code and Copilot Chat use the same slash-command names:
 /fix [description]         — diagnose and fix a bug (regression test first)
 /design [description]      — think through design before coding
 /review                    — review changes as a tech lead
+/security-review           — OWASP-style scan + senior judgement on auth, data flow, secrets
 /refactor [target]         — refactor with safety net
 /test [target]             — generate tests following project patterns
 /debt [area]               — find and fix tech debt
@@ -71,11 +73,20 @@ In **Claude Code**, these are loaded from `.claude/commands/`. In **Copilot Chat
 
 Or just describe what you want in natural language — `CLAUDE.md` teaches the agent to route to the right workflow automatically.
 
+## Framework versioning
+
+Each consumer repo records the template version it was last synced from. Two locations:
+- A human-readable HTML comment at the top of `CLAUDE.md`
+- A machine-readable `.claude/framework-version.json`
+
+When you next pull template updates into your repo, bump both. CI tooling and a future `/framework-update` command read the JSON file to detect drift between your repo and the latest template version. If the version stamps disagree, treat the JSON file as authoritative.
+
 ## What's in the box
 
 | File | Purpose |
 |------|---------|
 | `CLAUDE.md` | **Single source of truth** — conventions, architecture, common tasks, agentic workflow. Read directly by Claude Code and by Copilot's coding agent / CLI. |
+| `FRAMEWORK-CONTEXT.md` | Cross-repo context: shared NuGet libraries, multi-tenancy conventions, dashboard contracts, cross-service patterns. Maintainer-curated; bootstrap populates the "Detected Framework Packages" section. |
 | `AGENTS.md` | Pointer to `CLAUDE.md` for any agent-style tool (Copilot agent, Codex, Cursor, Aider). |
 | `.github/copilot-instructions.md` | **Generated** — slim imperative ruleset (≤80 lines) for Copilot **inline completions** only. The agent reads `CLAUDE.md` directly. |
 | `.github/prompts/*.prompt.md` | Copilot Chat workflows. Thin wrappers that delegate to `.claude/commands/`. |
@@ -118,13 +129,19 @@ All hooks are bash scripts. Compatibility per platform:
 | Linux | Works out of the box | Same as macOS. |
 | Windows + Git for Windows (git-bash) | Works | Default installer puts `bash.exe` on PATH. Claude Code finds it automatically. |
 | Windows + WSL only | Not recommended | Path translation between `/mnt/c/...` and Windows-style paths breaks the hooks. Install Git for Windows alongside WSL — Claude Code will pick up git-bash. |
-| Windows + PowerShell only (no git-bash) | Hooks disabled | The hooks won't run. Either install Git for Windows, or remove the hook entries from `.claude/settings.json` to suppress "command not found" warnings. The framework's other layers (CLAUDE.md, slash commands, skills, subagents) still work — you just lose the SessionStart preload, the natural-language router, the post-write `dotnet build`, and the Boy Scout Stop scanner. |
+| Windows + PowerShell only (no git-bash) | Works via PowerShell variant | Use the shipped PowerShell hooks. Copy `.claude/settings.windows.json` over `.claude/settings.json` (team-wide) or to `.claude/settings.local.json` (per-developer). Uses Windows PowerShell 5.1 — preinstalled on every Windows machine, no extra install. PowerShell 7 (`pwsh`) also works. |
 
 **Verify your setup** after copying the template into your repo:
 
 ```bash
-# From your repo root, with bash on PATH:
+# Bash version (macOS / Linux / Windows + git-bash):
 echo '{"prompt":"the export endpoint is broken"}' | bash .claude/hooks/route-prompt.sh
+# Expected: "## Routed intent: `fix` ..." plus the fix-workflow rules.
+```
+
+```powershell
+# PowerShell version (Windows-only PowerShell teams):
+'{"prompt":"the export endpoint is broken"}' | powershell -NoProfile -ExecutionPolicy Bypass -File .claude\hooks\route-prompt.ps1
 # Expected: "## Routed intent: `fix` ..." plus the fix-workflow rules.
 ```
 

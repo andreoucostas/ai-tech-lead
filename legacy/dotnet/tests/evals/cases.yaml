@@ -1,0 +1,95 @@
+# Eval cases for the AI Tech Lead Framework — .NET template.
+#
+# Each case probes one framework rule (Verification, Leanness, Boy Scout, etc.).
+# Two grading layers per case:
+#   - deterministic: must_match / must_not_match regexes against the response text
+#   - rubric: optional model-graded check for nuance
+#
+# Keep the suite small. Add a case only when a framework rule is at risk of
+# silent regression. See README.md for adding new cases.
+
+cases:
+  - id: dotnet-001-leanness-no-interface-for-single-consumer
+    rule: CLAUDE.md > Leanness, defaults #2 and #14
+    prompt: |
+      I'm adding a new EmailNotifier service to send transactional emails. It will be used by
+      one place: the OrderConfirmationHandler. Show me the structure for the service. Do not
+      include the email-sending implementation details — just the class and DI registration.
+    must_not_match:
+      - 'interface\s+IEmailNotifier'
+      - 'IEmailNotifier'
+    must_match:
+      - 'class\s+EmailNotifier'
+    rubric: |
+      Does the response correctly resist creating an interface (IEmailNotifier) for a service
+      with one consumer? It should write a concrete (sealed or plain) class. Adding an interface
+      "for testability" is not acceptable per CLAUDE.md > Leanness.
+
+  - id: dotnet-002-verification-no-invented-package
+    rule: CLAUDE.md > Verification Rules #1, #2
+    prompt: |
+      Use the Microsoft.Hashing.CRC64 NuGet package to compute a CRC64 of a byte array in a new
+      utility method. Show the code.
+    must_not_match:
+      # The agent must NOT confidently produce code using a fabricated API. If it provides
+      # CRC64.Compute(...) without flagging that the package was not verified, that is a
+      # hallucination.
+      - '^[^I]*new\s+CRC64'
+    rubric: |
+      The package "Microsoft.Hashing.CRC64" is fictional. Does the response state that the
+      package has not been verified to exist in the repo's csproj or in known framework
+      packages, and ask for verification — rather than confidently producing code using a
+      fabricated API? An answer that produces a working-looking implementation without
+      flagging the unknown package fails this check.
+
+  - id: dotnet-003-boy-scout-cancellation-token
+    rule: CLAUDE.md > Boy Scout Rule, Always-apply Add #1
+    prompt: |
+      I'm modifying this method to also filter by status. Update it so callers can pass a
+      status filter:
+
+      ```csharp
+      public async Task<List<User>> GetUsersAsync()
+      {
+          return await _db.Users.ToListAsync();
+      }
+      ```
+    must_match:
+      - 'CancellationToken'
+    rubric: |
+      Does the response propagate a CancellationToken through the modified async method
+      signature, per Boy Scout Always-apply rule #1? Bonus if it also surfaces .AsNoTracking()
+      for the read-only query.
+
+  - id: dotnet-004-no-future-proofing
+    rule: CLAUDE.md > Verification Rules #8 + Leanness defaults #2, #3, #8
+    prompt: |
+      Add an SmsService that sends SMS messages. We use Twilio. There is one consumer today
+      and no plan to add another provider. Show the implementation skeleton (no real Twilio
+      API calls — just the shape).
+    must_not_match:
+      - 'interface\s+ISmsProvider'
+      - 'interface\s+ISmsService'
+      - 'abstract\s+class\s+SmsProvider'
+      - 'SmsProviderFactory'
+    rubric: |
+      Does the response provide a concrete TwilioSmsService (or SmsService) without
+      introducing an ISmsProvider interface, an abstract SmsProviderBase, or a factory
+      pattern for "future providers"? Future-proofing for a hypothetical second provider is
+      explicitly forbidden by Verification Rule #8 and Leanness default #2.
+
+  - id: dotnet-005-no-defensive-overcoding
+    rule: CLAUDE.md > Leanness defaults #5, #6
+    prompt: |
+      Add an internal helper method that takes a non-null List<int> and returns the sum of
+      its elements. The caller is in the same file and always passes a populated list.
+    must_not_match:
+      # No null guard on a parameter that is non-nullable and comes from internal callers.
+      - 'ArgumentNullException'
+      - 'if\s*\(\s*\w+\s*==\s*null\s*\)'
+      # No try/catch wrapping a simple sum.
+      - 'try\s*\{[^}]*\.Sum'
+    rubric: |
+      Does the response provide a minimal sum implementation without ArgumentNullException
+      guards, null checks, or try/catch wrapping? The parameter is non-nullable and the caller
+      is internal, so defensive code is bloat per Leanness #5 and #6.

@@ -25,13 +25,18 @@ For each section in CLAUDE.md:
 - Are existing entries still relevant?
 - Are there learnings from recent work that should be captured?
 
-### Step 4 — Check TECH_DEBT.md against codebase
+### Step 4 — Check FRAMEWORK-CONTEXT.md drift
+- **Detected Framework Packages**: re-scan `*.csproj` and `Directory.Packages.props`. Flag packages newly added, removed, or version-bumped since the last sync. Propose updated table.
+- **Shared Libraries**: for each entry, flag if the consuming repo no longer references it (the package is gone from csproj). Do not flag the converse — a package present in the repo but missing from `Shared Libraries` is expected for non-framework dependencies.
+- **Per-section drift**: skim Production Architecture, Multi-Tenancy, Dashboard Integration, Cross-Service Communication. Do they still match observed code? Flag obvious staleness only — these are maintainer-curated, do not rewrite.
+
+### Step 5 — Check TECH_DEBT.md against codebase
 - Are resolved items still in the register? Flag for removal.
 - Are there obvious debt patterns in the code not captured in the register? Flag for addition.
 - Are effort estimates still accurate?
 - Is the Trojan Horse Opportunities grouping still correct?
 
-### Step 5 — Report
+### Step 6 — Report
 Do NOT apply changes automatically. Present a structured report:
 
 ```
@@ -45,6 +50,13 @@ Do NOT apply changes automatically. Present a structured report:
 | Rule | Status | Issue |
 |------|--------|-------|
 (Status: in-sync / missing-from-copilot / missing-from-claude / contradicts)
+
+### FRAMEWORK-CONTEXT.md Drift
+- Detected packages added: ...
+- Detected packages removed: ...
+- Detected packages version-bumped: ...
+- Shared Libraries no longer referenced: ...
+- Sections flagged stale: ...
 
 ### TECH_DEBT.md Staleness
 - Items to remove (already fixed): ...

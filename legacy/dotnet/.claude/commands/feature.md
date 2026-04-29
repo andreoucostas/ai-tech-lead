@@ -11,6 +11,7 @@ Before writing any code, reason through:
 - What existing patterns should be reused? Check Common Tasks in CLAUDE.md and the relevant skill in `.claude/skills/`.
 - What are the failure modes?
 - What tests will verify success?
+- **Leanness check** (CLAUDE.md > Leanness): can this fit in existing files? Are you tempted to introduce a new interface / helper / wrapper — is there a second consumer in this change-set? If not, defer the abstraction.
 
 If the feature touches a clear file or area, spawn the `debt-radar` subagent via `Task` to surface bundleable TECH_DEBT entries before you scope the work. Fold any "Yes — same blast radius" entries into the plan when the marginal effort is small.
 
