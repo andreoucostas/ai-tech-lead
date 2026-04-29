@@ -1,6 +1,16 @@
 # AI Tech Lead Framework — Playbook
 
-This document explains the methodology behind the framework. It's reference reading for onboarding — the executable artifacts live in `CLAUDE.md`, `.claude/commands/`, and `.claude/settings.json`.
+This document explains the methodology behind the framework. It's the deeper answer to "why should we bother with all this?" — the executable artifacts live in `CLAUDE.md`, `.claude/commands/`, and `.claude/settings.json`.
+
+## The problem this solves
+
+Teams that adopt AI coding tools without a framework hit the same wall after a few months. The AI is fast, but it's generic. It doesn't know that your team wraps EF Core queries in the service layer, not the controller. It doesn't know that you use FluentValidation, not DataAnnotations. It doesn't know about the tech debt in the payments module that you've been carefully routing around. It doesn't know that the last three PRs introduced async voids that nobody caught in review.
+
+The result: the AI accelerates you in the wrong direction. Code quality drifts. Conventions fragment. Junior developers adopt whatever the AI suggests, which is the average of the internet, not the average of your best engineers.
+
+The deeper problem is that AI tools are additive by default. They add code, add abstractions, add interfaces "for testability", add comments to explain what they just wrote. Left unchecked, this produces a codebase that's larger, more complex, and harder to reason about than the one you started with — all while passing tests.
+
+This framework is the counterweight.
 
 ---
 

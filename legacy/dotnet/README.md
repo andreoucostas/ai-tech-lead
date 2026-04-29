@@ -2,6 +2,26 @@
 
 A working template that turns Claude Code and GitHub Copilot into a tech lead for your .NET codebase. Clone it, run one command, and get AI-driven development with built-in conventions, verification, and continuous improvement.
 
+## Why this framework?
+
+Without it, AI tools give you generic .NET code. The AI doesn't know your architecture, your conventions, or your team's decisions. Every developer gets different AI behaviour. The AI suggests patterns your team has already decided against, invents class names that don't exist, adds abstractions you don't need, and never cleans up the mess it leaves behind.
+
+This framework fixes that by giving the AI team-level context — your actual conventions, your actual architecture, your actual debt priorities — and enforcing a consistent execution model across every developer and every tool.
+
+**The AI won't hallucinate your codebase.** Verification rules require it to confirm any class, method, package, or route exists in your code before referencing it. If it can't confirm, it says so.
+
+**Quality improves as a side effect of normal work.** The Trojan Horse principle bundles cleanup into every feature ticket and bug fix. The AI applies the Boy Scout Rule to every file it touches, and a counterweight leanness rule stops it from adding abstraction you don't need. After three months, every actively-developed area is measurably cleaner — without a single dedicated debt sprint.
+
+**Security becomes systematic, not heroic.** `/security-review` runs a structured OWASP-style audit on every change — injection, auth/authz, secrets, sensitive data exposure, crypto, transport. It doesn't require anyone to remember to ask.
+
+**Common patterns can't be done wrong.** Skills encode the correct approach for the tasks your team does repeatedly — add an endpoint end-to-end, add an EF Core entity, register a service. The AI follows that recipe, not a generic one. Junior developers get senior-level scaffolding.
+
+**Works with the tools you already have.** The same source of truth drives Claude Code (agentic, skills, hooks) and GitHub Copilot (inline completions, chat, coding agent). You're not locked in to either.
+
+**Built for regulated environments.** Every AI-assisted file change is logged with timestamp and branch for traceability. Security findings are tracked in a separate register with remediation SLAs. Financial domain invariants (decimal precision, idempotency, TOCTOU races) are detected automatically during codebase analysis.
+
+For the full methodology — why the three-tier design, how the Trojan Horse works in practice, design culture guardrails — see [`docs/playbook.md`](./docs/playbook.md).
+
 ## Quick Start
 
 ### 1. Copy into your project
