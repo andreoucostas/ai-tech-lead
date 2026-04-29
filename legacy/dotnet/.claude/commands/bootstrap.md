@@ -20,15 +20,15 @@ Before starting analysis:
 
 ## Phase 1 — Analysis
 
-Dispatch the six analysis passes (A1–A6) **in parallel** via the `Task` tool, each invoking the `bootstrap-pass` subagent with the pass id as input. Example call shape:
+Dispatch the seven analysis passes (A1–A7) **in parallel** via the `Task` tool, each invoking the `bootstrap-pass` subagent with the pass id as input. Example call shape:
 
 ```
 Task(subagent_type="bootstrap-pass", description="Bootstrap pass A1", prompt="Run pass A1.")
 ```
 
-Send all six Task calls in a single message so they execute concurrently. Wait for all six to return.
+Send all seven Task calls in a single message so they execute concurrently. Wait for all seven to return.
 
-Each subagent returns structured findings; you do **not** redo the analysis. Just collect the six results — they feed Phase 2.
+Each subagent returns structured findings; you do **not** redo the analysis. Just collect the seven results — they feed Phase 2.
 
 The pass definitions below are the source of truth the subagents read. Do not duplicate the pass logic inline; the subagents read this file directly.
 
@@ -77,6 +77,20 @@ The pass definitions below are the source of truth the subagents read. Do not du
 - Logging — structured, levels, sensitive data
 - NuGet — outdated/deprecated/redundant
 - .NET version currency
+
+### A7: Financial Domain Invariants
+Run only if the codebase shows financial domain signals (look for: currency/money/amount/balance/ledger/payment/trade/account in class names, method names, or comments; `decimal` fields named `Amount`/`Balance`/`Price`; presence of packages like `NodaMoney`, `Money.Net`, or regulatory report namespaces).
+
+If no financial signals found, return: `A7: No financial domain signals detected — skipping.`
+
+If signals found, identify and report:
+- **Monetary precision**: are `decimal` types used for money fields? Any `double` or `float` on financial amounts? (flag as Critical)
+- **Negative amount guards**: do deposit/credit/debit operations validate that amounts are positive before writing?
+- **Idempotency**: do payment or transaction-creating operations have idempotency keys? Are they enforced at the DB layer (unique index) or only in application code?
+- **Check-then-act races**: are balance reads and subsequent debits/credits within the same database transaction with appropriate isolation level? Flag any pattern that reads a balance then writes without a transaction or with `IsolationLevel.ReadUncommitted`.
+- **Regulatory calculation isolation**: which methods or classes produce figures for regulatory reporting? Are they unit-tested with known inputs/outputs to verify calculation accuracy?
+- **Decimal rounding strategy**: is `MidpointRounding` specified on `Math.Round` calls involving money? Inconsistent rounding is a regulatory audit finding.
+- **Audit trail for financial mutations**: do write operations on financial entities log who made the change, when, and the before/after values?
 
 ---
 
@@ -162,6 +176,7 @@ All AI coding agents (Claude Code, GitHub Copilot coding agent, Codex, Cursor, A
 
 - **Conventions, architecture, common tasks, boy-scout rules**: see [CLAUDE.md](./CLAUDE.md)
 - **Tech debt register**: see [TECH_DEBT.md](./TECH_DEBT.md)
+- **Security findings register** (with remediation SLAs): see [SECURITY_FINDINGS.md](./SECURITY_FINDINGS.md)
 - **Inline-completion ruleset**: see [.github/copilot-instructions.md](./.github/copilot-instructions.md)
 - **Reusable workflows for Copilot Chat**: see [.github/prompts/](./.github/prompts/)
 - **Reusable workflows for Claude Code**: see [.claude/commands/](./.claude/commands/)
@@ -196,7 +211,13 @@ Replace the `## Detected Framework Packages` section with a populated table:
 
 Do **not** edit any other section of FRAMEWORK-CONTEXT.md — those are maintainer-curated.
 
-### 3e: Generate copilot-instructions.md (slim, inline-completions only)
+### 3e: Initialise SECURITY_FINDINGS.md
+
+If `SECURITY_FINDINGS.md` does not exist at the repo root, create it using the template from `.claude/skills/` (or the framework template). Do not pre-populate findings — security findings come from `/security-review`, not from bootstrap analysis.
+
+If `SECURITY_FINDINGS.md` already exists, leave it entirely alone.
+
+### 3f: Generate copilot-instructions.md (slim, inline-completions only)
 
 Run the `/generate-copilot` workflow. **Do not** produce a full derivative of CLAUDE.md — Copilot's coding agent reads CLAUDE.md and AGENTS.md directly. The copilot-instructions.md file is now scoped to inline editor completions only:
 

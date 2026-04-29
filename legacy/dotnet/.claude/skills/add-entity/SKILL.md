@@ -1,6 +1,13 @@
 ---
 name: add-entity
-description: Use when the user wants to add a new EF Core entity. Covers entity class placement, IEntityTypeConfiguration, DbContext registration, migration generation, and SQL review.
+description: >
+  Use when the user wants to add a new EF Core entity backed by a new database table.
+  Covers entity class placement, IEntityTypeConfiguration, DbContext registration,
+  migration generation, and SQL review.
+  USE FOR: introducing a completely new domain concept that needs its own table — new entity
+  class, new DbSet, new migration from scratch.
+  DO NOT USE FOR: adding columns or relationships to an existing entity, modifying an existing
+  migration, writing queries against an existing entity, creating value objects with no table.
 ---
 
 # Add a new EF Core entity

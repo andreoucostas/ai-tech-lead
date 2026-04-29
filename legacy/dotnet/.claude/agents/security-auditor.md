@@ -52,6 +52,14 @@ You are a security auditor for a .NET codebase. Your single job is to compare th
 - ECB mode (`CipherMode.ECB`) on block ciphers
 - `RSA.Create()` with key size below 2048
 
+**Financial / concurrency**
+- Check-then-act on financial state without a wrapping transaction: pattern is a `SELECT` / `GET` on a balance or position followed by an `UPDATE` / `INSERT` — flag if no `using var tx = db.BeginTransaction(IsolationLevel.Serializable/RepeatableRead)` wraps both operations
+- `IsolationLevel.ReadUncommitted` on any query that feeds a financial write (dirty-read risk)
+- Balance or position reads used in a subsequent calculation without an explicit row-level lock (`UPDLOCK` hint or EF Core `FromSqlRaw` equivalent) — flag as potential TOCTOU
+- Duplicate transaction ID not guarded by a unique index: look for INSERT on a payment/transaction entity without a corresponding `HasIndex(...).IsUnique()` in the EF configuration
+- `double` or `float` fields on entities or DTOs whose name contains `Amount`, `Balance`, `Price`, `Rate`, `Fee`, or `Notional` — financial precision loss (flag as `critical`)
+- `Math.Round` without explicit `MidpointRounding` on a value in financial context — inconsistent rounding strategy (flag as `medium`)
+
 **HTTP / transport**
 - `HttpClient` with `ServerCertificateCustomValidationCallback => true` (cert pinning bypass)
 - `requireHttps = false` on auth middleware in non-Development

@@ -1,6 +1,14 @@
 ---
 name: register-service
-description: Use when the user wants to register a new service in DI. Covers interface + implementation pair, lifetime choice, the project's DI extension pattern, and constructor-injection discipline.
+description: >
+  Use when the user wants to create and register a brand-new service in the DI container.
+  Covers interface + implementation pair, lifetime choice, the project's DI extension pattern,
+  and constructor-injection discipline.
+  USE FOR: net-new service that doesn't exist yet — new interface, new implementation class,
+  new DI registration.
+  DO NOT USE FOR: changing the lifetime of an existing registration, adding a dependency to an
+  existing service constructor, extracting an interface from an already-registered class,
+  replacing one implementation with another.
 ---
 
 # Register a new service

@@ -41,4 +41,27 @@ if [ -f TECH_DEBT.md ] && [ -d .git ]; then
   fi
 fi
 
+# 4. Overdue security findings
+if [ -f SECURITY_FINDINGS.md ]; then
+  today=$(date -u +"%Y-%m-%d")
+  overdue=0
+  while IFS= read -r line; do
+    # Rows with status Open and a due date in the past
+    if echo "$line" | grep -qi "| Open " 2>/dev/null; then
+      due=$(echo "$line" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' | sed -n '2p')
+      if [ -n "$due" ] && [ "$due" \< "$today" ]; then
+        overdue=$((overdue + 1))
+      fi
+    fi
+  done < SECURITY_FINDINGS.md
+  open_count=$(grep -c "| Open " SECURITY_FINDINGS.md 2>/dev/null || echo 0)
+  if [ "$open_count" -gt 0 ]; then
+    if [ "$overdue" -gt 0 ]; then
+      echo "- 🔴 **Security:** $overdue overdue finding(s) in SECURITY_FINDINGS.md. Remediation SLA breached — review before starting new work."
+    else
+      echo "- **Security:** $open_count open finding(s) in SECURITY_FINDINGS.md."
+    fi
+  fi
+fi
+
 exit 0

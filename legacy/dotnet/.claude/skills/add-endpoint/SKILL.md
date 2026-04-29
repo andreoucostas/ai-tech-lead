@@ -1,6 +1,14 @@
 ---
 name: add-endpoint
-description: Use when the user wants to add a new HTTP API endpoint end-to-end in a .NET solution. Covers domain shape, application service, DTOs, FluentValidation, thin controller action, and the integration test via WebApplicationFactory.
+description: >
+  Use when the user wants to add a new HTTP API endpoint end-to-end in a .NET solution.
+  Covers domain shape, application service, DTOs, FluentValidation, thin controller action,
+  and the integration test via WebApplicationFactory.
+  USE FOR: adding a brand-new route that doesn't exist yet — greenfield endpoint, new resource,
+  new command or query surface.
+  DO NOT USE FOR: modifying an existing endpoint's logic or signature, adding a new method to
+  an existing service, refactoring a controller, adding middleware, changing response shape on
+  an endpoint that already exists.
 ---
 
 # Add a new API endpoint end-to-end

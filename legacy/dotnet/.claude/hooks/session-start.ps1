@@ -53,4 +53,28 @@ if ((Test-Path TECH_DEBT.md) -and (Test-Path .git)) {
     }
 }
 
+# 4. Overdue security findings
+if (Test-Path SECURITY_FINDINGS.md) {
+    $secContent = Get-Content SECURITY_FINDINGS.md -Raw
+    $openCount = ([regex]::Matches($secContent, '\| Open ')).Count
+    if ($openCount -gt 0) {
+        $today = (Get-Date).ToString('yyyy-MM-dd')
+        $overdue = 0
+        foreach ($line in (Get-Content SECURITY_FINDINGS.md)) {
+            if ($line -match '\| Open ') {
+                $dates = [regex]::Matches($line, '\d{4}-\d{2}-\d{2}')
+                if ($dates.Count -ge 2) {
+                    $due = $dates[1].Value
+                    if ([string]::Compare($due, $today, $false) -lt 0) { $overdue++ }
+                }
+            }
+        }
+        if ($overdue -gt 0) {
+            Write-Output "- 🔴 **Security:** $overdue overdue finding(s) in SECURITY_FINDINGS.md. Remediation SLA breached -- review before starting new work."
+        } else {
+            Write-Output "- **Security:** $openCount open finding(s) in SECURITY_FINDINGS.md."
+        }
+    }
+}
+
 exit 0

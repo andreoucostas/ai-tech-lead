@@ -42,7 +42,7 @@ The Boy Scout Rule biases toward adding improvements. This section is the counte
 2. **No interface unless there will be a second implementation.** Sealed classes are fine. "I might mock it" is not a second implementation — `NSubstitute` and equivalents work on virtual methods of concrete classes.
 3. **No abstract base class with one subclass.** Inline it.
 4. **Wrappers must add behavior.** A method that just delegates is a layer that costs reading time and adds no value. Inline or remove.
-5. **No defensive code for impossible states.** Trust internal callers; validate only at system boundaries (HTTP request body, message bus payload, third-party API response).
+5. **No defensive code for impossible states.** Trust internal callers; validate only at system boundaries (HTTP request body, message bus payload, third-party API response). **Financial domain exception**: for monetary amounts, ledger entries, account balances, regulatory figures, and idempotency keys — treat every state as possible regardless of caller. Use `decimal` (never `double`) for money; guard against negative amounts, duplicate transaction IDs, decimal precision loss, and timestamp ordering violations at every layer even in internal code.
 6. **No `try/catch` to silence; only to handle.** If you cannot say what the catch block does for the user, do not write it.
 7. **No comments that restate code.** A comment earns its place only when it captures a non-obvious *why* (constraint, invariant, workaround). XML doc comments on public APIs are an exception when the project ships them.
 8. **No new generic helpers / utility classes without two existing call sites.** Three similar lines beat a premature abstraction.
@@ -105,8 +105,11 @@ Recipes live in `.claude/skills/` — each is auto-discovered by Claude Code and
 - `add-endpoint` — add a new HTTP API endpoint end-to-end (domain → service → DTO → validator → controller → integration test)
 - `add-entity` — add a new EF Core entity with configuration and migration review
 - `register-service` — register a new service in DI with the right lifetime
+- `perf` — scan a file, directory, or the whole repo for ~50 performance anti-patterns; produces tiered findings (Critical / Moderate / Info) with file locations and TECH_DEBT.md integration
 
 `/bootstrap` adds project-specific skills under `.claude/skills/` rather than appending recipes here.
+
+**Registers**: [TECH_DEBT.md](./TECH_DEBT.md) tracks delivery debt. [SECURITY_FINDINGS.md](./SECURITY_FINDINGS.md) tracks security findings separately with remediation SLAs (Critical = 7 days, High = 30 days). Do not merge them — audit teams treat these differently. AI-assisted file changes are appended to [.claude/ai-audit.log](./.claude/ai-audit.log) automatically by the PostToolUse hook.
 
 ---
 
@@ -191,6 +194,7 @@ Before presenting work as complete:
 At the end of your response, note if:
 - A new pattern was introduced that should be documented here
 - A TECH_DEBT.md entry was resolved or a new one discovered
+- A SECURITY_FINDINGS.md entry was resolved or a new finding discovered
 - copilot-instructions.md needs regeneration (run `/generate-copilot` in Claude Code, or ask your agent to rewrite it from this file following the rules in `.claude/commands/generate-copilot.md`)
 
 ---

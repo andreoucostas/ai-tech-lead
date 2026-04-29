@@ -63,3 +63,17 @@ Spot-check 2–3 findings by opening the cited files and confirming the pattern 
 - `APPROVE`: only when all findings are `low` or have explicit accepted-risk rationale
 
 Be direct. Do not praise code for not being insecure — that is the baseline.
+
+---
+
+## Step 6 — Update SECURITY_FINDINGS.md
+
+For every finding rated `critical` or `high`, append a row to `SECURITY_FINDINGS.md`.
+
+Calculate the due date from today:
+- `critical` → today + 7 calendar days
+- `high` → today + 30 calendar days
+
+Only append — never modify or delete existing rows. If a finding duplicates an open row (same file:line, same category), note the duplicate in the finding's description rather than adding a second row.
+
+If the verdict is `APPROVE` (no critical or high findings), note this in the output but do not modify `SECURITY_FINDINGS.md`.
