@@ -14,8 +14,21 @@ $filePath = ''
 if (-not [string]::IsNullOrEmpty($inputJson)) {
     try {
         $obj = $inputJson | ConvertFrom-Json
-        if ($obj.tool_input -and $obj.tool_input.file_path) {
-            $filePath = [string]$obj.tool_input.file_path
+        # Tool name filter — Copilot has no matcher; Claude Code uses settings.json matcher.
+        $tn = if ($obj.tool_name) { [string]$obj.tool_name } elseif ($obj.toolName) { [string]$obj.toolName } else { '' }
+        if ($tn -and $tn -notin @('Write','Edit')) { exit 0 }
+        # Claude Code: tool_input.file_path | VS Code Copilot: tool_input.filePath
+        if ($obj.tool_input) {
+            if ($obj.tool_input.file_path) { $filePath = [string]$obj.tool_input.file_path }
+            elseif ($obj.tool_input.filePath) { $filePath = [string]$obj.tool_input.filePath }
+        }
+        # Copilot cloud/CLI: toolArgs is a JSON string containing filePath
+        if ([string]::IsNullOrEmpty($filePath) -and $obj.toolArgs) {
+            try {
+                $ta = [string]$obj.toolArgs | ConvertFrom-Json
+                if ($ta.filePath) { $filePath = [string]$ta.filePath }
+                elseif ($ta.file_path) { $filePath = [string]$ta.file_path }
+            } catch { }
         }
     } catch { }
 }

@@ -1,0 +1,24 @@
+{
+  "hooks": [
+    {
+      "event": "sessionStart",
+      "bash": ".claude/hooks/session-start.sh",
+      "powershell": ".claude\\hooks\\session-start.ps1"
+    },
+    {
+      "event": "userPromptSubmitted",
+      "bash": ".claude/hooks/route-prompt.sh",
+      "powershell": ".claude\\hooks\\route-prompt.ps1"
+    },
+    {
+      "event": "postToolUse",
+      "bash": ".claude/hooks/post-write.sh",
+      "powershell": ".claude\\hooks\\post-write.ps1"
+    },
+    {
+      "event": "postToolUse",
+      "bash": ".claude/hooks/audit-trail.sh",
+      "powershell": ".claude\\hooks\\audit-trail.ps1"
+    }
+  ]
+}

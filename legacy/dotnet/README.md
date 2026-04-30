@@ -114,8 +114,9 @@ When you next pull template updates into your repo, bump both. CI tooling and a 
 | `.claude/skills/*/SKILL.md` | Auto-discovered Common Tasks recipes (add-endpoint, add-entity, register-service). Body loads only when triggered. |
 | `.claude/agents/*.md` | Subagents (convention-check, debt-radar, bootstrap-pass). Run in isolated context; return structured findings to the parent. |
 | `.claude/workflow.md` | Shared self-review + flag-drift tail inlined by the workflow commands via `@.claude/workflow.md`. |
-| `.claude/hooks/*.sh` | SessionStart context preload, UserPromptSubmit intent router, Stop-hook Boy Scout scanner. Bash; needs git-bash on Windows. |
-| `.claude/settings.json` | Registers hooks: SessionStart, UserPromptSubmit, PostToolUse (`dotnet build` after `.cs` writes), and Stop. Claude Code only — Copilot has no hook system. |
+| `.claude/hooks/*.sh` | SessionStart context preload, UserPromptSubmit intent router, PostToolUse build trigger and audit trail, Stop Boy Scout scanner. Each has a `.ps1` twin for Windows-only teams. |
+| `.claude/settings.json` | Registers hooks for Claude Code and VS Code Copilot: SessionStart, UserPromptSubmit, PostToolUse (`dotnet build` + audit trail after `.cs` writes), and Stop. |
+| `.github/hooks/hooks.json` | Registers the same hooks for Copilot cloud agent and CLI. Points to the same scripts in `.claude/hooks/`. |
 | `TECH_DEBT.md` | **Generated** by `/bootstrap` — prioritised debt register with Trojan Horse opportunities. |
 | `LEARNINGS.md` | Append-only log of what worked / what didn't / what rule changed. Read on non-trivial work. |
 | `docs/playbook.md` | Methodology guide (the "why" behind the framework). |
@@ -141,15 +142,23 @@ The router hook is the key piece: a developer who types *"the export endpoint is
 
 #### Hook compatibility
 
-All hooks are bash scripts. Compatibility per platform:
+The same hook scripts run across Claude Code and GitHub Copilot. All hooks are bash scripts with a PowerShell twin. Three hook surfaces are supported:
+
+| Surface | Config file | Notes |
+|---------|-------------|-------|
+| **Claude Code** | `.claude/settings.json` | Native hook support with `matcher` field — hooks already filtered by tool name before the script runs. |
+| **VS Code Copilot** | `.claude/settings.json` (same file) | VS Code Copilot reads `.claude/settings.json` directly but uses camelCase field names in the payload (`filePath`, `toolName`). No `matcher` support — the scripts filter by tool name internally. |
+| **Copilot cloud / CLI** | `.github/hooks/hooks.json` | Separate file required. Payload delivers `toolName` + `toolArgs` (a JSON string). The scripts detect and parse this format automatically. |
+
+Platform compatibility for running the bash scripts:
 
 | Platform | Status | Notes |
 |----------|--------|-------|
 | macOS (bash 3.2+) | Works out of the box | `git`, `grep`, `tr`, `printf`, `wc` are all default. |
 | Linux | Works out of the box | Same as macOS. |
-| Windows + Git for Windows (git-bash) | Works | Default installer puts `bash.exe` on PATH. Claude Code finds it automatically. |
-| Windows + WSL only | Not recommended | Path translation between `/mnt/c/...` and Windows-style paths breaks the hooks. Install Git for Windows alongside WSL — Claude Code will pick up git-bash. |
-| Windows + PowerShell only (no git-bash) | Works via PowerShell variant | Use the shipped PowerShell hooks. Copy `.claude/settings.windows.json` over `.claude/settings.json` (team-wide) or to `.claude/settings.local.json` (per-developer). Uses Windows PowerShell 5.1 — preinstalled on every Windows machine, no extra install. PowerShell 7 (`pwsh`) also works. |
+| Windows + Git for Windows (git-bash) | Works | Default installer puts `bash.exe` on PATH. Claude Code and Copilot find it automatically. |
+| Windows + WSL only | Not recommended | Path translation between `/mnt/c/...` and Windows-style paths breaks the hooks. Install Git for Windows alongside WSL. |
+| Windows + PowerShell only (no git-bash) | Works via PowerShell variant | Use the shipped PowerShell hooks. Copy `.claude/settings.windows.json` over `.claude/settings.json` (team-wide) or to `.claude/settings.local.json` (per-developer). Uses Windows PowerShell 5.1 — preinstalled on every Windows machine. PowerShell 7 (`pwsh`) also works. |
 
 **Verify your setup** after copying the template into your repo:
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://github.com/ai-tech-lead-framework/schema/framework-version.json",
   "template": "dotnet",
-  "version": "0.5.0",
-  "applied": "2026-04-28",
+  "version": "0.7.0",
+  "applied": "2026-04-29",
   "_comment": "Machine-readable framework version stamp. Bumped when this repo syncs template updates. CI tooling (and future /framework-update command) reads this file to detect drift between the consumer repo and the latest template version. Keep in sync with the HTML comment at the top of CLAUDE.md."
 }
