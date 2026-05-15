@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 description: Cross-check all documentation against the codebase and between instruction files. Reports drift.
 ---
 

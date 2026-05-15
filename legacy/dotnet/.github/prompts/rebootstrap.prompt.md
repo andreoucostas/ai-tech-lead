@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 description: Refresh the AI Tech Lead framework config for this .NET codebase — diff-aware merge into existing CLAUDE.md and TECH_DEBT.md after months of evolution.
 ---
 

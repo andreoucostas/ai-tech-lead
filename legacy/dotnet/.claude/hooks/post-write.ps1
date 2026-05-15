@@ -1,8 +1,8 @@
-# PostToolUse hook -- incremental dotnet build after Write/Edit on .cs files.
-# PowerShell equivalent of post-write.sh. Reads tool input JSON from stdin,
-# extracts the file path, and runs dotnet build only when a .cs file was just
-# written/edited. Throttled to one build per 5 seconds to avoid burst-write
-# duplication.
+# PostToolUse hook -- incremental dotnet build after a file write/edit on .cs files.
+# Tool surfaces handled:
+#   Claude Code (CLI + VS Code extension)  -- tool_name in {Write,Edit}; path at tool_input.file_path
+#   GitHub Copilot (cloud agent + CLI)     -- toolName  in {edit,create}; path at toolArgs.filePath
+# Throttled to one build per 60 seconds to avoid stomping on a long-running compile.
 
 $ErrorActionPreference = 'SilentlyContinue'
 
@@ -14,21 +14,26 @@ $filePath = ''
 if (-not [string]::IsNullOrEmpty($inputJson)) {
     try {
         $obj = $inputJson | ConvertFrom-Json
-        # Tool name filter — Copilot has no matcher; Claude Code uses settings.json matcher.
         $tn = if ($obj.tool_name) { [string]$obj.tool_name } elseif ($obj.toolName) { [string]$obj.toolName } else { '' }
-        if ($tn -and $tn -notin @('Write','Edit')) { exit 0 }
-        # Claude Code: tool_input.file_path | VS Code Copilot: tool_input.filePath
+        if ($tn -and $tn -notin @('Write','Edit','edit','create')) { exit 0 }
+
+        # Claude Code: tool_input.file_path
         if ($obj.tool_input) {
             if ($obj.tool_input.file_path) { $filePath = [string]$obj.tool_input.file_path }
             elseif ($obj.tool_input.filePath) { $filePath = [string]$obj.tool_input.filePath }
         }
-        # Copilot cloud/CLI: toolArgs is a JSON string containing filePath
+        # Copilot: toolArgs is a parsed object (per spec), not a JSON string. Try object access first,
+        # fall back to string parse for older payload shapes.
         if ([string]::IsNullOrEmpty($filePath) -and $obj.toolArgs) {
-            try {
-                $ta = [string]$obj.toolArgs | ConvertFrom-Json
+            $ta = $obj.toolArgs
+            if ($ta -is [string]) {
+                try { $ta = $ta | ConvertFrom-Json } catch { $ta = $null }
+            }
+            if ($ta) {
                 if ($ta.filePath) { $filePath = [string]$ta.filePath }
                 elseif ($ta.file_path) { $filePath = [string]$ta.file_path }
-            } catch { }
+                elseif ($ta.path) { $filePath = [string]$ta.path }
+            }
         }
     } catch { }
 }
@@ -40,14 +45,17 @@ if ([string]::IsNullOrEmpty($filePath) -and $env:CLAUDE_FILE_PATH) {
 if ([string]::IsNullOrEmpty($filePath)) { exit 0 }
 if ($filePath -notlike '*.cs') { exit 0 }
 
-# Throttle: skip if a build was started within the last 5 seconds.
+# Bail cleanly if no dotnet CLI on PATH.
+if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) { exit 0 }
+
+# Throttle: skip if a build was started within the last 60 seconds.
 $stamp = '.claude\.state\last-build-ts'
 $now = [int][double]::Parse((Get-Date -UFormat %s))
 if (Test-Path $stamp) {
     $lastRaw = Get-Content $stamp -Raw
     if ($lastRaw) {
         $last = 0
-        if ([int]::TryParse($lastRaw.Trim(), [ref]$last) -and ($now - $last) -lt 5) {
+        if ([int]::TryParse($lastRaw.Trim(), [ref]$last) -and ($now - $last) -lt 60) {
             exit 0
         }
     }

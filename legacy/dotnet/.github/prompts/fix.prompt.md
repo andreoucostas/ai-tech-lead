@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 description: Diagnose and fix a bug in this .NET codebase. Writes a failing regression test first.
 ---
 

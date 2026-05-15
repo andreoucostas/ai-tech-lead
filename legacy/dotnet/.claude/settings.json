@@ -2,27 +2,32 @@
   "hooks": {
     "SessionStart": [
       {
-        "command": "bash .claude/hooks/session-start.sh"
+        "hooks": [
+          { "type": "command", "command": "bash .claude/hooks/session-start.sh" }
+        ]
       }
     ],
     "UserPromptSubmit": [
       {
-        "command": "bash .claude/hooks/route-prompt.sh"
+        "hooks": [
+          { "type": "command", "command": "bash .claude/hooks/route-prompt.sh" }
+        ]
       }
     ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit",
-        "command": "bash .claude/hooks/post-write.sh"
-      },
-      {
-        "matcher": "Write|Edit",
-        "command": "bash .claude/hooks/audit-trail.sh"
+        "hooks": [
+          { "type": "command", "command": "bash .claude/hooks/post-write.sh" },
+          { "type": "command", "command": "bash .claude/hooks/audit-trail.sh" }
+        ]
       }
     ],
     "Stop": [
       {
-        "command": "bash .claude/hooks/boy-scout-check.sh"
+        "hooks": [
+          { "type": "command", "command": "bash .claude/hooks/boy-scout-check.sh" }
+        ]
       }
     ]
   }

@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 description: Refactor code in this .NET codebase without changing behavior. Verified with tests.
 ---
 

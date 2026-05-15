@@ -115,7 +115,7 @@ When you next pull template updates into your repo, bump both. CI tooling and a 
 | `.claude/agents/*.md` | Subagents (convention-check, debt-radar, bootstrap-pass). Run in isolated context; return structured findings to the parent. |
 | `.claude/workflow.md` | Shared self-review + flag-drift tail inlined by the workflow commands via `@.claude/workflow.md`. |
 | `.claude/hooks/*.sh` | SessionStart context preload, UserPromptSubmit intent router, PostToolUse build trigger and audit trail, Stop Boy Scout scanner. Each has a `.ps1` twin for Windows-only teams. |
-| `.claude/settings.json` | Registers hooks for Claude Code and VS Code Copilot: SessionStart, UserPromptSubmit, PostToolUse (`dotnet build` + audit trail after `.cs` writes), and Stop. |
+| `.claude/settings.json` | Registers hooks for Claude Code: SessionStart, UserPromptSubmit, PostToolUse (`dotnet build` + audit trail after `.cs` writes), and Stop. |
 | `.github/hooks/hooks.json` | Registers the same hooks for Copilot cloud agent and CLI. Points to the same scripts in `.claude/hooks/`. |
 | `TECH_DEBT.md` | **Generated** by `/bootstrap` — prioritised debt register with Trojan Horse opportunities. |
 | `LEARNINGS.md` | Append-only log of what worked / what didn't / what rule changed. Read on non-trivial work. |
@@ -142,13 +142,12 @@ The router hook is the key piece: a developer who types *"the export endpoint is
 
 #### Hook compatibility
 
-The same hook scripts run across Claude Code and GitHub Copilot. All hooks are bash scripts with a PowerShell twin. Three hook surfaces are supported:
+The same hook scripts run across Claude Code and GitHub Copilot. All hooks are bash scripts with a PowerShell twin. Two hook surfaces are supported:
 
-| Surface | Config file | Notes |
-|---------|-------------|-------|
-| **Claude Code** | `.claude/settings.json` | Native hook support with `matcher` field — hooks already filtered by tool name before the script runs. |
-| **VS Code Copilot** | `.claude/settings.json` (same file) | VS Code Copilot reads `.claude/settings.json` directly but uses camelCase field names in the payload (`filePath`, `toolName`). No `matcher` support — the scripts filter by tool name internally. |
-| **Copilot cloud / CLI** | `.github/hooks/hooks.json` | Separate file required. Payload delivers `toolName` + `toolArgs` (a JSON string). The scripts detect and parse this format automatically. |
+| Surface | Config file | Payload shape | Notes |
+|---------|-------------|---------------|-------|
+| **Claude Code** (CLI + VS Code extension) | `.claude/settings.json` | `tool_name` ∈ {`Write`,`Edit`}; `tool_input.file_path` | Native hook support with `matcher` field — hooks already filtered by tool name before the script runs. |
+| **GitHub Copilot** (cloud agent + CLI) | `.github/hooks/hooks.json` | `toolName` ∈ {`edit`,`create`}; `toolArgs.filePath` (parsed object, not a JSON string) | No `matcher` support — the scripts filter by tool name internally. |
 
 Platform compatibility for running the bash scripts:
 
@@ -215,3 +214,24 @@ If the secondary stack is Angular, the `ai-tech-lead-angular` template's `copilo
 - When conventions change: update `CLAUDE.md` and ask your agent (or `/generate-copilot`) to refresh `.github/copilot-instructions.md`
 - Quarterly: run `/docs-sync` to find drift, or `/rebootstrap` for a deeper refresh
 - Always: the Boy Scout Rule and Trojan Horse principle mean every change improves the codebase incrementally
+
+## Changelog
+
+### 0.7.1 — 2026-05-15 (hook plumbing forensic-fix batch)
+
+**Fixed**
+- **`.claude/settings.json` hook schema** (bash + PowerShell variants). Restructured to the documented Claude Code form: each event entry now wraps handlers in a nested `hooks` array with explicit `"type": "command"`. The previous flattened form was non-conformant and likely failed to register hooks on recent Claude Code versions.
+- **`.github/hooks/hooks.json` schema**. Added the required `"version": 1` field; converted the top-level `hooks` from an array to an object keyed by event name; added `"type": "command"` to every handler; added `timeoutSec` per event. The prior shape did not match the GitHub Copilot hooks reference and the hooks almost certainly weren't being loaded by the cloud agent.
+- **Tool-name filter in hook scripts** (`post-write.{sh,ps1}`, `audit-trail.{sh,ps1}`). The filter previously accepted only Claude Code's `Write`/`Edit` (PascalCase); GitHub Copilot uses `edit`/`create` (lowercase). Every Copilot file-write event was being silently dropped before path extraction — meaning the SR 11-7 / DORA audit log never recorded a Copilot-initiated change. Filter now accepts both surfaces.
+- **`toolArgs` parsing** in the same scripts. Per the Copilot hooks spec, `toolArgs` is a parsed object, not a JSON-encoded string. The previous `jq fromjson` / `ConvertFrom-Json` paths threw and were silently swallowed, so file-path extraction from Copilot payloads returned empty. Switched to direct object access, with a fallback string-parse for legacy payload shapes.
+- **`settings.windows.json` audit-trail parity** — the bash variant registered two `PostToolUse` hooks (post-write + audit-trail); the PowerShell variant only registered post-write, so Windows-only PowerShell teams had no audit log. Added the audit-trail handler.
+- **Prompt-file frontmatter** — `mode: agent` → `agent: agent` across all 13 `.github/prompts/*.prompt.md` files. `mode` was deprecated by VS Code in favor of `agent` (see `github/awesome-copilot#464`).
+- **Bogus `$schema` URL** in `framework-version.json`. Removed — the URL pointed to a non-existent GitHub org.
+- **`post-write` throttle window** — raised from 5 s to 60 s. Real `dotnet build` runs take 30 s+; the 5 s throttle expired long before the in-flight build finished, so burst writes still stomped on the running compile.
+- **Boy-scout `!` (null-forgiving) detector** false-positive on `x!=y` (no surrounding spaces). Now requires the `!` to be in postfix-operator position.
+
+**Changed**
+- **README hook-compatibility table**. The "VS Code Copilot reads `.claude/settings.json` directly" row was unfounded — VS Code Copilot's surfaces are `.github/copilot-instructions.md`, `.github/instructions/`, `.github/prompts/`, and `.github/hooks/`. The table is now two rows: Claude Code (CLI + VS Code extension) and GitHub Copilot (cloud + CLI), with the exact payload shape per surface.
+
+**Added**
+- **Clean bail-out guard** in `post-write.sh|ps1`: skip if the `dotnet` CLI is not on PATH, instead of failing noisily.

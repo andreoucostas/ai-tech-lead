@@ -2,10 +2,9 @@
 # PostToolUse hook — append every AI-assisted file write to .claude/ai-audit.log.
 # Format: ISO-8601-UTC TAB git-branch TAB file-path
 # Satisfies SR 11-7 / DORA traceability requirements for AI tooling in regulated environments.
-# Handles three input formats (same as post-write.sh):
-#   Claude Code          — tool_input.file_path  (snake_case, matcher filters tool)
-#   VS Code Copilot      — tool_input.filePath   (camelCase, no matcher → name-filter in script)
-#   Copilot cloud/CLI    — toolArgs JSON string  (toolName + toolArgs at top level)
+# Tool surfaces handled:
+#   Claude Code (CLI + VS Code extension)  — tool_name in {Write,Edit}; path at tool_input.file_path
+#   GitHub Copilot (cloud agent + CLI)     — toolName  in {edit,create}; path at toolArgs.filePath (object)
 
 set -u
 
@@ -15,33 +14,34 @@ if [ ! -t 0 ]; then
   input=$(cat)
   if [ -n "$input" ]; then
     if command -v jq >/dev/null 2>&1; then
-      # Tool name filter — Copilot has no matcher; Claude Code uses settings.json matcher.
       tool_name=$(printf '%s' "$input" | jq -r '.tool_name // .toolName // ""' 2>/dev/null)
       case "$tool_name" in
-        Write|Edit|"") ;;
+        Write|Edit|edit|create|"") ;;
         *) exit 0 ;;
       esac
-      # Claude Code: tool_input.file_path | VS Code Copilot: tool_input.filePath
-      file_path=$(printf '%s' "$input" | jq -r '.tool_input.file_path // .tool_input.filePath // ""' 2>/dev/null)
-      # Copilot cloud/CLI: toolArgs is a JSON string containing filePath
-      if [ -z "$file_path" ]; then
-        file_path=$(printf '%s' "$input" | jq -r 'if .toolArgs then (.toolArgs | fromjson | .filePath // .file_path // "") else "" end' 2>/dev/null)
-      fi
+      file_path=$(printf '%s' "$input" | jq -r '
+        .tool_input.file_path
+        // .tool_input.filePath
+        // .toolArgs.filePath
+        // .toolArgs.file_path
+        // .toolArgs.path
+        // ""
+      ' 2>/dev/null)
     elif command -v python3 >/dev/null 2>&1; then
       file_path=$(printf '%s' "$input" | python3 -c 'import json,sys
 try:
     d = json.load(sys.stdin)
     tn = d.get("tool_name") or d.get("toolName") or ""
-    if tn and tn not in ("Write","Edit"):
+    if tn and tn not in ("Write","Edit","edit","create"):
         sys.exit(0)
     ti = d.get("tool_input") or {}
     fp = ti.get("file_path") or ti.get("filePath") or ""
-    if not fp and d.get("toolArgs"):
-        try:
-            ta = json.loads(d["toolArgs"])
-            fp = ta.get("filePath") or ta.get("file_path") or ""
-        except Exception:
-            pass
+    if not fp:
+        ta = d.get("toolArgs") or {}
+        if isinstance(ta, str):
+            try: ta = json.loads(ta)
+            except Exception: ta = {}
+        fp = ta.get("filePath") or ta.get("file_path") or ta.get("path") or ""
     print(fp or "")
 except Exception:
     pass' 2>/dev/null)

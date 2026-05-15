@@ -56,8 +56,10 @@ while IFS= read -r f; do
     fi
   fi
 
-  # 4. Null-suppression `!` without an adjacent comment — weak proxy for missing null guards
-  bang_hits=$(grep -E '[a-zA-Z_]+!' "$f" 2>/dev/null | grep -vE '^\s*//' | wc -l)
+  # 4. Null-suppression `!` without an adjacent comment — weak proxy for missing null guards.
+  # Require the `!` to be in postfix-operator position (followed by `.`, `;`, `,`, `)`, `]`,
+  # whitespace, or end of line) so `disposed!=true` and similar `!=` writings don't false-positive.
+  bang_hits=$(grep -E '[a-zA-Z_)\]]+!([.;,)\] ]|$)' "$f" 2>/dev/null | grep -vE '^\s*//' | wc -l)
   if [ "$bang_hits" -ge 5 ]; then
     findings+=("$f: $bang_hits null-forgiving (\`!\`) usage(s) — confirm each is justified or add guard clauses")
   fi

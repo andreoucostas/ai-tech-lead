@@ -66,9 +66,10 @@ foreach ($f in $files) {
         $findings.Add("${f}: read-style EF Core query without any AsNoTracking() in file -- review for read-only opportunities")
     }
 
-    # 4. Null-suppression `!` without an adjacent comment -- weak proxy for missing null guards
+    # 4. Null-suppression `!` without an adjacent comment -- weak proxy for missing null guards.
+    # Require `!` to be in postfix-operator position so `x!=y` (no spaces) doesn't false-positive.
     $bangHits = ($lines | Where-Object {
-        $_ -match '[a-zA-Z_]+!' -and
+        $_ -match '[a-zA-Z_)\]]+!([.;,)\] ]|$)' -and
         $_ -notmatch '^\s*//'
     }).Count
     if ($bangHits -ge 5) {

@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 description: Implement a new feature in this .NET codebase end-to-end (domain → service → API → tests).
 ---
 
