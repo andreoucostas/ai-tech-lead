@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 description: Find and fix tech debt in a specific area of this Angular codebase.
 ---
 

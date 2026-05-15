@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 description: Refresh the AI Tech Lead framework config for this Angular codebase — diff-aware merge into existing CLAUDE.md and TECH_DEBT.md after months of evolution.
 ---
 

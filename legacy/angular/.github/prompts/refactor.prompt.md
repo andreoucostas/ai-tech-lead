@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 description: Refactor code in this Angular codebase without changing behavior. Verified with tests.
 ---
 

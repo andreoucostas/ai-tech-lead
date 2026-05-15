@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 description: Adopt this Angular repo into the AI Tech Lead Framework — discovers existing AI artifacts (Cursor, Copilot, Aider, Continue, generic docs) and merges them into our canonical structure without losing work.
 ---
 

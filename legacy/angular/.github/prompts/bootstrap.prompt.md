@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 description: One-time bootstrap — analyse this Angular codebase and populate CLAUDE.md, TECH_DEBT.md, AGENTS.md, and copilot-instructions.md.
 ---
 

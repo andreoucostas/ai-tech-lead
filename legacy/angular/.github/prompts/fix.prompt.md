@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 description: Diagnose and fix a bug in this Angular codebase. Writes a failing regression test first.
 ---
 

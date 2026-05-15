@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 description: Reason through the design of a change before writing any code. Produces a design document only.
 ---
 

@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 description: Security review of changed Angular code. OWASP-style frontend scan plus senior judgement (auth, token handling, trust boundaries).
 ---
 

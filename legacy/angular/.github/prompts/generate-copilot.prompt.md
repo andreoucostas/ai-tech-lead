@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 description: Regenerate .github/copilot-instructions.md from CLAUDE.md as a slim ≤80-line ruleset for Copilot inline completions.
 ---
 

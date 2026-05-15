@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 description: Generate tests for code in this Angular codebase, following project patterns.
 ---
 

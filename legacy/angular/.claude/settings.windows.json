@@ -3,23 +3,31 @@
   "hooks": {
     "SessionStart": [
       {
-        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude\\hooks\\session-start.ps1"
+        "hooks": [
+          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude\\hooks\\session-start.ps1" }
+        ]
       }
     ],
     "UserPromptSubmit": [
       {
-        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude\\hooks\\route-prompt.ps1"
+        "hooks": [
+          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude\\hooks\\route-prompt.ps1" }
+        ]
       }
     ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit",
-        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude\\hooks\\post-write.ps1"
+        "hooks": [
+          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude\\hooks\\post-write.ps1" }
+        ]
       }
     ],
     "Stop": [
       {
-        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude\\hooks\\boy-scout-check.ps1"
+        "hooks": [
+          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude\\hooks\\boy-scout-check.ps1" }
+        ]
       }
     ]
   }

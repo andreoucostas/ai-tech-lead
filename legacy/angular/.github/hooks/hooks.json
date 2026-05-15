@@ -1,19 +1,29 @@
 {
-  "hooks": [
-    {
-      "event": "sessionStart",
-      "bash": ".claude/hooks/session-start.sh",
-      "powershell": ".claude\\hooks\\session-start.ps1"
-    },
-    {
-      "event": "userPromptSubmitted",
-      "bash": ".claude/hooks/route-prompt.sh",
-      "powershell": ".claude\\hooks\\route-prompt.ps1"
-    },
-    {
-      "event": "postToolUse",
-      "bash": ".claude/hooks/post-write.sh",
-      "powershell": ".claude\\hooks\\post-write.ps1"
-    }
-  ]
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": ".claude/hooks/session-start.sh",
+        "powershell": ".claude\\hooks\\session-start.ps1",
+        "timeoutSec": 15
+      }
+    ],
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "bash": ".claude/hooks/route-prompt.sh",
+        "powershell": ".claude\\hooks\\route-prompt.ps1",
+        "timeoutSec": 10
+      }
+    ],
+    "postToolUse": [
+      {
+        "type": "command",
+        "bash": ".claude/hooks/post-write.sh",
+        "powershell": ".claude\\hooks\\post-write.ps1",
+        "timeoutSec": 60
+      }
+    ]
+  }
 }

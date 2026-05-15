@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 description: Review code as a senior tech lead. This is a quality gate, not a rubber stamp.
 ---
 

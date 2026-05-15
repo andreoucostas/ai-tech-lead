@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 description: Implement a new feature in this Angular codebase end-to-end (models → state → component → tests).
 ---
 
