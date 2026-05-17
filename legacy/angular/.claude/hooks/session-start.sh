@@ -25,7 +25,25 @@ if [ -f CLAUDE.md ] && grep -q "BOOTSTRAP_PENDING" CLAUDE.md 2>/dev/null; then
   echo "- ⚠ **CLAUDE.md is unbootstrapped** (BOOTSTRAP_PENDING marker present). Run \`/bootstrap\` before non-trivial work — conventions are still placeholder."
 fi
 
-# 3. TECH_DEBT items touching recently changed files
+# 3. Workflow-routing primer.
+# In Claude Code, route-prompt.sh injects rails per-prompt. In GitHub Copilot the
+# userPromptSubmitted hook is fire-and-forget (stdout is discarded by spec), so the
+# only place to surface the routing vocabulary is here — once per session. Top-tier
+# models will self-classify against this list and apply the corresponding workflow.
+if [ -f CLAUDE.md ]; then
+  cat <<'EOF'
+- **Workflow routing:** when the user's prompt clearly matches one of the workflows below and they did not type an explicit `/command`, apply that workflow's rails from `CLAUDE.md > Agentic Workflow` before responding. State which workflow you concluded.
+  - `feature` — add, implement, create, build new ...
+  - `fix` — broken, bug, crash, failing, regression, not working
+  - `refactor` — cleanup, extract, rename, simplify, restructure
+  - `test` — write/add tests, increase coverage
+  - `design` — design X, approach for, trade-offs, how should I architect
+  - `debt` — tech debt, technical debt, cleanup debt
+  - `review` — review this PR/changes/code, quality gate
+EOF
+fi
+
+# 4. TECH_DEBT items touching recently changed files
 if [ -f TECH_DEBT.md ] && [ -d .git ]; then
   # Look at files touched in the last 14 days, capped at 30 to bound work.
   recent_files=$(git log --since="14 days ago" --name-only --format="" 2>/dev/null | grep -v '^$' | sort -u | head -30)
