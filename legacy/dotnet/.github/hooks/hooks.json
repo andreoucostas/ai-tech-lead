@@ -1,4 +1,5 @@
 {
+  "_comment": "Note: userPromptSubmitted is intentionally omitted. Per docs.github.com/en/copilot/reference/hooks-configuration, Copilot does not consume hook stdout for that event ('Output processed: No'), so route-prompt.sh's natural-language routing would be a silent no-op. Claude Code, which does honor UserPromptSubmit stdout, still runs route-prompt via .claude/settings.json. In Copilot, the sessionStart hook now ships a workflow-routing primer instead.",
   "version": 1,
   "hooks": {
     "sessionStart": [
@@ -7,14 +8,6 @@
         "bash": ".claude/hooks/session-start.sh",
         "powershell": ".claude\\hooks\\session-start.ps1",
         "timeoutSec": 15
-      }
-    ],
-    "userPromptSubmitted": [
-      {
-        "type": "command",
-        "bash": ".claude/hooks/route-prompt.sh",
-        "powershell": ".claude\\hooks\\route-prompt.ps1",
-        "timeoutSec": 10
       }
     ],
     "postToolUse": [

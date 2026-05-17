@@ -133,12 +133,12 @@ Every workflow command follows the same execution model:
 ### Deterministic hooks
 | Hook | When | What it does |
 |------|------|--------------|
-| `SessionStart` | New session | Preloads branch, last 3 commits, `BOOTSTRAP_PENDING` warning, count of TECH_DEBT entries touching files modified in the last 14 days |
-| `UserPromptSubmit` | Every prompt | Regex-classifies natural-language prompts as `fix`/`feature`/`refactor`/`test`/`design`/`debt`/`review` and injects that workflow's hard rules. Skips explicit `/command` invocations |
-| `PostToolUse` (Write/Edit) | After every `.cs` write | Runs solution-level incremental `dotnet build` — catches compilation errors before they compound |
-| `Stop` | End of every turn | Scans modified `.cs` files for the always-apply Boy Scout patterns (async without `CancellationToken`, interpolated logger calls, EF read queries without `AsNoTracking()`, excess null-forgiving `!`); soft-warns the model |
+| `SessionStart` | New session | Preloads branch, last 3 commits, `BOOTSTRAP_PENDING` warning, the workflow-routing primer, the count of TECH_DEBT entries touching files modified in the last 14 days, and any overdue `SECURITY_FINDINGS` |
+| `UserPromptSubmit` | Every prompt (Claude Code only) | Regex-classifies natural-language prompts as `fix`/`feature`/`refactor`/`test`/`design`/`debt`/`review` and injects that workflow's hard rules. Skips explicit `/command` invocations. **Copilot does not consume hook stdout for this event** ([hooks reference](https://docs.github.com/en/copilot/reference/hooks-configuration)), so in Copilot the equivalent vocabulary is shipped via the `SessionStart` primer and the model self-classifies. |
+| `PostToolUse` (Write/Edit) | After every `.cs` write | Runs solution-level incremental `dotnet build` — catches compilation errors before they compound. Plus a second handler appends an SR 11-7 / DORA audit-log line. |
+| `Stop` | End of every turn (Claude Code only) | Scans modified `.cs` files for the always-apply Boy Scout patterns (async without `CancellationToken`, interpolated logger calls, EF read queries without `AsNoTracking()`, excess null-forgiving `!`); soft-warns the model. Copilot has no equivalent event. |
 
-The router hook is the key piece: a developer who types *"the export endpoint is broken"* gets the `/fix` rails (regression-test-first, blast-radius Boy Scout) auto-injected without typing a slash command. Same for the other six workflows.
+The router is the key piece. **In Claude Code**, a developer who types *"the export endpoint is broken"* gets the `/fix` rails (regression-test-first, blast-radius Boy Scout) auto-injected per-prompt, without typing a slash command. **In Copilot**, the same vocabulary is preloaded once per session and the model self-classifies — works well with top-tier models, less reliable with smaller ones. Either way, the seven workflows are also invokable explicitly as slash commands (`/feature`, `/fix`, …) for deterministic routing.
 
 #### Hook compatibility
 
@@ -216,6 +216,17 @@ If the secondary stack is Angular, the `ai-tech-lead-angular` template's `copilo
 - Always: the Boy Scout Rule and Trojan Horse principle mean every change improves the codebase incrementally
 
 ## Changelog
+
+### 0.7.2 — 2026-05-16 (Copilot routing parity)
+
+**Fixed**
+- **Natural-language routing in Copilot was a silent no-op.** Per the [GitHub Copilot hooks reference](https://docs.github.com/en/copilot/reference/hooks-configuration), the `userPromptSubmitted` event is fire-and-forget — stdout is discarded, so `route-prompt.sh|ps1` couldn't inject workflow rails on the Copilot side regardless of schema correctness. Removed the misleading `userPromptSubmitted` entry from `.github/hooks/hooks.json`.
+
+**Added**
+- **Workflow-routing primer in `SessionStart`** (both `session-start.sh` and `session-start.ps1`). Once per session, the hook now emits the seven workflow names with their trigger vocabulary so the model can self-classify natural-language prompts in Copilot. In Claude Code the per-prompt `route-prompt` router still runs (and dominates); the session-start primer is harmless reinforcement there.
+
+**Changed**
+- **README "Deterministic hooks" table** now flags `UserPromptSubmit` and `Stop` as Claude Code only, and the introductory paragraph distinguishes per-prompt routing (Claude Code) from session primer + self-classification (Copilot).
 
 ### 0.7.1 — 2026-05-15 (hook plumbing forensic-fix batch)
 
