@@ -5,9 +5,10 @@
 #
 # Patterns derived from the always-apply items in CLAUDE.md > Boy Scout Rule:
 #   - manual ngOnDestroy subscription cleanup
-#   - missing ChangeDetectionStrategy.OnPush on components
 #   - nested .subscribe()
 #   - explicit `any` / `as any`
+# OnPush is intentionally NOT scanned: switching a component to OnPush is a
+# semantic change, not a drive-by cleanup — see CLAUDE.md > Boy Scout Rule.
 
 set -u
 
@@ -38,26 +39,19 @@ while IFS= read -r f; do
     findings+=("$f: manual ngOnDestroy with .subscribe — consider takeUntilDestroyed()")
   fi
 
-  # 2. Component without OnPush
-  if [[ "$f" == *.component.ts ]]; then
-    if grep -q '@Component(' "$f" 2>/dev/null && ! grep -q 'ChangeDetectionStrategy.OnPush' "$f" 2>/dev/null; then
-      findings+=("$f: @Component without ChangeDetectionStrategy.OnPush")
-    fi
-  fi
-
-  # 3. Multiple .subscribe( calls — possible nested subscribe (count occurrences, not lines)
+  # 2. Multiple .subscribe( calls — possible nested subscribe (count occurrences, not lines)
   sub_count=$(grep -oE '\.subscribe\(' "$f" 2>/dev/null | wc -l)
   if [ "$sub_count" -ge 3 ]; then
     findings+=("$f: $sub_count .subscribe() calls — review for nested subscribes (use switchMap/mergeMap/concatMap/exhaustMap)")
   fi
 
-  # 4. Explicit `any` (not in comments)
+  # 3. Explicit `any` (not in comments)
   any_hits=$(grep -E '(:[[:space:]]*any\b|\bas[[:space:]]+any\b)' "$f" 2>/dev/null | grep -v '^[[:space:]]*//' | wc -l)
   if [ "$any_hits" -gt 0 ]; then
     findings+=("$f: $any_hits explicit \`any\` usage(s) — replace with proper types or unknown+narrowing")
   fi
 
-  # 5. Commented-out code blocks — runs of 2+ contiguous lines starting with //
+  # 4. Commented-out code blocks — runs of 2+ contiguous lines starting with //
   # whose content looks code-like (contains ;, {, }, =, or a function-call pattern).
   commented_run=$(awk '
     BEGIN { run = 0; max = 0 }

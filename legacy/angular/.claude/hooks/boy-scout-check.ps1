@@ -4,9 +4,10 @@
 #
 # Patterns derived from the always-apply items in CLAUDE.md > Boy Scout Rule:
 #   - manual ngOnDestroy subscription cleanup
-#   - missing ChangeDetectionStrategy.OnPush on components
 #   - nested .subscribe()
 #   - explicit `any` / `as any`
+# OnPush is intentionally NOT scanned: switching a component to OnPush is a
+# semantic change, not a drive-by cleanup -- see CLAUDE.md > Boy Scout Rule.
 
 $ErrorActionPreference = 'SilentlyContinue'
 
@@ -45,20 +46,13 @@ foreach ($f in $files) {
         $findings.Add("${f}: manual ngOnDestroy with .subscribe -- consider takeUntilDestroyed()")
     }
 
-    # 2. Component without OnPush
-    if ($f -match '\.component\.ts$') {
-        if ($content -match '@Component\(' -and $content -notmatch 'ChangeDetectionStrategy\.OnPush') {
-            $findings.Add("${f}: @Component without ChangeDetectionStrategy.OnPush")
-        }
-    }
-
-    # 3. Multiple .subscribe( calls -- possible nested subscribe
+    # 2. Multiple .subscribe( calls -- possible nested subscribe
     $subMatches = [regex]::Matches($content, '\.subscribe\(')
     if ($subMatches.Count -ge 3) {
         $findings.Add("${f}: $($subMatches.Count) .subscribe() calls -- review for nested subscribes (use switchMap/mergeMap/concatMap/exhaustMap)")
     }
 
-    # 4. Explicit `any` (not in comments)
+    # 3. Explicit `any` (not in comments)
     $anyHits = ($lines | Where-Object {
         ($_ -match ':\s*any\b' -or $_ -match '\bas\s+any\b') -and
         $_ -notmatch '^\s*//'
@@ -67,7 +61,7 @@ foreach ($f in $files) {
         $findings.Add("${f}: $anyHits explicit ``any`` usage(s) -- replace with proper types or unknown+narrowing")
     }
 
-    # 5. Commented-out code blocks -- runs of 2+ contiguous code-like // lines
+    # 4. Commented-out code blocks -- runs of 2+ contiguous code-like // lines
     $maxRun = 0
     $run = 0
     foreach ($line in $lines) {

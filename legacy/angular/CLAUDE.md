@@ -1,8 +1,8 @@
 <!--
 ai-tech-lead-framework
   template: angular
-  version: 0.7.2
-  applied: 2026-05-16
+  version: 0.7.3
+  applied: 2026-05-19
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
 # [Project Name]
@@ -119,21 +119,23 @@ When touching any file, leave it cleaner than you found it. The rule is symmetri
 
 **Add:**
 1. Replace manual `ngOnDestroy` subscription cleanup with `takeUntilDestroyed()`
-2. `ChangeDetectionStrategy.OnPush` if missing
-3. Replace nested `.subscribe()` with the appropriate RxJS operator
-4. Replace `any` with proper types
+2. Replace nested `.subscribe()` with the appropriate RxJS operator
+3. Replace `any` with proper types
 
 **Subtract:**
-5. Unused TypeScript imports and unused RxJS operator imports
-6. Commented-out code or template blocks (more than 1 line — version control preserves them)
-7. Unreferenced private fields, methods, or local variables that `tsc`/lint flags
-8. Unused `@Input` / `@Output` properties
+4. Unused TypeScript imports and unused RxJS operator imports
+5. Commented-out code or template blocks (more than 1 line — version control preserves them)
+6. Unreferenced private fields, methods, or local variables that `tsc`/lint flags
+7. Unused `@Input` / `@Output` properties
+
+> **Not auto-applied: `ChangeDetectionStrategy.OnPush`.** Switching a component to `OnPush` is a semantic change, not a cleanup — it can silently break views that mutate inputs in place, rely on default change detection ticking from `setInterval`/Promises/third-party callbacks, or expect re-render on ambient state changes. Treat it as an explicit, tested change when the component is the primary target, not a drive-by edit. New components scaffolded from skills still default to `OnPush` (see `docs/defaults.md`).
 
 ### Apply only when the file is the primary target of the change:
 
 **Add:**
-9. Replace manual `.subscribe()` with `async` pipe where possible
-10. Extract complex template expressions into component methods or pipes
+8. Replace manual `.subscribe()` with `async` pipe where possible
+9. Extract complex template expressions into component methods or pipes
+10. Add `ChangeDetectionStrategy.OnPush` — but only after verifying the component's data flow (immutable inputs, no in-place mutation, no reliance on ambient ticking) and after manual/test verification that the view still updates correctly.
 
 **Subtract:**
 11. Inline single-consumer interfaces or abstract bases (per Leanness)
@@ -141,7 +143,7 @@ When touching any file, leave it cleaner than you found it. The rule is symmetri
 13. Single-use pipes or directives — inline at the call site, or convert to a component method
 14. Unused barrel re-exports in `index.ts`
 
-Items 9–14 can significantly expand or reshape a diff. Only apply them when the file is what the task is specifically about, not when it's incidentally touched. This keeps PRs focused and reviewable.
+Items 8–14 can significantly expand or reshape a diff. Only apply them when the file is what the task is specifically about, not when it's incidentally touched. This keeps PRs focused and reviewable.
 
 **When to skip**: hotfixes, time-sensitive production incidents, and proof-of-concept branches. If skipping, add a comment `// TODO: Boy Scout skipped — [reason]` so it's picked up on the next pass. Use `/debt` to clean up later.
 
