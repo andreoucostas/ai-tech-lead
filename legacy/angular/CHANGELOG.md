@@ -3,6 +3,15 @@
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
 > Architecture decisions (cross-stack) live in `project_framework_architecture.md`.
 
+## 0.11.0 — 2026-06-04 (deterministic SOLID backstop + PowerShell parity)
+
+### Added
+- **`enforce-architecture` skill** — scaffolds the **deterministic** layer/feature dependency-direction CI gate that complements the semantic `solid-check` agent: a **dependency-cruiser** config (no circular deps, core/shared ⊄ features, no cross-feature imports), with a copy-paste sample at `scripts/ci/dependency-cruiser.sample.js`. Referenced from `CLAUDE.md > SOLID` and Common Tasks.
+- **PowerShell twins** for the impact harness — `scripts/metrics.ps1` and `scripts/impact-run.ps1` — so Windows-only / PowerShell shops get full parity (the bash versions remain primary).
+
+### Decided
+- **Angular SOLID stays literal** (an abstraction/token per injected service) — confirmed, no relaxation to principled-DIP.
+
 ## 0.10.0 — 2026-06-04 (impact harness)
 
 ### Added

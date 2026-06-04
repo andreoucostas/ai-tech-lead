@@ -70,7 +70,7 @@ SOLID is **mandatory** in this codebase. It governs structure; [Leanness](#leann
 
 **Mechanism**: prefer `abstract class Foo` as the token with `{ provide: Foo, useClass: FooImpl }` (TypeScript `interface`s don't exist at runtime); use `interface` + `InjectionToken<T>` where an abstract class is awkward.
 
-**Deterministic backstop**: module/layer dependency direction is enforced in CI by **dependency-cruiser** (or `eslint-plugin-boundaries`). The `solid-check` agent covers the semantic principles per diff and is run by `/review`.
+**Deterministic backstop**: module/layer dependency direction is enforced in CI by **dependency-cruiser** (or `eslint-plugin-boundaries`). The `solid-check` agent covers the semantic principles per diff and is run by `/review`. Scaffold it with the `enforce-architecture` skill.
 
 ---
 
@@ -94,6 +94,7 @@ Recipes live as auto-discovered **skills**, available to both Claude Code (`.cla
 - `add-tests` — add tests following project patterns (Jasmine/Karma or Jest spec + HTTP mocks)
 - `dependency-audit` — scan for vulnerable/outdated npm packages and wire up automated dependency scanning
 - `create-adr` — record an architecture decision
+- `enforce-architecture` — wire the deterministic DIP/layering CI gate (dependency-cruiser)
 
 **Registers**: [TECH_DEBT.md](./TECH_DEBT.md) tracks delivery debt. AI-assisted file changes are appended to `.claude/ai-audit.log` automatically by the PostToolUse hook.
 
