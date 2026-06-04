@@ -109,7 +109,7 @@ Run in isolated context; return a structured findings table to the parent. Model
 
 Auto-discovered Common-Tasks recipes; the body loads only when triggered (progressive disclosure).
 
-`add-endpoint` · `add-entity` · `register-service` · `add-tests` · `perf` · `dependency-audit` · `create-adr`
+`add-endpoint` · `add-entity` · `register-service` · `add-tests` · `perf` · `dependency-audit` · `create-adr` · `enforce-architecture`
 
 ---
 

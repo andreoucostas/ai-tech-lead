@@ -3,6 +3,12 @@
 > Framework-level changes for the .NET template. Per-stack Angular changes live in [`ai-tech-lead-angular/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-angular/blob/master/CHANGELOG.md).
 > Architecture decisions (cross-stack) live in `project_framework_architecture.md`.
 
+## 0.11.0 — 2026-06-04 (deterministic SOLID backstop + PowerShell parity)
+
+### Added
+- **`enforce-architecture` skill** — scaffolds the **deterministic** DIP/layering CI gate that complements the semantic `solid-check` agent: a NetArchTest test project enforcing dependency direction (Domain ⊄ Infrastructure, Application ⊄ Infrastructure/API), with a copy-paste sample at `scripts/ci/ArchitectureTests.sample.cs`. Referenced from `CLAUDE.md > SOLID` and Common Tasks.
+- **PowerShell twins** for the impact harness — `scripts/metrics.ps1` and `scripts/impact-run.ps1` — so Windows-only / PowerShell shops get full parity (the bash versions remain primary).
+
 ## 0.10.0 — 2026-06-04 (impact harness)
 
 ### Added

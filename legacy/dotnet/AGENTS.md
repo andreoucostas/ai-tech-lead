@@ -70,7 +70,7 @@ SOLID is **mandatory** in this codebase. It governs structure; [Leanness](#leann
 
 **Mechanism**: define `IFoo` beside `Foo`; register `services.AddScoped<IFoo, Foo>()` via the project's DI extension; inject `IFoo`. Implementations may be `sealed`.
 
-**Deterministic backstop**: dependency *direction* is enforced in CI by architecture tests (**NetArchTest**). The `solid-check` agent covers the semantic principles per diff and is run by `/review`.
+**Deterministic backstop**: dependency *direction* is enforced in CI by architecture tests (**NetArchTest**). The `solid-check` agent covers the semantic principles per diff and is run by `/review`. Scaffold it with the `enforce-architecture` skill.
 
 ---
 
@@ -94,6 +94,7 @@ Recipes live as auto-discovered **skills**, available to both Claude Code (`.cla
 - `perf` — scan for performance anti-patterns; tiered findings with TECH_DEBT.md integration
 - `dependency-audit` — scan for vulnerable/outdated NuGet packages and wire up automated dependency scanning
 - `create-adr` — record an architecture decision
+- `enforce-architecture` — wire the deterministic DIP/layering CI gate (NetArchTest)
 
 **Registers**: [TECH_DEBT.md](./TECH_DEBT.md) tracks delivery debt. [SECURITY_FINDINGS.md](./SECURITY_FINDINGS.md) tracks security findings separately with remediation SLAs (Critical = 7 days, High = 30 days). AI-assisted file changes are appended to `.claude/ai-audit.log` automatically by the PostToolUse hook.
 

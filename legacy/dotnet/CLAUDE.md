@@ -1,7 +1,7 @@
 <!--
 ai-tech-lead-framework
   template: dotnet
-  version: 0.10.0
+  version: 0.11.0
   applied: 2026-06-04
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
@@ -73,7 +73,7 @@ SOLID is **mandatory** in this codebase. It governs structure; [Leanness](#leann
 
 **Mechanism**: define `IFoo` beside `Foo`; register `services.AddScoped<IFoo, Foo>()` via the project's DI extension; inject `IFoo`. Implementations may be `sealed`.
 
-**Deterministic backstop**: dependency *direction* is enforced in CI by architecture tests (**NetArchTest** — e.g. Domain must not reference Infrastructure). The `solid-check` agent covers the semantic principles per diff and is run by `/review`.
+**Deterministic backstop**: dependency *direction* is enforced in CI by architecture tests (**NetArchTest** — e.g. Domain must not reference Infrastructure). The `solid-check` agent covers the semantic principles per diff and is run by `/review`. Scaffold the NetArchTest gate with the `enforce-architecture` skill.
 
 ---
 
@@ -127,6 +127,7 @@ Recipes live as **skills**, auto-discovered by both Claude Code (`.claude/skills
 - `perf` — scan a file, directory, or the whole repo for ~50 performance anti-patterns; produces tiered findings (Critical / Moderate / Info) with file locations and TECH_DEBT.md integration
 - `dependency-audit` — scan for vulnerable/deprecated/outdated NuGet packages and set up automated dependency scanning (Dependabot or Renovate)
 - `create-adr` — record a significant architecture decision in Architecture Decisions
+- `enforce-architecture` — wire the deterministic DIP/layering CI gate (NetArchTest)
 
 `/bootstrap` adds project-specific skills under `.claude/skills/` rather than appending recipes here. Skills are mirrored to `.github/skills/` by `/generate-copilot` (and `scripts/sync-agent-files`) so Copilot CLI/agent see them too.
 
