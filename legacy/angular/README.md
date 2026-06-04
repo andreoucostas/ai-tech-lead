@@ -4,6 +4,16 @@ A working template that turns Claude Code and GitHub Copilot into a tech lead fo
 
 Targets **Angular 17+** (standalone components, signals, new control flow, `inject()`, `takeUntilDestroyed`). Bootstrap auto-detects your Angular version and adjusts conventions accordingly.
 
+## Implementing this framework (for an AI agent)
+
+Pointed at this repo and asked to install the framework into a target codebase? Do this:
+
+1. **Copy the files in:** `bash scripts/install.sh <target-repo-path>` (or `pwsh scripts/install.ps1 <target-repo-path>`). It copies everything except the `.git` directory and the `.template-repo` marker.
+2. **Populate it** in the target repo: run **`/adopt`** if it already has AI tooling (CLAUDE.md, `.cursorrules`, Copilot instructions, ADRs, Aider/Continue config…), otherwise **`/bootstrap`**.
+3. **Self-verify:** `bash scripts/docs-sync-check.sh`, then read the generated `CLAUDE.md` — it is the source of truth that drives every tool.
+
+Architecture is mapped in [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md); reviewers should start with [docs/REVIEW-GUIDE.md](./docs/REVIEW-GUIDE.md). Detailed manual steps are in "Quick Start" below.
+
 ## Why this framework?
 
 Without it, AI tools give you generic Angular code. The AI doesn't know your team uses signals over BehaviorSubject, `inject()` over constructor injection, or `OnPush` everywhere. It doesn't know you've migrated away from NgModules. It doesn't know about the state management pattern your team settled on after two failed experiments. Every developer gets different AI behaviour. The AI suggests patterns your team has already moved past, adds RxJS complexity where a signal would do, and never cleans up the subscriptions it leaves behind.

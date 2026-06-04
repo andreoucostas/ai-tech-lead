@@ -3,6 +3,15 @@
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
 > Architecture decisions (cross-stack) live in `project_framework_architecture.md`.
 
+## 0.9.1 — 2026-06-04 (architecture docs + AI install path)
+
+### Added
+- **`docs/ARCHITECTURE.md`** — canonical, human-readable architecture map with Mermaid diagrams (three-tier model, source→generated flow, hook lifecycle, GitHub-vs-Bitbucket surface split, repo map). Renders on GitHub/Bitbucket; AI agents still read CLAUDE.md/AGENTS.md, not this.
+- **`docs/architecture.html`** — generated from ARCHITECTURE.md by `scripts/build-architecture-html.{sh,ps1}` (renders diagrams via marked + mermaid; embeds the source so it cannot silently drift). Cross-tool `src-sha1` marker; `docs-sync-check` flags staleness.
+- **`docs/REVIEW-GUIDE.md`** — a senior reviewer's annotated tour: reading order, what each piece guarantees, how to verify it, and the tradeoffs worth probing.
+- **`scripts/install.{sh,ps1}`** — install the framework into a target repo (excludes `.git` and the `.template-repo` marker), then prints next steps; plus an "Implementing this framework (for an AI agent)" entrypoint in the README.
+- **`docs-sync-check`** gains an `architecture.html` freshness check.
+
 ## 0.9.0 — 2026-06-04 (literal SOLID)
 
 ### Added
