@@ -1,7 +1,7 @@
 <!--
 ai-tech-lead-framework
   template: dotnet
-  version: 0.11.1
+  version: 0.12.0
   applied: 2026-06-04
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
@@ -159,7 +159,7 @@ When touching any file, leave it cleaner than you found it. The rule is symmetri
 9. Missing unit tests for public methods you're modifying
 
 **Subtract:**
-10. Inline single-consumer interfaces or abstract bases (per Leanness)
+10. Inline single-consumer interfaces or abstract bases **that are not DI service seams** (data/internal abstractions only) — per Leanness. Service interfaces are required by SOLID/DIP even with one implementation; never inline those.
 11. Collapse shallow delegate methods that add no behavior beyond calling another component
 12. Single-use private helpers — inline at the call site
 
@@ -189,6 +189,7 @@ For any non-trivial task:
 - List the files you'll create or modify
 - State the order of operations
 - Identify what tests will verify success
+- For larger features, persist a spec to `specs/<slug>.md` (see `/design`) and implement against it
 - State the plan, then execute
 
 ### 3. Execute in verified subtasks
@@ -217,7 +218,7 @@ At the end of your response, note if:
 - A new pattern was introduced that should be documented here
 - A TECH_DEBT.md entry was resolved or a new one discovered
 - A SECURITY_FINDINGS.md entry was resolved or a new finding discovered
-- copilot-instructions.md needs regeneration (run `/generate-copilot` in Claude Code, or ask your agent to rewrite it from this file following the rules in `.claude/commands/generate-copilot.md`)
+- `copilot-instructions.md` / `AGENTS.md` need regeneration (run `/generate-copilot` in Claude Code, or ask your agent to rewrite them from this file following the rules in `.claude/commands/generate-copilot.md`)
 
 ---
 

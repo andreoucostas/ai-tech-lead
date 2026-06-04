@@ -87,6 +87,24 @@ if [ -d ".claude/skills" ]; then
   fi
 fi
 
+# 6. README mentions each skill and agent (advisory) — keep the reference tables current.
+if [ -f "README.md" ]; then
+  missing_doc=""
+  for d in .claude/skills/*/; do
+    [ -d "$d" ] || continue
+    n=$(basename "$d")
+    grep -qF "$n" README.md 2>/dev/null || missing_doc="$missing_doc skill:$n"
+  done
+  for f in .claude/agents/*.md; do
+    [ -f "$f" ] || continue
+    n=$(basename "$f" .md)
+    grep -qF "$n" README.md 2>/dev/null || missing_doc="$missing_doc agent:$n"
+  done
+  if [ -n "$missing_doc" ]; then
+    echo "NOTE: README.md does not mention:$missing_doc — update the What's-in-the-box / subagents tables (they may have drifted). (advisory — not a failure)"
+  fi
+fi
+
 # 7. architecture.html freshness (advisory) — regenerate after editing ARCHITECTURE.md.
 if [ -f "docs/ARCHITECTURE.md" ] && [ -f "docs/architecture.html" ]; then
   if command -v sha1sum >/dev/null 2>&1; then a_sha=$(tr -d '\r' < docs/ARCHITECTURE.md | sha1sum | awk '{print $1}')
