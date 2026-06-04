@@ -83,6 +83,15 @@ if (Test-Path ".claude/skills") {
     }
 }
 
+# 7. architecture.html freshness (advisory) -- regenerate after editing ARCHITECTURE.md.
+if ((Test-Path 'docs/ARCHITECTURE.md') -and (Test-Path 'docs/architecture.html')) {
+    $aNorm = ((Get-Content 'docs/ARCHITECTURE.md' -Raw -Encoding UTF8) -replace "`r", "")
+    $aSha  = -join ([System.Security.Cryptography.SHA1]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($aNorm)) | ForEach-Object { $_.ToString('x2') })
+    if (-not (Select-String -Path 'docs/architecture.html' -SimpleMatch -Pattern "src-sha1: $aSha" -Quiet)) {
+        Write-Output "NOTE: docs/architecture.html is stale vs docs/ARCHITECTURE.md -- run scripts/build-architecture-html.ps1. (advisory -- not a failure)"
+    }
+}
+
 if ($failed) {
     Write-Output ""
     Write-Output "One or more AI Tech Lead framework checks failed (see above)."

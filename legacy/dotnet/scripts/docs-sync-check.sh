@@ -87,6 +87,16 @@ if [ -d ".claude/skills" ]; then
   fi
 fi
 
+# 7. architecture.html freshness (advisory) — regenerate after editing ARCHITECTURE.md.
+if [ -f "docs/ARCHITECTURE.md" ] && [ -f "docs/architecture.html" ]; then
+  if command -v sha1sum >/dev/null 2>&1; then a_sha=$(tr -d '\r' < docs/ARCHITECTURE.md | sha1sum | awk '{print $1}')
+  elif command -v shasum  >/dev/null 2>&1; then a_sha=$(tr -d '\r' < docs/ARCHITECTURE.md | shasum  | awk '{print $1}')
+  else a_sha=""; fi
+  if [ -n "$a_sha" ] && ! grep -q "src-sha1: $a_sha" docs/architecture.html 2>/dev/null; then
+    echo "NOTE: docs/architecture.html is stale vs docs/ARCHITECTURE.md — run scripts/build-architecture-html.sh. (advisory — not a failure)"
+  fi
+fi
+
 if [ "$FAILED" -ne 0 ]; then
   echo
   echo "One or more AI Tech Lead framework checks failed (see above)."

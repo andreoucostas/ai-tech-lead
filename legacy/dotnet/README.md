@@ -2,6 +2,16 @@
 
 A working template that turns Claude Code and GitHub Copilot into a tech lead for your .NET codebase. Clone it, run one command, and get AI-driven development with built-in conventions, verification, and continuous improvement.
 
+## Implementing this framework (for an AI agent)
+
+Pointed at this repo and asked to install the framework into a target codebase? Do this:
+
+1. **Copy the files in:** `bash scripts/install.sh <target-repo-path>` (or `pwsh scripts/install.ps1 <target-repo-path>`). It copies everything except the `.git` directory and the `.template-repo` marker.
+2. **Populate it** in the target repo: run **`/adopt`** if it already has AI tooling (CLAUDE.md, `.cursorrules`, Copilot instructions, ADRs, Aider/Continue config…), otherwise **`/bootstrap`**.
+3. **Self-verify:** `bash scripts/docs-sync-check.sh`, then read the generated `CLAUDE.md` — it is the source of truth that drives every tool.
+
+Architecture is mapped in [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md); reviewers should start with [docs/REVIEW-GUIDE.md](./docs/REVIEW-GUIDE.md). Detailed manual steps are in "Quick Start" below.
+
 ## Why this framework?
 
 Without it, AI tools give you generic .NET code. The AI doesn't know your architecture, your conventions, or your team's decisions. Every developer gets different AI behaviour. The AI suggests patterns your team has already decided against, invents class names that don't exist, adds abstractions you don't need (while skipping the ones you do), and never cleans up the mess it leaves behind.
