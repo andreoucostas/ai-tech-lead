@@ -127,7 +127,7 @@ When touching any file, leave it cleaner than you found it. The rule is symmetri
 10. Add `ChangeDetectionStrategy.OnPush` — but only after verifying the component's data flow (immutable inputs, no in-place mutation, no reliance on ambient ticking) and after manual/test verification that the view still updates correctly.
 
 **Subtract:**
-11. Inline single-consumer interfaces or abstract bases (per Leanness)
+11. Inline single-consumer interfaces or abstract bases **that are not DI service seams** (data/internal abstractions only) — per Leanness. Service abstractions/tokens are required by SOLID/DIP even with one implementation; never inline those.
 12. Collapse shallow service methods that just delegate to `HttpClient` with no transformation
 13. Single-use pipes or directives — inline at the call site, or convert to a component method
 14. Unused barrel re-exports in `index.ts`

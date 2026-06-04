@@ -83,6 +83,15 @@ if (Test-Path ".claude/skills") {
     }
 }
 
+# 6. README mentions each skill and agent (advisory) -- keep the reference tables current.
+if (Test-Path 'README.md') {
+    $readme = Get-Content 'README.md' -Raw
+    $missingDoc = @()
+    Get-ChildItem -Directory '.claude/skills' -ErrorAction SilentlyContinue | ForEach-Object { if ($readme -notmatch [regex]::Escape($_.Name)) { $missingDoc += "skill:$($_.Name)" } }
+    Get-ChildItem -File '.claude/agents' -Filter *.md -ErrorAction SilentlyContinue | ForEach-Object { $n = [IO.Path]::GetFileNameWithoutExtension($_.Name); if ($readme -notmatch [regex]::Escape($n)) { $missingDoc += "agent:$n" } }
+    if ($missingDoc.Count -gt 0) { Write-Output ("NOTE: README.md does not mention: " + ($missingDoc -join ' ') + " -- update the What's-in-the-box / subagents tables. (advisory -- not a failure)") }
+}
+
 # 7. architecture.html freshness (advisory) -- regenerate after editing ARCHITECTURE.md.
 if ((Test-Path 'docs/ARCHITECTURE.md') -and (Test-Path 'docs/architecture.html')) {
     $aNorm = ((Get-Content 'docs/ARCHITECTURE.md' -Raw -Encoding UTF8) -replace "`r", "")

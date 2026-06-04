@@ -1,7 +1,7 @@
 <!--
 ai-tech-lead-framework
   template: angular
-  version: 0.11.1
+  version: 0.12.0
   applied: 2026-06-04
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
@@ -160,7 +160,7 @@ When touching any file, leave it cleaner than you found it. The rule is symmetri
 10. Add `ChangeDetectionStrategy.OnPush` — but only after verifying the component's data flow (immutable inputs, no in-place mutation, no reliance on ambient ticking) and after manual/test verification that the view still updates correctly.
 
 **Subtract:**
-11. Inline single-consumer interfaces or abstract bases (per Leanness)
+11. Inline single-consumer interfaces or abstract bases **that are not DI service seams** (data/internal abstractions only) — per Leanness. Service abstractions/tokens are required by SOLID/DIP even with one implementation; never inline those.
 12. Collapse shallow service methods that just delegate to `HttpClient` with no transformation
 13. Single-use pipes or directives — inline at the call site, or convert to a component method
 14. Unused barrel re-exports in `index.ts`
@@ -191,6 +191,7 @@ For any non-trivial task:
 - List the files you'll create or modify
 - State the order of operations
 - Identify what tests will verify success
+- For larger features, persist a spec to `specs/<slug>.md` (see `/design`) and implement against it
 - State the plan, then execute
 
 ### 3. Execute in verified subtasks
@@ -218,7 +219,7 @@ Before presenting work as complete:
 At the end of your response, note if:
 - A new pattern was introduced that should be documented here
 - A TECH_DEBT.md entry was resolved or a new one discovered
-- copilot-instructions.md needs regeneration (run `/generate-copilot` in Claude Code, or ask your agent to rewrite it from this file following the rules in `.claude/commands/generate-copilot.md`)
+- `copilot-instructions.md` / `AGENTS.md` need regeneration (run `/generate-copilot` in Claude Code, or ask your agent to rewrite them from this file following the rules in `.claude/commands/generate-copilot.md`)
 
 ---
 
