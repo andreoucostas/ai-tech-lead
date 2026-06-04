@@ -104,6 +104,7 @@ Both Claude Code and Copilot Chat use the same slash-command names:
 /docs-sync                 — check documentation for drift
 /adopt                     — ingest existing AI-framework artifacts into this layout
 /generate-copilot          — regenerate the slim copilot-instructions.md (for inline completions)
+/impact                    — before/after impact report for tech leads (auto-run by /adopt)
 ```
 
 In **Claude Code**, these are loaded from `.claude/commands/`. In **Copilot Chat**, the same names are loaded from `.github/prompts/` — those files are thin wrappers that delegate to the canonical `.claude/commands/*.md` files, so there's a single source of truth per workflow.
@@ -128,18 +129,21 @@ When you next pull template updates into your repo, bump both. CI tooling and a 
 | `.github/copilot-instructions.md` | **Generated** — slim imperative ruleset (≤80 lines) for Copilot **inline completions** only. Agent-mode tools read the fuller `AGENTS.md`. |
 | `.github/prompts/*.prompt.md` | Copilot Chat workflows. Thin wrappers that delegate to `.claude/commands/`. |
 | `.claude/commands/*.md` | Canonical workflow definitions (used by Claude Code natively, and by the Copilot prompt files). |
-| `.claude/skills/*/SKILL.md` | Auto-discovered Common Tasks recipes (add-component, add-service, add-lazy-route, add-signal-store, add-tests, dependency-audit, create-adr). Body loads only when triggered. Mirrored to `.github/skills/` for Copilot. |
-| `.claude/agents/*.md` | Subagents (security-auditor, convention-check, bloat-radar, debt-radar, bootstrap-pass). Run in isolated context; return structured findings. The four user-facing ones are mirrored to `.github/agents/*.agent.md` as Copilot custom agents. |
+| `.claude/skills/*/SKILL.md` | Auto-discovered Common Tasks recipes (add-component, add-service, add-lazy-route, add-signal-store, add-tests, dependency-audit, create-adr, enforce-architecture). Body loads only when triggered. Mirrored to `.github/skills/` for Copilot. |
+| `.claude/agents/*.md` | Subagents (security-auditor, solid-check, convention-check, bloat-radar, debt-radar, bootstrap-pass). Run in isolated context; return structured findings. The five user-facing ones are mirrored to `.github/agents/*.agent.md` as Copilot custom agents. |
 | `.claude/workflow.md` | Shared self-review + flag-drift tail inlined by the workflow commands via `@.claude/workflow.md`. |
 | `.claude/hooks/*.sh` | SessionStart context preload, UserPromptSubmit intent router, **PreToolUse guard** (blocks warning-suppressions & secrets), PostToolUse type-checker, Stop Boy Scout scanner. Each has a `.ps1` twin for Windows-only teams. |
 | `.claude/settings.json` | Registers hooks for Claude Code: SessionStart, UserPromptSubmit, PreToolUse (`guard` before `.ts` writes), PostToolUse (`tsc --noEmit` after `.ts` writes), and Stop. |
 | `.github/hooks/hooks.json` | Registers the same hooks for Copilot cloud agent and CLI (on Bitbucket, the CLI surface only). Points to the same scripts in `.claude/hooks/`. |
 | `.github/skills/`, `.github/agents/` | **Generated** Copilot-facing mirrors: `.github/skills/` is a byte-identical copy of `.claude/skills/` (via `scripts/sync-agent-files.*`); `.github/agents/*.agent.md` wrap the subagents as Copilot custom agents. |
-| `scripts/` | Host-agnostic helpers: `docs-sync-check.{sh,ps1}` (the CI guardrail), `sync-agent-files.{sh,ps1}` (skills mirror), `ci/bitbucket-pipelines.example.yml`. |
+| `scripts/` | Host-agnostic helpers: `install.{sh,ps1}` (install into a target repo), `docs-sync-check.{sh,ps1}` (CI guardrail), `sync-agent-files.{sh,ps1}` (skills mirror), `build-architecture-html.{sh,ps1}`, `metrics.{sh,ps1}` + `impact-run.{sh,ps1}` (impact harness), `ci/` samples (Bitbucket Pipelines, dependency-cruiser). |
 | `specs/` | Persistent feature specs (spec-driven development). `/design` writes one, `/feature` implements against it, `/review` verifies. See `specs/README.md`. |
+| `tests/impact/` + `docs/impact/` | Before/after impact harness — task suite + config; the generated report (`IMPACT.md` + `impact.html`) lands in `docs/impact/`. |
 | `TECH_DEBT.md` | **Generated** by `/bootstrap` — prioritised debt register with Trojan Horse opportunities. |
 | `LEARNINGS.md` | Append-only log of what worked / what didn't / what rule changed. Read on non-trivial work. |
 | `docs/playbook.md` | Methodology guide (the "why" behind the framework). |
+| `docs/ARCHITECTURE.md` (+ `architecture.html`) | Canonical architecture map with Mermaid diagrams; HTML is the generated, drift-checked view for reviewers. |
+| `docs/REVIEW-GUIDE.md` | A senior reviewer's annotated tour — reading order, what each piece guarantees, how to verify, and the tradeoffs. |
 
 ## How it works
 
@@ -200,11 +204,12 @@ Hooks degrade gracefully — a failing hook doesn't break the session, you just 
 Recipes for "add a new feature component", "add a new service", "add a new lazy route", "add a new signal-based store" live as auto-discovered skills in `.claude/skills/`. The model triggers the relevant one when the user describes that kind of task; the body loads only when triggered, keeping main context lean.
 
 ### Subagents for isolated specialist work
-Five subagents live in `.claude/agents/` — the four user-facing ones are mirrored to `.github/agents/*.agent.md` as Copilot custom agents:
+Six subagents live in `.claude/agents/` — the five user-facing ones are mirrored to `.github/agents/*.agent.md` as Copilot custom agents:
 
 | Agent | Purpose | Invoked by |
 |-------|---------|-----------|
 | `security-auditor` | OWASP-style scan of a diff (XSS/unsafe DOM sinks, auth/route guards, secrets, sensitive-data exposure, vulnerable deps). Read-only. | `/security-review`; ad-hoc |
+| `solid-check` | Audits a diff against CLAUDE.md > SOLID — the five principles (an abstraction/token per injected service). Read-only. | `/review` Step 1; ad-hoc |
 | `convention-check` | Audits a diff against CLAUDE.md > Conventions; returns a structured findings table. Read-only. | `/review` Step 1; ad-hoc |
 | `bloat-radar` | Flags speculative abstractions, shallow service wrappers, parallel implementations, single-use pipes/directives, comment debris. Read-only. | `/review` Step 1; ad-hoc |
 | `debt-radar` | Maps a file path or feature area to TECH_DEBT entries; suggests trojan-horse bundles. Read-only. | `/review` Step 1; `/feature` Step 1; ad-hoc |
@@ -273,6 +278,8 @@ The checks live in **`scripts/docs-sync-check.sh`** (PowerShell twin: `scripts/d
 - Always: the Boy Scout Rule and Trojan Horse principle mean every change improves the codebase incrementally
 
 ## Changelog
+
+> **Current, full changelog: [CHANGELOG.md](./CHANGELOG.md).** The entries below are an older excerpt kept for context.
 
 ### 0.7.2 — 2026-05-16 (Copilot routing parity)
 

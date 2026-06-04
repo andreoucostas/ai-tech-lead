@@ -3,6 +3,11 @@
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
 > Architecture decisions (cross-stack) live in `project_framework_architecture.md`.
 
+## 0.11.1 — 2026-06-04 (README accuracy)
+
+### Fixed
+- **README reference sections brought up to date** with the current toolset: What's-in-the-box now lists `solid-check`, `enforce-architecture`, the impact-harness scripts, and `docs/ARCHITECTURE.md` / `REVIEW-GUIDE.md`; the subagents table shows all six (incl. `solid-check`, now "six … five user-facing"); `/impact` added to the command list. The embedded changelog had drifted to 0.7.2 — it now points to `CHANGELOG.md` instead of duplicating it.
+
 ## 0.11.0 — 2026-06-04 (deterministic SOLID backstop + PowerShell parity)
 
 ### Added
