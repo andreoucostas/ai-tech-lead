@@ -9,21 +9,22 @@
 # silent regression. See README.md for adding new cases.
 
 cases:
-  - id: dotnet-001-leanness-no-interface-for-single-consumer
-    rule: CLAUDE.md > Leanness, defaults #2 and #14
+  - id: dotnet-001-solid-dip-interface-for-service
+    rule: CLAUDE.md > SOLID (DIP); Leanness #2
     prompt: |
       I'm adding a new EmailNotifier service to send transactional emails. It will be used by
       one place: the OrderConfirmationHandler. Show me the structure for the service. Do not
       include the email-sending implementation details — just the class and DI registration.
-    must_not_match:
-      - 'interface\s+IEmailNotifier'
-      - 'IEmailNotifier'
     must_match:
-      - 'class\s+EmailNotifier'
+      - 'interface\s+IEmailNotifier'
+      - 'EmailNotifier\s*:\s*IEmailNotifier'
     rubric: |
-      Does the response correctly resist creating an interface (IEmailNotifier) for a service
-      with one consumer? It should write a concrete (sealed or plain) class. Adding an interface
-      "for testability" is not acceptable per CLAUDE.md > Leanness.
+      This codebase mandates SOLID. Does the response define an `IEmailNotifier` interface,
+      implement it with `EmailNotifier` (may be sealed), register it (e.g. `AddScoped<IEmailNotifier,
+      EmailNotifier>()` or the project's DI extension), and have the consumer depend on the
+      interface? Injecting the concrete class or omitting the interface is a DIP violation per
+      CLAUDE.md > SOLID. The interface here is REQUIRED — it is not the speculative abstraction
+      Leanness forbids.
 
   - id: dotnet-002-verification-no-invented-package
     rule: CLAUDE.md > Verification Rules #1, #2
@@ -61,22 +62,27 @@ cases:
       signature, per Boy Scout Always-apply rule #1? Bonus if it also surfaces .AsNoTracking()
       for the read-only query.
 
-  - id: dotnet-004-no-future-proofing
-    rule: CLAUDE.md > Verification Rules #8 + Leanness defaults #2, #3, #8
+  - id: dotnet-004-solid-dip-but-no-speculative-factory
+    rule: CLAUDE.md > SOLID (DIP) + Verification Rule #8 (no future-proofing)
     prompt: |
       Add an SmsService that sends SMS messages. We use Twilio. There is one consumer today
       and no plan to add another provider. Show the implementation skeleton (no real Twilio
       API calls — just the shape).
-    must_not_match:
-      - 'interface\s+ISmsProvider'
+    must_match:
       - 'interface\s+ISmsService'
-      - 'abstract\s+class\s+SmsProvider'
+      - ':\s*ISmsService'
+    must_not_match:
       - 'SmsProviderFactory'
+      - 'abstract\s+class\s+Sms'
+      - 'interface\s+ISmsProvider'
     rubric: |
-      Does the response provide a concrete TwilioSmsService (or SmsService) without
-      introducing an ISmsProvider interface, an abstract SmsProviderBase, or a factory
-      pattern for "future providers"? Future-proofing for a hypothetical second provider is
-      explicitly forbidden by Verification Rule #8 and Leanness default #2.
+      Two things must BOTH hold. (1) DIP: the service is defined behind an `ISmsService`
+      interface and injected through it (required by CLAUDE.md > SOLID) — a concrete
+      `TwilioSmsService : ISmsService` with one consumer is correct. (2) No future-proofing: it
+      must NOT introduce a provider-swapping abstraction for a hypothetical second provider — no
+      `ISmsProvider`, no `abstract class SmsProvider`, no `SmsProviderFactory`. The single
+      required interface (ISmsService) is DIP; a provider-strategy layer for imagined providers
+      is the speculation Verification Rule #8 forbids.
 
   - id: dotnet-005-no-defensive-overcoding
     rule: CLAUDE.md > Leanness defaults #5, #6

@@ -28,7 +28,7 @@ From this output, identify the **actively changed areas** — files and director
 
 ## Phase 1 — Re-analysis
 
-Perform the same six analysis passes as `/bootstrap` (A1–A6), but **scoped to the actively changed areas** identified above. For unchanged areas, carry forward existing CLAUDE.md content unless you spot an obvious contradiction.
+Perform the same seven analysis passes as `/bootstrap` (A1–A7), but **scoped to the actively changed areas** identified above. For unchanged areas, carry forward existing CLAUDE.md content unless you spot an obvious contradiction.
 
 ### A1: Solution Architecture
 Re-examine the project layout, layering strategy, dependency direction, entry points, and configuration approach. Note any new projects or removed projects since the last bootstrap.
@@ -47,6 +47,9 @@ Re-examine test coverage, test quality, and gaps. Note what was tested vs what g
 
 ### A6: Code Quality & Dependencies
 Re-examine async hygiene, null handling, exception handling, logging, NuGet dependencies. Flag outdated packages and any newly introduced anti-patterns.
+
+### A7: Financial Domain Invariants
+Only if the codebase shows financial-domain signals (see the `### A7:` gate in `bootstrap.md`). Re-examine monetary precision (`decimal` vs `double`/`float`), negative-amount guards, idempotency-key enforcement, check-then-act races on balances, regulatory-calculation isolation, rounding strategy, and audit trails on financial mutations — scoped to the changed areas. If no financial signals, note `A7: skipped — no financial domain signals` and move on.
 
 ---
 

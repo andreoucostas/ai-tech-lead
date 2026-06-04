@@ -1,14 +1,14 @@
 <!--
 ai-tech-lead-framework
   template: dotnet
-  version: 0.7.2
-  applied: 2026-05-16
+  version: 0.9.0
+  applied: 2026-06-04
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
 # [Project Name]
 
 > This file is the single source of truth for AI-assisted development in this repository.
-> It is automatically loaded by Claude Code, by GitHub Copilot's coding agent and CLI, and by any AGENTS.md-aware tool (Codex, Cursor, Aider).
+> Claude Code loads this file directly. GitHub Copilot (agent mode & CLI), Codex, Cursor, Gemini, and Aider read its generated mirror **[AGENTS.md](./AGENTS.md)** (kept in sync by `/generate-copilot`). Edit conventions here, never in AGENTS.md.
 > Run `/bootstrap` to populate it from your actual codebase.
 >
 > **Companion file**: [FRAMEWORK-CONTEXT.md](./FRAMEWORK-CONTEXT.md) holds cross-repo context (shared libraries, multi-tenancy conventions, dashboard contracts) that the agent should also load on every non-trivial task. CLAUDE.md wins on any conflict — but flag the contradiction.
@@ -27,7 +27,7 @@ These apply to every workflow, before any convention-level rule. The difference 
 4. **State uncertainty.** When a question depends on context you do not have (a file you have not read, runtime behaviour you cannot observe, a database state you cannot query), say so. Do not guess to seem helpful.
 5. **Tests are immutable safety nets during fixes and refactors.** When an existing test fails, production is wrong (or the test is wrong for a documented reason). Do not edit assertions to make them pass without flagging it explicitly.
 6. **No invented fixtures.** When sample data, builders, factories, or mocks already exist, reuse them. Do not fabricate parallel ones.
-7. **Failures are signals.** Build, test, or analyser failures are diagnostic. Read the message and fix the cause; never wrap in try/catch or `#pragma warning disable` to silence.
+7. **Failures are signals.** Build, test, or analyser failures are diagnostic. Read the message and fix the cause; never wrap in try/catch or `#pragma warning disable` to silence. (A PreToolUse hook hard-blocks writes that add `#pragma warning disable`.)
 8. **No future-proofing.** Do not add code for hypothetical requirements. Three similar lines is better than a premature abstraction.
 
 ---
@@ -39,7 +39,7 @@ The Boy Scout Rule biases toward adding improvements. This section is the counte
 ### Defaults
 
 1. **Edit existing files; do not create new ones unless required.** A new file is a long-term commitment. If a method fits an existing file, put it there.
-2. **No interface unless there will be a second implementation.** Sealed classes are fine. "I might mock it" is not a second implementation — `NSubstitute` and equivalents work on virtual methods of concrete classes.
+2. **Interfaces are for injected services (SOLID/DIP) and for genuine second implementations — not for data.** Every injected service is depended on through an interface (see [SOLID](#solid)); the implementation may be `sealed`. *Outside* that rule, no interface or abstraction without a real need — data carriers (DTOs, entities, value objects, `Options` records) never get interfaces, and don't invent abstractions for hypothetical variation.
 3. **No abstract base class with one subclass.** Inline it.
 4. **Wrappers must add behavior.** A method that just delegates is a layer that costs reading time and adds no value. Inline or remove.
 5. **No defensive code for impossible states.** Trust internal callers; validate only at system boundaries (HTTP request body, message bus payload, third-party API response). **Financial domain exception**: for monetary amounts, ledger entries, account balances, regulatory figures, and idempotency keys — treat every state as possible regardless of caller. Use `decimal` (never `double`) for money; guard against negative amounts, duplicate transaction IDs, decimal precision loss, and timestamp ordering violations at every layer even in internal code.
@@ -58,6 +58,22 @@ The Boy Scout Rule biases toward adding improvements. This section is the counte
 ### When you must add structure
 
 If a change genuinely requires a new abstraction, file, or wrapper, state the second consumer (existing or imminent) in the design or PR description. "Imminent" means within the same change-set. Otherwise: defer the abstraction until the second case appears.
+
+---
+
+## SOLID
+
+SOLID is **mandatory** in this codebase. It governs structure; [Leanness](#leanness) governs ceremony *beyond* that structure — the two are reconciled here and in Leanness #2.
+
+1. **Single Responsibility** — one reason to change per class. No god classes; controllers stay thin (delegate to a service immediately). Split a class that mixes orchestration, data access, and presentation. Heuristic: more than ~5 injected collaborators, or a name needing "And"/"Manager", means split.
+2. **Open/Closed** — extend by adding a type, not editing a stable one. When a `switch`/`if` over a type/enum code reaches its **third** arm, replace it with polymorphism. (Do not build the seam speculatively before then — that is future-proofing.)
+3. **Liskov Substitution** — every implementation fulfils its interface's contract completely: no `NotImplementedException`/`NotSupportedException`, no strengthened preconditions, no weakened postconditions. If a type can't honour the contract, it must not implement it.
+4. **Interface Segregation** — small, role-based interfaces over one fat `I*Service`. No implementation is forced to implement members it does not use.
+5. **Dependency Inversion** — **every injected service/behaviour is depended on through an interface**, registered in DI; higher layers never `new` a concrete service or depend on a concrete lower layer. Data carriers (DTOs, entities, value objects, `Options` records, enums) are **not** services — they get no interface.
+
+**Mechanism**: define `IFoo` beside `Foo`; register `services.AddScoped<IFoo, Foo>()` via the project's DI extension; inject `IFoo`. Implementations may be `sealed`.
+
+**Deterministic backstop**: dependency *direction* is enforced in CI by architecture tests (**NetArchTest** — e.g. Domain must not reference Infrastructure). The `solid-check` agent covers the semantic principles per diff and is run by `/review`.
 
 ---
 
@@ -91,23 +107,28 @@ _Not yet populated. Until you run `/bootstrap`, the greenfield defaults in [docs
 
 ## Architecture Decisions
 
-<!-- Populated by /bootstrap — replaces separate ADR files -->
-<!-- Format: Decision → Context → Consequences → Review notes -->
+<!-- One-line INDEX of significant decisions here (ID — title — date — link). Full ADRs
+     (Decision → Context → Consequences → Review notes) live in docs/architecture-decisions.md,
+     added by the create-adr skill. Rationale: CLAUDE.md loads on nearly every agent turn and
+     anchors the prompt cache — keep it small; detail loads on demand. -->
 
-Record significant decisions here. Include accidental decisions that became convention.
+A one-line index of significant decisions (including accidental ones that became convention). Full detail in [docs/architecture-decisions.md](./docs/architecture-decisions.md).
 
 ---
 
 ## Common Tasks
 
-Recipes live in `.claude/skills/` — each is auto-discovered by Claude Code and triggered by the model when relevant. Current skills:
+Recipes live as **skills**, auto-discovered by both Claude Code (`.claude/skills/`) and GitHub Copilot (`.github/skills/`) — the model triggers the relevant one when you describe that kind of task. Current skills:
 
 - `add-endpoint` — add a new HTTP API endpoint end-to-end (domain → service → DTO → validator → controller → integration test)
 - `add-entity` — add a new EF Core entity with configuration and migration review
 - `register-service` — register a new service in DI with the right lifetime
+- `add-tests` — add unit/integration tests following project patterns (xUnit + `WebApplicationFactory`)
 - `perf` — scan a file, directory, or the whole repo for ~50 performance anti-patterns; produces tiered findings (Critical / Moderate / Info) with file locations and TECH_DEBT.md integration
+- `dependency-audit` — scan for vulnerable/deprecated/outdated NuGet packages and set up automated dependency scanning (Dependabot or Renovate)
+- `create-adr` — record a significant architecture decision in Architecture Decisions
 
-`/bootstrap` adds project-specific skills under `.claude/skills/` rather than appending recipes here.
+`/bootstrap` adds project-specific skills under `.claude/skills/` rather than appending recipes here. Skills are mirrored to `.github/skills/` by `/generate-copilot` (and `scripts/sync-agent-files`) so Copilot CLI/agent see them too.
 
 **Registers**: [TECH_DEBT.md](./TECH_DEBT.md) tracks delivery debt. [SECURITY_FINDINGS.md](./SECURITY_FINDINGS.md) tracks security findings separately with remediation SLAs (Critical = 7 days, High = 30 days). Do not merge them — audit teams treat these differently. AI-assisted file changes are appended to [.claude/ai-audit.log](./.claude/ai-audit.log) automatically by the PostToolUse hook.
 

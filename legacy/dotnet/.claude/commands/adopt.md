@@ -157,8 +157,8 @@ Merge into CLAUDE.md > Repository Structure. Preserve diagrams.
 
 ### 4c — Merge into Architecture Decisions
 For each ADR found in `docs/adr/*` or `docs/decisions/*`:
-- Title + decision + key consequences in CLAUDE.md format
-- For lengthy ADRs: include decision + one-line consequence + reference to archive
+- Append the full ADR (title, decision, context, consequences) to `docs/architecture-decisions.md` (create it with an `# Architecture Decisions` heading if missing), then add a **one-line index entry** to `CLAUDE.md > Architecture Decisions` (`ADR-NNN — title — date — link`). Do not paste full ADRs into CLAUDE.md — it loads on nearly every turn (same split as the `create-adr` skill and `/bootstrap` Phase 3a).
+- For lengthy ADRs: summarise to decision + one-line consequence in `docs/architecture-decisions.md` and reference the archived original under `docs/pre-adoption/`.
 
 ### 4d — Merge into Codebase Context
 If `CONTRIBUTING.md` or top-of-`README.md` describes what the app does and who uses it, extract that into CLAUDE.md > Codebase Context. Don't duplicate the README — extract only the "what / who / domain" framing.

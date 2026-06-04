@@ -15,6 +15,7 @@
 - Files match class names exactly. One public class per file.
 
 ### Dependency Injection
+- **DIP (mandatory — see CLAUDE.md > SOLID)**: every injected service is depended on through an interface (`IFoo` + `Foo`, impl may be `sealed`), registered in DI; never inject or `new` a concrete service. Data carriers (DTOs, entities, value objects, `Options`) are not services and get no interface.
 - Services: scoped. Factories and stateless helpers: transient. Caches and config: singleton.
 - Register via extension methods per project, not in Program.cs directly.
 - Use `IOptions<T>` for static config, `IOptionsMonitor<T>` for config that can change at runtime, `IOptionsSnapshot<T>` for scoped config refresh.

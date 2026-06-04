@@ -76,6 +76,11 @@ if [ -f "$stamp" ]; then
 fi
 date +%s > "$stamp" 2>/dev/null
 
-dotnet build --no-restore --verbosity quiet 2>&1 | tail -20
+build_output=$(dotnet build --no-restore --verbosity quiet 2>&1)
+if [ $? -ne 0 ]; then
+  echo "## dotnet build failed — fix before continuing:"
+  printf '%s\n' "$build_output" | tail -20
+fi
+# On success: stay silent — emitting the build summary every successful write wastes context tokens.
 
 exit 0

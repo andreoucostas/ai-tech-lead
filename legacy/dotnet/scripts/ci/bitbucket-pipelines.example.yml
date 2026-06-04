@@ -1,0 +1,24 @@
+# Sample Bitbucket Pipelines config for the AI Tech Lead framework guardrail (Bitbucket CLOUD).
+# Copy the `docs-sync-check` step into your repo's bitbucket-pipelines.yml (merge with any existing
+# steps). It runs the same host-agnostic check as the GitHub Actions workflow.
+#
+# IMPORTANT: Bitbucket DATA CENTER does not run Pipelines. There, invoke scripts/docs-sync-check.sh
+# from a Bamboo/Jenkins job or a pre-receive hook instead, and optionally publish the result to the
+# PR with the Code Insights REST API. See the README "Running on Bitbucket Data Center" section.
+
+image: atlassian/default-image:4
+
+definitions:
+  steps:
+    - step: &docs-sync-check
+        name: AI Tech Lead framework state
+        script:
+          - bash scripts/docs-sync-check.sh
+
+pipelines:
+  pull-requests:
+    '**':
+      - step: *docs-sync-check
+  branches:
+    '{main,master}':
+      - step: *docs-sync-check

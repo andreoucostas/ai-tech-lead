@@ -3,6 +3,49 @@
 > Framework-level changes for the .NET template. Per-stack Angular changes live in [`ai-tech-lead-angular/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-angular/blob/master/CHANGELOG.md).
 > Architecture decisions (cross-stack) live in `project_framework_architecture.md`.
 
+## 0.9.0 — 2026-06-04 (literal SOLID)
+
+### Added
+- **SOLID is now mandatory** — a standing `## SOLID` section in CLAUDE.md (mirrored to AGENTS.md): an interface for **every injected service** (DIP), plus SRP / OCP / LSP / ISP rules. Literal classic SOLID, per tech-lead mandate. Data carriers (DTOs, entities, value objects, `Options`) are exempt — they are not services.
+- **`solid-check` subagent** (`.claude/agents/` + `.github/agents/` mirror), dispatched by `/review` Step 1 alongside convention-check / bloat-radar / debt-radar. Covers the five principles semantically; self-skips in repos without a `## SOLID` section.
+- **`docs/architecture-decisions.md`** is now the home for full ADRs; `docs/defaults.md` DI section mandates interface-per-service for greenfield.
+
+### Changed
+- **Leanness #2 reconciled with SOLID**: interfaces are now expected for injected services; the anti-bloat teeth remain on *data* (never interface a DTO/entity/value object) and on *speculation* (no abstractions for hypothetical variation).
+- **`bloat-radar` recalibrated**: it no longer flags a single-implementation interface on an injected service (required by DIP now); it still flags interfaces/abstractions on non-service types, speculative bases, and helper classes. The SOLID lens moved to `solid-check`.
+- **`/generate-copilot`** now emits a SOLID block into `copilot-instructions.md` and copies the full SOLID section into the `AGENTS.md` mirror.
+- **Eval suite** flipped to the new policy: `dotnet-001` now requires `IEmailNotifier`; `dotnet-004` requires `ISmsService` **and** still forbids a speculative provider factory (DIP yes, future-proofing no).
+
+### Fixed
+- **`/adopt` ADR merge** now appends full ADRs to `docs/architecture-decisions.md` with a one-line index in CLAUDE.md (was pasting them inline), matching the `create-adr` skill and `/bootstrap` Phase 3a — keeps CLAUDE.md within budget and the prompt cache warm.
+
+### Note
+- Deterministic DIP backstop is **NetArchTest** (dependency-direction tests in CI); the semantic SOLID gate is the `solid-check` agent. Wire NetArchTest into your test project to fail builds on layer violations.
+
+## 0.8.0 — 2026-06-04 (cross-tool parity + Bitbucket + spec-driven)
+
+### Added
+- **AGENTS.md is now a generated full mirror** of CLAUDE.md's portable rules (Verification, Leanness, Conventions, Boy Scout, Agentic Workflow) — not a pointer — so AGENTS.md-native tools (GitHub Copilot agent mode & CLI, Codex, Cursor, Gemini, Aider) get the real ruleset. Emitted by `/generate-copilot` Part B; produced by `/bootstrap` Phase 3f; checked for drift by `/docs-sync` Step 2 and the CI guardrail.
+- **Skills now reach Copilot.** `.claude/skills/` is mirrored byte-for-byte to `.github/skills/` (Copilot CLI / cloud agent read that path; VS Code Copilot already reads `.claude/skills/`). New `scripts/sync-agent-files.{sh,ps1}` regenerates the mirror, `/generate-copilot` Part C runs it, and the CI guardrail enforces parity.
+- **Subagents exposed to Copilot** as custom agents: `.github/agents/{security-auditor,convention-check,bloat-radar,debt-radar}.agent.md` — thin wrappers delegating to the canonical `.claude/agents/` definitions (same single-source pattern as the prompt files).
+- **PreToolUse guard hook** (`guard.sh` + `.ps1`) — hard-blocks any write that adds `#pragma warning disable` or a hardcoded secret (private key, cloud token, credential literal). Registered in `.claude/settings.json`, `.claude/settings.windows.json`, and `.github/hooks/hooks.json` (Claude Code: exit-2 block; Copilot: JSON deny). Deterministic enforcement of Verification Rule #7.
+- **Spec-driven development**: a `specs/` directory with `specs/README.md` (template + lifecycle). `/design` persists a spec to `specs/<slug>.md`, `/feature` implements against it, `/review` verifies conformance. CLAUDE.md is framed as the project "constitution".
+- **New skills**: `add-tests` (xUnit + `WebApplicationFactory`), `dependency-audit` (vulnerable NuGet + Dependabot/Renovate setup), `create-adr` (inline ADRs in CLAUDE.md > Architecture Decisions).
+- **Bitbucket Data Center support**: a README "Running on Bitbucket Data Center" section (what works locally vs what's GitHub-only — incl. Atlassian Rovo Dev being Cloud-only); host-agnostic `scripts/docs-sync-check.{sh,ps1}`; `scripts/ci/bitbucket-pipelines.example.yml`; and Code Insights / pre-receive / Bamboo wiring guidance. `/security-review` gains a "Standing scanners" note (CodeQL on GitHub; Semgrep/SonarQube + Code Insights on Bitbucket).
+
+### Fixed
+- **A7 bootstrap pass was dead.** `/bootstrap` dispatched seven passes (incl. **A7 Financial Domain Invariants**) but `bootstrap-pass` only accepted A1–A6 and Phase 2 synthesised "six" — so the financial-domain analysis silently never ran. `bootstrap-pass`, Phase 2, the README agents table, and the `/bootstrap` + `/rebootstrap` prompt wrappers now all agree on **seven (A1–A7)**.
+
+### Changed
+- `.github/workflows/docs-sync-check.yml` is now a thin caller of `scripts/docs-sync-check.sh` (host-agnostic) and is marked GitHub-only. The script also verifies the AGENTS.md mirror is current and that `.github/skills` matches `.claude/skills`.
+- `/generate-copilot` now regenerates **both** `.github/copilot-instructions.md` (slim) and `AGENTS.md` (full mirror), and syncs the skills mirror.
+
+### Token economy
+- **Model routing**: `convention-check`, `bloat-radar`, and `debt-radar` now run on **Haiku** (recurring, pattern-based work); `security-auditor` and `bootstrap-pass` stay on the inherited strong model (high-stakes / one-time-high-leverage). Cuts per-`/review` cost without losing security or bootstrap quality.
+- **Quiet-on-success hooks**: `post-write.{sh,ps1}` emit `dotnet build` output **only on failure** — a successful write no longer injects a build summary into context.
+- **CLAUDE.md size budget**: `docs-sync-check.{sh,ps1}` prints an advisory NOTE when CLAUDE.md exceeds ~400 lines (it loads on nearly every turn and anchors the prompt cache); `/bootstrap` Phase 3a documents the budget.
+- **ADRs out of the hot path**: the `create-adr` skill now appends full ADRs to `docs/architecture-decisions.md` with a one-line index in CLAUDE.md, instead of pasting them inline — stops the always-loaded file from growing and avoids busting the prompt cache on every recorded decision. `/bootstrap` Phase 3a follows the same split.
+
 ## 0.7.2 — 2026-05-16 (Copilot routing parity)
 
 ### Fixed

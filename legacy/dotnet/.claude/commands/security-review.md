@@ -77,3 +77,14 @@ Calculate the due date from today:
 Only append — never modify or delete existing rows. If a finding duplicates an open row (same file:line, same category), note the duplicate in the finding's description rather than adding a second row.
 
 If the verdict is `APPROVE` (no critical or high findings), note this in the output but do not modify `SECURITY_FINDINGS.md`.
+
+---
+
+## Standing scanners (set up once, not per-review)
+
+`/security-review` is the per-change gate. Back it with automated scanning so regressions are caught between reviews:
+
+- **Dependencies**: run the `dependency-audit` skill — vulnerable/deprecated NuGet packages plus Dependabot (GitHub) or Renovate (Bitbucket / host-agnostic).
+- **SAST**: on GitHub, enable **CodeQL** code scanning. On **Bitbucket Data Center**, CodeQL is unavailable — run a SAST tool (Semgrep, SonarQube) in Bitbucket Pipelines / Bamboo / Jenkins and publish results via the **Code Insights API** so findings appear inline on the PR. See the README "Running on Bitbucket Data Center" section.
+
+These are infrastructure, not review steps — recommend them once, then let CI carry them.

@@ -4,7 +4,7 @@ A working template that turns Claude Code and GitHub Copilot into a tech lead fo
 
 ## Why this framework?
 
-Without it, AI tools give you generic .NET code. The AI doesn't know your architecture, your conventions, or your team's decisions. Every developer gets different AI behaviour. The AI suggests patterns your team has already decided against, invents class names that don't exist, adds abstractions you don't need, and never cleans up the mess it leaves behind.
+Without it, AI tools give you generic .NET code. The AI doesn't know your architecture, your conventions, or your team's decisions. Every developer gets different AI behaviour. The AI suggests patterns your team has already decided against, invents class names that don't exist, adds abstractions you don't need (while skipping the ones you do), and never cleans up the mess it leaves behind.
 
 This framework fixes that by giving the AI team-level context — your actual conventions, your actual architecture, your actual debt priorities — and enforcing a consistent execution model across every developer and every tool.
 
@@ -29,9 +29,14 @@ Copy the following into your existing .NET **solution root** (where your `.sln` 
 ```
 .claude/                            → Claude Code commands and hooks
 .github/prompts/                    → GitHub Copilot Chat workflows (mirror of .claude/commands/)
-.github/workflows/docs-sync-check.yml → CI guardrail for framework state
+.github/skills/                     → Copilot-facing mirror of .claude/skills/ (generated)
+.github/agents/                     → Copilot custom agents wrapping the subagents
+.github/hooks/hooks.json            → registers the hooks for Copilot CLI / cloud agent
+.github/workflows/docs-sync-check.yml → CI guardrail (GitHub Actions; Bitbucket uses scripts/)
 .github/PULL_REQUEST_TEMPLATE.md    → PR template with design rationale + Boy Scout checklist
-AGENTS.md                           → pointer for any agent-style tool
+scripts/                            → host-agnostic CI guardrail + skills-sync + Bitbucket CI sample
+specs/                              → persistent feature specs (spec-driven development)
+AGENTS.md                           → generated mirror of CLAUDE.md's rules (for Copilot/Codex/Cursor)
 CLAUDE.md                           → template, populated by /bootstrap
 FRAMEWORK-CONTEXT.md                → cross-repo context (shared libs, multi-tenancy, dashboard contracts)
 LEARNINGS.md                        → append-only log of what works/doesn't
@@ -65,7 +70,7 @@ This single command:
 - Populates `CLAUDE.md` with your actual conventions and patterns
 - Generates `TECH_DEBT.md` with prioritised debt
 - Audits `.claude/skills/` against your codebase, adjusts default Common-Tasks recipes, and adds new skills for project-specific patterns
-- Writes `AGENTS.md` (a pointer at `CLAUDE.md` for Copilot agent / Codex / Cursor / Aider)
+- Generates `AGENTS.md` (full rules mirror of `CLAUDE.md` for Copilot agent / Codex / Cursor / Aider) and mirrors skills to `.github/skills/`
 - Generates a slim `.github/copilot-instructions.md` for Copilot inline completions
 
 ### 3. Review
@@ -105,18 +110,21 @@ When you next pull template updates into your repo, bump both. CI tooling and a 
 
 | File | Purpose |
 |------|---------|
-| `CLAUDE.md` | **Single source of truth** — conventions, architecture, common tasks, agentic workflow. Read directly by Claude Code and by Copilot's coding agent / CLI. |
+| `CLAUDE.md` | **Single source of truth** (authored) — conventions, architecture, common tasks, agentic workflow. Read directly by Claude Code. Copilot/Codex/Cursor read its generated mirror `AGENTS.md`. |
 | `FRAMEWORK-CONTEXT.md` | Cross-repo context: shared NuGet libraries, multi-tenancy conventions, dashboard contracts, cross-service patterns. Maintainer-curated; bootstrap populates the "Detected Framework Packages" section. |
-| `AGENTS.md` | Pointer to `CLAUDE.md` for any agent-style tool (Copilot agent, Codex, Cursor, Aider). |
-| `.github/copilot-instructions.md` | **Generated** — slim imperative ruleset (≤80 lines) for Copilot **inline completions** only. The agent reads `CLAUDE.md` directly. |
+| `AGENTS.md` | **Generated** — full mirror of CLAUDE.md's portable rules (Verification, Leanness, Conventions, Boy Scout, Agentic Workflow) so AGENTS.md-native tools (Copilot agent mode & CLI, Codex, Cursor, Gemini, Aider) get the real ruleset, not a pointer. Refreshed by `/generate-copilot`. |
+| `.github/copilot-instructions.md` | **Generated** — slim imperative ruleset (≤80 lines) for Copilot **inline completions** only. Agent-mode tools read the fuller `AGENTS.md`. |
 | `.github/prompts/*.prompt.md` | Copilot Chat workflows. Thin wrappers that delegate to `.claude/commands/`. |
 | `.claude/commands/*.md` | Canonical workflow definitions (used by Claude Code natively, and by the Copilot prompt files). |
-| `.claude/skills/*/SKILL.md` | Auto-discovered Common Tasks recipes (add-endpoint, add-entity, register-service). Body loads only when triggered. |
-| `.claude/agents/*.md` | Subagents (convention-check, debt-radar, bootstrap-pass). Run in isolated context; return structured findings to the parent. |
+| `.claude/skills/*/SKILL.md` | Auto-discovered Common Tasks recipes (add-endpoint, add-entity, register-service, add-tests, perf, dependency-audit, create-adr). Body loads only when triggered. Mirrored to `.github/skills/` for Copilot. |
+| `.claude/agents/*.md` | Subagents (security-auditor, convention-check, bloat-radar, debt-radar, bootstrap-pass). Run in isolated context; return structured findings. The four user-facing ones are mirrored to `.github/agents/*.agent.md` as Copilot custom agents. |
 | `.claude/workflow.md` | Shared self-review + flag-drift tail inlined by the workflow commands via `@.claude/workflow.md`. |
-| `.claude/hooks/*.sh` | SessionStart context preload, UserPromptSubmit intent router, PostToolUse build trigger and audit trail, Stop Boy Scout scanner. Each has a `.ps1` twin for Windows-only teams. |
-| `.claude/settings.json` | Registers hooks for Claude Code: SessionStart, UserPromptSubmit, PostToolUse (`dotnet build` + audit trail after `.cs` writes), and Stop. |
-| `.github/hooks/hooks.json` | Registers the same hooks for Copilot cloud agent and CLI. Points to the same scripts in `.claude/hooks/`. |
+| `.claude/hooks/*.sh` | SessionStart context preload, UserPromptSubmit intent router, **PreToolUse guard** (blocks warning-suppressions & secrets), PostToolUse build trigger and audit trail, Stop Boy Scout scanner. Each has a `.ps1` twin for Windows-only teams. |
+| `.claude/settings.json` | Registers hooks for Claude Code: SessionStart, UserPromptSubmit, PreToolUse (`guard` before `.cs` writes), PostToolUse (`dotnet build` + audit trail after `.cs` writes), and Stop. |
+| `.github/hooks/hooks.json` | Registers the same hooks for Copilot cloud agent and CLI (on Bitbucket, the CLI surface only). Points to the same scripts in `.claude/hooks/`. |
+| `.github/skills/`, `.github/agents/` | **Generated** Copilot-facing mirrors: `.github/skills/` is a byte-identical copy of `.claude/skills/` (via `scripts/sync-agent-files.*`); `.github/agents/*.agent.md` wrap the subagents as Copilot custom agents. |
+| `scripts/` | Host-agnostic helpers: `docs-sync-check.{sh,ps1}` (the CI guardrail), `sync-agent-files.{sh,ps1}` (skills mirror), `ci/bitbucket-pipelines.example.yml`. |
+| `specs/` | Persistent feature specs (spec-driven development). `/design` writes one, `/feature` implements against it, `/review` verifies. See `specs/README.md`. |
 | `TECH_DEBT.md` | **Generated** by `/bootstrap` — prioritised debt register with Trojan Horse opportunities. |
 | `LEARNINGS.md` | Append-only log of what worked / what didn't / what rule changed. Read on non-trivial work. |
 | `docs/playbook.md` | Methodology guide (the "why" behind the framework). |
@@ -135,6 +143,7 @@ Every workflow command follows the same execution model:
 |------|------|--------------|
 | `SessionStart` | New session | Preloads branch, last 3 commits, `BOOTSTRAP_PENDING` warning, the workflow-routing primer, the count of TECH_DEBT entries touching files modified in the last 14 days, and any overdue `SECURITY_FINDINGS` |
 | `UserPromptSubmit` | Every prompt (Claude Code only) | Regex-classifies natural-language prompts as `fix`/`feature`/`refactor`/`test`/`design`/`debt`/`review` and injects that workflow's hard rules. Skips explicit `/command` invocations. **Copilot does not consume hook stdout for this event** ([hooks reference](https://docs.github.com/en/copilot/reference/hooks-configuration)), so in Copilot the equivalent vocabulary is shipped via the `SessionStart` primer and the model self-classifies. |
+| `PreToolUse` (Write/Edit) | Before every `.cs` write | **Hard-blocks** the write if it adds a warning-suppression (`#pragma warning disable`) or a hardcoded secret (private key, cloud token, credential literal). Deterministic enforcement of Verification Rule #7. Runs in Claude Code **and** Copilot CLI. |
 | `PostToolUse` (Write/Edit) | After every `.cs` write | Runs solution-level incremental `dotnet build` — catches compilation errors before they compound. Plus a second handler appends an SR 11-7 / DORA audit-log line. |
 | `Stop` | End of every turn (Claude Code only) | Scans modified `.cs` files for the always-apply Boy Scout patterns (async without `CancellationToken`, interpolated logger calls, EF read queries without `AsNoTracking()`, excess null-forgiving `!`); soft-warns the model. Copilot has no equivalent event. |
 
@@ -179,13 +188,15 @@ Hooks degrade gracefully — a failing hook doesn't break the session, you just 
 Recipes for "add a new endpoint end-to-end", "add a new EF Core entity", "register a new service" live as auto-discovered skills in `.claude/skills/`. The model triggers the relevant one when the user describes that kind of task; the body loads only when triggered, keeping main context lean.
 
 ### Subagents for isolated specialist work
-Three subagents live in `.claude/agents/`:
+Five subagents live in `.claude/agents/` — the four user-facing ones are mirrored to `.github/agents/*.agent.md` as Copilot custom agents:
 
 | Agent | Purpose | Invoked by |
 |-------|---------|-----------|
+| `security-auditor` | OWASP-style scan of a diff (injection, auth/authz, secrets, crypto, financial/concurrency). Read-only. | `/security-review`; ad-hoc |
 | `convention-check` | Audits a diff against CLAUDE.md > Conventions; returns a structured findings table. Read-only. | `/review` Step 1; ad-hoc |
+| `bloat-radar` | Flags speculative abstractions, shallow wrappers, parallel implementations, comment debris, trivial tests. Read-only. | `/review` Step 1; ad-hoc |
 | `debt-radar` | Maps a file path or feature area to TECH_DEBT entries; suggests trojan-horse bundles. Read-only. | `/review` Step 1; `/feature` Step 1; ad-hoc |
-| `bootstrap-pass` | Runs a single bootstrap analysis pass (A1–A6) in isolation. Read-only. | `/bootstrap` Phase 1 (six in parallel) |
+| `bootstrap-pass` | Runs a single bootstrap analysis pass (A1–A7) in isolation. Read-only. | `/bootstrap` Phase 1 (seven in parallel) |
 
 Subagents run in isolated context — analysis chatter does not pollute the parent's main conversation. The parent receives one structured message per subagent and synthesises.
 
@@ -208,6 +219,38 @@ applyTo: "**/*.ts"
 Copilot's coding agent and inline completions both honour `applyTo` — `.cs` files see the .NET rules from `copilot-instructions.md`, `.ts` files see the TypeScript rules from `.github/instructions/typescript.instructions.md`. The repo-wide rules apply on top of either.
 
 If the secondary stack is Angular, the `ai-tech-lead-angular` template's `copilot-instructions.md` content is a sensible starting point — copy it into a `.github/instructions/typescript.instructions.md` file and add `applyTo: "**/*.{ts,html}"` at the top.
+
+## Running on Bitbucket Data Center
+
+This framework grew up around GitHub conventions, but its **local layer is host-agnostic** — it behaves the same whether your remote is GitHub, Bitbucket Cloud, or **Bitbucket Data Center / Server**. Only the *cloud-automation* layer is GitHub-specific. Here's precisely what applies on a self-hosted Bitbucket repo.
+
+### Works unchanged (everything local)
+- **GitHub Copilot in the IDE** (VS Code / Visual Studio / JetBrains) — completions, chat, and **agent mode** — reads `.github/copilot-instructions.md`, `.github/instructions/`, `.github/prompts/`, `.github/agents/`, `.github/skills/`, and `AGENTS.md` **from the working tree, regardless of git host**. The `.github/` folder name carries no GitHub dependency here; Copilot just looks there.
+- **Claude Code** (CLI + IDE extension) — reads `CLAUDE.md` and everything under `.claude/`. Host-agnostic.
+- **GitHub Copilot CLI** (GA Feb 2026) — runs `.github/hooks/hooks.json` hooks **locally on your machine**: the PreToolUse guard, the `dotnet build`, and the SR 11-7 / DORA audit trail all fire. (Only the *cloud-agent* half of hooks.json is inert on Bitbucket — the CLI half works.)
+- **Skills, custom agents, prompts, slash commands** — all file-driven in the repo; no platform service required.
+
+### Does NOT apply on Bitbucket (GitHub-only)
+| GitHub feature | On Bitbucket DC | Use instead |
+|----------------|-----------------|-------------|
+| Copilot **coding agent** (async, assigned to issues, opens PRs) | Not available (github.com repos only) | Local CLI agents: Claude Code, Copilot CLI |
+| `.github/workflows/docs-sync-check.yml` (**GitHub Actions**) | Does not run | `scripts/docs-sync-check.sh` in Bamboo/Jenkins/pre-receive (below) |
+| `.github/PULL_REQUEST_TEMPLATE.md` | Not auto-applied | Bitbucket repo/project **default PR description** setting |
+| Copilot **PR code review** | Not available | `/review` + `/security-review` locally pre-push; or a SAST step in CI |
+| Atlassian **Rovo Dev** (native AI agent / PR reviewer) | **Cloud-only** — not on Data Center | Local CLI agents + the CI guardrail below |
+
+> Net: on Bitbucket Data Center your agentic story is **local CLI agents + IDE Copilot**, not a cloud agent, and there is no platform-side AI PR reviewer. Gate quality with `/review` and `/security-review` *before* you push, and with the CI guardrail *after*.
+
+### The framework-state guardrail on Bitbucket
+The checks live in **`scripts/docs-sync-check.sh`** (PowerShell twin: `scripts/docs-sync-check.ps1`) — host-agnostic, exit 0/1. Wire it in whichever way fits your DC setup:
+- **Bamboo / Jenkins / TeamCity**: a build step that runs `bash scripts/docs-sync-check.sh` and fails on non-zero exit.
+- **Pre-receive hook** (server-side, blocks the push): call the script from a Bitbucket DC [pre-receive hook](https://confluence.atlassian.com/bitbucketserver/managing-merge-checks-and-hooks).
+- **Surface it on the PR**: publish the verdict (and annotations) via the **Code Insights REST API** (`/rest/insights/1.0/...`), available on Bitbucket Data Center 10.x — the closest DC equivalent of a required GitHub check.
+- **Bitbucket Cloud** repos: copy `scripts/ci/bitbucket-pipelines.example.yml` into `bitbucket-pipelines.yml`.
+
+### Standing scanners on Bitbucket
+- **Dependencies**: Dependabot is GitHub-only — use **Renovate** (self-hostable) or the `dependency-audit` skill's CI fallback (`dotnet list package --vulnerable --include-transitive`).
+- **SAST**: CodeQL is GitHub-only — run **Semgrep** or **SonarQube** in CI and publish via Code Insights.
 
 ## Keeping it alive
 

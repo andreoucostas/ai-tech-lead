@@ -63,7 +63,9 @@ if (Test-Path $stamp) {
 Set-Content -Path $stamp -Value $now -Encoding ASCII
 
 $out = dotnet build --no-restore --verbosity quiet 2>&1
-if ($out) {
+# Only surface output on failure — emitting the build summary every successful write wastes context tokens.
+if ($LASTEXITCODE -ne 0) {
+    Write-Output "## dotnet build failed -- fix before continuing:"
     $out | Select-Object -Last 20 | ForEach-Object { Write-Output $_ }
 }
 
