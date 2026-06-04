@@ -14,6 +14,8 @@ Pointed at this repo and asked to install the framework into a target codebase? 
 
 Architecture is mapped in [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md); reviewers should start with [docs/REVIEW-GUIDE.md](./docs/REVIEW-GUIDE.md). Detailed manual steps are in "Quick Start" below.
 
+`/adopt` also produces a **before/after impact report** in `docs/impact/` (capability diff + codebase scorecard + an optional Copilot-CLI behavioral A/B) to show tech leads what changed — fully automated, no input needed.
+
 ## Why this framework?
 
 Without it, AI tools give you generic Angular code. The AI doesn't know your team uses signals over BehaviorSubject, `inject()` over constructor injection, or `OnPush` everywhere. It doesn't know you've migrated away from NgModules. It doesn't know about the state management pattern your team settled on after two failed experiments. Every developer gets different AI behaviour. The AI suggests patterns your team has already moved past, adds RxJS complexity where a signal would do, and never cleans up the subscriptions it leaves behind.

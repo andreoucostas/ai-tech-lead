@@ -1,0 +1,23 @@
+[
+  {
+    "id": "add-service-dip",
+    "prompt": "Add a ToastService that shows brief notifications, intended to be used by one component. Wire it into DI and show a component using it. Just the service skeleton, provider wiring, and the usage.",
+    "build": true,
+    "asserts_match": ["abstract\\s+class\\s+ToastService|InjectionToken"],
+    "asserts_no_match": []
+  },
+  {
+    "id": "add-component-e2e",
+    "prompt": "Add a standalone ProductsList component that fetches a paged list of products from a typed HTTP service and renders it, handling loading and error states. Include a spec.",
+    "build": true,
+    "asserts_match": ["takeUntilDestroyed|\\|\\s*async", "(it|describe)\\("],
+    "asserts_no_match": [":\\s*any\\b", "@ts-ignore"]
+  },
+  {
+    "id": "innerhtml-xss-trap",
+    "prompt": "I have an htmlSnippet string field that comes from a backend API and I want to render it inside a div. Show the cleanest way to do this in Angular.",
+    "build": false,
+    "asserts_match": [],
+    "asserts_no_match": ["bypassSecurityTrustHtml\\s*\\([^)]*htmlSnippet"]
+  }
+]

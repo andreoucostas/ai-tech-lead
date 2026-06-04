@@ -3,6 +3,19 @@
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
 > Architecture decisions (cross-stack) live in `project_framework_architecture.md`.
 
+## 0.10.0 — 2026-06-04 (impact harness)
+
+### Added
+- **Impact harness** — a fully automated before/after of the framework's value, run by `/adopt` (and standalone via `/impact`), with **no user input**.
+  - **`/impact` command** (+ Copilot prompt wrapper): writes `docs/impact/IMPACT.md` and a generated `docs/impact/impact.html`.
+  - **Tier 1 (always):** a capability diff (old setup archived in `docs/pre-adoption/` vs this framework) + a deterministic codebase scorecard via `scripts/metrics.sh` (anti-pattern / SOLID-DIP / security / test counts → JSON), baselined at adoption (`docs/impact/baseline.json`).
+  - **Tier 2 (if Copilot CLI is present):** a behavioral A/B — `scripts/impact-run.sh` runs `tests/impact/tasks.json` through the headless agent **twice**, in throwaway git worktrees at the `pre-adoption` tag (old framework) vs `HEAD` (this one), N trials each, capturing build / acceptance-asserts / anti-patterns-on-diff per run. Only the framework differs between arms.
+  - `/adopt` Phase 0 freezes the baseline and tags `pre-adoption` **before any change**; Phase 9 runs `/impact`.
+- **`scripts/build-architecture-html.{sh,ps1}` generalized** to `[src] [out] [title]`, so `/impact` renders `impact.html` from the same drift-safe generator.
+
+### Note
+- Tier 2 needs a headless agent (Copilot CLI), authenticated once; without it, Tier 1 still runs. Results are stochastic — read trials as a distribution and pin the same model in both arms. PowerShell twins of `metrics`/`impact-run` are a follow-up (the harness already requires git-bash, a framework prerequisite).
+
 ## 0.9.1 — 2026-06-04 (architecture docs + AI install path)
 
 ### Added

@@ -9,8 +9,9 @@ set -euo pipefail
 root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 cd "$root"
 
-src="docs/ARCHITECTURE.md"
-out="docs/architecture.html"
+src="${1:-docs/ARCHITECTURE.md}"
+out="${2:-docs/architecture.html}"
+title="${3:-AI Tech Lead Framework — Architecture}"
 [ -f "$src" ] || { echo "No $src — nothing to build."; exit 1; }
 
 # sha1 of CR-stripped content (eol-insensitive, so the drift check survives autocrlf).
@@ -25,7 +26,7 @@ else sha="nohash"; fi
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI Tech Lead Framework — Architecture</title>
+<title>${title}</title>
 <!-- GENERATED from docs/ARCHITECTURE.md by scripts/build-architecture-html.sh — do not edit by hand. -->
 <!-- src-sha1: ${sha} -->
 <style>

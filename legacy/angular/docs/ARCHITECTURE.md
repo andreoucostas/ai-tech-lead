@@ -86,6 +86,7 @@ Same names in Claude Code (`.claude/commands/`) and Copilot Chat (`.github/promp
 | `/docs-sync` | Cross-check docs vs code and the generated mirrors for drift |
 | `/rebootstrap` | Deeper periodic re-alignment |
 | `/generate-copilot` | Regenerate copilot-instructions.md + AGENTS.md from CLAUDE.md, sync skills |
+| `/impact` | Before/after impact report — capability diff + deterministic scorecard + (if Copilot CLI present) a behavioral A/B. Auto-run by `/adopt`; fully automated |
 
 ---
 
@@ -184,8 +185,9 @@ LEARNINGS.md                  append-only lessons
 .claude/settings*.json        hook registration (bash + Windows variants)
 .github/prompts|skills|agents|hooks|instructions   Copilot surfaces (generated/mirrored)
 .github/workflows/            GitHub Actions (GitHub-only)
-scripts/                      docs-sync-check, sync-agent-files, install, build-architecture-html, ci/
+scripts/                      docs-sync-check, sync-agent-files, install, build-architecture-html, metrics, impact-run, ci/
 specs/                        persistent feature specs (spec-driven development)
+tests/impact/                 impact A/B task suite + config; docs/impact/ holds the generated report
 docs/                         playbook, defaults, ARCHITECTURE (this), REVIEW-GUIDE, architecture-decisions
 tests/evals/                  framework behavior eval suite
 ```

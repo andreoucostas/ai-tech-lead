@@ -14,6 +14,10 @@ $ARGUMENTS
 1. **Check for uncommitted changes** — run `git status`. If there are uncommitted changes, STOP and tell the user to commit or stash. Adoption touches many files and must be reversible.
 2. **Recommend a branch** — tell the user: "I recommend running this on a new branch: `git checkout -b adopt-ai-framework`. Review everything and merge when satisfied." Wait for confirmation.
 3. **Locate the project root** — find `angular.json` (or `nx.json`/`project.json` for Nx). All paths are relative to this root.
+4. **Capture the impact baseline (before any changes).** This freezes the "before" for the impact report — do it now or it's lost:
+   - `git tag -f pre-adoption HEAD` and write the resolved SHA to `.claude/impact-baseline.ref`.
+   - `mkdir -p docs/impact && bash scripts/metrics.sh > docs/impact/baseline.json` (the original codebase scorecard).
+   The `pre-adoption` tag becomes the "old framework" arm of the behavioral A/B in Phase 9. (Requires the framework's `scripts/` — copied in before `/adopt`.)
 
 ---
 
@@ -221,3 +225,9 @@ Remind the user to:
 3. Try `/feature` or `/fix` on a small task to verify the workflow
 4. Commit: `git add -A && git commit -m "Adopt AI Tech Lead Framework"`
 5. Optionally delete `docs/pre-adoption/` once they're confident nothing was lost (keep it for at least one release cycle)
+
+---
+
+## Phase 9 — Impact report
+
+After the adoption is committed (step 4 above — so `HEAD` reflects this framework), run `/impact`. It contrasts the old setup (archived in `docs/pre-adoption/`) with this framework and writes `docs/impact/IMPACT.md` (+ `docs/impact/impact.html`): the **capability diff**, the **deterministic scorecard** vs the Phase-0 baseline, and — if Copilot CLI is available — a **behavioral A/B** (the same tasks run against the `pre-adoption` tag vs `HEAD`, several trials each). No input needed. This report is what you show the tech leads.
