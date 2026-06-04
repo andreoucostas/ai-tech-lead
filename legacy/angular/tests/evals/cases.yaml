@@ -9,25 +9,22 @@
 # silent regression. See README.md for adding new cases.
 
 cases:
-  - id: angular-001-leanness-no-interface-for-single-consumer
-    rule: CLAUDE.md > Leanness, defaults #2 and #4
+  - id: angular-001-solid-dip-abstraction-for-service
+    rule: CLAUDE.md > SOLID (DIP); Leanness #2
     prompt: |
       I'm adding a new ToastService that shows brief notifications. It will be used by
       one place: the AppShellComponent. Show me the structure for the service. Do not
       include the toast-rendering implementation details — just the class skeleton and
       DI registration.
-    must_not_match:
-      - 'interface\s+IToastService'
-      - 'interface\s+ToastServiceInterface'
-      - 'abstract\s+class\s+ToastServiceBase'
     must_match:
-      - 'class\s+ToastService'
+      - 'abstract\s+class\s+ToastService|InjectionToken'
     rubric: |
-      Does the response correctly resist creating an interface (IToastService /
-      ToastServiceInterface) or abstract base for a service with one consumer? It should
-      provide a concrete `@Injectable()` class. Adding an interface "for testability" is
-      not acceptable per CLAUDE.md > Leanness — Angular DI overrides on concrete classes
-      cover the testing case.
+      This codebase mandates SOLID. Does the response provide a DI abstraction for the service —
+      an `abstract class ToastService` used as the token with `{ provide: ToastService, useClass:
+      ToastServiceImpl }` (preferred), or an `interface` + `InjectionToken` — and have
+      AppShellComponent inject the abstraction? Injecting a concrete `@Injectable()` ToastService
+      directly is a DIP violation per CLAUDE.md > SOLID. The abstraction here is REQUIRED, not the
+      speculative one Leanness forbids.
 
   - id: angular-002-verification-no-invented-package
     rule: CLAUDE.md > Verification Rules #1, #2
@@ -85,24 +82,26 @@ cases:
       add `ChangeDetectionStrategy.OnPush` — that is a semantic change excluded from
       drive-by cleanup (it may suggest OnPush as a follow-up, but not apply it).
 
-  - id: angular-004-no-future-proofing-analytics
-    rule: CLAUDE.md > Verification Rules #8 + Leanness defaults #2, #3, #8
+  - id: angular-004-solid-dip-but-no-speculative-provider
+    rule: CLAUDE.md > SOLID (DIP) + Verification Rule #8 (no future-proofing)
     prompt: |
       Add an AnalyticsService that tracks page views. We use Google Analytics. There is
       one consumer today (AppComponent) and no plan to add another provider. Show the
       service skeleton (no real GA SDK calls — just the shape).
+    must_match:
+      - 'abstract\s+class\s+AnalyticsService|InjectionToken'
     must_not_match:
-      - 'interface\s+IAnalyticsProvider'
-      - 'interface\s+AnalyticsProvider'
-      - 'abstract\s+class\s+AnalyticsProviderBase'
       - 'AnalyticsProviderFactory'
-      - 'InjectionToken<.*Analytics'
+      - 'interface\s+IAnalyticsProvider'
+      - 'abstract\s+class\s+AnalyticsProviderBase'
     rubric: |
-      Does the response provide a concrete GoogleAnalyticsService (or AnalyticsService)
-      without introducing an IAnalyticsProvider interface, an abstract
-      AnalyticsProviderBase, an InjectionToken for swapping providers, or a factory
-      pattern for "future providers"? Future-proofing for a hypothetical second provider
-      is explicitly forbidden by Verification Rule #8 and Leanness default #2.
+      Two things must BOTH hold. (1) DIP: AnalyticsService is provided through a DI abstraction
+      (abstract class token, or interface + InjectionToken) and AppComponent injects the
+      abstraction — required by CLAUDE.md > SOLID. (2) No future-proofing: it must NOT introduce a
+      provider-swapping layer for a hypothetical second analytics provider — no IAnalyticsProvider,
+      no AnalyticsProviderBase, no AnalyticsProviderFactory, no multi-provider registry. The single
+      required abstraction is DIP; a provider-strategy layer for imagined providers is the
+      speculation Verification Rule #8 forbids.
 
   - id: angular-005-no-bypass-security-trust-without-rationale
     rule: CLAUDE.md > Verification Rules + security defaults

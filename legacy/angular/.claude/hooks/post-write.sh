@@ -83,6 +83,11 @@ if [ -f "$stamp" ]; then
 fi
 date +%s > "$stamp" 2>/dev/null
 
-npx --no-install tsc --noEmit --incremental --tsBuildInfoFile .claude/.state/tsbuildinfo 2>&1 | tail -20
+tsc_output=$(npx --no-install tsc --noEmit --incremental --tsBuildInfoFile .claude/.state/tsbuildinfo 2>&1)
+if [ $? -ne 0 ]; then
+  echo "## tsc --noEmit failed — fix before continuing:"
+  printf '%s\n' "$tsc_output" | tail -20
+fi
+# On success: stay silent — emitting type-check output every successful write wastes context tokens.
 
 exit 0

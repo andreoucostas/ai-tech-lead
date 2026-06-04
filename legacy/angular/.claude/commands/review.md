@@ -8,13 +8,14 @@ If no specific files or PR given, review the most recent uncommitted changes (bo
 ## Execution
 
 ### Step 1 — Dispatch parallel auditors
-In a single message, spawn all three subagents via the `Task` tool:
+In a single message, spawn all four subagents via the `Task` tool:
 
 - `convention-check` — verifies the diff against CLAUDE.md > Conventions and Boy Scout always-apply items.
+- `solid-check` — audits the diff against CLAUDE.md > SOLID (the five principles; literal interface-per-injected-service).
 - `debt-radar` — surfaces TECH_DEBT.md entries touching the changed files (debt-trajectory signal).
 - `bloat-radar` — surfaces speculative abstractions, shallow wrappers, parallel implementations, and comment debris in the diff.
 
-Wait for all three to return their structured output. Use those findings as the spine of the review — do not redo the scans yourself.
+Wait for all four to return their structured output. Use those findings as the spine of the review — do not redo the scans yourself.
 
 ### Step 2 — Verify the build yourself
 Run `ng build` and `ng test --watch=false --browsers=ChromeHeadless`. Do not trust that the code being reviewed already passes. If lint is configured, run `ng lint` too. Record any failures as high-severity issues.
@@ -26,6 +27,7 @@ The auditors handle pattern-level checks. You handle:
 - **Security**: XSS, data exposure, auth bypass, injection — auditors do not check these.
 - **Test quality**: does the test verify behavior or implementation? Would it catch a regression?
 - **Architecture trajectory**: does this move toward or away from the target architecture in CLAUDE.md > Architecture Decisions?
+- **Spec conformance**: if a `specs/<slug>.md` exists for this change, verify the implementation satisfies its acceptance criteria and stays within its declared scope. Flag unmet criteria or scope creep as issues.
 
 ### Step 4 — Synthesise
 

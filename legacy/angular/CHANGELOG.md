@@ -3,6 +3,46 @@
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
 > Architecture decisions (cross-stack) live in `project_framework_architecture.md`.
 
+## 0.9.0 — 2026-06-04 (literal SOLID)
+
+### Added
+- **SOLID is now mandatory** — a standing `## SOLID` section in CLAUDE.md (mirrored to AGENTS.md): an abstraction/token for **every injected service** (DIP), plus SRP / OCP / LSP / ISP rules. Literal classic SOLID, per tech-lead mandate. DIP mechanism is an `abstract class` DI token (or `interface` + `InjectionToken`). Data carriers (models, DTOs, enums) are exempt.
+- **`solid-check` subagent** (`.claude/agents/` + `.github/agents/` mirror), dispatched by `/review` Step 1 alongside convention-check / bloat-radar / debt-radar. Self-skips in repos without a `## SOLID` section.
+- **`docs/architecture-decisions.md`** is now the home for full ADRs; `docs/defaults.md` DI section mandates an abstraction per service for greenfield.
+
+### Changed
+- **Leanness #2 reconciled with SOLID**: abstractions are now expected for injected services; anti-bloat teeth remain on *data* (never abstract a model/DTO) and on *speculation*.
+- **`bloat-radar` recalibrated**: no longer flags a single-implementation abstraction/token on an injected service (required by DIP now); still flags abstractions on non-service types, speculative bases, and single-use pipes/directives. The SOLID lens moved to `solid-check`.
+- **`/generate-copilot`** now emits a SOLID block into `copilot-instructions.md` and copies the full SOLID section into the `AGENTS.md` mirror.
+- **Eval suite** flipped to the new policy: `angular-001` now requires a DI abstraction for the service; `angular-004` requires the abstraction **and** still forbids a speculative provider layer (DIP yes, future-proofing no).
+
+### Fixed
+- **`/adopt` ADR merge** now appends full ADRs to `docs/architecture-decisions.md` with a one-line index in CLAUDE.md (was inline), matching the `create-adr` skill and `/bootstrap` Phase 3a.
+
+### Note
+- Deterministic DIP backstop is **dependency-cruiser** (or `eslint-plugin-boundaries`) enforcing module/layer direction in CI; the semantic SOLID gate is the `solid-check` agent.
+
+## 0.8.0 — 2026-06-04 (cross-tool parity + Bitbucket + spec-driven)
+
+### Added
+- **AGENTS.md is now a generated full mirror** of CLAUDE.md's portable rules (Verification, Leanness, Conventions, Boy Scout, Agentic Workflow) — not a pointer — so AGENTS.md-native tools (GitHub Copilot agent mode & CLI, Codex, Cursor, Gemini, Aider) get the real ruleset. Emitted by `/generate-copilot` Part B; produced by `/bootstrap` Phase 3e; checked for drift by `/docs-sync` Step 2 and the CI guardrail.
+- **Skills now reach Copilot.** `.claude/skills/` is mirrored byte-for-byte to `.github/skills/` (Copilot CLI / cloud agent read that path; VS Code Copilot already reads `.claude/skills/`). New `scripts/sync-agent-files.{sh,ps1}` regenerates the mirror, `/generate-copilot` Part C runs it, and the CI guardrail enforces parity.
+- **Subagents exposed to Copilot** as custom agents: `.github/agents/{security-auditor,convention-check,bloat-radar,debt-radar}.agent.md` — thin wrappers delegating to the canonical `.claude/agents/` definitions (same single-source pattern as the prompt files).
+- **PreToolUse guard hook** (`guard.sh` + `.ps1`) — hard-blocks any write that adds `// eslint-disable`, `@ts-ignore`/`@ts-nocheck`, or a hardcoded secret (private key, cloud token, credential literal). Registered in `.claude/settings.json`, `.claude/settings.windows.json`, and `.github/hooks/hooks.json` (Claude Code: exit-2 block; Copilot: JSON deny). Deterministic enforcement of Verification Rule #7.
+- **Spec-driven development**: a `specs/` directory with `specs/README.md` (template + lifecycle). `/design` persists a spec to `specs/<slug>.md`, `/feature` implements against it, `/review` verifies conformance. CLAUDE.md is framed as the project "constitution".
+- **New skills**: `add-tests` (TestBed + `HttpTestingController`, store state-transition tests), `dependency-audit` (`npm audit` + Dependabot/Renovate setup), `create-adr` (inline ADRs in CLAUDE.md > Architecture Decisions).
+- **Bitbucket Data Center support**: a README "Running on Bitbucket Data Center" section (what works locally vs what's GitHub-only — incl. Atlassian Rovo Dev being Cloud-only); host-agnostic `scripts/docs-sync-check.{sh,ps1}`; `scripts/ci/bitbucket-pipelines.example.yml`; and Code Insights / pre-receive / Bamboo wiring guidance. `/security-review` gains a "Standing scanners" note (CodeQL on GitHub; Semgrep/SonarQube + Code Insights on Bitbucket).
+
+### Changed
+- `.github/workflows/docs-sync-check.yml` is now a thin caller of `scripts/docs-sync-check.sh` (host-agnostic) and is marked GitHub-only. The script also verifies the AGENTS.md mirror is current and that `.github/skills` matches `.claude/skills`.
+- `/generate-copilot` now regenerates **both** `.github/copilot-instructions.md` (slim) and `AGENTS.md` (full mirror), and syncs the skills mirror.
+
+### Token economy
+- **Model routing**: `convention-check`, `bloat-radar`, and `debt-radar` now run on **Haiku** (recurring, pattern-based work); `security-auditor` and `bootstrap-pass` stay on the inherited strong model (high-stakes / one-time-high-leverage). Cuts per-`/review` cost without losing security or bootstrap quality.
+- **Quiet-on-success hooks**: `post-write.{sh,ps1}` emit `tsc --noEmit` output **only on failure** — a successful write no longer injects type-check output into context.
+- **CLAUDE.md size budget**: `docs-sync-check.{sh,ps1}` prints an advisory NOTE when CLAUDE.md exceeds ~400 lines (it loads on nearly every turn and anchors the prompt cache); `/bootstrap` Phase 3a documents the budget.
+- **ADRs out of the hot path**: the `create-adr` skill now appends full ADRs to `docs/architecture-decisions.md` with a one-line index in CLAUDE.md, instead of pasting them inline — stops the always-loaded file from growing and avoids busting the prompt cache on every recorded decision. `/bootstrap` Phase 3a follows the same split.
+
 ## 0.7.3 — 2026-05-19 (Boy Scout OnPush demotion)
 
 ### Fixed

@@ -1,14 +1,14 @@
 <!--
 ai-tech-lead-framework
   template: angular
-  version: 0.7.3
-  applied: 2026-05-19
+  version: 0.9.0
+  applied: 2026-06-04
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
 # [Project Name]
 
 > This file is the single source of truth for AI-assisted development in this repository.
-> It is automatically loaded by Claude Code, by GitHub Copilot's coding agent and CLI, and by any AGENTS.md-aware tool (Codex, Cursor, Aider).
+> Claude Code loads this file directly. GitHub Copilot (agent mode & CLI), Codex, Cursor, Gemini, and Aider read its generated mirror **[AGENTS.md](./AGENTS.md)** (kept in sync by `/generate-copilot`). Edit conventions here, never in AGENTS.md.
 > Run `/bootstrap` to populate it from your actual codebase.
 >
 > **Companion file**: [FRAMEWORK-CONTEXT.md](./FRAMEWORK-CONTEXT.md) holds cross-repo context (shared libraries, multi-tenancy conventions, dashboard contracts) that the agent should also load on every non-trivial task. CLAUDE.md wins on any conflict — but flag the contradiction.
@@ -27,7 +27,7 @@ These apply to every workflow, before any convention-level rule. The difference 
 4. **State uncertainty.** When a question depends on context you do not have (a file you have not read, runtime behaviour you cannot observe, a backend response shape you cannot verify), say so. Do not guess to seem helpful.
 5. **Tests are immutable safety nets during fixes and refactors.** When an existing spec fails, production is wrong (or the test is wrong for a documented reason). Do not edit assertions to make them pass without flagging it explicitly.
 6. **No invented fixtures.** When sample data, builders, factories, or HTTP mocks already exist, reuse them. Do not fabricate parallel ones.
-7. **Failures are signals.** `tsc` errors, lint errors, and test failures are diagnostic. Read the message and fix the cause; never `// @ts-ignore`, `as any`, or comment-out to silence.
+7. **Failures are signals.** `tsc` errors, lint errors, and test failures are diagnostic. Read the message and fix the cause; never `// @ts-ignore`, `as any`, or comment-out to silence. (A PreToolUse hook hard-blocks writes that add `// eslint-disable` / `@ts-ignore` / `@ts-nocheck`.)
 8. **No future-proofing.** Do not add code for hypothetical requirements. Three similar lines is better than a premature abstraction.
 
 ---
@@ -39,7 +39,7 @@ The Boy Scout Rule biases toward adding improvements. This section is the counte
 ### Defaults
 
 1. **Edit existing files; do not create new ones unless required.** A new file is a long-term commitment. If a method fits an existing service or component, put it there.
-2. **No interface unless there will be a second implementation.** "I might mock it" is not a second implementation — Angular's testing utilities work on concrete classes via DI overrides.
+2. **Abstractions are for injected services (SOLID/DIP) and for genuine second implementations — not for data.** Every injected service is provided through an `abstract class`/token (see [SOLID](#solid)). *Outside* that rule, no interface or abstraction without a real need — models/DTOs never get abstractions, and don't invent abstractions for hypothetical variation.
 3. **No abstract base class with one subclass.** Inline it.
 4. **Wrappers must add behavior.** A service whose method just calls `httpClient.get(...)` and returns the observable is a layer that costs reading time and adds no value. Inline or remove.
 5. **No defensive code for impossible states.** Trust internal callers; validate only at system boundaries (form input, HTTP response, route params).
@@ -58,6 +58,22 @@ The Boy Scout Rule biases toward adding improvements. This section is the counte
 ### When you must add structure
 
 If a change genuinely requires a new abstraction, component, service, or pipe, state the second consumer (existing or imminent) in the design or PR description. "Imminent" means within the same change-set. Otherwise: defer the abstraction until the second case appears.
+
+---
+
+## SOLID
+
+SOLID is **mandatory** in this codebase. It governs structure; [Leanness](#leanness) governs ceremony *beyond* that structure — reconciled here and in Leanness #2.
+
+1. **Single Responsibility** — one reason to change. No god components/services; honour the smart/dumb split; split a component that mixes data access and presentation. Heuristic: more than ~5 injected collaborators, or a name needing "And"/"Manager", means split.
+2. **Open/Closed** — extend by adding a type/strategy, not editing a stable one. When a `switch`/`if` over a type code reaches its **third** arm, replace it with polymorphism. (Don't build the seam speculatively before then — that is future-proofing.)
+3. **Liskov Substitution** — every implementation fulfils its abstraction's contract: no `throw new Error('not implemented')`, no strengthened preconditions, no weakened postconditions.
+4. **Interface Segregation** — small, role-based interfaces over one fat service contract; no implementation forced to stub members it doesn't use.
+5. **Dependency Inversion** — **every injected service is depended on through an abstraction**: declare an `abstract class` (a runtime-capable DI token) — or an `interface` + `InjectionToken<T>` — and `provide` the concrete implementation; components/services inject the abstraction, never `new` a concrete service. Data carriers (models, DTOs, enums) are not services — they get no abstraction.
+
+**Mechanism**: prefer `abstract class Foo` as the token with `{ provide: Foo, useClass: FooImpl }` (TypeScript `interface`s don't exist at runtime); use `interface` + `InjectionToken<T>` where an abstract class is awkward.
+
+**Deterministic backstop**: module/layer dependency direction is enforced in CI by **dependency-cruiser** (or `eslint-plugin-boundaries`). The `solid-check` agent covers the semantic principles per diff and is run by `/review`.
 
 ---
 
@@ -91,23 +107,28 @@ _Not yet populated. Until you run `/bootstrap`, the greenfield defaults in [docs
 
 ## Architecture Decisions
 
-<!-- Populated by /bootstrap — replaces separate ADR files -->
-<!-- Format: Decision → Context → Consequences → Review notes -->
+<!-- One-line INDEX of significant decisions here (ID — title — date — link). Full ADRs
+     (Decision → Context → Consequences → Review notes) live in docs/architecture-decisions.md,
+     added by the create-adr skill. Rationale: CLAUDE.md loads on nearly every agent turn and
+     anchors the prompt cache — keep it small; detail loads on demand. -->
 
-Record significant decisions here. Include accidental decisions that became convention.
+A one-line index of significant decisions (including accidental ones that became convention). Full detail in [docs/architecture-decisions.md](./docs/architecture-decisions.md).
 
 ---
 
 ## Common Tasks
 
-Recipes live in `.claude/skills/` — each is auto-discovered by Claude Code and triggered by the model when relevant. Current skills:
+Recipes live as **skills**, auto-discovered by both Claude Code (`.claude/skills/`) and GitHub Copilot (`.github/skills/`) — the model triggers the relevant one when you describe that kind of task. Current skills:
 
 - `add-component` — add a new Angular feature component end-to-end
 - `add-service` — add an HTTP / business-logic / signal-store service
 - `add-lazy-route` — add a lazy-loaded route with optional guards/resolvers
 - `add-signal-store` — add a signal-based shared-state store
+- `add-tests` — add specs following project patterns (TestBed + `HttpTestingController`, harnesses, store state-transition tests)
+- `dependency-audit` — scan for vulnerable/deprecated/outdated npm packages and set up automated dependency scanning (Dependabot or Renovate)
+- `create-adr` — record a significant architecture decision in Architecture Decisions
 
-`/bootstrap` adds project-specific skills under `.claude/skills/` rather than appending recipes here.
+`/bootstrap` adds project-specific skills under `.claude/skills/` rather than appending recipes here. Skills are mirrored to `.github/skills/` by `/generate-copilot` (and `scripts/sync-agent-files`) so Copilot CLI/agent see them too.
 
 ---
 

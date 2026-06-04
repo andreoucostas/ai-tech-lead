@@ -67,7 +67,9 @@ if (Test-Path $stamp) {
 Set-Content -Path $stamp -Value $now -Encoding ASCII
 
 $out = npx --no-install tsc --noEmit --incremental --tsBuildInfoFile .claude\.state\tsbuildinfo 2>&1
-if ($out) {
+# Only surface output on failure — emitting type-check output every successful write wastes context tokens.
+if ($LASTEXITCODE -ne 0) {
+    Write-Output "## tsc --noEmit failed -- fix before continuing:"
     $out | Select-Object -Last 20 | ForEach-Object { Write-Output $_ }
 }
 

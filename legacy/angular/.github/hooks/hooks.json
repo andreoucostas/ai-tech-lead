@@ -10,6 +10,14 @@
         "timeoutSec": 15
       }
     ],
+    "preToolUse": [
+      {
+        "type": "command",
+        "bash": ".claude/hooks/guard.sh",
+        "powershell": ".claude\\hooks\\guard.ps1",
+        "timeoutSec": 10
+      }
+    ],
     "postToolUse": [
       {
         "type": "command",

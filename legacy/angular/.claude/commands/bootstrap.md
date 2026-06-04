@@ -110,11 +110,13 @@ Read the existing CLAUDE.md template in the project root. Replace every placehol
 - **Codebase Context**: what this app does, users, domain concepts, critical journeys
 - **Repository Structure**: actual folder layout with module dependency diagram
 - **Conventions**: the rules this codebase actually follows (or should follow), with rationale. Use the subsection structure from `docs/defaults.md` (Angular Version, Architecture, Component Design, State Management, RxJS, API/HTTP, Typing, Testing) as a starting checklist; record observed reality, deviating from defaults where the codebase does. If Angular version is below 17, adjust conventions to match what's available. **Delete the `BOOTSTRAP_PENDING` HTML comment and the "_Not yet populated_" placeholder line** when this section is filled in.
-- **Architecture Decisions**: every significant decision found — intentional or accidental. Include context, consequences, and honest review notes.
+- **Architecture Decisions**: index every significant decision found (intentional or accidental) as a one-line entry here; write the full Decision → Context → Consequences → Review notes to `docs/architecture-decisions.md` (create it if missing). Keeping detail out of CLAUDE.md holds it within the token budget — it loads on nearly every turn.
 - **Common Tasks**: do NOT write recipes inline in CLAUDE.md. Instead, audit `.claude/skills/` against this codebase: keep a default skill if its recipe matches reality (adjust steps where they don't); add new skills under `.claude/skills/<name>/SKILL.md` for project-specific recipes (each with `name` + `description` frontmatter); delete defaults that don't apply. Update the Common Tasks bullet list in CLAUDE.md to match the final skill set.
 - **Boy Scout Rule**: priority improvements based on the actual debt found in Phase 2
 
 Preserve the Agentic Workflow section as-is. Never touch `LEARNINGS.md` — it is append-only.
+
+**Token budget**: `CLAUDE.md` loads on nearly every agent turn and anchors the prompt cache — keep it ≤ ~400 lines. Put verbose detail (long ADRs, exhaustive structure dumps) in on-demand files (`docs/`, skills); keep CLAUDE.md to the high-frequency rules. `scripts/docs-sync-check.*` warns past the budget.
 
 ### 3b: Generate TECH_DEBT.md
 
@@ -156,31 +158,11 @@ Effort: S (< 1hr) / M (half day) / L (1-2 days) / XL (needs spike)
 
 Sort by severity then effort. One `## DEBT-NNN` block per item.
 
-### 3c: Ensure AGENTS.md exists
+### 3c: AGENTS.md (generated full mirror)
 
-If `AGENTS.md` is missing from the repo root, write it. Use this exact content (it points all agent-style tools — Copilot coding agent, Codex, Cursor, Aider — at CLAUDE.md):
+`AGENTS.md` is a **generated mirror** of CLAUDE.md's portable rules (Verification, Leanness, Conventions, Boy Scout, Agentic Workflow, Common Tasks). It exists so AGENTS.md-native tools — GitHub Copilot agent mode & CLI, Codex, Cursor, Gemini CLI, Aider — get the actual ruleset, not a pointer. **Do not hand-write a pointer file.**
 
-```markdown
-# Agent Instructions
-
-This repository follows the AI Tech Lead Framework. The single source of truth for conventions, architecture, common tasks, and the agentic workflow lives in **[CLAUDE.md](./CLAUDE.md)** at the repository root.
-
-All AI coding agents (Claude Code, GitHub Copilot coding agent, Codex, Cursor, Aider, etc.) should read `CLAUDE.md` before making changes and treat it as authoritative.
-
-## Quick reference
-
-- **Conventions, architecture, common tasks, boy-scout rules**: see [CLAUDE.md](./CLAUDE.md)
-- **Tech debt register**: see [TECH_DEBT.md](./TECH_DEBT.md)
-- **Inline-completion ruleset**: see [.github/copilot-instructions.md](./.github/copilot-instructions.md)
-- **Reusable workflows for Copilot Chat**: see [.github/prompts/](./.github/prompts/)
-- **Reusable workflows for Claude Code**: see [.claude/commands/](./.claude/commands/)
-
-## Precedence
-
-If anything in this file or in derived files conflicts with `CLAUDE.md`, `CLAUDE.md` wins. Slash commands (`/feature`, `/fix`, etc.) have Copilot equivalents in `.github/prompts/` with the same names.
-```
-
-If `AGENTS.md` already exists, leave it alone.
+AGENTS.md is produced by the `/generate-copilot` workflow (Part B), which Phase 3e runs **after** Phase 3a has populated `CLAUDE.md > Conventions`. So there is nothing to do here except ensure 3e runs. If a stale or pointer-style `AGENTS.md` already exists, it will be **regenerated** (overwritten) by 3e — do not preserve hand edits to it.
 
 ### 3d: Populate FRAMEWORK-CONTEXT.md > Detected Framework Packages
 
@@ -205,16 +187,14 @@ Replace the `## Detected Framework Packages` section with a populated table:
 
 Do **not** edit any other section of FRAMEWORK-CONTEXT.md — those are maintainer-curated.
 
-### 3e: Generate copilot-instructions.md (slim, inline-completions only)
+### 3e: Generate the agent-facing derived files
 
-Run the `/generate-copilot` workflow. **Do not** produce a full derivative of CLAUDE.md — Copilot's coding agent reads CLAUDE.md and AGENTS.md directly. The copilot-instructions.md file is now scoped to inline editor completions only:
+Run the `/generate-copilot` workflow. It regenerates **both** derived files from the now-populated CLAUDE.md:
 
-- Terse imperative one-liners
-- Conventions and Boy Scout (always-apply only)
-- Total under 80 lines
-- No Common Tasks, no Architecture Decisions, no Codebase Context
+- **`.github/copilot-instructions.md`** — slim (≤80 lines), terse imperative one-liners, Conventions + always-apply Boy Scout only. For **inline editor completions**.
+- **`AGENTS.md`** — full mirror of CLAUDE.md's portable rules (Verification, Leanness, Conventions, Boy Scout, Agentic Workflow, Common Tasks), preserving the `GENERATED FILE` banner. For **AGENTS.md-native tools** (Copilot agent mode & CLI, Codex, Cursor, Gemini, Aider) — they get the real ruleset, not a pointer.
 
-See `.claude/commands/generate-copilot.md` for the exact rules.
+See `.claude/commands/generate-copilot.md` for the exact rules for each file.
 
 ---
 

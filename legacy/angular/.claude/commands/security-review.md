@@ -63,3 +63,14 @@ Spot-check 2–3 findings by opening the cited files and confirming the pattern 
 - `APPROVE`: only when all findings are `low` or have explicit accepted-risk rationale
 
 Be direct. Do not praise code for not being insecure — that is the baseline.
+
+---
+
+## Standing scanners (set up once, not per-review)
+
+`/security-review` is the per-change gate. Back it with automated scanning so regressions are caught between reviews:
+
+- **Dependencies**: run the `dependency-audit` skill — `npm audit` plus Dependabot (GitHub) or Renovate (Bitbucket / host-agnostic).
+- **SAST**: on GitHub, enable **CodeQL** code scanning (JavaScript/TypeScript). On **Bitbucket Data Center**, CodeQL is unavailable — run a SAST tool (Semgrep, SonarQube) in Bitbucket Pipelines / Bamboo / Jenkins and publish results via the **Code Insights API** so findings appear inline on the PR. See the README "Running on Bitbucket Data Center" section.
+
+These are infrastructure, not review steps — recommend them once, then let CI carry them.

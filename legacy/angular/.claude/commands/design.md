@@ -69,4 +69,10 @@ List anything you're unsure about or that the developer needs to decide before i
 [decisions needed from the developer]
 ```
 
-When the developer is ready to implement, they can use `/feature` with the decisions from this design.
+## Persist the spec (non-trivial features)
+
+For anything beyond a trivial change, write the design above to `specs/<short-kebab-slug>.md` using the template in [`specs/README.md`](../../specs/README.md), with **Status: Draft**. This persists the contract across sessions and tools so `/feature` implements against it and `/review` verifies against it. For a trivial change, skip the file — say so and proceed.
+
+`CLAUDE.md` is the **constitution**: the spec must comply with its Conventions, Leanness, and Architecture Decisions. Flag any place the requirement pushes against a convention so the developer decides *before* code is written.
+
+When the developer is ready to implement, they run `/feature` — it picks up `specs/<slug>.md` and implements against it.

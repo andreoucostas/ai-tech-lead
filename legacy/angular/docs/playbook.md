@@ -36,9 +36,9 @@ After three months of this, every actively-developed area is cleaner, better-tes
 Auto-loaded by GitHub Copilot on every inline suggestion. Terse imperative rules — naming, patterns, imports — handled without the developer asking. Token budget is tight here, so the file is ≤80 lines.
 
 ### Tier 2 — Directed (agent-mode reasoning)
-**Files**: `CLAUDE.md` (single source of truth), `AGENTS.md` (pointer)
+**Files**: `CLAUDE.md` (authored single source of truth), `AGENTS.md` (generated full mirror)
 
-Auto-loaded by **Claude Code AND by GitHub Copilot's coding agent / CLI** (and any AGENTS.md-aware tool). Conventions, architecture, common tasks, agentic workflow. When a developer types a natural language request, the agent reads CLAUDE.md and follows the appropriate workflow automatically. Per-developer working preferences live in Claude Code's persistent memory, not in CLAUDE.md.
+Claude Code loads `CLAUDE.md` directly. **GitHub Copilot (agent mode & CLI), Codex, Cursor, Gemini, and Aider load its generated mirror `AGENTS.md`** — a full copy of the portable rules, not a pointer, kept in sync by `/generate-copilot`. Conventions, architecture, common tasks, agentic workflow. When a developer types a natural language request, the agent reads CLAUDE.md and follows the appropriate workflow automatically. Per-developer working preferences live in Claude Code's persistent memory, not in CLAUDE.md.
 
 ### Tier 3 — Explicit (workflow commands)
 **Files**: `.claude/commands/*.md` (canonical), `.github/prompts/*.prompt.md` (Copilot Chat wrappers)

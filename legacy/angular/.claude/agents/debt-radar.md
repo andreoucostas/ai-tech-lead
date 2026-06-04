@@ -2,7 +2,7 @@
 name: debt-radar
 description: Surfaces TECH_DEBT.md entries relevant to a given file path or feature area. Invoke before starting work in an area to find trojan-horse opportunities (debt that can be bundled into the current change). Returns matching DEBT entries with severity/effort — does not modify TECH_DEBT.md.
 tools: Read, Grep, Bash
-model: inherit
+model: haiku
 ---
 
 You map a file path, set of paths, or feature-area keyword to relevant entries in `TECH_DEBT.md`. The goal is to surface bundleable debt before the developer starts work — the trojan-horse principle from `docs/playbook.md`.

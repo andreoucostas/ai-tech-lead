@@ -1,5 +1,13 @@
 name: Docs sync check
 
+# GitHub Actions wrapper. The actual checks live in scripts/docs-sync-check.sh so they run
+# ANYWHERE — GitHub Actions, Bitbucket Pipelines, Bamboo, Jenkins, a pre-receive hook, or locally.
+#
+# This .yml is GitHub-only. On Bitbucket Data Center (no GitHub Actions), wire
+# scripts/docs-sync-check.sh into a Bamboo/Jenkins job or a pre-receive hook, and optionally publish
+# the result to the PR via the Code Insights API. A Bitbucket Pipelines sample (Bitbucket Cloud) is
+# in scripts/ci/bitbucket-pipelines.example.yml. See the README "Running on Bitbucket Data Center".
+
 on:
   pull_request:
   push:
@@ -12,80 +20,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Check AI Tech Lead framework files
-        run: |
-          # Skip checks if this repo is the framework template itself.
-          # The marker file is documented to never be copied into consumer repos.
-          if [ -f ".template-repo" ]; then
-            echo "Detected framework template repo (.template-repo marker present). Skipping framework-state checks — they only apply to consumer repos that have run /bootstrap."
-            exit 0
-          fi
-
-          FAILED=0
-
-          # 1. CLAUDE.md exists and is non-empty
-          if [ ! -s "CLAUDE.md" ]; then
-            echo "FAIL: CLAUDE.md is missing or empty."
-            FAILED=1
-          else
-            echo "OK: CLAUDE.md exists and is non-empty."
-          fi
-
-          # 2. AGENTS.md exists
-          if [ ! -f "AGENTS.md" ]; then
-            echo "FAIL: AGENTS.md is missing. Run /bootstrap to generate it."
-            FAILED=1
-          else
-            echo "OK: AGENTS.md exists."
-          fi
-
-          # 3. .github/copilot-instructions.md exists and is <= 80 lines
-          if [ ! -f ".github/copilot-instructions.md" ]; then
-            echo "FAIL: .github/copilot-instructions.md is missing. Regenerate it: run /generate-copilot in Claude Code, or have your AI agent rewrite it from CLAUDE.md following the rules in .claude/commands/generate-copilot.md."
-            FAILED=1
-          else
-            LINE_COUNT=$(wc -l < ".github/copilot-instructions.md")
-            if [ "$LINE_COUNT" -gt 80 ]; then
-              echo "FAIL: .github/copilot-instructions.md is $LINE_COUNT lines (limit: 80). Regenerate it within the slim limit (rules in .claude/commands/generate-copilot.md)."
-              FAILED=1
-            else
-              echo "OK: .github/copilot-instructions.md exists and is $LINE_COUNT lines (<= 80)."
-            fi
-          fi
-
-          # 4. TECH_DEBT.md exists
-          if [ ! -f "TECH_DEBT.md" ]; then
-            echo "FAIL: TECH_DEBT.md is missing. Run /bootstrap to generate it."
-            FAILED=1
-          else
-            echo "OK: TECH_DEBT.md exists."
-          fi
-
-          # 4b. FRAMEWORK-CONTEXT.md exists and has been bootstrapped
-          if [ ! -f "FRAMEWORK-CONTEXT.md" ]; then
-            echo "FAIL: FRAMEWORK-CONTEXT.md is missing. Copy it from the template."
-            FAILED=1
-          elif grep -q "DETECTED_FRAMEWORK_PACKAGES_PENDING" "FRAMEWORK-CONTEXT.md" 2>/dev/null; then
-            echo "FAIL: FRAMEWORK-CONTEXT.md still contains the DETECTED_FRAMEWORK_PACKAGES_PENDING marker. Run /bootstrap to populate it."
-            FAILED=1
-          else
-            echo "OK: FRAMEWORK-CONTEXT.md exists and detected-packages section has been populated."
-          fi
-
-          # 5. CLAUDE.md no longer contains the BOOTSTRAP_PENDING marker
-          if grep -q "BOOTSTRAP_PENDING" "CLAUDE.md" 2>/dev/null; then
-            echo "FAIL: CLAUDE.md still contains the BOOTSTRAP_PENDING marker. Run /bootstrap to populate it from your codebase."
-            FAILED=1
-          else
-            echo "OK: CLAUDE.md has been bootstrapped."
-          fi
-
-          if [ "$FAILED" -ne 0 ]; then
-            echo ""
-            echo "One or more AI Tech Lead framework checks failed. See messages above."
-            exit 1
-          fi
-
-          echo ""
-          echo "All AI Tech Lead framework checks passed."
+      - name: AI Tech Lead framework state
+        run: bash scripts/docs-sync-check.sh

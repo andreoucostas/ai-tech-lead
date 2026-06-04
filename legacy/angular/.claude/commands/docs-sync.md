@@ -14,11 +14,20 @@ For each section in CLAUDE.md:
 - **Common Tasks**: do the step-by-step patterns match the current code?
 - **Boy Scout Rule**: are the priorities still relevant or has debt shifted?
 
-### Step 2 — Check copilot-instructions.md against CLAUDE.md
-- Every rule in CLAUDE.md should appear in copilot-instructions.md
-- Every rule in copilot-instructions.md should trace back to CLAUDE.md
-- No contradictions between the two files
-- Flag any rules that exist in one but not the other
+### Step 2 — Check the generated derived files against CLAUDE.md
+Two files are generated from CLAUDE.md by `/generate-copilot` and must not drift:
+
+**`.github/copilot-instructions.md`** (slim, inline completions):
+- Every Conventions / always-apply Boy Scout rule in CLAUDE.md should appear here.
+- Every rule here should trace back to CLAUDE.md. No contradictions. Flag rules in one but not the other.
+- Still ≤ 80 lines.
+
+**`AGENTS.md`** (full mirror for AGENTS.md-native tools):
+- The Verification Rules, Leanness, Boy Scout, and Agentic Workflow sections should match CLAUDE.md **verbatim**. Flag any section that has diverged.
+- The Conventions section should mirror `CLAUDE.md > Conventions` (once bootstrapped).
+- It must still begin with the `GENERATED FILE — do not edit by hand` banner. If someone hand-edited AGENTS.md, flag it and recommend re-running `/generate-copilot`.
+
+If either file has drifted, recommend `/generate-copilot` to regenerate both.
 
 ### Step 3 — Check LEARNINGS.md
 - Does it still only say "No entries yet"? If so, prompt the team to add observations.
@@ -46,10 +55,10 @@ Do NOT apply changes automatically. Present a structured report:
 | Section | Issue | Suggested Update |
 |---------|-------|-----------------|
 
-### copilot-instructions.md vs CLAUDE.md
-| Rule | Status | Issue |
-|------|--------|-------|
-(Status: in-sync / missing-from-copilot / missing-from-claude / contradicts)
+### Derived files vs CLAUDE.md (copilot-instructions.md + AGENTS.md)
+| File | Rule / Section | Status | Issue |
+|------|----------------|--------|-------|
+(Status: in-sync / missing-from-derived / missing-from-claude / contradicts / hand-edited)
 
 ### FRAMEWORK-CONTEXT.md Drift
 - Detected packages added: ...
