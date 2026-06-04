@@ -12,6 +12,8 @@ Pointed at this repo and asked to install the framework into a target codebase? 
 
 Architecture is mapped in [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md); reviewers should start with [docs/REVIEW-GUIDE.md](./docs/REVIEW-GUIDE.md). Detailed manual steps are in "Quick Start" below.
 
+`/adopt` also produces a **before/after impact report** in `docs/impact/` (capability diff + codebase scorecard + an optional Copilot-CLI behavioral A/B) to show tech leads what changed — fully automated, no input needed.
+
 ## Why this framework?
 
 Without it, AI tools give you generic .NET code. The AI doesn't know your architecture, your conventions, or your team's decisions. Every developer gets different AI behaviour. The AI suggests patterns your team has already decided against, invents class names that don't exist, adds abstractions you don't need (while skipping the ones you do), and never cleans up the mess it leaves behind.

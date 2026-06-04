@@ -7,8 +7,9 @@ $root = (git rev-parse --show-toplevel 2>$null)
 if (-not $root) { $root = (Get-Location).Path }
 Set-Location $root
 
-$src = 'docs/ARCHITECTURE.md'
-$out = 'docs/architecture.html'
+$src   = if ($args.Count -ge 1) { $args[0] } else { 'docs/ARCHITECTURE.md' }
+$out   = if ($args.Count -ge 2) { $args[1] } else { 'docs/architecture.html' }
+$title = if ($args.Count -ge 3) { $args[2] } else { 'AI Tech Lead Framework — Architecture' }
 if (-not (Test-Path $src)) { Write-Output "No $src -- nothing to build."; exit 1 }
 
 $md = Get-Content $src -Raw -Encoding UTF8
@@ -23,7 +24,7 @@ $head = @"
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI Tech Lead Framework — Architecture</title>
+<title>$title</title>
 <!-- GENERATED from docs/ARCHITECTURE.md by scripts/build-architecture-html.ps1 — do not edit by hand. -->
 <!-- src-sha1: $sha -->
 <style>

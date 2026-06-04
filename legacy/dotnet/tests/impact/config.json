@@ -1,0 +1,6 @@
+{
+  "_comment": "Impact A/B harness config. The /impact workflow reads this. 'trials' = full statistical run (CI); 'smoke_trials' = quick inline run during /adopt. 'agent_cmd' is the headless coding-agent invocation with {prompt} substituted — the /impact workflow verifies and, if needed, adjusts it against `copilot --help` before running, so no manual edit is required. Pin the SAME model for both arms.",
+  "trials": 3,
+  "smoke_trials": 1,
+  "agent_cmd": "copilot --allow-all-tools -p {prompt}"
+}
