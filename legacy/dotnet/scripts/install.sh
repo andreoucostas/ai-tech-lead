@@ -29,6 +29,15 @@ done
 # The installer is meta — don't ship it into the consumer repo.
 rm -f "$target/scripts/install.sh" "$target/scripts/install.ps1"
 
+# Claude Code hooks default to pwsh (PowerShell 7). If this box doesn't have it, switch them to the
+# bash twins (bash is the Unix prerequisite anyway) so the hooks still fire.
+sj="$target/.claude/settings.json"
+if [ -f "$sj" ] && ! command -v pwsh >/dev/null 2>&1; then
+  tmp="$(mktemp)"
+  sed -E 's#pwsh -NoProfile -ExecutionPolicy Bypass -File \.claude/hooks/([A-Za-z-]+)\.ps1#bash .claude/hooks/\1.sh#g' "$sj" > "$tmp" && mv "$tmp" "$sj"
+  echo "  pwsh not found - switched Claude Code hooks to the bash twins."
+fi
+
 echo
 echo "Done. Next steps in the target repo:"
 echo "  1. Review the copied files (commit them — they are team-shared config, not local settings)."

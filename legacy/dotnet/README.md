@@ -168,22 +168,25 @@ The router is the key piece. **In Claude Code**, a developer who types *"the exp
 
 #### Hook compatibility
 
-The same hook scripts run across Claude Code and GitHub Copilot. All hooks are bash scripts with a PowerShell twin. Two hook surfaces are supported:
+The same hook logic runs across Claude Code and GitHub Copilot, shipped as both a bash script and a PowerShell twin. Two hook surfaces are supported:
 
 | Surface | Config file | Payload shape | Notes |
 |---------|-------------|---------------|-------|
 | **Claude Code** (CLI + VS Code extension) | `.claude/settings.json` | `tool_name` ∈ {`Write`,`Edit`}; `tool_input.file_path` | Native hook support with `matcher` field — hooks already filtered by tool name before the script runs. |
 | **GitHub Copilot** (cloud agent + CLI) | `.github/hooks/hooks.json` | `toolName` ∈ {`edit`,`create`}; `toolArgs.filePath` (parsed object, not a JSON string) | No `matcher` support — the scripts filter by tool name internally. |
 
-Platform compatibility for running the bash scripts:
+Hook interpreter by platform. **Claude Code's `settings.json` defaults to the PowerShell (`pwsh`) twins** — so hooks fire on Windows without git-bash (the old bash default silently no-opped there). The installer adapts the interpreter to your machine, so this is automatic:
 
-| Platform | Status | Notes |
-|----------|--------|-------|
-| macOS (bash 3.2+) | Works out of the box | `git`, `grep`, `tr`, `printf`, `wc` are all default. |
-| Linux | Works out of the box | Same as macOS. |
-| Windows + Git for Windows (git-bash) | Works | Default installer puts `bash.exe` on PATH. Claude Code and Copilot find it automatically. |
-| Windows + WSL only | Not recommended | Path translation between `/mnt/c/...` and Windows-style paths breaks the hooks. Install Git for Windows alongside WSL. |
-| Windows + PowerShell only (no git-bash) | Works via PowerShell variant | Use the shipped PowerShell hooks. Copy `.claude/settings.windows.json` over `.claude/settings.json` (team-wide) or to `.claude/settings.local.json` (per-developer). Uses Windows PowerShell 5.1 — preinstalled on every Windows machine. PowerShell 7 (`pwsh`) also works. |
+| Platform | Hook interpreter | Notes |
+|----------|------------------|-------|
+| Windows + PowerShell 7 (`pwsh`) | `pwsh` (default) | Works out of the box — no git-bash required. |
+| Windows, no `pwsh` | Windows PowerShell 5.1 | `install.ps1` auto-activates `settings.windows.json` (5.1 is preinstalled on every Windows box). |
+| Windows + Git for Windows (git-bash) | `pwsh`, or bash if preferred | Run `install.sh` under git-bash to switch to the bash twins. `.gitattributes` pins `*.sh` to LF so CRLF can't break them. |
+| macOS / Linux + `pwsh` | `pwsh` (default) | Works out of the box. |
+| macOS / Linux, no `pwsh` | bash | `install.sh` switches to the bash twins (`git`, `grep`, `tr`, `printf`, `wc` are all default). |
+| Windows + WSL only | — | Not recommended: `/mnt/c/...` path translation breaks the hooks. Install Git for Windows or PowerShell alongside WSL. |
+
+> GitHub Copilot's `.github/hooks/hooks.json` already declares both a `bash` and a `powershell` command per hook and picks per-OS, so Copilot is unaffected — this change brings Claude Code to parity on Windows.
 
 **Verify your setup** after copying the template into your repo:
 
