@@ -26,6 +26,17 @@ foreach ($f in @('scripts/install.sh', 'scripts/install.ps1')) {
     Remove-Item -Force -ErrorAction SilentlyContinue -LiteralPath (Join-Path $tgt $f)
 }
 
+# Claude Code hooks default to pwsh (PowerShell 7). If it isn't installed, fall back to the Windows
+# PowerShell 5.1 variant (preinstalled on every Windows box) so the hooks still fire.
+if (-not (Get-Command pwsh -ErrorAction SilentlyContinue)) {
+    $sj  = Join-Path $tgt '.claude/settings.json'
+    $sjw = Join-Path $tgt '.claude/settings.windows.json'
+    if ((Test-Path $sjw) -and (Test-Path $sj)) {
+        Copy-Item -Force -LiteralPath $sjw -Destination $sj
+        Write-Output "  pwsh not found - activated Windows PowerShell 5.1 hooks (settings.windows.json -> settings.json)."
+    }
+}
+
 Write-Output ""
 Write-Output "Done. Next steps in the target repo:"
 Write-Output "  1. Review the copied files (commit them — they are team-shared config, not local settings)."

@@ -1,16 +1,17 @@
 {
+  "_comment": "Hooks run via PowerShell 7 (pwsh) using the .ps1 twins — cross-platform and, crucially, not dependent on bash being on PATH (the bash default silently no-opped on Windows boxes). The installer adapts this to the machine: scripts/install.ps1 falls back to Windows PowerShell 5.1 (settings.windows.json) when pwsh is absent; scripts/install.sh switches to the bash twins. Edit CLAUDE.md for rules, not this file.",
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "bash .claude/hooks/session-start.sh" }
+          { "type": "command", "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/session-start.ps1" }
         ]
       }
     ],
     "UserPromptSubmit": [
       {
         "hooks": [
-          { "type": "command", "command": "bash .claude/hooks/route-prompt.sh" }
+          { "type": "command", "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/route-prompt.ps1" }
         ]
       }
     ],
@@ -18,7 +19,7 @@
       {
         "matcher": "Write|Edit",
         "hooks": [
-          { "type": "command", "command": "bash .claude/hooks/guard.sh" }
+          { "type": "command", "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/guard.ps1" }
         ]
       }
     ],
@@ -26,14 +27,14 @@
       {
         "matcher": "Write|Edit",
         "hooks": [
-          { "type": "command", "command": "bash .claude/hooks/post-write.sh" }
+          { "type": "command", "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/post-write.ps1" }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "bash .claude/hooks/boy-scout-check.sh" }
+          { "type": "command", "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/boy-scout-check.ps1" }
         ]
       }
     ]

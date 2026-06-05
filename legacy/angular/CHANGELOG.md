@@ -3,6 +3,12 @@
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
 > Architecture decisions (cross-stack) live in `project_framework_architecture.md`.
 
+## 0.13.2 — 2026-06-05 (hooks fire on Windows: PowerShell-default + CRLF-safe)
+
+### Fixed
+- **Claude Code hooks silently no-opped on Windows.** The default `.claude/settings.json` invoked `bash .claude/hooks/*.sh`; on a Windows box without git-bash on PATH (or with CRLF-mangled `.sh` files), the hooks failed quietly — so the framework's enforcement (secret/suppression blocking via the PreToolUse guard, the PostToolUse checks, the Stop boy-scout check) **wasn't actually running**. The default now uses the PowerShell (`pwsh`) twins, which don't depend on bash. `scripts/install.ps1` falls back to Windows PowerShell 5.1 (`settings.windows.json`) when `pwsh` is absent; `scripts/install.sh` switches to the bash twins when `pwsh` is absent. Copilot's `.github/hooks/hooks.json` already declared both interpreters and was unaffected — this brings Claude Code to parity. (Reported from a real implementation.)
+- **`.sh` hooks corrupted to CRLF on Windows checkout.** Added `.gitattributes` pinning `*.sh` (and `*.ps1`) to LF, so `core.autocrlf=true` can't rewrite the shebang line to `bash\r` and break the bash twins — the second reason the bash hooks failed on Windows.
+
 ## 0.13.1 — 2026-06-05 (impact harness: exclude build artifacts from the A/B diff)
 
 ### Fixed

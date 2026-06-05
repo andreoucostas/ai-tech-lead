@@ -1,0 +1,7 @@
+# Shell scripts MUST stay LF. With core.autocrlf=true (common on Windows), git would otherwise
+# rewrite these to CRLF on checkout, and bash — including git-bash — chokes on a CRLF shebang line
+# ("/usr/bin/env: bash\r: No such file or directory"), so the hooks "silently" no-op. Pin LF.
+*.sh text eol=lf
+
+# PowerShell runs fine with either ending; pin LF too for clean, churn-free diffs across OSes.
+*.ps1 text eol=lf
