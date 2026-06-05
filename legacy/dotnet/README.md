@@ -144,6 +144,7 @@ When you next pull template updates into your repo, bump both. CI tooling and a 
 | `docs/playbook.md` | Methodology guide (the "why" behind the framework). |
 | `docs/ARCHITECTURE.md` (+ `architecture.html`) | Canonical architecture map with Mermaid diagrams; HTML is the generated, drift-checked view for reviewers. |
 | `docs/REVIEW-GUIDE.md` | A senior reviewer's annotated tour — reading order, what each piece guarantees, how to verify, and the tradeoffs. |
+| `docs/presentation/` | Ready-to-present, self-contained HTML briefing deck (`framework-briefing.html`) + `TALKING-POINTS.md` — for pitching the framework to tech leads and their teams (overview + practical implications). |
 
 ## How it works
 

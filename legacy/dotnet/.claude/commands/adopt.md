@@ -226,8 +226,26 @@ Remind the user to:
 4. Commit: `git add -A && git commit -m "Adopt AI Tech Lead Framework"`
 5. Optionally delete `docs/pre-adoption/` once they're confident nothing was lost (keep it for at least one release cycle)
 
+**This is not the end of `/adopt`.** Proceed immediately to Phase 9 and generate the impact report — that is the deliverable the user asked for by running `/adopt`.
+
 ---
 
-## Phase 9 — Impact report
+## Phase 9 — Impact report (MANDATORY — this is the deliverable, do not skip)
 
-After the adoption is committed (step 4 above — so `HEAD` reflects this framework), run `/impact`. It contrasts the old setup (archived in `docs/pre-adoption/`) with this framework and writes `docs/impact/IMPACT.md` (+ `docs/impact/impact.html`): the **capability diff**, the **deterministic scorecard** vs the Phase-0 baseline, and — if Copilot CLI is available — a **behavioral A/B** (the same tasks run against the `pre-adoption` tag vs `HEAD`, several trials each). No input needed. This report is what you show the tech leads.
+**The impact report is the point of `/adopt` for the tech leads — do not present adoption as complete until `docs/impact/IMPACT.md` exists.** Running it is automatic and needs no confirmation from the user.
+
+Execute `/impact` now (after the Phase-8 commit, so `HEAD` reflects this framework). Follow its workflow in full — including the **behavioral A/B (Tier 2)**, which is the part most worth having:
+
+1. **Detect the headless agent properly before deciding anything.** The user runs Copilot in VS Code, and the Copilot CLI is typically an npm-global install that appears as `copilot.cmd` on Windows — a bare `command -v copilot` will miss it. Do **not** declare Tier 2 unavailable on a single failed check. Instead just run the runner — `bash scripts/impact-run.sh <pre_ref> <post_ref> --smoke` (or `pwsh scripts/impact-run.ps1 <pre_ref> <post_ref> --smoke` on Windows) — which itself probes the `.cmd`/`.exe` shims and npm-global dirs and uses short, `core.longpaths` worktrees. Treat Tier 2 as unavailable **only if the runner exits 3.**
+2. If the runner reports it cannot find the CLI, say so explicitly in the report and still deliver Tier 1 (capability diff + scorecard). Never silently omit the A/B.
+
+`/impact` writes `docs/impact/IMPACT.md` (+ `docs/impact/impact.html`): the **capability diff**, the **deterministic scorecard** vs the Phase-0 baseline, and the **behavioral A/B** (same tasks run against the `pre-adoption` tag vs `HEAD`, several trials each). This report is what you hand the tech leads.
+
+### Definition of done for `/adopt`
+Adoption is complete only when **all** of these exist and you have reported them:
+- Updated `CLAUDE.md` (+ generated `AGENTS.md`, `.github/copilot-instructions.md`)
+- Archived originals under `docs/pre-adoption/`
+- `docs/impact/baseline.json` (Phase 0) **and** `docs/impact/IMPACT.md` (Phase 9)
+- The Phase-8 commit
+
+If `docs/impact/IMPACT.md` is missing, you have not finished — go back and run `/impact`.

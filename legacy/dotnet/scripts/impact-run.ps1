@@ -19,11 +19,39 @@ if ($trials -lt 1) { $trials = 1 }
 
 $agentCmd = $cfg.agent_cmd
 $agentBin = ($agentCmd -split '\s+')[0]
-if (-not (Get-Command $agentBin -ErrorAction SilentlyContinue)) {
-    Write-Output "Headless agent '$agentBin' not on PATH — cannot run the behavioral A/B (Tier 2)."
-    Write-Output "Install/auth it (Copilot CLI) or run only the deterministic before/after (Tier 1)."
+
+# Resolve the headless agent robustly. Get-Command usually finds copilot.cmd via PATHEXT, but an
+# npm-global install may sit in %APPDATA%\npm without that dir being on PATH — so also probe the
+# .cmd/.exe shims and the npm-global locations before giving up.
+function Resolve-Agent($b) {
+    foreach ($c in @($b, "$b.cmd", "$b.exe")) {
+        $g = Get-Command $c -ErrorAction SilentlyContinue
+        if ($g -and $g.Source) { return $g.Source }
+    }
+    $dirs = @()
+    try { $dirs += (npm prefix -g 2>$null) } catch {}
+    if ($env:APPDATA)     { $dirs += (Join-Path $env:APPDATA 'npm') }
+    if ($env:USERPROFILE) { $dirs += (Join-Path $env:USERPROFILE '.npm-global') }
+    foreach ($d in $dirs) {
+        if (-not $d) { continue }
+        foreach ($c in @($b, "$b.cmd", "$b.exe")) {
+            $p = Join-Path $d $c
+            if (Test-Path $p) { return $p }
+        }
+    }
+    return $null
+}
+$resolved = Resolve-Agent $agentBin
+if (-not $resolved) {
+    Write-Output "Headless agent '$agentBin' not found — looked for $agentBin / $agentBin.cmd / $agentBin.exe on PATH,"
+    Write-Output "in ``npm prefix -g``, and %APPDATA%\npm. Tier 2 (behavioral A/B) skipped."
+    Write-Output "Install the Copilot CLI (e.g. npm i -g @github/copilot) and authenticate once, or run Tier 1 only."
     exit 3
 }
+# Splice the resolved binary back into the command (replace only the first token); use the call
+# operator for an absolute path so Invoke-Expression runs it even when it contains spaces.
+$rest = $agentCmd.Substring($agentBin.Length)
+$agentCmd = $(if ($resolved -match '[\\/]') { '& "' + $resolved + '"' } else { $resolved }) + $rest
 
 # Infer a build command for this repo (used for tasks with "build": true).
 $buildCmd = $null
@@ -39,6 +67,15 @@ $runDir = 'docs/impact/runs'
 if (Test-Path $runDir) { Remove-Item -Recurse -Force $runDir }
 New-Item -ItemType Directory -Force -Path $runDir | Out-Null
 
+# Short base dir for throwaway worktrees — Windows' 260-char MAX_PATH means a deep %TEMP% path plus a
+# deep source tree overflows the limit and breaks `git worktree add` and the build. A drive-root dir
+# keeps paths shallow; core.longpaths gives git extra headroom on top.
+$wtBase = if ($env:SystemDrive) { Join-Path "$($env:SystemDrive)\" 'iwt' } else { Join-Path ([IO.Path]::GetTempPath()) 'iwt' }
+try { New-Item -ItemType Directory -Force -Path $wtBase -ErrorAction Stop | Out-Null }
+catch { $wtBase = Join-Path ([IO.Path]::GetTempPath()) 'iwt'; New-Item -ItemType Directory -Force -Path $wtBase | Out-Null }
+git -c core.longpaths=true worktree prune 2>$null | Out-Null
+$wtn = 0
+
 foreach ($arm in 'pre', 'post') {
     $ref = if ($arm -eq 'pre') { $pre } else { $post }
     foreach ($task in $tasks) {
@@ -46,9 +83,11 @@ foreach ($arm in 'pre', 'post') {
         $needBuild = [bool]$task.build
         New-Item -ItemType Directory -Force -Path (Join-Path $runDir "$arm/$tid") | Out-Null
         for ($t = 1; $t -le $trials; $t++) {
-            $wt = Join-Path ([System.IO.Path]::GetTempPath()) ("impact_" + [guid]::NewGuid().ToString('N'))
-            git worktree add -q --detach $wt $ref 2>$null
-            if (-not $?) { Write-Output "  worktree add failed for '$ref' — skipping"; continue }
+            $wtn++; $wt = Join-Path $wtBase "w$wtn"
+            if (Test-Path $wt) { Remove-Item -Recurse -Force $wt -ErrorAction SilentlyContinue }
+            git -c core.longpaths=true worktree add -q --detach $wt $ref 2>$null
+            if (-not $?) { Write-Output "  worktree add failed for '$ref' (path: $wt) — skipping"; continue }
+            git -C $wt config core.longpaths true 2>$null | Out-Null
 
             $cmd = $agentCmd -replace '\{prompt\}', ('"' + ($task.prompt -replace '"', '\"') + '"')
             $start = Get-Date
@@ -105,7 +144,7 @@ foreach ($arm in 'pre', 'post') {
                 files_changed = $changed.Count; lines_added = $added; lines_deleted = $deleted; duration_s = $dur
             } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $runDir "$arm/$tid/$t.json") -Encoding UTF8
 
-            git worktree remove --force $wt 2>$null | Out-Null
+            git -c core.longpaths=true worktree remove --force $wt 2>$null | Out-Null
             if (Test-Path $wt) { Remove-Item -Recurse -Force $wt -ErrorAction SilentlyContinue }
             Write-Output "  $arm/$tid trial $t : acceptance=$acc build=$buildOk files=$($changed.Count)"
         }
