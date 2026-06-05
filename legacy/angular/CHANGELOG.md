@@ -3,6 +3,11 @@
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
 > Architecture decisions (cross-stack) live in `project_framework_architecture.md`.
 
+## 0.13.1 — 2026-06-05 (impact harness: exclude build artifacts from the A/B diff)
+
+### Fixed
+- **Build artifacts leaked into the behavioral A/B file list.** `scripts/impact-run.{sh,ps1}` now exclude `node_modules/`, `dist/`, `.angular/`, `bin/`, `obj/`, `.vs/`, `TestResults/`, and `coverage/` from the captured diff via git pathspec exclusions (`:(exclude,glob)**/…/**`). Without it, a consumer repo that doesn't gitignore those dirs fed generated/vendored files (compiled output under `dist/`, packages under `node_modules/`) into the acceptance asserts and the `metrics.sh` scorecard, corrupting the A/B signal and inflating file/LOC counts. We filter the file list rather than clean the tree — note `git clean -fd` does **not** remove ignored dirs; that needs `-fdx`. (Reported from a real implementation.)
+
 ## 0.13.0 — 2026-06-05 (presentation deck + impact-harness Windows/Copilot fixes)
 
 ### Added

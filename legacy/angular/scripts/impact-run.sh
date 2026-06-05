@@ -73,6 +73,11 @@ mkdir -p "$wt_base" 2>/dev/null || { wt_base="${TMPDIR:-/tmp}/iwt"; mkdir -p "$w
 git -c core.longpaths=true worktree prune 2>/dev/null
 wtn=0
 
+# Exclude build artifacts from the captured diff so the A/B measures source changes only — robust even
+# when the consumer repo doesn't gitignore bin/obj/node_modules/dist. (git clean -fd wouldn't remove
+# those ignored dirs anyway; we filter the file list rather than clean the tree.)
+art_excl=(':(exclude,glob)**/bin/**' ':(exclude,glob)**/obj/**' ':(exclude,glob)**/node_modules/**' ':(exclude,glob)**/dist/**' ':(exclude,glob)**/.angular/**' ':(exclude,glob)**/.vs/**' ':(exclude,glob)**/TestResults/**' ':(exclude,glob)**/coverage/**')
+
 for arm in pre post; do
   if [ "$arm" = pre ]; then ref="$pre"; else ref="$post"; fi
   ntasks=$(jq 'length' "$tasks"); i=0
@@ -99,10 +104,10 @@ for arm in pre post; do
       end=$(date +%s 2>/dev/null || echo 0); dur=$(( end - start )); [ "$dur" -lt 0 ] && dur=0
 
       git -C "$wt" add -A 2>/dev/null
-      changed=(); while IFS= read -r f; do [ -n "$f" ] && changed+=("$f"); done < <(git -C "$wt" diff --cached --name-only 2>/dev/null)
+      changed=(); while IFS= read -r f; do [ -n "$f" ] && changed+=("$f"); done < <(git -C "$wt" diff --cached --name-only -- . "${art_excl[@]}" 2>/dev/null)
       abschanged=(); for f in "${changed[@]}"; do abschanged+=("$wt/$f"); done
-      added=$(git -C "$wt" diff --cached --numstat 2>/dev/null | awk '{a+=$1} END{print a+0}')
-      deleted=$(git -C "$wt" diff --cached --numstat 2>/dev/null | awk '{d+=$2} END{print d+0}')
+      added=$(git -C "$wt" diff --cached --numstat -- . "${art_excl[@]}" 2>/dev/null | awk '{a+=$1} END{print a+0}')
+      deleted=$(git -C "$wt" diff --cached --numstat -- . "${art_excl[@]}" 2>/dev/null | awk '{d+=$2} END{print d+0}')
 
       build_ok="null"
       if [ "$need_build" = "true" ] && [ -n "$build_cmd" ]; then

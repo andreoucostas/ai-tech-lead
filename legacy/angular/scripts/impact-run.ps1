@@ -76,6 +76,11 @@ catch { $wtBase = Join-Path ([IO.Path]::GetTempPath()) 'iwt'; New-Item -ItemType
 git -c core.longpaths=true worktree prune 2>$null | Out-Null
 $wtn = 0
 
+# Exclude build artifacts from the captured diff so the A/B measures source changes only — robust even
+# when the consumer repo doesn't gitignore bin/obj/node_modules/dist. (git clean -fd wouldn't remove
+# those ignored dirs anyway; we filter the file list rather than clean the tree.)
+$artExcl = @(':(exclude,glob)**/bin/**', ':(exclude,glob)**/obj/**', ':(exclude,glob)**/node_modules/**', ':(exclude,glob)**/dist/**', ':(exclude,glob)**/.angular/**', ':(exclude,glob)**/.vs/**', ':(exclude,glob)**/TestResults/**', ':(exclude,glob)**/coverage/**')
+
 foreach ($arm in 'pre', 'post') {
     $ref = if ($arm -eq 'pre') { $pre } else { $post }
     foreach ($task in $tasks) {
@@ -97,10 +102,10 @@ foreach ($arm in 'pre', 'post') {
             $dur = [int]((Get-Date) - $start).TotalSeconds
 
             git -C $wt add -A 2>$null | Out-Null
-            $changed = @(git -C $wt diff --cached --name-only 2>$null | Where-Object { $_ })
+            $changed = @(git -C $wt diff --cached --name-only -- . @artExcl 2>$null | Where-Object { $_ })
             $abs = @($changed | ForEach-Object { Join-Path $wt $_ })
             $added = 0; $deleted = 0
-            foreach ($l in (git -C $wt diff --cached --numstat 2>$null)) {
+            foreach ($l in (git -C $wt diff --cached --numstat -- . @artExcl 2>$null)) {
                 $p = $l -split '\s+'
                 if ($p[0] -match '^\d+$') { $added += [int]$p[0] }
                 if ($p[1] -match '^\d+$') { $deleted += [int]$p[1] }
