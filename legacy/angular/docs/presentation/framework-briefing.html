@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The AI Tech Lead Framework — Briefing</title>
+<style>
+  :root{
+    --bg:#0b1020; --bg2:#11183140; --ink:#e8ecf6; --muted:#9aa6c4; --line:#26304f;
+    --accent:#6ea8fe; --accent2:#7ef0c0; --warn:#ffd27a; --bad:#ff8f9c; --card:#141d38;
+    --maxw:1100px;
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:radial-gradient(1200px 800px at 70% -10%, #1a2750 0%, var(--bg) 55%) fixed;
+    color:var(--ink); font-family:var(--font); -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+  }
+  #deck{position:relative; height:100vh; width:100vw}
+  .slide{
+    position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center;
+    padding:6vh 8vw; opacity:0; transform:translateY(14px) scale(.995);
+    transition:opacity .35s ease, transform .35s ease; pointer-events:none;
+    max-width:100vw;
+  }
+  .slide.active{opacity:1; transform:none; pointer-events:auto}
+  .wrap{width:100%; max-width:var(--maxw); margin:0 auto}
+  .kicker{
+    display:inline-block; font-size:.82rem; letter-spacing:.18em; text-transform:uppercase;
+    color:var(--accent2); border:1px solid var(--line); background:var(--bg2);
+    padding:.35rem .7rem; border-radius:999px; margin-bottom:1.2rem; font-weight:600;
+  }
+  h1{font-size:clamp(2.4rem,6vw,4.4rem); line-height:1.02; margin:.2rem 0 1rem; letter-spacing:-.02em}
+  h2{font-size:clamp(1.7rem,3.6vw,2.8rem); line-height:1.08; margin:.1rem 0 1.4rem; letter-spacing:-.01em}
+  h3{font-size:1.15rem; margin:0 0 .6rem; color:var(--ink)}
+  p.lead{font-size:clamp(1.05rem,1.7vw,1.35rem); color:var(--muted); max-width:60ch; line-height:1.5}
+  .tagline{font-size:clamp(1.1rem,2vw,1.5rem); color:var(--muted); margin:.4rem 0 1.6rem}
+  .meta{color:var(--muted); font-size:.95rem; margin-top:2.2rem; border-top:1px solid var(--line); padding-top:1rem}
+  ul.points{list-style:none; padding:0; margin:1rem 0 0; font-size:clamp(1.02rem,1.7vw,1.3rem); line-height:1.5}
+  ul.points li{position:relative; padding-left:1.7rem; margin:.7rem 0; color:var(--ink)}
+  ul.points li::before{content:""; position:absolute; left:0; top:.55em; width:.6rem; height:.6rem;
+    background:var(--accent); border-radius:2px; transform:rotate(45deg)}
+  ul.points li b{color:var(--ink)}
+  ul.points li span{color:var(--muted)}
+  .punch{font-size:clamp(1.3rem,2.6vw,2rem); line-height:1.25; margin-top:1.6rem; font-weight:600}
+  .punch em{color:var(--accent2); font-style:normal}
+  .grid{display:grid; gap:1rem; margin-top:1.2rem}
+  .grid.two{grid-template-columns:1fr 1fr}
+  .grid.three{grid-template-columns:repeat(3,1fr)}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:1.1rem 1.2rem}
+  .card h3{display:flex; align-items:center; gap:.5rem}
+  .card p{margin:.3rem 0 0; color:var(--muted); font-size:1rem; line-height:1.45}
+  .card.good{border-color:#2c5b46} .card.good h3{color:var(--accent2)}
+  .card.warnc{border-color:#5b5230} .card.warnc h3{color:var(--warn)}
+  .card.badc{border-color:#5b3036} .card.badc h3{color:var(--bad)}
+  .tag{font-size:.72rem; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)}
+  /* flow diagram */
+  .flow{display:flex; align-items:center; gap:1rem; flex-wrap:wrap; margin-top:1.4rem}
+  .node{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:.9rem 1.1rem; text-align:center}
+  .node.src{border-color:var(--accent); box-shadow:0 0 0 1px #6ea8fe40}
+  .node .t{font-weight:700} .node .s{color:var(--muted); font-size:.85rem; font-family:var(--mono)}
+  .arrow{color:var(--accent); font-size:1.6rem; opacity:.8}
+  .mirrors{display:flex; flex-direction:column; gap:.6rem}
+  .steps{counter-reset:step; display:grid; gap:.9rem; margin-top:1.2rem}
+  .steps .step{display:flex; gap:1rem; align-items:flex-start; background:var(--bg2); border:1px solid var(--line); border-radius:12px; padding:.9rem 1.1rem}
+  .steps .step::before{counter-increment:step; content:counter(step); flex:0 0 2.1rem; height:2.1rem; display:grid; place-items:center;
+    background:var(--accent); color:#06122e; font-weight:800; border-radius:50%}
+  .steps .step div b{display:block} .steps .step div span{color:var(--muted)}
+  .two-aud{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin-top:1rem}
+  .col h3{font-size:1.05rem; text-transform:uppercase; letter-spacing:.08em}
+  .big{font-size:clamp(2.6rem,7vw,5rem); font-weight:800; letter-spacing:-.02em; line-height:1}
+  code{font-family:var(--mono); background:#0c1430; border:1px solid var(--line); padding:.08em .4em; border-radius:6px; font-size:.92em; color:#cfe0ff}
+  /* HUD */
+  .progress{position:fixed; top:0; left:0; right:0; height:3px; background:#0c1430; z-index:50}
+  .progress .bar{height:100%; width:0; background:linear-gradient(90deg,var(--accent),var(--accent2)); transition:width .35s ease}
+  .hud{position:fixed; bottom:14px; right:18px; display:flex; align-items:center; gap:.5rem; z-index:50;
+    color:var(--muted); font-size:.9rem; background:#0c1430cc; border:1px solid var(--line); border-radius:999px; padding:.25rem .5rem; backdrop-filter:blur(6px)}
+  .hud button{background:transparent; border:0; color:var(--ink); font-size:1.3rem; cursor:pointer; width:2rem; height:2rem; border-radius:50%}
+  .hud button:hover{background:#1a2750}
+  #counter{min-width:3.4rem; text-align:center; font-variant-numeric:tabular-nums}
+  .hint{position:fixed; bottom:16px; left:18px; color:var(--muted); font-size:.78rem; z-index:50; opacity:.7}
+  .brand{position:fixed; top:14px; left:18px; font-size:.8rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); z-index:50}
+  .notesbar{position:fixed; left:0; right:0; bottom:0; max-height:42vh; overflow:auto; background:#070b18f2; border-top:2px solid var(--accent);
+    padding:1rem 1.4rem 1.2rem; z-index:60; box-shadow:0 -20px 40px #0008}
+  .notesbar h4{margin:.1rem 0 .5rem; color:var(--accent2); font-size:.8rem; letter-spacing:.14em; text-transform:uppercase}
+  .notesbar p{margin:.4rem 0; color:#d7def0; line-height:1.5; font-size:1rem; max-width:90ch}
+  .notesbar ul{margin:.3rem 0; padding-left:1.2rem; color:#d7def0; line-height:1.5}
+  .notes{display:none}            /* speaker notes live only in the N-toggle overlay, never on-slide */
+  [hidden]{display:none!important}
+  @media (max-width:760px){ .grid.two,.grid.three,.two-aud{grid-template-columns:1fr} }
+  /* print → one slide per page (PDF export) */
+  @media print{
+    body{overflow:visible; background:#fff; color:#000}
+    #deck{height:auto}
+    .slide{position:static; opacity:1; transform:none; height:auto; min-height:96vh; page-break-after:always; padding:5vh 6vw}
+    .progress,.hud,.hint,.brand,.notesbar{display:none!important}
+    .card,.node,.steps .step,.kicker{border-color:#bbb}
+    h1,h2,h3,.big,.punch{color:#000} p.lead,.tagline,.card p,.steps .step div span{color:#333}
+  }
+</style>
+</head>
+<body>
+<div class="progress"><div class="bar" id="bar"></div></div>
+<div class="brand">AI Tech Lead Framework</div>
+
+<main id="deck">
+
+  <!-- 1 TITLE -->
+  <section class="slide title active">
+    <div class="wrap">
+      <span class="kicker">Engineering Briefing</span>
+      <h1>The AI&nbsp;Tech&nbsp;Lead Framework</h1>
+      <div class="tagline">Governed, consistent, <em style="color:var(--accent2);font-style:normal">measurable</em> AI-assisted development.</div>
+      <p class="lead">One source of truth that every AI tool reads and obeys — turning our conventions into something the AI can't ignore.</p>
+      <div class="meta">.NET &amp; Angular · Runs entirely on local Bitbucket + Windows · No cloud dependency</div>
+    </div>
+    <aside class="notes">
+      <p><b>Opening line:</b> "AI is already writing a meaningful share of our code. This is how we make sure it writes <i>our</i> code, to <i>our</i> standards — and how we prove it."</p>
+      <p>Set the frame: this is not a new tool to learn so much as a set of rails that make our existing standards automatic. Two audiences today: leads first (governance + impact), then teams (daily workflow).</p>
+      <p>Keep this slide up while people settle. 30 seconds.</p>
+    </aside>
+  </section>
+
+  <!-- 2 WHY NOW -->
+  <section class="slide">
+    <div class="wrap">
+      <span class="kicker">The Shift</span>
+      <h2>AI now writes a growing share of our code</h2>
+      <ul class="points">
+        <li>Copilot and Claude are in every IDE; delivery speed is genuinely up.</li>
+        <li>But the output is <b>ungoverned</b> — it varies by developer, by tool, and by prompt.</li>
+        <li>The assistant doesn't know our conventions, our architecture, or our "never do this" list.</li>
+      </ul>
+      <div class="punch">AI accelerates whatever you point it at — <em>including our mistakes.</em></div>
+    </div>
+    <aside class="notes">
+      <p><b>Goal:</b> establish the tension. Speed is real and good; the lack of governance is the risk.</p>
+      <p>Concrete example to say aloud: "Three developers ask Copilot for 'a service to do X' and get three different shapes — different error handling, different layering, different testing. Multiply that across a year."</p>
+      <p>Don't dwell on doom — pivot fast to "there's a clean way to fix this."</p>
+    </aside>
+  </section>
+
+  <!-- 3 THE PROBLEM -->
+  <section class="slide">
+    <div class="wrap">
+      <span class="kicker">The Problem</span>
+      <h2>Speed without guardrails</h2>
+      <div class="grid three">
+        <div class="card badc"><h3>Invents APIs</h3><p>Confidently calls methods, packages, and endpoints that don't exist in our codebase.</p></div>
+        <div class="card badc"><h3>Adds bloat</h3><p>Premature abstractions, speculative "future-proofing," wrappers that do nothing.</p></div>
+        <div class="card badc"><h3>Hides failures</h3><p>Wraps errors in try/catch, silences analyzers with <code>#pragma</code> to make red go green.</p></div>
+        <div class="card badc"><h3>Ignores conventions</h3><p>Doesn't know our layering, naming, DI, or testing patterns unless told every time.</p></div>
+        <div class="card badc"><h3>Inconsistent output</h3><p>Every dev and every tool produces a different shape for the same task.</p></div>
+        <div class="card badc"><h3>No audit trail</h3><p>No record of what the AI changed, or why — a governance and review blind spot.</p></div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p><b>Goal:</b> name the failure modes precisely so leads recognize them from their own repos.</p>
+      <p>Ask the room: "How many of these have you seen in a PR this month?" — gets nods, builds buy-in.</p>
+      <p>These six map directly to the framework's four pillars (next slides). Each problem has a countermeasure.</p>
+    </aside>
+  </section>
+
+  <!-- 4 WHAT IT IS -->
+  <section class="slide">
+    <div class="wrap">
+      <span class="kicker">The Idea</span>
+      <h2>An operating system for AI-assisted development</h2>
+      <ul class="points">
+        <li><b>A repo-level standard</b> every AI tool reads and obeys — authored once.</li>
+        <li><b>Tool-agnostic.</b> Claude Code, GitHub Copilot (agent &amp; CLI), Cursor, Gemini, Aider — same rules.</li>
+        <li><b>Adopted as a template</b> — drop it into a repo; it learns your codebase.</li>
+        <li><b>Two stacks in lockstep</b> — a .NET edition and an Angular edition, kept identical in spirit.</li>
+      </ul>
+      <div class="punch">It doesn't replace the AI. It <em>governs</em> it.</div>
+    </div>
+    <aside class="notes">
+      <p><b>Key reframe:</b> not "another AI tool" — a layer that sits over the tools we already use. People relax when they hear they don't have to switch assistants.</p>
+      <p>"Authored once" is the headline — say it twice. The whole value chain hangs off a single file.</p>
+    </aside>
+  </section>
+
+  <!-- 5 ONE SOURCE OF TRUTH -->
+  <section class="slide">
+    <div class="wrap">
+      <span class="kicker">Architecture</span>
+      <h2>Write the rules once — every tool obeys</h2>
+      <div class="flow">
+        <div class="node src"><div class="t">CLAUDE.md</div><div class="s">authored · single source</div></div>
+        <div class="arrow">→</div>
+        <div class="mirrors">
+          <div class="node"><div class="t">AGENTS.md</div><div class="s">full mirror</div></div>
+          <div class="node"><div class="t">.github/copilot-instructions.md</div><div class="s">slim ≤80 lines</div></div>
+          <div class="node"><div class="t">.github/skills/</div><div class="s">task recipes</div></div>
+        </div>
+      </div>
+      <ul class="points" style="margin-top:1.4rem">
+        <li><b>Generated, not hand-copied</b> — mirrors are produced from the source file.</li>
+        <li><b>Drift-checked in CI</b> — the build fails if a mirror falls out of sync.</li>
+      </ul>
+    </div>
+    <aside class="notes">
+      <p><b>Goal:</b> show the mechanism that makes "authored once" true. Edit CLAUDE.md → regenerate → all tools updated.</p>
+      <p>Why mirrors at all? Because each tool reads a different file. We don't maintain four sets of rules — we maintain one and project it.</p>
+      <p>The drift check is what stops this rotting in six months — emphasize for leads who've seen docs go stale.</p>
+    </aside>
+  </section>
+
+  <!-- 6 WHAT IT ENFORCES -->
+  <section class="slide">
+    <div class="wrap">
+      <span class="kicker">The Non-Negotiables</span>
+      <h2>Four pillars</h2>
+      <div class="grid two">
+        <div class="card good"><h3>Verification</h3><p>Verify before you reference. No invented APIs, types, or packages — read the source or say "unverified."</p></div>
+        <div class="card good"><h3>Leanness</h3><p>No bloat, no premature abstraction, no future-proofing. Deletion is a contribution.</p></div>
+        <div class="card good"><h3>SOLID</h3><p>Mandatory and literal — every injected service behind an interface, with a deterministic CI backstop.</p></div>
+        <div class="card good"><h3>Boy Scout Rule</h3><p>Leave every touched file cleaner — symmetric: add what's missing, remove dead weight.</p></div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p><b>Goal:</b> these are the standards, encoded. They're the same ones a good tech lead would enforce in review — now they're enforced continuously.</p>
+      <p>SOLID note: the tech lead asked for <i>literal</i> SOLID. Verification + Leanness are reconciled (no bloat, but service seams are required). Mention the CI backstop is deterministic — not just an LLM opinion.</p>
+      <p>If asked "isn't leanness vs SOLID a contradiction?" — no: SOLID governs structure, leanness governs ceremony beyond that structure.</p>
+    </aside>
+  </section>
+
+  <!-- 7 ENFORCED NOT DOCUMENTED -->
+  <section class="slide">
+    <div class="wrap">
+      <span class="kicker">Teeth</span>
+      <h2>Enforced — not just documented</h2>
+      <div class="grid two">
+        <div class="card"><h3>⛔ Real-time hooks</h3><p>A pre-write guard <b>blocks</b> suppressions and secrets before they hit disk. Every AI edit triggers a build + an audit-log entry.</p></div>
+        <div class="card"><h3>🔍 Review subagents</h3><p>Specialised reviewers for security, SOLID, conventions, and bloat run on demand — a second pair of eyes that never gets tired.</p></div>
+        <div class="card"><h3>🧱 CI guardrails</h3><p>Architecture tests (dependency direction) and a docs-sync check fail the pipeline on violations or drift.</p></div>
+        <div class="card"><h3>🧾 Audit trail</h3><p>Every AI-assisted change is appended to an audit log; security findings tracked separately with remediation SLAs.</p></div>
+      </div>
+      <div class="punch">Rules that aren't enforced are just <em>suggestions.</em></div>
+    </div>
+    <aside class="notes">
+      <p><b>This is the slide leads care about most.</b> The difference between a style guide nobody reads and a system that holds the line.</p>
+      <p>Concrete: the PreToolUse hook hard-blocks <code>#pragma warning disable</code> and obvious secrets — the AI literally cannot write them.</p>
+      <p>Bitbucket note: CI guardrails run via Bamboo/Jenkins or a pre-receive hook, and publish to PRs through Bitbucket Code Insights. No cloud needed.</p>
+    </aside>
+  </section>
+
+  <!-- 8 FOR TECH LEADS -->
+  <section class="slide">
+    <div class="wrap">
+      <span class="kicker">Practical Implications — Tech Leads</span>
+      <h2>What changes for you</h2>
+      <div class="two-aud">
+        <div class="col">
+          <h3 style="color:var(--accent2)">You gain</h3>
+          <ul class="points">
+            <li>Your conventions become <b>executable</b>, not tribal knowledge.</li>
+            <li><b>Consistency</b> across the team and across AI tools.</li>
+            <li>Governance: an <b>audit trail</b> and tracked security findings with SLAs.</li>
+            <li>You spend review time on <b>design</b>, not catching boilerplate slips.</li>
+          </ul>
+        </div>
+        <div class="col">
+          <h3 style="color:var(--warn)">You own</h3>
+          <ul class="points">
+            <li>Keeping <code>CLAUDE.md</code> current — it's now a first-class artifact.</li>
+            <li>Deciding conventions deliberately (they're code now, so they carry weight).</li>
+            <li>Championing adoption: one repo, then the team.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p><b>Goal:</b> make the lead see themselves in it. The framework amplifies <i>them</i> — their standards, applied at machine scale and consistency.</p>
+      <p>"You own CLAUDE.md" is the honest cost. It's small (a few hundred lines, budgeted) and the drift checks help keep it honest, but it is a living document.</p>
+      <p>Land the review-time point hard: less time on "you forgot a CancellationToken," more on "is this the right design."</p>
+    </aside>
+  </section>
+
+  <!-- 9 FOR DEVELOPERS -->
+  <section class="slide">
+    <div class="wrap">
+      <span class="kicker">Practical Implications — Developers</span>
+      <h2>What changes for you</h2>
+      <div class="two-aud">
+        <div class="col">
+          <h3 style="color:var(--accent2)">Easier</h3>
+          <ul class="points">
+            <li>Slash commands run the whole workflow — <code>/feature</code>, <code>/fix</code>, <code>/review</code>, <code>/design</code>.</li>
+            <li>Skills <b>auto-trigger</b> for common tasks (add endpoint, add entity, register service).</li>
+            <li>The AI already knows our <b>conventions and structure</b> — less prompting.</li>
+            <li>Guardrails catch slips <b>before</b> code review, so PRs go smoother.</li>
+          </ul>
+        </div>
+        <div class="col">
+          <h3 style="color:var(--warn)">Different</h3>
+          <ul class="points">
+            <li>You state <b>intent</b>; the framework drives the steps.</li>
+            <li>No silencing failures — fix the cause, not the symptom.</li>
+            <li>SOLID &amp; leanness are enforced — <span>yes, even on a deadline.</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p><b>This is the team slide.</b> Lead with what makes their day easier, then the constraints — framed as "the rails that keep us out of the ditch."</p>
+      <p>Demo idea for the team session: run <code>/feature</code> on a small change live and let them see the plan → verified subtasks → self-review.</p>
+      <p>Pre-empt the pushback: "enforced on a deadline?" Yes — because the friction is cheaper than the cleanup. But hooks have an escape hatch for genuine hotfixes (documented).</p>
+    </aside>
+  </section>
+
+  <!-- 10 MEASURABLE IMPACT -->
+  <section class="slide">
+    <div class="wrap">
+      <span class="kicker">Proof, Not Faith</span>
+      <h2>We measure the difference</h2>
+      <p class="lead">Adopting the framework runs a before/after automatically — no manual setup.</p>
+      <div class="grid three" style="margin-top:1.2rem">
+        <div class="card"><span class="tag">Tier 1</span><h3>Capability diff</h3><p>What the old setup lacked vs what's now in place, gap by gap.</p></div>
+        <div class="card"><span class="tag">Tier 1</span><h3>Deterministic scorecard</h3><p>Anti-patterns, SOLID/DIP, security, test counts — measured, baselined at adoption.</p></div>
+        <div class="card"><span class="tag">Tier 2</span><h3>Behavioral A/B</h3><p>The same tasks run through a real agent against the <i>old</i> framework vs the <i>new</i> one, several trials each.</p></div>
+      </div>
+      <div class="punch" style="font-size:1.3rem">Same model, same tasks — the only difference is the framework. <em>Honest, repeatable evidence.</em></div>
+    </div>
+    <aside class="notes">
+      <p><b>Differentiator.</b> Most "AI standards" decks ask for faith. This produces a report on <i>your</i> codebase.</p>
+      <p>Be honest about stochasticity: LLM runs vary, so we run trials and read distributions, not a single number. The capability diff is concrete immediately; the A/B is the behavioral evidence.</p>
+      <p><b>Before the meeting:</b> run <code>/adopt</code> on a pilot repo and paste the real headline numbers here. Don't invent figures — the whole point is that they're measured.</p>
+    </aside>
+  </section>
+
+  <!-- 11 FITS ENVIRONMENT -->
+  <section class="slide">
+    <div class="wrap">
+      <span class="kicker">No Cloud Required</span>
+      <h2>Built for our environment</h2>
+      <div class="grid two">
+        <div class="card good"><h3>Local &amp; self-hosted</h3><p>VS Code + Copilot, Claude Code, and the Copilot CLI all run locally. Works with <b>Bitbucket Data Center</b> — nothing leaves the building it shouldn't.</p></div>
+        <div class="card good"><h3>CI on our terms</h3><p>Guardrails run in Bamboo / Jenkins / a pre-receive hook and report to PRs via Bitbucket Code Insights.</p></div>
+        <div class="card good"><h3>Windows-first</h3><p>Every script ships as a bash <i>and</i> a PowerShell twin.</p></div>
+        <div class="card good"><h3>Both stacks</h3><p>.NET (NetArchTest, EF Core) and Angular (dependency-cruiser, RxJS) — same doctrine, stack-appropriate teeth.</p></div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p><b>Goal:</b> remove the "but we're on local Bitbucket, not GitHub cloud" objection before it's raised.</p>
+      <p>Explicitly: GitHub Actions / Copilot cloud agent / Rovo Dev are <i>not</i> required and not assumed. The framework is host-agnostic; CI is wired to whatever we already run.</p>
+      <p>The PowerShell-twin point matters here — this was built knowing the team is on Windows.</p>
+    </aside>
+  </section>
+
+  <!-- 12 ADOPTION PATH -->
+  <section class="slide">
+    <div class="wrap">
+      <span class="kicker">Rollout</span>
+      <h2>Low-risk adoption path</h2>
+      <div class="steps">
+        <div class="step"><div><b>Run <code>/adopt</code> on a pilot repo</b><span>Ingests any existing AI config (Cursor, Copilot, Aider…) and <b>archives originals</b> — nothing is lost, fully reversible.</span></div></div>
+        <div class="step"><div><b><code>/bootstrap</code> learns the codebase</b><span>Fills CLAUDE.md from your actual structure, conventions, and tech debt.</span></div></div>
+        <div class="step"><div><b>Impact report is generated</b><span>The before/after lands automatically — that's what you review as a lead.</span></div></div>
+        <div class="step"><div><b>The team works through slash commands</b><span>Day-to-day development, now on rails. Expand to more repos when convinced.</span></div></div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p><b>Goal:</b> make starting feel safe and small. The word that matters is <i>reversible</i> — adoption archives, never deletes.</p>
+      <p>Recommend: pilot on one active-but-not-critical repo for a sprint. Low blast radius, real signal.</p>
+      <p>Note the recently-hardened bits: adoption now <i>always</i> produces the impact report, detects the Copilot CLI on Windows reliably, and uses short worktree paths so it doesn't trip Windows' path-length limit.</p>
+    </aside>
+  </section>
+
+  <!-- 13 TRADEOFFS -->
+  <section class="slide">
+    <div class="wrap">
+      <span class="kicker">Straight Talk</span>
+      <h2>Honest tradeoffs</h2>
+      <div class="grid three">
+        <div class="card warnc"><h3>Token cost</h3><p>More context per turn. <b>Mitigated</b> by model routing, slim instructions, and prompt-cache-stable files.</p></div>
+        <div class="card warnc"><h3>Discipline cost</h3><p>SOLID and leanness are enforced. The friction is the point — but it <i>is</i> friction.</p></div>
+        <div class="card warnc"><h3>Learning curve</h3><p>A handful of slash commands and a new habit: edit CLAUDE.md, don't fight it.</p></div>
+      </div>
+      <div class="punch">It isn't magic. It makes <em>good practice the path of least resistance.</em></div>
+    </div>
+    <aside class="notes">
+      <p><b>Credibility move.</b> Naming the costs yourself earns trust and disarms skeptics. Leads have seen enough silver-bullet pitches.</p>
+      <p>Token cost is real but actively managed — cheaper agents for cheap checks, the heavy model only where it matters, and a tight per-turn base file.</p>
+      <p>If pressed on ROI: the cost is tokens + discipline; the return is consistency, fewer review cycles, and a measurable quality delta.</p>
+    </aside>
+  </section>
+
+  <!-- 14 THE ASK -->
+  <section class="slide">
+    <div class="wrap">
+      <span class="kicker">Next Step</span>
+      <h1 style="font-size:clamp(2rem,5vw,3.6rem)">Pilot one repo this sprint.</h1>
+      <ul class="points" style="font-size:clamp(1.1rem,1.9vw,1.45rem)">
+        <li>Pick one active repo and run <code>/adopt</code>.</li>
+        <li>We review the <b>impact report</b> together — real numbers, your code.</li>
+        <li>Decide rollout on the evidence, not the pitch.</li>
+      </ul>
+      <div class="meta">Questions? Let's look at the report. · AI Tech Lead Framework</div>
+    </div>
+    <aside class="notes">
+      <p><b>Close with a small, concrete ask</b> — not "adopt everywhere," just "one repo, one sprint, then we look at numbers."</p>
+      <p>If the room is warm, offer to run the pilot adoption live or this week and book the follow-up to review the report.</p>
+      <p>Leave the title up for Q&amp;A.</p>
+    </aside>
+  </section>
+
+</main>
+
+<div class="hud">
+  <button id="prev" aria-label="Previous">‹</button>
+  <span id="counter">1 / 14</span>
+  <button id="next" aria-label="Next">›</button>
+</div>
+<div class="notesbar" id="notesbar" hidden></div>
+<div class="hint">← → / Space navigate · N speaker notes · F fullscreen · P print/PDF</div>
+
+<script>
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var bar = document.getElementById('bar');
+  var counter = document.getElementById('counter');
+  var notesbar = document.getElementById('notesbar');
+  var notesOn = false;
+  var i = 0;
+
+  function clamp(n){ return Math.max(0, Math.min(slides.length-1, n)); }
+  function renderNotes(){
+    if(!notesOn){ notesbar.hidden = true; return; }
+    var n = slides[i].querySelector('.notes');
+    notesbar.hidden = false;
+    notesbar.innerHTML = '<h4>Speaker notes · slide '+(i+1)+'</h4>' + (n ? n.innerHTML : '<p>(no notes)</p>');
+  }
+  function show(n){
+    i = clamp(n);
+    slides.forEach(function(s,idx){ s.classList.toggle('active', idx===i); });
+    counter.textContent = (i+1)+' / '+slides.length;
+    bar.style.width = ((i)/(slides.length-1)*100)+'%';
+    renderNotes();
+    if(location.hash !== '#'+(i+1)) history.replaceState(null,'','#'+(i+1));
+  }
+  function next(){ show(i+1); }
+  function prev(){ show(i-1); }
+
+  document.getElementById('next').addEventListener('click', next);
+  document.getElementById('prev').addEventListener('click', prev);
+
+  document.addEventListener('keydown', function(e){
+    if(e.metaKey||e.ctrlKey||e.altKey) return;
+    switch(e.key){
+      case 'ArrowRight': case 'PageDown': case ' ': e.preventDefault(); next(); break;
+      case 'ArrowLeft':  case 'PageUp': e.preventDefault(); prev(); break;
+      case 'Home': e.preventDefault(); show(0); break;
+      case 'End':  e.preventDefault(); show(slides.length-1); break;
+      case 'n': case 'N': notesOn=!notesOn; renderNotes(); break;
+      case 'f': case 'F':
+        if(!document.fullscreenElement){ (document.documentElement.requestFullscreen||function(){})(); }
+        else if(document.exitFullscreen){ document.exitFullscreen(); }
+        break;
+      case 'p': case 'P': e.preventDefault(); window.print(); break;
+    }
+  });
+
+  // touch swipe
+  var x0=null;
+  document.addEventListener('touchstart', function(e){ x0 = e.touches[0].clientX; }, {passive:true});
+  document.addEventListener('touchend', function(e){
+    if(x0===null) return; var dx = e.changedTouches[0].clientX - x0;
+    if(Math.abs(dx)>50){ dx<0 ? next() : prev(); } x0=null;
+  }, {passive:true});
+
+  var start = parseInt((location.hash||'').replace('#',''),10);
+  show(isNaN(start) ? 0 : start-1);
+})();
+</script>
+</body>
+</html>

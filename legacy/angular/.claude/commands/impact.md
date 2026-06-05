@@ -19,10 +19,13 @@ Compare the old setup (`docs/pre-adoption/` + the pre-adoption ref) with the ins
 - **Now**: `bash scripts/metrics.sh` on `HEAD`.
 - Table each metric **Before → Now (Δ)**. Add the `TECH_DEBT.md` item count and the `.claude/ai-audit.log` line count (AI-change traceability).
 
-### 3. Behavioral A/B (Tier 2 — if a headless agent is available)
-- Read `tests/impact/config.json` → `agent_cmd` (default `copilot`). If the agent binary is **not** on PATH, **skip Tier 2** and say so in the report (you still have Tier 1).
-- Make it run unattended: run `<agent> --help`; if the non-interactive/print flag differs from the configured one, update `agent_cmd` to match the installed CLI version. This is the one adaptation to do automatically — no user input.
-- Run the inline smoke pass: `bash scripts/impact-run.sh <pre_ref> <post_ref> --smoke`. (The full statistical run uses more trials and belongs in CI — see the Bitbucket pipeline step.)
+### 3. Behavioral A/B (Tier 2 — run this; skip only if the runner proves the CLI is absent)
+- **Do not pre-judge whether the agent is installed with a single `command -v copilot`.** The user runs Copilot in VS Code and the Copilot CLI is usually an npm-global install that shows up as `copilot.cmd` on Windows (under `%APPDATA%\npm`), which a bare PATH check frequently misses. The runner below already probes the `.cmd`/`.exe` shims and npm-global dirs for you.
+- **Run the inline smoke pass directly:**
+  - Windows: `pwsh scripts/impact-run.ps1 <pre_ref> <post_ref> --smoke`
+  - macOS/Linux/git-bash: `bash scripts/impact-run.sh <pre_ref> <post_ref> --smoke`
+- **Interpret the exit code:** exit `3` means the runner genuinely could not find the Copilot CLI after all probes — only then skip Tier 2, and say so explicitly in the report (you still have Tier 1). Any other completion means Tier 2 ran. (The full statistical run uses more trials and belongs in CI — see the Bitbucket pipeline step.)
+- If you want to confirm the CLI's flags first, run `copilot --help` (try `copilot.cmd --help` on Windows). If the non-interactive/print flag differs from `agent_cmd` in `tests/impact/config.json`, update `agent_cmd` to match the installed version — the one adaptation to do automatically, no user input. The runner's worktrees are short-pathed and set `core.longpaths` to survive Windows' 260-char limit.
 - Aggregate `docs/impact/runs/**/*.json`: per task and overall, contrast **pre vs post** on acceptance rate, build-pass rate, anti-patterns-introduced (sum), and net LOC. Report the spread across trials, not a single number.
 
 ### 4. Write the report

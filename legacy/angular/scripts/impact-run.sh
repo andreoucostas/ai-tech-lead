@@ -27,9 +27,31 @@ command -v jq >/dev/null 2>&1 || { echo "jq is required."; exit 2; }
 agent_cmd=$(jq -r '.agent_cmd' "$cfg")
 if [ "$mode" = "--smoke" ]; then trials=$(jq -r '.smoke_trials // 1' "$cfg"); else trials=$(jq -r '.trials // 3' "$cfg"); fi
 agent_bin=$(printf '%s' "$agent_cmd" | awk '{print $1}')
-if ! command -v "$agent_bin" >/dev/null 2>&1; then
-  echo "Headless agent '$agent_bin' not on PATH — cannot run the behavioral A/B (Tier 2)."
-  echo "Install/auth it (Copilot CLI) or run only the deterministic before/after (Tier 1)."
+
+# Resolve the headless agent robustly. On Windows the Copilot CLI is usually an npm-global install that
+# lands as `copilot.cmd` (not `copilot`) under %APPDATA%\npm — a path git-bash's `command -v` often
+# misses. Probe the bare name, the .cmd/.exe shims, then known npm-global dirs before giving up.
+resolve_agent() {
+  local b="$1" c d
+  for c in "$b" "$b.cmd" "$b.exe"; do
+    command -v "$c" >/dev/null 2>&1 && { printf '%s' "$c"; return 0; }
+  done
+  for d in "$(npm prefix -g 2>/dev/null)" "${APPDATA:-}/npm" "$HOME/AppData/Roaming/npm" "$HOME/.npm-global/bin" "/usr/local/bin"; do
+    [ -n "$d" ] || continue
+    d=${d//\\//}
+    for c in "$b" "$b.cmd" "$b.exe"; do
+      [ -f "$d/$c" ] && { printf '%s' "$d/$c"; return 0; }
+    done
+  done
+  return 1
+}
+if resolved=$(resolve_agent "$agent_bin"); then
+  # Splice the resolved binary back into the command (replace only the first token).
+  agent_cmd="$(printf '%q' "$resolved")${agent_cmd#"$agent_bin"}"
+else
+  echo "Headless agent '$agent_bin' not found — looked for $agent_bin / $agent_bin.cmd / $agent_bin.exe on PATH,"
+  echo "in \`npm prefix -g\`, and %APPDATA%\\npm. Tier 2 (behavioral A/B) skipped."
+  echo "Install the Copilot CLI (e.g. npm i -g @github/copilot) and authenticate once, or run Tier 1 only."
   exit 3
 fi
 
@@ -43,6 +65,14 @@ fi
 
 run_dir="docs/impact/runs"; rm -rf "$run_dir"; mkdir -p "$run_dir"
 
+# Choose a SHORT base dir for throwaway worktrees. Windows' 260-char MAX_PATH means a deep temp path
+# plus a deep source tree (namespaces, node_modules) overflows the limit, so `git worktree add` and the
+# build fail. A drive-root dir keeps paths shallow; core.longpaths gives git extra headroom on top.
+if [ -n "${SYSTEMDRIVE:-}" ]; then wt_base="${SYSTEMDRIVE}/iwt"; else wt_base="${TMPDIR:-/tmp}/iwt"; fi
+mkdir -p "$wt_base" 2>/dev/null || { wt_base="${TMPDIR:-/tmp}/iwt"; mkdir -p "$wt_base" 2>/dev/null; }
+git -c core.longpaths=true worktree prune 2>/dev/null
+wtn=0
+
 for arm in pre post; do
   if [ "$arm" = pre ]; then ref="$pre"; else ref="$post"; fi
   ntasks=$(jq 'length' "$tasks"); i=0
@@ -53,10 +83,11 @@ for arm in pre post; do
     mkdir -p "$run_dir/$arm/$tid"
     t=1
     while [ "$t" -le "$trials" ]; do
-      wt=$(mktemp -d 2>/dev/null || echo "/tmp/impact.$$.$RANDOM"); mkdir -p "$wt"
-      if ! git worktree add -q --detach "$wt" "$ref" 2>/dev/null; then
-        echo "  worktree add failed for ref '$ref' — skipping"; rm -rf "$wt"; t=$((t+1)); continue
+      wtn=$((wtn+1)); wt="$wt_base/w$wtn"; rm -rf "$wt" 2>/dev/null
+      if ! git -c core.longpaths=true worktree add -q --detach "$wt" "$ref" 2>/dev/null; then
+        echo "  worktree add failed for ref '$ref' (path: $wt) — skipping"; rm -rf "$wt" 2>/dev/null; t=$((t+1)); continue
       fi
+      git -C "$wt" config core.longpaths true 2>/dev/null
 
       start=$(date +%s 2>/dev/null || echo 0)
       cmd="${agent_cmd/\{prompt\}/$(printf '%q' "$prompt")}"
@@ -114,7 +145,7 @@ for arm in pre post; do
         '{arm:$arm, task:$task, trial:$trial, ref:$ref, build_ok:$build_ok, acceptance:$acceptance, asserts:$asserts, antipatterns_introduced:$metrics, files_changed:$files, lines_added:$added, lines_deleted:$deleted, duration_s:$duration}' \
         > "$run_dir/$arm/$tid/$t.json"
 
-      git worktree remove --force "$wt" 2>/dev/null; rm -rf "$wt" 2>/dev/null
+      git -c core.longpaths=true worktree remove --force "$wt" 2>/dev/null; rm -rf "$wt" 2>/dev/null
       echo "  $arm/$tid trial $t: acceptance=$acc_ok build=$build_ok files=${#changed[@]}"
       t=$((t+1))
     done

@@ -3,6 +3,16 @@
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
 > Architecture decisions (cross-stack) live in `project_framework_architecture.md`.
 
+## 0.13.0 — 2026-06-05 (presentation deck + impact-harness Windows/Copilot fixes)
+
+### Added
+- **Presentation deck** — `docs/presentation/framework-briefing.html`, a self-contained, offline HTML briefing (keyboard nav, built-in speaker-notes overlay, print-to-PDF) for pitching the framework to tech leads and their teams: overview + practical implications for both audiences. Companion **`docs/presentation/TALKING-POINTS.md`** carries two runs-of-show (leads vs teams), a pre-meeting checklist, per-slide notes, and anticipated Q&A. Listed in the README "What's in the box" table.
+
+### Fixed
+- **Impact harness was skipped during `/adopt`** (observed in a real Opus-4.6 adoption). `/adopt` Phase 9 is now **mandatory**, with a "Definition of done" that gates completion on `docs/impact/IMPACT.md` existing, and Phase 8 explicitly hands off to it — the report can no longer be silently dropped.
+- **Copilot CLI not detected on Windows.** `scripts/impact-run.{sh,ps1}` now resolve the agent robustly — probing `copilot`, `copilot.cmd`, `copilot.exe`, and npm-global locations (`npm prefix -g`, `%APPDATA%\npm`) — instead of a single `command -v copilot`, which missed the npm-global `.cmd` shim. `/impact` now tells the agent to trust the runner's exit code (`3` = genuinely absent) rather than pre-judging availability with a bare PATH check.
+- **`git worktree` failed on Windows long paths (MAX_PATH).** The behavioral A/B now creates worktrees at a short drive-root base (`<drive>:/iwt/wN`) with `core.longpaths=true`, instead of deep temp+GUID paths that overflowed the 260-char limit once a deep source tree was checked out.
+
 ## 0.12.0 — 2026-06-04 (CLAUDE.md review + README-drift check)
 
 ### Added
