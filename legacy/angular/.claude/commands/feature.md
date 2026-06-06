@@ -7,7 +7,7 @@ $ARGUMENTS
 
 ### Step 1 — Design check
 
-**Check for a spec first.** If `specs/<slug>.md` exists for this work, read it and treat it as the contract — implement against its acceptance criteria, scope, and chosen approach, and flag any deviation. If the feature is non-trivial and no spec exists, recommend `/design` first (it writes one). For small changes, proceed without a spec.
+**Check for a spec first.** If `specs/<slug>.md` exists for this work, read it and treat it as the contract — implement against its acceptance criteria, scope, and chosen approach, **working through its Tasks checklist and checking off each `- [ ]` → `- [x]` in the spec file as you complete it** (so progress survives across sessions), and flag any deviation. If the feature is non-trivial and no spec exists, recommend `/design` first (it writes one). For small changes, proceed without a spec.
 
 Before writing any code, reason through:
 - Which layers are affected (models, services, state, components, routing)?

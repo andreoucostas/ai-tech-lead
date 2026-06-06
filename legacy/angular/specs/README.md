@@ -7,11 +7,11 @@ Why persist it: an in-chat design is lost when the session ends. A spec on disk 
 ## Lifecycle
 
 ```
-/design  → writes specs/<slug>.md (Status: Draft)
+/design  → writes specs/<slug>.md (Status: Draft) — requirement, approach, and a Tasks checklist
   ↓        developer reviews & approves the spec (Status: Approved)
-/feature → implements against the spec (Status: Implemented)
+/feature → implements against the spec, checking off Tasks as each lands (Status: Implemented)
   ↓
-/review  → verifies the change satisfies the spec
+/review  → verifies the spec is satisfied (acceptance criteria met + all Tasks checked)
   ↓        ship, then archive or delete the spec
 ```
 
@@ -52,6 +52,11 @@ API → service → state (store/signals) → smart component → dumb component
 
 ### Test strategy
 What tests, at what level (unit, component via TestBed/harness, e2e), and the key cases.
+
+### Tasks
+Ordered, checkable implementation steps the agent works through (the *how*; distinct from acceptance criteria, the *what*). Keep them small and verifiable; `/feature` checks each off in this file as it lands, so progress survives across sessions.
+- [ ] ...
+- [ ] ...
 
 ### Open questions
 Decisions the developer must make before implementation.

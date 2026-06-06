@@ -65,13 +65,18 @@ List anything you're unsure about or that the developer needs to decide before i
 ### Test Strategy
 [what tests are needed and at what level]
 
+### Tasks
+Ordered, checkable implementation steps `/feature` will work through:
+- [ ] ...
+- [ ] ...
+
 ### Open Questions
 [decisions needed from the developer]
 ```
 
 ## Persist the spec (non-trivial features)
 
-For anything beyond a trivial change, write the design above to `specs/<short-kebab-slug>.md` using the template in [`specs/README.md`](../../specs/README.md), with **Status: Draft**. This persists the contract across sessions and tools so `/feature` implements against it and `/review` verifies against it. For a trivial change, skip the file — say so and proceed.
+For anything beyond a trivial change, write the design above to `specs/<short-kebab-slug>.md` using the template in [`specs/README.md`](../../specs/README.md), with **Status: Draft**, **including the Tasks checklist** (the ordered implementation steps). This persists the contract *and the implementation progress* across sessions and tools so `/feature` implements against it — checking off each Task as it lands — and `/review` verifies against it. For a trivial change, skip the file — say so and proceed.
 
 `CLAUDE.md` is the **constitution**: the spec must comply with its Conventions, Leanness, and Architecture Decisions. Flag any place the requirement pushes against a convention so the developer decides *before* code is written.
 

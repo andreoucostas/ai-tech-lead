@@ -3,6 +3,13 @@
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
 > Architecture decisions (cross-stack) live in `project_framework_architecture.md`.
 
+## 0.15.0 — 2026-06-06 (spec-driven development: explicit Tasks artifact)
+
+> A targeted alignment after reviewing how the frontier labs and institutions (AWS Kiro, GitHub Spec-Kit, Google Antigravity, OpenAI Codex) frame AI-driven SDLC: they have converged on Spec → Plan → **Tasks** → Implement. The framework already had the spec lifecycle (`/design → spec → /feature → /review`, with CLAUDE.md as the "constitution") and is ahead on governance / calibration / eval — this adds the one element it underweighted: a persisted, checkable Tasks breakdown.
+
+### Added
+- **Tasks checklist in the spec lifecycle.** The `specs/<slug>.md` template now carries an ordered, checkable **Tasks** section (the *how* — distinct from acceptance criteria, the *what*). `/design` drafts it; `/feature` works through it and checks each `- [ ]` → `- [x]` **in the spec file** as it lands, so implementation progress survives across sessions and tools; `/review` flags any unchecked Task as incomplete work. No new command or artifact — an extension of the existing flow, and the lean answer to industry spec-driven development.
+
 ## 0.14.0 — 2026-06-06 (AI-driven SDLC hardening: security, calibration, brownfield safety)
 
 > Bakes best-practice findings from METR, Google DORA 2025, Anthropic's Claude Code guidance, and Thoughtworks/Böckeler into the framework so they are **LLM-driven, not left to each developer**. Reframed after a multi-reviewer critique: the highest-leverage gaps were security and trust-calibration, not the originally-planned ones. LSP-over-MCP symbol grounding was evaluated and **deferred** (no maintained offline bridge for Windows/Bitbucket DC; 8–15 s/query; orphaned-process lifecycle) — `Read`/`Grep` + Verification Rules #1–2 remain the fallback.

@@ -27,7 +27,7 @@ The auditors handle pattern-level checks. You handle:
 - **Security**: XSS, data exposure, auth bypass, injection — auditors do not check these.
 - **Test quality**: does the test verify behavior or implementation? Would it catch a regression?
 - **Architecture trajectory**: does this move toward or away from the target architecture in CLAUDE.md > Architecture Decisions?
-- **Spec conformance**: if a `specs/<slug>.md` exists for this change, verify the implementation satisfies its acceptance criteria and stays within its declared scope. Flag unmet criteria or scope creep as issues.
+- **Spec conformance**: if a `specs/<slug>.md` exists for this change, verify the implementation satisfies its acceptance criteria, that **every Task in its checklist is checked off** (flag any still `- [ ]` as incomplete work), and stays within its declared scope. Flag unmet criteria or scope creep as issues.
 
 ### Step 4 — Synthesise
 
