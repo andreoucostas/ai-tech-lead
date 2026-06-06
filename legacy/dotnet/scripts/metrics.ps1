@@ -29,4 +29,26 @@ $m = [ordered]@{
     money_double_float                 = (Count '(double|float)\s+[A-Za-z_]*(Amount|Balance|Price|Rate|Fee|Notional)')
     test_attributes                    = (Count '\[(Fact|Theory|Test|TestMethod)\]')
 }
-[pscustomobject]@{ stack = 'dotnet'; scope = ($paths -join ' '); metrics = $m } | ConvertTo-Json -Depth 4
+
+# --- Readiness signals: capability disclosure for /impact, NOT a gate ---
+$ciPresent = (Test-Path 'bitbucket-pipelines.yml') -or (Test-Path 'bitbucket-pipelines.yaml') -or (Test-Path '.github/workflows') -or (Test-Path 'azure-pipelines.yml')
+$covPct = $null
+$covFile = Get-ChildItem -Path . -Recurse -File -Filter 'coverage.cobertura.xml' -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -notmatch '[\\/](node_modules|bin|obj)[\\/]' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if (-not $covFile) {
+    $covFile = Get-ChildItem -Path . -Recurse -File -Filter '*cobertura*.xml' -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -notmatch '[\\/](node_modules|bin|obj)[\\/]' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+}
+if ($covFile) { try { $xml = [xml](Get-Content $covFile.FullName -Raw); $lr = $xml.coverage.'line-rate'; if ($lr) { $covPct = [math]::Round([double]$lr * 100, 1) } } catch {} }
+$projFiles = Get-ChildItem -Path . -Recurse -File -Include *.csproj, Directory.Build.props -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' }
+$nullable = [bool]($projFiles | Select-String -Pattern '<Nullable>\s*enable' -ErrorAction SilentlyContinue | Select-Object -First 1)
+$warnErr  = [bool]($projFiles | Select-String -Pattern '<TreatWarningsAsErrors>\s*true' -ErrorAction SilentlyContinue | Select-Object -First 1)
+$r = [ordered]@{
+    ci_present         = $ciPresent
+    coverage_pct       = $covPct
+    nullable_enabled   = $nullable
+    warnings_as_errors = $warnErr
+    has_tests          = ($m.test_attributes -gt 0)
+}
+[pscustomobject]@{ stack = 'dotnet'; scope = ($paths -join ' '); metrics = $m; readiness = $r } | ConvertTo-Json -Depth 4

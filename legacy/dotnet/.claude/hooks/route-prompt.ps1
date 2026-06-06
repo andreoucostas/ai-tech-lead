@@ -84,6 +84,22 @@ This is a quality gate, not a rubber stamp.
 Output: APPROVE or REQUEST CHANGES with a severity-tagged issues table.
 '@
 
+$railsSecurity = @'
+## Security-sensitive surface detected
+
+This prompt touches a security- or money-sensitive area (auth, payments, balances, ledgers, idempotency, secrets). DORA's evidence is that AI amplifies existing weaknesses fastest here, so this overlay applies ON TOP OF any workflow rails above. Before presenting the change as complete:
+1. Run /security-review on the diff (or invoke the security-auditor agent) -- do not self-certify.
+2. Monetary logic: use decimal (never double); guard negative amounts, duplicate transaction IDs, precision loss, and timestamp ordering; make state-changing operations idempotent.
+3. Check-then-act on balances/state: ensure read-decide-write is atomic/serialised -- no TOCTOU race.
+4. Record anything you could not fully verify in SECURITY_FINDINGS.md.
+If this prompt does NOT actually touch a sensitive surface, say so and skip this overlay.
+'@
+
+$railsPlanGate = @'
+## Plan gate (present -> clarify -> confirm)
+Before writing code: post a short plan (files to change, order of operations, how you'll verify) AND any clarifying questions for whatever is underspecified -- do not guess past a material ambiguity to seem helpful. Then WAIT for the developer's explicit go-ahead before editing code. Skip the wait only for a trivial, unambiguous change (typo, one-liner), and say that you're skipping it and why.
+'@
+
 $inputJson = [Console]::In.ReadToEnd()
 if ([string]::IsNullOrEmpty($inputJson)) { exit 0 }
 
@@ -114,21 +130,37 @@ elseif ($lc -match '(\bfix\b|\bbug\b|\bbroken\b|\bcrash|\bfails?\b|\bfailing\b|\
 elseif ($lc -match '(\brefactor\b|cleanup|clean up|\bextract\b|\brename\b|simplify|reorganis[ez]|restructure|\btidy\b)')                  { $intent = 'refactor' }
 elseif ($lc -match '(\badd\b|\bimplement\b|\bcreate\b|\bbuild\b|new (feature|endpoint|component|service|screen|route))')                  { $intent = 'feature' }
 
-if ([string]::IsNullOrEmpty($intent)) { exit 0 }
+# Security overlay fires IN ADDITION to any workflow intent -- it is not an
+# exclusive intent, so a security-relevant feature still gets the feature rails.
+$sensitive = $lc -match '(payment|balance|ledger|transaction|transfer|\bdebit\b|\bcredit\b|refund|settle|idempotenc|reconcil|\bauth\b|authenticat|authori[sz]|login|password|secret|token|credential|permission|\brole\b|encrypt|decrypt|money|currency)'
 
-Write-Output "## Routed intent: ``$intent``"
-Write-Output ''
-Write-Output "This natural-language prompt was classified as **$intent**. Apply the rails for that workflow before responding. If the user's actual intent differs, ignore these rails and proceed normally -- but state explicitly what you concluded the intent is."
-Write-Output ''
+if ([string]::IsNullOrEmpty($intent) -and -not $sensitive) { exit 0 }
 
-switch ($intent) {
-    'fix'      { Write-Output $railsFix }
-    'feature'  { Write-Output $railsFeature }
-    'refactor' { Write-Output $railsRefactor }
-    'test'     { Write-Output $railsTest }
-    'design'   { Write-Output $railsDesign }
-    'debt'     { Write-Output $railsDebt }
-    'review'   { Write-Output $railsReview }
+if (-not [string]::IsNullOrEmpty($intent)) {
+    Write-Output "## Routed intent: ``$intent``"
+    Write-Output ''
+    Write-Output "This natural-language prompt was classified as **$intent**. Apply the rails for that workflow before responding. If the user's actual intent differs, ignore these rails and proceed normally -- but state explicitly what you concluded the intent is."
+    Write-Output ''
+
+    if ($intent -in @('fix','feature','refactor','test')) {
+        Write-Output $railsPlanGate
+        Write-Output ''
+    }
+
+    switch ($intent) {
+        'fix'      { Write-Output $railsFix }
+        'feature'  { Write-Output $railsFeature }
+        'refactor' { Write-Output $railsRefactor }
+        'test'     { Write-Output $railsTest }
+        'design'   { Write-Output $railsDesign }
+        'debt'     { Write-Output $railsDebt }
+        'review'   { Write-Output $railsReview }
+    }
+}
+
+if ($sensitive) {
+    Write-Output ''
+    Write-Output $railsSecurity
 }
 
 exit 0

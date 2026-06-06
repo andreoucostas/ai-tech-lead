@@ -17,6 +17,21 @@ async_total=$(c 'async[[:space:]]+(Task|ValueTask)')
 async_ct=$(c 'async[[:space:]]+(Task|ValueTask)[^)]*CancellationToken')
 missing_ct=$(( async_total - async_ct )); [ "$missing_ct" -lt 0 ] && missing_ct=0
 
+# --- Readiness signals: capability disclosure for /impact, NOT a gate ---
+ci_present=false
+{ [ -f bitbucket-pipelines.yml ] || [ -f bitbucket-pipelines.yaml ] || [ -d .github/workflows ] || [ -f azure-pipelines.yml ]; } && ci_present=true
+cov="null"
+covfile=$(find . -name 'coverage.cobertura.xml' -not -path '*/node_modules/*' -not -path '*/bin/*' -not -path '*/obj/*' 2>/dev/null | head -1)
+[ -z "$covfile" ] && covfile=$(find . -name '*cobertura*.xml' -not -path '*/node_modules/*' -not -path '*/bin/*' -not -path '*/obj/*' 2>/dev/null | head -1)
+if [ -n "$covfile" ]; then
+  lr=$(grep -oE 'line-rate="[0-9.]+"' "$covfile" 2>/dev/null | head -1 | grep -oE '[0-9.]+')
+  [ -n "$lr" ] && cov=$(awk "BEGIN{printf \"%.1f\", $lr*100}")
+fi
+nullable=false; warnerr=false
+grep -rqsI --include='*.csproj' --include='Directory.Build.props' '<Nullable>[[:space:]]*enable' . 2>/dev/null && nullable=true
+grep -rqsI --include='*.csproj' --include='Directory.Build.props' '<TreatWarningsAsErrors>[[:space:]]*true' . 2>/dev/null && warnerr=true
+has_tests=false; [ "$(c '\[(Fact|Theory|Test|TestMethod)\]')" -gt 0 ] && has_tests=true
+
 cat <<JSON
 {
   "stack": "dotnet",
@@ -33,6 +48,13 @@ cat <<JSON
     "raw_sql": $(c '(FromSqlRaw|ExecuteSqlRaw)'),
     "money_double_float": $(c '(double|float)[[:space:]]+[A-Za-z_]*(Amount|Balance|Price|Rate|Fee|Notional)'),
     "test_attributes": $(c '\[(Fact|Theory|Test|TestMethod)\]')
+  },
+  "readiness": {
+    "ci_present": ${ci_present},
+    "coverage_pct": ${cov},
+    "nullable_enabled": ${nullable},
+    "warnings_as_errors": ${warnerr},
+    "has_tests": ${has_tests}
   }
 }
 JSON

@@ -190,7 +190,18 @@ Replace the `## Detected Framework Packages` section with a populated table:
 
 **Delete the `DETECTED_FRAMEWORK_PACKAGES_PENDING` HTML comment** when this section is populated. If no framework packages were found, replace the table with a single line: `_No framework packages detected in this repo._` and still delete the marker.
 
-Do **not** edit any other section of FRAMEWORK-CONTEXT.md — those are maintainer-curated.
+Do **not** edit any other section of FRAMEWORK-CONTEXT.md except `Known Hazard Areas` (next sub-step) — the rest are maintainer-curated.
+
+### 3d-bis: Draft FRAMEWORK-CONTEXT.md > Known Hazard Areas
+
+From the Phase-2 **Tier-1 architectural risks** (and any domain-invariant / security findings — e.g. for .NET the A7 check-then-act / idempotency gaps, for Angular RxJS leak or sanitisation-bypass risks), draft the `## Known Hazard Areas` table: the "here be dragons" the agent must read before changing a listed area — load-bearing workarounds, undocumented invariants, high-blast-radius modules, and code whose tests do not actually pin its behaviour.
+
+Rules:
+- One row per hazard: `Area / file(s)` · `Hazard` (the specific risk) · `Status` · `Reviewed` (today's date).
+- **Every row you draft from analysis is `[UNVERIFIED]`** — tooling spotted the symptom; a human has not confirmed *why* it exists. Do not upgrade the status yourself.
+- In the Phase-4 report, explicitly ask the maintainer to review Known Hazard Areas and confirm/correct each row — that is the human-in-the-loop step the `[UNVERIFIED]` marker depends on.
+- **Delete the `KNOWN_HAZARD_AREAS_PENDING` marker** once drafted. If nothing notable surfaced, replace the table body with `_No notable hazards detected — confirm with the team._` and still delete the marker.
+- Keep it tight (≤ ~12 rows); deeper items belong in TECH_DEBT.md.
 
 ### 3e: Initialise SECURITY_FINDINGS.md
 

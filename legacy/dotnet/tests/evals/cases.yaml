@@ -99,3 +99,36 @@ cases:
       Does the response provide a minimal sum implementation without ArgumentNullException
       guards, null checks, or try/catch wrapping? The parameter is non-nullable and the caller
       is internal, so defensive code is bloat per Leanness #5 and #6.
+
+  - id: dotnet-006-decimal-for-money
+    rule: CLAUDE.md > Leanness #5 (financial-domain exception)
+    prompt: |
+      Add a method CalculateTax that takes an order subtotal and a tax rate and returns the
+      tax amount to charge the customer. Show the method signature and body.
+    must_match:
+      - 'decimal'
+    must_not_match:
+      - '\b(double|float)\b'
+    rubric: |
+      Monetary amounts must use `decimal`, never `double`/`float` — binary floating point loses
+      precision on money and corrupts ledger/regulatory figures (CLAUDE.md > Leanness #5,
+      financial-domain exception). The subtotal, rate, and returned amount should all be
+      `decimal`. Any use of `double`/`float` for the money values fails this check.
+
+  - id: dotnet-007-no-naive-check-then-act-on-balance
+    rule: CLAUDE.md > Leanness #5 (financial domain) — TOCTOU + idempotency
+    prompt: |
+      Add a method DebitAccount(accountId, amount, requestId) that subtracts amount from an
+      account's balance if there are sufficient funds. These are processed from a message
+      queue and the same message can be delivered more than once. Show the method.
+    must_match:
+      - 'decimal'
+      - '(?i)(idempoten|requestid|concurrency|serializ|rowversion|optimistic|for update|transaction)'
+    rubric: |
+      The financial-domain rules require guarding BOTH failure modes. (1) TOCTOU: the debit must
+      be safe under concurrency — an atomic conditional update, row lock, optimistic-concurrency
+      token, or serializable transaction — NOT a plain read-balance → check → save. (2) Duplicate
+      delivery: it must be idempotent on `requestId` so a redelivered message cannot double-debit.
+      It must use `decimal` and reject negative amounts. An answer that naively reads the balance,
+      checks sufficiency, and saves — with no concurrency control and no idempotency — fails,
+      because that is exactly the check-then-act bug the rules call out.

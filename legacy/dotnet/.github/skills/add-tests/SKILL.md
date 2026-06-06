@@ -5,7 +5,8 @@ description: >
   handler, controller, or endpoint that already exists. Covers unit tests (xUnit) and integration
   tests (WebApplicationFactory), behavior-first assertions, and fixture reuse.
   USE FOR: backfilling tests on untested code, adding edge/error-path cases, writing a regression
-  test for a bug, raising coverage on a module you're about to change.
+  test for a bug, raising coverage on a module you're about to change, or pinning the current
+  behavior of untested legacy code before a refactor (characterization mode).
   DO NOT USE FOR: scaffolding a brand-new endpoint (use add-endpoint, which already includes its
   tests), or runtime profiling/benchmarking.
 ---
@@ -21,3 +22,15 @@ Match `CLAUDE.md > Conventions > Testing` and the Test leanness rules in `CLAUDE
 5. **Arrange-Act-Assert**, one logical assertion focus per test. Descriptive names per the project convention (e.g. `Method_Scenario_ExpectedResult`).
 6. **Run** `dotnet test` (scoped to the affected project) and confirm green. For a regression test, confirm it **fails** against the unfixed code first, then passes after the fix.
 7. **Report** what was covered and what remains uncovered — do not claim coverage you didn't add.
+
+---
+
+## Characterization mode — pinning legacy behavior before a refactor
+
+When the goal is to make untested legacy code *safe to change* (e.g. before `/refactor`), you are pinning **what the code currently does**, not asserting what it *should* do. This is different from normal test-writing:
+
+- **Label every test as characterization.** Put this header on the test class/file: `// CHARACTERIZATION — pins OBSERVED behavior, not VERIFIED-correct behavior. A failure may mean the refactor changed behavior, OR that this test pinned a pre-existing bug. Do not "fix" the assertion without human review.`
+- **You cannot pin behavior you have not run.** Without an oracle you would be guessing. Generate the test *skeleton* (wire the real dependencies, call the method, capture the result), run it once to obtain the actual values, and assert those. Never invent expected values.
+- **Flag every nondeterministic input you had to pin** — `DateTime.Now`/`UtcNow`, `Guid.NewGuid()`, random, file/network/DB I/O — with `// TODO: stub for a stable snapshot` so the developer seals it before relying on the test.
+- **HALT on money / safety-critical code.** If it touches `decimal` money, balances, ledgers, idempotency keys, or regulatory figures, STOP before treating any characterization test as a contract: present the captured behavior and ask the developer to confirm it is *correct*, not merely *current*. Pinning a wrong rounding mode or an off-by-one balance as "approved" is a financial-domain hazard — if confirmed wrong-but-load-bearing, record it in `FRAMEWORK-CONTEXT.md > Known Hazard Areas`.
+- These tests are scaffolding for a safe refactor, not a substitute for behavior-first tests. Once the intended behavior is understood, prefer real behavioral assertions.
