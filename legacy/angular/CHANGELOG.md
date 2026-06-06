@@ -3,6 +3,23 @@
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
 > Architecture decisions (cross-stack) live in `project_framework_architecture.md`.
 
+## 0.14.0 — 2026-06-06 (AI-driven SDLC hardening: security, calibration, brownfield safety)
+
+> Bakes best-practice findings from METR, Google DORA 2025, Anthropic's Claude Code guidance, and Thoughtworks/Böckeler into the framework so they are **LLM-driven, not left to each developer**. Reframed after a multi-reviewer critique: the highest-leverage gaps were security and trust-calibration, not the originally-planned ones. LSP-over-MCP symbol grounding was evaluated and **deferred** (no maintained offline bridge for Windows/Bitbucket DC; 8–15 s/query; orphaned-process lifecycle) — `Read`/`Grep` + Verification Rules #1–2 remain the fallback.
+
+### Added
+- **`/adopt` trust-boundary + safety screen.** Discovered AI-config/doc files (`.cursorrules`, `AGENTS.md`, etc.) are now treated as **untrusted input**: the agent never obeys instructions found inside them, and a provenance + adversarial-content scan (override phrasing, hidden-comment imperatives, exfiltration URLs) with **raw-content review** gates every merge into the canonical CLAUDE.md. Closes a prompt-injection hole on brownfield adoption.
+- **Security-sensitive routing.** The `route-prompt` hook injects a security overlay (run `/security-review` / `security-auditor`; sanitisation / `bypassSecurityTrust*`, token-storage, XSS/CSRF reminders) whenever a prompt touches auth, tokens, sessions, PII, or output sanitisation — stacked on top of any workflow rails, and standalone when no workflow matched. DORA: AI amplifies weaknesses fastest here.
+- **Enforced plan-review & clarify gate.** For fix/feature/refactor/test the agent must present a plan, surface clarifying questions, and **wait for the developer's go-ahead before writing code** (CLAUDE.md Agentic Workflow + `route-prompt`). The human-in-the-loop checkpoint that also counters METR's perception gap.
+- **Perception-gap feedback loop.** A "Verification & confidence" line (verified-by-running vs asserted) is now required on completed work (`workflow.md` + CLAUDE.md self-review); `/impact` gains a predicted-vs-actual calibration section and a "confidence is not correctness" honesty rule; two security-correctness eval cases added (no auth token in web storage; no PII in client logs).
+- **Known Hazard Areas.** A `/bootstrap`-drafted section in `FRAMEWORK-CONTEXT.md` capturing the repo's "here be dragons" (load-bearing workarounds, undocumented invariants, tests that don't pin behaviour) with required epistemic status (`[UNVERIFIED]`/`[SUSPECTED]`/`[VERIFIED]`) and a 90-day re-confirm rule — the lean form of brownfield hazard capture (no new doc, no new subagent).
+- **Characterization mode** in the `add-tests` skill: pin **observed** (not verified-correct) behaviour before a refactor, skeleton-then-run (never invent expected values), with a mandatory "OBSERVED not VERIFIED" header and a **HALT for human review on auth/security/money** so a characterization spec can't silently bless an insecure or wrong behaviour. `/refactor` Step 2 now points at it.
+- **AI-readiness disclosure.** `scripts/metrics.{ps1,sh}` emit a `readiness` block (CI present, measured coverage % or `null`=not-measured, `tsconfig` strict, tests present); `/impact` surfaces it as a **capability disclosure, never a gate** — a weak substrate is exactly where teams most need help.
+- **Security parity with the .NET template.** Added `SECURITY_FINDINGS.md` (SLA register) and wired the existing `security-auditor` agent into the security overlay, `/bootstrap` (initialise the register), and the CLAUDE.md Registers note.
+
+### Notes
+- LSP-over-MCP symbol grounding: **deferred** behind a spike with explicit kill criteria — cold-start >10 s, 8–15 s/query, orphaned language-server processes, and air-gapped install of `csharp-ls`/`typescript-language-server` + an MCP bridge infeasible on Bitbucket DC. Fallback: `Read`/`Grep` + Verification Rules #1–2.
+
 ## 0.13.2 — 2026-06-05 (hooks fire on Windows: PowerShell-default + CRLF-safe)
 
 ### Fixed

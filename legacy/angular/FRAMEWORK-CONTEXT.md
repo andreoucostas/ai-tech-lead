@@ -3,7 +3,7 @@
 > Cross-repo context that AI agents need but cannot derive from this single repo.
 > Covers: shared library APIs, multi-tenancy conventions, dashboard contracts, and cross-service patterns.
 >
-> **Maintenance**: Edit the static sections (Production Architecture, Shared Libraries, etc.) when framework-level conventions change. The "Detected Framework Packages" section is auto-populated by `/bootstrap` and refreshed by `/docs-sync`.
+> **Maintenance**: Edit the static sections (Production Architecture, Shared Libraries, etc.) when framework-level conventions change. The "Detected Framework Packages" and "Known Hazard Areas" sections are auto-populated by `/bootstrap` and refreshed by `/docs-sync`.
 >
 > **Precedence**: If `FRAMEWORK-CONTEXT.md` and `CLAUDE.md` disagree on a convention, **`CLAUDE.md` (this repo's authoritative source) wins** — but the agent must flag the contradiction. Framework-level conventions are baseline; per-repo conventions can diverge with rationale.
 >
@@ -80,6 +80,29 @@ _Not applicable / not yet populated._
      - WebSocket / SSE patterns (if any) -->
 
 _Not yet populated._
+
+---
+
+## Known Hazard Areas
+
+<!-- Auto-drafted by /bootstrap (and /adopt) from the Phase-2 Tier-1 architectural-risk
+     synthesis (plus any domain-invariant / security findings); refined by maintainers. These
+     are the "here be dragons" of this repo: load-bearing workarounds, undocumented invariants,
+     high-blast-radius modules, and places where the tests do not actually pin the behaviour.
+     The agent reads this before planning any change in a listed area.
+
+     Epistemic status is REQUIRED on every row and the agent must honour it:
+       [VERIFIED]   a human confirmed the cause / why it must stay this way.
+       [SUSPECTED]  a human believes so but is unsure.
+       [UNVERIFIED] inferred by tooling only, no human confirmation — treat as a hypothesis, not
+                    a finding; it must NOT raise your confidence.
+     Re-confirm any row older than ~90 days — a stale hazard map causes false confidence. -->
+
+<!-- KNOWN_HAZARD_AREAS_PENDING: run /bootstrap to draft this from the codebase. -->
+
+| Area / file(s) | Hazard | Status | Reviewed |
+|----------------|--------|--------|----------|
+| _(drafted by /bootstrap)_ | _ | _ | _ |
 
 ---
 

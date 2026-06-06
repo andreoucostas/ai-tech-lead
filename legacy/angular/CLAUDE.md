@@ -11,7 +11,7 @@ ai-tech-lead-framework
 > Claude Code loads this file directly. GitHub Copilot (agent mode & CLI), Codex, Cursor, Gemini, and Aider read its generated mirror **[AGENTS.md](./AGENTS.md)** (kept in sync by `/generate-copilot`). Edit conventions here, never in AGENTS.md.
 > Run `/bootstrap` to populate it from your actual codebase.
 >
-> **Companion file**: [FRAMEWORK-CONTEXT.md](./FRAMEWORK-CONTEXT.md) holds cross-repo context (shared libraries, multi-tenancy conventions, dashboard contracts) that the agent should also load on every non-trivial task. CLAUDE.md wins on any conflict — but flag the contradiction.
+> **Companion file**: [FRAMEWORK-CONTEXT.md](./FRAMEWORK-CONTEXT.md) holds cross-repo context (shared libraries, multi-tenancy conventions, dashboard contracts) plus the repo's **Known Hazard Areas**, all of which the agent should load on every non-trivial task — consult the hazard list for the change's blast radius before planning. CLAUDE.md wins on any conflict — but flag the contradiction.
 >
 > **Per-developer working preferences** (e.g. "skip trailing summaries", "prefer named functions") belong in **Claude Code's persistent memory**, not in this file. Use phrasings like "remember to do X" during sessions; CLAUDE.md is for repo-shared conventions only.
 
@@ -131,6 +131,8 @@ Recipes live as **skills**, auto-discovered by both Claude Code (`.claude/skills
 
 `/bootstrap` adds project-specific skills under `.claude/skills/` rather than appending recipes here. Skills are mirrored to `.github/skills/` by `/generate-copilot` (and `scripts/sync-agent-files`) so Copilot CLI/agent see them too.
 
+**Registers**: [TECH_DEBT.md](./TECH_DEBT.md) tracks delivery debt. [SECURITY_FINDINGS.md](./SECURITY_FINDINGS.md) tracks security findings separately with remediation SLAs (Critical = 7 days, High = 30 days). Do not merge them — audit teams treat these differently. Security findings come from `/security-review` and the `security-auditor` agent, not from feature work.
+
 ---
 
 ## Boy Scout Rule
@@ -186,13 +188,16 @@ Determine what the developer is asking for:
 
 If the intent is ambiguous, ask before proceeding.
 
-### 2. Plan before coding
-For any non-trivial task:
-- List the files you'll create or modify
-- State the order of operations
-- Identify what tests will verify success
-- For larger features, persist a spec to `specs/<slug>.md` (see `/design`) and implement against it
-- State the plan, then execute
+**Security-sensitive surfaces always get a security pass.** If the work touches authentication/authorization, tokens, sessions, PII, or output sanitization (XSS/CSRF), run `/security-review` on the diff (or the `security-auditor` agent) before presenting it as complete — regardless of which workflow above applies. A `UserPromptSubmit` hook flags these automatically, but the rule holds even if the hook misses it.
+
+### 2. Plan before coding — present, clarify, then get the go-ahead
+For any non-trivial task, STOP before writing code and post a short plan:
+- The files you'll create or modify, and the order of operations
+- What tests will verify success
+- Your assumptions, plus **clarifying questions** for anything underspecified (ambiguous scope, unclear acceptance criteria, competing approaches). Do not guess past a material ambiguity to seem helpful — ask.
+- For larger features, persist the plan as a spec to `specs/<slug>.md` (see `/design`) and implement against it
+
+Then **wait for the developer's explicit go-ahead before editing code.** This checkpoint is where a wrong assumption gets caught before it becomes a wrong diff — and where the developer stays engaged with the change instead of rubber-stamping output. Skip the wait only for a trivial, unambiguous change (typo, one-liner), and say that you're skipping it and why.
 
 ### 3. Execute in verified subtasks
 For features and complex changes, decompose into ordered subtasks:
@@ -214,6 +219,7 @@ Before presenting work as complete:
 - Check if the change introduces a new pattern → flag that this file needs updating
 - Check if the change resolves a TECH_DEBT.md item → flag for removal
 - Check if the change contradicts any convention → ask whether to update the convention or change the implementation
+- **Close with a Verification & confidence line**: separate what you actually verified by running it (build / tests / lint — name which you ran) from what you assert without having run it, and flag anything you could not verify. This calibration is deliberate — it counters the well-documented tendency to feel more done than the work is.
 
 ### 6. Flag documentation drift
 At the end of your response, note if:

@@ -96,7 +96,7 @@ Recipes live as auto-discovered **skills**, available to both Claude Code (`.cla
 - `create-adr` — record an architecture decision
 - `enforce-architecture` — wire the deterministic DIP/layering CI gate (dependency-cruiser)
 
-**Registers**: [TECH_DEBT.md](./TECH_DEBT.md) tracks delivery debt. AI-assisted file changes are appended to `.claude/ai-audit.log` automatically by the PostToolUse hook.
+**Registers**: [TECH_DEBT.md](./TECH_DEBT.md) tracks delivery debt. [SECURITY_FINDINGS.md](./SECURITY_FINDINGS.md) tracks security findings separately with remediation SLAs (Critical = 7 days, High = 30 days) — do not merge them. Security findings come from `/security-review` and the `security-auditor` agent.
 
 ---
 
@@ -142,11 +142,11 @@ Items 8–14 can significantly expand or reshape a diff. Only apply them when th
 
 When given any task, follow this execution model. The seven workflows are also invokable explicitly as slash commands — in Claude Code from `.claude/commands/`, in Copilot Chat from `.github/prompts/` (same names).
 
-1. **Classify the intent** — feature / fix / refactor / design / test / debt / review. If ambiguous, ask before proceeding.
-2. **Plan before coding** — for any non-trivial task, list files to create/modify, the order of operations, and what tests verify success. State the plan, then execute. For larger features, persist a spec to `specs/<slug>.md` (see `/design`) and implement against it.
+1. **Classify the intent** — feature / fix / refactor / design / test / debt / review. If ambiguous, ask before proceeding. **Security-sensitive work** (auth/authz, tokens, sessions, PII, output sanitization / XSS / CSRF) additionally runs `/security-review` (or the `security-auditor` agent) before being presented as complete.
+2. **Plan before coding** — for any non-trivial task, present a plan (files to create/modify, order of operations, what tests verify success) **plus clarifying questions for anything underspecified, then wait for the developer's go-ahead before writing code** (skip the wait only for trivial, unambiguous changes, and say so). For larger features, persist a spec to `specs/<slug>.md` (see `/design`) and implement against it.
 3. **Execute in verified subtasks** — decompose into ordered layers (models/services → state → component → integration). Run `ng build` and `ng test --watch=false --browsers=ChromeHeadless` after each; fix failures before moving on.
 4. **Boy Scout every touched file** — apply the always-apply list above to every file you modify.
-5. **Self-review before presenting** — review against `CLAUDE.md > Conventions`; verify build + tests pass; flag new patterns, resolved TECH_DEBT items, and any convention contradictions.
+5. **Self-review before presenting** — review against `CLAUDE.md > Conventions`; verify build + tests pass; flag new patterns, resolved TECH_DEBT items, and any convention contradictions. **Close with a Verification & confidence line**: separate what you verified by running it (build/tests/lint) from what you assert without having run it, and flag anything unverified.
 6. **Flag documentation drift** — note new patterns to document, TECH_DEBT changes, and whether `copilot-instructions.md` / this file need regeneration (`/generate-copilot`).
 
 ---

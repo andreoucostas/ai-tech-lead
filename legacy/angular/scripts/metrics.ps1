@@ -24,4 +24,23 @@ $m = [ordered]@{
     concrete_service_instantiation_dip = (Count 'new\s+[A-Za-z0-9_]+(Service|Store|Facade)\(')
     test_specs                         = (Count '\b(it|describe)\(')
 }
-[pscustomobject]@{ stack = 'angular'; scope = ($paths -join ' '); metrics = $m } | ConvertTo-Json -Depth 4
+
+# --- Readiness signals: capability disclosure for /impact, NOT a gate ---
+$ciPresent = (Test-Path 'bitbucket-pipelines.yml') -or (Test-Path 'bitbucket-pipelines.yaml') -or (Test-Path '.github/workflows') -or (Test-Path 'azure-pipelines.yml')
+$covPct = $null
+$covFile = Get-ChildItem -Path . -Recurse -File -Filter 'cobertura-coverage.xml' -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -notmatch '[\\/](node_modules|dist)[\\/]' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if (-not $covFile) {
+    $covFile = Get-ChildItem -Path . -Recurse -File -Filter '*cobertura*.xml' -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -notmatch '[\\/](node_modules|dist)[\\/]' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+}
+if ($covFile) { try { $xml = [xml](Get-Content $covFile.FullName -Raw); $lr = $xml.coverage.'line-rate'; if ($lr) { $covPct = [math]::Round([double]$lr * 100, 1) } } catch {} }
+$tsStrict = [bool](Get-ChildItem -Path . -Recurse -File -Filter 'tsconfig*.json' -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -notmatch '[\\/](node_modules|dist)[\\/]' } | Select-String -Pattern '"strict"\s*:\s*true' -ErrorAction SilentlyContinue | Select-Object -First 1)
+$r = [ordered]@{
+    ci_present   = $ciPresent
+    coverage_pct = $covPct
+    ts_strict    = $tsStrict
+    has_tests    = ($m.test_specs -gt 0)
+}
+[pscustomobject]@{ stack = 'angular'; scope = ($paths -join ' '); metrics = $m; readiness = $r } | ConvertTo-Json -Depth 4

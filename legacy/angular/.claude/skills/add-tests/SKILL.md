@@ -6,7 +6,8 @@ description: >
   TestBed, HttpTestingController, component harnesses, signal/store state-transition tests, and
   behavior-first assertions.
   USE FOR: backfilling tests on untested code, adding edge/error-path cases, writing a regression
-  test for a bug, raising coverage on an area you're about to change.
+  test for a bug, raising coverage on an area you're about to change, or pinning the current
+  behavior of untested legacy code before a refactor (characterization mode).
   DO NOT USE FOR: scaffolding a brand-new component/service (use add-component/add-service, which
   include their tests), or e2e flows (use the project's Cypress/Playwright setup directly).
 ---
@@ -24,3 +25,15 @@ Match `CLAUDE.md > Conventions > Testing` and the Test leanness rules in `CLAUDE
 4. **Async**: use `fakeAsync`/`tick` or `await whenStable()` per the project's convention; flush `HttpTestingController` and `verify()` no outstanding requests.
 5. **Run** `ng test --watch=false --browsers=ChromeHeadless` (scoped if the project supports it) and confirm green. For a regression test, confirm it **fails** against the unfixed code first, then passes after the fix.
 6. **Report** what was covered and what remains uncovered — do not claim coverage you didn't add.
+
+---
+
+## Characterization mode — pinning legacy behavior before a refactor
+
+When the goal is to make untested legacy code *safe to change* (e.g. before `/refactor`), you are pinning **what the code currently does**, not asserting what it *should* do. This is different from normal spec-writing:
+
+- **Label every spec as characterization.** Put this header on the spec / `describe`: `// CHARACTERIZATION — pins OBSERVED behavior, not VERIFIED-correct behavior. A failure may mean the refactor changed behavior, OR that this spec pinned a pre-existing bug. Do not "fix" the expectation without human review.`
+- **You cannot pin behavior you have not run.** Generate the spec *skeleton* (configure `TestBed`, drive the component/service, capture emitted values / rendered output via `HttpTestingController` and harnesses), run it once to obtain the actual values, and assert those. Never invent expected values.
+- **Flag every nondeterministic input you had to pin** — `Date.now()`/`new Date()`, `Math.random()`, timers/`setTimeout`, animation timing, real HTTP — with `// TODO: stub for a stable snapshot` (fake the clock, flush `HttpTestingController`) so the developer seals it.
+- **HALT on security- / money-sensitive code.** If it touches auth, tokens, sanitisation / `bypassSecurityTrust*`, PII, or monetary values, STOP before treating any characterization spec as a contract: present the captured behavior and ask the developer to confirm it is *correct*, not merely *current*. Pinning an insecure or wrong behavior as "approved" is a hazard — if confirmed wrong-but-load-bearing, record it in `FRAMEWORK-CONTEXT.md > Known Hazard Areas`.
+- These specs are scaffolding for a safe refactor, not a substitute for behavior-first tests. Once the intended behavior is understood, prefer real behavioral assertions.

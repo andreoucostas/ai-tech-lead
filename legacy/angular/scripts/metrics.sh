@@ -13,6 +13,20 @@ paths=("$@"); [ ${#paths[@]} -eq 0 ] && paths=(.)
 EX=(--exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=.angular)
 c() { grep -rEI "${EX[@]}" --include='*.ts' --include='*.html' "$1" "${paths[@]}" 2>/dev/null | wc -l | tr -d ' '; }
 
+# --- Readiness signals: capability disclosure for /impact, NOT a gate ---
+ci_present=false
+{ [ -f bitbucket-pipelines.yml ] || [ -f bitbucket-pipelines.yaml ] || [ -d .github/workflows ] || [ -f azure-pipelines.yml ]; } && ci_present=true
+cov="null"
+covfile=$(find . -name 'cobertura-coverage.xml' -not -path '*/node_modules/*' -not -path '*/dist/*' 2>/dev/null | head -1)
+[ -z "$covfile" ] && covfile=$(find . -name '*cobertura*.xml' -not -path '*/node_modules/*' -not -path '*/dist/*' 2>/dev/null | head -1)
+if [ -n "$covfile" ]; then
+  lr=$(grep -oE 'line-rate="[0-9.]+"' "$covfile" 2>/dev/null | head -1 | grep -oE '[0-9.]+')
+  [ -n "$lr" ] && cov=$(awk "BEGIN{printf \"%.1f\", $lr*100}")
+fi
+ts_strict=false
+grep -rqsI --include='tsconfig*.json' '"strict"[[:space:]]*:[[:space:]]*true' . 2>/dev/null && ts_strict=true
+has_tests=false; [ "$(c '\b(it|describe)\(')" -gt 0 ] && has_tests=true
+
 cat <<JSON
 {
   "stack": "angular",
@@ -28,6 +42,12 @@ cat <<JSON
     "not_implemented_throws": $(c "throw[[:space:]]+new[[:space:]]+Error\([\"']not implemented"),
     "concrete_service_instantiation_dip": $(c 'new[[:space:]]+[A-Za-z0-9_]+(Service|Store|Facade)\('),
     "test_specs": $(c '\b(it|describe)\(')
+  },
+  "readiness": {
+    "ci_present": ${ci_present},
+    "coverage_pct": ${cov},
+    "ts_strict": ${ts_strict},
+    "has_tests": ${has_tests}
   }
 }
 JSON
