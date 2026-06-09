@@ -2,37 +2,48 @@
 
 A working template that turns Claude Code and GitHub Copilot into a tech lead for your .NET codebase. Clone it, run one command, and get AI-driven development with built-in conventions, verification, and continuous improvement.
 
-## Implementing this framework (for an AI agent)
+## 1. For AI agents (LLMs)
 
-Pointed at this repo and asked to install the framework into a target codebase? Do this:
+If you are an AI agent reading this repository, start here.
 
-1. **Copy the files in:** `bash scripts/install.sh <target-repo-path>` (or `pwsh scripts/install.ps1 <target-repo-path>`). It copies everything except the `.git` directory and the `.template-repo` marker.
-2. **Populate it** in the target repo: run **`/adopt`** if it already has AI tooling (CLAUDE.md, `.cursorrules`, Copilot instructions, ADRs, Aider/Continue config…), otherwise **`/bootstrap`**.
-3. **Self-verify:** `bash scripts/docs-sync-check.sh`, then read the generated `CLAUDE.md` — it is the source of truth that drives every tool.
+**Your source of truth is [`CLAUDE.md`](./CLAUDE.md)** (Claude Code reads it directly) or its generated mirror **[`AGENTS.md`](./AGENTS.md)** (Copilot agent/CLI, Codex, Cursor, Gemini, Aider). Read that file before doing anything else — it defines the verification rules, conventions, SOLID/leanness constraints, and the step-by-step workflow you must follow.
 
-Architecture is mapped in [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md); reviewers should start with [docs/REVIEW-GUIDE.md](./docs/REVIEW-GUIDE.md). Detailed manual steps are in "Quick Start" below.
+**If you were asked to install this framework into a target codebase:**
+1. **Copy the files in:** `pwsh scripts/install.ps1 <target-repo-path>` (or `bash scripts/install.sh <target-repo-path>`). Copies everything except the `.git` directory and the `.template-repo` marker.
+2. **Populate it** in the target repo: run **`/adopt`** if it already has AI tooling (CLAUDE.md, `.cursorrules`, Copilot instructions, ADRs, Aider/Continue config…), otherwise **`/bootstrap`**. That one command analyses the codebase and writes `CLAUDE.md`, `TECH_DEBT.md`, `AGENTS.md`, and the slim Copilot instructions. `/adopt` also emits a before/after impact report to `docs/impact/`.
+3. **Self-verify:** run `pwsh scripts/docs-sync-check.ps1` (or the `.sh` twin), then read the generated `CLAUDE.md` and confirm it matches the actual codebase.
 
-`/adopt` also produces a **before/after impact report** in `docs/impact/` (capability diff + codebase scorecard + an optional Copilot-CLI behavioral A/B) to show tech leads what changed — fully automated, no input needed.
+**If you were asked to do development work in a repo that already has this installed:** follow the **Agentic Workflow** in `CLAUDE.md` — classify intent, post a plan and wait for go-ahead, execute in verified subtasks (build + test after each), Boy Scout every touched file, self-review with a verification line. Trigger the matching skill in `.claude/skills/` when the task fits one.
 
-## Why this framework?
+Architecture: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) · Reviewer's tour: [docs/REVIEW-GUIDE.md](./docs/REVIEW-GUIDE.md) · Full methodology: [docs/playbook.md](./docs/playbook.md).
 
-Without it, AI tools give you generic .NET code. The AI doesn't know your architecture, your conventions, or your team's decisions. Every developer gets different AI behaviour. The AI suggests patterns your team has already decided against, invents class names that don't exist, adds abstractions you don't need (while skipping the ones you do), and never cleans up the mess it leaves behind.
+## 2. What installing this gets you
 
-This framework fixes that by giving the AI team-level context — your actual conventions, your actual architecture, your actual debt priorities — and enforcing a consistent execution model across every developer and every tool.
+No marketing. Each item is a concrete mechanism and the effect it produces.
 
-**The AI won't hallucinate your codebase.** Verification rules require it to confirm any class, method, package, or route exists in your code before referencing it. If it can't confirm, it says so.
+1. **Less context burned per task — skills load on demand.** The Common-Task recipes (add-endpoint, add-entity, register-service, …) ship as skills whose body loads *only when the task matches*. They don't sit in the prompt the way a monolithic CONVENTIONS doc would. You pay context for the one recipe in use, not all of them — main context stays lean.
 
-**Quality improves as a side effect of normal work.** The Trojan Horse principle bundles cleanup into every feature ticket and bug fix. The AI applies the Boy Scout Rule to every file it touches, and a counterweight leanness rule stops it from adding abstraction you don't need. After three months, every actively-developed area is measurably cleaner — without a single dedicated debt sprint.
+2. **Less context burned per review — subagents run isolated.** `/review` and `/security-review` fan out to subagents (solid-check, convention-check, bloat-radar, debt-radar, security-auditor) that each run in their own context window. Their file-reading and intermediate reasoning never enter the main conversation — the parent gets one structured findings table per agent, not the full transcript.
 
-**Security becomes systematic, not heroic.** `/security-review` runs a structured OWASP-style audit on every change — injection, auth/authz, secrets, sensitive data exposure, crypto, transport. It doesn't require anyone to remember to ask.
+3. **One command instead of hours hand-writing the AI's context.** `/bootstrap` (or `/adopt`) analyses architecture, domain, DI, API surface, testing, and code quality, then writes `CLAUDE.md`, `TECH_DEBT.md`, `AGENTS.md`, and `copilot-instructions.md`. You stop hand-authoring AI context — it's derived from the real codebase.
 
-**Common patterns can't be done wrong.** Skills encode the correct approach for the tasks your team does repeatedly — add an endpoint end-to-end, add an EF Core entity, register a service. The AI follows that recipe, not a generic one. Junior developers get senior-level scaffolding.
+4. **The AI stops inventing your codebase.** Verification rules force it to confirm any class, method, NuGet package, or route exists (via Read/Grep) before referencing it, and to honour version pinning. Fewer hallucinated APIs means fewer wrong diffs and less rework.
 
-**Works with the tools you already have.** The same source of truth drives Claude Code (agentic, skills, hooks) and GitHub Copilot (inline completions, chat, coding agent). You're not locked in to either.
+5. **Compile errors caught the moment they're written.** A PostToolUse hook runs an incremental `dotnet build` after every `.cs` write, so an error surfaces on the next step instead of compounding across ten files.
 
-**Built for regulated environments.** Every AI-assisted file change is logged with timestamp and branch for traceability. Security findings are tracked in a separate register with remediation SLAs. Financial domain invariants (decimal precision, idempotency, TOCTOU races) are detected automatically during codebase analysis.
+6. **Bad writes blocked deterministically — no review round-trip.** A PreToolUse hook hard-blocks any write that adds a warning-suppression (`#pragma warning disable`) or a hardcoded secret. Enforced by code, not by remembering to check.
 
-For the full methodology — why the three-tier design, how the Trojan Horse works in practice, design culture guardrails — see [`docs/playbook.md`](./docs/playbook.md).
+7. **Natural language routes to the right workflow — no slash commands to memorise.** Typing *"the export endpoint is broken"* auto-injects the `/fix` rails (regression-test-first, blast-radius cleanup). The seven workflows are still available as explicit slash commands when you want deterministic routing.
+
+8. **Common tasks can't be done wrong.** Skills encode the correct end-to-end recipe (add-endpoint: domain → service → DTO → validator → thin controller → integration test). Juniors get senior-level scaffolding; the agent follows *your* recipe, not a generic one.
+
+9. **Quality improves as a side effect of normal work.** The Boy Scout Rule cleans every file the agent touches; the Trojan Horse principle bundles debt cleanup into feature and fix tickets; a leanness counterweight stops it adding abstraction you don't need. No dedicated debt sprints.
+
+10. **Security is systematic, not heroic.** `/security-review` runs an OWASP-style pass (injection, auth/authz, secrets, sensitive-data exposure, crypto, financial/concurrency) on every change; findings land in `SECURITY_FINDINGS.md` with remediation SLAs.
+
+11. **One source of truth across every tool.** `CLAUDE.md` drives Claude Code; its mirror `AGENTS.md` drives Copilot agent/CLI, Codex, Cursor, Gemini, Aider; a ≤80-line `copilot-instructions.md` drives inline completions. Every developer and every tool gets the same rules — no per-developer drift.
+
+12. **Built for regulated environments.** Every AI-assisted file change is appended to an audit log with timestamp and branch. Security findings tracked separately with SLAs. Financial invariants (decimal precision, idempotency, TOCTOU races) are detected automatically during analysis.
 
 ## Quick Start
 
