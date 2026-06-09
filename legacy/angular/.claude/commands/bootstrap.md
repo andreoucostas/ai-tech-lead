@@ -20,15 +20,15 @@ Before starting analysis:
 
 ## Phase 1 — Analysis
 
-Dispatch the six analysis passes (A1–A6) **in parallel** via the `Task` tool, each invoking the `bootstrap-pass` subagent with the pass id as input. Example call shape:
+Dispatch the seven analysis passes (A1–A7) **in parallel** via the `Task` tool, each invoking the `bootstrap-pass` subagent with the pass id as input. Example call shape:
 
 ```
 Task(subagent_type="bootstrap-pass", description="Bootstrap pass A1", prompt="Run pass A1.")
 ```
 
-Send all six Task calls in a single message so they execute concurrently. Wait for all six to return.
+Send all seven Task calls in a single message so they execute concurrently. Wait for all seven to return.
 
-Each subagent returns structured findings; you do **not** redo the analysis. Just collect the six results — they feed Phase 2.
+Each subagent returns structured findings; you do **not** redo the analysis. Just collect the seven results — they feed Phase 2.
 
 The pass definitions below are the source of truth the subagents read. Do not duplicate the pass logic inline; the subagents read this file directly.
 
@@ -87,11 +87,37 @@ The pass definitions below are the source of truth the subagents read. Do not du
 - `any` usage; strict null checks
 - Dead code, unused imports, `console.log`
 
+### A7: Project-Specific Skill Discovery
+
+Mine this codebase for **tribal-knowledge recipes** — multi-step operations that recur but carry non-obvious, repo-specific steps that a competent agent would not infer from a single instance or from the framework alone.
+
+**Qualifying criterion (both must hold):**
+1. **Recurs** — the same multi-step operation appears 3+ times (naming cluster + structural pattern).
+2. **Carries tribal knowledge** — at least one step in the sequence is non-obvious and repo-specific (e.g., "every new feature module also requires a route registration, a NavBar entry, and a permission check"). Pure structural repetition dictated by the framework does **not** qualify.
+
+**Exclusions — never propose these (framework-mandated shapes, not tribal knowledge):**
+- Generated code: `node_modules/`, `dist/`, `.angular/`
+- Every `*.component.ts` scaffolded shell (the framework shapes its structure)
+- Every `*.service.ts` that only wraps `HttpClient` with no repo-specific behaviour
+- Every NgModule / standalone bootstrap boilerplate
+- Every `*.spec.ts` test class
+
+**Return candidates only** (the parent `/bootstrap` writes the skills). For each candidate:
+- Proposed `name` (kebab-case)
+- Terse `description` (one line — what operation it scaffolds, in plain engineering language)
+- Recurring **constellation** — what files and steps always travel together
+- Single cleanest **existing instance** (file path)
+- One-line **confidence/why-tribal** note — the non-obvious repo-specific step that disqualifies it as a pure-framework pattern
+
+**Low count by design.** Propose ≤3–5 candidates; fewer is better — precision beats recall, since reviewers approve at a glance. Return an empty findings block if no candidate meets the criterion.
+
+**Check `LEARNINGS.md` for declined recipes** before proposing. If a candidate's name or constellation matches a `## Declined recipe:` entry, skip it — the team removed it deliberately.
+
 ---
 
 ## Phase 2 — Synthesis
 
-From the six analysis passes, synthesise findings into three priority tiers:
+From the seven analysis passes, synthesise findings into three priority tiers:
 
 1. **Architectural risks** — affect scalability or correctness
 2. **Technical debt** — slows delivery or causes bugs
@@ -111,7 +137,11 @@ Read the existing CLAUDE.md template in the project root. Replace every placehol
 - **Repository Structure**: actual folder layout with module dependency diagram
 - **Conventions**: the rules this codebase actually follows (or should follow), with rationale. Use the subsection structure from `docs/defaults.md` (Angular Version, Architecture, Component Design, State Management, RxJS, API/HTTP, Typing, Testing) as a starting checklist; record observed reality, deviating from defaults where the codebase does. If Angular version is below 17, adjust conventions to match what's available. **Delete the `BOOTSTRAP_PENDING` HTML comment and the "_Not yet populated_" placeholder line** when this section is filled in.
 - **Architecture Decisions**: index every significant decision found (intentional or accidental) as a one-line entry here; write the full Decision → Context → Consequences → Review notes to `docs/architecture-decisions.md` (create it if missing). Keeping detail out of CLAUDE.md holds it within the token budget — it loads on nearly every turn.
-- **Common Tasks**: do NOT write recipes inline in CLAUDE.md. Instead, audit `.claude/skills/` against this codebase: keep a default skill if its recipe matches reality (adjust steps where they don't); add new skills under `.claude/skills/<name>/SKILL.md` for project-specific recipes (each with `name` + `description` frontmatter); delete defaults that don't apply. Update the Common Tasks bullet list in CLAUDE.md to match the final skill set.
+- **Common Tasks**: do NOT write recipes inline in CLAUDE.md. Instead, audit `.claude/skills/` against this codebase: keep a default skill if its recipe matches reality (adjust steps where they don't); add new skills under `.claude/skills/<name>/SKILL.md` for project-specific recipes (each with `name` + `description` frontmatter); delete defaults that don't apply. Update the Common Tasks bullet list in CLAUDE.md to match the final skill set — one terse line per skill, no USE-FOR/DO-NOT-USE-FOR trigger blocks.
+
+  **Writing A7-discovered skills:** Before writing any A7 candidate as a skill, cross-check it against Phase-2 synthesis — if the pattern is flagged as an anti-pattern or Tier-1–2 debt, route it to `TECH_DEBT.md` instead (do NOT canonize a known problem). Each written mined skill gets `origin: discovered` in its frontmatter so the PR reviewer can focus scrutiny there. "No exemplar" is first-class: if no instance passes the quality cross-check or the path doesn't resolve, write the skill abstract.
+
+  **Exemplar grounding (instance-shaped skills):** For `add-component`, `add-service`, `add-lazy-route`, `add-signal-store`, and any mined `add-X` skill: confirm a real instance exists (Verification Rule #1 — Read/Grep confirms the path). If it passes the quality cross-check (not flagged as debt), append one prose line to the skill file, **below** any existing "Match CLAUDE.md > Conventions" instruction: *"For a concrete current instance in this repo, see `<path>` — reproduce its **conventions and structure**, not its contents; CLAUDE.md > Conventions wins on any conflict."* Exempt process skills (`add-tests`, `create-adr`, `dependency-audit`, `enforce-architecture`) — they are not instance-shaped "add an X" recipes.
 - **Boy Scout Rule**: priority improvements based on the actual debt found in Phase 2
 
 Preserve the Agentic Workflow section as-is. Never touch `LEARNINGS.md` — it is append-only.
@@ -224,5 +254,6 @@ Then output:
 - Top 3 architectural risks
 - Top 3 quick wins
 - Files generated/modified
+- **New project-specific skills discovered (A7) — review these in the PR diff**: for each skill written from the A7 discovery pass, list: skill name, one-line trigger phrase (what operation it scaffolds, in plain engineering language — e.g. "a recipe for adding a new feature module with routing and a permission guard"), pinned exemplar file (or "(no exemplar — abstract only)"), and the why-tribal note. Omit this bullet entirely if A7 returned no candidates.
 
 **Important**: remind the user to review the generated `CLAUDE.md` before using any other commands. The conventions in that file drive everything else — if they're wrong, every command will follow wrong rules.

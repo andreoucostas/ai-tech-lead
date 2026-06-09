@@ -129,7 +129,7 @@ Recipes live as **skills**, auto-discovered by both Claude Code (`.claude/skills
 - `create-adr` — record a significant architecture decision in Architecture Decisions
 - `enforce-architecture` — wire the deterministic DIP/layering CI gate (dependency-cruiser)
 
-`/bootstrap` adds project-specific skills under `.claude/skills/` rather than appending recipes here. Skills are mirrored to `.github/skills/` by `/generate-copilot` (and `scripts/sync-agent-files`) so Copilot CLI/agent see them too.
+`/bootstrap` adds project-specific skills under `.claude/skills/`, grounding instance-shaped recipes in a real repo exemplar. Skills are mirrored to `.github/skills/` by `/generate-copilot` (and `scripts/sync-agent-files`) so Copilot CLI/agent see them too.
 
 **Registers**: [TECH_DEBT.md](./TECH_DEBT.md) tracks delivery debt. [SECURITY_FINDINGS.md](./SECURITY_FINDINGS.md) tracks security findings separately with remediation SLAs (Critical = 7 days, High = 30 days). Do not merge them — audit teams treat these differently. Security findings come from `/security-review` and the `security-auditor` agent, not from feature work.
 

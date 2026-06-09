@@ -28,7 +28,7 @@ From this output, identify the **actively changed areas** — files and director
 
 ## Phase 1 — Re-analysis
 
-Perform the same six analysis passes as `/bootstrap` (A1–A6), but **scoped to the actively changed areas** identified above. For unchanged areas, carry forward existing CLAUDE.md content unless you spot an obvious contradiction.
+Perform the same seven analysis passes as `/bootstrap` (A1–A7), but **scoped to the actively changed areas** identified above. For unchanged areas, carry forward existing CLAUDE.md content unless you spot an obvious contradiction.
 
 ### A1: Module Architecture & Lazy Loading
 Re-examine module layout, lazy loading strategy, barrel files, shared/core module contents, routing structure, and circular dependencies. Note any new modules, migrated NgModules, or new standalone components introduced.
@@ -47,6 +47,9 @@ Re-examine service structure, interceptors, request/response typing, error handl
 
 ### A6: Build, Testing & Code Quality
 Re-examine Angular version, tsconfig strictness, package.json dependencies, test coverage, and code quality. Flag outdated packages and any newly introduced `any` or console.log patterns.
+
+### A7: Project-Specific Skill Discovery
+Re-run the discovery pass (same definition as `bootstrap.md`'s `### A7:`), scoped to the actively changed areas and any new naming clusters that appeared in the git log period. **Before proposing candidates**, check `LEARNINGS.md` for `## Declined recipe:` entries and skip anything that matches — the team removed those deliberately.
 
 ---
 
@@ -91,7 +94,15 @@ Wait for the user's response before applying each chunk. If the user says "edit"
 Apply accepted changes section by section:
 - **Conventions**: add new conventions, update stale ones, remove obsolete ones
 - **Architecture Decisions**: add new decisions; mark old decisions as superseded if applicable
-- **Common Tasks**: update patterns to reflect current codebase reality
+- **Common Tasks**: update patterns to reflect current codebase reality. The two changes below are proposed through the **same diff-and-confirm gate** as every other Phase-3 change — show the before/after and wait for the user, do not apply silently:
+  - **Exemplar re-pinning**: for any instance-shaped skill (`add-component`, `add-service`, `add-lazy-route`, `add-signal-store`, any mined `add-X`) whose pinned exemplar file no longer exists or a clearly cleaner instance now exists — propose updating the exemplar prose line. Confirm the new path resolves (Verification Rule #1).
+  - **New A7 candidates**: if the discovery pass returned new candidates this run, apply the same quality-gate and exemplar-grounding rules from `/bootstrap` Phase 3a, and propose each as a diff.
+  - **Resurrection guard** (bookkeeping side-effect, not a diff chunk): if any skill with `origin: discovered` in its frontmatter has been deleted from `.claude/skills/` since the last run, append a declined-recipe block to `LEARNINGS.md` so the discovery pass stops re-proposing it. This append is automatic but **must be listed in the Phase-4 report** (see "Declined recipes recorded"). Use this exact form:
+
+    ```
+    ## Declined recipe: <name>
+    The team removed this auto-mined skill. Do not re-propose it.
+    ```
 - **Boy Scout Rule**: update the priority list based on newly found debt
 - **LEARNINGS.md** (root file, no longer in CLAUDE.md): append any new lessons — never overwrite existing entries
 
@@ -117,4 +128,5 @@ After all accepted changes are applied, output:
 - **TECH_DEBT items resolved**: list by ID and title
 - **TECH_DEBT items added**: list by ID and title
 - **Areas not re-analysed**: explicit list with reason (e.g., "no changes in last 3 months")
-- **Recommended next step**: if new patterns were introduced, suggest running `/generate-copilot` to refresh copilot-instructions.md
+- **Declined recipes recorded**: list any `## Declined recipe:` blocks appended to `LEARNINGS.md` this run by the resurrection guard (or "none")
+- **Required when skill set changed**: if any skill was added, removed, or updated during this rebootstrap, run `/generate-copilot` now — do not merely suggest it. This regenerates `.github/skills/` and `AGENTS.md`'s Common Tasks list so Copilot CLI and AGENTS.md-native tools stay in sync with the current skill set.

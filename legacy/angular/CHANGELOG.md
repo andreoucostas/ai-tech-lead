@@ -3,6 +3,18 @@
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
 > Architecture decisions (cross-stack) live in `project_framework_architecture.md`.
 
+## 0.16.0 — 2026-06-09 (project-specific skill discovery + exemplar grounding)
+
+> `/bootstrap` now mines each codebase for its own tribal-knowledge recipes — multi-step operations that recur with non-obvious, repo-specific steps no shipped template can predict. Found candidates are auto-written as skills with `origin: discovered` frontmatter (visible in the PR diff for review). Instance-shaped skills (`add-component`, `add-service`, `add-lazy-route`, `add-signal-store`, and any mined `add-X`) are grounded in a real repo exemplar so the agent reproduces the project's conventions and structure, not an abstract template. The resurrection guard in `/rebootstrap` records removed mined skills as declined recipes in `LEARNINGS.md` so they are not re-proposed.
+
+### Added
+- **A7 pass: project-specific skill discovery** (`bootstrap-pass.md`, `bootstrap.md`). Runs unconditionally in every repo — mines naming/directory clusters whole-tree (no recency sampling), applies a tribal-knowledge criterion + framework-exclusion list, proposes ≤3–5 candidates. Respects `## Declined recipe:` entries in `LEARNINGS.md`.
+- **Exemplar grounding** (`bootstrap.md` Phase 3a). For instance-shaped skills, pins a `see also` prose line to a real file in the repo. Quality-gated against Phase-2 synthesis: patterns flagged as debt are routed to `TECH_DEBT.md` instead.
+- **Phase 4 mined-skills report** (`bootstrap.md`). PR-reviewable listing of discovered skills in plain engineering language.
+- **Resurrection guard** (`rebootstrap.md`). Detects deleted mined skills and appends `## Declined recipe:` blocks to `LEARNINGS.md`; reported in Phase-4 final report.
+- **Exemplar re-pinning in `/rebootstrap`**. Proposes updated `see also` lines when exemplar files move or a cleaner instance exists.
+- **`LEARNINGS.md` declined-recipe convention**. Header now documents the auto-managed `## Declined recipe:` format so maintainers know not to remove these entries.
+
 ## 0.15.0 — 2026-06-06 (spec-driven development: explicit Tasks artifact)
 
 > A targeted alignment after reviewing how the frontier labs and institutions (AWS Kiro, GitHub Spec-Kit, Google Antigravity, OpenAI Codex) frame AI-driven SDLC: they have converged on Spec → Plan → **Tasks** → Implement. The framework already had the spec lifecycle (`/design → spec → /feature → /review`, with CLAUDE.md as the "constitution") and is ahead on governance / calibration / eval — this adds the one element it underweighted: a persisted, checkable Tasks breakdown.
