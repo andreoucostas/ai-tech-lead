@@ -3,6 +3,24 @@
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
 > Architecture decisions (cross-stack) live in `project_framework_architecture.md`.
 
+## 0.18.0 — 2026-06-10 (FRAMEWORK-CONTEXT.md fully auto-drafted by `/bootstrap`)
+
+> Previously `/bootstrap` populated only two of FRAMEWORK-CONTEXT.md's seven sections (Detected Framework Packages, Known Hazard Areas); the five context sections (Production Architecture, Shared Libraries, Multi-Tenancy, Dashboard Integration, Cross-Service Communication) stayed as "_Not yet populated_" placeholders waiting on a maintainer — and in practice stayed empty (observed in real adoptions). They are now auto-drafted from single-repo evidence with explicit honesty about scope: the draft describes what *this repo's code shows*, opens with a comment handing the cross-repo half to a maintainer, and a section with no signals gets a verified negative ("no multi-tenancy signals found — checked X, Y, Z") instead of a placeholder.
+
+### Added
+- **`/bootstrap` Phase 3d-ter** (`bootstrap.md`). Drafts the five context sections from Read/Grep evidence: app-vs-publishable-library classification + consumes/exposes from `environment*.ts` and `angular.json` (Production Architecture); per-detected-package consumed-surface entries titled "Consumed API surface (observed in this repo)" — never "latest" (Shared Libraries); tenant resolution / tenant-header / tenant-scoped-config signals (Multi-Tenancy); control-plane registration, `postMessage`, heartbeat wiring (Dashboard Integration); interceptor chain, API base URL conventions, typed envelopes, WebSocket/SSE (Cross-Service Communication). Non-interactive — drafts land in the PR diff for content review, same path as mined skills. Never touches a section a maintainer has written (per-section `*_PENDING` markers gate it).
+- **Per-section `*_PENDING` markers** in the FRAMEWORK-CONTEXT.md template, so drafting is gated per section and maintainer-written content deterministically survives re-runs.
+- **Phase 4 report bullet**: one line per drafted section (what was found, or the verified negative) with the reminder that cross-repo facts still need a maintainer.
+
+### Changed
+- **FRAMEWORK-CONTEXT.md header**. Maintenance note reflects that every section is now bootstrap-drafted; versioning caveat distinguishes auto-drafted entries (consumed surface at the pinned version) from maintainer entries (may document latest).
+- **`/docs-sync` Step 4** (`docs-sync.md`). Per-section drift now re-checks the four architecture/communication sections against the 3d-ter evidence lists and proposes updates in the report (still never rewrites in place).
+- **`/adopt` Phase 7** (`adopt.md`). Explicitly drafts the still-unpopulated context sections; sections filled by merged content in Phase 4 are left untouched.
+
+### Fixed
+- **`bootstrap.prompt.md` wrapper had drifted**: claimed six analysis passes (now seven, A7 added in 0.16.0) and "do not ask for confirmation between phases" (contradicting the 0.17.0 interactive gates). Now defers to the workflow's own pauses.
+- **CLAUDE.md template version stamp** had drifted from `.claude/framework-version.json` (0.13.2 vs 0.17.0); both now read 0.18.0.
+
 ## 0.17.0 — 2026-06-10 (interactive gates in `/bootstrap` and `/adopt`)
 
 > `/bootstrap` now pauses at two points for developer input rather than running end-to-end and deferring all review to a PR. Phase 2b collects ≤5 targeted questions (convention contradictions, pattern intent) in a single message before generating any artifact — the developer's answers are baked in, not deferred. Phase 3d-bis asks each candidate hazard as a plain engineering question before writing it to FRAMEWORK-CONTEXT.md; answers map to `[VERIFIED]`, `[REVIEWED: not a hazard — <date>]`, or `[UNVERIFIED]` — no row is dropped (audit trail preserved). `/adopt` Phase 4a reframes contradiction-resolution from an AI-artifact-merge question into a plain engineering choice with a safe default and an "accept all defaults" escape.

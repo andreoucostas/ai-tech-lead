@@ -231,7 +231,7 @@ Replace the `## Detected Framework Packages` section with a populated table:
 
 **Delete the `DETECTED_FRAMEWORK_PACKAGES_PENDING` HTML comment** when this section is populated. If no framework packages were found, replace the table with a single line: `_No framework packages detected in this repo._` and still delete the marker.
 
-Do **not** edit any other section of FRAMEWORK-CONTEXT.md except `Known Hazard Areas` (next sub-step) — the rest are maintainer-curated.
+Do **not** edit any other section of FRAMEWORK-CONTEXT.md here — `Known Hazard Areas` is handled in 3d-bis, and the five context sections are drafted in 3d-ter.
 
 ### 3d-bis: Confirm and write FRAMEWORK-CONTEXT.md > Known Hazard Areas
 
@@ -252,6 +252,27 @@ Then write the `## Known Hazard Areas` table to FRAMEWORK-CONTEXT.md with the an
 - **Delete the `KNOWN_HAZARD_AREAS_PENDING` marker** once written. If nothing notable surfaced, replace the table body with `_No notable hazards detected — confirm with the team._` and still delete the marker.
 - Keep it tight (≤ ~12 rows); deeper items belong in TECH_DEBT.md.
 - Do not upgrade `[UNVERIFIED]` rows yourself; only the developer can do that.
+
+### 3d-ter: Draft the remaining FRAMEWORK-CONTEXT.md context sections
+
+The five context sections — Production Architecture, Shared Libraries, Multi-Tenancy Conventions, Dashboard Integration Contracts, Cross-Service Communication — describe cross-repo facts, but each leaves an observable footprint in this repo. Draft them from that footprint instead of leaving template placeholders. **Draft what the code shows; hand what it cannot show to the maintainer — explicitly.**
+
+**Ground rules:**
+1. **Only fill a section that still carries its `*_PENDING` marker** (or the original template placeholder text). If a maintainer has written anything there, leave that section untouched.
+2. **Single-repo evidence only** (Verification Rule #1). Every statement must trace to something you Read/Grep'd: a config file, a package reference, an interceptor or provider. Never assert facts this repo cannot show — what the backend does with a header, why an org-wide convention exists, a shared library's full public surface.
+3. **Open each drafted section** with: `<!-- Auto-drafted by /bootstrap on <date> from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->` — and delete that section's `*_PENDING` marker.
+4. **Verified negatives beat placeholders.** If a section has no signals, replace the placeholder with one line stating what was checked, e.g. `_No multi-tenancy signals found in this repo (no tenant resolution, tenant headers, or tenant-scoped config as of <date>). If the system is multi-tenant at another layer, a maintainer should document it here._` — and still delete the marker.
+5. **Keep it scannable** — a short paragraph or a few bullets per section. These are context anchors, not documentation dumps.
+
+**Per-section evidence to gather:**
+
+- **Production Architecture** — classify the repo: application vs publishable library (`ng-packagr` targets in `angular.json` / Nx project config). Consumes: API base URLs and auth provider config in `environment*.ts` (or a runtime config fetch), backend(s) it talks to. Exposes: the route surface / app shell, published entry points for libraries. One paragraph.
+- **Shared Libraries** — one entry per package detected in 3d, built from this repo's usage: pinned version, the components / directives / providers / services actually imported (Grep the import sites), where it is configured (e.g. `provideX(...)` in the app config). **Heading honesty**: title the API list `Consumed API surface (observed in this repo)` — never `Public API surface (latest)` — and end each entry with: `Purpose, pitfalls, and the full surface need the library's source repo or owner.` If 3d found no framework packages, apply ground rule 4.
+- **Multi-Tenancy Conventions** — Grep for tenant signals: subdomain/path tenant resolution, a tenant header set in an interceptor, tenant-scoped theming or feature flags, tenant guards/resolvers, `Tenant*` types. Document the observed resolution and scoping pattern, with file references.
+- **Dashboard Integration Contracts** — control-plane registration calls, embedded-shell or `postMessage` contracts, heartbeat/health pings, required metadata in configuration.
+- **Cross-Service Communication** — the interceptor chain (auth token, error mapping, correlation-ID headers), API base URL and versioning conventions, typed error/response envelopes, WebSocket/SSE usage.
+
+No interactive confirmation here — the drafts land in the PR diff where reviewers correct wrong *content* (the same review path as mined skills), and every cross-repo blank is explicitly handed to the maintainer by the drafted comment.
 
 ### 3e: Initialise SECURITY_FINDINGS.md
 
@@ -280,5 +301,6 @@ Then output:
 - Top 3 quick wins
 - Files generated/modified
 - **New project-specific skills discovered (A7) — review these in the PR diff**: for each skill written from the A7 discovery pass, list: skill name, one-line trigger phrase (what operation it scaffolds, in plain engineering language — e.g. "a recipe for adding a new feature module with routing and a permission guard"), pinned exemplar file (or "(no exemplar — abstract only)"), and the why-tribal note. Omit this bullet entirely if A7 returned no candidates.
+- **FRAMEWORK-CONTEXT.md sections drafted from code (3d-ter)**: one line per section — what was found (e.g. "Cross-Service Communication: auth + correlation-ID interceptors, typed error envelope in `core/api/`") or the verified negative. Remind the user: these describe what the code shows; anything about *other* repos and services still needs a maintainer to fill in (the drafted comment in each section says exactly that).
 
 **Important**: the Conventions section was generated from code analysis and your Phase 2b answers. Verify it before relying on it — sections marked `<!-- INFERRED -->` flag specific areas where the code gave conflicting signals that couldn't be resolved automatically. All other sections reflect observed code patterns; review them for accuracy, not for AI-architecture decisions.

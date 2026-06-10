@@ -3,11 +3,11 @@
 > Cross-repo context that AI agents need but cannot derive from this single repo.
 > Covers: shared library APIs, multi-tenancy conventions, dashboard contracts, and cross-service patterns.
 >
-> **Maintenance**: Edit the static sections (Production Architecture, Shared Libraries, etc.) when framework-level conventions change. The "Detected Framework Packages" and "Known Hazard Areas" sections are auto-populated by `/bootstrap` and refreshed by `/docs-sync`.
+> **Maintenance**: Every section is drafted by `/bootstrap` from this repo's code. Drafted sections open with an auto-draft comment and cover only what this repo's code shows — the cross-repo half (why a convention exists org-wide, what the backend does, a library's full surface) still needs a maintainer. Edit any section freely; `/bootstrap` never overwrites maintainer-written content. "Detected Framework Packages" and "Known Hazard Areas" are also refreshed by `/docs-sync`.
 >
 > **Precedence**: If `FRAMEWORK-CONTEXT.md` and `CLAUDE.md` disagree on a convention, **`CLAUDE.md` (this repo's authoritative source) wins** — but the agent must flag the contradiction. Framework-level conventions are baseline; per-repo conventions can diverge with rationale.
 >
-> **Versioning caveat**: The "Shared Libraries" section documents the **latest** API surface. This consumer repo may pin to older versions — see "Detected Framework Packages" below. Before recommending a shared-library API, verify it exists in the version this repo actually references. If unsure, say so.
+> **Versioning caveat**: Auto-drafted "Shared Libraries" entries document the **consumed** API surface at the version this repo pins; maintainer-written entries may document the **latest** surface. Either way — see "Detected Framework Packages" below — before recommending a shared-library API, verify it exists in the version this repo actually references. If unsure, say so.
 
 ---
 
@@ -18,7 +18,9 @@
      - What does this repo consume? What does it expose?
      - Where do other systems integrate with this one? -->
 
-_Not yet populated. A maintainer should describe the production architecture here once._
+<!-- PRODUCTION_ARCHITECTURE_PENDING: run /bootstrap to draft this from the repo's code. -->
+
+_Not yet populated. `/bootstrap` drafts this from the repo's code; a maintainer adds the cross-repo context the code cannot show._
 
 ---
 
@@ -29,7 +31,9 @@ _Not yet populated. A maintainer should describe the production architecture her
      Document the latest version's public API surface, with a disclaimer that
      older consumer repos may pin to earlier versions. -->
 
-_Not yet populated. Add an entry per shared library so AI agents do not reimplement helpers that already exist._
+<!-- SHARED_LIBRARIES_PENDING: run /bootstrap to draft entries from this repo's detected framework packages and their observed usage. -->
+
+_Not yet populated. `/bootstrap` drafts an entry per detected framework package (consumed surface, observed in this repo); a maintainer adds purpose, pitfalls, and the full API surface. Entries exist so AI agents do not reimplement helpers that already exist._
 
 Template entry:
 
@@ -55,7 +59,9 @@ Template entry:
      - Tenant-scoped routing, theming, feature flags
      - How tenant context is provided to components / services -->
 
-_Not applicable / not yet populated._
+<!-- MULTI_TENANCY_PENDING: run /bootstrap to draft this from the repo's code (or record a verified negative). -->
+
+_Not yet populated. `/bootstrap` drafts this from observed tenant signals — or records that none were found._
 
 ---
 
@@ -67,7 +73,9 @@ _Not applicable / not yet populated._
      - Health-check / heartbeat contracts
      - How configuration flows from dashboard to app -->
 
-_Not applicable / not yet populated._
+<!-- DASHBOARD_INTEGRATION_PENDING: run /bootstrap to draft this from the repo's code (or record a verified negative). -->
+
+_Not yet populated. `/bootstrap` drafts this from observed registration/heartbeat wiring — or records that none was found._
 
 ---
 
@@ -79,7 +87,9 @@ _Not applicable / not yet populated._
      - Correlation ID propagation, logging conventions
      - WebSocket / SSE patterns (if any) -->
 
-_Not yet populated._
+<!-- CROSS_SERVICE_COMMUNICATION_PENDING: run /bootstrap to draft this from the repo's code (or record a verified negative). -->
+
+_Not yet populated. `/bootstrap` drafts this from observed interceptor/API/envelope wiring; a maintainer adds the org-wide conventions._
 
 ---
 

@@ -5,9 +5,9 @@ description: One-time bootstrap — analyse this Angular codebase and populate C
 
 Read `.claude/commands/bootstrap.md` in this repository, then execute the bootstrap workflow defined there.
 
-`.claude/commands/bootstrap.md` is the single source of truth. Follow it exactly: pre-flight checks → six analysis passes (A1–A6) → synthesis into priority tiers → generate artifacts (`CLAUDE.md`, `TECH_DEBT.md`, `AGENTS.md`, `.github/copilot-instructions.md`) → final report with diff summary.
+`.claude/commands/bootstrap.md` is the single source of truth. Follow it exactly: pre-flight checks → seven analysis passes (A1–A7) → synthesis into priority tiers → clarify gate → generate artifacts (`CLAUDE.md`, `TECH_DEBT.md`, `FRAMEWORK-CONTEXT.md` drafts, `AGENTS.md`, `.github/copilot-instructions.md`) → final report with diff summary.
 
-Run the full pipeline. Do not ask for confirmation between phases. Remind the user at the end to review the generated `CLAUDE.md` before using any other commands — it drives everything else.
+Run the full pipeline. The only pauses are the ones the workflow defines (Phase 2b clarifying questions, Phase 3d-bis hazard confirmation) — do not add others. Remind the user at the end to verify the generated `CLAUDE.md > Conventions` section — it drives everything else.
 
 ## Notes
 

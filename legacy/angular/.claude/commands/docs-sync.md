@@ -37,7 +37,7 @@ If either file has drifted, recommend `/generate-copilot` to regenerate both.
 ### Step 4 — Check FRAMEWORK-CONTEXT.md drift
 - **Detected Framework Packages**: re-scan `package.json` (and `package-lock.json` for resolved versions). Flag packages newly added, removed, or version-bumped since the last sync. Propose updated table.
 - **Shared Libraries**: for each entry, flag if the consuming repo no longer references it. Do not flag the converse — a package present in the repo but missing from `Shared Libraries` is expected for non-framework dependencies.
-- **Per-section drift**: skim Production Architecture, Multi-Tenancy, Dashboard Integration, Cross-Service Communication. Do they still match observed code? Flag obvious staleness only — these are maintainer-curated, do not rewrite.
+- **Per-section drift**: re-check Production Architecture, Multi-Tenancy, Dashboard Integration, and Cross-Service Communication against their code signals (the per-section evidence lists in `/bootstrap` Phase 3d-ter). Flag staleness and propose updated text in the report — never rewrite in place; auto-drafted sections may have been maintainer-refined since, and maintainer-written cross-repo context must survive.
 
 ### Step 5 — Check TECH_DEBT.md against codebase
 - Are resolved items still in the register? Flag for removal.
