@@ -1,3 +1,8 @@
+---
+description: "Re-align the framework after drift: refresh conventions, hazards, and mined skills against the current codebase; respects declined-recipe history in LEARNINGS.md. Developer-initiated only."
+disable-model-invocation: true
+---
+
 Refresh the AI Tech Lead framework configuration for this Angular codebase. Use when conventions have drifted, new patterns have emerged, or the team wants to re-align after months of evolution.
 
 This is NOT a replacement for `/bootstrap`. It assumes CLAUDE.md is already populated and merges updates into it rather than overwriting.

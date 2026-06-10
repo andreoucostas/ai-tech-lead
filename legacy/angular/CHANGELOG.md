@@ -3,6 +3,17 @@
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
 > Architecture decisions (cross-stack) live in `project_framework_architecture.md`.
 
+## 0.19.0 — 2026-06-10 (slash commands exposed to model-driven invocation)
+
+> Previously none of the 14 `.claude/commands/*.md` files had frontmatter, so Claude Code's SlashCommand tool could not surface them to the model: in natural-language chat the model could never escalate from the condensed `route-prompt` rails to the full workflow — even when those rails explicitly told it to ("Run /security-review on the diff"). The architecture is hook-as-floor, command-as-ceiling; this release makes the ceiling model-reachable. The `route-prompt` hook keeps injecting the deterministic floor on every prompt; the model can now invoke the full command (e.g. `/review`'s four-auditor fan-out) when the condensed rails aren't enough.
+
+### Added
+- **`description:` frontmatter on all 14 command files**, written as routing guidance (when to invoke, what the command spawns and produces). This exposes the workflow commands — `/feature`, `/fix`, `/refactor`, `/test`, `/design`, `/debt`, `/review`, `/security-review`, `/generate-copilot`, `/docs-sync` — to model-driven invocation via the SlashCommand tool.
+- **`argument-hint:` frontmatter** on the workflow commands that take `$ARGUMENTS`, for slash-menu autocomplete.
+
+### Changed
+- **Setup/maintenance commands opted out of model invocation**: `/bootstrap`, `/rebootstrap`, `/adopt`, and `/impact` carry `disable-model-invocation: true` — they reshape the framework configuration or run the A/B harness, and stay developer-initiated.
+
 ## 0.18.0 — 2026-06-10 (FRAMEWORK-CONTEXT.md fully auto-drafted by `/bootstrap`)
 
 > Previously `/bootstrap` populated only two of FRAMEWORK-CONTEXT.md's seven sections (Detected Framework Packages, Known Hazard Areas); the five context sections (Production Architecture, Shared Libraries, Multi-Tenancy, Dashboard Integration, Cross-Service Communication) stayed as "_Not yet populated_" placeholders waiting on a maintainer — and in practice stayed empty (observed in real adoptions). They are now auto-drafted from single-repo evidence with explicit honesty about scope: the draft describes what *this repo's code shows*, opens with a comment handing the cross-repo half to a maintainer, and a section with no signals gets a verified negative ("no multi-tenancy signals found — checked X, Y, Z") instead of a placeholder.

@@ -1,3 +1,8 @@
+---
+description: "Tech-debt workflow: match TECH_DEBT.md entries for an area, confirm each still exists in code, fix or defer with rationale, update the register. Invoke for debt-cleanup requests."
+argument-hint: "[area or DEBT-ID]"
+---
+
 Find and fix tech debt in a specific area of this Angular codebase. Read TECH_DEBT.md before starting (CLAUDE.md is already loaded).
 
 ## Input

@@ -1,3 +1,7 @@
+---
+description: "Documentation drift check: cross-checks CLAUDE.md, AGENTS.md, copilot-instructions.md, FRAMEWORK-CONTEXT.md, registers, and skills against the codebase and each other; reports drift, contradictions, and stale entries with proposed fixes. Read-mostly; safe to run anytime."
+---
+
 Cross-check all documentation against the codebase and between instruction files. Identify drift, contradictions, and stale entries.
 
 ## Input

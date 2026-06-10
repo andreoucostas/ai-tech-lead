@@ -1,3 +1,8 @@
+---
+description: "Bug-fix workflow: diagnose root cause first, write the failing regression test before any production code, apply the minimal fix, Boy Scout the blast radius only. Invoke for bugs, crashes, failing tests, and regressions."
+argument-hint: "[bug description or failing test]"
+---
+
 Diagnose and fix a bug in this Angular codebase. Every decision must comply with the conventions and patterns in CLAUDE.md.
 
 ## Input

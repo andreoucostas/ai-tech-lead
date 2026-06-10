@@ -1,3 +1,8 @@
+---
+description: "Behavior-preserving refactor workflow: verify the baseline is green first, add baseline tests if missing, refactor incrementally with build+test after each step, report a before/after summary with net LOC delta."
+argument-hint: "[target code and goal]"
+---
+
 Refactor code in this Angular codebase without changing behavior. Every decision must comply with the conventions in CLAUDE.md.
 
 ## Input

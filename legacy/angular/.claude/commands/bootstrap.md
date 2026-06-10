@@ -1,3 +1,8 @@
+---
+description: "One-time framework setup: eight parallel analysis passes, then populates CLAUDE.md, FRAMEWORK-CONTEXT.md, registers, and project-specific skills. Developer-initiated only."
+disable-model-invocation: true
+---
+
 Analyse this Angular codebase and set up the AI Tech Lead framework. This is the one-time bootstrap that makes the repo AI-ready.
 
 ## Input

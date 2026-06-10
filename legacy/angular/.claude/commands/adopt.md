@@ -1,3 +1,8 @@
+---
+description: "Consolidate pre-existing AI tooling (Cursor rules, Copilot instructions, AGENTS.md, ADRs, generic docs) into the canonical framework structure with provenance review. Developer-initiated only."
+disable-model-invocation: true
+---
+
 Adopt this repository into the AI Tech Lead Framework, ingesting any existing AI-framework artifacts (Cursor, Copilot, Aider, Continue, Claude, Gemini, generic docs) without losing work.
 
 Use this command when the repo already has *some* AI tooling or documentation (CLAUDE.md, .cursorrules, AGENTS.md, ARCHITECTURE.md, ADRs, etc.) and you want to consolidate it into our canonical structure. If the repo has nothing AI-related yet, run `/bootstrap` directly instead.

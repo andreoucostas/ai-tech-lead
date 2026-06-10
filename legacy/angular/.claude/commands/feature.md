@@ -1,3 +1,8 @@
+---
+description: "Full feature workflow: plan gate, ordered subtasks with build+test after each, Boy Scout on touched files, self-review against CLAUDE.md Conventions. Invoke for new multi-layer functionality when the inline feature rails are not enough."
+argument-hint: "[feature description]"
+---
+
 Implement a new feature in this Angular codebase. Every decision must comply with the conventions and patterns in CLAUDE.md.
 
 ## Input

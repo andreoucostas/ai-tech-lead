@@ -1,3 +1,8 @@
+---
+description: "Tech-lead quality gate on a diff: spawns convention-check, solid-check, debt-radar, and bloat-radar subagents in parallel, runs build+tests itself, applies senior judgement, returns APPROVE or REQUEST CHANGES. Invoke when completed work needs the full gate, not for a quick inline question."
+argument-hint: "[files or PR; empty = uncommitted changes]"
+---
+
 Review code as a senior tech lead. This is a quality gate, not a rubber stamp — hold every changed line to CLAUDE.md > Conventions.
 
 ## Input

@@ -1,3 +1,8 @@
+---
+description: "Test-coverage workflow: follow project test conventions; cover happy path, edge cases, and error paths; behavior-first assertions; reuse existing fixtures. Invoke when the user wants tests added or coverage raised."
+argument-hint: "[file, class, or area]"
+---
+
 Generate tests for code in this Angular codebase. Follow CLAUDE.md > Conventions > Testing and the test-related Common Tasks recipes.
 
 ## Input
