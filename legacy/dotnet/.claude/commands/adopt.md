@@ -222,6 +222,7 @@ Now that adopted content has been merged, run the `/bootstrap` workflow against 
 - Fill any CLAUDE.md sections still empty (use the bootstrap analysis passes)
 - Add any tech debt the bootstrap discovers that wasn't in the adopted backlog
 - Draft `FRAMEWORK-CONTEXT.md > Known Hazard Areas` from the analysis, and surface it in the report for maintainer confirmation
+- Draft the still-unpopulated FRAMEWORK-CONTEXT.md context sections (Production Architecture, Shared Libraries, Multi-Tenancy, Dashboard Integration, Cross-Service Communication) from the codebase per bootstrap Phase 3d-ter — sections already filled by merged content in Phase 4 are left untouched
 - Generate AGENTS.md (if not already present)
 - Generate the slim `.github/copilot-instructions.md`
 
