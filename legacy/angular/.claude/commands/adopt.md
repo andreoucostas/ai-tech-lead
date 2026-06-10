@@ -163,14 +163,14 @@ Merge principles:
 Read `.cursorrules`, `.cursor/rules/*.mdc`, `docs/CONVENTIONS.md`, `.windsurfrules`, `.clinerules`, Aider's `CONVENTIONS.md`, and any other instruction file. For each rule:
 1. Categorise into a CLAUDE.md Conventions subsection (Architecture, Component Design, State Management, RxJS, API/HTTP, Typing, Styling, SSR/Hydration, Testing).
 2. Skip rules that duplicate existing CLAUDE.md content.
-3. For rules that contradict existing CLAUDE.md content, surface them to the user and ask: keep existing, replace with adopted, or merge.
+3. For rules that contradict existing CLAUDE.md content, ask a plain engineering question — never frame it as an AI-artifact choice. For each contradiction, ask: "Your existing codebase has **[A]** for [area]; your `[filename]` says **[B]**. Which is the intended approach — or do both apply in different contexts?" The safe default is to keep the in-code pattern (it reflects reality). If the developer says "accept all defaults" or "skip", apply the safe default to all unresolved contradictions without prompting per item.
 
 Present to the user:
-> "From your existing files I extracted [N] convention rules. [M] are duplicates of what's already in CLAUDE.md. [K] contradict existing rules — please resolve those. The remaining [N-M-K] can be added directly. Here's the proposed Conventions section:
+> "From your existing files I extracted [N] convention rules. [M] are duplicates of what's already in CLAUDE.md. [K] contradict existing rules — I'll ask about each one individually before applying. The remaining [N-M-K] can be added directly. Here's the proposed Conventions section:
 >
-> [show diff]
+> [show diff with contradictions marked]
 >
-> Apply?"
+> Apply the non-contradicting rules now, then we'll resolve the contradictions?"
 
 ### 4b — Merge into Repository Structure
 If `CODEMAP.md`, `ARCHITECTURE.md`, or `docs/architecture/*` exist, extract:

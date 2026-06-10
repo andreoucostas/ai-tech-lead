@@ -3,6 +3,16 @@
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
 > Architecture decisions (cross-stack) live in `project_framework_architecture.md`.
 
+## 0.17.0 — 2026-06-10 (interactive gates in `/bootstrap` and `/adopt`)
+
+> `/bootstrap` now pauses at two points for developer input rather than running end-to-end and deferring all review to a PR. Phase 2b collects ≤5 targeted questions (convention contradictions, pattern intent) in a single message before generating any artifact — the developer's answers are baked in, not deferred. Phase 3d-bis asks each candidate hazard as a plain engineering question before writing it to FRAMEWORK-CONTEXT.md; answers map to `[VERIFIED]`, `[REVIEWED: not a hazard — <date>]`, or `[UNVERIFIED]` — no row is dropped (audit trail preserved). `/adopt` Phase 4a reframes contradiction-resolution from an AI-artifact-merge question into a plain engineering choice with a safe default and an "accept all defaults" escape.
+
+### Changed
+- **`/bootstrap` Phase 2b** (`bootstrap.md`). New clarify-before-writing gate: ≤5 questions in one message, covering convention contradictions and pattern intent. Skip signal ("proceed", "accept defaults") continues without markers; `<!-- INFERRED -->` reserved for genuine code ambiguity only.
+- **`/bootstrap` Phase 3d-bis** (`bootstrap.md`). Rewrites the hazard-confirmation step: each candidate hazard is asked in-session before being written, not after. Answered rows get `[VERIFIED]` or `[REVIEWED: not a hazard — <date>]`; unanswered rows remain `[UNVERIFIED]`. All rows are written (none dropped).
+- **`/bootstrap` Phase 4 reminder** (`bootstrap.md`). Narrowed from "review CLAUDE.md before using any other commands" to "Verify the Conventions section — `<!-- INFERRED -->` marks areas where code analysis was genuinely ambiguous."
+- **`/adopt` Phase 4a** (`adopt.md`). Contradiction-resolution reframed as a plain engineering question: "Your existing codebase has [A] for [area]; your `[filename]` says [B]. Which is intended?" Safe default keeps the in-code pattern. "Accept all defaults" escape applies it to all contradictions without per-item prompting.
+
 ## 0.16.0 — 2026-06-09 (project-specific skill discovery + exemplar grounding)
 
 > `/bootstrap` now mines each codebase for its own tribal-knowledge recipes — multi-step operations that recur with non-obvious, repo-specific steps no shipped template can predict. Found candidates are auto-written as skills with `origin: discovered` frontmatter (visible in the PR diff for review). Instance-shaped skills (`add-component`, `add-service`, `add-lazy-route`, `add-signal-store`, and any mined `add-X`) are grounded in a real repo exemplar so the agent reproduces the project's conventions and structure, not an abstract template. The resurrection guard in `/rebootstrap` records removed mined skills as declined recipes in `LEARNINGS.md` so they are not re-proposed.

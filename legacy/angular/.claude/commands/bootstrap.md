@@ -3,7 +3,7 @@ Analyse this Angular codebase and set up the AI Tech Lead framework. This is the
 ## Input
 $ARGUMENTS
 
-Execute all phases below in sequence. Do not skip any phase. Do not ask for confirmation between phases — run the full pipeline.
+Execute all phases below in sequence. Do not skip any phase. Do not ask for confirmation between phases — run the full pipeline. **Exceptions:** Phase 2b and Phase 3d-bis pause for developer input before generating artifacts; this is intentional.
 
 ---
 
@@ -127,6 +127,22 @@ For each item: current pattern → target pattern → brief rationale.
 
 ---
 
+## Phase 2b — Clarify before writing
+
+**If this `/bootstrap` is being invoked from within `/adopt`:** skip this phase entirely — the developer already provided codebase context in `/adopt` phases 1–6.
+
+Before generating any artifact, ask the developer a small number of targeted questions — **only where human judgment materially changes the output and the code alone cannot resolve it.** Collect all questions into a **single message** (never drip one at a time). Limit to ≤5 questions.
+
+**Ask about:**
+1. **Convention contradictions** — if two conflicting patterns exist for the same area (e.g. NgRx store in some features, BehaviorSubject services in others): *"Your codebase uses both [A] (e.g. NgRx in `feature-a/`) and [B] (e.g. BehaviorSubject services in `feature-b/`) for state management. Which is the intended approach — or are these genuinely different contexts?"* Frame as a plain engineering question about the codebase, never about which CLAUDE.md section to use.
+2. **Pattern intent** — if a pattern recurs but is applied inconsistently: *"I see [X] in [N] places but not all. Is this intentional (applied selectively) or drift (should be consistent)?"*
+
+**Do not ask** about things determinable from code (naming patterns, Angular version, file structure), matters of taste with no right answer, or hazard areas (those get their own confirmation in Phase 3d-bis).
+
+**Skip signal:** if the developer says "skip", "proceed", or "accept defaults", continue without adding any markers. Use `<!-- INFERRED -->` only when the code gives genuinely contradictory signals and the agent still cannot determine intent after reading multiple files — not as a default fallback when the developer skips.
+
+---
+
 ## Phase 3 — Generate artifacts
 
 ### 3a: Populate CLAUDE.md
@@ -217,16 +233,25 @@ Replace the `## Detected Framework Packages` section with a populated table:
 
 Do **not** edit any other section of FRAMEWORK-CONTEXT.md except `Known Hazard Areas` (next sub-step) — the rest are maintainer-curated.
 
-### 3d-bis: Draft FRAMEWORK-CONTEXT.md > Known Hazard Areas
+### 3d-bis: Confirm and write FRAMEWORK-CONTEXT.md > Known Hazard Areas
 
-From the Phase-2 **Tier-1 architectural risks** (and any domain-invariant / security findings — e.g. for .NET the A7 check-then-act / idempotency gaps, for Angular RxJS leak or sanitisation-bypass risks), draft the `## Known Hazard Areas` table: the "here be dragons" the agent must read before changing a listed area — load-bearing workarounds, undocumented invariants, high-blast-radius modules, and code whose tests do not actually pin its behaviour.
+From the Phase-2 **Tier-1 architectural risks** (and any domain-invariant / security findings — e.g. RxJS subscription leaks, missing sanitisation, auth interceptor gaps), identify up to ~12 candidate hazard areas. **Before writing anything to FRAMEWORK-CONTEXT.md**, ask the developer to confirm each one — in a **single message** (not dripped):
 
-Rules:
-- One row per hazard: `Area / file(s)` · `Hazard` (the specific risk) · `Status` · `Reviewed` (today's date).
-- **Every row you draft from analysis is `[UNVERIFIED]`** — tooling spotted the symptom; a human has not confirmed *why* it exists. Do not upgrade the status yourself.
-- In the Phase-4 report, explicitly ask the maintainer to review Known Hazard Areas and confirm/correct each row — that is the human-in-the-loop step the `[UNVERIFIED]` marker depends on.
-- **Delete the `KNOWN_HAZARD_AREAS_PENDING` marker** once drafted. If nothing notable surfaced, replace the table body with `_No notable hazards detected — confirm with the team._` and still delete the marker.
+For each candidate, ask a plain, answerable engineering question:
+> "I found a potential hazard in [Area / file]: [one plain sentence describing the specific risk — e.g. 'the auth interceptor does not retry after a 401 token refresh, so a race condition could leave the user with a broken session']. Is this (a) a confirmed risk to track, (b) not actually a risk in this codebase, or (c) you're not sure?"
+
+Add a "skip all — mark as unverified" escape at the end of the message.
+
+Map each answer to a row status:
+- **(a) confirmed** → `Status = [VERIFIED]`
+- **(b) not a risk** → `Status = [REVIEWED: not a hazard — <today's date>]` (write the row — kept for auditability, not dropped)
+- **(c) unsure / skip all** → `Status = [UNVERIFIED]` (same as before this change — graceful degradation)
+
+Then write the `## Known Hazard Areas` table to FRAMEWORK-CONTEXT.md with the answered statuses. One row per hazard: `Area / file(s)` · `Hazard` (the specific risk) · `Status` · `Reviewed` (today's date).
+
+- **Delete the `KNOWN_HAZARD_AREAS_PENDING` marker** once written. If nothing notable surfaced, replace the table body with `_No notable hazards detected — confirm with the team._` and still delete the marker.
 - Keep it tight (≤ ~12 rows); deeper items belong in TECH_DEBT.md.
+- Do not upgrade `[UNVERIFIED]` rows yourself; only the developer can do that.
 
 ### 3e: Initialise SECURITY_FINDINGS.md
 
@@ -256,4 +281,4 @@ Then output:
 - Files generated/modified
 - **New project-specific skills discovered (A7) — review these in the PR diff**: for each skill written from the A7 discovery pass, list: skill name, one-line trigger phrase (what operation it scaffolds, in plain engineering language — e.g. "a recipe for adding a new feature module with routing and a permission guard"), pinned exemplar file (or "(no exemplar — abstract only)"), and the why-tribal note. Omit this bullet entirely if A7 returned no candidates.
 
-**Important**: remind the user to review the generated `CLAUDE.md` before using any other commands. The conventions in that file drive everything else — if they're wrong, every command will follow wrong rules.
+**Important**: the Conventions section was generated from code analysis and your Phase 2b answers. Verify it before relying on it — sections marked `<!-- INFERRED -->` flag specific areas where the code gave conflicting signals that couldn't be resolved automatically. All other sections reflect observed code patterns; review them for accuracy, not for AI-architecture decisions.
