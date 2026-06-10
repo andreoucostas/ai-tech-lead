@@ -1,3 +1,8 @@
+---
+description: "Automated before/after A/B impact report contrasting the previous AI setup with this framework; runs the tests/impact harness in git worktrees. Developer-initiated only."
+disable-model-invocation: true
+---
+
 Produce a before/after **impact report** contrasting the previous AI setup with this framework. Fully automated — needs no input from the user.
 
 ## When this runs

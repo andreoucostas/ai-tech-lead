@@ -1,3 +1,8 @@
+---
+description: "Design-only workflow: produce a design with at least two approaches, a recommendation, and open questions; persist larger specs to specs/<slug>.md. Writes NO code. Invoke when the user wants to think through an approach before implementing."
+argument-hint: "[change to design]"
+---
+
 Reason through the design of a change before writing any code. This is a thinking exercise, not an implementation task.
 
 Anchor the design in CLAUDE.md > Repository Structure, Conventions, and Architecture Decisions.

@@ -1,3 +1,8 @@
+---
+description: "Security gate on changed code: spawns the security-auditor subagent, cross-checks tenant isolation and shared-library auth patterns, appends critical/high findings to SECURITY_FINDINGS.md with SLA due dates. Invoke before presenting any change that touches auth, payments, balances, ledgers, transactions, idempotency, or secrets."
+argument-hint: "[files or PR; empty = uncommitted changes]"
+---
+
 Run a security review of changed code as a senior tech lead. This is a quality gate, not a rubber stamp — every finding must be acted on, deferred with rationale, or rejected with rationale.
 
 ## Input

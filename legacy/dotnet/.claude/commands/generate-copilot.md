@@ -1,3 +1,7 @@
+---
+description: "Regenerate the derived files from CLAUDE.md: .github/copilot-instructions.md and the AGENTS.md full mirror, plus the .github/skills mirror via scripts/sync-agent-files. Invoke after any change to CLAUDE.md rules or the skill set."
+---
+
 Read the CLAUDE.md file in the project root. Regenerate the two **agent-facing derived files** from it:
 
 1. `.github/copilot-instructions.md` — a terse rule digest for **inline editor completions**.
