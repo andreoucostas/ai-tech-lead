@@ -16,11 +16,20 @@ $failed = $false
 function Fail($m) { Write-Output "FAIL: $m"; $script:failed = $true }
 function OK($m)   { Write-Output "OK:   $m" }
 
+# 0. Adoption-pending marker — the installer detected pre-existing AI tooling that /adopt must consolidate.
+if (Test-Path ".claude/adoption-pending.json") {
+    Fail "adoption pending (.claude/adoption-pending.json present) — the installer detected pre-existing AI tooling. A developer must run /adopt (it cannot be model-invoked) to consolidate it; /adopt removes this marker in its Phase 3."
+} else { OK "no adoption-pending marker." }
+
 # 1. CLAUDE.md present, non-empty, bootstrapped.
 if (-not (Test-Path "CLAUDE.md") -or ((Get-Item "CLAUDE.md").Length -eq 0)) {
     Fail "CLAUDE.md is missing or empty."
 } elseif (Select-String -Path "CLAUDE.md" -Pattern "BOOTSTRAP_PENDING" -Quiet) {
-    Fail "CLAUDE.md still contains the BOOTSTRAP_PENDING marker — run /bootstrap."
+    if (Test-Path ".claude/adoption-pending.json") {
+        Fail "CLAUDE.md still contains the BOOTSTRAP_PENDING marker — populated by /adopt (adoption pending, see check 0); do not run /bootstrap directly."
+    } else {
+        Fail "CLAUDE.md still contains the BOOTSTRAP_PENDING marker — run /bootstrap."
+    }
 } else { OK "CLAUDE.md present and bootstrapped." }
 
 # 1b. CLAUDE.md size budget (advisory — CLAUDE.md loads on nearly every agent turn).

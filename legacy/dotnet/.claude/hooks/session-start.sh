@@ -20,9 +20,11 @@ if [ -d .git ]; then
   fi
 fi
 
-# 2. Bootstrap state warning
-if [ -f CLAUDE.md ] && grep -q "BOOTSTRAP_PENDING" CLAUDE.md 2>/dev/null; then
-  echo "- ⚠ **CLAUDE.md is unbootstrapped** (BOOTSTRAP_PENDING marker present). Run \`/bootstrap\` before non-trivial work — conventions are still placeholder."
+# 2. Adoption / bootstrap state warning
+if [ -f .claude/adoption-pending.json ]; then
+  echo "- 🔴 **ADOPTION PENDING — this repo is not consolidated yet.** The installer detected pre-existing AI tooling; the originals it displaced are archived under \`docs/pre-adoption/\` and inventoried in \`.claude/adoption-pending.json\`. The required next step is \`/adopt\` — NOT \`/bootstrap\`, which would skip the archive/merge/provenance flow and the impact baseline. \`/adopt\` is developer-initiated and cannot be invoked by the model: if you are an agent, stop and tell the developer to type \`/adopt\`."
+elif [ -f CLAUDE.md ] && grep -q "BOOTSTRAP_PENDING" CLAUDE.md 2>/dev/null; then
+  echo "- ⚠ **CLAUDE.md is unbootstrapped** (BOOTSTRAP_PENDING marker present). \`/bootstrap\` must run before non-trivial work — conventions are still placeholder. It is developer-initiated and cannot be invoked by the model: if you are an agent, tell the developer to type \`/bootstrap\`."
 fi
 
 # 3. Workflow-routing primer.
