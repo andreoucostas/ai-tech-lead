@@ -18,11 +18,22 @@ FAILED=0
 fail() { echo "FAIL: $1"; FAILED=1; }
 ok()   { echo "OK:   $1"; }
 
+# 0. Adoption-pending marker — the installer detected pre-existing AI tooling that /adopt must consolidate.
+if [ -f ".claude/adoption-pending.json" ]; then
+  fail "adoption pending (.claude/adoption-pending.json present) — the installer detected pre-existing AI tooling. A developer must run /adopt (it cannot be model-invoked) to consolidate it; /adopt removes this marker in its Phase 3."
+else
+  ok "no adoption-pending marker."
+fi
+
 # 1. CLAUDE.md present, non-empty, bootstrapped.
 if [ ! -s "CLAUDE.md" ]; then
   fail "CLAUDE.md is missing or empty."
 elif grep -q "BOOTSTRAP_PENDING" "CLAUDE.md" 2>/dev/null; then
-  fail "CLAUDE.md still contains the BOOTSTRAP_PENDING marker — run /bootstrap."
+  if [ -f ".claude/adoption-pending.json" ]; then
+    fail "CLAUDE.md still contains the BOOTSTRAP_PENDING marker — populated by /adopt (adoption pending, see check 0); do not run /bootstrap directly."
+  else
+    fail "CLAUDE.md still contains the BOOTSTRAP_PENDING marker — run /bootstrap."
+  fi
 else
   ok "CLAUDE.md present and bootstrapped."
 fi

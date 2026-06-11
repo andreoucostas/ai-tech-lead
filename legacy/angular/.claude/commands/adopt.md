@@ -19,7 +19,8 @@ $ARGUMENTS
 1. **Check for uncommitted changes** — run `git status`. If there are uncommitted changes, STOP and tell the user to commit or stash. Adoption touches many files and must be reversible.
 2. **Recommend a branch** — tell the user: "I recommend running this on a new branch: `git checkout -b adopt-ai-framework`. Review everything and merge when satisfied." Wait for confirmation.
 3. **Locate the project root** — find `angular.json` (or `nx.json`/`project.json` for Nx). All paths are relative to this root.
-4. **Capture the impact baseline (before any changes).** This freezes the "before" for the impact report — do it now or it's lost:
+4. **Read the installer's adoption marker (if present).** If `.claude/adoption-pending.json` exists, the framework installer already detected the pre-existing AI tooling and **moved the originals its copy would have overwritten** (the repo's previous `CLAUDE.md`, `AGENTS.md`, `TECH_DEBT.md`, Copilot instructions, …) to `docs/pre-adoption/`. Read its `detectedArtifacts` and `archivedOriginals` lists — they seed Phase 1 discovery. Consequence: the `CLAUDE.md` now at the repo root is the **framework template**, not the consumer's original; the original (if any) is already at `docs/pre-adoption/CLAUDE.md`.
+5. **Capture the impact baseline (before any changes).** This freezes the "before" for the impact report — do it now or it's lost:
    - `git tag -f pre-adoption HEAD` and write the resolved SHA to `.claude/impact-baseline.ref`.
    - `mkdir -p docs/impact && bash scripts/metrics.sh > docs/impact/baseline.json` (the original codebase scorecard).
    The `pre-adoption` tag becomes the "old framework" arm of the behavioral A/B in Phase 9. (Requires the framework's `scripts/` — copied in before `/adopt`.)
@@ -38,6 +39,9 @@ Look for these at the repo root and in standard locations:
 - `.clinerules` (Cline)
 - `.windsurfrules` or `.windsurf/rules/*` (Windsurf)
 - `.roomodes` (Roo)
+
+### 1a-bis. Installer-archived originals
+If `.claude/adoption-pending.json` lists `archivedOriginals`, treat each file already under `docs/pre-adoption/` as a discovered merge candidate at its **original** path (the marker records the mapping). They skip Phase 3 (already archived) but go through the same safety screen and Phase 4 merge as everything else. Exception: an archived `CLAUDE.md` that still contains the `BOOTSTRAP_PENDING` marker is just an unused framework template — list it in the inventory, but it has no content to merge.
 
 ### 1b. Cursor
 - `.cursorrules` (legacy single-file)
@@ -147,6 +151,10 @@ Examples:
 - `CODEMAP.md` → `docs/pre-adoption/CODEMAP.md`
 - `docs/adr/0001-...md` → `docs/pre-adoption/adr/0001-...md`
 - `TODO.md` → `docs/pre-adoption/TODO.md`
+
+Files the installer already archived (Phase 0 marker) need no further move.
+
+Finally, **delete `.claude/adoption-pending.json`** (the installer's adoption marker): archival is complete, the SessionStart/CI warnings can stop, and this releases `/bootstrap`'s pre-flight guard so Phase 7 can run it.
 
 After archive, run `git status` and present the moves to the user.
 
@@ -273,6 +281,7 @@ Execute `/impact` now (after the Phase-8 commit, so `HEAD` reflects this framewo
 Adoption is complete only when **all** of these exist and you have reported them:
 - Updated `CLAUDE.md` (+ generated `AGENTS.md`, `.github/copilot-instructions.md`)
 - Archived originals under `docs/pre-adoption/`
+- `.claude/adoption-pending.json` deleted (Phase 3) — the SessionStart hook and `docs-sync-check` flag the repo while it exists
 - `docs/impact/baseline.json` (Phase 0) **and** `docs/impact/IMPACT.md` (Phase 9)
 - The Phase-8 commit
 
