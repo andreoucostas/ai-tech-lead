@@ -1,6 +1,8 @@
-# Stop hook -- flag Boy Scout opportunities in modified .ts files.
+﻿# Stop hook -- flag Boy Scout opportunities in modified .ts files.
 # PowerShell equivalent of boy-scout-check.sh, for Windows-only PowerShell teams.
-# Soft-warning by default (plain stdout).
+# Soft-warning by default, delivered as hookSpecificOutput.additionalContext JSON --
+# plain exit-0 stdout from a Stop hook goes to the debug log only, the model never sees it.
+# Switch to @{ decision = 'block'; reason = $text } for strict enforcement.
 #
 # Patterns derived from the always-apply items in CLAUDE.md > Boy Scout Rule:
 #   - manual ngOnDestroy subscription cleanup
@@ -94,10 +96,12 @@ if (Test-Path $hashFile) {
 }
 Set-Content -Path $hashFile -Value $currentHash -Encoding ASCII
 
-Write-Output "## Boy Scout candidates ($checked file(s) scanned)"
-Write-Output ''
-foreach ($finding in $findings) { Write-Output "- $finding" }
-Write-Output ''
-Write-Output "_If these touch files you modified this turn, address them per CLAUDE.md > Boy Scout Rule before considering the work complete. Otherwise add a ``// TODO: Boy Scout skipped -- [reason]`` comment._"
+$outLines = @("## Boy Scout candidates ($checked file(s) scanned)", '')
+foreach ($finding in $findings) { $outLines += "- $finding" }
+$outLines += ''
+$outLines += "_If these touch files you modified this turn, address them per CLAUDE.md > Boy Scout Rule before considering the work complete. Otherwise add a ``// TODO: Boy Scout skipped -- [reason]`` comment._"
+$text = $outLines -join "`n"
+
+(@{ hookSpecificOutput = @{ hookEventName = 'Stop'; additionalContext = $text } } | ConvertTo-Json -Compress)
 
 exit 0

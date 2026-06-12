@@ -1,4 +1,4 @@
-# SessionStart hook -- preload high-signal context every new session.
+﻿# SessionStart hook -- preload high-signal context every new session.
 # PowerShell equivalent of session-start.sh, for Windows-only PowerShell teams.
 # Output goes to the assistant's context as auxiliary data.
 # Keep fast: no expensive scans. Targets git, CLAUDE.md, TECH_DEBT.md only.

@@ -1,4 +1,4 @@
-# Generate docs/architecture.html from docs/ARCHITECTURE.md (PowerShell twin of build-architecture-html.sh).
+﻿# Generate docs/architecture.html from docs/ARCHITECTURE.md (PowerShell twin of build-architecture-html.sh).
 # Embeds the markdown verbatim and renders it client-side with marked + mermaid (CDN) so the HTML
 # cannot silently drift. Re-run after editing ARCHITECTURE.md. The HTML is for human reviewers only.
 $ErrorActionPreference = 'Stop'

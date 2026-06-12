@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Stop hook — flag Boy Scout opportunities in modified .ts files.
-# Soft-warning by default (plain stdout). Switch to {"decision":"block","reason":...}
-# JSON output if the team wants strict enforcement.
+# Soft-warning by default, delivered as hookSpecificOutput.additionalContext JSON —
+# plain exit-0 stdout from a Stop hook goes to the debug log only, the model never sees it.
+# Switch to {"decision":"block","reason":...} JSON output if the team wants strict enforcement.
 #
 # Patterns derived from the always-apply items in CLAUDE.md > Boy Scout Rule:
 #   - manual ngOnDestroy subscription cleanup
@@ -91,12 +92,19 @@ if [ -f "$hash_file" ] && [ "$(cat "$hash_file" 2>/dev/null)" = "$current_hash" 
 fi
 printf '%s' "$current_hash" > "$hash_file" 2>/dev/null
 
-echo "## Boy Scout candidates ($checked file(s) scanned)"
-echo
-for f in "${findings[@]}"; do
-  echo "- $f"
-done
-echo
-echo "_If these touch files you modified this turn, address them per CLAUDE.md > Boy Scout Rule before considering the work complete. Otherwise add a \`// TODO: Boy Scout skipped — [reason]\` comment._"
+text="## Boy Scout candidates ($checked file(s) scanned)
+
+$(printf -- '- %s\n' "${findings[@]}")
+
+_If these touch files you modified this turn, address them per CLAUDE.md > Boy Scout Rule before considering the work complete. Otherwise add a \`// TODO: Boy Scout skipped — [reason]\` comment._"
+
+if command -v jq >/dev/null 2>&1; then
+  printf '%s' "$text" | jq -Rs '{hookSpecificOutput: {hookEventName: "Stop", additionalContext: .}}'
+elif command -v python3 >/dev/null 2>&1; then
+  printf '%s' "$text" | python3 -c 'import json,sys; print(json.dumps({"hookSpecificOutput": {"hookEventName": "Stop", "additionalContext": sys.stdin.read()}}))'
+else
+  # No JSON tool available — plain stdout lands in the debug log only, but is better than nothing.
+  printf '%s\n' "$text"
+fi
 
 exit 0

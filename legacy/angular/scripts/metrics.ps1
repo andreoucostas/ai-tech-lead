@@ -1,4 +1,4 @@
-# Deterministic codebase scorecard for the impact before/after. Emits JSON to stdout.
+﻿# Deterministic codebase scorecard for the impact before/after. Emits JSON to stdout.
 # PowerShell twin of metrics.sh. Usage: pwsh scripts/metrics.ps1 [path ...]  (default: whole repo)
 $ErrorActionPreference = 'SilentlyContinue'
 $root = (git rev-parse --show-toplevel 2>$null); if (-not $root) { $root = (Get-Location).Path }

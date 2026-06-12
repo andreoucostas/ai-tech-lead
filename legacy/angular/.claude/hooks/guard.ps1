@@ -1,4 +1,4 @@
-# PreToolUse guard — hard-block writes that introduce warning-suppressions or hardcoded secrets.
+﻿# PreToolUse guard — hard-block writes that introduce warning-suppressions or hardcoded secrets.
 # Enforces CLAUDE.md > Verification Rule #7 and the no-secrets rule deterministically.
 # Claude Code block = exit 2 + reason on stderr. Copilot block = JSON deny on stdout.
 # Allow = exit 0. Degrades safe on parse failure (except high-confidence secrets, which fail closed).
@@ -52,7 +52,9 @@ if ($reasons.Count -eq 0) { exit 0 }
 $target = if ($fp) { $fp } else { 'the target file' }
 $msg = "Blocked write to ${target}: it " + ($reasons -join '; ') + "."
 
-if ($tool -eq 'edit' -or $tool -eq 'create') {
+# -ceq: Copilot's tool names are lowercase; case-insensitive -eq would route Claude's 'Edit'
+# to the Copilot JSON-deny path (exit 0), which Claude Code does not honor as a block.
+if ($tool -ceq 'edit' -or $tool -ceq 'create') {
     (@{ decision = 'deny'; reason = $msg } | ConvertTo-Json -Compress)
     exit 0
 }

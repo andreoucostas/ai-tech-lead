@@ -1,4 +1,4 @@
-# UserPromptSubmit router -- classify natural-language prompts into a workflow
+﻿# UserPromptSubmit router -- classify natural-language prompts into a workflow
 # and inject the matching workflow's deterministic rails before the model responds.
 # PowerShell equivalent of route-prompt.sh, for Windows-only PowerShell teams.
 # Plain stdout is treated as additionalContext by Claude Code.

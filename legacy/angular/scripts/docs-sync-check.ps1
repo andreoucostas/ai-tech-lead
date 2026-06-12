@@ -1,4 +1,4 @@
-# AI Tech Lead framework-state guardrail — host-agnostic (PowerShell twin of docs-sync-check.sh).
+﻿# AI Tech Lead framework-state guardrail — host-agnostic (PowerShell twin of docs-sync-check.sh).
 # Exit 0 = pass, 1 = fail. Use from Bamboo/Jenkins on Windows agents, or locally. See README
 # "Running on Bitbucket Data Center" for wiring options.
 $ErrorActionPreference = 'Stop'

@@ -1,4 +1,4 @@
-# Behavioral A/B runner — PowerShell twin of impact-run.sh.
+﻿# Behavioral A/B runner — PowerShell twin of impact-run.sh.
 # Usage: pwsh scripts/impact-run.ps1 <pre_ref> <post_ref> [--smoke]
 # Runs each task in tests/impact/tasks.json through a headless agent (Copilot CLI) in throwaway git
 # worktrees at <pre_ref> (old framework) vs <post_ref> (this one), N trials each, capturing per-run
