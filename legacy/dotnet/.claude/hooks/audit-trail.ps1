@@ -1,4 +1,4 @@
-# PostToolUse hook -- append every AI-assisted file write to .claude\ai-audit.log.
+﻿# PostToolUse hook -- append every AI-assisted file write to .claude\ai-audit.log.
 # Format: ISO-8601-UTC TAB git-branch TAB file-path
 # Tool surfaces handled:
 #   Claude Code (CLI + VS Code extension)  -- tool_name in {Write,Edit}; path at tool_input.file_path

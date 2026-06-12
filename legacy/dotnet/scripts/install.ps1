@@ -1,4 +1,4 @@
-# Install the AI Tech Lead Framework into a target repository.
+﻿# Install the AI Tech Lead Framework into a target repository.
 # Usage: pwsh scripts/install.ps1 C:\path\to\target-repo
 #
 # Copies the template's framework files into the target, EXCLUDING the .git directory, the

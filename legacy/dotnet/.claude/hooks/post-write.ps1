@@ -1,4 +1,4 @@
-# PostToolUse hook -- incremental dotnet build after a file write/edit on .cs files.
+﻿# PostToolUse hook -- incremental dotnet build after a file write/edit on .cs files.
 # Tool surfaces handled:
 #   Claude Code (CLI + VS Code extension)  -- tool_name in {Write,Edit}; path at tool_input.file_path
 #   GitHub Copilot (cloud agent + CLI)     -- toolName  in {edit,create}; path at toolArgs.filePath
@@ -62,11 +62,23 @@ if (Test-Path $stamp) {
 }
 Set-Content -Path $stamp -Value $now -Encoding ASCII
 
-$out = dotnet build --no-restore --verbosity quiet 2>&1
 # Only surface output on failure — emitting the build summary every successful write wastes context tokens.
-if ($LASTEXITCODE -ne 0) {
-    Write-Output "## dotnet build failed -- fix before continuing:"
-    $out | Select-Object -Last 20 | ForEach-Object { Write-Output $_ }
+$out = dotnet build --no-restore --verbosity quiet 2>&1
+if ($LASTEXITCODE -eq 0) { exit 0 }
+
+# Clear the throttle stamp so the next write rebuilds instead of skipping a known-broken build.
+Remove-Item $stamp -Force
+
+$msg = "## dotnet build failed -- fix before continuing:`n" + (($out | Select-Object -Last 20 | ForEach-Object { "$_" }) -join "`n")
+
+# Copilot consumes postToolUse feedback as JSON additionalContext on stdout (exit 0).
+# -ceq: Copilot's tool names are lowercase; case-insensitive -eq would swallow Claude's 'Edit'.
+if ($tn -ceq 'edit' -or $tn -ceq 'create') {
+    (@{ additionalContext = $msg } | ConvertTo-Json -Compress)
+    exit 0
 }
 
-exit 0
+# Claude Code feeds PostToolUse output to the model only via exit 2 + stderr;
+# exit-0 stdout goes to the debug log, so a plain echo here is silently dropped.
+[Console]::Error.WriteLine($msg)
+exit 2

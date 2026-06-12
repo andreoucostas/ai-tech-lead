@@ -11,6 +11,7 @@ mkdir -p .claude/.state 2>/dev/null
 
 # Resolve file path: stdin tool input first, env var fallback.
 file_path=""
+tool_name=""
 if [ ! -t 0 ]; then
   input=$(cat)
   if [ -n "$input" ]; then
@@ -76,11 +77,29 @@ if [ -f "$stamp" ]; then
 fi
 date +%s > "$stamp" 2>/dev/null
 
-build_output=$(dotnet build --no-restore --verbosity quiet 2>&1)
-if [ $? -ne 0 ]; then
-  echo "## dotnet build failed — fix before continuing:"
-  printf '%s\n' "$build_output" | tail -20
-fi
 # On success: stay silent — emitting the build summary every successful write wastes context tokens.
+build_output=$(dotnet build --no-restore --verbosity quiet 2>&1)
+[ $? -eq 0 ] && exit 0
 
-exit 0
+# Clear the throttle stamp so the next write rebuilds instead of skipping a known-broken build.
+rm -f "$stamp" 2>/dev/null
+
+msg="## dotnet build failed — fix before continuing:
+$(printf '%s\n' "$build_output" | tail -20)"
+
+# Copilot consumes postToolUse feedback as JSON additionalContext on stdout (exit 0).
+case "$tool_name" in
+  edit|create)
+    if command -v jq >/dev/null 2>&1; then
+      printf '%s' "$msg" | jq -Rs '{additionalContext: .}'
+    elif command -v python3 >/dev/null 2>&1; then
+      printf '%s' "$msg" | python3 -c 'import json,sys; print(json.dumps({"additionalContext": sys.stdin.read()}))'
+    fi
+    exit 0
+    ;;
+esac
+
+# Claude Code feeds PostToolUse output to the model only via exit 2 + stderr;
+# exit-0 stdout goes to the debug log, so a plain echo here is silently dropped.
+printf '%s\n' "$msg" >&2
+exit 2
