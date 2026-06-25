@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# PreToolUse guard — hard-block writes that introduce warning-suppressions or hardcoded secrets.
-# Enforces CLAUDE.md > Verification Rule #7 ("failures are signals; never silence them") and the
-# no-secrets rule deterministically, before the write lands.
+# PreToolUse guard — hard-block writes that introduce test-defeats, warning-suppressions, or hardcoded secrets.
+# Enforces CLAUDE.md > Verification Rules #5/#7 ("failures are signals; never silence them"; "don't skip
+# tests"), Test leanness #15 (no tautological assertions), and the no-secrets rule deterministically.
 #
 # Tool surfaces:
 #   Claude Code  — tool_name in {Write,Edit}; new content at tool_input.content / tool_input.new_string.
@@ -62,17 +62,37 @@ esac
 
 reasons=()
 
-# --- Warning / type suppressions (scoped by file extension) ---
+# --- Test-defeats + warning/type suppressions (scoped by file extension) ---
 case "$fp" in
   *.cs)
     printf '%s' "$content" | grep -Eq '#pragma[[:space:]]+warning[[:space:]]+disable' \
       && reasons+=("adds '#pragma warning disable' — Verification Rule #7: failures are signals, fix the cause")
+    printf '%s' "$content" | grep -Eq '\[(Fact|Theory)\([^)]*Skip[[:space:]]*=' \
+      && reasons+=("skips a test via [Fact/Theory(Skip=...)] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)")
+    { printf '%s' "$content" | grep -Eq 'Assert\.True\([[:space:]]*true[[:space:]]*[),]' \
+      || printf '%s' "$content" | grep -Eq 'Assert\.False\([[:space:]]*false[[:space:]]*[),]'; } \
+      && reasons+=("adds a tautological assertion (Assert.True(true) / Assert.False(false)) — assert observable behaviour, not a constant (Test leanness #15)")
     ;;
   *.ts|*.tsx|*.js|*.jsx|*.mts|*.cts|*.mjs|*.cjs)
     printf '%s' "$content" | grep -Eq 'eslint-disable' \
       && reasons+=("adds an 'eslint-disable' directive — fix the lint cause, don't silence it")
     printf '%s' "$content" | grep -Eq '@ts-(ignore|nocheck)' \
       && reasons+=("adds '@ts-ignore'/'@ts-nocheck' — fix the type error, don't suppress it")
+    ;;
+esac
+
+# --- Test-defeats in spec files (focused/skipped tests, tautological expects) ---
+case "$fp" in
+  *.spec.ts|*.spec.tsx|*.spec.js|*.spec.jsx|*.spec.mts|*.spec.cts)
+    { printf '%s' "$content" | grep -Eq '^[[:space:]]*f(it|describe)[[:space:]]*\(' \
+      || printf '%s' "$content" | grep -Eq '\b(it|describe)\.only[[:space:]]*\('; } \
+      && reasons+=("adds a focused test (fit/fdescribe/.only) — it silently skips the rest of the suite; remove it before committing")
+    { printf '%s' "$content" | grep -Eq '^[[:space:]]*x(it|describe)[[:space:]]*\(' \
+      || printf '%s' "$content" | grep -Eq '\b(it|describe)\.skip[[:space:]]*\('; } \
+      && reasons+=("skips a test (xit/xdescribe/.skip) — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)")
+    { printf '%s' "$content" | grep -Eq 'expect\([[:space:]]*true[[:space:]]*\)\.toBe\([[:space:]]*true[[:space:]]*\)' \
+      || printf '%s' "$content" | grep -Eq 'expect\([[:space:]]*false[[:space:]]*\)\.toBe\([[:space:]]*false[[:space:]]*\)'; } \
+      && reasons+=("adds a tautological assertion (expect(true).toBe(true)) — assert observable behaviour, not a constant (Test leanness #15)")
     ;;
 esac
 
