@@ -14,9 +14,13 @@ $ti = $d.tool_input
 $ta = $d.toolArgs
 if ($ta -is [string]) { try { $ta = $ta | ConvertFrom-Json } catch { $ta = $null } }
 
+# Field names vary by surface: Claude (file_path/content/new_string), Copilot CLI (filePath/
+# newString), and VS Code agent mode's text-editor tools (path + file_text on `create`, new_str
+# on `str_replace`/`insert`) -- Task 0 confirmed the VS Code shapes, so they are covered here.
 $fp = $null
-foreach ($v in @($ti.file_path, $ti.filePath, $ta.filePath, $ta.file_path, $ta.path)) { if ($v) { $fp = $v; break } }
-$parts = @($ti.content, $ti.new_string, $ti.newString, $ta.content, $ta.new_string, $ta.newString, $ti.text, $ta.text) | Where-Object { $_ }
+foreach ($v in @($ti.file_path, $ti.filePath, $ti.path, $ta.filePath, $ta.file_path, $ta.path)) { if ($v) { $fp = $v; break } }
+$parts = @($ti.content, $ti.new_string, $ti.newString, $ti.file_text, $ti.new_str, $ti.text,
+           $ta.content, $ta.new_string, $ta.newString, $ta.file_text, $ta.new_str, $ta.text) | Where-Object { $_ }
 $content = ($parts -join "`n")
 
 # Gate on whether this is an inspectable write, independent of surface: Claude sends

@@ -23,10 +23,11 @@ tool=""; fp=""; content=""
 
 if command -v jq >/dev/null 2>&1; then
   tool=$(printf '%s' "$input" | jq -r '.tool_name // .toolName // ""' 2>/dev/null)
-  fp=$(printf '%s' "$input" | jq -r '.tool_input.file_path // .tool_input.filePath // .toolArgs.filePath // .toolArgs.file_path // .toolArgs.path // ""' 2>/dev/null)
+  fp=$(printf '%s' "$input" | jq -r '.tool_input.file_path // .tool_input.filePath // .tool_input.path // .toolArgs.filePath // .toolArgs.file_path // .toolArgs.path // ""' 2>/dev/null)
+  # file_text / new_str cover VS Code agent mode's text-editor tools (create / str_replace / insert).
   content=$(printf '%s' "$input" | jq -r '
-    [ .tool_input.content, .tool_input.new_string, .tool_input.newString,
-      .toolArgs.content, .toolArgs.new_string, .toolArgs.newString,
+    [ .tool_input.content, .tool_input.new_string, .tool_input.newString, .tool_input.file_text, .tool_input.new_str,
+      .toolArgs.content, .toolArgs.new_string, .toolArgs.newString, .toolArgs.file_text, .toolArgs.new_str,
       .tool_input.text, .toolArgs.text ] | map(select(. != null)) | join("\n")' 2>/dev/null)
 elif command -v python3 >/dev/null 2>&1; then
   parsed=$(printf '%s' "$input" | python3 -c '
@@ -41,8 +42,8 @@ ta=d.get("toolArgs") or {}
 if isinstance(ta,str):
     try: ta=json.loads(ta)
     except Exception: ta={}
-fp=ti.get("file_path") or ti.get("filePath") or ta.get("filePath") or ta.get("file_path") or ta.get("path") or ""
-parts=[ti.get("content"),ti.get("new_string"),ti.get("newString"),ta.get("content"),ta.get("new_string"),ta.get("newString"),ti.get("text"),ta.get("text")]
+fp=ti.get("file_path") or ti.get("filePath") or ti.get("path") or ta.get("filePath") or ta.get("file_path") or ta.get("path") or ""
+parts=[ti.get("content"),ti.get("new_string"),ti.get("newString"),ti.get("file_text"),ti.get("new_str"),ta.get("content"),ta.get("new_string"),ta.get("newString"),ta.get("file_text"),ta.get("new_str"),ti.get("text"),ta.get("text")]
 content="\n".join([p for p in parts if p])
 sys.stdout.write(tool+"\x1f"+fp+"\x1f"+content)
 ' 2>/dev/null)
