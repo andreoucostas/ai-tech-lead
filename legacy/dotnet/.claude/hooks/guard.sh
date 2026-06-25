@@ -6,8 +6,8 @@
 # Tool surfaces:
 #   Claude Code  — tool_name in {Write,Edit}; new content at tool_input.content / tool_input.new_string.
 #                  Block = exit code 2 with the reason on stderr (documented PreToolUse block contract).
-#   GitHub Copilot (CLI / cloud agent, preToolUse) — toolName in {create,edit}; content at toolArgs.*.
-#                  Block = JSON {"decision":"deny","reason":...} on stdout.
+#   GitHub Copilot (CLI + VS Code agent mode, preToolUse) — toolName lowercase/camelCase; content at toolArgs.*.
+#                  Block = JSON {"permissionDecision":"deny",...} on stdout (superset incl. hookSpecificOutput).
 #
 # Allow = exit 0, no output. Degrades SAFE for suppressions (allow on parse failure) but FAILS CLOSED
 # for the high-confidence secret patterns. To relax per-repo, edit the patterns below or remove the
@@ -51,9 +51,12 @@ else
   exit 0   # no parser available — degrade safe
 fi
 
+# Gate on whether this is an inspectable write, independent of surface: known write tools
+# (Claude Write/Edit, Copilot CLI edit/create) OR any tool carrying a file path + content
+# (covers VS Code agent mode's camelCase tool names, which we can't fully enumerate).
 case "$tool" in
   Write|Edit|edit|create|"") ;;
-  *) exit 0 ;;
+  *) { [ -n "$fp" ] && [ -n "$content" ]; } || exit 0 ;;
 esac
 [ -z "$content" ] && exit 0
 
@@ -99,15 +102,20 @@ esac
 joined=$(printf '%s; ' "${reasons[@]}"); joined="${joined%; }"
 msg="Blocked write to ${fp:-the target file}: it ${joined}."
 
-# Copilot surface (lowercase toolName) → JSON deny on stdout.
+# Block per surface. Claude Code honors exit 2 + stderr; Copilot (CLI + VS Code agent mode)
+# honor a permissionDecision JSON deny on stdout. Claude tools are PascalCase (Edit/Write) — and
+# the ambiguous empty case routes to Claude too (its PreToolUse matcher only fires on Write|Edit);
+# everything else (Copilot CLI lowercase edit/create, VS Code camelCase) gets a SUPERSET JSON
+# carrying both the top-level (CLI shape) and hookSpecificOutput-nested (VS Code shape) decision.
+# Replaces the prior {decision,reason} shape, which no longer matches the Copilot spec (the old
+# Copilot deny had silently become a no-op). Task 0 confirms VS Code honors this.
 case "$tool" in
-  edit|create)
-    esc=$(printf '%s' "$msg" | sed 's/\\/\\\\/g; s/"/\\"/g')
-    printf '{"decision":"deny","reason":"%s"}\n' "$esc"
-    exit 0
+  Edit|Write|"")
+    printf '%s\n' "$msg" >&2
+    exit 2
     ;;
 esac
 
-# Claude Code surface → reason on stderr, exit 2 (block).
-printf '%s\n' "$msg" >&2
-exit 2
+esc=$(printf '%s' "$msg" | sed 's/\\/\\\\/g; s/"/\\"/g')
+printf '{"permissionDecision":"deny","permissionDecisionReason":"%s","hookSpecificOutput":{"permissionDecision":"deny","permissionDecisionReason":"%s"}}\n' "$esc" "$esc"
+exit 0

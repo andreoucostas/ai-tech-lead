@@ -28,10 +28,14 @@ Two files are generated from CLAUDE.md by `/generate-copilot` and must not drift
 
 **`AGENTS.md`** (full mirror for AGENTS.md-native tools):
 - The Verification Rules, Leanness, Boy Scout, and Agentic Workflow sections should match CLAUDE.md **verbatim**. Flag any section that has diverged.
+- **Agentic Workflow section 1 ("Classify the intent…") must match `CLAUDE.md` §1 verbatim — including every workflow's inline non-negotiables, the answer-only carve-out, and the security-pass paragraph.** This is the canonical routing definition and the *only* routing surface Copilot has, so condensing or paraphrasing it here is a hard drift finding, not a cosmetic one. (Sections 2–5 may be condensed to one line each — that is expected, not drift.)
 - The Conventions section should mirror `CLAUDE.md > Conventions` (once bootstrapped).
 - It must still begin with the `GENERATED FILE — do not edit by hand` banner. If someone hand-edited AGENTS.md, flag it and recommend re-running `/generate-copilot`.
 
-If either file has drifted, recommend `/generate-copilot` to regenerate both.
+**`route-prompt.ps1` / `route-prompt.sh` rails** (Claude-only just-in-time salience copy of §1):
+- The six per-workflow rail blocks (`$railsFix`/`$railsFeature`/… and the `.sh` here-docs) are a *bound salience copy* of `CLAUDE.md > Agentic Workflow §1`, not an independent source. Cross-check each rail against the matching §1 workflow: flag any **non-negotiable present in §1 but missing from the rail** (e.g. "regression test before production code", "build+tests pass before you touch anything", "net LOC delta", "red before green"), or any rail instruction that **contradicts** §1. They need not be word-identical (§1 is prose, the rails are terse), but they must not diverge in substance.
+
+If any file has drifted, recommend `/generate-copilot` (for the mirror) and a manual rail/§1 reconciliation (for `route-prompt`).
 
 ### Step 3 — Check LEARNINGS.md
 - Does it still only say "No entries yet"? If so, prompt the team to add observations.

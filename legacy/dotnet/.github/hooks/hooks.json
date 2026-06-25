@@ -1,5 +1,5 @@
 {
-  "_comment": "Note: userPromptSubmitted is intentionally omitted. Per docs.github.com/en/copilot/reference/hooks-configuration, Copilot does not consume hook stdout for that event ('Output processed: No'), so route-prompt.sh's natural-language routing would be a silent no-op. Claude Code, which does honor UserPromptSubmit stdout, still runs route-prompt via .claude/settings.json. In Copilot, the sessionStart hook now ships a workflow-routing primer instead.",
+  "_comment": "Note: userPromptSubmitted is intentionally omitted. Per docs.github.com/en/copilot/reference/hooks-configuration, Copilot does not consume hook stdout for that event ('Output processed: No'), so route-prompt's natural-language routing would be a silent no-op. Claude Code, which DOES honor UserPromptSubmit stdout, still runs route-prompt via .claude/settings.json. Copilot also discards sessionStart stdout, so NO hook can inject routing context on Copilot -- routing there rests entirely on AGENTS.md > Agentic Workflow (section 1), the always-on instruction surface. preToolUse IS consumed (JSON permissionDecision deny), which is how guard.* still enforces hard-blocks on Copilot. See docs/enforcement-surfaces.md for the guaranteed-vs-instructed matrix.",
   "version": 1,
   "hooks": {
     "sessionStart": [

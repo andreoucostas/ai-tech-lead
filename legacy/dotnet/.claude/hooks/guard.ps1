@@ -1,6 +1,7 @@
 ﻿# PreToolUse guard — hard-block writes that introduce warning-suppressions, hardcoded secrets, or test-defeats.
 # Enforces CLAUDE.md > Verification Rules #5/#7 and the no-secrets rule deterministically.
-# Claude Code block = exit 2 + reason on stderr. Copilot block = JSON deny on stdout.
+# Claude Code block = exit 2 + reason on stderr. Copilot block (CLI + VS Code agent mode) =
+# permissionDecision JSON deny on stdout (exit 0).
 # Allow = exit 0. Degrades safe on parse failure (except high-confidence secrets, which fail closed).
 $ErrorActionPreference = 'SilentlyContinue'
 
@@ -18,7 +19,12 @@ foreach ($v in @($ti.file_path, $ti.filePath, $ta.filePath, $ta.file_path, $ta.p
 $parts = @($ti.content, $ti.new_string, $ti.newString, $ta.content, $ta.new_string, $ta.newString, $ti.text, $ta.text) | Where-Object { $_ }
 $content = ($parts -join "`n")
 
-switch ($tool) { 'Write' {} 'Edit' {} 'edit' {} 'create' {} '' {} default { exit 0 } }
+# Gate on whether this is an inspectable write, independent of surface: Claude sends
+# Write/Edit (PascalCase), Copilot CLI sends edit/create (lowercase), VS Code agent mode
+# sends camelCase tool names we can't fully enumerate -- so also accept any tool that
+# carries a file path + content (the real signal). $fp/$content were extracted above.
+$knownWrite = (@('Write','Edit','edit','create') -contains $tool) -or ($tool -eq '')
+if (-not ($knownWrite -or ($fp -and $content))) { exit 0 }
 if (-not $content) { exit 0 }
 
 $reasons = @()
@@ -59,12 +65,23 @@ if ($reasons.Count -eq 0) { exit 0 }
 $target = if ($fp) { $fp } else { 'the target file' }
 $msg = "Blocked write to ${target}: it " + ($reasons -join '; ') + "."
 
-# -ceq: Copilot's tool names are lowercase; case-insensitive -eq would route Claude's 'Edit'
-# to the Copilot JSON-deny path (exit 0), which Claude Code does not honor as a block.
-if ($tool -ceq 'edit' -or $tool -ceq 'create') {
-    (@{ decision = 'deny'; reason = $msg } | ConvertTo-Json -Compress)
-    exit 0
+# Block per surface. Claude Code honors exit 2 + stderr; Copilot (CLI and VS Code agent mode)
+# honor a JSON `permissionDecision: deny` on stdout (exit 0). Discriminate by tool-name casing:
+# Claude tools are PascalCase (Edit/Write) -- and the ambiguous empty case routes to Claude too,
+# since the Claude PreToolUse matcher only fires on Write|Edit; everything else (Copilot CLI
+# lowercase edit/create, VS Code camelCase) gets the JSON. Emit a SUPERSET deny -- top-level
+# `permissionDecision` (Copilot CLI shape) AND nested under `hookSpecificOutput` (VS Code shape) --
+# so one output serves both Copilot surfaces. This replaces the prior {decision,reason} shape,
+# which no longer matches the Copilot spec (i.e. the old Copilot deny had silently become a no-op).
+# Task 0 confirms VS Code honors this and tolerates the extra top-level key.
+if ($tool -ceq 'Edit' -or $tool -ceq 'Write' -or $tool -eq '') {
+    [Console]::Error.WriteLine($msg)
+    exit 2
 }
 
-[Console]::Error.WriteLine($msg)
-exit 2
+@{
+    permissionDecision       = 'deny'
+    permissionDecisionReason = $msg
+    hookSpecificOutput       = @{ permissionDecision = 'deny'; permissionDecisionReason = $msg }
+} | ConvertTo-Json -Compress -Depth 6
+exit 0
