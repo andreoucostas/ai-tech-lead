@@ -5,6 +5,8 @@ argument-hint: "[file, class, or area]"
 
 Generate tests for code in this .NET codebase. Follow CLAUDE.md > Conventions > Testing and the test-related Common Tasks recipes.
 
+Match the test level to the **Test shape** heuristic in `docs/defaults.md` (or `CLAUDE.md > Conventions` once bootstrapped). This framework does not mandate test-first for features — but a bug fix or regression test is written **red-first**, and every new behavioral test must be seen to fail before you trust it (Verification Rule #9).
+
 ## Input
 $ARGUMENTS
 
@@ -30,6 +32,7 @@ For each target:
 - **Integration tests**: use `WebApplicationFactory` for API endpoints. Test the full request/response cycle.
 - Cover: happy path, edge cases, error paths, boundary conditions
 - Do not test framework behavior (e.g., don't test that DI works)
+- Mock only true external boundaries; every test needs a real oracle — a return, state change, or thrown exception, never just "the mock was called" or `Assert.True(true)` (Test leanness #14–16)
 
 ### Step 4 — Verify
 - Run `dotnet build` — tests must compile

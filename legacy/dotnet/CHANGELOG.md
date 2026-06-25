@@ -3,6 +3,28 @@
 > Framework-level changes for the .NET template. Per-stack Angular changes live in [`ai-tech-lead-angular/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-angular/blob/master/CHANGELOG.md).
 > Architecture decisions (cross-stack) live in `project_framework_architecture.md`.
 
+## 0.22.0 — 2026-06-25 (test integrity: defend against the test pathologies AI assistants are most prone to)
+
+> The framework had a strong testing *philosophy* (behaviour-first, lean, characterization-before-refactor) but three structural gaps: no guidance on test *shape* (only test types); no defence against the failure mode its own users are most exposed to — AI assistants routinely emit over-mocked, tautological tests that pass even when the code is broken (2026 empirical studies across Claude/Copilot/Cursor; majority-incorrect LLM oracles); and an enforcement asymmetry where architecture had a deterministic CI gate but testing had only soft review. This release closes the doctrine + cheap-enforcement gaps. Coverage-as-diagnostic and CI-enforced diff-scoped mutation testing are scoped for 0.23.0. Authored in lockstep with the Angular twin.
+
+### Added
+- **`test-critic` review agent** (`.claude/agents/test-critic.md` + `.github/agents/test-critic.agent.md`), spawned by `/review` alongside the existing four auditors. Its single question per test: *would this fail if the code under test broke?* Flags oracle-invalid (would-not-fail) tests, over-mocking, weak assertions, missing error/edge paths, implementation-coupling, nondeterminism, and financial-domain gaps — a separate context from the code author, per the "the agent doing the work isn't the one grading it" principle. `/review`'s output block is renamed **Test Quality & Coverage** with a would-fail-if-broken verdict.
+- **Test-integrity rules** (`CLAUDE.md` / `AGENTS.md` > Leanness > Test leanness #14–#16): no over-mocking (mock only true external boundaries; prefer fakes/in-memory for owned code), no tautological assertions, assert behaviour not implementation — each with its plain-language *why*.
+- **Verification Rule #9 — red before green**: a new behavioral test must be *seen to fail* against broken/pre-fix code before it is trusted; generalised from the bug-fix-only habit already in `fix.md`. The cheapest defence against vacuous tests.
+- **Test shape + determinism defaults** (`docs/defaults.md`): an architecture-conditioned shape heuristic (push each test to the lowest level that runs real behaviour; unit-dense domain logic, integration for cross-cutting paths via `WebApplicationFactory`, sparse full-stack; honeycomb/risk-based for boundary-heavy services; the inverted / ice-cream-cone anti-shape) plus a determinism/hermeticity stanza. Bootstrap-overridable.
+
+### Changed
+- **`guard.ps1` PreToolUse hook now hard-blocks test-defeats** (deterministic floor; both surfaces/shells preserved — exit 2 + stderr for Claude, JSON deny for Copilot, `-ceq`, UTF-8 BOM): `[Fact/Theory(Skip=…)]` and `Assert.True(true)`/`Assert.False(false)` in `*.cs`; `fit`/`fdescribe`/`.only`/`xit`/`xdescribe`/`.skip` and `expect(true).toBe(true)` in `*.spec.ts`. Enforces the previously-unenforced "no focused/skipped tests" convention.
+- **`add-tests` skill and `/test`** gained the over-mocking/real-oracle guidance and the red-before-green check; `/test` now points at the Test shape heuristic and states the TDD position (no test-first mandate for features; red-first for fixes and regressions).
+- **`/feature` final subtask** reworded from "integration test" to integration / end-to-end verification exercising the real pipeline as a caller would (Anthropic field finding: agents pass unit/integration but miss end-to-end) — parity with the Angular workflow.
+- **§5 Verification & confidence line** now requires showing the evidence — the command run and its observed pass/fail counts — not the bare claim "tests pass."
+- **`metrics.ps1`** discloses two new anti-pattern counts (`tests_skipped`, `tautological_assert`) for `/impact` — disclosure, not a gate. A `test-integrity-real-oracle` probe was added to `tests/impact/tasks.json` so the change is measurable through the framework's own A/B harness.
+
+### Verification
+- `guard.ps1` re-verified under Windows PowerShell 5.1 and pwsh 7: blocks `[Fact(Skip=…)]`, `Assert.True(true)`, `fit(`, `it.only`, `expect(true).toBe(true)` (exit 2); passes clean tests and the RxJS `skip()` operator (exit 0); existing `#pragma` / `@ts-ignore` blocks unaffected; UTF-8 BOM preserved.
+- `guard.ps1` and `metrics.ps1` parse cleanly (0 errors); `metrics.ps1` runs and emits the new keys; `tests/impact/tasks.json` is valid JSON with the new probe.
+- `.github/skills` re-synced and byte-identical to `.claude/skills`; `test-critic` mirrored to `.github/agents`; `AGENTS.md` updated with Rule #9 and Test leanness #14–#16; both repos stamped `0.22.0`; `docs-sync-check` clean. The impact A/B run itself (`impact-run.ps1`, needs Copilot CLI + two git refs) was not executed this session.
+
 ## 0.21.0 — 2026-06-12 (hook feedback actually reaches the model; PowerShell 5.1 hooks un-broken)
 
 > Field finding (consumer report): "hooks always exit with 0 — build failures silently get ignored." Confirmed, and the audit found three distinct silent-failure mechanisms, all in the feedback path between a hook and the model. The hooks *ran* fine; their output went nowhere. Verified against the Claude Code hooks reference (exit-code/stdout semantics per event) and the GitHub Copilot hooks reference (stdout parsed as JSON only).

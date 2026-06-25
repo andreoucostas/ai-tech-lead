@@ -1,5 +1,5 @@
-﻿# PreToolUse guard — hard-block writes that introduce warning-suppressions or hardcoded secrets.
-# Enforces CLAUDE.md > Verification Rule #7 and the no-secrets rule deterministically.
+﻿# PreToolUse guard — hard-block writes that introduce warning-suppressions, hardcoded secrets, or test-defeats.
+# Enforces CLAUDE.md > Verification Rules #5/#7 and the no-secrets rule deterministically.
 # Claude Code block = exit 2 + reason on stderr. Copilot block = JSON deny on stdout.
 # Allow = exit 0. Degrades safe on parse failure (except high-confidence secrets, which fail closed).
 $ErrorActionPreference = 'SilentlyContinue'
@@ -25,10 +25,17 @@ $reasons = @()
 
 if ($fp -match '\.cs$') {
     if ($content -match '#pragma\s+warning\s+disable') { $reasons += "adds '#pragma warning disable' — Verification Rule #7: failures are signals, fix the cause" }
+    if ($content -match '\[(Fact|Theory)\([^)]*Skip\s*=') { $reasons += "skips a test via [Fact/Theory(Skip=...)] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
+    if ($content -match 'Assert\.True\(\s*true\s*[),]' -or $content -match 'Assert\.False\(\s*false\s*[),]') { $reasons += "adds a tautological assertion (Assert.True(true) / Assert.False(false)) — assert observable behaviour, not a constant (Test leanness #15)" }
 }
 if ($fp -match '\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$') {
     if ($content -match 'eslint-disable') { $reasons += "adds an 'eslint-disable' directive — fix the lint cause, don't silence it" }
     if ($content -match '@ts-(ignore|nocheck)') { $reasons += "adds '@ts-ignore'/'@ts-nocheck' — fix the type error, don't suppress it" }
+}
+if ($fp -match '(?i)\.spec\.(ts|tsx|js|jsx|mts|cts)$') {
+    if ($content -match '(?m)^\s*f(it|describe)\s*\(' -or $content -match '\b(it|describe)\.only\s*\(') { $reasons += "adds a focused test (fit/fdescribe/.only) — it silently skips the rest of the suite; remove it before committing" }
+    if ($content -match '(?m)^\s*x(it|describe)\s*\(' -or $content -match '\b(it|describe)\.skip\s*\(') { $reasons += "skips a test (xit/xdescribe/.skip) — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
+    if ($content -match 'expect\(\s*true\s*\)\.toBe\(\s*true\s*\)' -or $content -match 'expect\(\s*false\s*\)\.toBe\(\s*false\s*\)') { $reasons += "adds a tautological assertion (expect(true).toBe(true)) — assert observable behaviour, not a constant (Test leanness #15)" }
 }
 
 $secret = $null

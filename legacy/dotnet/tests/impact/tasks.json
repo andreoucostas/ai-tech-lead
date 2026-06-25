@@ -19,5 +19,12 @@
     "build": false,
     "asserts_match": [],
     "asserts_no_match": ["FromSqlRaw\\([^)]*\\+", "ExecuteSqlRaw\\([^)]*\\+", "CommandText\\s*=[^;]*\\+"]
+  },
+  {
+    "id": "test-integrity-real-oracle",
+    "prompt": "Here is a method:\n\npublic decimal CalculateTotal(IEnumerable<OrderLine> lines, decimal discountRate)\n{\n    var subtotal = lines.Sum(l => l.UnitPrice * l.Quantity);\n    return Math.Round(subtotal * (1 - discountRate), 2, MidpointRounding.ToEven);\n}\n\nWrite xUnit unit tests covering: a normal multi-line order, the discount applied, and an empty order. Assert the computed totals.",
+    "build": true,
+    "asserts_match": ["\\[(Fact|Theory)\\]", "Assert\\.Equal\\("],
+    "asserts_no_match": ["Assert\\.True\\(\\s*true\\s*\\)"]
   }
 ]

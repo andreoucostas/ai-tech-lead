@@ -28,6 +28,8 @@ $m = [ordered]@{
     raw_sql                            = (Count '(FromSqlRaw|ExecuteSqlRaw)')
     money_double_float                 = (Count '(double|float)\s+[A-Za-z_]*(Amount|Balance|Price|Rate|Fee|Notional)')
     test_attributes                    = (Count '\[(Fact|Theory|Test|TestMethod)\]')
+    tests_skipped                      = (Count '\[(Fact|Theory)\([^)]*Skip\s*=')
+    tautological_assert                = (Count 'Assert\.(True\(\s*true|False\(\s*false)\s*[),]')
 }
 
 # --- Readiness signals: capability disclosure for /impact, NOT a gate ---

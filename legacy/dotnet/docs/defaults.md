@@ -48,3 +48,15 @@
 - Unit tests use xUnit + NSubstitute (or project's chosen stack).
 - Integration tests use `WebApplicationFactory`.
 - Test naming: `MethodName_Scenario_ExpectedResult`.
+
+### Test shape
+Choose the level by what the test actually exercises — *push each test to the lowest level that still runs real behavior; test at the boundary, not the mock.* A heuristic, not a fixed ratio; `/bootstrap` replaces it with the shape your codebase warrants.
+- Domain / application logic (rules, calculations, branching, validation) → unit-dense.
+- Cross-cutting paths (routing, model binding, EF Core, auth, serialization) → integration via `WebApplicationFactory`; exercise the real pipeline, don't mock it.
+- Critical journeys → a sparse top layer of full-stack behavioral checks. Few, high-value.
+- Boundary-heavy / gateway services → weight toward integration (honeycomb / risk-based), not unit.
+- Anti-shape: the inverted suite (mostly slow end-to-end tests over a thin unit base). Slow + flaky = wrong shape.
+
+### Test determinism
+- Tests must be deterministic and hermetic: no real network, clock, randomness, filesystem, or inter-test order dependence. An intermittently-failing test is worse than none — it trains the team to ignore red.
+- Pin time behind an abstraction (`TimeProvider` / injected clock); seed or stub randomness; isolate state between tests.

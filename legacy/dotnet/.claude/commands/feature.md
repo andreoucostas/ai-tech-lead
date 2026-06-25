@@ -31,7 +31,7 @@ Decompose into ordered subtasks. Execute each fully before starting the next:
 1. **Domain/model layer** — entities, value objects, enums + unit tests
 2. **Service/application layer** — business logic, interfaces + unit tests
 3. **API/controller layer** — DTOs, validators, controller actions + unit tests
-4. **Integration test** — end-to-end verification via WebApplicationFactory
+4. **Integration / end-to-end test** — verify the full flow through the real pipeline via `WebApplicationFactory`, exercising the endpoint as a caller would (real routing, model binding, serialization, middleware), not just the unit
 
 After each subtask, run `dotnet build`, `dotnet test`, and `dotnet format`. Fix any compilation errors, test failures, or formatting violations before starting the next subtask. Never leave the codebase in a broken state.
 
