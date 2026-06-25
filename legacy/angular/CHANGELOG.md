@@ -28,7 +28,7 @@
 - `guard.ps1` re-verified on all three surfaces: Claude `Edit` + AWS key → `exit 2` + stderr; Copilot CLI `edit` + key → `permissionDecision` JSON (exit 0); VS Code `createFile`/`applyPatch` + key **or** `expect(true).toBe(true)` → superset `permissionDecision` JSON (exit 0, the newly-covered surface); clean content → exit 0. `guard.*` byte-identical across both repos; UTF-8 BOM preserved.
 - All four edited hooks (`route-prompt`, `session-start`) parse clean under Windows PowerShell 5.1 + pwsh 7 and `bash -n`; answer-only suppression confirmed (a pure "why does this throw?" emits no rails; "fix the login crash" routes).
 - **Task 0 (VS Code Preview-hook enablement + live-payload capture) is a user-run spike** (`scratchpad/task0-vscode-hook-spike`) — the VS Code column of the floor is implemented to spec and is pending the maintainer's runtime confirmation that their org can enable Preview agent-hooks. If it cannot, VS Code degrades to instruction-only, as documented.
-- **Known divergence flagged (not fixed here):** `guard.sh` lacks the test-defeat blocks present in `guard.ps1` (a v0.22.0 lockstep miss); low blast radius since pwsh is the default path on the target. Tracked for a follow-up.
+- **`guard.sh` brought to parity with `guard.ps1`:** the bash path was missing the v0.22.0 test-defeat blocks (a lockstep miss). It now also blocks `[Fact/Theory(Skip=…)]`, `Assert.True(true)`/`Assert.False(false)`, `fit`/`fdescribe`/`.only`, `xit`/`xdescribe`/`.skip`, and `expect(true).toBe(true)` — verified firing on Claude (exit 2) and Copilot (`permissionDecision` JSON), and verified to still ALLOW the RxJS `skip()` operator and clean files.
 
 ## 0.22.0 — 2026-06-25 (test integrity: defend against the test pathologies AI assistants are most prone to)
 
