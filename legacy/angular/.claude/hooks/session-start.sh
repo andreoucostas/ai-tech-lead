@@ -27,21 +27,15 @@ elif [ -f CLAUDE.md ] && grep -q "BOOTSTRAP_PENDING" CLAUDE.md 2>/dev/null; then
   echo "- ⚠ **CLAUDE.md is unbootstrapped** (BOOTSTRAP_PENDING marker present). \`/bootstrap\` must run before non-trivial work — conventions are still placeholder. It is developer-initiated and cannot be invoked by the model: if you are an agent, tell the developer to type \`/bootstrap\`."
 fi
 
-# 3. Workflow-routing primer.
-# In Claude Code, route-prompt.sh injects rails per-prompt. In GitHub Copilot the
-# userPromptSubmitted hook is fire-and-forget (stdout is discarded by spec), so the
-# only place to surface the routing vocabulary is here — once per session. Top-tier
-# models will self-classify against this list and apply the corresponding workflow.
+# 3. Workflow-routing pointer (Claude Code only).
+# Claude Code consumes SessionStart stdout as model context. GitHub Copilot does NOT:
+# its sessionStart output is discarded by spec (and userPromptSubmitted likewise), so this
+# pointer reaches the model only on Claude Code. On Copilot, routing rests entirely on
+# AGENTS.md > Agentic Workflow (section 1), which is always-on context there. The full
+# intent->workflow vocabulary lives in section 1 (canonical); we do not re-list it here.
 if [ -f CLAUDE.md ]; then
   cat <<'EOF'
-- **Workflow routing:** when the user's prompt clearly matches one of the workflows below and they did not type an explicit `/command`, apply that workflow's rails from `CLAUDE.md > Agentic Workflow` before responding. State which workflow you concluded.
-  - `feature` — add, implement, create, build new ...
-  - `fix` — broken, bug, crash, failing, regression, not working
-  - `refactor` — cleanup, extract, rename, simplify, restructure
-  - `test` — write/add tests, increase coverage
-  - `design` — design X, approach for, trade-offs, how should I architect
-  - `debt` — tech debt, technical debt, cleanup debt
-  - `review` — review this PR/changes/code, quality gate
+- **Workflow routing:** when a prompt clearly matches a workflow and the developer did not type a `/command`, self-classify and apply that workflow's rails from `CLAUDE.md > Agentic Workflow` (section 1). State which workflow you concluded.
 EOF
 fi
 

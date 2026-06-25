@@ -3,6 +3,33 @@
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
 > Architecture decisions (cross-stack) live in `project_framework_architecture.md`.
 
+## 0.23.0 — 2026-06-25 (workflow disciplines made reachable on Copilot; deterministic write-floor extended to VS Code; false enforcement claims removed)
+
+> The framework's value is gated behind workflow commands the target developers won't type, and on the primary surface (GitHub Copilot in VS Code against a local Bitbucket Data Center) the picture was worse than assumed: routing/plan-gate/security context **cannot** be injected there (Copilot discards `sessionStart`/`userPromptSubmitted` stdout; VS Code agent-hooks are Preview-only), and the one Copilot write-block we shipped used a JSON shape (`{decision,reason}`) that **no longer matches the current Copilot spec** — i.e. the v0.22.0 Copilot guard had silently become a no-op. This release (a) inlines every workflow's non-negotiables into the always-on `CLAUDE.md`/`AGENTS.md` §1 so classification leads to discipline on Copilot without a slash command, (b) fixes the guard deny shape and extends the deterministic write-floor to VS Code agent mode, and (c) stops the framework claiming enforcement on surfaces where it doesn't fire. Authored in lockstep with the .NET twin. Researched against the Claude Code, Copilot CLI, and VS Code agent-hooks references (June 2026).
+
+> **Migration note:** *when* discipline fires has changed. The `route-prompt` per-prompt rails now point at `CLAUDE.md §1` as the canonical source (they remain a just-in-time salience copy, not an independent fork), and a question-shaped prompt with no imperative verb is now treated as answer-only (no workflow ceremony). If you relied on the old keyword-listed session-start primer "routing on Copilot," note that it never did — see `docs/enforcement-surfaces.md`.
+
+### Fixed
+- **`guard.ps1`/`.sh` Copilot deny shape was a no-op.** It emitted `{"decision":"deny","reason":…}`; current Copilot honours `{"permissionDecision":"deny","permissionDecisionReason":…}`. Now emits a **superset** (top-level *and* `hookSpecificOutput`-nested `permissionDecision`) so a single output blocks on **both Copilot CLI and VS Code agent mode**. The Claude Code `exit 2` path is unchanged.
+- **The guard no-opped on VS Code entirely** — its tool-name switch only matched Claude/CLI names, never VS Code's camelCase tools. It now gates on *"the payload carries a file path + content"* (surface-agnostic), so secret-writes and test-defeats (`fit`/`fdescribe`/`.only`, `expect(true).toBe(true)`) are blocked under VS Code agent mode too (when Preview agent-hooks are enabled).
+
+### Added
+- **`CLAUDE.md`/`AGENTS.md` §1 now carries each workflow's non-negotiables inline** (fix → root-cause-then-regression-spec-first; refactor → green-before-touch + net LOC delta; test → red-before-green, assert rendered output/emitted events/store state, no over-mocking; etc.). Previously these lived only in `commands/*.md`, which Copilot never auto-loads — so a Copilot dev who never typed `/fix` got "follow the fix workflow" with no reachable definition. §1 is now the **canonical routing definition** and the load-bearing surface on Copilot.
+- **`docs/enforcement-surfaces.md`** — the honest guaranteed-vs-instructed matrix per surface (Claude Code / Copilot CLI / Copilot VS Code). Linked from §1 and `hooks.json`.
+- **Answer-only carve-out** in `route-prompt` + §1: a question-shaped prompt with no imperative verb is answered directly, no plan-gate ceremony (reduces false-positive routing without advertising an override keyword).
+
+### Changed
+- **`route-prompt.ps1`/`.sh` intro now names `CLAUDE.md §1` as the canonical source** the rails mirror (the rails stay for just-in-time salience on Claude; they are bound to §1, not deleted).
+- **`session-start.ps1`/`.sh` no longer re-lists a routing keyword vocabulary** and no longer claims to route on Copilot (Copilot discards its stdout); it now points at §1. Comment in `.github/hooks/hooks.json` corrected accordingly.
+- **`generate-copilot.md`** now mandates the §1 block be copied **verbatim** into `AGENTS.md` (carved out of the "may be condensed to one line per step" license) — otherwise regeneration would erase the inline non-negotiables from the one surface that needs them.
+- **`/docs-sync`** gained two binding checks: AGENTS.md §1 must match `CLAUDE.md` §1 verbatim, and the `route-prompt` rails must stay substance-consistent with §1.
+
+### Verification
+- `guard.ps1` re-verified on all three surfaces: Claude `Edit` + AWS key → `exit 2` + stderr; Copilot CLI `edit` + key → `permissionDecision` JSON (exit 0); VS Code `createFile`/`applyPatch` + key **or** `expect(true).toBe(true)` → superset `permissionDecision` JSON (exit 0, the newly-covered surface); clean content → exit 0. `guard.*` byte-identical across both repos; UTF-8 BOM preserved.
+- All four edited hooks (`route-prompt`, `session-start`) parse clean under Windows PowerShell 5.1 + pwsh 7 and `bash -n`; answer-only suppression confirmed (a pure "why does this throw?" emits no rails; "fix the login crash" routes).
+- **Task 0 (VS Code Preview-hook enablement + live-payload capture) is a user-run spike** (`scratchpad/task0-vscode-hook-spike`) — the VS Code column of the floor is implemented to spec and is pending the maintainer's runtime confirmation that their org can enable Preview agent-hooks. If it cannot, VS Code degrades to instruction-only, as documented.
+- **Known divergence flagged (not fixed here):** `guard.sh` lacks the test-defeat blocks present in `guard.ps1` (a v0.22.0 lockstep miss); low blast radius since pwsh is the default path on the target. Tracked for a follow-up.
+
 ## 0.22.0 — 2026-06-25 (test integrity: defend against the test pathologies AI assistants are most prone to)
 
 > The framework had a strong testing *philosophy* (behaviour-first, lean, characterization-before-refactor) but three structural gaps, fixed in lockstep with the .NET twin: no guidance on test *shape* (only test types); no defence against the failure mode its own users are most exposed to — AI assistants routinely emit over-mocked, tautological specs that pass even when the code is broken (2026 empirical studies across Claude/Copilot/Cursor; majority-incorrect LLM oracles); and an enforcement asymmetry where architecture had a deterministic CI gate but testing had only soft review. This release closes the doctrine + cheap-enforcement gaps. Coverage-as-diagnostic and CI-enforced diff-scoped mutation testing are scoped for 0.23.0.

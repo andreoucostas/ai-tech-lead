@@ -59,6 +59,17 @@ elif echo "$lc" | grep -qE '(\brefactor\b|cleanup|clean up|\bextract\b|\brename\
 elif echo "$lc" | grep -qE '(\badd\b|\bimplement\b|\bcreate\b|\bbuild\b|new (feature|endpoint|component|service|screen|route))'; then intent="feature"
 fi
 
+# Answer-only carve-out (CLAUDE.md section 1): a question-shaped prompt with no
+# imperative verb asks for an explanation, not a code change — don't impose workflow
+# ceremony. Clearing intent suppresses the rails + plan-gate; the security overlay
+# below still fires if the question touches a sensitive surface.
+isq=""; imp=""
+if echo "$lc" | grep -qE "^[[:space:]]*(why|what|what'?s|how come|when|where|which|who|is|are|does|do|can|could|would|should)\b" || printf '%s' "$prompt" | grep -qE '\?[[:space:]]*$'; then isq="1"; fi
+if echo "$lc" | grep -qE '\b(add|fix|implement|create|build|make|change|update|modify|remove|delete|refactor|rename|extract|write|test|review|clean ?up|migrate|wire|integrate|introduce)\b'; then imp="1"; fi
+case "$intent" in
+  fix|feature|refactor|test) [ -n "$isq" ] && [ -z "$imp" ] && intent="" ;;
+esac
+
 # Security overlay fires IN ADDITION to any workflow intent (DORA: AI amplifies
 # weaknesses fastest on security-sensitive surfaces). Not an exclusive intent.
 sensitive=""
@@ -70,7 +81,7 @@ if [ -n "$intent" ]; then
 cat <<EOF
 ## Routed intent: \`$intent\`
 
-This natural-language prompt was classified as **$intent**. Apply the rails for that workflow before responding. If the user's actual intent differs, ignore these rails and proceed normally — but state explicitly what you concluded the intent is.
+This natural-language prompt was classified as **$intent**. The rails below mirror \`CLAUDE.md > Agentic Workflow\` section 1 — the canonical definition, already in your context; they are repeated here for salience. Apply them before responding. If the actual intent differs, say so and proceed normally.
 
 EOF
 

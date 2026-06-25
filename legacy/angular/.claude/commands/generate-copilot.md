@@ -68,7 +68,7 @@ Copy these sections **verbatim** from CLAUDE.md (they are the portable rules):
 - **SOLID** — full
 - **Conventions** — copy `CLAUDE.md > Conventions` once bootstrapped. Until then, keep the placeholder that points to `docs/defaults.md` and marks CLAUDE.md authoritative.
 - **Boy Scout Rule** — full (Always apply + the OnPush caveat + Apply-only-when-primary + When to skip)
-- **Agentic Workflow** — the numbered execution model (may be condensed to one line per step)
+- **Agentic Workflow** — copy **section 1 ("Classify the intent — and run that workflow without being asked") VERBATIM**: every workflow's inline non-negotiables, the canonical-definition note, the answer-only carve-out, and the security-pass paragraph. This is the canonical routing definition and the *only* routing surface Copilot has (no hook injects routing context there), so it must never be condensed or paraphrased. Sections 2–5 (plan-gate, verified subtasks, Boy Scout, self-review/flag-drift) may be condensed to one line each. `/docs-sync` asserts this mirror's section-1 block still matches `CLAUDE.md` §1.
 - **Common Tasks** — the skills list, noting they live in both `.github/skills/` and `.claude/skills/`
 
 Then keep:

@@ -131,6 +131,14 @@ elseif ($lc -match '(\bfix\b|\bbug\b|\bbroken\b|\bcrash|\bfails?\b|\bfailing\b|\
 elseif ($lc -match '(\brefactor\b|cleanup|clean up|\bextract\b|\brename\b|simplify|reorganis[ez]|restructure|\btidy\b)')                  { $intent = 'refactor' }
 elseif ($lc -match '(\badd\b|\bimplement\b|\bcreate\b|\bbuild\b|new (feature|endpoint|component|service|screen|route))')                  { $intent = 'feature' }
 
+# Answer-only carve-out (CLAUDE.md section 1): a question-shaped prompt with no
+# imperative verb asks for an explanation, not a code change -- don't impose workflow
+# ceremony. Clearing $intent suppresses the rails + plan-gate; the security overlay
+# below still fires if the question touches a sensitive surface.
+$isQuestion = ($lc -match "^\s*(why|what|what'?s|how come|when|where|which|who|is|are|does|do|can|could|would|should)\b") -or ($prompt.TrimEnd() -match '\?$')
+$hasImperative = $lc -match '\b(add|fix|implement|create|build|make|change|update|modify|remove|delete|refactor|rename|extract|write|test|review|clean\s?up|migrate|wire|integrate|introduce)\b'
+if ($isQuestion -and -not $hasImperative -and $intent -in @('fix','feature','refactor','test')) { $intent = '' }
+
 # Security overlay fires IN ADDITION to any workflow intent -- it is not an
 # exclusive intent, so a security-relevant feature still gets the feature rails.
 $sensitive = $lc -match '(\bauth\b|authenticat|authori[sz]|login|password|secret|token|credential|session|cookie|\bjwt\b|permission|\brole\b|\bpii\b|personal data|gdpr|encrypt|sanitiz|bypasssecuritytrust|innerhtml|\bxss\b|\bcsrf\b|payment|money|currency)'
@@ -140,7 +148,7 @@ if ([string]::IsNullOrEmpty($intent) -and -not $sensitive) { exit 0 }
 if (-not [string]::IsNullOrEmpty($intent)) {
     Write-Output "## Routed intent: ``$intent``"
     Write-Output ''
-    Write-Output "This natural-language prompt was classified as **$intent**. Apply the rails for that workflow before responding. If the user's actual intent differs, ignore these rails and proceed normally -- but state explicitly what you concluded the intent is."
+    Write-Output "This natural-language prompt was classified as **$intent**. The rails below mirror ``CLAUDE.md > Agentic Workflow`` section 1 -- the canonical definition, already in your context; they are repeated here for salience. Apply them before responding. If the actual intent differs, say so and proceed normally."
     Write-Output ''
 
     if ($intent -in @('fix','feature','refactor','test')) {

@@ -1,7 +1,7 @@
 <!--
 ai-tech-lead-framework
   template: angular
-  version: 0.22.0
+  version: 0.23.0
   applied: 2026-06-25
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
@@ -181,18 +181,21 @@ Items 8–14 can significantly expand or reshape a diff. Only apply them when th
 
 When given any task, follow this execution model:
 
-### 1. Classify the intent
-Determine what the developer is asking for:
-- **Feature**: new functionality across one or more layers → follow the feature workflow
-- **Bug fix**: something is broken → follow the fix workflow
-- **Refactor**: restructure without changing behavior → follow the refactor workflow
-- **Investigation/design**: need to think before coding → follow the design workflow
-- **Test**: add or improve test coverage → follow the test workflow
-- **Debt cleanup**: address known tech debt → follow the debt workflow
+### 1. Classify the intent — and run that workflow without being asked
+Developers will rarely type a slash command. Treat any natural-language request as the trigger: silently classify it, **announce in one line which workflow you concluded** ("Reading this as a *fix*…"), and apply that workflow's rails below. If two workflows genuinely fit, ask one clarifying question first. If it's a pure question ("why does this throw?", "what does `X` do?"), just answer it — no workflow ceremony. You may combine workflows for a compound request ("fix this and add a test"), but **never silently drop a workflow's non-negotiables** to do so.
 
-If the intent is ambiguous, ask before proceeding.
+> These rails are the **canonical definition** of each workflow. `commands/*.md` and the `route-prompt` hook elaborate them but must not contradict them; `/docs-sync` checks they stay aligned. On Copilot (VS Code & CLI) this text is the *only* thing that reaches the model — treat it as binding, not advisory.
 
-**Security-sensitive surfaces always get a security pass.** If the work touches authentication/authorization, tokens, sessions, PII, or output sanitization (XSS/CSRF), run `/security-review` on the diff (or the `security-auditor` agent) before presenting it as complete — regardless of which workflow above applies. A `UserPromptSubmit` hook flags these automatically, but the rule holds even if the hook misses it.
+- **Feature** — *add / implement / create / build new …*: design check first (affected layers, files to create/modify, failure modes, test strategy) → decompose into ordered subtasks, running `ng build` + `ng test --watch=false --browsers=ChromeHeadless` after each → Boy Scout every touched file → self-review against Conventions → present what was built and tested. Honour Leanness: no new service/abstraction without a second consumer in this change-set.
+- **Bug fix** — *broken / bug / crash / failing / "not working" / "looks off"*: **state the root cause before writing any code** → write a failing regression test (spec) that fails for the *right reason* **before** touching production code → apply the *minimal* fix (no unrelated refactor) → verify the regression test + related suite + build + lint all pass → apply Boy Scout to the **blast radius only** → report root cause, fix, regression coverage, blast radius.
+- **Refactor** — *cleanup / extract / rename / simplify / restructure*: **build + tests must pass before you touch anything**; if the target has no tests, write baseline (characterization) specs first → refactor incrementally, building + testing after each step → Boy Scout touched files → verify behaviour is unchanged → present a before/after summary **including net LOC delta**.
+- **Test** — *write / add tests, increase coverage*: match existing spec structure, naming, framework, mocking → cover happy path, edge cases, error paths, boundaries → **assert observable behaviour (rendered output, emitted events, store state), not framework internals or implementation detail; no over-mocking, no tautological assertions** → a new behavioural spec must be *seen to fail* before it is trusted (red before green) → verify new specs pass → report what's tested and what's still uncovered.
+- **Investigation / design** — *design X / approach for / trade-offs / "how should I"*: **write no code** → understand the requirement → analyse impact → weigh at least two approaches with pros/cons + effort → recommend with specifics (component structure, state, services, tests) → surface open questions before implementation.
+- **Debt cleanup** — *tech debt / cleanup debt*: read `TECH_DEBT.md` and find items in the area → confirm each still exists in the code (may already be fixed) → recommend fix-now vs defer with reasons → after fixes, update `TECH_DEBT.md` → Boy Scout touched files → report fixed/deferred plus the `TECH_DEBT.md` diff.
+
+What is *guaranteed* vs merely *instructed* here depends on the surface — see `docs/enforcement-surfaces.md`. On Claude Code these rails are reinforced by a per-prompt hook and a write-time guard; on Copilot only this text reaches the model.
+
+**Security-sensitive surfaces always get a security pass.** If the work touches authentication/authorization, tokens, sessions, PII, or output sanitization (XSS/CSRF), run `/security-review` on the diff (or the `security-auditor` agent) before presenting it as complete — regardless of which workflow above applies. On Claude Code a `UserPromptSubmit` hook flags these automatically; on Copilot it does not — the rule holds regardless.
 
 ### 2. Plan before coding — present, clarify, then get the go-ahead
 For any non-trivial task, STOP before writing code and post a short plan:
