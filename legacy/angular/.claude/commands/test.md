@@ -5,6 +5,8 @@ argument-hint: "[file, class, or area]"
 
 Generate tests for code in this Angular codebase. Follow CLAUDE.md > Conventions > Testing and the test-related Common Tasks recipes.
 
+Match the test level to the **Test shape** heuristic in `docs/defaults.md` (or `CLAUDE.md > Conventions` once bootstrapped) — frontend testing is trophy-shaped (component/integration-weighted). This framework does not mandate test-first for features — but a bug fix or regression test is written **red-first**, and every new behavioral spec must be seen to fail before you trust it (Verification Rule #9).
+
 ## Input
 $ARGUMENTS
 
@@ -31,6 +33,7 @@ For each target:
 - **Pipe/utility tests**: pure function tests — straightforward input/output.
 - Cover: happy path, edge cases, error paths, boundary conditions
 - Do not test Angular framework behavior (e.g., don't test that DI works)
+- Mock only true external boundaries; every spec needs a real oracle — rendered output, an emitted value, or state, never just "the spy was called" or `expect(true).toBe(true)` (Test leanness #14–16)
 
 ### Step 4 — Verify
 - Run `ng build` — tests must compile

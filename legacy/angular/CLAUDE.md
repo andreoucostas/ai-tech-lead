@@ -1,8 +1,8 @@
 <!--
 ai-tech-lead-framework
   template: angular
-  version: 0.21.0
-  applied: 2026-06-12
+  version: 0.22.0
+  applied: 2026-06-25
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
 # [Project Name]
@@ -29,6 +29,7 @@ These apply to every workflow, before any convention-level rule. The difference 
 6. **No invented fixtures.** When sample data, builders, factories, or HTTP mocks already exist, reuse them. Do not fabricate parallel ones.
 7. **Failures are signals.** `tsc` errors, lint errors, and test failures are diagnostic. Read the message and fix the cause; never `// @ts-ignore`, `as any`, or comment-out to silence. (A PreToolUse hook hard-blocks writes that add `// eslint-disable` / `@ts-ignore` / `@ts-nocheck`.)
 8. **No future-proofing.** Do not add code for hypothetical requirements. Three similar lines is better than a premature abstraction.
+9. **A new spec must be seen to fail before it is trusted.** Before relying on a new behavioral spec as green, confirm it actually goes red when the behavior is broken — write it before the fix (bug fixes), or briefly break the code under test and watch it fail for the right reason. Where running the red is impractical, state the specific defect the spec would catch. *Why: AI-generated specs are the highest-risk for tautological or over-mocked assertions that pass even against broken code; a spec you have watched fail cannot be vacuous.*
 
 ---
 
@@ -54,6 +55,9 @@ The Boy Scout Rule biases toward adding improvements. This section is the counte
 11. **Do not test getters, setters, or trivial signals.** Test behavior, not assignment.
 12. **Do not test the framework.** No tests that `@Input` decorators bind, that `Router.navigate` works, that change detection runs.
 13. **Reuse existing test fixtures and HTTP mocks.** Do not introduce parallel test data unless existing fixtures cannot represent the case.
+14. **No over-mocking.** Mock only true external boundaries — HTTP (`provideHttpClientTesting`), time, storage, third-party SDKs. Never mock the component/service under test or its owned collaborators when the real (or a lightweight fake) instance is cheap; render the real template and inject real collaborators. *Why: AI assistants frequently produce tests that assert on mock interactions and would still pass if the real code were broken — see [Verification Rules](#verification-rules) #9.*
+15. **No tautological assertions.** A test whose only assertion is `expect(true).toBe(true)`, a lone `expect(x).toBeDefined()` on a freshly-created object, or "the spy was called" verifies nothing. Assert the rendered output, emitted value, or state change. *Why: a large share of LLM-generated assertions are weak or vacuous — they bank coverage without catching regressions.*
+16. **Assert behavior, not implementation.** Do not assert private fields, internal method-call order that isn't part of the contract, or DOM structure that isn't user-visible. A refactor that preserves behavior must not break the test.
 
 ### When you must add structure
 
@@ -219,7 +223,7 @@ Before presenting work as complete:
 - Check if the change introduces a new pattern → flag that this file needs updating
 - Check if the change resolves a TECH_DEBT.md item → flag for removal
 - Check if the change contradicts any convention → ask whether to update the convention or change the implementation
-- **Close with a Verification & confidence line**: separate what you actually verified by running it (build / tests / lint — name which you ran) from what you assert without having run it, and flag anything you could not verify. This calibration is deliberate — it counters the well-documented tendency to feel more done than the work is.
+- **Close with a Verification & confidence line**: separate what you actually verified by running it (build / tests / lint — name which you ran) from what you assert without having run it, and flag anything you could not verify. Show the evidence — the command you ran and its observed result (e.g. `ng test --watch=false` → 87 passed, 0 failed), not the bare claim "tests pass." This calibration is deliberate — it counters the well-documented tendency to feel more done than the work is.
 
 ### 6. Flag documentation drift
 At the end of your response, note if:

@@ -1,5 +1,5 @@
 ---
-description: "Tech-lead quality gate on a diff: spawns convention-check, solid-check, debt-radar, and bloat-radar subagents in parallel, runs build+tests itself, applies senior judgement, returns APPROVE or REQUEST CHANGES. Invoke when completed work needs the full gate, not for a quick inline question."
+description: "Tech-lead quality gate on a diff: spawns convention-check, solid-check, debt-radar, bloat-radar, and test-critic subagents in parallel, runs build+tests itself, applies senior judgement, returns APPROVE or REQUEST CHANGES. Invoke when completed work needs the full gate, not for a quick inline question."
 argument-hint: "[files or PR; empty = uncommitted changes]"
 ---
 
@@ -19,8 +19,9 @@ In a single message, spawn all four subagents via the `Task` tool:
 - `solid-check` — audits the diff against CLAUDE.md > SOLID (the five principles; literal interface-per-injected-service).
 - `debt-radar` — surfaces TECH_DEBT.md entries touching the changed files (debt-trajectory signal).
 - `bloat-radar` — surfaces speculative abstractions, shallow wrappers, parallel implementations, and comment debris in the diff.
+- `test-critic` — audits the spec changes for integrity: would each spec actually fail if the code broke? Catches over-mocking, tautological/weak expectations, missing paths, and nondeterminism.
 
-Wait for all four to return their structured output. Use those findings as the spine of the review — do not redo the scans yourself.
+Wait for all five to return their structured output. Use those findings as the spine of the review — do not redo the scans yourself.
 
 ### Step 2 — Verify the build yourself
 Run `ng build` and `ng test --watch=false --browsers=ChromeHeadless`. Do not trust that the code being reviewed already passes. If lint is configured, run `ng lint` too. Record any failures as high-severity issues.
@@ -30,7 +31,7 @@ The auditors handle pattern-level checks. You handle:
 - **Correctness**: does the code do what it claims to do?
 - **Failure modes**: edge cases, error paths, race conditions, boundary conditions not covered.
 - **Security**: XSS, data exposure, auth bypass, injection — auditors do not check these.
-- **Test quality**: does the test verify behavior or implementation? Would it catch a regression?
+- **Test quality**: build on `test-critic`'s findings — confirm the new specs would fail if the code broke, and that error/edge paths are covered. Treat any "would pass against broken code" spec as a high-severity issue.
 - **Architecture trajectory**: does this move toward or away from the target architecture in CLAUDE.md > Architecture Decisions?
 - **Spec conformance**: if a `specs/<slug>.md` exists for this change, verify the implementation satisfies its acceptance criteria, that **every Task in its checklist is checked off** (flag any still `- [ ]` as incomplete work), and stays within its declared scope. Flag unmet criteria or scope creep as issues.
 
@@ -47,7 +48,8 @@ The auditors handle pattern-level checks. You handle:
 | # | Severity | File:line | Issue | Suggestion |
 |---|----------|-----------|-------|------------|
 
-### Test Coverage
+### Test Quality & Coverage
+- Would-fail-if-broken: <from test-critic — N would catch a regression, N would pass against broken code>
 - Covered: ...
 - Missing: ...
 

@@ -23,6 +23,8 @@ $m = [ordered]@{
     not_implemented_throws             = (Count 'throw\s+new\s+Error\([''"]not implemented')
     concrete_service_instantiation_dip = (Count 'new\s+[A-Za-z0-9_]+(Service|Store|Facade)\(')
     test_specs                         = (Count '\b(it|describe)\(')
+    tests_skipped_focused              = (Count '\b(fit|fdescribe|xit|xdescribe)\s*\(|\b(it|describe)\.(only|skip)\s*\(')
+    tautological_expect                = (Count 'expect\(\s*(true|false)\s*\)\.toBe\(\s*(true|false)\s*\)')
 }
 
 # --- Readiness signals: capability disclosure for /impact, NOT a gate ---

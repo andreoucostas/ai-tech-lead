@@ -26,6 +26,7 @@ These apply to every workflow, before any convention-level rule. The difference 
 6. **No invented fixtures.** When sample data, builders, factories, or HTTP mocks already exist, reuse them. Do not fabricate parallel ones.
 7. **Failures are signals.** `tsc` errors, lint errors, and test failures are diagnostic. Read the message and fix the cause; never `// @ts-ignore`, `as any`, or comment-out to silence. (A PreToolUse hook hard-blocks writes that add `// eslint-disable` / `@ts-ignore` / `@ts-nocheck`.)
 8. **No future-proofing.** Do not add code for hypothetical requirements. Three similar lines is better than a premature abstraction.
+9. **A new spec must be seen to fail before it is trusted.** Before relying on a new behavioral spec as green, confirm it actually goes red when the behavior is broken — write it before the fix (bug fixes), or briefly break the code under test and watch it fail for the right reason. Where running the red is impractical, state the specific defect the spec would catch. *Why: AI-generated specs are the highest-risk for tautological or over-mocked assertions that pass even against broken code; a spec you have watched fail cannot be vacuous.*
 
 ---
 
@@ -51,6 +52,9 @@ The Boy Scout Rule biases toward adding improvements. This section is the counte
 11. **Do not test getters, setters, or trivial signals.** Test behavior, not assignment.
 12. **Do not test the framework.** No tests that `@Input` decorators bind, that `Router.navigate` works, that change detection runs.
 13. **Reuse existing test fixtures and HTTP mocks.** Do not introduce parallel test data unless existing fixtures cannot represent the case.
+14. **No over-mocking.** Mock only true external boundaries — HTTP (`provideHttpClientTesting`), time, storage, third-party SDKs. Never mock the component/service under test or its owned collaborators when the real (or a lightweight fake) instance is cheap; render the real template and inject real collaborators. *Why: AI assistants frequently produce tests that assert on mock interactions and would still pass if the real code were broken — see Verification Rule #9.*
+15. **No tautological assertions.** A test whose only assertion is `expect(true).toBe(true)`, a lone `expect(x).toBeDefined()` on a freshly-created object, or "the spy was called" verifies nothing. Assert the rendered output, emitted value, or state change. *Why: a large share of LLM-generated assertions are weak or vacuous — they bank coverage without catching regressions.*
+16. **Assert behavior, not implementation.** Do not assert private fields, internal method-call order that isn't part of the contract, or DOM structure that isn't user-visible. A refactor that preserves behavior must not break the test.
 
 ### When you must add structure
 
@@ -146,7 +150,7 @@ When given any task, follow this execution model. The seven workflows are also i
 2. **Plan before coding** — for any non-trivial task, present a plan (files to create/modify, order of operations, what tests verify success) **plus clarifying questions for anything underspecified, then wait for the developer's go-ahead before writing code** (skip the wait only for trivial, unambiguous changes, and say so). For larger features, persist a spec to `specs/<slug>.md` (see `/design`) and implement against it.
 3. **Execute in verified subtasks** — decompose into ordered layers (models/services → state → component → integration). Run `ng build` and `ng test --watch=false --browsers=ChromeHeadless` after each; fix failures before moving on.
 4. **Boy Scout every touched file** — apply the always-apply list above to every file you modify.
-5. **Self-review before presenting** — review against `CLAUDE.md > Conventions`; verify build + tests pass; flag new patterns, resolved TECH_DEBT items, and any convention contradictions. **Close with a Verification & confidence line**: separate what you verified by running it (build/tests/lint) from what you assert without having run it, and flag anything unverified.
+5. **Self-review before presenting** — review against `CLAUDE.md > Conventions`; verify build + tests pass; flag new patterns, resolved TECH_DEBT items, and any convention contradictions. **Close with a Verification & confidence line**: separate what you verified by running it (build/tests/lint) from what you assert without having run it, and flag anything unverified. Show the evidence — the command you ran and its observed result (e.g. `ng test --watch=false` → 87 passed, 0 failed), not the bare claim "tests pass."
 6. **Flag documentation drift** — note new patterns to document, TECH_DEBT changes, and whether `copilot-instructions.md` / this file need regeneration (`/generate-copilot`).
 
 ---

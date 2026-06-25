@@ -66,3 +66,15 @@
 - Service tests mock HTTP via `provideHttpClientTesting` (preferred) or `HttpClientTestingModule` (legacy).
 - Test naming: `should [expected behavior] when [condition]`.
 - No `fdescribe`, `fit`, or `xdescribe`, `xit` committed to main.
+
+### Test shape
+Choose the level by what the test actually exercises — *push each test to the lowest level that still runs real behavior; test at the boundary, not the mock.* A heuristic, not a fixed ratio; `/bootstrap` replaces it with the shape your codebase warrants. Frontend testing is **trophy-shaped**, not a pyramid:
+- Static analysis (strict TypeScript + lint) is the wide base — it catches a whole class of bugs before a test runs.
+- Component / integration tests (`TestBed` with the real template + DI, harnesses) are the **centre of gravity** — they exercise rendering, inputs/outputs, and interaction the way a user hits them.
+- A thin layer of E2E (Cypress/Playwright) for critical journeys.
+- Fewest isolated unit tests — reserve them for pure pipes, pure functions, and signal/store state transitions.
+- Anti-shape: the inverted suite (mostly slow E2E over a thin base). Slow + flaky = wrong shape.
+
+### Test determinism
+- Tests must be deterministic and hermetic: no real network, real timers, randomness, or inter-test order dependence. An intermittently-failing test is worse than none — it trains the team to ignore red.
+- Use fake async (`fakeAsync`/`tick`) or marble tests for time; mock HTTP via `provideHttpClientTesting`; seed or stub randomness; reset state between tests.
