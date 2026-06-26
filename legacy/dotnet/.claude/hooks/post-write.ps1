@@ -48,6 +48,35 @@ if ($filePath -notlike '*.cs') { exit 0 }
 # Bail cleanly if no dotnet CLI on PATH.
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) { exit 0 }
 
+# Discover the build target: walk up from the written file to the nearest .sln so the whole
+# solution is built and cross-project breaks are caught; fall back to the nearest .csproj if no
+# solution exists up the tree. The old root-cwd `dotnet build` silently built nothing when the
+# solution lived in a subdirectory.
+$fileDir = Split-Path -Parent $filePath
+if ([string]::IsNullOrEmpty($fileDir)) { $fileDir = '.' }
+try { $dir = (Resolve-Path -LiteralPath $fileDir -ErrorAction Stop).Path } catch { exit 0 }
+
+$target = $null
+$probe = $dir
+while ($probe) {
+    $sln = Get-ChildItem -LiteralPath $probe -Filter *.sln -File -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($sln) { $target = $sln.FullName; break }
+    $parent = Split-Path -Parent $probe
+    if ($parent -eq $probe) { break }
+    $probe = $parent
+}
+if (-not $target) {
+    $probe = $dir
+    while ($probe) {
+        $proj = Get-ChildItem -LiteralPath $probe -Filter *.csproj -File -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($proj) { $target = $proj.FullName; break }
+        $parent = Split-Path -Parent $probe
+        if ($parent -eq $probe) { break }
+        $probe = $parent
+    }
+}
+if (-not $target) { exit 0 }
+
 # Throttle: skip if a build was started within the last 60 seconds.
 $stamp = '.claude\.state\last-build-ts'
 $now = [int][double]::Parse((Get-Date -UFormat %s))
@@ -63,7 +92,7 @@ if (Test-Path $stamp) {
 Set-Content -Path $stamp -Value $now -Encoding ASCII
 
 # Only surface output on failure — emitting the build summary every successful write wastes context tokens.
-$out = dotnet build --no-restore --verbosity quiet 2>&1
+$out = dotnet build $target --no-restore --verbosity quiet 2>&1
 if ($LASTEXITCODE -eq 0) { exit 0 }
 
 # Clear the throttle stamp so the next write rebuilds instead of skipping a known-broken build.

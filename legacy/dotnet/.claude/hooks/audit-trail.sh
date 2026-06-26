@@ -59,6 +59,18 @@ esac
 branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
 timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-printf "%s\t%s\t%s\n" "$timestamp" "$branch" "$file_path" >> .claude/ai-audit.log
+# Normalise to a repo-relative path so the committed log stays portable and does not leak
+# local absolute paths. cwd is the repo root. GNU realpath has --relative-to (test it, since
+# BSD/macOS realpath does not); fall back to python3 (no existence requirement), then to the
+# original path so a non-existent/cross-fs path is never logged blank.
+rel="$file_path"
+if command -v realpath >/dev/null 2>&1 && realpath --relative-to=. "$file_path" >/dev/null 2>&1; then
+  rel=$(realpath --relative-to=. "$file_path" 2>/dev/null) || rel="$file_path"
+elif command -v python3 >/dev/null 2>&1; then
+  rel=$(python3 -c 'import os,sys; print(os.path.relpath(sys.argv[1]))' "$file_path" 2>/dev/null) || rel="$file_path"
+fi
+[ -z "$rel" ] && rel="$file_path"
+
+printf "%s\t%s\t%s\n" "$timestamp" "$branch" "$rel" >> .claude/ai-audit.log
 
 exit 0

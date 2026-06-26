@@ -48,6 +48,17 @@ if (-not $branch) { $branch = 'unknown' }
 
 $timestamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
 
-"$timestamp`t$branch`t$filePath" | Out-File -FilePath '.claude\ai-audit.log' -Append -Encoding utf8
+# Normalise to a repo-relative path so the committed log stays portable and does not leak
+# local absolute paths (usernames, drive layout). The hook's cwd is the repo root.
+# Note: $ErrorActionPreference is SilentlyContinue, under which Resolve-Path on a missing
+# path returns $null *without throwing* -- force a terminating error and guard the result
+# so a non-existent/cross-drive path falls back to the original rather than logging blank.
+$rel = $filePath
+try {
+    $r = Resolve-Path -LiteralPath $filePath -Relative -ErrorAction Stop
+    if ($r) { $rel = [string]$r }
+} catch { $rel = $filePath }
+
+"$timestamp`t$branch`t$rel" | Out-File -FilePath '.claude\ai-audit.log' -Append -Encoding utf8
 
 exit 0
