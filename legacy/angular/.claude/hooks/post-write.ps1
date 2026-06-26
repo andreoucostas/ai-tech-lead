@@ -49,11 +49,52 @@ if ($filePath -notlike '*.ts') { exit 0 }
 $normalized = $filePath -replace '\\', '/'
 if ($normalized -notmatch '/src/') { exit 0 }
 
-# Bail out cleanly if the workspace isn't installed yet.
-if (-not (Test-Path node_modules)) { exit 0 }
+# Discover the workspace root: walk up from the written file to the nearest ancestor holding
+# an Angular tsconfig. Supports root, ClientApp/, and Nx apps/* layouts -- the old root-cwd
+# assumption silently skipped the type-check for anything but a workspace at the repo root.
+$fileDir = Split-Path -Parent $filePath
+if ([string]::IsNullOrEmpty($fileDir)) { $fileDir = '.' }
+try { $dir = (Resolve-Path -LiteralPath $fileDir -ErrorAction Stop).Path } catch { exit 0 }
+
+$workspace = $null
+$probe = $dir
+while ($probe) {
+    if ((Test-Path (Join-Path $probe 'tsconfig.app.json')) -or (Test-Path (Join-Path $probe 'tsconfig.json'))) {
+        $workspace = $probe; break
+    }
+    $parent = Split-Path -Parent $probe
+    if ($parent -eq $probe) { break }
+    $probe = $parent
+}
+if (-not $workspace) { exit 0 }
+
+# Prefer tsconfig.app.json: an Nx/CLI app's tsconfig.json is solution-style (files:[], include:[],
+# references), and `tsc -p` against it compiles nothing and exits 0 -- a silent false pass.
+# tsconfig.app.json carries the real files/include, so the type-check actually runs.
+$project = if (Test-Path (Join-Path $workspace 'tsconfig.app.json')) { 'tsconfig.app.json' } else { 'tsconfig.json' }
+
+# Resolve tsc: node_modules may sit in the workspace or be hoisted to a monorepo root above it.
+$hasModules = $false
+$mp = $workspace
+while ($mp) {
+    if (Test-Path (Join-Path $mp 'node_modules')) { $hasModules = $true; break }
+    $parent = Split-Path -Parent $mp
+    if ($parent -eq $mp) { break }
+    $mp = $parent
+}
+if (-not $hasModules) { exit 0 }
+
+# Per-workspace state (absolute, under the repo-root .state) so multiple apps in a monorepo
+# neither clobber each other's incremental tsbuildinfo nor cross-suppress each other's throttle.
+$repoState = Join-Path (Get-Location).Path '.claude\.state'
+$null = New-Item -ItemType Directory -Path $repoState -Force
+$wsRel = try { [string](Resolve-Path -LiteralPath $workspace -Relative -ErrorAction Stop) } catch { $workspace }
+$key = ($wsRel -replace '[^A-Za-z0-9]', '_') -replace '_+$', ''
+if ([string]::IsNullOrEmpty($key)) { $key = 'root' }
+$stamp = Join-Path $repoState "last-build-$key"
+$buildInfo = Join-Path $repoState "tsbuildinfo-$key"
 
 # Throttle: skip if a check was started within the last 5 seconds.
-$stamp = '.claude\.state\last-build-ts'
 $now = [int][double]::Parse((Get-Date -UFormat %s))
 if (Test-Path $stamp) {
     $lastRaw = Get-Content $stamp -Raw
@@ -67,8 +108,16 @@ if (Test-Path $stamp) {
 Set-Content -Path $stamp -Value $now -Encoding ASCII
 
 # Only surface output on failure — emitting type-check output every successful write wastes context tokens.
-$out = npx --no-install tsc --noEmit --incremental --tsBuildInfoFile .claude\.state\tsbuildinfo 2>&1
-if ($LASTEXITCODE -eq 0) { exit 0 }
+# Run from the workspace dir (npx resolves tsc by walking up to the monorepo node_modules);
+# the tsBuildInfoFile is an absolute repo-root path so it is unaffected by the Push-Location.
+Push-Location $workspace
+try {
+    $out = npx --no-install tsc --noEmit -p $project --incremental --tsBuildInfoFile $buildInfo 2>&1
+    $code = $LASTEXITCODE
+} finally {
+    Pop-Location
+}
+if ($code -eq 0) { exit 0 }
 
 # Clear the throttle stamp so the next write re-checks instead of skipping a known-broken type-check.
 Remove-Item $stamp -Force

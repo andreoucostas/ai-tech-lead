@@ -12,6 +12,10 @@ Usage:
 
 The harness is intentionally small. Add a case only when a framework rule is at
 risk of silent regression. See README.md.
+
+Exit codes: 0 = all cases passed; 1 = at least one case failed *or* errored (the run is
+fail-closed, so a transient API/network/auth failure fails the suite — investigate rather
+than assume a framework regression); 2 = usage error (no API key, no cases matched).
 """
 
 from __future__ import annotations
@@ -148,12 +152,14 @@ def main() -> int:
     system_blocks = build_system_blocks(REPO_ROOT)
 
     results: list[CaseResult] = []
+    errored: list[tuple[str, str]] = []
     for case in cases:
         print(f"-> {case['id']} ... ", end="", flush=True)
         try:
             result = run_case(client, system_blocks, case, args.model)
         except Exception as exc:
             print(f"ERROR: {exc}")
+            errored.append((case["id"], str(exc)))
             continue
         marker = "PASS" if (result.deterministic_pass and result.rubric_pass is not False) else "FAIL"
         print(marker)
@@ -169,6 +175,8 @@ def main() -> int:
     print(f"Deterministic pass: {det_pass} / {len(results)}")
     if rub_total:
         print(f"Rubric pass:        {rub_pass} / {rub_total}")
+    if errored:
+        print(f"Errored (no result): {len(errored)}")
     print("=" * 60)
 
     for r in results:
@@ -182,8 +190,16 @@ def main() -> int:
             print(f"  - rubric: {r.rubric_reason}")
         print(f"  excerpt: {r.response_excerpt}...")
 
+    for cid, err in errored:
+        print()
+        print(f"ERROR: {cid}")
+        print(f"  - {err}")
+
     failed_total = sum(1 for r in results if not r.deterministic_pass or r.rubric_pass is False)
-    return 1 if failed_total else 0
+    # Errored cases (exceptions) count as failures: a suite where every API call throws must
+    # not exit 0. Fail-closed — a transient error in either the response or grader call fails
+    # the run; treat a red run as "investigate," not "framework regressed."
+    return 1 if (failed_total or errored) else 0
 
 
 if __name__ == "__main__":

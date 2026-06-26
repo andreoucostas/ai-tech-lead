@@ -67,11 +67,52 @@ case "$file_path" in
   *) exit 0 ;;
 esac
 
-# Bail out cleanly if the workspace isn't installed yet.
-[ -d node_modules ] || exit 0
+# Discover the workspace root: nearest ancestor holding an Angular tsconfig. Supports root,
+# ClientApp/, and Nx apps/* layouts (the old root-cwd assumption silently skipped non-root ones).
+dir=$(CDPATH= cd -- "$(dirname -- "$file_path")" 2>/dev/null && pwd) || exit 0
+workspace=""
+probe="$dir"
+while [ -n "$probe" ]; do
+  if [ -f "$probe/tsconfig.app.json" ] || [ -f "$probe/tsconfig.json" ]; then
+    workspace="$probe"; break
+  fi
+  parent=$(dirname -- "$probe")
+  [ "$parent" = "$probe" ] && break
+  probe="$parent"
+done
+[ -z "$workspace" ] && exit 0
+
+# Prefer tsconfig.app.json: a solution-style tsconfig.json (files:[], include:[], references)
+# compiles nothing and exits 0 -- a silent false pass. tsconfig.app.json has the real sources.
+if [ -f "$workspace/tsconfig.app.json" ]; then
+  project=tsconfig.app.json
+else
+  project=tsconfig.json
+fi
+
+# Resolve tsc: node_modules in the workspace or hoisted to a monorepo root above it.
+has_modules=""
+mp="$workspace"
+while [ -n "$mp" ]; do
+  if [ -d "$mp/node_modules" ]; then has_modules=1; break; fi
+  parent=$(dirname -- "$mp")
+  [ "$parent" = "$mp" ] && break
+  mp="$parent"
+done
+[ -z "$has_modules" ] && exit 0
+
+# Per-workspace absolute state under the repo-root .state so monorepo apps neither clobber each
+# other's incremental tsbuildinfo nor cross-suppress each other's throttle.
+repo_root=$(pwd)
+repo_state="$repo_root/.claude/.state"
+mkdir -p "$repo_state" 2>/dev/null
+rel="${workspace#"$repo_root"}"; rel="${rel#/}"
+key=$(printf '%s' "$rel" | tr -c 'A-Za-z0-9' '_' | sed 's/_*$//')
+[ -z "$key" ] && key=root
+stamp="$repo_state/last-build-$key"
+build_info="$repo_state/tsbuildinfo-$key"
 
 # Throttle: skip if a check was started within the last 5 seconds.
-stamp=.claude/.state/last-build-ts
 if [ -f "$stamp" ]; then
   last=$(cat "$stamp" 2>/dev/null)
   now=$(date +%s 2>/dev/null || echo 0)
@@ -85,7 +126,8 @@ fi
 date +%s > "$stamp" 2>/dev/null
 
 # On success: stay silent — emitting type-check output every successful write wastes context tokens.
-tsc_output=$(npx --no-install tsc --noEmit --incremental --tsBuildInfoFile .claude/.state/tsbuildinfo 2>&1)
+# Run from the workspace dir; the tsBuildInfoFile is an absolute repo-root path.
+tsc_output=$( cd "$workspace" && npx --no-install tsc --noEmit -p "$project" --incremental --tsBuildInfoFile "$build_info" 2>&1 )
 [ $? -eq 0 ] && exit 0
 
 # Clear the throttle stamp so the next write re-checks instead of skipping a known-broken type-check.
