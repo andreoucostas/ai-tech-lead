@@ -13,7 +13,7 @@ If no specific files or PR given, review the most recent uncommitted changes (bo
 ## Execution
 
 ### Step 1 — Dispatch parallel auditors
-In a single message, spawn all four subagents via the `Task` tool:
+In a single message, spawn all five subagents via the `Task` tool:
 
 - `convention-check` — verifies the diff against CLAUDE.md > Conventions and Boy Scout always-apply items.
 - `solid-check` — audits the diff against CLAUDE.md > SOLID (the five principles; literal interface-per-injected-service).
