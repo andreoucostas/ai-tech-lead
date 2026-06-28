@@ -1,8 +1,10 @@
 ﻿# Stop hook -- flag Boy Scout opportunities in modified .ts files.
 # PowerShell equivalent of boy-scout-check.sh, for Windows-only PowerShell teams.
-# Soft-warning by default, delivered as hookSpecificOutput.additionalContext JSON --
-# plain exit-0 stdout from a Stop hook goes to the debug log only, the model never sees it.
-# Switch to @{ decision = 'block'; reason = $text } for strict enforcement.
+# Soft-warning by default. Findings reach the model via hookSpecificOutput.additionalContext (a Stop
+# hook's additionalContext is injected as a system reminder the model reads next turn) -- but that
+# text is invisible in the terminal, so a one-line systemMessage is emitted alongside it so the
+# developer also sees that candidates were flagged. Note: a Stop hook's @{ decision='block'; reason }
+# is NOT a stricter variant of this -- `reason` is shown only to the user, never fed to the model.
 #
 # Patterns derived from the always-apply items in CLAUDE.md > Boy Scout Rule:
 #   - manual ngOnDestroy subscription cleanup
@@ -102,6 +104,10 @@ $outLines += ''
 $outLines += "_If these touch files you modified this turn, address them per CLAUDE.md > Boy Scout Rule before considering the work complete. Otherwise add a ``// TODO: Boy Scout skipped -- [reason]`` comment._"
 $text = $outLines -join "`n"
 
-(@{ hookSpecificOutput = @{ hookEventName = 'Stop'; additionalContext = $text } } | ConvertTo-Json -Compress)
+# additionalContext (above) reaches the model but is invisible in the terminal; emit a short
+# systemMessage so the developer also sees that candidates were flagged.
+$summary = "Boy Scout: $($findings.Count) candidate(s) flagged to the model across $checked file(s) (see CLAUDE.md > Boy Scout Rule)."
+
+(@{ systemMessage = $summary; hookSpecificOutput = @{ hookEventName = 'Stop'; additionalContext = $text } } | ConvertTo-Json -Compress)
 
 exit 0

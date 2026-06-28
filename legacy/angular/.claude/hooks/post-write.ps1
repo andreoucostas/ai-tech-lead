@@ -15,7 +15,6 @@ if (-not [string]::IsNullOrEmpty($inputJson)) {
     try {
         $obj = $inputJson | ConvertFrom-Json
         $tn = if ($obj.tool_name) { [string]$obj.tool_name } elseif ($obj.toolName) { [string]$obj.toolName } else { '' }
-        if ($tn -and $tn -notin @('Write','Edit','edit','create')) { exit 0 }
 
         # Claude Code: tool_input.file_path
         if ($obj.tool_input) {
@@ -24,17 +23,25 @@ if (-not [string]::IsNullOrEmpty($inputJson)) {
         }
         # Copilot: toolArgs is a parsed object (per spec), not a JSON string. Try object access first,
         # fall back to string parse for older payload shapes.
-        if ([string]::IsNullOrEmpty($filePath) -and $obj.toolArgs) {
-            $ta = $obj.toolArgs
-            if ($ta -is [string]) {
-                try { $ta = $ta | ConvertFrom-Json } catch { $ta = $null }
-            }
-            if ($ta) {
-                if ($ta.filePath) { $filePath = [string]$ta.filePath }
-                elseif ($ta.file_path) { $filePath = [string]$ta.file_path }
-                elseif ($ta.path) { $filePath = [string]$ta.path }
-            }
+        $ta = $obj.toolArgs
+        if ($ta -is [string]) { try { $ta = $ta | ConvertFrom-Json } catch { $ta = $null } }
+        if ([string]::IsNullOrEmpty($filePath) -and $ta) {
+            if ($ta.filePath) { $filePath = [string]$ta.filePath }
+            elseif ($ta.file_path) { $filePath = [string]$ta.file_path }
+            elseif ($ta.path) { $filePath = [string]$ta.path }
         }
+
+        # Self-filter -- Copilot's hooks.json has no matcher, so gate here. Mirror guard.*: accept
+        # known write tools (Claude Write/Edit, Copilot CLI edit/create) OR any tool carrying a file
+        # path + content. The path+content arm covers VS Code agent mode's camelCase write tools
+        # (str_replace/insert/create), which can't be enumerated; requiring content (not just a path)
+        # keeps read-style tools from triggering a type-check.
+        $contentParts = @($obj.tool_input.content, $obj.tool_input.new_string, $obj.tool_input.newString,
+                          $obj.tool_input.file_text, $obj.tool_input.new_str, $obj.tool_input.text,
+                          $ta.content, $ta.new_string, $ta.newString, $ta.file_text, $ta.new_str, $ta.text) |
+                         Where-Object { $_ }
+        $knownWrite = (@('Write','Edit','edit','create') -contains $tn) -or ($tn -eq '')
+        if (-not ($knownWrite -or ($filePath -and $contentParts))) { exit 0 }
     } catch { }
 }
 
@@ -124,14 +131,16 @@ Remove-Item $stamp -Force
 
 $msg = "## tsc --noEmit failed -- fix before continuing:`n" + (($out | Select-Object -Last 20 | ForEach-Object { "$_" }) -join "`n")
 
-# Copilot consumes postToolUse feedback as JSON additionalContext on stdout (exit 0).
-# -ceq: Copilot's tool names are lowercase; case-insensitive -eq would swallow Claude's 'Edit'.
-if ($tn -ceq 'edit' -or $tn -ceq 'create') {
-    (@{ additionalContext = $msg } | ConvertTo-Json -Compress)
-    exit 0
+# Surface per surface, discriminating by tool-name casing (mirror guard.ps1). Claude Code is the
+# only surface consuming exit 2 + stderr; its tools are PascalCase Edit/Write -- and the ambiguous
+# empty case routes here too, since its PostToolUse matcher only fires on Write|Edit.
+# -ceq is required: case-insensitive -eq would route Copilot's lowercase 'edit' here by mistake.
+if ($tn -ceq 'Edit' -or $tn -ceq 'Write' -or $tn -eq '') {
+    [Console]::Error.WriteLine($msg)
+    exit 2
 }
 
-# Claude Code feeds PostToolUse output to the model only via exit 2 + stderr;
-# exit-0 stdout goes to the debug log, so a plain echo here is silently dropped.
-[Console]::Error.WriteLine($msg)
-exit 2
+# Everything else -- Copilot CLI (lowercase edit/create) AND VS Code agent mode (camelCase
+# str_replace/insert/etc.) -- consumes postToolUse feedback as JSON additionalContext on stdout.
+(@{ additionalContext = $msg } | ConvertTo-Json -Compress)
+exit 0

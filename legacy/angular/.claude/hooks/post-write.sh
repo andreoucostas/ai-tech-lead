@@ -15,14 +15,9 @@ tool_name=""
 if [ ! -t 0 ]; then
   input=$(cat)
   if [ -n "$input" ]; then
+    SEP=$'\x1f'
     if command -v jq >/dev/null 2>&1; then
-      # Tool-name filter — Claude Code uses settings.json matcher; Copilot does not, so filter here.
-      # Accept lowercase Copilot names plus empty (older payloads).
       tool_name=$(printf '%s' "$input" | jq -r '.tool_name // .toolName // ""' 2>/dev/null)
-      case "$tool_name" in
-        Write|Edit|edit|create|"") ;;
-        *) exit 0 ;;
-      esac
       # Try Claude Code's tool_input.file_path, then Copilot's toolArgs.* (which is a parsed object,
       # not a JSON string — do not use fromjson).
       file_path=$(printf '%s' "$input" | jq -r '
@@ -33,24 +28,38 @@ if [ ! -t 0 ]; then
         // .toolArgs.path
         // ""
       ' 2>/dev/null)
+      content=$(printf '%s' "$input" | jq -r '
+        [ .tool_input.content, .tool_input.new_string, .tool_input.newString, .tool_input.file_text, .tool_input.new_str, .tool_input.text,
+          .toolArgs.content, .toolArgs.new_string, .toolArgs.newString, .toolArgs.file_text, .toolArgs.new_str, .toolArgs.text ]
+        | map(select(. != null)) | join("\n")' 2>/dev/null)
+      # Self-filter — Copilot's hooks.json has no matcher, so gate here. Mirror guard.*: known write
+      # tools OR any tool carrying a file path + content (covers VS Code agent mode's camelCase tools;
+      # requiring content, not just a path, excludes read-style tools).
+      case "$tool_name" in
+        Write|Edit|edit|create|"") ;;
+        *) { [ -n "$file_path" ] && [ -n "$content" ]; } || exit 0 ;;
+      esac
     elif command -v python3 >/dev/null 2>&1; then
-      file_path=$(printf '%s' "$input" | python3 -c 'import json,sys
+      parsed=$(printf '%s' "$input" | python3 -c 'import json,sys
 try:
     d = json.load(sys.stdin)
-    tn = d.get("tool_name") or d.get("toolName") or ""
-    if tn and tn not in ("Write","Edit","edit","create"):
-        sys.exit(0)
-    ti = d.get("tool_input") or {}
-    fp = ti.get("file_path") or ti.get("filePath") or ""
-    if not fp:
-        ta = d.get("toolArgs") or {}
-        if isinstance(ta, str):
-            try: ta = json.loads(ta)
-            except Exception: ta = {}
-        fp = ta.get("filePath") or ta.get("file_path") or ta.get("path") or ""
-    print(fp or "")
 except Exception:
-    pass' 2>/dev/null)
+    sys.exit(0)
+tn = d.get("tool_name") or d.get("toolName") or ""
+ti = d.get("tool_input") or {}
+ta = d.get("toolArgs") or {}
+if isinstance(ta, str):
+    try: ta = json.loads(ta)
+    except Exception: ta = {}
+fp = ti.get("file_path") or ti.get("filePath") or ta.get("filePath") or ta.get("file_path") or ta.get("path") or ""
+parts = [ti.get("content"),ti.get("new_string"),ti.get("newString"),ti.get("file_text"),ti.get("new_str"),ti.get("text"),ta.get("content"),ta.get("new_string"),ta.get("newString"),ta.get("file_text"),ta.get("new_str"),ta.get("text")]
+if tn and tn not in ("Write","Edit","edit","create") and not (fp and any(parts)):
+    sys.exit(0)
+sys.stdout.write(tn + "\x1f" + (fp or ""))' 2>/dev/null)
+      if [ -n "$parsed" ]; then
+        tool_name=${parsed%%"$SEP"*}
+        file_path=${parsed#*"$SEP"}
+      fi
     fi
   fi
 fi
@@ -136,19 +145,21 @@ rm -f "$stamp" 2>/dev/null
 msg="## tsc --noEmit failed — fix before continuing:
 $(printf '%s\n' "$tsc_output" | tail -20)"
 
-# Copilot consumes postToolUse feedback as JSON additionalContext on stdout (exit 0).
+# Surface per surface (mirror guard.sh). Claude Code is the only surface consuming exit 2 + stderr;
+# its tools are PascalCase Edit/Write (and the ambiguous empty case routes here too, since its
+# PostToolUse matcher only fires on Write|Edit).
 case "$tool_name" in
-  edit|create)
-    if command -v jq >/dev/null 2>&1; then
-      printf '%s' "$msg" | jq -Rs '{additionalContext: .}'
-    elif command -v python3 >/dev/null 2>&1; then
-      printf '%s' "$msg" | python3 -c 'import json,sys; print(json.dumps({"additionalContext": sys.stdin.read()}))'
-    fi
-    exit 0
+  Edit|Write|"")
+    printf '%s\n' "$msg" >&2
+    exit 2
     ;;
 esac
 
-# Claude Code feeds PostToolUse output to the model only via exit 2 + stderr;
-# exit-0 stdout goes to the debug log, so a plain echo here is silently dropped.
-printf '%s\n' "$msg" >&2
-exit 2
+# Everything else — Copilot CLI (lowercase edit/create) AND VS Code agent mode (camelCase
+# str_replace/insert/etc.) — consumes postToolUse feedback as JSON additionalContext on stdout.
+if command -v jq >/dev/null 2>&1; then
+  printf '%s' "$msg" | jq -Rs '{additionalContext: .}'
+elif command -v python3 >/dev/null 2>&1; then
+  printf '%s' "$msg" | python3 -c 'import json,sys; print(json.dumps({"additionalContext": sys.stdin.read()}))'
+fi
+exit 0

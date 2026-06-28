@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Stop hook — flag Boy Scout opportunities in modified .ts files.
-# Soft-warning by default, delivered as hookSpecificOutput.additionalContext JSON —
-# plain exit-0 stdout from a Stop hook goes to the debug log only, the model never sees it.
-# Switch to {"decision":"block","reason":...} JSON output if the team wants strict enforcement.
+# Soft-warning by default. Findings reach the model via hookSpecificOutput.additionalContext — a
+# Stop hook's additionalContext is injected as a system reminder the model reads next turn — but
+# that text is invisible in the terminal, so a one-line systemMessage is emitted alongside it so the
+# developer also sees that candidates were flagged. Note: a Stop hook's {"decision":"block","reason"}
+# is NOT a stricter variant — `reason` is shown only to the user, never fed to the model.
 #
 # Patterns derived from the always-apply items in CLAUDE.md > Boy Scout Rule:
 #   - manual ngOnDestroy subscription cleanup
@@ -98,10 +100,14 @@ $(printf -- '- %s\n' "${findings[@]}")
 
 _If these touch files you modified this turn, address them per CLAUDE.md > Boy Scout Rule before considering the work complete. Otherwise add a \`// TODO: Boy Scout skipped — [reason]\` comment._"
 
+# additionalContext (above) reaches the model but is invisible in the terminal; emit a short
+# systemMessage so the developer also sees that candidates were flagged.
+summary="Boy Scout: ${#findings[@]} candidate(s) flagged to the model across $checked file(s) (see CLAUDE.md > Boy Scout Rule)."
+
 if command -v jq >/dev/null 2>&1; then
-  printf '%s' "$text" | jq -Rs '{hookSpecificOutput: {hookEventName: "Stop", additionalContext: .}}'
+  printf '%s' "$text" | jq -Rs --arg sm "$summary" '{systemMessage: $sm, hookSpecificOutput: {hookEventName: "Stop", additionalContext: .}}'
 elif command -v python3 >/dev/null 2>&1; then
-  printf '%s' "$text" | python3 -c 'import json,sys; print(json.dumps({"hookSpecificOutput": {"hookEventName": "Stop", "additionalContext": sys.stdin.read()}}))'
+  printf '%s' "$text" | SUMMARY="$summary" python3 -c 'import json,os,sys; print(json.dumps({"systemMessage": os.environ["SUMMARY"], "hookSpecificOutput": {"hookEventName": "Stop", "additionalContext": sys.stdin.read()}}))'
 else
   # No JSON tool available — plain stdout lands in the debug log only, but is better than nothing.
   printf '%s\n' "$text"
