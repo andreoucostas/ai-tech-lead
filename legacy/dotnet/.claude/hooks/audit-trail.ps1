@@ -13,7 +13,6 @@ if (-not [string]::IsNullOrEmpty($inputJson)) {
     try {
         $obj = $inputJson | ConvertFrom-Json
         $tn = if ($obj.tool_name) { [string]$obj.tool_name } elseif ($obj.toolName) { [string]$obj.toolName } else { '' }
-        if ($tn -and $tn -notin @('Write','Edit','edit','create')) { exit 0 }
 
         # Claude Code: tool_input.file_path
         if ($obj.tool_input) {
@@ -22,17 +21,25 @@ if (-not [string]::IsNullOrEmpty($inputJson)) {
         }
         # Copilot: toolArgs is a parsed object (per spec). Try object access first, fall back to
         # string parse for older payload shapes.
-        if ([string]::IsNullOrEmpty($filePath) -and $obj.toolArgs) {
-            $ta = $obj.toolArgs
-            if ($ta -is [string]) {
-                try { $ta = $ta | ConvertFrom-Json } catch { $ta = $null }
-            }
-            if ($ta) {
-                if ($ta.filePath) { $filePath = [string]$ta.filePath }
-                elseif ($ta.file_path) { $filePath = [string]$ta.file_path }
-                elseif ($ta.path) { $filePath = [string]$ta.path }
-            }
+        $ta = $obj.toolArgs
+        if ($ta -is [string]) { try { $ta = $ta | ConvertFrom-Json } catch { $ta = $null } }
+        if ([string]::IsNullOrEmpty($filePath) -and $ta) {
+            if ($ta.filePath) { $filePath = [string]$ta.filePath }
+            elseif ($ta.file_path) { $filePath = [string]$ta.file_path }
+            elseif ($ta.path) { $filePath = [string]$ta.path }
         }
+
+        # Self-filter -- Copilot's hooks.json has no matcher, so gate here. Mirror guard.*: accept
+        # known write tools (Claude Write/Edit, Copilot CLI edit/create) OR any tool carrying a file
+        # path + content. The path+content arm covers VS Code agent mode's camelCase write tools
+        # (str_replace/insert/create), which can't be enumerated -- without it the audit log silently
+        # under-records that surface; requiring content (not just a path) keeps read-style tools out.
+        $contentParts = @($obj.tool_input.content, $obj.tool_input.new_string, $obj.tool_input.newString,
+                          $obj.tool_input.file_text, $obj.tool_input.new_str, $obj.tool_input.text,
+                          $ta.content, $ta.new_string, $ta.newString, $ta.file_text, $ta.new_str, $ta.text) |
+                         Where-Object { $_ }
+        $knownWrite = (@('Write','Edit','edit','create') -contains $tn) -or ($tn -eq '')
+        if (-not ($knownWrite -or ($filePath -and $contentParts))) { exit 0 }
     } catch { }
 }
 
