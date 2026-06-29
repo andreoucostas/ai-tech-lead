@@ -23,11 +23,14 @@ function Get-PsExe {
 
 function Get-BashPath {
     if ($script:HarnessBash -ne '__unset__') { return $script:HarnessBash }
-    $cands = @(
-        (Join-Path $env:ProgramFiles 'Git\bin\bash.exe'),
-        (Join-Path ${env:ProgramFiles(x86)} 'Git\bin\bash.exe')
-    )
-    # Last resort: a `bash` on PATH (Linux/macOS CI, or a user who put Git's bin on PATH).
+    # Build candidates null-safe: $env:ProgramFiles / (x86) are null on non-Windows pwsh (and (x86)
+    # can be unset on Windows), and Join-Path on a null/empty Path THROWS -- which would crash before
+    # the bash-on-PATH fallback below. Only add a Git path when its env var is actually set.
+    $cands = @()
+    if ($env:ProgramFiles)        { $cands += (Join-Path $env:ProgramFiles 'Git\bin\bash.exe') }
+    if (${env:ProgramFiles(x86)}) { $cands += (Join-Path ${env:ProgramFiles(x86)} 'Git\bin\bash.exe') }
+    # Then a `bash` on PATH (Linux/macOS CI, or a user who put Git's bin on PATH) -- the path that
+    # makes the .sh twin tests actually run on Unix.
     $onPath = (Get-Command bash -ErrorAction SilentlyContinue | Select-Object -First 1).Source
     if ($onPath) { $cands += $onPath }
     foreach ($p in $cands) { if ($p -and (Test-Path -LiteralPath $p)) { $script:HarnessBash = $p; return $p } }

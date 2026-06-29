@@ -3,6 +3,13 @@
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
 > Architecture decisions (cross-stack) live in `project_framework_architecture.md`.
 
+## 0.23.2 — 2026-06-29 (hook test harness: cross-platform `Get-BashPath` fix)
+
+> Follow-up to 0.23.1, caught by a `/code-review` pass. The harness's bash resolver (`Get-BashPath` in `tests/hooks/_HookHarness.ps1`) built its candidate list with `Join-Path $env:ProgramFiles …`, which **throws** when `$env:ProgramFiles` is null/empty — the case on every non-Windows `pwsh` host (and a Windows box lacking the x86 var). That crashed the suite on Linux/macOS CI *before* the `bash`-on-`PATH` fallback could run, exactly where the `.sh` twin tests matter most. Now the candidate list is built null-safe (a Git path is added only when its env var is set), then falls back to `bash` on `PATH`. Lockstep with the .NET twin.
+
+### Fixed
+- `tests/hooks/_HookHarness.ps1` — `Get-BashPath` no longer throws on hosts without `%ProgramFiles%`; it resolves `bash` from `PATH` on Unix so the `.sh` twin-parity tests run there instead of erroring.
+
 ## 0.23.1 — 2026-06-29 (hook test harness: automated, twin-parity-checked tests for the framework's own hooks)
 
 > The framework's own hooks and scripts had **zero automated tests** — only manual recipes — and that gap had already shipped a real defect: in 0.23.0 the bash `guard.sh` was found missing the test-defeat blocks its `guard.ps1` twin enforced (a silent twin-drift the manual process didn't catch). This release adds a **dependency-free PowerShell test harness** (no Pester, so it runs air-gapped and under Windows PowerShell 5.1) that pipes JSON events to each hook and asserts exit code + per-surface output (Claude `exit 2`+stderr vs Copilot `permissionDecision` JSON), plus **behavioural twin-parity** tests that run the `.ps1` and `.sh` on the same input and assert the same decision — the check that would have caught the `guard.sh` regression. Authored in lockstep with the .NET twin.
