@@ -24,6 +24,7 @@ Two kinds of control:
 ## What this means for you
 - Treat the `AGENTS.md`/`CLAUDE.md` workflow rails as **binding**, not advisory — on Copilot they are usually the *only* thing standing between a casual prompt and an unreviewed change.
 - If you want the deterministic write floor in VS Code, **enable Preview agent-hooks** (and confirm your org allows them). Until then, the guard is a Claude-Code + Copilot-CLI guarantee only.
+- **`guard.sh` needs a JSON parser** (`jq`, with `python3` as fallback). On a box with neither it cannot inspect writes: it allows everything and prints a `write-guard INACTIVE` warning to stderr. If that warning appears in hook logs, install `jq` — until then the write floor on that machine is instruction-only. (`guard.ps1` has no such dependency; PowerShell parses JSON natively.)
 - The framework will not claim a control fires where it doesn't. If you find a doc or comment that implies otherwise, that's a bug — file it.
 
 > Status note: the VS Code `permissionDecision` path is implemented in `guard.*` and **verified end-to-end** against VS Code agent mode — with Preview agent-hooks enabled, a blocked write (e.g. a `create` carrying a secret) is denied at runtime and the reason is surfaced to the model. The captured payload uses the Anthropic text-editor tool schema (`create` → `path` + `file_text`; `str_replace`/`insert` → `new_str`), which `guard.*` reads. If your environment cannot enable Preview hooks, the VS Code column degrades to "instructed only" — by design, not by omission.

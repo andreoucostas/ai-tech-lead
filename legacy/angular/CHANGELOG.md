@@ -1,7 +1,25 @@
 # ai-tech-lead-angular — Changelog
 
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
-> Architecture decisions (cross-stack) live in `project_framework_architecture.md`.
+> Architecture decisions live in `docs/architecture-decisions.md`.
+
+## 0.23.3 — 2026-07-01 (self-application fixes: stamp sync, verbatim AGENTS.md mirror, guard.sh honesty)
+
+> A forensic self-audit found the framework failing its own drift rules in ways no deterministic
+> check covered. This release fixes the shipped artifacts; the next minor adds the machine checks
+> that keep them fixed. Lockstep with the .NET twin.
+
+### Fixed
+- `CLAUDE.md` header stamp had drifted two releases behind `.claude/framework-version.json` (0.23.0 vs 0.23.2) — the release recipe bumped the json but never the HTML comment. Both now read 0.23.3.
+- `AGENTS.md > Agentic Workflow §1` was paraphrased, violating the `/generate-copilot` "copy §1 VERBATIM" mandate (§1 is Copilot's only routing surface). All portable-rule sections (Verification Rules, Leanness, SOLID, Boy Scout Rule, and §1) are now byte-identical to CLAUDE.md; steps 2–6 stay condensed by design under a `### Steps 2–6` heading.
+- `AGENTS.md` claimed "seven workflows" while §1 defines six (the security pass is cross-cutting, not a workflow); the count claim is removed.
+- `CLAUDE.md > Agentic Workflow` step 6 was missing the SECURITY_FINDINGS.md drift bullet the .NET twin already had (lockstep fix); `AGENTS.md`'s Quick reference also gained the security-findings register link.
+- `guard.sh` header claimed the secret patterns "FAIL CLOSED", but with neither `jq` nor `python3` on PATH the hook allowed everything silently. It still allows in that state (blocking would brick every write) but now prints a loud `write-guard INACTIVE` warning to stderr, and the header + `docs/enforcement-surfaces.md` state the parser dependency honestly. (`guard.ps1` is unaffected — PowerShell parses JSON natively.)
+- CHANGELOG header pointed at `project_framework_architecture.md`, a maintainer-workspace file that never ships; now points at `docs/architecture-decisions.md`.
+
+### Added
+- `.github/copilot-instructions.md` — the slim inline-completion digest mandated by `/generate-copilot` Part A had never been generated. It now ships (pre-bootstrap content sourced from `docs/defaults.md`), so `AGENTS.md`'s Quick-reference link and consumer `docs-sync-check` check #3 no longer dangle.
+- `docs/architecture-decisions.md` — seeded empty so the `CLAUDE.md > Architecture Decisions` link resolves before the first `create-adr` run.
 
 ## 0.23.2 — 2026-06-29 (hook test harness: cross-platform `Get-BashPath` fix)
 

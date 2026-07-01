@@ -1,8 +1,8 @@
 <!--
 ai-tech-lead-framework
   template: angular
-  version: 0.23.0
-  applied: 2026-06-25
+  version: 0.23.3
+  applied: 2026-07-01
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
 # [Project Name]
@@ -232,6 +232,7 @@ Before presenting work as complete:
 At the end of your response, note if:
 - A new pattern was introduced that should be documented here
 - A TECH_DEBT.md entry was resolved or a new one discovered
+- A SECURITY_FINDINGS.md entry was resolved or a new finding discovered
 - `copilot-instructions.md` / `AGENTS.md` need regeneration (run `/generate-copilot` in Claude Code, or ask your agent to rewrite them from this file following the rules in `.claude/commands/generate-copilot.md`)
 
 ---

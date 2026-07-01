@@ -9,9 +9,11 @@
 #   GitHub Copilot (CLI + VS Code agent mode, preToolUse) — toolName lowercase/camelCase; content at toolArgs.*.
 #                  Block = JSON {"permissionDecision":"deny",...} on stdout (superset incl. hookSpecificOutput).
 #
-# Allow = exit 0, no output. Degrades SAFE for suppressions (allow on parse failure) but FAILS CLOSED
-# for the high-confidence secret patterns. To relax per-repo, edit the patterns below or remove the
-# PreToolUse registration from .claude/settings.json and .github/hooks/hooks.json.
+# Allow = exit 0, no output. Degrades SAFE (allow) on parse failure; the high-confidence secret
+# patterns FAIL CLOSED once content is extracted. If NO JSON parser exists (no jq, no python3) the
+# guard cannot inspect anything — it allows with a loud stderr warning so the floor being OFF is
+# never silent. To relax per-repo, edit the patterns below or remove the PreToolUse registration
+# from .claude/settings.json and .github/hooks/hooks.json.
 set -u
 
 [ -t 0 ] && exit 0
@@ -49,7 +51,10 @@ sys.stdout.write(tool+"\x1f"+fp+"\x1f"+content)
 ' 2>/dev/null)
   tool=${parsed%%"$SEP"*}; rest=${parsed#*"$SEP"}; fp=${rest%%"$SEP"*}; content=${rest#*"$SEP"}
 else
-  exit 0   # no parser available — degrade safe
+  # No parser -> nothing can be inspected. Allow (blocking would brick every write on boxes
+  # without jq/python3) but say so loudly: stderr surfaces in the hook logs on every surface.
+  echo "guard: no jq or python3 on PATH — write-guard INACTIVE (secret/test-defeat floor is OFF). Install jq to restore it." >&2
+  exit 0
 fi
 
 # Gate on whether this is an inspectable write, independent of surface: known write tools
