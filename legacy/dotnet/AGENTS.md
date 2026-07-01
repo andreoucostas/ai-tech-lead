@@ -52,7 +52,7 @@ The Boy Scout Rule biases toward adding improvements. This section is the counte
 11. **Do not test getters, setters, or trivial constructors.** Test behavior, not assignment.
 12. **Do not test the framework.** No tests that DI resolves, that EF Core can read its own writes, that ASP.NET model-binding parses an int.
 13. **Reuse existing builders / fixtures.** Do not introduce parallel test data unless the existing builders cannot represent the case.
-14. **No over-mocking.** Mock only true external boundaries — network, clock, filesystem, third-party SDKs, the database when an in-memory substitute won't do. Never mock the type under test or its owned collaborators when a real or in-memory instance is cheap; prefer a fake/in-memory over an interaction mock for code you own. *Why: AI assistants frequently produce tests that assert on mock interactions and would still pass if the real code were broken — see Verification Rule #9.*
+14. **No over-mocking.** Mock only true external boundaries — network, clock, filesystem, third-party SDKs, the database when an in-memory substitute won't do. Never mock the type under test or its owned collaborators when a real or in-memory instance is cheap; prefer a fake/in-memory over an interaction mock for code you own. *Why: AI assistants frequently produce tests that assert on mock interactions and would still pass if the real code were broken — see [Verification Rules](#verification-rules) #9.*
 15. **No tautological assertions.** A test whose only assertion is `Assert.True(true)`, a not-null check on a freshly-constructed object, or "the mock was called" verifies nothing. Assert the observable return value, state change, or emitted effect. *Why: a large share of LLM-generated assertions are weak or vacuous — they bank coverage without catching regressions.*
 16. **Assert behavior, not implementation.** Do not assert private state, internal call order that isn't part of the contract, or exact log strings. A refactor that preserves behavior must not break the test.
 
@@ -74,7 +74,7 @@ SOLID is **mandatory** in this codebase. It governs structure; [Leanness](#leann
 
 **Mechanism**: define `IFoo` beside `Foo`; register `services.AddScoped<IFoo, Foo>()` via the project's DI extension; inject `IFoo`. Implementations may be `sealed`.
 
-**Deterministic backstop**: dependency *direction* is enforced in CI by architecture tests (**NetArchTest**). The `solid-check` agent covers the semantic principles per diff and is run by `/review`. Scaffold it with the `enforce-architecture` skill.
+**Deterministic backstop**: dependency *direction* is enforced in CI by architecture tests (**NetArchTest** — e.g. Domain must not reference Infrastructure). The `solid-check` agent covers the semantic principles per diff and is run by `/review`. Scaffold the NetArchTest gate with the `enforce-architecture` skill.
 
 ---
 
@@ -132,7 +132,7 @@ When touching any file, leave it cleaner than you found it. The rule is symmetri
 11. Collapse shallow delegate methods that add no behavior beyond calling another component
 12. Single-use private helpers — inline at the call site
 
-Items 8–12 can significantly expand or reshape a diff. Only apply them when the file is what the task is specifically about, not when it's incidentally touched.
+Items 8–12 can significantly expand or reshape a diff. Only apply them when the file is what the task is specifically about, not when it's incidentally touched. This keeps PRs focused and reviewable.
 
 **When to skip**: hotfixes, time-sensitive production incidents, and proof-of-concept branches. If skipping, add a comment `// TODO: Boy Scout skipped — [reason]` so it's picked up on the next pass. Use `/debt` to clean up later.
 
@@ -140,17 +140,26 @@ Items 8–12 can significantly expand or reshape a diff. Only apply them when th
 
 ## Agentic Workflow
 
-When given any task, follow this execution model. The seven workflows are also invokable explicitly as slash commands — in Claude Code from `.claude/commands/`, in Copilot Chat from `.github/prompts/` (same names).
+When given any task, follow this execution model:
 
-1. **Classify the intent — and run that workflow without being asked.** Developers will rarely type a slash command. Treat any natural-language request as the trigger: silently classify it, **announce in one line which workflow you concluded**, and apply that workflow's rails below. If two workflows genuinely fit, ask one clarifying question first. If it's a pure question ("why does this throw?", "what does `X` do?"), just answer it — no workflow ceremony. You may combine workflows for a compound request, but **never silently drop a workflow's non-negotiables**. These rails are the **canonical definition** of each workflow; on Copilot (VS Code & CLI) this text is the *only* thing that reaches the model — treat it as binding, not advisory.
-   - **Feature** — *add / implement / create / build new …*: design check first (affected layers, files to create/modify, failure modes, test strategy) → decompose into ordered subtasks, running `dotnet build` + `dotnet test` after each → Boy Scout every touched file → self-review against Conventions → present what was built and tested. No new interface/abstraction without a second consumer in this change-set.
-   - **Bug fix** — *broken / bug / crash / failing / "not working" / "looks off"*: **state the root cause before writing any code** → write a failing regression test that fails for the *right reason* **before** touching production code → apply the *minimal* fix (no unrelated refactor) → verify the regression test + related suite + build + lint → Boy Scout the **blast radius only** → report root cause, fix, regression coverage, blast radius.
-   - **Refactor** — *cleanup / extract / rename / simplify / restructure*: **build + tests must pass before you touch anything**; if the target has no tests, write baseline (characterization) tests first → refactor incrementally, building + testing after each step → Boy Scout touched files → verify behaviour is unchanged → present a before/after summary **including net LOC delta**.
-   - **Test** — *write / add tests, increase coverage*: match existing test structure, naming, framework, mocking → cover happy path, edge cases, error paths, boundaries → **assert observable behaviour, not framework internals or implementation detail; no over-mocking, no tautological assertions** → a new behavioural test must be *seen to fail* before it is trusted (red before green) → verify new tests pass → report what's tested and what's still uncovered.
-   - **Investigation / design** — *design X / approach for / trade-offs / "how should I"*: **write no code** → understand the requirement → analyse impact → weigh at least two approaches with pros/cons + effort → recommend with specifics → surface open questions before implementation.
-   - **Debt cleanup** — *tech debt / cleanup debt*: read `TECH_DEBT.md` and find items in the area → confirm each still exists in the code → recommend fix-now vs defer with reasons → after fixes, update `TECH_DEBT.md` → Boy Scout touched files → report fixed/deferred plus the `TECH_DEBT.md` diff.
+### 1. Classify the intent — and run that workflow without being asked
+Developers will rarely type a slash command. Treat any natural-language request as the trigger: silently classify it, **announce in one line which workflow you concluded** ("Reading this as a *fix*…"), and apply that workflow's rails below. If two workflows genuinely fit, ask one clarifying question first. If it's a pure question ("why does this throw?", "what does `X` do?"), just answer it — no workflow ceremony. You may combine workflows for a compound request ("fix this and add a test"), but **never silently drop a workflow's non-negotiables** to do so.
 
-   **Security-sensitive surfaces always get a security pass** (auth/authz, payments, balances, ledgers, transactions, idempotency, secrets): run `/security-review` on the diff (or the `security-auditor` agent) before presenting as complete — regardless of workflow. On Claude Code a `UserPromptSubmit` hook flags these automatically; on Copilot it does not — the rule holds regardless. What is *guaranteed* vs *instructed* depends on the surface — see `docs/enforcement-surfaces.md`.
+> These rails are the **canonical definition** of each workflow. `commands/*.md` and the `route-prompt` hook elaborate them but must not contradict them; `/docs-sync` checks they stay aligned. On Copilot (VS Code & CLI) this text is the *only* thing that reaches the model — treat it as binding, not advisory.
+
+- **Feature** — *add / implement / create / build new …*: design check first (affected layers, files to create/modify, failure modes, test strategy) → decompose into ordered subtasks, running `dotnet build` + `dotnet test` after each → Boy Scout every touched file → self-review against Conventions → present what was built and tested. Honour Leanness: no new interface/abstraction without a second consumer in this change-set.
+- **Bug fix** — *broken / bug / crash / failing / "not working" / "looks off"*: **state the root cause before writing any code** → write a failing regression test that fails for the *right reason* **before** touching production code → apply the *minimal* fix (no unrelated refactor) → verify the regression test + related suite + build + lint all pass → apply Boy Scout to the **blast radius only** → report root cause, fix, regression coverage, blast radius.
+- **Refactor** — *cleanup / extract / rename / simplify / restructure*: **build + tests must pass before you touch anything**; if the target has no tests, write baseline (characterization) tests first → refactor incrementally, building + testing after each step → Boy Scout touched files → verify behaviour is unchanged → present a before/after summary **including net LOC delta**.
+- **Test** — *write / add tests, increase coverage*: match existing test structure, naming, framework, mocking → cover happy path, edge cases, error paths, boundaries → **assert observable behaviour, not framework internals or implementation detail; no over-mocking, no tautological assertions** → a new behavioural test must be *seen to fail* before it is trusted (red before green) → verify new tests pass → report what's tested and what's still uncovered.
+- **Investigation / design** — *design X / approach for / trade-offs / "how should I"*: **write no code** → understand the requirement → analyse impact → weigh at least two approaches with pros/cons + effort → recommend with specifics → surface open questions before implementation.
+- **Debt cleanup** — *tech debt / cleanup debt*: read `TECH_DEBT.md` and find items in the area → confirm each still exists in the code (may already be fixed) → recommend fix-now vs defer with reasons → after fixes, update `TECH_DEBT.md` → Boy Scout touched files → report fixed/deferred plus the `TECH_DEBT.md` diff.
+
+What is *guaranteed* vs merely *instructed* here depends on the surface — see `docs/enforcement-surfaces.md`. On Claude Code these rails are reinforced by a per-prompt hook and a write-time guard; on Copilot only this text reaches the model.
+
+**Security-sensitive surfaces always get a security pass.** If the work touches authentication/authorization, payments, balances, ledgers, transactions, idempotency, or secrets, run `/security-review` on the diff (or the `security-auditor` agent) before presenting it as complete — regardless of which workflow above applies. On Claude Code a `UserPromptSubmit` hook flags these automatically; on Copilot it does not — the rule holds regardless.
+
+### Steps 2–6 (condensed — full text in [CLAUDE.md](./CLAUDE.md) > Agentic Workflow)
+
 2. **Plan before coding** — for any non-trivial task, present a plan (files to create/modify, order of operations, what tests verify success) **plus clarifying questions for anything underspecified, then wait for the developer's go-ahead before writing code** (skip the wait only for trivial, unambiguous changes, and say so). For larger features, persist a spec to `specs/<slug>.md` (see `/design`) and implement against it.
 3. **Execute in verified subtasks** — decompose into ordered layers (domain → service → API → integration test). Run `dotnet build` and `dotnet test` after each; fix failures before moving on.
 4. **Boy Scout every touched file** — apply the always-apply list above to every file you modify.
