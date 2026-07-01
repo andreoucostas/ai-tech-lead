@@ -87,8 +87,10 @@ Get-ChildItem -Force -LiteralPath $src |
     Where-Object { $_.Name -notin $metaFiles } |
     ForEach-Object { Copy-Item -Recurse -Force -LiteralPath $_.FullName -Destination $tgt }
 
-# The installer is meta — don't ship it into the consumer repo.
-foreach ($f in @('scripts/install.sh', 'scripts/install.ps1')) {
+# The installer is meta — don't ship it into the consumer repo. template-ci.yml is the TEMPLATE
+# repo's own CI (hook suite + framework checks on push); consumers get the same framework checks
+# via docs-sync-check -> template-checks, wired into their own CI.
+foreach ($f in @('scripts/install.sh', 'scripts/install.ps1', '.github/workflows/template-ci.yml')) {
     Remove-Item -Force -ErrorAction SilentlyContinue -LiteralPath (Join-Path $tgt $f)
 }
 

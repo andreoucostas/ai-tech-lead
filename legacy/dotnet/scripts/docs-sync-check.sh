@@ -6,12 +6,20 @@
 # optionally publish the result to the PR via the Code Insights API (see README "Running on
 # Bitbucket Data Center").
 set -u
-cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+# Anchor to the repo this script lives in (scripts/..), not the caller's cwd — running from
+# elsewhere must never silently audit the wrong directory. Resolve $0 to an absolute path
+# BEFORE cd (a relative $0 stops resolving once the cwd changes).
+here=$(cd "$(dirname "$0")" && pwd)
+cd "$here/.." || exit 1
 
-# Skip in the framework template repo itself (consumer repos never copy this marker).
+# In the framework template repo the consumer-state checks (bootstrap markers, adoption pending)
+# don't apply — but the deterministic framework checks DO. Skipping everything here is how
+# version-stamp and mirror drift shipped unnoticed; run template-checks instead of going silent.
 if [ -f ".template-repo" ]; then
-  echo "Framework template repo (.template-repo present) — skipping framework-state checks."
-  exit 0
+  echo "Framework template repo (.template-repo present) — consumer-state checks don't apply;"
+  echo "running the deterministic framework checks (scripts/template-checks.sh) instead."
+  bash "$here/template-checks.sh"
+  exit $?
 fi
 
 FAILED=0
@@ -114,6 +122,12 @@ if [ -f "README.md" ]; then
   if [ -n "$missing_doc" ]; then
     echo "NOTE: README.md does not mention:$missing_doc — update the What's-in-the-box / subagents tables (they may have drifted). (advisory — not a failure)"
   fi
+fi
+
+# 6b. Deterministic framework checks (version-stamp sync, verbatim CLAUDE.md<->AGENTS.md mirror,
+#     BOM/twin sweeps) — the same gate the template repo's CI runs; the invariants hold after install.
+if [ -f "$here/template-checks.sh" ]; then
+  bash "$here/template-checks.sh" || fail "deterministic framework checks failed (see above)."
 fi
 
 # 7. architecture.html freshness (advisory) — regenerate after editing ARCHITECTURE.md.

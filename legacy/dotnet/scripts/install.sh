@@ -89,8 +89,10 @@ for entry in "$src"/*; do
   esac
   cp -r "$entry" "$tgt"/
 done
-# The installer is meta — don't ship it into the consumer repo.
-rm -f "$tgt/scripts/install.sh" "$tgt/scripts/install.ps1"
+# The installer is meta — don't ship it into the consumer repo. template-ci.yml is the TEMPLATE
+# repo's own CI (hook suite + framework checks on push); consumers get the same framework checks
+# via docs-sync-check -> template-checks, wired into their own CI.
+rm -f "$tgt/scripts/install.sh" "$tgt/scripts/install.ps1" "$tgt/.github/workflows/template-ci.yml"
 
 if [ "$update_mode" -eq 1 ] && [ -n "$snapshot" ]; then
   for f in $protected; do
