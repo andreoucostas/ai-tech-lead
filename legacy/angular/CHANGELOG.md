@@ -3,6 +3,25 @@
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
 > Architecture decisions live in `docs/architecture-decisions.md`.
 
+## 0.24.0 — 2026-07-01 (deterministic self-enforcement: template CI + machine-checked framework invariants)
+
+> 0.23.3 fixed the drift a forensic self-audit found; this release adds the machine gates that
+> keep it fixed. Until now the template repo had **zero effective CI** — its only workflow ran
+> `docs-sync-check`, which exits silently on `.template-repo`, so every invariant rested on the
+> maintainer remembering a manual checklist. That is the exact failure mode this framework exists
+> to prevent in consumer repos. Lockstep with the .NET twin.
+
+### Added
+- `scripts/template-checks.ps1` / `.sh` — deterministic framework checks: version-stamp sync (CLAUDE.md header == framework-version.json == CHANGELOG head; pair-check in consumer repos, which carry no CHANGELOG), **verbatim CLAUDE.md ↔ AGENTS.md mirror diff** (the four portable-rule sections + Agentic Workflow §1 — the `/docs-sync` "hard drift finding" is now a machine check, not a model instruction), copilot-instructions.md present and ≤ 80 lines, UTF-8 BOM sweep, hook `.ps1`/`.sh` twin existence, and script syntax.
+- `.github/workflows/template-ci.yml` — the first CI that actually gates this repo: windows + linux legs run the hook test suite (the linux leg drives every `.sh` twin via real bash) and the framework checks on every push/PR.
+
+### Changed
+- `scripts/docs-sync-check.ps1`/`.sh` no longer goes silent in the template repo: `.template-repo` now routes to `template-checks` instead of skipping everything (the silent skip is how the 0.23.x stamp/mirror drift shipped unnoticed). Consumer runs additionally invoke `template-checks` as check 6b — the same invariants hold after install.
+- `docs-sync-check` and `template-checks` anchor to their own script location instead of the caller's cwd/git root — running them from outside the repo can no longer silently audit the wrong directory.
+
+### Fixed
+- `docs-sync-check.ps1` counted lines with `Measure-Object -Line`, which skips blank lines and diverges from the `.sh` twin's `wc -l` (checks 1b and 3 could pass on one surface and fail on the other near the limit); both twins now count identically.
+
 ## 0.23.3 — 2026-07-01 (self-application fixes: stamp sync, verbatim AGENTS.md mirror, guard.sh honesty)
 
 > A forensic self-audit found the framework failing its own drift rules in ways no deterministic

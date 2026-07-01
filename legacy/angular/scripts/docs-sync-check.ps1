@@ -3,13 +3,20 @@
 # "Running on Bitbucket Data Center" for wiring options.
 $ErrorActionPreference = 'Stop'
 
-$root = (git rev-parse --show-toplevel 2>$null)
-if (-not $root) { $root = (Get-Location).Path }
-Set-Location $root
+# Anchor to the repo this script lives in (scripts/..), not the caller's cwd — running from
+# elsewhere must never silently audit the wrong directory.
+Set-Location (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
 
+# In the framework template repo the consumer-state checks (bootstrap markers, adoption pending)
+# don't apply — but the deterministic framework checks DO. Skipping everything here is how
+# version-stamp and mirror drift shipped unnoticed; run template-checks instead of going silent.
+$here  = Split-Path -Parent $MyInvocation.MyCommand.Path
+$psExe = 'powershell'; if (Get-Command pwsh -ErrorAction SilentlyContinue) { $psExe = 'pwsh' }
 if (Test-Path ".template-repo") {
-    Write-Output "Framework template repo (.template-repo present) — skipping framework-state checks."
-    exit 0
+    Write-Output "Framework template repo (.template-repo present) — consumer-state checks don't apply;"
+    Write-Output "running the deterministic framework checks (scripts/template-checks.ps1) instead."
+    & $psExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $here 'template-checks.ps1')
+    exit $LASTEXITCODE
 }
 
 $failed = $false
@@ -34,7 +41,8 @@ if (-not (Test-Path "CLAUDE.md") -or ((Get-Item "CLAUDE.md").Length -eq 0)) {
 
 # 1b. CLAUDE.md size budget (advisory — CLAUDE.md loads on nearly every agent turn).
 if (Test-Path "CLAUDE.md") {
-    $clLines = (Get-Content "CLAUDE.md" | Measure-Object -Line).Lines
+    # @().Count matches wc -l in the .sh twin; Measure-Object -Line skips blank lines and diverges.
+    $clLines = @(Get-Content "CLAUDE.md").Count
     if ($clLines -gt 400) {
         Write-Output "NOTE: CLAUDE.md is $clLines lines (soft budget 400). Push verbose detail into on-demand files (docs/, skills) to cut per-turn token cost. (advisory -- not a failure)"
     }
@@ -57,7 +65,7 @@ if (-not (Test-Path "AGENTS.md")) {
 if (-not (Test-Path ".github/copilot-instructions.md")) {
     Fail ".github/copilot-instructions.md is missing — run /generate-copilot."
 } else {
-    $n = (Get-Content ".github/copilot-instructions.md" | Measure-Object -Line).Lines
+    $n = @(Get-Content ".github/copilot-instructions.md").Count
     if ($n -gt 80) { Fail ".github/copilot-instructions.md is $n lines (limit: 80) — regenerate slimmer with /generate-copilot." }
     else { OK ".github/copilot-instructions.md present ($n lines <= 80)." }
 }
@@ -99,6 +107,15 @@ if (Test-Path 'README.md') {
     Get-ChildItem -Directory '.claude/skills' -ErrorAction SilentlyContinue | ForEach-Object { if ($readme -notmatch [regex]::Escape($_.Name)) { $missingDoc += "skill:$($_.Name)" } }
     Get-ChildItem -File '.claude/agents' -Filter *.md -ErrorAction SilentlyContinue | ForEach-Object { $n = [IO.Path]::GetFileNameWithoutExtension($_.Name); if ($readme -notmatch [regex]::Escape($n)) { $missingDoc += "agent:$n" } }
     if ($missingDoc.Count -gt 0) { Write-Output ("NOTE: README.md does not mention: " + ($missingDoc -join ' ') + " -- update the What's-in-the-box / subagents tables. (advisory -- not a failure)") }
+}
+
+# 6b. Deterministic framework checks (version-stamp sync, verbatim CLAUDE.md<->AGENTS.md mirror,
+#     BOM/twin sweeps) -- the same gate the template repo's CI runs; the invariants hold after install.
+# Child process: template-checks.ps1 ends with `exit`, which would terminate this script if dot-run.
+$tc = Join-Path $here 'template-checks.ps1'
+if (Test-Path $tc) {
+    & $psExe -NoProfile -ExecutionPolicy Bypass -File $tc
+    if ($LASTEXITCODE -ne 0) { Fail "deterministic framework checks failed (see above)." }
 }
 
 # 7. architecture.html freshness (advisory) -- regenerate after editing ARCHITECTURE.md.
