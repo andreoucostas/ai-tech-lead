@@ -52,4 +52,33 @@ try {
     Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
 }
 
+# --- session-start security-findings preload: twins agree and emit clean stderr ---
+# Regression for the `grep -c … || echo 0` bug (grep -c prints 0 AND exits 1 on no match, so the
+# fallback produced "0\n0" and an integer-comparison error on stderr) and for the section existing
+# in one twin but not the other. Fixture CWDs; the real repo is never touched.
+$ssPs = Join-Path $hooks 'session-start.ps1'; $ssSh = Join-Path $hooks 'session-start.sh'
+if (-not $bash) {
+    Skip 'session-start security-preload twins' 'no bash found'
+} else {
+    $secHeader = "| ID | Severity | Status | Found | Due | Issue |`n|---|---|---|---|---|---|"
+    $secCases = @(
+        @{ n = 'no open findings'; rows = '';                                                         expect = $false },
+        @{ n = 'one open finding'; rows = "`n| SF-1 | High | Open | 2026-01-01 | 2099-01-01 | x |";  expect = $true }
+    )
+    foreach ($case in $secCases) {
+        It "session-start twins agree on security preload ($($case.n)), clean stderr" {
+            $dir = Join-Path ([IO.Path]::GetTempPath()) ("ssfix-" + [guid]::NewGuid().ToString('N'))
+            New-Item -ItemType Directory -Path $dir -Force | Out-Null
+            Push-Location $dir
+            try {
+                [IO.File]::WriteAllText((Join-Path $dir 'SECURITY_FINDINGS.md'), ($secHeader + $case.rows + "`n"))
+                $rps = Invoke-Hook $ssPs '{}'; $rsh = Invoke-Hook $ssSh '{}'
+                Assert ("$($rps.Err)".Trim() -eq '' -and "$($rsh.Err)".Trim() -eq '') "stderr not clean: ps1='$("$($rps.Err)".Trim())' sh='$("$($rsh.Err)".Trim())'"
+                $hasPs = $rps.Out -match '\*\*Security:\*\*'; $hasSh = $rsh.Out -match '\*\*Security:\*\*'
+                Assert (($hasPs -eq $case.expect) -and ($hasSh -eq $case.expect)) "security line present: expected=$($case.expect) ps1=$hasPs sh=$hasSh"
+            } finally { Pop-Location; Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+    }
+}
+
 exit (Write-TestSummary 'TwinParity.Tests (.ps1 vs .sh)')
