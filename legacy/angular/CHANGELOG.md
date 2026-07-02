@@ -3,6 +3,42 @@
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
 > Architecture decisions live in `docs/architecture-decisions.md`.
 
+## 0.25.0 — 2026-07-02 (toolchain-first enforcement: `enforce-standards` skill + Copilot prompt injection)
+
+> First implementation slice of the 2026-07-02 self-sufficiency review (workspace WSD-008). Two
+> P0s: (1) the lint/compiler toolchain becomes the surface-independent standards floor —
+> deterministic in the IDE, every local build, and CI, binding humans and every AI tool alike;
+> (2) the `route-prompt` salience layer — believed Copilot-inert since 0.7.2 removed its
+> registration — is ported to Copilot, whose hooks now consume `userPromptSubmitted`
+> `additionalContext` (CLI ≥ v1.0.65 per its changelog; VS Code agent mode per the official
+> agent-hooks docs). Lockstep with the .NET twin.
+
+### Added
+- **`enforce-standards` skill** + `scripts/ci/eslint-standards.sample.mjs` — makes `@ts-ignore`
+  (`ban-ts-comment` → error), `// eslint-disable` (dead via `linterOptions.noInlineConfig` +
+  `reportUnusedDisableDirectives`), and `fit`/`fdescribe`/`xit`/`xdescribe`
+  (`no-restricted-syntax`) lint-breaking with **zero new dependencies**. Mirrors the
+  `enforce-architecture` delivery pattern; referenced from Common Tasks, README, and
+  `docs/ci-integration.md` leg 2. Brownfield ratchet guidance included.
+- **Copilot prompt injection**: `.github/hooks/hooks.json` registers `userPromptSubmitted` →
+  `route-prompt.*`. `route-prompt.*` and `session-start.*` now self-detect the surface — Claude
+  Code events carry `hook_event_name` and keep plain stdout (behavior unchanged); everything
+  else gets dual-shape JSON (`additionalContext` + `hookSpecificOutput` wrapper, mirroring
+  `guard.*`). Older Copilot versions ignore the JSON — a harmless no-op. The `.sh` twins need
+  `jq`/`python3` to JSON-encode (same posture as `guard.sh`); without either they fall back to
+  plain stdout, the pre-port behavior.
+- `tests/hooks/RoutePrompt.Tests.ps1` — 10 surface-shape cases: plain-vs-JSON dispatch, plan
+  gate, security overlay, slash-command and answer-only no-ops, twin decision agreement.
+
+### Changed
+- **Stale enforcement claims fixed** (the class 0.23.0 purged): the hooks.json `_comment` no
+  longer says Copilot discards `userPromptSubmitted` stdout; `docs/enforcement-surfaces.md`
+  routing/plan-gate/security rows now show per-prompt injection on Copilot **where hooks are
+  enabled**, with an explicit status note that the injection path is fixture-tested but not yet
+  live-verified on a real Copilot install (the github.com hooks-reference still lags — verify
+  with the canary prompt); CLAUDE.md/AGENTS.md §1 "on Copilot only this text reaches the model"
+  is now conditional on hooks being off.
+
 ## 0.24.2 — 2026-07-02 (CI integration doc: the required build consumers are expected to wire)
 
 > On Bitbucket Data Center — the primary consumer profile — the team's own CI is the framework's

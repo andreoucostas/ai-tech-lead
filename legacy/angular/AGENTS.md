@@ -99,6 +99,7 @@ Recipes live as auto-discovered **skills**, available to both Claude Code (`.cla
 - `dependency-audit` — scan for vulnerable/outdated npm packages and wire up automated dependency scanning
 - `create-adr` — record an architecture decision
 - `enforce-architecture` — wire the deterministic DIP/layering CI gate (dependency-cruiser)
+- `enforce-standards` — make `@ts-ignore`, `eslint-disable`, and focused/skipped specs build-breaking (ESLint `noInlineConfig` + rule severities)
 
 **Registers**: [TECH_DEBT.md](./TECH_DEBT.md) tracks delivery debt. [SECURITY_FINDINGS.md](./SECURITY_FINDINGS.md) tracks security findings separately with remediation SLAs (Critical = 7 days, High = 30 days) — do not merge them. Security findings come from `/security-review` and the `security-auditor` agent.
 
@@ -149,7 +150,7 @@ When given any task, follow this execution model:
 ### 1. Classify the intent — and run that workflow without being asked
 Developers will rarely type a slash command. Treat any natural-language request as the trigger: silently classify it, **announce in one line which workflow you concluded** ("Reading this as a *fix*…"), and apply that workflow's rails below. If two workflows genuinely fit, ask one clarifying question first. If it's a pure question ("why does this throw?", "what does `X` do?"), just answer it — no workflow ceremony. You may combine workflows for a compound request ("fix this and add a test"), but **never silently drop a workflow's non-negotiables** to do so.
 
-> These rails are the **canonical definition** of each workflow. `commands/*.md` and the `route-prompt` hook elaborate them but must not contradict them; `/docs-sync` checks they stay aligned. On Copilot (VS Code & CLI) this text is the *only* thing that reaches the model — treat it as binding, not advisory.
+> These rails are the **canonical definition** of each workflow. `commands/*.md` and the `route-prompt` hook elaborate them but must not contradict them; `/docs-sync` checks they stay aligned. Where hooks are off (Copilot VS Code without Preview agent-hooks, Copilot CLI < v1.0.65) this text is the *only* thing that reaches the model — treat it as binding, not advisory.
 
 - **Feature** — *add / implement / create / build new …*: design check first (affected layers, files to create/modify, failure modes, test strategy) → decompose into ordered subtasks, running `ng build` + `ng test --watch=false --browsers=ChromeHeadless` after each → Boy Scout every touched file → self-review against Conventions → present what was built and tested. Honour Leanness: no new service/abstraction without a second consumer in this change-set.
 - **Bug fix** — *broken / bug / crash / failing / "not working" / "looks off"*: **state the root cause before writing any code** → write a failing regression test (spec) that fails for the *right reason* **before** touching production code → apply the *minimal* fix (no unrelated refactor) → verify the regression test + related suite + build + lint all pass → apply Boy Scout to the **blast radius only** → report root cause, fix, regression coverage, blast radius.
@@ -158,9 +159,9 @@ Developers will rarely type a slash command. Treat any natural-language request 
 - **Investigation / design** — *design X / approach for / trade-offs / "how should I"*: **write no code** → understand the requirement → analyse impact → weigh at least two approaches with pros/cons + effort → recommend with specifics (component structure, state, services, tests) → surface open questions before implementation.
 - **Debt cleanup** — *tech debt / cleanup debt*: read `TECH_DEBT.md` and find items in the area → confirm each still exists in the code (may already be fixed) → recommend fix-now vs defer with reasons → after fixes, update `TECH_DEBT.md` → Boy Scout touched files → report fixed/deferred plus the `TECH_DEBT.md` diff.
 
-What is *guaranteed* vs merely *instructed* here depends on the surface — see `docs/enforcement-surfaces.md`. On Claude Code these rails are reinforced by a per-prompt hook and a write-time guard; on Copilot only this text reaches the model.
+What is *guaranteed* vs merely *instructed* here depends on the surface — see `docs/enforcement-surfaces.md`. On Claude Code — and on Copilot where hooks are enabled (CLI ≥ v1.0.65, VS Code Preview agent-hooks) — these rails are reinforced by a per-prompt hook and a write-time guard; where hooks are off, only this text reaches the model.
 
-**Security-sensitive surfaces always get a security pass.** If the work touches authentication/authorization, tokens, sessions, PII, or output sanitization (XSS/CSRF), run `/security-review` on the diff (or the `security-auditor` agent) before presenting it as complete — regardless of which workflow above applies. On Claude Code a `UserPromptSubmit` hook flags these automatically; on Copilot it does not — the rule holds regardless.
+**Security-sensitive surfaces always get a security pass.** If the work touches authentication/authorization, tokens, sessions, PII, or output sanitization (XSS/CSRF), run `/security-review` on the diff (or the `security-auditor` agent) before presenting it as complete — regardless of which workflow above applies. On Claude Code — and on Copilot where hooks are enabled — a `UserPromptSubmit` hook flags these automatically; elsewhere it does not — the rule holds regardless.
 
 ### Steps 2–6 (condensed — full text in [CLAUDE.md](./CLAUDE.md) > Agentic Workflow)
 

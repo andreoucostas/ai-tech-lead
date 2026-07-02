@@ -1,7 +1,9 @@
 ﻿# UserPromptSubmit router -- classify natural-language prompts into a workflow
 # and inject the matching workflow's deterministic rails before the model responds.
 # PowerShell equivalent of route-prompt.sh, for Windows-only PowerShell teams.
-# Plain stdout is treated as additionalContext by Claude Code.
+# Claude Code treats plain stdout as additionalContext; Copilot (CLI >= v1.0.65, VS Code agent
+# mode with Preview agent-hooks) consumes stdout only as JSON additionalContext -- see the
+# surface dispatch at the bottom.
 # Skips when the user explicitly invoked a slash command (already deterministic).
 #
 # ASCII-only: Windows PowerShell 5.1 reads .ps1 files as ANSI when no BOM is
@@ -145,31 +147,50 @@ $sensitive = $lc -match '(\bauth\b|authenticat|authori[sz]|login|password|secret
 
 if ([string]::IsNullOrEmpty($intent) -and -not $sensitive) { exit 0 }
 
+$parts = New-Object System.Collections.Generic.List[string]
 if (-not [string]::IsNullOrEmpty($intent)) {
-    Write-Output "## Routed intent: ``$intent``"
-    Write-Output ''
-    Write-Output "This natural-language prompt was classified as **$intent**. The rails below mirror ``CLAUDE.md > Agentic Workflow`` section 1 -- the canonical definition, already in your context; they are repeated here for salience. Apply them before responding. If the actual intent differs, say so and proceed normally."
-    Write-Output ''
+    $parts.Add("## Routed intent: ``$intent``")
+    $parts.Add('')
+    $parts.Add("This natural-language prompt was classified as **$intent**. The rails below mirror ``CLAUDE.md > Agentic Workflow`` section 1 -- the canonical definition, already in your context; they are repeated here for salience. Apply them before responding. If the actual intent differs, say so and proceed normally.")
+    $parts.Add('')
 
     if ($intent -in @('fix','feature','refactor','test')) {
-        Write-Output $railsPlanGate
-        Write-Output ''
+        $parts.Add($railsPlanGate)
+        $parts.Add('')
     }
 
     switch ($intent) {
-        'fix'      { Write-Output $railsFix }
-        'feature'  { Write-Output $railsFeature }
-        'refactor' { Write-Output $railsRefactor }
-        'test'     { Write-Output $railsTest }
-        'design'   { Write-Output $railsDesign }
-        'debt'     { Write-Output $railsDebt }
-        'review'   { Write-Output $railsReview }
+        'fix'      { $parts.Add($railsFix) }
+        'feature'  { $parts.Add($railsFeature) }
+        'refactor' { $parts.Add($railsRefactor) }
+        'test'     { $parts.Add($railsTest) }
+        'design'   { $parts.Add($railsDesign) }
+        'debt'     { $parts.Add($railsDebt) }
+        'review'   { $parts.Add($railsReview) }
     }
 }
 
 if ($sensitive) {
-    Write-Output ''
-    Write-Output $railsSecurity
+    $parts.Add('')
+    $parts.Add($railsSecurity)
+}
+
+$body = ($parts -join "`n")
+
+# Surface dispatch. Claude Code includes hook_event_name in the event payload and treats plain
+# stdout as additionalContext. Copilot parses stdout only as JSON: the CLI (>= v1.0.65) and
+# VS Code agent mode (Preview agent-hooks) inject userPromptSubmitted additionalContext into the
+# model-facing prompt -- emit both the top-level and wrapped shapes, mirroring guard.ps1's
+# dual-shape approach. Older Copilot versions ignore this JSON output entirely: harmless no-op,
+# same as before this hook was registered for Copilot.
+if ($inputJson -match '"hook_event_name"') {
+    Write-Output $body
+} else {
+    $payload = @{
+        additionalContext  = $body
+        hookSpecificOutput = @{ hookEventName = 'UserPromptSubmit'; additionalContext = $body }
+    }
+    Write-Output ($payload | ConvertTo-Json -Compress -Depth 4)
 }
 
 exit 0

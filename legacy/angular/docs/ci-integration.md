@@ -39,10 +39,11 @@ npx ng build --configuration production
 npx ng test --watch=false --browsers=ChromeHeadless
 ```
 
-Lint rules configured as **errors** (`@typescript-eslint/ban-ts-comment`, `eslint-comments`
-rules, focused/disabled-test rules) are what make `@ts-ignore`, `eslint-disable`, and `fdescribe`
+Lint rules configured as **errors** (`@typescript-eslint/ban-ts-comment`, `noInlineConfig`,
+focused/disabled-spec bans) are what make `@ts-ignore`, `eslint-disable`, and `fdescribe`
 *build-breaking* instead of advisory — the compiler and lint layer are the deterministic
-enforcement that AI instructions can never be. If the repo has the dependency-cruiser boundary
+enforcement that AI instructions can never be. Wire them with the `enforce-standards` skill
+(`scripts/ci/eslint-standards.sample.mjs`). If the repo has the dependency-cruiser boundary
 gate (see the `enforce-architecture` skill), add `npx depcruise src --config .dependency-cruiser.js`
 as a step here.
 

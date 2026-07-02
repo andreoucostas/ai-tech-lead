@@ -1,9 +1,17 @@
 ﻿# SessionStart hook -- preload high-signal context every new session.
 # PowerShell equivalent of session-start.sh, for Windows-only PowerShell teams.
-# Output goes to the assistant's context as auxiliary data.
+# Output goes to the assistant's context as auxiliary data. Claude Code consumes plain stdout;
+# Copilot (CLI, and VS Code agent mode with Preview agent-hooks) consumes stdout only as JSON
+# additionalContext -- see the surface dispatch at the bottom.
 # Keep fast: no expensive scans. Targets git, CLAUDE.md, TECH_DEBT.md only.
 
 $ErrorActionPreference = 'SilentlyContinue'
+
+# Read stdin (when redirected) for surface detection; Claude Code events carry hook_event_name.
+$stdinJson = ''
+if ([Console]::IsInputRedirected) { $stdinJson = [Console]::In.ReadToEnd() }
+
+$body = (& {
 
 Write-Output "## Session preload"
 
@@ -33,11 +41,10 @@ if (Test-Path .claude/adoption-pending.json) {
     }
 }
 
-# 3. Workflow-routing pointer (Claude Code only).
-# Claude Code consumes SessionStart stdout as model context. GitHub Copilot does NOT:
-# its sessionStart output is discarded by spec (and userPromptSubmitted likewise), so this
-# pointer reaches the model only on Claude Code. On Copilot, routing rests entirely on
-# AGENTS.md > Agentic Workflow (section 1), which is always-on context there. The full
+# 3. Workflow-routing pointer. Claude Code consumes this as plain stdout; on Copilot it lands
+# only via the JSON additionalContext shape emitted below (CLI, and VS Code agent mode with
+# Preview agent-hooks -- older Copilot versions drop it, and routing there rests on
+# AGENTS.md > Agentic Workflow section 1, the always-on instruction surface). The full
 # intent->workflow vocabulary lives in section 1 (canonical); we do not re-list it here.
 if (Test-Path CLAUDE.md) {
     Write-Output '- **Workflow routing:** when a prompt clearly matches a workflow and the developer did not type a `/command`, self-classify and apply that workflow''s rails from `CLAUDE.md > Agentic Workflow` (section 1). State which workflow you concluded.'
@@ -87,6 +94,24 @@ if (Test-Path SECURITY_FINDINGS.md) {
             Write-Output "- **Security:** $openCount open finding(s) in SECURITY_FINDINGS.md."
         }
     }
+}
+
+}) -join "`n"
+
+# Surface dispatch. Claude Code includes hook_event_name in the event payload and treats plain
+# stdout as context. Copilot parses stdout only as JSON additionalContext (CLI, and VS Code agent
+# mode with Preview agent-hooks) -- emit both the top-level and wrapped shapes, mirroring
+# guard.ps1's dual-shape approach. Older Copilot versions ignore the JSON: harmless no-op, same
+# as pre-port behavior. Empty or non-JSON stdin defaults to plain stdout (Claude-compatible).
+$isCopilot = ($stdinJson -and $stdinJson.TrimStart().StartsWith('{') -and ($stdinJson -notmatch '"hook_event_name"'))
+if ($isCopilot) {
+    $payload = @{
+        additionalContext  = $body
+        hookSpecificOutput = @{ hookEventName = 'SessionStart'; additionalContext = $body }
+    }
+    Write-Output ($payload | ConvertTo-Json -Compress -Depth 4)
+} else {
+    Write-Output $body
 }
 
 exit 0

@@ -1,5 +1,5 @@
 {
-  "_comment": "Note: userPromptSubmitted is intentionally omitted. Per docs.github.com/en/copilot/reference/hooks-configuration, Copilot does not consume hook stdout for that event ('Output processed: No'), so route-prompt's natural-language routing would be a silent no-op. Claude Code, which DOES honor UserPromptSubmit stdout, still runs route-prompt via .claude/settings.json. Copilot also discards sessionStart stdout, so NO hook can inject routing context on Copilot -- routing there rests entirely on AGENTS.md > Agentic Workflow (section 1), the always-on instruction surface. preToolUse IS consumed (JSON permissionDecision deny), which is how guard.* still enforces hard-blocks on Copilot. See docs/enforcement-surfaces.md for the guaranteed-vs-instructed matrix. The per-tool 'matcher' field is intentionally omitted (Copilot supports it, but): VS Code agent mode emits write tool names that cannot be fully enumerated (camelCase str_replace/insert/etc.), so guard.* must see every tool call and self-filter on file-path+content -- a 'matcher' regex like 'edit|create' would blind it to those VS Code writes and open a security gap. The fast self-exit on non-write calls is the deliberate cost of that coverage; do not add a matcher here.",
+  "_comment": "Note on userPromptSubmitted: registered since v0.25.0. Copilot CLI >= v1.0.65 and VS Code agent mode (Preview agent-hooks) inject the hook's JSON additionalContext into the model-facing prompt, so route-prompt's routing/plan-gate/security salience now reaches Copilot where hooks are enabled; sessionStart additionalContext is consumed the same way. Older Copilot versions ignore the JSON output -- harmless no-op (the docs.github.com hooks-reference 'Output processed: No' note lags the CLI changelog and VS Code docs; verify on your install with a canary prompt). route-prompt/session-start self-detect the surface: Claude Code events carry hook_event_name and get plain stdout; everything else gets the JSON shape. preToolUse is consumed as JSON permissionDecision deny, which is how guard.* enforces hard-blocks on Copilot. See docs/enforcement-surfaces.md for the guaranteed-vs-instructed matrix. The per-tool 'matcher' field is intentionally omitted (Copilot supports it, but): VS Code agent mode emits write tool names that cannot be fully enumerated (camelCase str_replace/insert/etc.), so guard.* must see every tool call and self-filter on file-path+content -- a 'matcher' regex like 'edit|create' would blind it to those VS Code writes and open a security gap. The fast self-exit on non-write calls is the deliberate cost of that coverage; do not add a matcher here.",
   "version": 1,
   "hooks": {
     "sessionStart": [
@@ -8,6 +8,14 @@
         "bash": ".claude/hooks/session-start.sh",
         "powershell": ".claude\\hooks\\session-start.ps1",
         "timeoutSec": 15
+      }
+    ],
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "bash": ".claude/hooks/route-prompt.sh",
+        "powershell": ".claude\\hooks\\route-prompt.ps1",
+        "timeoutSec": 10
       }
     ],
     "preToolUse": [
