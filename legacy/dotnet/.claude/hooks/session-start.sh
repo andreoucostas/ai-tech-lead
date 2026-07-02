@@ -68,7 +68,9 @@ if [ -f SECURITY_FINDINGS.md ]; then
       fi
     fi
   done < SECURITY_FINDINGS.md
-  open_count=$(grep -c "| Open " SECURITY_FINDINGS.md 2>/dev/null || echo 0)
+  # grep -c prints the count even on no match (exit 1), so no `|| echo 0` — that produced "0\n0".
+  open_count=$(grep -c "| Open " SECURITY_FINDINGS.md 2>/dev/null || true)
+  [ -n "$open_count" ] || open_count=0
   if [ "$open_count" -gt 0 ]; then
     if [ "$overdue" -gt 0 ]; then
       echo "- 🔴 **Security:** $overdue overdue finding(s) in SECURITY_FINDINGS.md. Remediation SLA breached — review before starting new work."

@@ -3,6 +3,23 @@
 > Framework-level changes for the .NET template. Per-stack Angular changes live in [`ai-tech-lead-angular/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-angular/blob/master/CHANGELOG.md).
 > Architecture decisions live in `docs/architecture-decisions.md`.
 
+## 0.24.1 — 2026-07-02 (session-start: fix `grep -c` stderr error in the security preload)
+
+> Found while measuring the framework's token footprint. `session-start.sh` counted open security
+> findings with `grep -c … || echo 0` — but `grep -c` prints `0` even when it exits 1 on no match,
+> so the fallback produced `"0\n0"` and an integer-comparison error on stderr in every session of
+> a repo with zero open findings. Harmless to behavior (the note was just skipped) but noisy, and
+> a silent twin divergence: `session-start.ps1` was unaffected. Caught red-first by a new
+> twin-parity regression test. Lockstep with the Angular twin.
+
+### Fixed
+- `.claude/hooks/session-start.sh` — open-findings count no longer double-emits `0`; stderr is
+  clean in the no-open-findings case.
+
+### Added
+- `tests/hooks/TwinParity.Tests.ps1` — session-start security-preload regression cases: twins must
+  agree on the security note (none / one open finding) and emit clean stderr, run from fixture CWDs.
+
 ## 0.24.0 — 2026-07-01 (deterministic self-enforcement: template CI + machine-checked framework invariants)
 
 > 0.23.3 fixed the drift a forensic self-audit found; this release adds the machine gates that
