@@ -278,11 +278,10 @@ This framework grew up around GitHub conventions, but its **local layer is host-
 
 > Net: on Bitbucket Data Center your agentic story is **local CLI agents + IDE Copilot**, not a cloud agent, and there is no platform-side AI PR reviewer. Gate quality with `/review` and `/security-review` *before* you push, and with the CI guardrail *after*.
 
-### The framework-state guardrail on Bitbucket
-The checks live in **`scripts/docs-sync-check.sh`** (PowerShell twin: `scripts/docs-sync-check.ps1`) — host-agnostic, exit 0/1. Wire it in whichever way fits your DC setup:
-- **Bamboo / Jenkins / TeamCity**: a build step that runs `bash scripts/docs-sync-check.sh` and fails on non-zero exit.
-- **Pre-receive hook** (server-side, blocks the push): call the script from a Bitbucket DC [pre-receive hook](https://confluence.atlassian.com/bitbucketserver/managing-merge-checks-and-hooks).
-- **Surface it on the PR**: publish the verdict (and annotations) via the **Code Insights REST API** (`/rest/insights/1.0/...`), available on Bitbucket Data Center 10.x — the closest DC equivalent of a required GitHub check.
+### The CI guardrail on Bitbucket — a required build is expected, not optional
+**Every repo using this framework is expected to wire one required build in its own CI (Bamboo/Jenkins/TeamCity) that gates PR merges.** The full recipe — what the build must run (the shipped `scripts/docs-sync-check.sh`/`.ps1` framework-state check **plus** `eslint` + `ng build` + `ng test` as the code-standards gate), Bamboo and Jenkins configurations, and how to make it blocking via Bitbucket DC's *required builds* merge check (repo-admin only, no server plugins) — lives in **[docs/ci-integration.md](./docs/ci-integration.md)**.
+- **Also enable** Bitbucket DC's native **secret scanning** (8.12+, push-time blocking — zero custom code).
+- **Optionally surface it on the PR** via the **Code Insights REST API** (`/rest/insights/1.0/...`); cosmetic on top of required builds, not a substitute.
 - **Bitbucket Cloud** repos: copy `scripts/ci/bitbucket-pipelines.example.yml` into `bitbucket-pipelines.yml`.
 
 ### Standing scanners on Bitbucket

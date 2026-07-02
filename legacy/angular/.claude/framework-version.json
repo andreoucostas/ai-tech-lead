@@ -1,6 +1,6 @@
 {
   "template": "angular",
-  "version": "0.24.1",
+  "version": "0.24.2",
   "applied": "2026-07-02",
   "_comment": "Machine-readable framework version stamp. Bumped when this repo syncs template updates. CI tooling (and future /framework-update command) reads this file to detect drift between the consumer repo and the latest template version. Keep in sync with the HTML comment at the top of CLAUDE.md."
 }

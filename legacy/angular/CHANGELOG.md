@@ -3,6 +3,30 @@
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
 > Architecture decisions live in `docs/architecture-decisions.md`.
 
+## 0.24.2 — 2026-07-02 (CI integration doc: the required build consumers are expected to wire)
+
+> On Bitbucket Data Center — the primary consumer profile — the team's own CI is the framework's
+> only enforcement point that constrains every actor (any agent, any IDE, any human, any
+> `--no-verify`). The README stated that expectation as four bullets ("wire `docs-sync-check` in
+> whichever way fits your DC setup") with no recipe, and never said that the framework-state check
+> alone does not gate code standards. Surfaced by the 2026-07-02 self-sufficiency forensic review
+> (workspace WSD-008, finding F4). Lockstep with the .NET twin.
+
+### Added
+- `docs/ci-integration.md` — the required-build recipe: leg 1 = `scripts/docs-sync-check.sh`/`.ps1`
+  (framework state), leg 2 = `eslint` + `ng build` + `ng test` (code-standards gate, with the
+  dependency-cruiser step where the `enforce-architecture` gate exists); Bamboo and Jenkins
+  reference configurations; blocking via Bitbucket DC's **required builds** merge check
+  (repo/project admin only — no server plugins); pointers to native secret scanning (DC 8.12+)
+  and Code Insights; an explicit "what CI still cannot gate" boundary.
+
+### Changed
+- README › "Running on Bitbucket Data Center": the guardrail section now states the required-build
+  expectation explicitly and links `docs/ci-integration.md`. The pre-receive-hook suggestion moved
+  out of the primary path — it needs DC *system* admin most consumer teams don't have; required
+  builds don't.
+- `scripts/ci/bitbucket-pipelines.example.yml` — DC note points at `docs/ci-integration.md`.
+
 ## 0.24.1 — 2026-07-02 (session-start: port the security-findings preload; twin-parity regression tests)
 
 > The .NET twin's session-start preloads open/overdue SECURITY_FINDINGS.md counts at session
