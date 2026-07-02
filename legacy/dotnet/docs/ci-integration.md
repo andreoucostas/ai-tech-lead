@@ -39,7 +39,8 @@ dotnet test  --configuration Release --no-build
 
 Warnings-as-errors plus analyzer severities are what make `#pragma warning disable`, skipped
 tests, and sloppy patterns *build-breaking* instead of advisory — the compiler and analyzers are
-the deterministic enforcement layer that AI instructions can never be. If the repo has the
+the deterministic enforcement layer that AI instructions can never be. Wire them with the
+`enforce-standards` skill (`scripts/ci/Directory.Build.props.sample`). If the repo has the
 NetArchTest architecture tests (see the `enforce-architecture` skill), they run inside
 `dotnet test` automatically.
 

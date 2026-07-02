@@ -1,0 +1,22 @@
+<!--
+  Deterministic standards floor - scaffolded by the `enforce-standards` skill.
+  Copy to the solution root as Directory.Build.props (or merge into an existing one).
+
+  Also append to the repo .editorconfig (test-integrity severities; extend as the team agrees):
+
+    [*.cs]
+    # A skipped test fails the build (same floor the write-time guard hook enforces at edit time).
+    dotnet_diagnostic.xUnit1004.severity = error
+    # Unnecessary suppressions are themselves flagged.
+    dotnet_diagnostic.IDE0079.severity = warning
+
+  Brownfield note: if the existing warning count is large, start with <WarningsAsErrors> listing
+  specific codes instead of the blanket switch below, record the rest in TECH_DEBT.md, and ratchet.
+-->
+<Project>
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+</Project>
