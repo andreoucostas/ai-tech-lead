@@ -1,8 +1,8 @@
 <!--
 ai-tech-lead-framework
   template: dotnet
-  version: 0.25.0
-  applied: 2026-07-02
+  version: 0.25.1
+  applied: 2026-07-04
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
 # [Project Name]
@@ -27,7 +27,7 @@ These apply to every workflow, before any convention-level rule. The difference 
 4. **State uncertainty.** When a question depends on context you do not have (a file you have not read, runtime behaviour you cannot observe, a database state you cannot query), say so. Do not guess to seem helpful.
 5. **Tests are immutable safety nets during fixes and refactors.** When an existing test fails, production is wrong (or the test is wrong for a documented reason). Do not edit assertions to make them pass without flagging it explicitly.
 6. **No invented fixtures.** When sample data, builders, factories, or mocks already exist, reuse them. Do not fabricate parallel ones.
-7. **Failures are signals.** Build, test, or analyser failures are diagnostic. Read the message and fix the cause; never wrap in try/catch or `#pragma warning disable` to silence. (A PreToolUse hook hard-blocks writes that add `#pragma warning disable`.)
+7. **Failures are signals.** Build, test, or analyser failures are diagnostic. Read the message and fix the cause; never wrap in try/catch or `#pragma warning disable` to silence. (A PreToolUse hook hard-blocks **editor/file writes** that add `#pragma warning disable`; writes routed through a terminal tool are not intercepted — see [docs/enforcement-surfaces.md](./docs/enforcement-surfaces.md).)
 8. **No future-proofing.** Do not add code for hypothetical requirements. Three similar lines is better than a premature abstraction.
 9. **A new test must be seen to fail before it is trusted.** Before relying on a new behavioral test as green, confirm it actually goes red when the behavior is broken — write it before the fix (bug fixes), or briefly break the code under test and watch it fail for the right reason. Where running the red is impractical, state the specific defect the test would catch. *Why: AI-generated tests are the highest-risk for tautological or over-mocked assertions that pass even against broken code; a test you have watched fail cannot be vacuous.*
 
