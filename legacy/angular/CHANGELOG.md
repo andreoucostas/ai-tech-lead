@@ -3,6 +3,35 @@
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
 > Architecture decisions live in `docs/architecture-decisions.md`.
 
+## 0.25.1 — 2026-07-04 (P1 correctness + enforcement-honesty fixes)
+
+> Fable-exit backlog P1 band (`BACKLOG.md` B-01/B-02/B-03). A shipped hook that crashed on a
+> supported consumer path, plus two honesty corrections where docs/comments claimed a control
+> fires where it doesn't. Lockstep with the .NET twin.
+
+### Fixed
+- **`post-write.ps1` crashed on every write under Windows PowerShell 5.1 in comma-decimal
+  locales** (de-DE/el-GR/fr-FR). The throttle epoch used
+  `[int][double]::Parse((Get-Date -UFormat %s))`; on 5.1 `-UFormat %s` returns a fractional
+  local-time string and `[double]::Parse` is culture-sensitive, so the dot parsed as a group
+  separator, overflowed `Int32`, and threw a terminating error `SilentlyContinue` does not
+  swallow. Replaced with `[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()` — culture-free, integer,
+  UTC — which also removes a UTC/local throttle-stamp skew against the `.sh` twin's `date +%s`.
+  Added `tests/hooks/PostWrite.Tests.ps1` (host-independent regression, red before green). (B-02)
+
+### Changed (enforcement honesty)
+- **Guard write hard-block scoped to editor/file-write tools.** `docs/enforcement-surfaces.md`
+  now carries a caveat that `guard.*` only sees `Write`/`Edit` (Claude Code) and file-path/content
+  (Copilot) tool calls — a write routed through a terminal/shell tool (`sed -i`, `echo >>`,
+  heredoc, `Set-Content`) carries no such payload and is **not** intercepted. Softened the
+  Verification-Rule-7 parenthetical in `CLAUDE.md`/`AGENTS.md` accordingly. (B-01)
+- **Copilot `additionalContext` consumption live-verified** (Copilot CLI 1.0.68, sentinel canary):
+  `userPromptSubmitted` additionalContext **is** consumed (routing/plan-gate/security salience
+  reaches the CLI model); `postToolUse` additionalContext is **not** consumed by the model, and
+  repo hooks fire **only after the workspace folder is trusted**. Updated the
+  `enforcement-surfaces.md` Status notes and corrected the now-falsified "consumes postToolUse
+  feedback" comment in the `post-write` twins. (B-03)
+
 ## 0.25.0 — 2026-07-02 (toolchain-first enforcement: `enforce-standards` skill + Copilot prompt injection)
 
 > First implementation slice of the 2026-07-02 self-sufficiency review (workspace WSD-008). Two

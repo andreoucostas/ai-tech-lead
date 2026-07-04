@@ -156,7 +156,9 @@ case "$tool_name" in
 esac
 
 # Everything else — Copilot CLI (lowercase edit/create) AND VS Code agent mode (camelCase
-# str_replace/insert/etc.) — consumes postToolUse feedback as JSON additionalContext on stdout.
+# str_replace/insert/etc.) -- is sent the JSON additionalContext shape below, but a live sentinel
+# canary (Copilot CLI 1.0.68, 2026-07-04) found the CLI model does NOT consume postToolUse stdout;
+# this branch is emit-for-forward-compat only (see docs/enforcement-surfaces.md). VS Code unverified.
 if command -v jq >/dev/null 2>&1; then
   printf '%s' "$msg" | jq -Rs '{additionalContext: .}'
 elif command -v python3 >/dev/null 2>&1; then

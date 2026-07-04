@@ -102,7 +102,12 @@ $stamp = Join-Path $repoState "last-build-$key"
 $buildInfo = Join-Path $repoState "tsbuildinfo-$key"
 
 # Throttle: skip if a check was started within the last 5 seconds.
-$now = [int][double]::Parse((Get-Date -UFormat %s))
+# UTC integer epoch. NOT Get-Date -UFormat %s: under Windows PowerShell 5.1 that returns a
+# fractional local-time string, and [double]::Parse is culture-sensitive -- in comma-decimal
+# locales (de-DE/el-GR/fr-FR) the dot is a group separator, so the value overflows Int32 and
+# throws on every write. This form is culture-free, integer, UTC, and agrees with the .sh twin's
+# `date +%s`.
+$now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
 if (Test-Path $stamp) {
     $lastRaw = Get-Content $stamp -Raw
     if ($lastRaw) {
@@ -141,6 +146,8 @@ if ($tn -ceq 'Edit' -or $tn -ceq 'Write' -or $tn -eq '') {
 }
 
 # Everything else -- Copilot CLI (lowercase edit/create) AND VS Code agent mode (camelCase
-# str_replace/insert/etc.) -- consumes postToolUse feedback as JSON additionalContext on stdout.
+# str_replace/insert/etc.) -- is sent the JSON additionalContext shape below, but a live sentinel
+# canary (Copilot CLI 1.0.68, 2026-07-04) found the CLI model does NOT consume postToolUse stdout;
+# this branch is emit-for-forward-compat only (see docs/enforcement-surfaces.md). VS Code unverified.
 (@{ additionalContext = $msg } | ConvertTo-Json -Compress)
 exit 0
