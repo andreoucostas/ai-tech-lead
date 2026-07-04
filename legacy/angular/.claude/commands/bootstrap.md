@@ -1,5 +1,5 @@
 ---
-description: "One-time framework setup: eight parallel analysis passes, then populates CLAUDE.md, FRAMEWORK-CONTEXT.md, registers, and project-specific skills. Developer-initiated only."
+description: "One-time framework setup: seven parallel analysis passes, then populates CLAUDE.md, FRAMEWORK-CONTEXT.md, registers, and project-specific skills. Developer-initiated only."
 disable-model-invocation: true
 ---
 

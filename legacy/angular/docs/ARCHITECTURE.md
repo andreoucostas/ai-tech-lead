@@ -73,7 +73,7 @@ Same names in Claude Code (`.claude/commands/`) and Copilot Chat (`.github/promp
 
 | Command | Purpose |
 |---------|---------|
-| `/bootstrap` | One-time: analyse the codebase (6 parallel passes A1–A6: modules, state, components, RxJS, API, build/test/quality), populate CLAUDE.md + TECH_DEBT.md, generate AGENTS.md + copilot-instructions, sync skills |
+| `/bootstrap` | One-time: analyse the codebase (7 parallel passes A1–A7: modules, state, components, RxJS, API, build/test/quality, skill discovery), populate CLAUDE.md + TECH_DEBT.md, generate AGENTS.md + copilot-instructions, sync skills |
 | `/adopt` | Ingest existing AI artifacts (Cursor/Copilot/Aider/ADRs) into this layout, then `/bootstrap` the gaps |
 | `/feature` | Implement across layers; checks for a `specs/<slug>.md` first; verified subtasks; Boy Scout; self-review |
 | `/fix` | Regression-test-first; minimal fix; blast-radius-only Boy Scout |
@@ -96,7 +96,7 @@ Run in isolated context; return a structured findings table to the parent. Model
 
 | Agent | Role | Model |
 |-------|------|-------|
-| `bootstrap-pass` | One analysis pass (A1–A6) during `/bootstrap` | inherit (strong) |
+| `bootstrap-pass` | One analysis pass (A1–A7) during `/bootstrap` | inherit (strong) |
 | `security-auditor` | XSS / auth / secrets scan; feeds `/security-review` | inherit (strong) |
 | `solid-check` | Audits the diff against the five SOLID principles (literal SOLID is mandatory here); feeds `/review` | inherit (strong) |
 | `convention-check` | Diff vs CLAUDE.md > Conventions; feeds `/review` | **haiku** |
