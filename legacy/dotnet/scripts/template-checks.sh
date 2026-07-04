@@ -100,6 +100,21 @@ for d in .claude/hooks scripts tests/hooks; do
 done
 if [ -n "$shfails" ]; then fail "bash syntax errors in:$shfails"; else ok "all framework .sh files parse cleanly."; fi
 
+# --- 7. Skills mirror: .claude/skills must byte-match .github/skills ---------------------------
+# Skills ship twice per repo (Claude reads .claude/skills, Copilot reads .github/skills). They are
+# mirrored by /generate-copilot + scripts/sync-agent-files; without a gate, editing one and
+# forgetting the other ships stale guidance to Copilot with every other check green (B-07).
+# CRLF-normalized (--strip-trailing-cr): with core.autocrlf on Windows the two copies can differ
+# only in line endings in a working tree yet be identical in a clean checkout -- ignore EOL-only diffs.
+if [ -d .claude/skills ] || [ -d .github/skills ]; then
+  if diff -rq --strip-trailing-cr .claude/skills .github/skills >/dev/null 2>&1; then
+    ok ".claude/skills and .github/skills are in sync."
+  else
+    details=$(diff -rq --strip-trailing-cr .claude/skills .github/skills 2>&1 | tr '\n' ';')
+    fail "skills mirror drift (.claude/skills vs .github/skills — run /generate-copilot): $details"
+  fi
+fi
+
 echo ""
 if [ "$failed" -gt 0 ]; then echo "$failed framework check(s) FAILED."; exit "$failed"; fi
 echo "All deterministic framework checks passed."

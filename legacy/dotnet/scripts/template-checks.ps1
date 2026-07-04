@@ -125,6 +125,38 @@ foreach ($d in $scanDirs) {
 }
 if ($parseFails.Count -gt 0) { Fail ("PS syntax errors: " + ($parseFails -join '; ')) } else { OK 'all framework .ps1 files parse cleanly.' }
 
+# --- 7. Skills mirror: .claude/skills must match .github/skills (EOL-normalized) --------------
+# Skills ship twice per repo (Claude reads .claude/skills, Copilot reads .github/skills). They are
+# mirrored by /generate-copilot + scripts/sync-agent-files; without a gate, editing one and
+# forgetting the other ships stale guidance to Copilot with every other check green (B-07).
+# Compare CRLF-normalized (matches the .sh twin's `diff --strip-trailing-cr`): with core.autocrlf
+# on Windows the two copies can differ only in line endings in a working tree yet be identical in a
+# clean checkout -- an EOL-only diff must not fail the gate. Use ABSOLUTE paths: [IO.File]::ReadAllText
+# resolves a relative path against the .NET process CWD, which Set-Location does NOT update -- a
+# relative path silently breaks when this script is invoked from another directory (e.g. release.ps1).
+function Get-SkillText($p) { ([System.IO.File]::ReadAllText($p)) -replace "`r`n", "`n" }
+$claudeSkills = if (Test-Path '.claude/skills') { (Resolve-Path '.claude/skills').Path } else { $null }
+$githubSkills = if (Test-Path '.github/skills') { (Resolve-Path '.github/skills').Path } else { $null }
+if ($claudeSkills -or $githubSkills) {
+    $mism = @()
+    if ($claudeSkills) {
+        foreach ($f in (Get-ChildItem $claudeSkills -Recurse -File)) {
+            $rel = $f.FullName.Substring($claudeSkills.Length).TrimStart('\', '/')
+            $gh  = if ($githubSkills) { Join-Path $githubSkills $rel } else { $null }
+            if (-not $gh -or -not (Test-Path $gh)) { $mism += ".github/skills/$rel missing" }
+            elseif ((Get-SkillText $f.FullName) -ne (Get-SkillText $gh)) { $mism += "$rel differs" }
+        }
+    }
+    if ($githubSkills) {
+        foreach ($f in (Get-ChildItem $githubSkills -Recurse -File)) {
+            $rel = $f.FullName.Substring($githubSkills.Length).TrimStart('\', '/')
+            if (-not $claudeSkills -or -not (Test-Path (Join-Path $claudeSkills $rel))) { $mism += ".claude/skills/$rel missing (extra under .github/skills)" }
+        }
+    }
+    if ($mism.Count -gt 0) { Fail ("skills mirror drift (.claude/skills vs .github/skills -- run /generate-copilot): " + ($mism -join '; ')) }
+    else { OK ".claude/skills and .github/skills are in sync." }
+}
+
 Write-Output ''
 if ($failed -gt 0) { Write-Output "$failed framework check(s) FAILED."; exit $failed }
 Write-Output 'All deterministic framework checks passed.'

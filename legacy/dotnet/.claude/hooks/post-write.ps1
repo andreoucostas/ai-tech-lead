@@ -10,6 +10,11 @@ $null = New-Item -ItemType Directory -Path .claude\.state -Force
 
 $inputJson = [Console]::In.ReadToEnd()
 $filePath = ''
+# Pre-declare so a malformed/empty payload leaves $tn = '' (not $null): the surface-routing at the
+# end uses `$tn -eq ''` for Claude's empty-case exit-2 path, and $null -eq '' is False in PowerShell
+# -- which would misroute a build failure to the Copilot exit-0 branch, diverging from the .sh twin's
+# `case "$tool_name" in ... "")`. Keeping it '' matches the twin.
+$tn = ''
 
 if (-not [string]::IsNullOrEmpty($inputJson)) {
     try {
