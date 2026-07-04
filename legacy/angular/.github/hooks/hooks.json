@@ -31,7 +31,7 @@
         "type": "command",
         "bash": ".claude/hooks/post-write.sh",
         "powershell": ".claude\\hooks\\post-write.ps1",
-        "timeoutSec": 60
+        "timeoutSec": 120
       }
     ]
   }

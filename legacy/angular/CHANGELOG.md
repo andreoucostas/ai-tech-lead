@@ -3,6 +3,39 @@
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
 > Architecture decisions live in `docs/architecture-decisions.md`.
 
+## 0.25.2 — 2026-07-04 (P2 gate-honesty: fix silent-drift gates + a twin routing bug)
+
+> Fable-exit backlog P2 band (`BACKLOG.md` B-04…B-09). Gates that passed while the drift they
+> existed to catch slipped through, plus a PowerShell-only `post-write` routing divergence.
+> Lockstep with the .NET twin.
+
+### Fixed
+- **`post-write.ps1` misrouted type-check failures to the wrong surface on malformed/empty payloads.**
+  `$tn` (tool name) was assigned only inside the JSON-parse `try`, so a malformed payload with the
+  `CLAUDE_FILE_PATH` env fallback left it `$null`; `$null -eq ''` is `$false` in PowerShell, so the
+  Claude empty-case exit-2 branch was skipped and a failed `tsc --noEmit` was emitted to the Copilot
+  (exit-0) branch instead — the model never saw it, diverging from the `.sh` twin's `case … "")`.
+  Pre-declared `$tn = ''`. Added `tests/hooks/PostWriteRouting.Tests.ps1` (static guard + build-free
+  twin agreement). (B-09)
+
+### Added (deterministic gates)
+- **Skills-mirror gate** in `scripts/template-checks.ps1/.sh`: `.claude/skills` must match
+  `.github/skills` (Copilot reads the `.github` copy), EOL-normalized. Editing one and forgetting
+  the other previously shipped stale Copilot guidance with every check green. (B-07)
+
+### Changed
+- **`post-write` `timeoutSec` unified to 120** in `.github/hooks/hooks.json` (was 60; the ceiling
+  only bounds a single type-check and a too-low value kills a cold `tsc` run mid-check). The file
+  is now gated by `check-lockstep` (structured registration parity). (B-05, WSD-009)
+- **Enforcement matrix** (`docs/enforcement-surfaces.md`) gains three capability rows — build/
+  type-check feedback, Boy Scout stop-nudge, audit trail — recording the B-03 live finding that
+  Copilot does **not** consume `postToolUse` `additionalContext` (so `post-write` feedback is
+  not surfaced to the Copilot model, though `audit-trail`'s file side-effect still fires). (B-08)
+
+_Maintainer-only (does not ship): `check-lockstep.ps1` now enumerates the union of both repos for
+IDENTICAL-class files (B-04), computes the shared-skill set instead of a hand-kept list (B-06), and
+gates `hooks.json`; covered by a new `CheckLockstep.Tests.ps1` self-test._
+
 ## 0.25.1 — 2026-07-04 (P1 correctness + enforcement-honesty fixes)
 
 > Fable-exit backlog P1 band (`BACKLOG.md` B-01/B-02/B-03). A shipped hook that crashed on a
