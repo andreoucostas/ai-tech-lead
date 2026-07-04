@@ -229,7 +229,7 @@ Seven subagents live in `.claude/agents/` — the six user-facing ones are mirro
 | `bloat-radar` | Flags speculative abstractions, shallow wrappers, parallel implementations, comment debris, trivial tests. Read-only. | `/review` Step 1; ad-hoc |
 | `test-critic` | Audits the test changes for integrity — would each test fail if the code under test broke? Flags over-mocking, tautological/weak assertions, missing paths, nondeterminism. Read-only. | `/review` Step 1; ad-hoc |
 | `debt-radar` | Maps a file path or feature area to TECH_DEBT entries; suggests trojan-horse bundles. Read-only. | `/review` Step 1; `/feature` Step 1; ad-hoc |
-| `bootstrap-pass` | Runs a single bootstrap analysis pass (A1–A7) in isolation. Read-only. | `/bootstrap` Phase 1 (seven in parallel) |
+| `bootstrap-pass` | Runs a single bootstrap analysis pass (A1–A8) in isolation. Read-only. | `/bootstrap` Phase 1 (eight in parallel) |
 
 Subagents run in isolated context — analysis chatter does not pollute the parent's main conversation. The parent receives one structured message per subagent and synthesises.
 
