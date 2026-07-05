@@ -99,6 +99,7 @@ Run in isolated context; return a structured findings table to the parent. Model
 | `bootstrap-pass` | One analysis pass (A1–A7) during `/bootstrap` | inherit (strong) |
 | `security-auditor` | XSS / auth / secrets scan; feeds `/security-review` | inherit (strong) |
 | `solid-check` | Audits the diff against the five SOLID principles (literal SOLID is mandatory here); feeds `/review` | inherit (strong) |
+| `test-critic` | Test-integrity audit — would each test go red if the code under test broke? Catches over-mocking and tautological/weak assertions; feeds `/review` | inherit (strong) |
 | `convention-check` | Diff vs CLAUDE.md > Conventions; feeds `/review` | **haiku** |
 | `bloat-radar` | Over-abstraction counterweight to Boy Scout; feeds `/review` | **haiku** |
 | `debt-radar` | Maps files/areas to TECH_DEBT entries (Trojan Horse) | **haiku** |

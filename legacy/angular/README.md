@@ -74,6 +74,8 @@ docs/playbook.md                    → methodology guide
 
 All of these files should be committed to version control — they're shared team configuration, not local settings.
 
+> **Hook prerequisite — the shell wired in `.claude/settings.json` must exist on every developer machine.** As shipped, Claude Code hooks run via **PowerShell 7 (`pwsh`)**, and `settings.json` is committed team config — every clone inherits it. A machine without the wired shell gets **no hooks, silently**: no write guard, no build feedback, no audit trail (the CLAUDE.md rules still instruct the model, but nothing enforces at write time). Either install PowerShell 7 on every dev machine — macOS and Linux included — or rewire once at install time: `scripts/install.sh` switches the hooks to the `.sh` (bash) twins when the installing box lacks pwsh, and `scripts/install.ps1` falls back to Windows PowerShell 5.1 (`settings.windows.json`). Whichever variant your team commits becomes the team-wide prerequisite.
+
 ### 2. Bootstrap (greenfield) **or** Adopt (existing setup)
 
 If the repo has **no AI tooling yet**, run:
@@ -130,7 +132,7 @@ Each consumer repo records the template version it was last synced from. Two loc
 - A human-readable HTML comment at the top of `CLAUDE.md`
 - A machine-readable `.claude/framework-version.json`
 
-When you next pull template updates into your repo, bump both. CI tooling and a future `/framework-update` command read the JSON file to detect drift between your repo and the latest template version. If the version stamps disagree, treat the JSON file as authoritative.
+To pull template updates, re-run the installer from a fresh template checkout against your repo (`bash scripts/install.sh /path/to/your-repo` or `pwsh scripts/install.ps1 /path/to/your-repo`) — it detects the existing `.claude/framework-version.json` and switches to **update mode**: framework machinery (hooks, commands, skills, scripts) is refreshed and the JSON stamp comes along, while consumer-owned content (CLAUDE.md, TECH_DEBT.md, …) is left untouched. Bump the CLAUDE.md header comment yourself as part of the update commit. CI tooling reads the JSON file to detect drift between your repo and the latest template version. If the version stamps disagree, treat the JSON file as authoritative.
 
 ## What's in the box
 

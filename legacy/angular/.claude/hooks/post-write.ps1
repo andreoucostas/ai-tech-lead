@@ -1,4 +1,5 @@
-﻿# PostToolUse hook -- incremental tsc --noEmit after a file write/edit on .ts files in src/.
+﻿# PostToolUse hook -- incremental tsc --noEmit after a write/edit on build-relevant files
+# (.ts sources under src/ + tsconfig*.json anywhere -- B-19a).
 # Tool surfaces handled:
 #   Claude Code (CLI + VS Code extension)  -- tool_name in {Write,Edit}; path at tool_input.file_path
 #   GitHub Copilot (cloud agent + CLI)     -- toolName  in {edit,create}; path at toolArgs.filePath
@@ -55,11 +56,16 @@ if ([string]::IsNullOrEmpty($filePath) -and $env:CLAUDE_FILE_PATH) {
 }
 
 if ([string]::IsNullOrEmpty($filePath)) { exit 0 }
-if ($filePath -notlike '*.ts') { exit 0 }
-
-# Match the bash hook's scope: only files under src/.
+# Trigger on what `tsc --noEmit` can actually validate (B-19a): .ts sources under src/, plus any
+# tsconfig*.json (it drives the type-check and typically lives OUTSIDE src/, so it bypasses the
+# src/ gate). Deliberately NOT angular.json/package.json: tsc cannot validate those -- a trigger
+# there would run a check that cannot catch the breakage.
 $normalized = $filePath -replace '\\', '/'
-if ($normalized -notmatch '/src/') { exit 0 }
+if ($normalized -notmatch '(^|/)tsconfig[^/]*\.json$') {
+    if ($filePath -notlike '*.ts') { exit 0 }
+    # Match the bash hook's scope: only .ts files under src/.
+    if ($normalized -notmatch '/src/') { exit 0 }
+}
 
 # Discover the workspace root: walk up from the written file to the nearest ancestor holding
 # an Angular tsconfig. Supports root, ClientApp/, and Nx apps/* layouts -- the old root-cwd
