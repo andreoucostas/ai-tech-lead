@@ -3,6 +3,28 @@
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
 > Architecture decisions live in `docs/architecture-decisions.md`.
 
+## 0.25.3 — 2026-07-05 (B-14: port audit-trail PostToolUse hook to Angular)
+
+> Ports the `audit-trail` PostToolUse hook from the dotnet template, closing a parity gap.
+> Every AI-assisted file write is now logged to `.claude/ai-audit.log` on both stacks.
+
+### Added
+- **`audit-trail` PostToolUse hook** (`.claude/hooks/audit-trail.ps1` + `.claude/hooks/audit-trail.sh`).
+  Appends a tab-delimited ISO-8601-UTC / git-branch / repo-relative-file-path entry to
+  `.claude/ai-audit.log` on every AI-assisted Write/Edit (Claude Code and Copilot surfaces).
+  Angular-specific build artifacts (`node_modules`, `dist`, `.angular`, `coverage`) are skipped.
+  The log itself is always skipped to prevent recursion. (B-14)
+- **`.claude/ai-audit.log` seed file.** Tracks AI-assisted file changes; committed to version control
+  with a 5-line header. (B-14)
+- **`tests/hooks/AuditTrail.Tests.ps1`** (byte-identical to dotnet twin). Behavioral tests for
+  audit-trail: append, self-skip, Copilot surface parity, tab-delimited 3-field format. (B-14)
+
+### Changed
+- **`.claude/settings.json`** — `PostToolUse` `Write|Edit` block gains `audit-trail.ps1` as second hook. (B-14)
+- **`.github/hooks/hooks.json`** — `postToolUse` array gains `audit-trail` entry (`timeoutSec: 10`). (B-14)
+
+---
+
 ## 0.25.2 — 2026-07-04 (P2 gate-honesty: fix silent-drift gates + a twin routing bug)
 
 > Fable-exit backlog P2 band (`BACKLOG.md` B-04…B-09). Gates that passed while the drift they

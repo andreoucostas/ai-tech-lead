@@ -32,6 +32,12 @@
         "bash": ".claude/hooks/post-write.sh",
         "powershell": ".claude\\hooks\\post-write.ps1",
         "timeoutSec": 120
+      },
+      {
+        "type": "command",
+        "bash": ".claude/hooks/audit-trail.sh",
+        "powershell": ".claude\\hooks\\audit-trail.ps1",
+        "timeoutSec": 10
       }
     ]
   }

@@ -101,7 +101,7 @@ Recipes live as auto-discovered **skills**, available to both Claude Code (`.cla
 - `enforce-architecture` — wire the deterministic DIP/layering CI gate (dependency-cruiser)
 - `enforce-standards` — make `@ts-ignore`, `eslint-disable`, and focused/skipped specs build-breaking (ESLint `noInlineConfig` + rule severities)
 
-**Registers**: [TECH_DEBT.md](./TECH_DEBT.md) tracks delivery debt. [SECURITY_FINDINGS.md](./SECURITY_FINDINGS.md) tracks security findings separately with remediation SLAs (Critical = 7 days, High = 30 days) — do not merge them. Security findings come from `/security-review` and the `security-auditor` agent.
+**Registers**: [TECH_DEBT.md](./TECH_DEBT.md) tracks delivery debt. [SECURITY_FINDINGS.md](./SECURITY_FINDINGS.md) tracks security findings separately with remediation SLAs (Critical = 7 days, High = 30 days) — do not merge them. Security findings come from `/security-review` and the `security-auditor` agent. AI-assisted file changes are appended to `.claude/ai-audit.log` automatically by the PostToolUse hook.
 
 ---
 

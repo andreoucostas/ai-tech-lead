@@ -1,0 +1,5 @@
+# AI-assisted development audit log
+# Format: ISO-8601-UTC TAB git-branch TAB file-path
+# Appended automatically by .claude/settings.json PostToolUse hook on every Write/Edit.
+# Retain this file in version control. Do not edit manually.
+# Cross-reference with git log to identify AI-assisted commits.
