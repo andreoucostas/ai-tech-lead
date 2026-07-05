@@ -3,6 +3,52 @@
 > Framework-level changes for the .NET template. Per-stack Angular changes live in [`ai-tech-lead-angular/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-angular/blob/master/CHANGELOG.md).
 > Architecture decisions live in `docs/architecture-decisions.md`.
 
+## 0.25.4 — 2026-07-05 (small-items sweep: generator twin parity, broader build triggers, doc honesty)
+
+> Clears four backlog small items (B-19, B-24, B-28, B-30) in dual-repo lockstep: the
+> architecture-HTML generator twins now emit byte-identical output, `post-write` triggers on
+> build-relevant project/config files (not just sources), and the README + enforcement docs
+> close three honesty gaps.
+
+### Fixed
+- **`scripts/build-architecture-html.ps1` output diverged from the `.sh` twin** (B-28): the head
+  here-string lacked a trailing newline (joining the opening `<script>` tag onto the first
+  markdown line), each twin stamped its own filename into the GENERATED comment, and the PS
+  content cmdlets wrote host EOLs (+ BOM on PS 5.1) where bash writes raw LF — so whoever
+  regenerated last "won", producing spurious `architecture.html` diffs between the Windows
+  maintainer and the linux CI leg. Both twins now emit byte-identical output (neutral `{sh,ps1}`
+  generator stamp, LF-only, no BOM, trailing newline). New
+  `tests/hooks/BuildArchitectureHtml.Tests.ps1` locks the parity (red-before-green verified:
+  4 failures against the pre-fix scripts, 5/5 green after).
+- **`docs/ARCHITECTURE.md` §5 agents table listed 6 of the 7 shipped agents** — `test-critic`
+  was missing (B-30). Row added; `architecture.html` regenerated with the fixed generator.
+- **`docs/enforcement-surfaces.md` still marked the audit trail "dotnet only (B-14)"** — stale
+  since v0.25.3 shipped the Angular port. Corrected to "both stacks since v0.25.3".
+
+### Changed
+- **`post-write` triggers on build-relevant files, not just `.cs`** (B-19a): the filter now
+  accepts `.cs|.csproj|.sln|.props|.targets|.razor|.cshtml` in both twins — everything
+  `dotnet build` actually consumes — so a broken project/build-file edit surfaces a build
+  failure instead of silence. Throttle and surface routing unchanged; extensions the build
+  cannot validate stay excluded by design (a triggered build can't catch their breakage).
+- **README "Framework versioning" points at the installer's update mode** instead of promising
+  a future `/framework-update` command (B-19b): `install.sh/.ps1` already detect an existing
+  `.claude/framework-version.json` and refresh framework machinery without touching
+  consumer-owned content.
+- **Boy Scout stop-nudge dedup semantics documented** in `docs/enforcement-surfaces.md` (B-19c):
+  the sorted finding set is hashed per machine; an unchanged set is silenced on later fires
+  (silence = already flagged, **not** resolved), and any change re-surfaces the full set.
+
+### Added
+- **README hook-prerequisite note** (B-24): the shell wired in the committed
+  `.claude/settings.json` (pwsh as shipped) must exist on **every** developer machine — a
+  machine without it gets no Claude Code hooks, silently. The installers' per-box fallbacks
+  (bash twins via `install.sh`, Windows PowerShell 5.1 via `install.ps1`) are documented
+  alongside, with the caveat that whichever variant the team commits becomes the team-wide
+  prerequisite.
+
+---
+
 ## 0.25.3 — 2026-07-05 (B-14: audit-trail hook lockstep + check-lockstep exception removal)
 
 > Ports the `audit-trail` PostToolUse hook to Angular (B-14), completing dual-repo lockstep.

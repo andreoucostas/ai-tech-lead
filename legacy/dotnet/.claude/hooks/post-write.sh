@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# PostToolUse hook — incremental dotnet build after a file write/edit on .cs files.
+# PostToolUse hook — incremental dotnet build after a write/edit on build-relevant files
+# (.cs sources + MSBuild/Razor inputs: .csproj/.sln/.props/.targets/.razor/.cshtml — B-19a).
 # Tool surfaces handled:
 #   Claude Code (CLI + VS Code extension)  — tool_name in {Write,Edit}; path at tool_input.file_path
 #   GitHub Copilot (cloud agent + CLI)     — toolName  in {edit,create}; path at toolArgs.filePath (object, not JSON string)
@@ -64,9 +65,11 @@ fi
 [ -z "$file_path" ] && file_path="${CLAUDE_FILE_PATH:-}"
 [ -z "$file_path" ] && exit 0
 
-# Only build for .cs files.
+# Trigger on what `dotnet build` actually consumes (B-19a): sources plus MSBuild/Razor inputs.
+# A broken .csproj/.sln/.props/.targets edit breaks the build as surely as a .cs edit; extensions
+# the build doesn't read stay excluded -- a build cannot catch their breakage.
 case "$file_path" in
-  *.cs) ;;
+  *.cs|*.csproj|*.sln|*.props|*.targets|*.razor|*.cshtml) ;;
   *) exit 0 ;;
 esac
 

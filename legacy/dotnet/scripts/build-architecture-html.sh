@@ -27,7 +27,7 @@ else sha="nohash"; fi
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${title}</title>
-<!-- GENERATED from docs/ARCHITECTURE.md by scripts/build-architecture-html.sh — do not edit by hand. -->
+<!-- GENERATED from docs/ARCHITECTURE.md by scripts/build-architecture-html.{sh,ps1} — do not edit by hand. -->
 <!-- src-sha1: ${sha} -->
 <style>
   :root { color-scheme: light dark; }
