@@ -3,6 +3,20 @@
 > Framework-level changes for the .NET template. Per-stack Angular changes live in [`ai-tech-lead-angular/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-angular/blob/master/CHANGELOG.md).
 > Architecture decisions live in `docs/architecture-decisions.md`.
 
+## 0.25.3 — 2026-07-05 (B-14: audit-trail hook lockstep + check-lockstep exception removal)
+
+> Ports the `audit-trail` PostToolUse hook to Angular (B-14), completing dual-repo lockstep.
+> Removes the three `check-lockstep.ps1` exceptions that permitted the parity gap.
+> No dotnet behavior change — the hook was already present; this is a lockstep housekeeping release.
+
+### Changed
+- **`check-lockstep.ps1` audit-trail exceptions removed.** The three exceptions permitting
+  `audit-trail.ps1/.sh` to be dotnet-only and the dotnet-only `hooks.json` `audit-trail` registration
+  are now removed — Angular carries the hook and both registrations, so the gate enforces full parity
+  with no special-casing. (B-14)
+
+---
+
 ## 0.25.2 — 2026-07-04 (P2 gate-honesty: fix silent-drift gates + a twin routing bug)
 
 > Fable-exit backlog P2 band (`BACKLOG.md` B-04…B-09). Gates that passed while the drift they
