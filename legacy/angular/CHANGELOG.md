@@ -3,6 +3,21 @@
 > Framework-level changes for the Angular template. Per-stack `.NET` changes live in [`ai-tech-lead-dotnet/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md).
 > Architecture decisions live in `docs/architecture-decisions.md`.
 
+## 0.25.5 — 2026-07-06 (B-31: restore audit trail on the PS-5.1 fallback path)
+
+> Hotfix for a gap the B-14 port missed, found by an adversarial review during merge planning.
+
+### Fixed
+- **`settings.windows.json` never registered `audit-trail.ps1`** — the v0.25.3 port wired
+  `.claude/settings.json` and `.github/hooks/hooks.json` but missed the Windows PowerShell 5.1
+  fallback file, so consumers installed via `install.ps1`'s no-pwsh fallback got **no audit log**
+  while the CHANGELOG claimed one (the same registration-gap class dotnet itself fixed in
+  v0.14.x). The `audit-trail.ps1` PostToolUse registration is now present. The maintainer
+  lockstep gate gained a `settings.json`/`settings.windows.json` registration-parity check so
+  this class cannot ship silently again. (B-31)
+
+---
+
 ## 0.25.4 — 2026-07-05 (small-items sweep: generator twin parity, broader type-check triggers, doc honesty)
 
 > Clears four backlog small items (B-19, B-24, B-28, B-30) in dual-repo lockstep: the
