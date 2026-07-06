@@ -3,6 +3,15 @@
 > Framework-level changes for the .NET template. Per-stack Angular changes live in [`ai-tech-lead-angular/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-angular/blob/master/CHANGELOG.md).
 > Architecture decisions live in `docs/architecture-decisions.md`.
 
+## 0.25.5 — 2026-07-06 (B-31: lockstep hotfix release — no dotnet behavior change)
+
+> Angular's `settings.windows.json` was missing the `audit-trail.ps1` registration (a gap the
+> v0.25.3 port missed); fixed there. No dotnet change — this release keeps the version stamps in
+> lockstep, and the maintainer gate now checks `settings*.json` registration parity across repos
+> so the class cannot recur silently. (B-31)
+
+---
+
 ## 0.25.4 — 2026-07-05 (small-items sweep: generator twin parity, broader build triggers, doc honesty)
 
 > Clears four backlog small items (B-19, B-24, B-28, B-30) in dual-repo lockstep: the
