@@ -3,7 +3,7 @@ description: "Bug-fix workflow: diagnose root cause first, write the failing reg
 argument-hint: "[bug description or failing test]"
 ---
 
-Diagnose and fix a bug in this .NET codebase. Every decision must comply with the conventions and patterns in CLAUDE.md.
+<!-- @stack:intro -->
 
 ## Input
 $ARGUMENTS
@@ -27,7 +27,7 @@ Before touching any production code:
 - Do not refactor unrelated code in the same change (that's what `/refactor` is for)
 
 ### Step 4 — Verify
-Run `dotnet build`, `dotnet test` (the regression test must pass and nothing else should break), and `dotnet format`.
+<!-- @stack:verify-cmds -->
 
 ### Step 5 — Boy Scout (blast radius only)
 Apply Boy Scout Rule (CLAUDE.md > Boy Scout Rule) to files within the blast radius only. Do not boy-scout unrelated files in a bug fix.

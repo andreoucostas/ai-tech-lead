@@ -1,0 +1,1 @@
+Run `ng build`, `ng test --watch=false --browsers=ChromeHeadless` (the regression test must pass and nothing else should break), and `ng lint` (if configured).
