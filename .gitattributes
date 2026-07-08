@@ -1,0 +1,7 @@
+# ai-tech-lead authoring repo — deterministic LF everywhere. The composer (scripts/build.*)
+# emits LF; the fidelity gate compares EOL-normalized. Keeping the whole tree LF avoids CRLF
+# churn between the Windows maintainer box and CI. (This governs THIS repo's working tree; the
+# consumer-facing .gitattributes that ships in each dist lives at src/core/.gitattributes.)
+* text=auto eol=lf
+*.sh text eol=lf
+*.ps1 text eol=lf
