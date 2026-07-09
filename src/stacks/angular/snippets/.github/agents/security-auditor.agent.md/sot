@@ -1,0 +1,1 @@
+The canonical definition of this agent — its process, checklist, severity model, and exact output format — lives in [`.claude/agents/security-auditor.md`](../../.claude/agents/security-auditor.md). It is the single source of truth, shared with Claude Code. **Read that file and follow it exactly.**

@@ -1,0 +1,1 @@
+description: Audits a .NET diff against the five SOLID principles. This codebase mandates literal SOLID (an interface for every injected service). Returns a structured findings table — does not modify files. Used by `/review` and ad-hoc SOLID audits.

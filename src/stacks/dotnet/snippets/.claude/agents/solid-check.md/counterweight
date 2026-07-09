@@ -1,0 +1,1 @@
+**Counterweight note:** a single-implementation interface on an **injected service is REQUIRED by DIP** — never report it as bloat. `bloat-radar` handles over-abstraction on non-service types; you handle SOLID compliance, including *under*-abstraction (concrete coupling).

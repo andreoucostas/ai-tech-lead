@@ -1,0 +1,1 @@
+2. Scope to `git diff --name-only` (working tree + staged), `*.ts`; skip `*.spec.ts`, `*.d.ts`. Read each in-scope file once; `Grep` across the project to confirm cross-file facts (e.g., is a newly injected concrete service missing an abstraction/token?).

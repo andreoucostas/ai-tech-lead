@@ -1,0 +1,2 @@
+  design decision — choosing a pattern, a library, a boundary, a data model, a trade-off.
+  Appends the full ADR to docs/architecture-decisions.md and adds a one-line index entry to CLAUDE.md.

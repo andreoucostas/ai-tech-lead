@@ -1,0 +1,3 @@
+  design decision — choosing a state-management approach, a library, a module boundary, a routing
+  strategy, a trade-off. Appends the full ADR to docs/architecture-decisions.md and adds a one-line
+  index entry to CLAUDE.md.

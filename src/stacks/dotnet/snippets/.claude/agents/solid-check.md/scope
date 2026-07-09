@@ -1,0 +1,1 @@
+2. Scope to `git diff --name-only` (working tree + staged), `*.cs`; skip `*.g.cs`, `*.Designer.cs`, `obj/`, `bin/`. Read each in-scope file once; `Grep` across the project to confirm cross-file facts (e.g., is a newly injected concrete service missing an interface?).

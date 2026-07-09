@@ -1,0 +1,5 @@
+- **S (SRP)** — `medium`: a class with more than ~5 injected dependencies, or one mixing orchestration + data access + presentation; a controller action carrying logic beyond delegating to a service.
+- **O (OCP)** — `low`: a `switch`/`if` over a type/enum code with 3+ arms that recurs across the codebase — should be polymorphism. Do **not** flag a seam built before the third case appears (that's future-proofing — `bloat-radar`'s job).
+- **L (LSP)** — `high`: `throw new NotImplementedException()` / `NotSupportedException()` inside an interface implementation or override; an override that strengthens preconditions or returns null where the base contract forbids it.
+- **I (ISP)** — `medium`: an interface with many unrelated members; an implementer that throws or no-ops members it doesn't need.
+- **D (DIP)** — `high`: a service/behaviour dependency taken as a **concrete** type (constructor parameter, field, or `new`-ed) instead of an interface; a higher layer referencing a concrete lower-layer type. **Exempt**: DTOs, entities, value objects, `Options` records, enums — data, not services.

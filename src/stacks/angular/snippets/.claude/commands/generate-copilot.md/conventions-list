@@ -1,0 +1,8 @@
+   - **Architecture** — standalone components, inject(), lazy loading, barrel-file rules
+   - **SOLID** — abstraction/token per injected service (DIP); one line each for SRP/OCP/LSP/ISP
+   - **Component Design** — OnPush, smart/dumb split, control flow syntax, signals preference
+   - **State Management** — local vs shared, no prop drilling, server state
+   - **RxJS** — async pipe preference, takeUntilDestroyed, no nested subscribes, error handling
+   - **API / HTTP** — typed services, interceptors, environment URLs
+   - **Typing** — strict, no `any`, interfaces over classes
+   - **Styling** — encapsulation, scoping, global rules

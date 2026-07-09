@@ -1,0 +1,1 @@
+description: OWASP-style security auditor for this .NET codebase. Scans changed files for injection, auth/authz gaps, secrets, sensitive-data exposure, weak crypto, and financial/concurrency (TOCTOU, decimal-precision) risks; returns a structured findings table. Read-only.

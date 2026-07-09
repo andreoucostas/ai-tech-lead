@@ -1,0 +1,9 @@
+   - **Naming** — one line per rule
+   - **Architecture** — dependency direction + layering rules only
+   - **SOLID** — interface per injected service (DIP); one line each for SRP/OCP/LSP/ISP
+   - **Dependency Injection** — lifetimes + registration pattern
+   - **Data Access** — query placement, AsNoTracking, repository usage
+   - **API Design** — controller thinness, DTO separation, validation
+   - **Async** — CancellationToken, no async void / sync-over-async
+   - **Null Handling** — nullable enabled, no unjustified `!`
+   - **Logging** — structured only, no string interpolation
