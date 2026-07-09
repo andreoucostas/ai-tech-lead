@@ -1,0 +1,73 @@
+name: CI
+
+# Repo-scale docs-sync-check for the authoring repo: proves src/ -> dist/ freshness on every
+# push/PR (rebuild + diff must be empty), that every dist passes its own template-checks and
+# parse gates (validate-dist), that dist still matches the frozen v0.25.5 baseline
+# (fidelity-check, strict — drop this step only when a release deliberately changes shipped
+# behaviour and moves the baseline), and that the hook test suites pass inside each dist.
+#
+# windows leg drives the .ps1 twins; linux leg drives the .sh twins — each leg rebuilds with
+# its own twin and diffs against the committed golden dist, so composer twin divergence fails
+# one of the two legs. fetch-depth: 0 because fidelity-check materialises the pre-restructure
+# tag from history.
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compose dists (build.ps1 twin)
+        run: |
+          pwsh -NoProfile -File scripts/build.ps1 dotnet
+          pwsh -NoProfile -File scripts/build.ps1 angular
+      - name: Dist freshness (rebuild == committed golden dist)
+        run: |
+          git add -A dist
+          git diff --cached --exit-code --stat -- dist
+      - name: Validate dists (parse gates + per-dist template-checks)
+        run: |
+          pwsh -NoProfile -File scripts/validate-dist.ps1 dotnet
+          pwsh -NoProfile -File scripts/validate-dist.ps1 angular
+      - name: Fidelity vs frozen baseline (strict)
+        run: |
+          pwsh -NoProfile -File scripts/fidelity-check.ps1 dotnet
+          pwsh -NoProfile -File scripts/fidelity-check.ps1 angular
+      - name: Hook test suites per dist
+        run: |
+          pwsh -NoProfile -File dist/dotnet/tests/hooks/Invoke-HookTests.ps1
+          pwsh -NoProfile -File dist/angular/tests/hooks/Invoke-HookTests.ps1
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compose dists (build.sh twin)
+        run: |
+          bash scripts/build.sh dotnet
+          bash scripts/build.sh angular
+      - name: Dist freshness (rebuild == committed golden dist)
+        run: |
+          git add -A dist
+          git diff --cached --exit-code --stat -- dist
+      - name: Validate dists (parse gates + per-dist template-checks)
+        run: |
+          bash scripts/validate-dist.sh dotnet
+          bash scripts/validate-dist.sh angular
+      - name: Fidelity vs frozen baseline (strict)
+        run: |
+          bash scripts/fidelity-check.sh dotnet
+          bash scripts/fidelity-check.sh angular
+      - name: Hook test suites per dist (exercises the .sh twins via bash)
+        run: |
+          pwsh -NoProfile -File dist/dotnet/tests/hooks/Invoke-HookTests.ps1
+          pwsh -NoProfile -File dist/angular/tests/hooks/Invoke-HookTests.ps1

@@ -1,2 +1,2 @@
-# Phase 2: composed output is a throwaway build artifact; Phase 3 commits golden dist.
-dist/
+# Phase 3+: dist/ is the committed golden output (rebuilt + diffed in CI). Nothing to ignore
+# yet; keep the file as the anchor for future authoring-repo ignores.

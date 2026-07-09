@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Phase 2/3 fidelity gate (bash): compare dist/<mode> to the FROZEN baseline, EOL-normalized.
-# The baseline is the full 138-file legacy/<mode> tree captured at the `pre-restructure` tag
-# (== the freeze-v0.25.5 content) — NOT the working legacy/ dir, which shrinks as files are
-# extracted during Phase 2. Reports match / mismatch / missing-in-dist / extra-in-dist; this is
-# the live Phase-2 progress meter and becomes the Phase-3 zero-behaviour-change proof.
+# Fidelity gate (bash twin; .ps1 twin: fidelity-check.ps1): compare dist/<mode> to the FROZEN
+# baseline, EOL-normalized. The baseline is the full 138-file legacy/<mode> tree captured at the
+# `pre-restructure` tag (== the freeze-v0.25.5 content). Reports match / mismatch /
+# missing-in-dist / extra-in-dist. Phase 3 semantics: STRICT — any mismatch, missing, or extra
+# file fails (Phase 2's "missing = not-yet-extracted" tolerance is over; a composer regression
+# that silently drops files must fail this gate). This is the zero-behaviour-change proof.
 #   Usage: fidelity-check.sh {dotnet|angular} [baseline-ref]   (baseline-ref default: pre-restructure)
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -24,7 +25,7 @@ BASE="$REF/legacy/$MODE"
 match=0; mism=0; missing=0; extra=0
 while IFS= read -r rel; do
   d="$DIST/$rel"; b="$BASE/$rel"
-  if [ ! -f "$d" ]; then missing=$((missing+1)); continue; fi
+  if [ ! -f "$d" ]; then missing=$((missing+1)); echo "MISSING  $rel"; continue; fi
   if diff -q <(tr -d '\r' < "$b") <(tr -d '\r' < "$d") >/dev/null 2>&1; then
     match=$((match+1))
   else
@@ -38,5 +39,5 @@ done < <(cd "$DIST" && find . -type f | sed 's#^\./##')
 
 total=$(cd "$BASE" && find . -type f | wc -l)
 echo "--- $MODE @ $REFSPEC: match=$match mismatch=$mism missing=$missing extra=$extra (of $total)"
-# Non-zero only on real drift (mismatch/extra). During Phase 2, missing = not-yet-extracted.
-[ "$mism" -eq 0 ] && [ "$extra" -eq 0 ]
+# STRICT: mismatch, missing, and extra all fail (Phase 3+).
+[ "$mism" -eq 0 ] && [ "$extra" -eq 0 ] && [ "$missing" -eq 0 ]
