@@ -1,0 +1,6 @@
+- `add-endpoint` — add a new HTTP API endpoint end-to-end (domain → service → DTO → validator → controller → integration test)
+- `add-entity` — add a new EF Core entity with configuration and migration review
+- `register-service` — register a new service in DI with the right lifetime
+- `add-tests` — add unit/integration tests following project patterns (xUnit + `WebApplicationFactory`)
+- `perf` — scan a file, directory, or the whole repo for ~50 performance anti-patterns; produces tiered findings (Critical / Moderate / Info) with file locations and TECH_DEBT.md integration
+- `dependency-audit` — scan for vulnerable/deprecated/outdated NuGet packages and set up automated dependency scanning (Dependabot or Renovate)

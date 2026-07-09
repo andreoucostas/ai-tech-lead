@@ -1,0 +1,2 @@
+8. Split fat methods (>30 lines) into focused private methods
+9. Missing unit tests for public methods you're modifying

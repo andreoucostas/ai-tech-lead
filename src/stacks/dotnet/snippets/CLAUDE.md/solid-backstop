@@ -1,0 +1,1 @@
+**Deterministic backstop**: dependency *direction* is enforced in CI by architecture tests (**NetArchTest** — e.g. Domain must not reference Infrastructure). The `solid-check` agent covers the semantic principles per diff and is run by `/review`. Scaffold the NetArchTest gate with the `enforce-architecture` skill.

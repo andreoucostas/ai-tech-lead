@@ -1,0 +1,4 @@
+1. Domain/model layer changes + tests
+2. Service/application layer changes + tests
+3. API/controller layer changes + tests
+4. Integration test covering the full flow

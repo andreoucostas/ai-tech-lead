@@ -1,0 +1,6 @@
+4. Unused TypeScript imports and unused RxJS operator imports
+5. Commented-out code or template blocks (more than 1 line — version control preserves them)
+6. Unreferenced private fields, methods, or local variables that `tsc`/lint flags
+7. Unused `@Input` / `@Output` properties
+
+> **Not auto-applied: `ChangeDetectionStrategy.OnPush`.** Switching a component to `OnPush` is a semantic change, not a cleanup — it can silently break views that mutate inputs in place, rely on default change detection ticking from `setInterval`/Promises/third-party callbacks, or expect re-render on ambient state changes. Treat it as an explicit, tested change when the component is the primary target, not a drive-by edit. New components scaffolded from skills still default to `OnPush` (see `docs/defaults.md`).

@@ -1,0 +1,6 @@
+- `add-component` — add a new Angular feature component end-to-end
+- `add-service` — add an HTTP / business-logic / signal-store service
+- `add-lazy-route` — add a lazy-loaded route with optional guards/resolvers
+- `add-signal-store` — add a signal-based shared-state store
+- `add-tests` — add specs following project patterns (TestBed + `HttpTestingController`, harnesses, store state-transition tests)
+- `dependency-audit` — scan for vulnerable/deprecated/outdated npm packages and set up automated dependency scanning (Dependabot or Renovate)

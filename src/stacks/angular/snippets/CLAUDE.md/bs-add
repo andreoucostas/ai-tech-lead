@@ -1,0 +1,3 @@
+1. Replace manual `ngOnDestroy` subscription cleanup with `takeUntilDestroyed()`
+2. Replace nested `.subscribe()` with the appropriate RxJS operator
+3. Replace `any` with proper types

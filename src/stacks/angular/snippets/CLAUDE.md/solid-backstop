@@ -1,0 +1,1 @@
+**Deterministic backstop**: module/layer dependency direction is enforced in CI by **dependency-cruiser** (or `eslint-plugin-boundaries`). The `solid-check` agent covers the semantic principles per diff and is run by `/review`. Scaffold it with the `enforce-architecture` skill.

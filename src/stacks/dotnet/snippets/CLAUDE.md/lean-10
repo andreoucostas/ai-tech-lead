@@ -1,0 +1,1 @@
+10. **No re-exports through barrel files unless the barrel already exports adjacent symbols.** Do not grow the public surface for free.

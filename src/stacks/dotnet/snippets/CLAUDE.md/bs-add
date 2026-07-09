@@ -1,0 +1,4 @@
+1. Missing `CancellationToken` propagation
+2. Replace string-interpolated log messages with structured logging
+3. Missing null checks at public boundaries
+4. Missing `.AsNoTracking()` on read-only queries

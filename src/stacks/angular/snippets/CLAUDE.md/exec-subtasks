@@ -1,0 +1,4 @@
+1. Models/interfaces and service layer + tests
+2. State management changes (store/signals/service) + tests
+3. Component implementation + tests
+4. E2E or integration verification

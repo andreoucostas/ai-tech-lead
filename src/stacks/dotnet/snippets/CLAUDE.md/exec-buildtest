@@ -1,0 +1,1 @@
+Run `dotnet build` and `dotnet test` after each subtask. Fix failures before moving on.

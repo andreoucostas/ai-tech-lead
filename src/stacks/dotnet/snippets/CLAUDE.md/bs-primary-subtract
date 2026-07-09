@@ -1,0 +1,3 @@
+10. Inline single-consumer interfaces or abstract bases **that are not DI service seams** (data/internal abstractions only) — per Leanness. Service interfaces are required by SOLID/DIP even with one implementation; never inline those.
+11. Collapse shallow delegate methods that add no behavior beyond calling another component
+12. Single-use private helpers — inline at the call site
