@@ -3,7 +3,7 @@ description: "Tech-debt workflow: match TECH_DEBT.md entries for an area, confir
 argument-hint: "[area or DEBT-ID]"
 ---
 
-Find and fix tech debt in a specific area of this Angular codebase. Read TECH_DEBT.md before starting (CLAUDE.md is already loaded).
+<!-- @stack:intro -->
 
 ## Input
 $ARGUMENTS
@@ -24,7 +24,7 @@ If TECH_DEBT.md is empty or contains only the template placeholder, run a fresh 
 For each item marked "fix now":
 - Verify existing tests pass before touching anything
 - Apply the fix
-- Run `ng build`, `ng test --watch=false --browsers=ChromeHeadless`, and `ng lint` (if configured) after each fix
+<!-- @stack:verify-cmds -->
 - If no tests exist for the affected code, write baseline tests first
 
 ### Step 3 — Update the register

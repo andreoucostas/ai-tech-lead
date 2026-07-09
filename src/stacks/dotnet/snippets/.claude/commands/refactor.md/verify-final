@@ -1,0 +1,1 @@
+Run `dotnet build`, `dotnet test`, and `dotnet format`. All must pass. No behavior should have changed.

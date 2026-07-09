@@ -3,7 +3,7 @@ description: "Behavior-preserving refactor workflow: verify the baseline is gree
 argument-hint: "[target code and goal]"
 ---
 
-Refactor code in this .NET codebase without changing behavior. Every decision must comply with the conventions in CLAUDE.md.
+<!-- @stack:intro -->
 
 ## Input
 $ARGUMENTS
@@ -11,25 +11,25 @@ $ARGUMENTS
 ## Execution
 
 ### Step 1 — Verify starting state
-Run `dotnet build` and `dotnet test`. Both must pass before changing anything. If tests don't exist for the code being refactored, write baseline tests FIRST (see Step 2).
+<!-- @stack:verify-pre -->
 
 ### Step 2 — Baseline / characterization tests (if needed)
 If the code you're refactoring has no test coverage, pin its **current** behavior first — use the `add-tests` skill's **Characterization mode**:
-- Generate the test skeleton, run it once to capture the actual outputs, and assert those (never invent expected values); label them characterization, not correctness.
+<!-- @stack:characterization -->
 - Run them — they must pass against the current code. They are the safety net for the refactor.
-- **Money / ledger / idempotency code: HALT and ask the developer to confirm the captured behavior is correct before trusting it** — a characterization test can otherwise lock in a pre-existing financial bug as "approved."
+<!-- @stack:halt-domain -->
 
 ### Step 3 — Refactor
 - Stay within the blast radius — only change what's needed
 - Make changes incrementally, not all at once
-- After each meaningful change, run `dotnet build` and `dotnet test`
+<!-- @stack:verify-each -->
 - If tests fail, the refactor introduced a behavior change — fix it or revert
 
 ### Step 4 — Boy Scout
 Apply Boy Scout Rule (CLAUDE.md > Boy Scout Rule) to every file you touched.
 
 ### Step 5 — Verify final state
-Run `dotnet build`, `dotnet test`, and `dotnet format`. All must pass. No behavior should have changed.
+<!-- @stack:verify-final -->
 
 ### Step 6 — Wrap up
 @.claude/workflow.md

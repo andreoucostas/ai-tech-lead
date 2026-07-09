@@ -1,0 +1,4 @@
+1. **Domain/model layer** — entities, value objects, enums + unit tests
+2. **Service/application layer** — business logic, interfaces + unit tests
+3. **API/controller layer** — DTOs, validators, controller actions + unit tests
+4. **Integration / end-to-end test** — verify the full flow through the real pipeline via `WebApplicationFactory`, exercising the endpoint as a caller would (real routing, model binding, serialization, middleware), not just the unit

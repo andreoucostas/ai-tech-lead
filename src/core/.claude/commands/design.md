@@ -21,7 +21,7 @@ $ARGUMENTS
 - What's the scope boundary — what is explicitly NOT part of this?
 
 ### Step 2 — Analyse the impact
-- Which layers are affected (models, services, state, components, routing)?
+<!-- @stack:layers -->
 - Which existing files will need to change?
 - Which new files will need to be created?
 - What existing patterns from CLAUDE.md should be reused?
@@ -36,10 +36,9 @@ Identify at least two approaches. For each:
 
 ### Step 4 — Recommend
 State your recommended approach and why. Be specific:
-- Component structure (smart/dumb split)
-- State management approach
+<!-- @stack:structure -->
 - Service layer changes
-- Routing changes
+<!-- @stack:contract -->
 - Test strategy
 
 ### Step 5 — Surface questions
@@ -65,7 +64,7 @@ List anything you're unsure about or that the developer needs to decide before i
 |----------|------|------|--------|
 
 ### Data Flow
-[how data moves: API → service → state → component → template]
+<!-- @stack:dataflow -->
 
 ### Test Strategy
 [what tests are needed and at what level]

@@ -1,0 +1,2 @@
+- **Security**: XSS, data exposure, auth bypass, injection — auditors do not check these.
+- **Test quality**: build on `test-critic`'s findings — confirm the new specs would fail if the code broke, and that error/edge paths are covered. Treat any "would pass against broken code" spec as a high-severity issue.

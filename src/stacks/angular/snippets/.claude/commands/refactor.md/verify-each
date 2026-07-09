@@ -1,0 +1,1 @@
+- After each meaningful change, run `ng build` and `ng test --watch=false --browsers=ChromeHeadless`

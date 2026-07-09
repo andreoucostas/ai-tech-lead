@@ -1,0 +1,1 @@
+- `test-critic` — audits the spec changes for integrity: would each spec actually fail if the code broke? Catches over-mocking, tautological/weak expectations, missing paths, and nondeterminism.

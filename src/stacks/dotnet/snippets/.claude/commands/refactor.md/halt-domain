@@ -1,0 +1,1 @@
+- **Money / ledger / idempotency code: HALT and ask the developer to confirm the captured behavior is correct before trusting it** — a characterization test can otherwise lock in a pre-existing financial bug as "approved."

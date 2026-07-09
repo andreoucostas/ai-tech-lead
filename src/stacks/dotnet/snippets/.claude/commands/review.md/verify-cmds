@@ -1,0 +1,1 @@
+Run `dotnet build` and `dotnet test`. Do not trust that the code being reviewed already passes. Run `dotnet format --verify-no-changes` to catch formatter drift. Record any failures as high-severity issues.

@@ -12,7 +12,7 @@ $ARGUMENTS
 ### Step 1 — Check CLAUDE.md against codebase
 For each section in CLAUDE.md:
 - **Codebase Context**: does it still accurately describe what the app does?
-- **Repository Structure**: do the folders, modules, and dependencies match reality?
+<!-- @stack:repo-structure -->
 - **Conventions**: for each convention, verify it's actually followed. Check for conventions the codebase follows that aren't documented.
 - **Architecture Decisions**: are the decisions still current? Any new ones since last sync?
 - **Common Tasks**: do the step-by-step patterns match the current code?
@@ -43,8 +43,7 @@ If any file has drifted, recommend `/generate-copilot` (for the mirror) and a ma
 - Are there learnings from recent work that should be captured?
 
 ### Step 4 — Check FRAMEWORK-CONTEXT.md drift
-- **Detected Framework Packages**: re-scan `package.json` (and `package-lock.json` for resolved versions). Flag packages newly added, removed, or version-bumped since the last sync. Propose updated table.
-- **Shared Libraries**: for each entry, flag if the consuming repo no longer references it. Do not flag the converse — a package present in the repo but missing from `Shared Libraries` is expected for non-framework dependencies.
+<!-- @stack:fwctx-packages -->
 - **Per-section drift**: re-check Production Architecture, Multi-Tenancy, Dashboard Integration, and Cross-Service Communication against their code signals (the per-section evidence lists in `/bootstrap` Phase 3d-ter). Flag staleness and propose updated text in the report — never rewrite in place; auto-drafted sections may have been maintainer-refined since, and maintainer-written cross-repo context must survive.
 
 ### Step 5 — Check TECH_DEBT.md against codebase

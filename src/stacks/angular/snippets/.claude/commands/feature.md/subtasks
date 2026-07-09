@@ -1,0 +1,4 @@
+1. **Models/interfaces** — data shapes, DTOs, enums + type tests if complex
+2. **Service/state layer** — HTTP services, stores/signals, business logic + unit tests
+3. **Component layer** — smart and dumb components, templates, styles + component tests
+4. **Integration/E2E** — end-to-end verification of the feature flow

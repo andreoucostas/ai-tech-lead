@@ -1,0 +1,1 @@
+Run `ng build`, `ng test --watch=false --browsers=ChromeHeadless`, and `ng lint` (if configured). All must pass. No behavior should have changed.

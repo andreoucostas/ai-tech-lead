@@ -1,0 +1,1 @@
+After each subtask, run `dotnet build`, `dotnet test`, and `dotnet format`. Fix any compilation errors, test failures, or formatting violations before starting the next subtask. Never leave the codebase in a broken state.

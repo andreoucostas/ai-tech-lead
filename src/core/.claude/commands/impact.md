@@ -23,7 +23,7 @@ Compare the old setup (`docs/pre-adoption/` + the pre-adoption ref) with the ins
 - **Baseline**: if `docs/impact/baseline.json` exists (captured by `/adopt`), use it. Else compute it from the pre-adoption ref via a throwaway worktree: `git worktree add --detach <wt> <pre_ref>` → `bash scripts/metrics.sh` inside `<wt>` → `git worktree remove --force <wt>`.
 - **Now**: `bash scripts/metrics.sh` on `HEAD`.
 - Table each metric **Before → Now (Δ)**. Add the `TECH_DEBT.md` item count and the `.claude/ai-audit.log` line count (AI-change traceability).
-- **AI-readiness disclosure (capability, not a gate):** the scorecard JSON now carries a `readiness` block — CI present, measured coverage % (or `null` = *not measured*, distinct from 0%), analyzer/strictness flags, tests present. Surface it as a short "what the agent can safely do here" note, e.g. *coverage low/unmeasured → the agent will characterize before touching legacy code (add-tests Characterization mode); no CI → a pipeline can't be trusted to catch regressions, so reviewer rigour matters more.* **Never block on it** — a weak substrate is exactly where teams most need help; readiness calibrates caution, it does not deny service.
+<!-- @stack:readiness-flags -->
 
 ### 3. Behavioral A/B (Tier 2 — run this; skip only if the runner proves the CLI is absent)
 - **Do not pre-judge whether the agent is installed with a single `command -v copilot`.** The user runs Copilot in VS Code and the Copilot CLI is usually an npm-global install that shows up as `copilot.cmd` on Windows (under `%APPDATA%\npm`), which a bare PATH check frequently misses. The runner below already probes the `.cmd`/`.exe` shims and npm-global dirs for you.

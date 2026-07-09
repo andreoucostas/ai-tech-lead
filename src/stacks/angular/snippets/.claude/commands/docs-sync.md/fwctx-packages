@@ -1,0 +1,2 @@
+- **Detected Framework Packages**: re-scan `package.json` (and `package-lock.json` for resolved versions). Flag packages newly added, removed, or version-bumped since the last sync. Propose updated table.
+- **Shared Libraries**: for each entry, flag if the consuming repo no longer references it. Do not flag the converse — a package present in the repo but missing from `Shared Libraries` is expected for non-framework dependencies.

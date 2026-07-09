@@ -1,0 +1,1 @@
+- `test-critic` — audits the test changes for integrity: would each test actually fail if the code broke? Catches over-mocking, tautological/weak assertions, missing paths, and nondeterminism.

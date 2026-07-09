@@ -19,19 +19,18 @@ In a single message, spawn all five subagents via the `Task` tool:
 - `solid-check` — audits the diff against CLAUDE.md > SOLID (the five principles; literal interface-per-injected-service).
 - `debt-radar` — surfaces TECH_DEBT.md entries touching the changed files (debt-trajectory signal).
 - `bloat-radar` — surfaces speculative abstractions, shallow wrappers, parallel implementations, and comment debris in the diff.
-- `test-critic` — audits the test changes for integrity: would each test actually fail if the code broke? Catches over-mocking, tautological/weak assertions, missing paths, and nondeterminism.
+<!-- @stack:test-critic-line -->
 
 Wait for all five to return their structured output. Use those findings as the spine of the review — do not redo the scans yourself.
 
 ### Step 2 — Verify the build yourself
-Run `dotnet build` and `dotnet test`. Do not trust that the code being reviewed already passes. Run `dotnet format --verify-no-changes` to catch formatter drift. Record any failures as high-severity issues.
+<!-- @stack:verify-cmds -->
 
 ### Step 3 — Apply senior judgement
 The auditors handle pattern-level checks. You handle:
 - **Correctness**: does the code do what it claims to do?
 - **Failure modes**: edge cases, error paths, race conditions, boundary conditions not covered.
-- **Security**: injection, data exposure, auth bypass, sensitive data in logs — auditors do not check these.
-- **Test quality**: build on `test-critic`'s findings — confirm the new tests would fail if the code broke, and that error/edge paths are covered. Treat any "would pass against broken code" test as a high-severity issue.
+<!-- @stack:security-testq -->
 - **Architecture trajectory**: does this move toward or away from the target architecture in CLAUDE.md > Architecture Decisions?
 - **Spec conformance**: if a `specs/<slug>.md` exists for this change, verify the implementation satisfies its acceptance criteria, that **every Task in its checklist is checked off** (flag any still `- [ ]` as incomplete work), and stays within its declared scope. Flag unmet criteria or scope creep as issues.
 

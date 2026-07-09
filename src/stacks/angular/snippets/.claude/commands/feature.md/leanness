@@ -1,0 +1,1 @@
+- **Leanness check** (CLAUDE.md > Leanness): can this fit in existing files? Are you tempted to introduce a new interface / helper / pipe / directive — is there a second consumer in this change-set? If not, defer the abstraction.

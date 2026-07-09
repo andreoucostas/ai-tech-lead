@@ -1,0 +1,1 @@
+- Run `dotnet build`, `dotnet test`, and `dotnet format` after each fix

@@ -1,0 +1,1 @@
+- **Auth / security / money code: HALT and ask the developer to confirm the captured behavior is correct before trusting it** — a characterization spec can otherwise lock in an insecure or wrong behavior as "approved."

@@ -1,0 +1,1 @@
+Run `ng build` and `ng test --watch=false --browsers=ChromeHeadless`. Both must pass before changing anything. If tests don't exist for the code being refactored, write baseline tests FIRST (see Step 2).

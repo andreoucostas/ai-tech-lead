@@ -1,0 +1,1 @@
+Run `ng build` and `ng test --watch=false --browsers=ChromeHeadless`. Do not trust that the code being reviewed already passes. If lint is configured, run `ng lint` too. Record any failures as high-severity issues.
