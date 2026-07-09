@@ -1,0 +1,1 @@
+API → service → state (store/signals) → smart component → dumb component → template (adjust to the actual layers touched).

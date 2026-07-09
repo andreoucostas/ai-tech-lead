@@ -1,0 +1,1 @@
+- Do not introduce new interfaces, helpers, pipes, or wrappers as part of a refactor unless they replace at least as much code as they add.

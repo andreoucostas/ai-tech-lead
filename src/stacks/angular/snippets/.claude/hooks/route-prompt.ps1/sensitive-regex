@@ -1,0 +1,1 @@
+$sensitive = $lc -match '(\bauth\b|authenticat|authori[sz]|login|password|secret|token|credential|session|cookie|\bjwt\b|permission|\brole\b|\bpii\b|personal data|gdpr|encrypt|sanitiz|bypasssecuritytrust|innerhtml|\bxss\b|\bcsrf\b|payment|money|currency)'

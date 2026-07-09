@@ -1,0 +1,1 @@
+This prompt touches a security- or money-sensitive area (auth, payments, balances, ledgers, idempotency, secrets). DORA's evidence is that AI amplifies existing weaknesses fastest here, so this overlay applies ON TOP OF any workflow rails above. Before presenting the change as complete:

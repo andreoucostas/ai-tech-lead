@@ -1,0 +1,4 @@
+2. Never bypass Angular's sanitisation (bypassSecurityTrust*, direct innerHTML) without an explicit, reviewed reason; rely on the framework's escaping.
+3. Keep tokens/secrets out of localStorage where an httpOnly cookie is viable; never log credentials or PII.
+4. Validate and encode at trust boundaries (route params, HTTP responses, user input); guard against XSS/CSRF.
+5. Record anything you could not fully verify in SECURITY_FINDINGS.md.

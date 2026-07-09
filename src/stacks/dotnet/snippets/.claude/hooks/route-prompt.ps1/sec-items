@@ -1,0 +1,3 @@
+2. Monetary logic: use decimal (never double); guard negative amounts, duplicate transaction IDs, precision loss, and timestamp ordering; make state-changing operations idempotent.
+3. Check-then-act on balances/state: ensure read-decide-write is atomic/serialised -- no TOCTOU race.
+4. Record anything you could not fully verify in SECURITY_FINDINGS.md.

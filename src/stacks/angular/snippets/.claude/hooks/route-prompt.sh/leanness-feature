@@ -1,0 +1,2 @@
+- No new interface, abstract class, pipe, or directive unless a second consumer exists in this change-set. State the second consumer if you add one.
+- Wrappers must add behavior. Inline shallow service methods that just call HttpClient.

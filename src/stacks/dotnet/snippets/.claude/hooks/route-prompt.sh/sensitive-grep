@@ -1,0 +1,1 @@
+if echo "$lc" | grep -qE '(payment|balance|ledger|transaction|transfer|\bdebit\b|\bcredit\b|refund|settle|idempotenc|reconcil|\bauth\b|authenticat|authori[sz]|login|password|secret|token|credential|permission|\brole\b|encrypt|decrypt|money|currency)'; then sensitive="1"; fi
