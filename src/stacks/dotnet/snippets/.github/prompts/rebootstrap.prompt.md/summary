@@ -1,0 +1,1 @@
+`.claude/commands/rebootstrap.md` is the single source of truth for this workflow. Follow it exactly: pre-flight check → git log pre-step → re-analysis (A1–A8 scoped to changed areas) → delta synthesis → diff-aware merge with user confirmation per chunk → final report.

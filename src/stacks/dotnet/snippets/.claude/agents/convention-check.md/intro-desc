@@ -1,0 +1,1 @@
+description: Independent convention auditor for a .NET codebase. Invoke when reviewing a diff or a set of files against CLAUDE.md > Conventions. Returns a structured findings table — does not modify files. Useful for `/review` and ad-hoc convention audits.

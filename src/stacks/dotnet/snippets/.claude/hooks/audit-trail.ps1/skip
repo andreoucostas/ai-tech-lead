@@ -1,0 +1,1 @@
+if ($filePath -match 'ai-audit\.log|[\\/]obj[\\/]|[\\/]bin[\\/]') { exit 0 }

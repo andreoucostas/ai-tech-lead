@@ -1,0 +1,1 @@
+`.claude/commands/security-review.md` is the single source of truth. Follow it exactly: dispatch the `security-auditor` subagent (or run its checklist directly if subagents are unavailable) → cross-check against framework auth patterns → apply senior judgement on auth, data flow, concurrency → verify auditor findings → synthesise with verdict APPROVE / REQUEST CHANGES / BLOCK.

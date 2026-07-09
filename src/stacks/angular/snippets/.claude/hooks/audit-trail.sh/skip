@@ -1,0 +1,1 @@
+  *ai-audit.log|*/node_modules/*|*/dist/*|*/.angular/*|*/coverage/*) exit 0 ;;

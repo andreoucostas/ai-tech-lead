@@ -1,0 +1,1 @@
+2. Take the caller's input. It is one of: a file path, a list of paths, or a feature-area name (e.g. `Auth`, `Reporting`, `Billing`).

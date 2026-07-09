@@ -1,0 +1,1 @@
+`.claude/commands/feature.md` is the single source of truth for this workflow. Follow it exactly: design check → ordered subtasks (models/services → state → component → integration) with `ng build` and `ng test` between each → Boy Scout on touched files → self-review against `CLAUDE.md` conventions → present.

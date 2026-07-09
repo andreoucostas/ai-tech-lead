@@ -1,0 +1,1 @@
+description: Scans the diff for bloat — speculative abstractions, single-use interfaces, shallow wrappers, parallel implementations, comment debris, defensive over-coding, trivial tests, dead code, net-LOC density. The counterweight to the Boy Scout add-bias. Read-only.

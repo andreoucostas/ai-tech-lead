@@ -1,0 +1,1 @@
+description: Security review of changed .NET code. OWASP-style scan plus senior judgement (auth, data flow, error envelopes).

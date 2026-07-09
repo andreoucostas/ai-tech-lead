@@ -1,0 +1,1 @@
+- A single-implementation interface on an injected service is **required** by DIP — never report it as bloat.

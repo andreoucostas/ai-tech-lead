@@ -1,0 +1,1 @@
+2. If the caller did not specify files, scope to `git diff --name-only` (working tree + staged) limited to `*.ts`, `*.html`, `*.scss`. Skip `.spec.ts`, `.test.ts`, `.d.ts`.
