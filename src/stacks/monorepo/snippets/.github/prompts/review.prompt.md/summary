@@ -1,0 +1,1 @@
+`.claude/commands/review.md` is the single source of truth. Follow it exactly: correctness & convention compliance → test quality & coverage → verify by running the touched stack's gates yourself (.NET: `dotnet build` and `dotnet test`; Angular: `ng build` and `ng test`) → architecture & debt trajectory → report in the structured format with verdict APPROVE or REQUEST CHANGES.

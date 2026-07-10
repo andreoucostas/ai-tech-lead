@@ -1,0 +1,2 @@
+- `enforce-architecture` — wire the deterministic DIP/layering CI gates (NetArchTest for .NET, dependency-cruiser for Angular)
+- `enforce-standards` — make warnings, skipped tests, and analyzer/lint findings build-breaking (.NET: `TreatWarningsAsErrors` + `.editorconfig` severities; Angular: ESLint `noInlineConfig` + rule severities)

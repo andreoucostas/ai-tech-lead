@@ -1,0 +1,2 @@
+- [ ] `dotnet build && dotnet test` pass locally (if .NET code touched)
+- [ ] `ng build && ng test` pass locally (if Angular code touched)

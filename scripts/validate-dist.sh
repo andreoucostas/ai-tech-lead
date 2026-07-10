@@ -10,14 +10,14 @@
 # Exit 0 = all checks passed. Exit 1 = at least one check failed. Exit 2 = usage error, missing
 # dist, or a required tool (JSON parser / bash / PowerShell host) is unavailable — these are
 # reported as FATAL and never silently skipped.
-#   Usage: validate-dist.sh {dotnet|angular} [dist-root]
+#   Usage: validate-dist.sh {dotnet|angular|monorepo} [dist-root]
 #   dist-root defaults to "dist" resolved under the repo root (scripts/..). Pass an explicit path
 #   to validate a scratch copy instead (e.g. to plant failure fixtures without touching dist/).
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
 MODE="${1:-}"
-case "$MODE" in dotnet|angular) ;; *) echo "usage: validate-dist.sh {dotnet|angular} [dist-root]" >&2; exit 2;; esac
+case "$MODE" in dotnet|angular|monorepo) ;; *) echo "usage: validate-dist.sh {dotnet|angular|monorepo} [dist-root]" >&2; exit 2;; esac
 DISTROOT="${2:-dist}"
 DIST="$DISTROOT/$MODE"
 [ -d "$DIST" ] || { echo "no $DIST — run scripts/build.sh $MODE first" >&2; exit 2; }

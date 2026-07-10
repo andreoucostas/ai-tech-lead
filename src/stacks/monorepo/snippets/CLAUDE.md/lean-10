@@ -1,0 +1,1 @@
+10. **No re-exports through barrel files (`index.ts`) unless the barrel already exports adjacent symbols.** Do not grow the public surface for free. Internal-only files do not need exports at all.

@@ -1,0 +1,2 @@
+- **Detected Framework Packages**: re-scan `*.csproj` and `Directory.Packages.props` (.NET) and `package.json` / `package-lock.json` for resolved versions (Angular). Flag packages newly added, removed, or version-bumped since the last sync. Propose updated table.
+- **Shared Libraries**: for each entry, flag if the consuming repo no longer references it (the package is gone from its `*.csproj` or `package.json`). Do not flag the converse — a package present in the repo but missing from `Shared Libraries` is expected for non-framework dependencies.

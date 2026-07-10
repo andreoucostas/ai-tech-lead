@@ -1,0 +1,1 @@
+- Scope to changed files (`git diff --name-only HEAD`, `*.cs` / `*.csproj` (.NET) and `*.ts` / `*.html` (Angular)) unless the user names specific files. Use `git diff HEAD -- <file>` so you see what was added vs what existed.

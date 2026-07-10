@@ -1,0 +1,1 @@
+description: Audits the test/spec changes in the diff for INTEGRITY — would each test actually fail if the code under test broke? Catches over-mocking, tautological/weak assertions or expectations, missing error paths, implementation-coupling, and nondeterminism. Read-only.

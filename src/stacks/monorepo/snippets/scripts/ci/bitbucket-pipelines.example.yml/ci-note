@@ -1,0 +1,1 @@
+# in docs/ci-integration.md into Bamboo/Jenkins instead (framework-state check + build/test gate (.NET) / lint/build/test gate (Angular),

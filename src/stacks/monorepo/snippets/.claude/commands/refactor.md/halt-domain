@@ -1,0 +1,1 @@
+- **Money / ledger / idempotency / auth / security code: HALT and ask the developer to confirm the captured behavior is correct before trusting it** — a characterization test/spec can otherwise lock in a pre-existing financial bug or insecure behavior as "approved."

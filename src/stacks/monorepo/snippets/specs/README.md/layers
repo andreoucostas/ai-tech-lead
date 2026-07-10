@@ -1,0 +1,3 @@
+**.NET:** request → controller → application service → domain → persistence.
+**Angular:** API → service → state (store/signals) → smart component → dumb component → template.
+(Adjust to the actual layers touched; describe both flows if the change spans both stacks.)

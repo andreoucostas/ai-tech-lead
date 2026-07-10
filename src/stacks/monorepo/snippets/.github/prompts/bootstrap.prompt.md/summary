@@ -1,0 +1,1 @@
+`.claude/commands/bootstrap.md` is the single source of truth. Follow it exactly: pre-flight checks → analysis passes (A1–A8 for .NET, A1–A7 for Angular, as applicable) → synthesis into priority tiers → clarify gate → generate artifacts (`CLAUDE.md`, `TECH_DEBT.md`, `FRAMEWORK-CONTEXT.md` drafts, `AGENTS.md`, `.github/copilot-instructions.md`) → final report with diff summary.

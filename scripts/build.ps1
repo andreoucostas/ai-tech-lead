@@ -1,13 +1,19 @@
 ﻿# ai-tech-lead composer (PowerShell twin of build.sh). Composes src/ -> dist/<mode>.
-# Modes: dotnet, angular  (monorepo added in Phase 4). Deterministic LF output.
+# Modes: dotnet, angular, monorepo. Deterministic LF output.
 #
 # Mechanism (kept dumb -- copy + marker substitution + file overlay, nothing else):
 #   1. Copy src/core -> dist/<mode>, substituting named insertion markers:
 #        markdown/text:  a line that is exactly   <!-- @stack:NAME -->
 #        scripts:        a line that is exactly   # @stack:NAME
-#      -> replaced by src/stacks/<mode>/snippets/<core-relpath>/<NAME> (removed if that snippet
-#         file is absent for this stack).
-#   2. Overlay src/stacks/<mode>/files/<relpath> (whole-file per-stack overrides + stack-only files).
+#      single-stack mode -> replaced by src/stacks/<mode>/snippets/<core-relpath>/<NAME>
+#        (removed if that snippet file is absent for this stack).
+#      monorepo mode     -> src/stacks/monorepo/snippets/<core-relpath>/<NAME> if it exists
+#        (authored merged/sectioned content), else the dotnet snippet followed by the angular
+#        snippet (raw concatenation -- union semantics; either may be absent).
+#   2. Overlay src/stacks/<mode>/files/<relpath> (whole-file per-stack overrides + stack-only
+#      files). monorepo mode overlays dotnet, then angular, then monorepo files -- and FAILS if
+#      a path exists in both stacks' files/ without a monorepo override (no silent last-wins:
+#      every whole-file collision must be an explicit authored decision).
 #   3. Validate: no unresolved @stack: markers remain in dist.
 # 5.1-safe: no pwsh-only syntax. Byte-faithful: preserves UTF-8 BOM per file, never re-encodes
 # through Get-Content/Set-Content (which would mangle BOMs and append trailing newlines).
@@ -18,8 +24,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-if ($Mode -ne 'dotnet' -and $Mode -ne 'angular') {
-    [Console]::Error.WriteLine('usage: build.ps1 {dotnet|angular}')
+if ($Mode -ne 'dotnet' -and $Mode -ne 'angular' -and $Mode -ne 'monorepo') {
+    [Console]::Error.WriteLine('usage: build.ps1 {dotnet|angular|monorepo}')
     exit 2
 }
 
@@ -28,11 +34,12 @@ Set-Location (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Pat
 
 $CORE = "src/core"
 $SNIP = "src/stacks/$Mode/snippets"
-$FILES = "src/stacks/$Mode/files"
 $DIST = "dist/$Mode"
-
-if (Test-Path $DIST) { Remove-Item -Recurse -Force $DIST }
-New-Item -ItemType Directory -Force -Path $DIST | Out-Null
+if ($Mode -eq 'monorepo') {
+    $OVERLAYS = @('src/stacks/dotnet/files', 'src/stacks/angular/files', 'src/stacks/monorepo/files')
+} else {
+    $OVERLAYS = @("src/stacks/$Mode/files")
+}
 
 $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 $Bom = [byte[]](0xEF, 0xBB, 0xBF)
@@ -99,6 +106,24 @@ function Get-SnippetLines {
     return , $result.ToArray()
 }
 
+# Resolve what a marker expands to. Single-stack: that stack's snippet (or nothing).
+# monorepo: the authored monorepo snippet if present, else dotnet then angular concatenated
+# (union semantics; either may be absent). Mirrors build.sh's emit_marker().
+function Get-MarkerLines {
+    param([string]$Rel, [string]$Name)
+    if ($Mode -eq 'monorepo') {
+        $monoDir = Join-Path 'src/stacks/monorepo/snippets' $Rel
+        if (Test-Path -LiteralPath (Join-Path $monoDir $Name) -PathType Leaf) {
+            return , (Get-SnippetLines -SnipDir $monoDir -Name $Name)
+        }
+        $result = New-Object System.Collections.Generic.List[string]
+        foreach ($sl in (Get-SnippetLines -SnipDir (Join-Path 'src/stacks/dotnet/snippets' $Rel) -Name $Name)) { $result.Add($sl) }
+        foreach ($sl in (Get-SnippetLines -SnipDir (Join-Path 'src/stacks/angular/snippets' $Rel) -Name $Name)) { $result.Add($sl) }
+        return , $result.ToArray()
+    }
+    return , (Get-SnippetLines -SnipDir (Join-Path $SNIP $Rel) -Name $Name)
+}
+
 function Get-RelativeFiles {
     param([string]$Root)
     $rootFull = (Resolve-Path -LiteralPath $Root).Path.TrimEnd('\', '/')
@@ -111,12 +136,27 @@ function Get-RelativeFiles {
     return , $out.ToArray()
 }
 
+if ($Mode -eq 'monorepo') {
+    # In monorepo mode the file collision check must pass before anything is composed.
+    $collide = $false
+    foreach ($rel in (Get-RelativeFiles 'src/stacks/dotnet/files')) {
+        if ((Test-Path -LiteralPath "src/stacks/angular/files/$rel" -PathType Leaf) -and
+            -not (Test-Path -LiteralPath "src/stacks/monorepo/files/$rel" -PathType Leaf)) {
+            [Console]::Error.WriteLine("ERROR: '$rel' exists in both src/stacks/dotnet/files and src/stacks/angular/files but has no src/stacks/monorepo/files override")
+            $collide = $true
+        }
+    }
+    if ($collide) { exit 1 }
+}
+
+if (Test-Path $DIST) { Remove-Item -Recurse -Force $DIST }
+New-Item -ItemType Directory -Force -Path $DIST | Out-Null
+
 # 1. core, with marker substitution; normalize to LF
 $coreFiles = Get-RelativeFiles $CORE
 foreach ($rel in $coreFiles) {
     $srcPath = Join-Path $CORE $rel
     $dstPath = Join-Path $DIST $rel
-    $snipDir = Join-Path $SNIP $rel
     $r = Read-TextFile $srcPath
 
     if ($r.Text -match $AnyMarker) {
@@ -125,9 +165,9 @@ foreach ($rel in $coreFiles) {
         foreach ($rawLine in $lines) {
             $s = Strip-CR $rawLine
             if ($s -match $HtmlMarker) {
-                foreach ($sl in (Get-SnippetLines -SnipDir $snipDir -Name $Matches[1])) { $out.Add($sl) }
+                foreach ($sl in (Get-MarkerLines -Rel $rel -Name $Matches[1])) { $out.Add($sl) }
             } elseif ($s -match $HashMarker) {
-                foreach ($sl in (Get-SnippetLines -SnipDir $snipDir -Name $Matches[1])) { $out.Add($sl) }
+                foreach ($sl in (Get-MarkerLines -Rel $rel -Name $Matches[1])) { $out.Add($sl) }
             } else {
                 $out.Add($s)
             }
@@ -142,15 +182,18 @@ foreach ($rel in $coreFiles) {
     }
 }
 
-# 2. overlay per-stack files (whole-file overrides + stack-only), normalized LF
-if (Test-Path $FILES) {
-    $overlayFiles = Get-RelativeFiles $FILES
-    foreach ($rel in $overlayFiles) {
-        $srcPath = Join-Path $FILES $rel
-        $dstPath = Join-Path $DIST $rel
-        $r = Read-TextFile $srcPath
-        $stripped = [regex]::Replace($r.Text, '(?m)\r$', '')
-        Write-TextFile -Path $dstPath -HasBom $r.HasBom -Text $stripped
+# 2. overlay per-stack files (whole-file overrides + stack-only), normalized LF.
+# monorepo = union of both stacks plus monorepo overrides (collisions already vetted above).
+foreach ($FILES in $OVERLAYS) {
+    if (Test-Path $FILES) {
+        $overlayFiles = Get-RelativeFiles $FILES
+        foreach ($rel in $overlayFiles) {
+            $srcPath = Join-Path $FILES $rel
+            $dstPath = Join-Path $DIST $rel
+            $r = Read-TextFile $srcPath
+            $stripped = [regex]::Replace($r.Text, '(?m)\r$', '')
+            Write-TextFile -Path $dstPath -HasBom $r.HasBom -Text $stripped
+        }
     }
 }
 

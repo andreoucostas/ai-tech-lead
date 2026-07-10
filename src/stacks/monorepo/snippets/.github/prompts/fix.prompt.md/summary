@@ -1,0 +1,1 @@
+`.claude/commands/fix.md` is the single source of truth. Follow it exactly: diagnose the root cause → write a failing regression test FIRST → apply the minimal fix → verify the touched stack(s) (.NET: `dotnet build`, `dotnet test`, format; Angular: `ng build`, `ng test`) → Boy Scout within blast radius → report.

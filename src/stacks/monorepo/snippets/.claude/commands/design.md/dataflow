@@ -1,0 +1,1 @@
+[how data moves through the system for this feature — .NET: request → controller → application → domain → infrastructure; Angular: API → service → state → component → template]

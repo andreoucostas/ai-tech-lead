@@ -1,0 +1,15 @@
+   - **Naming** — one line per rule
+   - **Architecture** — dependency direction + layering rules (.NET); standalone components, inject(), lazy loading, barrel-file rules (Angular)
+   - **SOLID** — abstraction/token per injected service (DIP); one line each for SRP/OCP/LSP/ISP
+   - **Dependency Injection** (.NET) — lifetimes + registration pattern
+   - **Data Access** (.NET) — query placement, AsNoTracking, repository usage
+   - **API Design** (.NET) — controller thinness, DTO separation, validation
+   - **Async** (.NET) — CancellationToken, no async void / sync-over-async
+   - **Null Handling** (.NET) — nullable enabled, no unjustified `!`
+   - **Logging** (.NET) — structured only, no string interpolation
+   - **Component Design** (Angular) — OnPush, smart/dumb split, control flow syntax, signals preference
+   - **State Management** (Angular) — local vs shared, no prop drilling, server state
+   - **RxJS** (Angular) — async pipe preference, takeUntilDestroyed, no nested subscribes, error handling
+   - **API / HTTP** (Angular) — typed services, interceptors, environment URLs
+   - **Typing** (Angular) — strict, no `any`, interfaces over classes
+   - **Styling** (Angular) — encapsulation, scoping, global rules

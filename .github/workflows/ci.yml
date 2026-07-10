@@ -2,9 +2,10 @@ name: CI
 
 # Repo-scale docs-sync-check for the authoring repo: proves src/ -> dist/ freshness on every
 # push/PR (rebuild + diff must be empty), that every dist passes its own template-checks and
-# parse gates (validate-dist), that dist still matches the frozen v0.25.5 baseline
-# (fidelity-check, strict — drop this step only when a release deliberately changes shipped
-# behaviour and moves the baseline), and that the hook test suites pass inside each dist.
+# parse gates (validate-dist), that dotnet/angular dists still match the frozen v0.25.5
+# baseline (fidelity-check, strict — drop this step only when a release deliberately changes
+# shipped behaviour and moves the baseline; dist/monorepo is a new capability with no freeze
+# baseline, so it has no fidelity leg), and that the hook test suites pass inside each dist.
 #
 # windows leg drives the .ps1 twins; linux leg drives the .sh twins — each leg rebuilds with
 # its own twin and diffs against the committed golden dist, so composer twin divergence fails
@@ -28,6 +29,7 @@ jobs:
         run: |
           pwsh -NoProfile -File scripts/build.ps1 dotnet
           pwsh -NoProfile -File scripts/build.ps1 angular
+          pwsh -NoProfile -File scripts/build.ps1 monorepo
       - name: Dist freshness (rebuild == committed golden dist)
         run: |
           git add -A dist
@@ -36,6 +38,7 @@ jobs:
         run: |
           pwsh -NoProfile -File scripts/validate-dist.ps1 dotnet
           pwsh -NoProfile -File scripts/validate-dist.ps1 angular
+          pwsh -NoProfile -File scripts/validate-dist.ps1 monorepo
       - name: Fidelity vs frozen baseline (strict)
         run: |
           pwsh -NoProfile -File scripts/fidelity-check.ps1 dotnet
@@ -44,6 +47,7 @@ jobs:
         run: |
           pwsh -NoProfile -File dist/dotnet/tests/hooks/Invoke-HookTests.ps1
           pwsh -NoProfile -File dist/angular/tests/hooks/Invoke-HookTests.ps1
+          pwsh -NoProfile -File dist/monorepo/tests/hooks/Invoke-HookTests.ps1
 
   linux:
     runs-on: ubuntu-latest
@@ -55,6 +59,7 @@ jobs:
         run: |
           bash scripts/build.sh dotnet
           bash scripts/build.sh angular
+          bash scripts/build.sh monorepo
       - name: Dist freshness (rebuild == committed golden dist)
         run: |
           git add -A dist
@@ -63,6 +68,7 @@ jobs:
         run: |
           bash scripts/validate-dist.sh dotnet
           bash scripts/validate-dist.sh angular
+          bash scripts/validate-dist.sh monorepo
       - name: Fidelity vs frozen baseline (strict)
         run: |
           bash scripts/fidelity-check.sh dotnet
@@ -71,3 +77,4 @@ jobs:
         run: |
           pwsh -NoProfile -File dist/dotnet/tests/hooks/Invoke-HookTests.ps1
           pwsh -NoProfile -File dist/angular/tests/hooks/Invoke-HookTests.ps1
+          pwsh -NoProfile -File dist/monorepo/tests/hooks/Invoke-HookTests.ps1

@@ -1,0 +1,1 @@
+description: Audits a diff in this mixed .NET + Angular codebase against the five SOLID principles. This codebase mandates literal SOLID (an interface or abstraction/token for every injected service). Returns a structured findings table — does not modify files. Used by `/review` and ad-hoc SOLID audits.

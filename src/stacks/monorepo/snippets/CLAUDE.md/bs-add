@@ -1,0 +1,7 @@
+1. Missing `CancellationToken` propagation (.NET)
+2. Replace string-interpolated log messages with structured logging (.NET)
+3. Missing null checks at public boundaries (.NET)
+4. Missing `.AsNoTracking()` on read-only queries (.NET)
+5. Replace manual `ngOnDestroy` subscription cleanup with `takeUntilDestroyed()` (Angular)
+6. Replace nested `.subscribe()` with the appropriate RxJS operator (Angular)
+7. Replace `any` with proper types (Angular)

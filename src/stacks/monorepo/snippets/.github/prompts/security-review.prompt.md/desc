@@ -1,0 +1,1 @@
+description: Security review of changed code in this mixed .NET + Angular codebase. OWASP-style scan plus senior judgement (auth, data flow, error envelopes; Angular: token handling, trust boundaries).

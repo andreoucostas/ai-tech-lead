@@ -1,0 +1,1 @@
+2. If the caller did not specify files, scope to `git diff --name-only` (working tree + staged) limited to `*.cs` (.NET) and `*.ts`, `*.html`, `*.scss` (Angular). Skip `*Tests.cs`, `*Test.cs`, `*.g.cs`, `*.Designer.cs`, anything in `obj/` or `bin/`, and `.spec.ts`, `.test.ts`, `.d.ts`.

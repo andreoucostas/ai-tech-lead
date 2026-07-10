@@ -1,0 +1,5 @@
+12. Split fat methods (>30 lines) into focused private methods
+13. Missing unit tests for public methods you're modifying
+14. Replace manual `.subscribe()` with `async` pipe where possible (Angular)
+15. Extract complex template expressions into component methods or pipes (Angular)
+16. Add `ChangeDetectionStrategy.OnPush` — but only after verifying the component's data flow (immutable inputs, no in-place mutation, no reliance on ambient ticking) and after manual/test verification that the view still updates correctly. (Angular)

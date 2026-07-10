@@ -1,0 +1,4 @@
+17. Inline single-consumer interfaces or abstract bases **that are not DI service seams** (data/internal abstractions only) — per Leanness. Service interfaces/abstractions are required by SOLID/DIP even with one implementation; never inline those.
+18. Collapse shallow delegate methods that add no behavior — including service methods that just call `HttpClient` with no transformation
+19. Single-use private helpers, pipes, or directives — inline at the call site
+20. Unused barrel re-exports in `index.ts` (Angular)

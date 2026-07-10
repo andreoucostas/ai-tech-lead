@@ -1,0 +1,36 @@
+name: Template CI
+
+# Deterministic self-enforcement for the framework template itself — the machine gate for the
+# invariants the repo used to enforce by maintainer discipline alone (which shipped drift:
+# version stamps and the AGENTS.md mirror both diverged unnoticed before 0.23.3).
+#
+# windows leg: hook suite under pwsh + template-checks.ps1 (incl. PS-syntax + BOM sweeps).
+# linux leg:   same hook suite (drives every .sh twin via bash) + template-checks.sh.
+# Consumer repos get the same checks via scripts/docs-sync-check.* -> template-checks.*.
+# GitHub-only wrapper; on Bitbucket Data Center wire the same two commands into Bamboo/Jenkins.
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Hook test suite (twin parity + surface matrix)
+        run: pwsh -NoProfile -File tests/hooks/Invoke-HookTests.ps1
+      - name: Deterministic framework checks
+        run: pwsh -NoProfile -File scripts/template-checks.ps1
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Hook test suite (exercises the .sh twins via bash)
+        run: pwsh -NoProfile -File tests/hooks/Invoke-HookTests.ps1
+      - name: Deterministic framework checks (bash twin)
+        run: bash scripts/template-checks.sh

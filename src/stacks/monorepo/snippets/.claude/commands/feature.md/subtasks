@@ -1,0 +1,13 @@
+Pick the subtask list(s) for the stack(s) this feature touches — a full-stack feature runs the .NET list first, then the Angular list.
+
+**.NET:**
+1. **Domain/model layer** — entities, value objects, enums + unit tests
+2. **Service/application layer** — business logic, interfaces + unit tests
+3. **API/controller layer** — DTOs, validators, controller actions + unit tests
+4. **Integration / end-to-end test** — verify the full flow through the real pipeline via `WebApplicationFactory`, exercising the endpoint as a caller would (real routing, model binding, serialization, middleware), not just the unit
+
+**Angular:**
+1. **Models/interfaces** — data shapes, DTOs, enums + type tests if complex
+2. **Service/state layer** — HTTP services, stores/signals, business logic + unit tests
+3. **Component layer** — smart and dumb components, templates, styles + component tests
+4. **Integration/E2E** — end-to-end verification of the feature flow

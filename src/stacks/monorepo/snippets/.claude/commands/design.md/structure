@@ -1,0 +1,3 @@
+- Data model changes
+- Component structure (smart/dumb split)
+- State management approach

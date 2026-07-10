@@ -1,0 +1,1 @@
+`.claude/commands/test.md` is the single source of truth. Follow it exactly: understand what to test → match existing test framework, naming, and mocking patterns → write tests covering happy path, edge cases, error paths → verify the touched stack (.NET: `dotnet build`, `dotnet test`; Angular: `ng build`, `ng test`) → report.

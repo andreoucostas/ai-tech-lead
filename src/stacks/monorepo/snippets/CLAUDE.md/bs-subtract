@@ -1,0 +1,6 @@
+8. Unused `using` directives (.NET), unused TypeScript imports and unused RxJS operator imports (Angular)
+9. Commented-out code or template blocks (more than 1 line — version control preserves them)
+10. Unreferenced private fields, methods, or local variables that the IDE/compiler/`tsc`/lint flags
+11. Unused `@Input` / `@Output` properties (Angular)
+
+> **Not auto-applied: `ChangeDetectionStrategy.OnPush`.** Switching a component to `OnPush` is a semantic change, not a cleanup — it can silently break views that mutate inputs in place, rely on default change detection ticking from `setInterval`/Promises/third-party callbacks, or expect re-render on ambient state changes. Treat it as an explicit, tested change when the component is the primary target, not a drive-by edit. New components scaffolded from skills still default to `OnPush` (see `docs/defaults.md`).

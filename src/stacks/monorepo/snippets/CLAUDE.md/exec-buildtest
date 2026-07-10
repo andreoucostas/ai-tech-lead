@@ -1,0 +1,1 @@
+Run the touched stack's gates after each subtask — .NET: `dotnet build` + `dotnet test`; Angular: `ng build` + `ng test --watch=false --browsers=ChromeHeadless`. Fix failures before moving on.

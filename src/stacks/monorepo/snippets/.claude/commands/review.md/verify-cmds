@@ -1,0 +1,1 @@
+Run the touched stack's gates — .NET: `dotnet build` and `dotnet test` (plus `dotnet format --verify-no-changes` to catch formatter drift); Angular: `ng build` and `ng test --watch=false --browsers=ChromeHeadless` (plus `ng lint` if configured). Do not trust that the code being reviewed already passes. Record any failures as high-severity issues.

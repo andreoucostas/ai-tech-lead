@@ -1,0 +1,1 @@
+Layout for both stacks — .NET: projects, layering strategy, dependency direction between projects, entry points; Angular: top-level folders, feature module boundaries, shared/core contents, routing structure — and where to put new code in each.

@@ -1,0 +1,13 @@
+First identify which stack(s) the change touches — .NET, Angular, or both — and run that stack's build/test after each subtask. For a full-stack change, do the .NET subtasks first, then the Angular ones.
+
+**.NET:**
+1. Domain/model layer changes + tests
+2. Service/application layer changes + tests
+3. API/controller layer changes + tests
+4. Integration test covering the full flow
+
+**Angular:**
+1. Models/interfaces and service layer + tests
+2. State management changes (store/signals/service) + tests
+3. Component implementation + tests
+4. E2E or integration verification

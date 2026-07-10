@@ -1,0 +1,1 @@
+Run the touched stack's gates — the regression test must pass and nothing else should break. .NET: `dotnet build`, `dotnet test`, and `dotnet format`; Angular: `ng build`, `ng test --watch=false --browsers=ChromeHeadless`, and `ng lint` (if configured).

@@ -1,0 +1,1 @@
+- Generate the test/spec skeleton, run it once to capture the actual outputs, and assert those (never invent expected values); label them characterization, not correctness.

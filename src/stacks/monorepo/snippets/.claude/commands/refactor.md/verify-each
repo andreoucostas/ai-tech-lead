@@ -1,0 +1,1 @@
+- After each meaningful change, run the touched stack's gates — .NET: `dotnet build` and `dotnet test`; Angular: `ng build` and `ng test --watch=false --browsers=ChromeHeadless`

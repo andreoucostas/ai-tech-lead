@@ -8,7 +8,7 @@
 #   5. the dist's OWN template-checks.ps1 suite passes, run from inside the dist dir
 # Exit 0 = all checks passed. Exit 1 = at least one check failed. Exit 2 = usage error, missing
 # dist, or a required tool (bash, for check 3) is unavailable — reported as FATAL, never skipped.
-#   Usage: validate-dist.ps1 {dotnet|angular} [dist-root]
+#   Usage: validate-dist.ps1 {dotnet|angular|monorepo} [dist-root]
 #   dist-root defaults to "dist" resolved under the repo root (scripts/..). Pass an explicit path
 #   to validate a scratch copy instead (e.g. to plant failure fixtures without touching dist/).
 # 5.1-safe: no pwsh-only syntax.
@@ -21,8 +21,8 @@ $ErrorActionPreference = 'Continue'
 Set-Location (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
 
 $Mode = $args[0]
-if ($Mode -ne 'dotnet' -and $Mode -ne 'angular') {
-    [Console]::Error.WriteLine('usage: validate-dist.ps1 {dotnet|angular} [dist-root]')
+if ($Mode -ne 'dotnet' -and $Mode -ne 'angular' -and $Mode -ne 'monorepo') {
+    [Console]::Error.WriteLine('usage: validate-dist.ps1 {dotnet|angular|monorepo} [dist-root]')
     exit 2
 }
 $DistRoot = if ($args.Count -ge 2 -and $args[1]) { $args[1] } else { 'dist' }
