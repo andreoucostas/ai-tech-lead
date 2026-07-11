@@ -1,0 +1,13 @@
+{
+  "_comment": "Maintainer meta layer for the ai-tech-lead authoring repo -- NOT part of the shipped templates (invariant #6). Only one hook remains: a PostToolUse auto-fixer that adds the UTF-8 BOM to any BOM-less .ps1 written under this repo (deterministic, silent, non-blocking -- invariant #4). The former Stop review-nudge apparatus was retired: a blocking Stop hook that forces /code-review is an anti-pattern (wrong cadence, hot-path cost, re-fire loops). The -File path is RELATIVE: this file is tracked and must work wherever the repo is cloned; the hook itself scopes to ai-tech-lead/ paths as a second guard.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          { "type": "command", "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/bom-fix.ps1" }
+        ]
+      }
+    ]
+  }
+}
