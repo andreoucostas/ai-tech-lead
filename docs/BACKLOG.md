@@ -179,7 +179,9 @@ root README + root CHANGELOG (v0.26.0 Unreleased) + legacy changelog freezes (di
 CI gained the meta-suite leg; workspace root reduced to a pointer stub. Verified: build ×3 +
 dist freshness empty, validate-dist ×3 exit 0, fidelity ×2 exit 0 (dist untouched), meta suite
 0 failures. **Next: Phase 6** (validation → archive legacies → tag v0.26.0 — the release must
-retire/re-baseline the CI fidelity legs + fold the checkout v4→v5 bump). See WSD-012 deltas.
+retire/re-baseline the CI fidelity legs + fold the checkout v4→v5 bump). **Precondition (2026-07-11):
+land B-33 (composer regression suite + sibling-drift gate) before or with Phase 6 — retiring
+fidelity without it leaves composition correctness ungated.** See WSD-012 deltas.
 Post-freeze follow-up: bump `actions/checkout` v4→v5 (GitHub Node 20 deprecation notice) in the
 **shipped** workflows (`src/core/.github/workflows/template-ci.yml` + `docs-sync-check.yml`, and
 thereby `dist/`) at the first release that deliberately changes shipped content (≥ v0.26.0) — they
@@ -342,6 +344,53 @@ fallback trigger); CI cross-OS legs = the twin proof; `release.ps1` runs `-Updat
 stamp lands after PRs were gated). Non-goals (locked): no tokenizer, no consumer-side FAIL, no
 output-token measurement, no relitigating WSD-011. Verification recipes + red-test matrix are
 in the spec.
+
+### B-33 · Composer regression suite + sibling-drift check — replace what fidelity proves **before Phase 6 retires it**
+**Effort:** M · **Invariants:** #1 #3 #4 #6 · added 2026-07-11 · **Sequence: land before or with
+Phase 6 (v0.26.0).** Meta-only (gates + tests, no shipped content) — freeze-compatible.
+
+Problem: `fidelity-check` is today the **only end-to-end proof that the composer produces the
+intended content**, and Phase 6 deliberately retires it (WSD-016: fidelity is a migration-era
+gate, not a release gate). After retirement the deterministic net for composition correctness is:
+freshness (proves committed dist == rebuild — i.e. *determinism*, not correctness: in the normal
+workflow a buggy composer's wrong output gets rebuilt-and-committed together, and freshness
+passes) + `validate-dist` (structural: markers resolved, JSON, syntax, template-checks — not
+content intent). The composer red-tests (Phase 3, ×4 defect classes) and the 116-marker
+CONCAT-vs-AUTHOR audit (Phase 4) were **one-off manual verifications, never committed as gates**
+— and the one real bug in this class (the `.ps1` sensitive-regex overwrite, LEARNINGS 2026-07-10)
+was caught only by that one-off audit. The WSD-015 sibling discipline (stack edit with a monorepo
+sibling never reaches `dist/monorepo`) is likewise enforced by nothing but CLAUDE.md prose,
+exactly when the post-merge implementations (B-21, B-22, B-27) are about to edit `src/` heavily.
+
+Ship three pieces (suggested home: extend the meta suite / follow the `Invoke-HookTests.ps1`
+dependency-free harness pattern; must not ship [#6]):
+1. **Fixture-based composer tests:** minimal fixture `src/` tree → compose → byte-compare to
+   expected output, run with **both** twins on the same fixtures asserting identical bytes [#3].
+   Cover the known defect classes: marker substitution, absent-snippet removal,
+   authored-monorepo-override precedence over dotnet+angular concat, whole-file override,
+   both-stacks collision without override → build **error** (red test), and a concat
+   additive-safety canary (the LEARNINGS 2026-07-10 class). Red-test each class per the
+   composer/gate definition of done — plant the defect, show the non-zero exit, then the clean pass.
+2. **Sibling-drift check (the WSD-015 gate):** diff-scoped — when a commit/PR touches
+   `src/stacks/{dotnet,angular}/(snippets|files)/<rel>` and a `src/stacks/monorepo/` sibling for
+   that `<rel>` exists but is untouched, FAIL (or loud WARN) naming the sibling path. Needs the
+   base ref in CI (`fetch-depth: 0` is already set). `.ps1`/`.sh` twins [#3].
+3. **Fold the tool-syntax leakage sweep** (`grep -rn '</content>\|</invoke>' src/`, LEARNINGS
+   2026-07-10) into `validate-dist` or the meta suite — one line; kills a known manual step.
+
+Wire the suite into `ci.yml` (both legs) and `release.ps1`. Rationale for the sequencing: v0.26.0
+is the first release that deliberately changes shipped content through the composer — the window
+where fidelity is gone and nothing replaces it should be zero.
+
+### B-34 · Installer smoke matrix in CI
+**Effort:** S–M · **Invariants:** #3 #6 · added 2026-07-11 · post-Phase-6, any time.
+
+The 9-scenario root-installer matrix (Phase 3) and the mixed→monorepo detection legs (Phase 4)
+were run by hand only; nothing re-runs them, so an installer regression ships silently. Add a CI
+step per leg (linux drives `.sh`, windows drives `.ps1` [#3]) that runs greenfield + brownfield +
+the three root-installer detection paths (csproj → dotnet, angular.json → angular, both →
+monorepo) into temp dirs and asserts the expected file layout (the Definition-of-done recipe in
+DEVELOPING.md → "Install smoke test", made deterministic). Keep it against `dist/` copies [#6].
 
 ---
 
