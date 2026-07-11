@@ -72,7 +72,7 @@ getting the framework itself into a repo.
 | `src/core/` | Single-source shared content — the common files, with `@@INCLUDE:NAME@@` markers where stacks diverge. |
 | `src/stacks/{dotnet,angular,monorepo}/` | Per-dist `snippets/` (marker content) and `files/` (whole-file overrides + stack-only files). |
 | `dist/{dotnet,angular,monorepo}/` | **Generated**, committed golden output. Never hand-edited — CI rebuilds and diffs it against `src/` on every push/PR. |
-| `scripts/` | The composer and its gates, each as a `.ps1`/`.sh` twin: `build`, `validate-dist`, `fidelity-check`. |
+| `scripts/` | The composer and its gates, each as a `.ps1`/`.sh` twin: `build`, `validate-dist`. |
 | `install.ps1` / `install.sh` | Root installers — detect the target's stack (or read `--stack`) and delegate to the matching dist installer. |
 | `docs/` | `BACKLOG.md` (work list), `workspace-decisions.md` (ADR log), `ci-handover.md`, legacy changelogs. |
 | `.github/workflows/ci.yml` | The CI gate — see below. |
@@ -85,11 +85,8 @@ getting the framework itself into a repo.
 `scripts/build.ps1`/`.sh` is the composer: it reads `src/core` plus the target dist's
 `src/stacks/<dist>/` overrides and writes a complete `dist/<dist>/` tree. Three gates run against
 that output — `validate-dist` (marker resolution, JSON validity, `bash -n`, PowerShell AST parse,
-and each dist's own `template-checks` for `CLAUDE.md`↔`AGENTS.md` mirror parity), `fidelity-check`
-(a strict byte-for-byte comparison of `dist/dotnet` and `dist/angular` against the frozen
-`freeze-v0.25.5` baseline from the pre-merge legacy repos — green until the v0.26.0 release
-deliberately changes shipped content and retires that baseline; `dist/monorepo` has no baseline,
-it's a new capability), and each dist's own hook test suite
+and each dist's own `template-checks` for `CLAUDE.md`↔`AGENTS.md` mirror parity) and each dist's
+own hook test suite
 (`dist/<dist>/tests/hooks/Invoke-HookTests.ps1`, a dependency-free PowerShell harness that pipes
 JSON fixtures at every hook and asserts both the bash and PowerShell twin agree). CI
 (`.github/workflows/ci.yml`) runs all of it on two legs — a Windows leg that rebuilds with the
@@ -99,13 +96,13 @@ in [`DEVELOPING.md`](./DEVELOPING.md).
 
 ## Status
 
-Current shipped version is **v0.25.5** across all three dists (`dist/*/.claude/framework-version.json`).
-This is the fidelity-frozen migration baseline inherited from the legacy repos — no shipped
-content changes until **v0.26.0**, which is pending final migration validation (Phase 6 of the
-merge plan: rerun the full gate matrix, then consciously retire the v0.25.5 fidelity baseline and
-fold in queued shipped-workflow updates). The two legacy repos, `ai-tech-lead-dotnet` and
-`ai-tech-lead-angular`, are still live but frozen at v0.25.5 pending that release; they will be
-archived with a pointer to this repo once v0.26.0 ships.
+Current shipped version is **v0.26.0** across all three dists (`dist/*/.claude/framework-version.json`)
+— the first release from this merged repo. The migration is complete: Phase 6 validation reran the
+full gate matrix (including a final fidelity run — 138/138 byte-match per legacy stack against the
+`freeze-v0.25.5` baseline) before the release deliberately changed shipped content (the queued
+`actions/checkout` v4→v5 bump in the shipped workflows) and retired the migration-era fidelity
+gate. The two legacy repos, `ai-tech-lead-dotnet` and `ai-tech-lead-angular`, are frozen at
+v0.25.5 and archived with a pointer to this repo as part of the v0.26.0 publish.
 
 ## Maintainer docs
 

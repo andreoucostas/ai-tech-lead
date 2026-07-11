@@ -9,9 +9,7 @@
 # today's date) and the working tree contains exactly the release changes.
 #
 # Gates (in order): compose all three dists -> validate-dist ×3 -> hook suites ×3 -> meta suite.
-# fidelity-check is deliberately NOT run here: it is the migration-era gate pinned to the
-# freeze-v0.25.5 tags, and the first release that changes shipped content must consciously
-# retire/re-baseline it (and the CI fidelity legs) in the same change — see WSD-016.
+# (The migration-era fidelity gate was retired at v0.26.0 with a final 138/138 pass — WSD-018.)
 #
 # PowerShell-only by decision (see docs/workspace-decisions.md): meta scripts run only on the
 # maintainer's box; invariant #3 twin parity applies to shipped hooks/scripts and scripts/.

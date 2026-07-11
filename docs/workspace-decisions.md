@@ -596,3 +596,74 @@ each repo's `docs/architecture-decisions.md`.
   field" question. The gate targets growth/churn **visibility**, not size minimization —
   B-26/WSD-011's salience-over-bytes trade stands (design D8 records this so a future session
   doesn't compress the rails against the ceiling).
+
+## WSD-018: B-25-EXEC Phase 6 — validation, fidelity-gate retirement, v0.26.0 release (migration COMPLETE)
+
+- **Date**: 2026-07-11
+- **Status**: Accepted (decided and executed — the final phase of B-25-EXEC)
+- **Decision**: complete the merge migration. In order:
+  - **Validation first (per WSD-016's precondition), all green before any change:** compose ×3
+    (both twins — `build.sh` and `build.ps1` each reproduce the committed golden dist
+    byte-identically), dist freshness empty, `validate-dist` ×3 exit 0, hook suites ×3
+    (0 failures across 7 files each), meta suite (0 failures), **and a final fidelity run:
+    138/138 match, mismatch=0/missing=0/extra=0, both dotnet and angular** against the
+    `pre-restructure` baseline — the migration's zero-behaviour-change acceptance, recorded one
+    last time before the baseline was deliberately broken.
+  - **Queued `actions/checkout` v4→v5 bump folded in** (GitHub Node 20 deprecation):
+    `src/core/.github/workflows/template-ci.yml` (2 occurrences) + `docs-sync-check.yml` (1) —
+    pure core files, no stack snippets or monorepo siblings, so the change flows to all three
+    dists automatically [#1]. This is the **only** shipped-content change relative to v0.25.5.
+    Red evidence that it (deliberately) breaks the frozen baseline: post-bump
+    `fidelity-check.sh dotnet` → exit 1, mismatch=2 (exactly the two workflow files).
+  - **Fidelity gate RETIRED, not re-baselined.** The CI fidelity legs (both OS legs, plus their
+    `fetch-depth: 0`, which existed only to materialize the baseline tag) are removed from
+    `ci.yml`, and the `scripts/fidelity-check.ps1/.sh` twins are **deleted** — following the
+    `check-lockstep` precedent (WSD-016): tooling goes when its job ends, and a permanently-red
+    script in `scripts/` is a trap for future sessions. Re-baselining was rejected as redundant
+    ceremony: the committed golden dist + CI freshness gate already pin exact bytes — a second
+    byte-diff against a new tag can never catch anything freshness misses. The `pre-restructure`
+    tag and the deleted twins stay recoverable from history
+    (`git show 'v0.26.0^:scripts/fidelity-check.sh'`).
+  - **v0.26.0 released** via `release.ps1` (stamps `src/core/CLAUDE.md` + three
+    `framework-version.json`, rebuilds ×3, full gate set, refuses on failure). Root `CHANGELOG.md`
+    v0.26.0 entry dated; the three shipped stack CHANGELOGs gained consumer-facing v0.26.0
+    entries (merged-repo provenance + the checkout bump) per invariant #7. Root
+    `CLAUDE.md`/`AGENTS.md` migration-status notes, `README.md` status section, `DEVELOPING.md`
+    recipes, and `release.ps1`'s header updated to post-migration reality; `docs/BACKLOG.md`
+    B-25-EXEC moved to Done. **The WSD-012 shipped-work freeze is lifted** — B-15…B-23, B-29
+    unpause; B-27 (v0.27.0), B-21/B-22 (≥ v0.28.0), B-32 (maintainer-side) are unblocked.
+  - **Maintainer admin actions (not executable from a repo session):** archive
+    `ai-tech-lead-dotnet` + `ai-tech-lead-angular` (read-only, pointer READMEs already in their
+    frozen state), flip `ai-tech-lead` public (WSD-012 D1 said "flip public at Phase 6"), push
+    the `v0.26.0` tag, and retire the old workspace root (its `MERGE-MIGRATION-PLAN.md` becomes
+    historical).
+- **Execution deltas (recorded, not silently applied):**
+  - Phase 6 was executed in a remote (Linux container) session from **WSD-012/WSD-016's recorded
+    Phase 6 spec**, not from `MERGE-MIGRATION-PLAN.md` directly — the plan file lives only in the
+    old workspace root on the maintainer's box and is not in this repo. The recorded spec
+    (validation → retire/re-baseline fidelity + checkout bump → archive → tag) was treated as
+    normative; no other plan content was re-derived.
+  - The release was prepared with `release.ps1 -NoPush` on a session branch rather than pushed
+    to `master` by the script — the remote session's branch policy forbids direct `master`
+    pushes; the maintainer merges the branch and pushes the tag (see the admin checklist above).
+    `release.ps1` ran on pwsh 7.6/Linux (meta scripts are maintainer-Windows by decision, but
+    the script is host-agnostic in practice; nothing platform-specific fired).
+- **Context**: WSD-016 required all gates green against the Phase 5 state before Phase 6 began
+  (verified — see validation bullet) and required the v0.26.0 release to "consciously retire or
+  re-baseline" the fidelity legs together with the queued checkout bump; this entry is that
+  conscious decision and its execution record. B-25-EXEC ran 2026-07-08 → 2026-07-11, Phases 0–6.
+- **Adversarial review (fresh-context agent, pre-push): LOCK WITH AMENDMENTS — folded.** Every
+  deterministic gate independently re-verified green (checkout-bump completeness, YAML validity,
+  version stamps, validate-dist ×3, dist freshness, hook suites ×3, meta suite, BOM sweep of all
+  107 `.ps1` files). One MEDIUM: several docs (root + shipped CHANGELOGs, CLAUDE/AGENTS/README/
+  BACKLOG) stated "archived / v0.26.0 tagged" in past tense while this same entry lists
+  archive+tag as pending maintainer publish steps — all reworded to publish-tense so the repo
+  never carries a live falsehood if the branch merges before the admin actions run. Two LOW
+  (baseline tag-name inconsistency `pre-restructure` vs `freeze-v0.25.5` inside DEVELOPING.md's
+  retirement note; a stale "execution continues as B-25-EXEC" line in BACKLOG's B-25 design Done
+  entry) — both fixed.
+- **Consequences**: the merge is **COMPLETE**. One authoring repo, three dists, one version
+  stream (v0.26.0). The fidelity gate's job — proving the migration changed nothing — is done
+  and its evidence is in this log; ongoing integrity rests on the freshness gate, `validate-dist`,
+  and the hook/meta suites. The legacy repos' `freeze-v0.25.5` tags remain the historical
+  reference. Next shipped work per the backlog: B-27 wiki memory targets v0.27.0.

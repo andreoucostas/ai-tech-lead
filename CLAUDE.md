@@ -26,7 +26,7 @@ repos (`ai-tech-lead-dotnet`, `ai-tech-lead-angular`). Shared content is authore
 | `src/core/` | Single-source shared content (the former 128 common files, with `@@INCLUDE` markers where stacks diverge). |
 | `src/stacks/{dotnet,angular,monorepo}/` | Per-dist `snippets/` (marker content) and `files/` (whole-file overrides + stack-only files). |
 | `dist/{dotnet,angular,monorepo}/` | **Generated** golden output, committed, `linguist-generated`. Never hand-edit — CI rebuilds and diffs. |
-| `scripts/` | Composer + gates, all `.ps1`/`.sh` twins: `build`, `validate-dist`, `fidelity-check`. |
+| `scripts/` | Composer + gates, all `.ps1`/`.sh` twins: `build`, `validate-dist`. |
 | `install.ps1` / `install.sh` | Thin root installers: detect the target's stack (auto-detects mixed → monorepo) and delegate to the chosen dist's installer. |
 | `docs/` | Maintainer docs: `BACKLOG.md`, `workspace-decisions.md` (ADR log), `changelogs/legacy-*.md`. |
 | `.claude/` | Maintainer meta layer: `bom-fix` hook + meta test suite, `release.ps1`, plans. Never ships. |
@@ -162,10 +162,15 @@ user. Generated `dist/` changes belong in the same commit as the `src/` change t
 
 ## Migration status note
 
-Phases 0–5 of `MERGE-MIGRATION-PLAN.md` (kept in the old workspace root, one level up) are done;
-**Phase 6 (validation → archive legacies → tag v0.26.0) is pending.** Until it lands: the legacy
-repos stay live-but-frozen at v0.25.5 (freeze-v0.25.5 tags are the fidelity baseline), the CI
-fidelity legs must stay green (so no shipped-content changes before the v0.26.0 release, which
-deliberately moves/retires that baseline — including the queued `actions/checkout` v4→v5 bump in
-the shipped workflows), and root `CHANGELOG.md`'s v0.26.0 entry stays "Unreleased". The old
-workspace-root repo now holds only a pointer stub and the migration plan.
+**The migration is COMPLETE — all phases of `MERGE-MIGRATION-PLAN.md` are done (Phase 6 executed
+2026-07-11, WSD-018).** v0.26.0 is the first release from this repo: Phase 6 validation reran the
+full gate matrix green (including a final fidelity pass — 138/138 per legacy stack against the
+`freeze-v0.25.5` baseline), then the release deliberately changed shipped content (the queued
+`actions/checkout` v4→v5 bump in the shipped workflows) and retired the migration-era fidelity
+gate (CI legs + `scripts/fidelity-check.ps1/.sh` removed; golden-dist freshness is the ongoing
+byte-integrity gate). The legacy repos (`ai-tech-lead-dotnet`, `ai-tech-lead-angular`) are
+frozen at v0.25.5 and archived with pointers here as part of the v0.26.0 publish (WSD-018's
+admin checklist), and the old workspace root is retired (its `MERGE-MIGRATION-PLAN.md` is
+historical). The WSD-012 shipped-work freeze is lifted:
+B-15…B-23, B-29 and the post-merge implementations (B-27 → v0.27.0; B-21, B-22 ≥ v0.28.0;
+B-32 maintainer-side) are unblocked.

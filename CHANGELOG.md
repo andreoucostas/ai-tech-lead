@@ -5,16 +5,17 @@
 > preserved legacy changelogs: [`docs/changelogs/legacy-dotnet.md`](docs/changelogs/legacy-dotnet.md)
 > and [`docs/changelogs/legacy-angular.md`](docs/changelogs/legacy-angular.md).
 
-## 0.26.0 — Unreleased
+## 0.26.0 — 2026-07-11
 
 > The single biggest structural change in the framework's history: two independently-versioned
 > template repos (`ai-tech-lead-dotnet`, `ai-tech-lead-angular`) become one authoring repo,
 > `ai-tech-lead`, that composes three installable distributions. The decision, rationale, and
 > execution record live in `docs/workspace-decisions.md` (WSD-012 and its Phase 0–5 execution
-> deltas, plus WSD-015 and WSD-016); this entry is the consumer-facing summary. **This release
-> ships only once Phase 6 validation is green and the two legacy repos are archived** — until
-> then it stays Unreleased, and the legacy repos remain live-but-frozen at their last independent
-> release, v0.25.5.
+> deltas, plus WSD-015, WSD-016, and WSD-018 — the Phase 6 completion record); this entry is the
+> consumer-facing summary. Phase 6 validation ran the full gate matrix green — including a final
+> fidelity pass, 138/138 byte-match per legacy stack — before this release deliberately changed
+> shipped content. The legacy repos freeze at v0.25.5 and are archived with pointers here as
+> this release publishes.
 
 ### Added
 - **One authoring repo, three installable distributions.** Shared framework content — skills,
@@ -42,14 +43,19 @@
   original v4.0 commit in whichever legacy repo it came from.
 
 ### Changed
-- **Zero shipped-behaviour change, proven by a strict fidelity gate.** Every one of the 138
-  tracked files in each legacy repo (dotnet, Angular) reproduces byte-for-byte (EOL-normalized)
-  from the new `src/` composition — `scripts/fidelity-check.ps1/.sh` diffs the rebuilt
+- **Zero-behaviour-change migration, proven by a strict fidelity gate.** Every one of the 138
+  tracked files in each legacy repo (dotnet, Angular) reproduced byte-for-byte (EOL-normalized)
+  from the new `src/` composition — `scripts/fidelity-check.ps1/.sh` diffed the rebuilt
   `dist/dotnet` and `dist/angular` against the `freeze-v0.25.5` tags taken on both legacy repos
   before any restructuring began, with an **empty allowlist** (no version-stamp or
-  stack-flavoured exclusions needed). This is the migration's central acceptance criterion: a
-  consumer already running v0.25.5 of either template gets an update, not a behavior change, when
-  they eventually move to a dist built from this repo.
+  stack-flavoured exclusions needed). This was the migration's central acceptance criterion, and
+  it held from Phase 2 through the final Phase 6 validation run: a consumer already running
+  v0.25.5 of either template gets an update, not a behavior change, when they move to a dist
+  built from this repo — apart from the one deliberate change below.
+- **Shipped workflows: `actions/checkout` v4 → v5** in `template-ci.yml` and
+  `docs-sync-check.yml` (all three dists, composed from `src/core/.github/workflows/`) —
+  GitHub's Node 20 deprecation. Queued since 2026-07-09 behind the fidelity freeze; folded into
+  this release as planned (the only shipped-content change relative to v0.25.5).
 - **The workspace meta-development layer moved into this repo (D7, WSD-016).** The maintainer
   workflow for developing the framework itself — previously governed by a separate, untracked
   workspace root one level up — now lives here: root `CLAUDE.md`/`AGENTS.md`/`DEVELOPING.md`
@@ -59,10 +65,18 @@
   retired — its job is now structural (one source, three composed dists) rather than a
   cross-repo diff.
 
+### Removed
+- **The migration-era fidelity gate is retired** (WSD-018): the CI fidelity legs and the
+  `scripts/fidelity-check.ps1/.sh` twins are deleted, after Phase 6 validation recorded their
+  final pass (138/138, both stacks) and this release deliberately changed shipped content.
+  Ongoing byte-integrity is the golden-dist freshness gate — `dist/` is committed and CI fails
+  any rebuild diff. The `pre-restructure` tag and the deleted twins remain in git history.
+
 ### Notes
-- This release ships only when Phase 6 (`MERGE-MIGRATION-PLAN.md`) validation is green and the
-  two legacy repos — `ai-tech-lead-dotnet` and `ai-tech-lead-angular` — are archived. Until then,
-  those repos stay live-but-frozen at v0.25.5 and this entry stays Unreleased.
+- Phase 6 of `MERGE-MIGRATION-PLAN.md` completes with this release: validation green (full gate
+  matrix + final fidelity pass) in this commit; publishing it archives the two legacy repos —
+  `ai-tech-lead-dotnet` and `ai-tech-lead-angular` — at v0.25.5 with pointers to this repo and
+  pushes the `v0.26.0` tag (the maintainer publish steps recorded in WSD-018).
 - Legacy framework history predating the merge: [`docs/changelogs/legacy-dotnet.md`](docs/changelogs/legacy-dotnet.md),
   [`docs/changelogs/legacy-angular.md`](docs/changelogs/legacy-angular.md).
 

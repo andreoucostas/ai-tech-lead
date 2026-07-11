@@ -19,6 +19,6 @@ jobs:
   docs-sync-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: AI Tech Lead framework state
         run: bash scripts/docs-sync-check.sh

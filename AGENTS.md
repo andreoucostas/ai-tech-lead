@@ -19,7 +19,7 @@ PowerShell/bash hooks + installer scripts. There is no app to compile — the "b
 - `src/core/` — single-source shared content (`@@INCLUDE` markers where stacks diverge).
 - `src/stacks/{dotnet,angular,monorepo}/` — per-dist `snippets/` + `files/` (overrides, stack-only).
 - `dist/{dotnet,angular,monorepo}/` — **generated** golden output, committed, never hand-edited.
-- `scripts/` — composer + gates (`build`, `validate-dist`, `fidelity-check`), all `.ps1`/`.sh` twins.
+- `scripts/` — composer + gates (`build`, `validate-dist`), all `.ps1`/`.sh` twins.
 - `install.ps1`/`.sh` — thin root installers; auto-detect the target stack (mixed → monorepo).
 - `docs/` — `BACKLOG.md`, `workspace-decisions.md` (ADR log), `changelogs/legacy-*.md`.
 - `.claude/` — maintainer meta layer (bom-fix hook, meta tests, `release.ps1`, plans). Never ships.
@@ -66,6 +66,9 @@ leave changes uncommitted.
 
 ## Migration status note
 
-Phases 0–5 of the merge are done; **Phase 6 (validate → archive legacies → tag v0.26.0) is
-pending**. Until then: no shipped-content changes (CI fidelity legs pin `dist/dotnet`+`dist/angular`
-to the freeze-v0.25.5 baseline), and root `CHANGELOG.md`'s v0.26.0 entry stays "Unreleased".
+**The migration is COMPLETE** (Phase 6 executed 2026-07-11, WSD-018). v0.26.0 shipped from this
+repo after a final green gate matrix (fidelity 138/138 per legacy stack); the migration-era
+fidelity gate is retired (CI legs + `scripts/fidelity-check.ps1/.sh` removed — golden-dist
+freshness is the ongoing byte-integrity gate); the legacy repos are frozen at v0.25.5 and
+archived with pointers here as part of the v0.26.0 publish (WSD-018's admin checklist). The
+WSD-012 shipped-work freeze is lifted.

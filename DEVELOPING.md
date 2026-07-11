@@ -11,7 +11,7 @@ Commands, not philosophy. The rules and the meta-invariant list live in `CLAUDE.
 | `src/stacks/<dist>/snippets/<rel>/<NAME>` | marker content per dist | monorepo snippet wins; else dotnet+angular concat (WSD-015) |
 | `src/stacks/<dist>/files/` | whole-file overrides + stack-only files | both-stacks collision without a monorepo override = build error |
 | `dist/{dotnet,angular,monorepo}/` | generated golden output (committed) | **never hand-edit** [#1]; `linguist-generated` |
-| `scripts/` | composer + gates, `.ps1`/`.sh` twins [#3] | `build`, `validate-dist`, `fidelity-check` |
+| `scripts/` | composer + gates, `.ps1`/`.sh` twins [#3] | `build`, `validate-dist` |
 | `install.ps1` / `install.sh` | root installers | detect stack, auto-detect mixed → monorepo, delegate to dist installer |
 | `.claude/hooks/` | meta-dev hook (`bom-fix.ps1`/`.sh` — auto-adds the UTF-8 BOM to written `.ps1`) | this repo only, does not ship |
 | `.claude/hooks/_fixtures/` | JSON event fixtures for testing the hooks | see below |
@@ -35,17 +35,13 @@ for d in dotnet angular monorepo; do bash scripts/build.sh "$d"; done   # .sh tw
 foreach ($d in 'dotnet','angular','monorepo') { pwsh -NoProfile -File scripts/validate-dist.ps1 $d; "exit=$LASTEXITCODE" }
 ```
 
-## Fidelity vs the frozen v0.25.5 baseline (migration-era gate)
-
-Strict EOL-normalized byte-compare of `dist/{dotnet,angular}` against the Phase-0 freeze tags
-(materialized from history — needs full clone depth). **Green until the v0.26.0 release
-deliberately changes shipped content and retires/moves this baseline** (see CLAUDE.md →
-Migration status note). `dist/monorepo` has no baseline (new capability).
-
-```powershell
-pwsh -NoProfile -File scripts/fidelity-check.ps1 dotnet
-pwsh -NoProfile -File scripts/fidelity-check.ps1 angular
-```
+> **Retired at v0.26.0 (WSD-018):** the migration-era fidelity gate (`scripts/fidelity-check.ps1/.sh`,
+> strict byte-compare of `dist/{dotnet,angular}` against this repo's `pre-restructure` tag — the
+> content-equal mirror of the legacy repos' Phase-0 `freeze-v0.25.5` baseline) was
+> deleted once Phase 6 validation recorded its final 138/138 pass and the release deliberately
+> changed shipped content. Ongoing byte-integrity is the freshness gate above (the golden dist is
+> committed). The `pre-restructure` tag and the deleted twins remain in git history
+> (`git show 'v0.26.0^:scripts/fidelity-check.sh'`) if a migration audit ever needs them.
 
 ## Run the hook test suites (automated — closes the "untested hook" gap [#5])
 
@@ -69,7 +65,7 @@ pwsh -NoProfile -File .claude/hooks/tests/Invoke-HookTests.ps1
 - **Speed:** slow by design — a process is spawned per hook invocation; a full dist suite takes
   ~1–2 min. Expected, not a hang.
 
-**CI** — `.github/workflows/ci.yml` runs compose→freshness→validate→fidelity→hook suites on every
+**CI** — `.github/workflows/ci.yml` runs compose→freshness→validate→hook suites on every
 push/PR (windows leg rebuilds with the `.ps1` composer, linux leg with the `.sh` twin — composer
 twin divergence fails a leg), plus the meta suite.
 
@@ -138,7 +134,6 @@ stamp drift twice:
    commit on any failure**, then commits to `master` and pushes. `-NoPush` for a dry-ish run.
 3. Append to `LEARNINGS.md` if there's a lesson.
 
-**Until Phase 6 lands** (see CLAUDE.md → Migration status note): shipped content is
-fidelity-frozen; the first release is v0.26.0 and must consciously retire/move the CI fidelity
-baseline in the same change, and fold in the queued `actions/checkout` v4→v5 bump in the shipped
-workflows (`src/core/.github/workflows/`).
+**Phase 6 landed with v0.26.0** (WSD-018): the fidelity baseline was retired and the queued
+`actions/checkout` v4→v5 bump folded into the shipped workflows in that release. Shipped-content
+changes are no longer frozen — normal release discipline [#7] applies.

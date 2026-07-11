@@ -6,6 +6,19 @@
 > templates, merged at v0.25.5 — each stack's full per-stack history lives in its origin repo's changelog.
 > Architecture decisions live in `docs/architecture-decisions.md`.
 
+## 0.26.0 — 2026-07-11 (first release from the merged authoring repo)
+
+> The framework is now authored once in the merged
+> [`ai-tech-lead`](https://github.com/andreoucostas/ai-tech-lead) repo, which composes this
+> template as its `dist/monorepo` distribution. The two origin repos are frozen at v0.25.5 and
+> archived with this release — their linked changelogs above are now historical.
+
+### Changed
+- **`.github/workflows`: `actions/checkout` v4 → v5** in `template-ci.yml` and
+  `docs-sync-check.yml` (GitHub's Node 20 deprecation). No other shipped change.
+
+---
+
 ## 0.25.5 — 2026-07-06 (monorepo template debut)
 
 > First release of the combined template for repos that carry **both** a .NET backend and an

@@ -103,9 +103,8 @@ Key traps recorded there: Angular needs a cobertura reporter wired; CI must fetc
 
 > **Design LOCKED — do not re-derive.** Full spec (adversarially critiqued, LOCK WITH
 > AMENDMENTS, findings folded): **`.claude/plans/2026-07-06-b21-reviewer-profile-design.md`**;
-> decision record **WSD-013**. Implement from that doc **post-merge, ≥ v0.28.0**, as single
-> `src/core` edits in the merged repo; independent of B-27. Frozen under WSD-012's shipped-work
-> freeze until the merge lands.
+> decision record **WSD-013**. Implement from that doc, **≥ v0.28.0**, as single `src/core`
+> edits; independent of B-27. The merge landed (v0.26.0, WSD-018) — no longer frozen.
 
 Consumers are competent engineers with limited AI understanding; the pipeline must make every
 AI-architecture call so reviewers only answer plain questions about their own code. The design
@@ -126,8 +125,9 @@ standalone "output leanness" backlog item exists, by decision.
 
 > **Design LOCKED — do not re-derive.** Full spec (adversarially critiqued — verdict RETHINK,
 > resolved as **Path A**; findings folded): **`.claude/plans/2026-07-06-b22-headless-adopt-design.md`**;
-> decision record **WSD-014**. Implement **post-merge, ≥ v0.28.0**, as single `src/core` edits;
-> **depends on B-21 D1** (sequence with or before). Frozen under WSD-012 until the merge.
+> decision record **WSD-014**. Implement **≥ v0.28.0**, as single `src/core` edits;
+> **depends on B-21 D1** (sequence with or before). The merge landed (v0.26.0, WSD-018) —
+> no longer frozen.
 
 Agent-runnable, non-interactive adoption. The critique proved the non-negotiable prompt-injection
 boundary (constraint 2) forbids auto-merging untrusted content into `CLAUDE.md`; the maintainer
@@ -145,54 +145,6 @@ The remaining backlog work is the implementation (L).
 Related open question: `tests/` including `tests/evals/` **ships to consumers** via the
 installer (verified 2026-07-01, accepted-for-now) — revisit whether evals should be excluded
 from the consumer install.
-
-### B-25-EXEC · Execute the monorepo merge (Phases 0–6 of MERGE-MIGRATION-PLAN.md)
-**Effort:** L (5–7 focused sessions) · **Invariants:** all — this task retargets them · added 2026-07-06
-· **IN PROGRESS since 2026-07-08 — Phases 0–3 COMPLETE.** Phase 0: freeze ON, `freeze-v0.25.5`
-tags pushed (fidelity baseline: dotnet `bd8bb2f`, angular `e0f7782`), filter-repo verified,
-`ai-tech-lead` repo created (private). Phase 1: both repos filter-repo'd into `legacy/{dotnet,angular}`,
-merged (`--allow-unrelated-histories`, zero conflicts) → merge commit `305d69e`, 276 files, history
-preserved, tagged `pre-restructure`, pushed (branch = `master`). Phase 2 COMPLETE (`218acac`):
-classification reproduced WSD-012 (51 identical / 77 differing / 10+10 stack-only), twin extraction
-done, **138/138 reproduced for both dist stacks, mismatch=0/missing=0/extra=0** — zero-behaviour-change
-proof for both single-stack dists. **Phase 3 COMPLETE 2026-07-09 (`6acb8e5`, pushed;
-independently re-verified by Fable first):** `build.ps1` composer twin (byte-identical to `build.sh`
-across PS 5.1 + pwsh 7 × both stacks; pwsh 7.3 `-split` trap found+fixed), STRICT fidelity twins
-(missing fails; allowlist EMPTY — 138/138 with no exclusions), `validate-dist` twins (marker/JSON/
-bash -n/PS-AST/per-dist template-checks; red-tested ×4 defect classes), golden `dist/` committed
-(`linguist-generated`), CI (`ci.yml`: rebuild+diff freshness, validate, fidelity, hook suites ×2 legs),
-thin root installer wrappers delegating to the frozen dist installers (9-scenario smoke matrix).
-**Phase 4 COMPLETE 2026-07-10 (WSD-015):** `dist/monorepo` (148 files) composes via
-concat-by-default + authored-override + collision-error (111 authored snippets, 38 whole-file
-overrides, 5 derived markers); D4 token gate 1.17× (no fallback); hook union + post-write dispatch
-fixture-proven on 3 hosts (the `.ps1` sensitive-regex was NOT additive-safe — authored `-or`
-merge, see LEARNINGS); installers auto-detect mixed→monorepo (smoke-tested both legs); validate-dist
-green ×3, fidelity 138/138 ×2, hook suites 0 failures ×3, composer twins byte-identical ×3 hosts;
-CI gained monorepo legs. **Phase 5 COMPLETE 2026-07-11 (WSD-016):** D7 executed — governance
-layer (CLAUDE.md/AGENTS.md/DEVELOPING.md, rewritten single-repo; invariant #1 → single-source
-composition) + bom-fix twins (rescoped `ai-tech-lead-*` → `ai-tech-lead/`, twin-agreement tested
-9/9) + meta suite (WorkspaceBom now repo-wide; `-File` trap: snippet dirs are *named* `*.ps1`) +
-BACKLOG/workspace-decisions/plans/LEARNINGS all moved into the merged repo; `check-lockstep` +
-its tests retired; `release.ps1` retargeted (one stamp/CHANGELOG; gates = compose ×3 +
-validate-dist ×3 + hook suites ×3 + meta suite; fidelity deliberately NOT a release gate);
-root README + root CHANGELOG (v0.26.0 Unreleased) + legacy changelog freezes (diff-verified);
-CI gained the meta-suite leg; workspace root reduced to a pointer stub. Verified: build ×3 +
-dist freshness empty, validate-dist ×3 exit 0, fidelity ×2 exit 0 (dist untouched), meta suite
-0 failures. **Next: Phase 6** (validation → archive legacies → tag v0.26.0 — the release must
-retire/re-baseline the CI fidelity legs + fold the checkout v4→v5 bump). See WSD-012 deltas.
-Post-freeze follow-up: bump `actions/checkout` v4→v5 (GitHub Node 20 deprecation notice) in the
-**shipped** workflows (`src/core/.github/workflows/template-ci.yml` + `docs-sync-check.yml`, and
-thereby `dist/`) at the first release that deliberately changes shipped content (≥ v0.26.0) — they
-are fidelity-frozen until then. The authoring repo's own `ci.yml` was bumped 2026-07-09.
-
-The decision half is DONE: D1–D7 signed off 2026-07-06 (**WSD-012**), plan refreshed against
-v0.25.5 with fresh evidence, phase reorder (archive/tag only after Phase 6 validation), a
-binding **abort rule**, and the fidelity baseline pinned to Phase-0 freeze tags. Execute
-`MERGE-MIGRATION-PLAN.md` exactly — do not re-derive; deltas get appended to WSD-012.
-**Phase 0 first** (freeze both repos + record freeze-tag SHAs). **Freeze scope:** while this
-runs, all shipped-repo backlog items (B-15…B-23, B-29) pause; meta-only design work
-(B-21/B-22 P0 design docs, WSD entries) remains allowed. First merged version **v0.26.0**;
-B-27 follows as v0.27.0 in the merged repo.
 
 ### B-26 · Accepted-debt watch list (no action unless symptoms appear)
 - `route-prompt` keyword-grep intent classification is brittle by design (accepted 2026-07-01);
@@ -347,6 +299,18 @@ in the spec.
 
 ## Done
 
+- **B-25-EXEC** — **COMPLETE 2026-07-11, shipped as v0.26.0** (Phases 0–6 of
+  `MERGE-MIGRATION-PLAN.md`, 2026-07-08 → 2026-07-11). The full per-phase execution record lives
+  in WSD-012 (Phases 0–3 deltas), WSD-015 (Phase 4), WSD-016 (Phase 5), and **WSD-018 (Phase 6 +
+  release)**. Phase 6 summary: full gate matrix revalidated green against the Phase 5 state
+  (compose ×3 with both composer twins byte-identical to the golden dist, validate-dist ×3, hook
+  suites ×3 at 0 failures, meta suite, and a **final fidelity pass — 138/138 both stacks**); the
+  queued `actions/checkout` v4→v5 bump folded into the shipped workflows (the only shipped change
+  vs v0.25.5; red-verified mismatch=2 against the frozen baseline); the migration-era fidelity
+  gate retired (CI legs removed, `scripts/fidelity-check.ps1/.sh` deleted — WSD-018 records why
+  retire beat re-baseline); v0.26.0 released via `release.ps1` with all gates green. Legacy repos
+  frozen at v0.25.5, archived at the v0.26.0 publish (WSD-018 admin checklist); **the WSD-012
+  shipped-work freeze is lifted** (B-15…B-23, B-29 unpause; B-27 targets v0.27.0 next).
 - **B-22 (P0 design)** — done **2026-07-06** (meta-only; implementation stays open, post-merge).
   Design locked as **WSD-014**, spec at `.claude/plans/2026-07-06-b22-headless-adopt-design.md`
   (rev-2). Adversarial critique returned **RETHINK** — it proved the non-negotiable
@@ -383,7 +347,7 @@ in the spec.
   D7 meta-layer fate; freeze scope; archive/tag moved after Phase 6; abort rule; freeze-tag
   fidelity baseline). Adversarial review pass reproduced every measured number and surfaced
   B-31 (fixed) + the stale-execution-sections and phase-ordering hazards (folded in).
-  Execution continues as **B-25-EXEC**. WSD-010 + the B-27 design doc carry retarget notes
+  Execution completed as **B-25-EXEC** (see its Done entry above). WSD-010 + the B-27 design doc carry retarget notes
   (v0.27.0, merged repo).
 - **B-19 · B-24 · B-28 · B-30** — shipped **v0.25.4** (2026-07-05, the "small-items sweep"; all
   gates green via `release.ps1`, both repos pushed). Per item:

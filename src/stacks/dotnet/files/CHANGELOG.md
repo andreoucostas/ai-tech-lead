@@ -3,6 +3,21 @@
 > Framework-level changes for the .NET template. Per-stack Angular changes live in [`ai-tech-lead-angular/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-angular/blob/master/CHANGELOG.md).
 > Architecture decisions live in `docs/architecture-decisions.md`.
 
+## 0.26.0 — 2026-07-11 (first release from the merged authoring repo)
+
+> The framework is now authored once in the merged
+> [`ai-tech-lead`](https://github.com/andreoucostas/ai-tech-lead) repo, which composes this
+> template as its `dist/dotnet` distribution; `ai-tech-lead-dotnet` is frozen at v0.25.5 and
+> archived with this release. Byte-for-byte fidelity against v0.25.5 was proven (138/138 files,
+> empty allowlist) before the one deliberate change below — updating to this version is an
+> update, not a behavior change.
+
+### Changed
+- **`.github/workflows`: `actions/checkout` v4 → v5** in `template-ci.yml` and
+  `docs-sync-check.yml` (GitHub's Node 20 deprecation). No other shipped change.
+
+---
+
 ## 0.25.5 — 2026-07-06 (B-31: lockstep hotfix release — no dotnet behavior change)
 
 > Angular's `settings.windows.json` was missing the `audit-trail.ps1` registration (a gap the
