@@ -116,6 +116,10 @@ PR/commit (bootstrap Phase 4 + adopt Phase 8, single-emitter, durable `<!-- DEFA
 marker for adopt-4a); **D2** session-start hazard-staleness resurface (real interval math,
 ISO-pinned, inside `$body`/`emit_body`); **D3** rendered legend + "merge ≠ verified" line, ladder
 tokens kept. The remaining backlog work is the implementation (M–L).
+**Implementation checklist addition (2026-07-11, WSD-017):** while editing the report emitters,
+sanity-check each report's verbosity against the reviewer profile — output leanness applies only
+where it doesn't cost the plain-engineering explanations the profile requires (WSD-013). No
+standalone "output leanness" backlog item exists, by decision.
 
 ### B-22 · Headless `/adopt` — **P0 design DONE (Path A); implementation post-merge**
 **Effort:** L · **P0 design complete 2026-07-06** (WSD-014) · **Invariants:** #1 #3 #5 #7
@@ -194,8 +198,10 @@ B-27 follows as v0.27.0 in the merged repo.
 - `route-prompt` keyword-grep intent classification is brittle by design (accepted 2026-07-01);
   revisit only with evidence of misrouting.
 - CLAUDE.md §1 rails reach the model up to 3× per prompt on Claude Code (CLAUDE.md +
-  session-start + route-prompt) — token cost accepted for salience; re-measure if context
-  budgets tighten.
+  session-start + route-prompt) — token cost accepted for salience. **The "re-measure if
+  context budgets tighten" trigger fired 2026-07-11** (consumer token-cost consciousness);
+  the watch item is superseded by **B-32** (context-footprint gate, design LOCKED — WSD-017),
+  which makes the re-measurement permanent. The salience-over-bytes trade itself stands.
 
 ### B-27 · Team wiki memory: repo-managed shared knowledge for consumer dev pools
 **Effort:** L (implementation only — design DONE) · **Invariants:** #1 #2 #3 #5 #7 · added 2026-07-04
@@ -301,6 +307,41 @@ cases with planted defects each agent must catch on Haiku: known convention viol
 `debt-radar`. Mirror to both repos [#1]. If Haiku misses at a meaningful rate, revisit the
 tiering (WSD-011) rather than the eval. Cross-links: B-23 (evals as release gate), WSD-011
 (token-policy record that filed this gap).
+
+**Amended 2026-07-11 (B-32 design pass, WSD-017):** rising consumer token-cost consciousness
+raises this item's value — it is the enabler for safely *extending* the WSD-011 tiering to more
+agents (the cheapest cost lever available; extension without evidence would repeat the original
+unevidenced claim). Scope addition: decide/verify whether the shipped `.github/agents/*.agent.md`
+wrappers should pin GitHub's documented `model:` field — tiering currently reaches Claude Code
+only (WSD-011 implementation fact), so the Copilot half of every consumer surface gets no benefit.
+A wrong pin is consumer-visible: verify on a live Copilot surface before shipping.
+
+### B-32 · Context-footprint gate: deterministic measurement + regression tripwire for the always-loaded surface — **P0 design DONE; implementation post-merge**
+**Effort:** M · **P0 design complete 2026-07-11** (WSD-017) · **Invariants:** #3 #6 #7 · added 2026-07-11
+
+> **Design LOCKED — do not re-derive.** Full spec (adversarially critiqued — LOCK WITH
+> AMENDMENTS; 2 HIGH + 5 MEDIUM + 5 LOW folded, both HIGHs independently re-verified):
+> **`.claude/plans/2026-07-11-b32-context-footprint-gate-design.md`**; decision record
+> **WSD-017**. Implement **after Phase 6 / v0.26.0** (maintainer-side — no shipped-behavior
+> change, so no version slot per invariant #7), **before or with B-27 (v0.27.0)** so the wiki
+> inherits the counting rule. The one shipped piece (framework-doctor "context cost" section,
+> design D6) rides B-16 (≥ v0.28.0).
+
+Problem: B-26's "re-measure if context budgets tighten" was an advisory note nobody executed,
+and WSD-015's 1.17×/1.5× monorepo token check was a one-off. Measured 2026-07-11: static
+per-prompt overhead ≈ **8.5–10.4K tok on Claude Code** (CLAUDE.md + skills/commands/agents
+frontmatter; monorepo highest at 41,443 chars) and ≈ **6.0–7.6K on Copilot** (AGENTS.md +
+copilot-instructions.md), plus up to ~1.1K route-prompt rails per matched prompt — previously
+invisible and silently growable. Ship `scripts/context-footprint.ps1/.sh` twins: per-dist
+manifest (static.claude / static.copilot / instructed / session / prompt / ondemand-info);
+rendered-hook fixtures execute **both** hook twins and FAIL on output mismatch (doubles as the
+first rendered-rails content-parity gate); committed baseline `docs/context-footprint.json`
+with hand-rolled canonical serialization; freshness-style FAIL on any drift; advisory WARN
+ceilings (40K/48K chars static.claude; 1.5× monorepo CLAUDE.md ratio — absorbs WSD-015's
+fallback trigger); CI cross-OS legs = the twin proof; `release.ps1` runs `-Update` (version
+stamp lands after PRs were gated). Non-goals (locked): no tokenizer, no consumer-side FAIL, no
+output-token measurement, no relitigating WSD-011. Verification recipes + red-test matrix are
+in the spec.
 
 ---
 

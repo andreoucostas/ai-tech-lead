@@ -552,3 +552,47 @@ each repo's `docs/architecture-decisions.md`.
   (validation → archive the two legacy repos → tag v0.26.0) remains the next and final phase of
   B-25-EXEC; it must not begin until this repo's gates (dist freshness, `validate-dist` ×3, hook
   suites ×3, meta suite) are all green against the Phase 5 state.
+
+## WSD-017: B-32 context-footprint gate — design LOCKED (measure + freshness-gate the always-loaded surface)
+- **Date**: 2026-07-11
+- **Status**: Accepted (design locked; implementation post-merge — after Phase 6 / v0.26.0,
+  before or with B-27; the doctor surfacing rides B-16)
+- **Decision**: build `scripts/context-footprint.ps1/.sh` twins that deterministically measure
+  what the framework injects into consumer sessions, per dist, against a committed baseline
+  `docs/context-footprint.json` — a freshness-style gate in the check-lockstep/dist-freshness
+  tradition. Manifest groups by *when the consumer pays*: `static.claude` (CLAUDE.md +
+  skills/commands/agents frontmatter), `static.copilot` (AGENTS.md + copilot-instructions.md),
+  `instructed` (FRAMEWORK-CONTEXT.md, docs/defaults.md, post-B-27 the wiki INDEX seed),
+  `session` / `prompt` (session-start and route-prompt rendered against pinned deterministic
+  fixtures — **both hook twins rendered, FAIL on output mismatch**, which doubles as the
+  first rendered-rails content-parity gate), `ondemand` (info-only). FAIL = measured ≠ baseline
+  or twin mismatch; WARN (never fail) = advisory ceilings, recorded in the JSON: `static.claude`
+  > 40K chars single-stack / 48K monorepo, and monorepo CLAUDE.md ratio > 1.5× — the latter
+  **absorbs WSD-015's one-off D4 token check** into a repeatable gate. Counting rule: LF-normalized
+  UTF-8 bytes, tokens ≈ chars÷4 (no tokenizer dependency); canonical hand-rolled JSON emission
+  (byte-identical across PS 5.1/pwsh/bash). Wiring: CI cross-OS legs run `-Check` (= twin proof);
+  `release.ps1` runs `-Update` (the version stamp lands after PRs were already gated, so the
+  release delta is the stamp alone). B-27's `wiki-check` must reuse the counting rule.
+  Full spec: `.claude/plans/2026-07-11-b32-context-footprint-gate-design.md` (rev-2,
+  adversarially critiqued — LOCK WITH AMENDMENTS; 2 HIGH + 5 MEDIUM + 5 LOW all folded; both
+  HIGHs independently re-verified: monorepo `static.claude` = 41,443 chars already exceeded a
+  naive shared 40K ceiling, and shipped `.github/copilot-instructions.md` was missing from the
+  draft manifest).
+- **Context**: the maintainer raised rising consumer token-cost consciousness (2026-07-11) —
+  the literal trigger recorded in B-26 ("re-measure if context budgets tighten"). Triage found
+  model-tiering already decided (WSD-011, static per-agent tiering; evidence gap = B-29) and no
+  measurement machinery anywhere: current static per-prompt overhead measured at ≈ 8.5–10.4K
+  tok on Claude Code and ≈ 6.0–7.6K on Copilot, previously invisible.
+- **Alternatives rejected**: fold into `validate-dist` (stateless per-dist validator vs a
+  stateful cross-dist gate); measurement-only report at release (recreates the B-26 advisory
+  rot); real tokenizer (dependency, no decision-relevant precision); hard-fail ceilings
+  (threshold-fiddling risk — the deterministic FAIL already prevents silence); measuring only
+  the `.sh` hook twins (consumers' settings.json wires the `.ps1` twins — they'd be ungated).
+- **Also decided in the same pass**: NO standalone "output/report leanness" backlog item — it
+  conflicts with the reviewer profile (WSD-013: reports must stay explanatory for engineers
+  with limited AI understanding); folded instead as a verbosity-sanity line on B-21's
+  implementation checklist. B-29 amended: it is the enabler for safely *extending* WSD-011
+  tiering, and gains the "should `.github/agents/*.agent.md` pin GitHub's documented `model:`
+  field" question. The gate targets growth/churn **visibility**, not size minimization —
+  B-26/WSD-011's salience-over-bytes trade stands (design D8 records this so a future session
+  doesn't compress the rails against the ceiling).
