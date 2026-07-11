@@ -101,6 +101,25 @@ Get-ChildItem -Recurse -Filter *.ps1 -Path src,dist,scripts,.claude | ForEach-Ob
 
 (The meta suite's `WorkspaceBom.Tests.ps1` runs the same sweep automatically on every release.)
 
+## Composer regression suite + repo hygiene gates (B-33)
+
+The meta suite (`.claude/hooks/tests/Invoke-HookTests.ps1`, auto-discovers `*.Tests.ps1`) now
+also carries — beyond bom-fix + the BOM sweep — the durable replacements for what the
+migration-era fidelity gate proved (fidelity retires at v0.26.0, see the release section):
+
+- `ComposerFixtures.Tests.ps1` — fixture-based composer defect classes (marker substitution,
+  authored-override-vs-concat precedence, whole-file collisions, unresolved markers, byte
+  fidelity), both twins on the same fixtures, sandboxed copies of the real `scripts/build.*`.
+- `SiblingDrift.Tests.ps1` — red/green tests for `scripts/check-sibling-drift.ps1/.sh`.
+- `SrcHygiene.Tests.ps1` — the `</content>`/`</invoke>` leakage sweep over `src/`
+  (LEARNINGS 2026-07-10), now a gate instead of a manual grep.
+- `RoutePromptUnion.Tests.ps1` — the monorepo sensitive-regex UNION canary against the
+  composed `dist/monorepo` route-prompt twins (the Phase-4 additive-safety class).
+
+```powershell
+pwsh -NoProfile -File .claude/hooks/tests/Invoke-HookTests.ps1   # runs all of the above
+```
+
 ## Monorepo-sibling discipline (WSD-015)
 
 `dist/monorepo` composes: markers resolve to an authored `src/stacks/monorepo/snippets/<rel>/<NAME>`

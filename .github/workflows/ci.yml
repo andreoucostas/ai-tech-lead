@@ -10,7 +10,12 @@ name: CI
 # windows leg drives the .ps1 twins; linux leg drives the .sh twins — each leg rebuilds with
 # its own twin and diffs against the committed golden dist, so composer twin divergence fails
 # one of the two legs. fetch-depth: 0 because fidelity-check materialises the pre-restructure
-# tag from history.
+# tag from history (and the sibling-drift gate needs the merge-base).
+#
+# The sibling-drift step (B-33) enforces WSD-015: a change to a stack snippet/whole-file whose
+# src/stacks/monorepo/ sibling exists but is untouched fails the leg (override: a
+# 'Sibling-Reviewed:' commit trailer). The meta suite additionally carries the composer
+# regression fixtures, the src/ leakage sweep, and the monorepo sensitive-union canary (B-33).
 
 on:
   pull_request:
@@ -34,6 +39,8 @@ jobs:
         run: |
           git add -A dist
           git diff --cached --exit-code --stat -- dist
+      - name: Monorepo-sibling drift (WSD-015 gate, .ps1 twin)
+        run: pwsh -NoProfile -File scripts/check-sibling-drift.ps1 "${{ github.event.pull_request.base.sha || github.event.before }}"
       - name: Validate dists (parse gates + per-dist template-checks)
         run: |
           pwsh -NoProfile -File scripts/validate-dist.ps1 dotnet
@@ -66,6 +73,8 @@ jobs:
         run: |
           git add -A dist
           git diff --cached --exit-code --stat -- dist
+      - name: Monorepo-sibling drift (WSD-015 gate, .sh twin)
+        run: bash scripts/check-sibling-drift.sh "${{ github.event.pull_request.base.sha || github.event.before }}"
       - name: Validate dists (parse gates + per-dist template-checks)
         run: |
           bash scripts/validate-dist.sh dotnet
