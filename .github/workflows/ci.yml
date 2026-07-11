@@ -55,7 +55,7 @@ jobs:
           pwsh -NoProfile -File dist/dotnet/tests/hooks/Invoke-HookTests.ps1
           pwsh -NoProfile -File dist/angular/tests/hooks/Invoke-HookTests.ps1
           pwsh -NoProfile -File dist/monorepo/tests/hooks/Invoke-HookTests.ps1
-      - name: Meta-hook test suite (bom-fix + repo-wide BOM gate)
+      - name: Meta test suite (bom-fix, BOM sweep, composer fixtures, sibling-drift tests, src hygiene, union canary)
         run: pwsh -NoProfile -File .claude/hooks/tests/Invoke-HookTests.ps1
 
   linux:
@@ -89,5 +89,5 @@ jobs:
           pwsh -NoProfile -File dist/dotnet/tests/hooks/Invoke-HookTests.ps1
           pwsh -NoProfile -File dist/angular/tests/hooks/Invoke-HookTests.ps1
           pwsh -NoProfile -File dist/monorepo/tests/hooks/Invoke-HookTests.ps1
-      - name: Meta-hook test suite (bom-fix + repo-wide BOM gate)
+      - name: Meta test suite (bom-fix, BOM sweep, composer fixtures, sibling-drift tests, src hygiene, union canary)
         run: pwsh -NoProfile -File .claude/hooks/tests/Invoke-HookTests.ps1

@@ -29,8 +29,14 @@ if ($Mode -ne 'dotnet' -and $Mode -ne 'angular' -and $Mode -ne 'monorepo') {
     exit 2
 }
 
-# Anchor to the repo this script lives in (scripts/..), not the caller's cwd.
+# Anchor to the repo this script lives in (scripts/..), not the caller's cwd. Set-Location
+# moves only PowerShell's $PWD; the raw [System.IO.File] calls below resolve relative paths
+# against [Environment]::CurrentDirectory (the process cwd), which stays wherever the caller
+# was -- so sync it too, or a foreign-cwd invocation deletes dist/ (cmdlet, $PWD) and then
+# dies mid-compose reading src/ (.NET, process cwd). The bash twin's cd is a real chdir() and
+# needs no equivalent. Found by the B-33 composer fixtures (LEARNINGS 2026-07-11).
 Set-Location (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
+[Environment]::CurrentDirectory = (Get-Location).ProviderPath
 
 $CORE = "src/core"
 $SNIP = "src/stacks/$Mode/snippets"

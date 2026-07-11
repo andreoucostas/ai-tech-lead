@@ -179,9 +179,9 @@ root README + root CHANGELOG (v0.26.0 Unreleased) + legacy changelog freezes (di
 CI gained the meta-suite leg; workspace root reduced to a pointer stub. Verified: build ×3 +
 dist freshness empty, validate-dist ×3 exit 0, fidelity ×2 exit 0 (dist untouched), meta suite
 0 failures. **Next: Phase 6** (validation → archive legacies → tag v0.26.0 — the release must
-retire/re-baseline the CI fidelity legs + fold the checkout v4→v5 bump). **Precondition (2026-07-11):
-land B-33 (composer regression suite + sibling-drift gate) before or with Phase 6 — retiring
-fidelity without it leaves composition correctness ungated.** See WSD-012 deltas.
+retire/re-baseline the CI fidelity legs + fold the checkout v4→v5 bump). **Precondition met
+2026-07-11: B-33 (composer regression suite + sibling-drift gate) is DONE — composition
+correctness stays gated after fidelity retires.** See WSD-012 deltas.
 Post-freeze follow-up: bump `actions/checkout` v4→v5 (GitHub Node 20 deprecation notice) in the
 **shipped** workflows (`src/core/.github/workflows/template-ci.yml` + `docs-sync-check.yml`, and
 thereby `dist/`) at the first release that deliberately changes shipped content (≥ v0.26.0) — they
@@ -345,43 +345,6 @@ stamp lands after PRs were gated). Non-goals (locked): no tokenizer, no consumer
 output-token measurement, no relitigating WSD-011. Verification recipes + red-test matrix are
 in the spec.
 
-### B-33 · Composer regression suite + sibling-drift check — replace what fidelity proves **before Phase 6 retires it**
-**Effort:** M · **Invariants:** #1 #3 #4 #6 · added 2026-07-11 · **Sequence: land before or with
-Phase 6 (v0.26.0).** Meta-only (gates + tests, no shipped content) — freeze-compatible.
-
-Problem: `fidelity-check` is today the **only end-to-end proof that the composer produces the
-intended content**, and Phase 6 deliberately retires it (WSD-016: fidelity is a migration-era
-gate, not a release gate). After retirement the deterministic net for composition correctness is:
-freshness (proves committed dist == rebuild — i.e. *determinism*, not correctness: in the normal
-workflow a buggy composer's wrong output gets rebuilt-and-committed together, and freshness
-passes) + `validate-dist` (structural: markers resolved, JSON, syntax, template-checks — not
-content intent). The composer red-tests (Phase 3, ×4 defect classes) and the 116-marker
-CONCAT-vs-AUTHOR audit (Phase 4) were **one-off manual verifications, never committed as gates**
-— and the one real bug in this class (the `.ps1` sensitive-regex overwrite, LEARNINGS 2026-07-10)
-was caught only by that one-off audit. The WSD-015 sibling discipline (stack edit with a monorepo
-sibling never reaches `dist/monorepo`) is likewise enforced by nothing but CLAUDE.md prose,
-exactly when the post-merge implementations (B-21, B-22, B-27) are about to edit `src/` heavily.
-
-Ship three pieces (suggested home: extend the meta suite / follow the `Invoke-HookTests.ps1`
-dependency-free harness pattern; must not ship [#6]):
-1. **Fixture-based composer tests:** minimal fixture `src/` tree → compose → byte-compare to
-   expected output, run with **both** twins on the same fixtures asserting identical bytes [#3].
-   Cover the known defect classes: marker substitution, absent-snippet removal,
-   authored-monorepo-override precedence over dotnet+angular concat, whole-file override,
-   both-stacks collision without override → build **error** (red test), and a concat
-   additive-safety canary (the LEARNINGS 2026-07-10 class). Red-test each class per the
-   composer/gate definition of done — plant the defect, show the non-zero exit, then the clean pass.
-2. **Sibling-drift check (the WSD-015 gate):** diff-scoped — when a commit/PR touches
-   `src/stacks/{dotnet,angular}/(snippets|files)/<rel>` and a `src/stacks/monorepo/` sibling for
-   that `<rel>` exists but is untouched, FAIL (or loud WARN) naming the sibling path. Needs the
-   base ref in CI (`fetch-depth: 0` is already set). `.ps1`/`.sh` twins [#3].
-3. **Fold the tool-syntax leakage sweep** (`grep -rn '</content>\|</invoke>' src/`, LEARNINGS
-   2026-07-10) into `validate-dist` or the meta suite — one line; kills a known manual step.
-
-Wire the suite into `ci.yml` (both legs) and `release.ps1`. Rationale for the sequencing: v0.26.0
-is the first release that deliberately changes shipped content through the composer — the window
-where fidelity is gone and nothing replaces it should be zero.
-
 ### B-34 · Installer smoke matrix in CI
 **Effort:** S–M · **Invariants:** #3 #6 · added 2026-07-11 · post-Phase-6, any time.
 
@@ -395,6 +358,30 @@ DEVELOPING.md → "Install smoke test", made deterministic). Keep it against `di
 ---
 
 ## Done
+
+- **B-33** — done **2026-07-11** (meta-only, no version/CHANGELOG per invariant #7 — no shipped
+  behavior change; dist/ byte-untouched, freeze respected). The Phase-6 precondition: durable
+  replacements for what the retiring fidelity gate proves. Shipped four gates, all auto-discovered
+  by the meta suite (`Invoke-HookTests.ps1` → `release.ps1` + both `ci.yml` legs):
+  `ComposerFixtures.Tests.ps1` (38 tests: sandboxed copies of the real composer twins over
+  programmatic fixtures — marker substitution, authored-override-vs-concat precedence, overlay +
+  collision red test, unresolved-marker red test, BOM/CRLF/trailing-NL byte fidelity, per-mode
+  .ps1≡.sh tree byte-identity); `scripts/check-sibling-drift.ps1/.sh` + 18 red/green tests + a CI
+  step per leg (WSD-015 gate: touched stack snippet/file with an untouched monorepo sibling fails;
+  `Sibling-Reviewed:` trailer override; loud NOTICE skip on unresolvable base);
+  `SrcHygiene.Tests.ps1` (the `</content>|</invoke>` sweep, LEARNINGS 2026-07-10, now a gate);
+  `RoutePromptUnion.Tests.ps1` (composed dist/monorepo route-prompt twins must flag dotnet-only
+  `ledger` AND angular-only `bypasssecuritytrust` — keywords verified one-sided against the
+  single-stack dists; pins the Phase-4 overwrite-assignment class). **Bonus find:** the fixture
+  work exposed a real `build.ps1` twin divergence — `Set-Location` anchors cmdlets but not the
+  raw .NET file calls (`[Environment]::CurrentDirectory`), so a foreign-cwd invocation deleted
+  dist/ then died mid-compose while `build.sh` self-anchored fine; fixed one-line, rebuilt dists
+  byte-identical, harness now spawns composers from a foreign cwd on purpose (LEARNINGS
+  2026-07-11; `fidelity-check.ps1` has the same latent pattern, left as-is — retires at v0.26.0).
+  Delivered by two Sonnet subagents against a locked Fable plan
+  (`.claude/plans/2026-07-11-b33-composer-regression-suite.md`) with Fable adversarial review —
+  review caught a `grep -q`-under-pipefail SIGPIPE race and a non-ASCII output hazard in the
+  sibling gate. Phase 6 is unblocked.
 
 - **B-22 (P0 design)** — done **2026-07-06** (meta-only; implementation stays open, post-merge).
   Design locked as **WSD-014**, spec at `.claude/plans/2026-07-06-b22-headless-adopt-design.md`

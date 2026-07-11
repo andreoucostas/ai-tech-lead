@@ -1,5 +1,7 @@
 ﻿# Suite entry point (root meta-dev) -- runs every *.Tests.ps1 here as an isolated pwsh process and
-# exits with the TOTAL number of failures (0 = green). Mirrors ai-tech-lead-*/tests/hooks runner.
+# exits with the TOTAL number of failures (0 = green). Mirrors the dist tests/hooks runner.
+# Carries: MetaHooks (bom-fix) + WorkspaceBom, and the B-33 gates -- ComposerFixtures,
+# SiblingDrift, SrcHygiene, RoutePromptUnion.
 # Usage:  pwsh -NoProfile -File .claude/hooks/tests/Invoke-HookTests.ps1
 $ErrorActionPreference = 'Stop'
 if (Get-Command pwsh -ErrorAction SilentlyContinue) { $psExe = 'pwsh' } else { $psExe = 'powershell' }

@@ -89,3 +89,21 @@ validate-dist, or template-checks gates could catch this — it is valid markdow
 A one-line grep sweep (`grep -rn '</content>\|</invoke>' src/stacks/monorepo`) found all three.
 Any batch of agent-authored artifacts gets that sweep before commit, and the final line of every
 agent-authored file gets eyeballed (the leak is always at EOF).
+
+[2026-07-11] **PowerShell `Set-Location` moves `$PWD`, not the process cwd — raw .NET file
+APIs diverge from cmdlets in a "self-anchoring" script.** `build.ps1`'s anchor
+(`Set-Location <script>/..`) made every *cmdlet* (Get-ChildItem, Remove-Item, Test-Path)
+repo-relative, but its raw `[System.IO.File]::ReadAllBytes/WriteAllBytes` calls resolve
+relative paths against `[Environment]::CurrentDirectory`, which `Set-Location` does NOT move.
+Invoked from a foreign cwd the composer deleted the (correct) dist via cmdlet, then died
+mid-compose reading `src/` against the wrong root — while `build.sh`'s `cd` (a real chdir)
+self-anchored fine: a live twin-behavior divergence [#3] invisible in a year of running it
+from the repo root, surfaced only when the B-33 fixture harness spawned the composer from a
+sandbox. Proven by a run from `/tmp`; fixed with one line
+(`[Environment]::CurrentDirectory = (Get-Location).ProviderPath` after the Set-Location), and
+the fixture harness now deliberately spawns both composers from a foreign cwd so
+self-anchoring stays covered. Rule: any .ps1 that anchors with Set-Location AND touches files
+through .NET statics must sync `[Environment]::CurrentDirectory` (fidelity-check.ps1 carries
+the same latent pattern; left as-is — it retires at v0.26.0). Corollary: native child
+processes inherit `$PWD`, not `Environment.CurrentDirectory`, so git-driving scripts like
+check-sibling-drift.ps1 are unaffected.
