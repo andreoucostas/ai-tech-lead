@@ -1,4 +1,4 @@
-﻿# B-02 regression -- the post-write throttle epoch must be culture-invariant and never overflow Int32.
+﻿# regression -- the post-write throttle epoch must be culture-invariant and never overflow Int32.
 # Historic bug: `$now = [int][double]::Parse((Get-Date -UFormat %s))`. Under Windows PowerShell 5.1,
 # -UFormat %s returns a FRACTIONAL LOCAL-TIME string (e.g. 1783162609.9606); [double]::Parse is
 # culture-sensitive, so in comma-decimal locales (de-DE/el-GR/fr-FR) the dots are group separators,
@@ -42,4 +42,4 @@ It 'old epoch approach overflows under a comma-decimal culture; new approach yie
     }
 }
 
-exit (Write-TestSummary 'PostWrite.Tests (B-02 epoch)')
+exit (Write-TestSummary 'PostWrite.Tests (epoch)')

@@ -546,7 +546,7 @@ each repo's `docs/architecture-decisions.md`.
   rather than silently applied.
 - **Consequences**: this repo's root `CLAUDE.md` is now the sole authority for meta-development
   (superseding the old workspace root's `CLAUDE.md`, which becomes historical once Phase 6
-  archives that root). `docs/BACKLOG.md` and this file are the live ADR/backlog surfaces going
+  archives that root). `meta/BACKLOG.md` and this file are the live ADR/backlog surfaces going
   forward. B-27 implementation (WSD-010, target v0.27.0) reads its delivery mechanics from the
   appendix above, not from re-deriving them against the now-retired `check-lockstep.ps1`. Phase 6
   (validation → archive the two legacy repos → tag v0.26.0) remains the next and final phase of
@@ -675,3 +675,77 @@ each repo's `docs/architecture-decisions.md`.
      both legacy repos (dotnet `f018085`, angular `433f258`); **both legacy repos archived on
      GitHub** (`isArchived:true`). B-25-EXEC is complete; B-27 (team wiki memory) is next as
      v0.27.0 in this repo.
+
+---
+
+## WSD-019: The meta/product boundary — sealed, namespaced, and made a machine check (v0.26.1)
+
+**Context.** Invariant #6 ("don't-ship boundary") has existed since the meta layer was created, and
+the framework's own `LEARNINGS.md` already says in plain words that *"instructions enforced only by
+a model reading them are wishes; the fix was machine checks."* Both were true. Neither held. A
+`no-meta-leak` sweep of the composed dists found **192 leaking lines** (81 dotnet / 83 angular /
+28 monorepo), in two tiers — and the distinction matters, so state it honestly:
+
+- **Tier 1 — actually installed into a consumer's repo: 22 lines** (measured on a real
+  `install.sh` smoke run into a greenfield .NET target). Tracking ids in **live shipped code**:
+  `post-write.{ps1,sh}` (all three stacks), `template-checks.{ps1,sh}` (which also named the
+  maintainer-only `release.ps1` — a script that does not exist in a consumer repo),
+  `build-architecture-html.ps1`, and four `tests/hooks/*.Tests.ps1`. This is unambiguous leakage.
+- **Tier 2 — product-visible but not installed: ~170 lines**, almost all in
+  `dist/dotnet/CHANGELOG.md` (66) and `dist/angular/CHANGELOG.md` (75), which were maintainer
+  engineering logs (backlog ids, `WSD-nnn`, the "Fable-exit" codename, "lockstep with the .NET
+  twin", links to the archived legacy repos, and a literal `_Maintainer-only (does not ship)_`
+  note). The installer deliberately excludes `CHANGELOG.md`/`README.md` from the copy, so these
+  never reach a consumer's working tree — but they *are* the published product surface that a
+  team reads when evaluating, cloning, or installing the framework. Still a defect; a lesser one.
+
+The gate scans `dist/` and therefore covers both tiers. Being precise about which is which is the
+point: the framework's own enforcement-honesty doctrine forbids overclaiming a harm, and "192 lines
+shipped into consumer repos" would have been an overclaim.
+
+**Crucially, the merge did not cause this — it inherited it.** The legacy
+`ai-tech-lead-dotnet/CHANGELOG.md` carries the identical 35 marker lines; the v0.25.5 fidelity
+freeze copied them byte-for-byte, exactly as designed. The merge only made them visible by putting
+the meta layer in the same tree.
+
+**Decisions.**
+
+- **D1 — the shipped changelog is the consumer's, not ours.** `src/stacks/*/files/CHANGELOG.md` is
+  rewritten in the consumer's voice: what changed in *their* repo, what they must do. Every version
+  heading is preserved (37/38/2 — unchanged), only the framing changed. This was safe to do because
+  the full engineering history already lives, verbatim, in `meta/changelogs/legacy-*.md` — the
+  shipped changelog was a near-duplicate of it. Our own engineering log is the **root**
+  `CHANGELOG.md`; it may keep tracking ids, and it no longer calls itself "consumer-facing".
+- **D2 — namespace the maintainer layer under `meta/`.** `LEARNINGS.md`, `BACKLOG.md`,
+  `workspace-decisions.md`, `ci-handover.md`, `changelogs/` move there, and root `docs/` is
+  **deleted outright** — that name belongs to the consumer (`dist/*/docs/`), and having both is what
+  made a maintainer open `LEARNINGS.md` and find meta content where the product's empty template
+  was expected. `CLAUDE.md`/`AGENTS.md`/`.claude/` **cannot** move (Claude Code loads them from the
+  root), so for those the banner remains the only tie-breaker. Accepted asymmetry: structure where
+  structure is possible, prose only where it isn't.
+- **D3 — enforce it: `validate-dist` check 6, `no-meta-leak`.** Scans each composed dist against
+  `scripts/meta-denylist.txt`. **Scanned against `dist/`, not `src/`**, because `dist/` is what a
+  consumer actually receives — a `src/`-only scan would miss anything a snippet composes *into* a
+  shipped file. CI already runs `validate-dist` per dist on both legs, so no `ci.yml` change.
+- **D4 — the denylist targets ID forms, not vocabulary.** `\bB-[0-9]{2}[a-z]?\b` and
+  `\bWSD-[0-9]{3}\b` are denied; the bare word **`BACKLOG` is deliberately allowed** (the product
+  legitimately reads the *consumer's own* `BACKLOG.md` in `adopt.md` and the installers' adoption
+  signals), and bare **`twin` is allowed** (the shipped `.ps1`/`.sh` twins are a real cross-platform
+  feature consumer docs must be able to name). This is why the `ALLOW` list is **empty**: a gate with
+  a large allowlist is a gate people learn to switch off. Prefer adding a narrow `ALLOW` over
+  weakening a `DENY`.
+- **D5 — one denylist file, read by both twins.** Not duplicated into the `.ps1` and `.sh` legs. The
+  cautionary precedent is in `meta/LEARNINGS.md`: `docs-sync-check.ps1` counted with
+  `Measure-Object -Line` while its `.sh` twin used `wc -l`, so the same check could pass on one
+  surface and fail on the other. A shared data file makes that class structurally impossible.
+
+**Evidence.** The gate was written **before** the cleanup and run against the dirty tree — it went
+red on the real defect (81/83/28 lines, checks 1–5 still green), and both twins reported identical
+counts. Building it first also caught a genuine twin asymmetry *in the gate itself*: check 5 invokes
+the dist's own `template-checks.ps1`, which `Set-Location`s into the dist and never restores it, so
+a relative path resolved after it broke on the PowerShell leg while the bash leg (subshell) was
+unaffected — fixed by resolving paths up front. That is invariant #3 catching a bug in the code
+written to enforce invariant #6.
+
+**Version.** Shipped as **v0.26.1** — shipped *content* changes, no behavior change — which leaves
+v0.27.0 free for B-27 (team wiki memory) as already planned.

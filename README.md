@@ -1,5 +1,10 @@
 # ai-tech-lead
 
+> **Want to *use* the framework in your repo? → go to [`dist/`](./dist).** Pick your stack
+> (`dist/dotnet`, `dist/angular`, `dist/monorepo`) and read its `README.md` — that is the whole
+> product, and it is the only thing that ships. **Everything else in this repo is how the framework
+> is *built*, and is written for its maintainers.**
+
 **AI Tech Lead** is a per-repository instruction layer — `CLAUDE.md`/`AGENTS.md`, skills,
 commands, subagents, and deterministic hooks — that makes AI coding agents (Claude Code and
 GitHub Copilot, dual-surface) follow a team's conventions, architecture, and risk posture instead
@@ -74,11 +79,11 @@ getting the framework itself into a repo.
 | `dist/{dotnet,angular,monorepo}/` | **Generated**, committed golden output. Never hand-edited — CI rebuilds and diffs it against `src/` on every push/PR. |
 | `scripts/` | The composer and its gates, each as a `.ps1`/`.sh` twin: `build`, `validate-dist`, `fidelity-check`. |
 | `install.ps1` / `install.sh` | Root installers — detect the target's stack (or read `--stack`) and delegate to the matching dist installer. |
-| `docs/` | `BACKLOG.md` (work list), `workspace-decisions.md` (ADR log), `ci-handover.md`, legacy changelogs. |
+| `meta/` | **The maintainer layer, kept out of the product's way:** `BACKLOG.md` (work list), `workspace-decisions.md` (ADR log), `LEARNINGS.md` (meta-dev log), `ci-handover.md`, `changelogs/` (frozen pre-merge history). Never ships. |
 | `.github/workflows/ci.yml` | The CI gate — see below. |
-| `CLAUDE.md` / `AGENTS.md` | Governance for developing *this* repo (maintainer instructions — not shipped; distinct from the `CLAUDE.md` templates inside each `dist/`). |
+| `CLAUDE.md` / `AGENTS.md` | Governance for developing *this* repo (maintainer instructions — not shipped; distinct from the `CLAUDE.md` templates inside each `dist/`). They must sit at the repo root for Claude Code to load them, so they keep an explicit "you are in the authoring repo" banner as the tie-breaker. |
 | `DEVELOPING.md` | Operational runbook: the exact commands behind every gate below. |
-| `.claude/` | Maintainer-only meta layer (hooks, release automation, plans). Never ships. |
+| `.claude/` | Maintainer-only Claude Code config (hooks, release automation, plans). Never ships. |
 
 ## How it's built and validated
 
@@ -99,17 +104,15 @@ in [`DEVELOPING.md`](./DEVELOPING.md).
 
 ## Status
 
-Current shipped version is **v0.25.5** across all three dists (`dist/*/.claude/framework-version.json`).
-This is the fidelity-frozen migration baseline inherited from the legacy repos — no shipped
-content changes until **v0.26.0**, which is pending final migration validation (Phase 6 of the
-merge plan: rerun the full gate matrix, then consciously retire the v0.25.5 fidelity baseline and
-fold in queued shipped-workflow updates). The two legacy repos, `ai-tech-lead-dotnet` and
-`ai-tech-lead-angular`, are still live but frozen at v0.25.5 pending that release; they will be
-archived with a pointer to this repo once v0.26.0 ships.
+Current shipped version is **v0.26.1** across all three dists
+(`dist/*/.claude/framework-version.json`). The merge is complete: this repo is the single home for
+framework development, and the two legacy repos (`ai-tech-lead-dotnet`, `ai-tech-lead-angular`) are
+archived and read-only, frozen at v0.25.5.
 
 ## Maintainer docs
 
 - [`CLAUDE.md`](./CLAUDE.md) — how to develop the framework itself: repo map, meta-invariants, workflows.
 - [`DEVELOPING.md`](./DEVELOPING.md) — command recipes behind every gate described above.
-- [`docs/BACKLOG.md`](./docs/BACKLOG.md) — the prioritized work list.
-- [`docs/workspace-decisions.md`](./docs/workspace-decisions.md) — the ADR log for framework-level decisions (merge strategy, mirror strategy, hook semantics, composition rules).
+- [`meta/BACKLOG.md`](./meta/BACKLOG.md) — the prioritized work list.
+- [`meta/workspace-decisions.md`](./meta/workspace-decisions.md) — the ADR log for framework-level decisions (merge strategy, mirror strategy, hook semantics, composition rules).
+- [`meta/LEARNINGS.md`](./meta/LEARNINGS.md) — the meta-dev log: what went wrong building this and what changed as a result.

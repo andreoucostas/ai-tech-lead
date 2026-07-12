@@ -21,8 +21,13 @@ PowerShell/bash hooks + installer scripts. There is no app to compile — the "b
 - `dist/{dotnet,angular,monorepo}/` — **generated** golden output, committed, never hand-edited.
 - `scripts/` — composer + gates (`build`, `validate-dist`, `fidelity-check`), all `.ps1`/`.sh` twins.
 - `install.ps1`/`.sh` — thin root installers; auto-detect the target stack (mixed → monorepo).
-- `docs/` — `BACKLOG.md`, `workspace-decisions.md` (ADR log), `changelogs/legacy-*.md`.
-- `.claude/` — maintainer meta layer (bom-fix hook, meta tests, `release.ps1`, plans). Never ships.
+- `meta/` — maintainer layer: `BACKLOG.md`, `workspace-decisions.md` (ADR log), `LEARNINGS.md`
+  (meta-dev log), `ci-handover.md`, `changelogs/legacy-*.md`. Never ships.
+- `.claude/` — maintainer Claude Code config (bom-fix hook, meta tests, `release.ps1`, plans). Never ships.
+
+There is deliberately **no root `docs/`** — that name belongs to the consumer (`dist/*/docs/`).
+Root `CLAUDE.md`/`AGENTS.md` still collide by name with their shipped counterparts because Claude
+Code must load them from the root; the banner above is the tie-breaker.
 
 ## Meta-invariants (canonical definitions live in CLAUDE.md — same numbering)
 
@@ -41,11 +46,17 @@ PowerShell/bash hooks + installer scripts. There is no app to compile — the "b
 5. **Hook output semantics differ per surface.** Claude Code: `exit 2`+stderr blocks / stdout JSON
    nudges. Copilot: stdout JSON `permissionDecision: deny`. Enforcing on both surfaces needs both
    shapes; always test both. Copilot CLI does not consume `postToolUse` additionalContext.
-6. **Don't-ship boundary.** Only `dist/` contents reach consumers via the installers; the rest of
-   the repo is authoring-only and must never collide with a template file.
+6. **Don't-ship boundary — a machine check, not a promise.** Only `dist/` contents reach consumers
+   via the installers; the rest of the repo is authoring-only and must never collide with a template
+   file. Enforced by `validate-dist` check 6 (`no-meta-leak`): each composed dist is scanned against
+   `scripts/meta-denylist.txt`, so our development vocabulary (tracking ids `B-nn`/`WSD-nnn`,
+   "lockstep", the two-repo past, maintainer-only tooling) cannot appear in a shipped file. One
+   denylist file, read by both twins. If a legitimate consumer word trips it, add a narrow `ALLOW` —
+   never weaken a `DENY`.
 7. **Versioning.** Shipped behavior change ⇒ root `CHANGELOG.md` entry, then release via
    `.claude/scripts/release.ps1` (stamps `src/`, rebuilds `dist/`, runs every gate, refuses on
-   failure). `LEARNINGS.md` is append-only.
+   failure). `meta/LEARNINGS.md` is append-only. Write the **shipped** changelog in the consumer's
+   voice; tracking ids and maintainer asides belong in the root `CHANGELOG.md`, which is *our* log.
 
 ## Workflows, done-ness, verification
 
@@ -60,8 +71,8 @@ disciplines in `src/core/CLAUDE.md` bind meta-work too.
 
 ## Conventions
 
-Plans → `.claude/plans/` · decisions → `docs/workspace-decisions.md` · meta learnings → root
-`LEARNINGS.md` · work list → `docs/BACKLOG.md`. Commit to `master` and push when done — never
+Plans → `.claude/plans/` · decisions → `meta/workspace-decisions.md` · meta learnings →
+`meta/LEARNINGS.md` · work list → `meta/BACKLOG.md`. Commit to `master` and push when done — never
 leave changes uncommitted.
 
 ## Migration status note
@@ -71,3 +82,7 @@ leave changes uncommitted.
 v0.25.5. The release folded the two deliberate shipped-content changes (`actions/checkout` v4→v5;
 CI strict-fidelity legs retired), so the freeze tags are no longer a CI baseline. This repo is the
 single home for framework development; **next: B-27 (team wiki memory) as v0.27.0**.
+
+**v0.26.1 (2026-07-12)** sealed the meta/product boundary: shipped changelogs rewritten in the
+consumer's voice, tracking ids stripped from shipped hooks/scripts/tests, the maintainer layer moved
+to `meta/`, and `no-meta-leak` added so the boundary is enforced rather than asserted (WSD-019).

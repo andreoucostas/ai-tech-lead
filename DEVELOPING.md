@@ -17,7 +17,8 @@ Commands, not philosophy. The rules and the meta-invariant list live in `CLAUDE.
 | `.claude/hooks/_fixtures/` | JSON event fixtures for testing the hooks | see below |
 | `.claude/scripts/release.ps1` | release automation [#7] | PowerShell-only by decision |
 | `.claude/plans/` | plans [Conventions] | includes the locked B-21/B-22/B-27 design specs |
-| `docs/` | `BACKLOG.md`, `workspace-decisions.md`, `changelogs/legacy-*.md` | |
+| `meta/` | `BACKLOG.md`, `workspace-decisions.md`, `LEARNINGS.md`, `ci-handover.md`, `changelogs/legacy-*.md` | maintainer layer; never ships. No root `docs/` — that name is the consumer's |
+| `scripts/meta-denylist.txt` | the `no-meta-leak` patterns [#6] | one file, read by BOTH twins so it cannot drift |
 
 ## Compose the dists + freshness [#1]
 
@@ -29,11 +30,30 @@ git status --porcelain dist/   # MUST print nothing — otherwise commit the dis
 for d in dotnet angular monorepo; do bash scripts/build.sh "$d"; done   # .sh twin (CI linux leg)
 ```
 
-## Validate the dists (markers, JSON, bash -n, PS-AST, per-dist template-checks [#2])
+## Validate the dists (markers, JSON, bash -n, PS-AST, per-dist template-checks [#2], no-meta-leak [#6])
 
 ```powershell
 foreach ($d in 'dotnet','angular','monorepo') { pwsh -NoProfile -File scripts/validate-dist.ps1 $d; "exit=$LASTEXITCODE" }
 ```
+```bash
+for d in dotnet angular monorepo; do bash scripts/validate-dist.sh "$d"; echo "exit=$?"; done   # .sh twin
+```
+
+### Red-test the `no-meta-leak` gate [#6]
+
+A gate you have never seen fail is not a gate. Plant a tracking id in a composed dist, confirm the
+check names the exact `file:line`, then restore:
+
+```bash
+echo 'WSD-999 planted' >> dist/dotnet/README.md
+bash scripts/validate-dist.sh dotnet; echo "exit=$?"   # MUST be 1, naming README.md and the pattern
+git checkout -- dist/dotnet/README.md
+bash scripts/validate-dist.sh dotnet; echo "exit=$?"   # back to 0
+```
+
+Both twins must agree. If you add a pattern to `scripts/meta-denylist.txt`, red-test it the same
+way — and prefer a narrow `ALLOW <path-substring>` over weakening a `DENY` when a legitimate
+consumer-facing word trips the check.
 
 ## Fidelity vs the frozen v0.25.5 baseline (migration-era gate)
 

@@ -1,5 +1,5 @@
 ﻿# PostToolUse hook -- incremental dotnet build after a write/edit on build-relevant files
-# (.cs sources + MSBuild/Razor inputs: .csproj/.sln/.props/.targets/.razor/.cshtml -- B-19a).
+# (.cs sources + MSBuild/Razor inputs: .csproj/.sln/.props/.targets/.razor/.cshtml).
 # Tool surfaces handled:
 #   Claude Code (CLI + VS Code extension)  -- tool_name in {Write,Edit}; path at tool_input.file_path
 #   GitHub Copilot (cloud agent + CLI)     -- toolName  in {edit,create}; path at toolArgs.filePath
@@ -56,7 +56,7 @@ if ([string]::IsNullOrEmpty($filePath) -and $env:CLAUDE_FILE_PATH) {
 }
 
 if ([string]::IsNullOrEmpty($filePath)) { exit 0 }
-# Trigger on what `dotnet build` actually consumes (B-19a): sources plus MSBuild/Razor inputs.
+# Trigger on what `dotnet build` actually consumes: sources plus MSBuild/Razor inputs.
 # A broken .csproj/.sln/.props/.targets edit breaks the build as surely as a .cs edit; extensions
 # the build doesn't read stay excluded -- a build cannot catch their breakage.
 if ($filePath -notmatch '\.(cs|csproj|sln|props|targets|razor|cshtml)$') { exit 0 }

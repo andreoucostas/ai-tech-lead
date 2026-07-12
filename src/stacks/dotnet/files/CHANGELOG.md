@@ -1,69 +1,85 @@
-# ai-tech-lead-dotnet — Changelog
+# AI Tech Lead (.NET) — Changelog
 
-> Framework-level changes for the .NET template. Per-stack Angular changes live in [`ai-tech-lead-angular/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-angular/blob/master/CHANGELOG.md).
-> Architecture decisions live in `docs/architecture-decisions.md`.
+> Release notes for the .NET distribution, written for the teams who install it: what changed in
+> **your** repo, and what (if anything) you need to do.
+> Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.26.0 — 2026-07-12 (repo consolidation: now shipped from the unified `ai-tech-lead` repo)
+## 0.26.1 — 2026-07-12 (these release notes are now written for you)
 
-> The two template repos (`ai-tech-lead-dotnet`, `ai-tech-lead-angular`) merged into one authoring
-> repo, **[`ai-tech-lead`](https://github.com/andreoucostas/ai-tech-lead)**, which composes this
-> `dist/dotnet` distribution. It reproduces the v0.25.5 .NET template byte-for-byte (EOL-normalized,
-> proven against the `freeze-v0.25.5` baseline), so moving to it is an update, not a behavior change.
-> `ai-tech-lead-dotnet` is now archived and read-only — get future updates from `ai-tech-lead`; the
-> installer's update mode accepts your existing `.claude/framework-version.json` as-is.
+> Documentation and comments only — **no behavior change, nothing to do**. Re-run the installer
+> whenever convenient.
+
+### Changed
+- **These release notes were rewritten for the teams who install the framework.** Previous versions
+  of this file were the framework maintainers' own engineering log: internal tracking ids, a
+  codename, references to two predecessor repositories and to tooling that does not exist in your
+  repo. Every version entry is still here — the framing is now "what changed in your repo, and what
+  you need to do."
+- **Internal tracking ids removed from the comments in shipped code** — the hooks
+  (`.claude/hooks/post-write.*`), the scripts (`scripts/template-checks.*`,
+  `scripts/build-architecture-html.ps1`), and the hook tests. Comments now state the rule the code
+  enforces instead of the ticket that produced it, so they read as intended in *your* repo. Behavior
+  is untouched; the hook test suites pass unchanged.
+- **Stale cross-references removed** from `README.md`. Advice about running a second stack now points
+  at the mixed .NET + Angular distribution rather than at repositories that are archived.
+
+## 0.26.0 — 2026-07-12 (the framework now ships from a single repo)
+
+> The .NET and Angular distributions are now built from one source, so both stay in step by
+> construction. Moving to this version is an **update, not a behavior change** — the .NET
+> distribution is unchanged apart from the CI note below.
 >
-> **Shipped change:** the framework's own CI workflows (`template-ci.yml`, `docs-sync-check.yml`) now
-> pin `actions/checkout@v5` (GitHub Node 20 runtime deprecation). No change to your application code.
+> **What you need to do:** nothing. Re-run the installer to update; it reads your existing
+> `.claude/framework-version.json` and refreshes the framework machinery without touching content
+> you own (`CLAUDE.md`, `TECH_DEBT.md`, and the rest).
+
+### Changed
+- The framework's own CI workflows (`template-ci.yml`, `docs-sync-check.yml`) now pin
+  `actions/checkout@v5`, following GitHub's Node 20 runtime deprecation. No change to your
+  application code.
 
 ---
 
-## 0.25.5 — 2026-07-06 (B-31: lockstep hotfix release — no dotnet behavior change)
+## 0.25.5 — 2026-07-06 (version alignment — no .NET behavior change)
 
-> Angular's `settings.windows.json` was missing the `audit-trail.ps1` registration (a gap the
-> v0.25.3 port missed); fixed there. No dotnet change — this release keeps the version stamps in
-> lockstep, and the maintainer gate now checks `settings*.json` registration parity across repos
-> so the class cannot recur silently. (B-31)
+> A hook-registration gap was fixed in the Angular distribution. Nothing changed for .NET; this
+> release only keeps both distributions on the same version number.
 
 ---
 
 ## 0.25.4 — 2026-07-05 (small-items sweep: generator twin parity, broader build triggers, doc honesty)
 
-> Clears four backlog small items (B-19, B-24, B-28, B-30) in dual-repo lockstep: the
-> architecture-HTML generator twins now emit byte-identical output, `post-write` triggers on
-> build-relevant project/config files (not just sources), and the README + enforcement docs
-> close three honesty gaps.
+> The architecture-diagram generator now produces identical output on Windows and Linux,
+> `post-write` catches broken project files (not just `.cs` sources), and three documentation
+> claims were corrected.
 
 ### Fixed
-- **`scripts/build-architecture-html.ps1` output diverged from the `.sh` twin** (B-28): the head
-  here-string lacked a trailing newline (joining the opening `<script>` tag onto the first
-  markdown line), each twin stamped its own filename into the GENERATED comment, and the PS
-  content cmdlets wrote host EOLs (+ BOM on PS 5.1) where bash writes raw LF — so whoever
-  regenerated last "won", producing spurious `architecture.html` diffs between the Windows
-  maintainer and the linux CI leg. Both twins now emit byte-identical output (neutral `{sh,ps1}`
-  generator stamp, LF-only, no BOM, trailing newline). New
-  `tests/hooks/BuildArchitectureHtml.Tests.ps1` locks the parity (red-before-green verified:
-  4 failures against the pre-fix scripts, 5/5 green after).
+- **`scripts/build-architecture-html.ps1` and its `.sh` counterpart produced different output**,
+  so `architecture.html` showed spurious diffs depending on which machine regenerated it last:
+  differing line endings, a BOM under PowerShell 5.1, a stray `<script>` tag joined onto the first
+  line, and the generating script's own filename stamped into the file. Both now emit
+  byte-identical output, and a test locks that parity so it cannot drift again.
 - **`docs/ARCHITECTURE.md` §5 agents table listed 6 of the 7 shipped agents** — `test-critic`
-  was missing (B-30). Row added; `architecture.html` regenerated with the fixed generator.
-- **`docs/enforcement-surfaces.md` still marked the audit trail "dotnet only (B-14)"** — stale
+  was missing. Row added; `architecture.html` regenerated with the fixed generator.
+- **`docs/enforcement-surfaces.md` still marked the audit trail "dotnet only"** — stale
   since v0.25.3 shipped the Angular port. Corrected to "both stacks since v0.25.3".
 
 ### Changed
-- **`post-write` triggers on build-relevant files, not just `.cs`** (B-19a): the filter now
+- **`post-write` triggers on build-relevant files, not just `.cs`**: the filter now
   accepts `.cs|.csproj|.sln|.props|.targets|.razor|.cshtml` in both twins — everything
   `dotnet build` actually consumes — so a broken project/build-file edit surfaces a build
   failure instead of silence. Throttle and surface routing unchanged; extensions the build
   cannot validate stay excluded by design (a triggered build can't catch their breakage).
 - **README "Framework versioning" points at the installer's update mode** instead of promising
-  a future `/framework-update` command (B-19b): `install.sh/.ps1` already detect an existing
+  a future `/framework-update` command: `install.sh/.ps1` already detect an existing
   `.claude/framework-version.json` and refresh framework machinery without touching
   consumer-owned content.
-- **Boy Scout stop-nudge dedup semantics documented** in `docs/enforcement-surfaces.md` (B-19c):
+- **Boy Scout stop-nudge dedup semantics documented** in `docs/enforcement-surfaces.md`:
   the sorted finding set is hashed per machine; an unchanged set is silenced on later fires
   (silence = already flagged, **not** resolved), and any change re-surfaces the full set.
 
 ### Added
-- **README hook-prerequisite note** (B-24): the shell wired in the committed
+- **README hook-prerequisite note**: the shell wired in the committed
   `.claude/settings.json` (pwsh as shipped) must exist on **every** developer machine — a
   machine without it gets no Claude Code hooks, silently. The installers' per-box fallbacks
   (bash twins via `install.sh`, Windows PowerShell 5.1 via `install.ps1`) are documented
@@ -72,25 +88,17 @@
 
 ---
 
-## 0.25.3 — 2026-07-05 (B-14: audit-trail hook lockstep + check-lockstep exception removal)
+## 0.25.3 — 2026-07-05 (the audit-trail hook now ships for Angular too)
 
-> Ports the `audit-trail` PostToolUse hook to Angular (B-14), completing dual-repo lockstep.
-> Removes the three `check-lockstep.ps1` exceptions that permitted the parity gap.
-> No dotnet behavior change — the hook was already present; this is a lockstep housekeeping release.
-
-### Changed
-- **`check-lockstep.ps1` audit-trail exceptions removed.** The three exceptions permitting
-  `audit-trail.ps1/.sh` to be dotnet-only and the dotnet-only `hooks.json` `audit-trail` registration
-  are now removed — Angular carries the hook and both registrations, so the gate enforces full parity
-  with no special-casing. (B-14)
+> The `audit-trail` hook, previously .NET-only, was ported to the Angular distribution.
+> No .NET behavior change — .NET already had it.
 
 ---
 
-## 0.25.2 — 2026-07-04 (P2 gate-honesty: fix silent-drift gates + a twin routing bug)
+## 0.25.2 — 2026-07-04 (a `post-write` routing bug, and two checks that passed when they shouldn't)
 
-> Fable-exit backlog P2 band (`BACKLOG.md` B-04…B-09). Gates that passed while the drift they
-> existed to catch slipped through, plus a PowerShell-only `post-write` routing divergence.
-> Lockstep with the Angular twin.
+> Fixes a PowerShell-only bug that sent build failures where nobody would see them, and closes two
+> gaps where a check reported green while the drift it existed to catch slipped through.
 
 ### Fixed
 - **`post-write.ps1` misrouted build failures to the wrong surface on malformed/empty payloads.**
@@ -99,31 +107,25 @@
   Claude empty-case exit-2 branch was skipped and a failed build was emitted to the Copilot
   (exit-0) branch instead — the model never saw it, diverging from the `.sh` twin's `case … "")`.
   Pre-declared `$tn = ''`. Added `tests/hooks/PostWriteRouting.Tests.ps1` (static guard + build-free
-  twin agreement). (B-09)
+  twin agreement).
 
 ### Added (deterministic gates)
 - **Skills-mirror gate** in `scripts/template-checks.ps1/.sh`: `.claude/skills` must match
   `.github/skills` (Copilot reads the `.github` copy), EOL-normalized. Editing one and forgetting
-  the other previously shipped stale Copilot guidance with every check green. (B-07)
+  the other previously shipped stale Copilot guidance with every check green.
 
 ### Changed
-- **`post-write` `timeoutSec` unified to 120** in `.github/hooks/hooks.json` (dotnet was already
-  120; the ceiling only bounds a single build and a too-low value kills a cold build mid-run). The
-  file is now gated by `check-lockstep` (structured registration parity). (B-05, WSD-009)
-- **Enforcement matrix** (`docs/enforcement-surfaces.md`) gains three capability rows — build/
-  type-check feedback, Boy Scout stop-nudge, audit trail — recording the B-03 live finding that
-  Copilot does **not** consume `postToolUse` `additionalContext` (so `post-write` feedback is
-  not surfaced to the Copilot model, though `audit-trail`'s file side-effect still fires). (B-08)
+- **`post-write` timeout raised to 120s** in `.github/hooks/hooks.json`. The ceiling bounds a single
+  build, and a value set too low kills a cold build part-way through.
+- **The enforcement matrix** (`docs/enforcement-surfaces.md`) gained three capability rows — build /
+  type-check feedback, the Boy Scout stop-nudge, and the audit trail — recording a live finding:
+  Copilot does **not** consume `postToolUse` output, so `post-write`'s build feedback does not reach
+  the Copilot model (the audit trail's file side-effect still happens). Claude Code is unaffected.
 
-_Maintainer-only (does not ship): `check-lockstep.ps1` now enumerates the union of both repos for
-IDENTICAL-class files (B-04), computes the shared-skill set instead of a hand-kept list (B-06), and
-gates `hooks.json`; covered by a new `CheckLockstep.Tests.ps1` self-test._
+## 0.25.1 — 2026-07-04 (a hook that crashed on non-English Windows, and two overstated claims)
 
-## 0.25.1 — 2026-07-04 (P1 correctness + enforcement-honesty fixes)
-
-> Fable-exit backlog P1 band (`BACKLOG.md` B-01/B-02/B-03). A shipped hook that crashed on a
-> supported consumer path, plus two honesty corrections where docs/comments claimed a control
-> fires where it doesn't. Lockstep with the Angular twin.
+> Fixes a shipped hook that crashed on every write for developers in comma-decimal locales, and
+> corrects two places where the docs claimed a control fires where it actually doesn't.
 
 ### Fixed
 - **`post-write.ps1` crashed on every write under Windows PowerShell 5.1 in comma-decimal
@@ -133,30 +135,30 @@ gates `hooks.json`; covered by a new `CheckLockstep.Tests.ps1` self-test._
   separator, overflowed `Int32`, and threw a terminating error `SilentlyContinue` does not
   swallow. Replaced with `[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()` — culture-free, integer,
   UTC — which also removes a UTC/local throttle-stamp skew against the `.sh` twin's `date +%s`.
-  Added `tests/hooks/PostWrite.Tests.ps1` (host-independent regression, red before green). (B-02)
+  Added `tests/hooks/PostWrite.Tests.ps1` (host-independent regression, red before green).
 
 ### Changed (enforcement honesty)
 - **Guard write hard-block scoped to editor/file-write tools.** `docs/enforcement-surfaces.md`
   now carries a caveat that `guard.*` only sees `Write`/`Edit` (Claude Code) and file-path/content
   (Copilot) tool calls — a write routed through a terminal/shell tool (`sed -i`, `echo >>`,
   heredoc, `Set-Content`) carries no such payload and is **not** intercepted. Softened the
-  Verification-Rule-7 parenthetical in `CLAUDE.md`/`AGENTS.md` accordingly. (B-01)
+  Verification-Rule-7 parenthetical in `CLAUDE.md`/`AGENTS.md` accordingly.
 - **Copilot `additionalContext` consumption live-verified** (Copilot CLI 1.0.68, sentinel canary):
   `userPromptSubmitted` additionalContext **is** consumed (routing/plan-gate/security salience
   reaches the CLI model); `postToolUse` additionalContext is **not** consumed by the model, and
   repo hooks fire **only after the workspace folder is trusted**. Updated the
   `enforcement-surfaces.md` Status notes and corrected the now-falsified "consumes postToolUse
-  feedback" comment in the `post-write` twins. (B-03)
+  feedback" comment in the `post-write` twins.
 
 ## 0.25.0 — 2026-07-02 (toolchain-first enforcement: `enforce-standards` skill + Copilot prompt injection)
 
-> First implementation slice of the 2026-07-02 self-sufficiency review (workspace WSD-008). Two
+> First slice of a review into how much of the framework holds without a human driving it. Two
 > P0s: (1) the compiler/analyzer toolchain becomes the surface-independent standards floor —
 > deterministic in the IDE, every local build, and CI, binding humans and every AI tool alike;
 > (2) the `route-prompt` salience layer — believed Copilot-inert since 0.7.2 removed its
 > registration — is ported to Copilot, whose hooks now consume `userPromptSubmitted`
 > `additionalContext` (CLI ≥ v1.0.65 per its changelog; VS Code agent mode per the official
-> agent-hooks docs). Lockstep with the Angular twin.
+> agent-hooks docs).
 
 ### Added
 - **`enforce-standards` skill** + `scripts/ci/Directory.Build.props.sample` — makes warnings,
@@ -189,8 +191,7 @@ gates `hooks.json`; covered by a new `CheckLockstep.Tests.ps1` self-test._
 > only enforcement point that constrains every actor (any agent, any IDE, any human, any
 > `--no-verify`). The README stated that expectation as four bullets ("wire `docs-sync-check` in
 > whichever way fits your DC setup") with no recipe, and never said that the framework-state check
-> alone does not gate code standards. Surfaced by the 2026-07-02 self-sufficiency forensic review
-> (workspace WSD-008, finding F4). Lockstep with the Angular twin.
+> alone does not gate code standards.
 
 ### Added
 - `docs/ci-integration.md` — the required-build recipe: leg 1 = `scripts/docs-sync-check.sh`/`.ps1`
@@ -213,7 +214,7 @@ gates `hooks.json`; covered by a new `CheckLockstep.Tests.ps1` self-test._
 > so the fallback produced `"0\n0"` and an integer-comparison error on stderr in every session of
 > a repo with zero open findings. Harmless to behavior (the note was just skipped) but noisy, and
 > a silent twin divergence: `session-start.ps1` was unaffected. Caught red-first by a new
-> twin-parity regression test. Lockstep with the Angular twin.
+> twin-parity regression test.
 
 ### Fixed
 - `.claude/hooks/session-start.sh` — open-findings count no longer double-emits `0`; stderr is
@@ -229,7 +230,7 @@ gates `hooks.json`; covered by a new `CheckLockstep.Tests.ps1` self-test._
 > keep it fixed. Until now the template repo had **zero effective CI** — its only workflow ran
 > `docs-sync-check`, which exits silently on `.template-repo`, so every invariant rested on the
 > maintainer remembering a manual checklist. That is the exact failure mode this framework exists
-> to prevent in consumer repos. Lockstep with the Angular twin.
+> to prevent in consumer repos.
 
 ### Added
 - `scripts/template-checks.ps1` / `.sh` — deterministic framework checks: version-stamp sync (CLAUDE.md header == framework-version.json == CHANGELOG head; pair-check in consumer repos, which carry no CHANGELOG), **verbatim CLAUDE.md ↔ AGENTS.md mirror diff** (the four portable-rule sections + Agentic Workflow §1 — the `/docs-sync` "hard drift finding" is now a machine check, not a model instruction), copilot-instructions.md present and ≤ 80 lines, UTF-8 BOM sweep, hook `.ps1`/`.sh` twin existence, and script syntax.
@@ -246,7 +247,7 @@ gates `hooks.json`; covered by a new `CheckLockstep.Tests.ps1` self-test._
 
 > A forensic self-audit found the framework failing its own drift rules in ways no deterministic
 > check covered. This release fixes the shipped artifacts; the next minor adds the machine checks
-> that keep them fixed. Lockstep with the Angular twin.
+> that keep them fixed.
 
 ### Fixed
 - `CLAUDE.md` header stamp had drifted two releases behind `.claude/framework-version.json` (0.23.0 vs 0.23.2) — the release recipe bumped the json but never the HTML comment. Both now read 0.23.3.
@@ -268,7 +269,7 @@ gates `hooks.json`; covered by a new `CheckLockstep.Tests.ps1` self-test._
 
 ## 0.23.1 — 2026-06-29 (hook test harness: automated, twin-parity-checked tests for the framework's own hooks)
 
-> The framework's own hooks and scripts had **zero automated tests** — only manual recipes — and that gap had already shipped a real defect: in 0.23.0 the bash `guard.sh` was found missing the test-defeat blocks its `guard.ps1` twin enforced (a silent twin-drift the manual process didn't catch). This release adds a **dependency-free PowerShell test harness** (no Pester, so it runs air-gapped and under Windows PowerShell 5.1) that pipes JSON events to each hook and asserts exit code + per-surface output (Claude `exit 2`+stderr vs Copilot `permissionDecision` JSON), plus **behavioural twin-parity** tests that run the `.ps1` and `.sh` on the same input and assert the same decision — the check that would have caught the `guard.sh` regression. Authored in lockstep with the Angular twin.
+> The framework's own hooks and scripts had **zero automated tests** — only manual recipes — and that gap had already shipped a real defect: in 0.23.0 the bash `guard.sh` was found missing the test-defeat blocks its `guard.ps1` twin enforced (a silent twin-drift the manual process didn't catch). This release adds a **dependency-free PowerShell test harness** (no Pester, so it runs air-gapped and under Windows PowerShell 5.1) that pipes JSON events to each hook and asserts exit code + per-surface output (Claude `exit 2`+stderr vs Copilot `permissionDecision` JSON), plus **behavioural twin-parity** tests that run the `.ps1` and `.sh` on the same input and assert the same decision — the check that would have caught the `guard.sh` regression.
 
 ### Added
 - **`tests/hooks/` hook test harness** — `_HookHarness.ps1` (dependency-free runner: pipes an event to a hook, captures exit/stdout/stderr, normalises to a BLOCK/DENY/ALLOW decision; drives `.sh` twins via Git's `bin\bash.exe` for full-PATH fidelity; falls back to `powershell.exe` when `pwsh` is absent; `.sh` tests self-skip when no bash is present), `Guard.Tests.ps1` (surface matrix over every block pattern + clean inputs, incl. the RxJS `skip()` and `*Tests*`-file false-positive allowances), `TwinParity.Tests.ps1` (deep `guard` `.ps1`↔`.sh` decision parity on both surfaces + empty/malformed-stdin robustness parity for every twin pair), a shared fixture library (`fixtures/guard-cases.ps1`), and `Invoke-HookTests.ps1` (suite runner; exit code = failing-test count).
@@ -278,7 +279,7 @@ gates `hooks.json`; covered by a new `CheckLockstep.Tests.ps1` self-test._
 
 ## 0.23.0 — 2026-06-25 (workflow disciplines made reachable on Copilot; deterministic write-floor extended to VS Code; false enforcement claims removed)
 
-> The framework's value is gated behind workflow commands the target developers won't type, and on the primary surface (GitHub Copilot in VS Code against a local Bitbucket Data Center) the picture was worse than assumed: routing/plan-gate/security context **cannot** be injected there (Copilot discards `sessionStart`/`userPromptSubmitted` stdout; VS Code agent-hooks are Preview-only), and the one Copilot write-block we shipped used a JSON shape (`{decision,reason}`) that **no longer matches the current Copilot spec** — i.e. the v0.22.0 Copilot guard had silently become a no-op. This release (a) inlines every workflow's non-negotiables into the always-on `CLAUDE.md`/`AGENTS.md` §1 so classification leads to discipline on Copilot without a slash command, (b) fixes the guard deny shape and extends the deterministic write-floor to VS Code agent mode, and (c) stops the framework claiming enforcement on surfaces where it doesn't fire. Authored in lockstep with the Angular twin. Researched against the Claude Code, Copilot CLI, and VS Code agent-hooks references (June 2026).
+> The framework's value is gated behind workflow commands the target developers won't type, and on the primary surface (GitHub Copilot in VS Code against a local Bitbucket Data Center) the picture was worse than assumed: routing/plan-gate/security context **cannot** be injected there (Copilot discards `sessionStart`/`userPromptSubmitted` stdout; VS Code agent-hooks are Preview-only), and the one Copilot write-block we shipped used a JSON shape (`{decision,reason}`) that **no longer matches the current Copilot spec** — i.e. the v0.22.0 Copilot guard had silently become a no-op. This release (a) inlines every workflow's non-negotiables into the always-on `CLAUDE.md`/`AGENTS.md` §1 so classification leads to discipline on Copilot without a slash command, (b) fixes the guard deny shape and extends the deterministic write-floor to VS Code agent mode, and (c) stops the framework claiming enforcement on surfaces where it doesn't fire. Researched against the Claude Code, Copilot CLI, and VS Code agent-hooks references (June 2026).
 
 > **Migration note:** *when* discipline fires has changed. The `route-prompt` per-prompt rails now point at `CLAUDE.md §1` as the canonical source (they remain a just-in-time salience copy, not an independent fork), and a question-shaped prompt with no imperative verb is now treated as answer-only (no workflow ceremony). If you relied on the old keyword-listed session-start primer "routing on Copilot," note that it never did — see `docs/enforcement-surfaces.md`.
 
@@ -301,11 +302,11 @@ gates `hooks.json`; covered by a new `CheckLockstep.Tests.ps1` self-test._
 - `guard.*` re-verified on all three surfaces: Claude `Edit` + AWS key → `exit 2` + stderr; Copilot CLI `edit` + key → `permissionDecision` JSON (exit 0); VS Code `create`/`str_replace` + key **or** `Assert.True(true)` → superset `permissionDecision` JSON (exit 0, the newly-covered surface); clean content → exit 0. `guard.*` byte-identical across both repos; UTF-8 BOM preserved.
 - All four edited hooks (`route-prompt`, `session-start`) parse clean under Windows PowerShell 5.1 + pwsh 7 and `bash -n`; answer-only suppression confirmed (a pure "why does this throw?" emits no rails; "fix the login crash" routes).
 - **Task 0 (VS Code Preview-hook spike) was run and confirmed agent-hooks DO fire in VS Code agent mode.** The captured payload uses the Anthropic text-editor tool schema — `create` (`toolArgs.path` + `toolArgs.file_text`), `str_replace`/`insert` (`new_str`) — field names the guard's extractor did **not** previously read, so VS Code writes would have slipped the floor. Added `file_text` / `new_str` / `path` to the field extraction (both `guard.ps1` and `guard.sh`, jq + python paths); re-verified the guard blocks a `create`+secret and `str_replace`+private-key under the real VS Code shape. **Verified end-to-end:** a `create` of a deny-listed path in VS Code agent mode was blocked at runtime with the hook's reason surfaced to the model — the superset `permissionDecision` deny is honored. (Enablement remains org-gated: where Preview agent-hooks are disabled, VS Code degrades to instruction-only, as documented.)
-- **`guard.sh` brought to parity with `guard.ps1`:** the bash path was missing the v0.22.0 test-defeat blocks (a lockstep miss). It now also blocks `[Fact/Theory(Skip=…)]`, `Assert.True(true)`/`Assert.False(false)`, `fit`/`fdescribe`/`.only`, `xit`/`xdescribe`/`.skip`, and `expect(true).toBe(true)` — verified firing on Claude (exit 2) and Copilot (`permissionDecision` JSON), and verified to still ALLOW the RxJS `skip()` operator and clean files.
+- **`guard.sh` brought to parity with `guard.ps1`:** the bash path was missing the v0.22.0 test-defeat blocks, so the same write was blocked under PowerShell but allowed under bash. It now also blocks `[Fact/Theory(Skip=…)]`, `Assert.True(true)`/`Assert.False(false)`, `fit`/`fdescribe`/`.only`, `xit`/`xdescribe`/`.skip`, and `expect(true).toBe(true)` — verified firing on Claude (exit 2) and Copilot (`permissionDecision` JSON), and verified to still ALLOW the RxJS `skip()` operator and clean files.
 
 ## 0.22.0 — 2026-06-25 (test integrity: defend against the test pathologies AI assistants are most prone to)
 
-> The framework had a strong testing *philosophy* (behaviour-first, lean, characterization-before-refactor) but three structural gaps: no guidance on test *shape* (only test types); no defence against the failure mode its own users are most exposed to — AI assistants routinely emit over-mocked, tautological tests that pass even when the code is broken (2026 empirical studies across Claude/Copilot/Cursor; majority-incorrect LLM oracles); and an enforcement asymmetry where architecture had a deterministic CI gate but testing had only soft review. This release closes the doctrine + cheap-enforcement gaps. Coverage-as-diagnostic and CI-enforced diff-scoped mutation testing are scoped for 0.23.0. Authored in lockstep with the Angular twin.
+> The framework had a strong testing *philosophy* (behaviour-first, lean, characterization-before-refactor) but three structural gaps: no guidance on test *shape* (only test types); no defence against the failure mode its own users are most exposed to — AI assistants routinely emit over-mocked, tautological tests that pass even when the code is broken (2026 empirical studies across Claude/Copilot/Cursor; majority-incorrect LLM oracles); and an enforcement asymmetry where architecture had a deterministic CI gate but testing had only soft review. This release closes the doctrine + cheap-enforcement gaps. Coverage-as-diagnostic and CI-enforced diff-scoped mutation testing are scoped for 0.23.0.
 
 ### Added
 - **`test-critic` review agent** (`.claude/agents/test-critic.md` + `.github/agents/test-critic.agent.md`), spawned by `/review` alongside the existing four auditors. Its single question per test: *would this fail if the code under test broke?* Flags oracle-invalid (would-not-fail) tests, over-mocking, weak assertions, missing error/edge paths, implementation-coupling, nondeterminism, and financial-domain gaps — a separate context from the code author, per the "the agent doing the work isn't the one grading it" principle. `/review`'s output block is renamed **Test Quality & Coverage** with a would-fail-if-broken verdict.
@@ -604,5 +605,5 @@ gates `hooks.json`; covered by a new `CheckLockstep.Tests.ps1` self-test._
 - One section per release (or per "Unreleased" working window). Date the heading.
 - Group entries by **Added / Changed / Fixed / Removed / Decided**.
 - One line per change. Reference the file or workflow touched, not the implementation detail.
-- Keep entries scoped to this template. Cross-stack decisions go in `project_framework_architecture.md`; the sibling Angular template tracks its own changes in [`ai-tech-lead-angular/CHANGELOG.md`](https://github.com/andreoucostas/ai-tech-lead-angular/blob/master/CHANGELOG.md).
-- When a framework-level change lands in both templates, write the entry separately in each — they'll diverge in detail (file paths, language idioms) and shared editing tends to drift anyway.
+- Keep entries scoped to this repo. Decisions that shaped the code belong in `docs/architecture-decisions.md`.
+- Write for the next person on your team who has to upgrade — not for whoever made the change.

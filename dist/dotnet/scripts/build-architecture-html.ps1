@@ -76,7 +76,7 @@ $tail = @'
 </html>
 '@
 
-# Compose exactly like the bash twin (B-28): LF-only template lines (the here-strings carry this
+# Compose exactly like the bash twin : LF-only template lines (the here-strings carry this
 # file's own EOLs -- strip CRs), a newline after the opening <script> tag and after </html> (the
 # here-strings end without one), markdown verbatim between them. Write BOM-less UTF-8 via .NET:
 # the content cmdlets would add a BOM on PS 5.1 plus a host-EOL trailing newline. Absolute path

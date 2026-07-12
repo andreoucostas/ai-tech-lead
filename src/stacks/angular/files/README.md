@@ -257,7 +257,7 @@ applyTo: "**/*.cs"
 
 Copilot's coding agent and inline completions both honour `applyTo` — `.ts` files see the Angular rules from `copilot-instructions.md`, `.cs` files see the .NET rules from `.github/instructions/csharp.instructions.md`. The repo-wide rules apply on top of either.
 
-If the secondary stack is .NET, the `ai-tech-lead-dotnet` template's `copilot-instructions.md` content is a sensible starting point — copy it into a `.github/instructions/csharp.instructions.md` file and add `applyTo: "**/*.cs"` at the top.
+If the secondary stack is .NET, consider installing the **monorepo** distribution instead — it carries both stacks' rails and dispatches per file type. Failing that, the .NET distribution's `copilot-instructions.md` content is a sensible starting point: copy it into a `.github/instructions/csharp.instructions.md` file and add `applyTo: "**/*.cs"` at the top.
 
 ## Running on Bitbucket Data Center
 

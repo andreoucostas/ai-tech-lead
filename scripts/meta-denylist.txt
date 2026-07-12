@@ -1,0 +1,47 @@
+# Meta-vocabulary denylist — the machine-readable half of the don't-ship boundary (invariant #6).
+#
+# validate-dist.ps1 / .sh check 6 ("no-meta-leak") scans the COMPOSED dist/<mode> tree for these
+# patterns and fails if any shipped file matches. Both twins read THIS file, so the denylist cannot
+# drift between the PowerShell and bash legs — the failure mode that shipped a real defect before
+# (docs-sync-check's Measure-Object vs wc -l divergence; see meta/LEARNINGS.md).
+#
+# Format: one pattern per line. Blank lines and lines starting with '#' are ignored.
+#   DENY <regex>          a shipped file matching this is a leak. Matched case-insensitively.
+#   ALLOW <path-substr>   dist-relative path substring exempted from ALL deny patterns.
+# Syntax must be valid in BOTH POSIX ERE (grep -E) and .NET regex — keep it to the common subset:
+# \b, character classes, {n}, and alternation. No lookaround, no lazy quantifiers, no \d.
+#
+# Scope discipline: these patterns target the framework's own DEVELOPMENT apparatus — tracking IDs,
+# the two-repo authoring past, maintainer-only tooling. They must NOT target concepts the product
+# legitimately gives a consumer team.
+
+# --- Internal tracking IDs -----------------------------------------------------------------------
+# Backlog item ids (B-01..B-99) and workspace-decision ids (WSD-001..). Meaningless to a consumer.
+# NOTE: the bare word "backlog" is deliberately NOT denied — the product legitimately reads the
+# CONSUMER's own BACKLOG.md (adopt.md, the installers' adoption_signals). Denying the ID form only
+# is what keeps the allowlist near-empty.
+DENY \bB-[0-9]{2}[a-z]?\b
+DENY \bWSD-[0-9]{3}\b
+
+# --- Internal codenames --------------------------------------------------------------------------
+# "Fable" is the codename of the framework's own review/audit process.
+DENY \bFable\b
+
+# --- The two-repo authoring past -----------------------------------------------------------------
+# "lockstep" (also catches "check-lockstep") was the discipline for keeping two template repos in
+# sync. There is one repo now; the word only ever meant something to the maintainer.
+# NOTE: the bare word "twin" is deliberately NOT denied — the shipped .ps1/.sh twins are a real
+# cross-platform feature that consumer docs must be able to name.
+DENY \blockstep\b
+DENY \bdual-repo\b
+DENY ai-tech-lead-(dotnet|angular)
+DENY \bauthoring repo\b
+DENY \bMERGE-MIGRATION\b
+
+# --- Maintainer-only tooling and surfaces --------------------------------------------------------
+# None of these exist in a consumer's repo, so naming them in a shipped file is a dead pointer.
+DENY \bMaintainer-only\b
+DENY \brelease\.ps1\b
+DENY \bworkspace-decisions\b
+DENY \bmeta-invariant
+DENY \.claude/plans/

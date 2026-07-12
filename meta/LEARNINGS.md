@@ -19,7 +19,7 @@ same check could pass on one surface and fail on the other near the 80-line limi
 the historic guard.sh drift the 0.23.1 harness caught. Twin parity holds only where a test pins it.
 
 [2026-07-01] **The meta layer must obey its own invariants or they decay.** `bom-fix` had no `.sh`
-twin, `.claude/plans/` / `docs/workspace-decisions.md` / this file were conventions nobody had ever
+twin, `.claude/plans/` / `meta/workspace-decisions.md` / this file were conventions nobody had ever
 instantiated, and the guard's fail-open path contradicted its own header. Self-application failures
 were concentrated exactly where no gate looked.
 
@@ -89,3 +89,52 @@ validate-dist, or template-checks gates could catch this — it is valid markdow
 A one-line grep sweep (`grep -rn '</content>\|</invoke>' src/stacks/monorepo`) found all three.
 Any batch of agent-authored artifacts gets that sweep before commit, and the final line of every
 agent-authored file gets eyeballed (the leak is always at EOF).
+
+[2026-07-12] **A byte-for-byte fidelity guarantee copies the bugs too.** The v0.25.5 freeze proved
+the merge changed nothing shipped — and it was telling the truth. What nobody asked was whether what
+it was faithfully preserving was *correct*. It wasn't: the legacy `CHANGELOG.md` was a maintainer's
+engineering log (backlog ids, `WSD-nnn`, "Fable-exit", "lockstep with the .NET twin", a literal
+`_Maintainer-only (does not ship)_` note) and the freeze carried all 192 lines of it forward across
+three dists. The merge got blamed for the bleed; the merge only made it *visible* by putting the meta
+layer in the same tree. Rule changed: a fidelity gate answers "did this change?", never "should this
+exist?" — when freezing content, run the correctness gates against the frozen baseline at least once,
+or you have pinned the defect, not just the behavior.
+
+[2026-07-12] **Measure the blast radius on the real install, not on the repo.** The instinct was to
+report "192 lines shipped to consumers" — the number the gate prints. An `install.sh` smoke run into
+a temp target said otherwise: only **22** of them land in a consumer's working tree (the ids in the
+shipped hooks/scripts/tests, which *are* copied). The other ~170 are in `dist/*/CHANGELOG.md`, and
+the installer has excluded `CHANGELOG.md`/`README.md` from the copy since v0.20.0 — so they are
+product-*visible* but never installed. Both deserved fixing and the gate covers both, but they are
+not the same severity, and this framework's own enforcement-honesty doctrine forbids inflating one
+into the other. Rule: before you write a number into a CHANGELOG or an ADR, run the artifact the
+consumer actually runs and count what actually arrives.
+
+[2026-07-12] **We wrote the rule, quoted the rule, and still broke the rule.** Invariant #6 was the
+don't-ship boundary. The entry four lines above this one already says "instructions enforced only by
+a model reading them are wishes; the fix was machine checks." Both were sitting in the file the whole
+time the framework shipped maintainer vocabulary to consumers. Knowing the lesson is not the same as
+having applied it *here*: the fix wasn't a better-worded invariant, it was `validate-dist` check 6
+reading `scripts/meta-denylist.txt`. Rule changed: when an invariant says "must never", ask in the
+same breath **"which command fails if it does?"** — and if the answer is "none", the invariant is
+decoration.
+
+[2026-07-12] **Write the gate before the cleanup; a gate that has never seen the defect is unproven.**
+`no-meta-leak` was built first and run against the dirty tree: red on 81/83/28 real lines with checks
+1–5 still green, both twins agreeing. That ordering paid for itself immediately — it caught a twin
+asymmetry *in the gate itself*. Check 5 invokes the dist's own `template-checks.ps1`, which
+`Set-Location`s into the dist and never restores it, so my relative denylist path resolved against the
+wrong root on the PowerShell leg, while the bash leg was fine because it runs `template-checks` in a
+subshell. Had I cleaned first, the gate would have gone green on both legs for the wrong reason and
+the asymmetry would have shipped. Resolve paths to absolute *before* any step that can move the cwd.
+
+[2026-07-12] **Deny the ID, not the word — the allowlist size tells you if your gate will survive.**
+The denylist targets `\bB-[0-9]{2}[a-z]?\b` and `\bWSD-[0-9]{3}\b`, and deliberately does *not* deny
+the bare words `BACKLOG` or `twin`: the product legitimately reads the consumer's own `BACKLOG.md`
+(`adopt.md`, the installers' adoption signals), and the shipped `.ps1`/`.sh` twins are a real feature
+consumer docs must name. Result: the `ALLOW` list is **empty**. That is the signal to aim for — a gate
+carrying a long allowlist is one people eventually switch off, and every entry is a hole. Also: two
+sed traps. `perl -pe 's/…\s*$//'` eats the trailing newline (`\s` matches `\n`, `$` matches before it),
+silently gluing bullets together; `sed` is safe because its pattern space excludes the newline. And
+never anchor with `^` when editing a `.ps1` — the UTF-8 BOM [#4] sits at the start of line 1, so `^#`
+does not match.

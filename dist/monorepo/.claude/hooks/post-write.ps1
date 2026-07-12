@@ -1,4 +1,4 @@
-﻿# PostToolUse hook -- monorepo variant: dispatches per extension (B-19a trigger filters of both
+﻿# PostToolUse hook -- monorepo variant: dispatches per extension (trigger filters of both
 # stacks). A write to .cs/.csproj/.sln/.props/.targets/.razor/.cshtml runs an incremental
 # `dotnet build` (60 s throttle); a write to a .ts source under src/ or any tsconfig*.json runs
 # `tsc --noEmit` (5 s throttle). Other files exit silently.
@@ -57,7 +57,7 @@ if ([string]::IsNullOrEmpty($filePath) -and $env:CLAUDE_FILE_PATH) {
 }
 
 if ([string]::IsNullOrEmpty($filePath)) { exit 0 }
-# Monorepo dispatch: pick the stack whose gate can actually validate this file (B-19a).
+# Monorepo dispatch: pick the stack whose gate can actually validate this file.
 # .NET: sources plus MSBuild/Razor inputs. Angular: .ts under src/ plus any tsconfig*.json.
 # Extensions neither gate reads stay excluded -- a check cannot catch their breakage.
 $normalized = $filePath -replace '\\', '/'

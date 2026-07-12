@@ -28,8 +28,13 @@ repos (`ai-tech-lead-dotnet`, `ai-tech-lead-angular`). Shared content is authore
 | `dist/{dotnet,angular,monorepo}/` | **Generated** golden output, committed, `linguist-generated`. Never hand-edit — CI rebuilds and diffs. |
 | `scripts/` | Composer + gates, all `.ps1`/`.sh` twins: `build`, `validate-dist`, `fidelity-check`. |
 | `install.ps1` / `install.sh` | Thin root installers: detect the target's stack (auto-detects mixed → monorepo) and delegate to the chosen dist's installer. |
-| `docs/` | Maintainer docs: `BACKLOG.md`, `workspace-decisions.md` (ADR log), `changelogs/legacy-*.md`. |
-| `.claude/` | Maintainer meta layer: `bom-fix` hook + meta test suite, `release.ps1`, plans. Never ships. |
+| `meta/` | Maintainer layer: `BACKLOG.md`, `workspace-decisions.md` (ADR log), `LEARNINGS.md` (meta-dev log), `ci-handover.md`, `changelogs/legacy-*.md`. Never ships. |
+| `.claude/` | Maintainer Claude Code config: `bom-fix` hook + meta test suite, `release.ps1`, plans. Never ships. |
+
+There is deliberately **no root `docs/`**: that name belongs to the consumer (`dist/*/docs/`), and
+having both invited exactly the confusion this layout removes. Root `CLAUDE.md`/`AGENTS.md` still
+collide by name with their shipped counterparts because Claude Code must load them from the root —
+hence the banner above.
 
 The framework's "code" is mostly Markdown (skills, commands, agents, the `CLAUDE.md` templates) +
 PowerShell/bash hook scripts + installer scripts. There is no application to compile — the
@@ -63,7 +68,7 @@ kept stable from the pre-merge workspace; #1 was retargeted by the merge per WSD
    edit the twin in the same task. CI proves composer twin parity by rebuilding with `.ps1` on
    the windows leg and `.sh` on the linux leg against the same committed dist. Meta *scripts*
    (`.claude/scripts/`) are PowerShell-only by decision — they run only on the maintainer's
-   Windows box (see `docs/workspace-decisions.md`).
+   Windows box (see `meta/workspace-decisions.md`).
 4. **UTF-8 BOM mandatory in every `.ps1`.** Windows PowerShell 5.1 mis-parses BOM-less UTF-8.
    This is binary and auto-fixed by the `bom-fix` hook (scoped to this repo) — but if you
    hand-create a `.ps1` outside the hook's reach, add the BOM yourself. The meta test suite and
@@ -73,17 +78,27 @@ kept stable from the pre-merge workspace; #1 was retargeted by the merge per WSD
    on Stop. Copilot (CLI + VS Code): stdout JSON `permissionDecision: deny` to block. A hook that
    must enforce on both surfaces has to emit **both** shapes. Always test both. (Live-verified
    2026-07-04: Copilot CLI does **not** consume `postToolUse` additionalContext.)
-6. **Don't-ship boundary.** Only `dist/` contents reach consumers, via the dist installers (the
-   root installers just delegate). Everything else — root `README`/`CHANGELOG`/`docs/`/`.claude/`/
-   `scripts/`/`src/` — is authoring-repo-only and must never be copied by an installer or collide
-   with a template file. The `.template-repo` marker inside each dist disables consumer CI for
-   the template itself.
+6. **Don't-ship boundary — and it is now a machine check.** Only `dist/` contents reach consumers,
+   via the dist installers (the root installers just delegate). Everything else — root
+   `README`/`CHANGELOG`/`meta/`/`.claude/`/`scripts/`/`src/` — is authoring-repo-only and must never
+   be copied by an installer or collide with a template file. The `.template-repo` marker inside each
+   dist disables consumer CI for the template itself.
+   **The boundary is enforced by `validate-dist` check 6 (`no-meta-leak`)**, which scans each
+   composed dist against `scripts/meta-denylist.txt` — our development vocabulary (tracking ids
+   `B-nn`/`WSD-nnn`, "lockstep", the two-repo past, maintainer-only tooling) must not appear in a
+   shipped file. The denylist is one file read by both twins so it cannot drift. If a legitimate
+   consumer-facing word trips it, add a narrow `ALLOW` — do **not** weaken a `DENY` pattern.
+   Prose alone never held this line: it was written down as an invariant here from the start and
+   still shipped ~190 leaking lines to consumers (see `meta/LEARNINGS.md`, 2026-07-12).
 7. **Versioning.** When *shipped* behavior changes: write an entry in the **root** `CHANGELOG.md`,
    update the shipped changelog content in `src/` if the release notes should reach consumers,
    then release via `.claude/scripts/release.ps1` — it stamps `src/core/CLAUDE.md` + the three
    `framework-version.json` files, rebuilds `dist/`, runs every gate, and refuses to commit on
-   failure. `LEARNINGS.md` is append-only. (Manual stamping shipped drift twice; don't go back
+   failure. `meta/LEARNINGS.md` is append-only. (Manual stamping shipped drift twice; don't go back
    to it.)
+   **Write the shipped changelog in the consumer's voice** — what changed in *their* repo and what
+   they must do. Tracking ids, our two-repo past, and maintainer asides belong in the root
+   `CHANGELOG.md` (which is *our* log), not in `src/stacks/*/files/CHANGELOG.md` (which is *theirs*).
 
 ---
 
@@ -102,7 +117,7 @@ These replace the shipped consumer workflows for meta-work.
 - **New version / large change:** plan first; persist the plan to `.claude/plans/`. For
   high-stakes plans, run an adversarial/critique pass before editing. Gate before touching code.
 - **Investigation / design:** write no code; weigh ≥2 approaches with trade-offs; record the
-  outcome in `docs/workspace-decisions.md` (see Conventions).
+  outcome in `meta/workspace-decisions.md` (see Conventions).
 
 ## Definition of done per artifact type
 
@@ -127,7 +142,7 @@ Never claim "it works." Show the command and its observed output. Standard comma
 - **Compose + freshness:** `pwsh -NoProfile -File scripts/build.ps1 <dist>` ×3, then
   `git status --porcelain dist/` must be empty.
 - **Dist validity:** `pwsh -NoProfile -File scripts/validate-dist.ps1 <dist>` ×3 (markers, JSON,
-  `bash -n`, PS-AST, per-dist `template-checks`).
+  `bash -n`, PS-AST, per-dist `template-checks`, and `no-meta-leak` [#6]).
 - **Hook suites:** `pwsh -NoProfile -File dist/<d>/tests/hooks/Invoke-HookTests.ps1` ×3; meta
   suite `.claude/hooks/tests/Invoke-HookTests.ps1`.
 - **Hook behavior:** pipe a fixture JSON event to the hook; assert `EXIT=` + output.
@@ -155,10 +170,11 @@ user. Generated `dist/` changes belong in the same commit as the `src/` change t
 ## Conventions
 
 - **Plans** → `.claude/plans/`.
-- **Framework-level decisions** → `docs/workspace-decisions.md` (lightweight ADR log: the merge,
+- **Framework-level decisions** → `meta/workspace-decisions.md` (lightweight ADR log: the merge,
   mirror strategy, hook semantics, composition rules).
-- **Meta-dev learnings** → root `LEARNINGS.md` (distinct from the shipped `src/core/LEARNINGS.md`).
-- **Work list** → `docs/BACKLOG.md` (self-contained entries; move finished ones to its Done section).
+- **Meta-dev learnings** → `meta/LEARNINGS.md` (distinct from the shipped `src/core/LEARNINGS.md`,
+  which is an empty template the consumer's team fills in — do not confuse the two).
+- **Work list** → `meta/BACKLOG.md` (self-contained entries; move finished ones to its Done section).
 
 ## Migration status note
 
@@ -169,5 +185,10 @@ v0.26.0 release folded the two deliberate shipped-content changes — `actions/c
 shipped workflows and retirement of the CI strict-fidelity legs — so the freeze tags are no longer a
 baseline; `scripts/fidelity-check.{ps1,sh}` remain for manual re-audit against the `pre-restructure`
 tag but are no longer wired to CI. This repo is now the single home for framework development.
-**Next framework work: B-27 (team wiki memory) as v0.27.0** (`docs/BACKLOG.md`). The old
+**Next framework work: B-27 (team wiki memory) as v0.27.0** (`meta/BACKLOG.md`). The old
 workspace-root repo one level up now holds only a pointer stub and the (now-executed) migration plan.
+
+**v0.26.1 (2026-07-12)** sealed the meta/product boundary: the shipped changelogs were rewritten in
+the consumer's voice, tracking ids were stripped from shipped hooks/scripts/tests, the maintainer
+layer moved to `meta/`, and `no-meta-leak` was added so the boundary is now enforced rather than
+merely asserted (WSD-019).

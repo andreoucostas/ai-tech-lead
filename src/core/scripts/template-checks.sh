@@ -103,7 +103,7 @@ if [ -n "$shfails" ]; then fail "bash syntax errors in:$shfails"; else ok "all f
 # --- 7. Skills mirror: .claude/skills must byte-match .github/skills ---------------------------
 # Skills ship twice per repo (Claude reads .claude/skills, Copilot reads .github/skills). They are
 # mirrored by /generate-copilot + scripts/sync-agent-files; without a gate, editing one and
-# forgetting the other ships stale guidance to Copilot with every other check green (B-07).
+# forgetting the other ships stale guidance to Copilot with every other check green.
 # CRLF-normalized (--strip-trailing-cr): with core.autocrlf on Windows the two copies can differ
 # only in line endings in a working tree yet be identical in a clean checkout -- ignore EOL-only diffs.
 if [ -d .claude/skills ] || [ -d .github/skills ]; then

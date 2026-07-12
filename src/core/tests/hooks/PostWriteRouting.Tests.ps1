@@ -1,7 +1,7 @@
-﻿# B-09 -- post-write surface routing + self-filter agreement between the .ps1 and .sh twins.
+﻿# post-write surface routing + self-filter agreement between the .ps1 and .sh twins.
 # Two classes of coverage, both host-independent and build-free (they never reach `dotnet build` /
 # `npx tsc`, so they are deterministic and need no toolchain):
-#   1. A static guard pinning the B-09a fix: on a malformed/empty payload the .ps1 must default the
+#   1. A static guard pinning the routing fix: on a malformed/empty payload the .ps1 must default the
 #      tool name to '' (not $null). The end-of-hook routing uses `$tn -eq ''` for Claude's empty-case
 #      exit-2 path, and `$null -eq ''` is $false in PowerShell -- so a $null default misroutes a build
 #      failure to the Copilot exit-0 branch, diverging from the .sh twin's `case ... "")` -> exit 2.
@@ -18,7 +18,7 @@ $bash  = Get-BashPath
 
 Reset-Tests
 
-# --- 1. B-09a static guard (red against the pre-fix .ps1, which had no top-level $tn default) ---
+# --- 1. static guard (red against the pre-fix .ps1, which had no top-level $tn default) ---
 $psSrc = [System.IO.File]::ReadAllText($pwPs)
 $shSrc = [System.IO.File]::ReadAllText($pwSh)
 $preamble = ($psSrc -split 'if \(-not \[string\]::IsNullOrEmpty\(\$inputJson\)')[0]
@@ -69,4 +69,4 @@ if (-not $bash) {
     }
 }
 
-exit (Write-TestSummary 'PostWriteRouting.Tests (B-09 surface routing)')
+exit (Write-TestSummary 'PostWriteRouting.Tests (surface routing)')

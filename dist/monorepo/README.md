@@ -306,7 +306,7 @@ This framework grew up around GitHub conventions, but its **local layer is host-
 
 ## Changelog
 
-> **Current, full changelog: [CHANGELOG.md](./CHANGELOG.md).** This monorepo template is composed from the `ai-tech-lead-dotnet` and `ai-tech-lead-angular` templates (merged at v0.25.5); each stack's full per-stack history lives in its origin repo's changelog. The entry below is an older excerpt kept for context.
+> **Current, full changelog: [CHANGELOG.md](./CHANGELOG.md).** The entry below is an older excerpt kept for context.
 
 ### 0.7.2 — 2026-05-16 (Copilot routing parity)
 

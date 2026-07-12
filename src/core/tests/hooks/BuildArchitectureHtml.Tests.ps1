@@ -1,10 +1,10 @@
-﻿# B-28 -- build-architecture-html twin agreement: identical input must yield byte-identical output.
+﻿# build-architecture-html twin agreement: identical input must yield byte-identical output.
 # The pre-fix .ps1 diverged from the .sh twin three ways: (1) the head here-string carried no
 # trailing newline, joining the opening <script> tag and the first markdown line onto one line;
 # (2) each twin stamped its own filename into the GENERATED comment; (3) Set-Content wrote host
 # EOLs (+ BOM on PS 5.1) and appended its own trailing newline, where bash writes raw LF, no BOM.
 # Consequence: whoever regenerated architecture.html last "won", producing spurious diffs between
-# the Windows maintainer (pwsh) and the linux CI leg (bash) -- see BACKLOG B-28 / B-11.
+# the Windows maintainer (pwsh) and the linux CI leg (bash).
 if (-not (Get-Command Reset-Tests -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot '_HookHarness.ps1') }
 $scripts = (Resolve-Path (Join-Path $PSScriptRoot '..\..\scripts')).Path
 $genPs = Join-Path $scripts 'build-architecture-html.ps1'
@@ -30,7 +30,7 @@ It 'both twins stamp the same neutral generator name into the GENERATED comment'
 # --- twin agreement: byte-identical output from identical (LF) input ---
 if (-not $bash) {
     Skip 'twins emit byte-identical HTML from identical markdown' 'no bash found -- cannot run .sh twin'
-    Skip 'opening <script> tag sits on its own line (the B-28 join symptom)' 'no bash found -- cannot run .sh twin'
+    Skip 'opening <script> tag sits on its own line (the join symptom)' 'no bash found -- cannot run .sh twin'
 } else {
     $tmp = Join-Path ([IO.Path]::GetTempPath()) ("archhtml-" + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $tmp -Force | Out-Null
@@ -61,7 +61,7 @@ if (-not $bash) {
             for ($i = 0; $i -lt $bp.Length; $i++) { if ($bp[$i] -ne $bs[$i]) { $diffAt = $i; break } }
             Assert ($diffAt -lt 0) "first differing byte at offset $diffAt (.ps1=0x$($bp[$diffAt].ToString('x2')) .sh=0x$($bs[$diffAt].ToString('x2')))"
         }
-        It 'opening <script> tag sits on its own line (the B-28 join symptom)' {
+        It 'opening <script> tag sits on its own line (the join symptom)' {
             $txt = [System.IO.File]::ReadAllText((Join-Path $tmp 'out-ps.html'))
             Assert ($txt -match ('<script id="md" type="text/markdown">' + "`n" + '# Fixture')) `
                 'the opening <script id="md"> tag and the first markdown line are joined -- the head is missing its trailing newline'
@@ -72,4 +72,4 @@ if (-not $bash) {
     }
 }
 
-exit (Write-TestSummary 'BuildArchitectureHtml.Tests (B-28 twin parity)')
+exit (Write-TestSummary 'BuildArchitectureHtml.Tests (twin parity)')

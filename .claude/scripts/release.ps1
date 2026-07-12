@@ -13,7 +13,7 @@
 # freeze-v0.25.5 tags, and the first release that changes shipped content must consciously
 # retire/re-baseline it (and the CI fidelity legs) in the same change — see WSD-016.
 #
-# PowerShell-only by decision (see docs/workspace-decisions.md): meta scripts run only on the
+# PowerShell-only by decision (see meta/workspace-decisions.md): meta scripts run only on the
 # maintainer's box; invariant #3 twin parity applies to shipped hooks/scripts and scripts/.
 param(
     [Parameter(Mandatory)][string]$Version,

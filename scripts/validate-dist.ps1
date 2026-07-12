@@ -6,6 +6,7 @@
 #   3. `bash -n` passes on every *.sh in the dist (invokes bash — hard FATAL if unavailable)
 #   4. PowerShell AST parse is clean on every *.ps1 in the dist
 #   5. the dist's OWN template-checks.ps1 suite passes, run from inside the dist dir
+#   6. no meta-dev vocabulary leaks into shipped content (scripts/meta-denylist.txt)
 # Exit 0 = all checks passed. Exit 1 = at least one check failed. Exit 2 = usage error, missing
 # dist, or a required tool (bash, for check 3) is unavailable — reported as FATAL, never skipped.
 #   Usage: validate-dist.ps1 {dotnet|angular|monorepo} [dist-root]
@@ -18,7 +19,8 @@
 # Failure detection here is explicit ($LASTEXITCODE / try-catch), not exception-driven.
 $ErrorActionPreference = 'Continue'
 
-Set-Location (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
+$RepoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+Set-Location $RepoRoot
 
 $Mode = $args[0]
 if ($Mode -ne 'dotnet' -and $Mode -ne 'angular' -and $Mode -ne 'monorepo') {
@@ -31,6 +33,11 @@ if (-not (Test-Path $Dist -PathType Container)) {
     [Console]::Error.WriteLine("no $Dist -- run scripts/build.ps1 $Mode first")
     exit 2
 }
+# Resolve to absolute NOW: check 5 invokes the dist's own template-checks.ps1, which Set-Location's
+# into the dist dir and does not restore it. Any relative path used after check 5 would resolve
+# against the wrong root. (The bash twin runs template-checks in a subshell, so its cwd survives --
+# resolving up front is what keeps the two legs behaving identically.)
+$DistAbs = (Resolve-Path $Dist).Path
 
 $failed = 0
 function Fail($m) { Write-Output "FAIL: $m"; $script:failed++ }
@@ -118,6 +125,51 @@ if (-not (Test-Path $Tc)) {
     } else {
         OK "$Tc passed."
     }
+}
+
+# --- 6. no meta-dev vocabulary in shipped content -------------------------------------------------
+# The don't-ship boundary (invariant #6) made deterministic. Everything under dist/ lands in a
+# consumer's repo, so the framework's own development vocabulary — tracking ids, the two-repo
+# authoring past, maintainer-only tooling — must not appear there. Patterns live in
+# scripts/meta-denylist.txt and are read by BOTH twins, so the denylist itself cannot drift between
+# the PowerShell and bash legs (invariant #3).
+$DenyFile = Join-Path $RepoRoot 'scripts/meta-denylist.txt'
+if (-not (Test-Path $DenyFile)) {
+    [Console]::Error.WriteLine("FATAL: missing $DenyFile -- cannot run the no-meta-leak check.")
+    exit 2
+}
+$denyPatterns = @()
+$allowPaths   = @()
+foreach ($line in (Get-Content $DenyFile)) {
+    $t = $line.Trim()
+    if ($t -eq '' -or $t.StartsWith('#')) { continue }
+    if ($t -match '^DENY\s+(.+)$')  { $denyPatterns += $Matches[1].Trim(); continue }
+    if ($t -match '^ALLOW\s+(.+)$') { $allowPaths   += $Matches[1].Trim(); continue }
+}
+if ($denyPatterns.Count -eq 0) {
+    [Console]::Error.WriteLine("FATAL: $DenyFile defines no DENY patterns.")
+    exit 2
+}
+$leaks = @()
+foreach ($f in (Get-ChildItem -Recurse -File -Path $DistAbs)) {
+    $rel = ($f.FullName.Substring($DistAbs.Length).TrimStart('\', '/')) -replace '\\', '/'
+    $skip = $false
+    foreach ($a in $allowPaths) { if ($rel -like "*$a*") { $skip = $true; break } }
+    if ($skip) { continue }
+    foreach ($p in $denyPatterns) {
+        # Select-String is case-insensitive by default -- matches the bash twin's `grep -i`.
+        foreach ($m in (Select-String -Path $f.FullName -Pattern $p -ErrorAction SilentlyContinue)) {
+            $leaks += ("{0}:{1}: {2}" -f $rel, $m.LineNumber, $p)
+        }
+    }
+}
+$leaks = $leaks | Sort-Object
+if ($leaks.Count -gt 0) {
+    Fail ("meta vocabulary in shipped content -- {0} line(s). These reach a consumer repo; fix in src/, not dist/." -f $leaks.Count)
+    $leaks | Select-Object -First 20 | ForEach-Object { Write-Output "  [no-meta-leak] $_" }
+    if ($leaks.Count -gt 20) { Write-Output ("  [no-meta-leak] ... and {0} more line(s)." -f ($leaks.Count - 20)) }
+} else {
+    OK "no meta-dev vocabulary in $Dist (no-meta-leak)."
 }
 
 Write-Output ''

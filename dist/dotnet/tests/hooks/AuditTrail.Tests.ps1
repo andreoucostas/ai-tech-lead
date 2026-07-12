@@ -1,9 +1,9 @@
-﻿# B-14 — audit-trail.ps1/.sh behavioral tests (stack-agnostic only).
+﻿# audit-trail.ps1/.sh behavioral tests (stack-agnostic only).
 # Tests: normal Write -> line appended; self-path -> no line; Copilot create -> line appended;
 # tab-delimited 3-field format; .ps1/.sh twin agree.
 # Stack-specific artifact skip (node_modules/dist/.angular/coverage vs obj/bin) differs between
 # repos and is NOT asserted here (byte-identical constraint) -- covered by manual fixture
-# demonstration in the B-14 verification write-up.
+# demonstration.
 # Red-before-green: the self-skip test catches a broken skip. If 'ai-audit\.log|' is removed
 # from the skip regex in .ps1 (or '*ai-audit.log|' from the .sh case), the self-skip It blocks
 # fail because Invoke-Hook appends a line when it should not. The static guards below go red
@@ -117,4 +117,4 @@ try {
     Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-exit (Write-TestSummary 'AuditTrail.Tests (B-14)')
+exit (Write-TestSummary 'AuditTrail.Tests')

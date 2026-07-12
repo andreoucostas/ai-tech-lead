@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # PostToolUse hook — incremental tsc --noEmit after a write/edit on build-relevant files
-# (.ts sources under src/ + tsconfig*.json anywhere — B-19a).
+# (.ts sources under src/ + tsconfig*.json anywhere �).
 # Tool surfaces handled:
 #   Claude Code (CLI + VS Code extension)  — tool_name in {Write,Edit}; path at tool_input.file_path
 #   GitHub Copilot (cloud agent + CLI)     — toolName  in {edit,create}; path at toolArgs.filePath (object, not JSON string)
@@ -67,7 +67,7 @@ fi
 [ -z "$file_path" ] && file_path="${CLAUDE_FILE_PATH:-}"
 [ -z "$file_path" ] && exit 0
 
-# Trigger on what `tsc --noEmit` can actually validate (B-19a): .ts sources under src/, plus any
+# Trigger on what `tsc --noEmit` can actually validate: .ts sources under src/, plus any
 # tsconfig*.json (it drives the type-check and typically lives OUTSIDE src/, so it bypasses the
 # src/ gate). Deliberately NOT angular.json/package.json: tsc cannot validate those -- a trigger
 # there would run a check that cannot catch the breakage.

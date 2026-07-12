@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # ai-tech-lead dist validator (bash twin; .ps1 twin is validate-dist.ps1). Validates an
 # ALREADY-COMPOSED dist/<mode> tree — it does NOT rebuild it (see scripts/build.sh for that).
-# Five checks, each with a clear OK/FAIL line:
+# Six checks, each with a clear OK/FAIL line:
 #   1. no unresolved @stack:NAME markers survive anywhere in the dist (composer leftovers)
 #   2. every *.json in the dist parses
 #   3. `bash -n` passes on every *.sh in the dist
 #   4. PowerShell AST parse is clean on every *.ps1 in the dist (invokes pwsh/powershell)
 #   5. the dist's OWN template-checks suite passes, run from inside the dist dir
+#   6. no meta-dev vocabulary leaks into shipped content (scripts/meta-denylist.txt)
 # Exit 0 = all checks passed. Exit 1 = at least one check failed. Exit 2 = usage error, missing
 # dist, or a required tool (JSON parser / bash / PowerShell host) is unavailable — these are
 # reported as FATAL and never silently skipped.
@@ -96,6 +97,44 @@ else
   else
     ok "$DIST/scripts/template-checks.sh passed."
   fi
+fi
+
+# --- 6. no meta-dev vocabulary in shipped content ---------------------------------------------------
+# The don't-ship boundary (invariant #6) made deterministic. Everything under dist/ lands in a
+# consumer's repo, so the framework's own development vocabulary — tracking ids, the two-repo
+# authoring past, maintainer-only tooling — must not appear there. Patterns live in
+# scripts/meta-denylist.txt and are read by BOTH twins, so the denylist itself cannot drift between
+# the bash and PowerShell legs (invariant #3).
+DENYFILE="scripts/meta-denylist.txt"
+[ -f "$DENYFILE" ] || { echo "FATAL: missing $DENYFILE — cannot run the no-meta-leak check." >&2; exit 2; }
+denypats=$(grep -E '^DENY[[:space:]]+' "$DENYFILE" | sed -E 's/^DENY[[:space:]]+//' || true)
+allowpaths=$(grep -E '^ALLOW[[:space:]]+' "$DENYFILE" | sed -E 's/^ALLOW[[:space:]]+//' || true)
+[ -n "$denypats" ] || { echo "FATAL: $DENYFILE defines no DENY patterns." >&2; exit 2; }
+leaks=""
+while IFS= read -r p; do
+  [ -n "$p" ] || continue
+  # -I skips binary files; -i matches the .ps1 twin's case-insensitive Select-String.
+  while IFS= read -r hit; do
+    [ -n "$hit" ] || continue
+    f="${hit%%:*}"; rest="${hit#*:}"; ln="${rest%%:*}"
+    rel="${f#"$DIST"/}"
+    skip=0
+    while IFS= read -r a; do
+      [ -n "$a" ] || continue
+      case "$rel" in *"$a"*) skip=1;; esac
+    done <<< "$allowpaths"
+    [ "$skip" -eq 1 ] && continue
+    leaks="$leaks$rel:$ln: $p"$'\n'
+  done < <(grep -rIiEn -- "$p" "$DIST" 2>/dev/null || true)
+done <<< "$denypats"
+leaks=$(printf '%s' "$leaks" | sed '/^[[:space:]]*$/d' | sort || true)
+leakcount=$(printf '%s' "$leaks" | grep -c . || true)
+if [ "$leakcount" -gt 0 ]; then
+  fail "meta vocabulary in shipped content — $leakcount line(s). These reach a consumer repo; fix in src/, not dist/."
+  printf '%s\n' "$leaks" | head -20 | sed 's/^/  [no-meta-leak] /'
+  [ "$leakcount" -gt 20 ] && echo "  [no-meta-leak] ... and $((leakcount - 20)) more line(s)."
+else
+  ok "no meta-dev vocabulary in $DIST (no-meta-leak)."
 fi
 
 echo ""

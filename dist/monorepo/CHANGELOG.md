@@ -1,21 +1,39 @@
-# ai-tech-lead (.NET + Angular monorepo) — Changelog
+# AI Tech Lead (.NET + Angular monorepo) — Changelog
 
-> Framework-level changes for the monorepo template. This template is composed from the
-> [`ai-tech-lead-dotnet`](https://github.com/andreoucostas/ai-tech-lead-dotnet/blob/master/CHANGELOG.md)
-> and [`ai-tech-lead-angular`](https://github.com/andreoucostas/ai-tech-lead-angular/blob/master/CHANGELOG.md)
-> templates, merged at v0.25.5 — each stack's full per-stack history lives in its origin repo's changelog.
-> Architecture decisions live in `docs/architecture-decisions.md`.
+> Release notes for the mixed .NET + Angular distribution, written for the teams who install it:
+> what changed in **your** repo, and what (if anything) you need to do. This distribution carries
+> the rails of both stacks, so entries may apply to one side or both.
+> Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.26.0 — 2026-07-12 (first released version of the unified `ai-tech-lead` repo)
+## 0.26.1 — 2026-07-12 (these release notes are now written for you)
 
-> This `dist/monorepo` distribution — the mixed .NET + Angular install — ships from the unified
-> **[`ai-tech-lead`](https://github.com/andreoucostas/ai-tech-lead)** authoring repo, which composes
-> all three distributions (`dotnet`, `angular`, `monorepo`) from one source. The two legacy template
-> repos (`ai-tech-lead-dotnet`, `ai-tech-lead-angular`) are now archived and read-only; this repo is
-> the single home for framework updates.
+> Documentation and comments only — **no behavior change, nothing to do**. Re-run the installer
+> whenever convenient.
+
+### Changed
+- **These release notes are written for the teams who install the framework**, not for its
+  maintainers: what changed in your repo, and what you need to do.
+- **Internal tracking ids removed from the comments in shipped code** — the hooks
+  (`.claude/hooks/post-write.*`), the scripts (`scripts/template-checks.*`,
+  `scripts/build-architecture-html.ps1`), and the hook tests. Comments now state the rule the code
+  enforces instead of the ticket that produced it, so they read as intended in *your* repo. Behavior
+  is untouched; the hook test suites pass unchanged.
+- **Stale cross-references removed** from `README.md` and this changelog — they pointed at two
+  predecessor repositories that are now archived.
+
+## 0.26.0 — 2026-07-12 (first release of the mixed .NET + Angular distribution)
+
+> This is the first release of the monorepo distribution — for repos that hold **both** a .NET
+> solution and an Angular workspace. It carries the union of both stacks' rails, and dispatches
+> per file type: a `.cs` edit runs the .NET gate, a `.ts` edit runs the Angular one.
 >
-> **Shipped change:** the framework's own CI workflows (`template-ci.yml`, `docs-sync-check.yml`) now
-> pin `actions/checkout@v5` (GitHub Node 20 runtime deprecation). No change to your application code.
+> **What you need to do:** if you have a mixed repo, the installer now auto-detects it and selects
+> this distribution. Pass `--stack monorepo` to force it.
+
+### Changed
+- The framework's own CI workflows (`template-ci.yml`, `docs-sync-check.yml`) now pin
+  `actions/checkout@v5`, following GitHub's Node 20 runtime deprecation. No change to your
+  application code.
 
 ---
 

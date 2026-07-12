@@ -222,7 +222,7 @@ B-27 follows as v0.27.0 in the merged repo.
 > **P0 (design) COMPLETE 2026-07-04 — do not re-derive.** The full design (D1–D10, twice
 > adversarially critiqued, 15/15 external findings incorporated) is at
 > **`.claude/plans/2026-07-04-b27-wiki-memory-design.md`**; decision record **WSD-010** in
-> `docs/workspace-decisions.md`. Implement from that doc: it contains the normative INDEX
+> `meta/workspace-decisions.md`. Implement from that doc: it contains the normative INDEX
 > grammar + frontmatter parsing contract, the install ownership matrix (the #1 trap), the adopt
 > screen-in-place class, the injection FAIL/WARN split, the check-lockstep additions, the test
 > matrix, the implementation order, and end-to-end verification recipes. Target **v0.27.0 in
@@ -281,7 +281,7 @@ it does not relitigate them):
 
 **Suggested phases.** P0: design doc weighing ≥2 layouts (flat dir + index vs scoped subdirs;
 session-start preload vs pointer-only), adversarial critique pass, record the outcome in
-`docs/workspace-decisions.md`. P1: implement in dotnet → mirror to angular [#1] (dir skeleton +
+`meta/workspace-decisions.md`. P1: implement in dotnet → mirror to angular [#1] (dir skeleton +
 entry template, skill mirrored to `.github/skills` [#2], CLAUDE.md preamble line + AGENTS.md
 regen via `/generate-copilot` [#2]). P2: deterministic `wiki-check` validation (frontmatter
 validity, index↔files bijection, size threshold) as `.ps1`/`.sh` twins [#3], referenced from the
