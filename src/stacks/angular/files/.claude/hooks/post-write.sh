@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # PostToolUse hook — incremental tsc --noEmit after a write/edit on build-relevant files
-# (.ts sources under src/ + tsconfig*.json anywhere �).
+# (.ts sources under src/ + tsconfig*.json anywhere).
 # Tool surfaces handled:
 #   Claude Code (CLI + VS Code extension)  — tool_name in {Write,Edit}; path at tool_input.file_path
 #   GitHub Copilot (cloud agent + CLI)     — toolName  in {edit,create}; path at toolArgs.filePath (object, not JSON string)

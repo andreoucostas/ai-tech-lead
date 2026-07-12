@@ -11,6 +11,29 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.26.2 — 2026-07-12
+
+> Hotfix for a defect v0.26.1 introduced, plus the machine check that would have caught it.
+> v0.26.1's CI went **red on the linux leg** — the two composers disagreed on
+> `dist/{dotnet,angular}/.claude/hooks/post-write.sh`.
+
+### Fixed
+- **A lone `0xE2` byte in two `src/stacks/*/files/.claude/hooks/post-write.sh` files.** Introduced by
+  a v0.26.1 `sed` whose character class contained an em-dash (`[-—]`). `sed` matches **bytewise**, so
+  it stripped the em-dash's two continuation bytes (`80 94`) and left the lead byte stranded —
+  invalid UTF-8. The two composers then disagreed by construction: `build.sh` copies the raw byte
+  through, while `build.ps1` decodes and re-encodes it into `U+FFFD`. The committed dist matched
+  whichever composer produced it, so the *other* CI leg failed the freshness diff. Comment text only;
+  the hook's behavior was never affected.
+
+### Added
+- **A repo-wide valid-UTF-8 sweep in the meta test suite** (`WorkspaceBom.Tests.ps1`, alongside the
+  BOM gate [#4]). Every file must decode under a **strict** UTF-8 decoder — one that throws rather
+  than silently substituting `U+FFFD`, since a lenient decode would make the test vacuous. It carries
+  a positive control that plants the exact byte sequence this release fixes. This closes a real hole:
+  every local gate passed on v0.26.1, and **only** CI's cross-leg rebuild caught the divergence — a
+  failure that surfaces far from its cause. It is now caught at the source, locally, before a push.
+
 ## 0.26.1 — 2026-07-12
 
 > Seals the meta/product boundary. A sweep of the composed dists found **192 lines of maintainer

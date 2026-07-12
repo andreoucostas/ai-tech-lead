@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # PostToolUse hook — incremental dotnet build after a write/edit on build-relevant files
-# (.cs sources + MSBuild/Razor inputs: .csproj/.sln/.props/.targets/.razor/.cshtml �).
+# (.cs sources + MSBuild/Razor inputs: .csproj/.sln/.props/.targets/.razor/.cshtml).
 # Tool surfaces handled:
 #   Claude Code (CLI + VS Code extension)  — tool_name in {Write,Edit}; path at tool_input.file_path
 #   GitHub Copilot (cloud agent + CLI)     — toolName  in {edit,create}; path at toolArgs.filePath (object, not JSON string)

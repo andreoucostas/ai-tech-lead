@@ -110,6 +110,29 @@ not the same severity, and this framework's own enforcement-honesty doctrine for
 into the other. Rule: before you write a number into a CHANGELOG or an ADR, run the artifact the
 consumer actually runs and count what actually arrives.
 
+[2026-07-12] **A character class with a non-ASCII char in it is a byte trap — and it broke the
+composer twins.** `sed -E 's/[[:space:]]*[-—]{1,2} B-19a\)/)/'` looks like "an ASCII hyphen or an
+em-dash". `sed` matches **bytewise**, so `[-—]` is really "any of the bytes `-`, `E2`, `80`, `94`" —
+it ate the em-dash's two continuation bytes and left the `E2` lead byte stranded. That single invalid
+byte made `build.sh` and `build.ps1` **disagree by construction**: bash copies raw bytes through,
+PowerShell decodes-and-re-encodes and turns the bad byte into `U+FFFD`. The committed dist matched
+whichever composer wrote it, so the *other* CI leg failed a freshness diff two steps removed from the
+cause. Rules changed: (1) never put a multi-byte character inside a `sed`/`grep` bracket expression —
+match the literal string or use `perl -CSD`; (2) `git ls-files | xargs -I{} iconv -f UTF-8 -t UTF-8`
+is now a repo gate (`WorkspaceBom.Tests.ps1`), because invalid UTF-8 is not a cosmetic issue here, it
+is a *twin-divergence* issue. Note the irony worth remembering: I had already run a corruption check
+and it passed — I grepped for `U+FFFD`, which is what the *PowerShell* composer produces downstream,
+not the raw `E2` actually sitting in the source. **Check for the bug you can make, not the bug you can
+picture.**
+
+[2026-07-12] **Local-green + CI-red means a gate is missing locally, not that CI is fussy.** Every
+local gate passed v0.26.1 — validate-dist ×3 on both legs, all four hook suites, the install smoke —
+and CI still went red, because the only check that compares the *two composers against each other* is
+CI's cross-leg rebuild. That asymmetry is the hole: any defect that makes the twins disagree is
+invisible to a single-machine run. The fix isn't to run CI more; it's to pull the check down to where
+the defect is made. Rule: when CI catches something local gates cannot, the deliverable is not just
+the fix — it is the local gate that makes that class impossible to push again.
+
 [2026-07-12] **We wrote the rule, quoted the rule, and still broke the rule.** Invariant #6 was the
 don't-ship boundary. The entry four lines above this one already says "instructions enforced only by
 a model reading them are wishes; the fix was machine checks." Both were sitting in the file the whole

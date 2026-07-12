@@ -4,6 +4,15 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.26.2 — 2026-07-12 (fixes a mangled character in a hook comment)
+
+> Comment text only — **no behavior change, nothing to do.**
+
+### Fixed
+- **A mangled character in the header comment of `.claude/hooks/post-write.sh`.** A stray byte
+  introduced while editing that comment in v0.26.1 left an invalid character that rendered as `�`.
+  The hook itself always behaved correctly — only the comment was affected. Text restored.
+
 ## 0.26.1 — 2026-07-12 (these release notes are now written for you)
 
 > Documentation and comments only — **no behavior change, nothing to do**. Re-run the installer

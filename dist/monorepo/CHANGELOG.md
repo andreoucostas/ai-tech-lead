@@ -5,6 +5,11 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.26.2 — 2026-07-12 (housekeeping)
+
+> No behavior change, nothing to do. Keeps this distribution's version in step with the .NET and
+> Angular distributions, which had a mangled character repaired in a hook comment.
+
 ## 0.26.1 — 2026-07-12 (these release notes are now written for you)
 
 > Documentation and comments only — **no behavior change, nothing to do**. Re-run the installer
