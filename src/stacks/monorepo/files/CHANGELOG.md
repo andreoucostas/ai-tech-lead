@@ -5,6 +5,28 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.26.3 — 2026-07-12 (fixes a broken install command in this README; AI-agent install contract)
+
+> **If you install with an AI agent, this one matters.** No change to the files in your repo — the
+> fixes are to the installer's own output and to the install instructions in this distribution's
+> `README.md`.
+
+### Fixed
+- **`README.md` §1 told AI agents to run an installer path that does not exist here.** It said
+  `pwsh install.ps1 <target-repo-path>`; the installer in this distribution is
+  **`scripts/install.ps1`** (`bash scripts/install.sh`). An agent that followed §1 verbatim got
+  `No such file or directory` and had to guess its way out. The .NET and Angular distributions were
+  always correct; only this one carried the wrong path. Corrected.
+- **The installer's greenfield "next steps" now tell an AI agent the whole contract.** When an agent
+  installed into a repo with no existing AI tooling, the closing message told it not to run
+  `/bootstrap` — but never stressed that it must first **commit** the copied files, never said not to
+  hand-replicate `/bootstrap`, and never warned that `scripts/docs-sync-check` **fails by design**
+  until a developer has run `/bootstrap`. Agents therefore left the copied files sitting uncommitted
+  in the working tree, and some treated the expected check failure as a bug to fix. The greenfield
+  message now matches the one already shown for repos with existing AI tooling: commit the files,
+  hand off to a developer, don't replicate `/bootstrap` by hand, and expect `docs-sync-check` to be
+  red until it has run.
+
 ## 0.26.2 — 2026-07-12 (housekeeping)
 
 > No behavior change, nothing to do. Keeps this distribution's version in step with the .NET and

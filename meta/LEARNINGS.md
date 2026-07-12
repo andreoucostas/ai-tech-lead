@@ -161,3 +161,34 @@ sed traps. `perl -pe 's/…\s*$//'` eats the trailing newline (`\s` matches `\n`
 silently gluing bullets together; `sed` is safe because its pattern space excludes the newline. And
 never anchor with `^` when editing a `.ps1` — the UTF-8 BOM [#4] sits at the start of line 1, so `^#`
 does not match.
+
+[2026-07-12] **A merge can preserve every artifact and still retire the entrypoint they were reached
+through.** Asked whether the merge dropped the README's *For AI agents (LLMs)* section, the answer was
+no: §1 is byte-identical in `dist/{dotnet,angular}`, was authored fresh for `dist/monorepo`, and
+`git log -S` over the whole history returns **only additions**. Nothing was deleted, no ADR proposed
+deleting it. But consumers reach this framework by pointing an agent at *a repo*, and the merge changed
+which repo that is — from a template repo whose README opened with §1, to an authoring repo whose root
+README was written fresh for maintainers. Every file survived; the **path to them** did not.
+Migration checklists inventory artifacts. Nobody inventories entrypoints — so when the front door moves,
+audit the *contracts the old door carried*, not just the files behind it.
+
+[2026-07-12] **Baseline the failure, or you will fix the wrong file — this is the same lesson as
+"a gate you have never seen fail is not a gate", applied to diagnosis.** The first plan for the above
+was confident and wrong. It asserted the root README had "dropped" the install contract (commit the
+files, hand off, don't hand-replicate `/adopt`) and proposed restoring it there. An adversarial pass
+killed it on evidence: `src/core/scripts/install.{sh,ps1}` **already print** that contract at the moment
+the agent acts, so three of the four "missing" items were never missing. The plan had diagnosed from a
+README without reading the installer. Worse, its *primary* lever — rewriting the always-loaded root
+`CLAUDE.md`/`AGENTS.md` banner on the theory that maintainer governance captures an installing agent and
+its unqualified *"commit to `master` and push"* aims it at **this** repo — did not reproduce when finally
+tested: a real agent (Opus 4.8, cwd = this repo, prompt *"install this framework into `<target>`"*) picked
+the right installer, detected greenfield, refused to run `/bootstrap`, and never once mistook itself for a
+maintainer. **The one thing it did get wrong was the thing nobody predicted:** it declined to *commit* the
+copied files — step 1 of the contract. Which the greenfield installer branch, unlike brownfield, never
+insisted on. The real defects were only visible from *running* things: a dead `install.ps1` path in
+`dist/monorepo/README.md` §1 (that dist has only `scripts/install.ps1`), and greenfield/brownfield
+asymmetry in the installer. Both were found by execution, neither by reading. **Prose review generates
+hypotheses; only execution ranks them.** Two further notes for next time: (1) the harness will (rightly)
+refuse to spawn a nested `claude -p --permission-mode bypassPermissions` — plan mode plus running the
+installer directly gave the same signal without an unsandboxed autonomous agent; (2) one agent sample is
+evidence, not proof — it was a single model on a single surface, and this framework ships dual-surface.

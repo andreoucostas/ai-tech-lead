@@ -7,7 +7,7 @@ Commands, not philosophy. The rules and the meta-invariant list live in `CLAUDE.
 
 | Path | What | Notes |
 |------|------|-------|
-| `src/core/` | shared single-source content | `@@INCLUDE:NAME@@` markers where stacks diverge |
+| `src/core/` | shared single-source content | `<!-- @stack:NAME -->` markers where stacks diverge |
 | `src/stacks/<dist>/snippets/<rel>/<NAME>` | marker content per dist | monorepo snippet wins; else dotnet+angular concat (WSD-015) |
 | `src/stacks/<dist>/files/` | whole-file overrides + stack-only files | both-stacks collision without a monorepo override = build error |
 | `dist/{dotnet,angular,monorepo}/` | generated golden output (committed) | **never hand-edit** [#1]; `linguist-generated` |
@@ -55,12 +55,13 @@ Both twins must agree. If you add a pattern to `scripts/meta-denylist.txt`, red-
 way — and prefer a narrow `ALLOW <path-substring>` over weakening a `DENY` when a legitimate
 consumer-facing word trips the check.
 
-## Fidelity vs the frozen v0.25.5 baseline (migration-era gate)
+## Fidelity vs the frozen v0.25.5 baseline (manual re-audit only — no longer a CI gate)
 
 Strict EOL-normalized byte-compare of `dist/{dotnet,angular}` against the Phase-0 freeze tags
-(materialized from history — needs full clone depth). **Green until the v0.26.0 release
-deliberately changes shipped content and retires/moves this baseline** (see CLAUDE.md →
-Migration status note). `dist/monorepo` has no baseline (new capability).
+(materialized from history — needs full clone depth). **Retired from CI at the v0.26.0 release**,
+which deliberately changed shipped content; the freeze tags are no longer a live baseline. The
+scripts remain for a manual re-audit against the `pre-restructure` tag (see CLAUDE.md → Migration
+status note). `dist/monorepo` never had a baseline (new capability).
 
 ```powershell
 pwsh -NoProfile -File scripts/fidelity-check.ps1 dotnet
@@ -89,9 +90,9 @@ pwsh -NoProfile -File .claude/hooks/tests/Invoke-HookTests.ps1
 - **Speed:** slow by design — a process is spawned per hook invocation; a full dist suite takes
   ~1–2 min. Expected, not a hang.
 
-**CI** — `.github/workflows/ci.yml` runs compose→freshness→validate→fidelity→hook suites on every
+**CI** — `.github/workflows/ci.yml` runs compose→freshness→validate→hook suites on every
 push/PR (windows leg rebuilds with the `.ps1` composer, linux leg with the `.sh` twin — composer
-twin divergence fails a leg), plus the meta suite.
+twin divergence fails a leg), plus the meta suite. Fidelity is **not** a CI step (see above).
 
 Manual one-off (debugging a single hook) — pipe a fixture straight in:
 

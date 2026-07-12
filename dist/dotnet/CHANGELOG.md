@@ -4,6 +4,22 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.26.3 — 2026-07-12 (the installer now gives AI agents the full handoff contract)
+
+> Installer output only — **no change to the files in your repo, nothing to do.** This matters only
+> if you have an AI agent perform the install for you.
+
+### Fixed
+- **The installer's greenfield "next steps" now tell an AI agent the whole contract.** When an agent
+  installed into a repo with no existing AI tooling, the closing message told it not to run
+  `/bootstrap` — but never stressed that it must first **commit** the copied files, never said not to
+  hand-replicate `/bootstrap`, and never warned that `scripts/docs-sync-check` **fails by design**
+  until a developer has run `/bootstrap`. Agents therefore left the copied files sitting uncommitted
+  in the working tree, and some treated the expected check failure as a bug to fix. The greenfield
+  message now matches the one already shown for repos with existing AI tooling: commit the files,
+  hand off to a developer, don't replicate `/bootstrap` by hand, and expect `docs-sync-check` to be
+  red until it has run.
+
 ## 0.26.2 — 2026-07-12 (fixes a mangled character in a hook comment)
 
 > Comment text only — **no behavior change, nothing to do.**

@@ -49,9 +49,12 @@ in the chosen dist's own `scripts/install.{sh,ps1}`.
 
 ## Quick start
 
-Installing a .NET repo, auto-detected:
+The installers run *from a local clone of this repo* against a target repo elsewhere on disk — so
+get the framework first, then point it at your codebase:
 
 ```bash
+git clone https://github.com/andreoucostas/ai-tech-lead.git
+cd ai-tech-lead
 bash install.sh /path/to/your-repo
 # or, on Windows:
 pwsh install.ps1 C:\path\to\your-repo
@@ -74,7 +77,7 @@ getting the framework itself into a repo.
 
 | Path | What it is |
 |------|-----------|
-| `src/core/` | Single-source shared content — the common files, with `@@INCLUDE:NAME@@` markers where stacks diverge. |
+| `src/core/` | Single-source shared content — the common files, with `<!-- @stack:NAME -->` markers where stacks diverge. |
 | `src/stacks/{dotnet,angular,monorepo}/` | Per-dist `snippets/` (marker content) and `files/` (whole-file overrides + stack-only files). |
 | `dist/{dotnet,angular,monorepo}/` | **Generated**, committed golden output. Never hand-edited — CI rebuilds and diffs it against `src/` on every push/PR. |
 | `scripts/` | The composer and its gates, each as a `.ps1`/`.sh` twin: `build`, `validate-dist`, `fidelity-check`. |
@@ -88,23 +91,23 @@ getting the framework itself into a repo.
 ## How it's built and validated
 
 `scripts/build.ps1`/`.sh` is the composer: it reads `src/core` plus the target dist's
-`src/stacks/<dist>/` overrides and writes a complete `dist/<dist>/` tree. Three gates run against
+`src/stacks/<dist>/` overrides and writes a complete `dist/<dist>/` tree. Two gates run against
 that output — `validate-dist` (marker resolution, JSON validity, `bash -n`, PowerShell AST parse,
-and each dist's own `template-checks` for `CLAUDE.md`↔`AGENTS.md` mirror parity), `fidelity-check`
-(a strict byte-for-byte comparison of `dist/dotnet` and `dist/angular` against the frozen
-`freeze-v0.25.5` baseline from the pre-merge legacy repos — green until the v0.26.0 release
-deliberately changes shipped content and retires that baseline; `dist/monorepo` has no baseline,
-it's a new capability), and each dist's own hook test suite
+each dist's own `template-checks` for `CLAUDE.md`↔`AGENTS.md` mirror parity, and `no-meta-leak`,
+which fails if maintainer vocabulary reaches a shipped file) and each dist's own hook test suite
 (`dist/<dist>/tests/hooks/Invoke-HookTests.ps1`, a dependency-free PowerShell harness that pipes
 JSON fixtures at every hook and asserts both the bash and PowerShell twin agree). CI
-(`.github/workflows/ci.yml`) runs all of it on two legs — a Windows leg that rebuilds with the
-`.ps1` composer and a Linux leg that rebuilds with the `.sh` twin — so composer twin divergence
-fails a leg on its own. Full command recipes, including how to run any single gate by hand, are
-in [`DEVELOPING.md`](./DEVELOPING.md).
+(`.github/workflows/ci.yml`) runs those, plus a freshness check that the rebuild matches the
+committed `dist/`, on two legs — a Windows leg that rebuilds with the `.ps1` composer and a Linux
+leg that rebuilds with the `.sh` twin — so composer twin divergence fails a leg on its own.
+`scripts/fidelity-check` (byte-compare of `dist/{dotnet,angular}` against the pre-merge
+`freeze-v0.25.5` baseline) was **retired from CI at v0.26.0**, which deliberately changed shipped
+content; it remains for manual re-audit. Full command recipes, including how to run any single gate
+by hand, are in [`DEVELOPING.md`](./DEVELOPING.md).
 
 ## Status
 
-Current shipped version is **v0.26.1** across all three dists
+Current shipped version is **v0.26.3** across all three dists
 (`dist/*/.claude/framework-version.json`). The merge is complete: this repo is the single home for
 framework development, and the two legacy repos (`ai-tech-lead-dotnet`, `ai-tech-lead-angular`) are
 archived and read-only, frozen at v0.25.5.

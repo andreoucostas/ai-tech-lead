@@ -16,7 +16,7 @@ Shared content is authored **once** in `src/`; the composer emits three installa
 The framework's "code" is mostly Markdown (skills, commands, agents, the `CLAUDE.md` templates) +
 PowerShell/bash hooks + installer scripts. There is no app to compile — the "build" is the composer.
 
-- `src/core/` — single-source shared content (`@@INCLUDE` markers where stacks diverge).
+- `src/core/` — single-source shared content (`<!-- @stack:NAME -->` markers where stacks diverge).
 - `src/stacks/{dotnet,angular,monorepo}/` — per-dist `snippets/` + `files/` (overrides, stack-only).
 - `dist/{dotnet,angular,monorepo}/` — **generated** golden output, committed, never hand-edited.
 - `scripts/` — composer + gates (`build`, `validate-dist`, `fidelity-check`), all `.ps1`/`.sh` twins.

@@ -49,6 +49,28 @@ the enforcement matrix gained the three missing capability rows.
 post-audit P3 item B-29 (haiku adequacy evidence) is under "Known deferred work" (its sibling
 B-30 shipped in v0.25.4).
 
+### B-33 · Make the archived legacy repos route an *agent* to the merged repo
+
+**Why:** consumers adopt this framework by pointing an LLM at a repo URL and saying "install this
+into our repository". For 25 versions those URLs were `ai-tech-lead-dotnet` and
+`ai-tech-lead-angular`, whose READMEs opened with §1 *"For AI agents (LLMs)"*. Both are now archived
+(read-only) with pointer READMEs. **Nobody has verified those pointers work on the audience that
+actually uses them** — an agent, not a human. If a pointer README is a human-voice "this repo has
+moved" line with no agent-addressed instruction, an agent told to install from the old URL will
+either install the **frozen v0.25.5 template** it can still see in the tree, or improvise. Old URLs
+are plausibly still the *majority* of inbound traffic.
+
+**Do:** read both pointer READMEs (they could not be verified from the maintainer's box — local
+clones are frozen at `bd8bb2f`, the pointers were added on GitHub). If they do not tell an agent, in
+imperative voice, to go to `andreoucostas/ai-tech-lead` and install from `dist/<stack>/` — and to
+**not** install what it finds in the archived tree — then: unarchive → fix → re-archive. Both repos.
+
+**Not:** any other change to the legacy repos. They stay frozen at v0.25.5.
+
+**Evidence trail:** v0.26.3 (2026-07-12), `meta/LEARNINGS.md` — "a merge can preserve every artifact
+and still retire the entrypoint they were reached through". This is the same defect class, on the
+one door that could not be fixed from here.
+
 ---
 
 ## Known deferred work (previously agreed, converted to entries so it survives handover)

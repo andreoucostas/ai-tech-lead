@@ -11,6 +11,55 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.26.3 — 2026-07-12
+
+> Started as "did the merge drop the README's *For AI agents (LLMs)* section?" It did not — §1 is
+> intact in all three dists and `git log -S` shows only additions. But the merge **moved the front
+> door** (the legacy template repos → this authoring repo), and chasing that turned up a dead install
+> command in `dist/monorepo` and an installer branch that under-instructs installing agents.
+>
+> **The diagnosis was baselined before anything was fixed**, and the baseline killed the original
+> hypothesis — see `meta/LEARNINGS.md`.
+
+### Fixed (shipped)
+- **`dist/monorepo/README.md` §1 told installing agents to run a command that does not exist.** It
+  said `pwsh install.ps1 <target>`; that dist contains only `scripts/install.ps1` (`dist/{dotnet,
+  angular}` correctly said `scripts/install.ps1`). Root-installer wording had been copied into a dist
+  README during Phase 4 monorepo authoring. Since the root README's blockquote routes readers straight
+  into `dist/<stack>`, an agent following that trail hit `No such file or directory` — on the mixed
+  .NET + Angular path, i.e. exactly the audience `dist/monorepo` exists for. Fixed in
+  `src/stacks/monorepo/files/README.md`.
+- **The greenfield branch of the shipped installer under-instructed AI agents relative to brownfield.**
+  Brownfield printed a standalone *"IF YOU ARE AN AI AGENT … your task is NOT complete until you have
+  done step 1 [commit] and then told the developer … Do not attempt /adopt yourself or replicate it by
+  hand"* block. Greenfield printed only a weaker parenthetical: no "or replicate it by hand", and no
+  warning that `docs-sync-check` fails **by design** until `/bootstrap` runs — so an agent would see
+  red CI and try to fix it. Greenfield now prints the same contract, naming `/bootstrap`.
+  Single-sourced in `src/core/scripts/install.{sh,ps1}` [#1], twins in lockstep [#3].
+  **Observed, not theorised:** a baseline run (Opus 4.8, cwd = this repo, prompt *"install this
+  framework into `<target>`"*) chose the right installer, detected greenfield, was **not** captured by
+  this repo's maintainer `CLAUDE.md`, and correctly refused to run `/bootstrap` — but explicitly
+  declined to **commit** the copied files in the target. Step 1 of the contract, silently dropped.
+
+### Docs (authoring repo — not shipped)
+- **`@@INCLUDE` was phantom syntax.** Documented in `README.md`, `CLAUDE.md`, `AGENTS.md` and
+  `DEVELOPING.md`; implemented nowhere. The composer's marker is `<!-- @stack:NAME -->`
+  (`scripts/build.ps1:6-7`). Corrected in all four. (The historical v0.26.0 entry below is left as
+  written — it is a dated record, not live guidance.)
+- **Root `README.md` had no acquisition step.** Every install instruction presumed a local clone the
+  reader was never told to make (`grep -i clone README.md` → zero hits). `## Quick start` now opens
+  with `git clone`.
+- **`fidelity-check` was still described as a live CI gate** in `README.md` and `DEVELOPING.md`. It was
+  retired from CI at v0.26.0 (`ci.yml:11-15`); it remains a manual re-audit tool. Corrected.
+- Root `README.md` claimed shipped v0.26.1 against an actual stamp of v0.26.2.
+
+### Not done (deliberately)
+- **No rewrite of this repo's root `CLAUDE.md`/`AGENTS.md` banner.** The pre-fix hypothesis was that
+  the always-loaded maintainer governance captures an installing agent and its unqualified *"commit to
+  `master` and push"* would make it push to **this** repo. The baseline did not reproduce either. One
+  sample (Opus 4.8, plan mode, .NET target) is not proof — but it is evidence against, and a prose
+  change with no observed failure behind it is exactly what this repo's own record warns off.
+
 ## 0.26.2 — 2026-07-12
 
 > Hotfix for a defect v0.26.1 introduced, plus the machine check that would have caught it.

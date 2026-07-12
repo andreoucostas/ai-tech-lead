@@ -23,7 +23,7 @@ repos (`ai-tech-lead-dotnet`, `ai-tech-lead-angular`). Shared content is authore
 
 | Path | What it is |
 |------|-----------|
-| `src/core/` | Single-source shared content (the former 128 common files, with `@@INCLUDE` markers where stacks diverge). |
+| `src/core/` | Single-source shared content (the former 128 common files, with `<!-- @stack:NAME -->` markers where stacks diverge). |
 | `src/stacks/{dotnet,angular,monorepo}/` | Per-dist `snippets/` (marker content) and `files/` (whole-file overrides + stack-only files). |
 | `dist/{dotnet,angular,monorepo}/` | **Generated** golden output, committed, `linguist-generated`. Never hand-edit — CI rebuilds and diffs. |
 | `scripts/` | Composer + gates, all `.ps1`/`.sh` twins: `build`, `validate-dist`, `fidelity-check`. |
