@@ -2,15 +2,17 @@ name: CI
 
 # Repo-scale docs-sync-check for the authoring repo: proves src/ -> dist/ freshness on every
 # push/PR (rebuild + diff must be empty), that every dist passes its own template-checks and
-# parse gates (validate-dist), that dotnet/angular dists still match the frozen v0.25.5
-# baseline (fidelity-check, strict — drop this step only when a release deliberately changes
-# shipped behaviour and moves the baseline; dist/monorepo is a new capability with no freeze
-# baseline, so it has no fidelity leg), and that the hook test suites pass inside each dist.
+# parse gates (validate-dist), and that the hook test suites pass inside each dist.
 #
 # windows leg drives the .ps1 twins; linux leg drives the .sh twins — each leg rebuilds with
 # its own twin and diffs against the committed golden dist, so composer twin divergence fails
-# one of the two legs. fetch-depth: 0 because fidelity-check materialises the pre-restructure
-# tag from history.
+# one of the two legs.
+#
+# The strict fidelity-check legs (dist == freeze-v0.25.5 baseline) were retired at the v0.26.0
+# release — the merge's zero-behaviour-change was proven and permanently recorded (WSD-012/018),
+# and v0.26.0 deliberately changes shipped content (actions/checkout v4->v5), so the freeze tags
+# are no longer the baseline. The freshness gate (rebuild + git diff) now fully guards src->dist.
+# scripts/fidelity-check.{ps1,sh} remain for manual re-audit against the pre-restructure tag.
 
 on:
   pull_request:
@@ -23,8 +25,6 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
       - name: Compose dists (build.ps1 twin)
         run: |
           pwsh -NoProfile -File scripts/build.ps1 dotnet
@@ -39,10 +39,6 @@ jobs:
           pwsh -NoProfile -File scripts/validate-dist.ps1 dotnet
           pwsh -NoProfile -File scripts/validate-dist.ps1 angular
           pwsh -NoProfile -File scripts/validate-dist.ps1 monorepo
-      - name: Fidelity vs frozen baseline (strict)
-        run: |
-          pwsh -NoProfile -File scripts/fidelity-check.ps1 dotnet
-          pwsh -NoProfile -File scripts/fidelity-check.ps1 angular
       - name: Hook test suites per dist
         run: |
           pwsh -NoProfile -File dist/dotnet/tests/hooks/Invoke-HookTests.ps1
@@ -55,8 +51,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
       - name: Compose dists (build.sh twin)
         run: |
           bash scripts/build.sh dotnet
@@ -71,10 +65,6 @@ jobs:
           bash scripts/validate-dist.sh dotnet
           bash scripts/validate-dist.sh angular
           bash scripts/validate-dist.sh monorepo
-      - name: Fidelity vs frozen baseline (strict)
-        run: |
-          bash scripts/fidelity-check.sh dotnet
-          bash scripts/fidelity-check.sh angular
       - name: Hook test suites per dist (exercises the .sh twins via bash)
         run: |
           pwsh -NoProfile -File dist/dotnet/tests/hooks/Invoke-HookTests.ps1

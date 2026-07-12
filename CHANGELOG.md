@@ -5,15 +5,16 @@
 > preserved legacy changelogs: [`docs/changelogs/legacy-dotnet.md`](docs/changelogs/legacy-dotnet.md)
 > and [`docs/changelogs/legacy-angular.md`](docs/changelogs/legacy-angular.md).
 
-## 0.26.0 — Unreleased
+## 0.26.0 — 2026-07-12
 
 > The single biggest structural change in the framework's history: two independently-versioned
 > template repos (`ai-tech-lead-dotnet`, `ai-tech-lead-angular`) become one authoring repo,
 > `ai-tech-lead`, that composes three installable distributions. The decision, rationale, and
-> execution record live in `docs/workspace-decisions.md` (WSD-012 and its Phase 0–5 execution
-> deltas, plus WSD-015 and WSD-016); this entry is the consumer-facing summary. **This release
-> ships only once Phase 6 validation is green and the two legacy repos are archived** — until
-> then it stays Unreleased, and the legacy repos remain live-but-frozen at their last independent
+> execution record live in `docs/workspace-decisions.md` (WSD-012 and its Phase 0–6 execution
+> deltas, plus WSD-015, WSD-016, and WSD-018); this entry is the consumer-facing summary. Phase 6
+> validation is green (real-toolchain install + `docs-sync-check` across all three dists, the
+> monorepo security-overlay smoke, and the composer/validate/hook/meta gates — WSD-018); the two
+> legacy repos are archived at this release with pointer READMEs, frozen at their last independent
 > release, v0.25.5.
 
 ### Added
@@ -58,11 +59,18 @@
   log), and the maintainer's `.claude/plans/`. The two-repo-specific `check-lockstep.ps1` gate is
   retired — its job is now structural (one source, three composed dists) rather than a
   cross-repo diff.
+- **Shipped CI workflows use `actions/checkout@v5`.** The `template-ci.yml` and
+  `docs-sync-check.yml` workflows that install into consumer repos were bumped from
+  `actions/checkout@v4` to `@v5` (GitHub's Node 20 runtime deprecation). This is the first
+  release to deliberately change shipped content since the freeze, so it also retires the
+  authoring repo's strict fidelity-check CI legs (dist == `freeze-v0.25.5`) — the freeze tags
+  are no longer the baseline; `src/ → dist/` freshness (rebuild + diff) plus per-dist
+  `validate-dist` and hook suites remain the CI guardrails.
 
 ### Notes
-- This release ships only when Phase 6 (`MERGE-MIGRATION-PLAN.md`) validation is green and the
-  two legacy repos — `ai-tech-lead-dotnet` and `ai-tech-lead-angular` — are archived. Until then,
-  those repos stay live-but-frozen at v0.25.5 and this entry stays Unreleased.
+- Phase 6 (`MERGE-MIGRATION-PLAN.md`) validation completed green (WSD-018); the two legacy repos
+  — `ai-tech-lead-dotnet` and `ai-tech-lead-angular` — are archived at this release with pointer
+  READMEs directing consumers here. They remain readable, frozen at v0.25.5.
 - Legacy framework history predating the merge: [`docs/changelogs/legacy-dotnet.md`](docs/changelogs/legacy-dotnet.md),
   [`docs/changelogs/legacy-angular.md`](docs/changelogs/legacy-angular.md).
 

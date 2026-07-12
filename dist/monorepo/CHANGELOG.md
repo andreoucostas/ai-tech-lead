@@ -6,6 +6,19 @@
 > templates, merged at v0.25.5 — each stack's full per-stack history lives in its origin repo's changelog.
 > Architecture decisions live in `docs/architecture-decisions.md`.
 
+## 0.26.0 — 2026-07-12 (first released version of the unified `ai-tech-lead` repo)
+
+> This `dist/monorepo` distribution — the mixed .NET + Angular install — ships from the unified
+> **[`ai-tech-lead`](https://github.com/andreoucostas/ai-tech-lead)** authoring repo, which composes
+> all three distributions (`dotnet`, `angular`, `monorepo`) from one source. The two legacy template
+> repos (`ai-tech-lead-dotnet`, `ai-tech-lead-angular`) are now archived and read-only; this repo is
+> the single home for framework updates.
+>
+> **Shipped change:** the framework's own CI workflows (`template-ci.yml`, `docs-sync-check.yml`) now
+> pin `actions/checkout@v5` (GitHub Node 20 runtime deprecation). No change to your application code.
+
+---
+
 ## 0.25.5 — 2026-07-06 (monorepo template debut)
 
 > First release of the combined template for repos that carry **both** a .NET backend and an
