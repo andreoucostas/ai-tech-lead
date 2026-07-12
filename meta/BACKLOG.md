@@ -382,7 +382,19 @@ in the spec.
 
 ## Done
 
-- **B-33** — done **2026-07-12** (same day it was filed; meta-only, no shipped change). Both archived
+- **B-33** — done **2026-07-12**, then **REOPENED AND RE-FIXED THE SAME DAY** when tested on the
+  second surface. The README fix below was **Claude-only**: given the archived repo's URL, **Copilot
+  never opens the README** — it clones and runs `scripts/install.ps1` directly, and duly installed
+  the frozen **v0.25.5** template straight past a STOP banner it never read. The first "verified
+  red→green" claim was made on one surface of a two-surface product, which is to say it was not
+  verified. **Final fix: a hard refuse-and-redirect at the top of all four frozen installer twins**
+  (print the STOP, `exit 1`, copy nothing) — the one channel both surfaces demonstrably obey.
+  Re-tested on Copilot against the archived URL: now redirects and installs **v0.26.4**, committed,
+  correct handoff. Claude path provably unaffected (guard commit touched only `scripts/install.*`).
+  Repos re-archived. Lesson in `meta/LEARNINGS.md`: *documentation is advisory; executable output is
+  not.* Original README work below — still correct, just not sufficient on its own.
+
+  Both archived
   pointer READMEs rewritten, verified, and re-archived. **The hypothesis was right and the mechanism
   was worse than filed.** Reproduced end-to-end: an agent given the old URL and *"install this
   framework into our repo"* on a clean machine read the archive banner, **rationalised past it, and

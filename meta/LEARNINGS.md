@@ -244,3 +244,31 @@ agent-driving found (an installing agent mistaking this repo for its target; the
 sending agents to install v0.25.5) would still not be caught. That is written into `DEVELOPING.md`
 next to the gates, because an undocumented blind spot behind a wall of green checkmarks is worse than
 no gates at all.
+
+[2026-07-12] **Documentation is advisory. Executable output is not. A dual-surface framework must
+put its non-negotiables in the channel BOTH surfaces obey — and only a test on both can tell you
+which channel that is.** The B-33 pointer-README STOP was verified twice on Claude, declared fixed,
+and the backlog item closed. Then it was run on Copilot: given the archived repo's URL and *"install
+this framework into our repo"*, Copilot cloned and ran `scripts/install.ps1` **directly, without ever
+opening the README**, and installed the frozen v0.25.5 template. The STOP banner — the one I had
+strengthened, red-team-reviewed, and proven — was simply never in its context. A fix verified on one
+surface of a two-surface product is an **untested** fix, and I had already written "verified
+red→green" in the changelog.
+
+The controlled pair is the whole lesson. Same model, same prompt, two framework URLs:
+`Copilot → archived URL` installed **0.25.5** and left the files **uncommitted**;
+`Copilot → current URL` installed **0.26.4**, **committed**, and handed off correctly. So the
+installer's *stdout* reaches Copilot perfectly (the v0.26.3 contract fix works on both surfaces — its
+failure to commit in the archived run was just the old v0.25.5 weak banner, i.e. the D3 defect
+reproducing on a second model), while the *README* reaches Copilot not at all. Two channels, one
+obeyed, one ignored — and no amount of strengthening the prose in the ignored one would ever have
+shown up as a failure.
+
+Fix: a hard refuse-and-redirect at the top of all four frozen installer twins — print the STOP, exit
+1, copy nothing — so an agent that never reads a word of prose still cannot install a stale
+framework. Re-tested identically: Copilot now redirects and installs 0.26.4, committed. The Claude
+path is provably unaffected (the guard commit touched only `scripts/install.*`; the README it keys
+off is byte-identical to the version it passed against). **Rule for anything that must bind an
+agent: put it where the machine runs, not where the human reads.** Prose is a request; a non-zero
+exit is a decision. `no-dead-instruction` and `InstallerContract` exist because of the same
+insight — assert on what the artifact *does*, not on what it *says*.
