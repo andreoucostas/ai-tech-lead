@@ -137,6 +137,43 @@ else
   ok "no meta-dev vocabulary in $DIST (no-meta-leak)."
 fi
 
+# --- 7. no dead instructions ------------------------------------------------------------------
+# Every script a shipped doc tells someone to RUN must actually exist. no-meta-leak (check 6)
+# proves shipped files don't say the wrong *words*; nothing proved they don't give the wrong
+# *commands*. They did: dist/monorepo's README told installing agents to run `pwsh install.ps1`,
+# which exists nowhere in that dist — root-installer wording copied into a dist doc. An agent that
+# followed it verbatim got "No such file or directory" (v0.26.3; meta/LEARNINGS.md).
+#
+# Resolution base is the DIST ROOT, not the doc's own directory — the framework documents every
+# command as run from the repo root (`bash scripts/docs-sync-check.sh` in docs/ci-integration.md
+# means from the consumer's root, not from docs/).
+#
+# CHANGELOG.md is skipped by design: release notes quote commands that WERE wrong in order to say
+# they are now fixed. It is the one shipped doc whose job is to describe the past.
+deadrefs=""
+while IFS= read -r f; do
+  case "$(basename "$f")" in CHANGELOG.md) continue;; esac
+  rel="${f#"$DIST"/}"
+  while IFS=: read -r ln content; do
+    [ -n "$content" ] || continue
+    printf '%s\n' "$content" \
+      | grep -oE '(pwsh|bash|powershell)( -[A-Za-z]+( [A-Za-z]+)?)* [A-Za-z0-9_./-]+\.(ps1|sh)' \
+      | grep -oE '[A-Za-z0-9_./-]+\.(ps1|sh)$' \
+      | while IFS= read -r script; do
+          case "$script" in /*) continue;; esac   # absolute path / placeholder, not ours to resolve
+          [ -f "$DIST/$script" ] || echo "$rel:$ln: \`$script\` does not exist in this dist"
+        done
+  done < <(grep -nE '(pwsh|bash|powershell)( -[A-Za-z]+( [A-Za-z]+)?)* [A-Za-z0-9_./-]+\.(ps1|sh)' "$f" 2>/dev/null || true)
+done < <(find "$DIST" -type f -name '*.md') > /tmp/_dead_$$ 2>/dev/null || true
+deadrefs=$(sort -u /tmp/_dead_$$ 2>/dev/null || true); rm -f /tmp/_dead_$$
+deadcount=$(printf '%s' "$deadrefs" | grep -c . || true)
+if [ "$deadcount" -gt 0 ]; then
+  fail "dead instructions in shipped docs — $deadcount. A consumer (or their agent) following these gets 'No such file or directory'. Fix in src/, not dist/."
+  printf '%s\n' "$deadrefs" | sed 's/^/  [no-dead-instruction] /'
+else
+  ok "every documented command resolves in $DIST (no-dead-instruction)."
+fi
+
 echo ""
 if [ "$failed" -gt 0 ]; then echo "$failed dist validation check(s) FAILED for $DIST."; exit 1; fi
 echo "All dist validation checks passed for $DIST."

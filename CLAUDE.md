@@ -60,7 +60,7 @@ kept stable from the pre-merge workspace; #1 was retargeted by the merge per WSD
 2. **`CLAUDE.md` ↔ `AGENTS.md` mirror parity (per dist).** The shipped `CLAUDE.md` is canonical;
    `AGENTS.md` is its generated mirror. Both are composed from `src/`, so fix mirror drift **in
    the source snippets/files**, then rebuild. The deterministic gate is each dist's
-   `scripts/template-checks.ps1/.sh` (verbatim section diff + version stamps), run per dist by
+   `dist/<stack>/scripts/template-checks.{ps1,sh}` (verbatim section diff + version stamps), run per dist by
    `validate-dist` and by CI. This repo's own root `CLAUDE.md` (this file) has a hand-maintained
    `AGENTS.md` mirror — regenerate it when you edit this file.
 3. **`.ps1` / `.sh` twin parity.** Every **shipped** hook/script, and every composer/gate script
@@ -142,9 +142,14 @@ Never claim "it works." Show the command and its observed output. Standard comma
 - **Compose + freshness:** `pwsh -NoProfile -File scripts/build.ps1 <dist>` ×3, then
   `git status --porcelain dist/` must be empty.
 - **Dist validity:** `pwsh -NoProfile -File scripts/validate-dist.ps1 <dist>` ×3 (markers, JSON,
-  `bash -n`, PS-AST, per-dist `template-checks`, and `no-meta-leak` [#6]).
+  `bash -n`, PS-AST, per-dist `template-checks`, `no-meta-leak` [#6], and **`no-dead-instruction`**
+  — every script a shipped doc tells someone to *run* must exist, resolved from the dist root).
 - **Hook suites:** `pwsh -NoProfile -File dist/<d>/tests/hooks/Invoke-HookTests.ps1` ×3; meta
-  suite `.claude/hooks/tests/Invoke-HookTests.ps1`.
+  suite `.claude/hooks/tests/Invoke-HookTests.ps1` — which also carries the two gates that cover
+  the *behavioral* surface no parser can: **`InstallerContract`** (runs the shipped installer in
+  both modes × both twins × all three dists and asserts its stdout states the whole agent-handoff
+  contract) and **`DocTruth`** (the authoring docs describe the repo that actually exists —
+  version stamps, marker syntax, no dead paths).
 - **Hook behavior:** pipe a fixture JSON event to the hook; assert `EXIT=` + output.
 - **Install smoke:** run `install.sh`/`.ps1` into temp greenfield + brownfield dirs.
 - **PS syntax / BOM:** parser sweep + BOM sweep (recipes in `DEVELOPING.md`).

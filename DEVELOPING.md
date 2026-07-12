@@ -30,7 +30,7 @@ git status --porcelain dist/   # MUST print nothing — otherwise commit the dis
 for d in dotnet angular monorepo; do bash scripts/build.sh "$d"; done   # .sh twin (CI linux leg)
 ```
 
-## Validate the dists (markers, JSON, bash -n, PS-AST, per-dist template-checks [#2], no-meta-leak [#6])
+## Validate the dists (markers, JSON, bash -n, PS-AST, per-dist template-checks [#2], no-meta-leak [#6], no-dead-instruction)
 
 ```powershell
 foreach ($d in 'dotnet','angular','monorepo') { pwsh -NoProfile -File scripts/validate-dist.ps1 $d; "exit=$LASTEXITCODE" }
@@ -50,6 +50,24 @@ bash scripts/validate-dist.sh dotnet; echo "exit=$?"   # MUST be 1, naming READM
 git checkout -- dist/dotnet/README.md
 bash scripts/validate-dist.sh dotnet; echo "exit=$?"   # back to 0
 ```
+
+### Red-test the `no-dead-instruction` gate (check 7)
+
+Check 6 proves shipped docs don't say the wrong *words*. Check 7 proves they don't give the wrong
+*commands*: every `pwsh`/`bash` script path in a shipped `.md` must exist, **resolved from the dist
+root** (the framework documents every command as run from the repo root). `CHANGELOG.md` is skipped
+— release notes quote commands that *were* wrong in order to say they're fixed.
+
+```bash
+sed -i 's|pwsh scripts/install.ps1|pwsh install.ps1|' dist/monorepo/README.md
+bash scripts/validate-dist.sh monorepo; echo "exit=$?"   # MUST be 1, naming README.md:14
+pwsh -NoProfile -File scripts/build.ps1 monorepo         # restore from src
+```
+
+This is the gate that would have caught the v0.26.3 defect: `dist/monorepo`'s README told installing
+agents to run `pwsh install.ps1`, which exists nowhere in that dist. When you name a twin pair in
+prose, write it as `` `build.{ps1,sh}` `` — the shorthand `` `build.ps1/.sh` `` reads as a *path*
+and will trip the gate.
 
 Both twins must agree. If you add a pattern to `scripts/meta-denylist.txt`, red-test it the same
 way — and prefer a narrow `ALLOW <path-substring>` over weakening a `DENY` when a legitimate
@@ -79,9 +97,36 @@ test pipes a JSON event to a hook and asserts exit code + output shape; **twin**
 pwsh -NoProfile -File dist/dotnet/tests/hooks/Invoke-HookTests.ps1
 pwsh -NoProfile -File dist/angular/tests/hooks/Invoke-HookTests.ps1
 pwsh -NoProfile -File dist/monorepo/tests/hooks/Invoke-HookTests.ps1
-# repo meta suite (bom-fix + repo-wide BOM sweep; does NOT ship)
+# repo meta suite (bom-fix, BOM sweep, + the two behavioral gates below; does NOT ship)
 pwsh -NoProfile -File .claude/hooks/tests/Invoke-HookTests.ps1
 ```
+
+### The behavioral gates (meta suite — auto-discovered, no wiring needed)
+
+Everything else in this repo is a **parser** gate: it proves the artifacts are well-formed, not that
+they *work*. The product is prose aimed at a model, and three defects shipped straight through the
+parser gates (v0.26.3). These two cover what a parser cannot. Drop a new `*.Tests.ps1` into
+`.claude/hooks/tests/` and the runner picks it up.
+
+| Gate | What it drives | The defect class it exists to catch |
+|------|----------------|--------------------------------------|
+| `InstallerContract.Tests.ps1` | **Runs the shipped installer** — 3 dists × greenfield/brownfield × `.ps1`/`.sh` = 12 real installs into temp targets — and asserts its **stdout** states the whole agent contract (commit the files; task NOT complete until handoff; don't hand-replicate `/bootstrap`\|`/adopt`; `docs-sync-check` is red by design). | A mode branch that quietly stops printing part of the contract. Greenfield had drifted weaker than brownfield and a real agent duly copied files and walked away without committing them. |
+| `DocTruth.Tests.ps1` | The **authoring** docs vs the repo that exists: one version stamp everywhere, README's claimed version == what's shipped, no phantom marker syntax, every `scripts/…` path in a root doc resolves, every script `ci.yml` invokes exists. | Docs that lie to the *maintainer* — which is how the next defect gets authored. A marker syntax that the composer has never implemented was documented in four files at once. |
+
+Red-test them the same way as any gate — plant the defect, watch it fail, restore:
+
+```bash
+# InstallerContract: regress greenfield to its pre-v0.26.3 wording
+sed -i 's|Do not attempt /bootstrap yourself or replicate it by hand.|Do not attempt /bootstrap yourself.|' dist/dotnet/scripts/install.sh dist/dotnet/scripts/install.ps1
+pwsh -NoProfile -File .claude/hooks/tests/InstallerContract.Tests.ps1   # MUST fail dotnet/greenfield on BOTH twins
+pwsh -NoProfile -File scripts/build.ps1 dotnet                          # restore from src
+```
+
+**What is still not covered:** whether the prose actually *steers* a model. That needs a real agent
+driven end-to-end, which means standing permission to spawn one non-interactively — a deliberate
+trade not taken. Two v0.26.3 defects (an installing agent's mistaking this repo for its target; the
+archived repos sending agents to install the frozen template) were found only by driving agents by
+hand, and no gate here would catch their like. Treat that as a known blind spot, not a solved one.
 
 - **Exit code = number of failing tests** (0 = green).
 - **`.sh` fidelity:** on Windows the harness drives `.sh` via Git's `bin\bash.exe` wrapper so

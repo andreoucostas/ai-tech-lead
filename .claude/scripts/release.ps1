@@ -54,7 +54,19 @@ foreach ($d in $dists) {
     $jt = [regex]::Replace($jt, '"applied"\s*:\s*"[^"]*"', "`"applied`": `"$today`"")
     [System.IO.File]::WriteAllText($fv, $jt)
 }
-Write-Host "Stamped src -> $Version ($today)."
+# The root README states the shipped version in prose. It was hand-maintained, so it drifted (it
+# claimed v0.26.1 against a shipped v0.26.2). DocTruth.Tests now fails the release on that drift --
+# which would make every release trip a gate the maintainer then hand-fixes. Stamp it here instead:
+# the only durable fix for a stamp that drifts is to stop maintaining it by hand.
+$rm = Join-Path $repo 'README.md'
+$rt = [System.IO.File]::ReadAllText($rm)
+$stamped = [regex]::Replace($rt, '(Current shipped version is \*\*v)[0-9]+\.[0-9]+\.[0-9]+(\*\*)', "`${1}$Version`${2}", 1)
+if ($stamped -eq $rt) {
+    [Console]::Error.WriteLine("FATAL: README.md has no 'Current shipped version is **vX.Y.Z**' line to stamp -- it was reworded, so the stamp (and DocTruth's check of it) is now blind. Restore the line or update both.")
+    exit 2
+}
+[System.IO.File]::WriteAllText($rm, $stamped)
+Write-Host "Stamped src + root README -> $Version ($today)."
 
 # ---- 3. Rebuild all three dists (the stamp must flow src -> dist in this same commit) ----
 foreach ($d in $dists) {

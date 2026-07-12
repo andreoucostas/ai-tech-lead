@@ -4,6 +4,12 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.26.4 — 2026-07-12 (no changes to this distribution)
+
+> Version stamp only. This release fixed a documentation defect in the mixed .NET + Angular
+> distribution and added CI checks that verify every command named in the docs actually resolves and
+> that the installer states the full handoff contract. Nothing in this distribution changed —
+> **nothing to do.**
 ## 0.26.3 — 2026-07-12 (the installer now gives AI agents the full handoff contract)
 
 > Installer output only — **no change to the files in your repo, nothing to do.** This matters only

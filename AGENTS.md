@@ -52,7 +52,9 @@ Code must load them from the root; the banner above is the tie-breaker.
    `scripts/meta-denylist.txt`, so our development vocabulary (tracking ids `B-nn`/`WSD-nnn`,
    "lockstep", the two-repo past, maintainer-only tooling) cannot appear in a shipped file. One
    denylist file, read by both twins. If a legitimate consumer word trips it, add a narrow `ALLOW` —
-   never weaken a `DENY`.
+   never weaken a `DENY`. Check 6 guards what shipped docs must not *say*; **check 7
+   (`no-dead-instruction`)** guards that the commands they *give* actually resolve — every script a
+   shipped doc tells someone to run must exist, resolved from the dist root.
 7. **Versioning.** Shipped behavior change ⇒ root `CHANGELOG.md` entry, then release via
    `.claude/scripts/release.ps1` (stamps `src/`, rebuilds `dist/`, runs every gate, refuses on
    failure). `meta/LEARNINGS.md` is append-only. Write the **shipped** changelog in the consumer's
@@ -65,6 +67,13 @@ Definition of done, and the evidence-based verification commands are defined in 
 `DEVELOPING.md` — follow them there. Core loop: edit `src/` (+ twin + monorepo sibling) → rebuild
 all three dists → `git status --porcelain dist/` empty → `validate-dist` ×3 → hook suites ×3 +
 meta suite → CHANGELOG/version if shipped behavior changed → commit + push `master`.
+
+Every gate above is a *parser* gate — it proves the artifacts are well-formed, not that they
+work. The product is prose aimed at a model, so two gates in the meta suite cover the behavioral
+surface instead: **`InstallerContract`** runs the shipped installer (both modes × both twins × all
+three dists) and asserts its stdout states the whole agent-handoff contract, and **`DocTruth`**
+asserts the authoring docs describe the repo that actually exists. Both were written after three
+defects shipped straight through the parser gates — see `meta/LEARNINGS.md`.
 
 The **Verification Rules**, **Leanness**, **SOLID**, **Boy Scout Rule**, and self-review
 disciplines in `src/core/CLAUDE.md` bind meta-work too.

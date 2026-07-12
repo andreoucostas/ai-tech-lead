@@ -134,7 +134,7 @@ Each consumer repo records the template version it was last synced from. Two loc
 - A human-readable HTML comment at the top of `CLAUDE.md`
 - A machine-readable `.claude/framework-version.json`
 
-To pull template updates, re-run the installer from a fresh template checkout against your repo (`bash install.sh /path/to/your-repo` or `pwsh install.ps1 /path/to/your-repo`) — it detects the existing `.claude/framework-version.json` and switches to **update mode**: framework machinery (hooks, commands, skills, scripts) is refreshed and the JSON stamp comes along, while consumer-owned content (CLAUDE.md, TECH_DEBT.md, …) is left untouched. Bump the CLAUDE.md header comment yourself as part of the update commit. CI tooling reads the JSON file to detect drift between your repo and the latest template version. If the version stamps disagree, treat the JSON file as authoritative.
+To pull template updates, re-run the installer from a fresh template checkout against your repo (`bash scripts/install.sh /path/to/your-repo` or `pwsh scripts/install.ps1 /path/to/your-repo`) — it detects the existing `.claude/framework-version.json` and switches to **update mode**: framework machinery (hooks, commands, skills, scripts) is refreshed and the JSON stamp comes along, while consumer-owned content (CLAUDE.md, TECH_DEBT.md, …) is left untouched. Bump the CLAUDE.md header comment yourself as part of the update commit. CI tooling reads the JSON file to detect drift between your repo and the latest template version. If the version stamps disagree, treat the JSON file as authoritative.
 
 ## What's in the box
 

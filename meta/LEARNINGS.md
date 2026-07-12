@@ -211,3 +211,36 @@ byte-for-byte identical" is meant to lower a human's migration anxiety; to an ag
 **deny** with an alternative, not a preference with a rationale. Deleting the equivalence claim mattered
 as much as adding the STOP — and it had also quietly stopped being true (v0.26+ added a whole
 distribution). Verified red→green with the same prompt and model: `0.25.5` → `0.26.3`.
+
+[2026-07-12] **Every gate we had was a parser gate. The product is prose, and nothing tested the
+prose.** Markers resolve, JSON parses, `bash -n`, PS-AST, twins agree, `no-meta-leak` — all of it
+proves the artifacts are *well-formed*, none of it proves they *work*. Three defects walked straight
+through: a README command that pointed at a file which does not exist, an installer branch that
+under-instructed agents, and four docs teaching a marker syntax the composer has never implemented.
+Green gates were mistaken for coverage. The tell was there all along and we never looked at it: ask
+of any gate, *what class of defect does this catch?* — and if the honest answer is "typos and syntax
+errors," you have no coverage of the thing you actually ship. Added `no-dead-instruction` (every
+script a shipped doc tells you to RUN must exist), `InstallerContract` (run the installer for real ×
+3 dists × 2 modes × 2 twins; assert its **stdout** carries the agent contract — behavior, not prose
+in a source file, because only that catches a branch that stops printing it), and `DocTruth` (the
+authoring docs describe the repo that exists).
+
+Three things this taught, all of which cost something to learn:
+**(1) Each new gate found a live defect on its first run.** `no-dead-instruction` found a *second*
+instance of the same bug I'd hand-fixed hours earlier and believed was gone (`dist/monorepo`'s
+update-mode section). `DocTruth` found a bad `template-checks` path that the adversarial review had
+already flagged and I had still not fixed. **Hand-fixing finds the instance; a gate finds the class.**
+If a bug is worth fixing by hand it is worth asking what would have caught it, immediately, before
+the fix feels done.
+**(2) The gate lied about itself first.** Both new test files ended `Write-TestSummary …` instead of
+`exit (Write-TestSummary …)`, so the runner — which sums `$LASTEXITCODE` — saw 0 no matter what.
+`DocTruth` printed *2 failed* while the suite printed *0 failures*. Caught only because the two
+numbers were on screen together. A new gate's **first** red-test is not of the defect; it is of the
+gate's own failure path. Watch it report a failure *through the runner*, not just print one.
+**(3) Name the blind spot in the docs, or green will be read as done.** Whether the prose actually
+*steers* a model is still untested — that needs a real agent driven end-to-end, i.e. standing
+permission to spawn one non-interactively, which we chose not to take. The two defects that only
+agent-driving found (an installing agent mistaking this repo for its target; the archived repos
+sending agents to install v0.25.5) would still not be caught. That is written into `DEVELOPING.md`
+next to the gates, because an undocumented blind spot behind a wall of green checkmarks is worse than
+no gates at all.

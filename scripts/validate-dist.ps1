@@ -172,6 +172,42 @@ if ($leaks.Count -gt 0) {
     OK "no meta-dev vocabulary in $Dist (no-meta-leak)."
 }
 
+# --- 7. no dead instructions ------------------------------------------------------------------
+# Every script a shipped doc tells someone to RUN must actually exist. `no-meta-leak` (check 6)
+# proves shipped files don't say the wrong *words*; nothing proved they don't give the wrong
+# *commands*. They did: dist/monorepo's README told installing agents to run `pwsh install.ps1`,
+# which exists nowhere in that dist — root-installer wording copied into a dist doc. An agent that
+# followed it verbatim got "No such file or directory" (v0.26.3; meta/LEARNINGS.md).
+#
+# Resolution base is the DIST ROOT, not the doc's own directory — the framework documents every
+# command as run from the repo root (`bash scripts/docs-sync-check.sh` in docs/ci-integration.md
+# means from the consumer's root, not from docs/).
+#
+# CHANGELOG.md is skipped by design: release notes quote commands that WERE wrong in order to say
+# they are now fixed. It is the one shipped doc whose job is to describe the past.
+$deadRefs = @()
+foreach ($f in (Get-ChildItem -Recurse -File -Path $DistAbs -Filter *.md)) {
+    if ($f.Name -eq 'CHANGELOG.md') { continue }
+    $rel = ($f.FullName.Substring($DistAbs.Length).TrimStart('\', '/')) -replace '\\', '/'
+    $n = 0
+    foreach ($line in (Get-Content $f.FullName)) {
+        $n++
+        foreach ($m in [regex]::Matches($line, '(?:pwsh|bash|powershell)(?:\s+-[A-Za-z]+(?:\s+[A-Za-z]+)?)*\s+([A-Za-z0-9_./-]+\.(?:ps1|sh))')) {
+            $script = $m.Groups[1].Value
+            if ($script.StartsWith('/')) { continue }   # absolute path / placeholder, not ours to resolve
+            if (-not (Test-Path (Join-Path $DistAbs $script))) {
+                $deadRefs += ("{0}:{1}: `{2}` does not exist in this dist" -f $rel, $n, $script)
+            }
+        }
+    }
+}
+if ($deadRefs.Count -gt 0) {
+    Fail ("dead instructions in shipped docs -- {0}. A consumer (or their agent) following these gets 'No such file or directory'. Fix in src/, not dist/." -f $deadRefs.Count)
+    $deadRefs | Sort-Object -Unique | ForEach-Object { Write-Output "  [no-dead-instruction] $_" }
+} else {
+    OK "every documented command resolves in $Dist (no-dead-instruction)."
+}
+
 Write-Output ''
 if ($failed -gt 0) { Write-Output "$failed dist validation check(s) FAILED for $Dist."; exit 1 }
 Write-Output "All dist validation checks passed for $Dist."

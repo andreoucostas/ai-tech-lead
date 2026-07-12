@@ -5,6 +5,18 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.26.4 — 2026-07-12 (fixes a second broken install command in this README)
+
+> Documentation only — **no change to the files in your repo, nothing to do.**
+
+### Fixed
+- **The "updating" section named an installer path that does not exist here.** v0.26.3 fixed the
+  install command in §1 but missed the same mistake further down: the instructions for pulling
+  template updates still said `bash install.sh /path/to/your-repo` / `pwsh install.ps1 …`. As in §1,
+  the installer in this distribution is **`scripts/install.sh`** / **`scripts/install.ps1`**.
+  Corrected. A check now runs in CI that every command named in these docs actually resolves, so this
+  class of mistake cannot ship again.
+
 ## 0.26.3 — 2026-07-12 (fixes a broken install command in this README; AI-agent install contract)
 
 > **If you install with an AI agent, this one matters.** No change to the files in your repo — the

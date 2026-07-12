@@ -11,6 +11,61 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.26.4 — 2026-07-12
+
+> **The gates that should have caught v0.26.3's defects.** Every gate this repo had was a *parser*
+> gate — markers resolve, JSON parses, `bash -n`, PS-AST, twins agree, no meta vocabulary leaks. The
+> product is prose aimed at a model, and **nothing tested whether the prose works.** Three defects
+> walked straight through. Two of them were mechanically catchable and now are.
+>
+> Written before the cleanup, red-tested first, per `DEVELOPING.md`: *a gate you have never seen fail
+> is not a gate.* Each one found a live defect on its first run.
+
+### Added — `no-dead-instruction` (`validate-dist` check 7, both twins)
+Every script a shipped doc tells someone to **run** must exist, resolved from the dist root.
+Check 6 (`no-meta-leak`) proves shipped docs don't say the wrong *words*; nothing proved they don't
+give the wrong *commands*.
+**Found on first run:** a **second, un-noticed instance of the v0.26.3 defect** —
+`dist/monorepo/README.md:137` (the update-mode section) still told consumers to run
+`bash install.sh` / `pwsh install.ps1`, which do not exist in that dist. I fixed the §1 occurrence
+this morning by hand and missed this one. The gate did not.
+
+### Added — `InstallerContract.Tests.ps1` (meta suite)
+Runs the **shipped installer for real** — 3 dists × greenfield/brownfield × `.ps1`/`.sh` = 12 installs
+into temp targets — and asserts its **stdout** states the whole agent contract: commit the files;
+your task is NOT complete until you hand off; do not hand-replicate `/bootstrap`|`/adopt`;
+`docs-sync-check` is red **by design**. Asserted as *behavior*, not as prose in a source file — the
+only way to catch a mode branch that quietly stops printing it, which is exactly what greenfield did.
+Red-tested by regressing greenfield to its pre-v0.26.3 wording: fails on both twins, other dists stay
+green.
+
+### Added — `DocTruth.Tests.ps1` (meta suite)
+The authoring docs must describe the repo that exists: one version stamp everywhere, README's claimed
+version == what's shipped, no phantom marker syntax, every `scripts/…` path in a root doc resolves,
+every script `ci.yml` invokes exists. Docs that lie to the *maintainer* are how the next defect gets
+authored.
+**Found on first run:** `CLAUDE.md:63` pointed at `scripts/template-checks.*` as if it were a root
+script. It is per-dist (`dist/<stack>/scripts/`); no root one has ever existed. Flagged by the
+adversarial review earlier today and still not fixed until a machine insisted.
+
+### Fixed
+- **`dist/monorepo/README.md:137`** — update-mode install command (see above). Shipped.
+- **`CLAUDE.md:63`** — `template-checks` path now unambiguous.
+- **Both new test files initially swallowed their own failures.** They ended with
+  `Write-TestSummary`, not `exit (Write-TestSummary …)`, so the meta runner (which sums
+  `$LASTEXITCODE`) saw 0 regardless. `DocTruth` reported *2 failed* while the suite reported *0
+  failures* — a gate lying about itself, caught only because the numbers disagreed on screen. The
+  established files had it right; the new ones didn't. Fixed and regression-tested: a planted failure
+  now propagates to the suite exit code.
+
+### Known blind spot (stated, not solved)
+Whether the prose actually **steers a model** is still untested. That needs a real agent driven
+end-to-end, which needs standing permission to spawn one non-interactively — a deliberate trade not
+taken. The other two v0.26.3 defects (an installing agent mistaking this repo for its target; the
+archived repos sending agents to install the frozen v0.25.5 template) were found *only* by driving
+agents by hand, and no gate here would catch their like. Recorded in `DEVELOPING.md` so the next
+maintainer doesn't mistake green gates for coverage.
+
 ## 0.26.3 — 2026-07-12
 
 > Started as "did the merge drop the README's *For AI agents (LLMs)* section?" It did not — §1 is
