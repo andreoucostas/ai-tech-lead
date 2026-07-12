@@ -49,7 +49,7 @@ the enforcement matrix gained the three missing capability rows.
 post-audit P3 item B-29 (haiku adequacy evidence) is under "Known deferred work" (its sibling
 B-30 shipped in v0.25.4).
 
-### B-33 · Make the archived legacy repos route an *agent* to the merged repo
+### B-33 · Make the archived legacy repos route an *agent* to the merged repo — **DONE 2026-07-12, see Done section**
 
 **Why:** consumers adopt this framework by pointing an LLM at a repo URL and saying "install this
 into our repository". For 25 versions those URLs were `ai-tech-lead-dotnet` and
@@ -381,6 +381,23 @@ in the spec.
 ---
 
 ## Done
+
+- **B-33** — done **2026-07-12** (same day it was filed; meta-only, no shipped change). Both archived
+  pointer READMEs rewritten, verified, and re-archived. **The hypothesis was right and the mechanism
+  was worse than filed.** Reproduced end-to-end: an agent given the old URL and *"install this
+  framework into our repo"* on a clean machine read the archive banner, **rationalised past it, and
+  installed the frozen v0.25.5 template** — citing the banner's own words as its warrant: *"its content
+  (and the byte-for-byte-identical installer) still works, and the URL you gave me is exactly this
+  repo, so I installed from it as asked."* Two causes: **(1)** the only *imperative, agent-addressed*
+  text on the page was the preserved §1 (*"If you are an AI agent reading this repository, start
+  here"*) telling it to run the installer **there**; the archive notice was human-voice prose the model
+  felt free to weigh against it and discount. **(2)** The banner's reassurance — *"reproduces this
+  template byte-for-byte … moving is an update, not a behavior change"* — was written to comfort a
+  human and **armed the agent**: it reads as *the old one is equivalent, so installing it is fine.* It
+  was also no longer true. Fix: banner now addresses agents first and humans second; §1 is a STOP that
+  redirects; the equivalence claim is gone. Re-tested identically → installs **v0.26.3**, commits in
+  the target, hands off correctly. Red→green: `0.25.5` → `0.26.3`. Repos re-archived.
+  Lesson in `meta/LEARNINGS.md`.
 
 - **B-22 (P0 design)** — done **2026-07-06** (meta-only; implementation stays open, post-merge).
   Design locked as **WSD-014**, spec at `.claude/plans/2026-07-06-b22-headless-adopt-design.md`

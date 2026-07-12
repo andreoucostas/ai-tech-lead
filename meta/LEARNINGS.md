@@ -192,3 +192,22 @@ hypotheses; only execution ranks them.** Two further notes for next time: (1) th
 refuse to spawn a nested `claude -p --permission-mode bypassPermissions` — plan mode plus running the
 installer directly gave the same signal without an unsandboxed autonomous agent; (2) one agent sample is
 evidence, not proof — it was a single model on a single surface, and this framework ships dual-surface.
+
+[2026-07-12] **A deprecation notice written for humans is not a deprecation notice for agents — and a
+reassuring one is actively dangerous.** The archived repos' pointer READMEs carried a clear
+human-voice banner ("⚠️ moved and archived, new home: …") and then, under *"the original README is
+preserved below for reference"*, the **entire original README** — including §1 *"If you are an AI
+agent reading this repository, **start here** … Copy the files in: `pwsh scripts/install.ps1
+<target>`"*. Given the old URL and *"install this framework into our repo"*, an agent read the banner,
+**discounted it, and installed the frozen v0.25.5 template** — quoting the banner's own reassurance as
+its justification: *"reproduces this template byte-for-byte … moving is an update, not a behavior
+change"*, therefore installing the old one is fine. Two transferable rules. **(1) Rank by voice, not by
+position.** The banner was *first*; §1 was *imperative and second-person*. The model obeyed the text
+addressed **to it** and treated everything else as context to weigh. A notice that must bind an agent
+has to be written in the same voice as the thing it overrides — put the STOP *inside* the section the
+agent was going to obey, not above it. **(2) Never reassure in a redirect.** "The new thing is
+byte-for-byte identical" is meant to lower a human's migration anxiety; to an agent it reads as
+*explicit permission to use either*. Say what breaks if they use the old one. Deprecations are a
+**deny** with an alternative, not a preference with a rationale. Deleting the equivalence claim mattered
+as much as adding the STOP — and it had also quietly stopped being true (v0.26+ added a whole
+distribution). Verified red→green with the same prompt and model: `0.25.5` → `0.26.3`.
