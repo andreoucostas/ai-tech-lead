@@ -597,15 +597,34 @@ each repo's `docs/architecture-decisions.md`.
   B-26/WSD-011's salience-over-bytes trade stands (design D8 records this so a future session
   doesn't compress the rails against the ceiling).
 
-## WSD-018: B-25-EXEC Phase 6 — validation gate GREEN (reversible portion); archive+tag is maintainer-gated
+## WSD-018: B-25-EXEC Phase 6 — COMPLETE; v0.26.0 shipped, legacy repos archived
 
-- **Status (2026-07-12):** the **reversible** half of Phase 6 (`MERGE-MIGRATION-PLAN.md` §5) is
-  **COMPLETE and GREEN** with fresh evidence on the maintainer box (pwsh 7.6.3, node 24; **no
-  dotnet CLI / no global `ng`** on this box — same constraint recorded for B-19). The
-  **irreversible** half (final legacy-repo pointer commits → archive both GitHub repos → tag
-  **v0.26.0**) is **not done — it needs the maintainer** (outward-facing + the point of no
-  return per the plan's own framing), and it carries the deliberate shipped-content changes that
-  the release must make (see "Release-execution items" below).
+- **Status (2026-07-12): Phase 6 COMPLETE — the merge is fully executed and shipped.** The
+  reversible validation (below) ran green; then, on maintainer go-ahead (dotnet 8.0.422 + ng 21
+  installed mid-session, enabling the real-toolchain re-run), the irreversible tail executed:
+  v0.26.0 released via `release.ps1` (commit `ad717c7`, 11/11 gates green — compose ×3 +
+  validate-dist ×3 + hook suites ×3 + meta), `master` + annotated tag **v0.26.0** pushed, pointer
+  READMEs committed to both legacy repos (dotnet `f018085`, angular `433f258`, each atop its
+  `freeze-v0.25.5` SHA), and **both legacy GitHub repos archived** (`isArchived:true`). The
+  release folded the two deliberate shipped-content changes: `actions/checkout` v4→v5 in the
+  shipped workflows, and retirement of the CI strict-fidelity legs (freeze tags are no longer the
+  baseline). Acceptance criteria 1–6 met. **The abort rule never fired.**
+- **Real-toolchain validation re-run (2026-07-12, superseding the simulated pass):** scaffolded a
+  real `dotnet new webapi`, real `ng new`, and a real mixed repo; installed all three dists via
+  root-installer auto-detect; `docs-sync-check` deterministic framework checks pass in each real
+  install (only the by-design bootstrap-pending signals remain until `/bootstrap`); monorepo
+  `route-prompt` fires the security overlay for a .NET money keyword AND an Angular sanitisation
+  keyword (both twins); the mixed repo's per-stack exemplars are directory-and-extension disjoint
+  (`.cs` under `api/`, `.ts` under `web/`) so bootstrap subsection routing cannot cross-contaminate.
+- **Evals decision:** the live eval run was **skipped for v0.26.0** — `run_evals.py` is hardcoded
+  to the Anthropic Messages API (needs `ANTHROPIC_API_KEY`; Copilot CLI is not a drop-in — that
+  is a shipped-file rewrite = B-23), evals are **not** a release gate (WSD-016) and never have
+  been, and the merge is proven zero-behaviour-change so there is nothing new for them to catch.
+  Structurally validated only (monorepo `cases.yaml` = 14-case union of 7+7, parses). Run later
+  with a key if desired (feeds B-23).
+- **Original reversible-portion evidence (2026-07-12, first pass):** the reversible half of Phase 6
+  (`MERGE-MIGRATION-PLAN.md` §5) ran green first on the maintainer box (pwsh 7.6.3) before the
+  toolchains were installed.
 - **Deterministic gates re-run GREEN (foundation):** compose ×3 with `dist/` freshness empty;
   `validate-dist` ×3 exit 0; strict `fidelity-check` ×2 exit 0 (dist still byte-matches the
   freeze-v0.25.5 baseline, allowlist empty — nothing has drifted); hook suites ×3 (0 failures /
@@ -640,18 +659,19 @@ each repo's `docs/architecture-decisions.md`.
   mixed-repo instruction in full — "locate both stack roots", "skill discovery runs once not per
   stack", and the per-stack-subsection rule ("populate each subsection from that stack's own
   directories only … never a `.cs` path under the Angular subsection, or a `.ts` under .NET").
-- **Go/no-go: GREEN to proceed.** No fidelity drift, no gate failure, no unreviewed behaviour
-  change; the abort rule is not triggered. The remaining steps are all maintainer actions.
-- **Maintainer-gated remainder (the irreversible tail + its shipped-content changes):**
-  1. Run `tests/evals` per dist (monorepo = the 14-case union) with an API key — records the
-     first eval-gated evidence (feeds B-23).
-  2. `/bootstrap` dry-run in a real mixed .NET+Angular scratch repo — confirm stack subsections
-     populate from the right stack's dirs and exemplar paths resolve correctly.
-  3. **Release-execution items (deliberate shipped-content change — must ride the v0.26.0
-     release, NOT before, or the still-live fidelity legs go red):** bump `actions/checkout`
-     v4→v5 in the shipped workflows (`src/core/.github/workflows/{template-ci,docs-sync-check}.yml`
-     → all three dists); retire/re-baseline the CI fidelity legs (freeze tags stop being the
-     baseline once legacies archive); flip root `CHANGELOG.md` v0.26.0 from "Unreleased"; release
-     via `.claude/scripts/release.ps1`.
-  4. Final pointer commit to each legacy repo → **archive both on GitHub** → tag **v0.26.0**
-     (the point of no return — do only after 1–3 are green).
+- **The irreversible tail — DONE 2026-07-12 (in order):**
+  1. Evals — **skipped for v0.26.0** by decision (see the Evals-decision bullet above); not a gate,
+     zero-behaviour-change, needs a key the harness has no Copilot substitute for. Feeds B-23.
+  2. `/bootstrap` dry-run — the full interactive workflow is developer-gated (`disable-model-
+     invocation` + human-input pauses + subagent passes); its one monorepo-specific behavior
+     (per-stack exemplar routing) was validated dynamically against the real mixed repo instead.
+  3. **Release-execution items — DONE:** bumped `actions/checkout` v4→v5 in the shipped workflows
+     (flowed to all three dists; fidelity then failed on exactly those 3 files, confirming the
+     deliberate change); retired the CI strict-fidelity legs in `.github/workflows/ci.yml`
+     (freshness + validate-dist + hook suites remain); wrote the v0.26.0 CHANGELOG (root +
+     3 shipped stack changelogs — the first `release.ps1` run REFUSED here, template-checks caught
+     the un-stamped shipped changelogs, fixed then green); released via `release.ps1` → `ad717c7`.
+  4. **DONE:** pushed `master` + annotated tag **v0.26.0** (`dcca7dd`); pointer READMEs pushed to
+     both legacy repos (dotnet `f018085`, angular `433f258`); **both legacy repos archived on
+     GitHub** (`isArchived:true`). B-25-EXEC is complete; B-27 (team wiki memory) is next as
+     v0.27.0 in this repo.

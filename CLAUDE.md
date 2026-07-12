@@ -162,10 +162,12 @@ user. Generated `dist/` changes belong in the same commit as the `src/` change t
 
 ## Migration status note
 
-Phases 0–5 of `MERGE-MIGRATION-PLAN.md` (kept in the old workspace root, one level up) are done;
-**Phase 6 (validation → archive legacies → tag v0.26.0) is pending.** Until it lands: the legacy
-repos stay live-but-frozen at v0.25.5 (freeze-v0.25.5 tags are the fidelity baseline), the CI
-fidelity legs must stay green (so no shipped-content changes before the v0.26.0 release, which
-deliberately moves/retires that baseline — including the queued `actions/checkout` v4→v5 bump in
-the shipped workflows), and root `CHANGELOG.md`'s v0.26.0 entry stays "Unreleased". The old
-workspace-root repo now holds only a pointer stub and the migration plan.
+**The merge is COMPLETE. `MERGE-MIGRATION-PLAN.md` Phases 0–6 are all done; v0.26.0 shipped
+2026-07-12** (commit `ad717c7`, tag `v0.26.0`; WSD-018). Both legacy repos (`ai-tech-lead-dotnet`,
+`ai-tech-lead-angular`) are **archived** on GitHub with pointer READMEs, frozen at v0.25.5. The
+v0.26.0 release folded the two deliberate shipped-content changes — `actions/checkout` v4→v5 in the
+shipped workflows and retirement of the CI strict-fidelity legs — so the freeze tags are no longer a
+baseline; `scripts/fidelity-check.{ps1,sh}` remain for manual re-audit against the `pre-restructure`
+tag but are no longer wired to CI. This repo is now the single home for framework development.
+**Next framework work: B-27 (team wiki memory) as v0.27.0** (`docs/BACKLOG.md`). The old
+workspace-root repo one level up now holds only a pointer stub and the (now-executed) migration plan.
