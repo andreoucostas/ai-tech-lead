@@ -596,3 +596,62 @@ each repo's `docs/architecture-decisions.md`.
   field" question. The gate targets growth/churn **visibility**, not size minimization —
   B-26/WSD-011's salience-over-bytes trade stands (design D8 records this so a future session
   doesn't compress the rails against the ceiling).
+
+## WSD-018: B-25-EXEC Phase 6 — validation gate GREEN (reversible portion); archive+tag is maintainer-gated
+
+- **Status (2026-07-12):** the **reversible** half of Phase 6 (`MERGE-MIGRATION-PLAN.md` §5) is
+  **COMPLETE and GREEN** with fresh evidence on the maintainer box (pwsh 7.6.3, node 24; **no
+  dotnet CLI / no global `ng`** on this box — same constraint recorded for B-19). The
+  **irreversible** half (final legacy-repo pointer commits → archive both GitHub repos → tag
+  **v0.26.0**) is **not done — it needs the maintainer** (outward-facing + the point of no
+  return per the plan's own framing), and it carries the deliberate shipped-content changes that
+  the release must make (see "Release-execution items" below).
+- **Deterministic gates re-run GREEN (foundation):** compose ×3 with `dist/` freshness empty;
+  `validate-dist` ×3 exit 0; strict `fidelity-check` ×2 exit 0 (dist still byte-matches the
+  freeze-v0.25.5 baseline, allowlist empty — nothing has drifted); hook suites ×3 (0 failures /
+  7 files each, incl. TwinParity 40/40); meta suite (0 failures / 2 files).
+- **Phase 6 item 1 — install each dist + `docs-sync-check` (evidence):** greenfield installs via
+  the root `install.sh` into scratch targets exercised **all** stack-resolution paths —
+  auto-detect dotnet (`*.sln`/`*.csproj`), auto-detect angular (`angular.json`), auto-detect
+  **monorepo** (both markers → `template: monorepo`), explicit `--stack` override into an
+  unmarked dir, update-stamp mode (re-install over an existing `.claude/framework-version.json`
+  → "update" mode), and the no-detection error path (empty dir, no flag → exit 2, actionable
+  message). Each install carried the correct file layout and did **not** leak `.template-repo`
+  (consumer-CI marker correctly excluded). `docs-sync-check` on a *fresh* install exits 1 with
+  **exactly** the two by-design "run /bootstrap" signals (`BOOTSTRAP_PENDING` in CLAUDE.md +
+  `DETECTED_FRAMEWORK_PACKAGES_PENDING` in FRAMEWORK-CONTEXT.md) while **all deterministic
+  framework checks pass** (stamp sync, verbatim CLAUDE.md↔AGENTS.md mirror ×5, BOM sweep, twin
+  sweep, `bash -n`, skills mirror). Simulating a completed bootstrap (populating those two
+  markers) makes `docs-sync-check` exit **0 — fully green ×3**. So "green ×3" holds once
+  bootstrapped, and the merge-critical deterministic surface is green even pre-bootstrap.
+- **Phase 6 item 2 — `route-prompt` security overlay in the monorepo install (evidence):** three
+  fixtures piped to **both** twins in the installed `dist/monorepo` copy. A .NET money keyword
+  (`ledger balance reconciliation`) and an Angular sanitisation keyword (`innerHTML`) **each
+  independently fire the "Security-sensitive surface detected" overlay** (the additive `-or`
+  merge — WSD-015's non-additive-`.ps1`-grep trap stays fixed in the shipped artifact); a benign
+  prompt stays silent. `.sh` and `.ps1` twins agree on all three.
+- **Phase 6 items 3 & 4 — maintainer-gated by design, structurally validated:** *(3) evals* —
+  `run_evals.py` requires `anthropic` + `ANTHROPIC_API_KEY` and makes **billable live API calls**
+  (B-23: human/cost-triggered, has never gated a release). Structural proof done without spend:
+  monorepo `cases.yaml` = **14 cases = 7 (dotnet) + 7 (angular)**, the composer union; parses as
+  valid YAML. The live run is the maintainer's to trigger. *(4) `/bootstrap` dry-run* — the
+  command carries `disable-model-invocation` (**human-only by design**) and needs a real mixed
+  codebase; not model-runnable. Static proof done: the monorepo `bootstrap.md` carries the
+  mixed-repo instruction in full — "locate both stack roots", "skill discovery runs once not per
+  stack", and the per-stack-subsection rule ("populate each subsection from that stack's own
+  directories only … never a `.cs` path under the Angular subsection, or a `.ts` under .NET").
+- **Go/no-go: GREEN to proceed.** No fidelity drift, no gate failure, no unreviewed behaviour
+  change; the abort rule is not triggered. The remaining steps are all maintainer actions.
+- **Maintainer-gated remainder (the irreversible tail + its shipped-content changes):**
+  1. Run `tests/evals` per dist (monorepo = the 14-case union) with an API key — records the
+     first eval-gated evidence (feeds B-23).
+  2. `/bootstrap` dry-run in a real mixed .NET+Angular scratch repo — confirm stack subsections
+     populate from the right stack's dirs and exemplar paths resolve correctly.
+  3. **Release-execution items (deliberate shipped-content change — must ride the v0.26.0
+     release, NOT before, or the still-live fidelity legs go red):** bump `actions/checkout`
+     v4→v5 in the shipped workflows (`src/core/.github/workflows/{template-ci,docs-sync-check}.yml`
+     → all three dists); retire/re-baseline the CI fidelity legs (freeze tags stop being the
+     baseline once legacies archive); flip root `CHANGELOG.md` v0.26.0 from "Unreleased"; release
+     via `.claude/scripts/release.ps1`.
+  4. Final pointer commit to each legacy repo → **archive both on GitHub** → tag **v0.26.0**
+     (the point of no return — do only after 1–3 are green).

@@ -184,6 +184,22 @@ Post-freeze follow-up: bump `actions/checkout` v4→v5 (GitHub Node 20 deprecati
 **shipped** workflows (`src/core/.github/workflows/template-ci.yml` + `docs-sync-check.yml`, and
 thereby `dist/`) at the first release that deliberately changes shipped content (≥ v0.26.0) — they
 are fidelity-frozen until then. The authoring repo's own `ci.yml` was bumped 2026-07-09.
+**Phase 6 validation (reversible portion) COMPLETE + GREEN 2026-07-12 (WSD-018):** all
+deterministic gates re-run green (compose ×3 + dist freshness empty, validate-dist ×3, strict
+fidelity ×2 — no drift; meta suite + hook suites ×3 = 0 failures); item 1 — every installer
+stack-resolution path (auto-detect dotnet/angular/monorepo, `--stack` override, update-stamp,
+no-detect exit-2) + `docs-sync-check` green ×3 post-bootstrap (a fresh install correctly exits 1 on
+the two by-design bootstrap-pending signals while every deterministic framework check passes;
+`.template-repo` correctly not leaked into consumers); item 2 — monorepo `route-prompt` fires the
+security overlay independently for a .NET money keyword AND an Angular sanitisation keyword, both
+twins agree, benign stays silent. Items 3 (live evals — billable API, B-23) and 4 (`/bootstrap`
+dry-run — `disable-model-invocation`, needs a real codebase) are **maintainer-gated by design**;
+structurally validated (monorepo evals = 14-case union of 7+7; monorepo `bootstrap.md` carries the
+mixed-repo per-stack instruction). **Go/no-go: GREEN; abort rule not triggered.** **Remaining =
+maintainer only:** run live evals + `/bootstrap` dry-run, then the release tail — bump
+`actions/checkout` v4→v5 in the shipped workflows (above), retire/re-baseline the CI fidelity legs,
+flip root CHANGELOG v0.26.0 off "Unreleased", release via `release.ps1`, final legacy pointer
+commits → archive both GitHub repos → tag v0.26.0 (the irreversible point of no return).
 
 The decision half is DONE: D1–D7 signed off 2026-07-06 (**WSD-012**), plan refreshed against
 v0.25.5 with fresh evidence, phase reorder (archive/tag only after Phase 6 validation), a
