@@ -75,6 +75,11 @@ foreach ($d in $dists) {
 }
 if ($fatal) { Write-Host "`nRelease REFUSED: the composer failed. Nothing was committed."; exit 1 }
 
+# Re-measure after version stamps have flowed into dist; the baseline lands in the release commit.
+& pwsh -NoProfile -File (Join-Path $repo 'scripts/context-footprint.ps1') -Update
+Gate ($LASTEXITCODE -eq 0) 'update context-footprint baseline'
+if ($fatal) { Write-Host "`nRelease REFUSED: context-footprint measurement failed. Nothing was committed."; exit 1 }
+
 # ---- 4. Deterministic gates: validate-dist + hook suite per dist, then the meta suite ----
 foreach ($d in $dists) {
     & pwsh -NoProfile -File (Join-Path $repo 'scripts/validate-dist.ps1') $d

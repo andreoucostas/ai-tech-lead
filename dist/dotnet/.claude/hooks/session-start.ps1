@@ -7,6 +7,13 @@
 
 $ErrorActionPreference = 'SilentlyContinue'
 
+# Emit UTF-8 when captured: consuming harnesses read raw bytes, and the default
+# [Console]::OutputEncoding (the OEM code page on Windows) would mangle ⚠/—/🔴 into '?'.
+# Guarded so an interactive console's code page is never changed.
+if ([Console]::IsOutputRedirected) {
+    [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+}
+
 # Read stdin (when redirected) for surface detection; Claude Code events carry hook_event_name.
 $stdinJson = ''
 if ([Console]::IsInputRedirected) { $stdinJson = [Console]::In.ReadToEnd() }
@@ -33,11 +40,11 @@ if (Test-Path .git) {
 
 # 2. Adoption / bootstrap state warning
 if (Test-Path .claude/adoption-pending.json) {
-    Write-Output "- 🔴 **ADOPTION PENDING -- this repo is not consolidated yet.** The installer detected pre-existing AI tooling; the originals it displaced are archived under ``docs/pre-adoption/`` and inventoried in ``.claude/adoption-pending.json``. The required next step is ``/adopt`` -- NOT ``/bootstrap``, which would skip the archive/merge/provenance flow and the impact baseline. ``/adopt`` is developer-initiated and cannot be invoked by the model: if you are an agent, stop and tell the developer to type ``/adopt``."
+    Write-Output "- 🔴 **ADOPTION PENDING — this repo is not consolidated yet.** The installer detected pre-existing AI tooling; the originals it displaced are archived under ``docs/pre-adoption/`` and inventoried in ``.claude/adoption-pending.json``. The required next step is ``/adopt`` — NOT ``/bootstrap``, which would skip the archive/merge/provenance flow and the impact baseline. ``/adopt`` is developer-initiated and cannot be invoked by the model: if you are an agent, stop and tell the developer to type ``/adopt``."
 } elseif (Test-Path CLAUDE.md) {
     $claude = Get-Content CLAUDE.md -Raw
     if ($claude -and $claude -match 'BOOTSTRAP_PENDING') {
-        Write-Output "- WARNING: **CLAUDE.md is unbootstrapped** (BOOTSTRAP_PENDING marker present). ``/bootstrap`` must run before non-trivial work -- conventions are still placeholder. It is developer-initiated and cannot be invoked by the model: if you are an agent, tell the developer to type ``/bootstrap``."
+        Write-Output "- ⚠ **CLAUDE.md is unbootstrapped** (BOOTSTRAP_PENDING marker present). ``/bootstrap`` must run before non-trivial work — conventions are still placeholder. It is developer-initiated and cannot be invoked by the model: if you are an agent, tell the developer to type ``/bootstrap``."
     }
 }
 
@@ -89,7 +96,7 @@ if (Test-Path SECURITY_FINDINGS.md) {
             }
         }
         if ($overdue -gt 0) {
-            Write-Output "- 🔴 **Security:** $overdue overdue finding(s) in SECURITY_FINDINGS.md. Remediation SLA breached -- review before starting new work."
+            Write-Output "- 🔴 **Security:** $overdue overdue finding(s) in SECURITY_FINDINGS.md. Remediation SLA breached — review before starting new work."
         } else {
             Write-Output "- **Security:** $openCount open finding(s) in SECURITY_FINDINGS.md."
         }

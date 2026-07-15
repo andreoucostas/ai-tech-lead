@@ -596,8 +596,33 @@ each repo's `docs/architecture-decisions.md`.
   field" question. The gate targets growth/churn **visibility**, not size minimization —
   B-26/WSD-011's salience-over-bytes trade stands (design D8 records this so a future session
   doesn't compress the rails against the ceiling).
-
-## WSD-018: B-25-EXEC Phase 6 — COMPLETE; v0.26.0 shipped, legacy repos archived
+- **Implementation deltas (2026-07-15, appended at B-32 execution)**:
+  1. **Baseline path is `meta/context-footprint.json`, not `docs/context-footprint.json`** — the
+     spec predates v0.26.1 (WSD-019), which moved the maintainer layer to `meta/` and removed the
+     root `docs/` by decision (root `CLAUDE.md` records why). Same role, new namespace; nothing
+     else about D3–D5 changes.
+  2. **The twin-render fixtures found their first real defect before the gate even existed:** the
+     shipped `.ps1` twins of session-start and route-prompt rendered ASCII-flattened rails
+     (`WARNING:`/`--`) where the `.sh` twins emit the designed `⚠`/`—`/`→` text — exactly the M5
+     gap the spec predicted. Decision: `.sh` content is canonical; the `.ps1` twins (core + the
+     route-prompt stack snippets) were aligned to byte-identical rendered output and shipped as
+     **v0.26.5** in the same release that lands the gate (the gate's baseline requires agreeing
+     twins to exist). guard/audit-trail were deliberately left out of scope → **B-34**.
+  3. **Two PowerShell correctness traps caught only by independent verification, not by the
+     implementer's own testing** (the implementer's sandbox could not execute bash, so it could
+     never run its own `.ps1` end-to-end against real dist content): (a) `Measure-Object
+     -Property <name> -Sum/-Maximum` silently returns `$null`/0 on `[ordered]` hashtable items —
+     unlike `Where-Object -Property`/`Sort-Object -Property`, which *do* resolve dictionary keys
+     as pseudo-properties, `Measure-Object`'s binder does not, and it fails silently rather than
+     erroring. Fixed by summing manually. (b) the classic `return ,$array` single-object-pipeline
+     idiom (used to stop PowerShell from unrolling a 0/1-element array on return) breaks if the
+     *caller* also wraps the call in `@(...)` — the double-wrap nests the real array one level
+     deep, and every downstream `Where-Object`/lookup against it silently returns nothing. Both
+     bugs produced no error at the point of failure (silent 0/`$null`, or a crash several
+     unrelated lines downstream) — this is why the design's per-line red-test matrix and an
+     independent verifier re-running the twins against real content (not trusting the
+     implementer's own "it works" claim) both earned their cost here. **Status: SHIPPED v0.26.5
+     (2026-07-15).**
 
 - **Status (2026-07-12): Phase 6 COMPLETE — the merge is fully executed and shipped.** The
   reversible validation (below) ran green; then, on maintainer go-ahead (dotnet 8.0.422 + ng 21
@@ -749,3 +774,45 @@ written to enforce invariant #6.
 
 **Version.** Shipped as **v0.26.1** — shipped *content* changes, no behavior change — which leaves
 v0.27.0 free for B-27 (team wiki memory) as already planned.
+
+---
+
+## WSD-020: B-35 + B-36 designs locked — evidence-gated technology claims; testing-strategy completion (2026-07-15)
+
+**Context.** First structured consumer feedback since v0.26.0: a dev team with a MongoDB backend
+reports the framework "goes with EF Core… should have derived things from the codebase." A
+same-day audit verified the mechanism (worst: `boy-scout-check` heuristic #3 fires on
+MongoDB.Driver's `ToListAsync`-family methods and demands the EF-only `AsNoTracking()`; plus
+unconditional defaults.md Data Access, `/bootstrap` A2's closed "EF Core / Dapper" detection
+list, an ungated `add-entity` recipe, and a hardcoded copilot-instructions DbContext line —
+MongoDB appears zero times in `src/`). The maintainer also asked whether the framework guides
+per-item testing strategy and covers building a suite where none exists.
+
+**Decision.** Two independent backlog items, designs locked in `.claude/plans/`:
+
+- **B-35 (P2, `2026-07-15-b35-derive-dont-assume-design.md`).** Root cause framed as
+  *technology claims are not evidence-gated*, not "missing Mongo support". Fix at that
+  altitude: one core "derive, don't assume" rule; conditional defaults.md Data Access blocks;
+  open A2 detection + a 3a no-unevidenced-technology synthesis guard; `add-entity` Step 0
+  evidence gate + 3a persistence audit line; boy-scout heuristic #3 requires in-file EF markers
+  (with a Mongo-shaped red fixture); genericized copilot-instructions line. **Rejected:** a
+  MongoDB dist (wrong altitude — multiplies the surface the merge just shrank, fixes one
+  technology, leaves the assumption mechanism); "just run /bootstrap" (the hook misfires
+  regardless; defaults/skills are deliberately live pre-bootstrap; A2's closed list biases
+  bootstrap's own output).
+- **B-36 (P3, `2026-07-15-b36-testing-strategy-design.md`).** Audit first: per-item testing
+  doctrine is substantially present (rails, Test shape heuristic, add-tests + characterization
+  mode, leanness #11–16, test-critic), and the meta layer's definition-of-done is adequate —
+  so the item adds only the verified gaps: `add-tests` **Suite bootstrap mode** for zero-test
+  repos (developer framework checkpoint → minimal harness → CI wiring → risk-first initial
+  tests → honest TECH_DEBT backfill entry), a Feature-rail pointer to the decision procedure,
+  and bootstrap outputs (suite absence as primary finding; target-test-shape line in
+  Conventions > Testing). **Rejected:** a new `bootstrap-tests` skill (would violate our own
+  no-parallel-infrastructure doctrine) and pushing suite creation into `/bootstrap` (it's a
+  re-runnable dev task with an interactive checkpoint, not one-time analysis).
+
+**Sequencing.** B-35 is consumer-reported incorrect behavior on a supported configuration —
+candidate to ship as a v0.26.x defect fix *before* B-27 (team wiki memory, still v0.27.0).
+B-36 is independent and can ride the same or a later release. Both specs are written for a
+Sonnet-class implementer: exact files, sibling/twin sweeps, acceptance criteria, and explicit
+out-of-scope fences.

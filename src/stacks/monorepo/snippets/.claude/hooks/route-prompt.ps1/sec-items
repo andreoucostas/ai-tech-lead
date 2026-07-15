@@ -1,5 +1,5 @@
 2. Monetary logic: use decimal (never double); guard negative amounts, duplicate transaction IDs, precision loss, and timestamp ordering; make state-changing operations idempotent.
-3. Check-then-act on balances/state: ensure read-decide-write is atomic/serialised -- no TOCTOU race.
+3. Check-then-act on balances/state: ensure read-decide-write is atomic/serialised — no TOCTOU race.
 4. Never bypass Angular's sanitisation (bypassSecurityTrust*, direct innerHTML) without an explicit, reviewed reason; rely on the framework's escaping.
 5. Keep tokens/secrets out of localStorage where an httpOnly cookie is viable; never log credentials or PII.
 6. Validate and encode at trust boundaries (route params, HTTP responses, user input); guard against XSS/CSRF.

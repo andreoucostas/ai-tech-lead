@@ -11,6 +11,18 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.26.5 (2026-07-15)
+
+### Added — B-32 context-footprint gate (WSD-017)
+- Added deterministic context measurement and a reviewed-baseline CI gate with advisory ceilings.
+- Release automation re-measures the baseline after version stamping.
+
+### Fixed
+- Aligned PowerShell session-start and prompt-routing guidance with canonical bash rendering
+  byte-for-byte. The new rendered-hook check exposed Unicode, blank-line, and whitespace drift.
+- PowerShell hooks now emit UTF-8 whenever their output is captured, preventing Windows OEM
+  output encoding from garbling the Unicode guidance.
+
 ## 0.26.4 — 2026-07-12
 
 > **The gates that should have caught v0.26.3's defects.** Every gate this repo had was a *parser*

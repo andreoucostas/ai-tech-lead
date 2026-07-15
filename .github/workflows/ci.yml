@@ -34,6 +34,8 @@ jobs:
         run: |
           git add -A dist
           git diff --cached --exit-code --stat -- dist
+      - name: Context footprint (context-footprint.ps1 twin)
+        run: pwsh -NoProfile -File scripts/context-footprint.ps1 -Check
       - name: Validate dists (parse gates + per-dist template-checks)
         run: |
           pwsh -NoProfile -File scripts/validate-dist.ps1 dotnet
@@ -60,6 +62,8 @@ jobs:
         run: |
           git add -A dist
           git diff --cached --exit-code --stat -- dist
+      - name: Context footprint (context-footprint.sh twin)
+        run: bash scripts/context-footprint.sh -Check
       - name: Validate dists (parse gates + per-dist template-checks)
         run: |
           bash scripts/validate-dist.sh dotnet

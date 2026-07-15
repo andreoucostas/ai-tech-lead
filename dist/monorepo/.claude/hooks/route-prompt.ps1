@@ -6,10 +6,17 @@
 # surface dispatch at the bottom.
 # Skips when the user explicitly invoked a slash command (already deterministic).
 #
-# ASCII-only: Windows PowerShell 5.1 reads .ps1 files as ANSI when no BOM is
-# present. Em-dashes are written as "--" to avoid encoding mismatches.
+# Unicode rendered text is intentional and matches the canonical bash twin. The mandatory UTF-8
+# BOM keeps Windows PowerShell 5.1 decoding these strings correctly.
 
 $ErrorActionPreference = 'SilentlyContinue'
+
+# Emit UTF-8 when captured: consuming harnesses read raw bytes, and the default
+# [Console]::OutputEncoding (the OEM code page on Windows) would mangle ⚠/—/🔴 into '?'.
+# Guarded so an interactive console's code page is never changed.
+if ([Console]::IsOutputRedirected) {
+    [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+}
 
 # Rails are defined at module level so here-string close markers ('@) sit at
 # column 0, which Windows PowerShell requires.
@@ -19,12 +26,12 @@ $railsFix = @'
 2. Write a failing regression test BEFORE touching production code; confirm it fails for the right reason.
 3. Apply the minimal fix; do not refactor unrelated code.
 4. Verify the regression test passes, the full related suite passes, build is clean, lint is clean.
-5. Apply Boy Scout to BLAST RADIUS only -- never boy-scout unrelated files in a fix.
+5. Apply Boy Scout to BLAST RADIUS only — never boy-scout unrelated files in a fix.
 6. Report root cause, fix, regression-test coverage, blast radius.
 '@
 
 $railsFeature = @'
-1. Design check first -- list affected layers, files to create/modify, failure modes, test strategy.
+1. Design check first — list affected layers, files to create/modify, failure modes, test strategy.
 2. Decompose into ordered subtasks; run build + test + lint after each before continuing.
 3. Apply Boy Scout to every file you touch.
 4. Self-review against CLAUDE.md > Conventions; flag new patterns or resolved tech debt.
@@ -38,11 +45,11 @@ Leanness constraints (CLAUDE.md > Leanness):
 '@
 
 $railsRefactor = @'
-1. Verify starting state -- build and tests must pass BEFORE touching anything.
+1. Verify starting state — build and tests must pass BEFORE touching anything.
 2. If no tests exist for the target code, write baseline tests FIRST.
 3. Refactor incrementally; build + test after each meaningful change.
 4. Apply Boy Scout to every file you touched.
-5. Verify final state -- no behavior should have changed.
+5. Verify final state — no behavior should have changed.
 6. Present a before/after summary INCLUDING net LOC delta.
 
 Leanness constraints (CLAUDE.md > Leanness):
@@ -54,17 +61,17 @@ Leanness constraints (CLAUDE.md > Leanness):
 $railsTest = @'
 1. Match existing test structure, naming convention, framework, and mocking approach.
 2. Cover happy path, edge cases, error paths, boundary conditions.
-3. Do not test framework behavior -- test public behavior only.
+3. Do not test framework behavior — test public behavior only.
 4. Verify all new tests pass.
-5. Report what was tested and what is still uncovered.
+5. Report what was tested and what's still uncovered.
 '@
 
 $railsDesign = @'
 **DO NOT WRITE ANY CODE.** Produce a design document only.
-1. Understand the requirement -- goal, users, acceptance criteria, scope boundary.
-2. Analyse impact -- layers affected, files changing, patterns to reuse.
+1. Understand the requirement — goal, users, acceptance criteria, scope boundary.
+2. Analyse impact — layers affected, files changing, patterns to reuse.
 3. Consider at least two approaches with pros/cons and effort estimates.
-4. Recommend, with specifics -- component structure, state, services, tests.
+4. Recommend, with specifics — component structure, state, services, tests.
 5. Surface open questions for the developer to answer before /feature.
 '@
 
@@ -72,7 +79,7 @@ $railsDebt = @'
 1. Read TECH_DEBT.md and find items in the specified area.
 2. Confirm each item still exists in the code (it may have been fixed already).
 3. Recommend fix-now vs defer per item, with reason.
-4. After fixes: update TECH_DEBT.md -- remove resolved items, add newly discovered.
+4. After fixes: update TECH_DEBT.md — remove resolved items, add newly discovered.
 5. Apply Boy Scout to every file touched.
 6. Report what was fixed/deferred plus the updated TECH_DEBT diff.
 '@
@@ -80,8 +87,8 @@ $railsDebt = @'
 $railsReview = @'
 This is a quality gate, not a rubber stamp.
 1. Check correctness and every CLAUDE.md > Conventions item per changed file.
-2. Check test quality -- behavior coverage, descriptive names, regression detection.
-3. Run build + tests yourself -- do not trust they pass.
+2. Check test quality — behavior coverage, descriptive names, regression detection.
+3. Run build + tests yourself — do not trust they pass.
 4. Check architecture/debt trajectory and Boy Scout application.
 Output: APPROVE or REQUEST CHANGES with a severity-tagged issues table.
 '@
@@ -90,9 +97,9 @@ $railsSecurity = @'
 ## Security-sensitive surface detected
 
 This prompt touches a security- or money-sensitive area (auth, payments, balances, ledgers, idempotency, secrets, tokens, session, PII, output sanitisation). DORA's evidence is that AI amplifies existing weaknesses fastest here, so this overlay applies ON TOP OF any workflow rails above. Before presenting the change as complete:
-1. Run /security-review on the diff (or invoke the security-auditor agent) -- do not self-certify.
+1. Run /security-review on the diff (or invoke the security-auditor agent) — do not self-certify.
 2. Monetary logic: use decimal (never double); guard negative amounts, duplicate transaction IDs, precision loss, and timestamp ordering; make state-changing operations idempotent.
-3. Check-then-act on balances/state: ensure read-decide-write is atomic/serialised -- no TOCTOU race.
+3. Check-then-act on balances/state: ensure read-decide-write is atomic/serialised — no TOCTOU race.
 4. Never bypass Angular's sanitisation (bypassSecurityTrust*, direct innerHTML) without an explicit, reviewed reason; rely on the framework's escaping.
 5. Keep tokens/secrets out of localStorage where an httpOnly cookie is viable; never log credentials or PII.
 6. Validate and encode at trust boundaries (route params, HTTP responses, user input); guard against XSS/CSRF.
@@ -102,7 +109,7 @@ If this prompt does NOT actually touch a sensitive surface, say so and skip this
 
 $railsPlanGate = @'
 ## Plan gate (present -> clarify -> confirm)
-Before writing code: post a short plan (files to change, order of operations, how you'll verify) AND any clarifying questions for whatever is underspecified -- do not guess past a material ambiguity to seem helpful. Then WAIT for the developer's explicit go-ahead before editing code. Skip the wait only for a trivial, unambiguous change (typo, one-liner), and say that you're skipping it and why.
+Before writing code: post a short plan (files to change, order of operations, how you'll verify) AND any clarifying questions for whatever is underspecified — do not guess past a material ambiguity to seem helpful. Then WAIT for the developer's explicit go-ahead before editing code. Skip the wait only for a trivial, unambiguous change (typo, one-liner), and say that you're skipping it and why.
 '@
 
 $inputJson = [Console]::In.ReadToEnd()
@@ -153,12 +160,11 @@ $parts = New-Object System.Collections.Generic.List[string]
 if (-not [string]::IsNullOrEmpty($intent)) {
     $parts.Add("## Routed intent: ``$intent``")
     $parts.Add('')
-    $parts.Add("This natural-language prompt was classified as **$intent**. The rails below mirror ``CLAUDE.md > Agentic Workflow`` section 1 -- the canonical definition, already in your context; they are repeated here for salience. Apply them before responding. If the actual intent differs, say so and proceed normally.")
+    $parts.Add("This natural-language prompt was classified as **$intent**. The rails below mirror ``CLAUDE.md > Agentic Workflow`` section 1 — the canonical definition, already in your context; they are repeated here for salience. Apply them before responding. If the actual intent differs, say so and proceed normally.")
     $parts.Add('')
 
     if ($intent -in @('fix','feature','refactor','test')) {
         $parts.Add($railsPlanGate)
-        $parts.Add('')
     }
 
     switch ($intent) {
@@ -173,7 +179,6 @@ if (-not [string]::IsNullOrEmpty($intent)) {
 }
 
 if ($sensitive) {
-    $parts.Add('')
     $parts.Add($railsSecurity)
 }
 

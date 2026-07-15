@@ -4,6 +4,13 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.26.5 — 2026-07-15
+
+### Fixed
+- PowerShell session-start and prompt-routing guidance now matches the bash guidance byte-for-byte,
+  including Unicode punctuation and spacing. No action is needed.
+- Hook guidance no longer garbles ⚠/— characters when PowerShell hooks run on Windows.
+
 ## 0.26.4 — 2026-07-12 (no changes to this distribution)
 
 > Version stamp only. This release fixed a documentation defect in the mixed .NET + Angular

@@ -40,14 +40,81 @@ dead (feeds B-08 matrix rows + B-09 post-write demotion) and the folder-trust pr
 **All P2 items (B-04…B-09) shipped in v0.25.2 (2026-07-04) — see the Done section.** The
 check-lockstep union/computed-skills/hooks.json gates + template-checks skills-mirror gate close
 the silent-drift holes; the post-write $tn routing divergence is fixed with twin agreement tests;
-the enforcement matrix gained the three missing capability rows.
+the enforcement matrix gained the three missing capability rows. **B-35 (below, added 2026-07-15
+from consumer feedback) is the one open P2 item.**
+
+### B-35 · Derive, don't assume: the framework pushes EF Core on non-EF backends — **design LOCKED (WSD-020)**
+**Effort:** M · **Invariants:** #1 #2 #3 #6 #7 · added 2026-07-15 · spec: `.claude/plans/2026-07-15-b35-derive-dont-assume-design.md`
+
+**Problem (consumer-reported).** A dev team with a MongoDB backend reports the framework "goes
+with EF Core… should have derived things from the codebase." Verified: (1) `boy-scout-check`
+heuristic #3 flags `ToListAsync`-family calls without `AsNoTracking()` — MongoDB.Driver exposes
+the same method names, so on Mongo the hook demands an EF-only API on every query file, pre- or
+post-bootstrap; (2) `docs/defaults.md > Data Access` asserts EF Core unconditionally in the
+cold-start window; (3) `/bootstrap` A2's detection list is closed ("EF Core / Dapper / both") —
+a document store isn't representable, biasing even bootstrapped output; (4) `add-entity` walks
+EF steps with no evidence gate; (5) shipped `copilot-instructions.md` hardcodes DbContext advice.
+
+**Do:** implement the locked spec — one core "derive, don't assume" evidence-gating rule;
+conditional defaults.md Data Access blocks (EF/Dapper/Mongo/none); open A2 detection + 3a
+no-unevidenced-technology guard; add-entity Step 0 gate + 3a persistence audit line;
+boy-scout heuristic #3 requires EF markers in-file (×4 twin/sibling files + fixtures);
+genericize the copilot-instructions line. Candidate to ship as a v0.26.x defect fix before B-27.
+
+**Not:** a MongoDB dist or stack; rewriting prose that uses EF Core as illustration; B-34.
 
 ---
 ## P3 — hygiene, drift, small fixes
 
 **B-12 was already resolved — see the Done section.** No open P3 items remain from the audit;
 post-audit P3 item B-29 (haiku adequacy evidence) is under "Known deferred work" (its sibling
-B-30 shipped in v0.25.4).
+B-30 shipped in v0.25.4). **B-34 and B-36 (below, added 2026-07-15) are the open P3 items.**
+
+### B-36 · Testing strategy: suite-bootstrap mode + per-item strategy rail — **design LOCKED (WSD-020)**
+**Effort:** M · **Invariants:** #1 #2 #6 #7 · added 2026-07-15 · spec: `.claude/plans/2026-07-15-b36-testing-strategy-design.md`
+
+**Problem.** Per-item testing doctrine is substantially present (workflow rails, Test shape
+heuristic, add-tests level decision + characterization mode, leanness #11–16, test-critic) —
+but three gaps: (G1) a repo with **zero tests** has no path — `add-tests` Step 1 is "find the
+existing pattern first", so there's nothing to mirror and no recipe creates the harness, wires
+CI, or orders first tests by risk; the Refactor rail's "characterization tests first" is
+unexecutable there; (G2) the Feature rail says "test strategy" without pointing at the decision
+procedure; (G3) bootstrap never writes a repo-specific *target test shape* nor converts "no
+tests found" into a routed action. The meta-framework side has no gap (definition-of-done per
+artifact type + hook harness — audited, adequate).
+
+**Do:** implement the locked spec — `add-tests` gains **Suite bootstrap mode** (confirm
+framework with developer → scaffold minimal unit + integration harness → wire into CI →
+risk-first initial tests: hazard areas / financial invariants / critical journeys → one honest
+TECH_DEBT backfill entry) across all three stacks; Feature rail gets a one-line pointer to the
+Test shape heuristic + suite-bootstrap escape hatch; bootstrap A5/A6 reports suite absence as a
+primary finding, 3a writes a target-test-shape line, 3b/Phase-4 route the fix; one routing line
+in defaults.md > Testing.
+
+**Not:** coverage thresholds / mutation testing (deferred by earlier decision — don't
+resurrect); E2E tooling selection; new skills or commands; meta-framework changes.
+
+### B-34 · Rendered-output twin parity: guard + audit-trail (the hooks B-32's fixtures don't cover)
+**Effort:** S–M · **Invariants:** #1 #3 #5 #7 · added 2026-07-15 (found during B-32 implementation)
+
+**Problem.** The B-32 fixture work proved the `.ps1` hook twins render *different model-visible
+text* than their `.sh` twins — the `.ps1` side was written ASCII-safe (`WARNING:`/`--`) while the
+`.sh` side uses the house style (`⚠`/`—`/`→`). Invariant #3 promises identical behavior; the hook
+suites test decisions/robustness, never rendered content (exactly the M5 gap named in the B-32
+spec). session-start + route-prompt were aligned and gated in v0.26.5 (B-32's twin-render fixtures
+now FAIL on drift there). **guard and audit-trail remain unswept**: grep evidence 2026-07-15 —
+`guard.sh` 16 unicode-bearing lines vs `guard.ps1` 11; `audit-trail.sh` 4 vs `.ps1` 0 (some are
+comments; nobody has diffed the *rendered* output).
+
+**Do:** render-diff each remaining twin pair (`guard`, `audit-trail`, and the per-stack
+`post-write` files under `src/stacks/*/files/`) across their existing test fixtures
+(`tests/hooks/_fixtures/` patterns), byte-compare stdout/stderr per surface shape [#5]. Align
+divergent rendered strings to the `.sh` canonical, sweep stack snippets/siblings [#1], update any
+tests pinning old strings, rebuild dists. Ship via release.ps1 [#7]. Consider extending the B-32
+fixture set to these hooks in the same pass (they're cheap once fixtures exist — but note guard's
+output is *stderr + JSON deny shapes*, not plain rails, so the fixture capture differs).
+
+**Not:** wording changes; the `.sh` content is canonical, this is formatting-parity only.
 
 ### B-33 · Make the archived legacy repos route an *agent* to the merged repo — **DONE 2026-07-12, see Done section**
 
@@ -351,37 +418,34 @@ wrappers should pin GitHub's documented `model:` field — tiering currently rea
 only (WSD-011 implementation fact), so the Copilot half of every consumer surface gets no benefit.
 A wrong pin is consumer-visible: verify on a live Copilot surface before shipping.
 
-### B-32 · Context-footprint gate: deterministic measurement + regression tripwire for the always-loaded surface — **P0 design DONE; implementation post-merge**
-**Effort:** M · **P0 design complete 2026-07-11** (WSD-017) · **Invariants:** #3 #6 #7 · added 2026-07-11
-
-> **Design LOCKED — do not re-derive.** Full spec (adversarially critiqued — LOCK WITH
-> AMENDMENTS; 2 HIGH + 5 MEDIUM + 5 LOW folded, both HIGHs independently re-verified):
-> **`.claude/plans/2026-07-11-b32-context-footprint-gate-design.md`**; decision record
-> **WSD-017**. Implement **after Phase 6 / v0.26.0** (maintainer-side — no shipped-behavior
-> change, so no version slot per invariant #7), **before or with B-27 (v0.27.0)** so the wiki
-> inherits the counting rule. The one shipped piece (framework-doctor "context cost" section,
-> design D6) rides B-16 (≥ v0.28.0).
-
-Problem: B-26's "re-measure if context budgets tighten" was an advisory note nobody executed,
-and WSD-015's 1.17×/1.5× monorepo token check was a one-off. Measured 2026-07-11: static
-per-prompt overhead ≈ **8.5–10.4K tok on Claude Code** (CLAUDE.md + skills/commands/agents
-frontmatter; monorepo highest at 41,443 chars) and ≈ **6.0–7.6K on Copilot** (AGENTS.md +
-copilot-instructions.md), plus up to ~1.1K route-prompt rails per matched prompt — previously
-invisible and silently growable. Ship `scripts/context-footprint.ps1/.sh` twins: per-dist
-manifest (static.claude / static.copilot / instructed / session / prompt / ondemand-info);
-rendered-hook fixtures execute **both** hook twins and FAIL on output mismatch (doubles as the
-first rendered-rails content-parity gate); committed baseline `docs/context-footprint.json`
-with hand-rolled canonical serialization; freshness-style FAIL on any drift; advisory WARN
-ceilings (40K/48K chars static.claude; 1.5× monorepo CLAUDE.md ratio — absorbs WSD-015's
-fallback trigger); CI cross-OS legs = the twin proof; `release.ps1` runs `-Update` (version
-stamp lands after PRs were gated). Non-goals (locked): no tokenizer, no consumer-side FAIL, no
-output-token measurement, no relitigating WSD-011. Verification recipes + red-test matrix are
-in the spec.
-
 ---
 
 ## Done
 
+- **B-32** — shipped **v0.26.5** (2026-07-15). Implemented from the LOCKED spec
+  (`.claude/plans/2026-07-11-b32-context-footprint-gate-design.md`, WSD-017) via a codex
+  (gpt-5.6-sol) implementer + principal-engineer review loop — five review rounds, three real
+  defects found and fixed before shipping (see `meta/workspace-decisions.md` WSD-017 for the
+  implementation-deltas log: baseline path retargeted to `meta/context-footprint.json`, a
+  pre-existing `.ps1` hook Unicode-mangling bug the fixtures caught, and two PowerShell
+  correctness bugs in the gate script itself — `Measure-Object -Property` silently returning
+  zero on `[ordered]` hashtable items, and a double-array-wrap that corrupted derived totals).
+  Twins `scripts/context-footprint.ps1/.sh` ship as genuinely independent implementations (not
+  a delegating wrapper — the first implementer's initial cut had `.sh` shell out to `.ps1`,
+  rejected on review since it defeats the CI cross-OS twin proof). **Forced an unplanned
+  shipped-behavior fix**: the rendered-hook fixtures proved `dist/*/.claude/hooks/{session-start,
+  route-prompt}.ps1` rendered ASCII-flattened rails (`WARNING:`/`--`) where the `.sh` twins emit
+  the designed `⚠`/`—`/`→` text, **and** that redirected `.ps1` hook stdout on Windows was
+  encoded with the OEM code page, silently turning `⚠/—/🔴` into `?` for every consumer who
+  runs the PowerShell hooks — both fixed (UTF-8-on-redirect guard + byte-identical rendered
+  text), which is why this shipped as v0.26.5 rather than landing with no version slot as the
+  design anticipated. `B-34` filed for the same rendered-parity sweep on `guard`/`audit-trail`
+  (out of scope here). Verified: 30-pair cross-twin render matrix, baseline generation +
+  idempotent `-Update` + cross-twin byte-identical proof, full red-test matrix (freshness drift,
+  twin-render-mismatch detection, WARN-ceiling reachability), all 4 hook suites + `validate-dist`
+  ×3 green (the one expected pre-stamp `validate-dist` FAIL — CHANGELOG at 0.26.5 vs
+  `framework-version.json` at 0.26.4 — resolved by `release.ps1`'s own stamp-then-validate
+  order). Released via `release.ps1`, all gates green, pushed.
 - **B-33** — done **2026-07-12**, then **REOPENED AND RE-FIXED THE SAME DAY** when tested on the
   second surface. The README fix below was **Claude-only**: given the archived repo's URL, **Copilot
   never opens the README** — it clones and runs `scripts/install.ps1` directly, and duly installed

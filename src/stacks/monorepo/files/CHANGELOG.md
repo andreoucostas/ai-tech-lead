@@ -5,6 +5,13 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.26.5 — 2026-07-15
+
+### Fixed
+- PowerShell session-start and prompt-routing guidance now matches the bash guidance byte-for-byte,
+  including Unicode punctuation and spacing. No action is needed.
+- Hook guidance no longer garbles ⚠/— characters when PowerShell hooks run on Windows.
+
 ## 0.26.4 — 2026-07-12 (fixes a second broken install command in this README)
 
 > Documentation only — **no change to the files in your repo, nothing to do.**
