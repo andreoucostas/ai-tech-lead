@@ -181,19 +181,9 @@ user. Generated `dist/` changes belong in the same commit as the `src/` change t
   which is an empty template the consumer's team fills in — do not confuse the two).
 - **Work list** → `meta/BACKLOG.md` (self-contained entries; move finished ones to its Done section).
 
-## Migration status note
+## Status
 
-**The merge is COMPLETE. `MERGE-MIGRATION-PLAN.md` Phases 0–6 are all done; v0.26.0 shipped
-2026-07-12** (commit `ad717c7`, tag `v0.26.0`; WSD-018). Both legacy repos (`ai-tech-lead-dotnet`,
-`ai-tech-lead-angular`) are **archived** on GitHub with pointer READMEs, frozen at v0.25.5. The
-v0.26.0 release folded the two deliberate shipped-content changes — `actions/checkout` v4→v5 in the
-shipped workflows and retirement of the CI strict-fidelity legs — so the freeze tags are no longer a
-baseline; `scripts/fidelity-check.{ps1,sh}` remain for manual re-audit against the `pre-restructure`
-tag but are no longer wired to CI. This repo is now the single home for framework development.
-**Next framework work: B-27 (team wiki memory) as v0.27.0** (`meta/BACKLOG.md`). The old
-workspace-root repo one level up now holds only a pointer stub and the (now-executed) migration plan.
+**Next framework work: B-27 (team wiki memory) as v0.27.0** — see `meta/BACKLOG.md`.
 
-**v0.26.1 (2026-07-12)** sealed the meta/product boundary: the shipped changelogs were rewritten in
-the consumer's voice, tracking ids were stripped from shipped hooks/scripts/tests, the maintainer
-layer moved to `meta/`, and `no-meta-leak` was added so the boundary is now enforced rather than
-merely asserted (WSD-019).
+Gotcha: `scripts/fidelity-check.{ps1,sh}` still exist but are **no longer wired to CI** — they are
+manual re-audit tools against the `pre-restructure` tag, not gates.

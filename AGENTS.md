@@ -84,14 +84,9 @@ Plans → `.claude/plans/` · decisions → `meta/workspace-decisions.md` · met
 `meta/LEARNINGS.md` · work list → `meta/BACKLOG.md`. Commit to `master` and push when done — never
 leave changes uncommitted.
 
-## Migration status note
+## Status
 
-**The merge is COMPLETE — Phases 0–6 done; v0.26.0 shipped 2026-07-12** (commit `ad717c7`, tag
-`v0.26.0`; WSD-018). Both legacy repos are **archived** on GitHub with pointer READMEs, frozen at
-v0.25.5. The release folded the two deliberate shipped-content changes (`actions/checkout` v4→v5;
-CI strict-fidelity legs retired), so the freeze tags are no longer a CI baseline. This repo is the
-single home for framework development; **next: B-27 (team wiki memory) as v0.27.0**.
+**Next framework work: B-27 (team wiki memory) as v0.27.0** — see `meta/BACKLOG.md`.
 
-**v0.26.1 (2026-07-12)** sealed the meta/product boundary: shipped changelogs rewritten in the
-consumer's voice, tracking ids stripped from shipped hooks/scripts/tests, the maintainer layer moved
-to `meta/`, and `no-meta-leak` added so the boundary is enforced rather than asserted (WSD-019).
+Gotcha: `scripts/fidelity-check.{ps1,sh}` still exist but are **no longer wired to CI** — they are
+manual re-audit tools against the `pre-restructure` tag, not gates.
