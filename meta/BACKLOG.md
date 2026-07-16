@@ -32,6 +32,54 @@
 follow-ons this band surfaced are folded into existing P2 entries: the Copilot postToolUse leg is
 dead (feeds B-08 matrix rows + B-09 post-write demotion) and the folder-trust prerequisite feeds
 `framework-doctor` (B-16). The B-01 optional guard hardening was deferred by decision (see Done).
+**B-37 (below, added 2026-07-16 from the post-ship review of v0.27.0) is the one open P1 item.**
+
+### B-37 · v0.27.0 wiki-check defects: macOS date, stdin hang, sort collation + spec omissions
+**Effort:** S–M · **Invariants:** #1 #2 #3 #7 · added 2026-07-16 (post-ship review of B-27/v0.27.0
+against the locked spec `.claude/plans/2026-07-04-b27-wiki-memory-design.md`)
+
+**Problem.** Review of the v0.27.0 implementation (commit 60dd04c) found four defects and one
+test gap. All evidence observed on the shipped dist copies.
+
+- **F1 (P1 — breaks a supported configuration).** `wiki-check.sh:27` uses GNU-only `date -d`
+  (the only occurrence in any shipped script). BSD/macOS `date` has no `-d <date>` → the
+  `date -d "$last_verified"` validation fails for *valid* dates → **every wiki entry FAILs
+  "invalid last-verified" on macOS**, and since `docs-sync-check.sh` now chains wiki-check,
+  any macOS build agent (explicitly supported: `ci-integration.md` Leg 1, README §198–207,
+  cf. the BSD-realpath workaround in `audit-trail.sh`) goes red on the first wiki entry.
+- **F2 (P2 — interactive hang).** Both twins read `$Root` from **stdin** when no argument is
+  given (`$input` in .ps1, `IFS= read -r root` in .sh) — a hook-harness convention no other
+  `scripts/` child uses (`template-checks.sh` anchors via `cd "$(dirname "$0")/.."`).
+  `docs-sync-check.{ps1,sh}` invoke wiki-check **with no argument**, so a developer running
+  docs-sync-check in an interactive terminal hangs until Enter (observed: both twins block
+  until a stdin line/EOF arrives; CI survives only because its stdin is /dev/null), and any
+  stray stdin line becomes a garbage `$Root` → spurious "INDEX.md is missing" FAIL.
+- **F3 (P2 latent — B-02 twin/environment-skew class).** The .sh sorted-index check uses bare
+  `sort` (locale-dependent) while every grep in the same file pins `LC_ALL=C`; the .ps1 uses
+  culture-sensitive `Sort-Object`. On glibc UTF-8 locales, collation ignores `-`
+  (`a-c` vs `ab` flips vs byte order), so one index can pass on the Windows leg and FAIL
+  "not sorted by slug" on a Linux agent. Neither the skill, `_template.md`, nor the spec's D1
+  grammar states the collation. Fix = pin byte/ordinal order in both twins (`LC_ALL=C sort`,
+  `[StringComparer]::Ordinal`) **and** state it wherever the grammar is stated.
+- **F4 (P3 — locked-spec omissions, D4/D9).** The CLAUDE.md "What We've Learned" section got
+  no wiki boundary sentence, and the "boundary table to the wiki docs" (D4: LEARNINGS.md =
+  chronological history + declined-recipe registry vs wiki = current scoped verifiable claims)
+  was never shipped anywhere. Only the `/docs-sync` step-3 promotion nudge landed.
+- **F5 (P3 — test gap).** `SessionStartWiki.Tests.ps1` asserts the Copilot-JSON
+  `additionalContext` delivery for the **.ps1 hook only**; the `.sh` twin's Copilot shape is
+  untested (the exact class the D3 insertion-point trap warns about).
+
+**Observation (log only, no action without a decision).** The locked D6 claim "one-line
+descriptions have negligible prose false-positive risk" is empirically shaky for `instead of`:
+a benign description "Prefer ConfigureAwait(false) instead of blocking waits…" hard-FAILs as an
+injection marker (observed). Design is locked — revisit only on consumer evidence.
+
+**Do:** fix F1–F3 in `src/core/scripts/wiki-check.{ps1,sh}` (+ have docs-sync-check pass the
+root explicitly), F4 in `src/core/CLAUDE.md` + wiki docs, F5 in the test file; red-test F1–F3
+classes where representable; rebuild ×3; ship as v0.27.1 via release.ps1.
+
+**Not:** relitigating the locked injection-marker list; duplicate-INDEX-line detection (PR
+review covers it); any RAG/decay scope creep.
 
 ---
 
