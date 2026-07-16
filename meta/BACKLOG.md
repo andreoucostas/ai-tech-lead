@@ -279,36 +279,6 @@ sanity-check each report's verbosity against the reviewer profile — output lea
 where it doesn't cost the plain-engineering explanations the profile requires (WSD-013). No
 standalone "output leanness" backlog item exists, by decision.
 
-### B-22 · Headless `/adopt` — **IMPLEMENTED + VERIFIED 2026-07-16; PENDING v0.29.0 release (`release.ps1 -Version 0.29.0`)**
-**Effort:** L · **P0 design complete 2026-07-06** (WSD-014) · **Invariants:** #1 #3 #5 #7
-
-> **Implementation done this session (not yet shipped).** `adopt.md` ×3 gained a normative
-> `## Headless mode` section (per-gate override table, stage-don't-apply, restricted tool surface,
-> marker/guard lifecycle, embedded-bootstrap headless propagation); `bootstrap.md` ×3 Phase 3d-bis
-> auto-takes "skip all — mark as unverified" under headless (HIGH-2 fix); `adopt.prompt.md` (core)
-> documents the `--headless` directive; `install.{sh,ps1}` twins + marker `nextStep` offer the
-> headless entry alongside the developer path. The pre-merge spec's "single `src/core` edit"
-> assumption was stale — `adopt.md`/`bootstrap.md` are stack whole-file overrides (×3), only the
-> prompt wrapper + installers are core. All gates green (compose ×3, validate-dist ×3, meta suite
-> incl. InstallerContract 12/12, dotnet dist hook suite). Changelog entries drafted (root 0.29.0
-> Unreleased; three consumer `## 0.29.0`). **STOPPED before `release.ps1`** — awaiting the ship
-> go/no-go (high-stakes: prompt-injection boundary). On ship, move this entry to the Done section.
-> See `meta/LEARNINGS.md` 2026-07-16 (B-22) for the codex-bypass-authorization deviation.
-
-> **Design LOCKED — do not re-derive.** Full spec (adversarially critiqued — verdict RETHINK,
-> resolved as **Path A**; findings folded): **`.claude/plans/2026-07-06-b22-headless-adopt-design.md`**;
-> decision record **WSD-014**. Implement **post-merge, ≥ v0.28.0**, as single `src/core` edits;
-> **depends on B-21 D1** (sequence with or before). Frozen under WSD-012 until the merge.
-
-Agent-runnable, non-interactive adoption. The critique proved the non-negotiable prompt-injection
-boundary (constraint 2) forbids auto-merging untrusted content into `CLAUDE.md`; the maintainer
-chose **Path A** — headless **prepares** adoption autonomously (branch, archive, provenance +
-adversarial screen, impact baseline) and **stages** every proposed CLAUDE.md/TECH_DEBT merge for a
-**human to apply at PR review**. Invocation reuses the read-and-execute-the-workflow prompt pattern
-(`--headless` directive; both Claude Code + Copilot CLI; `disable-model-invocation` stays). Embedded
-Phase-7 `/bootstrap` runs headlessly (3d-bis → all hazards `[UNVERIFIED]`). Composes with B-21 D1.
-The remaining backlog work is the implementation (L).
-
 ### B-23 · Evals as a release gate
 **Effort:** M
 `tests/evals/run_evals.py` has never gated a release. Wire `release.ps1` to *prompt* to run it
@@ -431,6 +401,30 @@ A wrong pin is consumer-visible: verify on a live Copilot surface before shippin
   freshness; validate-dist ×3; dotnet dist hook suite 0 failures across 10 files (TwinParity 40/40).
   Released via `release.ps1`. **B-22 (headless `/adopt`) is now unblocked** (its hard dependency
   B-21 D1 shipped).
+
+- **B-22 (implementation)** — shipped **v0.29.0** (2026-07-16). Implemented the LOCKED WSD-014
+  (Path A) design (`.claude/plans/2026-07-06-b22-headless-adopt-design.md`). Headless `/adopt`
+  **prepares** adoption autonomously (auto-branch, archive, provenance + adversarial screen,
+  impact baseline) and **stages** every `CLAUDE.md`/`TECH_DEBT.md` merge for a human to apply at
+  PR review — the prompt-injection boundary is held by stage-don't-apply + quarantine-exclusion +
+  a restricted tool surface, not by `disable-model-invocation` (a prompt wrapper ignores that
+  anyway, so the boundary holds on the Copilot leg too). `adopt.md` ×3 gained a normative
+  `## Headless mode` section (per-gate override table, restricted tool surface, marker/guard
+  lifecycle, embedded-bootstrap headless propagation); `bootstrap.md` ×3 Phase 3d-bis auto-takes
+  "skip all — mark as unverified" under headless; `adopt.prompt.md` (core) documents the
+  `--headless` directive; `install.{sh,ps1}` twins + marker `nextStep` offer the headless entry
+  alongside the developer path. **Structural correction** (same class as B-21's): the pre-merge
+  spec's "single `src/core` edit" assumption was stale — `adopt.md`/`bootstrap.md` are stack
+  whole-file overrides (×3), only the prompt wrapper + installers are core.
+  **Deviation** (see `meta/LEARNINGS.md` 2026-07-16, B-22): the plan was to drive codex
+  (gpt-5.6-sol) with `--dangerously-bypass-approvals-and-sandbox` as in B-32/B-21, but a
+  relayed/cross-session authorization doesn't clear the bypass gate for a nested codex — the
+  reviewer implemented directly instead (same edits, same review + gate verification). **Verified:**
+  compose ×3 + `git status dist/` self-consistent (15 expected files); `validate-dist` ×3 exit 0
+  (markers, template-checks/AGENTS mirror, no-meta-leak, no-dead-instruction); meta suite 0
+  failures incl. `InstallerContract` 12/12 (both modes × both twins × 3 dists) and generated
+  consumer marker JSON valid on both twins; dotnet dist hook suite 0 failures. Released via
+  `release.ps1`, all gates green, pushed.
 
 - **B-37** — shipped **v0.27.1** (2026-07-16). Post-ship review of v0.27.0 (B-27 team wiki
   memory) against the locked WSD-010 spec found six defects, all fixed: GNU-only `date -d`

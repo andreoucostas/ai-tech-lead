@@ -183,8 +183,9 @@ user. Generated `dist/` changes belong in the same commit as the `src/` change t
 
 ## Status
 
-**B-21 (reviewer-profile systemic fixes) shipped as v0.28.0** (2026-07-16). **Next: B-22
-(headless `/adopt`, Path A — its hard dependency B-21 D1 is now shipped)** — see `meta/BACKLOG.md`.
+**B-22 (headless `/adopt`, Path A) shipped as v0.29.0** (2026-07-16). **Next: B-35** (derive,
+don't assume — the framework pushes EF Core on non-EF backends; design LOCKED, WSD-020, the sole
+open P2 item) — see `meta/BACKLOG.md`.
 
 Gotcha: `scripts/fidelity-check.{ps1,sh}` still exist but are **no longer wired to CI** — they are
 manual re-audit tools against the `pre-restructure` tag, not gates.
