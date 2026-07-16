@@ -86,9 +86,8 @@ leave changes uncommitted.
 
 ## Status
 
-**B-35 (derive, don't assume) shipped as v0.29.1** (2026-07-16) — no open P2 items remain.
-**Next: B-38** (`release.ps1` README-stamp idempotency, first in the P3 sequence) — see
-`meta/BACKLOG.md`.
+**B-38 (`release.ps1` README-stamp idempotency) done 2026-07-16** (meta-only, no version). **Next:
+B-39** (gate-battery parallelization, phase 1) — see `meta/BACKLOG.md`.
 
 Gotcha: `scripts/fidelity-check.{ps1,sh}` still exist but are **no longer wired to CI** — they are
 manual re-audit tools against the `pre-restructure` tag, not gates.

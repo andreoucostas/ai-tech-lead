@@ -49,42 +49,8 @@ the enforcement matrix gained the three missing capability rows. **B-35 shipped 
 
 **B-12 was already resolved — see the Done section.** No open P3 items remain from the audit;
 post-audit P3 item B-29 (haiku adequacy evidence) is under "Known deferred work" (its sibling
-B-30 shipped in v0.25.4). **B-34 and B-36 (below, added 2026-07-15) plus B-38 and B-39 (added
-2026-07-16) are the open P3 items.**
-
-### B-38 · release.ps1 is not re-runnable after a refused release (README stamp idempotency)
-**Effort:** S · **Invariants:** #7 (process only — meta script, PS-only by decision, no shipped
-behavior) · added 2026-07-16 (hit twice during the v0.27.1 release; recipe in `meta/LEARNINGS.md`
-2026-07-16 §2)
-
-**Problem.** `release.ps1`'s README version stamp (`.claude/scripts/release.ps1` ~line 63)
-FATALs when the regex replace changes nothing, to protect against the line being reworded. But
-`[regex]::Replace` also changes nothing when the line exists and **already carries the target
-version** — which is exactly the state a *refused* release leaves behind (stamping happens in
-step 2, gates run in step 4). So the natural workflow "gate fails → fix the cause → re-run the
-same command" dies with a misleading `FATAL: README.md has no 'Current shipped version' line`,
-and the maintainer must hand-revert the README line first. Cost two extra runs on 2026-07-16
-(the refusal itself was legitimate — `no-meta-leak` caught a tracking id in a shipped test).
-
-**Do (plan).**
-1. Separate "line missing" from "line already stamped": `[regex]::Match` the version-line
-   pattern first — FATAL **only** when there is no match (reword protection stays); when the
-   matched version already equals `$Version`, skip the write and print
-   `README already stamped $Version (retry after a refused release).`; otherwise replace+write
-   as today.
-2. Audit the remaining stamp steps for the same class — they are already idempotent (CHANGELOG
-   `Unreleased` stamp is conditional; CLAUDE.md/framework-version.json replaces converge; step 5
-   already exits cleanly on "nothing to commit") — assert that in the PR description, don't
-   restructure them.
-3. On refusal (both `Release REFUSED` exits), print one line telling the maintainer the command
-   is safe to re-run as-is once the gate is fixed.
-4. Verify red/green without a full release: copy README to a temp file and drive the stamp
-   logic's three states (already-stamped → proceeds; older version → rewrites; line deleted →
-   FATAL). Full-loop confirmation happens for free at the next refused release; note the result
-   in LEARNINGS then.
-
-**Not:** making the gates themselves resumable/checkpointed (they're fast enough to just re-run
-— see B-39); touching anything shipped.
+B-30 shipped in v0.25.4). **B-38 shipped 2026-07-16 (meta-only, no version) — see the Done
+section. B-34 and B-36 (added 2026-07-15) plus B-39 (added 2026-07-16) remain open.**
 
 ### B-39 · Gate-battery runtime: parallelize the per-dist hook suites in release.ps1
 **Effort:** S (phase 1) · **Invariants:** #7 (phase 2 only) · added 2026-07-16 (measured on the
@@ -360,6 +326,28 @@ A wrong pin is consumer-visible: verify on a live Copilot surface before shippin
 ---
 
 ## Done
+
+- **B-38** — done **2026-07-16** (meta-only, no version/CHANGELOG — process-only fix to a
+  maintainer script, per invariant #7's scoping to *shipped* behavior). Implemented via a codex
+  (gpt-5.6-sol) implementer under principal-engineer review. `.claude/scripts/release.ps1`'s
+  README version-stamp logic now distinguishes "line missing/reworded" (still FATAL, `exit 2`)
+  from "line already carries the target version" (the state a *refused* release leaves behind,
+  since stamping happens in step 2 but gates run in step 4) — the latter now skips the write and
+  prints `README already stamped $Version (retry after a refused release).` instead of dying with
+  a misleading "no such line" error. All three `Release REFUSED` exit points gained a one-line
+  "safe to re-run as-is" hint. **Review finding fixed before merging:** the codex diff left
+  `Write-Host "Stamped src + root README -> $Version ($today)."` unconditional after the if/else,
+  so the already-stamped branch would have printed both "README already stamped…" and
+  "Stamped src + root README…" together — self-contradictory (claims a stamp that didn't happen).
+  Moved that line inside the `else` so only one message prints per branch. Audited the other three
+  stamp steps (CHANGELOG `Unreleased`, core `CLAUDE.md`, the three `framework-version.json`s) for
+  the same idempotency class — confirmed already-idempotent, left unchanged as the plan specified.
+  **Verified:** PS-AST parse clean, BOM intact; independently re-ran (not just trusted codex's
+  self-report) a standalone harness against temp README copies driving all three states —
+  already-stamped (exit 0, file unchanged, single correct message), older-version (exit 0,
+  rewrites), line-missing (exit 2, FATAL, unchanged) — all green post-fix. Full-loop confirmation
+  (a real refused release hitting this path) deferred to the next occurrence per the plan; note
+  the result in `meta/LEARNINGS.md` then.
 
 - **B-21 (implementation)** — shipped **v0.28.0** (2026-07-16). Implemented the LOCKED WSD-013
   design (`.claude/plans/2026-07-06-b21-reviewer-profile-design.md`) via a codex (gpt-5.6-sol)

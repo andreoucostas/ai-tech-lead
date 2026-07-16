@@ -60,25 +60,39 @@ foreach ($d in $dists) {
 # the only durable fix for a stamp that drifts is to stop maintaining it by hand.
 $rm = Join-Path $repo 'README.md'
 $rt = [System.IO.File]::ReadAllText($rm)
-$stamped = [regex]::Replace($rt, '(Current shipped version is \*\*v)[0-9]+\.[0-9]+\.[0-9]+(\*\*)', "`${1}$Version`${2}", 1)
-if ($stamped -eq $rt) {
+$versionLinePattern = '(Current shipped version is \*\*v)([0-9]+\.[0-9]+\.[0-9]+)(\*\*)'
+$versionLine = [regex]::Match($rt, $versionLinePattern)
+if (-not $versionLine.Success) {
     [Console]::Error.WriteLine("FATAL: README.md has no 'Current shipped version is **vX.Y.Z**' line to stamp -- it was reworded, so the stamp (and DocTruth's check of it) is now blind. Restore the line or update both.")
     exit 2
 }
-[System.IO.File]::WriteAllText($rm, $stamped)
-Write-Host "Stamped src + root README -> $Version ($today)."
+if ($versionLine.Groups[2].Value -eq $Version) {
+    Write-Host "README already stamped $Version (retry after a refused release)."
+} else {
+    $stamped = [regex]::Replace($rt, $versionLinePattern, "`${1}$Version`${3}", 1)
+    [System.IO.File]::WriteAllText($rm, $stamped)
+    Write-Host "Stamped src + root README -> $Version ($today)."
+}
 
 # ---- 3. Rebuild all three dists (the stamp must flow src -> dist in this same commit) ----
 foreach ($d in $dists) {
     & pwsh -NoProfile -File (Join-Path $repo 'scripts/build.ps1') $d
     Gate ($LASTEXITCODE -eq 0) "compose dist/$d"
 }
-if ($fatal) { Write-Host "`nRelease REFUSED: the composer failed. Nothing was committed."; exit 1 }
+if ($fatal) {
+    Write-Host "`nRelease REFUSED: the composer failed. Nothing was committed."
+    Write-Host 'Fix the failing gate, then re-run the same release command as-is.'
+    exit 1
+}
 
 # Re-measure after version stamps have flowed into dist; the baseline lands in the release commit.
 & pwsh -NoProfile -File (Join-Path $repo 'scripts/context-footprint.ps1') -Update
 Gate ($LASTEXITCODE -eq 0) 'update context-footprint baseline'
-if ($fatal) { Write-Host "`nRelease REFUSED: context-footprint measurement failed. Nothing was committed."; exit 1 }
+if ($fatal) {
+    Write-Host "`nRelease REFUSED: context-footprint measurement failed. Nothing was committed."
+    Write-Host 'Fix the failing gate, then re-run the same release command as-is.'
+    exit 1
+}
 
 # ---- 4. Deterministic gates: validate-dist + hook suite per dist, then the meta suite ----
 foreach ($d in $dists) {
@@ -90,7 +104,11 @@ foreach ($d in $dists) {
 & pwsh -NoProfile -File (Join-Path $repo '.claude/hooks/tests/Invoke-HookTests.ps1')
 Gate ($LASTEXITCODE -eq 0) 'meta-hook test suite'
 
-if ($fatal) { Write-Host "`nRelease REFUSED: fix the failing gate(s) and re-run. Nothing was committed."; exit 1 }
+if ($fatal) {
+    Write-Host "`nRelease REFUSED: fix the failing gate(s) and re-run. Nothing was committed."
+    Write-Host 'Once fixed, re-run the same release command as-is.'
+    exit 1
+}
 
 # ---- 5. Commit + push ----
 git -C $repo add -A
