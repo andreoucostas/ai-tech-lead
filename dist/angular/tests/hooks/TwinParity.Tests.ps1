@@ -10,7 +10,7 @@ $bash    = Get-BashPath
 
 Reset-Tests
 
-# --- Deep guard parity: identical decision from .ps1 and .sh, both surfaces ---
+# --- Deep guard parity: identical decision and rendered streams from .ps1 and .sh, both surfaces ---
 if (-not $bash) {
     Skip 'guard twin parity (all cases)' 'no bash found -- cannot run .sh twin on this host'
 } else {
@@ -18,9 +18,16 @@ if (-not $bash) {
         foreach ($surface in 'Claude','Copilot') {
             $evt = if ($surface -eq 'Claude') { New-ClaudeEvent $case.f $case.c } else { New-CopilotEvent $case.f $case.c }
             It "guard twins agree ($surface): $($case.n)" {
-                $dps = Get-Decision (Invoke-Hook $guardPs $evt)
-                $dsh = Get-Decision (Invoke-Hook $guardSh $evt)
+                $rps = Invoke-Hook $guardPs $evt
+                $rsh = Invoke-Hook $guardSh $evt
+                $dps = Get-Decision $rps
+                $dsh = Get-Decision $rsh
                 Assert ($dps -eq $dsh) "guard.ps1 -> $dps but guard.sh -> $dsh"
+                Assert ($rps.Exit -eq $rsh.Exit) "guard.ps1 exit $($rps.Exit) but guard.sh exit $($rsh.Exit)"
+                Assert ([string]::Equals("$($rps.Out)", "$($rsh.Out)", [StringComparison]::Ordinal)) `
+                    "stdout differs: guard.ps1='$($rps.Out)' guard.sh='$($rsh.Out)'"
+                Assert ([string]::Equals("$($rps.Err)", "$($rsh.Err)", [StringComparison]::Ordinal)) `
+                    "stderr differs: guard.ps1='$($rps.Err)' guard.sh='$($rsh.Err)'"
             }
         }
     }

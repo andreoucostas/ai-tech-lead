@@ -11,6 +11,14 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.30.1 (2026-07-16)
+
+### Fixed — B-34: rendered-output parity for hook twins
+
+- Guard messages and Copilot deny JSON now render byte-identically from the PowerShell and bash
+  twins. Audit-trail was confirmed to have no model-visible output; its PowerShell comments were
+  aligned to the bash house style as a Boy Scout cleanup.
+
 ## 0.30.0 (2026-07-16)
 
 ### Changed — B-36/WSD-020: testing strategy for repos with no suite

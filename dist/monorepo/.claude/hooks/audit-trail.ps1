@@ -1,8 +1,8 @@
-﻿# PostToolUse hook -- append every AI-assisted file write to .claude\ai-audit.log.
+﻿# PostToolUse hook — append every AI-assisted file write to .claude\ai-audit.log.
 # Format: ISO-8601-UTC TAB git-branch TAB file-path
 # Tool surfaces handled:
-#   Claude Code (CLI + VS Code extension)  -- tool_name in {Write,Edit}; path at tool_input.file_path
-#   GitHub Copilot (cloud agent + CLI)     -- toolName  in {edit,create}; path at toolArgs.filePath
+#   Claude Code (CLI + VS Code extension)  — tool_name in {Write,Edit}; path at tool_input.file_path
+#   GitHub Copilot (cloud agent + CLI)     — toolName  in {edit,create}; path at toolArgs.filePath
 
 $ErrorActionPreference = 'SilentlyContinue'
 
@@ -29,10 +29,10 @@ if (-not [string]::IsNullOrEmpty($inputJson)) {
             elseif ($ta.path) { $filePath = [string]$ta.path }
         }
 
-        # Self-filter -- Copilot's hooks.json has no matcher, so gate here. Mirror guard.*: accept
+        # Self-filter — Copilot's hooks.json has no matcher, so gate here. Mirror guard.*: accept
         # known write tools (Claude Write/Edit, Copilot CLI edit/create) OR any tool carrying a file
         # path + content. The path+content arm covers VS Code agent mode's camelCase write tools
-        # (str_replace/insert/create), which can't be enumerated -- without it the audit log silently
+        # (str_replace/insert/create), which can't be enumerated — without it the audit log silently
         # under-records that surface; requiring content (not just a path) keeps read-style tools out.
         $contentParts = @($obj.tool_input.content, $obj.tool_input.new_string, $obj.tool_input.newString,
                           $obj.tool_input.file_text, $obj.tool_input.new_str, $obj.tool_input.text,
@@ -59,7 +59,7 @@ $timestamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
 # Normalise to a repo-relative path so the committed log stays portable and does not leak
 # local absolute paths (usernames, drive layout). The hook's cwd is the repo root.
 # Note: $ErrorActionPreference is SilentlyContinue, under which Resolve-Path on a missing
-# path returns $null *without throwing* -- force a terminating error and guard the result
+# path returns $null *without throwing* — force a terminating error and guard the result
 # so a non-existent/cross-drive path falls back to the original rather than logging blank.
 $rel = $filePath
 try {

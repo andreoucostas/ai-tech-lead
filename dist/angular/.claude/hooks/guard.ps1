@@ -50,11 +50,11 @@ if ($fp -match '(?i)\.spec\.(ts|tsx|js|jsx|mts|cts)$') {
 
 $secret = $null
 if     ($content -match '-----BEGIN [A-Z ]*PRIVATE KEY-----')   { $secret = 'a private key block' }
-elseif ($content -match 'AKIA[0-9A-Z]{16}')                     { $secret = 'an AWS access key id (AKIA...)' }
-elseif ($content -match 'ghp_[A-Za-z0-9]{36}')                  { $secret = 'a GitHub token (ghp_...)' }
-elseif ($content -match 'xox[baprs]-[A-Za-z0-9-]{10,}')         { $secret = 'a Slack token (xox...)' }
-elseif ($content -match 'sk-[A-Za-z0-9_-]{20,}')                { $secret = 'an API secret key (sk-...)' }
-elseif ($content -match 'AIza[0-9A-Za-z_-]{35}')               { $secret = 'a Google API key (AIza...)' }
+elseif ($content -match 'AKIA[0-9A-Z]{16}')                     { $secret = 'an AWS access key id (AKIA…)' }
+elseif ($content -match 'ghp_[A-Za-z0-9]{36}')                  { $secret = 'a GitHub token (ghp_…)' }
+elseif ($content -match 'xox[baprs]-[A-Za-z0-9-]{10,}')         { $secret = 'a Slack token (xox…)' }
+elseif ($content -match 'sk-[A-Za-z0-9_-]{20,}')                { $secret = 'an API secret key (sk-…)' }
+elseif ($content -match 'AIza[0-9A-Za-z_-]{35}')               { $secret = 'a Google API key (AIza…)' }
 if ($secret) { $reasons += "contains $secret — secrets must not be committed; use user-secrets / env vars / a vault" }
 
 if ($fp -notmatch '(?i)(test|spec|Development|example|sample|mock|fixture)') {
@@ -83,9 +83,9 @@ if ($tool -ceq 'Edit' -or $tool -ceq 'Write' -or $tool -eq '') {
     exit 2
 }
 
-@{
+[ordered]@{
     permissionDecision       = 'deny'
     permissionDecisionReason = $msg
-    hookSpecificOutput       = @{ permissionDecision = 'deny'; permissionDecisionReason = $msg }
+    hookSpecificOutput       = [ordered]@{ permissionDecision = 'deny'; permissionDecisionReason = $msg }
 } | ConvertTo-Json -Compress -Depth 6
 exit 0

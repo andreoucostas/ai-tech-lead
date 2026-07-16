@@ -49,30 +49,8 @@ the enforcement matrix gained the three missing capability rows. **B-35 shipped 
 
 **B-12 was already resolved — see the Done section.** No open P3 items remain from the audit;
 post-audit P3 item B-29 (haiku adequacy evidence) is under "Known deferred work" (its sibling
-B-30 shipped in v0.25.4). **B-38, B-39 (both phases), and B-36 all shipped 2026-07-16 — see the
-Done section. B-34 (added 2026-07-15) is the only open P3 item.**
-
-### B-34 · Rendered-output twin parity: guard + audit-trail (the hooks B-32's fixtures don't cover)
-**Effort:** S–M · **Invariants:** #1 #3 #5 #7 · added 2026-07-15 (found during B-32 implementation)
-
-**Problem.** The B-32 fixture work proved the `.ps1` hook twins render *different model-visible
-text* than their `.sh` twins — the `.ps1` side was written ASCII-safe (`WARNING:`/`--`) while the
-`.sh` side uses the house style (`⚠`/`—`/`→`). Invariant #3 promises identical behavior; the hook
-suites test decisions/robustness, never rendered content (exactly the M5 gap named in the B-32
-spec). session-start + route-prompt were aligned and gated in v0.26.5 (B-32's twin-render fixtures
-now FAIL on drift there). **guard and audit-trail remain unswept**: grep evidence 2026-07-15 —
-`guard.sh` 16 unicode-bearing lines vs `guard.ps1` 11; `audit-trail.sh` 4 vs `.ps1` 0 (some are
-comments; nobody has diffed the *rendered* output).
-
-**Do:** render-diff each remaining twin pair (`guard`, `audit-trail`, and the per-stack
-`post-write` files under `src/stacks/*/files/`) across their existing test fixtures
-(`tests/hooks/_fixtures/` patterns), byte-compare stdout/stderr per surface shape [#5]. Align
-divergent rendered strings to the `.sh` canonical, sweep stack snippets/siblings [#1], update any
-tests pinning old strings, rebuild dists. Ship via release.ps1 [#7]. Consider extending the B-32
-fixture set to these hooks in the same pass (they're cheap once fixtures exist — but note guard's
-output is *stderr + JSON deny shapes*, not plain rails, so the fixture capture differs).
-
-**Not:** wording changes; the `.sh` content is canonical, this is formatting-parity only.
+B-30 shipped in v0.25.4). **B-38, B-39 (both phases), B-36, and B-34 all shipped 2026-07-16 — see
+the Done section. No open P3 items remain.**
 
 ### B-33 · Make the archived legacy repos route an *agent* to the merged repo — **DONE 2026-07-12, see Done section**
 
@@ -269,6 +247,28 @@ A wrong pin is consumer-visible: verify on a live Copilot surface before shippin
 ---
 
 ## Done
+
+- **B-34** — shipped **v0.30.1** (2026-07-16). Implemented via a codex (gpt-5.6-sol) implementer
+  under principal-engineer review, closing the render-parity gap B-32 left open on `guard` and
+  `audit-trail`. **`guard`**: aligned the PowerShell twin's secret-type labels from ASCII `...` to
+  the canonical ellipsis `…` (matching `guard.sh` exactly — e.g. `AKIA…` not `AKIA...`), and
+  switched the Copilot deny-JSON construction from a plain `@{}` hashtable to `[ordered]@{}` so key
+  order is deterministic and matches the bash twin's fixed `printf` format
+  (`permissionDecision`/`permissionDecisionReason`/`hookSpecificOutput`) byte-for-byte — without
+  `[ordered]`, PowerShell hashtable enumeration order is hash-based and not guaranteed to match.
+  **`audit-trail`**: confirmed it has **no model-visible output at all** (both twins produce empty
+  stdout/stderr on a real write event) — its drift was comment-only (`--`/`—`), fixed as a Boy
+  Scout pass rather than a behavior change. **Test coverage**: extended the existing
+  `guard-cases.ps1`-driven `TwinParity.Tests.ps1` block (not a new fixture table) to assert ordinal
+  byte-equality of both stdout and stderr across all 16 guard cases × both surfaces (Claude/
+  Copilot), on top of the pre-existing decision-only check. **Red-tested for real**: transiently
+  reverted the `AKIA…` fix back to `AKIA...`, confirmed the new assertion caught it on both
+  surfaces (`RED_EXIT=2`), then restored and reran clean. Left `post-write`/`session-start`/
+  `route-prompt` untouched (out of scope — the backlog's "consider extending to post-write" note
+  was optional; the primary deliverable came first and codex correctly didn't let it crowd that
+  out). **Verified:** build ×3 + freshness; `validate-dist` ×3 exit 0; all three dists' hook suites
+  0 failures across two independent full runs; PS-AST parse + BOM independently spot-checked (not
+  just trusted codex's report). Released via `release.ps1`, all gates green, pushed.
 
 - **B-36** — shipped **v0.30.0** (2026-07-16). Implemented the LOCKED WSD-020 design
   (`.claude/plans/2026-07-15-b36-testing-strategy-design.md`) via a codex (gpt-5.6-sol)

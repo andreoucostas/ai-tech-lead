@@ -4,6 +4,13 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.30.1 — 2026-07-16
+
+### Fixed — hook message rendering parity
+
+- Hook messages now render identically whether your team runs PowerShell or bash hooks — no
+  functional change.
+
 ## 0.30.0 — 2026-07-16
 
 ### Changed — testing strategy for repos with no suite
