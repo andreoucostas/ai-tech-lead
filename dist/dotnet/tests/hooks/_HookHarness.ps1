@@ -43,7 +43,14 @@ function Get-BashPath {
 function Invoke-Hook {
     param([Parameter(Mandatory)][string]$Path, [string]$Json = '')
     $ef = [IO.Path]::GetTempFileName()
+    # PowerShell decodes a native child's stdout bytes using [Console]::OutputEncoding. On a non-UTF-8
+    # console code page (e.g. 437/850) the hooks' UTF-8 output -- em dashes, ⚠/🔴 -- arrives mangled and
+    # -match silently misses. Pin UTF-8 (no BOM) for the capture, restore after (try/catch guards a
+    # console-less host where the setter throws). This is the capture-leg twin of the hooks' own
+    # IsOutputRedirected guard.
+    $prevOut = [Console]::OutputEncoding; $encChanged = $false
     try {
+        try { [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false); $encChanged = $true } catch { }
         if ($Path -match '\.ps1$') {
             $out = $Json | & (Get-PsExe) -NoProfile -ExecutionPolicy Bypass -File $Path 2>$ef
         } else {
@@ -54,7 +61,10 @@ function Invoke-Hook {
         $code = $LASTEXITCODE
         $err  = [IO.File]::ReadAllText($ef)
         return [pscustomobject]@{ Exit = $code; Out = ($out -join "`n"); Err = $err }
-    } finally { if (Test-Path -LiteralPath $ef) { [IO.File]::Delete($ef) } }
+    } finally {
+        if ($encChanged) { try { [Console]::OutputEncoding = $prevOut } catch { } }
+        if (Test-Path -LiteralPath $ef) { [IO.File]::Delete($ef) }
+    }
 }
 
 # Normalise a hook result to a decision: BLOCK (Claude exit 2), DENY (Copilot JSON), ALLOW (exit 0,

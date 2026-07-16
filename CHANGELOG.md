@@ -11,6 +11,42 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.27.1 (2026-07-16)
+
+### Fixed — B-37: post-ship review findings on v0.27.0 (team wiki memory)
+
+Post-ship review of `60dd04c` against the locked B-27 spec (WSD-010) found six defects, all
+fixed here. Review/verification: Fable 5; implementers: Opus 4.8 (scripts + tests), Sonnet 5
+(docs). Full evidence in `meta/BACKLOG.md` B-37.
+
+- **F1 (P1)** `wiki-check.sh` used GNU-only `date -d` — the only occurrence in any shipped
+  script — so on BSD/macOS every *valid* `last-verified` FAILed as "invalid last-verified",
+  turning macOS consumer CI red via the `docs-sync-check` chain on the first wiki entry.
+  Replaced with pure-shell calendar validation (rejects 2026-02-30 deterministically on every
+  platform) + a feature-detected 90-day cutoff (GNU `date -d` → BSD `date -v` → skip the
+  staleness WARN); the per-entry staleness check is a lexical YYYY-MM-DD compare.
+- **F2** Both `wiki-check` twins read `$Root` from **stdin** when no argument was given, so an
+  interactive `docs-sync-check` run blocked waiting for a keyboard line (CI survived only via
+  /dev/null stdin). The stdin path is removed: root comes from the argument — `docs-sync-check`
+  now passes it explicitly — or self-anchors to `scripts/..` like `template-checks`.
+- **F3** The sorted-index check was locale-dependent (bare `sort` in .sh vs culture-sensitive
+  `Sort-Object` in .ps1 — glibc UTF-8 locales collate hyphens differently, the B-02 skew
+  class). Pinned to byte/ordinal order in both twins (`LC_ALL=C sort`;
+  `[StringComparer]::Ordinal`); `remember-for-team` step 4 documents the order.
+- **F4** Locked-spec omissions (D4/D9) shipped: the "What We've Learned" boundary sentence in
+  `CLAUDE.md` and the LEARNINGS-vs-wiki boundary table in `docs/wiki/INDEX.md`.
+- **F5** `SessionStartWiki.Tests` now cover the `.sh` hook's Copilot-JSON `additionalContext`
+  delivery (jq/python3-gated, skip otherwise); red tests added for the F1 (non-calendar date)
+  and F3 (hyphen adjacency) defect classes — both run both twins and assert verdict agreement.
+- **F6 (pre-existing, found while verifying)** `_HookHarness.ps1` `Invoke-Hook` decoded child
+  stdout with `[Console]::OutputEncoding`, so the em-dash summary-line assertions failed on any
+  non-UTF-8 console (reproduced under ibm850) — v0.27.0's "hook suites green" was
+  environment-dependent. The capture now pins UTF-8 and restores the prior encoding in
+  `finally` — the harness-side leg of the v0.26.5 rendering fix.
+
+Logged-not-fixed (locked design, revisit only on consumer evidence): the D6 injection-marker
+list hard-FAILs benign prose descriptions containing `instead of` (observation in B-37).
+
 ## 0.27.0 (2026-07-16)
 
 ### Added — B-27 team wiki memory (WSD-010)

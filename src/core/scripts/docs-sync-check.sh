@@ -130,7 +130,9 @@ if [ -f "$here/template-checks.sh" ]; then
   bash "$here/template-checks.sh" || fail "deterministic framework checks failed (see above)."
 fi
 if [ -f "$here/wiki-check.sh" ]; then
-  bash "$here/wiki-check.sh" || fail "team wiki checks failed (see above)."
+  # Pass the repo root explicitly — wiki-check must never read it from stdin here (an interactive
+  # docs-sync-check run would otherwise block waiting for a stdin line).
+  bash "$here/wiki-check.sh" "$(cd "$here/.." && pwd)" || fail "team wiki checks failed (see above)."
 fi
 
 # 7. architecture.html freshness (advisory) — regenerate after editing ARCHITECTURE.md.

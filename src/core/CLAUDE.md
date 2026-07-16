@@ -1,7 +1,7 @@
 <!--
 ai-tech-lead-framework
 <!-- @stack:stamp -->
-  version: 0.27.0
+  version: 0.27.1
   applied: 2026-07-16
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
@@ -199,3 +199,5 @@ At the end of your response, note if:
 ## What We've Learned
 
 Long-form learnings live in [LEARNINGS.md](./LEARNINGS.md). Read it when starting non-trivial work; append to it (don't overwrite) when you discover what works, what causes friction, or what rule needs adjusting.
+
+LEARNINGS.md is an append-only chronological history (plus the declined-recipe registry); the team wiki ([docs/wiki/](./docs/wiki/INDEX.md)) holds current, scoped, individually-verifiable claims with an index — promote a durable LEARNINGS entry to a wiki entry via `remember-for-team`.

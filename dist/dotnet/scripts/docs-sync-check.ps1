@@ -119,7 +119,9 @@ if (Test-Path $tc) {
 }
 $wc = Join-Path $here 'wiki-check.ps1'
 if (Test-Path $wc) {
-    & $psExe -NoProfile -ExecutionPolicy Bypass -File $wc
+    # Pass the repo root explicitly — wiki-check must never read it from stdin here (an interactive
+    # docs-sync-check run would otherwise block waiting for a stdin line).
+    & $psExe -NoProfile -ExecutionPolicy Bypass -File $wc (Split-Path -Parent $here)
     if ($LASTEXITCODE -ne 0) { Fail "team wiki checks failed (see above)." }
 }
 

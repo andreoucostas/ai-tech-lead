@@ -4,6 +4,24 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.27.1 — 2026-07-16
+
+### Fixed — team wiki checks
+- `wiki-check` no longer requires GNU `date`: on macOS build agents, valid `last-verified`
+  dates were previously rejected as invalid, failing `docs-sync-check` as soon as your team
+  had a single wiki entry. Date validity is now checked the same way on every platform.
+- Running `docs-sync-check` interactively no longer stalls waiting for keyboard input —
+  `wiki-check` receives its repo root as an argument instead of reading it from stdin.
+- The wiki index's required sort order is now pinned to plain byte order (ASCII) everywhere,
+  so the same `INDEX.md` cannot pass on one build agent and fail on another whose locale
+  collates hyphens differently. The `remember-for-team` skill now states this order.
+- `CLAUDE.md` ("What We've Learned") and `docs/wiki/INDEX.md` now state what belongs in
+  `LEARNINGS.md` (append-only history) versus the team wiki (current, scoped, individually
+  verifiable claims), and that durable learnings get promoted via `remember-for-team`.
+- Hook tests: the test harness reads hook output as UTF-8 regardless of the console code page
+  (two session-start assertions could fail spuriously on non-UTF-8 Windows consoles), and the
+  bash session-start hook's Copilot delivery of the wiki index is now covered.
+
 ## 0.27.0 — 2026-07-16
 
 ### Added — team wiki memory

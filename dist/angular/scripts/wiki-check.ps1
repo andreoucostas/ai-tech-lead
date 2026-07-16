@@ -1,6 +1,7 @@
 ﻿param([string]$Root)
 $ErrorActionPreference = 'Stop'
-if (-not $Root) { $Root = (($input | Out-String).Trim()) }
+# Root comes from the -Root argument (docs-sync-check passes it) or self-anchors to scripts/.. —
+# never from stdin. Reading stdin here made an interactive docs-sync-check run block on the console.
 if (-not $Root) { $Root = Split-Path $PSScriptRoot -Parent }
 $wiki = Join-Path $Root 'docs/wiki'; $index = Join-Path $wiki 'INDEX.md'; $fails=0
 function Fail($m){$script:fails++;Write-Output "FAIL: $m"}; function Warn($m){Write-Output "WARN: $m"}
@@ -9,7 +10,7 @@ if(-not(Test-Path -LiteralPath $index)){Fail 'docs/wiki/INDEX.md is missing';Wri
 $idx=[IO.File]::ReadAllText($index).TrimStart([char]0xFEFF)-replace"`r",''
 $lines=@($idx -split"`n"|Where-Object{$_ -match'^- \['});$slugs=@()
 foreach($line in $lines){if($line -notmatch'^- \[(gotcha|context|recipe|failed-approach)\] \[([a-z0-9]+(?:-[a-z0-9]+)*)\]\(\./\2\.md\) — (.+)$'){Fail "invalid INDEX line: $line"}else{$slugs+=$Matches[2]};if($line-match$signal){Fail "injection marker in INDEX line: $line"}}
-if(($slugs -join"`n") -ne (($slugs|Sort-Object) -join"`n")){Fail 'INDEX entries are not sorted by slug'}
+$sorted=[string[]]@($slugs);[Array]::Sort($sorted,[StringComparer]::Ordinal);if(($slugs -join"`n") -ne ($sorted -join"`n")){Fail 'INDEX entries are not sorted by slug'}
 $files=@(Get-ChildItem -LiteralPath $wiki -Filter '*.md' -File|Where-Object{$_.Name-notin@('INDEX.md','_template.md')})
 if($files.Count-gt100){Warn "$($files.Count) entries exceeds 100"}
 foreach($s in $slugs){if(-not(Test-Path -LiteralPath (Join-Path $wiki "$s.md"))){Fail "INDEX entry has no file: $s"}}
