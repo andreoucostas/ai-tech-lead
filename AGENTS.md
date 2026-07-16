@@ -86,7 +86,8 @@ leave changes uncommitted.
 
 ## Status
 
-**Next framework work: B-27 (team wiki memory) as v0.27.0** — see `meta/BACKLOG.md`.
+**B-27 (team wiki memory) shipped as v0.27.0** (2026-07-16). **Next: B-21 then B-22 (hard
+dependency: B-22 needs B-21 D1), targeting v0.28.0** — see `meta/BACKLOG.md`.
 
 Gotcha: `scripts/fidelity-check.{ps1,sh}` still exist but are **no longer wired to CI** — they are
 manual re-audit tools against the `pre-restructure` tag, not gates.
