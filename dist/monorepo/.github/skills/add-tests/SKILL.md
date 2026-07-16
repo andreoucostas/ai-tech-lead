@@ -22,6 +22,7 @@ Match `CLAUDE.md > Conventions > Testing` and the Test leanness rules in `CLAUDE
 1. **Find the existing pattern first.** `Grep` for a sibling test to mirror, and reuse what you find — do not introduce parallel test infrastructure (Verification Rule #6, Test leanness #13).
    - **.NET:** a sibling test class — framework (xUnit/NUnit/MSTest), mocking library (NSubstitute/Moq), naming convention, and any base fixtures, builders, or `WebApplicationFactory` subclasses.
    - **Angular:** a sibling `*.spec.ts` — runner (Karma/Jasmine, Jest, or Vitest), `TestBed` setup, `HttpTestingController` usage, component harnesses, and any shared fixtures/builders/HTTP mocks.
+   - If no test project or spec files exist at all for the touched stack, switch to **Suite bootstrap mode** below.
 2. **Decide the level.**
    - **.NET:** Pure logic / branching → unit test against the concrete class. Full HTTP path (routing, model binding, middleware, auth, serialization) → integration test via `WebApplicationFactory<Program>`.
    - **Angular:**
@@ -52,3 +53,16 @@ When the goal is to make untested legacy code *safe to change* (e.g. before `/re
   - **Angular:** `Date.now()`/`new Date()`, `Math.random()`, timers/`setTimeout`, animation timing, real HTTP (fake the clock, flush `HttpTestingController`).
 - **HALT on money- / security-sensitive code.** If it touches `decimal` money, balances, ledgers, idempotency keys, or regulatory figures (.NET), or auth, tokens, sanitisation / `bypassSecurityTrust*`, PII, or monetary values (Angular), STOP before treating any characterization test as a contract: present the captured behavior and ask the developer to confirm it is *correct*, not merely *current*. Pinning a wrong rounding mode, an off-by-one balance, or an insecure behavior as "approved" is a hazard — if confirmed wrong-but-load-bearing, record it in `FRAMEWORK-CONTEXT.md > Known Hazard Areas`.
 - These tests are scaffolding for a safe refactor, not a substitute for behavior-first tests. Once the intended behavior is understood, prefer real behavioral assertions.
+
+---
+
+## Suite bootstrap mode — when a stack has no tests
+
+1. **Confirm before scaffolding.** In one message, ask the developer to confirm the test framework and location. Prefer `CLAUDE.md > Conventions > Testing`. If unbootstrapped, propose xUnit + NSubstitute for .NET; for Angular, inspect `angular.json` and propose the workspace's configured builder and runner (Jasmine/Karma or Jest). This is a real checkpoint — do not create files until they answer.
+2. **Scaffold the minimum.**
+   - **.NET:** create one unit-test project referencing the primary domain/application project and add it with `dotnet sln add`. Only for an HTTP surface, add one `WebApplicationFactory<Program>` fixture; minimal APIs may require `public partial class Program` or `InternalsVisibleTo`.
+   - **Angular:** keep specs colocated and create only the configuration and shared setup needed for `ng test`; add one integration-style fixture only for an HTTP surface.
+   - Add no E2E project, coverage tooling, or extra test layers on day one.
+3. **Wire it so it cannot rot.** Ensure the repo's existing CI/build runs the new tests: .NET `dotnet test`; Angular `ng test --watch=false`. Follow `docs/ci-integration.md`. If no CI exists, flag it and route setup to the `enforce-standards` skill; do not build CI in this task.
+4. **Start risk-first, not coverage-first.** Test in this order: `FRAMEWORK-CONTEXT.md > Known Hazard Areas`; financial-domain invariants from step 5 above when present; critical journeys from `CLAUDE.md > Codebase Context`; then pure domain logic or state transitions with branching. Write only a handful that prove the harness end to end, and apply step 7's red-check to every test.
+5. **Record the remainder honestly.** Add one `TECH_DEBT.md` entry: `Test suite bootstrapped <date>; backfill areas: …`. Do not imply broader coverage. Update `CLAUDE.md > Conventions > Testing` with the real framework, naming, and fixture location, and flag that documentation drift under Agentic Workflow §6.

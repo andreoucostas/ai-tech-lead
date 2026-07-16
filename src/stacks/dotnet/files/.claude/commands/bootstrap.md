@@ -71,6 +71,7 @@ The pass definitions below are the source of truth the subagents read. Do not du
 
 ### A5: Testing
 - Test projects, framework (xUnit/NUnit/MSTest), mocking framework
+- If no test projects exist, state that as this pass's primary finding — do not silently return it as "coverage gaps"
 - Coverage gaps
 - Test quality — behaviour vs implementation
 - Integration tests — `WebApplicationFactory` usage
@@ -163,7 +164,7 @@ Read the existing CLAUDE.md template in the project root. Replace every placehol
 
 - **Codebase Context**: what this app does, users, domain concepts, critical journeys
 - **Repository Structure**: actual project layout with dependency diagram
-- **Conventions**: the rules this codebase actually follows (or should follow), with rationale. Use the subsection structure from `docs/defaults.md` (Architecture, Naming, DI, Data Access, API, Async, Null Handling, Logging, Testing) as a starting checklist; record observed reality, deviating from defaults where the codebase does. The Conventions section must not name a technology the analysis passes did not evidence in this repo. **Delete the `BOOTSTRAP_PENDING` HTML comment and the "_Not yet populated_" placeholder line** when this section is filled in.
+- **Conventions**: the rules this codebase actually follows (or should follow), with rationale. Use the subsection structure from `docs/defaults.md` (Architecture, Naming, DI, Data Access, API, Async, Null Handling, Logging, Testing) as a starting checklist; record observed reality, deviating from defaults where the codebase does. End `Conventions > Testing` with a one-line target test shape for this repo (unit-dense, honeycomb, or another shape from the `docs/defaults.md` heuristic), adapted to what A1–A6 found. The Conventions section must not name a technology the analysis passes did not evidence in this repo. **Delete the `BOOTSTRAP_PENDING` HTML comment and the "_Not yet populated_" placeholder line** when this section is filled in.
 - **Architecture Decisions**: index every significant decision found (intentional or accidental) as a one-line entry here; write the full Decision → Context → Consequences → Review notes to `docs/architecture-decisions.md` (create it if missing). Keeping detail out of CLAUDE.md holds it within the token budget — it loads on nearly every turn.
 - **Common Tasks**: do NOT write recipes inline in CLAUDE.md. Instead, audit `.claude/skills/` against this codebase: keep a default skill if its recipe matches reality (adjust steps where they don't); add new skills under `.claude/skills/<name>/SKILL.md` for project-specific recipes (each with `name` + `description` frontmatter); delete defaults that don't apply. Update the Common Tasks bullet list in CLAUDE.md to match the final skill set — one terse line per skill, no USE-FOR/DO-NOT-USE-FOR trigger blocks.
 
@@ -217,6 +218,8 @@ Severity: Critical / High / Medium / Low
 Effort: S (< 1hr) / M (half day) / L (1-2 days) / XL (needs spike)
 
 Sort by severity then effort. One `## DEBT-NNN` block per item.
+
+If A5 found no test projects, write one Severity-High Testing entry whose recommended fix explicitly names the `add-tests` skill's suite-bootstrap mode. In Phase 4, surface that entry in the top 3 quick wins.
 
 ### 3c: AGENTS.md (generated full mirror)
 
@@ -314,7 +317,7 @@ Run `git diff CLAUDE.md` and `git diff TECH_DEBT.md` to show the user exactly wh
 Then output:
 - Number of findings per severity
 - Top 3 architectural risks
-- Top 3 quick wins
+- Top 3 quick wins (including the Severity-High no-test-suite entry when A5 found no test projects)
 - Files generated/modified
 - **New project-specific skills discovered (A8) — review these in the PR diff**: for each skill written from the A8 discovery pass, list: skill name, one-line trigger phrase (what operation it scaffolds, in plain engineering language — e.g. "a recipe for adding a new tenant"), pinned exemplar file (or "(no exemplar — abstract only)"), and the why-tribal note. Omit this bullet entirely if A8 returned no candidates.
 - **FRAMEWORK-CONTEXT.md sections drafted from code (3d-ter)**: one line per section — what was found (e.g. "Cross-Service Communication: two named HttpClients with Polly retry, RabbitMQ via MassTransit") or the verified negative. Remind the user: these describe what the code shows; anything about *other* repos and services still needs a maintainer to fill in (the drafted comment in each section says exactly that).

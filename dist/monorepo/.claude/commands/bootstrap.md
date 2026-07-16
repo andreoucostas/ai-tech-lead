@@ -82,6 +82,7 @@ The pass definitions below are the source of truth the subagents read. Do not du
 
 #### A5: Testing
 - Test projects, framework (xUnit/NUnit/MSTest), mocking framework
+- If no test projects exist, state that as this pass's primary finding — do not silently return it as "coverage gaps"
 - Coverage gaps
 - Test quality — behaviour vs implementation
 - Integration tests — `WebApplicationFactory` usage
@@ -163,6 +164,7 @@ If signals found, identify and report:
 - `package.json` — outdated/deprecated/redundant
 - Bundle size — obvious bloat
 - Test framework (Karma/Jasmine, Jest, Vitest, Cypress, Playwright)
+- If no spec files exist, state that as this pass's primary finding — do not silently return it as "coverage gaps"
 - Coverage gaps
 - Test quality — behaviour vs implementation
 - `any` usage; strict null checks
@@ -232,7 +234,7 @@ Read the existing CLAUDE.md template in the project root. Replace every placehol
 
 - **Codebase Context**: what this app does, users, domain concepts, critical journeys (both the API and the frontend).
 - **Repository Structure**: actual layout with dependency diagram — .NET project layout and Angular folder/module layout, and how the two connect (API base URL, shared contracts).
-- **Conventions**: the rules this codebase actually follows (or should follow), with rationale. Use the subsection structure from `docs/defaults.md` as a starting checklist — .NET (Architecture, Naming, DI, Data Access, API, Async, Null Handling, Logging, Testing) and Angular (Angular Version, Architecture, Component Design, State Management, RxJS, API/HTTP, Typing, Testing) — recording observed reality and deviating from defaults where the codebase does. The Conventions section must not name a technology the analysis passes did not evidence in this repo. If Angular version is below 17, adjust conventions to match what's available. **Delete the `BOOTSTRAP_PENDING` HTML comment and the "_Not yet populated_" placeholder line** when this section is filled in.
+- **Conventions**: the rules this codebase actually follows (or should follow), with rationale. Use the subsection structure from `docs/defaults.md` as a starting checklist — .NET (Architecture, Naming, DI, Data Access, API, Async, Null Handling, Logging, Testing) and Angular (Angular Version, Architecture, Component Design, State Management, RxJS, API/HTTP, Typing, Testing) — recording observed reality and deviating from defaults where the codebase does. End each stack's `Conventions > Testing` subsection with a one-line target test shape (unit-dense, honeycomb, trophy-shaped, or another shape from the `docs/defaults.md` heuristic), adapted to what that stack's A1–A6 passes found. The Conventions section must not name a technology the analysis passes did not evidence in this repo. If Angular version is below 17, adjust conventions to match what's available. **Delete the `BOOTSTRAP_PENDING` HTML comment and the "_Not yet populated_" placeholder line** when this section is filled in.
 
   **Mixed-repo, per-stack subsections:** where a CLAUDE.md section carries `### .NET` / `### Angular` subsections, populate each subsection from **that stack's own directories only**, and cite exemplar file paths from the correct stack — never a `.cs` path under the Angular subsection, or a `.ts` path under the .NET one.
 - **Architecture Decisions**: index every significant decision found (intentional or accidental) as a one-line entry here; write the full Decision → Context → Consequences → Review notes to `docs/architecture-decisions.md` (create it if missing). Keeping detail out of CLAUDE.md holds it within the token budget — it loads on nearly every turn.
@@ -288,6 +290,8 @@ Severity: Critical / High / Medium / Low
 Effort: S (< 1hr) / M (half day) / L (1-2 days) / XL (needs spike)
 
 Sort by severity then effort. One `## DEBT-NNN` block per item.
+
+If either testing pass found no tests, write one Severity-High Testing entry per affected stack whose recommended fix explicitly names the `add-tests` skill's suite-bootstrap mode. In Phase 4, surface each such entry in the top 3 quick wins.
 
 ### 3c: AGENTS.md (generated full mirror)
 
@@ -389,7 +393,7 @@ Run `git diff CLAUDE.md` and `git diff TECH_DEBT.md` to show the user exactly wh
 Then output:
 - Number of findings per severity
 - Top 3 architectural risks
-- Top 3 quick wins
+- Top 3 quick wins (including each Severity-High no-test-suite entry when a testing pass found no tests)
 - Files generated/modified
 - **New project-specific skills discovered (A8/.NET · A7/Angular) — review these in the PR diff**: for each skill written from the skill-discovery pass, list: skill name, one-line trigger phrase (what operation it scaffolds, in plain engineering language — e.g. "a recipe for adding a new tenant" or "a recipe for adding a new feature module with routing and a permission guard"), which stack it belongs to, pinned exemplar file (or "(no exemplar — abstract only)"), and the why-tribal note. Omit this bullet entirely if the pass returned no candidates.
 - **FRAMEWORK-CONTEXT.md sections drafted from code (3d-ter)**: one line per section — what was found (e.g. "Cross-Service Communication: two named HttpClients with Polly retry on the API, auth + correlation-ID interceptors on the frontend") or the verified negative. Remind the user: these describe what the code shows; anything about *other* repos and services still needs a maintainer to fill in (the drafted comment in each section says exactly that).

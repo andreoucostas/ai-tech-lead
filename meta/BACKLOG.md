@@ -49,55 +49,8 @@ the enforcement matrix gained the three missing capability rows. **B-35 shipped 
 
 **B-12 was already resolved — see the Done section.** No open P3 items remain from the audit;
 post-audit P3 item B-29 (haiku adequacy evidence) is under "Known deferred work" (its sibling
-B-30 shipped in v0.25.4). **B-38 shipped 2026-07-16 (meta-only, no version) — see the Done
-section. B-39 phase 1 also shipped 2026-07-16 (meta-only, no version) — see the Done section;
-phase 2 (below) remains open. B-34 and B-36 (added 2026-07-15) remain open.**
-
-### B-39 (phase 2) · Parallelize `Invoke-HookTests.ps1`'s internal test files — optional, shipped change, needs a version
-**Effort:** S · **Invariants:** #7 · added 2026-07-16 (measured on the maintainer box, pwsh 7,
-during the B-37 session). Phase 1 (parallelizing `release.ps1`'s three per-dist gate pairs)
-shipped 2026-07-16 — see the Done section for the measured before/after and the red-test.
-
-**Evidence (2026-07-16).** Serial per-dist hook suite ≈ 105s (dotnet 106s / angular 104s /
-monorepo 105s). Per-file hot spots (dotnet): `TwinParity` 44s (40 tests), `WikiCheck` 26s
-(13 tests — each runs both twins), `Guard` 15s (34 tests). The cost is child `pwsh`/`bash`
-**process spawns per test** — that is by design (the spawned child *is* the honest test surface;
-do not in-process it) — so the win is concurrency, not per-test surgery.
-
-**Do (optional, shipped change, needs a version).** Teach the shipped
-`tests/hooks/Invoke-HookTests.ps1` runner to execute its `*.Tests.ps1` files as bounded
-parallel **child processes** (cap ~4). Per-dist wall ≈ 105 s → ~45 s (capped by TwinParity),
-and consumer CI gets the same win. Constraint discovered in B-37: `_HookHarness.ps1`'s
-`Invoke-Hook` mutates process-global `[Console]::OutputEncoding`, so in-process runspace
-parallelism is **unsafe** — parallelize at process granularity only. Ship only when a release
-is happening anyway; measure before/after in the changelog.
-
-**Not:** rewriting tests to avoid child-process spawns (the spawn is the test); splitting
-TwinParity (single-file cap is acceptable); CI runner-size changes.
-
-### B-36 · Testing strategy: suite-bootstrap mode + per-item strategy rail — **design LOCKED (WSD-020)**
-**Effort:** M · **Invariants:** #1 #2 #6 #7 · added 2026-07-15 · spec: `.claude/plans/2026-07-15-b36-testing-strategy-design.md`
-
-**Problem.** Per-item testing doctrine is substantially present (workflow rails, Test shape
-heuristic, add-tests level decision + characterization mode, leanness #11–16, test-critic) —
-but three gaps: (G1) a repo with **zero tests** has no path — `add-tests` Step 1 is "find the
-existing pattern first", so there's nothing to mirror and no recipe creates the harness, wires
-CI, or orders first tests by risk; the Refactor rail's "characterization tests first" is
-unexecutable there; (G2) the Feature rail says "test strategy" without pointing at the decision
-procedure; (G3) bootstrap never writes a repo-specific *target test shape* nor converts "no
-tests found" into a routed action. The meta-framework side has no gap (definition-of-done per
-artifact type + hook harness — audited, adequate).
-
-**Do:** implement the locked spec — `add-tests` gains **Suite bootstrap mode** (confirm
-framework with developer → scaffold minimal unit + integration harness → wire into CI →
-risk-first initial tests: hazard areas / financial invariants / critical journeys → one honest
-TECH_DEBT backfill entry) across all three stacks; Feature rail gets a one-line pointer to the
-Test shape heuristic + suite-bootstrap escape hatch; bootstrap A5/A6 reports suite absence as a
-primary finding, 3a writes a target-test-shape line, 3b/Phase-4 route the fix; one routing line
-in defaults.md > Testing.
-
-**Not:** coverage thresholds / mutation testing (deferred by earlier decision — don't
-resurrect); E2E tooling selection; new skills or commands; meta-framework changes.
+B-30 shipped in v0.25.4). **B-38, B-39 (both phases), and B-36 all shipped 2026-07-16 — see the
+Done section. B-34 (added 2026-07-15) is the only open P3 item.**
 
 ### B-34 · Rendered-output twin parity: guard + audit-trail (the hooks B-32's fixtures don't cover)
 **Effort:** S–M · **Invariants:** #1 #3 #5 #7 · added 2026-07-15 (found during B-32 implementation)
@@ -316,6 +269,64 @@ A wrong pin is consumer-visible: verify on a live Copilot surface before shippin
 ---
 
 ## Done
+
+- **B-36** — shipped **v0.30.0** (2026-07-16). Implemented the LOCKED WSD-020 design
+  (`.claude/plans/2026-07-15-b36-testing-strategy-design.md`) via a codex (gpt-5.6-sol)
+  implementer under principal-engineer review. **D1** — `add-tests` (all three stacks × `.claude`/
+  `.github` mirrors, 6 files) gains a new symmetric **Suite bootstrap mode** section, entered from
+  Step 1 when Grep finds no test project/spec files at all: confirm framework + location with the
+  developer first (a real checkpoint), scaffold the minimum (one unit-test project + an HTTP
+  integration fixture only if warranted, no E2E/coverage tooling day one), wire into existing
+  CI/build, order first tests risk-first (hazard areas → financial invariants → critical journeys
+  → domain logic), and record the remainder as one honest `TECH_DEBT.md` entry instead of implying
+  coverage. **D2** — each stack's Feature workflow rail (`workflow-bullets`) gained an identical
+  one-line parenthetical pointing at `Conventions > Testing` / the Test shape heuristic for level
+  selection and the suite-bootstrap escape hatch, kept tight given the rail's always-loaded token
+  budget. **D3** — `/bootstrap` (all three stacks) makes suite state a first-class output: the
+  testing pass (`A5`/dotnet+monorepo, `A6`/angular, both subsections in monorepo) states "no test
+  projects" as its *primary finding* rather than folding it into "coverage gaps"; Phase 3a's
+  Conventions synthesis now requires ending `Conventions > Testing` with a one-line target test
+  shape; Phase 3b writes a Severity-High `TECH_DEBT.md` entry naming suite-bootstrap mode as the
+  fix, surfaced in the Phase 4 top-3 quick wins. Monorepo's dual-stack structure was handled
+  correctly throughout (not copy-pasted) — both A5/.NET and A6/Angular testing passes got the
+  primary-finding treatment, and the Phase 3b/3a/Phase-4 wording was generalized to "per affected
+  stack" rather than assuming a single stack. **D4** — one routing line in each stack's
+  `defaults.md` Testing section pointing "no test suite yet?" at `add-tests`. **Verified:**
+  build ×3 + freshness; `validate-dist` ×3 exit 0 (re-run independently, not just trusted); the
+  composed `dist/monorepo` skill/rail/bootstrap text spot-checked directly (not just "compose
+  succeeded"); grep-confirmed the D1-D4 strings landed in all three composed dists (codex caught
+  its own tooling mistake mid-verification — a non-`--hidden` `rg` search missed the dot-directory
+  `.claude`/`.github` skill mirrors, silently reporting 0 matches — corrected and re-verified);
+  a real greenfield install-smoke confirming the installed `add-tests` SKILL.md carries the suite-
+  bootstrap routing/checkpoint/risk-first text; context-footprint measured (+178 chars per
+  `CLAUDE.md`, monorepo-to-largest-stack ratio *improved* slightly to 1.159×, well under the 1.5×
+  ceiling) — the un-updated baseline correctly FAILed pre-release (expected; `-Update` is
+  `release.ps1`'s job, deliberately not run here). No hook/script changes, so hook suites are
+  unaffected (spec's own call). Shipped in the same release as B-39 phase 2 (below) — one version
+  bump covering both. Released via `release.ps1`, all gates green, pushed.
+
+- **B-39 (phase 2)** — shipped **v0.30.0** (2026-07-16, same release as B-36 above). Implemented
+  via a codex (gpt-5.6-sol) implementer under principal-engineer review. The shipped
+  `src/core/tests/hooks/Invoke-HookTests.ps1` runner (single-source, composes byte-identically
+  into all three dists) now runs its `*.Tests.ps1` files through a bounded 4-slot `Start-Job`
+  worker pool instead of serially — each test file still runs as its own fully isolated external
+  `pwsh`/`powershell` process (an extra process layer versus the job-orchestration process itself,
+  which safely satisfies the B-37-discovered constraint that `_HookHarness.ps1`'s `Invoke-Hook`
+  mutates process-global console encoding and must never share a runspace). Output is buffered per
+  file and replayed in fixed name-sorted order after all children finish, preserving the exact
+  `=== Hook test suite: N failure(s) across M file(s) ===` summary contract and `exit $total`
+  behavior every caller (including `release.ps1`) depends on. The separate hand-maintained
+  meta-only fork (`.claude/hooks/tests/Invoke-HookTests.ps1`) was correctly left untouched — out of
+  scope. **Measured (real dist tree, dotnet):** serial 136.611s → parallel 91.999s (32.7%
+  reduction); also confirmed green under Windows PowerShell 5.1 (89.661s). **Red-tested for real:**
+  planted a failing assertion in one test file, confirmed it stayed visible through the buffered
+  output (`[FAIL] PLANTED runner propagation failure`), the aggregate count and exit code (1)
+  reflected it, and every other file still ran and reported correctly — then removed the plant and
+  hash-verified its complete removal from every dist copy. **Verified:** all three dists'
+  `Invoke-HookTests.ps1` (using the new parallel code) ran green (0 failures across 10 files) with
+  individual wall times noted; `validate-dist` ×3 exit 0; PS-AST parse + BOM independently spot-
+  checked (not just trusted codex's report). Shipped in the same release as B-36 — one version
+  bump covering both. Released via `release.ps1`, all gates green, pushed.
 
 - **B-39 (phase 1)** — done **2026-07-16** (meta-only, no version/CHANGELOG — process-only change
   to a maintainer script, per invariant #7's scoping to *shipped* behavior). Implemented via a

@@ -5,6 +5,19 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.30.0 — 2026-07-16
+
+### Changed — testing strategy for repos with no suite
+
+- The framework now covers repos with no test suite on either stack: `add-tests` gains a
+  suite-bootstrap mode; `/bootstrap` reports suite absence and states each stack's target test
+  shape.
+
+### Changed — faster hook test suite
+
+- The hook test suite that ships with this distribution now runs its isolated test files in
+  parallel, with no change to its test coverage, output, or failure behavior.
+
 ## 0.29.1 — 2026-07-16
 
 ### Fixed — data-access guidance now follows your codebase

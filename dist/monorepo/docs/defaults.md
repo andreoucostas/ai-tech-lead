@@ -64,6 +64,7 @@ Data-access defaults are conditional on what the repo evidences in csproj packag
 - Use `LoggerMessage` source generators for hot paths.
 
 ### Testing
+- No test suite yet? Use the `add-tests` skill — its suite-bootstrap mode scaffolds the harness and first risk-first tests.
 - Every public behavior has a test. Test behavior, not implementation details.
 - Unit tests use xUnit + NSubstitute (or project's chosen stack).
 - Integration tests use `WebApplicationFactory`.
@@ -143,6 +144,7 @@ Choose the level by what the test actually exercises — *push each test to the 
 <!-- Common rules: no direct DOM access (use Renderer2/inject DOCUMENT), no window/localStorage without isPlatformBrowser check. -->
 
 ### Testing
+- No test suite yet? Use the `add-tests` skill — its suite-bootstrap mode scaffolds the harness and first risk-first tests.
 - Every public behavior has a test. Test behavior, not implementation details.
 - Component tests use `TestBed` with component harnesses where available.
 - Service tests mock HTTP via `provideHttpClientTesting` (preferred) or `HttpClientTestingModule` (legacy).

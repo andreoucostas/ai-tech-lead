@@ -4,6 +4,18 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.30.0 — 2026-07-16
+
+### Changed — testing strategy for repos with no suite
+
+- The framework now covers repos with no test suite: `add-tests` gains a suite-bootstrap mode;
+  `/bootstrap` reports suite absence and states your target test shape.
+
+### Changed — faster hook test suite
+
+- The hook test suite that ships with this distribution now runs its isolated test files in
+  parallel, with no change to its test coverage, output, or failure behavior.
+
 ## 0.29.1 — 2026-07-16
 
 ### Fixed — technology guidance now follows your codebase

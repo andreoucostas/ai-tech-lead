@@ -11,6 +11,21 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.30.0 (2026-07-16)
+
+### Changed — B-36/WSD-020: testing strategy for repos with no suite
+
+- The testing strategy now handles zero-test repositories end to end: `add-tests` has an
+  interactive suite-bootstrap mode, Feature rails name the test-level decision procedure, and
+  `/bootstrap` reports suite absence, records a target test shape, and routes the repair as
+  Severity-High debt.
+
+### Changed — B-39 phase 2: parallelize shipped hook-test files
+
+- The shipped hook-test runner now executes up to four isolated test-file child processes in
+  parallel while retaining deterministic, per-file output and the existing aggregate exit-code
+  contract. On the maintainer machine, the .NET suite fell from 136.611 s to 91.999 s (32.7%).
+
 ## 0.29.1 (2026-07-16)
 
 ### Fixed — B-35: derive persistence guidance from repository evidence

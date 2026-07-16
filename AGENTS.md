@@ -86,9 +86,9 @@ leave changes uncommitted.
 
 ## Status
 
-**B-39 phase 1 (gate-battery parallelization) done 2026-07-16** (meta-only, no version; 41%
-measured wall-time reduction). **Next: B-36** (testing strategy: suite-bootstrap mode; design
-LOCKED, WSD-020) — see `meta/BACKLOG.md`.
+**B-36 (testing strategy: suite-bootstrap mode) + B-39 phase 2 (parallel hook-test runner)
+shipped together as v0.30.0** (2026-07-16). **Next: B-34** (rendered-output twin parity: guard +
+audit-trail) — the only open P3 item — see `meta/BACKLOG.md`.
 
 Gotcha: `scripts/fidelity-check.{ps1,sh}` still exist but are **no longer wired to CI** — they are
 manual re-audit tools against the `pre-restructure` tag, not gates.
