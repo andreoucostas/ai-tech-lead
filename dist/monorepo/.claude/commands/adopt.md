@@ -180,7 +180,7 @@ Merge principles:
 Read `.cursorrules`, `.cursor/rules/*.mdc`, `docs/CONVENTIONS.md`, `.windsurfrules`, `.clinerules`, Aider's `CONVENTIONS.md`, and any other instruction file. For each rule:
 1. Categorise into a CLAUDE.md Conventions subsection (.NET: Architecture, Naming, DI, Data Access, API Design, Async, Null Handling, Logging, Testing; Angular: Architecture, Component Design, State Management, RxJS, API/HTTP, Typing, Styling, SSR/Hydration, Testing). In this mixed repo, populate each stack's subsection from that stack's directories and cite exemplar paths from the correct stack.
 2. Skip rules that duplicate existing CLAUDE.md content.
-3. For rules that contradict existing CLAUDE.md content, ask a plain engineering question — never frame it as an AI-artifact choice. For each contradiction, ask: "Your existing codebase has **[A]** for [area]; your `[filename]` says **[B]**. Which is the intended approach — or do both apply in different contexts?" The safe default is to keep the in-code pattern (it reflects reality). If the developer says "accept all defaults" or "skip", apply the safe default to all unresolved contradictions without prompting per item.
+3. For rules that contradict existing CLAUDE.md content, ask a plain engineering question — never frame it as an AI-artifact choice. For each contradiction, ask: "Your existing codebase has **[A]** for [area]; your `[filename]` says **[B]**. Which is the intended approach — or do both apply in different contexts?" The safe default is to keep the in-code pattern (it reflects reality). If the developer says "accept all defaults" or "skip", apply the safe default to all unresolved contradictions without prompting per item. Whenever the safe default keeps [A] — whether chosen explicitly or through "accept all defaults" / "skip" — immediately append `<!-- DEFAULTED: [area] — kept [A] over [B] from [file] -->` to the relevant CLAUDE.md Conventions subsection. This durable review-handoff trace is required because the full `/bootstrap` pipeline runs before Phase 8; do not rely on conversation memory.
 
 Present to the user:
 > "From your existing files I extracted [N] convention rules. [M] are duplicates of what's already in CLAUDE.md. [K] contradict existing rules — I'll ask about each one individually before applying. The remaining [N-M-K] can be added directly. Here's the proposed Conventions section:
@@ -258,6 +258,22 @@ Show the user:
 - What `/bootstrap` filled in
 - Final CLAUDE.md line count
 - `git diff --stat`
+
+Before the commit reminder below, re-scan the durable artifacts and emit a prioritized checklist capped at about 10 entries. This Phase 8 block is the sole emitter during `/adopt`; it aggregates bootstrap-side sources rather than trusting conversation memory. Omit any source category with no entries, in this priority order:
+
+1. For each `<!-- INFERRED -->` convention: "The code gave mixed signals on [area]; I wrote **[rule]**. Is that the team's intent? (CLAUDE.md > Conventions > [subsection])"
+2. For each `(c) unsure` or tooling-only hazard: "Is [specific risk] real in this codebase? If you're not sure, leave it as it is. (FRAMEWORK-CONTEXT.md > Known Hazard Areas)"
+3. For each `<!-- DEFAULTED: … -->` marker written in Phase 4a: "You had [A] in your code and [B] in [old file]; I kept **[A]**. Right call? (CLAUDE.md > [section])"
+4. For each skill whose frontmatter says `origin: discovered`, fold in the existing plain-language skill line as a yes/no question with its skill file pointer.
+
+Emit the result in a fenced code block whose first line is exactly:
+
+```text
+Paste this into your PR (or commit message)
+[prioritized yes/no questions]
+```
+
+If every category is empty, replace the questions with the single line: `No open judgment calls — the run resolved everything against your code.` After listing source 3, the `<!-- DEFAULTED: … -->` markers may be stripped; they are a review-handoff trace, not permanent documentation.
 
 Remind the user to:
 1. Review the updated CLAUDE.md — especially merged Conventions and Architecture Decisions

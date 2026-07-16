@@ -293,3 +293,37 @@ omissions, .sh Copilot test gap, harness console-codepage capture). Two process 
    `Current shipped version` line to the previous version, fix the failing gate, re-run.
    (Cost two extra runs this release; the actual gate failure was `no-meta-leak` catching a
    tracking id an implementer agent wrote into a shipped test comment — the gate worked.)
+
+## 2026-07-16 — v0.28.0 (B-21): reviewer-profile systemic fixes, and driving codex as the implementer
+
+B-21 (D1 judgment checklist, D2 hazard-staleness session-start mechanism, D3 rendered legend)
+shipped from the LOCKED WSD-013 spec, implemented by a codex (gpt-5.6-sol) implementer under
+principal-engineer review this session. Three learnings:
+
+1. **A pre-merge design's "single `src/core` edit per artifact" can be stale.** The B-21 spec
+   (written 2026-07-06, pre-merge) said each of bootstrap.md/adopt.md/FRAMEWORK-CONTEXT.md would
+   be one core edit in the merged repo. In fact all three are **stack whole-file overrides in all
+   three stacks** — the change was a ×3 surface (invariant #1 sibling discipline), only the
+   `session-start` twins were core. Verify artifact placement in the *current* tree before
+   trusting a locked spec's implementation-notes; the design's *intent* held, its file-layout
+   assumption did not.
+
+2. **Codex `workspace-write` has no sandbox backend on Windows when spawned nested inside another
+   agent's shell — it degrades to read-only.** Proven-working config from the B-32 session
+   (`-m gpt-5.6-sol -s workspace-write -c approval_policy=never`, writable root = the repo) works
+   when the maintainer runs codex directly in a terminal, but every write was rejected
+   ("workspace is mounted read-only") when Claude Code spawned it via its Bash tool — with the
+   outer Claude sandbox on *or* off, and with `--full-auto`. The only config that writes while
+   nested is `--dangerously-bypass-approvals-and-sandbox` (codex sandbox off entirely), which is
+   broader than workspace-write and needs explicit user authorization. If you must drive codex
+   nested on Windows, plan for bypass-with-authorization or hand the command to the maintainer to
+   run un-nested. (Codex also stopped mid-brief on the first bypass run's predecessor and needed a
+   clean re-run; and it printed proposed diffs for files it had already applied — read `git status`
+   for ground truth, not the codex transcript.)
+
+3. **D2's twin date-handling is not byte-identical by construction and that is acceptable.** The
+   `.sh` twin validates the `Reviewed` cell shape with a glob (`????-??-??`) then lexically
+   compares ISO strings; the `.ps1` twin uses `ParseExact`. They diverge only on
+   syntactically-ISO-but-invalid dates (e.g. `2026-13-45`), which 3d-bis never writes — the twin
+   tests pin genuinely-unparseable values so the verdict is identical. Documented so a future
+   twin-parity audit doesn't "fix" a non-bug.

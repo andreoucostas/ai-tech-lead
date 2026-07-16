@@ -5,6 +5,30 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.28.0 — 2026-07-16
+
+### Added — judgment calls no longer get lost between bootstrap/adopt and review
+
+- **`/bootstrap` and `/adopt` now end with a "Paste this into your PR (or commit message)"
+  checklist** — a short, prioritized list of the specific decisions the run made for you, each a
+  plain yes/no question with a file pointer (e.g. "The code gave mixed signals on error handling;
+  I wrote X. Is that the team's intent?"). Paste it into your PR description so reviewers see
+  exactly what needs a human answer. If the run resolved everything against your code, it says so
+  in one line. `/adopt` also records any convention contradiction it resolved by default, so that
+  choice shows up in the checklist instead of disappearing.
+- **Session start now flags stale hazard areas.** When `FRAMEWORK-CONTEXT.md > Known Hazard Areas`
+  has an entry whose `Reviewed` date is more than 90 days old, a new session reminds you to
+  confirm it (or mark it "not a hazard"). Settled non-hazards and not-yet-drafted tables are left
+  alone.
+- **The Known Hazard Areas table is easier to read at review time.** It now shows a plain-English
+  legend (Verified = a person confirmed it; Suspected = a person thinks so; Unverified = only the
+  tooling flagged it) and states that **merging the PR does not confirm these** — an item is
+  confirmed only when a person answers its question and updates its status. Hazard `Reviewed`
+  dates are written as `YYYY-MM-DD`.
+
+No action required. These are additive: existing `FRAMEWORK-CONTEXT.md` files keep working, and
+the new session-start reminder only appears once a hazard entry is over 90 days old.
+
 ## 0.27.1 — 2026-07-16
 
 ### Fixed — team wiki checks

@@ -250,10 +250,10 @@ Add a "skip all — mark as unverified" escape at the end of the message.
 
 Map each answer to a row status:
 - **(a) confirmed** → `Status = [VERIFIED]`
-- **(b) not a risk** → `Status = [REVIEWED: not a hazard — <today's date>]` (write the row — kept for auditability, not dropped)
+- **(b) not a risk** → `Status = [REVIEWED: not a hazard — YYYY-MM-DD]` using today's date in that ISO format (write the row — kept for auditability, not dropped)
 - **(c) unsure / skip all** → `Status = [UNVERIFIED]` (same as before this change — graceful degradation)
 
-Then write the `## Known Hazard Areas` table to FRAMEWORK-CONTEXT.md with the answered statuses. One row per hazard: `Area / file(s)` · `Hazard` (the specific risk) · `Status` · `Reviewed` (today's date).
+Then write the `## Known Hazard Areas` table to FRAMEWORK-CONTEXT.md with the answered statuses. One row per hazard: `Area / file(s)` · `Hazard` (the specific risk) · `Status` · `Reviewed` (today's date in ISO `YYYY-MM-DD` format).
 
 - **Delete the `KNOWN_HAZARD_AREAS_PENDING` marker** once written. If nothing notable surfaced, replace the table body with `_No notable hazards detected — confirm with the team._` and still delete the marker.
 - Keep it tight (≤ ~12 rows); deeper items belong in TECH_DEBT.md.
@@ -310,3 +310,22 @@ Then output:
 - **FRAMEWORK-CONTEXT.md sections drafted from code (3d-ter)**: one line per section — what was found (e.g. "Cross-Service Communication: auth + correlation-ID interceptors, typed error envelope in `core/api/`") or the verified negative. Remind the user: these describe what the code shows; anything about *other* repos and services still needs a maintainer to fill in (the drafted comment in each section says exactly that).
 
 **Important**: the Conventions section was generated from code analysis and your Phase 2b answers. Verify it before relying on it — sections marked `<!-- INFERRED -->` flag specific areas where the code gave conflicting signals that couldn't be resolved automatically. All other sections reflect observed code patterns; review them for accuracy, not for AI-architecture decisions.
+
+### Needs a human decision
+
+Unless this `/bootstrap` is being invoked from within `/adopt`, emit a prioritized checklist capped at about 10 entries. Under `/adopt`, suppress this checklist because adopt Phase 8 is the sole emitter and aggregates these sources. Re-scan the written artifacts, omit any source category with no entries, and use this priority order:
+
+1. For each `<!-- INFERRED -->` convention: "The code gave mixed signals on [area]; I wrote **[rule]**. Is that the team's intent? (CLAUDE.md > Conventions > [subsection])"
+2. For each `(c) unsure` or tooling-only hazard from 3d-bis: "Is [specific risk] real in this codebase? If you're not sure, leave it as it is. (FRAMEWORK-CONTEXT.md > Known Hazard Areas)"
+3. For each skill whose frontmatter says `origin: discovered`, fold in the existing plain-language skill line from the report as a yes/no question with its skill file pointer.
+
+Emit the result in a fenced code block whose first line is exactly:
+
+```text
+Paste this into your PR (or commit message)
+[prioritized yes/no questions]
+```
+
+If every category is empty, replace the questions with the single line: `No open judgment calls — the run resolved everything against your code.`
+
+Then nudge the developer to commit these changes on a branch and open a PR; paste the block above into the description so your team sees what needs a human answer.

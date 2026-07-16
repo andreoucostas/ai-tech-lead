@@ -3,7 +3,8 @@
 # Output lands in the assistant's context as auxiliary data. Claude Code consumes plain stdout;
 # Copilot (CLI, and VS Code agent mode with Preview agent-hooks) consumes stdout only as JSON
 # additionalContext — see the surface dispatch at the bottom.
-# Keep fast: no expensive scans. Targets git, CLAUDE.md, TECH_DEBT.md only.
+# Keep fast: no expensive scans. Targets git, CLAUDE.md, TECH_DEBT.md, and
+# FRAMEWORK-CONTEXT.md only; the hazard table is capped at ~12 entries, so parsing stays cheap.
 
 set -u
 
@@ -92,6 +93,39 @@ if [ -f docs/wiki/INDEX.md ]; then
   wiki_count=$(grep -c '^- \[' docs/wiki/INDEX.md 2>/dev/null || true)
   [ -n "$wiki_count" ] || wiki_count=0
   if [ "$wiki_count" -le 30 ]; then cat docs/wiki/INDEX.md; else echo "$wiki_count wiki entries — read docs/wiki/INDEX.md"; fi
+fi
+
+# 7. Hazard-area staleness
+if [ -f FRAMEWORK-CONTEXT.md ] && ! grep -q 'KNOWN_HAZARD_AREAS_PENDING' FRAMEWORK-CONTEXT.md 2>/dev/null; then
+  cutoff=$(date -d '90 days ago' +%F 2>/dev/null || true)
+  if [ -n "$cutoff" ]; then
+    open_stale=0
+    confirmed_stale=0
+    in_hazards=0
+    while IFS= read -r line; do
+      if [ "$line" = '## Known Hazard Areas' ]; then in_hazards=1; continue; fi
+      if [ "$in_hazards" -eq 1 ] && case "$line" in '## '*) true;; *) false;; esac; then break; fi
+      [ "$in_hazards" -eq 1 ] || continue
+      case "$line" in \|*) ;; *) continue;; esac
+      area=$(printf '%s' "$line" | cut -d '|' -f 2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+      hazard=$(printf '%s' "$line" | cut -d '|' -f 3 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+      status=$(printf '%s' "$line" | cut -d '|' -f 4 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+      rev=$(printf '%s' "$line" | cut -d '|' -f 5 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+      if [ "$area" = '_(drafted by /bootstrap)_' ] && [ "$hazard" = '_' ] && [ "$status" = '_' ] && [ "$rev" = '_' ]; then continue; fi
+      case "$status" in '[REVIEWED: not a hazard'* ) continue;; esac
+      case "$rev" in ????-??-??) ;; *) continue;; esac
+      [ "$rev" \< "$cutoff" ] || continue
+      case "$status" in
+        '[UNVERIFIED]'|'[SUSPECTED]') open_stale=$((open_stale + 1));;
+        '[VERIFIED]') confirmed_stale=$((confirmed_stale + 1));;
+      esac
+    done < FRAMEWORK-CONTEXT.md
+    if [ "$open_stale" -gt 0 ]; then
+      echo "- ⚠ **Hazard areas:** $open_stale hazard area(s) have waited over 90 days for a human answer — confirm each, or mark it 'not a hazard', in FRAMEWORK-CONTEXT.md > Known Hazard Areas."
+    elif [ "$confirmed_stale" -gt 0 ]; then
+      echo "- **Hazard areas:** $confirmed_stale confirmed hazard area(s) are over 90 days old — a quick re-confirm in FRAMEWORK-CONTEXT.md keeps the map trustworthy."
+    fi
+  fi
 fi
 
 }

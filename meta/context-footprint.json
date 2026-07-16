@@ -186,8 +186,8 @@
       "instructed": [
         {
           "path": "FRAMEWORK-CONTEXT.md",
-          "chars": 6511,
-          "tok": 1628
+          "chars": 6820,
+          "tok": 1705
         },
         {
           "path": "docs/defaults.md",
@@ -292,13 +292,13 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 19776,
-          "tok": 4944
+          "chars": 21614,
+          "tok": 5404
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 26130,
-          "tok": 6532
+          "chars": 27564,
+          "tok": 6891
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -590,8 +590,8 @@
       "instructed": [
         {
           "path": "FRAMEWORK-CONTEXT.md",
-          "chars": 6391,
-          "tok": 1598
+          "chars": 6700,
+          "tok": 1675
         },
         {
           "path": "docs/defaults.md",
@@ -696,13 +696,13 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 19830,
-          "tok": 4958
+          "chars": 21668,
+          "tok": 5417
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 24577,
-          "tok": 6144
+          "chars": 26011,
+          "tok": 6503
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1014,8 +1014,8 @@
       "instructed": [
         {
           "path": "FRAMEWORK-CONTEXT.md",
-          "chars": 7480,
-          "tok": 1870
+          "chars": 7789,
+          "tok": 1947
         },
         {
           "path": "docs/defaults.md",
@@ -1120,13 +1120,13 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 20504,
-          "tok": 5126
+          "chars": 22342,
+          "tok": 5586
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 33491,
-          "tok": 8373
+          "chars": 34925,
+          "tok": 8731
         },
         {
           "path": ".claude/commands/debt.md#body",

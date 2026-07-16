@@ -256,7 +256,7 @@ StrykerJS `--incremental`; WS-T11 wire survivors into `test-critic`; WS-T12 docs
 Key traps recorded there: Angular needs a cobertura reporter wired; CI must fetch the base ref;
 "CI-enforced" = runs+reports by default, only the opt-in floor blocks.
 
-### B-21 · Reviewer-profile systemic fixes — **P0 design DONE; implementation post-merge**
+### B-21 · Reviewer-profile systemic fixes — **DONE (shipped v0.28.0, 2026-07-16) — see Done section**
 **Effort:** M–L · **P0 design complete 2026-07-06** (WSD-013) · **Invariants:** #1 #3 #4 #5
 
 > **Design LOCKED — do not re-derive.** Full spec (adversarially critiqued, LOCK WITH
@@ -397,6 +397,27 @@ A wrong pin is consumer-visible: verify on a live Copilot surface before shippin
 ---
 
 ## Done
+
+- **B-21 (implementation)** — shipped **v0.28.0** (2026-07-16). Implemented the LOCKED WSD-013
+  design (`.claude/plans/2026-07-06-b21-reviewer-profile-design.md`) via a codex (gpt-5.6-sol)
+  implementer under principal-engineer review. **D1** — `bootstrap.md` Phase 4 + `adopt.md` Phase 8
+  emit a prioritized "Paste this into your PR (or commit message)" judgment checklist (INFERRED
+  conventions / unsure-or-tooling-only hazards / adopt-4a defaulted contradictions / discovered
+  skills); bootstrap suppresses under `/adopt` (Phase 8 sole emitter via the Phase-2b adopt signal),
+  bootstrap gains a commit/PR nudge, adopt-4a writes a durable `<!-- DEFAULTED: … -->` marker that
+  Phase 8 re-scans. **D2** — `session-start.{ps1,sh}` (core twins) resurface hazard rows whose ISO
+  `Reviewed` date is >90 days old (interval math, GNU-`date` guard, inside `$body`/`emit_body` for
+  the Copilot surface); `bootstrap.md` 3d-bis pins `Reviewed` + the not-a-hazard status to ISO
+  `YYYY-MM-DD`. **D3** — rendered ladder legend + "merging the PR does not confirm these" above the
+  hazard table (was inside a non-rendering HTML comment); ladder tokens kept as machine anchors.
+  **Structural correction** (see LEARNINGS 2026-07-16): the pre-merge spec's "one `src/core` edit
+  per artifact" was stale — bootstrap.md/adopt.md/FRAMEWORK-CONTEXT.md are stack whole-file overrides,
+  so this was a ×3 edit (invariant #1), only session-start is core; cross-stack inserts confirmed
+  byte-identical. **Verified:** new `SessionStartHazard.Tests.ps1` (19 cases, red-tested against the
+  pre-D2 HEAD hook then green on both twins incl. confirmed-stale + Copilot dual-shape); build ×3 +
+  freshness; validate-dist ×3; dotnet dist hook suite 0 failures across 10 files (TwinParity 40/40).
+  Released via `release.ps1`. **B-22 (headless `/adopt`) is now unblocked** (its hard dependency
+  B-21 D1 shipped).
 
 - **B-37** — shipped **v0.27.1** (2026-07-16). Post-ship review of v0.27.0 (B-27 team wiki
   memory) against the locked WSD-010 spec found six defects, all fixed: GNU-only `date -d`

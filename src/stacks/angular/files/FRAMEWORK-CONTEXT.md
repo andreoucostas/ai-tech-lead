@@ -108,6 +108,10 @@ _Not yet populated. `/bootstrap` drafts this from observed interceptor/API/envel
                     a finding; it must NOT raise your confidence.
      Re-confirm any row older than ~90 days — a stale hazard map causes false confidence. -->
 
+**Legend:** `[VERIFIED]` = a person confirmed it. `[SUSPECTED]` = a person thinks so. `[UNVERIFIED]` = only the tooling flagged it — treat it as an open question, not a finding.
+
+Merging the PR does not confirm these — an item is confirmed only when a person answers its question and updates its status.
+
 <!-- KNOWN_HAZARD_AREAS_PENDING: run /bootstrap to draft this from the codebase. -->
 
 | Area / file(s) | Hazard | Status | Reviewed |

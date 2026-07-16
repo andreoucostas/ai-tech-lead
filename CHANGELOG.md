@@ -11,6 +11,55 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.28.0 (2026-07-16)
+
+### Added — B-21: reviewer-profile systemic fixes (judgment items stop scattering and expiring silently)
+
+Implements the LOCKED design `.claude/plans/2026-07-06-b21-reviewer-profile-design.md` (WSD-013).
+The reviewer profile (competent engineers, limited AI understanding): the pipeline makes every
+AI-architecture call itself; reviewers only answer plain questions about their own code. The
+residual gap the design named — judgment-needed items are created with good UX but then scatter
+and expire silently — is closed by three deltas. Implemented via a codex (gpt-5.6-sol) implementer
+under principal-engineer review (this session); shipped as **three-stack whole-file edits**, not
+the single `src/core` edit the pre-merge spec assumed (`bootstrap.md`/`adopt.md`/`FRAMEWORK-CONTEXT.md`
+are stack whole-file overrides — the spec's "one src/core edit per artifact" was stale; only the
+`session-start` twins are core).
+
+- **D1 — one "Needs a human decision" checklist emitted for the PR/commit.** `bootstrap.md`
+  Phase 4 and `adopt.md` Phase 8 now emit a prioritized (~10-cap) fenced block titled
+  *"Paste this into your PR (or commit message)"*, each item a plain yes/no question with a file
+  pointer. Sources: `<!-- INFERRED -->` conventions, `(c) unsure`/tooling-only hazards,
+  adopt-4a contradictions resolved by default, and `origin: discovered` skills. bootstrap
+  **suppresses** its block under `/adopt` (Phase 8 is the sole emitter, reusing the existing
+  Phase-2b adopt-context signal, M1); bootstrap gains a commit/PR nudge since it has no branch
+  step of its own (H2a). adopt Phase 4a writes a durable `<!-- DEFAULTED: … -->` marker at
+  resolution time so the choice survives the full `/bootstrap` pipeline that runs between 4a and
+  8 (H2b); Phase 8 re-scans it. Empty categories are omitted; all-empty prints one line.
+- **D2 — hazard staleness becomes a mechanism.** `session-start.{ps1,sh}` (core twins) parse
+  `FRAMEWORK-CONTEXT.md > Known Hazard Areas` and resurface areas whose `Reviewed` date is >90
+  days old — real interval math (`cutoff = today − 90d`, ISO-pinned, GNU-`date` guard on the sh
+  side per H1; no `date -j`/epoch, avoiding the B-02 skew class). Open items (`[UNVERIFIED]`/
+  `[SUSPECTED]`) get an open-question line; `[VERIFIED]` a lighter re-confirm nudge. Excludes
+  `[REVIEWED: not a hazard]`, the `_` placeholder row, and files still carrying
+  `KNOWN_HAZARD_AREAS_PENDING` (M4). Block lives inside `$body`/`emit_body` so the Copilot
+  surface gets it via JSON `additionalContext` (M5). `bootstrap.md` 3d-bis now pins `Reviewed`
+  and the not-a-hazard status to ISO `YYYY-MM-DD` (the parser keys on it). Header "keep fast"
+  comment updated to include FRAMEWORK-CONTEXT.md + the ~12-row cap (L2).
+- **D3 — rendered legend + "merge ≠ verified".** `FRAMEWORK-CONTEXT.md` gains a visible
+  (non-comment) one-line ladder legend and the sentence *"Merging the PR does not confirm these
+  …"* directly above the hazard table — the prior explanation lived inside an HTML comment that
+  never renders in GitHub file view (M3). The `[VERIFIED]/[SUSPECTED]/[UNVERIFIED]` tokens stay
+  (machine anchors for D2's parser and 3d-bis's writer).
+
+**Verification:** new `src/core/tests/hooks/SessionStartHazard.Tests.ps1` (19 cases: resurface /
+fresh-silent / unparseable-skip / REVIEWED-excluded / placeholder-skip / PENDING-silent /
+confirmed-stale lighter nudge / suspected-resurface / twin-agreement / Copilot dual-shape on both
+twins) — red-tested against the pre-D2 HEAD hook (no resurface line), green after. Cross-stack
+sibling parity confirmed byte-identical (D1/D3 inserts). Gates green: build ×3 + dist freshness;
+validate-dist ×3 (markers, template-checks/AGENTS mirror, no-meta-leak, no-dead-instruction);
+dotnet dist hook suite 0 failures across 10 files (TwinParity 40/40). Full gate battery via
+`release.ps1`.
+
 ## 0.27.1 (2026-07-16)
 
 ### Fixed — B-37: post-ship review findings on v0.27.0 (team wiki memory)

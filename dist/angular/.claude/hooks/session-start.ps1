@@ -3,7 +3,8 @@
 # Output goes to the assistant's context as auxiliary data. Claude Code consumes plain stdout;
 # Copilot (CLI, and VS Code agent mode with Preview agent-hooks) consumes stdout only as JSON
 # additionalContext -- see the surface dispatch at the bottom.
-# Keep fast: no expensive scans. Targets git, CLAUDE.md, TECH_DEBT.md only.
+# Keep fast: no expensive scans. Targets git, CLAUDE.md, TECH_DEBT.md, and
+# FRAMEWORK-CONTEXT.md only; the hazard table is capped at ~12 entries, so parsing stays cheap.
 
 $ErrorActionPreference = 'SilentlyContinue'
 
@@ -109,6 +110,38 @@ if (Test-Path docs/wiki/INDEX.md) {
     $wikiCount = ([regex]::Matches($wikiIndex, '(?m)^- \[')).Count
     if ($wikiCount -le 30) { Write-Output $wikiIndex.TrimEnd() }
     else { Write-Output "$wikiCount wiki entries — read docs/wiki/INDEX.md" }
+}
+
+# 7. Hazard-area staleness
+if (Test-Path FRAMEWORK-CONTEXT.md) {
+    $frameworkContext = Get-Content FRAMEWORK-CONTEXT.md -Raw
+    if ($frameworkContext -and $frameworkContext -notmatch 'KNOWN_HAZARD_AREAS_PENDING') {
+        $inHazards = $false
+        $openStale = 0
+        $confirmedStale = 0
+        $cutoff = (Get-Date).AddDays(-90)
+        foreach ($line in (Get-Content FRAMEWORK-CONTEXT.md)) {
+            if ($line -match '^## Known Hazard Areas\s*$') { $inHazards = $true; continue }
+            if ($inHazards -and $line -match '^## ') { break }
+            if (-not $inHazards -or $line -notmatch '^\|') { continue }
+            $cells = $line.Split('|') | ForEach-Object { $_.Trim() }
+            if ($cells.Count -lt 6) { continue }
+            $area = $cells[1]; $hazard = $cells[2]; $status = $cells[3]; $rev = $cells[4]
+            if (($area -eq '_(drafted by /bootstrap)_' -and $hazard -eq '_' -and $status -eq '_' -and $rev -eq '_') -or
+                $status.StartsWith('[REVIEWED: not a hazard')) { continue }
+            try {
+                $reviewed = [datetime]::ParseExact($rev, 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)
+                if ($reviewed -ge $cutoff) { continue }
+            } catch { continue }
+            if ($status -eq '[UNVERIFIED]' -or $status -eq '[SUSPECTED]') { $openStale++ }
+            elseif ($status -eq '[VERIFIED]') { $confirmedStale++ }
+        }
+        if ($openStale -gt 0) {
+            Write-Output "- ⚠ **Hazard areas:** $openStale hazard area(s) have waited over 90 days for a human answer — confirm each, or mark it 'not a hazard', in FRAMEWORK-CONTEXT.md > Known Hazard Areas."
+        } elseif ($confirmedStale -gt 0) {
+            Write-Output "- **Hazard areas:** $confirmedStale confirmed hazard area(s) are over 90 days old — a quick re-confirm in FRAMEWORK-CONTEXT.md keeps the map trustworthy."
+        }
+    }
 }
 
 }) -join "`n"
