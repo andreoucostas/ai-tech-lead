@@ -50,31 +50,21 @@ the enforcement matrix gained the three missing capability rows. **B-35 shipped 
 **B-12 was already resolved — see the Done section.** No open P3 items remain from the audit;
 post-audit P3 item B-29 (haiku adequacy evidence) is under "Known deferred work" (its sibling
 B-30 shipped in v0.25.4). **B-38 shipped 2026-07-16 (meta-only, no version) — see the Done
-section. B-34 and B-36 (added 2026-07-15) plus B-39 (added 2026-07-16) remain open.**
+section. B-39 phase 1 also shipped 2026-07-16 (meta-only, no version) — see the Done section;
+phase 2 (below) remains open. B-34 and B-36 (added 2026-07-15) remain open.**
 
-### B-39 · Gate-battery runtime: parallelize the per-dist hook suites in release.ps1
-**Effort:** S (phase 1) · **Invariants:** #7 (phase 2 only) · added 2026-07-16 (measured on the
-maintainer box, pwsh 7, during the B-37 session)
+### B-39 (phase 2) · Parallelize `Invoke-HookTests.ps1`'s internal test files — optional, shipped change, needs a version
+**Effort:** S · **Invariants:** #7 · added 2026-07-16 (measured on the maintainer box, pwsh 7,
+during the B-37 session). Phase 1 (parallelizing `release.ps1`'s three per-dist gate pairs)
+shipped 2026-07-16 — see the Done section for the measured before/after and the red-test.
 
-**Evidence (2026-07-16).** Serial gate battery in `release.ps1` ≈ **6 min wall**: hook suite
-≈ 105 s **per dist** ×3 (dotnet 106 s / angular 104 s / monorepo 105 s), meta suite 21 s,
-compose ~1 s and validate-dist ~3 s per dist. CI wall ≈ 6.5 min (windows leg 6 m 22 s is the
-long pole; linux 3 m 35 s). Per-file hot spots (dotnet): `TwinParity` 44 s (40 tests),
-`WikiCheck` 26 s (13 tests — each runs both twins), `Guard` 15 s (34 tests). The cost is child
-`pwsh`/`bash` **process spawns per test** — that is by design (the spawned child *is* the honest
-test surface; do not in-process it) — so the win is concurrency, not per-test surgery.
+**Evidence (2026-07-16).** Serial per-dist hook suite ≈ 105s (dotnet 106s / angular 104s /
+monorepo 105s). Per-file hot spots (dotnet): `TwinParity` 44s (40 tests), `WikiCheck` 26s
+(13 tests — each runs both twins), `Guard` 15s (34 tests). The cost is child `pwsh`/`bash`
+**process spawns per test** — that is by design (the spawned child *is* the honest test surface;
+do not in-process it) — so the win is concurrency, not per-test surgery.
 
-**Assessment.** ~6 min per release is tolerable in isolation but compounds: active days ship
-multiple releases (three release.ps1 runs on 2026-07-16 alone ≈ 18 min of gates), and every
-refused release doubles its cost. A process-level parallelization is cheap and honest.
-
-**Do (phase 1 — meta-only, no version bump).** In `release.ps1`, run the three per-dist gate
-pairs (validate-dist + hook suite) as three concurrent child processes (`Start-Process`/jobs),
-collect exit codes, gate on all three. Suites are independent (separate dist trees, per-test
-GUID temp dirs). Expected release gate wall ≈ 6 min → ~2.5 min (capped by one dist suite +
-meta suite). Keep output legible: buffer per-dist logs and print them sequentially.
-
-**Do (phase 2 — optional, shipped change, needs a version).** Teach the shipped
+**Do (optional, shipped change, needs a version).** Teach the shipped
 `tests/hooks/Invoke-HookTests.ps1` runner to execute its `*.Tests.ps1` files as bounded
 parallel **child processes** (cap ~4). Per-dist wall ≈ 105 s → ~45 s (capped by TwinParity),
 and consumer CI gets the same win. Constraint discovered in B-37: `_HookHarness.ps1`'s
@@ -326,6 +316,33 @@ A wrong pin is consumer-visible: verify on a live Copilot surface before shippin
 ---
 
 ## Done
+
+- **B-39 (phase 1)** — done **2026-07-16** (meta-only, no version/CHANGELOG — process-only change
+  to a maintainer script, per invariant #7's scoping to *shipped* behavior). Implemented via a
+  codex (gpt-5.6-sol) implementer under principal-engineer review. `.claude/scripts/release.ps1`'s
+  step 4 now runs the three per-dist gate pairs (`validate-dist.ps1` then that dist's
+  `Invoke-HookTests.ps1`) as three concurrent `Start-Job` child processes (true process-level
+  parallelism — a runspace-based approach was rejected per the B-37-discovered constraint that
+  `_HookHarness.ps1` mutates process-global `[Console]::OutputEncoding`, which is unsafe to share
+  across in-process runspaces) instead of serially; each dist's combined output is buffered to a
+  temp log and replayed in fixed `$dists` order (dotnet, angular, monorepo) after all three jobs
+  finish, so the release log stays readable rather than interleaving three suites' output.
+  Both exit codes (`validate-dist`, hook suite) are gated per dist exactly as before — the
+  existing `Gate` helper, its `$fatal` accumulation, and the REFUSED-exit messaging are untouched.
+  **Measured (maintainer box, real dist trees, not a fixture):** serial baseline 418.46s
+  (dotnet 139.6s / angular 137.6s / monorepo 141.2s) → parallel 247.12s — a 41% wall-time
+  reduction (less than the spec's ~2.5min ideal-case estimate, since real concurrent process
+  contention on one box doesn't hit the theoretical best case; still a substantial, honestly
+  reported win). **Red-tested for real:** first attempt (renaming `.template-repo`) was a false
+  negative — `validate-dist` doesn't actually check that file — caught and corrected to a defect
+  class the validator does gate (`dist/angular/scripts/template-checks.ps1` missing), confirmed
+  `GATE FAIL: validate-dist angular` + `$fatal=$true` with the hook suite still running and
+  passing independently (both statuses are recorded per-dist regardless of the other), file
+  restored, worktree left clean. **Independently re-verified** (not just trusted codex's
+  self-report): PS-AST parse clean, BOM intact, a live green single-dist run, and a from-scratch
+  repeat of the red test executing the literal code extracted from the file (not a retyped copy) —
+  same result. Phase 2 (parallelizing `Invoke-HookTests.ps1`'s internal test files, a shipped
+  change) remains open — see B-39 (phase 2) above.
 
 - **B-38** — done **2026-07-16** (meta-only, no version/CHANGELOG — process-only fix to a
   maintainer script, per invariant #7's scoping to *shipped* behavior). Implemented via a codex

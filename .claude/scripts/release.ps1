@@ -95,11 +95,34 @@ if ($fatal) {
 }
 
 # ---- 4. Deterministic gates: validate-dist + hook suite per dist, then the meta suite ----
-foreach ($d in $dists) {
-    & pwsh -NoProfile -File (Join-Path $repo 'scripts/validate-dist.ps1') $d
-    Gate ($LASTEXITCODE -eq 0) "validate-dist $d"
-    & pwsh -NoProfile -File (Join-Path $repo "dist/$d/tests/hooks/Invoke-HookTests.ps1")
-    Gate ($LASTEXITCODE -eq 0) "dist/$d hook test suite"
+try {
+    $distGateJobs = foreach ($d in $dists) {
+        $log = [System.IO.Path]::GetTempFileName()
+        $job = Start-Job -ArgumentList $repo, $d, $log -ScriptBlock {
+            param($repo, $dist, $log)
+            & pwsh -NoProfile -File (Join-Path $repo 'scripts/validate-dist.ps1') $dist *> $log
+            $validateExit = $LASTEXITCODE
+            & pwsh -NoProfile -File (Join-Path $repo "dist/$dist/tests/hooks/Invoke-HookTests.ps1") *>> $log
+            [pscustomobject]@{
+                ValidateExit = $validateExit
+                HookExit     = $LASTEXITCODE
+            }
+        }
+        [pscustomobject]@{ Dist = $d; Log = $log; Job = $job }
+    }
+    $distGateJobs.Job | Wait-Job | Out-Null
+    foreach ($distGateJob in $distGateJobs) {
+        $result = Receive-Job $distGateJob.Job
+        Write-Host -NoNewline ([System.IO.File]::ReadAllText($distGateJob.Log))
+        $d = $distGateJob.Dist
+        Gate ($result.ValidateExit -eq 0) "validate-dist $d"
+        Gate ($result.HookExit -eq 0) "dist/$d hook test suite"
+    }
+} finally {
+    if ($distGateJobs) {
+        $distGateJobs.Job | Remove-Job -Force
+        $distGateJobs.Log | Remove-Item -Force
+    }
 }
 & pwsh -NoProfile -File (Join-Path $repo '.claude/hooks/tests/Invoke-HookTests.ps1')
 Gate ($LASTEXITCODE -eq 0) 'meta-hook test suite'

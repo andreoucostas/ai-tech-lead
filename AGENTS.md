@@ -86,8 +86,9 @@ leave changes uncommitted.
 
 ## Status
 
-**B-38 (`release.ps1` README-stamp idempotency) done 2026-07-16** (meta-only, no version). **Next:
-B-39** (gate-battery parallelization, phase 1) — see `meta/BACKLOG.md`.
+**B-39 phase 1 (gate-battery parallelization) done 2026-07-16** (meta-only, no version; 41%
+measured wall-time reduction). **Next: B-36** (testing strategy: suite-bootstrap mode; design
+LOCKED, WSD-020) — see `meta/BACKLOG.md`.
 
 Gotcha: `scripts/fidelity-check.{ps1,sh}` still exist but are **no longer wired to CI** — they are
 manual re-audit tools against the `pre-restructure` tag, not gates.
