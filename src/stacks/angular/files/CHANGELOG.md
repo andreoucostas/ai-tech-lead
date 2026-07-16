@@ -4,6 +4,28 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.29.0 — 2026-07-16
+
+### Added — `/adopt` can now run unattended (headless), preparing a PR for you to review
+
+- **You can finish adoption without opening a session and typing `/adopt` by hand.** An installing
+  agent — or an operator running `claude -p` / `copilot -p` with no developer at the keyboard — can
+  run adoption **headless** by passing a `--headless` directive. Headless adoption does the
+  mechanical, reversible work for you: it creates an `adopt-ai-framework` branch, archives your
+  existing AI files, runs the provenance + safety screen, captures the impact baseline, and
+  **stages** every proposed change to `CLAUDE.md` and `TECH_DEBT.md` as a clearly-marked, attributed
+  proposal on that branch.
+- **A human still applies the merges — the trust boundary is unchanged.** Headless adoption never
+  merges discovered content into your canonical `CLAUDE.md` / `TECH_DEBT.md` on its own, and never
+  opens or merges the PR. It hands you a PR-ready branch: you review the proposed changes (and
+  anything it quarantined as suspicious) and apply them at PR review. Files that trip the safety
+  screen are excluded entirely and listed at the top of the report — they are never auto-approved.
+- **Nothing changes for the normal interactive flow.** Run `/adopt` in a session as before and you
+  still get the show-each-merge gates. The installer's next-step message and the adoption marker now
+  mention the headless option alongside the developer path.
+
+No action required — this is additive.
+
 ## 0.28.0 — 2026-07-16
 
 ### Added — judgment calls no longer get lost between bootstrap/adopt and review

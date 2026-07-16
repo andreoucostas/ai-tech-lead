@@ -254,6 +254,8 @@ For each candidate, ask a plain, answerable engineering question:
 
 Add a "skip all — mark as unverified" escape at the end of the message.
 
+**Under headless `/adopt`** (the `--headless` directive propagated into this Phase-7 `/bootstrap`): do **not** pause for confirmation. Take the "skip all — mark as unverified" path automatically — write every candidate hazard `[UNVERIFIED]` and surface it on adopt's Phase-8 checklist. Never auto-confirm a hazard when no developer is present.
+
 Map each answer to a row status:
 - **(a) confirmed** → `Status = [VERIFIED]`
 - **(b) not a risk** → `Status = [REVIEWED: not a hazard — YYYY-MM-DD]` using today's date in that ISO format (write the row — kept for auditability, not dropped)

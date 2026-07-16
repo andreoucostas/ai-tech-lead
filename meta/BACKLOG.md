@@ -279,8 +279,21 @@ sanity-check each report's verbosity against the reviewer profile — output lea
 where it doesn't cost the plain-engineering explanations the profile requires (WSD-013). No
 standalone "output leanness" backlog item exists, by decision.
 
-### B-22 · Headless `/adopt` — **P0 design DONE (Path A); implementation post-merge**
+### B-22 · Headless `/adopt` — **IMPLEMENTED + VERIFIED 2026-07-16; PENDING v0.29.0 release (`release.ps1 -Version 0.29.0`)**
 **Effort:** L · **P0 design complete 2026-07-06** (WSD-014) · **Invariants:** #1 #3 #5 #7
+
+> **Implementation done this session (not yet shipped).** `adopt.md` ×3 gained a normative
+> `## Headless mode` section (per-gate override table, stage-don't-apply, restricted tool surface,
+> marker/guard lifecycle, embedded-bootstrap headless propagation); `bootstrap.md` ×3 Phase 3d-bis
+> auto-takes "skip all — mark as unverified" under headless (HIGH-2 fix); `adopt.prompt.md` (core)
+> documents the `--headless` directive; `install.{sh,ps1}` twins + marker `nextStep` offer the
+> headless entry alongside the developer path. The pre-merge spec's "single `src/core` edit"
+> assumption was stale — `adopt.md`/`bootstrap.md` are stack whole-file overrides (×3), only the
+> prompt wrapper + installers are core. All gates green (compose ×3, validate-dist ×3, meta suite
+> incl. InstallerContract 12/12, dotnet dist hook suite). Changelog entries drafted (root 0.29.0
+> Unreleased; three consumer `## 0.29.0`). **STOPPED before `release.ps1`** — awaiting the ship
+> go/no-go (high-stakes: prompt-injection boundary). On ship, move this entry to the Done section.
+> See `meta/LEARNINGS.md` 2026-07-16 (B-22) for the codex-bypass-authorization deviation.
 
 > **Design LOCKED — do not re-derive.** Full spec (adversarially critiqued — verdict RETHINK,
 > resolved as **Path A**; findings folded): **`.claude/plans/2026-07-06-b22-headless-adopt-design.md`**;

@@ -11,6 +11,8 @@ Read `.claude/commands/adopt.md` in this repository, then execute the adoption w
 
 Use this when the repo already has *some* AI tooling or documentation. If the repo has nothing AI-related yet, run `/bootstrap` directly instead.
 
+**Headless (agent-driven, non-interactive) adoption.** When this prompt runs non-interactively — an installing agent via `copilot -p` / `claude -p`, no developer at the keyboard — include a `--headless` directive in the notes below. `adopt.md`'s **Headless mode** then applies: the run **prepares** adoption on an `adopt-ai-framework` branch and **stages** every `CLAUDE.md` / `TECH_DEBT.md` merge for a human to apply at PR review — it never applies untrusted discovered content and never opens the PR. Omit `--headless` when a developer is present (interactive VS Code), so the normal show-each-merge gates run.
+
 ## Notes
 
 ${input:notes:Optional — anything specific about the existing setup the adoption should know}

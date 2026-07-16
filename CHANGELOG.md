@@ -11,6 +11,49 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.29.0 (2026-07-16)
+
+### Added — B-22: headless `/adopt` (Path A — prepare autonomously, human applies the merge)
+
+Implements the LOCKED design `.claude/plans/2026-07-06-b22-headless-adopt-design.md` (WSD-014,
+**Path A**), unblocked now that its hard dependency B-21 D1 (the PR judgment checklist) has shipped.
+Closes the last manual step of adoption without breaking the prompt-injection trust boundary that
+made `/adopt` developer-initiated. Authored as **three-stack whole-file edits** of `adopt.md` and
+`bootstrap.md` (invariant #1 — they are stack whole-file overrides, only the prompt wrapper +
+installers are core), plus the two core installer twins (invariant #3). Implemented this session by
+principal-engineer direct edit after the intended codex (gpt-5.6-sol) implementer was blocked by the
+bypass-authorization boundary (see `meta/LEARNINGS.md`).
+
+- **`adopt.md` gains a normative `## Headless mode` section** (byte-identical across all three
+  stacks). When `$ARGUMENTS` carries a `--headless` directive, the workflow **prepares** adoption
+  autonomously — auto-branch `adopt-ai-framework`, archive, provenance + adversarial screen, impact
+  baseline, PR structuring — and **stages** every proposed `CLAUDE.md`/`TECH_DEBT.md` merge as a
+  clearly-marked, attributed, normalized block for a human to apply at PR review. A per-gate
+  override table makes each interactive gate's headless behavior normative (skip ambiguous, exclude
+  quarantine with no auto-upgrade, record-not-apply the plan, stage-don't-apply merges with the
+  `<!-- DEFAULTED -->` marker on 4a contradictions, unset TECH_DEBT severity/effort, never auto-add
+  custom commands, commit to the branch only). Everything deferred lands in the Phase-8 report +
+  B-21 checklist.
+- **The trust boundary is preserved by construction (constraint 2), not by the flag.** Nothing
+  derived from an untrusted discovered file is ever *applied* to canonical guidance without a
+  person; `disable-model-invocation: true` stays on `adopt.md`/`bootstrap.md`. Works on both Claude
+  Code (`claude -p`) and Copilot CLI (its `-p` equivalent), reusing the read-and-execute prompt
+  pattern — so the boundary holds even where the flag is irrelevant (Copilot). A restricted tool
+  surface (deny network egress / secret access / git-config changes) bounds mid-run exposure.
+- **Marker/guard lifecycle:** the install is committed to the **default branch** (precondition);
+  headless deletes `.claude/adoption-pending.json` only on the adoption branch, so SessionStart +
+  `docs-sync-check` keep firing on the default branch until a human merges the reviewed PR — guards
+  release on human merge, not on the headless run.
+- **Embedded Phase-7 `/bootstrap` runs headless too (HIGH-2 fix):** the `--headless` directive
+  propagates in; `bootstrap.md` Phase 3d-bis no longer stalls — it takes the "skip all — mark as
+  unverified" path automatically, writing every candidate hazard `[UNVERIFIED]` onto the checklist,
+  never auto-confirming a hazard unattended.
+- **Installer twins + marker `nextStep`** now offer the headless entry alongside the developer path
+  (`src/core/scripts/install.{sh,ps1}`): the brownfield agent-handoff block tells an installing
+  agent it may EITHER hand off to a developer OR run headless adoption (which prepares a PR branch
+  for human review and does not auto-merge or open the PR). The `InstallerContract` gate confirms
+  the full agent contract still prints in both modes × both twins × all three dists.
+
 ## 0.28.0 (2026-07-16)
 
 ### Added — B-21: reviewer-profile systemic fixes (judgment items stop scattering and expiring silently)

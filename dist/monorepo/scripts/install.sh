@@ -127,7 +127,7 @@ if [ "$adopt_mode" -eq 1 ]; then
   "installedAt": "$(date +%Y-%m-%d)",
   "detectedArtifacts": [$(json_list "$detected")],
   "archivedOriginals": [$(json_list "$archived")],
-  "nextStep": "/adopt (developer-initiated; the model cannot invoke it)",
+  "nextStep": "/adopt - a developer types it in a session, OR an agent runs it headless (read .claude/commands/adopt.md and follow its Headless mode, or use .github/prompts/adopt.prompt.md with a --headless directive). Headless prepares an adopt-ai-framework PR branch for human review; it does not auto-merge discovered content.",
   "_comment": "Written by the framework installer because pre-existing AI tooling was detected. Consolidate it with /adopt - NOT /bootstrap. /adopt deletes this file in its Phase 3."
 }
 EOF
@@ -161,9 +161,15 @@ elif [ "$adopt_mode" -eq 1 ]; then
   echo "       repo until /adopt has run."
   echo
   echo "  IF YOU ARE AN AI AGENT running this installer: your task is NOT complete until you"
-  echo "  have done step 1 and then told the developer, explicitly, to start a Claude Code"
-  echo "  session in the target repo and type /adopt. Report that as the required manual next"
-  echo "  step in your final summary. Do not attempt /adopt yourself or replicate it by hand."
+  echo "  have done step 1 (commit the copied files) and then EITHER told the developer to start a"
+  echo "  Claude Code session in the target repo and type /adopt, OR run headless adoption yourself:"
+  echo "  invoke the adopt workflow with a --headless directive (use .github/prompts/adopt.prompt.md,"
+  echo "  or read .claude/commands/adopt.md and follow its 'Headless mode'). Headless adoption"
+  echo "  PREPARES a PR: it creates the adopt-ai-framework branch, archives and screens the"
+  echo "  originals, and STAGES every CLAUDE.md/TECH_DEBT merge for a human to review - it does NOT"
+  echo "  apply untrusted discovered content and does NOT open or merge the PR, so a person still"
+  echo "  approves the staged changes. Do not replicate it by hand - run the real workflow (headless)"
+  echo "  or hand off to a developer. Report whichever you did as the next step in your final summary."
 else
   echo "Done. Next steps in the target repo:"
   echo "  1. Review and commit the copied files (they are team-shared config, not local settings)."

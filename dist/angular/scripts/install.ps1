@@ -130,7 +130,7 @@ if ($adoptMode) {
         installedAt       = (Get-Date).ToString('yyyy-MM-dd')
         detectedArtifacts = $detected
         archivedOriginals = $archived
-        nextStep          = '/adopt (developer-initiated; the model cannot invoke it)'
+        nextStep          = '/adopt - a developer types it in a session, OR an agent runs it headless (read .claude/commands/adopt.md and follow its Headless mode, or use .github/prompts/adopt.prompt.md with a --headless directive). Headless prepares an adopt-ai-framework PR branch for human review; it does not auto-merge discovered content.'
         _comment          = 'Written by the framework installer because pre-existing AI tooling was detected. Consolidate it with /adopt - NOT /bootstrap. /adopt deletes this file in its Phase 3.'
     }
     $marker | ConvertTo-Json | Set-Content -Encoding UTF8 -LiteralPath (Join-Path $tgt '.claude/adoption-pending.json')
@@ -166,9 +166,15 @@ if ($updateMode) {
     Write-Output "       repo until /adopt has run."
     Write-Output ""
     Write-Output "  IF YOU ARE AN AI AGENT running this installer: your task is NOT complete until you"
-    Write-Output "  have done step 1 and then told the developer, explicitly, to start a Claude Code"
-    Write-Output "  session in the target repo and type /adopt. Report that as the required manual next"
-    Write-Output "  step in your final summary. Do not attempt /adopt yourself or replicate it by hand."
+    Write-Output "  have done step 1 (commit the copied files) and then EITHER told the developer to start a"
+    Write-Output "  Claude Code session in the target repo and type /adopt, OR run headless adoption yourself:"
+    Write-Output "  invoke the adopt workflow with a --headless directive (use .github/prompts/adopt.prompt.md,"
+    Write-Output "  or read .claude/commands/adopt.md and follow its 'Headless mode'). Headless adoption"
+    Write-Output "  PREPARES a PR: it creates the adopt-ai-framework branch, archives and screens the"
+    Write-Output "  originals, and STAGES every CLAUDE.md/TECH_DEBT merge for a human to review - it does NOT"
+    Write-Output "  apply untrusted discovered content and does NOT open or merge the PR, so a person still"
+    Write-Output "  approves the staged changes. Do not replicate it by hand - run the real workflow (headless)"
+    Write-Output "  or hand off to a developer. Report whichever you did as the next step in your final summary."
 } else {
     Write-Output "Done. Next steps in the target repo:"
     Write-Output "  1. Review and commit the copied files (they are team-shared config, not local settings)."

@@ -292,13 +292,13 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 21614,
-          "tok": 5404
+          "chars": 27162,
+          "tok": 6790
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 27564,
-          "tok": 6891
+          "chars": 27913,
+          "tok": 6978
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -696,13 +696,13 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 21668,
-          "tok": 5417
+          "chars": 27216,
+          "tok": 6804
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 26011,
-          "tok": 6503
+          "chars": 26360,
+          "tok": 6590
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1120,13 +1120,13 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 22342,
-          "tok": 5586
+          "chars": 27890,
+          "tok": 6972
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 34925,
-          "tok": 8731
+          "chars": 35274,
+          "tok": 8818
         },
         {
           "path": ".claude/commands/debt.md#body",

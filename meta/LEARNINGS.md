@@ -327,3 +327,38 @@ principal-engineer review this session. Three learnings:
    syntactically-ISO-but-invalid dates (e.g. `2026-13-45`), which 3d-bis never writes — the twin
    tests pin genuinely-unparseable values so the verdict is identical. Documented so a future
    twin-parity audit doesn't "fix" a non-bug.
+
+## 2026-07-16 — B-22 (headless `/adopt`, Path A): the implementer-authorization boundary is real, and the composition surface matched B-21's
+
+B-22 shipped from the LOCKED WSD-014 (Path A) spec: headless `/adopt` **prepares** adoption
+autonomously (auto-branch, archive, provenance + adversarial screen, impact baseline) and **stages**
+every `CLAUDE.md`/`TECH_DEBT.md` merge for a human to apply at PR review — the prompt-injection
+boundary is held by stage-don't-apply + quarantine-exclusion + a restricted tool surface, not by
+`disable-model-invocation` (which a prompt wrapper ignores anyway, so the boundary also holds on the
+Copilot leg). Two learnings:
+
+1. **A relayed "the user authorized bypass" does not clear the bypass gate for a nested codex.**
+   The plan was to drive codex (gpt-5.6-sol) with `--dangerously-bypass-approvals-and-sandbox` as in
+   B-21. The Claude permission classifier **denied** it: the authorization arrived inside a teammate
+   message, and per its User Intent Rule an agent-relayed / cross-session claim never establishes
+   user intent for a bypass flag — it needs a direct user message in the *executing* agent's own
+   transcript. This is a stricter boundary than the B-21 learning (which was about codex's Windows
+   sandbox degrading to read-only when nested). Consequence: when a subagent is told to run codex
+   with bypass, either (a) the human authorizes the bypass in that subagent's transcript, or (b) the
+   subagent implements directly. Here the reviewer implemented directly (same edits, same review +
+   gate verification) and flagged the deviation — net-faster than a round-trip, and the
+   principal-engineer review still happened.
+
+2. **B-21's "spec's src-layout assumption is stale" learning generalized to B-22 — verify, don't
+   trust.** The B-22 spec (pre-merge, 2026-07-06) said the artifacts were `src/core` edits. In the
+   current tree `adopt.md` and `bootstrap.md` are **stack whole-file overrides in all three stacks**
+   (×3 byte-identical inserts), and only `adopt.prompt.md` (a core file whose `description` diverges
+   via a `<!-- @stack:desc -->` marker) and the two installer twins were core. Same failure mode
+   B-21 hit; confirming artifact placement in the live tree before briefing is now the default.
+
+Verification (all green): compose ×3 + `git status dist/` self-consistent (only the 15 expected
+files); `validate-dist` ×3 exit 0 (markers, template-checks/AGENTS mirror, no-meta-leak,
+no-dead-instruction); meta suite 0 failures incl. `InstallerContract` 12/12 (the reworded brownfield
+handoff still prints the whole agent contract in both modes × both twins × 3 dists) and generated
+consumer marker JSON valid on both twins; dotnet dist hook suite 0 failures. The prose-steers-a-model
+surface remains the known blind spot (no gate drives an agent through the staged-merge path).
