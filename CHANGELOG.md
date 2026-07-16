@@ -11,6 +11,39 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.27.0 (2026-07-16)
+
+### Added — B-27 team wiki memory (WSD-010)
+- New `docs/wiki/` per dist: `INDEX.md` (normative grammar, sorted by slug) + `_template.md`,
+  a flat one-fact-per-file team wiki (gotcha/context/recipe/failed-approach) with frontmatter
+  (`name`, `description`, `type`, `scope`, `status`, `last-verified`).
+- `remember-for-team` skill (human-gated write path: triage/redirect, dedup-before-create, draft
+  from template, sorted-insert into `INDEX.md`, honest "draft until PR review" close). Mirrored
+  to `.github/skills/` for Copilot parity.
+- `wiki-check.ps1/.sh` twins: structural validation (index↔file bijection, frontmatter schema,
+  enum values, sort order) plus an injection screen — FAIL on INDEX-line/description-level
+  matches, WARN (advisory only) on body-level matches. Wired into `docs-sync-check` (both twins).
+- `session-start.ps1/.sh` preload the wiki index (inline when small, summarized above a size
+  threshold, silent when absent), on both Claude Code and Copilot surfaces.
+- `CLAUDE.md`/`AGENTS.md` companion-preamble line + Common Tasks/self-review pointers to the wiki.
+- `install.ps1/.sh`: `docs/wiki/INDEX.md` is copy-if-absent (joins `$adoptionSignals`), everything
+  else under `docs/wiki/` copies normally — a consumer's own wiki survives a framework update.
+- `adopt.md` D7: `docs/wiki/**` is a **screen-in-place** candidate class — clean entries stay
+  where they are (never archived/merged); flagged entries quarantine to
+  `docs/pre-adoption/quarantine/` with their INDEX line intact, keeping `wiki-check` red until a
+  human resolves them.
+
+### Fixed (found during B-27 implementation review)
+- `wiki-check.sh`'s injection-signal character class matched the INDEX grammar's own mandatory
+  em-dash under real UTF-8 collation, failing every syntactically valid entry. Rewritten as
+  `LC_ALL=C` byte-exact UTF-8 matching, mirroring the `.ps1` twin's codepoint ranges.
+- `wiki-check.sh` failed to resolve a native Windows-style root path; now normalizes separators
+  (and uses `cygpath` when available) before building `docs/wiki` paths.
+- `install.ps1`'s D8 fix had diverged structurally from the `.sh` twin (a full per-file rewrite of
+  the copy loop vs. the twin's surgical `docs/`-only special case) — restored to the same shape.
+- The shipped `_template.md` carried a leading HTML comment that broke its own frontmatter
+  contract the moment it was used literally; removed to match the locked design's D2 template.
+
 ## 0.26.5 (2026-07-15)
 
 ### Added — B-32 context-footprint gate (WSD-017)

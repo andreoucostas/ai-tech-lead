@@ -117,6 +117,11 @@ if (Test-Path $tc) {
     & $psExe -NoProfile -ExecutionPolicy Bypass -File $tc
     if ($LASTEXITCODE -ne 0) { Fail "deterministic framework checks failed (see above)." }
 }
+$wc = Join-Path $here 'wiki-check.ps1'
+if (Test-Path $wc) {
+    & $psExe -NoProfile -ExecutionPolicy Bypass -File $wc
+    if ($LASTEXITCODE -ne 0) { Fail "team wiki checks failed (see above)." }
+}
 
 # 7. architecture.html freshness (advisory) -- regenerate after editing ARCHITECTURE.md.
 if ((Test-Path 'docs/ARCHITECTURE.md') -and (Test-Path 'docs/architecture.html')) {

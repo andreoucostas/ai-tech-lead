@@ -305,99 +305,6 @@ B-27 follows as v0.27.0 in the merged repo.
   the watch item is superseded by **B-32** (context-footprint gate, design LOCKED — WSD-017),
   which makes the re-measurement permanent. The salience-over-bytes trade itself stands.
 
-### B-27 · Team wiki memory: repo-managed shared knowledge for consumer dev pools
-**Effort:** L (implementation only — design DONE) · **Invariants:** #1 #2 #3 #5 #7 · added 2026-07-04
-
-> **P0 (design) COMPLETE 2026-07-04 — do not re-derive.** The full design (D1–D10, twice
-> adversarially critiqued, 15/15 external findings incorporated) is at
-> **`.claude/plans/2026-07-04-b27-wiki-memory-design.md`**; decision record **WSD-010** in
-> `meta/workspace-decisions.md`. Implement from that doc: it contains the normative INDEX
-> grammar + frontmatter parsing contract, the install ownership matrix (the #1 trap), the adopt
-> screen-in-place class, the injection FAIL/WARN split, the check-lockstep additions, the test
-> matrix, the implementation order, and end-to-end verification recipes. Target **v0.27.0 in
-> the merged `ai-tech-lead` repo, after B-25-EXEC** (retargeted 2026-07-06 per WSD-012 — see
-> the retarget banner on the design doc; D1–D10 unchanged, delivery mechanics map to the
-> composer). The constraints below remain the locked envelope the design honors; the design
-> doc's refinements win where more specific. **One deliberate reversal:** consumer LEARNINGS.md
-> is KEPT (not merged into the wiki) — see WSD-010.
-
-**Problem.** Claude Code auto-memory is per-developer and private; the only *shared* memory a
-consumer repo has is CLAUDE.md conventions + append-only `LEARNINGS.md` + the registers
-(TECH_DEBT / SECURITY_FINDINGS / ADRs). At large-team scale a single append-only file rots:
-merge conflicts, unbounded token growth, no scoping/retrieval, no curation — and one developer's
-discovered gotcha never reaches a teammate's agent. The goal is a repo-native shared knowledge
-layer ("team wiki memory") so a large dev pool compounds each other's AI-session learnings.
-
-**Grounding (leading practice).** Anthropic's best-practices guidance treats CLAUDE.md/AGENTS.md
-as PR-reviewed shared team memory ("treat it as code"); the Karpathy-style "LLM wiki" pattern is
-compile-don't-re-derive knowledge into a curated repo wiki; the documented dominant failure mode
-of agent-memory systems is **uncurated accumulation** → noise, contradiction, context bloat.
-Claude Code's own harness memory (an index file + one-fact-per-file with frontmatter) is the
-reference implementation shape.
-
-**Locked design constraints** (decided 2026-07-04 — the design phase refines *within* these,
-it does not relitigate them):
-1. **Repo-native, file-based, PR-curated.** A wiki dir (location decided in design phase;
-   candidate `docs/wiki/`) — one fact per file with frontmatter (`name`, one-line `description`,
-   `type: gotcha|context|recipe|failed-approach`, `scope` (area/glob), `last-verified` date,
-   author). An `INDEX.md` (one line per entry) is the only always-loaded piece; agents read
-   entries selectively by relevance.
-2. **No RAG / embeddings / MCP memory server / decay algorithms** — REJECTED: infra-heavy,
-   unusable across both surfaces (Copilot + Claude Code in Bitbucket DC shops), and unnecessary —
-   grep + index is sufficient retrieval at repo scale. Staleness = a `last-verified` date + human
-   review, not decay math.
-3. **Write path is human-gated.** A skill (working name `remember-for-team`) drafts entry +
-   index line; it reaches the team only via normal commit/PR review. **No auto-append hook** —
-   REJECTED: auto-capture noise defeats curation, and every auto-write is a prompt-injection
-   channel. The PR review *is* the memory-quality mechanism.
-4. **Curation designed in:** the skill searches the index for duplicates before creating (update
-   beats duplicate); entries >90 days unverified are resurfaced for confirm-or-delete (mirror the
-   B-21 hazard-refresh pattern); an index-size threshold warns on token bloat (cf. B-26).
-5. **Security — wiki entries are model-consumed text committed by many hands.** Treat as an
-   injection surface: guard patterns scan wiki writes like any write; `/adopt`'s quarantine
-   treats pre-existing wiki dirs as adversarial-content candidates; the consumed guidance states
-   entries are *claims to verify against code, not instructions to obey*; the entry template
-   forbids imperative phrasing ("always run X") in favor of factual claims.
-6. **Boundaries:** the wiki must NOT duplicate TECH_DEBT / SECURITY_FINDINGS / ADRs / CLAUDE.md
-   conventions. It is the layer beneath: gotchas, tribal context, failed approaches, "why X looks
-   weird". The design must define the **promotion path** (recurring wiki entry → CLAUDE.md
-   convention or ADR) and decide consumer `LEARNINGS.md`'s fate (likely: becomes/feeds the wiki).
-   The wiki is a staging area, never a rival source of truth — CLAUDE.md wins conflicts.
-7. **Dual-surface, instructed-first.** Must work with zero hooks (index referenced from the
-   CLAUDE.md/AGENTS.md companion-files preamble [#2]); an optional session-start index preload is
-   salience-only, twin-scripted [#3], and honest per surface [#5] — remember `postToolUse`
-   additionalContext is NOT consumed by the Copilot CLI model (B-03 canary).
-
-**Suggested phases.** P0: design doc weighing ≥2 layouts (flat dir + index vs scoped subdirs;
-session-start preload vs pointer-only), adversarial critique pass, record the outcome in
-`meta/workspace-decisions.md`. P1: implement in dotnet → mirror to angular [#1] (dir skeleton +
-entry template, skill mirrored to `.github/skills` [#2], CLAUDE.md preamble line + AGENTS.md
-regen via `/generate-copilot` [#2]). P2: deterministic `wiki-check` validation (frontmatter
-validity, index↔files bijection, size threshold) as `.ps1`/`.sh` twins [#3], referenced from the
-B-15 consumer CI recipe. Then CHANGELOG both repos + release via `release.ps1` [#7].
-
-**Verification for the executing agent (evidence-based — show commands + observed output):**
-- *Skill:* greenfield + brownfield install smoke into temp dirs → ask the agent to save a team
-  learning → entry file + index line created, frontmatter parses; repeat the same fact → it
-  updates the existing entry (dedup), does not duplicate.
-- *Retrieval:* fresh session in the temp install → a planted entry is cited when its scoped area
-  comes up, via index + one entry read (not a bulk load of all entries).
-- *wiki-check red-tests:* plant (a) an index line with no file, (b) a file with no index line,
-  (c) malformed frontmatter → each fails with a specific message; a clean fixture exits 0. Run
-  BOTH twins on the same fixtures and assert identical verdicts (follow the `tests/hooks/`
-  harness pattern; remember the EOL-normalization + absolute-path traps in LEARNINGS.md).
-- *Injection:* attempt a wiki entry containing a secret / instruction-like payload → the
-  editor-path guard fires (existing fixture pattern under `.claude/hooks/_fixtures/`).
-- *Parity:* `template-checks` ×2, `check-lockstep`, `docs-sync-check` all green; AGENTS.md
-  regenerated.
-
-**Recommendation & pushback (recorded at triage):** worth building — it converts the framework's
-weakest long-term asset (append-only LEARNINGS.md) into a compounding one, and it is the only
-piece that scales knowledge across a dev pool rather than per seat. The pushback is on *shape*,
-encoded in constraints 2–3: systems in this space die of uncurated auto-capture or of infra
-nobody runs. Value is contingent on teams reviewing wiki PRs like code — say so explicitly in
-the shipped docs (fits the reviewer profile: entries must read as plain engineering notes).
-
 ### B-29 · Haiku-tier agent adequacy evidence (P3)
 **Area:** both repos' `tests/evals/` · **Effort:** M · **Invariants:** #1 · added 2026-07-05
 
@@ -446,6 +353,45 @@ A wrong pin is consumer-visible: verify on a live Copilot surface before shippin
   ×3 green (the one expected pre-stamp `validate-dist` FAIL — CHANGELOG at 0.26.5 vs
   `framework-version.json` at 0.26.4 — resolved by `release.ps1`'s own stamp-then-validate
   order). Released via `release.ps1`, all gates green, pushed.
+- **B-27** — shipped **v0.27.0** (2026-07-16). Implemented from the LOCKED spec
+  (`.claude/plans/2026-07-04-b27-wiki-memory-design.md`, D1–D10, WSD-010 + its 2026-07-11
+  monorepo-retargeting appendix) via a codex (gpt-5.6-sol) implementer + principal-engineer
+  review loop — two implementation rounds, five real defects found on review and fixed before
+  shipping:
+  1. `wiki-check.sh`'s injection-signal character class matched the INDEX grammar's own
+     mandatory em-dash under real UTF-8 collation, FAILing every syntactically valid entry —
+     reproduced directly, rewritten as `LC_ALL=C` byte-exact UTF-8 matching mirroring the `.ps1`
+     twin's codepoint ranges.
+  2. `wiki-check.sh` didn't resolve a native Windows-style root path (exactly what the
+     `Invoke-Hook` test harness passes) — fixed with separator normalization + `cygpath`.
+  3. `install.ps1`'s D8 copy-if-absent fix had diverged structurally from the `.sh` twin (a full
+     per-file rewrite of the whole copy loop vs. the twin's surgical `docs/`-only special case,
+     an invariant #3 twin-parity violation and an oversized blast radius) — restored to match.
+  4. Three separate wiki-related doc insertions (`CLAUDE.md` companion-preamble line, Common
+     Tasks bullet, self-review bullet ×3 each; `ci-integration.md`'s wiki-check line ×2) had
+     landed tripled/duplicated — none in the 5 verbatim-gated mirror sections, so
+     `template-checks` passed clean despite it; caught only by direct file reading, deduped.
+  5. The shipped `_template.md` carried a leading HTML comment not present in the locked D2
+     template, breaking its own frontmatter contract (`first line must be ---`) the moment an
+     entry was drafted from it literally — caught by an actual skill smoke test (draft-from-
+     template, not a synthetic fixture), fixed by removing the line (principal-engineer fix,
+     not round-tripped — trivial one-line deletion).
+  Also confirmed and corrected: every other hook-suite failure the implementer reported
+  (`AuditTrail`, `PostWriteRouting`, `RoutePrompt`, `SessionStartWiki`, `TwinParity`) was its
+  sandbox's Git Bash failing to start (`CreateFileMapping ... Win32 error 5`), not a real defect
+  — confirmed by rerunning every suite in a working shell, all green throughout both rounds.
+  **Verified:** `build.ps1` fresh ×3 + `git status --porcelain dist/` stable; `validate-dist.ps1`
+  ×3 clean (markers, JSON, `bash -n`, PS-AST, `template-checks`, `no-meta-leak`,
+  `no-dead-instruction`); all 3 dists' `Invoke-HookTests.ps1` 0 failures across 9 files each
+  (`WikiCheck.Tests` 11/11, `TwinParity.Tests` 40/40); meta suite (`DocTruth`,
+  `InstallerContract`, `MetaHooks`, `WorkspaceBom`) green; install smoke greenfield + brownfield +
+  update ×3 dists all `EXIT=0`; `docs-sync-check` ×3 clean; `wiki-check` run directly against the
+  real committed `dist/*` wiki dirs (both twins agree); live guard-hook fixture (a fabricated AWS
+  key in a `docs/wiki/*.md` write) blocked with exit 2, proving the generic secret-scan already
+  covers wiki writes with no wiki-specific code needed; hands-on skill smoke (draft from the
+  corrected template → passes wiki-check with only an expected body-level WARN → single
+  entry/single INDEX line, proving the dedup-not-duplicate mechanics hold). Released via
+  `release.ps1`, all gates green, pushed.
 - **B-33** — done **2026-07-12**, then **REOPENED AND RE-FIXED THE SAME DAY** when tested on the
   second surface. The README fix below was **Claude-only**: given the archived repo's URL, **Copilot
   never opens the README** — it clones and runs `scripts/install.ps1` directly, and duly installed

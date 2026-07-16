@@ -103,6 +103,14 @@ if (Test-Path SECURITY_FINDINGS.md) {
     }
 }
 
+# 6. Team wiki index (cheap capped preload; staleness belongs to wiki-check)
+if (Test-Path docs/wiki/INDEX.md) {
+    $wikiIndex = Get-Content docs/wiki/INDEX.md -Raw
+    $wikiCount = ([regex]::Matches($wikiIndex, '(?m)^- \[')).Count
+    if ($wikiCount -le 30) { Write-Output $wikiIndex.TrimEnd() }
+    else { Write-Output "$wikiCount wiki entries — read docs/wiki/INDEX.md" }
+}
+
 }) -join "`n"
 
 # Surface dispatch. Claude Code includes hook_event_name in the event payload and treats plain

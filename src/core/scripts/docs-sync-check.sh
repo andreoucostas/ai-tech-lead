@@ -129,6 +129,9 @@ fi
 if [ -f "$here/template-checks.sh" ]; then
   bash "$here/template-checks.sh" || fail "deterministic framework checks failed (see above)."
 fi
+if [ -f "$here/wiki-check.sh" ]; then
+  bash "$here/wiki-check.sh" || fail "team wiki checks failed (see above)."
+fi
 
 # 7. architecture.html freshness (advisory) — regenerate after editing ARCHITECTURE.md.
 if [ -f "docs/ARCHITECTURE.md" ] && [ -f "docs/architecture.html" ]; then

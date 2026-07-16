@@ -17,6 +17,9 @@ Two legs. Both are non-negotiable; each gates a different thing.
 
 ### Leg 1 — framework-state check (shipped with this repo)
 
+`docs-sync-check` also runs `wiki-check`, validating the team wiki schema, index, and injection screen.
+
+
 ```
 bash scripts/docs-sync-check.sh          # Linux/macOS build agents
 pwsh -NoProfile -File scripts/docs-sync-check.ps1   # Windows build agents

@@ -30,7 +30,7 @@ protected="CLAUDE.md AGENTS.md TECH_DEBT.md SECURITY_FINDINGS.md LEARNINGS.md FR
 
 # Signals that the target already has AI tooling and therefore needs /adopt, not /bootstrap
 # (mirrors /adopt Phase 1 discovery).
-adoption_signals="CLAUDE.md AGENTS.md GEMINI.md .cursorrules .cursor/rules .clinerules .windsurfrules .roomodes .aider.conf.yml .continue .github/copilot-instructions.md .github/instructions .github/chatmodes docs/adr docs/decisions ARCHITECTURE.md docs/ARCHITECTURE.md CODEMAP.md CONVENTIONS.md docs/CONVENTIONS.md TECH_DEBT.md TODO.md BACKLOG.md"
+adoption_signals="CLAUDE.md AGENTS.md GEMINI.md .cursorrules .cursor/rules .clinerules .windsurfrules .roomodes .aider.conf.yml .continue .github/copilot-instructions.md .github/instructions .github/chatmodes docs/adr docs/decisions ARCHITECTURE.md docs/ARCHITECTURE.md CODEMAP.md CONVENTIONS.md docs/CONVENTIONS.md TECH_DEBT.md TODO.md BACKLOG.md docs/wiki/INDEX.md"
 
 update_mode=0
 if [ -f "$tgt/.claude/framework-version.json" ]; then update_mode=1; fi
@@ -87,8 +87,24 @@ for entry in "$src"/*; do
     # Template-repo meta files that must never land in (or overwrite their namesakes in) a consumer repo.
     .git|.template-repo|README.md|CHANGELOG.md|.gitignore|.gitattributes) continue ;;
   esac
-  cp -r "$entry" "$tgt"/
+  if [ "$name" != docs ]; then cp -r "$entry" "$tgt"/; fi
 done
+# Copy docs normally except for the consumer-owned wiki index, which is copy-if-absent.
+if [ -d "$src/docs" ]; then
+  mkdir -p "$tgt/docs"
+  for entry in "$src/docs"/*; do
+    name="$(basename "$entry")"
+    if [ "$name" != wiki ]; then cp -r "$entry" "$tgt/docs"/; fi
+  done
+  if [ -d "$src/docs/wiki" ]; then
+    mkdir -p "$tgt/docs/wiki"
+    for entry in "$src/docs/wiki"/*; do
+      name="$(basename "$entry")"
+      if [ "$name" = INDEX.md ] && [ -e "$tgt/docs/wiki/INDEX.md" ]; then continue; fi
+      cp -r "$entry" "$tgt/docs/wiki"/
+    done
+  fi
+fi
 # The installer is meta — don't ship it into the consumer repo. template-ci.yml is the TEMPLATE
 # repo's own CI (hook suite + framework checks on push); consumers get the same framework checks
 # via docs-sync-check -> template-checks, wired into their own CI.

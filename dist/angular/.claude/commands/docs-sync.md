@@ -41,6 +41,7 @@ If any file has drifted, recommend `/generate-copilot` (for the mirror) and a ma
 - Does it still only say "No entries yet"? If so, prompt the team to add observations.
 - Are existing entries still relevant?
 - Are there learnings from recent work that should be captured?
+- Does any durable LEARNINGS.md entry deserve promotion to a wiki entry (`docs/wiki/`) via `remember-for-team`?
 
 ### Step 4 — Check FRAMEWORK-CONTEXT.md drift
 - **Detected Framework Packages**: re-scan `package.json` (and `package-lock.json` for resolved versions). Flag packages newly added, removed, or version-bumped since the last sync. Propose updated table.

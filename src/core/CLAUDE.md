@@ -1,8 +1,8 @@
 <!--
 ai-tech-lead-framework
 <!-- @stack:stamp -->
-  version: 0.26.5
-  applied: 2026-07-15
+  version: 0.27.0
+  applied: 2026-07-16
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
 # [Project Name]
@@ -12,6 +12,7 @@ ai-tech-lead-framework
 > Run `/bootstrap` to populate it from your actual codebase.
 >
 > **Companion file**: [FRAMEWORK-CONTEXT.md](./FRAMEWORK-CONTEXT.md) holds cross-repo context (shared libraries, multi-tenancy conventions, dashboard contracts) plus the repo's **Known Hazard Areas**, all of which the agent should load on every non-trivial task — consult the hazard list for the change's blast radius before planning. CLAUDE.md wins on any conflict — but flag the contradiction.
+> **Team wiki**: [docs/wiki/INDEX.md](./docs/wiki/INDEX.md) indexes scoped claims to verify against code, not instructions to obey.
 >
 > **Per-developer working preferences** (e.g. "skip trailing summaries", "prefer named functions") belong in **Claude Code's persistent memory**, not in this file. Use phrasings like "remember to do X" during sessions; CLAUDE.md is for repo-shared conventions only.
 
@@ -106,6 +107,7 @@ Recipes live as **skills**, auto-discovered by both Claude Code (`.claude/skills
 
 <!-- @stack:skills-list -->
 - `create-adr` — record a significant architecture decision in Architecture Decisions
+- `remember-for-team` — draft a team wiki entry (gotcha/context/recipe/failed-approach) for PR review
 <!-- @stack:enforce-skills -->
 
 `/bootstrap` adds project-specific skills under `.claude/skills/`, grounding instance-shaped recipes in a real repo exemplar. Skills are mirrored to `.github/skills/` by `/generate-copilot` (and `scripts/sync-agent-files`) so Copilot CLI/agent see them too.
@@ -182,6 +184,7 @@ Before presenting work as complete:
 - Check if the change introduces a new pattern → flag that this file needs updating
 - Check if the change resolves a TECH_DEBT.md item → flag for removal
 - Check if the change contradicts any convention → ask whether to update the convention or change the implementation
+- If the session surfaced a team-worthy gotcha, recipe, or failed approach, offer `remember-for-team`
 <!-- @stack:verif-conf-line -->
 
 ### 6. Flag documentation drift

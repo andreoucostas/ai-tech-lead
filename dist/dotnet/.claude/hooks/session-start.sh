@@ -87,6 +87,13 @@ if [ -f SECURITY_FINDINGS.md ]; then
   fi
 fi
 
+# 6. Team wiki index (cheap capped preload; staleness belongs to wiki-check)
+if [ -f docs/wiki/INDEX.md ]; then
+  wiki_count=$(grep -c '^- \[' docs/wiki/INDEX.md 2>/dev/null || true)
+  [ -n "$wiki_count" ] || wiki_count=0
+  if [ "$wiki_count" -le 30 ]; then cat docs/wiki/INDEX.md; else echo "$wiki_count wiki entries — read docs/wiki/INDEX.md"; fi
+fi
+
 }
 
 body=$(emit_body)

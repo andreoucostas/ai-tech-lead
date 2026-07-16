@@ -36,7 +36,8 @@ $adoptionSignals = @('CLAUDE.md', 'AGENTS.md', 'GEMINI.md', '.cursorrules', '.cu
     '.clinerules', '.windsurfrules', '.roomodes', '.aider.conf.yml', '.continue',
     '.github/copilot-instructions.md', '.github/instructions', '.github/chatmodes',
     'docs/adr', 'docs/decisions', 'ARCHITECTURE.md', 'docs/ARCHITECTURE.md', 'CODEMAP.md',
-    'CONVENTIONS.md', 'docs/CONVENTIONS.md', 'TECH_DEBT.md', 'TODO.md', 'BACKLOG.md')
+    'CONVENTIONS.md', 'docs/CONVENTIONS.md', 'TECH_DEBT.md', 'TODO.md', 'BACKLOG.md',
+    'docs/wiki/INDEX.md')
 
 $updateMode = Test-Path -LiteralPath (Join-Path $tgt '.claude/framework-version.json')
 $detected = @()
@@ -84,8 +85,25 @@ if ($updateMode) {
 }
 
 Get-ChildItem -Force -LiteralPath $src |
-    Where-Object { $_.Name -notin $metaFiles } |
+    Where-Object { $_.Name -notin $metaFiles -and $_.Name -ne 'docs' } |
     ForEach-Object { Copy-Item -Recurse -Force -LiteralPath $_.FullName -Destination $tgt }
+
+# Copy docs normally except for the consumer-owned wiki index, which is copy-if-absent.
+$sourceDocs = Join-Path $src 'docs'
+if (Test-Path -LiteralPath $sourceDocs -PathType Container) {
+    $targetDocs = New-Item -ItemType Directory -Force -Path (Join-Path $tgt 'docs')
+    Get-ChildItem -Force -LiteralPath $sourceDocs |
+        Where-Object { $_.Name -ne 'wiki' } |
+        ForEach-Object { Copy-Item -Recurse -Force -LiteralPath $_.FullName -Destination $targetDocs.FullName }
+    $sourceWiki = Join-Path $sourceDocs 'wiki'
+    if (Test-Path -LiteralPath $sourceWiki -PathType Container) {
+        $targetWiki = New-Item -ItemType Directory -Force -Path (Join-Path $targetDocs.FullName 'wiki')
+        Get-ChildItem -Force -LiteralPath $sourceWiki | ForEach-Object {
+            if ($_.Name -eq 'INDEX.md' -and (Test-Path -LiteralPath (Join-Path $targetWiki.FullName 'INDEX.md'))) { return }
+            Copy-Item -Recurse -Force -LiteralPath $_.FullName -Destination $targetWiki.FullName
+        }
+    }
+}
 
 # The installer is meta — don't ship it into the consumer repo. template-ci.yml is the TEMPLATE
 # repo's own CI (hook suite + framework checks on push); consumers get the same framework checks

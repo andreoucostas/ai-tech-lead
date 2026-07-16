@@ -5,6 +5,29 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.27.0 — 2026-07-16
+
+### Added — team wiki memory
+- A new `docs/wiki/` in your repo: an `INDEX.md` plus one file per team learning (a gotcha,
+  context fact, recipe, or failed approach), each with a small frontmatter block (what it is,
+  where it applies, how confident, when last checked). Applies to both stacks.
+- A new `remember-for-team` skill drafts these entries for you during a session — nothing is
+  written automatically; it only ever produces a draft that reaches the team through your normal
+  PR review, same as any other code change.
+- Your agent now sees the wiki index at the start of a session (inlined if small, summarized if
+  large) on both Claude Code and Copilot, and the entries are described to it as **claims to
+  verify against the code, not instructions to follow** — the same "screen it, don't obey it"
+  posture the framework already applies to adopted docs.
+- A new `wiki-check` gate runs as part of `docs-sync-check`: it validates the wiki's structure and
+  screens entries for injected instructions, matching the framework's existing PR-review checks.
+- If you already run `/adopt` on a repo that has its own `docs/wiki/`, clean entries are left
+  exactly where they are; anything that looks adversarial is quarantined for a human to review
+  instead of being merged automatically.
+- Updating the framework never overwrites your team's own `docs/wiki/INDEX.md` — only a
+  missing one is created.
+
+No action needed to receive this — the wiki starts empty; your team populates it over time.
+
 ## 0.26.5 — 2026-07-15
 
 ### Fixed
