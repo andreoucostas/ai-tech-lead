@@ -272,3 +272,24 @@ off is byte-identical to the version it passed against). **Rule for anything tha
 agent: put it where the machine runs, not where the human reads.** Prose is a request; a non-zero
 exit is a decision. `no-dead-instruction` and `InstallerContract` exist because of the same
 insight — assert on what the artifact *does*, not on what it *says*.
+
+## 2026-07-16 — v0.27.1 (B-37): post-ship review of a lower-tier implementation, and two release-loop gotchas
+
+v0.27.0 (B-27) shipped by a less-capable implementer was reviewed post-ship against the locked
+spec: six findings (see B-37 in BACKLOG.md — macOS `date -d`, stdin-hang, sort collation, D4/D9
+omissions, .sh Copilot test gap, harness console-codepage capture). Two process learnings:
+
+1. **"Gates green" is only as strong as the environment they ran in.** The v0.27.0 hook suites
+   passed on the maintainer's UTF-8 console and failed 2 cases on any OEM code page (ibm850) —
+   the harness decoded child stdout with `[Console]::OutputEncoding`. A release gate that can
+   pass or fail depending on `chcp` is the same lie the v0.26.5 rendering fix killed, one layer
+   up. The harness now pins UTF-8 around the capture; when verifying a "green" claim, re-run at
+   least one suite under a deliberately hostile code page.
+
+2. **release.ps1 is not re-runnable after a refused release without manual un-stamping.** The
+   README version stamp treats "regex replaced nothing" as FATAL (reword protection), but a
+   refused run has already stamped README to the new version — so the retry dies on its own
+   leftovers. Until that's made idempotent, the retry recipe is: revert the README
+   `Current shipped version` line to the previous version, fix the failing gate, re-run.
+   (Cost two extra runs this release; the actual gate failure was `no-meta-leak` catching a
+   tracking id an implementer agent wrote into a shipped test comment — the gate worked.)
