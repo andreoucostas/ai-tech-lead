@@ -53,7 +53,8 @@ while IFS= read -r f; do
   fi
 
   # 3. ToListAsync / FirstOrDefaultAsync without AsNoTracking in the same file (heuristic)
-  if grep -qE '\.(ToListAsync|FirstOrDefaultAsync|SingleOrDefaultAsync|AnyAsync|CountAsync)\(' "$f" 2>/dev/null; then
+  if grep -qE 'using[[:space:]]+Microsoft\.EntityFrameworkCore|DbContext|DbSet<' "$f" 2>/dev/null \
+    && grep -qE '\.(ToListAsync|FirstOrDefaultAsync|SingleOrDefaultAsync|AnyAsync|CountAsync)\(' "$f" 2>/dev/null; then
     if ! grep -q 'AsNoTracking' "$f" 2>/dev/null; then
       findings+=("$f: read-style EF Core query without any AsNoTracking() in file — review for read-only opportunities")
     fi

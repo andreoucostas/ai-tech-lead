@@ -73,7 +73,8 @@ foreach ($f in $files) {
         }
 
         # 3. Read-style EF Core query without AsNoTracking in the same file (heuristic)
-        if ($content -match '\.(ToListAsync|FirstOrDefaultAsync|SingleOrDefaultAsync|AnyAsync|CountAsync)\(' -and
+        if ($content -match '(using\s+Microsoft\.EntityFrameworkCore|DbContext|DbSet<)' -and
+            $content -match '\.(ToListAsync|FirstOrDefaultAsync|SingleOrDefaultAsync|AnyAsync|CountAsync)\(' -and
             $content -notmatch 'AsNoTracking') {
             $findings.Add("${f}: read-style EF Core query without any AsNoTracking() in file -- review for read-only opportunities")
         }

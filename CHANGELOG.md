@@ -11,6 +11,15 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.29.1 (2026-07-16)
+
+### Fixed — B-35: derive persistence guidance from repository evidence
+
+- Implements the locked WSD-020 design: technology-specific rules now require repository evidence;
+  .NET data-access defaults, bootstrap analysis, `add-entity`, Copilot guidance, and the Boy Scout
+  hook no longer assume EF Core. MongoDB-style async query methods no longer trigger EF-only
+  `AsNoTracking()` advice.
+
 ## 0.29.0 (2026-07-16)
 
 ### Added — B-22: headless `/adopt` (Path A — prepare autonomously, human applies the merge)

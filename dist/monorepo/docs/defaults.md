@@ -27,9 +27,23 @@ This repo carries both stacks. Apply the `.NET defaults` to backend C# code and 
 - Use `IOptions<T>` for static config, `IOptionsMonitor<T>` for config that can change at runtime, `IOptionsSnapshot<T>` for scoped config refresh.
 
 ### Data Access
+Data-access defaults are conditional on what the repo evidences in csproj package references. Apply only the matching block; if none match, ask.
+
+**If EF Core (`Microsoft.EntityFrameworkCore*`):**
 - EF Core with repository pattern only where it adds value (not wrapping DbContext for the sake of it).
 - Queries belong in the application/service layer, not in controllers.
 - Always use `.AsNoTracking()` for read-only queries.
+
+**If Dapper:**
+- Use parameterized queries only; keep SQL in the application layer; never concatenate dynamic SQL.
+
+**If MongoDB.Driver:**
+- Use typed collections via a small registry; no magic strings.
+- Review indexes when adding a new query shape, and use projections for read-heavy queries.
+- Use multi-document transactions only where the deployment supports them (replica set); otherwise design idempotent single-document writes.
+
+**If none detected:**
+- For greenfield work, ask the developer before introducing a data-access stack.
 
 ### API Design
 - Controllers are thin — delegate to services immediately. Minimal APIs are acceptable for simple endpoints if the project uses them.
@@ -58,7 +72,7 @@ This repo carries both stacks. Apply the `.NET defaults` to backend C# code and 
 ### Test shape
 Choose the level by what the test actually exercises — *push each test to the lowest level that still runs real behavior; test at the boundary, not the mock.* A heuristic, not a fixed ratio; `/bootstrap` replaces it with the shape your codebase warrants.
 - Domain / application logic (rules, calculations, branching, validation) → unit-dense.
-- Cross-cutting paths (routing, model binding, EF Core, auth, serialization) → integration via `WebApplicationFactory`; exercise the real pipeline, don't mock it.
+- Cross-cutting paths (routing, model binding, data access, auth, serialization) → integration via `WebApplicationFactory`; exercise the real pipeline, don't mock it.
 - Critical journeys → a sparse top layer of full-stack behavioral checks. Few, high-value.
 - Boundary-heavy / gateway services → weight toward integration (honeycomb / risk-based), not unit.
 - Anti-shape: the inverted suite (mostly slow end-to-end tests over a thin unit base). Slow + flaky = wrong shape.

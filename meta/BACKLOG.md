@@ -41,28 +41,8 @@ dead (feeds B-08 matrix rows + B-09 post-write demotion) and the folder-trust pr
 **All P2 items (B-04…B-09) shipped in v0.25.2 (2026-07-04) — see the Done section.** The
 check-lockstep union/computed-skills/hooks.json gates + template-checks skills-mirror gate close
 the silent-drift holes; the post-write $tn routing divergence is fixed with twin agreement tests;
-the enforcement matrix gained the three missing capability rows. **B-35 (below, added 2026-07-15
-from consumer feedback) is the one open P2 item.**
-
-### B-35 · Derive, don't assume: the framework pushes EF Core on non-EF backends — **design LOCKED (WSD-020)**
-**Effort:** M · **Invariants:** #1 #2 #3 #6 #7 · added 2026-07-15 · spec: `.claude/plans/2026-07-15-b35-derive-dont-assume-design.md`
-
-**Problem (consumer-reported).** A dev team with a MongoDB backend reports the framework "goes
-with EF Core… should have derived things from the codebase." Verified: (1) `boy-scout-check`
-heuristic #3 flags `ToListAsync`-family calls without `AsNoTracking()` — MongoDB.Driver exposes
-the same method names, so on Mongo the hook demands an EF-only API on every query file, pre- or
-post-bootstrap; (2) `docs/defaults.md > Data Access` asserts EF Core unconditionally in the
-cold-start window; (3) `/bootstrap` A2's detection list is closed ("EF Core / Dapper / both") —
-a document store isn't representable, biasing even bootstrapped output; (4) `add-entity` walks
-EF steps with no evidence gate; (5) shipped `copilot-instructions.md` hardcodes DbContext advice.
-
-**Do:** implement the locked spec — one core "derive, don't assume" evidence-gating rule;
-conditional defaults.md Data Access blocks (EF/Dapper/Mongo/none); open A2 detection + 3a
-no-unevidenced-technology guard; add-entity Step 0 gate + 3a persistence audit line;
-boy-scout heuristic #3 requires EF markers in-file (×4 twin/sibling files + fixtures);
-genericize the copilot-instructions line. Candidate to ship as a v0.26.x defect fix before B-27.
-
-**Not:** a MongoDB dist or stack; rewriting prose that uses EF Core as illustration; B-34.
+the enforcement matrix gained the three missing capability rows. **B-35 shipped in v0.29.1
+(2026-07-16) — see the Done section. No open P2 items remain.**
 
 ---
 ## P3 — hygiene, drift, small fixes
@@ -401,6 +381,34 @@ A wrong pin is consumer-visible: verify on a live Copilot surface before shippin
   freshness; validate-dist ×3; dotnet dist hook suite 0 failures across 10 files (TwinParity 40/40).
   Released via `release.ps1`. **B-22 (headless `/adopt`) is now unblocked** (its hard dependency
   B-21 D1 shipped).
+
+- **B-35** — shipped **v0.29.1** (2026-07-16). Implemented the LOCKED WSD-020 design
+  (`.claude/plans/2026-07-15-b35-derive-dont-assume-design.md`) via a codex (gpt-5.6-sol)
+  implementer under principal-engineer review. **D1** — new Verification Rule 10 ("Derive, don't
+  assume") added to `verif-rule9` snippets in all three stacks (dotnet/angular/monorepo — the
+  principle generalizes beyond ORM to HTTP client/state management/test framework, so it applies
+  to angular too, not just the two EF-affected stacks). **D2** — dotnet + monorepo
+  `docs/defaults.md` Data Access restructured into evidence-keyed blocks (EF Core / Dapper /
+  MongoDB.Driver / none-detected); "Test shape" line genericized. **D3** — `/bootstrap` A2 opens
+  its persistence detection list (EF Core/Dapper/ADO.NET/MongoDB.Driver/Cosmos/Redis/other/none)
+  and Phase 3a gains a no-unevidenced-technology synthesis guard, dotnet + monorepo. **D4** —
+  `add-entity` (`.claude` + `.github` mirrors, dotnet + monorepo) gains a Step 0 EF-evidence gate;
+  bootstrap 3a Common Tasks audit gains a persistence-check line. **D5** — `boy-scout-check`
+  heuristic #3 (4 files: dotnet + monorepo × `.ps1`/`.sh`) now requires an EF marker
+  (`Microsoft.EntityFrameworkCore`/`DbContext`/`DbSet<`) in the same file before flagging missing
+  `AsNoTracking()` — MongoDB's identically-named `ToListAsync`-family methods no longer misfire.
+  **D6** — `copilot-instructions.md` (dotnet + monorepo) genericized ("data-access layer" instead
+  of "DbContext"). New shared test cases added to the existing core `TwinParity.Tests.ps1` (not a
+  new file — reused invariant #1's single-source test surface, angular skips via a guard since it
+  doesn't carry the hook): Mongo-shaped query → zero findings, EF query without AsNoTracking →
+  still flags. **Review finding fixed before shipping:** the angular consumer CHANGELOG entry
+  copy-pasted the dotnet wording ("no longer assumes EF Core") verbatim — meaningless to an
+  Angular consumer who never had EF Core guidance; reworded to name the actually-relevant
+  technologies (HTTP client, state management, test framework). **Verified:** build ×3 + dist
+  freshness; `validate-dist` ×3 exit 0 (all three, incl. skills-mirror sync); all 3 dists' hook
+  suites 0 failures (dotnet `TwinParity.Tests` 42/42, up from 40/40 — exactly the 2 new cases) +
+  meta suite 0 failures (`InstallerContract` 12/12). Released via `release.ps1`, all gates green,
+  pushed.
 
 - **B-22 (implementation)** — shipped **v0.29.0** (2026-07-16). Implemented the LOCKED WSD-014
   (Path A) design (`.claude/plans/2026-07-06-b22-headless-adopt-design.md`). Headless `/adopt`

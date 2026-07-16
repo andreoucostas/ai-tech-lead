@@ -21,7 +21,7 @@ When generating code in this repo, follow these rules. The full conventions, arc
 
 ## .NET — Data Access & API Design
 - Queries live in the application/service layer, never in controllers; always `.AsNoTracking()` on read-only queries.
-- Repository pattern only where it adds value; don't wrap DbContext for its own sake.
+- Repository pattern only where it adds value; don't wrap the data-access layer for its own sake.
 - Request/response DTOs separate from domain entities; FluentValidation for request validation; no validation logic in controllers.
 - Background work via BackgroundService/IHostedService; no fire-and-forget Task.Run in handlers.
 

@@ -5,6 +5,12 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.29.1 — 2026-07-16
+
+### Fixed — data-access guidance now follows your codebase
+
+- The framework no longer assumes EF Core; data-access guidance is derived from your codebase.
+
 ## 0.29.0 — 2026-07-16
 
 ### Added — `/adopt` can now run unattended (headless), preparing a PR for you to review

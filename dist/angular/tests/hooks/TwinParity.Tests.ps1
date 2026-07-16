@@ -52,6 +52,37 @@ try {
     Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
 }
 
+# --- boy-scout EF evidence gate: Mongo-shaped async queries stay silent; EF queries still flag ---
+$boyPs = Join-Path $hooks 'boy-scout-check.ps1'; $boySh = Join-Path $hooks 'boy-scout-check.sh'
+if (-not (Test-Path -LiteralPath $boyPs) -or -not ((Get-Content -Raw -LiteralPath $boyPs) -match 'read-style EF Core query')) {
+    Skip 'boy-scout EF evidence gate (all cases)' 'distribution does not carry the .NET boy-scout heuristic'
+} elseif (-not $bash) {
+    Skip 'boy-scout EF evidence gate (all cases)' 'no bash found -- cannot run .sh twin on this host'
+} else {
+    $boyCases = @(
+        @{ n = 'Mongo ToListAsync has zero findings'; file = 'MongoQuery.cs'; content = "using MongoDB.Driver;`nclass MongoQuery { async Task Run(IMongoCollection<string> c) => await c.Find(Builders<string>.Filter.Empty).ToListAsync(); }"; expect = $false },
+        @{ n = 'EF ToListAsync without AsNoTracking flags'; file = 'EfQuery.cs'; content = "using Microsoft.EntityFrameworkCore;`nclass EfQuery { async Task Run(DbSet<string> rows) => await rows.ToListAsync(); }"; expect = $true }
+    )
+    foreach ($case in $boyCases) {
+        It "boy-scout twins agree: $($case.n)" {
+            $dir = Join-Path ([IO.Path]::GetTempPath()) ("boyfix-" + [guid]::NewGuid().ToString('N'))
+            New-Item -ItemType Directory -Path $dir -Force | Out-Null
+            Push-Location $dir
+            try {
+                git init --quiet
+                [IO.File]::WriteAllText((Join-Path $dir $case.file), $case.content)
+                $rps = Invoke-Hook $boyPs '{}'
+                Remove-Item -LiteralPath (Join-Path $dir '.claude') -Recurse -Force -ErrorAction SilentlyContinue
+                $rsh = Invoke-Hook $boySh '{}'
+                $hasPs = $rps.Out -match 'read-style EF Core query'
+                $hasSh = $rsh.Out -match 'read-style EF Core query'
+                Assert ($hasPs -eq $case.expect) "boy-scout.ps1 finding expected=$($case.expect), actual=$hasPs, output='$($rps.Out)'"
+                Assert ($hasSh -eq $case.expect) "boy-scout.sh finding expected=$($case.expect), actual=$hasSh, output='$($rsh.Out)'"
+            } finally { Pop-Location; Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+    }
+}
+
 # --- session-start security-findings preload: twins agree and emit clean stderr ---
 # Regression for the `grep -c … || echo 0` bug (grep -c prints 0 AND exits 1 on no match, so the
 # fallback produced "0\n0" and an integer-comparison error on stderr) and for the section existing

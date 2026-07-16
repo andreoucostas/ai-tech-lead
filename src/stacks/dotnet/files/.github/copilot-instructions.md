@@ -26,7 +26,7 @@ When generating code in this repo, follow these rules. The full conventions, arc
 ## Data Access
 - Queries live in the application/service layer, never in controllers.
 - Always `.AsNoTracking()` on read-only queries.
-- Repository pattern only where it adds value; don't wrap DbContext for its own sake.
+- Repository pattern only where it adds value; don't wrap the data-access layer for its own sake.
 
 ## API Design
 - Controllers thin — delegate to services immediately.

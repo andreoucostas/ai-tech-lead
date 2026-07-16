@@ -86,9 +86,9 @@ leave changes uncommitted.
 
 ## Status
 
-**B-22 (headless `/adopt`, Path A) shipped as v0.29.0** (2026-07-16). **Next: B-35** (derive,
-don't assume — the framework pushes EF Core on non-EF backends; design LOCKED, WSD-020, the sole
-open P2 item) — see `meta/BACKLOG.md`.
+**B-35 (derive, don't assume) shipped as v0.29.1** (2026-07-16) — no open P2 items remain.
+**Next: B-38** (`release.ps1` README-stamp idempotency, first in the P3 sequence) — see
+`meta/BACKLOG.md`.
 
 Gotcha: `scripts/fidelity-check.{ps1,sh}` still exist but are **no longer wired to CI** — they are
 manual re-audit tools against the `pre-restructure` tag, not gates.

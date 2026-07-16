@@ -4,6 +4,14 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.29.1 — 2026-07-16
+
+### Fixed — technology guidance now follows your codebase
+
+- Technology-specific rules and recipes (HTTP client, state management, test framework, and
+  similar) now require evidence from your codebase before the framework applies them, instead of
+  assuming a default.
+
 ## 0.29.0 — 2026-07-16
 
 ### Added — `/adopt` can now run unattended (headless), preparing a PR for you to review

@@ -1,7 +1,8 @@
 ---
 name: add-entity
 description: >
-  Use when the user wants to add a new EF Core entity backed by a new database table.
+  EF Core repos only — verifies before scaffolding. Use when the user wants to add a new EF Core
+  entity backed by a new database table.
   Covers entity class placement, IEntityTypeConfiguration, DbContext registration,
   migration generation, and SQL review.
   USE FOR: introducing a completely new domain concept that needs its own table — new entity
@@ -14,6 +15,7 @@ description: >
 
 Match CLAUDE.md > Conventions > Data Access (query placement, AsNoTracking, repository pattern usage) and > Architecture (entities live in the domain layer).
 
+0. **Confirm this repo persists via EF Core.** Grep for `DbContext` or `Microsoft.EntityFrameworkCore`. If neither is present, STOP — this recipe does not apply. Find the repo's actual persistence pattern (for example, an existing entity/collection pair) and mirror it, or use the project-specific skill `/bootstrap` created.
 1. Entity class in the domain layer (no infrastructure imports).
 2. Configuration class implementing `IEntityTypeConfiguration<T>` — keep mappings out of the entity itself.
 3. Add `DbSet<T>` to the DbContext.

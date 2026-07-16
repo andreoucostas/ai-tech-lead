@@ -58,11 +58,11 @@ The pass definitions below are the source of truth the subagents read. Do not du
 
 #### A2: Domain & Data Access
 - Entity structure — rich vs anaemic
-- ORM — EF Core / Dapper / both; DbContext organisation
+- Persistence — detect from package references and DI registrations: EF Core / Dapper / ADO.NET / MongoDB.Driver / Cosmos / Redis / other / none. Name what is present; never assume a technology the csproj does not evidence.
 - Repository pattern — value-add vs ceremony
-- Migration management
 - Query placement — service layer vs controllers
-- N+1, missing includes, untracked-query opportunities
+- If relational/EF: migration management, N+1, missing includes, untracked-query opportunities
+- If document store: collection/index conventions, query-shape vs index alignment, transaction/consistency assumptions
 
 #### A3: Dependency Injection & Services
 - Registration — individual / by convention / extension methods
@@ -232,11 +232,13 @@ Read the existing CLAUDE.md template in the project root. Replace every placehol
 
 - **Codebase Context**: what this app does, users, domain concepts, critical journeys (both the API and the frontend).
 - **Repository Structure**: actual layout with dependency diagram — .NET project layout and Angular folder/module layout, and how the two connect (API base URL, shared contracts).
-- **Conventions**: the rules this codebase actually follows (or should follow), with rationale. Use the subsection structure from `docs/defaults.md` as a starting checklist — .NET (Architecture, Naming, DI, Data Access, API, Async, Null Handling, Logging, Testing) and Angular (Angular Version, Architecture, Component Design, State Management, RxJS, API/HTTP, Typing, Testing) — recording observed reality and deviating from defaults where the codebase does. If Angular version is below 17, adjust conventions to match what's available. **Delete the `BOOTSTRAP_PENDING` HTML comment and the "_Not yet populated_" placeholder line** when this section is filled in.
+- **Conventions**: the rules this codebase actually follows (or should follow), with rationale. Use the subsection structure from `docs/defaults.md` as a starting checklist — .NET (Architecture, Naming, DI, Data Access, API, Async, Null Handling, Logging, Testing) and Angular (Angular Version, Architecture, Component Design, State Management, RxJS, API/HTTP, Typing, Testing) — recording observed reality and deviating from defaults where the codebase does. The Conventions section must not name a technology the analysis passes did not evidence in this repo. If Angular version is below 17, adjust conventions to match what's available. **Delete the `BOOTSTRAP_PENDING` HTML comment and the "_Not yet populated_" placeholder line** when this section is filled in.
 
   **Mixed-repo, per-stack subsections:** where a CLAUDE.md section carries `### .NET` / `### Angular` subsections, populate each subsection from **that stack's own directories only**, and cite exemplar file paths from the correct stack — never a `.cs` path under the Angular subsection, or a `.ts` path under the .NET one.
 - **Architecture Decisions**: index every significant decision found (intentional or accidental) as a one-line entry here; write the full Decision → Context → Consequences → Review notes to `docs/architecture-decisions.md` (create it if missing). Keeping detail out of CLAUDE.md holds it within the token budget — it loads on nearly every turn.
 - **Common Tasks**: do NOT write recipes inline in CLAUDE.md. Instead, audit `.claude/skills/` against this codebase: keep a default skill if its recipe matches reality (adjust steps where they don't); add new skills under `.claude/skills/<name>/SKILL.md` for project-specific recipes (each with `name` + `description` frontmatter); delete defaults that don't apply. Update the Common Tasks bullet list in CLAUDE.md to match the final skill set — one terse line per skill, no USE-FOR/DO-NOT-USE-FOR trigger blocks.
+
+  **Persistence check:** if the repo's data access is not EF Core, delete or replace `add-entity` with a project-specific equivalent mined from the actual pattern (A8 candidate).
 
   **Writing skill-discovery-mined skills (A8/.NET · A7/Angular):** Before writing any discovered candidate as a skill, cross-check it against Phase-2 synthesis — if the pattern is flagged as an anti-pattern or Tier-1–2 debt, route it to `TECH_DEBT.md` instead (do NOT canonize a known problem). Each written mined skill gets `origin: discovered` in its frontmatter so the PR reviewer can focus scrutiny there. "No exemplar" is first-class: if no instance passes the quality cross-check or the path doesn't resolve, write the skill abstract.
 
