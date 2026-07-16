@@ -69,7 +69,75 @@ genericize the copilot-instructions line. Candidate to ship as a v0.26.x defect 
 
 **B-12 was already resolved — see the Done section.** No open P3 items remain from the audit;
 post-audit P3 item B-29 (haiku adequacy evidence) is under "Known deferred work" (its sibling
-B-30 shipped in v0.25.4). **B-34 and B-36 (below, added 2026-07-15) are the open P3 items.**
+B-30 shipped in v0.25.4). **B-34 and B-36 (below, added 2026-07-15) plus B-38 and B-39 (added
+2026-07-16) are the open P3 items.**
+
+### B-38 · release.ps1 is not re-runnable after a refused release (README stamp idempotency)
+**Effort:** S · **Invariants:** #7 (process only — meta script, PS-only by decision, no shipped
+behavior) · added 2026-07-16 (hit twice during the v0.27.1 release; recipe in `meta/LEARNINGS.md`
+2026-07-16 §2)
+
+**Problem.** `release.ps1`'s README version stamp (`.claude/scripts/release.ps1` ~line 63)
+FATALs when the regex replace changes nothing, to protect against the line being reworded. But
+`[regex]::Replace` also changes nothing when the line exists and **already carries the target
+version** — which is exactly the state a *refused* release leaves behind (stamping happens in
+step 2, gates run in step 4). So the natural workflow "gate fails → fix the cause → re-run the
+same command" dies with a misleading `FATAL: README.md has no 'Current shipped version' line`,
+and the maintainer must hand-revert the README line first. Cost two extra runs on 2026-07-16
+(the refusal itself was legitimate — `no-meta-leak` caught a tracking id in a shipped test).
+
+**Do (plan).**
+1. Separate "line missing" from "line already stamped": `[regex]::Match` the version-line
+   pattern first — FATAL **only** when there is no match (reword protection stays); when the
+   matched version already equals `$Version`, skip the write and print
+   `README already stamped $Version (retry after a refused release).`; otherwise replace+write
+   as today.
+2. Audit the remaining stamp steps for the same class — they are already idempotent (CHANGELOG
+   `Unreleased` stamp is conditional; CLAUDE.md/framework-version.json replaces converge; step 5
+   already exits cleanly on "nothing to commit") — assert that in the PR description, don't
+   restructure them.
+3. On refusal (both `Release REFUSED` exits), print one line telling the maintainer the command
+   is safe to re-run as-is once the gate is fixed.
+4. Verify red/green without a full release: copy README to a temp file and drive the stamp
+   logic's three states (already-stamped → proceeds; older version → rewrites; line deleted →
+   FATAL). Full-loop confirmation happens for free at the next refused release; note the result
+   in LEARNINGS then.
+
+**Not:** making the gates themselves resumable/checkpointed (they're fast enough to just re-run
+— see B-39); touching anything shipped.
+
+### B-39 · Gate-battery runtime: parallelize the per-dist hook suites in release.ps1
+**Effort:** S (phase 1) · **Invariants:** #7 (phase 2 only) · added 2026-07-16 (measured on the
+maintainer box, pwsh 7, during the B-37 session)
+
+**Evidence (2026-07-16).** Serial gate battery in `release.ps1` ≈ **6 min wall**: hook suite
+≈ 105 s **per dist** ×3 (dotnet 106 s / angular 104 s / monorepo 105 s), meta suite 21 s,
+compose ~1 s and validate-dist ~3 s per dist. CI wall ≈ 6.5 min (windows leg 6 m 22 s is the
+long pole; linux 3 m 35 s). Per-file hot spots (dotnet): `TwinParity` 44 s (40 tests),
+`WikiCheck` 26 s (13 tests — each runs both twins), `Guard` 15 s (34 tests). The cost is child
+`pwsh`/`bash` **process spawns per test** — that is by design (the spawned child *is* the honest
+test surface; do not in-process it) — so the win is concurrency, not per-test surgery.
+
+**Assessment.** ~6 min per release is tolerable in isolation but compounds: active days ship
+multiple releases (three release.ps1 runs on 2026-07-16 alone ≈ 18 min of gates), and every
+refused release doubles its cost. A process-level parallelization is cheap and honest.
+
+**Do (phase 1 — meta-only, no version bump).** In `release.ps1`, run the three per-dist gate
+pairs (validate-dist + hook suite) as three concurrent child processes (`Start-Process`/jobs),
+collect exit codes, gate on all three. Suites are independent (separate dist trees, per-test
+GUID temp dirs). Expected release gate wall ≈ 6 min → ~2.5 min (capped by one dist suite +
+meta suite). Keep output legible: buffer per-dist logs and print them sequentially.
+
+**Do (phase 2 — optional, shipped change, needs a version).** Teach the shipped
+`tests/hooks/Invoke-HookTests.ps1` runner to execute its `*.Tests.ps1` files as bounded
+parallel **child processes** (cap ~4). Per-dist wall ≈ 105 s → ~45 s (capped by TwinParity),
+and consumer CI gets the same win. Constraint discovered in B-37: `_HookHarness.ps1`'s
+`Invoke-Hook` mutates process-global `[Console]::OutputEncoding`, so in-process runspace
+parallelism is **unsafe** — parallelize at process granularity only. Ship only when a release
+is happening anyway; measure before/after in the changelog.
+
+**Not:** rewriting tests to avoid child-process spawns (the spawn is the test); splitting
+TwinParity (single-file cap is acceptable); CI runner-size changes.
 
 ### B-36 · Testing strategy: suite-bootstrap mode + per-item strategy rail — **design LOCKED (WSD-020)**
 **Effort:** M · **Invariants:** #1 #2 #6 #7 · added 2026-07-15 · spec: `.claude/plans/2026-07-15-b36-testing-strategy-design.md`
