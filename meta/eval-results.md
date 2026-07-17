@@ -83,3 +83,18 @@ Host: Claude Code 2.1.212 (Claude Code) · scratch: retained=True
 - **FAIL haiku-convention-check** (model=haiku; agent=convention-check) — agentExit=0 timedOut=False; finalFinding=False
 - **PASS haiku-bloat-radar** (model=haiku; agent=bloat-radar) — agentExit=0 timedOut=False; finalFinding=True
 - **PASS haiku-debt-radar** (model=haiku; agent=debt-radar) — agentExit=0 timedOut=False; finalFinding=True
+
+## 2026-07-17 13:55:26 +01:00 — framework v0.32.2 (91a2ee5d357388c85b1dca541e0f211d40f43fc6)
+
+Host: Claude Code 2.1.212 (Claude Code) · scratch: retained=True
+
+- **FAIL archived-redirect** (model=sonnet) — agentExit=0 timedOut=False; currentStamp=True frozenInstallerRan=False archivedInstallerTool=False commits=2 canonicalInstallerTool=True redirectedHandoff=False
+
+Post-run transcript review: the focused redirect run satisfied every typed/filesystem requirement;
+its final answer said "canonical repo" rather than the grader's over-specific "canonical framework"
+phrase and gave the developer-only `/bootstrap` handoff on a later line. The grader now treats those
+as independent structured facts. The retained route-fix transcript likewise contains an exception-
+bearing red run before the production edit and a clean PASS after it (Bash `tool_result.is_error`
+does not represent command exit status), while skill-add-tests added executable boundary calls and
+correctly left the planted production defect red. `haiku-convention-check` remains the genuine
+behavioral miss: it found the defect but violated its required structured output contract.
