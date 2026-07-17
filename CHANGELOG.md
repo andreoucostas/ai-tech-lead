@@ -11,6 +11,15 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.32.2 (2026-07-17)
+
+Second CI-linux fix for the B-16 test harness. v0.32.1 fixed the doctor itself (builtin root
+resolution — proven: the failing row moved past install-state), but the no-parser sandbox test
+still failed on the linux runner: pwsh-created symlinks in the restricted-PATH bin resolved as
+"command not found", so the sandbox was empty. The sandbox is now built inside bash (`ln -sf`
+with full PATH; only the doctor invocation sees the restricted PATH); the Git-bash copy branch
+is unchanged. Dead `UnixTool` helper removed with it.
+
 ## 0.32.1 (2026-07-17)
 
 Post-release fix for B-16, caught by the CI linux leg (the Windows-only local runs were green —

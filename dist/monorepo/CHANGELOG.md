@@ -5,6 +5,13 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.32.2 — 2026-07-17
+
+### Fixed — hook test suite on Linux
+
+- The framework-doctor "no JSON parser" test now builds its restricted-PATH sandbox portably, so
+  the shipped hook test suite passes on Linux machines as well as Windows.
+
 ## 0.32.1 — 2026-07-17
 
 ### Fixed — framework doctor on minimal PATH
