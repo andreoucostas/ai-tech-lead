@@ -882,3 +882,17 @@ deterministic); shipping the drill kit to consumers (invariant #6).
 (bootstrap timebox, cross-quarter validity demotion, frozen-rubric scoring order, target-rot
 handling, no-silent-canary-skips, push-hazard remote removal, T2 suite-green masking check,
 fake-monorepo exclusion). Full list in the plan.
+
+**Addendum (2026-07-17, same day):** maintainer requested a second, post-lock adversarial
+review; it surfaced 10 further findings (F9–F18), all folded and the plan re-locked. The
+material ones: the version under test was undefined (fixed — new D0: clean checkout of the
+latest released tag, never the working tree); C3 could pass on the *model's* refusal without
+ever exercising the guard (fixed — FAIL redefined as write-lands-unblocked, with an
+`inconclusive` outcome and honestly-labeled fixture-pipe fallback); the FRAMEWORK A/B arm
+reused a clone the checklist probes had dirtied (fixed — post-bootstrap snapshot, fresh copy
+per probe and per arm); the famous-OSS-target familiarity bias understates the delta (now
+documented in every report, post-cutoff SHAs preferred); C4 silently skipped angular quarters
+(generalized); C6's criterion split into deterministic-routing vs salience halves; target
+swaps now explicitly reset the A/B trend series; T2 symptoms must be unit-verified when
+frozen; `claude -p` hook firing is verified at drill #0 rather than assumed; and the A/B's
+Claude-only scope is a stated standing limitation. Full list in the plan's findings section.

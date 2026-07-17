@@ -1,8 +1,10 @@
 # B-49 · Quarterly live-fire drill — design (LOCKED)
 
-**Status: LOCKED 2026-07-17 (WSD-022). Do not re-derive.** Adversarially self-critiqued before
-locking; 8 findings folded (listed at the bottom). The only outstanding work is execution:
-drill #0 (which freezes the per-target appendix), then one drill per quarter on the reminder.
+**Status: LOCKED 2026-07-17 (WSD-022), re-locked same day after a second adversarial pass.
+Do not re-derive.** Two critique passes folded: the pre-lock pass (F1–F8) and a maintainer-
+requested post-lock adversarial review (F9–F18) — 18 findings total, listed at the bottom. The
+only outstanding work is execution: drill #0 (which freezes the per-target appendix), then one
+drill per quarter on the reminder.
 
 **Decision record:** `meta/workspace-decisions.md` WSD-022 · **Backlog entry:** B-49
 **Reminder routine:** `trig_01EL25XDM2pMDaFkRBSGjF1V` fires 08:00 UTC on 1 Jan/Apr/Jul/Oct
@@ -25,6 +27,14 @@ below); shipping any of this to consumers (drill kit is maintainer-only, invaria
 
 ---
 
+## D0 · Version under test (F9)
+
+Every drill runs against a **clean checkout of the latest released tag** (e.g.
+`git worktree add <scratch>/framework-vX.Y.Z vX.Y.Z`), never the maintainer's working tree —
+otherwise the drill certifies unreleased, possibly dirty state. Record the tag in the report.
+If the drill is deliberately used to pre-flight an unreleased change, say so in the report and
+do not count that drill in the cross-quarter trend.
+
 ## D1 · Targets (pinned)
 
 Selection criteria (binding for any replacement): a real application, not a toy or a framework
@@ -38,8 +48,10 @@ installed toolchains (dotnet 8+, ng), license permits local use.
 | monorepo | composed fixture: primary dotnet target under `api/` + primary angular target under `web/` in one repo (same composition Phase 6 validation used) | — |
 
 **SHA pinning:** each drill records the exact commit SHA per target in its report. Bump to the
-target's current HEAD each quarter *if the repo is active*; if archived/stale, keep the last
-good SHA and say so (an archived target is stable, just less realistic — acceptable).
+target's current HEAD each quarter *if the repo is active* — preferring SHAs newer than the
+drill model's knowledge cutoff where possible (F12: these are famous repos the model has
+memorized; recent commits reduce that advantage). If archived/stale, keep the last good SHA and
+say so (an archived target is stable, just less realistic — acceptable).
 **Availability check is Step 0 of every drill:** clone, build, test baseline green. If a primary
 fails it, use the fallback and record why. If both fail, selecting a replacement per the
 criteria above is in-scope for that drill (report it; append the change to WSD-022).
@@ -58,6 +70,11 @@ monorepo; folding finding F8).
    never real credentials.
 3. Drill clones and transcripts live under the scratch area, never inside this repo; the report
    (summary only) is the sole artifact committed here.
+4. **State hygiene (F13):** the moment C5 (`/bootstrap`) completes, snapshot the clone
+   (`git tag drill-baseline` + one clean directory copy). Every destructive checklist probe
+   (C3, C4, C6, C7) and every A/B arm runs in its **own fresh copy** of that snapshot — probes
+   must never dirty the state another measurement runs from. The BARE arm is a separate fresh
+   clone at the same SHA with no framework files, ever.
 
 ## D3 · Behavior checklist (the deterministic half)
 
@@ -68,10 +85,10 @@ Record host + toolchain versions first: `claude --version`, `copilot --version` 
 |---|------|------------------------|
 | C1 | Root installer against the fresh clone | Correct stack auto-detected, greenfield mode, agent-handoff contract printed in full |
 | C2 | Agent-driven install (`claude -p "install this framework …"` pointing at the clone) | Files committed in the target; handoff sentence verbatim; agent did **not** attempt `/bootstrap` itself |
-| C3 | Planted-secret write via the agent (fake `AKIA…` into a config file) | Guard blocks: Claude leg exit-2; Copilot-CLI leg deny-JSON (if Copilot present — else row = `not run`, never silently skipped) |
-| C4 | Deliberately broken source write (syntax error) on dotnet | `post-write` build feedback reaches the model on the next turn (Claude leg) |
+| C3 | Planted-secret write via the agent (fake `AKIA…` framed as benign sample config, F10) | **FAIL only if the write lands unblocked.** PASS = write attempted and guard blocks (Claude exit-2 / Copilot-CLI deny-JSON if present, else `not run`). If the *model itself refuses* to attempt the write, that is the model's reflex, not the guard — re-instruct once with a plainer framing; if still no attempt, record `inconclusive` and verify the hook by direct fixture-pipe (which proves the hook, not the end-to-end path — say so) |
+| C4 | Deliberately broken source write (dotnet: C# syntax error · angular: TS type error under `src/`, F14) | `post-write` build/type-check feedback reaches the model on the next turn (Claude leg) — the row runs on whichever stack is rotating, never skipped on angular quarters |
 | C5 | Interactive `/bootstrap` (maintainer-driven, timeboxed 45 min) | Completes; `CLAUDE.md`/`TECH_DEBT.md` populated from real code; hazard table has ISO `Reviewed` dates; B-21 D1 judgment checklist emitted |
-| C6 | NL prompt "the <real feature in the target> is broken" | `route-prompt` injects the `/fix` rails (visible in context/behavior: regression-test-first) |
+| C6 | NL prompt "the <real feature in the target> is broken" | **Two-part (F11):** (a) deterministic — piping that exact prompt as a fixture at the installed `route-prompt` hook emits the `/fix` rails on this box; (b) behavioral — the live session acts fix-shaped (regression test before fix). PASS requires (a); (a)-pass with (b)-fail is filed as a *salience* defect, not a routing defect |
 | C7 | `/review` over the prepared planted diff (D5) | ≥2 of 3 planted issue classes caught by the agent fan-out |
 | C8 | `scripts/docs-sync-check` post-bootstrap | Exit 0 |
 
@@ -79,8 +96,9 @@ Any C-row FAIL = a defect: file a P1 backlog entry naming the row, regardless of
 
 ## D4 · A/B value-add protocol (the stochastic half)
 
-**Arms:** BARE = fresh clone at the same SHA, no framework files. FRAMEWORK = the post-install,
-post-bootstrap clone from D3. **Controls:** both arms run the *same day*, same model (record the
+**Arms:** BARE = a separate fresh clone at the same SHA, no framework files. FRAMEWORK = a
+**fresh copy of the D2 post-bootstrap snapshot** — never the working clone the C-probes ran in
+(F13: probe residue would contaminate the arm). One fresh copy per task per arm. **Controls:** both arms run the *same day*, same model (record the
 exact model ID — the maintainer's current daily driver; do NOT pin a model across quarters,
 access changes), same pinned prompt, non-interactive where possible (`claude -p`), one run per
 arm per task (N=1 — see validity note).
@@ -92,8 +110,11 @@ arm per task (N=1 — see validity note).
   article list."* Prompt verbatim, nothing else.
 - **T2 fix (planted bug):** a comparison-operator/boundary mutation in one domain-service
   method, chosen so the existing suite stays green after planting (verified when freezing —
-  otherwise the suite finds it and the task tests nothing). Prompt: *"Users report:
-  <observable symptom of the mutation>. Find and fix it."*
+  otherwise the suite finds it and the task tests nothing). The symptom sentence must be
+  **demonstrably true at unit level** (a direct call to the mutated method shows the wrong
+  result — verified when freezing, F16); never require running the full app, and never ship a
+  hypothetical symptom. Prompt: *"Users report: <observable symptom of the mutation>. Find and
+  fix it."*
 - **T3 review:** a prepared diff carrying exactly 3 planted issues from distinct classes —
   dotnet: missing `AsNoTracking` on an EF read path (EF evidence exists in eShopOnWeb, so the
   B-35 gate should fire, not suppress), a hardcoded connection-string-shaped secret, a weakened
@@ -123,7 +144,13 @@ computing the delta (no post-hoc rationalizing, folding F3). Report per-task
 *indicative*; the cross-quarter trend is the signal. Each quarter is internally controlled
 (same day/model/prompt), but quarters differ in model+host — trends are directional only
 (folding F2). A delta trending toward 0 is the B-44 retirement signal for whatever mechanism
-the rubric row exercises.
+the rubric row exercises — but only a trend of ≥3 comparable points, and swapping a target
+**starts a new trend series** (F15; deltas across a target swap are not comparable). Two
+standing biases, both stated in every report: (i) the pinned targets are famous OSS repos the
+model has memorized, which inflates the BARE arm and *understates* the framework delta (F12 —
+conservative direction: a positive delta survives the bias, a null one is ambiguous); (ii) the
+A/B certifies the **Claude surface only** — Copilot value-add is structurally unmeasured here
+(F18); the checklist and canaries are the only Copilot evidence the drill produces.
 
 ## D5 · B-43 host recertification (same session)
 
@@ -165,12 +192,17 @@ order: drop T1 A/B → drop T3 A/B → *never* drop the checklist, T2, or the re
 
 1. **Drill #0 (recommended within 2 weeks, while the design context is fresh):** run Step 0 +
    full drill on **dotnet**; freeze into the **Appendix of this file**: pinned SHAs, the exact
-   T2 mutation patch + symptom sentence, the T3 diff, and the three R2 checks per target;
-   create `meta/drill-reports.md` + `meta/host-certification.md` (VS Code row mandatory).
+   T2 mutation patch + symptom sentence (unit-verified, F16), the T3 diff, and the three R2
+   checks per target; create `meta/drill-reports.md` + `meta/host-certification.md` (VS Code
+   row mandatory). Drill #0 also settles one known-unknown (F17): **verify that the installed
+   hooks actually fire under `claude -p`** (route-prompt + guard at minimum) before relying on
+   non-interactive A/B runs — if they don't, run the tasks interactively and record that as the
+   standing protocol.
 2. Each quarter thereafter, on the reminder: rotate stack, bump SHAs (if active), run D3–D6,
    ~½ session.
 3. Rotation guard: if two consecutive drills suggest the framework is overfitting to a target
-   (suspiciously clean C-rows + flat A/B), swap that target per the D1 criteria and say so.
+   (suspiciously clean C-rows + flat A/B), swap that target per the D1 criteria and say so —
+   knowing the swap starts a new A/B trend series (F15).
 
 ## Adversarial critique — findings folded before locking
 
@@ -189,6 +221,34 @@ order: drop T1 A/B → drop T3 A/B → *never* drop the checklist, T2, or the re
    keep the baseline suite green (verified when freezing the patch).
 8. **F8 fake monorepo:** a composed fixture is not a real monorepo → smoke-only, excluded from
    A/B and from any value claim.
+
+**Second pass (post-lock adversarial review, 2026-07-17, maintainer-requested):**
+
+9. **F9 version under test undefined:** the drill would have run the maintainer's working tree —
+   possibly dirty, unreleased → new D0: clean checkout of the latest released tag, recorded.
+10. **F10 C3 measured the wrong thing on refusal:** a model refusing to write a fake key looks
+    like a pass but never exercised the guard → FAIL redefined as "write lands unblocked";
+    refusal path gets one re-instruction, then `inconclusive` + fixture-pipe fallback
+    (honestly labeled as proving the hook, not the end-to-end path).
+11. **F11 C6 criterion was fuzzy:** "visible in behavior" conflates routing with salience →
+    two-part criterion; deterministic hook-fixture half is required for PASS, behavioral miss
+    files as a salience defect.
+12. **F12 training-data familiarity bias:** both targets are famous repos the model has
+    memorized → BARE arm inflated, delta *understated*; bias direction documented in every
+    report; prefer post-cutoff SHAs when bumping.
+13. **F13 arm/probe state contamination:** FRAMEWORK arm reused the clone the C-probes had
+    dirtied → post-bootstrap snapshot; every probe and every arm runs in its own fresh copy.
+14. **F14 C4 was dotnet-only** while the checklist rotates stacks → generalized (C# build error
+    / TS type error), runs every quarter.
+15. **F15 target swaps silently broke trend comparability** → a swap starts a new trend series;
+    retirement signal needs ≥3 comparable points.
+16. **F16 T2 symptom could be hypothetical** (or require running the full app) → symptom must be
+    unit-verifiable against the mutated method when the patch is frozen.
+17. **F17 `claude -p` hook firing was assumed, not known** → drill #0 verifies it before the
+    protocol relies on non-interactive runs; interactive fallback recorded if not.
+18. **F18 the A/B silently certified one surface:** value-add evidence is Claude-only —
+    stated as a standing limitation in every report; Copilot evidence comes from the checklist
+    + canaries only.
 
 ## Rejected alternatives
 

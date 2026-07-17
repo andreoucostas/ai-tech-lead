@@ -171,9 +171,11 @@ canary prompt). Close the VS Code gap in the first cycle.
 **Invariants:** #5 #6 · maintainer-decided 2026-07-17 · executes B-43 on a cadence; complements
 (does **not** replace) B-42
 
-> **Design LOCKED 2026-07-17 — do not re-derive.** Full spec (targets, safety protocol, C1–C8
-> checklist, frozen A/B rubric, recert canaries, report template, degradation order; 8
-> adversarial findings folded): **`.claude/plans/2026-07-17-b49-live-fire-drill-design.md`**;
+> **Design LOCKED 2026-07-17, re-locked same day after a second adversarial pass — do not
+> re-derive.** Full spec (version-under-test rule, targets, safety + state-hygiene protocol,
+> C1–C8 checklist, frozen A/B rubric with documented biases, recert canaries, report template,
+> degradation order; **18 findings folded across two critique passes**):
+> **`.claude/plans/2026-07-17-b49-live-fire-drill-design.md`**;
 > decision record **WSD-022**. The only outstanding work is execution: **drill #0** (recommended
 > within 2 weeks — runs the full dotnet drill and freezes the plan's Appendix: pinned SHAs, T2
 > mutation patch, T3 planted diff, per-target R2 checks), then quarterly on the reminder
