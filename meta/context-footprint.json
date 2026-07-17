@@ -122,13 +122,18 @@
         },
         {
           "path": ".claude/skills/add-entity/SKILL.md#frontmatter",
-          "chars": 636,
-          "tok": 159
+          "chars": 696,
+          "tok": 174
         },
         {
           "path": ".claude/skills/add-tests/SKILL.md#frontmatter",
           "chars": 724,
           "tok": 181
+        },
+        {
+          "path": ".claude/skills/add-warehouse-load/SKILL.md#frontmatter",
+          "chars": 740,
+          "tok": 185
         },
         {
           "path": ".claude/skills/create-adr/SKILL.md#frontmatter",
@@ -151,6 +156,11 @@
           "tok": 158
         },
         {
+          "path": ".claude/skills/map-warehouse/SKILL.md#frontmatter",
+          "chars": 795,
+          "tok": 199
+        },
+        {
           "path": ".claude/skills/perf/SKILL.md#frontmatter",
           "chars": 696,
           "tok": 174
@@ -167,8 +177,8 @@
         },
         {
           "path": "CLAUDE.md",
-          "chars": 24083,
-          "tok": 6021
+          "chars": 24460,
+          "tok": 6115
         }
       ],
       "static.copilot": [
@@ -179,8 +189,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 21656,
-          "tok": 5414
+          "chars": 22033,
+          "tok": 5508
         }
       ],
       "instructed": [
@@ -191,8 +201,8 @@
         },
         {
           "path": "docs/defaults.md",
-          "chars": 4961,
-          "tok": 1240
+          "chars": 6408,
+          "tok": 1602
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -297,8 +307,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 29098,
-          "tok": 7274
+          "chars": 30323,
+          "tok": 7581
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -337,8 +347,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 8068,
-          "tok": 2017
+          "chars": 8090,
+          "tok": 2022
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -376,6 +386,11 @@
           "tok": 1451
         },
         {
+          "path": ".claude/skills/add-warehouse-load/SKILL.md#body",
+          "chars": 5733,
+          "tok": 1433
+        },
+        {
           "path": ".claude/skills/create-adr/SKILL.md#body",
           "chars": 2033,
           "tok": 508
@@ -394,6 +409,11 @@
           "path": ".claude/skills/enforce-standards/SKILL.md#body",
           "chars": 1642,
           "tok": 410
+        },
+        {
+          "path": ".claude/skills/map-warehouse/SKILL.md#body",
+          "chars": 4857,
+          "tok": 1214
         },
         {
           "path": ".claude/skills/perf/SKILL.md#body",
@@ -935,8 +955,8 @@
         },
         {
           "path": ".claude/skills/add-entity/SKILL.md#frontmatter",
-          "chars": 636,
-          "tok": 159
+          "chars": 696,
+          "tok": 174
         },
         {
           "path": ".claude/skills/add-lazy-route/SKILL.md#frontmatter",
@@ -959,6 +979,11 @@
           "tok": 270
         },
         {
+          "path": ".claude/skills/add-warehouse-load/SKILL.md#frontmatter",
+          "chars": 740,
+          "tok": 185
+        },
+        {
           "path": ".claude/skills/create-adr/SKILL.md#frontmatter",
           "chars": 708,
           "tok": 177
@@ -979,6 +1004,11 @@
           "tok": 198
         },
         {
+          "path": ".claude/skills/map-warehouse/SKILL.md#frontmatter",
+          "chars": 795,
+          "tok": 199
+        },
+        {
           "path": ".claude/skills/perf/SKILL.md#frontmatter",
           "chars": 696,
           "tok": 174
@@ -995,8 +1025,8 @@
         },
         {
           "path": "CLAUDE.md",
-          "chars": 28806,
-          "tok": 7202
+          "chars": 29183,
+          "tok": 7296
         }
       ],
       "static.copilot": [
@@ -1007,8 +1037,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 25743,
-          "tok": 6436
+          "chars": 26120,
+          "tok": 6530
         }
       ],
       "instructed": [
@@ -1019,8 +1049,8 @@
         },
         {
           "path": "docs/defaults.md",
-          "chars": 10946,
-          "tok": 2736
+          "chars": 12393,
+          "tok": 3098
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -1125,8 +1155,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 36659,
-          "tok": 9165
+          "chars": 37884,
+          "tok": 9471
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1165,8 +1195,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 9820,
-          "tok": 2455
+          "chars": 9842,
+          "tok": 2460
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -1224,6 +1254,11 @@
           "tok": 2030
         },
         {
+          "path": ".claude/skills/add-warehouse-load/SKILL.md#body",
+          "chars": 5733,
+          "tok": 1433
+        },
+        {
           "path": ".claude/skills/create-adr/SKILL.md#body",
           "chars": 2033,
           "tok": 508
@@ -1242,6 +1277,11 @@
           "path": ".claude/skills/enforce-standards/SKILL.md#body",
           "chars": 3367,
           "tok": 842
+        },
+        {
+          "path": ".claude/skills/map-warehouse/SKILL.md#body",
+          "chars": 4857,
+          "tok": 1214
         },
         {
           "path": ".claude/skills/perf/SKILL.md#body",
@@ -1263,10 +1303,10 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 36431,
-      "static.claude.tok": 9108,
-      "static.copilot.chars": 24907,
-      "static.copilot.tok": 6227,
+      "static.claude.chars": 38403,
+      "static.claude.tok": 9601,
+      "static.copilot.chars": 25284,
+      "static.copilot.tok": 6321,
       "prompt.max.chars": 2126,
       "prompt.max.tok": 532
     },
@@ -1279,14 +1319,14 @@
       "prompt.max.tok": 549
     },
     "monorepo": {
-      "static.claude.chars": 43305,
-      "static.claude.tok": 10826,
-      "static.copilot.chars": 31205,
-      "static.copilot.tok": 7801,
+      "static.claude.chars": 45277,
+      "static.claude.tok": 11319,
+      "static.copilot.chars": 31582,
+      "static.copilot.tok": 7896,
       "prompt.max.chars": 2541,
       "prompt.max.tok": 635
     },
-    "monorepo-claude-ratio-permille": 1159
+    "monorepo-claude-ratio-permille": 1174
   },
   "_notes": [
     "Claude frontmatter is a stable over-approximation of harness injection.",

@@ -47,11 +47,13 @@ The pass definitions below are the source of truth the subagents read. Do not du
 
 ### A2: Domain & Data Access
 - Entity structure — rich vs anaemic
-- Persistence — detect from package references and DI registrations: EF Core / Dapper / ADO.NET / MongoDB.Driver / Cosmos / Redis / other / none. Name what is present; never assume a technology the csproj does not evidence.
+- Persistence — detect from package references, DI registrations, or repo artifacts (SQL project/source trees, pipeline definitions): EF Core / Dapper / ADO.NET / MongoDB.Driver / Cosmos / Redis / SQL project or stored-procedure codebase (`.sql` source trees, SSDT `.sqlproj`/DACPAC, dbt, migration-script folders) / other / none. Name what is present; never assume a technology the repo does not evidence.
 - Repository pattern — value-add vs ceremony
 - Query placement — service layer vs controllers
 - If relational/EF: migration management, N+1, missing includes, untracked-query opportunities
 - If document store: collection/index conventions, query-shape vs index alignment, transaction/consistency assumptions
+- If SQL/stored-procedure based: schema organisation, parameterization vs dynamic SQL, and the deployment vehicle for schema changes (SQL project build / migration scripts)
+- If data-warehouse signals (staging/dim/fact schemas or `Dim*`/`Fact*` naming, load/orchestration procs, batch/watermark control tables, ETL pipeline artifacts): identify the layers (staging vs warehouse vs marts), load ordering (dims before facts), the rerun/idempotency mechanism (watermarks, batch ids, partition switch, versioned runs), and the slowly-changing-dimension strategy per dimension — these become Conventions; the `map-warehouse` skill deep-dives on demand
 
 ### A3: Dependency Injection & Services
 - Registration — individual / by convention / extension methods
@@ -168,11 +170,11 @@ Read the existing CLAUDE.md template in the project root. Replace every placehol
 - **Architecture Decisions**: index every significant decision found (intentional or accidental) as a one-line entry here; write the full Decision → Context → Consequences → Review notes to `docs/architecture-decisions.md` (create it if missing). Keeping detail out of CLAUDE.md holds it within the token budget — it loads on nearly every turn.
 - **Common Tasks**: do NOT write recipes inline in CLAUDE.md. Instead, audit `.claude/skills/` against this codebase: keep a default skill if its recipe matches reality (adjust steps where they don't); add new skills under `.claude/skills/<name>/SKILL.md` for project-specific recipes (each with `name` + `description` frontmatter); delete defaults that don't apply. Update the Common Tasks bullet list in CLAUDE.md to match the final skill set — one terse line per skill, no USE-FOR/DO-NOT-USE-FOR trigger blocks.
 
-  **Persistence check:** if the repo's data access is not EF Core, delete or replace `add-entity` with a project-specific equivalent mined from the actual pattern (A8 candidate).
+  **Persistence check:** if the repo's data access is not EF Core, delete or replace `add-entity` with a project-specific equivalent mined from the actual pattern (A8 candidate). For the warehouse skills, apply a three-way rule: if A2 found data-warehouse signals, keep `map-warehouse` and `add-warehouse-load` and pin the latter's exemplar to the cleanest existing load (below); if A2 found a SQL/stored-procedure repo but no warehouse signals, delete both (the defaults.md raw-SQL block governs); if A2 found neither, delete both.
 
   **Writing A8-discovered skills:** Before writing any A8 candidate as a skill, cross-check it against Phase-2 synthesis — if the pattern is flagged as an anti-pattern or Tier-1–2 debt, route it to `TECH_DEBT.md` instead (do NOT canonize a known problem). Each written mined skill gets `origin: discovered` in its frontmatter so the PR reviewer can focus scrutiny there. "No exemplar" is first-class: if no instance passes the quality cross-check or the path doesn't resolve, write the skill abstract.
 
-  **Exemplar grounding (instance-shaped skills):** For `add-endpoint`, `add-entity`, `register-service`, and any mined `add-X` skill: confirm a real instance exists (Verification Rule #1 — Read/Grep confirms the path). If it passes the quality cross-check (not flagged as debt), append one prose line to the skill file, **below** any existing "Match CLAUDE.md > Conventions" instruction: *"For a concrete current instance in this repo, see `<path>` — reproduce its **conventions and structure**, not its contents; CLAUDE.md > Conventions wins on any conflict."* Exempt process skills (`add-tests`, `create-adr`, `dependency-audit`, `perf`, `enforce-architecture`) — they are not instance-shaped "add an X" recipes.
+  **Exemplar grounding (instance-shaped skills):** For `add-endpoint`, `add-entity`, `register-service`, `add-warehouse-load`, and any mined `add-X` skill: confirm a real instance exists (Verification Rule #1 — Read/Grep confirms the path). If it passes the quality cross-check (not flagged as debt), append one prose line to the skill file, **below** any existing "Match CLAUDE.md > Conventions" instruction: *"For a concrete current instance in this repo, see `<path>` — reproduce its **conventions and structure**, not its contents; CLAUDE.md > Conventions wins on any conflict."* Exempt process skills (`add-tests`, `create-adr`, `dependency-audit`, `perf`, `map-warehouse`, `enforce-architecture`) — they are not instance-shaped "add an X" recipes.
 - **Boy Scout Rule**: priority improvements based on the actual debt found in Phase 2
 
 Preserve the Agentic Workflow section as-is. Never touch `LEARNINGS.md` — it is append-only.

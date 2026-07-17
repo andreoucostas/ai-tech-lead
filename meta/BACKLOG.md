@@ -248,6 +248,23 @@ A wrong pin is consumer-visible: verify on a live Copilot surface before shippin
 
 ## Done
 
+- **B-40** — shipped **v0.31.0** (2026-07-17). SQL / data-warehouse guidance (WSD-021, design
+  `.claude/plans/2026-07-16-b40-sql-dw-guidance-design.md` — locked and implemented same-day
+  after an adversarial review of the implementation plan folded in 11 findings). Two new
+  dotnet-stack skills: **`map-warehouse`** (discovery: layers incl. consumption views/marts,
+  fact/dim entities + grain statements, load orchestration/ordering, batch/watermark control,
+  SCD strategy, partitioning; offers `docs/warehouse-map.md`) and **`add-warehouse-load`**
+  (recipe: mirror the sibling load, grain-first entity design, idempotent loads — watermark /
+  batch-ID dedup / delete-window / merge+row-hash / versioned-runs semantics — SCD mechanics,
+  dims-before-facts orchestration, partition alignment, deployment vehicle, sign-off
+  checklist). Both gated Step-0 on two-tier evidence (SQL-repo artifacts AND ≥2 DW signals
+  grepped inside SQL artifacts only — hardened against xUnit `[Fact]`/prose false positives).
+  `/bootstrap` A2 detects SQL-project/stored-proc repos + DW signals; Phase 3a got a three-way
+  keep/delete rule and exemplar-pins `add-warehouse-load`; `defaults.md` gained raw-SQL and DW
+  evidence blocks; `add-entity` cross-routes warehouse tables. Ships to dotnet + monorepo
+  (angular untouched bar the every-version changelog entry). All B-35-consistent; T-SQL as
+  evidence-gated illustration only.
+
 - **B-34** — shipped **v0.30.1** (2026-07-16). Implemented via a codex (gpt-5.6-sol) implementer
   under principal-engineer review, closing the render-parity gap B-32 left open on `guard` and
   `audit-trail`. **`guard`**: aligned the PowerShell twin's secret-type labels from ASCII `...` to

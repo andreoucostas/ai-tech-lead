@@ -1,8 +1,8 @@
 <!--
 ai-tech-lead-framework
   template: monorepo
-  version: 0.30.1
-  applied: 2026-07-16
+  version: 0.31.0
+  applied: 2026-07-17
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
 # [Project Name]
@@ -129,6 +129,8 @@ Recipes live as **skills**, auto-discovered by both Claude Code (`.claude/skills
 - `add-endpoint` — add a new HTTP API endpoint end-to-end (domain → service → DTO → validator → controller → integration test)
 - `add-entity` — add a new EF Core entity with configuration and migration review
 - `register-service` — register a new service in DI with the right lifetime
+- `map-warehouse` — map a SQL data-warehouse repo: layers (staging → warehouse → marts), fact/dim entities and grain, load orchestration, batch/watermark control, SCD strategy, partitioning
+- `add-warehouse-load` — add or extend a warehouse load following the repo's existing patterns: idempotent re-runnable loads, no double-loading, SCD handling, partition alignment
 - `perf` — scan a file, directory, or the whole repo for ~50 .NET performance anti-patterns; produces tiered findings (Critical / Moderate / Info) with file locations and TECH_DEBT.md integration
 - `add-component` — add a new Angular feature component end-to-end
 - `add-service` — add an HTTP / business-logic / signal-store service

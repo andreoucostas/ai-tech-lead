@@ -11,6 +11,24 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.31.0 (2026-07-17)
+
+### Added — B-40: SQL / data-warehouse guidance
+
+- Two new .NET-stack skills, `map-warehouse` (discovery: layers, fact/dim entities and grain,
+  load orchestration, batch/watermark control, SCD strategy, partitioning) and
+  `add-warehouse-load` (change recipe: follow the existing load pattern, idempotent re-runnable
+  loads, no double-loading, SCD handling, partition alignment). Ship to dotnet + monorepo dists.
+- `/bootstrap` A2 now detects SQL-project/stored-procedure codebases and data-warehouse signals
+  (two-tier evidence, per B-35 doctrine); Phase 3a applies a three-way keep/delete rule for the
+  warehouse skills and exemplar-pins `add-warehouse-load`.
+- `docs/defaults.md` Data Access gains evidence-keyed raw-SQL and data-warehouse blocks; the
+  section preamble widened to file-tree evidence. `add-entity` gained a cross-routing
+  DO-NOT-USE-FOR clause for warehouse tables.
+- Design locked in `.claude/plans/2026-07-16-b40-sql-dw-guidance-design.md` (WSD-021); plan was
+  adversarially reviewed pre-implementation (11 findings folded in, incl. angular changelog
+  version-stamp gate and generated architecture.html).
+
 ## 0.30.1 (2026-07-16)
 
 ### Fixed — B-34: rendered-output parity for hook twins

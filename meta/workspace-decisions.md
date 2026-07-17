@@ -816,3 +816,30 @@ candidate to ship as a v0.26.x defect fix *before* B-27 (team wiki memory, still
 B-36 is independent and can ride the same or a later release. Both specs are written for a
 Sonnet-class implementer: exact files, sibling/twin sweeps, acceptance criteria, and explicit
 out-of-scope fences.
+
+## WSD-021: B-40 SQL / data-warehouse guidance — design locked and shipped (2026-07-17)
+
+**Context.** Maintainer request (2026-07-16): the framework covers no SQL at all, yet most
+consumer solutions have a SQL backend; deep focus wanted on data warehouses — schema/layer
+understanding (staging → warehouse → marts), load patterns (fact/dim loads, versioned runs),
+slowly changing facts/dimensions, partitioning — with the framework acting as tech lead on
+following existing patterns and never loading the same data twice. Verified greenfield: zero
+matches for staging/dimension/fact/SCD/partition anywhere in `src/`.
+
+**Decision (B-40, `2026-07-16-b40-sql-dw-guidance-design.md`, shipped v0.31.0).** Two
+dotnet-stack skills — `map-warehouse` (discovery/report, perf-shaped, exempt from exemplar
+pinning) and `add-warehouse-load` (instance-shaped `add-X` recipe, exemplar-pinned) — plus
+DW-aware `/bootstrap` A2 detection (two-tier evidence: SQL-repo artifacts AND ≥2 warehouse
+signals grepped inside SQL artifacts only), a three-way Phase 3a keep/delete rule
+(DW / SQL-only / neither), and two evidence-keyed defaults.md blocks (raw SQL/procs;
+data-warehouse). All content B-35-consistent: Step-0 STOP gates, T-SQL as evidence-gated
+illustration only, derive-from-siblings with ask-when-greenfield. Ships to dotnet + monorepo
+only. **Rejected:** a data-warehouse dist (wrong altitude — same reasoning as B-35's rejected
+MongoDB dist); folding discovery into `/bootstrap` (re-runnable dev task, same reasoning that
+rejected `bootstrap-tests` in WSD-020); one mega-skill (different triggers, higher context cost).
+
+**Process note.** The implementation plan was adversarially reviewed before execution; 11
+findings folded in, including three that would have failed gates or shipped drift: the angular
+shipped-CHANGELOG version-stamp cross-check (release would refuse), hand-editing the generated
+`architecture.html` (docs-sync sha drift), and whole-tree Step-0 greps false-positive on xUnit
+`FactAttribute`/prose (gate now requires SQL-tier AND ≥2 DW signals scoped to SQL artifacts).

@@ -183,10 +183,11 @@ user. Generated `dist/` changes belong in the same commit as the `src/` change t
 
 ## Status
 
-**B-34 (rendered-output twin parity: guard + audit-trail) shipped as v0.30.1** (2026-07-16). **No
-open P1/P2/P3 items remain** from the original audit — remaining work lives in `meta/BACKLOG.md`'s
-"Known deferred work" section (B-15/B-16/B-17/B-18/B-20/B-23/B-26/B-29), a longer-horizon list, not
-a prioritized queue. Pick the next item there deliberately rather than by file order.
+**B-40 (SQL / data-warehouse guidance: `map-warehouse` + `add-warehouse-load`, DW-aware bootstrap
+and defaults) shipped as v0.31.0** (2026-07-17, WSD-021). **No open P1/P2/P3 items remain** from
+the original audit — remaining work lives in `meta/BACKLOG.md`'s "Known deferred work" section
+(B-15/B-16/B-17/B-18/B-20/B-23/B-26/B-29), a longer-horizon list, not a prioritized queue. Pick
+the next item there deliberately rather than by file order.
 
 Gotcha: `scripts/fidelity-check.{ps1,sh}` still exist but are **no longer wired to CI** — they are
 manual re-audit tools against the `pre-restructure` tag, not gates.

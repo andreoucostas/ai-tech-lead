@@ -4,6 +4,20 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.31.0 — 2026-07-17
+
+### Added — SQL data-warehouse guidance
+
+- Two new skills recognize and govern warehouse repos. `map-warehouse` maps the warehouse —
+  layers (staging → warehouse → marts), fact/dimension entities and their grain, load
+  orchestration and ordering, batch/watermark control, slowly-changing-dimension strategy,
+  partitioning — and can write the result to `docs/warehouse-map.md`. `add-warehouse-load`
+  adds or extends a fact/dimension load following your existing patterns, with idempotent,
+  re-runnable loads that never load the same data twice.
+- `/bootstrap` and `docs/defaults.md` now detect SQL-project / stored-procedure repos and
+  data-warehouse repos, with matching conventions for each. Nothing applies unless your repo
+  shows the signals — guidance is derived from what your codebase actually contains.
+
 ## 0.30.1 — 2026-07-16
 
 ### Fixed — hook message rendering parity

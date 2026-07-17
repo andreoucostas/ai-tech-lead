@@ -8,7 +8,8 @@ description: >
   USE FOR: introducing a completely new domain concept that needs its own table — new entity
   class, new DbSet, new migration from scratch.
   DO NOT USE FOR: adding columns or relationships to an existing entity, modifying an existing
-  migration, writing queries against an existing entity, creating value objects with no table.
+  migration, writing queries against an existing entity, creating value objects with no table,
+  warehouse fact/dimension tables (use add-warehouse-load).
 ---
 
 # Add a new EF Core entity

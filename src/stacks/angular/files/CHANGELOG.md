@@ -4,6 +4,12 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.31.0 — 2026-07-17
+
+### No changes to the Angular distribution
+
+- This release adds SQL/data-warehouse guidance to the .NET and monorepo distributions only.
+
 ## 0.30.1 — 2026-07-16
 
 ### Fixed — hook message rendering parity

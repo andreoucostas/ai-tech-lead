@@ -21,7 +21,7 @@
 - Use `IOptions<T>` for static config, `IOptionsMonitor<T>` for config that can change at runtime, `IOptionsSnapshot<T>` for scoped config refresh.
 
 ### Data Access
-Data-access defaults are conditional on what the repo evidences in csproj package references. Apply only the matching block; if none match, ask.
+Data-access defaults are conditional on what the repo evidences in csproj package references or repo artifacts such as SQL project/source trees. Apply only the matching block; if none match, ask.
 
 **If EF Core (`Microsoft.EntityFrameworkCore*`):**
 - EF Core with repository pattern only where it adds value (not wrapping DbContext for the sake of it).
@@ -35,6 +35,19 @@ Data-access defaults are conditional on what the repo evidences in csproj packag
 - Use typed collections via a small registry; no magic strings.
 - Review indexes when adding a new query shape, and use projections for read-heavy queries.
 - Use multi-document transactions only where the deployment supports them (replica set); otherwise design idempotent single-document writes.
+
+**If raw SQL / stored procedures (`.sql` source tree, SQL project such as SSDT `.sqlproj`, migration-script folders, Dapper over procs):**
+- Parameterized statements only; never concatenate input into SQL.
+- Prefer set-based statements over row-by-row loops (cursors/WHILE) unless the surrounding code deliberately does otherwise.
+- Schema-qualify object names; follow the repo's existing naming for tables and procedures.
+- Every schema change goes through the repo's one deployment vehicle (SQL project build or migration scripts) — never ad-hoc.
+
+**If data-warehouse signals (staging/dim/fact schemas or `Dim*`/`Fact*` tables, load procs, batch/watermark control tables):**
+- Follow the existing load pattern exactly — one warehouse, one loading style; never introduce a second.
+- Loads are idempotent and re-runnable: use the repo's control mechanism (watermarks, batch/load ids, partition switch, versioned runs) — never load the same data twice, and a rerun after a failed run must be safe.
+- Load dimensions before the facts that reference them; apply the slowly-changing-dimension type each dimension already uses.
+- Use the `map-warehouse` skill to understand the warehouse before changing it, and `add-warehouse-load` to add or extend a load.
+- T-SQL examples apply only where the repo evidences SQL Server (`.sqlproj`, `Microsoft.Data.SqlClient`, T-SQL syntax in `.sql` files).
 
 **If none detected:**
 - For greenfield work, ask the developer before introducing a data-access stack.

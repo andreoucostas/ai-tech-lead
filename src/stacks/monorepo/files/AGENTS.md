@@ -95,6 +95,8 @@ Recipes live as auto-discovered **skills**, available to both Claude Code (`.cla
 - `add-endpoint` — add a new HTTP API endpoint end-to-end (domain → service → DTO → validator → controller → integration test)
 - `add-entity` — add a new EF Core entity with configuration and migration review
 - `register-service` — register a new service in DI with the right lifetime
+- `map-warehouse` — map a SQL data-warehouse repo: layers (staging → warehouse → marts), fact/dim entities and grain, load orchestration, batch/watermark control, SCD strategy, partitioning
+- `add-warehouse-load` — add or extend a warehouse load following the repo's existing patterns: idempotent re-runnable loads, no double-loading, SCD handling, partition alignment
 - `perf` — scan for .NET performance anti-patterns; tiered findings with TECH_DEBT.md integration
 - `add-component` — add a new Angular feature component end-to-end
 - `add-service` — add an HTTP / business-logic / signal-store service

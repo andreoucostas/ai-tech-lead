@@ -110,7 +110,7 @@ Run in isolated context; return a structured findings table to the parent. Model
 
 Auto-discovered Common-Tasks recipes; the body loads only when triggered (progressive disclosure).
 
-- **.NET:** `add-endpoint` · `add-entity` · `register-service` · `perf`
+- **.NET:** `add-endpoint` · `add-entity` · `register-service` · `map-warehouse` · `add-warehouse-load` · `perf`
 - **Angular:** `add-component` · `add-service` · `add-lazy-route` · `add-signal-store`
 - **Both stacks:** `add-tests` · `dependency-audit` · `create-adr` · `enforce-architecture` · `enforce-standards`
 
