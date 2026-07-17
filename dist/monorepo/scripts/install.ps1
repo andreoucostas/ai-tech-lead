@@ -148,6 +148,7 @@ if (-not (Get-Command pwsh -ErrorAction SilentlyContinue)) {
 }
 
 Write-Output ""
+Write-Output "Each developer should run  pwsh scripts/framework-doctor.ps1  once on their own machine."
 if ($updateMode) {
     Write-Output "Done (update). Framework machinery refreshed; consumer-owned content files untouched."
     Write-Output "  Next: review the diff, run  pwsh scripts/docs-sync-check.ps1 , then commit."

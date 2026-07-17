@@ -143,6 +143,7 @@ if [ -f "$sj" ] && ! command -v pwsh >/dev/null 2>&1; then
 fi
 
 echo
+echo "Each developer should run  bash scripts/framework-doctor.sh  once on their own machine."
 if [ "$update_mode" -eq 1 ]; then
   echo "Done (update). Framework machinery refreshed; consumer-owned content files untouched."
   echo "  Next: review the diff, run  bash scripts/docs-sync-check.sh , then commit."

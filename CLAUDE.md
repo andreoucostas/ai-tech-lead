@@ -183,11 +183,11 @@ user. Generated `dist/` changes belong in the same commit as the `src/` change t
 
 ## Status
 
-**B-40 (SQL / data-warehouse guidance: `map-warehouse` + `add-warehouse-load`, DW-aware bootstrap
-and defaults) shipped as v0.31.0** (2026-07-17, WSD-021). **No open P1/P2/P3 items remain** from
+**B-16 (`framework-doctor`: honest per-machine enforcement diagnostics) is implemented for
+v0.32.0** (2026-07-17, WSD-023). **No open P1/P2/P3 items remain** from
 the original audit — remaining work lives in `meta/BACKLOG.md` in two sections: the **"Strategic
 backlog — post-Fable horizon"** (B-41…B-48, added 2026-07-17 with a recommended execution order —
-start there) and "Known deferred work" (B-15/B-16/B-17/B-18/B-20/B-23/B-26/B-29, a longer-horizon
+start there) and "Known deferred work" (B-15/B-17/B-18/B-20/B-23/B-26/B-29, a longer-horizon
 feature list; B-23 and B-29 are absorbed by B-41).
 
 Gotcha: `scripts/fidelity-check.{ps1,sh}` still exist but are **no longer wired to CI** — they are

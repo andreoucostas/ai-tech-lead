@@ -18,6 +18,7 @@ Two legs. Both are non-negotiable; each gates a different thing.
 ### Leg 1 — framework-state check (shipped with this repo)
 
 `docs-sync-check` also runs `wiki-check`, validating the team wiki schema, index, and injection screen.
+`framework-doctor` is a developer-machine diagnostic, not a CI gate; keep `docs-sync-check` as the required build check.
 
 
 ```

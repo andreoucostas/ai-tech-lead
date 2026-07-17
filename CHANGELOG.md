@@ -11,6 +11,17 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.32.0 (2026-07-17)
+
+### Added — B-16: honest developer-machine enforcement diagnostic
+
+- Added `framework-doctor.{ps1,sh}` to report which enforcement prerequisites are verified on
+  the current machine, which are missing, and which require a human-observed agent canary.
+- The diagnostic reuses the installed pending-state signals and shipped `template-checks`, runs
+  without agent machinery, and never claims full enforcement from script-visible facts alone.
+- Installer handoff and consumer docs now tell each developer to run the doctor once locally.
+  Design: WSD-023 and `.claude/plans/2026-07-17-b16-framework-doctor-design.md`.
+
 ## 0.31.0 (2026-07-17)
 
 ### Added — B-40: SQL / data-warehouse guidance

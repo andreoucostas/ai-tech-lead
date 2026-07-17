@@ -362,3 +362,12 @@ no-dead-instruction); meta suite 0 failures incl. `InstallerContract` 12/12 (the
 handoff still prints the whole agent contract in both modes × both twins × 3 dists) and generated
 consumer marker JSON valid on both twins; dotnet dist hook suite 0 failures. The prose-steers-a-model
 surface remains the known blind spot (no gate drives an agent through the staged-merge path).
+
+## 2026-07-17 — B-16: diagnostics must survive the dependency they diagnose
+
+The framework doctor cannot depend on healthy agent hooks, PowerShell 7, or a JSON parser: those
+are precisely the failures it exists to expose. Its PowerShell twin stays 5.1-compatible, its bash
+twin has a conservative parser-free fallback for the generated settings shape, and agent-only
+facts remain explicit human canaries. The first fixture run also caught a path-normalization trap:
+PowerShell `TrimStart('./')` treats its argument as a character set and changed `.claude` to
+`claude`; prefix removal must be explicit when a leading dot is meaningful.
