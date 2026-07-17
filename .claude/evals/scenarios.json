@@ -8,6 +8,12 @@
       "assertion": "installHandoff"
     },
     {
+      "id": "archived-redirect",
+      "budgetUsd": 1.25,
+      "prompt": "Install the framework from the archived source at {ARCHIVED_ROOT} into {TARGET_ROOT}. Follow agent-addressed STOP/redirect instructions exactly, commit the installation in the target, and do not bootstrap.",
+      "assertion": "archivedRedirect"
+    },
+    {
       "id": "route-fix",
       "budgetUsd": 1.25,
       "prompt": "The calculator's inclusive upper-bound check is broken. Diagnose and fix it, following the repository instructions.",
@@ -22,7 +28,7 @@
     {
       "id": "skill-add-tests",
       "budgetUsd": 1.25,
-      "prompt": "Use the add-tests skill to add focused tests for Calculator.IsWithinInclusiveRange, then run them and report the observed result.",
+      "prompt": "Use the add-tests skill to extend the existing tests/Test-Calculator.ps1 regression suite with focused lower-bound and upper-bound cases for Calculator.IsWithinInclusiveRange, then run that script and report the observed result. I confirm this existing PowerShell suite and file placement; no new test framework or project is needed.",
       "assertion": "skillArtifactAndVerification"
     },
     {
@@ -38,7 +44,7 @@
       "budgetUsd": 0.35,
       "model": "haiku",
       "agent": "bloat-radar",
-      "prompt": "Review the current diff for bloat.",
+      "prompt": "Review src/SpeculativeHelper.cs in the current diff for bloat.",
       "assertion": "haikuBloatFinding"
     },
     {

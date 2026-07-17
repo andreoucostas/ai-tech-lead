@@ -98,7 +98,19 @@ one door that could not be fixed from here.
 > 6. Then interleave: **B-15** (CI recipe) from the deferred list — it is
 >    the consumer-lifecycle half of the same story — plus **B-44/B-46/B-48** as capacity allows.
 
-### B-41 · Agent-behavior eval harness — **DONE 2026-07-17, see Done section**
+### B-41 · Agent-behavior eval harness — close the "prose steers a model" blind spot
+**Effort:** L · **Invariants:** #5 #6 #7 · absorbs B-23 and B-29
+
+**Phase 1 in PR #2:** the maintainer-only Claude harness, typed stream-event graders, archived-
+redirect fixture, release reminder, and Haiku planted-defect cases are implemented. The first live
+results produced before the adversarial review used raw-transcript graders and are explicitly
+invalidated in `meta/eval-results.md`; re-run the eight cases before claiming behavioral evidence
+or closing B-29.
+
+**Still required before DONE:** add the Copilot CLI leg where scriptable (including trusted-folder
+setup and its different deny/additionalContext shapes); settle B-23's open question about why the
+older response-only `tests/evals/` suite ships to consumers; then record threshold-based results
+from both available hosts. Do not close the item from Claude-only evidence.
 
 ### B-42 · Field pilot — install into ≥1 real production repo and let evidence drive the backlog
 **Effort:** M to set up · elapsed weeks to harvest · **Invariants:** #6
@@ -460,20 +472,6 @@ A wrong pin is consumer-visible: verify on a live Copilot surface before shippin
 ---
 
 ## Done
-
-- **B-41** — done **2026-07-17** (maintainer-only; no framework version bump). Added the bounded
-  `.claude/evals/run-agent-evals.ps1` live harness with disposable no-remote repositories,
-  stream-JSON/tool-order evidence, per-scenario budget and wall-clock limits, a free planted-
-  negative self-test, and append-only `meta/eval-results.md`. Four core scenarios prove installer
-  handoff/STOP, natural-language `/fix` test-before-production ordering, guard block + safe retry,
-  and an `add-tests` skill run with verification. The absorbed B-29 extension runs
-  `convention-check`, `bloat-radar`, and `debt-radar` at their shipped Haiku tier against planted
-  defects. First live evidence: all four core scenarios PASS; all three Haiku cases PASS. A
-  deliberately shortened retry recorded `ERROR` on timeout rather than misclassifying host/API
-  failure as framework behavior. `release.ps1` prompts interactively (or prints the exact command
-  non-interactively) and runs only the no-network self-test as a deterministic gate; stochastic
-  outcomes never block release. Locked design:
-  `.claude/plans/2026-07-17-b41-agent-behavior-harness-design.md`.
 
 - **B-16** — implemented for **v0.32.0** (2026-07-17). Added the locked WSD-023
   `framework-doctor.{ps1,sh}` design: nine ordered machine checks with verified/pending/missing

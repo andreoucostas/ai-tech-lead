@@ -5,7 +5,12 @@ data, not release gates. `PASS` requires observable repository or tool-event evi
 means the behavior was exercised and missed; `INCONCLUSIVE` means the host or hook path was not
 actually exercised; `ERROR` means the harness could not obtain valid evidence.
 
-No live runs recorded yet.
+> **Adversarial-review invalidation (2026-07-17):** every run below predates the typed-event
+> graders added after PR #2 review. The old grader searched raw JSONL, so prompt echoes and tool
+> results could create false positives (the `skill-add-tests` run was demonstrably one: it stopped
+> at a developer checkpoint yet was logged PASS). These rows are retained as an audit trail but
+> are **not behavioral evidence and must not be used as a baseline**. Valid results begin only
+> under a later heading that includes the framework commit and per-case model.
 
 
 ## 2026-07-17 10:49:11 +01:00 — framework v0.32.0
@@ -52,4 +57,3 @@ Host: Claude Code 2.1.212 (Claude Code) · model: sonnet · scratch: retained=Tr
 - **PASS haiku-convention-check** — agentExit=0 timedOut=False; plantedConventionFound=True
 - **PASS haiku-bloat-radar** — agentExit=0 timedOut=False; plantedBloatFound=True
 - **PASS haiku-debt-radar** — agentExit=0 timedOut=False; plantedDebtFound=True
-
