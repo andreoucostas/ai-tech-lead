@@ -76,6 +76,195 @@ one door that could not be fixed from here.
 
 ---
 
+## Strategic backlog — post-Fable horizon (added 2026-07-17, Fable strategic review)
+
+> **Why this section exists.** A strategic review (2026-07-17, framework v0.31.0) asked: what are
+> the framework's structural shortcomings, and what should the work list look like for a
+> maintainer who no longer has Fable-tier review on tap? The audit-band items (P1–P3) are all
+> shipped; the "Known deferred work" below is a feature list. This section is different — it
+> targets the **gaps between the framework and reality**: no behavioral evidence, no field
+> evidence, no legal basis for consumption, one-time host verifications going stale, and a
+> maintenance process calibrated to a frontier-model reviewer.
+>
+> **Recommended execution order** (deliberate, not file order):
+> 1. **B-45** first — it is process-only, cheap, and every later item is shipped under it.
+> 2. **B-47** (LICENSE) — one decision + one file; until it lands, public consumption is legally
+>    void, which makes every other consumer-facing investment moot.
+> 3. **B-42** (field pilot) — start it early because its value is elapsed time; it runs in the
+>    background while other items proceed, and its evidence should re-prioritize everything else.
+> 4. **B-41** (agent-behavior harness) — the flagship; absorbs B-23 and B-29.
+> 5. Then interleave: **B-16** (doctor) and **B-15** (CI recipe) from the deferred list — they are
+>    the consumer-lifecycle half of the same story — plus **B-43/B-44/B-46/B-48** as capacity allows.
+
+### B-41 · Agent-behavior eval harness — close the "prose steers a model" blind spot
+**Effort:** L · **Invariants:** #5 #6 #7 · absorbs B-23 and B-29 (cross-link, don't duplicate)
+
+**Why:** every deterministic gate this repo has validates *bytes* (composition, parity, parse,
+mirrors) — none validates *behavior*. The blind spot is written into `DEVELOPING.md` and
+`meta/LEARNINGS.md` (2026-07-12, 2026-07-16): the only two post-merge defects that mattered to
+consumers (an installing agent mistaking the authoring repo for its target; archived-repo agents
+installing frozen v0.25.5) were found **only** by driving a real agent end-to-end, both times by
+accident of manual testing rather than by a gate. Meanwhile `tests/evals/run_evals.py` has never
+gated a release (B-23), and the WSD-011 haiku-tier downgrade claim has never been evidenced
+(B-29). The product *is* prose-for-models; a framework whose entire value proposition is
+"the model behaves differently with this installed" has zero automated evidence that it does.
+
+**Do:** build a scripted, non-interactive harness (maintainer-triggered — API cost — not CI):
+drive `claude -p` (and the Copilot CLI where scriptable) through fixture scenarios in temp repos
+and assert **observable outcomes**, not transcript vibes: files created/committed, installer STOP
+obeyed, `/fix` rails produce a regression test before the fix, verification lines present in
+output, guard-blocked writes actually retried differently. Start with the 3–5 scenarios that
+encode past real failures (install-handoff contract, archived-repo redirect, route-prompt rail
+injection, one skill recipe followed end-to-end). Record per-version results in
+`meta/eval-results.md`; wire `release.ps1` to *prompt* (not force) a run, per B-23's original
+shape. Then extend with B-29's planted-defect agent cases (convention-check / bloat-radar /
+debt-radar on Haiku). Treat thresholds, not single runs, as signal — outcomes are stochastic.
+
+**Not:** don't make releases hard-fail on a stochastic outcome; don't build a general eval
+platform — fixture scenarios + a results log is the whole product.
+
+### B-42 · Field pilot — install into ≥1 real production repo and let evidence drive the backlog
+**Effort:** M to set up · elapsed weeks to harvest · **Invariants:** #6
+
+**Why:** the framework has shipped 31 minor versions with — as far as the meta layer records —
+**zero live consumer installs and zero field feedback**. Every design decision to date came from
+maintainer introspection plus adversarial self-critique (excellent, but closed-loop). Several
+standing items explicitly wait on evidence that only field use can produce: B-26's misrouting
+watch, the reviewer-profile verbosity calibration (WSD-017), the B-37 injection-marker
+false-positive observation, token-cost consciousness (B-32's trigger). Without a pilot, the
+backlog can only grow more machinery.
+
+**Do:** (1) define 3–5 success metrics *first* and record them in `meta/workspace-decisions.md`
+(candidates: review rounds per AI-assisted PR, hallucinated-API incidents caught, time-to-useful
+`CLAUDE.md` for a new repo, developer-reported friction per week, % of sessions where a rail or
+skill demonstrably fired). (2) Install into at least one real Bitbucket DC work repo
+(dotnet or monorepo), run `/bootstrap` or `/adopt` for real, and use it for normal work for 2–4
+weeks. (3) Keep `meta/field-reports.md`: date, repo shape, what fired, what misfired, what got
+ignored, hook noise, token pain. (4) Convert findings into backlog entries and *re-order this
+section* against them. If the pilot can include one developer who is not the framework's author,
+their friction reports outweigh the maintainer's.
+
+**Not:** no new machinery to "prepare" for the pilot — install what v0.31.0 ships, as shipped.
+
+### B-43 · Host-compatibility recertification cadence (the one-time verifications are rotting)
+**Effort:** S per cycle, recurring · **Invariants:** #5
+
+**Why:** the enforcement matrix rests on *dated, one-shot* live verifications: Copilot CLI 1.0.68
+canary (2026-07-04) established which hook legs are live vs dead; VS Code agent-mode consumption
+was **never verified at all** (open since B-03); Claude Code hook semantics were verified on one
+CLI generation. Agent hosts ship weekly and change hook/context behavior without notice — every
+"live-verified" row in `enforcement-surfaces.md` decays toward fiction, and the framework's
+honesty discipline (its main differentiator) decays with it.
+
+**Do:** write a canary checklist into `DEVELOPING.md` — the sentinel prompts and hook fixtures
+per surface (reuse the B-03 canary design), expected observations, and a dated
+"last certified: host X version Y" table (in `meta/`, or as Status notes in
+`enforcement-surfaces.md` if consumer-visible). Run it quarterly or on any major host release,
+whichever first; each run either re-dates the table or files a defect entry. Fold the
+*consumer-side* half into B-16's doctor (its cannot-verify-from-a-script tier already prints a
+canary prompt). Close the VS Code gap in the first cycle.
+
+### B-44 · Host-native overlap watch — retirement triggers for framework machinery
+**Effort:** S · **Invariants:** #7
+
+**Why:** the hosts are absorbing the framework's territory from below: Claude Code has grown
+native memory (overlaps B-27 wiki), native code review (overlaps the `/review` fan-out), plan
+mode (overlaps plan-first rails), and first-class skills; Copilot keeps moving too. The
+framework's value is the **delta over host-native behavior**, and that delta shrinks every
+host release. With no deprecation policy, the framework's fate is to become redundant
+scaffolding that costs consumers context (the exact failure B-32 exists to measure) while
+duplicating what the host does better.
+
+**Do:** add a table (suggest `meta/overlap-watch.md`, linked from this file): one row per
+framework mechanism — the host-native feature that would obsolete it, the detection signal
+("host X ships Y / doc Z announces"), and the retirement action (drop it, thin it to
+configuration of the native feature, or keep with a written justification). Review the table as
+part of every B-43 recertification cycle. First candidates to assess honestly: wiki memory vs
+Claude Code auto-memory, `/review` agents vs host-native review, `route-prompt` vs improving
+native intent handling, `post-write` build feedback vs host-native diagnostics.
+
+### B-45 · Post-Fable maintenance model — codify the implementer/reviewer split (do this first)
+**Effort:** S · process-only · **Invariants:** none retargeted, all inherited
+
+**Why:** the shipping quality of the last ten versions depended on frontier-tier review, and the
+record proves it: B-37's post-ship review of a lower-tier implementation found **six real
+defects** including a false "gates green" (harness code-page bug); every codex-implemented item
+(B-32, B-21, B-35, B-36, B-27) had 2–5 real review findings caught **before** ship; two locked
+specs had stale file-layout assumptions only caught by a reviewer verifying the live tree. If
+Fable-tier access ends, the process that produced this quality must be written down or it
+evaporates — the backlog's self-containedness was designed for exactly this handover
+(this file's own header says so) but the *review discipline* is currently tribal.
+
+**Do:** add a "Maintenance model" section to the root `CLAUDE.md` (+ regenerate `AGENTS.md`
+mirror): (1) every M+ item gets a locked design with an adversarial critique pass before
+implementation; (2) implementer and reviewer must be different sessions (different model tier
+when available); (3) the reviewer independently re-runs at least one gate and one red-test —
+never trusts the implementer's self-report (the B-27/B-36 pattern); (4) when reviewer tier ≤
+implementer tier, auto-file a post-ship review entry (the B-37 pattern) instead of pretending
+the review was sufficient; (5) verify a spec's file-layout claims against the live tree before
+briefing (the B-21/B-22 lesson); (6) re-run at least one suite under a hostile code page before
+claiming "gates green" (the F6 lesson). Most of these exist as LEARNINGS entries — this item
+promotes them from war stories to binding process.
+
+### B-46 · Consumer update & drift story — what actually happens to a consumer who diverges?
+**Effort:** M · investigate-first · **Invariants:** #3 #5 #6 #7
+
+**Why:** install is polished (three modes, smoke-tested ×3 dists) but *operate-and-upgrade* is
+not: (1) update mode "refreshes framework machinery, leaves consumer-owned content" — but a
+consumer who locally tweaked a shipped skill or hook (which the docs implicitly invite — it's
+their repo) gets either silently clobbered or silently left stale; which one is **unverified**.
+(2) There is **no channel by which a consumer ever learns a new framework version exists** —
+no notification, no check, nothing; realistic consumer version lag is "forever". (3) The B-24
+residual (teammate without the wired shell gets no hooks, silently) is documented but not
+detected — that detection belongs to B-16's doctor, keep it there.
+
+**Do:** first *verify*: run update mode over a fixture repo carrying a consumer-modified shipped
+skill and a consumer-modified hook; record the actual outcome. Then decide policy and document
+it honestly in the consumer README (options: clobber-with-preserved-copy à la brownfield
+archive; skip-with-warning; three-way-diff note in the update output). For version awareness:
+consider a low-noise `session-start` line ("framework v0.31.0 installed; check for updates: <URL>")
+throttled to once per N days via the existing `.claude/.state/` mechanism — offline-tolerant,
+no network call, just a nudge. Record the design as a WSD before implementing.
+
+### B-47 · LICENSE + distribution posture (blocked on a maintainer decision — but the block is cheap)
+**Effort:** S · **Invariants:** #6 #7
+
+**Why:** `github.com/andreoucostas/ai-tech-lead` is **public** with **no LICENSE file**
+(verified 2026-07-17). Default copyright means all rights reserved: the README invites teams to
+install something they have no legal right to use, and no serious shop's OSS-compliance scan
+will let it in. This has been open since the 2026-07-01 forensic audit and it silently caps
+adoption at zero-diligence consumers.
+
+**Do:** the maintainer decides the posture: (a) real OSS — MIT or Apache-2.0 (Apache adds a
+patent grant; both are corporate-friendly), or (b) employer-internal — then the repo should
+arguably be private and the Bitbucket-DC specificity stays a feature, or (c) source-available
+with restrictions. Then: add `LICENSE` at root, decide whether each dist ships a copy (consumers
+copy dist contents into their repos — the license needs to travel or explicitly not need to),
+and add the one-line README statement. If (a), also decide the copyright holder line.
+
+### B-48 · Enforcement-bypass audit — the guard's known end-runs, decided honestly
+**Effort:** M · **Invariants:** #3 #5 · needs a WSD record
+
+**Why:** two known bypasses have been deferred-by-decision and neither has a written honest
+disclosure: (1) the **shell-write gap** — `guard` registers on editor/file-write tools only, so
+`echo $SECRET > appsettings.json` via the terminal tool sails past the secret/pragma blocks
+(B-01 optional hardening, deferred 2026-07-04); the `enforcement-surfaces.md` caveat exists but
+the hardening decision was never made. (2) the **test-defeat gap** — an agent can satisfy
+"build + test green" by weakening the failing test; the test-integrity prose forbids it but no
+deterministic gate sees it (open since v0.23.0). An enforcement product whose bypasses are
+undocumented-but-known is one consumer incident away from losing its honesty claim.
+
+**Do:** one scoped audit pass: enumerate the realistic end-runs (terminal-tool writes; test
+edits that invert assertions/delete cases in the same change that fixes them; `git commit
+--no-verify` where git hooks are in play per B-18). For each: either harden (terminal-tool
+registration + content-sniff for guard — needs its own fixtures and false-positive analysis;
+an added-lines diff heuristic for test-defeat, likely *advisory* not blocking) or **document the
+bypass explicitly** in `enforcement-surfaces.md`'s capability rows. Blocking-vs-advisory is the
+key judgment: a false-positive block on a legitimate test refactor costs more trust than the
+gap. Record the decision as a WSD either way.
+
+---
+
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see the Done section.**
@@ -146,7 +335,7 @@ sanity-check each report's verbosity against the reviewer profile — output lea
 where it doesn't cost the plain-engineering explanations the profile requires (WSD-013). No
 standalone "output leanness" backlog item exists, by decision.
 
-### B-23 · Evals as a release gate
+### B-23 · Evals as a release gate — **absorbed by B-41** (strategic section above); kept for its open question about `tests/evals` shipping to consumers
 **Effort:** M
 `tests/evals/run_evals.py` has never gated a release. Wire `release.ps1` to *prompt* to run it
 (human-triggered — API cost), and record per-version results in `docs/eval-results.md`.
@@ -224,7 +413,7 @@ B-27 follows as v0.27.0 in the merged repo.
   the watch item is superseded by **B-32** (context-footprint gate, design LOCKED — WSD-017),
   which makes the re-measurement permanent. The salience-over-bytes trade itself stands.
 
-### B-29 · Haiku-tier agent adequacy evidence (P3)
+### B-29 · Haiku-tier agent adequacy evidence (P3) — **absorbed by B-41** (strategic section above) as its planted-defect extension
 **Area:** both repos' `tests/evals/` · **Effort:** M · **Invariants:** #1 · added 2026-07-05
 
 The v0.8.0 model-routing entry claims the haiku downgrade of `convention-check`, `bloat-radar`,
