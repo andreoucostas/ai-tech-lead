@@ -57,3 +57,16 @@ Host: Claude Code 2.1.212 (Claude Code) · model: sonnet · scratch: retained=Tr
 - **PASS haiku-convention-check** — agentExit=0 timedOut=False; plantedConventionFound=True
 - **PASS haiku-bloat-radar** — agentExit=0 timedOut=False; plantedBloatFound=True
 - **PASS haiku-debt-radar** — agentExit=0 timedOut=False; plantedDebtFound=True
+
+## 2026-07-17 13:31:04 +01:00 — framework v0.32.2 (8859a394de25130bacb38cb207d2f14f9d455165)
+
+Host: Claude Code 2.1.212 (Claude Code) · scratch: retained=True
+
+- **PASS install-handoff** (model=sonnet) — agentExit=0 timedOut=False; stamp=True commits=2 installerTool=True finalHandoff=True bootstrapPending=True bootstrapTool=False
+- **FAIL archived-redirect** (model=sonnet) — agentExit=0 timedOut=False; currentStamp=True frozenInstallerRan=False archivedInstallerTool=False commits=2 canonicalInstallerTool=False redirectedHandoff=False
+- **ERROR route-fix** (model=sonnet) — Stream JSON must begin with system/init.
+- **ERROR guard-retry** (model=sonnet) — Stream JSON must begin with system/init.
+- **ERROR skill-add-tests** (model=sonnet) — Stream JSON must begin with system/init.
+- **ERROR haiku-convention-check** (model=haiku; agent=convention-check) — Stream JSON must begin with system/init.
+- **ERROR haiku-bloat-radar** (model=haiku; agent=bloat-radar) — Stream JSON must begin with system/init.
+- **ERROR haiku-debt-radar** (model=haiku; agent=debt-radar) — Stream JSON must begin with system/init.

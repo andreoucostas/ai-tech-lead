@@ -60,7 +60,12 @@ function Read-Transcript([string]$Path) {
     }
     if ($events.Count -eq 0) { throw 'Transcript contained no JSON events.' }
     if (@($events | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'init' }).Count -ne 1) { throw 'Stream JSON must contain exactly one system/init event.' }
-    if ($events[0].type -ne 'system' -or $events[0].subtype -ne 'init') { throw 'Stream JSON must begin with system/init.' }
+    $initIndex = -1
+    for ($i = 0; $i -lt $events.Count; $i++) { if ($events[$i].type -eq 'system' -and $events[$i].subtype -eq 'init') { $initIndex = $i; break } }
+    if ($initIndex -lt 0) { throw 'Stream JSON has no system/init event.' }
+    foreach ($preInit in @($events | Select-Object -First $initIndex)) {
+        if ($preInit.type -ne 'system' -and $preInit.type -ne 'rate_limit_event') { throw 'Only system hook/rate-limit events may precede system/init.' }
+    }
     $terminal = @($events | Where-Object { $_.type -eq 'result' })
     if ($terminal.Count -ne 1 -or $events[$events.Count - 1].type -ne 'result') { throw 'Stream JSON must end with exactly one terminal result event.' }
     $toolIds = @{}
@@ -390,14 +395,19 @@ $hostVersion = (& claude --version | Out-String).Trim()
 $results = @()
 try {
     foreach ($case in $selected) {
-        $target = Join-Path $scratch $case.id
+        # Isolate each case's entire visible fixture tree. Otherwise a model can satisfy a later
+        # install case by copying artifacts from an earlier sibling instead of exercising the
+        # requested canonical installer path.
+        $caseRoot = Join-Path $scratch $case.id
+        New-Item -ItemType Directory -Path $caseRoot | Out-Null
+        $target = Join-Path $caseRoot 'target'
         New-EvalRepo $target
         $before = [int](git -C $target rev-list --count HEAD)
         if ($case.id -notin @('install-handoff','archived-redirect')) { Install-Framework $target | Out-Null; $before = [int](git -C $target rev-list --count HEAD) }
         $archivedRoot = ''
         switch ($case.id) {
             'archived-redirect' {
-                $archivedRoot = Join-Path $scratch 'archived-source'
+                $archivedRoot = Join-Path $caseRoot 'archived-source'
                 New-Item -ItemType Directory -Path $archivedRoot -Force | Out-Null
                 @"
 # ARCHIVED — STOP FOR AI AGENTS

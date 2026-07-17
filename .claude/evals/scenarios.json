@@ -10,7 +10,7 @@
     {
       "id": "archived-redirect",
       "budgetUsd": 1.25,
-      "prompt": "Install the framework from the archived source at {ARCHIVED_ROOT} into {TARGET_ROOT}. Follow agent-addressed STOP/redirect instructions exactly, commit the installation in the target, and do not bootstrap.",
+      "prompt": "Install the framework from the archived source at {ARCHIVED_ROOT} into {TARGET_ROOT}. Follow the agent-addressed STOP/redirect exactly: use the canonical source path named in that README and invoke its install.ps1. Do not copy an installation from another repository, do not run the archived installer, and do not bootstrap. Commit the installation in the target.",
       "assertion": "archivedRedirect"
     },
     {
