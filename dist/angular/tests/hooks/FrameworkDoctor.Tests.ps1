@@ -54,4 +54,14 @@ if($bash){
 It 'twins agree on pending fixture' {$r=Fixture -Shell 'bash' -Pending $true;$old=$env:PATH;try{$env:PATH=(Split-Path $bash -Parent)+[IO.Path]::PathSeparator+$old;$p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$s=Run (Join-Path $r 'scripts/framework-doctor.sh');Assert ($p.Exit-eq$s.Exit) "exit mismatch PS=$($p.Exit) SH=$($s.Exit)`nPS:`n$($p.Out)`nSH:`n$($s.Out)`n$($s.Err)";Assert ((Normal $p.Out)-eq(Normal $s.Out)) "stdout mismatch`nPS:`n$($p.Out)`nSH:`n$($s.Out)"}finally{$env:PATH=$old;Remove-Item -Recurse -Force $r}}
 It 'bash twin survives without jq or python3 and reports inactive guard' {$r=Fixture -Shell 'bash' -Pending $true;$bin=Join-Path $r 'bin';New-Item -ItemType Directory $bin|Out-Null;$normalBash=$bash;try{if($bash-match'\\Git\\bin\\bash\.exe$'){$git=Split-Path (Split-Path $bash -Parent) -Parent;$usr=Join-Path $git 'usr/bin';foreach($n in 'dirname','sed','grep','sort','paste','head'){Copy-Item (Join-Path $usr "$n.exe") $bin};Get-ChildItem $usr -Filter '*.dll'|Copy-Item -Destination $bin;$restricted=$bin;$bash=Join-Path $usr 'bash.exe'}else{foreach($n in 'dirname','sed','grep','sort','paste','head'){ $src=UnixTool $n;New-Item -ItemType SymbolicLink -Path (Join-Path $bin $n) -Target $src|Out-Null };$restricted=$bin};$old=$env:PATH;$env:PATH=$restricted;try{$s=Run (Join-Path $r 'scripts/framework-doctor.sh')}finally{$env:PATH=$old;$bash=$normalBash};Assert ($null-ne$s) 'bash did not run';Assert ($s.Out-match'\[MISSING\] Guard JSON parser') "parser finding absent: $($s.Out)";Assert ($s.Out-match'\[PENDING\] Bootstrap/adoption state') 'grep fallback did not read pending state'}finally{$bash=$normalBash;Remove-Item -Recurse -Force $r}}
 }else{Skip 'framework-doctor.sh parity' 'no bash found'}
+It 'pinned canary strings exist in the hooks they quote' {
+    $hooks=(Resolve-Path (Join-Path $scripts '..\.claude\hooks')).Path
+    foreach($f in @($doctorPs,$doctorSh)){
+        $t=[IO.File]::ReadAllText($f)
+        $m=[regex]::Match($t,'starts with "([^"]+)"');Assert $m.Success "no quoted session banner in $f"
+        foreach($h in 'session-start.ps1','session-start.sh'){Assert ([IO.File]::ReadAllText((Join-Path $hooks $h)).Contains($m.Groups[1].Value)) "$h does not emit '$($m.Groups[1].Value)' quoted by $(Split-Path $f -Leaf)"}
+        $m=[regex]::Match($t,'hook says "([^"]+)"');Assert $m.Success "no quoted guard message in $f"
+        foreach($h in 'guard.ps1','guard.sh'){Assert ([IO.File]::ReadAllText((Join-Path $hooks $h)).Contains($m.Groups[1].Value)) "$h does not emit '$($m.Groups[1].Value)' quoted by $(Split-Path $f -Leaf)"}
+    }
+}
 exit (Write-TestSummary 'FrameworkDoctor.Tests')

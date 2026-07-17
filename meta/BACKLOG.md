@@ -491,6 +491,16 @@ A wrong pin is consumer-visible: verify on a live Copilot surface before shippin
   states, explicit human canaries for agent-only facts, parserless bash fallback, PowerShell 5.1
   compatibility, installer/docs handoff, and fixture tests including the fresh-install and
   missing-shell failure modes. The doctor diagnoses only; `docs-sync-check` remains the CI gate.
+  **Review finding fixed before merging (PR #1):** the Claude-hooks canary quoted a session-start
+  banner that no shipped hook emits ("## AI Tech Lead - Session Context"; the real first line is
+  "## Session preload") — exactly the WSD-023 F9 pinned-string hazard, and the F6 failure mode in
+  reverse: a developer with *working* hooks would have concluded they were broken. Fixed in both
+  twins (canary now also observable via asking the model, since SessionStart stdout is context,
+  not chrome), and a new anti-rot test case pins every doctor-quoted string to the hook sources
+  it cites (red-tested against the unfixed doctor: caught it). Accepted deviation from the spec:
+  row 6 keys off the installed `template` stamp instead of `@stack` markers — one byte-identical
+  core file, less drift surface; and the `.sh`-only Copilot CANT-VERIFY branch is a documented
+  twin divergence (PowerShell always has a JSON parser).
 
 - **B-40** — shipped **v0.31.0** (2026-07-17). SQL / data-warehouse guidance (WSD-021, design
   `.claude/plans/2026-07-16-b40-sql-dw-guidance-design.md` — locked and implemented same-day

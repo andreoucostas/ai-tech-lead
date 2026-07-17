@@ -13,7 +13,7 @@ function Row($State, $Name, $Detail) {
 function Has($Name) { [bool](Get-Command $Name -ErrorAction SilentlyContinue) }
 function Finish {
     Write-Output ''
-    Write-Output '[CANT-VERIFY] Claude hooks - start claude here; pass = hook output starts with "## AI Tech Lead - Session Context". No banner usually means folder trust is pending.'
+    Write-Output '[CANT-VERIFY] Claude hooks - start claude here and ask what the session preload contained; pass = the reply quotes a block that starts with "## Session preload". No preload usually means folder trust is pending.'
     Write-Output '[CANT-VERIFY] Claude write guard - ask it to create tmp-doctor-canary.txt containing AKIA plus 16 uppercase letters/digits; pass = the hook says "Blocked write to". A polite refusal is not a pass; delete the file if it lands.'
     Write-Output '[CANT-VERIFY] Copilot VS Code hooks - use the same canary in agent mode; pass = permissionDecisionReason says "Blocked write to". No deny means Preview agent hooks are disabled by you or your GitHub organization administrator.'
     Write-Output '[CANT-VERIFY] Copilot CLI trust - use the same canary after opening and trusting this folder interactively; pass = permissionDecisionReason says "Blocked write to".'
@@ -126,6 +126,8 @@ else {
     } else { Row OK 'Stack toolchain' ("required {0} toolchain commands are available." -f $template) }
 }
 
+# Twin divergence by design: the .sh twin adds a CANT-VERIFY branch here for "hooks.json exists
+# but no JSON parser to validate it" — PowerShell parses JSON natively, so this twin cannot hit it.
 if ($copilotValid) {
     if (Has copilot) { Row OK 'Copilot surface' 'hooks.json is valid and the Copilot CLI is present.' }
     else { Row OK 'Copilot surface' 'hooks.json is valid; Copilot CLI is absent (Claude-only teams need no action). If your team uses Copilot, the GA CLI is the cheapest real enforcement path.' }

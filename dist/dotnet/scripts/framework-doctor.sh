@@ -13,7 +13,7 @@ row() {
 has() { command -v "$1" >/dev/null 2>&1; }
 finish() {
   echo
-  echo '[CANT-VERIFY] Claude hooks - start claude here; pass = hook output starts with "## AI Tech Lead - Session Context". No banner usually means folder trust is pending.'
+  echo '[CANT-VERIFY] Claude hooks - start claude here and ask what the session preload contained; pass = the reply quotes a block that starts with "## Session preload". No preload usually means folder trust is pending.'
   echo '[CANT-VERIFY] Claude write guard - ask it to create tmp-doctor-canary.txt containing AKIA plus 16 uppercase letters/digits; pass = the hook says "Blocked write to". A polite refusal is not a pass; delete the file if it lands.'
   echo '[CANT-VERIFY] Copilot VS Code hooks - use the same canary in agent mode; pass = permissionDecisionReason says "Blocked write to". No deny means Preview agent hooks are disabled by you or your GitHub organization administrator.'
   echo '[CANT-VERIFY] Copilot CLI trust - use the same canary after opening and trusting this folder interactively; pass = permissionDecisionReason says "Blocked write to".'
@@ -113,6 +113,8 @@ if [ -f "$copilot_json" ]; then
   else copilot_unknown=1
   fi
 fi
+# Twin divergence by design: only this twin can hit the CANT-VERIFY branch below — the .ps1 twin
+# always has a JSON parser (PowerShell native), so it reports valid/invalid directly.
 if [ "$copilot_valid" -eq 1 ]; then
   if has copilot; then row OK 'Copilot surface' 'hooks.json is valid and the Copilot CLI is present.'
   else row OK 'Copilot surface' 'hooks.json is valid; Copilot CLI is absent (Claude-only teams need no action). If your team uses Copilot, the GA CLI is the cheapest real enforcement path.'; fi

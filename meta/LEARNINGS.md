@@ -362,6 +362,7 @@ no-dead-instruction); meta suite 0 failures incl. `InstallerContract` 12/12 (the
 handoff still prints the whole agent contract in both modes × both twins × 3 dists) and generated
 consumer marker JSON valid on both twins; dotnet dist hook suite 0 failures. The prose-steers-a-model
 surface remains the known blind spot (no gate drives an agent through the staged-merge path).
+
 ## 2026-07-17 — B-16: diagnostics must survive the dependency they diagnose
 
 The framework doctor cannot depend on healthy agent hooks, PowerShell 7, or a JSON parser: those
