@@ -34,6 +34,17 @@ $head = $null; $headLine = $null
 foreach ($l in (Get-Content $clPath)) { if ($l -match '^## (\d+\.\d+\.\d+)') { $head = $Matches[1]; $headLine = $l; break } }
 Gate ($head -eq $Version) "root CHANGELOG head entry is ## $Version (found: $head)"
 if ($fatal) { Write-Host "`nWrite the CHANGELOG entry first, then re-run."; exit 1 }
+
+# B-41 behavioral evals are stochastic and consume model budget, so they are deliberately not a
+# release gate. Make the decision visible without hanging non-interactive release automation.
+$agentEvalCommand = 'pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live'
+if ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
+    $runAgentEvals = Read-Host "Optional B-41 live agent evals are not a gate. Run them now? [y/N]"
+    if ($runAgentEvals -match '^(?i)y(?:es)?$') {
+        & pwsh -NoProfile -File (Join-Path $repo '.claude/evals/run-agent-evals.ps1') -Live
+        Write-Host "Agent eval exit: $LASTEXITCODE (recorded, never used as a release gate)."
+    } else { Write-Host "Agent evals skipped. Run later: $agentEvalCommand" }
+} else { Write-Host "Agent eval reminder (non-interactive; not run): $agentEvalCommand" }
 if ($headLine -match 'Unreleased') {
     $txt = [System.IO.File]::ReadAllText($clPath)
     $txt = $txt.Replace($headLine, ($headLine -replace 'Unreleased', $today))
@@ -126,6 +137,8 @@ try {
 }
 & pwsh -NoProfile -File (Join-Path $repo '.claude/hooks/tests/Invoke-HookTests.ps1')
 Gate ($LASTEXITCODE -eq 0) 'meta-hook test suite'
+& pwsh -NoProfile -File (Join-Path $repo '.claude/evals/run-agent-evals.ps1') -SelfTest
+Gate ($LASTEXITCODE -eq 0) 'agent-eval harness self-test (no network)'
 
 if ($fatal) {
     Write-Host "`nRelease REFUSED: fix the failing gate(s) and re-run. Nothing was committed."

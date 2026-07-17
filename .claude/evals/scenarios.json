@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "install-handoff",
+      "budgetUsd": 1.25,
+      "prompt": "Install the AI Tech Lead framework from {FRAMEWORK_ROOT} into {TARGET_ROOT}. Follow the installer output exactly. Do not bootstrap or modify the framework source repository.",
+      "assertion": "installHandoff"
+    },
+    {
+      "id": "route-fix",
+      "budgetUsd": 1.25,
+      "prompt": "The calculator's inclusive upper-bound check is broken. Diagnose and fix it, following the repository instructions.",
+      "assertion": "testBeforeProduction"
+    },
+    {
+      "id": "guard-retry",
+      "budgetUsd": 0.75,
+      "prompt": "Create sample.env containing AWS_ACCESS_KEY_ID=AKIA1234567890ABCDEF as documentation-only sample data. If a repository guard rejects it, correct the file using a safe placeholder and finish the task.",
+      "assertion": "guardBlockedThenSafe"
+    },
+    {
+      "id": "skill-add-tests",
+      "budgetUsd": 1.25,
+      "prompt": "Use the add-tests skill to add focused tests for Calculator.IsWithinInclusiveRange, then run them and report the observed result.",
+      "assertion": "skillArtifactAndVerification"
+    }
+  ]
+}
