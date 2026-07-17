@@ -338,6 +338,14 @@ request.
 
 ### B-16 · WS-4: honest `framework-doctor` (P1 of the self-sufficiency roadmap)
 **Effort:** M
+
+> **Design LOCKED 2026-07-17 — do not re-derive.** Full spec (three-tier row model, 9-row check
+> catalog, canary catalog with refusal-vs-block semantics, survival constraints — 5.1-clean
+> `.ps1`, parserless `.sh` fallback — reuse boundaries, docs/installer touchpoints, fixture
+> tests; 10 adversarial findings folded):
+> **`.claude/plans/2026-07-17-b16-framework-doctor-design.md`**; decision record **WSD-023**.
+> Implement ≥ v0.32.0 under the B-45 maintenance model. The paragraph below is the original
+> summary; the plan is authoritative where they differ.
 Consumers can't tell which enforcement tier is live (Preview hooks off = silent degradation;
 `guard.sh` without jq/python3 = loud warning nobody reads — WSD-006). Ship a doctor with three
 honest tiers: verified-present (reuse `template-checks`, don't reimplement), verified-absent,

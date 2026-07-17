@@ -896,3 +896,37 @@ documented in every report, post-cutoff SHAs preferred); C4 silently skipped ang
 swaps now explicitly reset the A/B trend series; T2 symptoms must be unit-verified when
 frozen; `claude -p` hook firing is verified at drill #0 rather than assumed; and the A/B's
 Claude-only scope is a stated standing limitation. Full list in the plan's findings section.
+
+## WSD-023: B-16 honest framework-doctor — design locked (2026-07-17)
+
+**Context.** WS-4 of the self-sufficiency roadmap (WSD-008), promoted by the strategic review:
+consumers cannot tell which enforcement tier is live — silent hook degradation (Preview off,
+missing wired shell per the B-24 residual, guard.sh with no JSON parser per WSD-006, folder
+trust per B-03) is the framework's biggest honesty gap on the consumer's own machine.
+
+**Decision (B-16, `.claude/plans/2026-07-17-b16-framework-doctor-design.md`, LOCKED —
+implement ≥ v0.32.0, effort M).** `scripts/framework-doctor.{ps1,sh}` twins ship in all three
+dists; developer-run diagnostic (explicitly not a CI gate — docs-sync-check keeps that job).
+Every row lands in one of three honest tiers: [OK] verified-present, [MISSING] verified-absent
+(plain-voice consequence + the one fix command), [CANT-VERIFY] cannot-verify-from-a-script —
+which prints an exact canary whose pass signal is always the HOOK'S OWN output string, never a
+bare model refusal (lesson imported from B-49's F10). Nine script rows (install state,
+bootstrap-pending via the EXISTING session-start/docs-sync signal — no new sentinel, wired-
+shell-exists, hook files resolve, guard JSON parser, stack toolchain via @stack markers,
+Copilot surface + the F9 surface-choice guidance, template-checks as a sub-call, audit-log
+substrate) ordered so fresh installs read [PENDING], not broken. Survival constraints: the
+.ps1 twin is PowerShell-5.1-clean (a doctor requiring pwsh can't diagnose "pwsh missing") and
+the .sh twin self-degrades to grep extraction when the JSON parser it diagnoses is absent.
+Exit = 1 iff any [MISSING]; canaries never affect exit. Two-part summary so script rows can
+never imply full enforcement. Fixture-driven twin-parity tests (byte-identical stdout, both
+PowerShell hosts, red-before-green incl. the .sh no-parser path). Docs + installer-stdout
+touchpoints under no-dead-instruction; maintainer meta-checks stay out; no remote version
+check (B-46's job); diagnose-only, no auto-fix.
+
+**Rejected:** skill/command instead of a script (B-33: the broken-machinery audience needs the
+channel that always runs); auto-fix; session-start auto-run (context cost + canaries need a
+human); reimplementing template-checks/pending detection.
+
+**Process note.** Drafted, then adversarially reviewed before locking; 10 findings folded —
+the load-bearing ones being the two self-dependency traps (F1/F2), fresh-install false alarms
+(F3), refusal-vs-block canary semantics (F6), and pinned-string rot in canary quotes (F9).
