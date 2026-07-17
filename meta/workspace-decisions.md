@@ -843,3 +843,42 @@ findings folded in, including three that would have failed gates or shipped drif
 shipped-CHANGELOG version-stamp cross-check (release would refuse), hand-editing the generated
 `architecture.html` (docs-sync sha drift), and whole-tree Step-0 greps false-positive on xUnit
 `FactAttribute`/prose (gate now requires SQL-tier AND ≥2 DW signals scoped to SQL artifacts).
+
+## WSD-022: B-49 quarterly live-fire drill — design locked (2026-07-17)
+
+**Context.** Maintainer request (2026-07-17, Fable strategic review session): a periodic test —
+install the framework into a real repo (an open-source one), verify things work as expected, and
+run evals around value-add, with Claude reminding quarterly. This is the recurring execution
+vehicle the strategic backlog lacked: B-41 defines behavioral scenarios and B-43 defines host
+recertification, but nothing made either *happen* on a calendar.
+
+**Decision (B-49, `.claude/plans/2026-07-17-b49-live-fire-drill-design.md`, LOCKED).** Quarterly
+maintainer-run drill: pinned real OSS targets (dotnet `dotnet-architecture/eShopOnWeb`, angular
+`gothinkster/angular-realworld-example-app`, fallbacks + binding replacement criteria; SHAs
+pinned per drill), full drill on ONE rotating stack per quarter + monorepo composed-fixture
+install-smoke (never A/B — a composed fixture is not a real monorepo). Three halves per drill:
+(1) an 8-row binary behavior checklist C1–C8 (installer contract, agent-driven install commit,
+guard secret-block on both surfaces, post-write feedback, timeboxed interactive /bootstrap with
+B-21 outputs, route-prompt rail injection, /review catching ≥2/3 planted issues, docs-sync-check)
+— any FAIL files a P1; (2) an A/B value-add protocol — same day/model/prompt, FRAMEWORK vs BARE
+arms, frozen 5-dimension rubric (fabrication, convention adherence, test discipline,
+verification evidence, leanness; T3 scored as planted-issues-caught), within-quarter deltas are
+the controlled claim, cross-quarter trends directional only, a delta trending to 0 is B-44's
+retirement signal; (3) the B-43 host-recertification canaries date-stamped into
+`meta/host-certification.md` (VS Code agent-mode row mandatory in cycle 1 — the standing B-03
+gap; missing seats produce `not certified` rows, never omissions). Safety protocol binding:
+`git remote remove origin` at clone, fixture-shaped fake secrets only, artifacts in scratch.
+Reporting template + degradation order (drop A/B tasks first, never checklist/recert) pinned in
+the plan. A cloud reminder routine (`trig_01EL25XDM2pMDaFkRBSGjF1V`, 08:00 UTC 1 Jan/Apr/Jul/Oct)
+reminds; it cannot and does not run the drill. Drill #0 (recommended within 2 weeks) freezes the
+plan's Appendix: SHAs, T2 mutation patch, T3 planted diff, per-target R2 checks.
+
+**Rejected:** running the drill inside the cloud routine (no local hosts/toolchains, no spend
+control); using the maintainer's work repo (that is B-42's field-evidence job — would lose
+pinned-SHA reproducibility); hard-gating releases on drill outcomes (stochastic must not block
+deterministic); shipping the drill kit to consumers (invariant #6).
+
+**Process note.** Design adversarially self-critiqued before locking; 8 findings folded
+(bootstrap timebox, cross-quarter validity demotion, frozen-rubric scoring order, target-rot
+handling, no-silent-canary-skips, push-hazard remote removal, T2 suite-green masking check,
+fake-monorepo exclusion). Full list in the plan.

@@ -167,8 +167,18 @@ whichever first; each run either re-dates the table or files a defect entry. Fol
 canary prompt). Close the VS Code gap in the first cycle.
 
 ### B-49 · Quarterly live-fire drill — install into a real OSS repo, verify behavior, measure value-add
-**Effort:** M to build the drill kit · ~½ session per quarter thereafter · **Invariants:** #5 #6
-· maintainer-decided 2026-07-17 · executes B-43 on a cadence; complements (does **not** replace) B-42
+**Effort:** drill #0 = 1 session (freezes the Appendix) · ~½ session per quarter thereafter ·
+**Invariants:** #5 #6 · maintainer-decided 2026-07-17 · executes B-43 on a cadence; complements
+(does **not** replace) B-42
+
+> **Design LOCKED 2026-07-17 — do not re-derive.** Full spec (targets, safety protocol, C1–C8
+> checklist, frozen A/B rubric, recert canaries, report template, degradation order; 8
+> adversarial findings folded): **`.claude/plans/2026-07-17-b49-live-fire-drill-design.md`**;
+> decision record **WSD-022**. The only outstanding work is execution: **drill #0** (recommended
+> within 2 weeks — runs the full dotnet drill and freezes the plan's Appendix: pinned SHAs, T2
+> mutation patch, T3 planted diff, per-target R2 checks), then quarterly on the reminder
+> (`trig_01EL25XDM2pMDaFkRBSGjF1V`, next fire 2026-10-01). The prose below is the summary; the
+> plan is authoritative where they differ.
 
 **Why:** the deterministic gates validate bytes and B-41's harness validates scripted scenarios —
 but neither ever exercises the product on a codebase nobody curated. A quarterly drill against a
