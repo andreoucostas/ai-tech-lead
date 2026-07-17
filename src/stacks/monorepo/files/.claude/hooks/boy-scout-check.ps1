@@ -19,13 +19,17 @@
 # semantic change, not a drive-by cleanup -- see CLAUDE.md > Boy Scout Rule.
 
 $ErrorActionPreference = 'SilentlyContinue'
+$inputJson = [Console]::In.ReadToEnd()
 
-if (-not (Test-Path .git)) { exit 0 }
+$candidateRoot = [IO.Path]::GetFullPath((Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..\..'))
+$repoRoot = (& git -C $candidateRoot rev-parse --show-toplevel 2>$null | Select-Object -First 1)
+if (-not $repoRoot) { exit 0 }
+$repoRoot = [IO.Path]::GetFullPath($repoRoot.Trim())
 
 $changed = @()
-$changed += git diff --name-only -- '*.cs' '*.ts'
-$changed += git diff --cached --name-only -- '*.cs' '*.ts'
-$changed += git ls-files --others --exclude-standard -- '*.cs' '*.ts'
+$changed += & git -C $repoRoot diff --name-only -- '*.cs' '*.ts'
+$changed += & git -C $repoRoot diff --cached --name-only -- '*.cs' '*.ts'
+$changed += & git -C $repoRoot ls-files --others --exclude-standard -- '*.cs' '*.ts'
 
 $files = $changed |
     Where-Object { $_ -and $_.Trim() } |
@@ -39,7 +43,8 @@ $checked = 0
 
 foreach ($f in $files) {
     if ([string]::IsNullOrWhiteSpace($f)) { continue }
-    if (-not (Test-Path $f)) { continue }
+    $fullPath = Join-Path $repoRoot $f
+    if (-not (Test-Path -LiteralPath $fullPath)) { continue }
 
     # Skip test files, generated files, obj/bin trees, type declarations (per stack)
     if ($f -match '(?i)(Tests\.cs|Test\.cs|\.g\.cs|\.Designer\.cs)$') { continue }
@@ -48,7 +53,7 @@ foreach ($f in $files) {
 
     $checked++
 
-    $lines = Get-Content $f
+    $lines = Get-Content -LiteralPath $fullPath
     if (-not $lines) { continue }
     $content = $lines -join "`n"
 
@@ -131,8 +136,9 @@ foreach ($f in $files) {
 if ($findings.Count -eq 0) { exit 0 }
 
 # Dedup: skip output when this finding set matches the last fire's output.
-$null = New-Item -ItemType Directory -Path .claude\.state -Force
-$hashFile = '.claude\.state\last-boy-scout-hash'
+$stateDir = Join-Path $repoRoot '.claude\.state'
+$null = New-Item -ItemType Directory -Path $stateDir -Force
+$hashFile = Join-Path $stateDir 'last-boy-scout-hash'
 $joined = ($findings | Sort-Object) -join "`n"
 $sha1 = [System.Security.Cryptography.SHA1]::Create()
 $bytes = [System.Text.Encoding]::UTF8.GetBytes($joined)
@@ -154,6 +160,10 @@ $text = $outLines -join "`n"
 # systemMessage so the developer also sees that candidates were flagged.
 $summary = "Boy Scout: $($findings.Count) candidate(s) flagged to the model across $checked file(s) (see CLAUDE.md > Boy Scout Rule)."
 
-(@{ systemMessage = $summary; hookSpecificOutput = @{ hookEventName = 'Stop'; additionalContext = $text } } | ConvertTo-Json -Compress)
+if ($inputJson -match '"hook_event_name"') {
+    @{ systemMessage = $summary; hookSpecificOutput = @{ hookEventName = 'Stop'; additionalContext = $text } } | ConvertTo-Json -Compress
+} else {
+    @{ additionalContext = $text; hookSpecificOutput = @{ hookEventName = 'UserPromptSubmit'; additionalContext = $text } } | ConvertTo-Json -Compress
+}
 
 exit 0

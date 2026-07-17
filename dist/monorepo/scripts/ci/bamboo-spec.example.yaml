@@ -1,0 +1,33 @@
+# Bamboo Specs starting point for the AI Tech Lead framework-state gate.
+# Replace the project/plan keys and connect the plan to your Bitbucket Data Center repository.
+# Branch plans make this run on pull-request source branches; a Bitbucket required-build merge
+# check must separately require the resulting Bamboo build. This file alone is not a merge gate.
+version: 2
+
+plan:
+  project-key: REPLACE_ME
+  key: AITECHLEAD
+  name: AI Tech Lead framework state
+
+stages:
+  - Framework checks:
+      manual: false
+      final: false
+      jobs:
+        - Docs sync check
+
+Docs sync check:
+  key: DOCSYNC
+  tasks:
+    - checkout:
+        force-clean-build: true
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - bash scripts/docs-sync-check.sh
+
+branches:
+  create: for-new-branch
+  delete:
+    after-deleted-days: 7
+    after-inactive-days: 30

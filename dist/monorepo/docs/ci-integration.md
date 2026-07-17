@@ -80,6 +80,11 @@ admin, no server plugins:
 
 ## Bamboo recipe
 
+Start from `scripts/ci/bamboo-spec.example.yaml`. Replace its project/plan keys and link the plan
+to this repository. The sample creates branch plans, but it does **not** make itself blocking:
+enable the Bitbucket repository trigger and configure the required-build merge check above for
+the reported Bamboo build key.
+
 One plan, one job, two script tasks (order matters — fail fast on framework state):
 
 - **Task 1 (Script)**: inline, interpreter *Shell* on Linux agents — `bash scripts/docs-sync-check.sh`

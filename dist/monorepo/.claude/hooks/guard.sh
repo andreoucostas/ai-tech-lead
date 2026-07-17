@@ -106,7 +106,8 @@ esac
 secret=""
 printf '%s' "$content" | grep -Eq -- '-----BEGIN [A-Z ]*PRIVATE KEY-----' && secret="a private key block"
 [ -z "$secret" ] && printf '%s' "$content" | grep -Eq 'AKIA[0-9A-Z]{16}'        && secret="an AWS access key id (AKIA…)"
-[ -z "$secret" ] && printf '%s' "$content" | grep -Eq 'ghp_[A-Za-z0-9]{36}'      && secret="a GitHub token (ghp_…)"
+[ -z "$secret" ] && printf '%s' "$content" | grep -Eq 'gh[oprsu]_[A-Za-z0-9]{36}' && secret="a classic GitHub token (gh*_…)"
+[ -z "$secret" ] && printf '%s' "$content" | grep -Eq 'github_pat_[0-9A-Za-z]{22}_[0-9A-Za-z]{59,}' && secret="a fine-grained GitHub token (github_pat_…)"
 [ -z "$secret" ] && printf '%s' "$content" | grep -Eq 'xox[baprs]-[A-Za-z0-9-]{10,}' && secret="a Slack token (xox…)"
 [ -z "$secret" ] && printf '%s' "$content" | grep -Eq 'sk-[A-Za-z0-9_-]{20,}'    && secret="an API secret key (sk-…)"
 [ -z "$secret" ] && printf '%s' "$content" | grep -Eq 'AIza[0-9A-Za-z_-]{35}'    && secret="a Google API key (AIza…)"
@@ -117,7 +118,7 @@ case "$fp" in
   *[Tt]est*|*spec*|*Development*|*example*|*sample*|*mock*|*fixture*) ;;
   *)
     cred=$(printf '%s' "$content" \
-      | grep -Ei '(password|passwd|pwd|secret|api[_-]?key|access[_-]?key|client[_-]?secret|connectionstring)["'"'"' ]*[:=][[:space:]]*["'"'"'][^"'"'"']{8,}["'"'"']' 2>/dev/null \
+      | grep -Ei '(password|passwd|pwd|secret|api[_-]?key|access[_-]?key|client[_-]?secret)["'"'"' ]*[:=][[:space:]]*["'"'"'][^"'"'"']{8,}["'"'"']|connectionstring["'"'"' ]*[:=][[:space:]]*["'"'"'][^"'"'"']*(password|pwd)[[:space:]]*=[[:space:]]*[^;"'"'"']{4,}[^"'"'"']*["'"'"']|connectionstring["'"'"' ]*[:=][[:space:]]*["'"'"'][^"'"'"']*://[^/[:space:]:@]+:[^/[:space:]@]+@[^"'"'"']*["'"'"']' 2>/dev/null \
       | grep -Eiv '(changeme|placeholder|your[_-]|example|dummy|<[^>]+>|\$\{|process\.env|%[A-Z_]+%)' | head -1)
     [ -n "$cred" ] && reasons+=("assigns a hardcoded credential literal — move it to user-secrets / env vars / a vault")
     ;;

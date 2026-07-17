@@ -5,6 +5,15 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.33.0 — 2026-07-17
+
+- Copilot CLI receives Boy Scout candidates at the next prompt, with the same dedup behavior as
+  Claude Code. Hook scans now work from subdirectories and Git worktrees.
+- The write guard blocks fine-grained and all classic GitHub PAT forms. Passwordless connection
+  strings no longer false-positive; keyed passwords and URI userinfo credentials still block.
+- `docs-sync-check` fails when the enforcement matrix is missing and advises when the optional CI
+  guide is absent. A Bamboo Specs example provides an explicitly non-blocking starting point.
+
 ## 0.32.2 — 2026-07-17
 
 ### Fixed — hook test suite on Linux

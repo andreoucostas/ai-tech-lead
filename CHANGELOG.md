@@ -11,6 +11,14 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.33.0 (2026-07-17)
+
+Closes five gaps found by a real onboarding review. Copilot CLI now receives the Boy Scout nudge
+through its consumed per-prompt channel; the write guard recognizes fine-grained and all classic
+GitHub PAT prefixes while allowing passwordless connection strings; credential-bearing keyed and
+URI connection strings remain blocked. The framework-state check now fails an incomplete install
+missing the enforcement matrix, and a Bamboo Specs example documents repository-specific wiring.
+
 ## 0.32.2 (2026-07-17)
 
 Second CI-linux fix for the B-16 test harness. v0.32.1 fixed the doctor itself (builtin root
