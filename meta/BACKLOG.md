@@ -93,8 +93,10 @@ one door that could not be fixed from here.
 > 3. **B-42** (field pilot) — start it early because its value is elapsed time; it runs in the
 >    background while other items proceed, and its evidence should re-prioritize everything else.
 > 4. **B-41** (agent-behavior harness) — the flagship; absorbs B-23 and B-29.
-> 5. Then interleave: **B-16** (doctor) and **B-15** (CI recipe) from the deferred list — they are
->    the consumer-lifecycle half of the same story — plus **B-43/B-44/B-46/B-48** as capacity allows.
+> 5. **B-49** (quarterly live-fire drill) — build the drill kit once B-41's first scenarios exist;
+>    it becomes the recurring vehicle that *executes* B-43 (and reviews B-44) every quarter.
+> 6. Then interleave: **B-16** (doctor) and **B-15** (CI recipe) from the deferred list — they are
+>    the consumer-lifecycle half of the same story — plus **B-44/B-46/B-48** as capacity allows.
 
 ### B-41 · Agent-behavior eval harness — close the "prose steers a model" blind spot
 **Effort:** L · **Invariants:** #5 #6 #7 · absorbs B-23 and B-29 (cross-link, don't duplicate)
@@ -147,7 +149,7 @@ their friction reports outweigh the maintainer's.
 **Not:** no new machinery to "prepare" for the pilot — install what v0.31.0 ships, as shipped.
 
 ### B-43 · Host-compatibility recertification cadence (the one-time verifications are rotting)
-**Effort:** S per cycle, recurring · **Invariants:** #5
+**Effort:** S per cycle, recurring · **Invariants:** #5 · **execution vehicle: B-49's quarterly drill**
 
 **Why:** the enforcement matrix rests on *dated, one-shot* live verifications: Copilot CLI 1.0.68
 canary (2026-07-04) established which hook legs are live vs dead; VS Code agent-mode consumption
@@ -163,6 +165,49 @@ per surface (reuse the B-03 canary design), expected observations, and a dated
 whichever first; each run either re-dates the table or files a defect entry. Fold the
 *consumer-side* half into B-16's doctor (its cannot-verify-from-a-script tier already prints a
 canary prompt). Close the VS Code gap in the first cycle.
+
+### B-49 · Quarterly live-fire drill — install into a real OSS repo, verify behavior, measure value-add
+**Effort:** M to build the drill kit · ~½ session per quarter thereafter · **Invariants:** #5 #6
+· maintainer-decided 2026-07-17 · executes B-43 on a cadence; complements (does **not** replace) B-42
+
+**Why:** the deterministic gates validate bytes and B-41's harness validates scripted scenarios —
+but neither ever exercises the product on a codebase nobody curated. A quarterly drill against a
+real open-source repo catches what both miss: bootstrap quality on messy real code, installer
+behavior on repo shapes we didn't design for, host drift since the last drill, and — the half
+nothing else measures — whether the framework demonstrably *adds value* over the same agent bare.
+A fixed cadence also defeats the failure mode the one-shot verifications already exhibited
+(B-03's canary aging out, VS Code never verified): recurring by calendar, not by memory — a
+scheduled reminder fires quarterly (1st of Jan/Apr/Jul/Oct) so the drill happens without anyone
+having to remember it.
+
+**Do — build the kit once (M):**
+1. **Pin the drill targets in a WSD** so quarters are comparable: one mid-size real .NET OSS repo
+   and one Angular one (candidates: `dotnet-architecture/eShopOnWeb` or
+   `ardalis/CleanArchitecture`-class for .NET; a mid-size real Angular app, not a toy — criteria:
+   50–500 source files, builds on the maintainer box, real domain logic). Pin the *commit SHA*
+   per drill so reruns are reproducible; bump the SHA each quarter to stay realistic.
+2. **Write the drill checklist** into `DEVELOPING.md` (or `meta/drill-kit.md`): fresh clone →
+   root installer (assert mode detection + agent-handoff contract) → drive a real agent through
+   `/bootstrap` → 2–3 representative tasks (one feature via a skill recipe, one `/fix`, one
+   `/review`) → planted-defect probes (a secret write the guard must block; a convention
+   violation `convention-check` must flag). Score each against fixed pass criteria.
+3. **Value-add evals (the A/B half):** same task prompt, same repo, same model — once with the
+   framework installed, once bare. Score both on a **fixed rubric**: hallucinated APIs referenced,
+   convention adherence, test-written-before-fix, verification evidence shown, review findings
+   caught. Single runs are anecdotes — keep the rubric frozen and track the *delta across
+   quarters*, not absolute scores; a shrinking delta is exactly the B-44 retirement signal.
+4. **Fold B-43 in:** the host-recertification canaries run in the same quarterly session (one
+   calendar slot, two checklists); the B-44 overlap table gets reviewed there too.
+5. **Record** each drill in `meta/drill-reports.md`: date, host + framework versions, repo SHAs,
+   scores, defects filed. Defects become backlog entries; a failed drill is a P1.
+
+**Per quarter (~½ session):** run the checklist, log the report, file what it finds. API cost is
+real — the drill is maintainer-triggered; the scheduler only *reminds*.
+
+**Not:** don't let the drill replace **B-42** — an OSS clone has no team, so developer friction,
+adoption, and reviewer-profile evidence still come only from the field pilot. Don't tune the
+framework *to* the pinned repos (rotate one target if that risk appears). Don't average away
+failures: one hard checklist failure = a defect entry, regardless of the rubric totals.
 
 ### B-44 · Host-native overlap watch — retirement triggers for framework machinery
 **Effort:** S · **Invariants:** #7
