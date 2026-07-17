@@ -122,16 +122,41 @@ pwsh -NoProfile -File .claude/hooks/tests/InstallerContract.Tests.ps1   # MUST f
 pwsh -NoProfile -File scripts/build.ps1 dotnet                          # restore from src
 ```
 
-**What is still not covered:** whether the prose actually *steers* a model. That needs a real agent
-driven end-to-end, which means standing permission to spawn one non-interactively — a deliberate
-trade not taken. Two v0.26.3 defects (an installing agent's mistaking this repo for its target; the
-archived repos sending agents to install the frozen template) were found only by driving agents by
-hand, and no gate here would catch their like. Treat that as a known blind spot, not a solved one.
+**What is still not covered by a gate:** whether the prose actually *steers* a model — that needs a
+real agent driven end-to-end and API/subscription spend, so it is deliberately not wired into any
+of the suites above. B-41's live harness below closes the evidence gap for the Claude host (not
+the gate gap, and not yet the Copilot host — see `meta/BACKLOG.md`): it is maintainer-triggered,
+not automatic, and its results are a trend log, not a pass/fail release condition.
 
 - **Exit code = number of failing tests** (0 = green).
 - **`.sh` fidelity:** on Windows the harness drives `.sh` via Git's `bin\bash.exe` wrapper so
   `cat`/`grep`/`jq` resolve; `.sh` tests self-skip when no bash is found (pure-Windows safe).
 - **Host:** prefers `pwsh` (7+); falls back to `powershell.exe` [#4 platform].
+
+### The live agent-behavior harness (B-41 — maintainer-triggered, spends budget, not a gate)
+
+`.claude/evals/run-agent-evals.ps1` drives the installed `claude` CLI through fixture scenarios in
+disposable temp repos and grades **typed, observable** evidence — matched `tool_use`/`tool_result`
+events, git state, file bytes — never transcript prose alone. It never runs in CI and never gates
+a release; see the locked design in `.claude/plans/2026-07-17-b41-agent-behavior-harness-design.md`
+and results in `meta/eval-results.md`.
+
+```powershell
+# free, no network — proves the harness's own typed-evidence grading on synthetic/adversarial
+# fixtures (malformed streams, keyword echoes, developer checkpoints, inverted tool-result
+# semantics, ...). .claude/evals/tests/AgentEvals.Tests.ps1 wraps this same check but is not
+# auto-discovered by the hook runner above — evals are deliberately a separate suite from hooks,
+# so run either the wrapper or the flag directly:
+pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -SelfTest
+
+# spends real budget — requires dist/ to match the checked-out release (version == root
+# CHANGELOG head) with no local diff
+pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live [-Scenario route-fix] [-Model sonnet]
+```
+
+`release.ps1` runs `-SelfTest` as a deterministic gate and, only after a successful release commit
+(and push), offers an interactive prompt for an optional `-Live` run — never a hard fail — and
+persists its evidence in a follow-up commit.
 - **Speed:** slow by design — a process is spawned per hook invocation; a full dist suite takes
   ~1–2 min. Expected, not a hang.
 

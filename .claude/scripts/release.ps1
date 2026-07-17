@@ -34,6 +34,7 @@ $head = $null; $headLine = $null
 foreach ($l in (Get-Content $clPath)) { if ($l -match '^## (\d+\.\d+\.\d+)') { $head = $Matches[1]; $headLine = $l; break } }
 Gate ($head -eq $Version) "root CHANGELOG head entry is ## $Version (found: $head)"
 if ($fatal) { Write-Host "`nWrite the CHANGELOG entry first, then re-run."; exit 1 }
+
 if ($headLine -match 'Unreleased') {
     $txt = [System.IO.File]::ReadAllText($clPath)
     $txt = $txt.Replace($headLine, ($headLine -replace 'Unreleased', $today))
@@ -126,6 +127,8 @@ try {
 }
 & pwsh -NoProfile -File (Join-Path $repo '.claude/hooks/tests/Invoke-HookTests.ps1')
 Gate ($LASTEXITCODE -eq 0) 'meta-hook test suite'
+& pwsh -NoProfile -File (Join-Path $repo '.claude/evals/run-agent-evals.ps1') -SelfTest
+Gate ($LASTEXITCODE -eq 0) 'agent-eval harness self-test (no network)'
 
 if ($fatal) {
     Write-Host "`nRelease REFUSED: fix the failing gate(s) and re-run. Nothing was committed."
@@ -143,5 +146,29 @@ if (-not $NoPush) {
     git -C $repo push origin master
     if ($LASTEXITCODE -ne 0) { Write-Host 'Push FAILED.'; exit 1 }
 }
+
+# B-41 behavioral evals are stochastic and consume model budget, so they run only after the
+# deterministic release succeeded and are never a release gate. At this point the runner sees the
+# just-committed distribution, not the previous release or a dirty pre-gate build.
+$agentEvalCommand = 'pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live'
+if ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
+    $runAgentEvals = Read-Host "Release succeeded. Run optional B-41 live agent evals now? [y/N]"
+    if ($runAgentEvals -match '^(?i)y(?:es)?$') {
+        & pwsh -NoProfile -File (Join-Path $repo '.claude/evals/run-agent-evals.ps1') -Live
+        Write-Host "Agent eval exit: $LASTEXITCODE (recorded, never changes release status)."
+        $evalResultsPath = 'meta/eval-results.md'
+        if (git -C $repo status --porcelain -- $evalResultsPath) {
+            git -C $repo add $evalResultsPath
+            git -C $repo commit -m "meta: record v${Version} agent eval results"
+            if ($LASTEXITCODE -ne 0) { Write-Host 'Eval-results commit FAILED; release is shipped but evidence is not persisted.'; exit 1 }
+            if (-not $NoPush) {
+                git -C $repo push origin master
+                if ($LASTEXITCODE -ne 0) { Write-Host 'Eval-results push FAILED; release is shipped but evidence is only local.'; exit 1 }
+            }
+            $persisted = if ($NoPush) { 'locally (-NoPush)' } else { 'and pushed' }
+            Write-Host "Agent eval evidence committed $persisted."
+        }
+    } else { Write-Host "Agent evals skipped. Run later: $agentEvalCommand" }
+} else { Write-Host "Agent eval reminder (non-interactive; not run): $agentEvalCommand" }
 Write-Host "`nRelease $Version complete$(if ($NoPush) { ' (not pushed: -NoPush)' })."
 exit 0

@@ -99,31 +99,18 @@ one door that could not be fixed from here.
 >    the consumer-lifecycle half of the same story — plus **B-44/B-46/B-48** as capacity allows.
 
 ### B-41 · Agent-behavior eval harness — close the "prose steers a model" blind spot
-**Effort:** L · **Invariants:** #5 #6 #7 · absorbs B-23 and B-29 (cross-link, don't duplicate)
+**Effort:** L · **Invariants:** #5 #6 #7 · absorbs B-23 and B-29
 
-**Why:** every deterministic gate this repo has validates *bytes* (composition, parity, parse,
-mirrors) — none validates *behavior*. The blind spot is written into `DEVELOPING.md` and
-`meta/LEARNINGS.md` (2026-07-12, 2026-07-16): the only two post-merge defects that mattered to
-consumers (an installing agent mistaking the authoring repo for its target; archived-repo agents
-installing frozen v0.25.5) were found **only** by driving a real agent end-to-end, both times by
-accident of manual testing rather than by a gate. Meanwhile `tests/evals/run_evals.py` has never
-gated a release (B-23), and the WSD-011 haiku-tier downgrade claim has never been evidenced
-(B-29). The product *is* prose-for-models; a framework whose entire value proposition is
-"the model behaves differently with this installed" has zero automated evidence that it does.
+**Phase 1 in PR #2:** the maintainer-only Claude harness, typed stream-event graders, archived-
+redirect fixture, release reminder, and Haiku planted-defect cases are implemented. The first live
+results produced before the adversarial review used raw-transcript graders and are explicitly
+invalidated in `meta/eval-results.md`; re-run the eight cases before claiming behavioral evidence
+or closing B-29.
 
-**Do:** build a scripted, non-interactive harness (maintainer-triggered — API cost — not CI):
-drive `claude -p` (and the Copilot CLI where scriptable) through fixture scenarios in temp repos
-and assert **observable outcomes**, not transcript vibes: files created/committed, installer STOP
-obeyed, `/fix` rails produce a regression test before the fix, verification lines present in
-output, guard-blocked writes actually retried differently. Start with the 3–5 scenarios that
-encode past real failures (install-handoff contract, archived-repo redirect, route-prompt rail
-injection, one skill recipe followed end-to-end). Record per-version results in
-`meta/eval-results.md`; wire `release.ps1` to *prompt* (not force) a run, per B-23's original
-shape. Then extend with B-29's planted-defect agent cases (convention-check / bloat-radar /
-debt-radar on Haiku). Treat thresholds, not single runs, as signal — outcomes are stochastic.
-
-**Not:** don't make releases hard-fail on a stochastic outcome; don't build a general eval
-platform — fixture scenarios + a results log is the whole product.
+**Still required before DONE:** add the Copilot CLI leg where scriptable (including trusted-folder
+setup and its different deny/additionalContext shapes); settle B-23's open question about why the
+older response-only `tests/evals/` suite ships to consumers; then record threshold-based results
+from both available hosts. Do not close the item from Claude-only evidence.
 
 ### B-42 · Field pilot — install into ≥1 real production repo and let evidence drive the backlog
 **Effort:** M to set up · elapsed weeks to harvest · **Invariants:** #6
