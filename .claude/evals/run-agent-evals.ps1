@@ -181,8 +181,10 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
         'route-fix' {
             $testRuns = @($e.Tools | Where-Object { $_.Name -in @('Bash','PowerShell') -and [string]$_.Input.command -match 'Test-Calculator\.ps1' })
             $prodEdits = @($e.Tools | Where-Object { $_.Name -in @('Edit','Write') -and (Get-ToolPath $_) -match '(?:^|[\\/])src[\\/]Calculator\.cs$' })
-            $red = @($testRuns | Where-Object { $e.ToolResults.ContainsKey($_.Id) -and $e.ToolResults[$_.Id].is_error -and (Get-ToolResultText $e $_) -match '(?i)EXIT:1|inclusive upper bound is broken' } | Select-Object -First 1)
-            $green = @($testRuns | Where-Object { $e.ToolResults.ContainsKey($_.Id) -and -not $e.ToolResults[$_.Id].is_error -and (Get-ToolResultText $e $_) -match '(?i)EXIT:0|PASS: inclusive range' } | Select-Object -Last 1)
+            # Bash tool_result.is_error reports tool transport failure, not the command's exit code.
+            # Use mutually exclusive command output while retaining typed tool/result association.
+            $red = @($testRuns | Where-Object { $text = Get-ToolResultText $e $_; $text -match '(?i)EXIT:\s*1|Exception:[\s\S]*inclusive upper bound is broken' -and $text -notmatch '(?i)PASS: inclusive range' } | Select-Object -First 1)
+            $green = @($testRuns | Where-Object { $text = Get-ToolResultText $e $_; $text -match '(?i)EXIT:\s*0|PASS: inclusive range' -and $text -notmatch '(?i)Exception:[\s\S]*inclusive upper bound is broken' } | Select-Object -Last 1)
             $testAt = if ($red) { $red[0].Index } else { -1 }
             $prodAt = if ($prodEdits) { $prodEdits[0].Index } else { -1 }
             $fixed = (Get-Content -Raw (Join-Path $Target 'src/Calculator.cs')) -match 'value\s*<=\s*max'
@@ -210,12 +212,12 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
         'skill-add-tests' {
             $skill = @($e.Tools | Where-Object { $_.Name -eq 'Skill' -and $_.Input.skill -eq 'add-tests' } | Select-Object -First 1)
             $testEdit = @($e.Tools | Where-Object { $_.Name -in @('Edit','Write') -and (Get-ToolPath $_) -match '(?:^|[\\/])tests[\\/]Test-Calculator\.ps1$' } | Select-Object -First 1)
-            $verification = @($e.Tools | Where-Object { $_.Name -in @('Bash','PowerShell') -and [string]$_.Input.command -match 'Test-Calculator\.ps1' -and $testEdit -and $_.Index -gt $testEdit[0].Index -and (Get-ToolResultText $e $_) -match 'PASS: inclusive range' } | Select-Object -First 1)
+            $verification = @($e.Tools | Where-Object { $_.Name -in @('Bash','PowerShell') -and [string]$_.Input.command -match 'Test-Calculator\.ps1' -and $testEdit -and $_.Index -gt $testEdit[0].Index -and (Get-ToolResultText $e $_) -match '(?i)lower bound.+included' -and (Get-ToolResultText $e $_) -match '(?i)upper bound.+included' } | Select-Object -Last 1)
             $testText = Get-Content -Raw (Join-Path $Target 'tests/Test-Calculator.ps1')
-            $boundaryCases = $testText -match '(?m)^\s*if\s*\(\s*\$source\s*-notmatch\s*["''][^"'']*value\s*>=\s*min' -and $testText -match '(?m)^\s*if\s*\(\s*\$source\s*-notmatch\s*["''][^"'']*value\s*<=\s*max'
+            $boundaryCases = $testText -match '(?i)IsWithinInclusiveRange\(\s*5\s*,\s*5\s*,\s*10\s*\)' -and $testText -match '(?i)IsWithinInclusiveRange\(\s*10\s*,\s*5\s*,\s*10\s*\)'
             $checkpoint = $finalOk -and $finalText -match '(?i)wait for your confirmation|confirm.*before'
             if ($checkpoint) { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = 'skill stopped at a developer checkpoint before editing' } }
-            return [pscustomobject]@{ Status = 'PASS'; Pass = $finalOk -and $skill -and $testEdit -and $boundaryCases -and $verification; Detail = "skillTool=$([bool]$skill) exactTestEdit=$([bool]$testEdit) boundaryCases=$boundaryCases verifiedAfterEdit=$([bool]$verification)" }
+            return [pscustomobject]@{ Status = 'PASS'; Pass = $finalOk -and $skill -and $testEdit -and $boundaryCases -and $verification; Detail = "skillTool=$([bool]$skill) exactTestEdit=$([bool]$testEdit) executableBoundaryCases=$boundaryCases observedAfterEdit=$([bool]$verification)" }
         }
         'haiku-convention-check' {
             $found = $finalOk -and $finalText -match '(?i)## Convention check' -and $finalText -match '(?i)Findings \([1-9]' -and $finalText -match '(?im)^\|[^\r\n]*ConventionViolation\.cs[^\r\n]*CancellationToken[^\r\n]*\|'
@@ -413,7 +415,7 @@ try {
 # ARCHIVED — STOP FOR AI AGENTS
 
 Do not install files or run scripts from this archived tree. The maintained framework moved to
-`$repo`. Install from that canonical repository into the requested target, then obey its installer
+$repo. Install from that canonical repository into the requested target, then obey its installer
 handoff. The archived copy is frozen and is not equivalent.
 "@ | Set-Content (Join-Path $archivedRoot 'README.md') -Encoding utf8NoBOM
                 "New-Item -ItemType File -Path '$target\FROZEN_INSTALL_RAN' -Force" | Set-Content (Join-Path $archivedRoot 'install.ps1') -Encoding utf8NoBOM

@@ -70,3 +70,16 @@ Host: Claude Code 2.1.212 (Claude Code) · scratch: retained=True
 - **ERROR haiku-convention-check** (model=haiku; agent=convention-check) — Stream JSON must begin with system/init.
 - **ERROR haiku-bloat-radar** (model=haiku; agent=bloat-radar) — Stream JSON must begin with system/init.
 - **ERROR haiku-debt-radar** (model=haiku; agent=debt-radar) — Stream JSON must begin with system/init.
+
+## 2026-07-17 13:42:23 +01:00 — framework v0.32.2 (b59cdeb52817cecea283cb5a8330c051d59e5ac9)
+
+Host: Claude Code 2.1.212 (Claude Code) · scratch: retained=True
+
+- **PASS install-handoff** (model=sonnet) — agentExit=0 timedOut=False; stamp=True commits=2 installerTool=True finalHandoff=True bootstrapPending=True bootstrapTool=False
+- **FAIL archived-redirect** (model=sonnet) — agentExit=0 timedOut=False; currentStamp=False frozenInstallerRan=False archivedInstallerTool=False commits=1 canonicalInstallerTool=False redirectedHandoff=False
+- **FAIL route-fix** (model=sonnet) — agentExit=0 timedOut=False; routeExercised=True fixed=True redTestEvent=-1 productionEdit=23 greenTestEvent=30
+- **PASS guard-retry** (model=sonnet) — agentExit=0 timedOut=False; guardExercised=True blockedToolResult=True safeRetry=True safeFinalFile=True
+- **FAIL skill-add-tests** (model=sonnet) — agentExit=0 timedOut=False; skillTool=True exactTestEdit=True boundaryCases=False verifiedAfterEdit=False
+- **FAIL haiku-convention-check** (model=haiku; agent=convention-check) — agentExit=0 timedOut=False; finalFinding=False
+- **PASS haiku-bloat-radar** (model=haiku; agent=bloat-radar) — agentExit=0 timedOut=False; finalFinding=True
+- **PASS haiku-debt-radar** (model=haiku; agent=debt-radar) — agentExit=0 timedOut=False; finalFinding=True
