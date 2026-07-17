@@ -27,6 +27,7 @@ Two kinds of control:
 - The **cloud coding agent** and github.com repo-aware context are unavailable on Bitbucket Data Center (they need github.com-hosted repos), so they are out of scope here.
 
 ## What this means for you
+- Run `pwsh scripts/framework-doctor.ps1` or `bash scripts/framework-doctor.sh` once on each developer machine to see which script-verifiable controls are live and which agent canaries still need a human observation.
 - Treat the `AGENTS.md`/`CLAUDE.md` workflow rails as **binding**, not advisory — wherever hooks are off (Preview disabled, older CLI), they are the *only* thing standing between a casual prompt and an unreviewed change.
 - If you want the deterministic write floor **and** the per-prompt salience injection in VS Code, **enable Preview agent-hooks** (and confirm your org allows them).
 - **`guard.sh`, `route-prompt.sh`, and `session-start.sh` need a JSON parser** (`jq`, with `python3` as fallback) to emit/inspect JSON. Without one, `guard.sh` allows everything and prints a `write-guard INACTIVE` warning to stderr; the injection hooks silently fall back to plain stdout (which Copilot drops — the pre-v0.25.0 behavior). The `.ps1` twins have no such dependency; PowerShell parses JSON natively.

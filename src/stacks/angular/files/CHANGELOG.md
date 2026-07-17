@@ -4,6 +4,15 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.32.0 — 2026-07-17
+
+### Added — developer-machine framework doctor
+
+- Run `pwsh scripts/framework-doctor.ps1` or `bash scripts/framework-doctor.sh` to see which
+  enforcement prerequisites are live on your machine, what is missing, and the exact canaries
+  needed for agent settings that a script cannot observe. The doctor diagnoses only and is not a
+  CI gate; `docs-sync-check` remains the required build check.
+
 ## 0.31.0 — 2026-07-17
 
 ### No changes to the Angular distribution

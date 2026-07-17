@@ -15,13 +15,14 @@
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $bash = Get-BashPath
 
-# Every mode must state ALL of these. They are the four things an agent gets wrong without them:
+# Every mode must state ALL of these. They are the things an agent gets wrong without them:
 # leaves files uncommitted / thinks it may finish / hand-rolls the populate step / "fixes" a red check.
 $contract = @(
     @{ Name = 'tells the agent to COMMIT the copied files'; Pattern = 'commit the copied files' },
     @{ Name = 'tells the agent its task is NOT complete until it hands off'; Pattern = 'NOT complete until' },
     @{ Name = 'forbids hand-replicating the populate command'; Pattern = 'replicate it by hand' },
     @{ Name = 'warns docs-sync-check is red BY DESIGN until populate runs'; Pattern = 'by design|until /(bootstrap|adopt) has run' }
+    @{ Name = 'tells every developer to run framework-doctor locally'; Pattern = 'Each developer should run.+framework-doctor' }
 )
 
 function New-Target {
