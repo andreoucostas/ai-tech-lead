@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 # Developer-machine enforcement diagnostic. No jq/python dependency by design.
 set +e
-root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+# Root resolution uses shell builtins only (no dirname): this script must run even on a
+# machine whose PATH is broken — that is exactly the machine it exists to diagnose.
+# Backslashes are normalized first: on Git bash the script path may arrive Windows-style.
+p=${0//\\//}
+case "$p" in
+  */*) root=$(CDPATH= cd -- "${p%/*}/.." && pwd) ;;
+  *)   root=$(CDPATH= cd -- .. && pwd) ;;
+esac
 missing=0
 missing_rows=0
 ok=0

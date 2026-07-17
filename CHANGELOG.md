@@ -11,6 +11,17 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.32.1 (2026-07-17)
+
+Post-release fix for B-16, caught by the CI linux leg (the Windows-only local runs were green —
+MSYS bash tolerates what POSIX bash does not). `framework-doctor.sh` now resolves its own
+location with shell builtins only (no `dirname`): under a hostile PATH its root resolution
+failed and every subsequent row silently vanished — the exact failure mode a survival-
+constrained diagnostic must not have. `FrameworkDoctor.Tests` fixtures now wire a hook shell
+that exists on the test host (CI linux has `pwsh`, not `powershell` — the doctor was *correctly*
+reporting the fixture's shell as missing), and the no-parser test now asserts install-state
+resolution and carries stderr in its failure messages.
+
 ## 0.32.0 (2026-07-17)
 
 ### Added — B-16: honest developer-machine enforcement diagnostic

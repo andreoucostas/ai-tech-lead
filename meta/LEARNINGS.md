@@ -371,3 +371,23 @@ twin has a conservative parser-free fallback for the generated settings shape, a
 facts remain explicit human canaries. The first fixture run also caught a path-normalization trap:
 PowerShell `TrimStart('./')` treats its argument as a character set and changed `.claude` to
 `claude`; prefix removal must be explicit when a leading dot is meaningful.
+
+## 2026-07-17 — v0.32.1 (B-16 post-release): the linux CI leg is part of "green", and a diagnostic must not depend on what it diagnoses
+
+v0.32.0 shipped with local gates green and CI's linux leg red — three FrameworkDoctor failures.
+Two lessons, one of them a repeat offender:
+
+1. **"Gates green" on one OS is the B-37 environment-dependent-green lie in a new coat.** The
+   fixtures wired `powershell` as the hook shell — absent on the linux runner, so the doctor
+   *correctly* reported it missing and the "healthy" fixture exited 1. The reviewer (Fable)
+   re-ran every gate independently but on the same OS as the implementer, so the review
+   inherited the blind spot. Local verification of anything with a linux CI leg must either
+   run that leg's environment or explicitly name it unverified.
+
+2. **The doctor's own root resolution used `dirname` — an external tool — inside the script
+   whose design constraint is "must run where PATH is broken" (WSD-023 F1/F2).** Under the
+   restricted-PATH test on real linux it failed, and the failure mode was maximally dishonest:
+   `[MISSING] Install state — not a framework install` with every real row silently gone. MSYS
+   bash on Windows masked it. Root resolution is now shell builtins only, and the no-parser
+   test pins install-state resolution so this class can't return quietly. Corollary: a
+   survival constraint applies to every line of the script, including the first one.

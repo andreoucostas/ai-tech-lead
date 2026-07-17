@@ -4,6 +4,14 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.32.1 — 2026-07-17
+
+### Fixed — framework doctor on minimal PATH
+
+- `scripts/framework-doctor.sh` now locates the repository root using shell builtins only, so it
+  still produces a full report on machines with a broken or minimal PATH — exactly the machines
+  it exists to diagnose.
+
 ## 0.32.0 — 2026-07-17
 
 ### Added — developer-machine framework doctor
