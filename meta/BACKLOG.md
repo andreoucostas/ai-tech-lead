@@ -98,32 +98,7 @@ one door that could not be fixed from here.
 > 6. Then interleave: **B-15** (CI recipe) from the deferred list — it is
 >    the consumer-lifecycle half of the same story — plus **B-44/B-46/B-48** as capacity allows.
 
-### B-41 · Agent-behavior eval harness — close the "prose steers a model" blind spot
-**Effort:** L · **Invariants:** #5 #6 #7 · absorbs B-23 and B-29 (cross-link, don't duplicate)
-
-**Why:** every deterministic gate this repo has validates *bytes* (composition, parity, parse,
-mirrors) — none validates *behavior*. The blind spot is written into `DEVELOPING.md` and
-`meta/LEARNINGS.md` (2026-07-12, 2026-07-16): the only two post-merge defects that mattered to
-consumers (an installing agent mistaking the authoring repo for its target; archived-repo agents
-installing frozen v0.25.5) were found **only** by driving a real agent end-to-end, both times by
-accident of manual testing rather than by a gate. Meanwhile `tests/evals/run_evals.py` has never
-gated a release (B-23), and the WSD-011 haiku-tier downgrade claim has never been evidenced
-(B-29). The product *is* prose-for-models; a framework whose entire value proposition is
-"the model behaves differently with this installed" has zero automated evidence that it does.
-
-**Do:** build a scripted, non-interactive harness (maintainer-triggered — API cost — not CI):
-drive `claude -p` (and the Copilot CLI where scriptable) through fixture scenarios in temp repos
-and assert **observable outcomes**, not transcript vibes: files created/committed, installer STOP
-obeyed, `/fix` rails produce a regression test before the fix, verification lines present in
-output, guard-blocked writes actually retried differently. Start with the 3–5 scenarios that
-encode past real failures (install-handoff contract, archived-repo redirect, route-prompt rail
-injection, one skill recipe followed end-to-end). Record per-version results in
-`meta/eval-results.md`; wire `release.ps1` to *prompt* (not force) a run, per B-23's original
-shape. Then extend with B-29's planted-defect agent cases (convention-check / bloat-radar /
-debt-radar on Haiku). Treat thresholds, not single runs, as signal — outcomes are stochastic.
-
-**Not:** don't make releases hard-fail on a stochastic outcome; don't build a general eval
-platform — fixture scenarios + a results log is the whole product.
+### B-41 · Agent-behavior eval harness — **DONE 2026-07-17, see Done section**
 
 ### B-42 · Field pilot — install into ≥1 real production repo and let evidence drive the backlog
 **Effort:** M to set up · elapsed weeks to harvest · **Invariants:** #6
@@ -485,6 +460,20 @@ A wrong pin is consumer-visible: verify on a live Copilot surface before shippin
 ---
 
 ## Done
+
+- **B-41** — done **2026-07-17** (maintainer-only; no framework version bump). Added the bounded
+  `.claude/evals/run-agent-evals.ps1` live harness with disposable no-remote repositories,
+  stream-JSON/tool-order evidence, per-scenario budget and wall-clock limits, a free planted-
+  negative self-test, and append-only `meta/eval-results.md`. Four core scenarios prove installer
+  handoff/STOP, natural-language `/fix` test-before-production ordering, guard block + safe retry,
+  and an `add-tests` skill run with verification. The absorbed B-29 extension runs
+  `convention-check`, `bloat-radar`, and `debt-radar` at their shipped Haiku tier against planted
+  defects. First live evidence: all four core scenarios PASS; all three Haiku cases PASS. A
+  deliberately shortened retry recorded `ERROR` on timeout rather than misclassifying host/API
+  failure as framework behavior. `release.ps1` prompts interactively (or prints the exact command
+  non-interactively) and runs only the no-network self-test as a deterministic gate; stochastic
+  outcomes never block release. Locked design:
+  `.claude/plans/2026-07-17-b41-agent-behavior-harness-design.md`.
 
 - **B-16** — implemented for **v0.32.0** (2026-07-17). Added the locked WSD-023
   `framework-doctor.{ps1,sh}` design: nine ordered machine checks with verified/pending/missing

@@ -391,3 +391,16 @@ Two lessons, one of them a repeat offender:
    bash on Windows masked it. Root resolution is now shell builtins only, and the no-parser
    test pins install-state resolution so this class can't return quietly. Corollary: a
    survival constraint applies to every line of the script, including the first one.
+
+## 2026-07-17 — B-41: a spend cap is not a time cap, and evidence needs three outcomes
+
+The first live agent harness attempt entered the CLI's exponential API-retry path. A maximum-dollar
+flag limited spend but did not limit elapsed time; killing the shell wrapper also left inherited
+output-pipe handles capable of keeping an async reader open. Live evals therefore need both a
+per-scenario budget and a wall-clock process-tree kill, and the timeout path must not await pipes
+owned by killed descendants.
+
+Behavior grading also needs `PASS`, `FAIL`, and `ERROR`/`INCONCLUSIVE` as distinct outcomes. A host
+timeout, invalid stream schema, or model refusal is not evidence that framework behavior failed.
+The B-41 log keeps those outcomes visible, while only observable tool order, repository state,
+hook blocks, and file bytes can earn a pass.

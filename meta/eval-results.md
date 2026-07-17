@@ -27,3 +27,29 @@ Host: Claude Code 2.1.212 (Claude Code) · model: sonnet · scratch: retained=Tr
 - **PASS guard-retry** — agentExit=0 timedOut=False; guardBlockObserved=True safeFinalFile=True
 - **ERROR skill-add-tests** — agentExit=124 timedOut=True; testArtifact=True skillObserved=True verification=True
 
+
+## 2026-07-17 11:03:37 +01:00 — framework v0.32.1
+
+Host: Claude Code 2.1.212 (Claude Code) · model: sonnet · scratch: retained=True
+
+- **PASS install-handoff** — agentExit=0 timedOut=False; stamp=True commits=2 handoff=True stoppedBeforeBootstrap=True
+- **PASS route-fix** — agentExit=0 timedOut=False; fixed=True rails=True testEvent=8462 productionEvent=11744
+- **PASS guard-retry** — agentExit=0 timedOut=False; guardBlockObserved=True safeFinalFile=True
+- **PASS skill-add-tests** — agentExit=0 timedOut=False; testArtifact=True skillObserved=True verification=True
+
+
+## 2026-07-17 11:03:47 +01:00 — framework v0.32.1
+
+Host: Claude Code 2.1.212 (Claude Code) · model: sonnet · scratch: retained=True
+
+- **ERROR install-handoff** — Claude CLI exceeded the 30s wall-clock limit.
+
+
+## 2026-07-17 11:08:28 +01:00 — framework v0.32.1
+
+Host: Claude Code 2.1.212 (Claude Code) · model: sonnet · scratch: retained=True
+
+- **PASS haiku-convention-check** — agentExit=0 timedOut=False; plantedConventionFound=True
+- **PASS haiku-bloat-radar** — agentExit=0 timedOut=False; plantedBloatFound=True
+- **PASS haiku-debt-radar** — agentExit=0 timedOut=False; plantedDebtFound=True
+

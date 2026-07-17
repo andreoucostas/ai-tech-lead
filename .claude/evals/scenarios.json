@@ -24,6 +24,30 @@
       "budgetUsd": 1.25,
       "prompt": "Use the add-tests skill to add focused tests for Calculator.IsWithinInclusiveRange, then run them and report the observed result.",
       "assertion": "skillArtifactAndVerification"
+    },
+    {
+      "id": "haiku-convention-check",
+      "budgetUsd": 0.35,
+      "model": "haiku",
+      "agent": "convention-check",
+      "prompt": "Audit src/ConventionViolation.cs against this repository's conventions.",
+      "assertion": "haikuConventionFinding"
+    },
+    {
+      "id": "haiku-bloat-radar",
+      "budgetUsd": 0.35,
+      "model": "haiku",
+      "agent": "bloat-radar",
+      "prompt": "Review the current diff for bloat.",
+      "assertion": "haikuBloatFinding"
+    },
+    {
+      "id": "haiku-debt-radar",
+      "budgetUsd": 0.35,
+      "model": "haiku",
+      "agent": "debt-radar",
+      "prompt": "Find debt relevant to src/Calculator.cs.",
+      "assertion": "haikuDebtFinding"
     }
   ]
 }

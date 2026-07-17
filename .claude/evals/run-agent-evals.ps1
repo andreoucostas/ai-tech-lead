@@ -62,7 +62,7 @@ function Read-Transcript([string]$Path) {
     [pscustomobject]@{ Events = $events; Raw = [IO.File]::ReadAllText($Path) }
 }
 
-function Invoke-ClaudeProcess([string]$WorkingDirectory, [string]$Prompt, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout) {
+function Invoke-ClaudeProcess([string]$WorkingDirectory, [string]$Prompt, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout, [string]$Agent) {
     $psi = [Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = (Get-Command claude).Source
     $psi.WorkingDirectory = $WorkingDirectory
@@ -72,18 +72,28 @@ function Invoke-ClaudeProcess([string]$WorkingDirectory, [string]$Prompt, [strin
     foreach ($arg in @('-p', $Prompt, '--model', $ModelId, '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions', '--no-session-persistence', '--max-budget-usd', ([string]$Budget))) {
         [void]$psi.ArgumentList.Add($arg)
     }
+    if ($Agent) { [void]$psi.ArgumentList.Add('--agent'); [void]$psi.ArgumentList.Add($Agent) }
     $process = [Diagnostics.Process]::new()
     $process.StartInfo = $psi
     [void]$process.Start()
     $stdout = $process.StandardOutput.ReadToEndAsync()
     $stderr = $process.StandardError.ReadToEndAsync()
     $timedOut = -not $process.WaitForExit($Timeout * 1000)
-    if ($timedOut) { $process.Kill($true); $process.WaitForExit() }
-    [IO.File]::WriteAllText($TranscriptPath, $stdout.GetAwaiter().GetResult())
+    if ($timedOut) {
+        $process.Kill($true)
+        [void]$process.WaitForExit(10000)
+        # A killed CLI may leave an inherited pipe handle open in a grandchild. Do not await the
+        # async readers on the timeout path or the timeout itself can hang indefinitely.
+        [IO.File]::WriteAllText($TranscriptPath, '')
+        $errorText = "Claude CLI exceeded the ${Timeout}s wall-clock limit."
+    } else {
+        [IO.File]::WriteAllText($TranscriptPath, $stdout.GetAwaiter().GetResult())
+        $errorText = $stderr.GetAwaiter().GetResult()
+    }
     [pscustomobject]@{
         ExitCode = if ($timedOut) { 124 } else { $process.ExitCode }
         TimedOut = $timedOut
-        ErrorText = $stderr.GetAwaiter().GetResult()
+        ErrorText = $errorText
     }
 }
 
@@ -116,6 +126,18 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $skill = $raw -match '(?i)add-tests|SKILL.md'
             $verified = $raw -match '(?i)PASS:|tests? pass|exit code.?0|verification'
             return [pscustomobject]@{ Pass = $artifact -and $skill -and $verified; Detail = "testArtifact=$artifact skillObserved=$skill verification=$verified" }
+        }
+        'haiku-convention-check' {
+            $found = $raw -match '(?i)ConventionViolation.cs' -and $raw -match '(?i)CancellationToken'
+            return [pscustomobject]@{ Pass = $found; Detail = "plantedConventionFound=$found" }
+        }
+        'haiku-bloat-radar' {
+            $found = $raw -match '(?i)SpeculativeHelper.cs' -and $raw -match '(?i)helper|bloat|generic'
+            return [pscustomobject]@{ Pass = $found; Detail = "plantedBloatFound=$found" }
+        }
+        'haiku-debt-radar' {
+            $found = $raw -match 'DEBT-001' -and $raw -match '(?i)Calculator.cs'
+            return [pscustomobject]@{ Pass = $found; Detail = "plantedDebtFound=$found" }
         }
         default { throw "Unknown scenario '$Id'." }
     }
@@ -155,7 +177,8 @@ if (-not (Get-Command claude -ErrorAction SilentlyContinue)) { throw 'claude CLI
 if (git -C $repo status --porcelain -- dist/) { throw 'Refusing live eval: dist/ differs from the checked-out release.' }
 
 $config = Get-Content -Raw $scenarioPath | ConvertFrom-Json
-$selected = @($config.scenarios | Where-Object { -not $Scenario -or $_.id -in $Scenario })
+$scenarioIds = @($Scenario | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
+$selected = @($config.scenarios | Where-Object { -not $scenarioIds -or $_.id -in $scenarioIds })
 if ($selected.Count -eq 0) { throw 'No scenarios matched -Scenario.' }
 $scratch = Join-Path ([IO.Path]::GetTempPath()) ('ai-tech-lead-agent-evals-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 New-Item -ItemType Directory $scratch | Out-Null
@@ -168,12 +191,33 @@ try {
         New-EvalRepo $target
         $before = [int](git -C $target rev-list --count HEAD)
         if ($case.id -ne 'install-handoff') { Install-Framework $target | Out-Null; $before = [int](git -C $target rev-list --count HEAD) }
+        switch ($case.id) {
+            'haiku-convention-check' {
+                "namespace EvalFixture; public class ConventionViolation { public async Task WorkAsync() { await Task.Delay(1); } }" | Set-Content (Join-Path $target 'src/ConventionViolation.cs') -Encoding utf8NoBOM
+            }
+            'haiku-bloat-radar' {
+                "namespace EvalFixture; public static class SpeculativeHelper { public static int Identity(int value) => value; }" | Set-Content (Join-Path $target 'src/SpeculativeHelper.cs') -Encoding utf8NoBOM
+            }
+            'haiku-debt-radar' {
+                @'
+# Technical debt
+## DEBT-001 — Inclusive range boundary is fragile
+Severity: High
+Effort: S
+Files: src/Calculator.cs:4
+Issue: Boundary behavior lacks a direct compiled unit test.
+'@ | Set-Content (Join-Path $target 'TECH_DEBT.md') -Encoding utf8NoBOM
+            }
+        }
         $prompt = $case.prompt.Replace('{FRAMEWORK_ROOT}', $repo).Replace('{TARGET_ROOT}', $target)
         $transcriptPath = Join-Path $scratch ($case.id + '.jsonl')
         Write-Output "RUN $($case.id) (budget USD $($case.budgetUsd))"
-        $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $Model ([decimal]$case.budgetUsd) $TimeoutSeconds
+        $caseModel = if ($case.model) { [string]$case.model } else { $Model }
+        $caseAgent = if ($case.agent) { [string]$case.agent } else { '' }
+        $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel ([decimal]$case.budgetUsd) $TimeoutSeconds $caseAgent
         $agentExit = $run.ExitCode
         try {
+            if ($run.TimedOut) { throw $run.ErrorText }
             $transcript = Read-Transcript $transcriptPath
             $evidence = Test-ScenarioEvidence $case.id $target $transcript $before
             $status = if ($agentExit -ne 0) { 'ERROR' } elseif ($evidence.Pass) { 'PASS' } else { 'FAIL' }

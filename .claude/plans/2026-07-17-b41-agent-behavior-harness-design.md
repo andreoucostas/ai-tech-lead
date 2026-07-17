@@ -21,6 +21,10 @@ The first four scenarios encode the behavior classes named by B-41:
 4. `skill-add-tests`: the installed `add-tests` skill is followed end-to-end and verification is
    shown after a test artifact is created.
 
+Three small planted-defect cases close absorbed item B-29: run `convention-check`, `bloat-radar`,
+and `debt-radar` explicitly at their shipped Haiku tier and require the planted finding in the
+observable final output.
+
 Each scenario has a per-run USD ceiling and a hard wall-clock timeout. Results append to
 `meta/eval-results.md`; a single miss is
 reported honestly but is not a release gate. The release script gives an interactive prompt when
