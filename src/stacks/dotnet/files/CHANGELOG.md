@@ -4,6 +4,14 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.34.2 — 2026-07-20
+
+- `/bootstrap` now flags data-warehouse repos in its final report. When it detects warehouse signals
+  (staging / dimension / fact layers) and keeps the warehouse skills, it points you at
+  `/map-warehouse` to produce a full layer / grain / load-ordering / idempotency map before your
+  first warehouse change, and names `add-warehouse-load` as the recipe for when you actually add or
+  change a load. Repos with no warehouse signals see no change. No runtime behaviour changes.
+
 ## 0.34.1 — 2026-07-20
 
 - The technical presentation now teaches the framework through a concrete CSV-export feature from

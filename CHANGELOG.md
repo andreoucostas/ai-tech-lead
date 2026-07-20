@@ -11,6 +11,19 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.34.2 (2026-07-20)
+
+Closes a discoverability gap for data-warehouse repos in `/bootstrap`. When A2 detects warehouse
+signals and Phase 3a keeps the `map-warehouse` / `add-warehouse-load` skills, the Phase 4 report now
+emits a one-line nudge pointing the developer at `/map-warehouse` for a full layer/grain/load-
+ordering/idempotency map before their first warehouse change, and names `add-warehouse-load` as the
+task-triggered recipe for the change itself. WSD-021 deliberately rejected *auto-running* warehouse
+discovery inside bootstrap (it is a re-runnable perf-class task); this is the report-nudge middle
+ground, gated on the same evidence that kept the skills, so non-warehouse repos see nothing. dotnet +
+monorepo only (angular ships no warehouse skills; it gets a no-op changelog entry to satisfy the
+version-stamp gate). Design-reviewed with an adversarial pass — the gate was hardened from
+"A2 detected signals" to "Phase 3a kept the skills" (an observable artifact state, not agent memory).
+
 ## 0.34.1 (2026-07-20)
 
 Rebuilds the technical presentation after team feedback that v0.34.0 was accurate but too abstract.

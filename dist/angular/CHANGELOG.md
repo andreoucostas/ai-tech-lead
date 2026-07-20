@@ -4,6 +4,12 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.34.2 — 2026-07-20
+
+- No changes to the Angular distribution this release. The data-warehouse `/bootstrap` report nudge
+  added in v0.34.2 applies only to the .NET and mixed (monorepo) distributions, which ship the
+  warehouse skills.
+
 ## 0.34.1 — 2026-07-20
 
 - The technical presentation now teaches the framework through a concrete CSV-export feature from

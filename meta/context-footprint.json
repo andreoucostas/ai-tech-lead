@@ -307,8 +307,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 30323,
-          "tok": 7581
+          "chars": 31005,
+          "tok": 7751
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1155,8 +1155,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 37884,
-          "tok": 9471
+          "chars": 38566,
+          "tok": 9642
         },
         {
           "path": ".claude/commands/debt.md#body",
