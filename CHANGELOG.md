@@ -11,6 +11,14 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.34.0 (2026-07-20)
+
+Adds the technical architecture presentation requested after an adversarial review of the existing
+persuasive briefing: a 12-slide offline deck that separates instruction, context, advisory review,
+hard local blocks, deterministic gates, and human authority; a printable one-page system map; and a
+claim-to-evidence appendix tying strong claims to shipped implementations and tests. The three
+distribution READMEs now distinguish the briefing deck from the technical companion.
+
 ## 0.33.0 (2026-07-17)
 
 Closes five gaps found by a real onboarding review. Copilot CLI now receives the Boy Scout nudge

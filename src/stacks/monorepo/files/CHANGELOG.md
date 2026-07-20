@@ -5,6 +5,14 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.34.0 — 2026-07-20
+
+- `docs/presentation/framework-technical.html` adds an offline technical architecture deck covering
+  request routing, workflow contracts, engineering standards, enforcement strength, tool-surface
+  differences, project memory, framework composition, adoption, and inspectable evidence.
+- `docs/presentation/framework-system-map.html` provides the same operating model as a printable
+  one-page reference. No runtime behaviour or adoption action changes in this release.
+
 ## 0.33.0 — 2026-07-17
 
 - Copilot CLI receives Boy Scout candidates at the next prompt, with the same dedup behavior as
