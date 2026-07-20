@@ -208,6 +208,63 @@ adoption, and reviewer-profile evidence still come only from the field pilot. Do
 framework *to* the pinned repos (rotate one target if that risk appears). Don't average away
 failures: one hard checklist failure = a defect entry, regardless of the rubric totals.
 
+### B-50 · Copilot CLI 1.0.70 now consumes `postToolUse` context — update the shipped matrix
+**Effort:** S · **Priority:** P2 documentation/capability honesty · **Invariants:** #3 #5 #7
+
+**Found by:** B-49 drill #0 host recertification, 2026-07-17. The trusted-folder sentinel canary
+performed a real write and the model returned the out-of-band `B49_POST_TOOL_4MV2` token injected
+only by `postToolUse`. This reverses the live 1.0.68 observation on which
+`docs/enforcement-surfaces.md` currently says the leg is dead. Re-run once in an isolated canary,
+then update the shipped matrix/status note and any hook comments that demote Copilot post-write
+feedback. Normal release path; do not fold the shipped change into the meta-only drill PR.
+
+### B-51 · Release tags stopped at v0.26.0 — restore the release artifact contract
+**Effort:** S · **Priority:** P2 reproducibility · **Invariants:** #7
+
+**Found by:** B-49 drill #0 D0, 2026-07-17. The latest release was v0.32.2 but `git tag
+--sort=-version:refname` showed only `v0.26.0` and `pre-restructure`. The locked drill protocol
+requires a clean checkout of the latest released tag; drill #0 had to use the known release commit
+`29e57fea78adc1446426ad27b742a294bde3e3bb` instead. Extend `release.ps1` to create and push an
+annotated `vX.Y.Z` tag only after every gate and the release commit succeed; add a safe retry/idempotency
+test. Decide whether to backfill v0.26.1–v0.32.2 or tag only current/future releases, and record the
+choice in a WSD.
+
+### B-52 · Verify Copilot CLI fires *both* `userPromptSubmitted` hooks and injects both payloads (v0.33.0 Boy Scout parity claim)
+**Effort:** S · **Priority:** P2 capability honesty · **Invariants:** #5 · **execution vehicle: B-49's quarterly recert / B-43**
+
+**Why:** v0.33.0 registered a **second** `userPromptSubmitted` hook (`boy-scout-check`, after
+`route-prompt`) in `.github/hooks/hooks.json` to bring the Boy Scout nudge to Copilot, and updated
+`docs/enforcement-surfaces.md` to claim "Guaranteed (soft), CLI ≥ 1.0.65" for the Copilot CLI Boy
+Scout row. The prior live canary (2026-07-04, CLI 1.0.68) only ever verified a **single**
+`userPromptSubmitted` hook (`route-prompt`) is consumed. Whether Copilot CLI runs **multiple**
+`userPromptSubmitted` entries and merges **all** their `additionalContext` into the model-facing
+prompt is **unverified** — if it honors only the first (or last), the shipped Boy Scout-on-Copilot
+guarantee is false and the matrix row overclaims (the exact honesty failure the doc forbids at its
+own line 34). VS Code agent-mode consumption remains unverified regardless (shared with B-43).
+
+**Do:** a two-hook sentinel canary (reuse the B-03/B-43 canary design). In a trusted temp folder,
+register two `userPromptSubmitted` hooks in `.github/hooks/hooks.json`, each emitting a **distinct**
+out-of-band token (present in no file) via the dual JSON shape
+(`additionalContext` + `hookSpecificOutput.additionalContext`); run
+`copilot -C <dir> --allow-all-tools -p "echo any CANARY-XXXX tokens you were given"` and confirm the
+model echoes **both** tokens. Both → re-date the matrix row as verified; one/neither → apply the
+plan's documented fallback (fold Boy Scout into `route-prompt` without its early-exit) and correct
+the `enforcement-surfaces.md` row. Prereq (verified 2026-07-20): the temp folder must be in
+`~/.copilot/config.json` `trustedFolders` or repo hooks don't load in `-p` mode; and `hooks.json`
+Windows paths must use forward slashes (backslashes are an invalid JSON escape — observed rejection).
+
+**Blocked (2026-07-20, re-confirmed same day):** attempted live twice; the canary is built and
+staged (`scratchpad/copilot-canary-b52`, two env-token hooks so the tokens are in no file), and
+folder-trust confirmed loading repo hooks in `-p` mode, but the Copilot account hit its **monthly
+quota** (`402 Payment required`, `AI Credits 0`) so no model turn could run — including a 2026-07-20
+retry after the CLI drifted to 1.0.71. Retry once quota resets or on another account. Until then the
+v0.33.0 CLI Boy Scout row rests on reasoning, not the live observation its wording implies.
+
+**Not:** don't relax the `enforcement-surfaces.md` wording pre-emptively — it already keeps the VS
+Code hedge; this item either upgrades the CLI row to verified or triggers the fallback. Cross-links:
+B-43 (recert cadence — run this in the same quarterly slot), B-50 (the sibling `postToolUse`
+capability-honesty item from drill #0), B-03 (original canary design).
+
 ### B-44 · Host-native overlap watch — retirement triggers for framework machinery
 **Effort:** S · **Invariants:** #7
 

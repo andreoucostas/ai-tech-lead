@@ -260,9 +260,74 @@ order: drop T1 A/B → drop T3 A/B → *never* drop the checklist, T2, or the re
   releases; failures route through P1 backlog entries instead.
 - **Shipping the drill kit to consumers** — maintainer-only by invariant #6.
 
-## Appendix (frozen at drill #0 — deliberately empty until then)
+## Appendix (frozen at drill #0 — 2026-07-17)
 
-- Pinned SHAs: —
-- T2 mutation patch + symptom sentence (per target): —
-- T3 planted diff (per target): —
-- R2 convention checks ×3 (per target): —
+### Version and target pins
+
+- Framework: release **v0.32.2**, commit `29e57fea78adc1446426ad27b742a294bde3e3bb`.
+  No `v0.32.2` tag existed (the newest release tag was `v0.26.0`), so drill #0 used a clean
+  detached worktree of the release commit and filed B-51. Future drills must use the tag once the
+  release process creates it.
+- .NET: `dotnet-architecture/eShopOnWeb@4da8212117e87d808d4bbc7da6286fd2147ce606`.
+  Step 0: `dotnet test Everything.sln --configuration Release` — 74 passed, 0 failed
+  (44 unit, 3 integration, 12 functional, 15 Public API integration); known package-vulnerability
+  warnings recorded in Drill 0.
+- Angular: `gothinkster/angular-realworld-example-app@dd99ed2cf39c805d719f943c5d7061a5683d98a8`.
+- Monorepo smoke: the two pins above under `api/` and `web/`; no A/B claim.
+
+### .NET T2 mutation and prompt
+
+File: `src/ApplicationCore/Specifications/CatalogFilterPaginatedSpecification.cs`.
+
+```diff
+-        if (take == 0)
++        if (take < 0)
+```
+
+Frozen prompt: **“Users report: requesting the catalog with a page size of zero returns no items,
+but zero is documented to mean ‘return all catalog items’. Find and fix it.”**
+
+Evidence: the planted mutation left the existing unit suite green (44/44). A direct xUnit probe
+constructing `CatalogFilterPaginatedSpecification(0, 0, null, null)` and evaluating the four-item
+fixture failed `Assert.Equal(4, ...)` with `Expected: 4, Actual: 0`, so the symptom is unit-level
+true and is not already caught by the baseline suite.
+
+### .NET T3 planted diff
+
+Apply exactly these three issue classes to fresh post-bootstrap copies:
+
+1. **EF read tracking:** add `CatalogContext.GetCatalogItemsForExport(CancellationToken)` returning
+   `CatalogItems.ToListAsync(cancellationToken)` without `AsNoTracking()` (plus the necessary
+   `System.Collections.Generic`, `System.Threading`, and `System.Threading.Tasks` usings).
+2. **Hardcoded secret-shaped connection string:** replace `CatalogConnection` in
+   `src/Web/appsettings.json` with
+   `Server=sql.example.invalid;User ID=drill;Password=DrillOnly-P@ssw0rd!;Initial Catalog=CatalogDb;`.
+   This is fixture-only and not a real credential.
+3. **Weakened assertion:** in
+   `tests/UnitTests/ApplicationCore/Specifications/CatalogFilterPaginatedSpecification.cs`,
+   replace `Assert.Equal(4, result.ToList().Count)` with `Assert.NotEmpty(result)`.
+
+The complete planted diff builds and the baseline unit suite remains green (44/44). No fourth
+issue is intentionally present.
+
+### Frozen R2 checks
+
+**.NET T1 (“5 most recently ordered catalog items”):**
+
+1. Placement: endpoint/request/response types live under `src/PublicApi/CatalogItemEndpoints/`,
+   matching the feature-folder endpoint layout.
+2. Registration/access: endpoint follows the existing `IEndpoint` + `MapGet` pattern and consumes
+   the already-registered repository abstraction; it does not add a parallel controller or a
+   second DI registration path.
+3. Naming: `*Endpoint`, `*Request`, `*Response`, and `*Dto` names and the
+   `Microsoft.eShopWeb.PublicApi.CatalogItemEndpoints` namespace match siblings.
+
+**Angular T1 (“clear all filters”):**
+
+1. Placement: the control stays in `src/app/features/article/components/article-list.component.ts`
+   (and its colocated spec if tests change), not a new global/shared abstraction.
+2. State/integration: it resets the existing `ArticleListConfig`/page flow and emits through the
+   component's existing input/output mechanism; it does not introduce a second store or service.
+3. Naming/style: `app-*` selector conventions, signal state, `inject(...)`, OnPush, and
+   `takeUntilDestroyed` are followed where applicable; no NgModule is introduced into this
+   standalone-component application.
