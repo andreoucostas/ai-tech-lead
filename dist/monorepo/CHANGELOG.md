@@ -5,6 +5,15 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.34.1 — 2026-07-20
+
+- The technical presentation now teaches the framework through a concrete CSV-export feature from
+  installation to merge. It shows the real event payloads, files, hook decisions, build/audit
+  output, verification loop, review questions, failure paths, and responsibilities for developers,
+  reviewers, tech leads, platform owners, and product/security partners.
+- The one-page system map is now a functional twelve-stage event trace and machine-operation guide
+  rather than an abstract architecture summary. Runtime behaviour is unchanged.
+
 ## 0.34.0 — 2026-07-20
 
 - `docs/presentation/framework-technical.html` adds an offline technical architecture deck covering

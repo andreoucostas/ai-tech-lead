@@ -11,6 +11,15 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.34.1 (2026-07-20)
+
+Rebuilds the technical presentation after team feedback that v0.34.0 was accurate but too abstract.
+The deck now follows one CSV-export feature through the actual installer, bootstrap, session context,
+prompt payload and routing output, plan gate, Feature contract, pre-write allow/deny path, post-write
+build and audit, subtask tests, review, CI, knowledge updates, and human responsibilities. The
+one-page architecture poster is replaced by a functional twelve-stage event trace and operational
+failure guide.
+
 ## 0.34.0 (2026-07-20)
 
 Adds the technical architecture presentation requested after an adversarial review of the existing
