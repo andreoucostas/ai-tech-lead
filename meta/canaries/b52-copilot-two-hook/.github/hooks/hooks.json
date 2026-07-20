@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "hooks": {
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "bash": ".github/hooks/hook-a.sh",
+        "powershell": ".github/hooks/hook-a.ps1",
+        "timeoutSec": 10
+      },
+      {
+        "type": "command",
+        "bash": ".github/hooks/hook-b.sh",
+        "powershell": ".github/hooks/hook-b.ps1",
+        "timeoutSec": 10
+      }
+    ]
+  }
+}

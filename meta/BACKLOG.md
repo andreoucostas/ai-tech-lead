@@ -254,11 +254,13 @@ the `enforcement-surfaces.md` row. Prereq (verified 2026-07-20): the temp folder
 Windows paths must use forward slashes (backslashes are an invalid JSON escape — observed rejection).
 
 **Blocked (2026-07-20, re-confirmed same day):** attempted live twice; the canary is built and
-staged (`scratchpad/copilot-canary-b52`, two env-token hooks so the tokens are in no file), and
-folder-trust confirmed loading repo hooks in `-p` mode, but the Copilot account hit its **monthly
-quota** (`402 Payment required`, `AI Credits 0`) so no model turn could run — including a 2026-07-20
-retry after the CLI drifted to 1.0.71. Retry once quota resets or on another account. Until then the
-v0.33.0 CLI Boy Scout row rests on reasoning, not the live observation its wording implies.
+**committed at `meta/canaries/b52-copilot-two-hook/`** (two env-token hooks so the tokens are in no
+file; run recipe + result-reading in its README), and folder-trust confirmed loading repo hooks in
+`-p` mode, but the Copilot account hit its **monthly quota** (`402 Payment required`,
+`AI Credits 0`) so no model turn could run — including a 2026-07-20 retry after the CLI drifted to
+1.0.71. **Next action: re-run the committed canary once monthly Copilot credits reset (~Aug 2026)
+or on another account** — no rebuild needed. Until then the v0.33.0 CLI Boy Scout row rests on
+reasoning, not the live observation its wording implies.
 
 **Not:** don't relax the `enforcement-surfaces.md` wording pre-emptively — it already keeps the VS
 Code hedge; this item either upgrades the CLI row to verified or triggers the fallback. Cross-links:

@@ -160,7 +160,7 @@ To pull template updates, re-run the installer from a fresh template checkout ag
 | `docs/playbook.md` | Methodology guide (the "why" behind the framework). |
 | `docs/ARCHITECTURE.md` (+ `architecture.html`) | Canonical architecture map with Mermaid diagrams; HTML is the generated, drift-checked view for reviewers. |
 | `docs/REVIEW-GUIDE.md` | A senior reviewer's annotated tour — reading order, what each piece guarantees, how to verify, and the tradeoffs. |
-| `docs/presentation/` | Ready-to-present, self-contained HTML briefing deck (`framework-briefing.html`) + `TALKING-POINTS.md` — for pitching the framework to tech leads and their teams (overview + practical implications). |
+| `docs/presentation/` | Self-contained offline presentations: the persuasive `framework-briefing.html` + `TALKING-POINTS.md`, the implementation-level `framework-technical.html`, and the printable one-page `framework-system-map.html`. |
 
 ## How it works
 
