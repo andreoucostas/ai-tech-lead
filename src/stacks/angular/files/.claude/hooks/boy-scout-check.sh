@@ -14,14 +14,17 @@
 # semantic change, not a drive-by cleanup — see CLAUDE.md > Boy Scout Rule.
 
 set -u
+if [ -t 0 ]; then input=""; else input=$(cat); fi
 
-[ ! -d .git ] && exit 0
+hook_dir=$(cd "$(dirname "$0")" && pwd)
+candidate_root=$(cd "$hook_dir/../.." && pwd)
+repo_root=$(git -C "$candidate_root" rev-parse --show-toplevel 2>/dev/null) || exit 0
 
 # Modified + staged + untracked .ts files (bounded to keep this fast)
 files=$(
-  { git diff --name-only -- '*.ts' 2>/dev/null
-    git diff --cached --name-only -- '*.ts' 2>/dev/null
-    git ls-files --others --exclude-standard -- '*.ts' 2>/dev/null
+  { git -C "$repo_root" diff --name-only -- '*.ts' 2>/dev/null
+    git -C "$repo_root" diff --cached --name-only -- '*.ts' 2>/dev/null
+    git -C "$repo_root" ls-files --others --exclude-standard -- '*.ts' 2>/dev/null
   } | sort -u | head -30
 )
 [ -z "$files" ] && exit 0
@@ -30,7 +33,7 @@ declare -a findings=()
 checked=0
 
 while IFS= read -r f; do
-  [ -z "$f" ] || [ ! -f "$f" ] && continue
+  [ -z "$f" ] || [ ! -f "$repo_root/$f" ] && continue
   # Skip test files and generated files
   case "$f" in
     *.spec.ts|*.test.ts|*.d.ts) continue ;;
@@ -38,18 +41,18 @@ while IFS= read -r f; do
   checked=$((checked + 1))
 
   # 1. ngOnDestroy + manual .subscribe — likely a candidate for takeUntilDestroyed
-  if grep -q 'ngOnDestroy' "$f" 2>/dev/null && grep -q '\.subscribe(' "$f" 2>/dev/null; then
+  if grep -q 'ngOnDestroy' "$repo_root/$f" 2>/dev/null && grep -q '\.subscribe(' "$repo_root/$f" 2>/dev/null; then
     findings+=("$f: manual ngOnDestroy with .subscribe — consider takeUntilDestroyed()")
   fi
 
   # 2. Multiple .subscribe( calls — possible nested subscribe (count occurrences, not lines)
-  sub_count=$(grep -oE '\.subscribe\(' "$f" 2>/dev/null | wc -l)
+  sub_count=$(grep -oE '\.subscribe\(' "$repo_root/$f" 2>/dev/null | wc -l)
   if [ "$sub_count" -ge 3 ]; then
     findings+=("$f: $sub_count .subscribe() calls — review for nested subscribes (use switchMap/mergeMap/concatMap/exhaustMap)")
   fi
 
   # 3. Explicit `any` (not in comments)
-  any_hits=$(grep -E '(:[[:space:]]*any\b|\bas[[:space:]]+any\b)' "$f" 2>/dev/null | grep -v '^[[:space:]]*//' | wc -l)
+  any_hits=$(grep -E '(:[[:space:]]*any\b|\bas[[:space:]]+any\b)' "$repo_root/$f" 2>/dev/null | grep -v '^[[:space:]]*//' | wc -l)
   if [ "$any_hits" -gt 0 ]; then
     findings+=("$f: $any_hits explicit \`any\` usage(s) — replace with proper types or unknown+narrowing")
   fi
@@ -69,7 +72,7 @@ while IFS= read -r f; do
     }
     { run = 0 }
     END { print max }
-  ' "$f" 2>/dev/null)
+  ' "$repo_root/$f" 2>/dev/null)
   if [ -n "$commented_run" ] && [ "$commented_run" -ge 2 ]; then
     findings+=("$f: commented-out code block ($commented_run+ contiguous lines) — delete; version control preserves history (CLAUDE.md > Boy Scout > Subtract)")
   fi
@@ -79,8 +82,8 @@ done <<< "$files"
 
 # Dedup: skip output when this finding set matches the last fire's output.
 # Avoids re-emitting the same warnings on every turn while the user iterates.
-mkdir -p .claude/.state 2>/dev/null
-hash_file=.claude/.state/last-boy-scout-hash
+mkdir -p "$repo_root/.claude/.state" 2>/dev/null
+hash_file="$repo_root/.claude/.state/last-boy-scout-hash"
 joined=$(printf '%s\n' "${findings[@]}" | LC_ALL=C sort)
 if command -v sha1sum >/dev/null 2>&1; then
   current_hash=$(printf '%s' "$joined" | sha1sum | awk '{print $1}')
@@ -105,9 +108,13 @@ _If these touch files you modified this turn, address them per CLAUDE.md > Boy S
 summary="Boy Scout: ${#findings[@]} candidate(s) flagged to the model across $checked file(s) (see CLAUDE.md > Boy Scout Rule)."
 
 if command -v jq >/dev/null 2>&1; then
-  printf '%s' "$text" | jq -Rs --arg sm "$summary" '{systemMessage: $sm, hookSpecificOutput: {hookEventName: "Stop", additionalContext: .}}'
+  if printf '%s' "$input" | grep -q '"hook_event_name"'; then
+    printf '%s' "$text" | jq -Rs --arg sm "$summary" '{systemMessage: $sm, hookSpecificOutput: {hookEventName: "Stop", additionalContext: .}}'
+  else
+    printf '%s' "$text" | jq -Rs '{additionalContext: ., hookSpecificOutput: {hookEventName: "UserPromptSubmit", additionalContext: .}}'
+  fi
 elif command -v python3 >/dev/null 2>&1; then
-  printf '%s' "$text" | SUMMARY="$summary" python3 -c 'import json,os,sys; print(json.dumps({"systemMessage": os.environ["SUMMARY"], "hookSpecificOutput": {"hookEventName": "Stop", "additionalContext": sys.stdin.read()}}))'
+  printf '%s' "$text" | SUMMARY="$summary" SURFACE="$(printf '%s' "$input" | grep -q '"hook_event_name"' && printf claude || printf copilot)" python3 -c 'import json,os,sys; t=sys.stdin.read(); print(json.dumps({"systemMessage": os.environ["SUMMARY"], "hookSpecificOutput": {"hookEventName": "Stop", "additionalContext": t}} if os.environ["SURFACE"] == "claude" else {"additionalContext": t, "hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": t}}))'
 else
   # No JSON tool available — plain stdout lands in the debug log only, but is better than nothing.
   printf '%s\n' "$text"

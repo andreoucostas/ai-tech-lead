@@ -6,7 +6,10 @@ name: Docs sync check
 # This .yml is GitHub-only. On Bitbucket Data Center (no GitHub Actions), wire
 # scripts/docs-sync-check.sh into a Bamboo/Jenkins job or a pre-receive hook, and optionally publish
 # the result to the PR via the Code Insights API. A Bitbucket Pipelines sample (Bitbucket Cloud) is
-# in scripts/ci/bitbucket-pipelines.example.yml. See the README "Running on Bitbucket Data Center".
+# in scripts/ci/bitbucket-pipelines.example.yml. A Bamboo Specs starting point is in
+# scripts/ci/bamboo-spec.example.yaml; repository linkage, branch plans, and the required-build
+# merge check still need configuring for your Bamboo/Bitbucket installation. See
+# docs/ci-integration.md.
 
 on:
   pull_request:

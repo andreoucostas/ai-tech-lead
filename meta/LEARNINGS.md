@@ -3,6 +3,13 @@
 > Append-only. Lessons about developing the framework itself; per-repo learnings live in each
 > repo's `LEARNINGS.md`. Format: `[YYYY-MM-DD] observation — what worked, what didn't, what changed.`
 
+## 2026-07-17 — onboarding-review hardening: verify paths and host premises before implementation
+
+An implementation-ready plan still carried two stale facts: `postToolUse` consumption had changed
+in Copilot CLI 1.0.70, and `docs/ci-integration.md` was described as core although it is a
+three-stack whole-file override. Resolve every named path and re-check host claims against the
+newest live-fire evidence. A cwd fix must root git commands, file reads, and state writes together.
+
 [2026-07-01] **A gate that skips the template repo protects nothing.** `docs-sync-check` early-exited
 on `.template-repo`, so the framework's own repos had zero effective CI — and exactly the drift the
 framework lectures consumers about shipped three releases running (CLAUDE.md stamp two versions

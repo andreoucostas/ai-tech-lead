@@ -26,7 +26,18 @@ FAILED=0
 fail() { echo "FAIL: $1"; FAILED=1; }
 ok()   { echo "OK:   $1"; }
 
-# 0. Adoption-pending marker — the installer detected pre-existing AI tooling that /adopt must consolidate.
+# 0. Install completeness. The enforcement matrix is load-bearing: CLAUDE.md points to it for
+# the honest host guarantees. ci-integration.md is advisory and may be intentionally removed.
+if [ ! -f "docs/enforcement-surfaces.md" ]; then
+  fail "framework install incomplete: docs/enforcement-surfaces.md missing — reinstall from the template."
+else
+  ok "framework enforcement matrix present."
+fi
+if [ ! -f "docs/ci-integration.md" ]; then
+  echo "NOTE: docs/ci-integration.md is missing — restore it from the template if you need the portable required-build recipe. (advisory — not a failure)"
+fi
+
+# 1. Adoption-pending marker — the installer detected pre-existing AI tooling that /adopt must consolidate.
 if [ -f ".claude/adoption-pending.json" ]; then
   fail "adoption pending (.claude/adoption-pending.json present) — the installer detected pre-existing AI tooling. A developer must run /adopt (it cannot be model-invoked) to consolidate it; /adopt removes this marker in its Phase 3."
 else

@@ -73,18 +73,29 @@ if (-not (Test-Path -LiteralPath $boyPs) -or -not ((Get-Content -Raw -LiteralPat
     foreach ($case in $boyCases) {
         It "boy-scout twins agree: $($case.n)" {
             $dir = Join-Path ([IO.Path]::GetTempPath()) ("boyfix-" + [guid]::NewGuid().ToString('N'))
-            New-Item -ItemType Directory -Path $dir -Force | Out-Null
+            $repo = Join-Path $dir 'repo'
+            $installedHooks = Join-Path $repo '.claude\hooks'
+            New-Item -ItemType Directory -Path $installedHooks -Force | Out-Null
+            Copy-Item -LiteralPath $boyPs -Destination (Join-Path $installedHooks 'boy-scout-check.ps1')
+            Copy-Item -LiteralPath $boySh -Destination (Join-Path $installedHooks 'boy-scout-check.sh')
+            git -C $repo init --quiet
+            [IO.File]::WriteAllText((Join-Path $repo $case.file), $case.content)
             Push-Location $dir
             try {
-                git init --quiet
-                [IO.File]::WriteAllText((Join-Path $dir $case.file), $case.content)
-                $rps = Invoke-Hook $boyPs '{}'
-                Remove-Item -LiteralPath (Join-Path $dir '.claude') -Recurse -Force -ErrorAction SilentlyContinue
-                $rsh = Invoke-Hook $boySh '{}'
+                $rps = Invoke-Hook (Join-Path $installedHooks 'boy-scout-check.ps1') '{}'
+                $dedup = Invoke-Hook (Join-Path $installedHooks 'boy-scout-check.ps1') '{}'
+                Remove-Item -LiteralPath (Join-Path $repo '.claude\.state') -Recurse -Force -ErrorAction SilentlyContinue
+                $rsh = Invoke-Hook (Join-Path $installedHooks 'boy-scout-check.sh') '{}'
                 $hasPs = $rps.Out -match 'read-style EF Core query'
                 $hasSh = $rsh.Out -match 'read-style EF Core query'
                 Assert ($hasPs -eq $case.expect) "boy-scout.ps1 finding expected=$($case.expect), actual=$hasPs, output='$($rps.Out)'"
                 Assert ($hasSh -eq $case.expect) "boy-scout.sh finding expected=$($case.expect), actual=$hasSh, output='$($rsh.Out)'"
+                if ($case.expect) {
+                    $json = $rps.Out | ConvertFrom-Json
+                    Assert ($json.additionalContext -match 'Boy Scout candidates') 'Copilot top-level additionalContext missing'
+                    Assert ($json.hookSpecificOutput.hookEventName -eq 'UserPromptSubmit') 'Copilot hook event shape wrong'
+                    Assert ($dedup.Out.Trim() -eq '') 'unchanged finding set was not deduplicated'
+                }
             } finally { Pop-Location; Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
         }
     }

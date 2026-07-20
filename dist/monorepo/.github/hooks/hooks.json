@@ -16,6 +16,12 @@
         "bash": ".claude/hooks/route-prompt.sh",
         "powershell": ".claude\\hooks\\route-prompt.ps1",
         "timeoutSec": 10
+      },
+      {
+        "type": "command",
+        "bash": ".claude/hooks/boy-scout-check.sh",
+        "powershell": ".claude\\hooks\\boy-scout-check.ps1",
+        "timeoutSec": 10
       }
     ],
     "preToolUse": [
