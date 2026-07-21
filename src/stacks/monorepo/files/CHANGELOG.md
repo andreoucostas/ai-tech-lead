@@ -5,6 +5,12 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.34.3 — 2026-07-21
+
+- `CLAUDE.md`/`AGENTS.md` — Leanness rule #7 ("no comments that restate code") now carries a short
+  Bad/Good example so the rule reads as concrete guidance rather than an abstract imperative. No
+  action needed.
+
 ## 0.34.2 — 2026-07-20
 
 - `/bootstrap` now flags data-warehouse repos in its final report. When it detects warehouse signals

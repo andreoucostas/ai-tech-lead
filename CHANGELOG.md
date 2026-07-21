@@ -11,6 +11,18 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.34.3 (2026-07-21)
+
+Sharpens Leanness rule #7 ("no comments that restate code") with a concrete Bad/Good example in the
+always-loaded `CLAUDE.md`/`AGENTS.md` rule set, so agents pattern-match against the rule rather than
+an abstract imperative — comment-noise is one of the most persistent LLM habits. Authored once per
+stack in `src/stacks/*/snippets/CLAUDE.md/lean-4-8` and its `files/AGENTS.md` mirror; the
+`## Leanness` verbatim-mirror gate covers both. Docs-only; no behavioral surface changed.
+
+This is the change developed in parallel on the `claude/lean-rule7-example` branch as a
+same-numbered v0.34.1; replayed here as v0.34.3 to resolve the version collision with the
+presentation (v0.34.1) and warehouse (v0.34.2) releases that shipped on `master`.
+
 ## 0.34.2 (2026-07-20)
 
 Closes a discoverability gap for data-warehouse repos in `/bootstrap`. When A2 detects warehouse

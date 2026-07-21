@@ -4,6 +4,13 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.34.3 — 2026-07-21
+
+- `CLAUDE.md`/`AGENTS.md` — Leanness rule #7 ("no comments that restate code") now carries a short
+  Bad/Good example (`// map users to names` above `users.map(...)` vs. `// backend paginates at 50`
+  above a page-size constant), so the rule reads as concrete guidance rather than an abstract
+  imperative. No action needed.
+
 ## 0.34.2 — 2026-07-20
 
 - No changes to the Angular distribution this release. The data-warehouse `/bootstrap` report nudge

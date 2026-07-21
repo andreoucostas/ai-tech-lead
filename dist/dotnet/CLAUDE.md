@@ -1,8 +1,8 @@
 <!--
 ai-tech-lead-framework
   template: dotnet
-  version: 0.34.2
-  applied: 2026-07-20
+  version: 0.34.3
+  applied: 2026-07-21
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
 # [Project Name]
@@ -47,7 +47,7 @@ The Boy Scout Rule biases toward adding improvements. This section is the counte
 4. **Wrappers must add behavior.** A method that just delegates is a layer that costs reading time and adds no value. Inline or remove.
 5. **No defensive code for impossible states.** Trust internal callers; validate only at system boundaries (HTTP request body, message bus payload, third-party API response). **Financial domain exception**: for monetary amounts, ledger entries, account balances, regulatory figures, and idempotency keys — treat every state as possible regardless of caller. Use `decimal` (never `double`) for money; guard against negative amounts, duplicate transaction IDs, decimal precision loss, and timestamp ordering violations at every layer even in internal code.
 6. **No `try/catch` to silence; only to handle.** If you cannot say what the catch block does for the user, do not write it.
-7. **No comments that restate code.** A comment earns its place only when it captures a non-obvious *why* (constraint, invariant, workaround). XML doc comments on public APIs are an exception when the project ships them.
+7. **No comments that restate code.** A comment earns its place only when it captures a non-obvious *why* (constraint, invariant, workaround). XML doc comments on public APIs are an exception when the project ships them. Bad: `// loop over orders` above `foreach (var o in orders)`. Good: `// vendor API caps batches at 50` above a chunk-size constant.
 8. **No new generic helpers / utility classes without two existing call sites.** Three similar lines beat a premature abstraction.
 9. **Deletion is a contribution.** If a change makes existing code obsolete, delete it in the same PR. Comment-out is never the answer; that is what version control is for.
 10. **No re-exports through barrel files unless the barrel already exports adjacent symbols.** Do not grow the public surface for free.
