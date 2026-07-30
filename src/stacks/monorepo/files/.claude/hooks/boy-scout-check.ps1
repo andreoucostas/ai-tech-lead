@@ -1,11 +1,10 @@
 ﻿# Stop hook -- flag Boy Scout opportunities in modified .cs and .ts files (monorepo variant:
 # each file gets its own stack's checks).
 # PowerShell equivalent of boy-scout-check.sh, for Windows-only PowerShell teams.
-# Soft-warning by default. Findings reach the model via hookSpecificOutput.additionalContext (a Stop
-# hook's additionalContext is injected as a system reminder the model reads next turn) -- but that
-# text is invisible in the terminal, so a one-line systemMessage is emitted alongside it so the
-# developer also sees that candidates were flagged. Note: a Stop hook's @{ decision='block'; reason }
-# is NOT a stricter variant of this -- `reason` is shown only to the user, never fed to the model.
+# CLAUDE scans and emits Stop additionalContext; SCAN queues findings and emits Copilot context;
+# DELIVER emits and deletes queued Copilot context without scanning. A Stop hook's block reason
+# is shown to Claude as a system reminder (unlike top-level stopReason). This advisory nudge still
+# uses the softer additionalContext path and never blocks.
 #
 # Patterns derived from the always-apply items in CLAUDE.md > Boy Scout Rule:
 #   .cs -- missing CancellationToken on async methods (best-effort)
@@ -18,13 +17,41 @@
 # OnPush is intentionally NOT scanned: switching a component to OnPush is a
 # semantic change, not a drive-by cleanup -- see CLAUDE.md > Boy Scout Rule.
 
+param(
+    [ValidateSet('scan', 'deliver')]
+    [string]$Mode
+)
+
 $ErrorActionPreference = 'SilentlyContinue'
 $inputJson = [Console]::In.ReadToEnd()
+
+$resolvedMode = if ($Mode) {
+    $Mode.ToLowerInvariant()
+} elseif ($inputJson -match 'hook_event_name') {
+    'claude'
+} elseif ($inputJson -match '(?i):\s*\x22(agentStop|Stop)\x22') {
+    'scan'
+} else {
+    'deliver'
+}
 
 $candidateRoot = [IO.Path]::GetFullPath((Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..\..'))
 $repoRoot = (& git -C $candidateRoot rev-parse --show-toplevel 2>$null | Select-Object -First 1)
 if (-not $repoRoot) { exit 0 }
 $repoRoot = [IO.Path]::GetFullPath($repoRoot.Trim())
+
+$stateDir = Join-Path $repoRoot '.claude\.state'
+$queueFile = Join-Path $stateDir 'boy-scout-queue'
+if ($resolvedMode -eq 'deliver') {
+    if (Test-Path -LiteralPath $queueFile) {
+        $queuedText = [string](Get-Content -LiteralPath $queueFile -Raw)
+        if (-not [string]::IsNullOrWhiteSpace($queuedText)) {
+            @{ additionalContext = $queuedText; hookSpecificOutput = @{ hookEventName = 'UserPromptSubmit'; additionalContext = $queuedText } } | ConvertTo-Json -Compress
+        }
+        Remove-Item -LiteralPath $queueFile -Force
+    }
+    exit 0
+}
 
 $changed = @()
 $changed += & git -C $repoRoot diff --name-only -- '*.cs' '*.ts'
@@ -136,7 +163,6 @@ foreach ($f in $files) {
 if ($findings.Count -eq 0) { exit 0 }
 
 # Dedup: skip output when this finding set matches the last fire's output.
-$stateDir = Join-Path $repoRoot '.claude\.state'
 $null = New-Item -ItemType Directory -Path $stateDir -Force
 $hashFile = Join-Path $stateDir 'last-boy-scout-hash'
 $joined = ($findings | Sort-Object) -join "`n"
@@ -156,11 +182,15 @@ $outLines += ''
 $outLines += "_If these touch files you modified this turn, address them per CLAUDE.md > Boy Scout Rule before considering the work complete. Otherwise add a ``// TODO: Boy Scout skipped -- [reason]`` comment._"
 $text = $outLines -join "`n"
 
+if ($resolvedMode -eq 'scan') {
+    Set-Content -LiteralPath $queueFile -Value $text -Encoding UTF8
+}
+
 # additionalContext (above) reaches the model but is invisible in the terminal; emit a short
 # systemMessage so the developer also sees that candidates were flagged.
 $summary = "Boy Scout: $($findings.Count) candidate(s) flagged to the model across $checked file(s) (see CLAUDE.md > Boy Scout Rule)."
 
-if ($inputJson -match '"hook_event_name"') {
+if ($resolvedMode -eq 'claude') {
     @{ systemMessage = $summary; hookSpecificOutput = @{ hookEventName = 'Stop'; additionalContext = $text } } | ConvertTo-Json -Compress
 } else {
     @{ additionalContext = $text; hookSpecificOutput = @{ hookEventName = 'UserPromptSubmit'; additionalContext = $text } } | ConvertTo-Json -Compress

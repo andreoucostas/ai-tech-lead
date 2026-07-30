@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "hooks": {
+    "agentStop": [
+      {
+        "type": "command",
+        "bash": ".github/hooks/agent-stop.sh",
+        "powershell": ".github/hooks/agent-stop.ps1",
+        "timeoutSec": 10
+      }
+    ]
+  }
+}

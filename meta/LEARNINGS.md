@@ -411,3 +411,24 @@ Behavior grading also needs `PASS`, `FAIL`, and `ERROR`/`INCONCLUSIVE` as distin
 timeout, invalid stream schema, or model refusal is not evidence that framework behavior failed.
 The B-41 log keeps those outcomes visible, while only observable tool order, repository state,
 hook blocks, and file bytes can earn a pass.
+
+## 2026-07-30 — Hook capabilities must be verified at the event-and-output-channel level
+
+1. **Copilot now has a true per-turn event.** CLI v1.0.72 added `agentStop`, including
+   `stop_hook_active` and an eight-consecutive-block cap, so its hook lifecycle has converged on
+   Claude Code's. The assumption that Copilot had no turn-end event is stale; it had become
+   embedded in several shipped documents.
+
+2. **The hooks reference table can lag shipped CLI behavior.** The docs.github.com table still
+   says `userPromptSubmitted` output is not processed months after CLI v1.0.65 shipped
+   `additionalContext` injection. For capability claims, trust the CLI changelog plus a local
+   out-of-band canary over the reference table alone.
+
+3. **An event firing does not prove a usable delivery channel.** `postToolUse`
+   `additionalContext` is captured but not reliably forwarded to the model, so it must not carry
+   findings. It also cannot represent writes made through shell tools.
+
+4. **Hook-header prose is executable documentation without a truth gate.** We long claimed that a
+   Stop hook's `decision: "block"` `reason` is shown only to the user. In fact it reaches Claude as
+   a system reminder; the user-facing field is the separate top-level `stopReason`. Tests exercise
+   output shapes, not comments, so this factual error survived for a long time.

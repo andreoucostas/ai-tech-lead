@@ -930,3 +930,26 @@ human); reimplementing template-checks/pending detection.
 **Process note.** Drafted, then adversarially reviewed before locking; 10 findings folded —
 the load-bearing ones being the two self-dependency traps (F1/F2), fresh-install false alarms
 (F3), refusal-vs-block canary semantics (F6), and pinned-string rot in canary quotes (F9).
+
+## WSD-024: Copilot Boy Scout scan at turn end, deliver at the next prompt (2026-07-30)
+
+**Context.** Copilot's Boy Scout check ran on `userPromptSubmitted`, before the prompt's work. It
+therefore scanned on read-only turns and reported the previous turn's diff. CLI v1.0.72 added the
+true per-turn `agentStop` event, but that event is documented for stop/block control rather than
+model-context injection; `userPromptSubmitted` remains the proven injection channel.
+
+**Decision.** On Copilot, run `boy-scout-check --mode scan` at `agentStop`, persist any findings in
+the state queue, and run `--mode deliver` at the next `userPromptSubmitted` to inject and delete
+that queue without scanning. Never emit `decision: "block"`: the nudge remains advisory. Claude
+Code stays registered directly on `Stop`.
+
+**Alternatives rejected.** Simply re-registering the hook on `agentStop` would time the scan
+correctly but likely never expose its findings to the model because that event is not a documented
+injection channel. Blocking at `agentStop` would turn a soft nudge into a surface-specific hard
+gate, consume extra agent turns, and eventually hit the eight-consecutive-block loop cap. Driving
+the queue from `postToolUse` relies on a known context-forwarding bug and misses writes performed
+through shell tools.
+
+**Open verification.** VS Code agent hooks are Preview and off by default; its documented event
+spelling is `Stop`. A real-host canary must establish whether it accepts `agentStop`, requires
+`Stop`, and forwards any turn-end output before the queue hop can be simplified.

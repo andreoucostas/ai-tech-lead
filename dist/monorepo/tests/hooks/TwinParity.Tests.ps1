@@ -59,6 +59,52 @@ try {
     Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
 }
 
+# Boy Scout modes use different argument syntax across twins; keep the shared harness unchanged.
+function Invoke-BoyScoutHook {
+    param([string]$Path, [string]$Json, [string]$Mode = '')
+    $ef = [IO.Path]::GetTempFileName()
+    try {
+        if ($Path -match '\.ps1$') {
+            if ($Mode) {
+                $out = $Json | & (Get-PsExe) -NoProfile -ExecutionPolicy Bypass -File $Path -Mode $Mode 2>$ef
+            } else {
+                $out = $Json | & (Get-PsExe) -NoProfile -ExecutionPolicy Bypass -File $Path 2>$ef
+            }
+        } else {
+            $boyBash = Get-BashPath
+            if (-not $boyBash) { return $null }
+            if ($Mode) {
+                $out = $Json | & $boyBash $Path --mode $Mode 2>$ef
+            } else {
+                $out = $Json | & $boyBash $Path 2>$ef
+            }
+        }
+        return [pscustomobject]@{
+            Exit = $LASTEXITCODE
+            Out = ($out -join "`n")
+            Err = [IO.File]::ReadAllText($ef)
+        }
+    } finally {
+        if (Test-Path -LiteralPath $ef) { [IO.File]::Delete($ef) }
+    }
+}
+
+function New-BoyScoutFixture {
+    param([string]$PowerShellHook, [string]$ShellHook)
+    $dir = Join-Path ([IO.Path]::GetTempPath()) ("boymode-" + [guid]::NewGuid().ToString('N'))
+    $repo = Join-Path $dir 'repo'
+    $installedHooks = Join-Path $repo '.claude\hooks'
+    New-Item -ItemType Directory -Path $installedHooks -Force | Out-Null
+    Copy-Item -LiteralPath $PowerShellHook -Destination (Join-Path $installedHooks 'boy-scout-check.ps1')
+    Copy-Item -LiteralPath $ShellHook -Destination (Join-Path $installedHooks 'boy-scout-check.sh')
+    git -C $repo init --quiet
+    [IO.File]::WriteAllText(
+        (Join-Path $repo 'EfQuery.cs'),
+        "using Microsoft.EntityFrameworkCore;`nclass EfQuery { async Task Run(DbSet<string> rows) => await rows.ToListAsync(); }"
+    )
+    return [pscustomobject]@{ Dir = $dir; Repo = $repo; Hooks = $installedHooks }
+}
+
 # --- boy-scout EF evidence gate: Mongo-shaped async queries stay silent; EF queries still flag ---
 $boyPs = Join-Path $hooks 'boy-scout-check.ps1'; $boySh = Join-Path $hooks 'boy-scout-check.sh'
 if (-not (Test-Path -LiteralPath $boyPs) -or -not ((Get-Content -Raw -LiteralPath $boyPs) -match 'read-style EF Core query')) {
@@ -82,22 +128,90 @@ if (-not (Test-Path -LiteralPath $boyPs) -or -not ((Get-Content -Raw -LiteralPat
             [IO.File]::WriteAllText((Join-Path $repo $case.file), $case.content)
             Push-Location $dir
             try {
-                $rps = Invoke-Hook (Join-Path $installedHooks 'boy-scout-check.ps1') '{}'
-                $dedup = Invoke-Hook (Join-Path $installedHooks 'boy-scout-check.ps1') '{}'
+                $state = Join-Path $repo '.claude\.state'
+                $queue = Join-Path $state 'boy-scout-queue'
+                $rps = Invoke-BoyScoutHook (Join-Path $installedHooks 'boy-scout-check.ps1') '{}' 'scan'
+                $queuePs = Test-Path -LiteralPath $queue
+                $dedup = Invoke-BoyScoutHook (Join-Path $installedHooks 'boy-scout-check.ps1') '{}' 'scan'
                 Remove-Item -LiteralPath (Join-Path $repo '.claude\.state') -Recurse -Force -ErrorAction SilentlyContinue
-                $rsh = Invoke-Hook (Join-Path $installedHooks 'boy-scout-check.sh') '{}'
+                $rsh = Invoke-BoyScoutHook (Join-Path $installedHooks 'boy-scout-check.sh') '{}' 'scan'
+                $queueSh = Test-Path -LiteralPath $queue
+                $dedupSh = Invoke-BoyScoutHook (Join-Path $installedHooks 'boy-scout-check.sh') '{}' 'scan'
                 $hasPs = $rps.Out -match 'read-style EF Core query'
                 $hasSh = $rsh.Out -match 'read-style EF Core query'
+                $emittedPs = -not [string]::IsNullOrWhiteSpace($rps.Out)
+                $emittedSh = -not [string]::IsNullOrWhiteSpace($rsh.Out)
                 Assert ($hasPs -eq $case.expect) "boy-scout.ps1 finding expected=$($case.expect), actual=$hasPs, output='$($rps.Out)'"
                 Assert ($hasSh -eq $case.expect) "boy-scout.sh finding expected=$($case.expect), actual=$hasSh, output='$($rsh.Out)'"
+                Assert ($queuePs -eq $emittedPs -and $queueSh -eq $emittedSh) `
+                    "scan queue presence must match emission: ps1 emitted=$emittedPs queue=$queuePs; sh emitted=$emittedSh queue=$queueSh"
+                Assert ($rps.Out -notmatch 'decision' -and $rsh.Out -notmatch 'decision') 'scan output contained forbidden decision property'
                 if ($case.expect) {
                     $json = $rps.Out | ConvertFrom-Json
                     Assert ($json.additionalContext -match 'Boy Scout candidates') 'Copilot top-level additionalContext missing'
                     Assert ($json.hookSpecificOutput.hookEventName -eq 'UserPromptSubmit') 'Copilot hook event shape wrong'
-                    Assert ($dedup.Out.Trim() -eq '') 'unchanged finding set was not deduplicated'
+                    Assert ($dedup.Out.Trim() -eq '' -and $dedupSh.Out.Trim() -eq '') `
+                        "unchanged finding set was not deduplicated in scan mode: ps1='$($dedup.Out)' sh='$($dedupSh.Out)'"
                 }
             } finally { Pop-Location; Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
         }
+    }
+
+    It 'boy-scout twins agree: deliver emits queued Copilot context and consumes the queue' {
+        $fixture = New-BoyScoutFixture $boyPs $boySh
+        $queue = Join-Path $fixture.Repo '.claude\.state\boy-scout-queue'
+        New-Item -ItemType Directory -Path (Split-Path -Parent $queue) -Force | Out-Null
+        Push-Location $fixture.Dir
+        try {
+            [IO.File]::WriteAllText($queue, 'queued Boy Scout candidates')
+            $rps = Invoke-BoyScoutHook (Join-Path $fixture.Hooks 'boy-scout-check.ps1') '{}' 'deliver'
+            $gonePs = -not (Test-Path -LiteralPath $queue)
+            [IO.File]::WriteAllText($queue, 'queued Boy Scout candidates')
+            $rsh = Invoke-BoyScoutHook (Join-Path $fixture.Hooks 'boy-scout-check.sh') '{}' 'deliver'
+            $goneSh = -not (Test-Path -LiteralPath $queue)
+            Assert ($rps.Exit -eq $rsh.Exit -and $rps.Exit -eq 0) 'deliver exits differ or are non-zero'
+            $jps = $rps.Out | ConvertFrom-Json; $jsh = $rsh.Out | ConvertFrom-Json
+            Assert ($jps.additionalContext -eq $jsh.additionalContext) 'deliver additionalContext differs'
+            Assert ($jps.hookSpecificOutput.hookEventName -eq 'UserPromptSubmit') 'PowerShell deliver event shape wrong'
+            Assert ($jsh.hookSpecificOutput.hookEventName -eq 'UserPromptSubmit') 'shell deliver event shape wrong'
+            Assert ($gonePs -and $goneSh) "deliver did not consume both queues: ps1=$gonePs sh=$goneSh"
+            Assert ($rps.Out -notmatch 'decision' -and $rsh.Out -notmatch 'decision') 'deliver output contained forbidden decision property'
+        } finally { Pop-Location; Remove-Item -LiteralPath $fixture.Dir -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'boy-scout regression: deliver with no queue never scans or speaks on a read-only prompt' {
+        $fixture = New-BoyScoutFixture $boyPs $boySh
+        $queue = Join-Path $fixture.Repo '.claude\.state\boy-scout-queue'
+        Remove-Item -LiteralPath $queue -Force -ErrorAction SilentlyContinue
+        Push-Location $fixture.Dir
+        try {
+            $rps = Invoke-BoyScoutHook (Join-Path $fixture.Hooks 'boy-scout-check.ps1') '{}' 'deliver'
+            $rsh = Invoke-BoyScoutHook (Join-Path $fixture.Hooks 'boy-scout-check.sh') '{}' 'deliver'
+            Assert ($rps.Exit -eq 0 -and $rsh.Exit -eq 0) `
+                "REGRESSION: queue-less deliver must exit 0: ps1=$($rps.Exit) sh=$($rsh.Exit)"
+            Assert ([string]::IsNullOrEmpty($rps.Out) -and [string]::IsNullOrEmpty($rsh.Out)) `
+                "REGRESSION: queue-less deliver scanned or spoke on a read-only prompt: ps1='$($rps.Out)' sh='$($rsh.Out)'"
+            Assert ($rps.Out -notmatch 'decision' -and $rsh.Out -notmatch 'decision') 'queue-less deliver output contained forbidden decision property'
+        } finally { Pop-Location; Remove-Item -LiteralPath $fixture.Dir -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'boy-scout twins agree: Claude Stop payload emits Claude context' {
+        $fixture = New-BoyScoutFixture $boyPs $boySh
+        $state = Join-Path $fixture.Repo '.claude\.state'
+        Push-Location $fixture.Dir
+        try {
+            $payload = '{"hook_event_name":"Stop"}'
+            $rps = Invoke-BoyScoutHook (Join-Path $fixture.Hooks 'boy-scout-check.ps1') $payload
+            Remove-Item -LiteralPath $state -Recurse -Force -ErrorAction SilentlyContinue
+            $rsh = Invoke-BoyScoutHook (Join-Path $fixture.Hooks 'boy-scout-check.sh') $payload
+            Assert ($rps.Exit -eq $rsh.Exit -and $rps.Exit -eq 0) 'Claude-mode exits differ or are non-zero'
+            $jps = $rps.Out | ConvertFrom-Json; $jsh = $rsh.Out | ConvertFrom-Json
+            Assert ($jps.hookSpecificOutput.hookEventName -eq 'Stop') 'PowerShell Claude event shape wrong'
+            Assert ($jsh.hookSpecificOutput.hookEventName -eq 'Stop') 'shell Claude event shape wrong'
+            Assert (-not [string]::IsNullOrWhiteSpace($jps.systemMessage)) 'PowerShell Claude systemMessage missing'
+            Assert (-not [string]::IsNullOrWhiteSpace($jsh.systemMessage)) 'shell Claude systemMessage missing'
+            Assert ($rps.Out -notmatch 'decision' -and $rsh.Out -notmatch 'decision') 'Claude output contained forbidden decision property'
+        } finally { Pop-Location; Remove-Item -LiteralPath $fixture.Dir -Recurse -Force -ErrorAction SilentlyContinue }
     }
 }
 

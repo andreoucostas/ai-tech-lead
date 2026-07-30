@@ -5,6 +5,17 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.35.0 — 2026-07-30
+
+- In GitHub Copilot, the Boy Scout nudge now runs when a turn ends instead of at the start of every
+  prompt. It no longer interrupts read-only questions or reports work before it is done; findings
+  are handed to the next prompt so the model still sees them. The new timing requires Copilot CLI
+  v1.0.72 or newer; older versions simply keep the previous behaviour. VS Code agent mode depends
+  on Preview agent hooks and remains unverified. No action is required.
+
+- `framework-doctor` no longer reports the write guard as inactive on Windows when `jq` is
+  installed in a way Windows PATH lookup cannot see. It now checks the way the guard itself would.
+
 ## 0.34.3 — 2026-07-21
 
 - `CLAUDE.md`/`AGENTS.md` — Leanness rule #7 ("no comments that restate code") now carries a short

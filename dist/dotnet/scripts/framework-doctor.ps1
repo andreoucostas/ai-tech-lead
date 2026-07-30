@@ -109,7 +109,26 @@ if ($hookPaths.Count -eq 0 -or $missingHooks.Count) {
 
 $bashWired = @($shells | Where-Object { $_ -eq 'bash' }).Count -gt 0
 if ($bashWired) {
-    if ((Has jq) -or (Has python3)) { Row OK 'Guard JSON parser' 'jq or python3 is available.' }
+    $bashParser = $null
+    $bashCommand = Get-Command bash -ErrorAction SilentlyContinue
+    if ($bashCommand) {
+        try {
+            $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+            $startInfo.FileName = $bashCommand.Source
+            $startInfo.Arguments = '--noprofile --norc -c "command -v jq >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1"'
+            $startInfo.UseShellExecute = $false
+            $startInfo.CreateNoWindow = $true
+            $process = New-Object System.Diagnostics.Process
+            $process.StartInfo = $startInfo
+            if ($process.Start()) {
+                if ($process.WaitForExit(3000)) { $bashParser = ($process.ExitCode -eq 0) }
+                else { $process.Kill() }
+            }
+            $process.Dispose()
+        } catch { $bashParser = $null }
+    }
+    if ($null -eq $bashParser) { $bashParser = (Has jq) -or (Has python3) }
+    if ($bashParser) { Row OK 'Guard JSON parser' 'jq or python3 is available.' }
     else { Row MISSING 'Guard JSON parser' 'the bash write guard is INACTIVE and allows writes with only a warning. Fix: install jq.' }
 } else { Row OK 'Guard JSON parser' 'not required by the wired PowerShell hooks.' }
 

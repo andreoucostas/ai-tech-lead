@@ -11,6 +11,30 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.35.0 (2026-07-30)
+
+Fixes the Copilot Boy Scout nudge firing on the wrong event. It was originally registered on
+`userPromptSubmitted` because Copilot had no known turn-end event and, since CLI v1.0.65 (hardened
+in v1.0.76), that event injects `additionalContext` into the model-facing prompt. That meant the
+hook ran before the prompt's work, including read-only turns, and could only report the previous
+turn's diff. CLI v1.0.72 introduced `agentStop`, the true per-turn analogue of Claude Code's
+unchanged `Stop` registration, but its documented output supports blocking rather than context
+injection. WSD-024 therefore separates timing from delivery: `agentStop` scans and queues findings;
+the next `userPromptSubmitted` delivers them without scanning.
+
+We deliberately rejected `decision: "block"` at `agentStop`: the Boy Scout check is advisory, and
+blocking would force extra turns on one surface while still terminating after Copilot's
+eight-consecutive-block loop cap. VS Code agent mode remains unverified because agent hooks are
+Preview/off by default and may spell the event `Stop`. The shipped hook headers also correct a
+long-standing false claim: a Claude Stop hook's blocking `reason` is delivered to Claude as a
+system reminder, not shown only to the user (that behavior belongs to the separate `stopReason`).
+
+Fixes `framework-doctor` falsely reporting the guard JSON parser as MISSING on Windows when `jq`
+is an extensionless binary, or is otherwise invisible to PATHEXT-based command resolution. The
+PowerShell doctor consequently diverged from its bash twin and broke invariant #3 twin parity.
+The parser probe now runs from bash's vantage point because `guard.sh` is the component that needs
+the parser.
+
 ## 0.34.3 (2026-07-21)
 
 Sharpens Leanness rule #7 ("no comments that restate code") with a concrete Bad/Good example in the
