@@ -267,6 +267,73 @@ Code hedge; this item either upgrades the CLI row to verified or triggers the fa
 B-43 (recert cadence — run this in the same quarterly slot), B-50 (the sibling `postToolUse`
 capability-honesty item from drill #0), B-03 (original canary design).
 
+### B-53 · `release.ps1` can print "Release complete" while shipping nothing
+**Effort:** S · **Priority:** P1 release integrity · **Invariants:** #7
+
+**Why:** the commit+push step runs `git -C $repo push origin master` — it pushes the branch **by
+name**, not the commit it just created. During the v0.35.0 release the repo was on a **detached
+HEAD** (and had been for three releases); the release commit landed on that detached HEAD,
+`push origin master` pushed the *unchanged* local `master` ref, exited 0, and the script printed
+`Release 0.35.0 complete.` Nothing reached `origin`. There is no precondition asserting HEAD is on
+the expected branch, and no postcondition asserting `origin/master` actually advanced to the new
+commit — so the one thing a release script exists to guarantee is unverified. This is not
+hypothetical drift: the v0.34.3 root CHANGELOG entry is scar tissue from an earlier instance of the
+same class ("replayed here as v0.34.3 to resolve the version collision … that shipped on `master`").
+
+**Do:** (a) refuse to run when HEAD is detached or not on the expected branch, unless an explicit
+override is passed; (b) push the commit explicitly (`HEAD:master`) instead of by branch name;
+(c) after pushing, re-read `origin/master` and fail loudly unless it equals the release commit;
+(d) apply the same postcondition to the eval-results push. Consider also warning when the target
+branch is checked out in another worktree — that is what let the divergence persist unnoticed.
+
+### B-54 · Shipped changelog dates are never stamped, and no gate rejects the placeholder
+**Effort:** S · **Priority:** P2 gate lies by omission · **Invariants:** #7
+
+**Why:** `release.ps1` rewrites `Unreleased` → today's date in the **root** `CHANGELOG.md` only. The
+three shipped changelogs (`src/stacks/*/files/CHANGELOG.md`) are never touched, and the
+`template-checks` version-stamp gate parses only the version *number* out of the head entry
+(`^## (\d+\.\d+\.\d+)`), so `## 0.35.0 — Unreleased` satisfies it. v0.35.0 came within one manual
+catch of shipping the literal word "Unreleased" to consumers as its release date.
+
+**Do:** extend the release stamping to the shipped changelogs, **and** make `template-checks` fail
+when a shipped changelog head entry carries a placeholder instead of a date — belt and braces, so
+the gate still catches it when an entry is hand-authored outside the release script.
+
+### B-55 · Vendor-behavior facts are restated across ~6 shipped surfaces with no single source
+**Effort:** M · **Priority:** P2 doc truth · **Invariants:** #5, #6
+
+**Why:** claims about what Copilot/Claude actually do are duplicated in
+`docs/enforcement-surfaces.md`, the `hooks.json` `_comment`, the three stack `README.md` hook tables,
+all six `boy-scout-check` headers, and `docs/presentation/framework-technical.html`. When Copilot
+shipped `agentStop`, **five** of those surfaces still asserted "Copilot has no equivalent event", and
+a README asserted "Copilot does not consume hook stdout for this event" while
+`enforcement-surfaces.md` said the opposite **in the same commit**. Separately, a factually wrong
+claim (a Stop hook's `decision:"block"` `reason` "is shown only to the user" — it is shown to Claude;
+the confusion was with `stopReason`) survived in six hook headers for months. `DocTruth` covers
+internal repo facts (paths, version stamps); nothing tests prose about *external* behavior.
+
+**Do:** pick one canonical home for vendor-capability claims (`enforcement-surfaces.md` is the
+natural one) and have the other surfaces point at it rather than restate it. Where a restatement is
+genuinely load-bearing, back it with a small machine-checkable registry (event name → minimum
+version → date verified) that a gate can diff against the shipped surfaces. Cheap first step: a gate
+that greps shipped files for a denylist of *superseded* claims, so the next vendor change fails a
+gate instead of quietly making six files wrong.
+
+### B-56 · Host-dependent capability probes make gate outcomes machine-dependent
+**Effort:** S · **Priority:** P2 · **Invariants:** #3
+
+**Why:** `framework-doctor`'s "Guard JSON parser" row asked PowerShell's `Get-Command jq` (Windows
+PATH + PATHEXT) while *reporting on* `guard.sh`, which runs under bash. On a machine where `jq` is an
+extensionless binary, the twins disagreed (PS `[MISSING]`, bash `[OK]`), the twin-parity test failed,
+and — because `release.ps1` gates on the hook suites — **every release was blocked** until it was
+diagnosed. Fixed for that row in v0.35.0 by probing from bash's vantage point, but the class is open:
+a check that asks the wrong shell about another surface's capability yields a different verdict per
+machine, and the fixtures exercise the real host rather than a pinned environment.
+
+**Do:** audit the doctor's remaining probes for the same shape — where a check is about surface X's
+capability, ask X. Pin the probe environment in the twin-parity fixtures so a maintainer's local tool
+layout cannot decide whether a gate passes.
+
 ### B-44 · Host-native overlap watch — retirement triggers for framework machinery
 **Effort:** S · **Invariants:** #7
 
