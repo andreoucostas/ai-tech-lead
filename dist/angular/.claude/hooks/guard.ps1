@@ -36,6 +36,7 @@ $reasons = @()
 if ($fp -match '\.cs$') {
     if ($content -match '#pragma\s+warning\s+disable') { $reasons += "adds '#pragma warning disable' — Verification Rule #7: failures are signals, fix the cause" }
     if ($content -match '\[(Fact|Theory)\([^)]*Skip\s*=') { $reasons += "skips a test via [Fact/Theory(Skip=...)] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
+    if ($content -cmatch '(?m)^\s*\[([^]]*[,\s])?(Ignore)(Attribute)?\s*[\](,=]') { $reasons += "skips a test via [Ignore] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
     if ($content -match 'Assert\.True\(\s*true\s*[),]' -or $content -match 'Assert\.False\(\s*false\s*[),]') { $reasons += "adds a tautological assertion (Assert.True(true) / Assert.False(false)) — assert observable behaviour, not a constant (Test leanness #15)" }
 }
 if ($fp -match '\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$') {

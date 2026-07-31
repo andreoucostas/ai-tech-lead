@@ -15,7 +15,7 @@ description: >
 
 # Enforce standards deterministically (.NET + Angular)
 
-The write-time guard hook blocks floor violations — .NET: `#pragma warning disable`, `[Fact(Skip=…)]`, and tautological asserts; Angular: `eslint-disable`, `@ts-ignore`, and `fit`/`xit` — but only on surfaces where hooks run. This skill wires the same floor into the **build / lint step**, where it binds every developer, every agent, and CI. Pairs with `docs/ci-integration.md` (leg 2) and `docs/enforcement-surfaces.md`. This repo has two stacks; apply the section for the stack you are hardening (a repo-wide hardening does both).
+The write-time guard hook blocks floor violations — .NET: `#pragma warning disable`, skipped tests across xUnit `[Fact(Skip=…)]` and NUnit/MSTest `[Ignore]`, and tautological asserts; Angular: `eslint-disable`, `@ts-ignore`, and `fit`/`xit` — but only on surfaces where hooks run. This skill wires the same floor into the **build / lint step**, where it binds every developer, every agent, and CI. Pairs with `docs/ci-integration.md` (leg 2) and `docs/enforcement-surfaces.md`. This repo has two stacks; apply the section for the stack you are hardening (a repo-wide hardening does both).
 
 ### .NET — compiler + analyzers
 

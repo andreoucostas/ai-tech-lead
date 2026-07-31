@@ -5,6 +5,9 @@
 $GuardCases = @(
     @{ n='cs #pragma warning disable';         f='src/Foo.cs';                c='#pragma warning disable CS8602';                       block=$true }
     @{ n='cs [Fact(Skip=...)]';                f='tests/FooTests.cs';         c='[Fact(Skip="flaky")] public void T(){}';               block=$true }
+    @{ n='cs NUnit [Test, Ignore(...)]';       f='tests/FooTests.cs';         c='[Test, Ignore("flaky")] public void T(){}';            block=$true }
+    @{ n='cs MSTest [Ignore] attribute';       f='tests/FooTests.cs';         c='[Ignore]';                                             block=$true }
+    @{ n='cs NUnit [TestCase(.. Ignore = ..)]';f='tests/FooTests.cs';         c='[TestCase(1, Ignore = "flaky")]';                      block=$true }
     @{ n='cs Assert.True(true) tautology';     f='tests/FooTests.cs';         c='Assert.True(true);';                                   block=$true }
     @{ n='ts eslint-disable';                  f='src/app.ts';                c='// eslint-disable-next-line';                          block=$true }
     @{ n='ts @ts-ignore';                      f='src/app.ts';                c='// @ts-ignore';                                        block=$true }
@@ -26,6 +29,10 @@ $GuardCases = @(
     @{ n='clean .cs (allow)';                  f='src/Foo.cs';                c='public int Add(int a, int b) => a + b;';               block=$false }
     @{ n='clean .spec.ts real assertion';      f='src/app.spec.ts';           c="it('adds', () => { expect(add(1,2)).toBe(3); });";     block=$false }
     @{ n='RxJS skip() not a test-skip';        f='src/stream.spec.ts';        c='source$.pipe(skip(1)).subscribe();';                   block=$false }
+    @{ n='cs [JsonIgnore] near-miss (allow)';  f='src/Dto.cs';                c='[JsonIgnore] public int Id { get; set; }';             block=$false }
+    @{ n='cs enum Ignore member (allow)';      f='src/Mode.cs';               c='public enum Mode { None, Ignore, All }';               block=$false }
+    @{ n='cs lowercase ignore arg (allow)';    f='src/Handler.cs';            c='Handle(evt, ignore, ctx);';                            block=$false }
+    @{ n='cs NUnit [Explicit] (allow by design)'; f='tests/FooTests.cs';      c='[Test, Explicit] public void T(){}';                   block=$false }
     @{ n='credential in *Tests* file (allow)'; f='tests/AuthServiceTests.cs'; c='var password = "hunter2hunter2";';                     block=$false }
     @{ n='passwordless connection string';     f='src/AuthService.cs';        c='var connectionString = "Server=localhost;Trusted_Connection=True";'; block=$false }
     @{ n='near-miss fine-grained PAT';         f='src/deploy.cs';             c='var t = "github_pat_too_short";';                       block=$false }

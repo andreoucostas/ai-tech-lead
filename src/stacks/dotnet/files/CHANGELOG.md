@@ -4,6 +4,26 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.37.0 — 2026-07-31
+
+- **The write guard now catches skipped tests in NUnit and MSTest, not just xUnit.** It already
+  blocked `[Fact(Skip="…")]` at write time; it now also blocks `[Ignore]` and `[Ignore("reason")]`,
+  including NUnit's per-case `[TestCase(…, Ignore = "…")]`. If your repo uses NUnit or MSTest you were
+  previously getting a weaker floor than an xUnit repo — an agent could silently skip a test and the
+  guard would not object. Both the PowerShell and bash versions of the hook were updated together, and
+  the message is the same one you already see for xUnit skips.
+
+  **`[Explicit]` is deliberately still allowed.** It is a legitimate NUnit marker for opt-in
+  long-running or manual tests, and blocking it would make the framework stricter on NUnit than on
+  xUnit. If you use `[Explicit]` to park a broken test, that is a skip in spirit and the no-skipping
+  convention still applies — the guard just will not stop you.
+
+  The check looks at attribute lines only, so ordinary code like `public enum Mode { None, Ignore, All }`
+  and serialization attributes like `[JsonIgnore]` are unaffected. Known limitation: an attribute list
+  split across several lines is not detected — the same limitation the xUnit check has always had.
+
+  **No action required.**
+
 ## 0.36.0 — 2026-07-31
 
 - **The framework no longer assumes your tests are xUnit.** If your repo already has a test suite —

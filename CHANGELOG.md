@@ -11,6 +11,48 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.37.0 (2026-07-31)
+
+The enforcement half of B-57, split from 0.36.0 because a regex in the write-time guard can hard-block
+ordinary C# and that risk should not ride along with prose changes.
+
+The guard blocked xUnit's `[Fact(Skip=…)]` but let NUnit's and MSTest's `[Ignore]` through, so an
+NUnit repo got a strictly weaker floor than an xUnit one while the framework advertised a
+deterministic backstop. Both twins now also block `[Ignore]`, including NUnit's per-case
+`[TestCase(…, Ignore = "…")]` — the direct structural analogue of `[Fact(Skip=…)]` and the pattern most
+likely to be reached for.
+
+The pattern is anchored to an attribute-list line rather than matching `Ignore` anywhere, and this
+matters: the `.cs` branch is not scoped to test files, so an unanchored pattern hard-blocks
+`public enum Mode { None, Ignore, All }` — ordinary production C#. Four properties are load-bearing and
+were each verified by execution on both engines before shipping:
+
+1. **Line-anchored** (`^\s*\[`), or the enum above blocks on both twins.
+2. **`-cmatch`, not `-match`.** PowerShell's default is case-insensitive and bash's `grep -E` is not,
+   so `Handle(evt, ignore, ctx);` would block on Windows and pass on Linux. Twin parity is asserted
+   byte-for-byte, so that divergence fails the release.
+3. **POSIX bracket syntax in the bash twin**: `]` first in the class (`[](,=]`), and `[[:space:]]`
+   rather than `\s`, which BSD grep does not support. An earlier draft used `[\](,]` and `\s`, which
+   makes `grep` exit 2 — and because the check is `grep -Eq … && reasons+=(…)`, that silently disables
+   the check on the `.sh` twin while `.ps1` blocks.
+4. **`=` in the trailing class**, without which `[TestCase(1, Ignore = "flaky")]` is missed.
+
+`[Explicit]` is deliberately **not** blocked. It is a legitimate NUnit marker for opt-in
+long-running or manual tests and xUnit has no blocked equivalent; blocking it would make the framework
+stricter on NUnit than on xUnit — the mirror image of the complaint that started this. Known limitation,
+shared with the existing `[Fact(Skip=)]` check and not papered over: both engines are line-oriented, so
+a multi-line attribute list is not caught.
+
+Seven fixture cases were added to the shared table that feeds both `Guard.Tests` and `TwinParity.Tests`,
+so they run across both twins and both surfaces. Four are `block=$false` — `[JsonIgnore]`, the enum, a
+lowercase `ignore` argument, and `[Explicit]` — because the false positives are the failure mode that
+would actually hurt a consumer. Red-tested before the fix (all three skip forms exited 0, with
+`[Fact(Skip=)]` exiting 2 as a control) and after (8/8 Claude surface, 9/9 bash twin, Copilot surface
+emitting `permissionDecision: deny`).
+
+`enforce-standards` no longer claims the guard blocks only `[Fact(Skip=…)]`, which this change would
+otherwise have made false on exactly the NUnit repos it now protects.
+
 ## 0.36.0 (2026-07-31)
 
 Stops the framework asserting xUnit at repos that already use something else. A field report from a

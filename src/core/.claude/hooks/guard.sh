@@ -75,6 +75,8 @@ case "$fp" in
       && reasons+=("adds '#pragma warning disable' — Verification Rule #7: failures are signals, fix the cause")
     printf '%s' "$content" | grep -Eq '\[(Fact|Theory)\([^)]*Skip[[:space:]]*=' \
       && reasons+=("skips a test via [Fact/Theory(Skip=...)] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)")
+    printf '%s' "$content" | grep -Eq '^[[:space:]]*\[([^]]*[,[:space:]])?(Ignore)(Attribute)?[[:space:]]*[](,=]' \
+      && reasons+=("skips a test via [Ignore] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)")
     { printf '%s' "$content" | grep -Eq 'Assert\.True\([[:space:]]*true[[:space:]]*[),]' \
       || printf '%s' "$content" | grep -Eq 'Assert\.False\([[:space:]]*false[[:space:]]*[),]'; } \
       && reasons+=("adds a tautological assertion (Assert.True(true) / Assert.False(false)) — assert observable behaviour, not a constant (Test leanness #15)")

@@ -4,6 +4,16 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.37.0 — 2026-07-31
+
+- No change to Angular behaviour. The write guard gained a check for skipped .NET tests
+  (NUnit/MSTest `[Ignore]`), which only applies to `.cs` files. The guard is one shared hook across
+  all distributions, so the file changed here too, but nothing in an Angular repo is affected — the
+  spec-file checks (`fit`/`fdescribe`/`xit`/`.only`/`.skip`, tautological `expect`) and the
+  TypeScript checks (`eslint-disable`, `@ts-ignore`) are untouched.
+
+  **No action required.**
+
 ## 0.36.0 — 2026-07-31
 
 - **`add-tests` now starts with an explicit evidence gate.** Before writing a spec it must read your

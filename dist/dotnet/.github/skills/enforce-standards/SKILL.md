@@ -12,8 +12,8 @@ description: >
 
 # Enforce standards deterministically (.NET — compiler + analyzers)
 
-The write-time guard hook blocks `#pragma warning disable`, `[Fact(Skip=…)]`, and tautological
-asserts — but only on surfaces where hooks run. This skill wires the same floor into the
+The write-time guard hook blocks `#pragma warning disable`, skipped tests across xUnit
+`[Fact(Skip=…)]` and NUnit/MSTest `[Ignore]`, and tautological asserts — but only on surfaces where hooks run. This skill wires the same floor into the
 **build**, where it binds every developer, every agent, and CI. Pairs with `docs/ci-integration.md`
 (leg 2) and `docs/enforcement-surfaces.md`.
 
