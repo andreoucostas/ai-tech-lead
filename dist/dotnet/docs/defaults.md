@@ -71,11 +71,26 @@ Data-access defaults are conditional on what the repo evidences in csproj packag
 - Use `LoggerMessage` source generators for hot paths.
 
 ### Testing
+Test-framework defaults are conditional on what the repo already evidences. Detect first, then apply
+the matching block.
+
+**Detect** — read the test projects' `.csproj` package references:
+`xunit*` → xUnit · `NUnit` / `NUnit3TestAdapter` → NUnit · `MSTest.TestFramework` → MSTest.
+Mocking: `NSubstitute` · `Moq` · `FakeItEasy`. Assertions: `FluentAssertions` · `Shouldly` · built-in.
+
+**If a test suite already exists (any framework):**
+- Mirror it — the runner, mocking library, assertion library, naming convention, and base
+  fixtures/builders already in use.
+- Do not introduce a second test framework alongside it. If the existing one is genuinely wrong for
+  the job, raise it in `TECH_DEBT.md` and get a human decision rather than migrating as a side effect
+  of adding tests.
+
+**If no test suite exists anywhere in the solution (greenfield only):**
+- Unit tests: xUnit + NSubstitute. Integration tests: `WebApplicationFactory`.
+- Test naming: `MethodName_Scenario_ExpectedResult`.
+
 - No test suite yet? Use the `add-tests` skill — its suite-bootstrap mode scaffolds the harness and first risk-first tests.
 - Every public behavior has a test. Test behavior, not implementation details.
-- Unit tests use xUnit + NSubstitute (or project's chosen stack).
-- Integration tests use `WebApplicationFactory`.
-- Test naming: `MethodName_Scenario_ExpectedResult`.
 
 ### Test shape
 Choose the level by what the test actually exercises — *push each test to the lowest level that still runs real behavior; test at the boundary, not the mock.* A heuristic, not a fixed ratio; `/bootstrap` replaces it with the shape your codebase warrants.

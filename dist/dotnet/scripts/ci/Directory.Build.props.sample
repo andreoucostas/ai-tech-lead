@@ -5,7 +5,7 @@
   Also append to the repo .editorconfig (test-integrity severities; extend as the team agrees):
 
     [*.cs]
-    # A skipped test fails the build (same floor the write-time guard hook enforces at edit time).
+    # xUnit only: a skipped test fails the build. For NUnit/MSTest, use enforce-standards step 2.
     dotnet_diagnostic.xUnit1004.severity = error
     # Unnecessary suppressions are themselves flagged.
     dotnet_diagnostic.IDE0079.severity = warning

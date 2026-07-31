@@ -38,7 +38,7 @@ $ARGUMENTS
    - **API / HTTP** — typed services, interceptors, environment URLs
    - **Typing** — strict, no `any`, interfaces over classes
    - **Styling** — encapsulation, scoping, global rules
-   - **Testing** — test name format, framework choice
+   - **Testing** — name the framework evidenced in `CLAUDE.md > Conventions`; if absent, require mirroring the existing suite
    - **Boy Scout (always-apply items only)** — the numbered list from CLAUDE.md's "Always apply" subsection
 
 5. Hard limits:

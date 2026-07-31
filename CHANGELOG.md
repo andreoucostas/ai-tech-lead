@@ -11,6 +11,49 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.36.0 (2026-07-31)
+
+Stops the framework asserting xUnit at repos that already use something else. A field report from a
+brownfield .NET install on NUnit: the reviewer's complaint was that the framework kept pushing xUnit
+instead of following the suite already in place. It was right. Verification Rule #10
+("Derive, don't assume") already names *test framework* as a category requiring evidence, and
+`/bootstrap` Phase 3a already forbids naming an unevidenced technology — but six shipped surfaces
+bypassed both and stated xUnit as fact. Brownfield is where it bit hardest: the installer detects
+pre-existing AI tooling, `/bootstrap` hard-stops and redirects to `/adopt`, so there is a real window
+where `Conventions` is unpopulated and those surfaces are the only thing reaching the model.
+
+This release fixes the guidance half (B-57). `docs/defaults.md` § Testing is restructured into
+evidence-keyed blocks exactly as B-35 did for Data Access — a **Detect** step, an **existing suite →
+mirror it** block, and a **greenfield only** block that is now the sole home of xUnit + NSubstitute
+and of `MethodName_Scenario_ExpectedResult` (an xUnit house style that an NUnit repo has no reason to
+adopt). `copilot-instructions.md` drops the unconditional `xUnit + NSubstitute` line for a mirror-first
+pair within the file's 120-char-per-rule contract, and `generate-copilot` is told to emit the
+*evidenced* framework. `add-tests` gains a Step-1 evidence gate naming Rule #10, and its suite-bootstrap
+mode must now confirm the whole solution is test-free before proposing anything — the .NET branch had
+hardcoded while the Angular branch already derived the runner from `angular.json`. `enforce-standards`
+step 2 becomes evidence-keyed across xUnit (`xUnit1004`), MSTest (`MSTEST0015` — verified against
+Microsoft's docs: ships in MSTest.Analyzers 3.3+, severity Info, opt-in from 3.8 and not enabled even
+by `MSTestAnalysisMode=All`), and NUnit, which genuinely has no ignored-test analyzer and so gets a
+build-failing CI grep instead. `ArchitectureTests.sample.cs` — copied verbatim into consumer repos —
+now says how to translate off xUnit, since it would not otherwise compile on an NUnit repo.
+
+The enforcement half ships separately in 0.37.0: the write-time guard blocks `[Fact(Skip=…)]` but lets
+NUnit and MSTest skips through, so an NUnit repo currently gets a weaker floor than an xUnit one. It is
+split out because a regex there can hard-block ordinary C#, and that risk should not ride along with
+prose changes.
+
+Deliberately unchanged: `tests/impact/tasks.json` names xUnit in its prompt, which is a direct
+instruction to the agent (and the harness runs against a scratch repo with no suite, i.e. the
+greenfield branch), plus the held-constant prompt is what makes A/B scoring meaningful.
+
+Two gaps found while verifying and **not** fixed here. `template-checks` mirrors only Verification
+Rules / Leanness / SOLID / Boy Scout — the `## Common Tasks` skills list is ungated and had already
+drifted between `CLAUDE.md` and `AGENTS.md` in all three dists with every gate green. Adding a verbatim
+section diff is the wrong fix: `AGENTS.md`'s Common Tasks is deliberately condensed. A skill-slug-set
+comparison is the right one, logged as B-58. Also, this repo was on a detached HEAD with local `master`
+two commits behind `origin/master` (an abandoned scratchpad worktree held the branch) — precisely the
+B-53 condition. Resolved by detaching that worktree rather than deleting it.
+
 ## 0.35.0 (2026-07-30)
 
 Fixes the Copilot Boy Scout nudge firing on the wrong event. It was originally registered on

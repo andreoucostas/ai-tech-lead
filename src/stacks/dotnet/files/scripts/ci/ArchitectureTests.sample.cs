@@ -1,6 +1,8 @@
 // Sample NetArchTest architecture tests — copy into your test project and adjust the namespaces.
 // Makes SOLID's dependency-direction (DIP / Clean Architecture) a BUILD-BREAKING gate, complementing
 // the semantic `solid-check` agent. Requires the `NetArchTest.Rules` NuGet package.
+// Translate to the repo's framework: NUnit uses `NUnit.Framework` + `[Test]`; MSTest uses
+// `Microsoft.VisualStudio.TestTools.UnitTesting` + `[TestMethod]`.
 //
 // Scaffolded by the `enforce-architecture` skill. See CLAUDE.md > SOLID.
 using NetArchTest.Rules;

@@ -4,6 +4,22 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.36.0 — 2026-07-31
+
+- **`add-tests` now starts with an explicit evidence gate.** Before writing a spec it must read your
+  workspace config and a sibling `*.spec.ts` to establish the runner you actually use — Karma/Jasmine,
+  Jest, or Vitest — along with your `TestBed` setup, HTTP mocking approach, harnesses, and shared
+  fixtures, then mirror them. Introducing a second test runner alongside the one you already use is
+  explicitly forbidden. This was already the skill's habit; it is now a required first step rather
+  than advice.
+
+- `docs/defaults.md` says the same thing up front: the spec runner and assertion style are read from
+  your workspace config and existing specs, never assumed.
+
+  **No action required.** This release mostly hardens the .NET side of the framework, where testing
+  guidance had been naming a specific framework as fact; the Angular guidance was already written
+  against Angular platform APIs rather than a particular runner.
+
 ## 0.35.0 — 2026-07-30
 
 - In GitHub Copilot, the Boy Scout nudge now runs when a turn ends instead of at the start of every

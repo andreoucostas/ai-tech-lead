@@ -48,7 +48,9 @@ When generating code in this repo, follow these rules. The full conventions, arc
 - Encapsulated component styles (`ViewEncapsulation.Emulated`); `:host` for component-level styling; global styles only in `styles.scss`.
 
 ## Testing (both stacks)
-- .NET: naming `MethodName_Scenario_ExpectedResult`; xUnit + NSubstitute; integration via WebApplicationFactory. Angular: naming `should [expected behavior] when [condition]`; TestBed + harnesses; HTTP via `provideHttpClientTesting`.
+- .NET: mirror the existing test framework, mocking library, and naming — never add a second one.
+- .NET: no suite anywhere? xUnit + NSubstitute; `MethodName_Scenario_ExpectedResult`; WebApplicationFactory.
+- Angular: `should [expected behavior] when [condition]`; TestBed + harnesses; HTTP: `provideHttpClientTesting`.
 - Test behavior, not implementation; no tautological assertions; no over-mocking; never skip a failing test.
 - Tests are deterministic and hermetic: no real network, clock, randomness, or order dependence; no `fdescribe`/`fit`/`xdescribe`/`xit` committed.
 

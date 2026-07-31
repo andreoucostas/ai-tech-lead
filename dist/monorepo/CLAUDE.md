@@ -1,8 +1,8 @@
 <!--
 ai-tech-lead-framework
   template: monorepo
-  version: 0.35.0
-  applied: 2026-07-30
+  version: 0.36.0
+  applied: 2026-07-31
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
 # [Project Name]
@@ -136,7 +136,7 @@ Recipes live as **skills**, auto-discovered by both Claude Code (`.claude/skills
 - `add-service` — add an HTTP / business-logic / signal-store service
 - `add-lazy-route` — add a lazy-loaded route with optional guards/resolvers
 - `add-signal-store` — add a signal-based shared-state store
-- `add-tests` — add tests following project patterns (.NET: xUnit + `WebApplicationFactory`; Angular: TestBed + `HttpTestingController`, harnesses, store state-transition tests)
+- `add-tests` — add tests following the repo's existing test framework and fixtures (.NET); TestBed + `HttpTestingController`, harnesses, store state-transition tests (Angular)
 - `dependency-audit` — scan for vulnerable/deprecated/outdated NuGet and npm packages and set up automated dependency scanning (Dependabot or Renovate)
 - `create-adr` — record a significant architecture decision in Architecture Decisions
 - `remember-for-team` — draft a team wiki entry (gotcha/context/recipe/failed-approach) for PR review

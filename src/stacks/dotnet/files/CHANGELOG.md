@@ -4,6 +4,41 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.36.0 — 2026-07-31
+
+- **The framework no longer assumes your tests are xUnit.** If your repo already has a test suite —
+  NUnit, MSTest, or xUnit — the agent is now required to detect it and mirror it: the runner, the
+  mocking library, the assertion library, the naming convention, and your existing base fixtures.
+  Introducing a second test framework alongside the one you already use is now explicitly forbidden;
+  if the agent thinks your framework is the wrong choice, it must raise that in `TECH_DEBT.md` for a
+  human decision instead of migrating you as a side effect of "add some tests".
+
+  Previously several files stated xUnit + NSubstitute as fact — including
+  `.github/copilot-instructions.md`, which Copilot reads on every inline completion. On a non-xUnit
+  repo that was simply wrong, and most visible before `/bootstrap` had populated
+  `CLAUDE.md > Conventions`. xUnit + NSubstitute now appears only as the greenfield default, for when
+  there is no test suite anywhere in the solution. The `MethodName_Scenario_ExpectedResult` naming
+  rule moved with it — if your suite names tests differently, the agent follows your convention.
+
+  **No action required.** If you have already run `/bootstrap`, your `Conventions > Testing` section
+  was already authoritative and stays so. If you want the Copilot digest regenerated from it, run
+  `/generate-copilot`.
+
+- **`add-tests` now starts with an evidence gate.** Before writing a test it reads your test projects'
+  package references and greps a sibling test class, and it only proposes a framework after confirming
+  the whole solution has no test project — not just the folder next to the code under test.
+
+- **`enforce-standards` covers all three test frameworks.** It previously offered only the xUnit
+  skipped-test analyzer, so an NUnit or MSTest repo silently got no build-time protection against
+  skipped tests. It now applies the analyzer matching your framework — `xUnit1004` for xUnit,
+  `MSTEST0015` for MSTest (note: it ships in MSTest.Analyzers 3.3+ at severity Info and is opt-in from
+  3.8, so the `.editorconfig` entry is required). NUnit has no equivalent analyzer, so the skill wires
+  a build-failing CI check over your test root instead.
+
+- **`scripts/ci/ArchitectureTests.sample.cs` now tells you how to translate it.** The sample is xUnit
+  and gets copied into your test project by `enforce-architecture`; on an NUnit or MSTest repo it would
+  not compile. It now carries the attribute and `using` swap for both.
+
 ## 0.35.0 — 2026-07-30
 
 - In GitHub Copilot, the Boy Scout nudge now runs when a turn ends instead of at the start of every

@@ -4,7 +4,7 @@ description: >
   Use when the user wants to add or improve test coverage for existing code in this mixed
   .NET + Angular codebase — on the .NET side a service, handler, controller, or endpoint; on the
   Angular side a component, service, signal store, pipe, guard, or interceptor that already exists.
-  Covers .NET unit tests (xUnit) and integration tests (WebApplicationFactory), Angular spec
+  Covers .NET unit and integration tests in whatever framework the repo already uses, Angular spec
   structure (TestBed, HttpTestingController, component harnesses, signal/store state-transition
   tests), and behavior-first assertions on both.
   USE FOR: backfilling tests on untested code, adding edge/error-path cases, writing a regression
@@ -19,10 +19,16 @@ description: >
 
 Match `CLAUDE.md > Conventions > Testing` and the Test leanness rules in `CLAUDE.md > Leanness`. If conventions are unbootstrapped, follow `docs/defaults.md`. Apply the section for the stack of the code under test.
 
-1. **Find the existing pattern first.** `Grep` for a sibling test to mirror, and reuse what you find — do not introduce parallel test infrastructure (Verification Rule #6, Test leanness #13).
-   - **.NET:** a sibling test class — framework (xUnit/NUnit/MSTest), mocking library (NSubstitute/Moq), naming convention, and any base fixtures, builders, or `WebApplicationFactory` subclasses.
+1. **Evidence gate — derive, don't assume.** Apply Verification Rule #10 before writing a test.
+   - **.NET:** read every test project's `.csproj` package references, then `Grep` a sibling test
+     class. Detect the runner, mocking library, assertion library, naming convention, and base
+     fixtures, builders, or `WebApplicationFactory` subclasses. Mirror everything found; never
+     introduce a second test framework or parallel infrastructure (Verification Rule #6, Test
+     leanness #13). On an NUnit suite, `[Explicit]` is a legitimate opt-in marker for long-running
+     or manual tests, but `[Ignore]` is a skip and stays subject to the project's no-skipping rule
+     — as does MSTest's `[Ignore]` and xUnit's `[Fact(Skip=…)]`.
    - **Angular:** a sibling `*.spec.ts` — runner (Karma/Jasmine, Jest, or Vitest), `TestBed` setup, `HttpTestingController` usage, component harnesses, and any shared fixtures/builders/HTTP mocks.
-   - If no test project or spec files exist at all for the touched stack, switch to **Suite bootstrap mode** below.
+   - If nothing is found anywhere for the touched stack, switch to **Suite bootstrap mode** below.
 2. **Decide the level.**
    - **.NET:** Pure logic / branching → unit test against the concrete class. Full HTTP path (routing, model binding, middleware, auth, serialization) → integration test via `WebApplicationFactory<Program>`.
    - **Angular:**
@@ -58,7 +64,12 @@ When the goal is to make untested legacy code *safe to change* (e.g. before `/re
 
 ## Suite bootstrap mode — when a stack has no tests
 
-1. **Confirm before scaffolding.** In one message, ask the developer to confirm the test framework and location. Prefer `CLAUDE.md > Conventions > Testing`. If unbootstrapped, propose xUnit + NSubstitute for .NET; for Angular, inspect `angular.json` and propose the workspace's configured builder and runner (Jasmine/Karma or Jest). This is a real checkpoint — do not create files until they answer.
+1. **Confirm before scaffolding.** In one message, ask the developer to confirm the test framework
+   and location. Prefer `CLAUDE.md > Conventions > Testing`. For .NET, first inspect the whole
+   solution and confirm no test project exists anywhere; only if it is genuinely test-free and
+   conventions are unbootstrapped, propose xUnit + NSubstitute. For Angular, inspect `angular.json`
+   and propose the workspace's configured builder and runner (Jasmine/Karma or Jest). This is a
+   real checkpoint — do not create files until they answer.
 2. **Scaffold the minimum.**
    - **.NET:** create one unit-test project referencing the primary domain/application project and add it with `dotnet sln add`. Only for an HTTP surface, add one `WebApplicationFactory<Program>` fixture; minimal APIs may require `public partial class Program` or `InternalsVisibleTo`.
    - **Angular:** keep specs colocated and create only the configuration and shared setup needed for `ng test`; add one integration-style fixture only for an HTTP surface.

@@ -127,8 +127,8 @@
         },
         {
           "path": ".claude/skills/add-tests/SKILL.md#frontmatter",
-          "chars": 724,
-          "tok": 181
+          "chars": 735,
+          "tok": 184
         },
         {
           "path": ".claude/skills/add-warehouse-load/SKILL.md#frontmatter",
@@ -152,8 +152,8 @@
         },
         {
           "path": ".claude/skills/enforce-standards/SKILL.md#frontmatter",
-          "chars": 630,
-          "tok": 158
+          "chars": 649,
+          "tok": 162
         },
         {
           "path": ".claude/skills/map-warehouse/SKILL.md#frontmatter",
@@ -177,20 +177,20 @@
         },
         {
           "path": "CLAUDE.md",
-          "chars": 24592,
-          "tok": 6148
+          "chars": 24598,
+          "tok": 6150
         }
       ],
       "static.copilot": [
         {
           "path": ".github/copilot-instructions.md",
-          "chars": 3251,
-          "tok": 813
+          "chars": 3358,
+          "tok": 840
         },
         {
           "path": "AGENTS.md",
-          "chars": 22165,
-          "tok": 5541
+          "chars": 22188,
+          "tok": 5547
         }
       ],
       "instructed": [
@@ -201,8 +201,8 @@
         },
         {
           "path": "docs/defaults.md",
-          "chars": 6408,
-          "tok": 1602
+          "chars": 7246,
+          "tok": 1812
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -307,8 +307,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 31005,
-          "tok": 7751
+          "chars": 31138,
+          "tok": 7784
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -337,8 +337,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#body",
-          "chars": 5837,
-          "tok": 1459
+          "chars": 5909,
+          "tok": 1477
         },
         {
           "path": ".claude/commands/impact.md#body",
@@ -367,8 +367,8 @@
         },
         {
           "path": ".claude/commands/test.md#body",
-          "chars": 2116,
-          "tok": 529
+          "chars": 2158,
+          "tok": 540
         },
         {
           "path": ".claude/skills/add-endpoint/SKILL.md#body",
@@ -382,8 +382,8 @@
         },
         {
           "path": ".claude/skills/add-tests/SKILL.md#body",
-          "chars": 5803,
-          "tok": 1451
+          "chars": 6374,
+          "tok": 1594
         },
         {
           "path": ".claude/skills/add-warehouse-load/SKILL.md#body",
@@ -402,13 +402,13 @@
         },
         {
           "path": ".claude/skills/enforce-architecture/SKILL.md#body",
-          "chars": 1237,
-          "tok": 309
+          "chars": 1314,
+          "tok": 328
         },
         {
           "path": ".claude/skills/enforce-standards/SKILL.md#body",
-          "chars": 1642,
-          "tok": 410
+          "chars": 2343,
+          "tok": 586
         },
         {
           "path": ".claude/skills/map-warehouse/SKILL.md#body",
@@ -615,8 +615,8 @@
         },
         {
           "path": "docs/defaults.md",
-          "chars": 6033,
-          "tok": 1508
+          "chars": 6186,
+          "tok": 1546
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -751,8 +751,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#body",
-          "chars": 5882,
-          "tok": 1470
+          "chars": 5954,
+          "tok": 1488
         },
         {
           "path": ".claude/commands/impact.md#body",
@@ -806,8 +806,8 @@
         },
         {
           "path": ".claude/skills/add-tests/SKILL.md#body",
-          "chars": 6007,
-          "tok": 1502
+          "chars": 6167,
+          "tok": 1542
         },
         {
           "path": ".claude/skills/create-adr/SKILL.md#body",
@@ -975,8 +975,8 @@
         },
         {
           "path": ".claude/skills/add-tests/SKILL.md#frontmatter",
-          "chars": 1080,
-          "tok": 270
+          "chars": 1086,
+          "tok": 272
         },
         {
           "path": ".claude/skills/add-warehouse-load/SKILL.md#frontmatter",
@@ -1000,8 +1000,8 @@
         },
         {
           "path": ".claude/skills/enforce-standards/SKILL.md#frontmatter",
-          "chars": 794,
-          "tok": 198
+          "chars": 786,
+          "tok": 196
         },
         {
           "path": ".claude/skills/map-warehouse/SKILL.md#frontmatter",
@@ -1025,19 +1025,19 @@
         },
         {
           "path": "CLAUDE.md",
-          "chars": 29307,
-          "tok": 7327
+          "chars": 29306,
+          "tok": 7326
         }
       ],
       "static.copilot": [
         {
           "path": ".github/copilot-instructions.md",
-          "chars": 5462,
-          "tok": 1366
+          "chars": 5550,
+          "tok": 1388
         },
         {
           "path": "AGENTS.md",
-          "chars": 26244,
+          "chars": 26243,
           "tok": 6561
         }
       ],
@@ -1049,8 +1049,8 @@
         },
         {
           "path": "docs/defaults.md",
-          "chars": 12393,
-          "tok": 3098
+          "chars": 13384,
+          "tok": 3346
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -1155,8 +1155,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 38566,
-          "tok": 9642
+          "chars": 38699,
+          "tok": 9675
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1185,8 +1185,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#body",
-          "chars": 6508,
-          "tok": 1627
+          "chars": 6580,
+          "tok": 1645
         },
         {
           "path": ".claude/commands/impact.md#body",
@@ -1215,8 +1215,8 @@
         },
         {
           "path": ".claude/commands/test.md#body",
-          "chars": 3032,
-          "tok": 758
+          "chars": 3064,
+          "tok": 766
         },
         {
           "path": ".claude/skills/add-component/SKILL.md#body",
@@ -1250,8 +1250,8 @@
         },
         {
           "path": ".claude/skills/add-tests/SKILL.md#body",
-          "chars": 8122,
-          "tok": 2030
+          "chars": 8605,
+          "tok": 2151
         },
         {
           "path": ".claude/skills/add-warehouse-load/SKILL.md#body",
@@ -1270,13 +1270,13 @@
         },
         {
           "path": ".claude/skills/enforce-architecture/SKILL.md#body",
-          "chars": 1982,
-          "tok": 496
+          "chars": 2059,
+          "tok": 515
         },
         {
           "path": ".claude/skills/enforce-standards/SKILL.md#body",
-          "chars": 3367,
-          "tok": 842
+          "chars": 4068,
+          "tok": 1017
         },
         {
           "path": ".claude/skills/map-warehouse/SKILL.md#body",
@@ -1303,10 +1303,10 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 38535,
-      "static.claude.tok": 9634,
-      "static.copilot.chars": 25416,
-      "static.copilot.tok": 6354,
+      "static.claude.chars": 38571,
+      "static.claude.tok": 9643,
+      "static.copilot.chars": 25546,
+      "static.copilot.tok": 6386,
       "prompt.max.chars": 2126,
       "prompt.max.tok": 532
     },
@@ -1319,10 +1319,10 @@
       "prompt.max.tok": 549
     },
     "monorepo": {
-      "static.claude.chars": 45401,
+      "static.claude.chars": 45398,
       "static.claude.tok": 11350,
-      "static.copilot.chars": 31706,
-      "static.copilot.tok": 7926,
+      "static.copilot.chars": 31793,
+      "static.copilot.tok": 7948,
       "prompt.max.chars": 2541,
       "prompt.max.tok": 635
     },

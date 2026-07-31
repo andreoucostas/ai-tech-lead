@@ -23,7 +23,7 @@ If no specific target given, identify the files with the weakest test coverage a
 ### Step 2 — Follow project patterns
 - Match the existing test project/file structure and naming conventions of the stack under test
 - Use the same test framework and assertion style as existing tests
-- Follow that stack's naming convention — .NET: `MethodName_Scenario_ExpectedResult`; Angular: `should [expected behavior] when [condition]`
+- Follow that stack's naming convention — .NET: mirror the repo, or use `MethodName_Scenario_ExpectedResult` if none; Angular: `should [expected behavior] when [condition]`
 - Use the same mocking approach as the rest of the codebase
 
 ### Step 3 — Write tests

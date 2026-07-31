@@ -1,8 +1,8 @@
 <!--
 ai-tech-lead-framework
   template: dotnet
-  version: 0.35.0
-  applied: 2026-07-30
+  version: 0.36.0
+  applied: 2026-07-31
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
 # [Project Name]
@@ -131,7 +131,7 @@ Recipes live as **skills**, auto-discovered by both Claude Code (`.claude/skills
 - `register-service` — register a new service in DI with the right lifetime
 - `map-warehouse` — map a SQL data-warehouse repo: layers (staging → warehouse → marts), fact/dim entities and grain, load orchestration, batch/watermark control, SCD strategy, partitioning
 - `add-warehouse-load` — add or extend a warehouse load following the repo's existing patterns: idempotent re-runnable loads, no double-loading, SCD handling, partition alignment
-- `add-tests` — add unit/integration tests following project patterns (xUnit + `WebApplicationFactory`)
+- `add-tests` — add unit/integration tests following the repo's existing test framework, fixtures, and naming
 - `perf` — scan a file, directory, or the whole repo for ~50 performance anti-patterns; produces tiered findings (Critical / Moderate / Info) with file locations and TECH_DEBT.md integration
 - `dependency-audit` — scan for vulnerable/deprecated/outdated NuGet packages and set up automated dependency scanning (Dependabot or Renovate)
 - `create-adr` — record a significant architecture decision in Architecture Decisions

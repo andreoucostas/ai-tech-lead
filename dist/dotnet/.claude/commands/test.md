@@ -23,7 +23,7 @@ If no specific target given, identify the files with the weakest test coverage a
 ### Step 2 — Follow project patterns
 - Match the existing test project structure and naming conventions
 - Use the same test framework and assertion style as existing tests
-- Follow the naming convention: `MethodName_Scenario_ExpectedResult`
+- Follow the repo's existing test naming convention; if none exists, use `MethodName_Scenario_ExpectedResult`.
 - Use the same mocking approach as the rest of the codebase
 
 ### Step 3 — Write tests

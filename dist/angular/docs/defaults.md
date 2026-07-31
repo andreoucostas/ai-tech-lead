@@ -61,6 +61,7 @@
 <!-- Common rules: no direct DOM access (use Renderer2/inject DOCUMENT), no window/localStorage without isPlatformBrowser check. -->
 
 ### Testing
+- Detect the spec runner (Karma/Jasmine, Jest, or Vitest) and assertion style from workspace config and existing specs; mirror them, never replace them.
 - No test suite yet? Use the `add-tests` skill — its suite-bootstrap mode scaffolds the harness and first risk-first tests.
 - Every public behavior has a test. Test behavior, not implementation details.
 - Component tests use `TestBed` with component harnesses where available.

@@ -72,7 +72,8 @@ The pass definitions below are the source of truth the subagents read. Do not du
 - Middleware pipeline order
 
 ### A5: Testing
-- Test projects, framework (xUnit/NUnit/MSTest), mocking framework
+- Test projects, framework (xUnit/NUnit/MSTest), mocking library, and assertion library
+- Report these as a binding finding; synthesis must record them verbatim in `CLAUDE.md > Conventions > Testing`
 - If no test projects exist, state that as this pass's primary finding — do not silently return it as "coverage gaps"
 - Coverage gaps
 - Test quality — behaviour vs implementation

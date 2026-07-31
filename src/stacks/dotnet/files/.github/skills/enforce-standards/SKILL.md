@@ -3,7 +3,7 @@ name: enforce-standards
 description: >
   Use to wire the DETERMINISTIC backstop for code standards — make warnings, skipped tests, and
   analyzer findings build-breaking via TreatWarningsAsErrors + .editorconfig severities +
-  xunit.analyzers, so the compiler enforces what AI instructions can only request.
+  test-integrity analyzer severities, so the compiler enforces what AI instructions can only request.
   USE FOR: "make warnings errors", "fail the build on skipped tests", "enforce standards in CI",
   hardening a repo whose only standards enforcement is instructions and review.
   DO NOT USE FOR: dependency-direction rules (that is `enforce-architecture`), or the semantic
@@ -20,10 +20,23 @@ asserts — but only on surfaces where hooks run. This skill wires the same floo
 1. **Warnings as errors**: copy `scripts/ci/Directory.Build.props.sample` to `Directory.Build.props`
    at the solution root (or merge into an existing one — Leanness: don't duplicate). It sets
    `TreatWarningsAsErrors`, `AnalysisLevel=latest-recommended`, and `EnforceCodeStyleInBuild`.
-2. **Test-integrity severities**: append the `.editorconfig` fragment from the same sample's
-   header comment — at minimum raise `xUnit1004` (skipped test) to `error` so a `Skip=` that
-   slipped past the hook fails `dotnet build`. The xunit analyzers ship with the `xunit`
-   metapackage; verify the version this repo pins actually includes them before claiming coverage.
+   The sample's `.editorconfig` fragment is xUnit-specific; use step 2 for NUnit or MSTest.
+2. **Test-integrity severities**: detect the test framework from package references and apply only
+   its branch. Verify the versions this repo pins include the stated analyzer before claiming
+   coverage.
+   - **If xUnit:** add `dotnet_diagnostic.xUnit1004.severity = error` for skipped tests. The xunit
+     analyzers ship with the `xunit` metapackage.
+   - **If MSTest:** add `dotnet_diagnostic.MSTEST0015.severity = error` ("Test method should not be
+     ignored"). It ships in `MSTest.Analyzers` 3.3+ with default severity Info and became opt-in
+     from 3.8.
+   - **If NUnit:** there is no equivalent analyzer. NUnit1xxx rules are structural, NUnit2xxx are
+     assertion rules, and NUnit3xxx are suppressors; none flags an ignored test. Wire a
+     build-failing CI step that rejects `[Ignore]`, pointed at this repo's test root:
+     ```bash
+     if grep -rn --include=*.cs '^\s*\[.*\bIgnore\b' tests/; then
+       echo "NUnit [Ignore] is forbidden"; exit 1
+     fi
+     ```
 3. **CI**: nothing extra to add — `dotnet build` / `dotnet test` in the required build
    (`docs/ci-integration.md`) now enforce it. Run the build once locally and show the result.
 4. **Don't weaken to go green** — a pre-existing warning wall is normal in brownfield: keep

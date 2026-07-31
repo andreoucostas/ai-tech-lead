@@ -47,7 +47,8 @@ When generating code in this repo, follow these rules. The full conventions, arc
 - LoggerMessage source generators on hot paths.
 
 ## Testing
-- Test naming: `MethodName_Scenario_ExpectedResult`; xUnit + NSubstitute; integration via WebApplicationFactory.
+- Mirror the repo's existing test framework, mocking library, and naming — never add a second one.
+- No suite anywhere? xUnit + NSubstitute; `MethodName_Scenario_ExpectedResult`; integration via WebApplicationFactory.
 - Test behavior, not implementation; no tautological assertions; no over-mocking; never skip a failing test.
 - Tests are deterministic and hermetic: no real network, clock, randomness, or order dependence.
 

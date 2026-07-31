@@ -97,7 +97,7 @@ Recipes live as auto-discovered **skills**, available to both Claude Code (`.cla
 - `register-service` — register a new service in DI with the right lifetime
 - `map-warehouse` — map a SQL data-warehouse repo: layers (staging → warehouse → marts), fact/dim entities and grain, load orchestration, batch/watermark control, SCD strategy, partitioning
 - `add-warehouse-load` — add or extend a warehouse load following the repo's existing patterns: idempotent re-runnable loads, no double-loading, SCD handling, partition alignment
-- `add-tests` — add tests following project patterns (xUnit + `WebApplicationFactory`)
+- `add-tests` — add unit/integration tests following the repo's existing test framework, fixtures, and naming
 - `perf` — scan for performance anti-patterns; tiered findings with TECH_DEBT.md integration
 - `dependency-audit` — scan for vulnerable/outdated NuGet packages and wire up automated dependency scanning
 - `create-adr` — record an architecture decision

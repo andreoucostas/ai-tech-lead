@@ -16,7 +16,12 @@ description: >
 
 Match `CLAUDE.md > Conventions > Testing` and the Test leanness rules in `CLAUDE.md > Leanness`. If conventions are unbootstrapped, follow `docs/defaults.md`.
 
-1. **Find the existing pattern first.** `Grep` for a sibling `*.spec.ts` to mirror: runner (Karma/Jasmine, Jest, or Vitest), `TestBed` setup, `HttpTestingController` usage, component harnesses, and any shared fixtures/builders/HTTP mocks. Reuse them — do not introduce parallel test infrastructure (Verification Rule #6, Test leanness #13). If no spec files exist at all, switch to **Suite bootstrap mode** below.
+1. **Evidence gate — derive, don't assume.** Apply Verification Rule #10 before writing a spec:
+   inspect `angular.json` and test configuration, then `Grep` a sibling `*.spec.ts`. Detect the
+   runner, assertion style, naming convention, `TestBed` setup, `HttpTestingController` usage,
+   component harnesses, and shared fixtures/builders/HTTP mocks. Mirror everything found; never
+   introduce a second runner or parallel infrastructure (Verification Rule #6, Test leanness #13).
+   If nothing is found anywhere in the workspace, switch to **Suite bootstrap mode** below.
 2. **Decide the level and approach.**
    - **Service / signal store**: instantiate via `TestBed.inject`; mock HTTP with `HttpTestingController`; for stores, assert **state transitions** (input → resulting signal/computed values), not getters.
    - **Component**: prefer the component's public behavior via a harness or DOM query over inspecting internals. Mock injected services via `{ provide, useValue }`.

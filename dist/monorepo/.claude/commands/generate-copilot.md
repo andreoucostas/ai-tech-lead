@@ -45,7 +45,7 @@ $ARGUMENTS
    - **API / HTTP** (Angular) — typed services, interceptors, environment URLs
    - **Typing** (Angular) — strict, no `any`, interfaces over classes
    - **Styling** (Angular) — encapsulation, scoping, global rules
-   - **Testing** — test name format, framework choice
+   - **Testing** — name the framework evidenced in `CLAUDE.md > Conventions`; if absent, require mirroring the existing suite
    - **Boy Scout (always-apply items only)** — the numbered list from CLAUDE.md's "Always apply" subsection
 
 5. Hard limits:
