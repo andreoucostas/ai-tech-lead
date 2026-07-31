@@ -136,9 +136,16 @@ their friction reports outweigh the maintainer's.
 **Not:** no new machinery to "prepare" for the pilot — install what v0.31.0 ships, as shipped.
 
 **Field report #1 arrived 2026-07-31:** an Angular developer reported the model using `@Input()`
-everywhere instead of injecting `NgControl` on a custom form control. `meta/field-reports.md` still
-does not exist. Creating it and recording report #1 is now the blocking next action; B-66 is the
-first defect derived from that report.
+everywhere instead of injecting `NgControl` on a custom form control. B-66 is the first defect
+derived from that report.
+
+**`meta/field-reports.md` now exists (created 2026-07-31)** and is the ledger — record every report
+there, at intake. Two corrections it makes to the paragraph above, both left visible rather than
+rewritten: the Angular report is **#2**, not #1 (the NUnit report behind B-57 is also a field report
+from a real install and landed earlier); and the arrival dates, "what fired", hook noise and token
+pain were **never captured for either report**, which the ledger records as an intake gap. Both
+reports to date are complaints, so nothing in the intake path can currently evidence value — only
+failure. The remaining B-42 work (success metrics, the pilot itself) is untouched.
 
 ### B-43 · Host-compatibility recertification cadence (the one-time verifications are rotting)
 **Effort:** S per cycle, recurring · **Invariants:** #5 · **execution vehicle: B-49's quarterly drill**
@@ -723,6 +730,47 @@ should apply to the test harness too.
 
 **Not:** do not make the skip a hard failure; a host genuinely without Windows PowerShell should
 still be able to run the suite.
+
+### B-72 · A behavioural probe can be defeated by the guidance it measures, and `angular-form-control` does not reproduce its field report
+**Effort:** M · **Priority:** P2 · **Invariants:** #5 · found 2026-07-31 while shipping B-66
+
+**Why:** three separate failures of the same instrument, all found in one session.
+
+1. **The grader was defeatable — by the very idiom the guidance was about to recommend.** The
+   `formInputs` patterns missed `@Input() set disabled(v)` / `@Input() get errors()` (the decorator
+   pattern required the property name immediately after `@Input(...)`) and
+   `disabled = input.required<boolean>()` (the signal pattern did not admit `.required`). A value
+   accessor re-declaring form-owned state in either form — **exactly the reported defect** — scored
+   PASS. The draft B-66 plan told the implementer to "cover the signal `input()` form", which would
+   have flipped the eval green without any behaviour changing. Fixed and red-tested for v0.40.0; the
+   *class* is open. This is B-59's "inert check" applied to the behavioural harness: `-SelfTest` was
+   green throughout because no case exercised the gap.
+
+2. **The probe does not reproduce the report it was built from.** The first valid baseline run
+   (2026-07-31, `meta/eval-results.md`) is a **PASS with no forms guidance shipped**: the agent
+   self-injected `NgControl`, set `valueAccessor = this`, used `setDisabledState` rather than an
+   `@Input() disabled`, and commented that this "avoids the circular-DI `forwardRef`". The prompt
+   telegraphs the answer — it asks for a component bindable "directly with `formControlName`" that
+   shows "its own validation error when the field is invalid and touched", which is close to a
+   specification of the `NgControl` approach. Same defect class as the probe's first
+   mis-specification (`0598c6d`), one level subtler, and it means the scenario cannot red-test B-66.
+
+3. **The grader cannot see the hazard the guidance teaches.** `cva` is
+   `ControlValueAccessor OR NG_VALUE_ACCESSOR`, so the correct pattern (`implements
+   ControlValueAccessor` + self-injected `NgControl`) and the **double-registration bug**
+   (`NG_VALUE_ACCESSOR` provider *and* injected `NgControl` → circular DI) both score
+   `cva=True ngcontrol=True`. The probe would score the runtime-broken component as a pass.
+
+**Do:** (a) separate the `cva` signal into provider-vs-interface so double registration is
+detectable, and add a self-test case for it; (b) re-specify the scenario so the prompt states the
+*business* need without naming the mechanism — describe a reusable input used across several forms
+and let the agent discover that `formControlName` requires a value accessor — then re-baseline;
+(c) adopt a standing rule that a behavioural probe is only a red test once it has been shown to
+**fail** on the unfixed tree, and record that failing observation next to the scenario; (d) sweep
+the other scenarios for prompts that specify the mechanism rather than the goal.
+
+**Not:** do not delete `angular-form-control` — its `formInputs`/`controlAsInput` signals are sound
+and the fixture is reusable. The defect is the prompt and the `cva` conflation, not the harness.
 
 ---
 

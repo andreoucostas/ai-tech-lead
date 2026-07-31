@@ -218,3 +218,52 @@ Host: Claude Code 2.1.220 (Claude Code) · scratch: retained=True
 
 - **INCONCLUSIVE angular-form-control** (model=sonnet) — agentExit=0 timedOut=False; cva=False ngcontrol=False controlAsInput=False formInputs= readDefaults=True
 
+
+## 2026-07-31 18:14:26 +01:00 — framework v0.39.0 (0598c6d807e80f50bfea26f2af8a112fbda76fcd)
+
+Host: Claude Code 2.1.220 (Claude Code) · scratch: retained=True
+
+- **PASS angular-form-control** (model=sonnet) — agentExit=0 timedOut=False; cva=True ngcontrol=True controlAsInput=False formInputs= readDefaults=True usedSkill=False
+
+
+## angular-form-control baseline — 2026-07-31, framework v0.39.0
+
+**This is the first valid run of this scenario, and it is a PASS. The framework has no forms
+guidance whatsoever, so the guidance B-66 proposes cannot be credited with it.**
+
+**Grader hardened first.** Two idiomatic forms defeated the previous `formInputs` patterns and were
+fixed before this run: `@Input() set disabled(v)` / `@Input() get errors()` (the decorator pattern
+required the property name immediately after `@Input(...)`) and `disabled = input.required<boolean>()`
+(the signal pattern did not admit `.required`). A value accessor re-declaring form-owned state in
+either form — exactly the reported defect — previously scored PASS. Both are now `-SelfTest` cases,
+and the suite was red-tested by reverting the patterns (it throws, exit 1). A `usedSkill` signal was
+also added, because nothing in the grader could attribute an outcome to a delivery tier.
+
+**Result:** `cva=True ngcontrol=True controlAsInput=False formInputs= readDefaults=True usedSkill=False`.
+
+The agent produced a textbook-correct control unaided: `inject(NgControl, { self: true, optional: true })`,
+`ngControl.valueAccessor = this`, `setDisabledState` rather than an `@Input() disabled`, presentation-only
+inputs (`label`, `inputId`), and its own error rendered from `control.invalid && control.touched`. It
+even commented that self-injecting `NgControl` "avoids the circular-DI `forwardRef(() => TextFieldComponent)`
+that `NG_VALUE_ACCESSOR` would need" — the hazard the proposed guidance was going to teach.
+
+**Conclusion: the probe does not reproduce the field report, and must not be cited as validating
+B-66.** The most likely cause is the prompt, which telegraphs the answer: it asks for a component
+"our reactive forms can bind to directly with `formControlName`" that shows "its own validation error
+when the field is invalid and touched". That is close to a specification of the `NgControl` approach,
+so a capable model satisfies it whether or not the repository says anything. The reported failure came
+from a real session where the ask was presumably vaguer. This is the same defect class as the probe's
+first mis-specification (commit `0598c6d`), one level subtler.
+
+**What this does not overturn:** B-66 itself. Its evidence is a case-sensitive grep returning zero hits
+for every forms token across `src/stacks/angular/`, `src/core/` and `dist/angular/`, plus a field report
+from a real developer. A stack that ships nothing about the largest surface of a line-of-business app
+is a defect independent of whether one scripted scenario reproduces it.
+
+**Caveats:** n=1, one model (sonnet), one prompt, one host. A single PASS is not evidence that the
+framework handles custom form controls well — only that this prompt does not discriminate.
+
+**Follow-up:** the grader still cannot distinguish the correct `NgControl` pattern (`implements
+ControlValueAccessor` + self-injected `NgControl`) from the double-registration bug (`NG_VALUE_ACCESSOR`
+provider *and* injected `NgControl`, which is the circular-DI hazard) — both score `cva=True
+ngcontrol=True`. Filed with the probe-specification defect in `meta/BACKLOG.md`.
