@@ -672,6 +672,49 @@ blind.
 **Do:** state the limitation at the top of `tests/evals/README.md` and point anything needing
 tool-use or file-read evidence at `.claude/evals/`.
 
+### B-70 · Nothing requires a new test to be exercised on both CI legs before it ships
+**Effort:** S · **Priority:** P2
+
+**Why:** CI deliberately runs the `.ps1` twin on Windows and the `.sh` twin on Linux to catch
+cross-platform divergence — that split is the point of the two legs. But a test authored and
+verified on the maintainer's Windows box passes local review with the Linux path never executed,
+and lands red on master. That is exactly what happened to the v0.38.0 test: `existing absolute
+wired shell is OK` resolved its interpreter with `Get-Command -CommandType Application` and read
+`.Source`; on Linux the command returned multiple matches, so the fixture wrote three paths
+space-separated, while Windows returned one. The following RCA-backlog commit inherited the red
+because it did not touch the test. This is the test-authoring counterpart to B-64: B-64 asks that
+gates and diagnostics be red-tested for the defect they catch; this asks that new tests be shown to
+actually run on every leg that will execute them.
+
+**Do:** add to the Definition of done for a test-carrying change that any new or modified test case
+is demonstrated running (not merely passing) on both legs — either by running it under bash
+locally, or by treating the first CI run as part of the change rather than as a post-hoc check.
+Consider a cheap local proxy: enumerate test cases skipped or not reached on the authoring platform
+and print them in the suite summary.
+
+**Not:** do not add a third CI leg; the gap is process, not infrastructure.
+
+### B-71 · Silently skipped tests make a green local suite weaker than it looks
+**Effort:** S · **Priority:** P2
+
+**Why:** the FrameworkDoctor suite prints `[skip] Windows PowerShell 5.1 compatibility --
+powershell.exe unavailable on this host` and still summarises as green. On the maintainer machine
+`powershell.exe` cannot be resolved because the session `PATH` is missing System32, so the one test
+that guards meta-invariant #4's entire rationale — Windows PowerShell 5.1 mis-parses BOM-less UTF-8
+— never runs locally. A `[skip]` line scrolls past inside an otherwise-green summary and reads as
+benign. The same machine condition is what made the v0.38.0 hook defect possible in the first
+place, so this is not hypothetical: local coverage silently shrank exactly where the invariant
+needed it.
+
+**Do:** distinguish an ordinary skip from a skip of an invariant-guarding test. Surface the latter
+prominently in the suite summary — a count and a named list, not just an inline line — and consider
+making the summary state which invariants went unexercised on this host. Cross-reference
+framework-doctor's CANT-VERIFY tier: the honest-reporting pattern already exists in this repo and
+should apply to the test harness too.
+
+**Not:** do not make the skip a hard failure; a host genuinely without Windows PowerShell should
+still be able to run the suite.
+
 ---
 
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
