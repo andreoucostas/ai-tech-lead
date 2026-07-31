@@ -21,8 +21,118 @@ function Assert-Bom([string]$Path) {
     return $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
 }
 
-function New-EvalRepo([string]$Path) {
+function New-EvalRepo([string]$Path, [ValidateSet('dotnet','angular')][string]$Stack = 'dotnet') {
     New-Item -ItemType Directory -Path $Path -Force | Out-Null
+    if ($Stack -eq 'angular') {
+        @'
+{
+  "name": "eval-fixture",
+  "private": true,
+  "scripts": { "test": "ng test" },
+  "dependencies": {
+    "@angular/common": "^19.0.0",
+    "@angular/core": "^19.0.0",
+    "@angular/forms": "^19.0.0",
+    "@angular/platform-browser": "^19.0.0"
+  }
+}
+'@ | Set-Content -LiteralPath (Join-Path $Path 'package.json') -Encoding utf8NoBOM
+        @'
+{
+  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "projects": {
+    "eval-fixture": {
+      "projectType": "application",
+      "root": "",
+      "sourceRoot": "src",
+      "architect": {
+        "build": { "builder": "@angular-devkit/build-angular:application", "options": { "browser": "src/main.ts", "tsConfig": "tsconfig.json" } },
+        "test": { "builder": "@angular-devkit/build-angular:karma" }
+      }
+    }
+  }
+}
+'@ | Set-Content -LiteralPath (Join-Path $Path 'angular.json') -Encoding utf8NoBOM
+        @'
+{
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "target": "ES2022",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "experimentalDecorators": true
+  },
+  "angularCompilerOptions": { "strictTemplates": true }
+}
+'@ | Set-Content -LiteralPath (Join-Path $Path 'tsconfig.json') -Encoding utf8NoBOM
+        New-Item -ItemType Directory -Path (Join-Path $Path 'src/app/profile-form') -Force | Out-Null
+        @'
+import { bootstrapApplication } from '@angular/platform-browser';
+import { provideHttpClient } from '@angular/common/http';
+import { AppComponent } from './app/app.component';
+
+bootstrapApplication(AppComponent, { providers: [provideHttpClient()] });
+'@ | Set-Content -LiteralPath (Join-Path $Path 'src/main.ts') -Encoding utf8NoBOM
+        @'
+import { Component } from '@angular/core';
+import { ProfileFormComponent } from './profile-form/profile-form.component';
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [ProfileFormComponent],
+  template: '<app-profile-form />',
+})
+export class AppComponent {}
+'@ | Set-Content -LiteralPath (Join-Path $Path 'src/app/app.component.ts') -Encoding utf8NoBOM
+        @'
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+
+@Injectable({ providedIn: 'root' })
+export class UserService {
+  private readonly http = inject(HttpClient);
+
+  updateProfile(profile: { name: string; email: string }) {
+    return this.http.put('/api/profile', profile);
+  }
+}
+'@ | Set-Content -LiteralPath (Join-Path $Path 'src/app/user.service.ts') -Encoding utf8NoBOM
+        @'
+import { Component, inject } from '@angular/core';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+
+@Component({
+  selector: 'app-profile-form',
+  standalone: true,
+  imports: [ReactiveFormsModule],
+  template: `
+    <form [formGroup]="form">
+      <label>Name <input formControlName="name" /></label>
+      <label>Email <input formControlName="email" /></label>
+    </form>
+  `,
+})
+export class ProfileFormComponent {
+  private readonly formBuilder = inject(FormBuilder);
+  readonly form: FormGroup = this.formBuilder.group({
+    name: ['', Validators.required],
+    email: ['', [Validators.required, Validators.email]],
+  });
+}
+'@ | Set-Content -LiteralPath (Join-Path $Path 'src/app/profile-form/profile-form.component.ts') -Encoding utf8NoBOM
+        git -C $Path init --quiet
+        git -C $Path config user.email 'agent-evals@invalid.local'
+        git -C $Path config user.name 'Agent Evals'
+        git -C $Path add -A
+        git -C $Path commit --quiet -m 'fixture baseline'
+        return
+    }
     @'
 <Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>
 '@ | Set-Content -LiteralPath (Join-Path $Path 'EvalFixture.csproj') -Encoding utf8NoBOM
@@ -46,8 +156,8 @@ Write-Output 'PASS: inclusive range'
     git -C $Path commit --quiet -m 'fixture baseline'
 }
 
-function Install-Framework([string]$Path) {
-    $output = & pwsh -NoProfile -File (Join-Path $repo 'install.ps1') -Stack dotnet $Path 2>&1 | Out-String
+function Install-Framework([string]$Path, [ValidateSet('dotnet','angular')][string]$Stack = 'dotnet') {
+    $output = & pwsh -NoProfile -File (Join-Path $repo 'install.ps1') -Stack $Stack $Path 2>&1 | Out-String
     if ($LASTEXITCODE -ne 0) { throw "Fixture framework install failed:`n$output" }
     return $output
 }
@@ -242,6 +352,34 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $classes = if ($classNames.Count -eq 0) { 'not-found' } else { $classNames -join ',' }
             return [pscustomobject]@{ Status = 'PASS'; Pass = $followed; Detail = "loaded=$loaded followed=$followed classes=$classes" }
         }
+        'angular-form-control' {
+            $readDefaults = [bool]@($e.Tools | Where-Object {
+                $_.Name -match '^(?i:Read|ReadFile|read_file)$' -and
+                (Get-ToolPath $_) -replace '\\','/' -match '(?i)(?:^|/)docs/defaults\.md$'
+            } | Select-Object -First 1)
+            $rootCommit = (git -C $Target rev-list --max-parents=0 HEAD | Select-Object -First 1)
+            $added = @(
+                @(git -C $Target diff --name-only --diff-filter=A $rootCommit -- 'src/app/*.ts' 'src/app/**/*.ts')
+                @(git -C $Target ls-files --others --exclude-standard -- 'src/app/*.ts' 'src/app/**/*.ts')
+            ) | Where-Object { $_ } | Sort-Object -Unique
+            if ($added.Count -eq 0) {
+                return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "cva=False ngcontrol=False controlAsInput=False formInputs= readDefaults=$readDefaults" }
+            }
+            $texts = @($added | ForEach-Object { Get-Content -Raw -LiteralPath (Join-Path $Target $_) })
+            $allText = $texts -join "`n"
+            $cva = $allText -match '\bControlValueAccessor\b' -or $allText -match '\bNG_VALUE_ACCESSOR\b'
+            $ngcontrol = $allText -match '\binject\s*\(\s*NgControl\b' -or $allText -match '(?s)constructor\s*\([^)]*:\s*NgControl\b'
+            $controlType = '(?:AbstractControl|FormControl|FormGroup|NgControl)'
+            $controlAsInput = $allText -match "(?im)@Input\s*(?:\([^)]*\))?\s*(?:(?:public|protected|private|readonly)\s+)*[A-Za-z_][A-Za-z0-9_]*[!?]?\s*:\s*$controlType\b" -or
+                $allText -match "(?im)(?:(?:public|protected|private|readonly)\s+)*[A-Za-z_][A-Za-z0-9_]*\s*=\s*input(?:\.required)?\s*<\s*$controlType\b(?:[^<>]|<[^<>]*>)*>\s*\("
+            $formInputs = [Collections.Generic.List[string]]::new()
+            foreach ($text in $texts) {
+                foreach ($match in [regex]::Matches($text, '(?im)@Input\s*(?:\([^)]*\))?\s*(?:readonly\s+)?(required|disabled|errors|errorMessage|invalid|touched)\b')) { $formInputs.Add($match.Groups[1].Value) }
+                foreach ($match in [regex]::Matches($text, '(?im)\b(required|disabled|errors|errorMessage|invalid|touched)\s*=\s*input(?:\s*<[^;=()]+>)?\s*\(')) { $formInputs.Add($match.Groups[1].Value) }
+            }
+            $inputNames = @($formInputs | Sort-Object -Unique)
+            return [pscustomobject]@{ Status = 'PASS'; Pass = ($cva -or $ngcontrol) -and $inputNames.Count -eq 0; Detail = "cva=$cva ngcontrol=$ngcontrol controlAsInput=$controlAsInput formInputs=$($inputNames -join ',') readDefaults=$readDefaults" }
+        }
         'haiku-convention-check' {
             $found = $finalOk -and $finalText -match '(?i)## Convention check' -and $finalText -match '(?i)Findings \([1-9]' -and $finalText -match '(?im)^\|[^\r\n]*ConventionViolation\.cs[^\r\n]*CancellationToken[^\r\n]*\|'
             return [pscustomobject]@{ Status = 'PASS'; Pass = $found; Detail = "finalFinding=$found" }
@@ -362,6 +500,60 @@ function Invoke-SelfTest {
         ) }
         $docsKeywordOnly = Test-ScenarioEvidence 'docs-tier-ondemand' $temp $docsEcho 1
         if ($docsKeywordOnly.Pass -or $docsKeywordOnly.Status -ne 'INCONCLUSIVE') { throw 'docs-tier probe accepted final-text Coordinator keyword without a matching source file' }
+        $angularTemp = Join-Path $temp 'angular-fixture'
+        New-EvalRepo $angularTemp angular
+        if (-not (Test-Path (Join-Path $angularTemp 'src/app/profile-form/profile-form.component.ts'))) { throw 'Angular fixture reactive form missing' }
+        $angularEvidence = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='defaults'; name='Read'; input=[pscustomobject]@{ file_path=(Join-Path $angularTemp 'docs/defaults.md') } }) } }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='done' })
+        ) }
+        $shared = Join-Path $angularTemp 'src/app/shared'
+        New-Item -ItemType Directory -Path $shared | Out-Null
+        @'
+import { Component, Input } from '@angular/core';
+import { AbstractControl } from '@angular/forms';
+
+@Component({ selector: 'app-form-field', standalone: true, template: '<ng-content />' })
+export class FormFieldComponent {
+  @Input() control: AbstractControl | null = null;
+}
+'@ | Set-Content (Join-Path $shared 'form-field.component.ts') -Encoding utf8NoBOM
+        $angularWrapper = Test-ScenarioEvidence 'angular-form-control' $angularTemp $angularEvidence 1
+        if ($angularWrapper.Pass -or $angularWrapper.Detail -notmatch '^cva=False ngcontrol=False controlAsInput=True formInputs= readDefaults=True$') { throw "angular-form-control failed to identify control-as-input wrapper: $($angularWrapper.Detail)" }
+        Remove-Item -LiteralPath (Join-Path $shared 'form-field.component.ts')
+        @'
+import { Component, forwardRef } from '@angular/core';
+import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+
+@Component({ selector: 'app-form-field', standalone: true, template: '<input />', providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => FormFieldComponent), multi: true }] })
+export class FormFieldComponent implements ControlValueAccessor {
+  writeValue(value: string): void {}
+  registerOnChange(fn: (value: string) => void): void {}
+  registerOnTouched(fn: () => void): void {}
+}
+'@ | Set-Content (Join-Path $shared 'form-field.component.ts') -Encoding utf8NoBOM
+        $angularCva = Test-ScenarioEvidence 'angular-form-control' $angularTemp $angularEvidence 1
+        if (-not $angularCva.Pass -or $angularCva.Detail -notmatch '^cva=True ngcontrol=False controlAsInput=False formInputs= readDefaults=True$') { throw "angular-form-control rejected CVA component: $($angularCva.Detail)" }
+        Remove-Item -LiteralPath (Join-Path $shared 'form-field.component.ts')
+        @'
+import { Component, Input } from '@angular/core';
+
+@Component({ selector: 'app-form-field', standalone: true, template: '<input />' })
+export class FormFieldComponent {
+  @Input() required = false;
+  @Input() disabled = false;
+}
+'@ | Set-Content (Join-Path $shared 'form-field.component.ts') -Encoding utf8NoBOM
+        $angularInputs = Test-ScenarioEvidence 'angular-form-control' $angularTemp $angularEvidence 1
+        if ($angularInputs.Pass -or $angularInputs.Detail -notmatch '^cva=False ngcontrol=False controlAsInput=False formInputs=disabled,required readDefaults=True$') { throw "angular-form-control accepted form-owned inputs or failed to list them: $($angularInputs.Detail)" }
+        Remove-Item -LiteralPath (Join-Path $shared 'form-field.component.ts')
+        $angularEcho = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='Implemented ControlValueAccessor and NG_VALUE_ACCESSOR.' })
+        ) }
+        $angularKeywordOnly = Test-ScenarioEvidence 'angular-form-control' $angularTemp $angularEcho 1
+        if ($angularKeywordOnly.Pass -or $angularKeywordOnly.Status -ne 'INCONCLUSIVE') { throw 'angular-form-control accepted final-text ControlValueAccessor without a matching file' }
         $checkpoint = [pscustomobject]@{ Events = @(
             ([pscustomobject]@{ type='system'; subtype='init' }),
             ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='skill'; name='Skill'; input=[pscustomobject]@{ skill='add-tests' } }) } }),
@@ -409,6 +601,7 @@ function Invoke-SelfTest {
         Write-Output 'PASS: structured Haiku positive control is accepted'
         Write-Output 'PASS: all graders reject keyword-only evidence'
         Write-Output 'PASS: docs-tier probe observes Read, class naming, and rejects keyword-only evidence'
+        Write-Output 'PASS: Angular fixture and form-control grader positive/negative/keyword-only cases'
         Write-Output 'PASS: developer checkpoint is INCONCLUSIVE, not PASS/FAIL'
         Write-Output 'PASS: install graders require an observed installer tool event'
         Write-Output 'PASS: bootstrap Skill and archived-installer attempts are rejected'
@@ -445,9 +638,10 @@ try {
         $caseRoot = Join-Path $scratch $case.id
         New-Item -ItemType Directory -Path $caseRoot | Out-Null
         $target = Join-Path $caseRoot 'target'
-        New-EvalRepo $target
+        $caseStack = if ($case.stack) { [string]$case.stack } else { 'dotnet' }
+        New-EvalRepo $target $caseStack
         $before = [int](git -C $target rev-list --count HEAD)
-        if ($case.id -notin @('install-handoff','archived-redirect')) { Install-Framework $target | Out-Null; $before = [int](git -C $target rev-list --count HEAD) }
+        if ($case.id -notin @('install-handoff','archived-redirect')) { Install-Framework $target $caseStack | Out-Null; $before = [int](git -C $target rev-list --count HEAD) }
         $archivedRoot = ''
         switch ($case.id) {
             'archived-redirect' {
@@ -491,6 +685,19 @@ Classes that orchestrate multi-step domain work are suffixed `Coordinator` in th
                 } else {
                     $ordinaryConventions += "`n- Classes that orchestrate multi-step domain work are suffixed `Coordinator` in this repository. Do not use `Service`, `Manager`, or `Handler` for them — `Service` is reserved for HTTP clients."
                 }
+                $claudeText = [regex]::Replace($claudeText, '(?s)<!-- EVAL_BOOTSTRAPPED:.*?_Not yet populated\..*?\r?\n(?=\r?\n---)', $ordinaryConventions)
+                $claudeText | Set-Content $claudePath -Encoding utf8NoBOM
+            }
+            'angular-form-control' {
+                $claudePath = Join-Path $target 'CLAUDE.md'
+                $claudeText = (Get-Content -Raw $claudePath).Replace('BOOTSTRAP_PENDING', 'EVAL_BOOTSTRAPPED')
+                $ordinaryConventions = @'
+<!-- EVAL_BOOTSTRAPPED: repository conventions observed for this fixture. -->
+
+- Build UI features as standalone components.
+- Keep shared components under `src/app/shared/`.
+- Prefer dependency injection with `inject()` for services.
+'@
                 $claudeText = [regex]::Replace($claudeText, '(?s)<!-- EVAL_BOOTSTRAPPED:.*?_Not yet populated\..*?\r?\n(?=\r?\n---)', $ordinaryConventions)
                 $claudeText | Set-Content $claudePath -Encoding utf8NoBOM
             }

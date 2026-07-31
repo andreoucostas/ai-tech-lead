@@ -50,6 +50,13 @@
       "assertion": "docsTierProbe"
     },
     {
+      "id": "angular-form-control",
+      "stack": "angular",
+      "budgetUsd": 1.00,
+      "prompt": "Add a reusable text input component under `src/app/shared/` that our reactive forms can bind to directly with `formControlName`, like `<app-text-field formControlName=\"email\" label=\"Email\" />`. It should render its own label and show its own validation error when the field is invalid and touched. Follow this repository's conventions. One component is enough; no tests needed. I approve this change in advance: do not stop for a plan or ask for confirmation -- implement it now in this session, then report what you built.",
+      "assertion": "angularFormControl"
+    },
+    {
       "id": "haiku-convention-check",
       "budgetUsd": 0.35,
       "model": "haiku",

@@ -190,3 +190,31 @@ names actually declared in new source files on disk. Final-message text was neve
 **Caveats:** there were two or fewer valid runs per arm, using one model (sonnet), one prompt, one
 stack, and one host version. This is directional evidence, not a baseline, and must not be used to
 gate a release.
+
+## 2026-07-31 16:15:13 +01:00 — framework v0.39.0 (4a6499d39769343f8aba6f09153f26d6d6b5fef0)
+
+Host: Claude Code 2.1.220 (Claude Code) · scratch: retained=True
+
+- **FAIL angular-form-control** (model=sonnet) — agentExit=0 timedOut=False; cva=False ngcontrol=False formInputs= readDefaults=False
+
+
+## 2026-07-31 16:16:20 +01:00 — framework v0.39.0 (4a6499d39769343f8aba6f09153f26d6d6b5fef0)
+
+Host: Claude Code 2.1.220 (Claude Code) · scratch: retained=True
+
+- **INCONCLUSIVE angular-form-control** (model=sonnet) — agentExit=0 timedOut=False; cva=False ngcontrol=False formInputs= readDefaults=True
+
+
+## 2026-07-31 16:26:04 +01:00 — framework v0.39.0 (4a6499d39769343f8aba6f09153f26d6d6b5fef0)
+
+Host: Claude Code 2.1.220 (Claude Code) · scratch: retained=True
+
+- **INCONCLUSIVE angular-form-control** (model=sonnet) — agentExit=0 timedOut=False; cva=False ngcontrol=False controlAsInput=False formInputs= readDefaults=True
+
+
+## 2026-07-31 16:29:26 +01:00 — framework v0.39.0 (4a6499d39769343f8aba6f09153f26d6d6b5fef0)
+
+Host: Claude Code 2.1.220 (Claude Code) · scratch: retained=True
+
+- **INCONCLUSIVE angular-form-control** (model=sonnet) — agentExit=0 timedOut=False; cva=False ngcontrol=False controlAsInput=False formInputs= readDefaults=True
+
