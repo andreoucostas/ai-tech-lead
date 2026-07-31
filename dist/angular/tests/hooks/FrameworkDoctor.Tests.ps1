@@ -10,15 +10,16 @@ function Put($Path, $Text, [bool]$Bom=$false) { [IO.File]::WriteAllText($Path,$T
 # - otherwise the doctor correctly reports it missing and the "healthy" fixtures exit 1.
 $defaultShell = if (Get-Command powershell.exe -ErrorAction SilentlyContinue) {'powershell'}
     elseif (Get-Command pwsh -ErrorAction SilentlyContinue) {'pwsh'} else {'bash'}
-function Fixture([string]$Shell=$script:defaultShell,[bool]$Pending=$false,[bool]$MissingHook=$false) {
+function Fixture([string]$Shell=$script:defaultShell,[bool]$Pending=$false,[bool]$MissingHook=$false,[bool]$HookArguments=$false) {
     $r=Join-Path ([IO.Path]::GetTempPath()) ('doctor-'+[guid]::NewGuid())
     New-Item -ItemType Directory -Force (Join-Path $r '.claude/hooks'),(Join-Path $r '.github/hooks'),(Join-Path $r 'scripts')|Out-Null
     Put (Join-Path $r '.claude/framework-version.json') '{"template":"fixture","version":"0.32.0","applied":"2026-07-17"}'
     Put (Join-Path $r 'CLAUDE.md') $(if($Pending){'BOOTSTRAP_PENDING'}else{'# Fixture'})
-    $hook='.claude/hooks/guard.ps1'; if($Shell -eq 'bash'){$hook='.claude/hooks/guard.sh'}
-    $cmd="$Shell -File $hook"
+    $shellLeaf=Split-Path $Shell -Leaf;$hook='.claude/hooks/guard.ps1'; if($shellLeaf-match'^bash(?:\.exe)?$'){$hook='.claude/hooks/guard.sh'}
+    $shellToken=if($Shell-match'[\\/]'){('"'+$Shell+'"')}else{$Shell};$cmd="$shellToken -File $hook"
     Put (Join-Path $r '.claude/settings.json') (@{hooks=@{PreToolUse=@(@{hooks=@(@{command=$cmd})})}}|ConvertTo-Json -Depth 8)
-    Put (Join-Path $r '.github/hooks/hooks.json') ('{"hooks":{"preToolUse":[{"bash":"'+($hook-replace '\.ps1$','.sh')+'","powershell":"'+($hook-replace '/','\\')+'"}]}}')
+    $bashArgs=if($HookArguments){' --mode scan'}else{''};$psArgs=if($HookArguments){' -Mode scan'}else{''}
+    Put (Join-Path $r '.github/hooks/hooks.json') ('{"hooks":{"preToolUse":[{"bash":"'+($hook-replace '\.ps1$','.sh')+$bashArgs+'","powershell":"'+($hook-replace '/','\\')+$psArgs+'"}]}}')
     if(-not $MissingHook){Put (Join-Path $r $hook) '# fixture'; $other=$hook-replace '\.ps1$','.sh'; if($other-ne$hook){Put (Join-Path $r $other) '# fixture'}}
     Put (Join-Path $r '.claude/ai-audit.log') ''
     Put (Join-Path $r 'scripts/template-checks.ps1') ([char]0xFEFF+'exit 0') $false
@@ -40,10 +41,13 @@ Reset-Tests
 It 'healthy fixture exits zero and prints canary boundary' {$r=Fixture;try{$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 0) "exit=$($x.Exit): $($x.Out)";Assert ($x.Out-match'\[OK\] Install state') 'install state not OK';Assert ($x.Out-match'Enforcement is only FULL') 'false-full boundary missing'}finally{Remove-Item -Recurse -Force $r}}
 It 'adoption pending is not reported broken' {$r=Fixture -Pending $true;try{Put (Join-Path $r '.claude/adoption-pending.json') '{}';$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 0) "pending exit=$($x.Exit)";Assert ($x.Out-match'\[PENDING\] Bootstrap/adoption state') 'pending row missing';Assert ($x.Out-notmatch'\[MISSING\] Stack toolchain') 'dependent false alarm'}finally{Remove-Item -Recurse -Force $r}}
 It 'missing hook file exits one' {$r=Fixture -MissingHook $true;try{$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 1) "exit=$($x.Exit)";Assert ($x.Out-match'\[MISSING\] Hook files') 'missing hook row absent'}finally{Remove-Item -Recurse -Force $r}}
-It 'missing wired shell exits one and names the lost controls' {$r=Fixture -Shell 'doctor-shell-does-not-exist';try{$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 1) "exit=$($x.Exit)";Assert ($x.Out-match'\[MISSING\] Wired hook shell') 'missing shell row absent';Assert ($x.Out-match'no write guard, build feedback, or audit trail') 'consequence absent'}finally{Remove-Item -Recurse -Force $r}}
+It 'bare-name wired shell is CANT-VERIFY and does not change exit' {$r=Fixture -Shell 'doctor-shell-bare-name' -Pending $true;try{$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 0) "exit=$($x.Exit): $($x.Out)";Assert ($x.Out-match'\[CANT-VERIFY\] Wired hook shell - hooks are wired to the bare name doctor-shell-bare-name') 'CANT-VERIFY row absent';Assert ($x.Out-match'Script-verifiable checks: 4 ok / 0 missing\.') "summary counted CANT-VERIFY: $($x.Out)"}finally{Remove-Item -Recurse -Force $r}}
+It 'existing absolute wired shell is OK' {$shell=(Get-Command (Get-PsExe) -CommandType Application).Source;$r=Fixture -Shell $shell -Pending $true;try{$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 0) "exit=$($x.Exit): $($x.Out)";Assert ($x.Out-match'\[OK\] Wired hook shell - wired interpreter paths exist:') "OK row absent: $($x.Out)"}finally{Remove-Item -Recurse -Force $r}}
+It 'missing absolute wired shell is MISSING and exits one' {$shell=(Join-Path ([IO.Path]::GetTempPath()) 'doctor-missing/interpreter.exe');$r=Fixture -Shell $shell -Pending $true;try{$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 1) "exit=$($x.Exit): $($x.Out)";Assert ($x.Out-match'\[MISSING\] Wired hook shell - the wired interpreter path does not exist on this machine') "MISSING row absent: $($x.Out)"}finally{Remove-Item -Recurse -Force $r}}
 $winPs=Get-Command powershell.exe -ErrorAction SilentlyContinue
 if($winPs){It 'PowerShell twin runs under Windows PowerShell 5.1' {$r=Fixture;try{$x=RunPsHost $winPs.Source (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 0) "5.1 exit=$($x.Exit): $($x.Out) $($x.Err)";Assert ($x.Out-match'Enforcement is only FULL') '5.1 output incomplete'}finally{Remove-Item -Recurse -Force $r}}}else{Skip 'Windows PowerShell 5.1 compatibility' 'powershell.exe unavailable on this host'}
 if($bash){
+It 'Copilot hook registrations with arguments resolve only their file paths' {$r=Fixture -Shell 'bash' -Pending $true -HookArguments $true;try{$p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$s=Run (Join-Path $r 'scripts/framework-doctor.sh');Assert ($p.Out-match'\[OK\] Hook files') "PowerShell hook row not OK: $($p.Out)";Assert ($s.Out-match'\[OK\] Hook files') "bash hook row not OK: $($s.Out)";Assert ((Normal $p.Out)-eq(Normal $s.Out)) "stdout mismatch`nPS:`n$($p.Out)`nSH:`n$($s.Out)"}finally{Remove-Item -Recurse -Force $r}}
 It 'twins agree on pending fixture' {$r=Fixture -Shell 'bash' -Pending $true;$old=$env:PATH;try{$env:PATH=(Split-Path $bash -Parent)+[IO.Path]::PathSeparator+$old;$p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$s=Run (Join-Path $r 'scripts/framework-doctor.sh');Assert ($p.Exit-eq$s.Exit) "exit mismatch PS=$($p.Exit) SH=$($s.Exit)`nPS:`n$($p.Out)`nSH:`n$($s.Out)`n$($s.Err)";Assert ((Normal $p.Out)-eq(Normal $s.Out)) "stdout mismatch`nPS:`n$($p.Out)`nSH:`n$($s.Out)"}finally{$env:PATH=$old;Remove-Item -Recurse -Force $r}}
 It 'bash twin survives without jq or python3 and reports inactive guard' {
     $r=Fixture -Shell 'bash' -Pending $true;$bin=Join-Path $r 'bin';New-Item -ItemType Directory $bin|Out-Null

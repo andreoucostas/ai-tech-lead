@@ -4,6 +4,20 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.38.0 — 2026-07-31
+
+- **Claude Code hooks on Windows now use an absolute PowerShell path.** A bare `pwsh` registration
+  can fail with command-not-found in the Git Bash shell Claude Code uses for hooks, even when
+  PowerShell is available from another shell. Because that failure is silent, the TypeScript
+  post-write check, write guard, Boy Scout check, routing context, and audit trail can all appear
+  quiet while never running. `framework-doctor` now calls a bare interpreter name `CANT-VERIFY`
+  instead of reporting a false clean result.
+
+  **Action required: re-run the installer** so your hook registrations receive an absolute
+  interpreter path. If hooks in your Angular workspace have seemed to do nothing, this may be why;
+  run `pwsh scripts/framework-doctor.ps1` or `bash scripts/framework-doctor.sh` after reinstalling
+  to confirm the pinned interpreter is available.
+
 ## 0.37.0 — 2026-07-31
 
 - No change to Angular behaviour. The write guard gained a check for skipped .NET tests

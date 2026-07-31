@@ -11,6 +11,26 @@ function Row($State, $Name, $Detail) {
     if ($State -eq 'MISSING') { $script:missing = 1; $script:missingRows++ }
 }
 function Has($Name) { [bool](Get-Command $Name -ErrorAction SilentlyContinue) }
+# This sees the doctor's environment, not the agent host's; never use it to predict host command resolution.
+function Invoke-BashProbe($Command) {
+    $bashCommand = Get-Command bash -ErrorAction SilentlyContinue
+    if (-not $bashCommand) { return $null }
+    try {
+        $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+        $startInfo.FileName = $bashCommand.Source
+        $startInfo.Arguments = '--noprofile --norc -c "' + $Command + '"'
+        $startInfo.UseShellExecute = $false
+        $startInfo.CreateNoWindow = $true
+        $process = New-Object System.Diagnostics.Process
+        $process.StartInfo = $startInfo
+        if ($process.Start()) {
+            if ($process.WaitForExit(3000)) { $result = ($process.ExitCode -eq 0) }
+            else { $process.Kill(); $result = $null }
+        } else { $result = $null }
+        $process.Dispose()
+        return $result
+    } catch { return $null }
+}
 function Finish {
     Write-Output ''
     Write-Output '[CANT-VERIFY] Claude hooks - start claude here and ask what the session preload contained; pass = the reply quotes a block that starts with "## Session preload". No preload usually means folder trust is pending.'
@@ -66,16 +86,26 @@ if (Test-Path -LiteralPath $settingsPath) {
     } catch { }
 }
 $shells = @($commands | ForEach-Object {
-    if ($_ -match '^\s*([^\s]+)') { $matches[1] }
+    if ($_ -match '^\s*"([^"]+)"') { $matches[1] }
+    elseif ($_ -match '^\s*([^\s]+)') { $matches[1] }
 } | Select-Object -Unique)
 if ($shells.Count -eq 0) {
     Row MISSING 'Wired hook shell' 'no hook interpreter could be read from .claude/settings.json. Fix: re-run the installer to rewire hooks.'
 } else {
-    $absent = @($shells | Where-Object { -not (Has $_) })
-    if ($absent.Count) {
-        $names = $absent -join ','
-        Row MISSING 'Wired hook shell' ("committed hooks use {0}, which this machine does not have: no write guard, build feedback, or audit trail. Fix: install {0}, or re-run the installer to rewire hooks." -f $names)
-    } else { Row OK 'Wired hook shell' ("available: {0}." -f ($shells -join ',')) }
+    $missingShells = @()
+    $bareShells = @()
+    $existingShells = @()
+    foreach ($shell in $shells) {
+        if ($shell -match '^(?:[A-Za-z]:[\\/]|/)') {
+            if (Test-Path -LiteralPath $shell -PathType Leaf) { $existingShells += $shell }
+            else { $missingShells += $shell }
+        } else { $bareShells += $shell }
+    }
+    if ($missingShells.Count) {
+        Row MISSING 'Wired hook shell' ("the wired interpreter path does not exist on this machine, so hooks are silently dead: {0}. Fix: re-run the installer." -f ($missingShells -join ','))
+    } elseif ($bareShells.Count) {
+        Row CANT-VERIFY 'Wired hook shell' ("hooks are wired to the bare name {0}, so whether they run depends on the PATH of the shell your agent launches hooks with, which this script cannot observe -- if hooks seem to do nothing, this is the first thing to check. Fix: re-run the installer to pin an absolute interpreter path." -f ($bareShells -join ','))
+    } else { Row OK 'Wired hook shell' ("wired interpreter paths exist: {0}." -f ($existingShells -join ',')) }
 }
 
 $hookPaths = @()
@@ -93,7 +123,7 @@ if (Test-Path -LiteralPath $copilotPath) {
         $null = Get-Content -Raw -LiteralPath $copilotPath | ConvertFrom-Json
         $copilotValid = $true
         $rawCopilot = Get-Content -Raw -LiteralPath $copilotPath
-        [regex]::Matches($rawCopilot, '"(?:bash|powershell)"\s*:\s*"([^" ]+)"') | ForEach-Object {
+        [regex]::Matches($rawCopilot, '"(?:bash|powershell)"\s*:\s*"([^" ]+)[^"]*"') | ForEach-Object {
             $path = $_.Groups[1].Value -replace '\\\\','/'
             if ($path.StartsWith('./')) { $path = $path.Substring(2) }
             $hookPaths += $path
@@ -109,24 +139,7 @@ if ($hookPaths.Count -eq 0 -or $missingHooks.Count) {
 
 $bashWired = @($shells | Where-Object { $_ -eq 'bash' }).Count -gt 0
 if ($bashWired) {
-    $bashParser = $null
-    $bashCommand = Get-Command bash -ErrorAction SilentlyContinue
-    if ($bashCommand) {
-        try {
-            $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-            $startInfo.FileName = $bashCommand.Source
-            $startInfo.Arguments = '--noprofile --norc -c "command -v jq >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1"'
-            $startInfo.UseShellExecute = $false
-            $startInfo.CreateNoWindow = $true
-            $process = New-Object System.Diagnostics.Process
-            $process.StartInfo = $startInfo
-            if ($process.Start()) {
-                if ($process.WaitForExit(3000)) { $bashParser = ($process.ExitCode -eq 0) }
-                else { $process.Kill() }
-            }
-            $process.Dispose()
-        } catch { $bashParser = $null }
-    }
+    $bashParser = Invoke-BashProbe 'command -v jq >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1'
     if ($null -eq $bashParser) { $bashParser = (Has jq) -or (Has python3) }
     if ($bashParser) { Row OK 'Guard JSON parser' 'jq or python3 is available.' }
     else { Row MISSING 'Guard JSON parser' 'the bash write guard is INACTIVE and allows writes with only a warning. Fix: install jq.' }

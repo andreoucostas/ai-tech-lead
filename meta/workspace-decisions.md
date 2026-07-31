@@ -1012,3 +1012,37 @@ was written, four in the guard regex, all confirmed by execution rather than arg
 mattered most was silent: `[\](,]` is invalid POSIX ERE, making `grep` exit 2, and because the check
 is `grep -Eq … && reasons+=(…)`, that short-circuit would have disabled the check on the `.sh` twin
 while `.ps1` blocked — a twin divergence that looks like a working feature.
+
+---
+
+## WSD-026: capability probes must use the consumer's vantage point (2026-07-31)
+
+**Context.** Hook registrations used the bare interpreter name `pwsh`. Claude Code launches hooks
+through Git Bash on Windows, and on the maintainer machine that bash's PATH ended in a literal,
+unexpanded `${PATH}` token. `pwsh` was therefore command-not-found (exit 127), so every registered
+hook was dead and silent. The PowerShell doctor nevertheless printed `[OK] Wired hook shell —
+available: pwsh.` because `Get-Command` ran inside PowerShell; its bash twin printed `[MISSING]` on
+the same machine. This is the second instance of the same bug class: the earlier `jq` diagnostic
+checked availability from PowerShell's vantage point instead of the bash guard's and was corrected
+in `framework-doctor`.
+
+**Decision.** Probe a capability from the vantage point that will actually use it. When that vantage
+point is unobservable, do not infer an answer: report `CANT-VERIFY` and remove the dependency instead.
+Hook registrations now pin an absolute interpreter path, preferring the stable
+`%LOCALAPPDATA%\Microsoft\WindowsApps\pwsh.exe` alias over the versioned
+`Program Files\WindowsApps\Microsoft.PowerShell_<ver>_…` path that changes on upgrade. The doctor
+can report `OK` or `MISSING` for that absolute path; a remaining bare name is `CANT-VERIFY`.
+
+**Alternatives rejected.** “Probe harder from bash” was rejected. A bash spawned by the doctor
+inherits the doctor's PATH, not the PATH of the shell the host later launches for hooks. Measurement
+showed the contradiction directly: host-launched bash could not resolve `pwsh`, while a
+doctor-spawned bash could. The probe is structurally incapable of answering the question, however
+many resolution commands it tries.
+
+**Consequences.** Interpreter resolution is removed from the host PATH as a runtime dependency, and
+the doctor no longer converts an unknowable condition into a false `[OK]`. The remaining
+`Invoke-BashProbe` use for the Guard JSON parser row has the same latent limitation; its comment now
+states that it must never be used to predict host-launched resolution. Future capability diagnostics
+must name both the consumer and the observation vantage point before claiming availability.
+
+**Date.** 2026-07-31.

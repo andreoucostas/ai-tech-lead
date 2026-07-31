@@ -488,3 +488,19 @@ Shipping B-57 (v0.36.0 + v0.37.0) after a consumer reported the framework pushin
    landed on the detached HEAD and the push been rejected — B-53's exact shape, a fourth time. Fixed
    non-destructively by detaching the worktree rather than removing it. Checking
    `git rev-parse --abbrev-ref HEAD` belongs in the release preflight, not in a postmortem.
+
+---
+
+## 2026-07-31 — a false `[OK]` is worse than a missing check
+
+Every hook could fail to start with command-not-found and still leave the framework looking clean.
+That is not an incidental presentation problem: silence is treated as a pass everywhere.
+`convention-check` literally says “Silence is a pass”; `boy-scout-check` deduplicates on a hash, so
+no output naturally reads as “nothing new”. A diagnostic that prints `[OK]` from the wrong process
+vantage point turns that established meaning of silence into false assurance.
+
+The two doctor twins disagreed on the same machine: PowerShell reported the hook interpreter
+available while bash reported it missing. That disagreement was the only reason the dead hooks were
+found. Running either twin alone — especially the one that printed `[OK]` — would have produced a
+clean bill of health. Twin agreement is not merely a maintenance nicety; disagreement is evidence
+that at least one probe is answering a different question.

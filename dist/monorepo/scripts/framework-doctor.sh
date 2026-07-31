@@ -65,24 +65,32 @@ else row OK 'Bootstrap/adoption state' 'repository setup is complete.'
 fi
 
 settings="$root/.claude/settings.json"
-commands=$(sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$settings" 2>/dev/null)
-shells=$(printf '%s\n' "$commands" | sed -n 's/^[[:space:]]*\([^[:space:]]*\)[[:space:]].*/\1/p' | sort -u)
+commands=$(sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\\"\([^"]*\)\\"\(.*\)".*/"\1"\2/p; t; s/.*"command"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$settings" 2>/dev/null)
+shells=$(printf '%s\n' "$commands" | sed -n 's/^[[:space:]]*"\([^"]*\)".*/\1/p; t; s/^[[:space:]]*\([^[:space:]]*\)[[:space:]].*/\1/p' | sort -u)
 if [ -z "$shells" ]; then
   row MISSING 'Wired hook shell' 'no hook interpreter could be read from .claude/settings.json. Fix: re-run the installer to rewire hooks.'
 else
-  absent=''
+  missing_shells=''; bare_shells=''; existing_shells=''
   while IFS= read -r shell; do
-    [ -n "$shell" ] && ! has "$shell" && absent="${absent}${absent:+,}$shell"
+    [ -z "$shell" ] && continue
+    case "$shell" in
+      /*|[A-Za-z]:[\\/]*)
+        if [ -f "$shell" ]; then existing_shells="${existing_shells}${existing_shells:+,}$shell"
+        else missing_shells="${missing_shells}${missing_shells:+,}$shell"; fi ;;
+      *) bare_shells="${bare_shells}${bare_shells:+,}$shell" ;;
+    esac
   done <<EOF
 $shells
 EOF
-  if [ -n "$absent" ]; then
-    row MISSING 'Wired hook shell' "committed hooks use $absent, which this machine does not have: no write guard, build feedback, or audit trail. Fix: install $absent, or re-run the installer to rewire hooks."
-  else row OK 'Wired hook shell' "available: $(printf '%s\n' "$shells" | paste -sd, -)."
+  if [ -n "$missing_shells" ]; then
+    row MISSING 'Wired hook shell' "the wired interpreter path does not exist on this machine, so hooks are silently dead: $missing_shells. Fix: re-run the installer."
+  elif [ -n "$bare_shells" ]; then
+    row CANT-VERIFY 'Wired hook shell' "hooks are wired to the bare name $bare_shells, so whether they run depends on the PATH of the shell your agent launches hooks with, which this script cannot observe -- if hooks seem to do nothing, this is the first thing to check. Fix: re-run the installer to pin an absolute interpreter path."
+  else row OK 'Wired hook shell' "wired interpreter paths exist: $existing_shells."
   fi
 fi
 
-paths=$( { printf '%s\n' "$commands" | grep -oE '[^ ]*\.claude[\\/]hooks[\\/][^ ]+'; sed -n 's/.*"\(bash\|powershell\)"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\2/p' "$root/.github/hooks/hooks.json" 2>/dev/null; } | sed 's#\\\\#/#g;s#^\./##' | sort -u)
+paths=$( { printf '%s\n' "$commands" | grep -oE '[^ ]*\.claude[\\/]hooks[\\/][^ ]+'; sed -n 's/.*"\(bash\|powershell\)"[[:space:]]*:[[:space:]]*"\([^"[:space:]]*\).*/\2/p' "$root/.github/hooks/hooks.json" 2>/dev/null; } | sed 's#\\\\#/#g;s#^\./##' | sort -u)
 missing_paths=''; count=0
 while IFS= read -r path; do
   [ -z "$path" ] && continue

@@ -5,6 +5,21 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.38.0 — 2026-07-31
+
+- **Claude Code hooks on Windows now use an absolute PowerShell path across the workspace.** A bare
+  `pwsh` registration can fail with command-not-found in the Git Bash shell Claude Code uses for
+  hooks, even when PowerShell is available from another shell. The failure emits nothing, so the
+  shared write guard and audit trail, .NET build feedback, Angular type-check feedback, Boy Scout
+  check, and routing context can all appear quiet while never running. `framework-doctor` now
+  reports a bare interpreter name as `CANT-VERIFY` rather than `OK`.
+
+  **Action required: re-run the installer** at the monorepo root so every hook registration receives
+  an absolute interpreter path. If hooks on either the .NET or Angular side have seemed to do
+  nothing, this may be why; run `pwsh scripts/framework-doctor.ps1` or
+  `bash scripts/framework-doctor.sh` after reinstalling to confirm the pinned interpreter is
+  available.
+
 ## 0.37.0 — 2026-07-31
 
 - **(.NET) The write guard now catches skipped tests in NUnit and MSTest, not just xUnit.** It already

@@ -11,6 +11,32 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.38.0 (2026-07-31)
+
+Fixes a silent failure that disabled every Claude Code hook on a Windows maintainer machine. Hook
+registrations invoked the bare name `pwsh`; Claude Code launches them through Git Bash, whose PATH on
+that machine ended in a literal unexpanded `${PATH}` token and no longer contained PowerShell.
+Every invocation failed command-not-found with exit 127 before the hook could emit anything: no write
+guard, post-write type-check, Boy Scout nudge, routing context, or audit trail.
+
+`framework-doctor.ps1` made the failure more dangerous by reporting `[OK] Wired hook shell —
+available: pwsh.` and exiting 0. It asked `Get-Command` from inside the already-running PowerShell
+process, while the `.sh` twin correctly reported `[MISSING]` from bash on the same machine. This is
+the second vantage-point defect in the doctor after the earlier `jq` probe checked PowerShell's view
+of a dependency consumed by bash.
+
+The installer now resolves and writes an absolute PowerShell interpreter path into hook
+registrations. It prefers `%LOCALAPPDATA%\Microsoft\WindowsApps\pwsh.exe`, the stable app-execution
+alias, over the versioned `Program Files\WindowsApps\Microsoft.PowerShell_<ver>_…` executable whose
+path changes on upgrade. Existing consumers must rerun the installer to replace bare registrations.
+
+The doctor now reports absolute interpreter paths as `OK` or `MISSING`, and reports a bare name as
+`CANT-VERIFY`. It deliberately does not “probe harder from bash”: a bash spawned by the doctor
+inherits the doctor's PATH, not the host shell's PATH, and measurement showed it could resolve
+`pwsh` even when host-launched bash could not. A diagnostic cannot observe the environment of a
+process it does not launch (WSD-026). The remaining `Invoke-BashProbe` use for the Guard JSON parser
+row is documented as unsuitable for predicting host-launched resolution.
+
 ## 0.37.0 (2026-07-31)
 
 The enforcement half of B-57, split from 0.36.0 because a regex in the write-time guard can hard-block
