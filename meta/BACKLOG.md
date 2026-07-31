@@ -280,8 +280,22 @@ commit — so the one thing a release script exists to guarantee is unverified. 
 hypothetical drift: the v0.34.3 root CHANGELOG entry is scar tissue from an earlier instance of the
 same class ("replayed here as v0.34.3 to resolve the version collision … that shipped on `master`").
 
+**Root cause of the recurrence, identified 2026-07-31 (4th occurrence, found pre-flight while
+shipping B-57):** the repo does not drift into a detached HEAD by accident — **Claude Code scratchpad
+worktrees claim the `master` branch**. An abandoned worktree under
+`%TEMP%\claude\<project>\<session>\scratchpad\wt-*` still held `master` (at a commit two behind
+`origin/master`, with 1126 uncommitted deletions and nothing else), which forces the main working
+directory to a detached HEAD and leaves the `master` *ref* stale. That is the precondition for the
+failure above, and it will keep recurring for as long as sessions create worktrees here. Note this
+also means fix (a) below, added on its own, would **block every release** until the operator
+understands the worktree interaction — so ship (a) with an error message that names the likely cause
+and the remedy. Non-destructive remedy, verified: `git -C <worktree> checkout --detach` frees the
+branch without discarding the worktree, then `git checkout master && git merge --ff-only <sha>`.
+`git worktree list` is the diagnostic.
+
 **Do:** (a) refuse to run when HEAD is detached or not on the expected branch, unless an explicit
-override is passed; (b) push the commit explicitly (`HEAD:master`) instead of by branch name;
+override is passed — and when refusing, run `git worktree list` and point at any worktree holding the
+target branch; (b) push the commit explicitly (`HEAD:master`) instead of by branch name;
 (c) after pushing, re-read `origin/master` and fail loudly unless it equals the release commit;
 (d) apply the same postcondition to the eval-results push. Consider also warning when the target
 branch is checked out in another worktree — that is what let the divergence persist unnoticed.
@@ -421,8 +435,18 @@ disclosure: (1) the **shell-write gap** — `guard` registers on editor/file-wri
 (B-01 optional hardening, deferred 2026-07-04); the `enforcement-surfaces.md` caveat exists but
 the hardening decision was never made. (2) the **test-defeat gap** — an agent can satisfy
 "build + test green" by weakening the failing test; the test-integrity prose forbids it but no
-deterministic gate sees it (open since v0.23.0). An enforcement product whose bypasses are
-undocumented-but-known is one consumer incident away from losing its honesty claim.
+deterministic gate sees it (open since v0.23.0). (3) **multi-line attribute lists evade every `.cs`
+test-defeat check** (found while shipping B-57, 2026-07-31): both twins are line-oriented, so
+`[Fact(Skip=…)]` and the new NUnit/MSTest `[Ignore]` check are both defeated by splitting the
+attribute list across lines —
+```csharp
+[Test,
+ Ignore("flaky")]
+```
+— which is legal C# that no formatter forbids. This is disclosed in the shipped v0.37.0 changelog as
+a known limitation, so it is honest, but it is a one-line evasion of a gate the framework advertises
+as deterministic. An enforcement product whose bypasses are undocumented-but-known is one consumer
+incident away from losing its honesty claim.
 
 **Do:** one scoped audit pass: enumerate the realistic end-runs (terminal-tool writes; test
 edits that invert assertions/delete cases in the same change that fixes them; `git commit
@@ -432,6 +456,63 @@ an added-lines diff heuristic for test-defeat, likely *advisory* not blocking) o
 bypass explicitly** in `enforcement-surfaces.md`'s capability rows. Blocking-vs-advisory is the
 key judgment: a false-positive block on a legitimate test refactor costs more trust than the
 gap. Record the decision as a WSD either way.
+
+### B-59 · The guard's test harness cannot detect an **inert** check — twins can silently disagree
+**Effort:** M · **Priority:** P2 · **Invariants:** #3 #5 · needs a WSD record
+
+**Why:** `TwinParity.Tests.ps1` compares the *decisions* the two twins reach on fixture inputs. It
+cannot see a check that has stopped working, because an inert check and a check that legitimately
+didn't match are indistinguishable from the outside. Three independent mechanisms can make a check
+inert, all found while shipping B-57 (v0.37.0), all verified by execution:
+
+1. **`grep -Eq … && reasons+=(…)` fails OPEN — 20 sites in `guard.sh`.** `grep` exits 2 on a bad
+   regex, an unsupported construct, or an unreadable input. The `&&` treats that identically to
+   "no match", so the reason is never appended and the write is allowed. A first-draft B-57 pattern
+   did exactly this — `[\](,]` is invalid POSIX ERE — which would have shipped a check that blocks
+   on `.ps1` and does nothing on `.sh`. Nothing in CI would have failed, because no fixture case
+   exercised it on the erroring twin.
+
+2. **`-match` is case-insensitive; `grep -E` is not.** Verified across **every existing pattern**,
+   not just the new one — `#PRAGMA WARNING DISABLE`, `[FACT(Skip="x")]`, `ASSERT.True(true)`,
+   `// ESLINT-DISABLE-next-line`, `// @TS-IGNORE` all block on `guard.ps1` and pass on `guard.sh`.
+   **No live exploit today**: C#, ESLint directives, and TS pragmas are all case-sensitive, so every
+   divergent input above is invalid code the `.ps1` side merely over-blocks. The danger is the *next*
+   pattern — B-57's `Ignore` was the first to collide with a legitimate lowercase identifier
+   (`Handle(evt, ignore, ctx)`), and it needed `-cmatch`. There is no stated policy, so the trap is
+   re-armed for whoever adds pattern #21.
+
+3. **Fixture content does not resemble the input.** Every `guard-cases.ps1` entry is a one-line
+   snippet; the hook receives whole file contents. A failure mode that only manifests across lines
+   is untestable by construction. B-57's patterns happened to be correct under `(?m)`/line-oriented
+   `grep`, but that was confirmed by an ad-hoc check, not by the suite.
+
+**Do:** (a) make grep errors loud — check the exit code explicitly (0 match / 1 no-match / 2 error →
+fail the hook or emit a diagnostic) rather than `&&`-chaining, or wrap the idiom in one helper used
+by all 20 sites; (b) decide and document a case-sensitivity policy for guard patterns, sweep the
+existing ones to `-cmatch` where the pattern contains a bare identifier, and add adversarially-cased
+fixture cases so `TwinParity` can actually see the divergence; (c) convert several fixtures to
+realistic multi-line file bodies; (d) add a self-test that plants a deliberately invalid regex in each
+twin and asserts the suite goes red — the harness must be shown to catch an inert check. Same
+portability class, worth sweeping together: the NUnit CI grep shipped in `enforce-standards` step 2
+uses GNU-only `\s`/`\b`, which are literal on BSD/macOS grep — it works on typical Linux CI but is
+the exact trap this entry is about, and a POSIX-safe form
+(`'^[[:space:]]*\[.*[^A-Za-z]Ignore[^A-Za-z]'`) is verified equivalent.
+
+### B-60 · Skill step cross-references rot silently when a numbered list changes
+**Effort:** S · **Priority:** P3 hygiene
+
+**Why:** skills cross-reference their own steps in prose — `add-tests` alone has "financial-domain
+invariants from **step 4** above" and "apply **step 6**'s red-check to every test". Markdown
+auto-renumbers ordered lists, so changing the first item's number silently repoints every such
+reference. This was caught by hand during B-57 (an implementer renamed step 1 to 0, leaving
+`0,2,3,4,5,6,7`, which renders as `0,1,2,3,4,5,6` and shifts both cross-references onto the wrong
+steps) in all three stacks. Nothing gates it, and the failure is invisible in the diff — each line
+looks locally correct.
+
+**Do:** a small check in `validate-dist` (or `template-checks`): for each shipped skill/command, parse
+the ordered-list labels, confirm they are contiguous from 1, and confirm every `step N` reference in
+the prose resolves to an existing item. Red-test by planting a gap. Cheap, and it protects a
+correctness property no human reliably re-verifies.
 
 ### B-58 · `CLAUDE.md` ↔ `AGENTS.md` skills list is ungated and has already drifted
 
