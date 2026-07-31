@@ -32,6 +32,24 @@
       "assertion": "skillArtifactAndVerification"
     },
     {
+      "id": "docs-tier-ondemand",
+      "budgetUsd": 0.75,
+      "prompt": "Add a class under `src/` that orchestrates validating an order and then reserving stock. Follow this repository's conventions. Do not add tests or a project reference; one source file is enough.",
+      "assertion": "docsTierProbe"
+    },
+    {
+      "id": "docs-tier-inline",
+      "budgetUsd": 0.75,
+      "prompt": "Add a class under `src/` that orchestrates validating an order and then reserving stock. Follow this repository's conventions. Do not add tests or a project reference; one source file is enough.",
+      "assertion": "docsTierProbe"
+    },
+    {
+      "id": "docs-tier-nopointer",
+      "budgetUsd": 0.75,
+      "prompt": "Add a class under `src/` that orchestrates validating an order and then reserving stock. Follow this repository's conventions. Do not add tests or a project reference; one source file is enough.",
+      "assertion": "docsTierProbe"
+    },
+    {
       "id": "haiku-convention-check",
       "budgetUsd": 0.35,
       "model": "haiku",

@@ -98,3 +98,95 @@ bearing red run before the production edit and a clean PASS after it (Bash `tool
 does not represent command exit status), while skill-add-tests added executable boundary calls and
 correctly left the planted production defect red. `haiku-convention-check` remains the genuine
 behavioral miss: it found the defect but violated its required structured output contract.
+
+## 2026-07-31 15:41:50 +01:00 — framework v0.39.0 (94b672d6e62076e998429da39c14d812fe7031f7)
+
+Host: Claude Code 2.1.220 (Claude Code) · scratch: retained=True
+
+- **PASS docs-tier-ondemand** (model=sonnet) — agentExit=0 timedOut=False; loaded=True followed=True class=OrderCoordinator
+
+
+## 2026-07-31 15:42:41 +01:00 — framework v0.39.0 (94b672d6e62076e998429da39c14d812fe7031f7)
+
+Host: Claude Code 2.1.220 (Claude Code) · scratch: retained=True
+
+- **FAIL docs-tier-inline** (model=sonnet) — agentExit=0 timedOut=False; loaded=n/a followed=False class=Order
+
+> **Grader false-negative invalidation (2026-07-31):** this row is not a behavioural failure.
+> The created file declared `Order`, `OrderLine`, and `OrderFulfillmentCoordinator`; the grader
+> inspected only the first class declaration. Retained as an audit trail, but it **must not be used
+> as a baseline**.
+
+## 2026-07-31 15:52:14 +01:00 — framework v0.39.0 (94b672d6e62076e998429da39c14d812fe7031f7)
+
+Host: Claude Code 2.1.220 (Claude Code) · scratch: retained=True
+
+- **ERROR docs-tier-nopointer** (model=sonnet) — Stream JSON must contain exactly one system/init event.
+
+
+## 2026-07-31 15:53:43 +01:00 — framework v0.39.0 (94b672d6e62076e998429da39c14d812fe7031f7)
+
+Host: Claude Code 2.1.220 (Claude Code) · scratch: retained=True
+
+- **PASS docs-tier-ondemand** (model=sonnet) — agentExit=0 timedOut=False; loaded=True followed=True classes=OrderCoordinator
+
+
+## 2026-07-31 15:54:41 +01:00 — framework v0.39.0 (94b672d6e62076e998429da39c14d812fe7031f7)
+
+Host: Claude Code 2.1.220 (Claude Code) · scratch: retained=True
+
+- **PASS docs-tier-inline** (model=sonnet) — agentExit=0 timedOut=False; loaded=n/a followed=True classes=OrderCoordinator
+
+
+## 2026-07-31 15:56:29 +01:00 — framework v0.39.0 (94b672d6e62076e998429da39c14d812fe7031f7)
+
+Host: Claude Code 2.1.220 (Claude Code) · scratch: retained=True
+
+- **INCONCLUSIVE docs-tier-nopointer** (model=sonnet) — agentExit=0 timedOut=False; loaded=True followed=False classes=n/a
+
+
+## 2026-07-31 15:57:55 +01:00 — framework v0.39.0 (94b672d6e62076e998429da39c14d812fe7031f7)
+
+Host: Claude Code 2.1.220 (Claude Code) · scratch: retained=True
+
+- **FAIL docs-tier-nopointer** (model=sonnet) — agentExit=0 timedOut=False; loaded=False followed=False classes=OrderFulfillmentOrchestrator
+
+## Phase A synthesis — 2026-07-31, framework v0.39.0
+
+Host: Claude Code 2.1.220 (Claude Code) · model: sonnet
+
+**Question:** after `/bootstrap`, does an on-demand `docs/` file reach an agent, and is a
+`CLAUDE.md` pointer what causes it? This question was raised by B-65.
+
+**Method:** three arms ran on a bootstrapped .NET fixture using an arbitrary, unguessable repository
+rule: orchestration classes are suffixed `Coordinator`; `Service` is reserved for HTTP clients.
+Grading used observable evidence only: a `Read` tool event for `docs/patterns.md`, plus the class
+names actually declared in new source files on disk. Final-message text was never grading evidence.
+
+**Results:**
+
+- **PASS — `docs-tier-ondemand` (file + pointer), 2 of 2 runs.** Both runs recorded
+  `loaded=True followed=True` and declared `OrderCoordinator`.
+- **PASS — `docs-tier-inline` (rule inlined in `CLAUDE.md`, control for rule clarity).** The valid
+  run recorded `followed=True` and declared `OrderCoordinator`. This confirms that the rule is
+  followable, so delivery rather than clarity is the variable under test. The earlier FAIL for this
+  arm was a grader false negative and is invalidated above.
+- **Split and inconclusive overall — `docs-tier-nopointer` (file present, no pointer).** One run
+  ERRORed because of the stream schema, so no evidence was obtained; one was INCONCLUSIVE
+  (`loaded=True`, but no new class was produced); and one FAILed (`loaded=False`, class
+  `OrderFulfillmentOrchestrator`).
+
+**Conclusions:**
+
+1. **On-demand `docs/` files are reachable by an agent in a bootstrapped repository.** The prior
+   working assumption that this delivery tier is effectively dead is falsified. This was the
+   decision-relevant question, and it has a clear answer.
+2. **Whether the pointer is what causes the load is unresolved.** The agent opened the file unaided
+   in one of two valid control runs. At this sample size, that is indistinguishable from noise.
+3. **The probe is sound.** Without the rule, the agent independently chose
+   `OrderFulfillmentOrchestrator`—the same intent expressed with a different word—so the rule is
+   genuinely not guessable from training, and "followed" really does mean the guidance arrived.
+
+**Caveats:** there were two or fewer valid runs per arm, using one model (sonnet), one prompt, one
+stack, and one host version. This is directional evidence, not a baseline, and must not be used to
+gate a release.

@@ -609,7 +609,7 @@ never held to it.
 to catch and asserts the non-zero exit or the honest row — the discipline B-41 applies to agent
 behaviour, applied to the deterministic layer.
 
-### B-65 · Shipped `docs/defaults.md` is unreachable after `/bootstrap`
+### B-65 · Restore reliable post-bootstrap discovery of `docs/defaults.md`
 **Effort:** S · **Priority:** P2
 
 **Why:** every inbound pointer is conditional on being un-bootstrapped: the `CLAUDE.md`
@@ -621,6 +621,15 @@ files are a weaker delivery tier than Instructed, and `enforcement-surfaces.md` 
 
 **Do:** decide whether `defaults.md` should be reachable post-bootstrap or explicitly retired at
 bootstrap, and add the missing tier to `enforcement-surfaces.md`.
+
+**Amended 2026-07-31 after the Phase A experiment:** the unreachability framing above is too strong
+and is superseded by measurement. Agents do reach on-demand `docs/` files in bootstrapped repos; in
+one valid no-pointer run, the agent opened the file unaided. Removing the pointer therefore
+plausibly reduces the *reliability* with which guidance is found rather than making the file
+unreachable. Keep this item open: restoring the pointer that `/bootstrap` deletes is cheap and
+still worth doing. The causal question—whether the pointer increases load probability—needs more
+runs before the framework asserts anything about pointers in shipped documentation. For the Angular
+work, a pattern catalogue in `docs/` is a viable delivery location on this evidence.
 
 ### B-66 · The Angular stack ships no forms guidance at all
 **Effort:** M · **Priority:** P2

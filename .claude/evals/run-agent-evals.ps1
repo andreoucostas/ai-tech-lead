@@ -219,6 +219,29 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             if ($checkpoint) { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = 'skill stopped at a developer checkpoint before editing' } }
             return [pscustomobject]@{ Status = 'PASS'; Pass = $finalOk -and $skill -and $testEdit -and $boundaryCases -and $verification; Detail = "skillTool=$([bool]$skill) exactTestEdit=$([bool]$testEdit) executableBoundaryCases=$boundaryCases observedAfterEdit=$([bool]$verification)" }
         }
+        { $_ -in @('docs-tier-ondemand','docs-tier-inline','docs-tier-nopointer') } {
+            $loaded = if ($Id -eq 'docs-tier-inline') {
+                'n/a'
+            } else {
+                [bool]@($e.Tools | Where-Object {
+                    $_.Name -match '^(?i:Read|ReadFile|read_file)$' -and
+                    (Get-ToolPath $_) -replace '\\','/' -match '(?i)(?:^|/)docs/patterns\.md$'
+                } | Select-Object -First 1)
+            }
+            $sourceFiles = @(Get-ChildItem -LiteralPath (Join-Path $Target 'src') -Filter '*.cs' -File -Recurse |
+                Where-Object { $_.Name -ne 'Calculator.cs' })
+            if ($sourceFiles.Count -eq 0) {
+                return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "loaded=$loaded followed=False classes=n/a" }
+            }
+            $classNames = @()
+            foreach ($sourceFile in $sourceFiles) {
+                $classNames += @([regex]::Matches((Get-Content -Raw -LiteralPath $sourceFile.FullName), '(?m)\bclass\s+([A-Za-z_][A-Za-z0-9_]*)') |
+                    ForEach-Object { $_.Groups[1].Value })
+            }
+            $followed = [bool]@($classNames | Where-Object { $_ -match 'Coordinator$' } | Select-Object -First 1)
+            $classes = if ($classNames.Count -eq 0) { 'not-found' } else { $classNames -join ',' }
+            return [pscustomobject]@{ Status = 'PASS'; Pass = $followed; Detail = "loaded=$loaded followed=$followed classes=$classes" }
+        }
         'haiku-convention-check' {
             $found = $finalOk -and $finalText -match '(?i)## Convention check' -and $finalText -match '(?i)Findings \([1-9]' -and $finalText -match '(?im)^\|[^\r\n]*ConventionViolation\.cs[^\r\n]*CancellationToken[^\r\n]*\|'
             return [pscustomobject]@{ Status = 'PASS'; Pass = $found; Detail = "finalFinding=$found" }
@@ -321,6 +344,24 @@ function Invoke-SelfTest {
             ([pscustomobject]@{ type='result'; is_error=$false; result='fixed' })
         ) }
         if ((Test-ScenarioEvidence 'route-fix' $temp $wrongExit 1).Pass) { throw 'route-fix accepted inverted tool-result error semantics' }
+        $docsRead = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='patterns'; name='Read'; input=[pscustomobject]@{ file_path=(Join-Path $temp 'docs/patterns.md') } }) } }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='done' })
+        ) }
+        'namespace EvalFixture; public class Order { } public class OrderLine { }' | Set-Content (Join-Path $temp 'src/OrderWork.cs') -Encoding utf8NoBOM
+        $docsService = Test-ScenarioEvidence 'docs-tier-ondemand' $temp $docsRead 1
+        if ($docsService.Pass -or $docsService.Detail -notmatch 'loaded=True followed=False classes=Order,OrderLine') { throw "docs-tier probe accepted supporting data types without a Coordinator: $($docsService.Detail)" }
+        'namespace EvalFixture; public class Order { } public class OrderLine { } public class OrderFulfillmentCoordinator { }' | Set-Content (Join-Path $temp 'src/OrderWork.cs') -Encoding utf8NoBOM
+        $docsCoordinator = Test-ScenarioEvidence 'docs-tier-ondemand' $temp $docsRead 1
+        if (-not $docsCoordinator.Pass -or $docsCoordinator.Detail -notmatch 'loaded=True followed=True classes=Order,OrderLine,OrderFulfillmentCoordinator') { throw "docs-tier probe rejected a later Coordinator declaration: $($docsCoordinator.Detail)" }
+        Remove-Item -LiteralPath (Join-Path $temp 'src/OrderWork.cs')
+        $docsEcho = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='I followed the convention and created an OrderCoordinator.' })
+        ) }
+        $docsKeywordOnly = Test-ScenarioEvidence 'docs-tier-ondemand' $temp $docsEcho 1
+        if ($docsKeywordOnly.Pass -or $docsKeywordOnly.Status -ne 'INCONCLUSIVE') { throw 'docs-tier probe accepted final-text Coordinator keyword without a matching source file' }
         $checkpoint = [pscustomobject]@{ Events = @(
             ([pscustomobject]@{ type='system'; subtype='init' }),
             ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='skill'; name='Skill'; input=[pscustomobject]@{ skill='add-tests' } }) } }),
@@ -367,6 +408,7 @@ function Invoke-SelfTest {
         Write-Output 'PASS: init ordering, unique results, and tool exit semantics are enforced'
         Write-Output 'PASS: structured Haiku positive control is accepted'
         Write-Output 'PASS: all graders reject keyword-only evidence'
+        Write-Output 'PASS: docs-tier probe observes Read, class naming, and rejects keyword-only evidence'
         Write-Output 'PASS: developer checkpoint is INCONCLUSIVE, not PASS/FAIL'
         Write-Output 'PASS: install graders require an observed installer tool event'
         Write-Output 'PASS: bootstrap Skill and archived-installer attempts are rejected'
@@ -424,6 +466,33 @@ handoff. The archived copy is frozen and is not equivalent.
                 "namespace EvalFixture; public class ConventionViolation { public async Task WorkAsync() { await Task.Delay(1); } }" | Set-Content (Join-Path $target 'src/ConventionViolation.cs') -Encoding utf8NoBOM
                 $claudeText = Get-Content -Raw (Join-Path $target 'CLAUDE.md')
                 $claudeText.Replace('BOOTSTRAP_PENDING', 'EVAL_BOOTSTRAPPED') | Set-Content (Join-Path $target 'CLAUDE.md') -Encoding utf8NoBOM
+            }
+            { $_ -in @('docs-tier-ondemand','docs-tier-inline','docs-tier-nopointer') } {
+                $claudePath = Join-Path $target 'CLAUDE.md'
+                $claudeText = (Get-Content -Raw $claudePath).Replace('BOOTSTRAP_PENDING', 'EVAL_BOOTSTRAPPED')
+                $ordinaryConventions = @'
+<!-- EVAL_BOOTSTRAPPED: repository conventions observed for this fixture. -->
+
+- Use PascalCase for types and public members.
+- Suffix asynchronous methods with `Async`.
+- Nullable reference types are enabled; address warnings rather than suppressing them.
+'@
+                if ($case.id -eq 'docs-tier-ondemand') {
+                    $ordinaryConventions += "`n- Before naming a new class, check [docs/patterns.md](./docs/patterns.md) — several common cases have a repository-specific convention."
+                }
+                if ($case.id -ne 'docs-tier-inline') {
+                    @'
+# Repository pattern catalogue
+
+Use these conventions when choosing names for common domain roles. They keep domain orchestration distinct from infrastructure clients.
+
+Classes that orchestrate multi-step domain work are suffixed `Coordinator` in this repository. Do not use `Service`, `Manager`, or `Handler` for them — `Service` is reserved for HTTP clients.
+'@ | Set-Content (Join-Path $target 'docs/patterns.md') -Encoding utf8NoBOM
+                } else {
+                    $ordinaryConventions += "`n- Classes that orchestrate multi-step domain work are suffixed `Coordinator` in this repository. Do not use `Service`, `Manager`, or `Handler` for them — `Service` is reserved for HTTP clients."
+                }
+                $claudeText = [regex]::Replace($claudeText, '(?s)<!-- EVAL_BOOTSTRAPPED:.*?_Not yet populated\..*?\r?\n(?=\r?\n---)', $ordinaryConventions)
+                $claudeText | Set-Content $claudePath -Encoding utf8NoBOM
             }
             'haiku-bloat-radar' {
                 "namespace EvalFixture; public static class SpeculativeHelper { public static int Identity(int value) => value; }" | Set-Content (Join-Path $target 'src/SpeculativeHelper.cs') -Encoding utf8NoBOM
