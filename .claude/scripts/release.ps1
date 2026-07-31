@@ -18,7 +18,10 @@
 param(
     [Parameter(Mandatory)][string]$Version,
     [Parameter(Mandatory)][string]$Summary,
-    [switch]$NoPush
+    [switch]$NoPush,
+    # Escape hatch for the branch precondition below. Deliberately named for what it risks, not for
+    # what it enables -- releasing off master is how v0.34.0 lost its release commit.
+    [switch]$AllowNonMasterHead
 )
 $ErrorActionPreference = 'Stop'
 
@@ -46,6 +49,43 @@ Git Bash rewrites a leading "/word" argument into a Windows path. Re-run with th
 or invoke from PowerShell directly, or lead the summary with a non-slash word.
 "@)
     exit 2
+}
+
+# ---- 0a2. HEAD must be on master (B-53) ----
+# Two real failures come from releasing while HEAD is not master's tip, and neither is theoretical:
+#
+#   * DETACHED HEAD (B-53, four occurrences). The commit lands on the detached HEAD, `push origin
+#     master` then pushes the *unchanged* master ref, exits 0, and the script prints
+#     "Release complete" having shipped nothing. The usual cause is a Claude Code scratchpad
+#     worktree holding the master branch, which forces this working directory to detach.
+#   * A FEATURE/PR BRANCH. v0.34.0 was released on a branch that was then squash-merged; GitHub
+#     replaced the release commit's subject with the PR title ("... (meta-only) (#5)") and the
+#     release commit ceased to exist as such. That release has no release commit on master to this
+#     day -- found only when the B-51 tag backfill went looking for it.
+#
+# Refuse before anything is stamped, so a refusal costs nothing and leaves no half-released tree.
+$branch = (git -C $repo rev-parse --abbrev-ref HEAD 2>$null)
+if ($LASTEXITCODE -ne 0) { [Console]::Error.WriteLine('FATAL: not a git repository.'); exit 2 }
+$branch = "$branch".Trim()
+if ($branch -ne 'master') {
+    if ($AllowNonMasterHead) {
+        Write-Host "WARNING: HEAD is '$branch', not master. Proceeding because -AllowNonMasterHead was passed."
+        Write-Host '         If this branch is later squash-merged, the release commit will not survive as such.'
+    } else {
+        [Console]::Error.WriteLine("FATAL: HEAD is '$branch', not master -- refusing to release.")
+        if ($branch -eq 'HEAD') {
+            [Console]::Error.WriteLine('HEAD is DETACHED. The usual cause is another worktree holding the master branch:')
+            git -C $repo worktree list | ForEach-Object { [Console]::Error.WriteLine("  $_") }
+            [Console]::Error.WriteLine('Free it non-destructively (do NOT delete the worktree), then re-attach here:')
+            [Console]::Error.WriteLine('  git -C <that-worktree> checkout --detach')
+            [Console]::Error.WriteLine('  git checkout master && git merge --ff-only <this-sha>')
+        } else {
+            [Console]::Error.WriteLine('Release from master. Releasing on a branch that is later squash-merged destroys')
+            [Console]::Error.WriteLine('the release commit (this is what happened to v0.34.0). Merge first, then release.')
+        }
+        [Console]::Error.WriteLine('Override only if you understand the above: -AllowNonMasterHead')
+        exit 2
+    }
 }
 
 # ---- 0b. State the runtime up front (B-73) ----
@@ -170,8 +210,21 @@ if (-not $staged) { Write-Host 'Nothing to commit (already released?).'; exit 0 
 git -C $repo commit -m "v${Version}: $Summary" -m "Released via .claude/scripts/release.ps1 — all deterministic gates green (compose ×3, validate-dist ×3, hook suites ×3, meta suite)."
 if ($LASTEXITCODE -ne 0) { Write-Host 'Commit FAILED.'; exit 1 }
 if (-not $NoPush) {
-    git -C $repo push origin master
+    # Push the COMMIT, not the branch name (B-53). `push origin master` pushes whatever the local
+    # master ref points at -- which, on a detached HEAD, is not the commit just created. That is how
+    # a release exited 0 and printed "complete" having shipped nothing.
+    $releaseCommit = (git -C $repo rev-parse HEAD).Trim()
+    git -C $repo push origin "${releaseCommit}:refs/heads/master"
     if ($LASTEXITCODE -ne 0) { Write-Host 'Push FAILED.'; exit 1 }
+    # Postcondition: prove origin actually advanced. An exit code of 0 from push is not proof --
+    # the whole of B-53 is that the one thing this script exists to guarantee went unverified.
+    $remoteMaster = (git -C $repo ls-remote origin refs/heads/master | ForEach-Object { ($_ -split '\s+')[0] })
+    if ("$remoteMaster".Trim() -ne $releaseCommit) {
+        Write-Host "Push POSTCONDITION FAILED: origin/master is $remoteMaster, expected $releaseCommit."
+        Write-Host 'The release is committed locally but did NOT reach origin. Do not treat this as shipped.'
+        exit 1
+    }
+    Write-Host "origin/master confirmed at $($releaseCommit.Substring(0,7))."
 }
 
 # ---- 5b. Tag the release (B-51) ----
@@ -225,8 +278,16 @@ if ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
             git -C $repo commit -m "meta: record v${Version} agent eval results"
             if ($LASTEXITCODE -ne 0) { Write-Host 'Eval-results commit FAILED; release is shipped but evidence is not persisted.'; exit 1 }
             if (-not $NoPush) {
-                git -C $repo push origin master
+                # Same explicit-commit push + postcondition as the release push above (B-53 d).
+                $evalCommit = (git -C $repo rev-parse HEAD).Trim()
+                git -C $repo push origin "${evalCommit}:refs/heads/master"
                 if ($LASTEXITCODE -ne 0) { Write-Host 'Eval-results push FAILED; release is shipped but evidence is only local.'; exit 1 }
+                $remoteAfterEval = (git -C $repo ls-remote origin refs/heads/master | ForEach-Object { ($_ -split '\s+')[0] })
+                if ("$remoteAfterEval".Trim() -ne $evalCommit) {
+                    Write-Host "Eval-results push POSTCONDITION FAILED: origin/master is $remoteAfterEval, expected $evalCommit."
+                    Write-Host 'Release is shipped; the eval evidence is only local.'
+                    exit 1
+                }
             }
             $persisted = if ($NoPush) { 'locally (-NoPush)' } else { 'and pushed' }
             Write-Host "Agent eval evidence committed $persisted."

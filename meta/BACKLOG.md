@@ -267,13 +267,19 @@ of the latest released tag" works without a raw SHA.
 once from each legacy repo merged in — and carry no `dist/` stamp, so a tag would be ambiguous and
 unverifiable. The root `CHANGELOG.md` starts at v0.26.0 for the same reason.
 
-**Anomaly surfaced by the backfill, worth its own attention:** **v0.34.0 has no release commit.** Its
-version stamp lands in `524842f`, a squashed PR merge whose subject reads
-"B-52: persist two-hook Copilot canary durably + point BACKLOG at it **(meta-only)**" — but a version
-bump means shipped content changed, so "meta-only" and a stamp bump are contradictory. The tag is
-placed there because that is verifiably where the shipped version became 0.34.0, but it means a
-release once rode along inside a commit labelled as not shipping anything. Nothing would have caught
-it; the tagging pass did, incidentally.
+**Anomaly surfaced by the backfill, root-caused and fixed the same day:** **v0.34.0 has no release
+commit.** Its version stamp lands in `524842f`, a squashed PR merge whose subject reads
+"B-52: persist two-hook Copilot canary durably + point BACKLOG at it **(meta-only)**". Reading the
+squashed body shows why: the PR carried three commits and the third was a genuine release
+(`v0.34.0: add technical architecture presentation and system map`, gates green, version stamps and
+all three changelogs in the diff). `release.ps1` had been run **on the PR branch**, and the
+squash-merge replaced the release commit's subject with the PR title.
+
+So the label was never the problem — the root cause is that `release.ps1` had **no precondition that
+HEAD is master**, which is **B-53(a)**, open as a P1 through four detached-HEAD occurrences. This is
+the fifth occurrence and a second mechanism for it. Fixed in B-53 (see that entry): releasing off
+master is now refused, with the squash hazard named in the error. The tag stays at `524842f` because
+that is verifiably where the shipped version became 0.34.0.
 
 ### B-52 · Verify Copilot CLI fires *both* `userPromptSubmitted` hooks and injects both payloads (v0.33.0 Boy Scout parity claim)
 **Effort:** S · **Priority:** P2 capability honesty · **Invariants:** #5 · **execution vehicle: B-49's quarterly recert / B-43**
@@ -345,6 +351,33 @@ target branch; (b) push the commit explicitly (`HEAD:master`) instead of by bran
 (c) after pushing, re-read `origin/master` and fail loudly unless it equals the release commit;
 (d) apply the same postcondition to the eval-results push. Consider also warning when the target
 branch is checked out in another worktree — that is what let the divergence persist unnoticed.
+
+**DONE 2026-07-31 — (a), (b), (c) and (d) all shipped.** Reached by asking for the *root cause* of
+the v0.34.0 anomaly that the B-51 tag backfill surfaced, which turned out to be this entry's missing
+precondition.
+
+**A fifth occurrence, and a new mechanism.** The four known instances were all detached HEAD. v0.34.0
+was different: `release.ps1` ran on a **PR branch**, and the branch was then **squash-merged**.
+GitHub replaced the release commit's subject with the PR title — "B-52: persist two-hook Copilot
+canary durably + point BACKLOG at it **(meta-only)** (#5)" — so a real release
+(`v0.34.0: add technical architecture presentation and system map`, gates green, stamps and all three
+changelogs in the diff) survives only as a bullet inside a squashed commit body, under a subject
+asserting it shipped nothing. The precondition now covers both mechanisms, because both reduce to
+"HEAD is not master's tip".
+
+**Shipped:** (a) refuses unless HEAD is `master`, printing `git worktree list` and the
+non-destructive `checkout --detach` remedy on the detached path, and naming the v0.34.0 squash hazard
+on the branch path; escape hatch `-AllowNonMasterHead`, named for what it risks rather than what it
+enables. (b) pushes `<commit>:refs/heads/master`. (c) re-reads `origin/master` via `ls-remote` and
+exits 1 unless it equals the release commit, saying explicitly "do not treat this as shipped".
+(d) the same explicit push + postcondition on the eval-results push.
+
+**Red-tested, including the original failure reproduced end to end** in a throwaway repo with a bare
+origin: on a detached HEAD, `git push origin master` printed **"Everything up-to-date"** and
+**exited 0** while `origin/master` stayed at the old commit — B-53's exact claim, demonstrated rather
+than argued. `push <commit>:refs/heads/master` then advanced origin to the release commit. Guard
+tests: feature branch → refused exit 2; detached HEAD → refused exit 2 with the worktree list;
+`master` → proceeds to the real gates. Meta suite 0 failures.
 
 ### B-54 · Shipped changelog dates are never stamped, and no gate rejects the placeholder
 **Effort:** S · **Priority:** P2 gate lies by omission · **Invariants:** #7

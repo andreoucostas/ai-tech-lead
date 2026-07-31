@@ -551,3 +551,36 @@ next to the scenario. Until then it is an unvalidated instrument, and a green re
 nothing. This is B-59's inert-check problem — a check that has stopped working is indistinguishable
 from a check that legitimately did not match — moved from the deterministic layer to the
 behavioural one.
+
+---
+
+## 2026-07-31 — the anomaly was the symptom; the P1 had been sitting open the whole time
+
+A tag backfill found that v0.34.0 had no release commit. The obvious reading was a labelling slip:
+its version stamp sits in a squashed PR merge whose subject says "(meta-only)", which contradicts a
+version bump. The tempting fix is a gate that rejects a stamp bump in a commit labelled meta-only.
+
+Reading the squashed body instead showed the real shape. The PR carried three commits and the third
+was a full release — `release.ps1` run **on the PR branch**, gates green, stamps and all three
+changelogs present. GitHub's squash then replaced that commit's subject with the PR title. Nothing
+was mislabelled; a release was performed somewhere it could not survive.
+
+And the mechanism was already written down. **B-53(a)** — "refuse to run when HEAD is detached or not
+on the expected branch" — had been open as a **P1 through four occurrences**, all of them detached
+HEAD. Nobody had noticed the entry also covers releasing from a feature branch, because every prior
+instance wore the same costume. The anomaly was a fifth occurrence of a known P1 in unfamiliar dress.
+
+Three things worth keeping:
+
+1. **When something anomalous turns up, check the open P1s before inventing a new gate.** A
+   meta-only-label gate would have been new machinery that fixed a symptom of a defect already
+   diagnosed, and would have left the actual hole open.
+2. **A recurring defect's *recorded* mechanism can be narrower than its real one.** B-53's evidence
+   was four detached-HEAD cases, so "detached HEAD" became shorthand for the bug. The invariant is
+   "HEAD is not master's tip"; detachment is one way to get there and a PR branch is another. When
+   filing a recurrence, restate the invariant, not the costume.
+3. **Reproduce the failure before fixing it, even when the entry already asserts it.** In a throwaway
+   repo with a bare origin, on a detached HEAD, `git push origin master` printed
+   **"Everything up-to-date"** and **exited 0** while origin stayed put. Seeing it is worth more than
+   the four write-ups saying so — and it is what makes the postcondition obviously necessary rather
+   than defensive.
