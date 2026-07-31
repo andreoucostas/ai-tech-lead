@@ -245,11 +245,35 @@ choice in a WSD.
 and `origin/master` was confirmed at the new SHA, but no `v0.38.0` tag was created. `git tag` still
 ends at `v0.26.0`.
 
-**Reproduced again 2026-07-31 by the v0.40.0 release** (`0cbf24f`, pushed, `origin/master` verified
-in sync): `git tag --sort=-version:refname` still returns only `v0.26.0` and `pre-restructure`. That
-is now **14 untagged releases** (v0.26.1 … v0.40.0). Every one of them is unreachable by the tag the
-B-49 drill protocol requires for a clean checkout, which is why drill #0 had to fall back to a raw
-SHA. The backfill-or-not decision in this entry is still unmade and is getting more expensive.
+**DONE 2026-07-31.** Both halves closed.
+
+*Code:* `release.ps1` now creates and pushes an annotated `vX.Y.Z` tag after every gate and the
+release commit succeed, so a tag always means a green release. A re-run finding the tag already on
+the release commit skips it; a tag pointing anywhere else is refused rather than moved; the push is
+verified against `ls-remote`, because a local-only tag is precisely the failure this entry
+describes. An isolation test caught a real bug before it shipped: `git rev-parse refs/tags/x` on an
+**annotated** tag returns the tag *object* sha, not the commit sha, so without a `^{commit}` peel
+every retry would have taken the "exists elsewhere" branch and refused a re-run outright.
+
+*Backfill (maintainer decision — backfill all, verified):* **27 tags created** for v0.26.1 … v0.40.0
+and pushed; with the pre-existing `v0.26.0` that is **29 version tags, every one verified on origin**
+to point at the same commit locally and remotely. Tags were not trusted to commit subjects — each was
+placed only where that commit's own `dist/angular/.claude/framework-version.json` stamp equals the
+tag version, so the tag is backed by the artifact rather than by a message someone typed.
+`git tag --sort=-version:refname` now returns `v0.40.0`, so the B-49 drill protocol's "clean checkout
+of the latest released tag" works without a raw SHA.
+
+*Deliberately not tagged:* the pre-merge legacy versions (0.13.x–0.19.x) appear **twice** in history —
+once from each legacy repo merged in — and carry no `dist/` stamp, so a tag would be ambiguous and
+unverifiable. The root `CHANGELOG.md` starts at v0.26.0 for the same reason.
+
+**Anomaly surfaced by the backfill, worth its own attention:** **v0.34.0 has no release commit.** Its
+version stamp lands in `524842f`, a squashed PR merge whose subject reads
+"B-52: persist two-hook Copilot canary durably + point BACKLOG at it **(meta-only)**" — but a version
+bump means shipped content changed, so "meta-only" and a stamp bump are contradictory. The tag is
+placed there because that is verifiably where the shipped version became 0.34.0, but it means a
+release once rode along inside a commit labelled as not shipping anything. Nothing would have caught
+it; the tagging pass did, incidentally.
 
 ### B-52 · Verify Copilot CLI fires *both* `userPromptSubmitted` hooks and injects both payloads (v0.33.0 Boy Scout parity claim)
 **Effort:** S · **Priority:** P2 capability honesty · **Invariants:** #5 · **execution vehicle: B-49's quarterly recert / B-43**
@@ -831,6 +855,21 @@ session `PATH`.
 `Program Files`, since neither can be intentional) or document `MSYS_NO_PATHCONV=1` as the required
 invocation and add it to `DEVELOPING.md`'s release recipe. The script-side guard is preferable —
 `DEVELOPING.md` already has a recipe and it did not prevent this.
+
+**DONE 2026-07-31 (both halves).** The script-side guard shipped: `release.ps1` refuses a `-Summary`
+containing the Git install path or the repo path and prints the `MSYS_NO_PATHCONV=1` remedy. The red
+test **reproduced the bug live** — passing the *correct* string from Git Bash still tripped the
+guard, because bash mangled it on the way in; the same string with `MSYS_NO_PATHCONV=1` passed
+through and proceeded to the real gates. The v0.40.0 commit subject itself was corrected by rebuilding
+the two commits on top of `790e42c` and force-pushing with `--force-with-lease`, after proving the
+rebuilt history was content-identical (`git diff` against the originals empty in both directions).
+The runtime notice also shipped: the script now states the ~30-minute estimate and "if interrupted
+before complete, nothing was committed — re-run as-is" before the first gate.
+
+**Residual, deliberately not done:** the `-ResumeFrom` / `-SkipGates` escape hatch. Skipping gates is
+the one thing this script exists to prevent, and a flag that does it would be reached for under
+exactly the time pressure that makes it dangerous. The re-run-as-is path is slow but honest. Revisit
+only if release runtime grows further.
 
 **Why (defect 2 — the release cannot fit in one tool call).** The gate sequence is
 `compose ×3 → footprint → validate-dist ×3 → hook suites ×3 → meta suite → eval self-test`, and the
