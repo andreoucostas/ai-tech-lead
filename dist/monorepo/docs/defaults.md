@@ -131,11 +131,21 @@ Choose the level by what the test actually exercises — *push each test to the 
 - Barrel files (`index.ts`) only at feature boundaries — not inside feature folders (causes circular deps).
 
 ### Component Design
-- Smart/container components handle state and orchestration. Dumb/presentational components receive data via `@Input` and emit via `@Output`.
+- Smart/container components handle state and orchestration. Dumb/presentational components receive data via `@Input` and emit via `@Output` — except a component that is itself a form control, which must participate in the forms API instead (see Forms).
 - `ChangeDetectionStrategy.OnPush` on every component. No exceptions without a documented reason.
 - Templates stay lean — no complex expressions, no business logic. Move logic to the component class or a pipe.
 - Use new control flow syntax (`@if`, `@for`, `@switch`) in new code. Migrate from `*ngIf`/`*ngFor` when touching existing templates.
 - Prefer signals over getter-based reactive state for new code.
+
+### Forms
+<!-- Detect the approach before writing any: `ReactiveFormsModule` + `formControlName` in templates
+     means reactive; `FormsModule` + `ngModel` means template-driven. Mirror what the repo already
+     uses and don't introduce a second approach alongside it. Record which one, and where validators
+     live. -->
+<!-- Record how this repo's custom form controls participate in the forms API — providing
+     `NG_VALUE_ACCESSOR`, or injecting `NgControl` and assigning `valueAccessor` — and follow the
+     pattern already established. A component bindable with `formControlName` must participate one of
+     those ways; `@Input`/`@Output` alone cannot carry a form binding. -->
 
 ### State Management
 - Local component state: signals or simple properties.

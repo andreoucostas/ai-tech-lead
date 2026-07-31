@@ -5,6 +5,30 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.40.0 — Unreleased
+
+Angular-side changes only; the .NET rails are unchanged this release.
+
+- **`/bootstrap` and `/adopt` now capture your Angular forms conventions.** Until this release
+  neither command had any notion of forms, so the `Conventions` section they write for your repo
+  said nothing about them — and an agent working on a form had nothing repo-specific to follow. Both
+  commands now author a `Forms` subsection on the Angular side, and `/bootstrap`'s component-design
+  analysis pass looks for what belongs in it: whether you use reactive or template-driven forms,
+  where your validators live, and whether any of your components are custom form controls and how
+  they plug into the forms API.
+- **A correction to the component guidance.** `.github/copilot-instructions.md` and
+  `docs/defaults.md` both stated that presentational components take data via `@Input` and emit via
+  `@Output` — stated flatly enough to read as covering *every* component. It does not cover a
+  component that is itself a form control: to be usable with `formControlName` a component has to
+  participate in the forms API, either by providing `NG_VALUE_ACCESSOR` or by injecting `NgControl`
+  and assigning its `valueAccessor`. Both files now carry that exception.
+- **`docs/defaults.md` gains a `Forms` section** under the Angular defaults. It is deliberately a set
+  of detection notes rather than a prescribed default: it tells the analysis what to look for in
+  *your* codebase, in the same style as the existing SSR / Hydration section. Your own conventions,
+  once bootstrapped, remain the authority.
+- **Nothing to do.** Re-running `/bootstrap` or `/adopt` will pick up forms conventions on the next
+  pass; an existing `CLAUDE.md` is not rewritten by installing this version.
+
 ## 0.39.0 — 2026-07-31
 
 - **`framework-doctor` can now confirm that Claude Code hooks have really run at your monorepo

@@ -504,3 +504,50 @@ available while bash reported it missing. That disagreement was the only reason 
 found. Running either twin alone — especially the one that printed `[OK]` — would have produced a
 clean bill of health. Twin agreement is not merely a maintenance nicety; disagreement is evidence
 that at least one probe is answering a different question.
+
+---
+
+## 2026-07-31 — the instrument agreed with the fix, so we nearly shipped on faith
+
+B-66 was as well-evidenced as a backlog item gets: a real field report, plus a case-sensitive grep
+returning zero hits for every forms token across `src/stacks/angular/`, `src/core/` and
+`dist/angular/`. The plan was to ship forms guidance and prove it with the `angular-form-control`
+probe. Three things went wrong in sequence, and the order matters.
+
+1. **The grader was defeatable by the idiom the guidance was about to recommend.** `@Input() set
+   disabled(v)` and `disabled = input.required<boolean>()` both scored PASS while being precisely
+   the reported defect — the decorator pattern required the property name immediately after
+   `@Input(...)`, and the signal pattern did not admit `.required`. The draft plan contained the
+   sentence "cover both `@Input()` and Angular's signal `input()` form". Had the guidance been
+   written first, the eval would have gone green and the release would have carried a behavioural
+   claim produced entirely by the measurement artefact. **A probe you are about to satisfy is not a
+   test; it is a mirror.** Harden the instrument before the change it will measure, never after.
+
+2. **The baseline passed before the fix.** With no forms guidance shipped at all, the agent
+   self-injected `NgControl`, assigned `valueAccessor = this`, used `setDisabledState` instead of an
+   `@Input() disabled`, and commented that this avoids the circular-DI `forwardRef` that
+   `NG_VALUE_ACCESSOR` would need — the hazard the guidance existed to teach. The prompt telegraphed
+   the mechanism ("bind directly with `formControlName`", "show its own validation error when
+   invalid and touched"), so a capable model satisfies it whether or not the repo says anything.
+   A scenario written from a defect report will tend to *describe the fix*, because whoever writes
+   it now knows the answer. State the business need; let the agent discover the mechanism.
+
+3. **The grader cannot see the hazard the guidance teaches.** `cva` is `ControlValueAccessor OR
+   NG_VALUE_ACCESSOR`, so the correct pattern and the double-registration circular-DI bug both score
+   `cva=True ngcontrol=True`. The probe would have passed a component that fails at runtime.
+
+**What we did with that.** Not "ship anyway, it's justified independently" — though it was — and not
+"abandon B-66". The scope was cut to the half that stands without the probe: `/bootstrap` and
+`/adopt` now capture a repo's forms conventions, and the surfaces asserting `@Input`/`@Output`
+**only** were carved out. The prescriptive greenfield guidance and the CVA-vs-`NgControl` trade-off
+table were dropped until a re-specified probe shows where the model actually fails. Evidence that
+arrives against your expectation is worth more than evidence that confirms it, and the right
+response to "my instrument says I was wrong about the urgency" is to ship the part that was never
+in question.
+
+**The generalisable rule, now filed as B-72(c):** a behavioural probe earns the name "red test" only
+once it has been observed to **fail** on the unfixed tree, with that failing observation recorded
+next to the scenario. Until then it is an unvalidated instrument, and a green result from it means
+nothing. This is B-59's inert-check problem — a check that has stopped working is indistinguishable
+from a check that legitimately did not match — moved from the deterministic layer to the
+behavioural one.

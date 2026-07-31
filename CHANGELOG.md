@@ -11,6 +11,42 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.40.0 (2026-07-31)
+
+Closes the delivery half of B-66: the Angular stack shipped **no forms guidance at all**. A
+case-sensitive grep for `ControlValueAccessor`, `NgControl`, `FormControl`, `FormGroup`,
+`FormBuilder`, `Validators`, `ngModel`, `NG_VALUE_ACCESSOR`, `formControlName` and
+`ReactiveFormsModule` returned zero hits across `src/stacks/angular/`, `src/core/` **and**
+`dist/angular/`. Forms are the largest surface of a line-of-business Angular app, and this is the
+standing defect behind field report #2 (`meta/field-reports.md`), where a developer reported the
+model using `@Input()` on a custom form control instead of participating in the forms API.
+
+`/bootstrap` and `/adopt` now carry a `Forms` subsection in the Conventions structure they author,
+and `/bootstrap`'s A3 pass probes for it (reactive vs template-driven, where validators live,
+whether any component is a custom form control and how it participates). `docs/defaults.md` gains a
+matching detect-only `### Forms` section — HTML comments in the house style of `### SSR / Hydration`,
+telling the analysis what to observe rather than prescribing a greenfield default. Two shipped
+surfaces that asserted the opposite were carved out: `copilot-instructions.md` said dumb components
+use `@Input`/`@Output` **only**, and `defaults.md` § Component Design said the same less forcefully.
+
+**Deliberately trimmed, and this is the interesting part.** The plan originally shipped prescriptive
+greenfield forms guidance — reactive-over-template-driven, typed forms, and a `NG_VALUE_ACCESSOR`
+vs `NgControl` trade-off table — plus an `add-component` skill branch. That was cut after the
+`angular-form-control` baseline **passed with no forms guidance shipped** (`meta/eval-results.md`).
+The agent self-injected `NgControl`, set `valueAccessor = this`, used `setDisabledState` rather than
+an `@Input() disabled`, and commented that this avoids the circular-DI `forwardRef` that
+`NG_VALUE_ACCESSOR` would need — the exact hazard the guidance was going to teach. Writing
+prescriptive guidance against a probe that is green before the fix would have been shipping on
+faith. What ships here is only the part justified independently of the probe: making the framework
+*capture* a repo's forms conventions, which it previously could not do at all.
+
+**No eval validates this release.** B-72 records why: the probe's prompt telegraphs the mechanism,
+so it cannot reproduce its own field report; and its `cva` signal conflates the correct `NgControl`
+pattern with the double-registration circular-DI bug. The grader was also found **defeatable by the
+idiom the cut guidance recommended** — `@Input() set disabled(v)` and `disabled = input.required<boolean>()`
+both scored PASS while being exactly the reported defect. Fixed and red-tested in `790e42c` before
+the baseline ran, which is the only reason the baseline result can be trusted at all.
+
 ## 0.39.0 (2026-07-31)
 
 Adds the framework's first observed-behaviour diagnostic. Every check before this release inspected

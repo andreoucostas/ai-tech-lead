@@ -33,7 +33,7 @@ When generating code in this repo, follow these rules. The full conventions, arc
 ## Angular — Architecture & Component Design
 - Standalone components by default; `inject()` for DI in new code (don't mix with constructor injection in one file); feature areas are lazy-loaded routes.
 - Barrel files (`index.ts`) only at feature boundaries, never inside feature folders.
-- `ChangeDetectionStrategy.OnPush` on every new component; smart components orchestrate state, dumb components use `@Input`/`@Output` only.
+- `ChangeDetectionStrategy.OnPush` on every new component; smart components orchestrate state, dumb components use `@Input`/`@Output` only — unless the component is itself a form control, which must participate in the forms API (`NG_VALUE_ACCESSOR` or injected `NgControl`).
 - Templates stay lean — no complex expressions or business logic; new control flow (`@if`, `@for`, `@switch`) in new code; prefer signals over getter-based reactive state.
 
 ## Angular — State Management & RxJS

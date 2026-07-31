@@ -657,6 +657,34 @@ trade-off honestly rather than naming either an anti-pattern, and name the doubl
 **Not:** do not ship a broad pattern catalogue before the delivery-tier question in B-65 is
 answered.
 
+**PARTIALLY DONE — delivery half shipped as v0.40.0 (2026-07-31); the guidance half is deliberately
+still open.** What shipped: `/bootstrap` and `/adopt` now author a `Forms` subsection (both stacks,
+monorepo siblings included), `/bootstrap`'s A3 pass probes for it, `docs/defaults.md` gained a
+**detect-only** `### Forms` section in the `### SSR / Hydration` house style, and the two surfaces
+asserting `@Input`/`@Output` **only** (`copilot-instructions.md`, `defaults.md` § Component Design)
+were carved out. That closes the delivery-tier problem: the reason the guidance could not reach a
+bootstrapped repo was that nothing wrote `Conventions > Forms`, and the `add-component` skill
+subordinates itself to `CLAUDE.md > Conventions` at its first line — so routing around the tier was
+never going to work.
+
+What did **not** ship, and why: the prescriptive greenfield block (reactive-over-template-driven,
+typed forms, the `NG_VALUE_ACCESSOR`-vs-`NgControl` trade-off table, the double-registration hazard)
+and an `add-component` form-control branch. The `angular-form-control` baseline **passed with no
+forms guidance shipped at all** — the agent self-injected `NgControl`, set `valueAccessor = this`,
+used `setDisabledState` rather than an `@Input() disabled`, and commented that this avoids the
+circular-DI `forwardRef`. Writing prescriptive guidance whose only instrument is green before the
+fix would be shipping on faith. **Resume this half once B-72 re-specifies the probe** so it states
+the business need without naming the mechanism, and shows where the model actually fails. The
+technical content is drafted and reviewed in
+`C:\Users\Costas\.claude\plans\let-s-go-ahead-and-sorted-quill.md` (including three precision traps:
+qualify circular DI to the *self-referencing* `useExisting` provider; do **not** claim "Angular
+warns" about `@Input() disabled` — it collides with `setDisabledState()`, which is a different
+thing; signal inputs are read-only so a CVA's *value* cannot be an `input()`).
+
+Scope note: `bootstrap.md`/`adopt.md` were taken deliberately even though B-66 deferred the
+delivery-tier question to B-65. B-65 is about restoring the pointer `/bootstrap` *deletes*; this was
+about what `/bootstrap` *writes*. Adjacent, not the same.
+
 ### B-67 · `no-dead-instruction` does not validate markdown link targets
 **Effort:** S · **Priority:** P3
 

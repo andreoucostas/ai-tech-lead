@@ -60,6 +60,7 @@ The pass definitions below are the source of truth the subagents read. Do not du
 - Template complexity — heavy logic, deep nesting, complex expressions
 - God components
 - `@Input`/`@Output` patterns — anti-patterns
+- Forms: reactive or template-driven (or both); where validators live; whether any component is a custom form control, and how it participates (`NG_VALUE_ACCESSOR` provider vs injected `NgControl`)
 - Lifecycle hook misuse
 - Signals adoption (Angular 16+)
 
@@ -158,7 +159,7 @@ Read the existing CLAUDE.md template in the project root. Replace every placehol
 
 - **Codebase Context**: what this app does, users, domain concepts, critical journeys
 - **Repository Structure**: actual folder layout with module dependency diagram
-- **Conventions**: the rules this codebase actually follows (or should follow), with rationale. Use the subsection structure from `docs/defaults.md` (Angular Version, Architecture, Component Design, State Management, RxJS, API/HTTP, Typing, Testing) as a starting checklist; record observed reality, deviating from defaults where the codebase does. End `Conventions > Testing` with a one-line target test shape for this repo (unit-dense, honeycomb, trophy-shaped, or another shape from the `docs/defaults.md` heuristic), adapted to what A1–A6 found. If Angular version is below 17, adjust conventions to match what's available. **Delete the `BOOTSTRAP_PENDING` HTML comment and the "_Not yet populated_" placeholder line** when this section is filled in.
+- **Conventions**: the rules this codebase actually follows (or should follow), with rationale. Use the subsection structure from `docs/defaults.md` (Angular Version, Architecture, Component Design, Forms, State Management, RxJS, API/HTTP, Typing, Testing) as a starting checklist; record observed reality, deviating from defaults where the codebase does. End `Conventions > Testing` with a one-line target test shape for this repo (unit-dense, honeycomb, trophy-shaped, or another shape from the `docs/defaults.md` heuristic), adapted to what A1–A6 found. If Angular version is below 17, adjust conventions to match what's available. **Delete the `BOOTSTRAP_PENDING` HTML comment and the "_Not yet populated_" placeholder line** when this section is filled in.
 - **Architecture Decisions**: index every significant decision found (intentional or accidental) as a one-line entry here; write the full Decision → Context → Consequences → Review notes to `docs/architecture-decisions.md` (create it if missing). Keeping detail out of CLAUDE.md holds it within the token budget — it loads on nearly every turn.
 - **Common Tasks**: do NOT write recipes inline in CLAUDE.md. Instead, audit `.claude/skills/` against this codebase: keep a default skill if its recipe matches reality (adjust steps where they don't); add new skills under `.claude/skills/<name>/SKILL.md` for project-specific recipes (each with `name` + `description` frontmatter); delete defaults that don't apply. Update the Common Tasks bullet list in CLAUDE.md to match the final skill set — one terse line per skill, no USE-FOR/DO-NOT-USE-FOR trigger blocks.
 

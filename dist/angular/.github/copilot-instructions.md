@@ -18,7 +18,7 @@ When generating code in this repo, follow these rules. The full conventions, arc
 
 ## Component Design
 - `ChangeDetectionStrategy.OnPush` on every new component.
-- Smart components orchestrate state; dumb components use `@Input`/`@Output` only.
+- Smart components orchestrate state; dumb components use `@Input`/`@Output` only — unless the component is itself a form control, which must participate in the forms API (`NG_VALUE_ACCESSOR` or injected `NgControl`).
 - Templates stay lean — no complex expressions or business logic; move to class or pipe.
 - New control flow (`@if`, `@for`, `@switch`) in new code.
 - Prefer signals over getter-based reactive state.

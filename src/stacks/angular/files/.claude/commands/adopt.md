@@ -210,7 +210,7 @@ Merge principles:
 
 ### 4a — Merge into Conventions
 Read `.cursorrules`, `.cursor/rules/*.mdc`, `docs/CONVENTIONS.md`, `.windsurfrules`, `.clinerules`, Aider's `CONVENTIONS.md`, and any other instruction file. For each rule:
-1. Categorise into a CLAUDE.md Conventions subsection (Architecture, Component Design, State Management, RxJS, API/HTTP, Typing, Styling, SSR/Hydration, Testing).
+1. Categorise into a CLAUDE.md Conventions subsection (Architecture, Component Design, Forms, State Management, RxJS, API/HTTP, Typing, Styling, SSR/Hydration, Testing).
 2. Skip rules that duplicate existing CLAUDE.md content.
 3. For rules that contradict existing CLAUDE.md content, ask a plain engineering question — never frame it as an AI-artifact choice. For each contradiction, ask: "Your existing codebase has **[A]** for [area]; your `[filename]` says **[B]**. Which is the intended approach — or do both apply in different contexts?" The safe default is to keep the in-code pattern (it reflects reality). If the developer says "accept all defaults" or "skip", apply the safe default to all unresolved contradictions without prompting per item. Whenever the safe default keeps [A] — whether chosen explicitly or through "accept all defaults" / "skip" — immediately append `<!-- DEFAULTED: [area] — kept [A] over [B] from [file] -->` to the relevant CLAUDE.md Conventions subsection. This durable review-handoff trace is required because the full `/bootstrap` pipeline runs before Phase 8; do not rely on conversation memory.
 
@@ -245,7 +245,7 @@ If `docs/TESTING.md` or `TESTING.md` exists, merge testing strategy and patterns
 ## Phase 5 — Merge into TECH_DEBT.md
 
 For each item in `TODO.md`, `BACKLOG.md`, `ISSUES.md`, `docs/tech-debt/*`:
-- Categorise (Architecture, State Management, RxJS, Component Design, Testing, Types, Performance, Dependencies, Security)
+- Categorise (Architecture, State Management, RxJS, Component Design, Forms, Testing, Types, Performance, Dependencies, Security)
 - Estimate severity (Critical / High / Medium / Low) — ask user when unclear
 - Estimate effort (S / M / L / XL) — ask user when unclear
 - Add to TECH_DEBT.md

@@ -598,8 +598,8 @@
       "static.copilot": [
         {
           "path": ".github/copilot-instructions.md",
-          "chars": 3625,
-          "tok": 906
+          "chars": 3762,
+          "tok": 940
         },
         {
           "path": "AGENTS.md",
@@ -615,8 +615,8 @@
         },
         {
           "path": "docs/defaults.md",
-          "chars": 6186,
-          "tok": 1546
+          "chars": 6995,
+          "tok": 1749
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -716,13 +716,13 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 27216,
-          "tok": 6804
+          "chars": 27230,
+          "tok": 6808
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 26965,
-          "tok": 6741
+          "chars": 27170,
+          "tok": 6792
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1032,8 +1032,8 @@
       "static.copilot": [
         {
           "path": ".github/copilot-instructions.md",
-          "chars": 5550,
-          "tok": 1388
+          "chars": 5687,
+          "tok": 1422
         },
         {
           "path": "AGENTS.md",
@@ -1049,8 +1049,8 @@
         },
         {
           "path": "docs/defaults.md",
-          "chars": 13384,
-          "tok": 3346
+          "chars": 14193,
+          "tok": 3548
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -1150,13 +1150,13 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 27890,
-          "tok": 6972
+          "chars": 27904,
+          "tok": 6976
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 38699,
-          "tok": 9675
+          "chars": 38904,
+          "tok": 9726
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1313,16 +1313,16 @@
     "angular": {
       "static.claude.chars": 35879,
       "static.claude.tok": 8970,
-      "static.copilot.chars": 26257,
-      "static.copilot.tok": 6564,
+      "static.copilot.chars": 26394,
+      "static.copilot.tok": 6598,
       "prompt.max.chars": 2196,
       "prompt.max.tok": 549
     },
     "monorepo": {
       "static.claude.chars": 45398,
       "static.claude.tok": 11350,
-      "static.copilot.chars": 31793,
-      "static.copilot.tok": 7948,
+      "static.copilot.chars": 31930,
+      "static.copilot.tok": 7982,
       "prompt.max.chars": 2541,
       "prompt.max.tok": 635
     },

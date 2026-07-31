@@ -4,6 +4,12 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.40.0 — Unreleased
+
+- No changes to the .NET distribution this release. The forms-conventions support added to
+  `/bootstrap` and `/adopt` in v0.40.0 applies only to the Angular and mixed (monorepo)
+  distributions.
+
 ## 0.39.0 — 2026-07-31
 
 - **`framework-doctor` can now tell whether Claude Code hooks have actually run in your .NET
