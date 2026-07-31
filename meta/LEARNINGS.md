@@ -432,3 +432,59 @@ hook blocks, and file bytes can earn a pass.
    Stop hook's `decision: "block"` `reason` is shown only to the user. In fact it reaches Claude as
    a system reminder; the user-facing field is the separate top-level `stopReason`. Tests exercise
    output shapes, not comments, so this factual error survived for a long time.
+
+---
+
+## 2026-07-31 — the framework broke its own rule, and no gate noticed
+
+Shipping B-57 (v0.36.0 + v0.37.0) after a consumer reported the framework pushing xUnit at an NUnit repo.
+
+1. **A rule that ships is not a rule that binds.** Verification Rule #10 "Derive, don't assume" names
+   *test framework* explicitly, and `bootstrap.md` Phase 3a forbids naming unevidenced technology. Both
+   have shipped for versions. Six other surfaces stated xUnit as fact the whole time, including
+   `copilot-instructions.md`, which is read on every inline completion. Writing the principle down in
+   one file does nothing for the files that contradict it — the same lesson as invariant #6, which was
+   written down from the start and still shipped ~190 leaking lines. When a new principle lands, sweep
+   for the surfaces that already assert the opposite; that sweep is the actual work, not the principle.
+
+2. **The self-contradicting string is the tell.** `add-tests` read "following project patterns
+   **(xUnit + `WebApplicationFactory`)**" — it argues with itself in a single line. That phrasing is a
+   reliable smell for an unevidenced default: the sentence knows the right rule and the parenthetical
+   overrides it. Worth grepping for.
+
+3. **Gates cover what someone thought to gate, and their absence is invisible.** `template-checks`
+   mirrors four named sections; the `## Common Tasks` skills list is not one of them, and it had already
+   drifted in all three dists — Angular's pair named a *different technology* on each side — with every
+   gate green. The plan initially claimed the gate covered this. It did not. **Read the gate before
+   citing it.** (B-58. Note the obvious fix is also wrong: `AGENTS.md`'s Common Tasks is deliberately
+   condensed, so a verbatim diff goes red everywhere.)
+
+4. **A `&&`-chained `grep` fails open.** The first-draft bash pattern used `[\](,]`, invalid POSIX ERE
+   (`]` must come first in a bracket expression; `\` does not escape inside one). `grep` exits 2, and
+   because the line is `grep -Eq … && reasons+=(…)`, the check silently does nothing — while the
+   PowerShell twin blocks correctly. A twin divergence that looks like a working feature. Also: `\s` is
+   a GNU extension (`guard.sh` uses `[[:space:]]` everywhere for exactly this reason), and PowerShell
+   `-match` is case-*insensitive* by default while `grep -E` is not, so `-cmatch` is mandatory whenever
+   the pattern contains a plain identifier like `Ignore`.
+
+5. **Test the false positives, not the feature.** The guard's `.cs` branch is not scoped to test files.
+   An unanchored `Ignore` pattern hard-blocks `public enum Mode { None, Ignore, All }` — ordinary
+   production C#, unwritable through `Write`/`Edit`, with an error accusing the developer of skipping a
+   test. Four of the seven new fixture cases are `block=$false` for this reason. The near-miss cases are
+   the ones that earn their keep.
+
+6. **Verify against the real input shape.** The 11-case regex check used single-line strings; the guard
+   actually receives whole file contents. That gap was caught late and the patterns happened to be
+   correct under `(?m)` and bash's line-orientation — but the check as designed would not have caught a
+   multiline-only failure. Fixture content should look like the file, not like the pattern.
+
+7. **Split the change that can regress from the change that cannot.** Guidance had no regression
+   surface; the guard could hard-block valid code. Two releases (0.36.0, 0.37.0) rather than one kept
+   consumer-blocking risk out of a prose release. Four of the five blocking review defects were in the
+   part that got its own release.
+
+8. **Detached HEAD, again.** `master` was held by an abandoned scratchpad worktree and sat two commits
+   behind `origin/master`; `release.ps1` pushes the branch *by name*, so the release commit would have
+   landed on the detached HEAD and the push been rejected — B-53's exact shape, a fourth time. Fixed
+   non-destructively by detaching the worktree rather than removing it. Checking
+   `git rev-parse --abbrev-ref HEAD` belongs in the release preflight, not in a postmortem.

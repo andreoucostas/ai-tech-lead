@@ -433,6 +433,35 @@ bypass explicitly** in `enforcement-surfaces.md`'s capability rows. Blocking-vs-
 key judgment: a false-positive block on a legitimate test refactor costs more trust than the
 gap. Record the decision as a WSD either way.
 
+### B-58 · `CLAUDE.md` ↔ `AGENTS.md` skills list is ungated and has already drifted
+
+`template-checks.{ps1,sh}` mirrors exactly four sections — `## Verification Rules`, `## Leanness`,
+`## SOLID`, `## Boy Scout Rule` (plus `### 1. Classify the intent`). The skills list under
+`## Common Tasks` is **never compared**, and it had already drifted in all three dists while every
+gate was green. Found while shipping B-57, which edits exactly those lines:
+
+```
+dist/dotnet/CLAUDE.md:134   - `add-tests` — add unit/integration tests following project patterns (xUnit + `WebApplicationFactory`)
+dist/dotnet/AGENTS.md:100   - `add-tests` — add tests following project patterns (xUnit + `WebApplicationFactory`)
+dist/angular/CLAUDE.md:133  - `add-tests` — add specs following project patterns (TestBed + `HttpTestingController`, harnesses, …)
+dist/angular/AGENTS.md:99   - `add-tests` — add tests following project patterns (Jasmine/Karma or Jest spec + HTTP mocks)
+```
+
+Angular's pair had drifted far enough to name a *different technology* on each side. B-57 fixed the
+lines by hand and hand-diffed them; nothing stops them drifting again.
+
+**Do not add `## Common Tasks` to the verbatim mirror list** — that was the first idea and it is
+wrong. A section diff shows `AGENTS.md`'s Common Tasks is *deliberately* condensed: shorter
+descriptions throughout and the `/bootstrap` paragraph dropped. A verbatim gate goes red in all three
+dists and would force rewriting a section that is intentionally different.
+
+The right gate compares the **set of backtick-quoted skill slugs** in each file, ignoring the prose
+around them: catches "a skill was added/removed on one side only" without fighting the intentional
+condensation. It does *not* catch description drift (the actual B-57 defect), so consider whether a
+second, looser check is worth it — e.g. flag when one side names a technology token the other does
+not. Red-test per `DEVELOPING.md`: plant a slug on one side only, show non-zero exit, then the clean
+pass. Both twins.
+
 ---
 
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
@@ -598,6 +627,30 @@ A wrong pin is consumer-visible: verify on a live Copilot surface before shippin
 ---
 
 ## Done
+
+- **B-57** — shipped as **v0.36.0** (guidance) and **v0.37.0** (enforcement), 2026-07-31, WSD-025.
+  Field report from a brownfield .NET install on NUnit: the reviewer's complaint was that the
+  framework kept pushing xUnit instead of following the suite already in place. Six surfaces stated
+  xUnit as fact while Verification Rule #10 and `bootstrap.md`'s Phase 3a synthesis guard both already
+  forbade exactly that. Fixed by reusing B-35's evidence-keyed block pattern in `docs/defaults.md`
+  § Testing, neutralising `copilot-instructions.md` and the skills-list one-liners, adding a Step-1
+  evidence gate to `add-tests` (the .NET branch had hardcoded while Angular already derived from
+  `angular.json`), branching `enforce-standards` across xUnit/MSTest/NUnit, and teaching
+  `ArchitectureTests.sample.cs` to translate off xUnit. v0.37.0 then closed the enforcement half: the
+  guard blocked only `[Fact(Skip=…)]`, so NUnit and MSTest repos got a weaker floor than xUnit ones.
+
+  **Split into two releases deliberately.** The guard regex is the only part that can regress working
+  behaviour — an unanchored pattern hard-blocks `public enum Mode { None, Ignore, All }` — so it did
+  not ride along with prose changes. That judgement was vindicated: an adversarial review of the plan
+  found five blocking defects, four of them in the regex (invalid POSIX bracket syntax that makes
+  `grep` exit 2 and silently disables the `.sh` twin; `\s` unsupported by BSD grep; `-match` vs
+  `grep -E` case divergence; and a missed `[TestCase(…, Ignore = …)]`, the direct analogue of
+  `[Fact(Skip=)]`). All four were confirmed by execution before any code was written.
+
+  Deliberate non-changes, recorded so they are not re-litigated: `tests/impact/tasks.json` keeps
+  naming xUnit (the prompt is a direct instruction, the harness runs greenfield, and a held-constant
+  prompt is what makes A/B scoring meaningful); `[Explicit]` is not blocked (legitimate NUnit idiom,
+  and blocking it would make the framework stricter on NUnit than xUnit). Spun out: **B-58**.
 
 - **B-16** — implemented for **v0.32.0** (2026-07-17). Added the locked WSD-023
   `framework-doctor.{ps1,sh}` design: nine ordered machine checks with verified/pending/missing

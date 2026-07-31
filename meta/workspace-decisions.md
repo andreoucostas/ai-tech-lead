@@ -953,3 +953,62 @@ through shell tools.
 **Open verification.** VS Code agent hooks are Preview and off by default; its documented event
 spelling is `Stop`. A real-host canary must establish whether it accepts `agentStop`, requires
 `Stop`, and forwards any turn-end output before the queue hop can be simplified.
+
+---
+
+## WSD-025: test framework is evidenced, not assumed; enforcement split from guidance (2026-07-31)
+
+**Context.** A brownfield .NET consumer on NUnit reported that the framework kept pushing xUnit at
+them instead of following the suite already in place. Six shipped surfaces stated xUnit as fact:
+`.github/copilot-instructions.md` (unconditional, read on every inline completion), `docs/defaults.md`
+§ Testing, the `CLAUDE.md`/`AGENTS.md` skills-list one-liners, `add-tests`' frontmatter and
+suite-bootstrap step, `enforce-standards` (only `xUnit1004` offered), and the write guard (only
+`[Fact(Skip=…)]` blocked). This directly contradicted two rules the framework already shipped:
+Verification Rule #10 "Derive, don't assume", which names *test framework* explicitly, and
+`bootstrap.md` Phase 3a's "must not name a technology the analysis passes did not evidence".
+Brownfield is the worst case: the installer detects pre-existing AI tooling, `/bootstrap` hard-stops
+and redirects to `/adopt`, so there is a real window where `Conventions` is unpopulated and these
+surfaces are the only thing reaching the model.
+
+**Decision 1 — reuse the B-35 pattern, do not invent one.** `docs/defaults.md` § Testing becomes
+evidence-keyed blocks in the same shape B-35 gave Data Access: a **Detect** step, an
+**existing suite → mirror it** block, and a **greenfield only** block that is the sole remaining home
+of xUnit + NSubstitute. `MethodName_Scenario_ExpectedResult` moved into the greenfield block with it —
+it is an xUnit house style, and an NUnit repo has its own.
+
+**Decision 2 — mirror before propose, and never introduce a second framework.** If a suite exists, it
+is mirrored (runner, mocking library, assertion library, naming, base fixtures). If the existing
+framework is genuinely wrong, that is a `TECH_DEBT.md` entry and a human decision, never a side effect
+of "add some tests". The .NET `add-tests` branch was the outlier here — Angular already derived the
+runner from `angular.json`; .NET hardcoded. They now behave the same way.
+
+**Decision 3 — name analyzer IDs where they exist, and say so plainly where they do not.** The first
+draft refused to name any non-xUnit analyzer on "don't assert what you haven't verified" grounds. That
+is asymmetric, since `xUnit1004` was already named. Corrected: MSTest gets `MSTEST0015` (verified
+against Microsoft's docs — MSTest.Analyzers 3.3+, severity Info, opt-in from 3.8 and *not* enabled even
+by `MSTestAnalysisMode=All`, so the `.editorconfig` entry is mandatory); NUnit genuinely has no
+ignored-test analyzer, which is stated as a checked fact so no consumer re-researches it, plus a
+build-failing CI grep over the test root as the fallback.
+
+**Decision 4 — ship enforcement separately from guidance.** Guidance (v0.36.0) has no regression
+surface. The guard regex (v0.37.0) does: the `.cs` branch is not scoped to test files, so an
+unanchored pattern hard-blocks `public enum Mode { None, Ignore, All }`. Splitting kept a
+consumer-blocking risk out of a prose release and gave the risky change its own red-test.
+
+**Decision 5 — `[Explicit]` is not blocked.** It is a legitimate NUnit marker for opt-in
+long-running/manual tests and xUnit has no blocked equivalent. Blocking it would make the framework
+stricter on NUnit than on xUnit — the mirror image of the complaint being fixed. It is a `block=$false`
+fixture case so the decision is pinned, not accidental.
+
+**Alternatives rejected.** (a) Gating `## Common Tasks` in `template-checks` to catch the skills-list
+drift — rejected because `AGENTS.md`'s copy is deliberately condensed, so a verbatim diff goes red in
+all three dists; the correct narrower gate is spun out as B-58. (b) Changing
+`tests/impact/tasks.json`, which names xUnit in its prompt — rejected: the prompt is a direct
+instruction (which legitimately outranks derivation), the harness runs greenfield, and a
+held-constant prompt is what makes A/B scoring meaningful.
+
+**Verification note.** An adversarial review of the plan found five blocking defects before any code
+was written, four in the guard regex, all confirmed by execution rather than argument. The one that
+mattered most was silent: `[\](,]` is invalid POSIX ERE, making `grep` exit 2, and because the check
+is `grep -Eq … && reasons+=(…)`, that short-circuit would have disabled the check on the `.sh` twin
+while `.ps1` blocked — a twin divergence that looks like a working feature.
