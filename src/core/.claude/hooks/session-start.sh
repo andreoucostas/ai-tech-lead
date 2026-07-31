@@ -8,6 +8,10 @@
 
 set -u
 
+# Best-effort proof that hook wiring actually invoked this script. Telemetry must never affect
+# the preload: an unwritable or otherwise unavailable state path is deliberately ignored.
+{ mkdir -p .claude/.state && printf '%s' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" > .claude/.state/last-session-start; } 2>/dev/null || true
+
 # Read stdin (when piped) for surface detection; Claude Code events carry hook_event_name.
 input=""
 if [ ! -t 0 ]; then input=$(cat); fi

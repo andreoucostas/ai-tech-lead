@@ -8,6 +8,18 @@
 
 $ErrorActionPreference = 'SilentlyContinue'
 
+# Best-effort proof that hook wiring actually invoked this script. Telemetry must never affect
+# the preload: an unwritable or otherwise unavailable state path is deliberately ignored.
+try {
+    $stateDir = Join-Path (Get-Location) '.claude/.state'
+    New-Item -ItemType Directory -Force -Path $stateDir -ErrorAction Stop | Out-Null
+    [IO.File]::WriteAllText(
+        (Join-Path $stateDir 'last-session-start'),
+        [DateTime]::UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", [Globalization.CultureInfo]::InvariantCulture),
+        [Text.UTF8Encoding]::new($false)
+    )
+} catch { }
+
 # Emit UTF-8 when captured: consuming harnesses read raw bytes, and the default
 # [Console]::OutputEncoding (the OEM code page on Windows) would mangle ⚠/—/🔴 into '?'.
 # Guarded so an interactive console's code page is never changed.

@@ -11,6 +11,32 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.39.0 (2026-07-31)
+
+Adds the framework's first observed-behaviour diagnostic. Every check before this release inspected
+configuration, but configuration cannot prove that a hook runs. Two real installations exposed that
+gap in succession: first a bare `bash` did not resolve, then a bare `pwsh` did not resolve. In both
+cases the registrations looked correct while the write guard, build feedback, and audit trail were
+inactive.
+
+`session-start` now makes a best-effort write of an ISO-8601 UTC timestamp to
+`.claude/.state/last-session-start` whenever it runs. Failure to write the record can never affect
+the session preload, and `.claude/.state/` remains gitignored. Both `framework-doctor` twins gained
+a `Hook liveness` row: a present record is `[OK]` evidence that the hook wiring is alive and reports
+the most recent timestamp; an absent record is `[CANT-VERIFY]` with guidance to check the wired
+interpreter and `docs/enforcement-surfaces.md` if a Claude Code session has already been started in
+the repo.
+
+This proves only that a hook actually started, not that enforcement works: a live hook can still
+fail later at runtime. Absence is deliberately `CANT-VERIFY`, not `MISSING`, because a fresh install
+where nobody has started a session is indistinguishable from dead wiring. That preserves WSD-023's
+`Exit = 1 iff any MISSING` contract; the new row does not change the doctor's exit code or CI
+behaviour.
+
+Instrumentation is deliberately limited to `session-start`. It fires unconditionally, so after a
+session its silence is unambiguous. The other hooks depend on user actions; reporting that one of
+them had “never fired” would create false alarms when no matching action had occurred.
+
 ## 0.38.1 (2026-07-31)
 
 Reverts v0.38.0's installer pinning of hook interpreters to absolute paths. `.claude/settings.json`

@@ -4,6 +4,21 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.39.0 — 2026-07-31
+
+- **`framework-doctor` can now tell whether Claude Code hooks have actually run in your .NET
+  repo, not only whether their configuration looks correct.** The session-start hook records its
+  latest run, giving the doctor observed evidence that the hook wiring is alive. This does not prove
+  that every enforcement hook completes successfully; a hook can start and still fail at runtime.
+
+  Run `pwsh scripts/framework-doctor.ps1` or `bash scripts/framework-doctor.sh`. If `Hook liveness`
+  reports `CANT-VERIFY` after you have used Claude Code in this repo, your hooks are not firing; check
+  the wired interpreter first, then `docs/enforcement-surfaces.md`. That silence matters because the
+  same wiring carries the write guard, .NET build feedback, and audit trail.
+
+  **No action required.** Recording starts with your next session. The new `CANT-VERIFY` row does not
+  change the doctor's exit code or any CI behaviour.
+
 ## 0.38.1 — 2026-07-31
 
 - **Claude Code hook registrations are portable team configuration again.** If you installed 0.38.0

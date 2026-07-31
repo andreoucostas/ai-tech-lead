@@ -90,6 +90,14 @@ EOF
   fi
 fi
 
+liveness="$root/.claude/.state/last-session-start"
+if [ -r "$liveness" ]; then
+  last_session_start=$(cat "$liveness" 2>/dev/null)
+  row OK 'Hook liveness' "hooks have demonstrably run in this repo, most recently at '$last_session_start'."
+else
+  row CANT-VERIFY 'Hook liveness' 'no hook has recorded a run here; if you have already started a Claude Code session in this repo, your hooks are not firing -- check the wired interpreter above, and see docs/enforcement-surfaces.md.'
+fi
+
 paths=$( { printf '%s\n' "$commands" | grep -oE '[^ ]*\.claude[\\/]hooks[\\/][^ ]+'; sed -n 's/.*"\(bash\|powershell\)"[[:space:]]*:[[:space:]]*"\([^"[:space:]]*\).*/\2/p' "$root/.github/hooks/hooks.json" 2>/dev/null; } | sed 's#\\\\#/#g;s#^\./##' | sort -u)
 missing_paths=''; count=0
 while IFS= read -r path; do

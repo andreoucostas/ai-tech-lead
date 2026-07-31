@@ -5,6 +5,22 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.39.0 — 2026-07-31
+
+- **`framework-doctor` can now confirm that Claude Code hooks have really run at your monorepo
+  root, not just that they appear to be configured.** The unconditional session-start hook records
+  its latest run, providing observed evidence that the shared hook wiring is alive. It does not
+  guarantee that enforcement succeeds after startup; an individual hook can still fail at runtime.
+
+  Run `pwsh scripts/framework-doctor.ps1` or `bash scripts/framework-doctor.sh` from the monorepo
+  root. If `Hook liveness` is `CANT-VERIFY` after you have used Claude Code there, your hooks are not
+  firing. Check the wired interpreter first, followed by `docs/enforcement-surfaces.md`. The affected
+  wiring carries the shared write guard and audit trail as well as .NET build feedback and Angular
+  TypeScript feedback.
+
+  **No action required.** The record appears automatically on your next session. The new row changes
+  neither the doctor's exit code nor CI behaviour.
+
 ## 0.38.1 — 2026-07-31
 
 - **Claude Code hook configuration is portable across the team again.** A 0.38.0 install may have

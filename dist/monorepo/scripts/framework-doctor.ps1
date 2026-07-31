@@ -108,6 +108,14 @@ if ($shells.Count -eq 0) {
     } else { Row OK 'Wired hook shell' ("wired interpreter paths exist: {0}." -f ($existingShells -join ',')) }
 }
 
+$livenessPath = Join-Path $root '.claude/.state/last-session-start'
+try { $lastSessionStart = Get-Content -Raw -LiteralPath $livenessPath -ErrorAction Stop } catch { $lastSessionStart = $null }
+if ($null -ne $lastSessionStart) {
+    Row OK 'Hook liveness' ("hooks have demonstrably run in this repo, most recently at '{0}'." -f $lastSessionStart.Trim())
+} else {
+    Row CANT-VERIFY 'Hook liveness' 'no hook has recorded a run here; if you have already started a Claude Code session in this repo, your hooks are not firing -- check the wired interpreter above, and see docs/enforcement-surfaces.md.'
+}
+
 $hookPaths = @()
 foreach ($command in $commands) {
     if ($command -match '([^\s"'']*\.claude[\\/]hooks[\\/][^\s"'']+)') {

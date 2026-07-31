@@ -4,6 +4,21 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.39.0 — 2026-07-31
+
+- **`framework-doctor` now has evidence that Claude Code hooks have run in your Angular
+  workspace, rather than merely checking their configuration.** The session-start hook records its
+  most recent run so the doctor can confirm that the wiring is alive. It does not claim that hook
+  enforcement is working end to end: a hook may start and still encounter a runtime failure.
+
+  Check with `pwsh scripts/framework-doctor.ps1` or `bash scripts/framework-doctor.sh`. If the
+  `Hook liveness` row says `CANT-VERIFY` after you have used Claude Code in this workspace, the hooks
+  are not firing. Inspect the wired interpreter first and then `docs/enforcement-surfaces.md`; dead
+  wiring also silences the TypeScript feedback, write guard, and audit trail.
+
+  **No action required.** Your next session starts recording automatically. The diagnostic does not
+  alter the doctor's exit code or CI behaviour.
+
 ## 0.38.1 — 2026-07-31
 
 - **Claude Code hook commands no longer capture one developer's machine path.** If you installed
