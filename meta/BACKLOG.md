@@ -135,6 +135,11 @@ their friction reports outweigh the maintainer's.
 
 **Not:** no new machinery to "prepare" for the pilot — install what v0.31.0 ships, as shipped.
 
+**Field report #1 arrived 2026-07-31:** an Angular developer reported the model using `@Input()`
+everywhere instead of injecting `NgControl` on a custom form control. `meta/field-reports.md` still
+does not exist. Creating it and recording report #1 is now the blocking next action; B-66 is the
+first defect derived from that report.
+
 ### B-43 · Host-compatibility recertification cadence (the one-time verifications are rotting)
 **Effort:** S per cycle, recurring · **Invariants:** #5 · **execution vehicle: B-49's quarterly drill**
 
@@ -228,6 +233,10 @@ requires a clean checkout of the latest released tag; drill #0 had to use the kn
 annotated `vX.Y.Z` tag only after every gate and the release commit succeed; add a safe retry/idempotency
 test. Decide whether to backfill v0.26.1–v0.32.2 or tag only current/future releases, and record the
 choice in a WSD.
+
+**Reproduced 2026-07-31 by the v0.38.0 release:** the release committed and pushed successfully,
+and `origin/master` was confirmed at the new SHA, but no `v0.38.0` tag was created. `git tag` still
+ends at `v0.26.0`.
 
 ### B-52 · Verify Copilot CLI fires *both* `userPromptSubmitted` hooks and injects both payloads (v0.33.0 Boy Scout parity claim)
 **Effort:** S · **Priority:** P2 capability honesty · **Invariants:** #5 · **execution vehicle: B-49's quarterly recert / B-43**
@@ -390,6 +399,13 @@ briefing (the B-21/B-22 lesson); (6) re-run at least one suite under a hostile c
 claiming "gates green" (the F6 lesson). Most of these exist as LEARNINGS entries — this item
 promotes them from war stories to binding process.
 
+**Process evidence added 2026-07-31:** do not run gate suites concurrently with an implementer
+round. During the v0.38.0 task, a hook suite raced a tree being modified by a concurrent Codex run
+and produced a transient failure that cost a diagnosis cycle. The implementer's self-reported
+before/after was also a false pass **twice**: both verifications ran inside a sandbox whose `PATH`
+differed from the real environment, so the defect could not manifest there. The reviewer re-running
+the red-test in the real environment caught both failures.
+
 ### B-46 · Consumer update & drift story — what actually happens to a consumer who diverges?
 **Effort:** M · investigate-first · **Invariants:** #3 #5 #6 #7
 
@@ -542,6 +558,119 @@ condensation. It does *not* catch description drift (the actual B-57 defect), so
 second, looser check is worth it — e.g. flag when one side names a technology token the other does
 not. Red-test per `DEVELOPING.md`: plant a slug on one side only, show non-zero exit, then the clean
 pass. Both twins.
+
+### B-61 · Twin behavioural parity does not cover shipped `scripts/`, only `.claude/hooks/`
+**Effort:** M · **Priority:** P1
+
+**Why:** `tests/hooks/TwinParity.Tests.ps1` genuinely runs both twins against fixtures and diffs
+stdout/stderr, but its coverage is scoped to hooks: guard, boy-scout-check, and the empty/malformed-
+stdin cases. `framework-doctor.ps1` and `framework-doctor.sh` returned **opposite verdicts on the
+same machine at the same moment**: OK vs MISSING, exit 0 vs exit 1. No gate noticed. That divergence
+was the only reason the bug was found; running either twin alone showed a clean bill of health. The
+doctor is the diagnostic every other honesty claim rests on.
+
+**Do:** extend the behavioural twin comparison to the shipped `scripts/` twins, framework-doctor
+first.
+
+### B-62 · No gate validates the hook registrations we ship
+**Effort:** S · **Priority:** P1
+
+**Why:** a bare interpreter name shipped in `dist/*/.claude/settings.json` for many versions with no
+check. `validate-dist` has `no-meta-leak` and `no-dead-instruction`, but nothing inspects whether a
+hook registration can actually start. `settings.windows.json` ships a bare `powershell` and carries
+the same exposure.
+
+**Do:** add a `validate-dist` check that fails on a bare interpreter name in a shipped settings
+file; red-test it by planting one.
+
+### B-63 · Audit every capability probe for vantage-point validity
+**Effort:** M · **Priority:** P2
+
+**Why:** this is the **second** instance of the class; the first was a jq probe checking from
+PowerShell's vantage point instead of bash's. The remaining `Invoke-BashProbe` use for the Guard JSON
+parser row still has it: it spawns bash as a child of the doctor, so that bash inherits the doctor's
+`PATH`, not the host's. Measured: from the host's shell `pwsh` was not found; from a doctor-spawned
+bash it **was** found. It does not bite today only because jq's location does not vary the way
+pwsh's does. A comment now warns against reuse, but the flaw is unfixed.
+
+**Do:** enumerate every capability probe across hooks, scripts and gates; for each, state which
+environment it observes and which one actually matters. Where the relevant environment is
+unobservable, report CANT-VERIFY rather than guessing, or remove the dependency.
+
+### B-64 · Deterministic diagnostics have no planted-defect tests
+**Effort:** M · **Priority:** P2
+
+**Why:** framework-doctor shipped three independent defects that all reported success, and its
+existing suite passed throughout because it tested happy paths. The root `CLAUDE.md` Definition of
+done already requires red-testing for composer/gate scripts, but the diagnostics themselves were
+never held to it.
+
+**Do:** for each gate and diagnostic, add at least one test that plants the defect class it exists
+to catch and asserts the non-zero exit or the honest row — the discipline B-41 applies to agent
+behaviour, applied to the deterministic layer.
+
+### B-65 · Shipped `docs/defaults.md` is unreachable after `/bootstrap`
+**Effort:** S · **Priority:** P2
+
+**Why:** every inbound pointer is conditional on being un-bootstrapped: the `CLAUDE.md`
+`BOOTSTRAP_PENDING` comment and `add-tests/SKILL.md`. `bootstrap.md` instructs the model to delete the
+`BOOTSTRAP_PENDING` marker and the placeholder line, severing the only pointer. `session-start` and
+`route-prompt` reference the file nowhere. Every bootstrapped consumer repo therefore carries a
+greenfield-conventions document that nothing can route a model to. This also means on-demand `docs/`
+files are a weaker delivery tier than Instructed, and `enforcement-surfaces.md` has no row for it.
+
+**Do:** decide whether `defaults.md` should be reachable post-bootstrap or explicitly retired at
+bootstrap, and add the missing tier to `enforcement-surfaces.md`.
+
+### B-66 · The Angular stack ships no forms guidance at all
+**Effort:** M · **Priority:** P2
+
+**Why:** case-sensitive grep across `src/stacks/angular/` for `ControlValueAccessor`, `NgControl`,
+`FormControl`, `FormGroup`, `FormBuilder`, `Validators`, `ngModel`, `NG_VALUE_ACCESSOR`,
+`formControlName`, and `ReactiveFormsModule` returns no matches; likewise `ng-content`,
+`ngTemplateOutlet`, `hostDirectives`, `defer`, `viewChild`, `contentChild`, and `toSignal`. Forms are
+the largest surface of a line-of-business Angular app. This is the standing defect behind the first
+field report the framework has ever received.
+
+**Do:** the immediate transcript-independent piece is a Forms section in the Angular conventions:
+reactive over template-driven for new code, typed forms, where validators live, and when a component
+becomes a `ControlValueAccessor`. State the `NG_VALUE_ACCESSOR`-provider vs `NgControl`-injection
+trade-off honestly rather than naming either an anti-pattern, and name the double-registration hazard
+(providing both causes a circular-DI runtime error).
+
+**Not:** do not ship a broad pattern catalogue before the delivery-tier question in B-65 is
+answered.
+
+### B-67 · `no-dead-instruction` does not validate markdown link targets
+**Effort:** S · **Priority:** P3
+
+**Why:** the check greps for script invocations and asserts the script resolves; it has no notion of
+markdown links, so a doc-to-doc reference can dangle in all three dists with no gate firing.
+
+**Do:** extend it to markdown link targets; red-test with a planted dangling link.
+
+### B-68 · `context-footprint` hard-codes the Instructed file list
+**Effort:** S · **Priority:** P3
+
+**Why:** the instructed group iterates a literal list (`FRAMEWORK-CONTEXT.md`, `docs/defaults.md`,
+`docs/wiki/INDEX.md`), so any newly added `docs/*.md` is measured by nothing and silently escapes the
+budget gate.
+
+**Do:** derive the list, or require new files be added deliberately. Twin edit, both `.ps1` and
+`.sh`.
+
+### B-69 · `tests/evals/` scoping limitation is not written down
+**Effort:** S · **Priority:** P3
+
+**Why:** `run_evals.py` builds its system context from exactly `CLAUDE.md` and
+`FRAMEWORK-CONTEXT.md` and calls `messages.create` with no `tools` parameter. It can therefore never
+see `docs/`, follow a pointer, or observe tool use. During the v0.38.0 session this was briefly
+mistaken for a viable way to measure whether a `docs/` file changes model behaviour. It is not, and
+a null result would have been misread as the wording being wrong rather than the instrument being
+blind.
+
+**Do:** state the limitation at the top of `tests/evals/README.md` and point anything needing
+tool-use or file-read evidence at `.claude/evals/`.
 
 ---
 
