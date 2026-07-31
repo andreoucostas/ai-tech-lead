@@ -28,6 +28,33 @@ $today = Get-Date -Format 'yyyy-MM-dd'
 $fatal = $false
 function Gate($ok, $what) { if ($ok) { Write-Host "GATE ok:   $what" } else { Write-Host "GATE FAIL: $what"; $script:fatal = $true } }
 
+# ---- 0. Reject a -Summary mangled by MSYS path conversion (B-73) ----
+# Invoked from Git Bash, an argument that begins with "/" is rewritten to a Windows path before
+# pwsh ever sees it: -Summary "/bootstrap and /adopt ..." arrived as
+# "C:/Program Files/Git/bootstrap and /adopt ...". v0.40.0 shipped with that in its commit subject.
+# Only the FIRST such token is converted, so the result reads as a typo rather than a tooling bug.
+# Every slash-command this framework documents (/bootstrap, /adopt, /review, /fix, /feature,
+# /design, /debt, /map-warehouse) triggers it. Neither the Git install path nor the repo path can
+# legitimately appear in a release summary, so treat either as proof of conversion and refuse.
+$gitRootPattern = '(?i)(Program Files[\\/]+Git|Git[\\/]+usr[\\/]+bin|[A-Za-z]:[\\/]+.*[\\/]+(?:bootstrap|adopt|review|fix|feature|design|debt|map-warehouse)\b)'
+if ($Summary -match $gitRootPattern -or $Summary -like "*$repo*") {
+    [Console]::Error.WriteLine(@"
+FATAL: -Summary looks MSYS-mangled -- it contains a filesystem path that cannot be intentional:
+  $Summary
+Git Bash rewrites a leading "/word" argument into a Windows path. Re-run with the conversion off:
+  MSYS_NO_PATHCONV=1 pwsh -NoProfile -File .claude/scripts/release.ps1 -Version $Version -Summary "..."
+or invoke from PowerShell directly, or lead the summary with a non-slash word.
+"@)
+    exit 2
+}
+
+# ---- 0b. State the runtime up front (B-73) ----
+# The gate sequence runs ~30 minutes; the first v0.40.0 attempt was killed at a 10-minute caller
+# timeout mid-gates, which is indistinguishable from a gate failure and leaves a stamped, rebuilt
+# tree that looks like a botched release. Say so before the operator starts waiting.
+Write-Host "Releasing $Version. Gates take roughly 30 minutes (compose x3 -> validate-dist x3 -> hook suites x3 -> meta suite -> eval self-test)."
+Write-Host "If this is interrupted before 'Release $Version complete', nothing has been committed -- re-run the same command as-is."
+
 # ---- 1. Root CHANGELOG head entry must already exist ----
 $clPath = Join-Path $repo 'CHANGELOG.md'
 $head = $null; $headLine = $null
@@ -145,6 +172,42 @@ if ($LASTEXITCODE -ne 0) { Write-Host 'Commit FAILED.'; exit 1 }
 if (-not $NoPush) {
     git -C $repo push origin master
     if ($LASTEXITCODE -ne 0) { Write-Host 'Push FAILED.'; exit 1 }
+}
+
+# ---- 5b. Tag the release (B-51) ----
+# Tags stopped at v0.26.0 and 14 releases shipped untagged, so the B-49 drill protocol -- which
+# requires a clean checkout of the latest released tag -- had to fall back to a raw SHA. The tag is
+# created only after every gate and the commit have succeeded, so a tag always means a green release.
+# Idempotent by design: a re-run after a partial failure must not fail on an existing correct tag,
+# but a tag pointing somewhere else is a real conflict and is never silently moved.
+$tagName     = "v$Version"
+$releaseSha  = (git -C $repo rev-parse HEAD).Trim()
+# NOTE the ^{commit} peel: for an ANNOTATED tag, `rev-parse refs/tags/x` returns the tag OBJECT's
+# sha, not the commit's. Without peeling, the equality below never matches, every retry takes the
+# "tag exists elsewhere" branch, and a re-run after an interrupted release is refused outright --
+# which is exactly the situation this release path has already hit once. Caught by the red test.
+$existingSha = (git -C $repo rev-parse -q --verify "refs/tags/$tagName^{commit}" 2>$null)
+if ($existingSha) {
+    $existingSha = $existingSha.Trim()
+    if ($existingSha -eq $releaseSha) {
+        Write-Host "Tag $tagName already present at the release commit (retry) -- not recreated."
+    } else {
+        Write-Host "Tag FAILED: $tagName already exists at $($existingSha.Substring(0,7)) but the release commit is $($releaseSha.Substring(0,7))."
+        Write-Host 'Refusing to move an existing release tag. Resolve by hand, then re-run.'
+        exit 1
+    }
+} else {
+    git -C $repo tag -a $tagName -m "ai-tech-lead $tagName" $releaseSha
+    if ($LASTEXITCODE -ne 0) { Write-Host "Tag FAILED: could not create $tagName."; exit 1 }
+    Write-Host "Tagged $tagName at $($releaseSha.Substring(0,7))."
+}
+if (-not $NoPush) {
+    git -C $repo push origin "refs/tags/$tagName"
+    if ($LASTEXITCODE -ne 0) { Write-Host "Tag push FAILED: $tagName exists locally but not on origin."; exit 1 }
+    # A tag that exists only locally is the failure this entry is about, so verify rather than assume.
+    $remoteTag = (git -C $repo ls-remote --tags origin "refs/tags/$tagName")
+    if (-not $remoteTag) { Write-Host "Tag push reported success but origin has no $tagName."; exit 1 }
+    Write-Host "Tag $tagName confirmed on origin."
 }
 
 # B-41 behavioral evals are stochastic and consume model budget, so they run only after the
