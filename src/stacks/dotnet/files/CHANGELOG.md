@@ -4,6 +4,18 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.38.1 — 2026-07-31
+
+- **Claude Code hook registrations are portable team configuration again.** If you installed 0.38.0
+  and committed `.claude/settings.json`, it may contain the installing developer's machine-specific
+  PowerShell path. That path will not exist for teammates using another OS or user profile, leaving
+  your .NET repo with no write guard, build feedback, routing context, or audit trail.
+
+  **Action required for 0.38.0 installs:** re-run the installer, or hand-edit each hook command back
+  to the bare interpreter name (`pwsh`, `powershell`, or `bash` as appropriate), then commit the
+  corrected `.claude/settings.json`. Run `pwsh scripts/framework-doctor.ps1` or
+  `bash scripts/framework-doctor.sh` on each developer machine to check the wiring.
+
 ## 0.38.0 — 2026-07-31
 
 - **Claude Code hooks on Windows now use an absolute PowerShell path.** A bare `pwsh` registration

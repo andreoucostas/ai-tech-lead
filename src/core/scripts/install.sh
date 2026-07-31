@@ -141,25 +141,6 @@ if [ -f "$sj" ] && ! command -v pwsh >/dev/null 2>&1; then
   sed -E 's#pwsh -NoProfile -ExecutionPolicy Bypass -File \.claude/hooks/([A-Za-z-]+)\.ps1#bash .claude/hooks/\1.sh#g' "$sj" > "$tmp" && mv "$tmp" "$sj"
   echo "  pwsh not found - switched Claude Code hooks to the bash twins."
 fi
-if [ -f "$sj" ]; then
-  interpreter=$(sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\([^[:space:]]*\).*/\1/p' "$sj" | head -1)
-  resolved=$(command -v "$interpreter" 2>/dev/null || true)
-  if [ -n "$resolved" ] && command -v cygpath >/dev/null 2>&1; then
-    windows_resolved=$(cygpath -am "$resolved" 2>/dev/null || true)
-    [ -f "$windows_resolved" ] && resolved="$windows_resolved"
-  fi
-  if [ "$interpreter" = pwsh ] && [ -n "${LOCALAPPDATA:-}" ]; then
-    alias_path="$LOCALAPPDATA/Microsoft/WindowsApps/pwsh.exe"
-    case "$resolved" in */WindowsApps/Microsoft.PowerShell_*/pwsh|*/WindowsApps/Microsoft.PowerShell_*/pwsh.exe) [ -f "$alias_path" ] && resolved="$alias_path";; esac
-  fi
-  case "$resolved" in
-    /*|[A-Za-z]:[\\/]*)
-      escaped=$(printf '%s' "$resolved" | sed 's/[\\&|]/\\&/g')
-      tmp=$(mktemp)
-      sed -E "s|\"command\": \"$interpreter |\"command\": \"\\\\\"$escaped\\\\\" |; s|\"_comment\": \"[^\"]*\"|\"_comment\": \"Hook commands use an absolute interpreter path so they run consistently even when the agent host uses a different PATH. Re-run the installer if that interpreter moves.\"|" "$sj" > "$tmp" && mv "$tmp" "$sj" ;;
-  esac
-fi
-
 echo
 echo "Each developer should run  bash scripts/framework-doctor.sh  once on their own machine."
 if [ "$update_mode" -eq 1 ]; then

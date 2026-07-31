@@ -147,47 +147,6 @@ if (-not (Get-Command pwsh -ErrorAction SilentlyContinue)) {
     }
 }
 
-# Pin the selected hook interpreter so hook execution does not depend on the agent host's PATH.
-$sj = Join-Path $tgt '.claude/settings.json'
-if (Test-Path -LiteralPath $sj) {
-    try {
-        $settings = Get-Content -Raw -LiteralPath $sj | ConvertFrom-Json
-        $firstCommand = $null
-        function Find-FirstHookCommand($Value) {
-            if ($script:firstCommand -or $null -eq $Value -or $Value -is [string]) { return }
-            if ($Value -is [System.Collections.IEnumerable]) { foreach ($v in $Value) { Find-FirstHookCommand $v }; return }
-            foreach ($p in $Value.PSObject.Properties) {
-                if ($p.Name -eq 'command' -and $p.Value -is [string]) { $script:firstCommand = [string]$p.Value; return }
-                Find-FirstHookCommand $p.Value
-            }
-        }
-        Find-FirstHookCommand $settings
-        $interpreter = if ($firstCommand -match '^\s*([^\s]+)') { $matches[1] } else { $null }
-        $resolved = $null
-        if ($interpreter) {
-            $command = Get-Command $interpreter -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($command) { $resolved = $command.Source }
-            if ($interpreter -eq 'pwsh' -and $env:LOCALAPPDATA) {
-                $alias = Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\pwsh.exe'
-                if ((Test-Path -LiteralPath $alias -PathType Leaf) -and $resolved -match '[\\/]WindowsApps[\\/]Microsoft\.PowerShell_[^\\/]+[\\/]pwsh(?:\.exe)?$') { $resolved = $alias }
-            }
-        }
-        if ($resolved -and [IO.Path]::IsPathRooted($resolved)) {
-            function Pin-HookCommand($Value) {
-                if ($null -eq $Value -or $Value -is [string]) { return }
-                if ($Value -is [System.Collections.IEnumerable]) { foreach ($v in $Value) { Pin-HookCommand $v }; return }
-                foreach ($p in $Value.PSObject.Properties) {
-                    if ($p.Name -eq 'command' -and $p.Value -is [string]) { $p.Value = ([regex]::Replace([string]$p.Value, '^\s*[^\s]+', ('"' + $script:resolved + '"'))) }
-                    else { Pin-HookCommand $p.Value }
-                }
-            }
-            Pin-HookCommand $settings
-            $settings._comment = 'Hook commands use an absolute interpreter path so they run consistently even when the agent host uses a different PATH. Re-run the installer if that interpreter moves.'
-            [IO.File]::WriteAllText($sj, ($settings | ConvertTo-Json -Depth 20), [Text.UTF8Encoding]::new($true))
-        }
-    } catch { }
-}
-
 Write-Output ""
 Write-Output "Each developer should run  pwsh scripts/framework-doctor.ps1  once on their own machine."
 if ($updateMode) {

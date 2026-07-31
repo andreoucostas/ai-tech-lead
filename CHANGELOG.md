@@ -11,6 +11,23 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.38.1 (2026-07-31)
+
+Reverts v0.38.0's installer pinning of hook interpreters to absolute paths. `.claude/settings.json`
+is committed team configuration, so recording the installing developer's machine-specific path made
+hooks fail for teammates on another OS or user profile. The installers again retain their existing
+`pwsh` / Windows PowerShell 5.1 / `bash` selection but write the selected interpreter's bare name.
+
+A pin in `settings.local.json` is not a safe alternative: Claude Code merges hook entries additively
+across settings levels and deduplicates only exact command-string matches. A bare registration and a
+pinned registration would therefore both fire, running every hook twice.
+
+Corrects `enforcement-surfaces.md`: an interpreter resolution failure kills the controls carried by
+the hook and is invisible to the model and framework checks, but Claude Code does show the developer
+a non-blocking hook-error notice in the transcript. This is the second field-reported occurrence of
+the same class: a bare `bash` silently no-opped, was replaced by a bare `pwsh`, which silently
+no-opped. Detection, not a better default, is the actual fix; that work comes next.
+
 ## 0.38.0 (2026-07-31)
 
 Fixes a silent failure that disabled every Claude Code hook on a Windows maintainer machine. Hook

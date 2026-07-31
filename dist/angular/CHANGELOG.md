@@ -4,6 +4,19 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.38.1 — 2026-07-31
+
+- **Claude Code hook commands no longer capture one developer's machine path.** If you installed
+  0.38.0 and committed `.claude/settings.json`, your Angular workspace may now point at the
+  installing developer's PowerShell executable. Teammates on another OS or user profile inherit a
+  path that cannot exist and get no hooks, silently — including no write guard, TypeScript feedback,
+  routing context, or audit trail.
+
+  **Action required for 0.38.0 installs:** run the installer again, or change every hook command to
+  use the appropriate bare interpreter name (`pwsh`, `powershell`, or `bash`), and commit the updated
+  `.claude/settings.json`. Each developer should then check their wiring with
+  `pwsh scripts/framework-doctor.ps1` or `bash scripts/framework-doctor.sh`.
+
 ## 0.38.0 — 2026-07-31
 
 - **Claude Code hooks on Windows now use an absolute PowerShell path.** A bare `pwsh` registration

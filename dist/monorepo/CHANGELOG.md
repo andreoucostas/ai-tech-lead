@@ -5,6 +5,19 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.38.1 — 2026-07-31
+
+- **Claude Code hook configuration is portable across the team again.** A 0.38.0 install may have
+  written the installing developer's absolute PowerShell path into the committed
+  `.claude/settings.json`. Teammates on another OS or user profile cannot use that path and get no
+  hooks, silently, across both the .NET and Angular sides of the workspace.
+
+  **Action required for 0.38.0 installs:** re-run the installer at the monorepo root, or hand-edit
+  every hook command back to its bare interpreter name (`pwsh`, `powershell`, or `bash`), then commit
+  the resulting `.claude/settings.json`. Run `pwsh scripts/framework-doctor.ps1` or
+  `bash scripts/framework-doctor.sh` per developer machine to check the shared write guard, stack
+  feedback, routing context, and audit wiring.
+
 ## 0.38.0 — 2026-07-31
 
 - **Claude Code hooks on Windows now use an absolute PowerShell path across the workspace.** A bare

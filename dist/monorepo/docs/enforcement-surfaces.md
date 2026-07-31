@@ -9,15 +9,15 @@ Two kinds of control:
 ## Before any hook can be guaranteed
 
 > **The hook interpreter must resolve in the shell your agent uses to launch hooks.** If it does
-> not, the shell exits with command-not-found, the hook produces no output, and every control that
-> hook carries is dead with no signal. Across this framework that silence is indistinguishable from
-> a clean result: no other control will tell you the hook failed to start.
+> not, every control that hook carries is dead: no write guard, build feedback, or audit trail. The
+> agent host shows the developer watching the transcript a hook-error notice and the first line of
+> stderr, but the model never sees that error and none of this framework's own checks sees it.
 
-The installer therefore pins an absolute interpreter path in hook registrations. A bare interpreter
-name cannot be verified by any diagnostic script: the script cannot observe the `PATH` of a shell it
-does not launch. `framework-doctor` reports such a registration as `CANT-VERIFY`, never `OK`. Run
-`pwsh scripts/framework-doctor.ps1` or `bash scripts/framework-doctor.sh` to detect an absent pinned
-interpreter on each developer machine.
+A configuration-only diagnostic can therefore report healthy wiring while the hooks are dead. Treat
+the developer-visible hook-error notice as a signal to act, then run `pwsh
+scripts/framework-doctor.ps1` or `bash scripts/framework-doctor.sh` to check the wiring. A bare
+interpreter name remains `CANT-VERIFY`: the doctor cannot observe the `PATH` of a shell it does not
+launch.
 
 ## Matrix
 
