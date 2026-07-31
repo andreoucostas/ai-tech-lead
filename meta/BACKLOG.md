@@ -245,6 +245,12 @@ choice in a WSD.
 and `origin/master` was confirmed at the new SHA, but no `v0.38.0` tag was created. `git tag` still
 ends at `v0.26.0`.
 
+**Reproduced again 2026-07-31 by the v0.40.0 release** (`0cbf24f`, pushed, `origin/master` verified
+in sync): `git tag --sort=-version:refname` still returns only `v0.26.0` and `pre-restructure`. That
+is now **14 untagged releases** (v0.26.1 … v0.40.0). Every one of them is unreachable by the tag the
+B-49 drill protocol requires for a clean checkout, which is why drill #0 had to fall back to a raw
+SHA. The backfill-or-not decision in this entry is still unmade and is getting more expensive.
+
 ### B-52 · Verify Copilot CLI fires *both* `userPromptSubmitted` hooks and injects both payloads (v0.33.0 Boy Scout parity claim)
 **Effort:** S · **Priority:** P2 capability honesty · **Invariants:** #5 · **execution vehicle: B-49's quarterly recert / B-43**
 
@@ -799,6 +805,46 @@ the other scenarios for prompts that specify the mechanism rather than the goal.
 
 **Not:** do not delete `angular-form-control` — its `formInputs`/`controlAsInput` signals are sound
 and the fixture is reusable. The defect is the prompt and the `cva` conflation, not the harness.
+
+### B-73 · `release.ps1` invoked from bash mangles any argument beginning with `/`, and its runtime now exceeds the tooling that calls it
+**Effort:** S · **Priority:** P2 release integrity · **Invariants:** #7 · found 2026-07-31 shipping v0.40.0
+
+**Why (defect 1 — a corrupted permanent record).** The v0.40.0 release was invoked from Git Bash as
+`-Summary "/bootstrap and /adopt capture Angular forms conventions"`. MSYS argument conversion
+rewrote the leading `/bootstrap` into a Windows path before `pwsh` ever saw it, so the release commit
+subject is permanently:
+
+```
+v0.40.0: C:/Program Files/Git/bootstrap and /adopt capture Angular forms conventions
+```
+
+The release itself was correct — all 11 gates green, `origin/master` verified in sync — but the
+commit subject is wrong in the one log that is supposed to be authoritative. Note the second
+`/adopt` survived: MSYS converts only the *first* token when it looks like an absolute path, which
+is exactly the kind of half-applied corruption that reads as a typo rather than a tooling bug. Every
+slash-command name in this framework (`/bootstrap`, `/adopt`, `/review`, `/fix`, `/feature`,
+`/design`, `/debt`, `/map-warehouse`) triggers it, so any release summary naming a command is
+exposed. Same interop family as the `hooks.json` backslash-escape trap (B-52) and the corrupted
+session `PATH`.
+
+**Do:** either defend inside the script (reject or repair a `-Summary` containing the repo path /
+`Program Files`, since neither can be intentional) or document `MSYS_NO_PATHCONV=1` as the required
+invocation and add it to `DEVELOPING.md`'s release recipe. The script-side guard is preferable —
+`DEVELOPING.md` already has a recipe and it did not prevent this.
+
+**Why (defect 2 — the release cannot fit in one tool call).** The gate sequence is
+`compose ×3 → footprint → validate-dist ×3 → hook suites ×3 → meta suite → eval self-test`, and the
+hook suites alone run ~10 minutes each. The first v0.40.0 attempt was **killed at the 10-minute
+background-task cap, mid-gates** — after stamping, composing, and rewriting the footprint baseline,
+but before committing. It had to be re-run under a persistent monitor. The failure presents as a
+kill, which is indistinguishable at a glance from a gate failure, and it leaves a stamped and
+rebuilt tree that looks like a botched release. The script's re-run-as-is design saved it, but
+nothing tells the operator that.
+
+**Do:** print an up-front runtime estimate and a "safe to re-run as-is if interrupted" line before
+the first gate; consider a `-ResumeFrom` or a `-SkipGates` escape hatch for a re-run whose gates
+already passed minutes earlier. Cross-links: B-53 (the other release-integrity entry — same script,
+different failure), B-51 (tagging, still unfixed and reproduced by this release).
 
 ---
 
