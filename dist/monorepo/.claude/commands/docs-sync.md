@@ -14,6 +14,7 @@ For each section in CLAUDE.md:
 - **Codebase Context**: does it still accurately describe what the app does?
 - **Repository Structure**: do the projects, layers, folders, modules, and dependencies match reality?
 - **Conventions**: for each convention, verify it's actually followed. Check for conventions the codebase follows that aren't documented.
+- **Data Access — warehouse map**: if `docs/warehouse-map.md` exists, check whether the SQL tree has changed since it was written (new or dropped tables, renamed load procs, changed load ordering). If it has, report the map as stale and recommend re-running `map-warehouse`. Do **not** re-derive the map here — that is the skill's job, and doing it twice costs the scan twice.
 - **Architecture Decisions**: are the decisions still current? Any new ones since last sync?
 - **Common Tasks**: do the step-by-step patterns match the current code?
 - **Boy Scout Rule**: are the priorities still relevant or has debt shifted?

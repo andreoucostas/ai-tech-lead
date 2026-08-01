@@ -931,6 +931,95 @@ different failure), B-51 (tagging, still unfixed and reproduced by this release)
 
 ---
 
+### B-76 · Nothing checks that a shipped doc's description of a command matches that command
+**Effort:** M · **Priority:** P2 doc truth · **Invariants:** #6 · found 2026-08-01 shipping v0.42.0
+
+**Why:** three false claims were shipping simultaneously, each asserting a command does maintenance
+it does not do:
+
+- `FRAMEWORK-CONTEXT.md` and all three `README.md`s: *"'Detected Framework Packages' and 'Known
+  Hazard Areas' are also refreshed by `/docs-sync`"*. `grep -i hazard` over `docs-sync.md` returned
+  **nothing**. The packages half was true, which is what made the sentence survive reading.
+- `rebootstrap.md`'s own frontmatter `description`: *"refresh conventions, **hazards**, and mined
+  skills"*. `grep -i hazard` over its body returned **only that line**. This is the highest-salience
+  of the three — the description drives model routing and is what the developer sees in the command
+  picker.
+- `.github/prompts/docs-sync.prompt.md` enumerated the docs-sync workflow as four steps, omitting
+  Step 4 (FRAMEWORK-CONTEXT) and the AGENTS.md/rails half of Step 2 — and it is a `src/core` file,
+  so it ships to all three dists as the only workflow summary Copilot gets.
+
+The first two survived from introduction to v0.41.0. `no-dead-instruction` matches script
+invocations only (`pwsh|bash|powershell <path>.{ps1,sh}`) and asserts the file resolves; `DocTruth`
+covers authoring-repo facts (paths, version stamps). Neither has any notion of *"this prose
+describes that command"*.
+
+**Do:** add a gate covering **all three shapes** — a check aimed only at the first would have caught
+one of three:
+
+1. **Third-party attribution** — `refreshed by /X`, `checked by /X`, `asserted by /X`: assert the
+   named command's body mentions the subject noun.
+2. **Frontmatter self-description** — assert each `description:` verb-phrase subject appears in its
+   own body.
+3. **Step enumeration** — where a doc lists another doc's steps, assert count and order match.
+
+Red-test each shape with a planted false claim.
+
+**Cross-links:** B-55 (same family, but scoped to *external vendor* behavior claims rather than our
+own commands), B-67 (`no-dead-instruction` blind to markdown link targets — the third blind spot in
+the same check). Consider closing all three as one hardening pass on that check.
+
+**Not swept:** other `checked by /X` / `asserted by /X` phrasings across `dist/*` were not audited
+when the three above were fixed — only the exact `refreshed by /docs-sync` string was.
+
+---
+
+### B-77 · Hazard-row references have no machine check — only their age is measured
+**Effort:** S · **Priority:** P2 · found 2026-08-01 shipping v0.42.0
+
+**Why:** `session-start.{ps1,sh}` warns when a `Known Hazard Areas` row's `Reviewed` date passes 90
+days. It reads the `Area / file(s)` cell only to skip the placeholder row; the logic is purely
+`$reviewed -ge $cutoff` — **age, never content**. So a `[VERIFIED]` row pointing at a file deleted,
+renamed, or extracted months ago stays fresh-looking indefinitely, while `CLAUDE.md` instructs the
+agent to consult that list for blast radius on every non-trivial task. A row pointing at nothing is
+false confidence, which is exactly what the table's own warning says a stale hazard map causes.
+
+v0.42.0 gave `/rebootstrap` Phase 3c a referential-drift pass, but that is model-executed and
+developer-initiated — there is no deterministic equivalent, and no gate fails when a row dangles.
+
+**Do:** add `hazard-check.{ps1,sh}` modelled on the existing `wiki-check.{ps1,sh}` — same problem
+shape (an optional artifact carrying epistemic status), same wiring (invoked from
+`docs-sync-check`), same test shape (`WikiCheck.Tests.ps1`). Validate row shape, a required status
+token, an ISO `Reviewed` date, and that each path named in `Area / file(s)` resolves. **It must
+never set or upgrade a status** — that is the human's, per WSD-027. Twin edit; red-test with a
+planted dangling path.
+
+---
+
+### B-78 · Warehouse-map staleness has four populations no signal reaches
+**Effort:** S · **Priority:** P3 · found 2026-08-01 shipping v0.42.0
+
+**Why:** v0.42.0 added a freshness caveat inside `add-warehouse-load` (fires when the map is read)
+and a `/docs-sync` bullet gated on `docs/warehouse-map.md` existing. Both are structurally blind to
+repos that have **no** map but should:
+
+- bootstrapped on v0.31.0–v0.34.1, before the Phase-4 nudge existed — and `/bootstrap` is
+  `disable-model-invocation: true`, so it is not re-run;
+- the developer declined the offer — `map-warehouse` says "offer, don't force";
+- the repo **grew** a warehouse after bootstrap, where `/bootstrap` Phase 3a's three-way rule
+  already deleted both warehouse skills, so nothing warehouse-shaped remains to fire at all;
+- `/adopt` — the brownfield path an existing warehouse actually takes — never mentions warehouses,
+  and declares its own Phase 8 the sole emitter during adoption.
+
+Compounding it: the Phase-4 nudge is a bullet in a chat report. It leaves no artifact, so it is a
+one-shot mention, not a durable pointer.
+
+**Do:** decide which of these deserve a signal — this is a scoping question, not an obvious fix.
+Cheapest candidate is a durable pointer written into `CLAUDE.md > Conventions > Data Access` when A2
+finds warehouse signals, which survives where a report bullet does not; second is a warehouse row in
+`/adopt`'s Phase-8 checklist.
+
+---
+
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see the Done section.**

@@ -626,3 +626,45 @@ Three things worth keeping:
    metrics key inventory was wrong in both count and shape, and would have produced three incorrect
    consumer changelog entries. A reviewer's corrections are input, not verdict — the inventory was
    only settled by running a key diff per stack.
+
+## 2026-08-01 — v0.42.0: a true half is what keeps a false claim alive
+
+1. **The sentence survived because half of it was true.** `"Detected Framework Packages" and "Known
+   Hazard Areas" are also refreshed by /docs-sync` sat in four shipped files across three stacks
+   from its introduction to v0.41.0. Anyone checking it would have confirmed the packages half
+   immediately — Step 4 does exactly that — and stopped. A compound claim needs each conjunct
+   checked separately; the plausible half is camouflage for the false one.
+
+2. **The highest-salience instance was the one that did not match the grep.** The `/docs-sync` claim
+   was found by grepping `refreshed by /docs-sync`. `/rebootstrap`'s identical defect — a
+   frontmatter `description` promising it refreshes "hazards" over a body that never mentions them —
+   was invisible to that pattern, because it is *self*-description, not attribution. It was found
+   only because an adversarial reviewer was asked to steelman the opposite position and went looking
+   for the capability's rightful home. The gate proposed in B-76 must cover all three shapes for
+   this reason; a check built from the string that found the first defect would have caught one of
+   three.
+
+3. **Fixing a false claim by making it true can be the wrong repair.** The instinct was to add a
+   hazard step to `/docs-sync`. That would have let a model-auto-invocable command regenerate rows
+   whose `[VERIFIED]`/`[SUSPECTED]`/`[UNVERIFIED]` design exists precisely to require a human
+   answer. The correct question was not "how do we make this true" but "which surface should own
+   this" — see WSD-027. Two of the three properties that decided it (auto-invocability, human
+   presence) are invisible from the doc making the claim.
+
+4. **`disable-model-invocation: true` turned out to be a design signal, not a config detail.** It
+   cleanly separates commands that may be handed expensive or unattended work (`/bootstrap`,
+   `/rebootstrap`, `/adopt`, `/impact`) from those that may not (`/docs-sync`). Nothing had ever
+   used it that way. It is now the first check in the siting rule.
+
+5. **The adversarial pass paid for itself by attacking judgment, not mechanics.** The mechanics
+   reviewer confirmed the risky structural claim (dotnet-only snippet reaching `dist/monorepo` via
+   the per-marker-name concat fallback, no sibling needed) and caught a fabricated risk in the
+   plan's own verification section — a `no-meta-leak` warning about prose that could not trip any of
+   the 13 denylist patterns. The design reviewer rejected the plan's core change outright. Both were
+   necessary; only the second changed what shipped.
+
+6. **The fix belongs where the damage happens.** The first draft's problem statement said a stale
+   map propagates the wrong pattern *because `add-warehouse-load` trusts it* — and then listed
+   `add-warehouse-load` as out of scope. The shipped fix is one caveat in that skill's step 1, which
+   fires on the developer who is about to be misled, at no cost to any non-warehouse repo. The
+   quarterly docs command got one bullet.

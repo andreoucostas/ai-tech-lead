@@ -124,6 +124,25 @@ For each item whose recommended fix has changed, propose an update to the Recomm
 
 Reminder: items are per-block — to remove a resolved item, delete its `## DEBT-NNN` block. To add a new item, follow the template at the top of TECH_DEBT.md.
 
+### 3c: Re-confirm Known Hazard Areas
+
+`FRAMEWORK-CONTEXT.md > Known Hazard Areas` is the list the agent consults for blast radius before planning any change in a listed area — so a row that is wrong is worse than a row that is missing. Re-align it in three passes, then propose the result through the **same diff-and-confirm gate** as 3a and 3b.
+
+1. **Referential drift** — for every existing row, check that the paths named in `Area / file(s)` still resolve. A row pointing at a deleted, renamed, or extracted file is stale no matter how recently it was reviewed, and nothing else catches this: the session-start staleness warning reads only the `Reviewed` date. List each unresolved row and ask whether to re-point it at the current path or retire it.
+2. **New candidates** — from this run's Tier-1 architectural risks and any domain-invariant or security findings, identify hazards not already listed. Ask about each in the same form `/bootstrap` Phase 3d-bis uses:
+   > "I found a potential hazard in [Area / file]: [one plain sentence describing the specific risk]. Is this (a) a confirmed risk to track, (b) not actually a risk in this codebase, or (c) you're not sure?"
+3. **Ageing rows** — list rows whose `Reviewed` date is more than ~90 days old and ask the developer to re-confirm each.
+
+Ask all three passes' questions in a **single message** (not dripped), with a "skip all — leave every row as it is" escape at the end. Map the answers to the same statuses `/bootstrap` writes:
+
+- **(a) confirmed** → `Status = [VERIFIED]`, `Reviewed` = today in ISO `YYYY-MM-DD`
+- **(b) not a risk** → `Status = [REVIEWED: not a hazard — YYYY-MM-DD]` (keep the row — it is kept for auditability, not dropped)
+- **(c) unsure / skip all** → leave an existing row's status and date exactly as they are; a *new* candidate is written `[UNVERIFIED]`
+
+**Do not upgrade an `[UNVERIFIED]` row yourself** — only the developer can, and only by answering its question. Never re-date a row the developer did not answer: a fresh `Reviewed` date on an unconfirmed row manufactures precisely the false confidence this table exists to prevent. Keep the table tight (≤ ~12 rows); deeper items belong in TECH_DEBT.md.
+
+If this command is ever run with no developer present to answer, take the "skip all" path — change nothing, and report the unanswered rows.
+
 ---
 
 ## Phase 4 — Final report
@@ -135,6 +154,7 @@ After all accepted changes are applied, output:
 - **Conventions removed or changed**: list with brief reason
 - **TECH_DEBT items resolved**: list by ID and title
 - **TECH_DEBT items added**: list by ID and title
+- **Hazard areas re-confirmed**: rows verified, re-pointed, retired, or left unanswered this run (or "none")
 - **Areas not re-analysed**: explicit list with reason (e.g., "no changes in last 3 months")
 - **Declined recipes recorded**: list any `## Declined recipe:` blocks appended to `LEARNINGS.md` this run by the resurrection guard (or "none")
 - **Required when skill set changed**: if any skill was added, removed, or updated during this rebootstrap, run `/generate-copilot` now — do not merely suggest it. This regenerates `.github/skills/` and `AGENTS.md`'s Common Tasks list so Copilot CLI and AGENTS.md-native tools stay in sync with the current skill set.

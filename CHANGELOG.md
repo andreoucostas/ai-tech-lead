@@ -11,6 +11,52 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.42.0 — 2026-08-01
+
+Started as "does `/docs-sync` keep `docs/warehouse-map.md` up to date?" (it does not — `grep -rn
+warehouse src/core/` returned zero). Answering that surfaced three defects of one class: **a
+documented maintenance duty with no implementation behind it.**
+
+- **`/rebootstrap` gained Phase 3c, re-confirming `FRAMEWORK-CONTEXT.md > Known Hazard Areas`** —
+  making its own frontmatter `description` ("refresh conventions, **hazards**, and mined skills")
+  true for the first time. `grep -i hazard` over its body previously returned only that description
+  line, in all three stacks. 3c reuses `/bootstrap` 3d-bis verbatim in shape (single-message
+  confirmation, the (a)/(b)/(c) status mapping, the skip-all escape, never self-upgrading an
+  `[UNVERIFIED]` row) and adds a **referential-drift pass that nothing previously owned**:
+  `session-start` parses the `Reviewed` date only, so a `[VERIFIED]` row pointing at a deleted file
+  stayed fresh-looking indefinitely.
+- **Struck the false `/docs-sync` hazard claim** from `FRAMEWORK-CONTEXT.md:6` and `README.md` in all
+  three stacks. The "Detected Framework Packages" half of that sentence was true (Step 4's
+  `fwctx-packages` marker), which is why it survived to v0.41.0.
+- **Warehouse-map freshness caveat in `add-warehouse-load` step 1**, where the map is read and where
+  the damage happens — plus a one-bullet staleness pointer in `/docs-sync` Step 1 via a new
+  dotnet-only `docs-sync-warehouse` marker. Angular resolves it to nothing; monorepo gets it through
+  the per-marker-name concat fallback with **no monorepo sibling** (verified in the composed output,
+  not just traced).
+- **`.github/prompts/docs-sync.prompt.md` enumerated four of six steps**, omitting Step 4 and the
+  AGENTS.md/rails half of Step 2 — a `src/core` file, so all three dists shipped Copilot a narrower
+  workflow than Claude Code ran.
+
+Design record: WSD-027 (site a maintenance duty on the surface whose invocation model matches it).
+
+An adversarial review pass rejected the first draft of this work, which added a full
+`/docs-sync` warehouse cross-check step. Four reasons, all recorded in WSD-027: it re-derives grain
+and load ordering (warehouse discovery, which WSD-021 declined to automate); `docs-sync.md` carries
+no `disable-model-invocation: true`, so a full SQL-tree scan would be model-triggerable against a
+command advertised as "read-mostly, safe to run anytime"; it would be the first `/docs-sync` target
+with no shipped template or schema; and its own recommended action was "re-run `map-warehouse`",
+making the developer pay the scan twice. The shipped fix is roughly a tenth of that diff.
+
+*Why did no gate catch it:* `no-dead-instruction` matches script invocations only; `DocTruth` covers
+authoring-repo facts. Nothing checks *"this prose describes that command"* — filed as **B-76**, which
+must cover three shapes (third-party attribution, frontmatter self-description, step enumeration),
+since a check aimed at only the first would have caught one of the three.
+
+*What else is exposed to the same class:* the deterministic half of hazard-row checking is filed as
+**B-77** (`hazard-check.{ps1,sh}`, modelled on `wiki-check`); the four warehouse-map populations that
+no signal reaches are filed as **B-78**. Other `checked by /X` / `asserted by /X` phrasings across
+`dist/*` were **not** swept — only the exact `refreshed by /docs-sync` string was.
+
 ## 0.41.0 — 2026-08-01
 
 Closes B-61: behavioural twin parity covered `.claude/hooks/` but almost none of the shipped

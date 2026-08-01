@@ -1,0 +1,1 @@
+- **Data Access — warehouse map**: if `docs/warehouse-map.md` exists, check whether the SQL tree has changed since it was written (new or dropped tables, renamed load procs, changed load ordering). If it has, report the map as stale and recommend re-running `map-warehouse`. Do **not** re-derive the map here — that is the skill's job, and doing it twice costs the scan twice.

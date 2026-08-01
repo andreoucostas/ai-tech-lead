@@ -5,6 +5,33 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.42.0 — 2026-08-01
+
+- **`/rebootstrap` now re-confirms your Known Hazard Areas — it always claimed to, and never did.**
+  Its description said it refreshes "hazards", but no step in it touched
+  `FRAMEWORK-CONTEXT.md > Known Hazard Areas`. It now has a Phase 3c that makes three passes: it
+  checks whether the files each row names still exist (a row pointing at a deleted or renamed file
+  looked fresh indefinitely — the session-start warning only reads the review date), proposes
+  hazards this run's analysis found, and re-asks about rows older than ~90 days. It asks everything
+  in one message, proposes changes through the same accept/reject gate as the rest of Phase 3, and —
+  as before — **only you can confirm a hazard**: it will never upgrade an `[UNVERIFIED]` row or
+  re-date one you did not answer.
+- **`FRAMEWORK-CONTEXT.md` and `README.md` no longer claim `/docs-sync` refreshes Known Hazard
+  Areas.** It never did. "Detected Framework Packages" genuinely is refreshed by `/docs-sync`, which
+  is why the sentence read plausibly for so long; the hazard half of it was simply wrong. Hazard
+  areas are now attributed to `/rebootstrap`, which actually does the work.
+- **The Copilot `/docs-sync` prompt described four of the six checks.** It omitted the
+  `FRAMEWORK-CONTEXT.md` drift check and the `AGENTS.md` / routing-rails half of the derived-files
+  check, so Copilot ran a narrower documentation sync than Claude Code did from the same command.
+  Corrected.
+- **`docs/warehouse-map.md` is now treated as a snapshot, not a live view.** `add-warehouse-load`
+  read that map as the authoritative source for the load pattern to copy, and nothing kept the map
+  current — so a warehouse that had moved on could push a stale pattern into new ETL code. The skill
+  now tells you to confirm the entities and load procs the map names still exist in the SQL tree
+  before copying from it, and that the code wins where the two disagree. `/docs-sync` additionally
+  flags the map as stale when the SQL tree has changed since it was written, and points you at
+  `map-warehouse` to refresh it.
+
 ## 0.41.0 — 2026-08-01
 
 - **Your test suite could report green while a test failed — fixed.** If you run

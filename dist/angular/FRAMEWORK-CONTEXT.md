@@ -3,7 +3,7 @@
 > Cross-repo context that AI agents need but cannot derive from this single repo.
 > Covers: shared library APIs, multi-tenancy conventions, dashboard contracts, and cross-service patterns.
 >
-> **Maintenance**: Every section is drafted by `/bootstrap` from this repo's code. Drafted sections open with an auto-draft comment and cover only what this repo's code shows — the cross-repo half (why a convention exists org-wide, what the backend does, a library's full surface) still needs a maintainer. Edit any section freely; `/bootstrap` never overwrites maintainer-written content. "Detected Framework Packages" and "Known Hazard Areas" are also refreshed by `/docs-sync`.
+> **Maintenance**: Every section is drafted by `/bootstrap` from this repo's code. Drafted sections open with an auto-draft comment and cover only what this repo's code shows — the cross-repo half (why a convention exists org-wide, what the backend does, a library's full surface) still needs a maintainer. Edit any section freely; `/bootstrap` never overwrites maintainer-written content. "Detected Framework Packages" is also refreshed by `/docs-sync`. "Known Hazard Areas" is re-confirmed by `/rebootstrap`, and the session-start hook flags rows left unreviewed for 90 days.
 >
 > **Precedence**: If `FRAMEWORK-CONTEXT.md` and `CLAUDE.md` disagree on a convention, **`CLAUDE.md` (this repo's authoritative source) wins** — but the agent must flag the contradiction. Framework-level conventions are baseline; per-repo conventions can diverge with rationale.
 >

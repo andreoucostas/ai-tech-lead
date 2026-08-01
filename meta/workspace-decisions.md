@@ -1046,3 +1046,62 @@ states that it must never be used to predict host-launched resolution. Future ca
 must name both the consumer and the observation vantage point before claiming availability.
 
 **Date.** 2026-07-31.
+
+---
+
+## WSD-027: site a maintenance duty on the surface whose invocation model matches it (2026-08-01)
+
+**Context.** Three shipped docs claimed a command performed maintenance it did not perform:
+`FRAMEWORK-CONTEXT.md` and all three `README.md`s said `/docs-sync` refreshes "Known Hazard Areas"
+(it never mentioned hazards); `rebootstrap.md`'s own frontmatter said it refreshes "hazards" (its
+body never mentioned them); and `docs-sync.prompt.md` enumerated four of `/docs-sync`'s six steps.
+Separately, `docs/warehouse-map.md` — which `add-warehouse-load` reads as the authoritative source
+for the load pattern to copy — had no freshness mechanism at all, so a stale map silently propagated
+the wrong load pattern into new ETL code.
+
+The obvious fix for each was to make the claim true by adding the work to `/docs-sync`. Both
+attempts were wrong for the same reason.
+
+**Decision.** Before siting a maintenance duty on a command, check three properties of that command
+and require all three to match the duty:
+
+1. **Invocation model.** `/docs-sync` has no `disable-model-invocation: true`, so the model can
+   trigger it unprompted. A duty that is expensive, or that must not run unattended, cannot live
+   there. `/bootstrap`, `/rebootstrap`, `/adopt`, and `/impact` all carry the flag and can.
+2. **Whether a human must be present.** Hazard rows carry epistemic status
+   (`[VERIFIED]`/`[SUSPECTED]`/`[UNVERIFIED]`) and the template states an item is confirmed only
+   when a person answers its question. Any refresh of them therefore requires a developer in the
+   loop, which an auto-invocable command cannot guarantee.
+3. **Distance from the point of failure.** Warehouse-map staleness does damage at the moment
+   `add-warehouse-load` copies a pattern out of the map — not at the moment someone runs a
+   quarterly docs chore.
+
+Applied: hazard re-confirmation went to `/rebootstrap` as Phase 3c (developer-initiated,
+human-present, reusing the `/bootstrap` 3d-bis ritual and status mapping verbatim); the warehouse
+freshness caveat went into `add-warehouse-load` step 1, where the map is read, with only a one-line
+staleness pointer left in `/docs-sync`.
+
+**The reusable sub-rule on epistemic artifacts: tooling may verify a row's *references*; only a
+human may change its *status*.** A check that asks "does this row's `Area / file(s)` path still
+resolve?" invents nothing and confirms nothing, and is legitimate deterministic work.
+`wiki-check.{ps1,sh}` is the existence proof — it validates status *shape* and index integrity while
+never setting a status.
+
+**Alternatives rejected.** *Making the `/docs-sync` hazard claim true* — rejected: it would let
+tooling regenerate rows the design requires a human to confirm, laundering `[UNVERIFIED]` inferences
+into apparent findings. *A `/docs-sync` warehouse cross-check step* — rejected on four grounds: it
+re-derives grain and load ordering, which is warehouse discovery that WSD-021 already declined to
+automate; it would be the first `/docs-sync` target with no shipped template or schema; on a real
+warehouse it would exceed the other five steps combined; and its own recommended action is "re-run
+`map-warehouse`", making the developer pay the scan twice. *Deleting the hazard claim from
+`/rebootstrap` too* — rejected: unlike `/docs-sync`, `/rebootstrap` satisfies all three properties,
+so the cheaper fix would have discarded the right home for the capability.
+
+**Consequences.** `/rebootstrap` now owns hazard re-alignment, including a referential-drift pass
+that nothing previously covered — `session-start` measures the `Reviewed` date only, so a
+`[VERIFIED]` row pointing at a deleted file stays fresh-looking indefinitely. The deterministic half
+of that pass is filed as B-77. The gate gap that let all three false claims ship is filed as B-76;
+note it needs to cover three distinct shapes (third-party attribution, frontmatter self-description,
+step enumeration), because a check aimed at only the first would have caught one of the three.
+
+**Date.** 2026-08-01.

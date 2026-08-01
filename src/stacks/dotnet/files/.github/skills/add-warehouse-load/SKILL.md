@@ -26,11 +26,15 @@ Match CLAUDE.md > Conventions > Data Access. The two rules that dominate everyth
    pattern and mirror it, or use the project-specific skill `/bootstrap` created.
 
 1. **Find the pattern to copy.** Read `docs/warehouse-map.md` if it exists (run
-   `map-warehouse` to create it if the change is non-trivial). Locate 1–2 existing loads of
-   the same kind — a dimension load for a new dimension, a fact load for a new fact — and
-   mirror their structure exactly: naming, staging shape, procedure layout, error handling,
-   logging, control-table calls. One warehouse, one loading pattern: never introduce a second
-   style. If no comparable load exists, ask the developer before inventing one.
+   `map-warehouse` to create it if the change is non-trivial). **That map is a snapshot, not a
+   live view** — nothing refreshes it when the warehouse changes. Before copying a pattern out
+   of it, confirm the entities and load procs it names still exist in the SQL tree; where the
+   map and the code disagree the code wins — re-run `map-warehouse` rather than trusting it
+   further. Locate 1–2 existing loads of the same kind — a dimension load for a new dimension,
+   a fact load for a new fact — and mirror their structure exactly: naming, staging shape,
+   procedure layout, error handling, logging, control-table calls. One warehouse, one loading
+   pattern: never introduce a second style. If no comparable load exists, ask the developer
+   before inventing one.
 
 2. **Design the entity.**
    - Dimension: surrogate key; natural/business key with a unique constraint (scoped to the

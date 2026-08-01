@@ -14,6 +14,7 @@ For each section in CLAUDE.md:
 - **Codebase Context**: does it still accurately describe what the app does?
 <!-- @stack:repo-structure -->
 - **Conventions**: for each convention, verify it's actually followed. Check for conventions the codebase follows that aren't documented.
+<!-- @stack:docs-sync-warehouse -->
 - **Architecture Decisions**: are the decisions still current? Any new ones since last sync?
 - **Common Tasks**: do the step-by-step patterns match the current code?
 - **Boy Scout Rule**: are the priorities still relevant or has debt shifted?
