@@ -64,9 +64,9 @@ function Assert  { param([bool]$Cond,[string]$Msg) if (-not $Cond) { throw $Msg 
 function Reset-Tests { $script:Tests.Clear() }
 function Write-TestSummary {
     param([string]$Title)
-    $pass = ($script:Tests | Where-Object State -eq 'PASS').Count
-    $fail = ($script:Tests | Where-Object State -eq 'FAIL').Count
-    $skip = ($script:Tests | Where-Object State -eq 'SKIP').Count
+    $pass = @($script:Tests | Where-Object State -eq 'PASS').Count
+    $fail = @($script:Tests | Where-Object State -eq 'FAIL').Count
+    $skip = @($script:Tests | Where-Object State -eq 'SKIP').Count
     foreach ($t in $script:Tests) {
         $mark = switch ($t.State) { 'PASS' {'[ok]'} 'FAIL' {'[FAIL]'} 'SKIP' {'[skip]'} }
         Write-Host ("{0} {1}{2}" -f $mark, $t.Name, $(if ($t.Msg) { " -- $($t.Msg)" } else { '' }))

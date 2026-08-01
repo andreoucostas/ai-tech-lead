@@ -41,7 +41,9 @@ cat <<JSON
     "todo_hack_fixme": $(c '(TODO|HACK|FIXME)'),
     "not_implemented_throws": $(c "throw[[:space:]]+new[[:space:]]+Error\([\"']not implemented"),
     "concrete_service_instantiation_dip": $(c 'new[[:space:]]+[A-Za-z0-9_]+(Service|Store|Facade)\('),
-    "test_specs": $(c '\b(it|describe)\(')
+    "test_specs": $(c '\b(it|describe)\('),
+    "tests_skipped_focused": $(c '\b(fit|fdescribe|xit|xdescribe)[[:space:]]*\(|\b(it|describe)\.(only|skip)[[:space:]]*\('),
+    "tautological_expect": $(c 'expect\([[:space:]]*(true|false)[[:space:]]*\)\.toBe\([[:space:]]*(true|false)[[:space:]]*\)')
   },
   "readiness": {
     "ci_present": ${ci_present},

@@ -11,6 +11,56 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.41.0 — 2026-08-01
+
+Closes B-61: behavioural twin parity covered `.claude/hooks/` but almost none of the shipped
+`scripts/`. The gap was found the hard way — `framework-doctor.ps1` and `.sh` once returned opposite
+verdicts on the same machine at the same moment and no gate noticed, because running either twin
+alone looked healthy.
+
+Writing the harness immediately surfaced three divergences that were **already shipping**, which is
+the point of the item rather than a surprise:
+
+- **`metrics.sh` was missing its test-integrity counters**, and by a different amount per stack:
+  dotnet lacked `tests_skipped` and `tautological_assert`; angular lacked `tests_skipped_focused`
+  and `tautological_expect`; monorepo lacked all four. The PowerShell twins had them throughout, so
+  the two twins emitted different JSON key sets. (An earlier draft of this work asserted three keys
+  common to all stacks — that was wrong, caught by a second adversarial review pass.)
+- **`docs-sync-check` twins printed different prose**: four ASCII-vs-em-dash advisory suffixes plus
+  two genuinely different sentences (the CLAUDE.md size NOTE and the README NOTE, which also used a
+  different separator).
+- **The shipped test harness could not go red.** Under Windows PowerShell 5.1,
+  `(… | Where-Object …).Count` on a pipeline yielding exactly ONE object returns `$null`, so
+  `Write-TestSummary` returned `$null`, `exit $null` became exit 0, and a test file with exactly one
+  failing test scored green while printing `[FAIL]`. Two or more failures returned an int and were
+  caught, so this hid precisely the lone-regression case. pwsh 7 returns 1 for the same expression,
+  which is why CI and the maintainer box never saw it. Fixed in both the shipped and meta harnesses
+  and red-tested under 5.1 (exit 0 before, exit 1 after).
+
+New `tests/hooks/ScriptTwinParity.Tests.ps1` (ships) runs both twins of `template-checks`,
+`docs-sync-check`, `sync-agent-files` and `metrics` against one fixture and compares them.
+`framework-doctor` gained two non-pending cases, so `Stack toolchain`, `Mirror and version
+integrity` and `Audit trail substrate` are twin-compared for the first time — the failing-mirror
+case is the one that matters, because the passing branch is trivially identical.
+A maintainer-only `ScriptTwinCoverage.Tests.ps1` makes an unclassified twin pair fail, so a newly
+added script cannot silently escape coverage.
+
+Contract notes, deliberately narrow: comparison is of the **ordered** `OK:`/`FAIL:` sequence, not a
+set — a set would hide ordering and duplication defects. Exactly two normalizations exist, both
+commented: `template-checks`' by-design check 6 asymmetry (`.ps1` parses `.ps1` files, `.sh` parses
+`.sh` files), and a script naming its own sibling twin. A static assertion fails if the check-6
+exemption ever widens. The fixture also asserts which checks it *reached*, after an early version of
+it silently exercised only 5 of 7 checks and a planted defect in check 5 failed to go red.
+
+Known limitation, stated rather than papered over: the metrics corpus uses canonically-cased source.
+`Select-String` is case-insensitive and `grep -E` is not, so case parity is not asserted — that
+belongs to B-59(b), which owns the case-sensitivity policy. Also unexercised: the `Stack toolchain`
+row's regex-vs-glob branch, noted in the test.
+
+Housekeeping: the three shipped changelogs still headed `0.40.0 — Unreleased` for a version released
+2026-07-31, because `release.ps1` stamps only the root changelog. Dated here; the automation half
+remains open as B-54.
+
 ## 0.40.0 (2026-07-31)
 
 Closes the delivery half of B-66: the Angular stack shipped **no forms guidance at all**. A

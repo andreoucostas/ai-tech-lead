@@ -67,6 +67,24 @@ function Invoke-Hook {
     }
 }
 
+# Run a script with zero or more arguments. Returns $null for a .sh when bash is unavailable.
+function RunArg {
+    param([Parameter(Mandatory)][string]$Path, [string[]]$Arguments = @())
+    $ef = [IO.Path]::GetTempFileName()
+    # PowerShell decodes a native child's stdout bytes using [Console]::OutputEncoding. On a non-UTF-8
+    # console code page the child's UTF-8 output arrives mangled and -match silently misses.
+    $prevOut = [Console]::OutputEncoding; $encChanged = $false
+    try {
+        try { [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false); $encChanged = $true } catch { }
+        if ($Path -match '\.ps1$') { $out = & (Get-PsExe) -NoProfile -ExecutionPolicy Bypass -File $Path @Arguments 2>$ef }
+        else { $bash = Get-BashPath; if (-not $bash) { return $null }; $out = & $bash $Path @Arguments 2>$ef }
+        return [pscustomobject]@{ Exit=$LASTEXITCODE; Out=($out -join "`n"); Err=[IO.File]::ReadAllText($ef) }
+    } finally {
+        if ($encChanged) { try { [Console]::OutputEncoding = $prevOut } catch { } }
+        if (Test-Path -LiteralPath $ef) { [IO.File]::Delete($ef) }
+    }
+}
+
 # Normalise a hook result to a decision: BLOCK (Claude exit 2), DENY (Copilot JSON), ALLOW (exit 0,
 # no deny), SKIP (no bash), or EXITn for anything unexpected.
 function Get-Decision {
@@ -97,9 +115,15 @@ function Assert-Decision { param($Result,[string]$Expected,[string]$Ctx)
 function Reset-Tests { $script:Tests.Clear() }
 function Write-TestSummary {
     param([string]$Title)
-    $pass = ($script:Tests | Where-Object State -eq 'PASS').Count
-    $fail = ($script:Tests | Where-Object State -eq 'FAIL').Count
-    $skip = ($script:Tests | Where-Object State -eq 'SKIP').Count
+    # @() is load-bearing, not style. Under Windows PowerShell 5.1 a pipeline yielding exactly ONE
+    # object has no .Count, so `(... | Where-Object ...).Count` returns $null -- and `return $fail`
+    # then makes `exit (Write-TestSummary ...)` exit 0 while the summary prints [FAIL]. The runner
+    # sums child exit codes, so a single failing test in a file scored as green. Two or more
+    # failures returned an int and were caught, which is why this only ever hid a lone regression.
+    # pwsh 7 returns 1 for the same expression, so CI and pwsh boxes never saw it.
+    $pass = @($script:Tests | Where-Object State -eq 'PASS').Count
+    $fail = @($script:Tests | Where-Object State -eq 'FAIL').Count
+    $skip = @($script:Tests | Where-Object State -eq 'SKIP').Count
     foreach ($t in $script:Tests) {
         $mark = switch ($t.State) { 'PASS' {'[ok]'} 'FAIL' {'[FAIL]'} 'SKIP' {'[skip]'} }
         Write-Host ("{0} {1}{2}" -f $mark, $t.Name, $(if ($t.Msg) { " -- $($t.Msg)" } else { '' }))

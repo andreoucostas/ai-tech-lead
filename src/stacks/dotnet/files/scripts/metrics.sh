@@ -47,7 +47,9 @@ cat <<JSON
     "weak_crypto_md5_sha1": $(c '\b(MD5|SHA1)\b'),
     "raw_sql": $(c '(FromSqlRaw|ExecuteSqlRaw)'),
     "money_double_float": $(c '(double|float)[[:space:]]+[A-Za-z_]*(Amount|Balance|Price|Rate|Fee|Notional)'),
-    "test_attributes": $(c '\[(Fact|Theory|Test|TestMethod)\]')
+    "test_attributes": $(c '\[(Fact|Theory|Test|TestMethod)\]'),
+    "tests_skipped": $(c '\[(Fact|Theory)\([^)]*Skip[[:space:]]*='),
+    "tautological_assert": $(c 'Assert\.(True\([[:space:]]*true|False\([[:space:]]*false)[[:space:]]*[),]')
   },
   "readiness": {
     "ci_present": ${ci_present},

@@ -57,6 +57,8 @@ cat <<JSON
     "raw_sql": $(ccs '(FromSqlRaw|ExecuteSqlRaw)'),
     "money_double_float": $(ccs '(double|float)[[:space:]]+[A-Za-z_]*(Amount|Balance|Price|Rate|Fee|Notional)'),
     "test_attributes": $(ccs '\[(Fact|Theory|Test|TestMethod)\]'),
+    "tests_skipped": $(ccs '\[(Fact|Theory)\([^)]*Skip[[:space:]]*='),
+    "tautological_assert": $(ccs 'Assert\.(True\([[:space:]]*true|False\([[:space:]]*false)[[:space:]]*[),]'),
     "any_type": $(cng ':[[:space:]]*any\b|<any>'),
     "ts_ignore_nocheck": $(cng '@ts-(ignore|nocheck)'),
     "eslint_disable": $(cng 'eslint-disable'),
@@ -64,6 +66,8 @@ cat <<JSON
     "bypass_security_trust": $(cng 'bypassSecurityTrust'),
     "console_log": $(cng 'console\.(log|debug|warn|error)\('),
     "test_specs": $(cng '\b(it|describe)\('),
+    "tests_skipped_focused": $(cng '\b(fit|fdescribe|xit|xdescribe)[[:space:]]*\(|\b(it|describe)\.(only|skip)[[:space:]]*\('),
+    "tautological_expect": $(cng 'expect\([[:space:]]*(true|false)[[:space:]]*\)\.toBe\([[:space:]]*(true|false)[[:space:]]*\)'),
     "todo_hack_fixme": ${todo},
     "not_implemented_throws": ${notimpl},
     "concrete_service_instantiation_dip": ${concrete}

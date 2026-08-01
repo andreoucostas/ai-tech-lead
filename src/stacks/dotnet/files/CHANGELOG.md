@@ -4,7 +4,29 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.40.0 — Unreleased
+## 0.41.0 — 2026-08-01
+
+- **Your test suite could report green while a test failed — fixed.** If you run
+  `tests/hooks/Invoke-HookTests.ps1` under **Windows PowerShell 5.1** (the fallback used on machines
+  without PowerShell 7), a test file containing exactly *one* failing test printed `[FAIL]` but
+  still exited 0, so CI scored the run as a pass. Two or more failures in the same file were
+  reported correctly, which is why this only ever hid a single fresh regression. If you gate a
+  pipeline on this suite, re-run it after updating — it may surface a failure that was previously
+  invisible.
+- **`scripts/metrics.sh` now reports the same counters as `scripts/metrics.ps1`.** The bash version
+  was missing `tests_skipped` and `tautological_assert`, so the JSON it emitted had a different key
+  set from the PowerShell version. Anything consuming that JSON now sees both keys regardless of
+  which twin produced it.
+- **`scripts/docs-sync-check` prints identical wording from either twin.** The PowerShell and bash
+  versions had drifted apart in six advisory messages, so the same repo produced different output
+  depending on which one your CI happened to run.
+- **New `tests/hooks/ScriptTwinParity.Tests.ps1`.** Runs both the `.ps1` and `.sh` version of
+  `template-checks`, `docs-sync-check`, `sync-agent-files` and `metrics` against one fixture and
+  fails if they disagree. `framework-doctor`'s checks that only run on a fully set-up repo are now
+  compared too. This is what caught the three problems above; it protects you from a Windows
+  developer and a Linux CI agent silently getting different answers from the same repo.
+
+## 0.40.0 — 2026-07-31
 
 - No changes to the .NET distribution this release. The forms-conventions support added to
   `/bootstrap` and `/adopt` in v0.40.0 applies only to the Angular and mixed (monorepo)

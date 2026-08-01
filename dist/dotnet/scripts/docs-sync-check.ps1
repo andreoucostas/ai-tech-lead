@@ -29,7 +29,7 @@ if (-not (Test-Path "docs/enforcement-surfaces.md")) {
     Fail "framework install incomplete: docs/enforcement-surfaces.md missing — reinstall from the template."
 } else { OK "framework enforcement matrix present." }
 if (-not (Test-Path "docs/ci-integration.md")) {
-    Write-Output "NOTE: docs/ci-integration.md is missing — restore it from the template if you need the portable required-build recipe. (advisory -- not a failure)"
+    Write-Output "NOTE: docs/ci-integration.md is missing — restore it from the template if you need the portable required-build recipe. (advisory — not a failure)"
 }
 
 # 1. Adoption-pending marker — the installer detected pre-existing AI tooling that /adopt must consolidate.
@@ -53,7 +53,7 @@ if (Test-Path "CLAUDE.md") {
     # @().Count matches wc -l in the .sh twin; Measure-Object -Line skips blank lines and diverges.
     $clLines = @(Get-Content "CLAUDE.md").Count
     if ($clLines -gt 400) {
-        Write-Output "NOTE: CLAUDE.md is $clLines lines (soft budget 400). Push verbose detail into on-demand files (docs/, skills) to cut per-turn token cost. (advisory -- not a failure)"
+        Write-Output "NOTE: CLAUDE.md is $clLines lines (soft budget 400). Push verbose Architecture Decisions / Repository Structure detail into on-demand files (docs/, skills) to cut per-turn token cost. (advisory — not a failure)"
     }
 }
 
@@ -115,7 +115,7 @@ if (Test-Path 'README.md') {
     $missingDoc = @()
     Get-ChildItem -Directory '.claude/skills' -ErrorAction SilentlyContinue | ForEach-Object { if ($readme -notmatch [regex]::Escape($_.Name)) { $missingDoc += "skill:$($_.Name)" } }
     Get-ChildItem -File '.claude/agents' -Filter *.md -ErrorAction SilentlyContinue | ForEach-Object { $n = [IO.Path]::GetFileNameWithoutExtension($_.Name); if ($readme -notmatch [regex]::Escape($n)) { $missingDoc += "agent:$n" } }
-    if ($missingDoc.Count -gt 0) { Write-Output ("NOTE: README.md does not mention: " + ($missingDoc -join ' ') + " -- update the What's-in-the-box / subagents tables. (advisory -- not a failure)") }
+    if ($missingDoc.Count -gt 0) { Write-Output ("NOTE: README.md does not mention: " + ($missingDoc -join ' ') + " — update the What's-in-the-box / subagents tables (they may have drifted). (advisory — not a failure)") }
 }
 
 # 6b. Deterministic framework checks (version-stamp sync, verbatim CLAUDE.md<->AGENTS.md mirror,
@@ -139,7 +139,7 @@ if ((Test-Path 'docs/ARCHITECTURE.md') -and (Test-Path 'docs/architecture.html')
     $aNorm = ((Get-Content 'docs/ARCHITECTURE.md' -Raw -Encoding UTF8) -replace "`r", "")
     $aSha  = -join ([System.Security.Cryptography.SHA1]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($aNorm)) | ForEach-Object { $_.ToString('x2') })
     if (-not (Select-String -Path 'docs/architecture.html' -SimpleMatch -Pattern "src-sha1: $aSha" -Quiet)) {
-        Write-Output "NOTE: docs/architecture.html is stale vs docs/ARCHITECTURE.md -- run scripts/build-architecture-html.ps1. (advisory -- not a failure)"
+        Write-Output "NOTE: docs/architecture.html is stale vs docs/ARCHITECTURE.md — run scripts/build-architecture-html.ps1. (advisory — not a failure)"
     }
 }
 
