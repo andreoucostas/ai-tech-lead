@@ -196,8 +196,8 @@
       "instructed": [
         {
           "path": "FRAMEWORK-CONTEXT.md",
-          "chars": 6820,
-          "tok": 1705
+          "chars": 6917,
+          "tok": 1729
         },
         {
           "path": "docs/defaults.md",
@@ -322,8 +322,8 @@
         },
         {
           "path": ".claude/commands/docs-sync.md#body",
-          "chars": 5582,
-          "tok": 1396
+          "chars": 5963,
+          "tok": 1491
         },
         {
           "path": ".claude/commands/feature.md#body",
@@ -347,8 +347,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 8090,
-          "tok": 2022
+          "chars": 10565,
+          "tok": 2641
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -387,8 +387,8 @@
         },
         {
           "path": ".claude/skills/add-warehouse-load/SKILL.md#body",
-          "chars": 5733,
-          "tok": 1433
+          "chars": 6062,
+          "tok": 1516
         },
         {
           "path": ".claude/skills/create-adr/SKILL.md#body",
@@ -610,8 +610,8 @@
       "instructed": [
         {
           "path": "FRAMEWORK-CONTEXT.md",
-          "chars": 6700,
-          "tok": 1675
+          "chars": 6797,
+          "tok": 1699
         },
         {
           "path": "docs/defaults.md",
@@ -761,8 +761,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 7797,
-          "tok": 1949
+          "chars": 10272,
+          "tok": 2568
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -1044,8 +1044,8 @@
       "instructed": [
         {
           "path": "FRAMEWORK-CONTEXT.md",
-          "chars": 7789,
-          "tok": 1947
+          "chars": 7886,
+          "tok": 1972
         },
         {
           "path": "docs/defaults.md",
@@ -1170,8 +1170,8 @@
         },
         {
           "path": ".claude/commands/docs-sync.md#body",
-          "chars": 5706,
-          "tok": 1426
+          "chars": 6087,
+          "tok": 1522
         },
         {
           "path": ".claude/commands/feature.md#body",
@@ -1195,8 +1195,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 9842,
-          "tok": 2460
+          "chars": 12317,
+          "tok": 3079
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -1255,8 +1255,8 @@
         },
         {
           "path": ".claude/skills/add-warehouse-load/SKILL.md#body",
-          "chars": 5733,
-          "tok": 1433
+          "chars": 6062,
+          "tok": 1516
         },
         {
           "path": ".claude/skills/create-adr/SKILL.md#body",

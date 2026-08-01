@@ -1,7 +1,7 @@
 <!--
 ai-tech-lead-framework
   template: monorepo
-  version: 0.41.0
+  version: 0.42.0
   applied: 2026-08-01
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
