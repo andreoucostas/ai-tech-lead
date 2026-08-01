@@ -1062,6 +1062,31 @@ profiling this does not rediscover it and assume it was missed.
 
 ---
 
+### B-80 · `release.ps1`'s `git add -A` commits whatever is sitting in the working tree
+**Effort:** S · **Priority:** P2 release integrity · **Invariants:** #7 · found 2026-08-01 after v0.43.0
+
+**Why:** the release stages with a blanket `git add -A` (step 5). That is deliberate — the release
+commit must carry the stamps, the rebuilt `dist/`, and the footprint baseline together — but it also
+sweeps in anything else present. A git worktree created under `.claude/worktrees/` (where the
+tooling puts them by default) is recorded as a **gitlink**, mode 160000, so v0.42.0 and v0.43.0 each
+shipped a stray pointer to a directory that ceased to exist the moment the worktree was removed.
+Caught only because removing the worktrees showed two tracked deletions.
+
+`.gitignore` now covers `.claude/worktrees/`, which closes this instance. The general hazard is not
+closed: `git add -A` will do the same for any untracked scratch file, editor backup, or temp output
+that happens to be in the tree when a release runs, and the release prints no manifest of what it
+staged, so nothing surfaces it.
+
+**Do:** before committing, diff the staged set against what a release is *expected* to touch
+(`src/**`, `dist/**`, `CHANGELOG.md`, `meta/context-footprint.json`, the version stamps) and refuse
+— or at minimum print a prominent warning and require confirmation — when anything else appears.
+A stray gitlink (mode 160000) anywhere in the index should be a hard refusal: this repo has no
+submodules, so it is always a mistake. Red-test by planting an untracked file and a worktree.
+
+**Cross-links:** B-53 and B-73 (same script, other release-integrity failures). Consider closing all
+three as one pass over `release.ps1`.
+
+---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see the Done section.**

@@ -1,2 +1,7 @@
 # Phase 3+: dist/ is the committed golden output (rebuilt + diffed in CI). Nothing to ignore
 # yet; keep the file as the anchor for future authoring-repo ignores.
+
+# Git worktrees created inside the repo (EnterWorktree defaults here). These are gitlinks, not
+# content: release.ps1 does `git add -A`, which swept one into each of v0.42.0 and v0.43.0 as a
+# stray 160000 entry pointing at a directory that no longer exists once the worktree is removed.
+.claude/worktrees/
