@@ -4,6 +4,19 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.43.0 — 2026-08-01
+
+- **`tests/hooks/Invoke-HookTests.ps1` now sizes itself to your machine.** The lane count was fixed
+  at 4 regardless of hardware. It now defaults to your logical core count (capped at 8), and honours
+  a `HOOKTESTS_THROTTLE` environment variable if you run several suites at once and want to hand
+  each a share. Nothing about what is tested changed.
+- **`Guard.Tests.ps1` now drives both the `.ps1` and `.sh` guard twins from one pass.** The `.sh`
+  twin's decision parity used to be checked in `TwinParity.Tests.ps1`, which re-ran every `.ps1`
+  case a second time to compare against. Each guard case is now executed once per twin instead of
+  three times in total, and a broken `.sh` twin reports the wrong decision directly rather than only
+  "differs from .ps1". Coverage is unchanged: both twins are still checked against the expected
+  decision and against each other, and guard still gets full `.ps1` coverage on hosts with no bash.
+
 ## 0.42.0 — 2026-08-01
 
 - **`/rebootstrap` now re-confirms your Known Hazard Areas — it always claimed to, and never did.**
