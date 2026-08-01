@@ -87,15 +87,16 @@ one door that could not be fixed from here.
 > maintenance process calibrated to a frontier-model reviewer.
 >
 > **Recommended execution order** (deliberate, not file order):
-> 1. **B-45** first — it is process-only, cheap, and every later item is shipped under it.
-> 2. **B-47** (LICENSE) — one decision + one file; until it lands, public consumption is legally
->    void, which makes every other consumer-facing investment moot.
-> 3. **B-42** (field pilot) — start it early because its value is elapsed time; it runs in the
+> 1. ~~**B-45**~~ and ~~**B-47**~~ — both **done 2026-08-01**, see the Done section. B-45 shipped in
+>    a stronger form than written: enforced by `release.ps1`'s review ledger rather than by prose,
+>    after an adversarial pass argued a prose-only version would not bind. B-47 landed MIT root-only;
+>    the dist-travel half is deferred and filed separately.
+> 2. **B-42** (field pilot) — start it early because its value is elapsed time; it runs in the
 >    background while other items proceed, and its evidence should re-prioritize everything else.
-> 4. **B-41** (agent-behavior harness) — the flagship; absorbs B-23 and B-29.
-> 5. **B-49** (quarterly live-fire drill) — build the drill kit once B-41's first scenarios exist;
+> 3. **B-41** (agent-behavior harness) — the flagship; absorbs B-23 and B-29.
+> 4. **B-49** (quarterly live-fire drill) — build the drill kit once B-41's first scenarios exist;
 >    it becomes the recurring vehicle that *executes* B-43 (and reviews B-44) every quarter.
-> 6. Then interleave: **B-15** (CI recipe) from the deferred list — it is
+> 5. Then interleave: **B-15** (CI recipe) from the deferred list — it is
 >    the consumer-lifecycle half of the same story — plus **B-44/B-46/B-48** as capacity allows.
 
 ### B-41 · Agent-behavior eval harness — close the "prose steers a model" blind spot
@@ -230,57 +231,6 @@ only by `postToolUse`. This reverses the live 1.0.68 observation on which
 then update the shipped matrix/status note and any hook comments that demote Copilot post-write
 feedback. Normal release path; do not fold the shipped change into the meta-only drill PR.
 
-### B-51 · Release tags stopped at v0.26.0 — restore the release artifact contract
-**Effort:** S · **Priority:** P2 reproducibility · **Invariants:** #7
-
-**Found by:** B-49 drill #0 D0, 2026-07-17. The latest release was v0.32.2 but `git tag
---sort=-version:refname` showed only `v0.26.0` and `pre-restructure`. The locked drill protocol
-requires a clean checkout of the latest released tag; drill #0 had to use the known release commit
-`29e57fea78adc1446426ad27b742a294bde3e3bb` instead. Extend `release.ps1` to create and push an
-annotated `vX.Y.Z` tag only after every gate and the release commit succeed; add a safe retry/idempotency
-test. Decide whether to backfill v0.26.1–v0.32.2 or tag only current/future releases, and record the
-choice in a WSD.
-
-**Reproduced 2026-07-31 by the v0.38.0 release:** the release committed and pushed successfully,
-and `origin/master` was confirmed at the new SHA, but no `v0.38.0` tag was created. `git tag` still
-ends at `v0.26.0`.
-
-**DONE 2026-07-31.** Both halves closed.
-
-*Code:* `release.ps1` now creates and pushes an annotated `vX.Y.Z` tag after every gate and the
-release commit succeed, so a tag always means a green release. A re-run finding the tag already on
-the release commit skips it; a tag pointing anywhere else is refused rather than moved; the push is
-verified against `ls-remote`, because a local-only tag is precisely the failure this entry
-describes. An isolation test caught a real bug before it shipped: `git rev-parse refs/tags/x` on an
-**annotated** tag returns the tag *object* sha, not the commit sha, so without a `^{commit}` peel
-every retry would have taken the "exists elsewhere" branch and refused a re-run outright.
-
-*Backfill (maintainer decision — backfill all, verified):* **27 tags created** for v0.26.1 … v0.40.0
-and pushed; with the pre-existing `v0.26.0` that is **29 version tags, every one verified on origin**
-to point at the same commit locally and remotely. Tags were not trusted to commit subjects — each was
-placed only where that commit's own `dist/angular/.claude/framework-version.json` stamp equals the
-tag version, so the tag is backed by the artifact rather than by a message someone typed.
-`git tag --sort=-version:refname` now returns `v0.40.0`, so the B-49 drill protocol's "clean checkout
-of the latest released tag" works without a raw SHA.
-
-*Deliberately not tagged:* the pre-merge legacy versions (0.13.x–0.19.x) appear **twice** in history —
-once from each legacy repo merged in — and carry no `dist/` stamp, so a tag would be ambiguous and
-unverifiable. The root `CHANGELOG.md` starts at v0.26.0 for the same reason.
-
-**Anomaly surfaced by the backfill, root-caused and fixed the same day:** **v0.34.0 has no release
-commit.** Its version stamp lands in `524842f`, a squashed PR merge whose subject reads
-"B-52: persist two-hook Copilot canary durably + point BACKLOG at it **(meta-only)**". Reading the
-squashed body shows why: the PR carried three commits and the third was a genuine release
-(`v0.34.0: add technical architecture presentation and system map`, gates green, version stamps and
-all three changelogs in the diff). `release.ps1` had been run **on the PR branch**, and the
-squash-merge replaced the release commit's subject with the PR title.
-
-So the label was never the problem — the root cause is that `release.ps1` had **no precondition that
-HEAD is master**, which is **B-53(a)**, open as a P1 through four detached-HEAD occurrences. This is
-the fifth occurrence and a second mechanism for it. Fixed in B-53 (see that entry): releasing off
-master is now refused, with the squash hazard named in the error. The tag stays at `524842f` because
-that is verifiably where the shipped version became 0.34.0.
-
 ### B-52 · Verify Copilot CLI fires *both* `userPromptSubmitted` hooks and injects both payloads (v0.33.0 Boy Scout parity claim)
 **Effort:** S · **Priority:** P2 capability honesty · **Invariants:** #5 · **execution vehicle: B-49's quarterly recert / B-43**
 
@@ -318,66 +268,6 @@ reasoning, not the live observation its wording implies.
 Code hedge; this item either upgrades the CLI row to verified or triggers the fallback. Cross-links:
 B-43 (recert cadence — run this in the same quarterly slot), B-50 (the sibling `postToolUse`
 capability-honesty item from drill #0), B-03 (original canary design).
-
-### B-53 · `release.ps1` can print "Release complete" while shipping nothing
-**Effort:** S · **Priority:** P1 release integrity · **Invariants:** #7
-
-**Why:** the commit+push step runs `git -C $repo push origin master` — it pushes the branch **by
-name**, not the commit it just created. During the v0.35.0 release the repo was on a **detached
-HEAD** (and had been for three releases); the release commit landed on that detached HEAD,
-`push origin master` pushed the *unchanged* local `master` ref, exited 0, and the script printed
-`Release 0.35.0 complete.` Nothing reached `origin`. There is no precondition asserting HEAD is on
-the expected branch, and no postcondition asserting `origin/master` actually advanced to the new
-commit — so the one thing a release script exists to guarantee is unverified. This is not
-hypothetical drift: the v0.34.3 root CHANGELOG entry is scar tissue from an earlier instance of the
-same class ("replayed here as v0.34.3 to resolve the version collision … that shipped on `master`").
-
-**Root cause of the recurrence, identified 2026-07-31 (4th occurrence, found pre-flight while
-shipping B-57):** the repo does not drift into a detached HEAD by accident — **Claude Code scratchpad
-worktrees claim the `master` branch**. An abandoned worktree under
-`%TEMP%\claude\<project>\<session>\scratchpad\wt-*` still held `master` (at a commit two behind
-`origin/master`, with 1126 uncommitted deletions and nothing else), which forces the main working
-directory to a detached HEAD and leaves the `master` *ref* stale. That is the precondition for the
-failure above, and it will keep recurring for as long as sessions create worktrees here. Note this
-also means fix (a) below, added on its own, would **block every release** until the operator
-understands the worktree interaction — so ship (a) with an error message that names the likely cause
-and the remedy. Non-destructive remedy, verified: `git -C <worktree> checkout --detach` frees the
-branch without discarding the worktree, then `git checkout master && git merge --ff-only <sha>`.
-`git worktree list` is the diagnostic.
-
-**Do:** (a) refuse to run when HEAD is detached or not on the expected branch, unless an explicit
-override is passed — and when refusing, run `git worktree list` and point at any worktree holding the
-target branch; (b) push the commit explicitly (`HEAD:master`) instead of by branch name;
-(c) after pushing, re-read `origin/master` and fail loudly unless it equals the release commit;
-(d) apply the same postcondition to the eval-results push. Consider also warning when the target
-branch is checked out in another worktree — that is what let the divergence persist unnoticed.
-
-**DONE 2026-07-31 — (a), (b), (c) and (d) all shipped.** Reached by asking for the *root cause* of
-the v0.34.0 anomaly that the B-51 tag backfill surfaced, which turned out to be this entry's missing
-precondition.
-
-**A fifth occurrence, and a new mechanism.** The four known instances were all detached HEAD. v0.34.0
-was different: `release.ps1` ran on a **PR branch**, and the branch was then **squash-merged**.
-GitHub replaced the release commit's subject with the PR title — "B-52: persist two-hook Copilot
-canary durably + point BACKLOG at it **(meta-only)** (#5)" — so a real release
-(`v0.34.0: add technical architecture presentation and system map`, gates green, stamps and all three
-changelogs in the diff) survives only as a bullet inside a squashed commit body, under a subject
-asserting it shipped nothing. The precondition now covers both mechanisms, because both reduce to
-"HEAD is not master's tip".
-
-**Shipped:** (a) refuses unless HEAD is `master`, printing `git worktree list` and the
-non-destructive `checkout --detach` remedy on the detached path, and naming the v0.34.0 squash hazard
-on the branch path; escape hatch `-AllowNonMasterHead`, named for what it risks rather than what it
-enables. (b) pushes `<commit>:refs/heads/master`. (c) re-reads `origin/master` via `ls-remote` and
-exits 1 unless it equals the release commit, saying explicitly "do not treat this as shipped".
-(d) the same explicit push + postcondition on the eval-results push.
-
-**Red-tested, including the original failure reproduced end to end** in a throwaway repo with a bare
-origin: on a detached HEAD, `git push origin master` printed **"Everything up-to-date"** and
-**exited 0** while `origin/master` stayed at the old commit — B-53's exact claim, demonstrated rather
-than argued. `push <commit>:refs/heads/master` then advanced origin to the release commit. Guard
-tests: feature branch → refused exit 2; detached HEAD → refused exit 2 with the worktree list;
-`master` → proceeds to the real gates. Meta suite 0 failures.
 
 ### B-54 · Shipped changelog dates are never stamped, and no gate rejects the placeholder
 **Effort:** S · **Priority:** P2 gate lies by omission · **Invariants:** #7
@@ -446,36 +336,6 @@ part of every B-43 recertification cycle. First candidates to assess honestly: w
 Claude Code auto-memory, `/review` agents vs host-native review, `route-prompt` vs improving
 native intent handling, `post-write` build feedback vs host-native diagnostics.
 
-### B-45 · Post-Fable maintenance model — codify the implementer/reviewer split (do this first)
-**Effort:** S · process-only · **Invariants:** none retargeted, all inherited
-
-**Why:** the shipping quality of the last ten versions depended on frontier-tier review, and the
-record proves it: B-37's post-ship review of a lower-tier implementation found **six real
-defects** including a false "gates green" (harness code-page bug); every codex-implemented item
-(B-32, B-21, B-35, B-36, B-27) had 2–5 real review findings caught **before** ship; two locked
-specs had stale file-layout assumptions only caught by a reviewer verifying the live tree. If
-Fable-tier access ends, the process that produced this quality must be written down or it
-evaporates — the backlog's self-containedness was designed for exactly this handover
-(this file's own header says so) but the *review discipline* is currently tribal.
-
-**Do:** add a "Maintenance model" section to the root `CLAUDE.md` (+ regenerate `AGENTS.md`
-mirror): (1) every M+ item gets a locked design with an adversarial critique pass before
-implementation; (2) implementer and reviewer must be different sessions (different model tier
-when available); (3) the reviewer independently re-runs at least one gate and one red-test —
-never trusts the implementer's self-report (the B-27/B-36 pattern); (4) when reviewer tier ≤
-implementer tier, auto-file a post-ship review entry (the B-37 pattern) instead of pretending
-the review was sufficient; (5) verify a spec's file-layout claims against the live tree before
-briefing (the B-21/B-22 lesson); (6) re-run at least one suite under a hostile code page before
-claiming "gates green" (the F6 lesson). Most of these exist as LEARNINGS entries — this item
-promotes them from war stories to binding process.
-
-**Process evidence added 2026-07-31:** do not run gate suites concurrently with an implementer
-round. During the v0.38.0 task, a hook suite raced a tree being modified by a concurrent Codex run
-and produced a transient failure that cost a diagnosis cycle. The implementer's self-reported
-before/after was also a false pass **twice**: both verifications ran inside a sandbox whose `PATH`
-differed from the real environment, so the defect could not manifest there. The reviewer re-running
-the red-test in the real environment caught both failures.
-
 ### B-46 · Consumer update & drift story — what actually happens to a consumer who diverges?
 **Effort:** M · investigate-first · **Invariants:** #3 #5 #6 #7
 
@@ -495,22 +355,6 @@ archive; skip-with-warning; three-way-diff note in the update output). For versi
 consider a low-noise `session-start` line ("framework v0.31.0 installed; check for updates: <URL>")
 throttled to once per N days via the existing `.claude/.state/` mechanism — offline-tolerant,
 no network call, just a nudge. Record the design as a WSD before implementing.
-
-### B-47 · LICENSE + distribution posture (blocked on a maintainer decision — but the block is cheap)
-**Effort:** S · **Invariants:** #6 #7
-
-**Why:** `github.com/andreoucostas/ai-tech-lead` is **public** with **no LICENSE file**
-(verified 2026-07-17). Default copyright means all rights reserved: the README invites teams to
-install something they have no legal right to use, and no serious shop's OSS-compliance scan
-will let it in. This has been open since the 2026-07-01 forensic audit and it silently caps
-adoption at zero-diligence consumers.
-
-**Do:** the maintainer decides the posture: (a) real OSS — MIT or Apache-2.0 (Apache adds a
-patent grant; both are corporate-friendly), or (b) employer-internal — then the repo should
-arguably be private and the Bitbucket-DC specificity stays a feature, or (c) source-available
-with restrictions. Then: add `LICENSE` at root, decide whether each dist ships a copy (consumers
-copy dist contents into their repos — the license needs to travel or explicitly not need to),
-and add the one-line README statement. If (a), also decide the copyright holder line.
 
 ### B-48 · Enforcement-bypass audit — the guard's known end-runs, decided honestly
 **Effort:** M · **Invariants:** #3 #5 · needs a WSD record
@@ -874,63 +718,6 @@ the other scenarios for prompts that specify the mechanism rather than the goal.
 **Not:** do not delete `angular-form-control` — its `formInputs`/`controlAsInput` signals are sound
 and the fixture is reusable. The defect is the prompt and the `cva` conflation, not the harness.
 
-### B-73 · `release.ps1` invoked from bash mangles any argument beginning with `/`, and its runtime now exceeds the tooling that calls it
-**Effort:** S · **Priority:** P2 release integrity · **Invariants:** #7 · found 2026-07-31 shipping v0.40.0
-
-**Why (defect 1 — a corrupted permanent record).** The v0.40.0 release was invoked from Git Bash as
-`-Summary "/bootstrap and /adopt capture Angular forms conventions"`. MSYS argument conversion
-rewrote the leading `/bootstrap` into a Windows path before `pwsh` ever saw it, so the release commit
-subject is permanently:
-
-```
-v0.40.0: C:/Program Files/Git/bootstrap and /adopt capture Angular forms conventions
-```
-
-The release itself was correct — all 11 gates green, `origin/master` verified in sync — but the
-commit subject is wrong in the one log that is supposed to be authoritative. Note the second
-`/adopt` survived: MSYS converts only the *first* token when it looks like an absolute path, which
-is exactly the kind of half-applied corruption that reads as a typo rather than a tooling bug. Every
-slash-command name in this framework (`/bootstrap`, `/adopt`, `/review`, `/fix`, `/feature`,
-`/design`, `/debt`, `/map-warehouse`) triggers it, so any release summary naming a command is
-exposed. Same interop family as the `hooks.json` backslash-escape trap (B-52) and the corrupted
-session `PATH`.
-
-**Do:** either defend inside the script (reject or repair a `-Summary` containing the repo path /
-`Program Files`, since neither can be intentional) or document `MSYS_NO_PATHCONV=1` as the required
-invocation and add it to `DEVELOPING.md`'s release recipe. The script-side guard is preferable —
-`DEVELOPING.md` already has a recipe and it did not prevent this.
-
-**DONE 2026-07-31 (both halves).** The script-side guard shipped: `release.ps1` refuses a `-Summary`
-containing the Git install path or the repo path and prints the `MSYS_NO_PATHCONV=1` remedy. The red
-test **reproduced the bug live** — passing the *correct* string from Git Bash still tripped the
-guard, because bash mangled it on the way in; the same string with `MSYS_NO_PATHCONV=1` passed
-through and proceeded to the real gates. The v0.40.0 commit subject itself was corrected by rebuilding
-the two commits on top of `790e42c` and force-pushing with `--force-with-lease`, after proving the
-rebuilt history was content-identical (`git diff` against the originals empty in both directions).
-The runtime notice also shipped: the script now states the ~30-minute estimate and "if interrupted
-before complete, nothing was committed — re-run as-is" before the first gate.
-
-**Residual, deliberately not done:** the `-ResumeFrom` / `-SkipGates` escape hatch. Skipping gates is
-the one thing this script exists to prevent, and a flag that does it would be reached for under
-exactly the time pressure that makes it dangerous. The re-run-as-is path is slow but honest. Revisit
-only if release runtime grows further.
-
-**Why (defect 2 — the release cannot fit in one tool call).** The gate sequence is
-`compose ×3 → footprint → validate-dist ×3 → hook suites ×3 → meta suite → eval self-test`, and the
-hook suites alone run ~10 minutes each. The first v0.40.0 attempt was **killed at the 10-minute
-background-task cap, mid-gates** — after stamping, composing, and rewriting the footprint baseline,
-but before committing. It had to be re-run under a persistent monitor. The failure presents as a
-kill, which is indistinguishable at a glance from a gate failure, and it leaves a stamped and
-rebuilt tree that looks like a botched release. The script's re-run-as-is design saved it, but
-nothing tells the operator that.
-
-**Do:** print an up-front runtime estimate and a "safe to re-run as-is if interrupted" line before
-the first gate; consider a `-ResumeFrom` or a `-SkipGates` escape hatch for a re-run whose gates
-already passed minutes earlier. Cross-links: B-53 (the other release-integrity entry — same script,
-different failure), B-51 (tagging, still unfixed and reproduced by this release).
-
----
-
 ### B-76 · Nothing checks that a shipped doc's description of a command matches that command
 **Effort:** M · **Priority:** P2 doc truth · **Invariants:** #6 · found 2026-08-01 shipping v0.42.0
 
@@ -1083,8 +870,75 @@ staged, so nothing surfaces it.
 A stray gitlink (mode 160000) anywhere in the index should be a hard refusal: this repo has no
 submodules, so it is always a mistake. Red-test by planting an untracked file and a worktree.
 
-**Cross-links:** B-53 and B-73 (same script, other release-integrity failures). Consider closing all
+**Cross-links:** B-53 and B-73 (same script, other release-integrity failures -- both now closed). Consider closing all
 three as one pass over `release.ps1`.
+
+---
+### B-74 · Nothing proves a test harness can report failure
+**Effort:** S · **Priority:** P2 · **Invariants:** #3 · found 2026-08-01 shipping B-61
+
+**Why:** B-64 covers gates and diagnostics. It does not cover `_HookHarness.ps1` / `Invoke-HookTests.ps1`,
+which decide whether *any* gate's verdict is heard. A defect there is maximally silent: every suite
+still prints, and every exit code lies. The v0.41.0 finding above is the existence proof, and it
+survived on a supported host for an unknown number of releases.
+
+**Do:** add a self-test that plants a deliberately failing test in a throwaway fixture and asserts the
+harness returns non-zero — run under **both** PowerShell hosts, since this defect existed only on 5.1.
+Extend the same idea to the runner: a file that exits 1 must make `Invoke-HookTests.ps1` exit non-zero.
+
+**Not:** do not fold this into B-64. B-64's subject is the checks; this one's subject is the scoreboard.
+
+---
+
+### B-75 · The parity fixture was inert for two of seven checks, and looked green
+**Effort:** S · **Priority:** P3 · found 2026-08-01 shipping B-61
+
+**Why:** the first cut of `ScriptTwinParity`'s `template-checks` fixture omitted `.claude/hooks/` and
+`.claude/skills/`, so checks 5 and 7 never emitted. A planted defect in check 5 **failed to go red**
+and the suite reported 4/4 passing. The fixture now asserts which checks it *reached*, so a check that
+stops being exercised fails instead of agreeing vacuously. The general hazard: a twin-parity fixture
+that does not trigger a branch makes both twins agree about nothing, and that is indistinguishable
+from agreement.
+
+**Do:** apply the reached-set assertion to the other parity suites (`WikiCheck`, `FrameworkDoctor`,
+`BuildArchitectureHtml`) — each should assert the branches its fixtures are supposed to exercise. This
+is B-59's inert-check class one level up: not an inert *check*, an inert *fixture*.
+
+---
+
+### B-81 · The licence does not travel with what consumers actually copy
+**Effort:** S · **Priority:** P3 · filed 2026-08-01 alongside B-47
+
+**Why:** B-47 put MIT at the repo root, which makes the repository legally consumable. But the unit
+of consumption is `dist/<stack>/` — the installers copy those contents into the consumer's own repo
+— and those copied files carry no licence text. A consumer whose compliance process inspects *their*
+tree (not ours) still finds unlicensed files. Root-only was the deliberate decision at B-47; this is
+the deferred half, not a reversal.
+
+**Do:** decide whether each dist ships a `LICENSE` copy. If yes it is authored once in
+`src/core/` and reaches all three dists, and it is new **shipped** content, so it needs a
+`no-meta-leak` pass and a line in the shipped changelogs. If no, say so explicitly in the README
+licence section so the answer is recorded rather than re-litigated.
+
+---
+
+### B-82 · Root `CLAUDE.md` ↔ `AGENTS.md` mirror parity is ungated
+**Effort:** S · **Priority:** P3 · filed 2026-08-01 while shipping B-45
+
+**Why:** meta-invariant #2 has two halves. The **shipped** half is gated per dist by
+`template-checks` (verbatim section diff + version stamps). The **root** half — this repo's own
+hand-maintained `AGENTS.md` mirror — is gated by nothing at all. `DocTruth` treats the four root
+docs as a set but never compares them to each other. Adding the Maintenance model section required
+editing both files by hand with no check that the second edit happened; the next such section may not
+be so lucky.
+
+**Do:** add a `DocTruth` assertion driven by a table of expected `CLAUDE.md` heading →
+`AGENTS.md` heading mappings, asserted **both** directions, and encoding the deliberate merges
+(Workflows / Definition of done / Verification / Inherited disciplines all collapse into one mirror
+section; Commit & push folds into Conventions). Verbatim diffing is the wrong instrument for a
+deliberately condensed mirror — that is B-58's lesson. Red-test by adding a section to one file only.
+Guard against the vacuous pass: assert the mapping table is non-empty, and count with `@(...).Count`
+(a bare pipeline `.Count` returns `$null` for a single match under 5.1 — the v0.41.0 RCA).
 
 ---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
@@ -1251,6 +1105,41 @@ A wrong pin is consumer-visible: verify on a live Copilot surface before shippin
 
 ## Done
 
+- **B-45** — done **2026-08-01** (meta-only, no version/CHANGELOG). Root `CLAUDE.md` gained a
+  **Maintenance model** section: five rules (locked design + adversarial critique that may reject the
+  premise, with a reviewer's corrections treated as input not verdict; implementer ≠ reviewer with an
+  auto-filed post-ship review when tiers are equal; nothing enters the record as observed unless you
+  observed it *in the environment that matters*; a green result counts only from an instrument seen to
+  go red; close every delivery with an RCA). The original entry listed six rules — four of them were
+  one rule in four costumes and were consolidated, and the RCA rule was added because it was practised
+  but written down nowhere in the repo, which made root `CLAUDE.md`'s "nothing resolves to private
+  `~/.claude` memory" claim false. **Crucially the rules are not prose-only:** an adversarial pass
+  argued that a prose section plus a "the heading exists" check is theatre in a repo whose whole
+  history is *prose did not hold the line*, so rules 2–4 are enforced by `release.ps1`, which now
+  refuses to start without `-ReviewEvidence` or an explicit `-NoIndependentReview`, records the
+  outcome in `meta/review-ledger.md`, and auto-files the post-ship review item when there was none.
+  Mirrored to root `AGENTS.md`; recipes and the concurrency hazard to `DEVELOPING.md`. WSD-028.
+- **B-47** — done **2026-08-01** (meta-only, no version/CHANGELOG). MIT `LICENSE` at repo root,
+  copyright Costas Andreou, plus a README **Licence** section. The repo was public with no licence
+  file since the 2026-07-01 audit, so default copyright made every documented install legally void.
+  Posture decided by the maintainer: MIT, **root only**. The dist-travel half was deliberately
+  deferred — consumers copy `dist/<stack>/` contents into their own repos and those copies still
+  carry no licence text — and is filed separately.
+- **B-51** — done **2026-08-01** (meta-only, no version/CHANGELOG). `release.ps1` creates, verifies
+  and pushes an annotated tag after the gates and the commit succeed, so a tag always means a green
+  release; the historic gap was backfilled. Verified 2026-08-01: 33 tags present, v0.42.0 and v0.43.0
+  both tagged by the script during this session.
+- **B-53** — done **2026-08-01** (meta-only, no version/CHANGELOG). `release.ps1` refuses to release
+  when HEAD is not `master` (escape hatch `-AllowNonMasterHead`, named for what it risks), pushes the
+  **commit** rather than the branch name, and asserts afterwards that `origin/master` actually
+  advanced to it. Verified 2026-08-01: the branch guard refused a release attempted from a worktree
+  branch, and both v0.42.0 and v0.43.0 printed the confirmed-at-origin postcondition.
+- **B-73** — done **2026-08-01** (meta-only, no version/CHANGELOG). Two defects, both fixed:
+  `release.ps1` now refuses a `-Summary` mangled by MSYS path conversion (the v0.40.0 commit subject
+  is permanently corrupted by it), and it states its runtime up front. The runtime notice was itself
+  wrong — it claimed "roughly 30 minutes" and had never been measured — and was corrected to a
+  measured 5–7 minutes in v0.43.0, which also cut the gate phase 385s → 285s.
+
 - **B-61** — shipped as **v0.41.0**, 2026-08-01. Behavioural twin parity extended from
   `.claude/hooks/` to the shipped `scripts/` twins. New shipped `tests/hooks/ScriptTwinParity.Tests.ps1`
   runs both twins of `template-checks`, `docs-sync-check`, `sync-agent-files` and `metrics` against one
@@ -1297,34 +1186,6 @@ and diagnostics be red-tested; the **reporting layer beneath them** was not in a
 *What else is exposed to the same class:* swept every `.ps1` under `src/`, `scripts/` and `.claude/`.
 Contained — `framework-doctor.ps1` already used `@()`, and the `metrics.ps1` counters go through
 `Measure-Object`, which always returns a real object with a real `Count`. The harness was the only site.
-
-### B-74 · Nothing proves a test harness can report failure
-**Effort:** S · **Priority:** P2 · **Invariants:** #3 · found 2026-08-01 shipping B-61
-
-**Why:** B-64 covers gates and diagnostics. It does not cover `_HookHarness.ps1` / `Invoke-HookTests.ps1`,
-which decide whether *any* gate's verdict is heard. A defect there is maximally silent: every suite
-still prints, and every exit code lies. The v0.41.0 finding above is the existence proof, and it
-survived on a supported host for an unknown number of releases.
-
-**Do:** add a self-test that plants a deliberately failing test in a throwaway fixture and asserts the
-harness returns non-zero — run under **both** PowerShell hosts, since this defect existed only on 5.1.
-Extend the same idea to the runner: a file that exits 1 must make `Invoke-HookTests.ps1` exit non-zero.
-
-**Not:** do not fold this into B-64. B-64's subject is the checks; this one's subject is the scoreboard.
-
-### B-75 · The parity fixture was inert for two of seven checks, and looked green
-**Effort:** S · **Priority:** P3 · found 2026-08-01 shipping B-61
-
-**Why:** the first cut of `ScriptTwinParity`'s `template-checks` fixture omitted `.claude/hooks/` and
-`.claude/skills/`, so checks 5 and 7 never emitted. A planted defect in check 5 **failed to go red**
-and the suite reported 4/4 passing. The fixture now asserts which checks it *reached*, so a check that
-stops being exercised fails instead of agreeing vacuously. The general hazard: a twin-parity fixture
-that does not trigger a branch makes both twins agree about nothing, and that is indistinguishable
-from agreement.
-
-**Do:** apply the reached-set assertion to the other parity suites (`WikiCheck`, `FrameworkDoctor`,
-`BuildArchitectureHtml`) — each should assert the branches its fixtures are supposed to exercise. This
-is B-59's inert-check class one level up: not an inert *check*, an inert *fixture*.
 
 - **B-57** — shipped as **v0.36.0** (guidance) and **v0.37.0** (enforcement), 2026-07-31, WSD-025.
   Field report from a brownfield .NET install on NUnit: the reviewer's complaint was that the

@@ -223,13 +223,28 @@ stamp drift twice:
 1. Author the release: make the change in `src/` (+ twins [#3] + monorepo siblings [#1]), write a
    `## <version>` entry in the **root** `CHANGELOG.md` (update the shipped changelog content in
    `src/` too if the notes should reach consumers).
-2. Run `pwsh -NoProfile -File .claude/scripts/release.ps1 -Version <v> -Summary "<one line>"`.
+2. Have a **different session** review it and re-run at least one gate and one red-test themselves
+   (CLAUDE.md → Maintenance model #2/#3). Keep their command and its observed exit code.
+3. Run `pwsh -NoProfile -File .claude/scripts/release.ps1 -Version <v> -Summary "<one line>"
+   -ReviewEvidence "reviewer <who>; re-ran <command>; EXIT=<code>; implementer <who>"`.
    It stamps `src/core/CLAUDE.md` + the three `framework-version.json` files, rebuilds all three
    dists, runs every gate (freshness, validate-dist ×3, hook suites ×3, meta suite), **refuses to
-   commit on any failure**, then commits to `master` and pushes. `-NoPush` for a dry-ish run.
-3. Append to `LEARNINGS.md` if there's a lesson.
+   commit on any failure**, appends the review row to `meta/review-ledger.md`, then commits to
+   `master`, pushes, and tags. Gates take ~5–7 min. `-NoPush` for a dry-ish run.
 
-**Until Phase 6 lands** (see CLAUDE.md → Migration status note): shipped content is
-fidelity-frozen; the first release is v0.26.0 and must consciously retire/move the CI fidelity
-baseline in the same change, and fold in the queued `actions/checkout` v4→v5 bump in the shipped
-workflows (`src/core/.github/workflows/`).
+   It **refuses to start** without either `-ReviewEvidence` or `-NoIndependentReview`. The latter
+   is allowed — sometimes there is no second session — but never silent: it records
+   `reviewer: none` in the ledger and auto-files a post-ship review item in `meta/BACKLOG.md`.
+4. Append to `LEARNINGS.md` if there's a lesson, and file the RCA (Maintenance model #5).
+
+**Do not run the gate suites while an implementer session is editing the tree.** A hook suite once
+raced a concurrent run's writes and produced a transient failure that cost a diagnosis cycle. The
+suites read the working tree directly; they assume it is still.
+
+**Launching an implementer session.** The maintenance model requires implementer and reviewer to be
+different sessions. The recipe used to date is the `codex` CLI on Windows, with three traps worth
+knowing: the session `PATH` can arrive with a literal unexpanded `${PATH}` (so invoke interpreters
+by absolute path), the sandbox `PATH` differs from the real environment — which is why a
+self-reported before/after has produced a false pass twice (Maintenance model #3) — and its own
+"tests now pass" must be re-run by you rather than believed.
+**Not re-verified since 2026-07; confirm it still works before relying on it.**

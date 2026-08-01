@@ -119,3 +119,9 @@ archived and read-only, frozen at v0.25.5.
 - [`meta/BACKLOG.md`](./meta/BACKLOG.md) — the prioritized work list.
 - [`meta/workspace-decisions.md`](./meta/workspace-decisions.md) — the ADR log for framework-level decisions (merge strategy, mirror strategy, hook semantics, composition rules).
 - [`meta/LEARNINGS.md`](./meta/LEARNINGS.md) — the meta-dev log: what went wrong building this and what changed as a result.
+
+## Licence
+
+[MIT](./LICENSE) — copyright (c) 2026 Costas Andreou. The licence lives at the repo root; the
+per-stack contents of `dist/` do not carry their own copy, so if your compliance process needs the
+licence text alongside the files you copy in, take it from here.

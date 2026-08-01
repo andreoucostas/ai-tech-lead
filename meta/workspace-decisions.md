@@ -1105,3 +1105,54 @@ note it needs to cover three distinct shapes (third-party attribution, frontmatt
 step enumeration), because a check aimed at only the first would have caught one of the three.
 
 **Date.** 2026-08-01.
+
+---
+
+## WSD-028: a maintenance rule is only real where the tooling can refuse (2026-08-01)
+
+**Context.** Shipping quality had come to depend on an independent, frontier-tier reviewer, and the
+record is unambiguous: B-37's post-ship review of a lower-tier implementation found six real defects
+including a false "gates green"; every externally-implemented item carried 2–5 findings caught
+before ship. B-45 asked for that discipline to be written down before it evaporated. The obvious
+reading — add a "Maintenance model" section to root `CLAUDE.md` — was drafted and reviewed.
+
+An adversarial pass rejected it. The objection: this repo's entire recorded history is *prose did
+not hold the line*. Meta-invariant #6 was written down from the start and still shipped ~190 leaking
+lines. Verification Rule #10 forbids unevidenced technology claims and six shipped surfaces asserted
+xUnit anyway. The Definition of done already requires red-testing and `framework-doctor` shipped
+three defects that all reported success. A rule in this file, read by this maintainer, has repeatedly
+failed to survive time pressure — and B-45's rules are *more* burdensome than any of those, since
+they cost a second session. The proposed gate (assert the section exists and the rule counts match)
+would have passed just as happily if every rule were rewritten to say "ship when you feel good".
+
+**Decision.** The rules live in `CLAUDE.md`, but the ones that can be mechanised are enforced at the
+choke point every shipped change already passes: `release.ps1`. It refuses to start without either
+`-ReviewEvidence` (the reviewer's re-run command and its observed exit code) or `-NoIndependentReview`.
+The escape hatch is deliberately allowed — sometimes there is no second session — but never silent:
+it records `reviewer: none — post-ship review owed` in `meta/review-ledger.md` and auto-files a
+post-ship review item in `meta/BACKLOG.md`. The ledger row is written before `git add -A`, so it
+lands in the commit of the release it describes.
+
+**The boundary, stated so it is not over-claimed.** This records *whether* a review happened and what
+was re-run. It cannot judge whether the review was any good, and nothing here pretends otherwise —
+`no-meta-leak` does not prove good prose either. What every gate in this repo does is make an absence
+impossible to hide, and that is the whole claim.
+
+**Alternatives rejected.** *Prose plus a section-exists gate* — rejected as theatre; it verifies a
+heading, not a practice, and would pass with the rules hollowed out. *Making it meta-invariant #8* —
+rejected for now: invariants #1–#7 each have a deterministic machine check, and adding an
+aspirational one would teach that an invariant can be unenforced, which is exactly the belief
+invariant #6's own text exists to destroy. Revisit if the ledger proves itself. *Nine rules as
+originally written* — rejected: four were one rule in four costumes (self-reports, spec layout
+claims, plan assumptions, quoted numbers are all "you did not observe it"), and a maintainer under
+pressure might follow five but never nine.
+
+**Consequences.** Releasing now requires a sentence about who reviewed and what they re-ran, which is
+friction by design. `meta/review-ledger.md` becomes the handover artifact B-45 was really asking for:
+a per-release record of whether the discipline was applied. The RCA rule (#5) was added because it was
+practised but written nowhere in the repo — it lived only in private `~/.claude` memory, which made
+root `CLAUDE.md`'s claim to stand on its own false; it is now true. Root `CLAUDE.md` ↔ `AGENTS.md`
+section-mapping remains ungated (invariant #2's shipped half is gated per dist, its root half is not);
+filed separately rather than bundled here.
+
+**Date.** 2026-08-01.

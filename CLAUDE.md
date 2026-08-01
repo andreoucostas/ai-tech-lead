@@ -114,10 +114,45 @@ These replace the shipped consumer workflows for meta-work.
 - **Hook / script bug:** reproduce by piping a crafted JSON fixture to the hook (see
   `DEVELOPING.md` → "Run/test a hook") → fix in `src/` → re-run the fixture to confirm → twin +
   monorepo sibling → rebuild → verify on **both** surfaces [#5].
-- **New version / large change:** plan first; persist the plan to `.claude/plans/`. For
-  high-stakes plans, run an adversarial/critique pass before editing. Gate before touching code.
+- **New version / large change:** plan first; persist the plan to `.claude/plans/`. The adversarial
+  critique pass is not optional here — see Maintenance model #1 for when it is required. Gate before
+  touching code.
 - **Investigation / design:** write no code; weigh ≥2 approaches with trade-offs; record the
   outcome in `meta/workspace-decisions.md` (see Conventions).
+
+---
+
+## Maintenance model (who implements, who reviews, what "green" means)
+
+The shipping quality of this framework has depended on a second, independent reviewer, and the
+record proves it: B-37's post-ship review of a lower-tier implementation found **six real defects**
+including a false "gates green"; every externally-implemented item (B-32, B-21, B-35, B-36, B-27)
+had 2–5 real findings caught **before** ship. That discipline was tribal — these five rules make it
+binding. Rules 2–4 are enforced by `release.ps1`'s review ledger, not by this prose.
+
+1. **Locked design + adversarial critique before implementation, for every M+ item.** The critique
+   is licensed to reject the item's *premise*, not merely tighten the approach — twice it has
+   killed an already-approved plan, and both times that was the right outcome. But **a reviewer's
+   corrections are input, not verdict**: a second pass once caught a factual error in the first
+   pass's own remediation. Re-verify what a reviewer tells you before acting on it.
+2. **Implementer and reviewer are different sessions**, different model tier where available. When
+   the reviewer's tier is at or below the implementer's, the review did not happen in the sense
+   that matters — **auto-file a post-ship review entry** rather than pretending it did.
+3. **Nothing enters the record as observed unless you observed it.** This covers implementer
+   self-reports, a spec's claims about file layout, the assumption a plan rests on, and any number
+   you quote. Verify it **in the environment that matters** — a sandbox whose `PATH` differed from
+   the real one produced a false pass twice — or attribute it ("the script claims…") instead of
+   asserting it as fact.
+4. **A green result counts only from an instrument you have seen go red** on the unfixed tree, in
+   the host and code page that matter. This is the dominant recent failure class here: B-64, B-72,
+   B-74 and B-75 were all instruments that could not fail, reporting success. Record the failing
+   observation next to the check.
+5. **Close every delivery with an RCA** filed into `meta/BACKLOG.md`, answering two questions:
+   *why did no gate catch it*, and *what else is exposed to the same class?* Sweep for the second —
+   the answer is rarely "nothing".
+
+Evidence trail for all five: `meta/LEARNINGS.md`. Working hazards that are *not* principles (e.g.
+never run the gate suites concurrently with an implementer round) live in `DEVELOPING.md`.
 
 ## Definition of done per artifact type
 
@@ -137,7 +172,10 @@ fabricate a test, and do not skip verification — pick the right evidence for t
 
 ## Verification (evidence-based — name the command, show the result)
 
-Never claim "it works." Show the command and its observed output. Standard commands:
+Never claim "it works." Show the command and its observed output. Before calling a run green, apply
+Maintenance model #4: the instrument must have been seen to go red, and at least one suite must have
+been re-run under a hostile code page and under both PowerShell hosts — a 5.1-vs-7 divergence hid a
+harness defect for an unknown number of releases. Standard commands:
 
 - **Compose + freshness:** `pwsh -NoProfile -File scripts/build.ps1 <dist>` ×3, then
   `git status --porcelain dist/` must be empty.
@@ -183,12 +221,15 @@ user. Generated `dist/` changes belong in the same commit as the `src/` change t
 
 ## Status
 
-**B-16 (`framework-doctor`: honest per-machine enforcement diagnostics) is implemented for
-v0.32.0** (2026-07-17, WSD-023). **No open P1/P2/P3 items remain** from
-the original audit — remaining work lives in `meta/BACKLOG.md` in two sections: the **"Strategic
-backlog — post-Fable horizon"** (B-41…B-48, added 2026-07-17 with a recommended execution order —
-start there) and "Known deferred work" (B-15/B-17/B-18/B-20/B-23/B-26/B-29, a longer-horizon
-feature list; B-23 and B-29 are absorbed by B-41).
+Current shipped version: **v0.43.0** (2026-08-01). The work list is `meta/BACKLOG.md`; read it
+rather than this paragraph for what is open, because a summary here rots — this one claimed "no open
+P1/P2/P3 items remain" for twelve versions while P2 and P3 items were open, and scoped the strategic
+section as "B-41…B-48" after it had grown past B-80.
+
+Two sections hold the open work: the **"Strategic backlog — post-Fable horizon"** (added
+2026-07-17, with a recommended execution order — start there) and **"Known deferred work"**
+(B-15/B-17/B-18/B-20/B-26, a longer-horizon feature list; B-23 and B-29 are absorbed by B-41).
+Items filed since are appended to the strategic section in number order.
 
 Gotcha: `scripts/fidelity-check.{ps1,sh}` still exist but are **no longer wired to CI** — they are
 manual re-audit tools against the `pre-restructure` tag, not gates.

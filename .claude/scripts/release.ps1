@@ -21,7 +21,16 @@ param(
     [switch]$NoPush,
     # Escape hatch for the branch precondition below. Deliberately named for what it risks, not for
     # what it enables -- releasing off master is how v0.34.0 lost its release commit.
-    [switch]$AllowNonMasterHead
+    [switch]$AllowNonMasterHead,
+    # The reviewer's evidence: the gate/red-test they re-ran INDEPENDENTLY, its observed exit code,
+    # and who implemented vs who reviewed. Recorded verbatim in meta/review-ledger.md.
+    # NOT [Parameter(Mandatory)] -- that prompts, and a prompt hangs a non-interactive release. The
+    # precondition below refuses instead.
+    [string]$ReviewEvidence,
+    # Escape hatch for that precondition, named for what it risks. Releasing without an independent
+    # review is allowed -- it is sometimes the right call -- but it is never silent: the ledger
+    # records that none happened and a post-ship review item is filed automatically.
+    [switch]$NoIndependentReview
 )
 $ErrorActionPreference = 'Stop'
 
@@ -47,6 +56,36 @@ FATAL: -Summary looks MSYS-mangled -- it contains a filesystem path that cannot 
 Git Bash rewrites a leading "/word" argument into a Windows path. Re-run with the conversion off:
   MSYS_NO_PATHCONV=1 pwsh -NoProfile -File .claude/scripts/release.ps1 -Version $Version -Summary "..."
 or invoke from PowerShell directly, or lead the summary with a non-slash word.
+"@)
+    exit 2
+}
+
+# ---- 0a1. Require review evidence, or an explicit acknowledgement that there was none (B-45) ----
+# Maintenance model #2/#3: the reviewer must be a different session and must have re-run something
+# themselves. Prose could not hold this -- invariant #6 was written down from the start and still
+# shipped ~190 leaking lines -- so it is enforced where every shipped change already passes.
+# This gate does NOT judge whether the review was good; no gate here does (no-meta-leak does not
+# prove good prose either). It makes the ABSENCE of a review impossible to ship silently.
+$hasEvidence = -not [string]::IsNullOrWhiteSpace($ReviewEvidence)
+if ($hasEvidence -and $NoIndependentReview) {
+    [Console]::Error.WriteLine(
+        "FATAL: pass -ReviewEvidence OR -NoIndependentReview, not both. They record opposite facts.")
+    exit 2
+}
+if (-not $hasEvidence -and -not $NoIndependentReview) {
+    [Console]::Error.WriteLine(@"
+FATAL: no review evidence. Nothing has been stamped or committed.
+
+Maintenance model #2/#3 (root CLAUDE.md): the implementer's self-report is not evidence -- it has
+been a false pass twice, both times because the check ran in a sandbox whose PATH differed from the
+real environment. A different session must have re-run at least one gate and one red-test.
+
+Re-run with the reviewer's evidence:
+  -ReviewEvidence "reviewer <who>; re-ran <command>; EXIT=<code>; implementer <who>"
+
+Or acknowledge there was none -- allowed, never silent:
+  -NoIndependentReview
+which records "reviewer: none" in meta/review-ledger.md and files a post-ship review item.
 "@)
     exit 2
 }
@@ -221,6 +260,65 @@ if ($fatal) {
     Write-Host "`nRelease REFUSED: fix the failing gate(s) and re-run. Nothing was committed."
     Write-Host 'Once fixed, re-run the same release command as-is.'
     exit 1
+}
+
+# ---- 4b. Record the review in the ledger, and file the debt when there wasn't one (B-45) ----
+# Written after the gates pass and before `git add -A`, so the ledger row lands in the release
+# commit itself -- a claim about a release that is not in that release's commit is not evidence.
+$ledger = Join-Path $repo 'meta/review-ledger.md'
+if (-not (Test-Path -LiteralPath $ledger)) {
+    [IO.File]::WriteAllText($ledger, @"
+# Review ledger
+
+One row per release, written by ``.claude/scripts/release.ps1`` and committed with the release it
+describes. It records **whether** an independent review happened and what the reviewer re-ran --
+never whether the review was any good, which no gate here can judge. A ``reviewer: none`` row is a
+legitimate outcome, deliberately not a silent one: it files a post-ship review item in
+``meta/BACKLOG.md``. See root ``CLAUDE.md`` > Maintenance model.
+
+| version | date | evidence |
+|---------|------|----------|
+
+"@.TrimEnd("`r", "`n") + "`n", [Text.UTF8Encoding]::new($false))
+}
+$evidenceCell = if ($NoIndependentReview) {
+    'reviewer: none -- post-ship review owed'
+} else {
+    # Collapse to one line and escape the cell delimiter so the row cannot break the table.
+    $ReviewEvidence -replace '\r?\n', ' ' -replace '\|', '\|'
+}
+Add-Content -LiteralPath $ledger -Value "| v$Version | $today | $evidenceCell |" -Encoding utf8
+Write-Host "Review ledger: $evidenceCell"
+
+if ($NoIndependentReview) {
+    # Maintenance model #2: when no independent review happened, the debt is filed automatically
+    # rather than left to memory -- the B-37 pattern, which is how it was missed before.
+    $backlog = Join-Path $repo 'meta/BACKLOG.md'
+    $anchor  = '## Known deferred work'
+    $text    = [IO.File]::ReadAllText($backlog)
+    $nums    = [regex]::Matches($text, '(?m)^### B-(\d+)') | ForEach-Object { [int]$_.Groups[1].Value }
+    $next    = (($nums | Measure-Object -Maximum).Maximum) + 1
+    $stub    = @"
+### B-$next · Post-ship review owed for v$Version
+**Effort:** S · **Priority:** P2 · filed automatically by ``release.ps1`` on $today
+
+**Why:** v$Version shipped with ``-NoIndependentReview``, so no second session re-ran a gate or a
+red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
+it did not happen. Summary of what shipped: $Summary
+
+**Do:** review the v$Version diff as an independent session -- re-run at least one gate and one
+red-test yourself, do not read the release output as evidence -- and file whatever it finds. Then
+close this entry, recording what was re-run.
+
+---
+
+"@
+    if (([regex]::Matches($text, [regex]::Escape($anchor))).Count -eq 1) {
+        [IO.File]::WriteAllText($backlog, $text.Replace($anchor, $stub + $anchor), [Text.UTF8Encoding]::new($false))
+        Write-Host "Filed B-$next (post-ship review owed for v$Version)."
+    } else {
+        Write-Host "WARNING: could not file the post-ship review stub -- '$anchor' anchor not unique in meta/BACKLOG.md. File it by hand."
+    }
 }
 
 # ---- 5. Commit + push ----

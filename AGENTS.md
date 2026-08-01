@@ -78,20 +78,43 @@ defects shipped straight through the parser gates — see `meta/LEARNINGS.md`.
 The **Verification Rules**, **Leanness**, **SOLID**, **Boy Scout Rule**, and self-review
 disciplines in `src/core/CLAUDE.md` bind meta-work too.
 
+## Maintenance model
+
+Canonical definitions live in `CLAUDE.md` > Maintenance model — same five rules, condensed here.
+Rules 2–4 are enforced by `release.ps1`, not by this prose.
+
+1. **Locked design + adversarial critique before implementing any M+ item.** The critique may
+   reject the item's *premise*, not just its approach. A reviewer's corrections are input, not
+   verdict — re-verify them.
+2. **Implementer ≠ reviewer** (different tier where available). Reviewer tier ≤ implementer tier
+   means the review did not happen: auto-file a post-ship review instead of pretending it did.
+3. **Nothing enters the record as observed unless you observed it** — self-reports, a spec's
+   file-layout claims, a plan's assumptions, any number you quote. Verify in the environment that
+   matters, or attribute the claim rather than asserting it.
+4. **A green result counts only from an instrument you have seen go red** on the unfixed tree, in
+   the host and code page that matter.
+5. **Close every delivery with an RCA** in `meta/BACKLOG.md`: why did no gate catch it, and what
+   else is exposed to the same class?
+
+`release.ps1` refuses to release without either `-ReviewEvidence` (the reviewer's re-run command
+and its observed exit code) or `-NoIndependentReview`, which is allowed but records
+`reviewer: none` in `meta/review-ledger.md` and files the post-ship review item automatically.
+
 ## Conventions
 
 Plans → `.claude/plans/` · decisions → `meta/workspace-decisions.md` · meta learnings →
-`meta/LEARNINGS.md` · work list → `meta/BACKLOG.md`. Commit to `master` and push when done — never
-leave changes uncommitted.
+`meta/LEARNINGS.md` · work list → `meta/BACKLOG.md` · review ledger → `meta/review-ledger.md`.
+Commit to `master` and push when done — never leave changes uncommitted.
 
 ## Status
 
-**B-16 (`framework-doctor`: honest per-machine enforcement diagnostics) is implemented for
-v0.32.0** (2026-07-17, WSD-023). **No open P1/P2/P3 items remain** from
-the original audit — remaining work lives in `meta/BACKLOG.md` in two sections: the **"Strategic
-backlog — post-Fable horizon"** (B-41…B-48, added 2026-07-17 with a recommended execution order —
-start there) and "Known deferred work" (B-15/B-17/B-18/B-20/B-23/B-26/B-29, a longer-horizon
-feature list; B-23 and B-29 are absorbed by B-41).
+Current shipped version: **v0.43.0** (2026-08-01). Read `meta/BACKLOG.md` for what is open rather
+than this paragraph — a summary here rots, and this one claimed "no open P1/P2/P3 items remain" for
+twelve versions while P2 and P3 items were open.
+
+Open work lives in two sections: the **"Strategic backlog — post-Fable horizon"** (added
+2026-07-17, with a recommended execution order — start there) and **"Known deferred work"**
+(B-15/B-17/B-18/B-20/B-26; B-23 and B-29 are absorbed by B-41).
 
 Gotcha: `scripts/fidelity-check.{ps1,sh}` still exist but are **no longer wired to CI** — they are
 manual re-audit tools against the `pre-restructure` tag, not gates.

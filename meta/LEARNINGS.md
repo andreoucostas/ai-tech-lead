@@ -700,3 +700,48 @@ Three things worth keeping:
    and clearer failure messages, but it was justified on a false premise for a while, and the
    changelog now says so explicitly. Transitive coverage is easy to miss when you are looking at one
    file at a time.
+
+## 2026-08-01 — B-45/B-47: the rule that survived was the one the tooling could refuse
+
+1. **The adversarial pass rejected the plan's form, not its content — and was right.** The draft was
+   a Maintenance model section plus a gate asserting the section exists and the rule counts match.
+   The reviewer's argument was short and decisive: rewrite all the rules to say "ship when you feel
+   good about it" and that gate stays green. It verifies a heading, not a practice. Four precedents
+   in this repo say prose alone does not hold — invariant #6 shipped ~190 leaking lines *after* being
+   written down; Verification Rule #10 was contradicted by six shipped surfaces; the Definition of
+   done already demanded red-testing while `framework-doctor` shipped three self-reporting defects.
+   The version that shipped enforces rules 2–4 in `release.ps1`, which can refuse.
+
+2. **Nine rules were four rules in costumes.** "Don't trust the implementer's self-report", "verify
+   the spec's file-layout claims", "measure the assumption the plan rests on", and "don't restate an
+   unmeasured number" are one rule: *nothing enters the record as observed unless you observed it, in
+   the environment that matters.* Consolidating to five was not tidying — a maintainer under pressure
+   might follow five and will never follow nine. The instinct to add a rule per incident is how a
+   process document becomes unreadable and therefore unfollowed.
+
+3. **Testing the real source text beat testing a re-typed copy.** The ledger writer could not be
+   reached without a full release, so its actual lines were extracted from `release.ps1` and executed
+   against a temp repo. That immediately exposed a defect a hand-written equivalent would have
+   missed: the here-string header ended without a trailing newline, so the first data row
+   concatenated onto the table separator. A malformed ledger would have shipped on the first release
+   that used it — the artifact whose entire job is to be the handover record.
+
+4. **Writing one doc surfaced three others that were lying.** `DEVELOPING.md` still said "Until Phase
+   6 lands" seven weeks after Phase 6 completed. Both root `## Status` paragraphs claimed "no open
+   P1/P2/P3 items remain" through twelve versions while P2 and P3 items were open, and scoped the
+   strategic backlog as "B-41…B-48" after it passed B-80. All three are B-76's class — a doc
+   describing a state that no longer exists — and none is reachable by `DocTruth`, which checks
+   version stamps and script paths but has no notion of a stale narrative claim. The Status
+   paragraphs were rewritten to point at the backlog instead of summarising it, because a summary of
+   a moving list is a defect with a delay fuse.
+
+5. **The backlog was wrong in both directions at once.** B-51, B-53 and B-73 sat open after shipping
+   (overstating the work); B-74 and B-75 sat *inside* the Done section while open (hiding it). The
+   second is worse and was the harder to notice. An audit that only sweeps one direction confirms its
+   own assumption.
+
+6. **A rule was practised for weeks and written down nowhere.** The post-activity RCA discipline —
+   close every delivery by asking why no gate caught it and what else is exposed — lives in the
+   maintainer's private memory, while root `CLAUDE.md` opens by claiming it "stands on its own:
+   nothing resolves to private `~/.claude` memory". That claim was false for as long as the practice
+   existed. Handover risk is not only what is undocumented; it is what is documented as unnecessary.
