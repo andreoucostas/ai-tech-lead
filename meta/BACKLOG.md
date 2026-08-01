@@ -822,6 +822,17 @@ should apply to the test harness too.
 **Not:** do not make the skip a hard failure; a host genuinely without Windows PowerShell should
 still be able to run the suite.
 
+**Live evidence, 2026-08-01 (shipping B-61) — this entry is no longer hypothetical.** The
+FrameworkDoctor suite reported `15 passed, 0 failed, 1 skipped` on the maintainer box all through the
+v0.41.0 work; the skip was the Windows PowerShell 5.1 case, because `Get-Command powershell.exe
+-CommandType Application` cannot resolve it when the session `PATH` lacks System32. In the *same
+session* a **5.1-only** harness defect was found (see the v0.41.0 RCA) — the exact host whose coverage
+had silently lapsed. `powershell.exe` was in fact present and usable at
+`$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe`; only PATH resolution failed. So
+besides surfacing invariant-guarding skips prominently, the probe should fall back to the well-known
+absolute path before declaring the host incapable — a skip caused by a broken PATH is not the same
+fact as a host without 5.1, and reporting them identically is what let the gap persist.
+
 ### B-72 · A behavioural probe can be defeated by the guidance it measures, and `angular-form-control` does not reproduce its field report
 **Effort:** M · **Priority:** P2 · **Invariants:** #5 · found 2026-07-31 while shipping B-66
 
@@ -1083,6 +1094,81 @@ A wrong pin is consumer-visible: verify on a live Copilot surface before shippin
 ---
 
 ## Done
+
+- **B-61** — shipped as **v0.41.0**, 2026-08-01. Behavioural twin parity extended from
+  `.claude/hooks/` to the shipped `scripts/` twins. New shipped `tests/hooks/ScriptTwinParity.Tests.ps1`
+  runs both twins of `template-checks`, `docs-sync-check`, `sync-agent-files` and `metrics` against one
+  fixture; `framework-doctor` gained two **non-pending** cases so `Stack toolchain`, `Mirror and version
+  integrity` and `Audit trail substrate` are twin-compared for the first time; a maintainer-only
+  `.claude/hooks/tests/ScriptTwinCoverage.Tests.ps1` fails on any twin pair that is neither exercised
+  nor given a written reason. `RunArg` was promoted into `_HookHarness.ps1` (array args) and
+  `WikiCheck.Tests.ps1`'s shadowing local copy deleted.
+
+  **The harness immediately found three divergences that were already shipping** — which is the item
+  working, not a surprise:
+  1. `metrics.sh` was missing test-integrity counters, by a **different amount per stack** (dotnet +2,
+     angular +2, monorepo +4). Two adversarial review passes were needed to get this inventory right;
+     the first revision of the plan asserted three keys common to all three stacks and was wrong.
+  2. `docs-sync-check` twins printed different prose — four punctuation sites and two whole sentences.
+  3. **The test harness itself could not go red** (see the RCA below).
+
+  **Contract decisions, recorded so they are not re-litigated:** comparison is of the **ordered**
+  `OK:`/`FAIL:` sequence, never a set (a set hides ordering and duplication defects); exactly two
+  normalizations exist, both by name and both commented — `template-checks`' by-design check-6
+  asymmetry and a script naming its own sibling twin — with a static assertion that fails if the
+  check-6 exemption ever widens. `impact-run` is deliberately **not** behaviourally tested: it needs an
+  external agent CLI, git worktrees and paid API calls, and `tests/impact/config.json` *ships*, so a
+  naive "missing config" case would fall through the guard and start a real agent run in a consumer
+  repo. Case-sensitivity parity is deliberately not asserted (belongs to **B-59(b)**), and the
+  `Stack toolchain` regex-vs-glob branch stays unexercised; both are stated in the test rather than
+  implied as coverage.
+
+### RCA of v0.41.0 — filed 2026-08-01
+
+**Finding 1 (fixed in this release): the shipped test harness scored a failing suite as green.**
+Under Windows PowerShell 5.1, `(… | Where-Object …).Count` on a pipeline yielding **exactly one**
+object returns `$null`. `Write-TestSummary` therefore returned `$null`, `exit (Write-TestSummary …)`
+became **exit 0**, and `Invoke-HookTests.ps1` — which sums child exit codes — scored the file green
+while printing `[FAIL]`. Two or more failures in one file returned an int and were caught, so this hid
+precisely the **lone regression**, the most common shape of a fresh break. pwsh 7 returns 1 for the
+same expression, which is why CI and the maintainer box never saw it. Reproduced under 5.1 (exit 0
+before, exit 1 after) rather than argued. Consumers on 5.1-only boxes — the configuration
+`settings.windows.json` exists to serve — were exposed; the shipped changelogs tell them to re-run.
+
+*Why did no gate catch it:* nothing tests the harness that reports test results. B-64 asks that gates
+and diagnostics be red-tested; the **reporting layer beneath them** was not in anyone's scope.
+
+*What else is exposed to the same class:* swept every `.ps1` under `src/`, `scripts/` and `.claude/`.
+Contained — `framework-doctor.ps1` already used `@()`, and the `metrics.ps1` counters go through
+`Measure-Object`, which always returns a real object with a real `Count`. The harness was the only site.
+
+### B-74 · Nothing proves a test harness can report failure
+**Effort:** S · **Priority:** P2 · **Invariants:** #3 · found 2026-08-01 shipping B-61
+
+**Why:** B-64 covers gates and diagnostics. It does not cover `_HookHarness.ps1` / `Invoke-HookTests.ps1`,
+which decide whether *any* gate's verdict is heard. A defect there is maximally silent: every suite
+still prints, and every exit code lies. The v0.41.0 finding above is the existence proof, and it
+survived on a supported host for an unknown number of releases.
+
+**Do:** add a self-test that plants a deliberately failing test in a throwaway fixture and asserts the
+harness returns non-zero — run under **both** PowerShell hosts, since this defect existed only on 5.1.
+Extend the same idea to the runner: a file that exits 1 must make `Invoke-HookTests.ps1` exit non-zero.
+
+**Not:** do not fold this into B-64. B-64's subject is the checks; this one's subject is the scoreboard.
+
+### B-75 · The parity fixture was inert for two of seven checks, and looked green
+**Effort:** S · **Priority:** P3 · found 2026-08-01 shipping B-61
+
+**Why:** the first cut of `ScriptTwinParity`'s `template-checks` fixture omitted `.claude/hooks/` and
+`.claude/skills/`, so checks 5 and 7 never emitted. A planted defect in check 5 **failed to go red**
+and the suite reported 4/4 passing. The fixture now asserts which checks it *reached*, so a check that
+stops being exercised fails instead of agreeing vacuously. The general hazard: a twin-parity fixture
+that does not trigger a branch makes both twins agree about nothing, and that is indistinguishable
+from agreement.
+
+**Do:** apply the reached-set assertion to the other parity suites (`WikiCheck`, `FrameworkDoctor`,
+`BuildArchitectureHtml`) — each should assert the branches its fixtures are supposed to exercise. This
+is B-59's inert-check class one level up: not an inert *check*, an inert *fixture*.
 
 - **B-57** — shipped as **v0.36.0** (guidance) and **v0.37.0** (enforcement), 2026-07-31, WSD-025.
   Field report from a brownfield .NET install on NUnit: the reviewer's complaint was that the

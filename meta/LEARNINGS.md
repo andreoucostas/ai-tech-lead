@@ -584,3 +584,45 @@ Three things worth keeping:
    **"Everything up-to-date"** and **exited 0** while origin stayed put. Seeing it is worth more than
    the four write-ups saying so — and it is what makes the postcondition obviously necessary rather
    than defensive.
+
+## 2026-08-01 — B-61 (v0.41.0): what a twin-parity harness actually teaches you
+
+1. **Building the test is how you find the bugs; expect the "test-only" change not to be one.**
+   B-61 was scoped as adding coverage. Writing the fixtures immediately surfaced three divergences
+   that were already shipping — two in `metrics.sh`/`docs-sync-check`, one in the harness itself. Plan
+   a parity item as *fix + prove*, sequenced in that order, and put both in one release: shipping the
+   harness first ships a red suite, shipping the fixes first ships them unproven.
+
+2. **A parity fixture that doesn't trigger a branch makes both twins agree about nothing.** The first
+   `template-checks` fixture reached 5 of 7 checks. A defect planted in check 5 did not go red and the
+   suite still said 4/4. Agreement-about-nothing is indistinguishable from agreement, so assert the
+   set of checks the fixture *reached*, not just that the two outputs match. This is B-59's inert-check
+   class one level up: an inert **fixture** rather than an inert check.
+
+3. **Verify the implementer's environment, not just their output.** Codex reported every Stage-2 test
+   green — under Windows PowerShell 5.1, because `pwsh` would not launch in its sandbox. The claim was
+   true and the environment was wrong; CI runs pwsh 7. This is the third recorded instance of a
+   codex self-report being an environment artifact rather than a falsehood. Re-run on the host that
+   matters. (Ironically the reverse also bit here: the defect in finding 5 below exists *only* on 5.1,
+   so codex's "wrong" host is the one that could have caught it — nobody ran both.)
+
+4. **When an implementer fixes something you didn't ask for, find out whether the twin has it too.**
+   Codex quietly repaired the counting bug in the *meta* harness because that was the file it happened
+   to be running. The **shipped** harness had the identical defect in all three dists and it did not
+   look. An unrequested fix is a signal that a class exists, not that the class is closed.
+
+5. **`(pipeline).Count` is `$null` for exactly one object under PowerShell 5.1, and 1 under pwsh 7.**
+   So `exit (Write-TestSummary …)` exited 0 while printing `[FAIL]`. Two failures returned an int and
+   were caught — the bug hid precisely the single fresh regression. Always `@()`-wrap. `Measure-Object`
+   is safe (it returns a real object), which is why the `metrics.ps1` counters were never affected.
+
+6. **Ordered, not set.** Comparing twin output as a *set* of `OK:`/`FAIL:` lines hides ordering changes
+   and duplicated or dropped lines. Compare the ordered sequence, normalize by name and never by
+   pattern, and add a static assertion that the count of legitimate asymmetries has not grown — an
+   exemption that can silently widen is not an exemption, it is a hole.
+
+7. **Two adversarial passes were worth it, and the second one corrected the first.** Pass 1 (15
+   findings) reshaped the design. Pass 2 caught a **factual error in pass 1's own remediation**: the
+   metrics key inventory was wrong in both count and shape, and would have produced three incorrect
+   consumer changelog entries. A reviewer's corrections are input, not verdict — the inventory was
+   only settled by running a key diff per stack.
