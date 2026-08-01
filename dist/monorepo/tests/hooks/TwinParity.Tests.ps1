@@ -1,37 +1,16 @@
-﻿# WS-M3 (headline) -- prove each .ps1/.sh twin makes the SAME decision on the SAME input.
-# The historic guard.sh regression (shipped missing guard.ps1's test-defeat blocks) would FAIL here.
-# Deep parity on guard (decision-bearing); robustness parity (no-crash on empty/malformed) on every pair.
+﻿# WS-M3 -- .ps1/.sh twin parity for the surfaces Guard.Tests does not cover: robustness (no crash,
+# same decision on empty/malformed stdin) for every twin pair, the boy-scout EF evidence gate, and
+# the session-start security-findings preload.
+#
+# Deep guard decision parity lives in Guard.Tests.ps1, which drives BOTH twins from one case loop and
+# checks each against the expected decision as well as against each other. It used to run here too,
+# which executed every guard.ps1 case a second time per suite for no extra coverage. The historic
+# guard.sh regression (shipped missing guard.ps1's test-defeat blocks) still FAILS there.
 if (-not (Get-Command Invoke-Hook -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot '_HookHarness.ps1') }
-. (Join-Path $PSScriptRoot 'fixtures\guard-cases.ps1')
-$hooks   = (Resolve-Path (Join-Path $PSScriptRoot '..\..\.claude\hooks')).Path
-$guardPs = Join-Path $hooks 'guard.ps1'
-$guardSh = Join-Path $hooks 'guard.sh'
-$bash    = Get-BashPath
+$hooks = (Resolve-Path (Join-Path $PSScriptRoot '..\..\.claude\hooks')).Path
+$bash  = Get-BashPath
 
 Reset-Tests
-
-# --- Deep guard parity: identical decision and rendered streams from .ps1 and .sh, both surfaces ---
-if (-not $bash) {
-    Skip 'guard twin parity (all cases)' 'no bash found -- cannot run .sh twin on this host'
-} else {
-    foreach ($case in $GuardCases) {
-        foreach ($surface in 'Claude','Copilot') {
-            $evt = if ($surface -eq 'Claude') { New-ClaudeEvent $case.f $case.c } else { New-CopilotEvent $case.f $case.c }
-            It "guard twins agree ($surface): $($case.n)" {
-                $rps = Invoke-Hook $guardPs $evt
-                $rsh = Invoke-Hook $guardSh $evt
-                $dps = Get-Decision $rps
-                $dsh = Get-Decision $rsh
-                Assert ($dps -eq $dsh) "guard.ps1 -> $dps but guard.sh -> $dsh"
-                Assert ($rps.Exit -eq $rsh.Exit) "guard.ps1 exit $($rps.Exit) but guard.sh exit $($rsh.Exit)"
-                Assert ([string]::Equals("$($rps.Out)", "$($rsh.Out)", [StringComparison]::Ordinal)) `
-                    "stdout differs: guard.ps1='$($rps.Out)' guard.sh='$($rsh.Out)'"
-                Assert ([string]::Equals("$($rps.Err)", "$($rsh.Err)", [StringComparison]::Ordinal)) `
-                    "stderr differs: guard.ps1='$($rps.Err)' guard.sh='$($rsh.Err)'"
-            }
-        }
-    }
-}
 
 # --- Robustness parity for every twin pair: empty + malformed stdin must agree (and not crash) ---
 # Run from a throwaway CWD so any incidental relative writes (e.g. audit log) never touch the repo.

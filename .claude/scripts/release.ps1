@@ -92,7 +92,12 @@ if ($branch -ne 'master') {
 # The gate sequence runs ~30 minutes; the first v0.40.0 attempt was killed at a 10-minute caller
 # timeout mid-gates, which is indistinguishable from a gate failure and leaves a stamped, rebuilt
 # tree that looks like a botched release. Say so before the operator starts waiting.
-Write-Host "Releasing $Version. Gates take roughly 30 minutes (compose x3 -> validate-dist x3 -> hook suites x3 -> meta suite -> eval self-test)."
+# Runtime is dominated by process creation, not CPU: the hook suites spawn a fresh pwsh (~265ms on
+# the maintainer box) or bash (~55ms) per assertion. Measured end to end at v0.43.0: ~6 min total.
+# This banner read "roughly 30 minutes" for a long time and had never been measured -- it was ~4x
+# the truth. If you change the gates, re-measure and update this rather than padding it: an estimate
+# this wrong is what makes a release feel unaffordable and invites skipping it.
+Write-Host "Releasing $Version. Gates take roughly 5-7 minutes (compose x3 -> validate-dist x3 -> hook suites x3 -> meta suite -> eval self-test)."
 Write-Host "If this is interrupted before 'Release $Version complete', nothing has been committed -- re-run the same command as-is."
 
 # ---- 1. Root CHANGELOG head entry must already exist ----
@@ -153,21 +158,30 @@ if ($fatal) {
     exit 1
 }
 
-# Re-measure after version stamps have flowed into dist; the baseline lands in the release commit.
-& pwsh -NoProfile -File (Join-Path $repo 'scripts/context-footprint.ps1') -Update
-Gate ($LASTEXITCODE -eq 0) 'update context-footprint baseline'
-if ($fatal) {
-    Write-Host "`nRelease REFUSED: context-footprint measurement failed. Nothing was committed."
-    Write-Host 'Fix the failing gate, then re-run the same release command as-is.'
-    exit 1
-}
-
-# ---- 4. Deterministic gates: validate-dist + hook suite per dist, then the meta suite ----
+# ---- 4. Deterministic gates: validate-dist + hook suite per dist, the context-footprint baseline,
+# then the meta suite.
+#
+# The footprint re-measure (which must run after the version stamps have flowed into dist, and whose
+# baseline lands in the release commit) is independent of the dist gates: it writes
+# meta/context-footprint.json, which no gate reads. It used to run serially ahead of them and cost
+# its full ~39s of wall time; it now rides along with the dist legs.
+#
+# Each dist suite is handed a share of the machine rather than all three assuming they own it. The
+# suites are bound by process creation, not CPU -- every assertion spawns a fresh pwsh or bash -- so
+# three suites at the full default lane count oversubscribe and every lane gets slower.
 try {
+    $footprintLog = [System.IO.Path]::GetTempFileName()
+    $footprintJob = Start-Job -ArgumentList $repo, $footprintLog -ScriptBlock {
+        param($repo, $log)
+        & pwsh -NoProfile -File (Join-Path $repo 'scripts/context-footprint.ps1') -Update *> $log
+        $LASTEXITCODE
+    }
+    $lanes = [math]::Max(2, [int]([Environment]::ProcessorCount / $dists.Count))
     $distGateJobs = foreach ($d in $dists) {
         $log = [System.IO.Path]::GetTempFileName()
-        $job = Start-Job -ArgumentList $repo, $d, $log -ScriptBlock {
-            param($repo, $dist, $log)
+        $job = Start-Job -ArgumentList $repo, $d, $log, $lanes -ScriptBlock {
+            param($repo, $dist, $log, $lanes)
+            $env:HOOKTESTS_THROTTLE = "$lanes"
             & pwsh -NoProfile -File (Join-Path $repo 'scripts/validate-dist.ps1') $dist *> $log
             $validateExit = $LASTEXITCODE
             & pwsh -NoProfile -File (Join-Path $repo "dist/$dist/tests/hooks/Invoke-HookTests.ps1") *>> $log
@@ -186,11 +200,17 @@ try {
         Gate ($result.ValidateExit -eq 0) "validate-dist $d"
         Gate ($result.HookExit -eq 0) "dist/$d hook test suite"
     }
+    $footprintJob | Wait-Job | Out-Null
+    $footprintExit = Receive-Job $footprintJob
+    Write-Host -NoNewline ([System.IO.File]::ReadAllText($footprintLog))
+    Gate ($footprintExit -eq 0) 'update context-footprint baseline'
 } finally {
     if ($distGateJobs) {
         $distGateJobs.Job | Remove-Job -Force
         $distGateJobs.Log | Remove-Item -Force
     }
+    if ($footprintJob) { $footprintJob | Remove-Job -Force }
+    if ($footprintLog) { Remove-Item -LiteralPath $footprintLog -Force -ErrorAction SilentlyContinue }
 }
 & pwsh -NoProfile -File (Join-Path $repo '.claude/hooks/tests/Invoke-HookTests.ps1')
 Gate ($LASTEXITCODE -eq 0) 'meta-hook test suite'

@@ -11,6 +11,53 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.43.0 — 2026-08-01
+
+Release-time profiling, prompted by the banner claiming "roughly 30 minutes".
+
+**The banner was the defect.** A measured release is **7.4 minutes** (v0.42.0: 12:52:26 → 12:59:48),
+about a quarter of what the script announced. That figure had never been measured. It is now
+`5-7 minutes` with a comment requiring re-measurement rather than padding — an estimate that wrong
+is what makes a release feel unaffordable and invites skipping it.
+
+**What the profiling found.** The gates are bound by *process creation*, not CPU. Every assertion
+spawns a fresh interpreter, deliberately, so each one is a real hook invocation with a real exit
+code — roughly 1350 spawns across three dists. Measured on the maintainer box: `pwsh` 265 ms,
+`bash` 55 ms, `powershell.exe` 5.1 143 ms. `validate-dist` is 2.3 s and was never worth touching.
+
+Two plausible fixes were measured and **discarded**:
+
+- *More lanes.* A throttle sweep on one dist suite: 160.7 s (4) / 152.6 s (6) / 150.3 s (8) /
+  151.4 s (12). It plateaus — process creation serialises, and raw spawn throughput only improves
+  ~1.9x from 8-way parallelism.
+- *Splitting the 101 s `TwinParity.Tests.ps1`.* Rejected once the sweep landed: splitting moves
+  spawns between files without reducing them, so it would have bought approximately nothing. This
+  was the plan of record until the data killed it.
+
+**What shipped instead**, all measured:
+
+- Guard's `.ps1`/`.sh` parity moved into `Guard.Tests.ps1`, so each case runs once per twin instead
+  of three times total (the `.ps1` leg was executed by both files against the same fixture).
+  One dist suite: **150.3 s → 132.3 s**. Red-tested both ways — neutering `guard.sh` and neutering
+  `guard.ps1` each produce 44 failures, clean on restore.
+- `context-footprint -Update` (~39 s) now runs alongside the three dist legs instead of serially
+  ahead of them. It writes `meta/context-footprint.json`, which no gate reads, so there is no race.
+- Each dist suite is handed `cores / 3` lanes instead of all three assuming they own the machine.
+- Shipped runner lane count is core-aware rather than a hardcoded 4.
+
+Gate phase: **385.3 s → 284.7 s (26%)**, all gates green.
+
+*Correction recorded for honesty:* the merge was initially justified as closing a coverage hole —
+the claim that `guard.sh` was never checked against an expected decision. That was wrong. The old
+split asserted `ps == expected` and `sh == ps` including exit and streams, so `sh == expected` held
+transitively and a fault shared by both twins would still have failed `Guard.Tests`. The merge is an
+efficiency and diagnosability change, not a correctness fix.
+
+*What else is exposed:* **B-79** — the maintainer box has only the MSIX/Store build of PowerShell 7,
+which starts at 265 ms against native 5.1's 143 ms. PowerShell 7 starting 1.85x slower than 5.1 is
+backwards and points at MSIX per-launch overhead. An MSI install is the largest remaining win and
+needs no code change. Defender real-time scanning taxes every spawn too; left alone by decision.
+
 ## 0.42.0 — 2026-08-01
 
 Started as "does `/docs-sync` keep `docs/warehouse-map.md` up to date?" (it does not — `grep -rn

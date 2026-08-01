@@ -668,3 +668,35 @@ Three things worth keeping:
    `add-warehouse-load` as out of scope. The shipped fix is one caveat in that skill's step 1, which
    fires on the developer who is about to be misled, at no cost to any non-warehouse repo. The
    quarterly docs command got one bullet.
+
+## 2026-08-01 — v0.43.0: the estimate was the bug, and the plan died to its own measurement
+
+1. **A four-times-wrong estimate cost more than the thing it described.** `release.ps1` announced
+   "roughly 30 minutes" for gates that actually take about six. Nobody had measured it. The number
+   was doing real damage — it framed the release as something to batch up and dread, and it is what
+   prompted this whole investigation. I also repeated it back as though I had observed it, which is
+   how an unmeasured number survives: each retelling launders it a little further.
+
+2. **The plan of record was disproved by its own measurement, after approval.** The agreed fix was
+   to split the 101 s `TwinParity.Tests.ps1`. A throttle sweep then showed the suite plateaus at
+   ~150 s regardless of lane count (160.7 / 152.6 / 150.3 / 151.4 for 4 / 6 / 8 / 12), because
+   process creation serialises. Splitting moves spawns between files without reducing them, so it
+   would have bought nothing. Measuring the thing the plan assumed is not a formality — the sweep
+   cost ten minutes and saved a day of work in the wrong direction.
+
+3. **Profile before optimising, even when the structure looks obviously wrong.** The 3-legs-times-4-
+   lanes nesting *looked* like the bug. It was worth ~18%. The real cost was `pwsh` process startup
+   at 265 ms a spawn, ~1350 spawns per release — and `validate-dist`, which I had assumed was a
+   major term, turned out to be 2.3 s.
+
+4. **The biggest win was environmental and invisible from the code.** PowerShell 7 starting 1.85x
+   *slower* than 5.1 (265 ms vs 143 ms) is backwards, and points at the Store/MSIX build rather than
+   anything in this repo. Filed as B-79. No amount of restructuring would have found it; only a raw
+   spawn benchmark did.
+
+5. **I asserted a coverage hole that did not exist.** I claimed `guard.sh` was never checked against
+   an expected decision. The old split asserted `ps == expected` and `sh == ps` including exit and
+   both streams, so `sh == expected` held transitively. The merge is still worth having for speed
+   and clearer failure messages, but it was justified on a false premise for a while, and the
+   changelog now says so explicitly. Transitive coverage is easy to miss when you are looking at one
+   file at a time.

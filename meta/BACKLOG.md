@@ -1020,6 +1020,48 @@ finds warehouse signals, which survives where a report bullet does not; second i
 
 ---
 
+### B-79 · The maintainer box runs the MSIX build of PowerShell 7, and it is the release's largest single cost
+**Effort:** S (environment change, no code) · **Priority:** P3 · found 2026-08-01 profiling the release
+
+**Why:** the release is bound by process creation, not CPU. Measured on the maintainer box:
+
+| spawn | sequential | 8-wide |
+|---|---:|---:|
+| `pwsh` (MSIX) | **265 ms** | 141 ms |
+| `bash` (Git for Windows) | 55 ms | 20 ms |
+| `powershell.exe` 5.1 (native Win32) | **143 ms** | — |
+
+PowerShell 7 starting **1.85x slower than Windows PowerShell 5.1** is backwards — 7 is normally the
+faster of the two to start. The one install present is the Store/MSIX package
+(`C:\Program Files\WindowsApps\Microsoft.PowerShell_7.6.4.0_x64__8wekyb3d8bbwe\pwsh.exe`); there is
+no MSI install under `C:\Program Files\PowerShell\7\`. MSIX packages pay per-launch package identity
+and app-execution-alias resolution that the MSI build does not.
+
+The hook suites spawn a fresh interpreter per assertion (deliberately — that is what makes each
+assertion a real hook invocation with a real exit code), roughly 1350 spawns across the three dists.
+At 265 ms a spawn that is most of the ~6-minute gate phase. Parallelism cannot rescue it: measured
+throttle sweep on one dist suite was 160.7 s (4 lanes) / 152.6 s (6) / 150.3 s (8) / 151.4 s (12) —
+it plateaus, because process creation serialises. Raw spawn throughput only improves ~1.9x from
+8-way parallelism.
+
+**Do:** install PowerShell 7 via MSI (`winget install --id Microsoft.PowerShell`, or the .msi from
+the PowerShell releases page) so `C:\Program Files\PowerShell\7\pwsh.exe` exists, then re-measure:
+
+```
+1..25 | ForEach-Object { & 'C:\Program Files\PowerShell\7\pwsh.exe' -NoProfile -Command "exit 0" }
+```
+
+If startup lands near 5.1's 143 ms, that is ~45% off every `pwsh` spawn and the largest available
+win on release time — with no code change and no test weakened. Keep both installs and compare
+before switching what the hooks register (WSD-026 pins an absolute interpreter path, so that
+registration would need updating deliberately, not incidentally).
+
+**Not:** disabling Defender real-time scanning, which also taxes every spawn. Declined by the
+maintainer 2026-08-01 as a security decision, not a build tweak. Noted here only so the next person
+profiling this does not rediscover it and assume it was missed.
+
+---
+
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see the Done section.**

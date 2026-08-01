@@ -1,25 +1,47 @@
-﻿# WS-M2 -- guard behavioural tests. For each BLOCKING case: Claude-shaped event must BLOCK (exit 2),
-# Copilot-shaped event must DENY (JSON). For each CLEAN case: both shapes must ALLOW.
-# Cases are generated into both surface shapes from one content string, so the same input drives both.
+﻿# WS-M2 -- guard behavioural tests AND .ps1/.sh twin parity, in one pass over the case table.
+# For each BLOCKING case: Claude-shaped event must BLOCK (exit 2), Copilot-shaped event must DENY
+# (JSON). For each CLEAN case: both shapes must ALLOW. Cases are generated into both surface shapes
+# from one content string, so the same input drives both.
+#
+# Both twins are checked against the EXPECTED decision, then against each other. This used to be
+# split across two files -- Guard.Tests asserted only guard.ps1 against expected, and
+# TwinParity.Tests asserted guard.sh only against guard.ps1. A fault present in BOTH twins therefore
+# passed: they agreed with each other, and the .sh twin was never compared against the truth. Running
+# both twins from one loop closes that hole and halves the guard invocations, since the .ps1 leg is
+# no longer executed a second time against the same fixture.
 if (-not (Get-Command Invoke-Hook -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot '_HookHarness.ps1') }
 . (Join-Path $PSScriptRoot 'fixtures\guard-cases.ps1')
-$hooks = (Resolve-Path (Join-Path $PSScriptRoot '..\..\.claude\hooks')).Path
+$hooks   = (Resolve-Path (Join-Path $PSScriptRoot '..\..\.claude\hooks')).Path
 $guardPs = Join-Path $hooks 'guard.ps1'
+$guardSh = Join-Path $hooks 'guard.sh'
+$bash    = Get-BashPath
 
 Reset-Tests
 foreach ($case in $GuardCases) {
-    $claude  = New-ClaudeEvent  $case.f $case.c
-    $copilot = New-CopilotEvent $case.f $case.c
-    if ($case.block) {
-        It "guard.ps1 BLOCKS (Claude): $($case.n)"  { Assert-Decision (Invoke-Hook $guardPs $claude)  'BLOCK' $case.n }
-        It "guard.ps1 DENIES (Copilot): $($case.n)" { Assert-Decision (Invoke-Hook $guardPs $copilot) 'DENY'  $case.n }
-    } else {
-        It "guard.ps1 ALLOWS (Claude): $($case.n)"  { Assert-Decision (Invoke-Hook $guardPs $claude)  'ALLOW' $case.n }
-        It "guard.ps1 ALLOWS (Copilot): $($case.n)" { Assert-Decision (Invoke-Hook $guardPs $copilot) 'ALLOW' $case.n }
+    foreach ($surface in 'Claude','Copilot') {
+        $evt = if ($surface -eq 'Claude') { New-ClaudeEvent $case.f $case.c } else { New-CopilotEvent $case.f $case.c }
+        $expected = if (-not $case.block) { 'ALLOW' } elseif ($surface -eq 'Claude') { 'BLOCK' } else { 'DENY' }
+        It "guard $expected ($surface): $($case.n)" {
+            $rps = Invoke-Hook $guardPs $evt
+            Assert-Decision $rps $expected $case.n
+            # .sh twin: same expected decision, then byte-identical rendering. Self-skips when no bash
+            # is present (reported once below) so a pure-Windows host still gets full guard.ps1 cover.
+            if ($bash) {
+                $rsh = Invoke-Hook $guardSh $evt
+                Assert-Decision $rsh $expected $case.n
+                Assert ($rps.Exit -eq $rsh.Exit) "guard.ps1 exit $($rps.Exit) but guard.sh exit $($rsh.Exit)"
+                Assert ([string]::Equals("$($rps.Out)", "$($rsh.Out)", [StringComparison]::Ordinal)) `
+                    "stdout differs: guard.ps1='$($rps.Out)' guard.sh='$($rsh.Out)'"
+                Assert ([string]::Equals("$($rps.Err)", "$($rsh.Err)", [StringComparison]::Ordinal)) `
+                    "stderr differs: guard.ps1='$($rps.Err)' guard.sh='$($rsh.Err)'"
+            }
+        }
     }
 }
+if (-not $bash) { Skip 'guard .sh twin parity (all cases)' 'no bash found -- cannot run .sh twin on this host' }
+
 # Empty stdin and malformed JSON must degrade-safe to ALLOW (exit 0), never crash.
 It 'guard.ps1 empty stdin -> allow'     { Assert-Decision (Invoke-Hook $guardPs '')             'ALLOW' 'empty' }
 It 'guard.ps1 malformed json -> allow'  { Assert-Decision (Invoke-Hook $guardPs 'not json {')   'ALLOW' 'malformed' }
 
-exit (Write-TestSummary 'Guard.Tests (guard.ps1)')
+exit (Write-TestSummary 'Guard.Tests (guard.ps1 + .sh twin parity)')

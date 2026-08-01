@@ -6,7 +6,15 @@ $ErrorActionPreference = 'Stop'
 # Prefer pwsh (7+); fall back to Windows PowerShell 5.1 where pwsh is absent (5.1-safe if/else).
 if (Get-Command pwsh -ErrorAction SilentlyContinue) { $psExe = 'pwsh' } else { $psExe = 'powershell' }
 $files = Get-ChildItem -LiteralPath $PSScriptRoot -Filter *.Tests.ps1 | Sort-Object Name
-$throttle = 4
+# Lane count. This suite is bound by process creation, not CPU: every assertion spawns a fresh
+# pwsh (or bash) so the hook is exercised as a real process with a real exit code. A fixed 4 left
+# most of a modern box idle. HOOKTESTS_THROTTLE lets a caller that runs several suites at once
+# hand each one a share instead of every suite assuming it owns the machine -- without it, three
+# concurrent suites at 4 lanes each oversubscribe and every lane gets slower.
+# ([Environment]::ProcessorCount and this if/else chain are 5.1-safe.)
+if ($env:HOOKTESTS_THROTTLE) { $throttle = [int]$env:HOOKTESTS_THROTTLE }
+else { $throttle = [Environment]::ProcessorCount }
+if ($throttle -lt 2) { $throttle = 2 } elseif ($throttle -gt 8) { $throttle = 8 }
 $next = 0
 $running = @()
 $results = @{}
