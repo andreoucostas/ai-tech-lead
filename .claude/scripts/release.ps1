@@ -30,7 +30,11 @@ param(
     # Escape hatch for that precondition, named for what it risks. Releasing without an independent
     # review is allowed -- it is sometimes the right call -- but it is never silent: the ledger
     # records that none happened and a post-ship review item is filed automatically.
-    [switch]$NoIndependentReview
+    [switch]$NoIndependentReview,
+    # Escape hatch for the staged-set precondition at step 5 (B-80), named for what it risks: the
+    # release commit will carry files that are not part of a release. There is deliberately NO
+    # escape hatch for a staged gitlink -- see that check for why.
+    [switch]$AllowExtraStagedPaths
 )
 $ErrorActionPreference = 'Stop'
 
@@ -325,6 +329,92 @@ close this entry, recording what was re-run.
 git -C $repo add -A
 $staged = git -C $repo diff --cached --name-only
 if (-not $staged) { Write-Host 'Nothing to commit (already released?).'; exit 0 }
+
+# ---- 5a. Inspect what `git add -A` actually staged (B-80) ----
+# The blanket `add -A` above is deliberate: the release commit must carry the stamps, the rebuilt
+# dist/, and the footprint baseline together, and enumerating them would rot. The cost is that it
+# also sweeps in whatever else happens to be sitting in the tree, and until now the script printed
+# no manifest, so nothing surfaced it. v0.42.0 and v0.43.0 each shipped a stray worktree gitlink
+# that way; it was noticed only when removing the worktrees showed two tracked deletions.
+#
+# Classification has to happen HERE, after staging, not before: a worktree directory that has not
+# been added is merely untracked, and mode 160000 only exists once it is in the index (verified
+# against commit 90f331d, where both strays present as ":160000 000000 ... D"). On any refusal we
+# `git reset` so a refused release leaves the index exactly as it found it.
+#
+# `git diff --cached --raw` emits ":<srcmode> <dstmode> <srcsha> <dstsha> <status>\t<path>", and for
+# a rename/copy a SECOND tab-separated path follows. Split on tab and take the LAST field so the
+# destination path is what gets classified.
+$rawStaged = @(git -C $repo diff --cached --raw)
+$gitlinks  = @()
+$unexpected = @()
+# Where this repo legitimately keeps files -- the six tracked top-level directories and the ten
+# tracked root files, as they actually exist, not as a stamped-file list would have it.
+#
+# The first cut of this check used B-80's own wording (src/, dist/, CHANGELOG.md,
+# meta/context-footprint.json, the version stamps) and was WRONG: replayed against the real history
+# it would have refused every release from v0.39.0 to v0.43.0. Each touches README.md; v0.41.0 also
+# touched .claude/hooks/tests/. A release commit carries the whole session's work -- gate scripts,
+# root docs, meta hooks -- not just the stamped set. A guard that refuses correct releases gets
+# disabled, and then it guards nothing.
+#
+# So the question this asks is not "is this file part of a release?" (unanswerable) but "is this
+# file somewhere this repo keeps files at all?" -- which is exactly the scratch-file/temp-output
+# hazard B-80 describes. Keep it in sync if the repo grows a top-level directory; a legitimate new
+# one failing here once is the cheap direction of that error.
+$expectedPathPattern = '^(?:(?:\.claude|\.github|dist|meta|scripts|src)/|(?:\.gitattributes|\.gitignore|AGENTS\.md|CHANGELOG\.md|CLAUDE\.md|DEVELOPING\.md|LICENSE|README\.md|install\.ps1|install\.sh)$)'
+foreach ($line in $rawStaged) {
+    if ($line -notmatch '^:') { continue }
+    $fields = $line -split "`t"
+    $path   = $fields[-1]
+    # Field 0 is ":<srcmode> <dstmode> <srcsha> <dstsha> <status>". A deletion has dstmode 000000,
+    # so check srcmode too -- an untracked-then-deleted gitlink is still a gitlink we staged.
+    $modes = ($fields[0].TrimStart(':') -split '\s+')
+    if ($modes[0] -eq '160000' -or $modes[1] -eq '160000') { $gitlinks += $path; continue }
+    if ($path -notmatch $expectedPathPattern) { $unexpected += $path }
+}
+# @() is load-bearing here for the same reason it is in the shipped test harness: under Windows
+# PowerShell 5.1 a pipeline yielding exactly ONE object has no .Count and returns $null. One stray
+# file is the single most likely shape of this defect, so a bare .Count would go silent on precisely
+# the case worth catching. (The v0.41.0 RCA; B-82 repeats the warning.)
+Write-Host ''
+Write-Host ("Staged manifest ({0} path(s)):" -f @($staged).Count)
+foreach ($p in @($staged)) { Write-Host "  $p" }
+if (@($gitlinks).Count -gt 0) {
+    # No escape hatch, by design. This repo has no submodules, so a mode-160000 entry is ALWAYS a
+    # mistake -- there is no legitimate release in which one appears, and the two that shipped were
+    # pointers to directories that ceased to exist the moment the worktree was removed.
+    git -C $repo reset --quiet
+    [Console]::Error.WriteLine(@"
+FATAL: the index contains $(@($gitlinks).Count) gitlink(s) (mode 160000) -- refusing to release.
+$($gitlinks | ForEach-Object { "  $_" } | Out-String)
+This repo has no submodules, so a gitlink is always a mistake -- almost always a git worktree left
+under the tree when `git add -A` ran. v0.42.0 and v0.43.0 both shipped one. There is no override:
+remove the worktree (git worktree remove <path>, or git worktree prune) and re-run the same command.
+The index has been reset; nothing was committed.
+"@)
+    exit 2
+}
+if (@($unexpected).Count -gt 0) {
+    if ($AllowExtraStagedPaths) {
+        Write-Host ("WARNING: {0} staged path(s) are outside what a release touches. Proceeding because -AllowExtraStagedPaths was passed:" -f @($unexpected).Count)
+        foreach ($p in $unexpected) { Write-Host "         $p" }
+    } else {
+        git -C $repo reset --quiet
+        [Console]::Error.WriteLine(@"
+FATAL: $(@($unexpected).Count) staged path(s) are outside where this repo keeps files -- refusing.
+$($unexpected | ForEach-Object { "  $_" } | Out-String)
+Tracked content lives in .claude/ .github/ dist/ meta/ scripts/ src/ or one of the ten tracked root
+files. `git add -A` sweeps in anything else present -- scratch files, editor backups, temp output.
+
+Either remove/ignore them and re-run the same command, or, if they genuinely belong in this
+release, re-run with -AllowExtraStagedPaths.
+The index has been reset; nothing was committed.
+"@)
+        exit 2
+    }
+}
+Write-Host ''
 git -C $repo commit -m "v${Version}: $Summary" -m "Released via .claude/scripts/release.ps1 — all deterministic gates green (compose ×3, validate-dist ×3, hook suites ×3, meta suite)."
 if ($LASTEXITCODE -ne 0) { Write-Host 'Commit FAILED.'; exit 1 }
 if (-not $NoPush) {

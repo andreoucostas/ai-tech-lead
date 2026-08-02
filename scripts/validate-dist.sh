@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # ai-tech-lead dist validator (bash twin; .ps1 twin is validate-dist.ps1). Validates an
 # ALREADY-COMPOSED dist/<mode> tree — it does NOT rebuild it (see scripts/build.sh for that).
-# Six checks, each with a clear OK/FAIL line:
+# Eight checks, each with a clear OK/FAIL line:
 #   1. no unresolved @stack:NAME markers survive anywhere in the dist (composer leftovers)
 #   2. every *.json in the dist parses
 #   3. `bash -n` passes on every *.sh in the dist
 #   4. PowerShell AST parse is clean on every *.ps1 in the dist (invokes pwsh/powershell)
 #   5. the dist's OWN template-checks suite passes, run from inside the dist dir
 #   6. no meta-dev vocabulary leaks into shipped content (scripts/meta-denylist.txt)
+#   7. every script a shipped *.md tells someone to RUN exists (no-dead-instruction)
+#   8. every hook registration in settings*.json / hooks.json names a script that exists, with its
+#      opposite-language twin (hook-registration)
 # Exit 0 = all checks passed. Exit 1 = at least one check failed. Exit 2 = usage error, missing
 # dist, or a required tool (JSON parser / bash / PowerShell host) is unavailable — these are
 # reported as FATAL and never silently skipped.
@@ -172,6 +175,93 @@ if [ "$deadcount" -gt 0 ]; then
   printf '%s\n' "$deadrefs" | sed 's/^/  [no-dead-instruction] /'
 else
   ok "every documented command resolves in $DIST (no-dead-instruction)."
+fi
+
+# --- 8. hook registrations point at hooks that exist ---------------------------------------------
+# Twin of check 8 in validate-dist.ps1 — see that file for the full rationale. In short: nothing
+# read the registration files at all (check 2 only proves they are valid JSON, check 7 only scans
+# *.md), so a registration naming a script absent from the dist shipped silently, and the symptom
+# on the consumer's side is a hook that never runs and never complains.
+#
+# This deliberately does NOT fail on a bare interpreter name — that is the correct shipped value
+# (pinning absolute paths was tried and reverted in v0.38.1, because settings.json is committed
+# team configuration). Whether a bare name resolves is a runtime property; the doctor's
+# `Hook liveness` row reports that from the consumer's machine.
+#
+# Extraction is TEXTUAL and matches the PowerShell twin step for step. Using this script's
+# python3-or-jq JSON parser here would mean the branch this box lacks never runs, and the two legs
+# would be checking different things — the divergence class the twins exist to prevent.
+check_hook_ref() {   # $1 = registration file (dist-relative), $2 = referenced script
+  # hooks.json writes Windows paths with backslashes, and JSON escaping doubles them, so the raw
+  # text holds ".claude\\hooks\\guard.ps1". Collapse any RUN of backslashes to one separator: `tr`
+  # translates each one separately and yields ".claude//hooks//guard.ps1", which resolves on both
+  # Windows and POSIX and so would have hidden the sloppiness rather than failing on it.
+  _rel=$(printf '%s' "$2" | sed -E 's#\\+#/#g')
+  case "$_rel" in /*|[A-Za-z]:*) return 0;; esac  # absolute: not ours to resolve
+  if [ ! -f "$DIST/$_rel" ]; then
+    echo "$1 : \"$_rel\" does not exist in this dist"
+    return 0
+  fi
+  case "$_rel" in
+    *.ps1) _twin="${_rel%.ps1}.sh" ;;
+    *.sh)  _twin="${_rel%.sh}.ps1" ;;
+    *)     return 0 ;;
+  esac
+  # Invariant #3: a .ps1 registration whose .sh sibling is missing is a half-shipped hook.
+  [ -f "$DIST/$_twin" ] || echo "$1 : \"$_rel\" exists but its twin \"$_twin\" does not"
+}
+
+regproblems=""
+regcount=0
+for rf in .claude/settings.json .claude/settings.windows.json .github/hooks/hooks.json; do
+  if [ ! -f "$DIST/$rf" ]; then
+    regproblems="$regproblems
+$rf : registration file missing from this dist"
+    continue
+  fi
+  # settings*.json: "command": "<interpreter> [flags] -File <path>"
+  while IFS= read -r cmd; do
+    [ -n "$cmd" ] || continue
+    regcount=$((regcount+1))
+    interp=$(printf '%s' "$cmd" | awk '{print $1}')
+    case "$interp" in
+      pwsh|powershell|bash) ;;
+      *) regproblems="$regproblems
+$rf : unrecognised interpreter '$interp' in: $cmd" ;;
+    esac
+    script=$(printf '%s' "$cmd" | grep -oE '\-File[[:space:]]+[^[:space:]]+' | awk '{print $2}' | head -1)
+    if [ -z "$script" ]; then
+      regproblems="$regproblems
+$rf : no -File argument in: $cmd"
+    else
+      out=$(check_hook_ref "$rf" "$script")
+      [ -z "$out" ] || regproblems="$regproblems
+$out"
+    fi
+  done <<EOF
+$(grep -oE '"command"[[:space:]]*:[[:space:]]*"[^"]+"' "$DIST/$rf" | sed -E 's/^"command"[[:space:]]*:[[:space:]]*"(.*)"$/\1/')
+EOF
+  # hooks.json: "bash"/"powershell": "<path> [args]" — the value IS the script, interpreter implied.
+  while IFS= read -r val; do
+    [ -n "$val" ] || continue
+    regcount=$((regcount+1))
+    script=$(printf '%s' "$val" | awk '{print $1}')
+    out=$(check_hook_ref "$rf" "$script")
+    [ -z "$out" ] || regproblems="$regproblems
+$out"
+  done <<EOF
+$(grep -oE '"(bash|powershell)"[[:space:]]*:[[:space:]]*"[^"]+"' "$DIST/$rf" | sed -E 's/^"(bash|powershell)"[[:space:]]*:[[:space:]]*"(.*)"$/\2/')
+EOF
+done
+regprobcount=$(printf '%s\n' "$regproblems" | grep -c . || true)
+# Vacuous-pass guard: an extraction that silently matches nothing reports a clean dist.
+if [ "$regcount" -lt 15 ]; then
+  fail "hook-registration check extracted only $regcount registration(s) from $DIST — the extraction is broken, not the dist."
+elif [ "$regprobcount" -gt 0 ]; then
+  fail "hook registrations reference $regprobcount missing or invalid target(s) in $DIST. A registration that cannot start is a hook that silently never runs."
+  printf '%s\n' "$regproblems" | grep . | sort -u | sed 's/^/  [hook-registration] /'
+else
+  ok "all $regcount hook registrations resolve in $DIST (hook-registration)."
 fi
 
 echo ""

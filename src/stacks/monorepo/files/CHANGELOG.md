@@ -5,6 +5,23 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.44.0 — 2026-08-02
+
+- **New: `tests/hooks/HarnessIntegrity.Tests.ps1` — the test harness now proves it can report
+  failure.** Every other file in `tests/hooks/` tests a hook. This one tests the scoreboard they are
+  scored on, because a defect there is the quietest kind: every suite still prints its results and
+  every exit code lies. A real one shipped — under Windows PowerShell 5.1, `Write-TestSummary`
+  returned `$null` instead of a failure count, so a file with **exactly one** failing test printed
+  `[FAIL]` and still exited `0`, and the runner scored it green. That was fixed previously; this
+  adds the test that would have caught it, at both levels (a suite file's own exit code, and the
+  runner's sum).
+- **If you run the hook suite in CI, run it on the PowerShell host your developers actually use.**
+  The above was invisible under PowerShell 7, which returns a real integer for the same expression.
+  A green PowerShell 7 run does not tell you the harness behaves correctly on Windows PowerShell
+  5.1. The new test runs its fixtures under whichever host is running it, so a 5.1 run genuinely
+  exercises 5.1.
+- No action required. Nothing about your hooks, rails, or conventions changed.
+
 ## 0.43.0 — 2026-08-01
 
 - **`tests/hooks/Invoke-HookTests.ps1` now sizes itself to your machine.** The lane count was fixed

@@ -1,12 +1,15 @@
 ﻿# ai-tech-lead dist validator — PowerShell twin of validate-dist.sh. Validates an ALREADY-COMPOSED
-# dist/<mode> tree — it does NOT rebuild it (see scripts/build.ps1 for that). Five checks, each with
-# a clear OK/FAIL line:
+# dist/<mode> tree — it does NOT rebuild it (see scripts/build.ps1 for that). Eight checks, each
+# with a clear OK/FAIL line:
 #   1. no unresolved @stack:NAME markers survive anywhere in the dist (composer leftovers)
 #   2. every *.json in the dist parses (ConvertFrom-Json)
 #   3. `bash -n` passes on every *.sh in the dist (invokes bash — hard FATAL if unavailable)
 #   4. PowerShell AST parse is clean on every *.ps1 in the dist
 #   5. the dist's OWN template-checks.ps1 suite passes, run from inside the dist dir
 #   6. no meta-dev vocabulary leaks into shipped content (scripts/meta-denylist.txt)
+#   7. every script a shipped *.md tells someone to RUN exists (no-dead-instruction)
+#   8. every hook registration in settings*.json / hooks.json names a script that exists, with its
+#      opposite-language twin (hook-registration)
 # Exit 0 = all checks passed. Exit 1 = at least one check failed. Exit 2 = usage error, missing
 # dist, or a required tool (bash, for check 3) is unavailable — reported as FATAL, never skipped.
 #   Usage: validate-dist.ps1 {dotnet|angular|monorepo} [dist-root]
@@ -42,6 +45,31 @@ $DistAbs = (Resolve-Path $Dist).Path
 $failed = 0
 function Fail($m) { Write-Output "FAIL: $m"; $script:failed++ }
 function OK($m)   { Write-Output "OK:   $m" }
+
+# Used by check 8. Returns zero or more problem strings for one referenced hook script: the file
+# itself, and its opposite-language twin (invariant #3 -- a .ps1 registration whose .sh sibling is
+# missing is a half-shipped hook, and the surface that runs the missing one gets nothing).
+function Test-HookRef {
+    param([string]$Dist, [string]$File, [string]$Script)
+    $problems = @()
+    # hooks.json writes Windows paths with backslashes, and JSON escaping doubles them, so the raw
+    # text holds ".claude\\hooks\\guard.ps1". Collapse any RUN of backslashes to one separator:
+    # translating each one separately yields ".claude//hooks//guard.ps1", which happens to resolve on
+    # both Windows and POSIX and so would have hidden the sloppiness rather than failing on it.
+    $rel = $Script -replace '\\+', '/'
+    if ($rel -match '^[A-Za-z]:' -or $rel.StartsWith('/')) { return $problems }   # absolute: not ours to resolve
+    if (-not (Test-Path (Join-Path $Dist $rel))) {
+        $problems += "$File : `"$rel`" does not exist in this dist"
+        return $problems                        # no point asking about the twin of a missing file
+    }
+    if ($rel -match '\.ps1$')     { $twin = ($rel -replace '\.ps1$', '.sh') }
+    elseif ($rel -match '\.sh$')  { $twin = ($rel -replace '\.sh$', '.ps1') }
+    else { return $problems }
+    if (-not (Test-Path (Join-Path $Dist $twin))) {
+        $problems += "$File : `"$rel`" exists but its twin `"$twin`" does not"
+    }
+    return $problems
+}
 
 # --- 1. no unresolved @stack markers -------------------------------------------------------------
 $markerRe = '@stack:[A-Za-z0-9_-]+'
@@ -206,6 +234,65 @@ if ($deadRefs.Count -gt 0) {
     $deadRefs | Sort-Object -Unique | ForEach-Object { Write-Output "  [no-dead-instruction] $_" }
 } else {
     OK "every documented command resolves in $Dist (no-dead-instruction)."
+}
+
+# --- 8. hook registrations point at hooks that exist ---------------------------------------------
+# Nothing read the registration files at all. Check 2 proves they are valid JSON; check 7 checks
+# only *.md. So a registration naming a script that is not in the dist -- a renamed hook, a
+# half-composed stack -- shipped silently, and the consumer-side symptom is the worst kind: the
+# hook simply never runs. No write guard, no post-write feedback, no audit trail, and no error
+# anyone reads.
+#
+# What this deliberately does NOT do: fail on a BARE interpreter name. A bare name is the correct
+# shipped value. Pinning absolute interpreter paths was tried and reverted in v0.38.1 --
+# .claude/settings.json is committed team configuration, so recording the installing developer's
+# machine-specific path breaks every teammate on another OS or profile. Whether a bare name
+# RESOLVES on a given box is a runtime property no build-time check can see; that is what the
+# doctor's `Hook liveness` row (v0.39.0) reports from the consumer's own machine. This check
+# answers the build-time half only: does the thing we point at exist, and do both twins exist.
+#
+# Extraction is deliberately TEXTUAL and identical in both twins. The bash twin's JSON parser is
+# python3-or-jq depending on the box, so parsing there would leave whichever branch this machine
+# lacks untested while the PowerShell leg used ConvertFrom-Json -- three code paths for one check.
+$SanctionedInterpreters = @('pwsh', 'powershell', 'bash')
+$regFiles = @('.claude/settings.json', '.claude/settings.windows.json', '.github/hooks/hooks.json')
+$regProblems = @()
+$regCount = 0
+foreach ($rf in $regFiles) {
+    $rfAbs = Join-Path $DistAbs $rf
+    if (-not (Test-Path $rfAbs)) { $regProblems += "$rf : registration file missing from this dist"; continue }
+    $raw = Get-Content $rfAbs -Raw
+
+    # settings*.json: "command": "<interpreter> [flags] -File <path>"
+    foreach ($m in [regex]::Matches($raw, '"command"\s*:\s*"([^"]+)"')) {
+        $cmd = $m.Groups[1].Value
+        $regCount++
+        $interp = ($cmd -split '\s+')[0]
+        if ($SanctionedInterpreters -notcontains $interp) {
+            $regProblems += "$rf : unrecognised interpreter '$interp' in: $cmd"
+        }
+        $fm = [regex]::Match($cmd, '-File\s+(\S+)')
+        if (-not $fm.Success) { $regProblems += "$rf : no -File argument in: $cmd"; continue }
+        $regProblems += (Test-HookRef -Dist $DistAbs -File $rf -Script $fm.Groups[1].Value)
+    }
+
+    # hooks.json: "bash": "<path> [args]" / "powershell": "<path> [args]" -- the value IS the script,
+    # with the interpreter implied by the key, and Windows paths written with backslashes.
+    foreach ($m in [regex]::Matches($raw, '"(bash|powershell)"\s*:\s*"([^"]+)"')) {
+        $regCount++
+        $script = (($m.Groups[2].Value) -split '\s+')[0]
+        $regProblems += (Test-HookRef -Dist $DistAbs -File $rf -Script $script)
+    }
+}
+# Vacuous-pass guard: an extraction that silently matches nothing reports a clean dist. The three
+# files carry 6 + 6 + 8 registrations today; require enough to prove the regexes still bite.
+if ($regCount -lt 15) {
+    Fail "hook-registration check extracted only $regCount registration(s) from $Dist -- the extraction is broken, not the dist."
+} elseif (@($regProblems).Count -gt 0) {
+    Fail ("hook registrations reference {0} missing or invalid target(s) in {1}. A registration that cannot start is a hook that silently never runs." -f @($regProblems).Count, $Dist)
+    $regProblems | Sort-Object -Unique | ForEach-Object { Write-Output "  [hook-registration] $_" }
+} else {
+    OK "all $regCount hook registrations resolve in $Dist (hook-registration)."
 }
 
 Write-Output ''

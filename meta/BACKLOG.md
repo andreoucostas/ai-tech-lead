@@ -264,6 +264,18 @@ file; run recipe + result-reading in its README), and folder-trust confirmed loa
 or on another account** — no rebuild needed. Until then the v0.33.0 CLI Boy Scout row rests on
 reasoning, not the live observation its wording implies.
 
+**UNBLOCKED 2026-08-01.** The monthly quota has reset: a trivial probe
+(`copilot --allow-all-tools -p "Reply with exactly: PROBE-OK"`, CLI 1.0.71) completed a real model
+turn — `PROBE-OK` echoed, exit 0, `AI Credits 2.98` — where every 2026-07-20 attempt died at `402 /
+AI Credits 0`. **What this observation does and does not establish:** it establishes that the
+account can run a model turn. It does **not** run the canary — that still needs the interactive
+folder-trust step (no non-interactive flag exists), which the probe deliberately skipped. So the
+kit is ready and the blocker is gone; the two-hook result is still unobserved. Run it before the
+next monthly cycle. Hazard for whoever runs it: on this box `copilot.cmd` fails with `'"node"' is
+not recognized` because the session `PATH` is the corrupted one — prepend
+`C:\Program Files\nodejs` (and invoke `copilot.cmd` by its absolute path,
+`%APPDATA%\npm\copilot.cmd`, since it is not on `PATH` either).
+
 **Not:** don't relax the `enforcement-surfaces.md` wording pre-emptively — it already keeps the VS
 Code hedge; this item either upgrades the CLI row to verified or triggers the fallback. Cross-links:
 B-43 (recert cadence — run this in the same quarterly slot), B-50 (the sibling `postToolUse`
@@ -906,6 +918,89 @@ is B-59's inert-check class one level up: not an inert *check*, an inert *fixtur
 
 ---
 
+### B-83 · A backlog entry's *Do* can be contradicted by a later shipped decision, and nothing notices
+**Effort:** M · **Priority:** P2 · filed 2026-08-02 (RCA of v0.44.0)
+
+**Why:** B-62 was filed as a P1 and sat open. Its instruction — "fail on a bare interpreter name in a
+shipped settings file" — was *already wrong when read*, because **v0.38.1** had deliberately reverted
+absolute-path interpreter pinning, making a bare name the intended shipped value. An implementer
+following the entry literally would have written a gate that fails every settings file on purpose,
+watched three dists go red, and either weakened the gate until it passed or reverted a correct
+shipped decision. It was caught only because a critique pass read v0.38.1's changelog entry.
+
+This is a **staleness class, not a one-off**. Entries are self-contained by design (the file says so
+at the top) and are written against the repo as it was on their filing date. Ten versions later the
+premise can be false with no signal: no gate reads `BACKLOG.md`, and nothing correlates an entry
+against changelog entries that postdate it. The longer an entry waits — and P1s wait longest when
+they look expensive — the likelier its premise has rotted.
+
+**Do:** (a) add a dated **"filed against vN"** stamp to every open entry, so the reader knows how much
+history to check; (b) require any entry older than ~5 minor versions to be re-validated against the
+changelog *before* implementation, and write that into the maintenance model's rule 1 (the critique
+pass is the natural home — it is already licensed to reject the premise); (c) sweep the currently
+open entries for the same rot. Start with those filed before v0.38.1/v0.39.0, which is where the
+interpreter/liveness decisions landed: **B-15, B-17, B-18, B-20, B-26, B-41…B-49** all predate it.
+
+**Not:** do not try to make this a deterministic gate. Whether a decision contradicts an entry is a
+reading, not a string match; a check that pretends otherwise is the theatre this repo keeps removing.
+
+**Cross-links:** B-44 (retirement triggers — same "reality moved, the entry did not" shape).
+
+---
+
+### B-84 · Red-testing a gate is a manual ritual with no record and no shared kit
+**Effort:** M · **Priority:** P3 · filed 2026-08-02 (RCA of v0.44.0)
+
+**Why:** three of the four instrument defects in this release were found the same way — mutate the
+subject, re-run the check, confirm it goes red — and every one of those mutations was hand-rolled in
+an ad-hoc shell command, then thrown away. The maintenance model requires the red observation (#4)
+but the repo provides nothing to *perform* it with, so each red-test is re-invented, its exact
+mutation is unrecorded, and only the assertion survives. Two of this release's own red-tests were
+themselves defective on the first attempt (an over-broad extraction; a vacuously empty pattern), and
+nothing but a second look caught either.
+
+**Do:** provide a small mutation helper for meta tests — take a file, a find/replace, run a command,
+assert non-zero, restore unconditionally — and use it to record the *specific* mutation next to each
+gate as executable text rather than as a comment claiming a red-test happened. Then the claim "seen
+to go red" is re-verifiable by running it, which is the only version of that claim worth having.
+
+**Not:** don't run mutations against the working tree in a release path — this must operate on
+scratch copies, as this release's red-tests did (`validate-dist` already accepts a dist-root
+argument for exactly that).
+
+**Cross-links:** B-64 (planted-defect tests for diagnostics — this is the missing tooling under it),
+B-59, B-75.
+
+---
+
+### B-85 · Two gate scripts cannot run from Git Bash on the maintainer box
+**Effort:** S · **Priority:** P3 · filed 2026-08-02 (RCA of v0.44.0)
+
+**Why:** `bash scripts/validate-dist.sh <dist>` exits **FATAL at check 4** on this machine —
+"neither pwsh nor powershell is available to parse *.ps1 files" — because the session `PATH` is the
+corrupted one (a literal unexpanded `${PATH}`), and `pwsh` lives under a `WindowsApps` MSIX path that
+Git Bash does not inherit. It works only when the caller manually prepends
+`/c/Program Files/WindowsApps/Microsoft.PowerShell_7.6.4.0_x64__8wekyb3d8bbwe`. Same root cause as
+the `copilot.cmd` → `'"node"' is not recognized` failure hit in the same session, and as B-71's
+`powershell.exe` skip.
+
+The consequence is not "a script is inconvenient": it is that the **bash leg of the twin gates is
+effectively unrunnable locally**, so twin parity is verified on CI or not at all, and a local
+maintainer will read the FATAL as "this dist is broken" rather than "my PATH is broken". The
+`Invoke-BashProbe` vantage-point flaw (B-63) is the same family.
+
+**Do:** have the bash twin, on failing to resolve a PowerShell host, probe the well-known absolute
+locations before declaring FATAL — including the `WindowsApps` MSIX path — and, if it still cannot,
+say *why* ("no PowerShell host on PATH; this is a host/PATH problem, not a dist problem") rather than
+implying the dist failed. Mirror B-71's conclusion: a failure caused by a broken `PATH` is not the
+same fact as a host that lacks the tool, and reporting them identically is what lets the gap persist.
+
+**Not:** do not hard-code this box's version-stamped MSIX directory — glob it. And do not silently
+skip check 4: an unrunnable check must stay FATAL, only better explained. (B-79 separately proposes
+replacing the MSIX build; if that lands, this becomes cheaper but not moot — consumers hit it too.)
+
+---
+
 ### B-81 · The licence does not travel with what consumers actually copy
 **Effort:** S · **Priority:** P3 · filed 2026-08-01 alongside B-47
 
@@ -939,6 +1034,18 @@ section; Commit & push folds into Conventions). Verbatim diffing is the wrong in
 deliberately condensed mirror — that is B-58's lesson. Red-test by adding a section to one file only.
 Guard against the vacuous pass: assert the mapping table is non-empty, and count with `@(...).Count`
 (a bare pipeline `.Count` returns `$null` for a single match under 5.1 — the v0.41.0 RCA).
+
+---
+### B-86 · Post-ship review owed for v0.44.0
+**Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-02
+
+**Why:** v0.44.0 shipped with `-NoIndependentReview`, so no second session re-ran a gate or a
+red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
+it did not happen. Summary of what shipped: instruments that could not fail now can - harness red-test, hook-registration gate, release staging guard
+
+**Do:** review the v0.44.0 diff as an independent session -- re-run at least one gate and one
+red-test yourself, do not read the release output as evidence -- and file whatever it finds. Then
+close this entry, recording what was re-run.
 
 ---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
@@ -1104,6 +1211,85 @@ A wrong pin is consumer-visible: verify on a live Copilot surface before shippin
 ---
 
 ## Done
+
+- **B-74** — shipped as **v0.44.0**, 2026-08-02. `src/core/tests/hooks/HarnessIntegrity.Tests.ps1`
+  plants a fixture with **exactly one** failing test (one, not two: two or more returned a real
+  integer and were always caught; one is the shape that hid) and asserts non-zero at both levels —
+  the suite file's own exit code and `Invoke-HookTests.ps1`'s sum — with passing controls at each so
+  a harness hard-wired to fail would not satisfy it.
+
+  **Two defects in the test itself, both found by red-testing it and both the class it exists to
+  close.** (1) The first cut ran its fixtures through the harness's `Get-PsExe`, which prefers pwsh 7
+  whenever it resolves — so every fixture ran under pwsh 7 even when the suite ran under 5.1, and the
+  one host where the defect exists was never the host under test. With `@()` reverted, the file
+  passed. Fixtures now run under `(Get-Process -Id $PID).Path`. (2) It was **scored by the component
+  it tests**: with the defect planted it correctly printed `[FAIL]` and then exited **0**, because
+  the summary scoring it was the broken one. It now computes its own exit code from `$script:Tests`.
+  Every other suite file may trust `Write-TestSummary`; this one provably may not.
+
+  **Evidence:** defect planted → 5.1 `EXIT=1`; restored → `EXIT=0`. Under pwsh 7 green either way —
+  recorded as a documented blind spot, not a pass. Dist suites 13 files × 3, 0 failures.
+
+- **B-62** — shipped as **v0.44.0**, 2026-08-02, **with its premise corrected rather than executed.**
+  The entry's *Do* ("fail on a bare interpreter name in a shipped settings file") contradicts
+  **v0.38.1**, which deliberately reverted absolute-path interpreter pinning because
+  `.claude/settings.json` is committed team configuration and a machine-specific path breaks every
+  teammate on another OS or profile. A bare name is the *intended* shipped value; the check as
+  written would have failed every settings file on purpose. Whether a bare name *resolves* is a
+  runtime property no build-time check can observe — v0.39.0's `Hook liveness` doctor row already
+  reports that from the consumer's own machine.
+
+  The real gap was that **nothing read the registration files at all**: check 2 proved they parse as
+  JSON, check 7 scanned only `*.md`. `validate-dist` check 8 (`hook-registration`, both twins) now
+  resolves every reference in `.claude/settings.json`, `.claude/settings.windows.json` and
+  `.github/hooks/hooks.json`, requires the opposite-language twin [#3], and rejects an unsanctioned
+  interpreter. 26 registrations per dist. Extraction is textual and identical in both twins by
+  decision: the bash leg's JSON parser is python3-or-jq depending on the box, so parsing there would
+  leave whichever branch a machine lacks untested — B-59's inert-check class.
+
+  **Band:** the delivered check is **P2-shaped, not P1**. The P1 severity came from silent dead
+  hooks, which v0.39.0 covers consumer-side; this is build-time consistency. Recorded rather than
+  silently re-banded — reopen if that reading is wrong.
+
+  **Evidence:** red-tested on both twins against a scratch dist across three defect classes (renamed
+  hook in `settings.json`, missing target in `hooks.json`, a hook stripped of its `.sh` twin); both
+  legs produced byte-identical findings, and both exit 0 on all three real dists. A normalization
+  bug surfaced during the red-test and was fixed: translating each backslash separately turned
+  `.claude\\hooks\\x.ps1` into `.claude//hooks//x.ps1`, which resolves on Windows *and* POSIX and so
+  hid the sloppiness instead of failing on it; runs of backslashes now collapse to one separator.
+
+- **B-80** — done **2026-08-02** (meta-only, no version/CHANGELOG). `release.ps1` classifies the
+  staged set before committing: a mode-`160000` gitlink is a **hard refusal with no escape hatch**
+  (this repo has no submodules, so it is always a mistake), and a path outside where the repo keeps
+  files refuses unless `-AllowExtraStagedPaths` is passed. The manifest prints either way, and a
+  refusal `git reset`s so the index is left as found. Classification happens *after* staging because
+  that is the only point at which mode `160000` exists — an unadded worktree is merely untracked
+  (verified against `90f331d`, where both strays present as `:160000 000000 … D`).
+
+  **A confirmation prompt was considered and rejected**: `release.ps1` runs non-interactively, where
+  `Read-Host` reads EOF as empty — a guard treating that as "proceed" is worse than none, and one
+  treating it as "refuse" is a refusal with extra steps. Hence a named escape hatch, per
+  `-AllowNonMasterHead`.
+
+  **The allowlist's first cut would have refused every release from v0.39.0 to v0.43.0.** Written
+  from this entry's own wording (`src/`, `dist/`, `CHANGELOG.md`, `meta/context-footprint.json`, the
+  stamps), it produced **10 false positives** replayed over the last 8 tags: every release touches
+  `README.md`, and v0.41.0 touched `.claude/hooks/tests/`. A release commit carries the whole
+  session's work, not the stamped set. The question it asks is now "is this file somewhere this repo
+  keeps files at all?" — the actual scratch-file hazard.
+
+  **Evidence:** `.claude/hooks/tests/ReleaseStagingGuard.Tests.ps1` (6 tests, auto-discovered by the
+  meta suite, so the guard is re-verified at every release). It extracts the guard **verbatim** from
+  `release.ps1` rather than re-typing it, is bounded at both ends, and replays the last 8 tags so the
+  allowlist cannot silently narrow again. Red-tested by mutation: narrowing the allowlist → 1 failed;
+  making the gitlink check inert → 1 failed; restored → 6/6. Meta suite 6 files, 0 failures.
+
+  **The test's own first cut was inert twice**, both caught before landing: the extraction ran to the
+  `# ---- 6.` marker and swept in the commit+push (green cases really committed, then failed to push
+  to a nonexistent origin) while the marker sanity-check passed, because a too-*large* region still
+  contains every marker; and the allowlist replay used a bare `[0]` on a single-match `[string]`,
+  yielding its first *character*, so the pattern extracted empty and `-notmatch ''` classified 266
+  paths as clean. Both now have assertions that fail rather than agree vacuously.
 
 - **B-45** — done **2026-08-01** (meta-only, no version/CHANGELOG). Root `CLAUDE.md` gained a
   **Maintenance model** section: five rules (locked design + adversarial critique that may reject the

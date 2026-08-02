@@ -8,8 +8,15 @@ and merges **all** of their `additionalContext` into the model-facing prompt. Th
 (CLI 1.0.68) only ever proved a **single** hook is consumed. This kit proves the multi-hook case.
 
 **Status:** built 2026-07-17, re-confirmed blocked 2026-07-20 (Copilot CLI 1.0.71) — every attempt
-hit the account's **monthly** quota (`402`, `AI Credits 0`) before a model turn. Re-run once
-monthly Copilot credits reset.
+hit the account's **monthly** quota (`402`, `AI Credits 0`) before a model turn.
+**Quota reset confirmed 2026-08-01** by a trivial `-p` probe that completed a real model turn
+(exit 0, `AI Credits 2.98`, CLI 1.0.71). The canary itself has **not** been run — step 2's
+interactive folder-trust is still outstanding — so the two-hook question remains unobserved.
+Run steps 1–3 below.
+
+**PATH hazard on the maintainer box:** `copilot.cmd` dies with `'"node"' is not recognized` because
+the session `PATH` is the corrupted one. Prepend `C:\Program Files\nodejs` to `$env:PATH` and invoke
+`copilot` by absolute path (`$env:APPDATA\npm\copilot.cmd`) — it is not on `PATH` either.
 
 ## Design
 

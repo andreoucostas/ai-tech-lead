@@ -11,6 +11,75 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.44.0 — 2026-08-02
+
+Two instruments that could not fail, and one that was never built. B-74, B-62 and B-80.
+
+**The test harness can now prove it reports failure (B-74).** The v0.41.0 RCA found that
+`Write-TestSummary` returned `$null` under Windows PowerShell 5.1, so `exit (Write-TestSummary …)`
+became `exit 0` while the summary printed `[FAIL]`. The bug was fixed then; nothing was added that
+would have *caught* it. `tests/hooks/HarnessIntegrity.Tests.ps1` now plants a fixture with exactly
+one failing test — one, because two or more returned a real integer and were always caught — and
+asserts both the file's exit code and the runner's.
+
+Two findings while building it, both the same class it exists to close:
+
+1. **The first cut ran its fixtures under the wrong host.** It used the harness's `Get-PsExe`, which
+   prefers pwsh 7 whenever it resolves, so every fixture ran under pwsh 7 even when the suite ran
+   under 5.1 — the one host where the defect exists was never the host under test. With the `@()`
+   fix reverted, the file passed. It now runs fixtures under `(Get-Process -Id $PID).Path`.
+2. **It was scored by the component it tests.** With the defect planted it correctly printed
+   `[FAIL]` and then exited **0**, because the summary it used to score itself was the broken one.
+   It now computes its own exit code from the recorded results. Every other suite file can trust
+   the harness; this one provably cannot.
+
+Verified red-then-green on both hosts: defect planted → 5.1 EXIT=1, restored → EXIT=0. Under pwsh 7
+the file is green either way, which is a documented blind spot, not a pass — pwsh returns 1 for the
+expression that returns `$null` on 5.1.
+
+**`validate-dist` check 8: hook registrations (B-62).** Nothing read the registration files at all —
+check 2 proved they were valid JSON, check 7 scanned only `*.md` — so a registration naming a script
+absent from the dist would ship silently, and the consumer-side symptom is a hook that never runs
+and never complains. Check 8 resolves every reference in `.claude/settings.json`,
+`.claude/settings.windows.json` and `.github/hooks/hooks.json`, requires the opposite-language twin
+[#3], and rejects an unsanctioned interpreter. 26 registrations per dist.
+
+**B-62's written premise was wrong, and is corrected rather than executed.** The entry said to fail
+on a *bare interpreter name*. That contradicts v0.38.1, which deliberately reverted absolute-path
+pinning because `.claude/settings.json` is committed team configuration and a machine-specific path
+breaks every teammate. A bare name is the intended shipped value; whether it *resolves* is a runtime
+property no build-time check can see, and v0.39.0's `Hook liveness` doctor row already reports that
+from the consumer's machine. Check 8 does the build-time half only. **Band judgement: the delivered
+check is P2-shaped, not P1** — the P1 severity came from silent dead hooks, which v0.39.0 covers.
+
+Red-tested on both twins against a scratch dist across three defect classes (renamed hook in
+`settings.json`; missing target in `hooks.json`; a hook stripped of its `.sh` twin). Both legs
+produced byte-identical findings. Extraction is textual and identical in both twins deliberately:
+the bash leg's JSON parser is python3-or-jq depending on the box, so parsing there would leave
+whichever branch a machine lacks untested. A normalization bug surfaced during the red-test —
+translating each backslash separately turned `.claude\\hooks\\x.ps1` into `.claude//hooks//x.ps1`,
+which resolves on both platforms and so hid the sloppiness; runs of backslashes now collapse to one.
+
+**`release.ps1` no longer commits whatever is in the tree (B-80).** The blanket `git add -A` is
+deliberate — the stamps, the rebuilt `dist/` and the footprint baseline must land together — but it
+also swept in anything else present, and the script printed no manifest. v0.42.0 and v0.43.0 each
+shipped a stray worktree gitlink that way. The staged set is now classified before commit: a
+mode-`160000` gitlink is a **hard refusal with no escape hatch** (this repo has no submodules), and
+a path outside where the repo keeps files refuses unless `-AllowExtraStagedPaths` is passed. The
+manifest prints either way, and a refusal `git reset`s so the index is left as found.
+
+Classification happens *after* staging because that is the only point mode `160000` exists — an
+unadded worktree is merely untracked (verified against `90f331d`).
+
+**The allowlist's first cut would have refused every release from v0.39.0 to v0.43.0.** Written from
+B-80's own wording (`src/`, `dist/`, `CHANGELOG.md`, the stamps) it produced 10 false positives when
+replayed over the last 8 tags — each release touches `README.md`, and v0.41.0 touched
+`.claude/hooks/tests/`. It now asks "is this file somewhere this repo keeps files at all?", which is
+the actual hazard. `.claude/hooks/tests/ReleaseStagingGuard.Tests.ps1` replays those tags on every
+release so the allowlist cannot silently narrow again; it extracts the guard verbatim from
+`release.ps1` rather than re-typing it. Red-tested by mutation: narrowing the allowlist and making
+the gitlink check inert each turned the suite red.
+
 ## 0.43.0 — 2026-08-01
 
 Release-time profiling, prompted by the banner claiming "roughly 30 minutes".

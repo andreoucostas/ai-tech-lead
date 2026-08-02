@@ -745,3 +745,48 @@ Three things worth keeping:
    maintainer's private memory, while root `CLAUDE.md` opens by claiming it "stands on its own:
    nothing resolves to private `~/.claude` memory". That claim was false for as long as the practice
    existed. Handover risk is not only what is undocumented; it is what is documented as unnecessary.
+
+## 2026-08-02 — v0.44.0: four instruments that could not fail, three of them mine
+
+Shipped B-74, B-62 and B-80 in one pass. Every substantive finding came from the same act: mutate
+the subject, re-run the check, see whether it goes red. Nothing here was found by reading code.
+
+1. **A test that runs its fixtures under the wrong host tests nothing.** `HarnessIntegrity` — the
+   file whose entire purpose is to catch a Windows PowerShell 5.1 defect — launched its fixtures via
+   the harness's `Get-PsExe`, which prefers pwsh 7 whenever it resolves. So the fixtures ran under
+   pwsh 7 even when the suite ran under 5.1, and with the defect re-planted the file passed. The
+   generalisation is uncomfortable: a helper that picks the "best" host is exactly wrong inside a
+   test whose subject is host-specific behaviour, and every such helper reads as neutral convenience
+   at the call site.
+
+2. **A check scored by its own subject goes quiet precisely when it matters.** With the defect
+   planted, the same file printed `[FAIL]` correctly and then exited **0** — because the summary
+   function scoring it was the broken one. It reported the failure and certified success in the same
+   run. Anything testing the harness must compute its own verdict; "print" and "score" are different
+   trust boundaries and only the second reaches CI.
+
+3. **An inert fixture and an over-broad one are indistinguishable from the summary line.** B-75 named
+   the inert case. This release hit the opposite: the guard-extraction grabbed too *much* (sweeping in
+   the commit+push), and the "did we get the right region?" assertion passed, because a larger region
+   still contains every expected marker. One-sided assertions only bound one side. Both fixtures now
+   assert a floor **and** a ceiling.
+
+4. **A guard calibrated from its own backlog entry would have refused every recent release.** B-80's
+   text named the *stamped* file set; a real release commit carries the whole session's work. Written
+   to the entry, the allowlist produced 10 false positives replayed over the last 8 tags. The entry
+   was not lying — it described the stamping, and someone read that as the release. A guard that
+   refuses correct work gets its escape hatch passed every time, which is indistinguishable from not
+   having it. Replaying real history against a new gate cost one loop and should be the default for
+   anything that can refuse.
+
+5. **A backlog entry can be contradicted by a decision that shipped after it, silently.** B-62's *Do*
+   told us to fail on a bare interpreter name; v0.38.1 had already established the bare name as
+   correct and reverted the alternative. Following the entry literally would have produced a gate
+   failing three dists on purpose, and the plausible recovery — weaken the gate until it passes — is
+   worse than not building it. Self-contained entries were a deliberate choice for handover, and this
+   is that choice's bill: self-contained also means *not updated when the world moves*. Filed as B-83
+   with a sweep of everything predating v0.38.1.
+
+6. **Three of four red-tests were hand-rolled and discarded.** Only the assertions survive; the
+   mutations that proved them do not. Two of those mutations were themselves defective on the first
+   attempt. "Seen to go red" is only re-verifiable if the mutation is kept — filed as B-84.
