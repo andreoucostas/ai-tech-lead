@@ -149,8 +149,20 @@ try {
         Assert ('src/core/CLAUDE.md' -match $pattern)   "extracted pattern rejects a known-good path: $pattern"
         Assert ('scratch-notes.txt' -notmatch $pattern) "extracted pattern accepts a known-bad path: $pattern"
 
+        # Needs a clone WITH TAGS. `actions/checkout` defaults to `--depth=1 --no-tags`, so the
+        # first CI run of this test failed on both legs while passing locally -- the test observed a
+        # full clone and CI observed a shallow one. Kept as a hard failure rather than a skip: a
+        # silent skip here means the allowlist regression check quietly stops running, which is the
+        # exact thing it exists to prevent. The message has to name the cause, or the next person
+        # reads "5 passed, 1 failed" and goes looking in release.ps1.
         $tags = @(git -C $repoRoot tag --sort=-v:refname | Select-Object -First 8)
-        Assert (@($tags).Count -ge 5) "only $(@($tags).Count) tag(s) resolved -- refusing to run a vacuous replay"
+        # Single-quoted on purpose: in a double-quoted PowerShell string a backtick starts an escape,
+        # so "`fetch-depth" renders as a FORM FEED plus "etch-depth". The first cut of this message
+        # said "etch-depth: 0" -- an error message about a misconfiguration, itself misconfigured.
+        Assert (@($tags).Count -ge 5) (
+            "only $(@($tags).Count) tag(s) resolved -- refusing to run a vacuous replay. " +
+            'This needs a clone with tags: in CI set actions/checkout fetch-depth: 0 and ' +
+            'fetch-tags: true; locally run "git fetch --tags". Nothing is wrong with release.ps1.')
         $falsePositives = @(); $seen = 0
         foreach ($t in $tags) {
             foreach ($f in @(git -C $repoRoot show --name-only --format='' $t)) {

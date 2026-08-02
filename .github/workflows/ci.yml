@@ -24,7 +24,15 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
+      # fetch-tags is REQUIRED, not a nicety. The default checkout is `--depth=1 --no-tags`, and
+      # ReleaseStagingGuard.Tests replays the last 8 release tags to prove the release staging
+      # allowlist has not silently narrowed. With no tags it cannot run, and it refuses to report a
+      # vacuous pass -- so the meta suite fails. Removing this line does not weaken that test
+      # quietly; it turns CI red, which is the intended direction for a check that cannot run.
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
       - name: Compose dists (build.ps1 twin)
         run: |
           pwsh -NoProfile -File scripts/build.ps1 dotnet
@@ -52,7 +60,15 @@ jobs:
   linux:
     runs-on: ubuntu-latest
     steps:
+      # fetch-tags is REQUIRED, not a nicety. The default checkout is `--depth=1 --no-tags`, and
+      # ReleaseStagingGuard.Tests replays the last 8 release tags to prove the release staging
+      # allowlist has not silently narrowed. With no tags it cannot run, and it refuses to report a
+      # vacuous pass -- so the meta suite fails. Removing this line does not weaken that test
+      # quietly; it turns CI red, which is the intended direction for a check that cannot run.
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
       - name: Compose dists (build.sh twin)
         run: |
           bash scripts/build.sh dotnet

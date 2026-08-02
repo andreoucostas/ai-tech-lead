@@ -1001,6 +1001,38 @@ replacing the MSIX build; if that lands, this becomes cheaper but not moot — c
 
 ---
 
+### B-88 · Nothing tells you a release broke CI — four red runs went unnoticed until asked
+**Effort:** M · **Priority:** **P1** · filed 2026-08-02, observed the same day
+
+**Why:** v0.44.0 was released, tagged, pushed and reported green. **CI went red on both legs, and so
+did the three commits after it.** Nobody noticed for over an hour, and only because the maintainer
+asked. `release.ps1` runs every local gate and refuses to commit on failure — but it exits **before**
+CI has an opinion, so "Release complete" is a statement about the maintainer's box, not about the
+repo. Four consecutive red runs is exactly the state the whole gate apparatus exists to make
+impossible, and the release path is blind to it.
+
+The specific break was B-70's class (a new test never exercised on a CI leg before shipping) with a
+**vantage-point** cause (B-63's class): `ReleaseStagingGuard.Tests` replays release tags, and
+`actions/checkout` defaults to `--depth=1 --no-tags`. The test observed a full clone; CI observed a
+shallow one. Both legs failed identically, which is the good case — a test that failed on only one
+leg would have been read as flakiness.
+
+**Do:** after the tag push succeeds, have `release.ps1` **watch the CI run for the release commit**
+and report its conclusion — poll `gh run list --commit <sha>` (or the API) to a terminal state, print
+success/failure, and exit non-zero on failure so the release is not reported as complete when it is
+not. The release is already a 5–7 minute operation; adding the wait is cheap next to shipping a red
+master. If `gh` is absent, say so explicitly and print the run URL — an unverifiable CI result must
+read as CANT-VERIFY, never as success (the doctor's tier already models this).
+
+**Not:** don't make the release *depend* on CI passing before committing — the freshness gate needs
+the commit to exist. This is a post-condition, like the `origin/master` advance check (B-53), not a
+precondition.
+
+**Cross-links:** B-70 (the shipped-untested-on-a-leg gap this instance is), B-63 (vantage point),
+B-53 (the precedent: a release that exits 0 without verifying its own postcondition).
+
+---
+
 ### B-87 · A commit subject can still be mangled by the shell — B-73's class, outside `release.ps1`
 **Effort:** S · **Priority:** P3 · filed 2026-08-02, observed the same day
 
