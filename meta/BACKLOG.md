@@ -1001,6 +1001,30 @@ replacing the MSIX build; if that lands, this becomes cheaper but not moot — c
 
 ---
 
+### B-87 · A commit subject can still be mangled by the shell — B-73's class, outside `release.ps1`
+**Effort:** S · **Priority:** P3 · filed 2026-08-02, observed the same day
+
+**Why:** B-73 added a guard against MSYS path conversion corrupting `-Summary`, but it lives inside
+`release.ps1` and matches one specific corruption. The class is wider and recurred immediately: the
+2026-08-02 docs commit was authored with a PowerShell here-string (`@'…'@`) in a **POSIX sh** shell,
+which is not here-string syntax there — so `@` became the subject line and a trailing `@` the last
+body line. Caught by eye, after the push, and fixed only by an amend + `--force-with-lease` on
+`master` (a public repo). The v0.40.0 subject is permanently corrupted by the sibling defect, so
+this is twice that a shell quirk has reached the permanent record through a different door.
+
+**Do:** a `commit-msg` hook (opt-in, maintainer-side — this is *our* repo, not shipped) that rejects
+a degenerate subject: shorter than ~10 characters, consisting only of punctuation, or matching the
+MSYS-path signature `release.ps1` already knows. That catches both observed instances and does not
+depend on remembering which shell you are in. Red-test with a literal `@` subject.
+
+**Not:** don't extend `release.ps1`'s pattern list instead — the release path is exactly the one
+that was *already* guarded. The gap is every commit made outside it.
+
+**Cross-links:** B-73 (the in-release guard), B-80 (same script, staged-set integrity — both are
+"the commit records something nobody chose").
+
+---
+
 ### B-81 · The licence does not travel with what consumers actually copy
 **Effort:** S · **Priority:** P3 · filed 2026-08-01 alongside B-47
 
