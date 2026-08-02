@@ -54,7 +54,11 @@ Code must load them from the root; the banner above is the tie-breaker.
    denylist file, read by both twins. If a legitimate consumer word trips it, add a narrow `ALLOW` —
    never weaken a `DENY`. Check 6 guards what shipped docs must not *say*; **check 7
    (`no-dead-instruction`)** guards that the commands they *give* actually resolve — every script a
-   shipped doc tells someone to run must exist, resolved from the dist root.
+   shipped doc tells someone to run must exist, resolved from the dist root; **check 8
+   (`hook-registration`)** guards the same for hook wiring — every script named in
+   `.claude/settings*.json` / `.github/hooks/hooks.json` exists in the dist, with its twin [#3]. It
+   deliberately does not reject a bare interpreter name (v0.38.1 made that the intended shipped
+   value); whether it resolves is a runtime fact, reported by the doctor's `Hook liveness` row.
 7. **Versioning.** Shipped behavior change ⇒ root `CHANGELOG.md` entry, then release via
    `.claude/scripts/release.ps1` (stamps `src/`, rebuilds `dist/`, runs every gate, refuses on
    failure). `meta/LEARNINGS.md` is append-only. Write the **shipped** changelog in the consumer's

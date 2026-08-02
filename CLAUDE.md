@@ -180,8 +180,13 @@ harness defect for an unknown number of releases. Standard commands:
 - **Compose + freshness:** `pwsh -NoProfile -File scripts/build.ps1 <dist>` ×3, then
   `git status --porcelain dist/` must be empty.
 - **Dist validity:** `pwsh -NoProfile -File scripts/validate-dist.ps1 <dist>` ×3 (markers, JSON,
-  `bash -n`, PS-AST, per-dist `template-checks`, `no-meta-leak` [#6], and **`no-dead-instruction`**
-  — every script a shipped doc tells someone to *run* must exist, resolved from the dist root).
+  `bash -n`, PS-AST, per-dist `template-checks`, `no-meta-leak` [#6], **`no-dead-instruction`**
+  — every script a shipped doc tells someone to *run* must exist, resolved from the dist root — and
+  **`hook-registration`** (check 8): every script named in `.claude/settings*.json` /
+  `.github/hooks/hooks.json` exists in the dist, with its opposite-language twin [#3]. Check 8 does
+  **not** reject a bare interpreter name: that is the intended shipped value (v0.38.1 reverted
+  absolute-path pinning because `settings.json` is committed team config), and whether it *resolves*
+  is a runtime fact reported by the doctor's `Hook liveness` row, not a build-time one.
 - **Hook suites:** `pwsh -NoProfile -File dist/<d>/tests/hooks/Invoke-HookTests.ps1` ×3; meta
   suite `.claude/hooks/tests/Invoke-HookTests.ps1` — which also carries the two gates that cover
   the *behavioral* surface no parser can: **`InstallerContract`** (runs the shipped installer in

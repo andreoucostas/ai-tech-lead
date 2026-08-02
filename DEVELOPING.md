@@ -30,7 +30,7 @@ git status --porcelain dist/   # MUST print nothing — otherwise commit the dis
 for d in dotnet angular monorepo; do bash scripts/build.sh "$d"; done   # .sh twin (CI linux leg)
 ```
 
-## Validate the dists (markers, JSON, bash -n, PS-AST, per-dist template-checks [#2], no-meta-leak [#6], no-dead-instruction)
+## Validate the dists (markers, JSON, bash -n, PS-AST, per-dist template-checks [#2], no-meta-leak [#6], no-dead-instruction, hook-registration)
 
 ```powershell
 foreach ($d in 'dotnet','angular','monorepo') { pwsh -NoProfile -File scripts/validate-dist.ps1 $d; "exit=$LASTEXITCODE" }
@@ -63,6 +63,34 @@ sed -i 's|pwsh scripts/install.ps1|pwsh install.ps1|' dist/monorepo/README.md
 bash scripts/validate-dist.sh monorepo; echo "exit=$?"   # MUST be 1, naming README.md:14
 pwsh -NoProfile -File scripts/build.ps1 monorepo         # restore from src
 ```
+
+### Red-test the `hook-registration` gate (check 8)
+
+Check 7 covers commands a shipped **doc** gives a human. Check 8 covers the wiring the **host** acts
+on: every script named in `.claude/settings.json`, `.claude/settings.windows.json` and
+`.github/hooks/hooks.json` must exist in the dist, and so must its opposite-language twin [#3].
+26 registrations per dist. Work on a scratch copy — both twins take a dist-root argument, so you
+never have to mutate `dist/`:
+
+```bash
+S=$(mktemp -d)/dc; mkdir -p "$S"; cp -r dist/dotnet "$S/"
+rm "$S/dotnet/.claude/hooks/audit-trail.sh"                       # a half-shipped hook
+pwsh -NoProfile -File scripts/validate-dist.ps1 dotnet "$S"; echo "exit=$?"   # MUST be 1
+bash scripts/validate-dist.sh dotnet "$S"; echo "exit=$?"                     # MUST be 1, same text
+rm -rf "$(dirname "$S")"
+```
+
+Run **both** legs: the whole point of the textual (not JSON-parsed) extraction is that the two twins
+cannot diverge, and only running both proves it. A registration that names a missing script is a
+hook that silently never runs — no guard, no post-write feedback, no audit trail, and no error
+anyone reads. Check 8 deliberately does **not** reject a bare interpreter name; see the check's
+comment for why (v0.38.1).
+
+> **Hazard on this box:** `bash scripts/validate-dist.sh` exits FATAL at check 4 ("neither pwsh nor
+> powershell is available") because the session `PATH` is the corrupted one and `pwsh` lives under a
+> `WindowsApps` MSIX path Git Bash does not inherit. Prepend it before running the `.sh` leg:
+> `export PATH="/c/Program Files/WindowsApps/Microsoft.PowerShell_7.6.4.0_x64__8wekyb3d8bbwe:$PATH"`.
+> That FATAL is a host problem, not a dist problem — see B-85.
 
 This is the gate that would have caught the v0.26.3 defect: `dist/monorepo`'s README told installing
 agents to run `pwsh install.ps1`, which exists nowhere in that dist. When you name a twin pair in
