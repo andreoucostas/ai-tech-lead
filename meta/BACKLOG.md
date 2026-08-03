@@ -1001,7 +1001,7 @@ replacing the MSIX build; if that lands, this becomes cheaper but not moot — c
 
 ---
 
-### B-88 · Nothing tells you a release broke CI — four red runs went unnoticed until asked
+### B-88 · Nothing tells you a release broke CI — four red runs went unnoticed until asked — **DONE 2026-08-02, see Done section**
 **Effort:** M · **Priority:** **P1** · filed 2026-08-02, observed the same day
 
 **Why:** v0.44.0 was released, tagged, pushed and reported green. **CI went red on both legs, and so
@@ -1104,6 +1104,83 @@ red-test yourself, do not read the release output as evidence -- and file whatev
 close this entry, recording what was re-run.
 
 ---
+### B-89 · Windows PowerShell 5.1 turns a native command's stderr into a terminating error — and two *shipped* scripts are exposed
+**Effort:** S · **Priority:** P2 · filed 2026-08-02 (RCA of B-88) · **Invariants:** #3 #5
+
+**Why:** under 5.1, a native command that writes to stderr raises a `NativeCommandError` record, and
+with `$ErrorActionPreference = 'Stop'` that record is **terminating**. `2>$null` redirects the *text*
+but does not stop the record. pwsh 7 does not do this (`$PSNativeCommandUseErrorActionPreference`
+defaults to `False` — measured on 7.6.4). So the idiom `$root = (git rev-parse --show-toplevel
+2>$null)`, written to degrade gracefully, degrades gracefully on one host and dies on the other.
+
+Found in new code while shipping B-88, then swept. **Two shipped scripts match both conditions** —
+`src/core/scripts/sync-agent-files.ps1:12` and `src/core/scripts/build-architecture-html.ps1:6` —
+and it is not theoretical. Run from a non-git directory, `dist/dotnet/scripts/sync-agent-files.ps1`:
+
+```
+5.1: git : fatal: not a git repository ... + FullyQualifiedErrorId : NativeCommandError   (no exit code at all)
+7  : No .claude/skills directory -- nothing to sync.                                       EXIT=0
+```
+
+Both scripts intend the fallback that pwsh 7 gives them. Consumers on Windows may be on either host,
+and the 5.1 outcome is a raw .NET error dump instead of the message the author wrote. This is also a
+**twin divergence** the `.sh` side does not have (`2>/dev/null` in bash is just a redirect), so it is
+invariant #3 territory as well as #5.
+
+**Do:** wrap the affected native calls so the exit code is inspected rather than the error record —
+set `$ErrorActionPreference = 'Continue'` around the call and test `$LASTEXITCODE`, as
+`.claude/scripts/watch-ci.ps1`'s `Invoke-GitQuiet` now does. Red-test each from a non-git directory
+**under 5.1** — the existing `BuildArchitectureHtml.Tests.ps1` passes today because it runs inside a
+repo, where the branch never executes. Then sweep the remaining `2>$null` sites listed by
+`grep -rn '2>\$null' --include=*.ps1 src/ scripts/` and decide each; most do not set `Stop`, which is
+the only reason this has not bitten more widely.
+
+---
+
+### B-90 · A suite can spawn its subject under a host the defect cannot exist on
+**Effort:** M · **Priority:** P2 · filed 2026-08-02 (RCA of B-88) · **Invariants:** #3
+
+**Why:** `_HookHarness.ps1`'s `Get-PsExe` prefers `pwsh` whenever it resolves. Any suite that uses it
+to spawn the code under test therefore exercises that code under **pwsh 7 even when the suite itself
+is running under 5.1** — so running the suite under 5.1 proves nothing about 5.1. B-74's RCA recorded
+exactly this (fixtures were switched to `(Get-Process -Id $PID).Path`), and it **recurred immediately
+in new code**: `ReleaseCiWatch.Tests.ps1`'s first cut used `Get-PsExe`, reported 18/18 green under
+5.1, and was hiding two 5.1-only defects — a terminating `NativeCommandError` (B-89) and 5.1's
+`ConvertFrom-Json` not enumerating a top-level array. Both appeared the moment the child was bound to
+the suite's own host, and one of them would have mis-decided a release.
+
+A fix applied to one file is not a fix applied to a class. Nothing stops the next suite reaching for
+`Get-PsExe`, because `Get-PsExe` is the obvious thing to reach for and its name does not warn.
+
+**Do:** audit every `*.Tests.ps1` in `.claude/hooks/tests/` and `src/core/tests/hooks/` that spawns
+the subject. Where the subject must be exercised on the host under test, bind it to
+`(Get-Process -Id $PID).Path`; where `Get-PsExe` is genuinely right (the subject is *always* invoked
+by pwsh in production, as hooks registered with an explicit interpreter are), say so in a comment so
+the choice is visible. Consider renaming or documenting `Get-PsExe` at its definition — "resolves a
+host, NOT necessarily this one" — since the trap is that the name reads as "the PowerShell I am".
+Cross-links: B-74 (first instance), B-71 (the sibling: a skipped 5.1 test inside a green summary).
+
+---
+
+### B-91 · The release still pushes one commit it never watches
+**Effort:** S · **Priority:** P3 · filed 2026-08-02 (RCA of B-88)
+
+**Why:** B-88 made the release wait for CI on the release commit before tagging. The optional agent-eval
+block then commits `meta/eval-results.md` and pushes it (`release.ps1`, step 6), **after** the watch —
+so `origin/master` ends the run at a commit whose CI nobody observed. v0.44.0's red streak included
+exactly this shape: follow-up commits inheriting a break.
+
+It is now *disclosed* — the release prints that master advanced past the watched commit and gives the
+one-line command to watch it — which was the honest half of a trade: watching inline would add another
+multi-minute wait to an interactive prompt, for a meta-only commit.
+
+**Do:** decide between (a) watching it too and accepting the wait, (b) moving eval-result persistence
+out of the release entirely, or (c) leaving the disclosure as the answer and recording that as the
+decision. Cheap either way; the point is that the current state is a deliberate gap, not an oversight,
+and should be written down as one.
+
+---
+
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see the Done section.**
@@ -1267,6 +1344,53 @@ A wrong pin is consumer-visible: verify on a live Copilot surface before shippin
 ---
 
 ## Done
+
+- **B-88** — landed 2026-08-02 (meta-only; `.claude/` never ships, so no version). `release.ps1`
+  step 5c watches the CI run for the release commit between the verified `origin/master` push and the
+  tag, via a new `.claude/scripts/watch-ci.ps1` (0 green / 1 red / **3 CANT-VERIFY**) and a callable
+  `Get-CiPublishDecision` in `.claude/scripts/_ci-decision.ps1`. **WSD-029**; `DEVELOPING.md` has the
+  recipe.
+
+  **Shipped stronger than the entry asked, and deliberately.** The entry said "after the tag push
+  succeeds"; step 5b's own comment already claimed *"a tag always means a green release"*, so
+  watching after the tag would have made that sentence false while the drill protocol checks out the
+  latest tag. The watch went **before** the tag instead and the tag became the promotion step: red or
+  unverifiable leaves the commit on master **untagged**, and the release exits 1 or 3. The entry's
+  real constraint (don't gate the commit on CI) is untouched. This is B-83's class caught in the act
+  — the *Do* was written before the reading that contradicts it.
+
+  **Verified, not asserted.** Live against real history: `-Sha a41ab8d` → EXIT 0 on the genuinely
+  green run, `-Sha fc3a140` → EXIT 1 on one of the four red ones — real `gh`, real auth, real JSON,
+  under **both** PowerShell hosts. `ReleaseCiWatch.Tests.ps1` is 21 cases (18 + 4 self-test), 0
+  skipped, green on pwsh 7 and Windows PowerShell 5.1. Its `-SelfTest` plants four recorded
+  mutations and asserts the named case goes red for each, with a control run against the unmutated
+  watcher first. Both `release.ps1` wiring assertions were red-tested by mutating the real file
+  (watch relocated after the tag; the old `exit 0` restored) and observing each fail alone.
+
+  **Four defects found in this work's own instruments, all by red-testing them:**
+  1. **A unary comma over-wrapped the parsed rows**, so `$_.event` returned *every* row's event and
+     `-eq 'push'` matched a non-empty result — truthy. A failed `pull_request` run for the same sha
+     would have decided the release.
+  2. **Windows PowerShell 5.1 does not enumerate a top-level JSON array**: `@('[{a},{b}]' |
+     ConvertFrom-Json).Count` is **1** under 5.1 and **2** under pwsh 7 (measured). Same consequence
+     as (1). `-NoEnumerate` does not exist in 5.1, so the flatten is explicit.
+  3. **5.1 raises a terminating `NativeCommandError` for a native command's stderr** under
+     `$ErrorActionPreference='Stop'` — `2>$null` redirects the text but not the record. `git rev-parse`
+     against a non-repo killed the script with *no output at all* under 5.1 and worked under 7.
+  4. **The test fixture was one string, not three.** In PowerShell `,` binds tighter than `+`, so
+     `'[' + (New-Row) + ']', '[' + (New-Row) + ']'` is one 656-char concatenation. The polling case
+     was exercising a payload that could never parse.
+
+  (2) and (3) were invisible until the suite was made to run the watcher under **its own host**
+  rather than `Get-PsExe`'s — which prefers pwsh 7 whenever it resolves. That is verbatim B-74's
+  finding, one release later, in new code. Single-row payloads survive (1) and (2) *by accident*, so
+  only the multi-row cases could ever see them.
+
+  **Scope limits, recorded rather than glossed:** this notifies and withholds a tag; it does **not
+  prevent** a red commit reaching `master` (direct-to-master is B-53's decision). It does **not close
+  B-70** — the per-leg job check narrows that exposure, it does not replace it. And no end-to-end
+  release was run: ordering and the decision mapping are covered, real parameter binding is not, so
+  the next release is part of this change.
 
 - **B-74** — shipped as **v0.44.0**, 2026-08-02. `src/core/tests/hooks/HarnessIntegrity.Tests.ps1`
   plants a fixture with **exactly one** failing test (one, not two: two or more returned a real

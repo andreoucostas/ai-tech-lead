@@ -34,7 +34,12 @@ param(
     # Escape hatch for the staged-set precondition at step 5 (B-80), named for what it risks: the
     # release commit will carry files that are not part of a release. There is deliberately NO
     # escape hatch for a staged gitlink -- see that check for why.
-    [switch]$AllowExtraStagedPaths
+    [switch]$AllowExtraStagedPaths,
+    # Escape hatch for the CI watch at step 5c (B-88), named for what it risks: the release will be
+    # tagged without anyone having observed CI. This is a WAIVER, deliberately not the same fact as
+    # CANT-VERIFY -- it is recorded in the tag's own annotation so the waiver travels with the
+    # artifact whose meaning it changes.
+    [switch]$AllowUnverifiedCi
 )
 $ErrorActionPreference = 'Stop'
 
@@ -140,8 +145,16 @@ if ($branch -ne 'master') {
 # This banner read "roughly 30 minutes" for a long time and had never been measured -- it was ~4x
 # the truth. If you change the gates, re-measure and update this rather than padding it: an estimate
 # this wrong is what makes a release feel unaffordable and invites skipping it.
-Write-Host "Releasing $Version. Gates take roughly 5-7 minutes (compose x3 -> validate-dist x3 -> hook suites x3 -> meta suite -> eval self-test)."
-Write-Host "If this is interrupted before 'Release $Version complete', nothing has been committed -- re-run the same command as-is."
+Write-Host "Releasing $Version. Local gates take roughly 5-7 minutes (compose x3 -> validate-dist x3 -> hook suites x3 -> meta suite -> eval self-test)."
+Write-Host "Then the CI watch (B-88) waits for GitHub Actions on the release commit -- historically ~7-8 min, not yet measured end to end on this path."
+# The interruption promise used to be "nothing has been committed", full stop. After the push that is
+# simply false, and B-88 makes the window longer by adding a multi-minute wait to it. State the three
+# durable states instead; all three are safe to re-run the same command from (step 5 now falls
+# through to the publish phase rather than exiting when there is nothing left to stage).
+Write-Host "If interrupted, you are in exactly one of three states, and re-running the same command as-is is safe in all of them:"
+Write-Host "  before 'Staged manifest'         -> nothing committed."
+Write-Host "  after  'origin/master confirmed' -> the release is on master but UNTAGGED (CI unverified)."
+Write-Host "  after  'Tag ... confirmed'       -> released; a re-run is a no-op."
 
 # ---- 1. Root CHANGELOG head entry must already exist ----
 $clPath = Join-Path $repo 'CHANGELOG.md'
@@ -328,7 +341,16 @@ close this entry, recording what was re-run.
 # ---- 5. Commit + push ----
 git -C $repo add -A
 $staged = git -C $repo diff --cached --name-only
-if (-not $staged) { Write-Host 'Nothing to commit (already released?).'; exit 0 }
+# This used to `exit 0` here. With a CI watch in the publish phase (step 5c) that stranded every
+# recovery: CI goes red -> the maintainer fixes it in a separate commit -> re-runs the release ->
+# nothing left to stage -> exit 0, never tagged, printed as if it had released. So it falls THROUGH
+# to push -> watch -> tag instead. Every downstream step is already idempotent: the push is a no-op
+# plus a verified postcondition, the watch re-reads a terminal run in seconds, and the tag block was
+# built idempotent by design (see step 5b).
+$nothingToCommit = -not $staged
+if ($nothingToCommit) {
+    Write-Host 'Nothing new to stage -- resuming the publish phase for HEAD (push -> CI watch -> tag).'
+}
 
 # ---- 5a. Inspect what `git add -A` actually staged (B-80) ----
 # The blanket `add -A` above is deliberate: the release commit must carry the stamps, the rebuilt
@@ -377,9 +399,11 @@ foreach ($line in $rawStaged) {
 # PowerShell 5.1 a pipeline yielding exactly ONE object has no .Count and returns $null. One stray
 # file is the single most likely shape of this defect, so a bare .Count would go silent on precisely
 # the case worth catching. (The v0.41.0 RCA; B-82 repeats the warning.)
-Write-Host ''
-Write-Host ("Staged manifest ({0} path(s)):" -f @($staged).Count)
-foreach ($p in @($staged)) { Write-Host "  $p" }
+if (-not $nothingToCommit) {
+    Write-Host ''
+    Write-Host ("Staged manifest ({0} path(s)):" -f @($staged).Count)
+    foreach ($p in @($staged)) { Write-Host "  $p" }
+}
 if (@($gitlinks).Count -gt 0) {
     # No escape hatch, by design. This repo has no submodules, so a mode-160000 entry is ALWAYS a
     # mistake -- there is no legitimate release in which one appears, and the two that shipped were
@@ -414,14 +438,19 @@ The index has been reset; nothing was committed.
         exit 2
     }
 }
-Write-Host ''
-git -C $repo commit -m "v${Version}: $Summary" -m "Released via .claude/scripts/release.ps1 — all deterministic gates green (compose ×3, validate-dist ×3, hook suites ×3, meta suite)."
-if ($LASTEXITCODE -ne 0) { Write-Host 'Commit FAILED.'; exit 1 }
+# ---- 5b. Commit -- skipped when resuming a release whose commit already exists ----
+if (-not $nothingToCommit) {
+    Write-Host ''
+    git -C $repo commit -m "v${Version}: $Summary" -m "Released via .claude/scripts/release.ps1 — all deterministic gates green (compose ×3, validate-dist ×3, hook suites ×3, meta suite)."
+    if ($LASTEXITCODE -ne 0) { Write-Host 'Commit FAILED.'; exit 1 }
+}
+# Bound OUTSIDE the -NoPush branch below: step 5c needs it in every mode, and a variable that
+# exists only on one path is how a message ends up printing an empty sha.
+$releaseCommit = (git -C $repo rev-parse HEAD).Trim()
 if (-not $NoPush) {
     # Push the COMMIT, not the branch name (B-53). `push origin master` pushes whatever the local
     # master ref points at -- which, on a detached HEAD, is not the commit just created. That is how
     # a release exited 0 and printed "complete" having shipped nothing.
-    $releaseCommit = (git -C $repo rev-parse HEAD).Trim()
     git -C $repo push origin "${releaseCommit}:refs/heads/master"
     if ($LASTEXITCODE -ne 0) { Write-Host 'Push FAILED.'; exit 1 }
     # Postcondition: prove origin actually advanced. An exit code of 0 from push is not proof --
@@ -435,7 +464,49 @@ if (-not $NoPush) {
     Write-Host "origin/master confirmed at $($releaseCommit.Substring(0,7))."
 }
 
-# ---- 5b. Tag the release (B-51) ----
+# ---- 5c. Watch CI for the release commit, and let it decide whether we tag (B-88) ----
+# v0.44.0 was released, tagged, pushed and reported green while CI went RED on both legs -- and so
+# did the three commits after it. Four consecutive red runs on master, unnoticed for over an hour,
+# and only because the maintainer asked. Every local gate had passed: "Release complete" was a
+# statement about this box, not about the repo.
+#
+# WHY THE WATCH SITS HERE, and not after the tag as the backlog entry originally said. Step 5b's own
+# comment claims "a tag always means a green release". Watching after the tag push would make that
+# sentence false -- a red release would still carry a release tag, and the quarterly drill protocol
+# checks out the latest tag. So the tag becomes the PROMOTION step: it is created only once CI has
+# been observed green. The commit still lands and still gets pushed exactly as before (the freshness
+# gate needs the commit to exist); it is the TAG that now waits.
+#
+# What this does NOT do, stated plainly: it does not PREVENT a red commit reaching master. This
+# script pushes directly to master by decision -- releasing on a branch is what destroyed v0.34.0's
+# release commit -- so a red release is detected and left untagged, not stopped. It also narrows,
+# but does not close, the "a test never exercised on a CI leg" gap.
+. (Join-Path $repo '.claude/scripts/_ci-decision.ps1')
+if ($NoPush) {
+    $ciDecision = Get-CiPublishDecision -Mode NoPush
+} elseif ($AllowUnverifiedCi) {
+    $ciDecision = Get-CiPublishDecision -Mode Override
+} else {
+    & pwsh -NoProfile -File (Join-Path $repo '.claude/scripts/watch-ci.ps1') -Sha $releaseCommit
+    $ciDecision = Get-CiPublishDecision -Mode Watched -WatchExit $LASTEXITCODE
+}
+Write-Host ''
+Write-Host "CI: $($ciDecision.Status) -- $($ciDecision.Message)"
+if (-not $ciDecision.Tag) {
+    Write-Host ''
+    Write-Host "Release $Version is ON MASTER but NOT TAGGED."
+    Write-Host "  The commit is pushed and public; only the release tag is withheld."
+    Write-Host "  Fix the break, then re-run the SAME command -- it will re-watch and tag if CI is green:"
+    Write-Host "    pwsh -NoProfile -File .claude/scripts/release.ps1 -Version $Version -Summary `"$Summary`" ..."
+    Write-Host "  Or watch it yourself:  pwsh -NoProfile -File .claude/scripts/watch-ci.ps1 -Sha $($releaseCommit.Substring(0,7))"
+    Write-Host "  Tag anyway, recording the waiver in the tag itself:  -AllowUnverifiedCi"
+    exit $ciDecision.ReleaseExit
+}
+
+# ---- 5d. Tag the release (B-51) ----
+# Renumbered from 5b when the CI watch landed: the step markers now run in the order the steps
+# actually execute (5a guard -> 5b commit -> push -> 5c watch -> 5d tag), because a marker order that
+# contradicts the execution order is a trap for the next reader of a script this consequential.
 # Tags stopped at v0.26.0 and 14 releases shipped untagged, so the B-49 drill protocol -- which
 # requires a clean checkout of the latest released tag -- had to fall back to a raw SHA. The tag is
 # created only after every gate and the commit have succeeded, so a tag always means a green release.
@@ -458,7 +529,10 @@ if ($existingSha) {
         exit 1
     }
 } else {
-    git -C $repo tag -a $tagName -m "ai-tech-lead $tagName" $releaseSha
+    # The annotation carries the CI verdict (B-88). A tag now MEANS "CI observed green", so the one
+    # case where it does not -- an operator waiver, or a -NoPush local tag -- has to say so on the
+    # artifact itself, not only in a terminal that scrolls away.
+    git -C $repo tag -a $tagName -m "ai-tech-lead $tagName$($ciDecision.TagNote)" $releaseSha
     if ($LASTEXITCODE -ne 0) { Write-Host "Tag FAILED: could not create $tagName."; exit 1 }
     Write-Host "Tagged $tagName at $($releaseSha.Substring(0,7))."
 }
@@ -499,6 +573,16 @@ if ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
             }
             $persisted = if ($NoPush) { 'locally (-NoPush)' } else { 'and pushed' }
             Write-Host "Agent eval evidence committed $persisted."
+            if (-not $NoPush) {
+                # Honesty, not machinery (B-88). origin/master has just moved PAST the commit whose
+                # CI was watched, so the green verdict printed above no longer describes the tip.
+                # Watching this one inline would add another multi-minute wait to an interactive
+                # prompt for a meta-only commit; saying so costs nothing and removes a false claim.
+                Write-Host ''
+                Write-Host "NOTE: origin/master has advanced past the watched release commit."
+                Write-Host "      CI for $($evalCommit.Substring(0,7)) is UNOBSERVED. Watch it with:"
+                Write-Host "        pwsh -NoProfile -File .claude/scripts/watch-ci.ps1 -Sha $($evalCommit.Substring(0,7))"
+            }
         }
     } else { Write-Host "Agent evals skipped. Run later: $agentEvalCommand" }
 } else { Write-Host "Agent eval reminder (non-interactive; not run): $agentEvalCommand" }

@@ -1156,3 +1156,53 @@ section-mapping remains ungated (invariant #2's shipped half is gated per dist, 
 filed separately rather than bundled here.
 
 **Date.** 2026-08-01.
+---
+
+## WSD-029: a release tag means CI-verified green, and the tag is the promotion step (2026-08-02)
+
+**Context.** `release.ps1` ran every local gate, refused to commit on failure, pushed, tagged, and
+exited — all before CI had an opinion. On 2026-08-02 v0.44.0 was released, tagged and reported green
+while CI went **red on both legs**; so did the three commits after it. Four consecutive red runs on
+`master`, unnoticed for over an hour, and only because the maintainer asked. B-88.
+
+**Decision.** The release watches the CI run for the release commit, and the **tag** — not the commit
+— becomes the act of promotion. Step 5c sits between the verified `origin/master` push and the tag:
+green tags and exits 0; red leaves the commit on master **untagged** and exits 1; an unobservable
+result leaves it untagged and exits 3. `-AllowUnverifiedCi` waives the check, and because that breaks
+what a tag means, the waiver is written into the tag's own annotation.
+
+**Why not after the tag, as B-88's own entry said.** Because step 5b's existing comment already
+claimed the tag's meaning — *"a tag always means a green release"* — and watching afterwards would
+have made that sentence false while the quarterly drill protocol checks out the latest tag. The
+backlog entry was written before that reading; B-83 is exactly about entries whose *Do* has rotted.
+The entry's one real constraint (don't gate the *commit* on CI — the freshness gate needs the commit
+to exist) is preserved: the commit lands and is pushed as before; only the tag waits.
+
+**The three-outcome contract.** 0 green / 1 red / **3 cannot-verify**. The third is the substance,
+not a nicety: `gh` missing, unauthenticated, unparseable output, no run registered, still running at
+the timeout, or a conclusion GitHub has invented since — all resolve to 3, never to 0. B-64, B-72,
+B-74 and B-75 were every one of them an instrument that could not fail, reporting success; a watcher
+that treats "I could not look" as "it is fine" would be the next one.
+
+**Scope, stated so it is not over-claimed.** This is **notification plus tag-withholding, not
+prevention**. Releases push directly to `master` by decision, and a red commit still lands there. It
+also does not close B-70 (a test never exercised on a CI leg before shipping); the job-level check
+narrows that exposure by requiring both legs to have concluded success, which is not the same thing.
+
+**Alternatives rejected.** *A PR / candidate-ref promotion flow with required checks* — genuinely
+prevents rather than notifies, and rejected anyway: v0.34.0 was released on a branch that was later
+squash-merged, GitHub rewrote the subject, and that release still has no release commit on master.
+Direct-to-master is a decision this repo has already paid for. *`gh run watch --exit-status`* —
+collapses cannot-verify into a generic non-zero exit and cannot express the per-leg assertion.
+*Refactoring the release into resumable phases* — over-built; making step 5 fall through when there
+is nothing new to stage gives the same recovery in three lines against steps that were already
+idempotent.
+
+**Consequences.** A release is now a ~13–15 minute operation instead of ~6. A red CI leaves a
+*pushed, untagged* release — a state that did not exist before, so the interruption banner now
+enumerates all three durable states and the publish phase was made resumable to get out of it. The
+optional agent-eval commit still pushes past the watched commit; that is now *stated* rather than
+silently implied to be green, which is the honest half of a thing not worth another eight-minute
+wait.
+
+**Date.** 2026-08-02.

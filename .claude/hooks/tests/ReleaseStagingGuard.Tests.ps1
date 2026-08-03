@@ -28,7 +28,11 @@ $text = [IO.File]::ReadAllText($release)
 # region still contains every marker. An inert fixture and an over-broad one look identical from the
 # summary line (B-75).
 $start = $text.IndexOf('# ---- 5a.')
-$end   = $text.IndexOf('git -C $repo commit -m "v${Version}')
+# Bounded at the step-5b marker, not at the commit line itself. When the CI watch (B-88) made the
+# commit conditional (`if (-not $nothingToCommit) { ... }`), an end-bound on the commit line sliced
+# the region mid-block and every case died with a ParserError -- a real failure, but one that reads
+# like the guard broke rather than the bound. A step marker is the stable seam.
+$end   = $text.IndexOf('# ---- 5b.')
 $guard = $null
 if ($start -ge 0 -and $end -gt $start) { $guard = $text.Substring($start, $end - $start) }
 
@@ -66,6 +70,9 @@ function Invoke-Guard {
 git -C `$repo add -A
 `$staged = git -C `$repo diff --cached --name-only
 if (-not `$staged) { Write-Host 'Nothing to commit.'; exit 0 }
+# The region now reads `$nothingToCommit (it gates the staged manifest print). Bound it here: these
+# cases all stage something, which is the only state in which the guard has anything to classify.
+`$nothingToCommit = `$false
 $guard
 Write-Host 'GUARD PASSED'
 exit 0

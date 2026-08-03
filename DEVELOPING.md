@@ -16,6 +16,8 @@ Commands, not philosophy. The rules and the meta-invariant list live in `CLAUDE.
 | `.claude/hooks/` | meta-dev hook (`bom-fix.ps1`/`.sh` — auto-adds the UTF-8 BOM to written `.ps1`) | this repo only, does not ship |
 | `.claude/hooks/_fixtures/` | JSON event fixtures for testing the hooks | see below |
 | `.claude/scripts/release.ps1` | release automation [#7] | PowerShell-only by decision |
+| `.claude/scripts/watch-ci.ps1` | watches GitHub Actions for a commit; 0 green / 1 red / 3 cannot-verify | used by `release.ps1` step 5c, runnable by hand |
+| `.claude/scripts/_ci-decision.ps1` | the publish decision table (tag / exit code) as a callable function | dot-sourced by `release.ps1` and by its tests |
 | `.claude/plans/` | plans [Conventions] | includes the locked B-21/B-22/B-27 design specs |
 | `meta/` | `BACKLOG.md`, `workspace-decisions.md`, `LEARNINGS.md`, `ci-handover.md`, `changelogs/legacy-*.md` | maintainer layer; never ships. No root `docs/` — that name is the consumer's |
 | `scripts/meta-denylist.txt` | the `no-meta-leak` patterns [#6] | one file, read by BOTH twins so it cannot drift |
@@ -258,12 +260,48 @@ stamp drift twice:
    It stamps `src/core/CLAUDE.md` + the three `framework-version.json` files, rebuilds all three
    dists, runs every gate (freshness, validate-dist ×3, hook suites ×3, meta suite), **refuses to
    commit on any failure**, appends the review row to `meta/review-ledger.md`, then commits to
-   `master`, pushes, and tags. Gates take ~5–7 min. `-NoPush` for a dry-ish run.
+   `master`, pushes, **waits for CI**, and tags. Local gates take ~5–7 min; the CI wait adds
+   ~7–8 min on recent history. `-NoPush` for a dry-ish run.
 
    It **refuses to start** without either `-ReviewEvidence` or `-NoIndependentReview`. The latter
    is allowed — sometimes there is no second session — but never silent: it records
    `reviewer: none` in the ledger and auto-files a post-ship review item in `meta/BACKLOG.md`.
 4. Append to `LEARNINGS.md` if there's a lesson, and file the RCA (Maintenance model #5).
+
+### The CI watch — a tag means CI-verified green (B-88, WSD-028)
+
+v0.44.0 was released, tagged and reported green while CI went **red on both legs** — as did the three
+commits after it. Four consecutive red runs on `master`, unnoticed for over an hour. Every local gate
+had passed; the release simply ended before CI had an opinion.
+
+So step 5c runs `.claude/scripts/watch-ci.ps1` between the verified `origin/master` push and the tag,
+and **the tag is now the promotion step**:
+
+| CI | outcome |
+|---|---|
+| green | tagged, `Release X complete`, exit 0 |
+| red | **not tagged**, exit 1 — the commit is on master, the tag is withheld |
+| unobservable | **not tagged**, exit 3 — CANT-VERIFY is never reported as success |
+
+**Recovering from a red release:** fix the break (a normal commit), then re-run the *same* release
+command. Step 5 no longer exits when there is nothing new to stage — it falls through to
+push → watch → tag, and every one of those steps is idempotent.
+
+**Prerequisites and escape hatch.** Needs the GitHub CLI, authenticated. `gh` is resolved from `PATH`
+and then from the well-known install locations, because on this box `PATH` is the corrupted one and
+`Get-Command gh` fails while `gh.exe` is installed — a `PATH` problem and an absent tool are reported
+as the different facts they are. `-AllowUnverifiedCi` waives the check and tags anyway; it is a
+*waiver*, not a CANT-VERIFY, and it is recorded in the tag's own annotation.
+
+Watch any commit by hand (also how to finish an interrupted release):
+
+```powershell
+pwsh -NoProfile -File .claude/scripts/watch-ci.ps1 -Sha <sha>   # 0 green / 1 red / 3 cannot verify
+```
+
+**What it does not do:** it does not *prevent* a red commit reaching `master` — releases push
+directly to master by decision (B-53: releasing on a branch destroyed v0.34.0's release commit), so a
+red release is detected and left untagged, not stopped. It also does not close B-70.
 
 **Do not run the gate suites while an implementer session is editing the tree.** A hook suite once
 raced a concurrent run's writes and produced a transient failure that cost a diagnosis cycle. The

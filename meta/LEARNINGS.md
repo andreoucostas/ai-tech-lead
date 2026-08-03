@@ -790,3 +790,43 @@ the subject, re-run the check, see whether it goes red. Nothing here was found b
 6. **Three of four red-tests were hand-rolled and discarded.** Only the assertions survive; the
    mutations that proved them do not. Two of those mutations were themselves defective on the first
    attempt. "Seen to go red" is only re-verifiable if the mutation is kept — filed as B-84.
+
+## 2026-08-02 — B-88: the release watches CI, and four defects in the instruments that watch it
+
+1. **A release path that ends at `push` has verified the maintainer's box, not the repo.** Every
+   local gate passed for v0.44.0 and CI went red on both legs; the script had already printed
+   "Release complete". The fix was not "add a check" but "move what the tag *means*": the watch sits
+   before the tag, so a red or unverifiable CI leaves the commit on master **untagged**. B-53 had
+   already taught this shape once — a script that exits 0 without verifying its own postcondition —
+   and the postcondition set simply stopped one step short.
+
+2. **The backlog entry's own instruction was wrong, and the critique pass is what caught it.** B-88
+   said "after the tag push succeeds". Step 5b's comment already claimed "a tag always means a green
+   release", which watching-after-the-tag would falsify. This is B-83's class observed live, filed
+   the day before by the previous session, and it is the second time in two releases that reading the
+   *surrounding* code rather than the entry changed the design.
+
+3. **Two 5.1-only defects hid behind a green suite because the suite spawned the subject under
+   pwsh 7.** `Get-PsExe` prefers pwsh whenever it resolves, so "run the suite under 5.1" exercised
+   the subject under 7 regardless. B-74's RCA recorded this exact trap one release ago and fixed it
+   in one file; it recurred immediately in new code, which is what makes it a class (B-90) rather
+   than an incident. Bound to `(Get-Process -Id $PID).Path`, the suite went from 18/18 green to 13
+   red on 5.1 within seconds.
+
+4. **Single-element fixtures cannot see wrapping bugs.** Two independent mechanisms — a unary comma
+   on a return, and 5.1's `ConvertFrom-Json` not enumerating a top-level array — each wrapped the
+   parsed rows one level too deep. A wrapped array answers property access like its single element,
+   so every single-row case passed. Only the multi-row cases (a `pull_request` run alongside a
+   `push` run; a re-run superseding a failed attempt) could ever fail, and both did. Write the
+   fixture that has two of the thing.
+
+5. **A mutation self-test passes vacuously when the subject is already broken.** "The mutant fails"
+   is satisfied by a subject that never worked: under 5.1 the suite showed 13 red cases and 4 green
+   SELFTESTs, and those greens meant nothing. The self-test now runs the probe against the
+   *unmutated* subject first, so the mutation has to be the reason it fails. B-75's inert-fixture
+   lesson, one level up again.
+
+6. **The RCA sweep found a shipped defect, as it usually does.** Asking "what else is exposed to
+   this class" turned the 5.1 `NativeCommandError` finding into B-89: two shipped scripts whose
+   deliberate graceful fallback works on pwsh 7 and dies with a raw error dump on 5.1. Their tests
+   pass because they run inside a git repo, where the branch never executes.
