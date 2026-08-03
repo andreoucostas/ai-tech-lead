@@ -1092,7 +1092,7 @@ Guard against the vacuous pass: assert the mapping table is non-empty, and count
 (a bare pipeline `.Count` returns `$null` for a single match under 5.1 — the v0.41.0 RCA).
 
 ---
-### B-86 · Post-ship review owed for v0.44.0
+### B-86 · Post-ship review owed for v0.44.0 — **DONE 2026-08-03, see Done section** (findings: B-92, B-93, B-94)
 **Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-02
 
 **Why:** v0.44.0 shipped with `-NoIndependentReview`, so no second session re-ran a gate or a
@@ -1178,6 +1178,133 @@ multi-minute wait to an interactive prompt, for a meta-only commit.
 out of the release entirely, or (c) leaving the disclosure as the answer and recording that as the
 decision. Cheap either way; the point is that the current state is a deliberate gap, not an oversight,
 and should be written down as one.
+
+---
+
+### B-92 · `validate-dist` check 8 has three false-green paths — the anti-vacuity gate is itself vacuously passable
+**Effort:** S–M · **Priority:** P2 · filed 2026-08-03 by the B-86 post-ship review of v0.44.0 ·
+**Invariants:** #3 #5
+
+**Why:** check 8 shipped in v0.44.0 as one of three "instruments that could not fail now can". It
+does catch the plain case it was built for (a registration naming a script absent from the dist —
+red-tested both twins). But three independent inputs make it print `all N hook registrations
+resolve` and exit 0 while a hook is dead. All three were **confirmed by execution here**, on scratch
+copies, against the twins as shipped:
+
+1. **The vacuous-pass floor has a 42% dead band.** `validate-dist.ps1:287-290` /
+   `validate-dist.sh:257-259` fail only when the *total* across all three registration files drops
+   below 15. The real total is **26** (6 `settings.json` + 6 `settings.windows.json` + 14
+   `hooks.json`, measured per dist with check 8's own regexes). Renaming all six `"command"` keys in
+   `.claude/settings.json` — Claude Code loses **every** registration in that file — leaves 20, and
+   the gate prints `OK: all 20 hook registrations resolve` and exits 0. The floor is a total where
+   the failure mode is per-file. The source comment says the files carry "6 + 6 + 8"; the 8 is
+   wrong, which is how a floor of 15 came to look adequate.
+2. **An absolute path is silently exempted while the record claims no exception.**
+   `validate-dist.ps1:59-60` / `validate-dist.sh:199-200` `return` early on `^[A-Za-z]:` or a leading
+   `/`. Repointing `session-start.ps1` at `C:/definitely-missing/session-start.ps1` produced
+   `all 26 hook registrations resolve`, **exit 0 on both twins**. A committed absolute path is a dead
+   hook on every machine but one — precisely the "silently never runs" symptom the check exists to
+   remove — and `CHANGELOG.md`/`DEVELOPING.md` state the rule with no absolute-path carve-out.
+3. **A quoted `-File` value is truncated into an absolute-looking path and then exempted by (2).**
+   `-File \".claude/hooks/definitely missing.ps1\"` is valid JSON and is the *required* spelling for
+   a path containing a space. The outer regex stops at the escaped quote, the leading `\` survives,
+   normalization turns it into `/`, and the leading-slash exemption swallows it: exit 0,
+   `all 26 hook registrations resolve`, with the named script nonexistent.
+
+**No live exposure today** — no shipped dist has an absolute or quoted registration (checked all
+three dists × all three files), and all 26 resolve. This is band P2, not P1: the gate is weaker than
+its record, it is not currently passing a real defect.
+
+**Do:** (a) make the floor per-file and derive it, not a single hand-written total — a whole
+registration file going unextracted must fail; (b) decide the absolute-path case explicitly — either
+report it as a finding (it is a portability defect in committed team config) or say in
+`enforcement-surfaces.md`/the check comment that it is out of scope, but do not keep claiming every
+reference is resolved; (c) extract with a JSON-aware unescape, or at minimum reject a value the
+regexes could not parse cleanly rather than passing it. Red-test each with the commands above; they
+are recorded verbatim in `.claude/plans/2026-08-03-b86-codex-review.md`.
+
+**Not:** don't fix this by lowering the floor to zero or by making unparsed values fatal without
+measuring — an over-strict check on committed team config is the shape that gets its escape hatch
+passed every time (the v0.44.0 allowlist lesson).
+
+**RCA sweep — the same two shapes exist in check 7, which nobody was reviewing.** Maintenance model
+#5 asks what else is exposed; the answer here was not "nothing". `no-dead-instruction`
+(`validate-dist.ps1`, check 7) **counts nothing at all** — it accumulates `$deadRefs` and reports
+`every documented command resolves` whenever that list is empty, so an extraction regex that stopped
+matching, or a `.md` enumeration that returned zero files, reports a clean dist exactly as a genuinely
+clean one does. It also carries **the same absolute-path exemption** (`$script.StartsWith('/')`), so
+mechanism (2) above is a two-check pattern, not a check-8 quirk. Check 6 is the one that got this
+right: it guards its *input* (`if ($denyPatterns.Count -eq 0)`) — but not its file scan. Fix the class
+across checks 6, 7 and 8 in one pass, both twins, rather than patching check 8 alone.
+
+**Cross-links:** B-59 (the inert-check class, of which the floor's dead band is an instance), B-62
+(the entry check 8 came from), B-64 (planted-defect tests for diagnostics), B-67 (extends check 7 —
+whoever takes that entry should fix this at the same time).
+
+---
+
+### B-93 · The staged-set guard's 5.1 hardening is tested only under pwsh 7 — B-90's class, inside the release that themed on it
+**Effort:** S · **Priority:** P2 · filed 2026-08-03 by the B-86 post-ship review · **Invariants:** #3
+
+**Why:** `.claude/hooks/tests/ReleaseStagingGuard.Tests.ps1:83` spawns the extracted guard region via
+`Get-PsExe`. Measured on this box: under a **Windows PowerShell 5.1** suite run, `Get-PsExe` returns
+`pwsh`, resolving to `pwsh 7.6.4`. So running the suite under 5.1 exercises the guard under 7, and
+the `@()` wrappers the guard carries *explicitly and only* for a 5.1 defect (`release.ps1:398-401`,
+citing the v0.41.0 RCA) are never executed on the host they defend against.
+
+This is B-90 verbatim, and the timing is the point: B-90 was filed 2026-08-02 as the *class* behind
+B-74's recurrence, and the file that repeats it was added by v0.44.0 — the release whose theme was
+instruments that cannot fail. The trap is that `Get-PsExe` reads at the call site as "the PowerShell
+I am" when it means "the best PowerShell on this box".
+
+**Do:** bind the fixture to `(Get-Process -Id $PID).Path`, as `HarnessIntegrity.Tests.ps1:57` and
+`ReleaseCiWatch.Tests.ps1` already do, and run the suite under both hosts. Fold this file into
+B-90's audit rather than treating it as separate work — it is one more row in that sweep, filed
+separately only because it landed after B-90 was written.
+
+**Cross-links:** B-90 (the class), B-74 (first instance), B-71 (the sibling: a 5.1 test skipped
+inside a green summary).
+
+---
+
+### B-94 · The staged-set guard's record overclaims what it does, in three places
+**Effort:** S · **Priority:** P3 · filed 2026-08-03 by the B-86 post-ship review
+
+**Why:** the guard (B-80, `release.ps1` step 5a) works and its refusals are correct. But three
+statements about it are stronger than its behaviour, all confirmed by execution:
+
+1. **"no longer commits whatever is in the tree" (`CHANGELOG.md`) is broader than the check.** The
+   allowlist asks whether a path sits under one of six directories or is one of ten root files, so
+   `src/release-notes.tmp`, `meta/review.txt`, `.claude/debug.log` and `dist/scratch.bak` are all
+   classified as expected and committed without a warning; only a *top-level* stray is refused.
+   The check's own comment is honest about this ("is this file somewhere this repo keeps files at
+   all?"); the changelog sentence is not. Mitigating, and worth keeping in view: the staged manifest
+   prints unconditionally (`release.ps1:402-406`), so an in-directory stray is **visible** even
+   though it is not refused. That is why this is P3 and not a defect in the guard.
+2. **"the index is left as found" is false; it is left empty.** On refusal the guard runs an
+   unconditional `git reset --quiet`, which also discards staging the maintainer did *before*
+   invoking the release. Measured: `BEFORE=src/a.txt` → `AFTER=` (worktree content preserved). The
+   claim appears in `release.ps1`'s step-5a comment, in `CHANGELOG.md`, and in B-80's Done entry.
+   The test **codifies the weaker property under the stronger name**: the case is called
+   *"a stray untracked file is refused, and the index is left as found"* while its assertion is
+   `IsNullOrWhiteSpace($idx)` — index *empty* — and the fixture starts with an empty index, so it
+   cannot tell the two apart. A fixture that stages something first would.
+3. **A git-quoted path is misclassified as unexpected and refuses a legitimate release.** With
+   `core.quotepath` at its **default** (the review's one correction to the finding as first written —
+   this needs no unusual configuration), a non-ASCII path is emitted by `git diff --cached --raw` as
+   `"meta/caf\303\251.txt"`, quotes included. The leading `"` defeats the `^meta/` allowlist, so
+   step 5a refuses. Latent today — zero tracked paths contain non-ASCII bytes, and a space alone is
+   **not** quoted (measured) — but the failure mode is a correct release refused, which is the shape
+   that trains a maintainer to pass `-AllowExtraStagedPaths` reflexively.
+
+**Do:** correct (1) and (2) in the record rather than the code — the behaviours are defensible, the
+sentences are not — and add the pre-staged fixture so (2)'s test asserts what its name says. For (3),
+unquote the path before classifying (`git -c core.quotepath=false diff --cached --raw` is the cheap
+form), and red-test with a non-ASCII path.
+
+**Not:** don't widen the allowlist to file-level rules for (1). "Is this file part of a release?" was
+already judged unanswerable, and the first cut written that way would have refused every release
+from v0.39.0 to v0.43.0.
 
 ---
 
@@ -1344,6 +1471,44 @@ A wrong pin is consumer-visible: verify on a live Copilot surface before shippin
 ---
 
 ## Done
+
+- **B-86** — the post-ship review v0.44.0 owed, done 2026-08-03 (meta-only; no version). Three
+  findings filed: **B-92** (P2), **B-93** (P2), **B-94** (P3). The adversarial pass was run by
+  **codex CLI `gpt-5.6-sol`** in a separate session — a different model, which is what Maintenance
+  model #2 asks for and what a second Claude session cannot supply; its report is kept as the
+  evidence trail at `.claude/plans/2026-08-03-b86-codex-review.md`.
+
+  **Every finding was re-run here before it was filed**, per Maintenance model #3 and the standing
+  rule that an implementer's self-report can be a false pass. Re-run, with the observed result:
+
+  | # | re-run | observed |
+  |---|--------|----------|
+  | 1 | check 8, six `"command"` keys renamed in a scratch `settings.json` | `OK: all 20 hook registrations resolve`, EXIT 0 → **B-92.1** |
+  | 2 | check 8, `session-start.ps1` repointed at `C:/definitely-missing/` | `all 26 … resolve`, EXIT 0 on **both twins** → **B-92.2** |
+  | 3 | check 8, quoted `-File \"… definitely missing.ps1\"` (valid JSON) | `all 26 … resolve`, EXIT 0 → **B-92.3** |
+  | 4 | live `$expectedPathPattern` vs `src/*.tmp`, `meta/*.txt`, `.claude/*.log` | all `allowed=True` → **B-94.1** |
+  | 5 | scratch repo: pre-staged `src/a.txt`, then guard refusal | `BEFORE=src/a.txt` → `AFTER=` → **B-94.2** |
+  | 6 | scratch repo, `core.quotepath` **unset** (default), non-ASCII path | `"meta/caf\303\251.txt"`, `MATCH=False` → **B-94.3** |
+  | 7 | `Get-PsExe` probed from a 5.1 host | returns `pwsh` → 7.6.4 → **B-93** |
+  | 8 | **`HarnessIntegrity` red-test under Windows PowerShell 5.1** | control EXIT 0; `@()` stripped from the harness → EXIT 1 → **no finding** |
+
+  **The flagship instrument is sound.** (8) is the one that mattered most and it holds: with the
+  v0.41.0 defect re-planted, the mutant printed `3 passed,  failed, 0 skipped` — the `$null` visible
+  in the summary — and still exited 1, because the file scores itself independently of the harness.
+  That is the design working exactly as its header claims. Run with `powershell.exe` by **absolute
+  path** (`$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe`); it is present as
+  5.1.26100.8875 and **not resolvable from `PATH`**, re-confirming B-71's live evidence.
+
+  Two corrections the re-run made to the findings as first written, both left visible: the
+  git-quotepath case needs **no** unusual configuration (quoting is the default, so the review's
+  "with `core.quotepath=true`" understated it), and the in-directory stray of B-94.1 **is** surfaced
+  by the unconditional staged manifest, which drops it from a premise-rejection to a record
+  overclaim. A finding weakened by evidence is still evidence.
+
+  Also observed: v0.44.0's own CI run **failed** (run 30740988544), as did the three commits after
+  it, and `master` is green again only from `8265daf` — the record B-88 was filed on, confirmed
+  first-hand rather than read from its entry. Nothing was fixed in this pass, by design: the review's
+  product is findings, and fixing them here would collapse reviewer into implementer.
 
 - **B-88** — landed 2026-08-02 (meta-only; `.claude/` never ships, so no version). `release.ps1`
   step 5c watches the CI run for the release commit between the verified `origin/master` push and the

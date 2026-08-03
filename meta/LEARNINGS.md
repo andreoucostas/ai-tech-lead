@@ -830,3 +830,40 @@ the subject, re-run the check, see whether it goes red. Nothing here was found b
    this class" turned the 5.1 `NativeCommandError` finding into B-89: two shipped scripts whose
    deliberate graceful fallback works on pwsh 7 and dies with a raw error dump on 5.1. Their tests
    pass because they run inside a git repo, where the branch never executes.
+
+## 2026-08-03 — B-86: the owed review of v0.44.0, run adversarially by a different model
+
+1. **A review is the one deliverable where "different session" is not enough.** Maintenance model #2
+   asks for a different tier "where available", and a second Claude session is not that. Running the
+   adversarial pass as **codex `gpt-5.6-sol`** and keeping Claude as the re-runner produced a split
+   that earned its keep in both directions: codex found three false-green paths in check 8 that this
+   session had not looked for, and this session's re-runs *corrected two of codex's own findings*
+   (the quotepath case is the default, not a configuration; the in-directory stray is surfaced by the
+   manifest, so it is a record overclaim rather than a rejected premise). Neither half was
+   trustworthy alone.
+
+2. **The release themed on "instruments that could not fail now can" shipped a gate that could not
+   fail — in three ways.** Check 8's vacuous-pass floor is a *total* of 15 against a real 26, so an
+   entire registration file can go unextracted and the gate prints `all 20 … resolve`. The lesson is
+   not "the number was wrong": it is that a floor written as a single total cannot see a per-file
+   failure, and the comment justifying it ("6 + 6 + 8") was itself never measured. A guard against
+   vacuity that is calibrated by hand inherits the vacuity it guards against.
+
+3. **The RCA sweep beat the review.** Asking "what else is exposed" turned check 8's two mechanisms
+   into a check 7 finding within minutes: `no-dead-instruction` counts nothing at all and carries the
+   same absolute-path exemption. The review looked where it was pointed; the sweep looked where the
+   class lives. Check 6 guards its *input* list and not its file scan, which is the same gap one step
+   earlier — three checks, three different amounts of anti-vacuity, none of it deliberate.
+
+4. **B-90 recurred inside the release under review, in a file that release added.** The staging
+   guard's `@()` hardening exists for a Windows PowerShell 5.1 defect, and its test spawns the
+   subject through `Get-PsExe`, which resolves to pwsh 7 even from a 5.1 host (measured). B-74 → B-90
+   → B-93 is now the same trap three times. A helper that picks the *best* host reads as neutral
+   convenience at every call site, and no amount of filing the class has stopped the next author
+   reaching for it. The fix that would actually hold is renaming it.
+
+5. **The flagship instrument was sound, and only a real 5.1 run could say so.** With the v0.41.0
+   defect re-planted, `HarnessIntegrity` printed `3 passed,  failed, 0 skipped` — the `$null` visible
+   in its own summary — and still exited 1. Confirming that needed `powershell.exe` invoked by
+   absolute path, because it is present on this box and not resolvable from `PATH` (B-71). The
+   difference between "verified" and "skipped inside a green summary" was one hard-coded path.
