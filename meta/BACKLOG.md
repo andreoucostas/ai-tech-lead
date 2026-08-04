@@ -657,6 +657,22 @@ and print them in the suite summary.
 
 **Not:** do not add a third CI leg; the gap is process, not infrastructure.
 
+**Third and fourth instances, 2026-08-04 (shipping B-92) — this entry is now the most-repeated
+failure in the log.** A new meta suite was verified green under *both* PowerShell hosts locally and
+still took master red on the linux leg twice:
+
+1. `./scripts/validate-dist.sh` → **Permission denied**. The file is mode 644 in git; Windows ignores
+   the exec bit and Linux enforces it. Every other caller in the repo already spelled it
+   `bash scripts/validate-dist.sh`.
+2. `Get-ChildItem -Recurse` **without `-Force` skips `.claude/` and `.github/` on Linux**, because
+   PowerShell treats a leading dot as hidden there and not on Windows. `no-meta-leak` would have
+   inspected zero hooks and zero skills on Linux while printing a clean pass.
+
+Both are invisible to any local run on a Windows box, which is precisely this entry's thesis. The
+cheap local proxy it proposes would not have caught either — the honest fix is that **a change
+carrying a new test is not done until its first CI run is green**, which is now how B-92 was
+shipped. Consider promoting that from a suggestion to the Definition of done.
+
 ### B-71 · Silently skipped tests make a green local suite weaker than it looks
 **Effort:** S · **Priority:** P2
 
@@ -1437,7 +1453,25 @@ planted unreadable file and an emptied tree, both twins.
 
 ## Done
 
-- **B-92** — done 2026-08-03 (meta-only; no version). `validate-dist` checks 6–8 now have
+- **CI watch, 2026-08-04:** one linux run failed `route-prompt twins agree: security (Copilot)` with
+  `ps1=139 sh=0`. Exit 139 is SIGSEGV — the pwsh child crashed on the ubuntu runner; the harness
+  recorded the crash faithfully rather than a behavioural divergence. It did **not** reproduce on a
+  re-run of the same commit and did not appear on the two earlier runs of the same tree, and the
+  commits in question touch no `dist/`, `src/`, or `route-prompt` file. Recorded as an observation,
+  not a defect: if it recurs, it is a real bug in a shipped hook on Linux and deserves its own entry,
+  and this note is the second data point.
+
+- **B-92** — done 2026-08-04 (meta-only; no version; commits `61257f6`, `c247797`, `97bea4a`, CI
+  green on both legs). Three false greens in check 8 reproduced first, then closed; the RCA sweep
+  extended the fix to checks 7 and 6. **What CI caught after three local runs said green** — a
+  Linux-only `Permission denied` and a Linux-only `-Force` enumeration hole that would have made
+  `no-meta-leak` inspect zero hooks and zero skills there. Both are filed as B-70's third and fourth
+  instances. Verified: 16 passed / 0 failed / 1 skipped under pwsh 7 **and** Windows PowerShell 5.1;
+  both twins exit 0 on all three dists with identical counts; meta suite 0 failures across 8 files.
+  The `python3` parser branch cannot run on the maintainer's box at all — CI is its only instrument,
+  and it is green there.
+
+- **B-92 (original entry)** — done 2026-08-03 (meta-only; no version). `validate-dist` checks 6–8 now have
   structural anti-vacuity guards in both twins, hook registrations are parsed as JSON, and the new
   real-dist regression suite exercises the PowerShell and bash legs. Check 7 remains limited to its
   inline-command grammar; B-67 owns broader markdown-link coverage. The maintainer selected B-92
