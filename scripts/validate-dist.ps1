@@ -112,11 +112,18 @@ function Test-HookRef {
     return $problems
 }
 
+# -Force on every enumeration below is LOAD-BEARING, not defensive. PowerShell treats a leading dot
+# as "hidden" on Linux/macOS, so without it `Get-ChildItem -Recurse` silently skips everything under
+# `.claude/` and `.github/` there — which is most of what a dist ships. On Windows the same call
+# returns those files, so this twin under-scanned on Linux ONLY, and no local run could show it:
+# check 6 would never have looked at a single hook or skill for meta-leaks, and check 7 would have
+# scanned a fraction of the docs while reporting a clean pass. Found by the CI linux leg (2026-08-04)
+# via a test whose mutation had the identical blind spot.
 if (-not $ContentOnly) {
 # --- 1. no unresolved @stack markers -------------------------------------------------------------
 $markerRe = '@stack:[A-Za-z0-9_-]+'
 $markerFiles = @()
-foreach ($f in (Get-ChildItem -Recurse -File -Path $Dist)) {
+foreach ($f in (Get-ChildItem -Recurse -File -Force -Path $Dist)) {
     try {
         if ((Select-String -Path $f.FullName -Pattern $markerRe -SimpleMatch:$false -Quiet -ErrorAction SilentlyContinue)) {
             $markerFiles += $f.FullName
@@ -131,7 +138,7 @@ if ($markerFiles.Count -gt 0) {
 
 # --- 2. every *.json parses -------------------------------------------------------------------------
 $jsonFails = @()
-foreach ($f in (Get-ChildItem -Recurse -File -Filter *.json -Path $Dist)) {
+foreach ($f in (Get-ChildItem -Recurse -File -Force -Filter *.json -Path $Dist)) {
     try {
         Get-Content $f.FullName -Raw | ConvertFrom-Json | Out-Null
     } catch {
@@ -165,7 +172,7 @@ if (-not $bashWorks) {
     exit 2
 }
 $shFails = @()
-foreach ($f in (Get-ChildItem -Recurse -File -Filter *.sh -Path $Dist)) {
+foreach ($f in (Get-ChildItem -Recurse -File -Force -Filter *.sh -Path $Dist)) {
     & $bashExe -n ($f.FullName -replace '\\', '/') 2>$null 1>$null
     if ($LASTEXITCODE -ne 0) { $shFails += $f.FullName }
 }
@@ -174,7 +181,7 @@ else { OK "all *.sh files parse cleanly (bash -n)." }
 
 # --- 4. PowerShell AST parse on every *.ps1 -----------------------------------------------------------
 $ps1Fails = @()
-foreach ($f in (Get-ChildItem -Recurse -File -Filter *.ps1 -Path $Dist)) {
+foreach ($f in (Get-ChildItem -Recurse -File -Force -Filter *.ps1 -Path $Dist)) {
     $e = $null
     [System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$null, [ref]$e) | Out-Null
     if ($e) { $ps1Fails += "$($f.FullName): $($e[0].Message)" }
@@ -223,7 +230,7 @@ if ($denyPatterns.Count -eq 0) {
 }
 $leaks = @()
 $scanErrors = @()
-$distFiles = @(Get-ChildItem -Recurse -File -Path $DistAbs)
+$distFiles = @(Get-ChildItem -Recurse -File -Force -Path $DistAbs)
 $filesScanned = @($distFiles).Count
 foreach ($f in $distFiles) {
     $rel = ($f.FullName.Substring($DistAbs.Length).TrimStart('\', '/')) -replace '\\', '/'
@@ -274,7 +281,7 @@ $absoluteRefs = @()
 $docReadErrors = @()
 $docsScanned = 0
 $refsExtracted = 0
-foreach ($f in (Get-ChildItem -Recurse -File -Path $DistAbs -Filter *.md)) {
+foreach ($f in (Get-ChildItem -Recurse -File -Force -Path $DistAbs -Filter *.md)) {
     if ($f.Name -eq 'CHANGELOG.md') { continue }
     $docsScanned++
     $rel = ($f.FullName.Substring($DistAbs.Length).TrimStart('\', '/')) -replace '\\', '/'

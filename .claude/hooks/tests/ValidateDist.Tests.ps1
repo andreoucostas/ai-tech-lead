@@ -88,7 +88,10 @@ try {
     It 'case 7: an unrelated command object does not change registration scoping' { Assert-Case 'unrelated-command' { param($d) $p=Join-Path $d '.claude\settings.json'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,$t.Replace('"hooks": {','"unrelated": { "type": "command" },' + [Environment]::NewLine + '  "hooks": {')) } 'all 26 hook registrations resolve' -Green -PsOnly }   # bash green path: case 12
     It 'case 8: a missing hook twin fails check 8' { Assert-Case 'missing-twin' { param($d) Remove-Item -LiteralPath (Join-Path $d '.claude\hooks\audit-trail.sh') -Force } 'exists but its twin' }
     It 'case 9: a dead documented command fails check 7' { Assert-Case 'dead-doc' { param($d) Replace-Text (Join-Path $d 'README.md') 'scripts/install.ps1' 'scripts/definitely-missing.ps1' } 'dead instructions in shipped docs' }
-    It 'case 10: no markdown files fails check 7' { Assert-Case 'no-docs' { param($d) Get-ChildItem -LiteralPath $d -Recurse -Filter *.md | Remove-Item -Force } 'no-dead-instruction scanned zero documentation files' }
+    # -Force: on Linux, PowerShell treats dot-directories as hidden, so without it this mutation left
+    # every .md under .claude/ and .github/ in place and the case failed on the CI linux leg only.
+    # The validator had the same blind spot, which is what this case ended up exposing.
+    It 'case 10: no markdown files fails check 7' { Assert-Case 'no-docs' { param($d) Get-ChildItem -LiteralPath $d -Recurse -Filter *.md -Force | Remove-Item -Force } 'no-dead-instruction scanned zero documentation files' }
     It 'case 11: an empty tree fails check 6' { Assert-Case 'empty-tree' { param($d) Get-ChildItem -LiteralPath $d -Force | Remove-Item -Recurse -Force } 'no-meta-leak scanned zero files' }
     # The green anchors run the FULL validator (checks 1-8) on both legs, so the group the red cases
     # skip for speed is still exercised here — and so an over-strict check 6/7/8 cannot hide behind

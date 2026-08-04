@@ -868,6 +868,18 @@ the subject, re-run the check, see whether it goes red. Nothing here was found b
    absolute path, because it is present on this box and not resolvable from `PATH` (B-71). The
    difference between "verified" and "skipped inside a green summary" was one hard-coded path.
 
+7. **`Get-ChildItem -Recurse` without `-Force` skips `.claude/` and `.github/` on Linux — and no
+   local run can show it.** PowerShell treats a leading dot as "hidden" on Linux/macOS but not on
+   Windows, so `validate-dist.ps1` enumerated most of a dist on the maintainer's box and a fraction
+   of it on Linux: `no-meta-leak` would have inspected zero hooks and zero skills there while
+   printing a clean pass, and `no-dead-instruction` would have scanned a minority of the docs. Both
+   twins agreed on Windows and diverged on Linux, which is the shape twin testing on one OS cannot
+   see at all (the sibling of the `.PS1` case-resolution divergence found the same week). Found by
+   the CI linux leg, via a test whose own mutation had the identical blind spot — the mutation
+   deleted the visible `.md` files and left the hidden ones, so the case failed for the right reason
+   by accident. **Rule: every recursive enumeration in a PowerShell twin needs `-Force`, and a
+   cross-platform count is only evidence when it was taken on the platform in question.**
+
 6. **A total vacuity floor cannot prove each input survived extraction.** Check 8 accepted 20
 registrations after an entire six-handler file disappeared because its floor was a total; a second
 regex over the same bytes was not independent evidence. Guard the structure and the scanned inputs,
