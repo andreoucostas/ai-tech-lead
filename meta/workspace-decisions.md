@@ -1206,3 +1206,35 @@ silently implied to be green, which is the honest half of a thing not worth anot
 wait.
 
 **Date.** 2026-08-02.
+
+---
+
+## WSD-030: hook registration enumeration parses JSON (2026-08-03)
+
+v0.44.0 chose textual extraction to keep the validator twins aligned. That made quoted values and a
+per-file extraction failure invisible. `validate-dist` now parses registration JSON: PowerShell uses
+`ConvertFrom-Json`; bash uses its already-required python3-or-jq parser and emits one normalized
+record shape with a base64-encoded value field, so tabs, newlines, backslashes and Unicode cannot
+alter framing. Each bash parser invocation is first materialized to a secure temporary file and must
+exit zero before its records are consumed. The regression suite selects each branch explicitly,
+asserts the selected branch ran, and compares the two streams where both tools are installed; it calls
+out the unexercised branch prominently otherwise. This reverses the earlier choice because independently
+derived structure is more important than matching regexes over the same bytes.
+
+The first implementation exposed a live jq-versus-python3 divergence: jq's `@tsv` escapes
+backslashes, tabs, newlines and CR while python emitted raw values. Base64 framing replaces that
+ambiguous representation; the explicit override makes the comparison non-vacuous.
+
+Two consequences worth recording, because both were found by review rather than by a gate:
+
+- **Registration paths resolve case-exactly in both twins.** `Test-Path` on Windows resolves a
+  `.PS1` registration to the shipped `.ps1`; Linux does not. That is a twin divergence caused by the
+  *platform*, which no amount of twin testing on one OS can see, and it would have surfaced as a
+  consumer's Linux CI failure. Both twins now compare each path segment against the real directory
+  entry.
+- **The partial-run switch is an argument (`--content-only`), never an environment variable.** The
+  first cut used `VALIDATE_DIST_CONTENT_ONLY=1`; an ambient switch that narrows a gate's scope can
+  be inherited by a shell that never asked for it, and `release.ps1` sends validator output to a log
+  where the printed `NOTE:` would go unread. A caller must now ask for a reduced run in the command
+  itself. This is the general rule for this repo: **a switch that weakens a gate must be impossible
+  to set by accident.**

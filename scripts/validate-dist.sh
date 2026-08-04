@@ -20,8 +20,17 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
+# --content-only is an explicit ARGUMENT, not an environment variable — see the PowerShell twin: an
+# ambient switch that narrows a gate's scope can be inherited by a shell that never asked for it.
+CONTENT_ONLY=0
+POSITIONAL=""
+for arg in "$@"; do
+  if [ "$arg" = "--content-only" ]; then CONTENT_ONLY=1; else POSITIONAL="$POSITIONAL $arg"; fi
+done
+# shellcheck disable=SC2086
+set -- $POSITIONAL
 MODE="${1:-}"
-case "$MODE" in dotnet|angular|monorepo) ;; *) echo "usage: validate-dist.sh {dotnet|angular|monorepo} [dist-root]" >&2; exit 2;; esac
+case "$MODE" in dotnet|angular|monorepo) ;; *) echo "usage: validate-dist.sh {dotnet|angular|monorepo} [dist-root] [--content-only]" >&2; exit 2;; esac
 DISTROOT="${2:-dist}"
 DIST="$DISTROOT/$MODE"
 [ -d "$DIST" ] || { echo "no $DIST — run scripts/build.sh $MODE first" >&2; exit 2; }
@@ -30,15 +39,19 @@ failed=0
 fail() { echo "FAIL: $1"; failed=$((failed+1)); }
 ok()   { echo "OK:   $1"; }
 
-# --- 1. no unresolved @stack markers ------------------------------------------------------------
-markers=$(grep -rIlE '@stack:[A-Za-z0-9_-]+' "$DIST" 2>/dev/null || true)
-if [ -n "$markers" ]; then
-  fail "unresolved @stack markers in:$(printf ' %s' $markers)"
-else
-  ok "no unresolved @stack markers in $DIST."
+# --content-only skips checks 1-5 (parse/marker/template-checks) and runs only the content checks
+# 6, 7 and 8. See the PowerShell twin for the full rationale: those five re-parse every shipped file
+# on every case, which made ValidateDist.Tests.ps1 a 9-minute suite in a file that runs in
+# release.ps1 and on both CI legs. Neither release.ps1 nor CI passes it; the suite's green anchors
+# still run the FULL validator. A restricted run announces itself — a subset must never read as a
+# complete one.
+if [ "$CONTENT_ONLY" = "1" ]; then
+  echo "NOTE: --content-only — checks 1-5 were SKIPPED; this is NOT a full validation."
 fi
 
-# --- 2. every *.json parses -----------------------------------------------------------------------
+# The JSON tool is resolved HERE, not inside check 2, because check 8 parses registrations with it
+# too. Leaving it in check 2 meant a content-only run left $JSON_TOOL unset and `set -u` killed the
+# script immediately after the NOTE — a prerequisite hidden inside an optional group.
 # Prefer python3 (matches the .ps1 twin's ConvertFrom-Json more closely: full parse, not just
 # lexing); fall back to jq. Neither present is a hard FATAL, not a silent skip.
 JSON_TOOL=""
@@ -48,6 +61,17 @@ else
   echo "FATAL: neither python3 nor jq is available to validate *.json files — install one." >&2
   exit 2
 fi
+
+if [ "$CONTENT_ONLY" != "1" ]; then
+# --- 1. no unresolved @stack markers ------------------------------------------------------------
+markers=$(grep -rIlE '@stack:[A-Za-z0-9_-]+' "$DIST" 2>/dev/null || true)
+if [ -n "$markers" ]; then
+  fail "unresolved @stack markers in:$(printf ' %s' $markers)"
+else
+  ok "no unresolved @stack markers in $DIST."
+fi
+
+# --- 2. every *.json parses -----------------------------------------------------------------------
 jsonfails=""
 while IFS= read -r f; do
   if [ "$JSON_TOOL" = "python3" ]; then
@@ -101,6 +125,7 @@ else
     ok "$DIST/scripts/template-checks.sh passed."
   fi
 fi
+fi   # end of the checks 1-5 group (VALIDATE_DIST_CONTENT_ONLY)
 
 # --- 6. no meta-dev vocabulary in shipped content ---------------------------------------------------
 # The don't-ship boundary (invariant #6) made deterministic. Everything under dist/ lands in a
@@ -114,9 +139,20 @@ denypats=$(grep -E '^DENY[[:space:]]+' "$DENYFILE" | sed -E 's/^DENY[[:space:]]+
 allowpaths=$(grep -E '^ALLOW[[:space:]]+' "$DENYFILE" | sed -E 's/^ALLOW[[:space:]]+//' || true)
 [ -n "$denypats" ] || { echo "FATAL: $DENYFILE defines no DENY patterns." >&2; exit 2; }
 leaks=""
+greperrs=""
+# Anti-vacuity: guard the INPUT, not just the findings. An empty tree, or a grep that errored on
+# every pattern, produces no leaks and used to report a clean dist exactly as a genuinely clean one
+# did (B-92). Count what was actually scanned and say so on the OK line.
+patcount=$(printf '%s\n' "$denypats" | grep -c . || true)
+filesscanned=$(find "$DIST" -type f | grep -c . || true)
 while IFS= read -r p; do
   [ -n "$p" ] || continue
   # -I skips binary files; -i matches the .ps1 twin's case-insensitive Select-String.
+  # grep exits 0 = matched, 1 = no match, >1 = ERROR (bad regex, unreadable input). The `|| true`
+  # idiom this replaced collapsed the error case into "no match", which is B-59's fail-open: a
+  # pattern that stopped working looked exactly like a pattern that found nothing.
+  hits=$(grep -rIiEn -- "$p" "$DIST" 2>/dev/null); gstatus=$?
+  if [ "$gstatus" -gt 1 ]; then greperrs="$greperrs$p"$'\n'; continue; fi
   while IFS= read -r hit; do
     [ -n "$hit" ] || continue
     f="${hit%%:*}"; rest="${hit#*:}"; ln="${rest%%:*}"
@@ -128,16 +164,22 @@ while IFS= read -r p; do
     done <<< "$allowpaths"
     [ "$skip" -eq 1 ] && continue
     leaks="$leaks$rel:$ln: $p"$'\n'
-  done < <(grep -rIiEn -- "$p" "$DIST" 2>/dev/null || true)
+  done <<< "$hits"
 done <<< "$denypats"
 leaks=$(printf '%s' "$leaks" | sed '/^[[:space:]]*$/d' | sort || true)
 leakcount=$(printf '%s' "$leaks" | grep -c . || true)
-if [ "$leakcount" -gt 0 ]; then
+greperrcount=$(printf '%s' "$greperrs" | grep -c . || true)
+if [ "$greperrcount" -gt 0 ]; then
+  fail "no-meta-leak: grep failed (exit > 1) on $greperrcount pattern(s) in $DIST — the scan is broken, not the dist."
+  printf '%s' "$greperrs" | grep . | sed 's/^/  [no-meta-leak] errored pattern: /'
+elif [ "$filesscanned" -eq 0 ]; then
+  fail "no-meta-leak scanned zero files in $DIST — the input tree is empty, not clean."
+elif [ "$leakcount" -gt 0 ]; then
   fail "meta vocabulary in shipped content — $leakcount line(s). These reach a consumer repo; fix in src/, not dist/."
   printf '%s\n' "$leaks" | head -20 | sed 's/^/  [no-meta-leak] /'
   [ "$leakcount" -gt 20 ] && echo "  [no-meta-leak] ... and $((leakcount - 20)) more line(s)."
 else
-  ok "no meta-dev vocabulary in $DIST (no-meta-leak)."
+  ok "no meta-dev vocabulary in $DIST (no-meta-leak; $patcount pattern(s) over $filesscanned file(s))."
 fi
 
 # --- 7. no dead instructions ------------------------------------------------------------------
@@ -153,28 +195,58 @@ fi
 #
 # CHANGELOG.md is skipped by design: release notes quote commands that WERE wrong in order to say
 # they are now fixed. It is the one shipped doc whose job is to describe the past.
+# Anti-vacuity, as in check 6: this check used to report a clean dist whenever its findings list was
+# empty, so an extractor that stopped matching — or a tree with no docs at all — read as success.
+# It now counts what it scanned and what it extracted, and fails when either is zero (B-92).
+#
+# An absolute path in a DOC may legitimately be a placeholder example, so it is not resolved — but it
+# is counted and listed, because "every documented command resolves" was a claim the check could not
+# support. Check 8 treats an absolute path in a REGISTRATION as a defect instead: that is machine
+# wiring, not prose, and there it is always wrong.
 deadrefs=""
+absrefs=""
+docgreperrs=""
+docsscanned=0
+refsextracted=0
+cmdre='(pwsh|bash|powershell)( -[A-Za-z]+( [A-Za-z]+)?)* [A-Za-z0-9_./-]+\.(ps1|sh)'
 while IFS= read -r f; do
   case "$(basename "$f")" in CHANGELOG.md) continue;; esac
+  docsscanned=$((docsscanned+1))
   rel="${f#"$DIST"/}"
-  while IFS=: read -r ln content; do
-    [ -n "$content" ] || continue
-    printf '%s\n' "$content" \
-      | grep -oE '(pwsh|bash|powershell)( -[A-Za-z]+( [A-Za-z]+)?)* [A-Za-z0-9_./-]+\.(ps1|sh)' \
-      | grep -oE '[A-Za-z0-9_./-]+\.(ps1|sh)$' \
-      | while IFS= read -r script; do
-          case "$script" in /*) continue;; esac   # absolute path / placeholder, not ours to resolve
-          [ -f "$DIST/$script" ] || echo "$rel:$ln: \`$script\` does not exist in this dist"
-        done
-  done < <(grep -nE '(pwsh|bash|powershell)( -[A-Za-z]+( [A-Za-z]+)?)* [A-Za-z0-9_./-]+\.(ps1|sh)' "$f" 2>/dev/null || true)
-done < <(find "$DIST" -type f -name '*.md') > /tmp/_dead_$$ 2>/dev/null || true
-deadrefs=$(sort -u /tmp/_dead_$$ 2>/dev/null || true); rm -f /tmp/_dead_$$
+  matches=$(grep -nE "$cmdre" "$f" 2>/dev/null); gstatus=$?
+  if [ "$gstatus" -gt 1 ]; then docgreperrs="$docgreperrs$rel"$'\n'; continue; fi
+  [ "$gstatus" -eq 0 ] || continue
+  while IFS= read -r hit; do
+    [ -n "$hit" ] || continue
+    ln="${hit%%:*}"; content="${hit#*:}"
+    while IFS= read -r script; do
+      [ -n "$script" ] || continue
+      refsextracted=$((refsextracted+1))
+      case "$script" in
+        /*) absrefs="$absrefs$rel:$ln: absolute example \`$script\` out of scope"$'\n'; continue;;
+      esac
+      [ -f "$DIST/$script" ] || deadrefs="$deadrefs$rel:$ln: \`$script\` does not exist in this dist"$'\n'
+    done <<< "$(printf '%s\n' "$content" | grep -oE "$cmdre" | grep -oE '[A-Za-z0-9_./-]+\.(ps1|sh)$')"
+  done <<< "$matches"
+done < <(find "$DIST" -type f -name '*.md')
+deadrefs=$(printf '%s' "$deadrefs" | sed '/^[[:space:]]*$/d' | sort -u || true)
+absrefs=$(printf '%s' "$absrefs" | sed '/^[[:space:]]*$/d' | sort -u || true)
 deadcount=$(printf '%s' "$deadrefs" | grep -c . || true)
-if [ "$deadcount" -gt 0 ]; then
+abscount=$(printf '%s' "$absrefs" | grep -c . || true)
+docgreperrcount=$(printf '%s' "$docgreperrs" | grep -c . || true)
+if [ "$docgreperrcount" -gt 0 ]; then
+  fail "no-dead-instruction: grep failed (exit > 1) on $docgreperrcount doc(s) in $DIST — the scan is broken, not the dist."
+  printf '%s' "$docgreperrs" | grep . | sed 's/^/  [no-dead-instruction] unreadable doc: /'
+elif [ "$docsscanned" -eq 0 ]; then
+  fail "no-dead-instruction scanned zero documentation files in $DIST — the input tree is empty, not clean."
+elif [ "$refsextracted" -eq 0 ]; then
+  fail "no-dead-instruction extracted zero script references from $docsscanned doc(s) in $DIST — the inline-command extractor is broken, not the dist."
+elif [ "$deadcount" -gt 0 ]; then
   fail "dead instructions in shipped docs — $deadcount. A consumer (or their agent) following these gets 'No such file or directory'. Fix in src/, not dist/."
   printf '%s\n' "$deadrefs" | sed 's/^/  [no-dead-instruction] /'
 else
-  ok "every documented command resolves in $DIST (no-dead-instruction)."
+  [ "$abscount" -eq 0 ] || printf '%s\n' "$absrefs" | sed 's/^/  [no-dead-instruction] /'
+  ok "all $((refsextracted - abscount)) resolvable documented script references exist in $DIST ($docsscanned doc(s) scanned; $abscount absolute example(s) out of scope)."
 fi
 
 # --- 8. hook registrations point at hooks that exist ---------------------------------------------
@@ -188,80 +260,268 @@ fi
 # team configuration). Whether a bare name resolves is a runtime property; the doctor's
 # `Hook liveness` row reports that from the consumer's machine.
 #
-# Extraction is TEXTUAL and matches the PowerShell twin step for step. Using this script's
-# python3-or-jq JSON parser here would mean the branch this box lacks never runs, and the two legs
-# would be checking different things — the divergence class the twins exist to prevent.
+# Registrations are PARSED as JSON (WSD-030), not matched textually. The textual extractor this
+# replaced is what made checks 1 and 3 of B-92 possible: its vacuity floor was a second regex over
+# the same bytes, and a quoted -File value defeated it outright. The cost of parsing is that bash
+# has two parser branches (python3 or jq, whichever the box has); VALIDATE_DIST_JSON_TOOL exists so
+# both can be exercised and diffed rather than one rotting unexercised.
+# Case-EXACT existence test, matching the PowerShell twin's Test-CaseExactPath. `[ -f ]` is
+# case-insensitive under Git Bash on Windows and case-sensitive on Linux, so a `.PS1` registration
+# naming a `.ps1` file passed on the maintainer's box and failed on Linux CI: a twin divergence
+# caused by the PLATFORM, invisible to any amount of testing on one OS. Walk the real entries.
+case_exact_path() {   # $1 = root, $2 = relative path
+  _cur=$1
+  _IFSOLD=$IFS; IFS='/'
+  # shellcheck disable=SC2086
+  set -- $2
+  IFS=$_IFSOLD
+  for _seg in "$@"; do
+    [ -n "$_seg" ] || continue
+    ls -1a "$_cur" 2>/dev/null | grep -Fxq -- "$_seg" || return 1
+    _cur="$_cur/$_seg"
+  done
+  [ -f "$_cur" ]
+}
+
 check_hook_ref() {   # $1 = registration file (dist-relative), $2 = referenced script
-  # hooks.json writes Windows paths with backslashes, and JSON escaping doubles them, so the raw
-  # text holds ".claude\\hooks\\guard.ps1". Collapse any RUN of backslashes to one separator: `tr`
+  # hooks.json writes Windows paths with backslashes, and JSON escaping doubles them, so the decoded
+  # value holds ".claude\hooks\guard.ps1". Collapse any RUN of backslashes to one separator: `tr`
   # translates each one separately and yields ".claude//hooks//guard.ps1", which resolves on both
   # Windows and POSIX and so would have hidden the sloppiness rather than failing on it.
   _rel=$(printf '%s' "$2" | sed -E 's#\\+#/#g')
-  case "$_rel" in /*|[A-Za-z]:*) return 0;; esac  # absolute: not ours to resolve
-  if [ ! -f "$DIST/$_rel" ]; then
+  # An absolute registration is NOT exempt (B-92). It is a dead hook on every machine but the one it
+  # was written on — the exact "silently never runs" symptom this check exists to remove — and the
+  # old early `return` made a missing absolute target report as resolved. Check 7 still skips
+  # absolute paths, because a doc may show one as a placeholder; machine wiring may not.
+  case "$_rel" in
+    /*|[A-Za-z]:*) echo "$1 : \"$_rel\" is an absolute path — a committed absolute registration is a dead hook on every machine but the one it was written on"; return 0;;
+  esac
+  if ! case_exact_path "$DIST" "$_rel"; then
     echo "$1 : \"$_rel\" does not exist in this dist"
     return 0
   fi
-  case "$_rel" in
-    *.ps1) _twin="${_rel%.ps1}.sh" ;;
-    *.sh)  _twin="${_rel%.sh}.ps1" ;;
+  # Suffix tests are case-insensitive in BOTH twins: PowerShell's -match is case-insensitive by
+  # default while bash `case` is not, so a `.PS1` registration used to be judged differently by each
+  # leg (B-59's case-sensitivity class).
+  _lower=$(printf '%s' "$_rel" | tr '[:upper:]' '[:lower:]')
+  case "$_lower" in
+    *.ps1) _twin="${_rel%????}.sh" ;;
+    *.sh)  _twin="${_rel%???}.ps1" ;;
     *)     return 0 ;;
   esac
   # Invariant #3: a .ps1 registration whose .sh sibling is missing is a half-shipped hook.
-  [ -f "$DIST/$_twin" ] || echo "$1 : \"$_rel\" exists but its twin \"$_twin\" does not"
+  case_exact_path "$DIST" "$_twin" || echo "$1 : \"$_rel\" exists but its twin \"$_twin\" does not"
 }
+
+# Registration records are emitted as: <kind><TAB><base64 of the value>
+# kind is PROBLEM (value = the finding) or command/bash/powershell (value = the registration string).
+#
+# The value is BASE64 so the framing cannot collide with the content. Spelling the records as plain
+# tab-separated text failed twice in one afternoon: jq's @tsv escapes tabs, newlines and
+# BACKSLASHES while python3 prints them raw, so the two branches disagreed on 14 of every dist's 26
+# records (all the hooks.json Windows paths), and a hand-spelled "PROBLEM\t" emitted a literal
+# backslash-t under jq, which made every problem record parse as a valid handler and print a false
+# green. Base64 removes the class rather than patching the instances.
+emit_records() {   # $1 = registration file (dist-relative)
+  _rf=$1
+  if [ "$JSON_TOOL" = python3 ]; then
+    python3 - "$_rf" "$DIST/$_rf" <<'PY'
+import base64, json, sys
+rf, path = sys.argv[1:]
+def emit(kind, value):
+    print('%s\t%s' % (kind, base64.b64encode(value.encode('utf-8')).decode('ascii')))
+try:
+    doc = json.load(open(path, encoding='utf-8'))
+except Exception as exc:
+    emit('PROBLEM', '%s : registration file is unparseable (%s)' % (rf, exc)); raise SystemExit(0)
+hooks = doc.get('hooks')
+if not isinstance(hooks, dict):
+    emit('PROBLEM', '%s : registration file has no hooks object' % rf); raise SystemExit(0)
+if rf.startswith('.claude/'):
+    for ev, groups in hooks.items():
+        if not isinstance(groups, list):
+            emit('PROBLEM', "%s : hook event '%s' must be an array" % (rf, ev)); continue
+        for group in groups:
+            if not isinstance(group, dict) or not isinstance(group.get('hooks'), list):
+                emit('PROBLEM', "%s : hook group in event '%s' has no hooks array" % (rf, ev)); continue
+            for entry in group['hooks']:
+                if not isinstance(entry, dict) or entry.get('type') != 'command' or not entry.get('command'):
+                    emit('PROBLEM', "%s : hook entry must have type 'command' and a non-empty command" % rf)
+                else:
+                    emit('command', entry['command'])
+else:
+    for ev, entries in hooks.items():
+        if not isinstance(entries, list):
+            emit('PROBLEM', "%s : hook event '%s' must be an array" % (rf, ev)); continue
+        for entry in entries:
+            if not isinstance(entry, dict):
+                emit('PROBLEM', "%s : hook entry in event '%s' is not an object" % (rf, ev)); continue
+            b, p = entry.get('bash'), entry.get('powershell')
+            if not b and not p:
+                emit('PROBLEM', '%s : hook entry must have at least one bash/powershell leg; a deliberate single-leg entry requires updating this check on purpose' % rf); continue
+            if not b or not p:
+                emit('PROBLEM', '%s : hook entry has only one bash/powershell leg; a deliberate single-leg entry requires updating this check on purpose' % rf)
+            if b: emit('bash', b)
+            if p: emit('powershell', p)
+PY
+  else
+    jq -r --arg rf "$_rf" '
+      def rec(kind; value): kind + "\t" + (value | @base64);
+      def problem(msg): rec("PROBLEM"; $rf + " : " + msg);
+      if (.hooks | type) != "object" then problem("registration file has no hooks object")
+      elif ($rf | startswith(".claude/")) then
+        .hooks | to_entries[] | . as $e
+        | if ($e.value | type) != "array" then problem("hook event '\''" + $e.key + "'\'' must be an array")
+          else $e.value[]
+          | if (type != "object") or ((.hooks | type) != "array")
+            then problem("hook group in event '\''" + $e.key + "'\'' has no hooks array")
+            else .hooks[]
+            | if (type != "object") or (.type != "command") or ((.command // "") == "")
+              then problem("hook entry must have type '\''command'\'' and a non-empty command")
+              else rec("command"; .command) end
+            end
+          end
+      else
+        .hooks | to_entries[] | . as $e
+        | if ($e.value | type) != "array" then problem("hook event '\''" + $e.key + "'\'' must be an array")
+          else $e.value[]
+          | if type != "object" then problem("hook entry in event '\''" + $e.key + "'\'' is not an object")
+          elif ((.bash // "") == "") and ((.powershell // "") == "")
+          then problem("hook entry must have at least one bash/powershell leg; a deliberate single-leg entry requires updating this check on purpose")
+          else
+            (if ((.bash // "") == "") or ((.powershell // "") == "")
+             then problem("hook entry has only one bash/powershell leg; a deliberate single-leg entry requires updating this check on purpose")
+             else empty end),
+            (if ((.bash // "") != "") then rec("bash"; .bash) else empty end),
+            (if ((.powershell // "") != "") then rec("powershell"; .powershell) else empty end)
+          end
+          end
+      end' "$DIST/$_rf"
+  fi
+}
+
+# VALIDATE_DIST_JSON_TOOL lets a caller pin the parser branch. Without it, whichever tool a box
+# happens to have decides which branch is ever executed, and the unexercised one rots — which is how
+# the two branches came to disagree in the first place. ValidateDist.Tests.ps1 uses it to run both
+# and diff their record streams. An override naming an absent tool is FATAL, never a silent fallback.
+if [ -n "${VALIDATE_DIST_JSON_TOOL:-}" ]; then
+  case "$VALIDATE_DIST_JSON_TOOL" in
+    python3) python3 -c 'import json' >/dev/null 2>&1 || { echo "FATAL: VALIDATE_DIST_JSON_TOOL=python3 but python3 is unavailable." >&2; exit 2; } ;;
+    jq)      command -v jq >/dev/null 2>&1 || { echo "FATAL: VALIDATE_DIST_JSON_TOOL=jq but jq is unavailable." >&2; exit 2; } ;;
+    *)       echo "FATAL: VALIDATE_DIST_JSON_TOOL must be python3 or jq, got '$VALIDATE_DIST_JSON_TOOL'." >&2; exit 2 ;;
+  esac
+  JSON_TOOL="$VALIDATE_DIST_JSON_TOOL"
+fi
+# GNU coreutils spells it -d, BSD/macOS -D. Probe rather than assume, and FATAL rather than let a
+# failed decode look like an empty registration file.
+if printf 'eA==' | base64 -d >/dev/null 2>&1; then B64D='base64 -d'
+elif printf 'eA==' | base64 -D >/dev/null 2>&1; then B64D='base64 -D'
+else echo "FATAL: no usable base64 decoder (tried -d and -D)." >&2; exit 2
+fi
 
 regproblems=""
 regcount=0
+settingscount=0
+windowscount=0
+hookentries=0
 for rf in .claude/settings.json .claude/settings.windows.json .github/hooks/hooks.json; do
   if [ ! -f "$DIST/$rf" ]; then
     regproblems="$regproblems
 $rf : registration file missing from this dist"
     continue
   fi
-  # settings*.json: "command": "<interpreter> [flags] -File <path>"
-  while IFS= read -r cmd; do
-    [ -n "$cmd" ] || continue
-    regcount=$((regcount+1))
-    interp=$(printf '%s' "$cmd" | awk '{print $1}')
-    case "$interp" in
-      pwsh|powershell|bash) ;;
-      *) regproblems="$regproblems
-$rf : unrecognised interpreter '$interp' in: $cmd" ;;
-    esac
-    script=$(printf '%s' "$cmd" | grep -oE '\-File[[:space:]]+[^[:space:]]+' | awk '{print $2}' | head -1)
-    if [ -z "$script" ]; then
+  # Materialize the record stream so the PARSER'S EXIT STATUS can be inspected. Reading it straight
+  # from a process substitution discards that status, so a parser that emitted three records and
+  # then died left handlers > 0 and the per-file guard satisfied — B-92's own defect, recreated
+  # inside its fix.
+  recfile=$(mktemp "${TMPDIR:-/tmp}/validate-dist-records.XXXXXX") || { echo "FATAL: cannot create a temporary file for the record stream." >&2; exit 2; }
+  emit_records "$rf" > "$recfile" 2>/dev/null
+  parserstatus=$?
+  if [ "$parserstatus" -ne 0 ]; then
+    # Same wording as the PowerShell twin's ConvertFrom-Json catch and python3's own guard, so all
+    # three legs report one substring for "we could not read this file's registrations". jq cannot
+    # distinguish invalid JSON from an internal error, and for this check the consequence is the same.
+    regproblems="$regproblems
+$rf : registration file is unparseable (parser $JSON_TOOL exited $parserstatus; its records are incomplete)"
+    rm -f "$recfile"
+    continue
+  fi
+  handlers=0
+  while IFS=$'\t' read -r kind encoded; do
+    # jq on Windows writes CRLF, so the trailing CR would ride along into the base64 and break the
+    # decode. Strip it at the boundary so both parser branches yield the same fields.
+    kind=${kind%$'\r'}; encoded=${encoded%$'\r'}
+    [ -n "$kind" ] || continue
+    # A decode failure must be a FINDING, not an empty value: silently substituting '' would report
+    # "no -File argument" for a registration that is in fact fine, or hide one that is not.
+    if ! value=$(printf '%s' "$encoded" | $B64D 2>/dev/null); then
       regproblems="$regproblems
-$rf : no -File argument in: $cmd"
-    else
-      out=$(check_hook_ref "$rf" "$script")
-      [ -z "$out" ] || regproblems="$regproblems
-$out"
+$rf : registration record could not be decoded (kind '$kind')"
+      continue
     fi
-  done <<EOF
-$(grep -oE '"command"[[:space:]]*:[[:space:]]*"[^"]+"' "$DIST/$rf" | sed -E 's/^"command"[[:space:]]*:[[:space:]]*"(.*)"$/\1/')
-EOF
-  # hooks.json: "bash"/"powershell": "<path> [args]" — the value IS the script, interpreter implied.
-  while IFS= read -r val; do
-    [ -n "$val" ] || continue
-    regcount=$((regcount+1))
-    script=$(printf '%s' "$val" | awk '{print $1}')
+    if [ "$kind" = PROBLEM ]; then
+      regproblems="$regproblems
+$value"
+      continue
+    fi
+    # A record whose kind is not one we emit means the stream shape changed under us. Counting it as
+    # a handler is what let a malformed record restore the total and print a false green.
+    case "$kind" in
+      command|bash|powershell) ;;
+      *) regproblems="$regproblems
+$rf : unparseable registration record (kind '$kind')"; continue ;;
+    esac
+    handlers=$((handlers+1)); regcount=$((regcount+1))
+    if [ "$kind" = command ]; then
+      interp=$(printf '%s' "$value" | awk '{print tolower($1)}')
+      case "$interp" in
+        pwsh|powershell|bash) ;;
+        *) regproblems="$regproblems
+$rf : unrecognised interpreter '$interp' in: $value" ;;
+      esac
+      # -File accepts a quoted value: "-File \"a b.ps1\"" is valid JSON and the required spelling for
+      # a path containing a space. The old textual regex truncated it to a lone backslash, which the
+      # absolute-path exemption then swallowed (B-92 mechanism 3).
+      script=$(printf '%s' "$value" | sed -nE 's/.*[[:space:]]-[Ff][Ii][Ll][Ee][[:space:]]+("([^"]+)"|([^[:space:]]+)).*/\2\3/p')
+      if [ -z "$script" ]; then
+        regproblems="$regproblems
+$rf : no -File argument in: $value"
+        continue
+      fi
+    else
+      script=$(printf '%s' "$value" | awk '{print $1}')
+    fi
     out=$(check_hook_ref "$rf" "$script")
     [ -z "$out" ] || regproblems="$regproblems
 $out"
-  done <<EOF
-$(grep -oE '"(bash|powershell)"[[:space:]]*:[[:space:]]*"[^"]+"' "$DIST/$rf" | sed -E 's/^"(bash|powershell)"[[:space:]]*:[[:space:]]*"(.*)"$/\2/')
-EOF
+  done < "$recfile"
+  rm -f "$recfile"
+  # Per-FILE guard. The old floor was a single total across all three files (15 of a real 26), so
+  # losing every registration in one file still cleared it (B-92 mechanism 1).
+  [ "$handlers" -gt 0 ] || regproblems="$regproblems
+$rf : registration file yields zero handlers"
+  case "$rf" in
+    .claude/settings.json)         settingscount=$handlers ;;
+    .claude/settings.windows.json) windowscount=$handlers ;;
+    *)                             hookentries=$((handlers / 2)) ;;
+  esac
 done
+# ValidateDist.Tests.ps1 sets this to capture the raw record stream and diff the two parser branches
+# against each other. Without it, whichever tool a box has decides which branch is ever executed.
+if [ -n "${VALIDATE_DIST_RECORD_STREAM:-}" ]; then
+  for rf in .claude/settings.json .claude/settings.windows.json .github/hooks/hooks.json; do
+    [ -f "$DIST/$rf" ] || continue
+    emit_records "$rf" | sed 's/\r$//'
+  done > "$VALIDATE_DIST_RECORD_STREAM"
+fi
 regprobcount=$(printf '%s\n' "$regproblems" | grep -c . || true)
-# Vacuous-pass guard: an extraction that silently matches nothing reports a clean dist.
-if [ "$regcount" -lt 15 ]; then
-  fail "hook-registration check extracted only $regcount registration(s) from $DIST — the extraction is broken, not the dist."
-elif [ "$regprobcount" -gt 0 ]; then
+if [ "$regprobcount" -gt 0 ]; then
   fail "hook registrations reference $regprobcount missing or invalid target(s) in $DIST. A registration that cannot start is a hook that silently never runs."
   printf '%s\n' "$regproblems" | grep . | sort -u | sed 's/^/  [hook-registration] /'
 else
-  ok "all $regcount hook registrations resolve in $DIST (hook-registration)."
+  # The parser is named so a caller can assert WHICH branch ran; a comparison of two streams that
+  # cannot tell the branches apart proves nothing.
+  ok "all $regcount hook registrations resolve (settings.json $settingscount, settings.windows.json $windowscount, hooks.json $hookentries entries × 2 legs; parsed by $JSON_TOOL)"
 fi
 
 echo ""

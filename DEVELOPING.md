@@ -60,6 +60,11 @@ Check 6 proves shipped docs don't say the wrong *words*. Check 7 proves they don
 root** (the framework documents every command as run from the repo root). `CHANGELOG.md` is skipped
 — release notes quote commands that *were* wrong in order to say they're fixed.
 
+It also reports its coverage: the current dists contain 88/84/96 scanned docs and 30/30/31 inline
+script references. Zero docs or zero extracted references is a failure. Absolute paths in docs remain
+out-of-scope placeholder examples (and are listed); this is deliberately unlike hook registrations.
+`ValidateDist.Tests.ps1` is the executable version of these red-test recipes.
+
 ```bash
 sed -i 's|pwsh scripts/install.ps1|pwsh install.ps1|' dist/monorepo/README.md
 bash scripts/validate-dist.sh monorepo; echo "exit=$?"   # MUST be 1, naming README.md:14
@@ -74,6 +79,12 @@ on: every script named in `.claude/settings.json`, `.claude/settings.windows.jso
 26 registrations per dist. Work on a scratch copy — both twins take a dist-root argument, so you
 never have to mutate `dist/`:
 
+The derived shape is 6 + 6 + 14 registrations: settings.json 6, settings.windows.json 6, and seven
+Copilot entries with both bash and powershell legs. Registration targets may never be absolute;
+interpreter and `.ps1`/`.sh` suffix comparisons are case-insensitive. A deliberately single-leg
+Copilot entry requires updating this check on purpose. `ValidateDist.Tests.ps1` runs these recipes
+against real scratch copies.
+
 ```bash
 S=$(mktemp -d)/dc; mkdir -p "$S"; cp -r dist/dotnet "$S/"
 rm "$S/dotnet/.claude/hooks/audit-trail.sh"                       # a half-shipped hook
@@ -82,8 +93,17 @@ bash scripts/validate-dist.sh dotnet "$S"; echo "exit=$?"                     # 
 rm -rf "$(dirname "$S")"
 ```
 
-Run **both** legs: the whole point of the textual (not JSON-parsed) extraction is that the two twins
-cannot diverge, and only running both proves it. A registration that names a missing script is a
+Two environment variables exist for `ValidateDist.Tests.ps1` and are **never set by `release.ps1` or
+CI**:
+
+| Switch | Effect |
+|---|---|
+| `--content-only` (**argument**, both twins) | Skip checks 1–5 and run only 6, 7, 8. Prints a `NOTE:` line saying so — a partial run must never read as a full one. The suite's green anchors deliberately omit it, so the skipped group stays exercised on both legs. It is an **argument and not an environment variable on purpose**: an ambient switch that narrows a gate's scope can be inherited by a shell that never asked for it, and `release.ps1` sends validator output to a log where the `NOTE:` would go unread. |
+| `VALIDATE_DIST_JSON_TOOL=python3\|jq` (env, bash twin) | Pin the parser branch. Without it, whichever tool a box happens to have decides which branch is ever executed — which is how the two branches came to disagree. Naming an absent tool is FATAL, never a silent fallback: it cannot quietly downgrade a run. |
+
+Run **both** legs: registrations are JSON-parsed. The bash branch frames each decoded value as
+base64 in a tab-delimited record and the regression suite deliberately runs and compares its jq and
+python3 streams when both are installed. A registration that names a missing script is a
 hook that silently never runs — no guard, no post-write feedback, no audit trail, and no error
 anyone reads. Check 8 deliberately does **not** reject a bare interpreter name; see the check's
 comment for why (v0.38.1).

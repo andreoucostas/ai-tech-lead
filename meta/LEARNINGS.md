@@ -867,3 +867,8 @@ the subject, re-run the check, see whether it goes red. Nothing here was found b
    in its own summary — and still exited 1. Confirming that needed `powershell.exe` invoked by
    absolute path, because it is present on this box and not resolvable from `PATH` (B-71). The
    difference between "verified" and "skipped inside a green summary" was one hard-coded path.
+
+6. **A total vacuity floor cannot prove each input survived extraction.** Check 8 accepted 20
+registrations after an entire six-handler file disappeared because its floor was a total; a second
+regex over the same bytes was not independent evidence. Guard the structure and the scanned inputs,
+then keep the specific mutations as executable tests rather than prose-only red-test claims.

@@ -1,0 +1,120 @@
+﻿# B-92 executable red-tests. These use real composed dists: synthetic JSON fixtures hid the prior
+# false greens. The child is bound to THIS host, not Get-PsExe (B-90).
+. (Join-Path $PSScriptRoot '_HookHarness.ps1')
+Reset-Tests
+$repo = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+$validator = Join-Path $repo 'scripts\validate-dist.ps1'
+$bashValidator = Join-Path $repo 'scripts/validate-dist.sh'
+$bashExe = Get-BashPath
+$scratch = @()
+
+function New-DistCopy {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('validate-dist-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $root -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $repo 'dist\dotnet') -Destination $root -Recurse
+    $script:scratch += $root
+    return $root
+}
+function Convert-ToBashPath {
+    param([string]$Path)
+    if ($Path -match '^([A-Za-z]):[\\/](.*)$') { return '/' + $Matches[1].ToLowerInvariant() + '/' + $Matches[2].Replace('\', '/') }
+    return $Path.Replace('\', '/')
+}
+function Invoke-Validator {
+    param([string]$Root, [switch]$UseBash, [string]$JsonTool, [switch]$FullValidation)
+    # Checks 1-5 re-parse every shipped file, which dominates this suite's runtime. Red cases only
+    # need checks 6-8; the green anchors run the full validator so the skipped group is still
+    # exercised on both legs. See VALIDATE_DIST_CONTENT_ONLY in the validators.
+    # Passed as an ARGUMENT, never an environment variable: an inherited ambient switch could
+    # silently downgrade a run that asked for full validation (sol's review of this change).
+    $contentOnly = -not $FullValidation
+    if ($UseBash) {
+        if (-not $bashExe) { throw 'Bash is unavailable; the bash validator was not exercised.' }
+        $cwd = $repo.Replace('\', '/')
+        $dist = $Root.Replace('\', '/')
+        # B-85: Git Bash does not inherit the host PowerShell directory on this box.
+        # Resolve tool directories from this host; preserve the inherited PATH for CI/non-Windows.
+        $toolDirs = @((Split-Path -Parent (Get-Process -Id $PID).Path))
+        foreach ($toolName in @('jq', 'python3')) {
+            $tool = Get-Command $toolName -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($tool -and $tool.Source) { $toolDirs += (Split-Path -Parent $tool.Source) }
+        }
+        $pathPrefix = (@($toolDirs | Select-Object -Unique | ForEach-Object { "'$(Convert-ToBashPath $_)'" }) -join ':')
+        $override = if ($JsonTool) { "VALIDATE_DIST_JSON_TOOL='$JsonTool' " } else { '' }
+        $flag = if ($contentOnly) { ' --content-only' } else { '' }
+        $command = "export PATH=$pathPrefix`:`$PATH; cd '$cwd'; ${override}./scripts/validate-dist.sh dotnet '$dist'$flag"
+        $out = & $bashExe -c $command 2>&1; $code = $LASTEXITCODE
+    } else {
+        $argv = @('-NoProfile','-ExecutionPolicy','Bypass','-File',$validator,'dotnet',$Root)
+        if ($contentOnly) { $argv += '--content-only' }
+        $out = & (Get-Process -Id $PID).Path @argv 2>&1; $code = $LASTEXITCODE
+    }
+    return [pscustomobject]@{ Exit=$code; Out=($out -join "`n") }
+}
+# -PsOnly runs a case on the PowerShell leg alone. Every case ran on BOTH legs while this suite was
+# being built — that is how the bash-only false greens were found — but a full bash leg costs ~40s
+# per case, because each run re-parses every shipped *.ps1 in a fresh PowerShell process (checks 3
+# and 4), and this file runs in release.ps1's meta suite AND on both CI legs. The cases marked
+# -PsOnly are the ones whose bash-side code path is already exercised by another case in this file;
+# each one names that case. Nothing bash-specific is covered only by a PsOnly case.
+# The residual cost is checks 1-5 re-running for every case, which no subset fixes; see the backlog
+# entry filed with this change.
+function Assert-Case {
+    param([string]$Name, [scriptblock]$Mutate, [string]$Finding, [switch]$Green, [switch]$PsOnly, [switch]$FullValidation)
+    $legs = if ($PsOnly) { @('ps') } else { @('ps','bash') }
+    foreach ($leg in $legs) {
+        $root = New-DistCopy
+        & $Mutate (Join-Path $root 'dotnet')
+        $r = Invoke-Validator -Root $root -UseBash:($leg -eq 'bash') -FullValidation:$FullValidation
+        Write-Host "[ValidateDist $leg $Name] EXIT=$($r.Exit)"; Write-Host $r.Out
+        Assert ($r.Out -match '(?m)^(OK|FAIL):') "$Name/$leg did not reach a validator check: $($r.Out)"
+        Assert ($r.Out -match [regex]::Escape($Finding)) "$Name/$leg did not emit its target finding '$Finding': $($r.Out)"
+        if ($Green) { Assert ($r.Exit -eq 0) "$Name/$leg should be green, got EXIT=$($r.Exit)" }
+        else { Assert ($r.Exit -ne 0) "$Name/$leg should be red, got EXIT=0" }
+    }
+}
+function Replace-Text { param($Path,$Find,$Replace) $t=[IO.File]::ReadAllText($Path); [IO.File]::WriteAllText($Path,$t.Replace($Find,$Replace)) }
+
+try {
+    It 'case 1: settings.json with zero handlers fails check 8' { Assert-Case 'zero-settings' { param($d) $p=Join-Path $d '.claude\settings.json'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,[regex]::Replace($t,'"command"','"commandX"',6)) } 'settings.json : registration file yields zero handlers' }
+    It 'case 2: settings.windows.json with zero handlers fails check 8' { Assert-Case 'zero-windows' { param($d) $p=Join-Path $d '.claude\settings.windows.json'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,[regex]::Replace($t,'"command"','"commandX"',6)) } 'settings.windows.json : registration file yields zero handlers' -PsOnly }   # bash path identical to case 1
+    It 'case 3: an absolute registration fails check 8' { Assert-Case 'absolute' { param($d) Replace-Text (Join-Path $d '.claude\settings.json') '.claude/hooks/session-start.ps1' 'C:/definitely-missing/session-start.ps1' } 'is an absolute path' }
+    It 'case 4: a quoted missing -File target fails check 8' { Assert-Case 'quoted-missing' { param($d) Replace-Text (Join-Path $d '.claude\settings.json') '.claude/hooks/session-start.ps1' '\".claude/hooks/definitely missing.ps1\"' } 'does not exist in this dist' }
+    It 'case 5: a quoted real -File target stays green' { Assert-Case 'quoted-real' { param($d) Replace-Text (Join-Path $d '.claude\settings.json') '.claude/hooks/session-start.ps1' '\".claude/hooks/session-start.ps1\"' } 'all 26 hook registrations resolve' -Green -FullValidation }
+    It 'case 6: a single Copilot leg fails check 8' { Assert-Case 'single-leg' { param($d) $p=Join-Path $d '.github\hooks\hooks.json'; $t=[IO.File]::ReadAllText($p); $t=[regex]::Replace($t,'\s*"powershell":\s*"[^"]+",?','',1); [IO.File]::WriteAllText($p,$t) } 'has only one bash/powershell leg' -PsOnly }   # bash path: same parser branch as case 13
+    It 'case 7: an unrelated command object does not change registration scoping' { Assert-Case 'unrelated-command' { param($d) $p=Join-Path $d '.claude\settings.json'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,$t.Replace('"hooks": {','"unrelated": { "type": "command" },' + [Environment]::NewLine + '  "hooks": {')) } 'all 26 hook registrations resolve' -Green -PsOnly }   # bash green path: case 12
+    It 'case 8: a missing hook twin fails check 8' { Assert-Case 'missing-twin' { param($d) Remove-Item -LiteralPath (Join-Path $d '.claude\hooks\audit-trail.sh') -Force } 'exists but its twin' }
+    It 'case 9: a dead documented command fails check 7' { Assert-Case 'dead-doc' { param($d) Replace-Text (Join-Path $d 'README.md') 'scripts/install.ps1' 'scripts/definitely-missing.ps1' } 'dead instructions in shipped docs' }
+    It 'case 10: no markdown files fails check 7' { Assert-Case 'no-docs' { param($d) Get-ChildItem -LiteralPath $d -Recurse -Filter *.md | Remove-Item -Force } 'no-dead-instruction scanned zero documentation files' }
+    It 'case 11: an empty tree fails check 6' { Assert-Case 'empty-tree' { param($d) Get-ChildItem -LiteralPath $d -Force | Remove-Item -Recurse -Force } 'no-meta-leak scanned zero files' }
+    # The green anchors run the FULL validator (checks 1-8) on both legs, so the group the red cases
+    # skip for speed is still exercised here — and so an over-strict check 6/7/8 cannot hide behind
+    # a partial run.
+    It 'case 12: an unmutated dist stays green under the FULL validator' { Assert-Case 'clean' { param($d) } 'all 26 hook registrations resolve' -Green -FullValidation }
+    # Case 13 and 14 are the structural guards, and both exist because all three parsers (PowerShell
+    # ConvertFrom-Json, python3, jq) disagreed about malformed input the first time round: an event
+    # whose value was an object reported "no bash/powershell leg" on two legs and "not an object" on
+    # the third. The assertion is one message every leg must produce.
+    It 'case 13: an event whose value is not an array fails check 8 on every parser' { Assert-Case 'bad-event-shape' { param($d) $p=Join-Path $d '.github\hooks\hooks.json'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,$t.Replace('"sessionStart": [','"sessionStart": {"invalid":"not-an-array"}, "sessionStartX": [')) } "hook event 'sessionStart' must be an array" }
+    # Case 14 is the guard for a parser that dies mid-stream: without checking the parser's exit
+    # status, the records emitted before it died left handlers > 0 and the per-file guard satisfied.
+    It 'case 14: an unparseable registration file fails check 8 rather than yielding a short stream' { Assert-Case 'unparseable' { param($d) [IO.File]::WriteAllText((Join-Path $d '.claude\settings.json'), '{"hooks": {"SessionStart": [ THIS IS NOT JSON') } 'registration file is unparseable' }
+    # Case 15 proves the base64 record framing: a tab or a backslash inside a command value must not
+    # be able to shift a field. Spelling records as plain TSV made jq escape backslashes while
+    # python3 printed them raw, which desynchronised the two branches on real shipped data.
+    # Case 16 is a PLATFORM divergence, not a code one: Windows resolves `.PS1` to the shipped
+    # `.ps1` and Linux does not, so this registration passed here and would have failed a consumer's
+    # Linux CI. Both twins now resolve case-exactly, so both must call it missing.
+    It 'case 16: a registration whose casing differs from the shipped file fails check 8' { Assert-Case 'case-mismatch' { param($d) Replace-Text (Join-Path $d '.claude\settings.json') '.claude/hooks/session-start.ps1' '.claude/hooks/session-start.PS1' } 'does not exist in this dist' }
+    It 'case 15: a tab and a backslash in a command value cannot break the record framing' { Assert-Case 'framing' { param($d) Replace-Text (Join-Path $d '.claude\settings.json') '-File .claude/hooks/session-start.ps1' '-File .claude\\hooks\\definitely\tmissing.ps1' } 'does not exist in this dist' }
+
+    $python = Get-Command python3 -ErrorAction SilentlyContinue
+    if (-not $python) {
+        Write-Host '[COVERAGE GAP] python3 JSON branch was NOT exercised on this host; CI linux must exercise it.'
+        Skip 'the jq and python3 normalized record streams are byte-identical when both tools exist' 'python3 is unavailable on this host; CI linux must exercise this branch.'
+    } else { It 'the jq and python3 normalized record streams are byte-identical when both tools exist' {
+        $root=New-DistCopy; $a=Join-Path $root 'python.records'; $b=Join-Path $root 'jq.records'
+        $old=$env:PATH; try { $env:VALIDATE_DIST_RECORD_STREAM=$a; $r=Invoke-Validator $root -UseBash -JsonTool python3; Assert ($r.Out -match 'all \*\.json files parse \(python3\)') 'python3 branch did not run'; Assert ($r.Exit -eq 0) 'python3 stream setup failed'; $env:VALIDATE_DIST_RECORD_STREAM=$b; $r=Invoke-Validator $root -UseBash -JsonTool jq; Assert ($r.Out -match 'all \*\.json files parse \(jq\)') 'jq branch did not run'; Assert ($r.Exit -eq 0) 'jq stream setup failed'; Assert ([IO.File]::ReadAllText($a) -eq [IO.File]::ReadAllText($b)) 'python3 and jq record streams differ' } finally { $env:PATH=$old; Remove-Item Env:VALIDATE_DIST_RECORD_STREAM -ErrorAction SilentlyContinue }
+    } }
+} finally { foreach($p in $scratch) { if(Test-Path $p){ Remove-Item -LiteralPath $p -Recurse -Force } } }
+exit (Write-TestSummary 'ValidateDist.Tests (B-92)')

@@ -1181,68 +1181,6 @@ and should be written down as one.
 
 ---
 
-### B-92 · `validate-dist` check 8 has three false-green paths — the anti-vacuity gate is itself vacuously passable
-**Effort:** S–M · **Priority:** P2 · filed 2026-08-03 by the B-86 post-ship review of v0.44.0 ·
-**Invariants:** #3 #5
-
-**Why:** check 8 shipped in v0.44.0 as one of three "instruments that could not fail now can". It
-does catch the plain case it was built for (a registration naming a script absent from the dist —
-red-tested both twins). But three independent inputs make it print `all N hook registrations
-resolve` and exit 0 while a hook is dead. All three were **confirmed by execution here**, on scratch
-copies, against the twins as shipped:
-
-1. **The vacuous-pass floor has a 42% dead band.** `validate-dist.ps1:287-290` /
-   `validate-dist.sh:257-259` fail only when the *total* across all three registration files drops
-   below 15. The real total is **26** (6 `settings.json` + 6 `settings.windows.json` + 14
-   `hooks.json`, measured per dist with check 8's own regexes). Renaming all six `"command"` keys in
-   `.claude/settings.json` — Claude Code loses **every** registration in that file — leaves 20, and
-   the gate prints `OK: all 20 hook registrations resolve` and exits 0. The floor is a total where
-   the failure mode is per-file. The source comment says the files carry "6 + 6 + 8"; the 8 is
-   wrong, which is how a floor of 15 came to look adequate.
-2. **An absolute path is silently exempted while the record claims no exception.**
-   `validate-dist.ps1:59-60` / `validate-dist.sh:199-200` `return` early on `^[A-Za-z]:` or a leading
-   `/`. Repointing `session-start.ps1` at `C:/definitely-missing/session-start.ps1` produced
-   `all 26 hook registrations resolve`, **exit 0 on both twins**. A committed absolute path is a dead
-   hook on every machine but one — precisely the "silently never runs" symptom the check exists to
-   remove — and `CHANGELOG.md`/`DEVELOPING.md` state the rule with no absolute-path carve-out.
-3. **A quoted `-File` value is truncated into an absolute-looking path and then exempted by (2).**
-   `-File \".claude/hooks/definitely missing.ps1\"` is valid JSON and is the *required* spelling for
-   a path containing a space. The outer regex stops at the escaped quote, the leading `\` survives,
-   normalization turns it into `/`, and the leading-slash exemption swallows it: exit 0,
-   `all 26 hook registrations resolve`, with the named script nonexistent.
-
-**No live exposure today** — no shipped dist has an absolute or quoted registration (checked all
-three dists × all three files), and all 26 resolve. This is band P2, not P1: the gate is weaker than
-its record, it is not currently passing a real defect.
-
-**Do:** (a) make the floor per-file and derive it, not a single hand-written total — a whole
-registration file going unextracted must fail; (b) decide the absolute-path case explicitly — either
-report it as a finding (it is a portability defect in committed team config) or say in
-`enforcement-surfaces.md`/the check comment that it is out of scope, but do not keep claiming every
-reference is resolved; (c) extract with a JSON-aware unescape, or at minimum reject a value the
-regexes could not parse cleanly rather than passing it. Red-test each with the commands above; they
-are recorded verbatim in `.claude/plans/2026-08-03-b86-codex-review.md`.
-
-**Not:** don't fix this by lowering the floor to zero or by making unparsed values fatal without
-measuring — an over-strict check on committed team config is the shape that gets its escape hatch
-passed every time (the v0.44.0 allowlist lesson).
-
-**RCA sweep — the same two shapes exist in check 7, which nobody was reviewing.** Maintenance model
-#5 asks what else is exposed; the answer here was not "nothing". `no-dead-instruction`
-(`validate-dist.ps1`, check 7) **counts nothing at all** — it accumulates `$deadRefs` and reports
-`every documented command resolves` whenever that list is empty, so an extraction regex that stopped
-matching, or a `.md` enumeration that returned zero files, reports a clean dist exactly as a genuinely
-clean one does. It also carries **the same absolute-path exemption** (`$script.StartsWith('/')`), so
-mechanism (2) above is a two-check pattern, not a check-8 quirk. Check 6 is the one that got this
-right: it guards its *input* (`if ($denyPatterns.Count -eq 0)`) — but not its file scan. Fix the class
-across checks 6, 7 and 8 in one pass, both twins, rather than patching check 8 alone.
-
-**Cross-links:** B-59 (the inert-check class, of which the floor's dead band is an instance), B-62
-(the entry check 8 came from), B-64 (planted-defect tests for diagnostics), B-67 (extends check 7 —
-whoever takes that entry should fix this at the same time).
-
----
-
 ### B-93 · The staged-set guard's 5.1 hardening is tested only under pwsh 7 — B-90's class, inside the release that themed on it
 **Effort:** S · **Priority:** P2 · filed 2026-08-03 by the B-86 post-ship review · **Invariants:** #3
 
@@ -1470,7 +1408,43 @@ A wrong pin is consumer-visible: verify on a live Copilot surface before shippin
 
 ---
 
+### B-95 · `validate-dist` checks 1–4 still carry the vacuity shapes B-92 removed from 6–8
+**Effort:** S · **Priority:** P3 · filed 2026-08-04 (B-92's independent review) · **Invariants:** #3
+
+**Why:** B-92 was scoped to checks 6, 7 and 8, and those now guard their inputs, count what they
+scanned, and report read errors. The four checks above them were not touched and still have the
+shapes B-92 exists to remove — confirmed by reading during the pre-commit review:
+
+- **check 1** (`@stack` markers) swallows read errors in both twins (`-ErrorAction
+  SilentlyContinue` / `2>/dev/null || true`), so an unreadable file is indistinguishable from a
+  clean one.
+- **checks 2, 3 and 4** each print their own `OK:` on **zero** inputs. A dist containing no
+  `*.json`, no `*.sh` or no `*.ps1` gets three individual passes saying those files are all valid.
+  Other checks would redden the run overall, but each of those specific claims is vacuous.
+
+This is a genuine residual, not a regression: it is the same class, one check group over. It is P3
+because a dist with zero JSON/shell/PowerShell files fails checks 5–8 loudly anyway.
+
+**Do:** give checks 1–4 the treatment 6–8 received — count inputs, state the counts on the OK line,
+and record read/enumeration errors as findings rather than skipping the file. Decide explicitly
+whether zero inputs is legitimate for each (it is not, for any of the three). Red-test each with a
+planted unreadable file and an emptied tree, both twins.
+
+**Cross-links:** B-92 (the same class in checks 6–8, fixed), B-59 (the inert-check family), B-64
+(planted-defect tests for diagnostics).
+
+---
+
 ## Done
+
+- **B-92** — done 2026-08-03 (meta-only; no version). `validate-dist` checks 6–8 now have
+  structural anti-vacuity guards in both twins, hook registrations are parsed as JSON, and the new
+  real-dist regression suite exercises the PowerShell and bash legs. Check 7 remains limited to its
+  inline-command grammar; B-67 owns broader markdown-link coverage. The maintainer selected B-92
+  before the unordered P2/P3 items on 2026-08-03; **B-89** is the recommended next item because its
+  Windows PowerShell 5.1 defect is consumer-visible. Check 7's rewrite also removed the predictable
+  `/tmp/_dead_$$` path it used to write (no temporary file is created now), so the entry filed for
+  that during this change was withdrawn rather than shipped.
 
 - **B-86** — the post-ship review v0.44.0 owed, done 2026-08-03 (meta-only; no version). Three
   findings filed: **B-92** (P2), **B-93** (P2), **B-94** (P3). The adversarial pass was run by
@@ -1591,6 +1565,15 @@ A wrong pin is consumer-visible: verify on a live Copilot surface before shippin
   interpreter. 26 registrations per dist. Extraction is textual and identical in both twins by
   decision: the bash leg's JSON parser is python3-or-jq depending on the box, so parsing there would
   leave whichever branch a machine lacks untested — B-59's inert-check class.
+
+  > **Superseded 2026-08-04 by WSD-030 (B-92).** The textual-extraction decision recorded in the
+  > paragraph above was *reversed*: registrations are now parsed as JSON, because that decision was
+  > the direct cause of two of B-92's three false greens (a vacuity floor that was a second regex
+  > over the same bytes, and a quoted `-File` value the regex could not read). The concern it names
+  > was real and is now handled by coverage rather than by avoidance — `VALIDATE_DIST_JSON_TOOL`
+  > pins the branch so both can be exercised and diffed, and the two CI legs run different ones.
+  > The paragraph is left standing rather than rewritten, because the reasoning is why the reversal
+  > needed its own decision record.
 
   **Band:** the delivered check is **P2-shaped, not P1**. The P1 severity came from silent dead
   hooks, which v0.39.0 covers consumer-side; this is build-time consistency. Recorded rather than

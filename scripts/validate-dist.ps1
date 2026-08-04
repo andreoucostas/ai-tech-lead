@@ -25,12 +25,21 @@ $ErrorActionPreference = 'Continue'
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 Set-Location $RepoRoot
 
-$Mode = $args[0]
+# --content-only is an explicit ARGUMENT, deliberately not an environment variable: an ambient switch
+# that narrows a gate's scope can be inherited by a shell that never asked for it, and `release.ps1`
+# redirects validator output to a log, so the NOTE below would not be seen on an otherwise-green
+# gate. A caller must now ask for a partial run in the command itself.
+$ContentOnly = $false
+$positional  = @()
+foreach ($a in $args) {
+    if ("$a" -eq '--content-only') { $ContentOnly = $true } else { $positional += $a }
+}
+$Mode = $positional[0]
 if ($Mode -ne 'dotnet' -and $Mode -ne 'angular' -and $Mode -ne 'monorepo') {
-    [Console]::Error.WriteLine('usage: validate-dist.ps1 {dotnet|angular|monorepo} [dist-root]')
+    [Console]::Error.WriteLine('usage: validate-dist.ps1 {dotnet|angular|monorepo} [dist-root] [--content-only]')
     exit 2
 }
-$DistRoot = if ($args.Count -ge 2 -and $args[1]) { $args[1] } else { 'dist' }
+$DistRoot = if ($positional.Count -ge 2 -and $positional[1]) { $positional[1] } else { 'dist' }
 $Dist = Join-Path $DistRoot $Mode
 if (-not (Test-Path $Dist -PathType Container)) {
     [Console]::Error.WriteLine("no $Dist -- run scripts/build.ps1 $Mode first")
@@ -46,6 +55,34 @@ $failed = 0
 function Fail($m) { Write-Output "FAIL: $m"; $script:failed++ }
 function OK($m)   { Write-Output "OK:   $m" }
 
+# --content-only skips checks 1-5 (the parse/marker/template-checks group) and runs only the content
+# checks 6, 7 and 8. It exists for ValidateDist.Tests.ps1: those five re-parse every shipped file on
+# every case, which made that suite 9 minutes for 15 cases x 2 legs — in a file that runs in
+# release.ps1 AND on both CI legs. Neither release.ps1 nor CI passes it, and the suite's green
+# anchors still run the FULL validator so the skipped group stays exercised on both legs.
+# A restricted run says so loudly on stdout: a subset must never be mistakable for a complete one,
+# which is the exact reporting failure this change exists to remove.
+if ($ContentOnly) {
+    Write-Output "NOTE: --content-only -- checks 1-5 were SKIPPED; this is NOT a full validation."
+}
+
+# Resolution for check 8 is CASE-EXACT in both twins. Windows resolves a `.PS1` registration to a
+# `.ps1` file on disk and Linux does not, so a registration whose casing differs from the shipped
+# file passed on the maintainer's box and would break on a consumer's Linux host — the twins
+# disagreeing by PLATFORM rather than by code, which no amount of twin testing on one OS can see.
+# Compare each segment against the real directory entry instead of asking the filesystem to match.
+function Test-CaseExactPath {
+    param([string]$Root, [string]$Relative)
+    $current = $Root
+    foreach ($segment in @($Relative -split '/' | Where-Object { $_ -ne '' })) {
+        $entry = @(Get-ChildItem -LiteralPath $current -Force -ErrorAction SilentlyContinue |
+                   Where-Object { $_.Name -ceq $segment })
+        if ($entry.Count -eq 0) { return $false }
+        $current = $entry[0].FullName
+    }
+    return $true
+}
+
 # Used by check 8. Returns zero or more problem strings for one referenced hook script: the file
 # itself, and its opposite-language twin (invariant #3 -- a .ps1 registration whose .sh sibling is
 # missing is a half-shipped hook, and the surface that runs the missing one gets nothing).
@@ -57,20 +94,25 @@ function Test-HookRef {
     # translating each one separately yields ".claude//hooks//guard.ps1", which happens to resolve on
     # both Windows and POSIX and so would have hidden the sloppiness rather than failing on it.
     $rel = $Script -replace '\\+', '/'
-    if ($rel -match '^[A-Za-z]:' -or $rel.StartsWith('/')) { return $problems }   # absolute: not ours to resolve
-    if (-not (Test-Path (Join-Path $Dist $rel))) {
+    if ($rel -match '^[A-Za-z]:' -or $rel.StartsWith('/')) {
+        # Unlike a documentation example (check 7), committed machine wiring must never be absolute.
+        $problems += "$File : `"$rel`" is an absolute path — a committed absolute registration is a dead hook on every machine but the one it was written on"
+        return $problems
+    }
+    if (-not (Test-CaseExactPath -Root $Dist -Relative $rel)) {
         $problems += "$File : `"$rel`" does not exist in this dist"
         return $problems                        # no point asking about the twin of a missing file
     }
     if ($rel -match '\.ps1$')     { $twin = ($rel -replace '\.ps1$', '.sh') }
     elseif ($rel -match '\.sh$')  { $twin = ($rel -replace '\.sh$', '.ps1') }
     else { return $problems }
-    if (-not (Test-Path (Join-Path $Dist $twin))) {
+    if (-not (Test-CaseExactPath -Root $Dist -Relative $twin)) {
         $problems += "$File : `"$rel`" exists but its twin `"$twin`" does not"
     }
     return $problems
 }
 
+if (-not $ContentOnly) {
 # --- 1. no unresolved @stack markers -------------------------------------------------------------
 $markerRe = '@stack:[A-Za-z0-9_-]+'
 $markerFiles = @()
@@ -154,6 +196,7 @@ if (-not (Test-Path $Tc)) {
         OK "$Tc passed."
     }
 }
+}   # end of the checks 1-5 group (VALIDATE_DIST_CONTENT_ONLY)
 
 # --- 6. no meta-dev vocabulary in shipped content -------------------------------------------------
 # The don't-ship boundary (invariant #6) made deterministic. Everything under dist/ lands in a
@@ -179,25 +222,38 @@ if ($denyPatterns.Count -eq 0) {
     exit 2
 }
 $leaks = @()
-foreach ($f in (Get-ChildItem -Recurse -File -Path $DistAbs)) {
+$scanErrors = @()
+$distFiles = @(Get-ChildItem -Recurse -File -Path $DistAbs)
+$filesScanned = @($distFiles).Count
+foreach ($f in $distFiles) {
     $rel = ($f.FullName.Substring($DistAbs.Length).TrimStart('\', '/')) -replace '\\', '/'
     $skip = $false
     foreach ($a in $allowPaths) { if ($rel -like "*$a*") { $skip = $true; break } }
     if ($skip) { continue }
     foreach ($p in $denyPatterns) {
         # Select-String is case-insensitive by default -- matches the bash twin's `grep -i`.
-        foreach ($m in (Select-String -Path $f.FullName -Pattern $p -ErrorAction SilentlyContinue)) {
+        # A read error must be RECORDED, not swallowed: -ErrorAction SilentlyContinue alone let an
+        # unreadable file count as scanned and clean, which is the bash twin's `2>/dev/null || true`
+        # fail-open in PowerShell clothing (B-59, and sol's review of this change).
+        $scanErr = $null
+        foreach ($m in (Select-String -Path $f.FullName -Pattern $p -ErrorAction SilentlyContinue -ErrorVariable scanErr)) {
             $leaks += ("{0}:{1}: {2}" -f $rel, $m.LineNumber, $p)
         }
+        if ($scanErr) { $scanErrors += ("{0}: {1}" -f $rel, $scanErr[0].Exception.Message) }
     }
 }
 $leaks = $leaks | Sort-Object
-if ($leaks.Count -gt 0) {
+if (@($scanErrors).Count -gt 0) {
+    Fail ("no-meta-leak could not scan {0} file(s) in {1} -- the scan is broken, not the dist." -f @($scanErrors).Count, $Dist)
+    $scanErrors | Sort-Object -Unique | ForEach-Object { Write-Output "  [no-meta-leak] unreadable: $_" }
+} elseif ($filesScanned -eq 0) {
+    Fail "no-meta-leak scanned zero files in $Dist -- the input tree is empty, not clean."
+} elseif ($leaks.Count -gt 0) {
     Fail ("meta vocabulary in shipped content -- {0} line(s). These reach a consumer repo; fix in src/, not dist/." -f $leaks.Count)
     $leaks | Select-Object -First 20 | ForEach-Object { Write-Output "  [no-meta-leak] $_" }
     if ($leaks.Count -gt 20) { Write-Output ("  [no-meta-leak] ... and {0} more line(s)." -f ($leaks.Count - 20)) }
 } else {
-    OK "no meta-dev vocabulary in $Dist (no-meta-leak)."
+    OK "no meta-dev vocabulary in $Dist (no-meta-leak; $(@($denyPatterns).Count) pattern(s) over $filesScanned file(s))."
 }
 
 # --- 7. no dead instructions ------------------------------------------------------------------
@@ -214,26 +270,48 @@ if ($leaks.Count -gt 0) {
 # CHANGELOG.md is skipped by design: release notes quote commands that WERE wrong in order to say
 # they are now fixed. It is the one shipped doc whose job is to describe the past.
 $deadRefs = @()
+$absoluteRefs = @()
+$docReadErrors = @()
+$docsScanned = 0
+$refsExtracted = 0
 foreach ($f in (Get-ChildItem -Recurse -File -Path $DistAbs -Filter *.md)) {
     if ($f.Name -eq 'CHANGELOG.md') { continue }
+    $docsScanned++
     $rel = ($f.FullName.Substring($DistAbs.Length).TrimStart('\', '/')) -replace '\\', '/'
     $n = 0
-    foreach ($line in (Get-Content $f.FullName)) {
+    # Same rule as check 6: a doc that could not be READ is not a doc that contained nothing.
+    $docErr = $null
+    $lines = @(Get-Content $f.FullName -ErrorAction SilentlyContinue -ErrorVariable docErr)
+    if ($docErr) { $docReadErrors += ("{0}: {1}" -f $rel, $docErr[0].Exception.Message); continue }
+    foreach ($line in $lines) {
         $n++
         foreach ($m in [regex]::Matches($line, '(?:pwsh|bash|powershell)(?:\s+-[A-Za-z]+(?:\s+[A-Za-z]+)?)*\s+([A-Za-z0-9_./-]+\.(?:ps1|sh))')) {
             $script = $m.Groups[1].Value
-            if ($script.StartsWith('/')) { continue }   # absolute path / placeholder, not ours to resolve
+            $refsExtracted++
+            # An absolute doc path can be a placeholder example; registrations (check 8) cannot.
+            if ($script.StartsWith('/')) {
+                $absoluteRefs += ("{0}:{1}: absolute example `{2}` out of scope" -f $rel, $n, $script)
+                continue
+            }
             if (-not (Test-Path (Join-Path $DistAbs $script))) {
                 $deadRefs += ("{0}:{1}: `{2}` does not exist in this dist" -f $rel, $n, $script)
             }
         }
     }
 }
-if ($deadRefs.Count -gt 0) {
+if (@($docReadErrors).Count -gt 0) {
+    Fail ("no-dead-instruction could not read {0} doc(s) in {1} -- the scan is broken, not the dist." -f @($docReadErrors).Count, $Dist)
+    $docReadErrors | Sort-Object -Unique | ForEach-Object { Write-Output "  [no-dead-instruction] unreadable: $_" }
+} elseif ($docsScanned -eq 0) {
+    Fail "no-dead-instruction scanned zero documentation files in $Dist -- the input tree is empty, not clean."
+} elseif ($refsExtracted -eq 0) {
+    Fail "no-dead-instruction extracted zero script references from $docsScanned doc(s) in $Dist -- the inline-command extractor is broken, not the dist."
+} elseif ($deadRefs.Count -gt 0) {
     Fail ("dead instructions in shipped docs -- {0}. A consumer (or their agent) following these gets 'No such file or directory'. Fix in src/, not dist/." -f $deadRefs.Count)
     $deadRefs | Sort-Object -Unique | ForEach-Object { Write-Output "  [no-dead-instruction] $_" }
 } else {
-    OK "every documented command resolves in $Dist (no-dead-instruction)."
+    $absoluteRefs | Sort-Object -Unique | ForEach-Object { Write-Output "  [no-dead-instruction] $_" }
+    OK "all $($refsExtracted - $absoluteRefs.Count) resolvable documented script references exist in $Dist ($docsScanned doc(s) scanned; $($absoluteRefs.Count) absolute example(s) out of scope)."
 }
 
 # --- 8. hook registrations point at hooks that exist ---------------------------------------------
@@ -251,48 +329,68 @@ if ($deadRefs.Count -gt 0) {
 # doctor's `Hook liveness` row (v0.39.0) reports from the consumer's own machine. This check
 # answers the build-time half only: does the thing we point at exist, and do both twins exist.
 #
-# Extraction is deliberately TEXTUAL and identical in both twins. The bash twin's JSON parser is
-# python3-or-jq depending on the box, so parsing there would leave whichever branch this machine
-# lacks untested while the PowerShell leg used ConvertFrom-Json -- three code paths for one check.
+# Registrations are parsed as JSON. The bash twin emits the same normalized records through its
+# python3 and jq branches; ValidateDist.Tests.ps1 compares them when both tools are available.
 $SanctionedInterpreters = @('pwsh', 'powershell', 'bash')
 $regFiles = @('.claude/settings.json', '.claude/settings.windows.json', '.github/hooks/hooks.json')
 $regProblems = @()
 $regCount = 0
+$settingsCounts = @{}
+$hookEntries = 0
+function Get-FileArgument {
+    param([string]$Command)
+    $m = [regex]::Match($Command, '(?i)(?:^|\s)-File\s+(?:"([^"]+)"|(\S+))')
+    if (-not $m.Success) { return $null }
+    if ($m.Groups[1].Success) { return $m.Groups[1].Value }
+    return $m.Groups[2].Value
+}
 foreach ($rf in $regFiles) {
     $rfAbs = Join-Path $DistAbs $rf
     if (-not (Test-Path $rfAbs)) { $regProblems += "$rf : registration file missing from this dist"; continue }
-    $raw = Get-Content $rfAbs -Raw
-
-    # settings*.json: "command": "<interpreter> [flags] -File <path>"
-    foreach ($m in [regex]::Matches($raw, '"command"\s*:\s*"([^"]+)"')) {
-        $cmd = $m.Groups[1].Value
-        $regCount++
-        $interp = ($cmd -split '\s+')[0]
-        if ($SanctionedInterpreters -notcontains $interp) {
-            $regProblems += "$rf : unrecognised interpreter '$interp' in: $cmd"
+    try { $json = Get-Content $rfAbs -Raw | ConvertFrom-Json } catch { $regProblems += "$rf : registration file is unparseable"; continue }
+    if ($null -eq $json.hooks -or -not ($json.hooks -is [pscustomobject])) { $regProblems += "$rf : registration file has no hooks object"; continue }
+    $handlers = 0
+    # Every level is type-checked, and the three parsers (here, python3, jq) must agree on the
+    # message for each malformed shape. They did not: an event whose value was an object rather than
+    # an array produced "no bash/powershell leg" here and in python3 but "not an object" under jq.
+    # A twin that disagrees about WHY only looks like a twin.
+    if ($rf -like '.claude/*') {
+        foreach ($event in @($json.hooks.PSObject.Properties)) {
+            if ($event.Value -isnot [System.Array]) { $regProblems += "$rf : hook event '$($event.Name)' must be an array"; continue }
+            foreach ($group in @($event.Value)) {
+                if ($group -isnot [pscustomobject] -or $group.hooks -isnot [System.Array]) { $regProblems += "$rf : hook group in event '$($event.Name)' has no hooks array"; continue }
+                foreach ($entry in @($group.hooks)) {
+                    if ($entry.type -ne 'command' -or [string]::IsNullOrWhiteSpace([string]$entry.command)) { $regProblems += "$rf : hook entry must have type 'command' and a non-empty command"; continue }
+                    $handlers++; $regCount++
+                    $cmd = [string]$entry.command; $interp = (($cmd -split '\s+')[0]).ToLowerInvariant()
+                    if ($SanctionedInterpreters -notcontains $interp) { $regProblems += "$rf : unrecognised interpreter '$interp' in: $cmd" }
+                    $script = Get-FileArgument $cmd
+                    if (-not $script) { $regProblems += "$rf : no -File argument in: $cmd" } else { $regProblems += (Test-HookRef -Dist $DistAbs -File $rf -Script $script) }
+                }
+            }
         }
-        $fm = [regex]::Match($cmd, '-File\s+(\S+)')
-        if (-not $fm.Success) { $regProblems += "$rf : no -File argument in: $cmd"; continue }
-        $regProblems += (Test-HookRef -Dist $DistAbs -File $rf -Script $fm.Groups[1].Value)
+        $settingsCounts[$rf] = $handlers
+    } else {
+        foreach ($event in @($json.hooks.PSObject.Properties)) {
+            if ($event.Value -isnot [System.Array]) { $regProblems += "$rf : hook event '$($event.Name)' must be an array"; continue }
+            foreach ($entry in @($event.Value)) {
+                if ($entry -isnot [pscustomobject]) { $regProblems += "$rf : hook entry in event '$($event.Name)' is not an object"; continue }
+                $hasBash = -not [string]::IsNullOrWhiteSpace([string]$entry.bash); $hasPs = -not [string]::IsNullOrWhiteSpace([string]$entry.powershell)
+                if (-not $hasBash -and -not $hasPs) { $regProblems += "$rf : hook entry must have at least one bash/powershell leg; a deliberate single-leg entry requires updating this check on purpose"; continue }
+                if (-not $hasBash -or -not $hasPs) { $regProblems += "$rf : hook entry has only one bash/powershell leg; a deliberate single-leg entry requires updating this check on purpose" }
+                $hookEntries++
+                foreach ($kind in @('bash', 'powershell')) { if (-not [string]::IsNullOrWhiteSpace([string]$entry.$kind)) { $handlers++; $regCount++; $script = (([string]$entry.$kind -split '\s+')[0]); $regProblems += (Test-HookRef -Dist $DistAbs -File $rf -Script $script) } }
+            }
+        }
     }
-
-    # hooks.json: "bash": "<path> [args]" / "powershell": "<path> [args]" -- the value IS the script,
-    # with the interpreter implied by the key, and Windows paths written with backslashes.
-    foreach ($m in [regex]::Matches($raw, '"(bash|powershell)"\s*:\s*"([^"]+)"')) {
-        $regCount++
-        $script = (($m.Groups[2].Value) -split '\s+')[0]
-        $regProblems += (Test-HookRef -Dist $DistAbs -File $rf -Script $script)
-    }
+    if ($handlers -eq 0) { $regProblems += "$rf : registration file yields zero handlers" }
 }
-# Vacuous-pass guard: an extraction that silently matches nothing reports a clean dist. The three
-# files carry 6 + 6 + 8 registrations today; require enough to prove the regexes still bite.
-if ($regCount -lt 15) {
-    Fail "hook-registration check extracted only $regCount registration(s) from $Dist -- the extraction is broken, not the dist."
-} elseif (@($regProblems).Count -gt 0) {
+if (@($regProblems).Count -gt 0) {
     Fail ("hook registrations reference {0} missing or invalid target(s) in {1}. A registration that cannot start is a hook that silently never runs." -f @($regProblems).Count, $Dist)
     $regProblems | Sort-Object -Unique | ForEach-Object { Write-Output "  [hook-registration] $_" }
 } else {
-    OK "all $regCount hook registrations resolve in $Dist (hook-registration)."
+    # The parser is named here too, so both twins' OK lines state how the registrations were read.
+    OK "all $regCount hook registrations resolve (settings.json $($settingsCounts['.claude/settings.json']), settings.windows.json $($settingsCounts['.claude/settings.windows.json']), hooks.json $hookEntries entries × 2 legs; parsed by ConvertFrom-Json)"
 }
 
 Write-Output ''
