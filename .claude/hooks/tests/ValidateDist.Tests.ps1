@@ -42,7 +42,10 @@ function Invoke-Validator {
         $pathPrefix = (@($toolDirs | Select-Object -Unique | ForEach-Object { "'$(Convert-ToBashPath $_)'" }) -join ':')
         $override = if ($JsonTool) { "VALIDATE_DIST_JSON_TOOL='$JsonTool' " } else { '' }
         $flag = if ($contentOnly) { ' --content-only' } else { '' }
-        $command = "export PATH=$pathPrefix`:`$PATH; cd '$cwd'; ${override}./scripts/validate-dist.sh dotnet '$dist'$flag"
+        # Invoked as `bash <script>`, never `./<script>`: the file is mode 644 in git, which Windows
+        # ignores and Linux enforces, so `./` gave "Permission denied" on the CI linux leg only.
+        # Every other caller in this repo (CI, DEVELOPING.md) spells it this way too.
+        $command = "export PATH=$pathPrefix`:`$PATH; cd '$cwd'; ${override}bash scripts/validate-dist.sh dotnet '$dist'$flag"
         $out = & $bashExe -c $command 2>&1; $code = $LASTEXITCODE
     } else {
         $argv = @('-NoProfile','-ExecutionPolicy','Bypass','-File',$validator,'dotnet',$Root)
@@ -113,8 +116,26 @@ try {
         Write-Host '[COVERAGE GAP] python3 JSON branch was NOT exercised on this host; CI linux must exercise it.'
         Skip 'the jq and python3 normalized record streams are byte-identical when both tools exist' 'python3 is unavailable on this host; CI linux must exercise this branch.'
     } else { It 'the jq and python3 normalized record streams are byte-identical when both tools exist' {
-        $root=New-DistCopy; $a=Join-Path $root 'python.records'; $b=Join-Path $root 'jq.records'
-        $old=$env:PATH; try { $env:VALIDATE_DIST_RECORD_STREAM=$a; $r=Invoke-Validator $root -UseBash -JsonTool python3; Assert ($r.Out -match 'all \*\.json files parse \(python3\)') 'python3 branch did not run'; Assert ($r.Exit -eq 0) 'python3 stream setup failed'; $env:VALIDATE_DIST_RECORD_STREAM=$b; $r=Invoke-Validator $root -UseBash -JsonTool jq; Assert ($r.Out -match 'all \*\.json files parse \(jq\)') 'jq branch did not run'; Assert ($r.Exit -eq 0) 'jq stream setup failed'; Assert ([IO.File]::ReadAllText($a) -eq [IO.File]::ReadAllText($b)) 'python3 and jq record streams differ' } finally { $env:PATH=$old; Remove-Item Env:VALIDATE_DIST_RECORD_STREAM -ErrorAction SilentlyContinue }
+        # This case had never actually executed anywhere before CI ran it: skipped here for want of
+        # python3, and on CI it asserted on check 2's output while running --content-only, where
+        # checks 1-5 never print. It now asserts the check-8 line, which every run emits and which
+        # names the parser that actually ran -- the whole point of pinning the branch.
+        $root = New-DistCopy
+        $a = Join-Path $root 'python.records'; $b = Join-Path $root 'jq.records'
+        try {
+            foreach ($pair in @(@{ Tool='python3'; File=$a }, @{ Tool='jq'; File=$b })) {
+                # bash writes this path, so it must be a POSIX path even on Windows.
+                $env:VALIDATE_DIST_RECORD_STREAM = (Convert-ToBashPath $pair.File)
+                $r = Invoke-Validator -Root $root -UseBash -JsonTool $pair.Tool
+                Assert ($r.Out -match "parsed by $($pair.Tool)") "$($pair.Tool) branch did not run: $($r.Out)"
+                Assert ($r.Exit -eq 0) "$($pair.Tool) stream setup failed: $($r.Out)"
+                Assert (Test-Path -LiteralPath $pair.File) "$($pair.Tool) wrote no record stream"
+            }
+            # Guard against a vacuous comparison: two empty files are also byte-identical.
+            $pyRecords = [IO.File]::ReadAllText($a)
+            Assert ($pyRecords.Trim().Length -gt 0) 'the captured record stream is empty; the comparison would be vacuous'
+            Assert ($pyRecords -eq [IO.File]::ReadAllText($b)) 'python3 and jq record streams differ'
+        } finally { Remove-Item Env:VALIDATE_DIST_RECORD_STREAM -ErrorAction SilentlyContinue }
     } }
 } finally { foreach($p in $scratch) { if(Test-Path $p){ Remove-Item -LiteralPath $p -Recurse -Force } } }
 exit (Write-TestSummary 'ValidateDist.Tests (B-92)')

@@ -61,6 +61,19 @@ else
   echo "FATAL: neither python3 nor jq is available to validate *.json files — install one." >&2
   exit 2
 fi
+# VALIDATE_DIST_JSON_TOOL pins the branch, and is applied HERE so it governs check 2 and check 8
+# alike. Applied later (just before check 8) it left check 2 reporting the auto-detected tool while
+# check 8 used the pinned one — two checks disagreeing about which parser ran, in the very variable
+# that exists to make the branches distinguishable. An override naming an absent tool is FATAL,
+# never a silent fallback.
+if [ -n "${VALIDATE_DIST_JSON_TOOL:-}" ]; then
+  case "$VALIDATE_DIST_JSON_TOOL" in
+    python3) python3 -c 'import json' >/dev/null 2>&1 || { echo "FATAL: VALIDATE_DIST_JSON_TOOL=python3 but python3 is unavailable." >&2; exit 2; } ;;
+    jq)      command -v jq >/dev/null 2>&1 || { echo "FATAL: VALIDATE_DIST_JSON_TOOL=jq but jq is unavailable." >&2; exit 2; } ;;
+    *)       echo "FATAL: VALIDATE_DIST_JSON_TOOL must be python3 or jq, got '$VALIDATE_DIST_JSON_TOOL'." >&2; exit 2 ;;
+  esac
+  JSON_TOOL="$VALIDATE_DIST_JSON_TOOL"
+fi
 
 if [ "$CONTENT_ONLY" != "1" ]; then
 # --- 1. no unresolved @stack markers ------------------------------------------------------------
@@ -400,18 +413,6 @@ PY
   fi
 }
 
-# VALIDATE_DIST_JSON_TOOL lets a caller pin the parser branch. Without it, whichever tool a box
-# happens to have decides which branch is ever executed, and the unexercised one rots — which is how
-# the two branches came to disagree in the first place. ValidateDist.Tests.ps1 uses it to run both
-# and diff their record streams. An override naming an absent tool is FATAL, never a silent fallback.
-if [ -n "${VALIDATE_DIST_JSON_TOOL:-}" ]; then
-  case "$VALIDATE_DIST_JSON_TOOL" in
-    python3) python3 -c 'import json' >/dev/null 2>&1 || { echo "FATAL: VALIDATE_DIST_JSON_TOOL=python3 but python3 is unavailable." >&2; exit 2; } ;;
-    jq)      command -v jq >/dev/null 2>&1 || { echo "FATAL: VALIDATE_DIST_JSON_TOOL=jq but jq is unavailable." >&2; exit 2; } ;;
-    *)       echo "FATAL: VALIDATE_DIST_JSON_TOOL must be python3 or jq, got '$VALIDATE_DIST_JSON_TOOL'." >&2; exit 2 ;;
-  esac
-  JSON_TOOL="$VALIDATE_DIST_JSON_TOOL"
-fi
 # GNU coreutils spells it -d, BSD/macOS -D. Probe rather than assume, and FATAL rather than let a
 # failed decode look like an empty registration file.
 if printf 'eA==' | base64 -d >/dev/null 2>&1; then B64D='base64 -d'
