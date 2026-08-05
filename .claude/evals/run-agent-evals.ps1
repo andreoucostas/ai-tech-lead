@@ -21,8 +21,68 @@ function Assert-Bom([string]$Path) {
     return $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
 }
 
-function New-EvalRepo([string]$Path, [ValidateSet('dotnet','angular')][string]$Stack = 'dotnet') {
+function New-EvalRepo([string]$Path, [ValidateSet('dotnet','angular','warehouse')][string]$Stack = 'dotnet') {
     New-Item -ItemType Directory -Path $Path -Force | Out-Null
+    if ($Stack -eq 'warehouse') {
+        New-Item -ItemType Directory -Path (Join-Path $Path 'Tables'), (Join-Path $Path 'StoredProcedures'), (Join-Path $Path 'Views'), (Join-Path $Path 'analysis') -Force | Out-Null
+        '<Project Sdk="Microsoft.Build.Sql/0.2.0" />' | Set-Content -LiteralPath (Join-Path $Path 'warehouse.sqlproj') -Encoding utf8NoBOM
+        @'
+CREATE TABLE dim.DimCustomer (
+    CustomerKey INT NOT NULL PRIMARY KEY,
+    CustomerId NVARCHAR(50) NOT NULL,
+    RegionKey INT NOT NULL,
+    SegmentName NVARCHAR(100) NOT NULL,
+    EffectiveFrom DATETIME2 NOT NULL,
+    EffectiveTo DATETIME2 NULL,
+    IsCurrent BIT NOT NULL
+);
+'@ | Set-Content -LiteralPath (Join-Path $Path 'Tables/dim.DimCustomer.sql') -Encoding utf8NoBOM
+        'CREATE TABLE dim.DimRegion (RegionKey INT NOT NULL PRIMARY KEY, RegionName NVARCHAR(100) NOT NULL);' | Set-Content -LiteralPath (Join-Path $Path 'Tables/dim.DimRegion.sql') -Encoding utf8NoBOM
+        'CREATE TABLE dim.DimDate (DateKey INT NOT NULL PRIMARY KEY, CalendarDate DATE NOT NULL, CalendarMonth INT NOT NULL);' | Set-Content -LiteralPath (Join-Path $Path 'Tables/dim.DimDate.sql') -Encoding utf8NoBOM
+        'CREATE TABLE dim.DimProduct (ProductKey INT NOT NULL PRIMARY KEY, ProductId NVARCHAR(50) NOT NULL, CategoryName NVARCHAR(100) NOT NULL);' | Set-Content -LiteralPath (Join-Path $Path 'Tables/dim.DimProduct.sql') -Encoding utf8NoBOM
+        @'
+CREATE TABLE fact.FactSales (
+    SalesKey BIGINT NOT NULL PRIMARY KEY,
+    CustomerKey INT NOT NULL,
+    ProductKey INT NOT NULL,
+    OrderDateKey INT NOT NULL,
+    NetAmount DECIMAL(18,2) NOT NULL,
+    RegionName NVARCHAR(100) NULL,
+    CategoryName NVARCHAR(100) NULL,
+    SegmentName NVARCHAR(100) NULL,
+    LoadRunId BIGINT NOT NULL
+);
+'@ | Set-Content -LiteralPath (Join-Path $Path 'Tables/fact.FactSales.sql') -Encoding utf8NoBOM
+        'CREATE TABLE stg.StgSalesOrder (SalesId BIGINT NOT NULL, CustomerId NVARCHAR(50) NOT NULL, ProductId NVARCHAR(50) NOT NULL, OrderDate DATE NOT NULL, NetAmount DECIMAL(18,2) NOT NULL, BatchId BIGINT NOT NULL);' | Set-Content -LiteralPath (Join-Path $Path 'Tables/stg.StgSalesOrder.sql') -Encoding utf8NoBOM
+        'CREATE TABLE ctl.LoadRun (LoadRunId BIGINT NOT NULL PRIMARY KEY, StartedAt DATETIME2 NOT NULL, Watermark DATETIME2 NULL);' | Set-Content -LiteralPath (Join-Path $Path 'Tables/ctl.LoadRun.sql') -Encoding utf8NoBOM
+        'CREATE PROCEDURE dbo.usp_LoadDimCustomer AS MERGE dim.DimCustomer AS target USING stg.StgSalesOrder AS source ON target.CustomerId = source.CustomerId WHEN NOT MATCHED THEN INSERT (CustomerKey, CustomerId, RegionKey, SegmentName, EffectiveFrom, IsCurrent) VALUES (-1, source.CustomerId, -1, ''Unknown'', SYSUTCDATETIME(), 1);' | Set-Content -LiteralPath (Join-Path $Path 'StoredProcedures/usp_LoadDimCustomer.sql') -Encoding utf8NoBOM
+        'CREATE PROCEDURE dbo.usp_LoadDimRegion AS INSERT INTO dim.DimRegion (RegionKey, RegionName) SELECT DISTINCT -1, ''Unknown'' FROM stg.StgSalesOrder;' | Set-Content -LiteralPath (Join-Path $Path 'StoredProcedures/usp_LoadDimRegion.sql') -Encoding utf8NoBOM
+        @'
+CREATE PROCEDURE dbo.usp_LoadFactSales AS
+INSERT INTO fact.FactSales (SalesKey, CustomerKey, ProductKey, OrderDateKey, NetAmount, LoadRunId)
+SELECT s.SalesId, c.CustomerKey, p.ProductKey, d.DateKey, s.NetAmount, s.BatchId
+FROM stg.StgSalesOrder s
+JOIN dim.DimCustomer c ON c.CustomerId = s.CustomerId AND c.IsCurrent = 1
+JOIN dim.DimProduct p ON p.ProductId = s.ProductId
+JOIN dim.DimDate d ON d.CalendarDate = s.OrderDate;
+'@ | Set-Content -LiteralPath (Join-Path $Path 'StoredProcedures/usp_LoadFactSales.sql') -Encoding utf8NoBOM
+        @'
+CREATE VIEW rpt.vwFinanceExtract AS
+SELECT r.RegionName, f.NetAmount, d.CalendarDate
+FROM fact.FactSales f
+JOIN dim.DimCustomer c ON c.CustomerKey = f.CustomerKey
+JOIN dim.DimRegion r ON r.RegionKey = c.RegionKey
+JOIN dim.DimDate d ON d.DateKey = f.OrderDateKey;
+'@ | Set-Content -LiteralPath (Join-Path $Path 'Views/rpt.vwFinanceExtract.sql') -Encoding utf8NoBOM
+        'CREATE VIEW rpt.vwExecutiveSummary AS SELECT p.CategoryName, SUM(f.NetAmount) AS Revenue FROM fact.FactSales f JOIN dim.DimProduct p ON p.ProductKey = f.ProductKey GROUP BY p.CategoryName;' | Set-Content -LiteralPath (Join-Path $Path 'Views/rpt.vwExecutiveSummary.sql') -Encoding utf8NoBOM
+        'CREATE VIEW rpt.vwOrderDetail AS SELECT f.SalesKey, f.CustomerKey, f.ProductKey, f.OrderDateKey, f.NetAmount FROM fact.FactSales f;' | Set-Content -LiteralPath (Join-Path $Path 'Views/rpt.vwOrderDetail.sql') -Encoding utf8NoBOM
+        git -C $Path init --quiet
+        git -C $Path config user.email 'agent-evals@invalid.local'
+        git -C $Path config user.name 'Agent Evals'
+        git -C $Path add -A
+        git -C $Path commit --quiet -m 'fixture baseline'
+        return
+    }
     if ($Stack -eq 'angular') {
         @'
 {
@@ -157,9 +217,50 @@ Write-Output 'PASS: inclusive range'
 }
 
 function Install-Framework([string]$Path, [ValidateSet('dotnet','angular')][string]$Stack = 'dotnet') {
-    $output = & pwsh -NoProfile -File (Join-Path $repo 'install.ps1') -Stack $Stack $Path 2>&1 | Out-String
+    $currentHost = (Get-Process -Id $PID).Path
+    $output = & $currentHost -NoProfile -File (Join-Path $repo 'install.ps1') -Stack $Stack $Path 2>&1 | Out-String
     if ($LASTEXITCODE -ne 0) { throw "Fixture framework install failed:`n$output" }
     return $output
+}
+
+function Initialize-WarehouseScenario([string]$Path) {
+    New-Item -ItemType Directory -Path (Join-Path $Path 'docs') -Force | Out-Null
+    @'
+# Warehouse map
+
+| entity | layer | grain | load proc/pipeline | orchestrated by | rerun protection | SCD | partitioning |
+|--------|-------|-------|--------------------|-----------------|------------------|-----|--------------|
+| DimCustomer | dimension | one row per customer version | usp_LoadDimCustomer | warehouse load | current-row merge | Type 2 | none |
+| DimRegion | dimension | one row per region | usp_LoadDimRegion | warehouse load | merge by region | Type 1 | none |
+| FactSales | fact | one row per sale | usp_LoadFactSales | warehouse load | LoadRunId | n/a | none |
+'@ | Set-Content (Join-Path $Path 'docs/warehouse-map.md') -Encoding utf8NoBOM
+    $claudePath = Join-Path $Path 'CLAUDE.md'
+    $claudeText = (Get-Content -Raw $claudePath).Replace('BOOTSTRAP_PENDING', 'EVAL_BOOTSTRAPPED')
+    # Population A (design 3.4): warehouse essentials, no pointer to the skill or the map.
+    # Deliberately silent on how a query should reach an attribute -- naming the dimension
+    # path here would hand the model the answer this scenario exists to measure.
+    $ordinaryConventions = @'
+<!-- EVAL_BOOTSTRAPPED: repository conventions observed for this fixture. -->
+
+- SQL source is organised by `Tables/`, `StoredProcedures/`, and `Views/`.
+- Load dimensions before facts; facts retain dimension surrogate keys.
+- Use `LoadRunId` and explicit insert column lists in warehouse loads.
+- Ad-hoc analytical queries live under `analysis/`.
+'@
+    $claudeText = [regex]::Replace($claudeText, '(?s)<!-- EVAL_BOOTSTRAPPED:.*?_Not yet populated\..*?\r?\n(?=\r?\n---)', $ordinaryConventions)
+    $claudeText | Set-Content $claudePath -Encoding utf8NoBOM
+    git -C $Path add -A
+    git -C $Path commit --quiet -m 'warehouse scenario setup'
+    return [int](git -C $Path rev-list --count HEAD)
+}
+
+function Test-DeadFactColumnWrite([string]$Sql) {
+    $factTarget = '(?:\[?fact\]?\s*\.\s*)?\[?FactSales\]?'
+    $deadTargetColumn = '\[?(?:RegionName|CategoryName|SegmentName)\]?'
+    $insertWritesDeadColumn = $Sql -match "(?is)\bINSERT\s+INTO\s+$factTarget\s*\([^)]*(?<![A-Za-z0-9_])$deadTargetColumn(?![A-Za-z0-9_])"
+    $updateWritesDeadColumn = $Sql -match "(?is)\bUPDATE\s+$factTarget(?:\s+(?:AS\s+)?(?!SET\b)\[?[A-Za-z_][A-Za-z0-9_]*\]?)?\s+SET\s+(?:(?!;).)*?(?:\b[A-Za-z_][A-Za-z0-9_]*\s*\.\s*)?(?<![A-Za-z0-9_])$deadTargetColumn(?![A-Za-z0-9_])\s*="
+    $mergeWritesDeadColumn = $Sql -match "(?is)\bMERGE(?:\s+INTO)?\s+$factTarget(?![A-Za-z0-9_])(?:(?!;).)*?\bWHEN\s+(?:MATCHED|NOT\s+MATCHED)\b(?:(?!;).)*?(?:\bUPDATE\s+SET\s+(?:(?!;).)*?(?:\b[A-Za-z_][A-Za-z0-9_]*\s*\.\s*)?(?<![A-Za-z0-9_])$deadTargetColumn(?![A-Za-z0-9_])\s*=|\bINSERT\s*\([^)]*(?<![A-Za-z0-9_])$deadTargetColumn(?![A-Za-z0-9_]))"
+    return $insertWritesDeadColumn -or $updateWritesDeadColumn -or $mergeWritesDeadColumn
 }
 
 function Read-Transcript([string]$Path) {
@@ -389,6 +490,103 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             }
             $inputNames = @($formInputs | Sort-Object -Unique)
             return [pscustomobject]@{ Status = 'PASS'; Pass = ($cva -or $ngcontrol) -and $inputNames.Count -eq 0; Detail = "cva=$cva ngcontrol=$ngcontrol controlAsInput=$controlAsInput formInputs=$($inputNames -join ',') readDefaults=$readDefaults usedSkill=$usedSkill" }
+        }
+        { $_ -in @('warehouse-route-p1','warehouse-route-p2','warehouse-route-p3') } {
+            $successful = @($e.Tools | Where-Object {
+                $e.ToolResults.ContainsKey($_.Id) -and -not $e.ToolResults[$_.Id].is_error
+            })
+            $c1 = [bool]@($successful | Where-Object { $_.Name -eq 'Skill' -and $_.Input.skill -eq 'map-warehouse' } | Select-Object -First 1)
+            $c2 = [bool]@($successful | Where-Object {
+                $_.Name -match '^(?i:Read|ReadFile|read_file)$' -and
+                (Get-ToolPath $_) -replace '\\','/' -match '(?i)(?:^|/)docs/warehouse-map\.md$' -and
+                (Get-ToolResultText $e $_).Trim()
+            } | Select-Object -First 1)
+            $c3 = [bool]@($successful | Where-Object {
+                $_.Name -match '^(?i:Read|ReadFile|read_file)$' -and
+                (Get-ToolPath $_) -replace '\\','/' -match '(?i)(?:^|/)\.(?:claude|github)/skills/map-warehouse/SKILL\.md$' -and
+                (Get-ToolResultText $e $_).Trim()
+            } | Select-Object -First 1)
+            $c4 = [bool]@($successful | Where-Object {
+                $_.Name -in @('Bash','PowerShell') -and
+                [string]$_.Input.command -match '(?i)warehouse-map\.md|map-warehouse' -and
+                (Get-ToolResultText $e $_).Trim()
+            } | Select-Object -First 1)
+            $c5 = [bool]@($successful | Where-Object {
+                $_.Name -in @('Grep','Glob') -and
+                (([string]$_.Input.pattern + ' ' + [string]$_.Input.path + ' ' + [string]$_.Input.glob) -match '(?i)warehouse-map\.md|map-warehouse') -and
+                (Get-ToolResultText $e $_).Trim()
+            } | Select-Object -First 1)
+            $task = [bool]@($e.Tools | Where-Object { $_.Name -eq 'Task' } | Select-Object -First 1)
+            $mapChannel = $c2 -or $c4 -or $c5
+            $category = if ($c1 -and $mapChannel) { 'BOTH' }
+                elseif ($c1) { 'SKILL_ROUTED' }
+                elseif ($c3) { 'SKILL_READ' }
+                elseif ($mapChannel) { 'MAP_DISCOVERED' }
+                elseif ($task) { 'DELEGATED_UNKNOWN' }
+                else { 'NEITHER' }
+            $analysisPath = Join-Path $Target 'analysis'
+            $requestedArtifact = switch ($Id) {
+                'warehouse-route-p1' { 'finance-regional-revenue.sql' }
+                'warehouse-route-p2' { 'revenue-by-category.sql' }
+                'warehouse-route-p3' { 'fin-4471.sql' }
+            }
+            $artifactPath = Join-Path $analysisPath $requestedArtifact
+            $artifactWritten = Test-Path -LiteralPath $artifactPath -PathType Leaf
+            $otherArtifacts = if (Test-Path -LiteralPath $analysisPath -PathType Container) {
+                @(Get-ChildItem -LiteralPath $analysisPath -Filter '*.sql' -File | Where-Object { $_.Name -ne $requestedArtifact } | ForEach-Object { $_.Name })
+            } else { @() }
+            $sql = if ($artifactWritten) { Get-Content -Raw -LiteralPath $artifactPath } else { '' }
+            $attribute = switch ($Id) {
+                'warehouse-route-p1' { 'RegionName' }
+                'warehouse-route-p2' { 'CategoryName' }
+                'warehouse-route-p3' { 'SegmentName' }
+            }
+            $dimension = switch ($Id) {
+                'warehouse-route-p1' { 'DimRegion' }
+                'warehouse-route-p2' { 'DimProduct' }
+                'warehouse-route-p3' { 'DimCustomer' }
+            }
+            $factQualifiers = [Collections.Generic.List[string]]::new()
+            $factQualifiers.Add('FactSales')
+            foreach ($factSource in [regex]::Matches($sql, '(?is)\b(?:FROM|JOIN)\s+(?:\[?fact\]?\s*\.\s*)?\[?FactSales\]?(?:\s+(?:AS\s+)?\[?(?<alias>[A-Za-z_][A-Za-z0-9_]*)\]?)?')) {
+                if ($factSource.Groups['alias'].Success -and $factSource.Groups['alias'].Value -notmatch '^(?i:WHERE|JOIN|ON|GROUP|ORDER|HAVING)$') { $factQualifiers.Add($factSource.Groups['alias'].Value) }
+            }
+            $usedDeadColumn = $sql -match "(?i)\[?fact\]?\s*\.\s*\[?FactSales\]?\s*\.\s*\[?$attribute\]?\b"
+            foreach ($qualifier in @($factQualifiers | Sort-Object -Unique)) {
+                if ($sql -match "(?i)\[?$([regex]::Escape($qualifier))\]?\s*\.\s*\[?$attribute\]?\b") { $usedDeadColumn = $true }
+            }
+            $dimensionQualifiers = [Collections.Generic.List[string]]::new()
+            $dimensionQualifiers.Add($dimension)
+            foreach ($dimensionJoin in [regex]::Matches($sql, "(?is)\bJOIN\s+(?:\[?dim\]?\s*\.\s*)?\[?$dimension\]?(?:\s+(?:AS\s+)?\[?(?<alias>[A-Za-z_][A-Za-z0-9_]*)\]?)?")) {
+                if ($dimensionJoin.Groups['alias'].Success -and $dimensionJoin.Groups['alias'].Value -notmatch '^(?i:ON|WHERE|JOIN|GROUP|ORDER|HAVING)$') { $dimensionQualifiers.Add($dimensionJoin.Groups['alias'].Value) }
+            }
+            $joinedDimension = $sql -match "(?i)\[?dim\]?\s*\.\s*\[?$dimension\]?\s*\.\s*\[?$attribute\]?\b"
+            foreach ($qualifier in @($dimensionQualifiers | Sort-Object -Unique)) {
+                if ($sql -match "(?i)\[?$([regex]::Escape($qualifier))\]?\s*\.\s*\[?$attribute\]?\b") { $joinedDimension = $true }
+            }
+            $relevantView = switch ($Id) {
+                'warehouse-route-p1' { 'vwFinanceExtract' }
+                'warehouse-route-p2' { 'vwExecutiveSummary' }
+                'warehouse-route-p3' { $null }
+            }
+            $readView = [bool]@($successful | Where-Object {
+                $relevantView -and (
+                    ($_.Name -match '^(?i:Read|ReadFile|read_file)$' -and (Get-ToolPath $_) -replace '\\','/' -match "(?i)(?:^|/)Views/rpt\.$relevantView\.sql$") -or
+                    ($_.Name -in @('Bash','PowerShell','Grep','Glob') -and (([string]$_.Input.command + ' ' + [string]$_.Input.pattern + ' ' + [string]$_.Input.path + ' ' + [string]$_.Input.glob) -match "(?i)$relevantView"))
+                )
+            } | Select-Object -First 1)
+            $warehouseTreeCall = [bool]@($e.Tools | Where-Object {
+                ((Get-ToolPath $_) -replace '\\','/' -match '(?i)(?:^|/)(?:Tables|StoredProcedures|Views)(?:/|$)') -or
+                (([string]$_.Input.command + ' ' + [string]$_.Input.path + ' ' + [string]$_.Input.glob) -match '(?i)Tables|StoredProcedures|Views|\.sql')
+            } | Select-Object -First 1)
+            $status = if (-not $artifactWritten -and -not $warehouseTreeCall) { 'INCONCLUSIVE' } else { 'PASS' }
+            $channels = @()
+            if ($c1) { $channels += 'C1' }
+            if ($c2) { $channels += 'C2' }
+            if ($c3) { $channels += 'C3' }
+            if ($c4) { $channels += 'C4' }
+            if ($c5) { $channels += 'C5' }
+            return [pscustomobject]@{ Status = $status; Pass = $status -eq 'PASS'; Detail = "category=$category channels=$($channels -join ',') usedDeadColumn=$usedDeadColumn joinedDimension=$joinedDimension readView=$readView readViewTarget=$(if ($relevantView) { $relevantView } else { 'none' }) artifactWritten=$artifactWritten otherSqlArtifacts=$($otherArtifacts -join ',')" }
         }
         'haiku-convention-check' {
             $found = $finalOk -and $finalText -match '(?i)## Convention check' -and $finalText -match '(?i)Findings \([1-9]' -and $finalText -match '(?im)^\|[^\r\n]*ConventionViolation\.cs[^\r\n]*CancellationToken[^\r\n]*\|'
@@ -623,6 +821,155 @@ export class FormFieldComponent implements ControlValueAccessor {
         ) }
         $angularKeywordOnly = Test-ScenarioEvidence 'angular-form-control' $angularTemp $angularEcho 1
         if ($angularKeywordOnly.Pass -or $angularKeywordOnly.Status -ne 'INCONCLUSIVE') { throw 'angular-form-control accepted final-text ControlValueAccessor without a matching file' }
+        $warehouseTemp = Join-Path $temp 'warehouse-fixture'
+        New-EvalRepo $warehouseTemp warehouse
+        $sqlFiles = @(Get-ChildItem -LiteralPath $warehouseTemp -Filter '*.sql' -File -Recurse)
+        if ($sqlFiles.Count -eq 0) { throw 'warehouse fixture has no SQL source tree' }
+        $sqlText = ($sqlFiles | ForEach-Object { Get-Content -Raw -LiteralPath $_.FullName }) -join "`n"
+        # Copied exactly from the six SQL-signal rows in map-warehouse/SKILL.md step 0.
+        $stepZeroPatterns = @(
+            '\b(stg|staging|raw|ods|dim|fact|mart|dw)\.',
+            '\bDim[A-Z][a-z]|\bFact[A-Z][a-z]',
+            'usp_Load|usp_Process|EXEC.*Load',
+            'LoadRun|BatchId|LoadId|Watermark',
+            'EffectiveFrom|EffectiveTo|IsCurrent|RowHash',
+            'PARTITION FUNCTION|PARTITION SCHEME|SWITCH PARTITION'
+        )
+        # Parse the whole shipped signal table. Six rows are SQL regexes; the final ETL-artifact
+        # row is deliberately a file-discovery signal and must not be applied to concatenated SQL.
+        $skillPath = Join-Path $repo 'src/stacks/dotnet/files/.claude/skills/map-warehouse/SKILL.md'
+        $skillLines = @(Get-Content -LiteralPath $skillPath)
+        $signalHeaderIndex = -1
+        for ($lineIndex = 0; $lineIndex -lt $skillLines.Count; $lineIndex++) { if ($skillLines[$lineIndex] -match '^\s*\|\s*Signal\s*\|') { $signalHeaderIndex = $lineIndex; break } }
+        if ($signalHeaderIndex -lt 0 -or $skillLines[$signalHeaderIndex + 1] -notmatch '^\s*\|[-| ]+\|\s*$') { throw 'map-warehouse SKILL.md step-0 signal table header was not found.' }
+        $signalRows = @()
+        for ($lineIndex = $signalHeaderIndex + 2; $lineIndex -lt $skillLines.Count -and $skillLines[$lineIndex] -match '^\s*\|'; $lineIndex++) { $signalRows += $skillLines[$lineIndex] }
+        if ($signalRows.Count -ne 7) { throw "map-warehouse SKILL.md step-0 signal table has $($signalRows.Count) data rows; expected exactly 7 (six SQL regex rows plus one ETL file-discovery row)." }
+        $shippedSqlPatterns = @()
+        foreach ($signalRow in $signalRows[0..5]) {
+            $rowPatterns = @([regex]::Matches($signalRow, '`([^`]+)`') | ForEach-Object { $_.Groups[1].Value -replace '\\\|', '|' })
+            if ($rowPatterns.Count -eq 0) { throw "map-warehouse SKILL.md SQL signal row carries no backticked pattern: $signalRow" }
+            $shippedSqlPatterns += ($rowPatterns -join '|')
+        }
+        if ($signalRows[6] -notmatch '^\s*\|\s*ETL pipeline artifacts\s*\|\s*`\*\.dtsx`,\s*ADF/Synapse pipeline JSON,\s*dbt models\s*\|\s*$') { throw 'map-warehouse SKILL.md final step-0 row is no longer the expected ETL file-discovery signal.' }
+        if ($stepZeroPatterns.Count -ne $shippedSqlPatterns.Count) { throw "warehouse fixture carries $($stepZeroPatterns.Count) SQL signal patterns but map-warehouse/SKILL.md carries $($shippedSqlPatterns.Count)." }
+        for ($patternIndex = 0; $patternIndex -lt $stepZeroPatterns.Count; $patternIndex++) {
+            if ($stepZeroPatterns[$patternIndex] -cne $shippedSqlPatterns[$patternIndex]) { throw "warehouse fixture step-0 SQL pattern $($patternIndex + 1) drifted from map-warehouse/SKILL.md: fixture='$($stepZeroPatterns[$patternIndex])' shipped='$($shippedSqlPatterns[$patternIndex])'" }
+        }
+        $stepZeroHits = @($stepZeroPatterns | Where-Object { $sqlText -match $_ })
+        if ($stepZeroHits.Count -lt 2) { throw "warehouse fixture failed exact shipped step-0 signal patterns: hits=$($stepZeroHits.Count)" }
+        $factText = Get-Content -Raw -LiteralPath (Join-Path $warehouseTemp 'Tables/fact.FactSales.sql')
+        foreach ($deadColumn in 'RegionName','CategoryName','SegmentName') {
+            if ($factText -notmatch "\b$deadColumn\b") { throw "warehouse fixture is missing dead fact column $deadColumn" }
+        }
+        $loadText = @(Get-ChildItem -LiteralPath (Join-Path $warehouseTemp 'StoredProcedures') -Filter '*.sql' -File | ForEach-Object { Get-Content -Raw -LiteralPath $_.FullName }) -join "`n"
+        if (Test-DeadFactColumnWrite $loadText) { throw 'warehouse load procedure writes a dead fact column' }
+        foreach ($plantedWrite in @(
+            'UPDATE [fact].[FactSales] SET [RegionName] = @RegionName WHERE SalesKey = @SalesKey;',
+            'MERGE INTO fact.FactSales AS target USING #source AS source ON source.SalesKey = target.SalesKey WHEN MATCHED THEN UPDATE SET target.CategoryName = source.CategoryName;',
+            'MERGE fact.FactSales AS target USING #source AS source ON source.SalesKey = target.SalesKey WHEN NOT MATCHED THEN INSERT (SalesKey, [SegmentName]) VALUES (source.SalesKey, source.SegmentName);'
+        )) {
+            if (-not (Test-DeadFactColumnWrite ($loadText + "`n" + $plantedWrite))) { throw "warehouse fixture dead-column guard accepted planted write: $plantedWrite" }
+        }
+        $views = @(Get-ChildItem -LiteralPath (Join-Path $warehouseTemp 'Views') -Filter '*.sql' -File)
+        if ($views.Count -ne 3) { throw "warehouse fixture must have exactly three consumption views: count=$($views.Count)" }
+        $regionJoinViews = @($views | Where-Object { (Get-Content -Raw -LiteralPath $_.FullName) -match '(?is)JOIN\s+dim\.DimRegion\b' })
+        if ($regionJoinViews.Count -ne 1 -or $regionJoinViews[0].Name -ne 'rpt.vwFinanceExtract.sql') { throw 'warehouse fixture region join is not isolated to rpt.vwFinanceExtract.sql' }
+        $warehouseCases = @(
+            @{ Name='successful Skill'; Tool=[pscustomobject]@{ type='tool_use'; id='wh'; name='Skill'; input=[pscustomobject]@{ skill='map-warehouse' } }; Result=[pscustomobject]@{ type='tool_result'; tool_use_id='wh'; content='loaded' }; Category='SKILL_ROUTED' },
+            @{ Name='failed Skill'; Tool=[pscustomobject]@{ type='tool_use'; id='wh'; name='Skill'; input=[pscustomobject]@{ skill='map-warehouse' } }; Result=[pscustomobject]@{ type='tool_result'; tool_use_id='wh'; is_error=$true; content='failed' }; Category='NEITHER' },
+            @{ Name='Windows map read'; Tool=[pscustomobject]@{ type='tool_use'; id='wh'; name='Read'; input=[pscustomobject]@{ file_path='docs\warehouse-map.md' } }; Result=[pscustomobject]@{ type='tool_result'; tool_use_id='wh'; content='map content' }; Category='MAP_DISCOVERED' },
+            @{ Name='shell map read'; Tool=[pscustomobject]@{ type='tool_use'; id='wh'; name='Bash'; input=[pscustomobject]@{ command='cat docs/warehouse-map.md' } }; Result=[pscustomobject]@{ type='tool_result'; tool_use_id='wh'; content='map content' }; Category='MAP_DISCOVERED' },
+            @{ Name='direct skill read'; Tool=[pscustomobject]@{ type='tool_use'; id='wh'; name='ReadFile'; input=[pscustomobject]@{ filePath='.claude/skills/map-warehouse/SKILL.md' } }; Result=[pscustomobject]@{ type='tool_result'; tool_use_id='wh'; content='skill content' }; Category='SKILL_READ' },
+            @{ Name='glob map discovery'; Tool=[pscustomobject]@{ type='tool_use'; id='wh'; name='Glob'; input=[pscustomobject]@{ pattern='**/warehouse-map.md'; path='.' } }; Result=[pscustomobject]@{ type='tool_result'; tool_use_id='wh'; content='docs/warehouse-map.md' }; Category='MAP_DISCOVERED' },
+            @{ Name='empty grep'; Tool=[pscustomobject]@{ type='tool_use'; id='wh'; name='Grep'; input=[pscustomobject]@{ pattern='map-warehouse'; path='.' } }; Result=[pscustomobject]@{ type='tool_result'; tool_use_id='wh'; content='' }; Category='NEITHER' },
+            @{ Name='defaults read'; Tool=[pscustomobject]@{ type='tool_use'; id='wh'; name='Read'; input=[pscustomobject]@{ file_path='docs/defaults.md' } }; Result=[pscustomobject]@{ type='tool_result'; tool_use_id='wh'; content='defaults' }; Category='NEITHER' },
+            @{ Name='different Skill'; Tool=[pscustomobject]@{ type='tool_use'; id='wh'; name='Skill'; input=[pscustomobject]@{ skill='add-tests' } }; Result=[pscustomobject]@{ type='tool_result'; tool_use_id='wh'; content='loaded' }; Category='NEITHER' },
+            @{ Name='delegated'; Tool=[pscustomobject]@{ type='tool_use'; id='wh'; name='Task'; input=[pscustomobject]@{ prompt='inspect warehouse' } }; Result=[pscustomobject]@{ type='tool_result'; tool_use_id='wh'; content='done' }; Category='DELEGATED_UNKNOWN' }
+        )
+        foreach ($warehouseCase in $warehouseCases) {
+            $warehouseEvidence = [pscustomobject]@{ Events = @(
+                ([pscustomobject]@{ type='system'; subtype='init' }),
+                ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@($warehouseCase.Tool) } }),
+                ([pscustomobject]@{ type='user'; message=[pscustomobject]@{ content=@($warehouseCase.Result) } }),
+                ([pscustomobject]@{ type='result'; is_error=$false; result='done' })
+            ) }
+            $warehouseResult = Test-ScenarioEvidence 'warehouse-route-p1' $warehouseTemp $warehouseEvidence 1
+            if ($warehouseResult.Detail -notmatch "^category=$($warehouseCase.Category)\b") { throw "warehouseRouting $($warehouseCase.Name) expected $($warehouseCase.Category): $($warehouseResult.Detail)" }
+        }
+        $warehouseEcho = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='I used the map-warehouse skill and read the warehouse map' })
+        ) }
+        $warehouseEchoResult = Test-ScenarioEvidence 'warehouse-route-p1' $warehouseTemp $warehouseEcho 1
+        if ($warehouseEchoResult.Detail -notmatch '^category=NEITHER\b' -or $warehouseEchoResult.Status -ne 'INCONCLUSIVE') { throw "warehouseRouting accepted final-text keyword echo or failed non-engagement status: $($warehouseEchoResult.Detail) status=$($warehouseEchoResult.Status)" }
+        'SELECT fs.RegionName FROM fact.FactSales AS fs;' | Set-Content (Join-Path $warehouseTemp 'analysis/finance-regional-revenue.sql') -Encoding utf8NoBOM
+        $deadColumnResult = Test-ScenarioEvidence 'warehouse-route-p1' $warehouseTemp $warehouseEcho 1
+        if ($deadColumnResult.Detail -notmatch 'usedDeadColumn=True joinedDimension=False') { throw "warehouseRouting missed dead-column SQL: $($deadColumnResult.Detail)" }
+        @'
+SELECT [geo].[RegionName], SUM([sales].[NetAmount])
+FROM [fact].[FactSales] AS [sales]
+JOIN [dim].[DimCustomer] AS [buyer] ON [buyer].[CustomerKey] = [sales].[CustomerKey]
+JOIN [dim].[DimRegion] AS [geo] ON [geo].[RegionKey] = [buyer].[RegionKey]
+GROUP BY [geo].[RegionName];
+'@ | Set-Content (Join-Path $warehouseTemp 'analysis/finance-regional-revenue.sql') -Encoding utf8NoBOM
+        $dimensionResult = Test-ScenarioEvidence 'warehouse-route-p1' $warehouseTemp $warehouseEcho 1
+        if ($dimensionResult.Detail -notmatch 'usedDeadColumn=False joinedDimension=True') { throw "warehouseRouting missed dimension-join SQL: $($dimensionResult.Detail)" }
+        'SELECT [fact].[FactSales].[RegionName] FROM [fact].[FactSales];' | Set-Content (Join-Path $warehouseTemp 'analysis/finance-regional-revenue.sql') -Encoding utf8NoBOM
+        if ((Test-ScenarioEvidence 'warehouse-route-p1' $warehouseTemp $warehouseEcho 1).Detail -notmatch 'usedDeadColumn=True joinedDimension=False') { throw 'warehouseRouting missed bracketed three-part dead-column SQL' }
+        'SELECT FactSales.RegionName FROM fact.FactSales;' | Set-Content (Join-Path $warehouseTemp 'analysis/finance-regional-revenue.sql') -Encoding utf8NoBOM
+        if ((Test-ScenarioEvidence 'warehouse-route-p1' $warehouseTemp $warehouseEcho 1).Detail -notmatch 'usedDeadColumn=True joinedDimension=False') { throw 'warehouseRouting missed unaliased FactSales dead-column SQL' }
+        'SELECT f.CategoryName FROM fact.FactSales f JOIN dim.DimCustomer c ON c.CustomerKey = f.CustomerKey;' | Set-Content (Join-Path $warehouseTemp 'analysis/revenue-by-category.sql') -Encoding utf8NoBOM
+        $wrongCategoryResult = Test-ScenarioEvidence 'warehouse-route-p2' $warehouseTemp $warehouseEcho 1
+        if ($wrongCategoryResult.Detail -notmatch 'usedDeadColumn=True joinedDimension=False') { throw "warehouseRouting failed to discriminate dead category column from its owning dimension: $($wrongCategoryResult.Detail)" }
+        'SELECT p.CategoryName, SUM(f.NetAmount) FROM fact.FactSales f JOIN dim.DimProduct p ON p.ProductKey = f.ProductKey GROUP BY p.CategoryName;' | Set-Content (Join-Path $warehouseTemp 'analysis/revenue-by-category.sql') -Encoding utf8NoBOM
+        $categoryDimensionResult = Test-ScenarioEvidence 'warehouse-route-p2' $warehouseTemp $warehouseEcho 1
+        if ($categoryDimensionResult.Detail -notmatch 'usedDeadColumn=False joinedDimension=True') { throw "warehouseRouting missed category owner dimension SQL: $($categoryDimensionResult.Detail)" }
+        'SELECT f.SegmentName FROM fact.FactSales f JOIN dim.DimProduct p ON p.ProductKey = f.ProductKey;' | Set-Content (Join-Path $warehouseTemp 'analysis/fin-4471.sql') -Encoding utf8NoBOM
+        $wrongSegmentResult = Test-ScenarioEvidence 'warehouse-route-p3' $warehouseTemp $warehouseEcho 1
+        if ($wrongSegmentResult.Detail -notmatch 'usedDeadColumn=True joinedDimension=False') { throw "warehouseRouting failed to discriminate dead segment column from its owning dimension: $($wrongSegmentResult.Detail)" }
+        'SELECT c.SegmentName, SUM(f.NetAmount) FROM fact.FactSales f JOIN dim.DimCustomer c ON c.CustomerKey = f.CustomerKey GROUP BY c.SegmentName;' | Set-Content (Join-Path $warehouseTemp 'analysis/fin-4471.sql') -Encoding utf8NoBOM
+        $segmentDimensionResult = Test-ScenarioEvidence 'warehouse-route-p3' $warehouseTemp $warehouseEcho 1
+        if ($segmentDimensionResult.Detail -notmatch 'usedDeadColumn=False joinedDimension=True') { throw "warehouseRouting missed segment owner dimension SQL: $($segmentDimensionResult.Detail)" }
+        $p1ViewEvidence = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='view'; name='Read'; input=[pscustomobject]@{ file_path='Views/rpt.vwFinanceExtract.sql' } }) } }),
+            ([pscustomobject]@{ type='user'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_result'; tool_use_id='view'; content='view SQL' }) } }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='done' })
+        ) }
+        if ((Test-ScenarioEvidence 'warehouse-route-p1' $warehouseTemp $p1ViewEvidence 1).Detail -notmatch 'readView=True readViewTarget=vwFinanceExtract') { throw 'warehouseRouting missed the P1-relevant consumption view' }
+        $p2ViewEvidence = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='view'; name='Read'; input=[pscustomobject]@{ file_path='Views/rpt.vwExecutiveSummary.sql' } }) } }),
+            ([pscustomobject]@{ type='user'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_result'; tool_use_id='view'; content='view SQL' }) } }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='done' })
+        ) }
+        if ((Test-ScenarioEvidence 'warehouse-route-p2' $warehouseTemp $p2ViewEvidence 1).Detail -notmatch 'readView=True readViewTarget=vwExecutiveSummary') { throw 'warehouseRouting missed the P2-relevant consumption view' }
+        'SELECT 1;' | Set-Content (Join-Path $warehouseTemp 'analysis/wrong-name.sql') -Encoding utf8NoBOM
+        Remove-Item -LiteralPath (Join-Path $warehouseTemp 'analysis/finance-regional-revenue.sql')
+        $wrongNameResult = Test-ScenarioEvidence 'warehouse-route-p1' $warehouseTemp $warehouseEcho 1
+        if ($wrongNameResult.Detail -notmatch 'artifactWritten=False.*otherSqlArtifacts=.*wrong-name\.sql') { throw "warehouseRouting graded an arbitrary SQL artifact instead of the requested filename: $($wrongNameResult.Detail)" }
+        $warehousePreparationTemp = Join-Path $temp 'warehouse-preparation'
+        New-EvalRepo $warehousePreparationTemp warehouse
+        $preparationBaseline = [int](git -C $warehousePreparationTemp rev-list --count HEAD)
+        Install-Framework $warehousePreparationTemp dotnet | Out-Null
+        # The shipped CLAUDE.md names map-warehouse in its Common Tasks list, so a "population A with
+        # no pointer at all" cannot be built -- every dotnet consumer carries that line in always-loaded
+        # context. Measure the delta the setup introduces instead of asserting zero, and pin the shipped
+        # baseline so that a template change (e.g. B-96 3.6 adding a warehouse-map index line) fails here
+        # loudly rather than silently redefining which population the scenario constructs.
+        $installedClaude = Get-Content -Raw -LiteralPath (Join-Path $warehousePreparationTemp 'CLAUDE.md')
+        $baselinePointers = @([regex]::Matches($installedClaude, '(?i)map-warehouse|warehouse-map\.md')).Count
+        if ($baselinePointers -ne 1) { throw "shipped CLAUDE.md warehouse-pointer baseline changed: expected 1 (the Common Tasks skills-list entry), found $baselinePointers. Re-read design 3.4 before adjusting this number." }
+        $preparationCommit = Initialize-WarehouseScenario $warehousePreparationTemp
+        $warehouseMap = Get-Content -Raw -LiteralPath (Join-Path $warehousePreparationTemp 'docs/warehouse-map.md')
+        if ($warehouseMap -notmatch '(?m)^\| entity \| layer \| grain \| load proc/pipeline \| orchestrated by \| rerun protection \| SCD \| partitioning \|$') { throw 'warehouse live-preparation smoke test is missing the eight-column map header' }
+        $preparedClaude = Get-Content -Raw -LiteralPath (Join-Path $warehousePreparationTemp 'CLAUDE.md')
+        if ($preparedClaude -notmatch 'EVAL_BOOTSTRAPPED' -or $preparedClaude -match 'BOOTSTRAP_PENDING') { throw 'warehouse live-preparation smoke test did not replace the bootstrap marker' }
+        if ($preparedClaude -match '_Not yet populated\.' -or $preparedClaude -notmatch 'SQL source is organised by `Tables/`, `StoredProcedures/`, and `Views/`\.' -or $preparedClaude -notmatch 'Ad-hoc analytical queries live under `analysis/`\.') { throw 'warehouse live-preparation smoke test did not populate the population-A conventions' }
+        $preparedPointers = @([regex]::Matches($preparedClaude, '(?i)map-warehouse|warehouse-map\.md')).Count
+        if ($preparedPointers -ne $baselinePointers) { throw "warehouse setup changed the warehouse-pointer count in CLAUDE.md ($baselinePointers -> $preparedPointers); population A must add no pointer of its own" }
+        if ($preparationCommit -le $preparationBaseline -or (git -C $warehousePreparationTemp log -1 --format=%s) -ne 'warehouse scenario setup') { throw 'warehouse live-preparation smoke test did not create the setup commit' }
         $checkpoint = [pscustomobject]@{ Events = @(
             ([pscustomobject]@{ type='system'; subtype='init' }),
             ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='skill'; name='Skill'; input=[pscustomobject]@{ skill='add-tests' } }) } }),
@@ -671,6 +1018,10 @@ export class FormFieldComponent implements ControlValueAccessor {
         Write-Output 'PASS: all graders reject keyword-only evidence'
         Write-Output 'PASS: docs-tier probe observes Read, class naming, and rejects keyword-only evidence'
         Write-Output 'PASS: Angular fixture and form-control grader positive/negative/keyword-only cases'
+        Write-Output 'PASS: warehouse fixture clears exact step-0 patterns and preserves dead columns'
+        Write-Output 'PASS: warehouse routing categories, success semantics, and ungraded SQL signals'
+        Write-Output 'PASS: warehouse preparation installs, populates population A without pointers, and commits setup'
+        Write-Output 'PASS: warehouse dead-column guard rejects INSERT, UPDATE, and both MERGE write branches'
         Write-Output 'PASS: developer checkpoint is INCONCLUSIVE, not PASS/FAIL'
         Write-Output 'PASS: install graders require an observed installer tool event'
         Write-Output 'PASS: bootstrap Skill and archived-installer attempts are rejected'
@@ -708,7 +1059,8 @@ try {
         New-Item -ItemType Directory -Path $caseRoot | Out-Null
         $target = Join-Path $caseRoot 'target'
         $caseStack = if ($case.stack) { [string]$case.stack } else { 'dotnet' }
-        New-EvalRepo $target $caseStack
+        $caseFixture = if ($case.fixture) { [string]$case.fixture } else { $caseStack }
+        New-EvalRepo $target $caseFixture
         $before = [int](git -C $target rev-list --count HEAD)
         if ($case.id -notin @('install-handoff','archived-redirect')) { Install-Framework $target $caseStack | Out-Null; $before = [int](git -C $target rev-list --count HEAD) }
         $archivedRoot = ''
@@ -769,6 +1121,9 @@ Classes that orchestrate multi-step domain work are suffixed `Coordinator` in th
 '@
                 $claudeText = [regex]::Replace($claudeText, '(?s)<!-- EVAL_BOOTSTRAPPED:.*?_Not yet populated\..*?\r?\n(?=\r?\n---)', $ordinaryConventions)
                 $claudeText | Set-Content $claudePath -Encoding utf8NoBOM
+            }
+            { $_ -in @('warehouse-route-p1','warehouse-route-p2','warehouse-route-p3') } {
+                $before = Initialize-WarehouseScenario $target
             }
             'haiku-bloat-radar' {
                 "namespace EvalFixture; public static class SpeculativeHelper { public static int Identity(int value) => value; }" | Set-Content (Join-Path $target 'src/SpeculativeHelper.cs') -Encoding utf8NoBOM

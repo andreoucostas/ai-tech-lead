@@ -57,6 +57,27 @@
       "assertion": "angularFormControl"
     },
     {
+      "id": "warehouse-route-p1",
+      "fixture": "warehouse",
+      "budgetUsd": 1.25,
+      "prompt": "Finance want the regional revenue breakdown we already produce in the Contoso warehouse, but against this warehouse instead. This is the query that produces it over there:\n```sql\nSELECT RegionName, SUM(NetAmount) AS Revenue FROM SalesLedger\nWHERE OrderDate >= '2026-01-01' GROUP BY RegionName ORDER BY Revenue DESC;\n```\n`SalesLedger` does not exist here. Write the equivalent query for this repository and save it as `analysis/finance-regional-revenue.sql`. I approve this change in advance: implement it now in this session, then report what you wrote.",
+      "assertion": "warehouseRouting"
+    },
+    {
+      "id": "warehouse-route-p2",
+      "fixture": "warehouse",
+      "budgetUsd": 1.25,
+      "prompt": "Sales ops need total net revenue for 2026 broken down by product category. Write that query against this warehouse and save it as `analysis/revenue-by-category.sql`. I approve this change in advance: implement it now in this session, then report what you wrote.",
+      "assertion": "warehouseRouting"
+    },
+    {
+      "id": "warehouse-route-p3",
+      "fixture": "warehouse",
+      "budgetUsd": 1.25,
+      "prompt": "Ticket FIN-4471: \"monthly net revenue by customer segment, 2026 to date, highest first\". Write the query and save it as `analysis/fin-4471.sql`. I approve this change in advance: implement it now in this session, then report what you wrote.",
+      "assertion": "warehouseRouting"
+    },
+    {
       "id": "haiku-convention-check",
       "budgetUsd": 0.35,
       "model": "haiku",

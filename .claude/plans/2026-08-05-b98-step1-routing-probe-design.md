@@ -120,7 +120,7 @@ ends *"…these become Conventions; the `map-warehouse` skill deep-dives on dema
 (`dist/dotnet/.claude/commands/bootstrap.md:56`); whether the bootstrapping model copies that
 pointer into the consumer's `CLAUDE.md` is not determined by the template.
 
-| Population | Conventions content | Covered |
+| Population | **Conventions** content | Covered |
 |---|---|---|
 | A | Warehouse essentials, no pointer to skill or map | **this experiment** |
 | B | Warehouse essentials + a `docs/warehouse-map.md` index line | no — B-96 §3.6's proposal, cut (§9.8) |
@@ -130,6 +130,37 @@ Arm A is an **intentionally constructed** population, not a measured field basel
 prevalence is unknown, and revision 1 called it "the conservative worst case", which claimed more
 than the evidence supports. If C is common in the field, arm A understates real routing. Say this in
 the result.
+
+### 3.4.1 Correction — every population already carries a pointer (found in implementation)
+
+Revision 2 asserted arm A had "no pointer to the skill". **That is false and the assertion built to
+enforce it caught it**: `dist/dotnet/CLAUDE.md:132` lists
+
+```
+- `map-warehouse` — map a SQL data-warehouse repo: layers (staging → warehouse → marts), …
+```
+
+in **Common Tasks** — an always-loaded section that `/bootstrap` does not touch, because it rewrites
+*Conventions*, not the skills list. So a dotnet consumer with no pointer at all **cannot exist**, and
+the table above varies only in the Conventions section. The skills-list line is a **constant across
+all three populations**, and the model has `map-warehouse` named, with a one-line description, in
+static context on every turn.
+
+Two consequences, both of which must appear in the write-up:
+
+1. **This experiment cannot measure "routing from skill descriptions alone".** It measures routing
+   given an always-loaded skills-list entry. That is the real consumer condition, so it is the right
+   thing to measure — but it is not what revision 2 claimed to be measuring.
+2. **It sharpens what a negative result would mean.** If `map-warehouse` is named in always-loaded
+   context, its USE FOR already covers *"what feeds this report"*, and it still does not fire, then
+   the routing gap is considerably worse than B-98 assumed — the failure is not "the description was
+   not matched", it is "a named, described, in-context skill was not reached". Conversely a positive
+   result may be attributable to the skills list rather than to description matching, and cannot be
+   used to argue the description is well-tuned.
+
+The smoke test now pins the shipped baseline at exactly one such reference and fails if it changes,
+so B-96 §3.6 shipping a `warehouse-map.md` index line into the template will fail this test loudly
+rather than silently redefining the population under measurement.
 
 ## 4. The prompts
 
