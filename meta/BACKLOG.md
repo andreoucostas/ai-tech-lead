@@ -1431,6 +1431,50 @@ evidence above:
 **Decide before B-96 or B-99 implement anything**, since both were designed against delivery
 assumptions this entry has now falsified twice.
 
+#### Changelog sweep, 2026-08-05 — how long this has been true, and what it cost
+
+**The protection was introduced deliberately, as a correct fix, in v0.20.0 (2026-06-11).** Shipped
+changelog `:777`: *"**Update runs no longer clobber consumer content**: re-running the installer on a
+repo stamped with `.claude/framework-version.json` refreshes the framework machinery but restores the
+consumer-owned content files listed above (**previously a re-run overwrote a populated `CLAUDE.md`
+with the template**)."*
+
+That fix is right and must not be reverted — clobbering a bootstrapped `CLAUDE.md` is a worse failure
+than not delivering to it. **The defect is that its side effect was never traced.** Protecting the
+file from being overwritten also permanently severed the delivery of the *framework-owned* blocks
+inside it, and nothing in the release since has noticed. This is the root-cause shape worth keeping:
+**a correct fix silently created a second failure in the same file, and no gate looks for it.**
+
+Current shipped version is 0.44.0, so **every release from 0.21.0 onward has shipped `CLAUDE.md`
+content that reaches no already-installed consumer.** Claims in the shipped changelog affected
+(consumer-facing text, all written as though delivered):
+
+| Version | Claim | Reaches an existing consumer? |
+|---|---|---|
+| 0.22.0 | Test-integrity rules, `CLAUDE.md`/`AGENTS.md` > Leanness #14–16 (`:734`) | No |
+| 0.23.0 | §1 rails made canonical + `AGENTS.md` §1 verbatim mandate (`:705,717-720`) — the fix that made workflow disciplines reachable on Copilot at all | No |
+| 0.23.3 | `AGENTS.md` portable-rule sections made byte-identical to `CLAUDE.md` (`:674-676`) | No |
+| ~0.28 | Verification-Rule-7 parenthetical (`:566`) | No |
+| ~0.34 | Leanness rule #7 wording (`:201`) | No |
+| 0.36.0 | `CLAUDE.md > Conventions` — xUnit demoted to greenfield-only (`:163-165`) | **No — and this one answered field report #1** |
+| 0.44.0 | `FRAMEWORK-CONTEXT.md` hazard-area changes (`:41,48,53`) | No |
+
+**Two consequences worth acting on.**
+
+1. **v0.36.0 is the sharpest case and should be re-checked before anything else.** It answered a real
+   field report from a real install (ledger #1 — a repo whose existing NUnit suite the framework kept
+   overriding toward xUnit). Its fix was split: the `add-tests` and `enforce-standards` halves are
+   **skills**, which are unprotected and do deliver; the `CLAUDE.md > Conventions` and
+   `.github/copilot-instructions.md` halves do not. So the reporting consumer received *part* of
+   their own fix. Nobody knew which part, because nothing measures this.
+2. **The framework has been shipping half-fixes without knowing which half lands.** Any release that
+   touches both a skill and `CLAUDE.md` delivers the skill half only. That is not an argument for
+   putting more in skills — it is an argument that **the release process must state the delivery
+   surface per item**, which is cheap and can ship independently of whatever B-97 decides. Candidate:
+   a `release.ps1` prompt or a changelog convention marking each entry as *machinery* (delivers) or
+   *protected* (greenfield only). Note the honest version of this makes the changelog less flattering,
+   which is the point.
+
 **Cross-links:** B-78 (the warehouse-specific instance — four populations no signal reaches; this is
 its general form, and solving B-97 likely subsumes part of it), B-46 (consumer update & drift story),
 B-96 (blocked by this).
