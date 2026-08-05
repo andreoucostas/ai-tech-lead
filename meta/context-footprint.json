@@ -177,8 +177,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17147,
-          "tok": 4287
+          "chars": 17115,
+          "tok": 4279
         },
         {
           "path": "CLAUDE.md",
@@ -194,13 +194,13 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17147,
-          "tok": 4287
+          "chars": 17115,
+          "tok": 4279
         },
         {
           "path": "AGENTS.md",
-          "chars": 22276,
-          "tok": 5569
+          "chars": 22244,
+          "tok": 5561
         }
       ],
       "instructed": [
@@ -601,8 +601,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17059,
-          "tok": 4265
+          "chars": 17027,
+          "tok": 4257
         },
         {
           "path": "CLAUDE.md",
@@ -618,13 +618,13 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17059,
-          "tok": 4265
+          "chars": 17027,
+          "tok": 4257
         },
         {
           "path": "AGENTS.md",
-          "chars": 22720,
-          "tok": 5680
+          "chars": 22688,
+          "tok": 5672
         }
       ],
       "instructed": [
@@ -1045,8 +1045,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 19639,
-          "tok": 4910
+          "chars": 19607,
+          "tok": 4902
         },
         {
           "path": "CLAUDE.md",
@@ -1062,13 +1062,13 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 19639,
-          "tok": 4910
+          "chars": 19607,
+          "tok": 4902
         },
         {
           "path": "AGENTS.md",
-          "chars": 26331,
-          "tok": 6583
+          "chars": 26299,
+          "tok": 6575
         }
       ],
       "instructed": [
@@ -1333,26 +1333,26 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 39029,
-      "static.claude.tok": 9757,
-      "static.copilot.chars": 42781,
-      "static.copilot.tok": 10695,
+      "static.claude.chars": 38997,
+      "static.claude.tok": 9749,
+      "static.copilot.chars": 42717,
+      "static.copilot.tok": 10679,
       "prompt.max.chars": 2253,
       "prompt.max.tok": 563
     },
     "angular": {
-      "static.claude.chars": 36337,
-      "static.claude.tok": 9084,
-      "static.copilot.chars": 43541,
-      "static.copilot.tok": 10885,
+      "static.claude.chars": 36305,
+      "static.claude.tok": 9076,
+      "static.copilot.chars": 43477,
+      "static.copilot.tok": 10869,
       "prompt.max.chars": 2323,
       "prompt.max.tok": 581
     },
     "monorepo": {
-      "static.claude.chars": 45856,
-      "static.claude.tok": 11464,
-      "static.copilot.chars": 51657,
-      "static.copilot.tok": 12914,
+      "static.claude.chars": 45824,
+      "static.claude.tok": 11456,
+      "static.copilot.chars": 51593,
+      "static.copilot.tok": 12898,
       "prompt.max.chars": 2668,
       "prompt.max.tok": 667
     },
