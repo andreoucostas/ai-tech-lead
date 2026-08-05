@@ -34,8 +34,11 @@ if [ ! -t 0 ]; then
         Write|Edit|edit|create|"") ;;
         *) { [ -n "$file_path" ] && [ -n "$content" ]; } || exit 0 ;;
       esac
-    elif command -v python3 >/dev/null 2>&1; then
-      file_path=$(printf '%s' "$input" | python3 -c 'import json,sys
+    # Resolve a python that actually WORKS, by execution rather than by name: a Windows install
+    # ships python.exe and no python3.exe, and the Store alias stub resolves but is not an
+    # interpreter -- probing the name alone would select it and then silently produce nothing.
+    elif _pybin=$(for c in python3 python py; do command -v "$c" >/dev/null 2>&1 && [ "$(printf '{}' | "$c" -c 'import json,sys;json.load(sys.stdin);sys.stdout.write("ok")' 2>/dev/null)" = ok ] && { printf '%s' "$c"; break; }; done); [ -n "$_pybin" ]; then
+      file_path=$(printf '%s' "$input" | "$_pybin" -c 'import json,sys
 try:
     d = json.load(sys.stdin)
 except Exception:
@@ -72,8 +75,11 @@ timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 rel="$file_path"
 if command -v realpath >/dev/null 2>&1 && realpath --relative-to=. "$file_path" >/dev/null 2>&1; then
   rel=$(realpath --relative-to=. "$file_path" 2>/dev/null) || rel="$file_path"
-elif command -v python3 >/dev/null 2>&1; then
-  rel=$(python3 -c 'import os,sys; print(os.path.relpath(sys.argv[1]))' "$file_path" 2>/dev/null) || rel="$file_path"
+# Resolve a python that actually WORKS, by execution rather than by name: a Windows install
+# ships python.exe and no python3.exe, and the Store alias stub resolves but is not an
+# interpreter -- probing the name alone would select it and then silently produce nothing.
+elif _pybin=$(for c in python3 python py; do command -v "$c" >/dev/null 2>&1 && [ "$(printf '{}' | "$c" -c 'import json,sys;json.load(sys.stdin);sys.stdout.write("ok")' 2>/dev/null)" = ok ] && { printf '%s' "$c"; break; }; done); [ -n "$_pybin" ]; then
+  rel=$("$_pybin" -c 'import os,sys; print(os.path.relpath(sys.argv[1]))' "$file_path" 2>/dev/null) || rel="$file_path"
 fi
 [ -z "$rel" ] && rel="$file_path"
 

@@ -162,8 +162,11 @@ if [ -z "$is_copilot" ]; then
   printf '%s\n' "$body"
 elif command -v jq >/dev/null 2>&1; then
   printf '%s' "$body" | jq -Rs '{additionalContext: ., hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: .}}'
-elif command -v python3 >/dev/null 2>&1; then
-  printf '%s' "$body" | python3 -c 'import json,sys
+# Resolve a python that actually WORKS, by execution rather than by name: a Windows install
+# ships python.exe and no python3.exe, and the Store alias stub resolves but is not an
+# interpreter -- probing the name alone would select it and then silently produce nothing.
+elif _pybin=$(for c in python3 python py; do command -v "$c" >/dev/null 2>&1 && [ "$(printf '{}' | "$c" -c 'import json,sys;json.load(sys.stdin);sys.stdout.write("ok")' 2>/dev/null)" = ok ] && { printf '%s' "$c"; break; }; done); [ -n "$_pybin" ]; then
+  printf '%s' "$body" | "$_pybin" -c 'import json,sys
 b = sys.stdin.read()
 print(json.dumps({"additionalContext": b, "hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": b}}))'
 else

@@ -31,8 +31,27 @@ if command -v jq >/dev/null 2>&1; then
     [ .tool_input.content, .tool_input.new_string, .tool_input.newString, .tool_input.file_text, .tool_input.new_str,
       .toolArgs.content, .toolArgs.new_string, .toolArgs.newString, .toolArgs.file_text, .toolArgs.new_str,
       .tool_input.text, .toolArgs.text ] | map(select(. != null)) | join("\n")' 2>/dev/null)
-elif command -v python3 >/dev/null 2>&1; then
-  parsed=$(printf '%s' "$input" | python3 -c '
+else
+  # Resolve a WORKING python, not merely a resolvable name. Two traps this must survive, both
+  # measured on Windows -- the framework's primary target:
+  #   1. A python.org install ships python.exe and NO python3.exe, so probing only `python3`
+  #      guarantees this fallback can never engage there. That left the write floor OFF on any
+  #      Windows box without jq, while docs/enforcement-surfaces.md promised a fallback.
+  #   2. %LOCALAPPDATA%\Microsoft\WindowsApps\python.exe RESOLVES but is the Store alias stub: it
+  #      prints "Python was not found" and exits 49. A name-only probe would select it, and the
+  #      parse below would then yield empty output under 2>/dev/null -- turning a loud INACTIVE
+  #      warning into a silent failure open, which is strictly worse.
+  # So: execute each candidate and require it to actually round-trip JSON. Only runs when jq is
+  # absent, so the common path costs nothing extra.
+  pybin=""
+  for cand in python3 python py; do
+    if command -v "$cand" >/dev/null 2>&1 &&
+       [ "$(printf '{}' | "$cand" -c 'import json,sys; json.load(sys.stdin); sys.stdout.write("ok")' 2>/dev/null)" = "ok" ]; then
+      pybin=$cand; break
+    fi
+  done
+  if [ -n "$pybin" ]; then
+    parsed=$(printf '%s' "$input" | "$pybin" -c '
 import json,sys
 try:
     d=json.load(sys.stdin)
@@ -49,12 +68,13 @@ parts=[ti.get("content"),ti.get("new_string"),ti.get("newString"),ti.get("file_t
 content="\n".join([p for p in parts if p])
 sys.stdout.write(tool+"\x1f"+fp+"\x1f"+content)
 ' 2>/dev/null)
-  tool=${parsed%%"$SEP"*}; rest=${parsed#*"$SEP"}; fp=${rest%%"$SEP"*}; content=${rest#*"$SEP"}
-else
-  # No parser -> nothing can be inspected. Allow (blocking would brick every write on boxes
-  # without jq/python3) but say so loudly: stderr surfaces in the hook logs on every surface.
-  echo "guard: no jq or python3 on PATH — write-guard INACTIVE (secret/test-defeat floor is OFF). Install jq to restore it." >&2
-  exit 0
+    tool=${parsed%%"$SEP"*}; rest=${parsed#*"$SEP"}; fp=${rest%%"$SEP"*}; content=${rest#*"$SEP"}
+  else
+    # No parser -> nothing can be inspected. Allow (blocking would brick every write on boxes
+    # without one) but say so loudly: stderr surfaces in the hook logs on every surface.
+    echo "guard: no jq, and no python interpreter that could parse JSON — write-guard INACTIVE (secret/test-defeat floor is OFF). Install jq to restore it." >&2
+    exit 0
+  fi
 fi
 
 # Gate on whether this is an inspectable write, independent of surface: known write tools

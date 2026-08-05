@@ -43,8 +43,8 @@ if [ "$mode" = deliver ]; then
   queued_text=$(cat "$queue_file")
   if [ -n "${queued_text//[[:space:]]/}" ] && command -v jq >/dev/null 2>&1; then
     printf '%s' "$queued_text" | jq -Rs '{additionalContext: ., hookSpecificOutput: {hookEventName: "UserPromptSubmit", additionalContext: .}}'
-  elif [ -n "${queued_text//[[:space:]]/}" ] && command -v python3 >/dev/null 2>&1; then
-    printf '%s' "$queued_text" | python3 -c 'import json,sys; t=sys.stdin.read(); print(json.dumps({"additionalContext":t,"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":t}}))'
+  elif [ -n "${queued_text//[[:space:]]/}" ] && _pybin=$(for c in python3 python py; do command -v "$c" >/dev/null 2>&1 && [ "$(printf '{}' | "$c" -c 'import json,sys;json.load(sys.stdin);sys.stdout.write("ok")' 2>/dev/null)" = ok ] && { printf '%s' "$c"; break; }; done) && [ -n "$_pybin" ]; then
+    printf '%s' "$queued_text" | "$_pybin" -c 'import json,sys; t=sys.stdin.read(); print(json.dumps({"additionalContext":t,"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":t}}))'
   elif [ -n "${queued_text//[[:space:]]/}" ]; then
     printf '%s\n' "$queued_text"
   fi
@@ -147,8 +147,11 @@ if command -v jq >/dev/null 2>&1; then
   else
     printf '%s' "$text" | jq -Rs '{additionalContext: ., hookSpecificOutput: {hookEventName: "UserPromptSubmit", additionalContext: .}}'
   fi
-elif command -v python3 >/dev/null 2>&1; then
-  printf '%s' "$text" | SUMMARY="$summary" SURFACE="$mode" python3 -c 'import json,os,sys; t=sys.stdin.read(); print(json.dumps({"systemMessage": os.environ["SUMMARY"], "hookSpecificOutput": {"hookEventName": "Stop", "additionalContext": t}} if os.environ["SURFACE"] == "claude" else {"additionalContext": t, "hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": t}}))'
+# Resolve a python that actually WORKS, by execution rather than by name: a Windows install
+# ships python.exe and no python3.exe, and the Store alias stub resolves but is not an
+# interpreter -- probing the name alone would select it and then silently produce nothing.
+elif _pybin=$(for c in python3 python py; do command -v "$c" >/dev/null 2>&1 && [ "$(printf '{}' | "$c" -c 'import json,sys;json.load(sys.stdin);sys.stdout.write("ok")' 2>/dev/null)" = ok ] && { printf '%s' "$c"; break; }; done); [ -n "$_pybin" ]; then
+  printf '%s' "$text" | SUMMARY="$summary" SURFACE="$mode" "$_pybin" -c 'import json,os,sys; t=sys.stdin.read(); print(json.dumps({"systemMessage": os.environ["SUMMARY"], "hookSpecificOutput": {"hookEventName": "Stop", "additionalContext": t}} if os.environ["SURFACE"] == "claude" else {"additionalContext": t, "hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": t}}))'
 else
   # No JSON tool available — plain stdout lands in the debug log only, but is better than nothing.
   printf '%s\n' "$text"
