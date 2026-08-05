@@ -1889,7 +1889,10 @@ gated and this one is not), B-32/WSD-017 (the context-footprint gate this must p
 **Effort:** M · **Priority:** P2 · found 2026-08-05 (RCA on three red CI runs) · **Invariants:** #4 #5
 
 **The incident.** `.claude/scripts/canary-import-resolution.ps1` was committed without a UTF-8 BOM,
-breaking meta-invariant #4 and reddening CI for **three consecutive pushes** before anyone looked.
+breaking meta-invariant #4 and reddening CI for **five consecutive pushes** before anyone looked —
+runs `30992016878`, `30992071114`, `30992915143`, `30993263252`, `30993847982`. (Recorded as "three"
+when first filed; two more were still in flight at the time and also went red. Corrected here rather
+than left, because the count is the measure of how long the signal went unread.)
 One line, one file, caught only by the repo-wide BOM gate in the meta suite:
 `[FAIL] every .ps1 in the repo carries a UTF-8 BOM (invariant #4) -- BOM missing in:
 .claude\scripts\canary-import-resolution.ps1`.
