@@ -267,3 +267,27 @@ framework handles custom form controls well — only that this prompt does not d
 ControlValueAccessor` + self-injected `NgControl`) from the double-registration bug (`NG_VALUE_ACCESSOR`
 provider *and* injected `NgControl`, which is the circular-DI hazard) — both score `cva=True
 ngcontrol=True`. Filed with the probe-specification defect in `meta/BACKLOG.md`.
+
+## 2026-08-05 10:05:35 +01:00 — framework v0.44.0 (1b328fd114b2b9ef015593384150cc38fc8ec5ae)
+
+Host: Claude Code 2.1.222 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-route-p1** (model=haiku) — agentExit=0 timedOut=False costUsd=0.0475704 tokensIn=34 tokensOut=1355; category=NEITHER channels= usedDeadColumn=True joinedDimension=False readView=False readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p2** (model=haiku) — agentExit=0 timedOut=False costUsd=0.05239635 tokensIn=42 tokensOut=1644; category=NEITHER channels= usedDeadColumn=True joinedDimension=False readView=False readViewTarget=vwExecutiveSummary artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p3** (model=haiku) — agentExit=0 timedOut=False costUsd=0.05577675 tokensIn=42 tokensOut=2189; category=NEITHER channels= usedDeadColumn=True joinedDimension=False readView=False readViewTarget=none artifactWritten=True otherSqlArtifacts=
+
+> **THESE THREE RUNS ARE A DISCARDED PILOT — they are NOT B-98 step 1 and do NOT count toward `r`.**
+> Read `model=haiku`: the registered experiment is `sonnet` (harness default), and the rule
+> pre-registered *before* these ran states that a negative on a weaker model is uninterpretable,
+> because it cannot separate a routing gap from weaker tool selection. **Do not cite them as `r=0`
+> or as a confirmed routing gap.** The six registered runs remain owed. See B-98 in `meta/BACKLOG.md`.
+>
+> Note the two traps this entry itself demonstrates, both filed against the probe: `PASS` here means
+> "graded", not "routing worked" — `PASS … category=NEITHER` is a success-shaped line reporting a
+> negative; and `tokensIn=34..42` is a token-accounting artifact, **not** evidence of empty context —
+> the fixture was verified on disk to carry a 24 KB `CLAUDE.md`, 12 skills and `docs/warehouse-map.md`.
+>
+> What they legitimately establish: the probe runs live end-to-end for the first time, the fixture is
+> valid (not the terra host confound), and the real cost is ~$0.05/run against a $1.25 budget — so
+> cost was never the reason these were deferred.
+
