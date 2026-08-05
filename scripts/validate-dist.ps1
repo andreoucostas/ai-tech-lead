@@ -1,5 +1,5 @@
 ﻿# ai-tech-lead dist validator — PowerShell twin of validate-dist.sh. Validates an ALREADY-COMPOSED
-# dist/<mode> tree — it does NOT rebuild it (see scripts/build.ps1 for that). Eight checks, each
+# dist/<mode> tree — it does NOT rebuild it (see scripts/build.ps1 for that). Eleven checks, each
 # with a clear OK/FAIL line:
 #   1. no unresolved @stack:NAME markers survive anywhere in the dist (composer leftovers)
 #   2. every *.json in the dist parses (ConvertFrom-Json)
@@ -10,6 +10,9 @@
 #   7. every script a shipped *.md tells someone to RUN exists (no-dead-instruction)
 #   8. every hook registration in settings*.json / hooks.json names a script that exists, with its
 #      opposite-language twin (hook-registration)
+#   9. every core @stack marker expands from a non-empty stack snippet into the composed file
+#  10. section-path citations name a heading that exists in the cited shipped file
+#  11. CLAUDE.md imports the shipped framework-rules carrier
 # Exit 0 = all checks passed. Exit 1 = at least one check failed. Exit 2 = usage error, missing
 # dist, or a required tool (bash, for check 3) is unavailable — reported as FATAL, never skipped.
 #   Usage: validate-dist.ps1 {dotnet|angular|monorepo} [dist-root]
@@ -134,6 +137,131 @@ if ($markerFiles.Count -gt 0) {
     Fail ("unresolved @stack markers in: " + ($markerFiles -join ' '))
 } else {
     OK "no unresolved @stack markers in $Dist."
+}
+
+# --- 1a. every core marker expands from a non-empty snippet --------------------------------------
+# The composer consumes a marker even when its snippet is absent, producing a marker-free but
+# silently empty section. Derive the inventory from core rather than maintaining a second list.
+$coreRoot = (Resolve-Path (Join-Path $RepoRoot 'src/core')).Path
+$expansionProblems = @()
+$markerCount = 0
+foreach ($coreFile in (Get-ChildItem -Recurse -File -Force -Path $coreRoot)) {
+    $coreRel = $coreFile.FullName.Substring($coreRoot.Length).TrimStart('\', '/').Replace('\', '/')
+    $distFile = Join-Path $DistAbs ($coreRel -replace '/', [IO.Path]::DirectorySeparatorChar)
+    $distText = if (Test-Path -LiteralPath $distFile) { ([IO.File]::ReadAllText($distFile) -replace "`r`n", "`n") } else { $null }
+    # BOTH marker forms, anchored exactly as the composer anchors them (build.ps1 $HtmlMarker /
+    # $HashMarker): markdown uses `<!-- @stack:NAME -->`, scripts use `# @stack:NAME`, and each must
+    # be the whole line. Matching only the HTML form left this gate blind to the 15 hash markers in
+    # route-prompt/audit-trail/.gitignore/CI -- i.e. blind to the shipped hooks, which is the very
+    # failure class it exists to catch. Anchoring also stops a prose mention of the syntax counting
+    # as a marker.
+    foreach ($match in [regex]::Matches([IO.File]::ReadAllText($coreFile.FullName), '(?m)^[ \t]*(?:<!-- @stack:([A-Za-z0-9_-]+) -->|# @stack:([A-Za-z0-9_-]+))[ \t]*\r?$')) {
+        $markerCount++
+        $name = if ($match.Groups[1].Success) { $match.Groups[1].Value } else { $match.Groups[2].Value }
+        # Resolve with the composer's exact semantics: monorepo prefers its authored snippet, then
+        # falls back to dotnet + angular concatenation (either side may be absent).
+        $snippetPaths = @()
+        if ($Mode -eq 'monorepo') {
+            $mono = Join-Path $RepoRoot (("src/stacks/monorepo/snippets/{0}/{1}" -f $coreRel, $name) -replace '/', [IO.Path]::DirectorySeparatorChar)
+            if (Test-Path -LiteralPath $mono -PathType Leaf) { $snippetPaths = @($mono) }
+            else {
+                foreach ($fallbackStack in @('dotnet','angular')) {
+                    $candidate = Join-Path $RepoRoot (("src/stacks/{0}/snippets/{1}/{2}" -f $fallbackStack, $coreRel, $name) -replace '/', [IO.Path]::DirectorySeparatorChar)
+                    if (Test-Path -LiteralPath $candidate -PathType Leaf) { $snippetPaths += $candidate }
+                }
+            }
+        } else {
+            $candidate = Join-Path $RepoRoot (("src/stacks/{0}/snippets/{1}/{2}" -f $Mode, $coreRel, $name) -replace '/', [IO.Path]::DirectorySeparatorChar)
+            if (Test-Path -LiteralPath $candidate -PathType Leaf) { $snippetPaths = @($candidate) }
+            if ($snippetPaths.Count -eq 0) {
+                $otherCount = 0
+                foreach ($otherStack in @('dotnet','angular','monorepo') | Where-Object { $_ -ne $Mode }) {
+                    $other = Join-Path $RepoRoot (("src/stacks/{0}/snippets/{1}/{2}" -f $otherStack, $coreRel, $name) -replace '/', [IO.Path]::DirectorySeparatorChar)
+                    if (Test-Path -LiteralPath $other -PathType Leaf) { $otherCount++ }
+                }
+                # A one-stack snippet is intentionally stack-only. If both sibling stacks carry the
+                # marker, this stack must too; that shape identifies an accidentally deleted file.
+                if ($otherCount -lt 2) { continue }
+            }
+        }
+        $snippetText = (($snippetPaths | ForEach-Object { ([IO.File]::ReadAllText($_) -replace "`r`n", "`n").TrimEnd("`n", "`r") }) -join "`n")
+        if ([string]::IsNullOrWhiteSpace($snippetText)) {
+            $expansionProblems += "$Mode : $coreRel @stack:$name resolves to an empty expansion"
+        } elseif ($null -eq $distText) {
+            $expansionProblems += "$Mode : $coreRel @stack:$name cannot expand because the composed file is missing"
+        } elseif (-not $distText.Contains($snippetText)) {
+            $expansionProblems += "$Mode : $coreRel @stack:$name snippet content is absent from the composed file"
+        }
+    }
+}
+if ($markerCount -eq 0) {
+    Fail "marker-expansion inventory found zero core @stack markers -- the inventory is broken, not the dist."
+} elseif ($expansionProblems.Count -gt 0) {
+    Fail ("marker expansion failed for {0} core marker(s) in {1}." -f $expansionProblems.Count, $Mode)
+    $expansionProblems | Sort-Object -Unique | ForEach-Object { Write-Output "  [marker-expansion] $_" }
+} else {
+    OK "all $markerCount core @stack markers expand from non-empty $Mode snippets into composed files."
+}
+
+# --- 1b. section-path references resolve ---------------------------------------------------------
+# This finite registry deliberately avoids a permissive "everything after >" capture. Changelogs
+# are historical records and are excluded by path. Scan every textual shipped file, not only *.md.
+$citationFiles = @('CLAUDE.md','AGENTS.md','.github/instructions/framework-rules.instructions.md')
+$citationHeadings = @('Architecture Decisions','Verification Rules','Repository Structure','Agentic Workflow','Codebase Context',"What We've Learned",'Boy Scout Rule','Common Tasks','Conventions','Leanness','SOLID')
+$citationProblems = @()
+$textFilesScanned = 0
+foreach ($f in (Get-ChildItem -Recurse -File -Force -Path $DistAbs)) {
+    $rel = $f.FullName.Substring($DistAbs.Length).TrimStart('\', '/').Replace('\', '/')
+    if ($f.Name -eq 'CHANGELOG.md') { continue }
+    $bytes = [IO.File]::ReadAllBytes($f.FullName)
+    if ($bytes -contains 0) { continue }
+    $textFilesScanned++
+    $lineNo = 0
+    foreach ($line in [IO.File]::ReadAllLines($f.FullName)) {
+        $lineNo++
+        foreach ($citedFile in $citationFiles) {
+            $fileToken = [regex]::Escape($citedFile)
+            foreach ($heading in $citationHeadings) {
+                # Only the two registered citation forms count. A terminating backtick or a
+                # punctuation/end boundary prevents prose such as "CLAUDE.md > Conventions wins"
+                # from being mistaken for a citation.
+                $headingToken = [regex]::Escape($heading)
+                $plainBacktick = "``$fileToken\s*(?:>|›)\s*$headingToken``"
+                $markdownLink = "\[$fileToken\]\([^)]*\)\s*(?:>|›)\s*$headingToken(?=$|[``;,\.\):\]])"
+                $seen = ($line -match $plainBacktick) -or ($line -match $markdownLink)
+                if (-not $seen) { continue }
+                $target = Join-Path $DistAbs ($citedFile -replace '/', [IO.Path]::DirectorySeparatorChar)
+                if (-not (Test-Path -LiteralPath $target -PathType Leaf)) {
+                    $citationProblems += "$rel`:$lineNo cites $citedFile > $heading, but $citedFile is missing"
+                } elseif (-not (Select-String -LiteralPath $target -Pattern ("^#+\s+{0}\s*$" -f [regex]::Escape($heading)) -Quiet)) {
+                    $citationProblems += "$rel`:$lineNo cites $citedFile > $heading, but that heading does not exist"
+                }
+                break
+            }
+        }
+    }
+}
+if ($textFilesScanned -eq 0) {
+    Fail "section-path reference check scanned zero textual files in $Dist -- the input is empty or unreadable."
+} elseif ($citationProblems.Count -gt 0) {
+    Fail ("unresolved section-path references in shipped content -- {0}." -f $citationProblems.Count)
+    $citationProblems | Sort-Object -Unique | ForEach-Object { Write-Output "  [section-path-reference] $_" }
+} else {
+    OK "all registered section-path references resolve ($textFilesScanned textual file(s) scanned; CHANGELOG.md excluded)."
+}
+
+# --- 1c. CLAUDE.md imports the delivered framework-rules carrier --------------------------------
+$importLine = '@.github/instructions/framework-rules.instructions.md'
+$claudePath = Join-Path $DistAbs 'CLAUDE.md'
+$carrierPath = Join-Path $DistAbs '.github/instructions/framework-rules.instructions.md'
+if (-not (Test-Path -LiteralPath $claudePath -PathType Leaf)) {
+    Fail "framework-rules import cannot be checked because CLAUDE.md is missing from $Dist."
+} elseif (-not (Select-String -LiteralPath $claudePath -SimpleMatch -Pattern $importLine -Quiet)) {
+    Fail "CLAUDE.md is missing required import $importLine."
+} elseif (-not (Test-Path -LiteralPath $carrierPath -PathType Leaf)) {
+    Fail "CLAUDE.md imports $importLine but the carrier file is missing from $Dist."
+} else {
+    OK "CLAUDE.md imports the delivered framework-rules carrier."
 }
 
 # --- 2. every *.json parses -------------------------------------------------------------------------

@@ -58,9 +58,31 @@ $template = [string]$stamp.template
 if (-not $template) { $template = 'unknown' }
 Row OK 'Install state' ("template={0}; version={1}; applied={2}" -f $template, $stamp.version, $stamp.applied)
 
+$claudePath = Join-Path $root 'CLAUDE.md'
+$carrierPath = Join-Path $root '.github/instructions/framework-rules.instructions.md'
+$importLine = '@.github/instructions/framework-rules.instructions.md'
+$claudeContent = $null
+if (Test-Path -LiteralPath $claudePath) {
+    try { $claudeContent = Get-Content -Raw -LiteralPath $claudePath -ErrorAction Stop } catch { }
+}
+if ((Test-Path -LiteralPath $carrierPath) -and $claudeContent -and $claudeContent.Contains($importLine)) {
+    Row OK 'Framework rules delivery' 'CLAUDE.md imports the current framework rules carrier.'
+} elseif (Test-Path -LiteralPath $carrierPath) {
+    Row MISSING 'Framework rules delivery' ('the carrier is installed but CLAUDE.md does not import it. Fix: add {0} where the Verification Rules, Leanness, SOLID, and Agentic Workflow sections belong.' -f $importLine)
+} else {
+    Row MISSING 'Framework rules delivery' 'the framework rules carrier is absent. Fix: re-run the framework installer.'
+}
+
+$claudeVersion = $null
+if ($claudeContent -and $claudeContent -match '(?m)^\s*version:\s*([^\s]+)\s*$') { $claudeVersion = $matches[1] }
+if ($claudeVersion -and ([string]$stamp.version -eq $claudeVersion)) {
+    Row OK 'Protected-file sync' ("CLAUDE.md version {0} matches installed machinery." -f $claudeVersion)
+} else {
+    Row MISSING 'Protected-file sync' 'DIVERGED — protected file not synchronized with installed machinery; review required'
+}
+
 $adoption = Test-Path -LiteralPath (Join-Path $root '.claude/adoption-pending.json')
 $bootstrap = $false
-$claudePath = Join-Path $root 'CLAUDE.md'
 if (Test-Path -LiteralPath $claudePath) {
     $bootstrap = [bool](Select-String -Quiet -SimpleMatch 'BOOTSTRAP_PENDING' -LiteralPath $claudePath)
 }

@@ -4,7 +4,7 @@ This framework runs across three agent surfaces. They do **not** enforce the sam
 
 Two kinds of control:
 - **Guaranteed (hook-enforced):** a deterministic hook runs and the harness *acts* on its output (blocks a write, injects context) regardless of what the model "feels like" doing.
-- **Instructed (model-read):** a rule lives in `CLAUDE.md` / `AGENTS.md` and the model is asked to follow it. Strong, but the model *can* skip it under a casual prompt or long context.
+- **Instructed (model-read):** a rule lives in the framework-rules carrier, `CLAUDE.md`, or `AGENTS.md` and the model is asked to follow it. Strong, but the model *can* skip it under a casual prompt or long context.
 
 ## Before any hook can be guaranteed
 
@@ -23,7 +23,8 @@ launch.
 
 | Capability | Claude Code | Copilot CLI | Copilot in VS Code (agent mode) |
 |---|---|---|---|
-| **Routing** (classify NL → run the workflow) | Instructed (`CLAUDE.md §1`) + per-prompt salience nudge (`route-prompt`) | Instructed (`AGENTS.md §1`) + per-prompt injection (`route-prompt` JSON `additionalContext`, **CLI ≥ v1.0.65**; ignored by older versions) | Instructed (`AGENTS.md §1`) + per-prompt injection **only if Preview agent-hooks are enabled** (off by default, org-gated); otherwise instructed only |
+| **Framework-rules delivery on update** | **Delivered** after the one-time `CLAUDE.md` import migration; an un-migrated consumer receives only a `session-start` discovery pointer, not proven precedence over stale inline rules | **Delivered automatically** through `.github/instructions/framework-rules.instructions.md`; `AGENTS.md` remains the mirror for AGENTS.md-native tools | **Delivered automatically** through the same native instruction file, independent of Preview hooks |
+| **Routing** (classify NL → run the workflow) | Instructed (framework-rules carrier §1) + per-prompt salience nudge (`route-prompt`) | Instructed (`AGENTS.md` §1 + carrier) + per-prompt injection (`route-prompt` JSON `additionalContext`, **CLI ≥ v1.0.65**; ignored by older versions) | Instructed (`AGENTS.md` §1 + carrier) + per-prompt injection **only if Preview agent-hooks are enabled** (off by default, org-gated); otherwise instructed only |
 | **Plan-gate** (plan + clarify before code) | Guaranteed-ish: injected per-prompt by `route-prompt` + Instructed (`§2`) | Injected per-prompt (CLI ≥ v1.0.65) + Instructed | Injected per-prompt if Preview hooks enabled; otherwise instructed only |
 | **Security pass** (auth/money/secrets → `/security-review`) | Injected per-prompt by `route-prompt` + Instructed (`§1`) | Injected per-prompt (CLI ≥ v1.0.65) + Instructed | Injected per-prompt if Preview hooks enabled; otherwise instructed only |
 | **Write hard-blocks** (secrets, test-defeats, suppressions) — **editor/file-write tools only** (see caveat below) | **Guaranteed** — `guard.*` PreToolUse, `exit 2` | **Guaranteed** — `guard.*` preToolUse, `permissionDecision` JSON deny | **Guaranteed *only if* Preview agent-hooks are enabled** (off by default, org-gated) — `guard.*` emits the VS Code `permissionDecision` shape; otherwise **instructed only** |

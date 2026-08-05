@@ -1,6 +1,6 @@
 // Sample dependency-cruiser config — copy to .dependency-cruiser.js and adjust the globs to your
 // layering. Makes layer/feature dependency direction a BUILD-BREAKING gate, complementing the
-// semantic `solid-check` agent. Scaffolded by the `enforce-architecture` skill. See CLAUDE.md > SOLID.
+// semantic `solid-check` agent. Scaffolded by the `enforce-architecture` skill. See the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools).
 module.exports = {
   forbidden: [
     {

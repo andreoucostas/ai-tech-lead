@@ -37,7 +37,7 @@ $railsFeature = @'
 4. Self-review against CLAUDE.md > Conventions; flag new patterns or resolved tech debt.
 5. Present what was implemented and tested.
 
-Leanness constraints (CLAUDE.md > Leanness):
+Leanness constraints (the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools)):
 - Prefer editing existing files over creating new ones.
 # @stack:leanness-feature
 - No defensive code for impossible states; no comments that restate code; no future-proofing.
@@ -51,7 +51,7 @@ $railsRefactor = @'
 5. Verify final state — no behavior should have changed.
 6. Present a before/after summary INCLUDING net LOC delta.
 
-Leanness constraints (CLAUDE.md > Leanness):
+Leanness constraints (the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools)):
 - Trend toward less code: delete dead branches, inline single-use abstractions, remove now-redundant types.
 - A refactor that grows the codebase needs an explicit reason in the summary.
 # @stack:leanness-refactor
@@ -154,7 +154,7 @@ $parts = New-Object System.Collections.Generic.List[string]
 if (-not [string]::IsNullOrEmpty($intent)) {
     $parts.Add("## Routed intent: ``$intent``")
     $parts.Add('')
-    $parts.Add("This natural-language prompt was classified as **$intent**. The rails below mirror ``CLAUDE.md > Agentic Workflow`` section 1 — the canonical definition, already in your context; they are repeated here for salience. Apply them before responding. If the actual intent differs, say so and proceed normally.")
+    $parts.Add("This natural-language prompt was classified as **$intent**. The rails below mirror the framework rules (``.github/instructions/framework-rules.instructions.md`` › Agentic Workflow; ``AGENTS.md`` › Agentic Workflow on AGENTS.md-native tools) section 1 — the canonical definition, already in your context; they are repeated here for salience. Apply them before responding. If the actual intent differs, say so and proceed normally.")
     $parts.Add('')
 
     if ($intent -in @('fix','feature','refactor','test')) {

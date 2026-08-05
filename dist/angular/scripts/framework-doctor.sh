@@ -56,6 +56,24 @@ if [ -z "$template" ]; then
 fi
 row OK 'Install state' "template=$template; version=$version; applied=$applied"
 
+claude="$root/CLAUDE.md"
+carrier="$root/.github/instructions/framework-rules.instructions.md"
+import_line='@.github/instructions/framework-rules.instructions.md'
+if [ -f "$carrier" ] && grep -qF "$import_line" "$claude" 2>/dev/null; then
+  row OK 'Framework rules delivery' 'CLAUDE.md imports the current framework rules carrier.'
+elif [ -f "$carrier" ]; then
+  row MISSING 'Framework rules delivery' "the carrier is installed but CLAUDE.md does not import it. Fix: add $import_line where the Verification Rules, Leanness, SOLID, and Agentic Workflow sections belong."
+else
+  row MISSING 'Framework rules delivery' 'the framework rules carrier is absent. Fix: re-run the framework installer.'
+fi
+
+claude_version=$(sed -n 's/^[[:space:]]*version:[[:space:]]*\([^[:space:]]*\)[[:space:]]*$/\1/p' "$claude" 2>/dev/null | head -1)
+if [ -n "$claude_version" ] && [ "$version" = "$claude_version" ]; then
+  row OK 'Protected-file sync' "CLAUDE.md version $claude_version matches installed machinery."
+else
+  row MISSING 'Protected-file sync' 'DIVERGED — protected file not synchronized with installed machinery; review required'
+fi
+
 pending=0
 if [ -f "$root/.claude/adoption-pending.json" ]; then
   row PENDING 'Bootstrap/adoption state' 'adoption pending. A developer must run /adopt.'; pending=1

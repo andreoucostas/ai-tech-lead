@@ -11,7 +11,7 @@ model: inherit
 
 ## Process
 
-1. Read `CLAUDE.md > SOLID` and `> Conventions`. If there is no `## SOLID` section, reply `No SOLID policy in CLAUDE.md — skipping.` and stop (keeps this agent inert in repos that haven't adopted it).
+1. Read the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools) and `CLAUDE.md` › Conventions. If there is no `## SOLID` section, reply `No SOLID policy in the framework rules — skipping.` and stop (keeps this agent inert in repos that haven't adopted it).
 <!-- @stack:scope -->
 3. Record findings as `file:line — principle — severity — fix`. Cap at 30, top by severity.
 

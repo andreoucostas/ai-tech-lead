@@ -240,9 +240,12 @@ try {
         }
 
         [void]$groups['static.claude'].Add((New-ItemRecord 'CLAUDE.md' (Get-ByteCount (Join-Path $root 'CLAUDE.md'))))
+        $frameworkRules = '.github/instructions/framework-rules.instructions.md'
+        [void]$groups['static.claude'].Add((New-ItemRecord $frameworkRules (Get-ByteCount (Join-Path $root $frameworkRules))))
         foreach ($relative in @('AGENTS.md', '.github/copilot-instructions.md')) {
             [void]$groups['static.copilot'].Add((New-ItemRecord $relative (Get-ByteCount (Join-Path $root $relative))))
         }
+        [void]$groups['static.copilot'].Add((New-ItemRecord $frameworkRules (Get-ByteCount (Join-Path $root $frameworkRules))))
         foreach ($relative in @('FRAMEWORK-CONTEXT.md', 'docs/defaults.md', 'docs/wiki/INDEX.md')) {
             $path = Join-Path $root $relative
             if (Test-Path $path) {
@@ -290,9 +293,9 @@ try {
         }
     }
 
-    $dotnetClaude = ($distData.dotnet['static.claude'] | Where-Object path -eq 'CLAUDE.md').chars
-    $angularClaude = ($distData.angular['static.claude'] | Where-Object path -eq 'CLAUDE.md').chars
-    $monorepoClaude = ($distData.monorepo['static.claude'] | Where-Object path -eq 'CLAUDE.md').chars
+    $dotnetClaude = Get-CharsSum $distData.dotnet['static.claude']
+    $angularClaude = Get-CharsSum $distData.angular['static.claude']
+    $monorepoClaude = Get-CharsSum $distData.monorepo['static.claude']
     $largestSingle = [Math]::Max($dotnetClaude, $angularClaude)
     $derived['monorepo-claude-ratio-permille'] = [int][Math]::Round(1000 * $monorepoClaude / $largestSingle)
 

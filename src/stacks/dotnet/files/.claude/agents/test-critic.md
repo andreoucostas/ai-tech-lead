@@ -11,7 +11,7 @@ You audit the **tests** in a .NET diff. Your single organising question for ever
 
 ## Process
 
-1. Read `CLAUDE.md > Verification Rules` (esp. #5, #9) and `> Leanness > Test leanness` (#11–#16). If there is no `Test leanness` section, reply `No test policy in CLAUDE.md — skipping.` and stop (keeps this agent inert in repos that haven't adopted it).
+1. Read the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules; `AGENTS.md` › Verification Rules on AGENTS.md-native tools)` (esp. #5, #9) and `> Leanness > Test leanness` (#11–#16). If there is no `Test leanness` section, reply `No test policy in CLAUDE.md — skipping.` and stop (keeps this agent inert in repos that haven't adopted it).
 2. Scope to `git diff --name-only HEAD` (working tree + staged), `*.cs` whose path or name marks it a test: `*Tests.cs`, `*Test.cs`, `*Spec.cs`, or anything under a `*.Tests` project / a `test`/`tests` directory. Skip non-test `*.cs`. For each, `git diff HEAD -- <file>` to see what was added.
 3. For each added/modified test, read the method(s) under test just enough to judge assertion validity. `Grep` for the mocking library in use (NSubstitute/Moq) to read interaction-only verification correctly.
 4. Record findings as `file:line — issue — severity — fix`. Cap at 30, top by severity.

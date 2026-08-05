@@ -61,16 +61,28 @@ if (Test-Path .claude/adoption-pending.json) {
     }
 }
 
-# 3. Workflow-routing pointer. Claude Code consumes this as plain stdout; on Copilot it lands
-# only via the JSON additionalContext shape emitted below (CLI, and VS Code agent mode with
-# Preview agent-hooks -- older Copilot versions drop it, and routing there rests on
-# AGENTS.md > Agentic Workflow section 1, the always-on instruction surface). The full
-# intent->workflow vocabulary lives in section 1 (canonical); we do not re-list it here.
+# 3. Framework-rules migration pointer. Existing consumers keep their protected CLAUDE.md on
+# update, so the newly delivered carrier needs a one-time import. This is discovery, not delivery:
+# do not duplicate the rules into hook output.
 if (Test-Path CLAUDE.md) {
-    Write-Output '- **Workflow routing:** when a prompt clearly matches a workflow and the developer did not type a `/command`, self-classify and apply that workflow''s rails from `CLAUDE.md > Agentic Workflow` (section 1). State which workflow you concluded.'
+    $claude = Get-Content CLAUDE.md -Raw
+    if ((Test-Path .github/instructions/framework-rules.instructions.md) -and
+        $claude -and -not $claude.Contains('@.github/instructions/framework-rules.instructions.md')) {
+        Write-Output '- ⚠ **Framework rules migration:** `.github/instructions/framework-rules.instructions.md` is the current framework ruleset and supersedes any identically-titled sections in `CLAUDE.md`. Read it now. To make this permanent, add `@.github/instructions/framework-rules.instructions.md` to `CLAUDE.md` where those sections are, and delete them.'
+    }
 }
 
-# 4. TECH_DEBT items touching recently changed files
+# 4. Workflow-routing pointer. Claude Code consumes this as plain stdout; on Copilot it lands
+# only via the JSON additionalContext shape emitted below (CLI, and VS Code agent mode with
+# Preview agent-hooks -- older Copilot versions drop it, and routing there rests on
+# the framework rules (`.github/instructions/framework-rules.instructions.md` › Agentic Workflow;
+# `AGENTS.md` › Agentic Workflow on AGENTS.md-native tools), the always-on instruction surface). The full
+# intent->workflow vocabulary lives in section 1 (canonical); we do not re-list it here.
+if (Test-Path CLAUDE.md) {
+    Write-Output '- **Workflow routing:** when a prompt clearly matches a workflow and the developer did not type a `/command`, self-classify and apply that workflow''s rails from the framework rules (`.github/instructions/framework-rules.instructions.md` › Agentic Workflow; `AGENTS.md` › Agentic Workflow on AGENTS.md-native tools), section 1. State which workflow you concluded.'
+}
+
+# 5. TECH_DEBT items touching recently changed files
 if ((Test-Path TECH_DEBT.md) -and (Test-Path .git)) {
     $recentFiles = git log --since="14 days ago" --name-only --format="" |
         Where-Object { $_ -and $_.Trim() } |
@@ -92,7 +104,7 @@ if ((Test-Path TECH_DEBT.md) -and (Test-Path .git)) {
     }
 }
 
-# 5. Overdue security findings
+# 6. Overdue security findings
 if (Test-Path SECURITY_FINDINGS.md) {
     $secContent = Get-Content SECURITY_FINDINGS.md -Raw
     $openCount = ([regex]::Matches($secContent, '\| Open ')).Count
@@ -116,7 +128,7 @@ if (Test-Path SECURITY_FINDINGS.md) {
     }
 }
 
-# 6. Team wiki index (cheap capped preload; staleness belongs to wiki-check)
+# 7. Team wiki index (cheap capped preload; staleness belongs to wiki-check)
 if (Test-Path docs/wiki/INDEX.md) {
     $wikiIndex = Get-Content docs/wiki/INDEX.md -Raw
     $wikiCount = ([regex]::Matches($wikiIndex, '(?m)^- \[')).Count
@@ -124,7 +136,7 @@ if (Test-Path docs/wiki/INDEX.md) {
     else { Write-Output "$wikiCount wiki entries — read docs/wiki/INDEX.md" }
 }
 
-# 7. Hazard-area staleness
+# 8. Hazard-area staleness
 if (Test-Path FRAMEWORK-CONTEXT.md) {
     $frameworkContext = Get-Content FRAMEWORK-CONTEXT.md -Raw
     if ($frameworkContext -and $frameworkContext -notmatch 'KNOWN_HAZARD_AREAS_PENDING') {

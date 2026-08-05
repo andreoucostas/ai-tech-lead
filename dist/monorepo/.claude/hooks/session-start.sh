@@ -40,18 +40,28 @@ elif [ -f CLAUDE.md ] && grep -q "BOOTSTRAP_PENDING" CLAUDE.md 2>/dev/null; then
   echo "- ⚠ **CLAUDE.md is unbootstrapped** (BOOTSTRAP_PENDING marker present). \`/bootstrap\` must run before non-trivial work — conventions are still placeholder. It is developer-initiated and cannot be invoked by the model: if you are an agent, tell the developer to type \`/bootstrap\`."
 fi
 
-# 3. Workflow-routing pointer. Claude Code consumes this as plain stdout; on Copilot it lands
-# only via the JSON additionalContext shape emitted below (CLI, and VS Code agent mode with
-# Preview agent-hooks — older Copilot versions drop it, and routing there rests on
-# AGENTS.md > Agentic Workflow section 1, the always-on instruction surface). The full
-# intent->workflow vocabulary lives in section 1 (canonical); we do not re-list it here.
-if [ -f CLAUDE.md ]; then
+# 3. Framework-rules migration pointer. Existing consumers keep their protected CLAUDE.md on
+# update, so the newly delivered carrier needs a one-time import. This is discovery, not delivery:
+# do not duplicate the rules into hook output.
+if [ -f CLAUDE.md ] && [ -f .github/instructions/framework-rules.instructions.md ] && ! grep -qF '@.github/instructions/framework-rules.instructions.md' CLAUDE.md 2>/dev/null; then
   cat <<'EOF'
-- **Workflow routing:** when a prompt clearly matches a workflow and the developer did not type a `/command`, self-classify and apply that workflow's rails from `CLAUDE.md > Agentic Workflow` (section 1). State which workflow you concluded.
+- ⚠ **Framework rules migration:** `.github/instructions/framework-rules.instructions.md` is the current framework ruleset and supersedes any identically-titled sections in `CLAUDE.md`. Read it now. To make this permanent, add `@.github/instructions/framework-rules.instructions.md` to `CLAUDE.md` where those sections are, and delete them.
 EOF
 fi
 
-# 4. TECH_DEBT items touching recently changed files
+# 4. Workflow-routing pointer. Claude Code consumes this as plain stdout; on Copilot it lands
+# only via the JSON additionalContext shape emitted below (CLI, and VS Code agent mode with
+# Preview agent-hooks — older Copilot versions drop it, and routing there rests on
+# the framework rules (`.github/instructions/framework-rules.instructions.md` › Agentic Workflow;
+# `AGENTS.md` › Agentic Workflow on AGENTS.md-native tools), the always-on instruction surface). The full
+# intent->workflow vocabulary lives in section 1 (canonical); we do not re-list it here.
+if [ -f CLAUDE.md ]; then
+  cat <<'EOF'
+- **Workflow routing:** when a prompt clearly matches a workflow and the developer did not type a `/command`, self-classify and apply that workflow's rails from the framework rules (`.github/instructions/framework-rules.instructions.md` › Agentic Workflow; `AGENTS.md` › Agentic Workflow on AGENTS.md-native tools), section 1. State which workflow you concluded.
+EOF
+fi
+
+# 5. TECH_DEBT items touching recently changed files
 if [ -f TECH_DEBT.md ] && [ -d .git ]; then
   # Look at files touched in the last 14 days, capped at 30 to bound work.
   recent_files=$(git log --since="14 days ago" --name-only --format="" 2>/dev/null | grep -v '^$' | sort -u | head -30)
@@ -67,7 +77,7 @@ if [ -f TECH_DEBT.md ] && [ -d .git ]; then
   fi
 fi
 
-# 5. Overdue security findings
+# 6. Overdue security findings
 if [ -f SECURITY_FINDINGS.md ]; then
   today=$(date -u +"%Y-%m-%d")
   overdue=0
@@ -92,14 +102,14 @@ if [ -f SECURITY_FINDINGS.md ]; then
   fi
 fi
 
-# 6. Team wiki index (cheap capped preload; staleness belongs to wiki-check)
+# 7. Team wiki index (cheap capped preload; staleness belongs to wiki-check)
 if [ -f docs/wiki/INDEX.md ]; then
   wiki_count=$(grep -c '^- \[' docs/wiki/INDEX.md 2>/dev/null || true)
   [ -n "$wiki_count" ] || wiki_count=0
   if [ "$wiki_count" -le 30 ]; then cat docs/wiki/INDEX.md; else echo "$wiki_count wiki entries — read docs/wiki/INDEX.md"; fi
 fi
 
-# 7. Hazard-area staleness
+# 8. Hazard-area staleness
 if [ -f FRAMEWORK-CONTEXT.md ] && ! grep -q 'KNOWN_HAZARD_AREAS_PENDING' FRAMEWORK-CONTEXT.md 2>/dev/null; then
   cutoff=$(date -d '90 days ago' +%F 2>/dev/null || true)
   if [ -n "$cutoff" ]; then

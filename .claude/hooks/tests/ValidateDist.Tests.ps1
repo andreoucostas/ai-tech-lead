@@ -15,6 +15,24 @@ function New-DistCopy {
     $script:scratch += $root
     return $root
 }
+function New-ValidatorRepoCopy {
+    # Marker inventory derives from authoring src/, so its red fixture needs an isolated source tree
+    # as well as an isolated dist. Never mutate the live shared snippets during a test run.
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('validate-dist-repo-' + [guid]::NewGuid().ToString('N'))
+    foreach ($dir in @('scripts','src','dist')) { New-Item -ItemType Directory -Path (Join-Path $root $dir) -Force | Out-Null }
+    Copy-Item -LiteralPath (Join-Path $repo 'scripts\validate-dist.ps1') -Destination (Join-Path $root 'scripts')
+    Copy-Item -LiteralPath (Join-Path $repo 'scripts\validate-dist.sh') -Destination (Join-Path $root 'scripts')
+    Copy-Item -LiteralPath (Join-Path $repo 'scripts\meta-denylist.txt') -Destination (Join-Path $root 'scripts')
+    Copy-Item -LiteralPath (Join-Path $repo 'src\core') -Destination (Join-Path $root 'src') -Recurse
+    foreach ($stack in @('dotnet','angular','monorepo')) {
+        $target = Join-Path $root "src\stacks\$stack"
+        New-Item -ItemType Directory -Path $target -Force | Out-Null
+        Copy-Item -LiteralPath (Join-Path $repo "src\stacks\$stack\snippets") -Destination $target -Recurse
+    }
+    Copy-Item -LiteralPath (Join-Path $repo 'dist\dotnet') -Destination (Join-Path $root 'dist') -Recurse
+    $script:scratch += $root
+    return $root
+}
 function Convert-ToBashPath {
     param([string]$Path)
     if ($Path -match '^([A-Za-z]):[\\/](.*)$') { return '/' + $Matches[1].ToLowerInvariant() + '/' + $Matches[2].Replace('\', '/') }
@@ -113,6 +131,29 @@ try {
     # Linux CI. Both twins now resolve case-exactly, so both must call it missing.
     It 'case 16: a registration whose casing differs from the shipped file fails check 8' { Assert-Case 'case-mismatch' { param($d) Replace-Text (Join-Path $d '.claude\settings.json') '.claude/hooks/session-start.ps1' '.claude/hooks/session-start.PS1' } 'does not exist in this dist' }
     It 'case 15: a tab and a backslash in a command value cannot break the record framing' { Assert-Case 'framing' { param($d) Replace-Text (Join-Path $d '.claude\settings.json') '-File .claude/hooks/session-start.ps1' '-File .claude\\hooks\\definitely\tmissing.ps1' } 'does not exist in this dist' }
+
+    It 'case 17: a missing framework-rules import fails the full validator' { Assert-Case 'missing-framework-import' { param($d) $p=Join-Path $d 'CLAUDE.md'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,$t.Replace('@.github/instructions/framework-rules.instructions.md','')) } 'CLAUDE.md is missing required import @.github/instructions/framework-rules.instructions.md.' -FullValidation }
+    It 'case 18: a citation to a moved CLAUDE.md section fails the full validator' { Assert-Case 'moved-section-citation' { param($d) $p=Join-Path $d 'README.md'; [IO.File]::AppendAllText($p,"`nPlant: ``CLAUDE.md > SOLID```n") } 'cites CLAUDE.md > SOLID, but that heading does not exist' -FullValidation }
+    It 'case 19: prose after valid finite-registry citations does not become a heading' { Assert-Case 'citation-prose' { param($d) $p=Join-Path $d 'README.md'; [IO.File]::AppendAllText($p,"`nCLAUDE.md > Conventions wins on any conflict.`nCLAUDE.md > Boy Scout Rule before considering the work complete.`n[CLAUDE.md](./CLAUDE.md) > Conventions.`n") } 'all registered section-path references resolve' -Green -FullValidation }
+    It 'case 20: a missing stack snippet fails marker expansion without touching the live source tree' {
+        foreach ($leg in @('ps','bash')) {
+            $isolated = New-ValidatorRepoCopy
+            $snippet = Join-Path $isolated 'src\stacks\dotnet\snippets\.github\instructions\framework-rules.instructions.md\lean-test'
+            Remove-Item -LiteralPath $snippet -Force
+            if ($leg -eq 'ps') {
+                $out = & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File (Join-Path $isolated 'scripts\validate-dist.ps1') dotnet (Join-Path $isolated 'dist') 2>&1
+                $code = $LASTEXITCODE
+            } else {
+                $rootPath = Convert-ToBashPath $isolated
+                $out = & $bashExe -c "cd '$rootPath'; bash scripts/validate-dist.sh dotnet dist" 2>&1
+                $code = $LASTEXITCODE
+            }
+            $text = $out -join "`n"
+            Write-Host "[ValidateDist $leg missing-marker-expansion] EXIT=$code"; Write-Host $text
+            Assert ($code -ne 0) "missing-marker-expansion/$leg should be red"
+            Assert ($text.Contains('dotnet : .github/instructions/framework-rules.instructions.md @stack:lean-test resolves to an empty expansion')) "missing-marker-expansion/$leg did not name relpath, marker and stack: $text"
+        }
+    }
 
     $python = Get-Command python3 -ErrorAction SilentlyContinue
     if (-not $python) {

@@ -27,7 +27,7 @@ else
   ok "version stamps in sync ($v_claude)$extra."
 fi
 
-# --- 2. CLAUDE.md <-> AGENTS.md verbatim mirror ------------------------------------------------
+# --- 2. Framework-rules source <-> AGENTS.md verbatim mirror ------------------------------------
 # Section body: lines after the exact "## <name>" heading up to the next "## ", minus blank/--- lines
 # and trailing whitespace.
 section() { # $1=file $2=heading
@@ -45,16 +45,29 @@ section1() { # $1=file
   ' "$1"
 }
 if [ -f CLAUDE.md ] && [ -f AGENTS.md ]; then
-  for sec in "## Verification Rules" "## Leanness" "## SOLID" "## Boy Scout Rule"; do
-    a=$(section CLAUDE.md "$sec"); b=$(section AGENTS.md "$sec")
-    if [ -z "$a" ]; then fail "CLAUDE.md is missing section '$sec'."
-    elif [ "$a" != "$b" ]; then fail "AGENTS.md section '$sec' is not a verbatim mirror of CLAUDE.md — run /generate-copilot."
+  carrier=.github/instructions/framework-rules.instructions.md
+  # Updated consumers have the carrier; un-migrated consumers legitimately retain inline sections.
+  for sec in "## Verification Rules" "## Leanness" "## SOLID"; do
+    a=""; source=$carrier
+    [ -f "$carrier" ] && a=$(section "$carrier" "$sec")
+    if [ -z "$a" ]; then a=$(section CLAUDE.md "$sec"); source=CLAUDE.md; fi
+    b=$(section AGENTS.md "$sec")
+    if [ -z "$a" ]; then fail "section '$sec' is missing from both $carrier and CLAUDE.md."
+    elif [ "$a" != "$b" ]; then fail "AGENTS.md section '$sec' is not a verbatim mirror of $source — run /generate-copilot."
     else ok "'$sec' mirrored verbatim."
     fi
   done
-  s1c=$(section1 CLAUDE.md); s1a=$(section1 AGENTS.md)
-  if [ -z "$s1c" ]; then fail 'CLAUDE.md has no "### 1. Classify the intent" block.'
-  elif [ "$s1c" != "$s1a" ]; then fail "AGENTS.md Agentic Workflow §1 is not verbatim (this is the only routing surface Copilot has) — run /generate-copilot."
+  boy_claude=$(section CLAUDE.md "## Boy Scout Rule"); boy_agents=$(section AGENTS.md "## Boy Scout Rule")
+  if [ -z "$boy_claude" ]; then fail "CLAUDE.md is missing section '## Boy Scout Rule'."
+  elif [ "$boy_claude" != "$boy_agents" ]; then fail "AGENTS.md section '## Boy Scout Rule' is not a verbatim mirror of CLAUDE.md — run /generate-copilot."
+  else ok "'## Boy Scout Rule' mirrored verbatim."
+  fi
+  s1c=""; workflow_source=$carrier
+  [ -f "$carrier" ] && s1c=$(section1 "$carrier")
+  if [ -z "$s1c" ]; then s1c=$(section1 CLAUDE.md); workflow_source=CLAUDE.md; fi
+  s1a=$(section1 AGENTS.md)
+  if [ -z "$s1c" ]; then fail "Agentic Workflow §1 is missing from both $carrier and CLAUDE.md."
+  elif [ "$s1c" != "$s1a" ]; then fail "AGENTS.md Agentic Workflow §1 is not verbatim with $workflow_source (this is the only compared routing block) — run /generate-copilot."
   else ok "Agentic Workflow §1 mirrored verbatim."
   fi
 else

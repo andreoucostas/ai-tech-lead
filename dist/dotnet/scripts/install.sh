@@ -27,6 +27,7 @@ if [ "$tgt" = "$src" ]; then echo "Target is the template repo itself — choose
 # Consumer files the copy below would otherwise clobber. Brownfield: archived so /adopt can merge
 # them. Update: snapshotted and restored — after bootstrap/adopt the consumer owns their content.
 protected="CLAUDE.md AGENTS.md TECH_DEBT.md SECURITY_FINDINGS.md LEARNINGS.md FRAMEWORK-CONTEXT.md .github/copilot-instructions.md docs/ARCHITECTURE.md"
+brownfield_collisions="$protected .github/instructions/framework-rules.instructions.md"
 
 # Signals that the target already has AI tooling and therefore needs /adopt, not /bootstrap
 # (mirrors /adopt Phase 1 discovery).
@@ -56,7 +57,7 @@ archived=""
 if [ "$adopt_mode" -eq 1 ]; then
   # Move originals out of the copy's way so /adopt can merge them later — without this they
   # would be overwritten by the template versions and lost from the working tree.
-  for f in $protected; do
+  for f in $brownfield_collisions; do
     if [ -f "$tgt/$f" ]; then
       rel="docs/pre-adoption/${f#.}"
       mkdir -p "$(dirname "$tgt/$rel")"

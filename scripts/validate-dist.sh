@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ai-tech-lead dist validator (bash twin; .ps1 twin is validate-dist.ps1). Validates an
 # ALREADY-COMPOSED dist/<mode> tree — it does NOT rebuild it (see scripts/build.sh for that).
-# Eight checks, each with a clear OK/FAIL line:
+# Eleven checks, each with a clear OK/FAIL line:
 #   1. no unresolved @stack:NAME markers survive anywhere in the dist (composer leftovers)
 #   2. every *.json in the dist parses
 #   3. `bash -n` passes on every *.sh in the dist
@@ -11,6 +11,9 @@
 #   7. every script a shipped *.md tells someone to RUN exists (no-dead-instruction)
 #   8. every hook registration in settings*.json / hooks.json names a script that exists, with its
 #      opposite-language twin (hook-registration)
+#   9. every core @stack marker expands from a non-empty stack snippet into the composed file
+#  10. section-path citations name a heading that exists in the cited shipped file
+#  11. CLAUDE.md imports the shipped framework-rules carrier
 # Exit 0 = all checks passed. Exit 1 = at least one check failed. Exit 2 = usage error, missing
 # dist, or a required tool (JSON parser / bash / PowerShell host) is unavailable — these are
 # reported as FATAL and never silently skipped.
@@ -82,6 +85,142 @@ if [ -n "$markers" ]; then
   fail "unresolved @stack markers in:$(printf ' %s' $markers)"
 else
   ok "no unresolved @stack markers in $DIST."
+fi
+
+# --- 1a. every core marker expands from a non-empty snippet --------------------------------------
+# A missing snippet is silently consumed by the composer. Derive this inventory from src/core so a
+# marker added later is covered without maintaining a second list.
+marker_count=0
+expansion_problems=""
+while IFS= read -r core_file; do
+  core_rel=${core_file#src/core/}
+  dist_file="$DIST/$core_rel"
+  while IFS= read -r marker; do
+    [ -n "$marker" ] || continue
+    marker_count=$((marker_count+1))
+    name=${marker#@stack:}
+    snippet_paths=""
+    if [ "$MODE" = monorepo ]; then
+      mono="src/stacks/monorepo/snippets/$core_rel/$name"
+      if [ -f "$mono" ]; then snippet_paths=$mono
+      else
+        [ -f "src/stacks/dotnet/snippets/$core_rel/$name" ] && snippet_paths="src/stacks/dotnet/snippets/$core_rel/$name"
+        [ -f "src/stacks/angular/snippets/$core_rel/$name" ] && snippet_paths="$snippet_paths src/stacks/angular/snippets/$core_rel/$name"
+      fi
+    else
+      candidate="src/stacks/$MODE/snippets/$core_rel/$name"
+      [ -f "$candidate" ] && snippet_paths=$candidate
+      if [ -z "$snippet_paths" ]; then
+        other_count=0
+        for other_stack in dotnet angular monorepo; do
+          [ "$other_stack" = "$MODE" ] && continue
+          [ -f "src/stacks/$other_stack/snippets/$core_rel/$name" ] && other_count=$((other_count+1))
+        done
+        # One-stack snippets are intentional; two present siblings identify an accidental deletion.
+        [ "$other_count" -lt 2 ] && continue
+      fi
+    fi
+    snippet_text=""
+    for snippet in $snippet_paths; do
+      part=$(sed 's/\r$//' "$snippet")
+      if [ -n "$snippet_text" ]; then snippet_text="$snippet_text
+$part"; else snippet_text=$part; fi
+    done
+    if ! printf '%s\n' "$snippet_text" | grep -q '[^[:space:]]'; then
+      expansion_problems="$expansion_problems
+$MODE : $core_rel $marker resolves to an empty expansion"
+    elif [ ! -f "$dist_file" ]; then
+      expansion_problems="$expansion_problems
+$MODE : $core_rel $marker cannot expand because the composed file is missing"
+    else
+      dist_text=$(sed 's/\r$//' "$dist_file")
+      case "$dist_text" in
+        *"$snippet_text"*) ;;
+        *) expansion_problems="$expansion_problems
+$MODE : $core_rel $marker snippet content is absent from the composed file" ;;
+      esac
+    fi
+    # BOTH marker forms, anchored to the whole line exactly as the composer anchors them
+    # (build.sh's html/hash marker regexes): markdown `<!-- @stack:NAME -->`, scripts `# @stack:NAME`.
+    # Unanchored matching would also count a prose mention of the syntax as a marker.
+  done < <(grep -hoE '^[[:space:]]*(<!-- @stack:[A-Za-z0-9_-]+ -->|# @stack:[A-Za-z0-9_-]+)[[:space:]]*$' "$core_file" 2>/dev/null |
+           grep -oE '@stack:[A-Za-z0-9_-]+' || true)
+done < <(find src/core -type f)
+expansion_count=$(printf '%s\n' "$expansion_problems" | grep -c . || true)
+if [ "$marker_count" -eq 0 ]; then
+  fail "marker-expansion inventory found zero core @stack markers -- the inventory is broken, not the dist."
+elif [ "$expansion_count" -gt 0 ]; then
+  fail "marker expansion failed for $expansion_count core marker(s) in $MODE."
+  printf '%s\n' "$expansion_problems" | grep . | sort -u | sed 's/^/  [marker-expansion] /'
+else
+  ok "all $marker_count core @stack markers expand from non-empty $MODE snippets into composed files."
+fi
+
+# --- 1b. section-path references resolve ---------------------------------------------------------
+# The finite file/heading registry avoids treating prose after a citation as part of the heading.
+# CHANGELOG.md is historical text and is excluded by path. grep -Iq supplies the existing textual
+# classification semantics: binary files are skipped, while every textual extension is scanned.
+citation_files="CLAUDE.md AGENTS.md .github/instructions/framework-rules.instructions.md"
+# Separator registry matches the PowerShell twin exactly: ONLY ">" or "›". The first draft accepted
+# any non-alphanumeric character, which is a looser grammar than the twin's and would have made the
+# two disagree about what counts as a citation.
+citation_sep='[[:space:]]*(>|›)[[:space:]]*'
+citation_headings="Architecture Decisions|Verification Rules|Repository Structure|Agentic Workflow|Codebase Context|What We've Learned|Boy Scout Rule|Common Tasks|Conventions|Leanness|SOLID"
+citation_problems=""
+
+# Batched, not per-line. The first draft ran a `sed` plus a `grep` for every (line x cited file x
+# heading) triple -- up to 66 subprocesses per line across ~160 shipped files. On Git-for-Windows
+# that exhausted the process table ("dofork: ... Resource temporarily unavailable") and never
+# finished; the PowerShell twin completed the same work in ~10s. Here one grep pass per cited file
+# finds the candidate lines, and only those few lines are examined individually.
+text_list_file=$(mktemp)
+find "$DIST" -type f ! -name CHANGELOG.md -print0 | xargs -0 grep -Il . > "$text_list_file" 2>/dev/null || true
+text_files_scanned=$(grep -c . "$text_list_file" || true)
+
+for cited_file in $citation_files; do
+  escaped_file=$(printf '%s' "$cited_file" | sed 's/[.[\*^$()+?{|\\]/\\&/g')
+  plain_pattern='`'"$escaped_file$citation_sep($citation_headings)"'`'
+  link_pattern='\['"$escaped_file"'\]\([^)]*\)'"$citation_sep($citation_headings)"'($|[`;,.):]])'
+  target="$DIST/$cited_file"
+  target_headings=''
+  [ -f "$target" ] && target_headings=$(grep -E '^#+[[:space:]]+' "$target" || true)
+  while IFS= read -r hit; do
+    [ -n "$hit" ] || continue
+    hit_file=${hit%%:*}; rest=${hit#*:}; line_no=${rest%%:*}; line=${rest#*:}
+    # Mirrors the twin's `break` after the first heading match on a line.
+    heading=$(printf '%s\n' "$line" | grep -oE "$citation_sep($citation_headings)" | head -1 |
+              sed -E "s/^$citation_sep//")
+    [ -n "$heading" ] || continue
+    if [ ! -f "$target" ]; then
+      citation_problems="$citation_problems
+${hit_file#"$DIST/"}:$line_no cites $cited_file > $heading, but $cited_file is missing"
+    elif ! printf '%s\n' "$target_headings" | grep -qE "^#+[[:space:]]+$heading[[:space:]]*$"; then
+      citation_problems="$citation_problems
+${hit_file#"$DIST/"}:$line_no cites $cited_file > $heading, but that heading does not exist"
+    fi
+  done < <(tr '\n' '\0' < "$text_list_file" | xargs -0 grep -nHE "$plain_pattern|$link_pattern" 2>/dev/null || true)
+done
+rm -f "$text_list_file"
+citation_count=$(printf '%s\n' "$citation_problems" | grep -c . || true)
+if [ "$text_files_scanned" -eq 0 ]; then
+  fail "section-path reference check scanned zero textual files in $DIST -- the input is empty or unreadable."
+elif [ "$citation_count" -gt 0 ]; then
+  fail "unresolved section-path references in shipped content -- $citation_count."
+  printf '%s\n' "$citation_problems" | grep . | sort -u | sed 's/^/  [section-path-reference] /'
+else
+  ok "all registered section-path references resolve ($text_files_scanned textual file(s) scanned; CHANGELOG.md excluded)."
+fi
+
+# --- 1c. CLAUDE.md imports the delivered framework-rules carrier --------------------------------
+import_line='@.github/instructions/framework-rules.instructions.md'
+if [ ! -f "$DIST/CLAUDE.md" ]; then
+  fail "framework-rules import cannot be checked because CLAUDE.md is missing from $DIST."
+elif ! grep -Fq "$import_line" "$DIST/CLAUDE.md"; then
+  fail "CLAUDE.md is missing required import $import_line."
+elif [ ! -f "$DIST/.github/instructions/framework-rules.instructions.md" ]; then
+  fail "CLAUDE.md imports $import_line but the carrier file is missing from $DIST."
+else
+  ok "CLAUDE.md imports the delivered framework-rules carrier."
 fi
 
 # --- 2. every *.json parses -----------------------------------------------------------------------

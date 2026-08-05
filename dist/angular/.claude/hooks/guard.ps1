@@ -1,5 +1,5 @@
 ﻿# PreToolUse guard — hard-block writes that introduce warning-suppressions, hardcoded secrets, or test-defeats.
-# Enforces CLAUDE.md > Verification Rules #5/#7 and the no-secrets rule deterministically.
+# Enforces the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules; `AGENTS.md` › Verification Rules on AGENTS.md-native tools) #5/#7 and the no-secrets rule deterministically.
 # Claude Code block = exit 2 + reason on stderr. Copilot block (CLI + VS Code agent mode) =
 # permissionDecision JSON deny on stdout (exit 0).
 # Allow = exit 0. Degrades safe on parse failure (except high-confidence secrets, which fail closed).

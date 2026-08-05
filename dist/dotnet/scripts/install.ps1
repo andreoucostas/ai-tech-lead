@@ -29,6 +29,7 @@ $metaFiles = @('.git', '.template-repo', 'README.md', 'CHANGELOG.md', '.gitignor
 # them. Update: snapshotted and restored — after bootstrap/adopt the consumer owns their content.
 $protected = @('CLAUDE.md', 'AGENTS.md', 'TECH_DEBT.md', 'SECURITY_FINDINGS.md', 'LEARNINGS.md',
     'FRAMEWORK-CONTEXT.md', '.github/copilot-instructions.md', 'docs/ARCHITECTURE.md')
+$brownfieldCollisions = $protected + @('.github/instructions/framework-rules.instructions.md')
 
 # Signals that the target already has AI tooling and therefore needs /adopt, not /bootstrap
 # (mirrors /adopt Phase 1 discovery).
@@ -57,7 +58,7 @@ $archived = @()
 if ($adoptMode) {
     # Move originals out of the copy's way so /adopt can merge them later — without this they
     # would be overwritten by the template versions and lost from the working tree.
-    foreach ($f in $protected) {
+    foreach ($f in $brownfieldCollisions) {
         $orig = Join-Path $tgt $f
         if (Test-Path -LiteralPath $orig -PathType Leaf) {
             $rel  = 'docs/pre-adoption/' + $f.TrimStart('.')

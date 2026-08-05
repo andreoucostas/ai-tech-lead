@@ -11,7 +11,7 @@ You audit the **tests/specs** in a .NET or Angular diff. Your single organising 
 
 ## Process
 
-1. Read `CLAUDE.md > Verification Rules` (esp. #5, #9) and `> Leanness > Test leanness` (#11–#16). If there is no `Test leanness` section, reply `No test policy in CLAUDE.md — skipping.` and stop (keeps this agent inert in repos that haven't adopted it).
+1. Read the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules; `AGENTS.md` › Verification Rules on AGENTS.md-native tools)` (esp. #5, #9) and `> Leanness > Test leanness` (#11–#16). If there is no `Test leanness` section, reply `No test policy in CLAUDE.md — skipping.` and stop (keeps this agent inert in repos that haven't adopted it).
 2. Scope to `git diff --name-only HEAD` (working tree + staged) and pick up test files from either stack:
    - **.NET:** `*.cs` whose path or name marks it a test — `*Tests.cs`, `*Test.cs`, `*Spec.cs`, or anything under a `*.Tests` project / a `test`/`tests` directory. Skip non-test `*.cs`.
    - **Angular:** `*.spec.ts`. Skip non-spec files.

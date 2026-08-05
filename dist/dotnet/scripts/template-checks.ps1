@@ -36,7 +36,7 @@ elseif ($vClaude -ne $vJson) { Fail "version-stamp drift: CLAUDE.md says $vClaud
 elseif ($vLog -and $vLog -ne $vJson) { Fail "version-stamp drift: CHANGELOG.md head entry is $vLog, framework-version.json says $vJson." }
 else { OK "version stamps in sync ($vClaude)$(if (-not $vLog) { ' (no CHANGELOG.md — consumer repo, pair-check only)' })." }
 
-# --- 2. CLAUDE.md <-> AGENTS.md verbatim mirror ------------------------------------------------
+# --- 2. Framework-rules source <-> AGENTS.md verbatim mirror ------------------------------------
 function Get-Section {
     param([string[]]$Lines, [string]$Heading)
     $out = New-Object System.Collections.Generic.List[string]
@@ -63,19 +63,35 @@ function Get-Section1 {
     return ($out -join "`n")
 }
 if ((Test-Path 'CLAUDE.md') -and (Test-Path 'AGENTS.md')) {
+    # Updated consumers receive the framework-owned carrier outside protected CLAUDE.md. Consumers
+    # that have not migrated yet legitimately retain these sections inline, so prefer the carrier
+    # when present and fall back section-by-section to CLAUDE.md.
     $cl = Get-Content 'CLAUDE.md'
+    $carrierPath = '.github/instructions/framework-rules.instructions.md'
+    $carrier = if (Test-Path $carrierPath) { @(Get-Content $carrierPath) } else { @() }
     $ag = Get-Content 'AGENTS.md'
-    foreach ($sec in @('## Verification Rules','## Leanness','## SOLID','## Boy Scout Rule')) {
-        $a = Get-Section $cl $sec
+    foreach ($sec in @('## Verification Rules','## Leanness','## SOLID')) {
+        $a = Get-Section $carrier $sec
+        $source = $carrierPath
+        if (-not $a) { $a = Get-Section $cl $sec; $source = 'CLAUDE.md' }
         $b = Get-Section $ag $sec
-        if (-not $a) { Fail "CLAUDE.md is missing section '$sec'." }
-        elseif ($a -ne $b) { Fail "AGENTS.md section '$sec' is not a verbatim mirror of CLAUDE.md — run /generate-copilot." }
+        if (-not $a) { Fail "section '$sec' is missing from both $carrierPath and CLAUDE.md." }
+        elseif ($a -ne $b) { Fail "AGENTS.md section '$sec' is not a verbatim mirror of $source — run /generate-copilot." }
         else { OK "'$sec' mirrored verbatim." }
     }
-    $s1c = Get-Section1 $cl
+    # Boy Scout remains consumer-owned in CLAUDE.md and is intentionally not carried separately.
+    $boyClaude = Get-Section $cl '## Boy Scout Rule'
+    $boyAgents = Get-Section $ag '## Boy Scout Rule'
+    if (-not $boyClaude) { Fail "CLAUDE.md is missing section '## Boy Scout Rule'." }
+    elseif ($boyClaude -ne $boyAgents) { Fail "AGENTS.md section '## Boy Scout Rule' is not a verbatim mirror of CLAUDE.md — run /generate-copilot." }
+    else { OK "'## Boy Scout Rule' mirrored verbatim." }
+
+    $s1c = Get-Section1 $carrier
+    $workflowSource = $carrierPath
+    if (-not $s1c) { $s1c = Get-Section1 $cl; $workflowSource = 'CLAUDE.md' }
     $s1a = Get-Section1 $ag
-    if (-not $s1c) { Fail 'CLAUDE.md has no "### 1. Classify the intent" block.' }
-    elseif ($s1c -ne $s1a) { Fail 'AGENTS.md Agentic Workflow §1 is not verbatim (this is the only routing surface Copilot has) — run /generate-copilot.' }
+    if (-not $s1c) { Fail "Agentic Workflow §1 is missing from both $carrierPath and CLAUDE.md." }
+    elseif ($s1c -ne $s1a) { Fail "AGENTS.md Agentic Workflow §1 is not verbatim with $workflowSource (this is the only compared routing block) — run /generate-copilot." }
     else { OK 'Agentic Workflow §1 mirrored verbatim.' }
 } else {
     Fail 'CLAUDE.md or AGENTS.md missing — cannot check mirror parity.'

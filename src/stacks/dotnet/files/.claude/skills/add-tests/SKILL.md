@@ -13,7 +13,7 @@ description: >
 
 # Add tests following project patterns
 
-Match `CLAUDE.md > Conventions > Testing` and the Test leanness rules in `CLAUDE.md > Leanness`. If conventions are unbootstrapped, follow `docs/defaults.md`.
+Match `CLAUDE.md > Conventions > Testing` and the Test leanness rules in the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools)`. If conventions are unbootstrapped, follow `docs/defaults.md`.
 
 1. **Evidence gate — derive, don't assume.** Apply Verification Rule #10 before writing a test:
    read every test project's `.csproj` package references, then `Grep` a sibling test class. Detect

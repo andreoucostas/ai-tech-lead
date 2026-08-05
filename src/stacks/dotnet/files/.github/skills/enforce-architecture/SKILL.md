@@ -10,7 +10,7 @@ description: >
 
 # Enforce architecture deterministically (.NET — NetArchTest)
 
-`solid-check` covers SOLID semantically per diff; this makes the *structural* part (DIP / dependency direction) a **build-breaking** CI gate. Pairs with `CLAUDE.md > SOLID`.
+`solid-check` covers SOLID semantically per diff; this makes the *structural* part (DIP / dependency direction) a **build-breaking** CI gate. Pairs with the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools)`.
 
 1. **Test project**: add NetArchTest to an existing test project if one exists (Leanness — don't create a parallel project); otherwise add `tests/ArchitectureTests/ArchitectureTests.csproj` referencing `NetArchTest.Rules` + the projects to govern.
 2. **Rules**: copy `scripts/ci/ArchitectureTests.sample.cs`, translate it to the repo's existing

@@ -10,7 +10,7 @@
 
 cases:
   - id: dotnet-001-solid-dip-interface-for-service
-    rule: CLAUDE.md > SOLID (DIP); Leanness #2
+    rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools) (DIP); Leanness #2
     prompt: |
       I'm adding a new EmailNotifier service to send transactional emails. It will be used by
       one place: the OrderConfirmationHandler. Show me the structure for the service. Do not
@@ -23,11 +23,11 @@ cases:
       implement it with `EmailNotifier` (may be sealed), register it (e.g. `AddScoped<IEmailNotifier,
       EmailNotifier>()` or the project's DI extension), and have the consumer depend on the
       interface? Injecting the concrete class or omitting the interface is a DIP violation per
-      CLAUDE.md > SOLID. The interface here is REQUIRED — it is not the speculative abstraction
+      the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools). The interface here is REQUIRED — it is not the speculative abstraction
       Leanness forbids.
 
   - id: dotnet-002-verification-no-invented-package
-    rule: CLAUDE.md > Verification Rules #1, #2
+    rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules; `AGENTS.md` › Verification Rules on AGENTS.md-native tools) #1, #2
     prompt: |
       Use the Microsoft.Hashing.CRC64 NuGet package to compute a CRC64 of a byte array in a new
       utility method. Show the code.
@@ -63,7 +63,7 @@ cases:
       for the read-only query.
 
   - id: dotnet-004-solid-dip-but-no-speculative-factory
-    rule: CLAUDE.md > SOLID (DIP) + Verification Rule #8 (no future-proofing)
+    rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools) (DIP) + Verification Rule #8 (no future-proofing)
     prompt: |
       Add an SmsService that sends SMS messages. We use Twilio. There is one consumer today
       and no plan to add another provider. Show the implementation skeleton (no real Twilio
@@ -77,7 +77,7 @@ cases:
       - 'interface\s+ISmsProvider'
     rubric: |
       Two things must BOTH hold. (1) DIP: the service is defined behind an `ISmsService`
-      interface and injected through it (required by CLAUDE.md > SOLID) — a concrete
+      interface and injected through it (required by the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools)) — a concrete
       `TwilioSmsService : ISmsService` with one consumer is correct. (2) No future-proofing: it
       must NOT introduce a provider-swapping abstraction for a hypothetical second provider — no
       `ISmsProvider`, no `abstract class SmsProvider`, no `SmsProviderFactory`. The single
@@ -85,7 +85,7 @@ cases:
       is the speculation Verification Rule #8 forbids.
 
   - id: dotnet-005-no-defensive-overcoding
-    rule: CLAUDE.md > Leanness defaults #5, #6
+    rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools) defaults #5, #6
     prompt: |
       Add an internal helper method that takes a non-null List<int> and returns the sum of
       its elements. The caller is in the same file and always passes a populated list.
@@ -101,7 +101,7 @@ cases:
       is internal, so defensive code is bloat per Leanness #5 and #6.
 
   - id: dotnet-006-decimal-for-money
-    rule: CLAUDE.md > Leanness #5 (financial-domain exception)
+    rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools) #5 (financial-domain exception)
     prompt: |
       Add a method CalculateTax that takes an order subtotal and a tax rate and returns the
       tax amount to charge the customer. Show the method signature and body.
@@ -111,12 +111,12 @@ cases:
       - '\b(double|float)\b'
     rubric: |
       Monetary amounts must use `decimal`, never `double`/`float` — binary floating point loses
-      precision on money and corrupts ledger/regulatory figures (CLAUDE.md > Leanness #5,
+      precision on money and corrupts ledger/regulatory figures (the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools) #5,
       financial-domain exception). The subtotal, rate, and returned amount should all be
       `decimal`. Any use of `double`/`float` for the money values fails this check.
 
   - id: dotnet-007-no-naive-check-then-act-on-balance
-    rule: CLAUDE.md > Leanness #5 (financial domain) — TOCTOU + idempotency
+    rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools) #5 (financial domain) — TOCTOU + idempotency
     prompt: |
       Add a method DebitAccount(accountId, amount, requestId) that subtracts amount from an
       account's balance if there are sufficient funds. These are processed from a message

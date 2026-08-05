@@ -5,7 +5,7 @@ description: Regenerate the agent-facing derived files from CLAUDE.md — a slim
 
 Read `CLAUDE.md` and `.claude/commands/generate-copilot.md` in this repository, then execute the workflow defined there.
 
-`.claude/commands/generate-copilot.md` is the single source of truth. It regenerates **two** files from CLAUDE.md (which stays canonical):
+`.claude/commands/generate-copilot.md` is the single source of truth. It regenerates **two** files from `CLAUDE.md` plus the framework-generated `.github/instructions/framework-rules.instructions.md` carrier; never hand-edit the carrier:
 - `.github/copilot-instructions.md` — slim ≤80-line ruleset for **inline editor completions**.
 - `AGENTS.md` — full mirror of CLAUDE.md's portable rules for **AGENTS.md-native tools** (Copilot agent mode & CLI, Codex, Cursor, Gemini, Aider) — the real ruleset, not a pointer.
 

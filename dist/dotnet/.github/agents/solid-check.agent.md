@@ -9,5 +9,5 @@ The canonical definition of this agent lives in [`.claude/agents/solid-check.md`
 
 - Scope to changed files (`git diff --name-only`) unless the user names specific files.
 - A single-implementation interface on an injected service is **required** by DIP — never report it as bloat.
-- If `CLAUDE.md` has no `## SOLID` section, reply `No SOLID policy in CLAUDE.md — skipping.`
+- If neither `.github/instructions/framework-rules.instructions.md` nor `AGENTS.md` has a `## SOLID` section, reply `No SOLID policy in the framework rules — skipping.`
 - **Do not modify any file.** Return only the structured findings table.

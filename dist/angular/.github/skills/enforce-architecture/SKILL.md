@@ -10,7 +10,7 @@ description: >
 
 # Enforce architecture deterministically (Angular — dependency-cruiser)
 
-`solid-check` covers SOLID semantically per diff; this makes the *structural* part (layer / feature dependency direction) a **build-breaking** CI gate. Pairs with `CLAUDE.md > SOLID`.
+`solid-check` covers SOLID semantically per diff; this makes the *structural* part (layer / feature dependency direction) a **build-breaking** CI gate. Pairs with the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools)`.
 
 1. **Install**: `npm i -D dependency-cruiser`.
 2. **Config**: copy `scripts/ci/dependency-cruiser.sample.js` to `.dependency-cruiser.js` at the repo root and adjust the globs to this project's layering (core/shared vs features; no feature→feature imports; no deep cross-boundary imports).

@@ -131,7 +131,7 @@ Each consumer repo records the template version it was last synced from. Two loc
 - A human-readable HTML comment at the top of `CLAUDE.md`
 - A machine-readable `.claude/framework-version.json`
 
-To pull template updates, re-run the installer from a fresh template checkout against your repo (`bash scripts/install.sh /path/to/your-repo` or `pwsh scripts/install.ps1 /path/to/your-repo`) — it detects the existing `.claude/framework-version.json` and switches to **update mode**: framework machinery (hooks, commands, skills, scripts) is refreshed and the JSON stamp comes along, while consumer-owned content (CLAUDE.md, TECH_DEBT.md, …) is left untouched. Bump the CLAUDE.md header comment yourself as part of the update commit. CI tooling reads the JSON file to detect drift between your repo and the latest template version. If the version stamps disagree, treat the JSON file as authoritative.
+To pull template updates, re-run the installer from a fresh template checkout against your repo (`bash scripts/install.sh /path/to/your-repo` or `pwsh scripts/install.ps1 /path/to/your-repo`) — it detects the existing `.claude/framework-version.json` and switches to **update mode**: framework machinery (hooks, commands, skills, scripts) is refreshed and the JSON stamp comes along, while consumer-owned content (CLAUDE.md, TECH_DEBT.md, …) is left untouched. Bump the CLAUDE.md header comment yourself as part of the update commit. CI tooling reads the JSON file to detect drift between your repo and the latest template version. If the version stamps disagree, treat the JSON file as authoritative. The update also refreshes `.github/instructions/framework-rules.instructions.md`; Copilot receives those rules automatically. Existing Claude Code consumers must once add `@.github/instructions/framework-rules.instructions.md` to `CLAUDE.md` where the four inline framework sections were, then delete those old sections. Until then, `session-start` provides discovery only. The carrier is framework-owned: update deliberately overwrites consumer edits to it. Boy Scout content remains consumer-owned after bootstrap, so future scaffold changes to it are greenfield-only.
 
 ## What's in the box
 
@@ -227,7 +227,7 @@ Seven subagents live in `.claude/agents/` — the six user-facing ones are mirro
 | Agent | Purpose | Invoked by |
 |-------|---------|-----------|
 | `security-auditor` | OWASP-style scan of a diff (injection, auth/authz, secrets, crypto, financial/concurrency). Read-only. | `/security-review`; ad-hoc |
-| `solid-check` | Audits a diff against CLAUDE.md > SOLID — the five principles (literal interface-per-injected-service). Read-only. | `/review` Step 1; ad-hoc |
+| `solid-check` | Audits a diff against the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools) — the five principles (literal interface-per-injected-service). Read-only. | `/review` Step 1; ad-hoc |
 | `convention-check` | Audits a diff against CLAUDE.md > Conventions; returns a structured findings table. Read-only. | `/review` Step 1; ad-hoc |
 | `bloat-radar` | Flags speculative abstractions, shallow wrappers, parallel implementations, comment debris, trivial tests. Read-only. | `/review` Step 1; ad-hoc |
 | `test-critic` | Audits the test changes for integrity — would each test fail if the code under test broke? Flags over-mocking, tautological/weak assertions, missing paths, nondeterminism. Read-only. | `/review` Step 1; ad-hoc |

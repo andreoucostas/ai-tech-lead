@@ -4,7 +4,7 @@
 // Translate to the repo's framework: NUnit uses `NUnit.Framework` + `[Test]`; MSTest uses
 // `Microsoft.VisualStudio.TestTools.UnitTesting` + `[TestMethod]`.
 //
-// Scaffolded by the `enforce-architecture` skill. See CLAUDE.md > SOLID.
+// Scaffolded by the `enforce-architecture` skill. See the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools).
 using NetArchTest.Rules;
 using Xunit;
 

@@ -35,4 +35,4 @@ Run the touched stack's gates — .NET: `dotnet build`, `dotnet test`, and `dotn
 @.claude/workflow.md
 
 ### Step 7 — Present
-Before/after summary: what was refactored and why, what CLAUDE.md patterns were applied, **net LOC delta**, test results confirming no behavior change, any TECH_DEBT.md items resolved. Per CLAUDE.md > Leanness, a refactor that grows the codebase needs an explicit reason in the summary.
+Before/after summary: what was refactored and why, what CLAUDE.md patterns were applied, **net LOC delta**, test results confirming no behavior change, any TECH_DEBT.md items resolved. Per the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools), a refactor that grows the codebase needs an explicit reason in the summary.

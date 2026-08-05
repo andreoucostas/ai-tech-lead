@@ -11,7 +11,7 @@ description: >
 
 # Enforce architecture deterministically (.NET + Angular)
 
-`solid-check` covers SOLID semantically per diff; this makes the *structural* part (DIP / dependency direction) a **build-breaking** CI gate. Pairs with `CLAUDE.md > SOLID`. This repo has two stacks and wires **both** backstops — apply the section for the stack whose layering you are governing (a repo-wide hardening does both).
+`solid-check` covers SOLID semantically per diff; this makes the *structural* part (DIP / dependency direction) a **build-breaking** CI gate. Pairs with the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools)`. This repo has two stacks and wires **both** backstops — apply the section for the stack whose layering you are governing (a repo-wide hardening does both).
 
 ### .NET — NetArchTest
 

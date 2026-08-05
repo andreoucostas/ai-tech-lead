@@ -2,7 +2,7 @@
 description: "Regenerate the derived files from CLAUDE.md: .github/copilot-instructions.md and the AGENTS.md full mirror, plus the .github/skills mirror via scripts/sync-agent-files. Invoke after any change to CLAUDE.md rules or the skill set."
 ---
 
-Read the CLAUDE.md file in the project root. Regenerate the two **agent-facing derived files** from it:
+Read `CLAUDE.md` and the framework-generated `.github/instructions/framework-rules.instructions.md` carrier. Regenerate the two **agent-facing derived files** from those sources:
 
 1. `.github/copilot-instructions.md` — a terse rule digest for **inline editor completions**.
 2. `AGENTS.md` — a **full mirror of CLAUDE.md's portable rules** for tools that read AGENTS.md natively (GitHub Copilot agent mode & CLI, Codex, Cursor, Gemini CLI, Aider).
@@ -14,7 +14,7 @@ $ARGUMENTS
 
 - **`copilot-instructions.md` is tiny** because it is loaded on every inline completion, where the model has a few hundred lines of context. Brevity beats completeness.
 - **`AGENTS.md` is a full mirror** because AGENTS.md-native agents do **not** read `CLAUDE.md`; if AGENTS.md only pointed at CLAUDE.md, those agents would get a pointer instead of the rules. So AGENTS.md carries the actual Verification / Leanness / Boy Scout / Agentic Workflow / Conventions content.
-- **`CLAUDE.md` stays canonical.** Both derived files are generated from it and may lag; `CLAUDE.md` wins on any conflict. `/docs-sync` flags drift.
+- **The carrier is framework-generated; never hand-edit it.** It is canonical for Verification Rules, Leanness, SOLID, and Agentic Workflow. `CLAUDE.md` stays canonical for repo-specific content and imports that carrier. `/docs-sync` flags mirror drift.
 
 ---
 
@@ -54,7 +54,7 @@ $ARGUMENTS
 
 Regenerate `AGENTS.md` at the repo root so AGENTS.md-native tools get the full ruleset. Keep the generation banner at the very top (it tells humans not to hand-edit, and tells agents that CLAUDE.md is canonical).
 
-Copy these sections **verbatim** from CLAUDE.md (they are the portable rules):
+Copy these sections **verbatim** from `.github/instructions/framework-rules.instructions.md` (they are framework-owned portable rules):
 
 - **Verification Rules** — full
 - **Leanness** — full (Defaults, Test leanness, When you must add structure)
@@ -66,7 +66,7 @@ Copy these sections **verbatim** from CLAUDE.md (they are the portable rules):
 
 Then keep:
 <!-- @stack:quickref -->
-- **Precedence** — CLAUDE.md wins; this file is generated and may lag
+- **Precedence** — the framework-rules carrier wins for its four headings; CLAUDE.md wins for repo-specific content; this file is generated and may lag
 
 Do **not** copy into AGENTS.md the project-narrative sections (Codebase Context, Repository Structure, Architecture Decisions) — those stay only in CLAUDE.md, and AGENTS.md points agents there. This keeps AGENTS.md bounded while still carrying every rule an agent must follow.
 

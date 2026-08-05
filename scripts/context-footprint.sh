@@ -57,7 +57,9 @@ for dist in $dists;do
  root="dist/$dist";[ -d "$root" ]||{ echo "FATAL: missing $root -- rebuild first." >&2;exit 2; }
  for group in $groups;do :>"$tmp/$dist.$group.tsv";done
  add_item "$tmp/$dist.static.claude.tsv" CLAUDE.md "$(byte_count "$root/CLAUDE.md")"
+ add_item "$tmp/$dist.static.claude.tsv" .github/instructions/framework-rules.instructions.md "$(byte_count "$root/.github/instructions/framework-rules.instructions.md")"
  for relative in AGENTS.md .github/copilot-instructions.md;do add_item "$tmp/$dist.static.copilot.tsv" "$relative" "$(byte_count "$root/$relative")";done
+ add_item "$tmp/$dist.static.copilot.tsv" .github/instructions/framework-rules.instructions.md "$(byte_count "$root/.github/instructions/framework-rules.instructions.md")"
  for relative in FRAMEWORK-CONTEXT.md docs/defaults.md docs/wiki/INDEX.md;do [ ! -f "$root/$relative" ]||add_item "$tmp/$dist.instructed.tsv" "$relative" "$(byte_count "$root/$relative")";done
  {
   find "$root/.claude/skills" -mindepth 2 -maxdepth 2 -type f -name 'SKILL.md' -print
@@ -75,10 +77,9 @@ for dist in $dists;do
  eval "${dist}_claude_total=$(LC_ALL=C awk -F '\t' '{s+=$2}END{print s+0}' "$tmp/$dist.static.claude.tsv")"
  eval "${dist}_copilot_total=$(LC_ALL=C awk -F '\t' '{s+=$2}END{print s+0}' "$tmp/$dist.static.copilot.tsv")"
  eval "${dist}_prompt_max=$(LC_ALL=C awk -F '\t' 'BEGIN{m=0}$2>m{m=$2}END{print m}' "$tmp/$dist.prompt.tsv")"
- eval "${dist}_claude_file=$(LC_ALL=C awk -F '\t' '$1=="CLAUDE.md"{print $2}' "$tmp/$dist.static.claude.tsv")"
 done
-largest_single=$dotnet_claude_file;[ "$angular_claude_file" -le "$largest_single" ]||largest_single=$angular_claude_file
-ratio_numerator=$((1000*monorepo_claude_file))
+largest_single=$dotnet_claude_total;[ "$angular_claude_total" -le "$largest_single" ]||largest_single=$angular_claude_total
+ratio_numerator=$((1000*monorepo_claude_total))
 ratio_permille=$((ratio_numerator/largest_single))
 ratio_remainder=$((ratio_numerator%largest_single))
 if [ $((2*ratio_remainder)) -gt "$largest_single" ] || { [ $((2*ratio_remainder)) -eq "$largest_single" ] && [ $((ratio_permille%2)) -eq 1 ]; };then

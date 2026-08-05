@@ -1933,6 +1933,56 @@ process — do not pretend the third is the second.
 tells you a release broke CI; three runs went red here before it was raised by the maintainer, not by
 tooling).
 
+### B-101 · Gate runtime is measured by nothing, and one gate shipped that could not finish at all
+**Effort:** M · **Priority:** P2 · found 2026-08-05 while verifying B-97 · **Invariants:** #3
+
+**Why:** the repo gates correctness rigorously and cost not at all. B-97's new `validate-dist` check
+shipped with a bash twin that **never completed** — its section-path check ran a `sed` plus a `grep`
+for every *(line × cited file × heading)* triple, up to 66 subprocesses per line across ~160 shipped
+files, which exhausted the Git-for-Windows process table (`dofork: ... Resource temporarily
+unavailable`) after 10+ minutes. The PowerShell twin did the same work in 10s. **Every correctness
+gate was green throughout**, and the implementer reported the hang as an environment quirk rather
+than a defect. It was found only because the meta suite ran for hours and the maintainer asked why.
+
+That is the finding: **twin parity is asserted on decisions, never on feasibility.** A twin that
+cannot finish is as broken as one that returns the wrong answer — and CI's linux leg runs the `.sh`
+twin, so this would have hung CI, which B-88 would then have reported as a failure of unknown cause.
+
+Fixed for that check (batched to one `grep` pass per cited file: 77s, exit 0). The *class* is open,
+and so is the cost problem underneath it. Measured on this box against B-79's profiled spawn costs
+(pwsh MSIX 265 ms, bash fork 55 ms), for one `validate-dist.sh dotnet` run at 77s:
+
+| Cost | Count | Est. |
+|---|---:|---:|
+| marker check — outer loop greps **every** file in `src/core` | 218 forks | ~12s |
+| marker check — `sed`/`grep` per marker (117 × ~3), re-reading the whole dist file per marker | 351 forks | ~19s |
+| PS-AST check — one pwsh process **per `.ps1` file** | 32 spawns | ~8.5s |
+
+Only **40 of 109** files in `src/core` contain a marker, so ~138 forks (~7.6s) scan files that have
+none. The PS-AST loop is pre-existing (since the merge commit), not new.
+
+**Do:** (a) add a runtime budget signal — have the meta suite and `validate-dist` print elapsed time
+per check, and fail (or warn loudly) past a per-check ceiling, so a 20× regression is visible in the
+run that causes it rather than hours later; (b) the three speedups above — hoist the marker loop to
+`grep -rl` so only marker-bearing files are scanned, cache the dist-file read per file instead of per
+marker, and batch the 32 PS parses into one process (~77s → ~35-40s); (c) the structural one, worth
+more than (b) combined: **`ValidateDist.Tests.ps1` copies the real 161-file dist into temp for each of
+its 20 cases and runs full validation on both twins**, when it is testing gate *logic* that a small
+synthetic fixture would exercise just as well — it also re-proves what a single `validate-dist` run
+already proves. That file dominates the meta suite's runtime.
+
+**Not — and this is the trap:** do **not** optimise a gate without red-testing it afterwards. If the
+marker loop's file list is subtly wrong after hoisting, the gate silently checks fewer markers and
+still prints `OK`. That is B-59's inert-check class, and B-97 shipped **two** live instances of it in
+one session (the `.ps1` marker check was blind to the 15 hash-form markers in `route-prompt` /
+`audit-trail` / `.gitignore` / CI; the `.sh` twin matched unanchored, so a prose mention of the syntax
+would have counted as a marker). Every speedup here needs the planted-defect test re-run, both twins.
+
+**Cross-links:** B-79 (MSIX pwsh spawn cost — the measured baseline this uses, and the reason
+parallelism cannot rescue it), B-59 (inert checks), B-61 (twin parity does not cover feasibility),
+B-64 (planted-defect tests for diagnostics), B-70 (a change is not done until CI is green — this
+would have taken the linux leg down), B-88 (CI-red reporting).
+
 ---
 
 ## Known deferred work (previously agreed, converted to entries so it survives handover)

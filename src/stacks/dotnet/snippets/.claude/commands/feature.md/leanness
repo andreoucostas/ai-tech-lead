@@ -1,1 +1,1 @@
-- **Leanness check** (CLAUDE.md > Leanness): can this fit in existing files? Are you tempted to introduce a new interface / helper / wrapper — is there a second consumer in this change-set? If not, defer the abstraction.
+- **Leanness check** (the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools)): can this fit in existing files? Are you tempted to introduce a new interface / helper / wrapper — is there a second consumer in this change-set? If not, defer the abstraction.

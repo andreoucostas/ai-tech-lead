@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # PreToolUse guard — hard-block writes that introduce test-defeats, warning-suppressions, or hardcoded secrets.
-# Enforces CLAUDE.md > Verification Rules #5/#7 ("failures are signals; never silence them"; "don't skip
+# Enforces the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules; `AGENTS.md` › Verification Rules on AGENTS.md-native tools) #5/#7 ("failures are signals; never silence them"; "don't skip
 # tests"), Test leanness #15 (no tautological assertions), and the no-secrets rule deterministically.
 #
 # Tool surfaces:
