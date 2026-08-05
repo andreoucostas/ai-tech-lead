@@ -101,12 +101,128 @@ function Get-Decision {
 function New-ClaudeEvent  { param($File,$Content) (@{ tool_name='Write'; tool_input=@{ file_path=$File; content=$Content } } | ConvertTo-Json -Compress -Depth 6) }
 function New-CopilotEvent { param($File,$Content) (@{ toolName='create'; toolArgs=@{ path=$File; file_text=$Content } } | ConvertTo-Json -Compress -Depth 6) }
 
+# --- Sandbox helpers: reproduce "no jq / no working python" without an empty PATH breaking the
+# script's own plumbing and without an inherited PATH accidentally exposing a real jq/python on
+# either CI leg. Originally an inline block in FrameworkDoctor.Tests.ps1's sandboxed case; pulled
+# up here so every hook test file that needs the same sandbox shares one grammar instead of
+# reimplementing the Git-Bash-copy / POSIX-symlink-inside-bash split per file.
+function ConvertTo-PosixPath {
+    param([string]$Path)
+    if ($Path -match '^([A-Za-z]):[\\/](.*)$') { return '/' + $Matches[1].ToLowerInvariant() + '/' + $Matches[2].Replace('\', '/') }
+    return $Path.Replace('\', '/')
+}
+
+# Resolve a WORKING python on this host, by execution rather than by name -- same grammar as
+# guard.sh/route-prompt.sh/session-start.sh/framework-doctor.sh. Used only to locate a real
+# interpreter's file path for test fixtures. $env:ATL_TEST_PYTHON is an escape hatch for a host
+# whose normal command resolution hides a real interpreter (e.g. a broken session PATH) -- set it
+# to an absolute interpreter path rather than hardcoding one here. Returns $null, never a guess,
+# when no working interpreter can be found; callers must treat that as a real "cannot exercise
+# this branch on this host" and take an invariant-guarding skip rather than failing.
+function Resolve-HostPython {
+    if ($env:ATL_TEST_PYTHON -and (Test-Path -LiteralPath $env:ATL_TEST_PYTHON)) {
+        $ok = $null
+        try { $ok = '{}' | & $env:ATL_TEST_PYTHON -c 'import json,sys; json.load(sys.stdin); sys.stdout.write("ok")' 2>$null } catch { }
+        if ($ok -eq 'ok') { return $env:ATL_TEST_PYTHON }
+    }
+    foreach ($cand in 'python3', 'python', 'py') {
+        $cmd = Get-Command $cand -ErrorAction SilentlyContinue | Select-Object -First 1
+        if (-not $cmd -or -not $cmd.Source) { continue }
+        $ok = $null
+        try { $ok = '{}' | & $cmd.Source -c 'import json,sys; json.load(sys.stdin); sys.stdout.write("ok")' 2>$null } catch { }
+        if ($ok -eq 'ok') { return $cmd.Source }
+    }
+    return $null
+}
+
+# Same idea as Resolve-HostPython, for jq control cases. $env:ATL_TEST_JQ is the equivalent escape
+# hatch for a host whose normal command resolution hides a real jq.
+function Resolve-HostJq {
+    if ($env:ATL_TEST_JQ -and (Test-Path -LiteralPath $env:ATL_TEST_JQ)) { return $env:ATL_TEST_JQ }
+    $cmd = Get-Command jq -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($cmd -and $cmd.Source) { return $cmd.Source }
+    return $null
+}
+
+# Build a bash shim script (exec-wrapper) that runs $RealExePath under its own real location --
+# needed so a sandboxed PATH can expose a real interpreter/tool under an alternate or bare name
+# without copying the exe itself (a copy can lose sibling-DLL resolution, e.g. python.exe). Uses
+# env to find bash so it does not depend on bash living at one fixed path across hosts; the caller
+# is responsible for making sure "bash" itself resolves inside the sandbox this shim runs in.
+function New-ExecShim {
+    param([Parameter(Mandatory)][string]$RealExePath)
+    return "#!/usr/bin/env bash`nexec " + (ConvertTo-PosixPath $RealExePath) + " `"`$@`"`n"
+}
+
+# Run $ScriptPath under bash with PATH restricted to ONLY $Utilities (+ $FakeBins, + a real
+# interpreter aliased as $ExposeInterpreterAs if requested). Platform split matches
+# FrameworkDoctor.Tests.ps1's original sandbox: Git Bash (MSYS) needs its exes COPIED alongside
+# their DLLs (symlinks are unreliable there); POSIX hosts build the sandbox's symlinks INSIDE bash,
+# because pwsh-created symlinks resolved as "command not found" on the linux CI runner. Setup runs
+# with the full inherited PATH; only the script invocation itself sees the restricted one. The
+# script is always run AS AN ARGUMENT TO bash, never executed directly: shipped hooks are tracked
+# without the executable bit (Windows ignores that, Linux enforces it), so a direct exec would be
+# "Permission denied" on a Linux leg while working by accident on Windows.
+function Invoke-Sandboxed {
+    param(
+        [Parameter(Mandatory)][string]$Bash,
+        [Parameter(Mandatory)][string]$ScriptPath,
+        [string[]]$Utilities = @('cat', 'grep', 'sed', 'sort', 'head'),
+        [hashtable]$FakeBins = @{},
+        [string]$ExposeInterpreterAs = '',
+        $Stdin = $null
+    )
+    $r = Join-Path ([IO.Path]::GetTempPath()) ('sandbox-' + [guid]::NewGuid())
+    $bin = Join-Path $r 'bin'; New-Item -ItemType Directory -Force $bin | Out-Null
+    $ef = [IO.Path]::GetTempFileName()
+    # A fake bin's own shim shebang (`env bash`) needs "bash" resolvable inside the restricted
+    # sandbox PATH -- add it to the copied/symlinked utility set whenever a shim might run.
+    $needsBash = ($FakeBins.Count -gt 0) -or $ExposeInterpreterAs
+    $effectiveUtilities = if ($needsBash -and ($Utilities -notcontains 'bash')) { $Utilities + @('bash') } else { $Utilities }
+    try {
+        foreach ($name in $FakeBins.Keys) { [IO.File]::WriteAllText((Join-Path $bin $name), $FakeBins[$name]) }
+        if ($Bash -match '\\Git\\bin\\bash\.exe$') {
+            $git = Split-Path (Split-Path $Bash -Parent) -Parent; $usr = Join-Path $git 'usr/bin'
+            foreach ($n in $effectiveUtilities) { $exe = Join-Path $usr "$n.exe"; if (Test-Path -LiteralPath $exe) { Copy-Item $exe $bin } }
+            Get-ChildItem $usr -Filter '*.dll' | Copy-Item -Destination $bin
+            if ($ExposeInterpreterAs) {
+                $real = Resolve-HostPython
+                if ($real) { [IO.File]::WriteAllText((Join-Path $bin $ExposeInterpreterAs), (New-ExecShim $real)) }
+            }
+            $runner = Join-Path $usr 'bash.exe'
+            & $runner -c ('chmod +x "{0}"/*' -f (ConvertTo-PosixPath $bin)) 2>$null | Out-Null
+            $old = $env:PATH
+            try {
+                $env:PATH = $bin
+                if ($null -ne $Stdin) { $out = $Stdin | & $runner $ScriptPath 2>$ef } else { $out = & $runner $ScriptPath 2>$ef }
+            } finally { $env:PATH = $old }
+        } else {
+            $bashBin = ConvertTo-PosixPath $bin
+            $bashExePosix = ConvertTo-PosixPath $Bash
+            $utilList = ($effectiveUtilities -join ' ')
+            $exposeCmd = ''
+            if ($ExposeInterpreterAs) {
+                $exposeCmd = "; ln -sf `"`$(command -v python3 2>/dev/null || command -v python 2>/dev/null || command -v py 2>/dev/null)`" `"$bashBin/$ExposeInterpreterAs`""
+            }
+            $setup = "for t in $utilList; do ln -sf `"`$(command -v `$t)`" `"$bashBin/`$t`"; done$exposeCmd; chmod +x `"$bashBin`"/* 2>/dev/null; PATH=`"$bashBin`" `"$bashExePosix`" `"$ScriptPath`""
+            if ($null -ne $Stdin) { $out = $Stdin | & $Bash -c $setup 2>$ef } else { $out = & $Bash -c $setup 2>$ef }
+        }
+        [pscustomobject]@{ Exit = $LASTEXITCODE; Out = ($out -join "`n"); Err = [IO.File]::ReadAllText($ef) }
+    } finally {
+        Remove-Item -Force -ErrorAction SilentlyContinue $ef
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $r
+    }
+}
+
 # --- tiny test registry / assertions (no external framework) ---
 $script:Tests = [System.Collections.Generic.List[object]]::new()
 function It      { param([string]$Name,[scriptblock]$Body)
-    try { & $Body; $script:Tests.Add([pscustomobject]@{ Name=$Name; State='PASS'; Msg='' }) }
-    catch { $script:Tests.Add([pscustomobject]@{ Name=$Name; State='FAIL'; Msg=$_.Exception.Message }) } }
-function Skip    { param([string]$Name,[string]$Why) $script:Tests.Add([pscustomobject]@{ Name=$Name; State='SKIP'; Msg=$Why }) }
+    try { & $Body; $script:Tests.Add([pscustomobject]@{ Name=$Name; State='PASS'; Msg=''; Invariant=$false }) }
+    catch { $script:Tests.Add([pscustomobject]@{ Name=$Name; State='FAIL'; Msg=$_.Exception.Message; Invariant=$false }) } }
+# -Invariant marks a skip as invariant-guarding: the host genuinely lacks a required capability,
+# not a bug in the fixture. Write-TestSummary calls these out in a named block so they cannot
+# scroll past unnoticed inside an otherwise-green summary.
+function Skip    { param([string]$Name,[string]$Why,[switch]$Invariant) $script:Tests.Add([pscustomobject]@{ Name=$Name; State='SKIP'; Msg=$Why; Invariant=[bool]$Invariant }) }
 function Assert  { param([bool]$Cond,[string]$Msg) if (-not $Cond) { throw $Msg } }
 function Assert-Decision { param($Result,[string]$Expected,[string]$Ctx)
     $got = Get-Decision $Result
@@ -129,5 +245,12 @@ function Write-TestSummary {
         Write-Host ("{0} {1}{2}" -f $mark, $t.Name, $(if ($t.Msg) { " -- $($t.Msg)" } else { '' }))
     }
     Write-Host ("{0}: {1} passed, {2} failed, {3} skipped" -f $Title, $pass, $fail, $skip)
+    # A skip buried inline in a green summary reads as coverage. Call out invariant-guarding
+    # skips (host genuinely lacks a required capability) by name, separately.
+    $invariantSkips = @($script:Tests | Where-Object { $_.State -eq 'SKIP' -and $_.Invariant })
+    if ($invariantSkips.Count -gt 0) {
+        Write-Host ("INVARIANT-GUARDING SKIPS ({0}) -- this host lacks a capability these cases require; they are NOT passing and NOT covering their branch on this run:" -f $invariantSkips.Count)
+        foreach ($s in $invariantSkips) { Write-Host ("  - {0}: {1}" -f $s.Name, $s.Msg) }
+    }
     return $fail
 }

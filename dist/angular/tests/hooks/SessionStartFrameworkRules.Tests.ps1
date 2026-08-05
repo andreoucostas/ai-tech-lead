@@ -19,7 +19,11 @@ foreach($h in @($ps)+$(if($bash){@($sh)}else{@()})){
     It "carrier absent is silent: $(Split-Path $h -Leaf)" {$r=Root $true $false $false;try{$o=RunAt $h $r $claude;Assert($o.Out-notmatch[regex]::Escape($pointer))"unexpected pointer: $($o.Out)"}finally{Remove-Item -Recurse -Force $r}}
 }
 It 'PowerShell Copilot JSON carries the pointer in both shapes' {$r=Root $true $true $false;try{$o=RunAt $ps $r $copilot|Select-Object -ExpandProperty Out|ConvertFrom-Json;Assert($o.additionalContext-match[regex]::Escape($pointer))'top-level missing';Assert($o.hookSpecificOutput.additionalContext-match[regex]::Escape($pointer))'wrapped missing'}finally{Remove-Item -Recurse -Force $r}}
-$shJson=$false;if($bash){$probe="$(& $bash -c 'if command -v jq >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1; then echo yes; fi')";$shJson=($probe.Trim()-eq'yes')}
-if($bash-and$shJson){It 'bash Copilot JSON carries the pointer in both shapes' {$r=Root $true $true $false;try{$o=RunAt $sh $r $copilot|Select-Object -ExpandProperty Out|ConvertFrom-Json;Assert($o.additionalContext-match[regex]::Escape($pointer))'top-level missing';Assert($o.hookSpecificOutput.additionalContext-match[regex]::Escape($pointer))'wrapped missing'}finally{Remove-Item -Recurse -Force $r}}}elseif($bash){Skip 'session-start.sh Copilot JSON migration case' 'no jq/python3 in bash'}
+# Probe by EXECUTION across jq / python3 / python / py -- same reach as session-start.sh's own
+# resolver (a python.org install has no python3.exe; a name-only python3 probe would falsely skip
+# this case on exactly the host the resolver targets).
+$probeCmd='if command -v jq >/dev/null 2>&1; then echo yes; else for c in python3 python py; do if command -v "$c" >/dev/null 2>&1 && printf "{}" | "$c" -c "import json,sys;json.load(sys.stdin)" >/dev/null 2>&1; then echo yes; break; fi; done; fi'
+$shJson=$false;if($bash){$probe="$(& $bash -c $probeCmd)";$shJson=($probe.Trim()-eq'yes')}
+if($bash-and$shJson){It 'bash Copilot JSON carries the pointer in both shapes' {$r=Root $true $true $false;try{$o=RunAt $sh $r $copilot|Select-Object -ExpandProperty Out|ConvertFrom-Json;Assert($o.additionalContext-match[regex]::Escape($pointer))'top-level missing';Assert($o.hookSpecificOutput.additionalContext-match[regex]::Escape($pointer))'wrapped missing'}finally{Remove-Item -Recurse -Force $r}}}elseif($bash){Skip 'session-start.sh Copilot JSON migration case' 'no jq and no working python3/python/py in bash -- this host cannot exercise the JSON-encode branch at all' -Invariant}
 if(-not$bash){Skip 'session-start.sh framework-rules cases' 'no bash found'}
 exit(Write-TestSummary 'SessionStartFrameworkRules.Tests')

@@ -10,35 +10,44 @@ set -u
 
 input=$(cat)
 
-# Extract the prompt field. Prefer jq (handles all JSON escapes correctly),
-# fall back to python3 (typically available on every dev box where bash runs),
-# fall back to a regex that handles escaped quotes as a last resort.
+# Extract the prompt field. Prefer jq (handles all JSON escapes correctly); if absent, resolve a
+# working python (memoised in $pybin for reuse at the output-encode site below) and use it; if no
+# working interpreter exists, fall back to a regex that handles escaped quotes as a last resort.
 prompt=""
+pybin=""
 if command -v jq >/dev/null 2>&1; then
   prompt=$(printf '%s' "$input" | jq -r '.prompt // ""' 2>/dev/null)
-elif command -v python3 >/dev/null 2>&1; then
-  prompt=$(printf '%s' "$input" | python3 -c 'import json,sys
-try:
-    d = json.load(sys.stdin)
-    print(d.get("prompt","") if isinstance(d, dict) else "")
-except Exception:
-    pass' 2>/dev/null)
-elif command -v python >/dev/null 2>&1; then
-  prompt=$(printf '%s' "$input" | python -c 'import json,sys
-try:
-    d = json.load(sys.stdin)
-    print(d.get("prompt","") if isinstance(d, dict) else "")
-except Exception:
-    pass' 2>/dev/null)
 else
-  # Last-resort regex: allow backslash-escaped chars inside the captured value.
-  if [[ "$input" =~ \"prompt\"[[:space:]]*:[[:space:]]*\"((\\.|[^\"\\])*)\" ]]; then
-    prompt="${BASH_REMATCH[1]}"
-    # Decode the most common JSON string escapes.
-    prompt="${prompt//\\\"/\"}"
-    prompt="${prompt//\\\\/\\}"
-    prompt="${prompt//\\n/$'\n'}"
-    prompt="${prompt//\\t/$'\t'}"
+  # Resolve a WORKING python, not merely a resolvable name -- same grammar as guard.sh, on which
+  # this is modelled: a python.org install ships python.exe and no python3.exe, so probing only
+  # `python3` guarantees this fallback never engages on Windows; and the Microsoft Store alias
+  # stub resolves under the name `python` but is not an interpreter (it prints "Python was not
+  # found" and exits 49) -- a name-only probe would select it and then silently produce nothing.
+  # So: execute each candidate and require it to actually round-trip JSON. Resolved lazily here
+  # (only when jq is absent) and at most once per run, so the common jq path costs nothing extra.
+  for cand in python3 python py; do
+    if command -v "$cand" >/dev/null 2>&1 &&
+       [ "$(printf '{}' | "$cand" -c 'import json,sys; json.load(sys.stdin); sys.stdout.write("ok")' 2>/dev/null)" = "ok" ]; then
+      pybin=$cand; break
+    fi
+  done
+  if [ -n "$pybin" ]; then
+    prompt=$(printf '%s' "$input" | "$pybin" -c 'import json,sys
+try:
+    d = json.load(sys.stdin)
+    print(d.get("prompt","") if isinstance(d, dict) else "")
+except Exception:
+    pass' 2>/dev/null)
+  else
+    # Last-resort regex: allow backslash-escaped chars inside the captured value.
+    if [[ "$input" =~ \"prompt\"[[:space:]]*:[[:space:]]*\"((\\.|[^\"\\])*)\" ]]; then
+      prompt="${BASH_REMATCH[1]}"
+      # Decode the most common JSON string escapes.
+      prompt="${prompt//\\\"/\"}"
+      prompt="${prompt//\\\\/\\}"
+      prompt="${prompt//\\n/$'\n'}"
+      prompt="${prompt//\\t/$'\t'}"
+    fi
   fi
 fi
 [ -z "$prompt" ] && exit 0
@@ -198,14 +207,15 @@ body=$(emit_body)
 # VS Code agent mode (Preview agent-hooks) inject userPromptSubmitted additionalContext into the
 # model-facing prompt -- emit both the top-level and wrapped shapes, mirroring guard.sh's
 # dual-shape approach. Older Copilot versions ignore this JSON output entirely: harmless no-op.
-# JSON-encoding needs jq or python3 (same dependency posture as guard.sh); with neither, fall
-# back to plain stdout -- Copilot drops it, which is exactly the pre-port behavior.
+# JSON-encoding needs jq or a working python (same dependency posture as guard.sh, and the same
+# $pybin resolved once above); with neither, fall back to plain stdout -- Copilot drops it, which
+# is exactly the pre-port behavior.
 if printf '%s' "$input" | grep -q '"hook_event_name"'; then
   printf '%s\n' "$body"
 elif command -v jq >/dev/null 2>&1; then
   printf '%s' "$body" | jq -Rs '{additionalContext: ., hookSpecificOutput: {hookEventName: "UserPromptSubmit", additionalContext: .}}'
-elif command -v python3 >/dev/null 2>&1; then
-  printf '%s' "$body" | python3 -c 'import json,sys
+elif [ -n "$pybin" ]; then
+  printf '%s' "$body" | "$pybin" -c 'import json,sys
 b = sys.stdin.read()
 print(json.dumps({"additionalContext": b, "hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": b}}))'
 else

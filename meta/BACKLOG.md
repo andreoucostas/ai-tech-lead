@@ -294,6 +294,13 @@ catch of shipping the literal word "Unreleased" to consumers as its release date
 when a shipped changelog head entry carries a placeholder instead of a date — belt and braces, so
 the gate still catches it when an entry is hand-authored outside the release script.
 
+**Second manual catch, 2026-08-05 (v0.46.0).** It happened again, exactly as written: three shipped
+changelog entries were authored `## 0.46.0 — Unreleased`, every gate stayed green on them, and only
+a human remembering this entry stopped "Unreleased" reaching consumers as a release date. The
+version-stamp gate *did* fire during that release — but on the version **number** drifting from
+`framework-version.json`, which is a different check that happens to run on the same line; it said
+nothing about the date. Two catches, zero gate coverage: promote this above the rest of the P2 band.
+
 ### B-55 · Vendor-behavior facts are restated across ~6 shipped surfaces with no single source
 **Effort:** M · **Priority:** P2 doc truth · **Invariants:** #5, #6
 
@@ -1999,17 +2006,48 @@ one session (the `.ps1` marker check was blind to the 15 hash-form markers in `r
 `audit-trail` / `.gitignore` / CI; the `.sh` twin matched unanchored, so a prose mention of the syntax
 would have counted as a marker). Every speedup here needs the planted-defect test re-run, both twins.
 
+**MEASURED 2026-08-05 (the number this entry has never had).** The meta suite, run end-to-end on the
+maintainer box with a warm tree: **1,027s — 17.1 minutes**, of which `ValidateDist.Tests` is the
+overwhelming majority (the other eight files together finish in well under a minute). The shipped
+hook suites cost a further **174s / 217s / 182s** for dotnet / angular / monorepo, so a full local
+gate pass before a release is **~27 minutes** before `release.ps1` re-runs all of it and then waits
+on CI. Two consequences worth stating plainly: the maintainer asked "what's going on, it's been
+running for years" during this very run — the same question that originally produced this entry — and
+a 20× regression inside that 17 minutes would still be invisible, because nothing measures it. Fix
+(c) is therefore the one with real leverage: `ValidateDist.Tests` copies the whole 161-file dist per
+case and re-runs full validation on both twins, to test gate *logic* a small synthetic fixture would
+exercise just as well.
+
+**Also this class, added 2026-08-05 by B-103's review (F7): the parser resolution is re-derived on
+every hook invocation, uncached.** `guard.sh` runs on **every** `Write`/`Edit`; on the no-`jq` path it
+now spawns up to three `command -v` probes plus up to two real interpreter startups — the Store stub
+*executes* before being rejected — per write. `route-prompt` pays the same on every prompt once B-104
+lands. It is small per call and invisible on the maintainer box (which has `jq`), which is exactly the
+shape of cost this entry exists to make visible. Caching the resolved interpreter in `.claude/.state/`
+is the obvious fix and carries its own hazard (a cached path that later breaks), so measure before
+building it.
+
 **Cross-links:** B-79 (MSIX pwsh spawn cost — the measured baseline this uses, and the reason
 parallelism cannot rescue it), B-59 (inert checks), B-61 (twin parity does not cover feasibility),
 B-64 (planted-defect tests for diagnostics), B-70 (a change is not done until CI is green — this
-would have taken the linux leg down), B-88 (CI-red reporting).
+would have taken the linux leg down), B-88 (CI-red reporting), B-104/B-108 (the hooks whose
+resolution this measures).
 
 ### B-102 · The documented JSON-parser fallback cannot exist on Windows — `python3` is not the name Windows installs
 
 > **DONE — shipped v0.45.0 (2026-08-05).** Probe now resolves by execution over
-> `python3 → python → py` in all ten shipped `.sh` hooks and the doctor; `enforcement-surfaces.md`
-> corrected. Measured before/after, same box, Python 3.14.5 present: `exit 0` (INACTIVE, write
-> allowed) → `exit 2` (blocked), verified against the composed dist.
+> `python3 → python → py` in ~~all ten shipped `.sh` hooks and the doctor~~ **five shipped `.sh`
+> hooks** (`guard`, `session-start`, `audit-trail`, `boy-scout-check`, `post-write`);
+> `enforcement-surfaces.md` corrected. Measured before/after, same box, Python 3.14.5 present:
+> `exit 0` (INACTIVE, write allowed) → `exit 2` (blocked), verified against the composed dist.
+>
+> **CORRECTION, 2026-08-05 (B-103's review).** The struck claim above is false and is left visible
+> rather than rewritten. `git show --stat 6eb7752` contains no `route-prompt.sh`, no
+> `framework-doctor.{ps1,sh}`, and not a single test file. So: the doctor was **not** fixed (B-105);
+> `route-prompt.sh` was **not** fixed and still selects the Store stub (B-104, **P1** — a *silent*
+> fail-open, the exact outcome this entry exists to prevent); the false skip below was **not** fixed
+> (B-106). The record asserted three fixes that did not ship. That is why Maintenance model #2 does
+> not accept a self-review, and why the RCA below is itself incomplete.
 >
 > **RCA — why did no gate catch it?** Two reasons, both structural. (1) `jq` is present on the
 > maintainer box, so the fallback branch never executed here — the gates only ever exercised the
@@ -2064,7 +2102,8 @@ JSON document. Correct `enforcement-surfaces.md`'s parenthetical to name what is
 Red-test it by hiding `jq` and asserting the fallback engages and the guard still blocks a planted
 secret — on Windows, which is where the current code fails.
 
-**Also fixes a false skip (B-71's class).** `ValidateDist.Tests.ps1` prints
+**Also fixes a false skip (B-71's class).** — **it did not; see the correction above. The file is
+untouched by `6eb7752` and the skip is still live. Now B-106.** `ValidateDist.Tests.ps1` prints
 *"python3 is unavailable on this host; CI linux must exercise this branch"* and the suite still
 summarises green. That statement is **false** — python is installed and working. The skipped
 assertion is a *twin-parity* one (the jq and python normalized record streams must be byte-identical),
@@ -2080,6 +2119,35 @@ pass).
 ---
 
 ### B-103 · Post-ship review owed for B-102 — implementer and reviewer were the same session
+
+> **DONE — review performed 2026-08-05** by an independent session (Opus 5; B-102's implementer was
+> a different session), with an adversarial second pass by codex `gpt-5.6-sol` over the review's own
+> findings. **It did not come back clean: 9 findings, 5 of them defects in shipped code or in the
+> record.** Filed as B-104 (P1), B-105, B-106, B-107, B-108; F7 appended to B-101.
+>
+> | # | finding | disposition |
+> |---|---|---|
+> | F1 | `route-prompt.sh` never fixed; its `python` branch selects the Store stub and the `elif` chain makes the regex fallback unreachable — routing dies **silently** on Windows | **B-104, P1** |
+> | F2 | `framework-doctor.{ps1,sh}` never fixed; post-B-102 it now reports the write floor **backwards** (`MISSING` while the guard is active) | **B-105** |
+> | F3 | the false skip B-102 claims to have fixed is untouched, plus four more of the same shape in shipped suites | **B-106** |
+> | F4 | `enforcement-surfaces.md:48` overclaims for `route-prompt.sh` and omits three hooks that gained the dependency | folded into B-104 |
+> | F5 | `_pybin` reachability across all six sites — **no defect** (checked by ordering, not by counting; confirmed independently) | closed |
+> | F6 | comments in `audit-trail.sh` and `guard.sh` now contradict the code beneath them | **B-107** |
+> | F7 | resolution re-runs per invocation, uncached, on a per-tool-call hook | appended to **B-101** |
+> | F8 | one resolver, two grammars, fifteen copies — which is *how* F1 was missed | **B-108** |
+> | F9 | the no-`jq` fallback branch has no regression test in any suite | folded into B-106 |
+>
+> The three answers B-103 explicitly asked for: `_pybin` is safe on every reachable path (F5); the
+> per-invocation latency cost is real but small and belongs to B-101 (F7); and yes, the
+> `enforcement-surfaces.md` wording **does** now overclaim in the other direction (F4) — it promises
+> execution-probing for a hook that does not do it.
+>
+> **Method note, worth keeping:** the review's own adversarial pass returned 5 blocking findings, of
+> which **4 were accepted and 1 was refuted by execution** (it claimed a test file did not exist; the
+> file is tracked and unignored, and the reviewer had searched a tree that skipped `.claude/` — this
+> repo's own documented search hazard, at the top of this file). Maintenance model #1's "a reviewer's
+> corrections are input, not verdict" earned its keep again.
+
 **Effort:** S · **Priority:** P2 · filed 2026-08-05 at release time, per Maintenance model #2
 
 **Why:** B-97 followed the intended pipeline — an adversarial reviewer returned 7 blocking findings
@@ -2106,6 +2174,173 @@ Re-run the jq-hidden red-test independently rather than trusting the recorded be
 
 **Cross-links:** B-102 (the change under review), B-63 (probe vantage-point audit — B-102 is its
 third instance), B-45 (the review ledger that made this fileable at release time).
+
+---
+
+### B-104 · `route-prompt.sh` selects the Windows Store stub and then silently routes nothing
+**Effort:** S · **Priority:** **P1** · found 2026-08-05 by B-103's review · **Invariants:** #3 #5 #6
+
+**Why:** `src/core/.claude/hooks/route-prompt.sh` extracts the prompt through an `elif` chain:
+`jq` → `command -v python3` → `command -v python` → last-resort regex. On Windows, `python3` never
+resolves (python.org ships `python.exe` only), so the chain reaches `command -v python` — which
+resolves `%LOCALAPPDATA%\Microsoft\WindowsApps\python.exe`, the Store *alias stub*: it prints
+"Python was not found" and exits 49. Because this is an `elif` chain, **selecting the stub commits
+to that branch** — the regex `else` is never re-entered — so `prompt` comes back empty and the hook
+exits without routing anything. The output-encode site (~line 210) name-probes `python3` the same way
+and falls through to plain stdout, which Copilot drops.
+
+The consequence is the whole natural-language routing and discipline-injection delivery on the bash
+leg, failing **silently**, on the primary target platform. B-102 fixed exactly this class in five
+other hooks and its commit message names `route-prompt.sh` as the one hook with a bare-`python`
+fallback — but `git show --stat 6eb7752` does not contain the file. A *loud* degradation was
+converted into a silent one, which is what B-102 existed to prevent.
+
+**Do:** resolve a **working** interpreter by execution over `python3 → python → py`, using the exact
+grammar already in `guard.sh:46-52` (do not author a third dialect — see B-108). Resolve **lazily**,
+inside the `else` of the `jq` test only: this hook runs on every prompt and must not pay interpreter
+startups on the common path. Resolve **once** and memoise for both sites; initialise the variable for
+`set -u`. When no interpreter resolves, the regex path and the plain-stdout path must be genuinely
+reachable — *that reachability is the bug, not the name*. `route-prompt.ps1` needs no change
+(PowerShell parses JSON natively); state that explicitly rather than silently skipping the twin [#3].
+Also correct `docs/enforcement-surfaces.md:48` (F4): it promises execution-probing for
+`route-prompt.sh`, which is currently false, and omits `audit-trail.sh`, `post-write.sh` and
+`boy-scout-check.sh`, which gained the same dependency in the same commit.
+
+**Red-test (B-106 owns the permanent one):** sandbox `PATH` with no `jq`/`python3`/`py` and a fake
+`python` that exits 49; the hook must still route via the regex path.
+
+**Cross-links:** B-102 (the change that missed it), B-103 (the review that found it), B-108 (the
+two-grammar duplication that *caused* the miss), B-63.
+
+### B-105 · The doctor reports the write floor backwards — `MISSING` while the guard is active
+**Effort:** S · **Priority:** P2 · found 2026-08-05 by B-103's review · **Invariants:** #3 #5
+
+**Why:** `framework-doctor.sh` still name-probes `python3` at `:43` (version-stamp read), `:134`
+(the `Guard JSON parser` row) and `:153`/`:162` (Copilot `hooks.json` validity); `framework-doctor.ps1`
+`:172-173` asks the same question through `Invoke-BashProbe` and, when that observation is
+unavailable, **guesses from PowerShell's own PATH** — the wrong-vantage-point shape B-63 has already
+had to correct twice.
+
+Since B-102, this inverts. On a Windows box with a working python.org install and no `jq`, `guard.sh`
+is now **active**, and the doctor tells the consumer *"the bash write guard is INACTIVE"*. The
+diagnostic that every other honesty claim rests on (B-61) now produces a false alarm about the write
+floor — a defect **created by the fix**, because the doctor was out of that change's scope while its
+record claimed otherwise.
+
+**Do:** implement both twins to one verdict table, and test every row: `jq` present → OK; no `jq` but
+a working `python`/`py` → **OK** (today: wrongly MISSING); only the Store stub → MISSING; no parser →
+MISSING; parser present but `hooks.json` malformed → **invalid**, not CANT-VERIFY; bash unobservable
+(`.ps1` twin) → CANT-VERIFY. **Delete the `.ps1` PATH-guess fallback** — the row reports on
+`guard.sh`, which runs under bash, so when bash cannot be observed the honest answer is CANT-VERIFY.
+Keep "no parser" distinguishable from "invalid JSON".
+
+**Not yet observed live:** the inversion follows from the code by inspection. Constructing the host
+condition (no `jq`, working non-`python3` python) and recording the row before and after is required
+before this closes — do not close it on inference.
+
+### B-106 · The no-`jq` fallback has no test, and five skips lapse exactly where it matters
+**Effort:** M · **Priority:** P2 · found 2026-08-05 by B-103's review · **Invariants:** #3
+
+**Why:** B-102's red-test was run by hand and recorded in a commit message. **Nothing in any suite
+forces the no-`jq` branch**, so B-104 could regress tomorrow with every gate green — B-64's class, on
+the change that most needed it. Meanwhile five test cases silently stop covering it:
+
+- `.claude/hooks/tests/ValidateDist.Tests.ps1:158-161` — `Get-Command python3`, then
+  *"python3 is unavailable on this host"*, and the suite summarises green. B-102's entry claims to
+  have fixed this; the file is not in the commit.
+- `src/core/tests/hooks/SessionStart{FrameworkRules,Hazard,Wiki}.Tests.ps1` (`:22`, `:27`, `:15`) —
+  each probes `command -v jq || command -v python3` and skips its Copilot-JSON case as *"no
+  jq/python3 in bash"*; the Wiki file has two cases behind one skip.
+- `src/core/tests/hooks/FrameworkDoctor.Tests.ps1:73` asserts the **pre-fix** contract by name.
+
+**Do:** add a `route-prompt` no-`jq` case and a doctor inverted-row case, both driven from a sandbox
+`PATH`. Reuse the utility-sandbox already at `FrameworkDoctor.Tests.ps1:73-95` — do not invent a new
+one: a naive PATH scrub breaks the hook before the branch under test is reached (`route-prompt.sh`
+needs `cat`/`tr`/`grep`/`sed`), while an inherited PATH may expose a real `jq` so the stub is never
+selected. That fixture already carries the Git-Bash/POSIX split both CI legs need. Convert the five
+skips to execution probes, and when a host genuinely lacks every parser surface it as an
+**invariant-guarding** skip per B-71, not an inline `[skip]` inside a green summary. Both legs [B-70].
+
+### B-107 · Comments left contradicting the code beneath them
+**Effort:** S · **Priority:** P3 · found 2026-08-05 by B-103's adversarial pass
+
+`audit-trail.sh:73` still says *"fall back to python3"* directly above the new three-candidate
+resolver; `guard.sh:13` still describes absence as *"no jq, no python3"*, which is no longer the
+capability condition. The header of the change's own flagship file misdescribes it. Sweep the other
+parser-dependent hooks for the same wording while there.
+
+### B-108 · One resolver, two grammars, fifteen copies — and that is how B-104 was missed
+**Effort:** S–M · **Priority:** P2 · found 2026-08-05 by B-103's review · **Invariants:** #3 #6
+
+**Why:** `guard.sh` spells the parser probe as a multi-line `for` loop; `audit-trail`, `post-write`,
+`boy-scout-check` and `session-start` spell the same contract as a ~200-char one-liner inside an
+`elif` condition; `route-prompt` spells it a third way. Hooks are standalone by design (nothing is
+sourced), so *duplication* is structural and acceptable — **two different grammars for one contract
+is not.** It is B-55's class, and it is the direct cause of B-104: the change was scoped by grepping
+`command -v python3`, and the sites that survived are the ones spelled differently.
+
+**Do:** normalise every site to one grammar, then add a `validate-dist` check that fails any shipped
+`.sh` naming `python3` outside the sanctioned probe form. Red-test it by planting a bare
+`command -v python3` and showing the non-zero exit before the clean pass — per the trap in B-101, an
+optimised or narrowed gate that silently checks fewer sites is worse than no gate.
+
+### B-109 · `no-meta-leak` denies our vocabulary but not the maintainer's filesystem
+**Effort:** S · **Priority:** **P2** · found 2026-08-05 while reviewing B-106's implementation ·
+**Invariants:** #6
+
+**Why:** `scripts/meta-denylist.txt` catches tracking ids, "lockstep", the two-repo past — our
+*development vocabulary*. It has **no pattern for a machine-specific absolute path**. Caught live:
+an implementer added host-resolution helpers to `src/core/tests/hooks/_HookHarness.ps1`, which
+composes into all three dists, containing
+
+```powershell
+$fallback = 'C:\Python314\python.exe'
+$fallback = 'C:\Users\Costas\bin\jq.exe'
+```
+
+Both would have reached every consumer. `no-meta-leak` caught the `B-nn` ids in the same commit and
+**passed the paths** — so the gate that exists to hold the don't-ship boundary reported a clean scan
+over a file naming the maintainer's home directory. A consumer's test harness reaching into a
+username on a machine that is not theirs is a worse leak than a tracking id: the id is embarrassing,
+the path is a broken artifact plus an information disclosure.
+
+This is also the shape B-97's `$protected` work already knows about — *shipped* content is the only
+thing a consumer sees, and prose alone has never held this line (~190 leaking lines shipped once
+before, per the invariant's own note).
+
+**Do:** add DENY patterns for machine-local absolute paths in shipped content — at minimum
+`[A-Za-z]:\\Users\\`, `/home/[^/]+/`, `/Users/[^/]+/`, and the maintainer's own username as a
+belt-and-braces literal. Red-test by planting one and showing the non-zero exit. Consider whether
+any *legitimate* shipped file needs an absolute example path (documentation placeholders like
+`C:\path\to\repo` are the plausible case) and carve those out with a narrow `ALLOW` rather than
+weakening the DENY, per the invariant's standing rule.
+
+**Cross-links:** invariant #6, B-103 (the review during which this surfaced), B-62/B-92 (the other
+"nothing validates what we ship" entries).
+
+---
+
+### RCA — v0.45.0 (B-102), filed 2026-08-05 with B-103's review
+
+**Why did no gate catch it?** The change was scoped by a grep for `command -v python3`, and the sites
+that survived are precisely the ones spelling the probe differently (B-108) — plus a diagnostic and
+five test files nobody re-ran the grep against. **No gate knows which files are parser-dependent**, so
+"fixed everywhere" was an unfalsifiable claim: there is no inventory for a gate to re-derive and diff.
+`bash -n` passed on every hook, because a syntax check is not a coverage check, and the correctness
+gates only ever exercised the `jq` path that works on this box.
+
+**What else is exposed?** Every claim of the form "fixed everywhere / in all N files" made without an
+inventory a gate can re-derive. The sweep is worth doing on the standing ones: the `.sh`/`.ps1` twin
+sets, the six `boy-scout-check` headers (B-55), and the `enforcement-surfaces.md` capability rows.
+
+**And the pattern above the defect.** This is the **third consecutive release whose record
+overclaimed what it shipped** — B-94 (the staged-set guard's record overclaimed in three places),
+B-102 (three fixes asserted that are not in the commit), and the v0.45.0 commit message itself, which
+reports a "14 files × 3 dists" verification for files the commit does not contain. Each was caught by
+the next independent review, never by the authoring session and never by a gate. That is the argument
+for Maintenance model #2 being enforced rather than encouraged: **the failing component is not the
+implementation, it is the self-report.** Worth considering whether `release.ps1` should require the
+claimed blast radius to be stated as a file list it can diff against the commit.
 
 ---
 

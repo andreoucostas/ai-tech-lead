@@ -148,7 +148,8 @@ foreach ($command in $commands) {
 }
 $copilotPath = Join-Path $root '.github/hooks/hooks.json'
 $copilotValid = $false
-if (Test-Path -LiteralPath $copilotPath) {
+$copilotExists = Test-Path -LiteralPath $copilotPath
+if ($copilotExists) {
     try {
         $null = Get-Content -Raw -LiteralPath $copilotPath | ConvertFrom-Json
         $copilotValid = $true
@@ -169,9 +170,15 @@ if ($hookPaths.Count -eq 0 -or $missingHooks.Count) {
 
 $bashWired = @($shells | Where-Object { $_ -eq 'bash' }).Count -gt 0
 if ($bashWired) {
-    $bashParser = Invoke-BashProbe 'command -v jq >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1'
-    if ($null -eq $bashParser) { $bashParser = (Has jq) -or (Has python3) }
-    if ($bashParser) { Row OK 'Guard JSON parser' 'jq or python3 is available.' }
+    # The row reports on guard.sh, which runs under bash -- so capability must be observed from
+    # bash's vantage point. Probe execution, not name: jq, or any of python3/python/py that can
+    # actually round-trip JSON (a python.org install ships no python3.exe, and the Microsoft Store
+    # alias stub resolves under the name `python` but is not an interpreter). When bash cannot be
+    # observed, the honest answer is CANT-VERIFY -- guessing from this script's own PATH reports on
+    # the wrong shell, which is exactly how this row previously came out backwards.
+    $bashParser = Invoke-BashProbe 'command -v jq >/dev/null 2>&1 && exit 0; for c in python3 python py; do command -v $c >/dev/null 2>&1 && printf ''{}'' | $c -c ''import json,sys; json.load(sys.stdin)'' >/dev/null 2>&1 && exit 0; done; exit 1'
+    if ($null -eq $bashParser) { Row CANT-VERIFY 'Guard JSON parser' 'bash is wired but this script could not observe its PATH (no usable bash found, or the probe timed out), so whether a JSON parser is available to the guard cannot be determined from here.' }
+    elseif ($bashParser) { Row OK 'Guard JSON parser' 'jq or a working python interpreter is available.' }
     else { Row MISSING 'Guard JSON parser' 'the bash write guard is INACTIVE and allows writes with only a warning. Fix: install jq.' }
 } else { Row OK 'Guard JSON parser' 'not required by the wired PowerShell hooks.' }
 
@@ -193,7 +200,8 @@ else {
 if ($copilotValid) {
     if (Has copilot) { Row OK 'Copilot surface' 'hooks.json is valid and the Copilot CLI is present.' }
     else { Row OK 'Copilot surface' 'hooks.json is valid; Copilot CLI is absent (Claude-only teams need no action). If your team uses Copilot, the GA CLI is the cheapest real enforcement path.' }
-} else { Row MISSING 'Copilot surface' '.github/hooks/hooks.json is missing or invalid. Fix: re-run the installer.' }
+} elseif ($copilotExists) { Row MISSING 'Copilot surface' '.github/hooks/hooks.json exists but is not valid JSON. Fix: re-run the installer or correct the file.' }
+else { Row MISSING 'Copilot surface' '.github/hooks/hooks.json is missing. Fix: re-run the installer.' }
 
 if ($pending) { Row PENDING 'Mirror and version integrity' 'not checked until /bootstrap or /adopt completes.' }
 else {

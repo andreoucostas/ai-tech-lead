@@ -4,6 +4,30 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.46.0 — 2026-08-05
+
+- **Fixed: on Windows without `jq`, the prompt-routing hook silently did nothing.** If your machine
+  has no `jq` installed, `route-prompt.sh` fell back to looking for a Python interpreter by name. A
+  standard python.org install on Windows provides `python.exe` and **no `python3.exe`**, so the hook
+  went on to try plain `python` — which on most Windows machines resolves to the Microsoft Store
+  placeholder, a stub that is not an interpreter. Having picked it, the hook could no longer fall
+  back to its last-resort path, so it produced **no output at all** and exited successfully. The
+  workflow rails it exists to inject never reached the model, and nothing said so.
+
+  There was a quieter second case: with a real interpreter installed as `python`, the hook read your
+  prompt correctly but still emitted plain text instead of JSON, which GitHub Copilot discards.
+
+  It now finds a JSON parser by **running** each candidate rather than trusting its name, and only
+  when `jq` is genuinely absent — so nothing changes, and nothing slows down, if you have `jq`.
+  **No action required.** If you were affected you will simply notice the routing context appearing
+  again.
+
+- **Fixed: `framework-doctor` reported your write guard as inactive when it was working.** With no
+  `jq` but a usable Python present, the guard was correctly blocking secret writes while the doctor
+  told you the floor was OFF and advised installing `jq`. The doctor now asks the same question the
+  guard asks, and reports `CANT-VERIFY` where it genuinely cannot observe the answer rather than
+  guessing. It also now distinguishes "your `hooks.json` is invalid" from "there is no parser here to
+  check it with" — previously both produced the same message.
 ## 0.45.0 — 2026-08-05
 
 - **Action required (one line, once): your always-on rules now live in a file the installer can

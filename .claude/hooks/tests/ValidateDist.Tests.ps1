@@ -39,7 +39,7 @@ function Convert-ToBashPath {
     return $Path.Replace('\', '/')
 }
 function Invoke-Validator {
-    param([string]$Root, [switch]$UseBash, [string]$JsonTool, [switch]$FullValidation)
+    param([string]$Root, [switch]$UseBash, [string]$JsonTool, [switch]$FullValidation, [string]$ExtraPathDir)
     # Checks 1-5 re-parse every shipped file, which dominates this suite's runtime. Red cases only
     # need checks 6-8; the green anchors run the full validator so the skipped group is still
     # exercised on both legs. See VALIDATE_DIST_CONTENT_ONLY in the validators.
@@ -57,6 +57,10 @@ function Invoke-Validator {
             $tool = Get-Command $toolName -ErrorAction SilentlyContinue | Select-Object -First 1
             if ($tool -and $tool.Source) { $toolDirs += (Split-Path -Parent $tool.Source) }
         }
+        # B-106/F3: lets a case expose a shim ahead of everything else -- e.g. a real interpreter
+        # that only resolves under a name other than "python3" -- without changing what every other
+        # case here sees.
+        if ($ExtraPathDir) { $toolDirs = @($ExtraPathDir) + $toolDirs }
         $pathPrefix = (@($toolDirs | Select-Object -Unique | ForEach-Object { "'$(Convert-ToBashPath $_)'" }) -join ':')
         $override = if ($JsonTool) { "VALIDATE_DIST_JSON_TOOL='$JsonTool' " } else { '' }
         $flag = if ($contentOnly) { ' --content-only' } else { '' }
@@ -155,10 +159,30 @@ try {
         }
     }
 
-    $python = Get-Command python3 -ErrorAction SilentlyContinue
-    if (-not $python) {
+    # B-106/F3: this skip used to be false -- "python3 is unavailable" read as "no python here", but
+    # a python.org install ships python.exe and no python3.exe, so Get-Command python3 alone can miss
+    # a perfectly working interpreter. Resolve by EXECUTION across python3/python/py (Resolve-HostPython
+    # in _HookHarness.ps1) and, if the real name isn't literally "python3", expose it under that name
+    # via a shim dir prepended to Invoke-Validator's bash PATH -- validate-dist.sh's own
+    # VALIDATE_DIST_JSON_TOOL=python3 override still calls the literal name "python3".
+    $python3Direct = Get-Command python3 -ErrorAction SilentlyContinue
+    $py3ShimDir = ''
+    if (-not $python3Direct) {
+        $resolvedPython = Resolve-HostPython
+        if ($resolvedPython) {
+            $py3ShimDir = Join-Path ([IO.Path]::GetTempPath()) ('py3shim-' + [guid]::NewGuid())
+            New-Item -ItemType Directory -Force $py3ShimDir | Out-Null
+            [IO.File]::WriteAllText((Join-Path $py3ShimDir 'python3'), (New-ExecShim $resolvedPython))
+            if ($bashExe -and $bashExe -match '\\Git\\bin\\bash\.exe$') {
+                $git = Split-Path (Split-Path $bashExe -Parent) -Parent
+                & (Join-Path $git 'usr/bin/bash.exe') -c ('chmod +x "{0}"/*' -f (ConvertTo-PosixPath $py3ShimDir)) 2>$null | Out-Null
+            }
+            $script:scratch += $py3ShimDir
+        }
+    }
+    if (-not $python3Direct -and -not $py3ShimDir) {
         Write-Host '[COVERAGE GAP] python3 JSON branch was NOT exercised on this host; CI linux must exercise it.'
-        Skip 'the jq and python3 normalized record streams are byte-identical when both tools exist' 'python3 is unavailable on this host; CI linux must exercise this branch.'
+        Skip 'the jq and python3 normalized record streams are byte-identical when both tools exist' 'no working python interpreter (python3/python/py, execution-probed) found on this host; CI linux must exercise this branch.' -Invariant
     } else { It 'the jq and python3 normalized record streams are byte-identical when both tools exist' {
         # This case had never actually executed anywhere before CI ran it: skipped here for want of
         # python3, and on CI it asserted on check 2's output while running --content-only, where
@@ -170,7 +194,7 @@ try {
             foreach ($pair in @(@{ Tool='python3'; File=$a }, @{ Tool='jq'; File=$b })) {
                 # bash writes this path, so it must be a POSIX path even on Windows.
                 $env:VALIDATE_DIST_RECORD_STREAM = (Convert-ToBashPath $pair.File)
-                $r = Invoke-Validator -Root $root -UseBash -JsonTool $pair.Tool
+                $r = Invoke-Validator -Root $root -UseBash -JsonTool $pair.Tool -ExtraPathDir $py3ShimDir
                 Assert ($r.Out -match "parsed by $($pair.Tool)") "$($pair.Tool) branch did not run: $($r.Out)"
                 Assert ($r.Exit -eq 0) "$($pair.Tool) stream setup failed: $($r.Out)"
                 Assert (Test-Path -LiteralPath $pair.File) "$($pair.Tool) wrote no record stream"

@@ -151,8 +151,8 @@ body=$(emit_body)
 # mode with Preview agent-hooks) — emit both the top-level and wrapped shapes, mirroring
 # guard.sh's dual-shape approach. Older Copilot versions ignore the JSON: harmless no-op, same
 # as pre-port behavior. Empty or non-JSON stdin defaults to plain stdout (Claude-compatible).
-# JSON-encoding needs jq or python3 (same dependency posture as guard.sh); with neither, fall
-# back to plain stdout — Copilot drops it, which is exactly the pre-port behavior.
+# JSON-encoding needs jq or a working python (same dependency posture as guard.sh); with neither,
+# fall back to plain stdout — Copilot drops it, which is exactly the pre-port behavior.
 is_copilot=""
 case "$input" in
   \{*) printf '%s' "$input" | grep -q '"hook_event_name"' || is_copilot="1" ;;

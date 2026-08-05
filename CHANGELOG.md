@@ -11,6 +11,39 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.46.0 — 2026-08-05
+
+**The post-ship review of v0.45.0 (B-103), and the four defects it found.** B-102 was found,
+implemented and verified in one session by one model; the review ledger filed the debt automatically.
+Paying it turned up **nine findings, five of them live**. B-102's record claimed the parser fix landed
+"in all ten shipped `.sh` hooks and the doctor" and "also fixes a false skip". `git show --stat
+6eb7752` contains no `route-prompt.sh`, no `framework-doctor.{ps1,sh}` and no test file.
+
+- **B-104 (P1) — `route-prompt.sh` silently routed nothing on Windows.** Its `elif` chain reached
+  `command -v python`, which resolves the Microsoft Store alias stub (not an interpreter, exits 49),
+  and **an `elif` chain commits to the branch it selects** — so the regex fallback was never
+  re-entered. Measured, no `jq` + stub `python`: `EXIT=0` and **zero bytes** before, 1379 bytes of
+  routed context after. A second, subtler leg: with a *real* interpreter named `python`, extraction
+  worked but the output-encode site still name-probed `python3`, so it emitted plain stdout instead
+  of JSON — which Copilot drops. Resolution is now lazy (only when `jq` is absent), memoised, and
+  probes by execution.
+- **B-105 — the doctor reported the write floor backwards.** With no `jq` and a working interpreter
+  named `python`, `guard.sh` returned `EXIT=2` "Blocked write … AKIA…" while `framework-doctor.sh`
+  printed `[MISSING] Guard JSON parser — the bash write guard is INACTIVE`. Both twins now implement
+  one verdict table; the `.ps1` twin's PowerShell-PATH fallback guess is deleted in favour of
+  `CANT-VERIFY`, because that row reports on a hook that runs under bash.
+- **B-106 — the fallback branch had no test, and five skips lapsed where it mattered.** New
+  sandboxed cases drive the no-`jq` path; the five `command -v python3` skip-guards now probe by
+  execution. `ValidateDist.Tests` went from `1 skipped` behind the false message "python3 is
+  unavailable on this host" to **0 skipped**. Host-capability skips now print under an
+  `INVARIANT-GUARDING SKIPS` heading instead of scrolling past inside a green total.
+- **B-107** — comments that contradicted the code beneath them.
+
+Also filed: **B-108** (one resolver, three grammars — *how* B-104 was missed, since the original
+change was scoped by grepping one of them) and **B-109** (`no-meta-leak` denies our vocabulary but
+not machine-local absolute paths — caught mid-review, when a shipped test harness briefly carried
+`C:\Users\…`, which the gate passed without comment).
+
 ## 0.45.0 — 2026-08-05
 
 **B-97 (delivery) + B-102 (a P1 found while verifying it).**
@@ -39,6 +72,12 @@
   present: `exit 0` allowed → `exit 2` blocked. Probe now resolves by **execution** over
   `python3 → python → py`, because the Store alias resolves and exits 49 — a name-only probe would
   select it and fail open *silently*, worse than the original bug.
+  - **CORRECTION (2026-08-05, B-103's post-ship review):** "every shipped `.sh` hook" is wrong.
+    The commit fixed **five** — `guard`, `session-start`, `audit-trail`, `boy-scout-check`,
+    `post-write`. It did **not** touch `route-prompt.sh` (which still selects the Store stub and
+    then silently routes nothing — **B-104, P1**), `framework-doctor.{ps1,sh}` (which now reports
+    the write floor backwards — B-105), or any test file (B-106). The commit message's "14 files ×
+    3 dists" verification names files the commit does not contain. Left visible, not rewritten.
 
 - **Three new `validate-dist` checks**, each red-tested: marker-expansion inventory, section-path
   citation resolution, and carrier-import presence.

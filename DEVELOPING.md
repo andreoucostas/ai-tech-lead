@@ -151,6 +151,29 @@ pwsh -NoProfile -File dist/monorepo/tests/hooks/Invoke-HookTests.ps1
 pwsh -NoProfile -File .claude/hooks/tests/Invoke-HookTests.ps1
 ```
 
+### Set `ATL_TEST_PYTHON` / `ATL_TEST_JQ` on this box, or you lose coverage silently
+
+Several cases need a **real** JSON parser to exercise the no-`jq` fallback the shipped `.sh` hooks
+depend on. They resolve one by execution over `python3`/`python`/`py` — and on this box **none of
+those resolve**, because the session `PATH` is the known corrupted one. Without help those cases take
+an invariant-guarding skip, which is honest but is *not* coverage:
+
+```powershell
+$env:ATL_TEST_PYTHON = 'C:\Python314\python.exe'   # a real python.org install (no python3.exe exists)
+$env:ATL_TEST_JQ     = 'C:\Users\Costas\bin\jq.exe'
+```
+
+These are **environment variables on purpose**. The same values were first written as hardcoded
+fallbacks inside `src/core/tests/hooks/_HookHarness.ps1`, which composes into every dist — so a
+consumer would have received a test harness reaching for this machine's username. `no-meta-leak`
+does not catch that (see the backlog entry on machine-local paths); the review did. Keep host
+specifics in your shell, never in a shipped file.
+
+Skips from these cases are printed under an **`INVARIANT-GUARDING SKIPS`** heading in the suite
+summary rather than as an inline `[skip]` line, because a skip that scrolls past inside a green
+total reads as coverage — that is how a permanently-unexercised assertion hid a P1 for as long as it
+existed. If you see that heading, the run did **not** cover those branches.
+
 ### The behavioral gates (meta suite — auto-discovered, no wiring needed)
 
 Everything else in this repo is a **parser** gate: it proves the artifacts are well-formed, not that

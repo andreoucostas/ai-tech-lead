@@ -18,6 +18,23 @@ row() {
   if [ "$1" = MISSING ]; then missing=1; missing_rows=$((missing_rows + 1)); fi
 }
 has() { command -v "$1" >/dev/null 2>&1; }
+# Resolve a WORKING python once, by execution rather than by name (same grammar as guard.sh): a
+# python.org install ships python.exe and no python3.exe, and the Microsoft Store alias stub
+# resolves under the name `python` but is not an interpreter (it prints "Python was not found"
+# and exits 49) -- a name-only probe would select it and then silently produce nothing. Memoised
+# so the probe runs at most once even though this script asks the same question four times.
+_pybin_resolved=0
+_pybin=""
+resolve_pybin() {
+  [ "$_pybin_resolved" -eq 1 ] && return
+  _pybin_resolved=1
+  for cand in python3 python py; do
+    if command -v "$cand" >/dev/null 2>&1 &&
+       [ "$(printf '{}' | "$cand" -c 'import json,sys; json.load(sys.stdin); sys.stdout.write("ok")' 2>/dev/null)" = "ok" ]; then
+      _pybin=$cand; return
+    fi
+  done
+}
 finish() {
   echo
   echo '[CANT-VERIFY] Claude hooks - start claude here and ask what the session preload contained; pass = the reply quotes a block that starts with "## Session preload". No preload usually means folder trust is pending.'
@@ -40,15 +57,18 @@ if has jq; then
   template=$(jq -r '.template // ""' "$stamp" 2>/dev/null)
   version=$(jq -r '.version // ""' "$stamp" 2>/dev/null)
   applied=$(jq -r '.applied // ""' "$stamp" 2>/dev/null)
-elif has python3; then
-  values=$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("template", "")); print(d.get("version", "")); print(d.get("applied", ""))' "$stamp" 2>/dev/null)
-  template=$(printf '%s\n' "$values" | sed -n '1p')
-  version=$(printf '%s\n' "$values" | sed -n '2p')
-  applied=$(printf '%s\n' "$values" | sed -n '3p')
 else
-  template=$(sed -n 's/.*"template"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$stamp" | head -1)
-  version=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$stamp" | head -1)
-  applied=$(sed -n 's/.*"applied"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$stamp" | head -1)
+  resolve_pybin
+  if [ -n "$_pybin" ]; then
+    values=$("$_pybin" -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("template", "")); print(d.get("version", "")); print(d.get("applied", ""))' "$stamp" 2>/dev/null)
+    template=$(printf '%s\n' "$values" | sed -n '1p')
+    version=$(printf '%s\n' "$values" | sed -n '2p')
+    applied=$(printf '%s\n' "$values" | sed -n '3p')
+  else
+    template=$(sed -n 's/.*"template"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$stamp" | head -1)
+    version=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$stamp" | head -1)
+    applied=$(sed -n 's/.*"applied"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$stamp" | head -1)
+  fi
 fi
 if [ -z "$template" ]; then
   row MISSING 'Install state' '.claude/framework-version.json is invalid JSON. Fix: re-run the framework installer.'
@@ -131,8 +151,12 @@ else row OK 'Hook files' "$count registered files are present."
 fi
 
 if printf '%s\n' "$shells" | grep -qx bash; then
-  if has jq || has python3; then row OK 'Guard JSON parser' 'jq or python3 is available.'
-  else row MISSING 'Guard JSON parser' 'the bash write guard is INACTIVE and allows writes with only a warning. Fix: install jq.'; fi
+  if has jq; then row OK 'Guard JSON parser' 'jq or a working python interpreter is available.'
+  else
+    resolve_pybin
+    if [ -n "$_pybin" ]; then row OK 'Guard JSON parser' 'jq or a working python interpreter is available.'
+    else row MISSING 'Guard JSON parser' 'the bash write guard is INACTIVE and allows writes with only a warning. Fix: install jq.'; fi
+  fi
 else row OK 'Guard JSON parser' 'not required by the wired PowerShell hooks.'
 fi
 
@@ -147,11 +171,18 @@ fi
 
 copilot_json="$root/.github/hooks/hooks.json"
 copilot_valid=0
+copilot_invalid=0
 copilot_unknown=0
 if [ -f "$copilot_json" ]; then
-  if has jq && jq empty "$copilot_json" >/dev/null 2>&1; then copilot_valid=1
-  elif has python3 && python3 -m json.tool "$copilot_json" >/dev/null 2>&1; then copilot_valid=1
-  else copilot_unknown=1
+  if has jq; then
+    if jq empty "$copilot_json" >/dev/null 2>&1; then copilot_valid=1; else copilot_invalid=1; fi
+  else
+    resolve_pybin
+    if [ -n "$_pybin" ]; then
+      if "$_pybin" -m json.tool "$copilot_json" >/dev/null 2>&1; then copilot_valid=1; else copilot_invalid=1; fi
+    else
+      copilot_unknown=1
+    fi
   fi
 fi
 # Twin divergence by design: only this twin can hit the CANT-VERIFY branch below — the .ps1 twin
@@ -159,8 +190,9 @@ fi
 if [ "$copilot_valid" -eq 1 ]; then
   if has copilot; then row OK 'Copilot surface' 'hooks.json is valid and the Copilot CLI is present.'
   else row OK 'Copilot surface' 'hooks.json is valid; Copilot CLI is absent (Claude-only teams need no action). If your team uses Copilot, the GA CLI is the cheapest real enforcement path.'; fi
-elif [ "$copilot_unknown" -eq 1 ]; then row CANT-VERIFY 'Copilot surface' 'hooks.json exists, but JSON validity cannot be checked without jq or python3. Install jq, then rerun the doctor.'
-else row MISSING 'Copilot surface' '.github/hooks/hooks.json is missing or invalid. Fix: re-run the installer.'
+elif [ "$copilot_invalid" -eq 1 ]; then row MISSING 'Copilot surface' '.github/hooks/hooks.json exists but is not valid JSON. Fix: re-run the installer or correct the file.'
+elif [ "$copilot_unknown" -eq 1 ]; then row CANT-VERIFY 'Copilot surface' 'hooks.json exists, but JSON validity cannot be checked without jq or a working python interpreter. Install jq, then rerun the doctor.'
+else row MISSING 'Copilot surface' '.github/hooks/hooks.json is missing. Fix: re-run the installer.'
 fi
 
 if [ "$pending" -eq 1 ]; then row PENDING 'Mirror and version integrity' 'not checked until /bootstrap or /adopt completes.'

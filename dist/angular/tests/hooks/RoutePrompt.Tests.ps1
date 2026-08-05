@@ -84,4 +84,43 @@ if (-not $bash) {
     }
 }
 
+
+# --- Force the no-jq fallback branch, sandboxed to exactly cat/grep/tr (what route-prompt.sh
+# actually calls) so the sandbox can neither expose a stray real jq/python3 nor break the hook's own
+# plumbing. See Invoke-Sandboxed / New-ExecShim in _HookHarness.ps1.
+$storeStubScript = "#!/usr/bin/env bash`nprintf 'Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Manage App Execution Aliases.\n' >&2`nexit 49`n"
+if (-not $bash) {
+    Skip 'route-prompt.sh sandboxed: no jq, python is the Store stub -> still routes' 'no bash found' -Invariant
+    Skip 'route-prompt.sh sandboxed: no jq, working interpreter only as `python` -> emits JSON' 'no bash found' -Invariant
+    Skip 'route-prompt.sh sandboxed: jq present -> routes via jq (control)' 'no bash found' -Invariant
+} else {
+    It 'route-prompt.sh sandboxed: no jq, no python3, no py, python is the Store stub -> still routes (regex fallback)' {
+        $r = Invoke-Sandboxed -Bash $bash -ScriptPath $rpSh -Utilities @('cat','grep','tr') -FakeBins @{ python = $storeStubScript } -Stdin (New-ClaudePrompt 'fix the broken date formatting')
+        Assert ($r.Exit -eq 0) "exit=$($r.Exit): $($r.Err)"
+        Assert (-not [string]::IsNullOrEmpty($r.Out)) 'no output at all (pre-fix produced zero bytes here -- the elif chain committed to the Store-stub branch and never reached the regex fallback)'
+        Assert ($r.Out -match 'Routed intent') "rails missing: $($r.Out)"
+    }
+    if (Resolve-HostPython) {
+    It 'route-prompt.sh sandboxed: no jq, working interpreter only as `python` -> emits JSON' {
+        $r = Invoke-Sandboxed -Bash $bash -ScriptPath $rpSh -Utilities @('cat','grep','tr') -ExposeInterpreterAs 'python' -Stdin (New-CopilotPrompt 'fix the broken date formatting')
+        Assert ($r.Exit -eq 0) "exit=$($r.Exit): $($r.Err)"
+        Assert ($r.Out.TrimStart().StartsWith('{')) "expected JSON output (python encode path), got plain stdout (pre-fix: the encode site only ever probed jq/python3, never bare python): $($r.Out)"
+        $o = $r.Out | ConvertFrom-Json
+        Assert ($o.additionalContext -match 'Routed intent') 'top-level additionalContext missing rails'
+        Assert ($o.hookSpecificOutput.additionalContext -eq $o.additionalContext) 'wrapped context differs from top-level'
+    }
+    } else { Skip 'route-prompt.sh sandboxed: no jq, working interpreter only as `python` -> emits JSON' 'no working python interpreter found on this host (set $env:ATL_TEST_PYTHON to an absolute interpreter path to exercise this case)' -Invariant }
+    $jqReal = Resolve-HostJq
+    if ($jqReal) {
+        It 'route-prompt.sh sandboxed: jq present -> routes via jq (control)' {
+            $r = Invoke-Sandboxed -Bash $bash -ScriptPath $rpSh -Utilities @('cat','grep','tr') -FakeBins @{ jq = (New-ExecShim $jqReal) } -Stdin (New-CopilotPrompt 'fix the broken date formatting')
+            Assert ($r.Exit -eq 0) "exit=$($r.Exit): $($r.Err)"
+            $o = $r.Out | ConvertFrom-Json
+            Assert ($o.additionalContext -match 'Routed intent') "jq control: rails missing: $($r.Out)"
+        }
+    } else {
+        Skip 'route-prompt.sh sandboxed: jq present -> routes via jq (control)' 'no working jq found on this host' -Invariant
+    }
+}
+
 exit (Write-TestSummary 'RoutePrompt.Tests (surface shapes)')

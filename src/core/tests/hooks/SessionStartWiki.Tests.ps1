@@ -10,11 +10,15 @@ It "soft-fails when the liveness path is unwritable: $(Split-Path $h -Leaf)" {$r
 foreach($h in @($ps)+$(if($bash){@($sh)}else{@()})){It "small index inlined: $(Split-Path $h -Leaf)" {$r=Root 2;try{$o=RunAt $h $r $claude;Assert($o.Out-match'entry-2')'small index absent'}finally{Remove-Item -Recurse -Force $r}};It "large index summarized: $(Split-Path $h -Leaf)" {$r=Root 31;try{$o=RunAt $h $r $claude;Assert($o.Out-match'31 wiki entries — read docs/wiki/INDEX.md')'summary absent';Assert($o.Out-notmatch'entry-31')'large index leaked'}finally{Remove-Item -Recurse -Force $r}};It "missing index silent: $(Split-Path $h -Leaf)" {$r=Root (-1);try{$o=RunAt $h $r $claude;Assert($o.Out-notmatch'entry-|wiki entries|Team Wiki Index')'wiki output present'}finally{Remove-Item -Recurse -Force $r}}}
 It 'Copilot JSON contains wiki in both additionalContext shapes' {$r=Root 2;try{$o=RunAt $ps $r $copilot|Select-Object -ExpandProperty Out|ConvertFrom-Json;Assert($o.additionalContext-match'entry-2')'top-level missing';Assert($o.hookSpecificOutput.additionalContext-match'entry-2')'wrapped missing'}finally{Remove-Item -Recurse -Force $r}}
 It 'Copilot JSON contains large summary in both additionalContext shapes' {$r=Root 31;try{$o=RunAt $ps $r $copilot|Select-Object -ExpandProperty Out|ConvertFrom-Json;Assert($o.additionalContext-match'31 wiki entries')'top-level missing';Assert($o.hookSpecificOutput.additionalContext-match'31 wiki entries')'wrapped missing'}finally{Remove-Item -Recurse -Force $r}}
-# The .sh twin only emits Copilot JSON when a JSON encoder (jq or python3) is present — otherwise it
-# degrades to plain stdout by design. Probe once so these cases skip (not fail) on a bash without one.
-$shJson=$false;if($bash){$p="$(& $bash -c 'if command -v jq >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1; then echo yes; fi')";$shJson=($p.Trim()-eq'yes')}
+# The .sh twin only emits Copilot JSON when a JSON encoder (jq or a working python) is present —
+# otherwise it degrades to plain stdout by design. Probe once so these cases skip (not fail) on a
+# bash without one. Probe by EXECUTION across jq / python3 / python / py -- same reach as
+# session-start.sh's own resolver (a python.org install has no python3.exe; a name-only python3
+# probe would falsely skip this case on exactly the host the resolver targets).
+$probeCmd='if command -v jq >/dev/null 2>&1; then echo yes; else for c in python3 python py; do if command -v "$c" >/dev/null 2>&1 && printf "{}" | "$c" -c "import json,sys;json.load(sys.stdin)" >/dev/null 2>&1; then echo yes; break; fi; done; fi'
+$shJson=$false;if($bash){$p="$(& $bash -c $probeCmd)";$shJson=($p.Trim()-eq'yes')}
 if($bash -and $shJson){
 It 'Copilot JSON (sh twin) contains wiki in both additionalContext shapes' {$r=Root 2;try{$o=RunAt $sh $r $copilot|Select-Object -ExpandProperty Out|ConvertFrom-Json;Assert($o.additionalContext-match'entry-2')'top-level missing';Assert($o.hookSpecificOutput.additionalContext-match'entry-2')'wrapped missing'}finally{Remove-Item -Recurse -Force $r}}
 It 'Copilot JSON (sh twin) contains large summary in both additionalContext shapes' {$r=Root 31;try{$o=RunAt $sh $r $copilot|Select-Object -ExpandProperty Out|ConvertFrom-Json;Assert($o.additionalContext-match'31 wiki entries')'top-level missing';Assert($o.hookSpecificOutput.additionalContext-match'31 wiki entries')'wrapped missing'}finally{Remove-Item -Recurse -Force $r}}
-}elseif($bash){Skip 'session-start.sh Copilot JSON cases' 'no jq/python3 in bash'}
+}elseif($bash){Skip 'session-start.sh Copilot JSON cases' 'no jq and no working python3/python/py in bash -- this host cannot exercise the JSON-encode branch at all' -Invariant}
 if(-not$bash){Skip 'session-start.sh wiki cases' 'no bash found'};exit(Write-TestSummary 'SessionStartWiki.Tests')

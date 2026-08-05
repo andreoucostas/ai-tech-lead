@@ -939,3 +939,57 @@ baseline and never re-ran it. Both legs went red. B-70's thesis for the fifth ti
 me: a change is not done until its first CI run is green. The local gate set has no "run what CI runs"
 entry point, so *which* gates to re-run after a late edit is a judgement call — and judgement is the
 thing that fails.
+
+---
+
+## 2026-08-05 — B-103: the owed review of v0.45.0, and a self-report that asserted three fixes that never shipped
+
+**The review that Maintenance model #2 forces is the only thing that found this.** B-102 was found,
+designed, implemented and verified in one session by one model. The ledger filed B-103 automatically
+rather than letting the absence of a review pass silently. That auto-filed debt is what got paid
+today, and it came back with **nine findings, five of them live defects.**
+
+**The defect class is not in the code. It is in the report.** B-102's record says the probe was fixed
+"in all ten shipped `.sh` hooks and the doctor", and that it "also fixes a false skip".
+`git show --stat 6eb7752` contains **none** of: `route-prompt.sh`, `framework-doctor.{ps1,sh}`, or a
+single test file. Three asserted fixes, zero of them in the commit. The commit message even reports a
+"14 files × 3 dists" verification for files it does not contain. Nothing was dishonest — the author
+believed it — which is precisely why a self-report cannot be the evidence.
+
+**The worst of it inverted the thing it fixed.** `route-prompt.sh` extracts the prompt through an
+`elif` chain ending in a regex fallback. On Windows `python3` never resolves, so the chain reaches
+`command -v python` — the Store alias stub — and **an `elif` chain commits to the branch it
+selects**. The regex `else` is never re-entered. So the hook returns an empty prompt and routes
+nothing, silently, on the primary target platform. B-102's own commit message documents that exact
+trap and explains why a name-only probe would be "strictly worse than the bug being fixed". It was
+right. It just never edited the file. *The reachability of the fallback was the bug — not the name.*
+
+**And the fix created a second defect in a file it never touched.** `framework-doctor` still asks
+`has python3`. Post-B-102 the guard is active on a no-`jq` Windows box while the doctor reports the
+write floor **INACTIVE**. The diagnostic every other honesty claim rests on now produces a false
+alarm — invented by a fix, in a file outside that fix's scope, because "the doctor" was in the
+record but not in the diff.
+
+**How it was missed is mechanical, and worth more than the individual bugs.** The change was scoped
+by grepping `command -v python3`. The sites that survived are the ones spelling the probe
+*differently* — `guard.sh` uses a multi-line `for`, four hooks use a 200-char one-liner,
+`route-prompt` uses a third form. **One contract, three grammars, and the grep was written against
+one of them.** Now B-108. The general lesson: *a claim of "fixed everywhere" is unfalsifiable unless
+there is an inventory a gate can re-derive.* No gate knows which files are parser-dependent, so
+nothing could contradict the claim.
+
+**The adversarial pass was worth it, and was wrong once.** Five blocking findings on the review's own
+plan: four were right and changed the design materially — resolve *lazily*, because a per-prompt hook
+must not pay interpreter startups when `jq` works; reuse the existing utility-sandbox fixture rather
+than "scrub PATH", which breaks the hook before the branch under test is reached; keep the findings
+as separately-traceable entries instead of absorbing them into the review; and specify the doctor as
+a verdict *table* rather than "ask what guard asks". The fifth claimed a test file did not exist. It
+does — tracked and unignored — and the reviewer had searched a tree that skipped `.claude/`, the
+search hazard documented at the top of our own backlog. **A reviewer reproducing our own documented
+trap is not an argument against reviewers; it is the argument for verifying each finding.**
+
+**The pattern worth naming: three consecutive releases whose record overclaimed what shipped.** B-94,
+B-102, and v0.45.0's commit message. Every one was caught by the next independent review, never by
+the authoring session and never by a gate. The failing component is not the implementation — it is
+the self-report. Worth asking whether `release.ps1` should require the claimed blast radius as a file
+list it can diff against the commit it is about to make.

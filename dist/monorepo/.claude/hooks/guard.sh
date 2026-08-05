@@ -10,10 +10,11 @@
 #                  Block = JSON {"permissionDecision":"deny",...} on stdout (superset incl. hookSpecificOutput).
 #
 # Allow = exit 0, no output. Degrades SAFE (allow) on parse failure; the high-confidence secret
-# patterns FAIL CLOSED once content is extracted. If NO JSON parser exists (no jq, no python3) the
-# guard cannot inspect anything — it allows with a loud stderr warning so the floor being OFF is
-# never silent. To relax per-repo, edit the patterns below or remove the PreToolUse registration
-# from .claude/settings.json and .github/hooks/hooks.json.
+# patterns FAIL CLOSED once content is extracted. If NO JSON parser exists (no jq, and no working
+# python — python3, python, or py, each probed by execution) the guard cannot inspect anything —
+# it allows with a loud stderr warning so the floor being OFF is never silent. To relax per-repo,
+# edit the patterns below or remove the PreToolUse registration from .claude/settings.json and
+# .github/hooks/hooks.json.
 set -u
 
 [ -t 0 ] && exit 0
