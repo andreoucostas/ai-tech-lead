@@ -1152,7 +1152,14 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             $transcript = Read-Transcript $transcriptPath
             $evidence = Test-ScenarioEvidence $case.id $target $transcript $before
             $status = if ($agentExit -ne 0) { 'ERROR' } elseif ($evidence.Pass) { 'PASS' } elseif ($evidence.Status -eq 'INCONCLUSIVE') { 'INCONCLUSIVE' } else { 'FAIL' }
-            $detail = "agentExit=$agentExit timedOut=$($run.TimedOut); $($evidence.Detail)"
+            # The terminal result event already carries spend and token counts; recording them makes
+            # the cost of a suite run measurable instead of guessed from the per-case budget CAP,
+            # which is an upper bound and not what a run actually consumes.
+            $final = @($transcript.Events | Where-Object { $_.type -eq 'result' } | Select-Object -Last 1)
+            $cost = if ($final -and $null -ne $final[0].total_cost_usd) { [string]$final[0].total_cost_usd } else { 'n/a' }
+            $tokensIn = if ($final -and $final[0].usage) { [string]$final[0].usage.input_tokens } else { 'n/a' }
+            $tokensOut = if ($final -and $final[0].usage) { [string]$final[0].usage.output_tokens } else { 'n/a' }
+            $detail = "agentExit=$agentExit timedOut=$($run.TimedOut) costUsd=$cost tokensIn=$tokensIn tokensOut=$tokensOut; $($evidence.Detail)"
         } catch { $status = 'ERROR'; $detail = $_.Exception.Message }
         $results += [pscustomobject]@{ Id = $case.id; Status = $status; Model = $caseModel; Agent = $caseAgent; Detail = $detail }
         Write-Output "$status $($case.id): $detail"

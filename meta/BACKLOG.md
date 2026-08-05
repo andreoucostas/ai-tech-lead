@@ -1403,6 +1403,38 @@ warehouse-specific symptom. B-97 earned its own entry on those grounds and so do
 general defect found through the same symptom), B-76 (shipped descriptions matching what they
 describe — accuracy, where this is coverage), B-78 (warehouse-map signals that reach nobody).
 
+**Step 1 status, 2026-08-05 — instrument BUILT and verified; the six live runs are PENDING.**
+Design: `.claude/plans/2026-08-05-b98-step1-routing-probe-design.md` (rev 2, adversarially reviewed,
+12 findings dispositioned). Phase 1 shipped in commit `abaa7a2` (meta-only): warehouse fixture,
+`warehouseRouting` grader, three prompt paraphrases, 19 self-test assertions green on pwsh 7.6.4 and
+red-tested by breaking the Conventions replacement regex, the shipped step-0 table, and the shipped
+`CLAUDE.md` pointer count.
+
+**Deferred to 2026-08-06+ for weekly usage quota (96% consumed), not for cost.** Run all six as
+designed — do not silently shrink n, and do not substitute a non-Claude host: verified 2026-08-05
+that codex/terra has **no skill mechanism at all** and emits an unrelated event schema
+(`thread.started`/`turn.started`/`item.completed`/`agent_message`/`turn.completed`), so `Skill`
+routing cannot fire and `Read-Transcript` rejects the stream. A terra run would score `NEITHER` six
+times for host reasons and the decision rule would misread that as a confirmed routing gap.
+
+Command: `pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Scenario warehouse-route-p1,warehouse-route-p2,warehouse-route-p3 -TimeoutSeconds 420`, twice.
+
+**The decision rule is PRE-REGISTERED and binding** (design §2.1) — it was written before any run
+precisely so it cannot be tuned to the outcome. Let `r` = runs where framework warehouse guidance
+demonstrably entered context: `r=0` → routing gap confirmed, **B-96 blocked**, step 2 owns the
+remedy; `1≤r≤4` → routing real but unreliable, B-96 proceeds with a stated reliability ceiling;
+`r≥5` → routing works, **B-96 unblocked**, the gap is content.
+
+**Design correction found during implementation (§3.4.1), and it changes what a negative means.**
+`dist/dotnet/CLAUDE.md:132` names `map-warehouse` in **Common Tasks** — always-loaded context that
+`/bootstrap` never rewrites, because it replaces *Conventions*, not the skills list. So a consumer
+with "no pointer at all" **cannot exist**, and the design's population table varies only in the
+Conventions section. This sharpens a negative result: if a skill that is named and described in
+static context on every turn, whose USE FOR already covers "what feeds this report", still does not
+fire, the gap is not "the description was not matched" but "a named, in-context skill was not
+reached". A positive result is correspondingly attributable to the skills list rather than to
+description tuning, and must not be cited as evidence the description is well-written.
+
 ---
 
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
