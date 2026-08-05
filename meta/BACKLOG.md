@@ -1478,13 +1478,34 @@ conditional machinery: `session-start` is unprotected and already reads conditio
 inject the rules **only when the import line is absent** — no double-context cost for migrated or
 greenfield consumers, which is exactly what sank Option D.
 
-**Two cheap questions still gate implementation** (do not skip — both are one canary each):
-1. **Does a narrower `applyTo` still deliver?** `"**"` was used, and **B-17 explicitly rejected a
-   `**` variant** on salience-dilution grounds. If only `"**"` works, B-17's decision and this design
-   collide and one must give.
-2. **Does VS Code agent mode behave like the CLI**, especially with Preview hooks disabled? The
-   review asked for both surfaces; only the CLI was run. Precedence against a stale `AGENTS.md` is
-   also untested.
+**Canary 3 RUN 2026-08-05 — `applyTo` breadth is load-bearing; no collision with B-17.**
+Three arms, identical fileless prompt, a real `Program.cs` present so `**/*.cs` had a match:
+`"**"` → delivered; `"**/*.cs"` → **not** delivered (`NOT-IN-CONTEXT`); **no frontmatter → delivered**.
+Script: `.claude/scripts/canary-applyto-scope.ps1`.
+
+- Framework rules must ship broadly scoped — a narrow `applyTo` does not reach a prompt that names no
+  file. Use explicit `applyTo: "**"` rather than omitting frontmatter: both work, but the explicit
+  form states intent instead of leaning on an undocumented default.
+- **The B-17 collision flagged in rev 3 was overstated, twice over.** B-17's "no `applyTo: **`
+  variant" is scoped to its own item — *scoped instruction delivery for **test files*** — and rejects
+  a broad variant *of the test-integrity rules*, not a separate framework-rules file. Correction
+  recorded rather than quietly dropped.
+- **Better: canary 3 validates B-17's premise with evidence it never had.** Narrow scoping really
+  does gate delivery on the model touching a matching file, which is exactly the "highest marginal
+  salience" property B-17 wants. The two designs are complementary. **B-17 should cite this result.**
+
+**Canary 4 (VS Code) — NOT RUNNABLE ON THIS BOX, and that is itself a finding.** VS Code is installed
+but has three extensions: Angular language service and two Claude Code builds. **No GitHub Copilot
+extension.** So VS Code agent mode cannot be tested here by any means, automated or manual, without
+installing it — and Copilot Chat has no headless driver in any case.
+
+Consequence beyond B-97: **B-17's claim that `.github/instructions/` "works today with Preview hooks
+off"** describes precisely this untestable surface. Treat it as **unverified**, not as a known
+property — `docs/enforcement-surfaces.md` already rates VS Code the weakest surface, and this is why.
+
+**One question gates implementation, and it cannot be answered on this machine:** whether VS Code
+agent mode behaves like the CLI, and how a `.github/instructions/` file interacts with a stale
+`AGENTS.md`. Everything else is settled and observed.
 
 **Design step 3 — the fingerprint manifest — is BUILT (2026-08-05).**
 `.claude/scripts/build-block-manifest.ps1` (meta script, PS-only per WSD-005) →

@@ -236,9 +236,8 @@ behave is exactly what this review caught twice.
    - **Copilot CLI only.** VS Code agent mode is untested, and Preview-hooks-disabled VS Code
      especially so — the surface `docs/enforcement-surfaces.md` already rates weakest. The review
      asked for both; only one was run. Precedence against a stale `AGENTS.md` is also untested.
-   - **`applyTo: "**"` was used, and B-17 explicitly decided against shipping a `**` variant** on
-     salience-dilution grounds. Whether a *narrower* `applyTo` still delivers on a prompt that names
-     no file is **unknown**, and the shipped design depends on the answer.
+   - ~~`applyTo: "**"` was used, and B-17 rejected a `**` variant…~~ **SETTLED by canary 3, below —
+     and the feared collision with B-17 was overstated on two counts.**
 3. Define the historical fingerprint / migration manifest (design work, no host needed — **this is
    the only step executable today**).
 4. Ship the honestly-labelled C row plus Option E conditional discovery.
@@ -272,6 +271,41 @@ no remaining benefit.
   conditionally, so it can inject the rules **only when the import line is absent**. That carries no
   double-context cost for migrated or greenfield consumers, which is precisely what sank Option D.
 
-**Do not implement yet.** Two open questions gate it, both cheap: whether a narrower `applyTo` still
-delivers (B-17 rejected `**`), and whether VS Code agent mode behaves like the CLI. Both are the same
-kind of canary already built.
+### Canary 3 (2026-08-05) — `applyTo` breadth is load-bearing, and there is a cleaner option
+
+Three arms, identical fileless prompt, distinct sentinels, a real `Program.cs` present so a
+`**/*.cs` glob had something to match. Script: `.claude/scripts/canary-applyto-scope.ps1`.
+
+| `applyTo` | Delivered? |
+|---|---|
+| `"**"` | **yes** |
+| `"**/*.cs"` | **no** — returned `NOT-IN-CONTEXT` |
+| *no frontmatter at all* | **yes** |
+
+1. **A narrow `applyTo` does not deliver on a prompt that names no file.** Framework rules, which
+   must arrive on every task, therefore cannot be narrowly scoped.
+2. **No frontmatter also delivers** — an option neither the design nor the review considered, and it
+   sidesteps the `**` question entirely. Prefer explicit `applyTo: "**"` for a shipped artifact
+   nonetheless: it states the intent, whereas no-frontmatter leans on an undocumented default that
+   can change silently. Recorded because it is the fallback if `"**"` ever becomes contentious.
+3. **The collision with B-17 was overstated, on two counts.** B-17's *"no `applyTo: **` variant"* is
+   scoped to its own item — **scoped instruction delivery for _test files_** — and rejects shipping a
+   broad variant *of the test-integrity rules*, not a broad framework-rules file. And canary 3
+   **validates B-17's premise with evidence it never had**: narrow scoping genuinely gates delivery
+   on the model touching a matching file, which is exactly the "highest marginal salience" behaviour
+   B-17 is after. The two designs are complementary, not in conflict.
+
+### Canary 4 (VS Code) — NOT RUNNABLE ON THIS BOX
+
+VS Code is installed (`%LOCALAPPDATA%\Programs\Microsoft VS Code`) but carries **three** extensions —
+Angular language service and two Claude Code builds. **The GitHub Copilot extension is not
+installed**, so VS Code agent mode cannot be tested here by any means, automated or manual, without
+installing it first. Neither is it scriptable: there is no headless way to drive Copilot Chat.
+
+Consequence beyond this design: **B-17's claim that `.github/instructions/` "works today with Preview
+hooks off"** describes the VS Code surface and has, on this evidence, never been verifiable on this
+machine. Treat it as unverified.
+
+**Do not implement yet.** One question remains and it is not answerable here: whether VS Code agent
+mode behaves like the CLI, and how a `.github/instructions/` file interacts with a stale `AGENTS.md`.
+Everything else is settled and observed.
