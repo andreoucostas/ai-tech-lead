@@ -1446,11 +1446,19 @@ blocking findings accepted. The two that matter:
   protected file was **not synchronised**; it does not prove any block is stale or distinguish a
   deliberate consumer edit. Ships as `DIVERGED — review required`, not "you are behind".
 
-**Blocked on two live host canaries** (does `@import` resolve from a root `CLAUDE.md`; does
-`.github/instructions/` reach Copilot including Preview-hooks-off VS Code). Neither is answerable by
-reading the repo. Both need agent sessions, so both are parked on the same weekly quota as **B-98
-step 1**'s six routing runs — **batch all three when quota resets (2026-08-06+)**; same harness, same
-kind of experiment, materially cheaper together.
+**Canary 1 RUN 2026-08-05 — POSITIVE. `@import` resolves from a root `CLAUDE.md`, so Option A is
+viable.** Sentinel present only in the imported file; the model returned it with **zero tool
+invocations in the transcript**, so it could not have read the file, and the control confirms the
+sentinel is absent from `CLAUDE.md` itself. Verified independently of the probe script's own check.
+n=1 is sufficient because this measures the host's *deterministic* context assembly, unlike the
+stochastic routing question — do not cite it as precedent for shrinking B-98's six runs.
+
+**This moves the recommendation toward A.** Option A's only serious objection was the Copilot leg,
+and sol's finding that `.github/instructions/` is unprotected already weakened it. With imports now
+proven to resolve, A is a working delivery path for Claude Code today. **Canary 2 (does an unprotected
+`.github/instructions/` file reach Copilot, including Preview-hooks-off VS Code) is now the single
+open question that decides A-alone versus A-plus-a-Copilot-leg.** It needs Copilot, not Claude, so it
+is a different tool rather than a quota question.
 
 **Design step 3 — the fingerprint manifest — is BUILT (2026-08-05).**
 `.claude/scripts/build-block-manifest.ps1` (meta script, PS-only per WSD-005) →
@@ -1634,6 +1642,42 @@ would corrupt the one property that rule exists to protect.
 - **Known weakness in the transfer assumption, stated up front:** it presumes routing capability is
   monotonic in model strength. Plausible, unproven, and arguably backwards — a stronger model may
   answer directly where a weaker one reaches for a tool. This is why even a positive is provisional.
+
+**Haiku pilot RESULT, 2026-08-05: 3 runs, all negative — and DISCARDED per the rule above.**
+`-Model haiku` on p1/p2/p3. All three: `Skill` tool never used, `docs/warehouse-map.md` never opened,
+`category=NEITHER`. The string `map-warehouse` appears in every transcript only because
+`CLAUDE.md > Common Tasks` names it — i.e. the skill was **visible in always-loaded context and not
+invoked**.
+
+**This does not count as `r=0` and must not be cited as a confirmed routing gap.** The pre-registration
+said a negative here cannot separate a routing gap from a weaker model's tool selection, and that
+still holds now that the negative is in hand. The registered `sonnet` runs remain owed. Recording the
+constraint costs a result I would otherwise like to claim, which is the point of registering it first.
+
+Three things it *does* establish, none model-dependent:
+
+1. **Fixture validity — this is not the terra-style host confound.** Verified on disk in the retained
+   scratch: `target/` carries a 24 KB `CLAUDE.md`, all 12 skills including `map-warehouse`, and
+   `docs/warehouse-map.md`. The probe put the framework in front of the model correctly. (`tokensIn=42`
+   in the PASS line is a token-accounting artifact, not empty context — checked, not assumed.)
+2. **The probe has now been exercised live for the first time** and works end to end: spawn, grade,
+   categorise. It was previously "BUILT and verified" with no live run behind it.
+3. **Cost envelope:** ~$0.056 per run on haiku against a $1.25 budget. The six registered runs are
+   affordable; cost was never the reason to defer them.
+
+**Finding filed against the probe itself: `PASS` is a misleading label here.** The harness printed
+`PASS warehouse-route-p3: … category=NEITHER` — `PASS` means "the run completed and was graded", not
+"routing worked". In an instrument whose entire job is to settle a binary routing question, a line
+reading `PASS … NEITHER` invites exactly the misreading the pre-registered rule exists to prevent.
+Rename to `GRADED`/`DONE`, or print the category first. Cheap, and it is the same failure family as
+B-74/B-75 — a report whose shape suggests success.
+
+**Also found: the recorded run command cannot execute on the maintainer box as written.** `claude` is
+not resolvable — the session `PATH` holds three entries, the third being the literal unexpanded string
+`${PATH}`; the binary is at `C:\Users\Costas\.local\bin\claude.exe`. The harness fails fast and
+clearly (`claude CLI is not installed or not on PATH`), which is good instrument behaviour, but the
+runs were parked believing quota was the only obstacle and it was not the first one hit. Prepend that
+directory to `PATH` for the child process; do **not** "fix" the registry, which is a known false fix.
 
 **The decision rule is PRE-REGISTERED and binding** (design §2.1) — it was written before any run
 precisely so it cannot be tuned to the outcome. Let `r` = runs where framework warehouse guidance

@@ -195,9 +195,26 @@ fingerprint manifest, which is Option E's manifest — the same artifact, so bui
 cannot be answered by reading the repo, and asserting them from general knowledge of how the hosts
 behave is exactly what this review caught twice.
 
-1. **Canary: does `@.claude/framework-rules.md` resolve from a root `CLAUDE.md`?** Scratch consumer,
-   unique sentinel in the imported file only, fresh session, neutral question, preserve the
-   transcript. **If it does not resolve, Option A collapses.**
+1. ~~**Canary: does `@.claude/framework-rules.md` resolve from a root `CLAUDE.md`?**~~
+   **RUN 2026-08-05 — POSITIVE. It resolves. Option A does not collapse; it is viable.**
+
+   Method: scratch consumer, sentinel `ZORBLAX-7Q4M` present **only** in `.claude/framework-rules.md`,
+   root `CLAUDE.md` carrying `@.claude/framework-rules.md` and not the sentinel; prompt asked for the
+   codeword, forbade reading files, and offered `NOT-IN-CONTEXT` as the escape.
+
+   Result: the model answered `ZORBLAX-7Q4M`. Verified independently of the script's own check —
+   **the transcript contains zero tool invocations of any name**, so it could not have reached the
+   sentinel by reading; and the control re-check confirms `CLAUDE.md` does not contain the sentinel
+   while the imported file does. Script: `scratchpad/canary1-import.ps1` (exit 0 = POSITIVE, 1 =
+   NEGATIVE, 2 = INCONCLUSIVE, where a positive is downgraded to inconclusive if any file tool ran).
+
+   **n=1 is adequate here, and the reason matters:** this measures the *host's* context assembly,
+   which is deterministic — the import is either resolved before the model sees anything, or it is
+   not. That is categorically unlike routing (canary/B-98), which is a stochastic model behaviour and
+   is why six runs are registered there. Do not cite this run count as precedent for those.
+
+   **Scope of the claim:** proves the mechanism for Claude Code CLI. It says nothing about Copilot —
+   which Option A never claimed via imports, and which canary 2 owns.
 2. **Canary: does an unprotected `.github/instructions/framework-rules.instructions.md` reach
    Copilot?** CLI and VS Code agent mode, including Preview-hooks-disabled VS Code; check automatic
    selection and precedence against a stale `AGENTS.md`. **If it works, the recommendation flips to
