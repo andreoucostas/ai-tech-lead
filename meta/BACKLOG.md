@@ -1617,6 +1617,24 @@ times for host reasons and the decision rule would misread that as a confirmed r
 
 Command: `pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Scenario warehouse-route-p1,warehouse-route-p2,warehouse-route-p3 -TimeoutSeconds 420`, twice.
 
+**Haiku pilot — PRE-REGISTERED 2026-08-05, before running, and it does NOT satisfy step 1.**
+Weekly quota is effectively spent, so the six registered runs cannot happen today. A cheaper model is
+worth attempting, but only under a rule fixed in advance, because the registered rule below names no
+model and the harness defaults to `sonnet` (`run-agent-evals.ps1:9`) — swapping the model silently
+would corrupt the one property that rule exists to protect.
+
+- **The pilot is `-Model haiku` on `warehouse-route-p1..p3`. It is a pilot, not the experiment.**
+- **Positive (guidance demonstrably enters context in ≥5 of 6):** provisional evidence that routing
+  works, since a weaker model succeeding makes success on a stronger one likely. **Provisional only**
+  — it still requires one `sonnet` confirmation run before B-96 is unblocked.
+- **Negative (r low or zero): UNINTERPRETABLE. Discard it. Do not record it as `r`, and do not let
+  it confirm a routing gap.** It cannot distinguish "no framework guidance reached the model" from
+  "this model is weaker at tool selection" — the identical confound that already ruled out a terra
+  substitution below.
+- **Known weakness in the transfer assumption, stated up front:** it presumes routing capability is
+  monotonic in model strength. Plausible, unproven, and arguably backwards — a stronger model may
+  answer directly where a weaker one reaches for a tool. This is why even a positive is provisional.
+
 **The decision rule is PRE-REGISTERED and binding** (design §2.1) — it was written before any run
 precisely so it cannot be tuned to the outcome. Let `r` = runs where framework warehouse guidance
 demonstrably entered context: `r=0` → routing gap confirmed, **B-96 blocked**, step 2 owns the
