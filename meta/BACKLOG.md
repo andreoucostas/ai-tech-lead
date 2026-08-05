@@ -2006,6 +2006,47 @@ one session (the `.ps1` marker check was blind to the 15 hash-form markers in `r
 `audit-trail` / `.gitignore` / CI; the `.sh` twin matched unanchored, so a prose mention of the syntax
 would have counted as a marker). Every speedup here needs the planted-defect test re-run, both twins.
 
+**LARGELY DONE 2026-08-06 — measured, fixed, re-red-tested. What the measurement overturned:**
+
+Every estimate in the table below was derived from spawn-cost arithmetic, and the profile disagreed
+with most of it. Recorded because the *method* is the lesson, not the numbers:
+
+| claim | measured |
+|---|---|
+| marker outer loop ~12s | real, but the actual hotspot inside 1a was a `printf \| grep -q` blank-test **per marker** (117 × 2 forks) — 14.7s |
+| PS-AST 32 spawns ~8.5s | **confirmed** — batching to one process took it to **0.6s** |
+| `ValidateDist.Tests` dominates because it copies the dist per case | **wrong** — `Copy-Item` of the 161-file dist is **0.25s**, ~9s across all 37 cases. Not worth touching. |
+| — (not in the table at all) | `case_exact_path` forked `ls \| grep` **per path segment**: ~312 forks, and it made `--content-only` *slower than a full run* |
+| — (not in the table at all) | check 7 forked a `grep` **per doc** (~90) plus a `basename` per doc |
+
+**Fixed (bash twin):** file-index built once for case-exact lookups; one batched `grep` for check 7
+with the per-file loop retained *only* as the error path (so "which doc was unreadable" is still
+answerable); `basename`/`sed`/`tr` replaced with parameter expansion; the blank-test made a bash
+pattern match; PS-AST batched into one process; marker scan hoisted to `grep -rlE` sharing **one**
+regex variable with the extractor so the selecting and extracting patterns cannot drift apart.
+
+| | before | after |
+|---|---:|---:|
+| `validate-dist.sh` FULL | 66s | **29s** |
+| `validate-dist.sh --content-only` | 23s | **11s** |
+| `ValidateDist.Tests.ps1` | ~850s | **391s** |
+| **the whole meta suite** | **1,027s** | **428s** |
+
+**Red-tested after every step, both twins** — 20/20 planted-defect cases still red, and the counts
+the checks report (117 markers, 30 script refs, 89 docs, 26 registrations) are byte-identical to
+before, which is the anti-inert evidence. The backslash-collapse rewrite was proven equivalent to the
+`sed` it replaced across 7 inputs including the `//` edge case.
+
+**(a) shipped as well:** both twins now print `TIMING <s>  <check>` to stderr and warn past a
+per-check ceiling (`VALIDATE_DIST_CHECK_CEILING_S`, default 25s). stdout is untouched, so every
+existing caller parses the same `OK:`/`FAIL:` stream.
+
+**Still open:** the `.ps1` twin's section-path check (4.6s of its ~7s) is now *its* hotspot and was
+left alone. And the structural question stands — the suite makes ~16 bash validator runs against a
+real dist, so ~300s is inherent at current per-run cost. Going below that means running fewer legs,
+which is a **coverage** decision (B-92 chose both legs deliberately), not a performance one. Do not
+take it without a written decision.
+
 **MEASURED 2026-08-05 (the number this entry has never had).** The meta suite, run end-to-end on the
 maintainer box with a warm tree: **1,027s — 17.1 minutes**, of which `ValidateDist.Tests` is the
 overwhelming majority (the other eight files together finish in well under a minute). The shipped

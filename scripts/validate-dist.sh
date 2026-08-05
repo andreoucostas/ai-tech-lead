@@ -39,8 +39,34 @@ DIST="$DISTROOT/$MODE"
 [ -d "$DIST" ] || { echo "no $DIST — run scripts/build.sh $MODE first" >&2; exit 2; }
 
 failed=0
-fail() { echo "FAIL: $1"; failed=$((failed+1)); }
-ok()   { echo "OK:   $1"; }
+# Per-check elapsed time. Every check ends by calling ok() or fail() exactly once, so timing the
+# interval between those calls attributes cost without annotating each check by hand.
+#
+# Why this exists: this validator's runtime was governed by nothing. A check regressed to the point
+# where its bash twin could not finish AT ALL, and that was discovered only because a maintainer
+# asked why a suite had been running for hours -- every correctness gate stayed green throughout.
+# Correctness was gated; cost was not, so a 20x regression was invisible in the run that caused it.
+# Timings go to stderr so stdout stays exactly the OK:/FAIL: stream every caller already parses.
+_CHECK_CEILING_S=${VALIDATE_DIST_CHECK_CEILING_S:-25}
+_timings=''
+_t_last=$EPOCHREALTIME
+_record_timing() {
+  _t_now=$EPOCHREALTIME
+  _t_delta=$(awk -v a="$_t_now" -v b="$_t_last" 'BEGIN{printf "%.1f", a-b}')
+  _timings="$_timings$_t_delta $1"$'\n'
+  _t_last=$_t_now
+}
+_report_timings() {
+  [ -n "$_timings" ] || return 0
+  printf '%s' "$_timings" | while IFS=' ' read -r _d _label; do
+    [ -n "$_d" ] || continue
+    printf 'TIMING %6ss  %s\n' "$_d" "$_label" >&2
+    awk -v d="$_d" -v c="$_CHECK_CEILING_S" 'BEGIN{exit !(d>c)}' &&
+      printf 'WARNING: check "%s" took %ss, over the %ss ceiling. Gate cost is a defect too -- profile it before it becomes a timeout.\n' "$_label" "$_d" "$_CHECK_CEILING_S" >&2
+  done
+}
+fail() { _record_timing "${1:0:60}"; echo "FAIL: $1"; failed=$((failed+1)); }
+ok()   { _record_timing "${1:0:60}"; echo "OK:   $1"; }
 
 # --content-only skips checks 1-5 (parse/marker/template-checks) and runs only the content checks
 # 6, 7 and 8. See the PowerShell twin for the full rationale: those five re-parse every shipped file
@@ -92,9 +118,19 @@ fi
 # marker added later is covered without maintaining a second list.
 marker_count=0
 expansion_problems=""
+# ONE regex, used both to select which files to open and to extract markers from them. It is a
+# single variable on purpose: the speedup below narrows the outer loop from every file in src/core
+# to only the marker-bearing ones, and if the selecting pattern could drift from the extracting
+# pattern the check would silently inspect fewer markers and still print OK — an inert check, which
+# is worse than the slow one it replaces. Sharing the literal makes that divergence impossible.
+_MARKER_LINE_RE='^[[:space:]]*(<!-- @stack:[A-Za-z0-9_-]+ -->|# @stack:[A-Za-z0-9_-]+)[[:space:]]*$'
 while IFS= read -r core_file; do
   core_rel=${core_file#src/core/}
   dist_file="$DIST/$core_rel"
+  # Read the composed file ONCE per file rather than once per marker. Files carry up to a dozen
+  # markers each, so this was re-reading and re-normalising the same file a dozen times.
+  dist_text=''
+  [ -f "$dist_file" ] && dist_text=$(sed 's/\r$//' "$dist_file")
   while IFS= read -r marker; do
     [ -n "$marker" ] || continue
     marker_count=$((marker_count+1))
@@ -126,14 +162,16 @@ while IFS= read -r core_file; do
       if [ -n "$snippet_text" ]; then snippet_text="$snippet_text
 $part"; else snippet_text=$part; fi
     done
-    if ! printf '%s\n' "$snippet_text" | grep -q '[^[:space:]]'; then
+    # "is this blank?" as a bash pattern test, not a printf|grep pipeline. It runs once per marker,
+    # and at 117 markers those two forks per marker were the single most expensive thing left in the
+    # validator -- 14.7s of a 40s run, more than every parse check combined.
+    if [[ ! "$snippet_text" =~ [^[:space:]] ]]; then
       expansion_problems="$expansion_problems
 $MODE : $core_rel $marker resolves to an empty expansion"
     elif [ ! -f "$dist_file" ]; then
       expansion_problems="$expansion_problems
 $MODE : $core_rel $marker cannot expand because the composed file is missing"
     else
-      dist_text=$(sed 's/\r$//' "$dist_file")
       case "$dist_text" in
         *"$snippet_text"*) ;;
         *) expansion_problems="$expansion_problems
@@ -143,9 +181,11 @@ $MODE : $core_rel $marker snippet content is absent from the composed file" ;;
     # BOTH marker forms, anchored to the whole line exactly as the composer anchors them
     # (build.sh's html/hash marker regexes): markdown `<!-- @stack:NAME -->`, scripts `# @stack:NAME`.
     # Unanchored matching would also count a prose mention of the syntax as a marker.
-  done < <(grep -hoE '^[[:space:]]*(<!-- @stack:[A-Za-z0-9_-]+ -->|# @stack:[A-Za-z0-9_-]+)[[:space:]]*$' "$core_file" 2>/dev/null |
+  done < <(grep -hoE "$_MARKER_LINE_RE" "$core_file" 2>/dev/null |
            grep -oE '@stack:[A-Za-z0-9_-]+' || true)
-done < <(find src/core -type f)
+  # Only files that actually contain a marker, selected with the SAME regex used to extract them
+  # above. `find src/core -type f` opened all 109 files to find markers in 40 of them.
+done < <(grep -rlE "$_MARKER_LINE_RE" src/core 2>/dev/null || true)
 expansion_count=$(printf '%s\n' "$expansion_problems" | grep -c . || true)
 if [ "$marker_count" -eq 0 ]; then
   fail "marker-expansion inventory found zero core @stack markers -- the inventory is broken, not the dist."
@@ -253,15 +293,28 @@ else
   exit 2
 fi
 ps1fails=""
-while IFS= read -r f; do
-  # NOTE: positional args after `pwsh -Command '<script>'` do NOT bind to $args (they're silently
-  # dropped) — pass the path via an env var instead so quoting/argument-passing is not a concern.
-  VALIDATE_DIST_PS1_FILE="$f" "$PWSH" -NoProfile -NonInteractive -Command '
-    $e = $null
-    [System.Management.Automation.Language.Parser]::ParseFile($env:VALIDATE_DIST_PS1_FILE, [ref]$null, [ref]$e) | Out-Null
-    if ($e) { exit 1 } else { exit 0 }
-  ' >/dev/null 2>&1 || ps1fails="$ps1fails $f"
-done < <(find "$DIST" -name '*.ps1' -type f)
+# ONE PowerShell process for the whole tree, not one per file. Starting pwsh costs ~265 ms on this
+# box (it is the MSIX build), so the old per-file loop spent ~8.5 s of a run purely on process
+# startup for ~32 files, and every one of those parses is identical work the runtime could do
+# back-to-back. The parse itself is unchanged: same Parser::ParseFile, same per-file verdict.
+# NOTE: positional args after `pwsh -Command '<script>'` do NOT bind to $args (they're silently
+# dropped) — the file list travels via an env var pointing at a temp file, so no quoting concerns.
+_ps1_list=$(mktemp)
+find "$DIST" -name '*.ps1' -type f > "$_ps1_list"
+if [ -s "$_ps1_list" ]; then
+  ps1fails=$(VALIDATE_DIST_PS1_LIST="$_ps1_list" "$PWSH" -NoProfile -NonInteractive -Command '
+    $bad = @()
+    foreach ($p in [IO.File]::ReadAllLines($env:VALIDATE_DIST_PS1_LIST)) {
+      if ([string]::IsNullOrWhiteSpace($p)) { continue }
+      $e = $null
+      [System.Management.Automation.Language.Parser]::ParseFile($p, [ref]$null, [ref]$e) | Out-Null
+      if ($e) { $bad += $p }
+    }
+    # One space-prefixed token per failure, matching the string this check used to accumulate.
+    foreach ($b in $bad) { [Console]::Out.Write(" " + $b) }
+  ' 2>/dev/null)
+fi
+rm -f "$_ps1_list"
 if [ -n "$ps1fails" ]; then fail "PS syntax errors in:$ps1fails"; else ok "all *.ps1 files parse cleanly ($PWSH)."; fi
 
 # --- 5. the dist's own template-checks suite --------------------------------------------------------
@@ -361,13 +414,33 @@ docgreperrs=""
 docsscanned=0
 refsextracted=0
 cmdre='(pwsh|bash|powershell)( -[A-Za-z]+( [A-Za-z]+)?)* [A-Za-z0-9_./-]+\.(ps1|sh)'
-while IFS= read -r f; do
-  case "$(basename "$f")" in CHANGELOG.md) continue;; esac
-  docsscanned=$((docsscanned+1))
+# ONE grep over every shipped doc, instead of one grep PER doc. At ~90 docs that was ~90 forks per
+# run, 7.5s of a 34s run, and it ran on every invocation including the cheap --content-only ones.
+# The batched pass emits `path:line:content`, so nothing about the extraction below changes.
+#
+# The per-file loop is NOT deleted: it survives as the error path. `grep -r` reports exit 2 if ANY
+# input was unreadable but does not say WHICH, and "a doc that could not be read is not a doc that
+# contained nothing" is the anti-fail-open property this check was given deliberately. So the fast
+# path runs first, and only when it reports an error do we re-walk file by file to name the culprit.
+# Fast when healthy, precise when broken.
+_batch=$(grep -rnE --include='*.md' "$cmdre" "$DIST" 2>/dev/null); _bstatus=$?
+if [ "$_bstatus" -gt 1 ]; then
+  while IFS= read -r f; do
+    case "${f##*/}" in CHANGELOG.md) continue;; esac
+    rel="${f#"$DIST"/}"
+    grep -nE "$cmdre" "$f" >/dev/null 2>&1
+    [ $? -gt 1 ] && docgreperrs="$docgreperrs$rel"$'\n'
+  done < <(find "$DIST" -type f -name '*.md')
+fi
+# Scanned-count is its own cheap pass; the batched grep only reports files that MATCHED, and the
+# vacuity floor below needs to know how many docs were actually looked at.
+docsscanned=$(find "$DIST" -type f -name '*.md' ! -name 'CHANGELOG.md' | grep -c . || true)
+while IFS= read -r _bline; do
+  [ -n "$_bline" ] || continue
+  f="${_bline%%:*}"; _rest="${_bline#*:}"
+  case "${f##*/}" in CHANGELOG.md) continue;; esac
   rel="${f#"$DIST"/}"
-  matches=$(grep -nE "$cmdre" "$f" 2>/dev/null); gstatus=$?
-  if [ "$gstatus" -gt 1 ]; then docgreperrs="$docgreperrs$rel"$'\n'; continue; fi
-  [ "$gstatus" -eq 0 ] || continue
+  matches="$_rest"
   while IFS= read -r hit; do
     [ -n "$hit" ] || continue
     ln="${hit%%:*}"; content="${hit#*:}"
@@ -380,7 +453,7 @@ while IFS= read -r f; do
       [ -f "$DIST/$script" ] || deadrefs="$deadrefs$rel:$ln: \`$script\` does not exist in this dist"$'\n'
     done <<< "$(printf '%s\n' "$content" | grep -oE "$cmdre" | grep -oE '[A-Za-z0-9_./-]+\.(ps1|sh)$')"
   done <<< "$matches"
-done < <(find "$DIST" -type f -name '*.md')
+done <<< "$_batch"
 deadrefs=$(printf '%s' "$deadrefs" | sed '/^[[:space:]]*$/d' | sort -u || true)
 absrefs=$(printf '%s' "$absrefs" | sed '/^[[:space:]]*$/d' | sort -u || true)
 deadcount=$(printf '%s' "$deadrefs" | grep -c . || true)
@@ -421,26 +494,44 @@ fi
 # case-insensitive under Git Bash on Windows and case-sensitive on Linux, so a `.PS1` registration
 # naming a `.ps1` file passed on the maintainer's box and failed on Linux CI: a twin divergence
 # caused by the PLATFORM, invisible to any amount of testing on one OS. Walk the real entries.
+#
+# COST: this used to walk the tree per call, spawning `ls | grep` for EVERY path segment — 6
+# processes per lookup, ~52 lookups, ~312 forks. Under Git for Windows that was the single most
+# expensive thing in the whole validator: measured 26s for a run, and `--content-only` (which skips
+# checks 1-5 entirely) came out SLOWER than a full run because this check dominated both. The
+# inventory is now built ONCE with a single `find`, and each lookup is a pure-bash membership test
+# with no subprocess at all.
+#
+# Fidelity is unchanged, and that is the point — this is a speedup, not a relaxation:
+#   * `find -type f` reports the REAL on-disk names, exactly as `ls` did, so the comparison stays
+#     case-exact. A `.PS1` registration naming a `.ps1` file still fails here and still fails on
+#     Linux, which is the platform divergence this function exists to catch.
+#   * `-type f` also preserves the old trailing `[ -f ]`: a directory whose name matches is still
+#     not a resolved script.
+_DIST_FILE_INDEX=''
+build_dist_file_index() {   # $1 = root
+  # Leading/trailing newlines make the membership test below unambiguous for the first and last
+  # entries without special-casing them.
+  _DIST_FILE_INDEX=$'\n'$(cd "$1" 2>/dev/null && find . -type f 2>/dev/null | sed 's#^\./##')$'\n'
+}
 case_exact_path() {   # $1 = root, $2 = relative path
-  _cur=$1
-  _IFSOLD=$IFS; IFS='/'
-  # shellcheck disable=SC2086
-  set -- $2
-  IFS=$_IFSOLD
-  for _seg in "$@"; do
-    [ -n "$_seg" ] || continue
-    ls -1a "$_cur" 2>/dev/null | grep -Fxq -- "$_seg" || return 1
-    _cur="$_cur/$_seg"
-  done
-  [ -f "$_cur" ]
+  [ -n "$_DIST_FILE_INDEX" ] || build_dist_file_index "$1"
+  case "$_DIST_FILE_INDEX" in
+    *$'\n'"$2"$'\n'*) return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 check_hook_ref() {   # $1 = registration file (dist-relative), $2 = referenced script
   # hooks.json writes Windows paths with backslashes, and JSON escaping doubles them, so the decoded
-  # value holds ".claude\hooks\guard.ps1". Collapse any RUN of backslashes to one separator: `tr`
-  # translates each one separately and yields ".claude//hooks//guard.ps1", which resolves on both
-  # Windows and POSIX and so would have hidden the sloppiness rather than failing on it.
-  _rel=$(printf '%s' "$2" | sed -E 's#\\+#/#g')
+  # value holds ".claude\hooks\guard.ps1". Collapse any RUN of backslashes to ONE separator — doing
+  # it in that order matters: translating each backslash separately yields ".claude//hooks//guard.ps1",
+  # which resolves on both Windows and POSIX and so would hide the sloppiness rather than fail on it.
+  # This is the pure-bash equivalent of the `printf | sed -E 's#\\+#/#g'` it replaced, which forked
+  # twice for every one of the ~52 references checked here.
+  _rel="$2"
+  while [ "${_rel}" != "${_rel//\\\\/\\}" ]; do _rel="${_rel//\\\\/\\}"; done
+  _rel="${_rel//\\//}"
   # An absolute registration is NOT exempt (B-92). It is a dead hook on every machine but the one it
   # was written on — the exact "silently never runs" symptom this check exists to remove — and the
   # old early `return` made a missing absolute target report as resolved. Check 7 still skips
@@ -455,7 +546,8 @@ check_hook_ref() {   # $1 = registration file (dist-relative), $2 = referenced s
   # Suffix tests are case-insensitive in BOTH twins: PowerShell's -match is case-insensitive by
   # default while bash `case` is not, so a `.PS1` registration used to be judged differently by each
   # leg (B-59's case-sensitivity class).
-  _lower=$(printf '%s' "$_rel" | tr '[:upper:]' '[:lower:]')
+  # ${var,,} rather than a printf|tr pipeline: two fewer forks per reference, same ASCII result.
+  _lower="${_rel,,}"
   case "$_lower" in
     *.ps1) _twin="${_rel%????}.sh" ;;
     *.sh)  _twin="${_rel%???}.ps1" ;;
@@ -664,6 +756,7 @@ else
   ok "all $regcount hook registrations resolve (settings.json $settingscount, settings.windows.json $windowscount, hooks.json $hookentries entries × 2 legs; parsed by $JSON_TOOL)"
 fi
 
+_report_timings
 echo ""
 if [ "$failed" -gt 0 ]; then echo "$failed dist validation check(s) FAILED for $DIST."; exit 1; fi
 echo "All dist validation checks passed for $DIST."

@@ -55,8 +55,33 @@ if (-not (Test-Path $Dist -PathType Container)) {
 $DistAbs = (Resolve-Path $Dist).Path
 
 $failed = 0
-function Fail($m) { Write-Output "FAIL: $m"; $script:failed++ }
-function OK($m)   { Write-Output "OK:   $m" }
+# Per-check elapsed time, mirroring the bash twin [#3]. Every check ends by calling OK or Fail
+# exactly once, so timing the interval between those calls attributes cost without annotating each
+# check by hand.
+#
+# Why this exists: this validator's runtime was governed by nothing. A check once regressed to the
+# point where its bash twin could not finish AT ALL, and that was found only because a maintainer
+# asked why a suite had been running for hours -- every correctness gate stayed green throughout.
+# Correctness was gated; cost was not, so a 20x regression was invisible in the run that caused it.
+# Timings go to stderr so stdout stays exactly the OK:/FAIL: stream every caller already parses.
+$CheckCeilingSeconds = if ($env:VALIDATE_DIST_CHECK_CEILING_S) { [double]$env:VALIDATE_DIST_CHECK_CEILING_S } else { 25 }
+$script:timings = @()
+$script:tLast   = [Diagnostics.Stopwatch]::StartNew()
+function Record-Timing($label) {
+    $script:timings += [pscustomobject]@{ Seconds = $script:tLast.Elapsed.TotalSeconds; Label = $label }
+    $script:tLast.Restart()
+}
+function Report-Timings {
+    foreach ($t in $script:timings) {
+        $label = if ($t.Label.Length -gt 60) { $t.Label.Substring(0, 60) } else { $t.Label }
+        [Console]::Error.WriteLine(("TIMING {0,6:n1}s  {1}" -f $t.Seconds, $label))
+        if ($t.Seconds -gt $CheckCeilingSeconds) {
+            [Console]::Error.WriteLine(("WARNING: check `"{0}`" took {1:n1}s, over the {2}s ceiling. Gate cost is a defect too -- profile it before it becomes a timeout." -f $label, $t.Seconds, $CheckCeilingSeconds))
+        }
+    }
+}
+function Fail($m) { Record-Timing $m; Write-Output "FAIL: $m"; $script:failed++ }
+function OK($m)   { Record-Timing $m; Write-Output "OK:   $m" }
 
 # --content-only skips checks 1-5 (the parse/marker/template-checks group) and runs only the content
 # checks 6, 7 and 8. It exists for ValidateDist.Tests.ps1: those five re-parse every shipped file on
@@ -528,6 +553,7 @@ if (@($regProblems).Count -gt 0) {
     OK "all $regCount hook registrations resolve (settings.json $($settingsCounts['.claude/settings.json']), settings.windows.json $($settingsCounts['.claude/settings.windows.json']), hooks.json $hookEntries entries × 2 legs; parsed by ConvertFrom-Json)"
 }
 
+Report-Timings
 Write-Output ''
 if ($failed -gt 0) { Write-Output "$failed dist validation check(s) FAILED for $Dist."; exit 1 }
 Write-Output "All dist validation checks passed for $Dist."
