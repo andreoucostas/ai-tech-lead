@@ -1287,6 +1287,29 @@ Compounding: step 1 already identifies the consumption views (`:40-45`) and step
 which views each entity feeds (`:81-84`). Those views contain the correct joins. The skill opens them
 and extracts nothing from them.
 
+**Second field report, 2026-08-05 (ledger #4) — the locked design does not cover it.** Same
+warehouse, second read-side defect, different class: the model put **end-date predicates on
+dimension joins**. Unnecessary — staging populates dimensions then facts, so the load already
+resolved each business key to the dimension version that applied and stamped that surrogate key onto
+the fact. The as-of join happened once, at load; the version is already pinned. Only the **run**
+dimension needed one, because its current row is selected at read time rather than resolved at load.
+
+Design §3.4's five rules all address *attribute sourcing* (reach an attribute through a fact key,
+suspect same-named columns, map source→target before writing SQL); the fan/chasm traps address
+*grain*. Nothing addresses *temporal predicates*, so this defect survives the design as locked.
+**§3.4 gains a sixth rule:** a fact's dimension foreign key was resolved at load time, so a join on
+that surrogate key takes **no** `EffectiveFrom`/`EffectiveTo`/`IsCurrent` predicate — adding one
+silently drops every fact pointing at a superseded row. Temporal predicates belong only where the
+version was *not* resolved at load: natural/business-key joins, and run/version/snapshot registers
+where several rows are live at once and exactly one is current. The discriminator is **did the load
+resolve the key, or defer it** — and the relationship edge list this design already emits is what
+makes it answerable, since it records which fact key points at which dimension.
+
+Two properties make this defect worse than #3's class and worth stating in the skill: it fails
+**silently** (a low row count, not an error), and in review a join carrying effective-date predicates
+reads as *more* careful, not less — so it survives exactly the scrutiny that would catch a missing
+filter. The general form is filed as **B-99**.
+
 **Do:** implement the locked design. In outline — table inventory with primary keys; a per-fact
 relationship edge list as the primary artifact (`| fact | fk column | → dimension | role | evidence |
 confidence |`); the dimensional semantics reporting needs (fact type, role-playing, conformed and
@@ -1434,6 +1457,63 @@ static context on every turn, whose USE FOR already covers "what feeds this repo
 fire, the gap is not "the description was not matched" but "a named, in-context skill was not
 reached". A positive result is correspondingly attributable to the skills list rather than to
 description tuning, and must not be cited as evidence the description is well-written.
+
+---
+
+### B-99 · Nothing tells the model not to re-do a resolution an earlier stage already performed
+**Effort:** S–M · **Priority:** P2 · found 2026-08-05 (generalised from ledger report #4) · **Invariants:** #1 #2
+
+**Why:** the warehouse defect in report #4 is one instance of a class. When an earlier stage has
+already decided something — matched a key to a specific version, deduplicated, applied a tenant or
+soft-delete filter, converted a currency or unit, normalised a timezone — downstream code that redoes
+it "to be safe" is not defended, it is broken. It silently drops or double-counts rows.
+
+The class is systematically under-caught for two reasons, both visible in report #4. It fails
+**silently** — a low row count, not an exception. And a defensive predicate reads in review as *extra
+care*, so it survives the scrutiny a missing filter would not. The model is biased toward adding
+guards; nothing in the framework is biased against redundant ones.
+
+Nothing covers it today. **Verification Rule 10** ("Derive, don't assume") covers *technology
+presence* — is EF Core actually in this repo — not *semantic invariants of the existing system*.
+The plan gate (§2) asks for assumptions but defines no schema and no verification obligation, and it
+catches uncertainty, which is the wrong instrument: the model was confident and wrong.
+
+**What makes this worth its own entry rather than folding into B-96:** it is the only warehouse-adjacent
+fix on the table that is **not blocked**.
+
+- It is not a Conventions change, so **B-97** does not block it. `/bootstrap` replaces the Conventions
+  section, not the always-loaded blocks — established at B-98's §3.4.1 correction for the skills list,
+  and Verification Rules are in the same category. It therefore reaches already-bootstrapped consumers,
+  which is the population every warehouse report has come from.
+- It is not a skill, so **B-98 step 1** does not gate it. It is in static context on every turn
+  regardless of whether routing fires — so it holds whichever way the six routing runs land.
+- It is stack-independent: `src/stacks/{dotnet,angular,monorepo}/snippets/CLAUDE.md/verif-rule9`
+  carries rule 10 identically in all three, so rule 11 appends there without a new `src/core` marker.
+  (The marker name is one behind its contents; not worth renaming across three stacks.)
+
+**Do:** design and critique before writing. The draft rule — *"Don't re-resolve what an earlier stage
+already resolved… identify which stage owns that resolution and confirm from the code that it has not
+already run. If you cannot confirm, say so rather than adding the predicate"* — is a starting point,
+not a locked text. Settle in review:
+
+1. **Does it bite with no domain context?** It must have prevented report #4 while the warehouse prose
+   was absent from the window — that is the condition an already-bootstrapped consumer is in. Test the
+   draft against the defect with the DW text withheld.
+2. **Does it stay off the legitimate cases?** It must *not* flag the run dimension, a genuinely needed
+   soft-delete filter, or defence at a trust boundary (re-validating untrusted input is correct and
+   must not be discouraged — this is the sharpest failure mode of the rule as drafted).
+3. **Eleventh always-on rule, or a §2 plan-gate sub-bullet?** Cost is real: `meta/context-footprint.json`
+   puts dotnet at 38,571/40,000 — ~1,429 tokens of headroom, against ~150 for the rule. Affordable
+   once; not twice. Whatever lands must be counted, not assumed free.
+
+**Not:** no DW-specific text in static context (that belongs in the skill, B-96 §3.4); no second
+always-on block; no hook change — `route-prompt` injects the §1 rails and plan gate, not the
+verification rules.
+
+**Cross-links:** B-96 (the warehouse instance and its §3.4 sixth rule; this is the general form),
+B-97 (why the Conventions route was unavailable and this one is not), B-98 (why the skill route is
+gated and this one is not), B-32/WSD-017 (the context-footprint gate this must pass), ledger report
+#4 in `meta/field-reports.md`.
 
 ---
 

@@ -78,21 +78,84 @@ The field report and the harness agree, from different directions.
 
 ---
 
+## Report #3 — SQL data warehouse, attribute reached through a spurious column
+
+| | |
+|---|---|
+| **Date received** | 2026-08-04 |
+| **Stack / repo shape** | SQL data warehouse; consumer repo, onboarded and already mapped |
+| **Framework installed** | yes |
+| **What misfired** | Asked to replicate a report built in a *different* warehouse, the model reached a dimension attribute through a spurious column — declared in DDL, never populated — instead of following a fact key to the dimension built for that result. With no relationship model in reach, the only evidence available was the column's **name**. |
+| **What fired** | unknown — no transcript exists, so whether `map-warehouse` fired was never established. That unknown is itself the trigger for B-98. |
+| **What got ignored** | not captured |
+| **Hook noise** | not captured |
+| **Token pain** | not captured |
+| **Reporter** | the maintainer |
+
+**Root cause:** `map-warehouse` emits eight fields per entity, every one a *loading* property — no
+schema inventory, no keys, no relationships. It is an ETL map wearing a warehouse map's name, so it
+can say how a fact is loaded and not what it joins to.
+
+**Outcome:** B-96 (design LOCKED), and two general defects found through the same symptom — B-97
+(a conventions change cannot reach an already-bootstrapped consumer) and B-98 (a prompt matching no
+skill description fails silently).
+
+---
+
+## Report #4 — SQL data warehouse, end-date predicates on dimension joins
+
+| | |
+|---|---|
+| **Date received** | 2026-08-05 |
+| **Stack / repo shape** | SQL data warehouse; staging populates dimensions, then facts, so keys and state are generated on load |
+| **Framework installed** | not captured |
+| **What misfired** | The model put end-date predicates on **dimension joins**. Unnecessary: the load had already resolved each business key to the dimension version that applied and stamped that surrogate key onto the fact, so the version was already pinned. Only the run dimension genuinely needed an end-date predicate — its current row is selected at read time. |
+| **What fired** | not captured |
+| **What got ignored** | Nothing warehouse-specific existed to ignore: all shipped DW guidance is write-side. The only place `EffectiveTo` appears is `add-warehouse-load` step 5, which says how to *set* it when expiring a row. |
+| **Hook noise** | not captured |
+| **Token pain** | not captured |
+| **Reporter** | the maintainer |
+
+**Root cause:** the framework states a rule and never its entailment. `add-warehouse-load` step 2
+says facts carry foreign keys to *surrogate* keys, not natural keys — so the as-of join already
+happened, once, at load. That the version is therefore already pinned, and a downstream temporal
+predicate is wrong, is drawn nowhere. The model fell back on the textbook Kimball pattern, which is
+correct for the load and wrong for the read.
+
+The failure is silent and self-camouflaging: `AND d.EffectiveTo IS NULL` on a surrogate-key join
+drops every fact pointing at a superseded row, surfacing only as a low row count — and in review a
+join carrying effective-date predicates reads as *more* careful, not less.
+
+**Corroborates report #3 from a second angle.** Both are read-side defects in the same warehouse;
+#3 is attribute sourcing, #4 is temporal predicates. Two distinct defects, one cause — the read side
+has no guidance at all. B-96's locked design §3.4 addresses #3's class and not #4's.
+
+**Outcome:** B-96 amended (§3.4 gains the resolved-at-load vs deferred-to-read rule); B-99 for the
+general class.
+
+---
+
 ## Intake gaps (a finding in its own right)
 
-Both reports arrived as a single sentence about one defect. Neither captured what *worked*, hook
-noise, token cost, or the surrounding session — the things B-42 says the pilot needs, and the things
-that would tell us whether the framework is a net gain rather than merely wrong in one spot.
+Reports arrive as a sentence or two about one defect, and most table fields go uncaptured.
 
-Consequences worth acting on:
+1. **"We only hear about defects" — CLOSED by maintainer decision, 2026-08-05. Not a sampling flaw.**
+   This previously read as a consequence to act on: that the ledger cannot show value, only failure,
+   and any adoption argument built on it would be reading a biased sample. That is not what the
+   ledger is for. Everything shipped is tested and carries its own evidence, so testimonial intake
+   buys nothing; the reports are **deliberately improvement-only**, and what matters is excellence
+   and further value. **Do not add a "what did it get right" field, and do not re-raise this.**
+   `what fired` / `what got ignored` stay — they are diagnostic, not testimonial: report #1's cause
+   was *the framework spoke and was ignored*, reports #2 and #4's was *the framework was silent*, and
+   those demand opposite fixes.
+2. **Arrival dates are not recorded at intake.** Report #1's is unrecoverable. Reports #3 and #4
+   have them — treat that as the standard.
+3. **Every report to date names a *coverage* defect, not a workflow one — now four of four.** Three
+   of the four are outright silence (#2 Angular forms, #3 and #4 the warehouse read side); #1 is the
+   inverse, guidance present but overridden by a parenthetical. The framework's weak spot is the
+   **breadth of what it knows about a stack**, not how it drives a task. Reports #3 and #4 sharpen it
+   further: both are *read-side* gaps against *write-side* capabilities, which is the asymmetry
+   B-98 step 3 exists to sweep.
 
-1. **We only hear about defects.** Every report to date is a complaint. Nothing in the intake path
-   asks "what did it get right", so the ledger structurally cannot show value — only failure. Any
-   future adoption argument built on this file would be reading a biased sample.
-2. **Arrival dates are not recorded at intake.** Report #1's date is already unrecoverable.
-3. **Both reports name a *convention* defect, not a workflow one.** Two data points is not a trend,
-   but if it holds, it says the framework's weak spot is the breadth of what it knows about a stack
-   rather than how it drives a task.
-
-If a third report arrives, capture the table fields **at intake**, before the defect is diagnosed —
-by then attention has moved to the fix and the context is lost.
+Capture the table fields **at intake**, before the defect is diagnosed — by then attention has moved
+to the fix and the context is lost.
