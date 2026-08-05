@@ -1238,3 +1238,40 @@ Two consequences worth recording, because both were found by review rather than 
   where the printed `NOTE:` would go unread. A caller must now ask for a reduced run in the command
   itself. This is the general rule for this repo: **a switch that weakens a gate must be impossible
   to set by accident.**
+
+## WSD-031: framework-owned rules live in one unprotected carrier, reached differently per host (2026-08-05)
+
+**Context.** Framework-owned and consumer-owned content shared one file, `CLAUDE.md`, and the
+ownership boundary was a *section* boundary inside it. Every delivery mechanism operates on files.
+The installer protects that file (correctly — v0.20.0 stopped update runs clobbering a bootstrapped
+`CLAUDE.md`), which as a side effect severed delivery of the framework-owned blocks inside it for 24
+releases. Nobody traced the side effect at the time.
+
+**Decision.** Move the four framework-owned blocks — Verification Rules, Leanness, SOLID, Agentic
+Workflow — into `.github/instructions/framework-rules.instructions.md`, a single **unprotected**
+file, and reach it differently per host: Copilot reads it natively; Claude Code reaches it through
+an `@import` line in `CLAUDE.md`. `$protected` is unchanged.
+
+**Why one carrier and not two.** The design's rev 1 had two files (`.claude/framework-rules.md` for
+Claude, an instructions file for Copilot). The adversarial review rejected it: two authored copies in
+`src/` collide with meta-invariant #1 and recreate the delivery-drift defect *inside* the source
+tree. Rather than patch that, canary 5 tested whether one file could do both jobs — Claude Code
+resolves an `@import` pointing into `.github/instructions/`, `applyTo` frontmatter and all. It does
+(control arm reproduced canary 1; zero `tool_use` in either transcript). One carrier, no duplication,
+no parity gate needed between them.
+
+**What was deliberately not decided.** Boy Scout Rule stays in `CLAUDE.md` because `/bootstrap`
+rewrites it from the repo's actual debt — it is consumer-augmented, and moving it would either
+clobber consumer content or require protecting the carrier, which defeats the mechanism. The
+consequence is a permanent gap: framework changes to the Boy Scout scaffold remain greenfield-only.
+
+**Honest limit.** For an already-installed Claude Code consumer this ships **discovery, not
+delivery**: they hold a stale inline copy and receive a pointer. Canary 4 settled fresh-beats-stale
+for Copilot VS Code only; nothing is observed for Claude Code, and that question is stochastic, so it
+needs multiple runs rather than one. The release says *discovery* and does not imply otherwise.
+
+**Rejected:** a `/sync-template` that writes into a protected file (carries the v0.20.0 clobber risk
+into a new place for no remaining benefit once the Copilot gap turned out not to exist); reverting
+the protection (the worse failure); injecting the rules from `session-start` (duplicates the stale
+copy in the same window and costs ~7 KB every session).
+

@@ -884,3 +884,58 @@ the subject, re-run the check, see whether it goes red. Nothing here was found b
 registrations after an entire six-handler file disappeared because its floor was a total; a second
 regex over the same bytes was not independent evidence. Guard the structure and the scanned inputs,
 then keep the specific mutations as executable tests rather than prose-only red-test claims.
+
+## 2026-08-05 — v0.45.0: the implementer's report was green; four shipping defects were not in it
+
+B-97 and B-102 shipped together. The review pipeline worked exactly as designed and still would have
+shipped four defects, every one found by **re-running an instrument** rather than by reading a diff
+or a report. Worth writing down because the pipeline's own output said otherwise throughout.
+
+**The adversarial review earned its keep, and was right where I was wrong.** It returned 7 blocking
+findings on the implementation plan. Its sharpest: my plan claimed the composer catches a missed
+snippet rename. It does not — an absent snippet emits nothing and the marker is consumed, so the
+section silently empties. My reference-count estimates were also wrong by 4x (I divided a
+whole-repo grep by four; the real figure was 77 sites across six file types, including the live
+hooks a markdown-only sweep would have missed).
+
+**But a reviewer's fix can be beaten by testing its premise.** The review said the two-carrier scheme
+violated single-source authoring and wanted a composer post-step. Instead of implementing either, I
+tested whether one file could serve both hosts (canary 5). It can. The finding was right; the
+remedy was unnecessary. *Verify what a reviewer tells you, and check whether the problem can be
+deleted rather than solved.*
+
+**What the implementer reported as "no deviation":**
+1. A `.ps1` gate blind to 15 of 117 markers — the shipped hooks — because it matched only the HTML
+   marker form. The gate created to catch silently-empty sections had a silently-empty blind spot.
+2. A `.sh` twin that **could not finish**: a `sed`+`grep` per (line × file × heading), exhausting the
+   Git-for-Windows process table, while its `.ps1` twin took 10s. CI's linux leg runs it. **Twin
+   parity is asserted on decisions, never on feasibility** — a twin that cannot finish is as broken
+   as one that answers wrong. Now B-101.
+3. A markdown link that dangled from the moved content's new location.
+4. Two twins with different citation grammars.
+
+**A skip message lied, and the maintainer caught it, not the tooling.** The suite printed "python3 is
+unavailable on this host" and summarised green. Python was installed. On Windows a python.org
+install ships `python.exe` and **no** `python3.exe` — so the probe could never succeed there. That
+turned out not to be a test problem at all: every shipped `.sh` hook probed the same name, so on any
+Windows box without `jq` the **write guard printed INACTIVE and allowed the write** (B-102, measured
+`exit 0` → `exit 2`). A permanently-skipped test hid a P1 in shipped code for as long as it existed.
+
+**The fix for a fail-open probe can fail worse.** `WindowsApps\python.exe` resolves and exits 49 — it
+is the Store alias, not an interpreter. Adding `python` to a name-based probe would have selected it,
+and the parse would then return empty under `2>/dev/null`: a loud INACTIVE warning becomes a silent
+fail-open. **Probe capability by execution, not by name** — the same lesson B-63 keeps teaching, now
+with a case where the naive fix is worse than the bug.
+
+**Two self-inflicted, both the class we keep finding.** A `sed` whose delimiter clashed with its
+payload failed while the *follow-up* `sed` succeeded, leaving eight hooks calling an unassigned
+variable — and `bash -n` passed on all eight, because a syntax check is not a behaviour check. Then a
+compound `elif` the patcher did not match had its invocation rewritten anyway, putting the assignment
+120 lines later in a different branch. Found by asserting *ordering* (every use follows an
+assignment), not by counting occurrences — my first sweep counted, and reported a false imbalance.
+
+**CI caught the last one, and it was mine.** I edited content after regenerating the context-footprint
+baseline and never re-ran it. Both legs went red. B-70's thesis for the fifth time, this time against
+me: a change is not done until its first CI run is green. The local gate set has no "run what CI runs"
+entry point, so *which* gates to re-run after a late edit is a judgement call — and judgement is the
+thing that fails.

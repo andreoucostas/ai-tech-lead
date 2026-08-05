@@ -11,6 +11,59 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.45.0 — 2026-08-05
+
+**B-97 (delivery) + B-102 (a P1 found while verifying it).**
+
+- **B-97 — framework-owned rules move to an unprotected carrier.** Verification Rules, Leanness,
+  SOLID and Agentic Workflow move out of `CLAUDE.md` into
+  `.github/instructions/framework-rules.instructions.md`. `$protected` is unchanged; this routes
+  around it rather than through it. **One carrier serves both legs** — Copilot reads it natively,
+  Claude reaches it via `@import` — which canary 5 established (`.claude/scripts/canary-single-carrier.ps1`;
+  control arm reproduced canary 1, subject positive, zero `tool_use` in either transcript). That
+  killed the two-carrier scheme in the plan's rev 1, which duplicated authored content in `src/` and
+  collided with [#1].
+  - Boy Scout Rule deliberately stays in `CLAUDE.md` (`bootstrap.md:179` rewrites it from the repo's
+    debt). Consequence recorded rather than hidden: framework changes to the Boy Scout scaffold stay
+    greenfield-only.
+  - `AGENTS.md` keeps its inline copy — only Copilot reads `.github/instructions/`, so stripping it
+    would delete the ruleset for Codex/Cursor/Gemini/Aider.
+  - **B-97 does not fully close.** For an un-migrated Claude consumer this is *discovery*, not
+    delivery. The successor question (does a model follow the fresh carrier or the stale inline copy?)
+    is stochastic and needs B-98's six-run rule.
+
+- **B-102 — the JSON-parser fallback probed a name Windows does not install.** Every shipped `.sh`
+  hook resolved its parser with `command -v python3`; a python.org install on Windows ships
+  `python.exe` and no `python3.exe`. With `jq` absent the write guard printed `INACTIVE` and allowed
+  the write on a box with a working interpreter. Measured before/after, same input, Python 3.14.5
+  present: `exit 0` allowed → `exit 2` blocked. Probe now resolves by **execution** over
+  `python3 → python → py`, because the Store alias resolves and exits 49 — a name-only probe would
+  select it and fail open *silently*, worse than the original bug.
+
+- **Three new `validate-dist` checks**, each red-tested: marker-expansion inventory, section-path
+  citation resolution, and carrier-import presence.
+
+**Four defects fixed during verification that the implementer's report did not contain** — all found
+by re-running instruments rather than by reading the diff:
+1. The `.ps1` marker gate matched only `<!-- @stack:X -->`, so it was blind to the 15 hash-form
+   markers in `route-prompt`/`audit-trail`/`.gitignore`/CI — the shipped hooks. Both twins now use
+   the composer's anchored patterns; counts agree at 117 (were 102 vs 117).
+2. The `.sh` citation check forked a `sed`+`grep` per (line × cited file × heading) and **never
+   completed**, exhausting the Git-for-Windows process table, while the `.ps1` twin took 10s. CI's
+   linux leg runs that twin. Rewritten as one batched grep pass: 77s, exit 0. Filed as **B-101**.
+3. A markdown link in the moved Verification Rule #7 dangled from the carrier's new location
+   (B-67's class — nothing gates link targets).
+4. `.sh` accepted any non-alphanumeric citation separator where `.ps1` accepts only `>`/`›`.
+
+**New:** `.claude/hooks/tests/UpdateDelivery.Tests.ps1` — `InstallerContract` covered greenfield and
+brownfield but never **update**, the mode every existing consumer runs. Asserts both directions of
+the contract that must never swap (protected `CLAUDE.md` byte-identical; unprotected carrier
+overwritten even when edited), plus the pointer on both surfaces, both doctor rows, post-migration
+silence, and brownfield archival. 16/16 both twins; seen red (8 failures) when delivery is broken.
+
+**Filed:** B-101 (gate runtime is measured by nothing — a twin that cannot finish is as broken as one
+that answers wrong), B-102.
+
 ## 0.44.0 — 2026-08-02
 
 Two instruments that could not fail, and one that was never built. B-74, B-62 and B-80.

@@ -4,6 +4,49 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.45.0 — 2026-08-05
+
+- **Action required (one line, once): your always-on rules now live in a file the installer can
+  update.** Until now, `CLAUDE.md` was protected on update — the installer restored your copy so it
+  could never overwrite your conventions. That protection is right and is unchanged, but it also
+  meant framework changes to the **Verification Rules**, **Leanness**, **SOLID** and **Agentic
+  Workflow** sections inside that file never reached you: if you installed before this release, the
+  copies in your `CLAUDE.md` are as old as your first install.
+
+  Those four sections now ship in `.github/instructions/framework-rules.instructions.md`, which is
+  **not** protected and therefore updates from now on. Your repo-specific sections — Conventions,
+  Boy Scout Rule, Codebase Context, everything `/bootstrap` wrote — stay in `CLAUDE.md` and are
+  still never touched.
+
+  - **GitHub Copilot users: nothing to do.** Copilot reads that file natively, in both the CLI and
+    VS Code agent mode. It is already current.
+  - **Claude Code users: add one line to `CLAUDE.md`**, where those four sections are, then delete
+    the stale sections themselves:
+
+    ```
+    @.github/instructions/framework-rules.instructions.md
+    ```
+
+    Until you do, your session start will remind you once per session, and
+    `scripts/framework-doctor.*` will report the delivery row as `[MISSING]`. Nothing breaks in the
+    meantime — you simply keep reading your older copy of the rules.
+
+- **Fixed: on Windows, the write guard could be silently inactive.** `guard.sh` blocks writes that
+  contain secrets, test-defeats or suppressions. It needs a JSON parser: `jq` first, with Python as
+  the fallback. The fallback only ever looked for `python3` — but a standard Windows Python install
+  provides `python.exe` and no `python3.exe`. **So on a Windows machine without `jq`, the guard
+  printed `write-guard INACTIVE` and allowed the write, even with Python installed.** It now finds
+  `python3`, `python` or the `py` launcher, and confirms each actually runs before trusting it —
+  which also rules out the Microsoft Store placeholder that looks like Python but is not.
+
+  **Worth checking:** if your team runs the `.sh` hooks (Git Bash / WSL / macOS / Linux) and does not
+  have `jq` installed, your write guard may not have been enforcing. Run
+  `bash scripts/framework-doctor.sh` and look at the `Guard JSON parser` row. Installing `jq`
+  remains the most reliable option on any platform.
+
+- Fixed: a documentation link inside the moved rules pointed at a path that no longer resolved from
+  its new location.
+
 ## 0.44.0 — 2026-08-02
 
 - **New: `tests/hooks/HarnessIntegrity.Tests.ps1` — the test harness now proves it can report

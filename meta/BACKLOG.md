@@ -1349,6 +1349,27 @@ original DW capability and its no-execution property).
 ---
 
 ### B-97 · No change to `CLAUDE.md` — or any protected file — reaches an already-bootstrapped consumer
+
+> **PARTIALLY DONE — shipped v0.45.0 (2026-08-05), WSD-031.** The four framework-owned blocks now
+> ship in `.github/instructions/framework-rules.instructions.md` — one unprotected carrier read
+> natively by Copilot and via `@import` by Claude Code (canary 5). **Closed for the Copilot leg and
+> for greenfield/migrated Claude consumers. NOT closed for already-installed Claude consumers**, who
+> receive *discovery* (a session-start pointer + a doctor row), not delivery. Boy Scout Rule stays in
+> `CLAUDE.md` and its framework scaffold remains greenfield-only, permanently — stated, not hidden.
+>
+> **Successor question, still open:** does a Claude Code model follow the fresh carrier or the stale
+> inline copy when both are visible? Canary 4 settled this for Copilot VS Code only. It is a
+> stochastic model behaviour, so it needs B-98's six-run rule, not a single canary.
+>
+> **RCA — why did no gate catch the original defect?** Because the defect *was* a correct fix. v0.20.0
+> stopped update runs clobbering a bootstrapped `CLAUDE.md`; nobody traced that the same change also
+> severed delivery of the framework-owned blocks inside it. No gate exists for "a file we ship is
+> never received", and none is proposed here — the structural fix removes the condition instead.
+> **What else is exposed to the same class?** Every remaining `$protected` path:
+> `FRAMEWORK-CONTEXT.md`, `TECH_DEBT.md`, `SECURITY_FINDINGS.md`, `docs/ARCHITECTURE.md`,
+> `.github/copilot-instructions.md`. Framework-authored content in any of them has the same
+> non-delivery property. `copilot-instructions.md` is the one worth auditing next: it carries
+> framework-authored rules, not just consumer content.
 **Effort:** M · **Priority:** P2 → **recommend P1** (it gates B-96 and B-99, and every future always-on instruction change) · found 2026-08-05 (blocked B-96's delivery), **scope widened 2026-08-05 after B-99's review** · **Invariants:** #1
 
 > **Scope correction, 2026-08-05.** This entry originally said *a conventions change* cannot reach an
@@ -1984,6 +2005,22 @@ B-64 (planted-defect tests for diagnostics), B-70 (a change is not done until CI
 would have taken the linux leg down), B-88 (CI-red reporting).
 
 ### B-102 · The documented JSON-parser fallback cannot exist on Windows — `python3` is not the name Windows installs
+
+> **DONE — shipped v0.45.0 (2026-08-05).** Probe now resolves by execution over
+> `python3 → python → py` in all ten shipped `.sh` hooks and the doctor; `enforcement-surfaces.md`
+> corrected. Measured before/after, same box, Python 3.14.5 present: `exit 0` (INACTIVE, write
+> allowed) → `exit 2` (blocked), verified against the composed dist.
+>
+> **RCA — why did no gate catch it?** Two reasons, both structural. (1) `jq` is present on the
+> maintainer box, so the fallback branch never executed here — the gates only ever exercised the
+> path that worked. (2) The one test that would have covered it was **permanently skipped** with the
+> message "python3 is unavailable on this host", which was false; the suite summarised green around
+> it. A skip that misreports its cause is indistinguishable from coverage.
+> **What else is exposed?** Any capability probe that (a) tests a name rather than the capability, or
+> (b) has a fallback branch no test forces. B-63 owns the general audit; this entry is its third
+> confirmed instance and the first with live consumer impact. Specifically worth checking: every
+> `command -v` in the shipped hooks, and every `[skip]` message in the suites that asserts a host
+> lacks something.
 **Effort:** S–M · **Priority:** **P1** (the write-guard fails open on the primary target platform while a doc
 promises otherwise) · found 2026-08-05 · **Invariants:** #3 #5 #6
 
@@ -2039,6 +2076,36 @@ precisely what B-71 says lets a gap persist.
 make gate outcomes machine-dependent), B-71 (skips that misreport why), B-48 (enforcement-bypass
 audit — an inactive guard belongs on that list), B-101 (filed the same day from the same verification
 pass).
+
+---
+
+### B-103 · Post-ship review owed for B-102 — implementer and reviewer were the same session
+**Effort:** S · **Priority:** P2 · filed 2026-08-05 at release time, per Maintenance model #2
+
+**Why:** B-97 followed the intended pipeline — an adversarial reviewer returned 7 blocking findings
+on the plan, an external implementer built it, and a different session re-ran the gates and
+red-tests independently, catching four defects the implementer's report did not contain. **B-102 did
+not.** It was found, designed, implemented and verified in one session by one model. Maintenance
+model #2 is explicit that this does not count as reviewed, and the honest response is to file the
+review rather than to pretend it happened.
+
+That matters more than usual here because B-102 changes the **write guard's** parser resolution in
+ten shipped hooks — the framework's central enforcement claim — and because the same session
+inflicted two defects on itself while doing it (a failed `sed` that left eight hooks calling an
+unassigned variable and still passed `bash -n`; a compound `elif` whose invocation was rewritten
+while its assignment landed in another branch). Both were caught, but by the author, which is the
+condition this rule exists to distrust.
+
+**Do:** an independent session reviews commit `6eb7752` specifically for: the resolver's behaviour
+when a candidate exists but is broken in a way other than the Store stub (e.g. a Python whose
+`json` import fails, a `py` launcher with no installed runtime); whether `_pybin` can be unset on any
+reachable path in any of the ten hooks (assert ordering, do not count occurrences); whether probing
+by execution introduces a meaningful latency cost on the no-`jq` path for hooks that run per tool
+call; and whether the `enforcement-surfaces.md` wording now overclaims in the other direction.
+Re-run the jq-hidden red-test independently rather than trusting the recorded before/after.
+
+**Cross-links:** B-102 (the change under review), B-63 (probe vantage-point audit — B-102 is its
+third instance), B-45 (the review ledger that made this fileable at release time).
 
 ---
 
