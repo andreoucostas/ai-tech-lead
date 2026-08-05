@@ -1452,8 +1452,61 @@ reading the repo. Both need agent sessions, so both are parked on the same weekl
 step 1**'s six routing runs — **batch all three when quota resets (2026-08-06+)**; same harness, same
 kind of experiment, materially cheaper together.
 
-**Executable today without quota:** the versioned fingerprint / migration manifest (design step 3),
-which the honest drift row and the conditional-discovery option both need — one artifact, build once.
+**Design step 3 — the fingerprint manifest — is BUILT (2026-08-05).**
+`.claude/scripts/build-block-manifest.ps1` (meta script, PS-only per WSD-005) →
+`meta/block-manifest.json`. It walks the release tags, extracts each framework-owned block from the
+shipped `CLAUDE.md`/`AGENTS.md` at that release, normalises and hashes it, and records the release
+range each hash was current for. That is the basis the honest drift row and Option E's conditional
+discovery both need, and it is the same artifact for both.
+
+Scope: only the four blocks `/bootstrap` is documented **not** to rewrite — Verification Rules,
+Leanness, SOLID, Agentic Workflow. Boy Scout Rule and Conventions are bootstrap-populated
+(`bootstrap.md` Phase 3a), so fingerprinting them would report divergence for every consumer and
+mean nothing.
+
+Observed: 33 releases (v0.26.0 → v0.44.0), 3 dists × 2 files, **0 unavailable**, byte-identical
+across regeneration. 8 KB.
+
+**What it establishes empirically — four framework-owned block changes that reached no existing
+consumer:**
+
+| Block | Changed at | Note |
+|---|---|---|
+| Verification Rules | v0.29.1 | |
+| Leanness | v0.34.3 | Independently rediscovers the changelog's own record (`CHANGELOG:199-201`, "Leanness rule #7…") — the manifest and the changelog agree from different directions |
+| Agentic Workflow | v0.27.0, v0.30.0 | |
+| SOLID | — | unchanged since v0.26.0 |
+
+The `AGENTS.md` mirror shows the same v0.29.1 boundary as `CLAUDE.md`, which incidentally
+corroborates meta-invariant #2 holding across history.
+
+**Coverage limit, recorded rather than papered over:** tags in this repo begin at the monorepo merge
+(v0.26.0). The protection landed at **v0.20.0**, so consumers installed between v0.20.0 and v0.25.x
+cannot be fingerprinted from here — their blocks live in the archived legacy repos. They must
+classify **UNKNOWN, never CURRENT**. The manifest carries this in its `coverage.limitation` field so
+a consumer-side check cannot quietly overstate what it knows.
+
+**Verification (Maintenance model #4 — the instrument was seen to go red before its green counted):**
+`-SelfTest` asserts block extraction, non-bleed into the next section, formatting-invariance
+(CRLF / trailing whitespace / BOM), content-sensitivity, hash shape, a golden vector, and null on an
+absent heading. Red-tested twice by planting defects in a scratch copy: removing the per-line
+`TrimEnd` → `[FAIL] trailing whitespace`, exit 1.
+
+**The second red-test found a real defect in the test itself, and is the reusable lesson.** Collapsing
+the digest to a single hex character — destroying 15/16 of its discrimination — **passed**, because
+"the two hashes differ" is still ~94% true for a broken hash. B-75's class exactly: an assertion too
+weak to fail, reading as green. Fixed by pinning hash *shape* (`^[0-9a-f]{16}$`) and a golden vector,
+both of which fail deterministically; the same planted defect now trips two assertions. Generalisable:
+**an assertion that two values differ is not a test of the function that produced them.** Worth
+carrying into B-84 (red-test kit) and B-59 (inert-check detection).
+
+**Still to do here:** the consumer-side check that consumes the manifest, whose wording is settled
+(`DIVERGED — protected file not synchronized with installed machinery; review required`, never "you
+are behind"). Deferred deliberately: it belongs in `framework-doctor` or `docs-sync-check`, both of
+which ship as `.ps1`/`.sh` twins [#3], and its home depends on whether A or B wins — which the two
+canaries decide. Building it now would be building it twice. The manifest currently lives in `meta/`
+for the same reason; it moves to `src/core/.claude/` when a shipped artifact consumes it, and not
+before (Leanness #1 — do not ship an 8 KB file nothing reads).
 
 #### Changelog sweep, 2026-08-05 — how long this has been true, and what it cost
 

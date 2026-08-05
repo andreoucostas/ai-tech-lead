@@ -1,0 +1,312 @@
+{
+  "schema-version": 1,
+  "generated-by": ".claude/scripts/build-block-manifest.ps1",
+  "purpose": "Classify a consumer protected file as CURRENT / BEHIND / DIVERGED. See B-97.",
+  "counting-rule": "Block = \"## <name>\" to next \"## \" or EOF; LF-normalized, BOM-stripped, per-line trailing whitespace removed, outer whitespace trimmed; sha256, first 16 hex chars.",
+  "blocks": [
+    "Verification Rules",
+    "Leanness",
+    "SOLID",
+    "Agentic Workflow"
+  ],
+  "coverage": {
+    "earliest-release": "v0.26.0",
+    "latest-release": "v0.44.0",
+    "release-count": 33,
+    "limitation": "Tags in this repo begin at the monorepo merge. Releases before that shipped from the two archived legacy repos, so a consumer installed before the earliest release above cannot be fingerprinted here and must classify as UNKNOWN, never as CURRENT."
+  },
+  "unavailable": [],
+  "fingerprints": {
+    "dotnet": {
+      "CLAUDE.md": {
+        "Verification Rules": [
+          {
+            "hash": "9460aa742c32dfc6",
+            "first": "v0.26.0",
+            "last": "v0.29.0"
+          },
+          {
+            "hash": "4e2d78f9baaf9e1f",
+            "first": "v0.29.1",
+            "last": "v0.44.0"
+          }
+        ],
+        "Leanness": [
+          {
+            "hash": "204345ad7a51ffcd",
+            "first": "v0.26.0",
+            "last": "v0.34.2"
+          },
+          {
+            "hash": "ad595fc0be3918f8",
+            "first": "v0.34.3",
+            "last": "v0.44.0"
+          }
+        ],
+        "SOLID": [
+          {
+            "hash": "624135339e74161a",
+            "first": "v0.26.0",
+            "last": "v0.44.0"
+          }
+        ],
+        "Agentic Workflow": [
+          {
+            "hash": "1bcbe8760ebcb899",
+            "first": "v0.26.0",
+            "last": "v0.26.5"
+          },
+          {
+            "hash": "bbb7f60553595ab5",
+            "first": "v0.27.0",
+            "last": "v0.29.1"
+          },
+          {
+            "hash": "95673512c8e6ec50",
+            "first": "v0.30.0",
+            "last": "v0.44.0"
+          }
+        ]
+      },
+      "AGENTS.md": {
+        "Verification Rules": [
+          {
+            "hash": "9460aa742c32dfc6",
+            "first": "v0.26.0",
+            "last": "v0.29.0"
+          },
+          {
+            "hash": "4e2d78f9baaf9e1f",
+            "first": "v0.29.1",
+            "last": "v0.44.0"
+          }
+        ],
+        "Leanness": [
+          {
+            "hash": "204345ad7a51ffcd",
+            "first": "v0.26.0",
+            "last": "v0.34.2"
+          },
+          {
+            "hash": "ad595fc0be3918f8",
+            "first": "v0.34.3",
+            "last": "v0.44.0"
+          }
+        ],
+        "SOLID": [
+          {
+            "hash": "624135339e74161a",
+            "first": "v0.26.0",
+            "last": "v0.44.0"
+          }
+        ],
+        "Agentic Workflow": [
+          {
+            "hash": "a05dba02faf59323",
+            "first": "v0.26.0",
+            "last": "v0.29.1"
+          },
+          {
+            "hash": "59e234b93181d1e6",
+            "first": "v0.30.0",
+            "last": "v0.44.0"
+          }
+        ]
+      }
+    },
+    "angular": {
+      "CLAUDE.md": {
+        "Verification Rules": [
+          {
+            "hash": "7f6301ee03a9e157",
+            "first": "v0.26.0",
+            "last": "v0.29.0"
+          },
+          {
+            "hash": "996131fe2ee717ad",
+            "first": "v0.29.1",
+            "last": "v0.44.0"
+          }
+        ],
+        "Leanness": [
+          {
+            "hash": "0cceb8017efeeaa4",
+            "first": "v0.26.0",
+            "last": "v0.34.2"
+          },
+          {
+            "hash": "ad37de0199953d22",
+            "first": "v0.34.3",
+            "last": "v0.44.0"
+          }
+        ],
+        "SOLID": [
+          {
+            "hash": "348bbc3e3c700ad8",
+            "first": "v0.26.0",
+            "last": "v0.44.0"
+          }
+        ],
+        "Agentic Workflow": [
+          {
+            "hash": "1f6f4e9b4d3d503d",
+            "first": "v0.26.0",
+            "last": "v0.26.5"
+          },
+          {
+            "hash": "d195b9054171eb67",
+            "first": "v0.27.0",
+            "last": "v0.29.1"
+          },
+          {
+            "hash": "0166e976ed8aab1a",
+            "first": "v0.30.0",
+            "last": "v0.44.0"
+          }
+        ]
+      },
+      "AGENTS.md": {
+        "Verification Rules": [
+          {
+            "hash": "7f6301ee03a9e157",
+            "first": "v0.26.0",
+            "last": "v0.29.0"
+          },
+          {
+            "hash": "996131fe2ee717ad",
+            "first": "v0.29.1",
+            "last": "v0.44.0"
+          }
+        ],
+        "Leanness": [
+          {
+            "hash": "0cceb8017efeeaa4",
+            "first": "v0.26.0",
+            "last": "v0.34.2"
+          },
+          {
+            "hash": "ad37de0199953d22",
+            "first": "v0.34.3",
+            "last": "v0.44.0"
+          }
+        ],
+        "SOLID": [
+          {
+            "hash": "348bbc3e3c700ad8",
+            "first": "v0.26.0",
+            "last": "v0.44.0"
+          }
+        ],
+        "Agentic Workflow": [
+          {
+            "hash": "b57967faaabad7a6",
+            "first": "v0.26.0",
+            "last": "v0.29.1"
+          },
+          {
+            "hash": "740b0a0846bbf9b1",
+            "first": "v0.30.0",
+            "last": "v0.44.0"
+          }
+        ]
+      }
+    },
+    "monorepo": {
+      "CLAUDE.md": {
+        "Verification Rules": [
+          {
+            "hash": "dc72bbce4716e6ca",
+            "first": "v0.26.0",
+            "last": "v0.29.0"
+          },
+          {
+            "hash": "560b85759faa948a",
+            "first": "v0.29.1",
+            "last": "v0.44.0"
+          }
+        ],
+        "Leanness": [
+          {
+            "hash": "ba5b405312ccb8b6",
+            "first": "v0.26.0",
+            "last": "v0.34.2"
+          },
+          {
+            "hash": "60e225f5bd4815b5",
+            "first": "v0.34.3",
+            "last": "v0.44.0"
+          }
+        ],
+        "SOLID": [
+          {
+            "hash": "07a9b9798aa0915a",
+            "first": "v0.26.0",
+            "last": "v0.44.0"
+          }
+        ],
+        "Agentic Workflow": [
+          {
+            "hash": "3a47e95bfd9e4daa",
+            "first": "v0.26.0",
+            "last": "v0.26.5"
+          },
+          {
+            "hash": "11073b6d480520ce",
+            "first": "v0.27.0",
+            "last": "v0.29.1"
+          },
+          {
+            "hash": "add9ee496332bcb8",
+            "first": "v0.30.0",
+            "last": "v0.44.0"
+          }
+        ]
+      },
+      "AGENTS.md": {
+        "Verification Rules": [
+          {
+            "hash": "dc72bbce4716e6ca",
+            "first": "v0.26.0",
+            "last": "v0.29.0"
+          },
+          {
+            "hash": "560b85759faa948a",
+            "first": "v0.29.1",
+            "last": "v0.44.0"
+          }
+        ],
+        "Leanness": [
+          {
+            "hash": "ba5b405312ccb8b6",
+            "first": "v0.26.0",
+            "last": "v0.34.2"
+          },
+          {
+            "hash": "60e225f5bd4815b5",
+            "first": "v0.34.3",
+            "last": "v0.44.0"
+          }
+        ],
+        "SOLID": [
+          {
+            "hash": "07a9b9798aa0915a",
+            "first": "v0.26.0",
+            "last": "v0.44.0"
+          }
+        ],
+        "Agentic Workflow": [
+          {
+            "hash": "47acef05653505a7",
+            "first": "v0.26.0",
+            "last": "v0.29.1"
+          },
+          {
+            "hash": "d91214c8eab2e379",
+            "first": "v0.30.0",
+            "last": "v0.44.0"
+          }
+        ]
+      }
+    }
+  }
+}
