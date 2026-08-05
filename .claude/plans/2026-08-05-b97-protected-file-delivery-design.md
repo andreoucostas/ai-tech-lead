@@ -215,16 +215,63 @@ behave is exactly what this review caught twice.
 
    **Scope of the claim:** proves the mechanism for Claude Code CLI. It says nothing about Copilot —
    which Option A never claimed via imports, and which canary 2 owns.
-2. **Canary: does an unprotected `.github/instructions/framework-rules.instructions.md` reach
-   Copilot?** CLI and VS Code agent mode, including Preview-hooks-disabled VS Code; check automatic
-   selection and precedence against a stale `AGENTS.md`. **If it works, the recommendation flips to
-   A + native Copilot instructions, and B is likely dead.**
+2. ~~**Canary: does an unprotected `.github/instructions/` file reach Copilot?**~~
+   **RUN 2026-08-05 on Copilot CLI 1.0.77 — POSITIVE. It reaches. The recommendation flips to A.**
+
+   Three-way controlled design, because a bare null would not distinguish "the surface does not
+   deliver" from "my method is wrong":
+
+   | Arm | Fixture | Result |
+   |---|---|---|
+   | **Subject** | sentinel only in `.github/instructions/framework-rules.instructions.md` (`applyTo: "**"`) | sentinel returned |
+   | **Positive control** | sentinel only in `.github/copilot-instructions.md` (known-supported) | sentinel returned |
+   | **Negative control** | no instruction file at all | returned `NOT-IN-CONTEXT`, as designed |
+
+   Raw output shows `Changes +0 -0` and no tool invocation, so the model did not reach the sentinel
+   by reading. The negative control is what makes the positive meaningful: with no instruction file
+   the model correctly reports absence rather than confabulating.
+   Script: `.claude/scripts/canary-copilot-instructions.ps1`.
+
+   **Two limits on this claim, both material:**
+   - **Copilot CLI only.** VS Code agent mode is untested, and Preview-hooks-disabled VS Code
+     especially so — the surface `docs/enforcement-surfaces.md` already rates weakest. The review
+     asked for both; only one was run. Precedence against a stale `AGENTS.md` is also untested.
+   - **`applyTo: "**"` was used, and B-17 explicitly decided against shipping a `**` variant** on
+     salience-dilution grounds. Whether a *narrower* `applyTo` still delivers on a prompt that names
+     no file is **unknown**, and the shipped design depends on the answer.
 3. Define the historical fingerprint / migration manifest (design work, no host needed — **this is
    the only step executable today**).
 4. Ship the honestly-labelled C row plus Option E conditional discovery.
 5. Re-evaluate A versus a substantially redesigned B.
 
-**Both canaries need live agent sessions and therefore quota**, which is the same constraint parking
-B-98 step 1's six routing runs (96% of the weekly allowance consumed, deferred to 2026-08-06+).
-**Batch all three together when quota resets** — they are the same kind of experiment against the same
-harness, and running them in one sitting is materially cheaper than three separate ones.
+~~Both canaries need live agent sessions and therefore quota.~~ **Both were run on 2026-08-05.**
+Quota was never the binding constraint — the actual blocker was that no agent host resolves by bare
+name on this box (see the host-path table in `DEVELOPING.md`), and measured cost was ~$0.05/run.
+
+## 8. Conclusion (rev 3) — Option A, both legs proven
+
+**Split the framework-owned blocks out of the protected files into unprotected ones, delivered
+natively per host.** Both legs are now observed, not assumed:
+
+| Host | Carrier | Protected? | Evidence |
+|---|---|---|---|
+| Claude Code | `CLAUDE.md` → `@.claude/framework-rules.md` | **No** — delivers on update | Canary 1, positive, zero tool calls |
+| Copilot | `.github/instructions/framework-rules.instructions.md` | **No** (`install.ps1:31` vs `:37`) | Canary 2, positive, with negative control |
+
+Option B (`/sync-template` writing into a consumer-owned file) is **dead**: it existed only because A
+was thought to leave Copilot stranded, and it carried the v0.20.0 clobber risk into a new place for
+no remaining benefit.
+
+**The migration asymmetry is the best property of this answer, and it was not visible in rev 1:**
+
+- **The Copilot leg needs no consumer action at all.** `.github/instructions/` is unprotected, so the
+  file simply appears at the next update. Existing consumers are fixed silently and immediately.
+- **The Claude leg needs one line, once** — the `@import` added to a `CLAUDE.md` the framework may not
+  write. That is the whole of the remaining migration problem, and it is now small enough to solve
+  with Option E's conditional machinery: `session-start` is unprotected and already reads files
+  conditionally, so it can inject the rules **only when the import line is absent**. That carries no
+  double-context cost for migrated or greenfield consumers, which is precisely what sank Option D.
+
+**Do not implement yet.** Two open questions gate it, both cheap: whether a narrower `applyTo` still
+delivers (B-17 rejected `**`), and whether VS Code agent mode behaves like the CLI. Both are the same
+kind of canary already built.

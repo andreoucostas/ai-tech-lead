@@ -1453,12 +1453,38 @@ sentinel is absent from `CLAUDE.md` itself. Verified independently of the probe 
 n=1 is sufficient because this measures the host's *deterministic* context assembly, unlike the
 stochastic routing question — do not cite it as precedent for shrinking B-98's six runs.
 
-**This moves the recommendation toward A.** Option A's only serious objection was the Copilot leg,
-and sol's finding that `.github/instructions/` is unprotected already weakened it. With imports now
-proven to resolve, A is a working delivery path for Claude Code today. **Canary 2 (does an unprotected
-`.github/instructions/` file reach Copilot, including Preview-hooks-off VS Code) is now the single
-open question that decides A-alone versus A-plus-a-Copilot-leg.** It needs Copilot, not Claude, so it
-is a different tool rather than a quota question.
+**Canary 2 RUN 2026-08-05 on Copilot CLI 1.0.77 — POSITIVE. `.github/instructions/` reaches Copilot.**
+Three-way controlled: subject (`.github/instructions/*.instructions.md`, `applyTo: "**"`) returned the
+sentinel; positive control (`.github/copilot-instructions.md`) returned its own; **negative control
+(no instruction file) correctly returned `NOT-IN-CONTEXT`** rather than confabulating — which is what
+makes the positive mean anything. `Changes +0 -0`, no tool invocation, so the sentinel was not reached
+by reading. Script: `.claude/scripts/canary-copilot-instructions.ps1`.
+
+### B-97 ANSWER (rev 3): Option A, both legs observed
+
+| Host | Carrier | Protected? | Evidence |
+|---|---|---|---|
+| Claude Code | `CLAUDE.md` → `@.claude/framework-rules.md` | No — delivers on update | Canary 1 |
+| Copilot | `.github/instructions/framework-rules.instructions.md` | No (`install.ps1:31` vs `:37`) | Canary 2 |
+
+Option B (`/sync-template` writing into a consumer-owned file) is **dead** — it existed only to cover
+a Copilot gap that does not exist, and carried the v0.20.0 clobber risk into a new place for no
+remaining benefit.
+
+**Migration asymmetry, the best property here and invisible in rev 1:** the **Copilot leg needs no
+consumer action** — the file appears at the next update, so existing consumers are fixed silently.
+The **Claude leg needs one line, once** (the `@import`), which is now small enough for Option E's
+conditional machinery: `session-start` is unprotected and already reads conditionally, so it can
+inject the rules **only when the import line is absent** — no double-context cost for migrated or
+greenfield consumers, which is exactly what sank Option D.
+
+**Two cheap questions still gate implementation** (do not skip — both are one canary each):
+1. **Does a narrower `applyTo` still deliver?** `"**"` was used, and **B-17 explicitly rejected a
+   `**` variant** on salience-dilution grounds. If only `"**"` works, B-17's decision and this design
+   collide and one must give.
+2. **Does VS Code agent mode behave like the CLI**, especially with Preview hooks disabled? The
+   review asked for both surfaces; only the CLI was run. Precedence against a stale `AGENTS.md` is
+   also untested.
 
 **Design step 3 — the fingerprint manifest — is BUILT (2026-08-05).**
 `.claude/scripts/build-block-manifest.ps1` (meta script, PS-only per WSD-005) →
@@ -1678,6 +1704,19 @@ not resolvable — the session `PATH` holds three entries, the third being the l
 clearly (`claude CLI is not installed or not on PATH`), which is good instrument behaviour, but the
 runs were parked believing quota was the only obstacle and it was not the first one hit. Prepend that
 directory to `PATH` for the child process; do **not** "fix" the registry, which is a known false fix.
+
+**Absolute paths for every agent host on this box** (all three are invisible to a bare name because
+of the `${PATH}` corruption — record them here so no future session re-derives them):
+
+| Tool | Path | Note |
+|---|---|---|
+| Claude Code | `C:\Users\Costas\.local\bin\claude.exe` | |
+| Copilot CLI | `C:\Users\Costas\AppData\Roaming\npm\copilot.cmd` | **needs `C:\Program Files\nodejs` on `PATH` too** — the npm shim shells out to `node`, and its failure is the misleading `'"node"' is not recognized`, which looks like a broken Copilot install rather than a PATH problem |
+| GitHub CLI | `C:\Program Files\GitHub CLI\gh.exe` | |
+| pwsh 7.6.4 | `C:\Program Files\WindowsApps\Microsoft.PowerShell_7.6.4.0_x64__8wekyb3d8bbwe\pwsh.exe` | MSIX build, cf. B-79 |
+
+This is worth a line in `DEVELOPING.md` rather than only here — three separate host lookups were
+needed in one session, and each failed with a different and misleading error.
 
 **The decision rule is PRE-REGISTERED and binding** (design §2.1) — it was written before any run
 precisely so it cannot be tuned to the outcome. Let `r` = runs where framework warehouse guidance

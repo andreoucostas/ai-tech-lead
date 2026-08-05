@@ -183,6 +183,33 @@ not automatic, and its results are a trend log, not a pass/fail release conditio
   `cat`/`grep`/`jq` resolve; `.sh` tests self-skip when no bash is found (pure-Windows safe).
 - **Host:** prefers `pwsh` (7+); falls back to `powershell.exe` [#4 platform].
 
+### Agent-host paths on this box — none of them resolve by bare name
+
+The session `PATH` contains three entries and the third is the **literal unexpanded string
+`${PATH}`**, so every agent host is invisible to a bare command name. This is a session artifact —
+the registry is fine, and "fixing" it is a known dead end. Use absolute paths, or prepend the
+directory for the child process.
+
+| Tool | Absolute path |
+|---|---|
+| Claude Code | `C:\Users\Costas\.local\bin\claude.exe` |
+| Copilot CLI | `C:\Users\Costas\AppData\Roaming\npm\copilot.cmd` |
+| GitHub CLI | `C:\Program Files\GitHub CLI\gh.exe` |
+| pwsh 7.6.4 | `C:\Program Files\WindowsApps\Microsoft.PowerShell_7.6.4.0_x64__8wekyb3d8bbwe\pwsh.exe` |
+| node | `C:\Program Files\nodejs\node.exe` |
+
+Each fails differently and none of the errors names `PATH`, which is why this table exists:
+
+- `pwsh` from Git Bash → `No such file or directory`.
+- `claude` → the harness's own `claude CLI is not installed or not on PATH` (accurate, but reads as
+  "install it").
+- **`copilot` → `'"node"' is not recognized`** — the npm shim shells out to `node`, so Copilot looks
+  broken when the real gap is `C:\Program Files\nodejs`. Prepend **both** the nodejs directory and
+  the npm directory before invoking Copilot.
+
+Also beware `cmd 2>&1 | tail -n` in Bash: `$?` then reports `tail`'s status, so a total failure
+prints `EXIT=0`. Capture the exit code before the pipe.
+
 ### The live agent-behavior harness (B-41 — maintainer-triggered, spends budget, not a gate)
 
 `.claude/evals/run-agent-evals.ps1` drives the installed `claude` CLI through fixture scenarios in
