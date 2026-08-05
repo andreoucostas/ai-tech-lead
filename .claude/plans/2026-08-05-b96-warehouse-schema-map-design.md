@@ -173,8 +173,11 @@ delivery it does not have.
    field report's shape); two conflicting consumption joins; and dynamic SQL. Measure **abstention as
    well as precision** — the design question is whether the agent correctly says "unknown". Reuse the
    B-41 eval harness; do not build a second one.
-6. **Also record whether `map-warehouse` fires at all** on that prompt. If it does not, the routing
-   half is the real defect and §3.5 is insufficient — say so rather than shipping on the assumption.
+6. **B-98 step 1 is a prerequisite, not a criterion.** Whether `map-warehouse` fires at all on an
+   incident-shaped prompt must be settled *before* implementation begins: if it does not fire, this
+   content work never reaches the developer however good it is, and §3.5's description change is
+   insufficient. Filing it as an acceptance criterion here was wrong — it would only ever run once
+   the work it gates was already underway.
 7. Context footprint: `meta/context-footprint.json` static totals must not regress past their
    ceilings (dotnet 40,000; monorepo 48,000). Headroom is thin — dotnet was 38,571 at design time.
 
@@ -192,9 +195,12 @@ Two independent adversarial reviews rejected earlier revisions. Accepted:
   guards it.
 - **Delivery cannot reach bootstrapped consumers** — accepted and *not* solved here; §3.6 states the
   limitation and B-97 owns it.
-- **Sequencing: prove the skill fires before designing content** — partly accepted. The content gap
-  is established structurally rather than inferred, so design proceeds; criteria 5–6 make the routing
-  check a ship gate instead of a prerequisite.
+- **Sequencing: prove the skill fires before designing content** — accepted. The content gap is
+  established structurally rather than inferred, so *designing* it proceeds; but the routing check is
+  a **prerequisite to implementation**, filed as B-98 step 1 (criterion 6). The first cut of this
+  design demoted it to a ship gate, which inverted the dependency — the check would only run once the
+  work it gates was underway. The reviewer's framing ("not a downstream side investigation; it is the
+  prerequisite that determines whether B-96 addresses the incident at all") was right as written.
 
 **Rejected alternatives.** *A new `query-warehouse` skill* — adds a routing dependency without
 removing one; the content belongs where warehouse discovery already lives. *An opt-in profiling tier

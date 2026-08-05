@@ -1309,9 +1309,13 @@ rejected in the design; no whole-warehouse attribute-authority analysis.
 **Ship gates that are easy to skip:** the skill must be *observed* emitting `UNRESOLVED` on
 naming-only evidence, and the design's labelled fixture (declared FK, CTE-resolved key, `MERGE`,
 a misleading column name, conflicting consumption joins, dynamic SQL) must measure **abstention as
-well as precision** — via the B-41 harness, not a second one. Record whether `map-warehouse` fires at
-all on an incident-shaped prompt; if it does not, routing is the real defect and the description
-change is insufficient.
+well as precision** — via the B-41 harness, not a second one.
+
+**Gated by B-98 step 1.** Whether `map-warehouse` fires at all on an incident-shaped prompt is a
+*prerequisite*, not a ship gate: if it does not fire, this content work does not reach the developer
+however good it is, and the description change in the design (§3.5) is insufficient. Settle B-98
+step 1 before implementing. (It was first written into this entry as a ship-gate sentence, which
+inverted the dependency — the check would only ever run if B-96 were already being built.)
 
 **Cross-links:** B-97 (its Conventions index line cannot reach already-bootstrapped consumers —
 B-96 must not claim delivery it does not have), B-78 (the warehouse-specific case of that, and its
@@ -1353,6 +1357,51 @@ selectively loaded, so "durable" would then mean "reliably routed", which is a d
 **Cross-links:** B-78 (the warehouse-specific instance — four populations no signal reaches; this is
 its general form, and solving B-97 likely subsumes part of it), B-46 (consumer update & drift story),
 B-96 (blocked by this).
+
+---
+
+### B-98 · A prompt that matches no skill description fails silently
+**Effort:** S (step 1) · M (the general question) · **Priority:** P2 · found 2026-08-05
+
+**Why:** routing is the model matching a prompt against skill descriptions. When nothing matches,
+the framework emits **nothing** — no warning, no degraded path, no "I have no recipe for this". The
+developer receives a plausible answer produced with no framework guidance, and cannot tell that from
+one produced with it. Silence is indistinguishable from success, which is the worst shape a failure
+can take: there is no signal to act on, so the gap never surfaces except as a bad outcome downstream.
+
+The trigger is B-96's field report, and it is genuinely unresolved. `map-warehouse`'s USE FOR already
+includes "what feeds this report"
+(`src/stacks/dotnet/files/.claude/skills/map-warehouse/SKILL.md:10`), so the skill was **eligible** to
+fire — but no transcript exists, so nobody knows whether it did. Both outcomes are findings, and they
+have different owners:
+
+- **It fired** → the map had nothing useful to say. Content gap; B-96 owns it.
+- **It did not fire** → B-96's content work never reaches the developer regardless of quality, and the
+  remedy is routing, not content.
+
+This is the same shape as **B-97**: a general framework defect that surfaced through a
+warehouse-specific symptom. B-97 earned its own entry on those grounds and so does this.
+
+**Do:**
+
+1. **Settle the warehouse instance — cheapest, and it gates B-96.** Run an incident-shaped prompt
+   ("replicate this report, here is the source SQL") against a warehouse fixture with the current dist
+   installed, and observe whether `map-warehouse` fires and whether `docs/warehouse-map.md` enters
+   context. Reuse the B-41 harness; do not build a second one.
+2. **Then the general question: is silence acceptable when no skill matches?** Weigh — a `route-prompt`
+   fallback that names the nearest skills and states that none matched; accepting silence but auditing
+   whether descriptions carry **read/consumption** verbs at all (most real tasks are reads; most skill
+   descriptions are framed around writes — that asymmetry is what produced the warehouse gap); or a
+   periodic description-coverage audit against a corpus of realistic prompts. Note the fallback option
+   costs context on every turn, so it is not obviously right.
+3. **Sweep the class — write-side-only capabilities.** `add-endpoint` and `add-entity` cover
+   *authoring*; is *consuming* an existing endpoint or entity correctly covered anywhere? B-40 shipped
+   `map-warehouse` + `add-warehouse-load` and nothing for querying. Check whether the same asymmetry
+   runs through the rest of the skill roster.
+
+**Cross-links:** B-96 (gated by step 1), B-41 (the eval harness steps 1–2 depend on), B-97 (the other
+general defect found through the same symptom), B-76 (shipped descriptions matching what they
+describe — accuracy, where this is coverage), B-78 (warehouse-map signals that reach nobody).
 
 ---
 
