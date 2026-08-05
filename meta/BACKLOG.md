@@ -1983,6 +1983,63 @@ parallelism cannot rescue it), B-59 (inert checks), B-61 (twin parity does not c
 B-64 (planted-defect tests for diagnostics), B-70 (a change is not done until CI is green — this
 would have taken the linux leg down), B-88 (CI-red reporting).
 
+### B-102 · The documented JSON-parser fallback cannot exist on Windows — `python3` is not the name Windows installs
+**Effort:** S–M · **Priority:** **P1** (the write-guard fails open on the primary target platform while a doc
+promises otherwise) · found 2026-08-05 · **Invariants:** #3 #5 #6
+
+**Why:** every shipped `.sh` hook resolves its JSON parser with `command -v python3`, and
+`docs/enforcement-surfaces.md:48` promises consumers *"(`jq`, with `python3` as fallback)"*. **A
+standard python.org install on Windows provides `python.exe` only — there is no `python3.exe`.**
+Verified on the maintainer box: `C:\Python314\` (registered in the registry `PATH`) contains
+`python.exe`, `pythonw.exe`, `python3.dll` — and no `python3.exe`; `C:\Python314\python.exe --version`
+returns **Python 3.14.5** and parses JSON from stdin correctly.
+
+So on Windows the documented fallback **can never engage**, no matter how healthy the `PATH` is. The
+consequence is the one that matters: with `jq` absent, `guard.sh` prints
+*"no jq or python3 on PATH — write-guard INACTIVE (secret/test-defeat floor is OFF)"* and **allows
+every write**, on a box that has a perfectly good JSON parser installed. The framework's deterministic
+write floor is the product's central enforcement claim, and its only fallback is spelled in a way that
+excludes the primary target platform (Bitbucket DC shops on Windows).
+
+Why nobody noticed: `jq` is present on the maintainer box (`/c/Users/Costas/bin/jq`), so the fallback
+branch is never taken here. It fails only for a consumer without jq — i.e. exactly the person the
+fallback exists for.
+
+**Blast radius — 14 shipped/meta files carry the `command -v python3` probe:** `guard.sh`,
+`route-prompt.sh`, `session-start.sh`, `audit-trail.sh` (core); `boy-scout-check.sh` and
+`post-write.sh` (all three stacks); `framework-doctor.{ps1,sh}`; three `SessionStart*.Tests.ps1`.
+The doctor's `Guard JSON parser` row reports *"jq or python3 is available"* on the same naming, so it
+reports the floor's health on a basis that is wrong on Windows — a second defect in a row B-56 and
+B-63 have already had to correct once for vantage-point reasons.
+
+**The trap in the obvious fix, which must not be skipped:** do **not** simply add `python` to the
+`command -v` list. `C:\Users\Costas\AppData\Local\Microsoft\WindowsApps\python.exe` **exists and
+resolves**, but it is the Microsoft Store *app-execution-alias stub*: running it prints *"Python was
+not found; run without arguments to install from the Microsoft Store"* and exits non-zero. A
+name-resolution probe would therefore report a parser as available and then fail at the moment the
+guard needs it — converting a loud INACTIVE warning into a silent malfunction, which is strictly
+worse. **The probe must validate by execution** (run the candidate and confirm it parses), which is
+the same lesson as B-63: ask the capability, not the name.
+
+**Do:** one shared resolution helper used by both twins and the doctor: try `jq`, then `python3`,
+then `python`, then `py -3`, and accept a candidate only after it successfully round-trips a trivial
+JSON document. Correct `enforcement-surfaces.md`'s parenthetical to name what is actually probed.
+Red-test it by hiding `jq` and asserting the fallback engages and the guard still blocks a planted
+secret — on Windows, which is where the current code fails.
+
+**Also fixes a false skip (B-71's class).** `ValidateDist.Tests.ps1` prints
+*"python3 is unavailable on this host; CI linux must exercise this branch"* and the suite still
+summarises green. That statement is **false** — python is installed and working. The skipped
+assertion is a *twin-parity* one (the jq and python normalized record streams must be byte-identical),
+so it has been permanently unexercised on every Windows box while reading as covered. A skip caused by
+a POSIX-only name is not the same fact as a host without python, and reporting them identically is
+precisely what B-71 says lets a gap persist.
+
+**Cross-links:** B-63 (probe vantage-point validity — third instance), B-56 (host-dependent probes
+make gate outcomes machine-dependent), B-71 (skips that misreport why), B-48 (enforcement-bypass
+audit — an inactive guard belongs on that list), B-101 (filed the same day from the same verification
+pass).
+
 ---
 
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
