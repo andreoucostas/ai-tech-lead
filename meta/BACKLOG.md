@@ -1885,6 +1885,53 @@ gated and this one is not), B-32/WSD-017 (the context-footprint gate this must p
 
 ---
 
+### B-100 · A file created by a shell command passes no hook — the guard is not a floor
+**Effort:** M · **Priority:** P2 · found 2026-08-05 (RCA on three red CI runs) · **Invariants:** #4 #5
+
+**The incident.** `.claude/scripts/canary-import-resolution.ps1` was committed without a UTF-8 BOM,
+breaking meta-invariant #4 and reddening CI for **three consecutive pushes** before anyone looked.
+One line, one file, caught only by the repo-wide BOM gate in the meta suite:
+`[FAIL] every .ps1 in the repo carries a UTF-8 BOM (invariant #4) -- BOM missing in:
+.claude\scripts\canary-import-resolution.ps1`.
+
+**Why no gate caught it before the push — two independent failures:**
+
+1. **The `bom-fix` hook never had a chance.** It is a PostToolUse hook on Write/Edit. That file was
+   created in the repo with `Copy-Item` from a scratchpad — a **shell** copy, which fires no tool
+   hook at all. Every other `.ps1` added the same day went through `Write`, was auto-fixed, and
+   passed. The auto-fixer worked perfectly and was simply never invoked.
+2. **Targeted verification gave false confidence.** A BOM check *was* run that day and reported
+   `BOM present: OK` — on `build-block-manifest.ps1`, the file created via `Write`. Checking the
+   file that went through the hook proves nothing about the file that bypassed it. The meta suite,
+   which checks the whole repo, was not run before pushing.
+
+**What else is exposed to the same class — this is the part worth acting on.** The defect is not
+about BOMs. **Every hook-based enforcement in this repo is bypassed by a file that arrives without a
+Write/Edit tool call.** That includes:
+
+- **The `guard` hook** — PreToolUse on Write/Edit, the deterministic block on secrets, test-defeats
+  and suppressions. A file produced by `Copy-Item`, by `Set-Content` inside a Bash/PowerShell call,
+  by `git checkout`, or by an external tool never passes it. The guard is documented as a floor
+  (`docs/enforcement-surfaces.md`); for shell-created content it is **not a floor at all**.
+- **Implementer rounds specifically.** codex/terra writes files directly to disk. So every
+  externally-implemented change bypasses the guard entirely. The working model already compensates
+  ("Claude alone reviews diffs"), but that is a *human* control standing in for a deterministic one,
+  and nothing in the record says so.
+
+**Do:** decide where the second line of defence belongs, given the hook cannot be it. Candidates:
+fold a BOM + guard-pattern scan into the **staged set** at commit time (B-80's guard already
+inspects the staged set — the cheapest place to add this); extend **B-18**'s opt-in git-hook net,
+which is the same idea already scoped; or accept it and make "run the meta suite before pushing" an
+explicit step in `DEVELOPING.md` rather than tribal habit. The first is enforcement, the third is
+process — do not pretend the third is the second.
+
+**Cross-links:** B-80 (staged-set guard — the natural host), B-18 (opt-in git hooks), B-48
+(enforcement-bypass audit — **this is a concrete, demonstrated entry for that list**), B-88 (nothing
+tells you a release broke CI; three runs went red here before it was raised by the maintainer, not by
+tooling).
+
+---
+
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see the Done section.**

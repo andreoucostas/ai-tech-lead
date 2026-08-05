@@ -1,4 +1,4 @@
-#requires -Version 7.0
+﻿#requires -Version 7.0
 <#
   B-97 canary 1 — does an @import in a ROOT CLAUDE.md resolve into context?
 
