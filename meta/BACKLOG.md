@@ -1262,6 +1262,100 @@ from v0.39.0 to v0.43.0.
 
 ---
 
+### B-96 · `map-warehouse` maps the ETL, not the warehouse
+**Effort:** M · **Priority:** P2 · found 2026-08-04 (maintainer field report) · **Design:** `.claude/plans/2026-08-05-b96-warehouse-schema-map-design.md` (LOCKED)
+
+**Why:** the skill emits one row per entity over eight fields — `entity | layer | grain | load
+proc/pipeline | orchestrated by | rerun protection | SCD | partitioning`
+(`src/stacks/dotnet/files/.claude/skills/map-warehouse/SKILL.md:76-84`). Every one is a **loading**
+property. There is no schema inventory, no columns, no primary keys, no foreign keys, no
+relationships; columns appear only as table-classification signals (`:33`). It is an ETL map wearing
+a warehouse map's name.
+
+The consequence shows on the commonest warehouse task there is. Asked to help write a report, the
+framework can say how `FactSales` is loaded and whether the load is re-runnable — and cannot say what
+`FactSales` joins to or which dimension owns an attribute. This is established by reading the skill,
+not inferred from the field report.
+
+The field report is what it costs. A consumer warehouse, onboarded and already mapped, was asked to
+replicate a report built in a *different* warehouse; the model reached a dimension attribute through
+a spurious column (declared in DDL, never populated) instead of following a fact key to the dimension
+built for that result. With no relationship model in reach, the only evidence available was the
+column's **name**. No transcript exists, so whether the skill fired is unknown.
+
+Compounding: step 1 already identifies the consumption views (`:40-45`) and step 7 already records
+which views each entity feeds (`:81-84`). Those views contain the correct joins. The skill opens them
+and extracts nothing from them.
+
+**Do:** implement the locked design. In outline — table inventory with primary keys; a per-fact
+relationship edge list as the primary artifact (`| fact | fk column | → dimension | role | evidence |
+confidence |`); the dimensional semantics reporting needs (fact type, role-playing, conformed and
+degenerate dimensions); a coverage statement naming what could not be read; read-side query rules and
+the fan/chasm traps inside the skill; and a one-line `docs/warehouse-map.md` pointer in `CLAUDE.md >
+Conventions > Data Access`, mirroring the ADR index (`src/core/CLAUDE.md:92-100`).
+
+Three constraints are locked and are the reason two earlier revisions were rejected in review:
+**(a)** confidence is explicit and abstention is the default — naming convention alone never asserts
+an edge, and a guess labelled "declared" is worse than no label, because it suppresses the scepticism
+that would send the agent to the reporting view; **(b)** cost is tiered — DDL facts and consumption
+join predicates ride on scans already performed, load-proc dataflow tracing does not and stays off
+the default path; **(c)** no whole-warehouse bus matrix (7,200 cells at 60 facts × 120 dims, and
+Kimball's enterprise matrix is a planning artifact over business processes, not a join router).
+
+**Not:** no new skill (a second selectively-routed skill adds a routing bet without removing one); no
+execution against a database — WSD-021 stands, and the opt-in profiling tier was considered and
+rejected in the design; no whole-warehouse attribute-authority analysis.
+
+**Ship gates that are easy to skip:** the skill must be *observed* emitting `UNRESOLVED` on
+naming-only evidence, and the design's labelled fixture (declared FK, CTE-resolved key, `MERGE`,
+a misleading column name, conflicting consumption joins, dynamic SQL) must measure **abstention as
+well as precision** — via the B-41 harness, not a second one. Record whether `map-warehouse` fires at
+all on an incident-shaped prompt; if it does not, routing is the real defect and the description
+change is insufficient.
+
+**Cross-links:** B-97 (its Conventions index line cannot reach already-bootstrapped consumers —
+B-96 must not claim delivery it does not have), B-78 (the warehouse-specific case of that, and its
+"durable pointer into `CLAUDE.md > Conventions > Data Access`" is the same mechanism —
+`meta/BACKLOG.md:831-834`), B-41 (the eval harness the ship gates depend on), B-40/WSD-021 (the
+original DW capability and its no-execution property).
+
+---
+
+### B-97 · A conventions change cannot reach an already-bootstrapped consumer
+**Effort:** M · **Priority:** P2 · found 2026-08-05 (blocked B-96's delivery) · **Invariants:** #1
+
+**Why:** verified by reading, and general — nothing about this is warehouse-specific.
+
+- `/bootstrap` replaces the **entire** `CLAUDE.md > Conventions` section with conventions observed in
+  the actual codebase (`src/core/CLAUDE.md:83-88`).
+- `docs/defaults.md` explicitly stops being authoritative once it runs: *"These apply only when
+  CLAUDE.md > Conventions has not been populated by `/bootstrap`"* (`docs/defaults.md:3`).
+- `/bootstrap` is `disable-model-invocation: true` (`dist/dotnet/.claude/commands/bootstrap.md:3`), so
+  it is not re-run.
+
+Therefore **any** guidance we ship into either file reaches greenfield installs only. Every
+already-bootstrapped consumer — which is every consumer that has been using the framework — is
+structurally unreachable by that route. B-96's Conventions index line hit exactly this wall, which is
+how it was found.
+
+Compounding: there is little room to grow the shipped templates anyway. `meta/context-footprint.json`
+puts dotnet static Claude context at **38,571 against a 40,000 ceiling** and monorepo at **45,398
+against 48,000**. Whatever the answer is, it is probably not "add more to `CLAUDE.md`".
+
+**Do:** decide how a post-bootstrap consumer receives a conventions-level change at all, and record it
+— this is a WSD-shaped question, not a code change. Candidates to weigh: `/rebootstrap` as the
+delivery vehicle (it already re-aligns and is model-invocable, unlike `/bootstrap`); a `/docs-sync` or
+doctor row that *reports* the gap rather than closing it (cheaper, and consistent with WSD-027's rule
+that tooling may verify but not promote); or accepting that Conventions is consumer-owned after
+bootstrap and routing durable guidance to skills instead. Note the third option has a cost: skills are
+selectively loaded, so "durable" would then mean "reliably routed", which is a different problem.
+
+**Cross-links:** B-78 (the warehouse-specific instance — four populations no signal reaches; this is
+its general form, and solving B-97 likely subsumes part of it), B-46 (consumer update & drift story),
+B-96 (blocked by this).
+
+---
+
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see the Done section.**
