@@ -1348,10 +1348,50 @@ original DW capability and its no-execution property).
 
 ---
 
-### B-97 · A conventions change cannot reach an already-bootstrapped consumer
-**Effort:** M · **Priority:** P2 · found 2026-08-05 (blocked B-96's delivery) · **Invariants:** #1
+### B-97 · No change to `CLAUDE.md` — or any protected file — reaches an already-bootstrapped consumer
+**Effort:** M · **Priority:** P2 → **recommend P1** (it gates B-96 and B-99, and every future always-on instruction change) · found 2026-08-05 (blocked B-96's delivery), **scope widened 2026-08-05 after B-99's review** · **Invariants:** #1
 
-**Why:** verified by reading, and general — nothing about this is warehouse-specific.
+> **Scope correction, 2026-08-05.** This entry originally said *a conventions change* cannot reach an
+> already-bootstrapped consumer. That understated it. The wall is not `/bootstrap` replacing the
+> Conventions section — it is the **installer**, and it protects the whole file. B-99 was filed on the
+> premise that a new *Verification Rule* escapes this because bootstrap rewrites Conventions and not
+> the always-on blocks. That premise is **refuted**; see the three reads below. The practical
+> consequence is large: **the framework has no delivery path for any always-on instruction change to
+> its existing user base.**
+
+**Why:** verified by reading three independent mechanisms, all of which must be open for delivery and
+none of which is.
+
+1. **The installer restores the consumer's file over the new one.** `$protected` is
+   `CLAUDE.md, AGENTS.md, TECH_DEBT.md, SECURITY_FINDINGS.md, LEARNINGS.md, FRAMEWORK-CONTEXT.md,
+   .github/copilot-instructions.md, docs/ARCHITECTURE.md`
+   (`dist/dotnet/scripts/install.ps1:30-31`). Update mode is entered whenever
+   `.claude/framework-version.json` exists (`:42`); it snapshots every protected file to temp
+   (`:74-81`), copies the dist over the target, then **copies the snapshot back** (`:115-123`) and
+   prints *"consumer-owned content files left untouched"*. The header states the intent outright:
+   *"consumer-owned content files are left untouched. Safe to re-run"* (`:14-15`). So a consumer who
+   updates receives new skills, commands, agents and hooks — and their **own** `CLAUDE.md`.
+2. **`/bootstrap` cannot deliver it.** It replaces the Conventions section
+   (`src/core/CLAUDE.md:85`), enumerates what it rewrites without naming Verification Rules
+   (`dist/dotnet/.claude/commands/bootstrap.md:164-181`), and is `disable-model-invocation: true`
+   (`:3`) so it is not re-run anyway.
+3. **`/rebootstrap` cannot deliver it either** — the candidate vehicle this entry originally
+   proposed. It re-derives sections by analysing the consumer's repo; it contains no reference to
+   the template, `dist/`, or a re-copy, so it has **no source** for a framework-authored rule the
+   consumer's file does not already contain.
+
+Net: only *unprotected* paths update — `.claude/skills/`, `.claude/commands/`, `.claude/agents/`,
+hooks, `scripts/`, and `docs/` other than `ARCHITECTURE.md`. That makes this entry's third option
+(*"accepting that Conventions is consumer-owned after bootstrap and routing durable guidance to
+skills instead"*) not merely the cheapest candidate but the **only mechanism that currently works** —
+and its stated cost is now the whole problem: "durable" becomes "reliably routed", which is **B-98**.
+
+Compounding: there is little room to grow the shipped templates anyway. `meta/context-footprint.json`
+puts dotnet static Claude context at **38,571 against a 40,000 ceiling** and monorepo at **45,398
+against 48,000**. Note the ceilings are **characters**, not tokens — the counting rule is
+`LF-normalized UTF-8 bytes; ~tok = round(chars/4)` (`meta/context-footprint.json:4-8`), so dotnet's
+1,429 remaining characters are roughly **357 tokens**. Whatever the answer is, it is not "add more to
+`CLAUDE.md`".
 
 - `/bootstrap` replaces the **entire** `CLAUDE.md > Conventions` section with conventions observed in
   the actual codebase (`src/core/CLAUDE.md:83-88`).
@@ -1369,13 +1409,27 @@ Compounding: there is little room to grow the shipped templates anyway. `meta/co
 puts dotnet static Claude context at **38,571 against a 40,000 ceiling** and monorepo at **45,398
 against 48,000**. Whatever the answer is, it is probably not "add more to `CLAUDE.md`".
 
-**Do:** decide how a post-bootstrap consumer receives a conventions-level change at all, and record it
-— this is a WSD-shaped question, not a code change. Candidates to weigh: `/rebootstrap` as the
-delivery vehicle (it already re-aligns and is model-invocable, unlike `/bootstrap`); a `/docs-sync` or
-doctor row that *reports* the gap rather than closing it (cheaper, and consistent with WSD-027's rule
-that tooling may verify but not promote); or accepting that Conventions is consumer-owned after
-bootstrap and routing durable guidance to skills instead. Note the third option has a cost: skills are
-selectively loaded, so "durable" would then mean "reliably routed", which is a different problem.
+**Do:** decide how a post-bootstrap consumer receives an always-on instruction change at all, and
+record it — this is a WSD-shaped question, not a code change. Candidates, re-weighed against the
+evidence above:
+
+- **Routing durable guidance to skills** — now the only mechanism that demonstrably delivers, since
+  `.claude/skills/` is unprotected and refreshes on update. Cost: skills are selectively loaded, so
+  "durable" becomes "reliably routed" (**B-98**). This is no longer the fallback option; it is the
+  baseline against which the others must justify themselves.
+- **A merge-aware update path for the protected files** — the only candidate that would actually
+  restore delivery of an always-on rule. Expensive and hazardous: the whole point of `$protected` is
+  that these files are consumer-owned after bootstrap, and clobbering them is a worse failure than
+  not delivering. A three-way merge, or shipping framework-owned blocks as a *separate included
+  file* the consumer's `CLAUDE.md` references rather than contains, are the two shapes worth costing.
+- **A `/docs-sync` or doctor row that *reports* the drift** rather than closing it — cheap, honest,
+  consistent with WSD-027 (tooling may verify but not promote), and it converts a silent gap into a
+  visible one. Does not deliver anything, but tells the consumer they are behind.
+- **~~`/rebootstrap` as the delivery vehicle~~ — REFUTED, see (3) above.** It has no template source.
+  Struck rather than deleted so it is not re-proposed.
+
+**Decide before B-96 or B-99 implement anything**, since both were designed against delivery
+assumptions this entry has now falsified twice.
 
 **Cross-links:** B-78 (the warehouse-specific instance — four populations no signal reaches; this is
 its general form, and solving B-97 likely subsumes part of it), B-46 (consumer update & drift story),
@@ -1478,18 +1532,30 @@ presence* — is EF Core actually in this repo — not *semantic invariants of t
 The plan gate (§2) asks for assumptions but defines no schema and no verification obligation, and it
 catches uncertainty, which is the wrong instrument: the model was confident and wrong.
 
-**What makes this worth its own entry rather than folding into B-96:** it is the only warehouse-adjacent
-fix on the table that is **not blocked**.
+> **DELIVERY PREMISE REFUTED, 2026-08-05 — read this before implementing.** This entry was filed
+> claiming to be *"the only warehouse-adjacent fix not blocked"*, on the reasoning that a Verification
+> Rule escapes B-97 because `/bootstrap` rewrites Conventions and not the always-on blocks. The
+> bootstrap half of that is true; the conclusion is false. The **installer** protects the whole of
+> `CLAUDE.md` on update — snapshot, copy, restore (`dist/dotnet/scripts/install.ps1:30-31, 74-81,
+> 115-123`) — so a shipped Verification Rule never reaches an existing consumer, and `/rebootstrap`
+> has no template source to deliver it either. **B-99 is blocked by B-97 exactly as B-96 is**, and
+> B-97 has been rewidened accordingly. Found by adversarial review asking the delivery question first;
+> the reviewer verified the bootstrap boundary and correctly flagged the update mechanism as an
+> *inference* rather than a fact, which is what sent me to the installer.
+>
+> What survives: the **rule content** below is still right, and the class is still real. What changes
+> is that it has no vehicle until B-97 is decided — and if B-97 lands on "route durable guidance to
+> skills", this becomes skill content, not a Verification Rule, which is a different design.
 
-- It is not a Conventions change, so **B-97** does not block it. `/bootstrap` replaces the Conventions
-  section, not the always-loaded blocks — established at B-98's §3.4.1 correction for the skills list,
-  and Verification Rules are in the same category. It therefore reaches already-bootstrapped consumers,
-  which is the population every warehouse report has come from.
-- It is not a skill, so **B-98 step 1** does not gate it. It is in static context on every turn
-  regardless of whether routing fires — so it holds whichever way the six routing runs land.
-- It is stack-independent: `src/stacks/{dotnet,angular,monorepo}/snippets/CLAUDE.md/verif-rule9`
-  carries rule 10 identically in all three, so rule 11 appends there without a new `src/core` marker.
-  (The marker name is one behind its contents; not worth renaming across three stacks.)
+**What still makes it worth its own entry rather than folding into B-96:** the class is not
+warehouse-specific and not .NET-specific — it applies to any stage boundary in any stack, and B-96's
+skill is a .NET/monorepo artifact that Angular consumers never receive. Whatever vehicle B-97
+settles on, this content should not be filed inside a warehouse recipe.
+
+Placement, *if* the vehicle turns out to allow an always-on rule:
+`src/stacks/{dotnet,angular,monorepo}/snippets/CLAUDE.md/verif-rule9` carries rule 10 identically in
+all three, so rule 11 appends there without a new `src/core` marker. (The marker name is one behind
+its contents; not worth renaming across three stacks.)
 
 **Do:** design and critique before writing. The draft rule — *"Don't re-resolve what an earlier stage
 already resolved… identify which stage owns that resolution and confirm from the code that it has not
@@ -1502,9 +1568,41 @@ not a locked text. Settle in review:
 2. **Does it stay off the legitimate cases?** It must *not* flag the run dimension, a genuinely needed
    soft-delete filter, or defence at a trust boundary (re-validating untrusted input is correct and
    must not be discouraged — this is the sharpest failure mode of the rule as drafted).
-3. **Eleventh always-on rule, or a §2 plan-gate sub-bullet?** Cost is real: `meta/context-footprint.json`
-   puts dotnet at 38,571/40,000 — ~1,429 tokens of headroom, against ~150 for the rule. Affordable
-   once; not twice. Whatever lands must be counted, not assumed free.
+3. **Eleventh always-on rule, or a §2 plan-gate sub-bullet?** Reviewed: the always-on block is the
+   right instrument *if* a vehicle exists. The plan gate is weaker here because it asks the model to
+   surface **assumptions** (`src/core/CLAUDE.md:161-168`) and this incident was a confident,
+   apparently-defensive decision — no assumption was felt, so none would be surfaced.
+   Cost, **corrected**: the ceilings in `meta/context-footprint.json` are **characters**, not tokens
+   — counting rule `LF-normalized UTF-8 bytes; ~tok = round(chars/4)` (`:4-8`). Dotnet's headroom is
+   **1,429 characters ≈ 357 tokens**, not "~1,429 tokens" as this entry first asserted. A ~650-char
+   rule therefore consumes **~45% of remaining dotnet headroom** — still affordable once, decisively
+   not twice, and the earlier framing made it look ~4× cheaper than it is. Re-run the footprint
+   instrument on the composed result; do not estimate.
+
+**Review outcome on the draft wording (2026-08-05): the original draft was rejected as non-biting.**
+It asked the model to identify "a resolution it has already performed" — but the model must first
+*classify* `EffectiveTo IS NULL` as a re-resolution, and absent warehouse context it classifies it as
+an ordinary defensive filter, so the rule never fires. A rule that reads well and does not fire is
+worse than none, because it gets recorded as a fix. The correction is to trigger on an **observable
+action** rather than an abstract category. Working draft:
+
+> **Do not override an upstream decision without tracing it.** Before adding a downstream join
+> condition, filter, deduplication, conversion, or "current/latest" predicate, trace whether the
+> upstream stage already encoded that decision in the value or identifier being consumed. If it did,
+> preserve that decision; reapply it only where this stage independently owns it. This does not
+> prohibit validating untrusted input at a trust boundary, nor independently required authorization,
+> tenant-isolation, soft-delete, or read-time selection rules. If ownership cannot be confirmed from
+> code, state the uncertainty instead of adding the condition as a precaution.
+
+Two things still to settle on this text: it is ~650 characters against a ≤600 target, so it needs
+tightening or an explicit budget exception; and the carve-out list is broad enough that it may
+swallow the rule — a *redundant* tenant filter is the same defect class, and "independently required"
+is doing heavy lifting to exclude it.
+
+**Still unproven, and the reviewer's own weakest-point call:** placement and budget do not establish
+that the wording changes behaviour. It needs an incident-shaped evaluation with warehouse guidance
+withheld — which is the **B-41** harness, the same instrument B-96's ship gates and B-98 step 1
+depend on. Do not claim this rule works on the strength of it reading well.
 
 **Not:** no DW-specific text in static context (that belongs in the skill, B-96 §3.4); no second
 always-on block; no hook change — `route-prompt` injects the §1 rails and plan gate, not the
