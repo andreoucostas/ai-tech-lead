@@ -295,17 +295,49 @@ Three arms, identical fileless prompt, distinct sentinels, a real `Program.cs` p
    on the model touching a matching file, which is exactly the "highest marginal salience" behaviour
    B-17 is after. The two designs are complementary, not in conflict.
 
-### Canary 4 (VS Code) — NOT RUNNABLE ON THIS BOX
+### Canary 4 (VS Code) — POSITIVE, and it also settles the stale-`AGENTS.md` precedence question
 
-VS Code is installed (`%LOCALAPPDATA%\Programs\Microsoft VS Code`) but carries **three** extensions —
-Angular language service and two Claude Code builds. **The GitHub Copilot extension is not
-installed**, so VS Code agent mode cannot be tested here by any means, automated or manual, without
-installing it first. Neither is it scriptable: there is no headless way to drive Copilot Chat.
+> **Correction.** An earlier revision of this section stated the GitHub Copilot extension was not
+> installed and that VS Code could therefore not be tested here. **That was wrong.**
+> `code --list-extensions` **excludes built-ins**, and VS Code 1.128 ships **`GitHub.copilot-chat`
+> v0.56.0 as a built-in** under a versioned install path
+> (`…\Microsoft VS Code\fc3def6774\resources\app\extensions\copilot`). The
+> `globalStorage\github.copilot-chat` entry was the true signal and was misread as a stale remnant.
+> Method lesson worth keeping: **`--list-extensions` is not an inventory of what the host can do.**
 
-Consequence beyond this design: **B-17's claim that `.github/instructions/` "works today with Preview
-hooks off"** describes the VS Code surface and has, on this evidence, never been verifiable on this
-machine. Treat it as unverified.
+Fixture (`C:\temp\b97-canary4-vscode`) deliberately set the two sources against each other — the
+state every already-installed consumer is actually in:
 
-**Do not implement yet.** One question remains and it is not answerable here: whether VS Code agent
-mode behaves like the CLI, and how a `.github/instructions/` file interacts with a stale `AGENTS.md`.
-Everything else is settled and observed.
+- **fresh** codeword `NIMBUS-2X9K` in `.github/instructions/framework-rules.instructions.md` (unprotected)
+- **stale** codeword `OBSOLETE-1A1A` in `AGENTS.md` (protected — what a consumer still carries)
+
+**Result: `NIMBUS-2X9K`.** Two findings in one run:
+
+1. **`.github/instructions/` reaches VS Code agent mode**, not merely the CLI. The Copilot leg holds
+   on both surfaces.
+2. **Fresh instructions beat the stale protected mirror.** This was the open risk that could have
+   sunk the whole design: if `AGENTS.md` won, every existing consumer's stale copy would override
+   what we deliver, and Option A would deliver text that never takes effect.
+
+**Evidential status, stated plainly:** this is a **single manual observation reported by the
+maintainer**, not a machine-captured transcript like canaries 1–3, so there is no tool-use check
+behind it. It is strong — the sentinel is unambiguous and the *discriminating* answer was returned
+rather than the more conspicuous root-level `AGENTS.md` value — but it is n=1 and unautomated. Re-run
+it if VS Code or the built-in Copilot version changes materially.
+
+Also resolved: **B-17's claim that `.github/instructions/` "works today with Preview hooks off"** is
+now supported for VS Code agent mode. Instruction files are a native Copilot feature and do not
+depend on the Preview hooks machinery at all — which is why the hook-availability caveat that governs
+`session-start` output does not apply to this delivery path.
+
+## 9. Status: DESIGN COMPLETE — every question closed by observation
+
+| Question | Answer | Evidence |
+|---|---|---|
+| Does `@import` resolve from a root `CLAUDE.md`? | Yes | Canary 1 (zero tool calls) |
+| Does `.github/instructions/` reach Copilot CLI? | Yes | Canary 2 (+ negative control) |
+| Does a narrow `applyTo` deliver on a fileless prompt? | **No** — ship `"**"` | Canary 3 |
+| Does `.github/instructions/` reach VS Code agent mode? | Yes | Canary 4 (manual) |
+| Does a stale `AGENTS.md` override it? | **No** — fresh wins | Canary 4 (manual) |
+
+Nothing in this design now rests on an assumption about host behaviour. Implementation may proceed.

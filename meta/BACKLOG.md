@@ -1494,18 +1494,45 @@ Script: `.claude/scripts/canary-applyto-scope.ps1`.
   does gate delivery on the model touching a matching file, which is exactly the "highest marginal
   salience" property B-17 wants. The two designs are complementary. **B-17 should cite this result.**
 
-**Canary 4 (VS Code) — NOT RUNNABLE ON THIS BOX, and that is itself a finding.** VS Code is installed
-but has three extensions: Angular language service and two Claude Code builds. **No GitHub Copilot
-extension.** So VS Code agent mode cannot be tested here by any means, automated or manual, without
-installing it — and Copilot Chat has no headless driver in any case.
+**Canary 4 RUN 2026-08-05 — POSITIVE on VS Code agent mode, and it also settles stale-`AGENTS.md`
+precedence.**
 
-Consequence beyond B-97: **B-17's claim that `.github/instructions/` "works today with Preview hooks
-off"** describes precisely this untestable surface. Treat it as **unverified**, not as a known
-property — `docs/enforcement-surfaces.md` already rates VS Code the weakest surface, and this is why.
+> **Correction to an earlier entry here:** this said the GitHub Copilot extension was not installed
+> and VS Code was therefore untestable. **Wrong.** `code --list-extensions` **excludes built-ins**,
+> and VS Code 1.128 ships **`GitHub.copilot-chat` v0.56.0 as a built-in** under a versioned install
+> path. Method lesson: `--list-extensions` is not an inventory of what the host can do.
 
-**One question gates implementation, and it cannot be answered on this machine:** whether VS Code
-agent mode behaves like the CLI, and how a `.github/instructions/` file interacts with a stale
-`AGENTS.md`. Everything else is settled and observed.
+Fixture set the two sources against each other — the state every already-installed consumer is in:
+fresh `NIMBUS-2X9K` in `.github/instructions/` (unprotected) versus stale `OBSOLETE-1A1A` in
+`AGENTS.md` (protected). **Result: `NIMBUS-2X9K`.**
+
+1. **`.github/instructions/` reaches VS Code agent mode**, not just the CLI.
+2. **Fresh instructions beat the stale protected mirror** — the risk that could have sunk the design.
+   Had `AGENTS.md` won, every existing consumer's stale copy would override what we deliver and
+   Option A would ship text that never takes effect.
+
+**Evidential status:** a single **manual** observation reported by the maintainer, with no captured
+transcript or tool-use check, unlike canaries 1–3. Strong (the *discriminating* value was returned,
+not the more conspicuous root-level one) but n=1 and unautomated. Re-run if VS Code or the built-in
+Copilot version moves.
+
+**Also resolves a B-17 claim:** *"works today with Preview hooks off"* is now supported for VS Code
+agent mode. Instruction files are a native Copilot feature and do not depend on the Preview hooks
+machinery, so the hook-availability caveat governing `session-start` output does not apply to this
+path. **B-17 should cite canary 3 and canary 4.**
+
+### B-97 DESIGN COMPLETE — every question closed by observation
+
+| Question | Answer | Evidence |
+|---|---|---|
+| `@import` resolves from a root `CLAUDE.md`? | Yes | Canary 1 (zero tool calls) |
+| `.github/instructions/` reaches Copilot CLI? | Yes | Canary 2 (+ negative control) |
+| Narrow `applyTo` delivers on a fileless prompt? | **No** — ship `"**"` | Canary 3 |
+| `.github/instructions/` reaches VS Code agent mode? | Yes | Canary 4 (manual) |
+| Stale `AGENTS.md` overrides it? | **No** — fresh wins | Canary 4 (manual) |
+
+Nothing rests on an assumption about host behaviour any more. **Ready to implement**, and B-96/B-99
+are unblocked on the delivery axis (B-96 still gated separately by B-98 step 1's routing question).
 
 **Design step 3 — the fingerprint manifest — is BUILT (2026-08-05).**
 `.claude/scripts/build-block-manifest.ps1` (meta script, PS-only per WSD-005) →
