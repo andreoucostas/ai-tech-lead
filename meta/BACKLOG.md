@@ -1431,6 +1431,30 @@ evidence above:
 **Decide before B-96 or B-99 implement anything**, since both were designed against delivery
 assumptions this entry has now falsified twice.
 
+**Status 2026-08-05: design drafted, reviewed, sequencing rejected, rev 2 written.**
+`.claude/plans/2026-08-05-b97-protected-file-delivery-design.md` (rev 2 — **not locked**). Four
+blocking findings accepted. The two that matter:
+
+- **`.github/instructions/` is unprotected** (`install.ps1:31` lists eight protected paths and that
+  directory is not among them; `:37` names it in `$adoptionSignals`, so the framework recognises it
+  as an AI-tooling surface *and lets it update*). **B-17** already plans to use it. If a
+  framework-rules instruction file works there, the split-file option gains a native Copilot delivery
+  leg and the "assist the manual sync" option is probably dead.
+- **A drift row cannot honestly say "behind".** The installer overwrites
+  `.claude/framework-version.json` (`:87`) and restores the old `CLAUDE.md` (`:115`), whose header
+  carries its own stamp — so the stamps diverge on every update. That divergence reliably proves the
+  protected file was **not synchronised**; it does not prove any block is stale or distinguish a
+  deliberate consumer edit. Ships as `DIVERGED — review required`, not "you are behind".
+
+**Blocked on two live host canaries** (does `@import` resolve from a root `CLAUDE.md`; does
+`.github/instructions/` reach Copilot including Preview-hooks-off VS Code). Neither is answerable by
+reading the repo. Both need agent sessions, so both are parked on the same weekly quota as **B-98
+step 1**'s six routing runs — **batch all three when quota resets (2026-08-06+)**; same harness, same
+kind of experiment, materially cheaper together.
+
+**Executable today without quota:** the versioned fingerprint / migration manifest (design step 3),
+which the honest drift row and the conditional-discovery option both need — one artifact, build once.
+
 #### Changelog sweep, 2026-08-05 — how long this has been true, and what it cost
 
 **The protection was introduced deliberately, as a correct fix, in v0.20.0 (2026-06-11).** Shipped
