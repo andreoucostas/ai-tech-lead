@@ -291,3 +291,61 @@ Host: Claude Code 2.1.222 (Claude Code) · scratch: retained=True
 > valid (not the terra host confound), and the real cost is ~$0.05/run against a $1.25 budget — so
 > cost was never the reason these were deferred.
 
+
+## 2026-08-06 08:12:53 +01:00 — framework v0.46.0 (ceab0daa4f280768c5ebdd8320fb958c668f4ce3)
+
+Host: Claude Code 2.1.223 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-route-p1** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.4185924 tokensIn=20 tokensOut=5754; category=NEITHER channels= usedDeadColumn=True joinedDimension=True readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p2** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3317808 tokensIn=14 tokensOut=4227; category=NEITHER channels= usedDeadColumn=False joinedDimension=True readView=True readViewTarget=vwExecutiveSummary artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p3** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.4061001 tokensIn=18 tokensOut=6933; category=NEITHER channels= usedDeadColumn=False joinedDimension=True readView=False readViewTarget=none artifactWritten=True otherSqlArtifacts=
+
+
+## 2026-08-06 08:16:26 +01:00 — framework v0.46.0 (ceab0daa4f280768c5ebdd8320fb958c668f4ce3)
+
+Host: Claude Code 2.1.223 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-route-p1** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3388185 tokensIn=16 tokensOut=4729; category=NEITHER channels= usedDeadColumn=True joinedDimension=True readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p2** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3668193 tokensIn=16 tokensOut=4861; category=NEITHER channels= usedDeadColumn=True joinedDimension=True readView=True readViewTarget=vwExecutiveSummary artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p3** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3675483 tokensIn=16 tokensOut=4960; category=NEITHER channels= usedDeadColumn=True joinedDimension=True readView=False readViewTarget=none artifactWritten=True otherSqlArtifacts=
+
+### B-98 STEP 1 — COMPLETE. The six registered runs. **`r = 0` of 6.**
+
+The two blocks above **are** B-98 step 1: `-Model sonnet` (the registered model, harness default),
+three paraphrases × two batches, framework v0.46.0, Claude Code 2.1.223. All six graded
+`category=NEITHER` — the `Skill` tool was never invoked and `docs/warehouse-map.md` never entered
+context, on any run.
+
+**The pre-registered decision rule (design §2.1, written before any run) fires at `r=0`:
+routing gap CONFIRMED · B-96 BLOCKED · B-98 step 2 owns the remedy.** Recorded as the rule
+requires, not as the outcome anyone wanted.
+
+**Fixture validity — checked on disk, not assumed** (the haiku pilot's lesson). The retained scratch
+`ai-tech-lead-agent-evals-20260806-080837/warehouse-route-p1/target` carries 12 installed skills
+including `map-warehouse`, `docs/warehouse-map.md` (584 B, the current ETL-only shape), and a 7,791 B
+`CLAUDE.md`. That is population A as designed. (`CLAUDE.md` is smaller than the 24 KB recorded for the
+v0.44.0 haiku pilot because v0.45.0 moved the four framework-owned blocks out to
+`.github/instructions/framework-rules.instructions.md` — expected, not a fixture defect.)
+
+**This is the sharp form of the negative, per design §3.4.1.** `map-warehouse` is named and described
+at `CLAUDE.md:71` (Common Tasks — always-loaded context that `/bootstrap` never rewrites), and its
+USE FOR already covers *"what feeds this report"*. So the finding is not *"the description was not
+matched"*; it is **a named, in-context skill was not reached**. Description tuning is therefore not
+obviously the remedy, and a future positive must not be attributed to it.
+
+**What the agent did instead** — p1 transcript tool census: **12 `Read`, 7 `Glob`, 1 `Write`, 1 `Bash`,
+0 `Skill`.** It read every table DDL, both load procs and all three reporting views and re-derived by
+hand what the map exists to hand it. On a 9-table fixture that brute-force path is available; on the
+warehouse behind the field reports it is not, and the probe does not reproduce that scale.
+
+**Secondary, co-observed signal — NOT the registered outcome, and weaker evidence than it looks.**
+`usedDeadColumn=True` in **4 of 6** runs (batch 1: p1 only; batch 2: all three) while
+`joinedDimension=True` in 6/6 — i.e. the agent joins a dimension *and* in most runs still reaches an
+attribute off a column that is declared on the fact but never populated, which is the shape of field
+report #3. Two reasons not to bank this: the batch-to-batch flip on p2/p3 shows high run-to-run
+variance at n=2 per paraphrase, and B-72 has already caught this scenario family telegraphing its
+answer. It is a reason to keep the signal, not a substitute for B-96 criterion 5's labelled fixture
+with an answer key.
+
+**Cost:** $2.23 across six runs (~$0.37/run on sonnet vs ~$0.05 on haiku), against a $1.25/run budget.
+

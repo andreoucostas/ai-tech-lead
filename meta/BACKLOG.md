@@ -1341,6 +1341,22 @@ naming-only evidence, and the design's labelled fixture (declared FK, CTE-resolv
 a misleading column name, conflicting consumption joins, dynamic SQL) must measure **abstention as
 well as precision** — via the B-41 harness, not a second one.
 
+> **BLOCKED 2026-08-06 — B-98 step 1 ran and returned `r = 0` of 6.** The pre-registered rule fires:
+> implementation does not start until step 2 produces a routing remedy. `map-warehouse` was never
+> invoked and `docs/warehouse-map.md` never opened across six sonnet runs, *while the skill was named
+> in always-loaded context* — so however good this content is, it would currently reach nobody.
+> Evidence and caveats in B-98 above and `meta/eval-results.md`.
+>
+> **Two amendments to this entry's own record, both from that run:**
+> - **§3.6 understates delivery.** `.claude/skills/` is unprotected and refreshes on update
+>   (`install.ps1:30-31`, `:83-85`), so the skill content *does* reach already-bootstrapped
+>   consumers. Only the `Conventions > Data Access` index line is behind B-97. Do not carry the
+>   "greenfield installs only" framing to the whole item.
+> - **Criterion 5 got a partial dry run.** `usedDeadColumn=True` in 4/6 runs, which is field report
+>   #3's shape — but with the current skill shipped, at n=2 per paraphrase, with visible
+>   batch-to-batch variance. Treat as a reason the labelled-fixture work is worth doing, not as a
+>   baseline. The answer-key fixture criterion 5 requires is still owed.
+
 **Gated by B-98 step 1.** Whether `map-warehouse` fires at all on an incident-shaped prompt is a
 *prerequisite*, not a ship gate: if it does not fire, this content work does not reach the developer
 however good it is, and the description change in the design (§3.5) is insufficient. Settle B-98
@@ -1710,6 +1726,45 @@ warehouse-specific symptom. B-97 earned its own entry on those grounds and so do
 **Cross-links:** B-96 (gated by step 1), B-41 (the eval harness steps 1–2 depend on), B-97 (the other
 general defect found through the same symptom), B-76 (shipped descriptions matching what they
 describe — accuracy, where this is coverage), B-78 (warehouse-map signals that reach nobody).
+
+> **STEP 1 IS DONE — RUN 2026-08-06. `r = 0` of 6. Routing gap CONFIRMED; B-96 is BLOCKED; step 2
+> owns the remedy.** Six registered runs on `-Model sonnet` (three paraphrases × two batches),
+> framework v0.46.0, Claude Code 2.1.223, all six `category=NEITHER` — `Skill` never invoked,
+> `docs/warehouse-map.md` never opened. Full record and caveats: `meta/eval-results.md`
+> (2026-08-06 blocks). The pre-registered rule fired as written; nothing was tuned to the outcome.
+>
+> Four things this establishes, and one it does not:
+> 1. **Fixture valid** — verified on disk in the retained scratch (12 skills incl. `map-warehouse`,
+>    the map file, population-A `CLAUDE.md`), not inferred.
+> 2. **The negative is the sharp form (§3.4.1).** `map-warehouse` is named at `CLAUDE.md:71` in
+>    always-loaded Common Tasks and its USE FOR already covers "what feeds this report". So the gap
+>    is **a named, in-context skill was not reached**, not an unmatched description — which means
+>    step 2 must not assume description tuning is the fix, and a later positive must not be credited
+>    to it.
+> 3. **The model brute-forces instead.** p1 tool census: 12 `Read`, 7 `Glob`, 0 `Skill`. It
+>    re-derived the map from raw DDL. That path exists on a 9-table fixture and not on the warehouse
+>    behind the field reports — so the probe understates the cost of the gap rather than overstating
+>    it.
+> 4. **Co-observed:** `usedDeadColumn=True` in 4/6 (field report #3's shape) with
+>    `joinedDimension=True` in 6/6. Kept as a signal, **not** banked as evidence — p2/p3 flipped
+>    between batches (high variance at n=2/paraphrase) and B-72 has caught this scenario family
+>    telegraphing before.
+>
+> **What it does not establish:** that the *content* fix is wrong or unnecessary. B-96's content gap
+> was established structurally by reading the skill; this says only that the content would not have
+> been reached. Fix routing first, then ship the content — that ordering is now evidenced rather
+> than assumed. Cost: $2.23 for six runs.
+>
+> **Also confirmed while running this (Phase 1 premise re-validation, and it corrects B-96 §3.6):**
+> `.claude/skills/` is **not** in the installer's `$protected` list (`dist/dotnet/scripts/install.ps1:30-31`)
+> and is copied wholesale on update (`:83-85`). So B-96's *skill* content — the whole map, the edge
+> list, the read-side rules — **does** reach already-installed consumers. Only the one-line
+> `Conventions > Data Access` pointer is behind B-97's wall. §3.6's "reaches greenfield installs
+> only" is true of that line and must not be read as true of the item. The v0.45.0
+> `.github/instructions/` carrier is **not** the rescue for it either: that file is genuinely
+> unprotected and does deliver, but it is framework-owned and unconditional (`applyTo: "**"`) while
+> the pointer is conditional on the repo having a warehouse — and B-96's own "Not" forbids
+> DW-specific text in static context.
 
 **Step 1 status, 2026-08-05 — instrument BUILT and verified; the six live runs are PENDING.**
 Design: `.claude/plans/2026-08-05-b98-step1-routing-probe-design.md` (rev 2, adversarially reviewed,
