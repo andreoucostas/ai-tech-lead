@@ -177,8 +177,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17115,
-          "tok": 4279
+          "chars": 17535,
+          "tok": 4384
         },
         {
           "path": "CLAUDE.md",
@@ -194,13 +194,13 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17115,
-          "tok": 4279
+          "chars": 17535,
+          "tok": 4384
         },
         {
           "path": "AGENTS.md",
-          "chars": 22244,
-          "tok": 5561
+          "chars": 22664,
+          "tok": 5666
         }
       ],
       "instructed": [
@@ -601,8 +601,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17027,
-          "tok": 4257
+          "chars": 17447,
+          "tok": 4362
         },
         {
           "path": "CLAUDE.md",
@@ -618,13 +618,13 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17027,
-          "tok": 4257
+          "chars": 17447,
+          "tok": 4362
         },
         {
           "path": "AGENTS.md",
-          "chars": 22688,
-          "tok": 5672
+          "chars": 23108,
+          "tok": 5777
         }
       ],
       "instructed": [
@@ -1045,8 +1045,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 19607,
-          "tok": 4902
+          "chars": 20027,
+          "tok": 5007
         },
         {
           "path": "CLAUDE.md",
@@ -1062,13 +1062,13 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 19607,
-          "tok": 4902
+          "chars": 20027,
+          "tok": 5007
         },
         {
           "path": "AGENTS.md",
-          "chars": 26299,
-          "tok": 6575
+          "chars": 26719,
+          "tok": 6680
         }
       ],
       "instructed": [
@@ -1333,30 +1333,30 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 38997,
-      "static.claude.tok": 9749,
-      "static.copilot.chars": 42717,
-      "static.copilot.tok": 10679,
+      "static.claude.chars": 39417,
+      "static.claude.tok": 9854,
+      "static.copilot.chars": 43557,
+      "static.copilot.tok": 10889,
       "prompt.max.chars": 2253,
       "prompt.max.tok": 563
     },
     "angular": {
-      "static.claude.chars": 37835,
-      "static.claude.tok": 9459,
-      "static.copilot.chars": 43477,
-      "static.copilot.tok": 10869,
+      "static.claude.chars": 38255,
+      "static.claude.tok": 9564,
+      "static.copilot.chars": 44317,
+      "static.copilot.tok": 11079,
       "prompt.max.chars": 2323,
       "prompt.max.tok": 581
     },
     "monorepo": {
-      "static.claude.chars": 47354,
-      "static.claude.tok": 11838,
-      "static.copilot.chars": 51593,
-      "static.copilot.tok": 12898,
+      "static.claude.chars": 47774,
+      "static.claude.tok": 11944,
+      "static.copilot.chars": 52433,
+      "static.copilot.tok": 13108,
       "prompt.max.chars": 2668,
       "prompt.max.tok": 667
     },
-    "monorepo-claude-ratio-permille": 1214
+    "monorepo-claude-ratio-permille": 1212
   },
   "_notes": [
     "Claude frontmatter is a stable over-approximation of harness injection.",
