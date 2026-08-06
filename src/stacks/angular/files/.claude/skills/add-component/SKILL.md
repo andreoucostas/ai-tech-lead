@@ -1,6 +1,14 @@
 ---
 name: add-component
-description: Use when the user wants to add a new Angular feature component (standalone or module-bound). Covers component scaffold, routing, models, service wiring, state choice, and required test coverage.
+description: >
+  Use when the user wants to add a new Angular feature component (standalone or module-bound).
+  Covers component scaffold, routing, models, service wiring, state choice, and required test
+  coverage.
+  USE FOR: a component that does not exist yet — a new screen, dialog, or reusable presentational
+  component.
+  DO NOT USE FOR: changing an existing component's template, inputs, or behaviour (use `/feature`
+  or `/refactor`); backfilling tests (use `add-tests`); a service with no template (use
+  `add-service`); shared cross-component state (use `add-signal-store`).
 ---
 
 # Add a new feature component

@@ -1,6 +1,14 @@
 ---
 name: add-signal-store
-description: Use when the user wants to add a new signal-based store/service for shared state in Angular 16+. Covers signal vs computed split, read-only exposure, mutation discipline, and state-transition tests.
+description: >
+  Use when the user wants to add a new signal-based store/service for shared state in Angular 16+.
+  Covers signal vs computed split, read-only exposure, mutation discipline, and state-transition
+  tests.
+  USE FOR: a store that does not exist yet — a new feature's state slice, a new server-state cache
+  shared across components.
+  DO NOT USE FOR: a signal for local UI state inside one component (ordinary component work); a
+  stateless HTTP service (use `add-service`); migrating an existing NgRx/NGXS store to signals (use
+  `/design`, then `/refactor`); backfilling tests (use `add-tests`).
 ---
 
 # Add a new signal-based store

@@ -2505,8 +2505,56 @@ for Maintenance model #2 being enforced rather than encouraged: **the failing co
 implementation, it is the self-report.** Worth considering whether `release.ps1` should require the
 claimed blast radius to be stated as a file list it can diff against the commit.
 
+### B-110 · The context-footprint ceiling is advisory — the budget gate cannot fail on a breach
+**Effort:** S · **Priority:** P2 · found 2026-08-06 while shipping v0.47.0 · **Invariants:** #3
+
+**Why:** `scripts/context-footprint.ps1:323-331` checks the ceilings and emits
+`WARN: <dist> static.claude exceeds 40000 chars.` / `WARN: monorepo static.claude exceeds 48000
+chars.` / the 1.5× ratio warning — and **never sets a non-zero exit**. The script's only failing
+condition is *baseline drift* (`FAIL: context footprint differs from meta/context-footprint.json`),
+which the documented remedy `-Update` resolves by accepting whatever the new numbers are. So the
+sequence "make a change, run `-Update`, commit" absorbs a ceiling breach silently, and a `WARN:` line
+scrolls past inside an otherwise-clean run — B-71's shape as well as B-64's.
+
+This matters more than a normal advisory: the footprint gate is the instrument **every** static-context
+decision is weighed against. B-97 cited it to argue "whatever the answer is, it is not add more to
+`CLAUDE.md`"; B-99's placement decision was costed against it and its headroom figure was already
+wrong once (characters read as tokens, a 4× error, corrected in that entry). A budget whose enforcement
+is a print statement invites exactly that.
+
+Live relevance: v0.47.0 took monorepo `static.claude` to **47,354 / 48,000 — 646 characters (~162
+tokens) of headroom**. The next static-context addition can breach the ceiling, and on current code
+nothing would stop it.
+
+**Do:** decide whether the ceilings are limits or guidance, and make the code say so. If limits: exit
+non-zero on breach (with an explicit opt-out switch for a deliberate, recorded raise, since the
+ceilings are a judgment call and not physics). If guidance: rename them and say so, so no future entry
+cites them as a gate. Either way, **red-test it** — plant a file that breaches the ceiling and show the
+non-zero exit (or the documented WARN-only behaviour) before the clean pass. Twin edit: the `.sh` twin
+carries the same logic and must reach the same verdict [#3].
+
+**Also worth checking in the same pass:** whether `.sh` and `.ps1` agree on the ceiling branch at all.
+It is un-exercised code on both sides, which is B-75's inert-fixture class — a branch no fixture
+triggers makes both twins agree about nothing.
+
+**Cross-links:** B-64 (planted-defect tests for diagnostics — this is one), B-71 (a warning inside a
+green summary), B-75 (inert fixtures), B-32/WSD-017 (the gate's origin), B-97/B-99 (entries whose
+reasoning rests on these numbers).
+
 ---
 
+### B-111 · Post-ship review owed for v0.47.0
+**Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-06
+
+**Why:** v0.47.0 shipped with `-NoIndependentReview`, so no second session re-ran a gate or a
+red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
+it did not happen. Summary of what shipped: Angular authoring skills gained the routing clauses every other skill already had
+
+**Do:** review the v0.47.0 diff as an independent session -- re-run at least one gate and one
+red-test yourself, do not read the release output as evidence -- and file whatever it finds. Then
+close this entry, recording what was re-run.
+
+---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see the Done section.**

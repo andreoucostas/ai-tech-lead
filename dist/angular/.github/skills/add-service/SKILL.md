@@ -1,6 +1,14 @@
 ---
 name: add-service
-description: Use when the user wants to add a new Angular service (HTTP, business-logic, or signal-based store). Covers placement, providedIn scope, typing, and HTTP-mocked unit tests.
+description: >
+  Use when the user wants to add a new Angular service (HTTP, business-logic, or signal-based
+  store). Covers placement, providedIn scope, typing, and HTTP-mocked unit tests.
+  USE FOR: a service that does not exist yet — a new HTTP client for a backend resource, a new
+  business-logic service.
+  DO NOT USE FOR: adding a method to an existing service (ordinary work — follow CLAUDE.md >
+  Conventions, or `/feature`); a signal-based store for shared state (use `add-signal-store`);
+  changing an existing service's scope or dependencies (use `/refactor`); backfilling tests (use
+  `add-tests`).
 ---
 
 # Add a new service

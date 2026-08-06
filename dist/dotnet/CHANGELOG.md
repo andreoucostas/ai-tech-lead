@@ -4,6 +4,12 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.47.0 — 2026-08-06
+
+- No changes to the .NET distribution this release. The skill-description clarifications added in
+  v0.47.0 apply only to the Angular and mixed (monorepo) distributions; the .NET skills already
+  carried the same `USE FOR` / `DO NOT USE FOR` clauses.
+
 ## 0.46.0 — 2026-08-05
 
 - **Fixed: on Windows without `jq`, the prompt-routing hook silently did nothing.** If your machine

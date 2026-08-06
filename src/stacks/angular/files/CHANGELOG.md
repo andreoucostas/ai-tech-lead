@@ -4,6 +4,18 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.47.0 — 2026-08-06
+
+- **Four Angular skills now state when to use them — and when not to.** `add-component`,
+  `add-lazy-route`, `add-service` and `add-signal-store` each carried only a one-line description,
+  so your assistant had less to go on when choosing between them than it did for `add-tests` or the
+  audit skills. Each now says what it is for — something that does not exist yet — and what it is
+  not for, naming where to go instead: changing an existing component or route goes to `/feature`
+  or `/refactor`, backfilling tests goes to `add-tests`, a stateless HTTP service goes to
+  `add-service`, and shared cross-component state goes to `add-signal-store`.
+- **No action needed.** The recipes themselves are unchanged — only the descriptions your assistant
+  reads when deciding which one applies.
+
 ## 0.46.0 — 2026-08-05
 
 - **Fixed: on Windows without `jq`, the prompt-routing hook silently did nothing.** If your machine

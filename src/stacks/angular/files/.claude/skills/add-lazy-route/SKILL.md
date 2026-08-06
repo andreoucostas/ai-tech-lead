@@ -1,6 +1,12 @@
 ---
 name: add-lazy-route
-description: Use when the user wants to add a new Angular route, especially a lazy-loaded one. Covers feature directory layout, loadComponent/loadChildren choice, guards, and resolvers.
+description: >
+  Use when the user wants to add a new Angular route, especially a lazy-loaded one. Covers feature
+  directory layout, loadComponent/loadChildren choice, guards, and resolvers.
+  USE FOR: a route that does not exist yet — a new feature area, a lazily loaded child route, a
+  guarded or resolved route.
+  DO NOT USE FOR: changing an existing route's path, guard, or resolver (use `/feature` or
+  `/refactor`); creating the component the route will point at (use `add-component` first).
 ---
 
 # Add a new route with lazy loading

@@ -11,6 +11,34 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.47.0 — 2026-08-06
+
+**The four Angular authoring skills shipped with no routing clauses at all (B-98 step 3).**
+`add-component`, `add-lazy-route`, `add-service` and `add-signal-store` carried a single descriptive
+sentence, while every .NET counterpart *and* the Angular `add-tests` carried full `USE FOR` /
+`DO NOT USE FOR` clauses. Found by the roster sweep run for B-98 step 3, not by any gate — nothing
+asserts that a shipped skill declares its own boundaries.
+
+- Authored once in `src/stacks/angular/files/{.claude,.github}/skills/` as byte-identical pairs.
+  Reaches `dist/angular` **and** `dist/monorepo`: the monorepo inherits the Angular authoring files
+  directly for these four, so there is no `src/stacks/monorepo/` sibling to update [#1]. Verified by
+  normalized compare — an earlier raw `cmp` said "differs" and that was CRLF, not content.
+- **Every `DO NOT USE FOR` names a destination that exists**, asserted mechanically: 16/16 resolve
+  to a real command or skill in `dist/angular`. Deliberate, because the same sweep found ~12
+  *orphaned* exclusions already in the roster (tasks named as out-of-scope with nowhere to go), and
+  this change must not add more.
+- Context cost, measured rather than estimated — skill frontmatter **is** in the static budget.
+  Monorepo `static.claude` 45,824 → 47,354 chars against a 48,000 ceiling (**646 left**); angular
+  36,305 → 37,835 against 40,000. A first draft cost 1,709 and was trimmed to 1,530 before landing.
+  Monorepo headroom is now thin enough that the next static-context change needs a deliberate
+  decision, not an incidental one.
+
+**Found while doing this, and filed rather than fixed here: the context-footprint ceiling is
+advisory.** `scripts/context-footprint.ps1:323-331` emits `WARN:` on a breach of 40,000/48,000 and
+never exits non-zero; the gate fails only on *baseline drift*, so `-Update` would absorb a real
+breach silently. B-64's class — a check that reports but cannot fail — in the one instrument
+guarding the budget every static-context decision is weighed against. Filed as **B-110**.
+
 ## 0.46.0 — 2026-08-05
 
 **The post-ship review of v0.45.0 (B-103), and the four defects it found.** B-102 was found,
