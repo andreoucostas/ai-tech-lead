@@ -2533,6 +2533,46 @@ implementation, it is the self-report.** Worth considering whether `release.ps1`
 claimed blast radius to be stated as a file list it can diff against the commit.
 
 ### B-110 · The context-footprint ceiling is advisory — the budget gate cannot fail on a breach
+
+> **DONE 2026-08-06 (meta-only; the twins do not ship — they are authoring gates, absent from
+> `dist/*/scripts/`, so no version bump).** **Decision: the ceilings are LIMITS, not guidance.**
+> A breach now prints `FAIL:` per breached metric with the measured value and the overage, then
+> exits 1 — in **both** `-Check` and `-Update`, and **before** the `-Update` write, so a breach can
+> never leave a rewritten baseline behind. The escape hatch is `-AllowCeilingBreach` /
+> `--allow-ceiling-breach`, named for what it risks per this repo's convention: it prints
+> `WARN (CEILING WAIVED):` and continues. Raising a ceiling stays a two-twin edit, deliberately.
+>
+> **Red-tested — the instrument was seen to go red before its green counted (Maintenance model #4).**
+> Planted +1,180 chars into `dist/dotnet/CLAUDE.md` (38,997 → 40,201, over by 201), restored
+> unconditionally via `git checkout` in a `finally` (B-84's rule). Observed:
+>
+> | run | observed |
+> |---|---|
+> | `.ps1 -Check` | `FAIL: dotnet static.claude is 40201 chars, ceiling 40000 (over by 201).` · **exit 1** |
+> | `.ps1 -Update` | same FAIL · **exit 1** · `baseline_untouched=True` — **this is the defect, closed** |
+> | `.sh -Check` | byte-identical verdict · **exit 1** |
+> | `.sh -Check -AllowCeilingBreach` | `WARN (CEILING WAIVED)` then fell through to the drift check · exit 1 (drift, correct — the waiver waives the ceiling, not drift) |
+> | `.ps1 -Update -AllowCeilingBreach` | `WARN (CEILING WAIVED)` + `UPDATED` · **exit 0** |
+> | both twins, restored tree | `OK: context footprint matches…` · **exit 0** |
+>
+> Both CI legs already invoke their own twin with `-Check` (`ci.yml:45-46`, `:81-82`) and
+> `release.ps1:232` gates on `-Update` exiting 0, so the new failure mode is enforced everywhere
+> without wiring changes. Current values are all under ceiling (dotnet 38,997 / angular 37,835 /
+> monorepo 47,354 / ratio 1,214), so nothing is blocked today.
+>
+> **Also closed from this entry's "worth checking":** the twins previously had *no* fixture
+> exercising the ceiling branch on either side (B-75's inert-fixture class — both agreed about
+> nothing). The red-test above is the first execution of that branch in either twin, and they were
+> shown to agree on it.
+>
+> **NOT done, deliberately, and it is the honest residual:** no *permanent* test was added. The
+> red-test was performed and is recorded here as observed output, not as executable text — which is
+> exactly the gap **B-84** exists to close, and this is now a second worked example for it. The
+> reason is cost, not oversight: a single `context-footprint` run takes minutes (it renders both hook
+> twins across three dists), so a suite case would add multi-minute runtime to a meta suite B-101
+> just cut from 1,027s to 270s. That trade should be made deliberately with B-84's mutation helper,
+> which could plant the breach against a scratch dist rather than the real one. Filed as the reason,
+> not as a claim that testing happened.
 **Effort:** S · **Priority:** P2 · found 2026-08-06 while shipping v0.47.0 · **Invariants:** #3
 
 **Why:** `scripts/context-footprint.ps1:323-331` checks the ceilings and emits

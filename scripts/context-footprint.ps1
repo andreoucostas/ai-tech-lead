@@ -1,13 +1,16 @@
 ﻿# ai-tech-lead context-footprint gate (PowerShell twin; bash twin is context-footprint.sh).
 # Measures deterministic framework context across all composed dists, renders both hook twins,
 # and compares the canonical result with meta/context-footprint.json.
-# Usage: context-footprint.ps1 [-Check|-Update]
+# Usage: context-footprint.ps1 [-Check|-Update] [-AllowCeilingBreach]
 # Default/-Check: exit 1 for a missing or changed baseline or hook-render mismatch.
 # -Update: rewrite the BOM-less, LF-only canonical baseline.
+# Either mode: exit 1 when a declared ceiling is exceeded (B-110). -AllowCeilingBreach waives that
+# for one run and is named for what it risks: shipping static context past a budget nobody re-decided.
 # Exit 2: usage error, missing dist/tool, malformed frontmatter, or fixture execution failure.
 param(
     [switch]$Check,
-    [switch]$Update
+    [switch]$Update,
+    [switch]$AllowCeilingBreach
 )
 $ErrorActionPreference = 'Stop'
 
@@ -319,16 +322,31 @@ try {
     }
     $json = (ConvertTo-CanonicalJson $document) + $lf
 
+    # B-110: the ceilings are LIMITS, not advice. Before this they emitted WARN and never set a
+    # non-zero exit, so the only failing condition was baseline drift -- and the documented remedy
+    # for drift is -Update, which accepts whatever the new numbers are. "Change, -Update, commit"
+    # therefore absorbed a breach silently while printing a clean run. Checked BEFORE the -Update
+    # write so a breach never leaves a rewritten baseline behind.
+    $breaches = @()
     foreach ($dist in @('dotnet', 'angular')) {
-        if ($derived[$dist]['static.claude.chars'] -gt 40000) {
-            Write-Output "WARN: $dist static.claude exceeds 40000 chars."
+        $n = $derived[$dist]['static.claude.chars']
+        if ($n -gt 40000) { $breaches += "$dist static.claude is $n chars, ceiling 40000 (over by $($n - 40000))." }
+    }
+    $n = $derived.monorepo['static.claude.chars']
+    if ($n -gt 48000) { $breaches += "monorepo static.claude is $n chars, ceiling 48000 (over by $($n - 48000))." }
+    $r = $derived['monorepo-claude-ratio-permille']
+    if ($r -gt 1500) { $breaches += "monorepo CLAUDE.md is ${r} permille of the larger single-stack, ceiling 1500." }
+
+    # @(...) guard: under Windows PowerShell 5.1 a bare .Count on a single-element pipeline result
+    # returns $null (the v0.41.0 RCA).
+    if (@($breaches).Count -gt 0) {
+        foreach ($b in $breaches) {
+            Write-Output $(if ($AllowCeilingBreach) { "WARN (CEILING WAIVED): $b" } else { "FAIL: $b" })
         }
-    }
-    if ($derived.monorepo['static.claude.chars'] -gt 48000) {
-        Write-Output 'WARN: monorepo static.claude exceeds 48000 chars.'
-    }
-    if ($derived['monorepo-claude-ratio-permille'] -gt 1500) {
-        Write-Output 'WARN: monorepo CLAUDE.md exceeds 1.5x the larger single-stack CLAUDE.md.'
+        if (-not $AllowCeilingBreach) {
+            Write-Output 'FAIL: context footprint exceeds a declared ceiling. Raising a ceiling is a deliberate decision -- edit it here and in the bash twin and record why -- or pass -AllowCeilingBreach to waive this run.'
+            exit 1
+        }
     }
 
     if ($Update) {

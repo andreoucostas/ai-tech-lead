@@ -1,11 +1,21 @@
 #!/usr/bin/env bash
 # ai-tech-lead context-footprint gate (independent bash twin).
-# Usage: context-footprint.sh [-Check|-Update]; exits 0 pass/update, 1 mismatch, 2 FATAL/usage.
+# Usage: context-footprint.sh [-Check|-Update] [-AllowCeilingBreach]; exits 0 pass/update,
+# 1 mismatch or ceiling breach (B-110), 2 FATAL/usage. -AllowCeilingBreach waives a breach for one
+# run and is named for what it risks: shipping static context past a budget nobody re-decided.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 mode="-Check"
-[ "$#" -le 1 ] || { echo "usage: context-footprint.sh [-Check|-Update]" >&2; exit 2; }
-case "${1:--Check}" in -Check|--check) mode="-Check";; -Update|--update) mode="-Update";; *) echo "usage: context-footprint.sh [-Check|-Update]" >&2;exit 2;; esac
+allow_ceiling_breach=0
+[ "$#" -le 2 ] || { echo "usage: context-footprint.sh [-Check|-Update] [-AllowCeilingBreach]" >&2; exit 2; }
+for arg in "$@"; do
+  case "$arg" in
+    -Check|--check) mode="-Check";;
+    -Update|--update) mode="-Update";;
+    -AllowCeilingBreach|--allow-ceiling-breach) allow_ceiling_breach=1;;
+    *) echo "usage: context-footprint.sh [-Check|-Update] [-AllowCeilingBreach]" >&2;exit 2;;
+  esac
+done
 baseline="meta/context-footprint.json"
 if [ "$mode" = "-Check" ] && [ ! -f "$baseline" ];then echo "FAIL: context-footprint baseline missing: $baseline. Run with -Update and review the generated diff." >&2;exit 1;fi
 command -v bash >/dev/null 2>&1||{ echo "FATAL: bash is required to render hook twins." >&2;exit 2; }
@@ -99,11 +109,30 @@ output="$tmp/context-footprint.json"
  printf '  "_notes": [\n    "Claude frontmatter is a stable over-approximation of harness injection.",\n    "Copilot skill frontmatter and .agent.md wrapper consumption are unverified; B-17 instructions join static.copilot when added.",\n    "ondemand-info is reported but never policy-gated.",\n    "Token values are chars÷4 approximations."\n  ]\n}\n'
 }>"$output"
 
-# D4/D5: warnings do not change a matching-baseline exit.
-[ "$dotnet_claude_total" -le 40000 ]||echo "WARN: dotnet static.claude exceeds 40000 chars."
-[ "$angular_claude_total" -le 40000 ]||echo "WARN: angular static.claude exceeds 40000 chars."
-[ "$monorepo_claude_total" -le 48000 ]||echo "WARN: monorepo static.claude exceeds 48000 chars."
-[ "$ratio_permille" -le 1500 ]||echo "WARN: monorepo CLAUDE.md exceeds 1.5x the larger single-stack CLAUDE.md."
+# B-110: the ceilings are LIMITS, not advice. Before this they emitted WARN and never set a non-zero
+# exit, so the only failing condition was baseline drift -- whose documented remedy (-Update) accepts
+# whatever the new numbers are, silently absorbing a breach. Checked BEFORE the -Update copy so a
+# breach never leaves a rewritten baseline behind. Must reach the same verdict as the .ps1 twin [#3].
+breaches=""
+[ "$dotnet_claude_total" -le 40000 ]||breaches="${breaches}dotnet static.claude is $dotnet_claude_total chars, ceiling 40000 (over by $((dotnet_claude_total-40000))).
+"
+[ "$angular_claude_total" -le 40000 ]||breaches="${breaches}angular static.claude is $angular_claude_total chars, ceiling 40000 (over by $((angular_claude_total-40000))).
+"
+[ "$monorepo_claude_total" -le 48000 ]||breaches="${breaches}monorepo static.claude is $monorepo_claude_total chars, ceiling 48000 (over by $((monorepo_claude_total-48000))).
+"
+[ "$ratio_permille" -le 1500 ]||breaches="${breaches}monorepo CLAUDE.md is ${ratio_permille} permille of the larger single-stack, ceiling 1500.
+"
+if [ -n "$breaches" ];then
+  prefix="FAIL:"
+  [ "$allow_ceiling_breach" -eq 0 ]||prefix="WARN (CEILING WAIVED):"
+  while IFS= read -r line;do [ -z "$line" ]||echo "$prefix $line";done <<EOF
+$breaches
+EOF
+  if [ "$allow_ceiling_breach" -eq 0 ];then
+    echo "FAIL: context footprint exceeds a declared ceiling. Raising a ceiling is a deliberate decision -- edit it here and in the PowerShell twin and record why -- or pass -AllowCeilingBreach to waive this run."
+    exit 1
+  fi
+fi
 if [ "$mode" = "-Update" ];then cp "$output" "$baseline";echo "UPDATED: meta/context-footprint.json";exit 0;fi
 cmp -s "$output" "$baseline"||{ echo "FAIL: context footprint differs from meta/context-footprint.json. Review the change, then run -Update.";exit 1; }
 echo "OK: context footprint matches meta/context-footprint.json.";exit 0
