@@ -281,8 +281,60 @@ on the task that actually failed** — not a context-free property of its contai
   stated reliability ceiling. Unlike the rejected `delta≥3`, this is statistically defensible against
   a zero baseline: Fisher exact two-sided, **5/6 vs 0/6 → p≈0.015**, **6/6 vs 0/6 → p≈0.002**.
   (Computed here rather than asserted; the rejected design's accepted deltas were p≈0.18–0.24.)
-- **Falsification condition, unchanged:** `r` rising while `usedDeadColumn` does not fall means the
-  rule produced document-opening theatre. That is a failure, not a partial success.
+- **~~Falsification condition, unchanged:~~ `r` rising while `usedDeadColumn` does not fall means the
+  rule produced document-opening theatre. That is a failure, not a partial success.**
+  **WRONG — CORRECTED 2026-08-06 before any run. See §6.3.** This condition would have fired
+  regardless of the rule's quality, because the artifact the rule points at does not contain the
+  information the outcome measure requires. Struck rather than deleted: it is the third instrument
+  defect found in this thread and the only one I authored *after* writing the rules against it.
+
+### 6.3 The outcome measure was unreachable — why §6.2's falsification condition is struck
+
+**Found by checking what the rule would actually be tested against, before drafting it.**
+
+The fixture ships `docs/warehouse-map.md` as the **current** map: the eight loading columns
+(`entity | layer | grain | load proc | orchestrated by | rerun protection | SCD | partitioning`) for
+`DimCustomer`, `DimRegion`, `FactSales`. **No columns, no keys, no relationships** — that absence is
+precisely what B-96 exists to fix. Meanwhile `usedDeadColumn` (`run-agent-evals.ps1:554`) scores
+whether the produced SQL reaches an attribute off `FactSales.<attr>` — the declared-but-never-populated
+column — instead of joining the dimension that owns it.
+
+So the document the rule directs the model to open is **silent on exactly what the outcome measure
+tests.** Opening it cannot reveal that the column is dead or that `DimCustomer → DimRegion` is the
+path. `usedDeadColumn` could not fall, so the struck condition would have reported "theatre" for a
+rule that worked perfectly at the only thing a rule can do: get the document read.
+
+**The real structure of the problem, which this makes explicit for the first time.** The rule
+(reach) and B-96's map content (substance) are **complementary, and neither moves the outcome alone**:
+
+| | map is ETL-only (today) | map carries relationships (B-96) |
+|---|---|---|
+| **no rule** | `r=0/6`, `usedDeadColumn` 4/6 — **measured, step 1** | model never opens it → outcome unchanged |
+| **rule** | opens an empty map → outcome unchanged | the only cell that can move both |
+
+That is why B-96 was blocked on reach and this design was blocked on content — each was waiting on
+the other, and nothing in the record said so.
+
+**Corrected experiment.** Two signals, each with its own pre-registered prediction, and no single
+condition that can fail for the wrong reason:
+
+- **Reach — `r`, attributable to the rule alone.** Threshold unchanged (`r≥5` / `r≤1` / `2..4`), and
+  still defensible against the `r=0/6` baseline (5/6 vs 0/6 → p≈0.015).
+- **Outcome — `usedDeadColumn`, attributable to rule + content jointly.** It is **predicted to stay
+  flat** while the map is ETL-only. A flat result there is *confirmation*, not falsification, and
+  must not be cited as the rule failing.
+
+**Sequencing consequence, and it changes the order of the remaining work.** To measure the outcome at
+all, the fixture map must carry the relationship content B-96 designs. So either:
+
+1. **Run the reach-only arm now** (6 runs, ~$2.20): tests the rule, reports `r`, states plainly that
+   `usedDeadColumn` was not measurable. Cheap, honest, and it unblocks B-96 on the reach axis; or
+2. **Implement B-96's map content first**, enrich the fixture, then run once against both signals —
+   more informative per dollar, but it means building content whose delivery is still unproven.
+
+**(1) then (2)** is the better order: reach is the cheaper question, it is the one currently blocking
+B-96, and a low `r` would make (2)'s content work moot. Do not run a combined arm first and attribute
+a joint result to either component.
 
 **Four cheap controls carried over from the review, all of which the rejected design lacked:**
 
