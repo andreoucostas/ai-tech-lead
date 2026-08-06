@@ -36,9 +36,19 @@ param(
     # Escape hatch for tests and for a non-standard install. Normally resolved (see Resolve-Gh).
     [string]$GhPath,
     [string]$RepoRoot,
-    # The two CI legs (.github/workflows/ci.yml). A workflow-level `success` does not prove both legs
+    # Every job in .github/workflows/ci.yml. A workflow-level `success` does not prove each leg
     # ran -- watching only the aggregate is how a silently-skipped leg would look green.
-    [string[]]$ExpectedJobs = @('windows', 'linux')
+    # The `*-hooks (<dist>)` entries are the per-dist shipped hook suites, split onto their own
+    # runners at B-113 to get the windows leg clear of the 15-minute cancellation ceiling. They are
+    # listed individually and NOT collapsed to a prefix match: the whole point of this list is that
+    # a leg which stops running is caught, and a prefix match would pass on zero matrix legs.
+    # GitHub names a matrix job "<job> (<value>)" -- if that naming ever changes, this list must
+    # follow, and it failing loudly is the intended direction.
+    [string[]]$ExpectedJobs = @(
+        'windows', 'linux',
+        'windows-hooks (dotnet)', 'windows-hooks (angular)', 'windows-hooks (monorepo)',
+        'linux-hooks (dotnet)', 'linux-hooks (angular)', 'linux-hooks (monorepo)'
+    )
 )
 $ErrorActionPreference = 'Stop'
 

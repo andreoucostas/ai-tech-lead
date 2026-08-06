@@ -49,13 +49,29 @@ jobs:
           pwsh -NoProfile -File scripts/validate-dist.ps1 dotnet
           pwsh -NoProfile -File scripts/validate-dist.ps1 angular
           pwsh -NoProfile -File scripts/validate-dist.ps1 monorepo
-      - name: Hook test suites per dist
-        run: |
-          pwsh -NoProfile -File dist/dotnet/tests/hooks/Invoke-HookTests.ps1
-          pwsh -NoProfile -File dist/angular/tests/hooks/Invoke-HookTests.ps1
-          pwsh -NoProfile -File dist/monorepo/tests/hooks/Invoke-HookTests.ps1
       - name: Meta-hook test suite (bom-fix + repo-wide BOM gate)
         run: pwsh -NoProfile -File .claude/hooks/tests/Invoke-HookTests.ps1
+
+  # The three shipped hook suites used to run serially inside the `windows` job and were its
+  # dominant cost. They are split onto their own runners here (B-113): the suites execute against
+  # the COMMITTED dist/, whose equivalence to src/ the freshness gate in `windows` already proves,
+  # so they need a checkout and nothing else -- no compose, no ordering dependency. Splitting buys
+  # real concurrency rather than more lanes on one box: B-101 measured that added lanes plateau
+  # because process creation serialises, so three suites sharing one runner would not have helped.
+  # fail-fast is off so one dist's failure still reports the other two.
+  windows-hooks:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dist: [dotnet, angular, monorepo]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Hook test suite (${{ matrix.dist }}, .ps1 twins)
+        run: pwsh -NoProfile -File dist/${{ matrix.dist }}/tests/hooks/Invoke-HookTests.ps1
 
   linux:
     runs-on: ubuntu-latest
@@ -85,10 +101,21 @@ jobs:
           bash scripts/validate-dist.sh dotnet
           bash scripts/validate-dist.sh angular
           bash scripts/validate-dist.sh monorepo
-      - name: Hook test suites per dist (exercises the .sh twins via bash)
-        run: |
-          pwsh -NoProfile -File dist/dotnet/tests/hooks/Invoke-HookTests.ps1
-          pwsh -NoProfile -File dist/angular/tests/hooks/Invoke-HookTests.ps1
-          pwsh -NoProfile -File dist/monorepo/tests/hooks/Invoke-HookTests.ps1
       - name: Meta-hook test suite (bom-fix + repo-wide BOM gate)
         run: pwsh -NoProfile -File .claude/hooks/tests/Invoke-HookTests.ps1
+
+  # Linux half of the same split. Named separately from windows-hooks so both remain individually
+  # assertable by watch-ci.ps1 -- a leg that silently stops running must fail, not pass quietly.
+  linux-hooks:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dist: [dotnet, angular, monorepo]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Hook test suite (${{ matrix.dist }}, exercises the .sh twins via bash)
+        run: pwsh -NoProfile -File dist/${{ matrix.dist }}/tests/hooks/Invoke-HookTests.ps1
