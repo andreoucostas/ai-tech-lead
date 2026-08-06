@@ -1723,6 +1723,53 @@ warehouse-specific symptom. B-97 earned its own entry on those grounds and so do
    `map-warehouse` + `add-warehouse-load` and nothing for querying. Check whether the same asymmetry
    runs through the rest of the skill roster.
 
+> **STEP 3 DONE — RUN 2026-08-06, immediately after step 1. The asymmetry is real and worse than
+> this bullet assumed.** Swept all 16 shipped skills (`dist/monorepo`, the superset) and all 14
+> commands.
+>
+> **Every skill is named and framed by the artifact it *produces*, never by the question it
+> answers.** Nine of sixteen begin with `add-`; six of those say "new"/"brand-new"/"doesn't exist
+> yet" in the first clause. Only **two** are read-side at all — `perf` (a defect-hunting scan) and
+> `map-warehouse`. And `map-warehouse` is itself framed as *producing a document*: its headline is
+> "Map a warehouse codebase … refreshing `docs/warehouse-map.md`". A developer with a question does
+> not have a map-authoring task.
+>
+> **This is a better explanation of step 1's `r=0` than description tuning.** The three probe prompts
+> are all shaped *"Write that query and save it as `analysis/X.sql`"* — surface form: author a file.
+> No skill in the roster claims query authoring. Stated precisely, because the overclaim is
+> tempting: the two warehouse skills do **not** forbid it — they mention queries only to exclude
+> *tuning* (`add-warehouse-load` → "report/query tuning"; `map-warehouse` → "tuning a single slow
+> query"). So the task is **unclaimed, and the only query-adjacent language in reach is exclusionary**.
+> That is a routing gap by omission, not by misdescription — which is why rewriting
+> `map-warehouse`'s description (design §3.5) was never going to be sufficient, and step 1's
+> §3.4.1 sharpening already said so from the other direction.
+>
+> **Orphaned exclusions — the sharper structural defect.** `DO NOT USE FOR` clauses name ~17 tasks.
+> Five route somewhere real (`add-warehouse-load`→`add-entity`/`map-warehouse`,
+> `add-tests`→`add-endpoint`, `enforce-standards`→`enforce-architecture`,
+> `enforce-architecture`→`/review`). The rest name a task and offer **no destination, because none
+> exists**: *writing queries against an existing entity* (`add-entity`), *modifying an existing
+> endpoint's logic or signature*, *adding a method to an existing service*, *adding middleware*
+> (`add-endpoint`), *changing a registration's lifetime*, *adding a dependency to an existing
+> service constructor*, *extracting an interface from a registered class*, *replacing one
+> implementation with another* (`register-service`), *one-off data corrections*, *report/query
+> tuning* (`add-warehouse-load`), *tuning a single slow query* (`map-warehouse`). The roster tells
+> the model where **not** to go far more often than where to go, and most of those signposts point
+> at nothing.
+>
+> **Incidental find, worth its own fix:** four skills carry **no `USE FOR`/`DO NOT USE FOR` clause
+> at all** — `add-component`, `add-lazy-route`, `add-service`, `add-signal-store`, i.e. every
+> Angular authoring skill except `add-tests`. They ship a single descriptive sentence while their
+> .NET counterparts carry full routing clauses. Whatever step 2 decides about routing, this is an
+> unarguable inconsistency in the delivered product and cheap to close.
+>
+> **What this does NOT establish:** that adding a read-side skill fixes `r=0`. `map-warehouse` is
+> read-side and still did not fire, so "add a consumption skill" is a hypothesis, not a conclusion —
+> it needs the same pre-registered treatment step 1 got, on the same harness, before anything ships.
+> Commands were checked too and cover none of this: all 14 are lifecycle/workflow
+> (`/feature`, `/fix`, `/refactor`, `/design`, `/review`…), and none claims "answer a question about
+> existing code" either.
+
 **Cross-links:** B-96 (gated by step 1), B-41 (the eval harness steps 1–2 depend on), B-97 (the other
 general defect found through the same symptom), B-76 (shipped descriptions matching what they
 describe — accuracy, where this is coverage), B-78 (warehouse-map signals that reach nobody).
