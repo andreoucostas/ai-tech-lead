@@ -1267,6 +1267,33 @@ form), and red-test with a non-ASCII path.
 already judged unanswerable, and the first cut written that way would have refused every release
 from v0.39.0 to v0.43.0.
 
+**Live instance of (1), 2026-08-06 during the v0.47.0 release — and it adds a wrinkle worth having.**
+A design document (`.claude/plans/2026-08-06-b98-step2-routing-remedy-design.md`) was authored *while
+the release gates were running*, in the same working tree. `git add -A` swept it into the release
+commit: `46 files changed` including `create mode 100644 .claude/plans/…`. Step 5a did not refuse,
+correctly per its own rules — `.claude/` is one of the six allowed directories, so this is an
+in-directory stray, exactly the case this entry says is committed without a warning.
+
+**The wrinkle:** the file was **mid-edit**. The release captured a draft that was superseded minutes
+later by amendments from its adversarial critique, so the committed artifact is a *stale version of a
+document that was actively changing*, and the amendments then had to land in a follow-up commit. That
+is worse than the "stray scratch file" this entry anticipates: a stray is merely noise, whereas this
+is a real artifact captured at a misleading point in its life, with nothing in the release output
+indicating it was unfinished. The staged manifest *did* print it (`release.ps1:402-406`), which is
+the mitigation this entry credits — but a filename in a 46-line manifest does not distinguish
+"deliberately part of this release" from "happened to be open in the editor".
+
+**What this suggests for the fix,** beyond what is already written: the useful signal is not only
+*where* a staged path sits but *whether it was modified during the release run itself*. The release
+knows its own start time; a file whose mtime falls inside the run and which is not one of the paths
+the release deliberately rewrites (stamps, `dist/`, the footprint baseline) is a strong candidate for
+"the maintainer was working on this, it is probably not part of the release". Cheap to compute, and
+it catches the concurrent-authoring case that directory allowlisting structurally cannot.
+
+**Not (addition):** do not respond to this by forbidding work during a release. The gates take ~25
+minutes; expecting an idle maintainer is the kind of process rule that gets ignored and then relied
+upon.
+
 ---
 
 ### B-96 · `map-warehouse` maps the ETL, not the warehouse

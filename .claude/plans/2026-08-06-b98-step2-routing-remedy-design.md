@@ -101,8 +101,19 @@ to a real command or skill, or stop naming it.
 - **But it probably does not fix `r=0`.** No exclusion in the roster names the probe's task, so
   nothing was pushing the model away; the task was simply unclaimed. Honest assessment: this is
   hygiene that reduces future misrouting, not the remedy for the measured failure.
-- v0.47.0 already applied this discipline to the four Angular skills it touched (16/16 destinations
-  assert-checked), so the pattern and the check both exist.
+- **Status, stated precisely because the critique caught this being blurred (finding 1).** Option B
+  is **entirely open**. All ~12 orphaned exclusions live in five **.NET-side** skills —
+  `add-entity`, `add-endpoint`, `register-service`, `add-warehouse-load`, `map-warehouse` — and
+  **v0.47.0 touched none of them** (verified: `git status` shows no change to any of those five
+  SKILL.md files in that release). What v0.47.0 *did* was apply Option B's **discipline
+  prospectively** to four Angular skills that carried no clauses at all, asserting 16/16
+  destinations resolve. So the pattern and the assert-check exist and are proven; the backlog of
+  existing orphans is untouched.
+
+  The critique filed this as "Option B already shipped in v0.47.0". That is **not accurate** — but
+  its underlying charge is, and is answered in §5.1. Recorded rather than silently corrected,
+  because Maintenance model #1 says a reviewer's corrections are input, not verdict, and this repo
+  has previously had a second pass catch a factual error in the first pass's own remediation.
 
 ### Option C — A `route-prompt` no-match fallback
 When no skill matches, emit a line naming the nearest skills and stating that none matched.
@@ -136,7 +147,36 @@ Sequence, and the ordering is load-bearing:
    Do not let a 646-character headroom silently decide the wording of a rule that is supposed to
    change behaviour.
 3. **Then draft the rule against §6's red-test**, not against readability.
-4. **Ship Option B whenever** — it is independent of all of the above.
+4. **Ship Option B when convenient** — it is genuinely independent of steps 1–3, and it is
+   .NET-side work that does not compete for the same budget (adding a destination to an existing
+   clause is roughly cost-neutral; it rewords text that already ships).
+
+### 5.1 The headroom this design routes around is self-inflicted, and that must be said plainly
+
+**Accepted from the critique's blocking finding.** §4 cites 646 characters of monorepo headroom as
+Option A's binding constraint, and until this amendment §5 read as if that number were an external
+fact. It is not. It was **45,824 before today**. The v0.47.0 release — authored by this design's own
+session, hours earlier — consumed 1,530 characters of it to add routing clauses to four Angular
+skills, and computed the resulting 646 in its own changelog entry before this design cited it.
+
+Three things follow, and the third is the uncomfortable one:
+
+1. **The recommendation does not change.** "Settle B-110, then decide the budget explicitly" is
+   correct regardless of how the squeeze arose — arguably *more* correct, since the episode is a
+   worked example of static context being spent incidentally rather than deliberately.
+2. **But the ordering in §5 is not vindicated by the fact that it is sensible.** The honest reading
+   is that a cheap, obviously-good change was shipped first and the expensive, uncertain one now has
+   to justify itself against a budget the cheap one already spent. Had the order been reversed, the
+   rule would have had ~2,176 characters to work with and this design would not need a WSD to raise
+   a ceiling.
+3. **Generalise it, because this is the actual lesson.** There is no point in the workflow where
+   spending static context requires stating what it is being spent *instead of*. The footprint gate
+   measures the spend and (per B-110) cannot even fail on it. Recommend this become an explicit
+   question at release time whenever `static.claude` moves — cheap, and it is the same "state the
+   delivery surface per item" discipline B-97's changelog sweep already asked for.
+
+Presenting a fait accompli as a flexible future choice is precisely what Maintenance model #3 exists
+to catch, and the critique caught it.
 
 ## 6. Pre-registered success criteria (write these before running anything)
 
@@ -164,8 +204,14 @@ design starts with that B-96's did not.
 
 1. **Is §3's explanation right, or is it a story that fits six runs?** The competing explanation —
    the model simply judged a 9-table fixture small enough to read directly, and would behave
-   differently at real scale — is not excluded by anything here, and if true it means the probe
-   cannot measure the remedy either. **This is the weakest point in the document.**
+   differently at real scale — is not excluded by anything here. **Partly resolved by the critique
+   (finding 2), and in the design's favour:** the confound threatens the *external validity of the
+   `r=0` finding* (does this generalise to a real warehouse?) but **not §6's test**, because Option
+   A's mechanism is a flat obligation — *open the document first, regardless* — that does not
+   depend on the model judging the map necessary. So the before/after comparison remains valid on
+   this fixture even if brute-forcing stays viable, and the falsification condition (`r` rises while
+   `usedDeadColumn` does not fall) is a reasonable proxy for a decorative read. What remains open is
+   narrower: whether a rule that changes behaviour on a 9-table fixture still does so at real scale.
 2. **Does Option A survive its own §2.2 test?** A rule is prose. Step 1 showed prose in context
    (`Common Tasks` + a matching USE FOR) failing to change behaviour. Why would this prose be
    different? The intended answer is "because it states an obligation on an action rather than
@@ -176,6 +222,44 @@ design starts with that B-96's did not.
 4. **Does B-99 fold into this entirely?** If Option A ships as a general "consult before you write"
    obligation, B-99's "don't re-resolve an upstream decision" may become a second sentence of it
    rather than a separate rule — which would halve the budget cost of doing both.
+
+## 7bis. Critique disposition (2026-08-06, independent session, adversarial pass)
+
+**Verdict returned: LOCK WITH AMENDMENTS.** One blocking finding, four non-blocking. It independently
+re-verified and confirmed every load-bearing fact in this document: `r=0/6` and the per-run signals,
+`usedDeadColumn` 4/6, the `map-warehouse` USE FOR phrase, the `CLAUDE.md:71` placement, both footprint
+figures with the chars-not-tokens rule, `$protected` omitting the instructions carrier, and the
+advisory ceiling. Those are now checked twice by different sessions.
+
+| # | Finding | Disposition |
+|---|---|---|
+| 1 (blocking) | §5 presented Option B as flexible future work when the headroom squeeze was self-inflicted | **Accepted in substance, corrected in fact.** See §4 Option B status and §5.1. v0.47.0 is *not* Option B; the ~12 orphans are .NET-side and untouched. The underlying charge stands and is now stated. |
+| 2 | The fixture-size confound (§7.1) threatens the *original* finding's external validity but **not** §6's test, because Option A's mechanism is a flat obligation that does not depend on the model *needing* the map | **Accepted — and it strengthens the design.** Folded into §7.1 below. |
+| 3 | No calibration control: nothing establishes that the *existing* ten Verification Rules are followed at all, so a low `r` could not be attributed between "obligations in this block don't bite" and "this wording didn't bite" | **Accepted. This is a real gap I missed** and it is the sharpest of the four — it is B-72's inert-instrument class aimed at the whole delivery mechanism rather than one rule. Added as §6.1. |
+| 4 | Citation looseness: canary 1 tested `@import` against `.claude/framework-rules.md`, not the shipped `.github/instructions/…` path; canaries 2–4 were Copilot/VS Code | **Accepted as a footnote.** The claim is correct, the citation was imprecise. The reviewer also reported live corroboration for the Claude Code leg on the real shipped path, observed incidentally in its own session. |
+| 5 | Option C was dismissed partly on a cost argument that assumes one implementation shape; a post-hoc Stop-hook check would not cost per-turn context | **Accepted.** Option C stays rejected *for this instance* (it would not have fired here — a skill was eligible), but the cost argument is now scoped to the per-turn injection shape only. |
+
+The reviewer could not verify two things and said so rather than passing over them: that this
+design's author and the v0.47.0 session are literally the same session (only the artifacts are
+observable), and canary 4's VS Code result, which the backlog itself already flags as manual and n=1.
+
+### 6.1 Calibration control — required before Option A's result can be interpreted
+
+From critique finding 3. Option A's entire bet is that **obligation**-shaped prose in the Verification
+Rules block binds more reliably than **capability**-shaped prose in Common Tasks and USE FOR. Step 1
+proved the latter does not bind. Nothing has ever measured whether the former does — the ten existing
+Verification Rules are asserted to work by design intent and have never been probed.
+
+Without a calibration run, `r ≤ 1` after shipping Option A is uninterpretable in exactly the way the
+haiku pilot was: it cannot separate *"obligations in this block are not followed"* from *"this
+particular wording did not bite"*, and those have opposite remedies (change the vehicle vs. change
+the words).
+
+**Do, before drafting the rule's wording:** probe compliance with an *existing* Verification Rule on
+the same harness and fixture — Rule 1 ("Verify before you reference") is the natural candidate since
+it predicts an observable `Read`/`Grep` before a named symbol is used. Record it as the baseline for
+"does this block bite at all". This is cheap, needs no new instrument, and it is the difference
+between a measurable design and a hopeful one.
 
 ## 8. Out of scope
 
