@@ -2686,6 +2686,75 @@ sequencing §6.3 unblocked).
 
 ---
 
+#### SWEEP DONE 2026-08-06 — all 15 scenarios assessed, by reading + the recorded run history
+
+Method: for each measure, (a) can a constructible state make it report success, and (b) has it
+**ever been observed** reporting success in a *valid* run. (b) is the empirical form of (a), and it is
+decisive: a conjunct never once observed True across every run ever recorded is the signature of an
+unreachable measure. Pre-2026-07-17 rows are excluded — `meta/eval-results.md:8-13` invalidates them.
+
+| scenario | ever PASSed (valid runs) | verdict |
+|---|---|---|
+| `install-handoff` | 4 | reachable, demonstrated |
+| `guard-retry` | 3 | reachable · **cannot saturate** |
+| `haiku-bloat-radar`, `haiku-debt-radar` | 2 each | reachable · **cannot saturate** |
+| `haiku-convention-check` | 1 | reachable · cannot saturate |
+| `docs-tier-ondemand` | 2 | reachable · partial saturation (B-65) |
+| `docs-tier-inline` | 1 | reachable |
+| `route-fix` | 2 | reachable · **saturation UNASSESSED** |
+| `skill-add-tests` | 1 | reachable · **measures compliance, not routing** |
+| `angular-form-control` | 1 | **SATURATED** — B-72: passed with no forms guidance shipped |
+| `warehouse-route-p1/p2/p3` | `r` **never** True | `usedDeadColumn` **UNREACHABLE** (§6.3) |
+| `docs-tier-nopointer` | **0** (INCONCLUSIVE/FAIL/ERROR only) | **undemonstrated** |
+| `archived-redirect` | **0** (3 FAIL, 0 PASS, ever) | **see below — the finding** |
+
+**1. `archived-redirect` has never passed, and one of its failures had demonstrably correct
+behaviour.** All three valid runs (`meta/eval-results.md:66,79,91`) report `redirectedHandoff=False`
+— **that conjunct has never once been observed True.** The third run is the damning one:
+`currentStamp=True canonicalInstallerTool=True archivedInstallerTool=False commits=2`. The model did
+exactly the right thing operationally — installed from the canonical source, did not run the archived
+installer, produced the stamp and a commit — and the scenario still scored FAIL, solely because its
+closing prose did not satisfy a **three-regex conjunction** (`(?i)archiv|redirect` **and**
+`(?i)canonical` **and** `(?is)developer.+/bootstrap`) over free-form output
+(`run-agent-evals.ps1:409`).
+
+That is a measure that scores *how the model narrates*, not what it did, and it gates the whole
+scenario. B-33 exists to make the archived repos route an agent correctly; this is the instrument
+that would tell us whether they do, and it has produced three false negatives and zero signal.
+**Fix:** score the operational conjuncts (stamp, canonical installer, no archived installer, commit)
+as the outcome, and demote the prose match to a reported-but-not-gating signal — or replace the
+free-form regexes with one, chosen because a correct run must produce it. Then re-run and confirm
+the measure can reach True at all before citing any archived-redirect result again.
+
+**2. `docs-tier-nopointer` has also never passed** — and it is precisely the arm B-65's 2026-07-31
+amendment leans on when it says agents reach on-demand `docs/` files unaided. That amendment cites
+"one valid no-pointer run" where the agent opened the file; the ledger shows the *scenario* never
+scored PASS. Those are compatible (`loaded=True` with `followed=False` still fails), but the entry
+reads as stronger evidence than the instrument has produced. Re-check B-65's claim against the actual
+rows before it is used to justify keeping or dropping the pointer.
+
+**3. `route-fix`'s saturation is unassessed and the risk is high.** Its measure is red-test-then-fix;
+a competent model does that unprompted as ordinary practice. It has never been run bare, so its 2
+PASSes cannot currently be attributed to the framework. Same shape as `angular-form-control`, which
+*was* checked and turned out saturated.
+
+**4. `skill-add-tests` measures the wrong thing, mildly.** Its prompt opens *"Use the add-tests skill
+to…"* (`scenarios.json:31`), so `usedSkill` is telegraphed. It is a valid test of *following an
+explicit instruction* and no evidence at all about routing — which matters because B-98 is about
+routing, and this scenario looks like it speaks to that.
+
+**The design principle this sweep extracted, and the most reusable output here:** the measures that
+**cannot saturate** are exactly the ones whose success signal is *physically producible only by the
+framework* — `guard-retry` needs a real PreToolUse block in a tool result, and the `haiku-*` trio need
+an output format defined by a shipped agent. The saturated and unreachable ones all score **model
+prose or ordinary competence**. Prefer measures whose success signal the artifact under test must
+generate; treat any measure scoring free-form narration as suspect until shown otherwise.
+
+**Do:** fix (1), re-check (2), run a bare arm for (3), re-label (4), and record a reachability +
+saturation verdict beside every scenario so this is never re-derived.
+
+---
+
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see the Done section.**
