@@ -2622,6 +2622,70 @@ red-test yourself, do not read the release output as evidence -- and file whatev
 close this entry, recording what was re-run.
 
 ---
+### B-112 · RCA: every behavioural instrument's first version could not produce the result it claimed to test for
+**Effort:** S (the rule) · M (the sweep) · **Priority:** P2 · filed 2026-08-06 · **Invariants:** #5
+· generalises B-72; sibling of B-64/B-74/B-75 on the deterministic side
+
+**Why:** three behavioural instruments were built or specified in this repo, and **all three were
+broken in their first version, each in a different direction.** None was caught by running it; all
+three were caught by *reading what the instrument would actually be pointed at*.
+
+| # | instrument | defect | direction | caught by |
+|---|---|---|---|---|
+| 1 | `angular-form-control` grader (B-72, v0.40.0) | `formInputs` missed `@Input() set x()` and `input.required<T>()`, so a value accessor re-declaring form state — **the reported defect** — scored PASS | **could not fail** | shipping B-66 |
+| 2 | calibration probe (2026-08-06, rejected pre-run) | control arm removed the whole framework, not the block; `n=6` thresholds at p≈0.18–0.24; grader not deterministically implementable | **measured the wrong thing** | codex adversarial review |
+| 3 | §6.2 falsification condition (2026-08-06, corrected pre-run) | `usedDeadColumn` cannot fall because the artifact the rule points at is silent on what the measure scores | **could not pass** | self-check before drafting |
+
+**Why no gate caught any of them.** No gate can. These are experiment designs, not code — `bash -n`
+parses them, `validate-dist` never sees them, and a behavioural probe's own `-SelfTest` only proves
+the grader is self-consistent, not that it is *pointed at the right thing*. Instrument #1's
+`-SelfTest` was green throughout, which is precisely B-59's inert-check class one level up.
+
+**The actual root cause, and it is a gap in a rule this repo already wrote.** B-72 established:
+*"a behavioural probe is only a red test once it has been shown to **fail** on the unfixed tree."*
+That rule is **one-directional**. It catches instrument #1 (could not fail) and would catch nothing
+about #3 (could not pass) — a measure that always reports failure satisfies "shown to fail" trivially
+and looks maximally rigorous while being void. §6.2 is the proof: its falsification condition would
+have fired for a rule that worked perfectly, and the resulting false negative would have read as a
+*principled* result, which is worse than an obviously broken one.
+
+**Do — add the missing half to the maintenance model, next to B-72's rule:**
+
+> **Name the world in which the measure would register success.** For every outcome measure, state
+> the concrete, constructible state of the repository/fixture under which it would report the
+> desired result. If no such state can be named, the measure is **unreachable** and the experiment
+> is void before it runs. Record that state next to the measure, as B-72's rule already requires for
+> the failing observation.
+
+Both directions, stated together: an instrument must be shown able to **fail** on the unfixed tree
+*and* able to **pass** on a constructible fixed one. Cheap — both are reading exercises, and all
+three defects above were found by reading rather than running.
+
+**What else is exposed to the same class — the sweep.** Every scenario in `.claude/evals/` has an
+outcome measure whose reachability has never been stated:
+
+- `warehouseRouting`'s `usedDeadColumn` — **confirmed unreachable today** (§6.3). The fixture map is
+  ETL-only; no configuration of the current fixture makes it fall.
+- `angularFormControl` — B-72 already records that the scenario passed with **no forms guidance
+  shipped at all**, i.e. its measure may be saturated rather than unreachable. Same family, opposite
+  end.
+- `docsTierProbe`, `skillArtifactAndVerification`, `testBeforeProduction`, `installHandoff`,
+  `archivedRedirect`, `guardBlockedThenSafe`, and the three `haiku*` finding graders — **none
+  assessed.** Assess each for both directions and record the answer in `meta/eval-results.md` or
+  beside the scenario, rather than re-deriving it per experiment.
+
+**Not:** do not fold this into B-64. B-64's subject is deterministic gates and diagnostics, where
+planting a defect is trivial and the discipline already exists. This entry's subject is
+**behavioural** instruments, where you cannot plant a defect in a model and the reachability of the
+measure is therefore the only thing you *can* check in advance.
+
+**Cross-links:** B-72 (the one-directional rule this completes, and instrument #1), B-59 (inert
+checks), B-64 (the deterministic sibling), B-74 (a harness that cannot report failure), B-75 (an
+assertion too weak to fail), B-41 (the harness all of these run on), B-96/B-98 (the items whose
+sequencing §6.3 unblocked).
+
+---
+
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see the Done section.**

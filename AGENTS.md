@@ -96,7 +96,10 @@ Rules 2–4 are enforced by `release.ps1`, not by this prose.
    file-layout claims, a plan's assumptions, any number you quote. Verify in the environment that
    matters, or attribute the claim rather than asserting it.
 4. **A green result counts only from an instrument you have seen go red** on the unfixed tree, in
-   the host and code page that matter.
+   the host and code page that matter. **And the other direction: name the constructible state in
+   which the measure would register success.** If none can be named the measure is unreachable and
+   the experiment is void before it runs — "shown to fail" is satisfied trivially by a measure that
+   always fails (B-112).
 5. **Close every delivery with an RCA** in `meta/BACKLOG.md`: why did no gate catch it, and what
    else is exposed to the same class?
 

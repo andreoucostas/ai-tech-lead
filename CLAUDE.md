@@ -147,6 +147,13 @@ binding. Rules 2–4 are enforced by `release.ps1`'s review ledger, not by this 
    the host and code page that matter. This is the dominant recent failure class here: B-64, B-72,
    B-74 and B-75 were all instruments that could not fail, reporting success. Record the failing
    observation next to the check.
+   **And the other direction — name the world in which the measure would register success.** For any
+   outcome measure, state the concrete, constructible state under which it *would* report the desired
+   result. If no such state can be named, the measure is **unreachable** and the experiment is void
+   before it runs. "Shown to fail" alone is satisfied trivially by a measure that always fails, which
+   then produces a false negative wearing the costume of a principled result — see B-112, where all
+   three behavioural instruments built here were broken on first draft, in three different
+   directions, and every one was caught by *reading what it pointed at* rather than by running it.
 5. **Close every delivery with an RCA** filed into `meta/BACKLOG.md`, answering two questions:
    *why did no gate catch it*, and *what else is exposed to the same class?* Sweep for the second —
    the answer is rarely "nothing".
