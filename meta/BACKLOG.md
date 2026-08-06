@@ -2767,6 +2767,66 @@ red-test yourself, do not read the release output as evidence -- and file whatev
 close this entry, recording what was re-run.
 
 ---
+### B-113 · CI is being cancelled at exactly 15 minutes, and the windows leg already runs 12–14.5
+**Effort:** S to diagnose · **Priority:** **P1** — it blocks every release · found 2026-08-06 shipping v0.48.0
+
+**Why:** the v0.48.0 release commit (`beface1`) could not be tagged, because `release.ps1`'s CI watch
+(B-88) correctly refused to tag against a red run. But the run did not *fail* — **both jobs were
+`cancelled`, simultaneously, at exactly 15m01s, with no failing step in either.** Reproduced by an
+explicit `gh run rerun`: identical outcome, same 15-minute boundary
+(`16:49:45Z → 17:04:46Z` linux, `→ 17:04:47Z` windows). Two independent jobs, so this is not
+`fail-fast`.
+
+**What it is not, checked rather than assumed:**
+- **Not the code.** Every local gate passed twice: compose ×3, `validate-dist` ×3, hook suites ×3,
+  meta suite, eval self-test. The change under test is a 420-character markdown rule.
+- **Not a configured timeout.** `grep -rn timeout .github/workflows/` returns nothing; GitHub's
+  default job timeout is 6 hours.
+- **Not an Actions quota.** The repository is **public** (`private=false`), so Actions minutes are
+  not metered.
+- **Not `fail-fast`/concurrency.** `ci.yml` declares two independent jobs, no matrix, no
+  `concurrency:` block.
+
+**The part that makes this P1 rather than a curiosity — we were already at the edge and nobody
+measured it.** Recent green runs, wall clock:
+
+| commit | duration |
+|---|---|
+| `b1e24b5` | 12m27s (windows leg 12m24s, linux 5m24s) |
+| `5eeda5d` | **14m33s** |
+| `e88f8eb` | 12m36s |
+| `ef38832` | 11m12s |
+| `7ff3e2b` | 12m10s |
+
+Every green run fits under 15 minutes; the longest cleared it by 27 seconds. **The windows leg is the
+long pole and it has been running at 80–97% of a ceiling nobody knew existed.** So this is not "one
+unlucky run" — the repo has been one small slowdown away from being unable to release, and B-88 will
+correctly refuse to tag every time it happens. B-101 measured and optimised the *local* gates
+(1,027s → 270s); nothing has ever measured CI duration, and no signal exists for approaching a limit.
+
+**Do:** (1) establish what is doing the cancelling — a GitHub-side incident, an account/org runner
+policy, or something in this environment; the 15m00s boundary is too exact to be coincidence, and it
+is the one fact that would identify the mechanism. (2) Independently of the cause, get the windows leg
+well clear of 15 minutes — it duplicates work the linux leg already does, and B-101's parallelisation
+of `ValidateDist.Tests` was applied to the meta suite but the shipped hook suites (~174–217s per dist)
+still run serially per dist in CI. (3) Add a duration signal: print each leg's elapsed time and warn
+past a threshold, the same treatment B-101 gave `validate-dist` per-check timings.
+
+**Not:** do not tag v0.48.0 with `-AllowUnverifiedCi` to get past this. That switch exists and is
+honest — it records the waiver in the tag annotation — but using it to paper over an unexplained,
+*reproducible* cancellation would put a "CI-verified" tag on a build nobody has seen pass. That is
+precisely the claim the tag is supposed to carry.
+
+**Status:** v0.48.0 is **on `master` and pushed (`beface1`) but UNTAGGED** — the documented safe state
+(`release.ps1` prints it explicitly). Re-running the identical release command re-watches and tags if
+CI comes back green; nothing needs unwinding.
+
+**Cross-links:** B-88 (the watch that caught it and is working correctly), B-101 (gate runtime — the
+local half of this, and its "nothing measures cost" thesis now has a CI-side instance), B-70 (a change
+is not done until CI is green — which is now unachievable through no fault of the change).
+
+---
+
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see the Done section.**
