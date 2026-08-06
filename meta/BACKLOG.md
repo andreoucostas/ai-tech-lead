@@ -2029,8 +2029,28 @@ regex variable with the extractor so the selecting and extracting patterns canno
 |---|---:|---:|
 | `validate-dist.sh` FULL | 66s | **29s** |
 | `validate-dist.sh --content-only` | 23s | **11s** |
-| `ValidateDist.Tests.ps1` | ~850s | **391s** |
-| **the whole meta suite** | **1,027s** | **428s** |
+| `ValidateDist.Tests.ps1` | ~850s | **391s**, then **187s** parallel |
+| **the whole meta suite** | **1,027s** | **270s** |
+
+**Then parallelised (2026-08-06).** `ValidateDist.Tests.ps1` now dispatches one child process per
+case, `min(8, cores)` at a time; the cases already built their own temp dists, so they were
+independent before they were run that way. Measured 4/8/12 lanes = 218/183/179s against 391s
+sequential — the floor is the longest single case, so the default is capped at 8 and scaled to the
+host (a 2-core runner must not be over-subscribed into being slower than sequential). Three
+consecutive green runs (208/200/187s) before it was trusted, because parallelism turns a real race
+into an intermittent failure and a flaky gate is worse than a slow one.
+
+**Two things this did NOT need, discovered by looking rather than assuming:** `release.ps1` already
+ran the three dists' gates concurrently via `Start-Job`, and the shipped hook suites already
+throttle internally over their test files (`HOOKTESTS_THROTTLE`). The meta suite's
+`ValidateDist.Tests` was the only serial block left in the system.
+
+**The dispatcher shipped a silent-zero-coverage bug for one run, and it is worth recording because
+it is this file's own subject matter.** `Start-Process -ArgumentList` joins without quoting, so case
+names containing spaces arrived as many arguments, `-Only` bound to the first word, no case matched,
+and the suite reported **0 passed / 0 failed in 8 seconds** — indistinguishable from a 50× speedup if
+you only read the clock. The guard added in response now fails any child that reports no result for
+the case it was handed; a total of zero is never a pass.
 
 **Red-tested after every step, both twins** — 20/20 planted-defect cases still red, and the counts
 the checks report (117 markers, 30 script refs, 89 docs, 26 registrations) are byte-identical to

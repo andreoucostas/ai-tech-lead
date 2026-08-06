@@ -1,5 +1,15 @@
 ﻿# B-92 executable red-tests. These use real composed dists: synthetic JSON fixtures hid the prior
 # false greens. The child is bound to THIS host, not Get-PsExe (B-90).
+#
+# -Only runs a SINGLE case by name. It exists so this file can dispatch itself: with no -Only the
+# script becomes a driver that runs one child process per case, several at a time, and aggregates.
+# Every case already builds its own temp dist copy and cleans it up, so the cases were independent
+# long before they were run that way -- this parallelises them without changing what any of them do.
+# A child process rather than a runspace is deliberate: each case shells out to pwsh and bash and
+# mutates its own tree, so process isolation is the property that makes "independent" true rather
+# than hoped-for. Startup is ~265 ms per child against a suite that took 391 s.
+# Set VALIDATE_DIST_TESTS_THROTTLE=1 to force the old sequential behaviour when diagnosing.
+param([string]$Only)
 . (Join-Path $PSScriptRoot '_HookHarness.ps1')
 Reset-Tests
 $repo = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
@@ -100,6 +110,81 @@ function Assert-Case {
 }
 function Replace-Text { param($Path,$Find,$Replace) $t=[IO.File]::ReadAllText($Path); [IO.File]::WriteAllText($Path,$t.Replace($Find,$Replace)) }
 
+# Measured on a 12-core box: throttle 4 = 218s, 8 = 183s, 12 = 179s, sequential = 391s. The floor
+# is the longest single case, so past ~8 there is nothing left to win. Capped at 8 and scaled to the
+# host so a 2-core CI runner is not over-subscribed into being slower than sequential.
+$throttle = if ($env:VALIDATE_DIST_TESTS_THROTTLE) { [int]$env:VALIDATE_DIST_TESTS_THROTTLE }
+            else { [Math]::Max(2, [Math]::Min(8, [Environment]::ProcessorCount)) }
+if (-not $Only) {
+    # ---- driver: one child per case, $throttle at a time -------------------------------------
+    # Case names are read back out of this file rather than kept in a second list, so a case can
+    # never be added and silently not dispatched -- the failure mode would be a green run that
+    # tested less, which is the whole class this suite exists to prevent.
+    $caseNames = [regex]::Matches((Get-Content $PSCommandPath -Raw), "(?m)^\s*It\s+'([^']+)'") |
+                 ForEach-Object { $_.Groups[1].Value }
+    if ($caseNames.Count -eq 0) { Write-Host 'ValidateDist.Tests: dispatcher found ZERO cases -- the suite is broken, not clean.'; exit 1 }
+    $self = $PSCommandPath
+    $exe  = (Get-Process -Id $PID).Path
+    $queue = [System.Collections.Queue]::Synchronized((New-Object System.Collections.Queue))
+    $caseNames | ForEach-Object { $queue.Enqueue($_) }
+    $running = @(); $results = @{}
+    while ($queue.Count -gt 0 -or $running.Count -gt 0) {
+        while ($queue.Count -gt 0 -and $running.Count -lt $throttle) {
+            $name = $queue.Dequeue()
+            $out  = Join-Path ([IO.Path]::GetTempPath()) ('vdcase-' + [guid]::NewGuid().ToString('N') + '.txt')
+            # Every case name contains spaces and colons, and Start-Process joins ArgumentList with
+            # spaces WITHOUT quoting -- unquoted, the name arrived as a dozen separate arguments,
+            # -Only bound to the first word, no case matched, and the suite reported 0 passed /
+            # 0 failed in 8 seconds. It looked like a 50x speedup and was a total loss of coverage.
+            $p = Start-Process -FilePath $exe -ArgumentList @('-NoProfile','-File',"`"$self`"",'-Only',"`"$name`"") `
+                    -RedirectStandardOutput $out -RedirectStandardError "$out.err" -PassThru -NoNewWindow
+            $running += [pscustomobject]@{ Name=$name; Proc=$p; Out=$out }
+        }
+        Start-Sleep -Milliseconds 200
+        foreach ($r in @($running | Where-Object { $_.Proc.HasExited })) {
+            $results[$r.Name] = $r; $running = @($running | Where-Object { $_ -ne $r })
+        }
+    }
+    # Replay in declaration order so output is deterministic regardless of completion order.
+    $pass=0; $fail=0; $skip=0
+    foreach ($name in $caseNames) {
+        $r = $results[$name]
+        $text = if (Test-Path $r.Out) { Get-Content $r.Out -Raw } else { '' }
+        $err  = if (Test-Path "$($r.Out).err") { Get-Content "$($r.Out).err" -Raw } else { '' }
+        # Strip the child's own summary line; this driver prints one aggregate summary instead.
+        $lines = @($text -split "`r?`n" | Where-Object { $_ -notmatch '^ValidateDist\.Tests \(B-92\):' })
+        $lines | Where-Object { $_ -ne '' } | ForEach-Object { Write-Host $_ }
+        if ($text -match 'ValidateDist\.Tests \(B-92\): (\d+) passed, (\d+) failed, (\d+) skipped') {
+            $cp = [int]$Matches[1]; $cf = [int]$Matches[2]; $cs = [int]$Matches[3]
+            if (($cp + $cf + $cs) -eq 0) {
+                # A child that reported NO result for the case it was handed did not pass it. This
+                # guard is here because the dispatcher shipped with exactly that bug for one run:
+                # a quoting error meant no case ever matched, and every child returned a clean
+                # 0 passed / 0 failed. Without this the suite would have gone green having tested
+                # nothing -- the precise failure mode every case in this file exists to catch.
+                Write-Host ("[FAIL] {0} -- child reported no result for its case (exit {1})" -f $name, $r.Proc.ExitCode)
+                $fail++
+            } else { $pass += $cp; $fail += $cf; $skip += $cs }
+        } else {
+            # A child that produced no summary did not report a verdict. That is a failure, not a
+            # pass -- an unreported case is exactly the silent-coverage-loss this suite guards.
+            Write-Host ("[FAIL] {0} -- child produced no summary (exit {1}). stderr: {2}" -f $name, $r.Proc.ExitCode, $err.Trim())
+            $fail++
+        }
+        Remove-Item -Force -ErrorAction SilentlyContinue $r.Out, "$($r.Out).err"
+    }
+    Write-Host ("ValidateDist.Tests (B-92): {0} passed, {1} failed, {2} skipped" -f $pass, $fail, $skip)
+    exit $fail
+}
+# ---- child: run exactly the one case named by -Only ------------------------------------------
+$__origIt = ${function:It}
+$__origSkip = ${function:Skip}
+function It { param([string]$Name, [scriptblock]$Body) if ($Name -ne $Only) { return }; & $__origIt $Name $Body }
+# Skip is shadowed for the same reason as It: it registers a result, so an unguarded Skip would
+# record itself once per child and the aggregate would report 20 skips for one skipped case.
+# It shares its case NAME with the It it alternates with, so the dispatcher still schedules it.
+function Skip { param([string]$Name, [string]$Why, [switch]$Invariant) if ($Name -ne $Only) { return }; & $__origSkip @PSBoundParameters }
+
 try {
     It 'case 1: settings.json with zero handlers fails check 8' { Assert-Case 'zero-settings' { param($d) $p=Join-Path $d '.claude\settings.json'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,[regex]::Replace($t,'"command"','"commandX"',6)) } 'settings.json : registration file yields zero handlers' }
     It 'case 2: settings.windows.json with zero handlers fails check 8' { Assert-Case 'zero-windows' { param($d) $p=Join-Path $d '.claude\settings.windows.json'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,[regex]::Replace($t,'"command"','"commandX"',6)) } 'settings.windows.json : registration file yields zero handlers' -PsOnly }   # bash path identical to case 1
@@ -181,7 +266,9 @@ try {
         }
     }
     if (-not $python3Direct -and -not $py3ShimDir) {
-        Write-Host '[COVERAGE GAP] python3 JSON branch was NOT exercised on this host; CI linux must exercise it.'
+        if ($Only -eq 'the jq and python3 normalized record streams are byte-identical when both tools exist') {
+            Write-Host '[COVERAGE GAP] python3 JSON branch was NOT exercised on this host; CI linux must exercise it.'
+        }
         Skip 'the jq and python3 normalized record streams are byte-identical when both tools exist' 'no working python interpreter (python3/python/py, execution-probed) found on this host; CI linux must exercise this branch.' -Invariant
     } else { It 'the jq and python3 normalized record streams are byte-identical when both tools exist' {
         # This case had never actually executed anywhere before CI ran it: skipped here for want of
