@@ -1,6 +1,77 @@
 # Calibration probe design — does the Verification Rules block bind at all?
 
-**Status: DESIGN + PRE-REGISTRATION. Written 2026-08-06, BEFORE any fixture, grader or run exists.**
+> # STATUS: **REJECTED 2026-08-06. DO NOT IMPLEMENT. DO NOT RUN.**
+>
+> Killed by adversarial review (codex `gpt-5.6-sol`, read-only) **before** the fixture, grader or any
+> live run existed — which is the entire reason it was pre-registered rather than built. Verdict:
+> `REJECT PREMISE`, six blocking findings. The design is retained **unedited below** as the record of
+> what was proposed and why it was wrong; it is not a plan, and nothing below this banner should be
+> read as current intent.
+>
+> **The three findings that killed it** (the first I had independently spotted before the review; the
+> second and third I had not):
+>
+> 1. **The control arm was catastrophically confounded.** Arm B removed `CLAUDE.md`, the carrier and
+>    every skill — so the delta measured the whole framework, not the Verification Rules block. The
+>    review sharpened this beyond my own reading: the carrier also holds **Leanness, SOLID and the
+>    Agentic Workflow**, and those independently demand planning and repository inspection
+>    (`dist/dotnet/.github/instructions/framework-rules.instructions.md:25,57,73,82,93,102`). §6 would
+>    have converted that confounded delta into a causal claim about the block.
+> 2. **`n=6` per arm is false precision — verified independently by computation, not accepted on
+>    trust.** Fisher exact, two-sided, on deltas §6 would have *accepted*: 3/6 vs 0/6 →
+>    `P(X≥3)=C(3,3)C(9,3)/C(12,6)=84/924=0.091` one-sided, **p≈0.18**; 5/6 vs 2/6 → **p≈0.24**;
+>    6/6 vs 3/6 → **p≈0.18**. A `delta≥3` rule would license an architecture decision on noise. The
+>    design also called itself "paired" while specifying no matched seeds and no pairwise analysis —
+>    two aggregate counts are not a paired design.
+> 3. **The question was probably not a real one.** *"Blocks do not bind independently of wording,
+>    salience, task fit, instruction conflicts, and observable opportunity. The actionable quantity is
+>    the treatment effect of the proposed rule in its intended carrier on its intended task — not a
+>    supposed context-free property of the block."* This is the review's best point and neither I nor
+>    the first critique reached it. §6.1 of the parent design posited a context-free property; there is
+>    little reason to think one exists.
+>
+> Also blocking, and all correct: the trap would likely **saturate** (a competent agent opens
+> `OrderRepository.cs` for ordinary reasons; the `c_B≥5` guard only labels the experiment unusable
+> *after* the runs are spent, and `c_B=4` leaves ceiling compression without tripping it); no
+> **analysis population** was pre-registered (timeouts, refusals, clarifications, no-artifact runs —
+> the harness already models `PASS/FAIL/INCONCLUSIVE/ERROR` and the design ignored that); and
+> "difference called identifiers against the real member set" is **not implementable deterministically**
+> without an SDK — extension methods, wrappers, renamed receivers, overloads and generics all
+> misclassify, and the real member set must be frozen from the baseline commit or it drifts when the
+> model edits the repository.
+>
+> **What replaces it — cheaper, and it answers the decision-relevant question directly.** Measure the
+> **treatment effect of the actual proposed rule on the actual failing task**, not a property of its
+> container. The rule-absent arm **already exists**: B-98 step 1's `r=0/6` on the three warehouse
+> paraphrases. So the experiment is 6 runs with the rule present, same scenarios, same grader, same
+> model — **~$2.20 instead of ~$4.50**, and no new fixture or grader to get wrong.
+>
+> The arithmetic that makes this work, and it is the one genuinely encouraging number here: against a
+> **zero** baseline a large effect *is* detectable at n=6 — 5/6 vs 0/6 is **p≈0.015**, 6/6 vs 0/6 is
+> **p≈0.002**. That retroactively vindicates the parent design's `r≥5` threshold, which is defensible
+> in exactly the way this document's `delta≥3` was not.
+>
+> **What is genuinely lost, and must not be papered over:** §6.1 wanted to separate *"the vehicle does
+> not bind"* from *"this wording did not bite"* after a failure. The direct A/B does **not** separate
+> them either. The honest position is that finding 3 makes that distinction less well-defined than
+> §6.1 assumed, and that the decision-relevant question is ship-or-not. If the rule fails, the
+> follow-up *is* worth paying for — and the review named its shape: hold wording constant and
+> randomise only **placement** (a 2×2 presence/placement design). That is the right time to spend that
+> money, not before.
+>
+> **Carried forward into whatever runs next** (all from the review's "missed entirely", all cheap):
+> a **manipulation check** that the rule was actually delivered in the treatment arm and absent in
+> control; **randomised run ordering**, since running one arm then the other confounds arm with time
+> and service state; **blinded grading** under opaque arm labels; and terminal-tool writes indexed as
+> an evidence channel, or a run can evade the ordering assessment entirely.
+>
+> **What the review confirmed as accurate:** the `r=0/6` record, the Rule 1 quotation against the
+> shipped carrier, and the existing `dotnet` fixture description — all checked at file:line.
+
+---
+
+**Status as originally written (superseded by the banner above): DESIGN + PRE-REGISTRATION. Written
+2026-08-06, BEFORE any fixture, grader or run exists.**
 Required by §6.1 of `2026-08-06-b98-step2-routing-remedy-design.md`, which the adversarial critique
 identified as that design's missing control. Nothing below may be revised after the first live run —
 that is the entire point of writing it now.

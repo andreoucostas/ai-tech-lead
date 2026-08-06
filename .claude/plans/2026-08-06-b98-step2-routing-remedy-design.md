@@ -243,7 +243,14 @@ The reviewer could not verify two things and said so rather than passing over th
 design's author and the v0.47.0 session are literally the same session (only the artifacts are
 observable), and canary 4's VS Code result, which the backlog itself already flags as manual and n=1.
 
-### 6.1 Calibration control — required before Option A's result can be interpreted
+### 6.1 Calibration control — **SUPERSEDED 2026-08-06, read 6.2 first**
+
+> The design this section mandated was written, pre-registered, sent for adversarial review and
+> **REJECTED** — see `.claude/plans/2026-08-06-b98-calibration-probe-design.md`, whose banner carries
+> the full disposition. §6.1's *instinct* was right (a bare number is uninterpretable) but the
+> instrument it implied was unsound in three independent ways, and its underlying question —
+> "does the block bind?" — is probably not a real property. §6.2 replaces it. The text below is kept
+> because the reasoning that produced it is still worth reading before anyone proposes it again.
 
 From critique finding 3. Option A's entire bet is that **obligation**-shaped prose in the Verification
 Rules block binds more reliably than **capability**-shaped prose in Common Tasks and USE FOR. Step 1
@@ -260,6 +267,40 @@ the same harness and fixture — Rule 1 ("Verify before you reference") is the n
 it predicts an observable `Read`/`Grep` before a named symbol is used. Record it as the baseline for
 "does this block bite at all". This is cheap, needs no new instrument, and it is the difference
 between a measurable design and a hopeful one.
+
+### 6.2 What actually runs — direct A/B on the rule, against the baseline we already own
+
+Replaces §6.1, after its instrument was rejected. **Measure the treatment effect of the proposed rule
+on the task that actually failed** — not a context-free property of its container.
+
+- **Rule-absent arm: already collected.** B-98 step 1's `r=0/6` on `warehouse-route-p1..p3`, two
+  batches, `sonnet`, v0.46.0, recorded in `meta/eval-results.md`. Nothing to re-run.
+- **Rule-present arm: 6 runs**, identical scenarios, grader, model and fixture, with the drafted rule
+  added to the carrier. **~$2.20.**
+- **Threshold: the §6 rule stands unchanged** — `r≥5` ships, `r≤1` does not, `2..4` ships only with a
+  stated reliability ceiling. Unlike the rejected `delta≥3`, this is statistically defensible against
+  a zero baseline: Fisher exact two-sided, **5/6 vs 0/6 → p≈0.015**, **6/6 vs 0/6 → p≈0.002**.
+  (Computed here rather than asserted; the rejected design's accepted deltas were p≈0.18–0.24.)
+- **Falsification condition, unchanged:** `r` rising while `usedDeadColumn` does not fall means the
+  rule produced document-opening theatre. That is a failure, not a partial success.
+
+**Four cheap controls carried over from the review, all of which the rejected design lacked:**
+
+1. **Manipulation check** — confirm from the transcript/system context that the rule was actually
+   delivered in the treatment arm. Without it, `r=0` cannot distinguish "the rule did not work" from
+   "the rule was never in context", which is the same failure class as B-102's untested fallback.
+2. **Randomised run ordering** — do not run all six treatment runs in one block; arm would be
+   confounded with time, service state and model drift. Note the *existing* baseline was collected in
+   two same-day batches, so this control is imperfect for the comparison and that limitation must be
+   stated with the result.
+3. **Blinded grading** — freeze transcripts under opaque arm labels before any manual adjudication.
+4. **Index terminal-tool writes** as an evidence channel, or a run that writes via Bash/PowerShell
+   evades the ordering assessment.
+
+**What this does not answer, stated plainly:** if the rule fails, this does not separate "wrong
+vehicle" from "wrong wording". The rejected probe would not have separated them either. The review's
+proposed follow-up is the right shape for that question *if it arises* — hold wording constant and
+randomise only placement (2×2 presence/placement) — and it should be paid for then, not pre-emptively.
 
 ## 8. Out of scope
 
