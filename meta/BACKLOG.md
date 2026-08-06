@@ -2804,7 +2804,45 @@ unlucky run" — the repo has been one small slowdown away from being unable to 
 correctly refuse to tag every time it happens. B-101 measured and optimised the *local* gates
 (1,027s → 270s); nothing has ever measured CI duration, and no signal exists for approaching a limit.
 
-**Do:** (1) establish what is doing the cancelling — a GitHub-side incident, an account/org runner
+> **CAUSE FOUND 2026-08-06: GitHub Actions was in a `major_outage`.**
+> `curl https://www.githubstatus.com/api/v2/components.json` → the `Actions` component reports
+> `"status":"major_outage"`. Repo-side Actions config is healthy
+> (`repos/.../actions/permissions` → `enabled:true, allowed_actions:"all"`), so nothing here caused
+> it and nothing here can fix it.
+>
+> **The evidence that settles it, and it arrived in the order that made it obvious:**
+>
+> | commit | what it changed | outcome |
+> |---|---|---|
+> | `beface1` | the v0.48.0 release | both legs cancelled at exactly 15m01s |
+> | `e90adac` | **`meta/BACKLOG.md` only — one markdown file** | both legs cancelled at exactly 15m01s |
+> | `68cf0aa` | the CI split below | **no workflow run was created at all** |
+>
+> A commit touching one markdown file cannot produce a 15-minute build, let alone a cancelled one.
+> That row alone rules out repo content; the third rules out "slow build hits a ceiling" entirely,
+> because the platform stopped scheduling runs.
+>
+> **Correction to this entry as first written.** It framed the 15-minute boundary as a *ceiling the
+> windows leg was creeping toward* and made that the P1. The duration data was real — recent green
+> runs at 11–14.5 minutes, the longest clearing by 27 seconds — but the causal story was **wrong**,
+> and it was wrong in the direction of blaming the thing I had just changed. The 15m00s figure is an
+> outage artifact, not a configured limit. Left visible rather than rewritten: this is the same
+> failure shape the entries above it are about — a confident explanation that fit the data and was
+> not the cause.
+>
+> **What survives the correction, and is still worth doing:** the margin genuinely was thin. A
+> 12–14.5 minute windows leg with a 27-second worst-case margin is fragile regardless of what
+> cancelled it, and the split below stands on its own merits. But it must be re-verified once
+> Actions recovers — **it has never had a green run**, so it is currently an unvalidated change to
+> the one system that validates everything else.
+>
+> **Do first, when Actions recovers:** re-run CI on `68cf0aa` and confirm (a) all eight jobs appear,
+> (b) the matrix legs actually execute, (c) `watch-ci.ps1`'s extended `ExpectedJobs` matches the real
+> job names — GitHub's `<job> (<value>)` naming is assumed, not observed. Then re-run the release to
+> tag v0.48.0.
+
+**Do:** (1) ~~establish what is doing the cancelling~~ — **answered: a GitHub Actions outage.** Retained
+so the reasoning that led there is not lost. (1) establish what is doing the cancelling — a GitHub-side incident, an account/org runner
 policy, or something in this environment; the 15m00s boundary is too exact to be coincidence, and it
 is the one fact that would identify the mechanism. (2) Independently of the cause, get the windows leg
 well clear of 15 minutes — it duplicates work the linux leg already does, and B-101's parallelisation
