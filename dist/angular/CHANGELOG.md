@@ -4,6 +4,19 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.48.0 — 2026-08-06
+
+- **Your assistant now reads what your repository already says about a subsystem before writing
+  code against it.** A new always-on rule (Verification Rules #11) tells it to check `docs/` for a
+  file describing the database schema, warehouse, integration, or shared library it is about to work
+  against, and to read that file first — and that what your repository records about its own
+  structure outranks what can be inferred from names. If the document is missing, stale, or silent,
+  it now says so rather than guessing. For example, if your repo documents an API contract or a shared library under `docs/`, your assistant will now open it before writing code against that surface.
+- **This one was measured before it shipped.** On a test repository, the assistant previously opened
+  the relevant document in **0 of 6** runs; with this rule it opened it in **6 of 6**.
+- **You receive this on your next update** — it ships in `.github/instructions/`, which the installer
+  refreshes. No action needed.
+
 ## 0.47.0 — 2026-08-06
 
 - **Four Angular skills now state when to use them — and when not to.** `add-component`,

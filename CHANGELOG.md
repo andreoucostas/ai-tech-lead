@@ -11,6 +11,43 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.48.0 — 2026-08-06
+
+**Verification Rule 11 — "read the repository's own description of a subsystem before writing against
+it" — and it is the first shipped rule whose effect on behaviour was measured before it shipped, not
+after (B-98 step 2).**
+
+The chain that produced it: B-98 step 1 measured `r=0/6` — across six `sonnet` runs on a warehouse
+fixture, the model never invoked `map-warehouse` **and never opened `docs/warehouse-map.md`**, a plain
+markdown file one `Read` away, while brute-forcing every table DDL and reporting view by hand. Step 3
+then found the roster is write-side by construction: every skill is named for the artifact it
+*produces*, so "write a query against this warehouse" was unclaimed by anything.
+
+- **Measured result: `r=6/6` against the `0/6` baseline. Fisher exact two-sided `p≈0.002`.** Same
+  scenarios, grader, fixture, model and host; only the rule differs. The threshold (`r≥5`) was
+  pre-registered in `.claude/plans/2026-08-06-b98-step2-routing-remedy-design.md` §6 **before any run**
+  and was not moved. Full record, including limitations: `meta/eval-results.md`.
+- **Ships via the unprotected carrier**, so it reaches already-installed consumers on their next
+  update — the delivery path B-97 established and the reason this rule was buildable at all.
+- **The `Skill` channel did not move (0/6 both arms).** The remedy **bypasses** skill routing rather
+  than repairing it. Recorded as a finding, not smoothed over: B-98 step 2's general question is still
+  open, and `map-warehouse` is still not being reached.
+- **`usedDeadColumn` did not fall (4/6 → 5/6), as pre-registered.** The fixture map is ETL-only and
+  cannot carry the information that measure needs — §6.3 predicted this *before* the runs, which is
+  why it is confirmation rather than failure. Moving it needs B-96's map content, now unblocked on the
+  reach axis.
+- **Two of four pre-registered controls did not take effect** and are recorded rather than dropped:
+  run-order randomisation was defeated by the harness selecting scenarios in file order
+  (`run-agent-evals.ps1:1043`), and grading was not blinded.
+- **Budget:** monorepo `static.claude` 47,354 → **47,774 of 48,000 — 226 characters left.** The next
+  always-on addition now requires deliberately raising a ceiling, which B-110 makes a hard failure
+  rather than a warning.
+
+Method note worth keeping: the harness **refused** to run against a dirty tree
+(*"dist/ differs from the checked-out release"*, `run-agent-evals.ps1:1039`), so the rule was committed
+to a branch and measured there before touching `master`. That guard is why this result is traceable to
+an exact SHA, and it should not be worked around.
+
 ## 0.47.0 — 2026-08-06
 
 **The four Angular authoring skills shipped with no routing clauses at all (B-98 step 3).**

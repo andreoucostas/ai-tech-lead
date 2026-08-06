@@ -2755,6 +2755,18 @@ saturation verdict beside every scenario so this is never re-derived.
 
 ---
 
+### B-113 · Post-ship review owed for v0.48.0
+**Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-06
+
+**Why:** v0.48.0 shipped with `-NoIndependentReview`, so no second session re-ran a gate or a
+red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
+it did not happen. Summary of what shipped: Verification Rule 11: read the repo's own description of a subsystem before writing against it (r=6/6, measured pre-ship)
+
+**Do:** review the v0.48.0 diff as an independent session -- re-run at least one gate and one
+red-test yourself, do not read the release output as evidence -- and file whatever it finds. Then
+close this entry, recording what was re-run.
+
+---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see the Done section.**
