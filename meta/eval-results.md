@@ -349,3 +349,76 @@ with an answer key.
 
 **Cost:** $2.23 across six runs (~$0.37/run on sonnet vs ~$0.05 on haiku), against a $1.25/run budget.
 
+
+## 2026-08-06 17:14:02 +01:00 — framework v0.47.0 (495ab2625b4d7b01dd1856510efcdf54ad684919)
+
+Host: Claude Code 2.1.223 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-route-p1** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3674247 tokensIn=16 tokensOut=5088; category=MAP_DISCOVERED channels=C2 usedDeadColumn=False joinedDimension=False readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p2** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3180249 tokensIn=14 tokensOut=4189; category=MAP_DISCOVERED channels=C2 usedDeadColumn=True joinedDimension=True readView=True readViewTarget=vwExecutiveSummary artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p3** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.434193 tokensIn=20 tokensOut=6657; category=MAP_DISCOVERED channels=C2 usedDeadColumn=True joinedDimension=True readView=False readViewTarget=none artifactWritten=True otherSqlArtifacts=
+
+
+## 2026-08-06 17:18:25 +01:00 — framework v0.47.0 (495ab2625b4d7b01dd1856510efcdf54ad684919)
+
+Host: Claude Code 2.1.223 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-route-p1** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.4333695 tokensIn=26 tokensOut=5046; category=MAP_DISCOVERED channels=C2 usedDeadColumn=True joinedDimension=True readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p2** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3879732 tokensIn=16 tokensOut=5285; category=MAP_DISCOVERED channels=C2 usedDeadColumn=True joinedDimension=True readView=True readViewTarget=vwExecutiveSummary artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p3** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.4286907 tokensIn=20 tokensOut=7374; category=MAP_DISCOVERED channels=C2 usedDeadColumn=True joinedDimension=True readView=False readViewTarget=none artifactWritten=True otherSqlArtifacts=
+
+### B-98 STEP 2 — RULE-PRESENT ARM. **`r = 6` of 6** (baseline `r = 0` of 6). Pre-registered rule: SHIP.
+
+The two blocks above are the rule-present arm of the §6.2 A/B: Verification Rule 11 added to the
+`.github/instructions/framework-rules.instructions.md` carrier, branch `b98-rule11-reach-arm`
+(`495ab26`), same three paraphrases, same grader, same fixture, same model (`sonnet`), same host.
+
+| | rule absent (2026-08-06, v0.46.0) | rule present (this arm) |
+|---|---|---|
+| `category` | `NEITHER` ×6 | **`MAP_DISCOVERED` ×6** |
+| `docs/warehouse-map.md` opened | **0/6** | **6/6** |
+| `Skill` invoked | 0/6 | 0/6 |
+| `usedDeadColumn` | 4/6 | 5/6 |
+
+**`r=6/6` against a `0/6` baseline. Fisher exact, two-sided: `p≈0.002`** (`C(6,6)C(6,0)/C(12,6)
+= 1/924` one-sided). The pre-registered rule (`r≥5` ships) is met, and it was fixed before any run.
+
+**What moved, precisely.** `MAP_DISCOVERED` with `channels=C2` means a **successful `Read` of
+`docs/warehouse-map.md` returning non-empty content** (`run-agent-evals.ps1:499-504`). The model
+opened the map in every run. The `Skill` channel stayed at 0/6 — consistent with the rule's wording,
+which directs the model to `docs/` and says nothing about skills. **This closes the reach question,
+not the routing question:** `map-warehouse` is still not being invoked, and B-98 step 2's remedy
+turns out to bypass skill routing rather than repair it. That is a real finding, not a caveat.
+
+**`usedDeadColumn` did not fall (4/6 → 5/6), exactly as pre-registered in §6.3.** The fixture map is
+ETL-only — no columns, no keys, no relationships — so it *cannot* tell the model that
+`FactSales.RegionName` is dead. This is **confirmation of §6.3's reasoning, not a failure of the
+rule**, and it must not be cited as one. Moving that number needs B-96's map content, which this
+result now unblocks on the reach axis.
+
+**Manipulation check — done both before and after, since a null would otherwise be uninterpretable.**
+Pre-run: rule 11 present in all three composed carriers and all three `AGENTS.md`. Post-run, in the
+retained scratch target: the rule is in `.github/instructions/framework-rules.instructions.md`, the
+`@import` is at `CLAUDE.md:23`, and `docs/warehouse-map.md` is present (584 B).
+
+**Limitations — stated because two of §6.2's four controls did not actually happen.**
+
+1. **Run-ordering randomisation did NOT take effect.** The harness selects scenarios with
+   `$config.scenarios | Where-Object { $_.id -in $scenarioIds }` (`:1043`), preserving **file order**,
+   so passing `-Scenario p2,p3,p1` still executed p1, p2, p3 — identically to the baseline. Arm
+   remains confounded with time. Claimed in advance, not delivered; recorded rather than quietly
+   dropped.
+2. **Grading was not blinded.** I knew the arm while reading the results. The signals are typed
+   tool-events rather than judgement calls, which limits the exposure, but the control was not run.
+3. **Framework version differs between arms** (v0.46.0 vs v0.47.0+rule). Assessed as immaterial for
+   *this* fixture on the record rather than by assumption: v0.47.0's shipped dotnet changelog states
+   "No changes to the .NET distribution this release" — it was Angular-only — and the fixture is the
+   dotnet/warehouse one.
+4. `n=6` per arm, one model, one fixture, one host. The effect is large enough to clear that bar
+   (`p≈0.002`); a smaller effect would not have been detectable, which is why the `r≥5` threshold was
+   set where it was.
+5. **This measures reach on one subsystem type.** The rule names schemas, warehouses, integrations
+   and shared libraries; only the warehouse case was exercised.
+
+**Cost:** $2.37 for six runs.
+
