@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.49.0 — 2026-08-07 (unreleased — implementation commit; behavioural arms pending)
+## 0.49.0 — 2026-08-07
 
 **B-96: `map-warehouse` mapped the ETL, not the warehouse. It now carries the schema and the
 relationships — and the read-side rules travel in the artifact the measurement says gets opened.**
@@ -75,9 +75,46 @@ B-113 records that `68cf0aa` extended the watcher's `ExpectedJobs` and has never
 which is the likely cause. **Indicated, not independently confirmed on a clean HEAD** — the check was
 interrupted. Do not treat this as cleared.
 
-**Still owed at this commit:** both behavioural arms pre-registered in `meta/eval-results.md`
+**Still owed:** both behavioural arms pre-registered in `meta/eval-results.md`
 (`warehouse-map-quality` n=1, then `warehouse-route-p1..p3` ×2 against the enriched fixture). The
-harness refuses to run live while `dist/` differs from HEAD, which is why this commit exists.
+harness refuses to run live unless `dist/` matches HEAD *and* the dist version matches the root
+CHANGELOG head — this release satisfies both, so the arms are runnable for the first time.
+
+---
+
+**Also in this release: the gate suite was reined in. 399s → 148s, with no test removed.**
+
+Releasing had become impractical, and a documentation-only skill change was blocked by five stale
+stubs in an unrelated CI-watch test. Both halves of that are addressed.
+
+- **Where the time went, measured rather than guessed:** meta suite 399s serial, of which
+  `ValidateDist.Tests` was **259s (65%)**; one full `validate-dist` was 28s of checks, of which
+  `section-path` was **18.2s (65%)**.
+- **The PowerShell `section-path` check was quadratic** — ~2M freshly-compiled regexes per run, and
+  a re-read of the cited file on every hit. The **bash twin already did it correctly** and said so
+  in its own comment; the twins had diverged and only one was ever optimised. Porting the proven
+  strategy across: **18.2s → 2.8s**, identical findings and identical scanned-file counts.
+- **`-Check <names>` on both twins.** `ValidateDist.Tests` ran the whole 11-check validator 20 times
+  to test 11 checks one at a time; each red case now runs only the check owning its defect.
+  **259.1s → 83.2s.** An unknown *or empty* name exits 2, never 0.
+- **The meta runner** was a serial loop over 9 already-isolated processes; now throttled-parallel
+  with deterministic output ordering. **399s → 148.1s.**
+- **The trap, recorded because it nearly shipped:** the first cut of that runner launched all ten
+  files at once and measured **1,335s against a 399s baseline — 3.3× slower**. These suites are
+  bound by process creation, not CPU, and `ValidateDist.Tests` parallelises its own cases, so
+  unthrottled outer concurrency multiplied into hundreds of competing children.
+- **`-AllowFailingGate 'File.Tests.ps1=B-nn'`** — deliberately *not* a skip: the file still runs and
+  still reports, and only its power to block is suspended. Owning id mandatory; stale waivers and
+  unattributable totals are refused; recorded in both the release commit and the tag annotation.
+  Diff-based gate selection was considered and **rejected** — this repo has been burned four times
+  by instruments that could not fail, and "skip the tests that look unrelated" is that failure mode
+  with a build-speed justification.
+- **`meta/gate-budget.json`** — B-110's ceiling pattern applied to time: per-stage stopwatch,
+  declared ceilings, routed through `Gate` so a breach **fails** rather than prints.
+- **A twin divergence found by re-verification**, not by the implementer: `-Check ''` exited 2 on
+  PowerShell but ran **all eleven checks** on bash, because `[ -n "$CHECK_ARG" ]` cannot distinguish
+  "flag absent" from "flag present but empty". The implementing session had verified under
+  PowerShell 5.1 and could not run bash at all, and said so.
 ## 0.48.0 — 2026-08-06
 
 **Verification Rule 11 — "read the repository's own description of a subsystem before writing against

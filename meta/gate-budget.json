@@ -6,11 +6,29 @@
   "baseline-host": "maintainer Windows box, 12 cores, 2026-08-07, measured idle",
   "ceilings-seconds": {
     "compose": 60,
-    "dist-gates": 420,
+    "dist-gates": 700,
     "meta-suite": 300,
-    "eval-selftest": 240,
-    "total-local-gates": 900
+    "eval-selftest": 120,
+    "total-local-gates": 1000
   },
+  "ceiling-revisions": [
+    {
+      "date": "2026-08-07",
+      "stage": "dist-gates",
+      "from": 420,
+      "to": 700,
+      "why": "The 420 was a GUESS. I declared a ceiling for the one stage I had never actually timed -- I had measured the meta suite, ValidateDist.Tests and the section-path check, but never the dist gates as a stage. The first real release run measured 459.4s and the gate refused the release, which is the mechanism working correctly on its first outing and catching its author. Raised to 700s: ~1.5x the observation, which still catches a doubling but tolerates a loaded box. Recorded rather than quietly edited, because a ceiling that moves without a reason is not a ceiling.",
+      "measured": 459.4
+    },
+    {
+      "date": "2026-08-07",
+      "stage": "eval-selftest",
+      "from": 240,
+      "to": 120,
+      "why": "Observed 12.0s. A 240s ceiling on a 12s stage would let it grow 20x before complaining, which is not a budget. Tightened.",
+      "measured": 12.0
+    }
+  ],
   "observed-seconds": {
     "_comment": "Before/after for the 2026-08-07 gate-runtime work. Recorded so the improvement is checkable rather than asserted, and so the next regression has a number to be measured against.",
     "meta-suite-serial-before": 399,
@@ -19,7 +37,14 @@
     "validate-dist-tests-before": 259.1,
     "validate-dist-tests-after": 83.2,
     "section-path-check-before": 18.2,
-    "section-path-check-after": 2.8
+    "section-path-check-after": 2.8,
+    "_release-run-2026-08-07": "First full release run with the budget live: compose 4.9, dist-gates 459.4, meta-suite 164.5, eval-selftest 12.0, total 640.8.",
+    "compose": 4.9,
+    "dist-gates": 459.4,
+    "meta-suite": 164.5,
+    "eval-selftest": 12.0,
+    "total-local-gates": 640.8
   },
+  "next-target": "dist-gates is now 459s of the 641s total (72%) and is the largest remaining stage. It runs three per-dist suites in parallel, each spawning ~234 fresh pwsh/bash processes (122 ps1 + 112 sh, measured on dotnet). Process creation, not CPU, is the bound -- so the win there is fewer spawns per assertion, NOT more parallelism, which is the mistake the meta runner already made and paid for. Only 4 of 12 hook files are byte-identical across dists, so content-addressed dedup buys less than it looks.",
   "the-trap-worth-remembering": "The first cut of the parallel meta runner launched all ten files at once and came in at 1,335s against a 399s serial baseline -- 3.3x SLOWER, not faster. These suites are bound by process creation, not CPU, and ValidateDist.Tests parallelises its own cases, so unthrottled outer concurrency multiplied into hundreds of competing children. Throttling the outer loop and handing each file an inner lane budget is what turned it into a 2.7x win. Measure a parallelism change; do not assume it."
 }
