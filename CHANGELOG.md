@@ -11,6 +11,82 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.50.0 — 2026-08-07
+
+**`add-warehouse-load` never asked whether the dimension already existed. It does now — and the
+change ships with a write-side baseline that refuses the delivery half of its own plan.**
+
+Design LOCKED at `.claude/plans/2026-08-07-dimension-binding-eval-design.md`, adversarially reviewed
+before implementation (codex `sol`, read-only: 6 blocking findings, 5 accepted).
+
+- **The gap.** The recipe went from step 1 "find a load pattern to copy" straight to "design the
+  entity" and never posed the question the commonest warehouse task turns on: *does this dimension
+  already exist?* Adjacent guidance was all present — surrogate-key FKs, SCD, load ordering,
+  late-arrival handling — so the omission was invisible to every gate we have. New step 2 sorts each
+  non-measure source column into reaches-an-existing-dimension / degenerate / genuinely-new, matched
+  on **business key rather than column name**, and adds the three checks a name match misses:
+  indirect (snowflake) reach, grain compatibility, conformed use. Output is a written key list that
+  the fact-design step now transcribes instead of re-deciding.
+- **Budget: zero.** Static context is unchanged (47,884 of 48,000; 116 chars still free). The whole
+  change is skill **body**, which the footprint counts as `ondemand-info` — the only lines that moved
+  in `meta/context-footprint.json` are two `SKILL.md#body` entries, 6,062 → 10,413 chars.
+- **Steps 2–9 renumbered to 3–10.** The skill carries no internal step cross-references; sibling
+  steps in the new text are referenced **by name**, which is the fix for B-60's rot class rather than
+  a workaround. Three maintainer files cite the old numbers and were deliberately left alone — they
+  are dated records of what was true when written.
+
+**The measurement, and what it refused.** `meta/eval-results.md` carries the full pre-registration,
+written before any run.
+
+- New `warehouse-bind-sql` / `warehouse-bind-mixed` scenarios and a `warehouseDimensionBinding`
+  grader scoring four **independent** outcomes: map reached, skill reached, `add-entity` reached
+  instead, binding correct. Separating them is what distinguishes "the skill never fired" from "the
+  wrong skill fired" — different defects, different remedies.
+- **New `warehouse-mixed` fixture** — the SQL tree plus a genuine EF Core side. Until now **no
+  fixture put two plausible competing skills in one repo**, so a roster's likeliest failure was
+  structurally unobservable across the whole suite. That gap is B-117.
+- **Result (v0.49.0 dist, `n=2` per fixture, every verdict re-verified against the produced DDL):
+  pure-SQL bound correctly 2/2; mixed failed 2/2**, both times putting `RegionKey` directly on the
+  new fact where this warehouse reaches region through `DimCustomer.RegionKey`. Had only the old
+  pure-SQL fixture existed, the honest conclusion would have been "no behavioural cost, ship as
+  documentation" — the pre-registration says so in those words.
+- **The planned Stage D was REFUSED by its own pre-registered rule.** It was to copy write-side
+  guidance into the emitted `docs/warehouse-map.md`, justified by v0.48.0's `Skill` 0/6. That
+  justification does not transfer: the 0/6 was measured on **query-writing** prompts, and on a
+  **load-shaped** prompt the `Skill` tool fired **6/6**. `map-warehouse` is untouched.
+- **Which corrects a standing conclusion in the opposite direction.** B-98 step 2 concluded skill
+  routing was bypassed, not repaired. That is now shown to be **task-class-specific**: the roster is
+  write-side by construction (B-98 step 3), so write tasks find their skill and read tasks do not.
+  First direct confirmation from the write side.
+- **`reachedAddEntity` was 0/6, so the mixed-repo boundary line is NOT justified by measurement.**
+  It stays in the body as a cheap clarification, labelled unmeasured. B-117 is not discharged.
+
+**Three grader defects and one voided batch — all false negatives, none caught by running it.**
+Recorded because the pattern is the finding, not the individual fixes:
+1. The fixture map stated *"Region is not a direct fact dimension"* — the exact conclusion
+   `regionOnFact` scores. **A live batch was voided.** The hazard was already written down twelve
+   lines above, in the same file, about the fixture's `CLAUDE.md`; it was reproduced one artifact
+   over. Filed as B-112 instance 4, which now has the generalisable guard it lacked: for each scored
+   outcome, assert no fixture artifact states that outcome's conclusion.
+2. `newDimensions` keyed on a `Dim` name prefix and reported **none** for a run that created
+   `dim.CustomerXref` and `dim.ProductXref`. Now matches on schema.
+3. `naturalKeyOnFact` enumerated spellings and reported **False** for a fact declaring
+   `SupplierCustomerRef`. Now matched by shape.
+
+Every fix is red-tested; the grader was shown to go red on six axes and green on the correct
+positive. **All three were false negatives** — these numbers more likely understate the failure rate
+than overstate it, and that is why the verdicts above were re-verified against DDL on disk rather
+than read off the `Detail` string.
+
+**Also filed:** B-114 (two live entries both claim `B-113`), B-115 (pure SQL/SSDT/dbt repos cannot be
+installed and `/adopt` requires a `.sln`), B-116 (`route-prompt` has no data vocabulary), B-117,
+B-118 (RCA: a recipe listing what to build with no preceding *should this exist* decision, plus the
+sweep of other `add-X` skills exposed to it).
+
+**Known shortfall, not smoothed over:** `n=2` per fixture against a pre-registered `n=3`, stopped to
+stay inside the approved budget. The 3/3-vs-0/3 `regionOnFact` split is consistent, not a
+significance claim.
+
 ## 0.49.0 — 2026-08-07
 
 **B-96: `map-warehouse` mapped the ETL, not the warehouse. It now carries the schema and the

@@ -4,6 +4,47 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.50.0 — 2026-08-07
+
+- **`add-warehouse-load` now asks whether the dimension already exists — before it designs one.**
+  The recipe used to go from "find an existing load to copy" straight to "design the entity", so a
+  new fact was scaffolded without anyone deciding *which dimensions it should reach*. Most new loads
+  need **no new dimension at all**, and a duplicate one is the expensive mistake: it splits a single
+  business entity across two surrogate-key spaces, and nothing in the load fails — the numbers just
+  stop agreeing between two reports, months later.
+- **The new step sorts every non-measure source column into one of three buckets**: it reaches an
+  existing dimension, it is degenerate (an invoice or order number that stays on the fact), or it is
+  genuinely new — and that last branch now has to be justified out loud, naming what was searched.
+  Matching is on the **concept and its business key, not the column name**: your source's `cust_ref`
+  and `DimCustomer.CustomerCode` are one key under two names, and two same-named columns routinely
+  are not the same thing. The table inventory in `docs/warehouse-map.md` is the list it searches.
+- **Three checks that a name match will not catch**, each of which produces a wrong warehouse rather
+  than an error:
+  - **Indirect reach.** An attribute may be owned by a dimension reached *through* another
+    dimension. If region is already reached via `DimCustomer.RegionKey`, putting a `RegionKey` on
+    your new fact creates a second, contradictory path to the same dimension.
+  - **Grain compatibility.** A dimension at a coarser grain than the fact needs silently loses
+    detail; at a finer grain it multiplies rows. The right entity at the wrong grain is a
+    conversation to have, not grounds for a second dimension.
+  - **Conformed use.** If another fact already reaches this dimension, join it the way that fact
+    does — same key, same role — rather than inventing a second edge to the same table.
+- **The load step now decides what a failed dimension lookup does.** Every foreign key is resolved
+  by joining your staging business key to the dimension's — and where history is kept, to the
+  version that applied, using your repo's own as-of rule copied from a sibling load. A lookup that
+  finds nothing is a **late-arriving member, not a row to drop**: an inferred/stub member, a
+  reserved `Unknown`/`-1`, or fail-and-retry, whichever your warehouse already does. Silently
+  discarding unmatched rows makes a fact's totals wrong in a way that reconciles against nothing.
+- **Two new sign-off items**: no dimension was created that duplicates an existing one, and every
+  fact foreign key resolves — with the count sent to the unknown/inferred member **reported**, not
+  assumed to be zero.
+- **If your repo has both an application database and a warehouse**, the recipe now states the
+  boundary in its own body rather than only in its trigger description: it governs warehouse tables
+  in the SQL tree, while a table backed by your ORM model or its migrations belongs to the OLTP
+  entity recipe.
+- **What you need to do:** nothing — the updated skill arrives with your next update. It works best
+  when `docs/warehouse-map.md` is current, since that is where it looks up each dimension's business
+  key; if you have not built or refreshed one recently, run `map-warehouse` first.
+
 ## 0.49.0 — 2026-08-06
 
 - **`map-warehouse` now maps the warehouse, not just how it is loaded.** Until now the map told you

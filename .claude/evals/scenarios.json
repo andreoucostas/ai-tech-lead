@@ -78,6 +78,20 @@
       "assertion": "warehouseRouting"
     },
     {
+      "id": "warehouse-bind-sql",
+      "fixture": "warehouse",
+      "budgetUsd": 1.50,
+      "prompt": "We have a new nightly feed of supplier invoice lines to bring into the warehouse. The source delivers these columns: `invoice_no`, `line_no`, `cust_ref`, `prod_ref`, `invoice_date`, `region_name`, `net_amount`, `tax_amount`. `cust_ref` and `prod_ref` are the supplier system's codes for the customer and the product. Land it and build the warehouse load so we can report net and tax by customer, product and month. Call the target fact `fact.FactSupplierInvoice`. I approve this change in advance: do not stop for a plan or ask for confirmation -- implement it now in this session, then report what you built.",
+      "assertion": "warehouseDimensionBinding"
+    },
+    {
+      "id": "warehouse-bind-mixed",
+      "fixture": "warehouse-mixed",
+      "budgetUsd": 1.50,
+      "prompt": "We have a new nightly feed of supplier invoice lines to bring into the warehouse. The source delivers these columns: `invoice_no`, `line_no`, `cust_ref`, `prod_ref`, `invoice_date`, `region_name`, `net_amount`, `tax_amount`. `cust_ref` and `prod_ref` are the supplier system's codes for the customer and the product. Land it and build the warehouse load so we can report net and tax by customer, product and month. Call the target fact `fact.FactSupplierInvoice`. I approve this change in advance: do not stop for a plan or ask for confirmation -- implement it now in this session, then report what you built.",
+      "assertion": "warehouseDimensionBinding"
+    },
+    {
       "id": "warehouse-map-quality",
       "fixture": "warehouse",
       "budgetUsd": 1.50,

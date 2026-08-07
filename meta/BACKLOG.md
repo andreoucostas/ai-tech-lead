@@ -840,6 +840,12 @@ Cheapest candidate is a durable pointer written into `CLAUDE.md > Conventions > 
 finds warehouse signals, which survives where a report bullet does not; second is a warehouse row in
 `/adopt`'s Phase-8 checklist.
 
+**Stakes raised 2026-08-07.** `add-warehouse-load`'s new dimension-binding step tells the reader to
+search `docs/warehouse-map.md`'s table inventory for the business key before creating a dimension. A
+missing or stale map now costs a *wrong write* — a duplicate dimension — where before it cost a wrong
+read. Every population listed above inherits that. B-115 closes the `/adopt` one as a side effect of
+making a warehouse-only repo adoptable at all; the other three are still unreached.
+
 ---
 
 ### B-79 · The maintainer box runs the MSIX build of PowerShell 7, and it is the release's largest single cost
@@ -2645,6 +2651,18 @@ three were caught by *reading what the instrument would actually be pointed at*.
 | 1 | `angular-form-control` grader (B-72, v0.40.0) | `formInputs` missed `@Input() set x()` and `input.required<T>()`, so a value accessor re-declaring form state — **the reported defect** — scored PASS | **could not fail** | shipping B-66 |
 | 2 | calibration probe (2026-08-06, rejected pre-run) | control arm removed the whole framework, not the block; `n=6` thresholds at p≈0.18–0.24; grader not deterministically implementable | **measured the wrong thing** | codex adversarial review |
 | 3 | §6.2 falsification condition (2026-08-06, corrected pre-run) | `usedDeadColumn` cannot fall because the artifact the rule points at is silent on what the measure scores | **could not pass** | self-check before drafting |
+| 4 | `warehouseDimensionBinding` fixture (2026-08-07, **voided a live run**) | the `-EnrichedMap` fixture map stated *"Region is not a direct fact dimension"* in bold — the exact conclusion `regionOnFact` scores — so the run measured the fixture's helpfulness | **could not fail** | re-reading the fixture *after* the first paid batch |
+
+**Instance 4 is the first that got as far as spending money**, and it sharpens the entry in two ways.
+First, the hazard was **already written down in the same file**: `run-agent-evals.ps1:429-431` warns
+that the fixture's `CLAUDE.md` is deliberately silent on how to reach an attribute because "naming the
+dimension path here would hand the model the answer this scenario exists to measure". The defect was
+reproduced one artifact over, in the map, by someone who had read that comment. A warning sited on one
+artifact does not generalise to its siblings on its own.
+Second, it suggests the cheap mechanical guard this entry has been missing: **for each outcome the
+grader scores, assert that no fixture artifact states that outcome's conclusion.** That is a
+string-scan, it is red-testable, and it now exists for this one grader — see the `$tell` sweep in the
+harness self-test. Generalising it to the other graders' fixtures is the concrete "do" here.
 
 **Why no gate caught any of them.** No gate can. These are experiment designs, not code — `bash -n`
 parses them, `validate-dist` never sees them, and a behavioural probe's own `-SelfTest` only proves
@@ -2919,6 +2937,117 @@ CI comes back green; nothing needs unwinding.
 **Cross-links:** B-88 (the watch that caught it and is working correctly), B-101 (gate runtime — the
 local half of this, and its "nothing measures cost" thesis now has a CI-side instance), B-70 (a change
 is not done until CI is green — which is now unachievable through no fault of the change).
+
+---
+### B-114 · Two entries both claim the id `B-113`
+**Effort:** XS · **Priority:** P3 · found 2026-08-07 while filing B-115..B-118
+
+**Why:** `### B-113 · Post-ship review owed for v0.48.0` and `### B-113 · CI is being cancelled at
+exactly 15 minutes` are both live entries with the same id. Every cross-link written as "B-113" is
+now ambiguous, including the one in v0.49.0's CHANGELOG ("B-113 records that `68cf0aa` extended the
+watcher's `ExpectedJobs`"), which meant the CI entry — a reader following it to the post-ship-review
+entry learns nothing about `ExpectedJobs`.
+
+**Why no gate caught it:** nothing parses this file. Ids are allocated by reading the tail and adding
+one, which fails exactly when two items are filed from different sessions on the same day.
+
+**Do:** renumber the *post-ship review* one (it has fewer inbound references) and add a duplicate-id
+check to the meta suite — a five-line scan over `^### B-\d+`, in the file that already sweeps this
+repo's documentation for truth.
+
+---
+### B-115 · Pure SQL / SSDT / dbt repos cannot be installed, and `/adopt` cannot run in one
+**Effort:** S · **Priority:** P3 · found 2026-08-07 (dimension-binding work)
+
+**Why:** three independent blocks, none of which the installer reports as a stack problem:
+1. auto-detect covers only `*.csproj`/`*.sln`/`angular.json`, so a bare `.sqlproj`, a dbt project, or
+   a plain `Tables/`+`StoredProcedures/` tree hard-errors with "Could not determine the stack"
+   (`install.ps1:57,63,65`; `install.sh:62,67,69`). `-Stack dotnet` works and is named nowhere the
+   consumer will look.
+2. `/adopt` Phase 0 step 3 is "**Locate the solution root** — find the `.sln` file. All paths are
+   relative to this root" (`adopt.md:53`). `/adopt` is the brownfield path an existing warehouse
+   actually takes, so this stops the very repo the warehouse skills exist for.
+3. pre-bootstrap, the shipped `CLAUDE.md` says "defer to `docs/defaults.md` for greenfield **.NET**
+   conventions" (`src/stacks/dotnet/snippets/CLAUDE.md/defaults-comment`) — a technology claim about
+   a repo that evidences no .NET, i.e. exactly the class Verification Rule 10 exists to prevent.
+
+**Not urgent for the current consumer set** — the reporting maintainer's repos all carry a `.sln`
+alongside the SQL warehouse, so all three blocks are bypassed. Filed because the guidance is aimed at
+warehouses and a warehouse-only repo is the shape most likely to want it.
+
+**Do:** add a SQL fallback to detection, evaluated **only after** dotnet and angular both miss so a
+mixed repo still resolves to `dotnet`, and gate it on the **≥2 warehouse signals `map-warehouse`
+step 0 already defines** — reuse that list rather than inventing a second one, or the two will drift.
+Generalise `/adopt`'s root-finding. Make the pre-bootstrap pointer technology-neutral (it costs
+static budget — measure it).
+
+**Rejected in advance:** a `sql`/`warehouse` dist. WSD-020 and WSD-021 both call that the wrong
+altitude, and nothing here changes that.
+
+---
+### B-116 · `route-prompt` has no data or warehouse vocabulary
+**Effort:** S · **Priority:** P3 · found 2026-08-07 · **Cross-link:** B-98 (the general routing question)
+
+**Why:** "implement a new import into the data warehouse" classifies as a generic `feature` on
+`\bimplement\b` (`route-prompt.ps1:140`), and `$railsFeature` never mentions skills, `docs/`, or the
+warehouse map. The prompt most characteristic of a warehouse consumer therefore gets rails written
+for application features. This is not a claim that adding keywords would fix it — B-98 step 2 found
+that broadening a `description` is the mechanism the `r=0` observation *weakens*. It is a claim that
+the router is currently silent on an entire delivery surface, and nobody had written that down.
+
+**Do:** nothing standalone. Fold into B-98's general question, and settle it with the write-side
+baseline (`meta/eval-results.md`, dimension-binding Stage A) rather than by adding regexes on
+intuition.
+
+---
+### B-117 · Every `DO NOT USE FOR` cross-reference rides the channel measured at 0/6, and no fixture tests one
+**Effort:** M · **Priority:** P2 · found 2026-08-07 · **Cross-link:** B-98, B-60
+
+**Why:** sibling skills disambiguate each other exclusively in **frontmatter** — `add-entity` says
+*"DO NOT USE FOR … warehouse fact/dimension tables (use `add-warehouse-load`)"* and
+`add-warehouse-load` says *"DO NOT USE FOR: OLTP entities (use `add-entity`)"*. Frontmatter is the
+channel v0.48.0/v0.49.0 measured firing **0/6**. So the disambiguation is *asserted* and has never
+been *observed* to work.
+
+Worse, it could not have been: until 2026-08-07 **no fixture placed two plausible competitors in one
+repo.** The warehouse fixture has no EF Core, so `add-entity` was never a candidate there; the dotnet
+fixture has no warehouse. A skill roster's most likely failure — the wrong one firing — was
+structurally unobservable across the whole eval suite.
+
+The `warehouse-mixed` fixture and the `reachedAddEntity` outcome close this for **one pair**. The
+class is wider: every `DO NOT USE FOR` in the roster is in the same position.
+
+**Do:** once Stage A's baseline reports `reachedAddEntity`, decide whether mis-routing is real at
+rates worth fixing. If it is, the remedy is *not* more frontmatter — the budget is 116 chars and the
+channel does not fire. Sweep the roster for pairs whose triggers overlap on a plausible prompt, and
+carry the boundary in skill **bodies**, which are free and are read once the skill is open.
+
+---
+### B-118 · RCA: a recipe listed what to build without ever asking whether it should exist
+**Effort:** S (the sweep) · **Priority:** P2 · filed 2026-08-07 · **Cross-link:** B-112 (sibling class)
+
+**Why:** `add-warehouse-load` shipped in v0.31.0 and was revised through v0.49.0 without anyone
+noticing that it goes from "find a load pattern to copy" straight to "design the entity" — it never
+asks *whether the dimension already exists*. The commonest real warehouse task is a new fact against
+dimensions that all already exist, and the recipe's structure quietly assumes the opposite.
+
+**Why no gate caught it.** None could, and that is the point. `validate-dist` proves the file is
+present, parses, mirrors to `.github/skills`, and leaks no meta vocabulary. `no-dead-instruction`
+proves every script it names exists. **Every gate we have checks that the guidance is well-formed;
+none checks that it is complete.** The B-96 field report is the same shape one layer over: the map
+was a valid document that omitted the thing a reader needed.
+
+**What else is exposed to the same class — sweep, the answer is not "nothing".** Any instance-shaped
+`add-X` skill that enumerates construction steps without a preceding *should this exist / does it
+already exist* decision. First-pass candidates, to be confirmed by reading rather than assumed:
+`add-endpoint` (does this route already exist under another name?), `register-service` (is there
+already a service doing this?), `add-entity` (is this a new table or a column on an existing one?),
+`add-component`/`add-service` on the Angular side. `add-tests` is likely exempt — it is process-
+shaped, not instance-shaped, and its subject already exists by definition.
+
+**Do:** read each candidate for a missing reuse gate; add one only where a real duplicate is
+plausible in that stack. Do not mass-apply a template — that would be the "recipe lists what to
+build" failure repeated at the meta level.
 
 ---
 

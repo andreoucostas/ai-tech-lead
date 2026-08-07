@@ -4,6 +4,11 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.50.0 — 2026-08-07
+
+- No changes to the Angular distribution this release. The `add-warehouse-load` dimension-binding
+  improvements in v0.50.0 apply to the .NET and mixed (monorepo) distributions only.
+
 ## 0.49.0 — 2026-08-06
 
 - No changes to the Angular distribution this release. The warehouse-mapping improvements in

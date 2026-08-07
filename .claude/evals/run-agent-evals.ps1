@@ -21,9 +21,9 @@ function Assert-Bom([string]$Path) {
     return $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
 }
 
-function New-EvalRepo([string]$Path, [ValidateSet('dotnet','angular','warehouse')][string]$Stack = 'dotnet') {
+function New-EvalRepo([string]$Path, [ValidateSet('dotnet','angular','warehouse','warehouse-mixed')][string]$Stack = 'dotnet') {
     New-Item -ItemType Directory -Path $Path -Force | Out-Null
-    if ($Stack -eq 'warehouse') {
+    if ($Stack -in @('warehouse','warehouse-mixed')) {
         New-Item -ItemType Directory -Path (Join-Path $Path 'Tables'), (Join-Path $Path 'StoredProcedures'), (Join-Path $Path 'Views'), (Join-Path $Path 'analysis') -Force | Out-Null
         '<Project Sdk="Microsoft.Build.Sql/0.2.0" />' | Set-Content -LiteralPath (Join-Path $Path 'warehouse.sqlproj') -Encoding utf8NoBOM
         @'
@@ -76,6 +76,108 @@ JOIN dim.DimDate d ON d.DateKey = f.OrderDateKey;
 '@ | Set-Content -LiteralPath (Join-Path $Path 'Views/rpt.vwFinanceExtract.sql') -Encoding utf8NoBOM
         'CREATE VIEW rpt.vwExecutiveSummary AS SELECT p.CategoryName, SUM(f.NetAmount) AS Revenue FROM fact.FactSales f JOIN dim.DimProduct p ON p.ProductKey = f.ProductKey GROUP BY p.CategoryName;' | Set-Content -LiteralPath (Join-Path $Path 'Views/rpt.vwExecutiveSummary.sql') -Encoding utf8NoBOM
         'CREATE VIEW rpt.vwOrderDetail AS SELECT f.SalesKey, f.CustomerKey, f.ProductKey, f.OrderDateKey, f.NetAmount FROM fact.FactSales f;' | Set-Content -LiteralPath (Join-Path $Path 'Views/rpt.vwOrderDetail.sql') -Encoding utf8NoBOM
+        if ($Stack -eq 'warehouse-mixed') {
+            # A minimal but GENUINE .NET side. Its purpose is to make `add-entity` a live competitor
+            # for a load-shaped prompt: the pure-SQL fixture has no EF Core at all, so it is
+            # structurally incapable of observing an OLTP-vs-warehouse mis-route, which is the
+            # failure mode that matters in the target repos (all of which are .NET + SQL). The
+            # entities are deliberately ADJACENT to the warehouse feed (Supplier, PurchaseOrder) --
+            # a neutral domain would not tempt the wrong skill and would measure nothing.
+            New-Item -ItemType Directory -Path (Join-Path $Path 'src/SupplierPortal.Api/Data/Entities'), (Join-Path $Path 'src/SupplierPortal.Api/Data/Configurations'), (Join-Path $Path 'src/SupplierPortal.Api/Migrations') -Force | Out-Null
+            @'
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SupplierPortal.Api", "src\SupplierPortal.Api\SupplierPortal.Api.csproj", "{4E3B9A21-0C7D-4C22-9E2B-8C1D5F6A7B31}"
+EndProject
+'@ | Set-Content -LiteralPath (Join-Path $Path 'SupplierPortal.sln') -Encoding utf8NoBOM
+            @'
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
+  </ItemGroup>
+</Project>
+'@ | Set-Content -LiteralPath (Join-Path $Path 'src/SupplierPortal.Api/SupplierPortal.Api.csproj') -Encoding utf8NoBOM
+            @'
+namespace SupplierPortal.Api.Data.Entities;
+
+public class Supplier
+{
+    public int Id { get; set; }
+    public string SupplierCode { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+}
+'@ | Set-Content -LiteralPath (Join-Path $Path 'src/SupplierPortal.Api/Data/Entities/Supplier.cs') -Encoding utf8NoBOM
+            @'
+namespace SupplierPortal.Api.Data.Entities;
+
+public class PurchaseOrder
+{
+    public int Id { get; set; }
+    public string OrderNumber { get; set; } = string.Empty;
+    public int SupplierId { get; set; }
+    public Supplier? Supplier { get; set; }
+    public decimal NetAmount { get; set; }
+}
+'@ | Set-Content -LiteralPath (Join-Path $Path 'src/SupplierPortal.Api/Data/Entities/PurchaseOrder.cs') -Encoding utf8NoBOM
+            @'
+using Microsoft.EntityFrameworkCore;
+using SupplierPortal.Api.Data.Entities;
+
+namespace SupplierPortal.Api.Data;
+
+public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+{
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
+    public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+        => modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+}
+'@ | Set-Content -LiteralPath (Join-Path $Path 'src/SupplierPortal.Api/Data/AppDbContext.cs') -Encoding utf8NoBOM
+            @'
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using SupplierPortal.Api.Data.Entities;
+
+namespace SupplierPortal.Api.Data.Configurations;
+
+public class SupplierConfiguration : IEntityTypeConfiguration<Supplier>
+{
+    public void Configure(EntityTypeBuilder<Supplier> builder)
+    {
+        builder.ToTable("Suppliers");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.SupplierCode).HasMaxLength(50).IsRequired();
+        builder.HasIndex(x => x.SupplierCode).IsUnique();
+    }
+}
+'@ | Set-Content -LiteralPath (Join-Path $Path 'src/SupplierPortal.Api/Data/Configurations/SupplierConfiguration.cs') -Encoding utf8NoBOM
+            @'
+using Microsoft.EntityFrameworkCore.Migrations;
+
+namespace SupplierPortal.Api.Migrations;
+
+public partial class InitialCreate : Migration
+{
+    protected override void Up(MigrationBuilder migrationBuilder)
+        => migrationBuilder.CreateTable(
+            name: "Suppliers",
+            columns: table => new
+            {
+                Id = table.Column<int>(nullable: false).Annotation("SqlServer:Identity", "1, 1"),
+                SupplierCode = table.Column<string>(maxLength: 50, nullable: false),
+                Name = table.Column<string>(nullable: false)
+            },
+            constraints: table => table.PrimaryKey("PK_Suppliers", x => x.Id));
+
+    protected override void Down(MigrationBuilder migrationBuilder)
+        => migrationBuilder.DropTable(name: "Suppliers");
+}
+'@ | Set-Content -LiteralPath (Join-Path $Path 'src/SupplierPortal.Api/Migrations/20260101000000_InitialCreate.cs') -Encoding utf8NoBOM
+        }
         git -C $Path init --quiet
         git -C $Path config user.email 'agent-evals@invalid.local'
         git -C $Path config user.name 'Agent Evals'
@@ -223,9 +325,92 @@ function Install-Framework([string]$Path, [ValidateSet('dotnet','angular')][stri
     return $output
 }
 
-function Initialize-WarehouseScenario([string]$Path, [switch]$OmitMap) {
+function Initialize-WarehouseScenario([string]$Path, [switch]$OmitMap, [switch]$EnrichedMap) {
     New-Item -ItemType Directory -Path (Join-Path $Path 'docs') -Force | Out-Null
-    if (-not $OmitMap) {
+    # THREE map states, and the default one is FROZEN ON PURPOSE. meta/eval-results.md ties the
+    # recorded 0/6 -> 6/6 (p~0.002) B-98 step 2 result to "same scenarios, grader, FIXTURE, model and
+    # host; only the rule differs". Regenerating the default map into the B-96 shape would silently
+    # retire the comparability of the only pre-registered behavioural result this framework has.
+    # -EnrichedMap is therefore opt-in and used only by scenarios that need business keys and the
+    # edge list; -OmitMap and the default path are byte-identical to what those arms ran against.
+    if ($EnrichedMap) {
+        @'
+# Warehouse map
+
+## 1. Table inventory
+
+| entity | layer | classification | grain | primary key | natural/business key |
+|--------|-------|----------------|-------|-------------|----------------------|
+| stg.StgSalesOrder | staging | staging | one row per landed sales order line | none | SalesId |
+| dim.DimCustomer | warehouse | dimension | one row per customer version | CustomerKey | CustomerId |
+| dim.DimRegion | warehouse | dimension | one row per region | RegionKey | RegionName |
+| dim.DimProduct | warehouse | dimension | one row per product | ProductKey | ProductId |
+| dim.DimDate | warehouse | dimension | one row per calendar day | DateKey | CalendarDate |
+| fact.FactSales | warehouse | fact | one row per sale | SalesKey | SalesId (degenerate) |
+| ctl.LoadRun | control | control | one row per load run | LoadRunId | LoadRunId |
+
+## 2. Relationship edge list
+
+| fact | fk column | -> dimension | role | version resolution | evidence | confidence |
+|------|-----------|--------------|------|--------------------|----------|------------|
+| fact.FactSales | CustomerKey | dim.DimCustomer | customer | Pinned at load | usp_LoadFactSales joins CustomerId with IsCurrent = 1 and stamps CustomerKey | Load-derived |
+| fact.FactSales | ProductKey | dim.DimProduct | product | Pinned at load | usp_LoadFactSales joins ProductId | Load-derived |
+| fact.FactSales | OrderDateKey | dim.DimDate | order date | Pinned at load | usp_LoadFactSales joins CalendarDate | Load-derived |
+| dim.DimCustomer | RegionKey | dim.DimRegion | customer region | Pinned at load | rpt.vwFinanceExtract joins FactSales -> DimCustomer -> DimRegion | In use |
+| fact.FactSales | RegionName | dim.DimRegion | UNRESOLVED | UNRESOLVED | column declared in DDL, never written by any load; region is reached through DimCustomer | UNRESOLVED |
+| fact.FactSales | CategoryName | dim.DimProduct | UNRESOLVED | UNRESOLVED | column declared in DDL, never written by any load | UNRESOLVED |
+| fact.FactSales | SegmentName | dim.DimCustomer | UNRESOLVED | UNRESOLVED | column declared in DDL, never written by any load | UNRESOLVED |
+
+## 3. Loading
+
+| entity | load proc/pipeline | orchestrated by | rerun protection | SCD | partitioning |
+|--------|--------------------|-----------------|------------------|-----|--------------|
+| dim.DimCustomer | usp_LoadDimCustomer | warehouse load | current-row merge on CustomerId | Type 2 | none |
+| dim.DimRegion | usp_LoadDimRegion | warehouse load | merge by region | Type 1 | none |
+| fact.FactSales | usp_LoadFactSales | warehouse load | LoadRunId | n/a | none |
+
+Unmatched business keys resolve to the `-1` / `Unknown` member seeded by usp_LoadDimCustomer and
+usp_LoadDimRegion; rows are never dropped.
+
+## 4. Dimensional semantics
+
+- fact.FactSales is a **transaction** fact; NetAmount is fully additive.
+- dim.DimDate is role-playing in principle; only the order-date role is in use.
+- dim.DimCustomer and dim.DimProduct are conformed across the reporting views.
+- SalesId is a **degenerate dimension** carried on the fact with no dimension table.
+- Consumption: rpt.vwFinanceExtract, rpt.vwExecutiveSummary, rpt.vwOrderDetail.
+
+## 5. Coverage
+
+Built from DDL, load procedures and reporting views in this repository. No pipeline artifacts or
+externally-held procedures exist here. Three fact columns carry UNRESOLVED edges: RegionName,
+CategoryName, SegmentName.
+
+## 6. Findings
+
+- fact.FactSales declares RegionName, CategoryName and SegmentName but no load writes them. They read
+  as NULL and are the attribute trap: reach these through their owning dimension instead.
+- No FOREIGN KEY constraints are declared; every edge above is inferred from loads and views.
+
+## 7. Querying this warehouse
+
+1. Start at the fact and state its grain in one sentence before writing any SQL.
+2. Reach an attribute by following a fact key to the dimension that owns it. Never read it off a
+   column that merely happens to sit on a table already in the join.
+3. Copy an existing reporting view's join path before inventing one.
+4. Treat a same-named column on an already-joined table as suspect until you know which table
+   populates it.
+5. Replicating a report from another warehouse: write the source-column -> target-concept mapping
+   before any SQL.
+6. Add an effective-date predicate only when the key does not already identify one version. Every
+   edge above is **Pinned at load**, so adding EffectiveFrom/EffectiveTo/IsCurrent to those joins
+   silently drops facts pointing at superseded rows.
+
+Fan trap: aggregate at the fact's own grain. Chasm trap: aggregate each fact to the shared grain
+independently before joining two facts through a conformed dimension.
+'@ | Set-Content (Join-Path $Path 'docs/warehouse-map.md') -Encoding utf8NoBOM
+    }
+    elseif (-not $OmitMap) {
         @'
 # Warehouse map
 
@@ -589,6 +774,141 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             if ($c4) { $channels += 'C4' }
             if ($c5) { $channels += 'C5' }
             return [pscustomobject]@{ Status = $status; Pass = $status -eq 'PASS'; Detail = "category=$category channels=$($channels -join ',') usedDeadColumn=$usedDeadColumn joinedDimension=$joinedDimension readView=$readView readViewTarget=$(if ($relevantView) { $relevantView } else { 'none' }) artifactWritten=$artifactWritten otherSqlArtifacts=$($otherArtifacts -join ',')" }
+        }
+        { $_ -in @('warehouse-bind-sql','warehouse-bind-mixed') } {
+            $successful = @($e.Tools | Where-Object {
+                $e.ToolResults.ContainsKey($_.Id) -and -not $e.ToolResults[$_.Id].is_error
+            })
+            # C1..C5 reach channels, retargeted from map-warehouse to add-warehouse-load. Deliberately
+            # the SAME shape as the warehouse-route grader: a second classification scheme would make
+            # the read-side and write-side families incomparable for no gain.
+            $c1 = [bool]@($successful | Where-Object { $_.Name -eq 'Skill' -and $_.Input.skill -eq 'add-warehouse-load' } | Select-Object -First 1)
+            $c2 = [bool]@($successful | Where-Object {
+                $_.Name -match '^(?i:Read|ReadFile|read_file)$' -and
+                (Get-ToolPath $_) -replace '\\','/' -match '(?i)(?:^|/)docs/warehouse-map\.md$' -and
+                (Get-ToolResultText $e $_).Trim()
+            } | Select-Object -First 1)
+            $c3 = [bool]@($successful | Where-Object {
+                $_.Name -match '^(?i:Read|ReadFile|read_file)$' -and
+                (Get-ToolPath $_) -replace '\\','/' -match '(?i)(?:^|/)\.(?:claude|github)/skills/add-warehouse-load/SKILL\.md$' -and
+                (Get-ToolResultText $e $_).Trim()
+            } | Select-Object -First 1)
+            $c4 = [bool]@($successful | Where-Object {
+                $_.Name -in @('Bash','PowerShell') -and
+                [string]$_.Input.command -match '(?i)warehouse-map\.md|add-warehouse-load' -and
+                (Get-ToolResultText $e $_).Trim()
+            } | Select-Object -First 1)
+            $c5 = [bool]@($successful | Where-Object {
+                $_.Name -in @('Grep','Glob') -and
+                (([string]$_.Input.pattern + ' ' + [string]$_.Input.path + ' ' + [string]$_.Input.glob) -match '(?i)warehouse-map\.md|add-warehouse-load') -and
+                (Get-ToolResultText $e $_).Trim()
+            } | Select-Object -First 1)
+            $task = [bool]@($e.Tools | Where-Object { $_.Name -eq 'Task' } | Select-Object -First 1)
+            $mapChannel = $c2 -or $c4 -or $c5
+            $category = if ($c1 -and $mapChannel) { 'BOTH' }
+                elseif ($c1) { 'SKILL_ROUTED' }
+                elseif ($c3) { 'SKILL_READ' }
+                elseif ($mapChannel) { 'MAP_DISCOVERED' }
+                elseif ($task) { 'DELEGATED_UNKNOWN' }
+                else { 'NEITHER' }
+            # Outcome 3 -- the OLTP mis-route. Structurally invisible on the pure-SQL fixture (there is
+            # no EF Core there for add-entity to be tempting about), which is exactly why
+            # warehouse-bind-mixed exists. Reported on both so the pair isolates the .NET side's effect.
+            $reachedAddEntity = [bool]@($successful | Where-Object {
+                ($_.Name -eq 'Skill' -and $_.Input.skill -eq 'add-entity') -or
+                ($_.Name -match '^(?i:Read|ReadFile|read_file)$' -and ((Get-ToolPath $_) -replace '\\','/') -match '(?i)(?:^|/)\.(?:claude|github)/skills/add-entity/SKILL\.md$')
+            } | Select-Object -First 1)
+
+            $sqlFiles = @(Get-ChildItem -LiteralPath $Target -Filter '*.sql' -File -Recurse -ErrorAction SilentlyContinue)
+            $allSql = @($sqlFiles | ForEach-Object { Get-Content -Raw -LiteralPath $_.FullName }) -join "`n"
+            if ($null -eq $allSql) { $allSql = '' }
+            # Dimension inventory by CONTENT, not by filename or path diff: a duplicate dimension
+            # appended to an existing file is the same defect as one in a new file, and a
+            # --diff-filter=A path scan misses it entirely.
+            #
+            # Match on the SCHEMA, not on a `Dim` name prefix. The first version keyed on
+            # `Dim[A-Za-z0-9_]+` and therefore reported "no new dimensions" for a live run that
+            # created `dim.CustomerXref` and `dim.ProductXref` -- two new tables in the dimension
+            # schema, invisible to the measure that exists to count exactly that.
+            #
+            # A source-key cross-reference table IS scored as a violation here, deliberately and for
+            # a reason taken from the recipe rather than from the result: this warehouse resolves
+            # source keys by joining staging's natural key straight to the dimension's
+            # (`usp_LoadFactSales`: `JOIN dim.DimCustomer c ON c.CustomerId = s.CustomerId`). An xref
+            # table is a *second style* for the same job, and step 1 already says "One warehouse, one
+            # loading pattern: never introduce a second style."
+            $baselineDims = @('DimCustomer','DimRegion','DimProduct','DimDate')
+            $declaredDims = @([regex]::Matches($allSql, '(?is)\bCREATE\s+TABLE\s+\[?dim\]?\s*\.\s*\[?(?<name>[A-Za-z0-9_]+)\]?') |
+                ForEach-Object { $_.Groups['name'].Value } | Sort-Object -Unique)
+            $newDimTables = @($declaredDims | Where-Object { $_ -notin $baselineDims })
+
+            # Located by content wherever it landed -- the allowed-correct set permits any file layout,
+            # so anchoring on a required path would fail a correct implementation for a naming choice.
+            #
+            # Terminator is `);` OR `)` followed by end-of-input / `GO` / a blank line. The first
+            # version required a trailing semicolon and would have scored factWritten=False for
+            # perfectly ordinary SSDT DDL ending at `)` or followed by `GO`. It only ever passed
+            # because the fixture happened to end `);` -- a measure that worked by luck.
+            $factMatch = [regex]::Match($allSql, '(?is)\bCREATE\s+TABLE\s+(?:\[?fact\]?\s*\.\s*)?\[?FactSupplierInvoice\]?\s*\((?<body>.*?)\)\s*(?:;|\s*GO\b|\s*$|\r?\n\s*\r?\n)')
+            $factWritten = $factMatch.Success
+            $factBody = if ($factWritten) { $factMatch.Groups['body'].Value } else { '' }
+            # A declared column proves nothing about how it is populated: a fact can declare
+            # CustomerKey and have its load insert a constant -1, never touching the dimension.
+            # The load procedure's resolution join is the evidence that the key was actually BOUND,
+            # and the design said so ("fact DDL + load proc join") while the first implementation
+            # checked only the DDL token.
+            $loadProcText = @($sqlFiles | Where-Object { $_.Name -match '(?i)SupplierInvoice' -and (Get-Content -Raw -LiteralPath $_.FullName) -match '(?i)\bCREATE\s+(?:OR\s+ALTER\s+)?PROC' } |
+                ForEach-Object { Get-Content -Raw -LiteralPath $_.FullName }) -join "`n"
+            if ($null -eq $loadProcText) { $loadProcText = '' }
+            function Test-ResolvedKey([string]$Proc, [string]$Dim, [string]$NaturalKey) {
+                if (-not $Proc) { return $false }
+                # The load must reference the dimension AND join on its business key -- that pairing
+                # is what distinguishes a resolution from a constant or a bare mention in a comment.
+                return ($Proc -match "(?is)\b(?:JOIN|FROM|USING|MERGE)\s+(?:\[?dim\]?\s*\.\s*)?\[?$Dim\]?\b") -and ($Proc -match "(?i)\b$NaturalKey\b")
+            }
+            $resolvedCustomer = Test-ResolvedKey $loadProcText 'DimCustomer' 'CustomerId'
+            $resolvedProduct  = Test-ResolvedKey $loadProcText 'DimProduct'  'ProductId'
+            $resolvedDate     = Test-ResolvedKey $loadProcText 'DimDate'     'CalendarDate'
+            $boundCustomer = $factBody -match '(?i)\bCustomerKey\b'
+            $boundProduct  = $factBody -match '(?i)\bProductKey\b'
+            $boundDate     = $factBody -match '(?i)\b[A-Za-z]*DateKey\b'
+            # The snowflake violation. Region is reached through DimCustomer.RegionKey in this
+            # warehouse -- rpt.vwFinanceExtract is the proof -- so a RegionKey on the new fact is a
+            # second, contradictory path to the same dimension.
+            $regionOnFact  = $factBody -match '(?i)\bRegionKey\b'
+            # Narrow on purpose: natural key IN PLACE OF the surrogate. Carrying both is a defensible
+            # traceability choice and must not be scored as the defect.
+            #
+            # Matched by SHAPE, not by an enumerated list of spellings. The first version listed
+            # `cust_ref|CustRef|CustomerId|CustomerCode` and reported naturalKeyOnFact=False for a
+            # live fact declaring `SupplierCustomerRef NVARCHAR(50)` -- the defect itself, invisible
+            # because the model prefixed the column. Any <something>Cust/Prod<something><Ref|Code|Id|
+            # No|Num> counts; `...Key` deliberately does not appear in the suffix set.
+            $custNatural = $factBody -match '(?i)\b(?:cust_ref|[A-Za-z_]*Cust(?:omer)?[A-Za-z_]*(?:Ref|Code|Id|No|Num))\b'
+            $prodNatural = $factBody -match '(?i)\b(?:prod_ref|[A-Za-z_]*Prod(?:uct)?[A-Za-z_]*(?:Ref|Code|Id|No|Num))\b'
+            $naturalKeyOnFact = ($custNatural -and -not $boundCustomer) -or ($prodNatural -and -not $boundProduct)
+            $degenerateOnFact = $factBody -match '(?i)\b(?:InvoiceNo|InvoiceNumber|Invoice_No)\b'
+
+            $warehouseTreeCall = [bool]@($e.Tools | Where-Object {
+                (((Get-ToolPath $_) -replace '\\','/') -match '(?i)(?:^|/)(?:Tables|StoredProcedures|Views)(?:/|$)') -or
+                (([string]$_.Input.command + ' ' + [string]$_.Input.path + ' ' + [string]$_.Input.glob) -match '(?i)Tables|StoredProcedures|Views|\.sql')
+            } | Select-Object -First 1)
+            $status = if (-not $factWritten -and -not $warehouseTreeCall) { 'INCONCLUSIVE' } else { 'PASS' }
+            $channels = @()
+            if ($c1) { $channels += 'C1' }
+            if ($c2) { $channels += 'C2' }
+            if ($c3) { $channels += 'C3' }
+            if ($c4) { $channels += 'C4' }
+            if ($c5) { $channels += 'C5' }
+            # Binding = the column is declared AND the load resolves it. Either alone is insufficient:
+            # a declared column may never be populated, and a resolution join with no column to land
+            # in is not a binding either.
+            $bindCustomer = $boundCustomer -and $resolvedCustomer
+            $bindProduct  = $boundProduct  -and $resolvedProduct
+            $bindDate     = $boundDate     -and $resolvedDate
+            $pass = $status -eq 'PASS' -and $factWritten -and $bindCustomer -and $bindProduct -and $bindDate -and
+                $newDimTables.Count -eq 0 -and -not $regionOnFact -and -not $naturalKeyOnFact
+            return [pscustomobject]@{ Status = $status; Pass = $pass; Detail = "category=$category channels=$($channels -join ',') reachedAddEntity=$reachedAddEntity factWritten=$factWritten boundCustomer=$boundCustomer boundProduct=$boundProduct boundDate=$boundDate resolvedCustomer=$resolvedCustomer resolvedProduct=$resolvedProduct resolvedDate=$resolvedDate regionOnFact=$regionOnFact naturalKeyOnFact=$naturalKeyOnFact degenerateOnFact=$degenerateOnFact newDimTables=$($newDimTables -join ',')" }
         }
         'warehouse-map-quality' {
             $mapPath = Join-Path $Target 'docs/warehouse-map.md'
@@ -1020,6 +1340,44 @@ GROUP BY [geo].[RegionName];
         Install-Framework $withMapTemp dotnet | Out-Null
         Initialize-WarehouseScenario $withMapTemp | Out-Null
         if (-not (Test-Path -LiteralPath (Join-Path $withMapTemp 'docs/warehouse-map.md'))) { throw 'Initialize-WarehouseScenario without -OmitMap did not write a map' }
+        # The DEFAULT map is frozen: meta/eval-results.md ties the recorded 0/6 -> 6/6 (p~0.002) B-98
+        # result to this exact fixture. If this assertion ever fails, the comparability of the only
+        # pre-registered behavioural result in the repo has been silently retired -- that is the
+        # finding, not a stale test.
+        $defaultMapText = Get-Content -Raw -LiteralPath (Join-Path $withMapTemp 'docs/warehouse-map.md')
+        if ($defaultMapText -match '(?m)^##\s' -or $defaultMapText -notmatch '(?m)^\|\s*entity\s*\|\s*layer\s*\|\s*grain\s*\|') { throw 'the default warehouse fixture map changed shape -- B-98 step 2 comparability is broken; use -EnrichedMap for new scenarios instead' }
+
+        $enrichedMapTemp = Join-Path $temp 'warehouse-enriched-map'
+        New-EvalRepo $enrichedMapTemp warehouse
+        Install-Framework $enrichedMapTemp dotnet | Out-Null
+        Initialize-WarehouseScenario $enrichedMapTemp -EnrichedMap | Out-Null
+        $enrichedMapText = Get-Content -Raw -LiteralPath (Join-Path $enrichedMapTemp 'docs/warehouse-map.md')
+        foreach ($requiredHeading in @('Table inventory','Relationship edge list','Loading','Dimensional semantics','Coverage','Findings','Querying this warehouse')) {
+            if ($enrichedMapText -notmatch [regex]::Escape($requiredHeading)) { throw "-EnrichedMap map is missing the B-96 heading '$requiredHeading'" }
+        }
+        # The binding decision is unmeasurable without business keys and the snowflake edge.
+        if ($enrichedMapText -notmatch 'natural/business key') { throw '-EnrichedMap map carries no business-key column' }
+        if ($enrichedMapText -notmatch 'dim\.DimCustomer \| RegionKey \| dim\.DimRegion') { throw '-EnrichedMap map does not record the DimCustomer -> DimRegion snowflake edge' }
+        # The map may carry EVIDENCE (the edge row above) but must not state the CONCLUSION the
+        # grader tests for. The first draft of this fixture said "Region is not a direct fact
+        # dimension" in bold, which handed the model `regionOnFact=False` outright and made the
+        # measure score the fixture's helpfulness rather than the model's binding discipline. That
+        # is the same hazard the CLAUDE.md population-A comment above already warns about, and it
+        # invalidated a live run. A real map-warehouse run emits the edge list, not this sentence.
+        foreach ($tell in @('is not a direct fact dimension','do not add a RegionKey','reach region through')) {
+            if ($enrichedMapText -match [regex]::Escape($tell)) { throw "-EnrichedMap map states the conclusion the binding grader tests for ('$tell') -- it must carry evidence only" }
+        }
+
+        $mixedTemp = Join-Path $temp 'warehouse-mixed-fixture'
+        New-EvalRepo $mixedTemp warehouse-mixed
+        foreach ($mixedRequired in @('SupplierPortal.sln','src/SupplierPortal.Api/SupplierPortal.Api.csproj','src/SupplierPortal.Api/Data/AppDbContext.cs','src/SupplierPortal.Api/Data/Configurations/SupplierConfiguration.cs','Tables/fact.FactSales.sql')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $mixedTemp $mixedRequired))) { throw "warehouse-mixed fixture is missing $mixedRequired" }
+        }
+        # add-entity is only a live competitor if EF Core is actually evidenced. Assert the evidence,
+        # not the file's presence -- an empty DbContext would satisfy a path check and measure nothing.
+        $mixedContext = Get-Content -Raw -LiteralPath (Join-Path $mixedTemp 'src/SupplierPortal.Api/Data/AppDbContext.cs')
+        if ($mixedContext -notmatch 'DbSet<' -or $mixedContext -notmatch 'Microsoft\.EntityFrameworkCore') { throw 'warehouse-mixed DbContext does not evidence EF Core' }
+        if (Test-Path -LiteralPath (Join-Path $withMapTemp 'SupplierPortal.sln')) { throw 'the pure-SQL warehouse fixture grew a .NET side -- the two fixtures no longer isolate the .NET effect' }
 
         # warehouseMapQuality grades the CONTENT of docs/warehouse-map.md directly -- it needs no
         # tool-use evidence, but Test-ScenarioEvidence unconditionally parses the transcript first,
@@ -1079,6 +1437,152 @@ $coverageBlock
         $noMapResult = Test-ScenarioEvidence 'warehouse-map-quality' $mapQualityTemp $mapQualityEvidence 1
         if ($noMapResult.Status -ne 'INCONCLUSIVE' -or $noMapResult.Pass) { throw "warehouseMapQuality did not classify a missing map as INCONCLUSIVE: status=$($noMapResult.Status) pass=$($noMapResult.Pass)" }
 
+        # warehouseDimensionBinding. Maintenance model #4 in BOTH directions: the grader is proven to
+        # go GREEN on a constructible correct implementation and RED on each named defect, before it
+        # is trusted with a live number. "Shown to fail" alone is satisfied by a measure that always
+        # fails, which then produces a false negative wearing the costume of a principled result.
+        $bindTemp = Join-Path $temp 'warehouse-bind'
+        New-Item -ItemType Directory -Path (Join-Path $bindTemp 'Tables') -Force | Out-Null
+        $bindNoTools = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='done' })
+        ) }
+        $bindDimsPath = Join-Path $bindTemp 'Tables/dims.sql'
+        $bindFactPath = Join-Path $bindTemp 'Tables/fact.FactSupplierInvoice.sql'
+        $bindBaselineDims = @'
+CREATE TABLE dim.DimCustomer (CustomerKey INT NOT NULL PRIMARY KEY, CustomerId NVARCHAR(50) NOT NULL, RegionKey INT NOT NULL);
+CREATE TABLE dim.DimRegion (RegionKey INT NOT NULL PRIMARY KEY, RegionName NVARCHAR(100) NOT NULL);
+CREATE TABLE dim.DimProduct (ProductKey INT NOT NULL PRIMARY KEY, ProductId NVARCHAR(50) NOT NULL);
+CREATE TABLE dim.DimDate (DateKey INT NOT NULL PRIMARY KEY, CalendarDate DATE NOT NULL);
+'@
+        # The named success world: three existing dimensions reused by surrogate key, invoice number
+        # degenerate on the fact, no new dim.* table, and NO RegionKey -- region is reached through
+        # DimCustomer in this warehouse.
+        $bindPositiveFact = @'
+CREATE TABLE fact.FactSupplierInvoice (
+    SupplierInvoiceKey BIGINT NOT NULL PRIMARY KEY,
+    InvoiceNo NVARCHAR(50) NOT NULL,
+    LineNo INT NOT NULL,
+    CustomerKey INT NOT NULL,
+    ProductKey INT NOT NULL,
+    InvoiceDateKey INT NOT NULL,
+    NetAmount DECIMAL(18,2) NOT NULL,
+    TaxAmount DECIMAL(18,2) NOT NULL,
+    LoadRunId BIGINT NOT NULL
+);
+'@
+        # The load procedure is part of the positive fixture, because a declared column is not a
+        # binding: the resolution join is what proves the key came from the dimension.
+        $bindProcPath = Join-Path $bindTemp 'StoredProcedures/usp_LoadFactSupplierInvoice.sql'
+        New-Item -ItemType Directory -Path (Join-Path $bindTemp 'StoredProcedures') -Force | Out-Null
+        $bindPositiveProc = @'
+CREATE PROCEDURE dbo.usp_LoadFactSupplierInvoice AS
+INSERT INTO fact.FactSupplierInvoice (SupplierInvoiceKey, InvoiceNo, LineNo, CustomerKey, ProductKey, InvoiceDateKey, NetAmount, TaxAmount, LoadRunId)
+SELECT s.InvoiceLineId, s.InvoiceNo, s.LineNo, c.CustomerKey, p.ProductKey, d.DateKey, s.NetAmount, s.TaxAmount, s.BatchId
+FROM stg.StgSupplierInvoice s
+JOIN dim.DimCustomer c ON c.CustomerId = s.CustCode AND c.IsCurrent = 1
+JOIN dim.DimProduct p ON p.ProductId = s.ProdCode
+JOIN dim.DimDate d ON d.CalendarDate = s.InvoiceDate;
+'@
+        $bindBaselineDims | Set-Content -LiteralPath $bindDimsPath -Encoding utf8NoBOM
+        $bindPositiveFact | Set-Content -LiteralPath $bindFactPath -Encoding utf8NoBOM
+        $bindPositiveProc | Set-Content -LiteralPath $bindProcPath -Encoding utf8NoBOM
+        $bindPositive = Test-ScenarioEvidence 'warehouse-bind-mixed' $bindTemp $bindNoTools 1
+        $bindPositiveExpected = 'category=NEITHER channels= reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables='
+        if (-not $bindPositive.Pass -or $bindPositive.Detail -ne $bindPositiveExpected) { throw "warehouseDimensionBinding rejected a correct implementation: $($bindPositive.Detail)" }
+        if ((Test-ScenarioEvidence 'warehouse-bind-sql' $bindTemp $bindNoTools 1).Detail -ne $bindPositiveExpected) { throw 'warehouseDimensionBinding graded warehouse-bind-sql differently from warehouse-bind-mixed' }
+
+        # Defect 1: a duplicate dimension for a concept DimCustomer already owns. Appended to an
+        # EXISTING file on purpose -- a path-based --diff-filter=A scan would not see this.
+        ($bindBaselineDims + "`nCREATE TABLE dim.DimInvoiceCustomer (InvoiceCustomerKey INT NOT NULL PRIMARY KEY, CustRef NVARCHAR(50) NOT NULL);`n") | Set-Content -LiteralPath $bindDimsPath -Encoding utf8NoBOM
+        $bindDupResult = Test-ScenarioEvidence 'warehouse-bind-mixed' $bindTemp $bindNoTools 1
+        if ($bindDupResult.Pass -or $bindDupResult.Detail -notmatch 'newDimTables=DimInvoiceCustomer') { throw "warehouseDimensionBinding accepted a duplicate dimension: $($bindDupResult.Detail)" }
+
+        # Defect 1b -- REGRESSION. A live run created `dim.CustomerXref`/`dim.ProductXref` and the
+        # first detector, keyed on a `Dim` name prefix, reported "no new dimensions". Any new table
+        # in the dimension SCHEMA must be seen, whatever it is called.
+        ($bindBaselineDims + "`nCREATE TABLE dim.CustomerXref (CustomerKey INT NOT NULL, SourceRef NVARCHAR(50) NOT NULL);`n") | Set-Content -LiteralPath $bindDimsPath -Encoding utf8NoBOM
+        $bindXrefResult = Test-ScenarioEvidence 'warehouse-bind-mixed' $bindTemp $bindNoTools 1
+        if ($bindXrefResult.Pass -or $bindXrefResult.Detail -notmatch 'newDimTables=CustomerXref') { throw "warehouseDimensionBinding missed a new dim-schema table that is not Dim-prefixed: $($bindXrefResult.Detail)" }
+        $bindBaselineDims | Set-Content -LiteralPath $bindDimsPath -Encoding utf8NoBOM
+
+        # Defect 2: the snowflake violation -- RegionKey as a direct fact FK when this warehouse
+        # reaches region through DimCustomer.RegionKey.
+        ($bindPositiveFact.Replace('    InvoiceDateKey INT NOT NULL,', "    InvoiceDateKey INT NOT NULL,`n    RegionKey INT NOT NULL,")) | Set-Content -LiteralPath $bindFactPath -Encoding utf8NoBOM
+        $bindRegionResult = Test-ScenarioEvidence 'warehouse-bind-mixed' $bindTemp $bindNoTools 1
+        if ($bindRegionResult.Pass -or $bindRegionResult.Detail -notmatch 'regionOnFact=True') { throw "warehouseDimensionBinding accepted RegionKey as a direct fact FK: $($bindRegionResult.Detail)" }
+
+        # Defect 3: natural key stored IN PLACE OF the surrogate key.
+        ($bindPositiveFact.Replace('    CustomerKey INT NOT NULL,', '    CustRef NVARCHAR(50) NOT NULL,')) | Set-Content -LiteralPath $bindFactPath -Encoding utf8NoBOM
+        $bindNaturalResult = Test-ScenarioEvidence 'warehouse-bind-mixed' $bindTemp $bindNoTools 1
+        if ($bindNaturalResult.Pass -or $bindNaturalResult.Detail -notmatch 'boundCustomer=False naturalKeyOnFact=True' -and $bindNaturalResult.Detail -notmatch 'naturalKeyOnFact=True') { throw "warehouseDimensionBinding accepted a natural key in place of the surrogate: $($bindNaturalResult.Detail)" }
+
+        # Defect 3b -- REGRESSION. A live fact declared `SupplierCustomerRef`/`SupplierProductRef`
+        # and the enumerated-spelling detector reported naturalKeyOnFact=False. Prefixed source
+        # references must be caught, or the measure misses the defect in its most natural form.
+        ($bindPositiveFact.Replace('    CustomerKey INT NOT NULL,', '    SupplierCustomerRef NVARCHAR(50) NOT NULL,')) | Set-Content -LiteralPath $bindFactPath -Encoding utf8NoBOM
+        $bindPrefixedResult = Test-ScenarioEvidence 'warehouse-bind-mixed' $bindTemp $bindNoTools 1
+        if ($bindPrefixedResult.Pass -or $bindPrefixedResult.Detail -notmatch 'naturalKeyOnFact=True') { throw "warehouseDimensionBinding missed a prefixed source reference on the fact: $($bindPrefixedResult.Detail)" }
+
+        # Carrying BOTH keys is a defensible traceability choice and must NOT be scored as the defect.
+        ($bindPositiveFact.Replace('    CustomerKey INT NOT NULL,', "    CustomerKey INT NOT NULL,`n    CustomerId NVARCHAR(50) NULL,")) | Set-Content -LiteralPath $bindFactPath -Encoding utf8NoBOM
+        $bindBothKeysResult = Test-ScenarioEvidence 'warehouse-bind-mixed' $bindTemp $bindNoTools 1
+        if (-not $bindBothKeysResult.Pass -or $bindBothKeysResult.Detail -notmatch 'naturalKeyOnFact=False') { throw "warehouseDimensionBinding failed a fact carrying both the surrogate and natural key: $($bindBothKeysResult.Detail)" }
+        $bindPositiveFact | Set-Content -LiteralPath $bindFactPath -Encoding utf8NoBOM
+
+        # Defect 4 -- the one the DDL-token check could never catch. The fact declares every key
+        # column, so boundCustomer/Product/Date are all True, but the load stamps constants and
+        # never touches a dimension. Before the resolution check this scored a clean PASS.
+        @'
+CREATE PROCEDURE dbo.usp_LoadFactSupplierInvoice AS
+INSERT INTO fact.FactSupplierInvoice (SupplierInvoiceKey, InvoiceNo, LineNo, CustomerKey, ProductKey, InvoiceDateKey, NetAmount, TaxAmount, LoadRunId)
+SELECT s.InvoiceLineId, s.InvoiceNo, s.LineNo, -1, -1, 19000101, s.NetAmount, s.TaxAmount, s.BatchId
+FROM stg.StgSupplierInvoice s;
+'@ | Set-Content -LiteralPath $bindProcPath -Encoding utf8NoBOM
+        $bindUnresolvedResult = Test-ScenarioEvidence 'warehouse-bind-mixed' $bindTemp $bindNoTools 1
+        if ($bindUnresolvedResult.Pass) { throw "warehouseDimensionBinding passed a fact whose load stamps constants and never joins a dimension: $($bindUnresolvedResult.Detail)" }
+        if ($bindUnresolvedResult.Detail -notmatch 'boundCustomer=True' -or $bindUnresolvedResult.Detail -notmatch 'resolvedCustomer=False') { throw "warehouseDimensionBinding did not separate 'column declared' from 'key resolved': $($bindUnresolvedResult.Detail)" }
+        $bindPositiveProc | Set-Content -LiteralPath $bindProcPath -Encoding utf8NoBOM
+
+        # Defect 5 -- terminator shapes. SSDT DDL routinely ends at `)` with no semicolon, or with
+        # `GO`. The first parser required `);` and would have scored a correct implementation
+        # factWritten=False; it passed only because the fixture happened to end that way.
+        foreach ($terminatorCase in @(
+            @{ Name = 'no semicolon';  Text = ($bindPositiveFact -replace '\);\s*$', ")`n") },
+            @{ Name = 'GO terminator'; Text = ($bindPositiveFact -replace '\);\s*$', ")`nGO`n") }
+        )) {
+            $terminatorCase.Text | Set-Content -LiteralPath $bindFactPath -Encoding utf8NoBOM
+            $terminatorResult = Test-ScenarioEvidence 'warehouse-bind-mixed' $bindTemp $bindNoTools 1
+            if (-not $terminatorResult.Pass -or $terminatorResult.Detail -notmatch 'factWritten=True') { throw "warehouseDimensionBinding failed to parse fact DDL with $($terminatorCase.Name): $($terminatorResult.Detail)" }
+        }
+        $bindPositiveFact | Set-Content -LiteralPath $bindFactPath -Encoding utf8NoBOM
+
+        # Non-engagement is INCONCLUSIVE, not a failure -- same convention as warehouseRouting.
+        $bindEmptyTemp = Join-Path $temp 'warehouse-bind-empty'
+        New-Item -ItemType Directory -Path $bindEmptyTemp -Force | Out-Null
+        $bindEmptyResult = Test-ScenarioEvidence 'warehouse-bind-mixed' $bindEmptyTemp $bindNoTools 1
+        if ($bindEmptyResult.Status -ne 'INCONCLUSIVE' -or $bindEmptyResult.Pass) { throw "warehouseDimensionBinding did not classify a non-engaging run as INCONCLUSIVE: status=$($bindEmptyResult.Status) pass=$($bindEmptyResult.Pass)" }
+
+        # Outcome 2 and outcome 3 are separately observable: the skill firing, and add-entity being
+        # reached instead. Without this the mixed fixture measures nothing the pure-SQL one does not.
+        $bindSkillEvidence = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='wl'; name='Skill'; input=[pscustomobject]@{ skill='add-warehouse-load' } }) } }),
+            ([pscustomobject]@{ type='user'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_result'; tool_use_id='wl'; is_error=$false; content='loaded' }) } }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='done' })
+        ) }
+        $bindSkillResult = Test-ScenarioEvidence 'warehouse-bind-mixed' $bindTemp $bindSkillEvidence 1
+        if ($bindSkillResult.Detail -notmatch 'category=SKILL_ROUTED channels=C1' -or $bindSkillResult.Detail -notmatch 'reachedAddEntity=False') { throw "warehouseDimensionBinding missed the add-warehouse-load skill channel: $($bindSkillResult.Detail)" }
+
+        $bindEntityEvidence = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='ae'; name='Skill'; input=[pscustomobject]@{ skill='add-entity' } }) } }),
+            ([pscustomobject]@{ type='user'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_result'; tool_use_id='ae'; is_error=$false; content='loaded' }) } }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='done' })
+        ) }
+        $bindEntityResult = Test-ScenarioEvidence 'warehouse-bind-mixed' $bindTemp $bindEntityEvidence 1
+        if ($bindEntityResult.Detail -notmatch 'reachedAddEntity=True' -or $bindEntityResult.Detail -notmatch 'category=NEITHER') { throw "warehouseDimensionBinding missed the add-entity mis-route: $($bindEntityResult.Detail)" }
+
         $checkpoint = [pscustomobject]@{ Events = @(
             ([pscustomobject]@{ type='system'; subtype='init' }),
             ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='skill'; name='Skill'; input=[pscustomobject]@{ skill='add-tests' } }) } }),
@@ -1132,6 +1636,8 @@ $coverageBlock
         Write-Output 'PASS: warehouse preparation installs, populates population A without pointers, and commits setup'
         Write-Output 'PASS: warehouse-map-quality grades map content (compliant/no-UNRESOLVED/no-version-resolution/no-query-rules/missing) and -OmitMap toggles map creation'
         Write-Output 'PASS: warehouse dead-column guard rejects INSERT, UPDATE, and both MERGE write branches'
+        Write-Output 'PASS: -EnrichedMap emits the seven B-96 headings, the default fixture map stays frozen, and warehouse-mixed evidences EF Core'
+        Write-Output 'PASS: warehouseDimensionBinding accepts a correct binding and rejects duplicate dimension / RegionKey-on-fact / natural-key-for-surrogate, with skill and add-entity channels separable'
         Write-Output 'PASS: developer checkpoint is INCONCLUSIVE, not PASS/FAIL'
         Write-Output 'PASS: install graders require an observed installer tool event'
         Write-Output 'PASS: bootstrap Skill and archived-installer attempts are rejected'
@@ -1234,6 +1740,11 @@ Classes that orchestrate multi-step domain work are suffixed `Coordinator` in th
             }
             { $_ -in @('warehouse-route-p1','warehouse-route-p2','warehouse-route-p3') } {
                 $before = Initialize-WarehouseScenario $target
+            }
+            { $_ -in @('warehouse-bind-sql','warehouse-bind-mixed') } {
+                # -EnrichedMap: the binding decision needs business keys and the fact -> dimension
+                # edge list, which the default (frozen) fixture map does not carry.
+                $before = Initialize-WarehouseScenario $target -EnrichedMap
             }
             'warehouse-map-quality' {
                 $before = Initialize-WarehouseScenario $target -OmitMap

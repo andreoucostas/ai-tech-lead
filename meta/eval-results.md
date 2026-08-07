@@ -471,3 +471,312 @@ That is a real possible outcome of this run and it will be recorded as such.
 4. Arm 2's baseline (5/6) came from a different day's batch; batch-to-batch variance on this signal
    was visible in step 1 (4/6 vs 5/6 across arms with no content change), which is precisely why the
    threshold is ≤2/6 and not "any fall".
+
+---
+
+## PRE-REGISTRATION — dimension-binding Stage A baseline (written 2026-08-07, BEFORE any run)
+
+Design: `.claude/plans/2026-08-07-dimension-binding-eval-design.md` (LOCKED). This is a **baseline**,
+not an intervention arm: it runs against the **unmodified v0.49.0 dist**, before the
+`add-warehouse-load` body change exists. Capturing it afterwards would measure nothing.
+
+**Why a new arm at all.** Every warehouse result on record is read-side — `warehouse-route-p1..p3`
+are three query-writing paraphrases. The v0.48.0 conclusion (`Skill` 0/6, map 6/6) is therefore
+evidence about *writing a query*, and was used in the first draft of this plan to justify a
+delivery decision about *writing a load*. It does not transfer, and this arm is what replaces the
+assumption with a number.
+
+**Scenarios.** `warehouse-bind-sql` (pure-SQL fixture) and `warehouse-bind-mixed` (the same SQL tree
+plus a genuine EF Core side), **n=3 each = 6 runs**, `sonnet`, budget $1.50/run. Both use
+`-EnrichedMap`; the default fixture map is deliberately left frozen so the recorded `0/6 → 6/6`
+(`p≈0.002`) B-98 result keeps its comparability.
+
+**Four outcomes, recorded independently.** Separating them is the point: "the skill never fired" and
+"the wrong skill fired" are different defects with different remedies, and a single pass/fail cannot
+tell them apart.
+
+| Outcome | Key | What each value would mean |
+|---|---|---|
+| 1. Map reached | `category` contains `MAP_DISCOVERED`/`BOTH` | the write side inherits the 6/6 read-side channel |
+| 2. Skill reached | `category` = `SKILL_ROUTED`/`BOTH`/`SKILL_READ` | `add-warehouse-load` is actually invoked on a load-shaped prompt |
+| 3. OLTP mis-route | `reachedAddEntity` | the mixed-repo failure; **structurally unobservable** on the pure-SQL fixture, which is why both run |
+| 4. Binding correct | `Pass` | all three dimensions bound by surrogate key, no new `dim.*`, no `RegionKey` on the fact |
+
+**Decision rules, fixed now so the result cannot be read backwards into whatever was already planned:**
+
+- **Stage D (write-side guidance copied into the emitted map) ships only if** outcome 1 fires in
+  ≥4/6 while outcome 2 fires in ≤2/6 — i.e. the map is the channel that reaches and the skill is not.
+- **Stage D must NOT ship if** outcome 2 fires in ≥4/6. The skill is reached; duplicating its
+  procedure into a snapshot artifact would then buy nothing and create the authority conflict
+  `add-warehouse-load:28-32` warns about.
+- **If both outcomes 1 and 2 are ≤2/6**, neither channel reaches a load-shaped prompt. Stage B is
+  then delivered but its reach is unproven, Stage D is *not* the remedy either, and the honest
+  entry is a new routing finding — not a reworded pass.
+- **Outcome 3 firing on `mixed` but not on `sql`** confirms the OLTP mis-route is caused by the .NET
+  side's presence and justifies B2 (the boundary line). Firing on neither leaves B2 unjustified by
+  measurement; it stays in as a cheap body-only clarification, labelled as such.
+- **Outcome 4 is the number Stage B must move.** No threshold is set for the baseline itself — it is
+  whatever it is. The post-change threshold will be pre-registered separately, against this value.
+
+**Stated in advance because it is the result most likely to be spun:** if outcome 4 is already high
+at baseline, the dimension-binding gap is real *in the prose* but not costly *in behaviour*, and
+Stage B is a documentation improvement rather than a defect fix. That is a genuine possible outcome
+and will be recorded as such rather than reframed.
+
+**Amendments made after the pre-registration and before the counted batch — recorded rather than
+silently applied, because both change the instrument:**
+- **Fixture corrected (2026-08-07).** The `-EnrichedMap` map stated the conclusion `regionOnFact`
+  scores; it now carries only the edge-list evidence. The first batch is **VOID** and marked so
+  below. No threshold or decision rule was changed — only the fixture defect was removed.
+- **Wall clock 300s → 900s.** `warehouse-bind-mixed` exceeded 300s and errored. The pure-SQL run that
+  did complete emitted 22,889 output tokens, so a load-shaped task is simply longer than the
+  query-shaped ones this default was set for. Raising it changes what the harness *tolerates*, not
+  what it *scores*; a run that still exceeds 900s is recorded as `ERROR`, never as a failed binding.
+
+**A third grader false negative, found the same way (2026-08-07).** `naturalKeyOnFact` enumerated
+spellings (`cust_ref|CustRef|CustomerId|CustomerCode`) and reported **False** for a live fact
+declaring `SupplierCustomerRef NVARCHAR(50)` — the defect itself, missed because the model prefixed
+the column name. Now matched by shape (`<any>Cust[omer]<any>{Ref|Code|Id|No|Num}`, with `Key`
+deliberately excluded), with a regression case red-tested. **No counted verdict changes:** in the run
+that exposed it, `boundCustomer`/`boundProduct` were already `False`, so `Pass` was `False` either way.
+
+**Pattern worth naming, since it is now three for three.** Every field-level defect in this grader has
+been a **false negative** — the measure reporting "no defect" where one existed — and each was found
+by reading the produced artifact rather than by trusting the `Detail` string. `Pass` happened to be
+correct each time because another field caught the same run. That is luck, not design, and it is the
+argument for grading against the artifact on disk in review rather than against the summary line.
+
+**Known limitations, fixed here.**
+1. `n=3` per fixture, one model, one host. Smaller than the B-98 arms; treated as directional.
+2. Run-order randomisation is still defeated by file-order scenario selection — unchanged confound.
+3. The two fixtures differ in more than EF Core's presence (the mixed one is a larger repo), so
+   outcome 3's attribution to the .NET side is suggestive, not isolated.
+4. Grading is mechanical and the grader was red-tested on five axes (duplicate dimension, RegionKey
+   on fact, natural-key-for-surrogate, add-entity channel, enriched-map headings) plus a green
+   correct-positive, before this pre-registration was written.
+
+## 2026-08-07 13:39:44 +01:00 — framework v0.49.0 (909bd93ef311e70eb03aabe491be63b15fdd86cc)
+
+Host: Claude Code 2.1.223 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-bind-sql** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.9261852 tokensIn=28 tokensOut=22889; category=BOTH channels=C1,C2,C5 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimensions=
+- **ERROR warehouse-bind-mixed** (model=sonnet) — Claude CLI exceeded the 300s wall-clock limit.
+
+> ### ⚠ VOID — this batch is discarded. The fixture handed the model the answer.
+>
+> **Not a baseline. Do not cite the `PASS` above as evidence of anything.** The `-EnrichedMap`
+> fixture map I wrote for this arm contained, in bold immediately under the edge list:
+> *"**Region is not a direct fact dimension.** There is no RegionKey on fact.FactSales. Every correct
+> region query and every existing load reaches region through dim.DimCustomer.RegionKey."*
+>
+> `regionOnFact=False` is one of the four things the grader scores. The fixture stated that
+> conclusion outright, so the run measured **the map's explicitness, not the model's binding
+> discipline** — the "instrument that cannot fail" class, in the direction of a false pass.
+>
+> **This was already a written-down hazard in this very file.** `run-agent-evals.ps1:429-431` warns
+> that the fixture's `CLAUDE.md` is *"deliberately silent on how a query should reach an attribute —
+> naming the dimension path here would hand the model the answer this scenario exists to measure."*
+> I reproduced that exact defect one artifact over, in the map. Caught by re-reading what the
+> instrument would be pointed at, not by running it — the same way all three B-112 instruments were
+> caught, which is now the fourth instance of that pattern.
+>
+> **Corrected before re-running:** the map now carries the **evidence** (the edge-list row
+> `dim.DimCustomer | RegionKey | dim.DimRegion`, which is what a real `map-warehouse` run emits) and
+> not the conclusion. A regression guard asserting the map states no conclusion the grader tests for
+> was added to the harness self-test and red-tested (`EXIT=1` with the sentence restored, `0`
+> without). The second invocation was **stopped mid-flight** rather than spend more on a compromised
+> fixture.
+>
+> The one thing this batch does establish, because it is independent of the map's wording: on a
+> load-shaped prompt the `Skill` tool **fired** (`channels=C1`). That is worth re-testing, not
+> citing — see the corrected batch below.
+
+
+## 2026-08-07 13:53:06 +01:00 — framework v0.49.0 (909bd93ef311e70eb03aabe491be63b15fdd86cc)
+
+Host: Claude Code 2.1.223 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-bind-sql** (model=sonnet) — agentExit=0 timedOut=False costUsd=1.0437795 tokensIn=34 tokensOut=25618; category=BOTH channels=C1,C2,C5 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimensions=
+- **ERROR warehouse-bind-mixed** (model=sonnet) — agentExit=1 timedOut=False costUsd=1.1051091 tokensIn=32 tokensOut=27400; category=BOTH channels=C1,C2,C5 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True regionOnFact=True naturalKeyOnFact=False degenerateOnFact=True newDimensions=
+
+> ### ⚠ CORRECTED — the `newDimensions=` field in both rows above is WRONG. Not counted as a batch.
+>
+> **A second grader defect, found by reading the retained scratch rather than the Detail string.**
+> The detector keyed on a `Dim` name prefix (`Dim[A-Za-z0-9_]+`). The mixed run created
+> **`dim.CustomerXref` and `dim.ProductXref`** — two new tables in the dimension schema — and the
+> measure whose entire job is counting new dimension tables reported **none**. Verified on disk:
+>
+> | run | tables in `dim` schema, from the retained target tree | corrected `newDimTables` |
+> |---|---|---|
+> | `bind-sql` | DimCustomer, DimDate, DimProduct, DimRegion | *(empty)* |
+> | `bind-mixed` | + **CustomerXref**, **ProductXref** | `CustomerXref,ProductXref` |
+>
+> **Fixed:** the detector now matches on the **schema** (`CREATE TABLE dim.<anything>`), the field is
+> renamed `newDimTables`, and a regression case using a non-`Dim`-prefixed name was added and
+> red-tested (reverting to the prefix form reproduces `newDimTables=` empty and fails the suite).
+>
+> **The xref tables are scored as a violation, and the reason comes from the recipe, not the result.**
+> This warehouse resolves source keys by joining staging's natural key straight to the dimension's
+> (`usp_LoadFactSales`: `JOIN dim.DimCustomer c ON c.CustomerId = s.CustomerId`). An xref table is a
+> *second style* for the same job, and step 1 of `add-warehouse-load` already says "One warehouse, one
+> loading pattern: never introduce a second style." Recording the rule here because deciding it
+> *after* seeing the output is exactly how a grader gets retrofitted to a preferred answer.
+>
+> **What IS trustworthy in these two rows, because it was verified against the produced DDL:**
+> `fact.FactSupplierInvoice` on the mixed run declares `RegionKey INT NOT NULL` — the snowflake
+> violation, real and reproduced on disk. The pure-SQL run did not. Both runs reached **both**
+> channels (`category=BOTH channels=C1,C2,C5`) and neither touched `add-entity`.
+>
+> **Unexplained and not reclassified:** the mixed run's `agentExit=1` despite producing a complete
+> set of artifacts (fact, load proc, reporting view, both xref tables). The harness's rule is
+> `agentExit != 0 → ERROR`; that rule stands and the row is not promoted to `FAIL` by me.
+
+
+## 2026-08-07 17:46:06 +01:00 — framework v0.49.0 (909bd93ef311e70eb03aabe491be63b15fdd86cc)
+
+Host: Claude Code 2.1.223 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-bind-sql** (model=sonnet) — agentExit=0 timedOut=False costUsd=1.2950211 tokensIn=34 tokensOut=29301; category=BOTH channels=C1,C2,C5 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **FAIL warehouse-bind-mixed** (model=sonnet) — agentExit=0 timedOut=False costUsd=1.3664808 tokensIn=34 tokensOut=29528; category=BOTH channels=C1,C2 reachedAddEntity=False factWritten=True boundCustomer=False boundProduct=False boundDate=True regionOnFact=True naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+
+
+## 2026-08-07 17:58:23 +01:00 — framework v0.49.0 (909bd93ef311e70eb03aabe491be63b15fdd86cc)
+
+Host: Claude Code 2.1.223 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-bind-sql** (model=sonnet) — agentExit=0 timedOut=False costUsd=1.0821648 tokensIn=38 tokensOut=24845; category=BOTH channels=C1,C2,C5 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **FAIL warehouse-bind-mixed** (model=sonnet) — agentExit=0 timedOut=False costUsd=1.2521595 tokensIn=42 tokensOut=31207; category=BOTH channels=C1,C2 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True regionOnFact=True naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+
+
+### STAGE A BASELINE — RESULT. Counted `n=2` per fixture (pre-registered `n=3`; see limitations).
+
+Framework **v0.49.0, unmodified dist** — the `add-warehouse-load` dimension-binding step did not
+exist when these ran. Every verdict below was **re-verified against the produced DDL in the retained
+scratch tree**, not read off the `Detail` string, because three of this grader's fields turned out to
+be false negatives during the arm.
+
+| outcome | `warehouse-bind-sql` | `warehouse-bind-mixed` |
+|---|---|---|
+| 1. Map opened (`C2`) | 2/2 | 2/2 |
+| 2. Skill fired (`C1`) | 2/2 | 2/2 |
+| 3. `reachedAddEntity` | 0/2 | **0/2** |
+| 4. Binding correct (`Pass`) | **2/2** | **0/2** |
+
+Including the corrected-but-uncounted batch, `regionOnFact` fired **3/3 on mixed and 0/3 on
+pure-SQL**, and `category=BOTH` with `C1` present in **6/6** runs across both fixtures.
+
+**Decision rule 1 — `Stage D` is REFUSED, and the rule that refuses it is the one written before the
+run.** The pre-registration said Stage D ships only if outcome 1 is ≥4/6 *while outcome 2 is ≤2/6*.
+Outcome 2 is **6/6**: `add-warehouse-load` was invoked by the `Skill` tool in every single run. The
+skill is reached, so copying its procedure into the emitted `docs/warehouse-map.md` would buy nothing
+and would create the snapshot-versus-authority conflict `add-warehouse-load:28-32` warns about.
+**No change was made to `map-warehouse`.**
+
+**This also answers a question the read-side arms left open, in the opposite direction.** B-98 step 2
+measured the `Skill` channel at **0/6** and concluded routing was not repaired, only bypassed. That
+conclusion is now shown to be **task-class-specific, not general**: on a *load-shaped* prompt the same
+channel fires 6/6. B-98 step 3's explanation predicts exactly this — the roster is write-side by
+construction, every skill named for the artifact it *produces* — so a write task finds its skill and a
+read task does not. First direct confirmation from the write side.
+
+**Decision rule 2 — the dimension-binding gap has a real behavioural cost, and it is confined to the
+mixed repo.** The pure-SQL fixture bound correctly 2/2. The .NET+SQL fixture failed 2/2, both times by
+putting `RegionKey` directly on `fact.FactSupplierInvoice` when this warehouse reaches region through
+`DimCustomer.RegionKey`; run 1 additionally stored `SupplierCustomerRef`/`SupplierProductRef` on the
+fact instead of resolving them to surrogate keys.
+
+**The pre-registered "most likely to be spun" clause does not apply, and it would have if only the
+old fixture existed.** That clause said: if outcome 4 is already high at baseline, the gap is real in
+the prose but not costly in behaviour, and the change is documentation rather than a defect fix. On
+`warehouse-bind-sql` alone — the only warehouse fixture that existed before 2026-08-07 — outcome 4 is
+2/2 and that clause *would* have fired. The failure is visible only on the fixture built for this arm.
+
+**Decision rule 3 — `reachedAddEntity` is 0/6, so B2 is NOT justified by measurement.** The
+OLTP mis-route did not occur in any run. Per the pre-registration, the one-line boundary statement
+stays in the skill body as a cheap clarification **labelled as unmeasured**, not as a fix for an
+observed defect. B-117 (the wider class: every `DO NOT USE FOR` rides the 0/6 frontmatter channel)
+remains open and is *not* discharged by this arm.
+
+**Limitations, stated rather than discovered later.**
+1. **`n=2` per fixture, below the pre-registered `n=3`.** Stopped to stay inside the approved ~$9
+   budget (~$8.4 spent across all batches including the two discarded ones). The shortfall is real;
+   `regionOnFact` 3/3-vs-0/3 is a consistent split, not a significance claim.
+2. One model (`sonnet`), one host, one warehouse shape. Directional evidence.
+3. The two fixtures differ in more than EF Core's presence — the mixed one is a larger repo — so
+   attributing outcome 4's split to the .NET side specifically is suggestive, not isolated.
+4. Three grader fields were false negatives during this arm (`newDimTables` prefix-keying,
+   `naturalKeyOnFact` spelling enumeration, and the voided batch's fixture leak). All are fixed and
+   red-tested, but the pattern — every defect a false negative — means these numbers are more likely
+   to *understate* the failure rate than overstate it.
+
+#### Independent diff review (codex `sol`, read-only, pre-tag): REJECT — 6 blocking. Effect on the numbers above.
+
+Four findings were verified correct and fixed; one is partially rejected with evidence; one is a real
+gap in the release, not in the data.
+
+- **Grader scored `Pass` from fact-DDL column tokens alone** — a fact could declare `CustomerKey`
+  while its load stamped a constant `-1`, and score bound. The design said "fact DDL + load proc
+  join"; the implementation checked only the DDL. **Fixed** (`resolvedCustomer/Product/Date` now
+  require the load to reference the dimension *and* join on its business key), red-tested by blinding
+  all three conjuncts.
+  **This does NOT invalidate the counted results.** Re-verified by hand against both retained
+  `bind-sql` targets: each load carries
+  `JOIN dim.DimCustomer c ON c.CustomerId = <src> AND c.IsCurrent = 1`, plus the `DimProduct` and
+  `DimDate` joins — genuine resolution, including the Type-2 as-of predicate. The `2/2` stands under
+  the stricter rule; only the method that established it was weaker than claimed.
+- **Fact-DDL parser required a trailing `;`** — ordinary SSDT DDL ending at `)` or followed by `GO`
+  would have scored `factWritten=False` for a *correct* implementation. It passed only because the
+  fixture happened to end `);`. **Fixed and red-tested** with both terminator shapes.
+- **Two false absolutes in the shipped guidance** (would have reached consumers): a coarser-grained
+  dimension does *not* inherently lose detail — it is the normal many-to-one case; and "same key,
+  same role" misstates conformance, since role-playing dimensions deliberately differ in role.
+  **Both rewritten.** Also: not every failed lookup is a late-arriving member — the skill now
+  requires classifying the miss (late arrival / invalid key / legitimately absent / load-order bug)
+  before choosing the handling.
+- **PARTIALLY REJECTED — "the fixture still gives away `regionOnFact=False`."** The edge-list row and
+  the dead-column Finding are what a real `map-warehouse` run emits; removing them would make the
+  fixture unrepresentative in the opposite direction. More decisively, the claim is refuted by the
+  data: the mixed fixture added `RegionKey` **3/3** while reading that very map. A fixture that hands
+  over the answer does not produce a 3/3 failure on it. The fair half of the finding is accepted —
+  the guard checks three literal phrases and is weak assurance, not proof.
+- **ACCEPTED, and it is a gap in the release rather than the data: there is no post-change arm.**
+  The pre-registration says the post-change threshold is registered separately against this baseline.
+  That measurement has not been run.
+
+## PRE-REGISTRATION — dimension-binding POST-CHANGE arm (written 2026-08-07, BEFORE any run)
+
+Registered against the Stage A baseline above, per that pre-registration's promise that the
+post-change threshold would be fixed separately. Written before v0.50.0 is tagged and before any
+post-change run.
+
+**Held identical to the baseline:** same two scenarios, same fixtures (including the frozen default
+map and the corrected `-EnrichedMap`), same grader, same model (`sonnet`), same host, same
+`-TimeoutSeconds 900`. **Only the dist changes** — v0.49.0 → v0.50.0, i.e. the presence of
+`add-warehouse-load`'s dimension-binding step.
+
+**One deliberate asymmetry, disclosed:** the grader gained the load-proc resolution check
+(`resolvedCustomer/Product/Date`) after the baseline ran, as a result of the pre-tag diff review.
+The baseline's verdicts were **re-verified by hand against the retained load procedures** under that
+stricter rule and did not move (`bind-sql` 2/2, `bind-mixed` 0/2). The comparison is therefore
+between equal criteria, established by inspection rather than assumed.
+
+**`n=2` per fixture**, matching the baseline. This is directional evidence at both ends.
+
+| Signal | Baseline | Prediction | Reading |
+|---|---|---|---|
+| `regionOnFact`, mixed | **2/2** (3/3 incl. uncounted) | falls to **0/2** | 0/2 = the step works on the defect it was written for. 1/2 = partial, ship with a stated ceiling. **2/2 = it does not work** — record that, do not reword it |
+| `Pass`, mixed | **0/2** | rises to **≥1/2** | the outcome that matters; strictly harder than the row above, since it also requires resolution joins and no new `dim.*` table |
+| `Pass`, sql | **2/2** | stays **2/2** | a drop is a **regression** caused by this change and blocks the claim regardless of the mixed result |
+| `category` / `C1` | 6/6 | stays ≥3/4 | the step is body-only and must not affect routing; a drop means something else moved |
+
+**Stated in advance, because it is the result most likely to be spun.** With `n=2`, a 2/2 → 0/2 flip
+on `regionOnFact` is **suggestive, not significant** — two runs cannot separate a real effect from
+run-to-run variance on a stochastic model. It will be reported as directional evidence and the
+sentence "the step fixes the defect" will not appear without a larger `n`. Equally: if
+`regionOnFact` stays 2/2, the honest entry is that the guidance did not change the behaviour it was
+written for, and the shipped step is then a documentation improvement whose behavioural claim failed.
+
+**The world in which this registers success is constructible and already exists**: the harness
+self-test's `bindPositive` fixture — surrogate keys resolved by load-proc joins, invoice number
+degenerate, no new `dim.*`, no `RegionKey` — scores `Pass=True` under the final grader. The measure
+is reachable in both directions before it is pointed at anything.
