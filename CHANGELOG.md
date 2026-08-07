@@ -80,6 +80,19 @@ interrupted. Do not treat this as cleared.
 harness refuses to run live unless `dist/` matches HEAD *and* the dist version matches the root
 CHANGELOG head — this release satisfies both, so the arms are runnable for the first time.
 
+**And B-113 is fixed in the same release, which is what makes the tag reachable.** CI run
+`31168445026` produced all eight jobs — `windows`, `linux`, `windows-hooks (dotnet|angular|monorepo)`,
+`linux-hooks (dotnet|angular|monorepo)` — with the six split legs running in **1:21–3:16**. The
+15-minute cancellation is gone: `68cf0aa`'s split worked and the Actions outage that masked it has
+passed. That also **answers by observation** the question B-113 flagged as *assumed, not observed* —
+the `<job> (<value>)` matrix naming is real, so `watch-ci.ps1`'s widened default is correct.
+
+The five failing stubs are fixed **structurally**: `New-Jobs` now derives the leg list from
+`watch-ci.ps1`'s own `-ExpectedJobs` default by AST instead of restating it, because restating it is
+what drifted. Red-tested both ways — widening `ExpectedJobs` with a new leg (the exact `68cf0aa`
+scenario) leaves the suite 18/18 green, and removing the parameter fails loudly rather than silently.
+Meta suite: **0 failures across 10 files.**
+
 ---
 
 **Also in this release: the gate suite was reined in. 399s → 148s, with no test removed.**

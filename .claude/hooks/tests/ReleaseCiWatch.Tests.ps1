@@ -52,10 +52,45 @@ function New-Row {
             $HeadSha + '","status":"' + $Status + '","url":"https://github.com/owner/repo/actions/runs/' +
             $Id + '","workflowName":"' + $Workflow + '"}')
 }
+# The stub's job list is READ OUT OF watch-ci.ps1's own -ExpectedJobs default, never restated here.
+#
+# Why: it was restated here, and it drifted. B-113's 68cf0aa split the shipped hook suites onto six
+# new runners and widened ExpectedJobs to match; these stubs kept registering only windows+linux, so
+# the watcher correctly reported CANT-VERIFY and five cases that test WATCHER LOGIC -- pull_request
+# runs not deciding a release, re-runs superseding, polling to terminal, query scoping -- failed for
+# a reason none of them is about. That red then blocked every release, including a documentation-only
+# one, which is what -AllowFailingGate now exists for.
+#
+# Deriving the list means the next person to widen ExpectedJobs cannot break these cases by omission.
+# The naming shape itself ('<job> (<value>)' for matrix legs) is no longer an assumption: run
+# 31168445026 produced exactly windows, linux, windows-hooks (dotnet|angular|monorepo) and
+# linux-hooks (dotnet|angular|monorepo), which is what the default declares.
+function Get-ExpectedJobNames {
+    $watchPath = Join-Path $repoRoot '.claude/scripts/watch-ci.ps1'
+    $errors = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile($watchPath, [ref]$null, [ref]$errors)
+    if ($errors.Count) { throw "watch-ci.ps1 does not parse: $($errors[0])" }
+    $param = $ast.FindAll({ param($n)
+        $n -is [System.Management.Automation.Language.ParameterAst] -and $n.Name.VariablePath.UserPath -eq 'ExpectedJobs'
+    }, $true) | Select-Object -First 1
+    if (-not $param) { throw 'watch-ci.ps1 no longer declares -ExpectedJobs -- these stubs can no longer be kept in step with it' }
+    if (-not $param.DefaultValue) { throw '-ExpectedJobs has no default -- the stub cannot derive the leg list' }
+    $names = @($param.DefaultValue.SafeGetValue())
+    if ($names.Count -lt 2) { throw "-ExpectedJobs default yielded $($names.Count) name(s); expected the full leg list" }
+    return $names
+}
 function New-Jobs {
     param([string]$Windows = 'success', [string]$Linux = 'success', [switch]$OmitLinux)
-    $j = @('{"name":"windows","conclusion":"' + $Windows + '","status":"completed","databaseId":91483264876}')
-    if (-not $OmitLinux) { $j += '{"name":"linux","conclusion":"' + $Linux + '","status":"completed","databaseId":91483264877}' }
+    $id = 91483264876
+    $j = @()
+    foreach ($name in (Get-ExpectedJobNames)) {
+        if ($name -eq 'linux' -and $OmitLinux) { continue }
+        # 'windows'/'linux' keep their per-case conclusions; the derived matrix legs default to
+        # success so a case that says nothing about them is not silently testing a red leg.
+        $conclusion = switch ($name) { 'windows' { $Windows } 'linux' { $Linux } default { 'success' } }
+        $j += '{"name":"' + $name + '","conclusion":"' + $conclusion + '","status":"completed","databaseId":' + $id + '}'
+        $id++
+    }
     return '{"jobs":[' + ($j -join ',') + ']}'
 }
 

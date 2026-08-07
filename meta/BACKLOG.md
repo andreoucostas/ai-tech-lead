@@ -2893,6 +2893,28 @@ CI comes back green; nothing needs unwinding.
 > of the naming — the "Do first, when Actions recovers" checklist above stays owed in full.
 >
 > **Effort:** S. **Priority: P1** — it is now on the critical path of every release, not just this one.
+>
+> **FIXED 2026-08-07 (v0.49.0). And the naming question above is now ANSWERED BY OBSERVATION.**
+> CI run `31168445026` produced exactly eight jobs — `windows`, `linux`,
+> `windows-hooks (dotnet|angular|monorepo)`, `linux-hooks (dotnet|angular|monorepo)` — matching
+> `watch-ci.ps1`'s widened default. The six split legs each ran in **1:21–3:16**, nowhere near the
+> 15-minute ceiling. So all three items on the "Do first, when Actions recovers" checklist are
+> discharged: eight jobs appear, the matrix legs execute, and `ExpectedJobs` matches the real names.
+> The `<job> (<value>)` shape is no longer an assumption. **The 15-minute cancellation is gone —
+> `68cf0aa`'s split worked, and the outage that masked it has passed.**
+>
+> **The fix is structural, not a patch.** `New-Jobs` in `ReleaseCiWatch.Tests.ps1` no longer restates
+> the leg list; it **derives it from `watch-ci.ps1`'s own `-ExpectedJobs` default** by AST. Restating
+> it is precisely what drifted. Red-tested both directions: widening `ExpectedJobs` with a brand-new
+> leg — the exact `68cf0aa` scenario — leaves the suite **18/18 green** because the stubs follow
+> automatically, and removing the parameter fails **loudly** (14 failures), never silently.
+> **This breakage class cannot recur by omission.**
+>
+> **What this cost while it was open, worth remembering:** five stubs that had nothing to do with job
+> naming — they test that a `pull_request` run does not decide a release, that a re-run supersedes an
+> earlier failure, that the watcher polls to a terminal state, and that queries are scoped — blocked
+> *every* release for a day, including a documentation-only one. That asymmetry is the argument for
+> `-AllowFailingGate`, added in the same release.
 
 **Cross-links:** B-88 (the watch that caught it and is working correctly), B-101 (gate runtime — the
 local half of this, and its "nothing measures cost" thesis now has a CI-side instance), B-70 (a change
