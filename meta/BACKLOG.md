@@ -2869,6 +2869,31 @@ precisely the claim the tag is supposed to carry.
 (`release.ps1` prints it explicitly). Re-running the identical release command re-watches and tags if
 CI comes back green; nothing needs unwinding.
 
+> **NEW, 2026-08-07 — `68cf0aa` also broke the meta suite, and that now blocks every release.**
+> Found while shipping B-96, which cannot reach its own ship gates because of it. `ReleaseCiWatch.Tests`
+> reports **5 failures**; `release.ps1` gates on the meta suite (`:271`), so **no release can be cut
+> until this is fixed** — including v0.49.0.
+>
+> **Cause, confirmed rather than inferred.** `68cf0aa` extended `watch-ci.ps1`'s default
+> `ExpectedJobs` (`:47`) to the six split legs — `windows-hooks (dotnet|angular|monorepo)`,
+> `linux-hooks (…)`. Five test fixtures still register only the old two jobs, so the watcher correctly
+> returns `EXIT=3 CI CANT-VERIFY: expected CI leg(s) not present … Jobs observed: linux, windows`.
+> `git log -- .claude/scripts/watch-ci.ps1` shows `68cf0aa` as the last change to that file; B-96's
+> diff touches no file under `scripts/` at all.
+>
+> **The five are not about job naming.** They test *watcher logic* — a `pull_request` run must not
+> decide the release, a re-run supersedes an earlier failure, polling reaches a terminal state, query
+> scoping. Each broke incidentally because its stub job list no longer covers the widened default.
+> Updating those stubs restores them to testing what they exist for.
+>
+> **What updating them must NOT be mistaken for.** It does not verify the real job names. This entry
+> already records that GitHub's `<job> (<value>)` naming is *assumed, not observed*, and Actions being
+> down is exactly why it still cannot be observed. That assumption lives in `watch-ci.ps1`'s default
+> and is equally unverified before and after. Do not let a green meta suite be read as confirmation
+> of the naming — the "Do first, when Actions recovers" checklist above stays owed in full.
+>
+> **Effort:** S. **Priority: P1** — it is now on the critical path of every release, not just this one.
+
 **Cross-links:** B-88 (the watch that caught it and is working correctly), B-101 (gate runtime — the
 local half of this, and its "nothing measures cost" thesis now has a CI-side instance), B-70 (a change
 is not done until CI is green — which is now unachievable through no fault of the change).
