@@ -5,6 +5,42 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.49.0 — 2026-08-06
+
+- **`map-warehouse` now maps the warehouse, not just how it is loaded.** Until now the map told you
+  how `FactSales` is loaded and whether that load is re-runnable — and could not tell you what
+  `FactSales` joins to, or which dimension owns an attribute. Every one of its eight columns was a
+  loading property. The map now also carries a **table inventory with primary, surrogate and
+  natural keys**, a **fact → dimension relationship list** as its primary artifact, the dimensional
+  semantics a report depends on (fact type, role-playing and conformed dimensions, degenerate
+  dimensions, measure additivity), and a **Coverage** section naming what could not be read.
+- **Every relationship says how it was learned, and "I do not know" is a valid answer.** Each edge
+  is labelled `Declared` (a real foreign key or dbt relationship test), `In use` (a join an existing
+  reporting view actually performs), `Load-derived`, `UNRESOLVED`, or `CONFLICTING`. **A naming
+  convention alone is never enough to assert a relationship** — `CustomerKey` looking like it points
+  at `DimCustomer` is recorded as an unresolved candidate, not as a fact. A wrong label is worse
+  than no label: it retires exactly the doubt that would have sent someone to check the view.
+- **The map now carries its own "Querying this warehouse" section**, so the rules are in the
+  document you open when you are about to write a report. They cover the two ways a warehouse query
+  goes wrong *quietly* — producing a plausible number instead of an error:
+  - Reaching an attribute off a column that merely sits on an already-joined table. A column
+    declared in DDL but never populated by any load looks identical to a real one in a `SELECT`
+    list, and returns blanks rather than failing.
+  - Putting `EffectiveFrom`/`EffectiveTo`/`IsCurrent` predicates on a join whose key already
+    identifies one dimension version. That **silently drops every fact row pointing at a superseded
+    version** — a low row count, not an error — and in review the extra predicate reads as *more*
+    careful, so it survives the scrutiny that would catch a missing filter. The map records, per
+    relationship, whether the version was pinned when the fact was loaded or is still to be chosen
+    at query time, which is the only thing that settles it.
+  - Plus the fan and chasm traps, and the rule that you copy an existing reporting view's join path
+    before inventing one.
+- **After `/bootstrap`, CLAUDE.md > Conventions > Data Access gets a one-line pointer to
+  `docs/warehouse-map.md`**, the same index-then-detail split already used for architecture
+  decisions. The detail stays in the map so it does not sit in context on every turn.
+- **What you need to do:** nothing to install — the updated skill arrives with your next update.
+  To get the new content into your map, **re-run `map-warehouse`**; it refreshes
+  `docs/warehouse-map.md` in place. Existing maps are not upgraded automatically.
+- **No changes to the Angular side of this release.**
 ## 0.48.0 — 2026-08-06
 
 - **Your assistant now reads what your repository already says about a subsystem before writing

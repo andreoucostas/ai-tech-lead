@@ -1275,3 +1275,54 @@ into a new place for no remaining benefit once the Copilot gap turned out not to
 the protection (the worse failure); injecting the rules from `session-start` (duplicates the stale
 copy in the same window and costs ~7 KB every session).
 
+
+---
+
+## WSD-032: read-side guidance travels on the channel the evidence measured, not the one the design assumed (2026-08-06)
+
+**Context.** B-96's design (`.claude/plans/2026-08-05-b96-warehouse-schema-map-design.md`, LOCKED
+2026-08-05) placed the warehouse read-side query rules — reach an attribute through a fact key,
+suspect same-named columns, the fan and chasm traps, and later the temporal-predicate rule — inside
+`map-warehouse/SKILL.md`, under the heading "Read-side guidance (in the skill, not in static
+context)". That siting was reasonable when it was written: the skill is unprotected and refreshes on
+update, so the content genuinely reaches already-installed consumers, and static context had no room.
+
+Then B-98 step 2 measured the channels. Rule-present arm, six `sonnet` runs on the warehouse fixture
+(`meta/eval-results.md`): `docs/warehouse-map.md` was opened **6/6**, and the `Skill` tool fired
+**0/6** — unchanged from the `r=0` baseline. Verification Rule 11 fixed *reach*, and it did so by
+routing the model to the document, bypassing skill invocation rather than repairing it. On the exact
+task class the field report describes — a developer writing or replicating a report — the skill is
+not invoked, so guidance sited only in the skill reaches nobody at the moment it is needed.
+
+**Decision.** Keep the rules in `SKILL.md` as the authoring instruction, **and** require step 9 to
+copy the "Querying this warehouse" section into the emitted `docs/warehouse-map.md`. The rules then
+ride the channel measured at 6/6 instead of the one measured at 0/6. The map is a consumer-repo
+artifact, so this costs no static context.
+
+**Why not move them out of the skill entirely.** The skill is what an onboarding developer runs
+deliberately, and the rules are the reason several of its extraction steps exist — step 3's
+`version resolution` column exists only to make read-side rule 6 answerable. Removing them would
+leave the recipe stating requirements with no visible purpose.
+
+**Second-order consequence, and it is the load-bearing one.** Once the rules live in the map, the
+map's *content* is the delivery vehicle for everything B-96 adds. A map that is never written, or
+written without its edge list, delivers nothing — which is why the ship gate is a produced-artifact
+check (`warehouse-map-quality` in the eval harness) and not a prose review.
+
+**Also decided here: §3.5's description broadening is implemented budget-neutrally.** The design
+asked for a broader `description` naming report-writing. That is a "write a better description"
+mechanism, and B-98 step 2 §2.2 is explicit that such proposals must explain why the `r=0`
+observation does not also apply to them. It does apply: a matching USE FOR phrase was already
+present and the skill still did not fire. The phrase is therefore added while the frontmatter is
+compressed elsewhere — net **+96 characters**, against **226** of monorepo headroom — rather than
+spending the scarcest resource in the framework on the weakest of the three mechanisms.
+
+**Honest limit.** The 6/6 that motivates this was measured on one fixture, one model, one host, and
+on the reach question only. It establishes that the map is opened, not that rules inside it change
+what gets written. That second question is what the enriched fixture and `usedDeadColumn` exist to
+answer, and it is answered separately.
+
+**Rejected:** moving the rules to static context (no room — 120 characters of monorepo headroom
+after this change, and the same B-72 inert-rule risk); a second read-side skill (B-96 rejected it,
+and step 1 is the evidence that adding a routing bet does not pay); leaving §3.4 as locked and
+recording the gap in the backlog (it would ship content known not to reach the failure it targets).

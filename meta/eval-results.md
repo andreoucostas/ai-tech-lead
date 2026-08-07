@@ -422,3 +422,52 @@ retained scratch target: the rule is in `.github/instructions/framework-rules.in
 
 **Cost:** $2.37 for six runs.
 
+
+---
+
+## PRE-REGISTRATION — B-96 outcome arm (written 2026-08-06, BEFORE any run)
+
+B-98 step 2 §6.3 predicted `usedDeadColumn` could not move while the fixture map was ETL-only, and
+that prediction held (4/6 → 5/6). This is the run §6.3 named as step (2): enrich the fixture map with
+the relationship content B-96 adds, then re-measure. Thresholds and the honest-failure conditions are
+fixed here, before the instrument is pointed at anything.
+
+**Two arms, run in this order.**
+
+**Arm 1 — `warehouse-map-quality` (new scenario, n=1, ~$1.50). Discharges B-96 criterion 4.**
+Does the rewritten skill, when actually run, produce a map with substance? Graded on the produced
+`docs/warehouse-map.md`, not on the transcript and not on the prose:
+- **Pass** = map written · edge-list header present · `version resolution` column present · ≥3
+  fact→dimension edge rows · the literal `UNRESOLVED` appears · "Querying this warehouse" section
+  present · Coverage section present.
+- Secondary, reported not decisive: `deadColumnsFlagged` (0–3), `pinnedAtLoad`.
+- **A fail here stops the ship.** The whole delivery chain now runs through the emitted map
+  (WSD-032), so a skill that does not produce one delivers nothing.
+
+**Arm 2 — `warehouse-route-p1..p3` ×2 = 6 runs, ~$2.40. Discharges criterion 5's outcome axis.**
+The fixture map is replaced with **arm 1's machine-produced map, verbatim** — not a map I authored.
+This matters: an oracle written by the implementer to make the measure move would be exactly the
+"instrument that cannot fail" class this repo has been bitten by four times (B-64, B-72, B-74, B-75).
+Everything else is held identical to the `r=6/6` arm: same three paraphrases, same grader, same
+model (`sonnet`), same host, same harness.
+
+| Signal | Baseline | Prediction | Reading |
+|---|---|---|---|
+| `usedDeadColumn` | **5/6** (rule present, ETL-only map) | falls to **≤2/6** | ≤2/6 = the content works. 3–4/6 = partial, ship with a stated ceiling. **5–6/6 = it does not work** — do not reword that into a pass |
+| `r` (map reached) | 6/6 | stays **≥5/6** | a drop means the enriched map cost reach; that is a regression, not a wash |
+| `joinedDimension` | 6/6 | stays 6/6 | a drop is a regression regardless of `usedDeadColumn` |
+
+**Stated in advance, because it is the result most likely to be spun.** If `usedDeadColumn` stays at
+5/6 while arm 1 passes, the honest conclusion is that the map's *content* does not change the query
+the model writes — and B-96 has then delivered a better document and not fixed the field report.
+That is a real possible outcome of this run and it will be recorded as such.
+
+**Known limitations, fixed here so they are not discovered afterwards.**
+1. `n=6`, one model, one fixture, one host — same bar as both previous arms.
+2. Run-order randomisation is still defeated by the harness selecting scenarios in file order
+   (`run-agent-evals.ps1:1043`); the confound with time is unchanged from the earlier arms.
+3. Grading of the typed signals is mechanical, but arm 1's Pass includes a produced-document check
+   whose fixture content I chose the thresholds for. The thresholds are frozen above.
+4. Arm 2's baseline (5/6) came from a different day's batch; batch-to-batch variance on this signal
+   was visible in step 1 (4/6 vs 5/6 across arms with no content change), which is precisely why the
+   threshold is ≤2/6 and not "any fall".

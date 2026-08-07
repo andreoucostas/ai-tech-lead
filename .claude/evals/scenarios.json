@@ -78,6 +78,13 @@
       "assertion": "warehouseRouting"
     },
     {
+      "id": "warehouse-map-quality",
+      "fixture": "warehouse",
+      "budgetUsd": 1.50,
+      "prompt": "Use the map-warehouse skill to map this warehouse, and write the result to docs/warehouse-map.md. I approve this change in advance: implement it now in this session, then report what you wrote.",
+      "assertion": "warehouseMapQuality"
+    },
+    {
       "id": "haiku-convention-check",
       "budgetUsd": 0.35,
       "model": "haiku",

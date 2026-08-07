@@ -1368,13 +1368,23 @@ naming-only evidence, and the design's labelled fixture (declared FK, CTE-resolv
 a misleading column name, conflicting consumption joins, dynamic SQL) must measure **abstention as
 well as precision** — via the B-41 harness, not a second one.
 
-> **BLOCKED 2026-08-06 — B-98 step 1 ran and returned `r = 0` of 6.** The pre-registered rule fires:
-> implementation does not start until step 2 produces a routing remedy. `map-warehouse` was never
-> invoked and `docs/warehouse-map.md` never opened across six sonnet runs, *while the skill was named
-> in always-loaded context* — so however good this content is, it would currently reach nobody.
-> Evidence and caveats in B-98 above and `meta/eval-results.md`.
+> **UNBLOCKED 2026-08-06 — the gate is discharged, and the block below is kept as history.**
+> B-98 step 2 shipped Verification Rule 11 in v0.48.0 and measured `r = 6/6` against the `0/6`
+> baseline (`p≈0.002`, `meta/eval-results.md`). The pre-registered rule was `r≥5` ships; it was met
+> and not moved. §6.3 of that design names "implement B-96's map content" as the explicit next step,
+> because `usedDeadColumn` cannot move while the map it points at is ETL-only.
 >
-> **Two amendments to this entry's own record, both from that run:**
+> **But read what actually moved, because it changes this item's delivery story.** The `Skill`
+> channel stayed at **0/6**. Rule 11 works by routing the model to `docs/warehouse-map.md`, not by
+> repairing skill routing — so on a report-writing task, `map-warehouse` still does not fire.
+> Guidance sited *only* in the skill therefore reaches nobody at the moment it is needed. The locked
+> design's §3.4 put the read-side rules exactly there. **Deviation taken and recorded as WSD-032:**
+> the rules stay in `SKILL.md` as the authoring instruction *and* step 9 copies them into the emitted
+> map, so they ride the 6/6 channel. §3.5's description broadening is implemented budget-neutrally
+> for the same reason — it is a "better description" mechanism, which is what step 2 §2.2 says the
+> `r=0` observation weakens.
+>
+> **Two amendments to this entry's own record, both from the step-1 run:**
 > - **§3.6 understates delivery.** `.claude/skills/` is unprotected and refreshes on update
 >   (`install.ps1:30-31`, `:83-85`), so the skill content *does* reach already-bootstrapped
 >   consumers. Only the `Conventions > Data Access` index line is behind B-97. Do not carry the

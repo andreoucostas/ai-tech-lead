@@ -223,9 +223,10 @@ function Install-Framework([string]$Path, [ValidateSet('dotnet','angular')][stri
     return $output
 }
 
-function Initialize-WarehouseScenario([string]$Path) {
+function Initialize-WarehouseScenario([string]$Path, [switch]$OmitMap) {
     New-Item -ItemType Directory -Path (Join-Path $Path 'docs') -Force | Out-Null
-    @'
+    if (-not $OmitMap) {
+        @'
 # Warehouse map
 
 | entity | layer | grain | load proc/pipeline | orchestrated by | rerun protection | SCD | partitioning |
@@ -234,6 +235,7 @@ function Initialize-WarehouseScenario([string]$Path) {
 | DimRegion | dimension | one row per region | usp_LoadDimRegion | warehouse load | merge by region | Type 1 | none |
 | FactSales | fact | one row per sale | usp_LoadFactSales | warehouse load | LoadRunId | n/a | none |
 '@ | Set-Content (Join-Path $Path 'docs/warehouse-map.md') -Encoding utf8NoBOM
+    }
     $claudePath = Join-Path $Path 'CLAUDE.md'
     $claudeText = (Get-Content -Raw $claudePath).Replace('BOOTSTRAP_PENDING', 'EVAL_BOOTSTRAPPED')
     # Population A (design 3.4): warehouse essentials, no pointer to the skill or the map.
@@ -587,6 +589,43 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             if ($c4) { $channels += 'C4' }
             if ($c5) { $channels += 'C5' }
             return [pscustomobject]@{ Status = $status; Pass = $status -eq 'PASS'; Detail = "category=$category channels=$($channels -join ',') usedDeadColumn=$usedDeadColumn joinedDimension=$joinedDimension readView=$readView readViewTarget=$(if ($relevantView) { $relevantView } else { 'none' }) artifactWritten=$artifactWritten otherSqlArtifacts=$($otherArtifacts -join ',')" }
+        }
+        'warehouse-map-quality' {
+            $mapPath = Join-Path $Target 'docs/warehouse-map.md'
+            if (-not (Test-Path -LiteralPath $mapPath -PathType Leaf)) {
+                return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = 'mapWritten=False hasEdgeList=False hasVersionResolution=False edgeRows=0 abstained=False deadColumnsFlagged=0 hasQueryRules=False hasCoverage=False pinnedAtLoad=False' }
+            }
+            $mapText = Get-Content -Raw -LiteralPath $mapPath
+            if ($null -eq $mapText) { $mapText = '' }
+            $mapWritten = $mapText.Trim().Length -gt 0
+            # Header/data-row detection: a header row is any `|...|` line immediately followed by a
+            # markdown separator row (`|---|---|...`). Restricting to that shape keeps prose
+            # mentioning these column names from being mistaken for the edge-list table itself.
+            $mapLines = $mapText -split '\r?\n'
+            $headerLines = [Collections.Generic.List[string]]::new()
+            for ($lineIndex = 0; $lineIndex -lt $mapLines.Count - 1; $lineIndex++) {
+                if ($mapLines[$lineIndex] -match '^\s*\|' -and $mapLines[$lineIndex + 1] -match '^\s*\|[-:\|\s]+\|\s*$') {
+                    $headerLines.Add($mapLines[$lineIndex])
+                }
+            }
+            $edgeHeaderLine = @($headerLines | Where-Object {
+                $_ -match '(?i)\bfact\b' -and $_ -match '(?i)fk column' -and $_ -match '(?i)dimension' -and $_ -match '(?i)\bevidence\b' -and $_ -match '(?i)\bconfidence\b'
+            } | Select-Object -First 1)
+            $hasEdgeList = $edgeHeaderLine.Count -gt 0
+            $hasVersionResolution = $hasEdgeList -and ($edgeHeaderLine[0] -match '(?i)version resolution')
+            # Case-sensitive on purpose: under IgnoreCase, .NET treats [A-Z] as matching lowercase
+            # too, so "dimension" in prose would otherwise satisfy \bDim[A-Z]. Real table names are
+            # PascalCase (DimCustomer, DimRegion, ...); require that case to count as an edge row.
+            $edgeRows = @([regex]::Matches($mapText, '(?m)^\s*\|.*\|\s*$') | Where-Object {
+                $_.Value -notmatch '^\s*\|[-:\|\s]+\|\s*$' -and $_.Value -cmatch 'FactSales' -and $_.Value -cmatch '\bDim[A-Z][A-Za-z]*\b'
+            }).Count
+            $abstained = $mapText -cmatch 'UNRESOLVED'
+            $deadColumnsFlagged = @(@('RegionName', 'CategoryName', 'SegmentName') | Where-Object { $mapText -cmatch "\b$_\b" }).Count
+            $hasQueryRules = $mapText -match '(?im)^\s*#{1,6}.*Querying this warehouse'
+            $hasCoverage = $mapText -match '(?im)^\s*(#{1,6}\s*.*\bCoverage\b|\*\*[^*\r\n]*\bCoverage\b[^*\r\n]*\*\*)'
+            $pinnedAtLoad = $mapText -cmatch 'Pinned at load'
+            $pass = $mapWritten -and $hasEdgeList -and $hasVersionResolution -and $edgeRows -ge 3 -and $abstained -and $hasQueryRules -and $hasCoverage
+            return [pscustomobject]@{ Status = 'PASS'; Pass = $pass; Detail = "mapWritten=$mapWritten hasEdgeList=$hasEdgeList hasVersionResolution=$hasVersionResolution edgeRows=$edgeRows abstained=$abstained deadColumnsFlagged=$deadColumnsFlagged hasQueryRules=$hasQueryRules hasCoverage=$hasCoverage pinnedAtLoad=$pinnedAtLoad" }
         }
         'haiku-convention-check' {
             $found = $finalOk -and $finalText -match '(?i)## Convention check' -and $finalText -match '(?i)Findings \([1-9]' -and $finalText -match '(?im)^\|[^\r\n]*ConventionViolation\.cs[^\r\n]*CancellationToken[^\r\n]*\|'
@@ -970,6 +1009,76 @@ GROUP BY [geo].[RegionName];
         $preparedPointers = @([regex]::Matches($preparedClaude, '(?i)map-warehouse|warehouse-map\.md')).Count
         if ($preparedPointers -ne $baselinePointers) { throw "warehouse setup changed the warehouse-pointer count in CLAUDE.md ($baselinePointers -> $preparedPointers); population A must add no pointer of its own" }
         if ($preparationCommit -le $preparationBaseline -or (git -C $warehousePreparationTemp log -1 --format=%s) -ne 'warehouse scenario setup') { throw 'warehouse live-preparation smoke test did not create the setup commit' }
+
+        $omitMapTemp = Join-Path $temp 'warehouse-omit-map'
+        New-EvalRepo $omitMapTemp warehouse
+        Install-Framework $omitMapTemp dotnet | Out-Null
+        Initialize-WarehouseScenario $omitMapTemp -OmitMap | Out-Null
+        if (Test-Path -LiteralPath (Join-Path $omitMapTemp 'docs/warehouse-map.md')) { throw 'Initialize-WarehouseScenario -OmitMap wrote a map anyway' }
+        $withMapTemp = Join-Path $temp 'warehouse-with-map'
+        New-EvalRepo $withMapTemp warehouse
+        Install-Framework $withMapTemp dotnet | Out-Null
+        Initialize-WarehouseScenario $withMapTemp | Out-Null
+        if (-not (Test-Path -LiteralPath (Join-Path $withMapTemp 'docs/warehouse-map.md'))) { throw 'Initialize-WarehouseScenario without -OmitMap did not write a map' }
+
+        # warehouseMapQuality grades the CONTENT of docs/warehouse-map.md directly -- it needs no
+        # tool-use evidence, but Test-ScenarioEvidence unconditionally parses the transcript first,
+        # so a minimal valid stream (init + terminal result) is still required.
+        $mapQualityTemp = Join-Path $temp 'warehouse-map-quality'
+        New-Item -ItemType Directory -Path (Join-Path $mapQualityTemp 'docs') -Force | Out-Null
+        $mapQualityEvidence = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='done' })
+        ) }
+        $mapQualityPath = Join-Path $mapQualityTemp 'docs/warehouse-map.md'
+        $edgeListBlock = @'
+## Relationship edge list
+
+| fact | fk column | → dimension | role | version resolution | evidence | confidence |
+|------|-----------|-------------|------|--------------------|---------|------------|
+| FactSales | CustomerKey | DimCustomer | customer | Pinned at load | Declared | Declared |
+| FactSales | ProductKey | DimProduct | product | Deferred to query | In use | In use |
+| FactSales | RegionKey | DimRegion | region | UNRESOLVED | naming only | UNRESOLVED |
+'@
+        $queryRulesBlock = @'
+## Querying this warehouse
+
+Reach an attribute by following a fact key to the dimension that owns it.
+'@
+        $coverageBlock = @'
+## Coverage
+
+RegionName is declared in DDL but never populated by any load.
+'@
+        $compliantMap = @"
+# Warehouse map
+
+$edgeListBlock
+
+$queryRulesBlock
+
+$coverageBlock
+"@
+        $compliantMap | Set-Content -LiteralPath $mapQualityPath -Encoding utf8NoBOM
+        $compliantResult = Test-ScenarioEvidence 'warehouse-map-quality' $mapQualityTemp $mapQualityEvidence 1
+        if (-not $compliantResult.Pass -or $compliantResult.Detail -ne 'mapWritten=True hasEdgeList=True hasVersionResolution=True edgeRows=3 abstained=True deadColumnsFlagged=1 hasQueryRules=True hasCoverage=True pinnedAtLoad=True') { throw "warehouseMapQuality rejected a fully compliant map: $($compliantResult.Detail)" }
+
+        ($compliantMap.Replace('UNRESOLVED', 'Resolved')) | Set-Content -LiteralPath $mapQualityPath -Encoding utf8NoBOM
+        $noAbstainResult = Test-ScenarioEvidence 'warehouse-map-quality' $mapQualityTemp $mapQualityEvidence 1
+        if ($noAbstainResult.Pass -or $noAbstainResult.Detail -notmatch 'abstained=False') { throw "warehouseMapQuality accepted a map with every UNRESOLVED removed: $($noAbstainResult.Detail)" }
+
+        ($compliantMap.Replace('| version resolution ', '')) | Set-Content -LiteralPath $mapQualityPath -Encoding utf8NoBOM
+        $noVersionResult = Test-ScenarioEvidence 'warehouse-map-quality' $mapQualityTemp $mapQualityEvidence 1
+        if ($noVersionResult.Pass -or $noVersionResult.Detail -notmatch 'hasVersionResolution=False') { throw "warehouseMapQuality accepted a map with the version resolution column removed from the header: $($noVersionResult.Detail)" }
+
+        ($compliantMap.Replace($queryRulesBlock, '')) | Set-Content -LiteralPath $mapQualityPath -Encoding utf8NoBOM
+        $noQueryResult = Test-ScenarioEvidence 'warehouse-map-quality' $mapQualityTemp $mapQualityEvidence 1
+        if ($noQueryResult.Pass -or $noQueryResult.Detail -notmatch 'hasQueryRules=False') { throw "warehouseMapQuality accepted a map with the Querying this warehouse section removed: $($noQueryResult.Detail)" }
+
+        Remove-Item -LiteralPath $mapQualityPath -Force
+        $noMapResult = Test-ScenarioEvidence 'warehouse-map-quality' $mapQualityTemp $mapQualityEvidence 1
+        if ($noMapResult.Status -ne 'INCONCLUSIVE' -or $noMapResult.Pass) { throw "warehouseMapQuality did not classify a missing map as INCONCLUSIVE: status=$($noMapResult.Status) pass=$($noMapResult.Pass)" }
+
         $checkpoint = [pscustomobject]@{ Events = @(
             ([pscustomobject]@{ type='system'; subtype='init' }),
             ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='skill'; name='Skill'; input=[pscustomobject]@{ skill='add-tests' } }) } }),
@@ -1021,6 +1130,7 @@ GROUP BY [geo].[RegionName];
         Write-Output 'PASS: warehouse fixture clears exact step-0 patterns and preserves dead columns'
         Write-Output 'PASS: warehouse routing categories, success semantics, and ungraded SQL signals'
         Write-Output 'PASS: warehouse preparation installs, populates population A without pointers, and commits setup'
+        Write-Output 'PASS: warehouse-map-quality grades map content (compliant/no-UNRESOLVED/no-version-resolution/no-query-rules/missing) and -OmitMap toggles map creation'
         Write-Output 'PASS: warehouse dead-column guard rejects INSERT, UPDATE, and both MERGE write branches'
         Write-Output 'PASS: developer checkpoint is INCONCLUSIVE, not PASS/FAIL'
         Write-Output 'PASS: install graders require an observed installer tool event'
@@ -1124,6 +1234,9 @@ Classes that orchestrate multi-step domain work are suffixed `Coordinator` in th
             }
             { $_ -in @('warehouse-route-p1','warehouse-route-p2','warehouse-route-p3') } {
                 $before = Initialize-WarehouseScenario $target
+            }
+            'warehouse-map-quality' {
+                $before = Initialize-WarehouseScenario $target -OmitMap
             }
             'haiku-bloat-radar' {
                 "namespace EvalFixture; public static class SpeculativeHelper { public static int Identity(int value) => value; }" | Set-Content (Join-Path $target 'src/SpeculativeHelper.cs') -Encoding utf8NoBOM

@@ -47,6 +47,7 @@ Data-access defaults are conditional on what the repo evidences in csproj packag
 - Loads are idempotent and re-runnable: use the repo's control mechanism (watermarks, batch/load ids, partition switch, versioned runs) — never load the same data twice, and a rerun after a failed run must be safe.
 - Load dimensions before the facts that reference them; apply the slowly-changing-dimension type each dimension already uses.
 - Use the `map-warehouse` skill to understand the warehouse before changing it, and `add-warehouse-load` to add or extend a load.
+- The map lives in `docs/warehouse-map.md`, indexed by a one-line pointer in CLAUDE.md > Conventions > Data Access — the same detail-on-demand split as Architecture Decisions. **Read the map before writing a warehouse query**, not only before changing a load: it carries the fact → dimension relationships, which key reaches which dimension, and the confidence in each. Reach an attribute by following a fact key to the dimension that owns it — never off a same-named column that happens to sit on a table already in the join, and never assume a relationship from a naming convention. If the map marks an edge `UNRESOLVED`, copy an existing reporting view's join path or ask; do not guess.
 - T-SQL examples apply only where the repo evidences SQL Server (`.sqlproj`, `Microsoft.Data.SqlClient`, T-SQL syntax in `.sql` files).
 
 **If none detected:**

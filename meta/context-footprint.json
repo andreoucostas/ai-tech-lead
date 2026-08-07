@@ -157,8 +157,8 @@
         },
         {
           "path": ".claude/skills/map-warehouse/SKILL.md#frontmatter",
-          "chars": 795,
-          "tok": 199
+          "chars": 901,
+          "tok": 225
         },
         {
           "path": ".claude/skills/perf/SKILL.md#frontmatter",
@@ -182,8 +182,8 @@
         },
         {
           "path": "CLAUDE.md",
-          "chars": 7909,
-          "tok": 1977
+          "chars": 7913,
+          "tok": 1978
         }
       ],
       "static.copilot": [
@@ -199,8 +199,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 22664,
-          "tok": 5666
+          "chars": 22668,
+          "tok": 5667
         }
       ],
       "instructed": [
@@ -211,8 +211,8 @@
         },
         {
           "path": "docs/defaults.md",
-          "chars": 7364,
-          "tok": 1841
+          "chars": 8060,
+          "tok": 2015
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -317,8 +317,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 31333,
-          "tok": 7833
+          "chars": 31826,
+          "tok": 7956
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -422,8 +422,8 @@
         },
         {
           "path": ".claude/skills/map-warehouse/SKILL.md#body",
-          "chars": 4857,
-          "tok": 1214
+          "chars": 17003,
+          "tok": 4251
         },
         {
           "path": ".claude/skills/perf/SKILL.md#body",
@@ -1025,8 +1025,8 @@
         },
         {
           "path": ".claude/skills/map-warehouse/SKILL.md#frontmatter",
-          "chars": 795,
-          "tok": 199
+          "chars": 901,
+          "tok": 225
         },
         {
           "path": ".claude/skills/perf/SKILL.md#frontmatter",
@@ -1050,8 +1050,8 @@
         },
         {
           "path": "CLAUDE.md",
-          "chars": 10125,
-          "tok": 2531
+          "chars": 10129,
+          "tok": 2532
         }
       ],
       "static.copilot": [
@@ -1067,8 +1067,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 26719,
-          "tok": 6680
+          "chars": 26723,
+          "tok": 6681
         }
       ],
       "instructed": [
@@ -1079,8 +1079,8 @@
         },
         {
           "path": "docs/defaults.md",
-          "chars": 14429,
-          "tok": 3607
+          "chars": 15125,
+          "tok": 3781
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -1185,8 +1185,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 39099,
-          "tok": 9775
+          "chars": 39592,
+          "tok": 9898
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1310,8 +1310,8 @@
         },
         {
           "path": ".claude/skills/map-warehouse/SKILL.md#body",
-          "chars": 4857,
-          "tok": 1214
+          "chars": 17003,
+          "tok": 4251
         },
         {
           "path": ".claude/skills/perf/SKILL.md#body",
@@ -1333,10 +1333,10 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 39417,
-      "static.claude.tok": 9854,
-      "static.copilot.chars": 43557,
-      "static.copilot.tok": 10889,
+      "static.claude.chars": 39527,
+      "static.claude.tok": 9882,
+      "static.copilot.chars": 43561,
+      "static.copilot.tok": 10890,
       "prompt.max.chars": 2253,
       "prompt.max.tok": 563
     },
@@ -1349,14 +1349,14 @@
       "prompt.max.tok": 581
     },
     "monorepo": {
-      "static.claude.chars": 47774,
-      "static.claude.tok": 11944,
-      "static.copilot.chars": 52433,
-      "static.copilot.tok": 13108,
+      "static.claude.chars": 47884,
+      "static.claude.tok": 11971,
+      "static.copilot.chars": 52437,
+      "static.copilot.tok": 13109,
       "prompt.max.chars": 2668,
       "prompt.max.tok": 667
     },
-    "monorepo-claude-ratio-permille": 1212
+    "monorepo-claude-ratio-permille": 1211
   },
   "_notes": [
     "Claude frontmatter is a stable over-approximation of harness injection.",

@@ -68,7 +68,7 @@ Recipes live as **skills**, auto-discovered by both Claude Code (`.claude/skills
 - `add-endpoint` — add a new HTTP API endpoint end-to-end (domain → service → DTO → validator → controller → integration test)
 - `add-entity` — add a new EF Core entity with configuration and migration review
 - `register-service` — register a new service in DI with the right lifetime
-- `map-warehouse` — map a SQL data-warehouse repo: layers (staging → warehouse → marts), fact/dim entities and grain, load orchestration, batch/watermark control, SCD strategy, partitioning
+- `map-warehouse` — map a SQL data-warehouse repo: layers (staging → warehouse → marts), tables, keys and fact → dimension relationships, grain, load orchestration, SCD strategy, partitioning
 - `add-warehouse-load` — add or extend a warehouse load following the repo's existing patterns: idempotent re-runnable loads, no double-loading, SCD handling, partition alignment
 - `add-tests` — add unit/integration tests following the repo's existing test framework, fixtures, and naming
 - `perf` — scan a file, directory, or the whole repo for ~50 performance anti-patterns; produces tiered findings (Critical / Moderate / Info) with file locations and TECH_DEBT.md integration

@@ -4,6 +4,10 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.49.0 — 2026-08-06
+
+- No changes to the Angular distribution this release. The warehouse-mapping improvements in
+  v0.49.0 apply to the .NET and mixed (monorepo) distributions only.
 ## 0.48.0 — 2026-08-06
 
 - **Your assistant now reads what your repository already says about a subsystem before writing

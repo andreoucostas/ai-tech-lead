@@ -11,6 +11,73 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.49.0 — 2026-08-07 (unreleased — implementation commit; behavioural arms pending)
+
+**B-96: `map-warehouse` mapped the ETL, not the warehouse. It now carries the schema and the
+relationships — and the read-side rules travel in the artifact the measurement says gets opened.**
+
+Implements the LOCKED design at `.claude/plans/2026-08-05-b96-warehouse-schema-map-design.md`, with
+one deviation recorded as **WSD-032**.
+
+- **The gate is discharged, not waived.** B-96 was blocked on B-98 step 1's `r=0/6`. Step 2 shipped
+  Verification Rule 11 in v0.48.0 and measured `r=6/6` (`p≈0.002`). The `BLOCKED` note in
+  `meta/BACKLOG.md` was stale and is now corrected in place rather than deleted.
+- **What the skill gained:** table inventory with primary/surrogate/natural keys; a fact → dimension
+  **edge list as the primary artifact**, carrying `version resolution`, `evidence` and `confidence`
+  per edge with `UNRESOLVED`/`CONFLICTING` as first-class states; dimensional semantics (fact type,
+  role-playing, conformed, degenerate, per-measure additivity); a Coverage section; and a
+  "Querying this warehouse" section with six read-side rules plus the fan and chasm traps.
+- **WSD-032 — the deviation, and why.** Design §3.4 sited the read-side rules in `SKILL.md` only.
+  The v0.48.0 arm measured the map opened **6/6** and the `Skill` tool fired **0/6** on exactly this
+  task class, so skill-only siting reaches nobody when it matters. Step 9 now copies the section
+  into the emitted `docs/warehouse-map.md`. The rules ride the 6/6 channel; costs no static context.
+- **§3.5 implemented budget-neutrally, deliberately.** Broadening a `description` is the mechanism
+  step 2 §2.2 says the `r=0` observation weakens. The report-writing phrase is added and the
+  frontmatter compressed elsewhere: **+96 chars**. The always-loaded Common Tasks line, which still
+  described the skill as ETL-only, was corrected for **+2 chars**.
+- **Budget after this release: monorepo `static.claude` 47,774 → 47,884 of 48,000 — 116 characters
+  left.** Stated because B-98 §5.1's lesson was that static context gets spent incidentally and
+  nobody names what it was spent instead of. This was spent on: accuracy of the one always-loaded
+  line describing a skill, and one report-writing phrase in its USE FOR.
+
+**Adversarial review (`sol`, independent session): 4 blocking, 6 non-blocking. 8 accepted, 1
+rejected, 1 deferred.** The two that mattered:
+- Read-side rule 6 was written as an absolute ("never put effective-date predicates on a
+  surrogate-key join"). That is **wrong** for a late-binding design where the fact stores a durable
+  key shared by every version row — there the temporal predicate is required. Rewritten around the
+  real discriminator (does the key identify one version?), which also moved `version resolution`
+  from the per-entity loading table onto the **edge**, where it belongs: two facts can reach the
+  same Type 2 dimension differently.
+- "One row per foreign-key column per fact" permits an **empty edge list**, since an agent may read
+  that as constraint-backed only. Confirmed against the ship-gate fixture itself, where
+  `fact.FactSales` declares **no** `FOREIGN KEY` — the gate would have graded a map with zero edges.
+  Now requires an explicit candidate sweep, with unconfirmed candidates emitted as `UNRESOLVED`.
+- Rejected: that `/map-warehouse` names a non-existent command. It is pre-existing convention
+  (`bootstrap.md:327`, shipped changelog) and valid on Claude Code; changing it here would have
+  desynchronised two lines in the same file.
+
+**New ship-gate instrument: the `warehouse-map-quality` eval scenario.** Criterion 4 ("the skill
+emits `UNRESOLVED` where evidence is naming-only") is verified on a produced artifact, not by reading
+prose. It grades the content of the emitted `docs/warehouse-map.md` and its fixture starts with **no
+map** (`Initialize-WarehouseScenario -OmitMap`). Reuses the B-41 harness — no second harness, per the
+design's constraint.
+
+**Verification.** `validate-dist` ×3 EXIT 0; shipped hook suites ×3, 0 failures; eval self-test 20
+PASS. The new grader was red-tested on **two axes I chose myself**, distinct from the implementer's:
+`edgeRows` threshold 3→99 and a broken `hasQueryRules` regex, both EXIT 1 on a compliant map, then
+green on restore. The context ceiling was red-tested (+200 chars of monorepo frontmatter → `FAIL:
+monorepo static.claude is 48081 chars, ceiling 48000`) before being trusted green.
+
+**Known-failing, and NOT caused by this change:** the meta suite reports 5 failures, all in
+`ReleaseCiWatch.Tests` (`watch-ci.ps1` stub timeouts, `EXIT=3 ... timeout 30s`). This diff touches no
+file under `scripts/`, no `watch-ci`, and no release script — verified by `git diff --name-only`.
+B-113 records that `68cf0aa` extended the watcher's `ExpectedJobs` and has never had a green run,
+which is the likely cause. **Indicated, not independently confirmed on a clean HEAD** — the check was
+interrupted. Do not treat this as cleared.
+
+**Still owed at this commit:** both behavioural arms pre-registered in `meta/eval-results.md`
+(`warehouse-map-quality` n=1, then `warehouse-route-p1..p3` ×2 against the enriched fixture). The
+harness refuses to run live while `dist/` differs from HEAD, which is why this commit exists.
 ## 0.48.0 — 2026-08-06
 
 **Verification Rule 11 — "read the repository's own description of a subsystem before writing against
