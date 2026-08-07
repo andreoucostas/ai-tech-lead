@@ -780,3 +780,52 @@ written for, and the shipped step is then a documentation improvement whose beha
 self-test's `bindPositive` fixture — surrogate keys resolved by load-proc joins, invoice number
 degenerate, no new `dim.*`, no `RegionKey` — scores `Pass=True` under the final grader. The measure
 is reachable in both directions before it is pointed at anything.
+
+## 2026-08-07 18:44:12 +01:00 — framework v0.50.0 (291541227ff23f5a59bf23459183477ed574b5b2)
+
+Host: Claude Code 2.1.223 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-bind-sql** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.8665668 tokensIn=34 tokensOut=17203; category=BOTH channels=C1,C2,C4 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **ERROR warehouse-bind-mixed** (model=sonnet) — agentExit=1 timedOut=False costUsd=0.535437 tokensIn=16 tokensOut=12454; category=BOTH channels=C1,C2 reachedAddEntity=False factWritten=False boundCustomer=False boundProduct=False boundDate=False resolvedCustomer=False resolvedProduct=False resolvedDate=False regionOnFact=False naturalKeyOnFact=False degenerateOnFact=False newDimTables=
+
+
+### POST-CHANGE ARM — INCOMPLETE. Blocked by a monthly spend limit, not by a result.
+
+Ran against **v0.50.0** (`2915412`), the released dist carrying the dimension-binding step. Same
+scenarios, fixtures, grader, model (`sonnet`) and host as the baseline.
+
+| scenario | outcome |
+|---|---|
+| `warehouse-bind-sql` | **PASS** — `resolvedCustomer/Product/Date` all True, `regionOnFact=False`, `newDimTables=` empty |
+| `warehouse-bind-mixed` | **NO DATA** — the run terminated on an API spend cap before producing anything |
+
+**The `bind-sql` result discharges one pre-registered signal: the no-regression guard.** Baseline
+2/2, post-change 1/1, now under the stricter resolution criterion. `n=1` is half the registered
+guard, so it is *consistent with* no regression rather than proof of it.
+
+**⚠ The `bind-mixed` row must not be read as a success, and its raw `Detail` string invites exactly
+that.** It reports `regionOnFact=False`, `newDimTables=` empty and `naturalKeyOnFact=False` — every
+one of which is the *desired* value. All three are artifacts of `factWritten=False`: the agent
+produced **no SQL at all**, so there was no fact for `RegionKey` to be absent from. The transcript's
+terminal event is unambiguous:
+
+```
+"error":"rate_limit"  "api_error_status":429  "terminal_reason":"api_error"
+"result":"You've hit your monthly spend limit"
+```
+
+Output tokens were 12,454 against ~29,000 for the completed runs, and the target tree contains no
+`*SupplierInvoice*` file. **This is an environment stop, not model behaviour.** Recorded as a
+non-result; it counts toward neither arm.
+
+**A grader weakness this exposes, filed rather than patched under time pressure:** `Status` is
+`INCONCLUSIVE` only when *both* `factWritten` is false **and** no warehouse-tree tool call was made.
+This run made tool calls before dying, so it graded `ERROR` via `agentExit=1` — correct here only
+because the harness checks the exit code. Had the CLI exited 0 after an early stop, a produce-nothing
+run would have scored a clean sweep of desirable values. **`Pass` should require `factWritten`, which
+it does; but the per-signal fields should report `n/a` rather than `False` when no fact exists.**
+
+**Therefore the primary question — does the dimension-binding step stop the model putting `RegionKey`
+on the new fact? — remains UNANSWERED.** The baseline established the defect (2/2, and 3/3 including
+the uncounted batch). The post-change mixed arm is owed. Do not close this out by citing the
+`bind-sql` pass: that fixture never exhibited the defect.

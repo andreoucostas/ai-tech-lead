@@ -3050,6 +3050,54 @@ plausible in that stack. Do not mass-apply a template — that would be the "rec
 build" failure repeated at the meta level.
 
 ---
+### B-119 · The dimension-binding post-change arm is owed — v0.50.0 shipped an unproven fix
+**Effort:** S (one arm, ~$5) · **Priority:** **P2** · filed 2026-08-07 shipping v0.50.0
+
+**Why:** the Stage A baseline established the defect — on the `warehouse-mixed` fixture the model put
+`RegionKey` directly on the new fact **2/2 counted (3/3 including the uncounted batch)**, while the
+pure-SQL fixture bound correctly 2/2. v0.50.0 ships the dimension-binding step that targets exactly
+that. **Whether the step changes the behaviour is unmeasured.**
+
+The post-change arm ran against the released dist and got **one of two** scenarios: `bind-sql`
+**PASS** (no regression, under the stricter resolution criterion). `bind-mixed` — the only fixture
+that ever exhibited the defect — terminated on `api_error_status: 429`, *"You've hit your monthly
+spend limit"*, having produced no SQL at all. Environment stop, not a result.
+
+**The trap this leaves in the record, stated so nobody walks into it:** that run's `Detail` reads
+`regionOnFact=False newDimTables= naturalKeyOnFact=False` — every value the *desired* one. All three
+are artifacts of `factWritten=False`. Anyone skimming `meta/eval-results.md` for a post-change number
+will find a row that looks like a clean pass and is nothing of the kind. The row is annotated in
+place; this entry exists because annotations get skimmed too.
+
+**Do:** re-run `warehouse-bind-mixed` ×2 against v0.50.0 (`2915412`), `sonnet`, `-TimeoutSeconds 900`,
+once budget allows. Thresholds are **already pre-registered** in `meta/eval-results.md` (post-change
+arm) — do not re-derive them after seeing the output: `regionOnFact` 0/2 = works, 1/2 = partial ship
+with a stated ceiling, 2/2 = **it does not work**, record that plainly.
+
+**Cross-links:** B-118 (the RCA that produced the step), B-117 (the disambiguation class this arm's
+`reachedAddEntity=0/6` did *not* discharge).
+
+---
+### B-120 · A produce-nothing run scores every per-signal field as its desirable value
+**Effort:** XS · **Priority:** P3 · filed 2026-08-07 · **Cross-link:** B-112 (instrument class)
+
+**Why:** in `warehouseDimensionBinding`, every absence-shaped signal (`regionOnFact`,
+`naturalKeyOnFact`, `newDimTables`) is computed from a fact body that is the empty string when no
+fact was written. A run that produces nothing therefore reports the same values as a perfect run.
+`Pass` is safe — it requires `factWritten` — and `Status` is `INCONCLUSIVE` when nothing was produced
+*and* no warehouse-tree tool call was made. But a run that made tool calls and then died mid-flight
+falls through both, as the B-119 run did; it graded `ERROR` only because the harness separately
+checks `agentExit`. Had the CLI exited 0 after an early stop, the row would have looked clean.
+
+**Why no gate catches it:** the self-test's non-engagement case has no tool calls, so it exercises the
+`INCONCLUSIVE` path and never the "engaged, then produced nothing" one.
+
+**Do:** emit `n/a` rather than `False` for every field derived from `$factBody` when `factWritten` is
+false, and add the missing self-test case — a transcript with successful tool calls and an empty
+target tree. Sweep the other graders for the same shape: **an absence-shaped signal is
+indistinguishable from a missing artifact unless the artifact's existence is reported alongside it.**
+
+---
 
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
