@@ -1,0 +1,25 @@
+{
+  "schema-version": 1,
+  "why": "The gate suite grew by accretion until releasing became impractical: every RCA added a gate and nothing ever measured what the set cost. Static context had the identical failure mode and was fixed by declaring a ceiling and making it a hard failure (B-110). This applies that pattern to time. A stage over its ceiling is a FAILURE, not a warning -- raising a ceiling is a deliberate, recorded decision, exactly as it is for context.",
+  "measured-by": ".claude/scripts/release.ps1 (per-stage stopwatch, Measure-Stage) -- mirrors scripts/context-footprint.ps1",
+  "honest-limit": "Seconds are host-dependent. Ceilings sit at roughly 2x the maintainer-box observation ON PURPOSE: this gate exists to catch a stage growing several-fold, NOT to police a 20% swing between a loaded and an idle box. If CI ever enforces these it needs its own ceilings measured from its own runners -- do not reuse these numbers there.",
+  "baseline-host": "maintainer Windows box, 12 cores, 2026-08-07, measured idle",
+  "ceilings-seconds": {
+    "compose": 60,
+    "dist-gates": 420,
+    "meta-suite": 300,
+    "eval-selftest": 240,
+    "total-local-gates": 900
+  },
+  "observed-seconds": {
+    "_comment": "Before/after for the 2026-08-07 gate-runtime work. Recorded so the improvement is checkable rather than asserted, and so the next regression has a number to be measured against.",
+    "meta-suite-serial-before": 399,
+    "meta-suite-parallel-after": 148.1,
+    "meta-suite-unthrottled-attempt": 1335.7,
+    "validate-dist-tests-before": 259.1,
+    "validate-dist-tests-after": 83.2,
+    "section-path-check-before": 18.2,
+    "section-path-check-after": 2.8
+  },
+  "the-trap-worth-remembering": "The first cut of the parallel meta runner launched all ten files at once and came in at 1,335s against a 399s serial baseline -- 3.3x SLOWER, not faster. These suites are bound by process creation, not CPU, and ValidateDist.Tests parallelises its own cases, so unthrottled outer concurrency multiplied into hundreds of competing children. Throttling the outer loop and handing each file an inner lane budget is what turned it into a 2.7x win. Measure a parallelism change; do not assume it."
+}

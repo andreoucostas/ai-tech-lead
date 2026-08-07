@@ -49,13 +49,12 @@ function Convert-ToBashPath {
     return $Path.Replace('\', '/')
 }
 function Invoke-Validator {
-    param([string]$Root, [switch]$UseBash, [string]$JsonTool, [switch]$FullValidation, [string]$ExtraPathDir)
-    # Checks 1-5 re-parse every shipped file, which dominates this suite's runtime. Red cases only
-    # need checks 6-8; the green anchors run the full validator so the skipped group is still
-    # exercised on both legs. See VALIDATE_DIST_CONTENT_ONLY in the validators.
+    param([string]$Root, [switch]$UseBash, [string]$JsonTool, [switch]$FullValidation, [string]$ExtraPathDir, [string]$Check)
+    # Each focused case names the one check that owns its planted defect. The clean anchor still
+    # runs the full validator so every check remains exercised on both legs.
     # Passed as an ARGUMENT, never an environment variable: an inherited ambient switch could
     # silently downgrade a run that asked for full validation (sol's review of this change).
-    $contentOnly = -not $FullValidation
+    $contentOnly = -not $FullValidation -and -not $Check
     if ($UseBash) {
         if (-not $bashExe) { throw 'Bash is unavailable; the bash validator was not exercised.' }
         $cwd = $repo.Replace('\', '/')
@@ -74,6 +73,7 @@ function Invoke-Validator {
         $pathPrefix = (@($toolDirs | Select-Object -Unique | ForEach-Object { "'$(Convert-ToBashPath $_)'" }) -join ':')
         $override = if ($JsonTool) { "VALIDATE_DIST_JSON_TOOL='$JsonTool' " } else { '' }
         $flag = if ($contentOnly) { ' --content-only' } else { '' }
+        if ($Check) { $flag = " -Check '$Check'" }
         # Invoked as `bash <script>`, never `./<script>`: the file is mode 644 in git, which Windows
         # ignores and Linux enforces, so `./` gave "Permission denied" on the CI linux leg only.
         # Every other caller in this repo (CI, DEVELOPING.md) spells it this way too.
@@ -82,6 +82,7 @@ function Invoke-Validator {
     } else {
         $argv = @('-NoProfile','-ExecutionPolicy','Bypass','-File',$validator,'dotnet',$Root)
         if ($contentOnly) { $argv += '--content-only' }
+        if ($Check) { $argv += @('-Check',$Check) }
         $out = & (Get-Process -Id $PID).Path @argv 2>&1; $code = $LASTEXITCODE
     }
     return [pscustomobject]@{ Exit=$code; Out=($out -join "`n") }
@@ -92,15 +93,14 @@ function Invoke-Validator {
 # and 4), and this file runs in release.ps1's meta suite AND on both CI legs. The cases marked
 # -PsOnly are the ones whose bash-side code path is already exercised by another case in this file;
 # each one names that case. Nothing bash-specific is covered only by a PsOnly case.
-# The residual cost is checks 1-5 re-running for every case, which no subset fixes; see the backlog
-# entry filed with this change.
+# The residual cost is the selected check plus each case's dist copy and process startup.
 function Assert-Case {
-    param([string]$Name, [scriptblock]$Mutate, [string]$Finding, [switch]$Green, [switch]$PsOnly, [switch]$FullValidation)
+    param([string]$Name, [scriptblock]$Mutate, [string]$Finding, [string]$Check, [switch]$Green, [switch]$PsOnly, [switch]$FullValidation)
     $legs = if ($PsOnly) { @('ps') } else { @('ps','bash') }
     foreach ($leg in $legs) {
         $root = New-DistCopy
         & $Mutate (Join-Path $root 'dotnet')
-        $r = Invoke-Validator -Root $root -UseBash:($leg -eq 'bash') -FullValidation:$FullValidation
+        $r = Invoke-Validator -Root $root -UseBash:($leg -eq 'bash') -FullValidation:$FullValidation -Check $Check
         Write-Host "[ValidateDist $leg $Name] EXIT=$($r.Exit)"; Write-Host $r.Out
         Assert ($r.Out -match '(?m)^(OK|FAIL):') "$Name/$leg did not reach a validator check: $($r.Out)"
         Assert ($r.Out -match [regex]::Escape($Finding)) "$Name/$leg did not emit its target finding '$Finding': $($r.Out)"
@@ -186,55 +186,54 @@ function It { param([string]$Name, [scriptblock]$Body) if ($Name -ne $Only) { re
 function Skip { param([string]$Name, [string]$Why, [switch]$Invariant) if ($Name -ne $Only) { return }; & $__origSkip @PSBoundParameters }
 
 try {
-    It 'case 1: settings.json with zero handlers fails check 8' { Assert-Case 'zero-settings' { param($d) $p=Join-Path $d '.claude\settings.json'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,[regex]::Replace($t,'"command"','"commandX"',6)) } 'settings.json : registration file yields zero handlers' }
-    It 'case 2: settings.windows.json with zero handlers fails check 8' { Assert-Case 'zero-windows' { param($d) $p=Join-Path $d '.claude\settings.windows.json'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,[regex]::Replace($t,'"command"','"commandX"',6)) } 'settings.windows.json : registration file yields zero handlers' -PsOnly }   # bash path identical to case 1
-    It 'case 3: an absolute registration fails check 8' { Assert-Case 'absolute' { param($d) Replace-Text (Join-Path $d '.claude\settings.json') '.claude/hooks/session-start.ps1' 'C:/definitely-missing/session-start.ps1' } 'is an absolute path' }
-    It 'case 4: a quoted missing -File target fails check 8' { Assert-Case 'quoted-missing' { param($d) Replace-Text (Join-Path $d '.claude\settings.json') '.claude/hooks/session-start.ps1' '\".claude/hooks/definitely missing.ps1\"' } 'does not exist in this dist' }
-    It 'case 5: a quoted real -File target stays green' { Assert-Case 'quoted-real' { param($d) Replace-Text (Join-Path $d '.claude\settings.json') '.claude/hooks/session-start.ps1' '\".claude/hooks/session-start.ps1\"' } 'all 26 hook registrations resolve' -Green -FullValidation }
-    It 'case 6: a single Copilot leg fails check 8' { Assert-Case 'single-leg' { param($d) $p=Join-Path $d '.github\hooks\hooks.json'; $t=[IO.File]::ReadAllText($p); $t=[regex]::Replace($t,'\s*"powershell":\s*"[^"]+",?','',1); [IO.File]::WriteAllText($p,$t) } 'has only one bash/powershell leg' -PsOnly }   # bash path: same parser branch as case 13
-    It 'case 7: an unrelated command object does not change registration scoping' { Assert-Case 'unrelated-command' { param($d) $p=Join-Path $d '.claude\settings.json'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,$t.Replace('"hooks": {','"unrelated": { "type": "command" },' + [Environment]::NewLine + '  "hooks": {')) } 'all 26 hook registrations resolve' -Green -PsOnly }   # bash green path: case 12
-    It 'case 8: a missing hook twin fails check 8' { Assert-Case 'missing-twin' { param($d) Remove-Item -LiteralPath (Join-Path $d '.claude\hooks\audit-trail.sh') -Force } 'exists but its twin' }
-    It 'case 9: a dead documented command fails check 7' { Assert-Case 'dead-doc' { param($d) Replace-Text (Join-Path $d 'README.md') 'scripts/install.ps1' 'scripts/definitely-missing.ps1' } 'dead instructions in shipped docs' }
+    It 'case 1: settings.json with zero handlers fails check 8' { Assert-Case 'zero-settings' { param($d) $p=Join-Path $d '.claude\settings.json'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,[regex]::Replace($t,'"command"','"commandX"',6)) } 'settings.json : registration file yields zero handlers' 'hook-registration' }
+    It 'case 2: settings.windows.json with zero handlers fails check 8' { Assert-Case 'zero-windows' { param($d) $p=Join-Path $d '.claude\settings.windows.json'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,[regex]::Replace($t,'"command"','"commandX"',6)) } 'settings.windows.json : registration file yields zero handlers' 'hook-registration' -PsOnly }   # bash path identical to case 1
+    It 'case 3: an absolute registration fails check 8' { Assert-Case 'absolute' { param($d) Replace-Text (Join-Path $d '.claude\settings.json') '.claude/hooks/session-start.ps1' 'C:/definitely-missing/session-start.ps1' } 'is an absolute path' 'hook-registration' }
+    It 'case 4: a quoted missing -File target fails check 8' { Assert-Case 'quoted-missing' { param($d) Replace-Text (Join-Path $d '.claude\settings.json') '.claude/hooks/session-start.ps1' '\".claude/hooks/definitely missing.ps1\"' } 'does not exist in this dist' 'hook-registration' }
+    It 'case 5: a quoted real -File target stays green' { Assert-Case 'quoted-real' { param($d) Replace-Text (Join-Path $d '.claude\settings.json') '.claude/hooks/session-start.ps1' '\".claude/hooks/session-start.ps1\"' } 'all 26 hook registrations resolve' 'hook-registration' -Green }
+    It 'case 6: a single Copilot leg fails check 8' { Assert-Case 'single-leg' { param($d) $p=Join-Path $d '.github\hooks\hooks.json'; $t=[IO.File]::ReadAllText($p); $t=[regex]::Replace($t,'\s*"powershell":\s*"[^"]+",?','',1); [IO.File]::WriteAllText($p,$t) } 'has only one bash/powershell leg' 'hook-registration' -PsOnly }   # bash path: same parser branch as case 13
+    It 'case 7: an unrelated command object does not change registration scoping' { Assert-Case 'unrelated-command' { param($d) $p=Join-Path $d '.claude\settings.json'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,$t.Replace('"hooks": {','"unrelated": { "type": "command" },' + [Environment]::NewLine + '  "hooks": {')) } 'all 26 hook registrations resolve' 'hook-registration' -Green -PsOnly }   # bash green path: case 12
+    It 'case 8: a missing hook twin fails check 8' { Assert-Case 'missing-twin' { param($d) Remove-Item -LiteralPath (Join-Path $d '.claude\hooks\audit-trail.sh') -Force } 'exists but its twin' 'hook-registration' }
+    It 'case 9: a dead documented command fails check 7' { Assert-Case 'dead-doc' { param($d) Replace-Text (Join-Path $d 'README.md') 'scripts/install.ps1' 'scripts/definitely-missing.ps1' } 'dead instructions in shipped docs' 'no-dead-instruction' }
     # -Force: on Linux, PowerShell treats dot-directories as hidden, so without it this mutation left
     # every .md under .claude/ and .github/ in place and the case failed on the CI linux leg only.
     # The validator had the same blind spot, which is what this case ended up exposing.
-    It 'case 10: no markdown files fails check 7' { Assert-Case 'no-docs' { param($d) Get-ChildItem -LiteralPath $d -Recurse -Filter *.md -Force | Remove-Item -Force } 'no-dead-instruction scanned zero documentation files' }
-    It 'case 11: an empty tree fails check 6' { Assert-Case 'empty-tree' { param($d) Get-ChildItem -LiteralPath $d -Force | Remove-Item -Recurse -Force } 'no-meta-leak scanned zero files' }
-    # The green anchors run the FULL validator (checks 1-8) on both legs, so the group the red cases
-    # skip for speed is still exercised here — and so an over-strict check 6/7/8 cannot hide behind
-    # a partial run.
+    It 'case 10: no markdown files fails check 7' { Assert-Case 'no-docs' { param($d) Get-ChildItem -LiteralPath $d -Recurse -Filter *.md -Force | Remove-Item -Force } 'no-dead-instruction scanned zero documentation files' 'no-dead-instruction' }
+    It 'case 11: an empty tree fails check 6' { Assert-Case 'empty-tree' { param($d) Get-ChildItem -LiteralPath $d -Force | Remove-Item -Recurse -Force } 'no-meta-leak scanned zero files' 'no-meta-leak' }
+    # This unmutated anchor deliberately runs the FULL validator on both legs, so every check is
+    # still exercised together and an interaction cannot hide behind focused runs.
     It 'case 12: an unmutated dist stays green under the FULL validator' { Assert-Case 'clean' { param($d) } 'all 26 hook registrations resolve' -Green -FullValidation }
     # Case 13 and 14 are the structural guards, and both exist because all three parsers (PowerShell
     # ConvertFrom-Json, python3, jq) disagreed about malformed input the first time round: an event
     # whose value was an object reported "no bash/powershell leg" on two legs and "not an object" on
     # the third. The assertion is one message every leg must produce.
-    It 'case 13: an event whose value is not an array fails check 8 on every parser' { Assert-Case 'bad-event-shape' { param($d) $p=Join-Path $d '.github\hooks\hooks.json'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,$t.Replace('"sessionStart": [','"sessionStart": {"invalid":"not-an-array"}, "sessionStartX": [')) } "hook event 'sessionStart' must be an array" }
+    It 'case 13: an event whose value is not an array fails check 8 on every parser' { Assert-Case 'bad-event-shape' { param($d) $p=Join-Path $d '.github\hooks\hooks.json'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,$t.Replace('"sessionStart": [','"sessionStart": {"invalid":"not-an-array"}, "sessionStartX": [')) } "hook event 'sessionStart' must be an array" 'hook-registration' }
     # Case 14 is the guard for a parser that dies mid-stream: without checking the parser's exit
     # status, the records emitted before it died left handlers > 0 and the per-file guard satisfied.
-    It 'case 14: an unparseable registration file fails check 8 rather than yielding a short stream' { Assert-Case 'unparseable' { param($d) [IO.File]::WriteAllText((Join-Path $d '.claude\settings.json'), '{"hooks": {"SessionStart": [ THIS IS NOT JSON') } 'registration file is unparseable' }
+    It 'case 14: an unparseable registration file fails check 8 rather than yielding a short stream' { Assert-Case 'unparseable' { param($d) [IO.File]::WriteAllText((Join-Path $d '.claude\settings.json'), '{"hooks": {"SessionStart": [ THIS IS NOT JSON') } 'registration file is unparseable' 'hook-registration' }
     # Case 15 proves the base64 record framing: a tab or a backslash inside a command value must not
     # be able to shift a field. Spelling records as plain TSV made jq escape backslashes while
     # python3 printed them raw, which desynchronised the two branches on real shipped data.
     # Case 16 is a PLATFORM divergence, not a code one: Windows resolves `.PS1` to the shipped
     # `.ps1` and Linux does not, so this registration passed here and would have failed a consumer's
     # Linux CI. Both twins now resolve case-exactly, so both must call it missing.
-    It 'case 16: a registration whose casing differs from the shipped file fails check 8' { Assert-Case 'case-mismatch' { param($d) Replace-Text (Join-Path $d '.claude\settings.json') '.claude/hooks/session-start.ps1' '.claude/hooks/session-start.PS1' } 'does not exist in this dist' }
-    It 'case 15: a tab and a backslash in a command value cannot break the record framing' { Assert-Case 'framing' { param($d) Replace-Text (Join-Path $d '.claude\settings.json') '-File .claude/hooks/session-start.ps1' '-File .claude\\hooks\\definitely\tmissing.ps1' } 'does not exist in this dist' }
+    It 'case 16: a registration whose casing differs from the shipped file fails check 8' { Assert-Case 'case-mismatch' { param($d) Replace-Text (Join-Path $d '.claude\settings.json') '.claude/hooks/session-start.ps1' '.claude/hooks/session-start.PS1' } 'does not exist in this dist' 'hook-registration' }
+    It 'case 15: a tab and a backslash in a command value cannot break the record framing' { Assert-Case 'framing' { param($d) Replace-Text (Join-Path $d '.claude\settings.json') '-File .claude/hooks/session-start.ps1' '-File .claude\\hooks\\definitely\tmissing.ps1' } 'does not exist in this dist' 'hook-registration' }
 
-    It 'case 17: a missing framework-rules import fails the full validator' { Assert-Case 'missing-framework-import' { param($d) $p=Join-Path $d 'CLAUDE.md'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,$t.Replace('@.github/instructions/framework-rules.instructions.md','')) } 'CLAUDE.md is missing required import @.github/instructions/framework-rules.instructions.md.' -FullValidation }
-    It 'case 18: a citation to a moved CLAUDE.md section fails the full validator' { Assert-Case 'moved-section-citation' { param($d) $p=Join-Path $d 'README.md'; [IO.File]::AppendAllText($p,"`nPlant: ``CLAUDE.md > SOLID```n") } 'cites CLAUDE.md > SOLID, but that heading does not exist' -FullValidation }
-    It 'case 19: prose after valid finite-registry citations does not become a heading' { Assert-Case 'citation-prose' { param($d) $p=Join-Path $d 'README.md'; [IO.File]::AppendAllText($p,"`nCLAUDE.md > Conventions wins on any conflict.`nCLAUDE.md > Boy Scout Rule before considering the work complete.`n[CLAUDE.md](./CLAUDE.md) > Conventions.`n") } 'all registered section-path references resolve' -Green -FullValidation }
+    It 'case 17: a missing framework-rules import fails the full validator' { Assert-Case 'missing-framework-import' { param($d) $p=Join-Path $d 'CLAUDE.md'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,$t.Replace('@.github/instructions/framework-rules.instructions.md','')) } 'CLAUDE.md is missing required import @.github/instructions/framework-rules.instructions.md.' 'carrier-import' }
+    It 'case 18: a citation to a moved CLAUDE.md section fails the full validator' { Assert-Case 'moved-section-citation' { param($d) $p=Join-Path $d 'README.md'; [IO.File]::AppendAllText($p,"`nPlant: ``CLAUDE.md > SOLID```n") } 'cites CLAUDE.md > SOLID, but that heading does not exist' 'section-path' }
+    It 'case 19: prose after valid finite-registry citations does not become a heading' { Assert-Case 'citation-prose' { param($d) $p=Join-Path $d 'README.md'; [IO.File]::AppendAllText($p,"`nCLAUDE.md > Conventions wins on any conflict.`nCLAUDE.md > Boy Scout Rule before considering the work complete.`n[CLAUDE.md](./CLAUDE.md) > Conventions.`n") } 'all registered section-path references resolve' 'section-path' -Green }
     It 'case 20: a missing stack snippet fails marker expansion without touching the live source tree' {
         foreach ($leg in @('ps','bash')) {
             $isolated = New-ValidatorRepoCopy
             $snippet = Join-Path $isolated 'src\stacks\dotnet\snippets\.github\instructions\framework-rules.instructions.md\lean-test'
             Remove-Item -LiteralPath $snippet -Force
             if ($leg -eq 'ps') {
-                $out = & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File (Join-Path $isolated 'scripts\validate-dist.ps1') dotnet (Join-Path $isolated 'dist') 2>&1
+                $out = & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File (Join-Path $isolated 'scripts\validate-dist.ps1') dotnet (Join-Path $isolated 'dist') -Check marker-expansion 2>&1
                 $code = $LASTEXITCODE
             } else {
                 $rootPath = Convert-ToBashPath $isolated
-                $out = & $bashExe -c "cd '$rootPath'; bash scripts/validate-dist.sh dotnet dist" 2>&1
+                $out = & $bashExe -c "cd '$rootPath'; bash scripts/validate-dist.sh dotnet dist -Check marker-expansion" 2>&1
                 $code = $LASTEXITCODE
             }
             $text = $out -join "`n"
@@ -281,7 +280,7 @@ try {
             foreach ($pair in @(@{ Tool='python3'; File=$a }, @{ Tool='jq'; File=$b })) {
                 # bash writes this path, so it must be a POSIX path even on Windows.
                 $env:VALIDATE_DIST_RECORD_STREAM = (Convert-ToBashPath $pair.File)
-                $r = Invoke-Validator -Root $root -UseBash -JsonTool $pair.Tool -ExtraPathDir $py3ShimDir
+                $r = Invoke-Validator -Root $root -UseBash -JsonTool $pair.Tool -ExtraPathDir $py3ShimDir -Check hook-registration
                 Assert ($r.Out -match "parsed by $($pair.Tool)") "$($pair.Tool) branch did not run: $($r.Out)"
                 Assert ($r.Exit -eq 0) "$($pair.Tool) stream setup failed: $($r.Out)"
                 Assert (Test-Path -LiteralPath $pair.File) "$($pair.Tool) wrote no record stream"

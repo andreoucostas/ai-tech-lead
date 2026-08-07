@@ -15,7 +15,7 @@
 #  11. CLAUDE.md imports the shipped framework-rules carrier
 # Exit 0 = all checks passed. Exit 1 = at least one check failed. Exit 2 = usage error, missing
 # dist, or a required tool (bash, for check 3) is unavailable — reported as FATAL, never skipped.
-#   Usage: validate-dist.ps1 {dotnet|angular|monorepo} [dist-root]
+#   Usage: validate-dist.ps1 {dotnet|angular|monorepo} [dist-root] [-Check name[,name...]]
 #   dist-root defaults to "dist" resolved under the repo root (scripts/..). Pass an explicit path
 #   to validate a scratch copy instead (e.g. to plant failure fixtures without touching dist/).
 # 5.1-safe: no pwsh-only syntax.
@@ -33,13 +33,36 @@ Set-Location $RepoRoot
 # redirects validator output to a log, so the NOTE below would not be seen on an otherwise-green
 # gate. A caller must now ask for a partial run in the command itself.
 $ContentOnly = $false
+$CheckArg = $null
 $positional  = @()
-foreach ($a in $args) {
-    if ("$a" -eq '--content-only') { $ContentOnly = $true } else { $positional += $a }
+for ($i = 0; $i -lt $args.Count; $i++) {
+    $a = "$($args[$i])"
+    if ($a -eq '--content-only') { $ContentOnly = $true }
+    elseif ($a -eq '-Check') {
+        $i++
+        if ($i -ge $args.Count) { [Console]::Error.WriteLine('usage error: -Check requires one or more comma-separated check names.'); exit 2 }
+        $CheckArg = "$($args[$i])"
+    } else { $positional += $a }
+}
+$ValidChecks = @('markers','json','bash-syntax','ps-syntax','template-checks','no-meta-leak','no-dead-instruction','hook-registration','marker-expansion','section-path','carrier-import')
+$SelectedChecks = @()
+if ($null -ne $CheckArg) {
+    $SelectedChecks = @($CheckArg -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
+    $unknownChecks = @($SelectedChecks | Where-Object { $ValidChecks -cnotcontains $_ } | Sort-Object -Unique)
+    if ($SelectedChecks.Count -eq 0 -or $unknownChecks.Count -gt 0) {
+        $bad = if ($unknownChecks.Count -gt 0) { $unknownChecks -join ', ' } else { '(empty)' }
+        [Console]::Error.WriteLine("usage error: unknown check name(s): $bad. Valid names: $($ValidChecks -join ', ').")
+        exit 2
+    }
+}
+function Test-CheckSelected($name) {
+    if ($null -ne $CheckArg) { return $SelectedChecks -ccontains $name }
+    if ($ContentOnly) { return @('no-meta-leak','no-dead-instruction','hook-registration') -contains $name }
+    return $true
 }
 $Mode = $positional[0]
 if ($Mode -ne 'dotnet' -and $Mode -ne 'angular' -and $Mode -ne 'monorepo') {
-    [Console]::Error.WriteLine('usage: validate-dist.ps1 {dotnet|angular|monorepo} [dist-root] [--content-only]')
+    [Console]::Error.WriteLine('usage: validate-dist.ps1 {dotnet|angular|monorepo} [dist-root] [--content-only] [-Check name[,name...]]')
     exit 2
 }
 $DistRoot = if ($positional.Count -ge 2 -and $positional[1]) { $positional[1] } else { 'dist' }
@@ -148,6 +171,7 @@ function Test-HookRef {
 # scanned a fraction of the docs while reporting a clean pass. Found by the CI linux leg (2026-08-04)
 # via a test whose mutation had the identical blind spot.
 if (-not $ContentOnly) {
+if (Test-CheckSelected 'markers') {
 # --- 1. no unresolved @stack markers -------------------------------------------------------------
 $markerRe = '@stack:[A-Za-z0-9_-]+'
 $markerFiles = @()
@@ -163,7 +187,9 @@ if ($markerFiles.Count -gt 0) {
 } else {
     OK "no unresolved @stack markers in $Dist."
 }
+}
 
+if (Test-CheckSelected 'marker-expansion') {
 # --- 1a. every core marker expands from a non-empty snippet --------------------------------------
 # The composer consumes a marker even when its snippet is absent, producing a marker-free but
 # silently empty section. Derive the inventory from core rather than maintaining a second list.
@@ -227,12 +253,38 @@ if ($markerCount -eq 0) {
 } else {
     OK "all $markerCount core @stack markers expand from non-empty $Mode snippets into composed files."
 }
+}
 
+if (Test-CheckSelected 'section-path') {
 # --- 1b. section-path references resolve ---------------------------------------------------------
 # This finite registry deliberately avoids a permissive "everything after >" capture. Changelogs
 # are historical records and are excluded by path. Scan every textual shipped file, not only *.md.
 $citationFiles = @('CLAUDE.md','AGENTS.md','.github/instructions/framework-rules.instructions.md')
 $citationHeadings = @('Architecture Decisions','Verification Rules','Repository Structure','Agentic Workflow','Codebase Context',"What We've Learned",'Boy Scout Rule','Common Tasks','Conventions','Leanness','SOLID')
+$regexOptions = [Text.RegularExpressions.RegexOptions]::IgnoreCase
+$citationFileFilter = New-Object Text.RegularExpressions.Regex (($citationFiles | ForEach-Object { [regex]::Escape($_) }) -join '|'), $regexOptions
+$citationPatterns = @()
+$targetFileLookup = New-Object 'Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+$targetHeadingLookup = New-Object 'Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+foreach ($citedFile in $citationFiles) {
+    $fileToken = [regex]::Escape($citedFile)
+    $target = Join-Path $DistAbs ($citedFile -replace '/', [IO.Path]::DirectorySeparatorChar)
+    $targetLines = if (Test-Path -LiteralPath $target -PathType Leaf) { [IO.File]::ReadAllLines($target) } else { @() }
+    if ($targetLines.Count -gt 0 -or (Test-Path -LiteralPath $target -PathType Leaf)) { [void]$targetFileLookup.Add($citedFile) }
+    foreach ($heading in $citationHeadings) {
+        # Only the two registered citation forms count. A terminating backtick or a
+        # punctuation/end boundary prevents prose such as "CLAUDE.md > Conventions wins"
+        # from being mistaken for a citation.
+        $headingToken = [regex]::Escape($heading)
+        $plainBacktick = New-Object Text.RegularExpressions.Regex ("``$fileToken\s*(?:>|›)\s*$headingToken``"), $regexOptions
+        $markdownLink = New-Object Text.RegularExpressions.Regex ("\[$fileToken\]\([^)]*\)\s*(?:>|›)\s*$headingToken(?=$|[``;,\.\):\]])"), $regexOptions
+        $headingRegex = New-Object Text.RegularExpressions.Regex (("^#+\s+{0}\s*$" -f $headingToken)), $regexOptions
+        $citationPatterns += [pscustomobject]@{ File = $citedFile; Heading = $heading; Plain = $plainBacktick; Markdown = $markdownLink }
+        if ($targetLines | Where-Object { $headingRegex.IsMatch($_) } | Select-Object -First 1) {
+            [void]$targetHeadingLookup.Add("$citedFile`0$heading")
+        }
+    }
+}
 $citationProblems = @()
 $textFilesScanned = 0
 foreach ($f in (Get-ChildItem -Recurse -File -Force -Path $DistAbs)) {
@@ -244,22 +296,16 @@ foreach ($f in (Get-ChildItem -Recurse -File -Force -Path $DistAbs)) {
     $lineNo = 0
     foreach ($line in [IO.File]::ReadAllLines($f.FullName)) {
         $lineNo++
+        if (-not $citationFileFilter.IsMatch($line)) { continue }
         foreach ($citedFile in $citationFiles) {
-            $fileToken = [regex]::Escape($citedFile)
-            foreach ($heading in $citationHeadings) {
-                # Only the two registered citation forms count. A terminating backtick or a
-                # punctuation/end boundary prevents prose such as "CLAUDE.md > Conventions wins"
-                # from being mistaken for a citation.
-                $headingToken = [regex]::Escape($heading)
-                $plainBacktick = "``$fileToken\s*(?:>|›)\s*$headingToken``"
-                $markdownLink = "\[$fileToken\]\([^)]*\)\s*(?:>|›)\s*$headingToken(?=$|[``;,\.\):\]])"
-                $seen = ($line -match $plainBacktick) -or ($line -match $markdownLink)
+            foreach ($citation in $citationPatterns) {
+                if ($citation.File -ne $citedFile) { continue }
+                $seen = $citation.Plain.IsMatch($line) -or $citation.Markdown.IsMatch($line)
                 if (-not $seen) { continue }
-                $target = Join-Path $DistAbs ($citedFile -replace '/', [IO.Path]::DirectorySeparatorChar)
-                if (-not (Test-Path -LiteralPath $target -PathType Leaf)) {
-                    $citationProblems += "$rel`:$lineNo cites $citedFile > $heading, but $citedFile is missing"
-                } elseif (-not (Select-String -LiteralPath $target -Pattern ("^#+\s+{0}\s*$" -f [regex]::Escape($heading)) -Quiet)) {
-                    $citationProblems += "$rel`:$lineNo cites $citedFile > $heading, but that heading does not exist"
+                if (-not $targetFileLookup.Contains($citation.File)) {
+                    $citationProblems += "$rel`:$lineNo cites $($citation.File) > $($citation.Heading), but $($citation.File) is missing"
+                } elseif (-not $targetHeadingLookup.Contains("$($citation.File)`0$($citation.Heading)")) {
+                    $citationProblems += "$rel`:$lineNo cites $($citation.File) > $($citation.Heading), but that heading does not exist"
                 }
                 break
             }
@@ -274,7 +320,9 @@ if ($textFilesScanned -eq 0) {
 } else {
     OK "all registered section-path references resolve ($textFilesScanned textual file(s) scanned; CHANGELOG.md excluded)."
 }
+}
 
+if (Test-CheckSelected 'carrier-import') {
 # --- 1c. CLAUDE.md imports the delivered framework-rules carrier --------------------------------
 $importLine = '@.github/instructions/framework-rules.instructions.md'
 $claudePath = Join-Path $DistAbs 'CLAUDE.md'
@@ -288,7 +336,9 @@ if (-not (Test-Path -LiteralPath $claudePath -PathType Leaf)) {
 } else {
     OK "CLAUDE.md imports the delivered framework-rules carrier."
 }
+}
 
+if (Test-CheckSelected 'json') {
 # --- 2. every *.json parses -------------------------------------------------------------------------
 $jsonFails = @()
 foreach ($f in (Get-ChildItem -Recurse -File -Force -Filter *.json -Path $Dist)) {
@@ -300,7 +350,9 @@ foreach ($f in (Get-ChildItem -Recurse -File -Force -Filter *.json -Path $Dist))
 }
 if ($jsonFails.Count -gt 0) { Fail ("invalid JSON (ConvertFrom-Json):" + ($jsonFails -join ' ')) }
 else { OK "all *.json files parse (ConvertFrom-Json)." }
+}
 
+if (Test-CheckSelected 'bash-syntax') {
 # --- 3. bash -n on every *.sh ------------------------------------------------------------------------
 # Resolve a REAL bash: prefer Git for Windows (not on PowerShell's PATH on typical boxes), and
 # never trust a bare `bash` blindly — on Windows that can be the WSL stub in System32, which
@@ -331,7 +383,9 @@ foreach ($f in (Get-ChildItem -Recurse -File -Force -Filter *.sh -Path $Dist)) {
 }
 if ($shFails.Count -gt 0) { Fail ("bash syntax errors in:" + ($shFails -join ' ')) }
 else { OK "all *.sh files parse cleanly (bash -n)." }
+}
 
+if (Test-CheckSelected 'ps-syntax') {
 # --- 4. PowerShell AST parse on every *.ps1 -----------------------------------------------------------
 $ps1Fails = @()
 foreach ($f in (Get-ChildItem -Recurse -File -Force -Filter *.ps1 -Path $Dist)) {
@@ -341,7 +395,9 @@ foreach ($f in (Get-ChildItem -Recurse -File -Force -Filter *.ps1 -Path $Dist)) 
 }
 if ($ps1Fails.Count -gt 0) { Fail ("PS syntax errors: " + ($ps1Fails -join '; ')) }
 else { OK "all *.ps1 files parse cleanly." }
+}
 
+if (Test-CheckSelected 'template-checks') {
 # --- 5. the dist's own template-checks suite ------------------------------------------------------
 $Tc = Join-Path $Dist 'scripts/template-checks.ps1'
 if (-not (Test-Path $Tc)) {
@@ -356,8 +412,10 @@ if (-not (Test-Path $Tc)) {
         OK "$Tc passed."
     }
 }
+}
 }   # end of the checks 1-5 group (VALIDATE_DIST_CONTENT_ONLY)
 
+if (Test-CheckSelected 'no-meta-leak') {
 # --- 6. no meta-dev vocabulary in shipped content -------------------------------------------------
 # The don't-ship boundary (invariant #6) made deterministic. Everything under dist/ lands in a
 # consumer's repo, so the framework's own development vocabulary — tracking ids, the two-repo
@@ -415,7 +473,9 @@ if (@($scanErrors).Count -gt 0) {
 } else {
     OK "no meta-dev vocabulary in $Dist (no-meta-leak; $(@($denyPatterns).Count) pattern(s) over $filesScanned file(s))."
 }
+}
 
+if (Test-CheckSelected 'no-dead-instruction') {
 # --- 7. no dead instructions ------------------------------------------------------------------
 # Every script a shipped doc tells someone to RUN must actually exist. `no-meta-leak` (check 6)
 # proves shipped files don't say the wrong *words*; nothing proved they don't give the wrong
@@ -473,7 +533,9 @@ if (@($docReadErrors).Count -gt 0) {
     $absoluteRefs | Sort-Object -Unique | ForEach-Object { Write-Output "  [no-dead-instruction] $_" }
     OK "all $($refsExtracted - $absoluteRefs.Count) resolvable documented script references exist in $Dist ($docsScanned doc(s) scanned; $($absoluteRefs.Count) absolute example(s) out of scope)."
 }
+}
 
+if (Test-CheckSelected 'hook-registration') {
 # --- 8. hook registrations point at hooks that exist ---------------------------------------------
 # Nothing read the registration files at all. Check 2 proves they are valid JSON; check 7 checks
 # only *.md. So a registration naming a script that is not in the dist -- a renamed hook, a
@@ -551,6 +613,7 @@ if (@($regProblems).Count -gt 0) {
 } else {
     # The parser is named here too, so both twins' OK lines state how the registrations were read.
     OK "all $regCount hook registrations resolve (settings.json $($settingsCounts['.claude/settings.json']), settings.windows.json $($settingsCounts['.claude/settings.windows.json']), hooks.json $hookEntries entries × 2 legs; parsed by ConvertFrom-Json)"
+}
 }
 
 Report-Timings

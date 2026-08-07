@@ -17,7 +17,7 @@
 # Exit 0 = all checks passed. Exit 1 = at least one check failed. Exit 2 = usage error, missing
 # dist, or a required tool (JSON parser / bash / PowerShell host) is unavailable — these are
 # reported as FATAL and never silently skipped.
-#   Usage: validate-dist.sh {dotnet|angular|monorepo} [dist-root]
+#   Usage: validate-dist.sh {dotnet|angular|monorepo} [dist-root] [-Check name[,name...]]
 #   dist-root defaults to "dist" resolved under the repo root (scripts/..). Pass an explicit path
 #   to validate a scratch copy instead (e.g. to plant failure fixtures without touching dist/).
 set -uo pipefail
@@ -26,16 +26,48 @@ cd "$(dirname "$0")/.."
 # --content-only is an explicit ARGUMENT, not an environment variable — see the PowerShell twin: an
 # ambient switch that narrows a gate's scope can be inherited by a shell that never asked for it.
 CONTENT_ONLY=0
+CHECK_ARG=
+CHECK_SET=0
 POSITIONAL=""
-for arg in "$@"; do
-  if [ "$arg" = "--content-only" ]; then CONTENT_ONLY=1; else POSITIONAL="$POSITIONAL $arg"; fi
+while [ "$#" -gt 0 ]; do
+  arg=$1; shift
+  if [ "$arg" = "--content-only" ]; then CONTENT_ONLY=1
+  elif [ "$arg" = "-Check" ]; then
+    [ "$#" -gt 0 ] || { echo "usage error: -Check requires one or more comma-separated check names." >&2; exit 2; }
+    # CHECK_SET, not [ -n "$CHECK_ARG" ], is what marks the flag as supplied. Testing the VALUE
+    # cannot tell "-Check was not passed" from "-Check '' was passed", and that gap silently turned
+    # an empty selection into "run everything" while the PowerShell twin exited 2 on the same input.
+    CHECK_SET=1
+    CHECK_ARG=$1; shift
+  else POSITIONAL="$POSITIONAL $arg"
+  fi
 done
 # shellcheck disable=SC2086
 set -- $POSITIONAL
 MODE="${1:-}"
-case "$MODE" in dotnet|angular|monorepo) ;; *) echo "usage: validate-dist.sh {dotnet|angular|monorepo} [dist-root] [--content-only]" >&2; exit 2;; esac
+case "$MODE" in dotnet|angular|monorepo) ;; *) echo "usage: validate-dist.sh {dotnet|angular|monorepo} [dist-root] [--content-only] [-Check name[,name...]]" >&2; exit 2;; esac
 DISTROOT="${2:-dist}"
 DIST="$DISTROOT/$MODE"
+
+VALID_CHECKS='markers json bash-syntax ps-syntax template-checks no-meta-leak no-dead-instruction hook-registration marker-expansion section-path carrier-import'
+SELECTED_CHECKS=""
+if [ "$CHECK_SET" = "1" ]; then
+  _old_ifs=$IFS; IFS=,
+  for _check in $CHECK_ARG; do
+    IFS=$_old_ifs
+    _check=$(printf '%s' "$_check" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    case " $VALID_CHECKS " in *" $_check "*) SELECTED_CHECKS="$SELECTED_CHECKS $_check";;
+      *) echo "usage error: unknown check name(s): ${_check:-\(empty\)}. Valid names: $(printf '%s' "$VALID_CHECKS" | sed 's/ /, /g')." >&2; exit 2;; esac
+    IFS=,
+  done
+  IFS=$_old_ifs
+  [ -n "$SELECTED_CHECKS" ] || { echo "usage error: unknown check name(s): (empty). Valid names: $(printf '%s' "$VALID_CHECKS" | sed 's/ /, /g')." >&2; exit 2; }
+fi
+check_selected() {
+  if [ "$CHECK_SET" = "1" ]; then case " $SELECTED_CHECKS " in *" $1 "*) return 0;; *) return 1;; esac; fi
+  if [ "$CONTENT_ONLY" = "1" ]; then case "$1" in no-meta-leak|no-dead-instruction|hook-registration) return 0;; *) return 1;; esac; fi
+  return 0
+}
 [ -d "$DIST" ] || { echo "no $DIST — run scripts/build.sh $MODE first" >&2; exit 2; }
 
 failed=0
@@ -84,6 +116,7 @@ fi
 # Prefer python3 (matches the .ps1 twin's ConvertFrom-Json more closely: full parse, not just
 # lexing); fall back to jq. Neither present is a hard FATAL, not a silent skip.
 JSON_TOOL=""
+if check_selected json || check_selected hook-registration; then
 if python3 -c 'import json' >/dev/null 2>&1; then JSON_TOOL="python3"
 elif command -v jq >/dev/null 2>&1; then JSON_TOOL="jq"
 else
@@ -103,8 +136,10 @@ if [ -n "${VALIDATE_DIST_JSON_TOOL:-}" ]; then
   esac
   JSON_TOOL="$VALIDATE_DIST_JSON_TOOL"
 fi
+fi
 
 if [ "$CONTENT_ONLY" != "1" ]; then
+if check_selected markers; then
 # --- 1. no unresolved @stack markers ------------------------------------------------------------
 markers=$(grep -rIlE '@stack:[A-Za-z0-9_-]+' "$DIST" 2>/dev/null || true)
 if [ -n "$markers" ]; then
@@ -112,7 +147,9 @@ if [ -n "$markers" ]; then
 else
   ok "no unresolved @stack markers in $DIST."
 fi
+fi
 
+if check_selected marker-expansion; then
 # --- 1a. every core marker expands from a non-empty snippet --------------------------------------
 # A missing snippet is silently consumed by the composer. Derive this inventory from src/core so a
 # marker added later is covered without maintaining a second list.
@@ -195,7 +232,9 @@ elif [ "$expansion_count" -gt 0 ]; then
 else
   ok "all $marker_count core @stack markers expand from non-empty $MODE snippets into composed files."
 fi
+fi
 
+if check_selected section-path; then
 # --- 1b. section-path references resolve ---------------------------------------------------------
 # The finite file/heading registry avoids treating prose after a citation as part of the heading.
 # CHANGELOG.md is historical text and is excluded by path. grep -Iq supplies the existing textual
@@ -250,7 +289,9 @@ elif [ "$citation_count" -gt 0 ]; then
 else
   ok "all registered section-path references resolve ($text_files_scanned textual file(s) scanned; CHANGELOG.md excluded)."
 fi
+fi
 
+if check_selected carrier-import; then
 # --- 1c. CLAUDE.md imports the delivered framework-rules carrier --------------------------------
 import_line='@.github/instructions/framework-rules.instructions.md'
 if [ ! -f "$DIST/CLAUDE.md" ]; then
@@ -262,7 +303,9 @@ elif [ ! -f "$DIST/.github/instructions/framework-rules.instructions.md" ]; then
 else
   ok "CLAUDE.md imports the delivered framework-rules carrier."
 fi
+fi
 
+if check_selected json; then
 # --- 2. every *.json parses -----------------------------------------------------------------------
 jsonfails=""
 while IFS= read -r f; do
@@ -274,7 +317,9 @@ json.load(open(sys.argv[1], encoding="utf-8"))' "$f" >/dev/null 2>&1 || jsonfail
   fi
 done < <(find "$DIST" -name '*.json' -type f)
 if [ -n "$jsonfails" ]; then fail "invalid JSON ($JSON_TOOL):$jsonfails"; else ok "all *.json files parse ($JSON_TOOL)."; fi
+fi
 
+if check_selected bash-syntax; then
 # --- 3. bash -n on every *.sh ----------------------------------------------------------------------
 command -v bash >/dev/null 2>&1 || { echo "FATAL: bash is not available to syntax-check *.sh files." >&2; exit 2; }
 shfails=""
@@ -282,7 +327,9 @@ while IFS= read -r f; do
   bash -n "$f" 2>/dev/null || shfails="$shfails $f"
 done < <(find "$DIST" -name '*.sh' -type f)
 if [ -n "$shfails" ]; then fail "bash syntax errors in:$shfails"; else ok "all *.sh files parse cleanly (bash -n)."; fi
+fi
 
+if check_selected ps-syntax; then
 # --- 4. PowerShell AST parse on every *.ps1 ---------------------------------------------------------
 PWSH=""
 if command -v pwsh >/dev/null 2>&1; then PWSH="pwsh"
@@ -316,7 +363,9 @@ if [ -s "$_ps1_list" ]; then
 fi
 rm -f "$_ps1_list"
 if [ -n "$ps1fails" ]; then fail "PS syntax errors in:$ps1fails"; else ok "all *.ps1 files parse cleanly ($PWSH)."; fi
+fi
 
+if check_selected template-checks; then
 # --- 5. the dist's own template-checks suite --------------------------------------------------------
 TC="$DIST/scripts/template-checks.sh"
 if [ ! -f "$TC" ]; then
@@ -330,8 +379,10 @@ else
     ok "$DIST/scripts/template-checks.sh passed."
   fi
 fi
+fi
 fi   # end of the checks 1-5 group (VALIDATE_DIST_CONTENT_ONLY)
 
+if check_selected no-meta-leak; then
 # --- 6. no meta-dev vocabulary in shipped content ---------------------------------------------------
 # The don't-ship boundary (invariant #6) made deterministic. Everything under dist/ lands in a
 # consumer's repo, so the framework's own development vocabulary — tracking ids, the two-repo
@@ -386,7 +437,9 @@ elif [ "$leakcount" -gt 0 ]; then
 else
   ok "no meta-dev vocabulary in $DIST (no-meta-leak; $patcount pattern(s) over $filesscanned file(s))."
 fi
+fi
 
+if check_selected no-dead-instruction; then
 # --- 7. no dead instructions ------------------------------------------------------------------
 # Every script a shipped doc tells someone to RUN must actually exist. no-meta-leak (check 6)
 # proves shipped files don't say the wrong *words*; nothing proved they don't give the wrong
@@ -473,7 +526,9 @@ else
   [ "$abscount" -eq 0 ] || printf '%s\n' "$absrefs" | sed 's/^/  [no-dead-instruction] /'
   ok "all $((refsextracted - abscount)) resolvable documented script references exist in $DIST ($docsscanned doc(s) scanned; $abscount absolute example(s) out of scope)."
 fi
+fi
 
+if check_selected hook-registration; then
 # --- 8. hook registrations point at hooks that exist ---------------------------------------------
 # Twin of check 8 in validate-dist.ps1 — see that file for the full rationale. In short: nothing
 # read the registration files at all (check 2 only proves they are valid JSON, check 7 only scans
@@ -754,6 +809,7 @@ else
   # The parser is named so a caller can assert WHICH branch ran; a comparison of two streams that
   # cannot tell the branches apart proves nothing.
   ok "all $regcount hook registrations resolve (settings.json $settingscount, settings.windows.json $windowscount, hooks.json $hookentries entries × 2 legs; parsed by $JSON_TOOL)"
+fi
 fi
 
 _report_timings
