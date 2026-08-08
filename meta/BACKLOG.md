@@ -3173,6 +3173,164 @@ tests; the new prevention gate has been observed red on planted generic fixtures
 clean tree; and the history-retention/rewrite decision is recorded.
 
 ---
+### B-124 · Decide whether a warehouse change belongs in an existing fact or a new fact
+**Effort:** M · **Priority:** P2 · filed 2026-08-08 · **Capability:** warehouse technical leadership
+
+**Why:** `add-warehouse-load` now asks whether a dimension already exists, but it has no equally
+explicit decision for facts. A new measure or business event can therefore be placed in a new fact
+unnecessarily, or added to an existing fact whose grain, lifecycle, dimensionality, sparsity, or
+loading semantics are incompatible. Either failure fragments a business process or creates a
+mixed-grain fact whose numbers are easy to misinterpret.
+
+**Do:** design a fact-binding decision that inspects the warehouse map and live repository evidence
+before DDL is proposed. Compare business process, declared atomic grain, dimensionality, event
+frequency and lifecycle, measure additivity, source authority, update/load semantics, and existing
+consumer contracts. The outcome must distinguish: extend an existing fact, create a new fact,
+model a separate snapshot/accumulating snapshot, or abstain pending a named missing fact. Explain
+the evidence and trade-off; do not infer compatibility from similar table names.
+
+**Framework fit:** integrate with B-125's modelling findings, B-126's change-impact contract,
+B-127's scoped lineage, and B-128's physical review. Reuse `map-warehouse` and
+`add-warehouse-load`; do not create a competing warehouse inventory or a second generic workflow.
+Preserve evidence/confidence labels, bounded tracing, and explicit abstention.
+
+**Design/review gate:** write and lock a design before implementation, including the proportionality
+case and at least two approaches. Then obtain an independent adversarial review with **Claude Opus**;
+the review may reject the premise. If Opus is rate- or spend-limited, mark the review **WAITING —
+OPUS LIMIT** and continue only work that is independent of this item's implementation. Do not
+substitute a lower tier and call the review complete.
+
+**Done when:** ambiguous existing-vs-new fact fixtures have a pre-registered red baseline and a
+constructible success case; post-change evals demonstrate the intended choice without mixed grain;
+all applicable dists carry the guidance; and B-41 records whether the behavior is reliable enough
+to ship.
+
+---
+### B-125 · Produce an evidence-ranked warehouse modelling health review
+**Effort:** M–L · **Priority:** P2 · filed 2026-08-08 · **Capability:** warehouse technical leadership
+
+**Why:** the warehouse map reports several local findings, but it is not yet a systematic modelling
+review. The framework can describe a model without consistently challenging mixed or unstated
+grain, the wrong fact type, missing many-to-many bridges or allocations, duplicated/non-conformed
+dimensions, inappropriate snowflaking, natural keys on facts, ambiguous special members, incorrect
+measure additivity, or unsafe fan/chasm paths. The framework's premise requires it to surface these
+issues and propose proportionate improvements, not merely catalogue tables.
+
+**Do:** design a bounded review mode or extension to `map-warehouse` that checks dimensional
+semantics and produces findings with evidence, confidence, severity, consequence, and a suggested
+remediation. It must separate an observed defect from a convention preference, show uncertainty,
+and avoid proposing a remodel without considering migration cost and downstream consumers. Include
+the common fact, dimension, bridge, role-playing, conformance, SCD, special-member, and additivity
+failure classes, while allowing repository-specific conventions to override generic advice when
+they are explicit and coherent.
+
+**Framework fit:** this is the shared modelling-analysis layer consumed by B-124, B-126, B-127, and
+B-128. Extend the existing map/finding vocabulary rather than creating a parallel architecture
+document. Keep the default pass cheap; deeper tracing must remain scoped and on demand.
+
+**Design/review gate:** locked design plus proportionality case, followed by an independent
+adversarial **Claude Opus** review before implementation. If Opus is unavailable because of limits,
+record **WAITING — OPUS LIMIT** and proceed only with independent design/backlog work.
+
+**Done when:** planted-model fixtures make each claimed detector visibly fail before the change and
+pass after it; clean and intentionally unconventional fixtures do not receive false defect claims;
+recommendations cite repository evidence; and behavioural evals show the model uses the findings
+rather than merely reproducing them.
+
+---
+### B-126 · Make dimension and fact enhancement safe across downstream warehouse consumers
+**Effort:** M–L · **Priority:** P2 · filed 2026-08-08 · **Capability:** warehouse technical leadership
+
+**Why:** deciding to reuse an existing dimension or fact is only the first decision. The current
+recipe does not require a complete change-impact argument for attribute ownership, per-attribute
+SCD behavior, source-authority conflicts, historical backfill, null/default semantics, grain or type
+changes, or affected views, marts, procedures, semantic models, reports, exports, and external
+contracts. A locally correct ALTER can still break the warehouse's overall design.
+
+**Do:** design a warehouse schema-evolution preflight used before enhancing an existing fact or
+dimension. It must identify upstream authority and downstream consumers, classify compatible versus
+breaking changes, define history/backfill and deployment sequencing, preserve old consumers during
+migration where required, and state rollback/deprecation obligations. It must consume the fact
+decision from B-124, modelling findings from B-125, and scoped lineage from B-127; physical
+consequences route to B-128 rather than being reinvented here.
+
+**Framework fit:** add a composable preflight to the existing warehouse change workflow. Do not turn
+`add-warehouse-load` into an exhaustive global scan: request deeper evidence only for the entities
+and consumers touched by the proposed change, and abstain when the dependency graph is incomplete.
+
+**Design/review gate:** locked design plus proportionality case, followed by an independent
+adversarial **Claude Opus** review before implementation. If Opus is limited, record **WAITING —
+OPUS LIMIT**; design of another independent item may continue, but implementation may not.
+
+**Done when:** fixtures cover safe additive evolution, SCD-policy change, historical backfill, grain
+or type breakage, and a downstream semantic/report consumer; the framework names affected artifacts
+and a compatible migration path; and evals prove it does not treat every additive column as safe.
+
+---
+### B-127 · Trace a warehouse attribute or metric from source to consumption on demand
+**Effort:** M–L · **Priority:** P2 · filed 2026-08-08 · **Capability:** warehouse technical leadership
+
+**Why:** the map records entity-level flow, relationships, and consumption surfaces, but it cannot
+yet explain a named attribute or metric end to end. Without scoped lineage the framework can miss
+filters, derivations, defaulting, deduplication, effective-date resolution, currency/unit/time-zone
+conversion, and semantic redefinition between source, staging, core facts/dimensions, marts, and
+reports. Whole-warehouse column lineage would be costly and brittle; the need is a bounded trace
+for the change or question at hand.
+
+**Do:** design an on-demand trace that starts from a named source field, warehouse attribute,
+measure, or reported metric and follows repository evidence in either direction. Record each
+transformation, filter, join/key resolution, unit/currency/time-zone rule, aggregation, owning
+definition, and consumer, with gaps and conflicts explicitly marked. Capture canonical metric
+semantics where the repository defines them, but do not invent business definitions or claim
+runtime lineage from static evidence alone.
+
+**Framework fit:** enrich the existing warehouse map or a linked scoped artifact using its evidence
+and confidence vocabulary. B-124 uses the trace for fact compatibility, B-125 for modelling
+findings, B-126 for impact, and B-128 for workload evidence. The trace must be demand-driven and
+budgeted, not an always-on whole-repository graph.
+
+**Design/review gate:** locked design plus proportionality case, followed by an independent
+adversarial **Claude Opus** review before implementation. If Opus is unavailable due to limits,
+record **WAITING — OPUS LIMIT** and leave implementation blocked while independent work continues.
+
+**Done when:** multi-stage fixtures prove forward and reverse tracing through SQL transformations
+and a consuming semantic/report artifact; conflicting and absent evidence produce abstention rather
+than a fabricated line; cost/coverage is reported; and evals show the trace changes a downstream
+design or review decision.
+
+---
+### B-128 · Review warehouse physical design against its actual load and query workload
+**Effort:** M–L · **Priority:** P2 · filed 2026-08-08 · **Capability:** warehouse technical leadership
+
+**Why:** the framework records partitioning, columnstore, retention, and load ordering, but does not
+systematically test whether physical design supports the warehouse's observed loading and access
+patterns. Sound logical modelling can still fail through unsuitable partition keys, indexes,
+columnstore layout, distribution/sharding, compression, statistics, materialisation, or an
+unexamined load-versus-query trade-off.
+
+**Do:** design a physical-design review driven by repository evidence about fact size/growth,
+incremental and backfill patterns, join/filter/grouping paths, concurrency, retention, platform
+capabilities, and operational constraints. Assess partitioning, indexing/columnstore, distribution,
+compression, statistics, aggregates/materialised views, and maintenance cost where applicable.
+Recommendations must name the workload assumption and expected benefit, distinguish measured facts
+from estimates, and request plans/runtime evidence rather than asserting performance when static
+code is insufficient. This is architecture review, not a replacement for single-query tuning.
+
+**Framework fit:** consume B-124's grain/fact choice, B-125's logical findings, B-126's deployment
+impact, and B-127's workload paths. Keep platform-specific advice behind detected capabilities and
+avoid universal vendor prescriptions. Prefer extending the warehouse review workflow over a new
+always-routed skill unless the design demonstrates a routing need.
+
+**Design/review gate:** locked design plus proportionality case, followed by an independent
+adversarial **Claude Opus** review before implementation. If Opus is rate- or spend-limited, record
+**WAITING — OPUS LIMIT** and move to independent design work; do not implement this item unreviewed.
+
+**Done when:** representative fixtures cover rowstore and columnstore/partitioned designs, harmful
+and appropriate configurations, incremental loads and backfills, and absent workload evidence;
+recommendations are platform-scoped and evidence-ranked; false-positive controls are demonstrated;
+and behavioral evals show the framework can decline an unjustified optimization.
+
+---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see the Done section.**
