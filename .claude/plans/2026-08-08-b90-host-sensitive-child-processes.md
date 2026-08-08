@@ -52,12 +52,14 @@ absolute Windows PowerShell 5.1 executable and compare `(Get-Process -Id $PID).P
 success world is the same 5.1 parent receiving its identical `powershell.exe` path; a `pwsh` parent
 must likewise receive its identical `pwsh` path.
 
-After the change, repeat that real-helper identity test for both harnesses under both hosts. Run the
-release-staging and architecture suites directly under absolute 5.1 and `pwsh`. For
-`ReleaseStagingGuard`, additionally mutate one load-bearing `@(...).Count` wrapper in an isolated
-copy: the self-hosted 5.1 suite must fail, while the restored source passes 6/6 under both hosts.
-For architecture output, the existing static guard already rejects the historical `Set-Content`
-implementation; prove the corrected helper path is used and retain byte parity on restored source.
+After the change, repeat that real-helper identity test for both harnesses under both hosts, using a
+fresh child process for every probe so the helper cache cannot contaminate the result. Run the
+release-staging and architecture suites directly under absolute 5.1 and `pwsh`; the restored staging
+suite must pass 6/6 under both. No synthetic `@(...).Count` mutation is claimed: second-pass critique
+verified that removing those wrappers does not recreate the historical singleton shape and can stay
+green. For architecture output, the existing static guard already rejects the historical
+`Set-Content` implementation; prove the corrected helper path is used and retain byte parity on
+restored source.
 
 Then run parser/BOM checks, compose and freshness for all distributions, relevant focused/meta and
 dist suites, and `validate-dist` for all three distributions. A green result is not claimed for any
