@@ -115,8 +115,9 @@ These replace the shipped consumer workflows for meta-work.
   `DEVELOPING.md` → "Run/test a hook") → fix in `src/` → re-run the fixture to confirm → twin +
   monorepo sibling → rebuild → verify on **both** surfaces [#5].
 - **New version / large change:** plan first; persist the plan to `.claude/plans/`. The adversarial
-  critique pass is not optional here — see Maintenance model #1 for when it is required. Gate before
-  touching code.
+  critique pass is not optional here — see Maintenance model #1 for when it is required, and #6 for
+  the proportionality case that critique must include before the design locks. Gate before touching
+  code.
 - **Investigation / design:** write no code; weigh ≥2 approaches with trade-offs; record the
   outcome in `meta/workspace-decisions.md` (see Conventions).
 
@@ -127,7 +128,7 @@ These replace the shipped consumer workflows for meta-work.
 The shipping quality of this framework has depended on a second, independent reviewer, and the
 record proves it: B-37's post-ship review of a lower-tier implementation found **six real defects**
 including a false "gates green"; every externally-implemented item (B-32, B-21, B-35, B-36, B-27)
-had 2–5 real findings caught **before** ship. That discipline was tribal — these five rules make it
+had 2–5 real findings caught **before** ship. That discipline was tribal — these six rules make it
 binding. Rules 2–4 are enforced by `release.ps1`'s review ledger, not by this prose.
 
 1. **Locked design + adversarial critique before implementation, for every M+ item.** The critique
@@ -157,8 +158,22 @@ binding. Rules 2–4 are enforced by `release.ps1`'s review ledger, not by this 
 5. **Close every delivery with an RCA** filed into `meta/BACKLOG.md`, answering two questions:
    *why did no gate catch it*, and *what else is exposed to the same class?* Sweep for the second —
    the answer is rarely "nothing".
+6. **Before rule 1 locks a design, state the proportionality case, not just the correctness case.**
+   Rules 1–5 all govern whether an already-chosen fix is *right*; none of them asks whether its
+   *cost matches the harm*. Name the concrete, already-observed harm — not a hypothetical one — and
+   check whether a materially smaller fix would remove most of it before locking the larger one.
+   B-108 is the caught example: the defect class is real and already severe (B-104 was a P1 — the
+   exact grammar mismatch this item exists to prevent took the whole bash-leg NL-routing subsystem
+   silently offline on Windows), so "should we fix resolver drift" was never in question — but the
+   first locked design answered only that question, and stopped, without asking whether a bespoke
+   lexical parser (a probe-shaped-line grammar with CRLF normalization, comment/quote scanning, and
+   continuation-line handling) was proportionate to seven low-churn files, when the DENY-pattern
+   infrastructure B-109 had just built might close most of the same gap far more cheaply. This check
+   belongs *inside* the adversarial critique in rule 1 — it is not a second pass, and stating it in
+   two sentences in the plan document is enough. Do not let the proportionality check itself become
+   the thing that needs a proportionality check.
 
-Evidence trail for all five: `meta/LEARNINGS.md`. Working hazards that are *not* principles (e.g.
+Evidence trail for all six: `meta/LEARNINGS.md`. Working hazards that are *not* principles (e.g.
 never run the gate suites concurrently with an implementer round) live in `DEVELOPING.md`.
 
 ## Definition of done per artifact type

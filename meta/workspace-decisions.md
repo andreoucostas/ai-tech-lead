@@ -1346,3 +1346,33 @@ directory with a durable `LEARNINGS.md` record.
 **Rejected.** A SQL distribution (duplicates the .NET warehouse surface), mandatory map creation
 (contradicts the existing offer-not-force contract), arbitrary three-way merging of Markdown skill
 bodies (no stable merge semantics), and new ownership frontmatter (derivable and costs static budget).
+
+---
+
+## WSD-034: proportionality is a required part of the pre-lock critique, not a separate gate (2026-08-08)
+
+**Context.** The user flagged, at the framework-process level, that backlog items get adversarially
+critiqued for *correctness* (Maintenance model rule 1) but never for whether their *scope* matches
+the harm they prevent. B-108 was the live example: its design was independently re-reviewed and
+cleared to implement on correctness grounds (the `python3`-only detection gap was found and closed,
+verified against the real tree) without anyone asking whether a full bespoke lexical parser — a
+probe-shaped-line grammar with CRLF normalization, comment/quote scanning, continuation-line
+handling — was proportionate to normalizing seven low-churn hook files. Checking the record: the
+underlying defect class is not hypothetical (B-104 was a P1 — this exact grammar mismatch took the
+whole bash-leg NL-routing subsystem silently offline on Windows), so consolidating the resolver
+logic is justified. What was never examined is whether *this specific solution's* complexity was
+justified, when the DENY-pattern infrastructure B-109 had just built might close most of the same
+gap for a fraction of the implementation and long-term maintenance cost.
+
+**Decision.** Add Maintenance model rule 6: before rule 1 locks a design for an M+ item, the critique
+must name the concrete, already-observed harm (not a hypothetical one) and check whether a
+materially smaller fix would remove most of it. This lives *inside* the existing critique pass — it
+is not a new gate, a new document, or a second review round; two sentences in the plan is enough.
+Mirrored into `AGENTS.md`'s condensed Maintenance model section per invariant #2.
+
+**Rejected.** A standalone "necessity review" step or checklist file (process overhead disproportionate
+to the problem it solves — which would be exactly the failure mode this decision exists to prevent);
+renumbering rules 1–5 to insert proportionality first (rules 2–4 are referenced by number in
+`release.ps1`, `DEVELOPING.md`, and multiple locked plans — renumbering breaks live cross-references
+for a purely cosmetic ordering win, so the new rule is appended as 6 with its "applies before rule 1"
+relationship stated in its own text instead).

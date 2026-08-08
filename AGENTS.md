@@ -84,7 +84,7 @@ disciplines in `src/core/CLAUDE.md` bind meta-work too.
 
 ## Maintenance model
 
-Canonical definitions live in `CLAUDE.md` > Maintenance model — same five rules, condensed here.
+Canonical definitions live in `CLAUDE.md` > Maintenance model — same six rules, condensed here.
 Rules 2–4 are enforced by `release.ps1`, not by this prose.
 
 1. **Locked design + adversarial critique before implementing any M+ item.** The critique may
@@ -102,6 +102,13 @@ Rules 2–4 are enforced by `release.ps1`, not by this prose.
    always fails (B-112).
 5. **Close every delivery with an RCA** in `meta/BACKLOG.md`: why did no gate catch it, and what
    else is exposed to the same class?
+6. **Before rule 1 locks a design, state the proportionality case, not just the correctness case.**
+   Name the concrete, already-observed harm and check whether a materially smaller fix would remove
+   most of it before locking the larger one — rules 1–5 all assume the fix's *scope* is already
+   right and only test whether it's *verified* right. B-108 is the caught example: the defect class
+   was real (B-104, P1) but the first locked design never asked whether its bespoke lexical parser
+   was proportionate to seven low-churn files when cheaper machinery (B-109's DENY-pattern gate)
+   might close most of the same gap. Lives inside rule 1's critique, not a second pass.
 
 `release.ps1` refuses to release without either `-ReviewEvidence` (the reviewer's re-run command
 and its observed exit code) or `-NoIndependentReview`, which is allowed but records
