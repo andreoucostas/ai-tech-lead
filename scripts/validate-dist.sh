@@ -610,7 +610,10 @@ while IFS=$'\t' read -r f ln content; do
     [ -n "$pathpart" ] || continue
     linksextracted=$((linksextracted+1))
     pct_rest=$(printf '%s' "$pathpart" | sed -E 's/%[0-9A-Fa-f]{2}//g')
-    if [[ "$pct_rest" == *%* || "$pathpart" == *%00* ]]; then
+    # Shell variables cannot preserve NUL, and command substitution strips trailing newlines.
+    # Reject every percent-encoded ASCII control before decoding so none can normalize into a
+    # different (potentially valid) target. PowerShell rejects these through path resolution too.
+    if [[ "$pct_rest" == *%* || "$pathpart" =~ %([01][0-9A-Fa-f]|7[Ff]) ]]; then
       deadlinks="$deadlinks$rel:$ln: \`$target\` is not a valid relative link target"$'\n'
       continue
     fi

@@ -589,7 +589,9 @@ foreach ($f in (Get-ChildItem -Recurse -File -Force -Path $DistAbs -Filter *.md)
             if ([string]::IsNullOrWhiteSpace($pathPart)) { continue }
             $linksExtracted++
             try {
-                if ($pathPart -match '%(?![0-9A-Fa-f]{2})') { throw 'malformed percent escape' }
+                if ($pathPart -match '%(?![0-9A-Fa-f]{2})' -or $pathPart -match '%(?:[01][0-9A-Fa-f]|7F)') {
+                    throw 'malformed or control percent escape'
+                }
                 $decoded = [Uri]::UnescapeDataString($pathPart)
                 $resolved = [IO.Path]::GetFullPath((Join-Path $f.DirectoryName $decoded))
                 $rootPrefix = $DistAbs.TrimEnd('\','/') + [IO.Path]::DirectorySeparatorChar

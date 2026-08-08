@@ -3597,9 +3597,9 @@ planted unreadable file and an emptied tree, both twins.
   and inline-code examples remained green; case 33 removed every rendered local link and both twins
   failed the zero-candidate floor. **Independent review found four twin/boundary gaps:** the first
   PowerShell draft accidentally stopped checking script commands inside fences; bash truncated
-  angle-bracket targets containing spaces; malformed percent escapes differed; and links to the
-  dist root were rejected. Case 34 now locks fenced-command parity, angle-bracket spaces, malformed
-  escapes, encoded traversal, and root-directory links across both twins. Both twins then passed all
+  angle-bracket targets containing spaces; malformed/control percent escapes differed; and links to
+  the dist root were rejected. Case 34 now locks fenced-command parity, angle-bracket spaces, malformed
+  and control escapes, encoded traversal, and root-directory links across both twins. Both twins then passed all
   three composed dists with 35 relative inline links each. **RCA:** the original gate defined a dead instruction only as an executable
   command, so navigational instructions had no extractor, resolution rule, count, or planted
   failure. The fix extends the existing document-reference gate rather than introducing a parser or

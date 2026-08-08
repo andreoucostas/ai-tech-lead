@@ -479,6 +479,11 @@ try {
             [IO.File]::AppendAllText((Join-Path $d 'README.md'),"`n[nul](%00)`n")
         } 'is not a valid relative link target' 'no-dead-instruction' -AlsoPattern '%00'
 
+        Assert-Case 'newline-percent-link' {
+            param($d)
+            [IO.File]::AppendAllText((Join-Path $d 'README.md'),"`n[newline](%0A)`n")
+        } 'is not a valid relative link target' 'no-dead-instruction' -AlsoPattern '%0A'
+
         Assert-Case 'encoded-link-escape' {
             param($d)
             [IO.File]::AppendAllText((Join-Path $d 'docs/playbook.md'),"`n[escape](%2e%2e/%2e%2e/outside.md)`n")
