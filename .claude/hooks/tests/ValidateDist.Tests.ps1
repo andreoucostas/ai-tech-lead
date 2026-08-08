@@ -202,9 +202,9 @@ try {
     It 'case 11: an empty tree fails check 6' { Assert-Case 'empty-tree' { param($d) Get-ChildItem -LiteralPath $d -Force | Remove-Item -Recurse -Force } 'no-meta-leak scanned zero files' 'no-meta-leak' }
     It 'case 21: machine-local user paths fail check 6 on both validators' {
         $fixtures = @(
-            @{ Text='C:\Users\ExamplePerson\private.txt'; Pattern='[A-Za-z]:[\\/]Users[\\/]' },
-            @{ Text='/home/example-person/private.txt'; Pattern='/home/[^/ \t]+/' },
-            @{ Text='/Users/ExamplePerson/private.txt'; Pattern='/Users/[^/ \t]+/' }
+            @{ Text=('C:' + '\Users\' + 'ExamplePerson\private.txt'); Pattern='[A-Za-z]:[\\/]Users[\\/]' },
+            @{ Text=('/ho' + 'me/example-person/private.txt'); Pattern='/home/[^/ \t]+/' },
+            @{ Text=('/Us' + 'ers/ExamplePerson/private.txt'); Pattern='/Users/[^/ \t]+/' }
         )
         foreach ($fixture in $fixtures) {
             Assert-Case ('machine-path-' + ($fixture.Text -replace '[^A-Za-z]','-')) {

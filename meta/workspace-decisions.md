@@ -240,7 +240,7 @@ each repo's `docs/architecture-decisions.md`.
     clone of dotnet: `--to-subdirectory-filter legacy/dotnet` completed cleanly, all 138 files
     relocated, `git log --follow legacy/dotnet/CLAUDE.md` preserved all 38 commits to the initial
     commit. **Op note for Phase 1:** the Python Scripts dir
-    (`C:\Users\Costas\AppData\Roaming\Python\Python314\Scripts`) is **not on PATH** — prepend it so
+    (`<home>\AppData\Roaming\Python\Python314\Scripts`) is **not on PATH** — prepend it so
     `git filter-repo` resolves as a subcommand, or invoke the `.exe` directly. `python3` is the
     Windows Store shim; use `python`.
   - **Empty `ai-tech-lead` repo (D1): CREATED** by maintainer 2026-07-08 —
@@ -1376,3 +1376,22 @@ renumbering rules 1–5 to insert proportionality first (rules 2–4 are referen
 `release.ps1`, `DEVELOPING.md`, and multiple locked plans — renumbering breaks live cross-references
 for a purely cosmetic ordering win, so the new rule is appended as 6 with its "applies before rule 1"
 relationship stated in its own text instead).
+
+---
+
+## WSD-035: sanitize the current authoring tree; retain published history (2026-08-08)
+
+**Context.** B-122 found concrete maintainer home paths in public scripts, operational notes, eval
+output, and historical records. They disclose machine provenance and made three canaries specific to
+one account, but they are not credentials and none appears in a consumer distribution. Legitimate
+identity remains public in the MIT attribution and real repository URLs.
+
+**Decision.** Remove concrete home paths from the current tree, make canary defaults relative to
+`APPDATA`/`USERPROFILE`, and prevent ordinary recurrence with a whole-working-tree meta test. Retain
+published Git history. Old commits therefore still contain the paths; this decision cleans HEAD, not
+history. Historical erasure requires a separately approved migration coordinating rewritten commits,
+tags, forks, and collaborators.
+
+**Rejected.** Banning the maintainer's name (breaks attribution and URLs); file-wide exclusions for
+meta evidence or fixtures (where most leaks occurred); a general host-resolution/encoding scanner
+framework (disproportionate to the observed ordinary-text paths); and an unapproved history rewrite.

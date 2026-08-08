@@ -602,7 +602,7 @@ circular-DI `forwardRef`. Writing prescriptive guidance whose only instrument is
 fix would be shipping on faith. **Resume this half once B-72 re-specifies the probe** so it states
 the business need without naming the mechanism, and shows where the model actually fails. The
 technical content is drafted and reviewed in
-`C:\Users\Costas\.claude\plans\let-s-go-ahead-and-sorted-quill.md` (including three precision traps:
+`<home>\.claude\plans\let-s-go-ahead-and-sorted-quill.md` (including three precision traps:
 qualify circular DI to the *self-referencing* `useExisting` provider; do **not** claim "Angular
 warns" about `@Input() disabled` — it collides with `setDisabledState()`, which is a different
 thing; signal inputs are read-only so a CVA's *value* cannot be an `input()`).
@@ -1930,7 +1930,7 @@ B-74/B-75 — a report whose shape suggests success.
 
 **Also found: the recorded run command cannot execute on the maintainer box as written.** `claude` is
 not resolvable — the session `PATH` holds three entries, the third being the literal unexpanded string
-`${PATH}`; the binary is at `C:\Users\Costas\.local\bin\claude.exe`. The harness fails fast and
+`${PATH}`; the binary is at `<home>\.local\bin\claude.exe`. The harness fails fast and
 clearly (`claude CLI is not installed or not on PATH`), which is good instrument behaviour, but the
 runs were parked believing quota was the only obstacle and it was not the first one hit. Prepend that
 directory to `PATH` for the child process; do **not** "fix" the registry, which is a known false fix.
@@ -1940,8 +1940,8 @@ of the `${PATH}` corruption — record them here so no future session re-derives
 
 | Tool | Path | Note |
 |---|---|---|
-| Claude Code | `C:\Users\Costas\.local\bin\claude.exe` | |
-| Copilot CLI | `C:\Users\Costas\AppData\Roaming\npm\copilot.cmd` | **needs `C:\Program Files\nodejs` on `PATH` too** — the npm shim shells out to `node`, and its failure is the misleading `'"node"' is not recognized`, which looks like a broken Copilot install rather than a PATH problem |
+| Claude Code | `<home>\.local\bin\claude.exe` | |
+| Copilot CLI | `<home>\AppData\Roaming\npm\copilot.cmd` | **needs `C:\Program Files\nodejs` on `PATH` too** — the npm shim shells out to `node`, and its failure is the misleading `'"node"' is not recognized`, which looks like a broken Copilot install rather than a PATH problem |
 | GitHub CLI | `C:\Program Files\GitHub CLI\gh.exe` | |
 | pwsh 7.6.4 | `C:\Program Files\WindowsApps\Microsoft.PowerShell_7.6.4.0_x64__8wekyb3d8bbwe\pwsh.exe` | MSIX build, cf. B-79 |
 
@@ -2291,7 +2291,7 @@ every write**, on a box that has a perfectly good JSON parser installed. The fra
 write floor is the product's central enforcement claim, and its only fallback is spelled in a way that
 excludes the primary target platform (Bitbucket DC shops on Windows).
 
-Why nobody noticed: `jq` is present on the maintainer box (`/c/Users/Costas/bin/jq`), so the fallback
+Why nobody noticed: `jq` is present on the maintainer box (`<home>/bin/jq`), so the fallback
 branch is never taken here. It fails only for a consumer without jq — i.e. exactly the person the
 fallback exists for.
 
@@ -2303,7 +2303,7 @@ reports the floor's health on a basis that is wrong on Windows — a second defe
 B-63 have already had to correct once for vantage-point reasons.
 
 **The trap in the obvious fix, which must not be skipped:** do **not** simply add `python` to the
-`command -v` list. `C:\Users\Costas\AppData\Local\Microsoft\WindowsApps\python.exe` **exists and
+`command -v` list. `<home>\AppData\Local\Microsoft\WindowsApps\python.exe` **exists and
 resolves**, but it is the Microsoft Store *app-execution-alias stub*: running it prints *"Python was
 not found; run without arguments to install from the Microsoft Store"* and exits non-zero. A
 name-resolution probe would therefore report a parser as available and then fail at the moment the
@@ -2510,7 +2510,7 @@ composes into all three dists, containing
 
 ```powershell
 $fallback = 'C:\Python314\python.exe'
-$fallback = 'C:\Users\Costas\bin\jq.exe'
+$fallback = '<home>\bin\jq.exe'
 ```
 
 Both would have reached every consumer. `no-meta-leak` caught the `B-nn` ids in the same commit and
@@ -3138,7 +3138,7 @@ indistinguishable from a missing artifact unless the artifact's existence is rep
 > defects found in the v0.51.0 diff. Full evidence in `meta/review-ledger.md`.
 
 ---
-### B-122 · Remove personal machine details from the public authoring repository
+### B-122 · Remove personal machine details from the public authoring repository — **DONE 2026-08-08, see Done section**
 **Effort:** S–M · **Priority:** P3 · filed 2026-08-08 following B-109 · **Scope:** maintainer layer,
 not shipped distributions
 
@@ -3421,7 +3421,7 @@ rejected — keep it opt-in.
 
 ### B-20 · Coverage-as-diagnostic + diff-scoped mutation testing (the former v0.24.0 testing release)
 **Effort:** L · needs a **new version slot** — ≥ v0.28.0 (0.26.0 = merge, 0.27.0 = B-27 per WSD-012)
-Execution-ready plan exists: `C:\Users\Costas\.claude\plans\v0_24_0-shipped-framework-testing.md`
+Execution-ready plan exists: `<home>\.claude\plans\v0_24_0-shipped-framework-testing.md`
 (WS-T9 coverage holes-map + optional off-by-default patch-coverage gate, roll-your-own diff
 coverage over `scripts/metrics.*` cobertura ∩ `git diff`; WS-T10 Stryker.NET `--since` /
 StrykerJS `--incremental`; WS-T11 wire survivors into `test-critic`; WS-T12 docs/parity).
@@ -3594,11 +3594,23 @@ planted unreadable file and an emptied tree, both twins.
   wherever an audit infers behavioural coverage from one textual spelling; future sweeps must derive
   their population from composed artifacts and prove behavior with executable fixtures.
 
+- **B-122** — done **2026-08-08** (meta-only; no shipped version). Sanitized 16 incidental
+  maintainer paths while preserving 14 intentional identity/URL lines, made three canary defaults
+  relative to `APPDATA`/`USERPROFILE` with explicit overrides, and added an auto-discovered privacy
+  test over tracked plus non-ignored untracked files. B-109's three concrete fixtures are assembled
+  dynamically, so no fixture exemption weakens the gate. Red-before-green against the real
+  pre-change tree: 20 concrete paths found (16 machine details plus four fixture/evidence lines),
+  `EXIT=1`; focused post-change suite: 6/6, `EXIT=0`. WSD-035 records that HEAD is clean while old
+  published commits retain the metadata. **RCA:** the prior privacy boundary scanned only composed
+  distributions, so maintainer scripts, transcripts, plans, and records were outside its population.
+  The same class exposes any non-ignored authoring-tree text file; the new gate derives that complete
+  working-tree population from Git rather than maintaining a directory list.
+
 - **B-109** — done **2026-08-08** (meta-only; no shipped version). Extended the shared
   `no-meta-leak` denylist to reject Windows user profiles and Linux/macOS home directories while
   retaining generic documentation placeholders. Added a real-dist regression covering all three
-  forms on both validator twins. Red-before-green: a planted
-  `C:\Users\ExamplePerson\private.txt` passed both validators (`EXIT=0`) before the change and
+  forms on both validator twins. Red-before-green: a planted Windows user-profile path passed both
+  validators (`EXIT=0`) before the change and
   failed both afterward (`EXIT=1`); the focused four-form test passed on both legs, full
   `validate-dist.ps1` passed all three dists, and the meta suite passed 11 files with zero failures.
   **RCA:** no gate caught the original leak because check 6 encoded only development vocabulary,
