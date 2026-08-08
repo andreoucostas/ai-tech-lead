@@ -11,6 +11,13 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.51.3 — Unreleased
+
+- B-67: `validate-dist` now checks rendered relative inline Markdown links in shipped docs, with
+  document-relative, case-exact resolution, path-escape rejection, and a separate anti-vacuity
+  floor. The sweep also corrected bootstrap examples that rendered as dangling warehouse-map links
+  from inside `.claude/commands/`.
+
 ## 0.51.2 — 2026-08-08
 
 - B-71/B-74: the shipped hook test suite's Windows PowerShell 5.1 compatibility case no longer
