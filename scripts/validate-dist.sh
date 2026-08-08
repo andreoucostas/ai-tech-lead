@@ -141,11 +141,31 @@ fi
 if [ "$CONTENT_ONLY" != "1" ]; then
 if check_selected markers; then
 # --- 1. no unresolved @stack markers ------------------------------------------------------------
-markers=$(grep -rIlE '@stack:[A-Za-z0-9_-]+' "$DIST" 2>/dev/null || true)
-if [ -n "$markers" ]; then
+_marker_list=$(mktemp)
+marker_enum_ok=1
+find "$DIST" -type f > "$_marker_list" || marker_enum_ok=0
+marker_count=$(wc -l < "$_marker_list" | tr -d ' ')
+markers=""
+marker_read_fails=""
+while IFS= read -r f; do
+  [ -n "$f" ] || continue
+  grep -IlE '@stack:[A-Za-z0-9_-]+' "$f" >/dev/null 2>&1
+  marker_status=$?
+  if [ "$marker_status" -eq 0 ]; then markers="$markers $f"
+  elif [ "$marker_status" -gt 1 ]; then marker_read_fails="$marker_read_fails $f"
+  fi
+done < "$_marker_list"
+rm -f "$_marker_list"
+if [ "$marker_enum_ok" -ne 1 ]; then
+  fail "marker scan could not enumerate $DIST."
+elif [ "$marker_count" -eq 0 ]; then
+  fail "marker scan found zero files in $DIST."
+elif [ -n "$marker_read_fails" ]; then
+  fail "marker scan could not read:$marker_read_fails"
+elif [ -n "$markers" ]; then
   fail "unresolved @stack markers in:$(printf ' %s' $markers)"
 else
-  ok "no unresolved @stack markers in $DIST."
+  ok "no unresolved @stack markers in $DIST ($marker_count files scanned)."
 fi
 fi
 
@@ -307,26 +327,50 @@ fi
 
 if check_selected json; then
 # --- 2. every *.json parses -----------------------------------------------------------------------
+_json_list=$(mktemp)
+json_enum_ok=1
+find "$DIST" -name '*.json' -type f > "$_json_list" || json_enum_ok=0
+json_count=$(wc -l < "$_json_list" | tr -d ' ')
 jsonfails=""
+json_read_fails=""
 while IFS= read -r f; do
+  [ -n "$f" ] || continue
+  cat "$f" >/dev/null 2>&1 || { json_read_fails="$json_read_fails $f"; continue; }
   if [ "$JSON_TOOL" = "python3" ]; then
     python3 -c 'import json,sys
 json.load(open(sys.argv[1], encoding="utf-8"))' "$f" >/dev/null 2>&1 || jsonfails="$jsonfails $f"
   else
     jq empty "$f" >/dev/null 2>&1 || jsonfails="$jsonfails $f"
   fi
-done < <(find "$DIST" -name '*.json' -type f)
-if [ -n "$jsonfails" ]; then fail "invalid JSON ($JSON_TOOL):$jsonfails"; else ok "all *.json files parse ($JSON_TOOL)."; fi
+done < "$_json_list"
+rm -f "$_json_list"
+if [ "$json_enum_ok" -ne 1 ]; then fail "JSON scan could not enumerate $DIST."
+elif [ "$json_count" -eq 0 ]; then fail "JSON scan found zero files in $DIST."
+elif [ -n "$json_read_fails" ]; then fail "JSON scan could not read:$json_read_fails"
+elif [ -n "$jsonfails" ]; then fail "invalid JSON ($JSON_TOOL):$jsonfails"
+else ok "all $json_count *.json files parse ($JSON_TOOL)."; fi
 fi
 
 if check_selected bash-syntax; then
 # --- 3. bash -n on every *.sh ----------------------------------------------------------------------
 command -v bash >/dev/null 2>&1 || { echo "FATAL: bash is not available to syntax-check *.sh files." >&2; exit 2; }
+_sh_list=$(mktemp)
+sh_enum_ok=1
+find "$DIST" -name '*.sh' -type f > "$_sh_list" || sh_enum_ok=0
+sh_count=$(wc -l < "$_sh_list" | tr -d ' ')
 shfails=""
+sh_read_fails=""
 while IFS= read -r f; do
+  [ -n "$f" ] || continue
+  cat "$f" >/dev/null 2>&1 || { sh_read_fails="$sh_read_fails $f"; continue; }
   bash -n "$f" 2>/dev/null || shfails="$shfails $f"
-done < <(find "$DIST" -name '*.sh' -type f)
-if [ -n "$shfails" ]; then fail "bash syntax errors in:$shfails"; else ok "all *.sh files parse cleanly (bash -n)."; fi
+done < "$_sh_list"
+rm -f "$_sh_list"
+if [ "$sh_enum_ok" -ne 1 ]; then fail "shell scan could not enumerate $DIST."
+elif [ "$sh_count" -eq 0 ]; then fail "shell scan found zero files in $DIST."
+elif [ -n "$sh_read_fails" ]; then fail "shell scan could not read:$sh_read_fails"
+elif [ -n "$shfails" ]; then fail "bash syntax errors in:$shfails"
+else ok "all $sh_count *.sh files parse cleanly (bash -n)."; fi
 fi
 
 if check_selected ps-syntax; then
@@ -347,22 +391,33 @@ ps1fails=""
 # NOTE: positional args after `pwsh -Command '<script>'` do NOT bind to $args (they're silently
 # dropped) — the file list travels via an env var pointing at a temp file, so no quoting concerns.
 _ps1_list=$(mktemp)
-find "$DIST" -name '*.ps1' -type f > "$_ps1_list"
-if [ -s "$_ps1_list" ]; then
-  ps1fails=$(VALIDATE_DIST_PS1_LIST="$_ps1_list" "$PWSH" -NoProfile -NonInteractive -Command '
+_ps1_read_fails=$(mktemp)
+_ps1_parse_fails=$(mktemp)
+ps1_enum_ok=1
+find "$DIST" -name '*.ps1' -type f > "$_ps1_list" || ps1_enum_ok=0
+ps1_count=$(wc -l < "$_ps1_list" | tr -d ' ')
+ps1_tool_ok=1
+if [ "$ps1_count" -gt 0 ]; then
+  VALIDATE_DIST_PS1_LIST="$_ps1_list" VALIDATE_DIST_PS1_READ_FAILS="$_ps1_read_fails" VALIDATE_DIST_PS1_PARSE_FAILS="$_ps1_parse_fails" "$PWSH" -NoProfile -NonInteractive -Command '
     $bad = @()
     foreach ($p in [IO.File]::ReadAllLines($env:VALIDATE_DIST_PS1_LIST)) {
       if ([string]::IsNullOrWhiteSpace($p)) { continue }
       $e = $null
-      [System.Management.Automation.Language.Parser]::ParseFile($p, [ref]$null, [ref]$e) | Out-Null
-      if ($e) { $bad += $p }
+      try { [System.Management.Automation.Language.Parser]::ParseFile($p, [ref]$null, [ref]$e) | Out-Null }
+      catch { [IO.File]::AppendAllText($env:VALIDATE_DIST_PS1_READ_FAILS, " " + $p); continue }
+      if ($e) { [IO.File]::AppendAllText($env:VALIDATE_DIST_PS1_PARSE_FAILS, " " + $p) }
     }
-    # One space-prefixed token per failure, matching the string this check used to accumulate.
-    foreach ($b in $bad) { [Console]::Out.Write(" " + $b) }
-  ' 2>/dev/null)
+  ' 2>/dev/null || ps1_tool_ok=0
 fi
-rm -f "$_ps1_list"
-if [ -n "$ps1fails" ]; then fail "PS syntax errors in:$ps1fails"; else ok "all *.ps1 files parse cleanly ($PWSH)."; fi
+ps1_read_fails=$(cat "$_ps1_read_fails")
+ps1fails=$(cat "$_ps1_parse_fails")
+rm -f "$_ps1_list" "$_ps1_read_fails" "$_ps1_parse_fails"
+if [ "$ps1_enum_ok" -ne 1 ]; then fail "PowerShell scan could not enumerate $DIST."
+elif [ "$ps1_count" -eq 0 ]; then fail "PowerShell scan found zero files in $DIST."
+elif [ "$ps1_tool_ok" -ne 1 ]; then fail "PowerShell parser process failed while scanning $Dist."
+elif [ -n "$ps1_read_fails" ]; then fail "PowerShell scan could not read:$ps1_read_fails"
+elif [ -n "$ps1fails" ]; then fail "PS syntax errors in:$ps1fails"
+else ok "all $ps1_count *.ps1 files parse cleanly ($PWSH)."; fi
 fi
 
 if check_selected template-checks; then

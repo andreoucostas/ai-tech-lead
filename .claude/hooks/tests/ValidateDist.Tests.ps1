@@ -255,6 +255,42 @@ try {
         }
     }
 
+    It 'case 22: an empty dist fails the marker scan instead of reporting a vacuous pass' { Assert-Case 'zero-marker-files' { param($d) Get-ChildItem -LiteralPath $d -Force | Remove-Item -Recurse -Force } 'marker scan found zero files' 'markers' }
+    It 'case 23: a dist with zero JSON files fails the JSON check' { Assert-Case 'zero-json' { param($d) Get-ChildItem -LiteralPath $d -Recurse -Force -File -Filter *.json | Remove-Item -Force } 'JSON scan found zero files' 'json' }
+    It 'case 24: a dist with zero shell files fails the bash syntax check' { Assert-Case 'zero-shell' { param($d) Get-ChildItem -LiteralPath $d -Recurse -Force -File -Filter *.sh | Remove-Item -Force } 'shell scan found zero files' 'bash-syntax' }
+    It 'case 25: a dist with zero PowerShell files fails the PowerShell syntax check' { Assert-Case 'zero-powershell' { param($d) Get-ChildItem -LiteralPath $d -Recurse -Force -File -Filter *.ps1 | Remove-Item -Force } 'PowerShell scan found zero files' 'ps-syntax' }
+    if ($env:OS -eq 'Windows_NT') {
+    It 'case 26: a locked marker-scan input is a named read failure on both validators' {
+        foreach ($leg in @('ps','bash')) {
+            $root=New-DistCopy
+            $dist=Join-Path $root 'dotnet'
+            $locked=Join-Path $dist 'README.md'
+            $handle=[IO.File]::Open($locked,[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+            try { $r=Invoke-Validator -Root $root -UseBash:($leg-eq'bash') -Check markers }
+            finally { $handle.Dispose() }
+            Write-Host "[ValidateDist $leg locked-marker-input] EXIT=$($r.Exit)";Write-Host $r.Out
+            Assert ($r.Exit-ne0) "locked-marker-input/$leg should be red"
+            Assert ($r.Out-match'marker scan could not read:') "locked-marker-input/$leg did not report the read failure: $($r.Out)"
+            Assert ($r.Out-match[regex]::Escape('README.md')) "locked-marker-input/$leg did not name the locked file: $($r.Out)"
+        }
+    }
+    } else { Skip 'case 26: a locked marker-scan input is a named read failure on both validators' 'Windows file-sharing denial is unavailable on this host' -Invariant }
+    It 'case 27: clean checks 1 through 4 report nonzero scanned populations on both validators' {
+        $expect=@{
+            markers='no unresolved @stack markers.+\([1-9][0-9]* files scanned\)'
+            json='all [1-9][0-9]* \*\.json files parse'
+            'bash-syntax'='all [1-9][0-9]* \*\.sh files parse cleanly'
+            'ps-syntax'='all [1-9][0-9]* \*\.ps1 files parse cleanly'
+        }
+        foreach($leg in @('ps','bash')){foreach($check in @('markers','json','bash-syntax','ps-syntax')){
+            $root=New-DistCopy
+            $r=Invoke-Validator -Root $root -UseBash:($leg-eq'bash') -Check $check
+            Write-Host "[ValidateDist $leg counted-$check] EXIT=$($r.Exit)";Write-Host $r.Out
+            Assert ($r.Exit-eq0) "counted-$check/$leg should be green"
+            Assert ($r.Out-match$expect[$check]) "counted-$check/$leg did not report a nonzero population: $($r.Out)"
+        }}
+    }
+
     # B-106/F3: this skip used to be false -- "python3 is unavailable" read as "no python here", but
     # a python.org install ships python.exe and no python3.exe, so Get-Command python3 alone can miss
     # a perfectly working interpreter. Resolve by EXECUTION across python3/python/py (Resolve-HostPython

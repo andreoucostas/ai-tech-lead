@@ -3551,7 +3551,7 @@ A wrong pin is consumer-visible: verify on a live Copilot surface before shippin
 
 ---
 
-### B-95 · `validate-dist` checks 1–4 still carry the vacuity shapes B-92 removed from 6–8
+### B-95 · `validate-dist` checks 1–4 still carry the vacuity shapes B-92 removed from 6–8 — **DONE 2026-08-08, see Done**
 **Effort:** S · **Priority:** P3 · filed 2026-08-04 (B-92's independent review) · **Invariants:** #3
 
 **Why:** B-92 was scoped to checks 6, 7 and 8, and those now guard their inputs, count what they
@@ -3579,6 +3579,25 @@ planted unreadable file and an emptied tree, both twins.
 ---
 
 ## Done
+
+- **B-95** — done **2026-08-08** (meta-only; no shipped version). Both `validate-dist` twins now
+  derive and check the input inventory for marker, JSON, shell, and PowerShell scans; zero inputs,
+  enumeration failures, and read failures are findings, while successful lines state the actual
+  nonzero population. The filed premise was narrowed during audit: checks 2 and 3 already failed an
+  enumerated unreadable file as invalid, but did not distinguish the read failure; the shared live
+  defects were zero-input vacuity and uncaptured enumeration status, plus check 1's definite
+  fail-open read path. **Observed red:** before the validator changes, an empty dist and zero
+  JSON/shell/PowerShell populations each produced `OK` and exit 0. After adding a permanent
+  Windows file-sharing fixture, restoring the old marker catch/ignore behavior made a locked
+  `README.md` produce `OK ... (165 files scanned)` and exit 0, so the case itself exited 1.
+  **Observed green:** cases 22–25 failed the four zero populations on both twins; case 26 named the
+  locked file as a read failure on both twins; case 27 reported clean populations of 165 files,
+  6 JSON, 16 shell, and 34 PowerShell files on both twins. The existing full clean-dist case passed
+  both validators, and the PowerShell validator passed all three real distributions. **RCA:** no
+  gate caught the gap because success was inferred from an empty failure collection without first
+  proving that enumeration and reads had produced a population. The same class had already been
+  removed from checks 6–8 by B-92; this closes the remaining checks 1–4 without a generic scanner
+  framework or production fault-injection API.
 
 - **B-106** — done in **v0.46.0** (`d329c7c`); its still-open strategic heading was stale and is
   corrected here without another product release. That release added permanent sandboxed
