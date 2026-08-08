@@ -55,6 +55,10 @@ if ($null -ne $CheckArg) {
         exit 2
     }
 }
+if ($ContentOnly -and $null -ne $CheckArg) {
+    [Console]::Error.WriteLine('usage error: --content-only and -Check cannot be combined; choose one scope selector.')
+    exit 2
+}
 function Test-CheckSelected($name) {
     if ($null -ne $CheckArg) { return $SelectedChecks -ccontains $name }
     if ($ContentOnly) { return @('no-meta-leak','no-dead-instruction','hook-registration') -contains $name }
@@ -177,8 +181,9 @@ $markerRe = '@stack:[A-Za-z0-9_-]+'
 $markerFiles = @()
 $markerReadFails = @()
 $markerInputs = @()
+$markerEnumError = $null
 try { $markerInputs = @(Get-ChildItem -Recurse -File -Force -Path $Dist -ErrorAction Stop) }
-catch { Fail "marker scan could not enumerate $Dist : $($_.Exception.Message)" }
+catch { $markerEnumError = $_.Exception.Message }
 foreach ($f in $markerInputs) {
     try {
         if ((Select-String -LiteralPath $f.FullName -Pattern $markerRe -SimpleMatch:$false -Quiet -ErrorAction Stop)) {
@@ -186,7 +191,9 @@ foreach ($f in $markerInputs) {
         }
     } catch { $markerReadFails += $f.FullName }
 }
-if ($markerInputs.Count -eq 0) {
+if ($null -ne $markerEnumError) {
+    Fail "marker scan could not enumerate $Dist : $markerEnumError"
+} elseif ($markerInputs.Count -eq 0) {
     Fail "marker scan found zero files in $Dist."
 } elseif ($markerReadFails.Count -gt 0) {
     Fail ("marker scan could not read:" + ($markerReadFails -join ' '))
@@ -351,8 +358,9 @@ if (Test-CheckSelected 'json') {
 $jsonFails = @()
 $jsonReadFails = @()
 $jsonInputs = @()
+$jsonEnumError = $null
 try { $jsonInputs = @(Get-ChildItem -Recurse -File -Force -Filter *.json -Path $Dist -ErrorAction Stop) }
-catch { Fail "JSON scan could not enumerate $Dist : $($_.Exception.Message)" }
+catch { $jsonEnumError = $_.Exception.Message }
 foreach ($f in $jsonInputs) {
     try {
         $jsonText = [IO.File]::ReadAllText($f.FullName)
@@ -362,7 +370,8 @@ foreach ($f in $jsonInputs) {
     } catch { $jsonFails += $f.FullName
     }
 }
-if ($jsonInputs.Count -eq 0) { Fail "JSON scan found zero files in $Dist." }
+if ($null -ne $jsonEnumError) { Fail "JSON scan could not enumerate $Dist : $jsonEnumError" }
+elseif ($jsonInputs.Count -eq 0) { Fail "JSON scan found zero files in $Dist." }
 elseif ($jsonReadFails.Count -gt 0) { Fail ("JSON scan could not read:" + ($jsonReadFails -join ' ')) }
 elseif ($jsonFails.Count -gt 0) { Fail ("invalid JSON (ConvertFrom-Json):" + ($jsonFails -join ' ')) }
 else { OK "all $($jsonInputs.Count) *.json files parse (ConvertFrom-Json)." }
@@ -395,15 +404,17 @@ if (-not $bashWorks) {
 $shFails = @()
 $shReadFails = @()
 $shInputs = @()
+$shEnumError = $null
 try { $shInputs = @(Get-ChildItem -Recurse -File -Force -Filter *.sh -Path $Dist -ErrorAction Stop) }
-catch { Fail "shell scan could not enumerate $Dist : $($_.Exception.Message)" }
+catch { $shEnumError = $_.Exception.Message }
 foreach ($f in $shInputs) {
     try { $null = [IO.File]::OpenRead($f.FullName).Dispose() }
     catch { $shReadFails += $f.FullName; continue }
     & $bashExe -n ($f.FullName -replace '\\', '/') 2>$null 1>$null
     if ($LASTEXITCODE -ne 0) { $shFails += $f.FullName }
 }
-if ($shInputs.Count -eq 0) { Fail "shell scan found zero files in $Dist." }
+if ($null -ne $shEnumError) { Fail "shell scan could not enumerate $Dist : $shEnumError" }
+elseif ($shInputs.Count -eq 0) { Fail "shell scan found zero files in $Dist." }
 elseif ($shReadFails.Count -gt 0) { Fail ("shell scan could not read:" + ($shReadFails -join ' ')) }
 elseif ($shFails.Count -gt 0) { Fail ("bash syntax errors in:" + ($shFails -join ' ')) }
 else { OK "all $($shInputs.Count) *.sh files parse cleanly (bash -n)." }
@@ -414,15 +425,22 @@ if (Test-CheckSelected 'ps-syntax') {
 $ps1Fails = @()
 $ps1ReadFails = @()
 $ps1Inputs = @()
+$ps1EnumError = $null
 try { $ps1Inputs = @(Get-ChildItem -Recurse -File -Force -Filter *.ps1 -Path $Dist -ErrorAction Stop) }
-catch { Fail "PowerShell scan could not enumerate $Dist : $($_.Exception.Message)" }
+catch { $ps1EnumError = $_.Exception.Message }
 foreach ($f in $ps1Inputs) {
     $e = $null
-    try { [System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$null, [ref]$e) | Out-Null }
+    try {
+        # ParseFile reports some read failures as ParserError objects instead of throwing. Probe
+        # readability explicitly so an inaccessible file cannot be mislabeled as invalid syntax.
+        $null = [IO.File]::OpenRead($f.FullName).Dispose()
+        [System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$null, [ref]$e) | Out-Null
+    }
     catch { $ps1ReadFails += $f.FullName; continue }
     if ($e) { $ps1Fails += "$($f.FullName): $($e[0].Message)" }
 }
-if ($ps1Inputs.Count -eq 0) { Fail "PowerShell scan found zero files in $Dist." }
+if ($null -ne $ps1EnumError) { Fail "PowerShell scan could not enumerate $Dist : $ps1EnumError" }
+elseif ($ps1Inputs.Count -eq 0) { Fail "PowerShell scan found zero files in $Dist." }
 elseif ($ps1ReadFails.Count -gt 0) { Fail ("PowerShell scan could not read:" + ($ps1ReadFails -join ' ')) }
 elseif ($ps1Fails.Count -gt 0) { Fail ("PS syntax errors: " + ($ps1Fails -join '; ')) }
 else { OK "all $($ps1Inputs.Count) *.ps1 files parse cleanly." }

@@ -3591,14 +3591,32 @@ planted unreadable file and an emptied tree, both twins.
   JSON/shell/PowerShell populations each produced `OK` and exit 0. After adding a permanent
   Windows file-sharing fixture, restoring the old marker catch/ignore behavior made a locked
   `README.md` produce `OK ... (165 files scanned)` and exit 0, so the case itself exited 1.
-  **Observed green:** cases 22–25 failed the four zero populations on both twins; case 26 named the
-  locked file as a read failure on both twins; case 27 reported clean populations of 165 files,
-  6 JSON, 16 shell, and 34 PowerShell files on both twins. The existing full clean-dist case passed
-  both validators, and the PowerShell validator passed all three real distributions. **RCA:** no
-  gate caught the gap because success was inferred from an empty failure collection without first
-  proving that enumeration and reads had produced a population. The same class had already been
-  removed from checks 6–8 by B-92; this closes the remaining checks 1–4 without a generic scanner
-  framework or production fault-injection API.
+  **The independent post-merge review found the first closure incomplete:** it had one read-failure
+  fixture for check 1, only regex evidence that clean counts were nonzero, no syntax mutants for
+  checks 1–4, no spaced-root or selector-conflict coverage, and no parser-child failure fixture.
+  Its line-shaped dispatcher also omitted an `It` registration that appeared after an inline
+  conditional. The remediation derives registrations from the suite AST and rejects nonliteral,
+  duplicate, or orphan-skip registrations. **Observed remediation evidence:** case 26 used real
+  Windows deny-sharing locks for all four input types and both twins named the unreadable file; this
+  caught a second real defect before closure, because both PowerShell parser paths initially called
+  `Parser.ParseFile` without first probing readability and mislabeled its nonthrowing read error as
+  invalid syntax. Case 27 independently enumerated each scratch dist and matched exact clean counts
+  of 165 files, 6 JSON, 16 shell, and 34 PowerShell files on both twins. Case 28 rejected combined
+  `--content-only`/`-Check` selectors with exit 2 on both twins; case 29 preserved a dist-root path
+  containing spaces on both; case 30 made marker, JSON, shell, and PowerShell syntax mutants fail
+  for their named reason on both; and case 31 replaced `pwsh` with an exit-17 shim and observed the
+  bash validator's named parser-child failure. The AST dispatcher immediately exposed the omitted
+  jq/python parity case: its name-only probe accepted Windows' broken Store `python3.exe` alias and
+  its fallback called helpers absent from this meta harness. An execution-probed, self-contained
+  fallback then passed the focused parity case (1 passed, 0 failed, 0 skipped). On POSIX, the read
+  fixtures use `chmod 000` only after a capability probe proves the current user cannot still read
+  the file; otherwise they are an invariant-guarding skip, never a false pass. **RCA:** no gate caught the original gap because
+  success was inferred from an empty failure collection without first proving that enumeration and
+  reads had produced a population. The remediation itself was under-tested because one marker-lock
+  example and four broad nonzero regexes were generalized into claims about four distinct read and
+  parse paths, while the dispatcher was trusted through the same source-text shape it consumed.
+  The same class had already been removed from checks 6–8 by B-92; this closes checks 1–4 without a
+  generic scanner framework or production fault-injection API.
 
 - **B-106** — done in **v0.46.0** (`d329c7c`); its still-open strategic heading was stale and is
   corrected here without another product release. That release added permanent sandboxed

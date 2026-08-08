@@ -20,7 +20,8 @@ $bashExe = Get-BashPath
 $scratch = @()
 
 function New-DistCopy {
-    $root = Join-Path ([IO.Path]::GetTempPath()) ('validate-dist-' + [guid]::NewGuid().ToString('N'))
+    param([string]$Prefix = 'validate-dist-')
+    $root = Join-Path ([IO.Path]::GetTempPath()) ($Prefix + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $root -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $repo 'dist\dotnet') -Destination $root -Recurse
     $script:scratch += $root
@@ -50,12 +51,20 @@ function Convert-ToBashPath {
     return $Path.Replace('\', '/')
 }
 function Invoke-Validator {
-    param([string]$Root, [switch]$UseBash, [string]$JsonTool, [switch]$FullValidation, [string]$ExtraPathDir, [string]$Check)
+    param(
+        [string]$Root,
+        [switch]$UseBash,
+        [string]$JsonTool,
+        [switch]$FullValidation,
+        [string]$ExtraPathDir,
+        [string]$Check,
+        [switch]$CombineSelectors
+    )
     # Each focused case names the one check that owns its planted defect. The clean anchor still
     # runs the full validator so every check remains exercised on both legs.
     # Passed as an ARGUMENT, never an environment variable: an inherited ambient switch could
     # silently downgrade a run that asked for full validation (sol's review of this change).
-    $contentOnly = -not $FullValidation -and -not $Check
+    $contentOnly = $CombineSelectors -or (-not $FullValidation -and -not $Check)
     if ($UseBash) {
         if (-not $bashExe) { throw 'Bash is unavailable; the bash validator was not exercised.' }
         $cwd = $repo.Replace('\', '/')
@@ -74,7 +83,7 @@ function Invoke-Validator {
         $pathPrefix = (@($toolDirs | Select-Object -Unique | ForEach-Object { "'$(Convert-ToBashPath $_)'" }) -join ':')
         $override = if ($JsonTool) { "VALIDATE_DIST_JSON_TOOL='$JsonTool' " } else { '' }
         $flag = if ($contentOnly) { ' --content-only' } else { '' }
-        if ($Check) { $flag = " -Check '$Check'" }
+        if ($Check) { $flag += " -Check '$Check'" }
         # Invoked as `bash <script>`, never `./<script>`: the file is mode 644 in git, which Windows
         # ignores and Linux enforces, so `./` gave "Permission denied" on the CI linux leg only.
         # Every other caller in this repo (CI, DEVELOPING.md) spells it this way too.
@@ -111,6 +120,65 @@ function Assert-Case {
 }
 function Replace-Text { param($Path,$Find,$Replace) $t=[IO.File]::ReadAllText($Path); [IO.File]::WriteAllText($Path,$t.Replace($Find,$Replace)) }
 
+# Build the dispatch list from PowerShell's own AST, not a line-shaped regex. A case registration
+# may sit after a conditional on the same line (the python/jq branch below does), and the old
+# `^\s*It` regex silently omitted it from the driver. Every registration must have a literal name;
+# every Skip must be the platform-alternate of a real It; and two It blocks may not share a name.
+# Those constraints make "every registered case was dispatched once" a checked property rather
+# than an assumption about source formatting.
+function Get-RegisteredCaseNames {
+    $tokens = $null; $parseErrors = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile(
+        $PSCommandPath, [ref]$tokens, [ref]$parseErrors)
+    if ($parseErrors.Count -gt 0) {
+        throw "dispatcher cannot parse its own suite: $($parseErrors[0].Message)"
+    }
+    $calls = @($ast.FindAll({
+        param($node)
+        $node -is [System.Management.Automation.Language.CommandAst] -and
+            $node.GetCommandName() -in @('It','Skip')
+    }, $true))
+    $allNames = @(); $itNames = @(); $skipNames = @()
+    foreach ($call in $calls) {
+        if ($call.CommandElements.Count -lt 2 -or
+            $call.CommandElements[1] -isnot [System.Management.Automation.Language.StringConstantExpressionAst]) {
+            throw "dispatcher found a non-literal $($call.GetCommandName()) registration at line $($call.Extent.StartLineNumber)"
+        }
+        $name = $call.CommandElements[1].Value
+        $allNames += $name
+        if ($call.GetCommandName() -eq 'It') { $itNames += $name } else { $skipNames += $name }
+    }
+    $duplicateIts = @($itNames | Group-Object | Where-Object Count -gt 1 | ForEach-Object Name)
+    if ($duplicateIts.Count -gt 0) {
+        throw "dispatcher found duplicate It registration(s): $($duplicateIts -join ', ')"
+    }
+    $orphanSkips = @($skipNames | Where-Object { $itNames -notcontains $_ } | Select-Object -Unique)
+    if ($orphanSkips.Count -gt 0) {
+        throw "dispatcher found Skip registration(s) with no matching It: $($orphanSkips -join ', ')"
+    }
+    return @($allNames | Select-Object -Unique)
+}
+
+# Windows can make a file genuinely unreadable to child processes with a deny-sharing handle.
+# POSIX permissions are capability-probed because a privileged CI user can still read chmod 000;
+# that world must be an invariant-guarding skip, not a fixture that claims to deny reads but does not.
+function Test-CanDenyFileReads {
+    if ($env:OS -eq 'Windows_NT') { return $true }
+    if (-not $bashExe) { return $false }
+    $path = Join-Path ([IO.Path]::GetTempPath()) ('vd-unreadable-probe-' + [guid]::NewGuid().ToString('N'))
+    [IO.File]::WriteAllText($path, 'probe')
+    $posix = Convert-ToBashPath $path
+    try {
+        & $bashExe -c "chmod 000 '$posix'" 2>$null
+        if ($LASTEXITCODE -ne 0) { return $false }
+        try { $stream = [IO.File]::OpenRead($path); $stream.Dispose(); return $false }
+        catch { return $true }
+    } finally {
+        & $bashExe -c "chmod 600 '$posix'" 2>$null
+        Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+    }
+}
+
 # Measured on a 12-core box: throttle 4 = 218s, 8 = 183s, 12 = 179s, sequential = 391s. The floor
 # is the longest single case, so past ~8 there is nothing left to win. Capped at 8 and scaled to the
 # host so a 2-core CI runner is not over-subscribed into being slower than sequential.
@@ -118,11 +186,11 @@ $throttle = if ($env:VALIDATE_DIST_TESTS_THROTTLE) { [int]$env:VALIDATE_DIST_TES
             else { [Math]::Max(2, [Math]::Min(8, [Environment]::ProcessorCount)) }
 if (-not $Only) {
     # ---- driver: one child per case, $throttle at a time -------------------------------------
-    # Case names are read back out of this file rather than kept in a second list, so a case can
-    # never be added and silently not dispatched -- the failure mode would be a green run that
-    # tested less, which is the whole class this suite exists to prevent.
-    $caseNames = [regex]::Matches((Get-Content $PSCommandPath -Raw), "(?m)^\s*It\s+'([^']+)'") |
-                 ForEach-Object { $_.Groups[1].Value }
+    # Case names are read back out of the AST rather than kept in a second list, so a case can
+    # never be added and silently not dispatched -- including registrations that are not the first
+    # token on their source line.
+    try { $caseNames = @(Get-RegisteredCaseNames) }
+    catch { [Console]::Error.WriteLine("ValidateDist.Tests: $($_.Exception.Message)"); exit 1 }
     if ($caseNames.Count -eq 0) { Write-Host 'ValidateDist.Tests: dispatcher found ZERO cases -- the suite is broken, not clean.'; exit 1 }
     $self = $PSCommandPath
     $exe  = (Get-Process -Id $PID).Path
@@ -184,7 +252,13 @@ function It { param([string]$Name, [scriptblock]$Body) if ($Name -ne $Only) { re
 # Skip is shadowed for the same reason as It: it registers a result, so an unguarded Skip would
 # record itself once per child and the aggregate would report 20 skips for one skipped case.
 # It shares its case NAME with the It it alternates with, so the dispatcher still schedules it.
-function Skip { param([string]$Name, [string]$Why, [switch]$Invariant) if ($Name -ne $Only) { return }; & $__origSkip @PSBoundParameters }
+function Skip {
+    param([string]$Name, [string]$Why, [switch]$Invariant)
+    if ($Name -ne $Only) { return }
+    # -Invariant documents a capability-conditioned skip in this suite; the tiny shared registry's
+    # Skip function accepts only name/reason, so do not forward that local metadata switch.
+    & $__origSkip $Name $Why
+}
 
 try {
     It 'case 1: settings.json with zero handlers fails check 8' { Assert-Case 'zero-settings' { param($d) $p=Join-Path $d '.claude\settings.json'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,[regex]::Replace($t,'"command"','"commandX"',6)) } 'settings.json : registration file yields zero handlers' 'hook-registration' }
@@ -260,64 +334,156 @@ try {
     It 'case 23: a dist with zero JSON files fails the JSON check' { Assert-Case 'zero-json' { param($d) Get-ChildItem -LiteralPath $d -Recurse -Force -File -Filter *.json | Remove-Item -Force } 'JSON scan found zero files' 'json' }
     It 'case 24: a dist with zero shell files fails the bash syntax check' { Assert-Case 'zero-shell' { param($d) Get-ChildItem -LiteralPath $d -Recurse -Force -File -Filter *.sh | Remove-Item -Force } 'shell scan found zero files' 'bash-syntax' }
     It 'case 25: a dist with zero PowerShell files fails the PowerShell syntax check' { Assert-Case 'zero-powershell' { param($d) Get-ChildItem -LiteralPath $d -Recurse -Force -File -Filter *.ps1 | Remove-Item -Force } 'PowerShell scan found zero files' 'ps-syntax' }
-    if ($env:OS -eq 'Windows_NT') {
-    It 'case 26: a locked marker-scan input is a named read failure on both validators' {
-        foreach ($leg in @('ps','bash')) {
-            $root=New-DistCopy
-            $dist=Join-Path $root 'dotnet'
-            $locked=Join-Path $dist 'README.md'
-            $handle=[IO.File]::Open($locked,[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
-            try { $r=Invoke-Validator -Root $root -UseBash:($leg-eq'bash') -Check markers }
-            finally { $handle.Dispose() }
-            Write-Host "[ValidateDist $leg locked-marker-input] EXIT=$($r.Exit)";Write-Host $r.Out
-            Assert ($r.Exit-ne0) "locked-marker-input/$leg should be red"
-            Assert ($r.Out-match'marker scan could not read:') "locked-marker-input/$leg did not report the read failure: $($r.Out)"
-            Assert ($r.Out-match[regex]::Escape('README.md')) "locked-marker-input/$leg did not name the locked file: $($r.Out)"
-        }
+    $canDenyReads = Test-CanDenyFileReads
+    if ($canDenyReads) {
+    It 'case 26: unreadable inputs in checks 1 through 4 are named on both validators' {
+        $fixtures = @(
+            @{ Check='markers';     Relative='README.md';                       Finding='marker scan could not read:' },
+            @{ Check='json';        Relative='.claude/settings.json';           Finding='JSON scan could not read:' },
+            @{ Check='bash-syntax'; Relative='.claude/hooks/audit-trail.sh';     Finding='shell scan could not read:' },
+            @{ Check='ps-syntax';   Relative='.claude/hooks/audit-trail.ps1';    Finding='PowerShell scan could not read:' }
+        )
+        foreach ($leg in @('ps','bash')) { foreach ($fixture in $fixtures) {
+            $root = New-DistCopy
+            $target = Join-Path (Join-Path $root 'dotnet') $fixture.Relative
+            $handle = $null
+            if ($env:OS -eq 'Windows_NT') {
+                $handle = [IO.File]::Open($target,[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+            } else {
+                & $bashExe -c "chmod 000 '$(Convert-ToBashPath $target)'" 2>$null
+                Assert ($LASTEXITCODE -eq 0) "could not deny reads to $target"
+            }
+            try { $r = Invoke-Validator -Root $root -UseBash:($leg -eq 'bash') -Check $fixture.Check }
+            finally {
+                if ($handle) { $handle.Dispose() }
+                else { & $bashExe -c "chmod 600 '$(Convert-ToBashPath $target)'" 2>$null }
+            }
+            Write-Host "[ValidateDist $leg unreadable-$($fixture.Check)] EXIT=$($r.Exit)"; Write-Host $r.Out
+            Assert ($r.Exit -ne 0) "unreadable-$($fixture.Check)/$leg should be red"
+            Assert ($r.Out -match [regex]::Escape($fixture.Finding)) "unreadable-$($fixture.Check)/$leg did not identify a read failure: $($r.Out)"
+            Assert ($r.Out -match [regex]::Escape((Split-Path $fixture.Relative -Leaf))) "unreadable-$($fixture.Check)/$leg did not name the unreadable file: $($r.Out)"
+        }}
     }
-    } else { Skip 'case 26: a locked marker-scan input is a named read failure on both validators' 'Windows file-sharing denial is unavailable on this host' -Invariant }
-    It 'case 27: clean checks 1 through 4 report nonzero scanned populations on both validators' {
-        $expect=@{
-            markers='no unresolved @stack markers.+\([1-9][0-9]* files scanned\)'
-            json='all [1-9][0-9]* \*\.json files parse'
-            'bash-syntax'='all [1-9][0-9]* \*\.sh files parse cleanly'
-            'ps-syntax'='all [1-9][0-9]* \*\.ps1 files parse cleanly'
-        }
-        foreach($leg in @('ps','bash')){foreach($check in @('markers','json','bash-syntax','ps-syntax')){
-            $root=New-DistCopy
-            $r=Invoke-Validator -Root $root -UseBash:($leg-eq'bash') -Check $check
-            Write-Host "[ValidateDist $leg counted-$check] EXIT=$($r.Exit)";Write-Host $r.Out
-            Assert ($r.Exit-eq0) "counted-$check/$leg should be green"
-            Assert ($r.Out-match$expect[$check]) "counted-$check/$leg did not report a nonzero population: $($r.Out)"
+    } else { Skip 'case 26: unreadable inputs in checks 1 through 4 are named on both validators' 'this host cannot make a file unreadable to its validator processes (chmod 000 remains readable)' -Invariant }
+
+    It 'case 27: clean checks 1 through 4 report exact independently counted populations on both validators' {
+        foreach ($leg in @('ps','bash')) { foreach ($check in @('markers','json','bash-syntax','ps-syntax')) {
+            $root = New-DistCopy
+            $dist = Join-Path $root 'dotnet'
+            $expected = switch ($check) {
+                'markers'     { @(Get-ChildItem -LiteralPath $dist -Recurse -Force -File).Count }
+                'json'        { @(Get-ChildItem -LiteralPath $dist -Recurse -Force -File -Filter *.json).Count }
+                'bash-syntax' { @(Get-ChildItem -LiteralPath $dist -Recurse -Force -File -Filter *.sh).Count }
+                'ps-syntax'   { @(Get-ChildItem -LiteralPath $dist -Recurse -Force -File -Filter *.ps1).Count }
+            }
+            Assert ($expected -gt 0) "independent $check inventory is empty; the clean control would be vacuous"
+            $r = Invoke-Validator -Root $root -UseBash:($leg -eq 'bash') -Check $check
+            Write-Host "[ValidateDist $leg exact-count-$check] EXIT=$($r.Exit)"; Write-Host $r.Out
+            Assert ($r.Exit -eq 0) "exact-count-$check/$leg should be green"
+            $countText = if ($check -eq 'markers') { "($expected files scanned)" } else { "all $expected *.$(if($check-eq'json'){'json'}elseif($check-eq'bash-syntax'){'sh'}else{'ps1'}) files" }
+            Assert ($r.Out.Contains($countText)) "exact-count-$check/$leg did not report independent count ${expected}: $($r.Out)"
         }}
     }
 
+    It 'case 28: content-only and named-check selectors are rejected together by both validators' {
+        foreach ($leg in @('ps','bash')) {
+            $root = New-DistCopy
+            $r = Invoke-Validator -Root $root -UseBash:($leg -eq 'bash') -Check markers -CombineSelectors
+            Write-Host "[ValidateDist $leg conflicting-selectors] EXIT=$($r.Exit)"; Write-Host $r.Out
+            Assert ($r.Exit -eq 2) "conflicting-selectors/$leg should be a usage error (EXIT=2)"
+            Assert ($r.Out -match '--content-only and -Check cannot be combined') "conflicting-selectors/$leg did not explain the conflict: $($r.Out)"
+            Assert ($r.Out -notmatch '(?m)^(OK|FAIL):') "conflicting-selectors/$leg ran a check before rejecting its scope"
+        }
+    }
+
+    It 'case 29: a dist root containing spaces is preserved by both validators' {
+        foreach ($leg in @('ps','bash')) {
+            $root = New-DistCopy -Prefix 'validate dist spaced root '
+            $expected = @(Get-ChildItem -LiteralPath (Join-Path $root 'dotnet') -Recurse -Force -File).Count
+            $r = Invoke-Validator -Root $root -UseBash:($leg -eq 'bash') -Check markers
+            Write-Host "[ValidateDist $leg spaced-root] EXIT=$($r.Exit)"; Write-Host $r.Out
+            Assert ($r.Exit -eq 0) "spaced-root/$leg should be green"
+            Assert ($r.Out.Contains("($expected files scanned)")) "spaced-root/$leg lost or split the dist-root argument: $($r.Out)"
+        }
+    }
+
+    It 'case 30: syntax mutants in checks 1 through 4 fail for their intended reason on both validators' {
+        $fixtures = @(
+            @{ Check='markers'; Relative='README.md';                    Text="`n@stack:planted-review-mutant`n"; Finding='unresolved @stack markers in:' },
+            @{ Check='json'; Relative='.claude/settings.json';           Text="`nTHIS IS NOT JSON`n"; Finding='invalid JSON' },
+            @{ Check='bash-syntax'; Relative='.claude/hooks/guard.sh';    Text="`nif true; then`n"; Finding='bash syntax errors in:' },
+            @{ Check='ps-syntax'; Relative='.claude/hooks/guard.ps1';     Text="`nfunction ReviewMutant {`n"; Finding='PS syntax errors' }
+        )
+        foreach ($leg in @('ps','bash')) { foreach ($fixture in $fixtures) {
+            $root = New-DistCopy
+            $target = Join-Path (Join-Path $root 'dotnet') $fixture.Relative
+            [IO.File]::AppendAllText($target, $fixture.Text)
+            $r = Invoke-Validator -Root $root -UseBash:($leg -eq 'bash') -Check $fixture.Check
+            Write-Host "[ValidateDist $leg syntax-mutant-$($fixture.Check)] EXIT=$($r.Exit)"; Write-Host $r.Out
+            Assert ($r.Exit -ne 0) "syntax-mutant-$($fixture.Check)/$leg should be red"
+            Assert ($r.Out -match [regex]::Escape($fixture.Finding)) "syntax-mutant-$($fixture.Check)/$leg failed for the wrong reason: $($r.Out)"
+            Assert ($r.Out -match [regex]::Escape((Split-Path $fixture.Relative -Leaf))) "syntax-mutant-$($fixture.Check)/$leg did not name its mutant: $($r.Out)"
+        }}
+    }
+
+    It 'case 31: a failed bash-leg PowerShell parser child is a named failure' {
+        $root = New-DistCopy
+        $shim = Join-Path ([IO.Path]::GetTempPath()) ('vd-dead-pwsh-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $shim -Force | Out-Null
+        [IO.File]::WriteAllText((Join-Path $shim 'pwsh'), "#!/usr/bin/env bash`nexit 17`n")
+        & $bashExe -c "chmod +x '$(Convert-ToBashPath (Join-Path $shim 'pwsh'))'" 2>$null
+        Assert ($LASTEXITCODE -eq 0) 'could not make the parser-child shim executable'
+        $script:scratch += $shim
+        $r = Invoke-Validator -Root $root -UseBash -ExtraPathDir $shim -Check ps-syntax
+        Write-Host "[ValidateDist bash failed-parser-child] EXIT=$($r.Exit)"; Write-Host $r.Out
+        Assert ($r.Exit -ne 0) 'failed-parser-child/bash should be red'
+        Assert ($r.Out -match 'PowerShell parser process failed while scanning') "failed-parser-child/bash did not name the child-process failure: $($r.Out)"
+    }
+
     # B-106/F3: this skip used to be false -- "python3 is unavailable" read as "no python here", but
-    # a python.org install ships python.exe and no python3.exe, so Get-Command python3 alone can miss
-    # a perfectly working interpreter. Resolve by EXECUTION across python3/python/py (Resolve-HostPython
-    # in _HookHarness.ps1) and, if the real name isn't literally "python3", expose it under that name
-    # via a shim dir prepended to Invoke-Validator's bash PATH -- validate-dist.sh's own
+    # a python.org install ships python.exe and no working python3.exe (the Windows Store alias may
+    # still resolve by name). Resolve by EXECUTION across python3/python/py and, if the real name
+    # isn't literally "python3", expose it under that name via a shim dir prepended to
+    # Invoke-Validator's bash PATH -- validate-dist.sh's own
     # VALIDATE_DIST_JSON_TOOL=python3 override still calls the literal name "python3".
-    $python3Direct = Get-Command python3 -ErrorAction SilentlyContinue
+    # Get-Command alone is not a capability probe on Windows: the Microsoft Store app-execution
+    # alias resolves as python3.exe but exits 9009. Execute the same tiny JSON program the product
+    # needs before deciding either that literal python3 works or that an alternate needs a shim.
+    $python3Direct = $null
+    $resolvedPython = $null
+    foreach ($candidate in @('python3','python','py')) {
+        $command = Get-Command $candidate -ErrorAction SilentlyContinue | Select-Object -First 1
+        if (-not $command -or -not $command.Source) { continue }
+        $probe = $null
+        try { $probe = '{}' | & $command.Source -c 'import json,sys; json.load(sys.stdin); sys.stdout.write("ok")' 2>$null } catch { }
+        if ($probe -ne 'ok') { continue }
+        if ($candidate -eq 'python3') { $python3Direct = $command.Source }
+        else { $resolvedPython = $command.Source }
+        break
+    }
     $py3ShimDir = ''
     if (-not $python3Direct) {
-        $resolvedPython = Resolve-HostPython
         if ($resolvedPython) {
             $py3ShimDir = Join-Path ([IO.Path]::GetTempPath()) ('py3shim-' + [guid]::NewGuid())
             New-Item -ItemType Directory -Force $py3ShimDir | Out-Null
-            [IO.File]::WriteAllText((Join-Path $py3ShimDir 'python3'), (New-ExecShim $resolvedPython))
-            if ($bashExe -and $bashExe -match '\\Git\\bin\\bash\.exe$') {
-                $git = Split-Path (Split-Path $bashExe -Parent) -Parent
-                & (Join-Path $git 'usr/bin/bash.exe') -c ('chmod +x "{0}"/*' -f (ConvertTo-PosixPath $py3ShimDir)) 2>$null | Out-Null
-            }
+            $quotedPython = "'" + (Convert-ToBashPath $resolvedPython).Replace("'", "'\''") + "'"
+            $shimPath = Join-Path $py3ShimDir 'python3'
+            [IO.File]::WriteAllText($shimPath, "#!/usr/bin/env bash`nexec $quotedPython `"`$@`"`n")
+            & $bashExe -c "chmod +x '$(Convert-ToBashPath $shimPath)'" 2>$null | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw 'could not make the python3 capability shim executable' }
             $script:scratch += $py3ShimDir
         }
     }
-    if (-not $python3Direct -and -not $py3ShimDir) {
+    $jq = Get-Command jq -ErrorAction SilentlyContinue | Select-Object -First 1
+    $jqWorks = $false
+    if ($jq -and $jq.Source) {
+        try { & $jq.Source --version 2>$null | Out-Null; $jqWorks = ($LASTEXITCODE -eq 0) } catch { }
+    }
+    if ((-not $python3Direct -and -not $py3ShimDir) -or -not $jqWorks) {
         if ($Only -eq 'the jq and python3 normalized record streams are byte-identical when both tools exist') {
-            Write-Host '[COVERAGE GAP] python3 JSON branch was NOT exercised on this host; CI linux must exercise it.'
+            Write-Host '[COVERAGE GAP] jq/python3 parser parity was NOT exercised on this host; CI linux must exercise it.'
         }
-        Skip 'the jq and python3 normalized record streams are byte-identical when both tools exist' 'no working python interpreter (python3/python/py, execution-probed) found on this host; CI linux must exercise this branch.' -Invariant
+        Skip 'the jq and python3 normalized record streams are byte-identical when both tools exist' 'no working jq or python interpreter (execution-probed) found on this host; CI linux must exercise this branch.' -Invariant
     } else { It 'the jq and python3 normalized record streams are byte-identical when both tools exist' {
         # This case had never actually executed anywhere before CI ran it: skipped here for want of
         # python3, and on CI it asserted on check 2's output while running --content-only, where
