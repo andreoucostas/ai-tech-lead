@@ -17,7 +17,20 @@ A configuration-only diagnostic can therefore report healthy wiring while the ho
 the developer-visible hook-error notice as a signal to act, then run `pwsh
 scripts/framework-doctor.ps1` or `bash scripts/framework-doctor.sh` to check the wiring. A bare
 interpreter name remains `CANT-VERIFY`: the doctor cannot observe the `PATH` of a shell it does not
-launch.
+launch. The bare name is intentional portable team configuration: an absolute interpreter path from
+one developer's machine would break teammates on another OS or user profile. Do not "fix" a bare
+name by pinning a local absolute path. Use the doctor's `Hook liveness` row and the host canaries to
+prove what the agent actually launches; rerunning the installer restores the portable bare-name
+wiring if an old machine-specific path is present.
+
+The two doctor entry points report only evidence they can actually observe. The PowerShell doctor
+cannot see the runtime `PATH` an agent will later supply to a registered `guard.sh`, so its `Guard
+JSON parser` row is `CANT-VERIFY`; the Bash doctor can test a parser only in **that Bash
+environment**. Likewise, `Stack toolchain` and Copilot CLI command visibility describe **this doctor
+process environment**, not the later agent-host process. The write-guard canary proves the actual
+host's parser/enforcement path. For build feedback, make and immediately revert a harmless compile
+or type error through the actual agent after the post-write throttle has elapsed; only hook output
+starting `## dotnet build failed` or `## tsc --noEmit failed` proves that host path.
 
 ## Matrix
 

@@ -11,6 +11,18 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.51.4 — Unreleased
+
+- B-63/B-56: `framework-doctor` now reports capability evidence from the environment it actually
+  observes. Guard-parser demand comes from registered Claude and Copilot `guard.sh` targets;
+  PowerShell reports the agent host's Bash `PATH` as unobservable, while a directly invoked Bash
+  doctor reports only on its own environment. Wired-shell remediation follows the portable
+  bare-name policy, stack/Copilot command resolution names the doctor-process boundary, and a new
+  post-write canary covers the actual host. Deterministic registration, vantage, mutation, and
+  canary fixtures lock those boundaries under pwsh, Windows PowerShell 5.1, and Bash. The Bash
+  registration grammar also matches shell-valid single quoting and case-insensitive `bash.exe`
+  basenames without treating a target mentioned inside `bash -c` as an invoked guard.
+
 ## 0.51.3 — 2026-08-08
 
 - B-67: `validate-dist` now checks rendered relative inline Markdown links in shipped docs, with

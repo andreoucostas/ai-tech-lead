@@ -1047,6 +1047,16 @@ must name both the consumer and the observation vantage point before claiming av
 
 **Date.** 2026-07-31.
 
+**Correction (2026-08-08; B-63/B-56).** v0.38.1 superseded the v0.38.0 absolute-path policy
+recorded above. Committed `.claude/settings.json` is team configuration, so the installer
+intentionally writes a portable bare interpreter name; an installing developer's absolute path
+breaks teammates on another OS or profile. The vantage-point rule remains accepted: a doctor cannot
+convert its own `PATH` into a claim about the agent host. Therefore a bare registration is
+`CANT-VERIFY`, with hook liveness and host canaries as remediation—not a request to pin an absolute
+path. Existing absolute paths can be checked only on the current machine, and rerunning the current
+installer restores the portable policy. B-63 also removes the remaining child-Bash inference for
+`Guard JSON parser`.
+
 ---
 
 ## WSD-027: site a maintenance duty on the surface whose invocation model matches it (2026-08-01)
