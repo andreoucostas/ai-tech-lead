@@ -18,20 +18,38 @@ row() {
   if [ "$1" = MISSING ]; then missing=1; missing_rows=$((missing_rows + 1)); fi
 }
 has() { command -v "$1" >/dev/null 2>&1; }
+split_first_command_word() {
+  value=$(printf '%s\n' "$1" | sed 's/^[[:space:]]*//')
+  first_word=''; word_remainder=''
+  case "$value" in
+    \"*)
+      first_word=$(printf '%s\n' "$value" | sed -n 's/^"\([^"]*\)"[[:space:]]*\(.*\)$/\1/p')
+      word_remainder=$(printf '%s\n' "$value" | sed -n 's/^"\([^"]*\)"[[:space:]]*\(.*\)$/\2/p') ;;
+    \'*)
+      first_word=$(printf '%s\n' "$value" | sed -n "s/^'\\([^']*\\)'[[:space:]]*\\(.*\\)\$/\\1/p")
+      word_remainder=$(printf '%s\n' "$value" | sed -n "s/^'\\([^']*\\)'[[:space:]]*\\(.*\\)\$/\\2/p") ;;
+    *)
+      first_word=$(printf '%s\n' "$value" | sed -n 's/^\([^[:space:]]*\)[[:space:]]*\(.*\)$/\1/p')
+      word_remainder=$(printf '%s\n' "$value" | sed -n 's/^\([^[:space:]]*\)[[:space:]]*\(.*\)$/\2/p') ;;
+  esac
+  [ -n "$first_word" ]
+}
 is_guard_sh_target() {
-  normalized=$(printf '%s\n' "$1" | sed 's#\\\\#/#g;s#\\#/#g')
-  printf '%s\n' "$normalized" | grep -Eq '^[[:space:]]*("(\./)?\.claude/hooks/guard\.sh"|(\./)?\.claude/hooks/guard\.sh)($|[[:space:]])'
+  split_first_command_word "$1" || return 1
+  normalized=$(printf '%s\n' "$first_word" | sed 's#\\\\#/#g;s#\\#/#g')
+  case "$normalized" in .claude/hooks/guard.sh|./.claude/hooks/guard.sh) return 0;; *) return 1;; esac
 }
 is_bash_interpreter() {
-  normalized=$(printf '%s\n' "$1" | sed 's#\\#/#g')
+  normalized=$(printf '%s\n' "$1" | sed 's#\\\\#/#g;s#\\#/#g')
   leaf=${normalized##*/}
-  case "$leaf" in bash|bash.exe) return 0;; *) return 1;; esac
+  case "$leaf" in [Bb][Aa][Ss][Hh]|[Bb][Aa][Ss][Hh].[Ee][Xx][Ee]) return 0;; *) return 1;; esac
 }
 is_claude_bash_guard_command() {
   command=$1
-  shell=$(printf '%s\n' "$command" | sed -n 's/^[[:space:]]*"\([^"]*\)".*/\1/p; t; s/^[[:space:]]*\([^[:space:]]*\).*/\1/p')
+  split_first_command_word "$command" || return 1
+  shell=$first_word
+  remainder=$word_remainder
   is_bash_interpreter "$shell" || return 1
-  remainder=$(printf '%s\n' "$command" | sed -n 's/^[[:space:]]*"[^"]*"[[:space:]]*\(.*\)$/\1/p; t; s/^[[:space:]]*[^[:space:]]*[[:space:]]*\(.*\)$/\1/p')
   remainder=$(printf '%s\n' "$remainder" | sed ':again; s/^[[:space:]]*\(--noprofile\|--norc\|-File\|--\)[[:space:]][[:space:]]*//; t again')
   is_guard_sh_target "$remainder"
 }
@@ -162,7 +180,7 @@ else
 fi
 
 copilot_hook_commands=$(grep -oE '"(bash|powershell)"[[:space:]]*:[[:space:]]*"[^"]*"' "$root/.github/hooks/hooks.json" 2>/dev/null | sed -n 's/^"[^"]*"[[:space:]]*:[[:space:]]*"\([^"]*\)"$/\1/p')
-paths=$( { printf '%s\n' "$commands" | grep -oE '[^ ]*\.claude[\\/]hooks[\\/][^ ]+'; printf '%s\n' "$copilot_hook_commands" | sed 's/[[:space:]].*$//'; } | sed 's#\\\\#/#g;s#^\./##' | sort -u)
+paths=$( { printf '%s\n' "$commands" | grep -oE '[^ ]*\.claude[\\/]hooks[\\/][^ ]+'; printf '%s\n' "$copilot_hook_commands" | sed 's/[[:space:]].*$//'; } | sed -e 's#\\\\#/#g' -e 's#\\#/#g' -e 's#^"##' -e 's#"$##' -e "s#^'##" -e "s#'\$##" -e 's#^\./##' | sort -u)
 copilot_bash_commands=$(grep -oE '"bash"[[:space:]]*:[[:space:]]*"[^"]*"' "$root/.github/hooks/hooks.json" 2>/dev/null | sed -n 's/^"bash"[[:space:]]*:[[:space:]]*"\([^"]*\)"$/\1/p')
 while IFS= read -r command; do
   [ -z "$command" ] && continue
