@@ -315,6 +315,25 @@ bash dist/dotnet/scripts/install.sh /c/temp/install-smoke-green   # or a dist in
 # monorepo detection: seed both a .csproj and an angular.json in the target first
 ```
 
+## Hazard: reviewing a branch that is still moving
+
+When implementation runs concurrently with review (e.g. codex authoring on a branch while a
+separate session reviews it), a clean `git status --porcelain` plus an existing commit is **not**
+evidence the branch is settled — it can still be mid-amend or mid-rebase between two of your own
+commands, and a full gate run started at that instant reads a half-rewritten working tree and
+reports spurious failures. Caught three times in one sitting (2026-08-08): a merge that grabbed a
+commit already superseded by a concurrent reset, a `grep` that read already-edited files and
+concluded a real defect didn't exist, and a `validate-dist` run that failed mid-rebase for reasons
+that had nothing to do with the change. **Before starting an expensive verification pass, confirm
+the branch tip is unchanged across a short gap, not merely clean at one instant** — check the HEAD
+hash, wait briefly, check it again. **Before the merge itself, re-read the branch tip one more
+time** regardless of how long ago verification finished. Prefer verifying against a fixed commit
+(`git show <hash>:<path>`, `git diff <a>..<b>`) over the live working tree whenever the two could
+disagree. And for a shipped-behavior change specifically, prefer letting `release.ps1` below run the
+authoritative full gate suite over re-running it all by hand first — it refuses to commit on
+failure, so a manual pre-pass mostly duplicates it while being more exposed to this exact race; one
+targeted red-test re-run is enough evidence for `-ReviewEvidence`.
+
 ## Release process
 
 When shipped behavior changed [#7] — **automated**; the manual checklist this replaces shipped
