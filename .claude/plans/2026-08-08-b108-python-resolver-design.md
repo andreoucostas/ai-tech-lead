@@ -1,6 +1,24 @@
 # B-108 — one sanctioned Python resolver grammar
 
-**Status:** LOCKED after adversarial critique (`LOCK WITH AMENDMENTS`, amendments folded below)
+**Status:** LOCKED after adversarial critique (`LOCK WITH AMENDMENTS`, amendments folded below).
+**Independently re-reviewed by Claude Sonnet 5, separate session, 2026-08-08 — CLEARED TO
+IMPLEMENT.** I came to this plan intending to flag exactly the gap the folded amendments already
+fix: the original check counted only the literal `python3` token, while the sanctioned fragment
+itself probes `python3`/`python`/`py` — a stray `command -v python` duplicate would have slipped
+past a `python3`-only gate, reproducing the spelling-dependent miss that caused B-104 in the first
+place. §3's probe-shaped-line definition and the `python`/`py`-only red-test in Executable evidence
+§2 close that. Per Maintenance model rule #3 ("a reviewer's corrections are input, not verdict"), I
+did not take the fix on faith: `grep` across every `src/core` and `src/stacks/*/files` hook plus
+`framework-doctor.sh` confirms all 17 current call sites (10 distinct probe expressions counted per
+the inventory table, several duplicated across stack siblings) use only the two lexical forms §3
+defines (`command -v` and `for ... in ...`) — the inventory table's site count is not asserted, it
+is verified against the actual tree at this commit. **One non-blocking forward-looking note, not
+worth delaying implementation over:** the probe-shaped-line definition doesn't cover `which`,
+`type -p`, or `hash`-style probes. No current site uses them, so this isn't a gap against today's
+population, but if a future hook introduces one of those forms it would bypass check 12 the same
+way `python3`-only detection would have. Worth a one-line mention in the check's own comment
+so a future editor knows the boundary is deliberate, not accidental — does not need a plan
+revision or a re-lock.
 
 **Scope:** shipped Bash hooks/scripts plus the authoring validators and their meta tests
 
