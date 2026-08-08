@@ -3331,6 +3331,64 @@ recommendations are platform-scoped and evidence-ranked; false-positive controls
 and behavioral evals show the framework can decline an unjustified optimization.
 
 ---
+### B-129 · Design and review the warehouse reporting consumption layer
+**Effort:** M–L · **Priority:** P2 · filed 2026-08-08 · **Capability:** warehouse technical leadership
+
+**Why:** `map-warehouse` records consumption views/marts and teaches a report author to follow the
+warehouse's proven joins, but the framework has no end-to-end recipe for creating or enhancing the
+consumption surface itself. It does not explicitly decide between a reporting view, parameterised
+stored procedure, table-valued function, materialised/indexed view, semantic-model object, or a new
+mart; nor does it require a stable grain, metric contract, parameter behavior, security boundary,
+compatibility plan, or BI-tool-friendly result shape. Copying an existing join path is necessary but
+not enough to design a trustworthy reporting interface.
+
+**Do:** design guidance for building and reviewing reporting stored procedures, BI/reporting views,
+and equivalent SQL consumption artifacts. Start by identifying the consumer and workload, then
+choose the smallest appropriate publication surface using repository and platform conventions.
+Require:
+
+1. an explicit result grain and row-uniqueness contract;
+2. fact/dimension joins justified by the warehouse map, including role-playing and version-resolution
+   semantics, fan/chasm and many-to-many handling, and no accidental fact multiplication;
+3. canonical metric definitions, aggregation/additivity rules, filters, time/calendar semantics,
+   currency/unit treatment, null and unknown-member behavior, and totals/reconciliation expectations;
+4. a stable output contract — names, types, ordering guarantees only where real, parameters and
+   defaults, inclusive/exclusive date boundaries, paging or extract semantics, and compatibility for
+   existing consumers;
+5. security and governance at the reporting boundary, including least privilege, sensitive-column
+   exposure, row-level filtering where the platform uses it, and safe parameterisation/dynamic SQL;
+6. workload-aware choices for predicate pushdown, sargability, plan stability, materialisation,
+   indexes, refresh behavior, and BI query patterns, without asserting performance absent evidence;
+7. repository-native deployment, ownership/documentation, representative correctness tests, and
+   comparison to source/control totals and existing reports.
+
+The guidance must distinguish reusable governed datasets from one-report projections, interactive
+queries from scheduled extracts, and semantic definitions from presentation formatting. It must not
+make stored procedures, views, or denormalised marts a universal default, and must abstain when the
+business definition or consumer contract is missing.
+
+**Framework fit:** this is the write/review counterpart to `map-warehouse`'s existing read-side
+rules. It consumes B-124's fact-binding decision, B-125's modelling findings, B-126's evolution and
+downstream-impact contract, B-127's scoped metric lineage, and B-128's physical-design evidence.
+Reuse the warehouse map's evidence/confidence vocabulary and the existing framework workflow
+patterns; do not create a competing inventory, generic SQL-style guide, or vendor-specific default.
+The design must decide whether this belongs as a bounded addition to existing warehouse skills or a
+separately routed skill, using observed routing behavior and context cost rather than preference.
+
+**Design/review gate:** write and lock a design before implementation, including the proportionality
+case and at least two approaches. Then obtain an independent adversarial review with **Claude Opus**;
+the review may reject the premise or split the scope. If Opus is rate- or spend-limited, mark the
+review **WAITING — OPUS LIMIT** and continue only independent design/backlog work. Do not substitute
+a lower tier and call the review complete.
+
+**Done when:** fixtures cover a reusable BI view, a parameterised reporting procedure, a case where
+neither is the right abstraction, role-playing/time-version joins, non-additive measures, a
+many-to-many path, an existing-consumer compatibility change, and missing business semantics that
+must cause abstention. Pre-registered red baselines and constructible success cases are recorded;
+post-change evals demonstrate correct artifact choice and SQL semantics; and all applicable dists
+carry the guidance without weakening existing warehouse routing.
+
+---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see the Done section.**
