@@ -87,4 +87,16 @@ It 'every script CI invokes actually exists' {
     Assert $true 'clean'
 }
 
+# --- 5. backlog item identifiers are unambiguous -----------------------------------------------
+It 'every live backlog item has a unique id' {
+    $backlog = Get-Content (Join-Path $repoRoot 'meta/BACKLOG.md')
+    $ids = @($backlog | ForEach-Object {
+        if ($_ -match '^### (B-[0-9]+) ·') { $Matches[1] }
+    })
+    Assert ($ids.Count -gt 0) 'BACKLOG.md yielded zero live item ids -- the heading grammar changed and this gate is blind'
+    $duplicates = @($ids | Group-Object | Where-Object Count -gt 1 | ForEach-Object Name)
+    if ($duplicates) { Assert $false ("duplicate live backlog item ids: " + ($duplicates -join ', ')) }
+    Assert $true 'clean'
+}
+
 exit (Write-TestSummary 'DocTruth.Tests (the authoring docs describe the repo that exists)')

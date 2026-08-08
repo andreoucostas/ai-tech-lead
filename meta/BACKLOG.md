@@ -2792,7 +2792,7 @@ saturation verdict beside every scenario so this is never re-derived.
 
 ---
 
-### B-113 · Post-ship review owed for v0.48.0
+### B-123 · Post-ship review owed for v0.48.0
 **Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-06
 
 **Why:** v0.48.0 shipped with `-NoIndependentReview`, so no second session re-ran a gate or a
@@ -2948,7 +2948,7 @@ local half of this, and its "nothing measures cost" thesis now has a CI-side ins
 is not done until CI is green — which is now unachievable through no fault of the change).
 
 ---
-### B-114 · Two entries both claim the id `B-113`
+### B-114 · Two entries both claim the id `B-113` — **DONE 2026-08-08, see Done section**
 **Effort:** XS · **Priority:** P3 · found 2026-08-07 while filing B-115..B-118
 
 **Why:** `### B-113 · Post-ship review owed for v0.48.0` and `### B-113 · CI is being cancelled at
@@ -3375,6 +3375,16 @@ planted unreadable file and an emptied tree, both twins.
   not host identity or filesystem provenance. The same class exposes any shipped textual artifact
   containing an account-qualified home path; the new cross-platform patterns sweep the entire
   composed distribution without recording a maintainer's identity in the denylist itself.
+
+- **B-114** — done **2026-08-08** (meta-only; no shipped version). Renumbered the lower-reference
+  v0.48.0 post-ship review entry from B-113 to B-123; the CI-cancellation entry retains B-113 and
+  its existing CHANGELOG references. `DocTruth.Tests.ps1` now extracts live item headings using
+  their full `### B-nnn ·` grammar, fails on duplicate ids, and refuses a vacuous zero-id scan.
+  Red-before-green: the unchanged backlog passed the old six-case suite despite its duplicate;
+  the new check first reported `duplicate live backlog item ids: B-113`, then passed after the
+  renumber. **RCA:** no gate caught it because no test parsed backlog identities. Concurrent filing
+  exposes every identifier allocated by reading the current tail; the recurrence gate scans the
+  complete live-item population rather than special-casing B-113.
 
 - **CI watch, 2026-08-04:** one linux run failed `route-prompt twins agree: security (Copilot)` with
   `ps1=139 sh=0`. Exit 139 is SIGSEGV — the pwsh child crashed on the ubuntu runner; the harness
