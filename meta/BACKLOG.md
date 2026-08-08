@@ -3581,7 +3581,7 @@ planted unreadable file and an emptied tree, both twins.
 
 ## Done
 
-- **B-67** — done **2026-08-08** (release pending integration). Check 7 in both `validate-dist`
+- **B-67** — done **2026-08-08** (target v0.51.3). Check 7 in both `validate-dist`
   twins now resolves rendered single-line relative inline Markdown links from the document that
   contains them, case-exactly, accepting files and directories while rejecting paths that escape
   the dist. External URLs, pure fragments, images, fenced/inline-code examples, reference-style or

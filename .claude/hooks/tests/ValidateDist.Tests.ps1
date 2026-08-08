@@ -474,6 +474,11 @@ try {
             [IO.File]::AppendAllText((Join-Path $d 'README.md'),"`n[bad percent](./docs/foo%ZZ.md)`n")
         } 'is not a valid relative link target' 'no-dead-instruction' -AlsoPattern 'foo%ZZ\.md'
 
+        Assert-Case 'nul-percent-link' {
+            param($d)
+            [IO.File]::AppendAllText((Join-Path $d 'README.md'),"`n[nul](%00)`n")
+        } 'is not a valid relative link target' 'no-dead-instruction' -AlsoPattern '%00'
+
         Assert-Case 'encoded-link-escape' {
             param($d)
             [IO.File]::AppendAllText((Join-Path $d 'docs/playbook.md'),"`n[escape](%2e%2e/%2e%2e/outside.md)`n")
@@ -484,6 +489,11 @@ try {
             [IO.File]::AppendAllText((Join-Path $d 'README.md'),"`n[root](./)`n")
             [IO.File]::AppendAllText((Join-Path $d 'docs/playbook.md'),"`n[root](../)`n")
         } 'relative inline Markdown links and' 'no-dead-instruction' -Green
+
+        Assert-Case 'command-source-lines' {
+            param($d)
+            [IO.File]::AppendAllText((Join-Path $d 'README.md'),"`nbash scripts/definitely-missing-with-line-b67.sh`n")
+        } 'dead instructions in shipped docs' 'no-dead-instruction' -AlsoPattern @('README\.md:\d+:','definitely-missing-with-line-b67\.sh')
     }
 
     # B-106/F3: this skip used to be false -- "python3 is unavailable" read as "no python here", but

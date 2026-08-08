@@ -541,7 +541,9 @@ cmdre='(pwsh|bash|powershell)( -[A-Za-z]+( [A-Za-z]+)?)* [A-Za-z0-9_./-]+\.(ps1|
 # contained nothing" is the anti-fail-open property this check was given deliberately. So the fast
 # path runs first, and only when it reports an error do we re-walk file by file to name the culprit.
 # Fast when healthy, precise when broken.
-_batch=$(grep -rnE --include='*.md' "$cmdre" "$DIST" 2>/dev/null); _bstatus=$?
+# Run from inside the dist so grep emits relative paths. Besides being easier to read, this avoids
+# treating a Windows drive colon as the filename/line separator below.
+_batch=$(cd "$DIST" 2>/dev/null && grep -rnE --include='*.md' "$cmdre" . 2>/dev/null); _bstatus=$?
 if [ "$_bstatus" -gt 1 ]; then
   while IFS= read -r f; do
     case "${f##*/}" in CHANGELOG.md) continue;; esac
@@ -557,7 +559,7 @@ while IFS= read -r _bline; do
   [ -n "$_bline" ] || continue
   f="${_bline%%:*}"; _rest="${_bline#*:}"
   case "${f##*/}" in CHANGELOG.md) continue;; esac
-  rel="${f#"$DIST"/}"
+  rel="${f#./}"
   matches="$_rest"
   while IFS= read -r hit; do
     [ -n "$hit" ] || continue
@@ -608,7 +610,7 @@ while IFS=$'\t' read -r f ln content; do
     [ -n "$pathpart" ] || continue
     linksextracted=$((linksextracted+1))
     pct_rest=$(printf '%s' "$pathpart" | sed -E 's/%[0-9A-Fa-f]{2}//g')
-    if [[ "$pct_rest" == *%* ]]; then
+    if [[ "$pct_rest" == *%* || "$pathpart" == *%00* ]]; then
       deadlinks="$deadlinks$rel:$ln: \`$target\` is not a valid relative link target"$'\n'
       continue
     fi
