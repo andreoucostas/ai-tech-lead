@@ -1,5 +1,6 @@
 ﻿# B-92 executable red-tests. These use real composed dists: synthetic JSON fixtures hid the prior
-# false greens. The child is bound to THIS host, not Get-PsExe (B-90).
+# false greens. The child is bound explicitly to THIS host; Get-PsExe now has the same self-hosting
+# contract, after its former preference for pwsh caused B-90.
 #
 # -Only runs a SINGLE case by name. It exists so this file can dispatch itself: with no -Only the
 # script becomes a driver that runs one child process per case, several at a time, and aggregates.

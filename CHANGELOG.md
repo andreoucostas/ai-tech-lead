@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## Unreleased
+## 0.51.1 — Unreleased
 
 - B-90/B-93: PowerShell test subjects now remain on the host that launched their suite. A direct
   Windows PowerShell 5.1 run can no longer silently exercise hooks, installers, release guards, or

@@ -1137,7 +1137,7 @@ red-test yourself, do not read the release output as evidence -- and file whatev
 close this entry, recording what was re-run.
 
 ---
-### B-89 · Windows PowerShell 5.1 turns a native command's stderr into a terminating error — and two *shipped* scripts are exposed
+### B-89 · Windows PowerShell 5.1 turns a native command's stderr into a terminating error — one *shipped* script remains exposed
 **Effort:** S · **Priority:** P2 · filed 2026-08-02 (RCA of B-88) · **Invariants:** #3 #5
 
 **Why:** under 5.1, a native command that writes to stderr raises a `NativeCommandError` record, and
@@ -1146,25 +1146,26 @@ but does not stop the record. pwsh 7 does not do this (`$PSNativeCommandUseError
 defaults to `False` — measured on 7.6.4). So the idiom `$root = (git rev-parse --show-toplevel
 2>$null)`, written to degrade gracefully, degrades gracefully on one host and dies on the other.
 
-Found in new code while shipping B-88, then swept. **Two shipped scripts match both conditions** —
-`src/core/scripts/sync-agent-files.ps1:12` and `src/core/scripts/build-architecture-html.ps1:6` —
-and it is not theoretical. Run from a non-git directory, `dist/dotnet/scripts/sync-agent-files.ps1`:
+Found in new code while shipping B-88, then swept. Two shipped scripts originally matched both
+conditions. B-90's now-honest 5.1 architecture test reproduced and fixed
+`src/core/scripts/build-architecture-html.ps1`; **`src/core/scripts/sync-agent-files.ps1:12`
+remains exposed**, and it is not theoretical. Run from a non-git directory,
+`dist/dotnet/scripts/sync-agent-files.ps1`:
 
 ```
 5.1: git : fatal: not a git repository ... + FullyQualifiedErrorId : NativeCommandError   (no exit code at all)
 7  : No .claude/skills directory -- nothing to sync.                                       EXIT=0
 ```
 
-Both scripts intend the fallback that pwsh 7 gives them. Consumers on Windows may be on either host,
+The remaining script intends the fallback that pwsh 7 gives it. Consumers on Windows may use either host,
 and the 5.1 outcome is a raw .NET error dump instead of the message the author wrote. This is also a
 **twin divergence** the `.sh` side does not have (`2>/dev/null` in bash is just a redirect), so it is
 invariant #3 territory as well as #5.
 
-**Do:** wrap the affected native calls so the exit code is inspected rather than the error record —
+**Do:** wrap the remaining native call so the exit code is inspected rather than the error record —
 set `$ErrorActionPreference = 'Continue'` around the call and test `$LASTEXITCODE`, as
-`.claude/scripts/watch-ci.ps1`'s `Invoke-GitQuiet` now does. Red-test each from a non-git directory
-**under 5.1** — the existing `BuildArchitectureHtml.Tests.ps1` passes today because it runs inside a
-repo, where the branch never executes. Then sweep the remaining `2>$null` sites listed by
+`.claude/scripts/watch-ci.ps1`'s `Invoke-GitQuiet` now does. Red-test it from a non-git directory
+**under 5.1**. B-90 supplies the completed architecture-generator red/green evidence. Then sweep the remaining `2>$null` sites listed by
 `grep -rn '2>\$null' --include=*.ps1 src/ scripts/` and decide each; most do not set `Stop`, which is
 the only reason this has not bitten more widely.
 
