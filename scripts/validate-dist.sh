@@ -28,7 +28,7 @@ cd "$(dirname "$0")/.."
 CONTENT_ONLY=0
 CHECK_ARG=
 CHECK_SET=0
-POSITIONAL=""
+POSITIONAL=()
 while [ "$#" -gt 0 ]; do
   arg=$1; shift
   if [ "$arg" = "--content-only" ]; then CONTENT_ONLY=1
@@ -39,15 +39,19 @@ while [ "$#" -gt 0 ]; do
     # an empty selection into "run everything" while the PowerShell twin exited 2 on the same input.
     CHECK_SET=1
     CHECK_ARG=$1; shift
-  else POSITIONAL="$POSITIONAL $arg"
+  else POSITIONAL+=("$arg")
   fi
 done
-# shellcheck disable=SC2086
-set -- $POSITIONAL
+set -- "${POSITIONAL[@]}"
 MODE="${1:-}"
 case "$MODE" in dotnet|angular|monorepo) ;; *) echo "usage: validate-dist.sh {dotnet|angular|monorepo} [dist-root] [--content-only] [-Check name[,name...]]" >&2; exit 2;; esac
 DISTROOT="${2:-dist}"
 DIST="$DISTROOT/$MODE"
+
+if [ "$CONTENT_ONLY" = "1" ] && [ "$CHECK_SET" = "1" ]; then
+  echo "usage error: --content-only and -Check cannot be combined; choose one scope selector." >&2
+  exit 2
+fi
 
 VALID_CHECKS='markers json bash-syntax ps-syntax template-checks no-meta-leak no-dead-instruction hook-registration marker-expansion section-path carrier-import'
 SELECTED_CHECKS=""
@@ -403,7 +407,10 @@ if [ "$ps1_count" -gt 0 ]; then
     foreach ($p in [IO.File]::ReadAllLines($env:VALIDATE_DIST_PS1_LIST)) {
       if ([string]::IsNullOrWhiteSpace($p)) { continue }
       $e = $null
-      try { [System.Management.Automation.Language.Parser]::ParseFile($p, [ref]$null, [ref]$e) | Out-Null }
+      try {
+        $null = [IO.File]::OpenRead($p).Dispose()
+        [System.Management.Automation.Language.Parser]::ParseFile($p, [ref]$null, [ref]$e) | Out-Null
+      }
       catch { [IO.File]::AppendAllText($env:VALIDATE_DIST_PS1_READ_FAILS, " " + $p); continue }
       if ($e) { [IO.File]::AppendAllText($env:VALIDATE_DIST_PS1_PARSE_FAILS, " " + $p) }
     }
@@ -414,7 +421,7 @@ ps1fails=$(cat "$_ps1_parse_fails")
 rm -f "$_ps1_list" "$_ps1_read_fails" "$_ps1_parse_fails"
 if [ "$ps1_enum_ok" -ne 1 ]; then fail "PowerShell scan could not enumerate $DIST."
 elif [ "$ps1_count" -eq 0 ]; then fail "PowerShell scan found zero files in $DIST."
-elif [ "$ps1_tool_ok" -ne 1 ]; then fail "PowerShell parser process failed while scanning $Dist."
+elif [ "$ps1_tool_ok" -ne 1 ]; then fail "PowerShell parser process failed while scanning $DIST."
 elif [ -n "$ps1_read_fails" ]; then fail "PowerShell scan could not read:$ps1_read_fails"
 elif [ -n "$ps1fails" ]; then fail "PS syntax errors in:$ps1fails"
 else ok "all $ps1_count *.ps1 files parse cleanly ($PWSH)."; fi
