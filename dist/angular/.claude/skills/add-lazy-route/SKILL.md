@@ -13,6 +13,8 @@ description: >
 
 Match the conventions in CLAUDE.md > Conventions > Architecture for module/standalone choice and barrel-file rules.
 
+0. **Confirm the route and feature area do not already exist.** Search route configs, redirects, and lazy imports by URL and user-visible capability. Extend the existing route tree through ordinary `/feature` work instead of creating a competing path.
+
 1. Create a feature directory with its own routing config.
 2. Add the lazy route in the parent: `loadComponent` (standalone) or `loadChildren` (NgModule).
 3. Add guards if the route is auth- or role-gated.

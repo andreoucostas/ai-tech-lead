@@ -11,6 +11,15 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.51.0 — 2026-08-08
+
+- B-78/B-115: added shared warehouse detection, `warehouse-map-check` twins, current-evidence
+  gating for warehouse writes, and pure SQL/SSDT/dbt installation plus solution-free adoption.
+- Update mode refreshes framework skills while preserving standardized exemplars and discovered
+  skills; explicitly disabled framework skills stay inactive but current.
+- B-118/B-120: instance recipes now check for an existing owner, and no-output dimension-binding
+  evidence reports `n/a` instead of desirable false values.
+
 ## 0.50.0 — 2026-08-07
 
 **`add-warehouse-load` never asked whether the dimension already existed. It does now — and the

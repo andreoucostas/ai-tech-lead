@@ -993,3 +993,17 @@ B-102, and v0.45.0's commit message. Every one was caught by the next independen
 the authoring session and never by a gate. The failing component is not the implementation — it is
 the self-report. Worth asking whether `release.ps1` should require the claimed blast radius as a file
 list it can diff against the commit it is about to make.
+
+## 2026-08-07 — an optional document can still be a mandatory evidence boundary
+
+The warehouse map did not need to become compulsory when dimension binding raised its stakes. The
+actual invariant is that a write decision cannot proceed from absent or stale evidence. Accepting a
+current map *or* a live-schema inventory preserves the team's right to decline the artifact without
+turning that choice into permission to guess. Encoding the warehouse predicate once also exposed the
+pure-SQL installer gap and made PowerShell/Bash parity testable.
+
+Update ownership needed the same separation of artifact from intent. A deleted shipped skill is
+ambiguous; a skill under `disabled-skills` plus a durable learning is an explicit decision. That lets
+the framework deliver a security or correctness refresh to the inactive copy without silently
+reactivating it, while standardized exemplar lines remain the narrow consumer-owned seam in an
+otherwise framework-owned recipe.

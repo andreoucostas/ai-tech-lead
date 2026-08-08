@@ -15,6 +15,8 @@ description: >
 
 Match CLAUDE.md > Conventions > State Management. Do not introduce signals if the codebase consistently uses NgRx/NGXS — use the existing pattern unless the user explicitly asks to migrate.
 
+0. **Confirm the state is not already owned elsewhere.** Search existing stores, services, selectors, and signals by domain concept. Extend the established owner through ordinary `/feature` work instead of creating two writable sources of truth.
+
 1. Create a service with `signal()` for state and `computed()` for derived values.
 2. Expose read-only signals publicly via `asReadonly()`.
 3. Mutations only via explicit methods on the service — no external `.set()` calls; no leaky writable signals.

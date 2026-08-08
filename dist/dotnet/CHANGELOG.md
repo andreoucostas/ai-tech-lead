@@ -4,6 +4,14 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.51.0 — Unreleased
+
+- Warehouse writes now require a current map or equivalent live-schema inventory; pure SQL, SSDT,
+  and dbt repositories can be detected and adopted without a solution file.
+- Updates preserve local skill exemplars and discovered skills, while disabled framework skills
+  remain inactive and receive refreshed content for a future restore.
+- Endpoint, entity, and service recipes now search for an existing owner before scaffolding.
+
 ## 0.50.0 — 2026-08-07
 
 - **`add-warehouse-load` now asks whether the dimension already exists — before it designs one.**

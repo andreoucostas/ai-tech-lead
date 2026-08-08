@@ -29,6 +29,13 @@ $usage = 'Usage: pwsh install.ps1 [-Stack dotnet|angular|monorepo] C:\path\to\ta
 function Die([string]$msg) { [Console]::Error.WriteLine($msg); exit 2 }
 
 $selfDir = $PSScriptRoot
+function Test-WarehouseRepo([string]$Path) {
+    $signals = Join-Path $selfDir 'dist/dotnet/scripts/warehouse-signals.tsv'; if (-not (Test-Path -LiteralPath $signals)) { return $false }
+    $files = @(Get-ChildItem -LiteralPath $Path -Recurse -File -Force -ErrorAction SilentlyContinue | Where-Object { $_.FullName -notmatch '[\\/](\.git|node_modules|bin|obj|dist)[\\/]' -and ($_.Extension -in @('.sql','.sqlproj') -or $_.Name -eq 'dbt_project.yml' -or ($_.Extension -in @('.yml','.yaml','.json') -and $_.FullName -match '(?i)[\\/](etl|pipelines?|warehouse|datafactory|synapse|dags?)[\\/]|(pipeline|datafactory|synapse|dag)[^\\/]*\.(yml|yaml|json)$')) })
+    $hits=0
+    foreach($line in Get-Content -LiteralPath $signals){if($line.StartsWith('#')-or[string]::IsNullOrWhiteSpace($line)){continue};$parts=$line-split"`t",2;foreach($file in $files){if($file.Name-match$parts[1]-or(Select-String -LiteralPath $file.FullName -Pattern $parts[1] -Quiet)){$hits++;break}}}
+    return $hits -ge 2
+}
 
 if (-not $Target) { Die $usage }
 if (-not (Test-Path -LiteralPath $Target -PathType Container)) { Die "Target '$Target' is not a directory." }
@@ -61,6 +68,7 @@ else {
         }
         elseif ($hasDotnet) { $Stack = 'dotnet'; $reason = 'auto-detected (found *.csproj/*.sln)' }
         elseif ($hasAngular) { $Stack = 'angular'; $reason = 'auto-detected (found angular.json)' }
+        elseif (Test-WarehouseRepo $tgt) { $Stack='dotnet'; $reason='warehouse SQL fallback (at least two independent signals)' }
         else {
             Die ("Could not determine the stack for '$tgt': no *.csproj/*.sln and no angular.json in the target root or two levels below.`n" +
                 'Pass it explicitly: -Stack dotnet|angular|monorepo.')

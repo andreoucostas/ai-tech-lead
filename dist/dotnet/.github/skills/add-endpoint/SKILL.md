@@ -15,6 +15,8 @@ description: >
 
 Match CLAUDE.md > Conventions > Architecture (dependency direction), > API Design (controller thinness, DTO separation), and > Async (CancellationToken propagation).
 
+0. **Confirm the route and capability do not already exist.** Search route registrations, controllers, and application services by concept as well as the requested name. If an existing endpoint owns the capability, extend it through ordinary `/feature` work instead of creating a parallel route.
+
 1. Domain entity / value object (only if new — don't expand domain to fit an endpoint).
 2. Application service method + interface (the work happens here, not in the controller).
 3. Request and response DTOs (separate from domain entities).

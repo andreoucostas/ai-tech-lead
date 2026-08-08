@@ -820,6 +820,10 @@ planted dangling path.
 ### B-78 · Warehouse-map staleness has four populations no signal reaches
 **Effort:** S · **Priority:** P3 · found 2026-08-01 shipping v0.42.0
 
+> **DONE in v0.51.0.** `warehouse-map-check` reaches current/missing/stale/declined/not-applicable
+> states directly and through advisory docs-sync output; the load recipe requires current map or
+> equivalent live evidence. Pure-SQL adoption is covered with B-115.
+
 **Why:** v0.42.0 added a freshness caveat inside `add-warehouse-load` (fires when the map is read)
 and a `/docs-sync` bullet gated on `docs/warehouse-map.md` existing. Both are structurally blind to
 repos that have **no** map but should:
@@ -1729,6 +1733,11 @@ B-96 (blocked by this).
 
 ### B-98 · A prompt that matches no skill description fails silently
 **Effort:** S (step 1) · M (the general question) · **Priority:** P2 · found 2026-08-05
+
+> **v0.51.0 decision:** no always-on router or no-match hook. Stage A selected
+> `add-warehouse-load` 6/6 and selected `add-entity` 0/4 counted runs, while the earlier read-side
+> case remained 0/6. Routing remains probabilistic; dead destinations are hygiene defects, not a
+> behavior proof. Future body boundaries require an observed overlapping-fixture misroute.
 
 **Why:** routing is the model matching a prompt against skill descriptions. When nothing matches,
 the framework emits **nothing** — no warning, no degraded path, no "I have no recipe for this". The
@@ -2959,6 +2968,9 @@ repo's documentation for truth.
 ### B-115 · Pure SQL / SSDT / dbt repos cannot be installed, and `/adopt` cannot run in one
 **Effort:** S · **Priority:** P3 · found 2026-08-07 (dimension-binding work)
 
+> **DONE in v0.51.0.** Root fallback uses the shared category signal table after application-stack
+> detection misses; PowerShell/Bash behavior tests install a pure-SQL fixture without a solution.
+
 **Why:** three independent blocks, none of which the installer reports as a stack problem:
 1. auto-detect covers only `*.csproj`/`*.sln`/`angular.json`, so a bare `.sqlproj`, a dbt project, or
    a plain `Tables/`+`StoredProcedures/` tree hard-errors with "Could not determine the stack"
@@ -2988,6 +3000,9 @@ altitude, and nothing here changes that.
 ### B-116 · `route-prompt` has no data or warehouse vocabulary
 **Effort:** S · **Priority:** P3 · found 2026-08-07 · **Cross-link:** B-98 (the general routing question)
 
+> **DONE (no code) in v0.51.0.** The write-side baseline routed correctly, so warehouse regexes
+> were not added without evidence of a failure.
+
 **Why:** "implement a new import into the data warehouse" classifies as a generic `feature` on
 `\bimplement\b` (`route-prompt.ps1:140`), and `$railsFeature` never mentions skills, `docs/`, or the
 warehouse map. The prompt most characteristic of a warehouse consumer therefore gets rails written
@@ -3002,6 +3017,9 @@ intuition.
 ---
 ### B-117 · Every `DO NOT USE FOR` cross-reference rides the channel measured at 0/6, and no fixture tests one
 **Effort:** M · **Priority:** P2 · found 2026-08-07 · **Cross-link:** B-98, B-60
+
+> **PAIR CLOSED in v0.51.0.** The mixed fixture observed `add-warehouse-load` and never
+> `add-entity`; no frontmatter was added. The wider class remains evidence-gated under B-98.
 
 **Why:** sibling skills disambiguate each other exclusively in **frontmatter** — `add-entity` says
 *"DO NOT USE FOR … warehouse fact/dimension tables (use `add-warehouse-load`)"* and
@@ -3025,6 +3043,9 @@ carry the boundary in skill **bodies**, which are free and are read once the ski
 ---
 ### B-118 · RCA: a recipe listed what to build without ever asking whether it should exist
 **Effort:** S (the sweep) · **Priority:** P2 · filed 2026-08-07 · **Cross-link:** B-112 (sibling class)
+
+> **DONE in v0.51.0.** The warehouse, endpoint, entity, DI service, Angular component/service,
+> lazy-route, and signal-store recipes now search for an existing owner before scaffolding.
 
 **Why:** `add-warehouse-load` shipped in v0.31.0 and was revised through v0.49.0 without anyone
 noticing that it goes from "find a load pattern to copy" straight to "design the entity" — it never
@@ -3081,6 +3102,9 @@ with a stated ceiling, 2/2 = **it does not work**, record that plainly.
 ### B-120 · A produce-nothing run scores every per-signal field as its desirable value
 **Effort:** XS · **Priority:** P3 · filed 2026-08-07 · **Cross-link:** B-112 (instrument class)
 
+> **DONE in v0.51.0.** No-fact runs are INCONCLUSIVE and emit `n/a` for artifact-derived fields;
+> the self-test includes an engaged successful-tool transcript that produces no output.
+
 **Why:** in `warehouseDimensionBinding`, every absence-shaped signal (`regionOnFact`,
 `naturalKeyOnFact`, `newDimTables`) is computed from a fact body that is the empty string when no
 fact was written. A run that produces nothing therefore reports the same values as a perfect run.
@@ -3099,6 +3123,18 @@ indistinguishable from a missing artifact unless the artifact's existence is rep
 
 ---
 
+### B-121 · Post-ship review owed for v0.51.0
+**Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-08
+
+**Why:** v0.51.0 shipped with `-NoIndependentReview`, so no second session re-ran a gate or a
+red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
+it did not happen. Summary of what shipped: warehouse discovery, reusable recipes, and safe skill updates
+
+**Do:** review the v0.51.0 diff as an independent session -- re-run at least one gate and one
+red-test yourself, do not read the release output as evidence -- and file whatever it finds. Then
+close this entry, recording what was re-run.
+
+---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see the Done section.**

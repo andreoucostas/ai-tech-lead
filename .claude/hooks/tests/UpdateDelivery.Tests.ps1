@@ -58,6 +58,11 @@ Repo-specific conventions the consumer owns. Populated by /bootstrap. DO NOT CLO
 "@ -Encoding utf8
     Set-Content (Join-Path $t 'AGENTS.md') "# AGENTS`n`nGENERATED FILE`n" -Encoding utf8
     Set-Content (Join-Path $t '.claude/framework-version.json') "{`"version`": `"$staleVersion`"}" -Encoding utf8
+    New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude/skills/add-warehouse-load') | Out-Null
+    Set-Content (Join-Path $t '.claude/skills/add-warehouse-load/SKILL.md') "---`nname: add-warehouse-load`n---`n# Old framework body`n`nFor a concrete current instance in this repo, see ``warehouse/LoadSales.sql`` — reproduce its **conventions and structure**, not its contents; CLAUDE.md > Conventions wins on any conflict.`n" -Encoding utf8
+    New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude/skills/local-release') | Out-Null
+    Set-Content (Join-Path $t '.claude/skills/local-release/SKILL.md') "---`nname: local-release`norigin: discovered`n---`n# Consumer recipe`n" -Encoding utf8
+    Set-Content (Join-Path $t 'LEARNINGS.md') "## Disabled framework skill: perf`nDisabled: 2026-08-01`nReason: not used here.`n" -Encoding utf8
     return $t
 }
 
@@ -95,6 +100,16 @@ foreach ($twin in @('ps1', 'sh')) {
         Assert (Test-Path -LiteralPath $carrierPath) "carrier $carrierRel was not installed"
         $shipped = Get-Hash (Join-Path $repoRoot "dist/$dist/$carrierRel")
         Assert ((Get-Hash $carrierPath) -eq $shipped) 'installed carrier does not match the shipped one'
+    }
+
+    It "update refreshes framework skills while preserving consumer ownership ($twin)" {
+        $warehouse = Get-Content (Join-Path $target '.claude/skills/add-warehouse-load/SKILL.md') -Raw
+        Assert ($warehouse -match 'Bind to the dimensions that already exist') 'the current framework body was not delivered'
+        Assert ($warehouse -match 'warehouse/LoadSales.sql') 'the consumer exemplar was lost'
+        Assert ((Get-Content (Join-Path $target '.claude/skills/local-release/SKILL.md') -Raw) -match 'Consumer recipe') 'origin: discovered skill was overwritten'
+        Assert (-not (Test-Path (Join-Path $target '.claude/skills/perf'))) 'disabled framework skill was reactivated'
+        Assert (Test-Path (Join-Path $target '.claude/disabled-skills/perf/SKILL.md')) 'disabled framework skill was not refreshed in its inactive location'
+        Assert (Test-Path (Join-Path $target '.claude/framework-update-backup/skills')) 'one-time pre-update skill archive was not created'
     }
 
     # The un-migrated consumer must be TOLD, on both surfaces (meta-invariant #5).

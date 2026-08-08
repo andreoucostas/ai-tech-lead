@@ -893,7 +893,11 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
                 (((Get-ToolPath $_) -replace '\\','/') -match '(?i)(?:^|/)(?:Tables|StoredProcedures|Views)(?:/|$)') -or
                 (([string]$_.Input.command + ' ' + [string]$_.Input.path + ' ' + [string]$_.Input.glob) -match '(?i)Tables|StoredProcedures|Views|\.sql')
             } | Select-Object -First 1)
-            $status = if (-not $factWritten -and -not $warehouseTreeCall) { 'INCONCLUSIVE' } else { 'PASS' }
+            # No fact artifact means there is nothing on which absence-shaped outcome signals can
+            # be observed. An engaged run that only inspected the tree is still INCONCLUSIVE;
+            # reporting regionOnFact=False/newDimTables='' would turn "produced nothing" into the
+            # desirable answer and was the B-120 false-green.
+            $status = if (-not $factWritten) { 'INCONCLUSIVE' } else { 'PASS' }
             $channels = @()
             if ($c1) { $channels += 'C1' }
             if ($c2) { $channels += 'C2' }
@@ -908,6 +912,9 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $bindDate     = $boundDate     -and $resolvedDate
             $pass = $status -eq 'PASS' -and $factWritten -and $bindCustomer -and $bindProduct -and $bindDate -and
                 $newDimTables.Count -eq 0 -and -not $regionOnFact -and -not $naturalKeyOnFact
+            if (-not $factWritten) {
+                return [pscustomobject]@{ Status = $status; Pass = $false; Detail = "category=$category channels=$($channels -join ',') reachedAddEntity=$reachedAddEntity factWritten=False boundCustomer=n/a boundProduct=n/a boundDate=n/a resolvedCustomer=n/a resolvedProduct=n/a resolvedDate=n/a regionOnFact=n/a naturalKeyOnFact=n/a degenerateOnFact=n/a newDimTables=n/a" }
+            }
             return [pscustomobject]@{ Status = $status; Pass = $pass; Detail = "category=$category channels=$($channels -join ',') reachedAddEntity=$reachedAddEntity factWritten=$factWritten boundCustomer=$boundCustomer boundProduct=$boundProduct boundDate=$boundDate resolvedCustomer=$resolvedCustomer resolvedProduct=$resolvedProduct resolvedDate=$resolvedDate regionOnFact=$regionOnFact naturalKeyOnFact=$naturalKeyOnFact degenerateOnFact=$degenerateOnFact newDimTables=$($newDimTables -join ',')" }
         }
         'warehouse-map-quality' {
@@ -1562,6 +1569,16 @@ FROM stg.StgSupplierInvoice s;
         New-Item -ItemType Directory -Path $bindEmptyTemp -Force | Out-Null
         $bindEmptyResult = Test-ScenarioEvidence 'warehouse-bind-mixed' $bindEmptyTemp $bindNoTools 1
         if ($bindEmptyResult.Status -ne 'INCONCLUSIVE' -or $bindEmptyResult.Pass) { throw "warehouseDimensionBinding did not classify a non-engaging run as INCONCLUSIVE: status=$($bindEmptyResult.Status) pass=$($bindEmptyResult.Pass)" }
+        if ($bindEmptyResult.Detail -notmatch 'regionOnFact=n/a' -or $bindEmptyResult.Detail -notmatch 'newDimTables=n/a') { throw "warehouseDimensionBinding gave desirable absence values to a no-output run: $($bindEmptyResult.Detail)" }
+
+        $bindEngagedNoOutput = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='scan'; name='Glob'; input=[pscustomobject]@{ pattern='**/*.sql'; path='Tables' } }) } }),
+            ([pscustomobject]@{ type='user'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_result'; tool_use_id='scan'; is_error=$false; content='Tables/DimCustomer.sql' }) } }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='done' })
+        ) }
+        $bindEngagedResult = Test-ScenarioEvidence 'warehouse-bind-mixed' $bindEmptyTemp $bindEngagedNoOutput 1
+        if ($bindEngagedResult.Status -ne 'INCONCLUSIVE' -or $bindEngagedResult.Detail -notmatch 'regionOnFact=n/a' -or $bindEngagedResult.Detail -notmatch 'newDimTables=n/a') { throw "warehouseDimensionBinding did not emit n/a for an engaged-but-no-output run: $($bindEngagedResult.Detail)" }
 
         # Outcome 2 and outcome 3 are separately observable: the skill firing, and add-entity being
         # reached instead. Without this the mixed fixture measures nothing the pure-SQL one does not.

@@ -145,6 +145,9 @@ if [ -f "$here/wiki-check.sh" ]; then
   # docs-sync-check run would otherwise block waiting for a stdin line).
   bash "$here/wiki-check.sh" "$(cd "$here/.." && pwd)" || fail "team wiki checks failed (see above)."
 fi
+if [ -f "$here/warehouse-map-check.sh" ]; then
+  bash "$here/warehouse-map-check.sh" "$(cd "$here/.." && pwd)" || echo 'NOTE: warehouse map is missing or stale; refresh it before a warehouse write. (advisory - not a failure)'
+fi
 
 # 7. architecture.html freshness (advisory) — regenerate after editing ARCHITECTURE.md.
 if [ -f "docs/ARCHITECTURE.md" ] && [ -f "docs/architecture.html" ]; then

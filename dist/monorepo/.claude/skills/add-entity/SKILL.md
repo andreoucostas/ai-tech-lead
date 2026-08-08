@@ -17,6 +17,7 @@ description: >
 Match CLAUDE.md > Conventions > Data Access (query placement, AsNoTracking, repository pattern usage) and > Architecture (entities live in the domain layer).
 
 0. **Confirm this repo persists via EF Core.** Grep for `DbContext` or `Microsoft.EntityFrameworkCore`. If neither is present, STOP — this recipe does not apply. Find the repo's actual persistence pattern (for example, an existing entity/collection pair) and mirror it, or use the project-specific skill `/bootstrap` created.
+   Then search entities, mappings, migrations, and tables by concept and business key. If the concept already exists, extend that entity through ordinary `/feature` work rather than creating a second table.
 1. Entity class in the domain layer (no infrastructure imports).
 2. Configuration class implementing `IEntityTypeConfiguration<T>` — keep mappings out of the entity itself.
 3. Add `DbSet<T>` to the DbContext.

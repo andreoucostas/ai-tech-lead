@@ -4,6 +4,14 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.51.0 — Unreleased
+
+- Updates preserve discovered skills and local exemplars, while disabled framework skills remain
+  inactive and receive refreshed content for a future restore.
+- Component, service, lazy-route, and signal-store recipes now search for an existing owner before
+  creating a parallel capability or second writable source of truth.
+- Warehouse-map checks report not-applicable in repositories without warehouse signals.
+
 ## 0.50.0 — 2026-08-07
 
 - No changes to the Angular distribution this release. The `add-warehouse-load` dimension-binding

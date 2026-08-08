@@ -1,0 +1,7 @@
+# category<TAB>regular expression. Count categories, not matching lines.
+layers	(^|[^A-Za-z])(stg|staging|dim|fact|mart|dw)[.]|create\s+(table|view)\s+.*(Dim|Fact)[A-Z]
+loads	usp_Load|sp_Load|load[_ -]?(dimension|fact)|dbt_project[.]yml
+control	LoadRun|BatchId|BatchID|Watermark|HighWater|RunId
+history	EffectiveFrom|EffectiveTo|IsCurrent|RowHash|slowly[ -]changing|SCD\s*[12]
+partition	partition\s+(function|scheme)|partition[_ -]?by|partition[_ -]?switch
+pipeline	(ssis|dtsx|azure-pipelines|data[ -]?factory|airflow|dagster|orchestrat)

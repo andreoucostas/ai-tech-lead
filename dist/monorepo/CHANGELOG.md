@@ -5,6 +5,13 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.51.0 — Unreleased
+
+- Warehouse writes now require a current map or equivalent live-schema inventory; pure SQL/SSDT/dbt
+  sides can be detected and adopted without a solution file.
+- Updates preserve exemplars and discovered skills, and refresh disabled skills without activation.
+- Instance-shaped .NET and Angular recipes now search for an existing owner before scaffolding.
+
 ## 0.50.0 — 2026-08-07
 
 - **`add-warehouse-load` now asks whether the dimension already exists — before it designs one.**

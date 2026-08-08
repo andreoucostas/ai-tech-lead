@@ -15,6 +15,8 @@ description: >
 
 Match the conventions in CLAUDE.md > Conventions > API/HTTP and > State Management. If the service is a signal-based store, see also the `add-signal-store` skill for state-shape rules.
 
+0. **Confirm no existing service already owns the backend resource or responsibility.** Search injected services, HTTP paths, and public methods by capability. Extend an existing service through ordinary `/feature` work instead of creating a second client for the same resource.
+
 1. `ng generate service` in the appropriate feature or core directory.
 2. `providedIn: 'root'` for app-wide singletons; feature-level scope for services tied to a route.
 3. Type all method signatures — no `any` in or out. HTTP return types are typed interfaces.

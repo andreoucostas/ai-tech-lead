@@ -79,6 +79,10 @@ if [ "$update_mode" -eq 1 ]; then
       cp -p "$tgt/$f" "$snapshot/$f"
     fi
   done
+  mkdir -p "$snapshot/skill-state/.claude"
+  [ -d "$tgt/.claude/skills" ] && cp -r "$tgt/.claude/skills" "$snapshot/skill-state/.claude/"
+  [ -d "$tgt/.claude/disabled-skills" ] && cp -r "$tgt/.claude/disabled-skills" "$snapshot/skill-state/.claude/"
+  if [ ! -d "$tgt/.claude/framework-update-backup/skills" ] && [ -d "$tgt/.claude/skills" ]; then mkdir -p "$tgt/.claude/framework-update-backup"; cp -r "$tgt/.claude/skills" "$tgt/.claude/framework-update-backup/"; fi
 fi
 
 shopt -s dotglob nullglob 2>/dev/null || true
@@ -115,6 +119,11 @@ if [ "$update_mode" -eq 1 ] && [ -n "$snapshot" ]; then
   for f in $protected; do
     if [ -f "$snapshot/$f" ]; then cp -p "$snapshot/$f" "$tgt/$f"; fi
   done
+  if [ -d "$snapshot/skill-state/.claude/skills" ]; then
+    for old in "$snapshot/skill-state/.claude/skills"/*; do [ -d "$old" ]||continue;name=$(basename "$old");old_file="$old/SKILL.md";dest="$tgt/.claude/skills/$name";[ -f "$old_file" ]||continue;if grep -Eq '^origin:[[:space:]]*discovered[[:space:]]*$' "$old_file";then rm -rf "$dest";cp -r "$old" "$dest";continue;fi;exemplar=$(grep -E '^For a concrete current instance in this repo, see .+$' "$old_file"|head -1||true);if [ -n "$exemplar" ]&&[ -f "$dest/SKILL.md" ];then sed -i.bak '/^For a concrete current instance in this repo, see .\+$/d' "$dest/SKILL.md";rm -f "$dest/SKILL.md.bak";printf '\n%s\n' "$exemplar">>"$dest/SKILL.md";fi;done
+  fi
+  if [ -f "$snapshot/LEARNINGS.md" ]; then grep -E '^## Disabled framework skill:[[:space:]]*[a-z0-9-]+[[:space:]]*$' "$snapshot/LEARNINGS.md"|sed -E 's/^## Disabled framework skill:[[:space:]]*//'|while read -r name;do active="$tgt/.claude/skills/$name";inactive="$tgt/.claude/disabled-skills/$name";if [ -d "$active" ];then mkdir -p "$(dirname "$inactive")";rm -rf "$inactive";mv "$active" "$inactive";fi;done;fi
+  rm -rf "$tgt/.github/skills";mkdir -p "$tgt/.github/skills";[ -d "$tgt/.claude/skills" ]&&cp -r "$tgt/.claude/skills"/* "$tgt/.github/skills/"
   rm -rf "$snapshot"
   echo "  consumer-owned content files left untouched ($protected)."
 fi

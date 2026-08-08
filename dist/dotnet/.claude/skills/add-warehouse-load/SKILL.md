@@ -25,8 +25,12 @@ Match CLAUDE.md > Conventions > Data Access. The two rules that dominate everyth
    If the gate fails, STOP — this recipe does not apply. Find the repo's actual persistence
    pattern and mirror it, or use the project-specific skill `/bootstrap` created.
 
-1. **Find the pattern to copy.** Read `docs/warehouse-map.md` if it exists (run
-   `map-warehouse` to create it if the change is non-trivial). **That map is a snapshot, not a
+1. **Establish current warehouse evidence, then find the pattern to copy.** Run
+   `pwsh scripts/warehouse-map-check.ps1` (or `bash scripts/warehouse-map-check.sh`). A current
+   `docs/warehouse-map.md` is preferred, but the artifact is optional: if it is missing, stale,
+   or deliberately declined, inspect the live SQL/schema/view and orchestration definitions and
+   write down the equivalent table, business-key, relationship, and load-order inventory before
+   continuing. **Do not design a dimension from absent or stale evidence.** The map is a snapshot, not a
    live view** — nothing refreshes it when the warehouse changes. Before copying a pattern out
    of it, confirm the entities and load procs it names still exist in the SQL tree; where the
    map and the code disagree the code wins — re-run `map-warehouse` rather than trusting it
@@ -45,7 +49,8 @@ Match CLAUDE.md > Conventions > Data Access. The two rules that dominate everyth
    - **Reaches an existing dimension.** Match on the **concept and its business key, not the column
      name** — a source's `cust_ref` and `DimCustomer.CustomerCode` are one key under two names, and
      a same-named column in two systems is routinely not the same thing. The table inventory in
-     `docs/warehouse-map.md` lists each dimension's natural/business key; that is the list to search.
+     A current `docs/warehouse-map.md`, or the live inventory produced in step 1, lists each
+     dimension's natural/business key; that is the list to search.
    - **Degenerate.** An identifier with no dimension table behind it — order number, invoice number.
      It stays on the fact. Check how sibling facts carry theirs before inventing a table for it.
    - **Genuinely new.** No existing dimension covers the concept. Say so explicitly and name what you

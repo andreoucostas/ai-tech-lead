@@ -15,6 +15,8 @@ description: >
 
 Match the conventions in CLAUDE.md > Conventions > Component Design before scaffolding. If the codebase uses a state pattern (signals, NgRx, NGXS), match it; do not introduce a new pattern.
 
+0. **Confirm the screen or UI responsibility does not already exist.** Search routes, selectors, templates, and component names by user-visible capability. Extend or compose an existing component through ordinary `/feature` work instead of creating a parallel screen.
+
 1. Create component with `ng generate component` (standalone by default).
 2. Add route in the feature's routing config (lazy-loaded).
 3. Create interfaces/models for the feature's data shapes (no `any`).

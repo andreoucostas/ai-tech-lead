@@ -133,6 +133,7 @@ Apply accepted changes section by section:
     ## Declined recipe: <name>
     The team removed this auto-mined skill. Do not re-propose it.
     ```
+  - **Disabled shipped skills:** move a deliberately removed shipped skill to `.claude/disabled-skills/<name>` and record `## Disabled framework skill: <name>` plus `Disabled: <date>` and `Reason: <why>` in `LEARNINGS.md`. Do not merely delete it: update refreshes the inactive copy without reactivating it, and rebootstrap may explicitly propose restoring it.
 - **Boy Scout Rule**: update the priority list based on newly found debt
 - **LEARNINGS.md** (root file, no longer in CLAUDE.md): append any new lessons — never overwrite existing entries
 

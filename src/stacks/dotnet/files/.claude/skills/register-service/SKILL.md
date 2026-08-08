@@ -15,6 +15,8 @@ description: >
 
 Match CLAUDE.md > Conventions > Dependency Injection (lifetimes, registration via extension methods, IOptions variants).
 
+0. **Confirm no existing service already owns the responsibility.** Search interfaces, implementations, and registrations by capability, not only the proposed class name. Extend or replace an existing registration through ordinary `/feature` or `/refactor` work instead of creating overlapping ownership.
+
 1. Create the interface and implementation. Interface is meaningful — don't create an interface just to mock it; consider whether a sealed class would do.
 2. Add registration in the project's DI extension method (`AddXxxServices(this IServiceCollection)` per project), not directly in `Program.cs`.
 3. Pick the lifetime deliberately:

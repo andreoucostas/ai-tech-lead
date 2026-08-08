@@ -1,0 +1,6 @@
+﻿. (Join-Path $PSScriptRoot '_HookHarness.ps1')
+$repo=(Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path;$bash=Get-BashPath
+function New-SqlTarget{$t=Join-Path([IO.Path]::GetTempPath())('rootsql-'+[guid]::NewGuid());New-Item -ItemType Directory -Force -Path(Join-Path $t warehouse)|Out-Null;[IO.File]::WriteAllText((Join-Path $t 'warehouse/DimCustomer.sql'),'CREATE TABLE dw.DimCustomer (CustomerKey int, EffectiveFrom date, IsCurrent bit);');[IO.File]::WriteAllText((Join-Path $t 'warehouse/usp_LoadCustomer.sql'),'CREATE PROC etl.usp_LoadCustomer @BatchId int AS SELECT 1;');$t}
+Reset-Tests
+foreach($twin in @('ps1','sh')){if($twin-eq'sh'-and-not$bash){Skip "pure SQL root detection ($twin)" 'no bash';continue};It "pure SQL repo selects dotnet without a solution ($twin)" {$t=New-SqlTarget;try{if($twin-eq'ps1'){$out=&(Get-PsExe)-NoProfile -File(Join-Path $repo install.ps1) $t 2>&1|Out-String}else{$out=&$bash (Join-Path $repo install.sh) $t 2>&1|Out-String};Assert($out-match'Stack: dotnet.+warehouse SQL fallback')"wrong root selection: $out";Assert(Test-Path(Join-Path $t '.claude/commands/adopt.md'))'framework was not installed'}finally{Remove-Item -Recurse -Force $t}}}
+exit(Write-TestSummary 'RootInstallerWarehouse.Tests')

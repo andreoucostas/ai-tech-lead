@@ -50,7 +50,7 @@ When `--headless` is set, apply these per-phase overrides in place of the intera
 
 1. **Check for uncommitted changes** — run `git status`. If there are uncommitted changes, STOP and tell the user to commit or stash. Adoption touches many files and must be reversible.
 2. **Recommend a branch** — tell the user: "I recommend running this on a new branch: `git checkout -b adopt-ai-framework`. Review everything and merge when satisfied." Wait for confirmation.
-3. **Locate the repo root** — find the `.sln` file (.NET side) and `angular.json` (or `nx.json`/`project.json` for Nx — Angular side); in this mixed repo both live under one root. All paths are relative to that root.
+3. **Locate the repo root** — use the Git root. Locate `.sln` when the .NET side is an application, and `angular.json` (or `nx.json`/`project.json`) for Angular; a SQL/SSDT/dbt side need not have a solution file. All paths are relative to that root.
 4. **Read the installer's adoption marker (if present).** If `.claude/adoption-pending.json` exists, the framework installer already detected the pre-existing AI tooling and **moved the originals its copy would have overwritten** (the repo's previous `CLAUDE.md`, `AGENTS.md`, `TECH_DEBT.md`, Copilot instructions, …) to `docs/pre-adoption/`. Read its `detectedArtifacts` and `archivedOriginals` lists — they seed Phase 1 discovery. Consequence: the `CLAUDE.md` now at the repo root is the **framework template**, not the consumer's original; the original (if any) is already at `docs/pre-adoption/CLAUDE.md`.
 5. **Capture the impact baseline (before any changes).** This freezes the "before" for the impact report — do it now or it's lost:
    - `git tag -f pre-adoption HEAD` and write the resolved SHA to `.claude/impact-baseline.ref`.

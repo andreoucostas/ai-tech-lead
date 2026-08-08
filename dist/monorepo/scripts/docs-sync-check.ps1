@@ -133,6 +133,11 @@ if (Test-Path $wc) {
     & $psExe -NoProfile -ExecutionPolicy Bypass -File $wc (Split-Path -Parent $here)
     if ($LASTEXITCODE -ne 0) { Fail "team wiki checks failed (see above)." }
 }
+$wmc = Join-Path $here 'warehouse-map-check.ps1'
+if (Test-Path $wmc) {
+    & $psExe -NoProfile -ExecutionPolicy Bypass -File $wmc (Split-Path -Parent $here)
+    if ($LASTEXITCODE -ne 0) { Write-Output 'NOTE: warehouse map is missing or stale; refresh it before a warehouse write. (advisory - not a failure)' }
+}
 
 # 7. architecture.html freshness (advisory) -- regenerate after editing ARCHITECTURE.md.
 if ((Test-Path 'docs/ARCHITECTURE.md') -and (Test-Path 'docs/architecture.html')) {

@@ -1326,3 +1326,23 @@ answer, and it is answered separately.
 after this change, and the same B-72 inert-rule risk); a second read-side skill (B-96 rejected it,
 and step 1 is the evidence that adding a routing bet does not pay); leaving §3.4 as locked and
 recording the gap in the backlog (it would ship content known not to reach the failure it targets).
+
+---
+
+## WSD-033: warehouse evidence is optional as a document, mandatory as a write input (2026-08-07)
+
+**Context.** Dimension binding made a stale or absent warehouse map capable of causing a duplicate
+dimension. The same warehouse predicate was independently repeated in skills, bootstrap, and the
+root installer, while update mode could either erase consumer skill customization or withhold a new
+framework body to avoid doing so.
+
+**Decision.** Ship one category-based signal table consumed by the checker and root fallback.
+`warehouse-map.md` remains optional, including an explicit declined state, but a warehouse write
+must have either a current map or a live-schema inventory with the same keys and relationships.
+Update treats shipped skill bodies as framework-owned, preserves only standardized exemplar lines
+and `origin: discovered` skills, and represents disabled shipped skills outside the active discovery
+directory with a durable `LEARNINGS.md` record.
+
+**Rejected.** A SQL distribution (duplicates the .NET warehouse surface), mandatory map creation
+(contradicts the existing offer-not-force contract), arbitrary three-way merging of Markdown skill
+bodies (no stable merge semantics), and new ownership frontmatter (derivable and costs static budget).

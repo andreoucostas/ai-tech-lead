@@ -233,7 +233,7 @@ user. Generated `dist/` changes belong in the same commit as the `src/` change t
 
 ## Status
 
-Current shipped version: **v0.43.0** (2026-08-01). The work list is `meta/BACKLOG.md`; read it
+Current shipped version: **v0.50.0** (2026-08-07). The work list is `meta/BACKLOG.md`; read it
 rather than this paragraph for what is open, because a summary here rots — this one claimed "no open
 P1/P2/P3 items remain" for twelve versions while P2 and P3 items were open, and scoped the strategic
 section as "B-41…B-48" after it had grown past B-80.

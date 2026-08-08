@@ -83,6 +83,10 @@ if ($updateMode) {
             Copy-Item -Force -LiteralPath $orig -Destination $dest
         }
     }
+    $skillState = Join-Path $snapshot 'skill-state/.claude'
+    foreach ($rel in @('skills','disabled-skills')) { $orig=Join-Path $tgt ".claude/$rel"; if(Test-Path -LiteralPath $orig -PathType Container){New-Item -ItemType Directory -Force -Path $skillState|Out-Null;Copy-Item -Recurse -Force -LiteralPath $orig -Destination $skillState} }
+    $backup=Join-Path $tgt '.claude/framework-update-backup/skills'
+    if(-not(Test-Path -LiteralPath $backup)-and(Test-Path -LiteralPath (Join-Path $tgt '.claude/skills'))){New-Item -ItemType Directory -Force -Path (Split-Path -Parent $backup)|Out-Null;Copy-Item -Recurse -Force -LiteralPath (Join-Path $tgt '.claude/skills') -Destination $backup}
 }
 
 Get-ChildItem -Force -LiteralPath $src |
@@ -120,6 +124,11 @@ if ($updateMode -and $snapshot -and (Test-Path -LiteralPath $snapshot)) {
             Copy-Item -Force -LiteralPath $saved -Destination (Join-Path $tgt $f)
         }
     }
+    $oldSkills=Join-Path $snapshot 'skill-state/.claude/skills'
+    if(Test-Path -LiteralPath $oldSkills){foreach($dir in Get-ChildItem -LiteralPath $oldSkills -Directory){$oldFile=Join-Path $dir.FullName 'SKILL.md';if(-not(Test-Path -LiteralPath $oldFile)){continue};$oldText=Get-Content -LiteralPath $oldFile -Raw;$dest=Join-Path $tgt ".claude/skills/$($dir.Name)";if($oldText-match'(?m)^origin:\s*discovered\s*$'){if(Test-Path -LiteralPath $dest){Remove-Item -Recurse -Force -LiteralPath $dest};Copy-Item -Recurse -Force -LiteralPath $dir.FullName -Destination $dest;continue};$ex=[regex]::Match($oldText,'(?m)^For a concrete current instance in this repo, see .+$');$newFile=Join-Path $dest 'SKILL.md';if($ex.Success-and(Test-Path -LiteralPath $newFile)){$newText=Get-Content -LiteralPath $newFile -Raw;$newText=[regex]::Replace($newText,'(?m)^For a concrete current instance in this repo, see .+\r?\n?','');Set-Content -LiteralPath $newFile -Value($newText.TrimEnd()+"`n`n"+$ex.Value+"`n") -Encoding UTF8}}}
+    $savedLearnings=Join-Path $snapshot 'LEARNINGS.md'
+    if(Test-Path -LiteralPath $savedLearnings){foreach($m in [regex]::Matches((Get-Content -LiteralPath $savedLearnings -Raw),'(?m)^## Disabled framework skill:\s*([a-z0-9-]+)\s*$')){$name=$m.Groups[1].Value;$active=Join-Path $tgt ".claude/skills/$name";$inactive=Join-Path $tgt ".claude/disabled-skills/$name";if(Test-Path -LiteralPath $active){New-Item -ItemType Directory -Force -Path(Split-Path -Parent $inactive)|Out-Null;if(Test-Path -LiteralPath $inactive){Remove-Item -Recurse -Force -LiteralPath $inactive};Move-Item -LiteralPath $active -Destination $inactive}}}
+    $githubSkills=Join-Path $tgt '.github/skills';if(Test-Path -LiteralPath $githubSkills){Remove-Item -Recurse -Force -LiteralPath $githubSkills};New-Item -ItemType Directory -Force -Path $githubSkills|Out-Null;Get-ChildItem -LiteralPath(Join-Path $tgt '.claude/skills') -Directory -ErrorAction SilentlyContinue|ForEach-Object{Copy-Item -Recurse -Force -LiteralPath $_.FullName -Destination $githubSkills}
     Remove-Item -Recurse -Force -LiteralPath $snapshot
     Write-Output "  consumer-owned content files left untouched ($($protected -join ', '))."
 }

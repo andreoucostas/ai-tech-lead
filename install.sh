@@ -38,6 +38,14 @@ if [ -z "$target" ]; then echo "$usage" >&2; exit 2; fi
 tgt="$(cd "$target" && pwd)"
 
 valid_stack() { [ "$1" = "dotnet" ] || [ "$1" = "angular" ] || [ "$1" = "monorepo" ]; }
+is_warehouse_repo() {
+  signals="$self_dir/dist/dotnet/scripts/warehouse-signals.tsv"; [ -f "$signals" ] || return 1; hits=0
+  files=$(find "$tgt" -type f \( -name '*.sql' -o -name '*.sqlproj' -o -name 'dbt_project.yml' -o -name '*.yml' -o -name '*.yaml' -o -name '*.json' \) ! -path '*/.git/*' ! -path '*/node_modules/*' ! -path '*/bin/*' ! -path '*/obj/*' ! -path '*/dist/*' 2>/dev/null | grep -Ei '\.sql(proj)?$|/dbt_project\.yml$|/(etl|pipelines?|warehouse|datafactory|synapse|dags?)/|/(pipeline|datafactory|synapse|dag)[^/]*\.(yml|yaml|json)$' || true)
+  while IFS=$'\t' read -r category pattern; do case "$category" in ''|'#'*) continue;; esac; matched=0; while IFS= read -r f; do [ -n "$f" ]||continue; if { basename "$f"; cat "$f"; }|grep -Eiq "$pattern";then matched=1;break;fi; done <<EOF
+$files
+EOF
+  [ "$matched" -eq 1 ]&&hits=$((hits+1)); done < "$signals"; [ "$hits" -ge 2 ]
+}
 
 reason=""
 if [ -n "$stack" ]; then
@@ -65,6 +73,7 @@ else
       stack="monorepo"; reason="auto-detected (found both *.csproj/*.sln and angular.json — mixed repo)"
     elif [ "$has_dotnet" -eq 1 ]; then stack="dotnet";  reason="auto-detected (found *.csproj/*.sln)"
     elif [ "$has_angular" -eq 1 ]; then stack="angular"; reason="auto-detected (found angular.json)"
+    elif is_warehouse_repo; then stack="dotnet"; reason="warehouse SQL fallback (at least two independent signals)"
     else
       echo "Could not determine the stack for '$tgt': no *.csproj/*.sln and no angular.json in the target root or two levels below." >&2
       echo "Pass it explicitly: --stack dotnet|angular|monorepo." >&2

@@ -312,8 +312,8 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 27311,
-          "tok": 6828
+          "chars": 27430,
+          "tok": 6858
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
@@ -357,8 +357,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 10565,
-          "tok": 2641
+          "chars": 10926,
+          "tok": 2732
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -382,13 +382,13 @@
         },
         {
           "path": ".claude/skills/add-endpoint/SKILL.md#body",
-          "chars": 897,
-          "tok": 224
+          "chars": 1194,
+          "tok": 298
         },
         {
           "path": ".claude/skills/add-entity/SKILL.md#body",
-          "chars": 1019,
-          "tok": 255
+          "chars": 1226,
+          "tok": 306
         },
         {
           "path": ".claude/skills/add-tests/SKILL.md#body",
@@ -397,8 +397,8 @@
         },
         {
           "path": ".claude/skills/add-warehouse-load/SKILL.md#body",
-          "chars": 11989,
-          "tok": 2997
+          "chars": 12441,
+          "tok": 3110
         },
         {
           "path": ".claude/skills/create-adr/SKILL.md#body",
@@ -432,8 +432,8 @@
         },
         {
           "path": ".claude/skills/register-service/SKILL.md#body",
-          "chars": 797,
-          "tok": 199
+          "chars": 1103,
+          "tok": 276
         },
         {
           "path": ".claude/skills/remember-for-team/SKILL.md#body",
@@ -806,23 +806,23 @@
         },
         {
           "path": ".claude/skills/add-component/SKILL.md#body",
-          "chars": 785,
-          "tok": 196
+          "chars": 1054,
+          "tok": 264
         },
         {
           "path": ".claude/skills/add-lazy-route/SKILL.md#body",
-          "chars": 564,
-          "tok": 141
+          "chars": 817,
+          "tok": 204
         },
         {
           "path": ".claude/skills/add-service/SKILL.md#body",
-          "chars": 735,
-          "tok": 184
+          "chars": 1015,
+          "tok": 254
         },
         {
           "path": ".claude/skills/add-signal-store/SKILL.md#body",
-          "chars": 685,
-          "tok": 171
+          "chars": 932,
+          "tok": 233
         },
         {
           "path": ".claude/skills/add-tests/SKILL.md#body",
@@ -1180,8 +1180,8 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 28053,
-          "tok": 7013
+          "chars": 28084,
+          "tok": 7021
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
@@ -1225,8 +1225,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 12317,
-          "tok": 3079
+          "chars": 12678,
+          "tok": 3170
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -1250,33 +1250,33 @@
         },
         {
           "path": ".claude/skills/add-component/SKILL.md#body",
-          "chars": 785,
-          "tok": 196
+          "chars": 1054,
+          "tok": 264
         },
         {
           "path": ".claude/skills/add-endpoint/SKILL.md#body",
-          "chars": 897,
-          "tok": 224
+          "chars": 1194,
+          "tok": 298
         },
         {
           "path": ".claude/skills/add-entity/SKILL.md#body",
-          "chars": 1019,
-          "tok": 255
+          "chars": 1226,
+          "tok": 306
         },
         {
           "path": ".claude/skills/add-lazy-route/SKILL.md#body",
-          "chars": 564,
-          "tok": 141
+          "chars": 817,
+          "tok": 204
         },
         {
           "path": ".claude/skills/add-service/SKILL.md#body",
-          "chars": 735,
-          "tok": 184
+          "chars": 1015,
+          "tok": 254
         },
         {
           "path": ".claude/skills/add-signal-store/SKILL.md#body",
-          "chars": 685,
-          "tok": 171
+          "chars": 932,
+          "tok": 233
         },
         {
           "path": ".claude/skills/add-tests/SKILL.md#body",
@@ -1285,8 +1285,8 @@
         },
         {
           "path": ".claude/skills/add-warehouse-load/SKILL.md#body",
-          "chars": 11989,
-          "tok": 2997
+          "chars": 12441,
+          "tok": 3110
         },
         {
           "path": ".claude/skills/create-adr/SKILL.md#body",
@@ -1320,8 +1320,8 @@
         },
         {
           "path": ".claude/skills/register-service/SKILL.md#body",
-          "chars": 797,
-          "tok": 199
+          "chars": 1103,
+          "tok": 276
         },
         {
           "path": ".claude/skills/remember-for-team/SKILL.md#body",
