@@ -6,9 +6,19 @@ $doctorSh = Join-Path $scripts 'framework-doctor.sh'
 $bash = Get-BashPath
 if($bash){$null=& $bash --version 2>$null;if($LASTEXITCODE-ne 0){$bash=$null}}
 function Put($Path, $Text, [bool]$Bom=$false) { [IO.File]::WriteAllText($Path,$Text,[Text.UTF8Encoding]::new($Bom)) }
+function Resolve-WindowsPowerShell {
+    $onPath=Get-Command powershell.exe -CommandType Application -ErrorAction SilentlyContinue|Select-Object -First 1
+    if($onPath){return $onPath.Source}
+    if($env:SystemRoot){
+        $wellKnown=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+        if(Test-Path -LiteralPath $wellKnown -PathType Leaf){return $wellKnown}
+    }
+    return $null
+}
 # Default wired shell must be one that exists on the TEST host (CI linux has pwsh, not powershell)
 # - otherwise the doctor correctly reports it missing and the "healthy" fixtures exit 1.
-$defaultShell = if (Get-Command powershell.exe -ErrorAction SilentlyContinue) {'powershell'}
+$winPs=Resolve-WindowsPowerShell
+$defaultShell = if ($winPs) {$winPs}
     elseif (Get-Command pwsh -ErrorAction SilentlyContinue) {'pwsh'} else {'bash'}
 function Fixture([string]$Shell=$script:defaultShell,[bool]$Pending=$false,[bool]$MissingHook=$false,[bool]$HookArguments=$false) {
     $r=Join-Path ([IO.Path]::GetTempPath()) ('doctor-'+[guid]::NewGuid())
@@ -46,6 +56,20 @@ function RunPsHost($Exe,$Path){$ef=[IO.Path]::GetTempFileName();try{$out=& $Exe 
 # divergences elsewhere would be hidden.
 function Normal($Text){((($Text-replace'available: powershell\.exe','available: powershell')-replace'\\','/')-replace'docs-sync-check\.(?:ps1|sh)','docs-sync-check.<ext>')}
 Reset-Tests
+$wellKnownWinPs = if ($env:SystemRoot) { Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe' } else { $null }
+if ($wellKnownWinPs -and (Test-Path -LiteralPath $wellKnownWinPs -PathType Leaf)) {
+It 'Windows PowerShell resolver falls back to the usable SystemRoot executable when PATH cannot resolve it' {
+    $oldPath=$env:PATH
+    try {
+        $env:PATH=[IO.Path]::GetTempPath()
+        Assert (-not (Get-Command powershell.exe -CommandType Application -ErrorAction SilentlyContinue)) 'fixture PATH still resolves powershell.exe'
+        $resolved=Resolve-WindowsPowerShell
+        Assert ($resolved-eq$wellKnownWinPs) "resolved '$resolved', expected '$wellKnownWinPs'"
+        $null=& $resolved -NoProfile -Command 'exit 0'
+        Assert ($LASTEXITCODE-eq 0) "resolved Windows PowerShell is not usable (exit $LASTEXITCODE)"
+    } finally {$env:PATH=$oldPath}
+}
+} else { Skip 'Windows PowerShell resolver falls back to the usable SystemRoot executable when PATH cannot resolve it' 'Windows PowerShell 5.1 is genuinely absent on this host' -Invariant }
 It 'healthy fixture exits zero and prints canary boundary' {$r=Fixture;try{$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 0) "exit=$($x.Exit): $($x.Out)";Assert ($x.Out-match'\[OK\] Install state') 'install state not OK';Assert ($x.Out-match'Enforcement is only FULL') 'false-full boundary missing'}finally{Remove-Item -Recurse -Force $r}}
 It 'missing framework-rules import is reported honestly' {$r=Fixture -Pending $true;try{$p=Join-Path $r 'CLAUDE.md';Put $p (([IO.File]::ReadAllText($p))-replace'(?m)^@\.github/instructions/framework-rules\.instructions\.md\r?\n','');$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 1) "exit=$($x.Exit): $($x.Out)";Assert ($x.Out-match'\[MISSING\] Framework rules delivery') "delivery row absent: $($x.Out)"}finally{Remove-Item -Recurse -Force $r}}
 It 'protected-file version divergence uses the required honest wording' {$r=Fixture -Pending $true;try{$p=Join-Path $r 'CLAUDE.md';Put $p (([IO.File]::ReadAllText($p))-replace'version: 0\.32\.0','version: 0.31.0');$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 1) "exit=$($x.Exit): $($x.Out)";Assert ($x.Out-match'\[MISSING\] Protected-file sync - DIVERGED . protected file not synchronized with installed machinery; review required') "honest divergence row absent: $($x.Out)"}finally{Remove-Item -Recurse -Force $r}}
@@ -56,8 +80,7 @@ It 'no liveness record is CANT-VERIFY and does not change exit' {$r=Fixture -Pen
 It 'liveness record is OK and quotes its timestamp' {$r=Fixture -Pending $true;$stamp='2026-07-31T12:34:56Z';try{New-Item -ItemType Directory -Force (Join-Path $r '.claude/.state')|Out-Null;Put (Join-Path $r '.claude/.state/last-session-start') $stamp;$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 0) "exit=$($x.Exit): $($x.Out)";Assert ($x.Out-match("\[OK\] Hook liveness - hooks have demonstrably run in this repo, most recently at '{0}'\." -f [regex]::Escape($stamp))) "OK row does not quote timestamp: $($x.Out)"}finally{Remove-Item -Recurse -Force $r}}
 It 'existing absolute wired shell is OK' {$shell=[IO.Path]::GetTempFileName();$r=Fixture -Shell $shell -Pending $true;try{$wired=(Get-Content -Raw (Join-Path $r '.claude/settings.json')|ConvertFrom-Json).hooks.PreToolUse[0].hooks[0].command;Assert ($wired-eq('"'+$shell+'" -File .claude/hooks/guard.ps1')) "fixture did not receive one path: $wired";$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 0) "exit=$($x.Exit): $($x.Out)";Assert ($x.Out-match'\[OK\] Wired hook shell - wired interpreter paths exist:') "OK row absent: $($x.Out)"}finally{Remove-Item -Recurse -Force $r;Remove-Item -Force -ErrorAction SilentlyContinue $shell}}
 It 'missing absolute wired shell is MISSING and exits one' {$shell=(Join-Path ([IO.Path]::GetTempPath()) 'doctor-missing/interpreter.exe');$r=Fixture -Shell $shell -Pending $true;try{$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 1) "exit=$($x.Exit): $($x.Out)";Assert ($x.Out-match'\[MISSING\] Wired hook shell - the wired interpreter path does not exist on this machine') "MISSING row absent: $($x.Out)"}finally{Remove-Item -Recurse -Force $r}}
-$winPs=Get-Command powershell.exe -CommandType Application -ErrorAction SilentlyContinue|Select-Object -First 1
-if($winPs){It 'PowerShell twin runs under Windows PowerShell 5.1' {$r=Fixture;try{$x=RunPsHost $winPs.Source (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 0) "5.1 exit=$($x.Exit): $($x.Out) $($x.Err)";Assert ($x.Out-match'Enforcement is only FULL') '5.1 output incomplete'}finally{Remove-Item -Recurse -Force $r}}}else{Skip 'Windows PowerShell 5.1 compatibility' 'powershell.exe unavailable on this host'}
+if($winPs){It 'PowerShell twin runs under Windows PowerShell 5.1' {$r=Fixture;try{$x=RunPsHost $winPs (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 0) "5.1 exit=$($x.Exit): $($x.Out) $($x.Err)";Assert ($x.Out-match'Enforcement is only FULL') '5.1 output incomplete'}finally{Remove-Item -Recurse -Force $r}}}else{Skip 'Windows PowerShell 5.1 compatibility' 'Windows PowerShell 5.1 is genuinely absent on this host' -Invariant}
 if($bash){
 It 'twins agree when the liveness record is absent and when it is present' {$r=Fixture -Shell 'bash' -Pending $true;$old=$env:PATH;try{$env:PATH=(Split-Path $bash -Parent)+[IO.Path]::PathSeparator+$old;foreach($stamp in @($null,'2026-07-31T12:34:56Z')){Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $r '.claude/.state/last-session-start');if($stamp){New-Item -ItemType Directory -Force (Join-Path $r '.claude/.state')|Out-Null;Put (Join-Path $r '.claude/.state/last-session-start') $stamp};$p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$s=Run (Join-Path $r 'scripts/framework-doctor.sh');Assert ($p.Exit-eq 0-and$s.Exit-eq 0) "exit mismatch PS=$($p.Exit) SH=$($s.Exit)";Assert ((Normal $p.Out)-eq(Normal $s.Out)) "stdout mismatch for stamp '$stamp'`nPS:`n$($p.Out)`nSH:`n$($s.Out)"}}finally{$env:PATH=$old;Remove-Item -Recurse -Force $r}}
 It 'Copilot hook registrations with arguments resolve only their file paths' {$r=Fixture -Shell 'bash' -Pending $true -HookArguments $true;try{$p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$s=Run (Join-Path $r 'scripts/framework-doctor.sh');Assert ($p.Out-match'\[OK\] Hook files') "PowerShell hook row not OK: $($p.Out)";Assert ($s.Out-match'\[OK\] Hook files') "bash hook row not OK: $($s.Out)";Assert ((Normal $p.Out)-eq(Normal $s.Out)) "stdout mismatch`nPS:`n$($p.Out)`nSH:`n$($s.Out)"}finally{Remove-Item -Recurse -Force $r}}

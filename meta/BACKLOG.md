@@ -680,7 +680,7 @@ cheap local proxy it proposes would not have caught either — the honest fix is
 carrying a new test is not done until its first CI run is green**, which is now how B-92 was
 shipped. Consider promoting that from a suggestion to the Definition of done.
 
-### B-71 · Silently skipped tests make a green local suite weaker than it looks
+### B-71 · Silently skipped tests make a green local suite weaker than it looks — **DONE 2026-08-08, see Done**
 **Effort:** S · **Priority:** P2
 
 **Why:** the FrameworkDoctor suite prints `[skip] Windows PowerShell 5.1 compatibility --
@@ -919,7 +919,7 @@ submodules, so it is always a mistake. Red-test by planting an untracked file an
 three as one pass over `release.ps1`.
 
 ---
-### B-74 · Nothing proves a test harness can report failure
+### B-74 · Nothing proves a test harness can report failure — **DONE in v0.44.0; stale heading corrected 2026-08-08, see Done**
 **Effort:** S · **Priority:** P2 · **Invariants:** #3 · found 2026-08-01 shipping B-61
 
 **Why:** B-64 covers gates and diagnostics. It does not cover `_HookHarness.ps1` / `Invoke-HookTests.ps1`,
@@ -3579,6 +3579,23 @@ planted unreadable file and an emptied tree, both twins.
 ---
 
 ## Done
+
+- **B-71** — done **2026-08-08**. The harness already had prominent invariant-skip reporting from
+  v0.46.0, but the filed 5.1 case still tested only PATH and used an ordinary skip. The doctor suite
+  now resolves Windows PowerShell locally by trying the application on PATH and then
+  `$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe`; the same result drives its
+  healthy fixture default and its explicit 5.1 compatibility run. Genuine absence is now a named
+  invariant skip. **Observed red:** with PATH restricted so `Get-Command powershell.exe` returned
+  nothing while the standard executable existed and ran, the new permanent fallback case failed
+  because `Resolve-WindowsPowerShell` did not exist; the file reported 20 passed, 2 failed. **Observed
+  green:** after the local resolver was added, that exact case and the explicit 5.1 doctor run both
+  passed; the file reported 21 passed, 1 failed. The remaining failure is the pre-existing
+  PowerShell/bash parser-vantage mismatch in the Copilot-arguments fixture, tracked by B-63/B-85 and
+  not presented as B-71 success. **RCA:** no gate caught the silent coverage loss because ordinary
+  skips counted inside a green summary and capability was inferred from PATH spelling rather than
+  the installed host. The same class exposed other invariant skips; the harness-level prominence
+  fix already shipped, while this change closes the concrete false-absence probe without adding a
+  shared resolver framework.
 
 - **B-106** — done in **v0.46.0** (`d329c7c`); its still-open strategic heading was stale and is
   corrected here without another product release. That release added permanent sandboxed
