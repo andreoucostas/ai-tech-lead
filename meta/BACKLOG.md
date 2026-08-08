@@ -3124,15 +3124,12 @@ indistinguishable from a missing artifact unless the artifact's existence is rep
 ---
 
 ### B-121 · Post-ship review owed for v0.51.0
-**Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-08
 
-**Why:** v0.51.0 shipped with `-NoIndependentReview`, so no second session re-ran a gate or a
-red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
-it did not happen. Summary of what shipped: warehouse discovery, reusable recipes, and safe skill updates
-
-**Do:** review the v0.51.0 diff as an independent session -- re-run at least one gate and one
-red-test yourself, do not read the release output as evidence -- and file whatever it finds. Then
-close this entry, recording what was re-run.
+> **DONE (discharged) 2026-08-08.** Independent review by Claude Sonnet 5, separate session from
+> the implementer. Re-ran validate-dist ×3 fresh (all 8 checks, all three dists), rebuilt all three
+> dists and confirmed freshness, red-tested `no-meta-leak` (seen RED on a planted `WSD-999`, then
+> GREEN restored), ran the dotnet hook suite and the meta suite (0 failures, 26 files total). No
+> defects found in the v0.51.0 diff. Full evidence in `meta/review-ledger.md`.
 
 ---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
