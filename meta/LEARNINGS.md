@@ -1007,3 +1007,22 @@ ambiguous; a skill under `disabled-skills` plus a durable learning is an explici
 the framework deliver a security or correctness refresh to the inactive copy without silently
 reactivating it, while standardized exemplar lines remain the narrow consumer-owned seam in an
 otherwise framework-owned recipe.
+
+## 2026-08-08 — a child-host selector is part of the evidence, not test plumbing
+
+Running a suite under Windows PowerShell 5.1 proves nothing about 5.1 when its helper silently
+launches every subject under PowerShell 7. That false-green mechanism had already concealed two
+release defects, yet it recurred because `Get-PsExe` sounded like “the PowerShell running me” while
+implementing “the newest PowerShell installed here.” The smallest complete fix was at that semantic
+boundary: both harness copies now return their current process executable. Aggregate runners remain
+free to select their normal host, but a deliberately direct 5.1 run can no longer upgrade the code
+whose compatibility it claims to measure.
+
+The design review caught two useful errors before code moved. First, an initial audit called most
+remaining uses intentional preferred-host simulations, contradicting the shipped Windows settings
+that explicitly register `powershell`. Second, a proposed `@(...).Count` mutation was not actually
+load-bearing for the value shapes in the release fixture. Re-running the real helper in fresh child
+processes supplied the cleaner instrument: the unchanged 5.1 probes selected 7 and failed, the 7
+controls selected themselves, and the same four probes selected their own host after the fix.
+That honest 5.1 run immediately uncovered a third real defect: an expected failing native Git probe
+was terminating under 5.1 before the architecture generator could use its documented fallback.

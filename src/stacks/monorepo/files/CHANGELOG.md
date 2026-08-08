@@ -7,6 +7,11 @@
 
 ## 0.51.0 — Unreleased
 
+- The shipped PowerShell test harness now keeps child scripts on the same PowerShell host as the
+  suite. Teams that run the hook tests under Windows PowerShell 5.1 now genuinely exercise 5.1
+  instead of silently switching child processes to PowerShell 7. The architecture HTML generator
+  also now falls back to its current directory cleanly when run outside a Git worktree under 5.1.
+
 - Warehouse writes now require a current map or equivalent live-schema inventory; pure SQL/SSDT/dbt
   sides can be detected and adopted without a solution file.
 - Updates preserve exemplars and discovered skills, and refresh disabled skills without activation.
