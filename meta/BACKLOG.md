@@ -2453,7 +2453,7 @@ Keep "no parser" distinguishable from "invalid JSON".
 condition (no `jq`, working non-`python3` python) and recording the row before and after is required
 before this closes — do not close it on inference.
 
-### B-106 · The no-`jq` fallback has no test, and five skips lapse exactly where it matters
+### B-106 · The no-`jq` fallback has no test, and five skips lapse exactly where it matters — **DONE in v0.46.0; bookkeeping corrected 2026-08-08, see Done**
 **Effort:** M · **Priority:** P2 · found 2026-08-05 by B-103's review · **Invariants:** #3
 
 **Why:** B-102's red-test was run by hand and recorded in a commit message. **Nothing in any suite
@@ -3579,6 +3579,21 @@ planted unreadable file and an emptied tree, both twins.
 ---
 
 ## Done
+
+- **B-106** — done in **v0.46.0** (`d329c7c`); its still-open strategic heading was stale and is
+  corrected here without another product release. That release added permanent sandboxed
+  `route-prompt.sh` cases for no `jq`, a working interpreter available only as `python`, and the
+  Windows Store alias stub; changed the five spelling-dependent skips to execution probes; and
+  added doctor fixtures proving both the working-interpreter and Store-stub outcomes. Fresh direct
+  evidence on 2026-08-08: `RoutePrompt.Tests.ps1` passed 13/13, including all three fallback
+  controls. `FrameworkDoctor.Tests.ps1` executed and passed the B-106 cases (working `python`, Store
+  stub, no interpreter, and the load-bearing mutation); its file-level result was 20 passed, 1
+  failed because the PowerShell twin could not observe `bash` on this maintainer host while the
+  shell twin could, an unrelated host-vantage mismatch tracked by B-63/B-85 rather than hidden as a
+  B-106 success. **RCA:** implementation and release evidence were appended elsewhere in this
+  ledger by the v0.46.0 change, but the original strategic heading was not closed. Keeping live and
+  completed state in two sections allowed the contradiction; B-114's heading-integrity gate catches
+  duplicate ids, not stale status, so closure still requires explicit release bookkeeping review.
 
 - **B-108** — closed **2026-08-08** with no product change after design and adversarial review
   rejected the remedy as disproportionate. The filed inventory was itself inaccurate: the current
