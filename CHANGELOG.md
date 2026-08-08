@@ -27,6 +27,12 @@
   fallback now inspects the exit code instead of relying on the error record, matching the fix
   B-90 already shipped for the architecture-HTML generator. `fidelity-check.ps1` (maintainer-only)
   had the identical idiom and was fixed in the same pass.
+- **Correction (2026-08-08, post-ship):** all three shipped consumer changelogs
+  (`src/stacks/*/files/CHANGELOG.md`, composed to `dist/*/CHANGELOG.md`) still had their `## 0.51.4`
+  head entry reading `Unreleased` after this release actually shipped -- exactly the B-54 defect
+  class, still unfixed at the time this version was cut. Corrected in place to `2026-08-08` to match
+  this file's own head date; no other content changed. Found while resuming and validating B-54,
+  whose gate (once implemented) would have refused this exact release.
 
 ## 0.51.3 — 2026-08-08
 

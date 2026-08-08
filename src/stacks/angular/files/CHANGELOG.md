@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.51.4 — Unreleased
+## 0.51.4 — 2026-08-08
 
 - `framework-doctor` now reports capabilities only from the environment it actually observes.
   Registered Claude and Copilot Bash guards make the PowerShell doctor say that their runtime
