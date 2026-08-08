@@ -70,20 +70,25 @@ exit 0
     Put (Join-Path $bin 'jq') ($jq.Replace('__TEMPLATE__',$Template)+"`n")
     if($BashCopilot){Put (Join-Path $bin 'copilot') "#!/bin/sh`nexit 0`n"}
     if($PowerShellCopilot){Put (Join-Path $bin 'copilot.cmd') "@exit /b 0`r`n"}
+    # Callers reassign $env:PATH mid-loop to point at a just-constructed (and later deleted) fixture
+    # bin, then call this function again for the next case -- so the child bash processes below,
+    # which inherit $env:PATH, cannot be trusted to find even `command`, `ln`, or `chmod` on it.
+    # Anchor every subprocess here to a fixed, known-good PATH instead of the ambient one.
+    $safePath='/usr/bin:/bin:/usr/local/bin'
     $utilityNames=@('sed','grep','sort','head')
     if($Bash-match'\\Git\\bin\\bash\.exe$'){
         foreach($name in $utilityNames){Put (Join-Path $bin $name) ("#!/bin/sh`nexec /usr/bin/$name `"`$@`"`n")}
-    }else{$posixBin=ConvertTo-PosixPath $bin;$null=& $Bash -c ('for t in sed grep sort head; do ln -sf "$(command -v $t)" "{0}/$t"; done' -f $posixBin) 2>$null}
+    }else{$posixBin=ConvertTo-PosixPath $bin;$null=& $Bash -c ('PATH="{1}:$PATH"; for t in sed grep sort head; do ln -sf "$(command -v $t)" "{0}/$t"; done' -f $posixBin,$safePath) 2>$null}
     $posix=ConvertTo-PosixPath $bin
     $chmodNames=@('jq');if($BashCopilot){$chmodNames+='copilot'};if($Bash-match'\\Git\\bin\\bash\.exe$'){$chmodNames+=$utilityNames}
-    $chmod='chmod +x '+(($chmodNames|ForEach-Object{'"'+$posix+'/'+$_+'"'})-join' ');$null=& $Bash -c $chmod 2>$null
+    $chmod='PATH="'+$safePath+':$PATH" chmod +x '+(($chmodNames|ForEach-Object{'"'+$posix+'/'+$_+'"'})-join' ');$null=& $Bash -c $chmod 2>$null
     if($LASTEXITCODE-ne 0){Remove-Item -Recurse -Force $bin;throw "could not make controlled jq executable (exit $LASTEXITCODE)"}
     return $bin
 }
 function Add-FakeToolCommands {
     param([Parameter(Mandatory)][string]$Bin,[Parameter(Mandatory)][string]$Bash,[string[]]$Names)
     foreach($name in $Names){Put (Join-Path $Bin $name) "#!/bin/sh`nexit 0`n";Put (Join-Path $Bin ($name+'.cmd')) "@exit /b 0`r`n"}
-    if($Names.Count){$quoted=@($Names|ForEach-Object{'"'+(ConvertTo-PosixPath (Join-Path $Bin $_))+'"'});$null=& $Bash -c ('chmod +x '+($quoted-join' ')) 2>$null;Assert ($LASTEXITCODE-eq 0) 'could not make controlled tool commands executable'}
+    if($Names.Count){$quoted=@($Names|ForEach-Object{'"'+(ConvertTo-PosixPath (Join-Path $Bin $_))+'"'});$null=& $Bash -c ('PATH="/usr/bin:/bin:/usr/local/bin:$PATH" chmod +x '+($quoted-join' ')) 2>$null;Assert ($LASTEXITCODE-eq 0) 'could not make controlled tool commands executable'}
 }
 $script:DoctorRowNames=@('Install state','Framework rules delivery','Protected-file sync','Bootstrap/adoption state','Wired hook shell','Hook liveness','Hook files','Guard JSON parser','Stack toolchain','Copilot surface','Mirror and version integrity','Audit trail substrate')
 function Parse-DoctorResult($Result) {
