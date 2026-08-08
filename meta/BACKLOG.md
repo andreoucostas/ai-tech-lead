@@ -1137,7 +1137,7 @@ red-test yourself, do not read the release output as evidence -- and file whatev
 close this entry, recording what was re-run.
 
 ---
-### B-89 · Windows PowerShell 5.1 turns a native command's stderr into a terminating error — one *shipped* script remains exposed
+### B-89 · Windows PowerShell 5.1 turns a native command's stderr into a terminating error — one *shipped* script remains exposed — **DONE 2026-08-08, see Done**
 **Effort:** S · **Priority:** P2 · filed 2026-08-02 (RCA of B-88) · **Invariants:** #3 #5
 
 **Why:** under 5.1, a native command that writes to stderr raises a `NativeCommandError` record, and
@@ -1168,6 +1168,24 @@ set `$ErrorActionPreference = 'Continue'` around the call and test `$LASTEXITCOD
 **under 5.1**. B-90 supplies the completed architecture-generator red/green evidence. Then sweep the remaining `2>$null` sites listed by
 `grep -rn '2>\$null' --include=*.ps1 src/ scripts/` and decide each; most do not set `Stop`, which is
 the only reason this has not bitten more widely.
+
+---
+
+### B-123b · `build-block-manifest.ps1:183` has the same `Stop` + native-stderr idiom B-89 swept for
+**Effort:** XS · **Priority:** P3 · found 2026-08-08 re-running B-89's own closing sweep
+
+**Why:** `.claude/scripts/build-block-manifest.ps1` sets `$ErrorActionPreference = 'Stop'` (line 45)
+and calls `& git show "${tag}:${path}" 2>$null` unwrapped (line 183) — the exact idiom B-89 fixed in
+`sync-agent-files.ps1` and `fidelity-check.ps1`. Under Windows PowerShell 5.1, a missing tag or path
+would raise a terminating `NativeCommandError` instead of the graceful fallback the `2>$null` was
+written to produce. Lower urgency than B-89's sites: this is `.claude/scripts/`, maintainer-only,
+run only on this box, and this session runs pwsh 7 in practice — but B-89's own RCA said the sweep
+"should be re-run again before assuming no third site remains," and re-running it here is what
+found this one.
+
+**Do:** wrap the `git show` call the same way B-89 did (temporary
+`$ErrorActionPreference = 'Continue'`, check `$LASTEXITCODE`), red-test from a non-existent
+tag/path under real Windows PowerShell 5.1, then re-run the same grep once more before closing.
 
 ---
 
@@ -3633,6 +3651,25 @@ planted unreadable file and an emptied tree, both twins.
   exact divergence sets, isolated capability worlds, a reachable historical mutation, and
   actual-host canaries for facts no local doctor process can prove. WSD-026 retains its historical
   v0.38.0 record and carries an append-only correction to the v0.38.1 portable bare-name policy.
+
+- **B-89** — done **2026-08-08** (target v0.51.4). `src/core/scripts/sync-agent-files.ps1`'s
+  `git rev-parse --show-toplevel 2>$null` fallback used the same
+  `$ErrorActionPreference = 'Stop'` + native-stderr idiom that B-90 already fixed in
+  `build-architecture-html.ps1`; this closes the sibling site B-90's own RCA named as still
+  exposed. Wrapped the call with `$ErrorActionPreference = 'Continue'` and an explicit
+  `$LASTEXITCODE` check, mirroring `watch-ci.ps1`'s `Invoke-GitQuiet`. `scripts/fidelity-check.ps1`
+  (root, maintainer-only, not shipped) had the identical idiom and was fixed in the same pass.
+  **Observed red:** run from a non-git directory under real Windows PowerShell 5.1, the unfixed
+  `sync-agent-files.ps1` throws a terminating `NativeCommandError` naming `fatal: not a git
+  repository`, exit 1. **Observed green:** the fixed script prints "No .claude/skills directory --
+  nothing to sync." and exits 0, in the same non-git directory under the same 5.1 host.
+  `FidelityCheck.Tests.ps1` (new, 3/3) and `ScriptTwinParity.Tests.ps1`'s new
+  "sync-agent-files twins fall back to the current directory outside Git" case both pass. **RCA:**
+  B-90's sweep fixed the site its own red-test targeted but did not re-run
+  `grep -rn '2>\$null' --include=*.ps1 src/ scripts/` against every hit; the same idiom can recur
+  anywhere a native command's stderr is redirected under `Stop`. No new gate added here beyond the
+  two red-tests — B-89 itself was filed as the sweep, and the grep should be re-run again before
+  assuming no third site remains.
 
 - **B-67** — done **2026-08-08** (target v0.51.3). Check 7 in both `validate-dist`
   twins now resolves rendered single-line relative inline Markdown links from the document that

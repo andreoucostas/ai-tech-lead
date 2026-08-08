@@ -34,6 +34,29 @@ It 'docs-sync-check branches and advisory prose agree' {foreach($template in $tr
 
 It 'sync-agent-files recursively produces identical trees' {$seed=Temp sync-seed;try{Put (Join-Path $seed '.claude/skills/a/SKILL.md') '# a';Put (Join-Path $seed '.claude/skills/a/reference/notes.md') 'nested';foreach($kind in 'ps1','sh'){$r=Temp "sync-$kind";Copy-Item (Join-Path $seed '.claude') $r -Recurse -Force;CopyPair sync-agent-files $r;InitSafe $r;$res=RunHere (Join-Path $r "scripts/sync-agent-files.$kind") $r;if($kind-eq'ps1'){$pr=$res;$proot=$r}else{$sr=$res;$sroot=$r}};try{Assert ($pr.Exit-eq$sr.Exit) 'sync exits differ';Assert ($pr.Out-eq$sr.Out) 'sync stdout differs';$trees=@();foreach($root in $proot,$sroot){$base=(Resolve-Path (Join-Path $root '.github/skills')).Path;$rows=@(Get-ChildItem $base -Recurse -File|ForEach-Object{($_.FullName.Substring($base.Length).TrimStart('\','/')-replace'\\','/')+'|'+(Get-FileHash $_.FullName -Algorithm SHA256).Hash}|Sort-Object);$trees+=,(,$rows)};Assert (($trees[0]|ConvertTo-Json -Compress)-eq($trees[1]|ConvertTo-Json -Compress)) 'sync output trees differ'}finally{Remove-Item -Recurse -Force $proot,$sroot}}finally{Remove-Item -Recurse -Force $seed}}
 
+It 'sync-agent-files twins fall back to the current directory outside Git' {
+    $seed=Temp sync-nongit-seed
+    try{
+        Put (Join-Path $seed '.claude/skills/a/SKILL.md') '# a'
+        Put (Join-Path $seed '.claude/skills/a/reference/notes.md') 'nested'
+        foreach($kind in 'ps1','sh'){
+            $r=Temp "sync-nongit-$kind"
+            try{
+                Copy-Item (Join-Path $seed '.claude') $r -Recurse -Force
+                CopyPair sync-agent-files $r
+                $null=git -C $r rev-parse --show-toplevel 2>$null
+                Assert ($LASTEXITCODE-ne 0) "setup: $r unexpectedly resolves inside Git"
+                $res=RunHere (Join-Path $r "scripts/sync-agent-files.$kind") $r
+                Assert ($res.Exit-eq 0) "$kind non-Git sync exit=$($res.Exit): $($res.Err)"
+                Assert ($res.Out-eq'Synced 1 skill(s): .claude/skills -> .github/skills') "$kind non-Git stdout differs: $($res.Out)"
+                Assert ([string]::IsNullOrEmpty($res.Err)) "$kind non-Git stderr was not empty: $($res.Err)"
+                $mirrored=Join-Path $r '.github/skills/a/reference/notes.md'
+                Assert ((Test-Path -LiteralPath $mirrored)-and([IO.File]::ReadAllText($mirrored)-eq'nested')) "$kind non-Git nested mirror missing"
+            }finally{Remove-Item -Recurse -Force $r}
+        }
+    }finally{Remove-Item -Recurse -Force $seed}
+}
+
 It 'metrics twins agree on every non-zero counter' {$pairs=@();$localPs=Join-Path $scripts metrics.ps1;if(Test-Path $localPs){$pairs+=,$localPs}else{$root=(Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path;$pairs+=@(Get-ChildItem (Join-Path $root 'stacks/*/files/scripts/metrics.ps1'))};foreach($mp in $pairs){$ms=$mp.FullName;if(-not$ms){$ms=$mp};$sh=$ms-replace'\.ps1$','.sh';$r=Temp metrics;try{InitSafe $r;# Canonically-cased source exercises source patterns; case-sensitivity parity is intentionally not asserted.
 Put (Join-Path $r sample.cs) @'
 async Task Work() { }

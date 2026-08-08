@@ -9,8 +9,16 @@
 # the docs-sync CI check fails if the mirror is out of date.
 $ErrorActionPreference = 'Stop'
 
-$root = (git rev-parse --show-toplevel 2>$null)
-if (-not $root) { $root = (Get-Location).Path }
+$savedErrorPreference = $ErrorActionPreference
+$gitRootExit = 1
+try {
+    $ErrorActionPreference = 'Continue'
+    $root = (git rev-parse --show-toplevel 2>$null)
+    $gitRootExit = $LASTEXITCODE
+} finally {
+    $ErrorActionPreference = $savedErrorPreference
+}
+if ($gitRootExit -ne 0 -or -not $root) { $root = (Get-Location).Path }
 Set-Location $root
 
 $src = '.claude/skills'
