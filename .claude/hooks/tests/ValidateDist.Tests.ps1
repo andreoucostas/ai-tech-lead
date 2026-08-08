@@ -439,6 +439,27 @@ try {
         Assert ($r.Exit -ne 0) 'failed-parser-child/bash should be red'
         Assert ($r.Out -match 'PowerShell parser process failed while scanning') "failed-parser-child/bash did not name the child-process failure: $($r.Out)"
     }
+    It 'case 32: a dangling rendered markdown link fails both validators while code examples stay out of scope' {
+        Assert-Case 'dangling-markdown-link' {
+            param($d)
+            [IO.File]::AppendAllText((Join-Path $d 'README.md'), "`n[B67 planted](./docs/definitely-missing-b67.md)`n")
+        } 'dangling markdown links in shipped docs' 'no-dead-instruction'
+
+        Assert-Case 'markdown-code-examples' {
+            param($d)
+            [IO.File]::AppendAllText((Join-Path $d 'README.md'), "`n``````markdown`n[example](./does-not-exist.md)`n```````nLiteral ``[placeholder](./also-missing.md)``.`n")
+        } 'relative inline Markdown links and' 'no-dead-instruction' -Green
+    }
+    It 'case 33: zero rendered local links fails instead of making a broken extractor look clean' {
+        Assert-Case 'zero-markdown-links' {
+            param($d)
+            foreach ($f in (Get-ChildItem -LiteralPath $d -Recurse -Force -File -Filter *.md)) {
+                $text=[IO.File]::ReadAllText($f.FullName)
+                $text=[regex]::Replace($text,'(?<!!)\[([^\]]+)\]\((?!https?:|mailto:|#)([^\)]+)\)','`$1`')
+                [IO.File]::WriteAllText($f.FullName,$text)
+            }
+        } 'extracted zero relative inline Markdown links' 'no-dead-instruction'
+    }
 
     # B-106/F3: this skip used to be false -- "python3 is unavailable" read as "no python here", but
     # a python.org install ships python.exe and no working python3.exe (the Windows Store alias may

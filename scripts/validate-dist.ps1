@@ -7,7 +7,7 @@
 #   4. PowerShell AST parse is clean on every *.ps1 in the dist
 #   5. the dist's OWN template-checks.ps1 suite passes, run from inside the dist dir
 #   6. no meta-dev vocabulary leaks into shipped content (scripts/meta-denylist.txt)
-#   7. every script a shipped *.md tells someone to RUN exists (no-dead-instruction)
+#   7. every script a shipped *.md tells someone to RUN and every rendered relative inline link resolves
 #   8. every hook registration in settings*.json / hooks.json names a script that exists, with its
 #      opposite-language twin (hook-registration)
 #   9. every core @stack marker expands from a non-empty stack snippet into the composed file
@@ -525,8 +525,9 @@ if (@($scanErrors).Count -gt 0) {
 }
 
 if (Test-CheckSelected 'no-dead-instruction') {
-# --- 7. no dead instructions ------------------------------------------------------------------
-# Every script a shipped doc tells someone to RUN must actually exist. `no-meta-leak` (check 6)
+# --- 7. no dead instructions or local document links ------------------------------------------
+# Every script a shipped doc tells someone to RUN and every rendered relative inline link must
+# actually resolve. `no-meta-leak` (check 6)
 # proves shipped files don't say the wrong *words*; nothing proved they don't give the wrong
 # *commands*. They did: dist/monorepo's README told installing agents to run `pwsh install.ps1`,
 # which exists nowhere in that dist — root-installer wording copied into a dist doc. An agent that
@@ -543,6 +544,8 @@ $absoluteRefs = @()
 $docReadErrors = @()
 $docsScanned = 0
 $refsExtracted = 0
+$linksExtracted = 0
+$deadLinks = @()
 foreach ($f in (Get-ChildItem -Recurse -File -Force -Path $DistAbs -Filter *.md)) {
     if ($f.Name -eq 'CHANGELOG.md') { continue }
     $docsScanned++
@@ -552,8 +555,16 @@ foreach ($f in (Get-ChildItem -Recurse -File -Force -Path $DistAbs -Filter *.md)
     $docErr = $null
     $lines = @(Get-Content $f.FullName -ErrorAction SilentlyContinue -ErrorVariable docErr)
     if ($docErr) { $docReadErrors += ("{0}: {1}" -f $rel, $docErr[0].Exception.Message); continue }
+    $fenceChar = $null
     foreach ($line in $lines) {
         $n++
+        if ($line -match '^\s*(`{3,}|~{3,})') {
+            $char = $Matches[1].Substring(0,1)
+            if ($null -eq $fenceChar) { $fenceChar = $char }
+            elseif ($fenceChar -eq $char) { $fenceChar = $null }
+            continue
+        }
+        if ($null -ne $fenceChar) { continue }
         foreach ($m in [regex]::Matches($line, '(?:pwsh|bash|powershell)(?:\s+-[A-Za-z]+(?:\s+[A-Za-z]+)?)*\s+([A-Za-z0-9_./-]+\.(?:ps1|sh))')) {
             $script = $m.Groups[1].Value
             $refsExtracted++
@@ -566,6 +577,32 @@ foreach ($f in (Get-ChildItem -Recurse -File -Force -Path $DistAbs -Filter *.md)
                 $deadRefs += ("{0}:{1}: `{2}` does not exist in this dist" -f $rel, $n, $script)
             }
         }
+        # Bounded Markdown grammar: rendered, single-line inline links only. Fenced blocks and
+        # inline-code spans are examples rather than navigable links. Reference definitions,
+        # multiline destinations, remote URLs and anchor validation are deliberately out of scope.
+        $rendered = [regex]::Replace($line, '`+[^`]*`+', '')
+        foreach ($m in [regex]::Matches($rendered, '(?<!!)\[[^\]]+\]\((?<target><[^>]+>|[^\s\)]+)(?:\s+[^\)]*)?\)')) {
+            $target = $m.Groups['target'].Value.Trim('<','>')
+            if ($target -match '^(?:[A-Za-z][A-Za-z0-9+.-]*:|//|#|/)') { continue }
+            $pathPart = ($target -split '[?#]', 2)[0]
+            if ([string]::IsNullOrWhiteSpace($pathPart)) { continue }
+            $linksExtracted++
+            try {
+                $decoded = [Uri]::UnescapeDataString($pathPart)
+                $resolved = [IO.Path]::GetFullPath((Join-Path $f.DirectoryName $decoded))
+                $rootPrefix = $DistAbs.TrimEnd('\','/') + [IO.Path]::DirectorySeparatorChar
+                if (-not $resolved.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+                    $deadLinks += ("{0}:{1}: `{2}` escapes this dist" -f $rel, $n, $target)
+                    continue
+                }
+                $targetRel = $resolved.Substring($rootPrefix.Length).Replace('\','/')
+                if (-not (Test-CaseExactPath -Root $DistAbs -Relative $targetRel)) {
+                    $deadLinks += ("{0}:{1}: `{2}` does not resolve relative to this document" -f $rel, $n, $target)
+                }
+            } catch {
+                $deadLinks += ("{0}:{1}: `{2}` is not a valid relative link target" -f $rel, $n, $target)
+            }
+        }
     }
 }
 if (@($docReadErrors).Count -gt 0) {
@@ -575,12 +612,17 @@ if (@($docReadErrors).Count -gt 0) {
     Fail "no-dead-instruction scanned zero documentation files in $Dist -- the input tree is empty, not clean."
 } elseif ($refsExtracted -eq 0) {
     Fail "no-dead-instruction extracted zero script references from $docsScanned doc(s) in $Dist -- the inline-command extractor is broken, not the dist."
+} elseif ($linksExtracted -eq 0) {
+    Fail "no-dead-instruction extracted zero relative inline Markdown links from $docsScanned doc(s) in $Dist -- the link extractor is broken, not the dist."
 } elseif ($deadRefs.Count -gt 0) {
     Fail ("dead instructions in shipped docs -- {0}. A consumer (or their agent) following these gets 'No such file or directory'. Fix in src/, not dist/." -f $deadRefs.Count)
     $deadRefs | Sort-Object -Unique | ForEach-Object { Write-Output "  [no-dead-instruction] $_" }
+} elseif ($deadLinks.Count -gt 0) {
+    Fail ("dangling markdown links in shipped docs -- {0}. Targets resolve relative to the document that contains them." -f $deadLinks.Count)
+    $deadLinks | Sort-Object -Unique | ForEach-Object { Write-Output "  [no-dead-instruction] $_" }
 } else {
     $absoluteRefs | Sort-Object -Unique | ForEach-Object { Write-Output "  [no-dead-instruction] $_" }
-    OK "all $($refsExtracted - $absoluteRefs.Count) resolvable documented script references exist in $Dist ($docsScanned doc(s) scanned; $($absoluteRefs.Count) absolute example(s) out of scope)."
+    OK "all $linksExtracted relative inline Markdown links and $($refsExtracted - $absoluteRefs.Count) resolvable documented script references resolve in $Dist ($docsScanned doc(s) scanned; $($absoluteRefs.Count) absolute example(s) out of scope)."
 }
 }
 

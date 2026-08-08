@@ -611,7 +611,7 @@ Scope note: `bootstrap.md`/`adopt.md` were taken deliberately even though B-66 d
 delivery-tier question to B-65. B-65 is about restoring the pointer `/bootstrap` *deletes*; this was
 about what `/bootstrap` *writes*. Adjacent, not the same.
 
-### B-67 · `no-dead-instruction` does not validate markdown link targets
+### B-67 · `no-dead-instruction` does not validate markdown link targets — **DONE 2026-08-08, see Done**
 **Effort:** S · **Priority:** P3
 
 **Why:** the check greps for script invocations and asserts the script resolves; it has no notion of
@@ -3580,6 +3580,26 @@ planted unreadable file and an emptied tree, both twins.
 ---
 
 ## Done
+
+- **B-67** — done **2026-08-08** (release pending integration). Check 7 in both `validate-dist`
+  twins now resolves rendered single-line relative inline Markdown links from the document that
+  contains them, case-exactly, accepting files and directories while rejecting paths that escape
+  the dist. External URLs, pure fragments, images, fenced/inline-code examples, reference-style or
+  multiline links, and anchor existence are explicitly outside this bounded grammar; this is not
+  presented as a full CommonMark/network checker. The scan carries its own extracted-link floor so
+  a broken regex cannot turn an empty candidate set green. The sweep exposed a real shipped defect
+  in the dotnet and monorepo bootstrap instructions: an example meant for root `CLAUDE.md` rendered
+  as a live `./docs/warehouse-map.md` link from `.claude/commands/`; it is now shown as literal
+  Markdown syntax instead. **Observed red:** before the production change, case 32 planted
+  `[B67 planted](./docs/definitely-missing-b67.md)` in a copied real dist; the PowerShell validator
+  printed its old script-only OK and exited 0, so the permanent case failed. **Observed green:**
+  case 32 made both twins exit 1 and name `README.md`, its line, and the missing target, while fenced
+  and inline-code examples remained green; case 33 removed every rendered local link and both twins
+  failed the zero-candidate floor. Both twins then passed all three composed dists with 35 relative
+  inline links each. **RCA:** the original gate defined a dead instruction only as an executable
+  command, so navigational instructions had no extractor, resolution rule, count, or planted
+  failure. The fix extends the existing document-reference gate rather than introducing a parser or
+  dependency disproportionate to the observed local-link defect.
 
 - **B-95** — done **2026-08-08** (meta-only; no shipped version). Both `validate-dist` twins now
   derive and check the input inventory for marker, JSON, shell, and PowerShell scans; zero inputs,
