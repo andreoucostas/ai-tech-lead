@@ -105,7 +105,7 @@ function Invoke-Validator {
 # each one names that case. Nothing bash-specific is covered only by a PsOnly case.
 # The residual cost is the selected check plus each case's dist copy and process startup.
 function Assert-Case {
-    param([string]$Name, [scriptblock]$Mutate, [string]$Finding, [string]$Check, [switch]$Green, [switch]$PsOnly, [switch]$FullValidation)
+    param([string]$Name, [scriptblock]$Mutate, [string]$Finding, [string]$Check, [switch]$Green, [switch]$PsOnly, [switch]$FullValidation, [string[]]$AlsoPattern=@())
     $legs = if ($PsOnly) { @('ps') } else { @('ps','bash') }
     foreach ($leg in $legs) {
         $root = New-DistCopy
@@ -114,6 +114,7 @@ function Assert-Case {
         Write-Host "[ValidateDist $leg $Name] EXIT=$($r.Exit)"; Write-Host $r.Out
         Assert ($r.Out -match '(?m)^(OK|FAIL):') "$Name/$leg did not reach a validator check: $($r.Out)"
         Assert ($r.Out -match [regex]::Escape($Finding)) "$Name/$leg did not emit its target finding '$Finding': $($r.Out)"
+        foreach($pattern in $AlsoPattern){ Assert ($r.Out -match $pattern) "$Name/$leg did not match additional evidence '$pattern': $($r.Out)" }
         if ($Green) { Assert ($r.Exit -eq 0) "$Name/$leg should be green, got EXIT=$($r.Exit)" }
         else { Assert ($r.Exit -ne 0) "$Name/$leg should be red, got EXIT=0" }
     }
@@ -443,11 +444,12 @@ try {
         Assert-Case 'dangling-markdown-link' {
             param($d)
             [IO.File]::AppendAllText((Join-Path $d 'README.md'), "`n[B67 planted](./docs/definitely-missing-b67.md)`n")
-        } 'dangling markdown links in shipped docs' 'no-dead-instruction'
+        } 'dangling markdown links in shipped docs' 'no-dead-instruction' -AlsoPattern @('README\.md:\d+:','definitely-missing-b67\.md')
 
         Assert-Case 'markdown-code-examples' {
             param($d)
-            [IO.File]::AppendAllText((Join-Path $d 'README.md'), "`n``````markdown`n[example](./does-not-exist.md)`n```````nLiteral ``[placeholder](./also-missing.md)``.`n")
+            [IO.File]::WriteAllText((Join-Path $d 'docs/link target.md'),'# valid spaced target')
+            [IO.File]::AppendAllText((Join-Path $d 'README.md'), "`n[angle target](<./docs/link target.md>)`n``````markdown`n[example](./does-not-exist.md)`n```````nLiteral ``[placeholder](./also-missing.md)``.`n")
         } 'relative inline Markdown links and' 'no-dead-instruction' -Green
     }
     It 'case 33: zero rendered local links fails instead of making a broken extractor look clean' {
@@ -459,6 +461,29 @@ try {
                 [IO.File]::WriteAllText($f.FullName,$text)
             }
         } 'extracted zero relative inline Markdown links' 'no-dead-instruction'
+    }
+    It 'case 34: link edge grammar and fenced command parity hold on both validators' {
+        Assert-Case 'fenced-dead-command' {
+            param($d)
+            [IO.File]::AppendAllText((Join-Path $d 'README.md'),"`n``````bash`nbash scripts/definitely-missing-b67.sh`n```````n")
+        } 'dead instructions in shipped docs' 'no-dead-instruction' -AlsoPattern 'definitely-missing-b67\.sh'
+
+        Assert-Case 'malformed-percent-link' {
+            param($d)
+            [IO.File]::WriteAllText((Join-Path $d 'docs/foo%ZZ.md'),'literal percent filename')
+            [IO.File]::AppendAllText((Join-Path $d 'README.md'),"`n[bad percent](./docs/foo%ZZ.md)`n")
+        } 'is not a valid relative link target' 'no-dead-instruction' -AlsoPattern 'foo%ZZ\.md'
+
+        Assert-Case 'encoded-link-escape' {
+            param($d)
+            [IO.File]::AppendAllText((Join-Path $d 'docs/playbook.md'),"`n[escape](%2e%2e/%2e%2e/outside.md)`n")
+        } 'escapes this dist' 'no-dead-instruction' -AlsoPattern '%2e%2e'
+
+        Assert-Case 'root-directory-links' {
+            param($d)
+            [IO.File]::AppendAllText((Join-Path $d 'README.md'),"`n[root](./)`n")
+            [IO.File]::AppendAllText((Join-Path $d 'docs/playbook.md'),"`n[root](../)`n")
+        } 'relative inline Markdown links and' 'no-dead-instruction' -Green
     }
 
     # B-106/F3: this skip used to be false -- "python3 is unavailable" read as "no python here", but

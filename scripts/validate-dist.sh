@@ -597,8 +597,12 @@ while IFS=$'\t' read -r f ln content; do
   docdir="${rel%/*}"; [ "$docdir" != "$rel" ] || docdir='.'
   while IFS= read -r link; do
     [ -n "$link" ] || continue
-    target="${link#*(}"; target="${target%%[[:space:]]*}"; target="${target%)}"
-    target="${target#<}"; target="${target%>}"
+    target="${link#*(}"
+    if [[ "$target" == \<* ]]; then
+      target="${target#<}"; target="${target%%>*}"
+    else
+      target="${target%%[[:space:]]*}"; target="${target%)}"
+    fi
     case "$target" in ''|[A-Za-z]*:*|//*|\#*|/*) continue;; esac
     pathpart="${target%%[?#]*}"
     [ -n "$pathpart" ] || continue
@@ -611,6 +615,8 @@ while IFS=$'\t' read -r f ln content; do
     decoded=$(printf '%b' "${pathpart//%/\\x}")
     if ! targetrel=$(normalize_link_rel "$docdir" "$decoded"); then
       deadlinks="$deadlinks$rel:$ln: \`$target\` escapes this dist"$'\n'
+    elif [ -z "$targetrel" ]; then
+      : # the dist root itself is a valid directory target
     elif ! case "$_LINK_PATH_INDEX" in *$'\n'"$targetrel"$'\n'*) true;; *) false;; esac; then
       deadlinks="$deadlinks$rel:$ln: \`$target\` does not resolve relative to this document"$'\n'
     fi

@@ -3595,8 +3595,12 @@ planted unreadable file and an emptied tree, both twins.
   printed its old script-only OK and exited 0, so the permanent case failed. **Observed green:**
   case 32 made both twins exit 1 and name `README.md`, its line, and the missing target, while fenced
   and inline-code examples remained green; case 33 removed every rendered local link and both twins
-  failed the zero-candidate floor. Both twins then passed all three composed dists with 35 relative
-  inline links each. **RCA:** the original gate defined a dead instruction only as an executable
+  failed the zero-candidate floor. **Independent review found four twin/boundary gaps:** the first
+  PowerShell draft accidentally stopped checking script commands inside fences; bash truncated
+  angle-bracket targets containing spaces; malformed percent escapes differed; and links to the
+  dist root were rejected. Case 34 now locks fenced-command parity, angle-bracket spaces, malformed
+  escapes, encoded traversal, and root-directory links across both twins. Both twins then passed all
+  three composed dists with 35 relative inline links each. **RCA:** the original gate defined a dead instruction only as an executable
   command, so navigational instructions had no extractor, resolution rule, count, or planted
   failure. The fix extends the existing document-reference gate rather than introducing a parser or
   dependency disproportionate to the observed local-link defect.

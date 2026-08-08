@@ -558,17 +558,11 @@ foreach ($f in (Get-ChildItem -Recurse -File -Force -Path $DistAbs -Filter *.md)
     $fenceChar = $null
     foreach ($line in $lines) {
         $n++
-        if ($line -match '^\s*(`{3,}|~{3,})') {
-            $char = $Matches[1].Substring(0,1)
-            if ($null -eq $fenceChar) { $fenceChar = $char }
-            elseif ($fenceChar -eq $char) { $fenceChar = $null }
-            continue
-        }
-        if ($null -ne $fenceChar) { continue }
+        # Command examples are instructions even inside code fences; keep the established check-7
+        # grammar independent from the rendered-link grammar below.
         foreach ($m in [regex]::Matches($line, '(?:pwsh|bash|powershell)(?:\s+-[A-Za-z]+(?:\s+[A-Za-z]+)?)*\s+([A-Za-z0-9_./-]+\.(?:ps1|sh))')) {
             $script = $m.Groups[1].Value
             $refsExtracted++
-            # An absolute doc path can be a placeholder example; registrations (check 8) cannot.
             if ($script.StartsWith('/')) {
                 $absoluteRefs += ("{0}:{1}: absolute example `{2}` out of scope" -f $rel, $n, $script)
                 continue
@@ -577,6 +571,13 @@ foreach ($f in (Get-ChildItem -Recurse -File -Force -Path $DistAbs -Filter *.md)
                 $deadRefs += ("{0}:{1}: `{2}` does not exist in this dist" -f $rel, $n, $script)
             }
         }
+        if ($line -match '^\s*(`{3,}|~{3,})') {
+            $char = $Matches[1].Substring(0,1)
+            if ($null -eq $fenceChar) { $fenceChar = $char }
+            elseif ($fenceChar -eq $char) { $fenceChar = $null }
+            continue
+        }
+        if ($null -ne $fenceChar) { continue }
         # Bounded Markdown grammar: rendered, single-line inline links only. Fenced blocks and
         # inline-code spans are examples rather than navigable links. Reference definitions,
         # multiline destinations, remote URLs and anchor validation are deliberately out of scope.
@@ -588,10 +589,13 @@ foreach ($f in (Get-ChildItem -Recurse -File -Force -Path $DistAbs -Filter *.md)
             if ([string]::IsNullOrWhiteSpace($pathPart)) { continue }
             $linksExtracted++
             try {
+                if ($pathPart -match '%(?![0-9A-Fa-f]{2})') { throw 'malformed percent escape' }
                 $decoded = [Uri]::UnescapeDataString($pathPart)
                 $resolved = [IO.Path]::GetFullPath((Join-Path $f.DirectoryName $decoded))
                 $rootPrefix = $DistAbs.TrimEnd('\','/') + [IO.Path]::DirectorySeparatorChar
-                if (-not $resolved.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+                if ($resolved.Equals($DistAbs, [StringComparison]::OrdinalIgnoreCase)) {
+                    continue
+                } elseif (-not $resolved.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase)) {
                     $deadLinks += ("{0}:{1}: `{2}` escapes this dist" -f $rel, $n, $target)
                     continue
                 }
