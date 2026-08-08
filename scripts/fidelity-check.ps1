@@ -36,8 +36,16 @@ $ref = Join-Path ([IO.Path]::GetTempPath()) ("fidelity-" + [IO.Path]::GetRandomF
 New-Item -ItemType Directory -Path $ref -Force | Out-Null
 try {
     $tarFile = Join-Path $ref 'baseline.tar'
-    & git archive --output="$tarFile" $RefSpec "legacy/$Mode" 2>$null
-    if ($LASTEXITCODE -ne 0 -or -not (Test-Path $tarFile)) {
+    $savedErrorPreference = $ErrorActionPreference
+    $gitArchiveExit = 1
+    try {
+        $ErrorActionPreference = 'Continue'
+        & git archive --output="$tarFile" $RefSpec "legacy/$Mode" 2>$null
+        $gitArchiveExit = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $savedErrorPreference
+    }
+    if ($gitArchiveExit -ne 0 -or -not (Test-Path $tarFile)) {
         [Console]::Error.WriteLine("could not archive legacy/$Mode from $RefSpec"); exit 2
     }
     & $tarExe -xf $tarFile -C $ref
