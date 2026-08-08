@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.51.2 — Unreleased
+## 0.51.2 — 2026-08-08
 
 - B-71/B-74: the shipped hook test suite's Windows PowerShell 5.1 compatibility case no longer
   depends on `powershell.exe` being directly on `PATH` — it now falls back to the well-known

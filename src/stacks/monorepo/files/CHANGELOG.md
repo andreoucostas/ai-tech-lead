@@ -5,17 +5,20 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.51.1 — Unreleased
+## 0.51.2 — Unreleased
+
+- The shipped hook test suite's Windows PowerShell 5.1 compatibility case no longer depends on
+  `powershell.exe` being directly on `PATH` — it falls back to the well-known
+  `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`, so a host where 5.1 exists but
+  isn't PATH-exposed now gets a genuine test run instead of a silent skip.
+
+## 0.51.1 — 2026-08-08
 
 - The shipped PowerShell test harness now keeps child scripts on the same PowerShell host as an
   individual suite invoked directly. Such a test file run under Windows PowerShell 5.1 now
   genuinely exercises 5.1 instead of silently switching its children to PowerShell 7; the aggregate
   runner still selects its preferred host. The architecture HTML generator also now falls back to
   its current directory cleanly when run outside a Git worktree under 5.1.
-- The shipped hook test suite's Windows PowerShell 5.1 compatibility case no longer depends on
-  `powershell.exe` being directly on `PATH` — it falls back to the well-known
-  `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`, so a host where 5.1 exists but
-  isn't PATH-exposed now gets a genuine test run instead of a silent skip.
 
 ## 0.51.0 — 2026-08-08
 
