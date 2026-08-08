@@ -7,51 +7,57 @@ subject under `pwsh` 7, and then report evidence as though the subject ran under
 false-green class already concealed two 5.1-only release defects. B-93 is one concrete instance of
 B-90 and will be absorbed rather than delivered separately.
 
-The repository-wide call-site audit found two current subjects whose result is genuinely
-host-sensitive:
+The first audit incorrectly classified most remaining call sites as intentionally modelling a
+preferred production host. Independent critique rejected that claim: the shipped
+`settings.windows.json` explicitly invokes hooks with Windows PowerShell, and the installers and
+doctor support 5.1 too. Re-auditing every current use found no subject-spawning call site that needs
+to upgrade a 5.1 parent to `pwsh`:
 
-- `.claude/hooks/tests/ReleaseStagingGuard.Tests.ps1` extracts 5.1-hardened release logic but runs
-  the extracted child through `Get-PsExe`.
-- `src/core/tests/hooks/BuildArchitectureHtml.Tests.ps1` verifies output encoding whose historical
-  behavior differed specifically under 5.1, but also runs its PowerShell child through
-  `Get-PsExe`.
+- the meta harness and its installer, update-delivery, framework-doctor, twin-parity, root-installer,
+  release-staging, and other consumers all exercise scripts that support both hosts;
+- the shipped harness likewise exercises hooks and scripts registered for either host; and
+- `BuildArchitectureHtml.Tests.ps1` verifies output encoding whose historical behavior differed
+  specifically under 5.1.
 
-Other current `Get-PsExe` call sites intentionally model the preferred available production host,
-not the current test host. The suite runners themselves also prefer `pwsh`; changing that contract
-would broaden this item into a runner redesign and is out of scope. Host-sensitive suites must be
-invoked directly under each host.
+The suite runners themselves may continue preferring `pwsh`; changing that orchestration contract
+would broaden this item into a runner redesign. A suite invoked directly under 5.1 must keep its
+PowerShell subjects under 5.1. The existing `Get-PsExe` name can safely implement that contract for
+all current consumers; no second preferred-host helper is needed.
 
 ## Proportionality
 
 The observed harm is serious: this false-green mechanism already hid release-affecting 5.1 defects.
-The materially smaller remedy removes the current exposure with two child-host substitutions plus a
-warning at the two harness definitions. No new resolver, shared abstraction, static gate, runner
-rewrite, or blanket call-site replacement is justified.
+The materially smaller remedy removes the entire current exposure by correcting `Get-PsExe` in the
+two harness definitions, rather than editing every consumer. No new resolver, second helper, static
+gate, runner rewrite, or blanket call-site replacement is justified.
 
 ## Implementation
 
-1. In the two host-sensitive suites, resolve the current executable with
-   `(Get-Process -Id $PID).Path` once and use that path for the subject child. State why self-hosting
-   is load-bearing.
-2. At both `Get-PsExe` definitions, document that it selects the preferred available host and is not
-   necessarily the host running the suite. Retain intentional call sites.
+1. In both harness definitions, make `Get-PsExe` cache and return
+   `(Get-Process -Id $PID).Path`. Document that subject children deliberately inherit the suite host
+   so a direct 5.1 run cannot upgrade itself to 7.
+2. Do not add per-call-site substitutions: every current consumer has been classified as a
+   dual-host subject, and central self-hosting is the smaller complete fix.
 3. Recompose all three distributions; never edit `dist/` directly.
 4. Close B-90 and B-93 together in `meta/BACKLOG.md`, with the required RCA and an honest record of
-   red/green observations. Record shipped-test-artifact release treatment in the root changelog.
+   red/green observations. Because the core harness is a shipped test artifact and changes all
+   three distributions, prepare root and consumer-facing changelog entries for a patch release;
+   version stamping remains the release script's job when Claude reviews/releases the branch.
 
 ## Red and reachable-green evidence
 
-Before implementation, run a detached/temporary copy of `ReleaseStagingGuard.Tests.ps1` under the
-absolute Windows PowerShell 5.1 executable with an instrumented child that prints its executable.
-The filed defect is red when the 5.1 parent reports a `pwsh` child. The success world is the same
-5.1 parent reporting the identical `powershell.exe` path for the extracted subject; a `pwsh` parent
-must likewise report `pwsh`.
+Before implementation, traverse the real helper: dot-source each unchanged harness under the
+absolute Windows PowerShell 5.1 executable and compare `(Get-Process -Id $PID).Path` with
+`Get-PsExe`. The filed defect is red when the actual helper reports `pwsh` for a 5.1 parent. The
+success world is the same 5.1 parent receiving its identical `powershell.exe` path; a `pwsh` parent
+must likewise receive its identical `pwsh` path.
 
-After the change, run both focused suites directly under absolute 5.1 and `pwsh`. For
+After the change, repeat that real-helper identity test for both harnesses under both hosts. Run the
+release-staging and architecture suites directly under absolute 5.1 and `pwsh`. For
 `ReleaseStagingGuard`, additionally mutate one load-bearing `@(...).Count` wrapper in an isolated
 copy: the self-hosted 5.1 suite must fail, while the restored source passes 6/6 under both hosts.
 For architecture output, the existing static guard already rejects the historical `Set-Content`
-implementation; prove child identity under both hosts and retain byte parity on restored source.
+implementation; prove the corrected helper path is used and retain byte parity on restored source.
 
 Then run parser/BOM checks, compose and freshness for all distributions, relevant focused/meta and
 dist suites, and `validate-dist` for all three distributions. A green result is not claimed for any
@@ -63,5 +69,5 @@ broader suite that contains an unrelated failure.
   silently selecting a different host.
 - Generated copies must come only from the composer.
 - Do not infer that launching the aggregate runner under 5.1 makes every nested suite a 5.1 run.
-- Do not mechanically replace intentional preferred-host calls.
+- Do not add a preferred-host escape hatch unless a concrete production contract requires one.
 - B-71's PATH-only discovery of whether 5.1 exists is adjacent but separate work.
