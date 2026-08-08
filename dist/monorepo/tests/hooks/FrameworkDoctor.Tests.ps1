@@ -153,6 +153,24 @@ It 'both twins require the parser for bare and absolute bash and bash.exe regist
         }}
     }finally{$env:PATH=$old;Remove-Item -Recurse -Force $holder,$bin}
 }
+It 'both twins recognize shell-valid quoted and case-insensitive Bash guard registrations' {
+    $bin=New-ParserProbeBin $bash;$old=$env:PATH
+    try{
+        $env:PATH=$bin
+        foreach($command in @("bash '.claude/hooks/guard.sh'","'/usr/bin/bash' .claude/hooks/guard.sh",'C:\Git\BASH.EXE .claude/hooks/guard.sh')){
+            $r=Fixture -Pending $true -CopilotBash $false
+            try{
+                $jsonCommand=$command.Replace('\','\\').Replace('"','\"')
+                Put (Join-Path $r '.claude/settings.json') ('{"hooks":{"PreToolUse":[{"hooks":[{"command":"'+$jsonCommand+'"}]}]}}')
+                $p=Parse-DoctorResult (Run (Join-Path $r 'scripts/framework-doctor.ps1'));$s=Parse-DoctorResult (Run (Join-Path $r 'scripts/framework-doctor.sh'))
+                Assert ($p.Rows['Hook files'].State-eq'OK') "PowerShell command '$command' did not resolve its hook target"
+                Assert ($s.Rows['Hook files'].State-eq'OK') "Bash command '$command' did not resolve its hook target"
+                Assert ($p.Rows['Guard JSON parser'].State-eq'CANT-VERIFY') "PowerShell command '$command' did not require parser"
+                Assert ($s.Rows['Guard JSON parser'].State-eq'OK') "Bash command '$command' did not require parser"
+            }finally{Remove-Item -Recurse -Force $r}
+        }
+    }finally{$env:PATH=$old;Remove-Item -Recurse -Force $bin}
+}
 It 'both twins ignore a Bash non-guard target and a bash -c mention of guard.sh' {
     $bin=New-ParserProbeBin $bash;$old=$env:PATH
     try{

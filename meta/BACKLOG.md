@@ -3581,7 +3581,7 @@ planted unreadable file and an emptied tree, both twins.
 
 ## Done
 
-- **B-63 / B-56** — done **2026-08-08** (target v0.51.3). The audit closed B-56's
+- **B-63 / B-56** — done **2026-08-08** (target v0.51.4). The audit closed B-56's
   remaining class rather than treating v0.35.0's child-Bash probe as a complete fix. The complete
   disposition is: `Framework install`, `Framework rules delivery`, `Protected-file sync`,
   `Bootstrap/adoption state`, `Hook files`, and `Mirror and version integrity` remain valid
@@ -3606,16 +3606,22 @@ planted unreadable file and an emptied tree, both twins.
   anchors: with the same registrations and `PATH`, fixed production is `CANT-VERIFY` while the
   mutant is `OK`, and both keep a coherent summary and exit 0.
 
-  **Observed green before release:** the source `FrameworkDoctor` suite passed 30/30 under pwsh
-  and 29/29 under Windows PowerShell 5.1, with its one existing 5.1 invariant skip explaining that
+  **Observed green before release:** the source `FrameworkDoctor` suite passed 31/31 under pwsh
+  and 30/30 under Windows PowerShell 5.1, with its one existing 5.1 invariant skip explaining that
   the host Python executable is inaccessible rather than counting it as evidence. The three
   composed distributions each passed all 15 shipped hook suites. A second composition found all
   501 generated files byte-identical (165 dotnet, 161 angular, 175 monorepo), and both validator
   twins passed all 11 checks against all three distributions. Registration matrices cover both
   twins; parser and CLI asymmetries use exact fixture-specific divergence sets; isolated command
-  bins prevent the maintainer's ambient tools deciding parity. The full source suite completes in
-  91.7 seconds under pwsh and 63.2 seconds under 5.1 after equivalent local utility wrappers
-  replaced thousands of copied Git-Bash runtime files.
+  bins prevent the maintainer's ambient tools deciding parity. Independent review then found the
+  Bash registration extractor did not match the PowerShell twin for shell-valid single-quoted
+  targets/interpreters or a case-varied `BASH.EXE` basename. The permanent case pins
+  `bash '.claude/hooks/guard.sh'`, `'/usr/bin/bash' .claude/hooks/guard.sh`, and
+  `C:\Git\BASH.EXE .claude/hooks/guard.sh` on both twins while the existing `bash -c` command-
+  position negative remains green. Before the Bash fix its first arm failed hook-target resolution;
+  after it, the full source suite completes in 107.2 seconds under pwsh and 70.9 seconds under 5.1.
+  The runtime optimization is confined to `FrameworkDoctor.Tests.ps1`'s B-63 parser bins; the
+  shared shipped hook harness remains unchanged.
 
   **RCA:** v0.35.0 corrected which language performed the parser lookup but not which environment
   supplied the evidence: a child shell still inherited the doctor's `PATH`. Demand was also
