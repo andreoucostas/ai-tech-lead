@@ -2484,7 +2484,7 @@ resolver; `guard.sh:13` still describes absence as *"no jq, no python3"*, which 
 capability condition. The header of the change's own flagship file misdescribes it. Sweep the other
 parser-dependent hooks for the same wording while there.
 
-### B-108 · One resolver, two grammars, fifteen copies — and that is how B-104 was missed
+### B-108 · One resolver, two grammars, fifteen copies — and that is how B-104 was missed — **CLOSED 2026-08-08, premise rejected; see Done**
 **Effort:** S–M · **Priority:** P2 · found 2026-08-05 by B-103's review · **Invariants:** #3 #6
 
 **Why:** `guard.sh` spells the parser probe as a multi-line `for` loop; `audit-trail`, `post-write`,
@@ -3363,6 +3363,20 @@ planted unreadable file and an emptied tree, both twins.
 ---
 
 ## Done
+
+- **B-108** — closed **2026-08-08** with no product change after design and adversarial review
+  rejected the remedy as disproportionate. The filed inventory was itself inaccurate: the current
+  composed distributions contain seven affected shell files and ten probe sites, not fifteen
+  copies, and every observed site now implements the same execution-verified candidate order
+  (`python3`, `python`, `py`) despite differing shell syntax. No current behavioural failure was
+  reproduced. Normalising six stack overrides plus core hooks/doctor, shipping a canonical fragment,
+  and adding twinned lexical validators would police formatting rather than runtime behaviour and
+  introduce quoting/comment false-positive risk. The actual residual safety gap is behavioural:
+  B-106 already owns permanent no-`jq` fallback tests across the affected surfaces and is the right
+  next work. **RCA:** B-104 was missed because the change and review used a spelling-dependent grep,
+  not because multiple correct spellings are intrinsically defective. The same class is exposed
+  wherever an audit infers behavioural coverage from one textual spelling; future sweeps must derive
+  their population from composed artifacts and prove behavior with executable fixtures.
 
 - **B-109** — done **2026-08-08** (meta-only; no shipped version). Extended the shared
   `no-meta-leak` denylist to reject Windows user profiles and Linux/macOS home directories while
