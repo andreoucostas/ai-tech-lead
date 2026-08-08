@@ -26,9 +26,18 @@
 [CmdletBinding()]
 param(
     [string]$Model = 'haiku',
-    [int]$TimeoutSeconds = 180
+    [int]$TimeoutSeconds = 180,
+    [string]$ClaudeCmd = '',
+    [switch]$ResolveOnly
 )
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($ClaudeCmd)) {
+    if ([string]::IsNullOrWhiteSpace($env:USERPROFILE)) { throw 'Claude CLI not found; pass -ClaudeCmd.' }
+    $ClaudeCmd = Join-Path $env:USERPROFILE '.local\bin\claude.exe'
+}
+if (-not (Test-Path -LiteralPath $ClaudeCmd -PathType Leaf)) { throw 'Claude CLI not found; pass -ClaudeCmd.' }
+$ClaudeCmd = (Resolve-Path -LiteralPath $ClaudeCmd).Path
+if ($ResolveOnly) { Write-Output $ClaudeCmd; exit 0 }
 
 $prompt = @"
 What is the project codeword? Answer with the codeword only.
@@ -62,7 +71,7 @@ foreach ($arm in $arms) {
     $claudeArgs = @('-p', $prompt, '--model', $Model, '--output-format', 'stream-json', '--verbose',
                     '--dangerously-skip-permissions', '--no-session-persistence', '--max-budget-usd', '0.30')
     Push-Location $root
-    try { $out = & 'C:\Users\Costas\.local\bin\claude.exe' @claudeArgs 2>&1 } finally { Pop-Location }
+    try { $out = & $ClaudeCmd @claudeArgs 2>&1 } finally { Pop-Location }
     $out | Set-Content -Path (Join-Path $root 'transcript.jsonl') -Encoding utf8NoBOM
     $raw = ($out | Out-String)
 

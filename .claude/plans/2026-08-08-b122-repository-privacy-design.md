@@ -65,14 +65,15 @@ Add auto-discovered `.claude/hooks/tests/RepositoryPrivacy.Tests.ps1`:
    errors as failures, and skip content containing NUL as binary. Do not add directory/file
    allowlists.
 3. Detect case-insensitive Windows drive/MSYS/Linux/macOS concrete homes:
-   `X:\Users\account`, `X:/Users/account`, `/x/Users/account`, `/home/account`, `/Users/account`.
+   `X:\Users\<account>`, `X:/Users/<account>`, `/x/Users/<account>`, `/home/<account>`,
+   `/Users/<account>`.
    The account must start with `[A-Za-z0-9._-]` and end at slash, whitespace, quote, punctuation,
    or end-of-string, so `<account>` and regex documentation do not self-trigger. Extended Windows
    paths contain the normal drive-path substring and are covered incidentally.
 4. Define the scanner as a small function. Self-tests dynamically assemble all four concrete forms,
    prove slash/case/home-root boundaries and filename/line diagnostics, and prove placeholders and
    the regex source stay clean. A positive control must find at least one synthetic leak.
-5. Refactor B-109's literal `C:\Users\ExamplePerson\...` fixture to assemble its segments at runtime;
+5. Refactor B-109's literal concrete Windows-profile fixture to assemble its segments at runtime;
    no fixture-file exemption is allowed.
 
 This gate targets the actual UTF-8/BOM-marked repository contract. `WorkspaceBom.Tests.ps1` remains

@@ -18,12 +18,19 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$CopilotCmd = 'C:\Users\Costas\AppData\Roaming\npm\copilot.cmd',
+    [string]$CopilotCmd = '',
     [string]$NodeDir    = 'C:\Program Files\nodejs',
-    [int]$TimeoutSeconds = 180
+    [int]$TimeoutSeconds = 180,
+    [switch]$ResolveOnly
 )
 $ErrorActionPreference = 'Stop'
-if (-not (Test-Path $CopilotCmd)) { throw "Copilot CLI not found at $CopilotCmd" }
+if ([string]::IsNullOrWhiteSpace($CopilotCmd)) {
+    if ([string]::IsNullOrWhiteSpace($env:APPDATA)) { throw 'Copilot CLI not found; pass -CopilotCmd.' }
+    $CopilotCmd = Join-Path $env:APPDATA 'npm\copilot.cmd'
+}
+if (-not (Test-Path -LiteralPath $CopilotCmd -PathType Leaf)) { throw 'Copilot CLI not found; pass -CopilotCmd.' }
+$CopilotCmd = (Resolve-Path -LiteralPath $CopilotCmd).Path
+if ($ResolveOnly) { Write-Output $CopilotCmd; exit 0 }
 $env:PATH = "$NodeDir;" + (Split-Path $CopilotCmd) + ";$env:PATH"
 
 $prompt = 'What is the project codeword? Reply with the codeword only. Use ONLY what is already in ' +

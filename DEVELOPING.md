@@ -160,7 +160,7 @@ an invariant-guarding skip, which is honest but is *not* coverage:
 
 ```powershell
 $env:ATL_TEST_PYTHON = 'C:\Python314\python.exe'   # a real python.org install (no python3.exe exists)
-$env:ATL_TEST_JQ     = 'C:\Users\Costas\bin\jq.exe'
+$env:ATL_TEST_JQ     = '<home>\bin\jq.exe'
 ```
 
 These are **environment variables on purpose**. The same values were first written as hardcoded
@@ -215,8 +215,8 @@ directory for the child process.
 
 | Tool | Absolute path |
 |---|---|
-| Claude Code | `C:\Users\Costas\.local\bin\claude.exe` |
-| Copilot CLI | `C:\Users\Costas\AppData\Roaming\npm\copilot.cmd` |
+| Claude Code | `$env:USERPROFILE\.local\bin\claude.exe` |
+| Copilot CLI | `$env:APPDATA\npm\copilot.cmd` |
 | GitHub CLI | `C:\Program Files\GitHub CLI\gh.exe` |
 | pwsh 7.6.4 | `C:\Program Files\WindowsApps\Microsoft.PowerShell_7.6.4.0_x64__8wekyb3d8bbwe\pwsh.exe` |
 | node | `C:\Program Files\nodejs\node.exe` |

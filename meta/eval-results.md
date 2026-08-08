@@ -17,7 +17,7 @@ actually exercised; `ERROR` means the harness could not obtain valid evidence.
 
 Host: Claude Code 2.1.212 (Claude Code) · model: sonnet · scratch: retained=True
 
-- **ERROR install-handoff** — Cannot find path 'C:\Users\Costas\AppData\Local\Temp\ai-tech-lead-agent-evals-20260717-103654\install-handoff\CLAUDE.md' because it does not exist.
+- **ERROR install-handoff** — Cannot find path '<temp>\ai-tech-lead-agent-evals-20260717-103654\install-handoff\CLAUDE.md' because it does not exist.
 - **ERROR route-fix** — agentExit=1; fixed=False rails=False testEvent=-1 productionEvent=-1
 - **ERROR guard-retry** — agentExit=1; guardBlockObserved=False safeFinalFile=False
 - **ERROR skill-add-tests** — agentExit=1; testArtifact=True skillObserved=True verification=False
