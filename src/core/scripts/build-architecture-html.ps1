@@ -3,8 +3,16 @@
 # cannot silently drift. Re-run after editing ARCHITECTURE.md. The HTML is for human reviewers only.
 $ErrorActionPreference = 'Stop'
 
-$root = (git rev-parse --show-toplevel 2>$null)
-if (-not $root) { $root = (Get-Location).Path }
+$savedErrorPreference = $ErrorActionPreference
+$gitRootExit = 1
+try {
+    $ErrorActionPreference = 'Continue'
+    $root = (git rev-parse --show-toplevel 2>$null)
+    $gitRootExit = $LASTEXITCODE
+} finally {
+    $ErrorActionPreference = $savedErrorPreference
+}
+if ($gitRootExit -ne 0 -or -not $root) { $root = (Get-Location).Path }
 Set-Location $root
 
 $src   = if ($args.Count -ge 1) { $args[0] } else { 'docs/ARCHITECTURE.md' }

@@ -5,7 +5,15 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.51.0 — Unreleased
+## 0.51.1 — Unreleased
+
+- The shipped PowerShell test harness now keeps child scripts on the same PowerShell host as an
+  individual suite invoked directly. Such a test file run under Windows PowerShell 5.1 now
+  genuinely exercises 5.1 instead of silently switching its children to PowerShell 7; the aggregate
+  runner still selects its preferred host. The architecture HTML generator also now falls back to
+  its current directory cleanly when run outside a Git worktree under 5.1.
+
+## 0.51.0 — 2026-08-08
 
 - Warehouse writes now require a current map or equivalent live-schema inventory; pure SQL/SSDT/dbt
   sides can be detected and adopted without a solution file.

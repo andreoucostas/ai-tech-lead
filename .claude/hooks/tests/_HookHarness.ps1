@@ -6,10 +6,11 @@
 $script:HarnessBash = '__unset__'
 $script:PsExe = $null
 
-# Resolve a PowerShell host: prefer pwsh (7+), fall back to Windows PowerShell 5.1. 5.1-safe if/else.
+# Resolve the suite's own PowerShell host. Subject children must not silently upgrade a direct
+# Windows PowerShell 5.1 run to pwsh 7, where a 5.1-only defect cannot exist (B-90).
 function Get-PsExe {
     if ($script:PsExe) { return $script:PsExe }
-    if (Get-Command pwsh -ErrorAction SilentlyContinue) { $script:PsExe = 'pwsh' } else { $script:PsExe = 'powershell' }
+    $script:PsExe = (Get-Process -Id $PID).Path
     return $script:PsExe
 }
 

@@ -1137,7 +1137,7 @@ red-test yourself, do not read the release output as evidence -- and file whatev
 close this entry, recording what was re-run.
 
 ---
-### B-89 · Windows PowerShell 5.1 turns a native command's stderr into a terminating error — and two *shipped* scripts are exposed
+### B-89 · Windows PowerShell 5.1 turns a native command's stderr into a terminating error — one *shipped* script remains exposed
 **Effort:** S · **Priority:** P2 · filed 2026-08-02 (RCA of B-88) · **Invariants:** #3 #5
 
 **Why:** under 5.1, a native command that writes to stderr raises a `NativeCommandError` record, and
@@ -1146,31 +1146,32 @@ but does not stop the record. pwsh 7 does not do this (`$PSNativeCommandUseError
 defaults to `False` — measured on 7.6.4). So the idiom `$root = (git rev-parse --show-toplevel
 2>$null)`, written to degrade gracefully, degrades gracefully on one host and dies on the other.
 
-Found in new code while shipping B-88, then swept. **Two shipped scripts match both conditions** —
-`src/core/scripts/sync-agent-files.ps1:12` and `src/core/scripts/build-architecture-html.ps1:6` —
-and it is not theoretical. Run from a non-git directory, `dist/dotnet/scripts/sync-agent-files.ps1`:
+Found in new code while shipping B-88, then swept. Two shipped scripts originally matched both
+conditions. B-90's now-honest 5.1 architecture test reproduced and fixed
+`src/core/scripts/build-architecture-html.ps1`; **`src/core/scripts/sync-agent-files.ps1:12`
+remains exposed**, and it is not theoretical. Run from a non-git directory,
+`dist/dotnet/scripts/sync-agent-files.ps1`:
 
 ```
 5.1: git : fatal: not a git repository ... + FullyQualifiedErrorId : NativeCommandError   (no exit code at all)
 7  : No .claude/skills directory -- nothing to sync.                                       EXIT=0
 ```
 
-Both scripts intend the fallback that pwsh 7 gives them. Consumers on Windows may be on either host,
+The remaining script intends the fallback that pwsh 7 gives it. Consumers on Windows may use either host,
 and the 5.1 outcome is a raw .NET error dump instead of the message the author wrote. This is also a
 **twin divergence** the `.sh` side does not have (`2>/dev/null` in bash is just a redirect), so it is
 invariant #3 territory as well as #5.
 
-**Do:** wrap the affected native calls so the exit code is inspected rather than the error record —
+**Do:** wrap the remaining native call so the exit code is inspected rather than the error record —
 set `$ErrorActionPreference = 'Continue'` around the call and test `$LASTEXITCODE`, as
-`.claude/scripts/watch-ci.ps1`'s `Invoke-GitQuiet` now does. Red-test each from a non-git directory
-**under 5.1** — the existing `BuildArchitectureHtml.Tests.ps1` passes today because it runs inside a
-repo, where the branch never executes. Then sweep the remaining `2>$null` sites listed by
+`.claude/scripts/watch-ci.ps1`'s `Invoke-GitQuiet` now does. Red-test it from a non-git directory
+**under 5.1**. B-90 supplies the completed architecture-generator red/green evidence. Then sweep the remaining `2>$null` sites listed by
 `grep -rn '2>\$null' --include=*.ps1 src/ scripts/` and decide each; most do not set `Stop`, which is
 the only reason this has not bitten more widely.
 
 ---
 
-### B-90 · A suite can spawn its subject under a host the defect cannot exist on
+### B-90 · A suite can spawn its subject under a host the defect cannot exist on — **DONE 2026-08-08, see Done**
 **Effort:** M · **Priority:** P2 · filed 2026-08-02 (RCA of B-88) · **Invariants:** #3
 
 **Why:** `_HookHarness.ps1`'s `Get-PsExe` prefers `pwsh` whenever it resolves. Any suite that uses it
@@ -1214,7 +1215,7 @@ and should be written down as one.
 
 ---
 
-### B-93 · The staged-set guard's 5.1 hardening is tested only under pwsh 7 — B-90's class, inside the release that themed on it
+### B-93 · The staged-set guard's 5.1 hardening is tested only under pwsh 7 — **ABSORBED by B-90 2026-08-08, see Done**
 **Effort:** S · **Priority:** P2 · filed 2026-08-03 by the B-86 post-ship review · **Invariants:** #3
 
 **Why:** `.claude/hooks/tests/ReleaseStagingGuard.Tests.ps1:83` spawns the extracted guard region via
@@ -3594,6 +3595,25 @@ planted unreadable file and an emptied tree, both twins.
   ledger by the v0.46.0 change, but the original strategic heading was not closed. Keeping live and
   completed state in two sections allowed the contradiction; B-114's heading-integrity gate catches
   duplicate ids, not stale status, so closure still requires explicit release bookkeeping review.
+- **B-90 / B-93** — done **2026-08-08**; B-93 was one call site in B-90's class and was absorbed.
+  Both the maintainer and shipped test harnesses now bind PowerShell child subjects to the suite's
+  current executable instead of preferring `pwsh`. The call-site audit found no current consumer
+  that needs a 5.1 parent to upgrade its child: hooks can be registered with `powershell`, and the
+  installers, doctor, generator, and release fixtures support both hosts. The aggregate runners may
+  still choose `pwsh`; a suite invoked directly under 5.1 now remains honest. **Observed red:** in
+  fresh child processes, both unchanged real harnesses were launched by
+  `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe` but selected PowerShell 7, and the
+  identity probe exited 23; the reachable PowerShell 7 control selected itself and exited 0.
+  **Observed green:** after the central change, both real harnesses selected their identical parent
+  executable under both 5.1 and 7, with all four fresh probes exiting 0. **RCA:** no gate caught the
+  false evidence because the harness helper encoded availability preference while its name implied
+  current-host identity, and aggregate runs normally start under `pwsh`, hiding the distinction.
+  Once the harness became honest, the architecture fixture went red under 5.1: an expected failed
+  `git rev-parse` probe became a terminating `NativeCommandError` outside a worktree. The generator
+  now lowers error preference only around that native probe and checks its exit explicitly.
+  The same class exposed every child subject using that helper, so the fix was made at both helper
+  definitions rather than at B-93 alone; aggregate-runner host choice remains a separately stated
+  boundary, not evidence that every suite was exercised under 5.1.
 
 - **B-108** — closed **2026-08-08** with no product change after design and adversarial review
   rejected the remedy as disproportionate. The filed inventory was itself inaccurate: the current

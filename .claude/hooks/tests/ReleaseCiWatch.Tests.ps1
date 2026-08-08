@@ -144,8 +144,8 @@ function Invoke-Watch {
     )
     if (-not $Watcher) { $Watcher = $watchCi }
     if (-not $GhPath)  { $GhPath  = $Stub.Path }
-    # The watcher runs under THIS suite's own host, not Get-PsExe's. Get-PsExe prefers pwsh 7
-    # whenever it resolves, so running the suite under Windows PowerShell 5.1 would still have
+    # The watcher runs under THIS suite's own host. The old Get-PsExe contract preferred pwsh 7
+    # whenever it resolved, so running the suite under Windows PowerShell 5.1 would still have
     # exercised the subject under 7 -- the host where a 5.1-only defect cannot exist. That is
     # verbatim the trap the v0.41.0 RCA records (B-74), and its fix is this same expression.
     $ef = [IO.Path]::GetTempFileName()

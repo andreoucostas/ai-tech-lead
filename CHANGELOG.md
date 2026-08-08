@@ -11,6 +11,14 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.51.1 — Unreleased
+
+- B-90/B-93: PowerShell test subjects now remain on the host that launched their individual suite.
+  A test file invoked directly under Windows PowerShell 5.1 can no longer silently exercise hooks,
+  installers, release guards, or generators under PowerShell 7 and report that result as 5.1
+  evidence. The aggregate runner still selects its preferred host. The honest direct run exposed
+  and fixes a 5.1-only architecture generator failure when invoked outside a Git worktree.
+
 ## 0.51.0 — 2026-08-08
 
 - B-78/B-115: added shared warehouse detection, `warehouse-map-check` twins, current-evidence

@@ -47,8 +47,8 @@ function New-Fixture {
 
 # Run the fixture under THIS host, not under a preferred one.
 #
-# The first cut of this file used the harness's `Get-PsExe`, which prefers pwsh 7 whenever it
-# resolves. That made every fixture run under pwsh 7 even when the suite itself was running under
+# The first cut of this file used the harness's `Get-PsExe`, which at the time preferred pwsh 7
+# whenever it resolved. That made every fixture run under pwsh 7 even when the suite itself ran under
 # Windows PowerShell 5.1 — so the one host where the defect exists was never the host under test,
 # and the whole file passed with the defect planted. An integrity test that cannot observe the
 # failure it was written for is worse than no test: it certifies the thing it never checked.
