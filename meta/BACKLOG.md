@@ -2499,7 +2499,7 @@ is not.** It is B-55's class, and it is the direct cause of B-104: the change wa
 `command -v python3` and showing the non-zero exit before the clean pass — per the trap in B-101, an
 optimised or narrowed gate that silently checks fewer sites is worse than no gate.
 
-### B-109 · `no-meta-leak` denies our vocabulary but not the maintainer's filesystem
+### B-109 · `no-meta-leak` denies our vocabulary but not the maintainer's filesystem — **DONE 2026-08-08, see Done section**
 **Effort:** S · **Priority:** **P2** · found 2026-08-05 while reviewing B-106's implementation ·
 **Invariants:** #6
 
@@ -3138,6 +3138,41 @@ indistinguishable from a missing artifact unless the artifact's existence is rep
 > defects found in the v0.51.0 diff. Full evidence in `meta/review-ledger.md`.
 
 ---
+### B-122 · Remove personal machine details from the public authoring repository
+**Effort:** S–M · **Priority:** P3 · filed 2026-08-08 following B-109 · **Scope:** maintainer layer,
+not shipped distributions
+
+**Why:** B-109 established a generic gate preventing account-qualified home paths from reaching a
+composed distribution, but the public authoring repository still contains personal machine details.
+Observed on 2026-08-08: 30 tracked case-insensitive occurrences of the maintainer's name or GitHub
+handle, including unnecessary `C:\Users\<account>\...` and `/c/Users/<account>/...` paths in
+maintainer scripts, operational documentation, backlog evidence, decision records, and eval output.
+The three `dist/` trees contained zero occurrences of the maintainer's name. Some authoring-repo
+identity is intentional and public — the MIT copyright attribution and GitHub repository URLs — so
+this is a classification and sanitisation task, not a blind text replacement.
+
+**Do:** inventory every tracked account-qualified home path and personal-name occurrence, classify
+each as required public identity or incidental machine detail, then:
+1. replace incidental paths in prose/evidence with stable placeholders such as `<home>`,
+   `<username>`, or `<repo>` without falsifying the recorded technical result;
+2. replace hard-coded maintainer paths in executable scripts with parameters, environment variables,
+   or existing host-resolution helpers, with behavioural tests for any changed executable;
+3. preserve `LICENSE` attribution and repository-owner URLs unless the maintainer explicitly chooses
+   otherwise;
+4. add a repository-level gate for account-qualified home paths outside fixtures, distinct from
+   B-109's distribution boundary, with narrow allow rules for deliberate test fixtures and an
+   executable red test on Windows, Linux, and macOS forms;
+5. record an explicit decision on Git history. Working-tree cleanup does not erase already-pushed
+   commits; history rewriting requires a separate, maintainer-approved migration because it changes
+   every descendant commit and affects collaborators, tags, and forks. Do not rewrite history as
+   part of this item without that approval.
+
+**Done when:** the tracked-tree sweep reports no incidental personal machine paths; every remaining
+name/handle occurrence is enumerated and justified; affected scripts still pass their behavioural
+tests; the new prevention gate has been observed red on planted generic fixtures and green on the
+clean tree; and the history-retention/rewrite decision is recorded.
+
+---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see the Done section.**
@@ -3328,6 +3363,18 @@ planted unreadable file and an emptied tree, both twins.
 ---
 
 ## Done
+
+- **B-109** — done **2026-08-08** (meta-only; no shipped version). Extended the shared
+  `no-meta-leak` denylist to reject Windows user profiles and Linux/macOS home directories while
+  retaining generic documentation placeholders. Added a real-dist regression covering all three
+  forms on both validator twins. Red-before-green: a planted
+  `C:\Users\ExamplePerson\private.txt` passed both validators (`EXIT=0`) before the change and
+  failed both afterward (`EXIT=1`); the focused four-form test passed on both legs, full
+  `validate-dist.ps1` passed all three dists, and the meta suite passed 11 files with zero failures.
+  **RCA:** no gate caught the original leak because check 6 encoded only development vocabulary,
+  not host identity or filesystem provenance. The same class exposes any shipped textual artifact
+  containing an account-qualified home path; the new cross-platform patterns sweep the entire
+  composed distribution without recording a maintainer's identity in the denylist itself.
 
 - **CI watch, 2026-08-04:** one linux run failed `route-prompt twins agree: security (Copilot)` with
   `ps1=139 sh=0`. Exit 139 is SIGSEGV — the pwsh child crashed on the ubuntu runner; the harness
