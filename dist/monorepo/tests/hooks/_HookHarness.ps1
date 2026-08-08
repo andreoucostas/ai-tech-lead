@@ -156,13 +156,14 @@ function New-ExecShim {
 
 # Run $ScriptPath under bash with PATH restricted to ONLY $Utilities (+ $FakeBins, + a real
 # interpreter aliased as $ExposeInterpreterAs if requested). Platform split matches
-# FrameworkDoctor.Tests.ps1's original sandbox: Git Bash (MSYS) needs its exes COPIED alongside
-# their DLLs (symlinks are unreliable there); POSIX hosts build the sandbox's symlinks INSIDE bash,
-# because pwsh-created symlinks resolved as "command not found" on the linux CI runner. Setup runs
-# with the full inherited PATH; only the script invocation itself sees the restricted one. The
-# script is always run AS AN ARGUMENT TO bash, never executed directly: shipped hooks are tracked
-# without the executable bit (Windows ignores that, Linux enforces it), so a direct exec would be
-# "Permission denied" on a Linux leg while working by accident on Windows.
+# FrameworkDoctor.Tests.ps1's original sandbox needs stable PATH-local utility names. Git Bash
+# (MSYS) uses tiny wrappers that exec its absolute /usr/bin tools; this avoids copying every utility
+# dependency DLL into every fixture while exposing exactly the same command names. POSIX hosts build
+# the sandbox's symlinks INSIDE bash, because pwsh-created symlinks resolved as "command not found"
+# on the linux CI runner. Setup runs with the full inherited PATH; only the script invocation itself
+# sees the restricted one. The script is always run AS AN ARGUMENT TO bash, never executed directly:
+# shipped hooks are tracked without the executable bit (Windows ignores that, Linux enforces it), so
+# a direct exec would be "Permission denied" on a Linux leg while working by accident on Windows.
 function Invoke-Sandboxed {
     param(
         [Parameter(Mandatory)][string]$Bash,
@@ -183,8 +184,7 @@ function Invoke-Sandboxed {
         foreach ($name in $FakeBins.Keys) { [IO.File]::WriteAllText((Join-Path $bin $name), $FakeBins[$name]) }
         if ($Bash -match '\\Git\\bin\\bash\.exe$') {
             $git = Split-Path (Split-Path $Bash -Parent) -Parent; $usr = Join-Path $git 'usr/bin'
-            foreach ($n in $effectiveUtilities) { $exe = Join-Path $usr "$n.exe"; if (Test-Path -LiteralPath $exe) { Copy-Item $exe $bin } }
-            Get-ChildItem $usr -Filter '*.dll' | Copy-Item -Destination $bin
+            foreach ($n in $effectiveUtilities) { [IO.File]::WriteAllText((Join-Path $bin $n), "#!/bin/sh`nexec /usr/bin/$n `"`$@`"`n") }
             if ($ExposeInterpreterAs) {
                 $real = Resolve-HostPython
                 if ($real) { [IO.File]::WriteAllText((Join-Path $bin $ExposeInterpreterAs), (New-ExecShim $real)) }

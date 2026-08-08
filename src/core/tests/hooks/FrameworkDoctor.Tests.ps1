@@ -70,18 +70,13 @@ exit 0
     Put (Join-Path $bin 'jq') ($jq.Replace('__TEMPLATE__',$Template)+"`n")
     if($BashCopilot){Put (Join-Path $bin 'copilot') "#!/bin/sh`nexit 0`n"}
     if($PowerShellCopilot){Put (Join-Path $bin 'copilot.cmd') "@exit /b 0`r`n"}
+    $utilityNames=@('sed','grep','sort','head')
     if($Bash-match'\\Git\\bin\\bash\.exe$'){
-        $git=Split-Path (Split-Path $Bash -Parent) -Parent;$usr=Join-Path $git 'usr/bin'
-        $probeFiles=@(@('sed','grep','sort','head')|ForEach-Object{Join-Path $usr "$_.exe"})+@(Get-ChildItem $usr -Filter '*.dll'|ForEach-Object FullName)
-        foreach($source in $probeFiles){
-            if(Test-Path -LiteralPath $source){
-                $destination=Join-Path $bin (Split-Path $source -Leaf)
-                try{$null=New-Item -ItemType HardLink -Path $destination -Target $source -ErrorAction Stop}catch{Copy-Item -LiteralPath $source -Destination $destination}
-            }
-        }
+        foreach($name in $utilityNames){Put (Join-Path $bin $name) ("#!/bin/sh`nexec /usr/bin/$name `"`$@`"`n")}
     }else{$posixBin=ConvertTo-PosixPath $bin;$null=& $Bash -c ('for t in sed grep sort head; do ln -sf "$(command -v $t)" "{0}/$t"; done' -f $posixBin) 2>$null}
     $posix=ConvertTo-PosixPath $bin
-    $chmod='chmod +x "'+$posix+'/jq"';if($BashCopilot){$chmod+=' "'+$posix+'/copilot"'};$null=& $Bash -c $chmod 2>$null
+    $chmodNames=@('jq');if($BashCopilot){$chmodNames+='copilot'};if($Bash-match'\\Git\\bin\\bash\.exe$'){$chmodNames+=$utilityNames}
+    $chmod='chmod +x '+(($chmodNames|ForEach-Object{'"'+$posix+'/'+$_+'"'})-join' ');$null=& $Bash -c $chmod 2>$null
     if($LASTEXITCODE-ne 0){Remove-Item -Recurse -Force $bin;throw "could not make controlled jq executable (exit $LASTEXITCODE)"}
     return $bin
 }
@@ -143,7 +138,6 @@ if($bash){
 It 'PowerShell doctor cannot infer parser availability for a Copilot-only bash guard' {$r=Fixture -Pending $true;$bin=New-ParserProbeBin $bash;$old=$env:PATH;try{$settings=Get-Content -Raw (Join-Path $r '.claude/settings.json');$copilot=Get-Content -Raw (Join-Path $r '.github/hooks/hooks.json');Assert ($settings-match'guard\.ps1') "setup: Claude PowerShell guard absent: $settings";Assert ($settings-notmatch'guard\.sh') "setup: Claude unexpectedly wires guard.sh: $settings";Assert ($copilot-match'"bash"\s*:\s*"\.claude/hooks/guard\.sh"') "setup: Copilot bash guard absent: $copilot";$env:PATH=(Split-Path $bash -Parent)+[IO.Path]::PathSeparator+$bin+[IO.Path]::PathSeparator+$old;$null=& $bash --noprofile --norc -c 'command -v jq >/dev/null 2>&1';Assert ($LASTEXITCODE-eq 0) 'setup: controlled child bash cannot resolve jq';$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');$parsed=Parse-DoctorResult $x;Assert ($parsed.Rows['Guard JSON parser'].State-eq'CANT-VERIFY') "expected CANT-VERIFY for Copilot-only bash guard, got: $($x.Out)";Assert ($x.Exit-eq 0-and$parsed.Missing-eq 0) 'CANT-VERIFY changed exit or missing summary contribution'}finally{$env:PATH=$old;Remove-Item -Recurse -Force $r,$bin}}
 It 'PowerShell doctor cannot promote a Claude bash guard from its child bash PATH' {$r=Fixture -Shell 'bash' -Pending $true;$bin=New-ParserProbeBin $bash;$old=$env:PATH;try{$settings=Get-Content -Raw (Join-Path $r '.claude/settings.json');Assert ($settings-match'guard\.sh') "setup: Claude bash guard absent: $settings";$env:PATH=(Split-Path $bash -Parent)+[IO.Path]::PathSeparator+$bin+[IO.Path]::PathSeparator+$old;$null=& $bash --noprofile --norc -c 'command -v jq >/dev/null 2>&1';Assert ($LASTEXITCODE-eq 0) 'setup: controlled child bash cannot resolve jq';$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');$parsed=Parse-DoctorResult $x;Assert ($parsed.Rows['Guard JSON parser'].State-eq'CANT-VERIFY') "expected CANT-VERIFY despite child-bash jq visibility, got: $($x.Out)";Assert ($x.Exit-eq 0-and$parsed.Missing-eq 0) 'CANT-VERIFY changed exit or missing summary contribution'}finally{$env:PATH=$old;Remove-Item -Recurse -Force $r,$bin}}
 It 'PowerShell parser verdict is identical with bash present and absent from its PATH' {$r=Fixture -Shell 'bash' -Pending $true;$bin=New-ParserProbeBin $bash;$old=$env:PATH;try{$env:PATH=(Split-Path $bash -Parent)+[IO.Path]::PathSeparator+$bin;$present=Run (Join-Path $r 'scripts/framework-doctor.ps1');$env:PATH=$bin;Assert (-not (Get-Command bash -ErrorAction SilentlyContinue)) 'setup: bash still resolves in absent arm';$absent=Run (Join-Path $r 'scripts/framework-doctor.ps1');$pp=Parse-DoctorResult $present;$ap=Parse-DoctorResult $absent;Assert ($pp.Rows['Guard JSON parser'].State-eq'CANT-VERIFY') 'present arm state';Assert ($ap.Rows['Guard JSON parser'].State-eq'CANT-VERIFY') 'absent arm state';Assert ($pp.Rows['Guard JSON parser'].Detail-eq$ap.Rows['Guard JSON parser'].Detail) 'PATH changed parser detail';Assert ($pp.Ok-eq$ap.Ok-and$pp.Missing-eq$ap.Missing) 'PATH changed summary contribution'}finally{$env:PATH=$old;Remove-Item -Recurse -Force $r,$bin}}
-It 'PowerShell doctor keeps the parser-not-required outcome reachable with no bash guard registration' {$r=Fixture -Pending $true;try{Put (Join-Path $r '.github/hooks/hooks.json') '{"hooks":{"preToolUse":[{"powershell":".claude\\hooks\\guard.ps1"}]}}';$settings=Get-Content -Raw (Join-Path $r '.claude/settings.json');$copilot=Get-Content -Raw (Join-Path $r '.github/hooks/hooks.json');Assert ($settings-notmatch'guard\.sh') "setup: Claude unexpectedly wires guard.sh: $settings";Assert ($copilot-notmatch'"bash"') "setup: Copilot unexpectedly has a bash member: $copilot";Assert ($copilot-notmatch'guard\.sh') "setup: Copilot unexpectedly targets guard.sh: $copilot";$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Out-match'\[OK\] Guard JSON parser - not required') "reachable no-bash outcome absent: $($x.Out)"}finally{Remove-Item -Recurse -Force $r}}
 It 'both twins require the parser for bare and absolute bash and bash.exe registrations' {
     $holder=Join-Path ([IO.Path]::GetTempPath()) ('doctor-bash-names-'+[guid]::NewGuid());$bin=New-ParserProbeBin $bash;$old=$env:PATH
     New-Item -ItemType Directory -Force $holder|Out-Null
@@ -206,7 +200,7 @@ function Invoke-BashProbe($Command) {
 }
 '@ -replace"`r`n","`n"
         $mutated=$text.Replace($functionAnchor,$functionAnchor+"`n"+$historicalFunction.TrimEnd("`n"))
-        $begin='# B-63-PARSER-BRANCH-BEGIN';$end='# B-63-PARSER-BRANCH-END'
+        $begin='# PARSER-VANTAGE-BRANCH-BEGIN';$end='# PARSER-VANTAGE-BRANCH-END'
         Assert ([regex]::Matches($mutated,[regex]::Escape($begin)).Count-eq 1) 'parser begin anchor is not unique';Assert ([regex]::Matches($mutated,[regex]::Escape($end)).Count-eq 1) 'parser end anchor is not unique'
         $start=$mutated.IndexOf($begin)+$begin.Length;$finish=$mutated.IndexOf($end,$start)
         $historicalBranch=@'
@@ -257,6 +251,7 @@ It 'genuine no-bash and Copilot-only bash fixtures have exact parser divergence 
         foreach($copilotBash in @($false,$true)){
             $r=Fixture -Pending $true -CopilotBash $copilotBash
             try{
+                if(-not$copilotBash){$settings=Get-Content -Raw (Join-Path $r '.claude/settings.json');$copilot=Get-Content -Raw (Join-Path $r '.github/hooks/hooks.json');Assert ($settings-notmatch'guard\.sh') "setup: Claude unexpectedly wires guard.sh: $settings";Assert ($copilot-notmatch'"bash"') "setup: Copilot unexpectedly has a bash member: $copilot";Assert ($copilot-notmatch'guard\.sh') "setup: Copilot unexpectedly targets guard.sh: $copilot"}
                 $p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$s=Run (Join-Path $r 'scripts/framework-doctor.sh');$expected=if($copilotBash){@('Guard JSON parser')}else{@()};$c=Compare-DoctorResults $p $s $expected
                 if($copilotBash){Assert ($c.PowerShell.Rows['Guard JSON parser'].State-eq'CANT-VERIFY') 'Copilot-only PS state';Assert ($c.Bash.Rows['Guard JSON parser'].State-eq'OK') 'Copilot-only Bash state'}else{Assert ($c.PowerShell.Rows['Guard JSON parser'].State-eq'OK') 'no-bash PS state';Assert ($c.Bash.Rows['Guard JSON parser'].State-eq'OK') 'no-bash Bash state'}
             }finally{Remove-Item -Recurse -Force $r}
@@ -265,7 +260,6 @@ It 'genuine no-bash and Copilot-only bash fixtures have exact parser divergence 
 }
 It 'twins agree outside the parser row when liveness is absent and present' {$r=Fixture -Shell 'bash' -Pending $true;$bin=New-ParserProbeBin $bash;$old=$env:PATH;try{$env:PATH=(Split-Path $bash -Parent)+[IO.Path]::PathSeparator+$bin+[IO.Path]::PathSeparator+$old;foreach($stamp in @($null,'2026-07-31T12:34:56Z')){Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $r '.claude/.state/last-session-start');if($stamp){New-Item -ItemType Directory -Force (Join-Path $r '.claude/.state')|Out-Null;Put (Join-Path $r '.claude/.state/last-session-start') $stamp};$p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$s=Run (Join-Path $r 'scripts/framework-doctor.sh');$c=Compare-DoctorResults $p $s @('Guard JSON parser');Assert ($c.PowerShell.Rows['Guard JSON parser'].State-eq'CANT-VERIFY') 'PowerShell parser state';Assert ($c.Bash.Rows['Guard JSON parser'].State-eq'OK') 'Bash parser state'}}finally{$env:PATH=$old;Remove-Item -Recurse -Force $r,$bin}}
 It 'Copilot hook registrations with arguments resolve only their file paths' {$r=Fixture -Shell 'bash' -Pending $true -HookArguments $true;$bin=New-ParserProbeBin $bash;$old=$env:PATH;try{$env:PATH=(Split-Path $bash -Parent)+[IO.Path]::PathSeparator+$bin+[IO.Path]::PathSeparator+$old;$p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$s=Run (Join-Path $r 'scripts/framework-doctor.sh');$c=Compare-DoctorResults $p $s @('Guard JSON parser');Assert ($c.PowerShell.Rows['Hook files'].State-eq'OK') 'PowerShell hook row';Assert ($c.Bash.Rows['Hook files'].State-eq'OK') 'Bash hook row'}finally{$env:PATH=$old;Remove-Item -Recurse -Force $r,$bin}}
-It 'twins agree outside the parser row on a pending fixture' {$r=Fixture -Shell 'bash' -Pending $true;$bin=New-ParserProbeBin $bash;$old=$env:PATH;try{$env:PATH=(Split-Path $bash -Parent)+[IO.Path]::PathSeparator+$bin+[IO.Path]::PathSeparator+$old;$p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$s=Run (Join-Path $r 'scripts/framework-doctor.sh');$null=Compare-DoctorResults $p $s @('Guard JSON parser')}finally{$env:PATH=$old;Remove-Item -Recurse -Force $r,$bin}}
 # Non-pending cases reach Mirror and Audit; the controlled template matrix below separately forces
 # every Stack-toolchain marker with both available and absent command sets.
 It 'twins agree outside the parser row on non-pending mirror pass' {$r=Fixture -Shell 'bash';$bin=New-ParserProbeBin $bash;$old=$env:PATH;try{$env:PATH=(Split-Path $bash -Parent)+[IO.Path]::PathSeparator+$bin+[IO.Path]::PathSeparator+$old;$p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$s=Run (Join-Path $r 'scripts/framework-doctor.sh');$c=Compare-DoctorResults $p $s @('Guard JSON parser');Assert ($c.PowerShell.Rows['Mirror and version integrity'].State-eq'OK') 'PS mirror row'}finally{$env:PATH=$old;Remove-Item -Recurse -Force $r,$bin}}

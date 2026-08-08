@@ -283,7 +283,7 @@ Add one PowerShell mutation test against a scratch copy of the fixed real doctor
    }
    ```
 
-2. The fixed production branch must be bounded by unique comments `# B-63-PARSER-BRANCH-BEGIN` and `# B-63-PARSER-BRANCH-END`. Assert each marker occurs exactly once and replace only the text between them with this historical inference, retaining the corrected registration-demand boolean:
+2. The fixed production branch must be bounded by unique comments `# PARSER-VANTAGE-BRANCH-BEGIN` and `# PARSER-VANTAGE-BRANCH-END`. Assert each marker occurs exactly once and replace only the text between them with this historical inference, retaining the corrected registration-demand boolean. These neutral names correct the original design's backlog-ID-prefixed anchors: the test is shipped to consumers, so invariant #6 forbids a `B-63` maintainer token in either the production marker or its test literal.
 
    ```powershell
    if ($bashGuardRegistered) {

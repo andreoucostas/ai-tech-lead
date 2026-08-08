@@ -321,7 +321,7 @@ version → date verified) that a gate can diff against the shipped surfaces. Ch
 that greps shipped files for a denylist of *superseded* claims, so the next vendor change fails a
 gate instead of quietly making six files wrong.
 
-### B-56 · Host-dependent capability probes make gate outcomes machine-dependent
+### B-56 · Host-dependent capability probes make gate outcomes machine-dependent — **DONE 2026-08-08, see Done**
 **Effort:** S · **Priority:** P2 · **Invariants:** #3
 
 **Why:** `framework-doctor`'s "Guard JSON parser" row asked PowerShell's `Get-Command jq` (Windows
@@ -516,7 +516,7 @@ the same exposure.
 **Do:** add a `validate-dist` check that fails on a bare interpreter name in a shipped settings
 file; red-test it by planting one.
 
-### B-63 · Audit every capability probe for vantage-point validity
+### B-63 · Audit every capability probe for vantage-point validity — **DONE 2026-08-08, see Done**
 **Effort:** M · **Priority:** P2
 
 **Why:** this is the **second** instance of the class; the first was a jq probe checking from
@@ -3580,6 +3580,53 @@ planted unreadable file and an emptied tree, both twins.
 ---
 
 ## Done
+
+- **B-63 / B-56** — done **2026-08-08** (target v0.51.3). The audit closed B-56's
+  remaining class rather than treating v0.35.0's child-Bash probe as a complete fix. The complete
+  disposition is: `Framework install`, `Framework rules delivery`, `Protected-file sync`,
+  `Bootstrap/adoption state`, `Hook files`, and `Mirror and version integrity` remain valid
+  checkout-local structural checks; `Hook liveness` remains the actual Claude-host observation;
+  `Audit trail substrate` remains a doctor-process filesystem check, not host-execution proof;
+  `Wired hook shell` now treats a portable bare interpreter as deliberately unobservable and an
+  absolute path as current-machine evidence only; `Guard JSON parser` derives demand from the
+  actual registered Claude and Copilot `guard.sh` targets, reports `CANT-VERIFY` from PowerShell,
+  and reports only on “this Bash environment” when invoked directly under Bash; `Stack toolchain`
+  and `Copilot surface` now describe resolution only in “this doctor process environment,” with
+  their actual-host claims left to explicit canaries. The new post-write canary requires a
+  deliberate compile/type failure through the agent, the hook's own build-failure heading, a
+  revert, and awareness of the throttle.
+
+  **Observed red:** on unchanged production, the new Copilot-only-demand fixture registered
+  `guard.sh` only through `.github/hooks/*.json`; the PowerShell doctor incorrectly printed
+  `[OK] ... not required` instead of `CANT-VERIFY`. In the Claude-Bash fixture, a controlled parser
+  visible only to the doctor-spawned child made the old PowerShell probe print `[OK]`, proving it
+  was observing its inherited `PATH`, while the genuine no-Bash setup control stayed `[OK] ... not
+  required`. Both defects reproduced under pwsh and Windows PowerShell 5.1. The historical-branch
+  mutation reconstructs the removed function and branch between neutral, exact-once source
+  anchors: with the same registrations and `PATH`, fixed production is `CANT-VERIFY` while the
+  mutant is `OK`, and both keep a coherent summary and exit 0.
+
+  **Observed green before release:** the source `FrameworkDoctor` suite passed 30/30 under pwsh
+  and 29/29 under Windows PowerShell 5.1, with its one existing 5.1 invariant skip explaining that
+  the host Python executable is inaccessible rather than counting it as evidence. The three
+  composed distributions each passed all 15 shipped hook suites. A second composition found all
+  501 generated files byte-identical (165 dotnet, 161 angular, 175 monorepo), and both validator
+  twins passed all 11 checks against all three distributions. Registration matrices cover both
+  twins; parser and CLI asymmetries use exact fixture-specific divergence sets; isolated command
+  bins prevent the maintainer's ambient tools deciding parity. The full source suite completes in
+  91.7 seconds under pwsh and 63.2 seconds under 5.1 after equivalent local utility wrappers
+  replaced thousands of copied Git-Bash runtime files.
+
+  **RCA:** v0.35.0 corrected which language performed the parser lookup but not which environment
+  supplied the evidence: a child shell still inherited the doctor's `PATH`. Demand was also
+  inferred from Claude's interpreter choice rather than the registered guard targets, so a
+  Copilot-only Bash guard disappeared from the row. Ambient-path fixtures and whole-output parity
+  comparisons hid both the invalid observation and legitimate per-surface asymmetries. The
+  prevention is an explicit consumer/observation audit for every row, target-derived demand,
+  `CANT-VERIFY` where the relevant host environment is unobservable, semantic row assertions,
+  exact divergence sets, isolated capability worlds, a reachable historical mutation, and
+  actual-host canaries for facts no local doctor process can prove. WSD-026 retains its historical
+  v0.38.0 record and carries an append-only correction to the v0.38.1 portable bare-name policy.
 
 - **B-67** — done **2026-08-08** (target v0.51.3). Check 7 in both `validate-dist`
   twins now resolves rendered single-line relative inline Markdown links from the document that

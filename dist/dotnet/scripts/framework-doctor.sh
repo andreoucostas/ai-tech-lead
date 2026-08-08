@@ -18,6 +18,23 @@ row() {
   if [ "$1" = MISSING ]; then missing=1; missing_rows=$((missing_rows + 1)); fi
 }
 has() { command -v "$1" >/dev/null 2>&1; }
+is_guard_sh_target() {
+  normalized=$(printf '%s\n' "$1" | sed 's#\\\\#/#g;s#\\#/#g')
+  printf '%s\n' "$normalized" | grep -Eq '^[[:space:]]*("(\./)?\.claude/hooks/guard\.sh"|(\./)?\.claude/hooks/guard\.sh)($|[[:space:]])'
+}
+is_bash_interpreter() {
+  normalized=$(printf '%s\n' "$1" | sed 's#\\#/#g')
+  leaf=${normalized##*/}
+  case "$leaf" in bash|bash.exe) return 0;; *) return 1;; esac
+}
+is_claude_bash_guard_command() {
+  command=$1
+  shell=$(printf '%s\n' "$command" | sed -n 's/^[[:space:]]*"\([^"]*\)".*/\1/p; t; s/^[[:space:]]*\([^[:space:]]*\).*/\1/p')
+  is_bash_interpreter "$shell" || return 1
+  remainder=$(printf '%s\n' "$command" | sed -n 's/^[[:space:]]*"[^"]*"[[:space:]]*\(.*\)$/\1/p; t; s/^[[:space:]]*[^[:space:]]*[[:space:]]*\(.*\)$/\1/p')
+  remainder=$(printf '%s\n' "$remainder" | sed ':again; s/^[[:space:]]*\(--noprofile\|--norc\|-File\|--\)[[:space:]][[:space:]]*//; t again')
+  is_guard_sh_target "$remainder"
+}
 # Resolve a WORKING python once, by execution rather than by name (same grammar as guard.sh): a
 # python.org install ships python.exe and no python3.exe, and the Microsoft Store alias stub
 # resolves under the name `python` but is not an interpreter (it prints "Python was not found"
@@ -41,6 +58,7 @@ finish() {
   echo '[CANT-VERIFY] Claude write guard - ask it to create tmp-doctor-canary.txt containing AKIA plus 16 uppercase letters/digits; pass = the hook says "Blocked write to". A polite refusal is not a pass; delete the file if it lands.'
   echo '[CANT-VERIFY] Copilot VS Code hooks - use the same canary in agent mode; pass = permissionDecisionReason says "Blocked write to". No deny means Preview agent hooks are disabled by you or your GitHub organization administrator.'
   echo '[CANT-VERIFY] Copilot CLI trust - use the same canary after opening and trusting this folder interactively; pass = permissionDecisionReason says "Blocked write to".'
+  echo '[CANT-VERIFY] Agent-host stack toolchain - through the actual agent, make and then revert a harmless deliberate compile/type error in a real build-relevant file after the post-write throttle has elapsed; pass = the hook output starts with "## dotnet build failed" or "## tsc --noEmit failed". Model diagnosis or a direct terminal build is not a pass.'
   echo "Script-verifiable checks: $ok ok / $missing_rows missing."
   echo 'Enforcement is only FULL if the canaries above also pass; a script cannot see inside your agent.'
   exit "$missing"
@@ -105,6 +123,13 @@ fi
 settings="$root/.claude/settings.json"
 commands=$(sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\\"\([^"]*\)\\"\(.*\)".*/"\1"\2/p; t; s/.*"command"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$settings" 2>/dev/null)
 shells=$(printf '%s\n' "$commands" | sed -n 's/^[[:space:]]*"\([^"]*\)".*/\1/p; t; s/^[[:space:]]*\([^[:space:]]*\)[[:space:]].*/\1/p' | sort -u)
+bash_guard_registered=0
+while IFS= read -r command; do
+  [ -z "$command" ] && continue
+  if is_claude_bash_guard_command "$command"; then bash_guard_registered=1; fi
+done <<EOF
+$commands
+EOF
 if [ -z "$shells" ]; then
   row MISSING 'Wired hook shell' 'no hook interpreter could be read from .claude/settings.json. Fix: re-run the installer to rewire hooks.'
 else
@@ -121,10 +146,10 @@ else
 $shells
 EOF
   if [ -n "$missing_shells" ]; then
-    row MISSING 'Wired hook shell' "the wired interpreter path does not exist on this machine, so hooks are silently dead: $missing_shells. Fix: re-run the installer."
+    row MISSING 'Wired hook shell' "the configured machine-specific interpreter path is absent on this machine: $missing_shells. Fix: re-run the installer to restore portable bare-name wiring."
   elif [ -n "$bare_shells" ]; then
-    row CANT-VERIFY 'Wired hook shell' "hooks are wired to the bare name $bare_shells, so whether they run depends on the PATH of the shell your agent launches hooks with, which this script cannot observe -- if hooks seem to do nothing, this is the first thing to check. Fix: re-run the installer to pin an absolute interpreter path."
-  else row OK 'Wired hook shell' "wired interpreter paths exist: $existing_shells."
+    row CANT-VERIFY 'Wired hook shell' "hooks use the portable bare interpreter name $bare_shells; this doctor cannot observe the agent host's PATH. Use Hook liveness and the host canaries below."
+  else row OK 'Wired hook shell' "wired interpreter paths exist on this machine: $existing_shells."
   fi
 fi
 
@@ -136,7 +161,15 @@ else
   row CANT-VERIFY 'Hook liveness' 'no hook has recorded a run here; if you have already started a Claude Code session in this repo, your hooks are not firing -- check the wired interpreter above, and see docs/enforcement-surfaces.md.'
 fi
 
-paths=$( { printf '%s\n' "$commands" | grep -oE '[^ ]*\.claude[\\/]hooks[\\/][^ ]+'; sed -n 's/.*"\(bash\|powershell\)"[[:space:]]*:[[:space:]]*"\([^"[:space:]]*\).*/\2/p' "$root/.github/hooks/hooks.json" 2>/dev/null; } | sed 's#\\\\#/#g;s#^\./##' | sort -u)
+copilot_hook_commands=$(grep -oE '"(bash|powershell)"[[:space:]]*:[[:space:]]*"[^"]*"' "$root/.github/hooks/hooks.json" 2>/dev/null | sed -n 's/^"[^"]*"[[:space:]]*:[[:space:]]*"\([^"]*\)"$/\1/p')
+paths=$( { printf '%s\n' "$commands" | grep -oE '[^ ]*\.claude[\\/]hooks[\\/][^ ]+'; printf '%s\n' "$copilot_hook_commands" | sed 's/[[:space:]].*$//'; } | sed 's#\\\\#/#g;s#^\./##' | sort -u)
+copilot_bash_commands=$(grep -oE '"bash"[[:space:]]*:[[:space:]]*"[^"]*"' "$root/.github/hooks/hooks.json" 2>/dev/null | sed -n 's/^"bash"[[:space:]]*:[[:space:]]*"\([^"]*\)"$/\1/p')
+while IFS= read -r command; do
+  [ -z "$command" ] && continue
+  if is_guard_sh_target "$command"; then bash_guard_registered=1; fi
+done <<EOF
+$copilot_bash_commands
+EOF
 missing_paths=''; count=0
 while IFS= read -r path; do
   [ -z "$path" ] && continue
@@ -150,14 +183,14 @@ if [ "$count" -eq 0 ] || [ -n "$missing_paths" ]; then
 else row OK 'Hook files' "$count registered files are present."
 fi
 
-if printf '%s\n' "$shells" | grep -qx bash; then
-  if has jq; then row OK 'Guard JSON parser' 'jq or a working python interpreter is available.'
+if [ "$bash_guard_registered" -eq 1 ]; then
+  if has jq; then row OK 'Guard JSON parser' 'jq or a working python interpreter is available in this Bash environment.'
   else
     resolve_pybin
-    if [ -n "$_pybin" ]; then row OK 'Guard JSON parser' 'jq or a working python interpreter is available.'
-    else row MISSING 'Guard JSON parser' 'the bash write guard is INACTIVE and allows writes with only a warning. Fix: install jq.'; fi
+    if [ -n "$_pybin" ]; then row OK 'Guard JSON parser' 'jq or a working python interpreter is available in this Bash environment.'
+    else row MISSING 'Guard JSON parser' 'this Bash environment has no working JSON parser, so guard.sh is INACTIVE and allows writes with only a warning. Fix: install jq.'; fi
   fi
-else row OK 'Guard JSON parser' 'not required by the wired PowerShell hooks.'
+else row OK 'Guard JSON parser' 'not required by the registered PowerShell guards.'
 fi
 
 if [ "$pending" -eq 1 ]; then row PENDING 'Stack toolchain' 'not checked until /bootstrap or /adopt completes.'
@@ -165,8 +198,8 @@ else
   missing_tools=''
   case "$template" in *dotnet*|*monorepo*) has dotnet || missing_tools=dotnet;; esac
   case "$template" in *angular*|*monorepo*) has node || missing_tools="${missing_tools}${missing_tools:+,}node"; has npx || missing_tools="${missing_tools}${missing_tools:+,}npx";; esac
-  if [ -n "$missing_tools" ]; then row MISSING 'Stack toolchain' "compile checks after writes cannot run; errors surface at CI instead. Fix: install $missing_tools."
-  else row OK 'Stack toolchain' "required $template toolchain commands are available."; fi
+  if [ -n "$missing_tools" ]; then row MISSING 'Stack toolchain' "the required toolchain commands are absent from this doctor process environment: $missing_tools; this does not prove the agent host's post-write environment. Fix: install them on this machine if the actual-host canary also fails."
+  else row OK 'Stack toolchain' "required $template toolchain commands are available in this doctor process environment; this does not prove the agent host's post-write environment."; fi
 fi
 
 copilot_json="$root/.github/hooks/hooks.json"
@@ -188,8 +221,8 @@ fi
 # Twin divergence by design: only this twin can hit the CANT-VERIFY branch below — the .ps1 twin
 # always has a JSON parser (PowerShell native), so it reports valid/invalid directly.
 if [ "$copilot_valid" -eq 1 ]; then
-  if has copilot; then row OK 'Copilot surface' 'hooks.json is valid and the Copilot CLI is present.'
-  else row OK 'Copilot surface' 'hooks.json is valid; Copilot CLI is absent (Claude-only teams need no action). If your team uses Copilot, the GA CLI is the cheapest real enforcement path.'; fi
+  if has copilot; then row OK 'Copilot surface' 'hooks.json is valid and Copilot CLI is available in this doctor process environment.'
+  else row OK 'Copilot surface' 'hooks.json is valid; Copilot CLI is absent from this doctor process environment. Claude-only teams need no action; Copilot teams must use the actual-surface canaries below.'; fi
 elif [ "$copilot_invalid" -eq 1 ]; then row MISSING 'Copilot surface' '.github/hooks/hooks.json exists but is not valid JSON. Fix: re-run the installer or correct the file.'
 elif [ "$copilot_unknown" -eq 1 ]; then row CANT-VERIFY 'Copilot surface' 'hooks.json exists, but JSON validity cannot be checked without jq or a working python interpreter. Install jq, then rerun the doctor.'
 else row MISSING 'Copilot surface' '.github/hooks/hooks.json is missing. Fix: re-run the installer.'

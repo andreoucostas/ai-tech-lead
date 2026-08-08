@@ -11,25 +11,20 @@ function Row($State, $Name, $Detail) {
     if ($State -eq 'MISSING') { $script:missing = 1; $script:missingRows++ }
 }
 function Has($Name) { [bool](Get-Command $Name -ErrorAction SilentlyContinue) }
-# This sees the doctor's environment, not the agent host's; never use it to predict host command resolution.
-function Invoke-BashProbe($Command) {
-    $bashCommand = Get-Command bash -ErrorAction SilentlyContinue
-    if (-not $bashCommand) { return $null }
-    try {
-        $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $startInfo.FileName = $bashCommand.Source
-        $startInfo.Arguments = '--noprofile --norc -c "' + $Command + '"'
-        $startInfo.UseShellExecute = $false
-        $startInfo.CreateNoWindow = $true
-        $process = New-Object System.Diagnostics.Process
-        $process.StartInfo = $startInfo
-        if ($process.Start()) {
-            if ($process.WaitForExit(3000)) { $result = ($process.ExitCode -eq 0) }
-            else { $process.Kill(); $result = $null }
-        } else { $result = $null }
-        $process.Dispose()
-        return $result
-    } catch { return $null }
+function Test-GuardShTarget($Command) {
+    $normalized = [string]$Command -replace '\\\\','/' -replace '\\','/'
+    return [bool]($normalized -match '(?i)^\s*(?:"(?:\./)?\.claude/hooks/guard\.sh"|''(?:\./)?\.claude/hooks/guard\.sh''|(?:\./)?\.claude/hooks/guard\.sh)(?=$|\s)')
+}
+function Test-ClaudeBashGuardCommand($Command) {
+    $executable = $null; $remainder = $null
+    if ($Command -match '^\s*"([^"]+)"\s*(.*)$') { $executable = $matches[1]; $remainder = $matches[2] }
+    elseif ($Command -match "^\s*'([^']+)'\s*(.*)$") { $executable = $matches[1]; $remainder = $matches[2] }
+    elseif ($Command -match '^\s*([^\s]+)\s*(.*)$') { $executable = $matches[1]; $remainder = $matches[2] }
+    if (-not $executable) { return $false }
+    $leaf = [IO.Path]::GetFileName(($executable -replace '\\','/'))
+    if ($leaf -notmatch '(?i)^bash(?:\.exe)?$') { return $false }
+    $remainder = $remainder -replace '^\s*(?:(?:--noprofile|--norc|-File|--)\s+)*',''
+    return (Test-GuardShTarget $remainder)
 }
 function Finish {
     Write-Output ''
@@ -37,6 +32,7 @@ function Finish {
     Write-Output '[CANT-VERIFY] Claude write guard - ask it to create tmp-doctor-canary.txt containing AKIA plus 16 uppercase letters/digits; pass = the hook says "Blocked write to". A polite refusal is not a pass; delete the file if it lands.'
     Write-Output '[CANT-VERIFY] Copilot VS Code hooks - use the same canary in agent mode; pass = permissionDecisionReason says "Blocked write to". No deny means Preview agent hooks are disabled by you or your GitHub organization administrator.'
     Write-Output '[CANT-VERIFY] Copilot CLI trust - use the same canary after opening and trusting this folder interactively; pass = permissionDecisionReason says "Blocked write to".'
+    Write-Output '[CANT-VERIFY] Agent-host stack toolchain - through the actual agent, make and then revert a harmless deliberate compile/type error in a real build-relevant file after the post-write throttle has elapsed; pass = the hook output starts with "## dotnet build failed" or "## tsc --noEmit failed". Model diagnosis or a direct terminal build is not a pass.'
     Write-Output ("Script-verifiable checks: {0} ok / {1} missing." -f $script:ok, $script:missingRows)
     Write-Output 'Enforcement is only FULL if the canaries above also pass; a script cannot see inside your agent.'
     exit $script:missing
@@ -124,10 +120,10 @@ if ($shells.Count -eq 0) {
         } else { $bareShells += $shell }
     }
     if ($missingShells.Count) {
-        Row MISSING 'Wired hook shell' ("the wired interpreter path does not exist on this machine, so hooks are silently dead: {0}. Fix: re-run the installer." -f ($missingShells -join ','))
+        Row MISSING 'Wired hook shell' ("the configured machine-specific interpreter path is absent on this machine: {0}. Fix: re-run the installer to restore portable bare-name wiring." -f ($missingShells -join ','))
     } elseif ($bareShells.Count) {
-        Row CANT-VERIFY 'Wired hook shell' ("hooks are wired to the bare name {0}, so whether they run depends on the PATH of the shell your agent launches hooks with, which this script cannot observe -- if hooks seem to do nothing, this is the first thing to check. Fix: re-run the installer to pin an absolute interpreter path." -f ($bareShells -join ','))
-    } else { Row OK 'Wired hook shell' ("wired interpreter paths exist: {0}." -f ($existingShells -join ',')) }
+        Row CANT-VERIFY 'Wired hook shell' ("hooks use the portable bare interpreter name {0}; this doctor cannot observe the agent host's PATH. Use Hook liveness and the host canaries below." -f ($bareShells -join ','))
+    } else { Row OK 'Wired hook shell' ("wired interpreter paths exist on this machine: {0}." -f ($existingShells -join ',')) }
 }
 
 $livenessPath = Join-Path $root '.claude/.state/last-session-start'
@@ -149,17 +145,20 @@ foreach ($command in $commands) {
 $copilotPath = Join-Path $root '.github/hooks/hooks.json'
 $copilotValid = $false
 $copilotExists = Test-Path -LiteralPath $copilotPath
+$copilotBashCommands = @()
 if ($copilotExists) {
-    try {
-        $null = Get-Content -Raw -LiteralPath $copilotPath | ConvertFrom-Json
-        $copilotValid = $true
-        $rawCopilot = Get-Content -Raw -LiteralPath $copilotPath
+    try { $rawCopilot = Get-Content -Raw -LiteralPath $copilotPath -ErrorAction Stop } catch { $rawCopilot = $null }
+    if ($rawCopilot) {
+        try { $null = $rawCopilot | ConvertFrom-Json; $copilotValid = $true } catch { }
         [regex]::Matches($rawCopilot, '"(?:bash|powershell)"\s*:\s*"([^" ]+)[^"]*"') | ForEach-Object {
             $path = $_.Groups[1].Value -replace '\\\\','/'
             if ($path.StartsWith('./')) { $path = $path.Substring(2) }
             $hookPaths += $path
         }
-    } catch { }
+        [regex]::Matches($rawCopilot, '"bash"\s*:\s*"([^"]*)"') | ForEach-Object {
+            $copilotBashCommands += $_.Groups[1].Value
+        }
+    }
 }
 $hookPaths = @($hookPaths | Select-Object -Unique)
 $missingHooks = @($hookPaths | Where-Object { -not (Test-Path -LiteralPath (Join-Path $root $_)) })
@@ -168,19 +167,13 @@ if ($hookPaths.Count -eq 0 -or $missingHooks.Count) {
     Row MISSING 'Hook files' ("registration points at a missing file; hooks are silently dead. Fix: re-run the installer. Missing: {0}" -f $names)
 } else { Row OK 'Hook files' ("{0} registered files are present." -f $hookPaths.Count) }
 
-$bashWired = @($shells | Where-Object { $_ -eq 'bash' }).Count -gt 0
-if ($bashWired) {
-    # The row reports on guard.sh, which runs under bash -- so capability must be observed from
-    # bash's vantage point. Probe execution, not name: jq, or any of python3/python/py that can
-    # actually round-trip JSON (a python.org install ships no python3.exe, and the Microsoft Store
-    # alias stub resolves under the name `python` but is not an interpreter). When bash cannot be
-    # observed, the honest answer is CANT-VERIFY -- guessing from this script's own PATH reports on
-    # the wrong shell, which is exactly how this row previously came out backwards.
-    $bashParser = Invoke-BashProbe 'command -v jq >/dev/null 2>&1 && exit 0; for c in python3 python py; do command -v $c >/dev/null 2>&1 && printf ''{}'' | $c -c ''import json,sys; json.load(sys.stdin)'' >/dev/null 2>&1 && exit 0; done; exit 1'
-    if ($null -eq $bashParser) { Row CANT-VERIFY 'Guard JSON parser' 'bash is wired but this script could not observe its PATH (no usable bash found, or the probe timed out), so whether a JSON parser is available to the guard cannot be determined from here.' }
-    elseif ($bashParser) { Row OK 'Guard JSON parser' 'jq or a working python interpreter is available.' }
-    else { Row MISSING 'Guard JSON parser' 'the bash write guard is INACTIVE and allows writes with only a warning. Fix: install jq.' }
-} else { Row OK 'Guard JSON parser' 'not required by the wired PowerShell hooks.' }
+$bashGuardRegistered = @($commands | Where-Object { Test-ClaudeBashGuardCommand $_ }).Count -gt 0
+if (-not $bashGuardRegistered) { $bashGuardRegistered = @($copilotBashCommands | Where-Object { Test-GuardShTarget $_ }).Count -gt 0 }
+# PARSER-VANTAGE-BRANCH-BEGIN
+if ($bashGuardRegistered) {
+    Row CANT-VERIFY 'Guard JSON parser' 'PowerShell cannot observe the runtime PATH supplied to guard.sh. Run framework-doctor.sh to inspect this Bash environment; only the write-guard canary below proves the actual agent host.'
+} else { Row OK 'Guard JSON parser' 'not required by the registered PowerShell guards.' }
+# PARSER-VANTAGE-BRANCH-END
 
 if ($pending) { Row PENDING 'Stack toolchain' 'not checked until /bootstrap or /adopt completes.' }
 else {
@@ -191,15 +184,15 @@ else {
         if (-not (Has npx)) { $missingTools += 'npx' }
     }
     if ($missingTools.Count) {
-        Row MISSING 'Stack toolchain' ("compile checks after writes cannot run; errors surface at CI instead. Fix: install {0}." -f ($missingTools -join ','))
-    } else { Row OK 'Stack toolchain' ("required {0} toolchain commands are available." -f $template) }
+        Row MISSING 'Stack toolchain' ("the required toolchain commands are absent from this doctor process environment: {0}; this does not prove the agent host's post-write environment. Fix: install them on this machine if the actual-host canary also fails." -f ($missingTools -join ','))
+    } else { Row OK 'Stack toolchain' ("required {0} toolchain commands are available in this doctor process environment; this does not prove the agent host's post-write environment." -f $template) }
 }
 
 # Twin divergence by design: the .sh twin adds a CANT-VERIFY branch here for "hooks.json exists
 # but no JSON parser to validate it" — PowerShell parses JSON natively, so this twin cannot hit it.
 if ($copilotValid) {
-    if (Has copilot) { Row OK 'Copilot surface' 'hooks.json is valid and the Copilot CLI is present.' }
-    else { Row OK 'Copilot surface' 'hooks.json is valid; Copilot CLI is absent (Claude-only teams need no action). If your team uses Copilot, the GA CLI is the cheapest real enforcement path.' }
+    if (Has copilot) { Row OK 'Copilot surface' 'hooks.json is valid and Copilot CLI is available in this doctor process environment.' }
+    else { Row OK 'Copilot surface' 'hooks.json is valid; Copilot CLI is absent from this doctor process environment. Claude-only teams need no action; Copilot teams must use the actual-surface canaries below.' }
 } elseif ($copilotExists) { Row MISSING 'Copilot surface' '.github/hooks/hooks.json exists but is not valid JSON. Fix: re-run the installer or correct the file.' }
 else { Row MISSING 'Copilot surface' '.github/hooks/hooks.json is missing. Fix: re-run the installer.' }
 

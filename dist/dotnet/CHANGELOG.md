@@ -6,6 +6,12 @@
 
 ## 0.51.3 — Unreleased
 
+- `framework-doctor` now reports capabilities only from the environment it actually observes.
+  Registered Claude and Copilot Bash guards make the PowerShell doctor say that their runtime
+  parser is unobservable; a Bash doctor reports only on its own environment. Portable hook-shell
+  registrations no longer prompt machine-specific absolute paths, stack and Copilot command
+  details identify the doctor-process boundary, and a new post-write canary verifies the actual
+  agent-hosted build hook.
 - Shipped documentation is now checked for dangling relative inline links as well as dead script
   commands. Bootstrap's warehouse-map example is shown as literal Markdown syntax, so the command
   page no longer renders a broken link while preserving the exact link agents should write.

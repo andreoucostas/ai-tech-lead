@@ -169,11 +169,11 @@ if ($hookPaths.Count -eq 0 -or $missingHooks.Count) {
 
 $bashGuardRegistered = @($commands | Where-Object { Test-ClaudeBashGuardCommand $_ }).Count -gt 0
 if (-not $bashGuardRegistered) { $bashGuardRegistered = @($copilotBashCommands | Where-Object { Test-GuardShTarget $_ }).Count -gt 0 }
-# B-63-PARSER-BRANCH-BEGIN
+# PARSER-VANTAGE-BRANCH-BEGIN
 if ($bashGuardRegistered) {
     Row CANT-VERIFY 'Guard JSON parser' 'PowerShell cannot observe the runtime PATH supplied to guard.sh. Run framework-doctor.sh to inspect this Bash environment; only the write-guard canary below proves the actual agent host.'
 } else { Row OK 'Guard JSON parser' 'not required by the registered PowerShell guards.' }
-# B-63-PARSER-BRANCH-END
+# PARSER-VANTAGE-BRANCH-END
 
 if ($pending) { Row PENDING 'Stack toolchain' 'not checked until /bootstrap or /adopt completes.' }
 else {
