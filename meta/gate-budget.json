@@ -7,11 +7,19 @@
   "ceilings-seconds": {
     "compose": 60,
     "dist-gates": 700,
-    "meta-suite": 300,
+    "meta-suite": 650,
     "eval-selftest": 120,
     "total-local-gates": 1000
   },
   "ceiling-revisions": [
+    {
+      "date": "2026-08-08",
+      "stage": "meta-suite",
+      "from": 300,
+      "to": 650,
+      "why": "B-67 (validate-dist checks 7) added a new markdown-link scan over every line of every shipped doc, plus ~7 new ValidateDist.Tests.ps1 cases exercising it across multiple scratch-dist copies -- genuine new scope, not noise. Two consecutive v0.51.3 release attempts refused on this gate, and got WORSE not better (341.6s, then 424.2s), which is what a real baseline shift under load looks like rather than a one-off contention spike. Not measured on an idle box -- this session had many worktrees and background processes running for hours, so these numbers are pessimistic vs. the honest-limit's idle-box assumption. Followed the same policy as the dist-gates revision: ~1.5x the worse observation (424.2 * 1.5 = 636.3), rounded to 650s. This still catches a doubling from here; it does not certify that 650s is the true idle baseline, which is unmeasured and should be re-taken on a quiet box and revised again if it lands meaningfully under this ceiling.",
+      "measured": 424.2
+    },
     {
       "date": "2026-08-07",
       "stage": "dist-gates",
