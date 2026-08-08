@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.51.4 — Unreleased
+## 0.51.4 — 2026-08-08
 
 - B-63/B-56: `framework-doctor` now reports capability evidence from the environment it actually
   observes. Guard-parser demand comes from registered Claude and Copilot `guard.sh` targets;
