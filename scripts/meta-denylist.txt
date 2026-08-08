@@ -45,3 +45,10 @@ DENY \brelease\.ps1\b
 DENY \bworkspace-decisions\b
 DENY \bmeta-invariant
 DENY \.claude/plans/
+
+# --- Machine-local paths -------------------------------------------------------------------------
+# A shipped artifact must not name a maintainer or tool-runner account. Generic documentation
+# placeholders such as C:\path\to\repo remain legitimate because they identify no real host.
+DENY [A-Za-z]:[\\/]Users[\\/]
+DENY /home/[^/ \t]+/
+DENY /Users/[^/ \t]+/

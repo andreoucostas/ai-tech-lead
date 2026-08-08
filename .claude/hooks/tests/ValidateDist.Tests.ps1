@@ -200,6 +200,18 @@ try {
     # The validator had the same blind spot, which is what this case ended up exposing.
     It 'case 10: no markdown files fails check 7' { Assert-Case 'no-docs' { param($d) Get-ChildItem -LiteralPath $d -Recurse -Filter *.md -Force | Remove-Item -Force } 'no-dead-instruction scanned zero documentation files' 'no-dead-instruction' }
     It 'case 11: an empty tree fails check 6' { Assert-Case 'empty-tree' { param($d) Get-ChildItem -LiteralPath $d -Force | Remove-Item -Recurse -Force } 'no-meta-leak scanned zero files' 'no-meta-leak' }
+    It 'case 21: machine-local user paths fail check 6 on both validators' {
+        $fixtures = @(
+            @{ Text='C:\Users\ExamplePerson\private.txt'; Pattern='[A-Za-z]:[\\/]Users[\\/]' },
+            @{ Text='/home/example-person/private.txt'; Pattern='/home/[^/ \t]+/' },
+            @{ Text='/Users/ExamplePerson/private.txt'; Pattern='/Users/[^/ \t]+/' }
+        )
+        foreach ($fixture in $fixtures) {
+            Assert-Case ('machine-path-' + ($fixture.Text -replace '[^A-Za-z]','-')) {
+                param($d) [IO.File]::AppendAllText((Join-Path $d 'README.md'), "`nB109 path fixture: $($fixture.Text)`n")
+            } $fixture.Pattern 'no-meta-leak'
+        }
+    }
     # This unmutated anchor deliberately runs the FULL validator on both legs, so every check is
     # still exercised together and an interaction cannot hide behind focused runs.
     It 'case 12: an unmutated dist stays green under the FULL validator' { Assert-Case 'clean' { param($d) } 'all 26 hook registrations resolve' -Green -FullValidation }

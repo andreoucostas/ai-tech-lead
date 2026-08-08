@@ -2499,7 +2499,7 @@ is not.** It is B-55's class, and it is the direct cause of B-104: the change wa
 `command -v python3` and showing the non-zero exit before the clean pass — per the trap in B-101, an
 optimised or narrowed gate that silently checks fewer sites is worse than no gate.
 
-### B-109 · `no-meta-leak` denies our vocabulary but not the maintainer's filesystem
+### B-109 · `no-meta-leak` denies our vocabulary but not the maintainer's filesystem — **DONE 2026-08-08, see Done section**
 **Effort:** S · **Priority:** **P2** · found 2026-08-05 while reviewing B-106's implementation ·
 **Invariants:** #6
 
@@ -3328,6 +3328,18 @@ planted unreadable file and an emptied tree, both twins.
 ---
 
 ## Done
+
+- **B-109** — done **2026-08-08** (meta-only; no shipped version). Extended the shared
+  `no-meta-leak` denylist to reject Windows user profiles and Linux/macOS home directories while
+  retaining generic documentation placeholders. Added a real-dist regression covering all three
+  forms on both validator twins. Red-before-green: a planted
+  `C:\Users\ExamplePerson\private.txt` passed both validators (`EXIT=0`) before the change and
+  failed both afterward (`EXIT=1`); the focused four-form test passed on both legs, full
+  `validate-dist.ps1` passed all three dists, and the meta suite passed 11 files with zero failures.
+  **RCA:** no gate caught the original leak because check 6 encoded only development vocabulary,
+  not host identity or filesystem provenance. The same class exposes any shipped textual artifact
+  containing an account-qualified home path; the new cross-platform patterns sweep the entire
+  composed distribution without recording a maintainer's identity in the denylist itself.
 
 - **CI watch, 2026-08-04:** one linux run failed `route-prompt twins agree: security (Copilot)` with
   `ps1=139 sh=0`. Exit 139 is SIGSEGV — the pwsh child crashed on the ubuntu runner; the harness
