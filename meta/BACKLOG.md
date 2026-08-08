@@ -281,26 +281,6 @@ Code hedge; this item either upgrades the CLI row to verified or triggers the fa
 B-43 (recert cadence — run this in the same quarterly slot), B-50 (the sibling `postToolUse`
 capability-honesty item from drill #0), B-03 (original canary design).
 
-### B-54 · Shipped changelog dates are never stamped, and no gate rejects the placeholder
-**Effort:** S · **Priority:** P2 gate lies by omission · **Invariants:** #7
-
-**Why:** `release.ps1` rewrites `Unreleased` → today's date in the **root** `CHANGELOG.md` only. The
-three shipped changelogs (`src/stacks/*/files/CHANGELOG.md`) are never touched, and the
-`template-checks` version-stamp gate parses only the version *number* out of the head entry
-(`^## (\d+\.\d+\.\d+)`), so `## 0.35.0 — Unreleased` satisfies it. v0.35.0 came within one manual
-catch of shipping the literal word "Unreleased" to consumers as its release date.
-
-**Do:** extend the release stamping to the shipped changelogs, **and** make `template-checks` fail
-when a shipped changelog head entry carries a placeholder instead of a date — belt and braces, so
-the gate still catches it when an entry is hand-authored outside the release script.
-
-**Second manual catch, 2026-08-05 (v0.46.0).** It happened again, exactly as written: three shipped
-changelog entries were authored `## 0.46.0 — Unreleased`, every gate stayed green on them, and only
-a human remembering this entry stopped "Unreleased" reaching consumers as a release date. The
-version-stamp gate *did* fire during that release — but on the version **number** drifting from
-`framework-version.json`, which is a different check that happens to run on the same line; it said
-nothing about the date. Two catches, zero gate coverage: promote this above the rest of the P2 band.
-
 ### B-55 · Vendor-behavior facts are restated across ~6 shipped surfaces with no single source
 **Effort:** M · **Priority:** P2 doc truth · **Invariants:** #5, #6
 
@@ -3400,6 +3380,31 @@ the review may reject the premise or split the scope. If Opus is rate- or spend-
 review **WAITING — OPUS LIMIT** and continue only independent design/backlog work. Do not substitute
 a lower tier and call the review complete.
 
+### B-130 · `docs-sync-check` twin-parity test fails under Windows PowerShell 5.1 on unmodified master
+**Effort:** S · **Priority:** P3 · filed 2026-08-08 · **Invariants:** #3
+
+**Why:** discovered incidentally while resuming B-54: `src/core/tests/hooks/ScriptTwinParity.Tests.ps1`'s
+`docs-sync-check branches and advisory prose agree` case fails with "docs exit mismatch" when run
+under Windows PowerShell 5.1 (`powershell.exe`), even on unmodified `master` at `9500f5f` — pwsh 7
+passes cleanly. Not investigated beyond confirming it is pre-existing and unrelated to B-54 (stashed
+all B-54 changes and reproduced the same failure on baseline). The `Assert` call that fails
+(`Assert ($p.Exit-eq$s.Exit) "docs exit mismatch"`) doesn't interpolate the actual exit codes, so the
+next person will need to add that before diagnosing further.
+
+**Do:** reproduce, capture both hosts' actual exit codes and stdout for the `docs-sync-check.ps1`/`.sh`
+twins over `DocsFixture`/`TemplateFixture`, and find the 5.1-specific divergence (likely another
+BOM-less-file default-encoding case, per invariant #4's known class — see B-54's fix in
+`template-checks.ps1` step 1 for the pattern: replace `Get-Content` with an absolute-path
+`[IO.File]::ReadAllText`). Confirm whether this already fails in CI's Windows leg or is silently
+masked there too.
+
+**Second, separate pre-existing 5.1-only failure found in the same B-54 validation pass:**
+`dist/<d>/tests/hooks/FrameworkDoctor.Tests.ps1`'s `PowerShell twin runs under Windows PowerShell
+5.1` case also fails on unmodified master (reproduced with all B-54 changes stashed) — the healthy
+fixture reports `[MISSING] Mirror and version integrity` under 5.1 only. Not investigated further;
+may or may not be the same root cause as the item above. Both were confirmed pre-existing and out
+of scope for B-54 by stashing all B-54 changes and reproducing on baseline `master` (`9ddc97a`).
+
 **Done when:** fixtures cover a reusable BI view, a parameterised reporting procedure, a case where
 neither is the right abstraction, role-playing/time-version joins, non-additive measures, a
 many-to-many path, an existing-consumer compatibility change, and missing business semantics that
@@ -3598,6 +3603,72 @@ planted unreadable file and an emptied tree, both twins.
 ---
 
 ## Done
+
+- **B-54** — implemented **2026-08-08** on branch `codex/b54-release-changelog-stamp`, **not yet
+  released or merged** (pending independent review — see below). Codex began this item and ran out
+  of budget mid-implementation with `release.ps1`'s changelog-stamping half drafted but uncommitted
+  and `template-checks`'s placeholder-gate half not started; Claude resumed and finished both.
+
+  **Part 1 (`release.ps1`, Codex's draft, verified as-is):** `Set-ReleaseChangelogHeads` now
+  validates and stamps all four authored heads (root + 3 `src/stacks/*/files/CHANGELOG.md`)
+  atomically — refusing on any missing, version-mismatched, or malformed head before writing any of
+  them — and a new post-composition `Test-ReleaseChangelogHeads` postcondition (with
+  `-IncludeDist`) refuses the release before commit unless the stamped date reached all three
+  composed `dist/*/CHANGELOG.md` too. Previously only the root changelog was ever stamped.
+
+  **Part 2 (`template-checks.{ps1,sh}`, new):** the version-stamp check now also fails when a
+  changelog's head entry carries the *current stamped version* but still reads `Unreleased` instead
+  of a date — the belt-and-braces half, catching a hand-authored placeholder even outside
+  `release.ps1`. Discovered and fixed a Windows PowerShell 5.1-only defect in the same check while
+  building it: `Get-Content` with no explicit encoding mis-decodes a BOM-less UTF-8 em dash in the
+  changelog head under 5.1, garbling the failure message; switched to an absolute-path
+  `[IO.File]::ReadAllText`, matching the idiom `release.ps1` already used for the same reason.
+
+  **Live production defect found while validating this fix:** all three *already-shipped* v0.51.4
+  consumer changelogs still read `## 0.51.4 — Unreleased` — the exact class B-54 exists to prevent,
+  happening a third time, silently, on a release that was already tagged and CI-green. Corrected
+  directly on `master` (commit `9ddc97a`, pushed) as a data-only fix (dated to match the root
+  changelog's already-recorded `2026-08-08`), independent of this branch's code change, then the
+  branch was rebased onto the corrected master.
+
+  **Observed red:** the new `template-checks` case (`ScriptTwinParity.Tests.ps1`, new `It` block)
+  was confirmed to fail on the unfixed scripts before the fix landed (stashed the fix, reran, saw
+  `[FAIL] ... Unreleased head at the stamped version should fail`, restored the fix). The live
+  v0.51.4 defect above is itself an observed-red instance in production, predating any fixture.
+  `ReleaseChangelogStamp.Tests.ps1` (Codex's test) carries its own bounded legacy-fallback so its
+  first case is red against the pre-fix root-only behavior by construction.
+
+  **Observed green:** `ReleaseChangelogStamp.Tests.ps1` 3/3 under both pwsh and Windows PowerShell
+  5.1. `ScriptTwinParity.Tests.ps1` 7/7 under pwsh; 6/7 under 5.1 — the one failure
+  (`docs-sync-check branches and advisory prose agree`) reproduces identically on unmodified master
+  with all B-54 changes stashed, confirmed pre-existing and unrelated (filed as B-130). All three
+  dists (`dotnet`/`angular`/`monorepo`) composed cleanly (`git status --porcelain dist/` showed only
+  the 9 expected `template-checks`/`ScriptTwinParity` files) and passed `validate-dist.ps1` fully,
+  including the new check now passing against the corrected shipped changelogs. All three dist hook
+  suites: 14/15 files clean, the one failure being a second, separately pre-existing 5.1-only
+  `FrameworkDoctor.Tests.ps1` flake (also reproduced on unmodified master with B-54 stashed; also
+  filed under B-130). Meta suite: 0 failures across 14 files.
+
+  **RCA (why did no gate catch it twice, third time silent):** the version-stamp check only ever
+  parsed the leading digits of the head line, so it structurally could not distinguish a real date
+  from any other trailing text — the check's own regex made "Unreleased" and "2026-08-08"
+  indistinguishable inputs. **Same-class sweep:** no other shipped gate was found doing this
+  specific "parse a leading token, ignore the rest of the line" pattern against a value with a
+  release-safety meaning; B-130 (filed above) is a different failure shape (host-encoding, not
+  under-parsing) surfaced by the same validation pass, not the same class.
+
+  **Deferred to actual release, not part of this commit:** the `## 0.51.5` CHANGELOG headings
+  (root + 3 shipped) and the corresponding `framework-version.json`/`CLAUDE.md` version bump.
+  Pre-adding a bumped heading without also bumping the version stamp fails `template-checks`'s
+  existing (unchanged) drift check by design — confirmed by trying it and observing the exact
+  failure — so per repo convention (see the B-63 "prepare vX.Y.Z" commit) that bump belongs to the
+  single atomic release step, not to this pre-review commit.
+
+  **Independent review status:** implementer and reviewer are the same person for this item (Claude
+  implemented; Codex, the usual reviewer, was unavailable). A Sonnet subagent reviewed the diff as a
+  distinct pass before commit, but per Maintenance model rule 2 that does not satisfy the
+  different-session/different-tier bar — this branch is committed but explicitly **not merged or
+  released**, pending that review.
 
 - **B-63 / B-56** — done **2026-08-08** (target v0.51.4). The audit closed B-56's
   remaining class rather than treating v0.35.0's child-Bash probe as a complete fix. The complete
