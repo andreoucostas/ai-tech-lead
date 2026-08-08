@@ -3072,6 +3072,12 @@ build" failure repeated at the meta level.
 
 ---
 ### B-119 · The dimension-binding post-change arm is owed — v0.50.0 shipped an unproven fix
+
+> **DONE 2026-08-08.** Re-ran `warehouse-bind-mixed` ×2 against v0.50.0 (`2915412`), both completed
+> cleanly (no spend-cap error this time): `regionOnFact` **0/2**, `Pass` **2/2** — the floor of the
+> pre-registered range, not the ambiguous middle. **The dimension-binding step works on the defect it
+> was written for.** Full write-up in `meta/eval-results.md` under "POST-CHANGE ARM — COMPLETE".
+
 **Effort:** S (one arm, ~$5) · **Priority:** **P2** · filed 2026-08-07 shipping v0.50.0
 
 **Why:** the Stage A baseline established the defect — on the `warehouse-mixed` fixture the model put

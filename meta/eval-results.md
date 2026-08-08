@@ -829,3 +829,33 @@ it does; but the per-signal fields should report `n/a` rather than `False` when 
 on the new fact? — remains UNANSWERED.** The baseline established the defect (2/2, and 3/3 including
 the uncounted batch). The post-change mixed arm is owed. Do not close this out by citing the
 `bind-sql` pass: that fixture never exhibited the defect.
+
+### POST-CHANGE ARM — COMPLETE (B-119, re-run 2026-08-08)
+
+Re-ran `warehouse-bind-mixed` ×2 against **v0.50.0** (`2915412`), `sonnet`, `-TimeoutSeconds 900`,
+same fixtures/grader/host as the baseline and the incomplete attempt above — the `n=2` the
+pre-registration called for. Run against a detached worktree at `2915412` (not master, which had
+since moved to v0.51.0), independent session from both the v0.50.0 implementer and the v0.51.0
+release.
+
+- **PASS warehouse-bind-mixed** (model=sonnet) — agentExit=0 timedOut=False costUsd=1.3364364 tokensIn=44 tokensOut=32547; category=BOTH channels=C1,C2,C5 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **PASS warehouse-bind-mixed** (model=sonnet) — agentExit=0 timedOut=False costUsd=1.4993436 tokensIn=42 tokensOut=38174; category=BOTH channels=C1,C2,C5 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+
+Both runs completed cleanly (`agentExit=0`, no timeout, no spend-cap error) — genuine results, not
+environment stops.
+
+| Signal | Baseline | Pre-registered reading | Observed | Reading |
+|---|---|---|---|---|
+| `regionOnFact`, mixed | 2/2 (3/3 incl. uncounted) | 0/2=works, 1/2=partial, 2/2=doesn't work | **0/2** | **the step works on the defect it was written for** |
+| `Pass`, mixed | 0/2 | rises to ≥1/2 | **2/2** | exceeds the threshold that mattered |
+| `category`/`C1`, mixed | 6/6 | stays ≥3/4 | 2/2 `BOTH`, `C1` present both runs | unaffected — the step is body-only as intended |
+
+**Reading, stated at the same `n=2` the pre-registration accepted in advance:** `regionOnFact` landed
+at the floor of the registered range (0/2), not the ambiguous middle (1/2), so this is not the
+"suggestive, not significant" case the pre-registration flagged as likely to be spun — both runs
+independently avoided the defect and both resolved through load-proc joins
+(`resolvedCustomer/Product/Date=True`) with no new `dim.*` table. `n=2` still cannot rule out
+run-to-run variance with statistical confidence; a larger `n` would be needed to bound the failure
+rate rather than just its sign. What can be said plainly: **on both observed runs, the dimension-
+binding step shipped in v0.50.0 stopped the model putting `RegionKey` directly on the new fact.**
+B-119 closed on this evidence; see `meta/BACKLOG.md`.
