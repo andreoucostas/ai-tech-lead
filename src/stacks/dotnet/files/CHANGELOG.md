@@ -4,7 +4,13 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.51.2 — Unreleased
+## 0.51.3 — Unreleased
+
+- Shipped documentation is now checked for dangling relative inline links as well as dead script
+  commands. Bootstrap's warehouse-map example is shown as literal Markdown syntax, so the command
+  page no longer renders a broken link while preserving the exact link agents should write.
+
+## 0.51.2 — 2026-08-08
 
 - The shipped hook test suite's Windows PowerShell 5.1 compatibility case no longer depends on
   `powershell.exe` being directly on `PATH` — it falls back to the well-known

@@ -8,7 +8,7 @@
 #   4. PowerShell AST parse is clean on every *.ps1 in the dist (invokes pwsh/powershell)
 #   5. the dist's OWN template-checks suite passes, run from inside the dist dir
 #   6. no meta-dev vocabulary leaks into shipped content (scripts/meta-denylist.txt)
-#   7. every script a shipped *.md tells someone to RUN exists (no-dead-instruction)
+#   7. every script a shipped *.md tells someone to RUN and every rendered relative inline link resolves
 #   8. every hook registration in settings*.json / hooks.json names a script that exists, with its
 #      opposite-language twin (hook-registration)
 #   9. every core @stack marker expands from a non-empty stack snippet into the composed file
@@ -502,8 +502,9 @@ fi
 fi
 
 if check_selected no-dead-instruction; then
-# --- 7. no dead instructions ------------------------------------------------------------------
-# Every script a shipped doc tells someone to RUN must actually exist. no-meta-leak (check 6)
+# --- 7. no dead instructions or local document links ------------------------------------------
+# Every script a shipped doc tells someone to RUN and every rendered relative inline link must
+# actually resolve. no-meta-leak (check 6)
 # proves shipped files don't say the wrong *words*; nothing proved they don't give the wrong
 # *commands*. They did: dist/monorepo's README told installing agents to run `pwsh install.ps1`,
 # which exists nowhere in that dist — root-installer wording copied into a dist doc. An agent that
@@ -513,7 +514,7 @@ if check_selected no-dead-instruction; then
 # command as run from the repo root (`bash scripts/docs-sync-check.sh` in docs/ci-integration.md
 # means from the consumer's root, not from docs/).
 #
-# CHANGELOG.md is skipped by design: release notes quote commands that WERE wrong in order to say
+# CHANGELOG.md is skipped by design: release notes quote commands and links that WERE wrong to say
 # they are now fixed. It is the one shipped doc whose job is to describe the past.
 # Anti-vacuity, as in check 6: this check used to report a clean dist whenever its findings list was
 # empty, so an extractor that stopped matching — or a tree with no docs at all — read as success.
@@ -525,9 +526,11 @@ if check_selected no-dead-instruction; then
 # wiring, not prose, and there it is always wrong.
 deadrefs=""
 absrefs=""
+deadlinks=""
 docgreperrs=""
 docsscanned=0
 refsextracted=0
+linksextracted=0
 cmdre='(pwsh|bash|powershell)( -[A-Za-z]+( [A-Za-z]+)?)* [A-Za-z0-9_./-]+\.(ps1|sh)'
 # ONE grep over every shipped doc, instead of one grep PER doc. At ~90 docs that was ~90 forks per
 # run, 7.5s of a 34s run, and it ran on every invocation including the cheap --content-only ones.
@@ -538,7 +541,9 @@ cmdre='(pwsh|bash|powershell)( -[A-Za-z]+( [A-Za-z]+)?)* [A-Za-z0-9_./-]+\.(ps1|
 # contained nothing" is the anti-fail-open property this check was given deliberately. So the fast
 # path runs first, and only when it reports an error do we re-walk file by file to name the culprit.
 # Fast when healthy, precise when broken.
-_batch=$(grep -rnE --include='*.md' "$cmdre" "$DIST" 2>/dev/null); _bstatus=$?
+# Run from inside the dist so grep emits relative paths. Besides being easier to read, this avoids
+# treating a Windows drive colon as the filename/line separator below.
+_batch=$(cd "$DIST" 2>/dev/null && grep -rnE --include='*.md' "$cmdre" . 2>/dev/null); _bstatus=$?
 if [ "$_bstatus" -gt 1 ]; then
   while IFS= read -r f; do
     case "${f##*/}" in CHANGELOG.md) continue;; esac
@@ -554,7 +559,7 @@ while IFS= read -r _bline; do
   [ -n "$_bline" ] || continue
   f="${_bline%%:*}"; _rest="${_bline#*:}"
   case "${f##*/}" in CHANGELOG.md) continue;; esac
-  rel="${f#"$DIST"/}"
+  rel="${f#./}"
   matches="$_rest"
   while IFS= read -r hit; do
     [ -n "$hit" ] || continue
@@ -569,10 +574,70 @@ while IFS= read -r _bline; do
     done <<< "$(printf '%s\n' "$content" | grep -oE "$cmdre" | grep -oE '[A-Za-z0-9_./-]+\.(ps1|sh)$')"
   done <<< "$matches"
 done <<< "$_batch"
+
+# Rendered, single-line inline Markdown links only. Fenced blocks and inline-code spans are
+# examples, not navigable links. Remote URLs, pure fragments, reference definitions, multiline
+# destinations and anchor validation are deliberately outside this bounded check.
+_LINK_PATH_INDEX=$'\n'$(cd "$DIST" 2>/dev/null && find . -mindepth 1 -print 2>/dev/null | sed 's#^\./##')$'\n'
+normalize_link_rel() { # $1 = document directory relative to dist, $2 = decoded target
+  local combined="$1/$2" part
+  local -a parts out
+  IFS='/' read -r -a parts <<< "$combined"
+  out=()
+  for part in "${parts[@]}"; do
+    case "$part" in
+      ''|.) ;;
+      ..) [ "${#out[@]}" -gt 0 ] || return 1; unset 'out[${#out[@]}-1]' ;;
+      *) out+=("$part") ;;
+    esac
+  done
+  (IFS='/'; printf '%s' "${out[*]}")
+}
+while IFS=$'\t' read -r f ln content; do
+  [ -n "$content" ] || continue
+  rel="${f#"$DIST"/}"
+  docdir="${rel%/*}"; [ "$docdir" != "$rel" ] || docdir='.'
+  while IFS= read -r link; do
+    [ -n "$link" ] || continue
+    target="${link#*(}"
+    if [[ "$target" == \<* ]]; then
+      target="${target#<}"; target="${target%%>*}"
+    else
+      target="${target%%[[:space:]]*}"; target="${target%)}"
+    fi
+    case "$target" in ''|[A-Za-z]*:*|//*|\#*|/*) continue;; esac
+    pathpart="${target%%[?#]*}"
+    [ -n "$pathpart" ] || continue
+    linksextracted=$((linksextracted+1))
+    pct_rest=$(printf '%s' "$pathpart" | sed -E 's/%[0-9A-Fa-f]{2}//g')
+    # Shell variables cannot preserve NUL, and command substitution strips trailing newlines.
+    # Reject every percent-encoded ASCII control before decoding so none can normalize into a
+    # different (potentially valid) target. PowerShell rejects these through path resolution too.
+    if [[ "$pct_rest" == *%* || "$pathpart" =~ %([01][0-9A-Fa-f]|7[Ff]) ]]; then
+      deadlinks="$deadlinks$rel:$ln: \`$target\` is not a valid relative link target"$'\n'
+      continue
+    fi
+    decoded=$(printf '%b' "${pathpart//%/\\x}")
+    if ! targetrel=$(normalize_link_rel "$docdir" "$decoded"); then
+      deadlinks="$deadlinks$rel:$ln: \`$target\` escapes this dist"$'\n'
+    elif [ -z "$targetrel" ]; then
+      : # the dist root itself is a valid directory target
+    elif ! case "$_LINK_PATH_INDEX" in *$'\n'"$targetrel"$'\n'*) true;; *) false;; esac; then
+      deadlinks="$deadlinks$rel:$ln: \`$target\` does not resolve relative to this document"$'\n'
+    fi
+  done <<< "$(printf '%s\n' "$content" | grep -oE '\[[^][]+\]\((<[^>]+>|[^[:space:])]+)([[:space:]]+[^)]*)?\)' || true)"
+done < <(find "$DIST" -type f -name '*.md' ! -name 'CHANGELOG.md' -print0 | xargs -0 awk '
+  FNR==1 {f=""}
+  /^[[:space:]]*(```|~~~)/ { c=substr($0,match($0,/(```|~~~)/),1); if (!f) {f=c} else if (f==c) {f=""}; next }
+  !f { line=$0; gsub(/`+[^`]*`+/,"",line); gsub(/!\[[^]]*\]\([^)]*\)/,"",line); if (line ~ /\]\(/) print FILENAME "\t" FNR "\t" line }
+')
+
 deadrefs=$(printf '%s' "$deadrefs" | sed '/^[[:space:]]*$/d' | sort -u || true)
 absrefs=$(printf '%s' "$absrefs" | sed '/^[[:space:]]*$/d' | sort -u || true)
+deadlinks=$(printf '%s' "$deadlinks" | sed '/^[[:space:]]*$/d' | sort -u || true)
 deadcount=$(printf '%s' "$deadrefs" | grep -c . || true)
 abscount=$(printf '%s' "$absrefs" | grep -c . || true)
+deadlinkcount=$(printf '%s' "$deadlinks" | grep -c . || true)
 docgreperrcount=$(printf '%s' "$docgreperrs" | grep -c . || true)
 if [ "$docgreperrcount" -gt 0 ]; then
   fail "no-dead-instruction: grep failed (exit > 1) on $docgreperrcount doc(s) in $DIST — the scan is broken, not the dist."
@@ -581,12 +646,17 @@ elif [ "$docsscanned" -eq 0 ]; then
   fail "no-dead-instruction scanned zero documentation files in $DIST — the input tree is empty, not clean."
 elif [ "$refsextracted" -eq 0 ]; then
   fail "no-dead-instruction extracted zero script references from $docsscanned doc(s) in $DIST — the inline-command extractor is broken, not the dist."
+elif [ "$linksextracted" -eq 0 ]; then
+  fail "no-dead-instruction extracted zero relative inline Markdown links from $docsscanned doc(s) in $DIST — the link extractor is broken, not the dist."
 elif [ "$deadcount" -gt 0 ]; then
   fail "dead instructions in shipped docs — $deadcount. A consumer (or their agent) following these gets 'No such file or directory'. Fix in src/, not dist/."
   printf '%s\n' "$deadrefs" | sed 's/^/  [no-dead-instruction] /'
+elif [ "$deadlinkcount" -gt 0 ]; then
+  fail "dangling markdown links in shipped docs — $deadlinkcount. Targets resolve relative to the document that contains them."
+  printf '%s\n' "$deadlinks" | sed 's/^/  [no-dead-instruction] /'
 else
   [ "$abscount" -eq 0 ] || printf '%s\n' "$absrefs" | sed 's/^/  [no-dead-instruction] /'
-  ok "all $((refsextracted - abscount)) resolvable documented script references exist in $DIST ($docsscanned doc(s) scanned; $abscount absolute example(s) out of scope)."
+  ok "all $linksextracted relative inline Markdown links and $((refsextracted - abscount)) resolvable documented script references resolve in $DIST ($docsscanned doc(s) scanned; $abscount absolute example(s) out of scope)."
 fi
 fi
 
