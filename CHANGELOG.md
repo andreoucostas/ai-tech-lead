@@ -11,6 +11,14 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.51.2 — Unreleased
+
+- B-71/B-74: the shipped hook test suite's Windows PowerShell 5.1 compatibility case no longer
+  depends on `powershell.exe` being directly on `PATH` — it now falls back to the well-known
+  `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`, so a host where 5.1 exists but
+  isn't PATH-exposed gets a genuine run instead of a silent skip counted inside a green summary.
+  B-74's already-shipped (v0.44.0) backlog heading was also corrected; no behavior change there.
+
 ## 0.51.1 — 2026-08-08
 
 - B-90/B-93: PowerShell test subjects now remain on the host that launched their individual suite.
