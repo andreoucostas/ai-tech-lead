@@ -22,6 +22,11 @@
   canary fixtures lock those boundaries under pwsh, Windows PowerShell 5.1, and Bash. The Bash
   registration grammar also matches shell-valid single quoting and case-insensitive `bash.exe`
   basenames without treating a target mentioned inside `bash -c` as an invoked guard.
+- B-89: `sync-agent-files.ps1` no longer dies with a raw `NativeCommandError` under Windows
+  PowerShell 5.1 when run outside a Git worktree -- the `git rev-parse --show-toplevel 2>$null`
+  fallback now inspects the exit code instead of relying on the error record, matching the fix
+  B-90 already shipped for the architecture-HTML generator. `fidelity-check.ps1` (maintainer-only)
+  had the identical idiom and was fixed in the same pass.
 
 ## 0.51.3 — 2026-08-08
 

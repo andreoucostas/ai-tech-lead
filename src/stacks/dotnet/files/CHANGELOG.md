@@ -13,6 +13,9 @@
   details identify the doctor-process boundary, and a new post-write canary verifies the actual
   agent-hosted build hook. Bash registrations may use shell-valid single quoting or any case of
   the `bash.exe` basename without hiding guard-parser demand.
+- The Copilot-skill sync script (`sync-agent-files`) no longer crashes with a raw error under
+  Windows PowerShell 5.1 when run outside a Git repository -- it now falls back cleanly to the
+  current directory, the same fix already shipped for the architecture-HTML generator.
 
 ## 0.51.3 — 2026-08-08
 
