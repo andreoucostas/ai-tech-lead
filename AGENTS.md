@@ -59,10 +59,13 @@ Code must load them from the root; the banner above is the tie-breaker.
    `.claude/settings*.json` / `.github/hooks/hooks.json` exists in the dist, with its twin [#3]. It
    deliberately does not reject a bare interpreter name (v0.38.1 made that the intended shipped
    value); whether it resolves is a runtime fact, reported by the doctor's `Hook liveness` row.
-7. **Versioning.** Shipped behavior change ⇒ root `CHANGELOG.md` entry, then release via
-   `.claude/scripts/release.ps1` (stamps `src/`, rebuilds `dist/`, runs every gate, refuses on
-   failure). `meta/LEARNINGS.md` is append-only. Write the **shipped** changelog in the consumer's
-   voice; tracking ids and maintainer asides belong in the root `CHANGELOG.md`, which is *our* log.
+7. **Versioning.** Shipped behavior change ⇒ root `CHANGELOG.md` entry **and** a matching
+   `## <version> — Unreleased` head in all three `src/stacks/*/files/CHANGELOG.md` (mandatory,
+   not optional — `release.ps1` refuses to release without all four, B-54), then release via
+   `.claude/scripts/release.ps1` (stamps `src/`, rebuilds `dist/`, stamps all four changelog dates,
+   runs every gate, refuses on failure). `meta/LEARNINGS.md` is append-only. Write the **shipped**
+   changelog in the consumer's voice; tracking ids and maintainer asides belong in the root
+   `CHANGELOG.md`, which is *our* log.
 
 ## Workflows, done-ness, verification
 

@@ -3380,6 +3380,13 @@ the review may reject the premise or split the scope. If Opus is rate- or spend-
 review **WAITING — OPUS LIMIT** and continue only independent design/backlog work. Do not substitute
 a lower tier and call the review complete.
 
+**Done when:** fixtures cover a reusable BI view, a parameterised reporting procedure, a case where
+neither is the right abstraction, role-playing/time-version joins, non-additive measures, a
+many-to-many path, an existing-consumer compatibility change, and missing business semantics that
+must cause abstention. Pre-registered red baselines and constructible success cases are recorded;
+post-change evals demonstrate correct artifact choice and SQL semantics; and all applicable dists
+carry the guidance without weakening existing warehouse routing.
+
 ### B-130 · `docs-sync-check` twin-parity test fails under Windows PowerShell 5.1 on unmodified master
 **Effort:** S · **Priority:** P3 · filed 2026-08-08 · **Invariants:** #3
 
@@ -3405,12 +3412,23 @@ fixture reports `[MISSING] Mirror and version integrity` under 5.1 only. Not inv
 may or may not be the same root cause as the item above. Both were confirmed pre-existing and out
 of scope for B-54 by stashing all B-54 changes and reproducing on baseline `master` (`9ddc97a`).
 
-**Done when:** fixtures cover a reusable BI view, a parameterised reporting procedure, a case where
-neither is the right abstraction, role-playing/time-version joins, non-additive measures, a
-many-to-many path, an existing-consumer compatibility change, and missing business semantics that
-must cause abstention. Pre-registered red baselines and constructible success cases are recorded;
-post-change evals demonstrate correct artifact choice and SQL semantics; and all applicable dists
-carry the guidance without weakening existing warehouse routing.
+### B-131 · `release.ps1` and `template-checks` disagree on changelog-head grammar
+**Effort:** S · **Priority:** P3 · filed 2026-08-09 · **Invariants:** #7
+
+**Why:** found during B-54's independent review (Opus round 2). `release.ps1`'s
+`Get-ReleaseChangelogHead` requires the *literal first* `## ` line in a changelog to be a version
+head; `template-checks.ps1`/`.sh`'s version-stamp check instead skips down to the first
+*version-shaped* `## ` line. On an unusual changelog layout (e.g. a Keep-a-Changelog-style
+`## Unreleased` section heading placed above the actual versioned head), `release.ps1` hard-refuses
+the release while `template-checks` would have passed the same file. This fails safe in the
+direction observed (the stricter check blocks first), so it was not fixed in B-54's own pass —
+recorded here per Maintenance model rule 6 (proportionality) rather than left as an
+unsubstantiated "filed as follow-up" claim in the B-54 Done entry.
+
+**Do:** decide on one shared changelog-head grammar for both scripts (most likely: both should
+require the literal first `## ` line to be the version head, matching `release.ps1`'s stricter
+reading, since a shipped/authored changelog is not expected to carry other `## ` sections above its
+version history) and apply it identically in both twins.
 
 ---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
@@ -3690,18 +3708,36 @@ planted unreadable file and an emptied tree, both twins.
     stale wording, not a behavior change in practice. Both docs corrected.
   - **Nitpick (fixed):** `template-checks.ps1`'s `Resolve-Path 'CHANGELOG.md'` used glob-sensitive
     matching; switched to `-LiteralPath`.
-  - **Non-blocking (deferred, filed as follow-up, not fixed here):** `release.ps1`'s changelog-head
-    grammar (literal first `## ` line must be a version head) and `template-checks`'s (skips to the
-    first version-shaped `## ` line) can disagree on an unusual changelog layout — fails safe in the
-    direction observed, not proportionate to fix in this pass.
+  - **Non-blocking (deferred):** `release.ps1`'s changelog-head grammar (literal first `## ` line
+    must be a version head) and `template-checks`'s (skips to the first version-shaped `## ` line)
+    can disagree on an unusual changelog layout — fails safe in the direction observed, not
+    proportionate to fix in this pass. Filed as **B-131** (an earlier draft of this entry claimed
+    it was "filed as follow-up" when it wasn't yet — round-3 review caught the unsubstantiated
+    claim; it is now actually filed).
   - **Nitpick (not fixed, low value):** no test pins the case where a changelog's `Unreleased` head
     is for a version that doesn't yet match `framework-version.json` (mid-authoring); reviewer
     verified by reading that the pre-existing drift branch already prevents a false positive there.
 
-  **Independent review status:** commit `10c89d0` plus the round-2 fixes above are queued for a
-  fresh independent pass (this response fixed round 2's own findings without a further review of
-  those fixes — proportionate for a single well-scoped bugfix, but still self-certified). This
-  branch remains **not merged or released**.
+  **Independent review round 3 (Opus, same reviewer, commit `3c060f2` — 2026-08-09): APPROVE.**
+  Re-extracted the helpers by AST and drove the full state matrix (fresh/retry/inconsistent/mixed)
+  directly; re-ran `ReleaseChangelogStamp.Tests.ps1` 4/4 under both pwsh and Windows PowerShell 5.1
+  itself rather than taking the report on trust; independently re-verified the "zero gaps" changelog
+  history claim via `comm`. Three more non-blocking findings, all addressed in the same pass:
+  `AGENTS.md`'s generated mirror of invariant #7 still described the shipped-changelog update as
+  optional even after `CLAUDE.md` was fixed — corrected, restoring mirror parity [#2]; the
+  unsubstantiated "filed as follow-up" claim above — B-131 now actually exists; and a genuinely new
+  gap the round-2 fix introduced: four changelog heads that already **agree with each other** but on
+  a *wrong* date (e.g. copy-pasted from the previous release and only the version edited) are now
+  accepted and shipped silently, where round 1's stricter `Status -ne $Date` check would have caught
+  it. Assessed as low-probability and non-blocking (the console output names the resolved date, and
+  the corrected `CLAUDE.md`/`AGENTS.md` now tell an author to write `Unreleased`, not copy a date) —
+  not fixed in this branch; a future-dated-head guard is cheap and worth adding but was not judged
+  proportionate to hold the merge for a defect with no observed occurrence.
+
+  **Independent review status: satisfied.** Two full rounds (Sonnet self-review did not count per
+  Maintenance model rule 2; Opus round 2 found the real blocking defect; Opus round 3 re-verified
+  the fix and closed the round-2 process gaps). Branch `codex/b54-release-changelog-stamp`, tip
+  `3c060f2` plus whatever commit fixes round 3's three findings, is now clear to merge.
 
 - **B-63 / B-56** — done **2026-08-08** (target v0.51.4). The audit closed B-56's
   remaining class rather than treating v0.35.0's child-Bash probe as a complete fix. The complete
