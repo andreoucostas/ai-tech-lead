@@ -1054,7 +1054,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
         'warehouse-map-quality' {
             $mapPath = Join-Path $Target 'docs/warehouse-map.md'
             if (-not (Test-Path -LiteralPath $mapPath -PathType Leaf)) {
-                return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = 'mapWritten=False hasEdgeList=False hasVersionResolution=False edgeRows=0 abstained=False deadColumnsFlagged=0 hasQueryRules=False hasCoverage=False pinnedAtLoad=False' }
+                return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = 'mapWritten=False hasEdgeList=False hasVersionResolution=False edgeRows=0 abstained=False deadColumnsFlagged=0 hasQueryRules=False hasCoverage=False hasFindingsTable=False findingRows=0 findingsFields= pinnedAtLoad=False' }
             }
             $mapText = Get-Content -Raw -LiteralPath $mapPath
             if ($null -eq $mapText) { $mapText = '' }
@@ -1084,9 +1084,30 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $deadColumnsFlagged = @(@('RegionName', 'CategoryName', 'SegmentName') | Where-Object { $mapText -cmatch "\b$_\b" }).Count
             $hasQueryRules = $mapText -match '(?im)^\s*#{1,6}.*Querying this warehouse'
             $hasCoverage = $mapText -match '(?im)^\s*(#{1,6}\s*.*\bCoverage\b|\*\*[^*\r\n]*\bCoverage\b[^*\r\n]*\*\*)'
+            $findingsHeaderLine = @($headerLines | Where-Object {
+                $_ -match '(?i)\bfinding\b' -and $_ -match '(?i)\bentity\b' -and
+                $_ -match '(?i)\bevidence\b' -and $_ -match '(?i)finding confidence' -and
+                $_ -match '(?i)severity if confirmed' -and $_ -match '(?i)\bconsequence\b' -and
+                $_ -match '(?i)\bremediation\b'
+            } | Select-Object -First 1)
+            $hasFindingsTable = $findingsHeaderLine.Count -gt 0
+            $findingRows = 0
+            if ($hasFindingsTable) {
+                $headerIndex = [Array]::IndexOf($mapLines, $findingsHeaderLine[0])
+                for ($findingLineIndex = $headerIndex + 2; $findingLineIndex -lt $mapLines.Count; $findingLineIndex++) {
+                    if ($mapLines[$findingLineIndex] -notmatch '^\s*\|') { break }
+                    if ($mapLines[$findingLineIndex] -notmatch '^\s*\|[-:\|\s]+\|\s*$') { $findingRows++ }
+                }
+            }
+            $findingsFields = @()
+            if ($hasFindingsTable) {
+                foreach ($field in @('evidence','finding confidence','severity if confirmed','consequence','remediation')) {
+                    if ($findingsHeaderLine[0] -match "(?i)$([regex]::Escape($field))") { $findingsFields += ($field -replace ' ','-') }
+                }
+            }
             $pinnedAtLoad = $mapText -cmatch 'Pinned at load'
-            $pass = $mapWritten -and $hasEdgeList -and $hasVersionResolution -and $edgeRows -ge 3 -and $abstained -and $hasQueryRules -and $hasCoverage
-            return [pscustomobject]@{ Status = 'PASS'; Pass = $pass; Detail = "mapWritten=$mapWritten hasEdgeList=$hasEdgeList hasVersionResolution=$hasVersionResolution edgeRows=$edgeRows abstained=$abstained deadColumnsFlagged=$deadColumnsFlagged hasQueryRules=$hasQueryRules hasCoverage=$hasCoverage pinnedAtLoad=$pinnedAtLoad" }
+            $pass = $mapWritten -and $hasEdgeList -and $hasVersionResolution -and $edgeRows -ge 3 -and $abstained -and $hasQueryRules -and $hasCoverage -and $hasFindingsTable -and $findingRows -ge 1
+            return [pscustomobject]@{ Status = 'PASS'; Pass = $pass; Detail = "mapWritten=$mapWritten hasEdgeList=$hasEdgeList hasVersionResolution=$hasVersionResolution edgeRows=$edgeRows abstained=$abstained deadColumnsFlagged=$deadColumnsFlagged hasQueryRules=$hasQueryRules hasCoverage=$hasCoverage hasFindingsTable=$hasFindingsTable findingRows=$findingRows findingsFields=$($findingsFields -join ',') pinnedAtLoad=$pinnedAtLoad" }
         }
         'haiku-convention-check' {
             $found = $finalOk -and $finalText -match '(?i)## Convention check' -and $finalText -match '(?i)Findings \([1-9]' -and $finalText -match '(?im)^\|[^\r\n]*ConventionViolation\.cs[^\r\n]*CancellationToken[^\r\n]*\|'
@@ -1549,6 +1570,13 @@ Reach an attribute by following a fact key to the dimension that owns it.
 
 RegionName is declared in DDL but never populated by any load.
 '@
+        $findingsBlock = @'
+## Findings
+
+| finding | entity | evidence | finding confidence | severity if confirmed | consequence | remediation |
+|---|---|---|---|---|---|---|
+| Unstated grain | fact.FactSales | `Tables/fact.FactSales.sql` has no declared business grain | Confirmed | significant | Readers cannot choose valid aggregation | State and verify the row grain before changing the schema |
+'@
         $compliantMap = @"
 # Warehouse map
 
@@ -1557,10 +1585,12 @@ $edgeListBlock
 $queryRulesBlock
 
 $coverageBlock
+
+$findingsBlock
 "@
         $compliantMap | Set-Content -LiteralPath $mapQualityPath -Encoding utf8NoBOM
         $compliantResult = Test-ScenarioEvidence 'warehouse-map-quality' $mapQualityTemp $mapQualityEvidence 1
-        if (-not $compliantResult.Pass -or $compliantResult.Detail -ne 'mapWritten=True hasEdgeList=True hasVersionResolution=True edgeRows=3 abstained=True deadColumnsFlagged=1 hasQueryRules=True hasCoverage=True pinnedAtLoad=True') { throw "warehouseMapQuality rejected a fully compliant map: $($compliantResult.Detail)" }
+        if (-not $compliantResult.Pass -or $compliantResult.Detail -ne 'mapWritten=True hasEdgeList=True hasVersionResolution=True edgeRows=3 abstained=True deadColumnsFlagged=1 hasQueryRules=True hasCoverage=True hasFindingsTable=True findingRows=1 findingsFields=evidence,finding-confidence,severity-if-confirmed,consequence,remediation pinnedAtLoad=True') { throw "warehouseMapQuality rejected a fully compliant map: $($compliantResult.Detail)" }
 
         ($compliantMap.Replace('UNRESOLVED', 'Resolved')) | Set-Content -LiteralPath $mapQualityPath -Encoding utf8NoBOM
         $noAbstainResult = Test-ScenarioEvidence 'warehouse-map-quality' $mapQualityTemp $mapQualityEvidence 1
@@ -1573,6 +1603,14 @@ $coverageBlock
         ($compliantMap.Replace($queryRulesBlock, '')) | Set-Content -LiteralPath $mapQualityPath -Encoding utf8NoBOM
         $noQueryResult = Test-ScenarioEvidence 'warehouse-map-quality' $mapQualityTemp $mapQualityEvidence 1
         if ($noQueryResult.Pass -or $noQueryResult.Detail -notmatch 'hasQueryRules=False') { throw "warehouseMapQuality accepted a map with the Querying this warehouse section removed: $($noQueryResult.Detail)" }
+
+        ($compliantMap.Replace($findingsBlock, '')) | Set-Content -LiteralPath $mapQualityPath -Encoding utf8NoBOM
+        $noFindingsResult = Test-ScenarioEvidence 'warehouse-map-quality' $mapQualityTemp $mapQualityEvidence 1
+        if ($noFindingsResult.Pass -or $noFindingsResult.Detail -notmatch 'hasFindingsTable=False') { throw "warehouseMapQuality accepted a map without structured findings: $($noFindingsResult.Detail)" }
+
+        ($compliantMap.Replace(' | consequence', '')) | Set-Content -LiteralPath $mapQualityPath -Encoding utf8NoBOM
+        $missingFindingFieldResult = Test-ScenarioEvidence 'warehouse-map-quality' $mapQualityTemp $mapQualityEvidence 1
+        if ($missingFindingFieldResult.Pass -or $missingFindingFieldResult.Detail -notmatch 'hasFindingsTable=False') { throw "warehouseMapQuality accepted a findings table missing consequence: $($missingFindingFieldResult.Detail)" }
 
         Remove-Item -LiteralPath $mapQualityPath -Force
         $noMapResult = Test-ScenarioEvidence 'warehouse-map-quality' $mapQualityTemp $mapQualityEvidence 1

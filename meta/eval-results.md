@@ -951,3 +951,24 @@ remain as regression coverage; no post-change arm exists because no shipped chan
 first existing/new rows remained valid are superseded by this 12:52 registered reading. Those older
 runs used the answer-rich map and leading prompts rejected by Opus rev 2; they are retained only as
 an audit trail and are not evidence for the premise decision.
+
+## PRE-REGISTRATION — B-125 Phase 1 structured-findings baseline (2026-08-09, before run)
+
+Design: `.claude/plans/2026-08-09-b125-warehouse-modelling-health-review-design.md` rev 4. Run the
+existing `warehouse-map-quality` scenario against the unchanged committed v0.51.5 distribution,
+before composing the edited source skill. The revised grader has already demonstrated a reachable
+green world (a non-empty findings table with finding, entity, evidence, finding confidence,
+severity-if-confirmed, consequence, and remediation) and red worlds with either the table or one
+required field removed.
+
+Registered reading: `hasFindingsTable=False` or `findingRows=0` reproduces the shipped Phase 1 gap;
+`hasFindingsTable=True`, all five semantic fields listed, and `findingRows>=1` means the unchanged
+skill already structures its output and Phase 1 must be closed without implementation. An API/tool
+error or missing map is inconclusive. This arm tests structure only; it is not evidence for any
+Phase 2 detector.
+
+## 2026-08-09 18:48:37 +01:00 — framework v0.51.5 (8fe473f4508548b17859107f0bdf8fc118b9c67f)
+
+Host: Claude Code 2.1.226 (Claude Code) · scratch: retained=True
+
+- **FAIL warehouse-map-quality** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.7385982 tokensIn=18 tokensOut=13079; mapWritten=True hasEdgeList=True hasVersionResolution=True edgeRows=6 abstained=True deadColumnsFlagged=3 hasQueryRules=True hasCoverage=True hasFindingsTable=False findingRows=0 findingsFields= pinnedAtLoad=True

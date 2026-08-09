@@ -1,15 +1,16 @@
-# B-125 design — evidence-ranked warehouse modelling health review (LOCKED 2026-08-09, rev 3)
+# B-125 design — evidence-ranked warehouse modelling health review (LOCKED 2026-08-09, rev 4)
 
-> **Status: DESIGN LOCKED. Not implemented.** Deviations need a new entry in
+> **Status: DESIGN LOCKED AFTER CLAUDE OPUS REVIEW. Not implemented.** Deviations need a new entry in
 > `meta/workspace-decisions.md`. Trigger: `meta/BACKLOG.md` B-124–B-129, filed 2026-08-08
 > (capability "warehouse technical leadership"); B-125 is the foundational item the remaining
 > three (B-126–B-128) consume — **B-124 closed 2026-08-09, premise rejected; see §1.** **Review
 > disposition (§6): rev 1 was reviewed adversarially by codex (`gpt-5.6-sol`), not Claude Opus —
 > a budget-driven, explicitly recorded substitution (WSD-036). 12 findings returned (2 blocking,
 > 8 significant, 2 minor); all 12 verified and accepted, folded into rev 2. A Claude Opus pass is
-> still owed before implementation. Rev 3 (this revision) only corrects the now-stale B-124
-> consumer reference and cites B-124's closure as concrete evidence for §2's phased approach —
-> no other content changed, and rev 3 has not itself been re-reviewed.**
+> was still owed before implementation. Rev 3 corrected the stale B-124 reference. Rev 4 incorporates
+> the independent Claude Opus review recorded in §6 (`ACCEPT WITH CHANGES`): one blocking, six
+> significant, and four minor findings accepted after verification; one significant finding was
+> rejected with direct gate evidence.**
 
 ---
 
@@ -35,12 +36,13 @@ zero observed failures (`meta/BACKLOG.md` Done section, B-124). It shipped no de
 and is not a live consumer of this design's findings; its retained regression scenarios are
 evidence only. Three consumers, not four.
 
-**Honesty about proportionality (revised — see §6 finding 7; reinforced by B-124's actual outcome).**
-Rev 1 argued proportionality from hypothetical downstream harm (then: B-124/126/127/128 inheriting
-bad findings). CLAUDE.md's own rule 6 requires *concrete, already-observed* harm, not a hypothetical
-one, and no field incident specific to these eight defect classes exists — B-96's field report was
-about a missing relationship edge, not a modelling-health defect. This design does not manufacture
-an incident that isn't there. Instead it takes the smaller, immediately-justified step first (§2)
+**Proportionality (revised after Opus review).** The concrete observed harm is an internal
+contradiction in the shipped artifact: relationship edges must carry evidence and confidence and
+must abstain when unresolved (`SKILL.md:91-104`), and Coverage must name blind spots
+(`SKILL.md:185-188`), while Findings emits five bare defect claims with none of that structure
+(`SKILL.md:189-190`). Phase 1 is the smallest fix: structure only those already-emitted findings;
+it adds no detector. No field incident specific to the additional defect classes is claimed.
+Phase 2 therefore remains evidence-gated per class (§2)
 and treats full eight-class coverage as a set of separately-evidenced additions, each gated on its
 own fixture proof before it ships as a real finding rather than a candidate signal. **B-124 is now
 concrete evidence this caution is warranted, not excessive**: a same-batch, same-day, structurally
@@ -67,10 +69,10 @@ what the evidence already gathered can actually support:
   emits.** Add confidence/severity/consequence/remediation columns to the existing five checks.
   This is proportionate on its own terms — it changes no detection logic, only formats output that
   already exists, and is justified without appeal to future consumers.
-- **Phase 2 (scoped additions, each separately gated): the eight backlog-named classes.** Each
+- **Phase 2 (scoped additions, each separately gated): the backlog-named classes.** Each
   class is added only where steps 1–4's evidence can support at least a `Likely`-confidence
   candidate (§3.2); where it cannot (see §6 findings 2, 9, 10), the class is either narrowed to
-  what the evidence supports, moved to the on-demand deepening (§3.3), or filed as a distinct
+  what the evidence supports, moved to the on-demand deepening (§3.5), or filed as a distinct
   follow-on requiring its own evidence source. Acceptance criterion 1 (§5) requires a fixture proof
   *per class* before that class ships — Phase 2 is not "done" as a block.
 
@@ -128,13 +130,12 @@ always been"), no defect finding is emitted — the convention is noted instead.
 
 | Class (per `meta/BACKLOG.md:3221-3224`) | Phase 1 (structure only) or Phase 2 (new detection)? | What steps 1–4 evidence actually supports | Confidence ceiling from default evidence |
 |---|---|---|---|
-| **Fact** — mixed/unstated grain, wrong fact type | Phase 1 covers unstated grain (already emitted); Phase 2 adds mixed grain and fact-type-plausibility | Unstated grain: `Confirmed` (objective, from step 2). Mixed grain: only detectable when a fact's own column set implies two different event shapes or two measure grains coexisting on one row (e.g. both a transaction amount and a running balance column) — a real but narrower signal than rev 1's collapse into "unstated grain" (§6 finding 10). Wrong fact type: only a *plausibility* signal (semi-additive measures on a fact typed "transaction") — never a bare assertion that the type is wrong | Mixed grain: `Likely` where the column-shape signal is present, else not emitted (not `Possible` — no signal, no finding). Fact type: `Possible` only |
-| **Dimension** — non-conformance, inappropriate snowflaking | Phase 2 | Non-conformance: DDL can show two dimensions with the same name/business key disagreeing in column set or grain — a `Likely` signal; true semantic non-conformance (values disagree) is not visible from structure alone. Snowflaking: DDL shows normalization depth; "inappropriate" requires knowing consumer/cost tradeoffs the default pass does not gather | Non-conformance: `Likely`. Snowflaking: `Possible` only, phrased as a question ("N-level snowflake on `DimX` — confirm this is intentional") not an assertion |
+| **Fact** — mixed/unstated grain, wrong fact type, natural keys on facts | Phase 1 covers unstated grain (already emitted); Phase 2 adds mixed grain and a natural-key-on-fact check. Wrong-fact-type detection is deferred because only a `Possible` name/shape signal is available | Unstated grain: `Confirmed` from step 2. Mixed grain: `Likely` only where the fact's column set implies two event/measure grains. A natural/business key used as a dimension join from a fact is `Confirmed` from the separately-recorded key types plus the join (`SKILL.md:56-59`) | Unstated/natural-key misuse: `Confirmed`; mixed grain: `Likely`; wrong fact type: not emitted |
+| **Dimension / conformance** — non-conformance, inappropriate snowflaking | Phase 2 adds structural non-conformance only. Snowflaking-appropriateness is deferred because default evidence supports only a `Possible` question | DDL can show same-business-key dimensions disagreeing in column set or grain — a `Likely` structural signal; true value-level non-conformance is not visible from structure alone | Non-conformance: `Likely`; snowflaking: not emitted |
 | **Bridge** — missing bridge/allocation for a stated many-to-many | Phase 2, on-demand only (§3.5) | Requires the many-to-many business process to already be evidenced — either an existing bridge-shaped table elsewhere in the same schema pointing at one side, or an explicit developer statement. Absent that trigger, the detector does not fire (fixes §6 finding 9 — no silent pre-supplied conclusion) | `Likely` when triggered by real evidence; never fires speculatively |
-| **Role-playing** — a role-playing dimension reached but not distinguished | Phase 2 | Step 3's `role` column already records this per edge (`SKILL.md:75-76`) — a fact reaching the same dimension via 2+ differently-named keys with no distinct `role` recorded is a `Confirmed` structural gap (the map itself is incomplete, not a modelling judgment) | `Confirmed` for the "role not recorded" case; `Possible` for "is this really role-playing" ambiguity |
-| **Conformance** — see Dimension row above (same evidence path) | Phase 2 | (see Dimension) | (see Dimension) |
-| **SCD** — inconsistent or unstated SCD strategy per dimension | Phase 1 covers "inconsistent SCD handling" (already emitted, structured); Phase 2 adds unstated/mixed-per-column SCD without a stated rule | Step 7 already gathers Type 1/Type 2/mixed per dimension (`SKILL.md:149-158`); a dimension with `EffectiveFrom`/`IsCurrent` columns present but no consistent write pattern across its load is a `Likely` signal from evidence already open | `Likely` |
-| **Special member** — ambiguous or missing unknown/N/A dimension rows | Phase 2 | DDL/load evidence can show whether a dimension has a reserved surrogate key row for unknown/N/A (e.g. key `-1` or `0` with a sentinel description) — presence/absence is `Confirmed` from DDL/seed data already read; whether it's *correctly used* by facts (an unmatched key falling back to it) is `Possible` without tracing fact load logic | Existence check: `Confirmed`. Usage-correctness: `Possible` only |
+| **Role-playing** — a role-playing dimension reached but not distinguished | Phase 2, reported in Coverage rather than Findings | Step 3's `role` column already records this per edge (`SKILL.md:75-76`); a fact reaching the same dimension via 2+ differently-named keys with no distinct role is a `Confirmed` map-coverage gap, not yet a model defect | `Confirmed` coverage gap |
+| **SCD** — inconsistent or unstated SCD strategy per dimension | Phase 1 structures the existing inconsistency finding; Phase 2 adds a signal only when the already-open load statement makes the write pattern plain | Step 7 gathers Type 1/Type 2/mixed (`SKILL.md:149-158`). No CTE/temp/helper tracing is allowed on the default pass; otherwise mark unresolved or offer scoped deepening | `Likely` only from an already-open, plain load statement |
+| **Special member** — ambiguous or missing unknown/N/A dimension rows | Phase 2 checks evidenced presence only; absence and usage-correctness are deferred | A reserved row found in already-open DDL/load/seed evidence is `Confirmed`. Failure to find one is absence of evidence, not proof of absence | Presence/ambiguity: `Confirmed`; missing/usage claims: not emitted |
 | **Additivity** — incorrect measure additivity classification | Phase 1 covers structuring what step 4 already classifies; Phase 2 adds a plausibility check | Step 4 classifies additivity "where the load reveals it" (`SKILL.md:132-135`) — loads are examined in step 5, not step 4, so a same-pass additivity finding is only available when step 5 evidence is already in hand from the same run (fixes §6 finding 2's additivity point: this is not asserted from step 4 alone) | `Likely` only when step 5 evidence for that fact was actually read in the same pass; otherwise not emitted |
 
 ### 3.5 On-demand deepening (unchanged in shape from rev 1, renamed to avoid step-number collision)
@@ -165,23 +166,33 @@ evidence | finding confidence | severity-if-confirmed | consequence | remediatio
 Modelling health deepening (§3.5) was invoked, its results append to the same subsection with a
 note on what was and was not checked — mirroring 9.5's existing coverage statement.
 
+### 3.8 Phase-2 stopping rule
+
+Run the pre-registered unchanged-skill baselines before adding Phase-2 instructions. If five or
+more claimed detectors are already handled correctly, close the Phase-2 batch and file only the
+individually failing residue; do not ship a mostly-unneeded bundle. Any deferred `Possible`-only
+detector needs a future specificity criterion with clean and intentionally unusual counterfixtures
+that must emit zero findings before it can re-enter scope.
+
 ## 4. Files touched (at implementation — not this session)
 
 - `src/stacks/dotnet/files/{.claude,.github}/skills/map-warehouse/SKILL.md` — subsection 9.6
   rewrite (Phase 1 + Phase 2 classes from §3.4), new "Modelling health deepening" named procedure
   (§3.5), §3.3's convention-check pointer.
-- Monorepo sibling review per meta-invariant #1 / WSD-015 (confirm no monorepo-only override
-  exists before assuming a bare rebuild suffices — unresolved from rev 1, still open).
+- There is no monorepo source sibling: the dotnet whole-file is composed into monorepo. The
+  `.github/skills/map-warehouse/SKILL.md` mirror does exist beside the `.claude` source and must be
+  updated in the same change.
 - Rebuild `dist/{dotnet,monorepo}`; `dist/angular` unchanged except version-stamp changelog entry.
 - Root `CHANGELOG.md` + all four `src/stacks/*/files/CHANGELOG.md` heads; release via
   `.claude/scripts/release.ps1` (meta-invariant #7).
-- `meta/context-footprint.json` — re-check ceilings (B-96 recorded dotnet headroom as thin,
-  38,571/40,000, at its own design time; this table is larger than rev 1's).
+- `meta/context-footprint.json` — refresh the measured on-demand body size. The current gate counts
+  skill bodies as `ondemand-info` and explicitly does not policy-gate them; the 40,000/48,000
+  ceilings apply to static context, so they are not a blocker for this body-only change.
 
 ## 5. Acceptance criteria (fixes §6 findings 1, 12 — full scope, all fields tested)
 
-1. Planted-model fixtures exist for **each of the eight backlog-named classes** (not rev 1's nine
-   invented ones), each with a pre-registered red baseline and a constructible success case,
+1. Planted-model fixtures exist for each detector retained after §3.8's baseline stopping rule,
+   each with a pre-registered red baseline and a constructible success case,
    **at the confidence tier §3.4 claims for it** — a class claimed only to `Possible` must be
    proven to reach `Possible`, not silently asserted as `Confirmed`. **The red baseline must be run
    against the *unchanged* current skill, not merely constructed as a hypothetical** — this is
@@ -195,13 +206,14 @@ note on what was and was not checked — mirroring 9.5's existing coverage state
 4. **All five output fields are separately verified on fixtures**: evidence, finding confidence,
    severity-if-confirmed, consequence, and remediation — not just evidence and severity as rev 1's
    criteria tested (fixes §6 finding 12).
-5. Behavioural evals (reuse the B-41 harness — do not build a second one) show the model *uses* the
-   findings to change a downstream design or review decision, not merely reproduces the table.
+5. Behavioural evals (reuse the B-41 harness — do not build a second one) show a structured finding
+   changes the existing map read-side outcome: a report query or review decision follows the
+   finding instead of merely reproducing its table. This is the live consumer; B-126–B-128 are not.
 6. The bridge detector (§3.4 Bridge row) never fires without its stated trigger evidence present in
    the fixture — a fixture with no many-to-many signal must produce no bridge finding at all, not
    an `UNRESOLVED` one (fixes §6 finding 9).
-7. `no-meta-leak`, `validate-dist` ×3, hook suites ×3, meta suite all green; context-footprint
-   ceilings not regressed (§4).
+7. `no-meta-leak`, `validate-dist` ×3, hook suites ×3, meta suite all green; context-footprint is
+   refreshed and the on-demand delta reported (§4).
 
 ## 6. Review disposition
 
@@ -251,13 +263,29 @@ content and accepted — none rejected:**
 12. **Minor — acceptance criteria didn't test confidence/consequence/remediation, only
     evidence/severity.** → §5 criterion 4 now tests all five fields.
 
-**Verdict on rev 1: ACCEPT WITH CHANGES.** Rev 2 above is the changed version; it has not been
-re-reviewed by codex or Opus. That re-review is part of the outstanding Opus-pass precondition
-in §6's opening paragraph, not a separate open item.
+**Historical verdict on rev 1: ACCEPT WITH CHANGES.** Rev 2 was the changed version and at that
+point had not been re-reviewed by codex or Opus. The review below now discharges that precondition.
+
+### Claude Opus review of rev 3 (2026-08-09) — incorporated in rev 4
+
+Independent Claude Opus returned **ACCEPT WITH CHANGES**. After checking each claim against the
+tree, rev 4 accepts: the unfalsifiable `Possible`-tier gate; the omitted natural-key-on-fact case;
+the SCD cost-discipline mismatch; the false `Confirmed` claim from special-member absence; the
+missing aggregate stopping rule; the nonexistent B-126–B-128 behavioural consumer; the stale line
+citations; the duplicate Conformance row; relocation of the role-playing map gap to Coverage; and
+the unresolved sibling/mirror inventory.
+
+One finding is rejected after verification: Opus treated the 39,527/40,000 dotnet static-context
+number as a blocker and requested a pre-named cut. `scripts/context-footprint.ps1:270-271,286-291`
+and its bash twin classify skill frontmatter as `static.claude` but skill bodies as
+`ondemand-info`; `meta/context-footprint.json` explicitly says the latter is reported but never
+policy-gated. This change does not alter frontmatter. Rev 4 still requires reporting the body delta,
+but does not invent a static-ceiling risk. Opus explicitly said the accepted changes do not require
+another full adversarial pass. The B-125 pre-implementation Opus gate is therefore discharged.
 
 ## 7. Out of scope
 
-No implementation this session — this is a design-lock only. No `src/`/`dist/` edits. No angular
+No implementation in the design session. No angular
 content (this skill is dotnet/monorepo-scoped per B-40/B-96 precedent, to be confirmed at
 implementation). No change to `add-warehouse-load` (B-124's territory). No schema-evolution
 preflight (B-126), scoped lineage trace (B-127), or physical-design review (B-128) — this design
