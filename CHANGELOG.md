@@ -11,6 +11,12 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.52.0 — Unreleased
+
+- B-125: `map-warehouse` now emits evidence-ranked modelling-health findings for grain,
+  additivity, conformance, special members, allocation gaps, and fact-stream multiplication, with
+  scoped deepening and stricter SCD false-positive suppression.
+
 ## 0.51.5 — 2026-08-09
 
 - B-54: `release.ps1`'s changelog stamping now dates the root **and** all three shipped consumer

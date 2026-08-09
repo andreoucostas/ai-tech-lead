@@ -1,6 +1,6 @@
-# B-125 design — evidence-ranked warehouse modelling health review (LOCKED 2026-08-09, rev 7)
+# B-125 design — evidence-ranked warehouse modelling health review (LOCKED 2026-08-09, rev 9)
 
-> **Status: DESIGN LOCKED AFTER CLAUDE OPUS REVIEW. Not implemented.** Deviations need a new entry in
+> **Status: IMPLEMENTED; CORRECTIONS UNDER CLAUDE OPUS RE-REVIEW.** Deviations need a new entry in
 > `meta/workspace-decisions.md`. Trigger: `meta/BACKLOG.md` B-124–B-129, filed 2026-08-08
 > (capability "warehouse technical leadership"); B-125 is the foundational item the remaining
 > three (B-126–B-128) consume — **B-124 closed 2026-08-09, premise rejected; see §1.** **Review
@@ -358,6 +358,16 @@ pass findings for local DDL/load proof, reserves named consumer-view fan/chasm a
 deepening, treats direct structural contradictions as Confirmed and cross-artifact inferences as
 Likely, and forbids SCD findings based only on absent history markers or an unread load. No other
 detector or generic warehouse advice is authorized by this baseline.
+
+### Rev 9 — implementation-review corrections
+
+Claude Opus rejected the first Phase-2 implementation. Rev 9 accepts its blocking findings: use
+explicit per-class tiers rather than a generic direct/cross-artifact heuristic; keep allocation and
+fan/chasm checks in a named on-request deepening; enumerate the health classes in the Findings
+procedure; and require post-change evidence plus context/changelog gates. The recorded baseline is
+described as two later observations plus a retained-artifact regrade, not three runs of one frozen
+instrument. The implementation-review rejection is the adversarial review of the rev-8 delta; the
+corrected implementation requires a follow-up verdict before acceptance.
 
 ## 7. Out of scope
 

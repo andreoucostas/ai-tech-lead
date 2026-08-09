@@ -134,24 +134,27 @@ already there, and so a report can be written against the joins the warehouse ac
      summed across time); or non-additive (ratios, percentages — sum the numerator and the
      denominator, then divide).
 
-   Apply this evidence-gated modelling-health checklist to the artifacts already opened. Put a
-   supported defect in **Findings**, not only in this semantics section:
-   - flag a fact that combines transactional events with snapshot balances at a different grain,
-     and a consumer that sums a semi-additive balance across time; inspect the fact load in the
-     same pass before asserting the additivity defect;
-   - flag dimensions presented as conformed when repository identity rules and DDL prove
-     incompatible meaning, keys, values, or grain, and reserved special-member rows whose seeded
-     meanings are demonstrably ambiguous;
-   - when repository evidence says one fact row has multiple percentage allocations, flag a lone
-     scalar dimension key that cannot represent them. Do not infer this from a similarly named
-     fact or key alone;
-   - during scoped deepening for a named consumer, flag a view that joins two facts before either
-     is aggregated to the shared grain. Do not expand the default pass into a view-wide hunt.
+   Apply this evidence-gated modelling-health checklist to the artifacts already opened. Put each
+   supported defect in its own **Findings** row, not only in this semantics section:
+   - **Likely:** incompatible row meanings or grains coexist in one fact.
+   - **Likely:** a consumer aggregates a semi-additive measure across a non-additive dimension;
+     inspect the measure's load in the same pass before asserting this.
+   - **Confirmed:** repository identity rules and DDL directly disagree about whether dimensions
+     have compatible meaning, keys, values, or grain.
+   - **Confirmed:** seeded special-member keys have demonstrably indistinguishable meanings.
 
-   Direct structural contradictions are **Confirmed**; cross-artifact interpretations are
-   **Likely**. Never create an SCD finding merely because history markers or a change path were not
-   found: cite the complete load statement that proves the declared strategy is contradicted, or
-   record the unread/uncertain load under **Coverage**.
+   Never create an SCD finding merely because history markers or a change path were not found:
+   cite the complete load statement that proves the declared strategy is contradicted, or record
+   the unread/uncertain load under **Coverage**.
+
+   **Modelling health deepening (on request).** When the developer names a fact or consumer, inspect
+   only its immediately relevant allocation and consumption artifacts, then record what was and
+   was not checked under **Coverage**:
+   - **Confirmed:** repository cardinality/allocation rules require several dimension assignments
+     per fact row but the implemented relationship can store only one, with no allocation owner.
+   - **Confirmed:** a named consumer combines two fact streams before reducing each independently
+     to their common dimensional grain.
+   Do not run this deepening by default or infer either defect from names or keys alone.
 
 5. **Load flow and ordering.** Find the orchestration entry points: master procs that `EXEC` a
    chain, job/schedule scripts, `.dtsx` packages, pipeline JSON, or the dbt DAG. Trace each
@@ -205,9 +208,11 @@ already there, and so a report can be written against the joins the warehouse ac
       externally-held pipelines, procs not in this repo), how many facts carry `UNRESOLVED` edges,
       and which. A map that is silent about its own blind spots is what lets a naming guess look
       like knowledge.
-   6. **Findings** — evaluate the five checks already established by the steps above: unstated
-      grain, loads without rerun protection, inconsistent SCD handling, declared keys that are
-      disabled, and conflicting join paths between two reporting views. Report each finding as:
+   6. **Findings** — evaluate the checks established above: unstated or mixed grain, incorrect
+      measure additivity, incompatible conformance, ambiguous special members, loads without rerun
+      protection, evidenced SCD inconsistency, disabled declared keys, and conflicting join paths.
+      Include allocation gaps and fact-stream multiplication only when modelling-health deepening
+      was requested. Report each finding as:
 
       | finding | entity | evidence | finding confidence | severity if confirmed | consequence | remediation |
       |---------|--------|----------|--------------------|-----------------------|-------------|-------------|

@@ -4,6 +4,10 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.52.0 — Unreleased
+
+- No Angular-specific behaviour changes in this release candidate.
+
 ## 0.51.5 — 2026-08-09
 
 - `template-checks` (one of the framework's own quality gates) now fails if this file's top entry
