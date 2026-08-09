@@ -136,24 +136,30 @@ already there, and so a report can be written against the joins the warehouse ac
 
    Apply this evidence-gated modelling-health checklist to the artifacts already opened. Put each
    supported defect in its own **Findings** row, not only in this semantics section:
-   - **Likely:** incompatible row meanings or grains coexist in one fact.
-   - **Likely:** a consumer sums a semi-additive measure across time or another dimension along
-     which that measure is non-additive; inspect the measure's load in the same pass first.
+   - **Likely or Confirmed, according to evidence:** incompatible row identities coexist in one
+     fact (for example event rows unioned with periodic summaries). Different measure additivity on
+     one atomic row grain is not mixed grain.
+   - **Likely:** repository structure implies a semi-additive measure may be summed along a
+     non-additive dimension. **Confirmed:** an inspected consumer directly performs that unsafe
+     aggregation. Inspect the measure's load and consumer in the same pass.
+   - **Confirmed:** an evidenced fact-to-dimension relationship uses the dimension's business key
+     where repository convention requires its surrogate key. A copied source identifier or
+     name-only candidate edge is not enough; keep that `UNRESOLVED`.
    - **Confirmed:** repository identity rules and DDL directly disagree about whether dimensions
      have compatible meaning, keys, values, or grain.
-   - **Confirmed:** seeded special-member keys have demonstrably indistinguishable meanings.
+   - **Confirmed:** seeded special-member keys have distinct governed states but expose the same
+     consumer-facing label, making those states indistinguishable in reports.
 
-   Record each checklist finding at the confidence shown, not higher. Never create an SCD finding
-   merely because history markers or a change path were not found:
+   Never create an SCD finding merely because history markers or a change path were not found:
    cite the complete load statement that proves the declared strategy is contradicted, or record
    the unread/uncertain load under **Coverage**.
 
    **Modelling health deepening (on request).** When the developer names a fact or consumer, inspect
    only its immediately relevant allocation and consumption artifacts, then record what was and
    was not checked under **Coverage**:
-   - **Confirmed:** repository cardinality/allocation rules require percentage allocations to
-     several dimension members per fact row, but one scalar key cannot represent them and no
-     allocation owner exists.
+   - **Confirmed:** repository cardinality rules require several dimension members per fact row,
+     but one scalar key cannot represent them and no bridge or allocation owner exists. If a
+     correct bridge/allocation owner already represents that relationship, do not flag it.
    - **Confirmed:** a named consumer multiplies two fact streams by combining them before it can
      pre-aggregate each independently to their common dimensional grain.
    Do not run this deepening by default or infer either defect from names or keys alone.
@@ -211,7 +217,7 @@ already there, and so a report can be written against the joins the warehouse ac
       and which. A map that is silent about its own blind spots is what lets a naming guess look
       like knowledge.
    6. **Findings** — evaluate the checks established above: unstated or mixed grain, incorrect
-      measure additivity, incompatible conformance, ambiguous special members, loads without rerun
+      measure additivity, evidenced natural-key relationships, incompatible conformance, ambiguous special members, loads without rerun
       protection, evidenced SCD inconsistency, disabled declared keys, and conflicting join paths.
       Include allocation gaps and fact-stream multiplication only when modelling-health deepening
       was requested. Report each finding as:

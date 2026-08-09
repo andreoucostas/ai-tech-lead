@@ -1098,3 +1098,27 @@ Host: Claude Code 2.1.226 (Claude Code) · scratch: retained=True
 - **PASS warehouse-health-convention** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.6155838 tokensIn=16 tokensOut=13627; mapWritten=True truncated=False mixed=False tierMixed=Missing natural=False tierNatural=Missing scd=False tierScd=Missing additivity=False tierAdditivity=Missing loadRead=False roleCoverage=False conformance=False tierConformance=Missing special=False tierSpecial=Missing bridge=False tierBridge=Missing fanChasm=False tierFanChasm=Missing candidateRows=0
 - **PASS warehouse-health-no-trigger** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.7800972 tokensIn=24 tokensOut=17106; mapWritten=True truncated=False mixed=False tierMixed=Missing natural=False tierNatural=Missing scd=False tierScd=Missing additivity=False tierAdditivity=Missing loadRead=False roleCoverage=False conformance=False tierConformance=Missing special=False tierSpecial=Missing bridge=False tierBridge=Missing fanChasm=False tierFanChasm=Missing candidateRows=0
 
+
+## 2026-08-09 22:15:42 +01:00 — framework v0.52.0 (85eef5eaba765b3f08abee1ebc8ee4cb3ab15397)
+
+Host: Claude Code 2.1.226 (Claude Code) · scratch: retained=True
+
+- **FAIL warehouse-health-default-a** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.9475944 tokensIn=24 tokensOut=24172; mapWritten=True truncated=False mixed=False tierMixed=Missing natural=False tierNatural=Missing scd=True tierScd=Confirmed additivity=False tierAdditivity=Confirmed loadRead=True roleCoverage=True conformance=False tierConformance=Missing special=False tierSpecial=Missing bridge=False tierBridge=Missing fanChasm=False tierFanChasm=Missing candidateRows=3
+- **ERROR warehouse-health-default-b** (model=sonnet) — agentExit=1 timedOut=False costUsd=0.6772104 tokensIn=16 tokensOut=6135; mapWritten=False
+- **ERROR warehouse-health-deep-b** (model=sonnet) — agentExit=1 timedOut=False costUsd=0 tokensIn=0 tokensOut=0; mapWritten=False
+- **ERROR warehouse-health-clean** (model=sonnet) — agentExit=1 timedOut=False costUsd=0 tokensIn=0 tokensOut=0; mapWritten=False
+- **ERROR warehouse-health-convention** (model=sonnet) — agentExit=1 timedOut=False costUsd=0 tokensIn=0 tokensOut=0; mapWritten=False
+- **ERROR warehouse-health-no-trigger** (model=sonnet) — agentExit=1 timedOut=False costUsd=0 tokensIn=0 tokensOut=0; mapWritten=False
+
+### B-125 rev-10 disposition of the incomplete v0.52.0 batch
+
+The five API-error rows above are inconclusive monthly-limit failures and require replacement. The
+completed default-A row is also not acceptance evidence for the original instrument. Independent
+Terra and user-authorized fresh `gpt-5.6-sol` high-reasoning audits agreed that the planted model
+did not contain mixed row grain, did not evidence a fact-to-dimension natural-key join, and did
+contain a correctly diagnosed unsafe additivity consumer whose `Confirmed` confidence was
+defensible. Rev 10 replaces those invalid premises, makes confidence evidence-dependent, narrows
+the special-member claim, adds complete-field/section checks, strengthens negative controls, adds
+an existing-correct-bridge control, and adds a finding-led report-review outcome. The old batch is
+retained for audit only and must not be counted in a post-change stopping rule.
+

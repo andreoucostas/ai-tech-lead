@@ -1,4 +1,4 @@
-# B-125 design — evidence-ranked warehouse modelling health review (LOCKED 2026-08-09, rev 9)
+# B-125 design — evidence-ranked warehouse modelling health review (LOCKED 2026-08-09, rev 10)
 
 > **Status: IMPLEMENTED; CORRECTIONS UNDER CLAUDE OPUS RE-REVIEW.** Deviations need a new entry in
 > `meta/workspace-decisions.md`. Trigger: `meta/BACKLOG.md` B-124–B-129, filed 2026-08-08
@@ -131,13 +131,13 @@ always been"), no defect finding is emitted — the convention is noted instead.
 
 | Class (per `meta/BACKLOG.md:3221-3224`) | Phase 1 (structure only) or Phase 2 (new detection)? | What steps 1–4 evidence actually supports | Confidence ceiling from default evidence |
 |---|---|---|---|
-| **Fact** — mixed/unstated grain, wrong fact type, natural keys on facts | Phase 1 covers unstated grain (already emitted); Phase 2 adds mixed grain and a natural-key-on-fact check. Wrong-fact-type detection is deferred because only a `Possible` name/shape signal is available | Unstated grain: `Confirmed` from step 2. Mixed grain: `Likely` only where the fact's column set implies two event/measure grains. A natural/business key used as a dimension join from a fact is `Confirmed` from the separately-recorded key types plus the join (`SKILL.md:56-59`) | Unstated/natural-key misuse: `Confirmed`; mixed grain: `Likely`; wrong fact type: not emitted |
+| **Fact** — mixed/unstated grain, wrong fact type, natural keys on facts | Phase 1 covers unstated grain; Phase 2 adds mixed grain and natural-key-on-fact checks. Wrong-fact-type detection remains deferred | Mixed grain requires incompatible row identities, not measures with different additivity on one atomic grain. Natural-key misuse requires an evidenced fact-to-dimension join plus recorded key types; a copied identifier/name candidate stays unresolved | Unstated/natural-key misuse: `Confirmed` with direct proof; mixed grain: `Likely` or `Confirmed` according to proof |
 | **Dimension / conformance** — non-conformance, inappropriate snowflaking | Phase 2 adds structural non-conformance only. Snowflaking-appropriateness is deferred because default evidence supports only a `Possible` question | DDL plus an explicit repository rule can directly prove that the same governed entity is represented at incompatible grains/keys; value-level disagreement remains invisible from structure alone | Structural non-conformance: `Confirmed` with both sources, otherwise not emitted; snowflaking: not emitted |
-| **Bridge** — missing bridge/allocation for a stated many-to-many | Phase 2, on-demand only (§3.5) | Requires an explicit many-to-many business rule plus a scalar fact column that can represent only one related member. Absent that trigger, the detector does not fire (fixes §6 finding 9 — no silent pre-supplied conclusion) | `Confirmed` for the structural representational gap when both sources exist; never fires speculatively |
+| **Bridge** — missing bridge/allocation for a stated many-to-many | Phase 2, on-demand only (§3.5) | Requires an explicit cardinality rule plus a scalar fact column that can represent only one related member and no existing bridge/allocation owner | `Confirmed` when all evidence exists; silent without the trigger or when a correct bridge exists |
 | **Role-playing** — a role-playing dimension reached but not distinguished | Phase 2 only if the existing edge list and dimensional semantics fail to distinguish the roles; any explicit structured location counts | Step 3's `role` column already records this per edge (`SKILL.md:75-76`); a fact reaching the same dimension via 2+ differently-named keys with no distinct role is a `Confirmed` map-coverage gap, not yet a model defect | `Confirmed` coverage gap |
 | **SCD** — inconsistent or unstated SCD strategy per dimension | Phase 1 structures the existing inconsistency finding; Phase 2 adds a signal only when the complete already-open load statement makes the write pattern plain | Step 7 gathers Type 1/Type 2/mixed (`SKILL.md:149-158`). A complete MERGE with only `WHEN NOT MATCHED` directly proves it cannot create a changed version; no CTE/temp/helper tracing is allowed | `Confirmed` for that complete structural proof; otherwise unresolved, not a finding |
-| **Special member** — ambiguous or missing unknown/N/A dimension rows | Phase 2 checks evidenced presence only; absence and usage-correctness are deferred | A reserved row found in already-open DDL/load/seed evidence is `Confirmed`. Failure to find one is absence of evidence, not proof of absence | Presence/ambiguity: `Confirmed`; missing/usage claims: not emitted |
-| **Additivity** — incorrect measure additivity classification | Phase 1 covers structuring what step 4 already classifies; Phase 2 adds a plausibility check | Step 4 classifies additivity "where the load reveals it" (`SKILL.md:132-135`) — loads are examined in step 5, not step 4, so a same-pass additivity finding is only available when step 5 evidence is already in hand from the same run (fixes §6 finding 2's additivity point: this is not asserted from step 4 alone) | `Likely` only when step 5 evidence for that fact was actually read in the same pass; otherwise not emitted |
+| **Special member** — ambiguous or missing unknown/N/A dimension rows | Phase 2 checks evidenced collisions only; absence remains deferred | Seed/rule evidence proves distinct governed states expose the same consumer-facing label; two reserved keys alone are insufficient | Label collision: `Confirmed`; missing/usage claims: not emitted |
+| **Additivity** — incorrect measure additivity classification or use | Phase 1 structures the classification; Phase 2 adds evidence-ranked use review | A load can support classification; a consumer must also be read before asserting unsafe aggregation is performed | `Likely` for classification risk; `Confirmed` when an inspected consumer directly performs the unsafe aggregation |
 
 ### 3.5 On-demand deepening (unchanged in shape from rev 1, renamed to avoid step-number collision)
 
@@ -173,8 +173,8 @@ note on what was and was not checked — mirroring 9.5's existing coverage state
 Run pre-registered unchanged-skill baselines before adding any Phase-2 instruction. Decisions are
 **per detector**, never a count over one correlated map. A detector is already handled only when it:
 
-1. passes in every one of at least three independent defect-fixture runs at the confidence tier
-   claimed in §3.4;
+1. passes in every one of at least three independent defect-fixture runs within the
+   evidence-dependent confidence band in §3.4;
 2. remains silent in every clean-fixture and explicit-coherent-convention-fixture run; and
 3. for bridge, remains silent on a many-to-many-shaped fixture with no trigger evidence.
 
@@ -196,7 +196,7 @@ roles in its structured edge list, dimensional semantics, or Coverage, and emits
 Findings; forcing an already-correct edge into Coverage would add prose without removing harm.
 Additivity additionally requires transcript evidence that the relevant load was read in the same
 pass. Self-tests must demonstrate for every detector: a constructible green row, deleted-row red,
-right-entity/wrong-semantics red, right-semantics/wrong-entity red, wrong-tier red, and
+right-entity/wrong-semantics red, right-semantics/wrong-entity red, unsupported-tier red, and
 cross-detector non-confusion. Run both PowerShell hosts under a hostile code page before using the
 live numbers.
 
@@ -219,8 +219,7 @@ live numbers.
 
 1. Planted-model fixtures exist for each detector retained after §3.8's per-detector stopping rule,
    each with a pre-registered red baseline and a constructible success case,
-   **at the confidence tier §3.4 claims for it** — a class claimed only to `Possible` must be
-   proven to reach `Possible`, not silently asserted as `Confirmed`. **The red baseline must be run
+   **within the evidence-dependent confidence band §3.4 claims for it**. **The red baseline must be run
    against the *unchanged* current skill, not merely constructed as a hypothetical** — this is
    B-124's own registered stopping rule (`meta/BACKLOG.md` Done section: "the unchanged skill
    chose the intended...fact in 2/2 runs each" killed a plausible-sounding change with zero
@@ -235,9 +234,8 @@ live numbers.
 5. Behavioural evals (reuse the B-41 harness — do not build a second one) show a structured finding
    changes the existing map read-side outcome: a report query or review decision follows the
    finding instead of merely reproducing its table. This is the live consumer; B-126–B-128 are not.
-6. The bridge detector (§3.4 Bridge row) never fires without its stated trigger evidence present in
-   the fixture — a fixture with no many-to-many signal must produce no bridge finding at all, not
-   an `UNRESOLVED` one (fixes §6 finding 9).
+6. The bridge detector (§3.4 Bridge row) never fires without its stated trigger evidence and never
+   fires when a correct bridge/allocation owner already represents the relationship.
 7. `no-meta-leak`, `validate-dist` ×3, hook suites ×3, meta suite all green; context-footprint is
    refreshed and the on-demand delta reported (§4).
 
@@ -370,6 +368,19 @@ procedure; and require post-change evidence plus context/changelog gates. The re
 described as two later observations plus a retained-artifact regrade, not three runs of one frozen
 instrument. The implementation-review rejection is the adversarial review of the rev-8 delta; the
 corrected implementation requires a follow-up verdict before acceptance.
+
+### Rev 10 — final-review instrument correction
+
+The user-authorized fresh `gpt-5.6-sol` high-reasoning review returned **REJECT** and independently
+confirmed a Terra audit: default-A's original running balance did not prove mixed row grain, its
+`CustomerId` had no evidenced dimension join, and its correct additivity finding was rejected only
+for a defensible stronger confidence. Rev 10 replaces those premises with direct evidence: two
+explicit row identities, an actual business-key dimension join, and an inspected unsafe consumer.
+Confidence is evidence-dependent, not an exact class-wide answer key. Special-member scope is
+narrowed to a proven consumer-label collision. The grader parses fields separately, checks complete
+evidence/severity/consequence/remediation, locates role coverage in Coverage, strengthens negative
+controls, adds a correct-existing-bridge control, and adds a finding-led report-review outcome.
+The corrected implementation requires a fresh Sol verdict before release.
 
 ## 7. Out of scope
 

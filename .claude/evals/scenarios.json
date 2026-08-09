@@ -141,6 +141,13 @@
       "assertion": "warehouseModelHealth"
     },
     {
+      "id": "warehouse-health-decision-a",
+      "fixture": "warehouse-health-a",
+      "budgetUsd": 1.50,
+      "prompt": "Use map-warehouse to write docs/warehouse-map.md, then review this proposed report and write the decision to docs/warehouse-review.md: SELECT CustomerId, SUM(EndOfDayBalance) AS Balance FROM fact.FactAccountActivity GROUP BY CustomerId. State whether it is safe, cite the relevant map finding/evidence, and give the smallest correct query-shape change. I approve both documentation changes in advance.",
+      "assertion": "warehouseHealthDecision"
+    },
+    {
       "id": "warehouse-health-deep-b",
       "fixture": "warehouse-health-b",
       "budgetUsd": 1.50,
@@ -166,6 +173,13 @@
       "fixture": "warehouse-health-no-trigger",
       "budgetUsd": 1.25,
       "prompt": "Use the map-warehouse skill to map this warehouse and write docs/warehouse-map.md. Run modelling-health deepening for fact.FactCampaignResponse only where its stated trigger evidence exists. I approve this documentation change in advance: implement it now, then report what you found.",
+      "assertion": "warehouseModelHealth"
+    },
+    {
+      "id": "warehouse-health-bridge-ok",
+      "fixture": "warehouse-health-bridge-ok",
+      "budgetUsd": 1.25,
+      "prompt": "Use the map-warehouse skill to map this warehouse and write docs/warehouse-map.md. Run modelling-health deepening for fact.FactSales, including its existing campaign relationship, only where trigger evidence exists. I approve this documentation change in advance: implement it now, then report what you found.",
       "assertion": "warehouseModelHealth"
     },
     {

@@ -21,7 +21,7 @@ function Assert-Bom([string]$Path) {
     return $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
 }
 
-function New-EvalRepo([string]$Path, [ValidateSet('dotnet','angular','warehouse','warehouse-mixed','warehouse-fact-binding','warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger')][string]$Stack = 'dotnet') {
+function New-EvalRepo([string]$Path, [ValidateSet('dotnet','angular','warehouse','warehouse-mixed','warehouse-fact-binding','warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok')][string]$Stack = 'dotnet') {
     New-Item -ItemType Directory -Path $Path -Force | Out-Null
     if ($Stack -in @('warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger')) {
         if ($Stack -eq 'warehouse-health-no-trigger') {
@@ -62,6 +62,23 @@ VALUES (source.InvoiceId, source.CustomerKey, source.InvoiceDateKey, source.NetA
         git -C $Path commit --quiet -m "$Stack baseline"
         return
     }
+    if ($Stack -eq 'warehouse-health-bridge-ok') {
+        New-EvalRepo $Path warehouse-health-b
+        $salesPath = Join-Path $Path 'Tables/fact.FactSales.sql'
+        (Get-Content -Raw -LiteralPath $salesPath).Replace("    CampaignKey INT NULL,`n", '') |
+            Set-Content -LiteralPath $salesPath -Encoding utf8NoBOM
+        @'
+CREATE TABLE bridge.FactSalesCampaign (
+    SalesKey BIGINT NOT NULL,
+    CampaignKey INT NOT NULL,
+    AllocationPercent DECIMAL(5,2) NOT NULL,
+    CONSTRAINT PK_FactSalesCampaign PRIMARY KEY (SalesKey, CampaignKey)
+);
+'@ | Set-Content -LiteralPath (Join-Path $Path 'Tables/bridge.FactSalesCampaign.sql') -Encoding utf8NoBOM
+        git -C $Path add -A
+        git -C $Path commit --quiet -m 'allocation owner evidence'
+        return
+    }
     if ($Stack -in @('warehouse-health-a','warehouse-health-b')) {
         # Derive isolated health fixtures from the frozen warehouse fixture without changing that
         # fixture's bytes or its historical B-98 comparability. Added artifacts use domain names;
@@ -71,31 +88,47 @@ VALUES (source.InvoiceId, source.CustomerKey, source.InvoiceDateKey, source.NetA
             @'
 CREATE TABLE fact.FactAccountActivity (
     ActivityKey BIGINT NOT NULL PRIMARY KEY,
+    RecordKind NVARCHAR(20) NOT NULL,
     CustomerId NVARCHAR(50) NOT NULL,
     PostedDateKey INT NOT NULL,
     SettledDateKey INT NULL,
-    TransactionAmount DECIMAL(18,2) NOT NULL,
-    EndOfDayBalance DECIMAL(18,2) NOT NULL,
+    TransactionAmount DECIMAL(18,2) NULL,
+    EndOfDayBalance DECIMAL(18,2) NULL,
     LoadRunId BIGINT NOT NULL
 );
 '@ | Set-Content -LiteralPath (Join-Path $Path 'Tables/fact.FactAccountActivity.sql') -Encoding utf8NoBOM
             @'
 CREATE PROCEDURE dbo.usp_LoadFactAccountActivity AS
 INSERT INTO fact.FactAccountActivity
-    (ActivityKey, CustomerId, PostedDateKey, SettledDateKey, TransactionAmount, EndOfDayBalance, LoadRunId)
-SELECT s.SalesId, s.CustomerId, posted.DateKey, settled.DateKey, s.NetAmount,
-       SUM(s.NetAmount) OVER (PARTITION BY s.CustomerId ORDER BY s.OrderDate), s.BatchId
+    (ActivityKey, RecordKind, CustomerId, PostedDateKey, SettledDateKey, TransactionAmount, EndOfDayBalance, LoadRunId)
+SELECT s.SalesId * 2, 'TRANSACTION', s.CustomerId, posted.DateKey, settled.DateKey, s.NetAmount,
+       NULL, s.BatchId
 FROM stg.StgSalesOrder s
 JOIN dim.DimDate posted ON posted.CalendarDate = s.OrderDate
-LEFT JOIN dim.DimDate settled ON settled.CalendarDate = DATEADD(day, 2, s.OrderDate);
+LEFT JOIN dim.DimDate settled ON settled.CalendarDate = DATEADD(day, 2, s.OrderDate)
+UNION ALL
+SELECT 1000000000 + ROW_NUMBER() OVER (ORDER BY d.CustomerId, d.OrderDate),
+       'DAILY_POSITION', d.CustomerId, posted.DateKey, NULL, NULL,
+       SUM(d.DailyMovement) OVER (PARTITION BY d.CustomerId ORDER BY d.OrderDate), d.BatchId
+FROM (
+    SELECT CustomerId, OrderDate, MAX(BatchId) AS BatchId, SUM(NetAmount) AS DailyMovement
+    FROM stg.StgSalesOrder GROUP BY CustomerId, OrderDate
+) d
+JOIN dim.DimDate posted ON posted.CalendarDate = d.OrderDate;
 '@ | Set-Content -LiteralPath (Join-Path $Path 'StoredProcedures/usp_LoadFactAccountActivity.sql') -Encoding utf8NoBOM
             @'
 CREATE VIEW rpt.vwDailyAccountPosition AS
-SELECT PostedDateKey, SUM(TransactionAmount) AS DailyMovement,
-       SUM(EndOfDayBalance) AS TotalBalance
+SELECT CustomerId, SUM(EndOfDayBalance) AS SumOfDailyBalances
 FROM fact.FactAccountActivity
-GROUP BY PostedDateKey;
+WHERE RecordKind = 'DAILY_POSITION'
+GROUP BY CustomerId;
 '@ | Set-Content -LiteralPath (Join-Path $Path 'Views/rpt.vwDailyAccountPosition.sql') -Encoding utf8NoBOM
+            @'
+CREATE VIEW rpt.vwAccountCustomer AS
+SELECT a.ActivityKey, c.CustomerName
+FROM fact.FactAccountActivity a
+JOIN dim.DimCustomer c ON c.CustomerId = a.CustomerId;
+'@ | Set-Content -LiteralPath (Join-Path $Path 'Views/rpt.vwAccountCustomer.sql') -Encoding utf8NoBOM
         } else {
             @'
 CREATE TABLE sales.DimParty (
@@ -147,6 +180,7 @@ GROUP BY c.CustomerKey;
 - A sale may receive credit from more than one campaign.
 - Campaign credit percentages for one sale total 100 percent.
 - `PartyCode` identifies the same governed party across sales and service data.
+- Status code `UNK` means the source did not provide a value; `NA` means the status does not apply.
 '@ | Set-Content -LiteralPath (Join-Path $Path 'docs/warehouse-rules.md') -Encoding utf8NoBOM
         }
         $leakPatterns = @('mixed[ -]?grain','natural[ -]?key on fact','missing bridge','non-?conform','role-playing gap','incorrect additivity','fan trap','chasm trap','ambiguous special member')
@@ -1188,7 +1222,19 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             }
             return [pscustomobject]@{ Status = $status; Pass = $pass; Detail = "category=$category channels=$($channels -join ',') reachedAddEntity=$reachedAddEntity factWritten=$factWritten boundCustomer=$boundCustomer boundProduct=$boundProduct boundDate=$boundDate resolvedCustomer=$resolvedCustomer resolvedProduct=$resolvedProduct resolvedDate=$resolvedDate regionOnFact=$regionOnFact naturalKeyOnFact=$naturalKeyOnFact degenerateOnFact=$degenerateOnFact newDimTables=$($newDimTables -join ',')" }
         }
-        { $_ -in @('warehouse-health-default-a','warehouse-health-default-b','warehouse-health-deep-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger') } {
+        'warehouse-health-decision-a' {
+            $mapPath = Join-Path $Target 'docs/warehouse-map.md'
+            $reviewPath = Join-Path $Target 'docs/warehouse-review.md'
+            if (-not (Test-Path -LiteralPath $mapPath -PathType Leaf) -or -not (Test-Path -LiteralPath $reviewPath -PathType Leaf)) {
+                return [pscustomobject]@{ Status='INCONCLUSIVE'; Pass=$false; Detail='mapWritten=False reviewWritten=False' }
+            }
+            $reviewText = Get-Content -Raw -LiteralPath $reviewPath
+            $rejectsUnsafe = $reviewText -match '(?i)(unsafe|reject|not safe|incorrect)'
+            $citesFinding = $reviewText -match '(?i)EndOfDayBalance' -and $reviewText -match '(?i)(semi.additive|finding|warehouse-map)'
+            $correctsShape = $reviewText -match '(?i)(closing|last|latest|one row per customer per (?:day|date)|collapse)' -and $reviewText -match '(?i)(day|date|time)'
+            return [pscustomobject]@{ Status='PASS'; Pass=($rejectsUnsafe -and $citesFinding -and $correctsShape); Detail="mapWritten=True reviewWritten=True rejectsUnsafe=$rejectsUnsafe citesFinding=$citesFinding correctsShape=$correctsShape" }
+        }
+        { $_ -in @('warehouse-health-default-a','warehouse-health-default-b','warehouse-health-deep-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok') } {
             $mapPath = Join-Path $Target 'docs/warehouse-map.md'
             if (-not (Test-Path -LiteralPath $mapPath -PathType Leaf)) {
                 return [pscustomobject]@{ Status='INCONCLUSIVE'; Pass=$false; Detail='mapWritten=False' }
@@ -1208,9 +1254,10 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
                     $healthRawCells = $healthLine.Trim().Trim('|') -split '\|'
                     $healthCells = @($healthRawCells | ForEach-Object { $_.Trim() })
                     if ($healthCells.Count -lt 7) { continue }
+                    $healthEntityEvidence = $healthCells[1] + ' ' + $healthCells[2]
                     $healthHasRequired = $true
                     foreach ($healthRequiredText in $Required) {
-                        if ($healthLine -notmatch [regex]::Escape($healthRequiredText)) { $healthHasRequired = $false; break }
+                        if ($healthEntityEvidence -notmatch [regex]::Escape($healthRequiredText)) { $healthHasRequired = $false; break }
                     }
                     $healthSemanticText = $healthCells[0] + ' ' + $healthCells[2] + ' ' + $healthCells[5]
                     $healthHasSemantics = $true
@@ -1222,26 +1269,28 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
                             elseif ($healthCells[3] -match '(?i)^Likely\b') { 'Likely' }
                             elseif ($healthCells[3] -match '(?i)^Possible\b') { 'Possible' }
                             else { 'Missing' }
-                        return [pscustomobject]@{ Found=$true; Tier=$healthTier; Line=$healthLine }
+                        $healthComplete = @($healthCells[2],$healthCells[4],$healthCells[5],$healthCells[6] |
+                            Where-Object { -not $_ -or $_ -match '^(?:-|—|n/?a|unknown|tbd)$' }).Count -eq 0
+                        return [pscustomobject]@{ Found=$true; Tier=$healthTier; Severity=$healthCells[4]; Complete=$healthComplete; Line=$healthLine }
                     }
                 }
-                return [pscustomobject]@{ Found=$false; Tier='Missing'; Line='' }
+                return [pscustomobject]@{ Found=$false; Tier='Missing'; Severity='Missing'; Complete=$false; Line='' }
             }
             $findings = Get-MarkdownSection $mapText 'Findings'
             $coverage = Get-MarkdownSection $mapText 'Coverage'
             $truncated = $mapText -match '(?im)^\s*(?:>\s*)?(?:\[?TRUNCATED\]?|OUTPUT LIMIT|CONTINUED ELSEWHERE)\b' -or ($findings -and $findings -notmatch '(?m)^\s*\|')
 
-            $mixed = Find-HealthRow $findings @('FactAccountActivity') @('(?i)grain','(?i)(TransactionAmount|transaction)','(?i)(EndOfDayBalance|balance)')
+            $mixed = Find-HealthRow $findings @('FactAccountActivity') @('(?i)(row identity|grain|TRANSACTION)','(?i)(DAILY_POSITION|periodic|snapshot|position)')
             $natural = Find-HealthRow $findings @('FactAccountActivity','CustomerId') @('(?i)(natural|business|raw|text)','(?i)(surrogate|dimension key|CustomerKey)')
             $scd = Find-HealthRow $findings @('DimCustomer') @('(?i)SCD|Type\s*2','(?i)(history|version|WHEN MATCHED|IsCurrent)')
             $additivity = Find-HealthRow $findings @('FactAccountActivity','EndOfDayBalance') @('(?i)(semi.additive|non.additive|additivity)','(?i)(time|date|sum)')
-            $roleCoverage = $mapText -match '(?is)FactAccountActivity.*PostedDateKey.*SettledDateKey.*role|FactAccountActivity.*role.*PostedDateKey.*SettledDateKey'
+            $roleCoverage = $coverage -match '(?is)FactAccountActivity.*PostedDateKey.*SettledDateKey.*role|FactAccountActivity.*role.*PostedDateKey.*SettledDateKey'
             $roleFinding = $findings -match '(?is)FactAccountActivity.*(?:PostedDateKey|SettledDateKey).*role'
             $role = $roleCoverage -and -not $roleFinding
 
             $conformance = Find-HealthRow $findings @('sales.DimParty','service.DimParty','PartyCode') @('(?i)(conform|same governed party)','(?i)(grain|contact|column)')
-            $special = Find-HealthRow $findings @('DimStatus') @('(?:-1|`-1`)','(?:0|`0`)','(?i)(unknown|special|sentinel|ambiguous)')
-            $bridge = Find-HealthRow $findings @('FactSales','CampaignKey') @('(?i)(many.to.many|single[^|]*(?:FK|key|column)[^|]*cannot)','(?i)(percentage|100\s*percent|100%)')
+            $special = Find-HealthRow $findings @('DimStatus') @('(?:-1|`-1`)','(?:0|`0`)','(?i)(same label|indistinguishable|ambiguous|Unknown)')
+            $bridge = Find-HealthRow $findings @('FactSales','CampaignKey') @('(?i)(many.to.many|several|multiple)','(?i)(?:single|one\s+scalar)[^|]*(?:FK|key|column)[^|]*cannot|cannot[^|]*(?:FK|key|column)')
             $fan = Find-HealthRow $findings @('vwCustomerCommercialSummary','FactSales','FactReturn') @('(?i)multipl(?:y|ies|ied|ication)','(?i)(pre.aggregat|preaggregat)')
 
             $successful = @($e.Tools | Where-Object { $e.ToolResults.ContainsKey($_.Id) -and -not $e.ToolResults[$_.Id].is_error })
@@ -1250,14 +1299,14 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
                 (([string]$_.Input.command + ' ' + [string]$_.Input.path + ' ' + [string]$_.Input.pattern) -match '(?i)usp_LoadFactAccountActivity')
             } | Select-Object -First 1)
 
-            $mixedPass = $mixed.Found -and $mixed.Tier -eq 'Likely'
-            $naturalPass = $natural.Found -and $natural.Tier -eq 'Confirmed'
-            $scdPass = $scd.Found -and $scd.Tier -eq 'Confirmed'
-            $additivityPass = $additivity.Found -and $additivity.Tier -eq 'Likely' -and $additivityLoadRead
-            $conformancePass = $conformance.Found -and $conformance.Tier -eq 'Confirmed'
-            $specialPass = $special.Found -and $special.Tier -eq 'Confirmed'
-            $bridgePass = $bridge.Found -and $bridge.Tier -eq 'Confirmed'
-            $fanPass = $fan.Found -and $fan.Tier -eq 'Confirmed'
+            $mixedPass = $mixed.Found -and $mixed.Tier -in @('Likely','Confirmed') -and $mixed.Complete -and $mixed.Severity -match '(?i)blocking|significant'
+            $naturalPass = $natural.Found -and $natural.Tier -eq 'Confirmed' -and $natural.Complete -and $natural.Severity -match '(?i)blocking|significant'
+            $scdPass = $scd.Found -and $scd.Tier -eq 'Confirmed' -and $scd.Complete -and $scd.Severity -match '(?i)blocking|significant'
+            $additivityPass = $additivity.Found -and $additivity.Tier -eq 'Confirmed' -and $additivity.Complete -and $additivity.Severity -match '(?i)blocking|significant' -and $additivityLoadRead
+            $conformancePass = $conformance.Found -and $conformance.Tier -eq 'Confirmed' -and $conformance.Complete -and $conformance.Severity -match '(?i)blocking|significant'
+            $specialPass = $special.Found -and $special.Tier -eq 'Confirmed' -and $special.Complete -and $special.Severity -match '(?i)significant|advisory'
+            $bridgePass = $bridge.Found -and $bridge.Tier -eq 'Confirmed' -and $bridge.Complete -and $bridge.Severity -match '(?i)blocking|significant'
+            $fanPass = $fan.Found -and $fan.Tier -eq 'Confirmed' -and $fan.Complete -and $fan.Severity -match '(?i)blocking|significant'
             $candidateRows = @($mixed.Found,$natural.Found,$scd.Found,$additivity.Found,$role,$conformance.Found,$special.Found,$bridge.Found,$fan.Found) | Where-Object { $_ }
 
             $pass = switch ($Id) {
@@ -1265,8 +1314,9 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
                 'warehouse-health-default-b' { $conformancePass -and $specialPass -and -not $bridge.Found -and -not $fan.Found }
                 'warehouse-health-deep-b' { $bridgePass -and $fanPass }
                 'warehouse-health-clean' { $candidateRows.Count -eq 0 }
-                'warehouse-health-convention' { -not $natural.Found }
-                'warehouse-health-no-trigger' { -not $bridge.Found }
+                'warehouse-health-convention' { $candidateRows.Count -eq 0 }
+                'warehouse-health-no-trigger' { $candidateRows.Count -eq 0 }
+                'warehouse-health-bridge-ok' { -not $bridge.Found }
             }
             $status = if ($truncated) { 'INCONCLUSIVE' } else { 'PASS' }
             return [pscustomobject]@{ Status=$status; Pass=($status -eq 'PASS' -and $pass); Detail="mapWritten=True truncated=$truncated mixed=$mixedPass tierMixed=$($mixed.Tier) natural=$naturalPass tierNatural=$($natural.Tier) scd=$scdPass tierScd=$($scd.Tier) additivity=$additivityPass tierAdditivity=$($additivity.Tier) loadRead=$additivityLoadRead roleCoverage=$role conformance=$conformancePass tierConformance=$($conformance.Tier) special=$specialPass tierSpecial=$($special.Tier) bridge=$bridgePass tierBridge=$($bridge.Tier) fanChasm=$fanPass tierFanChasm=$($fan.Tier) candidateRows=$($candidateRows.Count)" }
@@ -1849,10 +1899,10 @@ $findingsBlock
 |---|---|---|---|---|---|---|
 '@
         $healthRowsA = @(
-            '| Two row meanings coexist | FactAccountActivity | TransactionAmount is transactional while EndOfDayBalance is a daily balance at a different grain | Likely | blocking | Aggregation mixes grains | Separate the daily position |',
-            '| Source identifier used for dimensional relationship | FactAccountActivity / CustomerId | CustomerId is a natural business key; CustomerKey is the required surrogate dimension key | Confirmed | blocking | Version joins can drift | Resolve CustomerKey in the load |',
+            '| Two row identities coexist | FactAccountActivity | TRANSACTION event rows and DAILY_POSITION periodic snapshot rows have different grain | Confirmed | blocking | Consumers can aggregate unlike rows together | Separate event and position facts |',
+            '| Business key used for dimensional relationship | FactAccountActivity / CustomerId | vwAccountCustomer joins CustomerId natural business key while CustomerKey is the required surrogate dimension key | Confirmed | blocking | Version joins can drift | Resolve CustomerKey in the load |',
             '| Declared history has no change path | DimCustomer | Type 2 SCD columns exist but no history version or WHEN MATCHED IsCurrent transition is present | Confirmed | significant | Attribute history is lost | Add an evidenced version transition |',
-            '| Balance is summed across dates | FactAccountActivity / EndOfDayBalance | EndOfDayBalance is semi-additive and must not sum across time or date | Likely | blocking | Balances are overstated | Select the closing snapshot per period |'
+            '| Balance is summed across dates | FactAccountActivity / EndOfDayBalance | vwDailyAccountPosition sums semi-additive EndOfDayBalance across time and date | Confirmed | blocking | Balances are overstated | Select the closing snapshot per period |'
         )
         $healthMapA = "## Coverage`n`nFactAccountActivity reaches DimDate through PostedDateKey and SettledDateKey; record distinct roles for both.`n`n## Findings`n`n$healthHeader`n$($healthRowsA -join "`n")`n"
         $healthMapA | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
@@ -1865,17 +1915,21 @@ $findingsBlock
             $mutatedResult = Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthEvidence 1
             if ($mutatedResult.Pass) { throw "warehouseModelHealth accepted default-A map with detector row $healthIndex deleted" }
         }
-        ($healthMapA.Replace('| Likely | blocking | Aggregation mixes grains', '| Confirmed | blocking | Aggregation mixes grains')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
-        if ((Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthEvidence 1).Detail -notmatch 'mixed=False tierMixed=Confirmed') { throw 'warehouseModelHealth accepted the wrong mixed-grain confidence tier' }
-        ($healthMapA.Replace('Two row meanings coexist | FactAccountActivity', 'Two row meanings coexist | FactOtherActivity')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
+        ($healthMapA.Replace('Separate event and position facts', '—')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
+        if ((Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthEvidence 1).Pass) { throw 'warehouseModelHealth accepted a finding without remediation' }
+        ($healthMapA.Replace('| Confirmed | blocking | Consumers can aggregate', '| Confirmed | advisory | Consumers can aggregate')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
+        if ((Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthEvidence 1).Pass) { throw 'warehouseModelHealth accepted an incompatible mixed-grain severity' }
+        ($healthMapA.Replace('| Confirmed | blocking | Consumers can aggregate', '| Possible | blocking | Consumers can aggregate')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
+        if ((Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthEvidence 1).Detail -notmatch 'mixed=False tierMixed=Possible') { throw 'warehouseModelHealth accepted unsupported mixed-grain confidence' }
+        ($healthMapA.Replace('Two row identities coexist | FactAccountActivity', 'Two row identities coexist | FactOtherActivity')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthEvidence 1).Detail -notmatch 'mixed=False') { throw 'warehouseModelHealth accepted mixed-grain semantics on the wrong entity' }
-        ($healthMapA.Replace('TransactionAmount is transactional while EndOfDayBalance is a daily balance at a different grain', 'both columns were inventoried')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
+        ($healthMapA.Replace('TRANSACTION event rows and DAILY_POSITION periodic snapshot rows have different grain', 'both columns were inventoried')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthEvidence 1).Detail -notmatch 'mixed=False') { throw 'warehouseModelHealth accepted the mixed-grain entity with wrong semantics' }
         ($healthMapA.Replace('| Confirmed | blocking | Version joins can drift', '| Likely | blocking | Version joins can drift')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthEvidence 1).Detail -notmatch 'natural=False tierNatural=Likely') { throw 'warehouseModelHealth accepted the wrong natural-key confidence tier' }
         ($healthMapA.Replace('FactAccountActivity / CustomerId', 'FactOther / CustomerId')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthEvidence 1).Detail -notmatch 'natural=False') { throw 'warehouseModelHealth accepted right natural-key semantics on the wrong entity' }
-        ($healthMapA.Replace('CustomerId is a natural business key; CustomerKey is the required surrogate dimension key', 'CustomerId is copied for reference')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
+        ($healthMapA.Replace('vwAccountCustomer joins CustomerId natural business key while CustomerKey is the required surrogate dimension key', 'CustomerId is copied for reference')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthEvidence 1).Detail -notmatch 'natural=False') { throw 'warehouseModelHealth accepted the right entity with wrong natural-key semantics' }
         ($healthMapA.Replace('| Confirmed | significant | Attribute history is lost', '| Likely | significant | Attribute history is lost')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthEvidence 1).Detail -notmatch 'scd=False tierScd=Likely') { throw 'warehouseModelHealth accepted the wrong SCD confidence tier' }
@@ -1883,11 +1937,11 @@ $findingsBlock
         if ((Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthEvidence 1).Detail -notmatch 'scd=False') { throw 'warehouseModelHealth accepted SCD semantics on the wrong entity' }
         ($healthMapA.Replace('Type 2 SCD columns exist but no history version or WHEN MATCHED IsCurrent transition is present', 'dimension load was inventoried')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthEvidence 1).Detail -notmatch 'scd=False') { throw 'warehouseModelHealth accepted the SCD entity with wrong semantics' }
-        ($healthMapA.Replace('| Likely | blocking | Balances are overstated', '| Confirmed | blocking | Balances are overstated')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
-        if ((Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthEvidence 1).Detail -notmatch 'additivity=False tierAdditivity=Confirmed') { throw 'warehouseModelHealth accepted the wrong additivity confidence tier' }
+        ($healthMapA.Replace('| Confirmed | blocking | Balances are overstated', '| Likely | blocking | Balances are overstated')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
+        if ((Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthEvidence 1).Detail -notmatch 'additivity=False tierAdditivity=Likely') { throw 'warehouseModelHealth accepted classification-only confidence for an observed unsafe consumer' }
         ($healthMapA.Replace('FactAccountActivity / EndOfDayBalance', 'FactOtherActivity / EndOfDayBalance')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthEvidence 1).Detail -notmatch 'additivity=False') { throw 'warehouseModelHealth accepted additivity semantics on the wrong entity' }
-        ($healthMapA.Replace('EndOfDayBalance is semi-additive and must not sum across time or date', 'EndOfDayBalance was inventoried')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
+        ($healthMapA.Replace('vwDailyAccountPosition sums semi-additive EndOfDayBalance across time and date', 'EndOfDayBalance was inventoried')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthEvidence 1).Detail -notmatch 'additivity=False') { throw 'warehouseModelHealth accepted the additivity entity with wrong semantics' }
         ($healthMapA.Replace('## Findings', "## Findings`n`n| Missing roles | FactAccountActivity / PostedDateKey / SettledDateKey | role labels absent | Confirmed | significant | map ambiguous | record roles |")) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthEvidence 1).Detail -notmatch 'roleCoverage=False') { throw 'warehouseModelHealth accepted a role-playing gap in Findings instead of Coverage' }
@@ -1902,7 +1956,7 @@ $findingsBlock
 
         $healthRowsB = @(
             '| Shared party definitions disagree | sales.DimParty / service.DimParty / PartyCode | same governed party uses different grain and contact column shape | Confirmed | significant | Consumers cannot treat the dimensions as conformed | Align or document the split |',
-            '| Reserved rows have indistinguishable labels | DimStatus | keys -1 and 0 are both seeded as Unknown special sentinel members and are ambiguous | Confirmed | significant | Consumers cannot distinguish states | Give each reserved member one meaning |'
+            '| Reserved rows have indistinguishable labels | DimStatus | keys -1 and 0 govern distinct UNK and NA states but expose the same Unknown label | Confirmed | significant | Consumers cannot distinguish states | Give each reserved state a distinct label |'
         )
         $healthMapB = "## Coverage`n`nDefault pass completed.`n`n## Findings`n`n$healthHeader`n$($healthRowsB -join "`n")`n"
         $healthMapB | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
@@ -1921,11 +1975,11 @@ $findingsBlock
         if ((Test-ScenarioEvidence 'warehouse-health-default-b' $healthTemp $healthEvidence 1).Detail -notmatch 'special=False tierSpecial=Likely') { throw 'warehouseModelHealth accepted the wrong special-member confidence tier' }
         ($healthMapB.Replace('Reserved rows have indistinguishable labels | DimStatus', 'Reserved rows have indistinguishable labels | DimOtherStatus')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-default-b' $healthTemp $healthEvidence 1).Detail -notmatch 'special=False') { throw 'warehouseModelHealth accepted special-member semantics on the wrong entity' }
-        ($healthMapB.Replace('keys -1 and 0 are both seeded as Unknown special sentinel members and are ambiguous', 'reserved rows were inventoried')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
+        ($healthMapB.Replace('keys -1 and 0 govern distinct UNK and NA states but expose the same Unknown label', 'reserved rows were inventoried')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-default-b' $healthTemp $healthEvidence 1).Detail -notmatch 'special=False') { throw 'warehouseModelHealth accepted the special-member entity with wrong semantics' }
 
         $healthRowsDeep = @(
-            '| Attribution relationship has no allocation owner | FactSales / CampaignKey | multiple campaign percentage attribution needs a bridge or allocation at the evidenced many-to-many grain | Confirmed | blocking | Credit can be lost | Introduce an allocation owner |',
+            '| Attribution relationship has no allocation owner | FactSales / CampaignKey | multiple campaign members are required but one scalar key cannot represent the many-to-many relationship | Confirmed | blocking | Credit can be lost | Introduce a bridge allocation owner |',
             '| Consumption join multiplies both facts | vwCustomerCommercialSummary / FactSales / FactReturn | fan chasm multiplication requires each fact to pre-aggregate at customer grain | Confirmed | blocking | Revenue and returns are overstated | Pre-aggregate each fact before joining |'
         )
         $healthMapDeep = "## Coverage`n`nScoped deepening completed.`n`n## Findings`n`n$healthHeader`n$($healthRowsDeep -join "`n")`n"
@@ -1939,7 +1993,7 @@ $findingsBlock
         if ((Test-ScenarioEvidence 'warehouse-health-deep-b' $healthTemp $healthEvidence 1).Detail -notmatch 'bridge=False tierBridge=Likely') { throw 'warehouseModelHealth accepted the wrong bridge confidence tier' }
         ($healthMapDeep.Replace('FactSales / CampaignKey', 'FactOther / CampaignKey')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-deep-b' $healthTemp $healthEvidence 1).Detail -notmatch 'bridge=False') { throw 'warehouseModelHealth accepted bridge semantics on the wrong entity' }
-        ($healthMapDeep.Replace('multiple campaign percentage attribution needs a bridge or allocation at the evidenced many-to-many grain', 'campaign data was inventoried')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
+        ($healthMapDeep.Replace('multiple campaign members are required but one scalar key cannot represent the many-to-many relationship', 'campaign data was inventoried')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-deep-b' $healthTemp $healthEvidence 1).Detail -notmatch 'bridge=False') { throw 'warehouseModelHealth accepted the bridge entity with wrong semantics' }
         ($healthMapDeep.Replace('| Confirmed | blocking | Revenue and returns', '| Likely | blocking | Revenue and returns')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-deep-b' $healthTemp $healthEvidence 1).Detail -notmatch 'fanChasm=False tierFanChasm=Likely') { throw 'warehouseModelHealth accepted the wrong fan/chasm confidence tier' }
@@ -1951,12 +2005,19 @@ $findingsBlock
         foreach ($negativeId in @('warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger')) {
             if (-not (Test-ScenarioEvidence $negativeId $healthTemp $healthEvidence 1).Pass) { throw "warehouseModelHealth rejected constructible negative control $negativeId" }
         }
+        if (-not (Test-ScenarioEvidence 'warehouse-health-bridge-ok' $healthTemp $healthEvidence 1).Pass) { throw 'warehouseModelHealth rejected a constructible existing-bridge control' }
+        $healthReviewPath = Join-Path $healthTemp 'docs/warehouse-review.md'
+        'Unsafe: the warehouse-map finding says EndOfDayBalance is semi-additive. Collapse to the latest closing row per customer per date before summing across customers.' |
+            Set-Content -LiteralPath $healthReviewPath -Encoding utf8NoBOM
+        if (-not (Test-ScenarioEvidence 'warehouse-health-decision-a' $healthTemp $healthEvidence 1).Pass) { throw 'warehouseHealthDecision rejected a constructible finding-led review' }
+        'Approved: SUM(EndOfDayBalance) is safe.' | Set-Content -LiteralPath $healthReviewPath -Encoding utf8NoBOM
+        if ((Test-ScenarioEvidence 'warehouse-health-decision-a' $healthTemp $healthEvidence 1).Pass) { throw 'warehouseHealthDecision accepted an unsafe report decision' }
         $healthStandalone = "## Coverage`n`nDefault pass completed.`n`n## Findings`n`n$healthHeader`n$($healthRowsA[0])`n"
         $healthStandalone | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
         $healthStandaloneResult = Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthEvidence 1
         if ($healthStandaloneResult.Detail -notmatch 'mixed=True' -or $healthStandaloneResult.Detail -match 'natural=True|scd=True|additivity=True') { throw 'warehouseModelHealth confuses one detector row with another' }
 
-        foreach ($healthFixture in @('warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger')) {
+        foreach ($healthFixture in @('warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok')) {
             $healthFixturePath = Join-Path $temp $healthFixture
             New-EvalRepo $healthFixturePath $healthFixture
             if (-not (Test-Path -LiteralPath (Join-Path $healthFixturePath 'warehouse.sqlproj'))) { throw "$healthFixture fixture has no SQL project" }
@@ -1965,6 +2026,7 @@ $findingsBlock
         if (-not (Test-Path -LiteralPath (Join-Path $temp 'warehouse-health-a/StoredProcedures/usp_LoadFactAccountActivity.sql'))) { throw 'warehouse-health-a is missing its load evidence' }
         if (-not (Test-Path -LiteralPath (Join-Path $temp 'warehouse-health-b/Views/rpt.vwCustomerCommercialSummary.sql'))) { throw 'warehouse-health-b is missing its scoped consumption view' }
         if (-not (Test-Path -LiteralPath (Join-Path $temp 'warehouse-health-no-trigger/Tables/fact.FactCampaignResponse.sql'))) { throw 'warehouse-health-no-trigger is missing the bridge false-positive control' }
+        if (-not (Test-Path -LiteralPath (Join-Path $temp 'warehouse-health-bridge-ok/Tables/bridge.FactSalesCampaign.sql'))) { throw 'warehouse-health-bridge-ok is missing its allocation owner' }
 
         Remove-Item -LiteralPath $mapQualityPath -Force
         $noMapResult = Test-ScenarioEvidence 'warehouse-map-quality' $mapQualityTemp $mapQualityEvidence 1
