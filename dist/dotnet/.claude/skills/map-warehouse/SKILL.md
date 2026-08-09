@@ -137,23 +137,25 @@ already there, and so a report can be written against the joins the warehouse ac
    Apply this evidence-gated modelling-health checklist to the artifacts already opened. Put each
    supported defect in its own **Findings** row, not only in this semantics section:
    - **Likely:** incompatible row meanings or grains coexist in one fact.
-   - **Likely:** a consumer aggregates a semi-additive measure across a non-additive dimension;
-     inspect the measure's load in the same pass before asserting this.
+   - **Likely:** a consumer sums a semi-additive measure across time or another dimension along
+     which that measure is non-additive; inspect the measure's load in the same pass first.
    - **Confirmed:** repository identity rules and DDL directly disagree about whether dimensions
      have compatible meaning, keys, values, or grain.
    - **Confirmed:** seeded special-member keys have demonstrably indistinguishable meanings.
 
-   Never create an SCD finding merely because history markers or a change path were not found:
+   Record each checklist finding at the confidence shown, not higher. Never create an SCD finding
+   merely because history markers or a change path were not found:
    cite the complete load statement that proves the declared strategy is contradicted, or record
    the unread/uncertain load under **Coverage**.
 
    **Modelling health deepening (on request).** When the developer names a fact or consumer, inspect
    only its immediately relevant allocation and consumption artifacts, then record what was and
    was not checked under **Coverage**:
-   - **Confirmed:** repository cardinality/allocation rules require several dimension assignments
-     per fact row but the implemented relationship can store only one, with no allocation owner.
-   - **Confirmed:** a named consumer combines two fact streams before reducing each independently
-     to their common dimensional grain.
+   - **Confirmed:** repository cardinality/allocation rules require percentage allocations to
+     several dimension members per fact row, but one scalar key cannot represent them and no
+     allocation owner exists.
+   - **Confirmed:** a named consumer multiplies two fact streams by combining them before it can
+     pre-aggregate each independently to their common dimensional grain.
    Do not run this deepening by default or infer either defect from names or keys alone.
 
 5. **Load flow and ordering.** Find the orchestration entry points: master procs that `EXEC` a

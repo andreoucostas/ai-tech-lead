@@ -307,7 +307,8 @@ and its bash twin classify skill frontmatter as `static.claude` but skill bodies
 `ondemand-info`; `meta/context-footprint.json` explicitly says the latter is reported but never
 policy-gated. This change does not alter frontmatter. Rev 4 still requires reporting the body delta,
 but does not invent a static-ceiling risk. Opus explicitly said the accepted changes do not require
-another full adversarial pass. The B-125 pre-implementation Opus gate is therefore discharged.
+another full adversarial pass. This discharges the pre-implementation gate for the rev-3 design;
+later material deltas retain their own review gates.
 
 ### Claude Opus review of the Phase-2 baseline instrument (2026-08-09) — incorporated in rev 5
 
@@ -346,17 +347,18 @@ the evidenced equivalent wording "raw `CustomerId` text versus surrogate `Custom
 requiring the literal word "natural". These corrections narrow lexical coupling; they do not add a
 detector or reinterpret an absent artifact as a pass.
 
-### Rev 8 — frozen Phase-2 implementation scope after corrected 3/3 baseline
+### Rev 8 — frozen Phase-2 implementation scope after corrected baseline observations
 
-The three corrected invocations are complete. Natural-key misuse and role-playing documentation
-were handled 3/3 and receive no new instruction. Every other registered class missed its required
+One retained invocation was regraded under the final matcher and two later invocations ran under
+that matcher. Natural-key misuse and role-playing documentation were handled in the retained
+regrade and both later observations, so receive no new instruction. Every other registered class missed its required
 world or tier at least once: mixed grain and balance additivity were never accepted; structural
 conformance, special members, bridge allocation and fan/chasm detection were inconsistent; and the
 clean control emitted an unsupported SCD finding in 2/3 runs. Phase 2 therefore adds one compact,
 evidence-gated modelling-health checklist covering exactly those seven classes. It requires default
-pass findings for local DDL/load proof, reserves named consumer-view fan/chasm analysis for scoped
-deepening, treats direct structural contradictions as Confirmed and cross-artifact inferences as
-Likely, and forbids SCD findings based only on absent history markers or an unread load. No other
+pass findings for local DDL/load proof, reserves allocation and named consumer-view fan/chasm
+analysis for scoped deepening, uses the per-class confidence labels in §3.4, and forbids SCD
+findings based only on absent history markers or an unread load. No other
 detector or generic warehouse advice is authorized by this baseline.
 
 ### Rev 9 — implementation-review corrections
@@ -375,5 +377,5 @@ No angular
 content (this skill is dotnet/monorepo-scoped per B-40/B-96 precedent, to be confirmed at
 implementation). No change to `add-warehouse-load` (B-124's territory). No schema-evolution
 preflight (B-126), scoped lineage trace (B-127), or physical-design review (B-128) — this design
-produces only the shared modelling-analysis layer those items are filed to consume. The Opus design
-and instrument reviews recorded in §6 discharge the pre-implementation review gate.
+produces only the shared modelling-analysis layer those items are filed to consume. Review status
+is recorded per revision in §6 and rev 9.
