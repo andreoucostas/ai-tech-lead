@@ -972,3 +972,17 @@ Phase 2 detector.
 Host: Claude Code 2.1.226 (Claude Code) · scratch: retained=True
 
 - **FAIL warehouse-map-quality** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.7385982 tokensIn=18 tokensOut=13079; mapWritten=True hasEdgeList=True hasVersionResolution=True edgeRows=6 abstained=True deadColumnsFlagged=3 hasQueryRules=True hasCoverage=True hasFindingsTable=False findingRows=0 findingsFields= pinnedAtLoad=True
+
+## 2026-08-09 18:52:11 +01:00 — framework v0.51.5 (6dfedf4f6e2d96f111a0a595fb4c324425c72514)
+
+Host: Claude Code 2.1.226 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-map-quality** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.6233904 tokensIn=16 tokensOut=14157; mapWritten=True hasEdgeList=True hasVersionResolution=True edgeRows=8 abstained=True deadColumnsFlagged=3 hasQueryRules=True hasCoverage=True hasFindingsTable=True findingRows=7 findingsFields=evidence,finding-confidence,severity-if-confirmed,consequence,remediation pinnedAtLoad=True
+
+### B-125 Phase 1 registered reading
+
+The unchanged committed distribution produced the registered red world with a successful agent and
+otherwise-complete map: `hasFindingsTable=False`, `findingRows=0`. Commit `6dfedf4` then produced the
+registered green world under the identical scenario: a seven-row findings table with evidence,
+finding confidence, severity-if-confirmed, consequence, and remediation. This proves the Phase 1
+structure change on one fixture/model/host; it does not support any Phase 2 detector claim.

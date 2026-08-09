@@ -1,4 +1,4 @@
-# B-125 design — evidence-ranked warehouse modelling health review (LOCKED 2026-08-09, rev 4)
+# B-125 design — evidence-ranked warehouse modelling health review (LOCKED 2026-08-09, rev 5)
 
 > **Status: DESIGN LOCKED AFTER CLAUDE OPUS REVIEW. Not implemented.** Deviations need a new entry in
 > `meta/workspace-decisions.md`. Trigger: `meta/BACKLOG.md` B-124–B-129, filed 2026-08-08
@@ -8,9 +8,10 @@
 > a budget-driven, explicitly recorded substitution (WSD-036). 12 findings returned (2 blocking,
 > 8 significant, 2 minor); all 12 verified and accepted, folded into rev 2. A Claude Opus pass is
 > was still owed before implementation. Rev 3 corrected the stale B-124 reference. Rev 4 incorporates
-> the independent Claude Opus review recorded in §6 (`ACCEPT WITH CHANGES`): one blocking, six
+> the independent Claude Opus design review recorded in §6 (`ACCEPT WITH CHANGES`): one blocking, six
 > significant, and four minor findings accepted after verification; one significant finding was
-> rejected with direct gate evidence.**
+> rejected with direct gate evidence. Rev 5 additionally incorporates Opus's independent review of
+> the Phase-2 baseline instrument: three blocking, five significant, and five minor corrections.**
 
 ---
 
@@ -166,13 +167,35 @@ evidence | finding confidence | severity-if-confirmed | consequence | remediatio
 Modelling health deepening (§3.5) was invoked, its results append to the same subsection with a
 note on what was and was not checked — mirroring 9.5's existing coverage statement.
 
-### 3.8 Phase-2 stopping rule
+### 3.8 Phase-2 evidence and stopping rules
 
-Run the pre-registered unchanged-skill baselines before adding Phase-2 instructions. If five or
-more claimed detectors are already handled correctly, close the Phase-2 batch and file only the
-individually failing residue; do not ship a mostly-unneeded bundle. Any deferred `Possible`-only
-detector needs a future specificity criterion with clean and intentionally unusual counterfixtures
-that must emit zero findings before it can re-enter scope.
+Run pre-registered unchanged-skill baselines before adding any Phase-2 instruction. Decisions are
+**per detector**, never a count over one correlated map. A detector is already handled only when it:
+
+1. passes in every one of at least three independent defect-fixture runs at the confidence tier
+   claimed in §3.4;
+2. remains silent in every clean-fixture and explicit-coherent-convention-fixture run; and
+3. for bridge, remains silent on a many-to-many-shaped fixture with no trigger evidence.
+
+Report an aggregate count descriptively, but never use it to suppress an individually observed
+failure. Each failing detector proceeds only with its own observed harm and proportionality case;
+the bundle is abandoned. A deferred `Possible`-only detector needs a future specificity criterion
+with clean and intentionally unusual counterfixtures that emit zero findings before re-entering
+scope.
+
+Use two domain-plausible, defect-neutral fixtures of four to five defects rather than one crowded
+fixture. Assert that no fixture path, comment, convention, map, prompt, or artifact name states the
+conclusion being measured. Split default-pass and on-demand evidence: a plain-map scenario covers
+the default detectors; a separate deepening scenario names both the fact (bridge scope) and the
+consumption view (fan/chasm scope). A truncated findings table is inconclusive, not a failure.
+
+The grader binds each detector to its intended section and reports entity, defect semantics, and
+observed confidence tier. Role-playing must appear in Coverage and be absent from Findings.
+Additivity additionally requires transcript evidence that the relevant load was read in the same
+pass. Self-tests must demonstrate for every detector: a constructible green row, deleted-row red,
+right-entity/wrong-semantics red, right-semantics/wrong-entity red, wrong-tier red, and
+cross-detector non-confusion. Run both PowerShell hosts under a hostile code page before using the
+live numbers.
 
 ## 4. Files touched (at implementation — not this session)
 
@@ -191,7 +214,7 @@ that must emit zero findings before it can re-enter scope.
 
 ## 5. Acceptance criteria (fixes §6 findings 1, 12 — full scope, all fields tested)
 
-1. Planted-model fixtures exist for each detector retained after §3.8's baseline stopping rule,
+1. Planted-model fixtures exist for each detector retained after §3.8's per-detector stopping rule,
    each with a pre-registered red baseline and a constructible success case,
    **at the confidence tier §3.4 claims for it** — a class claimed only to `Possible` must be
    proven to reach `Possible`, not silently asserted as `Confirmed`. **The red baseline must be run
@@ -282,6 +305,16 @@ and its bash twin classify skill frontmatter as `static.claude` but skill bodies
 policy-gated. This change does not alter frontmatter. Rev 4 still requires reporting the body delta,
 but does not invent a static-ceiling risk. Opus explicitly said the accepted changes do not require
 another full adversarial pass. The B-125 pre-implementation Opus gate is therefore discharged.
+
+### Claude Opus review of the Phase-2 baseline instrument (2026-08-09) — incorporated in rev 5
+
+Opus returned **ACCEPT WITH CHANGES**. Rev 5 accepts all three blocking findings: a one-run aggregate
+is correlated rather than nine independent samples; detector booleans must enforce confidence
+ceilings; and role-playing/additivity need section- and transcript-aware evidence. It also accepts
+the required neutral naming/no-leak assertions, default-vs-deepening split, named-fact bridge scope,
+baseline negative controls, stronger mutated-row/cross-detector self-tests, two smaller defect
+fixtures, explicit section boundaries, fixture isolation, and hostile-code-page/two-host checks.
+These are preconditions to the Phase-2 live baseline, not post-run repairs.
 
 ## 7. Out of scope
 

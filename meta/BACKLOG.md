@@ -3215,8 +3215,9 @@ to ship.
 ### B-125 · Produce an evidence-ranked warehouse modelling health review
 **Effort:** M–L · **Priority:** P2 · filed 2026-08-08 · **Capability:** warehouse technical leadership ·
 **Design:** `.claude/plans/2026-08-09-b125-warehouse-modelling-health-review-design.md` (LOCKED,
-rev 4 — independent Claude Opus review returned `ACCEPT WITH CHANGES`; verified findings are
-incorporated and the pre-implementation review gate is discharged)
+rev 5 — independent Claude Opus reviews of both the design and Phase-2 baseline instrument returned
+`ACCEPT WITH CHANGES`; verified findings are incorporated and the pre-implementation review gate is
+discharged)
 
 **Why:** the warehouse map reports several local findings, but it is not yet a systematic modelling
 review. The framework can describe a model without consistently challenging mixed or unstated

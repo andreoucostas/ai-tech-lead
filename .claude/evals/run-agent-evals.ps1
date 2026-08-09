@@ -1906,7 +1906,7 @@ FROM stg.StgSupplierInvoice s;
         Write-Output 'PASS: warehouse fixture clears exact step-0 patterns and preserves dead columns'
         Write-Output 'PASS: warehouse routing categories, success semantics, and ungraded SQL signals'
         Write-Output 'PASS: warehouse preparation installs, populates population A without pointers, and commits setup'
-        Write-Output 'PASS: warehouse-map-quality grades map content (compliant/no-UNRESOLVED/no-version-resolution/no-query-rules/missing) and -OmitMap toggles map creation'
+        Write-Output 'PASS: warehouse-map-quality grades edge, coverage, query-rule, and structured-findings content with reachable green/red worlds'
         Write-Output 'PASS: warehouse dead-column guard rejects INSERT, UPDATE, and both MERGE write branches'
         Write-Output 'PASS: -EnrichedMap emits the seven B-96 headings, the default fixture map stays frozen, and warehouse-mixed evidences EF Core'
         Write-Output 'PASS: warehouseDimensionBinding accepts a correct binding and rejects duplicate dimension / RegionKey-on-fact / natural-key-for-surrogate, with skill and add-entity channels separable'
