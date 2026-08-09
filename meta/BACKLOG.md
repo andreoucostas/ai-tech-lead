@@ -3172,8 +3172,15 @@ tests; the new prevention gate has been observed red on planted generic fixtures
 clean tree; and the history-retention/rewrite decision is recorded.
 
 ---
-### B-124 · Decide whether a warehouse change belongs in an existing fact or a new fact
+### B-124 · Decide whether a warehouse change belongs in an existing fact or a new fact — **CLOSED 2026-08-09, premise rejected; see Done**
 **Effort:** M · **Priority:** P2 · filed 2026-08-08 · **Capability:** warehouse technical leadership
+
+**Final status (2026-08-09): premise rejected.** Design/eval instrument:
+`.claude/plans/2026-08-09-b124-fact-binding-design.md`. Opus rev 1 rejected the first design; rev 2
+required a non-telegraphing `n>=2` ambiguous-pair baseline before premise lock. The corrected
+instrument is red/green self-tested. After invalid spend-limit runs were excluded, the unchanged
+skill chose the intended existing/new fact in 2/2 runs each. The registered stopping rule therefore
+rejects the shipped matrix as unproportionate; no distribution change was made.
 
 **Why:** `add-warehouse-load` now asks whether a dimension already exists, but it has no equally
 explicit decision for facts. A new measure or business event can therefore be placed in a new fact
@@ -3226,8 +3233,9 @@ the common fact, dimension, bridge, role-playing, conformance, SCD, special-memb
 failure classes, while allowing repository-specific conventions to override generic advice when
 they are explicit and coherent.
 
-**Framework fit:** this is the shared modelling-analysis layer consumed by B-124, B-126, B-127, and
-B-128. Extend the existing map/finding vocabulary rather than creating a parallel architecture
+**Framework fit:** this is the shared modelling-analysis layer consumed by B-126, B-127, and B-128.
+B-124 closed without a shipped dependency; its retained regression scenarios are evidence only.
+Extend the existing map/finding vocabulary rather than creating a parallel architecture
 document. Keep the default pass cheap; deeper tracing must remain scoped and on demand.
 
 **Design/review gate:** locked design plus proportionality case, followed by an independent
@@ -3252,8 +3260,9 @@ contracts. A locally correct ALTER can still break the warehouse's overall desig
 **Do:** design a warehouse schema-evolution preflight used before enhancing an existing fact or
 dimension. It must identify upstream authority and downstream consumers, classify compatible versus
 breaking changes, define history/backfill and deployment sequencing, preserve old consumers during
-migration where required, and state rollback/deprecation obligations. It must consume the fact
-decision from B-124, modelling findings from B-125, and scoped lineage from B-127; physical
+migration where required, and state rollback/deprecation obligations. It must establish the named
+target fact/dimension from live evidence (B-124 shipped no separate decision artifact), consume
+modelling findings from B-125 and scoped lineage from B-127; physical
 consequences route to B-128 rather than being reinvented here.
 
 **Framework fit:** add a composable preflight to the existing warehouse change workflow. Do not turn
@@ -3287,8 +3296,9 @@ semantics where the repository defines them, but do not invent business definiti
 runtime lineage from static evidence alone.
 
 **Framework fit:** enrich the existing warehouse map or a linked scoped artifact using its evidence
-and confidence vocabulary. B-124 uses the trace for fact compatibility, B-125 for modelling
-findings, B-126 for impact, and B-128 for workload evidence. The trace must be demand-driven and
+and confidence vocabulary. B-125 uses the trace for modelling findings, B-126 for impact, and B-128
+for workload evidence; B-124's retained evals may use it in future regression fixtures, but there is
+no shipped B-124 consumer. The trace must be demand-driven and
 budgeted, not an always-on whole-repository graph.
 
 **Design/review gate:** locked design plus proportionality case, followed by an independent
@@ -3318,8 +3328,9 @@ Recommendations must name the workload assumption and expected benefit, distingu
 from estimates, and request plans/runtime evidence rather than asserting performance when static
 code is insufficient. This is architecture review, not a replacement for single-query tuning.
 
-**Framework fit:** consume B-124's grain/fact choice, B-125's logical findings, B-126's deployment
-impact, and B-127's workload paths. Keep platform-specific advice behind detected capabilities and
+**Framework fit:** establish the grain/fact target from current repository evidence (B-124 shipped
+no separate choice artifact), then consume B-125's logical findings, B-126's deployment impact, and
+B-127's workload paths. Keep platform-specific advice behind detected capabilities and
 avoid universal vendor prescriptions. Prefer extending the warehouse review workflow over a new
 always-routed skill unless the design demonstrates a routing need.
 
@@ -3370,12 +3381,32 @@ make stored procedures, views, or denormalised marts a universal default, and mu
 business definition or consumer contract is missing.
 
 **Framework fit:** this is the write/review counterpart to `map-warehouse`'s existing read-side
-rules. It consumes B-124's fact-binding decision, B-125's modelling findings, B-126's evolution and
+rules. It establishes its fact target from current evidence (B-124 shipped no decision artifact),
+then consumes B-125's modelling findings, B-126's evolution and
 downstream-impact contract, B-127's scoped metric lineage, and B-128's physical-design evidence.
 Reuse the warehouse map's evidence/confidence vocabulary and the existing framework workflow
 patterns; do not create a competing inventory, generic SQL-style guide, or vendor-specific default.
 The design must decide whether this belongs as a bounded addition to existing warehouse skills or a
 separately routed skill, using observed routing behavior and context cost rather than preference.
+
+---
+### B-130 · Maintainer agent-eval harness cannot run under Windows PowerShell 5.1
+**Effort:** S–M · **Priority:** P3 · filed 2026-08-09 from B-124 RCA · **Scope:** maintainer layer
+
+**Why:** the B-124 verification attempted the eval self-test under hostile code page 437 on both
+PowerShell hosts. PowerShell 7 passed; Windows PowerShell 5.1 stopped at the first
+`-Encoding utf8NoBOM` because that enum value is PowerShell-7-only. The incompatibility predates
+B-124 (94 occurrences at HEAD) and the harness is currently invoked with `pwsh` by release tooling,
+but root verification policy asks for a meaningful 5.1 run and the design incorrectly promised one.
+
+**Do:** decide whether this maintainer-only harness should support 5.1. If yes, centralise no-BOM
+UTF-8 writes behind a host-neutral helper and red/green the direct 5.1 run under a hostile code page;
+if no, narrow the authoring verification contract and document the `pwsh` requirement explicitly.
+Do not mechanically replace encodings without preserving fixture byte semantics.
+
+**Done when:** the decision is recorded and either the full self-test passes under both hosts or the
+canonical verification text honestly scopes this harness to PowerShell 7 with a different 5.1-capable
+suite satisfying the cross-host requirement.
 
 **Design/review gate:** write and lock a design before implementation, including the proportionality
 case and at least two approaches. Then obtain an independent adversarial review with **Claude Opus**;
@@ -3624,6 +3655,20 @@ planted unreadable file and an emptied tree, both twins.
 ---
 
 ## Done
+
+- **B-124** — closed **2026-08-09**, premise rejected after two independent Opus design reviews and
+  a pre-registered behavioral baseline. The first fixture telegraphed its answers and was rejected;
+  the corrected fixture exposes only paths/live SQL and uses non-leading prompts. On the unchanged
+  v0.51.5 skill, `warehouse-fact-existing` selected **EXTEND `FactOrderLine` 2/2**, and
+  `warehouse-fact-new` selected **CREATE `FactPaymentAllocation` 2/2**. One first-run new-fact row
+  was falsely labelled FAIL because the grader demanded the literal `OrderLine`; its DDL correctly
+  used the warehouse's degenerate `OrderNumber + LineNumber` plus `AllocationSequence`. The matcher
+  was changed to those structural columns, observed red without the sequence, and green live.
+  Snapshot and explicit-abstention success worlds are also retained, with red worlds for missing
+  semi-additivity, map-only echo, wrong missing facts, and DDL-after-abstention. **No shipped change
+  and no version bump:** the proposed eleven-axis mandatory note was disproportionate to zero
+  observed failures. RCA: no gate caught the supposed gap because there was no demonstrated defect;
+  the exposed class is future fact-binding regressions, now covered by the maintainer scenarios.
 
 - **B-54** — implemented **2026-08-08** on branch `codex/b54-release-changelog-stamp`, **not yet
   released or merged** (pending independent review — see below). Codex began this item and ran out

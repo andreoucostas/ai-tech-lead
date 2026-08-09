@@ -1437,3 +1437,24 @@ entirely under budget pressure (the maintainer chose a substitute reviewer, not 
 waiting for budget to recover before doing any B-125 work this session (produces zero forward
 progress on a foundational, unblocking-others item when a partial, honestly-labelled step was
 available).
+
+---
+
+## WSD-037: reject B-124's shipped fact-binding matrix; retain its behavioral regression (2026-08-09)
+
+**Context.** B-124 proposed an explicit existing-vs-new fact decision in `add-warehouse-load`.
+Opus rejected the first design's evaluator, then rejected the first baseline because its map and
+prompts supplied the answers. A corrected fixture exposed only repository paths/live SQL, removed
+the decisive prose, red-tested its grader, and pre-registered `n>=2`: if both ambiguous outcomes
+already worked, the proposed eleven-axis mandatory note was disproportionate.
+
+**Decision.** Do not change the shipped skill. On unchanged v0.51.5, Sonnet extended the compatible
+order-line fact 2/2 and created the distinct payment-allocation fact 2/2. Retain the maintainer-only
+fixture, scenarios, and grader as regression evidence. Reopen only on an observed placement failure
+or regression. No version bump or consumer changelog is warranted because shipped bytes do not
+change. These four observations establish the sign needed by the pre-registered stopping rule; they
+do not estimate a reliability rate or rule out run-to-run variance.
+
+**Rejected.** Shipping the matrix despite a passing baseline (process without observed harm),
+counting answer-key fixtures as evidence, treating spend-limit errors as samples, and preserving a
+lexical `OrderLine` grader that rejected the repository's valid degenerate key representation.

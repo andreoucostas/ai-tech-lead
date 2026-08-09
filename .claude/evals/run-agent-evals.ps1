@@ -21,8 +21,76 @@ function Assert-Bom([string]$Path) {
     return $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
 }
 
-function New-EvalRepo([string]$Path, [ValidateSet('dotnet','angular','warehouse','warehouse-mixed')][string]$Stack = 'dotnet') {
+function New-EvalRepo([string]$Path, [ValidateSet('dotnet','angular','warehouse','warehouse-mixed','warehouse-fact-binding')][string]$Stack = 'dotnet') {
     New-Item -ItemType Directory -Path $Path -Force | Out-Null
+    if ($Stack -eq 'warehouse-fact-binding') {
+        New-Item -ItemType Directory -Path (Join-Path $Path 'Tables'), (Join-Path $Path 'StoredProcedures'), (Join-Path $Path 'Views'), (Join-Path $Path 'docs') -Force | Out-Null
+        '<Project Sdk="Microsoft.Build.Sql/0.2.0" />' | Set-Content -LiteralPath (Join-Path $Path 'warehouse.sqlproj') -Encoding utf8NoBOM
+        @'
+CREATE TABLE fact.FactOrderLine (
+    OrderLineKey BIGINT NOT NULL PRIMARY KEY,
+    OrderNumber NVARCHAR(40) NOT NULL,
+    LineNumber INT NOT NULL,
+    ProductKey INT NOT NULL,
+    OrderDateKey INT NOT NULL,
+    Quantity INT NOT NULL,
+    NetAmount DECIMAL(18,2) NOT NULL,
+    LoadRunId BIGINT NOT NULL
+);
+'@ | Set-Content -LiteralPath (Join-Path $Path 'Tables/fact.FactOrderLine.sql') -Encoding utf8NoBOM
+        @'
+CREATE TABLE fact.FactOrderPipeline (
+    OrderKey BIGINT NOT NULL PRIMARY KEY,
+    OrderNumber NVARCHAR(40) NOT NULL,
+    OrderedDateKey INT NOT NULL,
+    ShippedDateKey INT NULL,
+    DeliveredDateKey INT NULL,
+    LoadRunId BIGINT NOT NULL
+);
+'@ | Set-Content -LiteralPath (Join-Path $Path 'Tables/fact.FactOrderPipeline.sql') -Encoding utf8NoBOM
+        @'
+CREATE TABLE stg.StgOrderLine (OrderLineId BIGINT NOT NULL, OrderNumber NVARCHAR(40) NOT NULL,
+LineNumber INT NOT NULL, ProductId NVARCHAR(50) NOT NULL, OrderDate DATE NOT NULL,
+Quantity INT NOT NULL, NetAmount DECIMAL(18,2) NOT NULL,
+BatchId BIGINT NOT NULL);
+'@ | Set-Content -LiteralPath (Join-Path $Path 'Tables/stg.StgOrderLine.sql') -Encoding utf8NoBOM
+        @'
+CREATE TABLE stg.StgDailyInventory (ProductId NVARCHAR(50) NOT NULL, SnapshotDate DATE NOT NULL,
+ClosingOnHandQuantity DECIMAL(18,2) NOT NULL, BatchId BIGINT NOT NULL);
+'@ | Set-Content -LiteralPath (Join-Path $Path 'Tables/stg.StgDailyInventory.sql') -Encoding utf8NoBOM
+        'CREATE TABLE dim.DimProduct (ProductKey INT NOT NULL PRIMARY KEY, ProductId NVARCHAR(50) NOT NULL);' | Set-Content -LiteralPath (Join-Path $Path 'Tables/dim.DimProduct.sql') -Encoding utf8NoBOM
+        'CREATE TABLE dim.DimDate (DateKey INT NOT NULL PRIMARY KEY, CalendarDate DATE NOT NULL);' | Set-Content -LiteralPath (Join-Path $Path 'Tables/dim.DimDate.sql') -Encoding utf8NoBOM
+        @'
+CREATE PROCEDURE dbo.usp_LoadFactOrderLine AS
+INSERT INTO fact.FactOrderLine (OrderLineKey, OrderNumber, LineNumber, ProductKey, OrderDateKey, Quantity, NetAmount, LoadRunId)
+SELECT s.OrderLineId, s.OrderNumber, s.LineNumber, p.ProductKey, d.DateKey, s.Quantity, s.NetAmount, s.BatchId
+FROM stg.StgOrderLine s JOIN dim.DimProduct p ON p.ProductId=s.ProductId
+JOIN dim.DimDate d ON d.CalendarDate=s.OrderDate;
+'@ | Set-Content -LiteralPath (Join-Path $Path 'StoredProcedures/usp_LoadFactOrderLine.sql') -Encoding utf8NoBOM
+        'CREATE PROCEDURE dbo.usp_LoadFactOrderPipeline AS UPDATE fact.FactOrderPipeline SET ShippedDateKey=ShippedDateKey;' | Set-Content -LiteralPath (Join-Path $Path 'StoredProcedures/usp_LoadFactOrderPipeline.sql') -Encoding utf8NoBOM
+        'CREATE VIEW rpt.vwOrderSales AS SELECT OrderDateKey, ProductKey, SUM(NetAmount) NetAmount FROM fact.FactOrderLine GROUP BY OrderDateKey, ProductKey;' | Set-Content -LiteralPath (Join-Path $Path 'Views/rpt.vwOrderSales.sql') -Encoding utf8NoBOM
+        @'
+# Warehouse map
+
+## Inventory
+
+| entity | definition | load/consumer |
+|---|---|---|
+| fact.FactOrderLine | `Tables/fact.FactOrderLine.sql` | `usp_LoadFactOrderLine`; `rpt.vwOrderSales` |
+| fact.FactOrderPipeline | `Tables/fact.FactOrderPipeline.sql` | `usp_LoadFactOrderPipeline` |
+| stg.StgOrderLine | `Tables/stg.StgOrderLine.sql` | `usp_LoadFactOrderLine` |
+| stg.StgDailyInventory | `Tables/stg.StgDailyInventory.sql` | no target load yet |
+
+This inventory intentionally records locations, not modelling conclusions. Inspect the live DDL,
+load procedures, and views to determine grain, authority, lifecycle, and compatibility.
+'@ | Set-Content -LiteralPath (Join-Path $Path 'docs/warehouse-map.md') -Encoding utf8NoBOM
+        git -C $Path init --quiet
+        git -C $Path config user.email 'agent-evals@invalid.local'
+        git -C $Path config user.name 'Agent Evals'
+        git -C $Path add -A
+        git -C $Path commit --quiet -m 'fact-binding fixture baseline'
+        return
+    }
     if ($Stack -in @('warehouse','warehouse-mixed')) {
         New-Item -ItemType Directory -Path (Join-Path $Path 'Tables'), (Join-Path $Path 'StoredProcedures'), (Join-Path $Path 'Views'), (Join-Path $Path 'analysis') -Force | Out-Null
         '<Project Sdk="Microsoft.Build.Sql/0.2.0" />' | Set-Content -LiteralPath (Join-Path $Path 'warehouse.sqlproj') -Encoding utf8NoBOM
@@ -441,6 +509,24 @@ independently before joining two facts through a conformed dimension.
     return [int](git -C $Path rev-list --count HEAD)
 }
 
+function Initialize-FactBindingScenario([string]$Path) {
+    $claudePath = Join-Path $Path 'CLAUDE.md'
+    $claudeText = (Get-Content -Raw $claudePath).Replace('BOOTSTRAP_PENDING', 'EVAL_BOOTSTRAPPED')
+    $ordinaryConventions = @'
+<!-- EVAL_BOOTSTRAPPED: repository conventions observed for this fixture. -->
+
+- SQL source is organised by `Tables/`, `StoredProcedures/`, and `Views/`.
+- Facts retain dimension surrogate keys; load dimensions before facts.
+- Use `LoadRunId` and explicit insert column lists; deploy through the SQL project.
+- `docs/warehouse-map.md` is the current warehouse inventory, verified against this SQL tree.
+'@
+    $claudeText = [regex]::Replace($claudeText, '(?s)<!-- EVAL_BOOTSTRAPPED:.*?_Not yet populated\..*?\r?\n(?=\r?\n---)', $ordinaryConventions)
+    $claudeText | Set-Content $claudePath -Encoding utf8NoBOM
+    git -C $Path add -A
+    git -C $Path commit --quiet -m 'fact-binding scenario setup'
+    return [int](git -C $Path rev-list --count HEAD)
+}
+
 function Test-DeadFactColumnWrite([string]$Sql) {
     $factTarget = '(?:\[?fact\]?\s*\.\s*)?\[?FactSales\]?'
     $deadTargetColumn = '\[?(?:RegionName|CategoryName|SegmentName)\]?'
@@ -774,6 +860,54 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             if ($c4) { $channels += 'C4' }
             if ($c5) { $channels += 'C5' }
             return [pscustomobject]@{ Status = $status; Pass = $status -eq 'PASS'; Detail = "category=$category channels=$($channels -join ',') usedDeadColumn=$usedDeadColumn joinedDimension=$joinedDimension readView=$readView readViewTarget=$(if ($relevantView) { $relevantView } else { 'none' }) artifactWritten=$artifactWritten otherSqlArtifacts=$($otherArtifacts -join ',')" }
+        }
+        { $_ -in @('warehouse-fact-existing','warehouse-fact-new','warehouse-fact-snapshot','warehouse-fact-abstain') } {
+            $successful = @($e.Tools | Where-Object { $e.ToolResults.ContainsKey($_.Id) -and -not $e.ToolResults[$_.Id].is_error })
+            $warehouseTreeCall = [bool]@($successful | Where-Object {
+                ((Get-ToolPath $_) -replace '\\','/' -match '(?i)(?:^|/)(?:Tables|StoredProcedures|Views|docs/warehouse-map\.md)(?:/|$)') -or
+                (([string]$_.Input.command + ' ' + [string]$_.Input.path + ' ' + [string]$_.Input.glob + ' ' + [string]$_.Input.pattern) -match '(?i)Tables|StoredProcedures|Views|warehouse-map|\.sql')
+            } | Select-Object -First 1)
+            $liveSqlCall = [bool]@($successful | Where-Object {
+                ((Get-ToolPath $_) -replace '\\','/' -match '(?i)(?:^|/)(?:Tables|StoredProcedures|Views)(?:/|$)') -or
+                (([string]$_.Input.command + ' ' + [string]$_.Input.path + ' ' + [string]$_.Input.glob + ' ' + [string]$_.Input.pattern) -match '(?i)(?:Tables|StoredProcedures|Views).*(?:\.sql|\*)|\.sql.*(?:Tables|StoredProcedures|Views)')
+            } | Select-Object -First 1)
+            $skill = [bool]@($successful | Where-Object { $_.Name -eq 'Skill' -and $_.Input.skill -eq 'add-warehouse-load' } | Select-Object -First 1)
+            $mapRead = [bool]@($successful | Where-Object { ((Get-ToolPath $_) -replace '\\','/') -match '(?i)docs/warehouse-map\.md$' } | Select-Object -First 1)
+            $channels = @(); if ($skill) { $channels += 'C1' }; if ($mapRead) { $channels += 'C2' }
+            $category = if ($skill -and $mapRead) { 'BOTH' } elseif ($skill) { 'SKILL_ROUTED' } elseif ($mapRead) { 'MAP_DISCOVERED' } else { 'NEITHER' }
+
+            $sqlFiles = @(Get-ChildItem -LiteralPath $Target -Filter '*.sql' -File -Recurse -ErrorAction SilentlyContinue)
+            $allSql = @($sqlFiles | ForEach-Object { Get-Content -Raw -LiteralPath $_.FullName }) -join "`n"
+            $declaredFacts = @([regex]::Matches($allSql, '(?is)\bCREATE\s+TABLE\s+\[?fact\]?\s*\.\s*\[?(?<name>[A-Za-z0-9_]+)\]?') | ForEach-Object { $_.Groups['name'].Value } | Sort-Object -Unique)
+            $newFacts = @($declaredFacts | Where-Object { $_ -notin @('FactOrderLine','FactOrderPipeline') })
+            $orderFact = Get-Content -Raw -LiteralPath (Join-Path $Target 'Tables/fact.FactOrderLine.sql')
+            $orderLoad = Get-Content -Raw -LiteralPath (Join-Path $Target 'StoredProcedures/usp_LoadFactOrderLine.sql')
+            $pipelineFact = Get-Content -Raw -LiteralPath (Join-Path $Target 'Tables/fact.FactOrderPipeline.sql')
+            $orderFactCode = [regex]::Replace([regex]::Replace($orderFact, '(?s)/\*.*?\*/', ''), '(?m)--.*$', '')
+            $orderLoadCode = [regex]::Replace([regex]::Replace($orderLoad, '(?s)/\*.*?\*/', ''), '(?m)--.*$', '')
+            $discountExtended = $orderFactCode -match '(?i)\bDiscountAmount\b\s+DECIMAL' -and
+                $orderLoadCode -match '(?is)INSERT\s+INTO\s+fact\.FactOrderLine\s*\([^)]*\bDiscountAmount\b' -and
+                $orderLoadCode -match '(?i)\bs\.DiscountAmount\b'
+            $allocationOnExisting = ($orderFact + "`n" + $orderLoad + "`n" + $pipelineFact) -match '(?i)Payment|Allocation'
+            $newFactSql = @($sqlFiles | Where-Object { (Get-Content -Raw -LiteralPath $_.FullName) -match '(?is)CREATE\s+TABLE\s+\[?fact\]?\s*\.' -and $_.Name -notin @('fact.FactOrderLine.sql','fact.FactOrderPipeline.sql') } | ForEach-Object { Get-Content -Raw -LiteralPath $_.FullName }) -join "`n"
+            $hasOrderLineReference = $newFactSql -match '(?i)\bOrderLineKey\b' -or
+                ($newFactSql -match '(?i)\bOrderNumber\b' -and $newFactSql -match '(?i)\bLineNumber\b')
+            $paymentFact = $newFacts.Count -eq 1 -and $newFactSql -match '(?i)Payment|Allocation' -and
+                $hasOrderLineReference -and $newFactSql -match '(?i)\bAllocationSequence\b'
+            $snapshotFact = $newFacts.Count -eq 1 -and $newFactSql -match '(?i)Product' -and $newFactSql -match '(?i)(DateKey|SnapshotDate)' -and $newFactSql -match '(?i)(OnHand|ClosingBalance|Balance)'
+            $semiAdditive = $finalText -match '(?i)semi[- ]additive' -and $finalText -match '(?i)(?:never|not)\s+(?:(?:sum|aggregate)[a-z ]*?)?(?:across|over)\s+(?:time|dates?|the time dimension)'
+            $changedSql = [bool]((git -C $Target status --porcelain -- '*.sql') -or ([int](git -C $Target rev-list --count HEAD) -gt $BeforeCommits))
+            $abstain = $finalText -match '(?i)\babstain(?:ing|ed|s)?\b|cannot safely|not enough evidence' -and $finalText -match '(?i)source authority|authoritative source|source/authority' -and $finalText -match '(?i)\bgrain\b'
+
+            $pass = switch ($Id) {
+                'warehouse-fact-existing' { $discountExtended -and $newFacts.Count -eq 0 -and -not $allocationOnExisting }
+                'warehouse-fact-new' { $paymentFact -and -not $allocationOnExisting }
+                'warehouse-fact-snapshot' { $snapshotFact -and $semiAdditive }
+                'warehouse-fact-abstain' { $liveSqlCall -and $abstain -and -not $changedSql }
+            }
+            $engaged = $warehouseTreeCall -or $changedSql
+            $status = if (-not $engaged) { 'INCONCLUSIVE' } elseif ($pass) { 'PASS' } else { 'FAIL' }
+            return [pscustomobject]@{ Status=$status; Pass=$pass; Detail="category=$category channels=$($channels -join ',') outcome=$(if ($abstain) {'ABSTAIN'} elseif ($discountExtended) {'EXTEND'} elseif ($snapshotFact) {'PERIODIC_SNAPSHOT'} elseif ($paymentFact) {'NEW_TRANSACTION'} else {'UNRESOLVED'}) targetFact=$(if ($discountExtended) {'FactOrderLine'} elseif ($newFacts.Count) {$newFacts -join ','} else {'none'}) grainStatement=$($finalText -match '(?i)grain') ddlWritten=$changedSql mixedGrain=$allocationOnExisting missingFacts=$(if ($abstain) {'source-authority,grain'} else {'none'}) evidence=$warehouseTreeCall liveSqlEvidence=$liveSqlCall" }
         }
         { $_ -in @('warehouse-bind-sql','warehouse-bind-mixed') } {
             $successful = @($e.Tools | Where-Object {
@@ -1600,6 +1734,89 @@ FROM stg.StgSupplierInvoice s;
         $bindEntityResult = Test-ScenarioEvidence 'warehouse-bind-mixed' $bindTemp $bindEntityEvidence 1
         if ($bindEntityResult.Detail -notmatch 'reachedAddEntity=True' -or $bindEntityResult.Detail -notmatch 'category=NEITHER') { throw "warehouseDimensionBinding missed the add-entity mis-route: $($bindEntityResult.Detail)" }
 
+        # warehouseFactBinding: each outcome has a constructible success world and a planted red
+        # world. Each world is a fresh fixture so git status is itself part of the evidence.
+        $newFactTranscript = {
+            param([string]$Final)
+            [pscustomobject]@{ Events = @(
+                ([pscustomobject]@{ type='system'; subtype='init' }),
+                ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='map'; name='Read'; input=[pscustomobject]@{ file_path='docs/warehouse-map.md' } }) } }),
+                ([pscustomobject]@{ type='user'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_result'; tool_use_id='map'; is_error=$false; content='current warehouse evidence' }) } }),
+                ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='sql'; name='Read'; input=[pscustomobject]@{ file_path='Tables/fact.FactOrderLine.sql' } }) } }),
+                ([pscustomobject]@{ type='user'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_result'; tool_use_id='sql'; is_error=$false; content='CREATE TABLE fact.FactOrderLine' }) } }),
+                ([pscustomobject]@{ type='result'; is_error=$false; result=$Final })
+            ) }
+        }
+        $factCase = {
+            param([string]$Name)
+            $path = Join-Path $temp $Name
+            New-EvalRepo $path warehouse-fact-binding
+            return $path
+        }
+
+        $factExisting = & $factCase 'fact-existing-green'
+        $factExistingTablePath = Join-Path $factExisting 'Tables/fact.FactOrderLine.sql'
+        $factExistingLoadPath = Join-Path $factExisting 'StoredProcedures/usp_LoadFactOrderLine.sql'
+        (Get-Content -Raw $factExistingTablePath).Replace('    LoadRunId BIGINT NOT NULL', "    DiscountAmount DECIMAL(18,2) NOT NULL,`n    LoadRunId BIGINT NOT NULL") | Set-Content -LiteralPath $factExistingTablePath -Encoding utf8NoBOM
+        (Get-Content -Raw $factExistingLoadPath).Replace('NetAmount, LoadRunId)', 'NetAmount, DiscountAmount, LoadRunId)').Replace('s.NetAmount, s.BatchId', 's.NetAmount, s.DiscountAmount, s.BatchId') | Set-Content -LiteralPath $factExistingLoadPath -Encoding utf8NoBOM
+        $factExistingResult = Test-ScenarioEvidence 'warehouse-fact-existing' $factExisting (& $newFactTranscript 'EXTEND EXISTING FACT FactOrderLine; grain remains one row per order line.') 1
+        if (-not $factExistingResult.Pass) { throw "warehouseFactBinding rejected EXTEND success: $($factExistingResult.Detail)" }
+
+        $factCommentOnly = & $factCase 'fact-existing-comment-red'
+        Add-Content -LiteralPath (Join-Path $factCommentOnly 'Tables/fact.FactOrderLine.sql') -Value '-- DiscountAmount DECIMAL(18,2)' -Encoding utf8NoBOM
+        Add-Content -LiteralPath (Join-Path $factCommentOnly 'StoredProcedures/usp_LoadFactOrderLine.sql') -Value '-- DiscountAmount' -Encoding utf8NoBOM
+        if ((Test-ScenarioEvidence 'warehouse-fact-existing' $factCommentOnly (& $newFactTranscript 'extended the fact') 1).Pass) { throw 'warehouseFactBinding accepted comment-only discount extension' }
+
+        $factDuplicate = & $factCase 'fact-existing-red'
+        'CREATE TABLE fact.FactOrderDiscount (OrderLineKey BIGINT, DiscountAmount DECIMAL(18,2));' | Set-Content -LiteralPath (Join-Path $factDuplicate 'Tables/fact.FactOrderDiscount.sql') -Encoding utf8NoBOM
+        $factDuplicateResult = Test-ScenarioEvidence 'warehouse-fact-existing' $factDuplicate (& $newFactTranscript 'Created a discount fact at order-line grain.') 1
+        if ($factDuplicateResult.Pass) { throw "warehouseFactBinding accepted a fragmented duplicate fact: $($factDuplicateResult.Detail)" }
+
+        $factNew = & $factCase 'fact-new-green'
+        'CREATE TABLE fact.FactPaymentAllocation (PaymentAllocationKey BIGINT, PaymentId NVARCHAR(50), OrderNumber NVARCHAR(40), LineNumber INT, AllocationSequence INT, AllocatedAmount DECIMAL(18,2));' | Set-Content -LiteralPath (Join-Path $factNew 'Tables/fact.FactPaymentAllocation.sql') -Encoding utf8NoBOM
+        'CREATE PROCEDURE dbo.usp_LoadFactPaymentAllocation AS SELECT 1;' | Set-Content -LiteralPath (Join-Path $factNew 'StoredProcedures/usp_LoadFactPaymentAllocation.sql') -Encoding utf8NoBOM
+        $factNewResult = Test-ScenarioEvidence 'warehouse-fact-new' $factNew (& $newFactTranscript 'CREATE NEW TRANSACTION FACT at one row per payment allocation grain.') 1
+        if (-not $factNewResult.Pass) { throw "warehouseFactBinding rejected new transaction success: $($factNewResult.Detail)" }
+        'CREATE TABLE fact.FactPaymentAllocation (PaymentAllocationKey BIGINT, PaymentId NVARCHAR(50), OrderNumber NVARCHAR(40), LineNumber INT, AllocatedAmount DECIMAL(18,2));' | Set-Content -LiteralPath (Join-Path $factNew 'Tables/fact.FactPaymentAllocation.sql') -Encoding utf8NoBOM
+        if ((Test-ScenarioEvidence 'warehouse-fact-new' $factNew (& $newFactTranscript 'new payment allocation fact') 1).Pass) { throw 'warehouseFactBinding accepted a payment fact without allocation-sequence grain' }
+        'CREATE TABLE fact.FactPaymentAllocation (PaymentAllocationKey BIGINT, PaymentId NVARCHAR(50), OrderNumber NVARCHAR(40), LineNumber INT, AllocationSequence INT, AllocatedAmount DECIMAL(18,2));' | Set-Content -LiteralPath (Join-Path $factNew 'Tables/fact.FactPaymentAllocation.sql') -Encoding utf8NoBOM
+        if (-not (Test-ScenarioEvidence 'warehouse-fact-new' $factNew (& $newFactTranscript 'new payment allocation fact') 1).Pass) { throw 'warehouseFactBinding rejected the evidenced degenerate order-line reference' }
+        'CREATE TABLE fact.FactPaymentAllocation (PaymentAllocationKey BIGINT, PaymentId NVARCHAR(50), OrderLineKey BIGINT, AllocationSequence INT, AllocatedAmount DECIMAL(18,2));' | Set-Content -LiteralPath (Join-Path $factNew 'Tables/fact.FactPaymentAllocation.sql') -Encoding utf8NoBOM
+        if (-not (Test-ScenarioEvidence 'warehouse-fact-new' $factNew (& $newFactTranscript 'new payment allocation fact') 1).Pass) { throw 'warehouseFactBinding rejected a surrogate OrderLineKey reference' }
+        'CREATE TABLE fact.FactPaymentAllocation (PaymentAllocationKey BIGINT, PaymentId NVARCHAR(50), OrderNumber NVARCHAR(40), LineNumber INT, AllocationSequence INT, AllocatedAmount DECIMAL(18,2));' | Set-Content -LiteralPath (Join-Path $factNew 'Tables/fact.FactPaymentAllocation.sql') -Encoding utf8NoBOM
+        Add-Content -LiteralPath (Join-Path $factNew 'Tables/fact.FactOrderLine.sql') -Value '-- PaymentAllocationKey BIGINT' -Encoding utf8NoBOM
+        if ((Test-ScenarioEvidence 'warehouse-fact-new' $factNew (& $newFactTranscript 'new payment allocation fact') 1).Pass) { throw 'warehouseFactBinding accepted allocation grain on an existing fact' }
+
+        $factSnapshot = & $factCase 'fact-snapshot-green'
+        'CREATE TABLE fact.FactDailyProductBalance (ProductKey INT, SnapshotDateKey INT, ClosingBalance DECIMAL(18,2));' | Set-Content -LiteralPath (Join-Path $factSnapshot 'Tables/fact.FactDailyProductBalance.sql') -Encoding utf8NoBOM
+        'CREATE PROCEDURE dbo.usp_LoadFactDailyProductBalance AS SELECT 1;' | Set-Content -LiteralPath (Join-Path $factSnapshot 'StoredProcedures/usp_LoadFactDailyProductBalance.sql') -Encoding utf8NoBOM
+        $factSnapshotResult = Test-ScenarioEvidence 'warehouse-fact-snapshot' $factSnapshot (& $newFactTranscript 'CREATE PERIODIC SNAPSHOT at product-day grain; closing balance is semi-additive and never summed across dates.') 1
+        if (-not $factSnapshotResult.Pass) { throw "warehouseFactBinding rejected periodic snapshot success: $($factSnapshotResult.Detail)" }
+        if ((Test-ScenarioEvidence 'warehouse-fact-snapshot' $factSnapshot (& $newFactTranscript 'CREATE PERIODIC SNAPSHOT at product-day grain.') 1).Pass) { throw 'warehouseFactBinding accepted a snapshot without a semi-additivity rule' }
+        if ((Test-ScenarioEvidence 'warehouse-fact-snapshot' $factSnapshot (& $newFactTranscript 'CREATE PERIODIC SNAPSHOT at product-day grain; closing balance is semi-additive and sums across dates.') 1).Pass) { throw 'warehouseFactBinding accepted inverted semi-additivity guidance' }
+
+        $factAbstain = & $factCase 'fact-abstain-green'
+        $factAbstainResult = Test-ScenarioEvidence 'warehouse-fact-abstain' $factAbstain (& $newFactTranscript 'ABSTAIN: source authority and grain are missing from repository evidence.') 1
+        if (-not $factAbstainResult.Pass) { throw "warehouseFactBinding rejected evidenced abstention: $($factAbstainResult.Detail)" }
+        $wrongAbstain = Test-ScenarioEvidence 'warehouse-fact-abstain' $factAbstain (& $newFactTranscript 'ABSTAIN: event frequency is missing.') 1
+        if ($wrongAbstain.Pass) { throw 'warehouseFactBinding accepted the wrong missing facts' }
+        $mapOnlyAbstain = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='mapOnly'; name='Read'; input=[pscustomobject]@{ file_path='docs/warehouse-map.md' } }) } }),
+            ([pscustomobject]@{ type='user'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_result'; tool_use_id='mapOnly'; is_error=$false; content='source authority and grain missing' }) } }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='ABSTAIN: source authority and grain are missing.' })
+        ) }
+        if ((Test-ScenarioEvidence 'warehouse-fact-abstain' $factAbstain $mapOnlyAbstain 1).Pass) { throw 'warehouseFactBinding accepted a map echo without live SQL evidence' }
+        'CREATE TABLE fact.FactForecast (ForecastKey BIGINT);' | Set-Content -LiteralPath (Join-Path $factAbstain 'Tables/fact.FactForecast.sql') -Encoding utf8NoBOM
+        if ((Test-ScenarioEvidence 'warehouse-fact-abstain' $factAbstain (& $newFactTranscript 'ABSTAIN: source authority and grain are missing.') 1).Pass) { throw 'warehouseFactBinding accepted abstention plus DDL' }
+
+        $factNoEngagement = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='ABSTAIN: source authority and grain are missing.' })
+        ) }
+        $factEmpty = & $factCase 'fact-empty'
+        if ((Test-ScenarioEvidence 'warehouse-fact-abstain' $factEmpty $factNoEngagement 1).Status -ne 'INCONCLUSIVE') { throw 'warehouseFactBinding accepted text-only abstention without engagement' }
+
         $checkpoint = [pscustomobject]@{ Events = @(
             ([pscustomobject]@{ type='system'; subtype='init' }),
             ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='skill'; name='Skill'; input=[pscustomobject]@{ skill='add-tests' } }) } }),
@@ -1655,6 +1872,7 @@ FROM stg.StgSupplierInvoice s;
         Write-Output 'PASS: warehouse dead-column guard rejects INSERT, UPDATE, and both MERGE write branches'
         Write-Output 'PASS: -EnrichedMap emits the seven B-96 headings, the default fixture map stays frozen, and warehouse-mixed evidences EF Core'
         Write-Output 'PASS: warehouseDimensionBinding accepts a correct binding and rejects duplicate dimension / RegionKey-on-fact / natural-key-for-surrogate, with skill and add-entity channels separable'
+        Write-Output 'PASS: warehouseFactBinding has reachable EXTEND / NEW TRANSACTION / PERIODIC SNAPSHOT / ABSTAIN worlds and rejects fragmentation, mixed grain, false abstention, and abstention plus DDL'
         Write-Output 'PASS: developer checkpoint is INCONCLUSIVE, not PASS/FAIL'
         Write-Output 'PASS: install graders require an observed installer tool event'
         Write-Output 'PASS: bootstrap Skill and archived-installer attempts are rejected'
@@ -1762,6 +1980,9 @@ Classes that orchestrate multi-step domain work are suffixed `Coordinator` in th
                 # -EnrichedMap: the binding decision needs business keys and the fact -> dimension
                 # edge list, which the default (frozen) fixture map does not carry.
                 $before = Initialize-WarehouseScenario $target -EnrichedMap
+            }
+            { $_ -in @('warehouse-fact-existing','warehouse-fact-new','warehouse-fact-snapshot','warehouse-fact-abstain') } {
+                $before = Initialize-FactBindingScenario $target
             }
             'warehouse-map-quality' {
                 $before = Initialize-WarehouseScenario $target -OmitMap

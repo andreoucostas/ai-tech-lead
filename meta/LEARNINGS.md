@@ -1026,3 +1026,16 @@ processes supplied the cleaner instrument: the unchanged 5.1 probes selected 7 a
 controls selected themselves, and the same four probes selected their own host after the fix.
 That honest 5.1 run immediately uncovered a third real defect: an expected failing native Git probe
 was terminating under 5.1 before the architecture generator could use its documented fallback.
+
+## 2026-08-09 — an answer-rich fixture can manufacture the case for unnecessary guidance
+
+B-124 began with a plausible instruction gap, but its first evaluator wrote the proposed decision
+matrix into the warehouse map and stated the decisive grain in the prompts. Passing that fixture
+could not show the skill was already sufficient; failing it could not isolate the missing rule. Opus
+forced the evidence leg back to live DDL and non-leading requests. The unchanged skill then made the
+right existing/new choice twice each, so proportionality rejected the planned shipped matrix.
+
+The grader repeated the same lesson at smaller scale: it looked for `OrderLine`, while the correct
+warehouse representation was `OrderNumber + LineNumber + AllocationSequence`. Reading the artifact
+turned a false behavioral failure into a measurement defect. Outcome labels are not evidence until
+the code they point at has been inspected, especially when a lexical proxy stands in for grain.

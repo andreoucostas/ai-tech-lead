@@ -99,6 +99,34 @@
       "assertion": "warehouseMapQuality"
     },
     {
+      "id": "warehouse-fact-existing",
+      "fixture": "warehouse-fact-binding",
+      "budgetUsd": 1.50,
+      "prompt": "Finance needs discount amount available in warehouse sales reporting. The next source extract adds a `discount_amount` field. Implement this warehouse change in the repository. I approve the change in advance: do not stop for a plan or ask for confirmation; make the fact-binding decision and then implement the compatible DDL and load in this session.",
+      "assertion": "warehouseFactBinding"
+    },
+    {
+      "id": "warehouse-fact-new",
+      "fixture": "warehouse-fact-binding",
+      "budgetUsd": 1.50,
+      "prompt": "Treasury is onboarding payment allocations with `payment_id`, `order_number`, `line_number`, `allocation_sequence`, and `allocated_amount`. Implement this warehouse change in the repository. I approve the change in advance: do not stop for a plan or ask for confirmation; make the fact-binding decision and then implement the compatible DDL and load in this session.",
+      "assertion": "warehouseFactBinding"
+    },
+    {
+      "id": "warehouse-fact-snapshot",
+      "fixture": "warehouse-fact-binding",
+      "budgetUsd": 1.50,
+      "prompt": "Add the daily product on-hand closing balance from the authoritative stg.StgDailyInventory feed. Implement this warehouse change in the repository. I approve the change in advance: do not stop for a plan or ask for confirmation; make the fact-binding decision and then implement the compatible DDL and load in this session.",
+      "assertion": "warehouseFactBinding"
+    },
+    {
+      "id": "warehouse-fact-abstain",
+      "fixture": "warehouse-fact-binding",
+      "budgetUsd": 1.25,
+      "prompt": "Add forecast amount. Assess and implement this warehouse change only if repository evidence is enough to bind it safely. I approve any compatible change in advance: do not stop for a plan or ask for confirmation. If a required fact is missing, name it and abstain before DDL.",
+      "assertion": "warehouseFactBinding"
+    },
+    {
       "id": "haiku-convention-check",
       "budgetUsd": 0.35,
       "model": "haiku",

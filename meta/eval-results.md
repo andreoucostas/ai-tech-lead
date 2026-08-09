@@ -859,3 +859,95 @@ run-to-run variance with statistical confidence; a larger `n` would be needed to
 rate rather than just its sign. What can be said plainly: **on both observed runs, the dimension-
 binding step shipped in v0.50.0 stopped the model putting `RegionKey` directly on the new fact.**
 B-119 closed on this evidence; see `meta/BACKLOG.md`.
+
+## 2026-08-09 12:13:42 +01:00 — framework v0.51.5 (26f0c34758cacec231f6696379133563386e066a)
+
+Host: Claude Code 2.1.226 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-fact-existing** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.7019319 tokensIn=30 tokensOut=8564; category=MAP_DISCOVERED channels=C2 outcome=EXTEND targetFact=FactOrderLine grainStatement=True ddlWritten=True mixedGrain=False missingFacts=none evidence=True
+- **PASS warehouse-fact-new** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.7905717 tokensIn=32 tokensOut=16188; category=BOTH channels=C1,C2 outcome=NEW_TRANSACTION targetFact=FactPaymentAllocation grainStatement=True ddlWritten=True mixedGrain=False missingFacts=none evidence=True
+- **FAIL warehouse-fact-snapshot** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.5658543 tokensIn=20 tokensOut=11325; category=BOTH channels=C1,C2 outcome=UNRESOLVED targetFact=none grainStatement=True ddlWritten=False mixedGrain=False missingFacts=none evidence=True
+- **FAIL warehouse-fact-abstain** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3303867 tokensIn=12 tokensOut=3832; category=BOTH channels=C1,C2 outcome=UNRESOLVED targetFact=none grainStatement=True ddlWritten=False mixedGrain=False missingFacts=none evidence=True
+
+The snapshot and abstain rows above are **invalidated instrument results**, not behavioral failures.
+Reading their retained terminal results exposed two grader/fixture defects: the snapshot success was
+unreachable because the first fixture supplied no inventory source, and the abstention regex rejected
+the semantically explicit “I'm abstaining.” The fixture and grader were corrected and only those two
+cases were rerun below. The existing/new rows remain valid.
+
+## 2026-08-09 12:18 +01:00 — B-124 corrected old-skill baseline
+
+- **PASS warehouse-fact-snapshot (corrected regrade)** — the agent created
+  `FactProductInventorySnapshot` at product/day grain from authoritative `StgDailyInventory`, with a
+  matching load, and stated `ClosingOnHandQuantity` is “semi-additive: sums across products for a
+  date, never across dates.” The live grader initially printed FAIL only because it accepted “across
+  time” but not the equivalent “never across dates”; the retained transcript and SQL were read, the
+  semantic matcher was widened, and the constructible self-test remains green.
+- **PASS warehouse-fact-abstain** — agentExit=0 timedOut=False costUsd=0.3163908 tokensIn=12
+  tokensOut=2744; category=BOTH channels=C1,C2 outcome=ABSTAIN targetFact=none grainStatement=True
+  ddlWritten=False mixedGrain=False missingFacts=source-authority,grain evidence=True.
+
+**Pre-registered reading:** all four outcomes pass on the unchanged v0.51.5 skill. In particular,
+both ambiguous existing-vs-new cases pass, so B-124's required red premise did not reproduce. Per the
+design's proportionality condition, the proposed shipped fact-binding matrix must not lock without a
+new observed harm; this baseline supports rejecting the implementation premise, not shipping it.
+
+
+## 2026-08-09 12:18:26 +01:00 — framework v0.51.5 (26f0c34758cacec231f6696379133563386e066a)
+
+Host: Claude Code 2.1.226 (Claude Code) · scratch: retained=True
+
+- **FAIL warehouse-fact-snapshot** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.8048061 tokensIn=36 tokensOut=13316; category=BOTH channels=C1,C2 outcome=PERIODIC_SNAPSHOT targetFact=FactProductInventorySnapshot grainStatement=True ddlWritten=True mixedGrain=False missingFacts=none evidence=True
+- **PASS warehouse-fact-abstain** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3163908 tokensIn=12 tokensOut=2744; category=BOTH channels=C1,C2 outcome=ABSTAIN targetFact=none grainStatement=True ddlWritten=False mixedGrain=False missingFacts=source-authority,grain evidence=True
+
+
+## 2026-08-09 12:29:59 +01:00 — framework v0.51.5 (26f0c34758cacec231f6696379133563386e066a)
+
+Host: Claude Code 2.1.226 (Claude Code) · scratch: retained=True
+
+- **ERROR warehouse-fact-existing** (model=sonnet) — agentExit=1 timedOut=False costUsd=0.3138852 tokensIn=14 tokensOut=2752; category=BOTH channels=C1,C2 outcome=UNRESOLVED targetFact=none grainStatement=False ddlWritten=False mixedGrain=False missingFacts=none evidence=True liveSqlEvidence=True
+- **ERROR warehouse-fact-new** (model=sonnet) — agentExit=1 timedOut=False costUsd=0 tokensIn=0 tokensOut=0; category=NEITHER channels= outcome=UNRESOLVED targetFact=none grainStatement=False ddlWritten=False mixedGrain=False missingFacts=none evidence=False liveSqlEvidence=False
+
+Both rows are **INVALID — MONTHLY SPEND LIMIT**, not behavioral failures or samples toward `n=2`.
+The retained terminal results report HTTP 429 and `You've hit your monthly spend limit`; the first
+stopped after partial repository inspection and the second before any model token. B-124 is
+`WAITING — OPUS LIMIT`. Resume with two complete runs of each unchanged redesigned ambiguous case;
+do not replace Sonnet with a different model or count either error row.
+
+## 2026-08-09 12:47:01 +01:00 — framework v0.51.5 (26f0c34758cacec231f6696379133563386e066a)
+
+Host: Claude Code 2.1.226 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-fact-existing** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.6876183 tokensIn=34 tokensOut=9717; category=BOTH channels=C1,C2 outcome=EXTEND targetFact=FactOrderLine grainStatement=True ddlWritten=True mixedGrain=False missingFacts=none evidence=True liveSqlEvidence=True
+- **FAIL warehouse-fact-new** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.8660334 tokensIn=40 tokensOut=16074; category=BOTH channels=C1,C2 outcome=UNRESOLVED targetFact=FactPaymentAllocation grainStatement=True ddlWritten=True mixedGrain=False missingFacts=none evidence=True liveSqlEvidence=True
+
+
+## 2026-08-09 12:52:52 +01:00 — framework v0.51.5 (26f0c34758cacec231f6696379133563386e066a)
+
+Host: Claude Code 2.1.226 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-fact-existing** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.5503068 tokensIn=24 tokensOut=8153; category=BOTH channels=C1,C2 outcome=EXTEND targetFact=FactOrderLine grainStatement=True ddlWritten=True mixedGrain=False missingFacts=none evidence=True liveSqlEvidence=True
+- **PASS warehouse-fact-new** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.7446675 tokensIn=26 tokensOut=14214; category=BOTH channels=C1,C2 outcome=NEW_TRANSACTION targetFact=FactPaymentAllocation grainStatement=True ddlWritten=True mixedGrain=False missingFacts=none evidence=True liveSqlEvidence=True
+
+### B-124 registered reading
+
+The 12:47 new-fact FAIL label is **invalidated as a grader defect**, not a behavioral failure. Its
+retained DDL and terminal result were read directly: the agent created `FactPaymentAllocation` at
+one allocation-sequence grain and correctly represented the existing order-line reference with
+degenerate `OrderNumber + LineNumber`. The first matcher required the lexical token `OrderLine`.
+The replacement checks `OrderNumber`, `LineNumber`, and `AllocationSequence`; self-test observed it
+red when the sequence was removed, and the 12:52 live run is its green proof.
+
+| Outcome | Valid observations | Result |
+|---|---:|---|
+| Extend existing `FactOrderLine` | 2/2 | intended choice |
+| Create new `FactPaymentAllocation` | 2/2 (one direct regrade, one machine PASS) | intended choice |
+
+Both non-telegraphing ambiguous cases pass at the pre-registered `n>=2` stopping point. Per Opus rev
+2 and the design's proportionality rule, B-124's shipped matrix premise is rejected. These scenarios
+remain as regression coverage; no post-change arm exists because no shipped change is justified.
+
+**Supersession notice:** the 12:13–12:18 “all four outcomes pass” reading and its statement that the
+first existing/new rows remained valid are superseded by this 12:52 registered reading. Those older
+runs used the answer-rich map and leading prompts rejected by Opus rev 2; they are retained only as
+an audit trail and are not evidence for the premise decision.
