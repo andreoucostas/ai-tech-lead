@@ -1,12 +1,15 @@
-# B-125 design — evidence-ranked warehouse modelling health review (LOCKED 2026-08-09, rev 2)
+# B-125 design — evidence-ranked warehouse modelling health review (LOCKED 2026-08-09, rev 3)
 
 > **Status: DESIGN LOCKED. Not implemented.** Deviations need a new entry in
 > `meta/workspace-decisions.md`. Trigger: `meta/BACKLOG.md` B-124–B-129, filed 2026-08-08
-> (capability "warehouse technical leadership"); B-125 is the foundational item the other four
-> consume. **Review disposition (§6): rev 1 was reviewed adversarially by codex (`gpt-5.6-sol`),
-> not Claude Opus — a budget-driven, explicitly recorded substitution (WSD-036). 12 findings
-> returned (2 blocking, 8 significant, 2 minor); all 12 verified and accepted, folded into this
-> rev. A Claude Opus pass is still owed before implementation.**
+> (capability "warehouse technical leadership"); B-125 is the foundational item the remaining
+> three (B-126–B-128) consume — **B-124 closed 2026-08-09, premise rejected; see §1.** **Review
+> disposition (§6): rev 1 was reviewed adversarially by codex (`gpt-5.6-sol`), not Claude Opus —
+> a budget-driven, explicitly recorded substitution (WSD-036). 12 findings returned (2 blocking,
+> 8 significant, 2 minor); all 12 verified and accepted, folded into rev 2. A Claude Opus pass is
+> still owed before implementation. Rev 3 (this revision) only corrects the now-stale B-124
+> consumer reference and cites B-124's closure as concrete evidence for §2's phased approach —
+> no other content changed, and rev 3 has not itself been re-reviewed.**
 
 ---
 
@@ -22,14 +25,31 @@ no structure — no confidence, no severity, no consequence, no remediation — 
 eight failure classes B-125 is filed against: **fact, dimension, bridge, role-playing,
 conformance, SCD, special-member, and additivity** (`meta/BACKLOG.md:3221-3224`).
 
-**Honesty about proportionality (revised — see §6 finding 7).** Rev 1 argued proportionality from
-hypothetical downstream harm (B-124/126/127/128 inheriting bad findings). CLAUDE.md's own rule 6
-requires *concrete, already-observed* harm, not a hypothetical one, and no field incident specific
-to these eight defect classes exists — B-96's field report was about a missing relationship edge,
-not a modelling-health defect. This design does not manufacture an incident that isn't there.
-Instead it takes the smaller, immediately-justified step first (§2) and treats full eight-class
-coverage as a set of separately-evidenced additions, each gated on its own fixture proof before it
-ships as a real finding rather than a candidate signal.
+**Consumers (corrected in rev 3).** This is the shared modelling-analysis layer consumed by
+**B-126, B-127, and B-128** (`meta/BACKLOG.md`, B-125's current "Framework fit"). Rev 1/2 also
+named **B-124** as a consumer; B-124 **closed 2026-08-09 with its premise rejected** — two
+independent Claude Opus reviews plus a pre-registered behavioral baseline found the *unchanged*
+`add-warehouse-load` skill already chose the correct fact (EXTEND vs. NEW) 2/2 on both ambiguous
+test pairs, so the registered stopping rule blocked the proposed change as disproportionate to
+zero observed failures (`meta/BACKLOG.md` Done section, B-124). It shipped no decision artifact
+and is not a live consumer of this design's findings; its retained regression scenarios are
+evidence only. Three consumers, not four.
+
+**Honesty about proportionality (revised — see §6 finding 7; reinforced by B-124's actual outcome).**
+Rev 1 argued proportionality from hypothetical downstream harm (then: B-124/126/127/128 inheriting
+bad findings). CLAUDE.md's own rule 6 requires *concrete, already-observed* harm, not a hypothetical
+one, and no field incident specific to these eight defect classes exists — B-96's field report was
+about a missing relationship edge, not a modelling-health defect. This design does not manufacture
+an incident that isn't there. Instead it takes the smaller, immediately-justified step first (§2)
+and treats full eight-class coverage as a set of separately-evidenced additions, each gated on its
+own fixture proof before it ships as a real finding rather than a candidate signal. **B-124 is now
+concrete evidence this caution is warranted, not excessive**: a same-batch, same-day, structurally
+similar item (also a warehouse pre-DDL decision procedure) was killed by exactly the failure mode
+rev 2 exists to avoid — a plausible-sounding detection claim added without first confirming the
+*current* skill actually gets the case wrong. Phase 2's per-class fixture requirement (§5 criterion
+1: a pre-registered red baseline against the *unchanged* skill, not merely a constructed pass) is
+non-negotiable for the same reason B-124's matrix was rejected: a candidate signal is not a shippable
+finding until a baseline shows the default behavior actually misses it.
 
 ## 2. Two approaches, weighed — plus the smaller option codex's review identified
 
@@ -163,7 +183,12 @@ note on what was and was not checked — mirroring 9.5's existing coverage state
 1. Planted-model fixtures exist for **each of the eight backlog-named classes** (not rev 1's nine
    invented ones), each with a pre-registered red baseline and a constructible success case,
    **at the confidence tier §3.4 claims for it** — a class claimed only to `Possible` must be
-   proven to reach `Possible`, not silently asserted as `Confirmed`.
+   proven to reach `Possible`, not silently asserted as `Confirmed`. **The red baseline must be run
+   against the *unchanged* current skill, not merely constructed as a hypothetical** — this is
+   B-124's own registered stopping rule (`meta/BACKLOG.md` Done section: "the unchanged skill
+   chose the intended...fact in 2/2 runs each" killed a plausible-sounding change with zero
+   observed failures). A class whose baseline shows the current skill already handles it does not
+   ship as a new finding.
 2. A clean fixture and a fixture with an explicit, coherent local convention (per §3.3's named
    evidence sources) produce **no** false defect claims.
 3. Findings cite the repository evidence that produced them, not generic advice.
