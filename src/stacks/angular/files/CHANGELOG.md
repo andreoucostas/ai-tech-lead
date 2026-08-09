@@ -4,6 +4,12 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.51.5 — 2026-08-09
+
+- `template-checks` (one of the framework's own quality gates) now fails if this file's top entry
+  carries your installed version number but still says `Unreleased` instead of a date -- a
+  safeguard against ever seeing a placeholder date here. Nothing to do unless it flags this file.
+
 ## 0.51.4 — 2026-08-08
 
 - `framework-doctor` now reports capabilities only from the environment it actually observes.

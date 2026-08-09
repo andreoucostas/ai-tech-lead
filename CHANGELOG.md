@@ -11,6 +11,26 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.51.5 — 2026-08-09
+
+- B-54: `release.ps1`'s changelog stamping now dates the root **and** all three shipped consumer
+  changelogs atomically, with a post-composition postcondition checking all seven heads (root, 3
+  source, 3 composed dist) before any commit. Previously only the root changelog was ever stamped —
+  the shipped ones kept whatever placeholder they were authored with, and shipped that way twice
+  (v0.35.0, v0.46.0) and a third time silently in v0.51.4 itself (corrected separately, see the
+  v0.51.4 entry below). `template-checks` now also fails when a shipped changelog head carries the
+  current stamped version but still reads `Unreleased`, in both twins — belt and braces for a
+  hand-authored entry outside `release.ps1`.
+- B-54: fixed a Windows PowerShell 5.1-only encoding bug found while building the check above
+  (BOM-less `Get-Content` misreads a UTF-8 em dash under 5.1, garbling the failure message) by
+  switching to an absolute-path `[IO.File]::ReadAllText`, matching `release.ps1`'s existing idiom.
+- B-54: fixed a defect the stamping logic itself introduced, caught by independent (Opus-tier)
+  review — a release retried on a later calendar day after a gate failure would falsely refuse with
+  a "date mismatch" and instruct the operator to rewrite an already-published release date, breaking
+  the script's own documented retry-safety promise. Fixed by resolving the release date from any
+  single already-agreeing stamped value across the four heads instead of requiring exact equality
+  with a freshly recomputed "today", and explicitly refusing a genuine mix of disagreeing dates.
+
 ## 0.51.4 — 2026-08-08
 
 - B-63/B-56: `framework-doctor` now reports capability evidence from the environment it actually
