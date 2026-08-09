@@ -1,4 +1,4 @@
-# B-125 design — evidence-ranked warehouse modelling health review (LOCKED 2026-08-09, rev 5)
+# B-125 design — evidence-ranked warehouse modelling health review (LOCKED 2026-08-09, rev 6)
 
 > **Status: DESIGN LOCKED AFTER CLAUDE OPUS REVIEW. Not implemented.** Deviations need a new entry in
 > `meta/workspace-decisions.md`. Trigger: `meta/BACKLOG.md` B-124–B-129, filed 2026-08-08
@@ -134,7 +134,7 @@ always been"), no defect finding is emitted — the convention is noted instead.
 | **Fact** — mixed/unstated grain, wrong fact type, natural keys on facts | Phase 1 covers unstated grain (already emitted); Phase 2 adds mixed grain and a natural-key-on-fact check. Wrong-fact-type detection is deferred because only a `Possible` name/shape signal is available | Unstated grain: `Confirmed` from step 2. Mixed grain: `Likely` only where the fact's column set implies two event/measure grains. A natural/business key used as a dimension join from a fact is `Confirmed` from the separately-recorded key types plus the join (`SKILL.md:56-59`) | Unstated/natural-key misuse: `Confirmed`; mixed grain: `Likely`; wrong fact type: not emitted |
 | **Dimension / conformance** — non-conformance, inappropriate snowflaking | Phase 2 adds structural non-conformance only. Snowflaking-appropriateness is deferred because default evidence supports only a `Possible` question | DDL can show same-business-key dimensions disagreeing in column set or grain — a `Likely` structural signal; true value-level non-conformance is not visible from structure alone | Non-conformance: `Likely`; snowflaking: not emitted |
 | **Bridge** — missing bridge/allocation for a stated many-to-many | Phase 2, on-demand only (§3.5) | Requires the many-to-many business process to already be evidenced — either an existing bridge-shaped table elsewhere in the same schema pointing at one side, or an explicit developer statement. Absent that trigger, the detector does not fire (fixes §6 finding 9 — no silent pre-supplied conclusion) | `Likely` when triggered by real evidence; never fires speculatively |
-| **Role-playing** — a role-playing dimension reached but not distinguished | Phase 2, reported in Coverage rather than Findings | Step 3's `role` column already records this per edge (`SKILL.md:75-76`); a fact reaching the same dimension via 2+ differently-named keys with no distinct role is a `Confirmed` map-coverage gap, not yet a model defect | `Confirmed` coverage gap |
+| **Role-playing** — a role-playing dimension reached but not distinguished | Phase 2 only if the existing edge list and dimensional semantics fail to distinguish the roles; any explicit structured location counts | Step 3's `role` column already records this per edge (`SKILL.md:75-76`); a fact reaching the same dimension via 2+ differently-named keys with no distinct role is a `Confirmed` map-coverage gap, not yet a model defect | `Confirmed` coverage gap |
 | **SCD** — inconsistent or unstated SCD strategy per dimension | Phase 1 structures the existing inconsistency finding; Phase 2 adds a signal only when the already-open load statement makes the write pattern plain | Step 7 gathers Type 1/Type 2/mixed (`SKILL.md:149-158`). No CTE/temp/helper tracing is allowed on the default pass; otherwise mark unresolved or offer scoped deepening | `Likely` only from an already-open, plain load statement |
 | **Special member** — ambiguous or missing unknown/N/A dimension rows | Phase 2 checks evidenced presence only; absence and usage-correctness are deferred | A reserved row found in already-open DDL/load/seed evidence is `Confirmed`. Failure to find one is absence of evidence, not proof of absence | Presence/ambiguity: `Confirmed`; missing/usage claims: not emitted |
 | **Additivity** — incorrect measure additivity classification | Phase 1 covers structuring what step 4 already classifies; Phase 2 adds a plausibility check | Step 4 classifies additivity "where the load reveals it" (`SKILL.md:132-135`) — loads are examined in step 5, not step 4, so a same-pass additivity finding is only available when step 5 evidence is already in hand from the same run (fixes §6 finding 2's additivity point: this is not asserted from step 4 alone) | `Likely` only when step 5 evidence for that fact was actually read in the same pass; otherwise not emitted |
@@ -190,7 +190,9 @@ the default detectors; a separate deepening scenario names both the fact (bridge
 consumption view (fan/chasm scope). A truncated findings table is inconclusive, not a failure.
 
 The grader binds each detector to its intended section and reports entity, defect semantics, and
-observed confidence tier. Role-playing must appear in Coverage and be absent from Findings.
+observed confidence tier. Role-playing counts as handled when the map explicitly distinguishes both
+roles in its structured edge list, dimensional semantics, or Coverage, and emits no role defect in
+Findings; forcing an already-correct edge into Coverage would add prose without removing harm.
 Additivity additionally requires transcript evidence that the relevant load was read in the same
 pass. Self-tests must demonstrate for every detector: a constructible green row, deleted-row red,
 right-entity/wrong-semantics red, right-semantics/wrong-entity red, wrong-tier red, and
@@ -315,6 +317,22 @@ the required neutral naming/no-leak assertions, default-vs-deepening split, name
 baseline negative controls, stronger mutated-row/cross-detector self-tests, two smaller defect
 fixtures, explicit section boundaries, fixture isolation, and hostile-code-page/two-host checks.
 These are preconditions to the Phase-2 live baseline, not post-run repairs.
+
+### Rev 6 evidence-instrument corrections after baseline batch 1
+
+The first baseline batch exposed two instrument defects and two over-constrained readings. Its
+default-A row is invalidated because the truncation regex matched ordinary prose saying staging was
+"not truncated/filtered"; only explicit line-start truncation/output-limit markers count now. Its
+bridge observation is invalidated because the planted `FactCampaignResponse` was itself an
+allocation owner at sale×campaign grain. The replacement fixture puts one `CampaignKey` on
+`FactSales` while repository evidence states one sale can carry multiple percentage allocations,
+leaving no artifact that can represent all allocations. Confidence parsing now accepts a tier cell
+that begins with `Likely`/`Confirmed` and then explains it. Finally, a directly-read view that joins
+two facts before aggregation supports a **Confirmed structural chasm finding**; whether the numeric
+impact occurs remains conditional on data cardinality. Two attempted Opus follow-up sessions timed
+out without a verdict and are not counted as reviews; these corrections follow direct retained-map
+evidence and the original Opus instruction to verify reviewer claims rather than treating them as
+verdicts.
 
 ## 7. Out of scope
 

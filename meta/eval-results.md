@@ -1022,3 +1022,33 @@ many-to-many trigger. A detector is **already handled** only if its success worl
 relevant controls stay silent 3/3. Otherwise its observed failure is the only candidate for a
 proportionate Phase 2 instruction. Missing/truncated maps and agent/API failures are inconclusive and
 must be replaced, not counted.
+
+### B-125 Phase 2 baseline amendment after invalid batch 1 (before corrected rerun)
+
+Batch 1 at commit `a693516` is retained below but does **not** count toward the registered `n=3`.
+Direct map inspection found two instrument defects: default A was falsely `INCONCLUSIVE` because
+the broad truncation regex matched ordinary prose saying staging was "not truncated/filtered";
+and the bridge fixture contained `FactCampaignResponse` at sale×campaign allocation grain, making
+the planted table the very allocation owner claimed missing. Confidence cells with explanatory
+suffixes (`Likely — ...`, `Confirmed (...)`) were also misread as `Missing`.
+
+Before any corrected output is observed, rev 6 replaces those mechanics as follows: only explicit
+line-start truncation/output-limit markers count; the missing-allocation fixture now places one
+`CampaignKey` on `FactSales` despite repository evidence that one sale may have multiple percentage
+allocations; tier cells may explain their label; explicit distinct date roles anywhere in the
+structured map count as handled if Findings contains no role defect; and a directly-read view that
+joins two facts before aggregation has a `Confirmed` structural chasm shape while numeric impact
+remains conditional. The corrected experiment restarts at 0/3 for every detector and control. Two
+Opus follow-up attempts timed out with no verdict and are not represented as reviews; the original
+Opus design/instrument reviews remain the governing review evidence.
+
+## 2026-08-09 19:28:55 +01:00 — framework v0.51.5 (a693516d31726ddfd5ee692243cd5da3a04bc142)
+
+Host: Claude Code 2.1.226 (Claude Code) · scratch: retained=True
+
+- **INCONCLUSIVE warehouse-health-default-a** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.7721616 tokensIn=20 tokensOut=19907; mapWritten=True truncated=True mixed=False tierMixed=Missing natural=False tierNatural=Missing scd=False tierScd=Confirmed additivity=False tierAdditivity=Missing loadRead=True roleCoverage=False conformance=False tierConformance=Missing special=False tierSpecial=Missing bridge=False tierBridge=Missing fanChasm=False tierFanChasm=Missing candidateRows=3
+- **FAIL warehouse-health-default-b** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.8480829 tokensIn=20 tokensOut=15828; mapWritten=True truncated=False mixed=False tierMixed=Missing natural=False tierNatural=Missing scd=False tierScd=Missing additivity=False tierAdditivity=Missing loadRead=False roleCoverage=False conformance=False tierConformance=Missing special=False tierSpecial=Missing bridge=False tierBridge=Missing fanChasm=False tierFanChasm=Missing candidateRows=2
+- **FAIL warehouse-health-deep-b** (model=sonnet) — agentExit=0 timedOut=False costUsd=1.0762668 tokensIn=24 tokensOut=19169; mapWritten=True truncated=False mixed=False tierMixed=Missing natural=False tierNatural=Missing scd=True tierScd=Likely additivity=False tierAdditivity=Missing loadRead=False roleCoverage=False conformance=True tierConformance=Likely special=False tierSpecial=Missing bridge=False tierBridge=Missing fanChasm=False tierFanChasm=Missing candidateRows=2
+- **PASS warehouse-health-clean** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.6959751 tokensIn=18 tokensOut=15460; mapWritten=True truncated=False mixed=False tierMixed=Missing natural=False tierNatural=Missing scd=False tierScd=Missing additivity=False tierAdditivity=Missing loadRead=False roleCoverage=False conformance=False tierConformance=Missing special=False tierSpecial=Missing bridge=False tierBridge=Missing fanChasm=False tierFanChasm=Missing candidateRows=0
+- **PASS warehouse-health-convention** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.6542994 tokensIn=16 tokensOut=14725; mapWritten=True truncated=False mixed=False tierMixed=Missing natural=False tierNatural=Missing scd=False tierScd=Missing additivity=False tierAdditivity=Missing loadRead=False roleCoverage=False conformance=False tierConformance=Missing special=False tierSpecial=Missing bridge=False tierBridge=Missing fanChasm=False tierFanChasm=Missing candidateRows=0
+- **PASS warehouse-health-no-trigger** (model=sonnet) — agentExit=0 timedOut=False costUsd=1.0332423 tokensIn=32 tokensOut=21246; mapWritten=True truncated=False mixed=False tierMixed=Missing natural=False tierNatural=Missing scd=False tierScd=Missing additivity=False tierAdditivity=Missing loadRead=False roleCoverage=False conformance=False tierConformance=Missing special=False tierSpecial=Missing bridge=False tierBridge=Missing fanChasm=False tierFanChasm=Missing candidateRows=0

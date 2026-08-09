@@ -144,7 +144,7 @@
       "id": "warehouse-health-deep-b",
       "fixture": "warehouse-health-b",
       "budgetUsd": 1.50,
-      "prompt": "Use the map-warehouse skill to map this warehouse and write docs/warehouse-map.md. Then run modelling-health deepening for fact.FactCampaignResponse and rpt.vwCustomerCommercialSummary, appending the scoped results and explicit coverage to the same map. I approve this documentation change in advance: implement it now, then report what you found.",
+      "prompt": "Use the map-warehouse skill to map this warehouse and write docs/warehouse-map.md. Then run modelling-health deepening for fact.FactSales and rpt.vwCustomerCommercialSummary, appending the scoped results and explicit coverage to the same map. I approve this documentation change in advance: implement it now, then report what you found.",
       "assertion": "warehouseModelHealth"
     },
     {

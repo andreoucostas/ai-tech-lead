@@ -112,15 +112,10 @@ CREATE TABLE service.DimParty (
     ContactValue NVARCHAR(200) NOT NULL
 );
 '@ | Set-Content -LiteralPath (Join-Path $Path 'Tables/service.DimParty.sql') -Encoding utf8NoBOM
-            @'
-CREATE TABLE fact.FactCampaignResponse (
-    ResponseKey BIGINT NOT NULL PRIMARY KEY,
-    SalesKey BIGINT NOT NULL,
-    CampaignKey INT NOT NULL,
-    ResponseAmount DECIMAL(18,2) NOT NULL,
-    LoadRunId BIGINT NOT NULL
-);
-'@ | Set-Content -LiteralPath (Join-Path $Path 'Tables/fact.FactCampaignResponse.sql') -Encoding utf8NoBOM
+            $salesPath = Join-Path $Path 'Tables/fact.FactSales.sql'
+            $salesText = Get-Content -Raw -LiteralPath $salesPath
+            $salesText = $salesText.Replace('    ProductKey INT NOT NULL,', "    ProductKey INT NOT NULL,`n    CampaignKey INT NULL,")
+            $salesText | Set-Content -LiteralPath $salesPath -Encoding utf8NoBOM
             @'
 CREATE TABLE dim.DimStatus (
     StatusKey INT NOT NULL PRIMARY KEY,
@@ -1213,9 +1208,9 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
                     $hasRequired = @($Required | Where-Object { $line -notmatch [regex]::Escape($_) }).Count -eq 0
                     $hasSemantics = @($Semantics | Where-Object { $line -match $_ }).Count -eq $Semantics.Count
                     if ($hasRequired -and $hasSemantics) {
-                        $tier = if ($line -match '(?i)\|\s*Confirmed\s*\|') { 'Confirmed' }
-                            elseif ($line -match '(?i)\|\s*Likely\s*\|') { 'Likely' }
-                            elseif ($line -match '(?i)\|\s*Possible\s*\|') { 'Possible' }
+                        $tier = if ($line -match '(?i)\|\s*Confirmed\b[^|]*\|') { 'Confirmed' }
+                            elseif ($line -match '(?i)\|\s*Likely\b[^|]*\|') { 'Likely' }
+                            elseif ($line -match '(?i)\|\s*Possible\b[^|]*\|') { 'Possible' }
                             else { 'Missing' }
                         return [pscustomobject]@{ Found=$true; Tier=$tier; Line=$line }
                     }
@@ -1224,19 +1219,19 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             }
             $findings = Get-MarkdownSection $mapText 'Findings'
             $coverage = Get-MarkdownSection $mapText 'Coverage'
-            $truncated = $findings -match '(?i)truncat|continued elsewhere|output limit' -or ($findings -and $findings -notmatch '(?m)^\s*\|')
+            $truncated = $mapText -match '(?im)^\s*(?:>\s*)?(?:\[?TRUNCATED\]?|OUTPUT LIMIT|CONTINUED ELSEWHERE)\b' -or ($findings -and $findings -notmatch '(?m)^\s*\|')
 
             $mixed = Find-HealthRow $findings @('FactAccountActivity') @('(?i)grain','(?i)(TransactionAmount|transaction)','(?i)(EndOfDayBalance|balance)')
             $natural = Find-HealthRow $findings @('FactAccountActivity','CustomerId') @('(?i)(natural|business)','(?i)(surrogate|dimension key|CustomerKey)')
             $scd = Find-HealthRow $findings @('DimCustomer') @('(?i)SCD|Type\s*2','(?i)(history|version|WHEN MATCHED|IsCurrent)')
             $additivity = Find-HealthRow $findings @('FactAccountActivity','EndOfDayBalance') @('(?i)(semi.additive|non.additive|additivity)','(?i)(time|date|sum)')
-            $roleCoverage = $coverage -match '(?is)FactAccountActivity.*PostedDateKey.*SettledDateKey.*role|FactAccountActivity.*role.*PostedDateKey.*SettledDateKey'
+            $roleCoverage = $mapText -match '(?is)FactAccountActivity.*PostedDateKey.*SettledDateKey.*role|FactAccountActivity.*role.*PostedDateKey.*SettledDateKey'
             $roleFinding = $findings -match '(?is)FactAccountActivity.*(?:PostedDateKey|SettledDateKey).*role'
             $role = $roleCoverage -and -not $roleFinding
 
             $conformance = Find-HealthRow $findings @('sales.DimParty','service.DimParty','PartyCode') @('(?i)(conform|same governed party)','(?i)(grain|contact|column)')
             $special = Find-HealthRow $findings @('DimStatus') @('(?:-1|`-1`)','(?:0|`0`)','(?i)(unknown|special|sentinel|ambiguous)')
-            $bridge = Find-HealthRow $findings @('FactCampaignResponse') @('(?i)many.to.many','(?i)(percentage|100\s*percent)')
+            $bridge = Find-HealthRow $findings @('FactSales','CampaignKey') @('(?i)many.to.many','(?i)(percentage|100\s*percent)')
             $fan = Find-HealthRow $findings @('vwCustomerCommercialSummary','FactSales','FactReturn') @('(?i)(multiply|multiplication)','(?i)(pre.aggregate|preaggregate)')
 
             $successful = @($e.Tools | Where-Object { $e.ToolResults.ContainsKey($_.Id) -and -not $e.ToolResults[$_.Id].is_error })
@@ -1252,7 +1247,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $conformancePass = $conformance.Found -and $conformance.Tier -eq 'Likely'
             $specialPass = $special.Found -and $special.Tier -eq 'Confirmed'
             $bridgePass = $bridge.Found -and $bridge.Tier -eq 'Likely'
-            $fanPass = $fan.Found -and $fan.Tier -eq 'Likely'
+            $fanPass = $fan.Found -and $fan.Tier -eq 'Confirmed'
             $candidateRows = @($mixed.Found,$natural.Found,$scd.Found,$additivity.Found,$role,$conformance.Found,$special.Found,$bridge.Found,$fan.Found) | Where-Object { $_ }
 
             $pass = switch ($Id) {
@@ -1920,8 +1915,8 @@ $findingsBlock
         if ((Test-ScenarioEvidence 'warehouse-health-default-b' $healthTemp $healthEvidence 1).Detail -notmatch 'special=False') { throw 'warehouseModelHealth accepted the special-member entity with wrong semantics' }
 
         $healthRowsDeep = @(
-            '| Attribution relationship has no allocation owner | FactCampaignResponse | multiple campaign percentage attribution needs a bridge or allocation at the evidenced many-to-many grain | Likely | blocking | Credit can be duplicated | Introduce an allocation owner |',
-            '| Consumption join multiplies both facts | vwCustomerCommercialSummary / FactSales / FactReturn | fan chasm multiplication requires each fact to pre-aggregate at customer grain | Likely | blocking | Revenue and returns are overstated | Pre-aggregate each fact before joining |'
+            '| Attribution relationship has no allocation owner | FactSales / CampaignKey | multiple campaign percentage attribution needs a bridge or allocation at the evidenced many-to-many grain | Likely | blocking | Credit can be lost | Introduce an allocation owner |',
+            '| Consumption join multiplies both facts | vwCustomerCommercialSummary / FactSales / FactReturn | fan chasm multiplication requires each fact to pre-aggregate at customer grain | Confirmed | blocking | Revenue and returns are overstated | Pre-aggregate each fact before joining |'
         )
         $healthMapDeep = "## Coverage`n`nScoped deepening completed.`n`n## Findings`n`n$healthHeader$($healthRowsDeep -join "`n")`n"
         $healthMapDeep | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
@@ -1930,14 +1925,14 @@ $findingsBlock
             ($healthMapDeep.Replace($healthRow, '')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
             if ((Test-ScenarioEvidence 'warehouse-health-deep-b' $healthTemp $healthEvidence 1).Pass) { throw 'warehouseModelHealth accepted deepening map with a detector row deleted' }
         }
-        ($healthMapDeep.Replace('| Likely | blocking | Credit can be duplicated', '| Confirmed | blocking | Credit can be duplicated')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
+        ($healthMapDeep.Replace('| Likely | blocking | Credit can be lost', '| Confirmed | blocking | Credit can be lost')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-deep-b' $healthTemp $healthEvidence 1).Detail -notmatch 'bridge=False tierBridge=Confirmed') { throw 'warehouseModelHealth accepted the wrong bridge confidence tier' }
-        ($healthMapDeep.Replace('FactCampaignResponse', 'FactOtherResponse')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
+        ($healthMapDeep.Replace('FactSales / CampaignKey', 'FactOther / CampaignKey')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-deep-b' $healthTemp $healthEvidence 1).Detail -notmatch 'bridge=False') { throw 'warehouseModelHealth accepted bridge semantics on the wrong entity' }
         ($healthMapDeep.Replace('multiple campaign percentage attribution needs a bridge or allocation at the evidenced many-to-many grain', 'campaign data was inventoried')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-deep-b' $healthTemp $healthEvidence 1).Detail -notmatch 'bridge=False') { throw 'warehouseModelHealth accepted the bridge entity with wrong semantics' }
-        ($healthMapDeep.Replace('| Likely | blocking | Revenue and returns', '| Confirmed | blocking | Revenue and returns')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
-        if ((Test-ScenarioEvidence 'warehouse-health-deep-b' $healthTemp $healthEvidence 1).Detail -notmatch 'fanChasm=False tierFanChasm=Confirmed') { throw 'warehouseModelHealth accepted the wrong fan/chasm confidence tier' }
+        ($healthMapDeep.Replace('| Confirmed | blocking | Revenue and returns', '| Likely | blocking | Revenue and returns')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
+        if ((Test-ScenarioEvidence 'warehouse-health-deep-b' $healthTemp $healthEvidence 1).Detail -notmatch 'fanChasm=False tierFanChasm=Likely') { throw 'warehouseModelHealth accepted the wrong fan/chasm confidence tier' }
         ($healthMapDeep.Replace('vwCustomerCommercialSummary / FactSales / FactReturn', 'vwCustomerCommercialSummary / FactSales / FactOther')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-deep-b' $healthTemp $healthEvidence 1).Detail -notmatch 'fanChasm=False') { throw 'warehouseModelHealth accepted fan/chasm semantics on the wrong fact pair' }
         ($healthMapDeep.Replace('fan chasm multiplication requires each fact to pre-aggregate at customer grain', 'both facts were inventoried')) | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
