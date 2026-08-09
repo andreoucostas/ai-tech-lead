@@ -134,6 +134,25 @@ already there, and so a report can be written against the joins the warehouse ac
      summed across time); or non-additive (ratios, percentages — sum the numerator and the
      denominator, then divide).
 
+   Apply this evidence-gated modelling-health checklist to the artifacts already opened. Put a
+   supported defect in **Findings**, not only in this semantics section:
+   - flag a fact that combines transactional events with snapshot balances at a different grain,
+     and a consumer that sums a semi-additive balance across time; inspect the fact load in the
+     same pass before asserting the additivity defect;
+   - flag dimensions presented as conformed when repository identity rules and DDL prove
+     incompatible meaning, keys, values, or grain, and reserved special-member rows whose seeded
+     meanings are demonstrably ambiguous;
+   - when repository evidence says one fact row has multiple percentage allocations, flag a lone
+     scalar dimension key that cannot represent them. Do not infer this from a similarly named
+     fact or key alone;
+   - during scoped deepening for a named consumer, flag a view that joins two facts before either
+     is aggregated to the shared grain. Do not expand the default pass into a view-wide hunt.
+
+   Direct structural contradictions are **Confirmed**; cross-artifact interpretations are
+   **Likely**. Never create an SCD finding merely because history markers or a change path were not
+   found: cite the complete load statement that proves the declared strategy is contradicted, or
+   record the unread/uncertain load under **Coverage**.
+
 5. **Load flow and ordering.** Find the orchestration entry points: master procs that `EXEC` a
    chain, job/schedule scripts, `.dtsx` packages, pipeline JSON, or the dbt DAG. Trace each
    entity staging → warehouse. Record the load order — dimensions before the facts that

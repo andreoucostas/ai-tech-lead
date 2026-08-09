@@ -346,12 +346,24 @@ the evidenced equivalent wording "raw `CustomerId` text versus surrogate `Custom
 requiring the literal word "natural". These corrections narrow lexical coupling; they do not add a
 detector or reinterpret an absent artifact as a pass.
 
+### Rev 8 — frozen Phase-2 implementation scope after corrected 3/3 baseline
+
+The three corrected invocations are complete. Natural-key misuse and role-playing documentation
+were handled 3/3 and receive no new instruction. Every other registered class missed its required
+world or tier at least once: mixed grain and balance additivity were never accepted; structural
+conformance, special members, bridge allocation and fan/chasm detection were inconsistent; and the
+clean control emitted an unsupported SCD finding in 2/3 runs. Phase 2 therefore adds one compact,
+evidence-gated modelling-health checklist covering exactly those seven classes. It requires default
+pass findings for local DDL/load proof, reserves named consumer-view fan/chasm analysis for scoped
+deepening, treats direct structural contradictions as Confirmed and cross-artifact inferences as
+Likely, and forbids SCD findings based only on absent history markers or an unread load. No other
+detector or generic warehouse advice is authorized by this baseline.
+
 ## 7. Out of scope
 
-No implementation in the design session. No angular
+No angular
 content (this skill is dotnet/monorepo-scoped per B-40/B-96 precedent, to be confirmed at
 implementation). No change to `add-warehouse-load` (B-124's territory). No schema-evolution
 preflight (B-126), scoped lineage trace (B-127), or physical-design review (B-128) — this design
-produces only the shared modelling-analysis layer those items are filed to consume. No Claude Opus
-review in this session (§6) — implementation must not begin until one occurs, and rev 2's changes
-specifically have not yet been adversarially reviewed at all (codex or Opus).
+produces only the shared modelling-analysis layer those items are filed to consume. The Opus design
+and instrument reviews recorded in §6 discharge the pre-implementation review gate.
