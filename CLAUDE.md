@@ -90,12 +90,14 @@ kept stable from the pre-merge workspace; #1 was retargeted by the merge per WSD
    consumer-facing word trips it, add a narrow `ALLOW` — do **not** weaken a `DENY` pattern.
    Prose alone never held this line: it was written down as an invariant here from the start and
    still shipped ~190 leaking lines to consumers (see `meta/LEARNINGS.md`, 2026-07-12).
-7. **Versioning.** When *shipped* behavior changes: write an entry in the **root** `CHANGELOG.md`,
-   update the shipped changelog content in `src/` if the release notes should reach consumers,
-   then release via `.claude/scripts/release.ps1` — it stamps `src/core/CLAUDE.md` + the three
-   `framework-version.json` files, rebuilds `dist/`, runs every gate, and refuses to commit on
-   failure. `meta/LEARNINGS.md` is append-only. (Manual stamping shipped drift twice; don't go back
-   to it.)
+7. **Versioning.** When *shipped* behavior changes: write an entry in the **root** `CHANGELOG.md`
+   and add a matching `## <version> — Unreleased` head (with content, however minimal) to all three
+   `src/stacks/*/files/CHANGELOG.md` — `release.ps1` requires all four heads to already carry the
+   target version before it will stamp and release (B-54); it does not create them. Then release via
+   `.claude/scripts/release.ps1` — it stamps `src/core/CLAUDE.md` + the three `framework-version.json`
+   files, stamps all four changelog heads' dates, rebuilds `dist/`, runs every gate, and refuses to
+   commit on failure. `meta/LEARNINGS.md` is append-only. (Manual stamping shipped drift twice; don't
+   go back to it.)
    **Write the shipped changelog in the consumer's voice** — what changed in *their* repo and what
    they must do. Tracking ids, our two-repo past, and maintainer asides belong in the root
    `CHANGELOG.md` (which is *our* log), not in `src/stacks/*/files/CHANGELOG.md` (which is *theirs*).

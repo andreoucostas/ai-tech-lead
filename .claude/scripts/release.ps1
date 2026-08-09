@@ -4,9 +4,10 @@
 # if any deterministic gate fails.
 #
 # Usage:  pwsh -NoProfile -File .claude/scripts/release.ps1 -Version 0.26.0 -Summary "one-line topic" [-NoPush]
-# Precondition: the ROOT CHANGELOG.md already carries a "## <Version>" head entry (writing the
-# entry is authoring work, not automation; a trailing "Unreleased" on that line is stamped with
-# today's date) and the working tree contains exactly the release changes.
+# Precondition: the root CHANGELOG.md AND all three src/stacks/*/files/CHANGELOG.md already carry a
+# "## <Version>" head entry (writing the entries is authoring work, not automation; a trailing
+# "Unreleased" on any of them is stamped with the release date -- B-54: all four are mandatory, not
+# just root) and the working tree contains exactly the release changes.
 #
 # Gates (in order): compose all three dists -> validate-dist ×3 -> hook suites ×3 -> meta suite.
 # fidelity-check is deliberately NOT run here: it is the migration-era gate pinned to the
@@ -267,18 +268,156 @@ Write-Host "  before 'Staged manifest'         -> nothing committed."
 Write-Host "  after  'origin/master confirmed' -> the release is on master but UNTAGGED (CI unverified)."
 Write-Host "  after  'Tag ... confirmed'       -> released; a re-run is a no-op."
 
-# ---- 1. Root CHANGELOG head entry must already exist ----
-$clPath = Join-Path $repo 'CHANGELOG.md'
-$head = $null; $headLine = $null
-foreach ($l in (Get-Content $clPath)) { if ($l -match '^## (\d+\.\d+\.\d+)') { $head = $Matches[1]; $headLine = $l; break } }
-Gate ($head -eq $Version) "root CHANGELOG head entry is ## $Version (found: $head)"
-if ($fatal) { Write-Host "`nWrite the CHANGELOG entry first, then re-run."; exit 1 }
+# ---- 1. Root + authored consumer CHANGELOG heads must already exist ----
+# These helpers are deliberately side-effect bounded. ReleaseChangelogStamp.Tests extracts their
+# AST extents and drives them against scratch trees, so the red/green instrument exercises the
+# release implementation without running a release.
+function Get-ReleaseChangelogPaths {
+    param(
+        [Parameter(Mandatory)][string]$Root,
+        [Parameter(Mandatory)][string[]]$Dists,
+        [switch]$IncludeDist
+    )
+    [pscustomobject]@{ Label = 'root'; Path = (Join-Path $Root 'CHANGELOG.md') }
+    foreach ($distName in $Dists) {
+        [pscustomobject]@{
+            Label = "source/$distName"
+            Path  = (Join-Path $Root "src/stacks/$distName/files/CHANGELOG.md")
+        }
+    }
+    if ($IncludeDist) {
+        foreach ($distName in $Dists) {
+            [pscustomobject]@{
+                Label = "dist/$distName"
+                Path  = (Join-Path $Root "dist/$distName/CHANGELOG.md")
+            }
+        }
+    }
+}
 
-if ($headLine -match 'Unreleased') {
-    $txt = [System.IO.File]::ReadAllText($clPath)
-    $txt = $txt.Replace($headLine, ($headLine -replace 'Unreleased', $today))
-    [System.IO.File]::WriteAllText($clPath, $txt)
-    Write-Host "Stamped CHANGELOG head entry Unreleased -> $today."
+function Get-ReleaseChangelogHead {
+    param([Parameter(Mandatory)][string]$Path)
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return [pscustomobject]@{ Valid = $false; Problem = "missing changelog: $Path"; Path = $Path }
+    }
+    try {
+        $text = [IO.File]::ReadAllText($Path)
+    } catch {
+        return [pscustomobject]@{ Valid = $false; Problem = "cannot read changelog: $Path ($($_.Exception.Message))"; Path = $Path }
+    }
+
+    # The first H2 is the release head. Require the whole line, rather than accepting a semver
+    # prefix followed by arbitrary text or replacing every duplicate copy of the line in the file.
+    $heading = [regex]::Match($text, '(?m)^## [^\r\n]*')
+    if (-not $heading.Success) {
+        return [pscustomobject]@{ Valid = $false; Problem = "malformed changelog head: $Path (no H2 heading)"; Path = $Path }
+    }
+    if ($heading.Value -notmatch '^## ([0-9]+\.[0-9]+\.[0-9]+) — (Unreleased|[0-9]{4}-[0-9]{2}-[0-9]{2})$') {
+        return [pscustomobject]@{ Valid = $false; Problem = "malformed changelog head: $Path ('$($heading.Value)')"; Path = $Path }
+    }
+    return [pscustomobject]@{
+        Valid       = $true
+        Problem     = $null
+        Path        = $Path
+        Text        = $text
+        MatchIndex  = $heading.Index
+        MatchLength = $heading.Length
+        Version     = $Matches[1]
+        Status      = $Matches[2]
+    }
+}
+
+function Set-ReleaseChangelogHeads {
+    param(
+        [Parameter(Mandatory)][string]$Root,
+        [Parameter(Mandatory)][string]$Version,
+        [Parameter(Mandatory)][string]$Date,
+        [Parameter(Mandatory)][string[]]$Dists
+    )
+    $heads = @()
+    $problems = @()
+    foreach ($entry in @(Get-ReleaseChangelogPaths -Root $Root -Dists $Dists)) {
+        $head = Get-ReleaseChangelogHead -Path $entry.Path
+        if (-not $head.Valid) {
+            $problems += $head.Problem
+            continue
+        }
+        if ($head.Version -ne $Version) {
+            $problems += "version mismatch: $($entry.Path) (expected $Version, found $($head.Version))"
+            continue
+        }
+        $heads += $head
+    }
+    if ($problems.Count -gt 0) {
+        return [pscustomobject]@{ Ok = $false; Problems = @($problems); Stamped = 0; ResolvedDate = $Date }
+    }
+
+    # A retry after a gate failure re-runs this exact function on a later invocation -- possibly a
+    # later calendar day, since investigating a red gate is not bounded to minutes. Requiring an
+    # already-stamped head to equal *today* broke the script's own documented "re-running the same
+    # command as-is is safe" promise: a head correctly stamped yesterday would read as a mismatch and
+    # refuse, telling the operator to "correct" a date that was already right. Instead, accept any
+    # single already-agreeing stamped date as the resolved release date; only a genuine mix -- heads
+    # disagreeing with each other, or some dated and others still Unreleased -- is a real
+    # inconsistency (the atomic write below should make that mix unreachable in practice, but it is
+    # not proof against an interrupted write, so it is still validated explicitly rather than assumed).
+    $datedValues = @($heads | Where-Object { $_.Status -ne 'Unreleased' } | ForEach-Object { $_.Status } | Sort-Object -Unique)
+    $unreleasedCount = @($heads | Where-Object { $_.Status -eq 'Unreleased' }).Count
+    if ($datedValues.Count -gt 1) {
+        return [pscustomobject]@{ Ok = $false; Problems = @("inconsistent stamped dates across changelog heads: $($datedValues -join ', ')"); Stamped = 0; ResolvedDate = $Date }
+    }
+    if ($datedValues.Count -eq 1 -and $unreleasedCount -gt 0) {
+        return [pscustomobject]@{ Ok = $false; Problems = @("mixed changelog head state: some heads already dated $($datedValues[0]), others still Unreleased -- a prior stamp did not reach every file"); Stamped = 0; ResolvedDate = $Date }
+    }
+    $resolvedDate = if ($datedValues.Count -eq 1) { $datedValues[0] } else { $Date }
+
+    # Validate the complete four-file set before writing any one file. A refusal must not leave a
+    # half-dated release tree that looks as though it progressed further than it did.
+    $stamped = 0
+    foreach ($head in $heads) {
+        if ($head.Status -eq 'Unreleased') {
+            $datedHead = "## $Version — $resolvedDate"
+            $updated = $head.Text.Remove($head.MatchIndex, $head.MatchLength).Insert($head.MatchIndex, $datedHead)
+            [IO.File]::WriteAllText($head.Path, $updated)
+            $stamped++
+        }
+    }
+    return [pscustomobject]@{ Ok = $true; Problems = @(); Stamped = $stamped; ResolvedDate = $resolvedDate }
+}
+
+function Test-ReleaseChangelogHeads {
+    param(
+        [Parameter(Mandatory)][string]$Root,
+        [Parameter(Mandatory)][string]$Version,
+        [Parameter(Mandatory)][string]$Date,
+        [Parameter(Mandatory)][string[]]$Dists,
+        [switch]$IncludeDist
+    )
+    $problems = @()
+    foreach ($entry in @(Get-ReleaseChangelogPaths -Root $Root -Dists $Dists -IncludeDist:$IncludeDist)) {
+        $head = Get-ReleaseChangelogHead -Path $entry.Path
+        if (-not $head.Valid) {
+            $problems += $head.Problem
+        } elseif ($head.Version -ne $Version) {
+            $problems += "version mismatch: $($entry.Path) (expected $Version, found $($head.Version))"
+        } elseif ($head.Status -ne $Date) {
+            $problems += "date mismatch: $($entry.Path) (expected $Date, found $($head.Status))"
+        }
+    }
+    return [pscustomobject]@{ Ok = ($problems.Count -eq 0); Problems = @($problems) }
+}
+
+$changelogStamp = Set-ReleaseChangelogHeads -Root $repo -Version $Version -Date $today -Dists $dists
+$releaseDate = $changelogStamp.ResolvedDate
+Gate $changelogStamp.Ok "root + three source consumer CHANGELOG heads are ## $Version — $releaseDate"
+if (-not $changelogStamp.Ok) {
+    foreach ($problem in $changelogStamp.Problems) { Write-Host "  $problem" }
+}
+if ($fatal) { Write-Host "`nWrite or correct every CHANGELOG head first, then re-run."; exit 1 }
+if ($changelogStamp.Stamped -gt 0) {
+    Write-Host "Stamped $($changelogStamp.Stamped) CHANGELOG head(s) Unreleased -> $releaseDate."
+} else {
+    Write-Host "All four authored CHANGELOG heads were already stamped $releaseDate (release retry)."
 }
 
 # ---- 2. Stamp src: core CLAUDE.md header + the three framework-version.json overlays ----
@@ -324,6 +463,19 @@ Measure-Stage 'compose' {
 if ($fatal) {
     Write-Host "`nRelease REFUSED: the composer failed. Nothing was committed."
     Write-Host 'Fix the failing gate, then re-run the same release command as-is.'
+    exit 1
+}
+
+# The release boundary is the composed tree, not merely its authored inputs. Refuse before any gate
+# or commit if the exact target head did not flow to every generated consumer CHANGELOG.
+$changelogPostcondition = Test-ReleaseChangelogHeads -Root $repo -Version $Version -Date $releaseDate -Dists $dists -IncludeDist
+Gate $changelogPostcondition.Ok "root + source + composed CHANGELOG heads are ## $Version — $releaseDate"
+if (-not $changelogPostcondition.Ok) {
+    foreach ($problem in $changelogPostcondition.Problems) { Write-Host "  $problem" }
+}
+if ($fatal) {
+    Write-Host "`nRelease REFUSED: the composed CHANGELOG postcondition failed. Nothing was committed."
+    Write-Host 'Fix the changelog source/composition defect, then re-run the same release command as-is.'
     exit 1
 }
 
