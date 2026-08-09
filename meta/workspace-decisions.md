@@ -1405,3 +1405,35 @@ tags, forks, and collaborators.
 **Rejected.** Banning the maintainer's name (breaks attribution and URLs); file-wide exclusions for
 meta evidence or fixtures (where most leaks occurred); a general host-resolution/encoding scanner
 framework (disproportionate to the observed ordinary-text paths); and an unapproved history rewrite.
+
+---
+
+## WSD-036: B-125 design-lock reviewed by codex (gpt-5.6-sol), not Claude Opus — budget override (2026-08-09)
+
+**Context.** B-125 (evidence-ranked warehouse modelling health review), like B-124/126/127/128/129,
+is filed with an explicit gate: "independent adversarial review with Claude Opus... do not
+substitute a lower tier and call the review complete" (`meta/BACKLOG.md:3230-3232`). The maintainer
+had 9% of the weekly Claude allowance remaining and directed that B-125's design-lock use codex CLI
+(`gpt-5.6-sol`) as the adversarial reviewer instead, matching the reviewer this project has used for
+several other M+ items historically (B-21, B-22, B-32, B-35, B-36, B-40, B-97).
+
+**Decision.** Accept codex-sol as the working adversarial reviewer for B-125's design-lock phase
+under this specific budget constraint, and record it as exactly that — not as satisfying B-125's
+filed Opus-specific gate. `.claude/plans/2026-08-09-b125-warehouse-modelling-health-review-design.md`
+§6 carries the full disposition: codex returned 12 findings against rev 1 (2 blocking, 8
+significant, 2 minor), all independently verified against the real `SKILL.md`/`BACKLOG.md` content
+and accepted, producing rev 2. Rev 2 itself has not been re-reviewed by anyone.
+
+**What remains open.** A Claude Opus adversarial review is still owed before implementation of
+B-125 begins, independent of how thorough the codex pass or this rev 2 was — per B-125's own "do
+not substitute a lower tier and call the review complete." Until that Opus pass happens, B-125's
+design counts as locked-pending-full-review, not locked-and-clear-to-implement. The other four
+items in the same filed batch (B-126/127/128/129) are unaffected by this decision and still require
+their own Opus (or maintainer-directed equivalent) review when their turn comes.
+
+**Rejected.** Silently treating the codex review as satisfying the Opus clause (would misrepresent
+what happened, and the filed gate exists specifically to prevent this); skipping adversarial review
+entirely under budget pressure (the maintainer chose a substitute reviewer, not no reviewer);
+waiting for budget to recover before doing any B-125 work this session (produces zero forward
+progress on a foundational, unblocking-others item when a partial, honestly-labelled step was
+available).
