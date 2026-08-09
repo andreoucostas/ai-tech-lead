@@ -220,7 +220,7 @@ backlog closure/RCA, implementation review, commit, push, and observed CI are al
 
 The cross-host self-test promised above was not reachable: this pre-existing maintainer harness uses
 PowerShell 7's `-Encoding utf8NoBOM` throughout and Windows PowerShell 5.1 stops before the fixture
-runs. PowerShell 7 passed under the hostile-code-page attempt; B-130 records the scope/compatibility
+runs. PowerShell 7 passed under the hostile-code-page attempt; B-132 records the scope/compatibility
 decision rather than expanding B-124 into a harness-wide encoding rewrite.
 
 ## 7. Opus rev-1 review disposition
@@ -279,4 +279,4 @@ evidenced `OrderNumber + LineNumber` representation plus mandatory `AllocationSe
 discount extension against comment-only matches, removed stale B-124 dependencies from B-125–129,
 and added the n=2 variance caveat. Both retained existing-fact artifacts were directly inspected and
 contain real `DiscountAmount` DDL plus INSERT/SELECT load wiring. Minor hardening rejects inverted
-semi-additivity; B-130 records the pre-existing PowerShell-5.1 incompatibility.
+semi-additivity; B-132 records the pre-existing PowerShell-5.1 incompatibility.

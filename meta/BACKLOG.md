@@ -3390,7 +3390,7 @@ The design must decide whether this belongs as a bounded addition to existing wa
 separately routed skill, using observed routing behavior and context cost rather than preference.
 
 ---
-### B-130 · Maintainer agent-eval harness cannot run under Windows PowerShell 5.1
+### B-132 · Maintainer agent-eval harness cannot run under Windows PowerShell 5.1
 **Effort:** S–M · **Priority:** P3 · filed 2026-08-09 from B-124 RCA · **Scope:** maintainer layer
 
 **Why:** the B-124 verification attempted the eval self-test under hostile code page 437 on both
