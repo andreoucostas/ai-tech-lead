@@ -33,7 +33,7 @@ if (Test-Path 'CHANGELOG.md') {
     # non-ASCII em dash in the head line. Read the bytes directly via an absolute path: Set-Location
     # above updates the PowerShell provider location but not the .NET process CWD, so a relative
     # [IO.File] path would resolve against the wrong directory.
-    $clText = [IO.File]::ReadAllText((Resolve-Path 'CHANGELOG.md').Path)
+    $clText = [IO.File]::ReadAllText((Resolve-Path -LiteralPath 'CHANGELOG.md').Path)
     foreach ($l in ($clText -split "`r?`n")) { if ($l -match '^## (\d+\.\d+\.\d+)') { $vLog = $Matches[1]; $vLogLine = $l; break } }
 }
 if (-not $vClaude) { Fail 'CLAUDE.md has no version stamp in its header comment.' }

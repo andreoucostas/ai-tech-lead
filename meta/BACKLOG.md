@@ -3664,11 +3664,44 @@ planted unreadable file and an emptied tree, both twins.
   failure — so per repo convention (see the B-63 "prepare vX.Y.Z" commit) that bump belongs to the
   single atomic release step, not to this pre-review commit.
 
-  **Independent review status:** implementer and reviewer are the same person for this item (Claude
-  implemented; Codex, the usual reviewer, was unavailable). A Sonnet subagent reviewed the diff as a
-  distinct pass before commit, but per Maintenance model rule 2 that does not satisfy the
-  different-session/different-tier bar — this branch is committed but explicitly **not merged or
-  released**, pending that review.
+  **Independent review round 2 (Opus, different tier — 2026-08-09):** a Sonnet-tier self-review
+  found nothing; per Maintenance model rule 2 that didn't count as independent since Sonnet also
+  implemented. An Opus-tier review of commit `10c89d0` returned **REQUEST CHANGES** with one real,
+  verified-blocking finding and four non-blocking/nitpick findings:
+
+  - **Blocking (fixed):** `Set-ReleaseChangelogHeads`/`Test-ReleaseChangelogHeads` required an
+    already-stamped head to equal *today's* date, not merely be a valid date. A release retried on
+    a later calendar day after a gate failure — the script's own banner promises this is safe — hit
+    a "date mismatch" refusal telling the operator to rewrite an already-correct, already-published
+    date. **Observed red** on the pre-fix committed code: a fixture stamped `2031-02-03` then
+    retried with `$Date` `2031-02-04` produced four `date mismatch` problems and refused. Fixed by
+    resolving the release date from any single already-agreeing stamped value across the four heads
+    (falling back to `$today` only when all four still read `Unreleased`), threading that resolved
+    date into the postcondition instead of a freshly recomputed `$today`, and treating a genuine
+    *mix* of disagreeing dates or dated+`Unreleased` heads as its own distinct refusal (a related,
+    lower-probability gap the same pass closed rather than leaving implicit). New test: `a retry on
+    a later calendar day accepts an already-consistently-stamped world without rewriting the date`
+    in `ReleaseChangelogStamp.Tests.ps1`, confirmed red on the pre-fix commit and green after,
+    under both pwsh and Windows PowerShell 5.1.
+  - **Non-blocking (fixed):** `release.ps1`'s header comment and root `CLAUDE.md` invariant #7 both
+    described the shipped-changelog update as conditional ("if the release notes should reach
+    consumers"); B-54 made all three mandatory on every release. Checked history first — every
+    release from v0.26.0 through v0.51.4 already had a shipped entry with zero gaps, so this was
+    stale wording, not a behavior change in practice. Both docs corrected.
+  - **Nitpick (fixed):** `template-checks.ps1`'s `Resolve-Path 'CHANGELOG.md'` used glob-sensitive
+    matching; switched to `-LiteralPath`.
+  - **Non-blocking (deferred, filed as follow-up, not fixed here):** `release.ps1`'s changelog-head
+    grammar (literal first `## ` line must be a version head) and `template-checks`'s (skips to the
+    first version-shaped `## ` line) can disagree on an unusual changelog layout — fails safe in the
+    direction observed, not proportionate to fix in this pass.
+  - **Nitpick (not fixed, low value):** no test pins the case where a changelog's `Unreleased` head
+    is for a version that doesn't yet match `framework-version.json` (mid-authoring); reviewer
+    verified by reading that the pre-existing drift branch already prevents a false positive there.
+
+  **Independent review status:** commit `10c89d0` plus the round-2 fixes above are queued for a
+  fresh independent pass (this response fixed round 2's own findings without a further review of
+  those fixes — proportionate for a single well-scoped bugfix, but still self-certified). This
+  branch remains **not merged or released**.
 
 - **B-63 / B-56** — done **2026-08-08** (target v0.51.4). The audit closed B-56's
   remaining class rather than treating v0.35.0's child-Bash probe as a complete fix. The complete

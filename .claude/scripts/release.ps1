@@ -4,9 +4,10 @@
 # if any deterministic gate fails.
 #
 # Usage:  pwsh -NoProfile -File .claude/scripts/release.ps1 -Version 0.26.0 -Summary "one-line topic" [-NoPush]
-# Precondition: the ROOT CHANGELOG.md already carries a "## <Version>" head entry (writing the
-# entry is authoring work, not automation; a trailing "Unreleased" on that line is stamped with
-# today's date) and the working tree contains exactly the release changes.
+# Precondition: the root CHANGELOG.md AND all three src/stacks/*/files/CHANGELOG.md already carry a
+# "## <Version>" head entry (writing the entries is authoring work, not automation; a trailing
+# "Unreleased" on any of them is stamped with the release date -- B-54: all four are mandatory, not
+# just root) and the working tree contains exactly the release changes.
 #
 # Gates (in order): compose all three dists -> validate-dist ×3 -> hook suites ×3 -> meta suite.
 # fidelity-check is deliberately NOT run here: it is the migration-era gate pinned to the
@@ -345,29 +346,43 @@ function Set-ReleaseChangelogHeads {
             $problems += "version mismatch: $($entry.Path) (expected $Version, found $($head.Version))"
             continue
         }
-        if ($head.Status -ne 'Unreleased' -and $head.Status -ne $Date) {
-            $problems += "date mismatch: $($entry.Path) (expected Unreleased or $Date, found $($head.Status))"
-            continue
-        }
         $heads += $head
     }
+    if ($problems.Count -gt 0) {
+        return [pscustomobject]@{ Ok = $false; Problems = @($problems); Stamped = 0; ResolvedDate = $Date }
+    }
+
+    # A retry after a gate failure re-runs this exact function on a later invocation -- possibly a
+    # later calendar day, since investigating a red gate is not bounded to minutes. Requiring an
+    # already-stamped head to equal *today* broke the script's own documented "re-running the same
+    # command as-is is safe" promise: a head correctly stamped yesterday would read as a mismatch and
+    # refuse, telling the operator to "correct" a date that was already right. Instead, accept any
+    # single already-agreeing stamped date as the resolved release date; only a genuine mix -- heads
+    # disagreeing with each other, or some dated and others still Unreleased -- is a real
+    # inconsistency (the atomic write below should make that mix unreachable in practice, but it is
+    # not proof against an interrupted write, so it is still validated explicitly rather than assumed).
+    $datedValues = @($heads | Where-Object { $_.Status -ne 'Unreleased' } | ForEach-Object { $_.Status } | Sort-Object -Unique)
+    $unreleasedCount = @($heads | Where-Object { $_.Status -eq 'Unreleased' }).Count
+    if ($datedValues.Count -gt 1) {
+        return [pscustomobject]@{ Ok = $false; Problems = @("inconsistent stamped dates across changelog heads: $($datedValues -join ', ')"); Stamped = 0; ResolvedDate = $Date }
+    }
+    if ($datedValues.Count -eq 1 -and $unreleasedCount -gt 0) {
+        return [pscustomobject]@{ Ok = $false; Problems = @("mixed changelog head state: some heads already dated $($datedValues[0]), others still Unreleased -- a prior stamp did not reach every file"); Stamped = 0; ResolvedDate = $Date }
+    }
+    $resolvedDate = if ($datedValues.Count -eq 1) { $datedValues[0] } else { $Date }
 
     # Validate the complete four-file set before writing any one file. A refusal must not leave a
     # half-dated release tree that looks as though it progressed further than it did.
-    if ($problems.Count -gt 0) {
-        return [pscustomobject]@{ Ok = $false; Problems = @($problems); Stamped = 0 }
-    }
-
     $stamped = 0
     foreach ($head in $heads) {
         if ($head.Status -eq 'Unreleased') {
-            $datedHead = "## $Version — $Date"
+            $datedHead = "## $Version — $resolvedDate"
             $updated = $head.Text.Remove($head.MatchIndex, $head.MatchLength).Insert($head.MatchIndex, $datedHead)
             [IO.File]::WriteAllText($head.Path, $updated)
             $stamped++
         }
     }
-    return [pscustomobject]@{ Ok = $true; Problems = @(); Stamped = $stamped }
+    return [pscustomobject]@{ Ok = $true; Problems = @(); Stamped = $stamped; ResolvedDate = $resolvedDate }
 }
 
 function Test-ReleaseChangelogHeads {
@@ -393,15 +408,16 @@ function Test-ReleaseChangelogHeads {
 }
 
 $changelogStamp = Set-ReleaseChangelogHeads -Root $repo -Version $Version -Date $today -Dists $dists
-Gate $changelogStamp.Ok "root + three source consumer CHANGELOG heads are ## $Version — $today"
+$releaseDate = $changelogStamp.ResolvedDate
+Gate $changelogStamp.Ok "root + three source consumer CHANGELOG heads are ## $Version — $releaseDate"
 if (-not $changelogStamp.Ok) {
     foreach ($problem in $changelogStamp.Problems) { Write-Host "  $problem" }
 }
 if ($fatal) { Write-Host "`nWrite or correct every CHANGELOG head first, then re-run."; exit 1 }
 if ($changelogStamp.Stamped -gt 0) {
-    Write-Host "Stamped $($changelogStamp.Stamped) CHANGELOG head(s) Unreleased -> $today."
+    Write-Host "Stamped $($changelogStamp.Stamped) CHANGELOG head(s) Unreleased -> $releaseDate."
 } else {
-    Write-Host "All four authored CHANGELOG heads were already stamped $today (release retry)."
+    Write-Host "All four authored CHANGELOG heads were already stamped $releaseDate (release retry)."
 }
 
 # ---- 2. Stamp src: core CLAUDE.md header + the three framework-version.json overlays ----
@@ -452,8 +468,8 @@ if ($fatal) {
 
 # The release boundary is the composed tree, not merely its authored inputs. Refuse before any gate
 # or commit if the exact target head did not flow to every generated consumer CHANGELOG.
-$changelogPostcondition = Test-ReleaseChangelogHeads -Root $repo -Version $Version -Date $today -Dists $dists -IncludeDist
-Gate $changelogPostcondition.Ok "root + source + composed CHANGELOG heads are ## $Version — $today"
+$changelogPostcondition = Test-ReleaseChangelogHeads -Root $repo -Version $Version -Date $releaseDate -Dists $dists -IncludeDist
+Gate $changelogPostcondition.Ok "root + source + composed CHANGELOG heads are ## $Version — $releaseDate"
 if (-not $changelogPostcondition.Ok) {
     foreach ($problem in $changelogPostcondition.Problems) { Write-Host "  $problem" }
 }

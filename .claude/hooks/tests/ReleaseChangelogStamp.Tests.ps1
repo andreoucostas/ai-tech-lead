@@ -135,6 +135,44 @@ try {
         }
     }
 
+    It 'a retry on a later calendar day accepts an already-consistently-stamped world without rewriting the date' {
+        Assert $functionsReady ("release helper extraction failed; found $($functionAsts.Count) of $($functionNames.Count) functions")
+        # Independent review (Opus) found this: the script's own banner promises "re-running the
+        # same command as-is is safe", but requiring an already-stamped head to equal *today* broke
+        # that for any retry crossing midnight -- a head correctly stamped yesterday read as a
+        # "date mismatch" and refused, telling the operator to rewrite an already-published date.
+        $laterDate = '2031-02-04'
+        Assert ($laterDate -ne $date) 'fixture setup: retry date must differ from the original stamp date'
+
+        # A prior successful run already stamped every head to $date; simulate the process being
+        # re-invoked later with $today now $laterDate.
+        $root = New-ChangelogWorld -Head "## $version — $date"
+        $retry = Set-ReleaseChangelogHeads -Root $root -Version $version -Date $laterDate -Dists $dists
+        Assert $retry.Ok ("retry on a later day refused an already-consistent world: " + (@($retry.Problems) -join '; '))
+        Assert ($retry.Stamped -eq 0) "retry rewrote $($retry.Stamped) already-stamped file(s)"
+        Assert ($retry.ResolvedDate -eq $date) "retry resolved to '$($retry.ResolvedDate)', expected the original stamp date '$date' to be preserved, not '$laterDate'"
+        foreach ($path in Get-SourceChangelogPaths $root) {
+            $head = Get-FirstH2 $path
+            Assert ($head -eq "## $version — $date") "retry silently changed $path to '$head'"
+        }
+
+        # A genuine inconsistency -- not a clean retry -- must still be refused: two heads stamped to
+        # different dates from each other.
+        $mismatchRoot = New-ChangelogWorld -Head "## $version — $date"
+        Write-Changelog (Join-Path $mismatchRoot 'src/stacks/angular/files/CHANGELOG.md') "## $version — $laterDate"
+        $inconsistent = Set-ReleaseChangelogHeads -Root $mismatchRoot -Version $version -Date $laterDate -Dists $dists
+        Assert (-not $inconsistent.Ok) 'two heads stamped to different dates from each other were accepted'
+        Assert ((@($inconsistent.Problems) -join "`n") -match 'inconsistent stamped dates') "inconsistent-dates refusal did not name the defect: $(@($inconsistent.Problems) -join '; ')"
+
+        # A genuine partial stamp -- some heads dated, one still Unreleased -- must also be refused,
+        # not silently "completed" with a possibly-wrong date.
+        $mixedRoot = New-ChangelogWorld -Head "## $version — $date"
+        Write-Changelog (Join-Path $mixedRoot 'src/stacks/angular/files/CHANGELOG.md') "## $version — Unreleased"
+        $mixed = Set-ReleaseChangelogHeads -Root $mixedRoot -Version $version -Date $laterDate -Dists $dists
+        Assert (-not $mixed.Ok) 'a mix of dated and still-Unreleased heads was accepted'
+        Assert ((@($mixed.Problems) -join "`n") -match 'mixed changelog head state') "mixed-state refusal did not name the defect: $(@($mixed.Problems) -join '; ')"
+    }
+
     It 'the composed source/dist postcondition rejects any planted Unreleased head and accepts the fully dated world' {
         Assert $functionsReady ("release helper extraction failed; found $($functionAsts.Count) of $($functionNames.Count) functions")
         $root = New-ChangelogWorld -Head "## $version — $date" -IncludeDist
