@@ -986,3 +986,39 @@ otherwise-complete map: `hasFindingsTable=False`, `findingRows=0`. Commit `6dfed
 registered green world under the identical scenario: a seven-row findings table with evidence,
 finding confidence, severity-if-confirmed, consequence, and remediation. This proves the Phase 1
 structure change on one fixture/model/host; it does not support any Phase 2 detector claim.
+
+## PRE-REGISTRATION — B-125 Phase 2 per-detector baseline (2026-08-09, before any run)
+
+Design: `.claude/plans/2026-08-09-b125-warehouse-modelling-health-review-design.md` rev 5, after
+independent Opus review of the instrument. The new fixture variants do not modify the frozen
+`warehouse` fixture. Their source paths and prose are checked for detector-label leakage. The
+no-network self-test constructed green maps and independently observed deleted-row, wrong-entity,
+wrong-semantics, wrong-tier, wrong-section, missing-load-read, and cross-detector red worlds.
+Full self-test passed under PowerShell 7 with code page 437. The full Windows PowerShell 5.1 run
+stops at the known B-132 `utf8NoBOM` incompatibility before reaching this grader; a focused 5.1
+code-page-437 execution loaded the actual grader function from the harness and observed its
+deepening green world and wrong-tier red world.
+
+Run three separate invocations of the six scenarios below against the committed Phase-1-only skill.
+One invocation is one correlated map sample; detector decisions use consistency across invocations,
+never the count of booleans within one map.
+
+| Scenario | Detector | Registered success world |
+|---|---|---|
+| `warehouse-health-default-a` | mixed grain | `mixed=True tierMixed=Likely` |
+| same | natural key used for a dimension relationship | `natural=True tierNatural=Confirmed` |
+| same | SCD mismatch visible in an already-open load | `scd=True tierScd=Likely` |
+| same | incorrect balance additivity | `additivity=True tierAdditivity=Likely loadRead=True` |
+| same | unrecorded role-playing roles | `roleCoverage=True`, in Coverage and absent from Findings |
+| `warehouse-health-default-b` | structural non-conformance | `conformance=True tierConformance=Likely` |
+| same | ambiguous evidenced special members | `special=True tierSpecial=Confirmed` |
+| `warehouse-health-deep-b` | evidenced many-to-many lacks allocation owner | `bridge=True tierBridge=Likely` |
+| same | named consumption view multiplies facts | `fanChasm=True tierFanChasm=Likely` |
+
+Negative controls must remain silent in all three invocations: `warehouse-health-clean` has zero
+candidate detector rows; `warehouse-health-convention` emits no natural-key defect for its explicit,
+narrow ISO-currency convention; `warehouse-health-no-trigger` emits no bridge finding without the
+many-to-many trigger. A detector is **already handled** only if its success world appears 3/3 and all
+relevant controls stay silent 3/3. Otherwise its observed failure is the only candidate for a
+proportionate Phase 2 instruction. Missing/truncated maps and agent/API failures are inconclusive and
+must be replaced, not counted.
