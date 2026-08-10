@@ -1,4 +1,4 @@
-# B-125 design — evidence-ranked warehouse modelling health review (LOCKED 2026-08-10, rev 13)
+# B-125 design — evidence-ranked warehouse modelling health review (LOCKED 2026-08-10, rev 14)
 
 > **Status: IMPLEMENTED; CORRECTIONS UNDER CLAUDE OPUS RE-REVIEW.** Deviations need a new entry in
 > `meta/workspace-decisions.md`. Trigger: `meta/BACKLOG.md` B-124–B-129, filed 2026-08-08
@@ -411,6 +411,14 @@ could resemble a read. Rev 13 stops inferring safety from absence: the decision 
 balances must not be summed/combined across dates. Confirmed additivity now accepts only a direct
 consumer file-read event, never shell command text. Ordinary two-date and echoed-read mutants are
 red; the full suite remains green. Fresh Sol acceptance is still required.
+
+### Rev 14 — tool-kind binding and contradiction rejection
+
+Sol's rev-13 follow-up showed that a Write event shared the same path shape as Read, and a review
+could state the prohibition then contradict it. Rev 14 binds consumer inspection to an actual Read
+tool name plus exact path. It also scans recommendation clauses and rejects any non-negated
+instruction to combine several dates, even when another clause states the rule correctly. Write-path
+and contradictory-recommendation mutants are red; the full suite is green.
 
 ## 7. Out of scope
 

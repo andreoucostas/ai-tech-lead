@@ -1247,7 +1247,12 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $citesFinding = $reviewText -match '(?i)EndOfDayBalance' -and $reviewText -match '(?i)(semi.additive|finding|warehouse-map)'
             $singleAsOf = $reviewText -match '(?i)(?:single|one)\s+(?:requested\s+)?(?:as.of|selected|reporting)\s+(?:day|date)|(?:single|one)\s+(?:day|date)\s+parameter'
             $prohibitsCrossDate = $reviewText -match '(?i)(?:do not|must not|never)[^.!\r\n]{0,100}(?:sum|aggregat)[^.!\r\n]{0,100}(?:across|over|between|more than one|two|both|several|multiple|all|every)[^.!\r\n]{0,60}(?:day|date)|(?:do not|must not|never)[^.!\r\n]{0,100}(?:combine)[^.!\r\n]{0,100}(?:day|date)'
-            $correctsShape = $reviewText -match '(?i)(closing|last|latest)' -and $singleAsOf -and $prohibitsCrossDate
+            $activeCrossDate = [bool]@($reviewText -split '[.!?;\r\n]+' | Where-Object {
+                $_ -match '(?i)(?:sum|aggregat|combine)' -and
+                $_ -match '(?i)(?:across|over|between|more than one|two|both|several|multiple|all|every)[^\r\n]{0,60}(?:day|date)|(?:day|date)[^\r\n]{0,60}(?:two|both|several|multiple|all|every)' -and
+                $_ -notmatch '(?i)(?:do not|must not|never)'
+            } | Select-Object -First 1)
+            $correctsShape = $reviewText -match '(?i)(closing|last|latest)' -and $singleAsOf -and $prohibitsCrossDate -and -not $activeCrossDate
             return [pscustomobject]@{ Status='PASS'; Pass=($mapHasAdditivityFinding -and $rejectsUnsafe -and $citesFinding -and $correctsShape); Detail="mapWritten=True reviewWritten=True mapHasAdditivityFinding=$mapHasAdditivityFinding rejectsUnsafe=$rejectsUnsafe citesFinding=$citesFinding correctsShape=$correctsShape" }
         }
         { $_ -in @('warehouse-health-default-a','warehouse-health-default-b','warehouse-health-deep-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok') } {
@@ -1328,6 +1333,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
                 (([string]$_.Input.command + ' ' + [string]$_.Input.path + ' ' + [string]$_.Input.pattern) -match '(?i)usp_LoadFactAccountActivity')
             } | Select-Object -First 1)
             $additivityConsumerRead = [bool]@($successful | Where-Object {
+                $_.Name -match '^(?i:Read|ReadFile|read_file)$' -and
                 ((Get-ToolPath $_) -replace '\\','/') -match '(?i)Views/rpt\.vwDailyAccountPosition\.sql$'
             } | Select-Object -First 1)
 
@@ -2027,6 +2033,19 @@ $findingsBlock
             ([pscustomobject]@{ type='result'; is_error=$false; result='done' })
         ) }
         if ((Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthEchoReadEvidence 1).Detail -notmatch 'additivity=False.*consumerRead=False') { throw 'warehouseModelHealth accepted echoed read syntax as consumer inspection' }
+        $healthWritePathEvidence = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@(
+                ([pscustomobject]@{ type='tool_use'; id='health-load-write'; name='Read'; input=[pscustomobject]@{ file_path='StoredProcedures/usp_LoadFactAccountActivity.sql' } }),
+                ([pscustomobject]@{ type='tool_use'; id='health-write-consumer'; name='Write'; input=[pscustomobject]@{ file_path='Views/rpt.vwDailyAccountPosition.sql'; content='replacement' } })
+            ) } }),
+            ([pscustomobject]@{ type='user'; message=[pscustomobject]@{ content=@(
+                ([pscustomobject]@{ type='tool_result'; tool_use_id='health-load-write'; content='load SQL' }),
+                ([pscustomobject]@{ type='tool_result'; tool_use_id='health-write-consumer'; content='written' })
+            ) } }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='done' })
+        ) }
+        if ((Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthWritePathEvidence 1).Detail -notmatch 'additivity=False.*consumerRead=False') { throw 'warehouseModelHealth accepted a Write event as consumer inspection' }
 
         $healthRowsB = @(
             '| Shared party definitions disagree | sales.DimParty / service.DimParty / PartyCode | same governed party uses different grain and contact column shape | Confirmed | significant | Consumers cannot treat the dimensions as conformed | Align or document the split |',
@@ -2104,6 +2123,8 @@ $findingsBlock
         if ((Test-ScenarioEvidence 'warehouse-health-decision-a' $healthTemp $healthEvidence 1).Pass) { throw 'warehouseHealthDecision accepted equivalent multi-date aggregation wording' }
         'Unsafe: the warehouse-map finding says EndOfDayBalance is semi-additive. Select the latest closing row per customer for one reporting date, but then sum the closing balances for two dates.' | Set-Content -LiteralPath $healthReviewPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-decision-a' $healthTemp $healthEvidence 1).Pass) { throw 'warehouseHealthDecision accepted ordinary two-date aggregation wording' }
+        'Unsafe: the warehouse-map finding says EndOfDayBalance is semi-additive. Select the latest closing row for one requested as-of date. Never sum balances across dates; however, sum balances across both dates.' | Set-Content -LiteralPath $healthReviewPath -Encoding utf8NoBOM
+        if ((Test-ScenarioEvidence 'warehouse-health-decision-a' $healthTemp $healthEvidence 1).Pass) { throw 'warehouseHealthDecision accepted a contradictory cross-date recommendation' }
         'Approved: SUM(EndOfDayBalance) is safe.' | Set-Content -LiteralPath $healthReviewPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-decision-a' $healthTemp $healthEvidence 1).Pass) { throw 'warehouseHealthDecision accepted an unsafe report decision' }
         $healthStandalone = "## Coverage`n`nDefault pass completed.`n`n## Findings`n`n$healthHeader`n$($healthRowsA[0])`n"

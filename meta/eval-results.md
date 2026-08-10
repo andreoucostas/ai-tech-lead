@@ -1142,3 +1142,7 @@ Rev 13 replaces negative inference with an explicit “must not combine balances
 decision contract and requires a direct consumer file-read event. Mutants for ordinary two-date
 wording and echoed read-command text are red; the full PowerShell 7 suite remains green.
 
+Rev 14 additionally binds consumer inspection to a Read tool event and rejects a review that states
+the cross-date prohibition before contradicting it. Write-path and contradictory-clause mutants are
+red; the full PowerShell 7 suite remains green.
+
