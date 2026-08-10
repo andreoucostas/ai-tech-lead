@@ -1,4 +1,4 @@
-# B-125 design — evidence-ranked warehouse modelling health review (LOCKED 2026-08-10, rev 12)
+# B-125 design — evidence-ranked warehouse modelling health review (LOCKED 2026-08-10, rev 13)
 
 > **Status: IMPLEMENTED; CORRECTIONS UNDER CLAUDE OPUS RE-REVIEW.** Deviations need a new entry in
 > `meta/workspace-decisions.md`. Trigger: `meta/BACKLOG.md` B-124–B-129, filed 2026-08-08
@@ -403,6 +403,14 @@ that selects closing rows for several dates and then still aggregates those date
 consumer as inspected only through a direct read/cat operation, not filename discovery. Dedicated
 mutations cover omitted Findings, equivalent multi-date wording, and consumer-name-only commands.
 The corrected implementation again requires a fresh Sol verdict.
+
+### Rev 13 — explicit cross-date prohibition and direct-read proof
+
+Sol's rev-12 follow-up found that “two dates” wording escaped an enumeration and echoed shell text
+could resemble a read. Rev 13 stops inferring safety from absence: the decision must explicitly say
+balances must not be summed/combined across dates. Confirmed additivity now accepts only a direct
+consumer file-read event, never shell command text. Ordinary two-date and echoed-read mutants are
+red; the full suite remains green. Fresh Sol acceptance is still required.
 
 ## 7. Out of scope
 

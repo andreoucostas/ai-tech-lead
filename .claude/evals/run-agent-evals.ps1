@@ -1246,8 +1246,8 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $rejectsUnsafe = $reviewText -match '(?i)(unsafe|reject|not safe|incorrect)'
             $citesFinding = $reviewText -match '(?i)EndOfDayBalance' -and $reviewText -match '(?i)(semi.additive|finding|warehouse-map)'
             $singleAsOf = $reviewText -match '(?i)(?:single|one)\s+(?:requested\s+)?(?:as.of|selected|reporting)\s+(?:day|date)|(?:single|one)\s+(?:day|date)\s+parameter'
-            $stillAggregatesDates = $reviewText -match '(?i)(?:sum|aggregat)[^.!\r\n]*(?:every|multiple|across|all)[^.!\r\n]*(?:day|date)|(?:every|multiple|across|all)[^.!\r\n]*(?:day|date)[^.!\r\n]*(?:sum|aggregat)'
-            $correctsShape = $reviewText -match '(?i)(closing|last|latest)' -and $singleAsOf -and -not $stillAggregatesDates
+            $prohibitsCrossDate = $reviewText -match '(?i)(?:do not|must not|never)[^.!\r\n]{0,100}(?:sum|aggregat)[^.!\r\n]{0,100}(?:across|over|between|more than one|two|both|several|multiple|all|every)[^.!\r\n]{0,60}(?:day|date)|(?:do not|must not|never)[^.!\r\n]{0,100}(?:combine)[^.!\r\n]{0,100}(?:day|date)'
+            $correctsShape = $reviewText -match '(?i)(closing|last|latest)' -and $singleAsOf -and $prohibitsCrossDate
             return [pscustomobject]@{ Status='PASS'; Pass=($mapHasAdditivityFinding -and $rejectsUnsafe -and $citesFinding -and $correctsShape); Detail="mapWritten=True reviewWritten=True mapHasAdditivityFinding=$mapHasAdditivityFinding rejectsUnsafe=$rejectsUnsafe citesFinding=$citesFinding correctsShape=$correctsShape" }
         }
         { $_ -in @('warehouse-health-default-a','warehouse-health-default-b','warehouse-health-deep-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok') } {
@@ -1328,9 +1328,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
                 (([string]$_.Input.command + ' ' + [string]$_.Input.path + ' ' + [string]$_.Input.pattern) -match '(?i)usp_LoadFactAccountActivity')
             } | Select-Object -First 1)
             $additivityConsumerRead = [bool]@($successful | Where-Object {
-                ((Get-ToolPath $_) -replace '\\','/') -match '(?i)Views/rpt\.vwDailyAccountPosition\.sql$' -or
-                (([string]$_.Input.command -match '(?i)(?:Get-Content|cat\s|sed\s)') -and
-                 ([string]$_.Input.command -match '(?i)vwDailyAccountPosition'))
+                ((Get-ToolPath $_) -replace '\\','/') -match '(?i)Views/rpt\.vwDailyAccountPosition\.sql$'
             } | Select-Object -First 1)
 
             $mixedPass = $mixed.Found -and $mixed.Tier -in @('Likely','Confirmed') -and $mixed.Complete -and $mixed.Severity -match '(?i)blocking|significant'
@@ -2016,6 +2014,19 @@ $findingsBlock
             ([pscustomobject]@{ type='result'; is_error=$false; result='done' })
         ) }
         if ((Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthMentionOnlyEvidence 1).Detail -notmatch 'additivity=False.*consumerRead=False') { throw 'warehouseModelHealth accepted a consumer-name listing as consumer inspection' }
+        $healthEchoReadEvidence = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@(
+                ([pscustomobject]@{ type='tool_use'; id='health-load-echo'; name='Read'; input=[pscustomobject]@{ file_path='StoredProcedures/usp_LoadFactAccountActivity.sql' } }),
+                ([pscustomobject]@{ type='tool_use'; id='health-echo-consumer'; name='Bash'; input=[pscustomobject]@{ command="Write-Output 'cat Views/rpt.vwDailyAccountPosition.sql'" } })
+            ) } }),
+            ([pscustomobject]@{ type='user'; message=[pscustomobject]@{ content=@(
+                ([pscustomobject]@{ type='tool_result'; tool_use_id='health-load-echo'; content='load SQL' }),
+                ([pscustomobject]@{ type='tool_result'; tool_use_id='health-echo-consumer'; content='cat Views/rpt.vwDailyAccountPosition.sql' })
+            ) } }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='done' })
+        ) }
+        if ((Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthEchoReadEvidence 1).Detail -notmatch 'additivity=False.*consumerRead=False') { throw 'warehouseModelHealth accepted echoed read syntax as consumer inspection' }
 
         $healthRowsB = @(
             '| Shared party definitions disagree | sales.DimParty / service.DimParty / PartyCode | same governed party uses different grain and contact column shape | Confirmed | significant | Consumers cannot treat the dimensions as conformed | Align or document the split |',
@@ -2081,7 +2092,7 @@ $findingsBlock
         if (-not (Test-ScenarioEvidence 'warehouse-health-bridge-ok' $healthTemp $healthEvidence 1).Pass) { throw 'warehouseModelHealth rejected a constructible existing-bridge control' }
         $healthReviewPath = Join-Path $healthTemp 'docs/warehouse-review.md'
         $healthMapA | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
-        'Unsafe: the warehouse-map finding says EndOfDayBalance is semi-additive. Select the latest closing row per customer for one requested as-of date, then sum across customers.' |
+        'Unsafe: the warehouse-map finding says EndOfDayBalance is semi-additive. Select the latest closing row per customer for one requested as-of date, then sum across customers; never sum balances across dates.' |
             Set-Content -LiteralPath $healthReviewPath -Encoding utf8NoBOM
         if (-not (Test-ScenarioEvidence 'warehouse-health-decision-a' $healthTemp $healthEvidence 1).Pass) { throw 'warehouseHealthDecision rejected a constructible finding-led review' }
         "## Coverage`n`nComplete.`n`n## Findings`n`n$healthHeader" | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
@@ -2091,6 +2102,8 @@ $findingsBlock
         if ((Test-ScenarioEvidence 'warehouse-health-decision-a' $healthTemp $healthEvidence 1).Pass) { throw 'warehouseHealthDecision accepted remediation that still sums across dates' }
         'Unsafe: the warehouse-map finding says EndOfDayBalance is semi-additive. For every selected date, take the last closing row per customer, then sum every selected date.' | Set-Content -LiteralPath $healthReviewPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-decision-a' $healthTemp $healthEvidence 1).Pass) { throw 'warehouseHealthDecision accepted equivalent multi-date aggregation wording' }
+        'Unsafe: the warehouse-map finding says EndOfDayBalance is semi-additive. Select the latest closing row per customer for one reporting date, but then sum the closing balances for two dates.' | Set-Content -LiteralPath $healthReviewPath -Encoding utf8NoBOM
+        if ((Test-ScenarioEvidence 'warehouse-health-decision-a' $healthTemp $healthEvidence 1).Pass) { throw 'warehouseHealthDecision accepted ordinary two-date aggregation wording' }
         'Approved: SUM(EndOfDayBalance) is safe.' | Set-Content -LiteralPath $healthReviewPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-decision-a' $healthTemp $healthEvidence 1).Pass) { throw 'warehouseHealthDecision accepted an unsafe report decision' }
         $healthStandalone = "## Coverage`n`nDefault pass completed.`n`n## Findings`n`n$healthHeader`n$($healthRowsA[0])`n"

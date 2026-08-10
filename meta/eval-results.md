@@ -1138,3 +1138,7 @@ required `CurrencyCode` is populated, rejects equivalent “last row for every s
 sum dates” wording, and rejects consumer filename discovery as consumer inspection. The full
 PowerShell 7 mutation suite remains green.
 
+Rev 13 replaces negative inference with an explicit “must not combine balances across dates”
+decision contract and requires a direct consumer file-read event. Mutants for ordinary two-date
+wording and echoed read-command text are red; the full PowerShell 7 suite remains green.
+
