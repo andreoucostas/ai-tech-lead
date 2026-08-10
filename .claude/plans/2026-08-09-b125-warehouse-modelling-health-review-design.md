@@ -1,6 +1,6 @@
 # B-125 design — evidence-ranked warehouse modelling health review (LOCKED 2026-08-10, rev 14)
 
-> **Status: IMPLEMENTED; CORRECTIONS UNDER CLAUDE OPUS RE-REVIEW.** Deviations need a new entry in
+> **Status: IMPLEMENTED; FINAL SOL ADVERSARIAL REVIEW ACCEPTED 2026-08-10.** Deviations need a new entry in
 > `meta/workspace-decisions.md`. Trigger: `meta/BACKLOG.md` B-124–B-129, filed 2026-08-08
 > (capability "warehouse technical leadership"); B-125 is the foundational item the remaining
 > three (B-126–B-128) consume — **B-124 closed 2026-08-09, premise rejected; see §1.** **Review
@@ -419,6 +419,11 @@ could state the prohibition then contradict it. Rev 14 binds consumer inspection
 tool name plus exact path. It also scans recommendation clauses and rejects any non-negated
 instruction to combine several dates, even when another clause states the rule correctly. Write-path
 and contradictory-recommendation mutants are red; the full suite is green.
+
+Final `gpt-5.6-sol` high-reasoning follow-up verdict: **ACCEPT — ship: YES**. This is the
+user-authorized final substitute review after multiple earlier Opus reviews and the Claude account's
+monthly-limit failure. It re-ran the full self-test and verified the final direct-read and
+contradiction mutants at commit `816a73a`.
 
 ## 7. Out of scope
 

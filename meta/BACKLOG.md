@@ -3212,10 +3212,10 @@ all applicable dists carry the guidance; and B-41 records whether the behavior i
 to ship.
 
 ---
-### B-125 · Produce an evidence-ranked warehouse modelling health review
+### B-125 · Produce an evidence-ranked warehouse modelling health review — **DONE 2026-08-10**
 **Effort:** M–L · **Priority:** P2 · filed 2026-08-08 · **Capability:** warehouse technical leadership ·
 **Design:** `.claude/plans/2026-08-09-b125-warehouse-modelling-health-review-design.md` (rev 14;
-Opus reviews plus fresh Sol reviews; rev-13 loopholes corrected, final follow-up pending)
+Opus reviews plus user-authorized fresh Sol review; final verdict `ACCEPT — ship: YES`)
 
 **Why:** the warehouse map reports several local findings, but it is not yet a systematic modelling
 review. The framework can describe a model without consistently challenging mixed or unstated
@@ -3245,6 +3245,21 @@ record **WAITING — OPUS LIMIT** and proceed only with independent design/backl
 pass after it; clean and intentionally unconventional fixtures do not receive false defect claims;
 recommendations cite repository evidence; and behavioural evals show the model uses the findings
 rather than merely reproducing them.
+
+**Done:** `map-warehouse` now emits structured evidence/confidence/severity/consequence/remediation
+findings, applies evidence-gated modelling-health checks, and offers bounded allocation/fan-chasm
+deepening. Rev-14 fixtures cover each supported detector plus clean, explicit-convention,
+no-trigger, and existing-correct-bridge controls. The downstream scenario is finding-led and
+requires direct load/consumer reads plus a safe one-as-of-date decision. Claude live reruns were
+unavailable after HTTP 429 monthly-limit errors; the user authorized fresh Sol high-reasoning
+substitution, whose final verdict was `ACCEPT — ship: YES` after independently rerunning the suite.
+
+**RCA:** the first evaluator encoded expected words and confidence tiers before proving that the
+fixture supported those conclusions. Reachability self-tests showed the matcher could turn green
+and red, but could not establish that its answer key was true; correlated inherited defects hid the
+problem. The corrected gate binds claims to direct artifacts/tool events, uses counterfixtures for
+absent triggers, conventions, and already-correct structures, validates the full Findings contract,
+and mutates plausible contradictory outputs rather than only missing keywords.
 
 ---
 ### B-126 · Make dimension and fact enhancement safe across downstream warehouse consumers

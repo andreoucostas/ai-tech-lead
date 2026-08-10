@@ -1039,3 +1039,18 @@ The grader repeated the same lesson at smaller scale: it looked for `OrderLine`,
 warehouse representation was `OrderNumber + LineNumber + AllocationSequence`. Reading the artifact
 turned a false behavioral failure into a measurement defect. Outcome labels are not evidence until
 the code they point at has been inspected, especially when a lexical proxy stands in for grain.
+
+## 2026-08-10 — grader reachability does not validate the answer key
+
+A constructible green row and several red mutations can still certify the wrong warehouse claim.
+B-125's first health fixture treated a running balance on transaction rows as mixed row grain and a
+copied customer identifier as a proven dimension join. The matcher behaved exactly as authored;
+the authored answer was false. Confidence also cannot be a class-wide exact label when stronger
+repository evidence legitimately changes it.
+
+Review the evidence premise before the matcher: define the row identity, prove the relationship,
+and distinguish classification risk from an inspected unsafe consumer. Then attack success with
+plausible counterexamples—omitted sections, fixture-specific false rows, correct existing bridges,
+filename discovery instead of reads, and a recommendation that states the rule before contradicting
+it. A grader is trustworthy only when those worlds are red, not merely when deleting the expected
+row is red.
