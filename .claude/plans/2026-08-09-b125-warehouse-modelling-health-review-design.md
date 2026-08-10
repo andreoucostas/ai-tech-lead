@@ -1,4 +1,4 @@
-# B-125 design — evidence-ranked warehouse modelling health review (LOCKED 2026-08-09, rev 10)
+# B-125 design — evidence-ranked warehouse modelling health review (LOCKED 2026-08-10, rev 11)
 
 > **Status: IMPLEMENTED; CORRECTIONS UNDER CLAUDE OPUS RE-REVIEW.** Deviations need a new entry in
 > `meta/workspace-decisions.md`. Trigger: `meta/BACKLOG.md` B-124–B-129, filed 2026-08-08
@@ -381,6 +381,19 @@ narrowed to a proven consumer-label collision. The grader parses fields separate
 evidence/severity/consequence/remediation, locates role coverage in Coverage, strengthens negative
 controls, adds a correct-existing-bridge control, and adds a finding-led report-review outcome.
 The corrected implementation requires a fresh Sol verdict before release.
+
+### Rev 11 — false-green closure after Sol follow-up
+
+Fresh Sol review of rev 10 returned **REJECT** because controls could ignore fixture-specific false
+rows, the downstream review could cite an absent map finding, Confirmed additivity did not require
+a consumer read, role evidence was limited to Coverage, named fields were not structurally bound,
+and two scenarios skipped normal setup. Rev 11 closes each path: controls reject every Findings data
+row; forbidden fixture-specific rows are red-tested; the downstream decision requires the actual
+map finding and an as-of closing-row correction; load and consumer reads are both observable;
+edge-list, semantics, or Coverage role evidence is accepted; the exact seven-column header and
+field placement are enforced; header/order/blank-field mutations are red; and all health scenarios
+share initialization. The convention control now contains a real convention-permitted direct
+currency relationship. A fresh Sol verdict remains required.
 
 ## 7. Out of scope
 

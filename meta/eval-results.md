@@ -1122,3 +1122,14 @@ the special-member claim, adds complete-field/section checks, strengthens negati
 an existing-correct-bridge control, and adds a finding-led report-review outcome. The old batch is
 retained for audit only and must not be counted in a post-change stopping rule.
 
+### B-125 rev-11 deterministic acceptance correction
+
+Fresh Sol review rejected rev 10's remaining false-green paths. Rev 11 now proves red for a
+fixture-specific false `FactInvoice.CurrencyCode` finding, a false
+`FactCampaignResponse.CampaignKey` bridge finding, a review citing an empty Findings section,
+Confirmed additivity without a consumer-view read, reordered or incomplete finding fields, and
+remediation that still sums across dates. It proves green for edge-list-only role coverage and an
+existing correct campaign bridge. Both new live scenarios now use the normal warehouse
+initialization path. The full PowerShell 7 self-test is green; stochastic Claude rows remain
+unavailable because the account returns HTTP 429 monthly-limit errors.
+
