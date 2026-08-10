@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.52.0 — Unreleased
+## 0.52.0 — 2026-08-10
 
 - No Angular-specific behaviour changes in this release candidate.
 

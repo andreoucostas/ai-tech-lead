@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.52.0 — Unreleased
+## 0.52.0 — 2026-08-10
 
 - `map-warehouse` now reports evidence-ranked modelling-health findings and offers a bounded
   deepening for allocation and multi-fact consumption risks. SCD findings now require a complete
