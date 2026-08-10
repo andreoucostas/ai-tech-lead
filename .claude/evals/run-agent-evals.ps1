@@ -58,6 +58,13 @@ USING stg.StgInvoice AS source ON source.InvoiceId = target.InvoiceKey
 WHEN NOT MATCHED THEN INSERT (InvoiceKey, CustomerKey, InvoiceDateKey, NetAmount, LoadRunId)
 VALUES (source.InvoiceId, source.CustomerKey, source.InvoiceDateKey, source.NetAmount, source.LoadRunId);
 '@ | Set-Content -LiteralPath (Join-Path $Path 'StoredProcedures/usp_LoadFactInvoice.sql') -Encoding utf8NoBOM
+        if ($Stack -eq 'warehouse-health-convention') {
+            $invoiceLoadPath = Join-Path $Path 'StoredProcedures/usp_LoadFactInvoice.sql'
+            $invoiceLoad = Get-Content -Raw -LiteralPath $invoiceLoadPath
+            $invoiceLoad = $invoiceLoad.Replace('NetAmount, LoadRunId)', 'NetAmount, LoadRunId, CurrencyCode)')
+            $invoiceLoad = $invoiceLoad.Replace('source.NetAmount, source.LoadRunId);', "source.NetAmount, source.LoadRunId, 'GBP');")
+            $invoiceLoad | Set-Content -LiteralPath $invoiceLoadPath -Encoding utf8NoBOM
+        }
         'CREATE VIEW rpt.vwInvoiceRevenue AS SELECT CustomerKey, SUM(NetAmount) Revenue FROM fact.FactInvoice GROUP BY CustomerKey;' | Set-Content -LiteralPath (Join-Path $Path 'Views/rpt.vwInvoiceRevenue.sql') -Encoding utf8NoBOM
         git -C $Path init --quiet
         git -C $Path config user.email 'agent-evals@invalid.local'
@@ -1238,7 +1245,9 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $mapHasAdditivityFinding = $mapFindings -match '(?im)^\s*\|[^\r\n]*EndOfDayBalance[^\r\n]*(?:semi.additive|non.additive|additivity)[^\r\n]*\|'
             $rejectsUnsafe = $reviewText -match '(?i)(unsafe|reject|not safe|incorrect)'
             $citesFinding = $reviewText -match '(?i)EndOfDayBalance' -and $reviewText -match '(?i)(semi.additive|finding|warehouse-map)'
-            $correctsShape = $reviewText -match '(?i)(closing|last|latest)' -and $reviewText -match '(?i)(as.of|selected|reporting)\s+(?:day|date)|(?:day|date)\s+parameter'
+            $singleAsOf = $reviewText -match '(?i)(?:single|one)\s+(?:requested\s+)?(?:as.of|selected|reporting)\s+(?:day|date)|(?:single|one)\s+(?:day|date)\s+parameter'
+            $stillAggregatesDates = $reviewText -match '(?i)(?:sum|aggregat)[^.!\r\n]*(?:every|multiple|across|all)[^.!\r\n]*(?:day|date)|(?:every|multiple|across|all)[^.!\r\n]*(?:day|date)[^.!\r\n]*(?:sum|aggregat)'
+            $correctsShape = $reviewText -match '(?i)(closing|last|latest)' -and $singleAsOf -and -not $stillAggregatesDates
             return [pscustomobject]@{ Status='PASS'; Pass=($mapHasAdditivityFinding -and $rejectsUnsafe -and $citesFinding -and $correctsShape); Detail="mapWritten=True reviewWritten=True mapHasAdditivityFinding=$mapHasAdditivityFinding rejectsUnsafe=$rejectsUnsafe citesFinding=$citesFinding correctsShape=$correctsShape" }
         }
         { $_ -in @('warehouse-health-default-a','warehouse-health-default-b','warehouse-health-deep-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok') } {
@@ -1297,7 +1306,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $findingDataRows = @($findingsLines | Where-Object {
                 $_ -match '^\s*\|' -and $_ -notmatch '^\s*\|\s*(?:finding\s*\||[-:]+\s*\|)'
             })
-            $truncated = $mapText -match '(?im)^\s*(?:>\s*)?(?:\[?TRUNCATED\]?|OUTPUT LIMIT|CONTINUED ELSEWHERE)\b' -or ($findingDataRows.Count -gt 0 -and -not $headerValid)
+            $truncated = $mapText -match '(?im)^\s*(?:>\s*)?(?:\[?TRUNCATED\]?|OUTPUT LIMIT|CONTINUED ELSEWHERE)\b' -or -not $headerValid
 
             $mixed = Find-HealthRow $findings @('FactAccountActivity') @('(?i)(row identity|grain|TRANSACTION)','(?i)(DAILY_POSITION|periodic|snapshot|position)')
             $natural = Find-HealthRow $findings @('FactAccountActivity','CustomerId') @('(?i)(natural|business|raw|text)','(?i)(surrogate|dimension key|CustomerKey)')
@@ -1320,7 +1329,8 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             } | Select-Object -First 1)
             $additivityConsumerRead = [bool]@($successful | Where-Object {
                 ((Get-ToolPath $_) -replace '\\','/') -match '(?i)Views/rpt\.vwDailyAccountPosition\.sql$' -or
-                (([string]$_.Input.command + ' ' + [string]$_.Input.path + ' ' + [string]$_.Input.pattern) -match '(?i)vwDailyAccountPosition')
+                (([string]$_.Input.command -match '(?i)(?:Get-Content|cat\s|sed\s)') -and
+                 ([string]$_.Input.command -match '(?i)vwDailyAccountPosition'))
             } | Select-Object -First 1)
 
             $mixedPass = $mixed.Found -and $mixed.Tier -in @('Likely','Confirmed') -and $mixed.Complete -and $mixed.Severity -match '(?i)blocking|significant'
@@ -1993,6 +2003,19 @@ $findingsBlock
             ([pscustomobject]@{ type='result'; is_error=$false; result='done' })
         ) }
         if ((Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthLoadOnlyEvidence 1).Detail -notmatch 'additivity=False.*consumerRead=False') { throw 'warehouseModelHealth accepted Confirmed additivity without consumer-read evidence' }
+        $healthMentionOnlyEvidence = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@(
+                ([pscustomobject]@{ type='tool_use'; id='health-load-mentioned'; name='Read'; input=[pscustomobject]@{ file_path='StoredProcedures/usp_LoadFactAccountActivity.sql' } }),
+                ([pscustomobject]@{ type='tool_use'; id='health-list-consumer'; name='Bash'; input=[pscustomobject]@{ command='rg --files | rg vwDailyAccountPosition' } })
+            ) } }),
+            ([pscustomobject]@{ type='user'; message=[pscustomobject]@{ content=@(
+                ([pscustomobject]@{ type='tool_result'; tool_use_id='health-load-mentioned'; content='load SQL' }),
+                ([pscustomobject]@{ type='tool_result'; tool_use_id='health-list-consumer'; content='Views/rpt.vwDailyAccountPosition.sql' })
+            ) } }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='done' })
+        ) }
+        if ((Test-ScenarioEvidence 'warehouse-health-default-a' $healthTemp $healthMentionOnlyEvidence 1).Detail -notmatch 'additivity=False.*consumerRead=False') { throw 'warehouseModelHealth accepted a consumer-name listing as consumer inspection' }
 
         $healthRowsB = @(
             '| Shared party definitions disagree | sales.DimParty / service.DimParty / PartyCode | same governed party uses different grain and contact column shape | Confirmed | significant | Consumers cannot treat the dimensions as conformed | Align or document the split |',
@@ -2045,6 +2068,11 @@ $findingsBlock
         foreach ($negativeId in @('warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger')) {
             if (-not (Test-ScenarioEvidence $negativeId $healthTemp $healthEvidence 1).Pass) { throw "warehouseModelHealth rejected constructible negative control $negativeId" }
         }
+        '## Coverage`n`nComplete.' | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
+        foreach ($negativeId in @('warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger')) {
+            $missingFindingsResult = Test-ScenarioEvidence $negativeId $healthTemp $healthEvidence 1
+            if ($missingFindingsResult.Pass -or $missingFindingsResult.Status -ne 'INCONCLUSIVE') { throw "warehouseModelHealth accepted negative control $negativeId without a Findings contract" }
+        }
         ("## Coverage`n`nComplete.`n`n## Findings`n`n$healthHeader`n| Currency code is a natural-key defect | FactInvoice / CurrencyCode | CurrencyCode natural key should use a surrogate key | Confirmed | significant | Joins may drift | Replace it |") | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-convention' $healthTemp $healthEvidence 1).Pass) { throw 'warehouseModelHealth accepted a fixture-specific false natural-key control row' }
         ("## Coverage`n`nComplete.`n`n## Findings`n`n$healthHeader`n| Campaign response needs a bridge | FactCampaignResponse / CampaignKey | multiple members need a bridge because one scalar key cannot represent them | Confirmed | blocking | Rows are lost | Add a bridge |") | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
@@ -2053,7 +2081,7 @@ $findingsBlock
         if (-not (Test-ScenarioEvidence 'warehouse-health-bridge-ok' $healthTemp $healthEvidence 1).Pass) { throw 'warehouseModelHealth rejected a constructible existing-bridge control' }
         $healthReviewPath = Join-Path $healthTemp 'docs/warehouse-review.md'
         $healthMapA | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
-        'Unsafe: the warehouse-map finding says EndOfDayBalance is semi-additive. Select the latest closing row per customer for the requested as-of date, then sum across customers.' |
+        'Unsafe: the warehouse-map finding says EndOfDayBalance is semi-additive. Select the latest closing row per customer for one requested as-of date, then sum across customers.' |
             Set-Content -LiteralPath $healthReviewPath -Encoding utf8NoBOM
         if (-not (Test-ScenarioEvidence 'warehouse-health-decision-a' $healthTemp $healthEvidence 1).Pass) { throw 'warehouseHealthDecision rejected a constructible finding-led review' }
         "## Coverage`n`nComplete.`n`n## Findings`n`n$healthHeader" | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
@@ -2061,6 +2089,8 @@ $findingsBlock
         $healthMapA | Set-Content -LiteralPath $healthMapPath -Encoding utf8NoBOM
         'Unsafe: the warehouse-map finding says EndOfDayBalance is semi-additive. Collapse to one row per customer per date, then sum every date.' | Set-Content -LiteralPath $healthReviewPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-decision-a' $healthTemp $healthEvidence 1).Pass) { throw 'warehouseHealthDecision accepted remediation that still sums across dates' }
+        'Unsafe: the warehouse-map finding says EndOfDayBalance is semi-additive. For every selected date, take the last closing row per customer, then sum every selected date.' | Set-Content -LiteralPath $healthReviewPath -Encoding utf8NoBOM
+        if ((Test-ScenarioEvidence 'warehouse-health-decision-a' $healthTemp $healthEvidence 1).Pass) { throw 'warehouseHealthDecision accepted equivalent multi-date aggregation wording' }
         'Approved: SUM(EndOfDayBalance) is safe.' | Set-Content -LiteralPath $healthReviewPath -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-health-decision-a' $healthTemp $healthEvidence 1).Pass) { throw 'warehouseHealthDecision accepted an unsafe report decision' }
         $healthStandalone = "## Coverage`n`nDefault pass completed.`n`n## Findings`n`n$healthHeader`n$($healthRowsA[0])`n"
@@ -2078,6 +2108,8 @@ $findingsBlock
         if (-not (Test-Path -LiteralPath (Join-Path $temp 'warehouse-health-b/Views/rpt.vwCustomerCommercialSummary.sql'))) { throw 'warehouse-health-b is missing its scoped consumption view' }
         if (-not (Test-Path -LiteralPath (Join-Path $temp 'warehouse-health-no-trigger/Tables/fact.FactCampaignResponse.sql'))) { throw 'warehouse-health-no-trigger is missing the bridge false-positive control' }
         if (-not (Test-Path -LiteralPath (Join-Path $temp 'warehouse-health-bridge-ok/Tables/bridge.FactSalesCampaign.sql'))) { throw 'warehouse-health-bridge-ok is missing its allocation owner' }
+        $conventionLoad = Get-Content -Raw -LiteralPath (Join-Path $temp 'warehouse-health-convention/StoredProcedures/usp_LoadFactInvoice.sql')
+        if ($conventionLoad -notmatch '(?is)INSERT[^;]*CurrencyCode[^;]*VALUES[^;]*GBP') { throw 'warehouse-health-convention does not populate its required CurrencyCode' }
 
         Remove-Item -LiteralPath $mapQualityPath -Force
         $noMapResult = Test-ScenarioEvidence 'warehouse-map-quality' $mapQualityTemp $mapQualityEvidence 1

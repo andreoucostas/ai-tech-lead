@@ -1,4 +1,4 @@
-# B-125 design — evidence-ranked warehouse modelling health review (LOCKED 2026-08-10, rev 11)
+# B-125 design — evidence-ranked warehouse modelling health review (LOCKED 2026-08-10, rev 12)
 
 > **Status: IMPLEMENTED; CORRECTIONS UNDER CLAUDE OPUS RE-REVIEW.** Deviations need a new entry in
 > `meta/workspace-decisions.md`. Trigger: `meta/BACKLOG.md` B-124–B-129, filed 2026-08-08
@@ -394,6 +394,15 @@ edge-list, semantics, or Coverage role evidence is accepted; the exact seven-col
 field placement are enforced; header/order/blank-field mutations are red; and all health scenarios
 share initialization. The convention control now contains a real convention-permitted direct
 currency relationship. A fresh Sol verdict remains required.
+
+### Rev 12 — omitted-contract and evidence-observation closure
+
+Sol's rev-11 follow-up found four remaining loopholes. Rev 12 requires the Findings header even for
+zero-row controls; populates the convention fixture's required currency column; rejects remediation
+that selects closing rows for several dates and then still aggregates those dates; and counts a
+consumer as inspected only through a direct read/cat operation, not filename discovery. Dedicated
+mutations cover omitted Findings, equivalent multi-date wording, and consumer-name-only commands.
+The corrected implementation again requires a fresh Sol verdict.
 
 ## 7. Out of scope
 

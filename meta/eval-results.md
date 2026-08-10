@@ -1133,3 +1133,8 @@ existing correct campaign bridge. Both new live scenarios now use the normal war
 initialization path. The full PowerShell 7 self-test is green; stochastic Claude rows remain
 unavailable because the account returns HTTP 429 monthly-limit errors.
 
+Rev 12 additionally proves omitted Findings contracts inconclusive, proves the convention fact's
+required `CurrencyCode` is populated, rejects equivalent “last row for every selected date, then
+sum dates” wording, and rejects consumer filename discovery as consumer inspection. The full
+PowerShell 7 mutation suite remains green.
+
