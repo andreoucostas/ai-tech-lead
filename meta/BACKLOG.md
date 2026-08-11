@@ -3589,10 +3589,130 @@ from estimates, and request plans/runtime evidence rather than asserting perform
 code is insufficient. This is architecture review, not a replacement for single-query tuning.
 
 **Framework fit:** establish the grain/fact target from current repository evidence (B-124 shipped
-no separate choice artifact), then consume B-125's logical findings, B-126's deployment impact, and
-B-127's workload paths. Keep platform-specific advice behind detected capabilities and
-avoid universal vendor prescriptions. Prefer extending the warehouse review workflow over a new
-always-routed skill unless the design demonstrates a routing need.
+no separate choice artifact) and optionally use B-125's shipped logical findings. B-126/B-127 are
+unlocked future integrations, not inputs or acceptance dependencies. Keep platform-specific advice
+behind detected capabilities and avoid universal vendor prescriptions. Prefer extending the
+warehouse review workflow over a new always-routed skill unless the design demonstrates a routing
+need.
+
+**What established practice says (checked 2026-08-11):** Microsoft's current SQL Server guidance
+treats index choice as a workload-dependent balance between query speed, write/maintenance overhead,
+and storage. Query Store supplies query, plan, runtime, variation, and wait history; an estimated plan
+does not execute and carries no runtime resource/row evidence, while an actual plan does. Columnstore
+benefits large scans, but small rowgroups, partition granularity, load batch shape, deletes, and
+selective point access materially change the answer. Snowflake says explicit clustering is unnecessary
+for most tables: use large-table scan evidence and common filters, then prove benefit offsets initial
+and ongoing credit/storage cost. BigQuery likewise ties partition/clustering value to eligible
+predicates, pruning, column order, bytes scanned, table size, and update patterns; expressions can
+defeat pruning even when the “right” column appears. Leading vendor advice therefore supports an
+evidence ladder — declared layout → estimated behavior → observed representative workload → measured
+before/after outcome — and rejects universal index, partition, or materialisation recipes. Sources:
+[SQL Server index design](https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide),
+[Query Store workload practice](https://learn.microsoft.com/en-us/sql/relational-databases/performance/best-practice-with-the-query-store),
+[estimated vs actual plans](https://learn.microsoft.com/en-us/sql/relational-databases/performance/display-and-save-execution-plans),
+[columnstore design](https://learn.microsoft.com/en-us/sql/relational-databases/indexes/columnstore-indexes-design-guidance),
+[columnstore loading](https://learn.microsoft.com/en-us/sql/relational-databases/indexes/columnstore-indexes-data-loading-guidance),
+[SQL Server statistics](https://learn.microsoft.com/en-us/sql/relational-databases/statistics/statistics),
+[Snowflake table/clustering considerations](https://docs.snowflake.com/en/user-guide/table-considerations),
+[Snowflake clustering cost](https://docs.snowflake.com/en/user-guide/tables-auto-reclustering),
+[BigQuery partitioning](https://docs.cloud.google.com/bigquery/docs/partitioned-tables), and
+[BigQuery clustered-query guidance](https://docs.cloud.google.com/bigquery/docs/querying-clustered-tables).
+
+**Fresh-context adversarial review (Codex, 2026-08-11; does not satisfy the Opus gate):** verdict
+**REJECT candidate beyond a redesigned unchanged-skill baseline**. The reviewer found no observed
+harm attributable to current guidance; asking a structural grep-based mapping skill for a detailed
+physical review would mostly test model improvisation and telegraph the desired rubric. The first
+plan also left “representative workload” unreachable, offered a feature taxonomy instead of safe
+versioned platform adapters, blurred evidence validity, omitted mixed/invalid experiment outcomes,
+under-specified noise/privacy/cost controls, and expanded an M–L item into a cross-vendor tuning
+product. The narrower investigation below folds those findings and remains unlocked.
+
+**Implementation plan — revised investigation and conditional design:**
+
+1. **Authorise Phase 0 only.** Pre-register a small unchanged-framework behavioral baseline before
+   adding any instructions. Compare (a) ordinary routed warehouse work, (b) an explicit physical-
+   design question, and (c) a control with no performance question. Use two or three paired SQL
+   Server text fixtures plus normalized supplied telemetry: identical DDL with scan-heavy versus
+   selective workload; point lookup versus columnstore/load trade-off; representative versus biased
+   sample; and a justified no-change case. Do not put expected tuning vocabulary in the prompts.
+2. Attribute failure carefully. Freeze prompts, decisive artifacts, evidence available, normalized
+   outputs, direct-read requirements, three-or-more repetitions per available surface, and red/green
+   grader mutations. A shipped change is authorised only if unchanged behavior repeatedly makes a
+   materially wrong or unsafe decision *because framework guidance is missing or misleading*, not
+   because a general model lacks specialist database knowledge. Otherwise close or narrow B-128.
+3. Define workload representativeness before any recommendation: named population (queries/jobs in
+   scope), capture source and integrity, environment/version/settings, selection method, time window,
+   release/seasonal/peak periods, parameter/skew classes, coverage by execution count and by the
+   primary resource/cost measure, excluded classes, and a stability comparison with an adjacent
+   window. No universal percentage is assumed; the owner pre-registers the material population and
+   minimum coverage. Missing or unstable coverage yields `Evidence collection required` only.
+4. Record evidence on independent axes: origin/acquisition (direct repository read, supplied export,
+   captured execution, aggregate telemetry, attestation); exact coordinates/integrity; platform,
+   version/edition/service, environment and settings; time/window/population; direct versus attested;
+   and representativeness status. Static DDL/query text is a candidate mechanism; estimated plans are
+   predictions; actual plans prove one execution; aggregates are meaningful only with population
+   metadata. Screenshots or exports without coordinates, freshness, and environment remain unverified.
+5. Use a complete deterministic state transition: `Evidence collection required`, `Reject from
+   evidence`, `Candidate experiment`, `Awaiting authority`, `Invalid experiment`, `No material
+   difference`, `Measured improvement`, `Measured regression`, or `Mixed/guardrail failure`.
+   Define a constructible fixture world for each exercised state. Improvement requires the primary
+   threshold, every correctness/load/cost/maintenance guardrail, comparable environments, and proper
+   authority; it cannot hide a regression behind one faster query. Abstention is not the only pass.
+6. If Phase 0 reproduces an attributable gap, Phase 1 may add one ephemeral on-request **comparison
+   and experiment-planning** section to the existing dotnet `map-warehouse` mirrors at
+   `src/stacks/dotnet/files/{.claude,.github}/skills/map-warehouse/SKILL.md`, composed into dotnet
+   and monorepo. It performs no query, DDL, plan generation, telemetry export, or persistence. Keep
+   the C#-only `perf` skill and Angular behavior unchanged.
+7. Phase 1 supports only the evidenced platform/version family from Phase 0 (initially SQL Server).
+   Its adapter contract names detection precedence, required version/edition/service and managed-
+   feature state, permissions, current official capability source/date, supported alternatives and
+   diagnostics, `Unknown/unsupported` behavior, and expiry/recheck trigger. Snowflake, BigQuery, or
+   other adapters require a later separately reviewed evidence case and discriminating fixture; do
+   not ship vendor-name substitutions from the research survey.
+8. The conditional output compares `No change` plus only applicable alternatives, binding each to
+   evidence, predicted mechanism, query benefit, load/write cost, storage/maintenance cost,
+   operational risk, reversibility, falsifying diagnostic, safe experiment proposal, authority
+   needed, and decision state. Static review can nominate or reject an experiment, never label an
+   optimization measured or validated.
+9. A proposed experiment must pre-register identical data/configuration, randomized or interleaved
+   A/B order where possible, compilation and cold/warm-cache populations, background-load/noisy-
+   neighbor/autoscaling controls, parameter and concurrency mix, stabilization, repetitions, raw-run
+   retention, robust distribution/uncertainty summary, outlier rule, correctness, primary outcome,
+   all guardrails, abort/invalidation conditions, and rollback/drop plan. The fixed snapshot's scope
+   and representativeness are explicit; no execution is part of this item.
+10. Define authority levels separately for repository reads, telemetry/history read or export, plan
+    generation, query execution/replay, non-production DDL, production action, and spend. Default is
+    proposal-only. Require minimization/redaction of literals and sensitive query text, secret
+    exclusion, approved storage/retention, cost ceiling, and named abort owner before proposing a
+    higher-authority phase. A restored database or estimated compilation can still expose data or
+    consume resources.
+11. Phase-0 graders bind table/workload/evidence coordinates, validate units/arithmetic/comparison
+    direction, reject cherry-picked samples and vendor-keyword matching, and mutate evidence axes,
+    representativeness, no-change, cost, guardrails, and state transitions red→green. Include one
+    unsupported-platform control that safely requests capability evidence rather than inventing
+    advice. Broader platform/mechanism fixtures are explicitly deferred.
+12. Keep boundaries honest: B-125 may provide current logical context; B-126/B-127 are future
+    integrations, not prerequisites; B-129 owns publication design. Scope is one named table/fact
+    plus the named interacting objects required to evaluate its joins, aggregate, distribution, or
+    load. Single-query tuning remains out unless that query is part of the pre-registered workload.
+13. If Phase 1 is eventually implemented, verify exact changed-skill delivery: both authored mirrors,
+    dotnet/monorepo composition, disabled/discovered-skill semantics, greenfield and update installs
+    through both twins, and dotnet/monorepo root detection. Specify the expected brownfield collision
+    behavior for a same-name customized framework skill. Add document-preservation tests only if a
+    later design actually writes a document. Then compose/freshness and `validate-dist` ×3.
+
+**Proportionality:** no harmful framework-caused tuning decision has been observed, and the current
+skill promises structural mapping rather than performance review. Only the small unchanged-framework
+baseline is presently proportionate. If it proves attributable harm, an ephemeral SQL Server
+comparison/experiment-planning section is the maximum authorised candidate. Automated capture,
+execution, production DDL, cross-platform tuning engine, persistent telemetry, whole-warehouse scan,
+or new skill is not authorised.
+
+**Status: AWAITING OPUS REVIEW.** This candidate is not locked and authorises no implementation.
+The separate Codex critique above materially reduced the plan but does not clear the gate. Obtain a
+Claude Opus review of this revised baseline, attribution rule, representativeness contract, evidence
+axes, conditional single-platform scope, experiment safety, and proportionality. If Opus is genuinely
+unavailable due to limits, record `WAITING — OPUS LIMIT` rather than substituting a lower-tier verdict.
 
 **Design/review gate:** locked design plus proportionality case, followed by an independent
 adversarial **Claude Opus** review before implementation. If Opus is rate- or spend-limited, record
