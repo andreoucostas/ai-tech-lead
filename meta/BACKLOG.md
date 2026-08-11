@@ -4327,6 +4327,9 @@ the child. The revised design above uses the constructible trigger, child reacha
 absolute resolution, and the smaller host × visibility matrix. This Codex review does **not satisfy
 the required Claude Opus gate**.
 
+**Status: AWAITING OPUS REVIEW.** This revised design is not locked and authorises no
+implementation. If Opus is genuinely unavailable due to limits, record `WAITING — OPUS LIMIT`.
+
 ### B-131 · `release.ps1` and `template-checks` disagree on changelog-head grammar
 **Effort:** S · **Priority:** P3 · filed 2026-08-09 · **Invariants:** #7
 
@@ -4434,6 +4437,9 @@ states indeterminate, multiplied fixture axes, and omitted delivery/RCA work. Th
 uses `.template-repo` as the ownership boundary, ignores consumer changelogs, aligns all three
 parsers across two languages, defines state/path axes separately, and adds delivery and closure
 obligations. This Codex review **does not satisfy the required Claude Opus gate**.
+
+**Status: AWAITING OPUS REVIEW.** This revised design is not locked and authorises no
+implementation. If Opus is genuinely unavailable due to limits, record `WAITING — OPUS LIMIT`.
 
 ---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
