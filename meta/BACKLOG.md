@@ -3283,6 +3283,125 @@ consequences route to B-128 rather than being reinvented here.
 `add-warehouse-load` into an exhaustive global scan: request deeper evidence only for the entities
 and consumers touched by the proposed change, and abstain when the dependency graph is incomplete.
 
+**What established practice says (checked 2026-08-11):** Kimball's dimensional guidance makes
+fact grain uniformity and per-attribute SCD treatment semantic contracts, not incidental table
+details; a Type 2 change creates a new surrogate-keyed row and changes which version future facts
+reference. Fowler/Sadalage's evolutionary-database practice requires versioned migrations,
+automated data movement, consumer-contract testing, and collaboration with people who can see
+dependencies beyond the immediate application. Parallel Change supplies the compatible
+expand → migrate → contract sequence for interfaces with multiple consumers. Microsoft's current
+Power BI guidance says to inspect lineage and impact before changing a shared semantic model, test
+dependent reports, and interpret the result as *potential* impact rather than proof of failure; its
+architecture guidance likewise recommends compatibility with at least the preceding schema and
+sequencing destructive changes across releases. Sources:
+[Kimball SCD overview](https://www.kimballgroup.com/2008/08/slowly-changing-dimensions/),
+[Kimball Type 2](https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/type-2/),
+[Kimball fact-table grain](https://www.kimballgroup.com/2003/01/fact-tables-and-dimension-tables/),
+[Fowler/Sadalage evolutionary database design](https://www.martinfowler.com/articles/evodb.html),
+[Fowler Parallel Change](https://martinfowler.com/bliki/ParallelChange.html),
+[Power BI semantic-model impact analysis](https://learn.microsoft.com/en-us/power-bi/collaborate-share/service-dataset-impact-analysis),
+and [Azure schema-update guidance](https://learn.microsoft.com/en-gb/azure/architecture/guide/multitenant/approaches/storage-data).
+
+**Fresh-context adversarial review (Codex, 2026-08-11; does not satisfy the Opus gate):** verdict
+**REJECT pending redesign and unchanged-skill baseline**. The first candidate assumed a behavioral
+gap from missing prose, made `compatible in-place` unreachable by asking static repository evidence
+to prove every runtime consumer, misstated the whole-file composition layout, conflated relationship
+and finding vocabularies, depended on unimplemented B-127/B-128 work, and specified fixture topics
+rather than discriminating graders. It also treated compatibility as one property when schema,
+semantics, history, deployment, privacy, and rollback can disagree. The revised plan below folds
+those findings. It remains unlocked and must receive a fresh Opus review after the redesign.
+
+**Implementation plan — revised design candidate:**
+
+1. **Test the premise before authorising shipped edits.** Freeze at least two non-telegraphing paired
+   fixtures, expected artifacts, three-or-more repeated runs per available agent surface, direct-read
+   observations, truncation/inconclusive rules, and grader mutations. Include (a) a repository-closed,
+   genuinely compatible existing-dimension change and (b) identical additive DDL made incompatible
+   by a visible consumer; add grain/SCD and incomplete-external-consumer cases. Run the unchanged
+   `add-warehouse-load`. Stop with no shipped change if it reliably inventories the right evidence,
+   distinguishes the pair, preserves uncertainty, and produces an executable migration decision.
+2. Define evidence closure before grading safety. **Repository-visible compatibility** enumerates
+   what the scan actually found and never implies completeness. **Deployment approval** additionally
+   requires a stated closed-world premise or named owner/catalog/runtime attestation for external
+   consumers, operational constraints, and authority. Name the constructible evidence world for
+   every outcome; unavailable or access-limited evidence is `Unknown`, not a pass or an affected
+   consumer. `Potential consumer` and `confirmed dependency` remain distinct.
+3. Only if the baseline proves a material gap, add a bounded **Evolution preflight** section to
+   `add-warehouse-load` after the skill has proved the target entity and before it writes DDL/load
+   logic. Trigger it only for an existing fact/dimension change; a new entity continues through the
+   existing path. The actual sources are the dotnet whole-file mirrors at
+   `src/stacks/dotnet/files/{.claude,.github}/skills/add-warehouse-load/SKILL.md`; composition carries
+   them into dotnet and monorepo. There is no monorepo source sibling and no new skill or
+   always-loaded instruction.
+4. Build an evidence packet for only the named entity and proposed fields: current declared and
+   effective grain; keys and dependent facts; each field's source authority, type/null/default and
+   SCD/history policy; load and backfill code; repository-visible views, procedures, marts, exports,
+   semantic/report artifacts, tests, and deployment references. Reuse the fresh warehouse map and
+   B-125 Findings. Until B-127 exists, permit only a minimal direct trace through already-open SQL
+   and named repository references; mark the boundary and request deeper lineage instead of claiming
+   B-127 was consumed or implementing a general lineage graph.
+5. Emit a compact change matrix with one row per proposed semantic change: `Change`, `Current
+   contract`, `Proposed contract`, `Evidence`, `Upstream authority`, `Affected consumers`,
+   `Compatibility dimensions`, `History/backfill`, `Deploy sequence`, `Verification`, and `Open
+   owner`. Define claim status separately (`Observed`, `Reported/attested`, `Inferred`, `Unknown`)
+   rather than pretending it is the map's relationship or B-125 finding vocabulary. Grade schema,
+   semantic, historical, privacy/security, deployment, and rollback compatibility independently per
+   consumer before deriving a recommendation. Classify compatibility per consumer, not from DDL
+   shape: additive nullable data can still change row
+   counts, SCD interpretation, measures, wildcard extracts, or security exposure. Separate
+   potential from confirmed impact.
+6. Require an explicit invariants check before recommending reuse: no silent grain change; no
+   attribute moved between authorities without conflict resolution; SCD behavior stated per changed
+   attribute; unknown/null/default-member semantics preserved or migrated; fact/dimension key and
+   effective-date resolution intact; historical recomputation policy named; reconciliation totals
+   and privacy/security exposure considered. A grain change, key reinterpretation, destructive type
+   change, or changed historical meaning defaults to breaking for the relevant dimension unless the
+   explicitly bounded evidence proves otherwise.
+7. Produce one of three decisions: **repository-compatible candidate** (with enumerated coverage,
+   migration/backfill and consumer tests; deployment approval still separately gated),
+   **parallel evolution** (expand with a new field/view/version, dual-write or backfill,
+   migrate named consumers, observe, then contract after an owner/date/deprecation gate), or
+   **stop/abstain** (authority, lineage, runtime consumer, or rollback evidence is missing). Never
+   describe rollback as simply reversing DDL after consumers or history have changed; name restore,
+   replay, or forward-fix mechanics and the last safe point. For parallel evolution name the
+   authoritative pre-cutover write path, dual-write/backfill reconciliation, cutover and abort
+   criteria, backup/restore assumptions, replay boundary, post-cutover writes, and the point where
+   rollback becomes compensating forward migration.
+8. Keep minimum operational feasibility here: backfill volume/window, locks, log growth, partition
+   mechanics, deploy ordering, and last-safe-point evidence determine whether the migration is
+   executable. Route optimisation and broader physical-design judgment to B-128. Likewise do not
+   duplicate B-129's reporting-interface design; here a report/semantic model is a contract to
+   preserve, test, migrate, and deprecate, while B-129 owns choosing/designing a new publication
+   surface.
+9. Expand the pre-registered fixtures only if the unchanged baseline fails. Cover: a truly compatible
+   nullable descriptive Type-1 attribute; the same DDL with a `SELECT *` extract or sensitive-field
+   exposure (not automatically safe); a Type-1→Type-2 policy change; a fact-grain change; a widening
+   and a narrowing/type-semantic change; historical backfill with late-arriving facts; an external
+   or access-limited semantic consumer; and incomplete lineage. Plant mutations that omit a
+   consumer, call every `ADD COLUMN` safe, fabricate rollback, or confuse potential with confirmed
+   impact. Bind grader assertions to the correct entity/consumer and direct artifact reads; include
+   clean/convention counterfixtures, contradictory prose, empty/truncated output, and independent
+   mutations for lineage, compatibility, sequencing, and rollback. The abstention cases alone cannot
+   prove discrimination. Show every grader red and green.
+10. After implementation, run the repeated behavioral matrix, then greenfield, brownfield, and update
+   delivery through both installer twins and applicable root stack-detection paths. Verify both skill
+   mirrors refresh as intended without overwriting protected consumer material. Success requires the
+   correct evidence boundary, dimension-level compatibility result, and usable migration sequence,
+   not checklist words. Then compose/freshness and `validate-dist` ×3; Angular behavior stays
+   unchanged, while release-wide version/changelog stamping remains expected.
+
+**Proportionality:** the current evidence proves a prose omission, not behavioral harm. The unchanged
+baseline is therefore the smallest response and can close the item without a shipped change. Only a
+reproduced decision defect authorises one demand-triggered section in an existing skill. A persistent
+lineage service, warehouse-wide graph, schema registry, or new routed skill remains out of scope
+until B-127/B-42 supplies observed evidence that the bounded repository scan is insufficient.
+
+**Status: AWAITING OPUS REVIEW.** The plan above is not locked and authorises no implementation.
+The fresh-context review must be licensed to reject the premise, challenge whether the evidence
+packet is reachable from static repositories, test the proportionality claim, and require a second
+pass after any material redesign. If Opus is unavailable, retain `WAITING — OPUS LIMIT` rather than
+substituting a lower-tier verdict.
+
 **Design/review gate:** locked design plus proportionality case, followed by an independent
 adversarial **Claude Opus** review before implementation. If Opus is limited, record **WAITING —
 OPUS LIMIT**; design of another independent item may continue, but implementation may not.
