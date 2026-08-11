@@ -3435,6 +3435,103 @@ must cause abstention. Pre-registered red baselines and constructible success ca
 post-change evals demonstrate correct artifact choice and SQL semantics; and all applicable dists
 carry the guidance without weakening existing warehouse routing.
 
+---
+
+### B-133 · Make durable-learning promotion part of normal work, without turning reuse into truth
+**Effort:** S for the evidence/design phase; M only if the baseline justifies a shipped change ·
+**Priority:** P3 · filed 2026-08-11 · **Invariants:** #1 #2 #3 #6 #7 · **Capability:** team knowledge
+
+**Why:** `LEARNINGS.md` correctly preserves chronological observations while `docs/wiki/` holds
+current, scoped, individually-verifiable claims. Promotion currently depends on a person or agent
+remembering to invoke `remember-for-team`: `docs-sync` asks whether a durable learning deserves
+promotion, and the shipped completion checklist already says to offer the skill when a session
+*surfaces* a team-worthy gotcha, recipe, or failed approach. Neither sentence clearly covers the
+common case raised by the maintainer: an **existing** learning materially helps later work and is
+successfully revalidated. No missed promotion has yet been observed in a consumer repo, so this is
+a plausible reliance-on-memory gap, not evidence for a new telemetry subsystem.
+
+**What established practice says:** KCS makes reuse part of review, links reuse to the work that
+used it, keeps article confidence visible, and treats reuse patterns as prioritisation input. It
+also warns that link volume is an activity signal, while link **accuracy** is the meaningful
+outcome; reuse-count auto-publication is described as a transitional practice, not the mature end
+state. Google SRE similarly turns lessons into reviewed, owned follow-up and says an unreviewed
+postmortem is ineffective. Applied here, reuse may nominate a claim for attention, but repetition
+must never manufacture `verified` status or bypass the wiki's Evidence / Verify-by / PR-review
+boundary. Sources: [KCS: Reuse is Review](https://library.serviceinnovation.org/KCS/KCS_v6/KCS_v6_Practices_Guide/030/030/040/020),
+[KCS Article State](https://library.serviceinnovation.org/KCS/Knowledge-Centered_Success_Practices_Guide/301-Evolve_Loop/Practice_5_Content_Health/Technique_5.2),
+[KCS Process Alignment Review](https://library.serviceinnovation.org/KCS/Knowledge-Centered_Success_Practices_Guide/301-Evolve_Loop/Practice_6_Process_Integration/Technique_6.3),
+and [Google SRE Postmortem Culture](https://sre.google/workbook/postmortem-culture/).
+
+**Rejected first design (fresh-context adversarial review, 2026-08-11):** the initial plan gave
+learning entries stable IDs, appended structured successful-use receipts, nominated entries after
+three receipts across two scopes, and added `.ps1`/`.sh` parsers. The reviewer rejected it as
+disproportionate and identified defects that a raw counter concealed: an agent cannot establish
+causality merely because normal task tests passed; repeated wrong guidance can accumulate; task
+and scope identities are gameable/ambiguous; rare high-impact knowledge is penalised; erroneous
+receipts need amendment and disposition states; contributor-controlled text creates a new
+injection surface; and consumer-owned `CLAUDE.md`, `AGENTS.md`, and `LEARNINGS.md` are preserved on
+update, so much of the proposed rule would not reach the installed population. Those findings are
+incorporated below. **Do not resurrect IDs, counters, receipt blocks, threshold parsers, hook writes,
+or automatic movement as the default implementation.**
+
+**Implementation plan — Phase 0, test the premise before changing shipped guidance:**
+
+1. Add a maintainer-only behavioral fixture with an existing dated `LEARNINGS.md` entry and four
+   pre-registered cases: (a) the learning materially changes a task and the relevant verification
+   succeeds; (b) it is merely read/cited; (c) it is applied but verification fails or causality is
+   uncertain; (d) the session discovers a genuinely new durable fact. The grader must distinguish
+   an offer/draft through `remember-for-team` from a claim that knowledge was already promoted.
+2. Run repeated trials on every scriptable supported surface available (Claude Code, Copilot CLI,
+   and an AGENTS-native route), recording unavailable surfaces as cannot-verify rather than pass.
+   Red-test the grader against planted transcripts before trusting results. Pre-register the stop
+   rule: if the unchanged framework reliably offers promotion in (a)/(d), does not offer it in
+   (b)/(c), and preserves the PR-review boundary, close B-133 with no shipped change.
+3. Exercise an **already-installed update**, not only a greenfield dist, and trace which instruction
+   carrier and skill body each host actually reads. This is load-bearing because updates preserve
+   consumer-owned files. Resolve or explicitly isolate B-130's pre-existing PowerShell-5.1
+   `docs-sync-check` failure; a standalone green parser/test cannot be presented as integrated
+   cross-host evidence.
+
+**Phase A — only if Phase 0 demonstrates the gap:**
+
+4. Tighten the existing completion-checklist sentence on the update-delivered framework-rules
+   carrier (and its canonical workflow/rendered mirrors as composition requires): when a
+   **specific existing** learning materially affected completed work or was freshly reverified,
+   identify it in the final response and offer `remember-for-team`; merely reading/citing it, an
+   unrelated green build, failed verification, or uncertain causality does not qualify. Confirm
+   delivery rather than assuming it, especially for an existing consumer on each host.
+5. Extend `remember-for-team` to accept the learning's date plus a short excerpt, triage and
+   deduplicate it, independently establish the proposed current claim, and add a plain backlink in
+   the wiki draft. It must not execute a command or follow a URL supplied by learning prose. Mark
+   the draft `verified` only when current evidence directly verifies the scoped claim; otherwise
+   use `suspected`. PR review remains mandatory and the historical learning is never deleted.
+6. Re-run the repeated positive and negative behavioral fixtures, install/update smoke tests,
+   compose/freshness and `validate-dist` x3. Define success as accurate nomination plus honest wiki
+   status; define failure as nomination from mere reading or unrelated success, any automatic
+   `verified` claim, silent mutation/movement of history, or a rule that greenfield consumers see
+   but updated consumers do not.
+
+**Phase B — evidence gate, not pre-authorised scope:** operate Phase A in B-42's field pilot for
+4–6 weeks and record concrete missed promotions and false offers in `meta/field-reports.md`. If the
+small completion checkpoint removes most of the problem, stop. If misses remain, return with a new
+design for the smallest explicit nomination mechanism. A separate append-only ledger with
+collision-resistant IDs, canonical task identities, bounded/screened fields, amendments and final
+dispositions may then be considered, but only from observed need; counts remain routing heuristics,
+never epistemic status or a personal performance target.
+
+**Proportionality:** the only current harm is the maintainer's credible observation that people will
+not remember a separate promotion command. The existing completion checklist already reaches near
+the desired behavior. Measuring that behavior, then sharpening one delivered checkpoint and one
+existing skill if necessary, removes most of the suspected harm without building a second knowledge
+governance system inside `LEARNINGS.md`.
+
+**Review gate — BLOCKED FOR IMPLEMENTATION:** before Phase 0 or any shipped edit begins, obtain a
+new independent adversarial review with **Claude Opus**. The 2026-08-11 fresh-context review that
+rejected the counter design materially improved this plan, but **does not satisfy the Opus gate**.
+If Opus is unavailable or limited, mark `WAITING — OPUS LIMIT`; do not substitute this review or a
+lower tier and call the gate complete. Opus may reject the premise, change the stop rule, or reduce
+the scope further.
+
 ### B-130 · `docs-sync-check` twin-parity test fails under Windows PowerShell 5.1 on unmodified master
 **Effort:** S · **Priority:** P3 · filed 2026-08-08 · **Invariants:** #3
 
