@@ -3769,6 +3769,130 @@ patterns; do not create a competing inventory, generic SQL-style guide, or vendo
 The design must decide whether this belongs as a bounded addition to existing warehouse skills or a
 separately routed skill, using observed routing behavior and context cost rather than preference.
 
+**What established practice says (checked 2026-08-11):** Microsoft's current Power BI guidance
+starts from star-schema fact/dimension roles and consistent grain, recommends explicit measures when
+summarization must be governed, avoids direct fact-to-fact many-to-many relationships, and requires
+relationship plus RLS/OLS validation. Shared semantic models reduce duplicated definitions but make
+dependency, permission, and compatibility analysis more important. SQL Server guidance treats stored
+procedures as permission and parameter boundaries, while warning that dynamic SQL breaks ordinary
+ownership-chain assumptions and still requires parameterization, least privilege, and injection
+review. Kimball keeps facts aligned to a physical measurement event and classifies measures as
+additive, semi-additive, or non-additive; a reporting contract cannot safely infer totals from a
+column name. These sources support consumer/problem-first artifact choice, explicit semantic and
+security contracts, and representative reconciliation rather than a universal “use a view/proc/mart”
+rule. Sources: [Power BI star-schema guidance](https://learn.microsoft.com/en-us/power-bi/guidance/star-schema),
+[Power BI many-to-many guidance](https://learn.microsoft.com/en-us/power-bi/guidance/relationships-many-to-many),
+[Power BI model relationships](https://learn.microsoft.com/en-us/power-bi/transform-model/desktop-relationships-understand),
+[Power BI consumer security planning](https://learn.microsoft.com/en-us/power-bi/guidance/powerbi-implementation-planning-security-report-consumer-planning),
+[Power BI RLS guidance](https://learn.microsoft.com/en-us/power-bi/guidance/rls-guidance),
+[SQL Server stored procedures](https://learn.microsoft.com/en-us/sql/relational-databases/stored-procedures/stored-procedures-database-engine),
+[secure dynamic SQL](https://learn.microsoft.com/en-us/sql/connect/ado-net/sql/writing-secure-dynamic-sql),
+[SQL Server execution context](https://learn.microsoft.com/en-us/sql/t-sql/statements/execute-as-clause-transact-sql),
+[Kimball facts and grain](https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/facts-for-measurement/),
+and [Kimball additivity](https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/additive-semi-additive-non-additive-fact/).
+
+**Fresh-context adversarial review (Codex, 2026-08-11; does not satisfy the Opus gate):** verdict
+**REDESIGN before Opus**. The reviewer found that a new skill is currently infeasible: canonical
+`meta/context-footprint.json` records dotnet at 39,527/40,000 and monorepo at 47,884/48,000 static
+Claude characters, leaving 473 and 116 respectively, while current warehouse frontmatter alone is
+740–901 characters. The first plan also mixed database publication, semantic governance, and report
+presentation; could grade repository prose as human authority; lacked an attribution-safe A/B;
+assumed one result grain; used potentially correlated reconciliation oracles; and spread into BI
+platform architecture. The narrower SQL-publication investigation below folds those findings.
+
+**Implementation plan — revised investigation and conditional design:**
+
+1. **Authorise Phase 0 only:** a bounded SQL reporting-publication experiment choosing among
+   `extend existing database surface`, `new composable view`, `parameterized stored procedure`, or
+   `no new database surface / ask`. Semantic-model authoring/security, marts, materialisation,
+   cross-platform variants, presentation/report-local logic, and automatic migration are successor
+   scopes requiring separate observed harm and review.
+2. Freeze three matched scenario pairs plus one abstention control on the one scriptable host that
+   demonstrably loads skills: reusable/composable consumers favoring a view; scheduled parameterized
+   extract favoring a procedure; one-consumer/no-reuse favoring no new database surface; and missing
+   or conflicting metric authority. Keep DDL/data constant within each pair and vary one decision fact
+   (reuse, interaction, security boundary, or lifecycle) without telegraphing artifact names.
+3. Run a controlled matched A/B: A is unchanged framework; B is the identical fixture/prompt with
+   only the candidate bounded guidance injected through the feasible existing carrier. Pin host,
+   model/version, fixture commit, budget, timeout, and randomized/interleaved order. Pre-register
+   per-scenario thresholds; replace error/truncation/cannot-run trials under a fixed cap and report
+   them separately. Score workflow routing, skill selected/read, decisive artifacts read, publication
+   choice, and contract correctness as separate outcomes. Close/narrow B-129 unless B materially and
+   repeatedly fixes a defect attributable to framework guidance.
+4. The feasible default carrier is a tightly bounded write-side section in the existing authored
+   dotnet `map-warehouse` `.claude`/`.github` mirrors, composed into dotnet and monorepo. Measure its
+   on-demand body delta and any frontmatter change independently, and require context-footprint green.
+   A new skill is not a candidate unless a named static-context subtraction first leaves every ceiling
+   green and a separate routing test proves the trade worthwhile. `route-prompt` governs generic
+   workflow intent, not skill selection; modify it only on repeated workflow misclassification.
+5. Define the SQL publication request before artifact choice: named consumers and owner; composable
+   interactive querying versus scheduled parameterized extract; question/decision; freshness/as-of;
+   parameter/filter/paging/export contract; expected scale; caller/service identity and sensitive
+   fields; existing consumer/deprecation obligations; SQL platform/version/deployability; metric
+   implementation source; and authority status. Missing evidence yields one scoped question or draft
+   explicitly marked unapproved, never invented intent.
+6. Separate semantic evidence states: `Repository-supported definition`, `User-provided authoritative
+   source` with exact scope, `Named authority confirmation required`, or `Conflicting/unknown —
+   abstain`. A role-like filename, owner field, or confident prose never proves authority/currentness.
+   Preserve implementation and publication definitions separately; conflicting same-named metrics
+   block governed publication.
+7. First decide semantic ownership (`database-owned definition` versus outside this item's scope),
+   then choose only among database surfaces proven deployable and consumable by the named query mode.
+   Unavailable TVFs, semantic objects, indexed/materialized views, marts, or BI-tool capabilities are
+   absent from the candidate set, not losing options. Compare extension/view/procedure/no-new-surface
+   on reuse, composability, parameterization, stable schema, permission boundary, repository
+   convention, ownership, compatibility, and migration cost.
+8. Require either one homogeneous result set with declared grain and executable uniqueness/cardinality
+   assertions, or explicitly separated result sets/row types with their own grain and discriminator.
+   Record schema/types/null and unknown-member behavior; join cardinality; SCD interval overlap/gaps
+   and as-of rule; role-playing dates; drill-across pre-aggregation; additivity/base measures; filter
+   and date inclusivity; stable total ordering plus tie-breaker and snapshot semantics for paging;
+   parameter types/defaults/ranges; units/currency/rounding; and empty/error behavior.
+9. Define a SQL Server security profile for each fixture: caller versus owner/definer context;
+   ownership chain and cross-database boundary; direct base-object permissions; signing/certificate or
+   impersonation/revert where evidenced; dynamic-value parameterization and dynamic-identifier allow
+   list; service versus end-user identity; row restrictions; metadata visibility; export permission;
+   and least privilege. Grade effective permissions for every identity, including direct-table bypass,
+   broken chain, definer overreach, identifier injection, collapsed service identity, and role-union
+   leakage—not mere presence of `GRANT`, parameters, or RLS text.
+10. Discover repository-visible consumers through named SQL references, semantic/report metadata,
+    pipeline/job definitions, deployment manifests, and catalog/query history only when supplied and
+    provenance-rich; request owner confirmation for external populations. Access-limited/external is
+    `UNKNOWN`, never none. For an existing incompatible consumer, require expand→migrate→contract,
+    named notification/owner, dual-run reconciliation, deprecation gate, and rollback/forward-fix
+    boundary; otherwise this phase may only draft the change.
+11. Freeze an independent hand-authored answer table for each fixture, not generated from candidate
+    SQL or an existing report. State as-of time, population, exclusions, units, rounding, tolerance,
+    and authority status. Add metamorphic oracles: duplicating a dimension row cannot change additive
+    totals; valid group splits recombine; ratios recompute from additive components; SCD boundary
+    changes pick exactly the intended version; unauthorized roles see no protected rows/columns.
+    Snapshot the public schema and parameter metadata separately.
+12. Use a small factorial core: reuse one/many; interaction composable/scheduled; authority present/
+    absent-conflicting; security caller-filtered/module-boundary; lifecycle no consumers/incompatible
+    consumer. Blind graders to fixture labels and scan for answer leakage. Mutate artifact choice,
+    decisive reads, grain/cardinality, duplicate joins, SCD boundary, date inclusivity, non-additivity,
+    authority, direct-access leakage, dynamic identifiers, consumer completeness, and compatibility;
+    show every deterministic assertion red→green and include false-positive controls.
+13. Phase 1, only after a material A/B effect, may implement the bounded existing-skill section and
+    repeat the diagnostic cases. Cross-host behavioral replication requires a specific host-delivery
+    hypothesis; delivery verification still covers both mirrors, dotnet/monorepo composition,
+    context-footprint, disabled/discovered skills, greenfield/update/brownfield same-name behavior
+    through both installer twins and relevant root detection, compose/freshness, and `validate-dist`
+    ×3. Protected consumer context and update-refreshed skill bodies are tested as distinct contracts.
+
+**Proportionality:** the repository proves an absent dedicated recipe, no observed production harm,
+and virtually no static-context headroom. Only the three-pair unchanged-versus-injected SQL
+publication experiment is currently proportionate. If it proves a repeatable framework-attributable
+effect, a bounded on-demand section in an existing skill is the maximum candidate. Semantic-model
+authoring, BI security architecture, marts/materialisation, report design, catalogs, runtime services,
+cross-vendor libraries, or automatic migration is not authorised.
+
+**Status: AWAITING OPUS REVIEW.** This candidate is not locked and authorises no implementation.
+The separate Codex critique above materially reduced the plan but does not clear the gate. Obtain
+Claude Opus review of the controlled A/B, carrier feasibility, SQL-only scope, authority states,
+security oracle, compatibility boundary, context cost, and proportionality. If Opus is genuinely
+unavailable due to limits, record `WAITING — OPUS LIMIT` rather than substituting a lower-tier verdict.
+
 ---
 ### B-132 · Maintainer agent-eval harness cannot run under Windows PowerShell 5.1
 **Effort:** S–M · **Priority:** P3 · filed 2026-08-09 from B-124 RCA · **Scope:** maintainer layer
