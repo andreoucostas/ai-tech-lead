@@ -3894,23 +3894,93 @@ security oracle, compatibility boundary, context cost, and proportionality. If O
 unavailable due to limits, record `WAITING — OPUS LIMIT` rather than substituting a lower-tier verdict.
 
 ---
-### B-132 · Maintainer agent-eval harness cannot run under Windows PowerShell 5.1
+### B-132 · Agent-eval runner's PowerShell 7 boundary is implicit, inviting invalid 5.1 verification
 **Effort:** S–M · **Priority:** P3 · filed 2026-08-09 from B-124 RCA · **Scope:** maintainer layer
 
 **Why:** the B-124 verification attempted the eval self-test under hostile code page 437 on both
 PowerShell hosts. PowerShell 7 passed; Windows PowerShell 5.1 stopped at the first
-`-Encoding utf8NoBOM` because that enum value is PowerShell-7-only. The incompatibility predates
-B-124 (94 occurrences at HEAD) and the harness is currently invoked with `pwsh` by release tooling,
-but root verification policy asks for a meaningful 5.1 run and the design incorrectly promised one.
+`-Encoding utf8NoBOM` because that value is unavailable in Windows PowerShell 5.1. The incompatibility predates
+B-124: there are **200** `utf8NoBOM` call sites in the runner at the 2026-08-11 HEAD, not the stale
+94 originally recorded here. More importantly, this is not an accidental caller mismatch:
+`AgentEvals.Tests.ps1`, `release.ps1`, and both documented maintainer commands deliberately launch
+the runner with `pwsh`. Root verification policy asks that **at least one** relevant suite be run
+under both hosts and a hostile code page; it does not require every maintainer tool to support 5.1.
 
-**Do:** decide whether this maintainer-only harness should support 5.1. If yes, centralise no-BOM
-UTF-8 writes behind a host-neutral helper and red/green the direct 5.1 run under a hostile code page;
-if no, narrow the authoring verification contract and document the `pwsh` requirement explicitly.
-Do not mechanically replace encodings without preserving fixture byte semantics.
+**Current guidance and observed baseline (researched 2026-08-11):** Microsoft documents that
+Windows PowerShell 5.1's `-Encoding UTF8` always emits a BOM, while PowerShell 6+ defaults to
+BOMless UTF-8 and exposes `utf8NoBOM`; therefore substituting `UTF8` is not byte-equivalent. (The
+value exists in PowerShell 6+, while this repository's explicit `pwsh` maintainer baseline is 7+.) It also
+describes Desktop and Core as different runtime editions and says the only true compatibility proof
+is tests on every claimed version/edition; PSScriptAnalyzer's syntax, command, cmdlet, and type rules
+are useful screening, not that proof. `#Requires -Version` is the native fail-fast declaration for a
+script's minimum host. Sources: [about Character Encoding](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_character_encoding?view=powershell-7.5),
+[about PowerShell Editions](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_powershell_editions?view=powershell-7.5),
+[Using PSScriptAnalyzer](https://learn.microsoft.com/en-us/powershell/utility-modules/psscriptanalyzer/using-scriptanalyzer?view=ps-modules),
+[UseCompatibleSyntax](https://learn.microsoft.com/en-us/powershell/utility-modules/psscriptanalyzer/rules/usecompatiblesyntax?view=ps-modules),
+and [about Requires](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_requires?view=powershell-7.5).
+The direct Windows PowerShell 5.1 `-SelfTest` was also observed red at the first `Set-Content
+-Encoding utf8NoBOM` with exit 1; the ordinary `pwsh` invocation is already the release path.
 
-**Done when:** the decision is recorded and either the full self-test passes under both hosts or the
-canonical verification text honestly scopes this harness to PowerShell 7 with a different 5.1-capable
-suite satisfying the cross-host requirement.
+**Approaches considered:**
+
+1. **Make the whole runner dual-edition.** Introduce a narrowly specified `Write-Utf8NoBom` /
+   append helper backed by `.NET` UTF-8 encoding without a BOM, migrate the 200 writes by operation
+   shape, run all four PSScriptAnalyzer compatibility rules configured for a pinned 5.1 version /
+   platform target, then prove
+   every self-test under Desktop 5.1 and Core 7 with hostile and normal code pages. Rejected for now:
+   it is not a safe enum substitution; `Set-Content`, `Add-Content`, arrays, newlines, and overwrite /
+   append semantics all need preservation, compatibility rules cannot prove behavior, and no user or
+   release path needs the older host.
+2. **Declare the existing PowerShell 7 boundary and repair verification routing — selected.** Add
+   `#Requires -Version 7.0` to the runner, retain explicit `pwsh` calls, and state the boundary beside
+   the self-test/live commands in `DEVELOPING.md`. Do not change the accurate generic hook-test host
+   fallback or root cross-host policy. Use `.claude/hooks/tests/ReleaseCiWatch.Tests.ps1 -SelfTest`
+   for the representative dual-host/hostile-code-page leg: on 2026-08-11 it directly exercised its
+   subject under Desktop 5.1.26100.8875 and Core 7.6.4 at code page 437, reporting 21 passed, 0 failed,
+   0 skipped on each host, and its four planted mutations prove red reachability. Do not launch a
+   test under 5.1 if it merely shells back out to `pwsh`.
+3. **Split a 5.1-compatible grader core from the PS7 fixture/live driver.** This could preserve some
+   cross-host value while keeping BOMless fixture generation in PS7, but creates a second invocation
+   contract and proves only the extracted portion. Keep it as a later option only if a real consumer
+   or defect shows value not covered by approach 2 and the representative cross-host suite.
+
+**Implementation plan (after the review gate):**
+
+1. Freeze `ReleaseCiWatch.Tests.ps1 -SelfTest` as the representative cross-host suite. Retain its
+   current direct-subject behavior and planted red probes; rerun it under Desktop 5.1 and Core 7 at
+   code page 437 for the implementing delivery rather than treating this design-time run as future
+   acceptance evidence.
+2. Add the minimum-version declaration to `run-agent-evals.ps1`. Extend the canonical
+   `AgentEvals.Tests.ps1` recurrence wrapper with a Windows-only direct 5.1 probe that distinguishes
+   the fix from the current failure: require the version-prerequisite error identity/text and reject
+   today's `CannotConvertArgumentNoMessage` encoding failure. Make `release.ps1` invoke this wrapper,
+   not the runner directly, so the boundary oracle is release-reachable; retain an explicit `pwsh`
+   outer host. Direct PS7 `-SelfTest` must remain green. Because the selected change does not touch
+   fixture writers and no fixture-byte oracle currently exists, verify that the diff changes none of
+   the 200 encoding operations; do not claim the self-test proves BOMless fixture bytes.
+3. Update `DEVELOPING.md` and the canonical verification wording only as needed to distinguish the
+   PS7-only agent-eval harness from the repository-level representative dual-host obligation. Verify
+   references with `rg`, run the normal self-test/release recurrence path, and record the named
+   cross-host suite, host versions, code page, commands, red mutation, and green results. Do not
+   change root `CLAUDE.md` / `AGENTS.md`: their representative-suite policy is already correct.
+
+**Required closure RCA:** no gate caught this because every supported release/live caller already
+selected `pwsh`; the defect lived in a later plan's overly broad host-verification claim, outside the
+ordinary release path. Sweep remaining maintainer-only scripts and open designs for language copied
+from the repository-level “at least one suite” rule, and distinguish declared host support from a
+wrapper that silently delegates to another host.
+
+**Proportionality:** the observed harm is an inaccurate verification promise and wasted 5.1 attempt,
+not a failed supported release path. A fail-fast declaration plus honest routing removes that harm in
+S effort. Reworking 200 byte-sensitive writes and accepting perpetual dual-edition test ownership
+would be M+ risk without a consumer; reopen that choice only on concrete demand or a defect that the
+representative cross-host suite cannot expose.
+
+**Done when:** the PS7 prerequisite is machine-enforced and documented; a direct 5.1 run fails
+clearly with the prerequisite failure rather than the old encoding error; PS7 self-test remains
+green; all callers and prose agree; and the named, red-proven `ReleaseCiWatch` suite directly
+exercises its own subject under both hosts and hostile code page 437, satisfying the unchanged
+repository-level cross-host policy.
 
 **Design/review gate:** write and lock a design before implementation, including the proportionality
 case and at least two approaches. Then obtain an independent adversarial review with **Claude Opus**;
@@ -3918,12 +3988,17 @@ the review may reject the premise or split the scope. If Opus is rate- or spend-
 review **WAITING — OPUS LIMIT** and continue only independent design/backlog work. Do not substitute
 a lower tier and call the review complete.
 
-**Done when:** fixtures cover a reusable BI view, a parameterised reporting procedure, a case where
-neither is the right abstraction, role-playing/time-version joins, non-additive measures, a
-many-to-many path, an existing-consumer compatibility change, and missing business semantics that
-must cause abstention. Pre-registered red baselines and constructible success cases are recorded;
-post-change evals demonstrate correct artifact choice and SQL semantics; and all applicable dists
-carry the guidance without weakening existing warehouse routing.
+**Fresh-context adversarial review (Codex, 2026-08-11):** **REJECTED the first design as written.**
+It found that the claimed BOMless-fixture oracle did not exist, a nonzero 5.1 assertion was already
+green before the proposed fix, the recurrence wrapper was not release-reachable, the replacement
+cross-host success world was unnamed, the generic hook fallback/root policy were already accurate,
+and the closure RCA was absent. The revision above removes the false byte claim, asserts the changed
+failure identity, routes release through the recurrence wrapper, names and independently reruns the
+red-proven `ReleaseCiWatch` suite on both hosts at CP437, narrows the prose edit, and supplies the RCA.
+This independent Codex review **does not satisfy the required Claude Opus gate**.
+
+**Status: AWAITING OPUS REVIEW.** This revised design is not locked and authorises no implementation.
+If Opus is genuinely unavailable due to limits, record `WAITING — OPUS LIMIT`.
 
 ---
 
