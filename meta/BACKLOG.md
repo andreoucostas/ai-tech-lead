@@ -4441,6 +4441,58 @@ obligations. This Codex review **does not satisfy the required Claude Opus gate*
 **Status: AWAITING OPUS REVIEW.** This revised design is not locked and authorises no
 implementation. If Opus is genuinely unavailable due to limits, record `WAITING — OPUS LIMIT`.
 
+### B-135 · Security register republishes active credential-incident metadata to every clone
+**Effort:** M · **Priority:** P1 · filed 2026-08-11 · **Invariants:** #1 #2 #6 #7
+
+**Why:** a field report says the framework-shaped findings table copied a live service-account
+name, a concrete secret-bearing file path, host information, and the fact that the credential was
+echoed into an AI transcript into committed Markdown. The password itself was absent, but this
+broadened an active credential incident's operational metadata to every clone and PR reader. The
+affected consumer repository is not present here, so those incident facts remain attributed to the
+report. The enabling framework contract is locally confirmed: canonical `SECURITY_FINDINGS.md`
+requests `File:line` plus free-form `Description`; dotnet and monorepo `/security-review`
+automatically append critical/high rows; none of the register, parent workflow, or auditor output
+contracts forbids operational identifiers or transcript detail.
+
+**Do:** keep the committed register only as a minimised coordination index for ordinary
+repository-safe code findings. For active or suspected credential incidents, make **no automatic
+Git mutation** and never echo service/principal
+names, hosts/IPs, usernames/home paths, vault/key names, concrete secret-bearing paths/lines, secret
+fragments/fingerprints, transcript/session identifiers or links, or narrative disclosure-channel
+detail into chat output or Git. The review may retain ordinary repository-relative code `file:line`
+when locator and target are safe; the parent separately synthesises any durable row and never pastes
+raw auditor/chat/tool output. Ask a human to establish restricted incident handling; create no
+placeholder row or invented reference. A contained incident may gain a minimal historical row only
+with explicit human authorisation and an approved opaque reference. Apply the safe-record contract to
+active, accepted-risk, resolved, and archived findings across all three stacks and both host-facing
+agent surfaces.
+
+**Design:** `.claude/plans/2026-08-11-b135-security-register-minimisation-design.md` weighs three
+approaches and, after fresh-context review, selects a hybrid rather than warning-only,
+active-incident stubs, or mandatory external-only tracking. Legacy schemas fail closed because
+update preserves the consumer register; migration is human-only. Stack-specific fixtures define
+reachable red/green worlds. The same-class sweep must disposition `.claude/ai-audit.log`'s
+original-path fallback before lock. History/transcript containment remains outside automatic
+framework mutation.
+
+**Fresh-context adversarial review (Codex, 2026-08-11):** **REJECTED the active-incident stub.** It
+found that even a redacted row leaks incident existence/correlation, update preserves the legacy
+unsafe schema, the original all-stack red oracle was unreachable, Angular does not append despite
+its frontmatter claim, the live harness is Claude-only and cannot install monorepo, and the committed
+AI audit log is a concrete same-class path leak. The revised design adopts the hybrid, no-placeholder
+behavior, fail-closed legacy handling, stack-specific evidence, safe response output, and an
+audit-log pre-lock disposition. This review does **not** satisfy the Claude Opus gate.
+
+**Review gate — AWAITING OPUS REVIEW:** commit this revised design for independent Claude Opus
+review. Opus may reject the premise, require no security persistence at all, or change the migration
+and audit-log boundary. No shipped implementation is authorised until the design is locked and the
+decision is recorded in `meta/workspace-decisions.md`.
+
+**Proportionality:** the reported harm is an actual disclosure expansion caused by a durable record,
+not a hypothetical scanner concern. A schema and workflow-contract correction with focused
+behavioral evidence removes most of it. A general DLP/classification engine, mandatory incident-tool
+integration, history rewrite, or automatic transcript remediation is not authorised.
+
 ---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
