@@ -4494,6 +4494,49 @@ behavioral evidence removes most of it. A general DLP/classification engine, man
 integration, history rewrite, or automatic transcript remediation is not authorised.
 
 ---
+### B-136 · Make affected framework artifacts part of completing an AI-authored change
+**Effort:** M · **Priority:** P2 · filed 2026-08-11 · **Invariants:** #1 #2 #7
+
+**Why:** the shipped Agentic Workflow and shared `.claude/workflow.md` currently require an AI to
+**flag** documentation drift at the end of a task, not repair the drift its own change created.
+`/docs-sync` is deliberately read-mostly. Warehouse writes have a stronger pre-write freshness rule,
+but even that does not establish the general post-change duty to refresh a map whose keys,
+relationships, grain, load behavior, or consumption surface the current task changed. The result is
+a permitted “code done, known repository truth stale” handoff.
+
+**Do:** replace report-only completion with change-scoped affected-artifact reconciliation. Inspect
+the diff and its consequences; update writable canonical truth made stale by this task; regenerate
+derived mirrors rather than hand-editing them; respect append-only, register, security, and
+human-intent boundaries; and finish with either the artifacts updated, `Affected artifacts: none`, or
+a concrete blocker that prevents claiming full reconciliation. Add narrowly stack-owned triggers
+where the generic rule cannot know artifact semantics—first, a bounded warehouse-map refresh after a
+change to mapped warehouse facts. Do not turn every edit into `/docs-sync`, refresh unrelated docs,
+invent ADR intent, or create a second inventory of framework files.
+
+**Design:** `.claude/plans/2026-08-11-b136-change-owned-artifact-freshness-design.md` compares four
+approaches and selects causal, ownership-aware reconciliation. It includes an artifact/action table,
+generic affected/unaffected/protected worlds, warehouse positive and false-positive controls,
+source-to-dist delivery boundaries, implementation steps, and proportionality.
+
+**Codex adversarial review:** **REQUESTED CHANGES.** The first formulation could overwrite generated,
+append-only, security-sensitive, or human-owned artifacts; mistook report-only `/docs-sync` for a
+repair path; over-triggered whole-map refreshes; and lacked negative/blocked worlds. The revised plan
+uses artifact semantics, bounded causal triggers, negative controls, and honest structural-versus-
+behavioral evidence. This review does **not** satisfy the Claude Opus gate.
+
+**Review gate — AWAITING OPUS REVIEW:** ask Opus to attack the causal ownership model, update-versus-
+flag boundary, durability of the artifact inventory, warehouse trigger, protected records, delivery
+surfaces, oracle reachability, and proportionality. Opus should explicitly consider whether a
+shared-rule-only change removes most of the harm. No implementation is authorised until its findings
+are verified/incorporated and the decision is locked in `meta/workspace-decisions.md`. If unavailable,
+record `WAITING — OPUS LIMIT`.
+
+**Proportionality:** the current report-only wording is directly observed and is the requested harm.
+A shared completion-rule correction plus the smallest domain-specific trigger removes most of it; a
+documentation graph, automatic classifier, mutating `/docs-sync`, or exhaustive skill inventory does
+not.
+
+---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see the Done section.**
