@@ -3434,6 +3434,133 @@ for workload evidence; B-124's retained evals may use it in future regression fi
 no shipped B-124 consumer. The trace must be demand-driven and
 budgeted, not an always-on whole-repository graph.
 
+**What established practice says (checked 2026-08-11):** OpenLineage's current column-lineage
+facet distinguishes a value-producing `DIRECT` dependency from `INDIRECT` influences such as
+joins, filters, grouping, sorting, windows, and conditions, then records transformation subtype,
+description, and masking. That distinction prevents a trace from claiming that a metric depends
+only on the columns in its final expression. OpenMetadata supports column-level impact tracing but
+also allows manual lineage where automation cannot surface it. Microsoft Purview's current docs are
+more important for their limits than their happy path: stored procedures with create/drop patterns,
+dynamic M parameters, non-Azure-SQL Power BI sources, process-mediated manual column links, and
+several Fabric/Synapse paths can leave lineage incomplete. Kimball grounds a metric in the fact's
+declared grain and distinguishes additive, semi-additive, and non-additive measures; for ratios the
+additive components should be aggregated before division. A catalog edge or same-named field is
+therefore evidence of a candidate path, not proof of semantic equivalence or runtime execution.
+Sources: [OpenLineage column-lineage facet](https://openlineage.io/docs/spec/facets/dataset-facets/column_lineage_facet/),
+[OpenMetadata column lineage](https://docs.open-metadata.org/latest/how-to-guides/data-lineage/column),
+[Microsoft Purview lineage guide](https://learn.microsoft.com/en-us/azure/purview/catalog-lineage-user-guide),
+[Power BI lineage limitations](https://learn.microsoft.com/en-us/purview/how-to-lineage-powerbi),
+[Fabric lineage limitations](https://learn.microsoft.com/en-us/purview/data-map-lineage-fabric),
+[Kimball facts and grain](https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/facts-for-measurement/),
+and [Kimball measure additivity](https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/additive-semi-additive-non-additive-fact/).
+
+**Fresh-context adversarial review (Codex, 2026-08-11; does not satisfy the Opus gate):** verdict
+**REJECT pending baseline-first redesign**. The reviewer found that the first candidate conflated
+connector-extracted lineage, captured execution, and runtime values; forced a branching lineage DAG
+into a false ordered path; could manufacture metric authority from an implementation owner; gave no
+executable search limits; overclaimed effective grain from static SQL; and made unimplemented
+B-126/B-128/B-129 work acceptance dependencies. Persistence also conflicted with the map's fixed
+seven-heading contract. The investigation-first plan below incorporates those findings and remains
+unlocked.
+
+**Implementation plan — revised investigation and conditional design:**
+
+1. **Authorise only the unchanged-skill baseline now.** Freeze non-telegraphing forward and reverse
+   questions, normalized edge answers, exact decisive-artifact reads, three-or-more runs per
+   available agent surface, hard budgets, truncation/inconclusive rules, and grader mutations. Ask
+   unchanged `map-warehouse` explicitly to perform the scoped second semantic pass it already offers
+   (not an ordinary map refresh). Include one key-resolution trace it should solve today, one
+   attribute trace, one branching metric, one conflict, and one budget-exhaustion case. Close or
+   narrow B-127 without shipped changes if that behavior is already reliable and decision-useful.
+2. Define the trace as one named **subject** and one named **question/direction**, not a
+   whole-repository graph: source field → published attribute/metric, warehouse field/measure → sources and consumers,
+   or reported metric → definition and inputs. Resolve ambiguous names before tracing; record exact
+   fully-qualified identifiers, requested scope, start/end, and the warehouse-map freshness/boundary.
+3. **Only if the baseline reproduces a material decision defect**, design an on-request **Trace one
+   attribute or metric** mode in the existing `map-warehouse` skill. The sources are the dotnet
+   whole-file mirrors at
+   `src/stacks/dotnet/files/{.claude,.github}/skills/map-warehouse/SKILL.md`, composed into dotnet
+   and monorepo. Do not add an always-routed skill, change Angular behavior, or run this semantic
+   second pass during an ordinary map refresh.
+4. Pre-register an executable search contract, then calibrate it from baseline cost without moving
+   the thresholds after seeing correctness. Initial ceiling: one repository-wide indexed text
+   reference search (report total hits, inspect at most the first 100 under deterministic
+   path/identifier ranking), 16 files opened, graph depth 8, 12 candidate edges per frontier,
+   4 semantic/publication artifacts, and 20k trace-task tokens. Maintain a visited node+artifact set
+   to stop cycles. Terminate as `question answered`, `budget exhausted`, `ambiguous frontier`,
+   `unsupported artifact`, or `external boundary`; list skipped candidates and the exact bounded
+   continuation. Binary/remote semantic models are unsupported unless a directly readable export or
+   connector record exists.
+5. Emit a bounded trace **edge table**, not a linear path:
+
+   | edge id | from node(s) | to node(s) | influence | operation | declared semantics | evidence coordinates | evidence dimensions |
+   |---------|--------------|------------|-----------|-----------|--------------------|----------------------|---------------------|
+
+   Stable node IDs permit branches, merges, multiple inputs/outputs, and cycles. `influence` is value,
+   row selection, grouping/partition/order, key/version resolution, or conditional control;
+   `operation` records identity, transform, aggregation, filter, join, group, window,
+   conditional/default, deduplication, conversion, union, or semantic alias. Declared input/output
+   grain, grouping, temporal rule, cardinality, and additivity are independently `Unknown` when the
+   artifact cannot establish them. An optional narrative may summarize the graph but never replace it.
+6. Keep evidence on four independent axes: **origin** (repository, catalog, execution event, human),
+   **acquisition** (direct read, connector-extracted, run-captured, attested), **assertion** (declared
+   transform, possible path, observed execution, observed value behavior), and **scope/time**
+   (branch/version, environment, run/job ID, timestamp). Add completeness only as `none`, `bounded`
+   with its enumerated frontier, or `externally attested`. Use map provenance only for its existing
+   fact→dimension assertion. Static SQL never proves execution or effective cardinality; a captured
+   run proves only that run; connector output inherits the connector's documented limits.
+7. For a metric, add a **candidate semantic contract**, not a canonical one: implementation
+   definition, publication definition, accountable business authority, authority evidence, event or
+   declared grain, numerator/denominator or base measures, aggregation/additivity, dimensions,
+   filters/exclusions, calendar/as-of rule, units/currency/time zone, null/default behavior, and
+   publication consumers. Authority requires an explicit governance/convention artifact or named
+   accountable attestation for that metric and scope; a developer, catalog owner, or model owner is
+   not interchangeable with business authority. Preserve conflicting definitions separately and
+   abstain. Include a fixture where a real governance artifact makes authority reachable.
+8. Default to an ephemeral response. Persist only with explicit user approval to a separate
+   `docs/warehouse-traces/<stable-subject-id>.md`, linked from the existing map Coverage or
+   Dimensional-semantics section without adding an eighth required heading. Do not auto-retain or
+   auto-delete traces. Record subject/question, verifier, verified date, source-map fingerprint, the
+   normalized sorted list of decisive artifact paths+content hashes, coverage/frontier, and refresh
+   triggers. A changed decisive hash or missing path marks it stale; replacement/retirement remains
+   an explicit reviewed edit.
+9. Design fixtures that discriminate rather than reward abstention: direct rename; derived measure
+   with filter-only and join-key influences; deduplication/window; currency and time-zone conversion;
+   ratio whose components must aggregate before division; SCD effective-date resolution; reverse
+   trace from a semantic/report measure; conflicting definitions; dynamic SQL/external catalog gap;
+   and a same-named decoy. Include clean controls and paired fixtures where one predicate changes the
+   correct answer. Mutate missing indirect edges, wrong direction, wrong grain, fabricated authority,
+   false completeness, and plausible-but-wrong field binding; show every deterministic grader red
+   and green and require direct reads of the decisive artifacts.
+10. Measure utility, not document production. Use a self-contained decision such as whether report X
+    must migrate before attribute Y changes, or whether metric Z aggregates its components before
+    division; construct paired worlds whose correct outcome differs only at a decisive trace edge.
+    Success requires the trace to change that decision correctly while staying within the budget;
+    a complete-looking path that does not affect a decision, or a correct abstention on every case,
+    is insufficient. B-125/B-126/B-128/B-129 may later consume the contract, but are not acceptance
+    dependencies. B-128 receives only candidate query/physical paths; workload frequency, volume,
+    latency, skew, and runtime use require separate telemetry or captured execution evidence.
+11. After implementation, repeat behavioral trials on each available supported host and verify
+    greenfield, brownfield, and update delivery through both installer twins and relevant root stack
+    detection. Confirm delivery and update of both skill mirrors plus dotnet/monorepo composition.
+    Separately use behavioral fixtures for trace/staleness
+    semantics and a brownfield document fixture to prove an existing user-authored map/trace is not
+    silently overwritten. Then compose/freshness and `validate-dist` ×3; Angular receives only
+    release-wide stamps/changelog truth, not warehouse behavior.
+
+**Proportionality:** the existing map already identifies edges, consumption surfaces, and offers an
+on-request semantic second pass; no behavioral harm is yet observed. Only the unchanged-skill
+baseline is presently proportionate and authorised. If it demonstrates a repeatable decision defect,
+the smallest candidate is one demand-triggered bounded edge response, ephemeral by default. A
+persistent service/graph, parser, catalog integration, whole-warehouse scan, automatic retention, or
+new skill is not authorised.
+
+**Status: AWAITING OPUS REVIEW.** This candidate is not locked and authorises no implementation.
+The independent Codex critique above improved the candidate but does not clear the gate. Give this
+revised investigation-first plan to Claude Opus, licensed to reject the baseline, evidence axes,
+numeric budget, graph contract, persistence choice, and premise. If Opus is genuinely unavailable
+due to limits, record `WAITING — OPUS LIMIT` rather than substituting a lower-tier review.
+
 **Design/review gate:** locked design plus proportionality case, followed by an independent
 adversarial **Claude Opus** review before implementation. If Opus is unavailable due to limits,
 record **WAITING — OPUS LIMIT** and leave implementation blocked while independent work continues.
