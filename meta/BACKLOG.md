@@ -4231,7 +4231,7 @@ pass on the materially redesigned plan before calling it locked. If Opus is rate
 mark `WAITING — OPUS LIMIT`; do not substitute a lower tier or this existing review and call the
 gate satisfied.
 
-### B-130 · `docs-sync-check` twin-parity test fails under Windows PowerShell 5.1 on unmodified master
+### B-130 · Diagnose or retire the historical Windows PowerShell 5.1 parity failures
 **Effort:** S · **Priority:** P3 · filed 2026-08-08 · **Invariants:** #3
 
 **Why:** discovered incidentally while resuming B-54: `src/core/tests/hooks/ScriptTwinParity.Tests.ps1`'s
@@ -4255,6 +4255,71 @@ masked there too.
 fixture reports `[MISSING] Mirror and version integrity` under 5.1 only. Not investigated further;
 may or may not be the same root cause as the item above. Both were confirmed pre-existing and out
 of scope for B-54 by stashing all B-54 changes and reproducing on baseline `master` (`9ddc97a`).
+
+**Current diagnosis and guidance (researched 2026-08-11):** ordinary direct Windows PowerShell
+5.1.26100.8875 runs at code page 437 are green (`ScriptTwinParity.Tests`: 7/0/0;
+`FrameworkDoctor.Tests`: 30/0/1, with one unrelated missing-Python skip), but that is only the
+control. The historical defect is deterministic when the parent is launched by absolute 5.1 path
+and neither `pwsh` nor `powershell.exe` is visible to the child through `PATH`: `docs-sync-check.ps1`
+and `framework-doctor.ps1` both select a **bare** child host, reproducing `docs exit mismatch` at
+`9500f5f` and the exact `[MISSING] Mirror and version integrity` at `9ddc97a`. Their relevant subject,
+test, and harness blobs are unchanged through HEAD (apart from an unrelated changelog test), so the
+ambient green is environmental, not an intervening fix. This matches B-71 and the documented
+maintainer environment whose `PATH` omitted System32. Encoding was a hypothesis, not the cause.
+Microsoft documents distinct Desktop/Core runtimes and says claimed cross-edition compatibility
+ultimately requires tests on every supported edition. Sources:
+[about Character Encoding](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_character_encoding?view=powershell-7.5)
+and [about PowerShell Editions](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_powershell_editions?view=powershell-7.5).
+
+**Approaches considered:**
+
+1. **Apply the suspected `ReadAllText` encoding fix.** Rejected: the trigger is child-host visibility,
+   not decoded content. This would leave the command-resolution defect live.
+2. **Resolve the child host absolutely and regression-test the missing-`PATH` world — selected.** For
+   `framework-doctor.ps1`, invoke `template-checks.ps1` with the current process executable. For
+   `docs-sync-check.ps1`, preserve the deliberate PS7 preference when its resolved command has a
+   usable absolute `.Source`, otherwise fall back to the current process executable; never retain a
+   bare token after resolution. This preserves existing policy while removing ambient `PATH` from
+   the child launch.
+3. **Make every child inherit the current host.** Simpler, but could silently remove docs-sync's
+   deliberate preference for PS7 where installed. Select it only if review establishes that the
+   preference has no supported semantic purpose.
+
+**Proportional implementation plan (after review):**
+
+1. Improve the parity failure to print host/version, fixture branch, both exits, stdout, and stderr.
+   Add a docs consumer/reachability fixture that actually includes the child checks; today's
+   `DocsFixture` copies only docs-sync and cannot exercise the relevant launch.
+2. For each subject, pre-register controlled `PATH` fixtures with an exit-0 child, an exit-17 child,
+   and an unavailable bare child. Prove before the fix that the missing-host world goes red and that
+   the old logic can leave misleading exit/output; after the fix require the marker/exit to prove
+   the intended child ran, exit 17 to propagate as failure, no command-resolution stderr, and no
+   false success. Run host `{5.1, 7}` × child-host visibility `{present, absent}` once per
+   deterministic cell; 437 and 65001 are secondary one-shot controls, not repeated causal axes.
+3. Implement the narrow absolute-resolution policy in both authored PowerShell subjects, compose all
+   dists, and run twin parity plus framework-doctor suites on both hosts. Audit the same selector
+   shape in shipped and maintainer `Invoke-HookTests.ps1`; preserve B-90's permitted `pwsh`
+   preference, but ensure any selected command retains an absolute source or current-host fallback.
+   Split the item only if implementation proves the two subjects require genuinely different policy.
+
+**Proportionality:** the defect is current and constructible: supported 5.1 validation failed and the
+doctor falsely diagnosed a healthy mirror when child `PATH` differed from the parent invocation.
+Resolving two existing selectors absolutely, plus two deterministic regressions and a bounded
+same-shape audit, is smaller and more probative than repeated environmental stress or encoding edits.
+
+**Review gate — AWAITING OPUS REVIEW:** obtain a fresh independent Claude Opus review of the closure
+threshold, matrix, diagnostic oracle, and decision not to patch the subjects. A separate
+fresh-context Codex critique must first try to falsify the current baseline and this design, but does
+not satisfy that gate. If Opus is unavailable due to limits, record `WAITING — OPUS LIMIT`; no
+implementation is authorised.
+
+**Fresh-context adversarial review (Codex, 2026-08-11):** **REJECTED the retirement design.** It
+reproduced both exact historical failures by controlling child-host visibility, proved the relevant
+blobs had not changed, identified the shared bare-host selector, showed that the proposed matrix
+omitted the causal axis and duplicated code-page cells, and found that `DocsFixture` never reached
+the child. The revised design above uses the constructible trigger, child reachability/exit markers,
+absolute resolution, and the smaller host × visibility matrix. This Codex review does **not satisfy
+the required Claude Opus gate**.
 
 ### B-131 · `release.ps1` and `template-checks` disagree on changelog-head grammar
 **Effort:** S · **Priority:** P3 · filed 2026-08-09 · **Invariants:** #7
