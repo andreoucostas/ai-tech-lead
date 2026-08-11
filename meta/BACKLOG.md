@@ -4339,6 +4339,96 @@ require the literal first `## ` line to be the version head, matching `release.p
 reading, since a shipped/authored changelog is not expected to carry other `## ` sections above its
 version history) and apply it identically in both twins.
 
+**Established practice and local contract (researched 2026-08-11):** Keep a Changelog recommends an
+`Unreleased` section above released versions and adding a new one after a release; that is a valid
+external convention, not malformed Markdown. SemVer defines version precedence but does not define
+changelog layout. This repository intentionally uses a narrower workflow: four authored changelogs
+must put the target release as the first H2, `release.ps1` atomically changes its state from
+`Unreleased` to an ISO-like date, composition must reproduce all heads, and shipped
+`template-checks` rejects an `Unreleased` current version. Sources:
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
+[Semantic Versioning 2.0.0](https://semver.org/). The defect is therefore internal contract drift,
+not failure to implement Keep a Changelog. Ownership is decisive: installers preserve and do not
+install `CHANGELOG.md`, while `template-checks` also runs inside consumer repos. The local grammar
+may apply only where `.template-repo` marks a framework-owned template; an unmarked consumer's
+changelog is product-owned and must not be parsed or rejected by this gate.
+
+**Approaches considered:**
+
+1. **Adopt the full Keep a Changelog layout.** Teach release tooling to locate the first matching
+   version below an optional `## [Unreleased]`, insert/retain sections, and update link ranges.
+   Rejected as disproportionate: no consumer requested that format, atomic four-head stamping is
+   already shipped and red-proven, and accepting a second layout expands mutation and ambiguity.
+2. **Make the literal first column-zero `## ` line the canonical framework-owned head — selected.**
+   Define one two-state lexical contract: `## <X.Y.Z> — Unreleased` is accepted by release preflight
+   only when all four authored heads have that target/state; `## <X.Y.Z> — <YYYY-MM-DD>` is accepted
+   only when the relevant authored heads agree and the resolved target/date matches the phase.
+   Template validation accepts only the dated state. This is not a Markdown parser, full SemVer (the
+   triplet is digits/dots only), ISO date validation, or chronology check. It requires one ASCII
+   space after `##`, a literal UTF-8 em dash with surrounding spaces, and whole-line match; prose and
+   blockquotes before it are allowed, while fences/indentation have no special parsing semantics.
+   Apply it only to `.template-repo` roots. Unmarked consumers ignore any `CHANGELOG.md` and perform
+   framework-version pair checks only.
+3. **Loosen `release.ps1` to template-checks' current “first version-shaped H2 anywhere” rule.** This
+   makes the two gates agree cheaply but permits release mutation below an unowned H2 and can stamp a
+   file whose visible head represents a different state. Rejected because it weakens the fail-safe
+   release boundary.
+
+**Implementation plan (after review):**
+
+1. Freeze a shared fixture table before changing parsers: agreed dated target; all-four target
+   `Unreleased`; mixed dated/Unreleased and disagreeing dates; non-version first `## ` followed by a
+   dated target; wrong target; bracketed target; hyphen/en-dash variants; trailing text; missing H2;
+   prose/blockquotes before a valid head; LF/CRLF; and a repeated current-version heading. Reject a
+   repeated current-version lexical heading so stamping cannot leave a later `Unreleased` duplicate.
+   Diagnostics assert category plus salient observed value, and exact offending line only when one
+   exists. State explicitly that date shape is lexical; B-54's deferred wrong/future-date question
+   remains outside scope.
+2. Change both authored `template-checks.ps1` and `.sh` twins to branch on ownership. Marked template:
+   require `CHANGELOG.md`, capture the literal first column-zero `## ` line, validate the local
+   whole-line grammar/date state, and compare its version. Unmarked consumer: ignore a present or
+   absent consumer changelog and pair-check only. Add a green unmarked Keep-a-Changelog fixture and
+   a red marked/missing-changelog fixture. Do not add a runtime dependency or pretend the parsers
+   share executable code; keep one documented contract and shared fixture rows.
+3. Align the third executable parser in `.claude/evals/run-agent-evals.ps1`: its paid-live preflight
+   must require the dated framework-owned literal head, not skip to a buried version and call it the
+   head. Add reachable self-test cases for buried version, `Unreleased`, and dated target.
+4. Extend `ReleaseChangelogStamp.Tests.ps1` and `ScriptTwinParity.Tests.ps1` with the frozen table.
+   Red-prove the current divergence using `## Unreleased` above the target: current template checks
+   pass while release refuses. Then require both template twins to refuse it, release to remain
+   fail-safe before mutation, retry/idempotence and mixed-state checks to stay green, and composition
+   to preserve the accepted target/date head across source and dist. Exercise each grammar/state row
+   once per parser implementation (three parsers across two languages), not as a seven-path product;
+   separately plant one sentinel in each four preflight/seven postcondition path and prove all three
+   stack compositions.
+5. Run the modified twin suite under PowerShell 7, Windows PowerShell 5.1, and Git Bash with LF/CRLF;
+   compose/freshness, `validate-dist`, all three dist hook suites, the meta suite, release changelog,
+   eval self-test, and release staging recurrences. Update the root and three authored changelogs,
+   version target, release header contract, and known `DEVELOPING.md` drift that still describes
+   shipped notes as conditional. Record the locked choice in `meta/workspace-decisions.md` after
+   Opus approval; close with `meta/LEARNINGS.md`, the mandatory RCA/same-class sweep, release, and
+   observed source-to-dist delivery.
+
+**Proportionality:** the observed mismatch fails safe and no shipped release escaped it, so the
+operational harm is modest: framework validation can report a false green for a format that mandatory
+release preflight then refuses. The smallest sufficient change is ownership-bounding and aligning
+three short parsers plus focused fixtures. A general changelog parser, shared module, or
+Keep-a-Changelog migration would cost more and broaden release mutation without observed benefit.
+
+**Design/review gate — AWAITING OPUS REVIEW:** before implementation, obtain a fresh independent
+Claude Opus adversarial review of the local-format decision, exact grammar, state split, fixture
+reachability, cross-language parity, and proportionality. First obtain and incorporate a separate
+fresh-context Codex critique; it does not clear the Opus gate. If Opus is limited, record
+`WAITING — OPUS LIMIT`. This plan is not locked and authorises no implementation.
+
+**Fresh-context adversarial review (Codex, 2026-08-11):** **REQUESTED CHANGES.** It found that the
+first design would wrongly impose private release grammar on preserved consumer changelogs, omitted
+the live-eval parser, called a lexical regex Markdown/SemVer/date validation, left mixed/duplicate
+states indeterminate, multiplied fixture axes, and omitted delivery/RCA work. The revision above
+uses `.template-repo` as the ownership boundary, ignores consumer changelogs, aligns all three
+parsers across two languages, defines state/path axes separately, and adds delivery and closure
+obligations. This Codex review **does not satisfy the required Claude Opus gate**.
+
 ---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
