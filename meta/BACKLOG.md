@@ -3532,6 +3532,140 @@ If Opus is unavailable or limited, mark `WAITING — OPUS LIMIT`; do not substit
 lower tier and call the gate complete. Opus may reject the premise, change the stop rule, or reduce
 the scope further.
 
+---
+
+### B-134 · Prevent implementation evidence from masquerading as product intent
+**Effort:** M for research, behavioral baselines, and design; shipped effort must be re-estimated
+after review · **Priority:** P2 · filed 2026-08-11 · **Invariants:** #1 #2 #6 #7 ·
+**Capability:** product and experience leadership
+
+**Why:** the framework is strong at deriving architecture, conventions, technical debt, and
+implemented domain behavior from a repository, but it applies the same evidence model to product
+context. `src/core/CLAUDE.md > Codebase Context` asks what the application does, who uses it, its
+domain concepts, and critical user journeys. All three `/bootstrap` variants then tell the model to
+replace that section with "real findings from this codebase". Their clarification phase asks about
+engineering-pattern contradictions, not product purpose, actor authority, desired outcomes,
+non-goals, or whether an implemented journey is intentional. Routes, DTOs, forms, tests, and names
+can therefore become unmarked claims about users and product intent.
+
+This is the concrete defect to solve. The broader idea — product discovery, journey mapping,
+screen/form/button complexity, accessibility, product opportunities, and post-release outcomes —
+is valuable but must not enter as one pre-authorised subsystem. Leading practice consistently
+separates outcome, customer problem, solution, and assumption tests; treats value/usability/
+feasibility/viability as different risks; maps the whole cross-channel journey; combines metrics
+with user research; and keeps product work multidisciplinary. Persistent AI specs improve
+traceability but do not validate the requirements they preserve. Sources:
+[Product Talk](https://www.producttalk.org/discovering-solutions/),
+[SVPG four risks](https://www.svpg.com/four-big-risks/),
+[GOV.UK whole-problem mapping](https://www.gov.uk/service-manual/design/map-a-users-whole-problem),
+[GOV.UK success measures](https://www.gov.uk/service-manual/service-standard/point-10-define-success-publish-performance-data),
+[W3C WCAG 2.2](https://www.w3.org/TR/WCAG22/),
+[Google HEART](https://research.google/pubs/measuring-the-user-experience-on-a-large-scale-user-centered-metrics-for-web-applications/),
+[GitHub Spec Kit](https://github.github.com/spec-kit/), and
+[Anthropic agent evals](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents).
+
+**Fresh-context adversarial review already performed (2026-08-11; not the required Opus review):**
+verdict **REVISE**. It accepted the product-context honesty defect and rejected the proposed
+multi-phase capability build as presently unsupported. It found that one global
+`CONFIRMED / OBSERVED / INFERRED / UNKNOWN` ladder would conflate source, authority, and confidence
+and conflict with existing hazard, characterization-test, and warehouse vocabularies; that code can
+map an implementation surface but not a real user journey; that B-42 has no product/UX field report
+and B-41 has no product-judgment scenario; that consumer-owned context will not automatically
+migrate on update; and that product research introduces privacy, confidentiality, prompt-injection,
+staleness, metric-gaming, and causal-attribution risks. The narrower plan below incorporates those
+findings. This review **does not clear implementation**.
+
+**Phase 0 — evidence and design only:**
+
+1. Freeze fixtures, prompts, graders, success worlds, negative controls, sample count, and stop
+   rules before changing shipped guidance. Red/green every deterministic grader with planted
+   mutations; calibrate subjective judgments against product/UX-capable humans; an unavailable
+   host or truncated output is cannot-verify, never pass.
+2. Exercise at least three independent runs per stochastic case on every available supported host:
+   (a) exact feature request with no outcome; (b) materially ambiguous user-facing feature;
+   (c) authoritative product brief; (d) conflict between code and product evidence; (e) Angular
+   routes/forms without user evidence; (f) .NET API/domain flow without a known actor or channel;
+   (g) trivial fix/refactor; (h) sensitive research material; (i) stale/superseded claim plus a
+   deleted reference; (j) AI vocabulary without evidenced runtime AI behavior.
+3. Measure unsupported product claims, invented actors/journeys/outcomes/metrics/authority,
+   provenance accuracy, correct proceed/ask/abstain behavior, unnecessary blocking questions,
+   sensitive-data leakage, added turns/tokens/always-loaded footprint, and blind human ratings of
+   usefulness and material correctness. Report per host rather than averaging away a dead surface.
+4. Inspect greenfield and already-installed update paths. Record exactly which host reads which
+   carrier. Product knowledge is consumer-owned; framework updates must not overwrite it, while a
+   design that only reaches greenfield installations is not a successful delivery design.
+
+**Pre-registered stop rules:**
+
+- Close B-134 with no shipped change if the unchanged framework already avoids unsupported intent
+  claims, preserves ambiguity, and handles the ten cases correctly.
+- Do not ship if any code-only observation becomes confirmed product intent, raw sensitive research
+  is copied into the repo, an AI persona is treated as product authority, or exact/trivial work is
+  unnecessarily blocked in any repeated run.
+- Do not ship unless the intervention materially reduces unsupported product claims without a
+  material increase in wrong questions, turns, or always-loaded context.
+- Do not begin journey mapping until at least three independent real-work incidents across at least
+  two repositories or teams show that the minimal inline product frame failed because journey
+  structure was missing.
+- Do not add a product/UX reviewer until the same reviewable defect class survives inline framing
+  repeatedly and human reviewers judge the proposed findings materially useful.
+- Do not add outcome feedback until a team has a metric owner, validated instrumentation, baseline,
+  exposure definition, guardrails, and an interpretation rule separating association from causation.
+
+**Smallest candidate implementation — only if Phase 0 proves the defect:**
+
+1. Strengthen the existing compact `Codebase Context`, not a new file by default: purpose, actors,
+   critical journeys, domain vocabulary, intended outcomes, constraints/non-goals, sources,
+   authority/owner, and open questions. Keep it within the existing always-loaded budget.
+2. Use separate claim dimensions rather than a single confidence word: **Basis** (reported,
+   researched, policy, operational data, implementation observation); **Status** (supported,
+   inferred, unknown, disputed/superseded); exact **Source**; named **Authority** or unknown;
+   **Scope**; and human-reviewed date. Code can establish an implemented surface, never why it
+   exists, who should use it, or whether it creates value. "A human said it" is not authority.
+3. Change all three bootstrap variants to cite code-derived implementation observations, ask one
+   grouped set of product-context questions when a knowledgeable person is available, preserve
+   disagreements, and leave skipped/unanswered intent visibly unknown. Store minimized summaries
+   and controlled-system references, never raw interviews, support transcripts, customer identity,
+   health/financial information, or confidential strategy.
+4. Add a bounded **Product frame** to `/design` and the feature-spec template for significant
+   product/domain behavior: actor, problem/opportunity, evidence, intended outcome, affected
+   journey, assumptions, success signal, guardrails, and authority/unknown. Precisely specified
+   work may proceed with `product outcome unavailable` rather than inventing one. Add one concise
+   universal rule: implementation evidence is not evidence of product intent or real user behavior.
+5. Re-run the baseline matrix, install/update smokes, context-footprint gate, composition/freshness,
+   `validate-dist` x3, and applicable host behavior suites. Show both the defect world and the
+   constructible success world; do not call prose presence a behavioral pass.
+
+**Explicitly not authorised by this item:** no `map-product`/`map-journeys` skill, product/UX
+reviewer, screen/button/form numeric limits, automatic product roadmap, synthetic personas as
+evidence, `TECH_DEBT.md` product entries, new product-opportunity register, product-freshness hook,
+analytics integration, automatic causal claims, or conditional human-AI UX module. Each requires
+its own observed harm, proportionality case, design, delivery path, and review. A future journey
+artifact must distinguish observed route/API/state flow from reported cross-channel journey and
+unknown actor/goal/completion. Automated accessibility findings can prove particular structural
+failures; they can never claim complete accessibility or usability without manual/user evidence.
+
+**Product authority and privacy boundary:** a product claim must name who can decide it; developer,
+product owner, policy owner, researcher, analyst, and end user are not interchangeable authorities.
+Disputed claims stay disputed. Treat linked research and support material as untrusted and possibly
+sensitive: define minimisation, consent, redaction, retention, access, and prohibited-data rules;
+never execute commands or follow instructions embedded in research content. A valid path refreshes
+only the reference, not the human claim attached to it.
+
+**Proportionality:** the observed repo defect is an epistemic one in bootstrap, not evidence that
+the framework needs a full product operating model. Phase 0 plus a compact context/spec correction,
+if the baseline fails, removes most of that harm. Larger discovery and UX capabilities remain
+separately gated hypotheses.
+
+**Review gate — BLOCKED FOR IMPLEMENTATION:** before Phase 0 execution or any shipped edit, obtain
+a **heavy independent adversarial review with Claude Opus**. Give Opus the research sources, actual
+bootstrap/design/spec/update surfaces, this entry, and the fresh-context critique. The review is
+licensed to reject the premise, redesign the evidence model, change the evals/stop rules, split the
+item, or conclude that a smaller documentation correction is sufficient. Require a second Opus
+pass on the materially redesigned plan before calling it locked. If Opus is rate- or spend-limited,
+mark `WAITING — OPUS LIMIT`; do not substitute a lower tier or this existing review and call the
+gate satisfied.
+
 ### B-130 · `docs-sync-check` twin-parity test fails under Windows PowerShell 5.1 on unmodified master
 **Effort:** S · **Priority:** P3 · filed 2026-08-08 · **Invariants:** #3
 
