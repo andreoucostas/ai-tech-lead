@@ -4097,6 +4097,9 @@ If Opus is unavailable or limited, mark `WAITING — OPUS LIMIT`; do not substit
 lower tier and call the gate complete. Opus may reject the premise, change the stop rule, or reduce
 the scope further.
 
+**Status: AWAITING OPUS REVIEW.** The evidence-first design is captured but not locked, and
+authorises neither Phase 0 execution nor shipped changes until the required Claude Opus review.
+
 ---
 
 ### B-134 · Prevent implementation evidence from masquerading as product intent
@@ -4230,6 +4233,9 @@ item, or conclude that a smaller documentation correction is sufficient. Require
 pass on the materially redesigned plan before calling it locked. If Opus is rate- or spend-limited,
 mark `WAITING — OPUS LIMIT`; do not substitute a lower tier or this existing review and call the
 gate satisfied.
+
+**Status: AWAITING OPUS REVIEW.** The evidence-first design is captured but not locked, and
+authorises neither Phase 0 execution nor shipped changes until the required Claude Opus review.
 
 ### B-130 · Diagnose or retire the historical Windows PowerShell 5.1 parity failures
 **Effort:** S · **Priority:** P3 · filed 2026-08-08 · **Invariants:** #3
