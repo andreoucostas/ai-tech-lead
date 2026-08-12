@@ -11,6 +11,12 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## Unreleased
+
+- B-135: security review now keeps active or suspected credential incidents out of Git and durable
+  chat detail, minimises ordinary security rows, fails closed on legacy registers, and records a
+  constant audit sentinel instead of a path when normalisation fails.
+
 ## 0.52.0 — 2026-08-10
 
 - B-125: `map-warehouse` now emits evidence-ranked modelling-health findings for grain,

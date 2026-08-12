@@ -1525,7 +1525,6 @@ locked decision:
   protected-detail principle. Apply identically to both twins' full fallback chains, not just the
   first failure branch.
 
-**What remains open.** Implementation of the design as now finalised (base hybrid + both refinements,
-refinement 2 in its corrected form), independent verification against the design's Verification
-contract plus a new red-test for the sentinel behavior across every fallback branch in both twins,
-and the standard RCA before B-135 closes.
+**Closed 2026-08-12.** Implemented, independently verified (build/validate-dist ×3, full hook suite,
+install smoke), and RCA filed — see `meta/BACKLOG.md` Done section for B-135. Nothing remains open
+under this decision.

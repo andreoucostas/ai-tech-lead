@@ -1,5 +1,5 @@
 ---
-description: "Security gate on changed code: spawns the security-auditor subagent, cross-checks tenant isolation and shared-library auth patterns, appends critical/high findings to SECURITY_FINDINGS.md with SLA due dates. Invoke before presenting any change that touches auth, payments, balances, ledgers, transactions, idempotency, or secrets."
+description: "Security gate on changed code: spawns the security-auditor subagent, cross-checks tenant isolation and shared-library auth patterns, and records only repository-safe critical/high findings in SECURITY_FINDINGS.md. Credential incidents require restricted human handling and never mutate Git automatically."
 argument-hint: "[files or PR; empty = uncommitted changes]"
 ---
 
@@ -33,6 +33,15 @@ The auditor handles pattern-level checks. You handle what static patterns cannot
 Spot-check 2–3 findings by opening the cited files and confirming the pattern is real. The auditor uses heuristics; false positives happen. Confirm or downgrade them.
 
 ### Step 5 — Synthesise
+
+Classify each finding before writing the response. For an ordinary code finding, include a
+repository-relative `file:line` only when both the locator and target are safe for every repository
+reader. For an active or suspected credential finding, do not echo protected incident detail. State
+only that restricted human handling is required and the minimum immediate action class (for example,
+revoke/rotate the credential and stop further disclosure). Do not name identities, infrastructure,
+tenants, environments, customers, hosts/IPs, users/home paths, vaults/keys, concrete secret paths or
+lines, transcript/session/log/CI artifacts, disclosure channels, secret material, partial or masked
+fragments, secret-derived fingerprints, or unapproved references/URLs.
 
 ## Output Format
 
@@ -73,13 +82,28 @@ Be direct. Do not praise code for not being insecure — that is the baseline.
 
 ## Step 6 — Update SECURITY_FINDINGS.md
 
-For every finding rated `critical` or `high`, append a row to `SECURITY_FINDINGS.md`.
+For every ordinary repository-safe finding rated `critical` or `high`, synthesise and append a
+minimised row to `SECURITY_FINDINGS.md`. Never paste auditor/chat/tool output into the register.
+
+For an active or suspected credential finding, make no automatic Git mutation and create no
+placeholder row or invented reference. Ask a human to establish restricted incident handling. Only
+after containment may a human with incident authority explicitly authorise a minimal historical row
+using an organisation-approved opaque reference; never infer containment yourself.
+
+Before appending, require the current header containing `Affected area (redacted when sensitive)` and
+`Repository-safe summary`. If either heading is absent, do not modify the register. Give only this
+non-sensitive instruction: `SECURITY_FINDINGS.md uses a legacy schema; a human with incident
+authority must review/redact or remove unsafe legacy metadata, then adopt the current header.`
+Never ingest or restate legacy active, accepted-risk, resolved, or `docs/security-archive.md` rows.
 
 Calculate the due date from today:
 - `critical` → today + 7 calendar days
 - `high` → today + 30 calendar days
 
-Only append — never modify or delete existing rows. If a finding duplicates an open row (same file:line, same category), note the duplicate in the finding's description rather than adding a second row.
+Only append during ordinary maintenance — never modify or delete existing rows. A human with
+incident authority may redact or remove unsafe metadata during containment. If a finding duplicates
+an open row (same safe affected area, same category), update neither row and note the duplicate only
+in a repository-safe response.
 
 If the verdict is `APPROVE` (no critical or high findings), note this in the output but do not modify `SECURITY_FINDINGS.md`.
 

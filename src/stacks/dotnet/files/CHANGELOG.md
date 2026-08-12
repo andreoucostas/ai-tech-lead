@@ -4,6 +4,11 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## Unreleased
+
+- Security review no longer records active or suspected credential incidents in Git or echoes their
+  protected detail. Ordinary findings use minimised rows; legacy registers require human migration.
+
 ## 0.52.0 — 2026-08-10
 
 - `map-warehouse` now reports evidence-ranked modelling-health findings and offers a bounded

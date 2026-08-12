@@ -60,12 +60,12 @@ $timestamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
 # local absolute paths (usernames, drive layout). The hook's cwd is the repo root.
 # Note: $ErrorActionPreference is SilentlyContinue, under which Resolve-Path on a missing
 # path returns $null *without throwing* — force a terminating error and guard the result
-# so a non-existent/cross-drive path falls back to the original rather than logging blank.
-$rel = $filePath
+# so a non-existent/cross-drive path records a constant sentinel rather than leaking the original.
+$rel = '[path-normalisation-failed]'
 try {
     $r = Resolve-Path -LiteralPath $filePath -Relative -ErrorAction Stop
     if ($r) { $rel = [string]$r }
-} catch { $rel = $filePath }
+} catch { $rel = '[path-normalisation-failed]' }
 
 "$timestamp`t$branch`t$rel" | Out-File -FilePath '.claude\ai-audit.log' -Append -Encoding utf8
 

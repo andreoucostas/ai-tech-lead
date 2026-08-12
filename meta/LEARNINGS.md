@@ -1054,3 +1054,35 @@ plausible counterexamples—omitted sections, fixture-specific false rows, corre
 filename discovery instead of reads, and a recommendation that states the rule before contradicting
 it. A grader is trustworthy only when those worlds are red, not merely when deleting the expected
 row is red.
+
+## 2026-08-12 — a crashed implementer round still leaves real work on disk; verify what's there before assuming zero progress
+
+B-135's codex implementer round lost network connectivity to the model backend partway through
+(`No such host is known` on the codex websocket endpoint) and exited non-zero. The failure looked
+total, but `git status` showed 19 of ~20 target files already patched — codex applies edits as it
+goes, not in one commit at the end, so a mid-run crash still leaves genuine, checkable progress.
+Treating the non-zero exit as "nothing happened" would have discarded real, mostly-correct work and
+re-run the whole round from scratch. The right move was to diff what actually landed against the
+locked design, keep what was correct, and finish the rest by hand.
+
+Two of the four defects a from-scratch run of the freshly-written tests caught were in the tests
+themselves, not the implementation: (1) `"catch \{ \$rel = ...\}"` inside a **double-quoted**
+PowerShell string interpolates `$rel` — there is no `\$` escape in PS double-quoted strings, only
+backtick (`` `$ ``) suppresses interpolation — so an undefined `$rel` silently vanished, weakening
+the regex until it matched almost anything. The sibling assertion one line above happened to still
+pass afterward, but only because its weakened form coincidentally still matched real source text; it
+was not actually testing what its failure message claimed. Lesson: a static-guard regex built from a
+double-quoted string containing `$` needs a code-reading check, not just a green run, because the
+green run it "always" produced was for the wrong reason. (2) Two required literal substrings for a
+`.Contains()`-style check were split across a markdown line-wrap in the source prose it was checking
+— exact-substring assertions over hand-wrapped prose are one reflow away from a false red **and**,
+as this run showed, mask a missing phrase behind whichever required string happens to be checked
+first in a loop, since `Assert` throws and stops the remaining checks in that `It` block.
+
+B-135 also confirmed a second same-class disclosure surface beyond the one the field report named:
+`.claude/hooks/audit-trail.ps1`/`.sh` fell back to the original absolute path (leaking local
+username/drive layout) on `Resolve-Path`/`realpath` failure — found and fixed inside the same item
+per Maintenance model rule 5, not deferred. `TECH_DEBT.md` was checked as a same-shaped committed
+free-text register and found low-risk (its schema has no field that naturally invites operational
+identifiers), so it was not treated as a third instance — but it is the same append pattern and
+worth a glance if this class resurfaces.

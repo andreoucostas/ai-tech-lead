@@ -1,5 +1,5 @@
 ---
-description: "Security gate on changed code: spawns the security-auditor subagent, cross-checks tenant isolation and shared-library auth patterns, appends critical/high findings to SECURITY_FINDINGS.md with SLA due dates. Invoke before presenting any change that touches auth, payments, balances, ledgers, transactions, idempotency, or secrets."
+description: "Security gate on changed code: spawns the security-auditor subagent and cross-checks tenant isolation and shared-library auth patterns. It does not append findings; credential incidents require restricted human handling and never mutate Git automatically."
 argument-hint: "[files or PR; empty = uncommitted changes]"
 ---
 
@@ -33,6 +33,15 @@ The auditor handles pattern-level checks. You handle what static patterns cannot
 Spot-check 2–3 findings by opening the cited files and confirming the pattern is real. The auditor uses heuristics; false positives happen. Confirm or downgrade them.
 
 ### Step 5 — Synthesise
+
+Classify each finding before writing the response. For an ordinary code finding, include a
+repository-relative `file:line` only when both the locator and target are safe for every repository
+reader. For an active or suspected credential finding, do not echo protected incident detail. State
+only that restricted human handling is required and the minimum immediate action class (for example,
+revoke/rotate the credential and stop further disclosure). Do not name identities, infrastructure,
+tenants, environments, customers, hosts/IPs, users/home paths, vaults/keys, concrete secret paths or
+lines, transcript/session/log/CI artifacts, disclosure channels, secret material, partial or masked
+fragments, secret-derived fingerprints, or unapproved references/URLs.
 
 ## Output Format
 
@@ -68,6 +77,13 @@ Spot-check 2–3 findings by opening the cited files and confirming the pattern 
 - `APPROVE`: only when all findings are `low` or have explicit accepted-risk rationale
 
 Be direct. Do not praise code for not being insecure — that is the baseline.
+
+Do not append findings to `SECURITY_FINDINGS.md` or otherwise mutate Git. If that file uses a legacy
+header without `Affected area (redacted when sensitive)` and `Repository-safe summary`,
+do not modify the register — give only this non-sensitive instruction: `SECURITY_FINDINGS.md uses a
+legacy schema; a human with incident authority must review/redact or remove unsafe legacy metadata,
+then adopt the current header.`
+Never ingest or restate legacy active, accepted-risk, resolved, or `docs/security-archive.md` rows.
 
 ---
 

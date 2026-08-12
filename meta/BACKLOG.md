@@ -4441,71 +4441,6 @@ obligations. This Codex review **does not satisfy the required Claude Opus gate*
 **Status: AWAITING OPUS REVIEW.** This revised design is not locked and authorises no
 implementation. If Opus is genuinely unavailable due to limits, record `WAITING — OPUS LIMIT`.
 
-### B-135 · Security register republishes active credential-incident metadata to every clone
-**Effort:** M · **Priority:** P1 · filed 2026-08-11 · **Invariants:** #1 #2 #6 #7
-
-**Why:** a field report says the framework-shaped findings table copied a live service-account
-name, a concrete secret-bearing file path, host information, and the fact that the credential was
-echoed into an AI transcript into committed Markdown. The password itself was absent, but this
-broadened an active credential incident's operational metadata to every clone and PR reader. The
-affected consumer repository is not present here, so those incident facts remain attributed to the
-report. The enabling framework contract is locally confirmed: canonical `SECURITY_FINDINGS.md`
-requests `File:line` plus free-form `Description`; dotnet and monorepo `/security-review`
-automatically append critical/high rows; none of the register, parent workflow, or auditor output
-contracts forbids operational identifiers or transcript detail.
-
-**Do:** keep the committed register only as a minimised coordination index for ordinary
-repository-safe code findings. For active or suspected credential incidents, make **no automatic
-Git mutation** and never echo service/principal
-names, hosts/IPs, usernames/home paths, vault/key names, concrete secret-bearing paths/lines, secret
-fragments/fingerprints, transcript/session identifiers or links, or narrative disclosure-channel
-detail into chat output or Git. The review may retain ordinary repository-relative code `file:line`
-when locator and target are safe; the parent separately synthesises any durable row and never pastes
-raw auditor/chat/tool output. Ask a human to establish restricted incident handling; create no
-placeholder row or invented reference. A contained incident may gain a minimal historical row only
-with explicit human authorisation and an approved opaque reference. Apply the safe-record contract to
-active, accepted-risk, resolved, and archived findings across all three stacks and both host-facing
-agent surfaces.
-
-**Design:** `.claude/plans/2026-08-11-b135-security-register-minimisation-design.md` weighs three
-approaches and, after fresh-context review, selects a hybrid rather than warning-only,
-active-incident stubs, or mandatory external-only tracking. Legacy schemas fail closed because
-update preserves the consumer register; migration is human-only. Stack-specific fixtures define
-reachable red/green worlds. The same-class sweep must disposition `.claude/ai-audit.log`'s
-original-path fallback before lock. History/transcript containment remains outside automatic
-framework mutation.
-
-**Fresh-context adversarial review (Codex, 2026-08-11):** **REJECTED the active-incident stub.** It
-found that even a redacted row leaks incident existence/correlation, update preserves the legacy
-unsafe schema, the original all-stack red oracle was unreachable, Angular does not append despite
-its frontmatter claim, the live harness is Claude-only and cannot install monorepo, and the committed
-AI audit log is a concrete same-class path leak. The revised design adopts the hybrid, no-placeholder
-behavior, fail-closed legacy handling, stack-specific evidence, safe response output, and an
-audit-log pre-lock disposition. This review does **not** satisfy the Claude Opus gate.
-
-**Review gate — DESIGN LOCKED, rev 2 (WSD-038, 2026-08-12):** Claude Opus review completed from
-scratch (independently re-confirmed the dotnet auto-append, the Angular false append claim, and the
-`ai-audit.log` absolute-path fallback by direct read). Hybrid premise locked as written; "no security
-persistence at all" rejected as disproportionate. Delta-scoped adversarial review by codex
-(`gpt-5.6-sol`) on the two Opus refinements followed and is folded in:
-1. `security-auditor` agent definitions (all three Claude stacks **and** the GitHub Copilot wrapper)
-   must state they never return secret material, partial/masked fragments, or secret-derived
-   fingerprints — scoped to secret-derived fingerprints specifically, not every technical fingerprint.
-2. `.claude/ai-audit.log`'s path-normalisation-failure fallback is fixed **inside this item**: keep
-   the log line, replace the unsafe path with a fixed constant sentinel (e.g.
-   `[path-normalisation-failed]`), across every fallback branch in both `.ps1` and `.sh` twins — not
-   "skip the line" (Sol caught that this would silently break the hook's own stated SR 11-7/DORA
-   traceability contract; verified by direct read of `audit-trail.sh`).
-
-Full disposition in `meta/workspace-decisions.md` WSD-038. Design is now final — cleared for
-implementation.
-
-**Proportionality:** the reported harm is an actual disclosure expansion caused by a durable record,
-not a hypothetical scanner concern. A schema and workflow-contract correction with focused
-behavioral evidence removes most of it. A general DLP/classification engine, mandatory incident-tool
-integration, history rewrite, or automatic transcript remediation is not authorised.
-
----
 ### B-136 · Make affected framework artifacts part of completing an AI-authored change
 **Effort:** M · **Priority:** P2 · filed 2026-08-11 · **Invariants:** #1 #2 #7
 
@@ -4739,6 +4674,62 @@ planted unreadable file and an emptied tree, both twins.
 ---
 
 ## Done
+
+- **B-135** — shipped **2026-08-12** (`## Unreleased` heads staged; not yet stamped/released). Design
+  validated from scratch (not from Codex's write-up), locked as WSD-038, delta-reviewed by Codex, then
+  implemented. `SECURITY_FINDINGS.md` schema replaced (`File:line`/`Description` → `Affected area
+  (redacted when sensitive)`/`Repository-safe summary`, optional owner/reference, human-authorised
+  opaque reference only); dotnet/monorepo `/security-review` Step 6 now makes no automatic Git
+  mutation for a credential finding and only ever appends a minimised row for ordinary findings;
+  Angular's false "appends findings" claim corrected to state the true no-append behavior; all three
+  `security-auditor.md` definitions plus the GitHub Copilot wrapper agent now forbid returning secret
+  material, partial/masked fragments, or secret-derived fingerprints; `audit-trail.ps1`/`.sh` no
+  longer fall back to the original absolute path on `Resolve-Path`/`realpath` failure, instead
+  recording a constant `[path-normalisation-failed]` sentinel across every fallback branch in both
+  twins; new `SecurityReviewContract.Tests.ps1` (deterministic sentinel grader, red-tested against a
+  planted unsafe row and a benign near-match) plus 3 new `AuditTrail.Tests.ps1` cases.
+
+  **Implementation-round defect:** the codex implementer round lost network connectivity mid-run
+  (exit 1, backend websocket unreachable) after patching ~19 of ~20 files. Verified via `git status`
+  that real, mostly-correct work had already landed rather than assuming a failed exit meant no
+  progress; diffed every changed file against the locked design before trusting any of it.
+
+  **Observed red → green, found independently, not from the implementer's report (run never
+  self-reported — it crashed first):** a from-scratch first run of the new tests showed 4 real
+  failures, none of them in the underlying hook/content logic:
+  1. Two required literal substrings in generated prose were split by a markdown line-wrap
+     (`...this does\n   not suppress...`, `...header.\` Never\ningest...`), breaking `.Contains()`
+     checks — reflowed so each required phrase stays on one line, in all files that had it.
+  2. Angular's legacy-register paragraph was missing `do not modify the register` and `human with
+     incident authority` outright (not just wrapped) — added, matching dotnet/monorepo's contract.
+  3. A static-guard regex in the *test itself* used `"\$rel"` inside a **double-quoted** PowerShell
+     string, which interpolates `$rel` (undefined → empty) instead of producing a literal `\$rel` for
+     the regex — silently weakening the assertion until it no longer tested what its failure message
+     claimed. Fixed by switching to single-quoted regex strings (see `meta/LEARNINGS.md`,
+     2026-08-12).
+  4. The pre-existing "Claude Write event" test never created a real on-disk file, so
+     `Resolve-Path`/`realpath` was always hitting the failure branch — invisible before this task
+     because the old fallback (the original path string) coincidentally still matched the test's
+     loose assertion. Fixed by creating a genuine file before invoking the hook, so the success path
+     is now actually exercised and distinguished from the sentinel path.
+
+  All 4 fixed; re-ran `AuditTrail.Tests.ps1` + `SecurityReviewContract.Tests.ps1` clean (13/13 and
+  6/6) on all three dists, full aggregate hook suite (`Invoke-HookTests.ps1`) on all three dists with
+  zero regressions beyond one pre-existing, unrelated failure (`FrameworkDoctor.Tests.ps1` under
+  Windows PowerShell 5.1 — independently reproduced on the pre-B-135 baseline via `git stash`,
+  confirmed as B-130, not this item). `build.ps1` + `validate-dist.ps1` ×3 clean (markers,
+  `no-meta-leak`, BOM, twin parity, hook registration, template-checks). Greenfield install smoke
+  into a temp dir confirmed the new schema and sentinel both land in a real installed copy.
+
+  **RCA — why did no gate catch the original defect, and what else is exposed to the same class?**
+  No gate ever checked committed register *content* for operational-disclosure risk; `no-meta-leak`
+  scans only for the framework's own development vocabulary, an orthogonal concern. The
+  auditor/command output contract had no documented safe/incident boundary at all until this item —
+  there was no instrument for this class before B-135, not a broken one. Sweep: `.claude/ai-audit.log`
+  (found by Codex's fresh-context review, fixed in this same item, not deferred) is a confirmed second
+  instance of the same class. `TECH_DEBT.md` was checked as a structurally similar committed
+  free-text register and judged low-risk (its schema has no field that naturally invites operational
+  identifiers) — not fixed, but named rather than silently passed over.
 
 - **B-124** — closed **2026-08-09**, premise rejected after two independent Opus design reviews and
   a pre-registered behavioral baseline. The first fixture telegraphed its answers and was rejected;

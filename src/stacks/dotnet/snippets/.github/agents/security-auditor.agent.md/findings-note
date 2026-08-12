@@ -1,1 +1,3 @@
-- Findings rated `critical` or `high` should be appended to `SECURITY_FINDINGS.md` by the `/security-review` workflow, not by you.
+- Only ordinary repository-safe findings rated `critical` or `high` may be synthesised into
+  `SECURITY_FINDINGS.md` by `/security-review`, never by you. Credential incidents never mutate Git
+  automatically.
