@@ -4483,10 +4483,22 @@ AI audit log is a concrete same-class path leak. The revised design adopts the h
 behavior, fail-closed legacy handling, stack-specific evidence, safe response output, and an
 audit-log pre-lock disposition. This review does **not** satisfy the Claude Opus gate.
 
-**Review gate — AWAITING OPUS REVIEW:** commit this revised design for independent Claude Opus
-review. Opus may reject the premise, require no security persistence at all, or change the migration
-and audit-log boundary. No shipped implementation is authorised until the design is locked and the
-decision is recorded in `meta/workspace-decisions.md`.
+**Review gate — DESIGN LOCKED, rev 2 (WSD-038, 2026-08-12):** Claude Opus review completed from
+scratch (independently re-confirmed the dotnet auto-append, the Angular false append claim, and the
+`ai-audit.log` absolute-path fallback by direct read). Hybrid premise locked as written; "no security
+persistence at all" rejected as disproportionate. Delta-scoped adversarial review by codex
+(`gpt-5.6-sol`) on the two Opus refinements followed and is folded in:
+1. `security-auditor` agent definitions (all three Claude stacks **and** the GitHub Copilot wrapper)
+   must state they never return secret material, partial/masked fragments, or secret-derived
+   fingerprints — scoped to secret-derived fingerprints specifically, not every technical fingerprint.
+2. `.claude/ai-audit.log`'s path-normalisation-failure fallback is fixed **inside this item**: keep
+   the log line, replace the unsafe path with a fixed constant sentinel (e.g.
+   `[path-normalisation-failed]`), across every fallback branch in both `.ps1` and `.sh` twins — not
+   "skip the line" (Sol caught that this would silently break the hook's own stated SR 11-7/DORA
+   traceability contract; verified by direct read of `audit-trail.sh`).
+
+Full disposition in `meta/workspace-decisions.md` WSD-038. Design is now final — cleared for
+implementation.
 
 **Proportionality:** the reported harm is an actual disclosure expansion caused by a durable record,
 not a hypothetical scanner concern. A schema and workflow-contract correction with focused

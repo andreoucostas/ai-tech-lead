@@ -1458,3 +1458,74 @@ do not estimate a reliability rate or rule out run-to-run variance.
 **Rejected.** Shipping the matrix despite a passing baseline (process without observed harm),
 counting answer-key fixtures as evidence, treating spend-limit errors as samples, and preserving a
 lexical `OrderLine` grader that rejected the repository's valid degenerate key representation.
+
+---
+
+## WSD-038: B-135 Opus gate — lock the hybrid security-register design, resolve `ai-audit.log` inline (2026-08-12)
+
+**Context.** B-135's design (`.claude/plans/2026-08-11-b135-security-register-minimisation-design.md`)
+had already been through one fresh-context adversarial review by codex (`gpt-5.6-sol`), which rejected
+the original active-incident-stub approach and revised toward a hybrid, but explicitly could not
+satisfy B-135's filed Claude Opus gate ("This review does **not** satisfy the Claude Opus gate.").
+This entry is that Opus pass, done from scratch rather than by trusting the write-up: the underlying
+framework contract was independently re-read and the central claims confirmed live —
+`src/stacks/dotnet/files/.claude/commands/security-review.md` Step 6 auto-appends every
+critical/high finding to `SECURITY_FINDINGS.md` with no minimisation; the Angular equivalent's
+frontmatter claims the same append behavior but has no Step 6 at all (false claim, confirmed by
+direct read); and `src/core/.claude/hooks/audit-trail.ps1` falls back to logging the **original
+absolute path** (leaking local username/drive layout) when `Resolve-Path` fails — the same
+disclosure-expansion class the rest of this item exists to fix.
+
+**Decision.** Lock the design's hybrid premise as written: minimised committed rows for ordinary,
+repository-safe findings; no automatic Git mutation for active/suspected credential incidents;
+human-gated minimal historical row, with an approved opaque reference, only after containment. All
+of the design's other resolutions are accepted as written — the unreachable original oracle, the
+Angular false-claim correction, the Claude-canonical/thin-wrapper source ownership, the human-only
+legacy migration, and the stack-specific verification contract. Two refinements beyond the
+as-written design:
+1. The `security-auditor` agent definition itself (not just the parent command) must state that it
+   never returns secret fragments or fingerprints, even partially masked — closing the path where a
+   "helpful" partial redaction in the auditor's own table output becomes the leak.
+2. `.claude/ai-audit.log`'s `Resolve-Path`-failure fallback is fixed **inside this item**, not
+   deferred to a linked follow-up P1: on failure, skip logging that line rather than fall back to an
+   absolute path, in both `.ps1` and `.sh`. It is a few-line fix, already the same disclosure class
+   this item exists to close, and the design's own instructions forbid closing a same-class sweep as
+   "none" when a concrete instance was already found.
+
+**Rejected.** The stronger alternative the design posed to Opus — "no committed security-findings
+persistence at all" — is disproportionate: it would remove useful local remediation tracking for
+ordinary, repository-safe findings for every consumer without a SecOps platform, to guard against a
+harm (credential-incident metadata disclosure) the hybrid already removes without that cost. Also
+rejected: treating the audit-log fallback as out of scope for this item (would knowingly leave a
+found instance of the same defect class unfixed) and treating codex's prior review as satisfying this
+gate (it explicitly does not, per B-135's own filed requirement).
+
+**Delta review (codex `gpt-5.6-sol`, 2026-08-12) and disposition.** Sol reviewed only the two
+refinements, as scoped, and found one real defect in refinement 2, which is accepted and changes the
+locked decision:
+
+- **Refinement 1 (auditor forbids secret fragments/fingerprints): ACCEPTED**, with two tightenings
+  folded in: (a) the rule must reach the GitHub Copilot wrapper
+  (`src/core/.github/agents/security-auditor.agent.md`) as its own compact statement, not only the
+  three Claude `.claude/agents/security-auditor.md` definitions — the wrapper's `@stack:sot` marker
+  does not itself guarantee the rule propagates, since it is composed from a separate snippet; (b)
+  "fingerprints" means **secret-derived** fingerprints specifically, not every technical fingerprint,
+  so ordinary findings involving certificate/package checksums are not accidentally suppressed.
+- **Refinement 2 ("skip the line" on `Resolve-Path`/`realpath` failure): REJECTED as I wrote it,
+  REVISED to Sol's alternative.** Independently confirmed by direct read: `audit-trail.sh` line 4
+  states the log "Satisfies SR 11-7 / DORA traceability requirements for AI tooling in regulated
+  environments," and both twins have multiple fallback points (PowerShell: one `Resolve-Path` catch;
+  bash: `realpath` → python `relpath` → original path, three points, `audit-trail.sh:76-85`) — not
+  the single exception my original wording assumed. Dropping the line on failure is indistinguishable
+  from "no write happened" and directly contradicts that stated regulatory-traceability contract;
+  this is a real defect in my correction, not a stylistic quibble. **Corrected fix:** keep the log
+  line on normalisation failure; write a fixed, constant, non-path sentinel in the path field (e.g.
+  `[path-normalisation-failed]`) instead of skipping the append or falling back to the absolute path.
+  The sentinel must be constant (never a basename, hash, or other locator-derived value) per the
+  protected-detail principle. Apply identically to both twins' full fallback chains, not just the
+  first failure branch.
+
+**What remains open.** Implementation of the design as now finalised (base hybrid + both refinements,
+refinement 2 in its corrected form), independent verification against the design's Verification
+contract plus a new red-test for the sentinel behavior across every fallback branch in both twins,
+and the standard RCA before B-135 closes.
