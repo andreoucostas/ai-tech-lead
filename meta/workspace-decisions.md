@@ -1573,6 +1573,71 @@ before conforming — not the physical-review capability, evidence-axis taxonomy
 from the rejected design, and not a change to clause (b), which is unrelated and untested by this
 probe.
 
+**Observed result (2026-08-13).** Pre-fix baseline: n=2, both FAIL — unchanged `add-warehouse-load`
+read both decisive evidence sources (the family's partition DDL and a documented access-pattern
+contract showing point lookups across full history with no date filter) but silently conformed to
+the family's partition scheme with no flag, in both runs. The clause (a) fix above was implemented,
+composed into all three dists, validated (`validate-dist` ×3 green), committed (`73d0260`, branch
+`codex/b128-partition-probe`), and re-verified live: **n=2 post-fix, both still FAIL, identical
+shape.** Direct transcript inspection (not the grader's summary alone) confirmed the model received
+the full updated skill text in both post-fix runs (injected as a user-role message after the `Skill`
+tool call — the tool_result itself is a short "Launching skill" stub, not the body; grep'd the
+literal new clause text into both transcripts to confirm delivery) and read both decisive evidence
+files in every one of the 4 runs (pre- and post-fix) — so this is not a delivery failure. Both
+pre-fix transcripts show the same shape as post-fix: zero `AskUserQuestion` calls across all 4 runs.
+The scenario's prompt (`scenarios.json`) includes "I approve this change in advance: do not stop for
+a plan or ask for routine confirmation; implement it now in this session" — a plausible competing
+signal that may be causing the model to classify the mismatch flag as exactly the kind of "routine
+confirmation" it was told to skip, independent of what step 8 says. This has not yet been isolated
+(would require a controlled variant: same fixture, prompt without the "don't ask" framing, to see if
+the clause changes behavior when that pressure is absent) — recorded here as an open finding, not yet
+resolved. The underlying defect (n=4 total, 100% consistent) is more solidly established than the
+fix. Do not treat the one-clause fix as validated; it is committed on the branch, not merged.
+
+**Corrected disposition (2026-08-13, same day) — premise rejected, matching WSD-037's pattern.** The
+"observed result" above was itself built on a flawed instrument, caught by checking the actual
+artifact rather than trusting the grader's boolean summary (the exact discipline Maintenance rule 3
+exists for). Direct inspection of the real DDL written by **all four** live runs against the actual
+committed scenario prompt — 2 pre-fix, 2 post-fix — showed the model correctly avoiding
+`ps_OrderDateMonth` and documenting why (citing the point-lookup/no-date-range/mutable-`DetectedAt`
+facts from the fixture) in **every single run, including both pre-fix ones**. The grader's
+`mismatchRaised` check required a literal `AskUserQuestion` tool call and credited nothing else, so
+it scored this correct, unprompted, evidence-grounded engineering judgment as FAIL. Two further
+diagnostic runs with the prompt's "do not stop... ask for routine confirmation" clause removed
+showed a third legitimate pattern (stop before writing anything, present the conflict and a plan in
+prose) — informative, but run against a temporarily-modified prompt, not the committed scenario, so
+not counted in the final tally.
+
+Fixed the grader to also credit a documented in-artifact deviation (structural check: the written
+`CREATE TABLE` does not carry `) ON ps_OrderDateMonth(`, AND the same content names the specific
+scheme and grounds the deviation in this fact's own identity — deliberately broad on exact phrasing
+after the first fix attempt under-credited a second genuinely correct answer that used different
+words for the same fact, the same brittleness class as B-124's literal `OrderLine` requirement).
+Red/green-tested independently (a documented-deviation-no-question case must pass; a case using all
+the same keywords while still applying the scheme must still fail) before trusting it. Full self-test
+suite re-run clean, no regressions. Rescored all four real transcripts against the corrected grader
+without spending further live budget: **all four PASS.**
+
+**Decision (final).** Reject B-128's premise, matching and strengthening the original Opus review's
+verdict: the unchanged skill already produces the correct physical-design judgment on this fixture,
+without any shipped change, across every real run that used the actual committed prompt. The
+SKILL.md clause (a) fix (commit `73d0260`) is **reverted** — it was never necessary. No version bump,
+changelog, or LEARNINGS entry: shipped bytes do not change (meta-invariant #7 does not apply). The
+`warehouse-partition-mismatch` scenario, fixture, and corrected grader are retained in
+`.claude/evals/` as regression evidence per the WSD-037 pattern — maintainer-only tooling, no release
+needed to keep it. Reopen only on an observed field failure of this exact shape.
+
+**RCA (Maintenance rule 5).** Two independent instruments were wrong in this item, both caught only
+by reading the artifact directly rather than trusting a summary: (1) the substitute probe's own
+premise quote (caught by codex's delta review), and (2) the grader's pass condition (caught by direct
+DDL inspection after two "still FAILs" looked suspiciously identical in shape to each other and to
+the pre-fix baseline). Both are instances of Maintenance rule 4's dominant failure class — an
+instrument reporting a result it cannot actually support — recurring within the same item after
+already being named as the pattern to watch for. What else is exposed to the same class: any grader
+in this eval suite whose positive-evidence check is a single tool-call shape (e.g. `AskUserQuestion`)
+rather than an outcome check on the artifact itself risks the same under-crediting; worth a pass over
+`Test-ScenarioEvidence`'s other cases if this class resurfaces.
+
 Also authorised, separable, no eval required: two clarifying sentences in `map-warehouse` step 8 /
 Coverage stating the map records physical layout as observed and does not assess its fitness, naming
 what would be needed to assess it. This closes the one passive-harm path identified (a reader

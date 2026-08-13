@@ -3567,7 +3567,7 @@ shipped change (WSD-037 pattern) and the fixture is retained as regression evide
 3-10 are redesigned against the observed failure mode, not the current sketch.
 
 ---
-### B-128 · Review warehouse physical design against its actual load and query workload
+### B-128 · Review warehouse physical design against its actual load and query workload — **CLOSED 2026-08-13, premise rejected; see below**
 **Effort:** M–L · **Priority:** P2 · filed 2026-08-08 · **Capability:** warehouse technical leadership
 
 **Why:** the framework records partitioning, columnstore, retention, and load ordering, but does not
@@ -3725,6 +3725,20 @@ baseline runs; unchanged `add-warehouse-load` behavior is observed n≥2 on the 
 mismatch fixture; if it passes, B-128 closes with no shipped change and the fixture retained as
 regression evidence (WSD-037 pattern); if it fails, the one-clause fix to step 8's unconditional
 clause is applied and re-verified n≥2.
+
+**Final status (2026-08-13): premise rejected.** The first pass (n=2 pre-fix, both graded FAIL) led to
+a one-clause skill fix that was implemented, composed, validated, and committed — but re-verification
+also graded FAIL, identically, which turned out to be the tell. Direct inspection of the actual
+written DDL (not just the grader's boolean summary) showed the model had been making the *correct*
+partition decision, with documented reasoning, in **every one of the four real runs against the
+committed scenario prompt — including both "pre-fix" ones.** The grader only recognized one specific
+tool-call shape (`AskUserQuestion`) as success and scored a correct, unprompted, evidence-grounded
+engineering judgment as failure. Corrected and red/green-tested the grader (a documented in-artifact
+deviation now also passes; a case using the same keywords while still applying the mismatched scheme
+still fails); rescored all four real transcripts at zero further live cost: **all four PASS.** The
+one-clause `add-warehouse-load` fix was reverted — it was never necessary. Full detail, including the
+RCA on two independent under-crediting instruments caught only by reading the artifact directly, is
+in `meta/workspace-decisions.md` → WSD-039.
 
 ---
 ### B-129 · Design and review the warehouse reporting consumption layer
