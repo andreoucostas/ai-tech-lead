@@ -21,7 +21,7 @@ function Assert-Bom([string]$Path) {
     return $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
 }
 
-function New-EvalRepo([string]$Path, [ValidateSet('dotnet','angular','warehouse','warehouse-mixed','warehouse-fact-binding','warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok')][string]$Stack = 'dotnet') {
+function New-EvalRepo([string]$Path, [ValidateSet('dotnet','angular','warehouse','warehouse-mixed','warehouse-fact-binding','warehouse-partition-mismatch','warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok')][string]$Stack = 'dotnet') {
     New-Item -ItemType Directory -Path $Path -Force | Out-Null
     if ($Stack -in @('warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger')) {
         if ($Stack -eq 'warehouse-health-no-trigger') {
@@ -271,6 +271,48 @@ load procedures, and views to determine grain, authority, lifecycle, and compati
         git -C $Path config user.name 'Agent Evals'
         git -C $Path add -A
         git -C $Path commit --quiet -m 'fact-binding fixture baseline'
+        return
+    }
+    if ($Stack -eq 'warehouse-partition-mismatch') {
+        # Derive this probe from B-124's frozen fact-binding stack. The added evidence describes
+        # the new fact's operational shape without naming the design conclusion being measured.
+        New-EvalRepo $Path warehouse-fact-binding
+        @'
+CREATE PARTITION FUNCTION pf_OrderDateMonth (INT)
+AS RANGE RIGHT FOR VALUES (20260101, 20260201, 20260301, 20260401);
+
+CREATE PARTITION SCHEME ps_OrderDateMonth
+AS PARTITION pf_OrderDateMonth ALL TO ([PRIMARY]);
+'@ | Set-Content -LiteralPath (Join-Path $Path 'Tables/partition.OrderDateMonth.sql') -Encoding utf8NoBOM
+        $orderLinePath = Join-Path $Path 'Tables/fact.FactOrderLine.sql'
+        $orderLine = Get-Content -Raw -LiteralPath $orderLinePath
+        $orderLine = [regex]::Replace($orderLine, '    LoadRunId BIGINT NOT NULL\r?\n\);', "    LoadRunId BIGINT NOT NULL`n) ON ps_OrderDateMonth(OrderDateKey);")
+        if ($orderLine -notmatch '(?i)ON\s+ps_OrderDateMonth\s*\(\s*OrderDateKey\s*\)') { throw 'partition mismatch fixture failed to partition FactOrderLine' }
+        $orderLine | Set-Content -LiteralPath $orderLinePath -Encoding utf8NoBOM
+        @'
+CREATE TABLE stg.StgFraudAlert (
+    AlertId BIGINT NOT NULL,
+    DetectedAt DATETIME2 NOT NULL,
+    OrderNumber NVARCHAR(40) NOT NULL,
+    AlertStatus NVARCHAR(20) NOT NULL,
+    RiskAmount DECIMAL(18,2) NOT NULL,
+    SourceUpdatedAt DATETIME2 NOT NULL
+);
+'@ | Set-Content -LiteralPath (Join-Path $Path 'Tables/stg.StgFraudAlert.sql') -Encoding utf8NoBOM
+        @'
+# Fraud alert repository contract
+
+`stg.StgFraudAlert` is the authoritative source for the new fraud-alert transaction fact. One row
+represents one `AlertId`. The source sends continuous micro-batches throughout the day and may
+correct `DetectedAt`, status, or amount for any previously issued alert.
+
+The investigation service retrieves one alert by `AlertId` and must search the complete retained
+history; its requests do not carry a detected-date range. The warehouse load reconciles each batch
+to the target by `AlertId` and `SourceUpdatedAt`. Finance also aggregates risk by detected month,
+but that scheduled summary is not the investigation service's access path.
+'@ | Set-Content -LiteralPath (Join-Path $Path 'docs/fraud-alert-contract.md') -Encoding utf8NoBOM
+        git -C $Path add -A
+        git -C $Path commit --quiet -m 'partition mismatch probe evidence'
         return
     }
     if ($Stack -in @('warehouse','warehouse-mixed')) {
@@ -1090,6 +1132,43 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $engaged = $warehouseTreeCall -or $changedSql
             $status = if (-not $engaged) { 'INCONCLUSIVE' } elseif ($pass) { 'PASS' } else { 'FAIL' }
             return [pscustomobject]@{ Status=$status; Pass=$pass; Detail="category=$category channels=$($channels -join ',') outcome=$(if ($abstain) {'ABSTAIN'} elseif ($discountExtended) {'EXTEND'} elseif ($snapshotFact) {'PERIODIC_SNAPSHOT'} elseif ($paymentFact) {'NEW_TRANSACTION'} else {'UNRESOLVED'}) targetFact=$(if ($discountExtended) {'FactOrderLine'} elseif ($newFacts.Count) {$newFacts -join ','} else {'none'}) grainStatement=$($finalText -match '(?i)grain') ddlWritten=$changedSql mixedGrain=$allocationOnExisting missingFacts=$(if ($abstain) {'source-authority,grain'} else {'none'}) evidence=$warehouseTreeCall liveSqlEvidence=$liveSqlCall" }
+        }
+        'warehouse-partition-mismatch' {
+            $successful = @($e.Tools | Where-Object { $e.ToolResults.ContainsKey($_.Id) -and -not $e.ToolResults[$_.Id].is_error })
+            $partitionRead = @($successful | Where-Object {
+                $_.Name -match '^(?i:Read|ReadFile|read_file)$' -and
+                ((Get-ToolPath $_) -replace '\\','/') -match '(?i)(?:^|/)Tables/(?:partition\.OrderDateMonth|fact\.FactOrderLine)\.sql$' -and
+                (Get-ToolResultText $e $_) -match '(?is)pf_OrderDateMonth|ps_OrderDateMonth' -and
+                (Get-ToolResultText $e $_) -match '(?i)OrderDateKey|RANGE\s+RIGHT'
+            } | Sort-Object Index | Select-Object -First 1)
+            $accessRead = @($successful | Where-Object {
+                $_.Name -match '^(?i:Read|ReadFile|read_file)$' -and
+                ((Get-ToolPath $_) -replace '\\','/') -match '(?i)(?:^|/)docs/fraud-alert-contract\.md$' -and
+                (Get-ToolResultText $e $_) -match '(?i)AlertId' -and
+                (Get-ToolResultText $e $_) -match '(?i)complete retained history|do not carry a detected-date range' -and
+                (Get-ToolResultText $e $_) -match '(?i)correct `?DetectedAt|reconciles each batch'
+            } | Sort-Object Index | Select-Object -First 1)
+            $implementationWrite = @($e.Tools | Where-Object {
+                $_.Name -in @('Edit','Write') -and
+                ((Get-ToolPath $_) -replace '\\','/') -match '(?i)(?:^|/)(?:Tables|StoredProcedures)/.*(?:FraudAlert|partition).*\.sql$'
+            } | Sort-Object Index | Select-Object -First 1)
+            $mismatchQuestion = @($successful | Where-Object {
+                if ($_.Name -ne 'AskUserQuestion') { return $false }
+                $questionText = ($_.Input | ConvertTo-Json -Compress -Depth 20)
+                return $questionText -match '(?i)(?:pf_|ps_)?OrderDateMonth|OrderDateKey|date[- ]partition' -and
+                $questionText -match '(?i)AlertId|point lookup|complete (?:retained )?history|without (?:a )?date' -and
+                $questionText -match '(?i)mismatch|conflict|unsuit|poor fit|not (?:align|suit|fit)|should (?:not|we)|separate partition|different partition' -and
+                $partitionRead -and $_.Index -gt $partitionRead[0].Index -and
+                $accessRead -and $_.Index -gt $accessRead[0].Index -and
+                (-not $implementationWrite -or $_.Index -lt $implementationWrite[0].Index)
+            } | Sort-Object Index | Select-Object -First 1)
+            $engaged = [bool]($partitionRead -or $accessRead -or $implementationWrite)
+            $status = if (-not $engaged) { 'INCONCLUSIVE' } elseif ($mismatchQuestion) { 'PASS' } else { 'FAIL' }
+            return [pscustomobject]@{
+                Status = $status
+                Pass = [bool]$mismatchQuestion
+                Detail = "partitionEvidence=$([bool]$partitionRead) accessEvidence=$([bool]$accessRead) mismatchRaised=$([bool]$mismatchQuestion) raisedAt=$(if($mismatchQuestion){$mismatchQuestion[0].Index}else{-1}) implementationWriteAt=$(if($implementationWrite){$implementationWrite[0].Index}else{-1}) typedEvidenceOnly=True"
+            }
         }
         { $_ -in @('warehouse-bind-sql','warehouse-bind-mixed') } {
             $successful = @($e.Tools | Where-Object {
@@ -2388,6 +2467,46 @@ FROM stg.StgSupplierInvoice s;
         $factEmpty = & $factCase 'fact-empty'
         if ((Test-ScenarioEvidence 'warehouse-fact-abstain' $factEmpty $factNoEngagement 1).Status -ne 'INCONCLUSIVE') { throw 'warehouseFactBinding accepted text-only abstention without engagement' }
 
+        # B-128 partition probe: retain literal stream-JSON fixtures so the typed-evidence boundary
+        # is reviewable. The red final deliberately echoes the desired conclusion; it must still
+        # fail because no typed question raised it before the implementation write.
+        $partitionRedLines = @(
+            '{"type":"system","subtype":"init"}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"partition","name":"Read","input":{"file_path":"Tables/partition.OrderDateMonth.sql"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"partition","is_error":false,"content":"CREATE PARTITION FUNCTION pf_OrderDateMonth (INT) AS RANGE RIGHT; CREATE PARTITION SCHEME ps_OrderDateMonth; FactOrderLine uses OrderDateKey"}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"contract","name":"Read","input":{"file_path":"docs/fraud-alert-contract.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"contract","is_error":false,"content":"AlertId point lookup searches complete retained history without a date range; source corrects DetectedAt; load reconciles each batch."}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"write","name":"Write","input":{"file_path":"Tables/fact.FactFraudAlert.sql","content":"CREATE TABLE fact.FactFraudAlert (...) ON ps_OrderDateMonth(DetectedDateKey);"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"write","is_error":false,"content":"created"}]}}',
+            '{"type":"result","is_error":false,"result":"The AlertId access path mismatches the family date partition, but I reused it."}'
+        )
+        $partitionGreenLines = @(
+            '{"type":"system","subtype":"init"}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"partition","name":"Read","input":{"file_path":"Tables/partition.OrderDateMonth.sql"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"partition","is_error":false,"content":"CREATE PARTITION FUNCTION pf_OrderDateMonth (INT) AS RANGE RIGHT; CREATE PARTITION SCHEME ps_OrderDateMonth; FactOrderLine uses OrderDateKey"}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"contract","name":"Read","input":{"file_path":"docs/fraud-alert-contract.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"contract","is_error":false,"content":"AlertId point lookup searches complete retained history without a date range; source corrects DetectedAt; load reconciles each batch."}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"question","name":"AskUserQuestion","input":{"questions":[{"question":"The family uses ps_OrderDateMonth on OrderDateKey, but this fact is looked up by AlertId across complete history without a date filter and receives late DetectedAt corrections. That is a poor fit for the inherited date partition. Should FactFraudAlert use a separate partition design instead?","header":"Partition fit","options":[{"label":"Separate design","description":"Do not inherit the family date scheme."},{"label":"Inherit scheme","description":"Accept the access-path mismatch."}],"multiSelect":false}]}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"question","is_error":false,"content":"Use a separate design"}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"write","name":"Write","input":{"file_path":"Tables/fact.FactFraudAlert.sql","content":"CREATE TABLE fact.FactFraudAlert (...);"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"write","is_error":false,"content":"created"}]}}',
+            '{"type":"result","is_error":false,"result":"Implemented the approved design."}'
+        )
+        $partitionRedPath = Join-Path $temp 'partition-mismatch-red.jsonl'
+        $partitionGreenPath = Join-Path $temp 'partition-mismatch-green.jsonl'
+        $partitionRedLines | Set-Content -LiteralPath $partitionRedPath -Encoding utf8NoBOM
+        $partitionGreenLines | Set-Content -LiteralPath $partitionGreenPath -Encoding utf8NoBOM
+        $partitionRedResult = Test-ScenarioEvidence 'warehouse-partition-mismatch' $temp (Read-Transcript $partitionRedPath) 1
+        $partitionGreenResult = Test-ScenarioEvidence 'warehouse-partition-mismatch' $temp (Read-Transcript $partitionGreenPath) 1
+        if ($partitionRedResult.Pass -or $partitionRedResult.Status -ne 'FAIL') { throw "warehousePartitionMismatch accepted silent conformance / final-text echo: $($partitionRedResult.Detail)" }
+        if (-not $partitionGreenResult.Pass -or $partitionGreenResult.Status -ne 'PASS') { throw "warehousePartitionMismatch rejected a typed pre-write mismatch question: $($partitionGreenResult.Detail)" }
+        Write-Output 'TRANSCRIPT warehouse-partition-mismatch RED:'
+        $partitionRedLines | Write-Output
+        Write-Output "VERDICT warehouse-partition-mismatch RED: $($partitionRedResult.Status) — $($partitionRedResult.Detail)"
+        Write-Output 'TRANSCRIPT warehouse-partition-mismatch GREEN:'
+        $partitionGreenLines | Write-Output
+        Write-Output "VERDICT warehouse-partition-mismatch GREEN: $($partitionGreenResult.Status) — $($partitionGreenResult.Detail)"
+
         $checkpoint = [pscustomobject]@{ Events = @(
             ([pscustomobject]@{ type='system'; subtype='init' }),
             ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='skill'; name='Skill'; input=[pscustomobject]@{ skill='add-tests' } }) } }),
@@ -2445,6 +2564,7 @@ FROM stg.StgSupplierInvoice s;
         Write-Output 'PASS: -EnrichedMap emits the seven B-96 headings, the default fixture map stays frozen, and warehouse-mixed evidences EF Core'
         Write-Output 'PASS: warehouseDimensionBinding accepts a correct binding and rejects duplicate dimension / RegionKey-on-fact / natural-key-for-surrogate, with skill and add-entity channels separable'
         Write-Output 'PASS: warehouseFactBinding has reachable EXTEND / NEW TRANSACTION / PERIODIC SNAPSHOT / ABSTAIN worlds and rejects fragmentation, mixed grain, false abstention, and abstention plus DDL'
+        Write-Output 'PASS: warehousePartitionMismatch rejects silent family-scheme conformance/final-text echo and accepts a typed pre-write mismatch question'
         Write-Output 'PASS: developer checkpoint is INCONCLUSIVE, not PASS/FAIL'
         Write-Output 'PASS: install graders require an observed installer tool event'
         Write-Output 'PASS: bootstrap Skill and archived-installer attempts are rejected'
@@ -2553,7 +2673,7 @@ Classes that orchestrate multi-step domain work are suffixed `Coordinator` in th
                 # edge list, which the default (frozen) fixture map does not carry.
                 $before = Initialize-WarehouseScenario $target -EnrichedMap
             }
-            { $_ -in @('warehouse-fact-existing','warehouse-fact-new','warehouse-fact-snapshot','warehouse-fact-abstain') } {
+            { $_ -in @('warehouse-fact-existing','warehouse-fact-new','warehouse-fact-snapshot','warehouse-fact-abstain','warehouse-partition-mismatch') } {
                 $before = Initialize-FactBindingScenario $target
             }
             'warehouse-map-quality' {

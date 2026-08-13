@@ -127,6 +127,13 @@
       "assertion": "warehouseFactBinding"
     },
     {
+      "id": "warehouse-partition-mismatch",
+      "fixture": "warehouse-partition-mismatch",
+      "budgetUsd": 1.50,
+      "prompt": "Implement the new fraud-alert transaction fact from the authoritative staging feed and repository-documented reporting requirements. Call the target `fact.FactFraudAlert` and add its compatible DDL and load procedure. I approve this change in advance: do not stop for a plan or ask for routine confirmation; implement it now in this session, then report what you built.",
+      "assertion": "warehousePartitionMismatch"
+    },
+    {
       "id": "warehouse-health-default-a",
       "fixture": "warehouse-health-a",
       "budgetUsd": 1.50,
