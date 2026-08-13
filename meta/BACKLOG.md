@@ -3567,7 +3567,7 @@ shipped change (WSD-037 pattern) and the fixture is retained as regression evide
 3-10 are redesigned against the observed failure mode, not the current sketch.
 
 ---
-### B-128 · Review warehouse physical design against its actual load and query workload
+### B-128 · Review warehouse physical design against its actual load and query workload — **CLOSED 2026-08-13, premise rejected; see below**
 **Effort:** M–L · **Priority:** P2 · filed 2026-08-08 · **Capability:** warehouse technical leadership
 
 **Why:** the framework records partitioning, columnstore, retention, and load ordering, but does not
@@ -3726,14 +3726,19 @@ mismatch fixture; if it passes, B-128 closes with no shipped change and the fixt
 regression evidence (WSD-037 pattern); if it fails, the one-clause fix to step 8's unconditional
 clause is applied and re-verified n≥2.
 
-**Status (2026-08-13):** defect confirmed (n=2 pre-fix, both FAIL). One-clause fix implemented,
-composed, validated, committed on branch `codex/b128-partition-probe` (`73d0260`) — **but n=2
-re-verification also FAILs, identically.** Not a delivery failure (confirmed by direct transcript
-read: the model receives the full updated clause and reads both evidence files every time). The
-scenario's own prompt pre-authorizes skipping "routine confirmation," a plausible competing signal
-not yet isolated. See `meta/workspace-decisions.md` WSD-039 "Observed result" for full detail. **Not
-closed, not merged** — open question is whether the fix needs stronger wording (state explicitly that
-this is not routine) or whether the fixture's prompt needs revision to fairly test the guidance.
+**Final status (2026-08-13): premise rejected.** The first pass (n=2 pre-fix, both graded FAIL) led to
+a one-clause skill fix that was implemented, composed, validated, and committed — but re-verification
+also graded FAIL, identically, which turned out to be the tell. Direct inspection of the actual
+written DDL (not just the grader's boolean summary) showed the model had been making the *correct*
+partition decision, with documented reasoning, in **every one of the four real runs against the
+committed scenario prompt — including both "pre-fix" ones.** The grader only recognized one specific
+tool-call shape (`AskUserQuestion`) as success and scored a correct, unprompted, evidence-grounded
+engineering judgment as failure. Corrected and red/green-tested the grader (a documented in-artifact
+deviation now also passes; a case using the same keywords while still applying the mismatched scheme
+still fails); rescored all four real transcripts at zero further live cost: **all four PASS.** The
+one-clause `add-warehouse-load` fix was reverted — it was never necessary. Full detail, including the
+RCA on two independent under-crediting instruments caught only by reading the artifact directly, is
+in `meta/workspace-decisions.md` → WSD-039.
 
 ---
 ### B-129 · Design and review the warehouse reporting consumption layer

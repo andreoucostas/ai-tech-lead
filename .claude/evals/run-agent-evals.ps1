@@ -1162,12 +1162,41 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
                 $accessRead -and $_.Index -gt $accessRead[0].Index -and
                 (-not $implementationWrite -or $_.Index -lt $implementationWrite[0].Index)
             } | Sort-Object Index | Select-Object -First 1)
+            # Asking is one legitimate resolution; a model may instead resolve the conflict itself and
+            # document it in the artifact it actually ships — not in free chat prose (which the
+            # self-test's echo-only checks already forbid crediting), but in the DDL comment that is
+            # the real work product. Require the written table to both name the specific scheme it
+            # rejected AND ground that in the fixture's own access-pattern facts, and to not apply that
+            # scheme to itself — this is a structural/content check on the artifact, not a keyword
+            # match on the model's narration.
+            $factWrite = @($e.Tools | Where-Object {
+                $_.Name -in @('Edit','Write') -and
+                ((Get-ToolPath $_) -replace '\\','/') -match '(?i)(?:^|/)Tables/fact\.FactFraudAlert\.sql$'
+            } | Sort-Object Index | Select-Object -First 1)
+            $documentedDeviation = [bool]@($factWrite | Where-Object {
+                $written = [string]($_.Input.content)
+                if (-not $written) { return $false }
+                # The real DDL clause is ") ON ps_OrderDateMonth(Col)" — anchor on that shape, not the
+                # bare word "on", which collides with ordinary prose like "not partitioned on ...".
+                if ($written -match '(?i)\)\s*ON\s+ps_OrderDateMonth\s*\(') { return $false }
+                # Deliberately broad on phrasing (two independently-observed correct answers used
+                # different wording for the same fact — "no date range" vs. "not date-scoped"; "full
+                # history" vs. "complete retained history") — narrow keyword lists under-credit real
+                # variation, which is exactly the class of grader defect this repo has hit before
+                # (B-124's literal 'OrderLine' requirement). What must not vary: the model names the
+                # specific scheme it is rejecting (not a generic "no partition" note) and grounds the
+                # rejection in this fact's own identity, not boilerplate.
+                return $written -match '(?i)ps_OrderDateMonth' -and
+                $written -match '(?i)AlertId' -and
+                $written -match '(?i)(not\s+(?:partition|date-?scoped)|no\s+date|not\s+date|point\s+look|full[a-z\s]{0,20}history|complete[a-z\s]{0,20}history|unrelated|unlike|different)'
+            })
+            $resolved = [bool]($mismatchQuestion -or $documentedDeviation)
             $engaged = [bool]($partitionRead -or $accessRead -or $implementationWrite)
-            $status = if (-not $engaged) { 'INCONCLUSIVE' } elseif ($mismatchQuestion) { 'PASS' } else { 'FAIL' }
+            $status = if (-not $engaged) { 'INCONCLUSIVE' } elseif ($resolved) { 'PASS' } else { 'FAIL' }
             return [pscustomobject]@{
                 Status = $status
-                Pass = [bool]$mismatchQuestion
-                Detail = "partitionEvidence=$([bool]$partitionRead) accessEvidence=$([bool]$accessRead) mismatchRaised=$([bool]$mismatchQuestion) raisedAt=$(if($mismatchQuestion){$mismatchQuestion[0].Index}else{-1}) implementationWriteAt=$(if($implementationWrite){$implementationWrite[0].Index}else{-1}) typedEvidenceOnly=True"
+                Pass = $resolved
+                Detail = "partitionEvidence=$([bool]$partitionRead) accessEvidence=$([bool]$accessRead) mismatchRaised=$([bool]$mismatchQuestion) documentedDeviation=$documentedDeviation raisedAt=$(if($mismatchQuestion){$mismatchQuestion[0].Index}else{-1}) implementationWriteAt=$(if($implementationWrite){$implementationWrite[0].Index}else{-1}) typedEvidenceOnly=True"
             }
         }
         { $_ -in @('warehouse-bind-sql','warehouse-bind-mixed') } {
@@ -2506,6 +2535,42 @@ FROM stg.StgSupplierInvoice s;
         Write-Output 'TRANSCRIPT warehouse-partition-mismatch GREEN:'
         $partitionGreenLines | Write-Output
         Write-Output "VERDICT warehouse-partition-mismatch GREEN: $($partitionGreenResult.Status) — $($partitionGreenResult.Detail)"
+
+        # A model may resolve the conflict itself in the artifact it ships, instead of asking. That is
+        # a second legitimate green world, not the same one — red/green it independently. GREEN2:
+        # documents the specific rejected scheme and the access-pattern reason, and does not apply it.
+        # RED2: mentions all the same words (scheme name, AlertId, point lookup) but still applies the
+        # scheme — proves the check is structural (the ON clause), not a keyword match on prose.
+        $partitionGreen2Lines = @(
+            '{"type":"system","subtype":"init"}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"partition","name":"Read","input":{"file_path":"Tables/partition.OrderDateMonth.sql"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"partition","is_error":false,"content":"CREATE PARTITION FUNCTION pf_OrderDateMonth (INT) AS RANGE RIGHT; CREATE PARTITION SCHEME ps_OrderDateMonth; FactOrderLine uses OrderDateKey"}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"contract","name":"Read","input":{"file_path":"docs/fraud-alert-contract.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"contract","is_error":false,"content":"AlertId point lookup searches complete retained history without a date range; source corrects DetectedAt; load reconciles each batch."}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"write","name":"Write","input":{"file_path":"Tables/fact.FactFraudAlert.sql","content":"-- Not partitioned on ps_OrderDateMonth: AlertId point lookups search full history with no date range.\nCREATE TABLE fact.FactFraudAlert (AlertId BIGINT NOT NULL PRIMARY KEY);"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"write","is_error":false,"content":"created"}]}}',
+            '{"type":"result","is_error":false,"result":"Built the fact table; see the DDL comment for the partition decision."}'
+        )
+        $partitionRed2Lines = @(
+            '{"type":"system","subtype":"init"}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"partition","name":"Read","input":{"file_path":"Tables/partition.OrderDateMonth.sql"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"partition","is_error":false,"content":"CREATE PARTITION FUNCTION pf_OrderDateMonth (INT) AS RANGE RIGHT; CREATE PARTITION SCHEME ps_OrderDateMonth; FactOrderLine uses OrderDateKey"}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"contract","name":"Read","input":{"file_path":"docs/fraud-alert-contract.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"contract","is_error":false,"content":"AlertId point lookup searches complete retained history without a date range; source corrects DetectedAt; load reconciles each batch."}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"write","name":"Write","input":{"file_path":"Tables/fact.FactFraudAlert.sql","content":"-- AlertId point lookups search full history with no date range, unlike ps_OrderDateMonth.\nCREATE TABLE fact.FactFraudAlert (AlertId BIGINT NOT NULL) ON ps_OrderDateMonth(DetectedDateKey);"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"write","is_error":false,"content":"created"}]}}',
+            '{"type":"result","is_error":false,"result":"Built the fact table on the shared partition scheme."}'
+        )
+        $partitionGreen2Path = Join-Path $temp 'partition-mismatch-green2.jsonl'
+        $partitionRed2Path = Join-Path $temp 'partition-mismatch-red2.jsonl'
+        $partitionGreen2Lines | Set-Content -LiteralPath $partitionGreen2Path -Encoding utf8NoBOM
+        $partitionRed2Lines | Set-Content -LiteralPath $partitionRed2Path -Encoding utf8NoBOM
+        $partitionGreen2Result = Test-ScenarioEvidence 'warehouse-partition-mismatch' $temp (Read-Transcript $partitionGreen2Path) 1
+        $partitionRed2Result = Test-ScenarioEvidence 'warehouse-partition-mismatch' $temp (Read-Transcript $partitionRed2Path) 1
+        if (-not $partitionGreen2Result.Pass -or $partitionGreen2Result.Status -ne 'PASS') { throw "warehousePartitionMismatch rejected a documented in-artifact deviation with no AskUserQuestion: $($partitionGreen2Result.Detail)" }
+        if ($partitionRed2Result.Pass -or $partitionRed2Result.Status -ne 'FAIL') { throw "warehousePartitionMismatch credited scheme-name keyword presence despite the DDL still applying the scheme: $($partitionRed2Result.Detail)" }
+        Write-Output "VERDICT warehouse-partition-mismatch GREEN2 (documented deviation, no question): $($partitionGreen2Result.Status) — $($partitionGreen2Result.Detail)"
+        Write-Output "VERDICT warehouse-partition-mismatch RED2 (keywords present but scheme still applied): $($partitionRed2Result.Status) — $($partitionRed2Result.Detail)"
 
         $checkpoint = [pscustomobject]@{ Events = @(
             ([pscustomobject]@{ type='system'; subtype='init' }),

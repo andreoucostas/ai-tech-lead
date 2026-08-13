@@ -157,13 +157,10 @@ Match CLAUDE.md > Conventions > Data Access. The two rules that dominate everyth
    doesn't exist. Handle late-arriving dimension members the way the repo does (inferred/stub
    members updated later, or fail-and-retry).
 
-8. **Partition alignment.** Before joining the target table family's existing partition
-   function/scheme, check the new fact's own evidenced access pattern (its load/query shape —
-   e.g. point lookups across full history with no natural date-range filter) against what the
-   family's partition key assumes. If they evidently conflict, name the mismatch and ask before
-   conforming — do not inherit the layout silently. Otherwise the new table joins the existing
-   partition function/scheme. If sibling loads use partition switch, create the switch-aligned
-   staging table: same filegroup, same indexes, check constraint matching the target partition.
+8. **Partition alignment.** If the target table family is partitioned, the new table joins the
+   existing partition function/scheme. If sibling loads use partition switch, create the
+   switch-aligned staging table: same filegroup, same indexes, check constraint matching the
+   target partition.
 
 9. **Deployment.** Schema changes go through the repo's one existing vehicle — SQL project
    build, migration-scripts folder, or dbt — never ad-hoc scripts against the server. Review
