@@ -155,6 +155,86 @@ against `grep -rl Copilot dist/dotnet/tests/hooks/*.ps1`) found all four shipped
 Copilot-shape coverage. This is why §2 step 3 is an audit-first, build-only-if-a-real-gap-survives
 instruction rather than a concrete assertion to write.
 
+## 5. Validation addendum (2026-08-13, independent re-verification before implementation)
+
+A from-scratch re-verification of every load-bearing claim in §1–§4 was run, independently of the
+prior three passes, before handing this to implementation. All of it held, most of it re-confirmed
+with fresh direct evidence:
+
+- The `no-dead-instruction` regex was **executed** (not just read) against the three claimed
+  strings in PowerShell — 0 matches on all three, confirming the gate is currently blind to them.
+- All file-layout claims (doc reference line numbers, `case-cmd`/`case-id` marker locations,
+  `run_evals.py`/`requirements.txt`/`cases.yaml` paths) were independently re-located and match
+  exactly.
+- The coverage-already-exists claim (§4's correction) was re-verified by reading the actual
+  assertion lines in `RoutePrompt.Tests.ps1`, `SessionStartFrameworkRules/Hazard/Wiki.Tests.ps1`,
+  and `TwinParity.Tests.ps1` — all contain live `additionalContext` assertions exactly where
+  claimed. Bonus: `boy-scout-check.{ps1,sh}` (a stack-level hook outside the audited
+  `src/core/.claude/hooks/` universe) also already has Copilot-shape coverage in `TwinParity.Tests.ps1`
+  — not required by this scope, noted only as further confirmation the audit's conclusion is sound.
+- The cross-host vendor-model confound was independently re-checked directly against this box's live
+  `~/.copilot/session-state/*/events.jsonl` (not just the two sessions the design cites): 25 real
+  `session.auto_mode_resolved` events split 17 `claude-haiku-4.5` / 8 `gpt-5-mini`, confirming the
+  non-determinism is not a two-session fluke. The "never observed a deny shape" claim was also
+  re-checked across all 14 sessions with `hook.end` events on this box: still zero.
+- The B-23 doc-reference citations name only `dist/dotnet/...` paths, but `ARCHITECTURE.md`,
+  `REVIEW-GUIDE.md`, and `playbook.md` are **stack whole-files** (`src/stacks/{dotnet,angular,monorepo}/files/docs/`),
+  not core — angular and monorepo each carry their own copy of the same stale prose, worded
+  differently per stack (e.g. angular's `ARCHITECTURE.md` says "Boy Scout/`takeUntilDestroyed`",
+  its `REVIEW-GUIDE.md` cites `angular-001`/`angular-004` instead of `dotnet-001`/`dotnet-004`).
+  §2 step 2's "invariant #1 monorepo-sibling review applies to every stack-side edit" already covers
+  this, but it is easy to fix only the dotnet copy and consider the doc-reference sub-item done —
+  flagging explicitly so the implementer edits all three, not by copy-paste.
+- **New finding, not in the original three passes:** `ARCHITECTURE.md` has a generated derivative,
+  `architecture.html` (also a stack whole-file, ×3, built by `src/core/scripts/build-architecture-html.{ps1,sh}`,
+  which embeds the source Markdown verbatim and stamps a `src-sha1` comment). No gate in this
+  authoring repo checks that a committed `architecture.html` matches its committed `ARCHITECTURE.md`
+  — `docs-sync-check` is shipped *consumer* tooling for a consumer's own repo, not a maintainer gate
+  here, and `BuildArchitectureHtml.Tests.ps1` only proves the `.ps1`/`.sh` generator twins agree on
+  output, not that the committed HTML is fresh. Left alone, editing `ARCHITECTURE.md`'s "executable
+  spec" / "model-graded rubric" line without regenerating `architecture.html` would ship three stale
+  HTML copies still making those now-false claims about `cases.yaml` (not, as originally drafted here,
+  a literal "run the deleted evals runner" instruction — `architecture.html` never named `run_evals.py`;
+  that instruction lives only in `tests/evals/README.md`, already covered by §2 step 2) — undetected
+  by any check. **Added to the locked scope as step 2b below.**
+
+  **Correction (Sol adversarial review, 2026-08-13, `.claude/plans/2026-08-13-b41-sol-adversarial-review.md`,
+  finding 1, BLOCKING, independently re-verified):** the command below originally named
+  `scripts/build-architecture-html.ps1`. That path does not exist — the generators live at
+  `src/core/scripts/build-architecture-html.{ps1,sh}` (root `scripts/` has no such twin). Fixed below.
+- Light research pass: no established OSS tool (markdownlint, markdown-link-check, Vale) validates
+  that a prose-referenced *command* actually resolves — that class of check is bespoke by nature
+  (informal prose syntax), which is exactly why this repo already built `no-dead-instruction` itself.
+  The design's approach (extend the existing regex rather than adopt/build a new tool) is the
+  proportionate, industry-normal choice here, not a shortcut.
+
+**Scope addition — §2 step 2b (corrected path, strengthened verification per Sol review findings 1–2):**
+after fixing `ARCHITECTURE.md` ×3, from the repo root run, for each stack:
+`pwsh -NoProfile -File src/core/scripts/build-architecture-html.ps1 src/stacks/<stack>/files/docs/ARCHITECTURE.md src/stacks/<stack>/files/docs/architecture.html`
+(the generator resolves relative paths from the Git root regardless of invocation directory). Run the
+`.sh` twin once against the same inputs to confirm byte-identical output, per the existing
+`BuildArchitectureHtml.Tests.ps1` twin-parity contract. Commit the regenerated `architecture.html`
+files alongside the Markdown edit in the same commit.
+
+Verification (two checks, not one — phrase absence alone doesn't prove freshness, per Sol finding 2):
+1. Each `architecture.html`'s embedded markdown must no longer contain "executable spec" /
+   "model-graded rubric" (or whatever the edited phrasing removes) — grep it directly.
+2. Compute the CR-stripped SHA-1 of each edited `ARCHITECTURE.md` (same algorithm the generator and
+   `docs-sync-check` both use) and confirm it matches the `<!-- src-sha1: ... -->` comment stamped in
+   its regenerated `architecture.html`, for all three stacks. This is the direct freshness proof;
+   phrase-grep is a semantic sanity check on top of it, not a substitute for it.
+
+No other change to the locked scope. Sections 1–4 stand as originally locked.
+
+**Sol adversarial review (2026-08-13, `.claude/plans/2026-08-13-b41-sol-adversarial-review.md`):**
+1 blocking finding (the path error above, corrected), 3 non-blocking (freshness-check strengthened,
+wording corrected, plus a constructive confirmation — Sol planted a stale-HTML defect against the
+real `validate-dist.ps1` and observed it pass with exit 0, directly proving the gate blind spot this
+addendum exists to close). Verdict: **proceed** — B-41's remainder is still necessary and
+proportionate; nothing since the design's `4a7757a` base undercuts the premise. Both blocking and
+non-blocking findings independently re-verified before being applied above (grep/`Test-Path` checks
+shown inline), per this repo's "a reviewer's corrections are input, not verdict" rule.
+
 ## Verification (name the command, show the result; red observed before green)
 
 1. Plant the `no-dead-instruction` defect class (a doc referencing `python <x>.py` that doesn't exist),
