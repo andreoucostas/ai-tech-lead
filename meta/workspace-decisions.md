@@ -1573,6 +1573,27 @@ before conforming — not the physical-review capability, evidence-axis taxonomy
 from the rejected design, and not a change to clause (b), which is unrelated and untested by this
 probe.
 
+**Observed result (2026-08-13).** Pre-fix baseline: n=2, both FAIL — unchanged `add-warehouse-load`
+read both decisive evidence sources (the family's partition DDL and a documented access-pattern
+contract showing point lookups across full history with no date filter) but silently conformed to
+the family's partition scheme with no flag, in both runs. The clause (a) fix above was implemented,
+composed into all three dists, validated (`validate-dist` ×3 green), committed (`73d0260`, branch
+`codex/b128-partition-probe`), and re-verified live: **n=2 post-fix, both still FAIL, identical
+shape.** Direct transcript inspection (not the grader's summary alone) confirmed the model received
+the full updated skill text in both post-fix runs (injected as a user-role message after the `Skill`
+tool call — the tool_result itself is a short "Launching skill" stub, not the body; grep'd the
+literal new clause text into both transcripts to confirm delivery) and read both decisive evidence
+files in every one of the 4 runs (pre- and post-fix) — so this is not a delivery failure. Both
+pre-fix transcripts show the same shape as post-fix: zero `AskUserQuestion` calls across all 4 runs.
+The scenario's prompt (`scenarios.json`) includes "I approve this change in advance: do not stop for
+a plan or ask for routine confirmation; implement it now in this session" — a plausible competing
+signal that may be causing the model to classify the mismatch flag as exactly the kind of "routine
+confirmation" it was told to skip, independent of what step 8 says. This has not yet been isolated
+(would require a controlled variant: same fixture, prompt without the "don't ask" framing, to see if
+the clause changes behavior when that pressure is absent) — recorded here as an open finding, not yet
+resolved. The underlying defect (n=4 total, 100% consistent) is more solidly established than the
+fix. Do not treat the one-clause fix as validated; it is committed on the branch, not merged.
+
 Also authorised, separable, no eval required: two clarifying sentences in `map-warehouse` step 8 /
 Coverage stating the map records physical layout as observed and does not assess its fitness, naming
 what would be needed to assess it. This closes the one passive-harm path identified (a reader

@@ -3726,6 +3726,15 @@ mismatch fixture; if it passes, B-128 closes with no shipped change and the fixt
 regression evidence (WSD-037 pattern); if it fails, the one-clause fix to step 8's unconditional
 clause is applied and re-verified n≥2.
 
+**Status (2026-08-13):** defect confirmed (n=2 pre-fix, both FAIL). One-clause fix implemented,
+composed, validated, committed on branch `codex/b128-partition-probe` (`73d0260`) — **but n=2
+re-verification also FAILs, identically.** Not a delivery failure (confirmed by direct transcript
+read: the model receives the full updated clause and reads both evidence files every time). The
+scenario's own prompt pre-authorizes skipping "routine confirmation," a plausible competing signal
+not yet isolated. See `meta/workspace-decisions.md` WSD-039 "Observed result" for full detail. **Not
+closed, not merged** — open question is whether the fix needs stronger wording (state explicitly that
+this is not routine) or whether the fixture's prompt needs revision to fairly test the guidance.
+
 ---
 ### B-129 · Design and review the warehouse reporting consumption layer
 **Effort:** M–L · **Priority:** P2 · filed 2026-08-08 · **Capability:** warehouse technical leadership
