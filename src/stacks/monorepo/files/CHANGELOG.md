@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.52.1 — Unreleased
+## 0.52.1 — 2026-08-13
 
 - The framework's behavior cases are now a readable catalogue rather than an API-backed runner.
   Documentation now describes how to inspect or reuse those cases; no action is required.

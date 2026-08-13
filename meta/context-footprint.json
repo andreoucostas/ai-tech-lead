@@ -107,8 +107,8 @@
         },
         {
           "path": ".claude/commands/security-review.md#frontmatter",
-          "chars": 414,
-          "tok": 104
+          "chars": 388,
+          "tok": 97
         },
         {
           "path": ".claude/commands/test.md#frontmatter",
@@ -297,8 +297,8 @@
         },
         {
           "path": ".claude/agents/security-auditor.md#body",
-          "chars": 5930,
-          "tok": 1482
+          "chars": 6613,
+          "tok": 1653
         },
         {
           "path": ".claude/agents/solid-check.md#body",
@@ -372,8 +372,8 @@
         },
         {
           "path": ".claude/commands/security-review.md#body",
-          "chars": 4375,
-          "tok": 1094
+          "chars": 6233,
+          "tok": 1558
         },
         {
           "path": ".claude/commands/test.md#body",
@@ -541,8 +541,8 @@
         },
         {
           "path": ".claude/commands/security-review.md#frontmatter",
-          "chars": 414,
-          "tok": 104
+          "chars": 339,
+          "tok": 85
         },
         {
           "path": ".claude/commands/test.md#frontmatter",
@@ -721,8 +721,8 @@
         },
         {
           "path": ".claude/agents/security-auditor.md#body",
-          "chars": 5009,
-          "tok": 1252
+          "chars": 5692,
+          "tok": 1423
         },
         {
           "path": ".claude/agents/solid-check.md#body",
@@ -796,8 +796,8 @@
         },
         {
           "path": ".claude/commands/security-review.md#body",
-          "chars": 3801,
-          "tok": 950
+          "chars": 5089,
+          "tok": 1272
         },
         {
           "path": ".claude/commands/test.md#body",
@@ -955,8 +955,8 @@
         },
         {
           "path": ".claude/commands/security-review.md#frontmatter",
-          "chars": 414,
-          "tok": 104
+          "chars": 388,
+          "tok": 97
         },
         {
           "path": ".claude/commands/test.md#frontmatter",
@@ -1165,8 +1165,8 @@
         },
         {
           "path": ".claude/agents/security-auditor.md#body",
-          "chars": 9477,
-          "tok": 2369
+          "chars": 10160,
+          "tok": 2540
         },
         {
           "path": ".claude/agents/solid-check.md#body",
@@ -1240,8 +1240,8 @@
         },
         {
           "path": ".claude/commands/security-review.md#body",
-          "chars": 5358,
-          "tok": 1340
+          "chars": 7216,
+          "tok": 1804
         },
         {
           "path": ".claude/commands/test.md#body",
@@ -1333,30 +1333,30 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 39527,
-      "static.claude.tok": 9882,
+      "static.claude.chars": 39501,
+      "static.claude.tok": 9875,
       "static.copilot.chars": 43561,
       "static.copilot.tok": 10890,
       "prompt.max.chars": 2253,
       "prompt.max.tok": 563
     },
     "angular": {
-      "static.claude.chars": 38255,
-      "static.claude.tok": 9564,
+      "static.claude.chars": 38180,
+      "static.claude.tok": 9545,
       "static.copilot.chars": 44317,
       "static.copilot.tok": 11079,
       "prompt.max.chars": 2323,
       "prompt.max.tok": 581
     },
     "monorepo": {
-      "static.claude.chars": 47884,
-      "static.claude.tok": 11971,
+      "static.claude.chars": 47858,
+      "static.claude.tok": 11964,
       "static.copilot.chars": 52437,
       "static.copilot.tok": 13109,
       "prompt.max.chars": 2668,
       "prompt.max.tok": 667
     },
-    "monorepo-claude-ratio-permille": 1211
+    "monorepo-claude-ratio-permille": 1212
   },
   "_notes": [
     "Claude frontmatter is a stable over-approximation of harness injection.",

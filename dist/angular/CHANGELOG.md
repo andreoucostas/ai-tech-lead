@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## Unreleased
+## 0.52.1 — 2026-08-13
 
 - The framework's behavior cases are now a readable catalogue rather than an API-backed runner.
   Documentation now describes how to inspect or reuse those cases; no action is required.

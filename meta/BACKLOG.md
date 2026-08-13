@@ -4456,6 +4456,113 @@ A shared completion-rule correction plus the smallest domain-specific trigger re
 documentation graph, automatic classifier, mutating `/docs-sync`, or exhaustive skill inventory does
 not.
 
+### B-137 · A push outside `release.ps1` gets no CI check at all — B-88's fix only covers the release commit
+**Effort:** S · **Priority:** P2 · filed 2026-08-13 · **Invariants:** #7
+
+**Why:** B-88 wired `.claude/scripts/watch-ci.ps1` into `release.ps1` step 5c, so a *release* commit's
+CI run is checked before the tag is allowed. Every other push to `master` — an implementer's landing
+commit, a design-lock commit, a small fix commit made between releases, all routine and frequent in
+this repo's actual working history (codex-implementer rounds, adversarial-review-lock commits, etc.)
+— pushes straight to `origin/master` with **no automatic CI check at all**. The only way to learn it
+broke CI is to manually run `gh run list`/`gh run view`, which costs a deliberate, easy-to-skip step
+(and real inference effort to remember and execute) rather than being a fact the tooling hands back.
+
+**Caught live, 2026-08-13:** four consecutive pushes to `master` went CI-red and none were noticed
+until the maintainer asked directly — B-135's commit (`afabd90`, `context-footprint.json` went stale
+and nobody ran `-Update`), a docs-only design-lock commit that inherited the same stale baseline,
+and two B-41 commits (one of which had its own, different defect: editing `src/stacks/*/files/CHANGELOG.md`
+without rebuilding `dist/`, caught only because the *next* CI run's `git diff --cached --exit-code
+-- dist` failed). This is B-88's exact failure mode (`meta/BACKLOG.md`'s own B-88 entry: "four red
+runs went unnoticed until asked"), recurring in the one place B-88 didn't reach.
+
+**Do:** after every push to `master` (not just `release.ps1`'s), run the existing, already-tested
+`watch-ci.ps1` / `Get-CiPublishDecision` (`.claude/scripts/_ci-decision.ps1`, B-88/WSD-029 — reuse it,
+do not write a second CI-status reader) against the pushed commit, and print the 0/1/3 verdict as
+part of the command's own output — a deterministic script fact, not something an agent has to
+remember to go check and spend a reasoning pass deciding to look for. The cheapest wiring point is
+likely a small wrapper (`scripts/push-and-check.ps1`/`.sh`, or a documented one-liner in
+`DEVELOPING.md`'s commit recipe) that every non-release push routes through, mirroring step 5c's
+poll-until-terminal logic exactly rather than reinventing it. Out of scope: gating the push itself
+(this repo's own commit-and-push policy is "never leave changes uncommitted"; the fix is *visibility*
+after the fact, not a pre-push block) and building anything that duplicates `watch-ci.ps1`'s polling.
+
+**Proportionality:** B-88 already paid for the hard part (a red-tested, twin-parity CI watcher with a
+real 0/1/3 decision table). This is wiring the existing tool into the other call sites that skip it,
+not new machinery — small effort, and the harm is already observed twice over (B-88's own history,
+and this incident).
+
+### B-138 · The gate suite is bound by per-assertion process spawning, and its cost ceiling will always eventually be outgrown
+**Effort:** M · **Priority:** P2 · filed 2026-08-13 · **Invariants:** #3 #4
+
+**Why:** `meta/gate-budget.json` already diagnoses these suites as "bound by process creation, not
+CPU" — each assertion spawns a fresh `pwsh`/`bash` child. That means wall-clock cost scales roughly
+linearly with assertion count, so any fixed time ceiling is guaranteed to be outgrown again as more
+tests are added; raising the ceiling each time (as `meta-suite` already was once, 2026-08-08)
+delays the failure without changing its cause. Caught live, 2026-08-13: `ValidateDist.Tests.ps1`
+alone measured 339.6s in isolation, 67% of the 504.4s serial meta-suite total, and it is the file
+with by far the most assertions (34 `It` blocks, most invoking `validate-dist.{ps1,sh}` as a fresh
+process). `dist-gates` has the identical shape and the identical unaddressed note already sitting in
+`gate-budget.json`'s own `"next-target"` field, written 2026-08-07 and never acted on: "the win there
+is fewer spawns per assertion, NOT more parallelism."
+
+Two-year, ever-growing exposure: this framework's own working model (RCA → new gate, repeated
+dozens of times just in the five days between B-90 and B-136) guarantees new assertions keep
+arriving. A per-assertion-spawn architecture makes total suite cost a direct, compounding function
+of backlog velocity, which is exactly backwards -- the gate that is supposed to keep releases cheap
+becomes more expensive precisely because the framework is healthy and being actively maintained.
+
+Also worth checking while in this code: the 2026-08-07 tuning got the *parallel* meta-suite runner
+from 399s serial to 148.1s (a 2.7x win) via a throttled outer loop. Today's *parallel* aggregate
+reading (527–554s, per the two v0.52.1 release attempts) is barely faster than this entry's own
+504.4s *serial*, single-file-at-a-time measurement -- the throttle may itself have regressed or
+stopped helping as the suite grew, which would be free runtime back with no per-file work at all if
+confirmed and fixed.
+
+**Do:** for the highest-cost files (`ValidateDist.Tests.ps1` first, `dist-gates`'s per-dist hook
+suites second), replace one-process-per-assertion with a reused session: dot-source the target
+script's functions once into a persistent runspace (PowerShell) / keep one interactive shell alive
+(bash) per test file, and call the function repeatedly instead of re-invoking the interpreter each
+time. Confirm this doesn't change what's actually being tested (the composed, on-disk artifact must
+still be exercised faithfully — a reused in-process call must not silently start testing something
+subtly different from what a real consumer invocation does). Separately, profile whether the outer
+parallel throttle in the meta-suite runner is still delivering its 2026-08-07 speedup; if not, that
+regression is worth its own smaller, isolated fix first. Red-test per this repo's Definition of
+done: show the before/after wall-clock time on the same host, not just "it feels faster."
+
+**Proportionality:** the single dominant file is already identified and measured (339.6s of 504.4s).
+This is not a request to re-architect the whole suite; fixing the highest-cost file first and
+re-measuring is enough to know whether the remaining files are worth the same treatment.
+
+### B-139 · `total-local-gates` can silently drift out of sync with the per-stage ceilings it's supposed to bound
+**Effort:** S · **Priority:** P2 · filed 2026-08-13 · **Invariants:** #4
+
+**Why:** on 2026-08-08, `meta-suite`'s own ceiling was correctly raised 300s → 650s with a recorded,
+justified reason (B-67's genuine new scope) — but `total-local-gates` (the aggregate ceiling every
+stage's time is summed against) was never recomputed to match, and has been 1000s since inception.
+Once `dist-gates` (700s) and `meta-suite` (650s) both carry ceilings whose sum alone (1350s) already
+exceeds the 1000s aggregate, it is mathematically impossible for both stages to legitimately run
+anywhere near their own individually-justified ceilings and still pass the aggregate — the gate was
+already inconsistent with itself for five days before it was ever triggered. Caught live, 2026-08-13:
+two consecutive v0.52.1 release attempts refused on `total-local-gates` while every individual stage
+passed its own ceiling comfortably (dist-gates 668.4s/609.4s < 700; meta-suite 554.4s/527.3s < 650).
+This is the exact same defect class Maintenance rule 4 already names for behavioural instruments —
+an aggregate check that can go stale independently of the components it's supposed to bound, and
+nothing notices until someone hits it.
+
+**Do:** add a gate — to the meta suite itself, so it runs on every ordinary change, not only at
+release time — that asserts `meta/gate-budget.json`'s `total-local-gates` ceiling is at least the sum
+of the current per-stage ceilings (or some explicitly documented, deliberately-chosen margin below
+that sum, if the intent is that stages are assumed never to all peak simultaneously — state which
+policy is intended and enforce that one). Red-test by planting the exact 2026-08-08 defect class: bump
+one per-stage ceiling in a fixture copy of the file without updating the aggregate, and confirm the
+new gate fails. This makes the inconsistency a same-commit review-time failure for whoever next
+revises a per-stage ceiling, instead of a five-days-later surprise during an unrelated release.
+
+**Proportionality:** small, mechanical, and B-110/B-101's own established pattern (declare a ceiling,
+make violating it a hard failure) applied one level up to the ceilings themselves. The alternative —
+trusting whoever edits a per-stage ceiling to remember to also update the aggregate — is the exact
+discipline that already failed once.
+
 ---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 

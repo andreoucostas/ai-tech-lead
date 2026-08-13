@@ -9,9 +9,17 @@
     "dist-gates": 700,
     "meta-suite": 650,
     "eval-selftest": 120,
-    "total-local-gates": 1000
+    "total-local-gates": 1530
   },
   "ceiling-revisions": [
+    {
+      "date": "2026-08-13",
+      "stage": "total-local-gates",
+      "from": 1000,
+      "to": 1530,
+      "why": "Not a load or growth adjustment -- a correction of a bookkeeping gap. The 2026-08-08 meta-suite revision below correctly raised that stage's own ceiling 300 -> 650 for a genuine, justified reason (B-67), but never recomputed total-local-gates to match. With dist-gates already at 700 (set 2026-08-07) and meta-suite at 650, their sum alone (1350) already exceeded the 1000 aggregate before compose/eval-selftest are even added -- meaning both stages could never legitimately run near their own already-justified ceilings and still pass the aggregate. Two consecutive v0.52.1 release attempts hit exactly this: every individual stage passed its own ceiling comfortably (dist-gates 668.4s/609.4s < 700; meta-suite 554.4s/527.3s < 650) while the aggregate still failed. Set to the literal sum of the current per-stage ceilings (60+700+650+120=1530), the minimum value under which a release cannot be blocked by this file's own internal inconsistency alone. This is NOT a response to a genuine slowdown -- ValidateDist.Tests.ps1, the single largest cost (339.6s of a 504.4s serial meta-suite reading, measured in isolation), has not changed since before the 2026-08-08 revision; see B-138 (the real fix -- per-assertion process-spawn cost is the actual scaling problem and belongs there, not in this ceiling) and B-139 (a same-commit gate so a per-stage ceiling change can never again drift out of sync with the aggregate silently).",
+      "measured": 1265.4
+    },
     {
       "date": "2026-08-08",
       "stage": "meta-suite",

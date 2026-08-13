@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.52.1 — Unreleased
+## 0.52.1 — 2026-08-13
 
 - B-41/B-23: retired the unmaintained API-backed eval runner while preserving its case catalogue as
   readable framework evidence, and taught `no-dead-instruction` to catch missing Python scripts.
