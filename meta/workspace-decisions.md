@@ -1528,3 +1528,318 @@ locked decision:
 **Closed 2026-08-12.** Implemented, independently verified (build/validate-dist ×3, full hook suite,
 install smoke), and RCA filed — see `meta/BACKLOG.md` Done section for B-135. Nothing remains open
 under this decision.
+
+## WSD-039: B-128 Opus gate — reject the physical-design-review premise; substitute a cheap targeted probe (2026-08-13)
+
+**Context.** B-128 proposed a physical-design-review capability for `map-warehouse`, gated behind a
+"Phase 0" baseline experiment (3 arms × 4 SQL Server fixture families × ≥3 reps/surface, plus a
+9-state evidence machine and a 7-rung authority ladder for later phases). Sol's own self-review had
+already narrowed the original plan; this is the independent Opus-tier pass Sol's review explicitly
+could not satisfy.
+
+The review's central finding, independently re-verified by direct read rather than trusted: the
+decisive evidence for a physical-design judgment (row counts, growth, query frequency, predicate
+selectivity, plans, waits) does not exist anywhere in a static repository, which is the resource
+every other warehouse item in this cluster (B-124/125/126/127) draws its value from. That makes the
+question collapse to two degenerate regimes — no telemetry supplied (only `Evidence collection
+required` is reachable) or telemetry supplied (the answer becomes a textbook mapping any competent
+general model already performs) — with real signal in at most one of the four proposed fixture
+families. Compounding this, step 2's own attribution rule ("shipped only if failure is caused by
+missing/misleading guidance, not general model limitation") cannot be satisfied by an experiment run
+before any guidance exists to be missing — Phase 0's own design predetermines a `close` verdict
+before it runs, at an estimated ≥36 live-eval-run cost (~$45-55) against zero currently-observed
+harm. That is a Maintenance rule 6 violation on its face: the entry's own proportionality paragraph
+already states "no harmful framework-caused tuning decision has been observed."
+
+**Decision.** Reject B-128's Phase 0 apparatus as designed — the 4-fixture-family baseline, the
+9-state evidence machine (5 of 9 states are unreachable within an authorised no-execution artifact,
+per Maintenance rule 4 ¶2), and the 7-rung authority ladder (the framework has no database
+connectivity anywhere in shipped content — verified by grep — so it can only state a posture, not
+enforce a ladder). Substitute the review's Finding 4 as the sole authorised experiment, **retargeted
+after delta review found the original quote wrong** (see Delta review below): `add-warehouse-load`
+`SKILL.md:160-163` step 8 ("Partition alignment") actually says two separable things, not one — (a)
+*unconditionally*, "the new table joins the existing partition function/scheme" for any table in a
+partitioned family; (b) *only if* sibling loads use partition switch, the staging table additionally
+matches filegroup, indexes, and the partition check constraint. The probe targets (a), the
+unconditional clause with no evidenced-mismatch escape valve: a new fact whose evidenced access
+pattern (from its own load/query shape, not the family's) plausibly does not suit the family's
+existing partition function — does the model silently reuse it per instruction, or flag the mismatch
+before conforming? n≥2, cost unmeasured (estimate only, not to be quoted as a measured figure — see
+Delta review). Pre-register the stopping rule used by WSD-037 (B-124): if unchanged behavior passes
+n≥2 (states the mismatch or asks), close B-128 with no shipped change, retain the fixture as
+regression evidence, reopen only on an observed field failure. If it fails, the smallest authorised
+fix is one clause on step 8 clause (a) requiring an evidenced access-pattern mismatch to be raised
+before conforming — not the physical-review capability, evidence-axis taxonomy, or authority ladder
+from the rejected design, and not a change to clause (b), which is unrelated and untested by this
+probe.
+
+Also authorised, separable, no eval required: two clarifying sentences in `map-warehouse` step 8 /
+Coverage stating the map records physical layout as observed and does not assess its fitness, naming
+what would be needed to assess it. This closes the one passive-harm path identified (a reader
+mistaking the map's `partitioning` column for a reviewed judgement) and ships under meta-invariant #7
+(version/changelog/LEARNINGS) whenever it is bundled into a release — it needs no eval gate because it
+makes no behavioral claim.
+
+**Rejected.** The full physical-design-review capability, the cross-platform adapter contract (SQL
+Server confinement is repository-justified — 6 SQL Server signals, 0 genuine Snowflake/BigQuery — but
+the equal-weighted three-platform research bled into machinery for platforms this repo has no
+evidence for), and treating "Phase 0 only, not a ship" as itself satisfying proportionality (Phase 0
+is the larger fix that needed justifying against the smaller one, not an exemption from the check).
+
+**Delta review (codex `gpt-5.6-sol`, 2026-08-13) and disposition.** Sol found the substitute probe's
+target quote was fabricated — the actual `SKILL.md:160-163` text does not say what the synthesis
+claimed. **Confirmed by direct re-read (see revised Decision above): accepted, and the probe is
+retargeted** to the instruction's actual unconditional clause. Sol also found the $5-8/$45-55 cost
+figures were unreproducible from the harness's recorded per-run budgets ($1.25-1.50 cap,
+~$0.37/run observed) — **accepted**; the Decision now carries "cost unmeasured (estimate only)" and
+the dollar figures are not to be quoted as measured. Sol also found the backlog's "Done when" section
+still described the rejected design — **accepted**, corrected below.
+
+## WSD-040: B-127 Opus gate — lock the baseline-only probe; defer the trace-mode design (2026-08-13)
+
+**Context.** B-127 proposed an on-demand attribute/metric lineage trace for `map-warehouse`. Sol's
+self-review narrowed an initial rejected draft to an "investigation-first" design whose item 1
+authorises only an unchanged-skill baseline; items 2-10 sketch a conditional trace-mode design that
+fires only if the baseline demonstrates a repeatable decision defect.
+
+Independent verification (direct read, not trusted): `map-warehouse` `SKILL.md:106-116` does offer an
+on-request "scoped second semantic pass" — but only for one narrow case (a key's version resolution
+through a load procedure), not general attribute/metric lineage. The Opus review found the baseline
+as specified would not produce a diagnostic result: `meta/eval-results.md:336-339` already documents
+a 9-table fixture where the agent brute-force reads every table/proc/view, meaning a baseline "pass"
+at that scale proves exhaustive reading works, not that tracing works — non-diagnostic per Maintenance
+rule 4 ¶2. It also found the baseline's own prompt ("ask unchanged map-warehouse explicitly to perform
+the scoped second semantic pass it already offers") telegraphs the skill and the desired behavior, the
+same class Opus rejected in B-124 rev-1; that one of five proposed baseline cases (a numeric
+"budget-exhaustion" case) is unreachable because the unchanged skill declares no numeric budget
+anywhere; and that the review criterion (exact decisive-artifact reads) contradicts the acceptance
+criterion (decision-utility) and reproduces the literal false-FAIL class that hit B-124 live. It
+surfaced stronger, previously-uncited necessity evidence: `map-warehouse`'s own Findings section
+(step 9.6) tells the agent to defer to "impact analysis" that does not exist, and its frontmatter
+promises "what feeds this report" / "which dimension owns this attribute" with no body procedure to
+back the second claim — and found real prior evidence this defect class matters:
+`meta/field-reports.md` Report #3 (a same-named-column attribute-sourcing error) and a residual
+`usedDeadColumn=True` signal in 4/6 current-content eval runs (`meta/eval-results.md:342-348`),
+neither of which the entry's "no behavioral harm is yet observed" proportionality claim accounted for.
+
+**Decision.** Lock item 1 (baseline) and item 2 (trace-subject/question definition) only, with these
+binding revisions: (a) replace the maintainer-framed prompt with plain consumer language matching the
+field-report shape ("which source column ends up in `<report field>`, and what changes its value on
+the way?") — no skill named; (b) grade on paired-world decision outcome plus a no-fabrication check,
+not exact-artifact-read matching; (c) drop the unreachable budget-exhaustion case; (d) move the
+same-named-decoy case (currently only in the post-implementation eval set) into the baseline — it is
+the highest-value case, being the exact shape of field report #3; (e) prove every baseline grader
+red/green *before* the baseline runs, not after (the review's ordering defect: an unproven grader
+reporting "pass" is the instrument-that-cannot-fail class of Maintenance rule 4/B-64/72/74/75); (f)
+correct the necessity framing to the routing-promise/body-gap mismatch (finding 5) rather than the
+entry's overstated original claim; (g) pre-register a numeric stopping rule (n≥2 per scenario,
+B-124-shaped) before the first run; (h) cite `meta/field-reports.md` #3 and the `usedDeadColumn`
+residual signal in the proportionality case, each labelled precisely — #3 is observed field harm of
+the same defect *shape* (not proof this baseline will fail), the residual is a noisy current-content
+signal (n=2, prior telegraphing caveats attached), and neither substitutes for the baseline's own
+result; (i) name the one supported live-eval host the baseline runs on and record skill-selected/skill-read
+as attribution evidence tracked separately from the decision outcome — a trial where the plain
+consumer prompt never causes `map-warehouse` to be read is a routing non-reach, not proof the skill's
+existing content lacks lineage capability, and must not be scored as a pass either way. Items 3-10 (the
+trace-mode design: edge-table schema, evidence axes, budget dials, persistence) remain **explicitly
+unlocked** — a candidate sketch only, to be redesigned from the baseline's actual result, not
+implemented now. If item 3 is ever reached, its evidence-axis vocabulary should collapse to what a
+repository read can actually evidence (roughly 6 of 16 terms are reachable within the authorised
+no-connector, no-runtime-capture scope) and its edge-table should encode OpenLineage's DIRECT/INDIRECT
+distinction as one binary column, not split across two overlapping enums.
+
+**Rejected.** Locking items 3-10 now (no observed baseline result yet to design against); the
+budget-exhaustion baseline case (unreachable); grading the baseline on artifact-read exactness (false-FAIL
+prone, contradicts the entry's own acceptance criterion); "each available agent surface" for the
+baseline (routing is a separate, already-tracked variable — B-98 — and naming the skill bypasses it
+anyway).
+
+**Delta review (codex `gpt-5.6-sol`, 2026-08-13) and disposition.** Sol found the locked baseline
+never names which host it runs on or requires proof the skill is actually read there — a routing
+non-reach and a genuine no-effect result are otherwise indistinguishable. **Accepted**, folded into
+revision (i) above. Sol also found the backlog proportionality paragraph still asserted "no
+behavioral harm is yet observed" without qualification, in tension with citing field report #3 —
+**accepted**, revision (h) above now labels each piece of evidence by what it actually shows. Sol
+flagged that `meta/BACKLOG.md`'s "Done when" for B-127 still requires the deferred trace feature
+outright, giving no closure path for a passing baseline — **accepted**, corrected below (mirrors
+WSD-037's B-124 disposition).
+
+## WSD-041: B-126 Opus gate — lock the Phase 0 premise test; defer the shipped preflight design (2026-08-13)
+
+**Context.** B-126 proposed a warehouse schema-evolution "preflight" inside `add-warehouse-load` for
+changes to an *existing* fact/dimension. Sol's self-review rejected an initial draft (asked static
+evidence to prove runtime facts) and produced a revised design whose steps 1-2 authorise only a
+premise-testing baseline; steps 3-10 sketch a conditional shipped preflight.
+
+Independent verification (direct read): `add-warehouse-load/SKILL.md` confirms the claimed gaps
+(zero coverage of downstream views/marts/procs/reports, historical backfill, source-authority
+conflict) but the entry understates its own best evidence — `map-warehouse`'s Findings section
+already tells the agent that a remediation needing schema change "requires impact analysis first;
+do not invent migration cost or downstream consumers," naming a receiver that does not exist, and
+`add-warehouse-load`'s own frontmatter promises "adding columns... including the history
+implications" with only one step (6, table-level SCD only) delivering on it. The review found the
+design's proposed insertion point (mid-step-2) is anchored to a step written around net-new loads and
+barely executes for an existing-entity change — strengthening necessity but requiring the fork point
+to move to immediately after step 1. It found one real internal contradiction (step 5 asks for both
+a per-change matrix row *and* six compatibility dimensions graded "independently per consumer,"
+which cannot both hold without either an unverifiable single cell or a combinatorial explosion — fix:
+per-change rows, six dimensions reported by exception only where worse than compatible) and one
+genuine taxonomy gap (consumer-visible operational impact — e.g., a Type-1→Type-2 change that is
+schema/semantic/historical-compatible but multiplies row counts past a downstream refresh window —
+is not caught by any of the six named dimensions and should be graded under `deployment` or added as
+a seventh). It found the Fowler Parallel Change translation is applied correctly in structure but the
+backfill decision itself (value-as-known-now vs. value-as-of vs. NULL-for-history) is left as an
+empty slot an LLM will default through silently — this is the specific defect the design must close,
+not the pattern citation. It found the Phase-0 fixture pair as specified permits three confounds
+(fixture (a) not required to contain any non-breaking consumer, so the pair could measure detection
+rather than judgment; closed-world statement not required to be identical across both fixtures;
+"non-telegraphing" not tied to byte-identical prompts) and that the grader-proof-before-baseline
+ordering defect from B-127's review recurs here identically.
+
+**Decision.** Lock steps 1-2 (Phase 0 premise test) only, with these binding revisions, **all scoped
+strictly to the premise test itself — nothing here decides where or how a future preflight would be
+inserted**: (a) the locked fixture set has exactly three worlds and no more: `compatible-visible-consumer`
+(fixture (a): a repository-visible, explicit-column-list, provably-non-breaking consumer of the
+target dimension — not merely no consumer), `incompatible-visible-consumer` (fixture (b): identical
+additive DDL, made incompatible by that same consumer's construction), and one `incomplete-closure`
+abstention control; grain/SCD/external-consumer scenarios are deferred to the existing step-9
+expansion-on-failure logic, not built now; (b) state the closed-world premise identically across all
+three fixtures; (c) require byte-identical prompts across the pair; (d) prove Phase-0 graders
+red/green before the baseline runs; (e) enumerate accepted closed-world attestation sources
+(in-session developer statement, an explicit `CLAUDE.md > Conventions` line, or a named owner
+sign-off) and require the abstention control to demonstrate "deployment approval" firing green at
+least once — otherwise that state is decorative and unreachable per Maintenance rule 4 ¶2; (f) derive
+the fixtures from the repo's existing frozen `warehouse-fact-binding`/`warehouse-fact-existing` eval
+fixture (B-124's precedent) rather than building a new stack; (g) soften the entry's "Do" section,
+which still lists B-125/B-127/B-128 as required inputs, to match step 4's correct downgrade (only
+B-125, already DONE, is a real dependency); (h) add an explicit premise-rejection closure path to
+"Done when," mirroring WSD-037.
+
+Steps 3-10 (the shipped preflight: fork-point placement, six-dimension change matrix, backfill
+trichotomy, parallel-evolution sequencing, skill-body growth ceiling) remain **explicitly unlocked in
+their entirety — none of the review's findings about them are binding**, including the fork-point
+insertion detail; they are recorded below only as a redesign watch list, to be resolved from the
+baseline's actual result, not decided in advance of it.
+
+**Watch list for the steps 3-10 redesign (non-binding, informational only):** fork the preflight
+trigger after step 1 rather than mid-step-2 (step 2 is written around net-new loads and barely
+executes for an existing-entity change); resolve the step-5 matrix/six-dimension-grading contradiction
+(per-change rows, dimensions reported by exception); add consumer-visible operational impact (e.g. a
+Type-1→Type-2 change that multiplies row counts past a downstream refresh window) under `deployment`
+or as a seventh dimension; name the backfill trichotomy explicitly (value-as-known-now / value-as-of
+/ NULL-for-history) rather than leaving it an empty slot; pre-register a skill-body growth ceiling
+(~1,500 chars, undemonstrated derivation) so the preflight cannot silently double the size of an
+already-12,441-char skill body.
+
+**Rejected.** Locking steps 3-10 now; the "Do" section's current hard dependency on B-127/B-128 (both
+under independent review in this same cycle and may not ship); treating the current six-dimension
+taxonomy as complete without the operational-impact addition; leaving the backfill decision as an
+open slot rather than naming its three concrete options.
+
+**Note for the synthesiser (from the B-126 reviewer, carried forward, and extended by delta review):**
+B-126's Phase 0 has no hard dependency on B-127/B-128/B-129. Its *shipped* form (steps 3-10, still
+unlocked) carries three dangling references, not one: step 4's "request deeper lineage" points at
+B-127, which WSD-040 *deferred* (may still exist someday); candidate step 8 routes broader physical
+judgment to B-128, which **WSD-039 rejected outright** (will not exist as a receiver — a strictly
+local migration-feasibility check or explicit abstention is needed instead, not a routing reference);
+and step 8 also assigns publication-surface design to B-129, which WSD-042 authorises only as a probe,
+not a shipped receiver. All three are watch items for whenever steps 3-10 are next designed; none
+blocks Phase 0.
+
+**Delta review (codex `gpt-5.6-sol`, 2026-08-13) and disposition.** Sol found the original Decision
+locked several steps-3-10-only details (the fork point, an implicit taxonomy fix, the backfill
+trichotomy, the body-growth ceiling) as if they were binding Phase-0 revisions, directly contradicting
+the "steps 3-10 remain explicitly unlocked" claim — **accepted**, restructured above into a clearly
+non-binding watch list. Sol found the dangling-dependency note recorded only the B-127 case and missed
+that WSD-039 *rejects* B-128 (not merely defers it, a stronger and more urgent gap) plus a softer
+B-129 probe-only dependency — **accepted**, both added above. Sol found "the minimal discriminating
+pair plus the one negative control from (b)" ambiguous about whether the locked set has two or three
+worlds — **accepted**, the Decision now names exactly three fixtures by ID. Sol's "Done when" finding
+is addressed in the `meta/BACKLOG.md` correction below.
+
+## WSD-042: B-129 Opus gate — lock a single-pair routing-gated probe; reject the five-axis experimental apparatus (2026-08-13)
+
+**Context.** B-129 proposed write-side guidance for choosing/designing a warehouse reporting
+publication surface (view/proc/TVF/materialised view/no-new-surface), complementing `map-warehouse`'s
+read-side rules. Sol's self-review found an initial draft infeasible on context-footprint grounds and
+narrowed to a bounded SQL-publication experiment gated behind a 5-fixture-pair, 5-axis factorial A/B.
+
+Independent verification (direct read) found Sol's own headline feasibility claim backwards in the
+direction that changes the decision: `scripts/context-footprint.ps1:319` and
+`meta/context-footprint.json`'s own `_notes` state `ondemand-info` (a SKILL.md **body**, where
+`map-warehouse`'s existing 20,955-char body already lives) is "reported but never policy-gated" — only
+`static.claude` (frontmatter) is ceiling-gated. So the chosen carrier (a body-only write-side section)
+costs **zero** gated budget; the actual, previously-unstated constraint is that the carrier is
+reachable only by editing `map-warehouse`'s frontmatter *description* to route publication-shaped
+prompts to it at all, which costs against the real number: 142 chars of monorepo headroom (dotnet has
+499; `meta/context-footprint.json` current as of this review, both up slightly from Sol's cited
+473/116). The review found the design's arm B (guidance-injected) has no named state in which it can
+register success independent of whether the edited skill is even *selected* for a publication prompt
+— a routing failure and a no-effect finding are currently indistinguishable, which is the same
+unreachable-measure defect class as B-127/126's grader-ordering issue, just at the routing layer. It
+found the 5-fixture/5-axis factorial in step 12 is not supported by the 3-pair-plus-abstention fixture
+set actually specified in step 2 (security and lifecycle axes have no matched pair to test them,
+so step 12 would report coverage it doesn't have) and, most substantially, that two of the plan's own
+steps (6: authority-state vocabulary; 10: consumer discovery/expand-migrate-contract) directly
+re-implement B-127's and B-126's still-unlocked deliverables inside B-129's own Phase 0, contradicting
+step 1's claim of no sibling dependency. Separately, it found the metamorphic oracles (step 11: "ratios
+recompute from additive components," "SCD boundary picks the intended version") and the security
+oracle (step 9: "grade *effective* permissions, not mere GRANT presence") require a SQL execution
+environment — seeded data, a running engine — that this repo's eval harness has never had (verified:
+`run-agent-evals.ps1` generates DDL as text into a scratch git repo with no server and no rows; every
+grader is a deterministic string/regex match), making those steps unexecutable as specified, and two
+of the four proposed oracles are false on legitimately correct answers (a semi-additive-measure
+fixture would fail the "group splits recombine" oracle; a "no new database surface" correct answer
+has no dimension row to duplicate for the fan-out oracle) unless explicitly gated on precondition.
+
+**Decision.** Lock a single authorised experiment, replacing steps 1-3 and 12: one matched fixture
+pair plus the abstention control, testing artifact choice under reuse-vs-single-consumer **only** —
+the sole axis carrying the item's genuine residue per the review's overlap analysis (role-playing,
+version-resolution, fan/chasm, and additivity are *already* shipped in `map-warehouse` and must not be
+restated). No security or lifecycle fixture, and no security oracle of any kind — static or
+execution-based — is part of this dispatched experiment; security is cut from Phase 0 entirely, not
+merely reduced to a static check, because the locked axis does not vary it and an oracle with no
+discriminating fixture behind it risks re-expanding scope by stealth. Gated behind a precondition
+routing probe, pre-registered before any run: draft the exact proposed frontmatter description delta;
+measure it with the canonical `scripts/context-footprint.ps1`/`.sh` against the actual proposed
+source change (LF-normalized UTF-8 **bytes**, not a manual prose character count — the ceiling fields
+are named `.chars` but measured in bytes, and non-ASCII punctuation can diverge from a visual count),
+confirming monorepo stays ≤48,000; then run it against exactly 8 non-telegraphing publication-shaped
+prompts (2 paraphrase families × ≥4 reps) plus an unchanged-description control batch of the same
+size, with skill-selected and skill-read scored as separate, explicitly defined outcomes, a ≥75%
+selection rate as the reachability threshold, and up to 2 replacement runs permitted for tool/API
+error only (not for an undesired result). If the delta batch does not clear the threshold the
+unchanged batch does not, the finding is "carrier unreachable," not "no effect," and does not license
+closure the same way — an unreached carrier proves nothing about whether its content would have
+helped. Steps 6 and 10 (authority-state vocabulary; consumer-discovery/expand-migrate-contract) are
+**cut entirely from B-129's Phase 0** — they belong to B-127 and B-126 respectively and must not be
+re-invented here; if those items later ship, B-129 consumes their vocabulary rather than authoring a
+third one.
+
+**Successor-scope notes only (not authorised, not part of this experiment):** if a security-specific
+item is later separately opened on observed harm, its static oracle should read "the candidate does
+not join a finer-grained key below the fact" / "the candidate does not specify `EXECUTE AS OWNER` over
+an RLS-protected table" rather than requiring live execution, and should add the four gaps the review
+found relative to current shipped text — `TRUSTWORTHY`/module-signing as the definer-overreach check,
+cross-database ownership chaining defaulting OFF, `EXECUTE AS OWNER` silently bypassing RLS, and
+dynamic SQL's chain-breaking property (currently split across two unrelated grading buckets in the
+rejected draft and should be unified). None of this is dispatched now.
+
+**Rejected.** The 5-fixture/5-axis factorial (unsupported by the fixture set actually specified, and
+now narrowed to the one axis that is Phase-0-authorised); steps 6 and 10 as written (duplicate
+unimplemented sibling work); framing the 499/142-char headroom as a constraint on the chosen carrier
+(it constrains only the routing edit, which must now be measured before the experiment runs, not
+treated as already-solved); building rubric-style execution graders inside this item (a new,
+unbudgeted harness capability that would itself need red-testing before use).
+
+**Delta review (codex `gpt-5.6-sol`, 2026-08-13) and disposition.** Sol found the routing probe had
+no numeric stopping rule (`n`, threshold, replacement/error handling, or a control) despite the
+synthesis criticizing exactly this defect class elsewhere — **accepted**, the Decision above now
+pre-registers 8 prompts, ≥75% threshold, a control batch, and a 2-run replacement cap for tool errors
+only. Sol found "142 characters" should be measured in bytes via the canonical footprint scripts
+against the actual proposed text, not counted by hand — **accepted**, folded in above. Sol found the
+static security oracles were retained in the dispatched experiment despite security being cut from
+the tested axis, risking scope creep with no fixture to discriminate against — **accepted**, security
+is now excluded from the dispatched experiment entirely and the oracle content moved to a clearly
+labelled, non-authorised successor-scope note. Sol's "Done when"/proportionality finding is addressed
+in the `meta/BACKLOG.md` correction below.

@@ -3369,19 +3369,32 @@ reproduced decision defect authorises one demand-triggered section in an existin
 lineage service, warehouse-wide graph, schema registry, or new routed skill remains out of scope
 until B-127/B-42 supplies observed evidence that the bounded repository scan is insufficient.
 
-**Status: AWAITING OPUS REVIEW.** The plan above is not locked and authorises no implementation.
-The fresh-context review must be licensed to reject the premise, challenge whether the evidence
-packet is reachable from static repositories, test the proportionality claim, and require a second
-pass after any material redesign. If Opus is unavailable, retain `WAITING — OPUS LIMIT` rather than
-substituting a lower-tier verdict.
+**Status: OPUS GATE COMPLETE, DELTA-REVIEWED 2026-08-13 — LOCK WITH REVISIONS (Phase 0 only).** See
+`meta/workspace-decisions.md` WSD-041. Steps 1-2 (premise test) locked with a named three-world
+fixture set (compatible-visible-consumer / incompatible-visible-consumer / incomplete-closure
+abstention control), each with a non-breaking or breaking visible consumer as specified, identical
+closed-world statement, and byte-identical prompts; graders proven red/green before the baseline
+runs; closed-world attestation sources enumerated with the abstention control proving "deployment
+approval" reachable. Steps 3-10 (the shipped preflight, **including the fork-point insertion
+location** — delta review caught this being locked prematurely) remain explicitly unlocked pending
+the baseline's actual result, and now carry a non-binding redesign watch list covering the fork
+point, the change-matrix/six-dimension contradiction, the operational-impact taxonomy gap, the
+backfill trichotomy, and the body-growth ceiling. Dangling-dependency watch list extended to cover
+B-127 (deferred), B-128 (rejected outright by WSD-039 — stronger gap), and B-129 (probe-only). Next:
+build fixtures, prove graders, run the baseline.
 
-**Design/review gate:** locked design plus proportionality case, followed by an independent
-adversarial **Claude Opus** review before implementation. If Opus is limited, record **WAITING —
-OPUS LIMIT**; design of another independent item may continue, but implementation may not.
+**Done when (superseded by WSD-041 for the currently-authorised Phase 0 scope — this is the shipped
+preflight's criteria, applicable only if steps 3-10 are later locked):** ~~fixtures cover safe
+additive evolution, SCD-policy change, historical backfill, grain or type breakage, and a downstream
+semantic/report consumer; the framework names affected artifacts and a compatible migration path; and
+evals prove it does not treat every additive column as safe.~~
 
-**Done when:** fixtures cover safe additive evolution, SCD-policy change, historical backfill, grain
-or type breakage, and a downstream semantic/report consumer; the framework names affected artifacts
-and a compatible migration path; and evals prove it does not treat every additive column as safe.
+**Done when (actual, Phase 0 scope, per WSD-041):** Phase-0 graders proven red/green before any paid
+run; the three-world fixture set (compatible-visible-consumer / incompatible-visible-consumer /
+incomplete-closure abstention) runs n≥2 with byte-identical prompts; if unchanged `add-warehouse-load`
+reliably distinguishes the compatible and incompatible worlds and reaches "deployment approval" only
+via a named attestation, B-126 closes with no shipped change (WSD-037 pattern) and the fixture is
+retained as regression evidence; otherwise steps 3-10 are redesigned against the observed gap.
 
 ---
 ### B-127 · Trace a warehouse attribute or metric from source to consumption on demand
@@ -3528,20 +3541,30 @@ the smallest candidate is one demand-triggered bounded edge response, ephemeral 
 persistent service/graph, parser, catalog integration, whole-warehouse scan, automatic retention, or
 new skill is not authorised.
 
-**Status: AWAITING OPUS REVIEW.** This candidate is not locked and authorises no implementation.
-The independent Codex critique above improved the candidate but does not clear the gate. Give this
-revised investigation-first plan to Claude Opus, licensed to reject the baseline, evidence axes,
-numeric budget, graph contract, persistence choice, and premise. If Opus is genuinely unavailable
-due to limits, record `WAITING — OPUS LIMIT` rather than substituting a lower-tier review.
+**Status: OPUS GATE COMPLETE, DELTA-REVIEWED 2026-08-13 — LOCK WITH REVISIONS (baseline only).** See
+`meta/workspace-decisions.md` WSD-040. Items 1-2 locked with binding revisions: plain non-telegraphing
+consumer prompt (no skill named); grade on paired-world decision outcome, not exact-artifact-read
+matching; drop the unreachable numeric budget-exhaustion case; add the same-named-decoy case to the
+baseline; prove graders red/green before the baseline runs; correct necessity framing to the
+routing-promise/body-gap mismatch; cite `meta/field-reports.md` #3 and the `usedDeadColumn` residual
+signal, each labelled precisely (observed-shape harm vs. noisy residual, neither proof of this
+baseline's result); name the one supported live-eval host and track skill-selected/read as
+attribution evidence separate from the decision outcome (a routing non-reach must not be scored as a
+pass). Items 3-10 (the trace-mode design) remain explicitly unlocked. Next: build fixtures, prove
+graders, run the baseline.
 
-**Design/review gate:** locked design plus proportionality case, followed by an independent
-adversarial **Claude Opus** review before implementation. If Opus is unavailable due to limits,
-record **WAITING — OPUS LIMIT** and leave implementation blocked while independent work continues.
+**Done when (superseded by WSD-040 for the currently-authorised baseline scope — this is the
+trace-mode design's criteria, applicable only if items 3-10 are later locked):** ~~multi-stage
+fixtures prove forward and reverse tracing through SQL transformations and a consuming semantic/report
+artifact; conflicting and absent evidence produce abstention rather than a fabricated line;
+cost/coverage is reported; and evals show the trace changes a downstream design or review decision.~~
 
-**Done when:** multi-stage fixtures prove forward and reverse tracing through SQL transformations
-and a consuming semantic/report artifact; conflicting and absent evidence produce abstention rather
-than a fabricated line; cost/coverage is reported; and evals show the trace changes a downstream
-design or review decision.
+**Done when (actual, baseline scope, per WSD-040):** baseline graders proven red/green before any
+paid run; the plain-language, non-telegraphing baseline (including the same-named-decoy case) runs
+n≥2 on the named live-eval host with skill-selected/read tracked separately; if unchanged
+`map-warehouse` reliably answers the paired-world decision without fabrication, B-127 closes with no
+shipped change (WSD-037 pattern) and the fixture is retained as regression evidence; otherwise items
+3-10 are redesigned against the observed failure mode, not the current sketch.
 
 ---
 ### B-128 · Review warehouse physical design against its actual load and query workload
@@ -3681,20 +3704,27 @@ comparison/experiment-planning section is the maximum authorised candidate. Auto
 execution, production DDL, cross-platform tuning engine, persistent telemetry, whole-warehouse scan,
 or new skill is not authorised.
 
-**Status: AWAITING OPUS REVIEW.** This candidate is not locked and authorises no implementation.
-The separate Codex critique above materially reduced the plan but does not clear the gate. Obtain a
-Claude Opus review of this revised baseline, attribution rule, representativeness contract, evidence
-axes, conditional single-platform scope, experiment safety, and proportionality. If Opus is genuinely
-unavailable due to limits, record `WAITING — OPUS LIMIT` rather than substituting a lower-tier verdict.
+**Status: OPUS GATE COMPLETE, DELTA-REVIEWED 2026-08-13 — REJECT PREMISE, substitute locked.** See
+`meta/workspace-decisions.md` WSD-039. The 4-fixture-family baseline, 9-state evidence machine, and
+7-rung authority ladder above are rejected — the decisive evidence for this question does not exist
+in a static repository, and Phase 0 as designed would predetermine its own `close` verdict against
+zero observed harm at a cost order of magnitude larger than the substitute. Authorised instead: an
+n≥2 probe (cost unmeasured, estimate only) targeting `add-warehouse-load` `SKILL.md:160-163` step 8's
+**unconditional** partition-function/scheme-reuse clause specifically (not its separate,
+partition-switch-only staging-table filegroup/index clause — delta review caught the first draft
+misquoting this), pre-registered stopping rule (WSD-037 pattern). Next: execute the substitute probe.
 
-**Design/review gate:** locked design plus proportionality case, followed by an independent
-adversarial **Claude Opus** review before implementation. If Opus is rate- or spend-limited, record
-**WAITING — OPUS LIMIT** and move to independent design work; do not implement this item unreviewed.
-
-**Done when:** representative fixtures cover rowstore and columnstore/partitioned designs, harmful
+**Done when (superseded by WSD-039 — this is the rejected design's original criteria, retained only
+for record):** ~~representative fixtures cover rowstore and columnstore/partitioned designs, harmful
 and appropriate configurations, incremental loads and backfills, and absent workload evidence;
 recommendations are platform-scoped and evidence-ranked; false-positive controls are demonstrated;
-and behavioral evals show the framework can decline an unjustified optimization.
+and behavioral evals show the framework can decline an unjustified optimization.~~
+
+**Done when (actual, per WSD-039):** the substitute probe's grader is proven red/green before the
+baseline runs; unchanged `add-warehouse-load` behavior is observed n≥2 on the partition-function-reuse
+mismatch fixture; if it passes, B-128 closes with no shipped change and the fixture retained as
+regression evidence (WSD-037 pattern); if it fails, the one-clause fix to step 8's unconditional
+clause is applied and re-verified n≥2.
 
 ---
 ### B-129 · Design and review the warehouse reporting consumption layer
@@ -3860,11 +3890,21 @@ effect, a bounded on-demand section in an existing skill is the maximum candidat
 authoring, BI security architecture, marts/materialisation, report design, catalogs, runtime services,
 cross-vendor libraries, or automatic migration is not authorised.
 
-**Status: AWAITING OPUS REVIEW.** This candidate is not locked and authorises no implementation.
-The separate Codex critique above materially reduced the plan but does not clear the gate. Obtain
-Claude Opus review of the controlled A/B, carrier feasibility, SQL-only scope, authority states,
-security oracle, compatibility boundary, context cost, and proportionality. If Opus is genuinely
-unavailable due to limits, record `WAITING — OPUS LIMIT` rather than substituting a lower-tier verdict.
+**Status: OPUS GATE COMPLETE, DELTA-REVIEWED 2026-08-13 — LOCK WITH REVISIONS (narrowed).** See
+`meta/workspace-decisions.md` WSD-042. The 5-fixture/5-axis factorial, and steps 6/10 (which duplicate
+B-127's/B-126's still-unlocked deliverables), are rejected. Locked instead: one matched fixture pair
+plus abstention control on artifact-choice-under-reuse only — no security or lifecycle fixture, and
+no security oracle of any kind — gated behind a pre-registered precondition routing probe: 8
+non-telegraphing prompts (2 families × 4 reps) plus an unchanged-description control batch, ≥75%
+selection threshold, skill-selected/skill-read scored separately, byte-measured via the canonical
+`context-footprint` scripts against the actual proposed text (not manual counting) confirming
+monorepo stays ≤48,000. Sol's own carrier-cost argument was backwards — the skill *body* is
+context-footprint-ungated; only the frontmatter delta is real budget. If the routing probe doesn't
+clear its threshold, the finding is "carrier unreachable," not "no effect." **Done when:** the routing
+probe clears (or doesn't — recording "carrier unreachable" closes the item without running the A/B);
+if it clears, the matched pair + abstention control runs n≥2 and either shows a repeatable,
+attributable effect (authorising the bounded body section) or shows none (closing B-129 with no
+shipped change, WSD-037 pattern). Next: draft the frontmatter delta, run the routing probe.
 
 ---
 ### B-132 · Agent-eval runner's PowerShell 7 boundary is implicit, inviting invalid 5.1 verification
