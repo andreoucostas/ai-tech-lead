@@ -165,7 +165,7 @@ The **local layer is host-agnostic**; only the cloud layer is GitHub-specific. S
 ## 10. Quality gates & drift control
 
 - **CI guardrail** — `scripts/docs-sync-check.{sh,ps1}` (host-agnostic): CLAUDE.md bootstrapped + size budget; AGENTS.md is a current mirror; copilot-instructions ≤80 lines; `.github/skills` parity; FRAMEWORK-CONTEXT populated; architecture.html fresh. Wrapped by `.github/workflows/docs-sync-check.yml` (GitHub) and portable elsewhere.
-- **Evals** — `tests/evals/cases.yaml` is the executable spec of framework behavior (Verification, Leanness, SOLID/DIP, Boy Scout/takeUntilDestroyed, bypassSecurityTrust safety). Deterministic regex + model-graded rubric.
+- **Eval cases** — read `tests/evals/cases.yaml` as a declarative spec of intended framework behavior (Verification, Leanness, SOLID/DIP, Boy Scout/takeUntilDestroyed, bypassSecurityTrust safety). It records example response patterns and plain-English review rubrics.
 - **Version stamp** — `.claude/framework-version.json` + the HTML comment atop `CLAUDE.md`; `CHANGELOG.md` records evolution.
 
 ---

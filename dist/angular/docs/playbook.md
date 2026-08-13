@@ -154,7 +154,7 @@ When you author or extend `CLAUDE.md`:
 - **Do** keep the section ordering stable. Reordering invalidates downstream caches even if content is unchanged.
 - **Do** keep verification rules and conventions terse. The first ~200 lines get re-read most often; that is your highest-leverage real estate.
 
-For tools built on the Anthropic SDK, place the explicit `cache_control` breakpoint at the end of `CLAUDE.md` + `FRAMEWORK-CONTEXT.md`, before per-prompt user content. The eval harness in `tests/evals/` (when added) should follow this pattern as a reference implementation.
+For tools built on the Anthropic SDK, place the explicit `cache_control` breakpoint at the end of `CLAUDE.md` + `FRAMEWORK-CONTEXT.md`, before per-prompt user content. Read `tests/evals/cases.yaml` for framework scenarios an external harness can probe.
 
 ---
 

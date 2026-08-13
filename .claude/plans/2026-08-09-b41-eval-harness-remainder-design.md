@@ -107,6 +107,12 @@ recorded explicitly in `enforcement-surfaces.md` rather than silently dropped.
    This no longer unlocks or blocks anything else in this scope — it exists to keep the schema claims in
    this document from silently rotting, since Copilot has changed hook behavior across six observed
    versions.
+
+   **DONE (2026-08-13):** confirmed on live CLI 1.0.78 — `additionalContext` shape unchanged, no deny
+   shape observed (consistent with prior evidence). Result recorded in
+   `meta/canaries/b52-copilot-two-hook/README.md`'s new "B-41 S1 status" section, which also records a
+   non-interactive `trustedFolders` workaround discovered along the way (useful for that file's own
+   still-unresolved two-hook canary).
 5. **Close B-41.** Re-scope its DONE bar in `meta/BACKLOG.md` to "Claude behavioral evidence + Copilot
    hook-shape coverage (confirmed already shipping)"; record the cross-host behavioral evidence
    limitation in `docs/enforcement-surfaces.md` rather than leaving it implicit; hand that open question

@@ -13,7 +13,7 @@ One file is authored by hand — **`CLAUDE.md`**. Everything an AI tool actually
 3. **`.claude/commands/`** — the workflows. Read `feature.md`, `fix.md`, `review.md`, `bootstrap.md`. *Guarantees:* a repeatable execution model (plan → verified subtasks → Boy Scout → self-review).
 4. **`.claude/agents/`** — `solid-check`, `convention-check`, `bloat-radar`, `security-auditor`, `debt-radar`. *Guarantees:* `/review` is backed by specialist passes, not one model's vibe.
 5. **`.claude/hooks/`** — `guard` (PreToolUse), `post-write`, `route-prompt`, `boy-scout-check`. *Guarantees:* deterministic enforcement that doesn't rely on the model remembering.
-6. **`tests/evals/cases.yaml`** — the executable spec of behavior. The fastest way to see what the framework *promises* (and refuses).
+6. **`tests/evals/cases.yaml`** — a readable catalogue of intended behavior. The fastest way to see what the framework *promises* (and refuses).
 7. **`CHANGELOG.md`** — how it got here and why.
 
 ## How to verify the claims (don't take them on faith)
@@ -23,7 +23,7 @@ One file is authored by hand — **`CLAUDE.md`**. Everything an AI tool actually
   - .NET: `echo '{"tool_name":"Write","tool_input":{"file_path":"Foo.cs","content":"#pragma warning disable CS8602"}}' | bash .claude/hooks/guard.sh; echo $?` → blocks (exit 2).
   - Angular: `echo '{"tool_name":"Write","tool_input":{"file_path":"a.ts","content":"// @ts-ignore"}}' | bash .claude/hooks/guard.sh; echo $?` → blocks (exit 2).
 - **`/review` runs the build itself** (review.md Step 2) — it doesn't trust that tests pass.
-- **Behavior is pinned by evals:** read `tests/evals/cases.yaml`. e.g. `dotnet-001` requires an interface for an injected service (DIP) and `angular-001` requires a DI abstraction (token) for one; `dotnet-004` / `angular-004` require it **and** forbid a speculative provider factory/layer (the SOLID-vs-future-proofing line).
+- **Behavior is documented as cases:** read `tests/evals/cases.yaml`. e.g. `dotnet-001` requires an interface for an injected service (DIP) and `angular-001` requires a DI abstraction (token) for one; `dotnet-004` / `angular-004` require it **and** forbid a speculative provider factory/layer (the SOLID-vs-future-proofing line).
 
 ## Tradeoffs worth probing (named honestly)
 

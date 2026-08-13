@@ -531,7 +531,7 @@ docgreperrs=""
 docsscanned=0
 refsextracted=0
 linksextracted=0
-cmdre='(pwsh|bash|powershell)( -[A-Za-z]+( [A-Za-z]+)?)* [A-Za-z0-9_./-]+\.(ps1|sh)'
+cmdre='((pwsh|bash|powershell)( -[A-Za-z]+( [A-Za-z]+)?)* [A-Za-z0-9_./-]+\.(ps1|sh)|python [A-Za-z0-9_./-]+\.py)'
 # ONE grep over every shipped doc, instead of one grep PER doc. At ~90 docs that was ~90 forks per
 # run, 7.5s of a 34s run, and it ran on every invocation including the cheap --content-only ones.
 # The batched pass emits `path:line:content`, so nothing about the extraction below changes.
@@ -571,7 +571,7 @@ while IFS= read -r _bline; do
         /*) absrefs="$absrefs$rel:$ln: absolute example \`$script\` out of scope"$'\n'; continue;;
       esac
       [ -f "$DIST/$script" ] || deadrefs="$deadrefs$rel:$ln: \`$script\` does not exist in this dist"$'\n'
-    done <<< "$(printf '%s\n' "$content" | grep -oE "$cmdre" | grep -oE '[A-Za-z0-9_./-]+\.(ps1|sh)$')"
+    done <<< "$(printf '%s\n' "$content" | grep -oE "$cmdre" | grep -oE '[A-Za-z0-9_./-]+\.(ps1|sh|py)$')"
   done <<< "$matches"
 done <<< "$_batch"
 

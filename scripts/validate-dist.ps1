@@ -560,8 +560,8 @@ foreach ($f in (Get-ChildItem -Recurse -File -Force -Path $DistAbs -Filter *.md)
         $n++
         # Command examples are instructions even inside code fences; keep the established check-7
         # grammar independent from the rendered-link grammar below.
-        foreach ($m in [regex]::Matches($line, '(?:pwsh|bash|powershell)(?:\s+-[A-Za-z]+(?:\s+[A-Za-z]+)?)*\s+([A-Za-z0-9_./-]+\.(?:ps1|sh))')) {
-            $script = $m.Groups[1].Value
+        foreach ($m in [regex]::Matches($line, '(?:(?:pwsh|bash|powershell)(?:\s+-[A-Za-z]+(?:\s+[A-Za-z]+)?)*\s+([A-Za-z0-9_./-]+\.(?:ps1|sh))|python\s+([A-Za-z0-9_./-]+\.py))')) {
+            $script = @($m.Groups[1].Value, $m.Groups[2].Value) | Where-Object { $_ } | Select-Object -First 1
             $refsExtracted++
             if ($script.StartsWith('/')) {
                 $absoluteRefs += ("{0}:{1}: absolute example `{2}` out of scope" -f $rel, $n, $script)

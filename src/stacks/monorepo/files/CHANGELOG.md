@@ -7,6 +7,8 @@
 
 ## Unreleased
 
+- The framework's behavior cases are now a readable catalogue rather than an API-backed runner.
+  Documentation now describes how to inspect or reuse those cases; no action is required.
 - Security review no longer records active or suspected credential incidents in Git or echoes their
   protected detail. Ordinary findings use minimised rows; legacy registers require human migration.
 

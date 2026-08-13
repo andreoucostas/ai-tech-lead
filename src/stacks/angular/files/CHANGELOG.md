@@ -6,6 +6,8 @@
 
 ## Unreleased
 
+- The framework's behavior cases are now a readable catalogue rather than an API-backed runner.
+  Documentation now describes how to inspect or reuse those cases; no action is required.
 - Security review now explicitly keeps active or suspected credential incidents out of Git and
   withholds protected detail. Legacy registers require human review and migration.
 

@@ -13,6 +13,8 @@
 
 ## Unreleased
 
+- B-41/B-23: retired the unmaintained API-backed eval runner while preserving its case catalogue as
+  readable framework evidence, and taught `no-dead-instruction` to catch missing Python scripts.
 - B-135: security review now keeps active or suspected credential incidents out of Git and durable
   chat detail, minimises ordinary security rows, fails closed on legacy registers, and records a
   constant audit sentinel instead of a path when normalisation fails.

@@ -13,7 +13,7 @@ One file is authored by hand — **`CLAUDE.md`**. Everything an AI tool actually
 3. **`.claude/commands/`** — the workflows. Read `feature.md`, `fix.md`, `review.md`, `bootstrap.md`. *Guarantees:* a repeatable execution model (plan → verified subtasks → Boy Scout → self-review).
 4. **`.claude/agents/`** — `solid-check`, `convention-check`, `bloat-radar`, `security-auditor`, `debt-radar`. *Guarantees:* `/review` is backed by specialist passes, not one model's vibe.
 5. **`.claude/hooks/`** — `guard` (PreToolUse), `post-write`, `route-prompt`, `boy-scout-check`. *Guarantees:* deterministic enforcement that doesn't rely on the model remembering.
-6. **`tests/evals/cases.yaml`** — the executable spec of behavior. The fastest way to see what the framework *promises* (and refuses).
+6. **`tests/evals/cases.yaml`** — a readable catalogue of intended behavior. The fastest way to see what the framework *promises* (and refuses).
 7. **`CHANGELOG.md`** — how it got here and why.
 
 ## How to verify the claims (don't take them on faith)
@@ -21,7 +21,7 @@ One file is authored by hand — **`CLAUDE.md`**. Everything an AI tool actually
 - **Single source + no drift:** run `bash scripts/docs-sync-check.sh` (it self-skips in the template repo via `.template-repo`; run it in a bootstrapped consumer repo). It checks CLAUDE.md is bootstrapped and within budget, AGENTS.md/copilot-instructions are current, `.github/skills` mirrors `.claude/skills`, and `architecture.html` is fresh.
 - **Hooks actually fire:** `echo '{"prompt":"the toast button is broken"}' | bash .claude/hooks/route-prompt.sh` → should print the `/fix` rails. The guard: `echo '{"tool_name":"Write","tool_input":{"file_path":"a.ts","content":"// @ts-ignore"}}' | bash .claude/hooks/guard.sh; echo $?` → blocks (exit 2).
 - **`/review` runs the build itself** (review.md Step 2) — it doesn't trust that tests pass.
-- **Behavior is pinned by evals:** read `tests/evals/cases.yaml`. e.g. `angular-001` requires a DI abstraction (token) for an injected service (DIP); `angular-004` requires it **and** forbids a speculative provider layer (the SOLID-vs-future-proofing line).
+- **Behavior is documented as cases:** read `tests/evals/cases.yaml`. e.g. `angular-001` requires a DI abstraction (token) for an injected service (DIP); `angular-004` requires it **and** forbids a speculative provider layer (the SOLID-vs-future-proofing line).
 
 ## Tradeoffs worth probing (named honestly)
 

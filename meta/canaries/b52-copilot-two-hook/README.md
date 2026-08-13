@@ -67,3 +67,37 @@ Local sanity check (no Copilot needed) — confirm each hook still emits valid J
 CANARY_A=TEST-A bash .github/hooks/hook-a.sh | jq -e . >/dev/null && echo hook-a OK
 CANARY_B=TEST-B pwsh -NoProfile -File .github/hooks/hook-b.ps1 | ConvertFrom-Json > $null && echo hook-b OK
 ```
+
+## B-41 S1 status (2026-08-13) — schema re-verification only, NOT the two-hook question above
+
+**This is a narrower, separate check than the two-hook canary above.** B-41's remainder design
+(`.claude/plans/2026-08-09-b41-eval-harness-remainder-design.md` §2 step 4) needed only a cheap
+confirmation that the `events.jsonl` hook-shape schema documented in that design's §3 — written
+against CLI 1.0.71 — still holds on the currently-installed CLI. **It does not attempt, and does
+not answer, the two-hook merge question this file exists for; that remains unresolved, still
+blocked on the same interactive-trust step, see the finding below.**
+
+- **CLI version:** 1.0.78 (was 1.0.71 when §3 was written — 7 patch releases later).
+- **`userPromptSubmitted` → `additionalContext`:** still fires, byte-for-byte the same shape —
+  `hook.end` carries `output.additionalContext` with `route-prompt`'s full routed-intent text,
+  verbatim, confirmed against a real live session (`route-prompt` fired on a `fix`-classified
+  prompt in a disposable scratch repo carrying the real shipped `dotnet` dist's hooks).
+- **`preToolUse` deny shape:** still never observed. This session's `preToolUse` invocations all
+  returned bare `{"success":true}` (an allow, no payload) — consistent with every prior
+  observation. Not proof it can't happen, only that it remains unobserved across now 16 sessions
+  with `hook.end` events on this box.
+- **New finding — a non-interactive trust workaround exists.** This file's "no non-interactive flag
+  exists" note (line 32 above) is about the CLI's own UX; it is still true that `copilot -C <dir>`
+  has no flag to skip the prompt. But `~/.copilot/config.json`'s `trustedFolders` is a plain JSON
+  array of absolute path strings — writing the scratch dir's path into it directly (back up the
+  file first; it is the live trust store) is accepted exactly as if the interactive prompt had been
+  accepted, and hooks fire immediately on the next invocation. This unblocks running **this file's
+  own still-outstanding two-hook canary** (steps 1–3 above) without a human present to answer the
+  interactive prompt — that canary itself was NOT run as part of this check; the two-hook question
+  is still open. Confirmed safe: config was backed up before the edit and restored to its exact
+  original byte content afterward.
+- **Credits spent:** ~13.5 AI Credits across two live turns. Recorded because the design's step 4
+  text called this a "zero-credit schema re-verification" — that framing anticipated reading
+  already-on-disk session-state files rather than a fresh invocation; a fresh live turn was chosen
+  instead (with the maintainer's explicit go-ahead) to tie the confirmation directly to the
+  currently-installed CLI version rather than to session files of unknown CLI provenance.

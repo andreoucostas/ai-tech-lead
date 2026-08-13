@@ -93,25 +93,11 @@ one door that could not be fixed from here.
 >    the dist-travel half is deferred and filed separately.
 > 2. **B-42** (field pilot) — start it early because its value is elapsed time; it runs in the
 >    background while other items proceed, and its evidence should re-prioritize everything else.
-> 3. **B-41** (agent-behavior harness) — the flagship; absorbs B-23 and B-29.
+> 3. ~~**B-41**~~ (agent-behavior harness) — **done 2026-08-13**, see the Done section.
 > 4. **B-49** (quarterly live-fire drill) — build the drill kit once B-41's first scenarios exist;
 >    it becomes the recurring vehicle that *executes* B-43 (and reviews B-44) every quarter.
 > 5. Then interleave: **B-15** (CI recipe) from the deferred list — it is
 >    the consumer-lifecycle half of the same story — plus **B-44/B-46/B-48** as capacity allows.
-
-### B-41 · Agent-behavior eval harness — close the "prose steers a model" blind spot
-**Effort:** L · **Invariants:** #5 #6 #7 · absorbs B-23 and B-29
-
-**Phase 1 in PR #2:** the maintainer-only Claude harness, typed stream-event graders, archived-
-redirect fixture, release reminder, and Haiku planted-defect cases are implemented. The first live
-results produced before the adversarial review used raw-transcript graders and are explicitly
-invalidated in `meta/eval-results.md`; re-run the eight cases before claiming behavioral evidence
-or closing B-29.
-
-**Still required before DONE:** add the Copilot CLI leg where scriptable (including trusted-folder
-setup and its different deny/additionalContext shapes); settle B-23's open question about why the
-older response-only `tests/evals/` suite ships to consumers; then record threshold-based results
-from both available hosts. Do not close the item from Claude-only evidence.
 
 ### B-42 · Field pilot — install into ≥1 real production repo and let evidence drive the backlog
 **Effort:** M to set up · elapsed weeks to harvest · **Invariants:** #6
@@ -608,19 +594,6 @@ budget gate.
 
 **Do:** derive the list, or require new files be added deliberately. Twin edit, both `.ps1` and
 `.sh`.
-
-### B-69 · `tests/evals/` scoping limitation is not written down
-**Effort:** S · **Priority:** P3
-
-**Why:** `run_evals.py` builds its system context from exactly `CLAUDE.md` and
-`FRAMEWORK-CONTEXT.md` and calls `messages.create` with no `tools` parameter. It can therefore never
-see `docs/`, follow a pointer, or observe tool use. During the v0.38.0 session this was briefly
-mistaken for a viable way to measure whether a `docs/` file changes model behaviour. It is not, and
-a null result would have been misread as the wording being wrong rather than the instrument being
-blind.
-
-**Do:** state the limitation at the top of `tests/evals/README.md` and point anything needing
-tool-use or file-read evidence at `.claude/evals/`.
 
 ### B-70 · Nothing requires a new test to be exercised on both CI legs before it ships
 **Effort:** S · **Priority:** P2
@@ -4546,14 +4519,6 @@ sanity-check each report's verbosity against the reviewer profile — output lea
 where it doesn't cost the plain-engineering explanations the profile requires (WSD-013). No
 standalone "output leanness" backlog item exists, by decision.
 
-### B-23 · Evals as a release gate — **absorbed by B-41** (strategic section above); kept for its open question about `tests/evals` shipping to consumers
-**Effort:** M
-`tests/evals/run_evals.py` has never gated a release. Wire `release.ps1` to *prompt* to run it
-(human-triggered — API cost), and record per-version results in `docs/eval-results.md`.
-Related open question: `tests/` including `tests/evals/` **ships to consumers** via the
-installer (verified 2026-07-01, accepted-for-now) — revisit whether evals should be excluded
-from the consumer install.
-
 ### B-25-EXEC · Execute the monorepo merge (Phases 0–6 of MERGE-MIGRATION-PLAN.md)
 **Effort:** L (5–7 focused sessions) · **Invariants:** all — this task retargets them · added 2026-07-06
 · **IN PROGRESS since 2026-07-08 — Phases 0–3 COMPLETE.** Phase 0: freeze ON, `freeze-v0.25.5`
@@ -4674,6 +4639,46 @@ planted unreadable file and an emptied tree, both twins.
 ---
 
 ## Done
+
+- **B-41** — DONE **2026-08-13**. The re-scoped DONE bar is **Claude behavioral evidence +
+  Copilot hook-shape coverage (confirmed already shipping)**. Phase 1 supplied the typed Claude
+  behavioral evidence. A fresh leaf-level audit confirmed Copilot event-shape coverage for every
+  core hook: `AuditTrail.Tests.ps1` covers `audit-trail`, `Guard.Tests.ps1` drives `guard` through
+  its Claude/Copilot surface loop, `RoutePrompt.Tests.ps1` asserts both Copilot
+  `additionalContext` shapes, and the three `SessionStart*.Tests.ps1` files cover `session-start`
+  (with relevant twin checks in `TwinParity.Tests.ps1`). No new assertion was built. B-23 and B-69
+  are closed
+  by retiring the unmaintained API-backed `tests/evals/run_evals.py` and keeping `cases.yaml` as a
+  readable declarative case catalogue.
+
+  **Cross-host evidence limitation:** Copilot `auto` mode has resolved non-deterministically to
+  different vendor models (`claude-haiku-4.5` and `gpt-5-mini`) across otherwise comparable runs.
+  A Claude-vs-Copilot threshold comparison would therefore confound host with model and is not
+  interpretable. The open cross-host behavioral question passes explicitly to **B-43**'s host
+  recertification and **B-49**'s quarterly live-fire drill, where the resolved model can be recorded
+  and controlled or stratified.
+
+  **RCA — why no gate caught the dead runner instruction:** `no-dead-instruction` encoded only the
+  shell-launch grammar (`pwsh`/`powershell`/`bash` plus `.ps1`/`.sh`), so every non-shell
+  interpreter was outside its matcher and a deleted Python target could false-green. The shipped-doc
+  sweep found the stale `python run_evals.py` instructions in all three eval READMEs; after their
+  removal, no other bare Python or Node script instruction remains. It also found legitimate,
+  unguarded `npm ci` instructions in Angular and monorepo `docs/ci-integration.md` (including the
+  monorepo aggregate command). Those invoke a package manager rather than a repo-relative script,
+  so file-existence validation is not applicable; executable availability remains a runtime concern.
+  The gate now recognizes `python <relative>.py`, the observed defect class, without pretending to
+  validate all package-manager semantics.
+
+  **RCA — host evidence blind spot:** B-98 step 2's flagship `r=0/6→6/6, p≈0.002` result is the
+  first known instance of a Copilot-delivery carrier being measured entirely on Claude Code. The
+  result is valid for that host but cannot establish the Copilot delivery claim; B-43/B-49 own the
+  cross-host follow-through.
+
+  **RCA — coverage-audit trap:** the adversarial remediation checked the aggregate
+  `Invoke-HookTests.ps1` runner for assertion text even though that file discovers and invokes leaf
+  `*.Tests.ps1` files. This **aggregate-runner/leaf-assertion trap** falsely reported missing
+  coverage. Future audits of this suite must enumerate the runner's leaf files and inspect their
+  live assertions, not grep the orchestration file for strings owned by its children.
 
 - **B-135** — shipped **2026-08-12** (`## Unreleased` heads staged; not yet stamped/released). Design
   validated from scratch (not from Codex's write-up), locked as WSD-038, delta-reviewed by Codex, then
