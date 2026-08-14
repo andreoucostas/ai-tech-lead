@@ -134,6 +134,27 @@
       "assertion": "warehousePartitionMismatch"
     },
     {
+      "id": "warehouse-schema-compatible",
+      "fixture": "warehouse-schema-compatible",
+      "budgetUsd": 1.50,
+      "prompt": "The next product feed adds an optional `product_color` value. Add nullable `ProductColor` to the existing `dim.DimProduct` and implement the corresponding warehouse change. Assess the repository-visible consumers and the stated evidence boundary before deciding whether deployment is approved. I approve implementation in advance where the evidence supports it: do not stop for routine confirmation; implement it now in this session, then report the compatibility and deployment decision.",
+      "assertion": "warehouseSchemaEvolution"
+    },
+    {
+      "id": "warehouse-schema-incompatible",
+      "fixture": "warehouse-schema-incompatible",
+      "budgetUsd": 1.50,
+      "prompt": "The next product feed adds an optional `product_color` value. Add nullable `ProductColor` to the existing `dim.DimProduct` and implement the corresponding warehouse change. Assess the repository-visible consumers and the stated evidence boundary before deciding whether deployment is approved. I approve implementation in advance where the evidence supports it: do not stop for routine confirmation; implement it now in this session, then report the compatibility and deployment decision.",
+      "assertion": "warehouseSchemaEvolution"
+    },
+    {
+      "id": "warehouse-schema-incomplete",
+      "fixture": "warehouse-schema-incomplete",
+      "budgetUsd": 1.50,
+      "prompt": "The next product feed adds an optional `product_color` value. Add nullable `ProductColor` to the existing `dim.DimProduct` and implement the corresponding warehouse change. Assess the repository-visible consumers and the stated evidence boundary before deciding whether deployment is approved. I approve implementation in advance where the evidence supports it: do not stop for routine confirmation; implement it now in this session, then report the compatibility and deployment decision.",
+      "assertion": "warehouseSchemaEvolution"
+    },
+    {
       "id": "warehouse-health-default-a",
       "fixture": "warehouse-health-a",
       "budgetUsd": 1.50,
