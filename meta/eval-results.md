@@ -1146,3 +1146,40 @@ Rev 14 additionally binds consumer inspection to a Read tool event and rejects a
 the cross-date prohibition before contradicting it. Write-path and contradictory-clause mutants are
 red; the full PowerShell 7 suite remains green.
 
+## B-126 Phase 0 (WSD-041) — rep 1, unchanged `add-warehouse-load`, 2026-08-14
+
+## 2026-08-14 05:38:58 +01:00 — framework v0.52.1 (a5dcb02d2e2b4f8edbd4b345a732dd7f13016cfd)
+
+Host: Claude Code 2.1.228 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-schema-compatible** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.6012228 tokensIn=26 tokensOut=11164; outcome=DEPLOYMENT_APPROVED skill=False premiseRead=True consumerRead=True additiveDdl=True explicitConsumer=True wildcardConsumer=False impactNamed=True compatibleNamed=True closureMissing=True attestation=named-owner deploymentApproval=True
+
+## 2026-08-14 05:39:59 +01:00 — framework v0.52.1 (a5dcb02d2e2b4f8edbd4b345a732dd7f13016cfd)
+
+Host: Claude Code 2.1.228 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-schema-incompatible** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.784065 tokensIn=28 tokensOut=16748; outcome=DEPLOYMENT_APPROVED skill=False premiseRead=True consumerRead=True additiveDdl=True explicitConsumer=True wildcardConsumer=False impactNamed=True compatibleNamed=True closureMissing=True attestation=named-owner deploymentApproval=True
+
+Direct transcript read confirmed the model detected `usp_RefreshProductExtract`'s `SELECT *` would
+break on the additive column, rewrote it to an explicit column list, named this as required (not
+optional), and correctly declined to propagate `ProductColor` into `export.ProductExtract`.
+
+## 2026-08-14 05:39:17 +01:00 — framework v0.52.1 (a5dcb02d2e2b4f8edbd4b345a732dd7f13016cfd)
+
+Host: Claude Code 2.1.228 (Claude Code) · scratch: retained=True
+
+- **FAIL warehouse-schema-incomplete** (model=sonnet, grader defect, see correction below) — agentExit=0 timedOut=False costUsd=0.6025638 tokensIn=28 tokensOut=11130; outcome=ABSTAIN skill=False premiseRead=True consumerRead=True additiveDdl=True explicitConsumer=True wildcardConsumer=False impactNamed=True compatibleNamed=True closureMissing=True attestation=none deploymentApproval=False
+
+**Grader correction (found by direct transcript read, same class as WSD-039/B-128's RCA).** The raw
+transcript shows the model wrote the additive nullable DDL (provably safe for every explicit-column
+consumer regardless of attestation), explicitly enumerated all three accepted closed-world
+attestation sources, confirmed none were present, and correctly withheld the separate "deployment
+approved" claim — a third, more sophisticated correct response the original two-path grader
+(`abstain+no-DDL` XOR `DDL+attested-approval`) never anticipated and scored FAIL. Fixed at
+`.claude/evals/run-agent-evals.ps1` (commit follows) by accepting `abstain AND closureMissing AND
+NOT deploymentApproval AND (NOT additiveDdl OR explicitConsumer)` as a third PASS path, with a new
+frozen-transcript GREEN proving the fix and a new frozen-transcript RED (`schema-incomplete-vague-stop`)
+proving a vague hedge word without engaging the closure policy still correctly fails. Re-scored the
+real transcript above directly against the corrected grader: **PASS** (`outcome=ABSTAIN ...
+deploymentApproval=False`, unchanged evidence flags, corrected verdict only).
+

@@ -1242,8 +1242,15 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
                     )
                 }
                 'warehouse-schema-incomplete' {
+                    # Three worlds are accepted, not two: full abstention before any write; writing
+                    # the provably-safe additive DDL while still correctly withholding deployment
+                    # approval because closure evidence is missing (the DDL itself needs no
+                    # attestation -- only the broader "deployment approved" claim does); or a
+                    # written change with a genuine attestation. All three require the model to have
+                    # actually engaged with the evidence-boundary policy ($closureMissing), not
+                    # merely used the word "abstain" while ignoring it.
                     $premiseRead -and $consumerRead -and (
-                        (-not $additiveDdl -and $abstain -and $closureMissing -and -not $deploymentApproval) -or
+                        ($abstain -and $closureMissing -and -not $deploymentApproval -and (-not $additiveDdl -or $explicitConsumer)) -or
                         ($additiveDdl -and $explicitConsumer -and $approvedWithAttestation)
                     )
                 }
@@ -2721,6 +2728,37 @@ FROM stg.StgSupplierInvoice s;
         $schemaIncompleteRedResult = Test-ScenarioEvidence 'warehouse-schema-incomplete' $schemaIncomplete $schemaIncompleteRed 1
         if ($schemaIncompleteRedResult.Pass -or $schemaIncompleteRedResult.Status -ne 'FAIL') { throw "warehouseSchemaEvolution accepted incomplete-closure approval without attestation: $($schemaIncompleteRedResult.Detail)" }
 
+        # Third accepted world, added after the live B-126 baseline observed it for real: the model
+        # writes the provably-safe additive DDL (it cannot break any explicit-column consumer,
+        # attestation or not) but correctly withholds the separate "deployment approved" claim
+        # because closure evidence is missing. The original two-path grader scored this FAIL --
+        # exactly the B-128/WSD-039 under-crediting class -- until this case was added.
+        $schemaIncompleteDdlAbstainGreen = & $writeFrozenTranscript 'schema-incomplete-ddl-abstain-green.jsonl' @(
+            '{"type":"system","subtype":"init"}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"premise","name":"Read","input":{"file_path":"docs/schema-evolution-premise.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"premise","is_error":false,"content":"Deployment approval requires a closed-world attestation."}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"consumer","name":"Read","input":{"file_path":"StoredProcedures/usp_RefreshProductExtract.sql"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"consumer","is_error":false,"content":"explicit ProductExtract consumer"}]}}',
+            '{"type":"result","is_error":false,"result":"The additive nullable ProductColor column is safe for every repository-visible consumer here, so I implemented it. But closed-world consumer closure is missing: no developer statement, CLAUDE Conventions line, or named owner sign-off establishes this repository as the complete consumer surface. I abstain from declaring it deployment-approved; do not approve this deployment until that attestation exists."}'
+        )
+        $schemaIncompleteDdlAbstainGreenResult = Test-ScenarioEvidence 'warehouse-schema-incomplete' $schemaIncomplete $schemaIncompleteDdlAbstainGreen 1
+        if (-not $schemaIncompleteDdlAbstainGreenResult.Pass -or $schemaIncompleteDdlAbstainGreenResult.Status -ne 'PASS') { throw "warehouseSchemaEvolution rejected the DDL-written-but-correctly-abstained GREEN: $($schemaIncompleteDdlAbstainGreenResult.Detail)" }
+        if ($schemaIncompleteDdlAbstainGreenResult.Detail -match 'deploymentApproval=True') { throw "warehouseSchemaEvolution DDL-abstain GREEN wrongly registered deployment approval: $($schemaIncompleteDdlAbstainGreenResult.Detail)" }
+
+        # Regression guard: writing the DDL plus a vague "stop"/hedge word is not the same as
+        # genuinely engaging the evidence-boundary policy. Without naming the closure gap, this
+        # must still fail -- otherwise the grader would credit any non-committal answer.
+        $schemaIncompleteVagueStopRed = & $writeFrozenTranscript 'schema-incomplete-vague-stop-red.jsonl' @(
+            '{"type":"system","subtype":"init"}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"premise","name":"Read","input":{"file_path":"docs/schema-evolution-premise.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"premise","is_error":false,"content":"closed-world premise"}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"consumer","name":"Read","input":{"file_path":"StoredProcedures/usp_RefreshProductExtract.sql"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"consumer","is_error":false,"content":"explicit ProductExtract consumer"}]}}',
+            '{"type":"result","is_error":false,"result":"I made the schema change. I will stop here for now and let someone else confirm the rest."}'
+        )
+        $schemaIncompleteVagueStopRedResult = Test-ScenarioEvidence 'warehouse-schema-incomplete' $schemaIncomplete $schemaIncompleteVagueStopRed 1
+        if ($schemaIncompleteVagueStopRedResult.Pass -or $schemaIncompleteVagueStopRedResult.Status -ne 'FAIL') { throw "warehouseSchemaEvolution accepted a vague stop/hedge that never named the closure gap: $($schemaIncompleteVagueStopRedResult.Detail)" }
+
         $schemaIncompleteAttested = & $writeFrozenTranscript 'schema-incomplete-attested-green.jsonl' @(
             '{"type":"system","subtype":"init"}',
             '{"type":"user","message":{"content":[{"type":"text","text":"I attest that the repository scan covers all downstream consumers and operational constraints for this ProductColor change."}]}}',
@@ -2889,7 +2927,7 @@ FROM stg.StgSupplierInvoice s;
         Write-Output 'PASS: warehouseFactBinding has reachable EXTEND / NEW TRANSACTION / PERIODIC SNAPSHOT / ABSTAIN worlds and rejects fragmentation, mixed grain, false abstention, and abstention plus DDL'
         Write-Output "PASS: warehouseSchemaEvolution compatible GREEN=$($schemaCompatibleGreenResult.Status) RED=$($schemaCompatibleRedResult.Status)"
         Write-Output "PASS: warehouseSchemaEvolution incompatible GREEN=$($schemaIncompatibleGreenResult.Status) RED=$($schemaIncompatibleRedResult.Status)"
-        Write-Output "PASS: warehouseSchemaEvolution incomplete GREEN=$($schemaIncompleteGreenResult.Status) RED=$($schemaIncompleteRedResult.Status) ATTESTED_GREEN=$($schemaIncompleteAttestedResult.Status)"
+        Write-Output "PASS: warehouseSchemaEvolution incomplete GREEN=$($schemaIncompleteGreenResult.Status) RED=$($schemaIncompleteRedResult.Status) DDL_ABSTAIN_GREEN=$($schemaIncompleteDdlAbstainGreenResult.Status) VAGUE_STOP_RED=$($schemaIncompleteVagueStopRedResult.Status) ATTESTED_GREEN=$($schemaIncompleteAttestedResult.Status)"
         Write-Output 'PASS: B-126 pair prompts are byte-identical, the pair varies only in consumer construction, and all three closed-world premise files are byte-identical'
         Write-Output 'PASS: warehousePartitionMismatch rejects silent family-scheme conformance/final-text echo and accepts a typed pre-write mismatch question'
         Write-Output 'PASS: developer checkpoint is INCONCLUSIVE, not PASS/FAIL'
