@@ -1822,6 +1822,30 @@ pair plus the one negative control from (b)" ambiguous about whether the locked 
 worlds — **accepted**, the Decision now names exactly three fixtures by ID. Sol's "Done when" finding
 is addressed in the `meta/BACKLOG.md` correction below.
 
+**Disposition (2026-08-14) — baseline ran, B-126 closes with no shipped change.** Sol built the three
+locked fixture worlds and their grader (branch `codex/b126-schema-evolution-probe`), proven red/green
+against hand-authored transcripts before any paid run, per (d). Sol's own sandbox has no network
+egress and could not run the live baseline or commit to the worktree's `.git` index (outside its
+sandboxed root); Claude took over both directly, independently re-running the self-test suite before
+accepting the commit (Maintenance rule 3).
+
+The n=2 live baseline (one discarded transport-error attempt on the incompatible world, not counted)
+found the unchanged skill reliably correct on all three worlds — see the "Final status" paragraph in
+`meta/BACKLOG.md` B-126 for the full table. Two grader defects surfaced only once real transcripts
+existed to read, both the same under-crediting class this repo has hit before (WSD-039/B-128): a
+hand-authored self-test can only prove a grader is internally consistent with its own author's
+assumptions about response shape, not that it covers the real behavioral space a live model actually
+produces. Both were caught by direct transcript read (not the grader's boolean), fixed, and the real
+transcripts re-scored directly against the corrected grader before being accepted as PASS — full RCA
+in `meta/BACKLOG.md`.
+
+Per this entry's own binding revision (e), the abstention control's "deployment approval" state was
+independently proven reachable (not decorative) via `schema-incomplete-attested-green` before the
+live run, and the live run itself never approved deployment without a named attestation on any of
+its two reps — satisfying the reachability requirement in both directions. Steps 3-10 (the shipped
+preflight, including the fork-point placement) remain unauthorised; this entry's watch list is
+retained for if the item is ever reopened against new observed harm.
+
 ## WSD-042: B-129 Opus gate — lock a single-pair routing-gated probe; reject the five-axis experimental apparatus (2026-08-13)
 
 **Context.** B-129 proposed write-side guidance for choosing/designing a warehouse reporting

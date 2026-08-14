@@ -3235,7 +3235,7 @@ absent triggers, conventions, and already-correct structures, validates the full
 and mutates plausible contradictory outputs rather than only missing keywords.
 
 ---
-### B-126 · Make dimension and fact enhancement safe across downstream warehouse consumers
+### B-126 · Make dimension and fact enhancement safe across downstream warehouse consumers — **CLOSED 2026-08-14, Phase 0 baseline reliable, no shipped change; see below**
 **Effort:** M–L · **Priority:** P2 · filed 2026-08-08 · **Capability:** warehouse technical leadership
 
 **Why:** deciding to reuse an existing dimension or fact is only the first decision. The current
@@ -3395,6 +3395,42 @@ incomplete-closure abstention) runs n≥2 with byte-identical prompts; if unchan
 reliably distinguishes the compatible and incompatible worlds and reaches "deployment approval" only
 via a named attestation, B-126 closes with no shipped change (WSD-037 pattern) and the fixture is
 retained as regression evidence; otherwise steps 3-10 are redesigned against the observed gap.
+
+**Final status (2026-08-14): baseline reliable, closed with no shipped change.** Graders were proven
+red/green before every paid run. All three worlds ran n=2 on the live Claude Code host (one
+transport-error attempt on `warehouse-schema-incompatible` discarded, not counted): compatible-
+visible-consumer PASS/PASS (`DEPLOYMENT_APPROVED` via named-owner attestation both times);
+incompatible-visible-consumer PASS/PASS (the unchanged skill detected the `SELECT *` break both
+times, fixed it, and reached `DEPLOYMENT_APPROVED` via named-owner attestation); incomplete-closure
+abstention control PASS/PASS (the skill wrote the provably-safe additive DDL but correctly withheld
+"deployment approved" both times, since no attestation source exists in that fixture by design — the
+`schema-incomplete-attested-green` self-test independently proves that state is reachable given a
+real attestation, so the abstention isn't a decorative unreachable measure per Maintenance rule 4).
+
+**RCA (Maintenance model #5).** Two real grader defects were caught during this baseline, both by
+reading the raw transcript rather than trusting the boolean verdict, both the same under-crediting
+class as WSD-039/B-128's RCA: (1) the `warehouse-schema-incomplete` grader only recognized two
+response shapes (full abstention with no DDL, or DDL with an attested approval) and scored a
+demonstrably more correct third shape — writing the provably-safe additive DDL while correctly
+withholding the separate deployment-approval claim — as FAIL; (2) the `deploymentApproval` regex
+required "deployment" immediately followed by "(is )approved" and missed the natural
+"Deployment decision: Approved" colon-and-label phrasing, scoring a fully correct, well-reasoned
+approval as FAIL. **Why no gate caught it:** both graders were self-tested against hand-authored
+transcripts *before* the live run per Maintenance rule 4, but the hand-authored transcripts were
+written by the same reasoning that wrote the grader, so both shared the author's blind spot about
+which response shapes and phrasings a real model would actually produce — self-authored fixtures
+proved the grader was *internally consistent*, not that it covered the real behavioral space. **What
+else is exposed to the same class:** every other from-scratch grader built this cycle (B-127's and
+B-129's, not yet run live) has the identical structural risk — a hand-authored red/green pair can
+only prove reachability of the cases its author thought of. Recommend, when B-127/B-129 run their own
+live baselines, budgeting for at least one grader-correction round found by direct transcript read
+before accepting any FAIL as a true framework gap, rather than treating a self-tested grader as
+final. Full transcripts, evidence, and both fixes are in `meta/eval-results.md` (B-126 Phase 0
+sections) and `.claude/evals/run-agent-evals.ps1` (commits `a5dcb02`, `bcc3856`, `855a9cb` on
+`codex/b126-schema-evolution-probe`).
+
+Steps 3-10 (the shipped preflight) remain unauthorised and unimplemented. The three-world fixture set
+and both grader fixes are retained under `.claude/evals/` as regression evidence (WSD-037 pattern).
 
 ---
 ### B-127 · Trace a warehouse attribute or metric from source to consumption on demand
