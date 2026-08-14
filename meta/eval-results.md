@@ -1146,3 +1146,108 @@ Rev 14 additionally binds consumer inspection to a Read tool event and rejects a
 the cross-date prohibition before contradicting it. Write-path and contradictory-clause mutants are
 red; the full PowerShell 7 suite remains green.
 
+## B-126 Phase 0 (WSD-041) — rep 1, unchanged `add-warehouse-load`, 2026-08-14
+
+## 2026-08-14 05:38:58 +01:00 — framework v0.52.1 (a5dcb02d2e2b4f8edbd4b345a732dd7f13016cfd)
+
+Host: Claude Code 2.1.228 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-schema-compatible** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.6012228 tokensIn=26 tokensOut=11164; outcome=DEPLOYMENT_APPROVED skill=False premiseRead=True consumerRead=True additiveDdl=True explicitConsumer=True wildcardConsumer=False impactNamed=True compatibleNamed=True closureMissing=True attestation=named-owner deploymentApproval=True
+
+## 2026-08-14 05:39:59 +01:00 — framework v0.52.1 (a5dcb02d2e2b4f8edbd4b345a732dd7f13016cfd)
+
+Host: Claude Code 2.1.228 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-schema-incompatible** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.784065 tokensIn=28 tokensOut=16748; outcome=DEPLOYMENT_APPROVED skill=False premiseRead=True consumerRead=True additiveDdl=True explicitConsumer=True wildcardConsumer=False impactNamed=True compatibleNamed=True closureMissing=True attestation=named-owner deploymentApproval=True
+
+Direct transcript read confirmed the model detected `usp_RefreshProductExtract`'s `SELECT *` would
+break on the additive column, rewrote it to an explicit column list, named this as required (not
+optional), and correctly declined to propagate `ProductColor` into `export.ProductExtract`.
+
+## 2026-08-14 05:39:17 +01:00 — framework v0.52.1 (a5dcb02d2e2b4f8edbd4b345a732dd7f13016cfd)
+
+Host: Claude Code 2.1.228 (Claude Code) · scratch: retained=True
+
+- **FAIL warehouse-schema-incomplete** (model=sonnet, grader defect, see correction below) — agentExit=0 timedOut=False costUsd=0.6025638 tokensIn=28 tokensOut=11130; outcome=ABSTAIN skill=False premiseRead=True consumerRead=True additiveDdl=True explicitConsumer=True wildcardConsumer=False impactNamed=True compatibleNamed=True closureMissing=True attestation=none deploymentApproval=False
+
+**Grader correction (found by direct transcript read, same class as WSD-039/B-128's RCA).** The raw
+transcript shows the model wrote the additive nullable DDL (provably safe for every explicit-column
+consumer regardless of attestation), explicitly enumerated all three accepted closed-world
+attestation sources, confirmed none were present, and correctly withheld the separate "deployment
+approved" claim — a third, more sophisticated correct response the original two-path grader
+(`abstain+no-DDL` XOR `DDL+attested-approval`) never anticipated and scored FAIL. Fixed at
+`.claude/evals/run-agent-evals.ps1` (commit follows) by accepting `abstain AND closureMissing AND
+NOT deploymentApproval AND (NOT additiveDdl OR explicitConsumer)` as a third PASS path, with a new
+frozen-transcript GREEN proving the fix and a new frozen-transcript RED (`schema-incomplete-vague-stop`)
+proving a vague hedge word without engaging the closure policy still correctly fails. Re-scored the
+real transcript above directly against the corrected grader: **PASS** (`outcome=ABSTAIN ...
+deploymentApproval=False`, unchanged evidence flags, corrected verdict only).
+
+## B-126 Phase 0 (WSD-041) — rep 2, unchanged `add-warehouse-load`, 2026-08-14
+
+## 2026-08-14 06:37:38 +01:00 — framework v0.52.1 (bcc38567260667243e41858bbcc2d4ca6557a3a7)
+
+Host: Claude Code 2.1.232 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-schema-compatible** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.5528301 tokensIn=22 tokensOut=10148; outcome=DEPLOYMENT_APPROVED skill=True premiseRead=True consumerRead=True additiveDdl=True explicitConsumer=True wildcardConsumer=False impactNamed=True compatibleNamed=True closureMissing=True attestation=named-owner deploymentApproval=True
+
+This rep explicitly invoked the `add-warehouse-load` skill (`skill=True`), unlike rep 1, confirming
+routing reaches the skill on at least one real run.
+
+Three attempts were needed for `warehouse-schema-incompatible` rep 2: two runs hung past the 10-minute
+harness cap with no result (discarded, no cost recorded beyond what the process had already spent),
+then:
+
+## 2026-08-14 07:15:15 +01:00 — framework v0.52.1 (bcc38567260667243e41858bbcc2d4ca6557a3a7)
+
+Host: Claude Code 2.1.232 (Claude Code) · scratch: retained=True
+
+- **ERROR warehouse-schema-incompatible** (model=sonnet, discarded — transport failure, not a
+  behavioral result) — agentExit=1 timedOut=False costUsd=0.5116122 tokensIn=14 tokensOut=8985;
+  transcript ends `API Error: The response stopped arriving.` before the agent read any repository
+  file beyond the skill body. Retried below; not counted toward n>=2.
+
+## 2026-08-14 07:18:50 +01:00 — framework v0.52.1 (bcc38567260667243e41858bbcc2d4ca6557a3a7)
+
+Host: Claude Code 2.1.232 (Claude Code) · scratch: retained=True
+
+- **FAIL warehouse-schema-incompatible** (model=sonnet, grader defect, see correction below) — agentExit=0 timedOut=False costUsd=0.5841783 tokensIn=24 tokensOut=11398; outcome=ABSTAIN skill=False premiseRead=True consumerRead=True additiveDdl=True explicitConsumer=True wildcardConsumer=False impactNamed=True compatibleNamed=True closureMissing=True attestation=named-owner deploymentApproval=False
+
+**Second grader correction (found by direct transcript read).** The raw transcript shows the model
+correctly diagnosed the `SELECT *` break, fixed it, cited Mara Voss's owner sign-off as satisfying
+the evidence-boundary policy, and concluded "**Deployment decision: Approved**" with full,
+well-reasoned justification — a fully correct response. The `deploymentApproval` regex required
+"deployment" immediately followed by "(is )approved", so the natural "Deployment decision: Approved"
+colon-and-label phrasing never matched. Fixed symmetrically on both the approval and denial regexes
+to accept an optional "decision" word and colon between "deployment" and the approved/not-approved
+keyword, with a new frozen-transcript GREEN proving the fix and a new frozen-transcript RED
+(`schema-incompatible-decision-phrase-red`, using the same "Deployment decision:" phrasing but with
+"Not approved") proving the denial side still correctly fails. Re-scored the real transcript above
+directly against the corrected grader: **PASS** (`outcome=DEPLOYMENT_APPROVED ...
+deploymentApproval=True`, unchanged evidence flags, corrected verdict only).
+
+## 2026-08-14 07:19:09 +01:00 — framework v0.52.1 (bcc38567260667243e41858bbcc2d4ca6557a3a7)
+
+Host: Claude Code 2.1.232 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-schema-incomplete** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.6393429 tokensIn=22 tokensOut=11819; outcome=ABSTAIN skill=False premiseRead=True consumerRead=True additiveDdl=True explicitConsumer=True wildcardConsumer=False impactNamed=True compatibleNamed=True closureMissing=True attestation=none deploymentApproval=False
+
+Second independent run confirms the same third-path pattern as rep 1: safe DDL written, deployment
+approval correctly withheld with no attestation available.
+
+## B-126 Phase 0 result summary (n=2 per world, per WSD-041 Done-when)
+
+| World | Rep 1 | Rep 2 | Outcome |
+|---|---|---|---|
+| compatible-visible-consumer | PASS | PASS | Both reps: DEPLOYMENT_APPROVED via named-owner attestation. |
+| incompatible-visible-consumer | PASS | PASS (post grader-fix; 1 discarded transport error) | Both reps: detected the `SELECT *` break, fixed it, DEPLOYMENT_APPROVED via named-owner attestation. |
+| incomplete-closure (abstention control) | PASS (post grader-fix) | PASS | Both reps: safe DDL written, deployment approval correctly withheld — no attestation source present in this fixture by design. Self-test (`schema-incomplete-attested-green`) independently proves the approval state is reachable given a real attestation, not decorative. |
+
+Unchanged `add-warehouse-load` reliably distinguished the compatible and incompatible worlds and
+reached deployment approval only via a named attestation on every observed run, including on the
+abstention control (never approved without one). Two real grader defects were found and fixed along
+the way, both by reading the raw transcript rather than trusting the boolean verdict, both the same
+class as WSD-039/B-128's RCA — see `meta/BACKLOG.md` B-126 for the RCA sweep. Per WSD-041's
+Done-when criterion, **B-126 closes with no shipped change**; steps 3-10 (the shipped preflight)
+remain unauthorised, and this fixture set is retained as regression evidence (WSD-037 pattern).
+

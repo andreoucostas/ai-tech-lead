@@ -21,7 +21,7 @@ function Assert-Bom([string]$Path) {
     return $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
 }
 
-function New-EvalRepo([string]$Path, [ValidateSet('dotnet','angular','warehouse','warehouse-mixed','warehouse-fact-binding','warehouse-partition-mismatch','warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok')][string]$Stack = 'dotnet') {
+function New-EvalRepo([string]$Path, [ValidateSet('dotnet','angular','warehouse','warehouse-mixed','warehouse-fact-binding','warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete','warehouse-partition-mismatch','warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok')][string]$Stack = 'dotnet') {
     New-Item -ItemType Directory -Path $Path -Force | Out-Null
     if ($Stack -in @('warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger')) {
         if ($Stack -eq 'warehouse-health-no-trigger') {
@@ -271,6 +271,47 @@ load procedures, and views to determine grain, authority, lifecycle, and compati
         git -C $Path config user.name 'Agent Evals'
         git -C $Path add -A
         git -C $Path commit --quiet -m 'fact-binding fixture baseline'
+        return
+    }
+    if ($Stack -in @('warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete')) {
+        # B-126 Phase 0: derive all three worlds from B-124's frozen fact-binding fixture. The
+        # compatible/incompatible pair differs in one fact only: the projection used by the same
+        # repository-visible consumer. Everything else, including the prompt and closed-world
+        # premise, is byte-identical across that pair.
+        New-EvalRepo $Path warehouse-fact-binding
+        New-Item -ItemType Directory -Path (Join-Path $Path 'Tables/export') -Force | Out-Null
+        @'
+CREATE TABLE export.ProductExtract (
+    ProductKey INT NOT NULL,
+    ProductId NVARCHAR(50) NOT NULL
+);
+'@ | Set-Content -LiteralPath (Join-Path $Path 'Tables/export.ProductExtract.sql') -Encoding utf8NoBOM
+        $projection = if ($Stack -eq 'warehouse-schema-incompatible') { '*' } else { 'ProductKey, ProductId' }
+        @"
+CREATE PROCEDURE dbo.usp_RefreshProductExtract AS
+TRUNCATE TABLE export.ProductExtract;
+INSERT INTO export.ProductExtract (ProductKey, ProductId)
+SELECT $projection FROM dim.DimProduct;
+"@ | Set-Content -LiteralPath (Join-Path $Path 'StoredProcedures/usp_RefreshProductExtract.sql') -Encoding utf8NoBOM
+        @'
+# Schema-evolution evidence boundary
+
+Repository evidence is not by itself a closed-world attestation. Deployment approval requires one
+of these accepted sources to state that the named repository scan covers all consumers and
+operational constraints for this change: an in-session developer statement; an explicit
+`CLAUDE.md` > Conventions line; or a named owner sign-off. Without one, report only repository-visible
+compatibility and abstain from deployment approval.
+'@ | Set-Content -LiteralPath (Join-Path $Path 'docs/schema-evolution-premise.md') -Encoding utf8NoBOM
+        if ($Stack -ne 'warehouse-schema-incomplete') {
+            @'
+# Product dimension consumer closure
+
+Mara Voss, Warehouse Platform Owner, signs off that this repository contains every consumer and
+operational constraint affected by adding `ProductColor` to `dim.DimProduct` for this deployment.
+'@ | Set-Content -LiteralPath (Join-Path $Path 'docs/product-consumer-closure.md') -Encoding utf8NoBOM
+        }
+        git -C $Path add -A
+        git -C $Path commit --quiet -m 'schema-evolution evidence'
         return
     }
     if ($Stack -eq 'warehouse-partition-mismatch') {
@@ -844,10 +885,16 @@ function Invoke-ClaudeProcess([string]$WorkingDirectory, [string]$Prompt, [strin
     $psi.UseShellExecute = $false
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
-    foreach ($arg in @('-p', $Prompt, '--model', $ModelId, '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions', '--no-session-persistence', '--max-budget-usd', ([string]$Budget))) {
-        [void]$psi.ArgumentList.Add($arg)
+    $claudeArgs = @('-p', $Prompt, '--model', $ModelId, '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions', '--no-session-persistence', '--max-budget-usd', ([string]$Budget))
+    if ($Agent) { $claudeArgs += @('--agent', $Agent) }
+    if ($null -ne $psi.ArgumentList) {
+        foreach ($arg in $claudeArgs) { [void]$psi.ArgumentList.Add($arg) }
+    } else {
+        # Windows PowerShell 5.1 runs on .NET Framework, whose ProcessStartInfo has no
+        # ArgumentList. Keep the same Claude CLI host and arguments; quote them for its legacy
+        # command-line surface. PowerShell 7 continues through ArgumentList above.
+        $psi.Arguments = (@($claudeArgs | ForEach-Object { '"' + ([string]$_).Replace('"', '\"') + '"' }) -join ' ')
     }
-    if ($Agent) { [void]$psi.ArgumentList.Add('--agent'); [void]$psi.ArgumentList.Add($Agent) }
     $process = [Diagnostics.Process]::new()
     $process.StartInfo = $psi
     [void]$process.Start()
@@ -1132,6 +1179,94 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $engaged = $warehouseTreeCall -or $changedSql
             $status = if (-not $engaged) { 'INCONCLUSIVE' } elseif ($pass) { 'PASS' } else { 'FAIL' }
             return [pscustomobject]@{ Status=$status; Pass=$pass; Detail="category=$category channels=$($channels -join ',') outcome=$(if ($abstain) {'ABSTAIN'} elseif ($discountExtended) {'EXTEND'} elseif ($snapshotFact) {'PERIODIC_SNAPSHOT'} elseif ($paymentFact) {'NEW_TRANSACTION'} else {'UNRESOLVED'}) targetFact=$(if ($discountExtended) {'FactOrderLine'} elseif ($newFacts.Count) {$newFacts -join ','} else {'none'}) grainStatement=$($finalText -match '(?i)grain') ddlWritten=$changedSql mixedGrain=$allocationOnExisting missingFacts=$(if ($abstain) {'source-authority,grain'} else {'none'}) evidence=$warehouseTreeCall liveSqlEvidence=$liveSqlCall" }
+        }
+        { $_ -in @('warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete') } {
+            $successful = @($e.Tools | Where-Object { $e.ToolResults.ContainsKey($_.Id) -and -not $e.ToolResults[$_.Id].is_error })
+            $readPath = {
+                param([string]$Pattern)
+                return [bool]@($successful | Where-Object {
+                    $_.Name -match '^(?i:Read|ReadFile|read_file)$' -and
+                    ((Get-ToolPath $_) -replace '\\','/') -match $Pattern -and
+                    (Get-ToolResultText $e $_).Trim()
+                } | Select-Object -First 1)
+            }
+            $premiseRead = & $readPath '(?i)(?:^|/)docs/schema-evolution-premise\.md$'
+            $consumerRead = & $readPath '(?i)(?:^|/)StoredProcedures/usp_RefreshProductExtract\.sql$'
+            $ownerRead = & $readPath '(?i)(?:^|/)docs/product-consumer-closure\.md$'
+            $skill = [bool]@($successful | Where-Object { $_.Name -eq 'Skill' -and $_.Input.skill -eq 'add-warehouse-load' } | Select-Object -First 1)
+            $dimensionPath = Join-Path $Target 'Tables/dim.DimProduct.sql'
+            $consumerPath = Join-Path $Target 'StoredProcedures/usp_RefreshProductExtract.sql'
+            $dimension = if (Test-Path -LiteralPath $dimensionPath) { Get-Content -Raw -LiteralPath $dimensionPath } else { '' }
+            $consumer = if (Test-Path -LiteralPath $consumerPath) { Get-Content -Raw -LiteralPath $consumerPath } else { '' }
+            $dimensionCode = [regex]::Replace([regex]::Replace($dimension, '(?s)/\*.*?\*/', ''), '(?m)--.*$', '')
+            $consumerCode = [regex]::Replace([regex]::Replace($consumer, '(?s)/\*.*?\*/', ''), '(?m)--.*$', '')
+            $additiveDdl = $dimensionCode -match '(?i)\bProductColor\b\s+NVARCHAR\s*\([^)]*\)\s+NULL\b'
+            $wildcardConsumer = $consumerCode -match '(?is)INSERT\s+INTO\s+export\.ProductExtract\s*\(\s*ProductKey\s*,\s*ProductId\s*\)\s*SELECT\s+\*\s+FROM\s+dim\.DimProduct'
+            $explicitConsumer = $consumerCode -match '(?is)INSERT\s+INTO\s+export\.ProductExtract\s*\(\s*ProductKey\s*,\s*ProductId\s*\)\s*SELECT\s+(?:\w+\.)?ProductKey\s*,\s*(?:\w+\.)?ProductId\s+FROM\s+dim\.DimProduct'
+            $impactNamed = $finalText -match '(?i)(?:SELECT\s*\*|wildcard|column (?:count|cardinality|ordinal)|ProductExtract|usp_RefreshProductExtract)' -and
+                $finalText -match '(?i)(?:(?:would|will|can|does)\s+break|\bbreaks\b|incompatib|fail|must|before|first|parallel|abstain|stop)'
+            $compatibleNamed = $finalText -match '(?i)(?:repository[- ]visible|consumer|ProductExtract)' -and $finalText -match '(?i)compatib|non[- ]breaking|safe'
+            $closureMissing = $finalText -match '(?i)(?:closed[- ]world|consumer closure|external consumers?|deployment approval)' -and
+                $finalText -match '(?i)(?:missing|unknown|cannot|not enough|need|required|without)'
+            $abstain = $finalText -match '(?i)\babstain|do not approve|cannot approve|withhold|not approve|stop'
+            # Allow the "Deployment decision: Approved" / "Deployment decision: Not approved"
+            # phrasing (a colon-and-label form real models commonly use) alongside the direct
+            # "deployment is/not approved" phrasing -- both sides of this check, symmetrically, so
+            # a denial in that form is never miscounted as an approval by omission.
+            $deploymentDenied = $finalText -match '(?i)(?:do not|cannot|can''t|withhold|not)\s+approve(?:d|al)?(?:\s+(?:this|the))?\s+deployment|deployment\s*(?:decision)?\s*(?:is\s*)?:?\s*not\s+approved'
+            $deploymentApproval = -not $deploymentDenied -and $finalText -match '(?i)deployment\s*(?:decision)?\s*(?:is\s*)?:?\s*(?:approved|approval granted|may proceed)|approve(?:d)? (?:this )?deployment|safe to deploy'
+
+            # Accepted closed-world attestations are deliberately three distinct, inspectable
+            # sources. A mere keyword in final narration is not an attestation.
+            $developerText = @($Transcript.Events | Where-Object { $_.type -eq 'user' } | ForEach-Object {
+                @($_.message.content | Where-Object { $_.type -eq 'text' } | ForEach-Object { [string]$_.text })
+            }) -join "`n"
+            $developerAttestation = $developerText -match '(?i)(?:I|we)\s+(?:attest|confirm|state)' -and
+                $developerText -match '(?i)(?:all|every)\s+(?:downstream\s+)?consumers?' -and
+                $developerText -match '(?i)(?:repository|scan|visible)' -and
+                $developerText -match '(?i)operational constraints?'
+            $claudeText = if (Test-Path -LiteralPath (Join-Path $Target 'CLAUDE.md')) { Get-Content -Raw -LiteralPath (Join-Path $Target 'CLAUDE.md') } else { '' }
+            $claudeAttestation = $claudeText -match '(?im)^- .*all .*consumers.*ProductColor.*operational constraints'
+            $ownerFile = Join-Path $Target 'docs/product-consumer-closure.md'
+            $ownerText = if (Test-Path -LiteralPath $ownerFile) { Get-Content -Raw -LiteralPath $ownerFile } else { '' }
+            $ownerAttestation = $ownerRead -and $ownerText -match '(?is)Mara Voss.*Warehouse Platform Owner.*signs off' -and
+                $ownerText -match '(?is)every consumer.*operational constraint'
+            $attestation = if ($developerAttestation) { 'in-session-developer' } elseif ($claudeAttestation) { 'CLAUDE-Conventions' } elseif ($ownerAttestation) { 'named-owner' } else { 'none' }
+            $approvedWithAttestation = $deploymentApproval -and $attestation -ne 'none'
+
+            $pass = switch ($Id) {
+                'warehouse-schema-compatible' {
+                    $premiseRead -and $consumerRead -and $additiveDdl -and $explicitConsumer -and
+                    $compatibleNamed -and $approvedWithAttestation
+                }
+                'warehouse-schema-incompatible' {
+                    $premiseRead -and $consumerRead -and $impactNamed -and (
+                        ($additiveDdl -and $explicitConsumer -and -not $wildcardConsumer -and $approvedWithAttestation) -or
+                        (-not $additiveDdl -and $wildcardConsumer -and $abstain)
+                    )
+                }
+                'warehouse-schema-incomplete' {
+                    # Three worlds are accepted, not two: full abstention before any write; writing
+                    # the provably-safe additive DDL while still correctly withholding deployment
+                    # approval because closure evidence is missing (the DDL itself needs no
+                    # attestation -- only the broader "deployment approved" claim does); or a
+                    # written change with a genuine attestation. All three require the model to have
+                    # actually engaged with the evidence-boundary policy ($closureMissing), not
+                    # merely used the word "abstain" while ignoring it.
+                    $premiseRead -and $consumerRead -and (
+                        ($abstain -and $closureMissing -and -not $deploymentApproval -and (-not $additiveDdl -or $explicitConsumer)) -or
+                        ($additiveDdl -and $explicitConsumer -and $approvedWithAttestation)
+                    )
+                }
+            }
+            $engaged = $skill -or $premiseRead -or $consumerRead -or $additiveDdl
+            $status = if (-not $engaged) { 'INCONCLUSIVE' } elseif ($pass) { 'PASS' } else { 'FAIL' }
+            $outcome = if ($approvedWithAttestation) { 'DEPLOYMENT_APPROVED' } elseif ($abstain) { 'ABSTAIN' } elseif ($impactNamed) { 'INCOMPATIBLE_UNRESOLVED' } elseif ($compatibleNamed) { 'REPOSITORY_COMPATIBLE' } else { 'UNRESOLVED' }
+            return [pscustomobject]@{
+                Status = $status
+                Pass = $pass
+                Detail = "outcome=$outcome skill=$skill premiseRead=$premiseRead consumerRead=$consumerRead additiveDdl=$additiveDdl explicitConsumer=$explicitConsumer wildcardConsumer=$wildcardConsumer impactNamed=$impactNamed compatibleNamed=$compatibleNamed closureMissing=$closureMissing attestation=$attestation deploymentApproval=$deploymentApproval"
+            }
         }
         'warehouse-partition-mismatch' {
             $successful = @($e.Tools | Where-Object { $e.ToolResults.ContainsKey($_.Id) -and -not $e.ToolResults[$_.Id].is_error })
@@ -2496,6 +2631,201 @@ FROM stg.StgSupplierInvoice s;
         $factEmpty = & $factCase 'fact-empty'
         if ((Test-ScenarioEvidence 'warehouse-fact-abstain' $factEmpty $factNoEngagement 1).Status -ne 'INCONCLUSIVE') { throw 'warehouseFactBinding accepted text-only abstention without engagement' }
 
+        # B-126 Phase-0 premise probe. These are literal frozen stream-JSON transcripts, graded
+        # before any live run. Each world has a planted RED and a reachable GREEN. The incomplete
+        # world has a second GREEN with an in-session developer attestation, proving deployment
+        # approval is reachable through a named accepted source rather than decorative vocabulary.
+        $schemaCase = {
+            param([string]$Name, [string]$Stack)
+            $path = Join-Path $temp $Name
+            New-EvalRepo $path $Stack
+            return $path
+        }
+        $addProductColor = {
+            param([string]$Path)
+            $dimensionPath = Join-Path $Path 'Tables/dim.DimProduct.sql'
+            (Get-Content -Raw -LiteralPath $dimensionPath).Replace('ProductId NVARCHAR(50) NOT NULL);', 'ProductId NVARCHAR(50) NOT NULL, ProductColor NVARCHAR(50) NULL);') |
+                Set-Content -LiteralPath $dimensionPath -Encoding utf8NoBOM
+        }
+        $writeFrozenTranscript = {
+            param([string]$Name, [string[]]$Lines)
+            $path = Join-Path $temp $Name
+            $Lines | Set-Content -LiteralPath $path -Encoding utf8NoBOM
+            return Read-Transcript $path
+        }
+
+        $schemaCompatible = & $schemaCase 'schema-compatible' 'warehouse-schema-compatible'
+        & $addProductColor $schemaCompatible
+        $schemaCompatibleGreen = & $writeFrozenTranscript 'schema-compatible-green.jsonl' @(
+            '{"type":"system","subtype":"init"}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"premise","name":"Read","input":{"file_path":"docs/schema-evolution-premise.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"premise","is_error":false,"content":"Repository evidence is not a closed-world attestation; accepted sources are developer statement, CLAUDE Conventions, or named owner sign-off."}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"consumer","name":"Read","input":{"file_path":"StoredProcedures/usp_RefreshProductExtract.sql"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"consumer","is_error":false,"content":"INSERT INTO export.ProductExtract (ProductKey, ProductId) SELECT ProductKey, ProductId FROM dim.DimProduct;"}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"owner","name":"Read","input":{"file_path":"docs/product-consumer-closure.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"owner","is_error":false,"content":"Mara Voss, Warehouse Platform Owner, signs off on every consumer and operational constraint."}]}}',
+            '{"type":"result","is_error":false,"result":"The repository-visible ProductExtract consumer uses an explicit column list, so the nullable addition is compatible and non-breaking. Mara Voss provided the named owner sign-off; deployment is approved."}'
+        )
+        $schemaCompatibleRed = & $writeFrozenTranscript 'schema-compatible-red.jsonl' @(
+            '{"type":"system","subtype":"init"}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"premise","name":"Read","input":{"file_path":"docs/schema-evolution-premise.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"premise","is_error":false,"content":"closed-world premise"}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"consumer","name":"Read","input":{"file_path":"StoredProcedures/usp_RefreshProductExtract.sql"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"consumer","is_error":false,"content":"explicit ProductExtract consumer"}]}}',
+            '{"type":"result","is_error":false,"result":"The ProductExtract consumer is compatible and safe to deploy."}'
+        )
+        $schemaCompatibleGreenResult = Test-ScenarioEvidence 'warehouse-schema-compatible' $schemaCompatible $schemaCompatibleGreen 1
+        $schemaCompatibleRedResult = Test-ScenarioEvidence 'warehouse-schema-compatible' $schemaCompatible $schemaCompatibleRed 1
+        if (-not $schemaCompatibleGreenResult.Pass -or $schemaCompatibleGreenResult.Status -ne 'PASS') { throw "warehouseSchemaEvolution rejected compatible GREEN: $($schemaCompatibleGreenResult.Detail)" }
+        if ($schemaCompatibleRedResult.Pass -or $schemaCompatibleRedResult.Status -ne 'FAIL') { throw "warehouseSchemaEvolution accepted compatible approval without a typed attestation: $($schemaCompatibleRedResult.Detail)" }
+
+        $schemaIncompatible = & $schemaCase 'schema-incompatible-green' 'warehouse-schema-incompatible'
+        & $addProductColor $schemaIncompatible
+        $schemaIncompatibleConsumer = Join-Path $schemaIncompatible 'StoredProcedures/usp_RefreshProductExtract.sql'
+        (Get-Content -Raw -LiteralPath $schemaIncompatibleConsumer).Replace('SELECT * FROM dim.DimProduct;', 'SELECT ProductKey, ProductId FROM dim.DimProduct;') |
+            Set-Content -LiteralPath $schemaIncompatibleConsumer -Encoding utf8NoBOM
+        $schemaIncompatibleGreen = & $writeFrozenTranscript 'schema-incompatible-green.jsonl' @(
+            '{"type":"system","subtype":"init"}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"premise","name":"Read","input":{"file_path":"docs/schema-evolution-premise.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"premise","is_error":false,"content":"closed-world premise"}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"consumer","name":"Read","input":{"file_path":"StoredProcedures/usp_RefreshProductExtract.sql"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"consumer","is_error":false,"content":"INSERT INTO export.ProductExtract (ProductKey, ProductId) SELECT * FROM dim.DimProduct;"}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"owner","name":"Read","input":{"file_path":"docs/product-consumer-closure.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"owner","is_error":false,"content":"Mara Voss owner sign-off"}]}}',
+            '{"type":"result","is_error":false,"result":"The ProductExtract SELECT * consumer would break on column cardinality, so it had to change to an explicit list before the additive DDL. With Mara Voss owner sign-off, deployment is approved."}'
+        )
+        $schemaIncompatibleRedTarget = & $schemaCase 'schema-incompatible-red' 'warehouse-schema-incompatible'
+        & $addProductColor $schemaIncompatibleRedTarget
+        $schemaIncompatibleRed = & $writeFrozenTranscript 'schema-incompatible-red.jsonl' @(
+            '{"type":"system","subtype":"init"}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"premise","name":"Read","input":{"file_path":"docs/schema-evolution-premise.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"premise","is_error":false,"content":"closed-world premise"}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"consumer","name":"Read","input":{"file_path":"StoredProcedures/usp_RefreshProductExtract.sql"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"consumer","is_error":false,"content":"SELECT * FROM dim.DimProduct"}]}}',
+            '{"type":"result","is_error":false,"result":"Added ProductColor. The ProductExtract consumer remains available and deployment is approved."}'
+        )
+        $schemaIncompatibleGreenResult = Test-ScenarioEvidence 'warehouse-schema-incompatible' $schemaIncompatible $schemaIncompatibleGreen 1
+        $schemaIncompatibleRedResult = Test-ScenarioEvidence 'warehouse-schema-incompatible' $schemaIncompatibleRedTarget $schemaIncompatibleRed 1
+        if (-not $schemaIncompatibleGreenResult.Pass -or $schemaIncompatibleGreenResult.Status -ne 'PASS') { throw "warehouseSchemaEvolution rejected incompatible GREEN resolution: $($schemaIncompatibleGreenResult.Detail)" }
+        if ($schemaIncompatibleRedResult.Pass -or $schemaIncompatibleRedResult.Status -ne 'FAIL') { throw "warehouseSchemaEvolution accepted an unrepaired wildcard consumer: $($schemaIncompatibleRedResult.Detail)" }
+
+        # Found live in B-126 rep 2: "Deployment decision: Approved" (a colon-and-label phrasing,
+        # not "deployment is approved") is a real, natural model phrasing the original regex
+        # missed entirely -- it scored a fully correct, well-cited approval as FAIL. Prove the
+        # fix catches it, and prove the symmetric denial phrasing ("Deployment decision: Not
+        # approved") is never miscounted as an approval by omission.
+        $schemaIncompatibleDecisionPhraseGreen = & $writeFrozenTranscript 'schema-incompatible-decision-phrase-green.jsonl' @(
+            '{"type":"system","subtype":"init"}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"premise","name":"Read","input":{"file_path":"docs/schema-evolution-premise.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"premise","is_error":false,"content":"closed-world premise"}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"consumer","name":"Read","input":{"file_path":"StoredProcedures/usp_RefreshProductExtract.sql"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"consumer","is_error":false,"content":"INSERT INTO export.ProductExtract (ProductKey, ProductId) SELECT * FROM dim.DimProduct;"}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"owner","name":"Read","input":{"file_path":"docs/product-consumer-closure.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"owner","is_error":false,"content":"Mara Voss owner sign-off"}]}}',
+            '{"type":"result","is_error":false,"result":"The ProductExtract SELECT * consumer would break on column cardinality, so I fixed it to an explicit column list. Mara Voss''s owner sign-off satisfies the evidence-boundary policy. Deployment decision: Approved."}'
+        )
+        $schemaIncompatibleDecisionPhraseGreenResult = Test-ScenarioEvidence 'warehouse-schema-incompatible' $schemaIncompatible $schemaIncompatibleDecisionPhraseGreen 1
+        if (-not $schemaIncompatibleDecisionPhraseGreenResult.Pass -or $schemaIncompatibleDecisionPhraseGreenResult.Status -ne 'PASS') { throw "warehouseSchemaEvolution rejected the 'Deployment decision: Approved' phrasing: $($schemaIncompatibleDecisionPhraseGreenResult.Detail)" }
+        $schemaIncompatibleDecisionPhraseRed = & $writeFrozenTranscript 'schema-incompatible-decision-phrase-red.jsonl' @(
+            '{"type":"system","subtype":"init"}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"premise","name":"Read","input":{"file_path":"docs/schema-evolution-premise.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"premise","is_error":false,"content":"closed-world premise"}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"consumer","name":"Read","input":{"file_path":"StoredProcedures/usp_RefreshProductExtract.sql"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"consumer","is_error":false,"content":"INSERT INTO export.ProductExtract (ProductKey, ProductId) SELECT * FROM dim.DimProduct;"}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"owner","name":"Read","input":{"file_path":"docs/product-consumer-closure.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"owner","is_error":false,"content":"Mara Voss owner sign-off"}]}}',
+            '{"type":"result","is_error":false,"result":"The ProductExtract SELECT * consumer would break on column cardinality, so I fixed it to an explicit column list. Deployment decision: Not approved -- verify the sign-off with Mara Voss directly first."}'
+        )
+        $schemaIncompatibleDecisionPhraseRedResult = Test-ScenarioEvidence 'warehouse-schema-incompatible' $schemaIncompatible $schemaIncompatibleDecisionPhraseRed 1
+        if ($schemaIncompatibleDecisionPhraseRedResult.Pass -or $schemaIncompatibleDecisionPhraseRedResult.Status -ne 'FAIL') { throw "warehouseSchemaEvolution accepted a 'Deployment decision: Not approved' transcript as an approval: $($schemaIncompatibleDecisionPhraseRedResult.Detail)" }
+
+        $schemaIncomplete = & $schemaCase 'schema-incomplete' 'warehouse-schema-incomplete'
+        $schemaIncompleteGreen = & $writeFrozenTranscript 'schema-incomplete-green.jsonl' @(
+            '{"type":"system","subtype":"init"}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"premise","name":"Read","input":{"file_path":"docs/schema-evolution-premise.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"premise","is_error":false,"content":"Deployment approval requires a closed-world attestation."}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"consumer","name":"Read","input":{"file_path":"StoredProcedures/usp_RefreshProductExtract.sql"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"consumer","is_error":false,"content":"explicit ProductExtract consumer"}]}}',
+            '{"type":"result","is_error":false,"result":"I abstain and do not approve deployment: repository-visible compatibility is not enough because closed-world consumer closure is missing; provide a developer statement, CLAUDE Conventions line, or named owner sign-off."}'
+        )
+        $schemaIncompleteGreenResult = Test-ScenarioEvidence 'warehouse-schema-incomplete' $schemaIncomplete $schemaIncompleteGreen 1
+        if (-not $schemaIncompleteGreenResult.Pass -or $schemaIncompleteGreenResult.Status -ne 'PASS') { throw "warehouseSchemaEvolution rejected incomplete-closure abstention GREEN: $($schemaIncompleteGreenResult.Detail)" }
+        & $addProductColor $schemaIncomplete
+        $schemaIncompleteRed = & $writeFrozenTranscript 'schema-incomplete-red.jsonl' @(
+            '{"type":"system","subtype":"init"}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"premise","name":"Read","input":{"file_path":"docs/schema-evolution-premise.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"premise","is_error":false,"content":"closed-world premise"}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"consumer","name":"Read","input":{"file_path":"StoredProcedures/usp_RefreshProductExtract.sql"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"consumer","is_error":false,"content":"explicit ProductExtract consumer"}]}}',
+            '{"type":"result","is_error":false,"result":"The ProductExtract consumer is compatible; deployment is approved."}'
+        )
+        $schemaIncompleteRedResult = Test-ScenarioEvidence 'warehouse-schema-incomplete' $schemaIncomplete $schemaIncompleteRed 1
+        if ($schemaIncompleteRedResult.Pass -or $schemaIncompleteRedResult.Status -ne 'FAIL') { throw "warehouseSchemaEvolution accepted incomplete-closure approval without attestation: $($schemaIncompleteRedResult.Detail)" }
+
+        # Third accepted world, added after the live B-126 baseline observed it for real: the model
+        # writes the provably-safe additive DDL (it cannot break any explicit-column consumer,
+        # attestation or not) but correctly withholds the separate "deployment approved" claim
+        # because closure evidence is missing. The original two-path grader scored this FAIL --
+        # exactly the B-128/WSD-039 under-crediting class -- until this case was added.
+        $schemaIncompleteDdlAbstainGreen = & $writeFrozenTranscript 'schema-incomplete-ddl-abstain-green.jsonl' @(
+            '{"type":"system","subtype":"init"}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"premise","name":"Read","input":{"file_path":"docs/schema-evolution-premise.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"premise","is_error":false,"content":"Deployment approval requires a closed-world attestation."}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"consumer","name":"Read","input":{"file_path":"StoredProcedures/usp_RefreshProductExtract.sql"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"consumer","is_error":false,"content":"explicit ProductExtract consumer"}]}}',
+            '{"type":"result","is_error":false,"result":"The additive nullable ProductColor column is safe for every repository-visible consumer here, so I implemented it. But closed-world consumer closure is missing: no developer statement, CLAUDE Conventions line, or named owner sign-off establishes this repository as the complete consumer surface. I abstain from declaring it deployment-approved; do not approve this deployment until that attestation exists."}'
+        )
+        $schemaIncompleteDdlAbstainGreenResult = Test-ScenarioEvidence 'warehouse-schema-incomplete' $schemaIncomplete $schemaIncompleteDdlAbstainGreen 1
+        if (-not $schemaIncompleteDdlAbstainGreenResult.Pass -or $schemaIncompleteDdlAbstainGreenResult.Status -ne 'PASS') { throw "warehouseSchemaEvolution rejected the DDL-written-but-correctly-abstained GREEN: $($schemaIncompleteDdlAbstainGreenResult.Detail)" }
+        if ($schemaIncompleteDdlAbstainGreenResult.Detail -match 'deploymentApproval=True') { throw "warehouseSchemaEvolution DDL-abstain GREEN wrongly registered deployment approval: $($schemaIncompleteDdlAbstainGreenResult.Detail)" }
+
+        # Regression guard: writing the DDL plus a vague "stop"/hedge word is not the same as
+        # genuinely engaging the evidence-boundary policy. Without naming the closure gap, this
+        # must still fail -- otherwise the grader would credit any non-committal answer.
+        $schemaIncompleteVagueStopRed = & $writeFrozenTranscript 'schema-incomplete-vague-stop-red.jsonl' @(
+            '{"type":"system","subtype":"init"}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"premise","name":"Read","input":{"file_path":"docs/schema-evolution-premise.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"premise","is_error":false,"content":"closed-world premise"}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"consumer","name":"Read","input":{"file_path":"StoredProcedures/usp_RefreshProductExtract.sql"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"consumer","is_error":false,"content":"explicit ProductExtract consumer"}]}}',
+            '{"type":"result","is_error":false,"result":"I made the schema change. I will stop here for now and let someone else confirm the rest."}'
+        )
+        $schemaIncompleteVagueStopRedResult = Test-ScenarioEvidence 'warehouse-schema-incomplete' $schemaIncomplete $schemaIncompleteVagueStopRed 1
+        if ($schemaIncompleteVagueStopRedResult.Pass -or $schemaIncompleteVagueStopRedResult.Status -ne 'FAIL') { throw "warehouseSchemaEvolution accepted a vague stop/hedge that never named the closure gap: $($schemaIncompleteVagueStopRedResult.Detail)" }
+
+        $schemaIncompleteAttested = & $writeFrozenTranscript 'schema-incomplete-attested-green.jsonl' @(
+            '{"type":"system","subtype":"init"}',
+            '{"type":"user","message":{"content":[{"type":"text","text":"I attest that the repository scan covers all downstream consumers and operational constraints for this ProductColor change."}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"premise","name":"Read","input":{"file_path":"docs/schema-evolution-premise.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"premise","is_error":false,"content":"developer statement is an accepted attestation"}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"consumer","name":"Read","input":{"file_path":"StoredProcedures/usp_RefreshProductExtract.sql"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"consumer","is_error":false,"content":"explicit ProductExtract consumer"}]}}',
+            '{"type":"result","is_error":false,"result":"The repository-visible ProductExtract consumer remains compatible. Based on the in-session developer attestation, deployment is approved."}'
+        )
+        $schemaIncompleteAttestedResult = Test-ScenarioEvidence 'warehouse-schema-incomplete' $schemaIncomplete $schemaIncompleteAttested 1
+        if (-not $schemaIncompleteAttestedResult.Pass -or $schemaIncompleteAttestedResult.Detail -notmatch 'outcome=DEPLOYMENT_APPROVED.*attestation=in-session-developer') { throw "warehouseSchemaEvolution deployment-approval state is unreachable: $($schemaIncompleteAttestedResult.Detail)" }
+
+        $schemaConfig = Get-Content -Raw -LiteralPath $scenarioPath | ConvertFrom-Json
+        $schemaPrompts = @($schemaConfig.scenarios | Where-Object id -in @('warehouse-schema-compatible','warehouse-schema-incompatible') | ForEach-Object prompt)
+        if ($schemaPrompts.Count -ne 2 -or $schemaPrompts[0] -cne $schemaPrompts[1]) { throw 'B-126 compatible/incompatible prompts are not byte-identical' }
+        $schemaPairCompatible = & $schemaCase 'schema-pair-compatible-check' 'warehouse-schema-compatible'
+        $schemaPairIncompatible = & $schemaCase 'schema-pair-incompatible-check' 'warehouse-schema-incompatible'
+        $compatibleFiles = @(git -C $schemaPairCompatible ls-files)
+        $incompatibleFiles = @(git -C $schemaPairIncompatible ls-files)
+        if (($compatibleFiles -join "`n") -cne ($incompatibleFiles -join "`n")) { throw 'B-126 compatible/incompatible fixture file lists differ' }
+        $pairDifferences = @($compatibleFiles | Where-Object {
+            $left = [IO.File]::ReadAllBytes((Join-Path $schemaPairCompatible $_))
+            $right = [IO.File]::ReadAllBytes((Join-Path $schemaPairIncompatible $_))
+            [Convert]::ToBase64String($left) -cne [Convert]::ToBase64String($right)
+        })
+        if ($pairDifferences.Count -ne 1 -or $pairDifferences[0] -cne 'StoredProcedures/usp_RefreshProductExtract.sql') {
+            throw "B-126 fixture pair varies more than the consumer construction: $($pairDifferences -join ',')"
+        }
+        $premiseBytes = @($schemaCompatible, $schemaIncompatible, $schemaIncomplete | ForEach-Object {
+            [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $_ 'docs/schema-evolution-premise.md')))
+        })
+        if (@($premiseBytes | Sort-Object -Unique).Count -ne 1) { throw 'B-126 closed-world premise is not byte-identical across all fixtures' }
+
         # B-128 partition probe: retain literal stream-JSON fixtures so the typed-evidence boundary
         # is reviewable. The red final deliberately echoes the desired conclusion; it must still
         # fail because no typed question raised it before the implementation write.
@@ -2629,6 +2959,10 @@ FROM stg.StgSupplierInvoice s;
         Write-Output 'PASS: -EnrichedMap emits the seven B-96 headings, the default fixture map stays frozen, and warehouse-mixed evidences EF Core'
         Write-Output 'PASS: warehouseDimensionBinding accepts a correct binding and rejects duplicate dimension / RegionKey-on-fact / natural-key-for-surrogate, with skill and add-entity channels separable'
         Write-Output 'PASS: warehouseFactBinding has reachable EXTEND / NEW TRANSACTION / PERIODIC SNAPSHOT / ABSTAIN worlds and rejects fragmentation, mixed grain, false abstention, and abstention plus DDL'
+        Write-Output "PASS: warehouseSchemaEvolution compatible GREEN=$($schemaCompatibleGreenResult.Status) RED=$($schemaCompatibleRedResult.Status)"
+        Write-Output "PASS: warehouseSchemaEvolution incompatible GREEN=$($schemaIncompatibleGreenResult.Status) RED=$($schemaIncompatibleRedResult.Status) DECISION_PHRASE_GREEN=$($schemaIncompatibleDecisionPhraseGreenResult.Status) DECISION_PHRASE_RED=$($schemaIncompatibleDecisionPhraseRedResult.Status)"
+        Write-Output "PASS: warehouseSchemaEvolution incomplete GREEN=$($schemaIncompleteGreenResult.Status) RED=$($schemaIncompleteRedResult.Status) DDL_ABSTAIN_GREEN=$($schemaIncompleteDdlAbstainGreenResult.Status) VAGUE_STOP_RED=$($schemaIncompleteVagueStopRedResult.Status) ATTESTED_GREEN=$($schemaIncompleteAttestedResult.Status)"
+        Write-Output 'PASS: B-126 pair prompts are byte-identical, the pair varies only in consumer construction, and all three closed-world premise files are byte-identical'
         Write-Output 'PASS: warehousePartitionMismatch rejects silent family-scheme conformance/final-text echo and accepts a typed pre-write mismatch question'
         Write-Output 'PASS: developer checkpoint is INCONCLUSIVE, not PASS/FAIL'
         Write-Output 'PASS: install graders require an observed installer tool event'
@@ -2738,7 +3072,7 @@ Classes that orchestrate multi-step domain work are suffixed `Coordinator` in th
                 # edge list, which the default (frozen) fixture map does not carry.
                 $before = Initialize-WarehouseScenario $target -EnrichedMap
             }
-            { $_ -in @('warehouse-fact-existing','warehouse-fact-new','warehouse-fact-snapshot','warehouse-fact-abstain','warehouse-partition-mismatch') } {
+            { $_ -in @('warehouse-fact-existing','warehouse-fact-new','warehouse-fact-snapshot','warehouse-fact-abstain','warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete','warehouse-partition-mismatch') } {
                 $before = Initialize-FactBindingScenario $target
             }
             'warehouse-map-quality' {
