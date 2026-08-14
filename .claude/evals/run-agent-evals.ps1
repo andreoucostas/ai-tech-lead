@@ -1209,8 +1209,12 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $closureMissing = $finalText -match '(?i)(?:closed[- ]world|consumer closure|external consumers?|deployment approval)' -and
                 $finalText -match '(?i)(?:missing|unknown|cannot|not enough|need|required|without)'
             $abstain = $finalText -match '(?i)\babstain|do not approve|cannot approve|withhold|not approve|stop'
-            $deploymentDenied = $finalText -match '(?i)(?:do not|cannot|can''t|withhold|not)\s+approve(?:d|al)?(?:\s+(?:this|the))?\s+deployment|deployment (?:is )?not approved'
-            $deploymentApproval = -not $deploymentDenied -and $finalText -match '(?i)deployment (?:is )?(?:approved|approval granted|may proceed)|approve(?:d)? (?:this )?deployment|safe to deploy'
+            # Allow the "Deployment decision: Approved" / "Deployment decision: Not approved"
+            # phrasing (a colon-and-label form real models commonly use) alongside the direct
+            # "deployment is/not approved" phrasing -- both sides of this check, symmetrically, so
+            # a denial in that form is never miscounted as an approval by omission.
+            $deploymentDenied = $finalText -match '(?i)(?:do not|cannot|can''t|withhold|not)\s+approve(?:d|al)?(?:\s+(?:this|the))?\s+deployment|deployment\s*(?:decision)?\s*(?:is\s*)?:?\s*not\s+approved'
+            $deploymentApproval = -not $deploymentDenied -and $finalText -match '(?i)deployment\s*(?:decision)?\s*(?:is\s*)?:?\s*(?:approved|approval granted|may proceed)|approve(?:d)? (?:this )?deployment|safe to deploy'
 
             # Accepted closed-world attestations are deliberately three distinct, inspectable
             # sources. A mere keyword in final narration is not an attestation.
@@ -2705,6 +2709,36 @@ FROM stg.StgSupplierInvoice s;
         if (-not $schemaIncompatibleGreenResult.Pass -or $schemaIncompatibleGreenResult.Status -ne 'PASS') { throw "warehouseSchemaEvolution rejected incompatible GREEN resolution: $($schemaIncompatibleGreenResult.Detail)" }
         if ($schemaIncompatibleRedResult.Pass -or $schemaIncompatibleRedResult.Status -ne 'FAIL') { throw "warehouseSchemaEvolution accepted an unrepaired wildcard consumer: $($schemaIncompatibleRedResult.Detail)" }
 
+        # Found live in B-126 rep 2: "Deployment decision: Approved" (a colon-and-label phrasing,
+        # not "deployment is approved") is a real, natural model phrasing the original regex
+        # missed entirely -- it scored a fully correct, well-cited approval as FAIL. Prove the
+        # fix catches it, and prove the symmetric denial phrasing ("Deployment decision: Not
+        # approved") is never miscounted as an approval by omission.
+        $schemaIncompatibleDecisionPhraseGreen = & $writeFrozenTranscript 'schema-incompatible-decision-phrase-green.jsonl' @(
+            '{"type":"system","subtype":"init"}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"premise","name":"Read","input":{"file_path":"docs/schema-evolution-premise.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"premise","is_error":false,"content":"closed-world premise"}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"consumer","name":"Read","input":{"file_path":"StoredProcedures/usp_RefreshProductExtract.sql"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"consumer","is_error":false,"content":"INSERT INTO export.ProductExtract (ProductKey, ProductId) SELECT * FROM dim.DimProduct;"}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"owner","name":"Read","input":{"file_path":"docs/product-consumer-closure.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"owner","is_error":false,"content":"Mara Voss owner sign-off"}]}}',
+            '{"type":"result","is_error":false,"result":"The ProductExtract SELECT * consumer would break on column cardinality, so I fixed it to an explicit column list. Mara Voss''s owner sign-off satisfies the evidence-boundary policy. Deployment decision: Approved."}'
+        )
+        $schemaIncompatibleDecisionPhraseGreenResult = Test-ScenarioEvidence 'warehouse-schema-incompatible' $schemaIncompatible $schemaIncompatibleDecisionPhraseGreen 1
+        if (-not $schemaIncompatibleDecisionPhraseGreenResult.Pass -or $schemaIncompatibleDecisionPhraseGreenResult.Status -ne 'PASS') { throw "warehouseSchemaEvolution rejected the 'Deployment decision: Approved' phrasing: $($schemaIncompatibleDecisionPhraseGreenResult.Detail)" }
+        $schemaIncompatibleDecisionPhraseRed = & $writeFrozenTranscript 'schema-incompatible-decision-phrase-red.jsonl' @(
+            '{"type":"system","subtype":"init"}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"premise","name":"Read","input":{"file_path":"docs/schema-evolution-premise.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"premise","is_error":false,"content":"closed-world premise"}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"consumer","name":"Read","input":{"file_path":"StoredProcedures/usp_RefreshProductExtract.sql"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"consumer","is_error":false,"content":"INSERT INTO export.ProductExtract (ProductKey, ProductId) SELECT * FROM dim.DimProduct;"}]}}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"owner","name":"Read","input":{"file_path":"docs/product-consumer-closure.md"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"owner","is_error":false,"content":"Mara Voss owner sign-off"}]}}',
+            '{"type":"result","is_error":false,"result":"The ProductExtract SELECT * consumer would break on column cardinality, so I fixed it to an explicit column list. Deployment decision: Not approved -- verify the sign-off with Mara Voss directly first."}'
+        )
+        $schemaIncompatibleDecisionPhraseRedResult = Test-ScenarioEvidence 'warehouse-schema-incompatible' $schemaIncompatible $schemaIncompatibleDecisionPhraseRed 1
+        if ($schemaIncompatibleDecisionPhraseRedResult.Pass -or $schemaIncompatibleDecisionPhraseRedResult.Status -ne 'FAIL') { throw "warehouseSchemaEvolution accepted a 'Deployment decision: Not approved' transcript as an approval: $($schemaIncompatibleDecisionPhraseRedResult.Detail)" }
+
         $schemaIncomplete = & $schemaCase 'schema-incomplete' 'warehouse-schema-incomplete'
         $schemaIncompleteGreen = & $writeFrozenTranscript 'schema-incomplete-green.jsonl' @(
             '{"type":"system","subtype":"init"}',
@@ -2926,7 +2960,7 @@ FROM stg.StgSupplierInvoice s;
         Write-Output 'PASS: warehouseDimensionBinding accepts a correct binding and rejects duplicate dimension / RegionKey-on-fact / natural-key-for-surrogate, with skill and add-entity channels separable'
         Write-Output 'PASS: warehouseFactBinding has reachable EXTEND / NEW TRANSACTION / PERIODIC SNAPSHOT / ABSTAIN worlds and rejects fragmentation, mixed grain, false abstention, and abstention plus DDL'
         Write-Output "PASS: warehouseSchemaEvolution compatible GREEN=$($schemaCompatibleGreenResult.Status) RED=$($schemaCompatibleRedResult.Status)"
-        Write-Output "PASS: warehouseSchemaEvolution incompatible GREEN=$($schemaIncompatibleGreenResult.Status) RED=$($schemaIncompatibleRedResult.Status)"
+        Write-Output "PASS: warehouseSchemaEvolution incompatible GREEN=$($schemaIncompatibleGreenResult.Status) RED=$($schemaIncompatibleRedResult.Status) DECISION_PHRASE_GREEN=$($schemaIncompatibleDecisionPhraseGreenResult.Status) DECISION_PHRASE_RED=$($schemaIncompatibleDecisionPhraseRedResult.Status)"
         Write-Output "PASS: warehouseSchemaEvolution incomplete GREEN=$($schemaIncompleteGreenResult.Status) RED=$($schemaIncompleteRedResult.Status) DDL_ABSTAIN_GREEN=$($schemaIncompleteDdlAbstainGreenResult.Status) VAGUE_STOP_RED=$($schemaIncompleteVagueStopRedResult.Status) ATTESTED_GREEN=$($schemaIncompleteAttestedResult.Status)"
         Write-Output 'PASS: B-126 pair prompts are byte-identical, the pair varies only in consumer construction, and all three closed-world premise files are byte-identical'
         Write-Output 'PASS: warehousePartitionMismatch rejects silent family-scheme conformance/final-text echo and accepts a typed pre-write mismatch question'
