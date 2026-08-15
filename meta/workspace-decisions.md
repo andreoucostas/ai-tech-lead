@@ -1729,6 +1729,39 @@ flagged that `meta/BACKLOG.md`'s "Done when" for B-127 still requires the deferr
 outright, giving no closure path for a passing baseline — **accepted**, corrected below (mirrors
 WSD-037's B-124 disposition).
 
+**Disposition (2026-08-15) — baseline ran, B-127 closes with no shipped change; the routing
+precondition never fired.** Sol built the eight locked cases (key-resolution, attribute-transform,
+metric-aggregation, same-named decoy, conflicting views), proven red/green against hand-authored
+transcripts before any paid run, per (e). Sol's sandbox again had no network egress and could not
+write to the worktree's `.git` index; Claude took over both directly, independently re-verifying the
+build under real PowerShell 7 (parse + full `-SelfTest`) rather than trusting Sol's self-report,
+since Sol's own sandbox lacked `pwsh` and had self-tested against a patched copy.
+
+The n=2 live baseline (16 trials, 8 scenarios × 2 reps) against unchanged `map-warehouse` on Claude
+Code — the one named live-eval host per revision (i) — came back `ROUTING_NON_REACH` on **every
+trial**. The skill was never read or selected for any plain, non-telegraphing, no-skill-named prompt
+in any of the five case shapes. Per revision (i) this is not scored as a pass or fail: the baseline's
+decision-outcome measure (does the unchanged skill's body content answer these questions correctly)
+was never exercised. Five of sixteen raw transcripts were read directly; all five showed Claude Code
+reasoning to a correct, well-evidenced answer by reading DDL/view SQL directly, without the skill —
+the same brute-force pattern already on record in `meta/eval-results.md`'s 2026-08-06 entry.
+
+One real harness bug was found and fixed mid-run: `Test-ScenarioEvidence` correctly returned
+`Status='ROUTING_NON_REACH'`, but the `-Live` driver's outer status computation only special-cased
+`INCONCLUSIVE` before falling through to `'FAIL'` — silently reprinting rep 1's eight routing
+non-reaches as decision-outcome failures, the exact conflation revision (i) exists to prevent. The
+grader's own self-test did not catch this because the bug was in the outer driver loop, not the
+grader function; it surfaced only from reading rep 1's actual `-Live` output. Fixed, self-tested
+green (32/32), and confirmed correct on rep 2's output before either rep was recorded.
+
+Because no decision-outcome defect was observed in either direction, the Decision's escape hatch for
+authorizing items 3-10 ("items 3-10 are redesigned against the observed failure mode") does not
+apply — there is no observed decision-outcome failure mode, only a routing failure that reproduces
+the already-tracked B-98, explicitly excluded from this item's scope in the Rejected section above.
+B-127 closes with no shipped change; the fixture set and grader are retained as regression evidence
+and as a second live confirmation of B-98's necessity. Full detail: `meta/BACKLOG.md` B-127 and
+`meta/eval-results.md` "B-127 Phase 0".
+
 ## WSD-041: B-126 Opus gate — lock the Phase 0 premise test; defer the shipped preflight design (2026-08-13)
 
 **Context.** B-126 proposed a warehouse schema-evolution "preflight" inside `add-warehouse-load` for

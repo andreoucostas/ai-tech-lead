@@ -1730,6 +1730,13 @@ have different owners:
 This is the same shape as **B-97**: a general framework defect that surfaced through a
 warehouse-specific symptom. B-97 earned its own entry on those grounds and so does this.
 
+> **Second live confirmation, 2026-08-15 (B-127 Phase 0, WSD-040).** All 16 baseline trials (8
+> plain, non-telegraphing, no-skill-named prompts × n=2) against unchanged `map-warehouse` came back
+> `ROUTING_NON_REACH` — the skill was never read or selected once. Claude Code solved every sampled
+> case correctly anyway via direct DDL/view inspection, at a fixture scale where that brute-force
+> path is cheap. This is "it did not fire," settling that outcome a second time independent of B-96's
+> original trigger. Full detail: `meta/eval-results.md` "B-127 Phase 0" sections.
+
 **Do:**
 
 1. **Settle the warehouse instance — cheapest, and it gates B-96.** Run an incident-shaped prompt
@@ -3433,7 +3440,7 @@ Steps 3-10 (the shipped preflight) remain unauthorised and unimplemented. The th
 and both grader fixes are retained under `.claude/evals/` as regression evidence (WSD-037 pattern).
 
 ---
-### B-127 · Trace a warehouse attribute or metric from source to consumption on demand
+### B-127 · Trace a warehouse attribute or metric from source to consumption on demand — **CLOSED 2026-08-15, Phase 0 baseline ran, no shipped change; see below**
 **Effort:** M–L · **Priority:** P2 · filed 2026-08-08 · **Capability:** warehouse technical leadership
 
 **Why:** the map records entity-level flow, relationships, and consumption surfaces, but it cannot
@@ -3601,6 +3608,50 @@ n≥2 on the named live-eval host with skill-selected/read tracked separately; i
 `map-warehouse` reliably answers the paired-world decision without fabrication, B-127 closes with no
 shipped change (WSD-037 pattern) and the fixture is retained as regression evidence; otherwise items
 3-10 are redesigned against the observed failure mode, not the current sketch.
+
+**Final status (2026-08-15): routing precondition never fired, closed with no shipped change.**
+Sol built the eight locked WSD-040 baseline cases (key-resolution pinned/deferred,
+attribute-transform FX-conversion/null-default, metric ratio/additive, same-named decoy per
+`field-reports.md` #3, and the conflicting-views abstention control), self-tested every grader
+red/green against frozen transcripts before any paid run, per (e). Sol's sandbox again had no network
+egress and could not write to this worktree's `.git` index (same limitations as B-126); Claude took
+over both directly, independently re-verifying the build (real PowerShell 7 parse + full `-SelfTest`
+re-run, not trusting Sol's self-report, since Sol's own sandbox lacked `pwsh` and had self-tested
+against a patched copy) before accepting the commit.
+
+The live baseline ran n=2 per scenario (16 trials total) against unchanged `map-warehouse` on Claude
+Code, the named live-eval host. **All 16 trials came back `ROUTING_NON_REACH`**: the skill was never
+read or selected for any plain, non-telegraphing, no-skill-named prompt, in any of the five case
+shapes. Per WSD-040 revision (i) this is not scored as a pass or fail — the baseline's actual
+decision-outcome question was never exercised in a single trial. Five transcripts were read directly
+and all five showed Claude Code reasoning to a correct, well-evidenced answer via direct DDL/view
+inspection without the skill — the same brute-force pattern already on record in
+`meta/eval-results.md`'s 2026-08-06 entry, viable at this fixture's ≤4-table scale but not at the
+scale the field reports describe. Full per-scenario detail, both reps, and the harness bug found and
+fixed along the way: `meta/eval-results.md` "B-127 Phase 0" sections.
+
+**RCA (Maintenance model #5).** *Why did no gate catch it before run-time?* This wasn't a process
+gap — WSD-040 revision (i) was written specifically to anticipate and correctly handle exactly this
+outcome; the design worked as intended when the anticipated edge case occurred. One real harness bug
+was found and fixed same-day: `Test-ScenarioEvidence` correctly returned `Status='ROUTING_NON_REACH'`,
+but the `-Live` driver's outer status computation only special-cased `INCONCLUSIVE` before falling
+through to `'FAIL'`, silently reprinting every non-reach as a decision-outcome failure — the grader's
+own self-test didn't catch it because the bug was in the outer driver loop, not the grader function;
+it was caught only by reading a real `-Live` run's output. *What else is exposed to the same class?*
+Any future scenario family that introduces a new `Test-ScenarioEvidence` status distinct from
+`PASS`/`FAIL`/`INCONCLUSIVE` needs the matching branch added to the outer driver at the same time —
+self-testing the grader function in isolation does not prove the live driver reports it correctly.
+B-129 (WSD-042) has its own routing-gated "carrier unreachable" concept and should check for the same
+gap when its probe is built.
+
+The observed routing gap is not new evidence: it reproduces the already-tracked B-98 ("a prompt
+matching no skill description fails silently"), explicitly out of scope for B-127 per WSD-040's
+Rejected section. Because no decision-outcome defect was observed in either direction, WSD-040's
+escape hatch for authorizing items 3-10 ("redesigned against the observed failure mode") does not
+apply — there is no observed decision-outcome failure mode, only a routing failure already tracked
+elsewhere. **B-127 closes with no shipped change**; items 3-10 (the trace-mode design) remain
+unauthorised, and the fixture set and grader are retained as regression evidence and as a second live
+confirmation of B-98's necessity.
 
 ---
 ### B-128 · Review warehouse physical design against its actual load and query workload — **CLOSED 2026-08-13, premise rejected; see below**
