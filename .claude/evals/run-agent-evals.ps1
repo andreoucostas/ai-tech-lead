@@ -3342,7 +3342,11 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             if ($run.TimedOut) { throw $run.ErrorText }
             $transcript = Read-Transcript $transcriptPath
             $evidence = Test-ScenarioEvidence $case.id $target $transcript $before
-            $status = if ($agentExit -ne 0) { 'ERROR' } elseif ($evidence.Pass) { 'PASS' } elseif ($evidence.Status -eq 'INCONCLUSIVE') { 'INCONCLUSIVE' } else { 'FAIL' }
+            # WSD-040 revision (i): a routing non-reach (the unchanged skill was never read) must
+            # not be scored as a decision-outcome pass or fail -- it means the trial never exercised
+            # what B-127's baseline measures. Without this branch it fell through to 'FAIL' below,
+            # silently reintroducing the exact conflation the locked design exists to prevent.
+            $status = if ($agentExit -ne 0) { 'ERROR' } elseif ($evidence.Status -eq 'ROUTING_NON_REACH') { 'ROUTING_NON_REACH' } elseif ($evidence.Pass) { 'PASS' } elseif ($evidence.Status -eq 'INCONCLUSIVE') { 'INCONCLUSIVE' } else { 'FAIL' }
             # The terminal result event already carries spend and token counts; recording them makes
             # the cost of a suite run measurable instead of guessed from the per-case budget CAP,
             # which is an upper bound and not what a run actually consumes.
