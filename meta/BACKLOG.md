@@ -1737,6 +1737,19 @@ warehouse-specific symptom. B-97 earned its own entry on those grounds and so do
 > path is cheap. This is "it did not fire," settling that outcome a second time independent of B-96's
 > original trigger. Full detail: `meta/eval-results.md` "B-127 Phase 0" sections.
 
+> **Third confirmation, and a more diagnostic one, 2026-08-15 (B-126 retroactive correction).**
+> B-126's own live baseline (WSD-041, closed 2026-08-14) never gated its grader on skill invocation;
+> retroactively checking its recorded `skill=` field shows `add-warehouse-load` fired in only 1 of 6
+> counted trials. The diagnostic value here is the **contrast**, not just another non-fire: B-124's
+> near-identically write-task-phrased prompts routed 4/4, on the same skill, in the same fixture
+> family. The plausible difference is that B-126's fixture stages `docs/schema-evolution-premise.md`
+> and `docs/product-consumer-closure.md` directly and prominently — an equally-relevant non-skill path
+> that B-124's fixture didn't offer. If true, routing reliability here isn't just a function of prompt
+> phrasing (this item's original framing) but of what evidence already happens to be staged in
+> context — worth checking directly (does a fixture with an on-point doc file suppress routing to a
+> skill that would otherwise fire?) before this item's own "Do" step 2 design work begins. Full
+> detail: `meta/BACKLOG.md` B-126 "Correction (2026-08-15)".
+
 **Do:**
 
 1. **Settle the warehouse instance — cheapest, and it gates B-96.** Run an incident-shaped prompt
@@ -3435,6 +3448,42 @@ before accepting any FAIL as a true framework gap, rather than treating a self-t
 final. Full transcripts, evidence, and both fixes are in `meta/eval-results.md` (B-126 Phase 0
 sections) and `.claude/evals/run-agent-evals.ps1` (commits `a5dcb02`, `bcc3856`, `855a9cb` on
 `codex/b126-schema-evolution-probe`).
+
+**Correction (2026-08-15), prompted by B-127's routing-non-reach result.** B-127's baseline (WSD-040)
+gated its decision-outcome score on the skill actually being read; when applying the equivalent check
+here retroactively, all six counted trials' recorded `Detail` fields show `skill=False` in five of
+six — `add-warehouse-load` was invoked as a `Skill` tool call in only one trial (rep 2's
+`warehouse-schema-compatible` case). This grader was never built with WSD-040 revision (i)'s
+routing-attribution gate (WSD-041 predates it), so the "Final status" prose above overclaims: it
+attributes the observed correct behavior to `add-warehouse-load`'s guidance, but the guidance was
+barely consulted. **The behavioral finding itself still holds** — every counted trial correctly
+distinguished compatible from incompatible and reached deployment approval only via a named
+attestation, regardless of whether the skill was read — so "no shipped change" remains the right
+disposition; what is wrong is the attribution. The accurate statement is: *Claude Code, mostly
+reasoning from the fixture's directly-supplied evidence docs rather than the skill's body, reliably
+produced the correct outcome*, which is if anything a stronger case for "no shipped change" (the
+outcome doesn't depend on the skill), not a weaker one.
+
+This is also a new, more specific data point for B-98: B-124's near-identically-phrased write-task
+prompts ("Implement this warehouse change... I approve the change in advance...") routed to
+`add-warehouse-load` in **4 of 4** counted trials, while B-126's equally write-task-shaped prompts
+routed in only **1 of 6** — a real discrepancy between two items testing the same skill with similar
+phrasing, not just another instance of "sometimes it doesn't fire." The likely difference is that
+B-126's fixture stages `docs/schema-evolution-premise.md` and `docs/product-consumer-closure.md`
+directly and prominently, giving the model an equally-relevant path that doesn't require the skill —
+B-124's fixture did not stage comparably on-point documents. Cross-referenced at B-98 as a second,
+more diagnostic confirmation of that item's necessity.
+
+**RCA addendum, Maintenance rule 5 (why did no gate catch it, what else is exposed):** the original
+grader recorded `skill=` in its `Detail` output but never gated `$pass` on it, unlike B-127's grader
+built one day later under WSD-040's explicit revision (i). No self-test caught this because the gap
+was in what the grader *measured*, not in whether it scored correctly against its own frozen
+transcripts — a self-test proves internal consistency with the grader's own assumptions, not that
+those assumptions (here, "the skill doesn't need to be gated because the prompt shape resembles
+B-124's") were checked against the live data. **What else is exposed:** B-129 (WSD-042) has its own
+routing-gated design and should be checked for the same class before its baseline runs; B-124 was
+checked and is clean (4/4 skill-invoked), B-128 was checked and does not depend on a skill-attribution
+claim at all. Full skill= values: `meta/eval-results.md` B-126 Phase 0 rep 1/rep 2 sections.
 
 Steps 3-10 (the shipped preflight) remain unauthorised and unimplemented. The three-world fixture set
 and both grader fixes are retained under `.claude/evals/` as regression evidence (WSD-037 pattern).

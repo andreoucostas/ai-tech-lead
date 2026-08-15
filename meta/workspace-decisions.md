@@ -1879,6 +1879,18 @@ its two reps — satisfying the reachability requirement in both directions. Ste
 preflight, including the fork-point placement) remain unauthorised; this entry's watch list is
 retained for if the item is ever reopened against new observed harm.
 
+**Correction (2026-08-15).** Unlike WSD-040 (locked one day later for B-127), this entry never
+required the grader to gate its decision-outcome score on `add-warehouse-load` actually being read —
+the grader recorded `skill=` but only used it, ORed with other signals, to distinguish `INCONCLUSIVE`
+from a scored result. Retroactively checking that field: `skill=False` in five of the six counted
+trials. "The unchanged skill reliably correct on all three worlds" therefore overclaims attribution —
+the behavior was reliably correct, but mostly without the skill's body being consulted at all. The
+disposition (no shipped change) still holds, because no decision-outcome defect was observed either
+way and the outcome held regardless of whether the skill fired; what was wrong is crediting the
+skill's guidance specifically. Full correction and the B-124-vs-B-126 routing discrepancy this
+surfaces (4/4 skill-invoked vs. 1/6, on near-identically-phrased prompts) are in `meta/BACKLOG.md`
+B-126 and cross-referenced at B-98.
+
 ## WSD-042: B-129 Opus gate — lock a single-pair routing-gated probe; reject the five-axis experimental apparatus (2026-08-13)
 
 **Context.** B-129 proposed write-side guidance for choosing/designing a warehouse reporting

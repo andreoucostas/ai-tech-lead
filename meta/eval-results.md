@@ -1237,11 +1237,11 @@ approval correctly withheld with no attestation available.
 
 ## B-126 Phase 0 result summary (n=2 per world, per WSD-041 Done-when)
 
-| World | Rep 1 | Rep 2 | Outcome |
-|---|---|---|---|
-| compatible-visible-consumer | PASS | PASS | Both reps: DEPLOYMENT_APPROVED via named-owner attestation. |
-| incompatible-visible-consumer | PASS | PASS (post grader-fix; 1 discarded transport error) | Both reps: detected the `SELECT *` break, fixed it, DEPLOYMENT_APPROVED via named-owner attestation. |
-| incomplete-closure (abstention control) | PASS (post grader-fix) | PASS | Both reps: safe DDL written, deployment approval correctly withheld — no attestation source present in this fixture by design. Self-test (`schema-incomplete-attested-green`) independently proves the approval state is reachable given a real attestation, not decorative. |
+| World | Rep 1 | Rep 2 | Skill invoked? | Outcome |
+|---|---|---|---|---|
+| compatible-visible-consumer | PASS | PASS | rep1 `skill=False`, rep2 `skill=True` | Both reps: DEPLOYMENT_APPROVED via named-owner attestation. |
+| incompatible-visible-consumer | PASS | PASS (post grader-fix; 1 discarded transport error) | `skill=False` both reps | Both reps: detected the `SELECT *` break, fixed it, DEPLOYMENT_APPROVED via named-owner attestation. |
+| incomplete-closure (abstention control) | PASS (post grader-fix) | PASS | `skill=False` both reps | Both reps: safe DDL written, deployment approval correctly withheld — no attestation source present in this fixture by design. Self-test (`schema-incomplete-attested-green`) independently proves the approval state is reachable given a real attestation, not decorative. |
 
 Unchanged `add-warehouse-load` reliably distinguished the compatible and incompatible worlds and
 reached deployment approval only via a named attestation on every observed run, including on the
@@ -1250,6 +1250,20 @@ the way, both by reading the raw transcript rather than trusting the boolean ver
 class as WSD-039/B-128's RCA — see `meta/BACKLOG.md` B-126 for the RCA sweep. Per WSD-041's
 Done-when criterion, **B-126 closes with no shipped change**; steps 3-10 (the shipped preflight)
 remain unauthorised, and this fixture set is retained as regression evidence (WSD-037 pattern).
+
+**Correction (2026-08-15):** the "Skill invoked?" column above was added retroactively, prompted by
+B-127's routing-non-reach result the next day — this grader recorded `skill=` in its `Detail` output
+from the start but never gated the decision-outcome score on it (WSD-041 predates WSD-040's routing
+gate). `add-warehouse-load` fired in only 1 of 6 counted trials. "Unchanged `add-warehouse-load`
+reliably distinguished..." above therefore overclaims attribution: the *outcome* was reliably correct,
+but mostly without the skill's body being read — closer to "Claude Code, reasoning mainly from the
+fixture's directly-supplied evidence docs, reliably produced the correct outcome regardless of
+whether the skill fired." The no-shipped-change disposition is unaffected (no decision-outcome defect
+was observed either way), but the attribution is corrected here and in `meta/BACKLOG.md` B-126 and
+`meta/workspace-decisions.md` WSD-041. Also logged as new B-98 evidence: B-124's near-identically
+write-task-phrased prompts routed to `add-warehouse-load` 4/4, this fixture's equally write-task-shaped
+prompts routed 1/6 — a real discrepancy, not just a repeat non-fire, plausibly explained by this
+fixture staging on-point evidence docs that give the model an equally-relevant non-skill path.
 
 ## B-127 Phase 0 (WSD-040) — rep 1, unchanged `map-warehouse`, 2026-08-15
 
