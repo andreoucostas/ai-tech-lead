@@ -1331,3 +1331,44 @@ redesign against; what was observed is a routing failure, already tracked elsewh
 with no shipped change** (WSD-037 pattern); the fixture set and grader are retained as regression
 evidence, and as a second live confirmation of B-98's necessity.
 
+## B-129 Phase 0 (WSD-042) — routing-probe attempt, 2026-08-15 — VOID, account spend limit hit mid-run
+
+Attempt 1 failed before any trial ran: the `pwsh` subprocess launched to drive the harness lacked
+`claude` on `PATH` (the documented [[corrupted-session-path]] fix was not reapplied inside that fresh
+subprocess). No trials, no cost, no data. Re-run with the PATH fix applied.
+
+Attempt 2 (`-Scenario` = all 16 `warehouse-publication-routing-*` ids, `-Model sonnet`,
+`-TimeoutSeconds 600`) ran and printed `ROUTING PROBE INCOMPLETE: A selected=4/8 read=1/8; B
+selected=0/8 read=0/8`. Raw per-trial data (condition A, in run order): `reuse-dotnet-1` SELECTED
+(costUsd=1.193907), `reuse-dotnet-2` SELECTED (costUsd=1.2462723), `reuse-monorepo-1` SELECTED
+(costUsd=0.7798185, read=True), `reuse-monorepo-2` NOT_SELECTED (costUsd=0.6823998),
+`single-dotnet-1` SELECTED (costUsd=1.142229), `single-dotnet-2` NOT_SELECTED (costUsd=0.6499101),
+`single-monorepo-1` ERROR (costUsd=0.496314, agentExit=1), `single-monorepo-2` ERROR (costUsd=0,
+agentExit=1). Condition B: all 8 trials ERROR, agentExit=1, costUsd=0, tokensIn=0, tokensOut=0.
+
+**Root cause, confirmed by direct transcript read (not inferred from the summary status line):** every
+errored trial's raw JSONL contains the literal Anthropic API response `"You've hit your monthly spend
+limit · raise it at claude.ai/settings/usage?from=cc_cli_limit_message"` (`api_error_status:429`,
+`total_cost_usd:0`). This is an account-level monthly spend cap exhausted partway through the run, not
+a defect in `Set-PublicationRoutingCondition`, `Install-Framework`, or the grader — the same error text
+independently surfaced in this Claude Code session's own `/compact` failure within the same session,
+confirming it is a real, session-external constraint rather than a harness bug. The harness's own
+`Get-PublicationRoutingDisposition` reported `INCOMPLETE` correctly: `Counted` (non-ERROR trials) was
+6/8 for A and 0/8 for B, both below the required 8, and the pre-registered "up to 2 replacement runs,
+tool/API error only" allowance does not cover 2 (A) + 8 (B) = 10 errors from the same root cause. This
+is the harness behaving exactly as designed (Maintenance rule 4: it did not render a disposition from
+a world it hadn't actually observed) — **it is not the B-127-style bug class this run was built to
+catch**, and the earlier working hypothesis of a systemic `monorepo`/condition-B setup bug is
+retracted; the uniform zero-cost failures are fully explained by the spend cap, which affected both
+conditions equally once it hit and happened to hit partway through condition A's `single-monorepo`
+pair, before any condition-B trial had run.
+
+**Disposition: VOID, not scored.** This run cannot be used to determine WSD-042's routing-probe
+disposition — condition B has zero valid trials (need 8), condition A has 4/6 selected on an
+incomplete, non-pre-registered subset (need 8). The 6 valid condition-A data points are retained above
+as a diagnostic curiosity only (4/6 selected is consistent with, but does not establish, either
+`BASELINE_ALREADY_REACHABLE` or `CARRIER_UNREACHABLE` — no disposition may be drawn from n<8). **B-129
+is not closed.** Re-run the full 16-trial batch once the account's monthly spend limit resets; no
+harness change is required first. See `meta/BACKLOG.md` B-129 and `meta/workspace-decisions.md`
+WSD-042 for the corresponding status notes.
+

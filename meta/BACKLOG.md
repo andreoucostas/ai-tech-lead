@@ -4056,6 +4056,28 @@ if it clears, the matched pair + abstention control runs n≥2 and either shows 
 attributable effect (authorising the bounded body section) or shows none (closing B-129 with no
 shipped change, WSD-037 pattern). Next: draft the frontmatter delta, run the routing probe.
 
+**Phase 0 progress (2026-08-15):** the frontmatter delta is drafted and byte-measured (throwaway
+branch `b129-routing-probe-measurement`, commit `154b16b`, unmerged — see `meta/eval-results.md` for
+the exact headroom numbers). Sol built the routing-probe harness on `codex/b129-publication-routing-probe`
+(commit `80c789e`): 16 new scenarios (8 prompts × 2 conditions), a `Set-PublicationRoutingCondition`
+fixture-overlay function reading the measured delta via `git show` rather than duplicating it, an
+outer-aggregation disposition function (`Get-PublicationRoutingDisposition`) with its own
+self-tests exercising the threshold/carrier-unreachable logic directly — the class of bug B-127 found
+in its per-trial-only self-testing. Self-tests green.
+
+**Live run VOIDED (2026-08-15):** the first live attempt failed on a PATH misconfiguration (no
+trials ran); the second ran but the account's monthly spend limit was exhausted partway through,
+producing 6 valid + 2 errored condition-A trials and 8/8 errored condition-B trials, all with the
+identical `"You've hit your monthly spend limit"` API response. Full data and root-cause confirmation
+in `meta/eval-results.md`'s "B-129 Phase 0 (WSD-042) — routing-probe attempt, 2026-08-15" entry. This
+is **not** a harness defect and **not** a scoreable result either way — it is void. **B-129 remains
+open, blocked on the account's monthly spend limit resetting.** Next: re-run the same 16-trial batch
+(`.claude/evals/run-agent-evals.ps1 -Live -Scenario <the 16 warehouse-publication-routing-* ids>
+-Model sonnet -TimeoutSeconds 600`) once budget is available; no code change is needed first. The
+`codex/b129-publication-routing-probe` branch is uncommitted-clean and unmerged pending a valid result.
+Do not delete branch `b129-routing-probe-measurement` (commit `154b16b`) before this item closes — the
+harness reads the delta from it via `git show`.
+
 ---
 ### B-132 · Agent-eval runner's PowerShell 7 boundary is implicit, inviting invalid 5.1 verification
 **Effort:** S–M · **Priority:** P3 · filed 2026-08-09 from B-124 RCA · **Scope:** maintainer layer

@@ -1977,3 +1977,16 @@ the tested axis, risking scope creep with no fixture to discriminate against —
 is now excluded from the dispatched experiment entirely and the oracle content moved to a clearly
 labelled, non-authorised successor-scope note. Sol's "Done when"/proportionality finding is addressed
 in the `meta/BACKLOG.md` correction below.
+
+**Disposition (2026-08-15) — first live run voided, not a probe result.** The harness (built by Sol,
+`codex/b129-publication-routing-probe` commit `80c789e`) self-tests green, including independent
+aggregation self-tests targeting the exact bug class B-127 found (per-trial grader tested, outer
+disposition logic not). The first live attempt of the pre-registered 16-trial batch ran into the
+account's monthly spend limit partway through (confirmed via the literal API error text in the raw
+transcripts, and independently corroborated by this session's own `/compact` hitting the identical
+error) — 8/8 condition-B trials and 2/8 condition-A trials errored with zero cost/tokens, leaving only
+6 valid condition-A data points, below the 8 required per condition. This does not meet the "up to 2
+replacement runs, tool/API error only" allowance and does not license a disposition either way; it is
+specifically **not** the "carrier unreachable" outcome the Decision defines, which requires a complete,
+threshold-evaluated batch. Full data in `meta/eval-results.md`. The routing probe has not yet produced
+a valid result; re-run the same batch once budget resets, no design or code change required first.
