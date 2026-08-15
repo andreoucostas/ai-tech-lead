@@ -1251,3 +1251,69 @@ class as WSD-039/B-128's RCA — see `meta/BACKLOG.md` B-126 for the RCA sweep. 
 Done-when criterion, **B-126 closes with no shipped change**; steps 3-10 (the shipped preflight)
 remain unauthorised, and this fixture set is retained as regression evidence (WSD-037 pattern).
 
+## B-127 Phase 0 (WSD-040) — rep 1, unchanged `map-warehouse`, 2026-08-15
+
+## 2026-08-15 07:28:40 +01:00 — framework v0.52.1 (f6d064c944bab11cb9a72ab2fa3163b47353298a)
+
+Host: Claude Code 2.1.232 (Claude Code) · scratch: retained=True
+
+- **FAIL warehouse-trace-keyres-pinned** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3317712 tokensIn=6 tokensOut=2151; skillSelected=False skillRead=False outcome=NOT_SCORED fabrication=NOT_SCORED
+- **FAIL warehouse-trace-keyres-deferred** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2772444 tokensIn=10 tokensOut=4098; skillSelected=False skillRead=False outcome=NOT_SCORED fabrication=NOT_SCORED
+- **FAIL warehouse-trace-attribute-a** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2687454 tokensIn=14 tokensOut=2193; skillSelected=False skillRead=False outcome=NOT_SCORED fabrication=NOT_SCORED
+- **FAIL warehouse-trace-attribute-b** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2879157 tokensIn=16 tokensOut=2442; skillSelected=False skillRead=False outcome=NOT_SCORED fabrication=NOT_SCORED
+- **FAIL warehouse-trace-metric-ratio** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1990731 tokensIn=6 tokensOut=2003; skillSelected=False skillRead=False outcome=NOT_SCORED fabrication=NOT_SCORED
+- **FAIL warehouse-trace-metric-additive** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2811459 tokensIn=14 tokensOut=2926; skillSelected=False skillRead=False outcome=NOT_SCORED fabrication=NOT_SCORED
+- **FAIL warehouse-trace-decoy** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.277008 tokensIn=12 tokensOut=3037; skillSelected=False skillRead=False outcome=NOT_SCORED fabrication=NOT_SCORED
+- **FAIL warehouse-trace-conflict** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2265255 tokensIn=10 tokensOut=1735; skillSelected=False skillRead=False outcome=NOT_SCORED fabrication=NOT_SCORED
+
+**Harness bug found and fixed before rep 2:** every result above prints `FAIL`, but the Detail column
+already shows `skillRead=False outcome=NOT_SCORED` for all eight — `Test-ScenarioEvidence` correctly
+returned `Status='ROUTING_NON_REACH'` per WSD-040 revision (i), but the `-Live` driver's outer
+`$status` computation only special-cased `INCONCLUSIVE` before falling through to `'FAIL'`, silently
+reprinting every routing non-reach as a decision-outcome failure — the exact conflation the locked
+design exists to prevent. Fixed in commit `39231ca` (one line, plus a comment); self-test re-run
+green (32/32) after the fix. Rep 1's eight results above are `ROUTING_NON_REACH`, not `FAIL`, by the
+grader's own (correct) `Detail` field — the printed `FAIL` label was a display bug, not a scoring bug.
+
+## B-127 Phase 0 (WSD-040) — rep 2, unchanged `map-warehouse`, 2026-08-15
+
+## 2026-08-15 07:37:32 +01:00 — framework v0.52.1 (39231ca6844e60604034d3c7bd51c6f27cf19a97)
+
+Host: Claude Code 2.1.232 (Claude Code) · scratch: retained=True
+
+- **ROUTING_NON_REACH warehouse-trace-keyres-pinned** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2714829 tokensIn=10 tokensOut=3632; skillSelected=False skillRead=False outcome=NOT_SCORED fabrication=NOT_SCORED
+- **ROUTING_NON_REACH warehouse-trace-keyres-deferred** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2613981 tokensIn=8 tokensOut=4297; skillSelected=False skillRead=False outcome=NOT_SCORED fabrication=NOT_SCORED
+- **ROUTING_NON_REACH warehouse-trace-attribute-a** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2726592 tokensIn=14 tokensOut=2407; skillSelected=False skillRead=False outcome=NOT_SCORED fabrication=NOT_SCORED
+- **ROUTING_NON_REACH warehouse-trace-attribute-b** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2680638 tokensIn=14 tokensOut=2352; skillSelected=False skillRead=False outcome=NOT_SCORED fabrication=NOT_SCORED
+- **ROUTING_NON_REACH warehouse-trace-metric-ratio** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2325441 tokensIn=10 tokensOut=1921; skillSelected=False skillRead=False outcome=NOT_SCORED fabrication=NOT_SCORED
+- **ROUTING_NON_REACH warehouse-trace-metric-additive** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1931055 tokensIn=6 tokensOut=1546; skillSelected=False skillRead=False outcome=NOT_SCORED fabrication=NOT_SCORED
+- **ROUTING_NON_REACH warehouse-trace-decoy** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2692329 tokensIn=12 tokensOut=2872; skillSelected=False skillRead=False outcome=NOT_SCORED fabrication=NOT_SCORED
+- **ROUTING_NON_REACH warehouse-trace-conflict** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2119341 tokensIn=8 tokensOut=1628; skillSelected=False skillRead=False outcome=NOT_SCORED fabrication=NOT_SCORED
+
+## B-127 Phase 0 result summary (n=2 per scenario, per WSD-040 Done-when)
+
+All 16 trials (8 scenarios × 2 reps) came back `ROUTING_NON_REACH`: `map-warehouse` was never read or
+selected for any plain, non-telegraphing, no-skill-named prompt in any of the five locked case
+shapes (key-resolution, attribute-transform, metric-aggregation, same-named decoy, conflicting
+views). Per WSD-040 revision (i) this is not scored as a pass or fail either way — item 1's actual
+measure (does the unchanged skill's trace-relevant body content answer these questions correctly)
+was never exercised in a single trial.
+
+Five of the sixteen raw transcripts were read directly (not just the grader's boolean): in every one,
+Claude Code solved the question correctly and with good evidence by reading DDL/view SQL directly —
+including correctly identifying the FX-conversion transform, the null-default transform, both
+additive/non-additive aggregation orders, the Type-2 pinned-vs-deferred key resolution, and the
+genuine two-view conflict on `CarrierTier` — all without ever touching `map-warehouse` or
+`docs/warehouse-map.md`. This reproduces the same brute-force-DDL pattern already on record at
+`meta/eval-results.md`'s 2026-08-06 `warehouse-route-p1` entry, at a fixture scale (≤4 tables) where
+that path is cheap; the field reports this item exists to prevent occur at a scale where it is not.
+
+**Disposition:** the routing gap itself is not new evidence — it reproduces the already-tracked B-98
+("a prompt matching no skill description fails silently"), explicitly out of scope for B-127 per
+WSD-040's Rejected section. No decision-outcome defect was observed in either direction, so WSD-040's
+escape hatch ("otherwise items 3-10 are redesigned against the observed failure mode") does not
+license authorizing the trace-mode design — there is no observed decision-outcome failure mode to
+redesign against; what was observed is a routing failure, already tracked elsewhere. **B-127 closes
+with no shipped change** (WSD-037 pattern); the fixture set and grader are retained as regression
+evidence, and as a second live confirmation of B-98's necessity.
+

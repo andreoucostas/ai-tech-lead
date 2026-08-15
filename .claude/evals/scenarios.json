@@ -155,6 +155,70 @@
       "assertion": "warehouseSchemaEvolution"
     },
     {
+      "id": "warehouse-trace-keyres-pinned",
+      "fixture": "warehouse-trace-keyres-pinned",
+      "budgetUsd": 1.25,
+      "prompt": "If I run a report against fact.FactShipment for a date last quarter, joined to dim.DimCarrier, will it show the dimension values as they were back then, or today's current values?",
+      "assertion": "warehouseTraceBaseline",
+      "_comment": "WSD-040 baseline; pre-registered stopping rule: n>=2 live trials on the supported Claude Code host."
+    },
+    {
+      "id": "warehouse-trace-keyres-deferred",
+      "fixture": "warehouse-trace-keyres-deferred",
+      "budgetUsd": 1.25,
+      "prompt": "If I run a report against fact.FactShipment for a date last quarter, joined to dim.DimCarrier, will it show the dimension values as they were back then, or today's current values?",
+      "assertion": "warehouseTraceBaseline",
+      "_comment": "WSD-040 baseline; pre-registered stopping rule: n>=2 live trials on the supported Claude Code host."
+    },
+    {
+      "id": "warehouse-trace-attribute-a",
+      "fixture": "warehouse-trace-attribute-a",
+      "budgetUsd": 1.25,
+      "prompt": "Which source column ends up in RevenueGbp on rpt.vwOrderRevenue, and what changes its value on the way?",
+      "assertion": "warehouseTraceBaseline",
+      "_comment": "WSD-040 baseline; pre-registered stopping rule: n>=2 live trials on the supported Claude Code host."
+    },
+    {
+      "id": "warehouse-trace-attribute-b",
+      "fixture": "warehouse-trace-attribute-b",
+      "budgetUsd": 1.25,
+      "prompt": "Which source column ends up in RevenueGbp on rpt.vwOrderRevenue, and what changes its value on the way?",
+      "assertion": "warehouseTraceBaseline",
+      "_comment": "WSD-040 baseline; pre-registered stopping rule: n>=2 live trials on the supported Claude Code host."
+    },
+    {
+      "id": "warehouse-trace-metric-ratio",
+      "fixture": "warehouse-trace-metric-ratio",
+      "budgetUsd": 1.25,
+      "prompt": "For AverageOrderValue on rpt.vwSalesMetric, do I combine the row values directly, or do any components need to be aggregated first?",
+      "assertion": "warehouseTraceBaseline",
+      "_comment": "WSD-040 baseline; pre-registered stopping rule: n>=2 live trials on the supported Claude Code host."
+    },
+    {
+      "id": "warehouse-trace-metric-additive",
+      "fixture": "warehouse-trace-metric-additive",
+      "budgetUsd": 1.25,
+      "prompt": "For AverageOrderValue on rpt.vwSalesMetric, do I combine the row values directly, or do any components need to be aggregated first?",
+      "assertion": "warehouseTraceBaseline",
+      "_comment": "WSD-040 baseline; pre-registered stopping rule: n>=2 live trials on the supported Claude Code host."
+    },
+    {
+      "id": "warehouse-trace-decoy",
+      "fixture": "warehouse-trace-decoy",
+      "budgetUsd": 1.25,
+      "prompt": "Which source feeds SegmentName on rpt.vwCustomerRevenue, and what changes its value on the way?",
+      "assertion": "warehouseTraceBaseline",
+      "_comment": "WSD-040 revision (d), matching meta/field-reports.md Report #3; pre-registered stopping rule: n>=2 live trials on the supported Claude Code host."
+    },
+    {
+      "id": "warehouse-trace-conflict",
+      "fixture": "warehouse-trace-conflict",
+      "budgetUsd": 1.25,
+      "prompt": "Across the carrier reporting views, which table does CarrierTier come from?",
+      "assertion": "warehouseTraceBaseline",
+      "_comment": "WSD-040 abstention-style conflict control; pre-registered stopping rule: n>=2 live trials on the supported Claude Code host."
+    },
+    {
       "id": "warehouse-health-default-a",
       "fixture": "warehouse-health-a",
       "budgetUsd": 1.50,
