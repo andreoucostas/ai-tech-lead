@@ -21,7 +21,7 @@ function Assert-Bom([string]$Path) {
     return $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
 }
 
-function New-EvalRepo([string]$Path, [ValidateSet('dotnet','angular','warehouse','warehouse-mixed','warehouse-fact-binding','warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete','warehouse-partition-mismatch','warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok')][string]$Stack = 'dotnet') {
+function New-EvalRepo([string]$Path, [ValidateSet('dotnet','angular','warehouse','warehouse-mixed','warehouse-fact-binding','warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete','warehouse-partition-mismatch','warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok','warehouse-trace-keyres-pinned','warehouse-trace-keyres-deferred','warehouse-trace-attribute-a','warehouse-trace-attribute-b','warehouse-trace-metric-ratio','warehouse-trace-metric-additive','warehouse-trace-decoy','warehouse-trace-conflict')][string]$Stack = 'dotnet') {
     New-Item -ItemType Directory -Path $Path -Force | Out-Null
     if ($Stack -in @('warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger')) {
         if ($Stack -eq 'warehouse-health-no-trigger') {
@@ -312,6 +312,96 @@ operational constraint affected by adding `ProductColor` to `dim.DimProduct` for
         }
         git -C $Path add -A
         git -C $Path commit --quiet -m 'schema-evolution evidence'
+        return
+    }
+    if ($Stack -like 'warehouse-trace-*') {
+        if ($Stack -eq 'warehouse-trace-decoy') {
+            # WSD-040 revision (d): preserve the exact field-report #3 trap from the existing
+            # warehouse fixture. FactSales.SegmentName is declared but Test-DeadFactColumnWrite
+            # proves no load writes it; the reporting view follows CustomerKey to DimCustomer.
+            New-EvalRepo $Path warehouse
+            @'
+CREATE VIEW rpt.vwCustomerRevenue AS
+SELECT c.SegmentName, SUM(f.NetAmount) AS Revenue
+FROM fact.FactSales f JOIN dim.DimCustomer c ON c.CustomerKey=f.CustomerKey
+GROUP BY c.SegmentName;
+'@ | Set-Content -LiteralPath (Join-Path $Path 'Views/rpt.vwCustomerRevenue.sql') -Encoding utf8NoBOM
+            $loadSql = Get-Content -Raw -LiteralPath (Join-Path $Path 'StoredProcedures/usp_LoadFactSales.sql')
+            if (Test-DeadFactColumnWrite $loadSql) { throw 'trace decoy fixture unexpectedly populates a dead fact column' }
+            git -C $Path add -A
+            git -C $Path commit --quiet -m 'trace decoy evidence'
+            return
+        }
+        New-EvalRepo $Path warehouse-fact-binding
+        if ($Stack -in @('warehouse-trace-keyres-pinned','warehouse-trace-keyres-deferred','warehouse-trace-conflict')) {
+            @'
+CREATE TABLE dim.DimCarrier (CarrierKey INT NOT NULL PRIMARY KEY, CarrierCode NVARCHAR(20) NOT NULL,
+CarrierDurableKey INT NOT NULL, CarrierTier NVARCHAR(30) NOT NULL, EffectiveFrom DATE NOT NULL,
+EffectiveTo DATE NOT NULL, IsCurrent BIT NOT NULL);
+'@ | Set-Content -LiteralPath (Join-Path $Path 'Tables/dim.DimCarrier.sql') -Encoding utf8NoBOM
+            $keyColumn = if ($Stack -eq 'warehouse-trace-keyres-pinned') { 'CarrierKey INT NOT NULL' } elseif ($Stack -eq 'warehouse-trace-conflict') { 'CarrierKey INT NOT NULL, CarrierDurableKey INT NOT NULL' } else { 'CarrierDurableKey INT NOT NULL' }
+            "CREATE TABLE fact.FactShipment (ShipmentKey BIGINT NOT NULL PRIMARY KEY, ShipmentDate DATE NOT NULL, $keyColumn, FreightAmount DECIMAL(18,2) NOT NULL);" |
+                Set-Content -LiteralPath (Join-Path $Path 'Tables/fact.FactShipment.sql') -Encoding utf8NoBOM
+            if ($Stack -in @('warehouse-trace-keyres-pinned','warehouse-trace-conflict')) {
+                @'
+CREATE PROCEDURE dbo.usp_LoadFactShipment AS
+INSERT fact.FactShipment (ShipmentKey, ShipmentDate, CarrierKey, FreightAmount)
+SELECT s.ShipmentId, s.ShipmentDate, c.CarrierKey, s.FreightAmount
+FROM stg.StgShipment s JOIN dim.DimCarrier c ON c.CarrierCode=s.CarrierCode
+ AND s.ShipmentDate >= c.EffectiveFrom AND s.ShipmentDate < c.EffectiveTo;
+'@ | Set-Content -LiteralPath (Join-Path $Path 'StoredProcedures/usp_LoadFactShipment.sql') -Encoding utf8NoBOM
+                if ($Stack -eq 'warehouse-trace-conflict') {
+                    @'
+CREATE PROCEDURE dbo.usp_LoadFactShipment AS
+INSERT fact.FactShipment (ShipmentKey, ShipmentDate, CarrierKey, CarrierDurableKey, FreightAmount)
+SELECT s.ShipmentId, s.ShipmentDate, c.CarrierKey, c.CarrierDurableKey, s.FreightAmount
+FROM stg.StgShipment s JOIN dim.DimCarrier c ON c.CarrierCode=s.CarrierCode
+ AND s.ShipmentDate >= c.EffectiveFrom AND s.ShipmentDate < c.EffectiveTo;
+'@ | Set-Content -LiteralPath (Join-Path $Path 'StoredProcedures/usp_LoadFactShipment.sql') -Encoding utf8NoBOM
+                }
+                'CREATE VIEW rpt.vwShipment AS SELECT f.ShipmentDate,c.CarrierTier,f.FreightAmount FROM fact.FactShipment f JOIN dim.DimCarrier c ON c.CarrierKey=f.CarrierKey;' |
+                    Set-Content -LiteralPath (Join-Path $Path 'Views/rpt.vwShipment.sql') -Encoding utf8NoBOM
+            } else {
+                @'
+CREATE PROCEDURE dbo.usp_LoadFactShipment AS
+INSERT fact.FactShipment (ShipmentKey, ShipmentDate, CarrierDurableKey, FreightAmount)
+SELECT s.ShipmentId, s.ShipmentDate, c.CarrierDurableKey, s.FreightAmount
+FROM stg.StgShipment s JOIN dim.DimCarrier c ON c.CarrierCode=s.CarrierCode AND c.IsCurrent=1;
+'@ | Set-Content -LiteralPath (Join-Path $Path 'StoredProcedures/usp_LoadFactShipment.sql') -Encoding utf8NoBOM
+                'CREATE VIEW rpt.vwShipment AS SELECT f.ShipmentDate,c.CarrierTier,f.FreightAmount FROM fact.FactShipment f JOIN dim.DimCarrier c ON c.CarrierDurableKey=f.CarrierDurableKey AND f.ShipmentDate>=c.EffectiveFrom AND f.ShipmentDate<c.EffectiveTo;' |
+                    Set-Content -LiteralPath (Join-Path $Path 'Views/rpt.vwShipment.sql') -Encoding utf8NoBOM
+            }
+            if ($Stack -eq 'warehouse-trace-conflict') {
+                'CREATE VIEW rpt.vwShipmentCurrentCarrier AS SELECT f.ShipmentDate,c.CarrierTier FROM fact.FactShipment f JOIN dim.DimCarrier c ON c.CarrierDurableKey=f.CarrierDurableKey AND c.IsCurrent=1;' |
+                    Set-Content -LiteralPath (Join-Path $Path 'Views/rpt.vwShipmentCurrentCarrier.sql') -Encoding utf8NoBOM
+            }
+        } elseif ($Stack -in @('warehouse-trace-attribute-a','warehouse-trace-attribute-b')) {
+            'CREATE TABLE stg.StgOrderRevenue (OrderId BIGINT NOT NULL, RevenueAmount DECIMAL(18,2) NULL, CurrencyCode CHAR(3) NOT NULL, RevenueDate DATE NOT NULL);' |
+                Set-Content -LiteralPath (Join-Path $Path 'Tables/stg.StgOrderRevenue.sql') -Encoding utf8NoBOM
+            'CREATE TABLE fact.FactOrderRevenue (OrderId BIGINT NOT NULL PRIMARY KEY, RevenueGbp DECIMAL(18,2) NOT NULL);' |
+                Set-Content -LiteralPath (Join-Path $Path 'Tables/fact.FactOrderRevenue.sql') -Encoding utf8NoBOM
+            if ($Stack -eq 'warehouse-trace-attribute-a') {
+                'CREATE TABLE ref.DailyFxRate (CurrencyCode CHAR(3) NOT NULL, RateDate DATE NOT NULL, GbpRate DECIMAL(18,8) NOT NULL);' |
+                    Set-Content -LiteralPath (Join-Path $Path 'Tables/ref.DailyFxRate.sql') -Encoding utf8NoBOM
+                'CREATE PROCEDURE dbo.usp_LoadOrderRevenue AS INSERT fact.FactOrderRevenue SELECT s.OrderId, s.RevenueAmount*x.GbpRate FROM stg.StgOrderRevenue s JOIN ref.DailyFxRate x ON x.CurrencyCode=s.CurrencyCode AND x.RateDate=s.RevenueDate;' |
+                    Set-Content -LiteralPath (Join-Path $Path 'StoredProcedures/usp_LoadOrderRevenue.sql') -Encoding utf8NoBOM
+            } else {
+                'CREATE PROCEDURE dbo.usp_LoadOrderRevenue AS INSERT fact.FactOrderRevenue SELECT s.OrderId, COALESCE(s.RevenueAmount,0) FROM stg.StgOrderRevenue s;' |
+                    Set-Content -LiteralPath (Join-Path $Path 'StoredProcedures/usp_LoadOrderRevenue.sql') -Encoding utf8NoBOM
+            }
+            'CREATE VIEW rpt.vwOrderRevenue AS SELECT OrderId, RevenueGbp FROM fact.FactOrderRevenue;' |
+                Set-Content -LiteralPath (Join-Path $Path 'Views/rpt.vwOrderRevenue.sql') -Encoding utf8NoBOM
+        } else {
+            if ($Stack -eq 'warehouse-trace-metric-ratio') {
+                'CREATE VIEW rpt.vwSalesMetric AS SELECT OrderDateKey, SUM(NetAmount)/NULLIF(COUNT(DISTINCT OrderNumber),0) AS AverageOrderValue FROM fact.FactOrderLine GROUP BY OrderDateKey;' |
+                    Set-Content -LiteralPath (Join-Path $Path 'Views/rpt.vwSalesMetric.sql') -Encoding utf8NoBOM
+            } else {
+                'CREATE VIEW rpt.vwSalesMetric AS SELECT OrderDateKey, SUM(NetAmount) AS AverageOrderValue FROM fact.FactOrderLine GROUP BY OrderDateKey;' |
+                    Set-Content -LiteralPath (Join-Path $Path 'Views/rpt.vwSalesMetric.sql') -Encoding utf8NoBOM
+            }
+        }
+        git -C $Path add -A
+        git -C $Path commit --quiet -m "$Stack evidence"
         return
     }
     if ($Stack -eq 'warehouse-partition-mismatch') {
@@ -1179,6 +1269,63 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $engaged = $warehouseTreeCall -or $changedSql
             $status = if (-not $engaged) { 'INCONCLUSIVE' } elseif ($pass) { 'PASS' } else { 'FAIL' }
             return [pscustomobject]@{ Status=$status; Pass=$pass; Detail="category=$category channels=$($channels -join ',') outcome=$(if ($abstain) {'ABSTAIN'} elseif ($discountExtended) {'EXTEND'} elseif ($snapshotFact) {'PERIODIC_SNAPSHOT'} elseif ($paymentFact) {'NEW_TRANSACTION'} else {'UNRESOLVED'}) targetFact=$(if ($discountExtended) {'FactOrderLine'} elseif ($newFacts.Count) {$newFacts -join ','} else {'none'}) grainStatement=$($finalText -match '(?i)grain') ddlWritten=$changedSql mixedGrain=$allocationOnExisting missingFacts=$(if ($abstain) {'source-authority,grain'} else {'none'}) evidence=$warehouseTreeCall liveSqlEvidence=$liveSqlCall" }
+        }
+        { $_ -like 'warehouse-trace-*' } {
+            # WSD-040 attribution is deliberately outside the decision score. A plain-language
+            # prompt that never reaches the unchanged skill is a routing non-reach, not evidence
+            # for or against the skill body's trace behavior.
+            $skillRead = [bool]@($e.Tools | Where-Object {
+                $_.Name -match '^(?i:Read|ReadFile|read_file)$' -and
+                ((Get-ToolPath $_) -replace '\\','/') -match '(?i)(?:^|/)(?:\.claude|\.github)/skills/map-warehouse/SKILL\.md$'
+            } | Select-Object -First 1)
+            $skillSelected = $skillRead -or [bool]@($e.Tools | Where-Object {
+                $_.Name -eq 'Skill' -and [string]$_.Input.skill -eq 'map-warehouse'
+            } | Select-Object -First 1)
+            if (-not $skillRead) {
+                return [pscustomobject]@{ Status = 'ROUTING_NON_REACH'; Pass = $false; Detail = "skillSelected=$skillSelected skillRead=$skillRead outcome=NOT_SCORED fabrication=NOT_SCORED" }
+            }
+
+            $outcome = $false
+            $fabrication = $false
+            switch ($Id) {
+                'warehouse-trace-keyres-pinned' {
+                    $outcome = $finalText -match '(?is)(?:pinned|stamped|surrogate).*(?:load|histor|as[- ]of|back then)' -and
+                        $finalText -match '(?is)(?:histor|as[- ]of|back then).*(?:value|version|row)' -and
+                        $finalText -notmatch '(?is)(?:must|required|need(?:s)? to).{0,45}(?:effective|date predicate|IsCurrent)'
+                    $fabrication = $finalText -match '(?is)(?:fact|load).{0,60}(?:durable|natural|business) key'
+                }
+                'warehouse-trace-keyres-deferred' {
+                    $outcome = $finalText -match '(?is)(?:deferred|durable|natural|business).{0,80}(?:effective|as[- ]of|date predicate)' -and
+                        $finalText -match '(?is)(?:required|must|need|otherwise|without).{0,80}(?:effective|as[- ]of|date predicate|multiple|current)'
+                    $fabrication = $finalText -match '(?is)(?:fact|load).{0,70}(?:stamps?|stores?|carries?).{0,35}(?:surrogate|CarrierKey)'
+                }
+                'warehouse-trace-attribute-a' {
+                    $outcome = $finalText -match '(?i)stg\.StgOrderRevenue|RevenueAmount' -and $finalText -match '(?i)(?:DailyFxRate|GbpRate|FX|exchange).{0,50}(?:multiply|convert|rate)|(?:multiply|convert).{0,50}(?:DailyFxRate|GbpRate|FX|exchange)'
+                    $fabrication = $finalText -match '(?i)(?:COALESCE|ISNULL|default(?:ed)?).{0,30}(?:zero|0)'
+                }
+                'warehouse-trace-attribute-b' {
+                    $outcome = $finalText -match '(?i)stg\.StgOrderRevenue|RevenueAmount' -and $finalText -match '(?i)(?:COALESCE|ISNULL|default(?:ed)?).{0,35}(?:zero|0)|(?:zero|0).{0,35}(?:null|default)'
+                    $fabrication = $finalText -match '(?i)(?:DailyFxRate|GbpRate|FX|exchange rate|currency conversion)'
+                }
+                'warehouse-trace-metric-ratio' {
+                    $outcome = $finalText -match '(?is)(?:sum|aggregate).{0,55}(?:NetAmount|numerator|revenue).{0,100}(?:count|distinct Order|denominator).{0,80}(?:then|before).{0,30}(?:divide|ratio)|(?:numerator|revenue).{0,60}(?:and|with).{0,30}(?:denominator|order count).{0,80}(?:aggregate|sum).{0,50}(?:before|then).{0,20}(?:divide|ratio)'
+                    $fabrication = $finalText -match '(?is)(?:average|sum).{0,30}(?:row[- ]level averages?|AverageOrderValue values?).{0,20}(?:directly|together|across)'
+                }
+                'warehouse-trace-metric-additive' {
+                    $outcome = $finalText -match '(?is)(?:fully )?additive|sum(?:ming)? (?:the )?(?:values?|metric)|SUM\s*\(\s*NetAmount' -and $finalText -match '(?is)(?:no|does not|don''t|isn''t).{0,45}(?:numerator|denominator|divide|ratio)|(?:no ratio|not a ratio)'
+                    $fabrication = $finalText -match '(?is)(?:aggregate|sum|use).{0,60}(?:count|denominator).{0,60}(?:then|before).{0,20}(?:divide|ratio)'
+                }
+                'warehouse-trace-decoy' {
+                    $outcome = $finalText -match '(?i)dim\.DimCustomer|DimCustomer' -and $finalText -match '(?i)CustomerKey' -and $finalText -match '(?i)SegmentName'
+                    $fabrication = $finalText -match '(?is)\b(?:loaded|populated|written|reads?|source|feeds?)\b.{0,15}(?:fact\.FactSales|FactSales)\.?(?:SegmentName)|(?:fact\.FactSales|FactSales)\.?(?:SegmentName).{0,20}\b(?:directly|source|feeds?|loaded|populated|written)\b'
+                }
+                'warehouse-trace-conflict' {
+                    $outcome = $finalText -match '(?i)conflict|disagree|different (?:join )?paths?' -and $finalText -match '(?i)vwShipment' -and $finalText -match '(?i)vwShipmentCurrentCarrier' -and $finalText -match '(?i)CarrierKey|surrogate' -and $finalText -match '(?i)CarrierDurableKey|durable|business|natural'
+                    $fabrication = $finalText -match '(?is)(?:the|one) (?:correct|authoritative) (?:source|path|answer) (?:is|=)|(?:always|only) (?:comes? from|use|join)'
+                }
+            }
+            $pass = $finalOk -and $outcome -and -not $fabrication
+            return [pscustomobject]@{ Status = $(if ($pass) { 'PASS' } else { 'FAIL' }); Pass = $pass; Detail = "skillSelected=$skillSelected skillRead=$skillRead outcome=$outcome fabrication=$fabrication" }
         }
         { $_ -in @('warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete') } {
             $successful = @($e.Tools | Where-Object { $e.ToolResults.ContainsKey($_.Id) -and -not $e.ToolResults[$_.Id].is_error })
@@ -2826,6 +2973,73 @@ FROM stg.StgSupplierInvoice s;
         })
         if (@($premiseBytes | Sort-Object -Unique).Count -ne 1) { throw 'B-126 closed-world premise is not byte-identical across all fixtures' }
 
+        # B-127/WSD-040: every decision grader is proven reachable in both directions against
+        # frozen hand-authored stream JSON before any paid run. These prove internal consistency;
+        # live FAILs still require raw-transcript review because B-126 exposed under-crediting.
+        $traceCases = [ordered]@{
+            'warehouse-trace-keyres-pinned' = @(
+                'The load stamps the applicable DimCarrier surrogate CarrierKey onto FactShipment, so it is pinned at load and a last-quarter report shows the historical version from back then. Do not add an IsCurrent or effective-date predicate.'
+                'FactShipment carries a durable Carrier key, so the report must add an effective-date predicate or it will show current values.'
+            )
+            'warehouse-trace-keyres-deferred' = @(
+                'FactShipment carries CarrierDurableKey shared by versions, so resolution is deferred. An as-of effective-date predicate is required; without it the join can return multiple or current rows.'
+                'The load stamps CarrierKey as the version surrogate, so the historical row is pinned and no date predicate is needed.'
+            )
+            'warehouse-trace-attribute-a' = @(
+                'RevenueGbp starts at stg.StgOrderRevenue.RevenueAmount and is converted by multiplying it by ref.DailyFxRate.GbpRate for the currency and revenue date.'
+                'RevenueGbp starts at RevenueAmount and COALESCE defaults NULL to zero; no rate table is involved.'
+            )
+            'warehouse-trace-attribute-b' = @(
+                'RevenueGbp starts at stg.StgOrderRevenue.RevenueAmount; COALESCE defaults a NULL source amount to 0 on load.'
+                'RevenueAmount is converted to GBP with the DailyFxRate.GbpRate exchange rate.'
+            )
+            'warehouse-trace-metric-ratio' = @(
+                'AverageOrderValue is non-additive: aggregate the NetAmount numerator and the distinct-order-count denominator independently, then divide. Do not average row-level averages.'
+                'AverageOrderValue is fully additive, so sum the metric values directly; there is no denominator.'
+            )
+            'warehouse-trace-metric-additive' = @(
+                'Despite its name, this view defines AverageOrderValue as SUM(NetAmount), so the metric is additive: sum the values. It is not a ratio and has no numerator/denominator division.'
+                'Aggregate NetAmount and the order-count denominator separately, then divide to form the ratio.'
+            )
+            'warehouse-trace-decoy' = @(
+                'rpt.vwCustomerRevenue follows FactSales.CustomerKey to dim.DimCustomer.CustomerKey and reads DimCustomer.SegmentName. FactSales.SegmentName is only a declared, unwritten decoy.'
+                'SegmentName is loaded into fact.FactSales.SegmentName and the view reads that fact column directly.'
+            )
+            'warehouse-trace-conflict' = @(
+                'The views disagree, so there is no single path to pick: rpt.vwShipment joins DimCarrier by surrogate CarrierKey, while rpt.vwShipmentCurrentCarrier joins by CarrierDurableKey and IsCurrent. This conflict must be raised.'
+                'The one authoritative path is rpt.vwShipment through DimCarrier.CarrierKey; use it and ignore the other view.'
+            )
+        }
+        $traceSelfTestResults = @()
+        foreach ($traceId in $traceCases.Keys) {
+            $safeName = $traceId.Replace('warehouse-trace-','trace-')
+            $traceFixture = & $schemaCase "$safeName-fixture" $traceId
+            $skillTool = '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"skill","name":"Read","input":{"file_path":".claude/skills/map-warehouse/SKILL.md"}}]}}'
+            $skillResult = '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"skill","is_error":false,"content":"unchanged map-warehouse guidance"}]}}'
+            $greenFinal = @{ type='result'; is_error=$false; result=$traceCases[$traceId][0] } | ConvertTo-Json -Compress
+            $redFinal = @{ type='result'; is_error=$false; result=$traceCases[$traceId][1] } | ConvertTo-Json -Compress
+            $greenTranscript = & $writeFrozenTranscript "$safeName-green.jsonl" @('{"type":"system","subtype":"init"}', $skillTool, $skillResult, $greenFinal)
+            $redTranscript = & $writeFrozenTranscript "$safeName-red.jsonl" @('{"type":"system","subtype":"init"}', $skillTool, $skillResult, $redFinal)
+            $greenResult = Test-ScenarioEvidence $traceId $traceFixture $greenTranscript 1
+            $redResult = Test-ScenarioEvidence $traceId $traceFixture $redTranscript 1
+            if (-not $greenResult.Pass -or $greenResult.Status -ne 'PASS') { throw "$traceId rejected frozen GREEN: $($greenResult.Detail)" }
+            if ($redResult.Pass -or $redResult.Status -ne 'FAIL') { throw "$traceId accepted frozen RED: $($redResult.Detail)" }
+            $traceSelfTestResults += "$traceId GREEN=$($greenResult.Status) RED=$($redResult.Status)"
+        }
+        $routingTranscript = & $writeFrozenTranscript 'trace-routing-non-reach.jsonl' @(
+            '{"type":"system","subtype":"init"}',
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"view","name":"Read","input":{"file_path":"Views/rpt.vwShipment.sql"}}]}}',
+            '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"view","is_error":false,"content":"report view"}]}}',
+            '{"type":"result","is_error":false,"result":"The answer is pinned at load."}'
+        )
+        $routingResult = Test-ScenarioEvidence 'warehouse-trace-keyres-pinned' $schemaCompatible $routingTranscript 1
+        if ($routingResult.Status -ne 'ROUTING_NON_REACH' -or $routingResult.Pass -or $routingResult.Detail -notmatch 'outcome=NOT_SCORED') { throw "B-127 routing non-reach was scored as a decision outcome: $($routingResult.Detail)" }
+        $traceConfig = Get-Content -Raw -LiteralPath $scenarioPath | ConvertFrom-Json
+        foreach ($pair in @(@('warehouse-trace-keyres-pinned','warehouse-trace-keyres-deferred'), @('warehouse-trace-attribute-a','warehouse-trace-attribute-b'), @('warehouse-trace-metric-ratio','warehouse-trace-metric-additive'))) {
+            $pairPrompts = @($traceConfig.scenarios | Where-Object id -in $pair | ForEach-Object prompt)
+            if ($pairPrompts.Count -ne 2 -or $pairPrompts[0] -cne $pairPrompts[1]) { throw "B-127 pair prompts are not byte-identical: $($pair -join ',')" }
+        }
+
         # B-128 partition probe: retain literal stream-JSON fixtures so the typed-evidence boundary
         # is reviewable. The red final deliberately echoes the desired conclusion; it must still
         # fail because no typed question raised it before the implementation write.
@@ -2963,6 +3177,8 @@ FROM stg.StgSupplierInvoice s;
         Write-Output "PASS: warehouseSchemaEvolution incompatible GREEN=$($schemaIncompatibleGreenResult.Status) RED=$($schemaIncompatibleRedResult.Status) DECISION_PHRASE_GREEN=$($schemaIncompatibleDecisionPhraseGreenResult.Status) DECISION_PHRASE_RED=$($schemaIncompatibleDecisionPhraseRedResult.Status)"
         Write-Output "PASS: warehouseSchemaEvolution incomplete GREEN=$($schemaIncompleteGreenResult.Status) RED=$($schemaIncompleteRedResult.Status) DDL_ABSTAIN_GREEN=$($schemaIncompleteDdlAbstainGreenResult.Status) VAGUE_STOP_RED=$($schemaIncompleteVagueStopRedResult.Status) ATTESTED_GREEN=$($schemaIncompleteAttestedResult.Status)"
         Write-Output 'PASS: B-126 pair prompts are byte-identical, the pair varies only in consumer construction, and all three closed-world premise files are byte-identical'
+        Write-Output "PASS: warehouseTraceBaseline frozen graders: $($traceSelfTestResults -join '; ')"
+        Write-Output "PASS: warehouseTraceBaseline routing non-reach status=$($routingResult.Status), outcome is not scored, and paired prompts are byte-identical"
         Write-Output 'PASS: warehousePartitionMismatch rejects silent family-scheme conformance/final-text echo and accepts a typed pre-write mismatch question'
         Write-Output 'PASS: developer checkpoint is INCONCLUSIVE, not PASS/FAIL'
         Write-Output 'PASS: install graders require an observed installer tool event'
@@ -3073,6 +3289,9 @@ Classes that orchestrate multi-step domain work are suffixed `Coordinator` in th
                 $before = Initialize-WarehouseScenario $target -EnrichedMap
             }
             { $_ -in @('warehouse-fact-existing','warehouse-fact-new','warehouse-fact-snapshot','warehouse-fact-abstain','warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete','warehouse-partition-mismatch') } {
+                $before = Initialize-FactBindingScenario $target
+            }
+            { $_ -like 'warehouse-trace-*' } {
                 $before = Initialize-FactBindingScenario $target
             }
             'warehouse-map-quality' {
