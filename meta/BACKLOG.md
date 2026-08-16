@@ -4760,7 +4760,7 @@ done: show the before/after wall-clock time on the same host, not just "it feels
 This is not a request to re-architect the whole suite; fixing the highest-cost file first and
 re-measuring is enough to know whether the remaining files are worth the same treatment.
 
-### B-139 · `total-local-gates` can silently drift out of sync with the per-stage ceilings it's supposed to bound
+### B-139 · `total-local-gates` can silently drift out of sync with the per-stage ceilings it's supposed to bound — **DONE 2026-08-16, see Done section**
 **Effort:** S · **Priority:** P2 · filed 2026-08-13 · **Invariants:** #4
 
 **Why:** on 2026-08-08, `meta-suite`'s own ceiling was correctly raised 300s → 650s with a recorded,
@@ -5028,6 +5028,33 @@ planted unreadable file and an emptied tree, both twins.
 ---
 
 ## Done
+
+- **B-139** — DONE **2026-08-16**. Added `.claude/hooks/tests/GateBudgetConsistency.Tests.ps1`
+  (auto-discovered by `Invoke-HookTests.ps1`, no wiring needed): asserts
+  `meta/gate-budget.json`'s `ceilings-seconds.total-local-gates` is at least the sum of the other
+  four per-stage ceilings (chosen policy: zero margin, matching the real file's current exact-sum
+  state), and separately that every required ceiling key is present and a positive number (a
+  distinct MALFORMED failure, not conflated with a SUM MISMATCH). Red-tested by planting the exact
+  2026-08-08 defect class (bump one stage ceiling without recomputing the aggregate) and confirming
+  it fails with both disagreeing values named; also covers a correctly-recomputed fixture, a missing
+  key, a non-numeric value, and the real on-disk file (all pass except the planted-defect fixture).
+
+  Implemented by codex (`gpt-5.6-sol`) from a locked brief; reviewed and independently re-verified in
+  this session (Maintenance rule 3) — full meta suite 16/16 green after moving codex's own scratch
+  brief/log files out of the worktree (their presence in the tree caused the same spurious
+  `WorkspaceBom.Tests`/`RepositoryPrivacy.Tests` failures B-137's delivery hit; codex's own report
+  again attributed these to unrelated files rather than to its own scratch output — same
+  false-attribution pattern as last time, worth naming as a recurring codex-session hygiene issue
+  rather than re-diagnosing it fresh each time). No implementation defect found this round (unlike
+  B-137's swallowed-stdout bug) — the diff was accepted as codex delivered it.
+
+  **RCA (Maintenance rule 5):** no gate caught the original 2026-08-08 drift because nothing checked
+  the budget file's own internal arithmetic — each per-stage ceiling revision was reviewed in
+  isolation without a mechanical cross-check against the aggregate it feeds. **Same-class sweep:**
+  checked `meta/context-footprint.json` (B-110's static-context budget, the closest analogue) — its
+  ceilings are independent per-file/per-dist limits (40000/48000 chars, 1500 permille), not a
+  sum-of-siblings aggregate, so this specific class does not recur there. Not exhaustively swept
+  beyond that one analogue given this round's reviewer-budget constraint.
 
 - **B-137** — DONE **2026-08-16**. Added `.claude/scripts/push-and-check.ps1` (maintainer-only,
   PowerShell-only — no `.sh` twin, matching `watch-ci.ps1`'s own existing exception): it pushes the
