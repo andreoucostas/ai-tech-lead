@@ -4791,6 +4791,61 @@ trusting whoever edits a per-stage ceiling to remember to also update the aggreg
 discipline that already failed once.
 
 ---
+
+### B-140 · Investigate a codex execution path for the live-eval harness (budget diversification)
+**Effort:** M (investigation only; implementation is a separate, larger follow-on) · **Priority:** P3
+· filed 2026-08-16 · **Invariants:** #1, #3
+
+**Why:** the account's Claude monthly spend limit has now voided two full B-129 live-eval attempts
+back to back (2026-08-15, 2026-08-16) — a fully built, self-tested-green harness run, real spend
+burned, zero usable result each time (`meta/eval-results.md`, B-129 entries). Codex CLI/API budget is
+available and, per the account owner, much larger. The question raised: can `run-agent-evals.ps1
+-Live` be pointed at codex instead of (or in addition to) Claude Code to avoid this single point of
+failure?
+
+**This is not a config flag — it changes what the harness measures, not just who runs it.**
+`Invoke-ClaudeProcess` (line ~1004) shells out to `(Get-Command claude).Source` with
+`--output-format stream-json`; `Get-TranscriptEvidence` parses Claude Code's own JSONL event shape
+(`tool_use`/`tool_result`) to derive `skillSelected`/`skillRead`. This repo ships exactly two
+supported consumer surfaces — Claude Code and GitHub Copilot (`CLAUDE.md` Invariant #5) — neither of
+which is codex; there is no codex-targeted artifact (no `.claude/skills/`-equivalent codex reads) for
+any scenario to test against. Any scenario whose grader depends on `skillSelected`/`skillRead` —
+which includes **all of B-129/WSD-042**, whose locked Decision explicitly scoped the probe to "the
+one scriptable host that demonstrably loads skills" — cannot be ported to codex without first
+deciding what "skill selection" even means for an agent that has no equivalent routing mechanism.
+Scenarios whose grading only checks final transcript/artifact state (file contents, DDL correctness,
+decision text — not which internal mechanism was consulted) are the only plausible executor-agnostic
+candidates.
+
+**Do (investigation only — do not implement without the Opus gate, Maintenance rule 1, same as B-129
+itself required):**
+1. Inventory `scenarios.json`; classify each scenario as routing-dependent (depends on
+   `skillSelected`/`skillRead`, i.e. Claude-Code-specific) versus final-state-only
+   (executor-agnostic in principle).
+2. For the final-state-only subset, confirm codex CLI's headless/scriptable invocation shape (flags,
+   structured output format, budget/timeout controls) and whether it exposes anything
+   transcript-equivalent to Claude's `stream-json`, or whether codex grading would have to fall back
+   to final-state-only evidence (no tool-use trace) — a real reduction in what can be graded, not a
+   free substitution.
+3. State explicitly: **B-129/WSD-042 is out of scope for this item.** Porting it to codex would
+   require reopening WSD-042's already-locked Decision, which named the single-host scoping as
+   deliberate, not incidental. This item does not authorize that reopening; B-129 stays blocked on
+   the Claude spend limit per its existing plan (`CLAUDE-HANDOFF.md` BLOCKED section) unless a
+   separate future decision revisits WSD-042 on its own terms.
+4. Proportionality check before any design locks: a permanently dual-executor harness is ongoing
+   maintenance surface (this repo's own twin-parity discipline, Invariant #3, would likely extend to
+   it — a `Invoke-CodexProcess` twin to keep in sync indefinitely). Before locking that cost, confirm
+   whether raising the Claude spend limit (a config change, `claude.ai/settings/usage`) is actually
+   infeasible or undesired — if not, the smaller fix may remove most of the harm B-140 exists to
+   address, per Maintenance rule 6.
+
+**Proportionality:** open question, not yet decided — this item exists to hold and scope the
+investigation, not to authorize the build. Any implementation requires the Opus gate + adversarial
+critique per Maintenance rule 1 before code changes, exactly as B-129 itself required.
+
+**Status:** filed 2026-08-16, not started, not gated.
+
+---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see the Done section.**
