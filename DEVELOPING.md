@@ -406,6 +406,19 @@ red release is detected and left untagged, not stopped. It also does not close B
 raced a concurrent run's writes and produced a transient failure that cost a diagnosis cycle. The
 suites read the working tree directly; they assume it is still.
 
+**Do not pipe a gate, release, or push command into `tail`/`head`/`grep` and then read its exit
+code.** A shell pipeline reports the *last* stage's status, so the real exit code is discarded and
+every one of these scripts' carefully-designed non-zero contracts (`watch-ci.ps1`'s 0/1/3,
+`push-and-check.ps1`'s propagation of it, `release.ps1`'s refusals) silently reads as success.
+Observed 2026-08-16: `pwsh -NoProfile -File .claude/scripts/push-and-check.ps1 … | tail -4` was run
+from the wrong working directory, so `pwsh` never found the script and exited **64** — but the
+pipeline reported **0** and the push was very nearly recorded as done with `master` still unpushed.
+Note the second trap stacked on the first: a *relative* script path resolves against the caller's
+cwd, and this box routinely has several worktrees plus the parent container repo in play. Invoke
+these scripts by absolute path, capture the exit code before filtering (`$LASTEXITCODE`, or assign
+the output to a variable and filter afterwards), and treat "the command printed a usage/help dump"
+as the signature of a path that did not resolve.
+
 **Launching an implementer session.** The maintenance model requires implementer and reviewer to be
 different sessions. The recipe used to date is the `codex` CLI on Windows, with three traps worth
 knowing: the session `PATH` can arrive with a literal unexpanded `${PATH}` (so invoke interpreters
