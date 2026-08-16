@@ -382,6 +382,16 @@ and then from the well-known install locations, because on this box `PATH` is th
 as the different facts they are. `-AllowUnverifiedCi` waives the check and tags anyway; it is a
 *waiver*, not a CANT-VERIFY, and it is recorded in the tag's own annotation.
 
+For ordinary non-release work, push through the wrapper so the command itself reports CI's verdict:
+
+```powershell
+pwsh -NoProfile -File .claude/scripts/push-and-check.ps1
+```
+
+It pushes the current branch, then delegates the CI reading to `watch-ci.ps1`. Watching applies only
+to `-WatchedBranches` (default: `master`, kept in sync with `.github/workflows/ci.yml`'s `push`
+trigger); a successful push to any other branch reports that watching was skipped and exits 0.
+
 Watch any commit by hand (also how to finish an interrupted release):
 
 ```powershell

@@ -4683,7 +4683,7 @@ A shared completion-rule correction plus the smallest domain-specific trigger re
 documentation graph, automatic classifier, mutating `/docs-sync`, or exhaustive skill inventory does
 not.
 
-### B-137 · A push outside `release.ps1` gets no CI check at all — B-88's fix only covers the release commit
+### B-137 · A push outside `release.ps1` gets no CI check at all — B-88's fix only covers the release commit — **DONE 2026-08-16, see Done section**
 **Effort:** S · **Priority:** P2 · filed 2026-08-13 · **Invariants:** #7
 
 **Why:** B-88 wired `.claude/scripts/watch-ci.ps1` into `release.ps1` step 5c, so a *release* commit's
@@ -5028,6 +5028,52 @@ planted unreadable file and an emptied tree, both twins.
 ---
 
 ## Done
+
+- **B-137** — DONE **2026-08-16**. Added `.claude/scripts/push-and-check.ps1` (maintainer-only,
+  PowerShell-only — no `.sh` twin, matching `watch-ci.ps1`'s own existing exception): it pushes the
+  resolved/current branch, and only when the pushed branch is in `-WatchedBranches` (default
+  `master`, matching `.github/workflows/ci.yml`'s `push` trigger — documented as needing to stay in
+  sync with that file) does it resolve the pushed SHA and invoke the existing, unmodified
+  `watch-ci.ps1` as a real subprocess, propagating its 0/1/3 exit contract unchanged. A failed push
+  never invokes the watcher at all (nothing reached origin to have an opinion about). Documented in
+  `DEVELOPING.md` next to the existing "Watch any commit by hand" block.
+
+  Implemented by codex (`gpt-5.6-sol`) per this repo's implementer/reviewer split (Maintenance model
+  rule 2); this session (Claude) reviewed, independently re-ran every verification command in the
+  real environment rather than trusting the self-report (rule 3), and found and fixed one real
+  defect before accepting: the `-Live` git-push output path piped through `Tee-Object -Variable`
+  without `| Out-Host`, which — because the enclosing function's return value is captured by its
+  caller (`$r = Invoke-GitCaptured ...`) — silently swallowed the pipeline into the function's own
+  output stream instead of reaching the console. Confirmed directly with an isolated repro (a
+  bracketing pair of `Write-Host` calls around the call showed the git output appearing nowhere)
+  before and after the fix. Practically low-severity (git's push progress mostly goes to stderr,
+  which *was* reaching the console via `[Console]::Error.Write`), but the in-code comment claiming
+  "stdout was streamed already" was factually false until fixed, and no automated test could have
+  caught it — `PushAndCheck.Tests.ps1`'s subprocess capture cannot distinguish live-printed from
+  purely-buffered output.
+
+  **Verification (re-run independently, not from codex's self-report):**
+  `PushAndCheck.Tests.ps1`: 7/7 passed (all seven cases genuinely red-tested — codex reported each
+  failing at the "subject script does not exist" boundary before implementation, then green after).
+  Full meta suite `Invoke-HookTests.ps1`: 14/15 files passed; the one failure
+  (`RepositoryPrivacy.Tests.ps1`, a leaked `C:\Users\Costas` path at `meta/eval-results.md:1382`) is
+  pre-existing on unmodified `master` and unrelated to this change (confirmed by running the same
+  suite there). `git status --porcelain dist/` empty; both new `.ps1` files carry the UTF-8 BOM
+  (invariant #4, byte-checked). No shipped-behavior change, so no CHANGELOG/version bump, matching
+  B-88's own precedent.
+
+  **RCA (Maintenance rule 5) — why no gate caught the original gap:** `release.ps1` step 5c's
+  `watch-ci.ps1` call was the only CI-visibility wiring that existed; nothing routed the far more
+  common non-release push (implementer landing commits, design-lock commits, small fixes between
+  releases) through any check at all, so a red push between releases was only ever caught by someone
+  manually remembering to run `gh run list`. **Same-class sweep:** `push-and-check.ps1` only covers
+  pushes made *from this box via `git push`* — a PR merged through the GitHub web UI (the merge
+  button) is a push to `master` this local wrapper can never observe, since it never runs on this
+  machine. That residual is not closed here; it is the same "who actually watches this push" gap one
+  level up, worth naming as a candidate follow-up rather than silently declaring the class closed.
+  Separately: `RepositoryPrivacy.Tests.ps1`'s pre-existing failure (found incidentally, not part of
+  this item's scope) means `meta/eval-results.md` has been shipping a real personal-path leak in the
+  authoring tree since at least the B-129 write-up — worth its own small follow-up.
 
 - **B-41** — DONE **2026-08-13**. The re-scoped DONE bar is **Claude behavioral evidence +
   Copilot hook-shape coverage (confirmed already shipping)**. Phase 1 supplied the typed Claude
