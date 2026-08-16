@@ -501,6 +501,37 @@ try {
         } 'dead instructions in shipped docs' 'no-dead-instruction' -AlsoPattern @('README\.md:\d+:','definitely-missing-with-line-b67\.sh')
     }
 
+    It 'case 35: step-reference grammar, vacuity guards and allowances agree on both validators' {
+        $fixtures = @(
+            @{ Name='zero-files'; Text=$null; Green=$false; Finding='step-reference scan found zero Markdown files' },
+            @{ Name='zero-references'; Text="# fixture`n1. one`n2. two`n"; Green=$false; Finding='step-reference scan found zero prose references' },
+            @{ Name='heading-not-reference'; Text="# fixture`n### Step 7 — definition`n"; Green=$false; Finding='step-reference scan found zero prose references' },
+            @{ Name='broken-run'; Text="# fixture`n1. one`n3. three`nSee step 1.`n"; Green=$false; Finding='ordered-list run starts at 3 (expected 0 or 1)' },
+            @{ Name='dead-reference'; Text="# fixture`n1. one`nSee step **9**.`n"; Green=$false; Finding='prose step 9 has no ordered-list label or Step 9 heading' },
+            @{ Name='fenced-labels'; Text="# fixture`n``````text`n1. example`n3. example`n```````n1. real`nSee step 1.`n"; Green=$true; Finding='ordered-list runs are contiguous and prose step references resolve' },
+            @{ Name='heading-definition'; Text="# fixture`n### Step 7 — definition`nUse Step 7 here.`n"; Green=$true; Finding='ordered-list runs are contiguous and prose step references resolve' },
+            @{ Name='multiple-lists'; Text="# fixture`n1. first`n2. second`n`nText between procedures.`n`n1. another`n2. finish`nSee step 2 above.`n"; Green=$true; Finding='ordered-list runs are contiguous and prose step references resolve' }
+        )
+        foreach ($leg in @('ps','bash')) {
+            $root = New-DistCopy
+            $dist = Join-Path $root 'dotnet'
+            foreach ($scope in '.claude/skills','.claude/commands','.claude/agents') {
+                Get-ChildItem -LiteralPath (Join-Path $dist $scope) -Recurse -Force -File -Filter *.md -ErrorAction SilentlyContinue | Remove-Item -Force
+            }
+            $fixturePath = Join-Path $dist '.claude/skills/step-fixture/SKILL.md'
+            New-Item -ItemType Directory -Path (Split-Path $fixturePath -Parent) -Force | Out-Null
+            foreach ($fixture in $fixtures) {
+                if ($null -eq $fixture.Text) { Remove-Item -LiteralPath $fixturePath -Force -ErrorAction SilentlyContinue }
+                else { [IO.File]::WriteAllText($fixturePath,$fixture.Text) }
+                $r = Invoke-Validator -Root $root -UseBash:($leg -eq 'bash') -Check step-references
+                Write-Host "[ValidateDist $leg step-$($fixture.Name)] EXIT=$($r.Exit)"; Write-Host $r.Out
+                Assert ($r.Out.Contains($fixture.Finding)) "step-$($fixture.Name)/$leg missed '$($fixture.Finding)': $($r.Out)"
+                if ($fixture.Green) { Assert ($r.Exit -eq 0) "step-$($fixture.Name)/$leg should be green" }
+                else { Assert ($r.Exit -ne 0) "step-$($fixture.Name)/$leg should be red" }
+            }
+        }
+    }
+
     # B-106/F3: this skip used to be false -- "python3 is unavailable" read as "no python here", but
     # a python.org install ships python.exe and no working python3.exe (the Windows Store alias may
     # still resolve by name). Resolve by EXECUTION across python3/python/py and, if the real name

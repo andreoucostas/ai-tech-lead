@@ -32,7 +32,7 @@ git status --porcelain dist/   # MUST print nothing — otherwise commit the dis
 for d in dotnet angular monorepo; do bash scripts/build.sh "$d"; done   # .sh twin (CI linux leg)
 ```
 
-## Validate the dists (markers, JSON, bash -n, PS-AST, per-dist template-checks [#2, including Common Tasks skill inventory], no-meta-leak [#6], no-dead-instruction, hook-registration)
+## Validate the dists (markers, JSON, bash -n, PS-AST, per-dist template-checks [#2, including Common Tasks skill inventory], no-meta-leak [#6], no-dead-instruction, hook-registration, step-references)
 
 ```powershell
 foreach ($d in 'dotnet','angular','monorepo') { pwsh -NoProfile -File scripts/validate-dist.ps1 $d; "exit=$LASTEXITCODE" }
@@ -93,12 +93,25 @@ bash scripts/validate-dist.sh dotnet "$S"; echo "exit=$?"                     # 
 rm -rf "$(dirname "$S")"
 ```
 
+### Red-test the `step-references` gate (check 12)
+
+Check 12 scans top-level ordered-list labels and numbered prose step references in shipped skills,
+commands and agents. It blanks fenced code before both scans, accepts runs starting at `0.` or `1.`,
+and resolves each prose reference against a list label or `Step N` heading in the same file.
+
+```bash
+S=$(mktemp -d)/dc; mkdir -p "$S"; cp -r dist/dotnet "$S/"
+printf '\n1. first\n3. planted\nSee step 1.\n' >> "$S/dotnet/.claude/skills/create-adr/SKILL.md"
+bash scripts/validate-dist.sh dotnet "$S" -Check step-references; echo "exit=$?" # MUST be 1, naming the run at 3
+rm -rf "$(dirname "$S")"
+```
+
 Two environment variables exist for `ValidateDist.Tests.ps1` and are **never set by `release.ps1` or
 CI**:
 
 | Switch | Effect |
 |---|---|
-| `--content-only` (**argument**, both twins) | Skip checks 1–5 and run only 6, 7, 8. Prints a `NOTE:` line saying so — a partial run must never read as a full one. The suite's green anchors deliberately omit it, so the skipped group stays exercised on both legs. It is an **argument and not an environment variable on purpose**: an ambient switch that narrows a gate's scope can be inherited by a shell that never asked for it, and `release.ps1` sends validator output to a log where the `NOTE:` would go unread. |
+| `--content-only` (**argument**, both twins) | Skip checks 1–5 and run only 6, 7, 8 and 12. Prints a `NOTE:` line saying so — a partial run must never read as a full one. The suite's green anchors deliberately omit it, so the skipped group stays exercised on both legs. It is an **argument and not an environment variable on purpose**: an ambient switch that narrows a gate's scope can be inherited by a shell that never asked for it, and `release.ps1` sends validator output to a log where the `NOTE:` would go unread. |
 | `VALIDATE_DIST_JSON_TOOL=python3\|jq` (env, bash twin) | Pin the parser branch. Without it, whichever tool a box happens to have decides which branch is ever executed — which is how the two branches came to disagree. Naming an absent tool is FATAL, never a silent fallback: it cannot quietly downgrade a run. |
 
 Run **both** legs: registrations are JSON-parsed. The bash branch frames each decoded value as
@@ -109,9 +122,9 @@ anyone reads. Check 8 deliberately does **not** reject a bare interpreter name; 
 comment for why (v0.38.1).
 
 > **Hazard on this box:** `bash scripts/validate-dist.sh` exits FATAL at check 4 ("neither pwsh nor
-> powershell is available") because the session `PATH` is the corrupted one and `pwsh` lives under a
-> `WindowsApps` MSIX path Git Bash does not inherit. Prepend it before running the `.sh` leg:
-> `export PATH="/c/Program Files/WindowsApps/Microsoft.PowerShell_7.6.4.0_x64__8wekyb3d8bbwe:$PATH"`.
+> powershell is available") because the session `PATH` is corrupted and PowerShell's install
+> directory is not visible to Git Bash. Prepend it before running the `.sh` leg:
+> `export PATH="/c/Program Files/PowerShell/7:$PATH"`.
 > That FATAL is a host problem, not a dist problem — see B-85.
 
 This is the gate that would have caught the v0.26.3 defect: `dist/monorepo`'s README told installing
@@ -218,7 +231,7 @@ directory for the child process.
 | Claude Code | `$env:USERPROFILE\.local\bin\claude.exe` |
 | Copilot CLI | `$env:APPDATA\npm\copilot.cmd` |
 | GitHub CLI | `C:\Program Files\GitHub CLI\gh.exe` |
-| pwsh 7.6.4 | `C:\Program Files\WindowsApps\Microsoft.PowerShell_7.6.4.0_x64__8wekyb3d8bbwe\pwsh.exe` |
+| pwsh 7 | `C:\Program Files\PowerShell\7\pwsh.exe` |
 | node | `C:\Program Files\nodejs\node.exe` |
 
 Each fails differently and none of the errors names `PATH`, which is why this table exists:

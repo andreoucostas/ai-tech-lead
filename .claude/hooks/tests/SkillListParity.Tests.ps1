@@ -27,7 +27,7 @@ function Get-CommonTaskCodeSpans {
             foreach ($match in [regex]::Matches($Matches.description, '`([^`]+)`')) {
                 $null = $spans.Add($match.Groups[1].Value)
             }
-            $tasks.Add($Matches.slug, $spans)
+            $tasks[$Matches.slug] = $spans
         }
     }
     return $tasks
@@ -40,14 +40,19 @@ It 'stock Common Tasks descriptions keep code spans aligned per shared slug' {
     foreach ($dist in 'dotnet','angular','monorepo') {
         $claude = Get-CommonTaskCodeSpans (Join-Path $repoRoot "dist/$dist/CLAUDE.md")
         $agents = Get-CommonTaskCodeSpans (Join-Path $repoRoot "dist/$dist/AGENTS.md")
+        Assert (@($claude.Keys).Count -gt 0) "$dist/CLAUDE.md yielded zero Common Tasks slugs; the parser is blind"
+        Assert (@($agents.Keys).Count -gt 0) "$dist/AGENTS.md yielded zero Common Tasks slugs; the parser is blind"
+        $shared = 0
         foreach ($slug in $claude.Keys) {
             if (-not $agents.ContainsKey($slug)) { continue }
+            $shared++
             $claudeOnly = @($claude[$slug] | Where-Object { -not $agents[$slug].Contains($_) })
             $agentsOnly = @($agents[$slug] | Where-Object { -not $claude[$slug].Contains($_) })
             if ($claudeOnly.Count -gt 0 -or $agentsOnly.Count -gt 0) {
                 $drift += "$dist/$slug (CLAUDE-only: $($claudeOnly -join ', '); AGENTS-only: $($agentsOnly -join ', '))"
             }
         }
+        Assert ($shared -gt 0) "$dist Common Tasks inventories share zero slugs; no descriptions were compared"
     }
     Assert ($drift.Count -eq 0) ("Common Tasks code-span drift: " + ($drift -join '; '))
 }

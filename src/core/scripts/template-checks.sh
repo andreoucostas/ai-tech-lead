@@ -155,51 +155,57 @@ common_tasks() { # $1=file; emits existence marker followed by slugs in document
 }
 
 if [ -f CLAUDE.md ] && [ -f AGENTS.md ]; then
-  mapfile -t common_claude < <(common_tasks CLAUDE.md)
-  mapfile -t common_agents < <(common_tasks AGENTS.md)
+  common_claude=''; common_agents=''
   claude_exists=0; agents_exists=0
-  [ "${common_claude[0]-}" = EXISTS ] && { claude_exists=1; common_claude=("${common_claude[@]:1}"); }
-  [ "${common_agents[0]-}" = EXISTS ] && { agents_exists=1; common_agents=("${common_agents[@]:1}"); }
+  while IFS= read -r line; do
+    if [ "$line" = EXISTS ]; then claude_exists=1
+    else common_claude="$common_claude $line"
+    fi
+  done < <(common_tasks CLAUDE.md)
+  while IFS= read -r line; do
+    if [ "$line" = EXISTS ]; then agents_exists=1
+    else common_agents="$common_agents $line"
+    fi
+  done < <(common_tasks AGENTS.md)
 
   # Duplicates first: a set comparison would otherwise hide this defect.
-  declare -A seen_common=() reported_common=()
-  for slug in "${common_claude[@]}"; do
-    if [ -n "${seen_common[$slug]+x}" ] && [ -z "${reported_common[$slug]+x}" ]; then
+  # Slugs cannot contain spaces by grammar, so space-delimited membership is exact and Bash 3.2-safe.
+  seen_common=''; reported_common=''
+  for slug in $common_claude; do
+    case " $seen_common " in *" $slug "*)
+      case " $reported_common " in *" $slug "*) ;; *)
       fail "Common Tasks skill inventory has duplicate slug in CLAUDE.md: $slug."
-      reported_common[$slug]=1
-    fi
-    seen_common[$slug]=1
+      reported_common="$reported_common $slug";; esac;;
+      *) seen_common="$seen_common $slug";;
+    esac
   done
-  seen_common=(); reported_common=()
-  for slug in "${common_agents[@]}"; do
-    if [ -n "${seen_common[$slug]+x}" ] && [ -z "${reported_common[$slug]+x}" ]; then
+  seen_common=''; reported_common=''
+  for slug in $common_agents; do
+    case " $seen_common " in *" $slug "*)
+      case " $reported_common " in *" $slug "*) ;; *)
       fail "Common Tasks skill inventory has duplicate slug in AGENTS.md: $slug."
-      reported_common[$slug]=1
-    fi
-    seen_common[$slug]=1
+      reported_common="$reported_common $slug";; esac;;
+      *) seen_common="$seen_common $slug";;
+    esac
   done
 
-  # Bash associative keys are ordinal/case-sensitive. Preserve source order; do not sort for truth.
-  declare -A claude_set=() agents_set=()
-  for slug in "${common_claude[@]}"; do claude_set[$slug]=1; done
-  for slug in "${common_agents[@]}"; do agents_set[$slug]=1; done
-  missing_agents=(); missing_claude=()
-  for slug in "${common_claude[@]}"; do [ -n "${agents_set[$slug]+x}" ] || missing_agents+=("$slug"); done
-  for slug in "${common_agents[@]}"; do [ -n "${claude_set[$slug]+x}" ] || missing_claude+=("$slug"); done
-  if [ "${#missing_agents[@]}" -gt 0 ] || [ "${#missing_claude[@]}" -gt 0 ]; then
-    parts=()
-    if [ "${#missing_agents[@]}" -gt 0 ]; then
-      printf -v joined '%s, ' "${missing_agents[@]}"; parts+=("missing from AGENTS.md: ${joined%, }")
+  missing_agents=''; missing_claude=''
+  if [ "$claude_exists" -eq 1 ] && [ "$agents_exists" -eq 1 ]; then
+    for slug in $common_claude; do case " $common_agents " in *" $slug "*) ;; *) missing_agents="$missing_agents $slug";; esac; done
+    for slug in $common_agents; do case " $common_claude " in *" $slug "*) ;; *) missing_claude="$missing_claude $slug";; esac; done
+    if [ -n "$missing_agents" ] || [ -n "$missing_claude" ]; then
+      detail=''
+      [ -n "$missing_agents" ] && detail="missing from AGENTS.md: $(printf '%s' "${missing_agents# }" | sed 's/ /, /g')"
+      if [ -n "$missing_claude" ]; then
+        [ -n "$detail" ] && detail="$detail; "
+        detail="$detail""missing from CLAUDE.md: $(printf '%s' "${missing_claude# }" | sed 's/ /, /g')"
+      fi
+      fail "Common Tasks skill inventory differs: $detail."
     fi
-    if [ "${#missing_claude[@]}" -gt 0 ]; then
-      printf -v joined '%s, ' "${missing_claude[@]}"; parts+=("missing from CLAUDE.md: ${joined%, }")
-    fi
-    detail=${parts[0]}; [ "${#parts[@]}" -gt 1 ] && detail="$detail; ${parts[1]}"
-    fail "Common Tasks skill inventory differs: $detail."
   fi
 
   if { [ "$claude_exists" -eq 1 ] || [ "$agents_exists" -eq 1 ]; } &&
-     [ "${#common_claude[@]}" -eq 0 ] && [ "${#common_agents[@]}" -eq 0 ]; then
+     [ -z "$common_claude" ] && [ -z "$common_agents" ]; then
     fail "Common Tasks sections yielded zero skill slugs — the list grammar changed and this check is now blind."
   fi
 
@@ -208,8 +214,8 @@ if [ -f CLAUDE.md ] && [ -f AGENTS.md ]; then
   elif [ "$claude_exists" -ne "$agents_exists" ]; then
     missing_side=CLAUDE.md; [ "$claude_exists" -eq 1 ] && missing_side=AGENTS.md
     fail "Common Tasks section is missing from $missing_side."
-  elif [ "${#missing_agents[@]}" -eq 0 ] && [ "${#missing_claude[@]}" -eq 0 ] &&
-       [ "${#common_claude[@]}" -gt 0 ] && [ "${#common_agents[@]}" -gt 0 ]; then
+  elif [ -z "$missing_agents" ] && [ -z "$missing_claude" ] &&
+       [ -n "$common_claude" ] && [ -n "$common_agents" ]; then
     ok "Common Tasks skill inventory matches between CLAUDE.md and AGENTS.md."
   fi
 fi

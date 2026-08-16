@@ -219,10 +219,15 @@ if ((Test-Path 'CLAUDE.md') -and (Test-Path 'AGENTS.md')) {
         }
     }
 
-    # Compare ordinally and case-sensitively, without sorting for correctness.
-    $missingAgents = @($commonClaude.Slugs | Where-Object { -not ($commonAgents.Slugs -ccontains $_) })
-    $missingClaude = @($commonAgents.Slugs | Where-Object { -not ($commonClaude.Slugs -ccontains $_) })
-    if ($missingAgents.Count -gt 0 -or $missingClaude.Count -gt 0) {
+    # Compare ordinally without sorting; the lowercase-only slug grammar makes case drift unparseable.
+    $missingAgents = @()
+    $missingClaude = @()
+    if ($commonClaude.Exists -and $commonAgents.Exists) {
+        $missingAgents = @($commonClaude.Slugs | Where-Object { -not ($commonAgents.Slugs -ccontains $_) })
+        $missingClaude = @($commonAgents.Slugs | Where-Object { -not ($commonClaude.Slugs -ccontains $_) })
+    }
+    if ($commonClaude.Exists -and $commonAgents.Exists -and
+        ($missingAgents.Count -gt 0 -or $missingClaude.Count -gt 0)) {
         $parts = @()
         if ($missingAgents.Count -gt 0) { $parts += "missing from AGENTS.md: $($missingAgents -join ', ')" }
         if ($missingClaude.Count -gt 0) { $parts += "missing from CLAUDE.md: $($missingClaude -join ', ')" }

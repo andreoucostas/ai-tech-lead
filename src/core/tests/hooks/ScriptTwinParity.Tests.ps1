@@ -48,7 +48,7 @@ It 'template-checks Common Tasks twins agree on planted inventory failures and e
             if($case-eq'one-sided'){Assert ($p.Out.Contains('Common Tasks skill inventory differs: missing from AGENTS.md: zz-planted.')) 'one-sided finding absent'}
             elseif($case-eq'duplicate'){Assert ($p.Out.Contains('Common Tasks skill inventory has duplicate slug in CLAUDE.md: alpha.')) 'duplicate finding absent'}
             elseif($case-eq'zero-extraction'){Assert ($p.Out.Contains('Common Tasks sections yielded zero skill slugs — the list grammar changed and this check is now blind.')) 'zero-extraction finding absent'}
-            elseif($case-eq'absent-one'){Assert ($p.Out.Contains('Common Tasks section is missing from AGENTS.md.')) 'absent-one finding absent'}
+            elseif($case-eq'absent-one'){Assert ($p.Out.Contains('Common Tasks section is missing from AGENTS.md.')) 'absent-one finding absent';Assert (-not $p.Out.Contains('Common Tasks skill inventory differs:')) 'absent-one emitted misleading inventory drift'}
             elseif($case-eq'absent-both'){Assert ($p.Out.Contains('Common Tasks section is absent from both CLAUDE.md and AGENTS.md; skill inventory check did not run.')) 'absent-both explicit OK absent'}
         } finally { Remove-Item -Recurse -Force $r }
     }

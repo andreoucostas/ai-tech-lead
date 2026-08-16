@@ -210,7 +210,9 @@ harness defect for an unknown number of releases. Standard commands:
   `.github/hooks/hooks.json` exists in the dist, with its opposite-language twin [#3]. Check 8 does
   **not** reject a bare interpreter name: that is the intended shipped value (v0.38.1 reverted
   absolute-path pinning because `settings.json` is committed team config), and whether it *resolves*
-  is a runtime fact reported by the doctor's `Hook liveness` row, not a build-time one.
+  is a runtime fact reported by the doctor's `Hook liveness` row, not a build-time one; and
+  **`step-references`** (check 12): top-level ordered-list runs are contiguous and numbered prose
+  step references resolve within their shipped workflow file.
 - **Hook suites:** `pwsh -NoProfile -File dist/<d>/tests/hooks/Invoke-HookTests.ps1` ×3; meta
   suite `.claude/hooks/tests/Invoke-HookTests.ps1` — which also carries the two gates that cover
   the *behavioral* surface no parser can: **`InstallerContract`** (runs the shipped installer in

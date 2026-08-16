@@ -1,5 +1,5 @@
 ﻿# ai-tech-lead dist validator — PowerShell twin of validate-dist.sh. Validates an ALREADY-COMPOSED
-# dist/<mode> tree — it does NOT rebuild it (see scripts/build.ps1 for that). Eleven checks, each
+# dist/<mode> tree — it does NOT rebuild it (see scripts/build.ps1 for that). Twelve checks, each
 # with a clear OK/FAIL line:
 #   1. no unresolved @stack:NAME markers survive anywhere in the dist (composer leftovers)
 #   2. every *.json in the dist parses (ConvertFrom-Json)
@@ -13,6 +13,7 @@
 #   9. every core @stack marker expands from a non-empty stack snippet into the composed file
 #  10. section-path citations name a heading that exists in the cited shipped file
 #  11. CLAUDE.md imports the shipped framework-rules carrier
+#  12. top-level ordered-list runs are contiguous and prose step references resolve in-file
 # Exit 0 = all checks passed. Exit 1 = at least one check failed. Exit 2 = usage error, missing
 # dist, or a required tool (bash, for check 3) is unavailable — reported as FATAL, never skipped.
 #   Usage: validate-dist.ps1 {dotnet|angular|monorepo} [dist-root] [-Check name[,name...]]
@@ -44,7 +45,7 @@ for ($i = 0; $i -lt $args.Count; $i++) {
         $CheckArg = "$($args[$i])"
     } else { $positional += $a }
 }
-$ValidChecks = @('markers','json','bash-syntax','ps-syntax','template-checks','no-meta-leak','no-dead-instruction','hook-registration','marker-expansion','section-path','carrier-import')
+$ValidChecks = @('markers','json','bash-syntax','ps-syntax','template-checks','no-meta-leak','no-dead-instruction','hook-registration','marker-expansion','section-path','carrier-import','step-references')
 $SelectedChecks = @()
 if ($null -ne $CheckArg) {
     $SelectedChecks = @($CheckArg -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
@@ -61,7 +62,7 @@ if ($ContentOnly -and $null -ne $CheckArg) {
 }
 function Test-CheckSelected($name) {
     if ($null -ne $CheckArg) { return $SelectedChecks -ccontains $name }
-    if ($ContentOnly) { return @('no-meta-leak','no-dead-instruction','hook-registration') -contains $name }
+    if ($ContentOnly) { return @('no-meta-leak','no-dead-instruction','hook-registration','step-references') -contains $name }
     return $true
 }
 $Mode = $positional[0]
@@ -111,7 +112,7 @@ function Fail($m) { Record-Timing $m; Write-Output "FAIL: $m"; $script:failed++ 
 function OK($m)   { Record-Timing $m; Write-Output "OK:   $m" }
 
 # --content-only skips checks 1-5 (the parse/marker/template-checks group) and runs only the content
-# checks 6, 7 and 8. It exists for ValidateDist.Tests.ps1: those five re-parse every shipped file on
+# checks 6, 7, 8 and 12. It exists for ValidateDist.Tests.ps1: those five re-parse every shipped file on
 # every case, which made that suite 9 minutes for 15 cases x 2 legs — in a file that runs in
 # release.ps1 AND on both CI legs. Neither release.ps1 nor CI passes it, and the suite's green
 # anchors still run the FULL validator so the skipped group stays exercised on both legs.
@@ -710,6 +711,73 @@ if (@($regProblems).Count -gt 0) {
 } else {
     # The parser is named here too, so both twins' OK lines state how the registrations were read.
     OK "all $regCount hook registrations resolve (settings.json $($settingsCounts['.claude/settings.json']), settings.windows.json $($settingsCounts['.claude/settings.windows.json']), hooks.json $hookEntries entries × 2 legs; parsed by ConvertFrom-Json)"
+}
+}
+
+if (Test-CheckSelected 'step-references') {
+# --- 12. ordered-list runs and prose step references ---------------------------------------------
+# Top-level labels only: nested ordered lists are out of scope, and a genuine second procedure
+# renumbered from 1 is accepted. References are file-scoped, so one can resolve against the wrong
+# list in a multi-list file. Numbered ranges and unnumbered references are also deliberately out of
+# scope. Fenced code is blanked before both assertions; each Markdown file is read exactly once.
+$stepFiles = @()
+foreach ($scope in @('.claude/skills','.claude/commands','.claude/agents')) {
+    $path = Join-Path $DistAbs $scope
+    if (-not (Test-Path $path -PathType Container)) { continue }
+    if ($scope -eq '.claude/skills') {
+        $stepFiles += @(Get-ChildItem -LiteralPath $path -Recurse -Force -File -Filter *.md)
+    } else {
+        $stepFiles += @(Get-ChildItem -LiteralPath $path -Force -File -Filter *.md)
+    }
+}
+$stepFiles = @($stepFiles | Sort-Object FullName -Unique)
+$stepProblems = @()
+$stepLabelCount = 0
+$stepReferenceCount = 0
+foreach ($file in $stepFiles) {
+    $relative = $file.FullName.Substring($DistAbs.Length).TrimStart('\','/').Replace('\','/')
+    $rawLines = @([IO.File]::ReadAllLines($file.FullName))
+    $lines = New-Object System.Collections.Generic.List[string]
+    $inFence = $false
+    foreach ($line in $rawLines) {
+        if ($line -match '^(?:```|~~~)') { $inFence = -not $inFence; $lines.Add(''); continue }
+        if ($inFence) { $lines.Add('') } else { $lines.Add($line) }
+    }
+    $labels = New-Object System.Collections.Generic.List[int]
+    $definitions = New-Object 'System.Collections.Generic.HashSet[int]'
+    $references = New-Object System.Collections.Generic.List[int]
+    foreach ($line in $lines) {
+        if ($line -cmatch '^(?<n>\d+)\. ') { $labels.Add([int]$Matches.n) }
+        if ($line -cmatch '^#{1,6}\s+Step\s+(?<n>\d+)\b') { $null = $definitions.Add([int]$Matches.n) }
+        if ($line -match '^#{1,6}\s') { continue }
+        foreach ($match in [regex]::Matches($line, '(?<![A-Za-z0-9_])[sS]tep\s+(?:\*\*)?(?<n>\d+)(?:\*\*)?')) {
+            $references.Add([int]$match.Groups['n'].Value)
+        }
+    }
+    $stepLabelCount += @($labels).Count
+    $stepReferenceCount += @($references).Count
+    $previous = $null
+    foreach ($label in $labels) {
+        if ($null -eq $previous -or $label -ne ($previous + 1)) {
+            if ($label -ne 0 -and $label -ne 1) { $stepProblems += "$relative : ordered-list run starts at $label (expected 0 or 1)" }
+        }
+        $previous = $label
+    }
+    foreach ($reference in $references) {
+        if (-not ($labels -contains $reference) -and -not $definitions.Contains($reference)) {
+            $stepProblems += "$relative : prose step $reference has no ordered-list label or Step $reference heading in this file"
+        }
+    }
+}
+if (@($stepFiles).Count -eq 0) {
+    Fail "step-reference scan found zero Markdown files in $Dist -- the input is empty or the scan scope changed."
+} elseif ($stepReferenceCount -eq 0) {
+    Fail "step-reference scan found zero prose references in $Dist ($(@($stepFiles).Count) files scanned; $stepLabelCount ordered-list labels found) -- the extractor is blind."
+} elseif (@($stepProblems).Count -gt 0) {
+    Fail "ordered-list or step-reference defects in shipped workflows -- $(@($stepProblems).Count) finding(s) ($(@($stepFiles).Count) files scanned; $stepLabelCount labels found; $stepReferenceCount prose references found)."
+    $stepProblems | Sort-Object -Unique | ForEach-Object { Write-Output "  [step-references] $_" }
+} else {
+    OK "ordered-list runs are contiguous and prose step references resolve ($(@($stepFiles).Count) files scanned; $stepLabelCount labels found; $stepReferenceCount prose references found)."
 }
 }
 

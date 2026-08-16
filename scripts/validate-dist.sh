@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ai-tech-lead dist validator (bash twin; .ps1 twin is validate-dist.ps1). Validates an
 # ALREADY-COMPOSED dist/<mode> tree — it does NOT rebuild it (see scripts/build.sh for that).
-# Eleven checks, each with a clear OK/FAIL line:
+# Twelve checks, each with a clear OK/FAIL line:
 #   1. no unresolved @stack:NAME markers survive anywhere in the dist (composer leftovers)
 #   2. every *.json in the dist parses
 #   3. `bash -n` passes on every *.sh in the dist
@@ -14,6 +14,7 @@
 #   9. every core @stack marker expands from a non-empty stack snippet into the composed file
 #  10. section-path citations name a heading that exists in the cited shipped file
 #  11. CLAUDE.md imports the shipped framework-rules carrier
+#  12. top-level ordered-list runs are contiguous and prose step references resolve in-file
 # Exit 0 = all checks passed. Exit 1 = at least one check failed. Exit 2 = usage error, missing
 # dist, or a required tool (JSON parser / bash / PowerShell host) is unavailable — these are
 # reported as FATAL and never silently skipped.
@@ -53,7 +54,7 @@ if [ "$CONTENT_ONLY" = "1" ] && [ "$CHECK_SET" = "1" ]; then
   exit 2
 fi
 
-VALID_CHECKS='markers json bash-syntax ps-syntax template-checks no-meta-leak no-dead-instruction hook-registration marker-expansion section-path carrier-import'
+VALID_CHECKS='markers json bash-syntax ps-syntax template-checks no-meta-leak no-dead-instruction hook-registration marker-expansion section-path carrier-import step-references'
 SELECTED_CHECKS=""
 if [ "$CHECK_SET" = "1" ]; then
   _old_ifs=$IFS; IFS=,
@@ -69,7 +70,7 @@ if [ "$CHECK_SET" = "1" ]; then
 fi
 check_selected() {
   if [ "$CHECK_SET" = "1" ]; then case " $SELECTED_CHECKS " in *" $1 "*) return 0;; *) return 1;; esac; fi
-  if [ "$CONTENT_ONLY" = "1" ]; then case "$1" in no-meta-leak|no-dead-instruction|hook-registration) return 0;; *) return 1;; esac; fi
+  if [ "$CONTENT_ONLY" = "1" ]; then case "$1" in no-meta-leak|no-dead-instruction|hook-registration|step-references) return 0;; *) return 1;; esac; fi
   return 0
 }
 [ -d "$DIST" ] || { echo "no $DIST — run scripts/build.sh $MODE first" >&2; exit 2; }
@@ -105,7 +106,7 @@ fail() { _record_timing "${1:0:60}"; echo "FAIL: $1"; failed=$((failed+1)); }
 ok()   { _record_timing "${1:0:60}"; echo "OK:   $1"; }
 
 # --content-only skips checks 1-5 (parse/marker/template-checks) and runs only the content checks
-# 6, 7 and 8. See the PowerShell twin for the full rationale: those five re-parse every shipped file
+# 6, 7, 8 and 12. See the PowerShell twin for the full rationale: those five re-parse every shipped file
 # on every case, which made ValidateDist.Tests.ps1 a 9-minute suite in a file that runs in
 # release.ps1 and on both CI legs. Neither release.ps1 nor CI passes it; the suite's green anchors
 # still run the FULL validator. A restricted run announces itself — a subset must never read as a
@@ -941,6 +942,56 @@ else
   # The parser is named so a caller can assert WHICH branch ran; a comparison of two streams that
   # cannot tell the branches apart proves nothing.
   ok "all $regcount hook registrations resolve (settings.json $settingscount, settings.windows.json $windowscount, hooks.json $hookentries entries × 2 legs; parsed by $JSON_TOOL)"
+fi
+fi
+
+if check_selected step-references; then
+# --- 12. ordered-list runs and prose step references ---------------------------------------------
+# Top-level labels only: nested ordered lists are out of scope, and a genuine second procedure
+# renumbered from 1 is accepted. References are file-scoped, so one can resolve against the wrong
+# list in a multi-list file. Numbered ranges and unnumbered references are also deliberately out of
+# scope. Fenced code is blanked before both assertions; each Markdown file is read exactly once.
+step_files=0; step_labels=0; step_refs=0; step_problems=''
+while IFS= read -r -d '' file; do
+  step_files=$((step_files+1)); rel=${file#"$DIST/"}
+  labels=''; definitions=''; references=''; previous=''; in_fence=0
+  while IFS= read -r line || [ -n "$line" ]; do
+    line=${line%$'\r'}
+    case "$line" in '```'*|'~~~'*) in_fence=$((1-in_fence)); continue;; esac
+    [ "$in_fence" -eq 0 ] || continue
+    if [[ "$line" =~ ^([0-9]+)\.\  ]]; then
+      label=${BASH_REMATCH[1]}; labels="$labels $label"; step_labels=$((step_labels+1))
+      if [ -z "$previous" ] || [ "$label" -ne $((previous+1)) ]; then
+        if [ "$label" -ne 0 ] && [ "$label" -ne 1 ]; then step_problems="$step_problems
+$rel : ordered-list run starts at $label (expected 0 or 1)"; fi
+      fi
+      previous=$label
+    fi
+    if [[ "$line" =~ ^#{1,6}[[:space:]]+[Ss]tep[[:space:]]+([0-9]+) ]]; then definitions="$definitions ${BASH_REMATCH[1]}"; fi
+    [[ "$line" =~ ^#{1,6}[[:space:]] ]] && continue
+    rest=$line
+    while [[ "$rest" =~ (^|[^[:alnum:]_])[Ss]tep[[:space:]]+(\*\*)?([0-9]+)(\*\*)? ]]; do
+      reference=${BASH_REMATCH[3]}; references="$references $reference"; step_refs=$((step_refs+1))
+      matched=${BASH_REMATCH[0]}; rest=${rest#*"$matched"}
+    done
+  done < "$file"
+  for reference in $references; do
+    case " $labels $definitions " in *" $reference "*) ;;
+      *) step_problems="$step_problems
+$rel : prose step $reference has no ordered-list label or Step $reference heading in this file";;
+    esac
+  done
+done < <(find "$DIST/.claude/skills" -type f -name '*.md' -print0 2>/dev/null; find "$DIST/.claude/commands" -maxdepth 1 -type f -name '*.md' -print0 2>/dev/null; find "$DIST/.claude/agents" -maxdepth 1 -type f -name '*.md' -print0 2>/dev/null)
+step_problem_count=$(printf '%s\n' "$step_problems" | grep -c . || true)
+if [ "$step_files" -eq 0 ]; then
+  fail "step-reference scan found zero Markdown files in $DIST -- the input is empty or the scan scope changed."
+elif [ "$step_refs" -eq 0 ]; then
+  fail "step-reference scan found zero prose references in $DIST ($step_files files scanned; $step_labels ordered-list labels found) -- the extractor is blind."
+elif [ "$step_problem_count" -gt 0 ]; then
+  fail "ordered-list or step-reference defects in shipped workflows -- $step_problem_count finding(s) ($step_files files scanned; $step_labels labels found; $step_refs prose references found)."
+  printf '%s\n' "$step_problems" | grep . | sort -u | sed 's/^/  [step-references] /'
+else
+  ok "ordered-list runs are contiguous and prose step references resolve ($step_files files scanned; $step_labels labels found; $step_refs prose references found)."
 fi
 fi
 
