@@ -51,7 +51,7 @@ build key — fix that before trusting anything else on this page.
 
 Shipped in every consumer repo, maintained by framework updates — do not hand-edit:
 - `scripts/docs-sync-check.sh` / `.ps1` — the framework-state check (step 1).
-- `scripts/template-checks.sh` / `.ps1` — invoked by step 1 internally; version/mirror/BOM/twin gates.
+- `scripts/template-checks.sh` / `.ps1` — invoked by step 1 internally; version/mirror/BOM/twin/Common Tasks inventory gates.
 - `docs/ci-integration.md` — the full recipe (Bamboo task-by-task, Jenkinsfile example).
 - `scripts/ci/bitbucket-pipelines.example.yml` — Bitbucket **Cloud** only; not applicable on DC.
 

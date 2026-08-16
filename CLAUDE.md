@@ -60,7 +60,7 @@ kept stable from the pre-merge workspace; #1 was retargeted by the merge per WSD
 2. **`CLAUDE.md` ↔ `AGENTS.md` mirror parity (per dist).** The shipped `CLAUDE.md` is canonical;
    `AGENTS.md` is its generated mirror. Both are composed from `src/`, so fix mirror drift **in
    the source snippets/files**, then rebuild. The deterministic gate is each dist's
-   `dist/<stack>/scripts/template-checks.{ps1,sh}` (verbatim section diff + version stamps), run per dist by
+   `dist/<stack>/scripts/template-checks.{ps1,sh}` (verbatim section diff + version stamps + Common Tasks skill inventory), run per dist by
    `validate-dist` and by CI. This repo's own root `CLAUDE.md` (this file) has a hand-maintained
    `AGENTS.md` mirror — regenerate it when you edit this file.
 3. **`.ps1` / `.sh` twin parity.** Every **shipped** hook/script, and every composer/gate script

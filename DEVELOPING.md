@@ -32,7 +32,7 @@ git status --porcelain dist/   # MUST print nothing — otherwise commit the dis
 for d in dotnet angular monorepo; do bash scripts/build.sh "$d"; done   # .sh twin (CI linux leg)
 ```
 
-## Validate the dists (markers, JSON, bash -n, PS-AST, per-dist template-checks [#2], no-meta-leak [#6], no-dead-instruction, hook-registration)
+## Validate the dists (markers, JSON, bash -n, PS-AST, per-dist template-checks [#2, including Common Tasks skill inventory], no-meta-leak [#6], no-dead-instruction, hook-registration)
 
 ```powershell
 foreach ($d in 'dotnet','angular','monorepo') { pwsh -NoProfile -File scripts/validate-dist.ps1 $d; "exit=$LASTEXITCODE" }

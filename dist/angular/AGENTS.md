@@ -97,7 +97,7 @@ Recipes live as auto-discovered **skills**, available to both Claude Code (`.cla
 - `add-service` — add an HTTP / business-logic / signal-store service
 - `add-lazy-route` — add a lazy-loaded route with optional guards/resolvers
 - `add-signal-store` — add a signal-based shared-state store
-- `add-tests` — add tests following project patterns (Jasmine/Karma or Jest spec + HTTP mocks)
+- `add-tests` — add specs following project patterns (TestBed + `HttpTestingController`, harnesses, store state-transition tests)
 - `dependency-audit` — scan for vulnerable/outdated npm packages and wire up automated dependency scanning
 - `create-adr` — record an architecture decision
 - `remember-for-team` — draft a team wiki entry (gotcha/context/recipe/failed-approach) for PR review

@@ -6,7 +6,8 @@
 # Checks: version-stamp sync (CLAUDE.md header == framework-version.json == CHANGELOG head),
 # CLAUDE.md ↔ AGENTS.md verbatim mirror (rule sections + Agentic Workflow §1),
 # copilot-instructions.md present and <= 80 lines, UTF-8 BOM on framework .ps1 files,
-# .ps1/.sh hook twin existence, and PS syntax of framework scripts.
+# .ps1/.sh hook twin existence, PS syntax of framework scripts, skills-directory mirror, and
+# Common Tasks skill inventory parity.
 # 5.1-safe: no pwsh-only syntax.
 $ErrorActionPreference = 'Stop'
 
@@ -181,6 +182,68 @@ if ($claudeSkills -or $githubSkills) {
     }
     if ($mism.Count -gt 0) { Fail ("skills mirror drift (.claude/skills vs .github/skills -- run /generate-copilot): " + ($mism -join '; ')) }
     else { OK ".claude/skills and .github/skills are in sync." }
+}
+
+# --- 8. Common Tasks skill inventory: CLAUDE.md <-> AGENTS.md ---------------------------------
+# The descriptions are intentionally allowed to be condensed in AGENTS.md. The slug inventory is
+# contractual on both surfaces, though: /generate-copilot promises Common Tasks is "the skills
+# list". Normalize BOM/CRLF before parsing so checkout encoding cannot split the script twins.
+function Get-CommonTaskInventory($Path) {
+    $text = [IO.File]::ReadAllText((Resolve-Path -LiteralPath $Path).Path) -replace "`r`n", "`n"
+    if ($text.Length -gt 0 -and $text[0] -eq [char]0xFEFF) { $text = $text.Substring(1) }
+    $exists = $false
+    $inSection = $false
+    $slugs = New-Object System.Collections.Generic.List[string]
+    foreach ($line in ($text -split "`n")) {
+        if ($line -eq '## Common Tasks') { $exists = $true; $inSection = $true; continue }
+        if ($inSection -and $line -match '^## ') { break }
+        if ($inSection -and $line -cmatch '^- `(?<slug>[a-z0-9][a-z0-9-]*)` (?:—|-) ') {
+            $slugs.Add($Matches.slug)
+        }
+    }
+    return [pscustomobject]@{ Exists = $exists; Slugs = @($slugs) }
+}
+
+if ((Test-Path 'CLAUDE.md') -and (Test-Path 'AGENTS.md')) {
+    $commonClaude = Get-CommonTaskInventory 'CLAUDE.md'
+    $commonAgents = Get-CommonTaskInventory 'AGENTS.md'
+
+    # Duplicates must be diagnosed before set equality, because a set comparison hides them.
+    foreach ($side in @(@('CLAUDE.md',$commonClaude), @('AGENTS.md',$commonAgents))) {
+        $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+        $reported = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+        foreach ($slug in $side[1].Slugs) {
+            if (-not $seen.Add($slug) -and $reported.Add($slug)) {
+                Fail "Common Tasks skill inventory has duplicate slug in $($side[0]): $slug."
+            }
+        }
+    }
+
+    # Compare ordinally and case-sensitively, without sorting for correctness.
+    $missingAgents = @($commonClaude.Slugs | Where-Object { -not ($commonAgents.Slugs -ccontains $_) })
+    $missingClaude = @($commonAgents.Slugs | Where-Object { -not ($commonClaude.Slugs -ccontains $_) })
+    if ($missingAgents.Count -gt 0 -or $missingClaude.Count -gt 0) {
+        $parts = @()
+        if ($missingAgents.Count -gt 0) { $parts += "missing from AGENTS.md: $($missingAgents -join ', ')" }
+        if ($missingClaude.Count -gt 0) { $parts += "missing from CLAUDE.md: $($missingClaude -join ', ')" }
+        Fail ("Common Tasks skill inventory differs: " + ($parts -join '; ') + '.')
+    }
+
+    # A present section yielding no slugs means the list grammar changed and the check is blind.
+    if (($commonClaude.Exists -or $commonAgents.Exists) -and
+        (@($commonClaude.Slugs).Count -eq 0 -and @($commonAgents.Slugs).Count -eq 0)) {
+        Fail 'Common Tasks sections yielded zero skill slugs — the list grammar changed and this check is now blind.'
+    }
+
+    if (-not $commonClaude.Exists -and -not $commonAgents.Exists) {
+        OK 'Common Tasks section is absent from both CLAUDE.md and AGENTS.md; skill inventory check did not run.'
+    } elseif ($commonClaude.Exists -ne $commonAgents.Exists) {
+        $missingSide = if ($commonClaude.Exists) { 'AGENTS.md' } else { 'CLAUDE.md' }
+        Fail "Common Tasks section is missing from $missingSide."
+    } elseif ($missingAgents.Count -eq 0 -and $missingClaude.Count -eq 0 -and
+              @($commonClaude.Slugs).Count -gt 0 -and @($commonAgents.Slugs).Count -gt 0) {
+        OK 'Common Tasks skill inventory matches between CLAUDE.md and AGENTS.md.'
+    }
 }
 
 Write-Output ''

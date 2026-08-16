@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # AI Tech Lead deterministic framework checks — bash twin of template-checks.ps1.
 # Exit 0 = pass, otherwise the failure count. Runs in the template repo (CI) and in consumer
-# repos (invoked by docs-sync-check). Same checks as the .ps1 twin, minus the PS-syntax parse
-# (no PowerShell host assumed here; the CI windows leg covers it).
+# repos (invoked by docs-sync-check). Checks cover version/mirror/BOM/twin/skills-directory/Common
+# Tasks inventory parity, minus the PS-syntax parse (the CI windows leg covers it).
 set -u
 
 # Anchor to the repo this script lives in (scripts/..), not the caller's cwd — running from
@@ -133,6 +133,84 @@ if [ -d .claude/skills ] || [ -d .github/skills ]; then
   else
     details=$(diff -rq --strip-trailing-cr .claude/skills .github/skills 2>&1 | tr '\n' ';')
     fail "skills mirror drift (.claude/skills vs .github/skills — run /generate-copilot): $details"
+  fi
+fi
+
+# --- 8. Common Tasks skill inventory: CLAUDE.md <-> AGENTS.md ---------------------------------
+# Descriptions may be condensed in AGENTS.md, but /generate-copilot promises this remains the same
+# skills list. awk strips a UTF-8 BOM and CR before parsing; punctuation tests avoid non-ASCII
+# bracket expressions, which have corrupted UTF-8 differently across shell environments before.
+common_tasks() { # $1=file; emits existence marker followed by slugs in document order
+  awk '
+    NR==1 { sub(/^\357\273\277/, "") }
+    { sub(/\r$/, "") }
+    $0=="## Common Tasks" { print "EXISTS"; section=1; next }
+    section && /^## / { exit }
+    section && /^- `[a-z0-9][a-z0-9-]*` / {
+      line=$0; sub(/^- `/, "", line); slug=line; sub(/`.*/, "", slug)
+      rest=line; sub(/^[a-z0-9][a-z0-9-]*`/, "", rest)
+      if (index(rest, " — ")==1 || index(rest, " - ")==1) print slug
+    }
+  ' "$1"
+}
+
+if [ -f CLAUDE.md ] && [ -f AGENTS.md ]; then
+  mapfile -t common_claude < <(common_tasks CLAUDE.md)
+  mapfile -t common_agents < <(common_tasks AGENTS.md)
+  claude_exists=0; agents_exists=0
+  [ "${common_claude[0]-}" = EXISTS ] && { claude_exists=1; common_claude=("${common_claude[@]:1}"); }
+  [ "${common_agents[0]-}" = EXISTS ] && { agents_exists=1; common_agents=("${common_agents[@]:1}"); }
+
+  # Duplicates first: a set comparison would otherwise hide this defect.
+  declare -A seen_common=() reported_common=()
+  for slug in "${common_claude[@]}"; do
+    if [ -n "${seen_common[$slug]+x}" ] && [ -z "${reported_common[$slug]+x}" ]; then
+      fail "Common Tasks skill inventory has duplicate slug in CLAUDE.md: $slug."
+      reported_common[$slug]=1
+    fi
+    seen_common[$slug]=1
+  done
+  seen_common=(); reported_common=()
+  for slug in "${common_agents[@]}"; do
+    if [ -n "${seen_common[$slug]+x}" ] && [ -z "${reported_common[$slug]+x}" ]; then
+      fail "Common Tasks skill inventory has duplicate slug in AGENTS.md: $slug."
+      reported_common[$slug]=1
+    fi
+    seen_common[$slug]=1
+  done
+
+  # Bash associative keys are ordinal/case-sensitive. Preserve source order; do not sort for truth.
+  declare -A claude_set=() agents_set=()
+  for slug in "${common_claude[@]}"; do claude_set[$slug]=1; done
+  for slug in "${common_agents[@]}"; do agents_set[$slug]=1; done
+  missing_agents=(); missing_claude=()
+  for slug in "${common_claude[@]}"; do [ -n "${agents_set[$slug]+x}" ] || missing_agents+=("$slug"); done
+  for slug in "${common_agents[@]}"; do [ -n "${claude_set[$slug]+x}" ] || missing_claude+=("$slug"); done
+  if [ "${#missing_agents[@]}" -gt 0 ] || [ "${#missing_claude[@]}" -gt 0 ]; then
+    parts=()
+    if [ "${#missing_agents[@]}" -gt 0 ]; then
+      printf -v joined '%s, ' "${missing_agents[@]}"; parts+=("missing from AGENTS.md: ${joined%, }")
+    fi
+    if [ "${#missing_claude[@]}" -gt 0 ]; then
+      printf -v joined '%s, ' "${missing_claude[@]}"; parts+=("missing from CLAUDE.md: ${joined%, }")
+    fi
+    detail=${parts[0]}; [ "${#parts[@]}" -gt 1 ] && detail="$detail; ${parts[1]}"
+    fail "Common Tasks skill inventory differs: $detail."
+  fi
+
+  if { [ "$claude_exists" -eq 1 ] || [ "$agents_exists" -eq 1 ]; } &&
+     [ "${#common_claude[@]}" -eq 0 ] && [ "${#common_agents[@]}" -eq 0 ]; then
+    fail "Common Tasks sections yielded zero skill slugs — the list grammar changed and this check is now blind."
+  fi
+
+  if [ "$claude_exists" -eq 0 ] && [ "$agents_exists" -eq 0 ]; then
+    ok "Common Tasks section is absent from both CLAUDE.md and AGENTS.md; skill inventory check did not run."
+  elif [ "$claude_exists" -ne "$agents_exists" ]; then
+    missing_side=CLAUDE.md; [ "$claude_exists" -eq 1 ] && missing_side=AGENTS.md
+    fail "Common Tasks section is missing from $missing_side."
+  elif [ "${#missing_agents[@]}" -eq 0 ] && [ "${#missing_claude[@]}" -eq 0 ] &&
+       [ "${#common_claude[@]}" -gt 0 ] && [ "${#common_agents[@]}" -gt 0 ]; then
+    ok "Common Tasks skill inventory matches between CLAUDE.md and AGENTS.md."
   fi
 fi
 
