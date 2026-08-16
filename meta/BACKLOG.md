@@ -5071,9 +5071,14 @@ planted unreadable file and an emptied tree, both twins.
   button) is a push to `master` this local wrapper can never observe, since it never runs on this
   machine. That residual is not closed here; it is the same "who actually watches this push" gap one
   level up, worth naming as a candidate follow-up rather than silently declaring the class closed.
-  Separately: `RepositoryPrivacy.Tests.ps1`'s pre-existing failure (found incidentally, not part of
-  this item's scope) means `meta/eval-results.md` has been shipping a real personal-path leak in the
-  authoring tree since at least the B-129 write-up — worth its own small follow-up.
+  Separately: `RepositoryPrivacy.Tests.ps1` had a pre-existing failure (found incidentally, not part
+  of this item's original scope) — `meta/eval-results.md:1382` leaked `C:\Users\<redacted>\...` from
+  the B-129 write-up, and it had been on `master` undetected since that commit, which is exactly
+  B-137's own point: nothing was watching that non-release push either. Confirmed via
+  `push-and-check.ps1 -Sha f818a2c`-adjacent watch that CI was genuinely red on the merge for this
+  reason (both legs, `RepositoryPrivacy.Tests.ps1` only) before the redaction below, and green after.
+  Fixed in the same session rather than left open, since master was actively red: redacted to
+  `C:\Users\<account>\...`, matching the scanner's own documented placeholder convention.
 
 - **B-41** — DONE **2026-08-13**. The re-scoped DONE bar is **Claude behavioral evidence +
   Copilot hook-shape coverage (confirmed already shipping)**. Phase 1 supplied the typed Claude

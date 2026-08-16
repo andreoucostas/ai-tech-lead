@@ -1379,7 +1379,7 @@ attempt 1 hit: a fresh `pwsh` subprocess again lacked `claude` on `PATH` (`claud
 or not on PATH`, 0 trials, 0 cost). The [[corrupted-session-path]] fix must be reapplied inside
 **every** new subprocess, including subprocesses launched hours apart in the same wrapping session —
 it does not persist. Confirmed by direct check: `Get-Command claude` resolved to
-`C:\Users\Costas\.local\bin\claude.exe` only after re-running the fix inline in that subprocess.
+`C:\Users\<account>\.local\bin\claude.exe` only after re-running the fix inline in that subprocess.
 
 The next launch, with the fix applied inside the same `pwsh -File` invocation that runs the harness,
 executed the full pre-registered 16-trial batch (`-Model sonnet -TimeoutSeconds 600`,
