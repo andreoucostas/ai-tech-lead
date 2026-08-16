@@ -458,7 +458,7 @@ second, looser check is worth it — e.g. flag when one side names a technology 
 not. Red-test per `DEVELOPING.md`: plant a slug on one side only, show non-zero exit, then the clean
 pass. Both twins.
 
-### B-61 · Twin behavioural parity does not cover shipped `scripts/`, only `.claude/hooks/`
+### B-61 · Twin behavioural parity does not cover shipped `scripts/`, only `.claude/hooks/` — **DONE, heading corrected 2026-08-16, see Done section**
 **Effort:** M · **Priority:** P1
 
 **Why:** `tests/hooks/TwinParity.Tests.ps1` genuinely runs both twins against fixtures and diffs
@@ -471,7 +471,7 @@ doctor is the diagnostic every other honesty claim rests on.
 **Do:** extend the behavioural twin comparison to the shipped `scripts/` twins, framework-doctor
 first.
 
-### B-62 · No gate validates the hook registrations we ship
+### B-62 · No gate validates the hook registrations we ship — **DONE, heading corrected 2026-08-16, see Done section**
 **Effort:** S · **Priority:** P1
 
 **Why:** a bare interpreter name shipped in `dist/*/.claude/settings.json` for many versions with no
@@ -770,7 +770,7 @@ planted dangling path.
 
 ---
 
-### B-78 · Warehouse-map staleness has four populations no signal reaches
+### B-78 · Warehouse-map staleness has four populations no signal reaches — **DONE, heading corrected 2026-08-16, see Done section**
 **Effort:** S · **Priority:** P3 · found 2026-08-01 shipping v0.42.0
 
 > **DONE in v0.51.0.** `warehouse-map-check` reaches current/missing/stale/declined/not-applicable
@@ -847,7 +847,7 @@ profiling this does not rediscover it and assume it was missed.
 
 ---
 
-### B-80 · `release.ps1`'s `git add -A` commits whatever is sitting in the working tree
+### B-80 · `release.ps1`'s `git add -A` commits whatever is sitting in the working tree — **DONE, heading corrected 2026-08-16, see Done section**
 **Effort:** S · **Priority:** P2 release integrity · **Invariants:** #7 · found 2026-08-01 after v0.43.0
 
 **Why:** the release stages with a blanket `git add -A` (step 5). That is deliberate — the release
@@ -906,6 +906,20 @@ is B-59's inert-check class one level up: not an inert *check*, an inert *fixtur
 
 ### B-83 · A backlog entry's *Do* can be contradicted by a later shipped decision, and nothing notices
 **Effort:** M · **Priority:** P2 · filed 2026-08-02 (RCA of v0.44.0)
+
+**Sibling defect measured 2026-08-16 — the same rot, in the heading rather than the body.** A full
+audit of all 71 claimed-open entries (`meta/backlog-heading-audit-2026-08-16.md`) found **16 whose
+work had demonstrably shipped while the heading still read open** — B-61, B-62, B-78, B-80, B-103,
+B-104, B-105, B-107, B-110, B-113, B-115, B-116, B-118, B-119, B-120, B-121. Ten of the sixteen
+already carried an inline `> **DONE …**` marker *in their own body*, so the entry contradicted its own
+heading and nothing noticed. Headings are now corrected. This was found the expensive way: while
+picking "the next item to work on", B-80 was selected and turned out to be fully implemented
+(`release.ps1` step 5a + `ReleaseStagingGuard.Tests.ps1`, whose header names B-80) — i.e. the backlog
+actively misdirected real work. The audit also flagged **13 UNCLEAR** entries (B-50, B-64, B-65,
+B-66, B-70, B-72, B-96, B-97, B-98, B-101, B-102, B-112, B-117) where the shipped state only
+partially matches the entry's *Do*; those were deliberately NOT auto-closed and each needs a human
+read. Whatever mechanism this item lands on should cover heading/body/Done-section agreement, not
+just the *Do*-versus-decision drift it was originally filed for.
 
 **Why:** B-62 was filed as a P1 and sat open. Its instruction — "fail on a bare interpreter name in a
 shipped settings file" — was *already wrong when read*, because **v0.38.1** had deliberately reverted
@@ -2325,7 +2339,7 @@ pass).
 
 ---
 
-### B-103 · Post-ship review owed for B-102 — implementer and reviewer were the same session
+### B-103 · Post-ship review owed for B-102 — implementer and reviewer were the same session — **DONE, heading corrected 2026-08-16, see Done section**
 
 > **DONE — review performed 2026-08-05** by an independent session (Opus 5; B-102's implementer was
 > a different session), with an adversarial second pass by codex `gpt-5.6-sol` over the review's own
@@ -2384,7 +2398,7 @@ third instance), B-45 (the review ledger that made this fileable at release time
 
 ---
 
-### B-104 · `route-prompt.sh` selects the Windows Store stub and then silently routes nothing
+### B-104 · `route-prompt.sh` selects the Windows Store stub and then silently routes nothing — **DONE, heading corrected 2026-08-16, see Done section**
 **Effort:** S · **Priority:** **P1** · found 2026-08-05 by B-103's review · **Invariants:** #3 #5 #6
 
 **Why:** `src/core/.claude/hooks/route-prompt.sh` extracts the prompt through an `elif` chain:
@@ -2419,7 +2433,7 @@ Also correct `docs/enforcement-surfaces.md:48` (F4): it promises execution-probi
 **Cross-links:** B-102 (the change that missed it), B-103 (the review that found it), B-108 (the
 two-grammar duplication that *caused* the miss), B-63.
 
-### B-105 · The doctor reports the write floor backwards — `MISSING` while the guard is active
+### B-105 · The doctor reports the write floor backwards — `MISSING` while the guard is active — **DONE, heading corrected 2026-08-16, see Done section**
 **Effort:** S · **Priority:** P2 · found 2026-08-05 by B-103's review · **Invariants:** #3 #5
 
 **Why:** `framework-doctor.sh` still name-probes `python3` at `:43` (version-stamp read), `:134`
@@ -2468,7 +2482,7 @@ selected. That fixture already carries the Git-Bash/POSIX split both CI legs nee
 skips to execution probes, and when a host genuinely lacks every parser surface it as an
 **invariant-guarding** skip per B-71, not an inline `[skip]` inside a green summary. Both legs [B-70].
 
-### B-107 · Comments left contradicting the code beneath them
+### B-107 · Comments left contradicting the code beneath them — **DONE, heading corrected 2026-08-16, see Done section**
 **Effort:** S · **Priority:** P3 · found 2026-08-05 by B-103's adversarial pass
 
 `audit-trail.sh:73` still says *"fall back to python3"* directly above the new three-candidate
@@ -2549,7 +2563,7 @@ for Maintenance model #2 being enforced rather than encouraged: **the failing co
 implementation, it is the self-report.** Worth considering whether `release.ps1` should require the
 claimed blast radius to be stated as a file list it can diff against the commit.
 
-### B-110 · The context-footprint ceiling is advisory — the budget gate cannot fail on a breach
+### B-110 · The context-footprint ceiling is advisory — the budget gate cannot fail on a breach — **DONE, heading corrected 2026-08-16, see Done section**
 
 > **DONE 2026-08-06 (meta-only; the twins do not ship — they are authoring gates, absent from
 > `dist/*/scripts/`, so no version bump).** **Decision: the ceilings are LIMITS, not guidance.**
@@ -2796,7 +2810,7 @@ red-test yourself, do not read the release output as evidence -- and file whatev
 close this entry, recording what was re-run.
 
 ---
-### B-113 · CI is being cancelled at exactly 15 minutes, and the windows leg already runs 12–14.5
+### B-113 · CI is being cancelled at exactly 15 minutes, and the windows leg already runs 12–14.5 — **DONE, heading corrected 2026-08-16, see Done section**
 **Effort:** S to diagnose · **Priority:** **P1** — it blocks every release · found 2026-08-06 shipping v0.48.0
 
 **Why:** the v0.48.0 release commit (`beface1`) could not be tagged, because `release.ps1`'s CI watch
@@ -2957,7 +2971,7 @@ check to the meta suite — a five-line scan over `^### B-\d+`, in the file that
 repo's documentation for truth.
 
 ---
-### B-115 · Pure SQL / SSDT / dbt repos cannot be installed, and `/adopt` cannot run in one
+### B-115 · Pure SQL / SSDT / dbt repos cannot be installed, and `/adopt` cannot run in one — **DONE, heading corrected 2026-08-16, see Done section**
 **Effort:** S · **Priority:** P3 · found 2026-08-07 (dimension-binding work)
 
 > **DONE in v0.51.0.** Root fallback uses the shared category signal table after application-stack
@@ -2989,7 +3003,7 @@ static budget — measure it).
 altitude, and nothing here changes that.
 
 ---
-### B-116 · `route-prompt` has no data or warehouse vocabulary
+### B-116 · `route-prompt` has no data or warehouse vocabulary — **DONE, heading corrected 2026-08-16, see Done section**
 **Effort:** S · **Priority:** P3 · found 2026-08-07 · **Cross-link:** B-98 (the general routing question)
 
 > **DONE (no code) in v0.51.0.** The write-side baseline routed correctly, so warehouse regexes
@@ -3033,7 +3047,7 @@ channel does not fire. Sweep the roster for pairs whose triggers overlap on a pl
 carry the boundary in skill **bodies**, which are free and are read once the skill is open.
 
 ---
-### B-118 · RCA: a recipe listed what to build without ever asking whether it should exist
+### B-118 · RCA: a recipe listed what to build without ever asking whether it should exist — **DONE, heading corrected 2026-08-16, see Done section**
 **Effort:** S (the sweep) · **Priority:** P2 · filed 2026-08-07 · **Cross-link:** B-112 (sibling class)
 
 > **DONE in v0.51.0.** The warehouse, endpoint, entity, DI service, Angular component/service,
@@ -3063,7 +3077,7 @@ plausible in that stack. Do not mass-apply a template — that would be the "rec
 build" failure repeated at the meta level.
 
 ---
-### B-119 · The dimension-binding post-change arm is owed — v0.50.0 shipped an unproven fix
+### B-119 · The dimension-binding post-change arm is owed — v0.50.0 shipped an unproven fix — **DONE, heading corrected 2026-08-16, see Done section**
 
 > **DONE 2026-08-08.** Re-ran `warehouse-bind-mixed` ×2 against v0.50.0 (`2915412`), both completed
 > cleanly (no spend-cap error this time): `regionOnFact` **0/2**, `Pass` **2/2** — the floor of the
@@ -3097,7 +3111,7 @@ with a stated ceiling, 2/2 = **it does not work**, record that plainly.
 `reachedAddEntity=0/6` did *not* discharge).
 
 ---
-### B-120 · A produce-nothing run scores every per-signal field as its desirable value
+### B-120 · A produce-nothing run scores every per-signal field as its desirable value — **DONE, heading corrected 2026-08-16, see Done section**
 **Effort:** XS · **Priority:** P3 · filed 2026-08-07 · **Cross-link:** B-112 (instrument class)
 
 > **DONE in v0.51.0.** No-fact runs are INCONCLUSIVE and emit `n/a` for artifact-derived fields;
@@ -3121,7 +3135,7 @@ indistinguishable from a missing artifact unless the artifact's existence is rep
 
 ---
 
-### B-121 · Post-ship review owed for v0.51.0
+### B-121 · Post-ship review owed for v0.51.0 — **DONE, heading corrected 2026-08-16, see Done section**
 
 > **DONE (discharged) 2026-08-08.** Independent review by Claude Sonnet 5, separate session from
 > the implementer. Re-ran validate-dist ×3 fresh (all 8 checks, all three dists), rebuilt all three
