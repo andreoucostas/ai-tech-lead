@@ -1990,3 +1990,19 @@ replacement runs, tool/API error only" allowance and does not license a disposit
 specifically **not** the "carrier unreachable" outcome the Decision defines, which requires a complete,
 threshold-evaluated batch. Full data in `meta/eval-results.md`. The routing probe has not yet produced
 a valid result; re-run the same batch once budget resets, no design or code change required first.
+
+**Disposition (2026-08-16) — second live run voided, different failure split, still not a probe
+result.** Re-run ~24h after the first void hit the account's monthly spend limit again (condition B:
+4/8 valid, 4 errored on the identical spend-limit API text) — the cap resets on a billing-cycle date,
+not on a rolling window from the last hit, so a short-timer re-attempt was never going to clear it.
+Condition A this time surfaced a second, unrelated cause: both `reuse-monorepo` trials (6/8 valid, 2
+errored) hit the harness's own per-trial $1.25 budget cap after 36 genuine turns of work each, not the
+account limit. Combined, neither condition reaches the required 8, and the run consumed both of the
+Decision's "up to 2 replacement runs, tool/API error only" allowance on two different error classes in
+one batch — this is still **not** the "carrier unreachable" outcome, which requires a complete,
+threshold-evaluated batch, and licenses no disposition. Full data in `meta/eval-results.md`. The
+per-trial budget-cap failure is a new, separate, not-yet-actioned observation: if it recurs on
+`reuse-monorepo` a third time, the fix is raising that cap for the scenario shape, not a design change
+to the probe itself. B-129 remains blocked on the account's monthly spend limit; the account owner
+needs to either raise it (`claude.ai/settings/usage`) or confirm the billing-cycle reset date before a
+third attempt is worth spending on.

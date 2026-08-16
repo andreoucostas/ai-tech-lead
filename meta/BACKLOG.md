@@ -4078,6 +4078,21 @@ open, blocked on the account's monthly spend limit resetting.** Next: re-run the
 Do not delete branch `b129-routing-probe-measurement` (commit `154b16b`) before this item closes — the
 harness reads the delta from it via `git show`.
 
+**Live run VOIDED again (2026-08-15/16, attempt 2):** re-run ~24h after the first void. The monthly
+spend limit had **not** reset — it hit again partway through (condition B: 4/8 valid, 4 errored, same
+literal spend-limit API text as attempt 1), so this account's cap resets on a billing-cycle date, not
+on a rolling window from the last hit; do not re-attempt on a short timer expecting a reset. Condition
+A surfaced a second, distinct, non-spend-limit failure: both `reuse-monorepo-1/2` trials hit the
+harness's own **per-trial** $1.25 budget cap after 36 real turns of substantive work each (6/8 valid,
+2 errored on this separate cause). Full data and root-cause split in `meta/eval-results.md`'s
+"B-129 Phase 0 (WSD-042) — routing-probe attempt 2" entry; disposition addendum in
+`meta/workspace-decisions.md` WSD-042. **Still void, still open, still blocked on the account's
+monthly spend limit resetting** (raise it at claude.ai/settings/usage, or wait for the billing-cycle
+date — the account owner needs to check which). Separately flagged, not yet acted on: if a third
+attempt repeats the per-trial budget-cap error on the same `reuse-monorepo` scenario shape, the
+harness's $1.25 per-trial cap likely needs raising for that shape specifically before it can be
+reliably counted.
+
 ---
 ### B-132 · Agent-eval runner's PowerShell 7 boundary is implicit, inviting invalid 5.1 verification
 **Effort:** S–M · **Priority:** P3 · filed 2026-08-09 from B-124 RCA · **Scope:** maintainer layer

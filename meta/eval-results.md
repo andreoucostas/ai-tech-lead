@@ -1372,3 +1372,64 @@ is not closed.** Re-run the full 16-trial batch once the account's monthly spend
 harness change is required first. See `meta/BACKLOG.md` B-129 and `meta/workspace-decisions.md`
 WSD-042 for the corresponding status notes.
 
+## B-129 Phase 0 (WSD-042) — routing-probe attempt 2, 2026-08-15/16 — VOID again, second monthly-spend-limit exhaustion plus a distinct per-trial budget-cap failure
+
+A third launch attempt (same session, after the spend-limit reset check) repeated the exact PATH bug
+attempt 1 hit: a fresh `pwsh` subprocess again lacked `claude` on `PATH` (`claude CLI is not installed
+or not on PATH`, 0 trials, 0 cost). The [[corrupted-session-path]] fix must be reapplied inside
+**every** new subprocess, including subprocesses launched hours apart in the same wrapping session —
+it does not persist. Confirmed by direct check: `Get-Command claude` resolved to
+`C:\Users\Costas\.local\bin\claude.exe` only after re-running the fix inline in that subprocess.
+
+The next launch, with the fix applied inside the same `pwsh -File` invocation that runs the harness,
+executed the full pre-registered 16-trial batch (`-Model sonnet -TimeoutSeconds 600`,
+`ResultsPath=meta/eval-results-b129-live-attempt2.md`) and printed `ROUTING PROBE INCOMPLETE: A
+selected=4/6, read=1/6, clears=False; B selected=4/4, read=4/4, clears=False`. Raw per-trial data,
+condition A in run order: `reuse-dotnet-1` SELECTED (costUsd=1.1042682), `reuse-dotnet-2` SELECTED
+(costUsd=0.8402676), `reuse-monorepo-1` **ERROR — distinct cause, see below** (costUsd=1.2729318,
+36 turns), `reuse-monorepo-2` **ERROR — same distinct cause** (costUsd=1.2579825, 36 turns),
+`single-dotnet-1` NOT_SELECTED (costUsd=0.5647047), `single-dotnet-2` NOT_SELECTED
+(costUsd=0.6787701), `single-monorepo-1` SELECTED (costUsd=0.9282774), `single-monorepo-2` SELECTED
+(costUsd=1.1889465). Condition B in run order: `reuse-dotnet-1` SELECTED (costUsd=0.8441946),
+`reuse-dotnet-2` SELECTED (costUsd=0.7718685), `reuse-monorepo-1` SELECTED (costUsd=1.2492639),
+`reuse-monorepo-2` SELECTED (costUsd=0.935268), `single-dotnet-1` ERROR — spend limit, partial
+(costUsd=0.4850379, 21 turns before cutoff), `single-dotnet-2` ERROR — spend limit, zero cost,
+`single-monorepo-1` ERROR — spend limit, zero cost, `single-monorepo-2` ERROR — spend limit, zero
+cost.
+
+**Two distinct, confirmed-by-transcript root causes this run, not one:**
+
+1. **Account monthly spend limit exhausted again**, ~19:09 UTC on 2026-08-15 — same literal API
+   response as attempt 1 (`"You've hit your monthly spend limit · raise it at
+   claude.ai/settings/usage?from=cc_cli_limit_message"`, `api_error_status:429`), hitting condition
+   B's four `single-*` trials (one mid-task at 21 turns/$0.49, three before any turn ran). The limit
+   had **not** reset in the ~24 hours since attempt 1's void, and this run's own spend (~$9 across 12
+   completed/partial trials) was enough to hit it again — this account's monthly cap resets on a
+   billing-cycle date, not a rolling window, so repeated same-window attempts should be expected to
+   keep failing until that date. **Actionable by the account owner only:** raise the limit at
+   `claude.ai/settings/usage`, or wait for the billing-cycle reset, before attempting a fourth run.
+2. **New failure mode, not spend-limit-related:** both `condition-A reuse-monorepo` trials
+   independently hit the harness's own **per-trial** budget ceiling (`-Live`'s hardcoded $1.25 cap,
+   `terminal_reason:"budget_exhausted"`, `subtype:"error_max_budget_usd"`,
+   `errors:["Reached maximum budget ($1.25)"]`) — confirmed by direct transcript read, not inferred.
+   Both ran 36 real turns doing substantive work (one built a governed reporting view, a
+   `docs/warehouse-map.md`, and a `CLAUDE.md` pointer edit, reasoning about SCD/grain correctness
+   along the way) before being cut off mid-task, not idling or looping. This is a harness-level
+   finding: the `reuse-monorepo` scenario shape (routing-probe prompt layered on the monorepo
+   fixture, which already carries more surface area than dotnet) appears to need more than $1.25 of
+   real work to reach a decision, independent of the account-level spend limit. Not yet acted on —
+   record only; if a third attempt repeats this on the same two scenario ids, raising the per-trial
+   budget for this scenario shape (or splitting the fixture) is the likely fix, but two occurrences
+   from one run is not yet enough to confirm it's systematic rather than incidental.
+
+**Disposition: VOID, not scored — same as attempt 1, for a compounding reason.** Condition A: 6/8
+counted (2 errored on the harness's own per-trial budget cap, not spend limit — arguably these two
+*could* be argued as a different exclusion category than "tool/API error," but the Decision's
+replacement-run allowance covers only 2 total replacements and this run already needed all of them
+between the two root causes). Condition B: 4/8 counted (4 errored on the account spend limit). Neither
+condition reaches the required 8; per WSD-042's Decision this is specifically not the
+`CARRIER_UNREACHABLE` outcome (which requires a complete, threshold-evaluated batch) and licenses no
+disposition either way. **B-129 remains open, still blocked on the account's monthly spend limit
+resetting** — see `meta/BACKLOG.md` B-129 and `meta/workspace-decisions.md` WSD-042 for the
+corresponding status notes.
+
