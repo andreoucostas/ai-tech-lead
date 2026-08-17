@@ -4977,6 +4977,29 @@ defaulting to yes.
 the numbered list it names in the carrier, red-testing by inserting a rule mid-list and showing the
 downstream citations go red.
 
+### B-143 · We advise consumers into an `applyTo` glob syntax we have never verified
+**Effort:** S · **Priority:** P2 · filed 2026-08-17 while critiquing B-17 · **Invariants:** #5
+
+**Why:** two shipped READMEs tell a consumer to path-scope Copilot instructions using **brace**
+syntax — `src/stacks/dotnet/files/README.md:257` says to create
+`.github/instructions/typescript.instructions.md` with `applyTo: "**/*.{ts,html}"`. Nothing here has
+ever verified that Copilot honours a brace glob. Canary 3 (2026-08-05) tested exactly one form,
+`"**/*.cs"`, and the single most important thing it established is that **a non-matching `applyTo`
+fails silently** — the instructions simply never arrive, and the developer sees a correctly installed
+file either way. So if braces are unsupported, we are walking consumers into a config that delivers
+nothing and looks fine. That is the framework's own worst failure mode, in advice we hand out.
+
+Grep confirms no shipped `.instructions.md` uses a comma or brace `applyTo`; the syntax appears only
+in prose we give consumers (`applyTo:.*[,{]` over `src`/`dist`).
+
+**Do:** extend `.claude/scripts/canary-applyto-scope.ps1` with brace and comma arms against a repo
+containing a matching file, run it once, and record the result in the host-certification table. Then
+either keep the advice (verified) or correct both READMEs. Cheap: the canary harness already exists
+and Copilot CLI runs are not on the constrained Claude budget.
+
+**Not:** do not "fix" the READMEs by guessing a safer syntax — the point is to know, and an
+unverified replacement is the same defect wearing different punctuation.
+
 ---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
