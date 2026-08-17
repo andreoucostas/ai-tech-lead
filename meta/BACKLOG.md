@@ -333,6 +333,29 @@ no notification, no check, nothing; realistic consumer version lag is "forever".
 residual (teammate without the wired shell gets no hooks, silently) is documented but not
 detected — that detection belongs to B-16's doctor, keep it there.
 
+> **VERIFIED 2026-08-17 — the answer is SILENTLY CLOBBERED.** Question (1) is no longer open.
+> Method: greenfield install into a temp repo, plant a distinctive marker in one file of each class,
+> run update, check which markers survive. `dist/dotnet`, bash twin.
+>
+> | consumer change | outcome | warned? |
+> |---|---|---|
+> | shipped skill `.claude/skills/add-tests/SKILL.md` | **CLOBBERED** | no |
+> | shipped hook `.claude/hooks/guard.ps1` | **CLOBBERED** | no |
+> | shipped script `scripts/docs-sync-check.ps1` | **CLOBBERED** | no |
+> | **`.claude/settings.json`** | **CLOBBERED** | no |
+> | protected `CLAUDE.md` | survived | by design |
+> | a skill the consumer added themselves | survived | correct |
+>
+> Not one warning. The update's closing line — *"Framework machinery refreshed; consumer-owned
+> content files untouched."* — is **technically true and materially misleading**: "consumer-owned"
+> means only the 8 protected paths, while every consumer edit to shipped machinery is discarded
+> without mention. `.claude/settings.json` is the sharpest case, because it is where a team wires
+> permissions and hook registrations, and v0.38.1 reverted absolute-path pinning precisely on the
+> grounds that it is *committed team config* — i.e. we already know teams edit it.
+>
+> **Mitigation that exists:** the installer tells consumers to review the diff and commit, so a
+> disciplined team on a clean tree sees the loss in `git diff`. Nothing tells them to look.
+
 **Do:** first *verify*: run update mode over a fixture repo carrying a consumer-modified shipped
 skill and a consumer-modified hook; record the actual outcome. Then decide policy and document
 it honestly in the consumer README (options: clobber-with-preserved-copy à la brownfield
