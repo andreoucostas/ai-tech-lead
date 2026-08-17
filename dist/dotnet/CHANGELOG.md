@@ -4,8 +4,14 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.54.0 — Unreleased
+## 0.54.0 — 2026-08-17
 
+- **Fixed a broken update on the Bash installer.** Running `bash scripts/install.sh` against an
+  existing install aborted part-way with exit code 1 and no error message: the files were copied,
+  but the run stopped before finishing and never printed its "Done (update)" summary. If you wired
+  the installer into CI, it reported a red build on a successful update; if you ran it through an AI
+  agent, the agent saw a bare failure. `install.ps1` was unaffected, so the two installers disagreed
+  about whether the same update had worked. Updates now complete and exit 0 on both.
 - Framework installs now include `LICENSES/ai-tech-lead-MIT.txt` and
   `NOTICE-ai-tech-lead.md`, so the framework's MIT terms travel with its files. Updates refresh the
   framework-owned notice but refuse to overwrite a conflicting licence or unmarked notice; resolve

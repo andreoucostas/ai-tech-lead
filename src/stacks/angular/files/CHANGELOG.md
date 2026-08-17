@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.54.0 — Unreleased
+## 0.54.0 — 2026-08-17
 
 - **Fixed a broken update on the Bash installer.** Running `bash scripts/install.sh` against an
   existing install aborted part-way with exit code 1 and no error message: the files were copied,

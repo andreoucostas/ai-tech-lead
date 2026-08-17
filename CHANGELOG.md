@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.54.0 — Unreleased
+## 0.54.0 — 2026-08-17
 
 - Installer, Bash twin: two `set -euo pipefail` landmines on the UPDATE path. The disabled-skill
   restore piped a `grep` whose **no-match case is the normal one**; `pipefail` promoted that to a
