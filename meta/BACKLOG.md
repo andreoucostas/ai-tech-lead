@@ -5245,6 +5245,45 @@ planted unreadable file and an emptied tree, both twins.
   rather than bolted on here, because "more gate is better" is exactly the reasoning Maintenance
   rule 6 exists to interrupt.
 
+  **SECOND RCA — the release went red on CI twice before it tagged, and both causes were the same
+  blind spot.** Shipped as `v0.53.0` at `9854bd2` after three release attempts. Attempt 1 died on the
+  gate-runtime budget (`dist-gates 35278.5s` — the maintainer's laptop slept mid-stage;
+  `Measure-Stage` uses a wall-clock `Stopwatch`. Re-run, not a ceiling change: a ceiling raised to
+  absorb a laptop sleep would permanently blind the one instrument that exists to catch a real
+  multi-fold slowdown). Attempts 2 and 3 died on CI with **all six Windows legs green and all three
+  `linux-hooks` legs red**:
+
+  1. The shared `TemplateFixture` had been switched to CRLF to give the new check 8 an EOL control.
+     That fed carriage returns to checks 1–7 for the first time in their existence, breaking four
+     tests that had nothing to do with this cluster. **Lesson: do not buy coverage for a new check by
+     mutating a fixture four older checks depend on.** The CRLF control now lives in its own case.
+  2. Fixing that exposed a **real shipped twin divergence**: `template-checks.sh`'s `section()`
+     stripped CR from body lines but compared the *heading* with an exact string test, so on a CRLF
+     checkout `## Leanness` + CR ≠ `## Leanness` and the mirror check reported four sections MISSING
+     from a correct repo. The PowerShell twin was never affected. Consumer-visible, and fixed.
+
+  **Why could no local gate catch either?** Because **MSYS opens files in text mode**: under Git Bash,
+  `awk`/`sed`/`grep` receive the file already CR-stripped by the platform — verified through a file
+  open *and* through a pipe. A CR-handling defect in any shipped `.sh` is therefore **structurally
+  invisible on Windows**, which is the entire maintainer environment. Not "we forgot to test it" —
+  *unobservable here*. The mechanism was finally proven in-memory (`awk 'BEGIN{... sprintf("%c",13)
+  ...}'`), which is the only way to see it on this box, and that recipe is worth reusing.
+
+  **Same-class sweep — what else is exposed:** every shipped `.sh` that compares a whole line
+  exactly, or builds a value from `$0`/a capture without stripping CR, has the same unobservable
+  exposure. `section()`/`section1()` and `common_tasks()` are now explicitly CR-safe (all via octal
+  `\015`, because an awk that does not honour `\r` degrades it to a literal `r` and silently restores
+  the bug). **The rest of the shipped `.sh` surface has NOT been audited for this** — that is the
+  honest state, and it is the natural next item if this class recurs. Note also that the twin-parity
+  fixtures cannot demonstrate CR behaviour on the maintainer box at all, so any future CR assertion
+  is linux-leg-only coverage and must be labelled as such rather than read as red-tested.
+
+  **One instrument earned its keep immediately:** `ScriptTwinParity`'s exit-mismatch assertion now
+  interpolates both twins' stdout/stderr instead of two bare numbers. It turned an unreproducible red
+  CI leg into a named check in one cycle — and, separately, identified B-130's last unexplained 5.1
+  divergence as the corrupted `PATH`. B-130 had been open since 2026-08-08 on the strength of an
+  encoding hypothesis that was wrong for both of its members.
+
 - **B-139** — DONE **2026-08-16**. Added `.claude/hooks/tests/GateBudgetConsistency.Tests.ps1`
   (auto-discovered by `Invoke-HookTests.ps1`, no wiring needed): asserts
   `meta/gate-budget.json`'s `ceilings-seconds.total-local-gates` is at least the sum of the other

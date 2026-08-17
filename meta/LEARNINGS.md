@@ -1128,3 +1128,44 @@ that suite from `29 passed, 1 failed, 1 skipped` to `31 passed, 0 failed, 0 skip
 un-skipped a case, so the broken `PATH` was silently *removing coverage*, not just adding noise. Any
 5.1-only failure on this box is PATH-suspect before it is an encoding bug; see B-130, whose original
 hypothesis was encoding and was wrong for this member.
+
+## 2026-08-17 — a defect class the maintainer box cannot observe, and what that costs
+
+v0.53.0 needed three release attempts. The gate-runtime budget refused the first (the laptop slept
+mid-stage and `Measure-Stage` is wall-clock; the fix is re-run, never a ceiling raised to absorb a
+sleep — that would blind the one instrument built to catch a genuine multi-fold slowdown). CI
+refused the next two, both times with **all six Windows legs green and all three linux-hooks legs
+red**.
+
+The cause, and the reason it is worth a permanent entry: **MSYS opens files in text mode.** Under
+Git Bash, `awk`/`sed`/`grep` are handed a CRLF file with the CR already removed by the platform —
+through a file open *and* through a pipe. I confirmed it the only way that settles it: I deleted a
+script's CR-strip entirely and the check still passed locally. So a CR-handling bug in any shipped
+`.sh` is not "untested" here, it is **unobservable** here, on the box where all authoring happens.
+
+Two distinct defects came out of that blind spot in one release:
+
+1. **Self-inflicted.** The shared `TemplateFixture` was switched to CRLF to give a new check an EOL
+   control, which fed carriage returns to four older checks for the first time ever and broke tests
+   unrelated to the change. *Do not buy coverage for a new check by mutating a fixture that older
+   checks depend on* — scope the new input to the new case.
+2. **Genuine and shipped.** `template-checks.sh`'s `section()` stripped CR from body lines but
+   compared the heading with an exact string test, so on a CRLF checkout `## Leanness` + CR did not
+   equal `## Leanness` and the mirror check declared four sections missing from a perfectly correct
+   repo. The PowerShell twin was never affected — a twin-parity violation that had presumably been
+   latent for as long as the function existed, because nothing on this box could ever see it.
+
+The technique that made it tractable: reproduce **in memory**, where the platform cannot interfere —
+`awk 'BEGIN{ cr=sprintf("%c",13); line="## X" cr; ... sub(/\015$/,"",line); ... }'` shows both the
+failure and the fix locally. And use octal `\015` rather than `\r` in awk regexes: implementations
+differ on which escapes they honour, and an unrecognised `\r` degrades to a literal `r`, which would
+silently reinstate the bug on a consumer's Debian box. A CRLF assertion in a twin fixture is
+linux-leg-only coverage and must be labelled as such; a Windows green on it is not evidence.
+
+**The cheapest thing that helped was not a fix at all.** `ScriptTwinParity`'s exit-mismatch assert
+reported two bare exit codes, which is useless when the only failing host is one you cannot
+reproduce. Making it print both twins' stdout/stderr turned an opaque red leg into a named check in
+a single CI cycle — and, unprompted, identified the last unexplained failure in B-130 (open since
+2026-08-08 on an encoding hypothesis) as the maintainer box's corrupted `PATH`: a bare `powershell`
+spawn resolving to nothing. Both members of that entry were one environment defect in an encoding
+costume. When a diagnostic is cheap and the failure is remote, improve the diagnostic first.
