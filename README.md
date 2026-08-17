@@ -32,8 +32,11 @@ needs, or a **dist installer**, run directly when you already know the stack. Bo
 three install modes on the target repo: **greenfield** (no AI tooling yet — plain copy),
 **brownfield** (existing AI tooling — originals are archived to `docs/pre-adoption/` and a
 `.claude/adoption-pending.json` is written for `/adopt` to pick up), and **update** (target
-already has a `.claude/framework-version.json` stamp — framework machinery is refreshed,
-consumer-owned content like `CLAUDE.md` is left alone).
+already has a `.claude/framework-version.json` stamp). Update has three ownership classes:
+consumer-owned protected paths such as `CLAUDE.md` are restored, framework-owned machinery is
+overwritten, and mixed-ownership `.claude/settings.json` is backed up to
+`.claude/.state/settings.json.pre-update` before it is refreshed and adapted to the host. Preserve
+local edits to framework-owned files before updating, and review the resulting diff before commit.
 
 | Dist | Who it's for | Root installer (auto-detect) | Direct dist installer |
 |------|---------------|-------------------------------|------------------------|
@@ -107,7 +110,7 @@ by hand, are in [`DEVELOPING.md`](./DEVELOPING.md).
 
 ## Status
 
-Current shipped version is **v0.55.0** across all three dists
+Current shipped version is **v0.56.0** across all three dists
 (`dist/*/.claude/framework-version.json`). The merge is complete: this repo is the single home for
 framework development, and the two legacy repos (`ai-tech-lead-dotnet`, `ai-tech-lead-angular`) are
 archived and read-only, frozen at v0.25.5.

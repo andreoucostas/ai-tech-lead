@@ -11,8 +11,9 @@
 #                ADRs, ...): the originals this copy would overwrite are moved to docs/pre-adoption/
 #                first, and .claude/adoption-pending.json is written so every later session (and CI)
 #                steers to /adopt. Next step is /adopt.
-#   update     — target already carries .claude/framework-version.json: framework machinery is
-#                refreshed; consumer-owned content files are left untouched. Safe to re-run.
+#   update     — target already carries .claude/framework-version.json. Consumer-owned protected
+#                paths are restored; framework-owned machinery is overwritten; mixed-ownership
+#                .claude/settings.json is backed up, refreshed, and adapted to the host.
 param([Parameter(Mandatory = $true)][string]$Target)
 $ErrorActionPreference = 'Stop'
 
@@ -78,6 +79,12 @@ if ($updateMode)    { Write-Output "  mode: update (existing install detected vi
 elseif ($adoptMode) { Write-Output "  mode: brownfield (pre-existing AI tooling detected: $($detected -join ', '))" }
 else                { Write-Output "  mode: greenfield" }
 
+if ($updateMode) {
+    Write-Output "  UPDATE PREFLIGHT: This update replaces framework-owned files, including .claude/settings.json."
+    Write-Output "  Ensure any local edits to those files were committed, stashed, or copied first."
+    Write-Output "  Review the resulting diff before committing."
+}
+
 $archived = @()
 if ($adoptMode) {
     # Move originals out of the copy's way so /adopt can merge them later — without this they
@@ -97,6 +104,13 @@ if ($adoptMode) {
 
 $snapshot = $null
 if ($updateMode) {
+    $settings = Join-Path $tgt '.claude/settings.json'
+    if (Test-Path -LiteralPath $settings -PathType Leaf) {
+        $settingsBackup = Join-Path $tgt '.claude/.state/settings.json.pre-update'
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $settingsBackup) | Out-Null
+        Copy-Item -Force -LiteralPath $settings -Destination $settingsBackup
+        Write-Output "  saved pre-update settings: .claude/.state/settings.json.pre-update"
+    }
     # Snapshot consumer-owned content files; restored after the copy.
     $snapshot = Join-Path ([IO.Path]::GetTempPath()) ('ai-tech-lead-update-' + [IO.Path]::GetRandomFileName())
     foreach ($f in $protected) {
@@ -190,7 +204,7 @@ if (-not (Get-Command pwsh -ErrorAction SilentlyContinue)) {
 Write-Output ""
 Write-Output "Each developer should run  pwsh scripts/framework-doctor.ps1  once on their own machine."
 if ($updateMode) {
-    Write-Output "Done (update). Framework machinery refreshed; consumer-owned content files untouched."
+    Write-Output "Done (update). Framework-owned machinery refreshed; the listed protected paths were restored; .claude/settings.json was backed up and refreshed."
     Write-Output "  Next: review the diff, run  pwsh scripts/docs-sync-check.ps1 , then commit."
 } elseif ($adoptMode) {
     Write-Output "Done - but this repo is NOT ready for AI-assisted work yet: it has pre-existing AI"

@@ -4,6 +4,35 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.56.0 — 2026-08-17
+
+- **Updating is now explicit about what it replaces — and you should know it always did.** Running
+  the installer over an existing install overwrites framework-owned files: skills, hooks, `scripts/`,
+  and `.claude/settings.json`. That is how fixes reach you, and it has always worked this way — but
+  the run said nothing, and its closing line ("consumer-owned content files untouched") named only
+  the eight protected files. **If your team edited a shipped skill, hook, or `.claude/settings.json`
+  in the past, an earlier update may already have discarded it** — check your git history if that
+  matters to you.
+  From this release: the update prints a preflight notice **before** it changes anything, telling you
+  to commit, stash or copy local edits first; it saves your current `.claude/settings.json` to
+  `.claude/.state/settings.json.pre-update` before refreshing it, and names that path; and its
+  closing line says what it actually did.
+- Ownership is now documented as three classes rather than two: consumer-owned protected paths
+  (restored on update), framework-owned machinery (overwritten), and `.claude/settings.json`
+  (mixed — backed up, refreshed, then adapted to your host).
+- `docs/enforcement-surfaces.md` gained the missing **on-demand / discoverable** tier, covering
+  supporting material such as `docs/defaults.md`: available for the model to open, but loading is
+  task- and model-dependent and not guaranteed.
+
+## 0.56.0 — Unreleased
+
+- Updates now warn before replacing framework-owned files, including `.claude/settings.json`, and
+  tell you to preserve local edits first and review the resulting diff. Before settings are
+  refreshed, the prior copy is saved at `.claude/.state/settings.json.pre-update`. Past updates may
+  already have discarded local edits to shipped framework files.
+- The enforcement-surface guide now identifies on-demand documentation as discoverable but not
+  guaranteed to load; `docs/defaults.md` is the example.
+
 ## 0.55.0 — 2026-08-17
 
 - Greenfield Angular defaults now cover **forms**: reactive with typed controls, where validators

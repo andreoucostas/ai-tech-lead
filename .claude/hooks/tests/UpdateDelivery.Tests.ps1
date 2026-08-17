@@ -58,6 +58,7 @@ Repo-specific conventions the consumer owns. Populated by /bootstrap. DO NOT CLO
 "@ -Encoding utf8
     Set-Content (Join-Path $t 'AGENTS.md') "# AGENTS`n`nGENERATED FILE`n" -Encoding utf8
     Set-Content (Join-Path $t '.claude/framework-version.json') "{`"version`": `"$staleVersion`"}" -Encoding utf8
+    Set-Content (Join-Path $t '.claude/settings.json') "{`n  `"consumerEdit`": `"recover me`"`n}`n" -Encoding utf8
     New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude/skills/add-warehouse-load') | Out-Null
     Set-Content (Join-Path $t '.claude/skills/add-warehouse-load/SKILL.md') "---`nname: add-warehouse-load`n---`n# Old framework body`n`nFor a concrete current instance in this repo, see ``warehouse/LoadSales.sql`` — reproduce its **conventions and structure**, not its contents; CLAUDE.md > Conventions wins on any conflict.`n" -Encoding utf8
     New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude/skills/local-release') | Out-Null
@@ -89,6 +90,22 @@ foreach ($twin in @('ps1', 'sh')) {
 
     It "update mode is detected ($twin)" {
         Assert ($out -match 'mode: update') "installer did not enter update mode. stdout:`n$out"
+    }
+
+    It "update disclosure precedes the first target mutation ($twin)" {
+        $preflightAt = $out.IndexOf('UPDATE PREFLIGHT: This update replaces framework-owned files, including .claude/settings.json.')
+        $backupAt = $out.IndexOf('saved pre-update settings: .claude/.state/settings.json.pre-update')
+        Assert ($preflightAt -ge 0) "update preflight disclosure was absent. stdout:`n$out"
+        Assert ($out -match 'committed, stashed, or copied') 'update preflight omitted the preservation action'
+        Assert ($out -match 'Review the resulting diff before committing') 'update preflight omitted diff review'
+        Assert ($backupAt -gt $preflightAt) "settings backup (the first target mutation) was reported before the disclosure. stdout:`n$out"
+    }
+
+    It "settings backup is named and round-trips the consumer edit before refresh ($twin)" {
+        $backup = Join-Path $target '.claude/.state/settings.json.pre-update'
+        Assert (Test-Path -LiteralPath $backup -PathType Leaf) 'rolling settings backup was not created'
+        Assert ((Get-Content -LiteralPath $backup -Raw) -match 'recover me') 'consumer settings edit was not recoverable from the backup'
+        Assert (-not ((Get-Content -LiteralPath (Join-Path $target '.claude/settings.json') -Raw) -match 'recover me')) 'framework settings were not refreshed after backup'
     }
 
     # THE assertion. If this ever fails, the framework is destroying consumer content.
@@ -204,10 +221,36 @@ It 'an update completes and reports success on both twins, for every dist' {
             try {
                 $first = Invoke-Installer -Twin $twin -Dist $dist -Target $t
                 Assert ($LASTEXITCODE -eq 0) "$dist/$twin greenfield install failed (exit $LASTEXITCODE): $first"
+                Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/.state/settings.json.pre-update'))) "$dist/$twin greenfield created an update-only settings backup"
                 $second = Invoke-Installer -Twin $twin -Dist $dist -Target $t
                 $code = $LASTEXITCODE
                 Assert ($code -eq 0) "$dist/$twin UPDATE exited $code; a successful update must exit 0. Output:`n$second"
                 Assert ($second -match 'Done \(update\)') "$dist/$twin update did not print its completion banner, so it aborted part-way even though it exited 0. Output:`n$second"
+            } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+        }
+    }
+}
+
+# The legal-file preflight owns exit 3 and runs before every update mutation. Keep its v0.54.0
+# refusal contract intact, and prove a failed update never prints the success-only completion banner.
+foreach ($twin in @('ps1','sh')) {
+    if ($twin -eq 'sh' -and -not $bash) { continue }
+    foreach ($case in @(
+        @{ Rel = 'LICENSES/ai-tech-lead-MIT.txt'; Text = 'consumer licence'; Message = "Refusing to overwrite 'LICENSES/ai-tech-lead-MIT.txt': the existing file is not identical to the framework licence." },
+        @{ Rel = 'NOTICE-ai-tech-lead.md'; Text = 'consumer notice'; Message = "Refusing to overwrite 'NOTICE-ai-tech-lead.md': the existing file is not marked FRAMEWORK-OWNED." }
+    )) {
+        It "legal-file refusal remains exit 3 without an update completion banner ($twin, $($case.Rel))" {
+            $t = Join-Path ([IO.Path]::GetTempPath()) ('upd-legal-' + [guid]::NewGuid())
+            New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude') | Out-Null
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent (Join-Path $t $case.Rel)) | Out-Null
+            Set-Content -LiteralPath (Join-Path $t '.claude/framework-version.json') -Value '{"version":"0.55.0"}' -Encoding utf8
+            Set-Content -LiteralPath (Join-Path $t $case.Rel) -Value $case.Text -Encoding utf8
+            try {
+                $out = Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t
+                $code = $LASTEXITCODE
+                Assert ($code -eq 3) "legal-file refusal exit changed from 3 to $code. Output:`n$out"
+                Assert ($out -match [regex]::Escape($case.Message)) "legal-file refusal message changed. Output:`n$out"
+                Assert ($out -notmatch 'Done \(update\)') "failed update printed the success-only completion banner. Output:`n$out"
             } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
         }
     }

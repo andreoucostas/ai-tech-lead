@@ -11,6 +11,44 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.56.0 — 2026-08-17
+
+- B-46: made update ownership honest and recoverable. Both installer twins now disclose before
+  mutation that framework-owned files, including `.claude/settings.json`, will be replaced; keep a
+  rolling pre-overwrite settings backup; and name the eight protected paths instead of implying all
+  consumer edits survive. The rejected per-file difference detector was not implemented because a
+  clean v0.51.0-to-current update produced 31 false positives.
+- B-65: documented on-demand/discoverable material as a weaker, non-guaranteed delivery tier without
+  claiming that a pointer or routing improvement exists.
+
+## 0.56.0 — Unreleased
+
+- B-46 (verification + the actionable half): **measured** that an update silently clobbers every
+  consumer edit to shipped machinery — skills, hooks, `scripts/`, `.claude/settings.json` — while
+  printing "consumer-owned content files untouched". Protected and consumer-added files survive
+  correctly. Now shipped: an update-mode preflight disclosure that prints **before** the first
+  mutation, a rolling pre-overwrite backup of `.claude/settings.json` at
+  `.claude/.state/settings.json.pre-update`, an honest closing line, three documented ownership
+  classes across four READMEs and both installer headers, and WSD-043.
+  **The first design was rejected by measurement, not by argument.** It proposed reporting per-file
+  "local modifications" by comparing incoming against installed content — but a difference means a
+  consumer edit *or* an ordinary version change. Installing v0.51.0 and touching nothing leaves **31
+  files** differing from the current dist; all 31 would have been false positives, and a warning that
+  is ~100% noise trains consumers to ignore it. The first experiment only looked convincing because
+  it updated with the *same* dist version, so every difference genuinely was a consumer edit — the
+  confound was in the method. Independently fatal: `settings.json` is host-adapted at install,
+  refreshed skills gain an exemplar line, discovered/disabled skills are deliberately restored, and
+  `.github/skills` is regenerated — all *supposed* to differ.
+  Skipping was rejected on the record: `settings.json` carries hook registrations that must evolve,
+  and withholding them is B-97's failure mode. Backup-then-refresh keeps both properties.
+  The message deliberately does **not** say "recover from git history": the installer requires
+  neither git nor a clean tree, so that is a promise we cannot keep.
+- B-65: **dropped the pointer, shipped only the documentation correction.** The proposed carrier was
+  a line in `CLAUDE.md` — which is protected, so update restores the consumer's copy and the line
+  would reach new installs only, missing exactly the population it exists to help (B-97's wall).
+  `docs/enforcement-surfaces.md` gained an honest on-demand/discoverable tier that claims no routing
+  improvement; the single 2026-07-31 unaided-open observation is named as insufficient.
+
 ## 0.55.0 — 2026-08-17
 
 - B-66 (remaining half): shipped the prescriptive Angular forms guidance into `docs/defaults.md`

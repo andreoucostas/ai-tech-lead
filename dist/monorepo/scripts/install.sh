@@ -12,8 +12,9 @@
 #                ADRs, ...): the originals this copy would overwrite are moved to docs/pre-adoption/
 #                first, and .claude/adoption-pending.json is written so every later session (and CI)
 #                steers to /adopt. Next step is /adopt.
-#   update     — target already carries .claude/framework-version.json: framework machinery is
-#                refreshed; consumer-owned content files are left untouched. Safe to re-run.
+#   update     — target already carries .claude/framework-version.json. Consumer-owned protected
+#                paths are restored; framework-owned machinery is overwritten; mixed-ownership
+#                .claude/settings.json is backed up, refreshed, and adapted to the host.
 set -euo pipefail
 
 target="${1:-}"
@@ -77,6 +78,12 @@ if [ "$update_mode" -eq 1 ]; then echo "  mode: update (existing install detecte
 elif [ "$adopt_mode" -eq 1 ]; then echo "  mode: brownfield (pre-existing AI tooling detected: $detected)"
 else echo "  mode: greenfield"; fi
 
+if [ "$update_mode" -eq 1 ]; then
+  echo "  UPDATE PREFLIGHT: This update replaces framework-owned files, including .claude/settings.json."
+  echo "  Ensure any local edits to those files were committed, stashed, or copied first."
+  echo "  Review the resulting diff before committing."
+fi
+
 archived=""
 if [ "$adopt_mode" -eq 1 ]; then
   # Move originals out of the copy's way so /adopt can merge them later — without this they
@@ -95,6 +102,11 @@ fi
 
 snapshot=""
 if [ "$update_mode" -eq 1 ]; then
+  if [ -f "$tgt/.claude/settings.json" ]; then
+    mkdir -p "$tgt/.claude/.state"
+    cp "$tgt/.claude/settings.json" "$tgt/.claude/.state/settings.json.pre-update"
+    echo "  saved pre-update settings: .claude/.state/settings.json.pre-update"
+  fi
   # Snapshot consumer-owned content files; restored after the copy.
   snapshot="$(mktemp -d)"
   for f in $protected; do
@@ -190,7 +202,7 @@ fi
 echo
 echo "Each developer should run  bash scripts/framework-doctor.sh  once on their own machine."
 if [ "$update_mode" -eq 1 ]; then
-  echo "Done (update). Framework machinery refreshed; consumer-owned content files untouched."
+  echo "Done (update). Framework-owned machinery refreshed; the listed protected paths were restored; .claude/settings.json was backed up and refreshed."
   echo "  Next: review the diff, run  bash scripts/docs-sync-check.sh , then commit."
 elif [ "$adopt_mode" -eq 1 ]; then
   echo "Done - but this repo is NOT ready for AI-assisted work yet: it has pre-existing AI"

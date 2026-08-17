@@ -2006,3 +2006,27 @@ per-trial budget-cap failure is a new, separate, not-yet-actioned observation: i
 to the probe itself. B-129 remains blocked on the account's monthly spend limit; the account owner
 needs to either raise it (`claude.ai/settings/usage`) or confirm the billing-cycle reset date before a
 third attempt is worth spending on.
+
+## WSD-043: Updates disclose three ownership classes and back up settings before refresh (2026-08-17)
+
+**Context.** An update overwrites consumer edits to shipped machinery while restoring only eight
+protected content paths. The former completion text said consumer-owned content was untouched,
+without defining that narrow set. A proposed per-file modification detector was rejected after a
+clean v0.51.0-to-current comparison reported 31 changed shipped files even though the consumer had
+touched none; ordinary version drift and installer adaptation make that signal unusably noisy.
+`.claude/settings.json` is the sharpest case because it is committed team configuration and shipped
+machinery at once.
+
+**Decision.** Update mode has three explicit ownership classes: consumer-owned protected paths are
+snapshotted and restored; framework-owned machinery is overwritten; mixed-ownership
+`.claude/settings.json` is copied first to the rolling
+`.claude/.state/settings.json.pre-update` backup, then refreshed and adapted to the host. Before any
+mutation, both installer twins disclose that framework-owned files, including settings, will be
+replaced; tell the consumer to commit, stash, or copy local edits first; and require review of the
+resulting diff. Greenfield and brownfield behavior is unchanged.
+
+**Rejected.** Skipping `.claude/settings.json` would preserve edits at the cost of withholding new
+hook registrations. That repeats the failure mode in which an update does not deliver updated
+framework behavior. A general rolling archive and per-file difference detector were also rejected:
+the former adds an unnecessary lifecycle, while the latter cannot distinguish a local edit from a
+normal framework version change.

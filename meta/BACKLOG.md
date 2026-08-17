@@ -321,7 +321,7 @@ part of every B-43 recertification cycle. First candidates to assess honestly: w
 Claude Code auto-memory, `/review` agents vs host-native review, `route-prompt` vs improving
 native intent handling, `post-write` build feedback vs host-native diagnostics.
 
-### B-46 · Consumer update & drift story — what actually happens to a consumer who diverges?
+### B-46 · Consumer update & drift story — **PARTIALLY DONE in v0.56.0: (1) verified + disclosed. (2) VERSION AWARENESS IS STILL OPEN — a consumer still has no way to learn a new version exists.**
 **Effort:** M · investigate-first · **Invariants:** #3 #5 #6 #7
 
 **Why:** install is polished (three modes, smoke-tested ×3 dists) but *operate-and-upgrade* is
@@ -531,7 +531,7 @@ never held to it.
 to catch and asserts the non-zero exit or the honest row — the discipline B-41 applies to agent
 behaviour, applied to the deterministic layer.
 
-### B-65 · Restore reliable post-bootstrap discovery of `docs/defaults.md`
+### B-65 · Restore reliable post-bootstrap discovery of `docs/defaults.md` — **CLOSED in v0.56.0, pointer deliberately dropped; see Done** — **DONE in v0.56.0, see Done section**
 **Effort:** S · **Priority:** P2
 
 **Why:** every inbound pointer is conditional on being un-bootstrapped: the `CLAUDE.md`
@@ -5285,6 +5285,29 @@ planted unreadable file and an emptied tree, both twins.
 
 ## Done
 
+- **B-46** — DONE **2026-08-17**, targeted for **v0.56.0**. Update mode now discloses before
+  mutation that framework-owned files, including `.claude/settings.json`, are replaced; tells the
+  consumer to commit, stash, or copy local edits first; and tells them to review the resulting diff.
+  The eight protected paths are still restored. Settings, the mixed-ownership case, is copied to the
+  rolling `.claude/.state/settings.json.pre-update` backup before refresh and host adaptation. The
+  completion line now names those semantics. The measured-noisy per-file detector was not built.
+
+  **RCA:** no gate caught the misleading contract because update tests asserted only what arrived
+  and whether protected content survived, never what was lost or what the installer claimed before
+  loss. The same class exposes any destructive refresh path whose tests begin after mutation. The
+  targeted suite now asserts disclosure ordering, recovery content, greenfield exclusion, success-
+  only completion output, and the unchanged legal preflight on both twins.
+
+- **B-65** — DONE **2026-08-17**, targeted for **v0.56.0**. The enforcement-surface taxonomy now
+  names on-demand/discoverable material: `docs/defaults.md` may be loaded depending on task and
+  model, but is not guaranteed. No pointer or routing-improvement claim shipped; one unaided load
+  observed on 2026-07-31 cannot support either claim.
+
+  **RCA:** no gate caught the taxonomy omission because documentation truth checks validate named
+  facts and paths, not whether every delivery mode has been classified. The same class exposes other
+  optional documentation carriers; they must be described as on-demand unless a stronger delivery
+  mechanism is demonstrated.
+
 - **B-81** — DONE **2026-08-17**, targeted for **v0.54.0**. Every composed distribution carries
   the LF-normalised verbatim MIT text at `LICENSES/ai-tech-lead-MIT.txt` and a marked
   `NOTICE-ai-tech-lead.md` identifying the upstream project, governed framework-authored paths,
@@ -5303,6 +5326,51 @@ planted unreadable file and an emptied tree, both twins.
   The same class exposes any repository-level attribution or policy file assumed to cover generated
   or copied deliverables. The behavioral installer cases now cover both legal artifacts and both
   twins, while the drift gate covers the one deliberately duplicated legal text.
+
+- **B-46 (part 1) / B-65** — **2026-08-17, shipped in v0.56.0.**
+
+  **B-46's unverified question is now measured:** an update **silently clobbers** every consumer edit
+  to shipped machinery (skills, hooks, `scripts/`, `.claude/settings.json`); protected and
+  consumer-added files survive. The closing line claimed otherwise. Shipped: a preflight disclosure
+  printed **before** the first mutation, a rolling backup of `settings.json` at
+  `.claude/.state/settings.json.pre-update`, an honest closing line, three documented ownership
+  classes (four READMEs + both installer headers), and **WSD-043**.
+
+  **The first design was killed by a second measurement, and the lesson generalises.** It proposed
+  naming per-file "local modifications" by diffing incoming against installed content. But a
+  difference means a consumer edit *or* an ordinary version change: installing v0.51.0 and touching
+  **nothing** leaves **31 files** differing from the current dist. All 31 would have been false
+  positives, and a warning that is ~100% noise trains consumers to ignore it. **The first experiment
+  only looked convincing because it updated with the same dist version**, so every difference
+  genuinely was a consumer edit — the confound was in the method, not the data. Independently fatal:
+  `settings.json` is host-adapted at install, refreshed skills gain an exemplar line,
+  discovered/disabled skills are restored on purpose, and `.github/skills` is regenerated.
+  *Generalisable form: an A/B where one arm is held constant can validate a mechanism that collapses
+  the moment the real variable moves.*
+
+  Skipping was rejected on the record: `settings.json` carries hook registrations that must evolve,
+  so withholding it is B-97's failure mode. The message deliberately avoids "recover from git
+  history" — the installer requires neither git nor a clean tree, so that is a promise we cannot keep.
+
+  **STILL OPEN under B-46 — part (2), version awareness.** There is still **no channel by which a
+  consumer learns a new framework version exists**; realistic version lag remains "forever". Untouched
+  by this release. B-46's own candidate stands: a throttled `session-start` line naming the installed
+  version and an update URL, using the existing `.claude/.state/` mechanism, offline-tolerant, no
+  network call. **This is the larger commercial problem and it is still unsolved** — the entry heading
+  says so explicitly so it cannot be read as closed.
+
+  **B-65 — CLOSED with the pointer deliberately DROPPED.** The proposed carrier was a line in
+  `CLAUDE.md`, which is protected: update restores the consumer's copy, so it would reach new installs
+  only and miss the population it exists to help (B-97's wall). The unprotected carrier would travel
+  but spends always-on context for a benefit the 2026-07-31 measurement leaves unmeasured. Shipped
+  only the missing **on-demand / discoverable** tier in `docs/enforcement-surfaces.md`, which names
+  the single unaided-open observation as insufficient to claim a routing improvement.
+
+  **RCA (rule 5):** no gate caught the clobbering because `UpdateDelivery.Tests.ps1` asserted *what
+  arrived* and never *what was lost* — the same shape as B-144's finding one release earlier, so
+  twice in two releases. **Same-class sweep:** any suite asserting artifacts without asserting the
+  producing command's effect on pre-existing state has this hole. `InstallerContract` still drives
+  only greenfield/brownfield; B-144 (c) remains open.
 
 - **B-66** — DONE **2026-08-17**, shipped in **v0.55.0**. The remaining prescriptive half:
   greenfield forms defaults (reactive, typed controls, validator placement, no `ngModel` +

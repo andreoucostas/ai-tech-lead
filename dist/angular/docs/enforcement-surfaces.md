@@ -2,9 +2,10 @@
 
 This framework runs across three agent surfaces. They do **not** enforce the same way, and pretending otherwise is how a team ends up trusting a guarantee that isn't there. This page is the honest matrix. (Researched against the Claude Code, GitHub Copilot CLI, and VS Code agent-hooks docs, June–July 2026.)
 
-Two kinds of control:
+Three delivery tiers:
 - **Guaranteed (hook-enforced):** a deterministic hook runs and the harness *acts* on its output (blocks a write, injects context) regardless of what the model "feels like" doing.
 - **Instructed (model-read):** a rule lives in the framework-rules carrier, `CLAUDE.md`, or `AGENTS.md` and the model is asked to follow it. Strong, but the model *can* skip it under a casual prompt or long context.
+- **On-demand / discoverable:** supporting material such as `docs/defaults.md` is available for the model to open, but loading is task- and model-dependent, not guaranteed. One agent was observed opening such a file unaided on 2026-07-31; that single observation does not establish a routing improvement or delivery guarantee.
 
 ## Before any hook can be guaranteed
 
