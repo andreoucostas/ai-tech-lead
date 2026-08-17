@@ -33,6 +33,13 @@
   stdout/stderr — which immediately identified B-130's remaining unexplained 5.1 divergence as the
   maintainer box's corrupted `PATH` (a bare `powershell` spawn that resolves to nothing), not the
   encoding bug that entry had hypothesised for both of its members.
+- Fixed a real `template-checks.sh` twin divergence that the above turned up: its section
+  extractor stripped CR from body lines but compared the HEADING with an exact string test, so on a
+  CRLF checkout `## Leanness` plus a carriage return did not equal `## Leanness` and the mirror
+  check reported four sections MISSING on a repo that was perfectly correct. The PowerShell twin was
+  never affected, so this violated twin parity in a way no Windows run could reveal — under MSYS,
+  `awk` receives the file already CR-stripped by the platform, through a file open OR a pipe. Only
+  the linux leg can perceive it, and that is where it was caught.
 - B-82: `DocTruth` now requires every root `CLAUDE.md` and `AGENTS.md` level-two heading to
   participate in an explicit mirror mapping, forcing a new mirror decision when either topology
   changes without pretending to prove the mirrored prose is complete.

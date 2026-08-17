@@ -7,6 +7,11 @@
 
 ## 0.53.0 — 2026-08-16
 
+- Fixed: on a repository checked out with CRLF line endings, `docs-sync-check` could report
+  `## Verification Rules`, `## Leanness`, `## SOLID` and `## Boy Scout Rule` as missing from
+  `CLAUDE.md` when they were present and correct. The Bash and PowerShell checks now agree on
+  CRLF input. If you have been ignoring those four findings, re-run the check — it should now
+  be quiet, and any finding it still reports is real.
 - `docs-sync-check` now verifies that `CLAUDE.md` and `AGENTS.md` list the same skill slugs under
   `## Common Tasks`, so adding a skill to only one agent surface is caught. Descriptions may remain
   condensed and are deliberately not compared. No action is required unless the check reports a

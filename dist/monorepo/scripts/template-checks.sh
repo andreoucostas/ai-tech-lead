@@ -38,18 +38,28 @@ fi
 # --- 2. Framework-rules source <-> AGENTS.md verbatim mirror ------------------------------------
 # Section body: lines after the exact "## <name>" heading up to the next "## ", minus blank/--- lines
 # and trailing whitespace.
+# CR is stripped on EVERY line before anything else, because the heading test below is an exact
+# string compare: on a CRLF checkout `## Leanness\r` != `## Leanness`, so the section is reported
+# MISSING and the mirror check fails four times over on a repo that is perfectly fine. The body rule
+# always stripped trailing CR; the heading compare did not, and that asymmetry is the whole bug.
+# It was invisible on Windows for as long as it existed -- MSYS opens files in text mode, so under
+# Git Bash awk never receives the CR. Only a linux run can see it (found by CI, v0.53.0).
+# Octal \015 rather than \r: awk implementations differ on which C escapes they honour in a regex,
+# and an unrecognised escape degrades to a literal `r` -- which would silently restore this bug.
 section() { # $1=file $2=heading
   awk -v h="$2" '
+    { sub(/\015$/,"") }
     $0==h {flag=1; next}
     flag && /^## / {exit}
-    flag { sub(/[ \t\r]+$/,""); if ($0!="" && $0!="---") print }
+    flag { sub(/[ \t]+$/,""); if ($0!="" && $0!="---") print }
   ' "$1"
 }
 section1() { # $1=file
   awk '
+    { sub(/\015$/,"") }
     /^### 1\. Classify the intent/ {flag=1; next}
     flag && /^### / {exit}
-    flag { sub(/[ \t\r]+$/,""); if ($0!="") print }
+    flag { sub(/[ \t]+$/,""); if ($0!="") print }
   ' "$1"
 }
 if [ -f CLAUDE.md ] && [ -f AGENTS.md ]; then
