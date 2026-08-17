@@ -566,7 +566,27 @@ forms guidance shipped at all** — the agent self-injected `NgControl`, set `va
 used `setDisabledState` rather than an `@Input() disabled`, and commented that this avoids the
 circular-DI `forwardRef`. Writing prescriptive guidance whose only instrument is green before the
 fix would be shipping on faith. **Resume this half once B-72 re-specifies the probe** so it states
-the business need without naming the mechanism, and shows where the model actually fails. The
+the business need without naming the mechanism, and shows where the model actually fails.
+
+> **UNBLOCKED 2026-08-17 — the gate above was the wrong test, and one of its stated reasons was
+> factually wrong.** Two corrections, both verified:
+> 1. **The context-budget objection does not apply.** It was raised on the 142-character
+>    `static.claude` monorepo headroom. Measured against `meta/context-footprint.json`: a skill's
+>    *body* is `ondemand-info`, `docs/defaults.md` is `instructed`, and only a skill's *frontmatter*
+>    is `static.claude`. Prescriptive forms guidance placed in a skill body or in `defaults.md` never
+>    touches the scarce bucket, and neither of the buckets it does touch has a declared ceiling.
+> 2. **"The probe is green, so we cannot demonstrate improvement" is not a reason to withhold
+>    guidance a real user asked for.** B-66 rests on **the only field report this framework has ever
+>    received** — the strongest evidence class available here, stronger than any probe. Requiring a
+>    behavioural instrument to bless it inverts that. The instrument to build it with was itself
+>    rejected (see `.claude/plans/2026-08-17-b145-guidance-effect-canary-design.md`): at N=6 per arm
+>    it could only detect a near-total transformation, and the repo already forbids a second harness
+>    (`meta/BACKLOG.md:1772`).
+>
+> **Ship it on the field report, and label the claim honestly:** the guidance addresses a reported
+> gap; its effect on model behaviour is **unmeasured**, and the entry must say so rather than imply
+> a probe endorsed it. B-72 remains open on its own merits — the grader defects it found are real —
+> but B-66 no longer waits on it. The
 technical content is drafted and reviewed in
 `<home>\.claude\plans\let-s-go-ahead-and-sorted-quill.md` (including three precision traps:
 qualify circular DI to the *self-referencing* `useExisting` provider; do **not** claim "Angular
@@ -5034,6 +5054,29 @@ under `set -e`, prioritising installer and hook paths; (b) audit the meta suites
 assert artifacts without asserting the producing command's exit code; (c) decide whether
 `InstallerContract` should drive update mode too, since it is the suite that claims to cover
 installer behaviour.
+
+### B-145 · Guidance-effect canary — **REJECTED 2026-08-17, do not re-propose without new evidence**
+**Effort:** n/a · filed and rejected the same day · design + critique in `.claude/plans/`
+
+Proposed a Copilot-side A/B canary to measure whether framework prose changes model behaviour. It was
+rejected on three grounds, each verified:
+
+1. **The repo already forbids it.** `meta/BACKLOG.md:1772` — *"Reuse the B-41 harness; do not build a
+   second one."* `run-agent-evals.ps1` already supplies ~6 of the 8 needed capabilities; only the
+   executor is Claude-specific.
+2. **N=6 per arm cannot detect a moderate effect.** Exact two-sided Fisher: `0/6 vs 4/6 -> p=0.0606`.
+   The design would have produced nulls that read as "guidance does not work" but mean "no near-total
+   transformation was observed".
+3. **Proportionality pointed elsewhere** — B-17 was already rejected without it, and B-66 has a field
+   report and can be decided on judgement.
+
+**What would revive it:** a concrete observed hooks-off Copilot failure, then a Copilot **executor
+interface inside `run-agent-evals.ps1`** — never a second rig — with the sample size chosen from a
+stated minimum effect rather than inherited from B-98.
+
+**Keep this entry.** The idea is attractive and will be re-proposed by anyone who notices that the
+framework's central claim is unmeasured on Copilot. It is unmeasured; that is accepted, recorded, and
+not worth this instrument at this price.
 
 ---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
