@@ -2,6 +2,44 @@
 
 This is the archive of completed framework backlog entries. Entries are appended by release.
 
+- **B-77** — DONE **2026-08-17**, targeted for **v0.58.0**. `hazard-check.{ps1,sh}` is a new shipped
+  twin gate, wired blocking into `docs-sync-check` after `wiki-check`. It validates each
+  `Known Hazard Areas` row's cell count, Status token (the four shapes `session-start` honours —
+  anything else is invisible to the staleness nudge), calendar-real ISO `Reviewed` date, and that
+  every path-like token in `Area / file(s)` resolves. It is read-only per WSD-027; a test asserts the
+  input file is byte-identical after a failing run. Skips cleanly on a missing file, the
+  `KNOWN_HAZARD_AREAS_PENDING` marker, or an absent section. 27 cases, both twins, green under pwsh 7
+  and Windows PowerShell 5.1.
+
+  **Path resolution is deliberately narrow, and that was the main design call.** The gate blocks, and
+  `/bootstrap` drafts the `Area / file(s)` cell as free text — so prose ("the payment reconciliation
+  flow") and symbol names (`` `TenantContext` ``) are ignored, a bare filename matches tree-wide, a
+  `/`-bearing path resolves from the repo root, and a wildcard checks only its longest wildcard-free
+  directory prefix. Seven of the 27 cases exist solely to hold that false-positive line. The
+  bare-filename rule was added during review: resolving `PaymentService.cs` against the repo root
+  would have failed a consumer's CI on an entirely ordinary row.
+
+  **RCA — why no gate caught the original gap, and what else is exposed.** Nothing read the hazard
+  table's *content*: `session-start` parsed it only far enough to compare a date, so a `[VERIFIED]`
+  row pointing at a file deleted months ago stayed fresh-looking indefinitely while `CLAUDE.md` told
+  the agent to consult that list for blast radius. The exposed class is **any shipped artifact whose
+  freshness is measured but whose referents are not** — the same shape `wiki-check` already covers for
+  the wiki and `warehouse-map-check` for the warehouse map. Remaining sibling: `LEARNINGS.md` and
+  `docs/architecture-decisions.md` carry references that nothing resolves, though neither is dated,
+  so neither currently makes a freshness claim it cannot keep.
+
+  **Delivery RCA — two bash-twin defects shipped green from the implementer and were caught only by
+  running the leg it could not run.** Implemented by codex (`gpt-5.6-sol`) against a locked brief;
+  its sandbox had neither `bash` nor Windows PowerShell 5.1, so it honestly reported both legs as not
+  observed. Reviewer-run verification then found: (1) `for part in $candidate` with `IFS=/` left the
+  value **unquoted**, so bash pathname-expanded `src/app/**/*.component.ts` against the cwd and the
+  "directory prefix" became the repo's own file list joined by `/` — replaced with pure parameter
+  expansion; (2) the separator-row test deleted `-`/`:` unconditionally, so a row whose cells are
+  **all empty** was silently skipped by `.sh` and reported by `.ps1` — a twin divergence that a green
+  bash run cannot show, because agreeing to do nothing looks exactly like agreeing. Both now have
+  dedicated cases. Evidence added to B-70 (twin verified on one leg only) and B-84 (a red-test whose
+  mutation silently fails to apply reports a false green — it happened twice here).
+
 - **B-46** — DONE **2026-08-17**, targeted for **v0.56.0**. Update mode now discloses before
   mutation that framework-owned files, including `.claude/settings.json`, are replaced; tells the
   consumer to commit, stash, or copy local edits first; and tells them to review the resulting diff.

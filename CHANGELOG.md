@@ -11,6 +11,16 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.58.0 — Unreleased
+
+- B-77: added the read-only `hazard-check` PowerShell/bash gate and wired it into
+  `docs-sync-check` so malformed hazard status/date cells and dangling named paths block CI. Until
+  now `session-start` measured only a hazard row's *age*, so a `[VERIFIED]` row pointing at a
+  long-deleted file stayed fresh-looking forever. Path resolution is deliberately narrow — a bare
+  filename matches tree-wide, a `/`-bearing path resolves from the repo root, a wildcard checks only
+  its longest wildcard-free directory prefix, and prose/symbol cells are ignored — because the gate
+  blocks and `/bootstrap` drafts that cell in free text. Read-only per WSD-027.
+
 ## 0.57.0 — 2026-08-17
 
 - B-46 part 2: added honest, offline-only version awareness to both `session-start` twins. Once

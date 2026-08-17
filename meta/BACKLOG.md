@@ -459,6 +459,18 @@ and print them in the suite summary.
 
 **Not:** do not add a third CI leg; the gap is process, not infrastructure.
 
+**Fifth instance, 2026-08-17 (shipping B-77) — and the first where the *implementer* could not reach
+the leg at all.** The `hazard-check` twins were written by codex, whose Windows sandbox has neither a
+working `bash` (it dies with `CreateFileMapping ... Win32 error 5`) nor Windows PowerShell 5.1. It
+reported both legs as **not observed**, which was honest and correct. Running them found two real
+bash-only defects: an unquoted `$candidate` in `for part in $candidate` that let the shell
+pathname-expand a wildcard against the cwd, and a separator-row test that silently skipped a row whose
+cells were all empty while the `.ps1` twin reported it. Neither is visible from the PowerShell side by
+construction. The generalisation this entry keeps accumulating now has a sharper form: **when the
+authoring environment cannot execute a leg, that leg has no evidence at all — not weak evidence** —
+so the reviewer must run it before the diff is reviewable, not after. Same conclusion as the entry's
+existing "not done until its first CI run is green", one step earlier in the pipeline.
+
 **Third and fourth instances, 2026-08-04 (shipping B-92) — this entry is now the most-repeated
 failure in the log.** A new meta suite was verified green under *both* PowerShell hosts locally and
 still took master red on the linux leg twice:
@@ -555,28 +567,6 @@ the same check). Consider closing all three as one hardening pass on that check.
 
 **Not swept:** other `checked by /X` / `asserted by /X` phrasings across `dist/*` were not audited
 when the three above were fixed — only the exact `refreshed by /docs-sync` string was.
-
----
-
-### B-77 · Hazard-row references have no machine check — only their age is measured
-**Effort:** S · **Priority:** P2 · found 2026-08-01 shipping v0.42.0
-
-**Why:** `session-start.{ps1,sh}` warns when a `Known Hazard Areas` row's `Reviewed` date passes 90
-days. It reads the `Area / file(s)` cell only to skip the placeholder row; the logic is purely
-`$reviewed -ge $cutoff` — **age, never content**. So a `[VERIFIED]` row pointing at a file deleted,
-renamed, or extracted months ago stays fresh-looking indefinitely, while `CLAUDE.md` instructs the
-agent to consult that list for blast radius on every non-trivial task. A row pointing at nothing is
-false confidence, which is exactly what the table's own warning says a stale hazard map causes.
-
-v0.42.0 gave `/rebootstrap` Phase 3c a referential-drift pass, but that is model-executed and
-developer-initiated — there is no deterministic equivalent, and no gate fails when a row dangles.
-
-**Do:** add `hazard-check.{ps1,sh}` modelled on the existing `wiki-check.{ps1,sh}` — same problem
-shape (an optional artifact carrying epistemic status), same wiring (invoked from
-`docs-sync-check`), same test shape (`WikiCheck.Tests.ps1`). Validate row shape, a required status
-token, an ISO `Reviewed` date, and that each path named in `Area / file(s)` resolves. **It must
-never set or upgrade a status** — that is the human's, per WSD-027. Twin edit; red-test with a
-planted dangling path.
 
 ---
 
@@ -701,6 +691,18 @@ to go red" is re-verifiable by running it, which is the only version of that cla
 **Not:** don't run mutations against the working tree in a release path — this must operate on
 scratch copies, as this release's red-tests did (`validate-dist` already accepts a dist-root
 argument for exactly that).
+
+**New failure mode, observed twice in one session (2026-08-17, shipping B-77) — the mutation that
+never applied.** Two of five hand-rolled red-tests used a `perl -pi -e s/.../.../` whose pattern did
+not match the target line (escaping of `$`, `/` and `|` inside the shell-quoted regex). Both printed
+the suite's **normal green summary**, which reads exactly like "the check is inert" — the opposite of
+the truth. They were caught only because the mutated line was expected to appear in a `grep` echo and
+did not. Restated: *a red-test that reports green is ambiguous between "the check is inert" and "the
+mutation did not apply", and nothing distinguishes them.* Whatever helper this entry lands on must
+therefore **assert the subject actually changed** (diff the mutant against the original and fail if
+identical) before it runs the command — that assertion is cheaper than the mutation itself and is the
+difference between evidence and decoration. A line-addressed `awk`+`diff -q` form worked where the
+pattern-addressed `perl` form silently did not.
 
 **Cross-links:** B-64 (planted-defect tests for diagnostics — this is the missing tooling under it),
 B-59, B-75.

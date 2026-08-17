@@ -133,6 +133,11 @@ if (Test-Path $wc) {
     & $psExe -NoProfile -ExecutionPolicy Bypass -File $wc (Split-Path -Parent $here)
     if ($LASTEXITCODE -ne 0) { Fail "team wiki checks failed (see above)." }
 }
+$hc = Join-Path $here 'hazard-check.ps1'
+if (Test-Path $hc) {
+    & $psExe -NoProfile -ExecutionPolicy Bypass -File $hc (Split-Path -Parent $here)
+    if ($LASTEXITCODE -ne 0) { Fail "hazard map checks failed (see above)." }
+}
 $wmc = Join-Path $here 'warehouse-map-check.ps1'
 if (Test-Path $wmc) {
     & $psExe -NoProfile -ExecutionPolicy Bypass -File $wmc (Split-Path -Parent $here)
