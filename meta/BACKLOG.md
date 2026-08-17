@@ -4496,8 +4496,26 @@ Prepend `C:\Windows\System32;C:\Windows;C:\Windows\System32\WindowsPowerShell\v1
 gates, and treat any 5.1-only failure as PATH-suspect **before** diagnosing it as an encoding bug —
 this entry's own original hypothesis was encoding, and for this member it was wrong.
 
-Still open under this entry: the `docs-sync-check branches and advisory prose agree` divergence,
-which has not been re-tested under a repaired `PATH`. Do that first; it may be the same cause.
+**Update 2026-08-17 — the other member is the SAME cause, and this entry can close.** The
+`docs-sync-check branches and advisory prose agree` divergence is also the corrupted `PATH`, not
+encoding. Found immediately once the suite's exit-mismatch assertion was made to print both twins'
+output — the diagnostic gap this entry itself asked for. The interpolated stderr said it outright:
+
+```
+[FAIL] docs-sync-check exit mismatch 1/0
+PS ERR: & : The term 'powershell' is not recognized as the name of a cmdlet ...
+```
+
+`docs-sync-check.ps1` spawns a bare `powershell` for its `template-checks` delegation, exactly as
+`framework-doctor.ps1` does. With `PATH` repaired the whole suite is `9 passed, 0 failed, 0 skipped`
+under Windows PowerShell 5.1. **Both members of this family were one environment defect wearing an
+encoding costume**, and the entry's original hypothesis was wrong for both.
+
+Two things worth keeping when this closes: (1) `AssertExit` in `ScriptTwinParity.Tests.ps1` now
+interpolates both twins' stdout/stderr on any exit mismatch — that is what made this a two-minute
+diagnosis instead of another deferral; (2) the remaining real question is not "is 5.1 broken" but
+"should shipped scripts spawn a bare interpreter name at all" — see B-104's class. That is a
+separate decision and deliberately not made here.
 
 **Second, separate pre-existing 5.1-only failure found in the same B-54 validation pass:**
 `dist/<d>/tests/hooks/FrameworkDoctor.Tests.ps1`'s `PowerShell twin runs under Windows PowerShell

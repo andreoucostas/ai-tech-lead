@@ -140,10 +140,15 @@ fi
 # Descriptions may be condensed in AGENTS.md, but /generate-copilot promises this remains the same
 # skills list. awk strips a UTF-8 BOM and CR before parsing; punctuation tests avoid non-ASCII
 # bracket expressions, which have corrupted UTF-8 differently across shell environments before.
+# Both strips use OCTAL escapes (\357\273\277, \015) rather than \r and friends: awk implementations
+# differ on which C escapes they honour inside a regex, and this file runs under whatever `awk` the
+# consumer's box provides -- gawk on Git Bash, mawk on a stock Debian/Ubuntu. An unrecognised \r
+# degrades to a literal `r`, which would leave the CR in place and make a CRLF checkout parse as if
+# the section were absent -- i.e. it would read as a pass. Octal is honoured everywhere.
 common_tasks() { # $1=file; emits existence marker followed by slugs in document order
   awk '
     NR==1 { sub(/^\357\273\277/, "") }
-    { sub(/\r$/, "") }
+    { sub(/\015$/, "") }
     $0=="## Common Tasks" { print "EXISTS"; section=1; next }
     section && /^## / { exit }
     section && /^- `[a-z0-9][a-z0-9-]*` / {

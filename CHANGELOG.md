@@ -21,6 +21,18 @@
   consumer mirrors are intentionally condensed rather than verbatim.
 - B-60: `validate-dist` check 12 (`step-references`) now catches broken top-level ordered-list runs
   and unresolved numbered step references in shipped workflow content.
+- Follow-up (same version, after the first release attempt went red on CI's linux legs only): the
+  shared `TemplateFixture` had been switched to CRLF to give the new check an EOL control, which fed
+  carriage returns to checks 1-7 for the first time on the one leg that can perceive them — MSYS
+  opens files in text mode, so Git Bash strips CR before `sed`/`grep`/`awk` ever run and no Windows
+  leg can see this class. Fixture reverted to LF; the CRLF control is now its own scoped case,
+  marked as linux-only coverage because it provably cannot fail on Windows. `template-checks.sh`
+  now strips CR with an octal escape rather than a backslash-r escape, since awk implementations
+  differ on which escapes they honour inside a regex.
+  `ScriptTwinParity`'s exit-mismatch assertion now prints both twins'
+  stdout/stderr — which immediately identified B-130's remaining unexplained 5.1 divergence as the
+  maintainer box's corrupted `PATH` (a bare `powershell` spawn that resolves to nothing), not the
+  encoding bug that entry had hypothesised for both of its members.
 - B-82: `DocTruth` now requires every root `CLAUDE.md` and `AGENTS.md` level-two heading to
   participate in an explicit mirror mapping, forcing a new mirror decision when either topology
   changes without pretending to prove the mirrored prose is complete.
