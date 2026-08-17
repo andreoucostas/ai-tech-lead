@@ -120,7 +120,11 @@ and its observed exit code) or `-NoIndependentReview`, which is allowed but reco
 ## Conventions
 
 Plans → `.claude/plans/` · decisions → `meta/workspace-decisions.md` · meta learnings →
-`meta/LEARNINGS.md` · work list → `meta/BACKLOG.md` · review ledger → `meta/review-ledger.md`.
+`meta/LEARNINGS.md` · review ledger → `meta/review-ledger.md`.
+**Work list → `meta/BACKLOG.md` (open only); finished entries → `meta/BACKLOG-DONE.md`. An entry
+is in exactly one of the two, never both; `PARTIALLY DONE` is a legitimate OPEN state.**
+**Standing constraints → `meta/decisions-index.md` — read it before locking any design**, because
+decisions get made inside individual backlog entries and are invisible to anyone not reading them.
 Commit to `master` and push when done — never leave changes uncommitted.
 
 ## Status

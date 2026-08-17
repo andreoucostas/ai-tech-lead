@@ -248,7 +248,14 @@ user. Generated `dist/` changes belong in the same commit as the `src/` change t
   mirror strategy, hook semantics, composition rules).
 - **Meta-dev learnings** → `meta/LEARNINGS.md` (distinct from the shipped `src/core/LEARNINGS.md`,
   which is an empty template the consumer's team fills in — do not confuse the two).
-- **Work list** → `meta/BACKLOG.md` (self-contained entries; move finished ones to its Done section).
+- **Work list** → `meta/BACKLOG.md` — **open work only**. Finished entries move to
+  `meta/BACKLOG-DONE.md`; an entry is in exactly one of the two, never both (the double
+  convention is what produced a 41%-wrong index, see the 2026-08-16 heading audit).
+  `PARTIALLY DONE` is a legitimate open state — do not archive a partially-done entry.
+- **Standing constraints** → `meta/decisions-index.md`. **Read it before locking any design.**
+  Decisions get made inside individual backlog entries and are then invisible to anyone not
+  reading that entry; a whole design was drafted in this repo that violated one such decision
+  because nothing surfaced it. Citations name an entry id, never a line number.
 
 ## Status
 
