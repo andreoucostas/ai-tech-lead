@@ -4,6 +4,15 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.58.0 — Unreleased
+
+- `docs-sync-check` now rejects Known Hazard Areas rows with invalid Status tokens, invalid Reviewed
+  dates, or named paths that do not exist, so a hazard row pointing at a file you deleted or renamed
+  stops looking current. Update those rows before the required build check runs. A cell naming just a
+  filename matches that filename anywhere in the repo; a cell naming a path resolves it from the repo
+  root; a cell with a wildcard checks only the directory prefix before the first wildcard. Prose and
+  symbol names in that cell are ignored. The check never edits the table — statuses stay yours.
+
 ## 0.57.0 — 2026-08-17
 
 - Once every seven days, session start now names your installed framework version and points you to
