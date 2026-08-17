@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.58.0 — Unreleased
+## 0.58.0 — 2026-08-17
 
 - B-77: added the read-only `hazard-check` PowerShell/bash gate and wired it into
   `docs-sync-check` so malformed hazard status/date cells and dangling named paths block CI. Until

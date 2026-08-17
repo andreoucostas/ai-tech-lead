@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.58.0 — Unreleased
+## 0.58.0 — 2026-08-17
 
 - `docs-sync-check` now rejects Known Hazard Areas rows with invalid Status tokens, invalid Reviewed
   dates, or named paths that do not exist, so a hazard row pointing at a file you deleted or renamed
