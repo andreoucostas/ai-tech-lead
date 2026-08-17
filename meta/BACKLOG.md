@@ -183,6 +183,14 @@ adoption, and reviewer-profile evidence still come only from the field pilot. Do
 framework *to* the pinned repos (rotate one target if that risk appears). Don't average away
 failures: one hard checklist failure = a defect entry, regardless of the rubric totals.
 
+> **KIT DELIVERED 2026-08-17; no drill run.** WSD-044 pins
+> `dotnet-architecture/eShopOnWeb` and `gothinkster/angular-realworld-example-app`, while leaving
+> both commit SHAs and all size/build/domain qualification explicitly to drill #0. The cold-run
+> checklist and frozen A/B rubric are in `meta/drill-kit.md`. RCA: no gate caught the missing kit
+> because this is maintainer process infrastructure, not a malformed shipped artifact. The same
+> exposure applies to the still-unrun host-recertification/report templates; drill #0 must exercise
+> them rather than treating the existence of prose as execution evidence.
+
 ### B-50 · Copilot CLI 1.0.70 now consumes `postToolUse` context — update the shipped matrix
 **Effort:** S · **Priority:** P2 documentation/capability honesty · **Invariants:** #3 #5 #7
 
@@ -324,6 +332,16 @@ archive; skip-with-warning; three-way-diff note in the update output). For versi
 consider a low-noise `session-start` line ("framework v0.31.0 installed; check for updates: <URL>")
 throttled to once per N days via the existing `.claude/.state/` mechanism — offline-tolerant,
 no network call, just a nudge. Record the design as a WSD before implementing.
+
+> **PART 2 IMPLEMENTED FOR v0.57.0 — Unreleased (2026-08-17).** Both `session-start` twins now
+> emit one honest line at most once per seven days: the installed version plus the releases page.
+> They make no network request and do not assert that an update exists. The
+> `.claude/.state/last-version-awareness` throttle is claimed before emission, so an unwritable
+> state path remains a quiet soft failure. RCA: no existing gate could catch the absence of a
+> consumer update-awareness channel because byte validity and hook wiring say nothing about what a
+> long-lived consumer learns. Other lifecycle facts delivered only at install/update time remain
+> exposed to the same discoverability class and should be assessed through B-42/B-49 field evidence,
+> not inferred from parser gates.
 
 ### B-48 · Enforcement-bypass audit — the guard's known end-runs, decided honestly
 **Effort:** M · **Invariants:** #3 #5 · needs a WSD record
@@ -1629,6 +1647,26 @@ gated and this one is not), B-32/WSD-017 (the context-footprint gate this must p
 
 ### B-100 · A file created by a shell command passes no hook — the guard is not a floor
 **Effort:** M · **Priority:** P2 · found 2026-08-05 (RCA on three red CI runs) · **Invariants:** #4 #5
+
+> **AND AGAIN, SAME RELEASE, DIFFERENT GATE.** The second v0.57.0 attempt was refused by
+> `RepositoryPrivacy.Tests`: the implementer's own report carried a concrete
+> `C:\Users\<name>\AppData\Local\Temp\...` fixture path into `.claude/plans/`, which is
+> committed and public (B-122's class). Two refusals, two different gates, one delivery — and
+> **both gates that caught it are whole-tree sweeps that never ask how the file arrived**, while
+> every hook-based check saw nothing. That is the argument for sweeps over hooks, stated in
+> evidence rather than in principle. Cost so far: two refused releases in one delivery.
+
+> **RECURRED 2026-08-17, caught by the BOM gate.** Shipping B-46 part 2, the implementer created
+> `src/core/tests/hooks/SessionStartVersionAwareness.Tests.ps1` through its own sandbox rather than
+> through a tool call, so `bom-fix` (a PostToolUse hook on Write/Edit) never saw it and the file
+> shipped BOM-less into all three dists. `release.ps1` refused the release; nothing was committed.
+> This is the second recorded instance of the class and it now has a measured cost: one refused
+> release. **What worked:** the repo-wide BOM sweep is a genuine floor precisely because it does not
+> depend on how the file arrived. **What still does not:** any hook-based check remains unreachable
+> for shell- and sandbox-authored files, which is exactly this entry's thesis. Note the delivery
+> model has changed since this entry was filed — an external implementer now writes most files
+> without passing a single tool call, so the exposure is larger than "a file created by a shell
+> command", not smaller.
 
 **The incident.** `.claude/scripts/canary-import-resolution.ps1` was committed without a UTF-8 BOM,
 breaking meta-invariant #4 and reddening CI for **five consecutive pushes** before anyone looked —

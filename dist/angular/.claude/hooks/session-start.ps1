@@ -31,9 +31,31 @@ if ([Console]::IsOutputRedirected) {
 $stdinJson = ''
 if ([Console]::IsInputRedirected) { $stdinJson = [Console]::In.ReadToEnd() }
 
+# Weekly, offline-only version awareness. This does not know whether a newer version exists; it
+# only names the installed stamp and points to the releases page. Claim the throttle record before
+# emitting so an unwritable state directory cannot turn a low-noise nudge into every-session noise.
+$versionNudge = $null
+try {
+    $versionFile = Join-Path (Get-Location) '.claude/framework-version.json'
+    $installedVersion = (Get-Content -LiteralPath $versionFile -Raw -ErrorAction Stop | ConvertFrom-Json).version
+    if ($installedVersion) {
+        $nowEpoch = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+        $awarenessFile = Join-Path $stateDir 'last-version-awareness'
+        $lastEpoch = 0L
+        if (Test-Path -LiteralPath $awarenessFile) {
+            [long]::TryParse([IO.File]::ReadAllText($awarenessFile).Trim(), [ref]$lastEpoch) | Out-Null
+        }
+        if ($lastEpoch -le 0 -or ($nowEpoch - $lastEpoch) -ge (7 * 86400)) {
+            [IO.File]::WriteAllText($awarenessFile, $nowEpoch.ToString(), [Text.UTF8Encoding]::new($false))
+            $versionNudge = "- **Framework version:** v$installedVersion installed; check for updates: https://github.com/andreoucostas/ai-tech-lead/releases"
+        }
+    }
+} catch { }
+
 $body = (& {
 
 Write-Output "## Session preload"
+if ($versionNudge) { Write-Output $versionNudge }
 
 # 1. Git branch + last 3 commits
 if (Test-Path .git) {

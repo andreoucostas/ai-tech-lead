@@ -5,6 +5,13 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.57.0 — 2026-08-17
+
+- Once every seven days, session start now names your installed framework version and points you to
+  the releases page to check for updates. It makes no network request and does not claim that a
+  newer version exists. If the local throttle state cannot be written, the hook stays quiet and
+  does not disrupt the session.
+
 ## 0.56.0 — 2026-08-17
 
 - **Updating is now explicit about what it replaces — and you should know it always did.** Running

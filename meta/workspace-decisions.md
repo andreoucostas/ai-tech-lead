@@ -2030,3 +2030,22 @@ hook registrations. That repeats the failure mode in which an update does not de
 framework behavior. A general rolling archive and per-file difference detector were also rejected:
 the former adds an unnecessary lifecycle, while the latter cannot distinguish a local edit from a
 normal framework version change.
+
+## WSD-044: Quarterly drill targets are stable; commit pins are observations made per drill (2026-08-17)
+
+**Context.** B-49 needs stable real-repository targets so results remain comparable across quarters,
+but no live-fire drill, clone, baseline build, or source-file count was authorised in this session.
+Candidate SHAs and repository descriptions in an earlier design plan are not substitutes for a
+fresh observation on the maintainer box.
+
+**Decision.** The .NET target is `dotnet-architecture/eShopOnWeb`; the Angular target is
+`gothinkster/angular-realworld-example-app`. Each must satisfy the B-49 entry criteria at drill #0:
+50–500 source files, a green baseline build on the maintainer box, and real domain logic. Those
+criteria are **not yet verified by this decision**. The exact commit SHA for each target is **to be
+pinned at drill #0**, after cloning and baseline qualification, and recorded in that drill's report.
+Every later quarterly drill pins its own exact SHA and may bump it to a then-current qualifying
+commit; a target change starts a new comparison series and requires an appended decision record.
+
+**Rejected.** Copying unverified SHAs or file counts from planning prose into the decision record;
+rotating repositories casually between quarters; and treating a successful clone as proof that the
+target builds or meets the size and domain-logic criteria.

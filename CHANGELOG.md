@@ -11,6 +11,15 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.57.0 — 2026-08-17
+
+- B-46 part 2: added honest, offline-only version awareness to both `session-start` twins. Once
+  every seven days, the hook names the installed framework version and points to the releases page;
+  it does not contact the network or claim that an update exists. The throttle is best-effort under
+  `.claude/.state/`, and an unwritable state path remains a soft failure.
+- B-49: built the meta-only quarterly drill kit and pinned its two repository targets without
+  inventing commit or build evidence; exact SHAs and target qualification remain drill-#0 work.
+
 ## 0.56.0 — 2026-08-17
 
 - B-46: made update ownership honest and recoverable. Both installer twins now disclose before

@@ -16,10 +16,29 @@ set -u
 input=""
 if [ ! -t 0 ]; then input=$(cat); fi
 
+# Weekly, offline-only version awareness. This does not know whether a newer version exists; it
+# only names the installed stamp and points to the releases page. Claim the throttle record before
+# emitting so an unwritable state directory cannot turn a low-noise nudge into every-session noise.
+version_nudge=""
+installed_version=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' .claude/framework-version.json 2>/dev/null | head -1)
+if [ -n "$installed_version" ]; then
+  now_epoch=$(date -u +%s 2>/dev/null || true)
+  awareness_file=.claude/.state/last-version-awareness
+  last_epoch=""
+  [ -f "$awareness_file" ] && last_epoch=$(cat "$awareness_file" 2>/dev/null || true)
+  case "$last_epoch" in *[!0-9]*|'') last_epoch=0;; esac
+  if [ -n "$now_epoch" ] && { [ "$last_epoch" -eq 0 ] || [ $((now_epoch - last_epoch)) -ge $((7 * 86400)) ]; }; then
+    if { mkdir -p .claude/.state && printf '%s' "$now_epoch" > "$awareness_file"; } 2>/dev/null; then
+      version_nudge="- **Framework version:** v$installed_version installed; check for updates: https://github.com/andreoucostas/ai-tech-lead/releases"
+    fi
+  fi
+fi
+
 emit_body() {
 
 # Run from project root (hook is invoked from there by the harness).
 echo "## Session preload"
+[ -n "$version_nudge" ] && echo "$version_nudge"
 
 # 1. Git branch + last 3 commits
 if [ -d .git ]; then
