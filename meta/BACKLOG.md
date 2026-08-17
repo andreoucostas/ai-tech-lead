@@ -413,7 +413,7 @@ uses GNU-only `\s`/`\b`, which are literal on BSD/macOS grep — it works on typ
 the exact trap this entry is about, and a POSIX-safe form
 (`'^[[:space:]]*\[.*[^A-Za-z]Ignore[^A-Za-z]'`) is verified equivalent.
 
-### B-60 · Skill step cross-references rot silently when a numbered list changes
+### B-60 · Skill step cross-references rot silently when a numbered list changes — **DONE in v0.53.0, see Done section**
 **Effort:** S · **Priority:** P3 hygiene
 
 **Why:** skills cross-reference their own steps in prose — `add-tests` alone has "financial-domain
@@ -429,7 +429,7 @@ the ordered-list labels, confirm they are contiguous from 1, and confirm every `
 the prose resolves to an existing item. Red-test by planting a gap. Cheap, and it protects a
 correctness property no human reliably re-verifies.
 
-### B-58 · `CLAUDE.md` ↔ `AGENTS.md` skills list is ungated and has already drifted
+### B-58 · `CLAUDE.md` ↔ `AGENTS.md` skills list is ungated and has already drifted — **DONE in v0.53.0, see Done section**
 
 `template-checks.{ps1,sh}` mirrors exactly four sections — `## Verification Rules`, `## Leanness`,
 `## SOLID`, `## Boy Scout Rule` (plus `### 1. Classify the intent`). The skills list under
@@ -1073,7 +1073,7 @@ licence section so the answer is recorded rather than re-litigated.
 
 ---
 
-### B-82 · Root `CLAUDE.md` ↔ `AGENTS.md` mirror parity is ungated
+### B-82 · Root `CLAUDE.md` ↔ `AGENTS.md` mirror parity is ungated — **DONE in v0.53.0, see Done section**
 **Effort:** S · **Priority:** P3 · filed 2026-08-01 while shipping B-45
 
 **Why:** meta-invariant #2 has two halves. The **shipped** half is gated per dist by
@@ -4469,6 +4469,36 @@ BOM-less-file default-encoding case, per invariant #4's known class — see B-54
 `[IO.File]::ReadAllText`). Confirm whether this already fails in CI's Windows leg or is silently
 masked there too.
 
+**Update 2026-08-16 (found while shipping B-58/B-60/B-82) — one member of this family is solved, and
+it was never an encoding bug.** `FrameworkDoctor.Tests.ps1`'s `PowerShell twin runs under Windows
+PowerShell 5.1` case fails on baseline (`58393d7`, verified in a clean worktree, so not caused by
+that cluster) with `[MISSING] Mirror and version integrity`. The cause is **this box's corrupted
+`PATH`**, not the doctor and not 5.1 semantics: `framework-doctor.ps1:203-204` spawns a bare
+`powershell` when running under Desktop edition, and `(Get-Command powershell).Source` returns
+**nothing** here because the session `PATH` is the known-broken one (third entry is the literal
+string `${PATH}`, and `C:\Windows\System32` is absent entirely — see the corrupted-PATH hazard in
+`DEVELOPING.md`). The spawn fails, `$LASTEXITCODE` is non-zero, and the doctor reports drift that
+does not exist.
+
+Proof, same command, same tree, only `PATH` changed:
+
+```
+PATH as-is            -> FrameworkDoctor.Tests: 29 passed, 1 failed, 1 skipped
+PATH + System32 etc.  -> FrameworkDoctor.Tests: 31 passed, 0 failed, 0 skipped
+```
+
+**Two consequences worth more than the fix.** First, the corrupted `PATH` does not merely produce a
+false failure — it produced a false *skip*, silently costing a case of real coverage, which is the
+`INVARIANT-GUARDING SKIPS` problem arriving through a channel that heading does not cover. Second,
+**any gate run from a shell with this `PATH` is measuring a machine that does not exist**; a release
+run from such a shell would refuse on a dist hook suite, and a dist gate cannot be waived by design.
+Prepend `C:\Windows\System32;C:\Windows;C:\Windows\System32\WindowsPowerShell\v1.0` before running
+gates, and treat any 5.1-only failure as PATH-suspect **before** diagnosing it as an encoding bug —
+this entry's own original hypothesis was encoding, and for this member it was wrong.
+
+Still open under this entry: the `docs-sync-check branches and advisory prose agree` divergence,
+which has not been re-tested under a repaired `PATH`. Do that first; it may be the same cause.
+
 **Second, separate pre-existing 5.1-only failure found in the same B-54 validation pass:**
 `dist/<d>/tests/hooks/FrameworkDoctor.Tests.ps1`'s `PowerShell twin runs under Windows PowerShell
 5.1` case also fails on unmodified master (reproduced with all B-54 changes stashed) — the healthy
@@ -4859,6 +4889,76 @@ critique per Maintenance rule 1 before code changes, exactly as B-129 itself req
 
 **Status:** filed 2026-08-16, not started, not gated.
 
+### B-141 · `DocTruth` has two Windows-PowerShell-5.1 defects, and one of its gates has never run there
+**Effort:** S · **Priority:** P2 · filed 2026-08-16 while shipping B-82 · **Invariants:** #4
+
+**Why:** `.claude/hooks/tests/DocTruth.Tests.ps1` is green under pwsh 7 and reports **two failures**
+under Windows PowerShell 5.1, on an unmodified tree. Reproduced directly:
+
+```
+> powershell.exe -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/tests/DocTruth.Tests.ps1
+[FAIL] no doc documents the phantom marker ... documented in: .claude\hooks\tests\DocTruth.Tests.ps1
+[FAIL] every live backlog item has a unique id -- BACKLOG.md yielded zero live item ids -- the heading grammar changed and this gate is blind
+DocTruth.Tests: 6 passed, 2 failed, 0 skipped
+```
+
+(The first failure's real message quotes the phantom marker token itself; it is paraphrased here
+because this file is one of the documents that check scans — writing it out verbatim turns this
+entry into the very violation it describes. That is not a footnote: **it happened**, the gate caught
+this entry on the first run, which is a small live demonstration that the check works.)
+
+1. **`Get-ChildItem -LiteralPath $repoRoot -Recurse -File -Include *.md` does not filter under 5.1.**
+   The scan reads every file in the repo, including `.ps1`, so the test flags **its own source** for
+   containing the forbidden token inside an error message. On a 5.1-only box this is a false failure
+   that blocks a release.
+2. **`meta/BACKLOG.md` is BOM-less UTF-8**, so 5.1's `Get-Content` decodes it against the system
+   codepage; the `### B-nn ·` heading grammar (`·` is non-ASCII) stops matching and the scan yields
+   zero ids. The vacuous-pass guard catches this and says so — **the guard is working exactly as
+   designed** — but the consequence is that the duplicate-id gate has **never actually run** under
+   5.1, and B-114 (two entries claiming the same id) is precisely the defect it exists to catch.
+
+**Do:** (1) replace the `-Include` filter with an explicit `Where-Object { $_.Extension -eq '.md' }`,
+or `-Filter *.md`, and red-test under 5.1 specifically; (2) read `meta/BACKLOG.md` with an
+absolute-path `[IO.File]::ReadAllText`, which is the pattern `template-checks.ps1:31-36` already
+documents for exactly this trap on `CHANGELOG.md` — the fix existed three files away and this file
+never adopted it. Then add a 5.1 arm so the divergence cannot return silently.
+
+**Note the shape of this finding:** the fix pattern was already written down, with a comment
+explaining why, in a sibling file. Prose does not propagate; only a gate does.
+
+### B-142 · The cross-file numbered-rule citations are ungated — B-58/B-60's blind spot, one file over
+**Effort:** S · **Priority:** P3 · filed 2026-08-16 by the B-58/B-60/B-82 RCA · **Invariants:** #1
+
+**Why:** the shipped skills and hooks cite framework rules by number across a **file boundary** —
+`Verification Rule #9`, `Test leanness #14`, `Leanness #2`, `Agentic Workflow §1` — and the lists
+they point into live in `.github/instructions/framework-rules.instructions.md`. B-60 gated
+*in-document* step references; nothing gates these. Inserting a rule into the middle of Verification
+Rules silently repoints every citation in every dist, and the diff looks locally correct on both
+sides — the exact B-57 failure mode, across files instead of within one.
+
+Real citation sites include `.claude/skills/add-tests/SKILL.md` (Verification Rule #6, #9, #10; Test
+leanness #11, #13, #14, #15), `.claude/hooks/guard.{ps1,sh}` (Verification Rule #5, Test leanness
+#15), `.claude/commands/bootstrap.md` (Verification Rule #1), `docs/REVIEW-GUIDE.md`, and
+`tests/evals/cases.yaml`.
+
+**There is no live defect.** Verified 2026-08-16: the carrier defines Verification Rules 1–11 and
+Leanness 1–16, and every citation across all three dists lands inside those ranges. This entry
+exists because the *class* is unguarded, not because something is broken.
+
+**Proportionality (Maintenance rule 6 — read this before building):** the harm here is
+**hypothetical**, unlike B-58's (which had a live two-technology divergence shipped) and B-60's
+(which had a real historical occurrence). That is a materially weaker case than either, and the
+cheap instrument is genuinely cheap: extend `validate-dist` check 12 to resolve `<List> #N` against
+the carrier's numbered lists, reusing the run/label parsing that already exists. If it cannot be
+done inside check 12 for roughly the cost of check 12, the honest answer may be to leave this
+unguarded and rely on the citation ranges being stable — decide that explicitly rather than
+defaulting to yes.
+
+**Do:** state the proportionality case first, then (if it survives) resolve every `Verification Rule
+#N` / `Test leanness #N` / `Leanness #N` / `Agentic Workflow §N` citation in a shipped file against
+the numbered list it names in the carrier, red-testing by inserting a rule mid-list and showing the
+downstream citations go red.
+
 ---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
@@ -5042,6 +5142,90 @@ planted unreadable file and an emptied tree, both twins.
 ---
 
 ## Done
+
+- **B-58 / B-60 / B-82** — DONE **2026-08-16**, shipped together in **v0.53.0**. One cluster, one
+  defect class: a structural property of a Markdown artifact that a human re-verifies by hand, that
+  no instrument re-verifies at all, and whose breakage is invisible in the diff because every line
+  is locally correct. Locked design + adversarial critique:
+  `.claude/plans/2026-08-16-b58-b60-b82-mirror-drift-gates.md` and its `-sol-critique.md`.
+
+  **B-58** — `template-checks` check 8 compares the **slug inventory** of `## Common Tasks` across
+  `CLAUDE.md` and `AGENTS.md`: duplicates diagnosed first (a set comparison hides them), then ordinal
+  inventory equality, then a zero-extraction blindness guard, then the presence rules (absent from
+  both prints an explicit `OK:` naming the skip — silence is indistinguishable from a pass). It does
+  **not** compare descriptions, per this entry's own original instruction.
+  Found and fixed the live defect this entry was filed for and one more the entry did not know
+  about: `dist/angular`'s `add-tests` line named *TestBed + `HttpTestingController`* to Claude and
+  *Jasmine/Karma or Jest* to Copilot — two different test stacks shipped to the two hosts, with
+  every gate green. B-57 fixed the dotnet pair by hand and missed this one. Fixed at
+  `src/stacks/angular/files/AGENTS.md:100`.
+
+  **Where the design changed under critique, and why it matters:** the first design put a per-slug
+  *code-span* comparison into `template-checks` as well. That would have been wrong at the **consumer
+  vantage point** — `docs-sync-check.sh:138-141` runs `template-checks` inside every consumer repo,
+  and `generate-copilot.md:79` specifies Common Tasks as a condensed, model-authored list. The gate
+  would have failed consumers for obeying our own generator. It moved to
+  `.claude/hooks/tests/SkillListParity.Tests.ps1`, authoring-only, over the three stock dists, with
+  the reason written into its header so nobody promotes it back.
+
+  **B-60** — `validate-dist` check 12, `step-references`. Contiguity is a **run** rule over the
+  numeric label sequence: a new run begins whenever a label is not `previous + 1`, and every run must
+  start at 0 or 1. It never inspects the lines between items, so tables, blockquotes and headings
+  inside a procedure cannot false-positive — the first design's block-breaking rule could, and could
+  also silently *accept* the defect by treating a post-interruption item as a fresh run. Resolvability
+  requires every numbered prose `step N` to resolve to a list label or a `Step N` heading in the same
+  file, with heading lines excluded from extraction (a `### Step 3` line is a definition, not a
+  reference — counting them inflated the first coverage number ~2.5x). Fenced code is blanked before
+  **both** scans: three files per dist carry column-0 `N. ` lines inside fences, so a label scan that
+  ignores fences is wrong on content we ship today. Out of scope and said so in the check's own
+  comment: nested ordered lists, `steps N–M` ranges (0 occurrences today), unnumbered references, and
+  a reference resolving against the wrong list in a multi-list file.
+
+  **B-82** — a `DocTruth` assertion driven by an explicit `CLAUDE.md` heading → `AGENTS.md` heading
+  table, asserted both directions, with the deliberate 4→1 and 2→1 merges encoded. The critique
+  recommended DROP (it measures heading *topology*, not mirror *truth*); the maintainer overruled
+  that and the objection is recorded both in the plan's disposition table and in the test's own
+  header comment, which states plainly that deleting a section's body while leaving its heading
+  standing keeps this green.
+
+  **Verification (Maintenance rule 4 — every instrument seen to go red, by the reviewer, not the
+  implementer):** the literal B-57 defect replayed (renumber `add-tests` item 1 → 0) fails both twins
+  with byte-identical text; dead prose reference, zero-files and zero-prose-reference guards all red
+  on both twins; a planted fenced ```` ```markdown / 1. / 3. ```` block stays green, proving the fence
+  handling is load-bearing; B-82 red in three directions (CLAUDE-only heading, AGENTS-only heading,
+  and a reworded mirror target); the angular code-span defect reproduced red and green after the fix.
+  Full `validate-dist` green on all three dists on **both** twins.
+
+  **Implementer/reviewer split:** implemented by codex (`gpt-5.6-sol`) across three briefed rounds
+  with a checkpoint commit between each; reviewed, red-tested and committed by Claude. Two blocking
+  findings came out of reviewing a *green* round-1 tree, and neither was visible in the implementer's
+  own report:
+  1. The bash twin of check 8 used `mapfile` and `declare -A` — **bash 4.0+ builtins in a script that
+     ships into consumer repos**. `grep -rn 'mapfile|declare -A|readarray|coproc' src/core scripts
+     --include=*.sh` returned only those four lines: no shipped or gate script had ever used a
+     bash-4-only construct, and macOS ships bash 3.2 as `/bin/bash` while
+     `generate-copilot.md:82` tells consumers to run these on macOS. Rewritten with `while read` and
+     the space-delimited membership idiom already in `validate-dist.sh:70`. **Residual: not executed
+     on a real bash 3.2 host** — verified by construction and `bash -n` only. Recorded, not claimed.
+  2. `SkillListParity.Tests.ps1` reported **green while parsing nothing**: rewriting the list prefix
+     in all six stock files left it passing. It now asserts both populations and the shared-slug
+     population it actually compared. This is the B-64/B-72/B-74/B-75 class again, on a brand-new
+     instrument, caught only by pointing the probe at it.
+
+  **RCA (Maintenance rule 5) — why did no gate catch these?** All three are structural properties of
+  Markdown that the existing gates deliberately do not model. The mirror gate models *verbatim
+  identity* and was aimed at four sections chosen in v0.8.0, so anything condensed on purpose was
+  outside its reach **by construction** — and `## Common Tasks`, the section that changes most often
+  because it changes every time a skill is added, sat in that blind spot for 44 versions.
+  `validate-dist` modelled *files and paths* (does this script exist, does this link resolve) and
+  never document internals.
+  **Same-class sweep:** the shipped docs carry a *second* numbered cross-reference grammar
+  (`Verification Rule #N`, `Test leanness #N`, `Leanness #N`, `Agentic Workflow §N`) that points into
+  numbered lists in a **different** file. I verified every current citation resolves (Verification
+  Rules 1–11, Leanness 1–16), so there is **no live defect** — but it is the same blind spot one file
+  over, and those lists are edited regularly. Filed as **B-142** with its own proportionality case
+  rather than bolted on here, because "more gate is better" is exactly the reasoning Maintenance
+  rule 6 exists to interrupt.
 
 - **B-139** — DONE **2026-08-16**. Added `.claude/hooks/tests/GateBudgetConsistency.Tests.ps1`
   (auto-discovered by `Invoke-HookTests.ps1`, no wiring needed): asserts

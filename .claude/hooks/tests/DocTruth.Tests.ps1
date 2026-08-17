@@ -99,4 +99,45 @@ It 'every live backlog item has a unique id' {
     Assert $true 'clean'
 }
 
+# This checks heading topology, not whether the mirrors tell the same truth. For example, deleting
+# Maintenance model rule 6 from AGENTS.md while leaving its heading intact remains green. Likewise,
+# four CLAUDE.md sections deliberately map to one AGENTS.md heading, which could retain only one of
+# those concepts and still pass. This test catches one event: a section appears on either side
+# without a mirror decision. A future content-truth gap needs a content measure, not more topology.
+It 'root CLAUDE.md and AGENTS.md headings have an explicit mirror mapping' {
+    $table = @(
+        [pscustomobject]@{ Claude = 'What this repo is'; Agents = 'What this repo is' }
+        [pscustomobject]@{ Claude = 'Meta-invariants (canonical list — referenced everywhere, restated nowhere)'; Agents = 'Meta-invariants (canonical definitions live in CLAUDE.md — same numbering)' }
+        [pscustomobject]@{ Claude = 'How to approach a change (meta-workflows)'; Agents = 'Workflows, done-ness, verification' }
+        [pscustomobject]@{ Claude = 'Maintenance model (who implements, who reviews, what "green" means)'; Agents = 'Maintenance model' }
+        [pscustomobject]@{ Claude = 'Definition of done per artifact type'; Agents = 'Workflows, done-ness, verification' }
+        [pscustomobject]@{ Claude = 'Verification (evidence-based — name the command, show the result)'; Agents = 'Workflows, done-ness, verification' }
+        [pscustomobject]@{ Claude = 'Inherited disciplines (they apply to meta-work too)'; Agents = 'Workflows, done-ness, verification' }
+        [pscustomobject]@{ Claude = 'Commit & push policy (stated in full — not by reference)'; Agents = 'Conventions' }
+        [pscustomobject]@{ Claude = 'Conventions'; Agents = 'Conventions' }
+        [pscustomobject]@{ Claude = 'Status'; Agents = 'Status' }
+    )
+    Assert (@($table).Count -gt 0) 'heading mirror mapping table is empty -- this gate is blind'
+
+    $claudeHeadings = @([IO.File]::ReadAllLines((Join-Path $repoRoot 'CLAUDE.md'), [Text.Encoding]::UTF8) | ForEach-Object {
+        if ($_ -match '^## (.+)$') { $Matches[1] }
+    })
+    $agentsHeadings = @([IO.File]::ReadAllLines((Join-Path $repoRoot 'AGENTS.md'), [Text.Encoding]::UTF8) | ForEach-Object {
+        if ($_ -match '^## (.+)$') { $Matches[1] }
+    })
+    Assert ($claudeHeadings.Count -gt 0) 'CLAUDE.md yielded zero ## headings -- the heading grammar changed and this gate is blind'
+    Assert ($agentsHeadings.Count -gt 0) 'AGENTS.md yielded zero ## headings -- the heading grammar changed and this gate is blind'
+
+    foreach ($heading in $claudeHeadings) {
+        Assert (@($table | Where-Object { $_.Claude -ceq $heading }).Count -gt 0) "CLAUDE.md heading '$heading' has no mapping -- decide its mirror target and add it to the table"
+    }
+    foreach ($mapping in $table) {
+        Assert (@($agentsHeadings | Where-Object { $_ -ceq $mapping.Agents }).Count -gt 0) "mapped AGENTS.md target '$($mapping.Agents)' for CLAUDE.md heading '$($mapping.Claude)' does not exist"
+    }
+    foreach ($heading in $agentsHeadings) {
+        Assert (@($table | Where-Object { $_.Agents -ceq $heading }).Count -gt 0) "AGENTS.md heading '$heading' is not the target of any CLAUDE.md heading mapping"
+    }
+    Assert $true 'clean'
+}
+
 exit (Write-TestSummary 'DocTruth.Tests (the authoring docs describe the repo that exists)')

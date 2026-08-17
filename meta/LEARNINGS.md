@@ -1086,3 +1086,45 @@ per Maintenance model rule 5, not deferred. `TECH_DEBT.md` was checked as a same
 free-text register and found low-risk (its schema has no field that naturally invites operational
 identifiers), so it was not treated as a third instance — but it is the same append pattern and
 worth a glance if this class resurfaces.
+
+## 2026-08-16 — a shipped gate must be judged from the consumer's vantage point, not the author's
+
+B-58's first design compared, per skill, the set of backtick-quoted code spans in `CLAUDE.md` and
+`AGENTS.md`, and put that comparison in `template-checks` alongside the slug-inventory check. It was
+correct on our three stock dists (1 real hit, 0 false positives across 38 lines) and would have been
+wrong the moment it shipped: `docs-sync-check.sh:138-141` runs `template-checks` **inside every
+consumer repo**, and `generate-copilot.md:79` specifies `## Common Tasks` as "the skills list" — a
+condensed, model-authored mirror with no verbatim requirement. The gate would have failed consumers
+for doing exactly what the framework told them to do.
+
+The distinction that survived, and is the reusable one: **the slug inventory is contractual on both
+surfaces; the prose is explicitly the generator's to condense.** So the inventory check ships and the
+description check does not — it now lives in an authoring-only meta test over the three stock dists,
+whose header says why, so nobody promotes it back later. A gate that is true of *our* hand-authored
+files is not automatically true of a consumer's *generated* ones, and `template-checks` runs in both
+worlds. Ask which world an assertion is true in before choosing the file it lives in.
+
+Two more from the same cluster, both found by reviewing a **green** implementer round:
+
+1. **A brand-new instrument passed while parsing nothing.** `SkillListParity.Tests.ps1` reported
+   `1 passed` after the list-prefix grammar was broken in all six stock files: zero slugs parsed,
+   zero drift found, green. Non-empty inputs were not enough — the guard that mattered was asserting
+   the *shared* population actually compared, since two non-empty inventories with no overlap also
+   compare nothing. This is B-64/B-72/B-74/B-75's class arriving on a gate written *by people who
+   had just read that rule*. Point the probe at the new instrument before believing its first green.
+
+2. **A twin can pass `bash -n` and still raise the floor of a shipped script.** The bash twin used
+   `mapfile` and `declare -A` — bash 4.0+, where `grep -rn 'mapfile|declare -A|readarray|coproc'`
+   over `src/core` and `scripts` had previously returned *nothing*. macOS ships bash 3.2 as
+   `/bin/bash`, and we tell consumers to run these scripts there. Syntax-checking on a bash 5.2 box
+   cannot see this; the check that found it was asking "has any shipped script ever used this
+   construct before?" Worth making a habit when a twin gains a builtin it never used.
+
+And a working hazard that cost real diagnosis time: a dist hook suite failed with
+`[MISSING] Mirror and version integrity` under Windows PowerShell 5.1, on baseline as well as on the
+change — the cause was this box's corrupted `PATH` (no `C:\Windows\System32`, so the doctor's bare
+`powershell` spawn resolves to nothing), not 5.1 semantics and not the doctor. Repairing `PATH` took
+that suite from `29 passed, 1 failed, 1 skipped` to `31 passed, 0 failed, 0 skipped` — note it also
+un-skipped a case, so the broken `PATH` was silently *removing coverage*, not just adding noise. Any
+5.1-only failure on this box is PATH-suspect before it is an encoding bug; see B-130, whose original
+hypothesis was encoding and was wrong for this member.

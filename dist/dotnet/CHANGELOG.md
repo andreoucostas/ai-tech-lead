@@ -4,6 +4,13 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.53.0 — 2026-08-16
+
+- `docs-sync-check` now verifies that `CLAUDE.md` and `AGENTS.md` list the same skill slugs under
+  `## Common Tasks`, so adding a skill to only one agent surface is caught. Descriptions may remain
+  condensed and are deliberately not compared. No action is required unless the check reports a
+  one-sided or duplicate skill entry.
+
 ## 0.52.1 — 2026-08-13
 
 - The framework's behavior cases are now a readable catalogue rather than an API-backed runner.

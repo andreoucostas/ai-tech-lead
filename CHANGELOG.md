@@ -11,6 +11,20 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.53.0 — 2026-08-16
+
+- B-58: `template-checks` check 8 now compares the exact Common Tasks skill-slug inventory in
+  `CLAUDE.md` and `AGENTS.md`, catching one-sided and duplicate entries while continuing to allow
+  their deliberately different description prose. Corrected Angular's live `add-tests` mirror to
+  name the same test stack on both surfaces. A separate authoring-only `SkillListParity` test checks
+  description code spans in the three stock outputs; it stays authoring-only because generated
+  consumer mirrors are intentionally condensed rather than verbatim.
+- B-60: `validate-dist` check 12 (`step-references`) now catches broken top-level ordered-list runs
+  and unresolved numbered step references in shipped workflow content.
+- B-82: `DocTruth` now requires every root `CLAUDE.md` and `AGENTS.md` level-two heading to
+  participate in an explicit mirror mapping, forcing a new mirror decision when either topology
+  changes without pretending to prove the mirrored prose is complete.
+
 ## 0.52.1 — 2026-08-13
 
 - B-41/B-23: retired the unmaintained API-backed eval runner while preserving its case catalogue as

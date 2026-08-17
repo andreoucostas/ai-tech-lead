@@ -226,6 +226,18 @@ The session `PATH` contains three entries and the third is the **literal unexpan
 the registry is fine, and "fixing" it is a known dead end. Use absolute paths, or prepend the
 directory for the child process.
 
+> **Repair `PATH` before running any gate suite, or you are measuring a machine that does not
+> exist.** `C:\Windows\System32` is *also* absent, so even `powershell` does not resolve
+> (`(Get-Command powershell).Source` returns nothing). The shipped `framework-doctor.ps1` spawns a
+> bare `powershell` when it runs under 5.1; with this `PATH` that spawn fails and the doctor reports
+> mirror drift that does not exist, failing a **dist** hook suite — which `release.ps1` cannot waive
+> by design. Measured on one unmodified tree, same command, only `PATH` changed:
+> `29 passed, 1 failed, 1 skipped` → `31 passed, 0 failed, 0 skipped`. Note the skip: a broken
+> `PATH` silently *removes* coverage as well as adding false failures. Prepend this first:
+> `$env:PATH = "C:\Windows\System32;C:\Windows;C:\Windows\System32\WindowsPowerShell\v1.0;" + $env:PATH`
+> Corollary: treat any 5.1-only failure here as `PATH`-suspect **before** diagnosing it as an
+> encoding bug (see B-130 — that was its original hypothesis, and it was wrong for this case).
+
 | Tool | Absolute path |
 |---|---|
 | Claude Code | `$env:USERPROFILE\.local\bin\claude.exe` |

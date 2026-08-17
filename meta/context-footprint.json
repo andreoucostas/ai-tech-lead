@@ -623,8 +623,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 23108,
-          "tok": 5777
+          "chars": 23143,
+          "tok": 5786
         }
       ],
       "instructed": [
@@ -1343,8 +1343,8 @@
     "angular": {
       "static.claude.chars": 38180,
       "static.claude.tok": 9545,
-      "static.copilot.chars": 44317,
-      "static.copilot.tok": 11079,
+      "static.copilot.chars": 44352,
+      "static.copilot.tok": 11088,
       "prompt.max.chars": 2323,
       "prompt.max.tok": 581
     },
