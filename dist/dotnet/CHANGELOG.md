@@ -4,6 +4,11 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.55.0 — 2026-08-17
+
+- No changes to the .NET distribution in this release; it ships to keep every distribution on the
+  same framework version. The Angular and monorepo distributions gained greenfield forms guidance.
+
 ## 0.54.0 — 2026-08-17
 
 - **Fixed a broken update on the Bash installer.** Running `bash scripts/install.sh` against an

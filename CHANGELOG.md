@@ -11,6 +11,28 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.55.0 — 2026-08-17
+
+- B-66 (remaining half): shipped the prescriptive Angular forms guidance into `docs/defaults.md`
+  § Forms (both the angular and monorepo siblings [#1]) and a self-contained custom-form-control
+  branch in the `add-component` skill, with its frontmatter `description` extended so selection
+  fires on "custom form control"/"ControlValueAccessor". `### Component Design`'s @Input/@Output
+  line gained the form-control carve-out.
+  **This ships on the field report, not on a probe.** The gate that held it since v0.40.0 was
+  "the behavioural probe is already green so improvement cannot be demonstrated" — which inverts the
+  evidence hierarchy, since a real field report is the strongest evidence this repo has. The
+  instrument that would have graded it was itself rejected (B-145). The effect on model behaviour is
+  **unmeasured**, and nothing in the shipped text implies otherwise.
+  The three precision traps from the drafted content were all honoured and verified in the diff:
+  circular DI is qualified to the *self-referencing* `useExisting: forwardRef(() => Self)` provider;
+  the text says `@Input() disabled` *fights* `control.disable()` via `setDisabledState()` and never
+  claims "Angular warns" (that claim would be false — `grep -rn "Angular warns" dist/` is empty);
+  and signal inputs are noted read-only, so a CVA's value cannot be an `input()`.
+- `DEVELOPING.md`: corrected the PATH-repair advice added in v0.53.0. It is PowerShell-only —
+  prepending `C:\Windows\System32` inside Git Bash shadows GNU `find`/`sort` with the Windows
+  binaries, which made a validator's file scan see zero files and fail. A broken shell wearing the
+  costume of a broken dist; caught only because that check has a zero-files guard.
+
 ## 0.54.0 — 2026-08-17
 
 - Installer, Bash twin: two `set -euo pipefail` landmines on the UPDATE path. The disabled-skill

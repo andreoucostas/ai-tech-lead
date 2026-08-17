@@ -237,6 +237,16 @@ directory for the child process.
 > `$env:PATH = "C:\Windows\System32;C:\Windows;C:\Windows\System32\WindowsPowerShell\v1.0;" + $env:PATH`
 > Corollary: treat any 5.1-only failure here as `PATH`-suspect **before** diagnosing it as an
 > encoding bug (see B-130 — that was its original hypothesis, and it was wrong for this case).
+>
+> **That repair is for PowerShell ONLY. Never prepend `C:\Windows\System32` inside Git Bash** —
+> Windows ships `find.exe`, `sort.exe` and friends there, so prepending shadows the GNU coreutils
+> every `.sh` gate depends on. Measured 2026-08-17: with it prepended, `which find` resolves to
+> `/c/Windows/System32/find`, and `find … -type f -name '*.md'` answers
+> `FIND: Parameter format not correct` — so `validate-dist.sh`'s step-reference scan saw **zero
+> files** and failed, a broken shell wearing the costume of a broken dist. In bash add only the
+> PowerShell directory: `export PATH="/c/Program Files/PowerShell/7:$PATH"`.
+> That failure was loud only because the check carries a zero-files guard. Without one it would have
+> been a silent green over an empty scan — which is the argument for those guards in one sentence.
 
 | Tool | Absolute path |
 |---|---|

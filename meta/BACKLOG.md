@@ -530,7 +530,7 @@ still worth doing. The causal question—whether the pointer increases load prob
 runs before the framework asserts anything about pointers in shipped documentation. For the Angular
 work, a pattern catalogue in `docs/` is a viable delivery location on this evidence.
 
-### B-66 · The Angular stack ships no forms guidance at all
+### B-66 · The Angular stack ships no forms guidance at all — **DONE in v0.55.0, see Done section**
 **Effort:** M · **Priority:** P2
 
 **Why:** case-sensitive grep across `src/stacks/angular/` for `ControlValueAccessor`, `NgControl`,
@@ -5280,6 +5280,42 @@ planted unreadable file and an emptied tree, both twins.
   The same class exposes any repository-level attribution or policy file assumed to cover generated
   or copied deliverables. The behavioral installer cases now cover both legal artifacts and both
   twins, while the drift gate covers the one deliberately duplicated legal text.
+
+- **B-66** — DONE **2026-08-17**, shipped in **v0.55.0**. The remaining prescriptive half:
+  greenfield forms defaults (reactive, typed controls, validator placement, no `ngModel` +
+  `formControlName` on one control) and an honest `NG_VALUE_ACCESSOR`-vs-`NgControl` trade-off table
+  in `docs/defaults.md` § Forms, plus a self-contained custom-form-control branch in the
+  `add-component` skill. Both `docs/defaults.md` siblings edited [#1]; the skill is byte-identical
+  across angular/monorepo and both `.claude`/`.github` mirrors, verified before and after.
+
+  **Why it shipped now, after sitting blocked since v0.40.0.** The gate was "the `angular-form-control`
+  probe is already green, so guidance cannot be shown to improve anything". That inverts the evidence
+  hierarchy: B-66 rests on **the only field report this framework has ever received**, which is
+  stronger evidence than any probe. And the instrument that would have graded it was itself rejected
+  (B-145: at N=6 per arm, exact Fisher `0/6 vs 4/6 -> p=0.0606`, and `meta/BACKLOG.md:1772` already
+  forbids a second harness). A second stated reason for deferring — the static-context ceiling — was
+  simply **wrong**: only skill *frontmatter* is `static.claude`; a skill *body* is `ondemand-info`
+  and `docs/defaults.md` is `instructed`, and neither has a declared ceiling.
+
+  **The claim is labelled honestly:** the guidance addresses a reported gap; its effect on model
+  behaviour is **unmeasured**, and nothing in the shipped text implies a probe endorsed it.
+
+  **Three precision traps, all verified in the diff rather than trusted:** circular DI is qualified
+  to the *self-referencing* `useExisting: forwardRef(() => Self)` provider, with the note that a
+  separate accessor class does not cycle; `@Input() disabled` is described as *fighting*
+  `control.disable()` via `setDisabledState()`, and the false claim "Angular warns" appears nowhere
+  (`grep -rn "Angular warns" dist/` is empty); signal inputs are stated read-only, so a CVA's value
+  cannot be an `input()`. The wrapper-vs-bindable-control distinction that a previous eval run
+  conflated is stated explicitly.
+
+  **B-72 stays open on its own merits** — the grader defects it found are real — but no longer
+  blocks anything.
+
+  **RCA (rule 5):** no gate caught the original gap because no gate models *absence* of guidance;
+  a case-sensitive grep for ten forms identifiers returning zero matches was the only signal, and a
+  human ran it. **Same-class sweep:** the same grep shape would answer "what else does a stack say
+  nothing about?" for other large surfaces (routing guards/resolvers, i18n, accessibility). Not run.
+  That is the honest state, and it is a cheap check for whoever picks up B-42's field pilot.
 
 - **B-58 / B-60 / B-82** — DONE **2026-08-16**, shipped together in **v0.53.0**. One cluster, one
   defect class: a structural property of a Markdown artifact that a human re-verifies by hand, that

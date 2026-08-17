@@ -4,6 +4,16 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.55.0 — 2026-08-17
+
+- Greenfield Angular defaults now cover **forms**: reactive with typed controls, where validators
+  live, and how a custom form control should integrate — including an honest trade-off between
+  providing `NG_VALUE_ACCESSOR` and injecting `NgControl`, since neither is an anti-pattern. The
+  `add-component` skill gained a matching custom-form-control branch. Forms are the largest surface
+  of a line-of-business Angular app and the framework previously said nothing about them. These are
+  greenfield defaults: if your repo already has a forms approach, the guidance tells the agent to
+  mirror yours rather than introduce a second.
+
 ## 0.54.0 — 2026-08-17
 
 - **Fixed a broken update on the Bash installer.** Running `bash scripts/install.sh` against an

@@ -148,6 +148,26 @@ Choose the level by what the test actually exercises — *push each test to the 
      pattern already established. A component bindable with `formControlName` must participate one of
      those ways; `@Input`/`@Output` alone cannot carry a form binding. -->
 
+**If a forms approach already exists:** mirror it; do not introduce a second approach.
+
+**If no forms approach exists (greenfield only):**
+- Use reactive forms with typed controls (`FormControl<T>` or `NonNullableFormBuilder`).
+- Declare field validators with their control and cross-field validators on the `FormGroup`.
+- Never use `ngModel` and `formControlName` on the same control.
+
+For a custom form control, neither integration option is an anti-pattern. Choose by what the
+component needs to render:
+
+| | `NG_VALUE_ACCESSOR` provider | inject `NgControl` (`{ self: true }`) |
+|---|---|---|
+| gives you | value + disabled plumbing | plumbing plus the control (`touched`, `errors`, `status`) |
+| choose when | renders no validation state of its own | renders its own error/required state |
+| cost | needs a separate route to validity | must set `ngControl.valueAccessor = this` by hand |
+
+Do not combine injected `NgControl` with a self-referencing `NG_VALUE_ACCESSOR` provider using
+`useExisting: forwardRef(() => Self)`: that dependency path cycles from `NgControl` through the
+provider and component back to `NgControl`. A separate accessor class does not create that cycle.
+
 ### State Management
 - Local component state: signals or simple properties.
 - Shared state: signals-based service, NgRx, or NGXS — whichever the project uses. Don't mix approaches.

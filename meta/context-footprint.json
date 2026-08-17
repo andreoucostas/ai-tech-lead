@@ -551,8 +551,8 @@
         },
         {
           "path": ".claude/skills/add-component/SKILL.md#frontmatter",
-          "chars": 616,
-          "tok": 154
+          "chars": 675,
+          "tok": 169
         },
         {
           "path": ".claude/skills/add-lazy-route/SKILL.md#frontmatter",
@@ -635,8 +635,8 @@
         },
         {
           "path": "docs/defaults.md",
-          "chars": 7113,
-          "tok": 1778
+          "chars": 8297,
+          "tok": 2074
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -806,8 +806,8 @@
         },
         {
           "path": ".claude/skills/add-component/SKILL.md#body",
-          "chars": 1054,
-          "tok": 264
+          "chars": 2336,
+          "tok": 584
         },
         {
           "path": ".claude/skills/add-lazy-route/SKILL.md#body",
@@ -965,8 +965,8 @@
         },
         {
           "path": ".claude/skills/add-component/SKILL.md#frontmatter",
-          "chars": 616,
-          "tok": 154
+          "chars": 675,
+          "tok": 169
         },
         {
           "path": ".claude/skills/add-endpoint/SKILL.md#frontmatter",
@@ -1079,8 +1079,8 @@
         },
         {
           "path": "docs/defaults.md",
-          "chars": 15125,
-          "tok": 3781
+          "chars": 16309,
+          "tok": 4077
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -1250,8 +1250,8 @@
         },
         {
           "path": ".claude/skills/add-component/SKILL.md#body",
-          "chars": 1054,
-          "tok": 264
+          "chars": 2336,
+          "tok": 584
         },
         {
           "path": ".claude/skills/add-endpoint/SKILL.md#body",
@@ -1341,22 +1341,22 @@
       "prompt.max.tok": 563
     },
     "angular": {
-      "static.claude.chars": 38180,
-      "static.claude.tok": 9545,
+      "static.claude.chars": 38239,
+      "static.claude.tok": 9560,
       "static.copilot.chars": 44352,
       "static.copilot.tok": 11088,
       "prompt.max.chars": 2323,
       "prompt.max.tok": 581
     },
     "monorepo": {
-      "static.claude.chars": 47858,
-      "static.claude.tok": 11964,
+      "static.claude.chars": 47917,
+      "static.claude.tok": 11979,
       "static.copilot.chars": 52437,
       "static.copilot.tok": 13109,
       "prompt.max.chars": 2668,
       "prompt.max.tok": 667
     },
-    "monorepo-claude-ratio-permille": 1212
+    "monorepo-claude-ratio-permille": 1213
   },
   "_notes": [
     "Claude frontmatter is a stable over-approximation of harness injection.",
