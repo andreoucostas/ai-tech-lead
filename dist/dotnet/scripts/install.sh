@@ -46,6 +46,30 @@ fi
 adopt_mode=0
 if [ "$update_mode" -eq 0 ] && [ -n "$detected" ]; then adopt_mode=1; fi
 
+# These legal files are neither protected nor ordinary framework files. Protection would freeze a
+# stale framework-owned notice; bulk copying would silently clobber consumer files. Preflight their
+# explicit ownership policy before this installer mutates the target, then copy them after the bulk.
+legal_license="LICENSES/ai-tech-lead-MIT.txt"
+legal_notice="NOTICE-ai-tech-lead.md"
+copy_legal_license=1
+if [ -f "$tgt/$legal_license" ]; then
+  source_lf="$(mktemp)"
+  target_lf="$(mktemp)"
+  awk '{ sub(/\015$/, ""); print }' "$src/$legal_license" > "$source_lf"
+  awk '{ sub(/\015$/, ""); print }' "$tgt/$legal_license" > "$target_lf"
+  if ! cmp -s "$source_lf" "$target_lf"; then
+    rm -f "$source_lf" "$target_lf"
+    echo "ERROR: Refusing to overwrite '$legal_license': the existing file is not identical to the framework licence." >&2
+    exit 3
+  fi
+  rm -f "$source_lf" "$target_lf"
+  copy_legal_license=0
+fi
+if [ -f "$tgt/$legal_notice" ] && ! grep -Fq 'FRAMEWORK-OWNED' "$tgt/$legal_notice"; then
+  echo "ERROR: Refusing to overwrite '$legal_notice': the existing file is not marked FRAMEWORK-OWNED." >&2
+  exit 3
+fi
+
 echo "Installing AI Tech Lead Framework"
 echo "  from: $src"
 echo "  into: $tgt"
@@ -90,7 +114,7 @@ for entry in "$src"/*; do
   name="$(basename "$entry")"
   case "$name" in
     # Template-repo meta files that must never land in (or overwrite their namesakes in) a consumer repo.
-    .git|.template-repo|README.md|CHANGELOG.md|.gitignore|.gitattributes) continue ;;
+    .git|.template-repo|README.md|CHANGELOG.md|.gitignore|.gitattributes|LICENSES|NOTICE-ai-tech-lead.md) continue ;;
   esac
   if [ "$name" != docs ]; then cp -r "$entry" "$tgt"/; fi
 done
@@ -110,6 +134,11 @@ if [ -d "$src/docs" ]; then
     done
   fi
 fi
+# Explicit legal-file policy above owns these paths; keeping them out of both protected and the bulk
+# copy lets the notice travel on update without asserting ownership over consumer collisions.
+mkdir -p "$tgt/$(dirname "$legal_license")"
+if [ "$copy_legal_license" -eq 1 ]; then cp "$src/$legal_license" "$tgt/$legal_license"; fi
+cp "$src/$legal_notice" "$tgt/$legal_notice"
 # The installer is meta — don't ship it into the consumer repo. template-ci.yml is the TEMPLATE
 # repo's own CI (hook suite + framework checks on push); consumers get the same framework checks
 # via docs-sync-check -> template-checks, wired into their own CI.
@@ -122,8 +151,15 @@ if [ "$update_mode" -eq 1 ] && [ -n "$snapshot" ]; then
   if [ -d "$snapshot/skill-state/.claude/skills" ]; then
     for old in "$snapshot/skill-state/.claude/skills"/*; do [ -d "$old" ]||continue;name=$(basename "$old");old_file="$old/SKILL.md";dest="$tgt/.claude/skills/$name";[ -f "$old_file" ]||continue;if grep -Eq '^origin:[[:space:]]*discovered[[:space:]]*$' "$old_file";then rm -rf "$dest";cp -r "$old" "$dest";continue;fi;exemplar=$(grep -E '^For a concrete current instance in this repo, see .+$' "$old_file"|head -1||true);if [ -n "$exemplar" ]&&[ -f "$dest/SKILL.md" ];then sed -i.bak '/^For a concrete current instance in this repo, see .\+$/d' "$dest/SKILL.md";rm -f "$dest/SKILL.md.bak";printf '\n%s\n' "$exemplar">>"$dest/SKILL.md";fi;done
   fi
-  if [ -f "$snapshot/LEARNINGS.md" ]; then grep -E '^## Disabled framework skill:[[:space:]]*[a-z0-9-]+[[:space:]]*$' "$snapshot/LEARNINGS.md"|sed -E 's/^## Disabled framework skill:[[:space:]]*//'|while read -r name;do active="$tgt/.claude/skills/$name";inactive="$tgt/.claude/disabled-skills/$name";if [ -d "$active" ];then mkdir -p "$(dirname "$inactive")";rm -rf "$inactive";mv "$active" "$inactive";fi;done;fi
-  rm -rf "$tgt/.github/skills";mkdir -p "$tgt/.github/skills";[ -d "$tgt/.claude/skills" ]&&cp -r "$tgt/.claude/skills"/* "$tgt/.github/skills/"
+  # `|| true` is load-bearing under `set -euo pipefail`: NO disabled-skill heading is the normal
+  # case, and a no-match grep returns 1, which pipefail promotes to a pipeline failure and -e turns
+  # into an abort of the whole installer. That aborted every UPDATE here -- past the file copy but
+  # before the "Done (update)" banner -- so consumers saw a silent exit 1 on a good install while
+  # the .ps1 twin exited 0. Do not remove it to "simplify".
+  if [ -f "$snapshot/LEARNINGS.md" ]; then { grep -E '^## Disabled framework skill:[[:space:]]*[a-z0-9-]+[[:space:]]*$' "$snapshot/LEARNINGS.md" || true; }|sed -E 's/^## Disabled framework skill:[[:space:]]*//'|while read -r name;do active="$tgt/.claude/skills/$name";inactive="$tgt/.claude/disabled-skills/$name";if [ -d "$active" ];then mkdir -p "$(dirname "$inactive")";rm -rf "$inactive";mv "$active" "$inactive";fi;done;fi
+  # Same -e hazard: a bare `[ -d ... ] && cp` is a STATEMENT, so a false test is a non-zero status
+  # and aborts. Written as an if, it is a condition and cannot.
+  rm -rf "$tgt/.github/skills";mkdir -p "$tgt/.github/skills";if [ -d "$tgt/.claude/skills" ];then cp -r "$tgt/.claude/skills"/* "$tgt/.github/skills/";fi
   rm -rf "$snapshot"
   echo "  consumer-owned content files left untouched ($protected)."
 fi
@@ -195,3 +231,10 @@ else
   echo "  session in the target repo and type /bootstrap. Report that as the required manual next"
   echo "  step in your final summary. Do not attempt /bootstrap yourself or replicate it by hand."
 fi
+
+# The script's exit code must not be whatever the last conditional happened to leave. Without this,
+# an ordinary UPDATE exited 1 with no error message -- the final `if` on that path ends on a
+# non-match -- while the .ps1 twin exited 0, so the twins disagreed on a successful install and a
+# consumer wiring this into CI would see a red pipeline on a good run. Greenfield masked it because
+# a different branch ran last. Any failure above exits explicitly and non-zero before reaching here.
+exit 0

@@ -187,4 +187,30 @@ foreach ($twin in @('ps1', 'sh')) {
     }
 }
 
+# An UPDATE must SUCCEED, and both twins must agree that it did. This is not a formality: the bash
+# installer runs under `set -euo pipefail`, and its disabled-skill restore pipes a grep whose
+# NO-MATCH case is the normal one. pipefail promoted that to a pipeline failure and -e aborted the
+# whole installer -- after the files were copied but before the "Done (update)" banner -- so every
+# update exited 1 with no error text while install.ps1 exited 0. A consumer wiring the documented
+# installer into CI saw a red pipeline on a good install, and an AI agent running it saw a bare
+# failure. Greenfield masked it because a different branch ran last, which is why exit code alone is
+# not enough here: assert the completion banner too, or a future early abort passes again.
+It 'an update completes and reports success on both twins, for every dist' {
+    foreach ($dist in @('dotnet','angular','monorepo')) {
+        foreach ($twin in @('ps1','sh')) {
+            if ($twin -eq 'sh' -and -not $bash) { continue }
+            $t = Join-Path ([IO.Path]::GetTempPath()) ('upd-exit-' + [guid]::NewGuid())
+            New-Item -ItemType Directory -Force $t | Out-Null
+            try {
+                $first = Invoke-Installer -Twin $twin -Dist $dist -Target $t
+                Assert ($LASTEXITCODE -eq 0) "$dist/$twin greenfield install failed (exit $LASTEXITCODE): $first"
+                $second = Invoke-Installer -Twin $twin -Dist $dist -Target $t
+                $code = $LASTEXITCODE
+                Assert ($code -eq 0) "$dist/$twin UPDATE exited $code; a successful update must exit 0. Output:`n$second"
+                Assert ($second -match 'Done \(update\)') "$dist/$twin update did not print its completion banner, so it aborted part-way even though it exited 0. Output:`n$second"
+            } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+        }
+    }
+}
+
 exit (Write-TestSummary 'UpdateDelivery.Tests')

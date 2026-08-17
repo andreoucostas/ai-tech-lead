@@ -1057,7 +1057,7 @@ that was *already* guarded. The gap is every commit made outside it.
 
 ---
 
-### B-81 · The licence does not travel with what consumers actually copy
+### B-81 · The licence does not travel with what consumers actually copy — **DONE for v0.54.0, see Done section**
 **Effort:** S · **Priority:** P3 · filed 2026-08-01 alongside B-47
 
 **Why:** B-47 put MIT at the repo root, which makes the repository legally consumable. But the unit
@@ -5000,6 +5000,41 @@ and Copilot CLI runs are not on the constrained Claude budget.
 **Not:** do not "fix" the READMEs by guessing a safer syntax — the point is to know, and an
 unverified replacement is the same defect wearing different punctuation.
 
+### B-144 · RCA: a shipped `set -e` abort broke every Bash update, and only a smoke install found it
+**Effort:** S (fix shipped in v0.54.0) · **Priority:** P2 · filed 2026-08-17 while shipping B-81
+
+**The defect (fixed):** `install.sh` runs under `set -euo pipefail`. Its disabled-skill restore piped
+a `grep` whose **no-match case is the normal one**; `pipefail` made that a pipeline failure and `-e`
+aborted the installer — after the files were copied, before the `Done (update)` banner. Every update
+via the Bash installer exited 1 with no error text, while `install.ps1` exited 0. Confirmed
+pre-existing at the `v0.53.0` tag, so it had been shipping for an unknown number of releases.
+
+**Why no gate caught it, and this is the part worth keeping.** Three instruments all had the update
+path in scope and all missed it:
+- `UpdateDelivery.Tests.ps1` exercised update **delivery** — it asserted which files arrived — and
+  never asserted the installer's **exit code**. The files did arrive; the run failed anyway.
+- `InstallerContract.Tests.ps1` runs 12 real installs and asserts stdout, but greenfield and
+  brownfield only — the mode that aborts is the one nobody drove.
+- `bash -n` passes: this is a runtime status defect, not a syntax one.
+The one thing that found it was the Definition-of-done **install smoke test**, run by hand, exactly
+as `CLAUDE.md` requires for installer changes. The prose rule outperformed three suites.
+
+**Same-class sweep — what else is exposed:**
+1. **Other `set -e` aborts on paths no test drives.** `install.sh` is now checked, but every shipped
+   `.sh` running under `set -e` has the same shape wherever a `grep`/`[ ]`/`cmp` appears as a bare
+   statement rather than in a condition. **Not swept.** This is the bash sibling of B-89's
+   `ErrorActionPreference=Stop` + native-stderr class and of B-123b, and it should probably be one
+   sweep across all three.
+2. **Assertions about arrival that never assert success.** The generalisable lesson: a delivery test
+   proves *what landed*, not *that the run succeeded*. Any suite shaped that way can pass over a
+   failed command. `UpdateDelivery` is fixed; the others are unaudited.
+
+**Do:** (a) sweep shipped `.sh` for bare-statement commands that can legitimately return non-zero
+under `set -e`, prioritising installer and hook paths; (b) audit the meta suites for tests that
+assert artifacts without asserting the producing command's exit code; (c) decide whether
+`InstallerContract` should drive update mode too, since it is the suite that claims to cover
+installer behaviour.
+
 ---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
@@ -5183,6 +5218,25 @@ planted unreadable file and an emptied tree, both twins.
 ---
 
 ## Done
+
+- **B-81** — DONE **2026-08-17**, targeted for **v0.54.0**. Every composed distribution carries
+  the LF-normalised verbatim MIT text at `LICENSES/ai-tech-lead-MIT.txt` and a marked
+  `NOTICE-ai-tech-lead.md` identifying the upstream project, governed framework-authored paths,
+  licence location, and canonical version stamp. Both installer twins exclude those paths from the
+  bulk copy and apply the same preflight policy before any target mutation: copy when absent, accept
+  an identical licence, refresh a marked framework notice, and refuse a different licence or
+  unmarked notice with exit 3. Brownfield therefore never hands either legal file to `/adopt`.
+
+  This layout is standards-aligned, not scanner-verified: no compliance scanner has been run against
+  an installed fixture. If a consumer identifies its scanner, verify that concrete tool before and
+  after rather than claiming generic discovery. The equality gate remains in the authoring-only meta
+  suite because consumer repos do not contain this repository's root `LICENSE`.
+
+  **RCA:** no gate caught the original omission because composition and installer tests only proved
+  that listed artifacts travelled; none asserted that the copied framework carried its legal text.
+  The same class exposes any repository-level attribution or policy file assumed to cover generated
+  or copied deliverables. The behavioral installer cases now cover both legal artifacts and both
+  twins, while the drift gate covers the one deliberately duplicated legal text.
 
 - **B-58 / B-60 / B-82** — DONE **2026-08-16**, shipped together in **v0.53.0**. One cluster, one
   defect class: a structural property of a Markdown artifact that a human re-verifies by hand, that

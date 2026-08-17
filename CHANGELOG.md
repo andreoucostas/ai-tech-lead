@@ -11,6 +11,23 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.54.0 — Unreleased
+
+- Installer, Bash twin: two `set -euo pipefail` landmines on the UPDATE path. The disabled-skill
+  restore piped a `grep` whose **no-match case is the normal one**; `pipefail` promoted that to a
+  pipeline failure and `-e` aborted the installer after the copy but before the completion banner,
+  so every update exited 1 silently while `install.ps1` exited 0 — a twin-parity violation shipped
+  to consumers. A bare `[ -d ... ] && cp` two lines later is the same shape and was fixed with it.
+  Found by the Definition-of-done install smoke test while shipping B-81, and confirmed pre-existing
+  at the v0.53.0 tag. `UpdateDelivery.Tests.ps1` now asserts every dist × both twins exits 0 **and**
+  prints "Done (update)" — exit code alone would not have caught the abort, since greenfield masked
+  it by ending on a different branch.
+- B-81: every distribution now carries the framework's verbatim MIT text under `LICENSES/` and a
+  framework-owned root notice identifying the governed framework paths. Both installer twins
+  preflight those paths: an identical licence is retained, a marked notice refreshes, and either
+  kind of consumer-owned collision refuses with exit 3 before the target is mutated. An
+  authoring-only drift gate keeps the shipped legal text LF-normalised byte-identical to `LICENSE`.
+
 ## 0.53.0 — 2026-08-16
 
 - B-58: `template-checks` check 8 now compares the exact Common Tasks skill-slug inventory in

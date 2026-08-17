@@ -47,6 +47,30 @@ if (-not $updateMode) {
 }
 $adoptMode = (-not $updateMode) -and ($detected.Count -gt 0)
 
+# These legal files are neither protected nor ordinary framework files. Protection would freeze a
+# stale framework-owned notice; bulk copying would silently clobber consumer files. Preflight their
+# explicit ownership policy before this installer mutates the target, then copy them after the bulk.
+$legalLicense = 'LICENSES/ai-tech-lead-MIT.txt'
+$legalNotice = 'NOTICE-ai-tech-lead.md'
+$sourceLicense = Join-Path $src $legalLicense
+$targetLicense = Join-Path $tgt $legalLicense
+$targetNotice = Join-Path $tgt $legalNotice
+$copyLegalLicense = $true
+if (Test-Path -LiteralPath $targetLicense -PathType Leaf) {
+    $sourceText = [IO.File]::ReadAllText($sourceLicense) -replace "`r`n", "`n" -replace "`r", "`n"
+    $targetText = [IO.File]::ReadAllText($targetLicense) -replace "`r`n", "`n" -replace "`r", "`n"
+    if ($sourceText -cne $targetText) {
+        [Console]::Error.WriteLine("ERROR: Refusing to overwrite '$legalLicense': the existing file is not identical to the framework licence.")
+        exit 3
+    }
+    $copyLegalLicense = $false
+}
+if ((Test-Path -LiteralPath $targetNotice -PathType Leaf) -and
+    -not ([IO.File]::ReadAllText($targetNotice).Contains('FRAMEWORK-OWNED'))) {
+    [Console]::Error.WriteLine("ERROR: Refusing to overwrite '$legalNotice': the existing file is not marked FRAMEWORK-OWNED.")
+    exit 3
+}
+
 Write-Output "Installing AI Tech Lead Framework"
 Write-Output "  from: $src"
 Write-Output "  into: $tgt"
@@ -90,7 +114,7 @@ if ($updateMode) {
 }
 
 Get-ChildItem -Force -LiteralPath $src |
-    Where-Object { $_.Name -notin $metaFiles -and $_.Name -ne 'docs' } |
+    Where-Object { $_.Name -notin $metaFiles -and $_.Name -notin @('docs', 'LICENSES', $legalNotice) } |
     ForEach-Object { Copy-Item -Recurse -Force -LiteralPath $_.FullName -Destination $tgt }
 
 # Copy docs normally except for the consumer-owned wiki index, which is copy-if-absent.
@@ -109,6 +133,12 @@ if (Test-Path -LiteralPath $sourceDocs -PathType Container) {
         }
     }
 }
+
+# Explicit legal-file policy above owns these paths; keeping them out of both $protected and the
+# bulk copy lets the notice travel on update without asserting ownership over consumer collisions.
+New-Item -ItemType Directory -Force -Path (Split-Path -Parent $targetLicense) | Out-Null
+if ($copyLegalLicense) { Copy-Item -Force -LiteralPath $sourceLicense -Destination $targetLicense }
+Copy-Item -Force -LiteralPath (Join-Path $src $legalNotice) -Destination $targetNotice
 
 # The installer is meta — don't ship it into the consumer repo. template-ci.yml is the TEMPLATE
 # repo's own CI (hook suite + framework checks on push); consumers get the same framework checks

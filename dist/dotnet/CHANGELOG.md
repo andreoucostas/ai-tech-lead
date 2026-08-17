@@ -4,6 +4,13 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.54.0 — Unreleased
+
+- Framework installs now include `LICENSES/ai-tech-lead-MIT.txt` and
+  `NOTICE-ai-tech-lead.md`, so the framework's MIT terms travel with its files. Updates refresh the
+  framework-owned notice but refuse to overwrite a conflicting licence or unmarked notice; resolve
+  any named collision and run the installer again.
+
 ## 0.53.0 — 2026-08-16
 
 - Fixed: on a repository checked out with CRLF line endings, `docs-sync-check` could report
