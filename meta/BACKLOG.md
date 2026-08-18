@@ -2864,6 +2864,36 @@ and Copilot CLI runs are not on the constrained Claude budget.
 **Not:** do not "fix" the READMEs by guessing a safer syntax — the point is to know, and an
 unverified replacement is the same defect wearing different punctuation.
 
+> **RUN 2026-08-18 on Copilot CLI 1.0.80. The brace question is MOOT ON THIS SURFACE, and what
+> replaces it is worse for the advice.** New canary: `.claude/scripts/canary-applyto-brace.ps1`
+> (three arms — `"**/*.ts"`, `"**/*.{ts,html}"`, `"**/*.ts,**/*.html"` — matching `.ts` and `.html`
+> files present in every arm, and a prompt that **names** `app.ts`).
+>
+> **All three arms missed**, so the canary reported INVALID and refused to let the brace result be
+> read. That refusal was correct and is the useful part: the script's own "positive control" was
+> itself a **narrow** glob, i.e. the very form already known to fail. A positive control has to be a
+> form known to succeed. Re-running `canary-applyto-scope.ps1` the same day confirmed the baseline
+> still holds on 1.0.80 — `"**"` **HIT**, `"**/*.cs"` **MISS**, no-frontmatter **HIT**.
+>
+> **Jointly these establish something stronger than the question asked:** on Copilot CLI in `-p`
+> mode a narrow `applyTo` delivers nothing **even when a matching file exists and the prompt names
+> it** — this canary names `app.ts` and still missed; canary 3 names no file and missed. So
+> narrowness alone defeats delivery, whatever the punctuation, and **no run on this surface can
+> separate braces from commas from any other narrow form.** Braces are neither confirmed nor
+> refuted here.
+>
+> **What this means for the advice, which is the actual item.** The READMEs' instruction to create
+> `typescript.instructions.md` with `applyTo: "**/*.{ts,html}"` is aimed at **VS Code agent mode**,
+> where `applyTo` scoping is the documented mechanism and the file-context model differs. That
+> surface remains **unverified** (shared with B-43, which has never verified VS Code at all). So the
+> honest state is: the syntax is still unverified *for the surface it targets*, and on the surface we
+> *can* test, any narrow scoping — this syntax included — delivers nothing. Both halves belong in the
+> README caveat.
+>
+> **Still open:** verify on VS Code agent mode, or downgrade the advice to say plainly that scoped
+> instruction files are unverified outside `"**"`. Do not swap the canary's control to `"**"` to make
+> it report VALID — it would then measure nothing while blaming the braces.
+
 **B-146 is DONE (2026-08-18) — check B shipped, check A dropped on evidence; see `meta/BACKLOG-DONE.md`.**
 
 **B-144 is DONE (2026-08-18) — see `meta/BACKLOG-DONE.md`.**
