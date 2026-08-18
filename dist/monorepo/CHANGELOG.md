@@ -5,6 +5,35 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.59.0 — Unreleased
+
+**GitHub Copilot CLI: the workflow-routing nudge was not reaching the model, and now does.**
+Copilot CLI delivers only the *last* of the repository's `userPromptSubmitted` hooks. This framework
+registered two, with the routing hook first — so on Copilot CLI the per-prompt nudge that classifies
+your request and restates the plan-gate and security-pass rails was being dropped before it reached
+the model, while the end-of-turn cleanup nudge (registered second) arrived normally. Verified live
+against Copilot CLI 1.0.80 on 2026-08-18.
+
+The framework now registers a single hook that carries both messages, routing first. **You do not
+need to do anything** — the change is in the installed hook wiring, and updating picks it up. If you
+hand-edited `.github/hooks/hooks.json` to add your own `userPromptSubmitted` entry, be aware that
+only the last one registered will reach the model; fold your content into one entry rather than
+adding a second.
+
+What this did *not* affect: Claude Code, which consumes every registered hook and was always
+receiving both; the write guard, which runs on a different event; and the always-on rules in
+`AGENTS.md` and the instructions carrier, which reach the model on every turn regardless. Those
+rules are why the routing rails were still described to the model even while the per-prompt nudge
+was being dropped. `docs/enforcement-surfaces.md` has been corrected — it previously claimed the
+per-prompt injection worked on Copilot CLI.
+
+**`framework-doctor` could report documentation drift that did not exist.** Its mirror-and-version
+check ran the template checker through a bare interpreter name. On a machine whose `PATH` does not
+resolve that name, the check could not start — and the doctor reported that your `CLAUDE.md` and
+`AGENTS.md` had drifted, telling you to regenerate them, when nothing was wrong. It now runs the
+checker with the interpreter already running it, and when it genuinely cannot run one it says so
+plainly: drift is *unknown*, not *found*, and the problem is your host, not your documentation.
+
 ## 0.58.0 — 2026-08-17
 
 - `docs-sync-check` now rejects Known Hazard Areas rows with invalid Status tokens, invalid Reviewed

@@ -11,6 +11,34 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.59.0 — Unreleased
+
+**Copilot CLI delivers only the LAST `userPromptSubmitted` hook, so `route-prompt` was silently
+discarded (B-147, P1).** Established by live canary on CLI 1.0.79/1.0.80: four runs, the decisive
+control swapping tokens between two scripts so the surviving token moved with the *slot* rather than
+the script, and a fourth with structurally distinct messages ruling out context de-duplication.
+`.github/hooks/hooks.json` registered `route-prompt` first and `boy-scout-check --mode deliver`
+second, so the routing/plan-gate/security salience never reached the model while
+`docs/enforcement-surfaces.md` asserted in three rows that it did — the security-pass row among
+them. The framework now registers **one** entry and composes both payloads inside `route-prompt`:
+surface is decided first, the three early exits are gated to the Claude path, and the Copilot path
+falls through to drain the Boy Scout queue. The queue read sits behind the *surface* gate rather
+than behind "routing text is empty", because `boy-scout-check` is registered independently on
+Claude's `Stop` event and a drain on that path would double-deliver. Found by B-52's canary, whose
+own question is answered as a footnote: the Boy Scout row it was filed to doubt was the only one of
+the three that was true, by the accident of being registered last.
+
+**The doctor said "your docs have drifted" when it could not start an interpreter (B-130).** The
+*Mirror and version integrity* row ran `template-checks` through a bare interpreter name, so on a
+host whose `PATH` does not resolve it the row reported drift — a specific, false, actionable
+diagnosis — instead of reporting that it could not run. Both twins now separate the two: the `.ps1`
+self-hosts through this process's own executable, and each emits a distinct "drift is UNKNOWN rather
+than found; this is a host problem, not a documentation problem" row. This had been reddening all
+three dist hook suites, including at the `v0.58.0` tag: 29/1 → 30/0.
+
+Also: `no-meta-leak`-clean corrections to the Routing, Plan-gate, Security-pass and Boy Scout rows
+of `docs/enforcement-surfaces.md`, naming the CLI version and date observed.
+
 ## 0.58.0 — 2026-08-17
 
 - B-77: added the read-only `hazard-check` PowerShell/bash gate and wired it into
