@@ -204,102 +204,37 @@ feedback. Normal release path; do not fold the shipped change into the meta-only
 **B-52 is DONE (2026-08-18) — answered by live canary; it uncovered a P1, filed as B-147.
 See `meta/BACKLOG-DONE.md`.**
 
-### B-147 · **P1** — Copilot CLI delivers only the LAST `userPromptSubmitted` hook, so `session-start` and `route-prompt` injection are silently dead
-**Effort:** M (shipped fix + design) · **Priority:** **P1** — three shipped capability rows are false
-on a supported surface, one of them the security row · **Invariants:** #5 #7 · found 2026-08-18 by
-running B-52's canary
+**B-147 is DONE — shipped in v0.59.0 (2026-08-18); see `meta/BACKLOG-DONE.md`.**
 
-**The observation.** Copilot CLI **1.0.79/1.0.80**, live, on the maintainer box, folder trusted:
-with more than one `userPromptSubmitted` hook registered, **only the last entry's
-`additionalContext` reaches the model.** Every earlier entry's payload is discarded silently — the
-hook process runs, exits 0, emits valid JSON, and its context never arrives.
+### B-148 · Nothing stops someone registering a second `userPromptSubmitted` hook, which Copilot silently drops
+**Effort:** S · **Priority:** P2 · filed 2026-08-18 as B-147's deliberate residue · **Invariants:** #5
 
-Four runs, each ~1 AI Credit, designed so that each rules out one alternative explanation:
+**Why:** B-147 shipped the fix but not the guard. Copilot CLI delivers only the **last**
+`userPromptSubmitted` entry (observed 1.0.79/1.0.80), so a second entry means the first one's
+`additionalContext` is discarded — the hook still runs, still exits 0, still emits valid JSON, and
+its content simply never reaches the model. That is exactly how this went unnoticed across two minor
+versions: `validate-dist` check 8 asserts every registered script **exists**, never that its output
+is **consumed**, and no fixture had ever registered two hooks on one event.
 
-| # | registration | prompt | result |
-|---|---|---|---|
-| 1 | 2 hooks, tokens A then B | "echo any CANARY tokens" | only **B** (2nd) |
-| 2 | 2 hooks, **tokens swapped between the scripts** | same | only the **2nd position's** token — so it is *position*, not a broken script |
-| 3 | 3 hooks, A/B/C | "list every token, one per line, or say NONE" | only **C** (3rd) |
-| 4 | 3 hooks, **structurally distinct** messages modelled on the real ones | "list every identifier" | only **C** (3rd) — so it is *not* context de-duplication of similar strings |
+The fix removed today's instance. It did nothing about the next one, and the next one looks
+identical to a reviewer: adding an entry to an array is the obvious way to add a hook.
 
-Run 2 is the control that matters: swapping which script emits which token moved the surviving
-token with the *slot*, not with the script. Run 4 kills the "Copilot deduped near-identical
-context" reading, which was the last innocent explanation available.
+**Do:** a `validate-dist` check that fails when `.github/hooks/hooks.json` carries more than one
+entry under `userPromptSubmitted`, with a message that says *why* (only the last is delivered;
+compose into one hook instead). Red-test by adding a second entry to a scratch dist.
 
-> **CORRECTION, same day, before any fix was designed — the blast radius is smaller than this
-> entry first claimed, and the error is worth keeping.** The first version of this entry said
-> **three** hooks were registered on `userPromptSubmitted` and that `session-start` was therefore
-> dead too. That was wrong. It came from extracting the registration with
-> `sed -n '/userPromptSubmitted/,/]/p'`, which matched the `_comment` line — a long prose comment
-> that *mentions* `userPromptSubmitted` — and so began the range early and swept in the separate
-> `sessionStart` block. A structural read of the file shows the truth: `session-start` is
-> registered on **`sessionStart`**, a different event, and is **unaffected**. This is precisely the
-> "nothing enters the record as observed unless you observed it" failure (Maintenance model #3),
-> committed on the same day as an RCA about that class (B-146), by grepping a file instead of
-> reading its structure. Left visible rather than rewritten.
+**Scope it to `userPromptSubmitted` only.** A blanket "one entry per Copilot event" rule is wrong and
+was rejected during B-147's critique: `postToolUse` legitimately carries **two** (`post-write`,
+`audit-trail`), verified, because those are side-effecting hooks whose value is not model-facing
+`additionalContext`. The constraint is about **context injection**, not about running hooks. If
+another injecting event is added later, extend the list deliberately rather than generalising.
 
-**Why this is P1 and not a documentation nit.** The shipped `.github/hooks/hooks.json` registers
-**two** `userPromptSubmitted` entries in all three dists, in this order:
+**Not:** don't encode this as a vendor-bug workaround with no expiry. If Copilot ever honours every
+entry, the composed single hook keeps working and this check becomes a harmless anachronism — say so
+in the message so the next reader knows it is a delivery constraint, not a design preference.
 
-```
-1. .claude/hooks/route-prompt.*                     <- DISCARDED
-2. .claude/hooks/boy-scout-check.* --mode deliver   <- delivered
-```
-
-So on Copilot CLI the framework's **NL intent routing is inert**, while the Boy Scout nudge — the
-newest and least load-bearing of the two — is the only one that survives.
-(`session-start` is on the `sessionStart` event and is fine; `guard` is on `preToolUse` and is fine;
-the `agentStop` Boy Scout scan is fine. The damage is confined to the one event with two
-registrations — but that is the event carrying the routing rail.)
-`docs/enforcement-surfaces.md` currently asserts the opposite in three rows:
-
-- **Routing** (line 41): *"per-prompt injection (`route-prompt` JSON `additionalContext`, **CLI ≥
-  v1.0.65**; ignored by older versions)"* — false on ≥1.0.79 with the shipped registration.
-- **Plan-gate** (line 42): *"Injected per-prompt (CLI ≥ v1.0.65) + Instructed"* — false.
-- **Security pass** (line 43): *"Injected per-prompt by `route-prompt` + Instructed"* — false, and
-  this is the row that tells a consumer their auth/money/secrets work gets an automatic
-  security-review nudge.
-
-**What is NOT lost, stated so severity is not overstated.** All three rows are *"injected **+**
-instructed"*, and the instructed half is unaffected: `AGENTS.md` §1 and the
-`framework-rules.instructions.md` carrier still reach the model on every turn. The belt holds; the
-braces are cut. The framework's deliberate redundancy is exactly why this was survivable long
-enough to go unnoticed — and also why nothing user-visible failed loudly enough to catch it.
-
-**Why no gate caught it.** Nothing here has ever tested **multi-hook** delivery. The 2026-07-04
-canary that established `userPromptSubmitted` consumption registered **one** hook and was correct
-for that case; v0.33.0 then added a second entry and v0.5x a third, each verified only by "the hook
-runs and emits the right JSON" — which is still true and is not the property that matters.
-`hook-registration` (validate-dist check 8) asserts that every registered script *exists*, never
-that its output is *consumed*. This is the enforcement-surface analogue of B-144: the artifact
-arrived, the run "succeeded", and the outcome never happened.
-
-**Do:** (a) collapse the **two** `userPromptSubmitted` entries into **one** Copilot hook entry whose
-`additionalContext` carries both payloads — this is B-52's own documented fallback ("fold Boy Scout
-into `route-prompt` without its early-exit"), now backed by an observation instead of a hypothesis.
-Decide and record the composition order in a WSD: routing salience is the load-bearing half and the
-Boy Scout queue is advisory, so routing text should lead. Claude Code is unaffected —
-`.claude/settings.json` is a separate registration and Claude consumes every entry — so the fix must
-be confined to `src/core/.github/hooks/hooks.json` and must not disturb the Claude side. Both twins.
-(b) Correct the three matrix rows and the line-53 narrative in the same release, and delete the
-`_comment`'s now-false sentence "route-prompt remains first under userPromptSubmitted and provides
-routing/plan-gate/security salience where additionalContext is consumed" — being first is exactly
-what makes it *not* consumed. (c) Add a **multi-hook** arm to the canary kit and a row to the
-host-certification table; a single-hook canary is what let this through for two minor versions.
-(d) Consider a `validate-dist` check that fails when more than one hook is registered on a Copilot
-event that only honours one — the machine-checkable residue of this whole finding. (e) Re-run the
-canary after any Copilot CLI minor bump: this is vendor behaviour and could change back without
-notice, in which case a collapsed single hook still works and simply stops being necessary.
-
-**Not:** do not "fix" it by reordering so `route-prompt` is last. That trades one silently-dead hook
-for another and encodes a vendor bug as a layout convention.
-
-**Cross-links:** B-52 (whose canary found this — its own question is answered: the Boy Scout row is
-the *only* one of the three that was true, by the accident of being registered last), B-55 (the
-vendor-fact restatement problem — this correction has to land in ~6 places), B-43 (recert cadence:
-this is what the cadence exists to catch), B-144 (same "the run succeeded, the outcome did not"
-shape on the deterministic side).
+**Cross-links:** B-147 (the defect), B-43 (re-run the canary after any Copilot CLI bump), B-55 (the
+correction had to land in several surfaces at once — the same restatement problem).
 
 ### B-55 · Vendor-behavior facts are restated across ~6 shipped surfaces with no single source
 **Effort:** M · **Priority:** P2 doc truth · **Invariants:** #5, #6

@@ -3895,3 +3895,47 @@ about what `/bootstrap` *writes*. Adjacent, not the same.
 
   Kept as an instance of B-83's class: B-89's own closing sweep filed this from a pattern match
   without checking whether the pattern's *precondition* held in the file it named.
+
+- **B-147** — DONE, shipped in **v0.59.0 (2026-08-18)**. Copilot CLI delivers only the **last**
+  `userPromptSubmitted` hook's `additionalContext`. The framework registered `route-prompt` first and
+  `boy-scout-check --mode deliver` second, so the routing/plan-gate/security salience was discarded
+  on every Copilot CLI turn while `docs/enforcement-surfaces.md` asserted in three rows that it
+  arrived — the **security-pass** row among them. Now one entry, composing both payloads inside
+  `route-prompt`: surface decided first, the three early exits gated to the Claude path, the Copilot
+  path falling through to drain the queue.
+
+  **The queue read sits behind the *surface* gate, not behind "routing text is empty"** — the
+  distinction that matters, because `boy-scout-check` is registered independently on Claude's `Stop`
+  event and a drain on the Claude path would double-deliver. The regression guard therefore seeds a
+  real queue, sends a Claude-shaped prompt, and asserts both that no nudge appears **and that the
+  queue file still exists**; asserting "plain stdout" alone proves nothing, since duplicated nudge
+  text is also plain stdout.
+
+  **Both of this item's designs were wrong before they were right, in different ways.** Rev 1 put the
+  composition in `route-prompt` without noticing its three early exits, so a queued nudge would have
+  been delivered only on turns that *also* produced routing text — i.e. never on the read-only turns
+  the nudge usually follows. B-52's own fallback text had said "without its early-exit" and rev 1
+  dropped the clause. The adversarial pass caught it and also caught a second: the proposed
+  `validate-dist` cardinality check would have rejected `postToolUse`, which legitimately carries two
+  entries. Both verified before acceptance.
+
+  **And the entry's first blast-radius claim was wrong.** It said three hooks were registered on the
+  event and that `session-start` was dead too. That came from `sed -n '/userPromptSubmitted/,/]/p'`,
+  which matched the file's long `_comment` — the comment *mentions* the event name — and swept in the
+  separate `sessionStart` block. Two hooks, not three; `session-start` was never affected. Recorded
+  because it is Maintenance model #3 failing on the same day an RCA about that class was filed:
+  the canary evidence was rigorous, the claim about our own registration was grepped rather than read.
+
+  **Red-tested against the pre-change hook**, not merely shown green: HEAD's `route-prompt` twins
+  swapped into a scratch dist (mutation asserted present — differs, no `$isClaude`) → 4 failures
+  across both twins, including `Copilot empty routing + queue -> queue-only payload`, the exact case
+  rev 1 would have shipped broken. Verified further on the leg the implementer could not reach:
+  `RoutePrompt.Tests` 21/0/2 under **Windows PowerShell 5.1** as well as pwsh 7. Released through
+  `release.ps1`, which first **refused for want of independent-review evidence** (B-45's ledger doing
+  its job) and then ran every gate, watched CI to green on all 8 legs, and tagged.
+
+  **Residue, deliberately not built:** the `validate-dist` check that fails when `userPromptSubmitted`
+  carries more than one entry — the machine-checkable residue of this finding, skipped as
+  disproportionate inside a P1 and worth filing on its own. Without it, the next person to add a
+  second entry re-creates this silently. Also: re-run the canary after any Copilot CLI minor bump;
+  this is vendor behaviour and a single composed hook keeps working if they ever fix it.
