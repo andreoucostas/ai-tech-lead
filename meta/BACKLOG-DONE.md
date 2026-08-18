@@ -3939,3 +3939,60 @@ about what `/bootstrap` *writes*. Adjacent, not the same.
   disproportionate inside a P1 and worth filing on its own. Without it, the next person to add a
   second entry re-creates this silently. Also: re-run the canary after any Copilot CLI minor bump;
   this is vendor behaviour and a single composed hook keeps working if they ever fix it.
+
+- **B-59** — DONE, shipped in **v0.60.0 (2026-08-18)**, policy recorded as **WSD-046**. All 20
+  `grep` sites in `guard.sh` now route through an error-aware helper: `0` match / `1` no-match /
+  `2+` **could not answer**, where the third case had been silently folded into "no match" and the
+  write allowed. `grep -Eq --` is load-bearing — the private-key pattern begins with `-----`, so
+  without `--` grep parses it as an option and returns 2.
+
+  **Error policy is split by confidence, not uniform.** The 7 secret patterns **fail closed** on a
+  pattern error; test-defeat and suppression patterns **warn and allow**. Verified behaviourally on
+  a scratch dist with each mutation asserted applied: broken secret pattern → `EXIT=2` blocked,
+  broken test-defeat pattern → `EXIT=0` allowed, each naming its category. The generic credential
+  pipeline is explicitly documented as *deliberately* fail-open at the site rather than left
+  ambiguous — "all grep errors are now loud" would otherwise have been a fresh false claim inside
+  an entry about false confidence.
+
+  **Case policy has two halves, and collapsing them was the first design's blocking error.** Content
+  patterns are exact; the three file-routing predicates deliberately fold, in both twins, spelled
+  inline. A blanket `-cmatch` sweep would have stopped inspecting `src/Foo.CS` and `src/app.TS`
+  **entirely** — verified, `-match` → True, `-cmatch` → False. The design's claim that folding "can
+  only ever over-block on invalid code" was **false for file names**.
+
+  **It also closed a live gap nobody had filed.** `guard.sh` routed with `case "$fp" in *.cs)`,
+  case-sensitive, so `Foo.CS` was guarded by `guard.ps1` and **not** by `guard.sh` on the shipped
+  release — an asymmetry in the advertised floor, in the opposite direction from the one this entry
+  was about. Bash was brought **up**; PowerShell was not blinded down to match. Probed on 7 inputs
+  across both twins: all 7 agree.
+
+  **The entry's own thesis is now testable**, which was the point: `GuardPatternErrors.Tests.ps1`
+  plants an invalid regex in each twin and asserts the suite goes red, across **both** error
+  policies, on B-84's mutation helper so each mutation is proven to have applied and the restore
+  verified byte-identical. Guard.Tests went 66 → **82 cases, 0 failed** under pwsh 7.
+
+  **Deliberately not done — §3e, the NUnit POSIX grep.** The replacement this entry itself called
+  "verified equivalent" **misses the canonical bare `[Ignore]`** (measured, GNU grep 3.0:
+  `[Ignore]` old=0 new=1), because after `\[` it demands another non-letter. The shipped grep was
+  left alone rather than swapped for an unverified one, and BSD grep could not be reached on this
+  host so any replacement's portability stays **asserted, not observed**. Still open, and the
+  lesson is filed: a backlog entry's own "verified" label is worth no more than the run behind it.
+
+- **B-75** — DONE, shipped in **v0.60.0 (2026-08-18)**. `ScriptTwinParity`'s reached-set assertion
+  propagated to `WikiCheck` and `BuildArchitectureHtml`, so a fixture that stops exercising a check
+  fails instead of agreeing vacuously. **It caught a real inert fixture on the first clean run** —
+  `WikiCheck`'s "malformed frontmatter" case was not reaching the branch it existed to test.
+  `FrameworkDoctor` was correctly **skipped**: `Parse-DoctorResult` already asserts the exact set of
+  all 12 `$DoctorRowNames` on every parsed run (verified at lines 93/101, not taken on trust).
+
+- **B-64** — DONE **2026-08-18**, as `meta/gate-redtest-coverage.md`. The entry's original blanket
+  *Do* ("add a red-test for every gate") had rotted; the rewritten scope asked for the coverage
+  matrix first, and this is it: **49 COVERED, 10 HAPPY-PATH-ONLY, 9 UNKNOWN, 0 with no test at
+  all.** It cites real evidence records (review-ledger versions, report files) rather than
+  asserting, and says `UNKNOWN` where reading could not establish an observation instead of
+  upgrading the verdict.
+
+  **The gaps worth acting on** are the composer (`build.{ps1,sh}`), `docs-sync-check`,
+  `InstallerContract` and `RootInstallerWarehouse` — all happy-path-only. The composer is the
+  notable one: it is invariant #1's entire mechanism and nothing plants a malformed-snippet failure
+  against it.

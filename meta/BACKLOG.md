@@ -314,95 +314,9 @@ bypass explicitly** in `enforcement-surfaces.md`'s capability rows. Blocking-vs-
 key judgment: a false-positive block on a legitimate test refactor costs more trust than the
 gap. Record the decision as a WSD either way.
 
-### B-59 · The guard's test harness cannot detect an **inert** check — twins can silently disagree
-**Effort:** M · **Priority:** P2 · **Invariants:** #3 #5 · needs a WSD record
+**B-59 is DONE — shipped in v0.60.0 (2026-08-18), WSD-046; see `meta/BACKLOG-DONE.md`.**
 
-**Why:** `TwinParity.Tests.ps1` compares the *decisions* the two twins reach on fixture inputs. It
-cannot see a check that has stopped working, because an inert check and a check that legitimately
-didn't match are indistinguishable from the outside. Three independent mechanisms can make a check
-inert, all found while shipping B-57 (v0.37.0), all verified by execution:
-
-1. **`grep -Eq … && reasons+=(…)` fails OPEN — 20 sites in `guard.sh`.** `grep` exits 2 on a bad
-   regex, an unsupported construct, or an unreadable input. The `&&` treats that identically to
-   "no match", so the reason is never appended and the write is allowed. A first-draft B-57 pattern
-   did exactly this — `[\](,]` is invalid POSIX ERE — which would have shipped a check that blocks
-   on `.ps1` and does nothing on `.sh`. Nothing in CI would have failed, because no fixture case
-   exercised it on the erroring twin.
-
-2. **`-match` is case-insensitive; `grep -E` is not.** Verified across **every existing pattern**,
-   not just the new one — `#PRAGMA WARNING DISABLE`, `[FACT(Skip="x")]`, `ASSERT.True(true)`,
-   `// ESLINT-DISABLE-next-line`, `// @TS-IGNORE` all block on `guard.ps1` and pass on `guard.sh`.
-   **No live exploit today**: C#, ESLint directives, and TS pragmas are all case-sensitive, so every
-   divergent input above is invalid code the `.ps1` side merely over-blocks. The danger is the *next*
-   pattern — B-57's `Ignore` was the first to collide with a legitimate lowercase identifier
-   (`Handle(evt, ignore, ctx)`), and it needed `-cmatch`. There is no stated policy, so the trap is
-   re-armed for whoever adds pattern #21.
-
-3. **Fixture content does not resemble the input.** Every `guard-cases.ps1` entry is a one-line
-   snippet; the hook receives whole file contents. A failure mode that only manifests across lines
-   is untestable by construction. B-57's patterns happened to be correct under `(?m)`/line-oriented
-   `grep`, but that was confirmed by an ad-hoc check, not by the suite.
-
-**Do:** (a) make grep errors loud — check the exit code explicitly (0 match / 1 no-match / 2 error →
-fail the hook or emit a diagnostic) rather than `&&`-chaining, or wrap the idiom in one helper used
-by all 20 sites; (b) decide and document a case-sensitivity policy for guard patterns, sweep the
-existing ones to `-cmatch` where the pattern contains a bare identifier, and add adversarially-cased
-fixture cases so `TwinParity` can actually see the divergence; (c) convert several fixtures to
-realistic multi-line file bodies; (d) add a self-test that plants a deliberately invalid regex in each
-twin and asserts the suite goes red — the harness must be shown to catch an inert check. Same
-portability class, worth sweeping together: the NUnit CI grep shipped in `enforce-standards` step 2
-uses GNU-only `\s`/`\b`, which are literal on BSD/macOS grep — it works on typical Linux CI but is
-the exact trap this entry is about, and a POSIX-safe form
-(`'^[[:space:]]*\[.*[^A-Za-z]Ignore[^A-Za-z]'`) is verified equivalent.
-
-**2026-08-18 implementation RCA (implemented, release intentionally deferred).** Grep exit 2 was
-never asserted because every fixture supplied valid patterns; the suite tested decisions from the
-outside and could not distinguish a legitimate no-match from an inert matcher. The same class
-exposed the generic credential pipeline and any future grep-backed guard rule; the former is now
-explicitly documented as deliberately fail-open, while every typed rule has an applied invalid-regex
-mutation. The re-locked plan also established that the POSIX NUnit form above is *not* equivalent;
-that separate unsolved grep was left unchanged as authorised.
-
-### B-64 · Deterministic diagnostics have no planted-defect tests
-**Effort:** M · **Priority:** P2
-
-**Why:** framework-doctor shipped three independent defects that all reported success, and its
-existing suite passed throughout because it tested happy paths. The root `CLAUDE.md` Definition of
-done already requires red-testing for composer/gate scripts, but the diagnostics themselves were
-never held to it.
-
-**Do:** for each gate and diagnostic, add at least one test that plants the defect class it exists
-to catch and asserts the non-zero exit or the honest row — the discipline B-41 applies to agent
-behaviour, applied to the deterministic layer.
-
-> **SCOPE REWRITTEN 2026-08-18 (B-83's staleness sweep) — the blanket *Do* above is no longer
-> accurate and must not be implemented literally.** Sixteen versions of RCA-driven work have landed
-> since this entry was filed, and a good deal of it was exactly this. Measured on the current tree:
-> `ValidateDist.Tests.ps1` is 602 lines / 44 cases and already plants defects for twelve of them;
-> `BacklogHygiene.Tests.ps1` carries a **`-RedTest` parameter with six named mutations**, three of
-> which are vacuity mutations — the strongest form of this discipline anywhere in the repo, and a
-> ready-made pattern to copy. So the honest open question is **not** "add red-tests everywhere", it
-> is **"which gates and diagnostics still have only happy-path coverage?"**, and nobody has answered
-> it.
->
-> **Do (revised):** first produce the coverage matrix — one row per gate and per diagnostic
-> (`validate-dist`'s twelve checks, each dist's `template-checks`, `framework-doctor`'s rows,
-> `context-footprint`, `hazard-check`, `wiki-check`, `warehouse-map-check`, the composer, and each
-> meta suite), recording whether a planted-defect test exists, whether it has been **seen** to go
-> red, and on which twin. Publish it in `meta/`. Only then close the gaps it finds, highest-value
-> first. The matrix is the deliverable that makes the rest proportionate; without it this entry
-> licenses unbounded work and, per B-83, would send an implementer to rewrite tests that already
-> exist. Build it on B-84's mutation helper so each row's mutation is recorded as executable text
-> rather than as a comment claiming a red-test happened.
-
-**B-68 is DONE (2026-08-18) — both twins derive the Instructed list; see `meta/BACKLOG-DONE.md`.**
-
-**2026-08-18 delivery RCA (matrix phase complete; gap-closing phase remains open).** No gate required
-an inventory proving that every deterministic gate had an executable red control and a retained
-observation; the Definition of done applied per change, so coverage accumulated without a system
-view. The matrix found the same exposure in composer failure behavior, docs-sync-check failure
-behavior, three framework-doctor rows, and four meta suites. Those gaps remain the open phase of
-this entry; no tests were added during the inventory task.
+**B-64 is DONE — `meta/gate-redtest-coverage.md` (2026-08-18); see `meta/BACKLOG-DONE.md`.**
 
 ### B-70 · Nothing requires a new test to be exercised on both CI legs before it ships
 **Effort:** S · **Priority:** P2
@@ -539,28 +453,7 @@ profiling this does not rediscover it and assume it was missed.
 
 ---
 
-### B-75 · The parity fixture was inert for two of seven checks, and looked green
-**Effort:** S · **Priority:** P3 · found 2026-08-01 shipping B-61
-
-**Why:** the first cut of `ScriptTwinParity`'s `template-checks` fixture omitted `.claude/hooks/` and
-`.claude/skills/`, so checks 5 and 7 never emitted. A planted defect in check 5 **failed to go red**
-and the suite reported 4/4 passing. The fixture now asserts which checks it *reached*, so a check that
-stops being exercised fails instead of agreeing vacuously. The general hazard: a twin-parity fixture
-that does not trigger a branch makes both twins agree about nothing, and that is indistinguishable
-from agreement.
-
-**Do:** apply the reached-set assertion to the other parity suites (`WikiCheck`, `FrameworkDoctor`,
-`BuildArchitectureHtml`) — each should assert the branches its fixtures are supposed to exercise. This
-is B-59's inert-check class one level up: not an inert *check*, an inert *fixture*.
-
-**2026-08-18 implementation RCA (implemented, release intentionally deferred).** Parity compared
-outputs but did not assert that the shared fixtures reached each intended branch, so both twins could
-agree vacuously. The WikiCheck sweep found a live example: its “malformed frontmatter” fixture had
-valid delimiters and never reached that branch. Every other fixture-driven parity suite is exposed
-to the same class; the three named suites now have exact reached-set assertions (FrameworkDoctor
-already had one), while B-64's matrix identifies where equivalent controls are still absent.
-
----
+**B-75 is DONE — shipped in v0.60.0 (2026-08-18); see `meta/BACKLOG-DONE.md`.**
 
 ### B-83 · A backlog entry's *Do* can be contradicted by a later shipped decision, and nothing notices
 **Effort:** M · **Priority:** P2 · filed 2026-08-02 (RCA of v0.44.0)
