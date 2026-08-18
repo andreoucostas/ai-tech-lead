@@ -14,6 +14,7 @@
 . (Join-Path $PSScriptRoot '_HookHarness.ps1')
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $rootDocs = @('README.md', 'CLAUDE.md', 'AGENTS.md', 'DEVELOPING.md')
+$docTruthSuitePath = $MyInvocation.MyCommand.Path
 
 Reset-Tests
 
@@ -35,7 +36,7 @@ It 'the root README version stamp matches what is actually shipped' {
 # --- 2. no phantom syntax -----------------------------------------------------------------------
 It 'no doc documents `@@INCLUDE` -- the composer has never implemented it' {
     # CHANGELOG.md excluded: it is a dated record of what we believed, not live guidance.
-    $offenders = Get-ChildItem -LiteralPath $repoRoot -Recurse -File -Include *.md |
+    $offenders = Get-ChildItem -LiteralPath $repoRoot -Recurse -File -Filter *.md |
         Where-Object { $_.FullName -notmatch '[\\/]\.git[\\/]' -and $_.Name -ne 'CHANGELOG.md' } |
         Where-Object { Select-String -Path $_.FullName -Pattern '@@INCLUDE' -Quiet }
     if ($offenders) {
@@ -89,7 +90,7 @@ It 'every script CI invokes actually exists' {
 
 # --- 5. backlog item identifiers are unambiguous -----------------------------------------------
 It 'every live backlog item has a unique id' {
-    $backlog = Get-Content (Join-Path $repoRoot 'meta/BACKLOG.md')
+    $backlog = [IO.File]::ReadAllLines((Join-Path $repoRoot 'meta/BACKLOG.md'), [Text.Encoding]::UTF8)
     $ids = @($backlog | ForEach-Object {
         if ($_ -match '^### (B-[0-9]+) ·') { $Matches[1] }
     })
@@ -138,6 +139,27 @@ It 'root CLAUDE.md and AGENTS.md headings have an explicit mirror mapping' {
         Assert (@($table | Where-Object { $_.Agents -ceq $heading }).Count -gt 0) "AGENTS.md heading '$heading' is not the target of any CLAUDE.md heading mapping"
     }
     Assert $true 'clean'
+}
+
+# The 5.1 arm. Both defects this guards against (a `-Include` that does not filter, a BOM-less file
+# decoded against the system codepage) are INVISIBLE under pwsh 7, which is how they survived to
+# v0.58.0 while this suite reported 8/8. Re-running the whole suite under the other host is the only
+# measure that sees them.
+#
+# It reports SKIP, never a pass, when it cannot actually run 5.1 -- under 5.1 itself (where it would
+# recurse) and on a host without powershell.exe. An arm that verified nothing must not be
+# indistinguishable from one that verified something: that is B-71's class, and reporting a
+# not-run leg as [ok] is the stronger form of it.
+$windowsPowerShell = if ($env:SystemRoot) { Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe' } else { $null }
+if ($PSVersionTable.PSEdition -ne 'Core') {
+    Skip 'the suite also passes under Windows PowerShell 5.1' 'already running under Windows PowerShell; the pwsh 7 run drives this arm'
+} elseif (-not $windowsPowerShell -or -not (Test-Path -LiteralPath $windowsPowerShell)) {
+    Skip 'the suite also passes under Windows PowerShell 5.1' 'no powershell.exe on this host -- NOT a pass; the 5.1 leg was not exercised'
+} else {
+    It 'the suite also passes under Windows PowerShell 5.1' {
+        & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File $docTruthSuitePath *> $null
+        Assert ($LASTEXITCODE -eq 0) "Windows PowerShell 5.1 DocTruth run failed with exit $LASTEXITCODE"
+    }
 }
 
 exit (Write-TestSummary 'DocTruth.Tests (the authoring docs describe the repo that exists)')
