@@ -70,7 +70,7 @@ for dist in $dists;do
  add_item "$tmp/$dist.static.claude.tsv" .github/instructions/framework-rules.instructions.md "$(byte_count "$root/.github/instructions/framework-rules.instructions.md")"
  for relative in AGENTS.md .github/copilot-instructions.md;do add_item "$tmp/$dist.static.copilot.tsv" "$relative" "$(byte_count "$root/$relative")";done
  add_item "$tmp/$dist.static.copilot.tsv" .github/instructions/framework-rules.instructions.md "$(byte_count "$root/.github/instructions/framework-rules.instructions.md")"
- for relative in FRAMEWORK-CONTEXT.md docs/defaults.md docs/wiki/INDEX.md;do [ ! -f "$root/$relative" ]||add_item "$tmp/$dist.instructed.tsv" "$relative" "$(byte_count "$root/$relative")";done
+ { [ ! -f "$root/FRAMEWORK-CONTEXT.md" ]||printf '%s\n' "$root/FRAMEWORK-CONTEXT.md";find "$root/docs" -type f -name '*.md' -print; }|LC_ALL=C sort|while IFS= read -r source;do relative=${source#"$root/"};add_item "$tmp/$dist.instructed.tsv" "$relative" "$(byte_count "$source")";done
  {
   find "$root/.claude/skills" -mindepth 2 -maxdepth 2 -type f -name 'SKILL.md' -print
   find "$root/.claude/commands" -mindepth 1 -maxdepth 1 -type f -name '*.md' -print

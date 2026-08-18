@@ -249,7 +249,10 @@ try {
             [void]$groups['static.copilot'].Add((New-ItemRecord $relative (Get-ByteCount (Join-Path $root $relative))))
         }
         [void]$groups['static.copilot'].Add((New-ItemRecord $frameworkRules (Get-ByteCount (Join-Path $root $frameworkRules))))
-        foreach ($relative in @('FRAMEWORK-CONTEXT.md', 'docs/defaults.md', 'docs/wiki/INDEX.md')) {
+        $instructedFiles = @((Get-Item -LiteralPath (Join-Path $root 'FRAMEWORK-CONTEXT.md') -Force -ErrorAction SilentlyContinue))
+        $instructedFiles += @(Get-ChildItem -LiteralPath (Join-Path $root 'docs') -Filter '*.md' -File -Recurse -Force)
+        foreach ($file in $instructedFiles) {
+            $relative = $file.FullName.Substring($root.Length).TrimStart('\', '/').Replace('\', '/')
             $path = Join-Path $root $relative
             if (Test-Path $path) {
                 [void]$groups['instructed'].Add((New-ItemRecord $relative (Get-ByteCount $path)))
