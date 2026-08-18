@@ -5,6 +5,33 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.60.0 — Unreleased
+
+**The write guard now inspects mixed-case file extensions on every surface.** A file named
+`Foo.CS` or `app.TS` was checked by the PowerShell guard and silently skipped by the Bash one,
+so on Copilot CLI (which runs the Bash hook) such a file was not guarded at all. Both now
+inspect it. If your repository uses mixed-case extensions anywhere, expect the guard to start
+speaking up about files it previously ignored — that is the fix, not a regression.
+
+**The guard no longer stops enforcing without telling you.** Its checks are regular expressions,
+and a broken one used to be indistinguishable from "nothing to report": the check simply stopped
+blocking and the write went through. Now a pattern that cannot run says so, and what happens next
+depends on how confident that check is. The secret-scanning rules — private keys, cloud and
+service tokens — **block the write** if their pattern is broken, because a security floor that
+has quietly stopped checking is worse than a refused write. The lower-confidence rules that flag
+skipped tests, tautological assertions and suppression pragmas **warn and let the write through**,
+so a defect in our pattern cannot block an ordinary refactor. Either way the message names the
+pattern and its category, so you can tell us.
+
+**Fewer false blocks on wrong-case text.** Content matching is now exact, matching the languages
+themselves: C#, ESLint directives and TypeScript pragmas are all case-sensitive. Text like
+`ASSERT.True(true)` or `// ESLINT-DISABLE` — which is not valid code in the first place — no
+longer trips the guard, and both hook implementations now agree on every case tested.
+
+**You do not need to do anything.** Updating picks this up. If you have added your own patterns to
+a local copy of the guard, note the new convention: content patterns are matched case-sensitively,
+and anything that decides *which files to inspect* folds case deliberately and says so inline.
+
 ## 0.59.0 — 2026-08-18
 
 **GitHub Copilot CLI: the workflow-routing nudge was not reaching the model, and now does.**
@@ -848,3 +875,4 @@ No action needed to receive this — the wiki starts empty; your team populates 
 - **Merged CI guardrail and Bitbucket Data Center guidance** covering both legs — .NET
   (`dotnet build -warnaserror` + `dotnet test`) and Angular (`eslint` + `ng build` + `ng test`) —
   in `docs/ci-integration.md`.
+

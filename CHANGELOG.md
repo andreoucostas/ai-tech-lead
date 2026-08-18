@@ -11,6 +11,44 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.60.0 — Unreleased
+
+**The write-guard can no longer go inert, and its error policy is split by confidence (B-59,
+WSD-046).** All 20 `grep` sites in `guard.sh` route through an error-aware helper: exit 0 match /
+1 no-match / 2+ *could not answer*, where the third case was previously folded into "no match" and
+allowed the write. `grep -Eq --` matters — the private-key pattern begins with `-----`, so without
+`--` grep parses it as an option and returns 2; the first design's helper dropped it and would have
+made the first secret rule permanently inert, inside the helper written to prevent exactly that.
+On a pattern error the **7 secret patterns fail closed** (high-confidence any-file rules whose
+shipped header already promises this) while **test-defeat/suppression patterns warn and allow**
+(our bad regex must not brick an ordinary refactor — B-48's trust judgment).
+
+**Case policy has two halves, and collapsing them was the first design's blocking error.** Content
+patterns are exact (`-cmatch`); the three file-routing predicates deliberately fold, in both twins,
+spelled inline. A blanket `-cmatch` sweep would have stopped inspecting `src/Foo.CS` and
+`src/app.TS` **entirely** — verified, `'src/Foo.CS' -match '\.cs$'` → True, `-cmatch` → False.
+
+**A live twin gap was found and closed while doing it.** `guard.sh` routed with
+`case "$fp" in *.cs)`, which is case-sensitive, so `Foo.CS` was guarded by `guard.ps1` and **not**
+by `guard.sh` on the shipped release. Bash was brought up to correct behaviour rather than
+PowerShell blinded down to match.
+
+**The entry's own thesis is now testable.** `GuardPatternErrors.Tests.ps1` plants an invalid regex
+in each twin and asserts the suite goes red, across both error policies, on B-84's mutation helper
+so each mutation is proven to have applied and the restore verified byte-identical.
+
+**Reached-set assertions on the remaining parity suites (B-75)** — and they immediately caught a
+genuinely **inert** `WikiCheck` "malformed frontmatter" fixture. `FrameworkDoctor` was correctly
+skipped: `Parse-DoctorResult` already asserts the exact set of all 12 row names on every run.
+
+**`meta/gate-redtest-coverage.md` (B-64)** — the inventory the rewritten entry asked for:
+49 COVERED, 10 HAPPY-PATH-ONLY, 9 UNKNOWN, 0 with no test at all. The composer, `docs-sync-check`,
+`InstallerContract` and `RootInstallerWarehouse` are the happy-path-only gaps worth closing next.
+
+Deliberately **not** done: B-59 §3e, the NUnit POSIX grep. The replacement the entry called
+"verified equivalent" misses the canonical bare `[Ignore]` (measured, GNU grep 3.0), so the shipped
+grep was left alone rather than swapped for an unverified one.
+
 ## 0.59.0 — 2026-08-18
 
 **Copilot CLI delivers only the LAST `userPromptSubmitted` hook, so `route-prompt` was silently
