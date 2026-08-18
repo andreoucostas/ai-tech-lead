@@ -3852,3 +3852,46 @@ about what `/bootstrap` *writes*. Adjacent, not the same.
   accepted. That workaround was already recorded in the kit's own README footer on 2026-08-13 and
   the entry above never picked it up, so the item stayed labelled "blocked" for five days after it
   wasn't. Trust store was backed up and restored byte-identical on every run.
+
+- **B-84** — DONE **2026-08-18**. `.claude/hooks/tests/_MutationHelper.ps1` (meta-only,
+  PowerShell-only per WSD-005). Red-testing a gate here was a manual ritual with no record: each
+  mutation was hand-rolled in an ad-hoc shell command and thrown away, so every red-test was
+  re-invented, its exact mutation unrecorded, and only the assertion survived. The helper works on a
+  scratch copy, takes a line-addressed or find/replace mutation, **asserts the subject actually
+  changed and throws if not**, prints the diff it made with line numbers, asserts the command exits
+  non-zero, and restores unconditionally with a byte-identical check.
+
+  It answers **both** recorded failure modes, and the second one is why the diff-printing matters.
+  The 2026-08-17 mode: a `perl -pi` pattern that never matched printed the suite's ordinary green
+  summary, which reads exactly like "the check is inert". The 2026-08-18 mode, found while shipping
+  B-144: a mutation can **apply and still never execute** — appending `exit N` to `bom-fix.ps1` and
+  `install.ps1` left three suites green, because both scripts end with their own terminal `exit` and
+  the appended line was unreachable. The *file* had changed, so a change-assertion passed; the
+  *executed behaviour* had not. The helper cannot prove reachability in general and explicitly does
+  not claim to — it prints what it changed and says so, which makes an unreachable edit visible.
+
+  Self-tested on both PowerShell hosts, exit 0: a non-matching mutation throws "did not apply"; an
+  applied mutation with a red command passes; **an applied mutation whose command stays GREEN is
+  rejected** (the inert check being caught); restore is byte-identical. Adoption across the existing
+  suites is deliberately not part of this item.
+
+- **B-68** — DONE **2026-08-18**. `context-footprint`'s Instructed group iterated a literal
+  three-file list (`FRAMEWORK-CONTEXT.md`, `docs/defaults.md`, `docs/wiki/INDEX.md`), so any newly
+  added `docs/*.md` was measured by nothing and silently escaped the budget gate. Both twins now
+  derive the list from `FRAMEWORK-CONTEXT.md` plus `docs/**/*.md`. Deriving beats requiring
+  deliberate registration here because the failure mode being closed is *silent under-measurement*,
+  and a registration list re-creates it the first time someone forgets.
+
+  Red-tested on **both** twins by planting a 4 KB `dist/dotnet/docs/b68-probe.md`: `.ps1` exit 1,
+  `.sh` exit 1, both clean again after removal. Before the change the file was invisible to both.
+
+- **B-123b** — **REJECTED ON EVIDENCE 2026-08-18**, no code change. The entry claimed
+  `.claude/scripts/build-block-manifest.ps1:183` carries B-89's `ErrorActionPreference = Stop` +
+  native-stderr idiom. It cannot: **line 1 is `#requires -Version 7.0`**, and the failure mode is
+  Windows PowerShell 5.1 behaviour (a native command writing to redirected stderr raising a
+  terminating `NativeCommandError`), so the path is unreachable in every host that can run the file
+  at all. The site also already implements B-89's remedy independently — `& git show … 2>$null`
+  followed by an explicit `$LASTEXITCODE` check, with the miss recorded rather than guessed at.
+
+  Kept as an instance of B-83's class: B-89's own closing sweep filed this from a pattern match
+  without checking whether the pattern's *precondition* held in the file it named.

@@ -425,15 +425,7 @@ behaviour, applied to the deterministic layer.
 > exist. Build it on B-84's mutation helper so each row's mutation is recorded as executable text
 > rather than as a comment claiming a red-test happened.
 
-### B-68 · `context-footprint` hard-codes the Instructed file list
-**Effort:** S · **Priority:** P3
-
-**Why:** the instructed group iterates a literal list (`FRAMEWORK-CONTEXT.md`, `docs/defaults.md`,
-`docs/wiki/INDEX.md`), so any newly added `docs/*.md` is measured by nothing and silently escapes the
-budget gate.
-
-**Do:** derive the list, or require new files be added deliberately. Twin edit, both `.ps1` and
-`.sh`.
+**B-68 is DONE (2026-08-18) — both twins derive the Instructed list; see `meta/BACKLOG-DONE.md`.**
 
 ### B-70 · Nothing requires a new test to be exercised on both CI legs before it ships
 **Effort:** S · **Priority:** P2
@@ -630,42 +622,7 @@ reading, not a string match; a check that pretends otherwise is the theatre this
 
 ---
 
-### B-84 · Red-testing a gate is a manual ritual with no record and no shared kit
-**Effort:** M · **Priority:** P3 · filed 2026-08-02 (RCA of v0.44.0)
-
-**Why:** three of the four instrument defects in this release were found the same way — mutate the
-subject, re-run the check, confirm it goes red — and every one of those mutations was hand-rolled in
-an ad-hoc shell command, then thrown away. The maintenance model requires the red observation (#4)
-but the repo provides nothing to *perform* it with, so each red-test is re-invented, its exact
-mutation is unrecorded, and only the assertion survives. Two of this release's own red-tests were
-themselves defective on the first attempt (an over-broad extraction; a vacuously empty pattern), and
-nothing but a second look caught either.
-
-**Do:** provide a small mutation helper for meta tests — take a file, a find/replace, run a command,
-assert non-zero, restore unconditionally — and use it to record the *specific* mutation next to each
-gate as executable text rather than as a comment claiming a red-test happened. Then the claim "seen
-to go red" is re-verifiable by running it, which is the only version of that claim worth having.
-
-**Not:** don't run mutations against the working tree in a release path — this must operate on
-scratch copies, as this release's red-tests did (`validate-dist` already accepts a dist-root
-argument for exactly that).
-
-**New failure mode, observed twice in one session (2026-08-17, shipping B-77) — the mutation that
-never applied.** Two of five hand-rolled red-tests used a `perl -pi -e s/.../.../` whose pattern did
-not match the target line (escaping of `$`, `/` and `|` inside the shell-quoted regex). Both printed
-the suite's **normal green summary**, which reads exactly like "the check is inert" — the opposite of
-the truth. They were caught only because the mutated line was expected to appear in a `grep` echo and
-did not. Restated: *a red-test that reports green is ambiguous between "the check is inert" and "the
-mutation did not apply", and nothing distinguishes them.* Whatever helper this entry lands on must
-therefore **assert the subject actually changed** (diff the mutant against the original and fail if
-identical) before it runs the command — that assertion is cheaper than the mutation itself and is the
-difference between evidence and decoration. A line-addressed `awk`+`diff -q` form worked where the
-pattern-addressed `perl` form silently did not.
-
-**Cross-links:** B-64 (planted-defect tests for diagnostics — this is the missing tooling under it),
-B-59, B-75.
-
----
+**B-84 is DONE (2026-08-18) — `.claude/hooks/tests/_MutationHelper.ps1`; see `meta/BACKLOG-DONE.md`.**
 
 ### B-85 · Two gate scripts cannot run from Git Bash on the maintainer box
 **Effort:** S · **Priority:** P3 · filed 2026-08-02 (RCA of v0.44.0)
@@ -719,23 +676,7 @@ that was *already* guarded. The gap is every commit made outside it.
 
 ---
 
-### B-123b · `build-block-manifest.ps1:183` has the same `Stop` + native-stderr idiom B-89 swept for
-**Effort:** XS · **Priority:** P3 · found 2026-08-08 re-running B-89's own closing sweep
-
-**Why:** `.claude/scripts/build-block-manifest.ps1` sets `$ErrorActionPreference = 'Stop'` (line 45)
-and calls `& git show "${tag}:${path}" 2>$null` unwrapped (line 183) — the exact idiom B-89 fixed in
-`sync-agent-files.ps1` and `fidelity-check.ps1`. Under Windows PowerShell 5.1, a missing tag or path
-would raise a terminating `NativeCommandError` instead of the graceful fallback the `2>$null` was
-written to produce. Lower urgency than B-89's sites: this is `.claude/scripts/`, maintainer-only,
-run only on this box, and this session runs pwsh 7 in practice — but B-89's own RCA said the sweep
-"should be re-run again before assuming no third site remains," and re-running it here is what
-found this one.
-
-**Do:** wrap the `git show` call the same way B-89 did (temporary
-`$ErrorActionPreference = 'Continue'`, check `$LASTEXITCODE`), red-test from a non-existent
-tag/path under real Windows PowerShell 5.1, then re-run the same grep once more before closing.
-
----
+**B-123b is REJECTED ON EVIDENCE (2026-08-18) — the premise is invalid; see `meta/BACKLOG-DONE.md`.**
 
 ### B-91 · The release still pushes one commit it never watches
 **Effort:** S · **Priority:** P3 · filed 2026-08-02 (RCA of B-88)
@@ -2609,6 +2550,31 @@ unsubstantiated "filed as follow-up" claim in the B-54 Done entry.
 require the literal first `## ` line to be the version head, matching `release.ps1`'s stricter
 reading, since a shipped/authored changelog is not expected to carry other `## ` sections above its
 version history) and apply it identically in both twins.
+
+> **THE COMPARISON IS DONE (2026-08-18) — only the shipped change is outstanding.** Both grammars
+> were extracted from the code and run against the four live heads; full working in
+> `.claude/plans/2026-08-18-b131-changelog-grammar.md`. Do not re-derive it.
+>
+> | | grammar | requires |
+> |---|---|---|
+> | `release.ps1` | selects the **literal first** `^## ` line, then whole-line `^## (\d+\.\d+\.\d+) — (Unreleased\|\d{4}-\d{2}-\d{2})$` | em dash, two-state suffix, no trailing text, and that the *first* H2 be the version head |
+> | `template-checks.{ps1,sh}` | first **version-shaped** `^## \d+\.\d+\.\d+`, captures the triplet | nothing else; rejects the line only if it contains `Unreleased` |
+>
+> **Release is strictly narrower, and the divergence is one-directional.** A file headed
+> `## Unreleased` above `## 0.58.0 — 2026-08-17` passes both template twins and is hard-refused by
+> the release; so is `## 0.58.0 arbitrary text`. The converse cannot occur: anything the release
+> accepts carries a version prefix template-checks recognises, and its dated state clears the
+> `Unreleased` rejection. So the failure direction is **fail-safe but self-inflicted** — the cheap
+> gate reports green and the expensive one refuses ~25 minutes later.
+>
+> **All four live heads currently read `## 0.58.0 — 2026-08-17` and are accepted by both**, so there
+> is no live defect and this stays P3.
+>
+> **Recommendation carried forward:** the release grammar wins, applied **to marked template repos
+> only**. A consumer's own `CHANGELOG.md` must stay outside this gate — Keep a Changelog's
+> `## Unreleased`-above-versions layout is a legitimate external convention, and failing a consumer's
+> build for it would be the framework imposing an authoring style it has no standing to impose. That
+> ownership boundary is the part of this item that needs a decision recorded before code changes.
 
 **Established practice and local contract (researched 2026-08-11):** Keep a Changelog recommends an
 `Unreleased` section above released versions and adding a new one after a release; that is a valid
