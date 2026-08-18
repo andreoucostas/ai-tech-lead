@@ -2413,6 +2413,9 @@ gate satisfied.
 **Status: AWAITING OPUS REVIEW.** The evidence-first design is captured but not locked, and
 authorises neither Phase 0 execution nor shipped changes until the required Claude Opus review.
 
+**B-130 is PARTIALLY DONE (2026-08-18) — the framework-doctor instance is FIXED and shipped;
+the original `ScriptTwinParity` docs-sync-check 5.1 divergence is STILL OPEN. See below.**
+
 ### B-130 · Diagnose or retire the historical Windows PowerShell 5.1 parity failures
 **Effort:** S · **Priority:** P3 · filed 2026-08-08 · **Invariants:** #3
 
@@ -2443,6 +2446,39 @@ next person will need to add that before diagnosing further.
 > red hook suite on the maintainer box, and the release that produced it did not stop. Whatever the
 > cause, the gate either did not run this leg during that release or was waived; either way the
 > record should say which, because "the gates were green" is a claim this repo makes routinely.
+>
+> **DIAGNOSED AND FIXED, same day — and it was a real shipped defect, not an environment quirk.**
+> The doctor's *Mirror and version integrity* row ran `template-checks` through a **bare interpreter
+> name**: `$hostExe = if ($PSVersionTable.PSEdition -eq 'Core') { 'pwsh' } else { 'powershell' }`.
+> Under Windows PowerShell 5.1 that resolves `powershell` against the PATH the agent host supplies —
+> and this box's child processes inherit
+> `C:\Program Files\PowerShell\7;C:\Program Files\Git\bin;${PATH}`, with the literal unexpanded
+> `${PATH}` leaving `System32` off it. Proven by execution inside a 5.1 child:
+> `Get-Command powershell -> NOT RESOLVED`. The interpreter never started, `$LASTEXITCODE` was
+> non-zero, and the doctor reported **"CLAUDE.md and AGENTS.md or version stamps have drifted. Fix:
+> run /generate-copilot"** — a specific, false, actionable diagnosis handed to a consumer whose
+> documentation was fine. Under pwsh 7 the same row read OK, which is why it looked like a 5.1
+> parity curiosity rather than the reporting defect it was.
+>
+> **This is B-85's thesis, shipped:** *a failure caused by a broken PATH is not the same fact as the
+> thing being diagnosed, and reporting them identically is what lets the gap persist.* Fixed in both
+> twins. The `.ps1` now self-hosts — it runs `template-checks` with **this process's own executable**
+> (`(Get-Process -Id $PID).Path`, the same self-hosting contract `Get-PsExe` uses), falling back to
+> the bare name only if that cannot be read, and emits a **distinct** row when the host cannot be
+> started at all: *"could not start a PowerShell host to run template-checks, so drift is UNKNOWN
+> rather than found. This is a host/PATH problem, not a documentation problem."* The `.sh` twin gained
+> the same separation (exit 126/127 = could not execute) plus the *"template-checks is missing"*
+> message the `.ps1` already had and it did not — a twin divergence in messaging, found while fixing
+> this.
+>
+> **Measured, same box:** `FrameworkDoctor.Tests` **29 passed / 1 failed** at `HEAD` and at the
+> `v0.58.0` tag → **30 passed / 0 failed** on all three dists after the fix; the full dist hook
+> suites went from **1 failure across 18 files** each to **0 failures**. That before/after on an
+> unchanged host is the red observation this fix rests on.
+>
+> **Still open on this entry:** the original `ScriptTwinParity.Tests.ps1` docs-sync-check 5.1
+> divergence, which is a different assertion and was not touched. And the unanswered process
+> question above — how v0.58.0 shipped with this red — remains worth an answer.
 
 **Do:** reproduce, capture both hosts' actual exit codes and stdout for the `docs-sync-check.ps1`/`.sh`
 twins over `DocsFixture`/`TemplateFixture`, and find the 5.1-specific divergence (likely another

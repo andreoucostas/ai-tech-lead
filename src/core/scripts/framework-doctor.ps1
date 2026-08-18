@@ -200,9 +200,27 @@ if ($pending) { Row PENDING 'Mirror and version integrity' 'not checked until /b
 else {
     $check = Join-Path $root 'scripts/template-checks.ps1'
     if (Test-Path -LiteralPath $check) {
-        $hostExe = if ($PSVersionTable.PSEdition -eq 'Core') { 'pwsh' } else { 'powershell' }
-        & $hostExe -NoProfile -ExecutionPolicy Bypass -File $check *> $null
-        if ($LASTEXITCODE -eq 0) { Row OK 'Mirror and version integrity' 'template-checks passed.' }
+        # Self-host: run template-checks with THIS process's own interpreter, resolved by path.
+        # A bare name ('pwsh'/'powershell') is only as good as the PATH the agent host happens to
+        # hand us, and when it does not resolve the failure is indistinguishable from a real drift
+        # finding -- so the doctor told you "CLAUDE.md and AGENTS.md have drifted, run
+        # /generate-copilot" when the truth was "I could not start an interpreter". Observed: a
+        # session whose PATH contained a literal unexpanded ${PATH}, leaving System32 off it, so
+        # 'powershell' did not resolve under Windows PowerShell 5.1. A failure caused by the PATH is
+        # not the same fact as the thing being diagnosed, and reporting them identically is what
+        # lets the gap persist.
+        $hostExe = $null
+        try { $hostExe = (Get-Process -Id $PID).Path } catch { $hostExe = $null }
+        if ([string]::IsNullOrEmpty($hostExe)) {
+            $hostExe = if ($PSVersionTable.PSEdition -eq 'Core') { 'pwsh' } else { 'powershell' }
+        }
+        $checkRan = $true
+        try { & $hostExe -NoProfile -ExecutionPolicy Bypass -File $check *> $null }
+        catch { $checkRan = $false }
+        if (-not $checkRan) {
+            Row MISSING 'Mirror and version integrity' 'could not start a PowerShell host to run template-checks, so drift is UNKNOWN rather than found. This is a host/PATH problem, not a documentation problem. Fix: run scripts/template-checks.ps1 yourself and act on what it says.'
+        }
+        elseif ($LASTEXITCODE -eq 0) { Row OK 'Mirror and version integrity' 'template-checks passed.' }
         else { Row MISSING 'Mirror and version integrity' 'CLAUDE.md and AGENTS.md or version stamps have drifted. Fix: run /generate-copilot, then scripts/docs-sync-check.ps1.' }
     } else { Row MISSING 'Mirror and version integrity' 'template-checks is missing. Fix: re-run the installer.' }
 }

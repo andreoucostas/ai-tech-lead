@@ -247,8 +247,18 @@ else row MISSING 'Copilot surface' '.github/hooks/hooks.json is missing. Fix: re
 fi
 
 if [ "$pending" -eq 1 ]; then row PENDING 'Mirror and version integrity' 'not checked until /bootstrap or /adopt completes.'
-elif [ -f "$root/scripts/template-checks.sh" ] && bash "$root/scripts/template-checks.sh" >/dev/null 2>&1; then row OK 'Mirror and version integrity' 'template-checks passed.'
-else row MISSING 'Mirror and version integrity' 'CLAUDE.md and AGENTS.md or version stamps have drifted. Fix: run /generate-copilot, then scripts/docs-sync-check.sh.'
+elif [ ! -f "$root/scripts/template-checks.sh" ]; then row MISSING 'Mirror and version integrity' 'template-checks is missing. Fix: re-run the installer.'
+else
+  # Separate "the checker could not run" from "the checker found drift". Collapsing them told the
+  # user their docs had drifted whenever the checker merely failed to start -- a specific, false,
+  # actionable diagnosis. Exit 127 is the shell's "command not found"; 126 is "found but not
+  # executable" (the exec bit, which Windows does not carry and Linux enforces).
+  template_checks_out=$(bash "$root/scripts/template-checks.sh" 2>&1); template_checks_rc=$?
+  if [ "$template_checks_rc" -eq 0 ]; then row OK 'Mirror and version integrity' 'template-checks passed.'
+  elif [ "$template_checks_rc" -eq 126 ] || [ "$template_checks_rc" -eq 127 ]; then
+    row MISSING 'Mirror and version integrity' 'could not execute template-checks, so drift is UNKNOWN rather than found. This is a host problem, not a documentation problem. Fix: run scripts/template-checks.sh yourself and act on what it says.'
+  else row MISSING 'Mirror and version integrity' 'CLAUDE.md and AGENTS.md or version stamps have drifted. Fix: run /generate-copilot, then scripts/docs-sync-check.sh.'
+  fi
 fi
 
 audit="$root/.claude/ai-audit.log"
