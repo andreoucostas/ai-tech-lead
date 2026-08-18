@@ -1,6 +1,7 @@
 ﻿param(
     [ValidateSet('', 'finished-heading', 'dangling-pointer', 'broken-index',
-        'vacuous-headings', 'vacuous-pointers', 'vacuous-index')]
+        'vacuous-headings', 'vacuous-pointers', 'vacuous-index',
+        'decision-outside-backlog', 'vacuous-decision-subjects')]
     [string]$RedTest = ''
 )
 
@@ -32,6 +33,24 @@ function Assert-OpenHeadings {
         if ($record.Heading -match '(?i)PARTIALLY DONE' -or
             $record.Text -match '(?i)PARTIALLY DONE|STILL OPEN') { continue }
         throw "finished marker remains in open heading $($record.Id): $($record.Heading)"
+    }
+}
+
+function Assert-DecisionsRecordedInBacklog {
+    param([string]$BacklogText, [string[]]$Subjects)
+    if (@($Subjects).Count -eq 0) { throw 'git log yielded zero commit subjects -- decision check is vacuous' }
+    $openIds = @((Get-BacklogRecords $BacklogText) | ForEach-Object Id | Sort-Object -Unique)
+    $verb = '(?:REJECT|REJECTED|ACCEPTED|DECIDED|CLOSED|DONE)'
+    foreach ($subject in $Subjects) {
+        $ids = @()
+        foreach ($match in [regex]::Matches($subject,
+            "(?i)(?:\b$verb\b[\t ]+(?:AS[\t ]+)?(B-[0-9]+)\b|\b(B-[0-9]+)\b(?:[\t ]*[:—-][\t ]*|[\t ]+)(?:IS[\t ]+)?\b$verb\b)")) {
+            $id = if ($match.Groups[1].Success) { $match.Groups[1].Value } else { $match.Groups[2].Value }
+            $ids += $id
+        }
+        foreach ($id in @($ids | Sort-Object -Unique)) {
+            if ($openIds -contains $id) { throw "commit records a decision for open backlog item ${id}: $subject" }
+        }
     }
 }
 
@@ -127,6 +146,8 @@ if ($RedTest) {
             'vacuous-headings' { Assert-OpenHeadings "no headings`n" }
             'vacuous-pointers' { Assert-ArchivePointers "no pointers`n" "- **B-1** — archived`n" }
             'vacuous-index' { Assert-DecisionIndex "# no entries`n" $repoRoot }
+            'decision-outside-backlog' { Assert-DecisionsRecordedInBacklog "### B-900 · Example`nBody.`n" @('Reject B-900 on evidence') }
+            'vacuous-decision-subjects' { Assert-DecisionsRecordedInBacklog "### B-900 · Example`nBody.`n" @() }
         }
         Write-Error "red test '$RedTest' unexpectedly passed"
         exit 1
@@ -144,6 +165,18 @@ It 'open backlog headings contain no completed records' {
 
 It 'PARTIALLY DONE headings remain valid open records' {
     Assert-OpenHeadings "### B-900 · Example — **PARTIALLY DONE; REMAINDER STILL OPEN**`nBody.`n"
+}
+
+It 'recent commit decisions name no ids that remain open in the backlog' {
+    Push-Location $repoRoot
+    try {
+        $subjects = @(& git log -200 --format='%s' 2>&1)
+        $gitExit = $LASTEXITCODE
+    } finally { Pop-Location }
+    Assert ($gitExit -eq 0) "git log failed with exit $gitExit"
+    Assert-DecisionsRecordedInBacklog `
+        ([IO.File]::ReadAllText((Join-Path $repoRoot 'meta/BACKLOG.md'), [Text.Encoding]::UTF8)) `
+        $subjects
 }
 
 It 'archive pointers resolve to archived ids' {

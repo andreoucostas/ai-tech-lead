@@ -3747,3 +3747,54 @@ about what `/bootstrap` *writes*. Adjacent, not the same.
   A new false claim phrased *"is kept current by `/docs-sync`"* would not be discovered. That is a
   deliberate precision-over-recall trade — the alternative fired on 94% of correct files — but the
   net has a known mesh size and the registry, not the net, is the floor.
+
+- **B-144** — DONE **2026-08-18**. The shipped `set -e` abort itself was fixed in v0.54.0; this
+  entry's remaining halves were the sweep and the audit, and both are now discharged **by evidence
+  rather than by fixing things**.
+
+  **(a) The sweep found nothing, and that is a result.** All twelve shipped `.sh` files running
+  under `set -e` / `set -eu` / `set -euo pipefail` (`install.sh`, `sync-agent-files.sh`,
+  `build-architecture-html.sh` × `src/core` + three dists) were reviewed statement by statement for
+  a command that is both a bare statement and legitimately non-zero in normal operation. **No REAL
+  or LATENT hit.** Every high-value near-miss is already guarded: `install.sh:171` explicitly ends
+  the normal-no-match `grep` with `|| true`, `cmp` sits under `if !`, `command -v` sits in `if`
+  conditions. Recorded deliberately: blanket-appending `|| true` on this evidence would convert
+  real errors into silence, which is the opposite defect. Full file-by-file record in
+  `.claude/plans/2026-08-18-b144-sweep.md`.
+
+  **(b) The audit found three suites that assert what landed without asserting that the run
+  succeeded** — B-144's generalisable lesson, since `UpdateDelivery` proved *what arrived* and never
+  proved *the run exited 0*, and the files did arrive while the run failed. All three are now fixed
+  and red-tested:
+
+  | suite | was | now |
+  |---|---|---|
+  | `MetaHooks.Tests.ps1` | piped nine `Invoke-Hook` results to `Out-Null`, asserting only file bytes | asserts `Exit -eq 0` on each |
+  | `RootInstallerWarehouse.Tests.ps1` | asserted the installed `adopt.md` exists | asserts the installer's exit first |
+  | `InstallerContract.Tests.ps1` | asserted stdout only across 12 real installs | asserts exit first — this is the suite that *claims* to cover installer behaviour, and an installer that printed the whole contract and then aborted was indistinguishable from a clean run |
+
+  **The red-tests were themselves inert on the first attempt, and that is the part worth keeping.**
+  Appending `exit 7` / `exit 3` to the end of `bom-fix.ps1` and `install.ps1` produced GREEN suites
+  — which reads exactly like "the new assertion does nothing". It was neither: both scripts end with
+  their own terminal `exit` (`bom-fix.ps1:36`, `install.ps1:86`), so the appended line was never
+  reached. The file *had* changed, so a change-assertion passed; the **executed behaviour** had not.
+  Mutating the real terminal statements instead turned all three red immediately, with the intended
+  messages. B-84 already records that a red-test reporting green is ambiguous between an inert check
+  and a mutation that never applied — this adds that *asserting the file changed is not enough*; the
+  mutated line must be shown to be **on the executed path**.
+
+- **B-146** — DONE **2026-08-18** (filed and resolved the same day). Check B shipped; **check A was
+  dropped on evidence**. See the entry's own resolution note, kept in the archive for the lesson:
+  the proposed body/heading marker check fired 18 times on ordinary wrapped prose, and even a much
+  sharper rule (bold span + version stamp or ISO date — 4/4 recall, zero of the original false
+  positives) still fired 12 times on `**STEP 3 DONE**`, `**LARGELY DONE**`, `**OPUS GATE COMPLETE**`
+  in genuinely open entries. Separating those from `**DONE — shipped v0.45.0**` is a reading, which
+  is precisely what B-83 decided against and what `meta/decisions-index.md` carries as a standing
+  constraint. **That index was not read before the design was specified, though `CLAUDE.md` says to
+  read it before locking any design** — two rounds were spent building something already forbidden.
+  Check B (a commit subject recording a decision for a still-open id) is a genuine string match,
+  shipped, and was verified against real history rather than a fixture: replaying the actual log
+  against a backlog where B-17 was still open reproduces the exact finding that motivated it.
+  Honest coverage note: of the four stale entries found that day, check B would have caught only
+  B-17; the other three announced completion in their own bodies, and periodic human triage remains
+  the only mechanism for that.

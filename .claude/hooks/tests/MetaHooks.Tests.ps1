@@ -20,30 +20,35 @@ try {
 
     It 'bom-fix adds a BOM to a bomless .ps1 under an ai-tech-lead/ path, content intact' {
         $f = Join-Path $repoish 'x.ps1'; Write-NoBom $f "exit 0`n"
-        Invoke-Hook $bomfix (@{tool_name='Write';tool_input=@{file_path=$f}} | ConvertTo-Json -Compress) | Out-Null
+        $r = Invoke-Hook $bomfix (@{tool_name='Write';tool_input=@{file_path=$f}} | ConvertTo-Json -Compress)
+        Assert ($null -ne $r -and $r.Exit -eq 0) "bom-fix exited $(if($null -eq $r){'SKIP'}else{$r.Exit}) -- a hook that fails is not a hook that declined"
         Assert (Test-Bom $f) 'BOM was not added'
         Assert (([IO.File]::ReadAllText($f)).Trim() -eq 'exit 0') 'content changed'
     }
     It 'bom-fix is idempotent (already-BOM .ps1 unchanged)' {
         $f = Join-Path $repoish 'y.ps1'; [IO.File]::WriteAllText($f, "exit 0`n", (New-Object System.Text.UTF8Encoding($true)))
         $before = [IO.File]::ReadAllBytes($f).Length
-        Invoke-Hook $bomfix (@{tool_name='Write';tool_input=@{file_path=$f}} | ConvertTo-Json -Compress) | Out-Null
+        $r = Invoke-Hook $bomfix (@{tool_name='Write';tool_input=@{file_path=$f}} | ConvertTo-Json -Compress)
+        Assert ($null -ne $r -and $r.Exit -eq 0) "bom-fix exited $(if($null -eq $r){'SKIP'}else{$r.Exit}) -- a hook that fails is not a hook that declined"
         Assert ([IO.File]::ReadAllBytes($f).Length -eq $before) 'idempotent run changed the file'
     }
     It 'bom-fix leaves a .ps1 OUTSIDE ai-tech-lead/ untouched (scope guard)' {
         $f = Join-Path $other 'z.ps1'; Write-NoBom $f "exit 0`n"
-        Invoke-Hook $bomfix (@{tool_name='Write';tool_input=@{file_path=$f}} | ConvertTo-Json -Compress) | Out-Null
+        $r = Invoke-Hook $bomfix (@{tool_name='Write';tool_input=@{file_path=$f}} | ConvertTo-Json -Compress)
+        Assert ($null -ne $r -and $r.Exit -eq 0) "bom-fix exited $(if($null -eq $r){'SKIP'}else{$r.Exit}) -- a hook that fails is not a hook that declined"
         Assert (-not (Test-Bom $f)) 'should not have touched a file outside the repo'
     }
     It 'bom-fix does not fire on the LEGACY repo names (ai-tech-lead-dotnet is out of scope now)' {
         $legacy = Join-Path $tmp 'ai-tech-lead-dotnet'; New-Item -ItemType Directory -Path $legacy -Force | Out-Null
         $f = Join-Path $legacy 'l.ps1'; Write-NoBom $f "exit 0`n"
-        Invoke-Hook $bomfix (@{tool_name='Write';tool_input=@{file_path=$f}} | ConvertTo-Json -Compress) | Out-Null
+        $r = Invoke-Hook $bomfix (@{tool_name='Write';tool_input=@{file_path=$f}} | ConvertTo-Json -Compress)
+        Assert ($null -ne $r -and $r.Exit -eq 0) "bom-fix exited $(if($null -eq $r){'SKIP'}else{$r.Exit}) -- a hook that fails is not a hook that declined"
         Assert (-not (Test-Bom $f)) 'legacy repos are frozen — the hook must not rewrite them'
     }
     It 'bom-fix ignores non-.ps1 files' {
         $f = Join-Path $repoish 'note.txt'; Write-NoBom $f 'hi'
-        Invoke-Hook $bomfix (@{tool_name='Write';tool_input=@{file_path=$f}} | ConvertTo-Json -Compress) | Out-Null
+        $r = Invoke-Hook $bomfix (@{tool_name='Write';tool_input=@{file_path=$f}} | ConvertTo-Json -Compress)
+        Assert ($null -ne $r -and $r.Exit -eq 0) "bom-fix exited $(if($null -eq $r){'SKIP'}else{$r.Exit}) -- a hook that fails is not a hook that declined"
         Assert (-not (Test-Bom $f)) 'should not have rewritten a .txt'
     }
 
@@ -52,7 +57,8 @@ try {
         It 'bom-fix.sh twin adds a BOM to a bomless .ps1 under an ai-tech-lead/ path, content intact' {
             $f = Join-Path $repoish 'sh1.ps1'; Write-NoBom $f "exit 0`n"
             $fwd = $f -replace '\\','/'
-            Invoke-Hook $bomfixSh (@{tool_name='Write';tool_input=@{file_path=$fwd}} | ConvertTo-Json -Compress) | Out-Null
+            $r = Invoke-Hook $bomfixSh (@{tool_name='Write';tool_input=@{file_path=$fwd}} | ConvertTo-Json -Compress)
+            Assert ($null -ne $r -and $r.Exit -eq 0) "bom-fix exited $(if($null -eq $r){'SKIP'}else{$r.Exit}) -- a hook that fails is not a hook that declined"
             Assert (Test-Bom $f) 'BOM was not added by the .sh twin'
             Assert (([IO.File]::ReadAllText($f)).Trim() -eq 'exit 0') 'content changed'
         }
@@ -60,20 +66,23 @@ try {
             $f = Join-Path $repoish 'sh2.ps1'; [IO.File]::WriteAllText($f, "exit 0`n", (New-Object System.Text.UTF8Encoding($true)))
             $before = [IO.File]::ReadAllBytes($f).Length
             $fwd = $f -replace '\\','/'
-            Invoke-Hook $bomfixSh (@{tool_name='Write';tool_input=@{file_path=$fwd}} | ConvertTo-Json -Compress) | Out-Null
+            $r = Invoke-Hook $bomfixSh (@{tool_name='Write';tool_input=@{file_path=$fwd}} | ConvertTo-Json -Compress)
+            Assert ($null -ne $r -and $r.Exit -eq 0) "bom-fix exited $(if($null -eq $r){'SKIP'}else{$r.Exit}) -- a hook that fails is not a hook that declined"
             Assert ([IO.File]::ReadAllBytes($f).Length -eq $before) 'idempotent run changed the file'
         }
         It 'bom-fix.sh twin leaves a .ps1 OUTSIDE ai-tech-lead/ untouched (scope guard)' {
             $f = Join-Path $other 'sh3.ps1'; Write-NoBom $f "exit 0`n"
             $fwd = $f -replace '\\','/'
-            Invoke-Hook $bomfixSh (@{tool_name='Write';tool_input=@{file_path=$fwd}} | ConvertTo-Json -Compress) | Out-Null
+            $r = Invoke-Hook $bomfixSh (@{tool_name='Write';tool_input=@{file_path=$fwd}} | ConvertTo-Json -Compress)
+            Assert ($null -ne $r -and $r.Exit -eq 0) "bom-fix exited $(if($null -eq $r){'SKIP'}else{$r.Exit}) -- a hook that fails is not a hook that declined"
             Assert (-not (Test-Bom $f)) 'should not have touched a file outside the repo'
         }
         It 'bom-fix.sh twin does not fire on the LEGACY repo names (twin agreement on the new scope)' {
             $legacy = Join-Path $tmp 'ai-tech-lead-angular'; New-Item -ItemType Directory -Path $legacy -Force | Out-Null
             $f = Join-Path $legacy 'lsh.ps1'; Write-NoBom $f "exit 0`n"
             $fwd = $f -replace '\\','/'
-            Invoke-Hook $bomfixSh (@{tool_name='Write';tool_input=@{file_path=$fwd}} | ConvertTo-Json -Compress) | Out-Null
+            $r = Invoke-Hook $bomfixSh (@{tool_name='Write';tool_input=@{file_path=$fwd}} | ConvertTo-Json -Compress)
+            Assert ($null -ne $r -and $r.Exit -eq 0) "bom-fix exited $(if($null -eq $r){'SKIP'}else{$r.Exit}) -- a hook that fails is not a hook that declined"
             Assert (-not (Test-Bom $f)) 'legacy repos are frozen — the .sh twin must not rewrite them'
         }
     } else {

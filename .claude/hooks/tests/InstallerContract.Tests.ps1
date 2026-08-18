@@ -59,8 +59,16 @@ foreach ($dist in @('dotnet', 'angular', 'monorepo')) {
             try {
                 if ($twin -eq 'ps1') { $out = & (Get-PsExe) -NoProfile -File $inst $target 2>&1 | Out-String }
                 else { $out = & $bash $inst $target 2>&1 | Out-String }
+                $code = $LASTEXITCODE
 
                 It "installer states the whole agent contract: $label" {
+                    # Exit first: this suite asserted stdout only, so an installer that printed the
+                    # whole contract and THEN aborted was indistinguishable from a clean run. That is
+                    # not hypothetical -- a `set -e` abort shipped in install.sh for an unknown number
+                    # of releases, exiting 1 after the files were copied and before the closing
+                    # banner, while three suites with the path in scope stayed green (B-144).
+                    Assert ($code -eq 0) `
+                        "$label : installer exited $code. Output can be complete on a run that failed."
                     Assert ($out -match 'IF YOU ARE AN AI AGENT') `
                         "$label : no agent-addressed block at all. An installing agent is the primary reader of this output."
                     foreach ($c in $contract) {

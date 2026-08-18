@@ -2985,85 +2985,9 @@ and Copilot CLI runs are not on the constrained Claude budget.
 **Not:** do not "fix" the READMEs by guessing a safer syntax — the point is to know, and an
 unverified replacement is the same defect wearing different punctuation.
 
-### B-146 · RCA: the backlog sent work to four finished entries, and a design's own worked example was wrong
-**Effort:** S · **Priority:** P3 · filed 2026-08-18 (RCA of the B-141 + B-76 delivery)
+**B-146 is DONE (2026-08-18) — check B shipped, check A dropped on evidence; see `meta/BACKLOG-DONE.md`.**
 
-**What happened.** A triage pass before starting work found **four entries listed as open whose work
-was finished**: B-25-EXEC (done 2026-07-12, its own body has said `B-25-EXEC DONE` for five weeks),
-B-46 (both parts shipped, v0.56.0 and v0.57.0), B-102 (core fix v0.45.0, residues delivered as
-B-104/105/106), and B-17 (rejected on evidence 2026-08-17). Separately, the first B-76 design cited
-`SECURITY_FINDINGS.md:3` as a worked example its own rule provably does not match.
-
-**Why no gate caught the four.** `BacklogHygiene.Tests.ps1` reads the **heading** for a completion
-marker. B-25-EXEC's heading never carried one; B-46's said `PARTIALLY DONE … STILL OPEN`, which the
-gate explicitly and correctly exempts; B-102's heading was a defect statement; B-17's rejection was
-never written to the backlog at all — it existed only in a commit message and two plan files, and
-`meta/decisions-index.md` did not carry it either. So the gate was working as specified in all four
-cases. **The specification is the gap:** nothing correlates an entry's *body* against its heading,
-and nothing at all notices a decision recorded outside the backlog.
-
-**What else is exposed to the same class.** This is B-83's thesis with four more instances, and the
-2026-08-16 audit already flagged **13 UNCLEAR entries** (B-50, B-64, B-65, B-66, B-70, B-72, B-96,
-B-97, B-98, B-101, B-102, B-112, B-117) that were deliberately not auto-closed. B-102 was one of
-those thirteen and turned out to be closeable, which suggests the rest are worth a read rather than
-a re-file. Two cheap, non-NLP checks would have caught three of these four:
-
-1. **Body-vs-heading disagreement** — an entry whose body contains `DONE`/`SHIPPED`/`COMPLETE` in a
-   position of assertion while its heading claims open. B-83 forbids trying to make "does a decision
-   contradict this entry" deterministic, and that is right; this is narrower and *is* a string match.
-2. **Decisions recorded outside the backlog** — a commit whose message says REJECTED/ACCEPTED for a
-   `B-nn` that is still open in `meta/BACKLOG.md`. Also a string match.
-
-**The second finding is about designs, not the backlog, and is the more uncomfortable one.** The
-B-76 rev-1 design listed three live claims as covered by its rule. The reviewer had *surveyed* the
-corpus with grep and *reasoned* about the extraction rule — but never ran the proposed rule against
-the real lines. One of the three was wrong, and the adversarial pass found it by doing exactly what
-the design had not: applying the rule to the actual file content. Maintenance model #3 says nothing
-enters the record as observed unless you observed it; a **worked example in a design is a claim of
-observation**, and this one was inference wearing its clothes. The rule generalises: if a design
-asserts "this instance is covered", that assertion is only worth what the run behind it is worth.
-
-**Do:** add the two string-match checks above to `BacklogHygiene.Tests.ps1` (both red-testable, both
-cheap); read the remaining UNCLEAR entries; and consider whether the Definition of done for a design
-document should require that any worked example be produced by executing the proposed rule rather
-than by reading. Note the third item is process, not a gate — do not pretend otherwise.
-
-**Cross-links:** B-83 (the parent class), B-84 (the mutation kit the red-tests want), B-64.
-
-### B-144 · RCA: a shipped `set -e` abort broke every Bash update, and only a smoke install found it
-**Effort:** S (fix shipped in v0.54.0) · **Priority:** P2 · filed 2026-08-17 while shipping B-81
-
-**The defect (fixed):** `install.sh` runs under `set -euo pipefail`. Its disabled-skill restore piped
-a `grep` whose **no-match case is the normal one**; `pipefail` made that a pipeline failure and `-e`
-aborted the installer — after the files were copied, before the `Done (update)` banner. Every update
-via the Bash installer exited 1 with no error text, while `install.ps1` exited 0. Confirmed
-pre-existing at the `v0.53.0` tag, so it had been shipping for an unknown number of releases.
-
-**Why no gate caught it, and this is the part worth keeping.** Three instruments all had the update
-path in scope and all missed it:
-- `UpdateDelivery.Tests.ps1` exercised update **delivery** — it asserted which files arrived — and
-  never asserted the installer's **exit code**. The files did arrive; the run failed anyway.
-- `InstallerContract.Tests.ps1` runs 12 real installs and asserts stdout, but greenfield and
-  brownfield only — the mode that aborts is the one nobody drove.
-- `bash -n` passes: this is a runtime status defect, not a syntax one.
-The one thing that found it was the Definition-of-done **install smoke test**, run by hand, exactly
-as `CLAUDE.md` requires for installer changes. The prose rule outperformed three suites.
-
-**Same-class sweep — what else is exposed:**
-1. **Other `set -e` aborts on paths no test drives.** `install.sh` is now checked, but every shipped
-   `.sh` running under `set -e` has the same shape wherever a `grep`/`[ ]`/`cmp` appears as a bare
-   statement rather than in a condition. **Not swept.** This is the bash sibling of B-89's
-   `ErrorActionPreference=Stop` + native-stderr class and of B-123b, and it should probably be one
-   sweep across all three.
-2. **Assertions about arrival that never assert success.** The generalisable lesson: a delivery test
-   proves *what landed*, not *that the run succeeded*. Any suite shaped that way can pass over a
-   failed command. `UpdateDelivery` is fixed; the others are unaudited.
-
-**Do:** (a) sweep shipped `.sh` for bare-statement commands that can legitimately return non-zero
-under `set -e`, prioritising installer and hook paths; (b) audit the meta suites for tests that
-assert artifacts without asserting the producing command's exit code; (c) decide whether
-`InstallerContract` should drive update mode too, since it is the suite that claims to cover
-installer behaviour.
+**B-144 is DONE (2026-08-18) — see `meta/BACKLOG-DONE.md`.**
 
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
