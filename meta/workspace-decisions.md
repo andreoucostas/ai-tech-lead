@@ -2070,3 +2070,25 @@ and proposed shipping anyway.
 **Rejected alternatives.** Deferring it again (it would have been re-read as pending work by the
 next person triaging the backlog); shipping it narrow and "measuring later" (delivery evidence is
 not adherence evidence); and widening the glob to preserve the item at the cost of its own rationale.
+
+## WSD-046: Guard regex errors split by confidence; content case is exact and routing folds (2026-08-18)
+
+**Context.** The shell guard's 20 test-defeat, suppression, and high-confidence secret checks used
+`grep -Eq ... && ...`, so grep exit 2 was indistinguishable from a legitimate no-match. The two
+twins also disagreed on case: PowerShell folded content patterns and file extensions implicitly,
+while shell matching was exact for both. This made mixed-case extensions bypass the shell guard and
+made invalid differently-cased language constructs over-block only in PowerShell.
+
+**Decision.** Every counted shell content pattern uses one error-aware matcher with the explicit
+`--` option terminator. A regex error in any of the seven high-confidence secret patterns fails
+closed because that advertised floor is unavailable; an error in a lower-confidence test-defeat or
+suppression pattern warns on stderr and allows so a framework regex defect cannot brick an ordinary
+refactor. Both diagnostics identify the pattern and category. Content patterns are case-sensitive;
+the three file-routing predicates deliberately fold in both twins and spell that folding inline.
+The generic credential pipeline remains deliberately fail-open: it is a lower-confidence heuristic
+outside the typed 20-pattern set, and its existing two-stage filtering pipeline is unchanged.
+
+**Rejected.** Treating every grep error as no-match (silent loss of enforcement); failing closed for
+every category (a low-confidence pattern defect could block ordinary work); making PowerShell's file
+routing case-sensitive to match the defective shell behavior; and claiming every grep error is loud
+while the generic credential pipeline remains intentionally fail-open.

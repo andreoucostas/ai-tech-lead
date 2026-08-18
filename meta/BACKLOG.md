@@ -355,6 +355,14 @@ uses GNU-only `\s`/`\b`, which are literal on BSD/macOS grep — it works on typ
 the exact trap this entry is about, and a POSIX-safe form
 (`'^[[:space:]]*\[.*[^A-Za-z]Ignore[^A-Za-z]'`) is verified equivalent.
 
+**2026-08-18 implementation RCA (implemented, release intentionally deferred).** Grep exit 2 was
+never asserted because every fixture supplied valid patterns; the suite tested decisions from the
+outside and could not distinguish a legitimate no-match from an inert matcher. The same class
+exposed the generic credential pipeline and any future grep-backed guard rule; the former is now
+explicitly documented as deliberately fail-open, while every typed rule has an applied invalid-regex
+mutation. The re-locked plan also established that the POSIX NUnit form above is *not* equivalent;
+that separate unsolved grep was left unchanged as authorised.
+
 ### B-64 · Deterministic diagnostics have no planted-defect tests
 **Effort:** M · **Priority:** P2
 
@@ -388,6 +396,13 @@ behaviour, applied to the deterministic layer.
 > rather than as a comment claiming a red-test happened.
 
 **B-68 is DONE (2026-08-18) — both twins derive the Instructed list; see `meta/BACKLOG-DONE.md`.**
+
+**2026-08-18 delivery RCA (matrix phase complete; gap-closing phase remains open).** No gate required
+an inventory proving that every deterministic gate had an executable red control and a retained
+observation; the Definition of done applied per change, so coverage accumulated without a system
+view. The matrix found the same exposure in composer failure behavior, docs-sync-check failure
+behavior, three framework-doctor rows, and four meta suites. Those gaps remain the open phase of
+this entry; no tests were added during the inventory task.
 
 ### B-70 · Nothing requires a new test to be exercised on both CI legs before it ships
 **Effort:** S · **Priority:** P2
@@ -537,6 +552,13 @@ from agreement.
 **Do:** apply the reached-set assertion to the other parity suites (`WikiCheck`, `FrameworkDoctor`,
 `BuildArchitectureHtml`) — each should assert the branches its fixtures are supposed to exercise. This
 is B-59's inert-check class one level up: not an inert *check*, an inert *fixture*.
+
+**2026-08-18 implementation RCA (implemented, release intentionally deferred).** Parity compared
+outputs but did not assert that the shared fixtures reached each intended branch, so both twins could
+agree vacuously. The WikiCheck sweep found a live example: its “malformed frontmatter” fixture had
+valid delimiters and never reached that branch. Every other fixture-driven parity suite is exposed
+to the same class; the three named suites now have exact reached-set assertions (FrameworkDoctor
+already had one), while B-64's matrix identifies where equivalent controls are still absent.
 
 ---
 
@@ -2420,6 +2442,34 @@ next person will need to add that before diagnosing further.
 > **Still open on this entry:** the original `ScriptTwinParity.Tests.ps1` docs-sync-check 5.1
 > divergence, which is a different assertion and was not touched. And the unanswered process
 > question above — how v0.58.0 shipped with this red — remains worth an answer.
+
+> **THIRD INSTANCE, 2026-08-18 (found while verifying B-59) — the largest of the three, and it is
+> a TEST defect, not a product one.** `Guard.Tests.ps1` fails en masse under Windows PowerShell 5.1
+> while passing cleanly under pwsh 7. Measured at `HEAD` **before** B-59: **36 passed / 30 failed**
+> under 5.1 versus **66 passed / 0 failed** under pwsh 7, same tree, same box. So it is pre-existing
+> and has nothing to do with B-59.
+>
+> **Cause, visible in the failure text:** the suite compares the two twins' **stderr**, and 5.1
+> decorates error-stream output with the invoking command name — `guard.ps1='powershell.exe :
+> Blocked write to …'` where pwsh 7 emits `Blocked write to …`. Every case that asserts on stderr
+> text therefore diverges by host. The guard's *decisions* are identical: `TwinParity.Tests` (which
+> compares decisions rather than stderr) is **13/0 under 5.1**. So the product is fine and the
+> instrument is host-dependent — which is precisely the shape this entry exists to collect.
+>
+> **B-59 enlarged its footprint without causing it:** the new mixed-case and multi-line fixtures are
+> also stderr-comparing, so the counts moved from 30/66 failing to **41/82** — a slightly worse
+> ratio because there are simply more stderr assertions now. Under pwsh 7 the same suite is
+> **82 passed / 0 failed**.
+>
+> **Not a release blocker, and the record should be precise about why:** the release gate runs
+> `dist/<stack>/tests/hooks/Invoke-HookTests.ps1` under pwsh 7, where all three dists report
+> **0 failures across 18 files**. The 5.1 failure appears only when a human explicitly re-runs the
+> suite under `powershell.exe`, which is exactly what a maintainer diagnosing a consumer's Windows
+> box would do — so it is worth fixing, just not urgent.
+>
+> **Do:** normalise the captured stderr before comparison (strip a leading `<command> : ` decoration)
+> rather than weakening the assertions, and add a 5.1 arm so the divergence cannot return silently —
+> the same remedy shipped for `DocTruth` in B-141.
 
 **Do:** reproduce, capture both hosts' actual exit codes and stdout for the `docs-sync-check.ps1`/`.sh`
 twins over `DocsFixture`/`TemplateFixture`, and find the 5.1-specific divergence (likely another

@@ -33,30 +33,42 @@ if (-not $content) { exit 0 }
 
 $reasons = @()
 
-if ($fp -match '\.cs$') {
-    if ($content -match '#pragma\s+warning\s+disable') { $reasons += "adds '#pragma warning disable' — Verification Rule #7: failures are signals, fix the cause" }
-    if ($content -match '\[(Fact|Theory)\([^)]*Skip\s*=') { $reasons += "skips a test via [Fact/Theory(Skip=...)] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
-    if ($content -cmatch '(?m)^\s*\[([^]]*[,\s])?(Ignore)(Attribute)?\s*[\](,=]') { $reasons += "skips a test via [Ignore] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
-    if ($content -match 'Assert\.True\(\s*true\s*[),]' -or $content -match 'Assert\.False\(\s*false\s*[),]') { $reasons += "adds a tautological assertion (Assert.True(true) / Assert.False(false)) — assert observable behaviour, not a constant (Test leanness #15)" }
+function Test-GuardPattern {
+    param([string]$Pattern, [ValidateSet('secret','test-defeat/suppression')][string]$Category)
+    try { return ($content -cmatch $Pattern) }
+    catch {
+        [Console]::Error.WriteLine("guard: regex error in $Category pattern '$Pattern'")
+        if ($Category -eq 'secret') {
+            $script:reasons += "cannot evaluate secret pattern '$Pattern' — blocking because the high-confidence secret floor is unavailable"
+        }
+        return $false
+    }
 }
-if ($fp -match '\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$') {
-    if ($content -match 'eslint-disable') { $reasons += "adds an 'eslint-disable' directive — fix the lint cause, don't silence it" }
-    if ($content -match '@ts-(ignore|nocheck)') { $reasons += "adds '@ts-ignore'/'@ts-nocheck' — fix the type error, don't suppress it" }
+
+if ($fp -cmatch '(?i)\.cs$') {
+    if (Test-GuardPattern '#pragma\s+warning\s+disable' 'test-defeat/suppression') { $reasons += "adds '#pragma warning disable' — Verification Rule #7: failures are signals, fix the cause" }
+    if (Test-GuardPattern '\[(Fact|Theory)\([^)]*Skip\s*=' 'test-defeat/suppression') { $reasons += "skips a test via [Fact/Theory(Skip=...)] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
+    if (Test-GuardPattern '(?m)^\s*\[([^]]*[,\s])?(Ignore)(Attribute)?\s*[\](,=]' 'test-defeat/suppression') { $reasons += "skips a test via [Ignore] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
+    if ((Test-GuardPattern 'Assert\.True\(\s*true\s*[),]' 'test-defeat/suppression') -or (Test-GuardPattern 'Assert\.False\(\s*false\s*[),]' 'test-defeat/suppression')) { $reasons += "adds a tautological assertion (Assert.True(true) / Assert.False(false)) — assert observable behaviour, not a constant (Test leanness #15)" }
 }
-if ($fp -match '(?i)\.spec\.(ts|tsx|js|jsx|mts|cts)$') {
-    if ($content -match '(?m)^\s*f(it|describe)\s*\(' -or $content -match '\b(it|describe)\.only\s*\(') { $reasons += "adds a focused test (fit/fdescribe/.only) — it silently skips the rest of the suite; remove it before committing" }
-    if ($content -match '(?m)^\s*x(it|describe)\s*\(' -or $content -match '\b(it|describe)\.skip\s*\(') { $reasons += "skips a test (xit/xdescribe/.skip) — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
-    if ($content -match 'expect\(\s*true\s*\)\.toBe\(\s*true\s*\)' -or $content -match 'expect\(\s*false\s*\)\.toBe\(\s*false\s*\)') { $reasons += "adds a tautological assertion (expect(true).toBe(true)) — assert observable behaviour, not a constant (Test leanness #15)" }
+if ($fp -cmatch '(?i)\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$') {
+    if (Test-GuardPattern 'eslint-disable' 'test-defeat/suppression') { $reasons += "adds an 'eslint-disable' directive — fix the lint cause, don't silence it" }
+    if (Test-GuardPattern '@ts-(ignore|nocheck)' 'test-defeat/suppression') { $reasons += "adds '@ts-ignore'/'@ts-nocheck' — fix the type error, don't suppress it" }
+}
+if ($fp -cmatch '(?i)\.spec\.(ts|tsx|js|jsx|mts|cts)$') {
+    if ((Test-GuardPattern '(?m)^\s*f(it|describe)\s*\(' 'test-defeat/suppression') -or (Test-GuardPattern '\b(it|describe)\.only\s*\(' 'test-defeat/suppression')) { $reasons += "adds a focused test (fit/fdescribe/.only) — it silently skips the rest of the suite; remove it before committing" }
+    if ((Test-GuardPattern '(?m)^\s*x(it|describe)\s*\(' 'test-defeat/suppression') -or (Test-GuardPattern '\b(it|describe)\.skip\s*\(' 'test-defeat/suppression')) { $reasons += "skips a test (xit/xdescribe/.skip) — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
+    if ((Test-GuardPattern 'expect\(\s*true\s*\)\.toBe\(\s*true\s*\)' 'test-defeat/suppression') -or (Test-GuardPattern 'expect\(\s*false\s*\)\.toBe\(\s*false\s*\)' 'test-defeat/suppression')) { $reasons += "adds a tautological assertion (expect(true).toBe(true)) — assert observable behaviour, not a constant (Test leanness #15)" }
 }
 
 $secret = $null
-if     ($content -match '-----BEGIN [A-Z ]*PRIVATE KEY-----')   { $secret = 'a private key block' }
-elseif ($content -match 'AKIA[0-9A-Z]{16}')                     { $secret = 'an AWS access key id (AKIA…)' }
-elseif ($content -match 'gh[oprsu]_[A-Za-z0-9]{36}')            { $secret = 'a classic GitHub token (gh*_…)' }
-elseif ($content -match 'github_pat_[0-9A-Za-z]{22}_[0-9A-Za-z]{59,}') { $secret = 'a fine-grained GitHub token (github_pat_…)' }
-elseif ($content -match 'xox[baprs]-[A-Za-z0-9-]{10,}')         { $secret = 'a Slack token (xox…)' }
-elseif ($content -match 'sk-[A-Za-z0-9_-]{20,}')                { $secret = 'an API secret key (sk-…)' }
-elseif ($content -match 'AIza[0-9A-Za-z_-]{35}')               { $secret = 'a Google API key (AIza…)' }
+if     (Test-GuardPattern '-----BEGIN [A-Z ]*PRIVATE KEY-----' 'secret')   { $secret = 'a private key block' }
+elseif (Test-GuardPattern 'AKIA[0-9A-Z]{16}' 'secret')                     { $secret = 'an AWS access key id (AKIA…)' }
+elseif (Test-GuardPattern 'gh[oprsu]_[A-Za-z0-9]{36}' 'secret')            { $secret = 'a classic GitHub token (gh*_…)' }
+elseif (Test-GuardPattern 'github_pat_[0-9A-Za-z]{22}_[0-9A-Za-z]{59,}' 'secret') { $secret = 'a fine-grained GitHub token (github_pat_…)' }
+elseif (Test-GuardPattern 'xox[baprs]-[A-Za-z0-9-]{10,}' 'secret')         { $secret = 'a Slack token (xox…)' }
+elseif (Test-GuardPattern 'sk-[A-Za-z0-9_-]{20,}' 'secret')                { $secret = 'an API secret key (sk-…)' }
+elseif (Test-GuardPattern 'AIza[0-9A-Za-z_-]{35}' 'secret')               { $secret = 'a Google API key (AIza…)' }
 if ($secret) { $reasons += "contains $secret — secrets must not be committed; use user-secrets / env vars / a vault" }
 
 if ($fp -notmatch '(?i)(test|spec|Development|example|sample|mock|fixture)') {

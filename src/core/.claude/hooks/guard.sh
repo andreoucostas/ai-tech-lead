@@ -89,54 +89,76 @@ esac
 
 reasons=()
 
+# 0 = matched, 1 = no match, 2+ = grep could not answer (bad regex or another operational error).
+# Pattern errors are never silently folded into "no match". Secret checks fail closed; the lower-
+# confidence test-defeat/suppression checks warn and allow so our bad regex cannot brick a refactor.
+matches() {
+  printf '%s' "$content" | grep -Eq -- "$1"
+  rc=$?
+  case "$rc" in
+    0) return 0 ;;
+    1) return 1 ;;
+    *)
+      printf "guard: regex error in %s pattern '%s'\n" "$2" "$1" >&2
+      if [ "$2" = "secret" ]; then
+        reasons+=("cannot evaluate secret pattern '$1' — blocking because the high-confidence secret floor is unavailable")
+      fi
+      return 2
+      ;;
+  esac
+}
+
+# Deliberately folded file routing: extensions decide whether content is inspected at all.
+path_matches_i() {
+  printf '%s' "$fp" | grep -Eiq -- "$1"
+}
+
 # --- Test-defeats + warning/type suppressions (scoped by file extension) ---
-case "$fp" in
-  *.cs)
-    printf '%s' "$content" | grep -Eq '#pragma[[:space:]]+warning[[:space:]]+disable' \
+if path_matches_i '\.cs$'; then
+    matches '#pragma[[:space:]]+warning[[:space:]]+disable' 'test-defeat/suppression' \
       && reasons+=("adds '#pragma warning disable' — Verification Rule #7: failures are signals, fix the cause")
-    printf '%s' "$content" | grep -Eq '\[(Fact|Theory)\([^)]*Skip[[:space:]]*=' \
+    matches '\[(Fact|Theory)\([^)]*Skip[[:space:]]*=' 'test-defeat/suppression' \
       && reasons+=("skips a test via [Fact/Theory(Skip=...)] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)")
-    printf '%s' "$content" | grep -Eq '^[[:space:]]*\[([^]]*[,[:space:]])?(Ignore)(Attribute)?[[:space:]]*[](,=]' \
+    matches '^[[:space:]]*\[([^]]*[,[:space:]])?(Ignore)(Attribute)?[[:space:]]*[](,=]' 'test-defeat/suppression' \
       && reasons+=("skips a test via [Ignore] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)")
-    { printf '%s' "$content" | grep -Eq 'Assert\.True\([[:space:]]*true[[:space:]]*[),]' \
-      || printf '%s' "$content" | grep -Eq 'Assert\.False\([[:space:]]*false[[:space:]]*[),]'; } \
+    { matches 'Assert\.True\([[:space:]]*true[[:space:]]*[),]' 'test-defeat/suppression' \
+      || matches 'Assert\.False\([[:space:]]*false[[:space:]]*[),]' 'test-defeat/suppression'; } \
       && reasons+=("adds a tautological assertion (Assert.True(true) / Assert.False(false)) — assert observable behaviour, not a constant (Test leanness #15)")
-    ;;
-  *.ts|*.tsx|*.js|*.jsx|*.mts|*.cts|*.mjs|*.cjs)
-    printf '%s' "$content" | grep -Eq 'eslint-disable' \
+fi
+if path_matches_i '\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$'; then
+    matches 'eslint-disable' 'test-defeat/suppression' \
       && reasons+=("adds an 'eslint-disable' directive — fix the lint cause, don't silence it")
-    printf '%s' "$content" | grep -Eq '@ts-(ignore|nocheck)' \
+    matches '@ts-(ignore|nocheck)' 'test-defeat/suppression' \
       && reasons+=("adds '@ts-ignore'/'@ts-nocheck' — fix the type error, don't suppress it")
-    ;;
-esac
+fi
 
 # --- Test-defeats in spec files (focused/skipped tests, tautological expects) ---
-case "$fp" in
-  *.spec.ts|*.spec.tsx|*.spec.js|*.spec.jsx|*.spec.mts|*.spec.cts)
-    { printf '%s' "$content" | grep -Eq '^[[:space:]]*f(it|describe)[[:space:]]*\(' \
-      || printf '%s' "$content" | grep -Eq '\b(it|describe)\.only[[:space:]]*\('; } \
+if path_matches_i '\.spec\.(ts|tsx|js|jsx|mts|cts)$'; then
+    { matches '^[[:space:]]*f(it|describe)[[:space:]]*\(' 'test-defeat/suppression' \
+      || matches '\b(it|describe)\.only[[:space:]]*\(' 'test-defeat/suppression'; } \
       && reasons+=("adds a focused test (fit/fdescribe/.only) — it silently skips the rest of the suite; remove it before committing")
-    { printf '%s' "$content" | grep -Eq '^[[:space:]]*x(it|describe)[[:space:]]*\(' \
-      || printf '%s' "$content" | grep -Eq '\b(it|describe)\.skip[[:space:]]*\('; } \
+    { matches '^[[:space:]]*x(it|describe)[[:space:]]*\(' 'test-defeat/suppression' \
+      || matches '\b(it|describe)\.skip[[:space:]]*\(' 'test-defeat/suppression'; } \
       && reasons+=("skips a test (xit/xdescribe/.skip) — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)")
-    { printf '%s' "$content" | grep -Eq 'expect\([[:space:]]*true[[:space:]]*\)\.toBe\([[:space:]]*true[[:space:]]*\)' \
-      || printf '%s' "$content" | grep -Eq 'expect\([[:space:]]*false[[:space:]]*\)\.toBe\([[:space:]]*false[[:space:]]*\)'; } \
+    { matches 'expect\([[:space:]]*true[[:space:]]*\)\.toBe\([[:space:]]*true[[:space:]]*\)' 'test-defeat/suppression' \
+      || matches 'expect\([[:space:]]*false[[:space:]]*\)\.toBe\([[:space:]]*false[[:space:]]*\)' 'test-defeat/suppression'; } \
       && reasons+=("adds a tautological assertion (expect(true).toBe(true)) — assert observable behaviour, not a constant (Test leanness #15)")
-    ;;
-esac
+fi
 
 # --- High-confidence secrets (any file, fail closed) ---
 secret=""
-printf '%s' "$content" | grep -Eq -- '-----BEGIN [A-Z ]*PRIVATE KEY-----' && secret="a private key block"
-[ -z "$secret" ] && printf '%s' "$content" | grep -Eq 'AKIA[0-9A-Z]{16}'        && secret="an AWS access key id (AKIA…)"
-[ -z "$secret" ] && printf '%s' "$content" | grep -Eq 'gh[oprsu]_[A-Za-z0-9]{36}' && secret="a classic GitHub token (gh*_…)"
-[ -z "$secret" ] && printf '%s' "$content" | grep -Eq 'github_pat_[0-9A-Za-z]{22}_[0-9A-Za-z]{59,}' && secret="a fine-grained GitHub token (github_pat_…)"
-[ -z "$secret" ] && printf '%s' "$content" | grep -Eq 'xox[baprs]-[A-Za-z0-9-]{10,}' && secret="a Slack token (xox…)"
-[ -z "$secret" ] && printf '%s' "$content" | grep -Eq 'sk-[A-Za-z0-9_-]{20,}'    && secret="an API secret key (sk-…)"
-[ -z "$secret" ] && printf '%s' "$content" | grep -Eq 'AIza[0-9A-Za-z_-]{35}'    && secret="a Google API key (AIza…)"
+matches '-----BEGIN [A-Z ]*PRIVATE KEY-----' 'secret' && secret="a private key block"
+[ -z "$secret" ] && matches 'AKIA[0-9A-Z]{16}' 'secret'        && secret="an AWS access key id (AKIA…)"
+[ -z "$secret" ] && matches 'gh[oprsu]_[A-Za-z0-9]{36}' 'secret' && secret="a classic GitHub token (gh*_…)"
+[ -z "$secret" ] && matches 'github_pat_[0-9A-Za-z]{22}_[0-9A-Za-z]{59,}' 'secret' && secret="a fine-grained GitHub token (github_pat_…)"
+[ -z "$secret" ] && matches 'xox[baprs]-[A-Za-z0-9-]{10,}' 'secret' && secret="a Slack token (xox…)"
+[ -z "$secret" ] && matches 'sk-[A-Za-z0-9_-]{20,}' 'secret'    && secret="an API secret key (sk-…)"
+[ -z "$secret" ] && matches 'AIza[0-9A-Za-z_-]{35}' 'secret'    && secret="a Google API key (AIza…)"
 [ -n "$secret" ] && reasons+=("contains $secret — secrets must not be committed; use user-secrets / env vars / a vault")
 
 # --- Generic credential assignment (skip test / sample / Development files & placeholders) ---
+# This heuristic deliberately remains fail-open: its two-stage pipeline is outside the typed
+# high-confidence patterns above, and an operational grep error must not brick an ordinary write.
 case "$fp" in
   *[Tt]est*|*spec*|*Development*|*example*|*sample*|*mock*|*fixture*) ;;
   *)

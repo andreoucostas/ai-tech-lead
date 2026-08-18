@@ -12,6 +12,7 @@ $genSh = Join-Path $scripts 'build-architecture-html.sh'
 $bash  = Get-BashPath
 
 Reset-Tests
+$ExpectedOutputFragments = @('# Fixture','| a | b |','graph TD; A-->B;','unicode:')
 
 # --- static guards (host-independent; red against the pre-fix .ps1) ---
 $psSrc = [System.IO.File]::ReadAllText($genPs)
@@ -60,6 +61,10 @@ if (-not $bash) {
             $diffAt = -1
             for ($i = 0; $i -lt $bp.Length; $i++) { if ($bp[$i] -ne $bs[$i]) { $diffAt = $i; break } }
             Assert ($diffAt -lt 0) "first differing byte at offset $diffAt (.ps1=0x$($bp[$diffAt].ToString('x2')) .sh=0x$($bs[$diffAt].ToString('x2')))"
+            $txt = [System.IO.File]::ReadAllText((Join-Path $tmp 'out-ps.html'))
+            foreach ($fragment in $ExpectedOutputFragments) {
+                Assert ($txt.Contains($fragment)) "check '$fragment' was never reached -- the fixture stopped exercising it, so the twins would agree vacuously here. Restore the fixture input that triggers it."
+            }
         }
         It 'opening <script> tag sits on its own line (the join symptom)' {
             $txt = [System.IO.File]::ReadAllText((Join-Path $tmp 'out-ps.html'))
