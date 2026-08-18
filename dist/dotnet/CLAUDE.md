@@ -1,8 +1,8 @@
 <!--
 ai-tech-lead-framework
   template: dotnet
-  version: 0.58.0
-  applied: 2026-08-17
+  version: 0.59.0
+  applied: 2026-08-18
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
 # [Project Name]

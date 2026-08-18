@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.59.0 — Unreleased
+## 0.59.0 — 2026-08-18
 
 **GitHub Copilot CLI: the workflow-routing nudge was not reaching the model, and now does.**
 Copilot CLI delivers only the *last* of the repository's `userPromptSubmitted` hooks. This framework

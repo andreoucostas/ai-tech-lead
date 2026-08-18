@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.59.0 — Unreleased
+## 0.59.0 — 2026-08-18
 
 **Copilot CLI delivers only the LAST `userPromptSubmitted` hook, so `route-prompt` was silently
 discarded (B-147, P1).** Established by live canary on CLI 1.0.79/1.0.80: four runs, the decisive
