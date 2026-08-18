@@ -1,8 +1,24 @@
 # B-147 — restore routing salience on Copilot CLI (one `userPromptSubmitted` entry)
 
-**Status:** DESIGN, awaiting adversarial critique (Maintenance model #1). No implementation
-authorised until the critique returns, each finding is verified, and this is re-locked.
+**Status:** **REV 2 — RE-LOCKED after critique. Implementation authorised.**
 **Priority:** P1 · **Invariants:** #1 #3 #5 #7 · shipped change ⇒ release.
+**Critique:** `.claude/plans/2026-08-18-b147-sol-critique.md` — verdict REQUEST CHANGES, two
+blocking findings, both verified by the reviewer and both incorporated below (§3a, §3b).
+
+> **What the critique changed, and what it did not.** The premise and the merge direction survived;
+> the *host* did not, as written. Finding 1: `route-prompt` exits at lines 122/125/151 on an empty
+> prompt, a slash command, and an unclassified non-sensitive prompt — so as designed it could never
+> deliver a queued nudge when routing text is empty, which is most read-only turns. B-52's own
+> fallback text had anticipated this ("fold Boy Scout into `route-prompt` **without its
+> early-exit**") and rev 1 dropped it. Finding 2: the proposed `validate-dist` check would have
+> rejected a legitimate configuration — `postToolUse` carries **two** entries (`post-write`,
+> `audit-trail`), verified. Both accepted.
+>
+> **One critique claim was checked and did not reproduce.** It reported `TwinParity.Tests` red on
+> two bash-leg boy-scout cases and honourably refused to call the suite green. Re-run here:
+> **13 passed, 0 failed, exit 0**, both named cases green. The Boy Scout scan reads live `git diff`
+> state and the reviewer's sandbox had its own modified files in the tree. Environmental, not a
+> defect — recorded so nobody re-hunts it.
 
 ---
 
@@ -58,6 +74,36 @@ Why `route-prompt` is the host rather than a new dispatcher script: it **already
 needs exists. A new dispatcher would add a shipped script in two languages, a new registration, and
 a new twin to keep in sync, to do what one existing branch can.
 
+### 3a. The control-flow restructure (blocking finding 1)
+
+`route-prompt` has three early exits before its surface dispatch: empty prompt (122), slash command
+(125), and no-intent-and-not-sensitive (151). Under rev 1 a queued nudge would have been delivered
+**only on turns that also produced routing text** — i.e. never on the read-only turns the Boy Scout
+nudge most often follows. The fix:
+
+**Move the surface gate above the early exits, and make the non-Claude path fall through to a
+compose step rather than exiting.** Concretely, on the non-Claude surface: compute routing text as
+today (an empty string is fine), then drain the queue, then emit if *either* is non-empty, else emit
+nothing and exit 0. The Claude path keeps today's control flow byte-for-byte, early exits included.
+
+**The queue read MUST sit behind the surface gate, not merely behind "routing text is empty".** This
+is the precise shape of the Claude regression risk: `boy-scout-check` is registered independently on
+Claude's `Stop` event, so any queue drain on the Claude path double-delivers.
+
+**Surface detection is left exactly as it is** — a raw `"hook_event_name"` substring test
+(`.ps1:187`, `.sh:213`) rather than structural inspection of the already-parsed event. The critique
+is right that this is weaker than rev 1 called it, and right that changing the established
+discriminator would enlarge a P1. Preserve it; the tests must prove **both** known shapes. File
+structural detection separately if wanted.
+
+### 3b. The `validate-dist` check (blocking finding 2)
+
+Scope it to **`userPromptSubmitted` only**. A blanket "one entry per Copilot event" rule would reject
+`postToolUse`, which legitimately carries `post-write` **and** `audit-trail` — verified: those are
+side-effecting hooks whose value is not model-facing `additionalContext`, so multiple entries there
+are correct and must stay legal. The constraint being encoded is about **context injection**, not
+about running hooks.
+
 **Composition order inside the payload:** routing text first, Boy Scout queue second. Routing is the
 load-bearing half (it carries the plan-gate and security-pass salience); the Boy Scout nudge is
 advisory by decision (WSD-024 — it must never block). If either half is empty the other is emitted
@@ -83,10 +129,18 @@ this design carries and the tests below exist to bound it.
 - **Fixture-level, both twins:** a `userPromptSubmitted` event on a non-Claude surface with a
   non-empty Boy Scout queue yields one JSON payload containing **both** the routing text and the
   queue; with an empty queue, routing only; with neither, no output.
-- **Claude surface unchanged, both twins:** the same event carrying `hook_event_name` yields exactly
-  what it yields today — plain stdout, no Boy Scout text. This is the regression guard.
-- **Queue semantics preserved:** delivery still clears the queue exactly once, so a finding set is
-  announced once per write turn (the existing dedup contract).
+- **Claude surface unchanged, both twins — and asserting "plain stdout" is NOT sufficient.**
+  Duplicated Boy Scout text is also plain stdout. The guard must: seed a **real** queue file, send a
+  Claude-shaped prompt that produces routing text, assert the output carries **no** Boy Scout
+  sentinel, **and assert the queue file still exists afterwards**. That last assertion is the one
+  that actually proves Claude's independent `Stop` delivery was not stolen.
+- **Queue semantics preserved — keep today's contract literally.** `--mode deliver` reads
+  `.claude/.state/boy-scout-queue`, emits it if non-whitespace, and **deletes it unconditionally
+  after the read**; it never reads or writes `.claude/.state/last-boy-scout-hash` (which is why
+  silence means "already flagged", not "resolved"). Move that behaviour verbatim. Deleting only
+  after successful payload composition would quietly change the at-most-once contract — do not.
+- **Both known event shapes proven**, since the discriminator stays a substring test: a payload
+  with `hook_event_name` → plain stdout; one without → the dual JSON shape.
 - **`validate-dist`:** consider a check that fails when any Copilot event carries more than one hook
   entry. This is the machine-checkable residue of the whole finding, and without it the next person
   to add a second entry re-creates it silently. Decide explicitly; if it lands, red-test it by adding
