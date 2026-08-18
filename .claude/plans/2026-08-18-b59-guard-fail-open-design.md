@@ -1,8 +1,25 @@
 # B-59 — the guard's checks can go inert, and the harness cannot see it
 
-**Status:** DESIGN, awaiting adversarial critique (Maintenance model #1). No implementation until
-the critique returns, each finding is verified, and this is re-locked.
+**Status:** **REV 2 — RE-LOCKED after critique. Implementation authorised.**
 **Priority:** P2 · **Invariants:** #3 #5 · shipped change ⇒ release · needs a WSD record.
+**Critique:** `.claude/plans/2026-08-18-b59-sol-critique.md` — REQUEST CHANGES, **four blocking
+findings, all four verified by the reviewer and all four accepted.** Rev 1's §3a helper, §3b policy
+and §3e replacement were each wrong in a different way; the corrections are folded in below and the
+superseded text is struck rather than deleted.
+
+> **The one that would have caused a regression.** Rev 1 said case-insensitivity "can only ever
+> over-block on invalid code". **That is false for file names.** `guard.ps1` routes on
+> `$fp -match '\.cs$'` and `$fp -match '\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$'`; under a blanket
+> `-cmatch` sweep `src/Foo.CS` and `src/app.TS` stop being inspected **at all**. Verified:
+> `'src/Foo.CS' -match '\.cs$'` → True, `-cmatch` → **False**. So rev 1 would have turned a
+> harmless over-block into a genuine loss of inspection in the shipped write-guard.
+>
+> **And the same probe found a live defect this entry did not know about.** The bash twin routes with
+> `case "$fp" in *.cs)`, which is case-**sensitive**: verified, `src/Foo.CS` does **not** match today.
+> So on a case-insensitive Windows tree a file named `Foo.CS` is inspected by `guard.ps1` and **not**
+> by `guard.sh` right now — an asymmetry in the floor, live on the current release, and the opposite
+> direction from the one this entry was filed about. Rev 2 fixes the bash side rather than
+> "harmonising" by making both blind.
 
 ---
 
@@ -65,35 +82,65 @@ Add a single shell function to `guard.sh` and route every site through it:
 # 0 = matched, 1 = no match, 2+ = grep could not answer (bad regex, unreadable input).
 # The third case must never be silently folded into "no match": that is a check that has stopped
 # working while reporting that it found nothing.
-matches() {
-  printf '%s' "$content" | grep -Eq "$1"
+# `--` is LOAD-BEARING: the private-key pattern begins with `-----`, and without it grep parses the
+# pattern as an option and returns 2. Verified: without `--` exit=2 ("grep: unknown option"),
+# with `--` exit=1. The existing site already spells `grep -Eq --`; the rev-1 helper dropped it and
+# would have made the first secret rule permanently "erroring", i.e. inert.
+matches() {          # case-sensitive (default policy, see 3b)
+  printf '%s' "$content" | grep -Eq -- "$1"
   case $? in
     0) return 0 ;;
     1) return 1 ;;
-    *) guard_pattern_error "$1"; return 1 ;;
+    *) guard_pattern_error "$1"; return 2 ;;
   esac
 }
+matches_i() { … same, with grep -Eiq -- … }   # deliberate folding only
 ```
 
-`guard_pattern_error` writes a diagnostic to **stderr** and sets a flag. **What the flag does is the
-one real design decision here, and it must be made deliberately:** the guard is a PreToolUse hook, so
-failing closed means blocking a developer's write because *our* regex is broken. Recommended:
-**do not block on a pattern error, but make it impossible to miss** — emit a loud stderr line naming
-the pattern, and have the test suite treat any pattern error as a failure. Rationale: a false block
-costs more trust than the gap (B-48's stated principle), and the error is a *maintainer* defect that
-should be caught by our gate, not by the consumer's editor. State this in the WSD either way.
+**Error policy — SPLIT, not uniform. Rev 1's "never block" was wrong.** The critique's argument is
+accepted: a regex compilation error is not an ambiguous content classification, it is proof that a
+named part of the advertised floor is unavailable; stderr may live only in a log; and a test-suite
+failure protects a *future release*, not the consumer already running the broken pattern.
+
+| pattern class | on pattern error | why |
+|---|---|---|
+| the **7 secret** patterns | **FAIL CLOSED** (block the write) | high-confidence, any-file rules; the shipped header already promises they fail closed once content is extracted, so silently disabling one contradicts the stated contract |
+| **test-defeat / suppression** patterns | **warn, allow** | lower-confidence rules where our bad regex must not brick an ordinary refactor — B-48's trust judgment |
+
+Both paths emit the pattern and its category. The planted-invalid-regex test (§3d) must exercise
+**both** policies, not just one. Record the split in the WSD.
+
+**Also in scope, or explicitly out — say which:** the generic credential pipeline sits outside the
+counted 20 sites, suppresses grep stderr, and uses command substitution that cannot distinguish "no
+match" from "grep failed". Either route it through the helper or state in the WSD that it remains
+deliberately fail-open. What is not acceptable is the claim "all grep errors are now loud" while it
+stands — that would be a fresh false claim in an entry about false confidence.
 
 ### 3b. Case-sensitivity policy — decide it, write it down, sweep it
 
-**Policy: guard patterns are CASE-SENSITIVE by default**, matching both `grep -E` and the languages
-being matched (C#, ESLint directives, and TS pragmas are all case-sensitive, so a case-insensitive
-match can only ever over-block on invalid code). Deliberate case-insensitivity is spelled **inline**
-as `(?i)` in the PowerShell pattern and `grep -Ei` in the twin, so it is visible at the call site and
-mirrorable, never implicit in the operator.
+The policy has **two halves**, and rev 1 collapsed them into one. That collapse is the blocking error.
 
-Sweep `guard.ps1`'s **22** `-match` → `-cmatch`, except where a pattern genuinely needs folding —
-check each; do not bulk-replace and assume. Then add **adversarially-cased fixture cases** so
-`TwinParity` can actually see a divergence: today it cannot, because no fixture differs only by case.
+**CONTENT patterns (19 sites) — CASE-SENSITIVE.** C#, ESLint directives and TS pragmas are all
+case-sensitive languages, and the seven secret token formats are case-sensitive by specification, so
+folding can only over-block on input that is invalid anyway. These become `-cmatch`, matching the
+bash twin's existing `grep -E`.
+
+**FILE-ROUTING predicates (3 sites) — DELIBERATELY CASE-INSENSITIVE, IN BOTH TWINS.** `\.cs$`,
+`\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$` and the `.spec` predicate decide *whether the file is inspected
+at all*. Verified: `'src/Foo.CS' -match '\.cs$'` → True but `-cmatch` → **False**, and `'src/app.TS'`
+likewise. A blanket sweep would silently stop guarding mixed-case extensions, which are legal and
+occur on case-insensitive Windows trees. Folding here is spelled **inline** — `(?i)` in PowerShell,
+`grep -Eiq --` / a case-folded `case` in bash — so it is visible at the call site and mirrorable,
+never implicit in the operator.
+
+**Fix the bash twin's routing too — it is a live defect, not a parity concession.** `guard.sh` routes
+with `case "$fp" in *.cs)`, which is case-sensitive: verified, `src/Foo.CS` does **not** match today.
+So `Foo.CS` is currently inspected by `guard.ps1` and **not** by `guard.sh`. Do not "harmonise" by
+making the PowerShell side equally blind; bring bash up to the correct behaviour. Add
+**uppercase/mixed-case filename fixtures** (`Foo.CS`, `app.TS`, `app.SPEC.TS`) — today no fixture
+differs only by case, which is why `TwinParity` cannot see any of this.
+
+The generic credential detector already folds explicitly (`(?i)` / `grep -Ei`). Preserve that.
 
 ### 3c. Fixtures that resemble the input
 
@@ -111,9 +158,25 @@ an inert check and a check that legitimately did not match are indistinguishable
 
 ### 3e. Same portability class, swept together
 
-`enforce-standards` step 2 ships a NUnit CI grep using GNU-only `\s`/`\b`, which are **literal** on
-BSD/macOS grep. It works on typical Linux CI and is the exact trap this entry is about. The entry
-records a verified POSIX-safe equivalent: `'^[[:space:]]*\[.*[^A-Za-z]Ignore[^A-Za-z]'`.
+`enforce-standards` step 2 ships `grep -rn --include=*.cs '^\s*\[.*\bIgnore\b' tests/` in the dotnet
+and monorepo skills (both `.claude` and `.github` mirrors). `\s` and `\b` are GNU extensions and are
+**literal** on BSD/macOS grep, so the recipe is non-portable — the exact trap this entry is about.
+
+> **The replacement B-59 calls "verified equivalent" is NOT equivalent, and this design repeated the
+> claim without running it.** `'^[[:space:]]*\[.*[^A-Za-z]Ignore[^A-Za-z]'` **misses the canonical
+> bare `[Ignore]`**, because after `\[` it demands another non-letter before `Ignore`. Measured, GNU
+> grep 3.0: `[Ignore]` old=0 **new=1** (i.e. no longer matched), while `[Test, Ignore("x")]`,
+> `[TestCase(1,Ignore="x")]` and the near-misses `[JsonIgnore]` / `[IgnoreAttribute]` /
+> `var Ignore = 1;` all agree. So adopting it as written would silently stop flagging the commonest
+> form of the very thing it exists to catch. The false "verified" label came from the backlog entry
+> itself and was propagated here unchecked — a worked example that was never run, which is the same
+> failure recorded in B-146.
+
+**Do:** derive a form that admits *either* the opening bracket or a later separator before `Ignore`,
+and prove it against the full table — bare `[Ignore]`, comma-separated NUnit forms, `[TestCase(…
+Ignore = …)]`, the near-misses above, and beginning/end boundaries — before claiming equivalence.
+BSD/macOS grep could not be reached on this host, so portability of the *replacement* stays
+**asserted, not observed**, and must be labelled that way wherever it lands.
 
 ## 4. Verification
 
