@@ -3798,3 +3798,30 @@ about what `/bootstrap` *writes*. Adjacent, not the same.
   Honest coverage note: of the four stale entries found that day, check B would have caught only
   B-17; the other three announced completion in their own bodies, and periodic human triage remains
   the only mechanism for that.
+
+- **B-101** — DONE. Measured, fixed and re-red-tested **2026-08-06**; closed **2026-08-18** after a
+  triage read confirmed the residue is owned elsewhere. Gate *runtime* was governed by nothing while
+  gate *correctness* was governed rigorously — a `validate-dist` check shipped whose bash twin could
+  not finish at all (up to 66 subprocesses per line across ~160 files; the PowerShell twin did the
+  same work in 10s), and every correctness gate stayed green throughout. It was found because a
+  suite ran for hours and the maintainer asked why.
+
+  **The measurement overturned most of the estimates, and that is the lesson worth keeping.** Every
+  prediction had been derived from spawn-cost arithmetic. The real hotspots were different ones: a
+  `printf | grep -q` blank-test per marker (117 × 2 forks, 14.7s), `case_exact_path` forking
+  `ls | grep` per path *segment* (~312 forks, which made `--content-only` slower than a full run),
+  and check 7 forking a grep per doc — none of which appeared in the estimate table at all. Mean-
+  while the predicted dominant cost, copying the dist per test case, measured 0.25s and was not
+  worth touching. `validate-dist.sh` went 66s → 29s, `ValidateDist.Tests.ps1` ~850s → 391s → 187s
+  parallel, the whole meta suite **1,027s → 270s**.
+
+  **The parallel dispatcher then shipped a silent-zero-coverage bug for one run**, which belongs in
+  this entry because it is its own subject matter: `Start-Process -ArgumentList` joins without
+  quoting, so case names containing spaces arrived as several arguments, `-Only` bound to the first
+  word, no case matched, and the suite reported **0 passed / 0 failed in 8 seconds** —
+  indistinguishable from a 50× speedup if you only read the clock. The guard added in response fails
+  any child reporting no result for the case it was handed; a total of zero is never a pass.
+
+  **Residue, deliberately not closed here:** the architecture is still one process per assertion, so
+  suite cost remains a direct function of assertion count and any fixed ceiling will be outgrown
+  again. That is **B-138**, which owns it with its own measurements.

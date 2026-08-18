@@ -1644,138 +1644,8 @@ process — do not pretend the third is the second.
 tells you a release broke CI; three runs went red here before it was raised by the maintainer, not by
 tooling).
 
-### B-101 · Gate runtime is measured by nothing, and one gate shipped that could not finish at all
-**Effort:** M · **Priority:** P2 · found 2026-08-05 while verifying B-97 · **Invariants:** #3
-
-**Why:** the repo gates correctness rigorously and cost not at all. B-97's new `validate-dist` check
-shipped with a bash twin that **never completed** — its section-path check ran a `sed` plus a `grep`
-for every *(line × cited file × heading)* triple, up to 66 subprocesses per line across ~160 shipped
-files, which exhausted the Git-for-Windows process table (`dofork: ... Resource temporarily
-unavailable`) after 10+ minutes. The PowerShell twin did the same work in 10s. **Every correctness
-gate was green throughout**, and the implementer reported the hang as an environment quirk rather
-than a defect. It was found only because the meta suite ran for hours and the maintainer asked why.
-
-That is the finding: **twin parity is asserted on decisions, never on feasibility.** A twin that
-cannot finish is as broken as one that returns the wrong answer — and CI's linux leg runs the `.sh`
-twin, so this would have hung CI, which B-88 would then have reported as a failure of unknown cause.
-
-Fixed for that check (batched to one `grep` pass per cited file: 77s, exit 0). The *class* is open,
-and so is the cost problem underneath it. Measured on this box against B-79's profiled spawn costs
-(pwsh MSIX 265 ms, bash fork 55 ms), for one `validate-dist.sh dotnet` run at 77s:
-
-| Cost | Count | Est. |
-|---|---:|---:|
-| marker check — outer loop greps **every** file in `src/core` | 218 forks | ~12s |
-| marker check — `sed`/`grep` per marker (117 × ~3), re-reading the whole dist file per marker | 351 forks | ~19s |
-| PS-AST check — one pwsh process **per `.ps1` file** | 32 spawns | ~8.5s |
-
-Only **40 of 109** files in `src/core` contain a marker, so ~138 forks (~7.6s) scan files that have
-none. The PS-AST loop is pre-existing (since the merge commit), not new.
-
-**Do:** (a) add a runtime budget signal — have the meta suite and `validate-dist` print elapsed time
-per check, and fail (or warn loudly) past a per-check ceiling, so a 20× regression is visible in the
-run that causes it rather than hours later; (b) the three speedups above — hoist the marker loop to
-`grep -rl` so only marker-bearing files are scanned, cache the dist-file read per file instead of per
-marker, and batch the 32 PS parses into one process (~77s → ~35-40s); (c) the structural one, worth
-more than (b) combined: **`ValidateDist.Tests.ps1` copies the real 161-file dist into temp for each of
-its 20 cases and runs full validation on both twins**, when it is testing gate *logic* that a small
-synthetic fixture would exercise just as well — it also re-proves what a single `validate-dist` run
-already proves. That file dominates the meta suite's runtime.
-
-**Not — and this is the trap:** do **not** optimise a gate without red-testing it afterwards. If the
-marker loop's file list is subtly wrong after hoisting, the gate silently checks fewer markers and
-still prints `OK`. That is B-59's inert-check class, and B-97 shipped **two** live instances of it in
-one session (the `.ps1` marker check was blind to the 15 hash-form markers in `route-prompt` /
-`audit-trail` / `.gitignore` / CI; the `.sh` twin matched unanchored, so a prose mention of the syntax
-would have counted as a marker). Every speedup here needs the planted-defect test re-run, both twins.
-
-**LARGELY DONE 2026-08-06 — measured, fixed, re-red-tested. What the measurement overturned:**
-
-Every estimate in the table below was derived from spawn-cost arithmetic, and the profile disagreed
-with most of it. Recorded because the *method* is the lesson, not the numbers:
-
-| claim | measured |
-|---|---|
-| marker outer loop ~12s | real, but the actual hotspot inside 1a was a `printf \| grep -q` blank-test **per marker** (117 × 2 forks) — 14.7s |
-| PS-AST 32 spawns ~8.5s | **confirmed** — batching to one process took it to **0.6s** |
-| `ValidateDist.Tests` dominates because it copies the dist per case | **wrong** — `Copy-Item` of the 161-file dist is **0.25s**, ~9s across all 37 cases. Not worth touching. |
-| — (not in the table at all) | `case_exact_path` forked `ls \| grep` **per path segment**: ~312 forks, and it made `--content-only` *slower than a full run* |
-| — (not in the table at all) | check 7 forked a `grep` **per doc** (~90) plus a `basename` per doc |
-
-**Fixed (bash twin):** file-index built once for case-exact lookups; one batched `grep` for check 7
-with the per-file loop retained *only* as the error path (so "which doc was unreadable" is still
-answerable); `basename`/`sed`/`tr` replaced with parameter expansion; the blank-test made a bash
-pattern match; PS-AST batched into one process; marker scan hoisted to `grep -rlE` sharing **one**
-regex variable with the extractor so the selecting and extracting patterns cannot drift apart.
-
-| | before | after |
-|---|---:|---:|
-| `validate-dist.sh` FULL | 66s | **29s** |
-| `validate-dist.sh --content-only` | 23s | **11s** |
-| `ValidateDist.Tests.ps1` | ~850s | **391s**, then **187s** parallel |
-| **the whole meta suite** | **1,027s** | **270s** |
-
-**Then parallelised (2026-08-06).** `ValidateDist.Tests.ps1` now dispatches one child process per
-case, `min(8, cores)` at a time; the cases already built their own temp dists, so they were
-independent before they were run that way. Measured 4/8/12 lanes = 218/183/179s against 391s
-sequential — the floor is the longest single case, so the default is capped at 8 and scaled to the
-host (a 2-core runner must not be over-subscribed into being slower than sequential). Three
-consecutive green runs (208/200/187s) before it was trusted, because parallelism turns a real race
-into an intermittent failure and a flaky gate is worse than a slow one.
-
-**Two things this did NOT need, discovered by looking rather than assuming:** `release.ps1` already
-ran the three dists' gates concurrently via `Start-Job`, and the shipped hook suites already
-throttle internally over their test files (`HOOKTESTS_THROTTLE`). The meta suite's
-`ValidateDist.Tests` was the only serial block left in the system.
-
-**The dispatcher shipped a silent-zero-coverage bug for one run, and it is worth recording because
-it is this file's own subject matter.** `Start-Process -ArgumentList` joins without quoting, so case
-names containing spaces arrived as many arguments, `-Only` bound to the first word, no case matched,
-and the suite reported **0 passed / 0 failed in 8 seconds** — indistinguishable from a 50× speedup if
-you only read the clock. The guard added in response now fails any child that reports no result for
-the case it was handed; a total of zero is never a pass.
-
-**Red-tested after every step, both twins** — 20/20 planted-defect cases still red, and the counts
-the checks report (117 markers, 30 script refs, 89 docs, 26 registrations) are byte-identical to
-before, which is the anti-inert evidence. The backslash-collapse rewrite was proven equivalent to the
-`sed` it replaced across 7 inputs including the `//` edge case.
-
-**(a) shipped as well:** both twins now print `TIMING <s>  <check>` to stderr and warn past a
-per-check ceiling (`VALIDATE_DIST_CHECK_CEILING_S`, default 25s). stdout is untouched, so every
-existing caller parses the same `OK:`/`FAIL:` stream.
-
-**Still open:** the `.ps1` twin's section-path check (4.6s of its ~7s) is now *its* hotspot and was
-left alone. And the structural question stands — the suite makes ~16 bash validator runs against a
-real dist, so ~300s is inherent at current per-run cost. Going below that means running fewer legs,
-which is a **coverage** decision (B-92 chose both legs deliberately), not a performance one. Do not
-take it without a written decision.
-
-**MEASURED 2026-08-05 (the number this entry has never had).** The meta suite, run end-to-end on the
-maintainer box with a warm tree: **1,027s — 17.1 minutes**, of which `ValidateDist.Tests` is the
-overwhelming majority (the other eight files together finish in well under a minute). The shipped
-hook suites cost a further **174s / 217s / 182s** for dotnet / angular / monorepo, so a full local
-gate pass before a release is **~27 minutes** before `release.ps1` re-runs all of it and then waits
-on CI. Two consequences worth stating plainly: the maintainer asked "what's going on, it's been
-running for years" during this very run — the same question that originally produced this entry — and
-a 20× regression inside that 17 minutes would still be invisible, because nothing measures it. Fix
-(c) is therefore the one with real leverage: `ValidateDist.Tests` copies the whole 161-file dist per
-case and re-runs full validation on both twins, to test gate *logic* a small synthetic fixture would
-exercise just as well.
-
-**Also this class, added 2026-08-05 by B-103's review (F7): the parser resolution is re-derived on
-every hook invocation, uncached.** `guard.sh` runs on **every** `Write`/`Edit`; on the no-`jq` path it
-now spawns up to three `command -v` probes plus up to two real interpreter startups — the Store stub
-*executes* before being rejected — per write. `route-prompt` pays the same on every prompt once B-104
-lands. It is small per call and invisible on the maintainer box (which has `jq`), which is exactly the
-shape of cost this entry exists to make visible. Caching the resolved interpreter in `.claude/.state/`
-is the obvious fix and carries its own hazard (a cached path that later breaks), so measure before
-building it.
-
-**Cross-links:** B-79 (MSIX pwsh spawn cost — the measured baseline this uses, and the reason
-parallelism cannot rescue it), B-59 (inert checks), B-61 (twin parity does not cover feasibility),
-B-64 (planted-defect tests for diagnostics), B-70 (a change is not done until CI is green — this
-would have taken the linux leg down), B-88 (CI-red reporting), B-104/B-108 (the hooks whose
-resolution this measures).
+**B-101 is DONE (2026-08-18) — measured, fixed and re-red-tested 2026-08-06; the remaining
+per-assertion-spawn class is tracked as B-138. See `meta/BACKLOG-DONE.md`.**
 
 **B-102 is DONE — the core fix shipped in v0.45.0 and its three unshipped residues became B-104, B-105 and B-106, all since delivered; see `meta/BACKLOG-DONE.md`.**
 
@@ -1841,6 +1711,20 @@ have fired for a rule that worked perfectly, and the resulting false negative wo
 Both directions, stated together: an instrument must be shown able to **fail** on the unfixed tree
 *and* able to **pass** on a constructible fixed one. Cheap — both are reading exercises, and all
 three defects above were found by reading rather than running.
+
+> **HALF DONE — the rule shipped; the scenario sweep did not. Rescoped 2026-08-18.** The quoted rule
+> above is now in `CLAUDE.md` Maintenance model #4 verbatim ("*And the other direction — name the
+> world in which the measure would register success*"), so **this entry's first `Do` is discharged**
+> and must not be re-implemented. What remains open is the *second* `Do` at the foot of the entry —
+> fix (1), re-check (2), run a bare arm for (3), re-label (4), and record a reachability +
+> saturation verdict beside every scenario. That is scenario work in the eval harness, not a rule
+> change, and it is the only part still owed.
+>
+> A live instance of the same class landed the same day this was rescoped, on the *deterministic*
+> side: three new exit-code assertions were red-tested by appending `exit N` to the end of two
+> scripts that each already end with their own terminal `exit`. The mutation never executed, all
+> three suites reported green, and green read exactly like "the assertion is inert". The mutated
+> line must be shown to be **on the executed path**, not merely present in the file — see B-144.
 
 **What else is exposed to the same class — the sweep.** Every scenario in `.claude/evals/` has an
 outcome measure whose reachability has never been stated:
