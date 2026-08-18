@@ -1,5 +1,5 @@
 ﻿# ai-tech-lead dist validator — PowerShell twin of validate-dist.sh. Validates an ALREADY-COMPOSED
-# dist/<mode> tree — it does NOT rebuild it (see scripts/build.ps1 for that). Twelve checks, each
+# dist/<mode> tree — it does NOT rebuild it (see scripts/build.ps1 for that). Thirteen checks, each
 # with a clear OK/FAIL line:
 #   1. no unresolved @stack:NAME markers survive anywhere in the dist (composer leftovers)
 #   2. every *.json in the dist parses (ConvertFrom-Json)
@@ -14,6 +14,7 @@
 #  10. section-path citations name a heading that exists in the cited shipped file
 #  11. CLAUDE.md imports the shipped framework-rules carrier
 #  12. top-level ordered-list runs are contiguous and prose step references resolve in-file
+#  13. Copilot userPromptSubmitted has at most one entry (only its last entry is delivered)
 # Exit 0 = all checks passed. Exit 1 = at least one check failed. Exit 2 = usage error, missing
 # dist, or a required tool (bash, for check 3) is unavailable — reported as FATAL, never skipped.
 #   Usage: validate-dist.ps1 {dotnet|angular|monorepo} [dist-root] [-Check name[,name...]]
@@ -45,7 +46,7 @@ for ($i = 0; $i -lt $args.Count; $i++) {
         $CheckArg = "$($args[$i])"
     } else { $positional += $a }
 }
-$ValidChecks = @('markers','json','bash-syntax','ps-syntax','template-checks','no-meta-leak','no-dead-instruction','hook-registration','marker-expansion','section-path','carrier-import','step-references')
+$ValidChecks = @('markers','json','bash-syntax','ps-syntax','template-checks','no-meta-leak','no-dead-instruction','hook-registration','marker-expansion','section-path','carrier-import','step-references','prompt-hook-cardinality')
 $SelectedChecks = @()
 if ($null -ne $CheckArg) {
     $SelectedChecks = @($CheckArg -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
@@ -62,7 +63,7 @@ if ($ContentOnly -and $null -ne $CheckArg) {
 }
 function Test-CheckSelected($name) {
     if ($null -ne $CheckArg) { return $SelectedChecks -ccontains $name }
-    if ($ContentOnly) { return @('no-meta-leak','no-dead-instruction','hook-registration','step-references') -contains $name }
+    if ($ContentOnly) { return @('no-meta-leak','no-dead-instruction','hook-registration','step-references','prompt-hook-cardinality') -contains $name }
     return $true
 }
 $Mode = $positional[0]
@@ -112,7 +113,7 @@ function Fail($m) { Record-Timing $m; Write-Output "FAIL: $m"; $script:failed++ 
 function OK($m)   { Record-Timing $m; Write-Output "OK:   $m" }
 
 # --content-only skips checks 1-5 (the parse/marker/template-checks group) and runs only the content
-# checks 6, 7, 8 and 12. It exists for ValidateDist.Tests.ps1: those five re-parse every shipped file on
+# checks 6, 7, 8, 12 and 13. It exists for ValidateDist.Tests.ps1: those five re-parse every shipped file on
 # every case, which made that suite 9 minutes for 15 cases x 2 legs — in a file that runs in
 # release.ps1 AND on both CI legs. Neither release.ps1 nor CI passes it, and the suite's green
 # anchors still run the FULL validator so the skipped group stays exercised on both legs.
@@ -778,6 +779,48 @@ if (@($stepFiles).Count -eq 0) {
     $stepProblems | Sort-Object -Unique | ForEach-Object { Write-Output "  [step-references] $_" }
 } else {
     OK "ordered-list runs are contiguous and prose step references resolve ($(@($stepFiles).Count) files scanned; $stepLabelCount labels found; $stepReferenceCount prose references found)."
+}
+}
+
+if (Test-CheckSelected 'prompt-hook-cardinality') {
+# --- 13. Copilot model-facing prompt hook cardinality -------------------------------------------
+# DELIVERY CONSTRAINT observed on Copilot CLI 1.0.80, not a design preference: only the last
+# userPromptSubmitted entry's additionalContext is delivered. If Copilot later honours every entry,
+# a composed single hook still works and this check is merely a harmless anachronism.
+$promptHookFiles = @(Get-ChildItem -LiteralPath $DistAbs -Recurse -Force -File -Filter hooks.json)
+$promptHookProblems = @()
+$promptHookEvents = 0
+foreach ($file in $promptHookFiles) {
+    $relative = $file.FullName.Substring($DistAbs.Length).TrimStart('\','/').Replace('\','/')
+    try {
+        $doc = [IO.File]::ReadAllText($file.FullName, [Text.Encoding]::UTF8) | ConvertFrom-Json
+    } catch {
+        $promptHookProblems += "$relative : hooks.json is unparseable ($($_.Exception.Message))"
+        continue
+    }
+    if ($null -eq $doc.hooks) {
+        $promptHookProblems += "$relative : hooks.json has no hooks object"
+        continue
+    }
+    $events = @($doc.hooks.PSObject.Properties)
+    $promptHookEvents += $events.Count
+    $event = @($events | Where-Object { $_.Name -ceq 'userPromptSubmitted' })
+    if ($event.Count -eq 1) {
+        $entries = @($event[0].Value)
+        if ($entries.Count -gt 1) {
+            $promptHookProblems += "$relative : userPromptSubmitted has $($entries.Count) entries; Copilot CLI 1.0.80 delivers only the last entry, so compose model-facing additionalContext into one hook instead"
+        }
+    }
+}
+if ($promptHookFiles.Count -eq 0) {
+    Fail "prompt-hook cardinality scan found no hooks.json in $Dist -- the scan is blind."
+} elseif ($promptHookEvents -eq 0) {
+    Fail "prompt-hook cardinality scan parsed zero events from $($promptHookFiles.Count) hooks.json file(s) in $Dist -- the scan is blind."
+} elseif ($promptHookProblems.Count -gt 0) {
+    Fail "Copilot prompt-hook delivery constraint violated -- $($promptHookProblems.Count) finding(s). Only the last userPromptSubmitted entry is delivered by Copilot CLI 1.0.80, so compose into one hook instead; if Copilot later honours every entry, the composed hook remains valid and this check is a harmless anachronism."
+    $promptHookProblems | Sort-Object -Unique | ForEach-Object { Write-Output "  [prompt-hook-cardinality] $_" }
+} else {
+    OK "Copilot userPromptSubmitted cardinality is delivery-safe ($($promptHookFiles.Count) hooks.json file(s), $promptHookEvents events; at most one entry per userPromptSubmitted)."
 }
 }
 

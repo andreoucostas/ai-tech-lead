@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ai-tech-lead dist validator (bash twin; .ps1 twin is validate-dist.ps1). Validates an
 # ALREADY-COMPOSED dist/<mode> tree — it does NOT rebuild it (see scripts/build.sh for that).
-# Twelve checks, each with a clear OK/FAIL line:
+# Thirteen checks, each with a clear OK/FAIL line:
 #   1. no unresolved @stack:NAME markers survive anywhere in the dist (composer leftovers)
 #   2. every *.json in the dist parses
 #   3. `bash -n` passes on every *.sh in the dist
@@ -15,6 +15,7 @@
 #  10. section-path citations name a heading that exists in the cited shipped file
 #  11. CLAUDE.md imports the shipped framework-rules carrier
 #  12. top-level ordered-list runs are contiguous and prose step references resolve in-file
+#  13. Copilot userPromptSubmitted has at most one entry (only its last entry is delivered)
 # Exit 0 = all checks passed. Exit 1 = at least one check failed. Exit 2 = usage error, missing
 # dist, or a required tool (JSON parser / bash / PowerShell host) is unavailable — these are
 # reported as FATAL and never silently skipped.
@@ -54,7 +55,7 @@ if [ "$CONTENT_ONLY" = "1" ] && [ "$CHECK_SET" = "1" ]; then
   exit 2
 fi
 
-VALID_CHECKS='markers json bash-syntax ps-syntax template-checks no-meta-leak no-dead-instruction hook-registration marker-expansion section-path carrier-import step-references'
+VALID_CHECKS='markers json bash-syntax ps-syntax template-checks no-meta-leak no-dead-instruction hook-registration marker-expansion section-path carrier-import step-references prompt-hook-cardinality'
 SELECTED_CHECKS=""
 if [ "$CHECK_SET" = "1" ]; then
   _old_ifs=$IFS; IFS=,
@@ -70,7 +71,7 @@ if [ "$CHECK_SET" = "1" ]; then
 fi
 check_selected() {
   if [ "$CHECK_SET" = "1" ]; then case " $SELECTED_CHECKS " in *" $1 "*) return 0;; *) return 1;; esac; fi
-  if [ "$CONTENT_ONLY" = "1" ]; then case "$1" in no-meta-leak|no-dead-instruction|hook-registration|step-references) return 0;; *) return 1;; esac; fi
+  if [ "$CONTENT_ONLY" = "1" ]; then case "$1" in no-meta-leak|no-dead-instruction|hook-registration|step-references|prompt-hook-cardinality) return 0;; *) return 1;; esac; fi
   return 0
 }
 [ -d "$DIST" ] || { echo "no $DIST — run scripts/build.sh $MODE first" >&2; exit 2; }
@@ -106,7 +107,7 @@ fail() { _record_timing "${1:0:60}"; echo "FAIL: $1"; failed=$((failed+1)); }
 ok()   { _record_timing "${1:0:60}"; echo "OK:   $1"; }
 
 # --content-only skips checks 1-5 (parse/marker/template-checks) and runs only the content checks
-# 6, 7, 8 and 12. See the PowerShell twin for the full rationale: those five re-parse every shipped file
+# 6, 7, 8, 12 and 13. See the PowerShell twin for the full rationale: those five re-parse every shipped file
 # on every case, which made ValidateDist.Tests.ps1 a 9-minute suite in a file that runs in
 # release.ps1 and on both CI legs. Neither release.ps1 nor CI passes it; the suite's green anchors
 # still run the FULL validator. A restricted run announces itself — a subset must never read as a
@@ -121,7 +122,7 @@ fi
 # Prefer python3 (matches the .ps1 twin's ConvertFrom-Json more closely: full parse, not just
 # lexing); fall back to jq. Neither present is a hard FATAL, not a silent skip.
 JSON_TOOL=""
-if check_selected json || check_selected hook-registration; then
+if check_selected json || check_selected hook-registration || check_selected prompt-hook-cardinality; then
 if python3 -c 'import json' >/dev/null 2>&1; then JSON_TOOL="python3"
 elif command -v jq >/dev/null 2>&1; then JSON_TOOL="jq"
 else
@@ -992,6 +993,65 @@ elif [ "$step_problem_count" -gt 0 ]; then
   printf '%s\n' "$step_problems" | grep . | sort -u | sed 's/^/  [step-references] /'
 else
   ok "ordered-list runs are contiguous and prose step references resolve ($step_files files scanned; $step_labels labels found; $step_refs prose references found)."
+fi
+fi
+
+if check_selected prompt-hook-cardinality; then
+# --- 13. Copilot model-facing prompt hook cardinality -------------------------------------------
+# DELIVERY CONSTRAINT observed on Copilot CLI 1.0.80, not a design preference: only the last
+# userPromptSubmitted entry's additionalContext is delivered. If Copilot later honours every entry,
+# a composed single hook still works and this check is merely a harmless anachronism.
+prompt_hook_files=0; prompt_hook_events=0; prompt_hook_problems=''
+while IFS= read -r -d '' file; do
+  prompt_hook_files=$((prompt_hook_files+1)); rel=${file#"$DIST/"}
+  record=$(mktemp "${TMPDIR:-/tmp}/validate-dist-prompt-hooks.XXXXXX") || { echo "FATAL: cannot create a temporary file for the prompt-hook scan." >&2; exit 2; }
+  if [ "$JSON_TOOL" = python3 ]; then
+    python3 - "$file" > "$record" 2>/dev/null <<'PY'
+import json, sys
+try:
+    doc=json.load(open(sys.argv[1], encoding='utf-8'))
+except Exception as exc:
+    print('PROBLEM\tunparseable (%s)' % exc); raise SystemExit(0)
+hooks=doc.get('hooks')
+if not isinstance(hooks, dict):
+    print('PROBLEM\thas no hooks object'); raise SystemExit(0)
+print('EVENTS\t%d' % len(hooks))
+entries=hooks.get('userPromptSubmitted')
+if isinstance(entries, list) and len(entries) > 1:
+    print('CARDINALITY\t%d' % len(entries))
+PY
+  else
+    jq -r '
+      if (.hooks | type) != "object" then "PROBLEM\thas no hooks object"
+      else "EVENTS\t\(.hooks | length)",
+        (if ((.hooks.userPromptSubmitted | type) == "array" and (.hooks.userPromptSubmitted | length) > 1)
+         then "CARDINALITY\t\(.hooks.userPromptSubmitted | length)" else empty end)
+      end' "$file" > "$record" 2>/dev/null
+    parserstatus=$?
+    if [ "$parserstatus" -ne 0 ]; then printf 'PROBLEM\tunparseable (parser jq exited %s)\n' "$parserstatus" > "$record"; fi
+  fi
+  while IFS=$'\t' read -r kind value; do
+    value=${value%$'\r'}
+    case "$kind" in
+      EVENTS) prompt_hook_events=$((prompt_hook_events+value)) ;;
+      CARDINALITY) prompt_hook_problems="$prompt_hook_problems
+$rel : userPromptSubmitted has $value entries; Copilot CLI 1.0.80 delivers only the last entry, so compose model-facing additionalContext into one hook instead" ;;
+      PROBLEM) prompt_hook_problems="$prompt_hook_problems
+$rel : hooks.json $value" ;;
+    esac
+  done < "$record"
+  rm -f "$record"
+done < <(find "$DIST" -type f -name hooks.json -print0 2>/dev/null)
+prompt_hook_problem_count=$(printf '%s\n' "$prompt_hook_problems" | grep -c . || true)
+if [ "$prompt_hook_files" -eq 0 ]; then
+  fail "prompt-hook cardinality scan found no hooks.json in $DIST -- the scan is blind."
+elif [ "$prompt_hook_events" -eq 0 ]; then
+  fail "prompt-hook cardinality scan parsed zero events from $prompt_hook_files hooks.json file(s) in $DIST -- the scan is blind."
+elif [ "$prompt_hook_problem_count" -gt 0 ]; then
+  fail "Copilot prompt-hook delivery constraint violated -- $prompt_hook_problem_count finding(s). Only the last userPromptSubmitted entry is delivered by Copilot CLI 1.0.80, so compose into one hook instead; if Copilot later honours every entry, the composed hook remains valid and this check is a harmless anachronism."
+  printf '%s\n' "$prompt_hook_problems" | grep . | sort -u | sed 's/^/  [prompt-hook-cardinality] /'
+else
+  ok "Copilot userPromptSubmitted cardinality is delivery-safe ($prompt_hook_files hooks.json file(s), $prompt_hook_events events; at most one entry per userPromptSubmitted)."
 fi
 fi
 

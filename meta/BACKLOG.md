@@ -236,6 +236,12 @@ in the message so the next reader knows it is a delivery constraint, not a desig
 **Cross-links:** B-147 (the defect), B-43 (re-run the canary after any Copilot CLI bump), B-55 (the
 correction had to land in several surfaces at once — the same restatement problem).
 
+**Implementation RCA (2026-08-18):** No gate caught this because hook-registration check 8 proves
+that a registered command exists, not that a vendor consumes every model-facing output when an event
+array has multiple entries. The same class could affect another context-injecting Copilot event if
+one is added; extend the explicit event list only after live verification, rather than generalising
+to side-effecting events such as `postToolUse` where multiple entries are legitimate.
+
 ### B-55 · Vendor-behavior facts are restated across ~6 shipped surfaces with no single source
 **Effort:** M · **Priority:** P2 doc truth · **Invariants:** #5, #6
 

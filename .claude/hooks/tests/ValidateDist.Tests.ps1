@@ -532,6 +532,20 @@ try {
         }
     }
 
+    It 'case 36: a second userPromptSubmitted entry fails both validators' {
+        Assert-Case 'duplicate-user-prompt-hook' {
+            param($d)
+            $path = Join-Path $d '.github/hooks/hooks.json'
+            $doc = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8) | ConvertFrom-Json
+            $entries = @($doc.hooks.userPromptSubmitted)
+            Assert ($entries.Count -eq 1) "fixture expected exactly one userPromptSubmitted entry, found $($entries.Count)"
+            $doc.hooks.userPromptSubmitted = @($entries[0], $entries[0])
+            [IO.File]::WriteAllText($path, ($doc | ConvertTo-Json -Depth 20), (New-Object Text.UTF8Encoding($false)))
+            $mutated = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8) | ConvertFrom-Json
+            Assert (@($mutated.hooks.userPromptSubmitted).Count -eq 2) 'mutation did not create a second userPromptSubmitted entry'
+        } 'Only the last userPromptSubmitted entry is delivered by Copilot CLI 1.0.80' 'prompt-hook-cardinality' -AlsoPattern 'compose into one hook instead'
+    }
+
     # B-106/F3: this skip used to be false -- "python3 is unavailable" read as "no python here", but
     # a python.org install ships python.exe and no working python3.exe (the Windows Store alias may
     # still resolve by name). Resolve by EXECUTION across python3/python/py and, if the real name
