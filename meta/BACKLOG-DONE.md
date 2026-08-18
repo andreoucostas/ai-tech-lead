@@ -3649,3 +3649,43 @@ thing; signal inputs are read-only so a CVA's *value* cannot be an `input()`).
 Scope note: `bootstrap.md`/`adopt.md` were taken deliberately even though B-66 deferred the
 delivery-tier question to B-65. B-65 is about restoring the pointer `/bootstrap` *deletes*; this was
 about what `/bootstrap` *writes*. Adjacent, not the same.
+
+- **B-17** — **REJECTED on evidence 2026-08-17** (not deferred; WSD-045). Scoped
+  `.github/instructions/` delivery for test files rested on a marginal-salience premise that three
+  verified facts killed: the broad `applyTo: "**"` carrier already delivers the red-test rule and
+  "No tautological assertions" (canary 3 proved `"**"` delivers), so a scoped file adds locality and
+  not coverage; "test files" is not expressible as a glob, because xUnit imposes no filename
+  convention and `**/*Tests.cs` silently misses `*Test.cs`, `*Spec.cs` and directory-convention
+  layouts — a miss being indistinguishable from delivery, since scoped instructions have no
+  telemetry; and widening to `**/*.cs` restores coverage while destroying the salience premise in
+  the same move. The design and its critique are
+  `.claude/plans/2026-08-17-b17-b81-consumer-value-design.md` and
+  `.claude/plans/2026-08-17-b17-b81-sol-critique.md`.
+
+  **Why this sat open for a day as a live item:** the rejection was recorded only in a commit
+  message and two plan files. `meta/BACKLOG.md` still listed B-17 as work to do, and
+  `meta/decisions-index.md` — the file `CLAUDE.md` tells you to read before locking any design — did
+  not carry it. That is B-83's class exactly, and it is why the rejection now has a WSD.
+
+- **B-25-EXEC** — DONE **2026-07-12**, shipped as **v0.26.0** (WSD-018). Phases 0–6 of the monorepo
+  merge all completed; both legacy repos archived on GitHub with pointer READMEs. The entry stayed
+  in the open file for five weeks after its own body recorded `B-25-EXEC DONE`, because the hygiene
+  gate reads the *heading* and this entry's heading never carried a completion marker.
+
+- **B-46** — DONE. Part 1 (does update mode clobber consumer edits?) was answered by execution and
+  disclosed in **v0.56.0** (WSD-043): it **silently clobbers** every consumer edit to shipped
+  machinery, `.claude/settings.json` included, and the update now names three ownership classes and
+  backs up settings before refreshing. Part 2 (version awareness) shipped in **v0.57.0**: both
+  `session-start` twins emit one honest line at most once per seven days — the installed version
+  plus the releases page — with no network request, no assertion that an update exists, and the
+  `.claude/.state/last-version-awareness` throttle claimed before emission so an unwritable state
+  path stays a quiet soft failure.
+
+- **B-102** — DONE. The shipped `.sh` hooks now resolve a JSON parser by **execution** over
+  `jq → python3 → python → py`, so the documented fallback engages on Windows, where
+  `python3.exe` does not exist and the Microsoft Store `python.exe` stub resolves by name and then
+  fails. The core fix shipped in **v0.45.0**; the three residues its own correction identified — the
+  doctor (B-105), `route-prompt.sh`'s silent fail-open (B-104, P1) and the false `python3 is
+  unavailable` skip (B-106) — were filed separately and have all since been delivered. Kept as a
+  standing lesson: a probe that tests a **name** rather than the **capability** reports health it
+  cannot deliver, and a skip that misreports its cause is indistinguishable from coverage.

@@ -2049,3 +2049,24 @@ commit; a target change starts a new comparison series and requires an appended 
 **Rejected.** Copying unverified SHAs or file counts from planning prose into the decision record;
 rotating repositories casually between quarters; and treating a successful clone as proof that the
 target builds or meets the size and domain-logic criteria.
+
+## WSD-045: B-17 is rejected, not deferred — scoped test-file instructions buy locality, not coverage (2026-08-17)
+
+**Context.** B-17 (WS-5 of the self-sufficiency roadmap) proposed shipping
+`.github/instructions/*.instructions.md` scoped with `applyTo: "**/*Tests.cs"` / `"**/*.spec.ts"` to
+carry the test-integrity rules, on the premise that a narrow glob buys "highest marginal salience".
+It sat on the deferred list from the roadmap's filing until it was critiqued on 2026-08-17.
+
+**Decision.** Rejected. Three verified facts defeat the premise. The rules **already arrive**: the
+broad carrier is `applyTo: "**"` and already carries the red-test rule and "No tautological
+assertions", and canary 3 (2026-08-05) proved `"**"` delivers — so a scoped file adds locality, not
+coverage. "Test files" is **not expressible as a glob**: xUnit imposes no filename convention, so
+`**/*Tests.cs` silently misses `*Test.cs`, `*Spec.cs` and directory-convention layouts, and because
+scoped instructions have no telemetry a miss is indistinguishable from delivery — the same silent
+non-arrival B-143 is filed against. Widening to `**/*.cs` restores coverage and destroys the
+salience premise in the same move. The value claim was never measured, and the design admitted that
+and proposed shipping anyway.
+
+**Rejected alternatives.** Deferring it again (it would have been re-read as pending work by the
+next person triaging the backlog); shipping it narrow and "measuring later" (delivery evidence is
+not adherence evidence); and widening the glob to preserve the item at the cost of its own rationale.

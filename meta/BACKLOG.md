@@ -290,58 +290,7 @@ part of every B-43 recertification cycle. First candidates to assess honestly: w
 Claude Code auto-memory, `/review` agents vs host-native review, `route-prompt` vs improving
 native intent handling, `post-write` build feedback vs host-native diagnostics.
 
-### B-46 · Consumer update & drift story — **PARTIALLY DONE in v0.56.0: (1) verified + disclosed. (2) VERSION AWARENESS IS STILL OPEN — a consumer still has no way to learn a new version exists.**
-**Effort:** M · investigate-first · **Invariants:** #3 #5 #6 #7
-
-**Why:** install is polished (three modes, smoke-tested ×3 dists) but *operate-and-upgrade* is
-not: (1) update mode "refreshes framework machinery, leaves consumer-owned content" — but a
-consumer who locally tweaked a shipped skill or hook (which the docs implicitly invite — it's
-their repo) gets either silently clobbered or silently left stale; which one is **unverified**.
-(2) There is **no channel by which a consumer ever learns a new framework version exists** —
-no notification, no check, nothing; realistic consumer version lag is "forever". (3) The B-24
-residual (teammate without the wired shell gets no hooks, silently) is documented but not
-detected — that detection belongs to B-16's doctor, keep it there.
-
-> **VERIFIED 2026-08-17 — the answer is SILENTLY CLOBBERED.** Question (1) is no longer open.
-> Method: greenfield install into a temp repo, plant a distinctive marker in one file of each class,
-> run update, check which markers survive. `dist/dotnet`, bash twin.
->
-> | consumer change | outcome | warned? |
-> |---|---|---|
-> | shipped skill `.claude/skills/add-tests/SKILL.md` | **CLOBBERED** | no |
-> | shipped hook `.claude/hooks/guard.ps1` | **CLOBBERED** | no |
-> | shipped script `scripts/docs-sync-check.ps1` | **CLOBBERED** | no |
-> | **`.claude/settings.json`** | **CLOBBERED** | no |
-> | protected `CLAUDE.md` | survived | by design |
-> | a skill the consumer added themselves | survived | correct |
->
-> Not one warning. The update's closing line — *"Framework machinery refreshed; consumer-owned
-> content files untouched."* — is **technically true and materially misleading**: "consumer-owned"
-> means only the 8 protected paths, while every consumer edit to shipped machinery is discarded
-> without mention. `.claude/settings.json` is the sharpest case, because it is where a team wires
-> permissions and hook registrations, and v0.38.1 reverted absolute-path pinning precisely on the
-> grounds that it is *committed team config* — i.e. we already know teams edit it.
->
-> **Mitigation that exists:** the installer tells consumers to review the diff and commit, so a
-> disciplined team on a clean tree sees the loss in `git diff`. Nothing tells them to look.
-
-**Do:** first *verify*: run update mode over a fixture repo carrying a consumer-modified shipped
-skill and a consumer-modified hook; record the actual outcome. Then decide policy and document
-it honestly in the consumer README (options: clobber-with-preserved-copy à la brownfield
-archive; skip-with-warning; three-way-diff note in the update output). For version awareness:
-consider a low-noise `session-start` line ("framework v0.31.0 installed; check for updates: <URL>")
-throttled to once per N days via the existing `.claude/.state/` mechanism — offline-tolerant,
-no network call, just a nudge. Record the design as a WSD before implementing.
-
-> **PART 2 IMPLEMENTED FOR v0.57.0 — Unreleased (2026-08-17).** Both `session-start` twins now
-> emit one honest line at most once per seven days: the installed version plus the releases page.
-> They make no network request and do not assert that an update exists. The
-> `.claude/.state/last-version-awareness` throttle is claimed before emission, so an unwritable
-> state path remains a quiet soft failure. RCA: no existing gate could catch the absence of a
-> consumer update-awareness channel because byte validity and hook wiring say nothing about what a
-> long-lived consumer learns. Other lifecycle facts delivered only at install/update time remain
-> exposed to the same discoverability class and should be assessed through B-42/B-49 field evidence,
-> not inferred from parser gates.
+**B-46 is DONE — part 1 (verify + disclose) shipped in v0.56.0 and part 2 (version awareness) in v0.57.0; see `meta/BACKLOG-DONE.md`.**
 
 ### B-48 · Enforcement-bypass audit — the guard's known end-runs, decided honestly
 **Effort:** M · **Invariants:** #3 #5 · needs a WSD record
@@ -426,6 +375,26 @@ never held to it.
 **Do:** for each gate and diagnostic, add at least one test that plants the defect class it exists
 to catch and asserts the non-zero exit or the honest row — the discipline B-41 applies to agent
 behaviour, applied to the deterministic layer.
+
+> **SCOPE REWRITTEN 2026-08-18 (B-83's staleness sweep) — the blanket *Do* above is no longer
+> accurate and must not be implemented literally.** Sixteen versions of RCA-driven work have landed
+> since this entry was filed, and a good deal of it was exactly this. Measured on the current tree:
+> `ValidateDist.Tests.ps1` is 602 lines / 44 cases and already plants defects for twelve of them;
+> `BacklogHygiene.Tests.ps1` carries a **`-RedTest` parameter with six named mutations**, three of
+> which are vacuity mutations — the strongest form of this discipline anywhere in the repo, and a
+> ready-made pattern to copy. So the honest open question is **not** "add red-tests everywhere", it
+> is **"which gates and diagnostics still have only happy-path coverage?"**, and nobody has answered
+> it.
+>
+> **Do (revised):** first produce the coverage matrix — one row per gate and per diagnostic
+> (`validate-dist`'s twelve checks, each dist's `template-checks`, `framework-doctor`'s rows,
+> `context-footprint`, `hazard-check`, `wiki-check`, `warehouse-map-check`, the composer, and each
+> meta suite), recording whether a planted-defect test exists, whether it has been **seen** to go
+> red, and on which twin. Publish it in `meta/`. Only then close the gaps it finds, highest-value
+> first. The matrix is the deliverable that makes the rest proportionate; without it this entry
+> licenses unbounded work and, per B-83, would send an implementer to rewrite tests that already
+> exist. Build it on B-84's mutation helper so each row's mutation is recorded as executable text
+> rather than as a comment claiming a red-test happened.
 
 ### B-68 · `context-footprint` hard-codes the Instructed file list
 **Effort:** S · **Priority:** P3
@@ -1848,90 +1817,7 @@ B-64 (planted-defect tests for diagnostics), B-70 (a change is not done until CI
 would have taken the linux leg down), B-88 (CI-red reporting), B-104/B-108 (the hooks whose
 resolution this measures).
 
-### B-102 · The documented JSON-parser fallback cannot exist on Windows — `python3` is not the name Windows installs
-
-> **DONE — shipped v0.45.0 (2026-08-05).** Probe now resolves by execution over
-> `python3 → python → py` in ~~all ten shipped `.sh` hooks and the doctor~~ **five shipped `.sh`
-> hooks** (`guard`, `session-start`, `audit-trail`, `boy-scout-check`, `post-write`);
-> `enforcement-surfaces.md` corrected. Measured before/after, same box, Python 3.14.5 present:
-> `exit 0` (INACTIVE, write allowed) → `exit 2` (blocked), verified against the composed dist.
->
-> **CORRECTION, 2026-08-05 (B-103's review).** The struck claim above is false and is left visible
-> rather than rewritten. `git show --stat 6eb7752` contains no `route-prompt.sh`, no
-> `framework-doctor.{ps1,sh}`, and not a single test file. So: the doctor was **not** fixed (B-105);
-> `route-prompt.sh` was **not** fixed and still selects the Store stub (B-104, **P1** — a *silent*
-> fail-open, the exact outcome this entry exists to prevent); the false skip below was **not** fixed
-> (B-106). The record asserted three fixes that did not ship. That is why Maintenance model #2 does
-> not accept a self-review, and why the RCA below is itself incomplete.
->
-> **RCA — why did no gate catch it?** Two reasons, both structural. (1) `jq` is present on the
-> maintainer box, so the fallback branch never executed here — the gates only ever exercised the
-> path that worked. (2) The one test that would have covered it was **permanently skipped** with the
-> message "python3 is unavailable on this host", which was false; the suite summarised green around
-> it. A skip that misreports its cause is indistinguishable from coverage.
-> **What else is exposed?** Any capability probe that (a) tests a name rather than the capability, or
-> (b) has a fallback branch no test forces. B-63 owns the general audit; this entry is its third
-> confirmed instance and the first with live consumer impact. Specifically worth checking: every
-> `command -v` in the shipped hooks, and every `[skip]` message in the suites that asserts a host
-> lacks something.
-**Effort:** S–M · **Priority:** **P1** (the write-guard fails open on the primary target platform while a doc
-promises otherwise) · found 2026-08-05 · **Invariants:** #3 #5 #6
-
-**Why:** every shipped `.sh` hook resolves its JSON parser with `command -v python3`, and
-`docs/enforcement-surfaces.md:48` promises consumers *"(`jq`, with `python3` as fallback)"*. **A
-standard python.org install on Windows provides `python.exe` only — there is no `python3.exe`.**
-Verified on the maintainer box: `C:\Python314\` (registered in the registry `PATH`) contains
-`python.exe`, `pythonw.exe`, `python3.dll` — and no `python3.exe`; `C:\Python314\python.exe --version`
-returns **Python 3.14.5** and parses JSON from stdin correctly.
-
-So on Windows the documented fallback **can never engage**, no matter how healthy the `PATH` is. The
-consequence is the one that matters: with `jq` absent, `guard.sh` prints
-*"no jq or python3 on PATH — write-guard INACTIVE (secret/test-defeat floor is OFF)"* and **allows
-every write**, on a box that has a perfectly good JSON parser installed. The framework's deterministic
-write floor is the product's central enforcement claim, and its only fallback is spelled in a way that
-excludes the primary target platform (Bitbucket DC shops on Windows).
-
-Why nobody noticed: `jq` is present on the maintainer box (`<home>/bin/jq`), so the fallback
-branch is never taken here. It fails only for a consumer without jq — i.e. exactly the person the
-fallback exists for.
-
-**Blast radius — 14 shipped/meta files carry the `command -v python3` probe:** `guard.sh`,
-`route-prompt.sh`, `session-start.sh`, `audit-trail.sh` (core); `boy-scout-check.sh` and
-`post-write.sh` (all three stacks); `framework-doctor.{ps1,sh}`; three `SessionStart*.Tests.ps1`.
-The doctor's `Guard JSON parser` row reports *"jq or python3 is available"* on the same naming, so it
-reports the floor's health on a basis that is wrong on Windows — a second defect in a row B-56 and
-B-63 have already had to correct once for vantage-point reasons.
-
-**The trap in the obvious fix, which must not be skipped:** do **not** simply add `python` to the
-`command -v` list. `<home>\AppData\Local\Microsoft\WindowsApps\python.exe` **exists and
-resolves**, but it is the Microsoft Store *app-execution-alias stub*: running it prints *"Python was
-not found; run without arguments to install from the Microsoft Store"* and exits non-zero. A
-name-resolution probe would therefore report a parser as available and then fail at the moment the
-guard needs it — converting a loud INACTIVE warning into a silent malfunction, which is strictly
-worse. **The probe must validate by execution** (run the candidate and confirm it parses), which is
-the same lesson as B-63: ask the capability, not the name.
-
-**Do:** one shared resolution helper used by both twins and the doctor: try `jq`, then `python3`,
-then `python`, then `py -3`, and accept a candidate only after it successfully round-trips a trivial
-JSON document. Correct `enforcement-surfaces.md`'s parenthetical to name what is actually probed.
-Red-test it by hiding `jq` and asserting the fallback engages and the guard still blocks a planted
-secret — on Windows, which is where the current code fails.
-
-**Also fixes a false skip (B-71's class).** — **it did not; see the correction above. The file is
-untouched by `6eb7752` and the skip is still live. Now B-106.** `ValidateDist.Tests.ps1` prints
-*"python3 is unavailable on this host; CI linux must exercise this branch"* and the suite still
-summarises green. That statement is **false** — python is installed and working. The skipped
-assertion is a *twin-parity* one (the jq and python normalized record streams must be byte-identical),
-so it has been permanently unexercised on every Windows box while reading as covered. A skip caused by
-a POSIX-only name is not the same fact as a host without python, and reporting them identically is
-precisely what B-71 says lets a gap persist.
-
-**Cross-links:** B-63 (probe vantage-point validity — third instance), B-56 (host-dependent probes
-make gate outcomes machine-dependent), B-71 (skips that misreport why), B-48 (enforcement-bypass
-audit — an inactive guard belongs on that list), B-101 (filed the same day from the same verification
-pass).
-
----
+**B-102 is DONE — the core fix shipped in v0.45.0 and its three unshipped residues became B-104, B-105 and B-106, all since delivered; see `meta/BACKLOG-DONE.md`.**
 
 ### B-111 · Post-ship review owed for v0.47.0
 **Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-06
@@ -3225,12 +3111,7 @@ request.
 
 **B-16 is implemented for v0.32.0 — see `meta/BACKLOG-DONE.md`.**
 
-### B-17 · WS-5: scoped instruction delivery for test files
-**Effort:** M
-`.github/instructions/` files with `applyTo: **/*Tests.cs` / `**/*.spec.ts` carrying the
-test-integrity rules — highest marginal salience, works today with Preview hooks off. Generated
-by `/generate-copilot`; extend the `template-checks` mirror gate in the same task [#2]. No
-`applyTo: **` variant (decided — salience dilution).
+**B-17 was REJECTED on evidence 2026-08-17 (WSD-045) — see `meta/BACKLOG-DONE.md`.**
 
 ### B-18 · WS-6: opt-in git-hook convenience net
 **Effort:** M
@@ -3248,66 +3129,7 @@ StrykerJS `--incremental`; WS-T11 wire survivors into `test-critic`; WS-T12 docs
 Key traps recorded there: Angular needs a cobertura reporter wired; CI must fetch the base ref;
 "CI-enforced" = runs+reports by default, only the opt-in floor blocks.
 
-### B-25-EXEC · Execute the monorepo merge (Phases 0–6 of MERGE-MIGRATION-PLAN.md)
-**Effort:** L (5–7 focused sessions) · **Invariants:** all — this task retargets them · added 2026-07-06
-· **IN PROGRESS since 2026-07-08 — Phases 0–3 COMPLETE.** Phase 0: freeze ON, `freeze-v0.25.5`
-tags pushed (fidelity baseline: dotnet `bd8bb2f`, angular `e0f7782`), filter-repo verified,
-`ai-tech-lead` repo created (private). Phase 1: both repos filter-repo'd into `legacy/{dotnet,angular}`,
-merged (`--allow-unrelated-histories`, zero conflicts) → merge commit `305d69e`, 276 files, history
-preserved, tagged `pre-restructure`, pushed (branch = `master`). Phase 2 COMPLETE (`218acac`):
-classification reproduced WSD-012 (51 identical / 77 differing / 10+10 stack-only), twin extraction
-done, **138/138 reproduced for both dist stacks, mismatch=0/missing=0/extra=0** — zero-behaviour-change
-proof for both single-stack dists. **Phase 3 COMPLETE 2026-07-09 (`6acb8e5`, pushed;
-independently re-verified by Fable first):** `build.ps1` composer twin (byte-identical to `build.sh`
-across PS 5.1 + pwsh 7 × both stacks; pwsh 7.3 `-split` trap found+fixed), STRICT fidelity twins
-(missing fails; allowlist EMPTY — 138/138 with no exclusions), `validate-dist` twins (marker/JSON/
-bash -n/PS-AST/per-dist template-checks; red-tested ×4 defect classes), golden `dist/` committed
-(`linguist-generated`), CI (`ci.yml`: rebuild+diff freshness, validate, fidelity, hook suites ×2 legs),
-thin root installer wrappers delegating to the frozen dist installers (9-scenario smoke matrix).
-**Phase 4 COMPLETE 2026-07-10 (WSD-015):** `dist/monorepo` (148 files) composes via
-concat-by-default + authored-override + collision-error (111 authored snippets, 38 whole-file
-overrides, 5 derived markers); D4 token gate 1.17× (no fallback); hook union + post-write dispatch
-fixture-proven on 3 hosts (the `.ps1` sensitive-regex was NOT additive-safe — authored `-or`
-merge, see LEARNINGS); installers auto-detect mixed→monorepo (smoke-tested both legs); validate-dist
-green ×3, fidelity 138/138 ×2, hook suites 0 failures ×3, composer twins byte-identical ×3 hosts;
-CI gained monorepo legs. **Phase 5 COMPLETE 2026-07-11 (WSD-016):** D7 executed — governance
-layer (CLAUDE.md/AGENTS.md/DEVELOPING.md, rewritten single-repo; invariant #1 → single-source
-composition) + bom-fix twins (rescoped `ai-tech-lead-*` → `ai-tech-lead/`, twin-agreement tested
-9/9) + meta suite (WorkspaceBom now repo-wide; `-File` trap: snippet dirs are *named* `*.ps1`) +
-BACKLOG/workspace-decisions/plans/LEARNINGS all moved into the merged repo; `check-lockstep` +
-its tests retired; `release.ps1` retargeted (one stamp/CHANGELOG; gates = compose ×3 +
-validate-dist ×3 + hook suites ×3 + meta suite; fidelity deliberately NOT a release gate);
-root README + root CHANGELOG (v0.26.0 Unreleased) + legacy changelog freezes (diff-verified);
-CI gained the meta-suite leg; workspace root reduced to a pointer stub. Verified: build ×3 +
-dist freshness empty, validate-dist ×3 exit 0, fidelity ×2 exit 0 (dist untouched), meta suite
-0 failures. **Next: Phase 6** (validation → archive legacies → tag v0.26.0 — the release must
-retire/re-baseline the CI fidelity legs + fold the checkout v4→v5 bump). See WSD-012 deltas.
-Post-freeze follow-up: bump `actions/checkout` v4→v5 (GitHub Node 20 deprecation notice) in the
-**shipped** workflows (`src/core/.github/workflows/template-ci.yml` + `docs-sync-check.yml`, and
-thereby `dist/`) at the first release that deliberately changes shipped content (≥ v0.26.0) — they
-are fidelity-frozen until then. The authoring repo's own `ci.yml` was bumped 2026-07-09.
-**Phase 6 COMPLETE — v0.26.0 SHIPPED 2026-07-12 (WSD-018); B-25-EXEC DONE.** Validation ran green
-(deterministic gates; all installer stack-resolution paths + `docs-sync-check` — real-toolchain
-re-run against `dotnet new webapi` / `ng new` / a real mixed repo after the maintainer installed
-dotnet 8.0.422 + ng 21; monorepo `route-prompt` overlay both stacks both twins; per-stack exemplar
-routing dynamically confirmed disjoint — `.cs` under `api/`, `.ts` under `web/`). Release execution:
-`actions/checkout` v4→v5 in the shipped workflows, CI strict-fidelity legs retired, v0.26.0 CHANGELOG
-(root + 3 shipped stack changelogs), released via `release.ps1` → `ad717c7` (11/11 gates green; the
-first run correctly REFUSED — the shipped changelogs weren't stamped — fixed then green). `master`
-+ tag **v0.26.0** (`dcca7dd`) pushed; pointer READMEs on both legacy repos (dotnet `f018085`,
-angular `433f258`); **both legacy GitHub repos archived** (`isArchived:true`). Evals deliberately
-skipped for this release (not a gate, zero-behaviour-change, Anthropic-key-only harness — feeds
-B-23); full interactive `/bootstrap` stays developer-gated. Acceptance 1–6 met; abort rule never
-fired. **Next: B-27 (team wiki memory) as v0.27.0 in this repo.**
-
-The decision half is DONE: D1–D7 signed off 2026-07-06 (**WSD-012**), plan refreshed against
-v0.25.5 with fresh evidence, phase reorder (archive/tag only after Phase 6 validation), a
-binding **abort rule**, and the fidelity baseline pinned to Phase-0 freeze tags. Execute
-`MERGE-MIGRATION-PLAN.md` exactly — do not re-derive; deltas get appended to WSD-012.
-**Phase 0 first** (freeze both repos + record freeze-tag SHAs). **Freeze scope:** while this
-runs, all shipped-repo backlog items (B-15…B-23, B-29) pause; meta-only design work
-(B-21/B-22 P0 design docs, WSD entries) remains allowed. First merged version **v0.26.0**;
-B-27 follows as v0.27.0 in the merged repo.
+**B-25-EXEC is DONE — v0.26.0 shipped 2026-07-12 (WSD-018); see `meta/BACKLOG-DONE.md`.**
 
 ### B-26 · Accepted-debt watch list (no action unless symptoms appear)
 - `route-prompt` keyword-grep intent classification is brittle by design (accepted 2026-07-01);
