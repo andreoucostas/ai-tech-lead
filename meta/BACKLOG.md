@@ -497,47 +497,7 @@ the other scenarios for prompts that specify the mechanism rather than the goal.
 **Not:** do not delete `angular-form-control` — its `formInputs`/`controlAsInput` signals are sound
 and the fixture is reusable. The defect is the prompt and the `cva` conflation, not the harness.
 
-### B-76 · Nothing checks that a shipped doc's description of a command matches that command
-**Effort:** M · **Priority:** P2 doc truth · **Invariants:** #6 · found 2026-08-01 shipping v0.42.0
-
-**Why:** three false claims were shipping simultaneously, each asserting a command does maintenance
-it does not do:
-
-- `FRAMEWORK-CONTEXT.md` and all three `README.md`s: *"'Detected Framework Packages' and 'Known
-  Hazard Areas' are also refreshed by `/docs-sync`"*. `grep -i hazard` over `docs-sync.md` returned
-  **nothing**. The packages half was true, which is what made the sentence survive reading.
-- `rebootstrap.md`'s own frontmatter `description`: *"refresh conventions, **hazards**, and mined
-  skills"*. `grep -i hazard` over its body returned **only that line**. This is the highest-salience
-  of the three — the description drives model routing and is what the developer sees in the command
-  picker.
-- `.github/prompts/docs-sync.prompt.md` enumerated the docs-sync workflow as four steps, omitting
-  Step 4 (FRAMEWORK-CONTEXT) and the AGENTS.md/rails half of Step 2 — and it is a `src/core` file,
-  so it ships to all three dists as the only workflow summary Copilot gets.
-
-The first two survived from introduction to v0.41.0. `no-dead-instruction` matches script
-invocations only (`pwsh|bash|powershell <path>.{ps1,sh}`) and asserts the file resolves; `DocTruth`
-covers authoring-repo facts (paths, version stamps). Neither has any notion of *"this prose
-describes that command"*.
-
-**Do:** add a gate covering **all three shapes** — a check aimed only at the first would have caught
-one of three:
-
-1. **Third-party attribution** — `refreshed by /X`, `checked by /X`, `asserted by /X`: assert the
-   named command's body mentions the subject noun.
-2. **Frontmatter self-description** — assert each `description:` verb-phrase subject appears in its
-   own body.
-3. **Step enumeration** — where a doc lists another doc's steps, assert count and order match.
-
-Red-test each shape with a planted false claim.
-
-**Cross-links:** B-55 (same family, but scoped to *external vendor* behavior claims rather than our
-own commands), B-67 (`no-dead-instruction` blind to markdown link targets — the third blind spot in
-the same check). Consider closing all three as one hardening pass on that check.
-
-**Not swept:** other `checked by /X` / `asserted by /X` phrasings across `dist/*` were not audited
-when the three above were fixed — only the exact `refreshed by /docs-sync` string was.
-
----
+**B-76 is DONE (2026-08-18) — see `meta/BACKLOG-DONE.md`.**
 
 ### B-79 · The maintainer box runs the MSIX build of PowerShell 7, and it is the release's largest single cost
 **Effort:** S (environment change, no code) · **Priority:** P3 · found 2026-08-01 profiling the release
@@ -2967,42 +2927,7 @@ critique per Maintenance rule 1 before code changes, exactly as B-129 itself req
 
 **Status:** filed 2026-08-16, not started, not gated.
 
-### B-141 · `DocTruth` has two Windows-PowerShell-5.1 defects, and one of its gates has never run there
-**Effort:** S · **Priority:** P2 · filed 2026-08-16 while shipping B-82 · **Invariants:** #4
-
-**Why:** `.claude/hooks/tests/DocTruth.Tests.ps1` is green under pwsh 7 and reports **two failures**
-under Windows PowerShell 5.1, on an unmodified tree. Reproduced directly:
-
-```
-> powershell.exe -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/tests/DocTruth.Tests.ps1
-[FAIL] no doc documents the phantom marker ... documented in: .claude\hooks\tests\DocTruth.Tests.ps1
-[FAIL] every live backlog item has a unique id -- BACKLOG.md yielded zero live item ids -- the heading grammar changed and this gate is blind
-DocTruth.Tests: 6 passed, 2 failed, 0 skipped
-```
-
-(The first failure's real message quotes the phantom marker token itself; it is paraphrased here
-because this file is one of the documents that check scans — writing it out verbatim turns this
-entry into the very violation it describes. That is not a footnote: **it happened**, the gate caught
-this entry on the first run, which is a small live demonstration that the check works.)
-
-1. **`Get-ChildItem -LiteralPath $repoRoot -Recurse -File -Include *.md` does not filter under 5.1.**
-   The scan reads every file in the repo, including `.ps1`, so the test flags **its own source** for
-   containing the forbidden token inside an error message. On a 5.1-only box this is a false failure
-   that blocks a release.
-2. **`meta/BACKLOG.md` is BOM-less UTF-8**, so 5.1's `Get-Content` decodes it against the system
-   codepage; the `### B-nn ·` heading grammar (`·` is non-ASCII) stops matching and the scan yields
-   zero ids. The vacuous-pass guard catches this and says so — **the guard is working exactly as
-   designed** — but the consequence is that the duplicate-id gate has **never actually run** under
-   5.1, and B-114 (two entries claiming the same id) is precisely the defect it exists to catch.
-
-**Do:** (1) replace the `-Include` filter with an explicit `Where-Object { $_.Extension -eq '.md' }`,
-or `-Filter *.md`, and red-test under 5.1 specifically; (2) read `meta/BACKLOG.md` with an
-absolute-path `[IO.File]::ReadAllText`, which is the pattern `template-checks.ps1:31-36` already
-documents for exactly this trap on `CHANGELOG.md` — the fix existed three files away and this file
-never adopted it. Then add a 5.1 arm so the divergence cannot return silently.
-
-**Note the shape of this finding:** the fix pattern was already written down, with a comment
-explaining why, in a sibling file. Prose does not propagate; only a gate does.
+**B-141 is DONE (2026-08-18) — see `meta/BACKLOG-DONE.md`.**
 
 ### B-142 · The cross-file numbered-rule citations are ungated — B-58/B-60's blind spot, one file over
 **Effort:** S · **Priority:** P3 · filed 2026-08-16 by the B-58/B-60/B-82 RCA · **Invariants:** #1
@@ -3059,6 +2984,51 @@ and Copilot CLI runs are not on the constrained Claude budget.
 
 **Not:** do not "fix" the READMEs by guessing a safer syntax — the point is to know, and an
 unverified replacement is the same defect wearing different punctuation.
+
+### B-146 · RCA: the backlog sent work to four finished entries, and a design's own worked example was wrong
+**Effort:** S · **Priority:** P3 · filed 2026-08-18 (RCA of the B-141 + B-76 delivery)
+
+**What happened.** A triage pass before starting work found **four entries listed as open whose work
+was finished**: B-25-EXEC (done 2026-07-12, its own body has said `B-25-EXEC DONE` for five weeks),
+B-46 (both parts shipped, v0.56.0 and v0.57.0), B-102 (core fix v0.45.0, residues delivered as
+B-104/105/106), and B-17 (rejected on evidence 2026-08-17). Separately, the first B-76 design cited
+`SECURITY_FINDINGS.md:3` as a worked example its own rule provably does not match.
+
+**Why no gate caught the four.** `BacklogHygiene.Tests.ps1` reads the **heading** for a completion
+marker. B-25-EXEC's heading never carried one; B-46's said `PARTIALLY DONE … STILL OPEN`, which the
+gate explicitly and correctly exempts; B-102's heading was a defect statement; B-17's rejection was
+never written to the backlog at all — it existed only in a commit message and two plan files, and
+`meta/decisions-index.md` did not carry it either. So the gate was working as specified in all four
+cases. **The specification is the gap:** nothing correlates an entry's *body* against its heading,
+and nothing at all notices a decision recorded outside the backlog.
+
+**What else is exposed to the same class.** This is B-83's thesis with four more instances, and the
+2026-08-16 audit already flagged **13 UNCLEAR entries** (B-50, B-64, B-65, B-66, B-70, B-72, B-96,
+B-97, B-98, B-101, B-102, B-112, B-117) that were deliberately not auto-closed. B-102 was one of
+those thirteen and turned out to be closeable, which suggests the rest are worth a read rather than
+a re-file. Two cheap, non-NLP checks would have caught three of these four:
+
+1. **Body-vs-heading disagreement** — an entry whose body contains `DONE`/`SHIPPED`/`COMPLETE` in a
+   position of assertion while its heading claims open. B-83 forbids trying to make "does a decision
+   contradict this entry" deterministic, and that is right; this is narrower and *is* a string match.
+2. **Decisions recorded outside the backlog** — a commit whose message says REJECTED/ACCEPTED for a
+   `B-nn` that is still open in `meta/BACKLOG.md`. Also a string match.
+
+**The second finding is about designs, not the backlog, and is the more uncomfortable one.** The
+B-76 rev-1 design listed three live claims as covered by its rule. The reviewer had *surveyed* the
+corpus with grep and *reasoned* about the extraction rule — but never ran the proposed rule against
+the real lines. One of the three was wrong, and the adversarial pass found it by doing exactly what
+the design had not: applying the rule to the actual file content. Maintenance model #3 says nothing
+enters the record as observed unless you observed it; a **worked example in a design is a claim of
+observation**, and this one was inference wearing its clothes. The rule generalises: if a design
+asserts "this instance is covered", that assertion is only worth what the run behind it is worth.
+
+**Do:** add the two string-match checks above to `BacklogHygiene.Tests.ps1` (both red-testable, both
+cheap); read the remaining UNCLEAR entries; and consider whether the Definition of done for a design
+document should require that any worked example be produced by executing the proposed rule rather
+than by reading. Note the third item is process, not a gate — do not pretend otherwise.
+
+**Cross-links:** B-83 (the parent class), B-84 (the mutation kit the red-tests want), B-64.
 
 ### B-144 · RCA: a shipped `set -e` abort broke every Bash update, and only a smoke install found it
 **Effort:** S (fix shipped in v0.54.0) · **Priority:** P2 · filed 2026-08-17 while shipping B-81

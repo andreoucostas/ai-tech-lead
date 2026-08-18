@@ -3689,3 +3689,61 @@ about what `/bootstrap` *writes*. Adjacent, not the same.
   unavailable` skip (B-106) — were filed separately and have all since been delivered. Kept as a
   standing lesson: a probe that tests a **name** rather than the **capability** reports health it
   cannot deliver, and a skip that misreports its cause is indistinguishable from coverage.
+
+- **B-141** — DONE **2026-08-18**. `DocTruth.Tests.ps1` was green under pwsh 7 and failed 2 of 8
+  under Windows PowerShell 5.1 on an unmodified tree. `-Include *.md` does not filter under 5.1, so
+  the phantom-marker scan read every file in the repo and flagged its own source; and
+  `meta/BACKLOG.md` is BOM-less UTF-8, so 5.1 decoded it against the system codepage, the non-ASCII
+  middle dot in the `### B-nn` heading grammar stopped matching, and the duplicate-id gate yielded
+  zero ids. The vacuous-pass guard caught the second one and said so — working exactly as designed —
+  but the consequence is that **the duplicate-id gate had never once run under 5.1**, and B-114 (two
+  entries claiming one id) is precisely what it exists to catch. Now `-Filter` and an explicit
+  `[IO.File]::ReadAllLines(..., UTF8)`, the pattern `template-checks.ps1:31-36` already documented
+  for this exact trap three files away. A 5.1 arm was added so the divergence cannot return silently.
+
+  **The arm's first version reported `[ok]` when it had run nothing** — under 5.1 itself, and on a
+  host with no `powershell.exe`. It now reports SKIP with the reason in both cases. A leg that
+  verified nothing must not be indistinguishable from one that passed; that is B-71's class in its
+  stronger form, appearing inside the very change that exists to close a never-ran-there gap.
+
+  Verified by the reviewer, not from the implementer's report: pwsh 7 → 9/0/0 exit 0; 5.1 → 8/0/1
+  exit 0; reverting `-Filter` alone → 5.1 red on the phantom-marker case; reverting the UTF-8 read
+  alone → 5.1 red on zero-live-ids; each mutation asserted to have applied before running.
+
+- **B-76** — DONE **2026-08-18**. `.claude/hooks/tests/DocClaims.Tests.ps1` (new, meta-only, no twin
+  per WSD-005) guards that a shipped doc's description of a command matches that command. It is a
+  **literal registry of six claim contracts** plus a **narrow completeness net** that fails on any
+  new maintenance-claim-shaped line not yet adjudicated — `DocTruth`'s existing heading-mirror
+  pattern (explicit table + assertions that nothing on either side is missing from it). Per row it
+  asserts both directions: the claim still exists in the claiming file, and it is true of the
+  command. Frontmatter is stripped before the body search, which is what makes the `rebootstrap`
+  row test the defect that actually happened — a promise that lived only in the description.
+
+  **The first design was rejected on premise, and the rejection was right.** Rev 1 proposed
+  `validate-dist` check 13: three lexical extractors over ~91 Markdown files per dist, in both
+  twins. The adversarial pass killed it and every load-bearing finding was re-verified before
+  acceptance. Its subject extractor did not parse the real lines — `SECURITY_FINDINGS.md:3` is
+  `> Managed by /security-review`, with no quoted subject *preceding* the attribution, so the rule
+  skipped the very anchor rev 1 listed as covered; `README.md:141` carries three attributions on one
+  line and a per-line single match missed two; and it reaped `CHANGELOG.md` history, which would let
+  a dated record of what we once believed block a current command edit — the exact reason
+  `DocTruth.Tests.ps1:37` already excludes `CHANGELOG.md` by name. Its description-vs-body shape
+  produced findings in **95 of 101 files** under a generous 38-word stoplist: `docs-sync.md`'s
+  description ends *"Read-mostly; safe to run anytime"*, a correct usage note whose words appear
+  nowhere in the body and should not. **Rev 1 was inferring a subject from arbitrary prose, which is
+  NLP wearing a regex costume** — the thing `DocTruth`'s own header already refuses to build.
+
+  Moving it to a meta test also deleted the whole twin-divergence class the critique raised (case
+  folding, `\s` semantics, YAML folded scalars — B-59's live class, re-armed).
+
+  Verified: green on both PowerShell hosts, BOM present; all six `-RedTest` arms observed red; the
+  completeness grammar matched **none** of six provenance phrases (`Auto-populated by`, `Used by`,
+  `Managed by`, `drafted by`, `spawned by`, `Invoked in parallel by`) and yielded 9 live hits, all
+  genuine and all registered. Decisively: **all three historical defects were reconstructed in a
+  scratch copy of `dist/dotnet` and all three were caught**, with each mutation asserted to have
+  applied first and the copy green again after restore.
+
+  **Honest limit, recorded rather than smoothed over:** the completeness net recognises seven verbs.
+  A new false claim phrased *"is kept current by `/docs-sync`"* would not be discovered. That is a
+  deliberate precision-over-recall trade — the alternative fired on 94% of correct files — but the
+  net has a known mesh size and the registry, not the net, is the floor.
