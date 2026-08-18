@@ -201,55 +201,84 @@ only by `postToolUse`. This reverses the live 1.0.68 observation on which
 then update the shipped matrix/status note and any hook comments that demote Copilot post-write
 feedback. Normal release path; do not fold the shipped change into the meta-only drill PR.
 
-### B-52 · Verify Copilot CLI fires *both* `userPromptSubmitted` hooks and injects both payloads (v0.33.0 Boy Scout parity claim)
-**Effort:** S · **Priority:** P2 capability honesty · **Invariants:** #5 · **execution vehicle: B-49's quarterly recert / B-43**
+**B-52 is DONE (2026-08-18) — answered by live canary; it uncovered a P1, filed as B-147.
+See `meta/BACKLOG-DONE.md`.**
 
-**Why:** v0.33.0 registered a **second** `userPromptSubmitted` hook (`boy-scout-check`, after
-`route-prompt`) in `.github/hooks/hooks.json` to bring the Boy Scout nudge to Copilot, and updated
-`docs/enforcement-surfaces.md` to claim "Guaranteed (soft), CLI ≥ 1.0.65" for the Copilot CLI Boy
-Scout row. The prior live canary (2026-07-04, CLI 1.0.68) only ever verified a **single**
-`userPromptSubmitted` hook (`route-prompt`) is consumed. Whether Copilot CLI runs **multiple**
-`userPromptSubmitted` entries and merges **all** their `additionalContext` into the model-facing
-prompt is **unverified** — if it honors only the first (or last), the shipped Boy Scout-on-Copilot
-guarantee is false and the matrix row overclaims (the exact honesty failure the doc forbids at its
-own line 34). VS Code agent-mode consumption remains unverified regardless (shared with B-43).
+### B-147 · **P1** — Copilot CLI delivers only the LAST `userPromptSubmitted` hook, so `session-start` and `route-prompt` injection are silently dead
+**Effort:** M (shipped fix + design) · **Priority:** **P1** — three shipped capability rows are false
+on a supported surface, one of them the security row · **Invariants:** #5 #7 · found 2026-08-18 by
+running B-52's canary
 
-**Do:** a two-hook sentinel canary (reuse the B-03/B-43 canary design). In a trusted temp folder,
-register two `userPromptSubmitted` hooks in `.github/hooks/hooks.json`, each emitting a **distinct**
-out-of-band token (present in no file) via the dual JSON shape
-(`additionalContext` + `hookSpecificOutput.additionalContext`); run
-`copilot -C <dir> --allow-all-tools -p "echo any CANARY-XXXX tokens you were given"` and confirm the
-model echoes **both** tokens. Both → re-date the matrix row as verified; one/neither → apply the
-plan's documented fallback (fold Boy Scout into `route-prompt` without its early-exit) and correct
-the `enforcement-surfaces.md` row. Prereq (verified 2026-07-20): the temp folder must be in
-`~/.copilot/config.json` `trustedFolders` or repo hooks don't load in `-p` mode; and `hooks.json`
-Windows paths must use forward slashes (backslashes are an invalid JSON escape — observed rejection).
+**The observation.** Copilot CLI **1.0.79/1.0.80**, live, on the maintainer box, folder trusted:
+with more than one `userPromptSubmitted` hook registered, **only the last entry's
+`additionalContext` reaches the model.** Every earlier entry's payload is discarded silently — the
+hook process runs, exits 0, emits valid JSON, and its context never arrives.
 
-**Blocked (2026-07-20, re-confirmed same day):** attempted live twice; the canary is built and
-**committed at `meta/canaries/b52-copilot-two-hook/`** (two env-token hooks so the tokens are in no
-file; run recipe + result-reading in its README), and folder-trust confirmed loading repo hooks in
-`-p` mode, but the Copilot account hit its **monthly quota** (`402 Payment required`,
-`AI Credits 0`) so no model turn could run — including a 2026-07-20 retry after the CLI drifted to
-1.0.71. **Next action: re-run the committed canary once monthly Copilot credits reset (~Aug 2026)
-or on another account** — no rebuild needed. Until then the v0.33.0 CLI Boy Scout row rests on
-reasoning, not the live observation its wording implies.
+Four runs, each ~1 AI Credit, designed so that each rules out one alternative explanation:
 
-**UNBLOCKED 2026-08-01.** The monthly quota has reset: a trivial probe
-(`copilot --allow-all-tools -p "Reply with exactly: PROBE-OK"`, CLI 1.0.71) completed a real model
-turn — `PROBE-OK` echoed, exit 0, `AI Credits 2.98` — where every 2026-07-20 attempt died at `402 /
-AI Credits 0`. **What this observation does and does not establish:** it establishes that the
-account can run a model turn. It does **not** run the canary — that still needs the interactive
-folder-trust step (no non-interactive flag exists), which the probe deliberately skipped. So the
-kit is ready and the blocker is gone; the two-hook result is still unobserved. Run it before the
-next monthly cycle. Hazard for whoever runs it: on this box `copilot.cmd` fails with `'"node"' is
-not recognized` because the session `PATH` is the corrupted one — prepend
-`C:\Program Files\nodejs` (and invoke `copilot.cmd` by its absolute path,
-`%APPDATA%\npm\copilot.cmd`, since it is not on `PATH` either).
+| # | registration | prompt | result |
+|---|---|---|---|
+| 1 | 2 hooks, tokens A then B | "echo any CANARY tokens" | only **B** (2nd) |
+| 2 | 2 hooks, **tokens swapped between the scripts** | same | only the **2nd position's** token — so it is *position*, not a broken script |
+| 3 | 3 hooks, A/B/C | "list every token, one per line, or say NONE" | only **C** (3rd) |
+| 4 | 3 hooks, **structurally distinct** messages modelled on the real ones | "list every identifier" | only **C** (3rd) — so it is *not* context de-duplication of similar strings |
 
-**Not:** don't relax the `enforcement-surfaces.md` wording pre-emptively — it already keeps the VS
-Code hedge; this item either upgrades the CLI row to verified or triggers the fallback. Cross-links:
-B-43 (recert cadence — run this in the same quarterly slot), B-50 (the sibling `postToolUse`
-capability-honesty item from drill #0), B-03 (original canary design).
+Run 2 is the control that matters: swapping which script emits which token moved the surviving
+token with the *slot*, not with the script. Run 4 kills the "Copilot deduped near-identical
+context" reading, which was the last innocent explanation available.
+
+**Why this is P1 and not a documentation nit.** The shipped `.github/hooks/hooks.json` registers
+**three** `userPromptSubmitted` entries in all three dists, in this order:
+
+```
+1. .claude/hooks/session-start.*        <- discarded
+2. .claude/hooks/route-prompt.*         <- discarded
+3. .claude/hooks/boy-scout-check.* --mode deliver   <- delivered
+```
+
+So on Copilot CLI the framework's **NL intent routing and its session-start context are both
+inert**, while the Boy Scout nudge — the newest and least load-bearing of the three — is the only
+one that survives. `docs/enforcement-surfaces.md` currently asserts the opposite in three rows:
+
+- **Routing** (line 41): *"per-prompt injection (`route-prompt` JSON `additionalContext`, **CLI ≥
+  v1.0.65**; ignored by older versions)"* — false on ≥1.0.79 with the shipped registration.
+- **Plan-gate** (line 42): *"Injected per-prompt (CLI ≥ v1.0.65) + Instructed"* — false.
+- **Security pass** (line 43): *"Injected per-prompt by `route-prompt` + Instructed"* — false, and
+  this is the row that tells a consumer their auth/money/secrets work gets an automatic
+  security-review nudge.
+
+**What is NOT lost, stated so severity is not overstated.** All three rows are *"injected **+**
+instructed"*, and the instructed half is unaffected: `AGENTS.md` §1 and the
+`framework-rules.instructions.md` carrier still reach the model on every turn. The belt holds; the
+braces are cut. The framework's deliberate redundancy is exactly why this was survivable long
+enough to go unnoticed — and also why nothing user-visible failed loudly enough to catch it.
+
+**Why no gate caught it.** Nothing here has ever tested **multi-hook** delivery. The 2026-07-04
+canary that established `userPromptSubmitted` consumption registered **one** hook and was correct
+for that case; v0.33.0 then added a second entry and v0.5x a third, each verified only by "the hook
+runs and emits the right JSON" — which is still true and is not the property that matters.
+`hook-registration` (validate-dist check 8) asserts that every registered script *exists*, never
+that its output is *consumed*. This is the enforcement-surface analogue of B-144: the artifact
+arrived, the run "succeeded", and the outcome never happened.
+
+**Do:** (a) merge the three `userPromptSubmitted` emissions into **one** Copilot hook entry that
+composes all three payloads — B-52's documented fallback said to fold Boy Scout into `route-prompt`;
+the real fix is one dispatcher entry covering session-start, routing and the Boy Scout queue, with
+the ordering/precedence decided deliberately and recorded in a WSD. Claude Code is unaffected
+(`.claude/settings.json` is a separate registration and Claude consumes all of them) so the fix must
+not disturb it. (b) Correct the three matrix rows and the line-53 narrative in the same release.
+(c) Add a **multi-hook** arm to the canary kit and to the host-certification table, since the
+single-hook canary is what let this through. (d) Re-run after any Copilot CLI minor bump — this is
+vendor behaviour and could change back.
+
+**Not:** do not "fix" it by reordering so `route-prompt` is last. That trades one silently-dead hook
+for another and encodes a vendor bug as a layout convention.
+
+**Cross-links:** B-52 (whose canary found this — its own question is answered: the Boy Scout row is
+the *only* one of the three that was true, by the accident of being registered last), B-55 (the
+vendor-fact restatement problem — this correction has to land in ~6 places), B-43 (recert cadence:
+this is what the cadence exists to catch), B-144 (same "the run succeeded, the outcome did not"
+shape on the deterministic side).
 
 ### B-55 · Vendor-behavior facts are restated across ~6 shipped surfaces with no single source
 **Effort:** M · **Priority:** P2 doc truth · **Invariants:** #5, #6

@@ -3825,3 +3825,30 @@ about what `/bootstrap` *writes*. Adjacent, not the same.
   **Residue, deliberately not closed here:** the architecture is still one process per assertion, so
   suite cost remains a direct function of assertion count and any fixed ceiling will be outgrown
   again. That is **B-138**, which owns it with its own measurements.
+
+- **B-52** — DONE **2026-08-18**. The canary finally ran, and **the answer is worse than the
+  question**. B-52 asked whether Copilot CLI fires *both* registered `userPromptSubmitted` hooks and
+  merges both payloads, because v0.33.0's shipped Boy Scout claim depends on it. It does not: on CLI
+  **1.0.79/1.0.80**, **only the last entry's `additionalContext` reaches the model**, and every
+  earlier entry is discarded silently while its hook process runs, exits 0 and emits valid JSON.
+
+  Four runs, each ruling out one alternative reading: two hooks → only the 2nd; **tokens swapped
+  between the two scripts** → the surviving token moved with the *slot*, not the script, so it is
+  position and not a broken hook; three hooks → only the 3rd; three hooks with **structurally
+  distinct** messages → still only the 3rd, which kills the "Copilot deduped similar context"
+  explanation. ~4 AI Credits total.
+
+  **The irony worth recording:** the Boy Scout row this entry was filed to doubt is the *only* one
+  of the three that is true — by the accident of being registered last. The rows that are false are
+  Routing, Plan-gate and Security pass, all of which rest on `route-prompt`, registered second of
+  three. That is now **B-147 (P1)**, which owns the shipped fix; this entry is closed because its own
+  question is answered.
+
+  **Two prerequisites in this entry's own text were stale and are corrected for whoever reads the
+  kit next.** The monthly-quota block was gone (it cleared 2026-08-01). And the "interactive
+  folder-trust, no non-interactive flag exists" blocker — which is why this sat unrun for a month —
+  is true of the CLI's UX but not of the trust store: writing the scratch path into
+  `~/.copilot/config.json`'s `trustedFolders` array is honoured exactly as if the prompt had been
+  accepted. That workaround was already recorded in the kit's own README footer on 2026-08-13 and
+  the entry above never picked it up, so the item stayed labelled "blocked" for five days after it
+  wasn't. Trust store was backed up and restored byte-identical on every run.

@@ -210,14 +210,54 @@
           "tok": 1752
         },
         {
+          "path": "docs/ARCHITECTURE.md",
+          "chars": 11488,
+          "tok": 2872
+        },
+        {
+          "path": "docs/REVIEW-GUIDE.md",
+          "chars": 5201,
+          "tok": 1300
+        },
+        {
+          "path": "docs/architecture-decisions.md",
+          "chars": 301,
+          "tok": 75
+        },
+        {
+          "path": "docs/ci-integration.md",
+          "chars": 6339,
+          "tok": 1585
+        },
+        {
           "path": "docs/defaults.md",
           "chars": 8060,
           "tok": 2015
         },
         {
+          "path": "docs/enforcement-surfaces.md",
+          "chars": 12424,
+          "tok": 3106
+        },
+        {
+          "path": "docs/playbook.md",
+          "chars": 9649,
+          "tok": 2412
+        },
+        {
+          "path": "docs/presentation/TALKING-POINTS.md",
+          "chars": 8828,
+          "tok": 2207
+        },
+        {
           "path": "docs/wiki/INDEX.md",
           "chars": 380,
           "tok": 95
+        },
+        {
+          "path": "docs/wiki/_template.md",
+          "chars": 413,
+          "tok": 103
         }
       ],
       "session": [
@@ -634,14 +674,54 @@
           "tok": 1722
         },
         {
+          "path": "docs/ARCHITECTURE.md",
+          "chars": 11664,
+          "tok": 2916
+        },
+        {
+          "path": "docs/REVIEW-GUIDE.md",
+          "chars": 5386,
+          "tok": 1346
+        },
+        {
+          "path": "docs/architecture-decisions.md",
+          "chars": 301,
+          "tok": 75
+        },
+        {
+          "path": "docs/ci-integration.md",
+          "chars": 6536,
+          "tok": 1634
+        },
+        {
           "path": "docs/defaults.md",
           "chars": 8297,
           "tok": 2074
         },
         {
+          "path": "docs/enforcement-surfaces.md",
+          "chars": 12424,
+          "tok": 3106
+        },
+        {
+          "path": "docs/playbook.md",
+          "chars": 9691,
+          "tok": 2423
+        },
+        {
+          "path": "docs/presentation/TALKING-POINTS.md",
+          "chars": 8828,
+          "tok": 2207
+        },
+        {
           "path": "docs/wiki/INDEX.md",
           "chars": 380,
           "tok": 95
+        },
+        {
+          "path": "docs/wiki/_template.md",
+          "chars": 413,
+          "tok": 103
         }
       ],
       "session": [
@@ -1078,14 +1158,54 @@
           "tok": 1995
         },
         {
+          "path": "docs/ARCHITECTURE.md",
+          "chars": 12633,
+          "tok": 3158
+        },
+        {
+          "path": "docs/REVIEW-GUIDE.md",
+          "chars": 6181,
+          "tok": 1545
+        },
+        {
+          "path": "docs/architecture-decisions.md",
+          "chars": 301,
+          "tok": 75
+        },
+        {
+          "path": "docs/ci-integration.md",
+          "chars": 7460,
+          "tok": 1865
+        },
+        {
           "path": "docs/defaults.md",
           "chars": 16309,
           "tok": 4077
         },
         {
+          "path": "docs/enforcement-surfaces.md",
+          "chars": 12424,
+          "tok": 3106
+        },
+        {
+          "path": "docs/playbook.md",
+          "chars": 10309,
+          "tok": 2577
+        },
+        {
+          "path": "docs/presentation/TALKING-POINTS.md",
+          "chars": 8828,
+          "tok": 2207
+        },
+        {
           "path": "docs/wiki/INDEX.md",
           "chars": 380,
           "tok": 95
+        },
+        {
+          "path": "docs/wiki/_template.md",
+          "chars": 413,
+          "tok": 103
         }
       ],
       "session": [
