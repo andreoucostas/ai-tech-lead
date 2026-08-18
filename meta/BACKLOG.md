@@ -227,18 +227,32 @@ Run 2 is the control that matters: swapping which script emits which token moved
 token with the *slot*, not with the script. Run 4 kills the "Copilot deduped near-identical
 context" reading, which was the last innocent explanation available.
 
+> **CORRECTION, same day, before any fix was designed — the blast radius is smaller than this
+> entry first claimed, and the error is worth keeping.** The first version of this entry said
+> **three** hooks were registered on `userPromptSubmitted` and that `session-start` was therefore
+> dead too. That was wrong. It came from extracting the registration with
+> `sed -n '/userPromptSubmitted/,/]/p'`, which matched the `_comment` line — a long prose comment
+> that *mentions* `userPromptSubmitted` — and so began the range early and swept in the separate
+> `sessionStart` block. A structural read of the file shows the truth: `session-start` is
+> registered on **`sessionStart`**, a different event, and is **unaffected**. This is precisely the
+> "nothing enters the record as observed unless you observed it" failure (Maintenance model #3),
+> committed on the same day as an RCA about that class (B-146), by grepping a file instead of
+> reading its structure. Left visible rather than rewritten.
+
 **Why this is P1 and not a documentation nit.** The shipped `.github/hooks/hooks.json` registers
-**three** `userPromptSubmitted` entries in all three dists, in this order:
+**two** `userPromptSubmitted` entries in all three dists, in this order:
 
 ```
-1. .claude/hooks/session-start.*        <- discarded
-2. .claude/hooks/route-prompt.*         <- discarded
-3. .claude/hooks/boy-scout-check.* --mode deliver   <- delivered
+1. .claude/hooks/route-prompt.*                     <- DISCARDED
+2. .claude/hooks/boy-scout-check.* --mode deliver   <- delivered
 ```
 
-So on Copilot CLI the framework's **NL intent routing and its session-start context are both
-inert**, while the Boy Scout nudge — the newest and least load-bearing of the three — is the only
-one that survives. `docs/enforcement-surfaces.md` currently asserts the opposite in three rows:
+So on Copilot CLI the framework's **NL intent routing is inert**, while the Boy Scout nudge — the
+newest and least load-bearing of the two — is the only one that survives.
+(`session-start` is on the `sessionStart` event and is fine; `guard` is on `preToolUse` and is fine;
+the `agentStop` Boy Scout scan is fine. The damage is confined to the one event with two
+registrations — but that is the event carrying the routing rail.)
+`docs/enforcement-surfaces.md` currently asserts the opposite in three rows:
 
 - **Routing** (line 41): *"per-prompt injection (`route-prompt` JSON `additionalContext`, **CLI ≥
   v1.0.65**; ignored by older versions)"* — false on ≥1.0.79 with the shipped registration.
@@ -261,15 +275,22 @@ runs and emits the right JSON" — which is still true and is not the property t
 that its output is *consumed*. This is the enforcement-surface analogue of B-144: the artifact
 arrived, the run "succeeded", and the outcome never happened.
 
-**Do:** (a) merge the three `userPromptSubmitted` emissions into **one** Copilot hook entry that
-composes all three payloads — B-52's documented fallback said to fold Boy Scout into `route-prompt`;
-the real fix is one dispatcher entry covering session-start, routing and the Boy Scout queue, with
-the ordering/precedence decided deliberately and recorded in a WSD. Claude Code is unaffected
-(`.claude/settings.json` is a separate registration and Claude consumes all of them) so the fix must
-not disturb it. (b) Correct the three matrix rows and the line-53 narrative in the same release.
-(c) Add a **multi-hook** arm to the canary kit and to the host-certification table, since the
-single-hook canary is what let this through. (d) Re-run after any Copilot CLI minor bump — this is
-vendor behaviour and could change back.
+**Do:** (a) collapse the **two** `userPromptSubmitted` entries into **one** Copilot hook entry whose
+`additionalContext` carries both payloads — this is B-52's own documented fallback ("fold Boy Scout
+into `route-prompt` without its early-exit"), now backed by an observation instead of a hypothesis.
+Decide and record the composition order in a WSD: routing salience is the load-bearing half and the
+Boy Scout queue is advisory, so routing text should lead. Claude Code is unaffected —
+`.claude/settings.json` is a separate registration and Claude consumes every entry — so the fix must
+be confined to `src/core/.github/hooks/hooks.json` and must not disturb the Claude side. Both twins.
+(b) Correct the three matrix rows and the line-53 narrative in the same release, and delete the
+`_comment`'s now-false sentence "route-prompt remains first under userPromptSubmitted and provides
+routing/plan-gate/security salience where additionalContext is consumed" — being first is exactly
+what makes it *not* consumed. (c) Add a **multi-hook** arm to the canary kit and a row to the
+host-certification table; a single-hook canary is what let this through for two minor versions.
+(d) Consider a `validate-dist` check that fails when more than one hook is registered on a Copilot
+event that only honours one — the machine-checkable residue of this whole finding. (e) Re-run the
+canary after any Copilot CLI minor bump: this is vendor behaviour and could change back without
+notice, in which case a collapsed single hook still works and simply stops being necessary.
 
 **Not:** do not "fix" it by reordering so `route-prompt` is last. That trades one silently-dead hook
 for another and encodes a vendor bug as a layout convention.
