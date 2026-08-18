@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.60.0 — Unreleased
+## 0.60.0 — 2026-08-18
 
 **The write-guard can no longer go inert, and its error policy is split by confidence (B-59,
 WSD-046).** All 20 `grep` sites in `guard.sh` route through an error-aware helper: exit 0 match /

@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.60.0 — Unreleased
+## 0.60.0 — 2026-08-18
 
 **The write guard now inspects mixed-case file extensions on every surface.** A file named
 `Foo.CS` or `app.TS` was checked by the PowerShell guard and silently skipped by the Bash one,
