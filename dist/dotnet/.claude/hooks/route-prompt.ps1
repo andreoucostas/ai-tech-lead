@@ -111,6 +111,7 @@ Before writing code: post a short plan (files to change, order of operations, ho
 
 $inputJson = [Console]::In.ReadToEnd()
 if ([string]::IsNullOrEmpty($inputJson)) { exit 0 }
+$isClaude = $inputJson -match '"hook_event_name"'
 
 # Try ConvertFrom-Json first (handles escapes correctly); fall back to regex if it fails.
 $prompt = ''
@@ -122,12 +123,13 @@ try {
         $prompt = $Matches[1]
     }
 }
-if ([string]::IsNullOrEmpty($prompt)) { exit 0 }
+if ([string]::IsNullOrEmpty($prompt) -and $isClaude) { exit 0 }
 
 # Skip if the user already chose a workflow.
-if ($prompt.StartsWith('/')) { exit 0 }
+if ($prompt.StartsWith('/') -and $isClaude) { exit 0 }
 
-$lc = $prompt.ToLower()
+$routeEligible = -not [string]::IsNullOrEmpty($prompt) -and -not $prompt.StartsWith('/')
+$lc = if ($routeEligible) { $prompt.ToLower() } else { '' }
 
 # Priority order: review > debt > design > test > fix > refactor > feature
 $intent = ''
@@ -151,7 +153,7 @@ if ($isQuestion -and -not $hasImperative -and $intent -in @('fix','feature','ref
 # exclusive intent, so a security-relevant feature still gets the feature rails.
 $sensitive = $lc -match '(payment|balance|ledger|transaction|transfer|\bdebit\b|\bcredit\b|refund|settle|idempotenc|reconcil|\bauth\b|authenticat|authori[sz]|login|password|secret|token|credential|permission|\brole\b|encrypt|decrypt|money|currency)'
 
-if ([string]::IsNullOrEmpty($intent) -and -not $sensitive) { exit 0 }
+if ([string]::IsNullOrEmpty($intent) -and -not $sensitive -and $isClaude) { exit 0 }
 
 $parts = New-Object System.Collections.Generic.List[string]
 if (-not [string]::IsNullOrEmpty($intent)) {
@@ -190,6 +192,22 @@ $body = ($parts -join "`n")
 if ($inputJson -match '"hook_event_name"') {
     Write-Output $body
 } else {
+    $candidateRoot = [IO.Path]::GetFullPath((Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..\..'))
+    $repoRoot = (& git -C $candidateRoot rev-parse --show-toplevel 2>$null | Select-Object -First 1)
+    $queuedText = ''
+    if ($repoRoot) {
+        $repoRoot = [IO.Path]::GetFullPath($repoRoot.Trim())
+        $queueFile = Join-Path $repoRoot '.claude\.state\boy-scout-queue'
+        if (Test-Path -LiteralPath $queueFile) {
+            $queuedText = [string](Get-Content -LiteralPath $queueFile -Raw)
+            Remove-Item -LiteralPath $queueFile -Force
+        }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($queuedText)) {
+        if (-not [string]::IsNullOrEmpty($body)) { $body += "`n" }
+        $body += $queuedText
+    }
+    if ([string]::IsNullOrEmpty($body)) { exit 0 }
     $payload = @{
         additionalContext  = $body
         hookSpecificOutput = @{ hookEventName = 'UserPromptSubmit'; additionalContext = $body }

@@ -9,6 +9,8 @@
 set -u
 
 input=$(cat)
+is_claude=""
+if printf '%s' "$input" | grep -q '"hook_event_name"'; then is_claude="1"; fi
 
 # Extract the prompt field. Prefer jq (handles all JSON escapes correctly); if absent, resolve a
 # working python (memoised in $pybin for reuse at the output-encode site below) and use it; if no
@@ -50,14 +52,16 @@ except Exception:
     fi
   fi
 fi
-[ -z "$prompt" ] && exit 0
+[ -z "$prompt" ] && [ -n "$is_claude" ] && exit 0
 
 # Skip if the user already chose a workflow.
 case "$prompt" in
-  /*) exit 0 ;;
+  /*) [ -n "$is_claude" ] && exit 0 ; route_eligible="" ;;
+  *) route_eligible="1" ;;
 esac
+[ -z "$prompt" ] && route_eligible=""
 
-lc=$(printf '%s' "$prompt" | tr '[:upper:]' '[:lower:]')
+if [ -n "$route_eligible" ]; then lc=$(printf '%s' "$prompt" | tr '[:upper:]' '[:lower:]'); else lc=""; fi
 
 intent=""
 # Priority order: review > debt > design > test > fix > refactor > feature
@@ -86,7 +90,7 @@ esac
 sensitive=""
 # @stack:sensitive-grep
 
-[ -z "$intent" ] && [ -z "$sensitive" ] && exit 0
+[ -z "$intent" ] && [ -z "$sensitive" ] && [ -n "$is_claude" ] && exit 0
 
 emit_body() {
 if [ -n "$intent" ]; then
@@ -212,14 +216,31 @@ body=$(emit_body)
 # is exactly the pre-port behavior.
 if printf '%s' "$input" | grep -q '"hook_event_name"'; then
   printf '%s\n' "$body"
-elif command -v jq >/dev/null 2>&1; then
+else
+  hook_dir=$(cd "$(dirname "$0")" && pwd)
+  candidate_root=$(cd "$hook_dir/../.." && pwd)
+  queued_text=""
+  if repo_root=$(git -C "$candidate_root" rev-parse --show-toplevel 2>/dev/null); then
+    queue_file="$repo_root/.claude/.state/boy-scout-queue"
+    if [ -e "$queue_file" ]; then
+      queued_text=$(cat "$queue_file")
+      rm -f "$queue_file"
+    fi
+  fi
+  if [ -n "${queued_text//[[:space:]]/}" ]; then
+    if [ -n "$body" ]; then body="$body
+$queued_text"; else body=$queued_text; fi
+  fi
+  [ -z "$body" ] && exit 0
+  if command -v jq >/dev/null 2>&1; then
   printf '%s' "$body" | jq -Rs '{additionalContext: ., hookSpecificOutput: {hookEventName: "UserPromptSubmit", additionalContext: .}}'
-elif [ -n "$pybin" ]; then
+  elif [ -n "$pybin" ]; then
   printf '%s' "$body" | "$pybin" -c 'import json,sys
 b = sys.stdin.read()
 print(json.dumps({"additionalContext": b, "hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": b}}))'
-else
+  else
   printf '%s\n' "$body"
+  fi
 fi
 
 exit 0

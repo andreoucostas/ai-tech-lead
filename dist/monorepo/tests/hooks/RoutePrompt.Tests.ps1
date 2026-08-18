@@ -13,6 +13,17 @@ $bash  = Get-BashPath
 function New-ClaudePrompt  { param($Prompt) (@{ hook_event_name = 'UserPromptSubmit'; prompt = $Prompt } | ConvertTo-Json -Compress) }
 function New-CopilotPrompt { param($Prompt) (@{ prompt = $Prompt; timestamp = 1 } | ConvertTo-Json -Compress) }
 
+function New-RoutePromptFixture {
+    $dir = Join-Path ([IO.Path]::GetTempPath()) ('route-prompt-' + [guid]::NewGuid().ToString('N'))
+    $repo = Join-Path $dir 'repo'
+    $fixtureHooks = Join-Path $repo '.claude\hooks'
+    New-Item -ItemType Directory -Path $fixtureHooks -Force | Out-Null
+    Copy-Item -LiteralPath $rpPs -Destination (Join-Path $fixtureHooks 'route-prompt.ps1')
+    Copy-Item -LiteralPath $rpSh -Destination (Join-Path $fixtureHooks 'route-prompt.sh')
+    git -C $repo init --quiet
+    return [pscustomobject]@{ Dir = $dir; Repo = $repo; Hooks = $fixtureHooks }
+}
+
 Reset-Tests
 
 # --- Claude surface: plain stdout, not JSON ---
@@ -58,6 +69,76 @@ It 'route-prompt.ps1 answer-only question -> no rails (both surfaces)' {
     foreach ($evt in (New-ClaudePrompt 'why does it keep crashing?'), (New-CopilotPrompt 'why does it keep crashing?')) {
         $r = Invoke-Hook $rpPs $evt
         Assert ($r.Exit -eq 0 -and [string]::IsNullOrWhiteSpace($r.Out)) 'question carve-out must suppress rails'
+    }
+}
+
+# --- Copilot single-entry composition drains Boy Scout delivery behind the surface gate ---
+foreach ($twin in @(@{ Name = 'ps1'; File = 'route-prompt.ps1' }, @{ Name = 'sh'; File = 'route-prompt.sh' })) {
+    if ($twin.Name -eq 'sh' -and -not $bash) {
+        Skip "route-prompt.$($twin.Name) Copilot queue composition cases" 'no bash found' -Invariant
+        continue
+    }
+
+    It "route-prompt.$($twin.Name) Copilot routing + queue -> one payload, routing first, queue consumed once" {
+        $fixture = New-RoutePromptFixture
+        $queue = Join-Path $fixture.Repo '.claude\.state\boy-scout-queue'
+        New-Item -ItemType Directory -Path (Split-Path -Parent $queue) -Force | Out-Null
+        [IO.File]::WriteAllText($queue, 'B147_BOY_SCOUT_SENTINEL')
+        try {
+            $r = Invoke-Hook (Join-Path $fixture.Hooks $twin.File) (New-CopilotPrompt 'fix the broken date formatting')
+            Assert ($r.Exit -eq 0) "exit $($r.Exit): $($r.Err)"
+            $o = $r.Out | ConvertFrom-Json
+            Assert ($o.additionalContext -match 'Routed intent: `fix`') 'routing text missing'
+            Assert ($o.additionalContext -match 'B147_BOY_SCOUT_SENTINEL') 'Boy Scout queue missing'
+            Assert ($o.additionalContext.IndexOf('Routed intent') -lt $o.additionalContext.IndexOf('B147_BOY_SCOUT_SENTINEL')) 'routing must precede Boy Scout queue'
+            Assert (-not (Test-Path -LiteralPath $queue)) 'queue was not deleted after the read'
+            $second = Invoke-Hook (Join-Path $fixture.Hooks $twin.File) (New-CopilotPrompt 'why is the sky blue?')
+            Assert ([string]::IsNullOrEmpty($second.Out)) 'queue was delivered more than once'
+        } finally { Remove-Item -LiteralPath $fixture.Dir -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It "route-prompt.$($twin.Name) Copilot empty routing + queue -> queue-only payload" {
+        $fixture = New-RoutePromptFixture
+        $queue = Join-Path $fixture.Repo '.claude\.state\boy-scout-queue'
+        New-Item -ItemType Directory -Path (Split-Path -Parent $queue) -Force | Out-Null
+        [IO.File]::WriteAllText($queue, 'B147_QUEUE_ONLY_SENTINEL')
+        try {
+            $r = Invoke-Hook (Join-Path $fixture.Hooks $twin.File) (New-CopilotPrompt '/review')
+            $o = $r.Out | ConvertFrom-Json
+            Assert ($o.additionalContext -eq 'B147_QUEUE_ONLY_SENTINEL') "queue-only context differs: '$($o.additionalContext)'"
+            Assert (-not (Test-Path -LiteralPath $queue)) 'queue-only delivery did not consume the queue'
+        } finally { Remove-Item -LiteralPath $fixture.Dir -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It "route-prompt.$($twin.Name) Copilot routing + empty queue -> routing only" {
+        $fixture = New-RoutePromptFixture
+        try {
+            $r = Invoke-Hook (Join-Path $fixture.Hooks $twin.File) (New-CopilotPrompt 'fix the broken date formatting')
+            $o = $r.Out | ConvertFrom-Json
+            Assert ($o.additionalContext -match 'Routed intent: `fix`') 'routing text missing'
+            Assert ($o.additionalContext -notmatch 'B147_.*_SENTINEL') 'unexpected Boy Scout text'
+        } finally { Remove-Item -LiteralPath $fixture.Dir -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It "route-prompt.$($twin.Name) Copilot empty routing + empty queue -> no output" {
+        $fixture = New-RoutePromptFixture
+        try {
+            $r = Invoke-Hook (Join-Path $fixture.Hooks $twin.File) (New-CopilotPrompt '/review')
+            Assert ($r.Exit -eq 0 -and [string]::IsNullOrEmpty($r.Out)) "expected silence, got '$($r.Out)'"
+        } finally { Remove-Item -LiteralPath $fixture.Dir -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It "route-prompt.$($twin.Name) Claude routing preserves real queue for Stop delivery" {
+        $fixture = New-RoutePromptFixture
+        $queue = Join-Path $fixture.Repo '.claude\.state\boy-scout-queue'
+        New-Item -ItemType Directory -Path (Split-Path -Parent $queue) -Force | Out-Null
+        [IO.File]::WriteAllText($queue, 'B147_CLAUDE_QUEUE_SENTINEL')
+        try {
+            $r = Invoke-Hook (Join-Path $fixture.Hooks $twin.File) (New-ClaudePrompt 'fix the broken date formatting')
+            Assert ($r.Out -match 'Routed intent: `fix`') 'Claude routing text missing'
+            Assert ($r.Out -notmatch 'B147_CLAUDE_QUEUE_SENTINEL') 'Claude path stole Boy Scout delivery'
+            Assert (Test-Path -LiteralPath $queue) 'Claude path deleted the Stop delivery queue'
+        } finally { Remove-Item -LiteralPath $fixture.Dir -Recurse -Force -ErrorAction SilentlyContinue }
     }
 }
 

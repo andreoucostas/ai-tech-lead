@@ -2424,6 +2424,26 @@ all B-54 changes and reproduced the same failure on baseline). The `Assert` call
 (`Assert ($p.Exit-eq$s.Exit) "docs exit mismatch"`) doesn't interpolate the actual exit codes, so the
 next person will need to add that before diagnosing further.
 
+> **SECOND INSTANCE, 2026-08-18 — and this one reddens the shipped hook suite on all three dists.**
+> `FrameworkDoctor.Tests.ps1:141` (`PowerShell twin runs under Windows PowerShell 5.1`) fails on this
+> box: it builds a fixture repo, runs `scripts/framework-doctor.ps1` under `powershell.exe`, and gets
+> `5.1 exit=1` where it asserts 0. Consequence: `dist/{dotnet,angular,monorepo}/tests/hooks/Invoke-HookTests.ps1`
+> each report **1 failure across 18 files**, and that suite is a `release.ps1` gate.
+>
+> **Established by execution, so nobody re-hunts it:** identical at `HEAD` and at the **`v0.58.0`
+> tag** (29 passed / 1 failed / 1 skipped in all three trees), so it predates the 2026-08-18 work
+> entirely and **the last release shipped with it**. Not caused by B-147, which was verified against
+> the same baseline. Also: running the doctor *directly* from a dist root exits **0** under both
+> hosts — so the divergence is **fixture-dependent**, not a plain 5.1 incompatibility in the doctor,
+> and that is the thread to pull. Start by making the assertion print the doctor's own failing rows
+> rather than just its exit code; today it reports `5.1 exit=1: <whole stdout>`, which buries the row
+> that actually failed.
+>
+> **The uncomfortable part, which belongs to this entry rather than to B-147:** a shipped tag has a
+> red hook suite on the maintainer box, and the release that produced it did not stop. Whatever the
+> cause, the gate either did not run this leg during that release or was waived; either way the
+> record should say which, because "the gates were green" is a claim this repo makes routinely.
+
 **Do:** reproduce, capture both hosts' actual exit codes and stdout for the `docs-sync-check.ps1`/`.sh`
 twins over `DocsFixture`/`TemplateFixture`, and find the 5.1-specific divergence (likely another
 BOM-less-file default-encoding case, per invariant #4's known class — see B-54's fix in
