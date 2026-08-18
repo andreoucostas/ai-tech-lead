@@ -3996,3 +3996,38 @@ about what `/bootstrap` *writes*. Adjacent, not the same.
   `InstallerContract` and `RootInstallerWarehouse` — all happy-path-only. The composer is the
   notable one: it is invariant #1's entire mechanism and nothing plants a malformed-snippet failure
   against it.
+
+- **B-149** — DONE **2026-08-18**, meta-only. Four of B-64's ten HAPPY-PATH-ONLY gates now have
+  planted-defect tests, each built on `_MutationHelper.ps1` so the mutation is recorded as
+  executable text, asserted to have applied, and restored byte-identically. The matrix moved
+  **HAPPY-PATH-ONLY 10 → 5**.
+
+  | gate | planted defect | red observed |
+  |---|---|---|
+  | **composer** `build.{ps1,sh}` | malformed `@stack` marker; unapproved overlay collision — **both twins** | exit 1 ×4 |
+  | `docs-sync-check.{ps1,sh}` | skills-mirror drift | `FAIL: skills mirror drift … differ` |
+  | `InstallerContract.Tests.ps1` | a required contract line removed from the shipped installer | 11 passed / **1 failed**, then green on restore |
+  | `RootInstallerWarehouse.Tests.ps1` | broken warehouse selection | exit 1 |
+
+  **The composer was the one that mattered** — it is the entire mechanism of invariant #1, every
+  release runs it three times, and nothing had ever handed it a bad *input*. Its freshness check
+  answers a different question: output-matches-input is not bad-input-is-refused.
+
+  **One defect class was deliberately NOT tested, and the reasoning is the useful part.** A marker
+  whose snippet is **missing** is not rejected by the composer at all — it expands to nothing,
+  silently. That is not an untested gate but a *documented design choice*, and the class is caught
+  downstream by `validate-dist` check 1a, whose own comment says so: *"The composer consumes a
+  marker even when its snippet is absent, producing a marker-free but silently empty section."*
+  Writing a test asserting the composer rejects it would have failed, and bending the composer to
+  make the test pass would have been the exact anti-pattern the brief forbade — a gate bent to fit
+  its test lies in two places instead of one.
+
+  Verified by the reviewer: all four red observations reproduced here, not taken from the report;
+  the three new suites also green under **Windows PowerShell 5.1**, the leg the implementer marked
+  NOT OBSERVED; meta suite **0 failures across 24 files**; BOM sweep clean.
+
+  **Remaining from B-64:** five HAPPY-PATH-ONLY rows — the framework-doctor `Install state`,
+  `Bootstrap/adoption state` and `Audit trail substrate` rows, plus `RepositoryPrivacy` and
+  `ScriptTwinCoverage`. The nine `UNKNOWN` rows are deliberately untouched: `UNKNOWN` means reading
+  could not establish whether a red observation exists, which is a question about the *record*
+  rather than a missing test.

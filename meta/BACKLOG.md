@@ -242,51 +242,7 @@ array has multiple entries. The same class could affect another context-injectin
 one is added; extend the explicit event list only after live verification, rather than generalising
 to side-effecting events such as `postToolUse` where multiple entries are legitimate.
 
-### B-149 · Close B-64's happy-path-only gates, starting with the composer
-**Effort:** M · **Priority:** P2 · filed 2026-08-18 from B-64's coverage matrix · **Invariants:** #1 #3
-
-**Why:** `meta/gate-redtest-coverage.md` (B-64, 2026-08-18) inventoried every gate and diagnostic
-and found **10 HAPPY-PATH-ONLY** — a clean test exists, no planted-defect test does. Those gates
-report success today and nobody has watched any of them report failure, which is the exact
-condition Maintenance model #4 exists to forbid ("a green result counts only from an instrument you
-have seen go red").
-
-**The composer is the one that matters most, and it is the most exposed.**
-`scripts/build.{ps1,sh}` is the entire mechanism of meta-invariant #1 — behavioural changes are
-authored once in `src/` and reach consumers *only* through it. Every release runs it three times.
-Nothing plants a malformed marker, a missing snippet, or a collision against it and asserts a
-non-zero exit. Its freshness property is checked (rebuild + `git status --porcelain dist/`), which
-is a different question: freshness proves the output matches the input, not that a *bad* input is
-refused.
-
-The other three worth closing in the same pass, all of which run real subprocesses and assert only
-the happy result:
-
-| gate | asserted today | never asserted |
-|---|---|---|
-| `docs-sync-check.{ps1,sh}` | template/non-template output shapes | that a planted drift makes it fail |
-| `InstallerContract.Tests.ps1` | the contract text appears across 12 real installs | that a *missing* contract line fails the suite |
-| `RootInstallerWarehouse.Tests.ps1` | the warehouse install lands | that a broken install fails it |
-
-`InstallerContract` is the sharpest of the three because B-144 already caught it asserting stdout
-without exit status; it is a suite that claims to cover installer behaviour and has never been shown
-able to fail.
-
-**Do:** one planted-defect test per gate, built on `.claude/hooks/tests/_MutationHelper.ps1` (B-84)
-so each mutation is recorded as executable text, asserted to have actually applied, and restored
-unconditionally. Start with the composer. For each, plant the defect class the gate exists to catch —
-not an arbitrary breakage — and record the failing observation next to the check. Then update
-`meta/gate-redtest-coverage.md`'s verdict for that row, so the matrix stays the live answer rather
-than a dated snapshot.
-
-**Not:** do not chase the 9 `UNKNOWN` rows in the same pass. `UNKNOWN` there means "reading could
-not establish whether a red observation exists", which is a research question about the record, not
-a missing test; conflating the two would turn a bounded job into an unbounded one. And do not weaken
-any gate to make a planted defect easier to construct — if a defect class is hard to plant, that is
-worth writing down rather than engineering around.
-
-**Cross-links:** B-64 (the matrix that found these), B-84 (the kit they should use), B-144
-(`InstallerContract`'s previous instance of the same shape), B-70 (both legs).
+**B-149 is DONE (2026-08-18) — four gates closed; see `meta/BACKLOG-DONE.md`.**
 
 ### B-55 · Vendor-behavior facts are restated across ~6 shipped surfaces with no single source
 **Effort:** M · **Priority:** P2 doc truth · **Invariants:** #5, #6

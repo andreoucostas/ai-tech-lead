@@ -11,7 +11,10 @@
 #
 # The contract is asserted as BEHAVIOR (run the installer, read stdout), not as prose in a source
 # file -- which is the only way to catch a mode branch that silently stops printing it.
+[CmdletBinding()]
+param([switch]$SkipRedTest)
 . (Join-Path $PSScriptRoot '_HookHarness.ps1')
+. (Join-Path $PSScriptRoot '_MutationHelper.ps1')
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $bash = Get-BashPath
 
@@ -87,6 +90,19 @@ foreach ($dist in @('dotnet', 'angular', 'monorepo')) {
             }
             finally { Remove-Item -Recurse -Force $target -ErrorAction SilentlyContinue }
         }
+    }
+}
+
+if (-not $SkipRedTest) {
+    It 'a missing contract line makes this suite fail' {
+        $target = Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'
+        Invoke-MutationRedTest -TargetFile $target -ScratchSourceRoot $repoRoot `
+            -Find 'Review and commit the copied files' -Replacement 'Review the copied files' `
+            -Command {
+                param($scratchTarget, $scratchRoot)
+                $process = Start-Process -FilePath (Get-PsExe) -ArgumentList @('-NoProfile','-File',(Join-Path $scratchRoot '.claude/hooks/tests/InstallerContract.Tests.ps1'),'-SkipRedTest') -Wait -PassThru -NoNewWindow
+                $global:LASTEXITCODE = $process.ExitCode
+            } | Out-Null
     }
 }
 
