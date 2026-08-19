@@ -41,13 +41,30 @@ if ($File) {
 # what gets measured.
 function Write-FileResult([string]$Name, [int]$Exit) { Write-Host ("RESULT {0} {1}" -f $Name, $Exit) }
 
+# Per-file wall time, on its OWN line and never appended to RESULT: release.ps1:549 parses
+# `^RESULT\s+(\S+)\s+(\d+)\s*$` anchored at BOTH ends, so a third field would not merely be ignored
+# -- it would match nothing, and the -AllowFailingGate path would report "emitted no per-file RESULT
+# lines" and refuse a waiver that is actually valid. A silent break, so: separate line.
+#
+# This exists because a gate-budget breach was diagnosed twice from a SERIAL per-file pass, and both
+# diagnoses were wrong. A serial pass runs each file with the throttle env vars UNSET, i.e. at full
+# internal width; the parallel run hands each file $innerLanes instead. The two numbers are not the
+# same measurement, so serial costs can never predict the parallel makespan. Measure the run you
+# actually ship.
+function Write-FileTiming([string]$Name, $Begin, $End) {
+    if ($null -eq $Begin -or $null -eq $End) { return }
+    Write-Host ("TIMING {0} {1:N1}" -f $Name, ($End - $Begin).TotalSeconds)
+}
+
 $total = 0
 if ($Sequential -or $files.Count -eq 1) {
     foreach ($f in $files) {
         Write-Host ("--- {0} ---" -f $f.Name)
+        $began = Get-Date
         & $psExe -NoProfile -ExecutionPolicy Bypass -File $f.FullName
         $exit = [int]$LASTEXITCODE
         Write-FileResult $f.Name $exit
+        Write-FileTiming $f.Name $began (Get-Date)
         $total += $exit
     }
 } else {
@@ -60,6 +77,50 @@ if ($Sequential -or $files.Count -eq 1) {
     # Worse, the nesting is invisible: ValidateDist.Tests.ps1 parallelises its own 20 cases, so ten
     # outer jobs became ten x N children. VALIDATE_DIST_TESTS_THROTTLE is set below to hand that file
     # a share rather than let it assume it owns the box.
+    # LONGEST-FIRST SCHEDULING. The lanes were never the problem -- the launch ORDER was.
+    # Files were launched in `Sort-Object Name` order, chosen for determinism, which is the worst
+    # possible schedule for makespan: a long job that starts last runs alone at the tail while every
+    # other lane sits idle. Measured serially on the maintainer box (12 cores, idle, 2026-08-19,
+    # 923.6s total across 25 files):
+    #
+    #   GuardPatternErrors.Tests.ps1   418.5s   <- 45% of the entire serial cost, alphabetically 8th
+    #   ValidateDist.Tests.ps1         234.9s   <- alphabetically 23rd, i.e. launched in the LAST wave
+    #   UpdateDelivery.Tests.ps1        83.7s   <- 22nd
+    #   InstallerContract.Tests.ps1     51.3s
+    #   DocsSyncCheck.Tests.ps1         38.6s
+    #   ...every remaining file is under 27s, and 17 of 25 are under 3s.
+    #
+    # MEASURED OUTCOME: this ordering change bought NOTHING. Modelled makespan at 4 lanes was
+    # alphabetical ~(505/4)+418 = 545s vs longest-first ~max(418, 505/4) = 418s. The actual timed
+    # run after the change was 689.2s (0 failures), against 671.5s before it. The model was wrong,
+    # not the arithmetic: it fed SERIAL per-file costs into a PARALLEL schedule, and a serial pass
+    # runs each file with VALIDATE_DIST_TESTS_THROTTLE / HOOKTESTS_THROTTLE unset -- i.e. at full
+    # internal width -- while this loop hands each file only $innerLanes. Files that parallelise
+    # internally are therefore much more expensive here than the serial table says, so the table
+    # cannot predict the makespan and the "floor is the heaviest file" conclusion does not follow.
+    # The TIMING lines above exist so the next diagnosis reads the real per-file parallel cost
+    # instead of re-deriving it from the wrong pass a third time.
+    #
+    # The ordering is KEPT because longest-first is still the correct schedule shape and costs
+    # nothing -- but it is not a fix for the budget, and must not be cited as one.
+    #
+    # The table is a scheduling HINT, never correctness: an unlisted file is scheduled first (a new
+    # file's cost is unknown, and guessing "cheap" is the mistake that created this bug), and ties
+    # break by name so the order stays deterministic and reproducible. A stale entry costs some
+    # runtime, never a wrong result. Re-measure with a serial pass when the suite's shape changes.
+    $costHint = @{
+        'GuardPatternErrors.Tests.ps1'    = 418.5
+        'ValidateDist.Tests.ps1'          = 234.9
+        'UpdateDelivery.Tests.ps1'        = 83.7
+        'InstallerContract.Tests.ps1'     = 51.3
+        'DocsSyncCheck.Tests.ps1'         = 38.6
+        'RootInstallerWarehouse.Tests.ps1'= 26.6
+        'LicenseDelivery.Tests.ps1'       = 24.5
+        'ReleaseCiWatch.Tests.ps1'        = 12.9
+    }
+    $files = @($files | Sort-Object `
+        @{ Expression = { if ($costHint.ContainsKey($_.Name)) { $costHint[$_.Name] } else { [double]::MaxValue } }; Descending = $true }, `
+        @{ Expression = { $_.Name }; Ascending = $true })
     $outerLanes = [math]::Max(2, [math]::Min(4, [int]([Environment]::ProcessorCount / 3)))
     $innerLanes = [math]::Max(2, [int]([Environment]::ProcessorCount / $outerLanes))
     $jobs = @()
@@ -87,6 +148,7 @@ if ($Sequential -or $files.Count -eq 1) {
             # A child that died without producing an exit code must count as a failure, not as zero.
             if ($null -eq $exit) { $exit = 1 }
             Write-FileResult $entry.Name ([int]$exit)
+            Write-FileTiming $entry.Name $entry.Job.PSBeginTime $entry.Job.PSEndTime
             $total += [int]$exit
         }
     } finally {

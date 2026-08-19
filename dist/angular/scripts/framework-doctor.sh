@@ -123,11 +123,33 @@ else
   row MISSING 'Framework rules delivery' 'the framework rules carrier is absent. Fix: re-run the framework installer.'
 fi
 
-claude_version=$(sed -n 's/^[[:space:]]*version:[[:space:]]*\([^[:space:]]*\)[[:space:]]*$/\1/p' "$claude" 2>/dev/null | head -1)
-if [ -n "$claude_version" ] && [ "$version" = "$claude_version" ]; then
-  row OK 'Protected-file sync' "CLAUDE.md version $claude_version matches installed machinery."
+framework_headings='Verification Rules
+Leanness
+SOLID
+Agentic Workflow'
+if [ ! -f "$claude" ]; then
+  row MISSING 'Protected-file sync' 'CLAUDE.md is absent; protected-file migration state cannot be inspected.'
+elif [ ! -f "$carrier" ] || ! grep -qF "$import_line" "$claude" 2>/dev/null; then
+  row OK 'Protected-file sync' 'deferred to Framework rules delivery.'
 else
-  row MISSING 'Protected-file sync' 'DIVERGED — protected file not synchronized with installed machinery; review required'
+  heading_count=0
+  inline_headings=''
+  while IFS= read -r heading; do
+    [ -z "$heading" ] && continue
+    heading_count=$((heading_count + 1))
+    if grep -q "^##[[:space:]][[:space:]]*$heading[[:space:]]*$" "$claude" 2>/dev/null; then
+      if [ -n "$inline_headings" ]; then inline_headings="$inline_headings, $heading"; else inline_headings=$heading; fi
+    fi
+  done <<EOF
+$framework_headings
+EOF
+  if [ "$heading_count" -ne 4 ]; then
+    row MISSING 'Protected-file sync' 'framework heading inspection is incomplete; protected-file migration state cannot be verified.'
+  elif [ -z "$inline_headings" ]; then
+    row OK 'Protected-file sync' 'migrated - the carrier is authoritative.'
+  else
+    row PENDING 'Protected-file sync' "migration incomplete - these sections duplicate the carrier and may conflict: $inline_headings. Fix: delete them from CLAUDE.md."
+  fi
 fi
 
 pending=0

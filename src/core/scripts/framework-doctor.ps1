@@ -69,12 +69,23 @@ if ((Test-Path -LiteralPath $carrierPath) -and $claudeContent -and $claudeConten
     Row MISSING 'Framework rules delivery' 'the framework rules carrier is absent. Fix: re-run the framework installer.'
 }
 
-$claudeVersion = $null
-if ($claudeContent -and $claudeContent -match '(?m)^\s*version:\s*([^\s]+)\s*$') { $claudeVersion = $matches[1] }
-if ($claudeVersion -and ([string]$stamp.version -eq $claudeVersion)) {
-    Row OK 'Protected-file sync' ("CLAUDE.md version {0} matches installed machinery." -f $claudeVersion)
+$frameworkHeadings = @('Verification Rules', 'Leanness', 'SOLID', 'Agentic Workflow')
+if (-not (Test-Path -LiteralPath $claudePath -PathType Leaf)) {
+    Row MISSING 'Protected-file sync' 'CLAUDE.md is absent; protected-file migration state cannot be inspected.'
+} elseif (-not ((Test-Path -LiteralPath $carrierPath -PathType Leaf) -and $claudeContent -and $claudeContent.Contains($importLine))) {
+    # $claudeContent is null for an EMPTY or unreadable CLAUDE.md (Get-Content -Raw returns null, not '').
+    # Without the null guard this row threw and vanished from the report entirely -- an inert
+    # diagnostic reading as a clean run -- while the .sh twin still reported deferred [#3].
+    Row OK 'Protected-file sync' 'deferred to Framework rules delivery.'
+} elseif ($frameworkHeadings.Count -ne 4) {
+    Row MISSING 'Protected-file sync' 'framework heading inspection is incomplete; protected-file migration state cannot be verified.'
 } else {
-    Row MISSING 'Protected-file sync' 'DIVERGED — protected file not synchronized with installed machinery; review required'
+    $inlineHeadings = @($frameworkHeadings | Where-Object { $claudeContent -match ('(?m)^##\s+{0}\s*$' -f [regex]::Escape($_)) })
+    if ($inlineHeadings.Count -eq 0) {
+        Row OK 'Protected-file sync' 'migrated - the carrier is authoritative.'
+    } else {
+        Row PENDING 'Protected-file sync' ('migration incomplete - these sections duplicate the carrier and may conflict: {0}. Fix: delete them from CLAUDE.md.' -f ($inlineHeadings -join ', '))
+    }
 }
 
 $adoption = Test-Path -LiteralPath (Join-Path $root '.claude/adoption-pending.json')

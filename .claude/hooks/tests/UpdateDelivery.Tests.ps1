@@ -143,7 +143,7 @@ foreach ($twin in @('ps1', 'sh')) {
         Assert ($copilot.Out -match 'Framework rules migration') 'Copilot surface: pointer absent from additionalContext'
     }
 
-    It "doctor reports MISSING delivery and DIVERGED sync ($twin)" {
+    It "doctor reports MISSING delivery and defers protected-file sync ($twin)" {
         $doc = Join-Path $target "scripts/framework-doctor.$twin"
         Push-Location $target
         try {
@@ -151,8 +151,31 @@ foreach ($twin in @('ps1', 'sh')) {
             else { $d = & $bash $doc 2>&1 | Out-String }
         } finally { Pop-Location }
         Assert ($d -match '\[MISSING\][^\r\n]*Framework rules delivery') "no MISSING delivery row. output:`n$d"
-        Assert ($d -match 'DIVERGED') 'no DIVERGED protected-file-sync row'
-        Assert ($d -notmatch 'you are behind') 'doctor claimed "you are behind" -- it cannot know that (B-97 finding 5)'
+        # The sync row used to say DIVERGED here, from a version-stamp comparison that could not
+        # see migration state at all. An un-migrated consumer's stale stamp is expected, not a
+        # finding, and the delivery row above already states the problem and its fix -- so this row
+        # defers rather than double-reporting.
+        Assert ($d -match 'Protected-file sync[^\r\n]*deferred to Framework rules delivery') "sync row did not defer. output:`n$d"
+        Assert ($d -notmatch 'DIVERGED') 'the version-proxy DIVERGED verdict is back'
+        Assert ($d -notmatch 'you are behind') 'doctor claimed "you are behind" -- it cannot know that'
+    }
+
+    # The half-migrated consumer: import added, stale inline sections left in place. This is the
+    # state the shipped pointer's "and delete them" exists to prevent, and nothing verified it.
+    It "doctor names the sections a half-migrated consumer must still delete ($twin)" {
+        $doc = Join-Path $target "scripts/framework-doctor.$twin"
+        $before = Get-Content $claudePath -Raw
+        try {
+            Set-Content $claudePath ($importLine + "`n`n" + $before) -Encoding utf8
+            Push-Location $target
+            try {
+                if ($twin -eq 'ps1') { $d = & (Get-PsExe) -NoProfile -File $doc 2>&1 | Out-String }
+                else { $d = & $bash $doc 2>&1 | Out-String }
+            } finally { Pop-Location }
+            Assert ($d -match '\[PENDING\][^\r\n]*Protected-file sync') "half-migrated consumer not reported PENDING. output:`n$d"
+            Assert ($d -match 'Verification Rules') 'the row did not name the sections still inline'
+            Assert ($d -notmatch 'Boy Scout') 'Boy Scout Rule was flagged -- it stays in CLAUDE.md by design'
+        } finally { Set-Content $claudePath $before -Encoding utf8 }
     }
 
     # Perform the one-time migration the pointer asks for, then prove the noise stops.

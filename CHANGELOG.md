@@ -11,6 +11,90 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.61.0 — 2026-08-19
+
+**B-97 (partial): `framework-doctor`'s `Protected-file sync` row now reports migration state instead
+of comparing version strings.** The old row compared `CLAUDE.md`'s `version:` frontmatter against
+`.claude/framework-version.json`. After v0.45.0 moved the four framework-owned blocks into the
+carrier (WSD-031), that comparison stopped meaning anything: `CLAUDE.md` is consumer-owned and its
+stamp is *expected* to lag, so the row reported `DIVERGED` permanently to every consumer who
+installed earlier and never hand-edited their stamp — naming no block, offering no fix, and unable
+to see an actual hand-edit. A diagnostic that cries wolf trains people to ignore the only
+machine-checkable signal the delivery gap has.
+
+It now reports whether the migration actually completed: import present and no framework headings
+left inline → `OK`; import present but some of the four still inline → `PENDING`, naming them and
+saying to delete them; import or carrier absent → deferred to the `Framework rules delivery` row
+that already owns that state with its fix text; `CLAUDE.md` absent or unreadable → `MISSING`.
+
+This checks something nothing verified before: `session-start` already tells consumers to add the
+import *"where those sections are, **and delete them**"*, and no gate ever confirmed the second half
+happened. It also targets the state behind B-97's open successor question — a consumer holding both
+the fresh carrier and a stale inline copy — and resolves it by removing the duplicate rather than
+waiting on a measurement of which copy a model follows.
+
+**Rev 1 of this design was rejected by adversarial critique, and the rejection is the useful part.**
+It proposed shipping `meta/block-manifest.json` and classifying each inline block by hash. Four
+independently sufficient objections: (1) a materially smaller fix — redefining the row around the
+carrier/import state already computed one row above — was never evaluated, a Maintenance model #6
+failure; (2) shipping the manifest violates invariant #6, because its own `purpose` field contains a
+`B-nn` tracking id that `no-meta-leak` denies; (3) the `.sh` twin declares "No jq/python dependency
+by design" and ships no SHA-256 anywhere, so nested-JSON querying plus a portable hash cascade was a
+large new dependency surface for one diagnostic row; (4) it would not have fixed the stated harm
+anyway, since it still warned at the same population with different wording. The manifest stays in
+`meta/`, unread, until something legitimately consumes it.
+
+**Implementation RCA.** Codex implemented the eight specified arms and all eight were genuinely
+red-tested; independent re-testing with different mutations confirmed arms 4 and 7 are not inert.
+The review still found a defect none of the eight could see: `Get-Content -Raw` returns `$null`
+(not `''`) for an empty file, so an unguarded `.Contains()` threw and **both** the
+`Protected-file sync` and `Framework rules delivery` rows vanished from the PowerShell report
+entirely — an inert diagnostic reading as a clean run — while the `.sh` twin still reported
+`deferred`, a twin divergence [#3]. The original code was null-safe and the rewrite dropped the
+guard. Arm 9 now covers it. **Why no gate caught it:** every arm was written from the design's state
+table, which enumerates *consumer states*, not *file-read failure modes*; no arm supplied a
+degenerate file. **Same class exposed:** any doctor row that dereferences a `Get-Content -Raw`
+result without a null guard. Swept the file — the remaining reads are already guarded.
+
+**Also carried by this release: B-131**, which shipped in `a34ba8c` without a changelog entry and
+would otherwise have reached consumers unannounced. `template-checks` now parses `CHANGELOG.md` only
+in a marked template repo, so a consumer following Keep a Changelog (or anything else) no longer
+fails our gate over our own release grammar. Found while assembling this release; the release
+process not stating a delivery/announcement surface per item is the same class B-97's changelog
+sweep already flagged.
+
+Meta-only in the same release: B-55's superseded-vendor-claim denylist, and the B-42/B-49 record
+corrections.
+
+**Gate runtime: the meta suite went back under its ceiling by fixing the cause, not the ceiling.**
+Four release attempts refused on `gate budget: meta-suite took 671.5s, ceiling 650s` while every
+functional gate passed. `GuardPatternErrors.Tests.ps1` (added the day before, B-59) ran its four
+mutation cases in a plain `foreach`, and measured **651.1s of a 677.6s wall clock — 96%**: that one
+file *was* the suite, with every other file finishing inside its shadow. The cases were never
+coupled — `Invoke-MutationRedTest` gives each invocation its own `mutation-helper-<guid>` scratch
+tree and removes it in a `finally` — so they now run as throttled jobs honouring
+`HOOKTESTS_THROTTLE`, which matters because this file runs *inside* the outer parallel loop and
+ignoring the throttle would reproduce the 2026-08-07 oversubscription trap one level down.
+**Measured: 418.5s → 230.3s standalone (1.82x); full suite 671.5s → 529.8s, 0 failures across 25
+files.** The runner also now emits `TIMING <file> <seconds>` — on its own line, because
+`release.ps1` parses `^RESULT\s+(\S+)\s+(\d+)\s*$` anchored at both ends and a third field there
+would have silently broken the `-AllowFailingGate` path into "emitted no per-file RESULT lines".
+
+**RCA on the diagnosis, which was wrong twice before it was right.** The first fix — longest-first
+launch ordering — was modelled to cut the makespan to ~418s and delivered nothing (689.2s vs
+671.5s). Both wrong diagnoses came from feeding a **serial** per-file timing pass into a **parallel**
+schedule. A serial pass runs each file with the throttle env vars unset, i.e. at full internal
+width; the parallel loop hands each file `$innerLanes`. `GuardPatternErrors` measured 418.5s serial
+against 651.1s parallel — a 1.56x contention inflation on a file with *no* internal parallelism at
+all — so serial costs cannot predict a parallel makespan, and no reordering escapes a single job
+that outlasts the whole schedule. **Why no gate caught it:** the budget gate measures the aggregate
+and names the stage, but nothing measured *per file*, so every diagnosis was inference. That is what
+the `TIMING` lines close. **Same class exposed:** `dist-gates` has the identical shape and still has
+no per-file attribution. Also: B-138 still names `ValidateDist.Tests.ps1` as "the single largest
+cost (339.6s, 67% of serial)" and prescribes a reused-runspace re-architecture; that premise is now
+stale — `ValidateDist` was not the binding constraint and the real one yielded to scheduling — so
+the entry needs rewriting before anyone acts on it.
+
 ## 0.60.0 — 2026-08-18
 
 **The write-guard can no longer go inert, and its error policy is split by confidence (B-59,

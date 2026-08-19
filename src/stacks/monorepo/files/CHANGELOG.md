@@ -5,6 +5,44 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.61.0 — 2026-08-19
+
+**`framework-doctor`'s "Protected-file sync" row now tells you something you can act on.** It used
+to compare the version stamp inside your `CLAUDE.md` against the version of the installed machinery.
+Since 0.45.0 that comparison has meant nothing: `CLAUDE.md` is yours, and its stamp is *expected* to
+lag behind the framework. The practical result was a permanent `DIVERGED` for anyone who installed
+before their current version — no explanation of what had diverged, and no way to make it stop.
+
+The row now reports whether the framework-rules migration actually finished:
+
+- **OK — migrated.** Your `CLAUDE.md` imports the rules carrier and no longer carries its own copies
+  of Verification Rules, Leanness, SOLID, or Agentic Workflow.
+- **PENDING — migration incomplete.** You added the import, but one or more of those four sections
+  are still written out inline in `CLAUDE.md`. The row names exactly which ones. They duplicate the
+  carrier and can conflict with it, so delete them from `CLAUDE.md`.
+- **Deferred.** If the import or the carrier is missing entirely, this row stays quiet and the
+  `Framework rules delivery` row above it tells you what to do — it already owns that case, and
+  saying it twice helps nobody.
+- **MISSING.** Your `CLAUDE.md` is absent or unreadable, so the state cannot be inspected.
+
+**What you may need to do.** If you have been carrying a `DIVERGED` row, run
+`scripts/framework-doctor.ps1` (or `.sh`) again. If it now says PENDING, delete the named sections
+from your `CLAUDE.md` — the carrier is the current version of those rules and your inline copies are
+frozen at whatever version you installed. If it says OK, nothing is required; the old row was
+telling you about a mismatch that did not matter.
+
+**Also fixed:** an empty or unreadable `CLAUDE.md` used to make the PowerShell doctor drop two rows
+from its report without saying why, while the Bash doctor still printed them. Both now behave the
+same and report the problem.
+
+**Your `CHANGELOG.md` is no longer checked against our release format.** `scripts/template-checks`
+used to parse the first heading of any `CHANGELOG.md` it found and require our dated
+`## X.Y.Z — YYYY-MM-DD` form. That is our release convention, not yours — if your team follows
+Keep a Changelog (`## Unreleased` above the versions) or anything else, the check was failing your
+build over a style we have no standing to impose. It now parses the changelog **only** in the
+framework's own template repository, which your installed copy is not. Nothing to do; this only
+removes a false failure.
+
 ## 0.60.0 — 2026-08-18
 
 **The write guard now inspects mixed-case file extensions on every surface.** A file named

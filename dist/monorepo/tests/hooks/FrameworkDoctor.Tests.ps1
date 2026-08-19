@@ -1,4 +1,5 @@
 ﻿# framework-doctor fixture tests: truthful states, survival paths, and twin agreement.
+param([ValidateRange(0,9)][int]$ProtectedSyncArm=0)
 if (-not (Get-Command Assert -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot '_HookHarness.ps1') }
 $scripts = (Resolve-Path (Join-Path $PSScriptRoot '..\..\scripts')).Path
 $doctorPs = Join-Path $scripts 'framework-doctor.ps1'
@@ -130,7 +131,58 @@ It 'Windows PowerShell resolver falls back to the usable SystemRoot executable w
 } else { Skip 'Windows PowerShell resolver falls back to the usable SystemRoot executable when PATH cannot resolve it' 'Windows PowerShell 5.1 is genuinely absent on this host' -Invariant }
 It 'healthy fixture exits zero and prints canary boundary' {$r=Fixture;try{$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 0) "exit=$($x.Exit): $($x.Out)";Assert ($x.Out-match'\[OK\] Install state') 'install state not OK';Assert ($x.Out-match'Enforcement is only FULL') 'false-full boundary missing'}finally{Remove-Item -Recurse -Force $r}}
 It 'missing framework-rules import is reported honestly' {$r=Fixture -Pending $true;try{$p=Join-Path $r 'CLAUDE.md';Put $p (([IO.File]::ReadAllText($p))-replace'(?m)^@\.github/instructions/framework-rules\.instructions\.md\r?\n','');$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 1) "exit=$($x.Exit): $($x.Out)";Assert ($x.Out-match'\[MISSING\] Framework rules delivery') "delivery row absent: $($x.Out)"}finally{Remove-Item -Recurse -Force $r}}
-It 'protected-file version divergence uses the required honest wording' {$r=Fixture -Pending $true;try{$p=Join-Path $r 'CLAUDE.md';Put $p (([IO.File]::ReadAllText($p))-replace'version: 0\.32\.0','version: 0.31.0');$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 1) "exit=$($x.Exit): $($x.Out)";Assert ($x.Out-match'\[MISSING\] Protected-file sync - DIVERGED . protected file not synchronized with installed machinery; review required') "honest divergence row absent: $($x.Out)"}finally{Remove-Item -Recurse -Force $r}}
+function Assert-ProtectedSyncPair($Root,[string]$State,[string]$Detail,[string]$DeliveryState='OK') {
+    Assert ([bool]$bash) 'bash is required to verify framework-doctor twin agreement'
+    $p=Run (Join-Path $Root 'scripts/framework-doctor.ps1');$s=Run (Join-Path $Root 'scripts/framework-doctor.sh');$c=Compare-DoctorResults $p $s
+    foreach($parsed in @($c.PowerShell,$c.Bash)){
+        $row=$parsed.Rows['Protected-file sync'];Assert ($row.State-eq$State) "Protected-file sync state=$($row.State), expected=$State; detail=$($row.Detail)";Assert ($row.Detail-eq$Detail) "Protected-file sync detail='$($row.Detail)', expected='$Detail'"
+        Assert ($parsed.Rows['Framework rules delivery'].State-eq$DeliveryState) "Framework rules delivery state=$($parsed.Rows['Framework rules delivery'].State), expected=$DeliveryState"
+    }
+}
+function Add-InlineFrameworkHeadings($Root,[string[]]$Headings){$p=Join-Path $Root 'CLAUDE.md';Put $p (([IO.File]::ReadAllText($p))+"`n"+(($Headings|ForEach-Object{"## $_"})-join"`n"))}
+function New-ProtectedSyncFixture([ValidateSet('migrated','one','all','boy-scout','no-import','no-claude','empty-claude','empty-list')][string]$Case){
+    $r=Fixture -Pending $true -CopilotBash $false
+    switch($Case){
+        one {Add-InlineFrameworkHeadings $r @('Leanness')}
+        all {Add-InlineFrameworkHeadings $r @('Verification Rules','Leanness','SOLID','Agentic Workflow')}
+        boy-scout {Add-InlineFrameworkHeadings $r @('Boy Scout Rule')}
+        no-import {$p=Join-Path $r 'CLAUDE.md';Put $p (([IO.File]::ReadAllText($p))-replace'(?m)^@\.github/instructions/framework-rules\.instructions\.md\r?\n','')}
+        no-claude {Remove-Item -Force (Join-Path $r 'CLAUDE.md')}
+        empty-claude {Put (Join-Path $r 'CLAUDE.md') ''}
+        empty-list {
+            $p=Join-Path $r 'scripts/framework-doctor.ps1';$text=[IO.File]::ReadAllText($p);$mutated=$text.Replace("`$frameworkHeadings = @('Verification Rules', 'Leanness', 'SOLID', 'Agentic Workflow')",'$frameworkHeadings = @()');Assert ($mutated-ne$text) 'PowerShell empty-list subject mutation missed';Put $p $mutated $true
+            $s=Join-Path $r 'scripts/framework-doctor.sh';$text=[IO.File]::ReadAllText($s);$mutated=[regex]::Replace($text,"framework_headings='Verification Rules\r?\nLeanness\r?\nSOLID\r?\nAgentic Workflow'","framework_headings=''");Assert ($mutated-ne$text) 'shell empty-list subject mutation missed';Put $s $mutated
+        }
+    }
+    $r
+}
+$migratedDetail='migrated - the carrier is authoritative.'
+$incompletePrefix='migration incomplete - these sections duplicate the carrier and may conflict:'
+$incompleteSuffix='Fix: delete them from CLAUDE.md.'
+$inspectionMissing='framework heading inspection is incomplete; protected-file migration state cannot be verified.'
+function It-ProtectedSyncArm([int]$Arm,[string]$Name,[scriptblock]$Body){if($ProtectedSyncArm-eq 0-or$ProtectedSyncArm-eq$Arm){It $Name $Body}}
+It-ProtectedSyncArm 1 'Protected-file sync arm 1: imported carrier with no inline framework headings is migrated' {$r=New-ProtectedSyncFixture migrated;try{Assert-ProtectedSyncPair $r OK $migratedDetail}finally{Remove-Item -Recurse -Force $r}}
+It-ProtectedSyncArm 2 'Protected-file sync arm 2: one inline heading is pending and names Leanness' {$r=New-ProtectedSyncFixture one;try{Assert-ProtectedSyncPair $r PENDING "$incompletePrefix Leanness. $incompleteSuffix"}finally{Remove-Item -Recurse -Force $r}}
+It-ProtectedSyncArm 3 'Protected-file sync arm 3: all inline headings are pending and all are named' {$r=New-ProtectedSyncFixture all;try{Assert-ProtectedSyncPair $r PENDING "$incompletePrefix Verification Rules, Leanness, SOLID, Agentic Workflow. $incompleteSuffix"}finally{Remove-Item -Recurse -Force $r}}
+It-ProtectedSyncArm 4 'Protected-file sync arm 4: Boy Scout Rule alone is not a framework migration finding' {$r=New-ProtectedSyncFixture boy-scout;try{Assert-ProtectedSyncPair $r OK $migratedDetail}finally{Remove-Item -Recurse -Force $r}}
+It-ProtectedSyncArm 5 'Protected-file sync arm 5: missing import defers without double-reporting' {$r=New-ProtectedSyncFixture no-import;try{Assert-ProtectedSyncPair $r OK 'deferred to Framework rules delivery.' MISSING}finally{Remove-Item -Recurse -Force $r}}
+It-ProtectedSyncArm 6 'Protected-file sync arm 6: absent CLAUDE.md is missing' {$r=New-ProtectedSyncFixture no-claude;try{Assert-ProtectedSyncPair $r MISSING 'CLAUDE.md is absent; protected-file migration state cannot be inspected.' MISSING}finally{Remove-Item -Recurse -Force $r}}
+It-ProtectedSyncArm 7 'Protected-file sync arm 7: an empty heading list fails closed instead of passing vacuously' {$r=New-ProtectedSyncFixture empty-list;try{Assert-ProtectedSyncPair $r MISSING $inspectionMissing}finally{Remove-Item -Recurse -Force $r}}
+It-ProtectedSyncArm 9 'Protected-file sync arm 9: an empty CLAUDE.md still emits the row on both twins' {
+    # Regression guard. Get-Content -Raw returns $null (not '') for an empty file, so an unguarded
+    # .Contains() threw and the row VANISHED from the PowerShell report -- 6 ok / 2 missing with no
+    # Protected-file sync line at all -- while the .sh twin reported deferred. An inert row reads as
+    # a clean run, which is the failure class where a check silently stops checking.
+    $r=New-ProtectedSyncFixture empty-claude;try{Assert-ProtectedSyncPair $r OK 'deferred to Framework rules delivery.' MISSING}finally{Remove-Item -Recurse -Force $r}}
+It-ProtectedSyncArm 8 'Protected-file sync arm 8: twins agree across every migration-state arm' {
+    foreach($case in @(
+        @{Name='migrated';State='OK';Detail=$migratedDetail;Delivery='OK'},@{Name='one';State='PENDING';Detail="$incompletePrefix Leanness. $incompleteSuffix";Delivery='OK'},
+        @{Name='all';State='PENDING';Detail="$incompletePrefix Verification Rules, Leanness, SOLID, Agentic Workflow. $incompleteSuffix";Delivery='OK'},@{Name='boy-scout';State='OK';Detail=$migratedDetail;Delivery='OK'},
+        @{Name='no-import';State='OK';Detail='deferred to Framework rules delivery.';Delivery='MISSING'},@{Name='no-claude';State='MISSING';Detail='CLAUDE.md is absent; protected-file migration state cannot be inspected.';Delivery='MISSING'},@{Name='empty-claude';State='OK';Detail='deferred to Framework rules delivery.';Delivery='MISSING'},
+        @{Name='empty-list';State='MISSING';Detail=$inspectionMissing;Delivery='OK'}
+    )){$r=New-ProtectedSyncFixture $case.Name;try{Assert-ProtectedSyncPair $r $case.State $case.Detail $case.Delivery}finally{Remove-Item -Recurse -Force $r}}
+}
+if($ProtectedSyncArm-ne 0){exit (Write-TestSummary 'FrameworkDoctor.Tests')}
 It 'adoption pending is not reported broken' {$r=Fixture -Pending $true;try{Put (Join-Path $r '.claude/adoption-pending.json') '{}';$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 0) "pending exit=$($x.Exit)";Assert ($x.Out-match'\[PENDING\] Bootstrap/adoption state') 'pending row missing';Assert ($x.Out-notmatch'\[MISSING\] Stack toolchain') 'dependent false alarm'}finally{Remove-Item -Recurse -Force $r}}
 It 'missing hook file exits one' {$r=Fixture -MissingHook $true;try{$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 1) "exit=$($x.Exit)";Assert ($x.Out-match'\[MISSING\] Hook files') 'missing hook row absent'}finally{Remove-Item -Recurse -Force $r}}
 It 'bare-name wired shell is portable CANT-VERIFY and does not change exit' {$r=Fixture -Shell 'doctor-shell-bare-name' -Pending $true;try{$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');$parsed=Parse-DoctorResult $x;Assert ($parsed.Rows['Wired hook shell'].State-eq'CANT-VERIFY') "state=$($parsed.Rows['Wired hook shell'].State)";Assert ($parsed.Rows['Wired hook shell'].Detail-match'portable bare interpreter name doctor-shell-bare-name') 'portable wording absent';Assert ($parsed.Rows['Wired hook shell'].Detail-notmatch'pin an absolute') 'obsolete pin remediation remains'}finally{Remove-Item -Recurse -Force $r}}
