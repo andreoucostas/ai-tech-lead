@@ -546,6 +546,22 @@ try {
         } 'Only the last userPromptSubmitted entry is delivered by Copilot CLI 1.0.80' 'prompt-hook-cardinality' -AlsoPattern 'compose into one hook instead'
     }
 
+    It 'case 37: changelog-head grammar applies only to marked template repos on both twins' {
+        $badHead = "## Unreleased`n`n## 0.60.0 — 2026-08-18`n"
+        Assert-Case 'marked-template-bad-changelog-head' {
+            param($d)
+            [IO.File]::WriteAllText((Join-Path $d 'CHANGELOG.md'),$badHead,(New-Object Text.UTF8Encoding($false)))
+        } "marked template repo CHANGELOG.md literal first '## ' line" 'template-checks'
+        Assert-Case 'consumer-bad-changelog-head-ignored' {
+            param($d)
+            Remove-Item -LiteralPath (Join-Path $d '.template-repo') -Force
+            [IO.File]::WriteAllText((Join-Path $d 'CHANGELOG.md'),$badHead,(New-Object Text.UTF8Encoding($false)))
+            # ASCII-only substring on purpose: the real OK line contains an em dash, and the child
+            # process's stdout does not round-trip it under every console code page, so asserting on
+            # the dash tests the typography rather than the behaviour and fails on a correct run.
+        } 'CHANGELOG.md ignored, pair-check only' 'template-checks' -Green
+    }
+
     # B-106/F3: this skip used to be false -- "python3 is unavailable" read as "no python here", but
     # a python.org install ships python.exe and no working python3.exe (the Windows Store alias may
     # still resolve by name). Resolve by EXECUTION across python3/python/py and, if the real name

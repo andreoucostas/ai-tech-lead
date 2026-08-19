@@ -21,6 +21,7 @@ function OK($m)   { Write-Output "OK:   $m" }
 
 # --- 1. Version-stamp sync -------------------------------------------------------------------
 $vClaude = $null; $vJson = $null; $vLog = $null; $vLogLine = $null
+$isTemplateRepo = Test-Path -LiteralPath '.template-repo' -PathType Leaf
 if (Test-Path 'CLAUDE.md') {
     $head = Get-Content 'CLAUDE.md' -TotalCount 10
     foreach ($l in $head) { if ($l -match '^\s*version:\s*(\S+)') { $vClaude = $Matches[1]; break } }
@@ -28,24 +29,33 @@ if (Test-Path 'CLAUDE.md') {
 if (Test-Path '.claude/framework-version.json') {
     try { $vJson = (Get-Content '.claude/framework-version.json' -Raw | ConvertFrom-Json).version } catch {}
 }
-if (Test-Path 'CHANGELOG.md') {
+if ($isTemplateRepo -and (Test-Path -LiteralPath 'CHANGELOG.md' -PathType Leaf)) {
     # Get-Content has no explicit -Encoding here, so on Windows PowerShell 5.1 a BOM-less file (this
     # one deliberately has none) decodes against the system codepage, not UTF-8 -- mangling a
     # non-ASCII em dash in the head line. Read the bytes directly via an absolute path: Set-Location
     # above updates the PowerShell provider location but not the .NET process CWD, so a relative
     # [IO.File] path would resolve against the wrong directory.
     $clText = [IO.File]::ReadAllText((Resolve-Path -LiteralPath 'CHANGELOG.md').Path)
-    foreach ($l in ($clText -split "`r?`n")) { if ($l -match '^## (\d+\.\d+\.\d+)') { $vLog = $Matches[1]; $vLogLine = $l; break } }
+    foreach ($l in ($clText -split "`r?`n")) { if ($l -cmatch '^## ') { $vLogLine = $l; break } }
+    if ($vLogLine -cmatch '^## ([0-9]+\.[0-9]+\.[0-9]+) — ([0-9]{4}-[0-9]{2}-[0-9]{2})$') { $vLog = $Matches[1] }
 }
 if (-not $vClaude) { Fail 'CLAUDE.md has no version stamp in its header comment.' }
 elseif (-not $vJson) { Fail '.claude/framework-version.json missing or unparsable.' }
 elseif ($vClaude -ne $vJson) { Fail "version-stamp drift: CLAUDE.md says $vClaude, framework-version.json says $vJson." }
+elseif ($isTemplateRepo -and -not (Test-Path -LiteralPath 'CHANGELOG.md' -PathType Leaf)) { Fail 'marked template repo has no CHANGELOG.md.' }
+# The version number alone is not proof the entry is released: the marked template's literal first
+# H2 must use the same dated whole-line grammar the release preflight accepts after stamping. Unmarked
+# consumers own their changelog convention, so their CHANGELOG.md is deliberately not parsed.
+# Keep the placeholder case as its OWN finding rather than folding it into the grammar message
+# below. The generic "expected '## X.Y.Z — YYYY-MM-DD'" is true but unhelpful here, and this exact
+# defect -- the literal word Unreleased shipping to consumers as their release date -- reached a
+# release twice (v0.35.0, v0.46.0) and both times was caught only by a human noticing.
+elseif ($isTemplateRepo -and -not $vLog -and $vLogLine -cmatch ("^## " + [regex]::Escape($vJson) + " — Unreleased$")) {
+    Fail "CHANGELOG.md head entry for the current version $vJson still reads '$vLogLine' — stamp it with a real release date before shipping."
+}
+elseif ($isTemplateRepo -and -not $vLog) { Fail "marked template repo CHANGELOG.md literal first '## ' line is '$vLogLine' — expected '## X.Y.Z — YYYY-MM-DD'." }
 elseif ($vLog -and $vLog -ne $vJson) { Fail "version-stamp drift: CHANGELOG.md head entry is $vLog, framework-version.json says $vJson." }
-# The version number alone isn't proof the entry is released: a head line whose version already
-# matches framework-version.json but still reads "Unreleased" is the literal placeholder shipping
-# to consumers as their release date (v0.35.0, v0.46.0 both caught this only by a human noticing).
-elseif ($vLog -and $vLog -eq $vJson -and $vLogLine -match '\bUnreleased\b') { Fail "CHANGELOG.md head entry for the current version $vJson still reads '$vLogLine' — stamp it with a real release date before shipping." }
-else { OK "version stamps in sync ($vClaude)$(if (-not $vLog) { ' (no CHANGELOG.md — consumer repo, pair-check only)' })." }
+else { OK "version stamps in sync ($vClaude)$(if (-not $isTemplateRepo) { ' (consumer repo — CHANGELOG.md ignored, pair-check only)' })." }
 
 # --- 2. Framework-rules source <-> AGENTS.md verbatim mirror ------------------------------------
 function Get-Section {

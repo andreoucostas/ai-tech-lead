@@ -14,24 +14,33 @@ fail() { echo "FAIL: $1"; failed=$((failed+1)); }
 ok()   { echo "OK:   $1"; }
 
 # --- 1. Version-stamp sync -------------------------------------------------------------------
-v_claude=""; v_json=""; v_log=""; v_log_line=""
+v_claude=""; v_json=""; v_log=""; v_log_line=""; is_template_repo=0
+[ -f .template-repo ] && is_template_repo=1
 [ -f CLAUDE.md ] && v_claude=$(head -10 CLAUDE.md | sed -n 's/^[[:space:]]*version:[[:space:]]*\([^[:space:]]*\).*/\1/p' | head -1)
 [ -f .claude/framework-version.json ] && v_json=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' .claude/framework-version.json | head -1)
-if [ -f CHANGELOG.md ]; then
-  v_log_line=$(grep -m1 -E '^## [0-9]+\.[0-9]+\.[0-9]+' CHANGELOG.md)
-  v_log=$(printf '%s' "$v_log_line" | sed -E 's/^## ([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+if [ "$is_template_repo" -eq 1 ] && [ -f CHANGELOG.md ]; then
+  v_log_line=$(sed -n '/^## /{p;q;}' CHANGELOG.md)
+  if printf '%s\n' "$v_log_line" | grep -Eq '^## [0-9]+\.[0-9]+\.[0-9]+ — [0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
+    v_log=$(printf '%s' "$v_log_line" | sed -E 's/^## ([0-9]+\.[0-9]+\.[0-9]+) — [0-9]{4}-[0-9]{2}-[0-9]{2}$/\1/')
+  fi
 fi
 if [ -z "$v_claude" ]; then fail "CLAUDE.md has no version stamp in its header comment."
 elif [ -z "$v_json" ]; then fail ".claude/framework-version.json missing or unparsable."
 elif [ "$v_claude" != "$v_json" ]; then fail "version-stamp drift: CLAUDE.md says $v_claude, framework-version.json says $v_json."
-elif [ -n "$v_log" ] && [ "$v_log" != "$v_json" ]; then fail "version-stamp drift: CHANGELOG.md head entry is $v_log, framework-version.json says $v_json."
-# The version number alone isn't proof the entry is released: a head line whose version already
-# matches framework-version.json but still reads "Unreleased" is the literal placeholder shipping
-# to consumers as their release date (v0.35.0, v0.46.0 both caught this only by a human noticing).
-elif [ -n "$v_log" ] && [ "$v_log" = "$v_json" ] && printf '%s' "$v_log_line" | grep -qw 'Unreleased'; then
+elif [ "$is_template_repo" -eq 1 ] && [ ! -f CHANGELOG.md ]; then fail "marked template repo has no CHANGELOG.md."
+# The version number alone is not proof the entry is released: the marked template's literal first
+# H2 must use the same dated whole-line grammar the release preflight accepts after stamping. Unmarked
+# consumers own their changelog convention, so their CHANGELOG.md is deliberately not parsed.
+# Keep the placeholder case as its OWN finding rather than folding it into the grammar message
+# below. The generic "expected '## X.Y.Z — YYYY-MM-DD'" is true but unhelpful here, and this exact
+# defect -- the literal word Unreleased shipping to consumers as their release date -- reached a
+# release twice (v0.35.0, v0.46.0) and both times was caught only by a human noticing.
+elif [ "$is_template_repo" -eq 1 ] && [ -z "$v_log" ] && printf '%s' "$v_log_line" | grep -Eq -- "^## $v_json — Unreleased$"; then
   fail "CHANGELOG.md head entry for the current version $v_json still reads '$v_log_line' — stamp it with a real release date before shipping."
+elif [ "$is_template_repo" -eq 1 ] && [ -z "$v_log" ]; then fail "marked template repo CHANGELOG.md literal first '## ' line is '$v_log_line' — expected '## X.Y.Z — YYYY-MM-DD'."
+elif [ -n "$v_log" ] && [ "$v_log" != "$v_json" ]; then fail "version-stamp drift: CHANGELOG.md head entry is $v_log, framework-version.json says $v_json."
 else
-  extra=""; [ -z "$v_log" ] && extra=" (no CHANGELOG.md — consumer repo, pair-check only)"
+  extra=""; [ "$is_template_repo" -eq 0 ] && extra=" (consumer repo — CHANGELOG.md ignored, pair-check only)"
   ok "version stamps in sync ($v_claude)$extra."
 fi
 

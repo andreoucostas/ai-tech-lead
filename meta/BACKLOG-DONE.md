@@ -4031,3 +4031,56 @@ about what `/bootstrap` *writes*. Adjacent, not the same.
   `ScriptTwinCoverage`. The nine `UNKNOWN` rows are deliberately untouched: `UNKNOWN` means reading
   could not establish whether a red observation exists, which is a question about the *record*
   rather than a missing test.
+
+- **B-131** — DONE **2026-08-19**. `release.ps1` and `template-checks` no longer disagree about
+  changelog-head grammar: the release grammar wins, applied to **marked template repos only**.
+  `template-checks` now reads the **literal first** `## ` line and requires the dated whole-line form
+  `## X.Y.Z — YYYY-MM-DD`, matching what the release preflight accepts after stamping. The
+  divergence it closes was one-directional and self-inflicted: the cheap gate reported green and the
+  expensive one refused ~25 minutes later.
+
+  **The ownership boundary is the point, and it is structural rather than conventional.** An
+  unmarked repository's `CHANGELOG.md` is **not parsed at all** — Keep a Changelog's
+  `## Unreleased`-above-versions layout is a legitimate external convention, and failing a
+  consumer's build for it would be the framework imposing an authoring style it has no standing to
+  impose. This is guaranteed by construction, not by care: the installer's exclusion list drops
+  `.template-repo` (and `CHANGELOG.md`) before anything reaches a consumer. Verified both directions
+  on both twins with the exact layout `release.ps1` refuses: marker present → **exit 1**; marker
+  removed → **exit 0**.
+
+  **Two defects were introduced by the first implementation and caught in review, both from the same
+  cause — the implementer's meta suite timed out, so it never ran what it wrote.**
+  1. `ScriptTwinParity`'s `TemplateFixture` never created `.template-repo`. Marker-gating therefore
+     pushed a fixture *named* TemplateFixture onto the **consumer** branch, where its changelog
+     assertions agreed vacuously — B-75's inert-fixture class, created by the very change that
+     introduced the marker distinction. The fixture now writes the marker **and** a valid dated
+     changelog, because a marked template without one is itself a failure.
+  2. `ValidateDist` case 37 asserted on a string containing an **em dash**, which does not
+     round-trip through the child process's stdout under every console code page — testing the
+     typography rather than the behaviour, and failing on a correct run. Now an ASCII-only substring.
+
+  **A diagnostic was also restored rather than folded away.** The first cut replaced the specific
+  *"still reads 'Unreleased' — stamp it with a real release date before shipping"* finding with the
+  generic grammar message. That message exists because the literal word `Unreleased` shipped to
+  consumers as their release date **twice** (v0.35.0, v0.46.0), caught both times only by a human
+  noticing. It is now its own branch ahead of the generic one.
+
+- **B-142** — **CLOSED 2026-08-19 as a deliberate non-action.** The entry asked for exactly this
+  outcome by name: *"the honest answer may be to leave this unguarded … decide that explicitly
+  rather than defaulting to yes."*
+
+  **Re-verified first**, because the tree moved across two releases: every cross-file rule citation
+  still resolves — dotnet 51/0 unresolved, angular 52/0, monorepo 58/0.
+
+  **The decision does not rest on cost, it rests on reachability.** B-142's named failure mode is
+  *inserting a rule mid-list silently repoints later citations*. Insert at position N and renumber:
+  every old citation number **stays inside the valid range**, so a range resolver stays **green**.
+  The entry's own required red test is therefore **unreachable under the proposed mechanism**, and
+  Maintenance model #4's second half — name the world in which the measure would register success,
+  added by B-112 — voids the experiment before it is built. The only world where a range check fails
+  is a typo like `Verification Rule #99`, which is not the defect the entry is about.
+
+  Catching the real defect needs stable rule identities or citations bound to expected rule *text*
+  via a registry: a materially larger canonicalisation design, against harm the entry itself calls
+  hypothetical. **Recorded so nobody re-derives it**, including the cost finding — the extension is
+  not the near-free reuse of check 12 it hoped for, but comparable to or larger than check 12 itself.

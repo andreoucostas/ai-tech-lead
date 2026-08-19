@@ -1,7 +1,27 @@
 # B-55 — vendor-behaviour facts have no single source
 
-**Status:** DESIGN, awaiting adversarial critique (Maintenance model #1).
-**Priority:** P2 · **Invariants:** #5 #6 · shipped change ⇒ release.
+**Status:** **REV 2 — RE-LOCKED after critique. Implementation authorised.**
+**Priority:** P2 · **Invariants:** #5 #6 · **meta-only after rev 2 — no release.**
+**Critique:** `.claude/plans/2026-08-18-b55-sol-critique.md` — REQUEST CHANGES, four blocking
+findings. Three accepted outright; the fourth (no concrete regexes) is answered by §4b below.
+
+> **Two corrections that change the shape of the work.**
+>
+> **1. `validate-dist` is the wrong home, and this is the same boundary B-131 just enforced.**
+> `template-checks` and the shipped validator run **in consumer repositories**. A vendor-fact
+> denylist is *maintainer bookkeeping*: a consumer may accurately document an older Copilot
+> version, quote a superseded claim in their own changelog, or describe a different hook
+> arrangement on purpose. Failing their build over our vocabulary is exactly what B-131 forbids for
+> changelog grammar, one file over. **The denylist moves to the meta suite, scanning composed
+> `dist/*`** — where it is maintainer knowledge that need not ship at all. This makes the item
+> meta-only and drops the release.
+>
+> **2. I chose the minority spelling.** Measured: `≥` appears **18** times, ASCII `>=` **4**. Rev 1
+> proposed normalising *to* `>=`, i.e. rewriting 18 dominant instances to adopt 4 minority ones —
+> backwards. Worse, the premise was wrong: normalisation is **not** a prerequisite for gating,
+> because one regex can accept `(?:>=|≥)` with an optional `v`. No parser, test or assertion
+> anywhere consumes this typography (searched). **The migration is dropped entirely** — it was
+> churn justified by a constraint that does not exist.
 
 ---
 
@@ -53,8 +73,9 @@ tidying.
 
 ## 4. Design
 
-**(a) Normalise the spelling.** One form — `CLI >= v1.0.NN` — everywhere in shipped content. Pure
-text change, verified by the existing composer + `validate-dist`.
+**(a) ~~Normalise the spelling.~~ DROPPED — see the correction above.** `≥` is dominant 18:4, one
+regex can accept `(?:>=|≥)` with an optional `v`, and nothing parses the typography. Rewriting 18
+files to adopt the minority form would be churn justified by a constraint that does not exist.
 
 **(b) A superseded-claims denylist**, `scripts/vendor-claims-denylist.txt`, one file read by both
 twins so it cannot drift (the same construction `meta-denylist.txt` already uses for invariant #6).
@@ -68,9 +89,20 @@ superseded it. Seeded with the four known-dead claims:
 | a Stop `reason` "is shown only to the user" | it is shown to Claude; the confusion was with `stopReason` |
 | any claim that `route-prompt` injection reaches the model **while more than one** `userPromptSubmitted` hook is registered | B-147, CLI 1.0.80 |
 
-**(c) The gate:** a new `validate-dist` check that fails when a shipped file matches a denylist
-entry, reporting the file, the matched text, and *the reason it is superseded* — the reason is the
-point; a bare "forbidden string" finding teaches nothing.
+**(c) The gate lives in the META SUITE**, `.claude/hooks/tests/VendorClaims.Tests.ps1`, scanning the
+composed `dist/*` trees. PowerShell-only (WSD-005), so no twin. It fails when a composed file
+matches a denylist entry, reporting the file, the matched text, and *the reason it is superseded* —
+the reason is the point; a bare "forbidden string" finding teaches nothing and gets suppressed.
+
+**Neither the denylist file nor the check ships.** That is the ownership fix: consumers never
+inherit our vendor-fact vocabulary, and a consumer who accurately documents an older Copilot
+version is not our build's business.
+
+**Each regex must be proved twice before it is added** — the critique's fourth finding, and B-59's
+inert-check class applied here: (i) it **matches the real superseded text** as it was actually
+written, not as we remember writing it; (ii) it does **not** match the corrected prose that replaced
+it, or any legitimate current sentence. A denylist entry that matches nothing is inert; one that
+over-matches blocks correct writing. Both failure modes are silent.
 
 **(d) A dated provenance line** in `enforcement-surfaces.md` naming it as the canonical home for
 vendor-capability claims, so the next person adding a claim knows where it belongs. Prose, not a
