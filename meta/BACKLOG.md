@@ -78,7 +78,28 @@ B-30 shipped in v0.25.4). **B-38, B-39 (both phases), B-36, and B-34 all shipped
 ### B-42 · Field pilot — install into ≥1 real production repo and let evidence drive the backlog
 **Effort:** M to set up · elapsed weeks to harvest · **Invariants:** #6
 
-**Why:** the framework has shipped 31 minor versions with — as far as the meta layer records —
+> **PREMISE CORRECTED 2026-08-19 by the maintainer — the original *Why* below is factually wrong and
+> is kept only so the correction is legible.** The framework **is in active production use**: the
+> author uses it on real work, continuously. So "zero live consumer installs" was never true, and
+> "every design decision came from maintainer introspection" understates the evidence base — a
+> maintainer who ships with the tool daily is generating real friction data, not introspecting.
+>
+> **What B-42 actually lacks, and all it should now claim:** field evidence from a developer who is
+> **not the author**. That distinction is the whole remaining item — the author cannot report the
+> onboarding friction of someone who did not write the thing, cannot notice guidance that only reads
+> as obvious to its author, and shares every blind spot the design has. The two ledger reports to
+> date (`meta/field-reports.md`) are both from other people and are both complaints, which is
+> exactly the signal the author cannot self-generate.
+>
+> **Consequences for the *Do* below:** step 2 ("install into at least one real work repo") is
+> **already satisfied** — do not re-do it. Steps 1 (success metrics), 3 (intake discipline) and 4
+> (convert findings, re-order the backlog) remain open, and the intake gap the ledger records is
+> now the sharpest part: neither existing report captured arrival date, what fired, hook noise, or
+> token pain. **Nothing in this entry should any longer be read as "the framework is unproven in
+> the field."**
+
+**Why (ORIGINAL, SUPERSEDED — see the correction above):** the framework has shipped 31 minor
+versions with — as far as the meta layer records —
 **zero live consumer installs and zero field feedback**. Every design decision to date came from
 maintainer introspection plus adversarial self-critique (excellent, but closed-loop). Several
 standing items explicitly wait on evidence that only field use can produce: B-26's misrouting
@@ -183,6 +204,33 @@ adoption, and reviewer-profile evidence still come only from the field pilot. Do
 framework *to* the pinned repos (rotate one target if that risk appears). Don't average away
 failures: one hard checklist failure = a defect entry, regardless of the rubric totals.
 
+> **SCOPE WIDENED 2026-08-19 by the maintainer — the drill must ship, not just exist in `meta/`.**
+> As written, every part of B-49 is maintainer-only: `meta/drill-kit.md` never reaches a consumer, so
+> the one thing the drill measures that nothing else does — *does the framework demonstrably add
+> value over the same agent bare* — is a question only the author can ever ask, about repos only the
+> author picked. A consumer cannot answer it for **their** codebase, which is the only place the
+> answer actually matters to them.
+>
+> **Therefore B-49 splits into two deliverables sharing one frozen rubric:**
+> 1. **The meta drill (existing scope)** — quarterly, maintainer-run, against the two pinned OSS
+>    targets. Unchanged; `meta/drill-kit.md` stays where it is.
+> 2. **A consumer-runnable self-assessment (NEW)** — a shipped artifact that lets an installed team
+>    run the A/B value question on their own repo and their own tasks: same task, same model, once
+>    with the framework and once bare, scored on the same frozen rubric. This is the first thing the
+>    framework would offer that answers *"is this worth keeping installed?"* in the consumer's own
+>    terms rather than the author's.
+>
+> **Not yet designed, and it is not a copy-paste of the kit.** At least four things differ and must
+> be decided before implementation: (a) the meta kit pins commit SHAs for cross-quarter
+> comparability — a consumer's own repo has no such pin and does not need one; (b) the meta kit's
+> planted-defect probes assume the author's fixtures; (c) a consumer running "once bare" must be
+> told plainly that this costs real API spend, twice; (d) the rubric must stay **frozen and
+> identical** across both deliverables or the two populations stop being comparable — that shared
+> rubric is the whole reason to treat these as one item rather than two. Needs its own locked design
+> and critique before any code. **Cross-link: B-44** — a consumer-visible shrinking delta is the
+> retirement signal that item exists to watch for, and this is the only instrument that could
+> produce one from outside this box.
+>
 > **KIT DELIVERED 2026-08-17; no drill run.** WSD-044 pins
 > `dotnet-architecture/eShopOnWeb` and `gothinkster/angular-realworld-example-app`, while leaving
 > both commit SHAs and all size/build/domain qualification explicitly to drill #0. The cold-run
