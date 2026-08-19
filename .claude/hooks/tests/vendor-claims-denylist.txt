@@ -1,0 +1,67 @@
+# Superseded vendor-claim denylist — the machine-checkable half of B-55.
+#
+# WHAT THIS IS. Claims about what Copilot and Claude Code actually *do* are restated across ~6
+# shipped surfaces (docs/enforcement-surfaces.md, the hooks.json _comment, three stack README hook
+# tables, six boy-scout-check headers, the presentation HTML). Four times now, a vendor changed
+# behavior and several surfaces stayed wrong at once — most recently 2026-08-18, when B-147's
+# correction had to land in the matrix, the _comment and the narrative simultaneously. This file
+# lists claims we have already learned are FALSE, so the next vendor change fails a gate instead of
+# quietly making six files wrong.
+#
+# WHO READS IT. `.claude/hooks/tests/VendorClaims.Tests.ps1`, and nothing else. Unlike
+# scripts/meta-denylist.txt, this file is NOT read by a bash twin: the gate is a meta test and meta
+# scripts are PowerShell-only by decision (meta/workspace-decisions.md WSD-005). So .NET regex
+# syntax is available in full here — lookaround included — and there is no POSIX-ERE common subset
+# to keep to. Do not "helpfully" restrict these patterns for a bash leg that does not exist.
+#
+# WHAT IT IS NOT. Neither this file nor its gate ships. That is deliberate and is the ownership half
+# of the fix: a consumer may accurately document an older Copilot version, quote a superseded claim
+# in their own changelog, or describe a different hook arrangement on purpose. Failing a consumer's
+# build over our vendor-fact bookkeeping would be the wrong trade — the same boundary B-131 drew for
+# changelog grammar one file over.
+#
+# CANONICAL HOME. docs/enforcement-surfaces.md is where a vendor-capability claim belongs. That is
+# prose convention, not enforced by anything — this file only catches claims already known dead.
+#
+# Format: one directive per line. Blank lines and lines starting with '#' are ignored.
+#   DENY <regex>          .NET regex, matched against the whole file text. Must be followed by...
+#   REASON <text>         ...its supersession reason, on the very next directive line. The reason is
+#                         the deliverable: a bare "forbidden string" finding teaches nothing and gets
+#                         suppressed. A DENY with no REASON is a fatal parse error.
+#   ALLOW <path-substr>   dist-relative path substring exempted from ALL deny patterns.
+#
+# SCOPE. The gate scans the composed dist/{dotnet,angular,monorepo} trees, skipping CHANGELOG.md
+# and any dated version section (`### 1.2.3 — date`) inside other files. Those legitimately narrate
+# claims that were true when written; see the README `## Changelog` excerpt, which quotes the
+# pre-1.0.65 Copilot stdout behavior correctly, in the past tense, in a shipped file.
+#
+# ADDING AN ENTRY. Prove each regex TWICE before committing it (B-59/B-64's inert-check class):
+#   (i)  it matches the real superseded text AS IT WAS ACTUALLY WRITTEN — recover it with
+#        `git grep <phrase> <sha>^ -- src dist`, do not paraphrase from memory;
+#   (ii) it does NOT match the corrected prose that replaced it, nor any legitimate current
+#        sentence. `no equivalent analyzer` (NUnit, in enforce-standards/SKILL.md) is the live
+#        near-miss that killed the first draft of entry 1.
+# An entry that matches nothing is inert; one that over-matches blocks correct writing. Both fail
+# silently. Only list claims that are now FALSE — not ones that are merely narrower than the truth,
+# or this list accumulates style opinions and stops being trusted.
+
+# --- 1. Copilot's turn-end event ------------------------------------------------------------------
+# Was: "Copilot has no equivalent event." (README.md hook table, `Stop` row, all three dists,
+# through v0.34.x). Anchored on Copilot within one clause so it cannot reach the live, correct
+# "NUnit ... has no equivalent analyzer" in enforce-standards/SKILL.md.
+DENY (?i)Copilot[^.\r\n]{0,60}\bno equivalent event\b
+REASON Copilot CLI 1.0.72 ships `agentStop`; corrected 2026-07-27 in v0.35.0. Copilot's turn-end equivalent exists — see docs/enforcement-surfaces.md.
+
+# --- 2. Copilot and userPromptSubmitted stdout ----------------------------------------------------
+# Was: "**Copilot does not consume hook stdout for this event**" (README.md hook table,
+# `UserPromptSubmit` row, all three dists, through v0.34.x).
+DENY (?i)Copilot[^.\r\n]{0,60}does not consume hook stdout
+REASON Copilot CLI 1.0.65 consumes `userPromptSubmitted` stdout; live-verified 2026-07-04. It delivers only the LAST registered entry, which is a cardinality constraint, not a consumption one — validate-dist check 13 (B-148) enforces that separately.
+
+# --- 3. What a Stop hook's `reason` reaches -------------------------------------------------------
+# Was: "`reason` is shown only to the user, never fed to the model." (boy-scout-check.ps1/.sh
+# headers, all three dists, through v0.34.x — it survived there for months). `\breason` cannot match
+# inside `stopReason`: there is no word boundary between "stop" and "Reason", so the true statement
+# about top-level `stopReason` stays sayable.
+DENY (?i)\breason[^\w\r\n]{0,3}(?:is|was)\s+shown only to the user
+REASON A Stop hook's `decision:"block"` reason IS shown to Claude as a system reminder; the confusion was with top-level `stopReason`, which is the field that is user-only.

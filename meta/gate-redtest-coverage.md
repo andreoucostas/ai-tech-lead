@@ -1,6 +1,8 @@
 # Gate and diagnostic planted-defect coverage
 
 Inventory date: 2026-08-18, against v0.60.0 plus the B-149 working-tree changes in this delivery.
+Amended 2026-08-19: one row added for `VendorClaims.Tests.ps1`, a suite created after the inventory
+date by B-55. No other row was re-inventoried, so every verdict below still dates from 2026-08-18.
 `COVERED` means an executable negative fixture or mutation exists and a repository record
 shows the subject producing the expected failure/honest adverse row. `HAPPY-PATH-ONLY` means a clean
 test exists but no qualifying red observation could be established. `NONE` means no test was found.
@@ -70,6 +72,7 @@ One row follows for every `*.Tests.ps1` under `.claude/hooks/tests/` on the inve
 | `BacklogHygiene.Tests.ps1` | `-RedTest` named mutations, including vacuity mutations | Yes — executable arms; strongest reference named by B-64 | n/a (PS-only meta) | COVERED |
 | `DocClaims.Tests.ps1` | `-RedTest` named claim/registry mutations | Yes — `2026-08-18-b76-implementation.md` | n/a | COVERED |
 | `DocTruth.Tests.ps1` | Static live-tree assertions; external planted-heading replay | Yes — `meta/review-ledger.md` v0.53.0 | n/a | COVERED |
+| `VendorClaims.Tests.ps1` | nine `-RedTest` arms (3 planted claims, section-skipper, 4 vacuity/parse, unproved-pattern), plus a permanent in-suite provenance proof per pattern | Yes — all nine observed red, and the gate caught all four genuine instances in the real `dist/dotnet` at `3ea42f8^`; `meta/BACKLOG-DONE.md` B-55 | n/a (PS-only meta) | COVERED |
 | `Composer.Tests.ps1` | malformed-marker and unapproved-overlay-collision mutations | Yes — `2026-08-18-b149-implementation.md` | composer ps1 + sh | COVERED |
 | `DocsSyncCheck.Tests.ps1` | planted `.claude/skills` versus `.github/skills` drift | Yes — `2026-08-18-b149-implementation.md` | docs-sync-check ps1 + sh | COVERED |
 | `FidelityCheck.Tests.ps1` | Invalid-ref negative contract | Yes — suite fixture; no separate earlier record located | ps1 + sh subject | COVERED |

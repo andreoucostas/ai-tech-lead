@@ -4084,3 +4084,89 @@ about what `/bootstrap` *writes*. Adjacent, not the same.
   via a registry: a materially larger canonicalisation design, against harm the entry itself calls
   hypothetical. **Recorded so nobody re-derives it**, including the cost finding — the extension is
   not the near-free reuse of check 12 it hoped for, but comparable to or larger than check 12 itself.
+
+### B-55 · Vendor-behavior facts are restated across ~6 shipped surfaces with no single source
+
+- **B-55** — DONE **2026-08-19**, meta-only, no release. Vendor-capability claims we have already
+  learned are false are now caught by a gate instead of surviving in shipped prose.
+  `.claude/hooks/tests/vendor-claims-denylist.txt` holds the patterns with their supersession
+  reasons; `.claude/hooks/tests/VendorClaims.Tests.ps1` scans the three composed dists. Neither
+  ships. Design + critique: `.claude/plans/2026-08-18-b55-vendor-facts-design.md` (rev 2),
+  `.claude/plans/2026-08-18-b55-sol-critique.md`.
+
+  **Standing constraint this establishes:**
+  Vendor-capability claims are maintainer-owned and gated meta-side, never in a consumer's build.
+  A consumer may accurately document an older Copilot version, quote a superseded claim in their own
+  changelog, or describe a different hook arrangement on purpose; failing their build over our
+  vendor-fact bookkeeping is the same boundary violation B-131 forbids for changelog grammar one
+  file over.
+
+  **The locked design took the cheap half deliberately** — a superseded-claims denylist rather than
+  the canonical-source refactor — on the grounds that duplication is not what hurt us, *stale*
+  duplication is: all four recorded incidents were claims that **became** false when the vendor
+  changed and stayed shipped. That reasoning survived implementation unchanged.
+
+  **Three deltas from the locked design, all narrowing, all rev-1 leftovers the rev-2 rewrite
+  missed:**
+  1. The denylist moved from `scripts/` to `.claude/hooks/tests/`, beside its only reader. §4b still
+     justified `scripts/` as "one file read by both twins so it cannot drift" — a rationale that died
+     when rev 2 moved the gate into the PowerShell-only meta suite (WSD-005). Left in `scripts/`
+     next to the genuinely twin-read `meta-denylist.txt`, it would have invited the next reader to
+     build a bash twin for a gate that has none. Its header now says so explicitly.
+  2. **§4d was dropped as written.** The dated provenance line naming `enforcement-surfaces.md` as
+     the canonical home would have edited a **shipped** file — requiring a rebuild, four changelog
+     heads and a release under invariant #7 — for one sentence the design itself labels unenforced,
+     in an item rev 2 had just declared meta-only. The provenance statement lives in the denylist
+     header and in `meta/decisions-index.md` instead. Revisit as shipped prose when a release is
+     happening anyway.
+  3. **Seed claim #4 was dropped.** "Any claim that `route-prompt` injection reaches the model while
+     more than one `userPromptSubmitted` hook is registered" is a conditional about repository state,
+     not a phrase — there is no text for a regex to match. `validate-dist` check 13 (B-148) already
+     enforces that state deterministically, and the denylist entry for claim 2 cross-references it so
+     the distinction between *consumption* and *cardinality* is on the record.
+
+  **The scan-scope problem neither the design nor the critique caught.** The critique required
+  excluding `CHANGELOG` files, because they legitimately record what was once true. That is not
+  sufficient: `src/stacks/*/files/README.md` carries a `## Changelog` excerpt whose
+  `### 0.7.2 — 2026-05-16` section quotes the pre-1.0.65 Copilot stdout behavior **verbatim,
+  correctly, in the past tense, in a shipped file that is not a CHANGELOG**. The gate therefore
+  skips dated version sections wherever they appear, tracking fenced code blocks so a `#` comment
+  inside a fence cannot be mistaken for a heading, and applying the rule to `.md` only — `#` starts a
+  comment in `.ps1`/`.sh`, which is exactly where the `boy-scout-check` headers this gate must read
+  actually live. Both directions are tested: a dated section may quote a superseded claim, and a
+  live section later in the *same file* still fails.
+
+  **Every pattern is proved in both directions, permanently, not once at authoring time.** A
+  provenance registry inside the test pairs each pattern with the real historical text it must catch
+  and the live prose it must not, and a pattern with no provenance entry **fails the suite**. This is
+  B-59/B-64's inert-check class turned on the gate itself: a pattern that matches nothing is inert, a
+  pattern that over-matches blocks correct writing, and both fail silently. The live near-miss that
+  killed the first draft of pattern 1 is kept as a rejection case — `no equivalent analyzer` (NUnit,
+  in `enforce-standards/SKILL.md`) sits one word away from `no equivalent event`. Pattern 3 relies on
+  `\breason` being unable to match inside `stopReason` (no word boundary between "p" and "R"), so the
+  *true* statement about top-level `stopReason` stays sayable; that is a rejection case too.
+
+  **Verification.** Nine red tests, each observed failing with its supersession reason attached:
+  three planted claims, a section-skipper case proving a live claim after a dated section still
+  fails, zero-files-scanned, zero-DENY-patterns, unpaired `DENY`/`REASON`, an uncompilable regex, and
+  an unproved pattern. Then the observation that counts: the gate was run against the **real**
+  `dist/dotnet` tree at `3ea42f8^` (the parent of the v0.35.0 commit that corrected these claims) and
+  caught all four genuine instances at their exact historical line numbers — `README.md:176` and
+  `:179`, `boy-scout-check.ps1:7` and `boy-scout-check.sh:7`. Clean tree: 5/5 green under **both**
+  pwsh 7 and Windows PowerShell 5.1, red still red under 5.1. `dist/` unchanged, as a meta-only
+  change requires.
+
+  **RCA — why no gate caught this, and what else is exposed.** `DocTruth` and `DocClaims` both test
+  prose about facts *internal* to the repository — paths, version stamps, whether a command file
+  contains the section a doc claims it maintains. Every one of those is checkable by reading the
+  repository. A claim about what Copilot does is checkable only against the vendor, so no existing
+  gate could have been extended to cover it; the honest mechanism is a record of claims we have
+  already discovered to be false, which is what this is. **Same class still exposed:** this catches a
+  restated *dead* claim, not a *newly* dead one — the vendor change itself is still detected by a
+  human noticing, which is B-43's recertification cadence (re-run the canary after any Copilot CLI
+  bump) and B-46's version awareness. Nothing here shortens that detection latency; it only
+  guarantees that once a claim is known dead, it cannot survive in a composed dist. The residual
+  duplication that B-55's `Do` also described — ~11 surfaces restating the same facts — is
+  **deliberately unaddressed**, per the proportionality case; if the class recurs against *live*
+  claims rather than superseded ones, that is the evidence that would justify revisiting the
+  canonical-source refactor.

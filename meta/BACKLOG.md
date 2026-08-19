@@ -244,25 +244,10 @@ to side-effecting events such as `postToolUse` where multiple entries are legiti
 
 **B-149 is DONE (2026-08-18) — four gates closed; see `meta/BACKLOG-DONE.md`.**
 
-### B-55 · Vendor-behavior facts are restated across ~6 shipped surfaces with no single source
-**Effort:** M · **Priority:** P2 doc truth · **Invariants:** #5, #6
-
-**Why:** claims about what Copilot/Claude actually do are duplicated in
-`docs/enforcement-surfaces.md`, the `hooks.json` `_comment`, the three stack `README.md` hook tables,
-all six `boy-scout-check` headers, and `docs/presentation/framework-technical.html`. When Copilot
-shipped `agentStop`, **five** of those surfaces still asserted "Copilot has no equivalent event", and
-a README asserted "Copilot does not consume hook stdout for this event" while
-`enforcement-surfaces.md` said the opposite **in the same commit**. Separately, a factually wrong
-claim (a Stop hook's `decision:"block"` `reason` "is shown only to the user" — it is shown to Claude;
-the confusion was with `stopReason`) survived in six hook headers for months. `DocTruth` covers
-internal repo facts (paths, version stamps); nothing tests prose about *external* behavior.
-
-**Do:** pick one canonical home for vendor-capability claims (`enforcement-surfaces.md` is the
-natural one) and have the other surfaces point at it rather than restate it. Where a restatement is
-genuinely load-bearing, back it with a small machine-checkable registry (event name → minimum
-version → date verified) that a gate can diff against the shipped surfaces. Cheap first step: a gate
-that greps shipped files for a denylist of *superseded* claims, so the next vendor change fails a
-gate instead of quietly making six files wrong.
+**B-55 is DONE (2026-08-19) — the superseded-claims denylist shipped meta-only; see
+`meta/BACKLOG-DONE.md`.** The canonical-source refactor half of its *Do* was deliberately **not**
+built: the proportionality case found that stale duplication, not duplication, is what caused all
+four incidents. Revisit only on evidence that the class recurs against *live* claims.
 
 ### B-44 · Host-native overlap watch — retirement triggers for framework machinery
 **Effort:** S · **Invariants:** #7
