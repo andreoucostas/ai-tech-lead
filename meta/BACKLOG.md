@@ -2600,6 +2600,48 @@ reading (527–554s, per the two v0.52.1 release attempts) is barely faster than
 stopped helping as the suite grew, which would be free runtime back with no per-file work at all if
 confirmed and fixed.
 
+**MEASURED CORRECTION, 2026-08-19 (v0.61.0) — read this before acting on anything above.** Two of
+this entry's load-bearing claims were refuted by direct per-file measurement, and acting on the
+entry as originally written would have sent the next person at the wrong file with the expensive
+fix.
+
+1. **`ValidateDist.Tests.ps1` was NOT the binding constraint.** Re-measured on an idle box: 234.9s
+   serial (not 339.6s) and 404.5s parallel. The real dominant file was
+   `GuardPatternErrors.Tests.ps1` at **651.1s of a 677.6s parallel wall clock — 96%**; every other
+   file, `ValidateDist` included, finished inside its shadow. That file was added by B-59 the day
+   before this measurement, so the entry's 2026-08-13 numbers were simply taken before the dominant
+   cost existed. A cost table with no date next to it rots silently.
+2. **It did not need the reused-runspace re-architecture this entry prescribes.** Its four mutation
+   cases were independent by construction (`Invoke-MutationRedTest` gives each its own
+   `mutation-helper-<guid>` scratch tree, removed in a `finally`) and serial only because of a
+   `foreach`. Running them as throttled jobs took it 418.5s → 230.3s standalone (1.82x) and the
+   suite 671.5s → 524.3s in the real release run, back under the 650s ceiling with the ceiling
+   untouched. Cost: a few lines. **So check for trivially-parallel structure BEFORE reaching for
+   in-process reuse** — the proportionality check (Maintenance model #6) belongs at the top of this
+   entry, not the bottom.
+
+**The throttle had NOT regressed** — that hypothesis above is closed. The outer loop was working;
+one job simply outlasted the entire schedule, which no amount of scheduling can fix. Longest-first
+launch ordering was tried first on exactly that theory and bought nothing (689.2s vs 671.5s).
+
+**The methodological trap that produced two wrong diagnoses in a row, and the reason this entry's
+own numbers misled:** a *serial* per-file pass runs each file with `VALIDATE_DIST_TESTS_THROTTLE` /
+`HOOKTESTS_THROTTLE` unset, i.e. at full internal width, while the parallel runner hands each file
+`$innerLanes`. `GuardPatternErrors` measured 418.5s serial against 651.1s parallel — a 1.56x
+contention inflation on a file with *no* internal parallelism at all. **Serial per-file costs cannot
+predict a parallel makespan.** `Invoke-HookTests.ps1` now emits `TIMING <file> <seconds>` per file
+(on its own line — `release.ps1`'s `^RESULT\s+(\S+)\s+(\d+)\s*$` is anchored at both ends), so the
+next diagnosis reads the real parallel cost instead of inferring it. Re-measure before acting.
+
+**What remains genuinely open here:** the per-assertion-spawn architecture is still real and still
+scales with backlog velocity — the headroom won above is ~19% (524.3s of 650s) and
+`GuardPatternErrors` is *still* the makespan at ~507s inside the suite, so the next few gates will
+consume it. `dist-gates` (557.8s of a 700s ceiling) has the identical shape and, unlike the meta
+suite, still has **no per-file attribution at all** — that instrumentation is the cheap prerequisite
+to diagnosing it, and should come first. Also newly visible in the v0.61.0 run: four individual
+`validate-dist` checks now exceed their own 25s sub-ceiling (27.4s, 27.6s, 28.2s, 28.3s — all
+markdown-link and dead-instruction scans over shipped docs), warning but not failing.
+
 **Do:** for the highest-cost files (`ValidateDist.Tests.ps1` first, `dist-gates`'s per-dist hook
 suites second), replace one-process-per-assertion with a reused session: dot-source the target
 script's functions once into a persistent runspace (PowerShell) / keep one interactive shell alive
@@ -2611,9 +2653,13 @@ parallel throttle in the meta-suite runner is still delivering its 2026-08-07 sp
 regression is worth its own smaller, isolated fix first. Red-test per this repo's Definition of
 done: show the before/after wall-clock time on the same host, not just "it feels faster."
 
-**Proportionality:** the single dominant file is already identified and measured (339.6s of 504.4s).
-This is not a request to re-architect the whole suite; fixing the highest-cost file first and
-re-measuring is enough to know whether the remaining files are worth the same treatment.
+**Proportionality (revised 2026-08-19):** the original framing — "the single dominant file is
+already identified and measured (339.6s of 504.4s)" — was wrong on both the file and the number; see
+the measured correction above. The revised case is narrower: the meta suite is no longer urgent
+(524.3s of 650s after a few lines of scheduling, no ceiling raised), so this entry's remaining value
+is in `dist-gates`, and its cheap first step is per-file attribution, not re-architecture. Measure
+first, and re-check for trivially-parallel structure before assuming in-process reuse is the fix —
+that check alone was worth 1.82x on the file this entry used to be about.
 
 ### B-140 · Investigate a codex execution path for the live-eval harness (budget diversification)
 **Effort:** M (investigation only; implementation is a separate, larger follow-on) · **Priority:** P3
@@ -2725,6 +2771,66 @@ unverified replacement is the same defect wearing different punctuation.
 > **Still open:** verify on VS Code agent mode, or downgrade the advice to say plainly that scoped
 > instruction files are unverified outside `"**"`. Do not swap the canary's control to `"**"` to make
 > it report VALID — it would then measure nothing while blaming the braces.
+
+### B-150 · `release.ps1` parks forever on the post-release eval prompt when nothing can answer it
+**Effort:** S · **Priority:** P2 · filed 2026-08-19 during the v0.61.0 release · **Invariants:** #3 #7
+
+**Why — observed, not hypothetical.** The v0.61.0 release ran detached (`Start-Process
+-WindowStyle Hidden`, stdout+stderr redirected, **stdin not redirected**). It completed every real
+step — gates green, commit pushed, CI green on all 8 legs, `v0.61.0` tagged and confirmed on origin
+at `release.ps1:850` — and then sat blocked for **~57 minutes at 0.7s CPU** on line 858's
+`Read-Host "Release succeeded. Run optional B-41 live agent evals now? [y/N]"`, waiting for a
+keystroke at a hidden window nobody could type into. It had to be killed manually.
+
+The guard is `if ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected)`. Both
+halves are true for a detached `Start-Process`: `UserInteractive` reports the *session* type, not
+whether a human is watching a window, and stdin was never redirected because only stdout/stderr
+were. So the script concluded an operator was present when the opposite was true.
+
+**Why no gate caught it:** every gate had already passed — this is strictly *after* the release
+succeeds, so no instrument was still watching. `ReleaseGateWaiver.Tests` and friends cover gate
+logic, and nothing covers the post-success tail. The failure is also silent by construction: the
+log's last line is a success message, so a watcher tailing for failure signatures sees a clean
+finish and a process that simply never exits. My own monitor would have reported "gone without
+sentinel" only after a kill.
+
+**Same class exposed:** any `Read-Host` / `[Environment]::UserInteractive` branch in
+`.claude/scripts/`. Sweep them — a release path that can block indefinitely is the one place it
+matters most, because the operator has already been told the release succeeded and has walked away.
+
+**Do:** make the interactivity test honest. `[Console]::IsOutputRedirected` is the reliable signal
+here — a redirected stdout means no one is reading a prompt — so require an attended console on
+*all* streams, and/or add an explicit `-NoEvals` / `-NonInteractive` switch that the detached runner
+passes. Whichever is chosen, the non-interactive path must print the skip line that already exists
+(`"Agent evals skipped. Run later: $agentEvalCommand"`) so the evidence trail still says what was
+not run. Red-test it the way the defect actually occurred: launch via `Start-Process` with stdout
+redirected and stdin left alone, and show the process exits instead of parking.
+
+**Not:** do not simply delete the prompt. The evals are deliberately opt-in and off the release gate
+(they are stochastic and consume model budget, see the comment at `release.ps1:853`), and an
+interactive maintainer running a release by hand should still be offered them.
+
+### B-151 · `dist-gates` can say it blew its budget but not which file did — the meta suite's old blind spot
+**Effort:** S · **Priority:** P3 · filed 2026-08-19 · **Invariants:** #3 #4
+
+**Why:** the budget gate names the *stage* and the aggregate, never the file. For the meta suite
+that gap cost three diagnosis cycles in one session (see B-138's measured correction): two fixes
+were designed and one was implemented against a bottleneck that measurement later refuted, because
+every reading available was inference. `Invoke-HookTests.ps1` now emits `TIMING <file> <seconds>`
+and the question became trivial. `dist-gates` is the larger stage (557.8s of a 700s ceiling in the
+v0.61.0 run, vs the meta suite's 524.3s of 650s), has the identical parallel-Start-Job shape, and
+still has **no per-file attribution at all**. When it breaches — and B-138 argues it eventually
+must — the same guessing starts over.
+
+**Do:** emit the same per-file `TIMING` line from the dist-gate runner. Copy the meta-suite shape,
+including the reason it is a *separate line*: `release.ps1:549` parses
+`^RESULT\s+(\S+)\s+(\d+)\s*$` anchored at **both** ends, so a third field on `RESULT` does not get
+ignored — it matches nothing, and `-AllowFailingGate` then reports "emitted no per-file RESULT
+lines" and refuses a waiver that is actually valid. Cheap and mechanical; the value is that the
+next breach is *read* rather than inferred.
+
+**Proportionality:** this is instrumentation, not optimisation, and deliberately so — it is the
+prerequisite that makes B-138's remaining scope diagnosable. Do it before, not instead of.
 
 **B-146 is DONE (2026-08-18) — check B shipped, check A dropped on evidence; see `meta/BACKLOG-DONE.md`.**
 
