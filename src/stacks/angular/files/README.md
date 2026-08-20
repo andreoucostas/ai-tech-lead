@@ -256,7 +256,13 @@ applyTo: "**/*.cs"
 - ...
 ```
 
-Copilot's coding agent and inline completions both honour `applyTo` — `.ts` files see the Angular rules from `copilot-instructions.md`, `.cs` files see the .NET rules from `.github/instructions/csharp.instructions.md`. The repo-wide rules apply on top of either.
+The intent is that `.ts` files see the Angular rules from `copilot-instructions.md`, `.cs` files see the .NET rules from `.github/instructions/csharp.instructions.md`, and the repo-wide rules apply on top of either.
+
+> **Verify this actually reaches your agent before relying on it.** Path-scoped instruction files are the mechanism Microsoft documents for VS Code agent mode, but **we have not been able to confirm delivery on any surface we can test**, and a scoped file that does not reach the model **fails silently** — it installs correctly, the agent simply never receives it, and nothing distinguishes that from working.
+>
+> What we measured, on **Copilot CLI 1.0.80 in `-p` mode**: a narrow `applyTo` delivered **nothing at all**, even with a matching file present and named in the prompt. That held for `"**/*.cs"`, `"**/*.ts"`, `"**/*.{ts,html}"` and `"**/*.ts,**/*.html"` alike — so it is the *narrowness*, not the brace or comma syntax, that defeated delivery. Only `applyTo: "**"` was observed to arrive. **VS Code agent mode — the surface this advice is aimed at — remains unverified.**
+>
+> The cheap check: put a distinctive marker in the scoped file ("begin every reply about this file with WIDGET"), open a matching file, and ask your agent about it. If the marker does not come back, the file is not reaching the model, and repo-wide `copilot-instructions.md` is the only carrier you can currently rely on.
 
 If the secondary stack is .NET, consider installing the **monorepo** distribution instead — it carries both stacks' rails and dispatches per file type. Failing that, the .NET distribution's `copilot-instructions.md` content is a sensible starting point: copy it into a `.github/instructions/csharp.instructions.md` file and add `applyTo: "**/*.cs"` at the top.
 
