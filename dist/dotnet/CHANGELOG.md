@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.62.0 — Unreleased
+## 0.62.0 — 2026-08-20
 
 - Changelog validation now examines every semantic-version heading. It rejects duplicate release
   headings and any `Unreleased` heading for a version that is already shipped, while still allowing

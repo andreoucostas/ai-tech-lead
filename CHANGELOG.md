@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.62.0 — Unreleased
+## 0.62.0 — 2026-08-20
 
 **B-152: changelog validation now reads every release head instead of trusting only the first.**
 The shipped changelogs carried duplicate `0.56.0` heads for five releases, including a stale
