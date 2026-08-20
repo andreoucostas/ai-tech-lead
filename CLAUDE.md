@@ -193,6 +193,18 @@ fabricate a test, and do not skip verification — pick the right evidence for t
   succeed with the expected file layout; for the root installer, all three detection paths.
 - **Composer / gate script** — red-test it: plant the defect class it exists to catch and show
   the non-zero exit, then the clean pass.
+- **Any change carrying a new or modified test** [#3] — the case is demonstrated **running** (not
+  merely passing) on every CI leg that will execute it, and **the change is not done until its first
+  CI run is green**. CI deliberately runs the `.ps1` twin on Windows and the `.sh` twin on Linux, so
+  a test authored and verified on this box has been *proven* on one leg and *assumed* on the other.
+  Where the authoring environment cannot execute a leg, that leg has **no evidence at all** — not
+  weak evidence — so the reviewer runs it before the diff is reviewable, not after. This is the
+  most-repeated failure in `meta/LEARNINGS.md`: five recorded instances, twice taking master red, and
+  the fifth was the first where the *implementer* could not reach the leg at all. Do not substitute a
+  local proxy for the run — enumerating skipped cases would have caught neither of the two Linux-only
+  defects (a mode-644 script Windows ignores and Linux enforces; `Get-ChildItem -Recurse` silently
+  skipping dot-directories on Linux). And do not respond to this by adding a third CI leg — the gap
+  is process, not infrastructure (B-70).
 
 ## Verification (evidence-based — name the command, show the result)
 

@@ -25,7 +25,7 @@ phrase inside the cited entry.
 - “Quarterly drill targets are stable; commit pins are per-drill observations.” — `meta/workspace-decisions.md WSD-044`
 - “Scoped test-file instructions buy locality, not coverage — B-17 is rejected.” — `meta/workspace-decisions.md WSD-045`
 - “Guard regex errors split by confidence; content case is exact and routing folds.” — `meta/workspace-decisions.md WSD-046`
-- “do not add a third CI leg” — `meta/BACKLOG.md B-70`
+- “do not add a third CI leg” — `meta/BACKLOG-DONE.md B-70`
 - “do not try to make this a deterministic gate” — `meta/BACKLOG.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`

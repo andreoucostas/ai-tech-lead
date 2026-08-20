@@ -994,7 +994,8 @@ This is the archive of completed framework backlog entries. Entries are appended
   staged set before committing: a mode-`160000` gitlink is a **hard refusal with no escape hatch**
   (this repo has no submodules, so it is always a mistake), and a path outside where the repo keeps
   files refuses unless `-AllowExtraStagedPaths` is passed. The manifest prints either way, and a
-  refusal `git reset`s so the index is left as found. Classification happens *after* staging because
+  refusal `git reset`s the index while leaving the worktree untouched. Classification happens
+  *after* staging because
   that is the only point at which mode `160000` exists — an unadded worktree is merely untracked
   (verified against `90f331d`, where both strays present as `:160000 000000 … D`).
 
@@ -4565,3 +4566,367 @@ profiling this does not rediscover it and assume it was missed.
 ---
 
 **B-75 is DONE — shipped in v0.60.0 (2026-08-18); see `meta/BACKLOG-DONE.md`.**
+
+---
+
+### B-70 · Nothing requires a new test to be exercised on both CI legs before it ships
+> **DONE 2026-08-20 — promoted from suggestion to rule.** The Definition of done in `CLAUDE.md` now
+> carries a fifth artifact type: any change carrying a new or modified test must demonstrate the case
+> **running** (not merely passing) on every CI leg that will execute it, and is **not done until its
+> first CI run is green**. It states the sharper form this entry accumulated over five instances —
+> when the authoring environment cannot execute a leg, that leg has *no* evidence rather than weak
+> evidence, so the reviewer runs it before the diff is reviewable. `DEVELOPING.md`'s watch-ci section
+> no longer claims the watcher leaves this open; it now explains why a watcher cannot close it — it
+> reports that CI went red, never that a new case was *reached* on the leg that matters.
+>
+> The entry's own cheap local proxy was deliberately **not** built, and is recorded here as
+> insufficient: it would have caught neither Linux-only defect (the mode-644 exec bit, and
+> `Get-ChildItem -Recurse` skipping dot-directories on Linux). The standing "do not add a third CI
+> leg" constraint is restated inside the rule so the next reader meets it there.
+
+**Effort:** S · **Priority:** P2
+
+**Why:** CI deliberately runs the `.ps1` twin on Windows and the `.sh` twin on Linux to catch
+cross-platform divergence — that split is the point of the two legs. But a test authored and
+verified on the maintainer's Windows box passes local review with the Linux path never executed,
+and lands red on master. That is exactly what happened to the v0.38.0 test: `existing absolute
+wired shell is OK` resolved its interpreter with `Get-Command -CommandType Application` and read
+`.Source`; on Linux the command returned multiple matches, so the fixture wrote three paths
+space-separated, while Windows returned one. The following RCA-backlog commit inherited the red
+because it did not touch the test. This is the test-authoring counterpart to B-64: B-64 asks that
+gates and diagnostics be red-tested for the defect they catch; this asks that new tests be shown to
+actually run on every leg that will execute them.
+
+**Do:** add to the Definition of done for a test-carrying change that any new or modified test case
+is demonstrated running (not merely passing) on both legs — either by running it under bash
+locally, or by treating the first CI run as part of the change rather than as a post-hoc check.
+Consider a cheap local proxy: enumerate test cases skipped or not reached on the authoring platform
+and print them in the suite summary.
+
+**Not:** do not add a third CI leg; the gap is process, not infrastructure.
+
+**Fifth instance, 2026-08-17 (shipping B-77) — and the first where the *implementer* could not reach
+the leg at all.** The `hazard-check` twins were written by codex, whose Windows sandbox has neither a
+working `bash` (it dies with `CreateFileMapping ... Win32 error 5`) nor Windows PowerShell 5.1. It
+reported both legs as **not observed**, which was honest and correct. Running them found two real
+bash-only defects: an unquoted `$candidate` in `for part in $candidate` that let the shell
+pathname-expand a wildcard against the cwd, and a separator-row test that silently skipped a row whose
+cells were all empty while the `.ps1` twin reported it. Neither is visible from the PowerShell side by
+construction. The generalisation this entry keeps accumulating now has a sharper form: **when the
+authoring environment cannot execute a leg, that leg has no evidence at all — not weak evidence** —
+so the reviewer must run it before the diff is reviewable, not after. Same conclusion as the entry's
+existing "not done until its first CI run is green", one step earlier in the pipeline.
+
+**Third and fourth instances, 2026-08-04 (shipping B-92) — this entry is now the most-repeated
+failure in the log.** A new meta suite was verified green under *both* PowerShell hosts locally and
+still took master red on the linux leg twice:
+
+1. `./scripts/validate-dist.sh` → **Permission denied**. The file is mode 644 in git; Windows ignores
+   the exec bit and Linux enforces it. Every other caller in the repo already spelled it
+   `bash scripts/validate-dist.sh`.
+2. `Get-ChildItem -Recurse` **without `-Force` skips `.claude/` and `.github/` on Linux**, because
+   PowerShell treats a leading dot as hidden there and not on Windows. `no-meta-leak` would have
+   inspected zero hooks and zero skills on Linux while printing a clean pass.
+
+Both are invisible to any local run on a Windows box, which is precisely this entry's thesis. The
+cheap local proxy it proposes would not have caught either — the honest fix is that **a change
+carrying a new test is not done until its first CI run is green**, which is now how B-92 was
+shipped. Consider promoting that from a suggestion to the Definition of done.
+
+---
+
+### B-91 · The release still pushes one commit it never watches
+> **DONE 2026-08-20 — decided in favour of watching (option a), and implemented.** The release now
+> runs `watch-ci.ps1 -Sha <evalCommit>` after the eval-evidence push instead of printing that CI for
+> that commit is UNOBSERVED.
+>
+> **Why the earlier trade was reversed.** The original decision preferred disclosure because watching
+> "would add another multi-minute wait to an interactive prompt, for a meta-only commit". That was
+> true when written and is not true now, for two reasons that both post-date it: B-137 shipped
+> `watch-ci.ps1` / `push-and-check.ps1`, so this is a call to existing tested tooling rather than new
+> machinery; and reaching this line means the operator has just opted into **live stochastic agent
+> evals**, which cost far more wall clock than a CI watch — so the marginal wait is noise. B-150,
+> shipped in the same batch, separately guarantees this branch only runs at an attended console.
+>
+> **What it deliberately does not do:** a red result here does not retract or untag the release. The
+> tag sits on the release commit, which CI verified; what is red is a meta-only evidence commit on top
+> of it. So the watch reports and warns, and does not change the release's exit status. Option (b),
+> moving eval persistence out of the release, was rejected — it trades a watched commit for a manual
+> step that will sometimes not happen, and the evidence trail is the thing being protected.
+
+**Effort:** S · **Priority:** P3 · filed 2026-08-02 (RCA of B-88)
+
+**Why:** B-88 made the release wait for CI on the release commit before tagging. The optional agent-eval
+block then commits `meta/eval-results.md` and pushes it (`release.ps1`, step 6), **after** the watch —
+so `origin/master` ends the run at a commit whose CI nobody observed. v0.44.0's red streak included
+exactly this shape: follow-up commits inheriting a break.
+
+It is now *disclosed* — the release prints that master advanced past the watched commit and gives the
+one-line command to watch it — which was the honest half of a trade: watching inline would add another
+multi-minute wait to an interactive prompt, for a meta-only commit.
+
+**Do:** decide between (a) watching it too and accepting the wait, (b) moving eval-result persistence
+out of the release entirely, or (c) leaving the disclosure as the answer and recording that as the
+decision. Cheap either way; the point is that the current state is a deliberate gap, not an oversight,
+and should be written down as one.
+
+---
+
+---
+
+### B-94 · The staged-set guard's record overclaims what it does, in three places
+> **DONE 2026-08-20 — all three corrected.** (1) and (2) were fixed in the *record* rather than the
+> code, as the entry directed: `CHANGELOG.md` no longer claims the release "no longer commits whatever
+> is in the tree" — it now says what the check actually does, refusing staged paths outside the repo's
+> known top-level locations — and the "index is left as found" claim is corrected to "resets the index
+> while leaving the worktree untouched" in all three places it appeared (the step-5a comment, the
+> changelog, and B-80's Done entry).
+>
+> The test that **codified the weaker property under the stronger name** now asserts what its name
+> says: it stages `src/thing.txt` first, then asserts both that the index is emptied *and* that the
+> pre-staged worktree content survives — the distinction the old empty-index fixture structurally
+> could not make.
+>
+> (3) is a code fix: `-c core.quotepath=false` on the `diff --cached --raw` that feeds classification.
+> **Independently red-tested by the reviewer**, not taken from the implementer's report: with the fix
+> reverted, the new case `a staged non-ASCII path under meta is classified as expected` fails with
+> `expected EXIT=0, got 2` — a correct release refused, which is exactly the shape that trains a
+> maintainer to pass `-AllowExtraStagedPaths` reflexively — and with the fix restored the suite is 7/7.
+>
+> The allowlist was deliberately **not** widened to file-level rules, per this entry's own *Not*. The
+> concurrent-authoring mtime heuristic the entry floats was not built either; it remains available if
+> the in-directory-stray case recurs.
+
+**Effort:** S · **Priority:** P3 · filed 2026-08-03 by the B-86 post-ship review
+
+**Why:** the guard (B-80, `release.ps1` step 5a) works and its refusals are correct. But three
+statements about it are stronger than its behaviour, all confirmed by execution:
+
+1. **"no longer commits whatever is in the tree" (`CHANGELOG.md`) is broader than the check.** The
+   allowlist asks whether a path sits under one of six directories or is one of ten root files, so
+   `src/release-notes.tmp`, `meta/review.txt`, `.claude/debug.log` and `dist/scratch.bak` are all
+   classified as expected and committed without a warning; only a *top-level* stray is refused.
+   The check's own comment is honest about this ("is this file somewhere this repo keeps files at
+   all?"); the changelog sentence is not. Mitigating, and worth keeping in view: the staged manifest
+   prints unconditionally (`release.ps1:402-406`), so an in-directory stray is **visible** even
+   though it is not refused. That is why this is P3 and not a defect in the guard.
+2. **"the index is left as found" is false; it is left empty.** On refusal the guard runs an
+   unconditional `git reset --quiet`, which also discards staging the maintainer did *before*
+   invoking the release. Measured: `BEFORE=src/a.txt` → `AFTER=` (worktree content preserved). The
+   claim appears in `release.ps1`'s step-5a comment, in `CHANGELOG.md`, and in B-80's Done entry.
+   The test **codifies the weaker property under the stronger name**: the case is called
+   *"a stray untracked file is refused, and the index is left as found"* while its assertion is
+   `IsNullOrWhiteSpace($idx)` — index *empty* — and the fixture starts with an empty index, so it
+   cannot tell the two apart. A fixture that stages something first would.
+3. **A git-quoted path is misclassified as unexpected and refuses a legitimate release.** With
+   `core.quotepath` at its **default** (the review's one correction to the finding as first written —
+   this needs no unusual configuration), a non-ASCII path is emitted by `git diff --cached --raw` as
+   `"meta/caf\303\251.txt"`, quotes included. The leading `"` defeats the `^meta/` allowlist, so
+   step 5a refuses. Latent today — zero tracked paths contain non-ASCII bytes, and a space alone is
+   **not** quoted (measured) — but the failure mode is a correct release refused, which is the shape
+   that trains a maintainer to pass `-AllowExtraStagedPaths` reflexively.
+
+**Do:** correct (1) and (2) in the record rather than the code — the behaviours are defensible, the
+sentences are not — and add the pre-staged fixture so (2)'s test asserts what its name says. For (3),
+unquote the path before classifying (`git -c core.quotepath=false diff --cached --raw` is the cheap
+form), and red-test with a non-ASCII path.
+
+**Not:** don't widen the allowlist to file-level rules for (1). "Is this file part of a release?" was
+already judged unanswerable, and the first cut written that way would have refused every release
+from v0.39.0 to v0.43.0.
+
+**Live instance of (1), 2026-08-06 during the v0.47.0 release — and it adds a wrinkle worth having.**
+A design document (`.claude/plans/2026-08-06-b98-step2-routing-remedy-design.md`) was authored *while
+the release gates were running*, in the same working tree. `git add -A` swept it into the release
+commit: `46 files changed` including `create mode 100644 .claude/plans/…`. Step 5a did not refuse,
+correctly per its own rules — `.claude/` is one of the six allowed directories, so this is an
+in-directory stray, exactly the case this entry says is committed without a warning.
+
+**The wrinkle:** the file was **mid-edit**. The release captured a draft that was superseded minutes
+later by amendments from its adversarial critique, so the committed artifact is a *stale version of a
+document that was actively changing*, and the amendments then had to land in a follow-up commit. That
+is worse than the "stray scratch file" this entry anticipates: a stray is merely noise, whereas this
+is a real artifact captured at a misleading point in its life, with nothing in the release output
+indicating it was unfinished. The staged manifest *did* print it (`release.ps1:402-406`), which is
+the mitigation this entry credits — but a filename in a 46-line manifest does not distinguish
+"deliberately part of this release" from "happened to be open in the editor".
+
+**What this suggests for the fix,** beyond what is already written: the useful signal is not only
+*where* a staged path sits but *whether it was modified during the release run itself*. The release
+knows its own start time; a file whose mtime falls inside the run and which is not one of the paths
+the release deliberately rewrites (stamps, `dist/`, the footprint baseline) is a strong candidate for
+"the maintainer was working on this, it is probably not part of the release". Cheap to compute, and
+it catches the concurrent-authoring case that directory allowlisting structurally cannot.
+
+**Not (addition):** do not respond to this by forbidding work during a release. The gates take ~25
+minutes; expecting an idle maintainer is the kind of process rule that gets ignored and then relied
+upon.
+
+---
+
+---
+
+### B-148 · Nothing stops someone registering a second `userPromptSubmitted` hook, which Copilot silently drops
+> **DONE — shipped as `validate-dist` check 13 `prompt-hook-cardinality`; only the heading was still
+> open, corrected 2026-08-20.** The check fails when `.github/hooks/hooks.json` carries more than one
+> entry under `userPromptSubmitted`, and its message says *why*: Copilot CLI 1.0.80 delivers only the
+> last entry, so model-facing `additionalContext` must be composed into one hook instead.
+>
+> Everything the entry asked for is present, and was verified rather than assumed: both twins
+> (`scripts/validate-dist.ps1`, `scripts/validate-dist.sh`); the deliberate scoping to
+> `userPromptSubmitted` **only**, since `postToolUse` legitimately carries two entries and the
+> rejected blanket rule was correctly not written; the red test (`ValidateDist.Tests.ps1` case 36,
+> which duplicates the real entry and asserts both validators fail); and the COVERED row in
+> `meta/gate-redtest-coverage.md` naming both twins. The message carries the anachronism note the
+> entry asked for, so a future reader knows it encodes a delivery constraint, not a design preference.
+>
+> **This is the third heading-rot instance found on 2026-08-20 alone** (with B-98 and B-117), four
+> days after the 2026-08-16 audit corrected sixteen of them. That audit fixed instances; the mechanism
+> producing them is B-83's subject and is still open.
+
+**Effort:** S · **Priority:** P2 · filed 2026-08-18 as B-147's deliberate residue · **Invariants:** #5
+
+**Why:** B-147 shipped the fix but not the guard. Copilot CLI delivers only the **last**
+`userPromptSubmitted` entry (observed 1.0.79/1.0.80), so a second entry means the first one's
+`additionalContext` is discarded — the hook still runs, still exits 0, still emits valid JSON, and
+its content simply never reaches the model. That is exactly how this went unnoticed across two minor
+versions: `validate-dist` check 8 asserts every registered script **exists**, never that its output
+is **consumed**, and no fixture had ever registered two hooks on one event.
+
+The fix removed today's instance. It did nothing about the next one, and the next one looks
+identical to a reviewer: adding an entry to an array is the obvious way to add a hook.
+
+**Do:** a `validate-dist` check that fails when `.github/hooks/hooks.json` carries more than one
+entry under `userPromptSubmitted`, with a message that says *why* (only the last is delivered;
+compose into one hook instead). Red-test by adding a second entry to a scratch dist.
+
+**Scope it to `userPromptSubmitted` only.** A blanket "one entry per Copilot event" rule is wrong and
+was rejected during B-147's critique: `postToolUse` legitimately carries **two** (`post-write`,
+`audit-trail`), verified, because those are side-effecting hooks whose value is not model-facing
+`additionalContext`. The constraint is about **context injection**, not about running hooks. If
+another injecting event is added later, extend the list deliberately rather than generalising.
+
+**Not:** don't encode this as a vendor-bug workaround with no expiry. If Copilot ever honours every
+entry, the composed single hook keeps working and this check becomes a harmless anachronism — say so
+in the message so the next reader knows it is a delivery constraint, not a design preference.
+
+**Cross-links:** B-147 (the defect), B-43 (re-run the canary after any Copilot CLI bump), B-55 (the
+correction had to land in several surfaces at once — the same restatement problem).
+
+**Implementation RCA (2026-08-18):** No gate caught this because hook-registration check 8 proves
+that a registered command exists, not that a vendor consumes every model-facing output when an event
+array has multiple entries. The same class could affect another context-injecting Copilot event if
+one is added; extend the explicit event list only after live verification, rather than generalising
+to side-effecting events such as `postToolUse` where multiple entries are legitimate.
+
+**B-149 is DONE (2026-08-18) — four gates closed; see `meta/BACKLOG-DONE.md`.**
+
+**B-55 is DONE (2026-08-19) — the superseded-claims denylist shipped meta-only; see
+`meta/BACKLOG-DONE.md`.** The canonical-source refactor half of its *Do* was deliberately **not**
+built: the proportionality case found that stale duplication, not duplication, is what caused all
+four incidents. Revisit only on evidence that the class recurs against *live* claims.
+
+---
+
+### B-150 · `release.ps1` parks forever on the post-release eval prompt when nothing can answer it
+> **DONE 2026-08-20.** The post-success eval prompt now requires an attended console on *all* streams
+> — `-not [Console]::IsOutputRedirected` was the missing half — and `release.ps1` gained an explicit
+> `-NoEvals` switch so a detached runner can state its intent rather than depend on stream detection.
+> Every path still prints a skip line, so the evidence trail records what was not run: `-NoEvals`
+> prints the explicit "Agent evals skipped", and the unattended path prints the non-interactive
+> reminder that already existed.
+>
+> **Red-tested the way the defect actually occurred**, which is the part worth keeping: the test
+> extracts the *real* condition out of `release.ps1` and runs it under `Start-Process` with **stdout
+> redirected and stdin left alone** — the exact shape that parked v0.61.0 for ~57 minutes at 0.7s CPU
+> after the tag was already confirmed on origin — then asserts the process exits and prints the skip
+> line. A source-text assertion could not have told the fixed script from the unfixed one.
+>
+> The `.claude/scripts/` sweep the entry asked for found no other `Read-Host` or
+> `[Environment]::UserInteractive` branch; these two lines were the only instance.
+
+**Effort:** S · **Priority:** P2 · filed 2026-08-19 during the v0.61.0 release · **Invariants:** #3 #7
+
+**Why — observed, not hypothetical.** The v0.61.0 release ran detached (`Start-Process
+-WindowStyle Hidden`, stdout+stderr redirected, **stdin not redirected**). It completed every real
+step — gates green, commit pushed, CI green on all 8 legs, `v0.61.0` tagged and confirmed on origin
+at `release.ps1:850` — and then sat blocked for **~57 minutes at 0.7s CPU** on line 858's
+`Read-Host "Release succeeded. Run optional B-41 live agent evals now? [y/N]"`, waiting for a
+keystroke at a hidden window nobody could type into. It had to be killed manually.
+
+The guard is `if ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected)`. Both
+halves are true for a detached `Start-Process`: `UserInteractive` reports the *session* type, not
+whether a human is watching a window, and stdin was never redirected because only stdout/stderr
+were. So the script concluded an operator was present when the opposite was true.
+
+**Why no gate caught it:** every gate had already passed — this is strictly *after* the release
+succeeds, so no instrument was still watching. `ReleaseGateWaiver.Tests` and friends cover gate
+logic, and nothing covers the post-success tail. The failure is also silent by construction: the
+log's last line is a success message, so a watcher tailing for failure signatures sees a clean
+finish and a process that simply never exits. My own monitor would have reported "gone without
+sentinel" only after a kill.
+
+**Same class exposed:** any `Read-Host` / `[Environment]::UserInteractive` branch in
+`.claude/scripts/`. Sweep them — a release path that can block indefinitely is the one place it
+matters most, because the operator has already been told the release succeeded and has walked away.
+
+**Do:** make the interactivity test honest. `[Console]::IsOutputRedirected` is the reliable signal
+here — a redirected stdout means no one is reading a prompt — so require an attended console on
+*all* streams, and/or add an explicit `-NoEvals` / `-NonInteractive` switch that the detached runner
+passes. Whichever is chosen, the non-interactive path must print the skip line that already exists
+(`"Agent evals skipped. Run later: $agentEvalCommand"`) so the evidence trail still says what was
+not run. Red-test it the way the defect actually occurred: launch via `Start-Process` with stdout
+redirected and stdin left alone, and show the process exits instead of parking.
+
+**Not:** do not simply delete the prompt. The evals are deliberately opt-in and off the release gate
+(they are stochastic and consume model budget, see the comment at `release.ps1:853`), and an
+interactive maintainer running a release by hand should still be offered them.
+
+---
+
+### B-151 · `dist-gates` can say it blew its budget but not which file did — the meta suite's old blind spot
+> **DONE 2026-08-20 — and wider than the entry asked.** `dist-gates` now emits a standalone `TIMING`
+> line for **all four** of its parallel units rather than one per stage: the per-dist job wall clock,
+> and separately `<dist>/validate-dist` and `<dist>/hook-suite`, plus `context-footprint`.
+>
+> **The split is the point, and the first implementation did not have it.** A single per-dist number
+> would have named the slow *distribution* while leaving the only actionable question — validate-dist
+> or the hook suite? — exactly as inferential as before, because each job runs both sequentially. That
+> is the same guessing this entry exists to end. The three numbers deliberately do not sum to the wall
+> clock (job scheduling and the `pwsh` spawns sit outside the stopwatches), and that gap is itself
+> informative, so it must not be "fixed" by deriving one from the others.
+>
+> `TIMING` is its own line because the per-file parse is anchored at **both** ends: a third field on
+> `RESULT` does not degrade to ignored, it stops matching, the file-result map comes back empty, and
+> `-AllowFailingGate` then refuses a waiver that is actually valid. The test asserts that consequence
+> directly rather than describing it in a comment.
+>
+> **RCA — the first version of the test could not fail.** It asserted that `release.ps1`'s *source
+> contained* `PSBeginTime`, `PSEndTime` and the literal format string: green whether or not the line
+> was reachable, whether or not the arithmetic worked, whether or not the output was parseable. It was
+> replaced with one that **executes** the extracted emitters against stand-in values and asserts the
+> emitted line matches the TIMING shape and is *not* matched by the RESULT parser. Three planted
+> mutations were then observed red — wrong precision, a dropped unit, and a lost `TIMING` prefix —
+> each naming the unit that lost attribution. This is B-59/B-64/B-112's inert-check class landing once
+> more on a brand-new instrument, which is why rule 4 asks to see the red first.
+
+**Effort:** S · **Priority:** P3 · filed 2026-08-19 · **Invariants:** #3 #4
+
+**Why:** the budget gate names the *stage* and the aggregate, never the file. For the meta suite
+that gap cost three diagnosis cycles in one session (see B-138's measured correction): two fixes
+were designed and one was implemented against a bottleneck that measurement later refuted, because
+every reading available was inference. `Invoke-HookTests.ps1` now emits `TIMING <file> <seconds>`
+and the question became trivial. `dist-gates` is the larger stage (557.8s of a 700s ceiling in the
+v0.61.0 run, vs the meta suite's 524.3s of 650s), has the identical parallel-Start-Job shape, and
+still has **no per-file attribution at all**. When it breaches — and B-138 argues it eventually
+must — the same guessing starts over.
+
+**Do:** emit the same per-file `TIMING` line from the dist-gate runner. Copy the meta-suite shape,
+including the reason it is a *separate line*: `release.ps1:549` parses
+`^RESULT\s+(\S+)\s+(\d+)\s*$` anchored at **both** ends, so a third field on `RESULT` does not get
+ignored — it matches nothing, and `-AllowFailingGate` then reports "emitted no per-file RESULT
+lines" and refuses a waiver that is actually valid. Cheap and mechanical; the value is that the
+next breach is *read* rather than inferred.
+
+**Proportionality:** this is instrumentation, not optimisation, and deliberately so — it is the
+prerequisite that makes B-138's remaining scope diagnosable. Do it before, not instead of.

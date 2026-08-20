@@ -20,6 +20,9 @@ param(
     [Parameter(Mandatory)][string]$Version,
     [Parameter(Mandatory)][string]$Summary,
     [switch]$NoPush,
+    # Suppress the post-success optional live-eval prompt. Detached runners should state this intent
+    # explicitly; the stream checks below remain a backstop when they do not.
+    [switch]$NoEvals,
     # Escape hatch for the branch precondition below. Deliberately named for what it risks, not for
     # what it enables -- releasing off master is how v0.34.0 lost its release commit.
     [switch]$AllowNonMasterHead,
@@ -504,12 +507,22 @@ try {
         $job = Start-Job -ArgumentList $repo, $d, $log, $lanes -ScriptBlock {
             param($repo, $dist, $log, $lanes)
             $env:HOOKTESTS_THROTTLE = "$lanes"
+            # Time the two halves separately (B-151). A single per-dist number cannot answer the only
+            # question a breach actually raises -- validate-dist or the hook suite? -- because this
+            # job runs both, sequentially, and the answer has been guessed wrong before.
+            $sw = [System.Diagnostics.Stopwatch]::StartNew()
             & pwsh -NoProfile -File (Join-Path $repo 'scripts/validate-dist.ps1') $dist *> $log
             $validateExit = $LASTEXITCODE
+            $validateSeconds = $sw.Elapsed.TotalSeconds
+            $sw.Restart()
             & pwsh -NoProfile -File (Join-Path $repo "dist/$dist/tests/hooks/Invoke-HookTests.ps1") *>> $log
+            $hookExit = $LASTEXITCODE
+            $sw.Stop()
             [pscustomobject]@{
-                ValidateExit = $validateExit
-                HookExit     = $LASTEXITCODE
+                ValidateExit    = $validateExit
+                HookExit        = $hookExit
+                ValidateSeconds = $validateSeconds
+                HookSeconds     = $sw.Elapsed.TotalSeconds
             }
         }
         [pscustomobject]@{ Dist = $d; Log = $log; Job = $job }
@@ -519,12 +532,30 @@ try {
         $result = Receive-Job $distGateJob.Job
         Write-Host -NoNewline ([System.IO.File]::ReadAllText($distGateJob.Log))
         $d = $distGateJob.Dist
+        # Keep timing on its own line: RESULT parsing is anchored at both ends (B-151).
+        #
+        # Three numbers, not one. The job wall clock is what the stage budget is spent on, but it
+        # hides which half spent it, so the two inner measurements are reported beside it. They will
+        # not sum to the wall clock -- job scheduling and the `pwsh` spawns sit outside the
+        # stopwatches -- and that gap is itself informative, so do not "fix" it by deriving one from
+        # the others.
+        $jobSeconds = if ($distGateJob.Job.PSEndTime -and $distGateJob.Job.PSBeginTime) {
+            ($distGateJob.Job.PSEndTime - $distGateJob.Job.PSBeginTime).TotalSeconds
+        } else { 0 }
+        Write-Host ("TIMING {0} {1:N1}" -f $d, $jobSeconds)
+        Write-Host ("TIMING {0}/validate-dist {1:N1}" -f $d, [double]$result.ValidateSeconds)
+        Write-Host ("TIMING {0}/hook-suite {1:N1}" -f $d, [double]$result.HookSeconds)
         Gate ($result.ValidateExit -eq 0) "validate-dist $d"
         Gate ($result.HookExit -eq 0) "dist/$d hook test suite"
     }
     $footprintJob | Wait-Job | Out-Null
     $footprintExit = Receive-Job $footprintJob
     Write-Host -NoNewline ([System.IO.File]::ReadAllText($footprintLog))
+    # The fourth parallel unit in this stage, and the only one that was still unattributed (B-151).
+    $footprintSeconds = if ($footprintJob.PSEndTime -and $footprintJob.PSBeginTime) {
+        ($footprintJob.PSEndTime - $footprintJob.PSBeginTime).TotalSeconds
+    } else { 0 }
+    Write-Host ("TIMING context-footprint {0:N1}" -f $footprintSeconds)
     Gate ($footprintExit -eq 0) 'update context-footprint baseline'
 } finally {
     if ($distGateJobs) {
@@ -656,12 +687,12 @@ if ($nothingToCommit) {
 # Classification has to happen HERE, after staging, not before: a worktree directory that has not
 # been added is merely untracked, and mode 160000 only exists once it is in the index (verified
 # against commit 90f331d, where both strays present as ":160000 000000 ... D"). On any refusal we
-# `git reset` so a refused release leaves the index exactly as it found it.
+# `git reset`, leaving the index empty while preserving every worktree change.
 #
 # `git diff --cached --raw` emits ":<srcmode> <dstmode> <srcsha> <dstsha> <status>\t<path>", and for
 # a rename/copy a SECOND tab-separated path follows. Split on tab and take the LAST field so the
 # destination path is what gets classified.
-$rawStaged = @(git -C $repo diff --cached --raw)
+$rawStaged = @(git -C $repo -c core.quotepath=false diff --cached --raw)
 $gitlinks  = @()
 $unexpected = @()
 # Where this repo legitimately keeps files -- the six tracked top-level directories and the ten
@@ -854,7 +885,7 @@ if (-not $NoPush) {
 # deterministic release succeeded and are never a release gate. At this point the runner sees the
 # just-committed distribution, not the previous release or a dirty pre-gate build.
 $agentEvalCommand = 'pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live'
-if ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
+if (-not $NoEvals -and [Environment]::UserInteractive -and -not [Console]::IsInputRedirected -and -not [Console]::IsOutputRedirected) {
     $runAgentEvals = Read-Host "Release succeeded. Run optional B-41 live agent evals now? [y/N]"
     if ($runAgentEvals -match '^(?i)y(?:es)?$') {
         & pwsh -NoProfile -File (Join-Path $repo '.claude/evals/run-agent-evals.ps1') -Live
@@ -879,17 +910,33 @@ if ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
             $persisted = if ($NoPush) { 'locally (-NoPush)' } else { 'and pushed' }
             Write-Host "Agent eval evidence committed $persisted."
             if (-not $NoPush) {
-                # Honesty, not machinery (B-88). origin/master has just moved PAST the commit whose
-                # CI was watched, so the green verdict printed above no longer describes the tip.
-                # Watching this one inline would add another multi-minute wait to an interactive
-                # prompt for a meta-only commit; saying so costs nothing and removes a false claim.
+                # B-91, decided 2026-08-20: watch it, do not merely disclose it. origin/master has
+                # just moved PAST the commit whose CI was watched, so without this the run ends at a
+                # commit nobody observed -- the exact shape of v0.44.0's red streak, where follow-up
+                # commits inherited a break.
+                #
+                # The original decision was to disclose instead, because watching "would add another
+                # multi-minute wait to an interactive prompt". That trade was real when made and is
+                # not real now: reaching this line means the operator just chose to run live agent
+                # evals, which cost far more wall clock than a CI watch, so the marginal wait is
+                # noise. B-150 separately guarantees this branch only runs at an attended console.
+                #
+                # A red result here does NOT retract the release: the tag was placed on the watched
+                # release commit and that commit is still green. What is red is a meta-only evidence
+                # commit sitting on top of it, so this reports and does not exit non-zero.
                 Write-Host ''
-                Write-Host "NOTE: origin/master has advanced past the watched release commit."
-                Write-Host "      CI for $($evalCommit.Substring(0,7)) is UNOBSERVED. Watch it with:"
-                Write-Host "        pwsh -NoProfile -File .claude/scripts/watch-ci.ps1 -Sha $($evalCommit.Substring(0,7))"
+                Write-Host "Watching CI for the eval-evidence commit $($evalCommit.Substring(0,7))..."
+                & pwsh -NoProfile -File (Join-Path $repo '.claude/scripts/watch-ci.ps1') -Sha $evalCommit
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host ''
+                    Write-Host "WARNING: CI is not green for the eval-evidence commit $($evalCommit.Substring(0,7))."
+                    Write-Host "         Release $Version is unaffected -- it was tagged on $($releaseCommit.Substring(0,7)), which CI verified."
+                    Write-Host "         origin/master now carries a red meta-only commit; fix it forward."
+                }
             }
         }
     } else { Write-Host "Agent evals skipped. Run later: $agentEvalCommand" }
-} else { Write-Host "Agent eval reminder (non-interactive; not run): $agentEvalCommand" }
+} elseif ($NoEvals) { Write-Host "Agent evals skipped. Run later: $agentEvalCommand" }
+else { Write-Host "Agent eval reminder (non-interactive; not run): $agentEvalCommand" }
 Write-Host "`nRelease $Version complete$(if ($NoPush) { ' (not pushed: -NoPush)' })."
 exit 0

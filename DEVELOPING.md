@@ -435,7 +435,16 @@ pwsh -NoProfile -File .claude/scripts/watch-ci.ps1 -Sha <sha>   # 0 green / 1 re
 
 **What it does not do:** it does not *prevent* a red commit reaching `master` — releases push
 directly to master by decision (B-53: releasing on a branch destroyed v0.34.0's release commit), so a
-red release is detected and left untagged, not stopped. It also does not close B-70.
+red release is detected and left untagged, not stopped.
+
+**Cross-leg test evidence (B-70) is a rule, not a watcher.** The watch above tells you *that* CI went
+red; it cannot tell you a new test case was ever *reached* on the leg that matters. CI runs the `.ps1`
+twin on Windows and the `.sh` twin on Linux, so a case authored on this box is proven on one leg and
+assumed on the other — and where your environment cannot execute a leg at all (codex's sandbox has no
+working `bash`; Git Bash here needs an absolute PowerShell path), that leg has **no** evidence, not
+weak evidence. The Definition of done in `CLAUDE.md` therefore requires any test-carrying change to be
+demonstrated *running* on every leg that will execute it, and treats the first green CI run as part of
+the change rather than a post-hoc check. Run the bash twin yourself before reviewing such a diff.
 
 **Do not run the gate suites while an implementer session is editing the tree.** A hook suite once
 raced a concurrent run's writes and produced a transient failure that cost a diagnosis cycle. The
