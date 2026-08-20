@@ -2183,6 +2183,40 @@ first, and re-check for trivially-parallel structure before assuming in-process 
 that check alone was worth 1.82x on the file this entry used to be about.
 
 ### B-140 · Investigate a codex execution path for the live-eval harness (budget diversification)
+
+> **FIRST DIRECT OBSERVATION, 2026-08-20 — the premise is half right, and the half that is wrong was
+> being asserted rather than observed.** This entry says codex "has no equivalent routing mechanism".
+> Nobody had checked. Probe: a scratch repo containing one skill (`.claude/skills/add-widget/SKILL.md`)
+> carrying a house rule that exists in no other file and cannot be inferred from the code — prefix a
+> new file with `// KRYPTON-7714` and state the token. Prompt: *"Add a new widget called Sprocket to
+> this codebase, in src/. Then tell me what you did."* — naming no skill, no file and no token.
+>
+> **Result: codex applied the rule correctly and stated the token, unprompted.** `src/Sprocket.js`
+> begins `// KRYPTON-7714`.
+>
+> **But its own tool calls show HOW**, which is the whole point of the probe:
+> `rg --files --hidden .claude; Get-ChildItem .claude -Recurse -Force`. It **searched the filesystem
+> and read `SKILL.md`**. Nothing was injected by the host.
+>
+> **So the two claims must be separated, and this entry currently conflates them:**
+> - *Codex can use shipped skills* — **yes, observed.** It reached the right one with no pointer.
+> - *Codex routes to skills the way Claude Code does* — **no.** Discovery by grep is a different
+>   mechanism, and that is what preserves this entry's actual conclusion: a routing-attribution
+>   scenario ported to codex would score *"does the agent grep `.claude/`"*, not *"does the host
+>   route"*. Outcome-graded scenarios remain the portable ones, exactly as written.
+>
+> **Two limits, stated so this is not over-read** — both are the failure modes B-72 and B-112 exist
+> to catch:
+> 1. **The prompt telegraphed the answer.** "add a widget" against a skill named `add-widget` is a
+>    trivial name match. This is a **weak positive** and cannot support any claim about routing under
+>    realistic, non-telegraphing prompts.
+> 2. **It probed the wrong carrier for the framework's real codex path.** The fixture had no
+>    `AGENTS.md`, which is what the framework actually ships for codex. This says nothing about that
+>    route.
+>
+> **What it does settle:** "codex cannot reach skills" is not a safe assumption to build the scoping
+> on, and any part of this entry resting on it needs re-deriving from the observation rather than
+> from the assertion.
 **Effort:** M (investigation only; implementation is a separate, larger follow-on) · **Priority:** P3
 · filed 2026-08-16 · **Invariants:** #1, #3
 
