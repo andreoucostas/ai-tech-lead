@@ -5403,3 +5403,95 @@ unverified replacement is the same defect wearing different punctuation.
 **B-150 is DONE (2026-08-20) — the release no longer parks on the post-success prompt; see `meta/BACKLOG-DONE.md`.**
 
 **B-151 is DONE (2026-08-20) — dist-gates now attributes all four of its parallel units; see `meta/BACKLOG-DONE.md`.**
+
+---
+
+### B-152 · A duplicate changelog head shipped a permanently-`Unreleased` version to every consumer, past the gate built for exactly that defect
+> **DONE 2026-08-20 — shipped in v0.62.0, in three rules rather than the two the entry specified.**
+> The record is corrected: the duplicate `0.56.0` heads are merged into one dated head per version in
+> all four changelogs, keeping the **fuller** content in each — which differed by file, and the entry
+> was wrong about that. Its prose said the dated head was terse and the `Unreleased` head detailed in
+> all four; that is true only of the **root** changelog. The three shipped changelogs have the
+> **inverse** shape. The implementer flagged the discrepancy rather than following the entry off a
+> cliff, and the edits follow the observed files.
+>
+> Both gate twins now read **every** `## X.Y.Z` head instead of the first one, and reject:
+> 1. any duplicate semantic-version head, unconditionally;
+> 2. any `— Unreleased` head at or below the stamped version;
+> 3. any **dated** head *above* the stamped version.
+>
+> **Rule 3 was added in review, and it is the interesting one.** Dropping the first-H2 read was
+> forced — the intended pre-stamp state puts the next version's `Unreleased` head on top — but that
+> read was also the only thing rejecting a dated head for a version above the stamped one, which is
+> this entry's own defect one notch over. Measured on a scratch dist before the fix: a planted
+> `## 0.99.0 — 2026-01-01` above a stamped `0.61.0` reported **"version stamps in sync"** and exited
+> 0. Both twins were then observed red on that exact plant, with identical messages and a real
+> `exit=1` from bash (checked directly, not through a pipeline — `DEVELOPING.md` warns that piping a
+> gate into `grep` reports grep's status). Closing a hole while opening its sibling would have been a
+> poor outcome for an entry filed *because* a gate could not see a variant of its own defect.
+>
+> **The false-positive control is the case that mattered most and it passes:** the normal pre-stamp
+> authoring state — next version `Unreleased` on top, `framework-version.json` still at the current
+> version — is green on all three dists, both twins. A gate that failed the intended working state
+> would have been bypassed within a release or two.
+>
+> **RCA — what else is exposed.** The exposed class is every check that reduces a file to a single
+> extracted line before asserting on it; `$vLogLine` was the instance, and the sweep of its siblings
+> is still worth doing. This is now the third recorded case of *the gate for a known-recurring defect
+> being structurally unable to see a variant of it* (B-59, B-64, this), and all three were found by
+> reading what the instrument points at rather than by running it.
+
+**Effort:** S · **Priority:** P2 · found 2026-08-20 during backlog triage · **Invariants:** #1 #3 #7
+
+**Why — observed in the shipped tree, not inferred.** All four changelogs carry **two** `## 0.56.0`
+heads. The first is dated (`— 2026-08-17`) and terse; the second, ~20 lines below, still reads
+`## 0.56.0 — Unreleased` and holds the detailed entry. It composed into all three dists
+(`dist/{dotnet,angular,monorepo}/CHANGELOG.md:137-138`) and has survived five releases
+(v0.57.0 → v0.61.0), so **every consumer who installed v0.56.0 or later has a changelog telling them
+a shipped version is unreleased.**
+
+Introduced whole in the v0.56.0 release commit `604be8b`, which added **both** blocks in a single
+38-line insertion — the release dated a new head instead of dating the authored one.
+
+**Why no gate caught it, and this is the half that matters.** `src/core/scripts/template-checks.ps1:39`
+reads the changelog and **stops at the first `## ` line**:
+
+```powershell
+foreach ($l in ($clText -split "`r?`n")) { if ($l -cmatch '^## ') { $vLogLine = $l; break } }
+```
+
+Every later assertion examines `$vLogLine` alone — including the check at `:53` whose own comment
+says this exact defect "reached a release twice (v0.35.0, v0.46.0) and both times was caught only by
+a human noticing". A stale `Unreleased` head is therefore invisible **whenever a dated head sits
+above it**, which is precisely the shape that occurred. The check is not wrong; it is reading one
+line of a file whose defect lives on another.
+
+**Do:** two halves.
+1. **Correct the record.** Merge each duplicated pair into one dated head per version, keeping the
+   detailed content and the date. Four files: root `CHANGELOG.md` (ours) and the three
+   `src/stacks/*/files/CHANGELOG.md` (theirs), then rebuild so `dist/` follows [#1].
+2. **Make the gate read the whole file,** in both twins [#3]:
+   - fail on **any duplicate `## X.Y.Z` head**, unconditionally; and
+   - fail on any `## X.Y.Z — Unreleased` head whose version is **≤ the stamped
+     `framework-version.json` version** — a version that has already shipped.
+
+   Scope the second rule that way deliberately. A blanket "no `Unreleased` head anywhere" rule would
+   fire during normal authoring, because invariant #7 requires the *next* version's head to be
+   authored as `— Unreleased` before `release.ps1` will stamp it. At that moment the authored head's
+   version is strictly greater than the stamped one, so it passes; after stamping it is dated, so it
+   passes. A gate that fails the intended working state is one people learn to bypass.
+
+**Red-test all three conditions** (Definition of done, gate script): plant a duplicate head; plant a
+below-the-fold shipped-version `Unreleased` head; and show the **pre-stamp authoring state still
+passing** — that last one is the case a careless implementation would regress.
+
+**Not:** do not fix the data by deleting the detailed 0.56.0 block and keeping the terse summary. The
+detailed block is the real entry — it records why the per-file difference detector was rejected by
+measurement — and the terse one is the accident.
+
+**RCA — what else is exposed.** Every check in `template-checks` that reduces a file to a single
+extracted line before asserting on it; `$vLogLine` is the instance found, the sweep is the
+deliverable. More broadly this is the third recorded case of *the gate for a known-recurring defect
+being structurally unable to see a variant of it* (B-59, B-64, now this), and all three were found by
+reading what the instrument points at rather than by running it — B-112's lesson, now with a
+deterministic-gate example beside its behavioural ones.

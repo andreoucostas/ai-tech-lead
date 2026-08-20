@@ -11,6 +11,40 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.62.0 — Unreleased
+
+**B-152: changelog validation now reads every release head instead of trusting only the first.**
+The shipped changelogs carried duplicate `0.56.0` heads for five releases, including a stale
+`Unreleased` entry below the dated one, while the gate built for that defect examined only the
+first H2. The record is merged without losing the detailed release rationale. Both gate twins now
+reject duplicate semantic-version heads and reject an `Unreleased` head at or below the stamped
+framework version, while allowing the next version's required pre-release authoring head.
+
+A third rule was added in review. Dropping the first-H2 read was necessary — the intended pre-stamp
+state puts the next version's `Unreleased` head on top — but that read was also the only thing
+rejecting a **dated** head for a version *above* the stamped one, which is B-152's defect one notch
+over. Measured on a scratch dist: a planted `## 0.99.0 — 2026-01-01` above a stamped `0.61.0` passed
+as "version stamps in sync". Both twins now reject it, and both were observed red on that exact
+plant. There is no legitimate case for one: after a release the top dated head *is* the stamped
+version, and during authoring the top head is `Unreleased`.
+
+**B-50: the shipped enforcement matrix no longer contradicts itself about Copilot `postToolUse`.**
+The matrix row had been updated after the B-49 drill, while two other passages in the same document
+still stated flatly that the channel was dead — so a consumer reading the matrix and a consumer
+reading the status note got opposite answers. Settled by an isolated three-arm canary on **CLI
+1.0.80** (`meta/canaries/b50-copilot-posttooluse/`): the channel **is** live. Treatment echoed an
+out-of-band token verbatim after a real write; a positive control on `userPromptSubmitted` proved a
+null would have been readable; a no-hook control proved the token was not reachable through the
+inherited environment, which a `--allow-all-tools` model could otherwise have read.
+
+**B-143: the `applyTo` advice now states only what was observed.** All three READMEs asserted that
+"Copilot's coding agent and inline completions both honour `applyTo`". Nothing here had ever verified
+that, and a non-matching `applyTo` fails *silently*. On CLI 1.0.80 any **narrow** `applyTo` delivered
+nothing even with a matching file named in the prompt — braces, commas and plain globs alike, so it
+is narrowness rather than syntax — and only `"**"` arrived. VS Code agent mode, the surface the
+advice targets, remains unverified and escalates with B-43. The advice is kept and caveated, not
+deleted: the mechanism is vendor-documented; what was wrong was asserting a delivery we never saw.
+
 ## 0.61.0 — 2026-08-19
 
 **B-97 (partial): `framework-doctor`'s `Protected-file sync` row now reports migration state instead
@@ -181,16 +215,6 @@ of `docs/enforcement-surfaces.md`, naming the CLI version and date observed.
   inventing commit or build evidence; exact SHAs and target qualification remain drill-#0 work.
 
 ## 0.56.0 — 2026-08-17
-
-- B-46: made update ownership honest and recoverable. Both installer twins now disclose before
-  mutation that framework-owned files, including `.claude/settings.json`, will be replaced; keep a
-  rolling pre-overwrite settings backup; and name the eight protected paths instead of implying all
-  consumer edits survive. The rejected per-file difference detector was not implemented because a
-  clean v0.51.0-to-current update produced 31 false positives.
-- B-65: documented on-demand/discoverable material as a weaker, non-guaranteed delivery tier without
-  claiming that a pointer or routing improvement exists.
-
-## 0.56.0 — Unreleased
 
 - B-46 (verification + the actionable half): **measured** that an update silently clobbers every
   consumer edit to shipped machinery — skills, hooks, `scripts/`, `.claude/settings.json` — while

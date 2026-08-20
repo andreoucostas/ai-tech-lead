@@ -5,6 +5,30 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.62.0 — Unreleased
+
+- Changelog validation now examines every semantic-version heading. It rejects duplicate release
+  headings and any `Unreleased` heading for a version that is already shipped, while still allowing
+  the next version's normal pre-release authoring heading.
+- The duplicate `0.56.0` entry has been merged into its dated release entry without losing the
+  detailed update-safety guidance.
+- Changelog validation also rejects a **dated** heading for a version above your installed framework
+  version. Previously only the first heading in the file was examined, so a stray or future-dated
+  release heading below it was invisible.
+- **The enforcement-surface guide no longer contradicts itself about Copilot's post-write feedback.**
+  One table row said the channel was version-dependent while two nearby passages said flatly that it
+  was broken. Re-measured on **Copilot CLI 1.0.80**: post-write hook output **does** reach the model.
+  On CLI 1.0.68 it did not. Check your installed CLI version before relying on it — and note that the
+  Boy Scout nudge never depended on this channel, so it is unaffected either way.
+- **The mixed-stack `applyTo` advice is now honest about what has actually been verified.** The
+  READMEs told you that path-scoped instruction files are honoured. We have not been able to confirm
+  that on any surface we can test, and a scoped file that does not reach the model **fails silently** —
+  it installs correctly and simply never arrives. On Copilot CLI 1.0.80 a *narrow* `applyTo` delivered
+  nothing at all, even with a matching file named in the prompt, whether written with braces, commas
+  or a plain glob; only `applyTo: "**"` arrived. VS Code agent mode, which is what this advice is aimed
+  at, remains unverified. The advice is kept — the mechanism is documented by the vendor — but it now
+  comes with a one-minute check you can run to see whether your own scoped file is reaching your agent.
+
 ## 0.61.0 — 2026-08-19
 
 **`framework-doctor`'s "Protected-file sync" row now tells you something you can act on.** It used
@@ -134,15 +158,6 @@ plainly: drift is *unknown*, not *found*, and the problem is your host, not your
 - `docs/enforcement-surfaces.md` gained the missing **on-demand / discoverable** tier, covering
   supporting material such as `docs/defaults.md`: available for the model to open, but loading is
   task- and model-dependent and not guaranteed.
-
-## 0.56.0 — Unreleased
-
-- Updates now warn before replacing framework-owned files, including `.claude/settings.json`, and
-  tell you to preserve local edits first and review the resulting diff. Before settings are
-  refreshed, the prior copy is saved at `.claude/.state/settings.json.pre-update`. Past updates may
-  already have discarded local edits to shipped framework files.
-- The enforcement-surface guide now identifies on-demand documentation as discoverable but not
-  guaranteed to load; `docs/defaults.md` is the example.
 
 ## 0.55.0 — 2026-08-17
 
@@ -913,4 +928,3 @@ No action needed to receive this — the wiki starts empty; your team populates 
 - **Merged CI guardrail and Bitbucket Data Center guidance** covering both legs — .NET
   (`dotnet build -warnaserror` + `dotnet test`) and Angular (`eslint` + `ng build` + `ng test`) —
   in `docs/ci-integration.md`.
-
