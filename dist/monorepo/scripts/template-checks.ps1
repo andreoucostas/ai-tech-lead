@@ -20,7 +20,7 @@ function Fail($m) { Write-Output "FAIL: $m"; $script:failed++ }
 function OK($m)   { Write-Output "OK:   $m" }
 
 # --- 1. Version-stamp sync -------------------------------------------------------------------
-$vClaude = $null; $vJson = $null; $vLog = $null; $vLogLine = $null
+$vClaude = $null; $vJson = $null; $vLog = $null; $vLogLine = $null; $changelogHeads = @()
 $isTemplateRepo = Test-Path -LiteralPath '.template-repo' -PathType Leaf
 if (Test-Path 'CLAUDE.md') {
     $head = Get-Content 'CLAUDE.md' -TotalCount 10
@@ -36,8 +36,17 @@ if ($isTemplateRepo -and (Test-Path -LiteralPath 'CHANGELOG.md' -PathType Leaf))
     # above updates the PowerShell provider location but not the .NET process CWD, so a relative
     # [IO.File] path would resolve against the wrong directory.
     $clText = [IO.File]::ReadAllText((Resolve-Path -LiteralPath 'CHANGELOG.md').Path)
-    foreach ($l in ($clText -split "`r?`n")) { if ($l -cmatch '^## ') { $vLogLine = $l; break } }
-    if ($vLogLine -cmatch '^## ([0-9]+\.[0-9]+\.[0-9]+) — ([0-9]{4}-[0-9]{2}-[0-9]{2})$') { $vLog = $Matches[1] }
+    foreach ($l in ($clText -split "`r?`n")) {
+        if (-not $vLogLine -and $l -cmatch '^## ') { $vLogLine = $l }
+        if ($l -cmatch '^## ([0-9]+\.[0-9]+\.[0-9]+) — (Unreleased|[0-9]{4}-[0-9]{2}-[0-9]{2})$') {
+            $changelogHeads += [pscustomobject]@{ Version = $Matches[1]; Suffix = $Matches[2]; Line = $l }
+        }
+    }
+    # A normal pre-stamp tree has the next Unreleased head first and the stamped version dated
+    # below it. Select the stamped version's dated entry from the whole file, not merely the first H2.
+    $stampedHead = @($changelogHeads | Where-Object { $_.Version -eq $vJson -and $_.Suffix -match '^\d{4}-\d{2}-\d{2}$' }) | Select-Object -First 1
+    if ($stampedHead) { $vLog = $stampedHead.Version }
+    elseif ($vLogLine -cmatch '^## ([0-9]+\.[0-9]+\.[0-9]+) — ([0-9]{4}-[0-9]{2}-[0-9]{2})$') { $vLog = $Matches[1] }
 }
 if (-not $vClaude) { Fail 'CLAUDE.md has no version stamp in its header comment.' }
 elseif (-not $vJson) { Fail '.claude/framework-version.json missing or unparsable.' }
@@ -56,6 +65,27 @@ elseif ($isTemplateRepo -and -not $vLog -and $vLogLine -cmatch ("^## " + [regex]
 elseif ($isTemplateRepo -and -not $vLog) { Fail "marked template repo CHANGELOG.md literal first '## ' line is '$vLogLine' — expected '## X.Y.Z — YYYY-MM-DD'." }
 elseif ($vLog -and $vLog -ne $vJson) { Fail "version-stamp drift: CHANGELOG.md head entry is $vLog, framework-version.json says $vJson." }
 else { OK "version stamps in sync ($vClaude)$(if (-not $isTemplateRepo) { ' (consumer repo — CHANGELOG.md ignored, pair-check only)' })." }
+
+if ($isTemplateRepo -and $vJson) {
+    foreach ($group in @($changelogHeads | Group-Object Version | Where-Object Count -gt 1)) {
+        Fail "CHANGELOG.md has duplicate release headings for version $($group.Name)."
+    }
+    foreach ($headEntry in @($changelogHeads | Where-Object Suffix -eq 'Unreleased')) {
+        if ([version]$headEntry.Version -le [version]$vJson) {
+            Fail "CHANGELOG.md has an Unreleased heading for shipped version $($headEntry.Version) (current stamped version: $vJson)."
+        }
+    }
+    # Restores coverage that reading only the FIRST '## ' line used to provide. That read had to go,
+    # because the intended pre-stamp state puts the next version's Unreleased head on top -- but it
+    # was also the only thing rejecting a DATED head for a version above the stamped one, which is
+    # B-152's defect one notch over. There is no legitimate case for it: after a release the top
+    # dated head IS the stamped version, and during authoring the top head is Unreleased.
+    foreach ($headEntry in @($changelogHeads | Where-Object { $_.Suffix -cmatch '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' })) {
+        if ([version]$headEntry.Version -gt [version]$vJson) {
+            Fail "CHANGELOG.md has a dated heading for version $($headEntry.Version), which is above the stamped version $vJson -- a release that was dated but never stamped, or a stray head."
+        }
+    }
+}
 
 # --- 2. Framework-rules source <-> AGENTS.md verbatim mirror ------------------------------------
 function Get-Section {

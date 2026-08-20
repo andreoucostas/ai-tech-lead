@@ -239,40 +239,7 @@ failures: one hard checklist failure = a defect entry, regardless of the rubric 
 > exposure applies to the still-unrun host-recertification/report templates; drill #0 must exercise
 > them rather than treating the existence of prose as execution evidence.
 
-### B-50 · Copilot CLI 1.0.70 now consumes `postToolUse` context — update the shipped matrix
-**Effort:** S · **Priority:** P2 documentation/capability honesty · **Invariants:** #3 #5 #7
-
-> **TRIAGE 2026-08-20 — PARTIALLY DONE, and what remains is now sharper than the entry says.** The
-> shipped matrix row **has** been updated and is version-aware: `src/core/docs/enforcement-surfaces.md`
-> records that CLI 1.0.68 fired the hook but discarded `additionalContext` while 1.0.70 consumed the
-> canary shape, and tells the reader to verify their installed CLI.
->
-> **But two nearby passages in the same shipped file still assert the old conclusion flatly**, so the
-> document now contradicts itself: the "Why the differences" bullet says "**`postToolUse`
-> additionalContext is unreliable**: a known CLI bug captures the value but does not forward it to
-> the model", and the Status note repeats "**Post-tool feedback is unreliable**". Both are
-> unqualified by version. A consumer reading the matrix and a consumer reading the status note get
-> opposite answers, which is worse than either answer alone and is exactly the failure mode this
-> framework sells itself on avoiding.
->
-> **Remaining work:** (1) run the isolated canary the entry asks for — still not done, no canary
-> record, plan, or changelog entry exists for it; (2) reconcile those two passages with the
-> version-dependent matrix. No hook comment was found still asserting that 1.0.70 discards the
-> channel, so that part of the *Do* appears already satisfied.
-
-**Found by:** B-49 drill #0 host recertification, 2026-07-17. The trusted-folder sentinel canary
-performed a real write and the model returned the out-of-band `B49_POST_TOOL_4MV2` token injected
-only by `postToolUse`. This reverses the live 1.0.68 observation on which
-`docs/enforcement-surfaces.md` currently says the leg is dead. Re-run once in an isolated canary,
-then update the shipped matrix/status note and any hook comments that demote Copilot post-write
-feedback. Normal release path; do not fold the shipped change into the meta-only drill PR.
-
-**B-52 is DONE (2026-08-18) — answered by live canary; it uncovered a P1, filed as B-147.
-See `meta/BACKLOG-DONE.md`.**
-
-**B-147 is DONE — shipped in v0.59.0 (2026-08-18); see `meta/BACKLOG-DONE.md`.**
-
-**B-148 is DONE — shipped as `validate-dist` check 13 `prompt-hook-cardinality`, heading corrected 2026-08-20; see `meta/BACKLOG-DONE.md`.**
+**B-50 is DONE (2026-08-20) — an isolated three-arm canary confirmed the channel on CLI 1.0.80 and both stale passages are reconciled; see `meta/BACKLOG-DONE.md`.**
 
 ### B-44 · Host-native overlap watch — retirement triggers for framework machinery
 **Effort:** S · **Invariants:** #7
@@ -1110,18 +1077,8 @@ per-assertion-spawn class is tracked as B-138. See `meta/BACKLOG-DONE.md`.**
 
 **B-102 is DONE — the core fix shipped in v0.45.0 and its three unshipped residues became B-104, B-105 and B-106, all since delivered; see `meta/BACKLOG-DONE.md`.**
 
-### B-111 · Post-ship review owed for v0.47.0
-**Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-06
+**B-111 is DONE (2026-08-20) — the owed v0.47.0 post-ship review was performed and its findings filed; see `meta/BACKLOG-DONE.md`.**
 
-**Why:** v0.47.0 shipped with `-NoIndependentReview`, so no second session re-ran a gate or a
-red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
-it did not happen. Summary of what shipped: Angular authoring skills gained the routing clauses every other skill already had
-
-**Do:** review the v0.47.0 diff as an independent session -- re-run at least one gate and one
-red-test yourself, do not read the release output as evidence -- and file whatever it finds. Then
-close this entry, recording what was re-run.
-
----
 ### B-112 · RCA: every behavioural instrument's first version could not produce the result it claimed to test for
 **Effort:** S (the rule) · M (the sweep) · **Priority:** P2 · filed 2026-08-06 · **Invariants:** #5
 · generalises B-72; sibling of B-64/B-74/B-75 on the deterministic side
@@ -1302,19 +1259,7 @@ saturation verdict beside every scenario so this is never re-derived.
 
 ---
 
-### B-123 · Post-ship review owed for v0.48.0
-**Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-06
-
-**Why:** v0.48.0 shipped with `-NoIndependentReview`, so no second session re-ran a gate or a
-red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
-it did not happen. Summary of what shipped: Verification Rule 11: read the repo's own description of a subsystem before writing against it (r=6/6, measured pre-ship)
-
-**Do:** review the v0.48.0 diff as an independent session -- re-run at least one gate and one
-red-test yourself, do not read the release output as evidence -- and file whatever it finds. Then
-close this entry, recording what was re-run.
-
----
-**B-117 is DONE (2026-08-20) — its conditional *Do* was answered negatively by measurement; see `meta/BACKLOG-DONE.md`.**
+**B-123 is DONE (2026-08-20) — the owed v0.48.0 post-ship review was performed and produced B-154; see `meta/BACKLOG-DONE.md`.**
 
 ### B-129 · Design and review the warehouse reporting consumption layer
 **Effort:** M–L · **Priority:** P2 · filed 2026-08-08 · **Capability:** warehouse technical leadership
@@ -2189,118 +2134,9 @@ critique per Maintenance rule 1 before code changes, exactly as B-129 itself req
 **B-142 is CLOSED as a deliberate non-action (2026-08-19) — the proposed range gate cannot
 fail in the world the entry is about; see `meta/BACKLOG-DONE.md`.**
 
-### B-143 · We advise consumers into an `applyTo` glob syntax we have never verified
-**Effort:** S · **Priority:** P2 · filed 2026-08-17 while critiquing B-17 · **Invariants:** #5
+**B-143 is DONE (2026-08-20) — the advice now states only what was observed, and the VS Code leg escalates with B-43; see `meta/BACKLOG-DONE.md`.**
 
-**Why:** two shipped READMEs tell a consumer to path-scope Copilot instructions using **brace**
-syntax — `src/stacks/dotnet/files/README.md:257` says to create
-`.github/instructions/typescript.instructions.md` with `applyTo: "**/*.{ts,html}"`. Nothing here has
-ever verified that Copilot honours a brace glob. Canary 3 (2026-08-05) tested exactly one form,
-`"**/*.cs"`, and the single most important thing it established is that **a non-matching `applyTo`
-fails silently** — the instructions simply never arrive, and the developer sees a correctly installed
-file either way. So if braces are unsupported, we are walking consumers into a config that delivers
-nothing and looks fine. That is the framework's own worst failure mode, in advice we hand out.
-
-Grep confirms no shipped `.instructions.md` uses a comma or brace `applyTo`; the syntax appears only
-in prose we give consumers (`applyTo:.*[,{]` over `src`/`dist`).
-
-**Do:** extend `.claude/scripts/canary-applyto-scope.ps1` with brace and comma arms against a repo
-containing a matching file, run it once, and record the result in the host-certification table. Then
-either keep the advice (verified) or correct both READMEs. Cheap: the canary harness already exists
-and Copilot CLI runs are not on the constrained Claude budget.
-
-**Not:** do not "fix" the READMEs by guessing a safer syntax — the point is to know, and an
-unverified replacement is the same defect wearing different punctuation.
-
-> **RUN 2026-08-18 on Copilot CLI 1.0.80. The brace question is MOOT ON THIS SURFACE, and what
-> replaces it is worse for the advice.** New canary: `.claude/scripts/canary-applyto-brace.ps1`
-> (three arms — `"**/*.ts"`, `"**/*.{ts,html}"`, `"**/*.ts,**/*.html"` — matching `.ts` and `.html`
-> files present in every arm, and a prompt that **names** `app.ts`).
->
-> **All three arms missed**, so the canary reported INVALID and refused to let the brace result be
-> read. That refusal was correct and is the useful part: the script's own "positive control" was
-> itself a **narrow** glob, i.e. the very form already known to fail. A positive control has to be a
-> form known to succeed. Re-running `canary-applyto-scope.ps1` the same day confirmed the baseline
-> still holds on 1.0.80 — `"**"` **HIT**, `"**/*.cs"` **MISS**, no-frontmatter **HIT**.
->
-> **Jointly these establish something stronger than the question asked:** on Copilot CLI in `-p`
-> mode a narrow `applyTo` delivers nothing **even when a matching file exists and the prompt names
-> it** — this canary names `app.ts` and still missed; canary 3 names no file and missed. So
-> narrowness alone defeats delivery, whatever the punctuation, and **no run on this surface can
-> separate braces from commas from any other narrow form.** Braces are neither confirmed nor
-> refuted here.
->
-> **What this means for the advice, which is the actual item.** The READMEs' instruction to create
-> `typescript.instructions.md` with `applyTo: "**/*.{ts,html}"` is aimed at **VS Code agent mode**,
-> where `applyTo` scoping is the documented mechanism and the file-context model differs. That
-> surface remains **unverified** (shared with B-43, which has never verified VS Code at all). So the
-> honest state is: the syntax is still unverified *for the surface it targets*, and on the surface we
-> *can* test, any narrow scoping — this syntax included — delivers nothing. Both halves belong in the
-> README caveat.
->
-> **Still open:** verify on VS Code agent mode, or downgrade the advice to say plainly that scoped
-> instruction files are unverified outside `"**"`. Do not swap the canary's control to `"**"` to make
-> it report VALID — it would then measure nothing while blaming the braces.
-
-**B-150 is DONE (2026-08-20) — the release no longer parks on the post-success prompt; see `meta/BACKLOG-DONE.md`.**
-
-**B-151 is DONE (2026-08-20) — dist-gates now attributes all four of its parallel units; see `meta/BACKLOG-DONE.md`.**
-
-### B-152 · A duplicate changelog head shipped a permanently-`Unreleased` version to every consumer, past the gate built for exactly that defect
-**Effort:** S · **Priority:** P2 · found 2026-08-20 during backlog triage · **Invariants:** #1 #3 #7
-
-**Why — observed in the shipped tree, not inferred.** All four changelogs carry **two** `## 0.56.0`
-heads. The first is dated (`— 2026-08-17`) and terse; the second, ~20 lines below, still reads
-`## 0.56.0 — Unreleased` and holds the detailed entry. It composed into all three dists
-(`dist/{dotnet,angular,monorepo}/CHANGELOG.md:137-138`) and has survived five releases
-(v0.57.0 → v0.61.0), so **every consumer who installed v0.56.0 or later has a changelog telling them
-a shipped version is unreleased.**
-
-Introduced whole in the v0.56.0 release commit `604be8b`, which added **both** blocks in a single
-38-line insertion — the release dated a new head instead of dating the authored one.
-
-**Why no gate caught it, and this is the half that matters.** `src/core/scripts/template-checks.ps1:39`
-reads the changelog and **stops at the first `## ` line**:
-
-```powershell
-foreach ($l in ($clText -split "`r?`n")) { if ($l -cmatch '^## ') { $vLogLine = $l; break } }
-```
-
-Every later assertion examines `$vLogLine` alone — including the check at `:53` whose own comment
-says this exact defect "reached a release twice (v0.35.0, v0.46.0) and both times was caught only by
-a human noticing". A stale `Unreleased` head is therefore invisible **whenever a dated head sits
-above it**, which is precisely the shape that occurred. The check is not wrong; it is reading one
-line of a file whose defect lives on another.
-
-**Do:** two halves.
-1. **Correct the record.** Merge each duplicated pair into one dated head per version, keeping the
-   detailed content and the date. Four files: root `CHANGELOG.md` (ours) and the three
-   `src/stacks/*/files/CHANGELOG.md` (theirs), then rebuild so `dist/` follows [#1].
-2. **Make the gate read the whole file,** in both twins [#3]:
-   - fail on **any duplicate `## X.Y.Z` head**, unconditionally; and
-   - fail on any `## X.Y.Z — Unreleased` head whose version is **≤ the stamped
-     `framework-version.json` version** — a version that has already shipped.
-
-   Scope the second rule that way deliberately. A blanket "no `Unreleased` head anywhere" rule would
-   fire during normal authoring, because invariant #7 requires the *next* version's head to be
-   authored as `— Unreleased` before `release.ps1` will stamp it. At that moment the authored head's
-   version is strictly greater than the stamped one, so it passes; after stamping it is dated, so it
-   passes. A gate that fails the intended working state is one people learn to bypass.
-
-**Red-test all three conditions** (Definition of done, gate script): plant a duplicate head; plant a
-below-the-fold shipped-version `Unreleased` head; and show the **pre-stamp authoring state still
-passing** — that last one is the case a careless implementation would regress.
-
-**Not:** do not fix the data by deleting the detailed 0.56.0 block and keeping the terse summary. The
-detailed block is the real entry — it records why the per-file difference detector was rejected by
-measurement — and the terse one is the accident.
-
-**RCA — what else is exposed.** Every check in `template-checks` that reduces a file to a single
-extracted line before asserting on it; `$vLogLine` is the instance found, the sweep is the
-deliverable. More broadly this is the third recorded case of *the gate for a known-recurring defect
-being structurally unable to see a variant of it* (B-59, B-64, now this), and all three were found by
-reading what the instrument points at rather than by running it — B-112's lesson, now with a
-deterministic-gate example beside its behavioural ones.
+**B-152 is DONE (2026-08-20) — the duplicate heads are merged and both gate twins now read the whole file; see `meta/BACKLOG-DONE.md`.**
 
 ### B-153 · The bash validator silently fails every `.ps1` when handed an MSYS-style dist root, and its twin does not
 **Effort:** S · **Priority:** P3 · found 2026-08-20 while verifying B-85's bash leg · **Invariants:** #3
@@ -2347,6 +2183,48 @@ already does.
 **Cross-links:** B-85 (whose fix revealed it), B-63 and B-71 (the vantage-point family — a failure
 whose cause is the environment must not be reported as a property of the artifact), B-70 (this was
 found only because the reviewer ran the bash leg the implementer could not reach).
+
+### B-154 · A version can be "released" in the changelog with no tag, and nothing reconciles the two
+**Effort:** S · **Priority:** P3 · found 2026-08-20 by B-123's post-ship review · **Invariants:** #7
+
+**Why — measured, and it is a single isolated instance, which is what makes it worth a check rather
+than a shrug.** `v0.48.0` has **no git tag**, locally or on origin. A sweep of every dated version
+head in the root `CHANGELOG.md` against `refs/tags/` found it is the **only** one:
+
+```
+for v in <every ## X.Y.Z head>; do git rev-parse -q --verify refs/tags/v$v || echo "NO TAG: v$v"; done
+→ NO TAG: v0.48.0        (and nothing else)
+```
+
+**The tooling did the right thing.** CI **failed** on the release commit `beface1` (run
+`31120229196`, conclusion `failure`), and `release.ps1` withholds the tag on a red watch by design —
+that is B-88 and WSD-029 ("a release tag follows CI-verified green") working exactly as intended. It
+even prints the recovery instruction: *"Release X is ON MASTER but NOT TAGGED … re-run the SAME
+command — it will re-watch and tag if CI is green."*
+
+**Nobody re-ran it.** So the durable record now says two different things: `CHANGELOG.md` presents
+v0.48.0 as a released version with a date, and git has no such release. Whatever broke CI was fixed
+by v0.49.0 two days later, and the untagged commit was simply never revisited.
+
+**Do NOT retroactively tag `beface1`.** CI was red on it; tagging it now would assert a
+CI-verified-green release that never existed, which is the opposite of what WSD-029 protects. The
+honest options are (a) leave it untagged and say so **in the changelog entry itself**, so a reader
+is not misled, or (b) tag the first subsequent green commit that contains v0.48.0's content and
+record that it is a post-hoc marker, not the release commit. (a) is cheaper and more honest.
+
+**Then close the gap that let it go unnoticed for two weeks:** nothing ever compares "the changelog
+claims a release" against "a tag exists". The sweep above is three lines and belongs in the meta
+suite, with a declared exception list so a deliberately-untagged version (like this one, once
+documented) does not fail forever. Red-test by deleting a tag in a scratch clone.
+
+**Not:** do not make this block a release — it is a *record* reconciliation, and the release path
+already has the correct behaviour. It should fail the meta suite, where an unfinished release is
+noticed the next time anyone runs the gates, rather than gate the next release on the last one's
+paperwork.
+
+**Cross-links:** B-88 (the watch that correctly withheld the tag), B-123 (the post-ship review that
+found this — the first thing that review produced that no gate could have), B-83 (same family: the
+record and the reality drift apart and nothing correlates them).
 
 **B-146 is DONE (2026-08-18) — check B shipped, check A dropped on evidence; see `meta/BACKLOG-DONE.md`.**
 

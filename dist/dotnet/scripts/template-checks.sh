@@ -14,13 +14,17 @@ fail() { echo "FAIL: $1"; failed=$((failed+1)); }
 ok()   { echo "OK:   $1"; }
 
 # --- 1. Version-stamp sync -------------------------------------------------------------------
-v_claude=""; v_json=""; v_log=""; v_log_line=""; is_template_repo=0
+v_claude=""; v_json=""; v_log=""; v_log_line=""; changelog_heads=""; is_template_repo=0
 [ -f .template-repo ] && is_template_repo=1
 [ -f CLAUDE.md ] && v_claude=$(head -10 CLAUDE.md | sed -n 's/^[[:space:]]*version:[[:space:]]*\([^[:space:]]*\).*/\1/p' | head -1)
 [ -f .claude/framework-version.json ] && v_json=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' .claude/framework-version.json | head -1)
 if [ "$is_template_repo" -eq 1 ] && [ -f CHANGELOG.md ]; then
+  changelog_heads=$(grep -E '^## [0-9]+\.[0-9]+\.[0-9]+ — (Unreleased|[0-9]{4}-[0-9]{2}-[0-9]{2})$' CHANGELOG.md || true)
   v_log_line=$(sed -n '/^## /{p;q;}' CHANGELOG.md)
-  if printf '%s\n' "$v_log_line" | grep -Eq '^## [0-9]+\.[0-9]+\.[0-9]+ — [0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
+  stamped_dated=$(printf '%s\n' "$changelog_heads" | grep -E "^## $v_json — [0-9]{4}-[0-9]{2}-[0-9]{2}$" | head -1)
+  if [ -n "$stamped_dated" ]; then
+    v_log=$v_json
+  elif printf '%s\n' "$v_log_line" | grep -Eq '^## [0-9]+\.[0-9]+\.[0-9]+ — [0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
     v_log=$(printf '%s' "$v_log_line" | sed -E 's/^## ([0-9]+\.[0-9]+\.[0-9]+) — [0-9]{4}-[0-9]{2}-[0-9]{2}$/\1/')
   fi
 fi
@@ -42,6 +46,46 @@ elif [ -n "$v_log" ] && [ "$v_log" != "$v_json" ]; then fail "version-stamp drif
 else
   extra=""; [ "$is_template_repo" -eq 0 ] && extra=" (consumer repo — CHANGELOG.md ignored, pair-check only)"
   ok "version stamps in sync ($v_claude)$extra."
+fi
+
+if [ "$is_template_repo" -eq 1 ] && [ -n "$v_json" ]; then
+  duplicates=$(printf '%s\n' "$changelog_heads" | sed -E 's/^## ([0-9]+\.[0-9]+\.[0-9]+) — .*/\1/' | sort | uniq -d)
+  while IFS= read -r version; do
+    [ -n "$version" ] && fail "CHANGELOG.md has duplicate release headings for version $version."
+  done <<EOF
+$duplicates
+EOF
+  stale_unreleased=$(printf '%s\n' "$changelog_heads" | awk -v current="$v_json" '
+    function leq(a, b, aa, bb, i) {
+      split(a, aa, "."); split(b, bb, ".")
+      for (i=1; i<=3; i++) { if ((aa[i]+0) < (bb[i]+0)) return 1; if ((aa[i]+0) > (bb[i]+0)) return 0 }
+      return 1
+    }
+    / — Unreleased$/ { version=$2; if (leq(version, current)) print version }
+  ')
+  while IFS= read -r version; do
+    [ -n "$version" ] && fail "CHANGELOG.md has an Unreleased heading for shipped version $version (current stamped version: $v_json)."
+  done <<EOF
+$stale_unreleased
+EOF
+  # Restores coverage that reading only the FIRST '## ' line used to provide. That read had to go,
+  # because the intended pre-stamp state puts the next version's Unreleased head on top -- but it was
+  # also the only thing rejecting a DATED head for a version above the stamped one, which is B-152's
+  # defect one notch over. There is no legitimate case for it: after a release the top dated head IS
+  # the stamped version, and during authoring the top head is Unreleased.
+  future_dated=$(printf '%s\n' "$changelog_heads" | awk -v current="$v_json" '
+    function gt(a, b, aa, bb, i) {
+      split(a, aa, "."); split(b, bb, ".")
+      for (i=1; i<=3; i++) { if ((aa[i]+0) > (bb[i]+0)) return 1; if ((aa[i]+0) < (bb[i]+0)) return 0 }
+      return 0
+    }
+    / — [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ { version=$2; if (gt(version, current)) print version }
+  ')
+  while IFS= read -r version; do
+    [ -n "$version" ] && fail "CHANGELOG.md has a dated heading for version $version, which is above the stamped version $v_json -- a release that was dated but never stamped, or a stray head."
+  done <<EOF
+$future_dated
+EOF
 fi
 
 # --- 2. Framework-rules source <-> AGENTS.md verbatim mirror ------------------------------------
