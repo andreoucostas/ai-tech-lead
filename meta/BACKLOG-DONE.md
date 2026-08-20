@@ -5177,3 +5177,229 @@ This independent Codex review **does not satisfy the required Claude Opus gate**
 If Opus is genuinely unavailable due to limits, record `WAITING — OPUS LIMIT`.
 
 ---
+
+---
+
+### B-50 · Copilot CLI 1.0.70 now consumes `postToolUse` context — update the shipped matrix
+> **DONE 2026-08-20 — answered by an isolated canary, and the answer is YES.** On **Copilot CLI
+> 1.0.80** `postToolUse` `additionalContext` **is** delivered to the model. The treatment arm echoed
+> the out-of-band token `B50-POSTTOOL-Q7R4X2` verbatim after a real `create` tool call, and the
+> hook's marker file confirms the hook process ran. Kit persisted at
+> `meta/canaries/b50-copilot-posttooluse/`; row re-dated in `meta/host-certification.md`.
+>
+> **Three arms, because the treatment arm alone proves nothing.** The positive control — the same
+> hook script registered on `userPromptSubmitted`, a channel already verified on this CLI — also
+> echoed, which is what makes a null result readable rather than ambiguous. That is precisely the
+> half **B-143's canary lacked**: its "positive control" was itself a narrow `applyTo`, a form
+> already known to fail, so it could only ever report INVALID. The negative control (no `hooks.json`)
+> echoed nothing and its marker never fired, ruling out a false-positive channel the older
+> `b52-copilot-two-hook` kit does not account for — that kit reasons the token "exists in no file in
+> the tree", which is true but insufficient, because hooks inherit the CLI's environment and a model
+> run with `--allow-all-tools` can spawn a shell and read it.
+>
+> **The marker is what made the run interpretable.** A first two-arm attempt returned NONE for the
+> treatment; with no hook-ran evidence that could equally have meant "the hook never fired", so it is
+> recorded here as uninterpretable rather than as a negative result. Separating *hook did not run*
+> from *hook ran and output was discarded* is the whole distinction this item turns on.
+>
+> **What was actually wrong was the contradiction, not the matrix row.** The row had already been
+> updated after the B-49 drill; two other passages in the same shipped document still asserted
+> flatly that the channel was dead, so a consumer reading the matrix and a consumer reading the
+> status note got opposite answers. Both are now version-qualified against the measured evidence.
+
+**Effort:** S · **Priority:** P2 documentation/capability honesty · **Invariants:** #3 #5 #7
+
+> **TRIAGE 2026-08-20 — PARTIALLY DONE, and what remains is now sharper than the entry says.** The
+> shipped matrix row **has** been updated and is version-aware: `src/core/docs/enforcement-surfaces.md`
+> records that CLI 1.0.68 fired the hook but discarded `additionalContext` while 1.0.70 consumed the
+> canary shape, and tells the reader to verify their installed CLI.
+>
+> **But two nearby passages in the same shipped file still assert the old conclusion flatly**, so the
+> document now contradicts itself: the "Why the differences" bullet says "**`postToolUse`
+> additionalContext is unreliable**: a known CLI bug captures the value but does not forward it to
+> the model", and the Status note repeats "**Post-tool feedback is unreliable**". Both are
+> unqualified by version. A consumer reading the matrix and a consumer reading the status note get
+> opposite answers, which is worse than either answer alone and is exactly the failure mode this
+> framework sells itself on avoiding.
+>
+> **Remaining work:** (1) run the isolated canary the entry asks for — still not done, no canary
+> record, plan, or changelog entry exists for it; (2) reconcile those two passages with the
+> version-dependent matrix. No hook comment was found still asserting that 1.0.70 discards the
+> channel, so that part of the *Do* appears already satisfied.
+
+**Found by:** B-49 drill #0 host recertification, 2026-07-17. The trusted-folder sentinel canary
+performed a real write and the model returned the out-of-band `B49_POST_TOOL_4MV2` token injected
+only by `postToolUse`. This reverses the live 1.0.68 observation on which
+`docs/enforcement-surfaces.md` currently says the leg is dead. Re-run once in an isolated canary,
+then update the shipped matrix/status note and any hook comments that demote Copilot post-write
+feedback. Normal release path; do not fold the shipped change into the meta-only drill PR.
+
+**B-52 is DONE (2026-08-18) — answered by live canary; it uncovered a P1, filed as B-147.
+See `meta/BACKLOG-DONE.md`.**
+
+**B-147 is DONE — shipped in v0.59.0 (2026-08-18); see `meta/BACKLOG-DONE.md`.**
+
+**B-148 is DONE — shipped as `validate-dist` check 13 `prompt-hook-cardinality`, heading corrected 2026-08-20; see `meta/BACKLOG-DONE.md`.**
+
+---
+
+### B-111 · Post-ship review owed for v0.47.0
+> **DONE 2026-08-20 — the owed independent review of v0.47.0 was performed.** v0.47.0 shipped with
+> `-NoIndependentReview`; a separate session (codex `gpt-5.6-sol`, read-only) reconstructed the
+> release from `git show 9dc9c39` rather than from the release output, and the reviewer verified its
+> findings.
+>
+> **What shipped, confirmed from the diff:** `USE FOR` / `DO NOT USE FOR` routing clauses on four
+> Angular skills (`add-component`, `add-lazy-route`, `add-service`, `add-signal-store`) in both the
+> Claude and GitHub forms, present in the Angular and monorepo dists, with no `.claude`/`.github`
+> divergence and every named routing destination resolving.
+>
+> **One BLOCKING finding, historical and already fixed:** at `9dc9c39` the context-footprint ceiling
+> was **warning-only** — breaching it printed `WARN:` and did not set a failing exit, in **both**
+> twins. It was presented as a budget protecting exactly the additions that release made. That is an
+> instrument that could not fail for its declared defect, i.e. B-59/B-64/B-112's class again. It was
+> corrected inside the v0.48.0 range.
+>
+> **Re-verified live rather than taken on trust:** the reviewer could not run a red-test at all,
+> because the brief's absolute "create no files" rule made every defect-injection harness unusable —
+> it said so plainly instead of reporting the green re-runs as red-qualified evidence, which was the
+> correct call. The reviewing maintainer therefore ran it: lowering the single-stack ceiling to 100
+> makes `context-footprint.ps1` **exit 1**, and restoring it returns exit 0. Stated precisely, that
+> exercised the baseline-diff branch rather than the ceiling branch in isolation; what it establishes
+> is that the gate now **fails** rather than warns, which is the property the finding is about.
+>
+> **Lesson for the next review brief, and it is the reviewer's, not the reviewer's fault:** "read
+> only" must mean *do not modify the repository*, not *create no file anywhere*. The stricter form
+> silently removes the reviewer's ability to satisfy Maintenance rule 4.
+
+**Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-06
+
+**Why:** v0.47.0 shipped with `-NoIndependentReview`, so no second session re-ran a gate or a
+red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
+it did not happen. Summary of what shipped: Angular authoring skills gained the routing clauses every other skill already had
+
+**Do:** review the v0.47.0 diff as an independent session -- re-run at least one gate and one
+red-test yourself, do not read the release output as evidence -- and file whatever it finds. Then
+close this entry, recording what was re-run.
+
+---
+
+---
+
+### B-123 · Post-ship review owed for v0.48.0
+> **DONE 2026-08-20 — the owed independent review of v0.48.0 was performed, and it found something
+> no gate could have.** Reviewed read-only from `git show beface1` by a separate session.
+>
+> **What shipped:** Verification Rule 11 on the unprotected `framework-rules.instructions.md`
+> carrier and the generated `AGENTS.md` for all three dists, plus the context-footprint twins
+> changing from warning-only to a failing exit. Rule 11 is present at line 22 of the composed
+> artifact in all three stacks, and the `carrier-import` gate confirms `CLAUDE.md` still imports the
+> carrier it travels on.
+>
+> **The finding: `v0.48.0` has no git tag** — verified locally and on origin, and a sweep of every
+> dated version head in the root `CHANGELOG.md` against `refs/tags/` shows it is the **only** such
+> version. **The tooling behaved correctly**: CI *failed* on `beface1` (run `31120229196`), and
+> `release.ps1` withholds the tag on a red watch by design (B-88, WSD-029). It printed the recovery
+> instruction; nobody re-ran it, v0.49.0 shipped two days later, and the untagged commit was never
+> revisited. So the durable record says two different things, and nothing correlates them. Filed as
+> **B-154**, with the explicit judgement that `beface1` must **not** be retroactively tagged — CI was
+> red on it, and tagging it now would assert a CI-verified-green release that never happened.
+>
+> **Honest limits, recorded rather than glossed:** the release's claimed behavioural result (`r=6/6`)
+> was not re-derived — doing so means re-running live model evaluations under the same host
+> conditions — and carrier *presence* is observed while Copilot's actual *consumption* of Rule 11 in
+> production is not. Both were stated by the reviewer unprompted.
+
+**Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-06
+
+**Why:** v0.48.0 shipped with `-NoIndependentReview`, so no second session re-ran a gate or a
+red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
+it did not happen. Summary of what shipped: Verification Rule 11: read the repo's own description of a subsystem before writing against it (r=6/6, measured pre-ship)
+
+**Do:** review the v0.48.0 diff as an independent session -- re-run at least one gate and one
+red-test yourself, do not read the release output as evidence -- and file whatever it finds. Then
+close this entry, recording what was re-run.
+
+---
+**B-117 is DONE (2026-08-20) — its conditional *Do* was answered negatively by measurement; see `meta/BACKLOG-DONE.md`.**
+
+---
+
+### B-143 · We advise consumers into an `applyTo` glob syntax we have never verified
+> **DONE 2026-08-20 — the advice is downgraded to exactly what was observed.** The entry's own
+> disposition was "verify on VS Code agent mode, **or** downgrade the advice"; the second was taken,
+> because the first needs a human at a VS Code window and is now escalated with B-43.
+>
+> All three shipped READMEs previously asserted that *"Copilot's coding agent and inline completions
+> both honour `applyTo`"*. Nothing here had ever verified that. They now state the **intent**, then
+> disclose: delivery is unconfirmed on every surface we can test; a non-matching `applyTo` **fails
+> silently**, so a correctly-installed file and a file that never arrives look identical; on **CLI
+> 1.0.80 any narrow `applyTo` delivered nothing at all**, even with a matching file present and named
+> in the prompt, across `"**/*.cs"`, `"**/*.ts"`, `"**/*.{ts,html}"` and `"**/*.ts,**/*.html"` alike —
+> so it is **narrowness**, not brace or comma syntax, that defeats it, and only `"**"` was observed
+> to arrive; and **VS Code agent mode, the surface this advice targets, remains unverified.** A cheap
+> consumer-runnable self-check is given.
+>
+> **The advice was kept, not deleted.** The mechanism is vendor-documented for VS Code; what was
+> wrong was asserting a delivery we never observed. Per the entry's own *Not*, the canary's positive
+> control was **not** swapped to `"**"` to make it report VALID — that would have measured nothing
+> while blaming the braces.
+>
+> **Cross-link earned the hard way:** B-50's canary was built with a genuine known-good positive
+> control specifically because this item demonstrated what happens without one.
+
+**Effort:** S · **Priority:** P2 · filed 2026-08-17 while critiquing B-17 · **Invariants:** #5
+
+**Why:** two shipped READMEs tell a consumer to path-scope Copilot instructions using **brace**
+syntax — `src/stacks/dotnet/files/README.md:257` says to create
+`.github/instructions/typescript.instructions.md` with `applyTo: "**/*.{ts,html}"`. Nothing here has
+ever verified that Copilot honours a brace glob. Canary 3 (2026-08-05) tested exactly one form,
+`"**/*.cs"`, and the single most important thing it established is that **a non-matching `applyTo`
+fails silently** — the instructions simply never arrive, and the developer sees a correctly installed
+file either way. So if braces are unsupported, we are walking consumers into a config that delivers
+nothing and looks fine. That is the framework's own worst failure mode, in advice we hand out.
+
+Grep confirms no shipped `.instructions.md` uses a comma or brace `applyTo`; the syntax appears only
+in prose we give consumers (`applyTo:.*[,{]` over `src`/`dist`).
+
+**Do:** extend `.claude/scripts/canary-applyto-scope.ps1` with brace and comma arms against a repo
+containing a matching file, run it once, and record the result in the host-certification table. Then
+either keep the advice (verified) or correct both READMEs. Cheap: the canary harness already exists
+and Copilot CLI runs are not on the constrained Claude budget.
+
+**Not:** do not "fix" the READMEs by guessing a safer syntax — the point is to know, and an
+unverified replacement is the same defect wearing different punctuation.
+
+> **RUN 2026-08-18 on Copilot CLI 1.0.80. The brace question is MOOT ON THIS SURFACE, and what
+> replaces it is worse for the advice.** New canary: `.claude/scripts/canary-applyto-brace.ps1`
+> (three arms — `"**/*.ts"`, `"**/*.{ts,html}"`, `"**/*.ts,**/*.html"` — matching `.ts` and `.html`
+> files present in every arm, and a prompt that **names** `app.ts`).
+>
+> **All three arms missed**, so the canary reported INVALID and refused to let the brace result be
+> read. That refusal was correct and is the useful part: the script's own "positive control" was
+> itself a **narrow** glob, i.e. the very form already known to fail. A positive control has to be a
+> form known to succeed. Re-running `canary-applyto-scope.ps1` the same day confirmed the baseline
+> still holds on 1.0.80 — `"**"` **HIT**, `"**/*.cs"` **MISS**, no-frontmatter **HIT**.
+>
+> **Jointly these establish something stronger than the question asked:** on Copilot CLI in `-p`
+> mode a narrow `applyTo` delivers nothing **even when a matching file exists and the prompt names
+> it** — this canary names `app.ts` and still missed; canary 3 names no file and missed. So
+> narrowness alone defeats delivery, whatever the punctuation, and **no run on this surface can
+> separate braces from commas from any other narrow form.** Braces are neither confirmed nor
+> refuted here.
+>
+> **What this means for the advice, which is the actual item.** The READMEs' instruction to create
+> `typescript.instructions.md` with `applyTo: "**/*.{ts,html}"` is aimed at **VS Code agent mode**,
+> where `applyTo` scoping is the documented mechanism and the file-context model differs. That
+> surface remains **unverified** (shared with B-43, which has never verified VS Code at all). So the
+> honest state is: the syntax is still unverified *for the surface it targets*, and on the surface we
+> *can* test, any narrow scoping — this syntax included — delivers nothing. Both halves belong in the
+> README caveat.
+>
+> **Still open:** verify on VS Code agent mode, or downgrade the advice to say plainly that scoped
+> instruction files are unverified outside `"**"`. Do not swap the canary's control to `"**"` to make
+> it report VALID — it would then measure nothing while blaming the braces.
+
+**B-150 is DONE (2026-08-20) — the release no longer parks on the post-success prompt; see `meta/BACKLOG-DONE.md`.**
+
+**B-151 is DONE (2026-08-20) — dist-gates now attributes all four of its parallel units; see `meta/BACKLOG-DONE.md`.**
