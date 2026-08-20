@@ -4170,3 +4170,398 @@ about what `/bootstrap` *writes*. Adjacent, not the same.
   **deliberately unaddressed**, per the proportionality case; if the class recurs against *live*
   claims rather than superseded ones, that is the evidence that would justify revisiting the
   canonical-source refactor.
+
+---
+
+### B-98 · A prompt that matches no skill description fails silently
+> **DONE 2026-08-20.** Closed by triage, not by new work: all three steps of the *Do* had already
+> shipped and the heading had simply not followed. Step 1 (the warehouse instance) was settled at
+> `r = 0/6` with neither skill nor map reached. The general no-match question was decided at v0.51.0
+> — no always-on router and no no-match hook, and body boundaries require an *observed* overlapping-
+> fixture misroute first. The reach remedy shipped in v0.48.0 as Verification Rule 11, confirmed
+> present in the composed artifact at
+> `dist/dotnet/.github/instructions/framework-rules.instructions.md:22`, and its measured arm moved
+> map reach from 0/6 to 6/6. The roster sweep (16 skills, 14 commands) and the four Angular skills'
+> routing clauses are both in the tree.
+>
+> **Read the entry's opening paragraph as obsolete.** It says the warehouse outcome was unknown;
+> later blocks in the same entry record several confirmed non-reach observations, and the v0.51.0
+> decision governs. Future routing failures need their own evidence, not a reopening of this item.
+
+**Effort:** S (step 1) · M (the general question) · **Priority:** P2 · found 2026-08-05
+
+> **v0.51.0 decision:** no always-on router or no-match hook. Stage A selected
+> `add-warehouse-load` 6/6 and selected `add-entity` 0/4 counted runs, while the earlier read-side
+> case remained 0/6. Routing remains probabilistic; dead destinations are hygiene defects, not a
+> behavior proof. Future body boundaries require an observed overlapping-fixture misroute.
+
+**Why:** routing is the model matching a prompt against skill descriptions. When nothing matches,
+the framework emits **nothing** — no warning, no degraded path, no "I have no recipe for this". The
+developer receives a plausible answer produced with no framework guidance, and cannot tell that from
+one produced with it. Silence is indistinguishable from success, which is the worst shape a failure
+can take: there is no signal to act on, so the gap never surfaces except as a bad outcome downstream.
+
+The trigger is B-96's field report, and it is genuinely unresolved. `map-warehouse`'s USE FOR already
+includes "what feeds this report"
+(`src/stacks/dotnet/files/.claude/skills/map-warehouse/SKILL.md:10`), so the skill was **eligible** to
+fire — but no transcript exists, so nobody knows whether it did. Both outcomes are findings, and they
+have different owners:
+
+- **It fired** → the map had nothing useful to say. Content gap; B-96 owns it.
+- **It did not fire** → B-96's content work never reaches the developer regardless of quality, and the
+  remedy is routing, not content.
+
+This is the same shape as **B-97**: a general framework defect that surfaced through a
+warehouse-specific symptom. B-97 earned its own entry on those grounds and so does this.
+
+> **Second live confirmation, 2026-08-15 (B-127 Phase 0, WSD-040).** All 16 baseline trials (8
+> plain, non-telegraphing, no-skill-named prompts × n=2) against unchanged `map-warehouse` came back
+> `ROUTING_NON_REACH` — the skill was never read or selected once. Claude Code solved every sampled
+> case correctly anyway via direct DDL/view inspection, at a fixture scale where that brute-force
+> path is cheap. This is "it did not fire," settling that outcome a second time independent of B-96's
+> original trigger. Full detail: `meta/eval-results.md` "B-127 Phase 0" sections.
+
+> **Third confirmation, and a more diagnostic one, 2026-08-15 (B-126 retroactive correction).**
+> B-126's own live baseline (WSD-041, closed 2026-08-14) never gated its grader on skill invocation;
+> retroactively checking its recorded `skill=` field shows `add-warehouse-load` fired in only 1 of 6
+> counted trials. The diagnostic value here is the **contrast**, not just another non-fire: B-124's
+> near-identically write-task-phrased prompts routed 4/4, on the same skill, in the same fixture
+> family. The plausible difference is that B-126's fixture stages `docs/schema-evolution-premise.md`
+> and `docs/product-consumer-closure.md` directly and prominently — an equally-relevant non-skill path
+> that B-124's fixture didn't offer. If true, routing reliability here isn't just a function of prompt
+> phrasing (this item's original framing) but of what evidence already happens to be staged in
+> context — worth checking directly (does a fixture with an on-point doc file suppress routing to a
+> skill that would otherwise fire?) before this item's own "Do" step 2 design work begins. Full
+> detail: `meta/BACKLOG.md` B-126 "Correction (2026-08-15)".
+
+**Do:**
+
+1. **Settle the warehouse instance — cheapest, and it gates B-96.** Run an incident-shaped prompt
+   ("replicate this report, here is the source SQL") against a warehouse fixture with the current dist
+   installed, and observe whether `map-warehouse` fires and whether `docs/warehouse-map.md` enters
+   context. Reuse the B-41 harness; do not build a second one.
+2. **Then the general question: is silence acceptable when no skill matches?** Weigh — a `route-prompt`
+   fallback that names the nearest skills and states that none matched; accepting silence but auditing
+   whether descriptions carry **read/consumption** verbs at all (most real tasks are reads; most skill
+   descriptions are framed around writes — that asymmetry is what produced the warehouse gap); or a
+   periodic description-coverage audit against a corpus of realistic prompts. Note the fallback option
+   costs context on every turn, so it is not obviously right.
+3. **Sweep the class — write-side-only capabilities.** `add-endpoint` and `add-entity` cover
+   *authoring*; is *consuming* an existing endpoint or entity correctly covered anywhere? B-40 shipped
+   `map-warehouse` + `add-warehouse-load` and nothing for querying. Check whether the same asymmetry
+   runs through the rest of the skill roster.
+
+> **STEP 3 DONE — RUN 2026-08-06, immediately after step 1. The asymmetry is real and worse than
+> this bullet assumed.** Swept all 16 shipped skills (`dist/monorepo`, the superset) and all 14
+> commands.
+>
+> **Every skill is named and framed by the artifact it *produces*, never by the question it
+> answers.** Nine of sixteen begin with `add-`; six of those say "new"/"brand-new"/"doesn't exist
+> yet" in the first clause. Only **two** are read-side at all — `perf` (a defect-hunting scan) and
+> `map-warehouse`. And `map-warehouse` is itself framed as *producing a document*: its headline is
+> "Map a warehouse codebase … refreshing `docs/warehouse-map.md`". A developer with a question does
+> not have a map-authoring task.
+>
+> **This is a better explanation of step 1's `r=0` than description tuning.** The three probe prompts
+> are all shaped *"Write that query and save it as `analysis/X.sql`"* — surface form: author a file.
+> No skill in the roster claims query authoring. Stated precisely, because the overclaim is
+> tempting: the two warehouse skills do **not** forbid it — they mention queries only to exclude
+> *tuning* (`add-warehouse-load` → "report/query tuning"; `map-warehouse` → "tuning a single slow
+> query"). So the task is **unclaimed, and the only query-adjacent language in reach is exclusionary**.
+> That is a routing gap by omission, not by misdescription — which is why rewriting
+> `map-warehouse`'s description (design §3.5) was never going to be sufficient, and step 1's
+> §3.4.1 sharpening already said so from the other direction.
+>
+> **Orphaned exclusions — the sharper structural defect.** `DO NOT USE FOR` clauses name ~17 tasks.
+> Five route somewhere real (`add-warehouse-load`→`add-entity`/`map-warehouse`,
+> `add-tests`→`add-endpoint`, `enforce-standards`→`enforce-architecture`,
+> `enforce-architecture`→`/review`). The rest name a task and offer **no destination, because none
+> exists**: *writing queries against an existing entity* (`add-entity`), *modifying an existing
+> endpoint's logic or signature*, *adding a method to an existing service*, *adding middleware*
+> (`add-endpoint`), *changing a registration's lifetime*, *adding a dependency to an existing
+> service constructor*, *extracting an interface from a registered class*, *replacing one
+> implementation with another* (`register-service`), *one-off data corrections*, *report/query
+> tuning* (`add-warehouse-load`), *tuning a single slow query* (`map-warehouse`). The roster tells
+> the model where **not** to go far more often than where to go, and most of those signposts point
+> at nothing.
+>
+> **Incidental find, worth its own fix:** four skills carry **no `USE FOR`/`DO NOT USE FOR` clause
+> at all** — `add-component`, `add-lazy-route`, `add-service`, `add-signal-store`, i.e. every
+> Angular authoring skill except `add-tests`. They ship a single descriptive sentence while their
+> .NET counterparts carry full routing clauses. Whatever step 2 decides about routing, this is an
+> unarguable inconsistency in the delivered product and cheap to close.
+>
+> **What this does NOT establish:** that adding a read-side skill fixes `r=0`. `map-warehouse` is
+> read-side and still did not fire, so "add a consumption skill" is a hypothesis, not a conclusion —
+> it needs the same pre-registered treatment step 1 got, on the same harness, before anything ships.
+> Commands were checked too and cover none of this: all 14 are lifecycle/workflow
+> (`/feature`, `/fix`, `/refactor`, `/design`, `/review`…), and none claims "answer a question about
+> existing code" either.
+
+**Cross-links:** B-96 (gated by step 1), B-41 (the eval harness steps 1–2 depend on), B-97 (the other
+general defect found through the same symptom), B-76 (shipped descriptions matching what they
+describe — accuracy, where this is coverage), B-78 (warehouse-map signals that reach nobody).
+
+> **STEP 1 IS DONE — RUN 2026-08-06. `r = 0` of 6. Routing gap CONFIRMED; B-96 is BLOCKED; step 2
+> owns the remedy.** Six registered runs on `-Model sonnet` (three paraphrases × two batches),
+> framework v0.46.0, Claude Code 2.1.223, all six `category=NEITHER` — `Skill` never invoked,
+> `docs/warehouse-map.md` never opened. Full record and caveats: `meta/eval-results.md`
+> (2026-08-06 blocks). The pre-registered rule fired as written; nothing was tuned to the outcome.
+>
+> Four things this establishes, and one it does not:
+> 1. **Fixture valid** — verified on disk in the retained scratch (12 skills incl. `map-warehouse`,
+>    the map file, population-A `CLAUDE.md`), not inferred.
+> 2. **The negative is the sharp form (§3.4.1).** `map-warehouse` is named at `CLAUDE.md:71` in
+>    always-loaded Common Tasks and its USE FOR already covers "what feeds this report". So the gap
+>    is **a named, in-context skill was not reached**, not an unmatched description — which means
+>    step 2 must not assume description tuning is the fix, and a later positive must not be credited
+>    to it.
+> 3. **The model brute-forces instead.** p1 tool census: 12 `Read`, 7 `Glob`, 0 `Skill`. It
+>    re-derived the map from raw DDL. That path exists on a 9-table fixture and not on the warehouse
+>    behind the field reports — so the probe understates the cost of the gap rather than overstating
+>    it.
+> 4. **Co-observed:** `usedDeadColumn=True` in 4/6 (field report #3's shape) with
+>    `joinedDimension=True` in 6/6. Kept as a signal, **not** banked as evidence — p2/p3 flipped
+>    between batches (high variance at n=2/paraphrase) and B-72 has caught this scenario family
+>    telegraphing before.
+>
+> **What it does not establish:** that the *content* fix is wrong or unnecessary. B-96's content gap
+> was established structurally by reading the skill; this says only that the content would not have
+> been reached. Fix routing first, then ship the content — that ordering is now evidenced rather
+> than assumed. Cost: $2.23 for six runs.
+>
+> **Also confirmed while running this (Phase 1 premise re-validation, and it corrects B-96 §3.6):**
+> `.claude/skills/` is **not** in the installer's `$protected` list (`dist/dotnet/scripts/install.ps1:30-31`)
+> and is copied wholesale on update (`:83-85`). So B-96's *skill* content — the whole map, the edge
+> list, the read-side rules — **does** reach already-installed consumers. Only the one-line
+> `Conventions > Data Access` pointer is behind B-97's wall. §3.6's "reaches greenfield installs
+> only" is true of that line and must not be read as true of the item. The v0.45.0
+> `.github/instructions/` carrier is **not** the rescue for it either: that file is genuinely
+> unprotected and does deliver, but it is framework-owned and unconditional (`applyTo: "**"`) while
+> the pointer is conditional on the repo having a warehouse — and B-96's own "Not" forbids
+> DW-specific text in static context.
+
+**Step 1 status, 2026-08-05 — instrument BUILT and verified; the six live runs are PENDING.**
+Design: `.claude/plans/2026-08-05-b98-step1-routing-probe-design.md` (rev 2, adversarially reviewed,
+12 findings dispositioned). Phase 1 shipped in commit `abaa7a2` (meta-only): warehouse fixture,
+`warehouseRouting` grader, three prompt paraphrases, 19 self-test assertions green on pwsh 7.6.4 and
+red-tested by breaking the Conventions replacement regex, the shipped step-0 table, and the shipped
+`CLAUDE.md` pointer count.
+
+**Deferred to 2026-08-06+ for weekly usage quota (96% consumed), not for cost.** Run all six as
+designed — do not silently shrink n, and do not substitute a non-Claude host: verified 2026-08-05
+that codex/terra has **no skill mechanism at all** and emits an unrelated event schema
+(`thread.started`/`turn.started`/`item.completed`/`agent_message`/`turn.completed`), so `Skill`
+routing cannot fire and `Read-Transcript` rejects the stream. A terra run would score `NEITHER` six
+times for host reasons and the decision rule would misread that as a confirmed routing gap.
+
+Command: `pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Scenario warehouse-route-p1,warehouse-route-p2,warehouse-route-p3 -TimeoutSeconds 420`, twice.
+
+**Haiku pilot — PRE-REGISTERED 2026-08-05, before running, and it does NOT satisfy step 1.**
+Weekly quota is effectively spent, so the six registered runs cannot happen today. A cheaper model is
+worth attempting, but only under a rule fixed in advance, because the registered rule below names no
+model and the harness defaults to `sonnet` (`run-agent-evals.ps1:9`) — swapping the model silently
+would corrupt the one property that rule exists to protect.
+
+- **The pilot is `-Model haiku` on `warehouse-route-p1..p3`. It is a pilot, not the experiment.**
+- **Positive (guidance demonstrably enters context in ≥5 of 6):** provisional evidence that routing
+  works, since a weaker model succeeding makes success on a stronger one likely. **Provisional only**
+  — it still requires one `sonnet` confirmation run before B-96 is unblocked.
+- **Negative (r low or zero): UNINTERPRETABLE. Discard it. Do not record it as `r`, and do not let
+  it confirm a routing gap.** It cannot distinguish "no framework guidance reached the model" from
+  "this model is weaker at tool selection" — the identical confound that already ruled out a terra
+  substitution below.
+- **Known weakness in the transfer assumption, stated up front:** it presumes routing capability is
+  monotonic in model strength. Plausible, unproven, and arguably backwards — a stronger model may
+  answer directly where a weaker one reaches for a tool. This is why even a positive is provisional.
+
+**Haiku pilot RESULT, 2026-08-05: 3 runs, all negative — and DISCARDED per the rule above.**
+`-Model haiku` on p1/p2/p3. All three: `Skill` tool never used, `docs/warehouse-map.md` never opened,
+`category=NEITHER`. The string `map-warehouse` appears in every transcript only because
+`CLAUDE.md > Common Tasks` names it — i.e. the skill was **visible in always-loaded context and not
+invoked**.
+
+**This does not count as `r=0` and must not be cited as a confirmed routing gap.** The pre-registration
+said a negative here cannot separate a routing gap from a weaker model's tool selection, and that
+still holds now that the negative is in hand. The registered `sonnet` runs remain owed. Recording the
+constraint costs a result I would otherwise like to claim, which is the point of registering it first.
+
+Three things it *does* establish, none model-dependent:
+
+1. **Fixture validity — this is not the terra-style host confound.** Verified on disk in the retained
+   scratch: `target/` carries a 24 KB `CLAUDE.md`, all 12 skills including `map-warehouse`, and
+   `docs/warehouse-map.md`. The probe put the framework in front of the model correctly. (`tokensIn=42`
+   in the PASS line is a token-accounting artifact, not empty context — checked, not assumed.)
+2. **The probe has now been exercised live for the first time** and works end to end: spawn, grade,
+   categorise. It was previously "BUILT and verified" with no live run behind it.
+3. **Cost envelope:** ~$0.056 per run on haiku against a $1.25 budget. The six registered runs are
+   affordable; cost was never the reason to defer them.
+
+**Finding filed against the probe itself: `PASS` is a misleading label here.** The harness printed
+`PASS warehouse-route-p3: … category=NEITHER` — `PASS` means "the run completed and was graded", not
+"routing worked". In an instrument whose entire job is to settle a binary routing question, a line
+reading `PASS … NEITHER` invites exactly the misreading the pre-registered rule exists to prevent.
+Rename to `GRADED`/`DONE`, or print the category first. Cheap, and it is the same failure family as
+B-74/B-75 — a report whose shape suggests success.
+
+**Also found: the recorded run command cannot execute on the maintainer box as written.** `claude` is
+not resolvable — the session `PATH` holds three entries, the third being the literal unexpanded string
+`${PATH}`; the binary is at `<home>\.local\bin\claude.exe`. The harness fails fast and
+clearly (`claude CLI is not installed or not on PATH`), which is good instrument behaviour, but the
+runs were parked believing quota was the only obstacle and it was not the first one hit. Prepend that
+directory to `PATH` for the child process; do **not** "fix" the registry, which is a known false fix.
+
+**Absolute paths for every agent host on this box** (all three are invisible to a bare name because
+of the `${PATH}` corruption — record them here so no future session re-derives them):
+
+| Tool | Path | Note |
+|---|---|---|
+| Claude Code | `<home>\.local\bin\claude.exe` | |
+| Copilot CLI | `<home>\AppData\Roaming\npm\copilot.cmd` | **needs `C:\Program Files\nodejs` on `PATH` too** — the npm shim shells out to `node`, and its failure is the misleading `'"node"' is not recognized`, which looks like a broken Copilot install rather than a PATH problem |
+| GitHub CLI | `C:\Program Files\GitHub CLI\gh.exe` | |
+| pwsh 7.6.4 | `C:\Program Files\WindowsApps\Microsoft.PowerShell_7.6.4.0_x64__8wekyb3d8bbwe\pwsh.exe` | MSIX build, cf. B-79 |
+
+This is worth a line in `DEVELOPING.md` rather than only here — three separate host lookups were
+needed in one session, and each failed with a different and misleading error.
+
+**The decision rule is PRE-REGISTERED and binding** (design §2.1) — it was written before any run
+precisely so it cannot be tuned to the outcome. Let `r` = runs where framework warehouse guidance
+demonstrably entered context: `r=0` → routing gap confirmed, **B-96 blocked**, step 2 owns the
+remedy; `1≤r≤4` → routing real but unreliable, B-96 proceeds with a stated reliability ceiling;
+`r≥5` → routing works, **B-96 unblocked**, the gap is content.
+
+**Design correction found during implementation (§3.4.1), and it changes what a negative means.**
+`dist/dotnet/CLAUDE.md:132` names `map-warehouse` in **Common Tasks** — always-loaded context that
+`/bootstrap` never rewrites, because it replaces *Conventions*, not the skills list. So a consumer
+with "no pointer at all" **cannot exist**, and the design's population table varies only in the
+Conventions section. This sharpens a negative result: if a skill that is named and described in
+static context on every turn, whose USE FOR already covers "what feeds this report", still does not
+fire, the gap is not "the description was not matched" but "a named, in-context skill was not
+reached". A positive result is correspondingly attributable to the skills list rather than to
+description tuning, and must not be cited as evidence the description is well-written.
+
+---
+
+---
+
+### B-117 · Every `DO NOT USE FOR` cross-reference rides the channel measured at 0/6, and no fixture tests one
+> **DONE 2026-08-20 — the conditional *Do* was answered negatively by measurement.** The entry asked
+> for a fixture where `add-warehouse-load` and `add-entity` are both plausible, and then said "**if**
+> misrouting is real, sweep the roster and move boundaries into skill bodies". The fixture exists
+> (`warehouse-mixed`, `.claude/evals/run-agent-evals.ps1:24,502`) and recorded
+> `reachedAddEntity = 0/6`: the correct skill was selected in all six runs. The condition was false,
+> so the remedy was correctly **not** performed, and the pair closed in v0.51.0 with no frontmatter
+> added.
+>
+> **The opening premise is too broad and should not be revived as written.** "Frontmatter measured
+> 0/6, therefore every `DO NOT USE FOR` boundary is suspect" conflates two different channels:
+> *read-side* routing measured 0/6, while *load-shaped* prompts reached the correct skill 6/6.
+> Copying boundaries into every skill body without an observed misroute would violate both this
+> entry's own "if it is" condition and B-98's standing evidence rule.
+
+**Effort:** M · **Priority:** P2 · found 2026-08-07 · **Cross-link:** B-98, B-60
+
+> **PAIR CLOSED in v0.51.0.** The mixed fixture observed `add-warehouse-load` and never
+> `add-entity`; no frontmatter was added. The wider class remains evidence-gated under B-98.
+
+**Why:** sibling skills disambiguate each other exclusively in **frontmatter** — `add-entity` says
+*"DO NOT USE FOR … warehouse fact/dimension tables (use `add-warehouse-load`)"* and
+`add-warehouse-load` says *"DO NOT USE FOR: OLTP entities (use `add-entity`)"*. Frontmatter is the
+channel v0.48.0/v0.49.0 measured firing **0/6**. So the disambiguation is *asserted* and has never
+been *observed* to work.
+
+Worse, it could not have been: until 2026-08-07 **no fixture placed two plausible competitors in one
+repo.** The warehouse fixture has no EF Core, so `add-entity` was never a candidate there; the dotnet
+fixture has no warehouse. A skill roster's most likely failure — the wrong one firing — was
+structurally unobservable across the whole eval suite.
+
+The `warehouse-mixed` fixture and the `reachedAddEntity` outcome close this for **one pair**. The
+class is wider: every `DO NOT USE FOR` in the roster is in the same position.
+
+**Do:** once Stage A's baseline reports `reachedAddEntity`, decide whether mis-routing is real at
+rates worth fixing. If it is, the remedy is *not* more frontmatter — the budget is 116 chars and the
+channel does not fire. Sweep the roster for pairs whose triggers overlap on a plausible prompt, and
+carry the boundary in skill **bodies**, which are free and are read once the skill is open.
+
+---
+
+---
+
+### B-79 · The maintainer box runs the MSIX build of PowerShell 7, and it is the release's largest single cost
+> **REJECTED ON EVIDENCE 2026-08-20 — the MSIX hypothesis is refuted by measurement. Do not
+> implement this entry; its proposed fix has already happened and bought nothing.**
+>
+> The entry blamed pwsh 7's 265 ms spawn cost on Store/MSIX packaging and predicted the MSI build
+> would land "near 5.1's 143 ms", worth "~45% off every `pwsh` spawn and the largest available win on
+> release time".
+>
+> **Measured on the maintainer box, 2026-08-20.** The MSI build is already installed
+> (`C:\Program Files\PowerShell\7\pwsh.exe`, PowerShell **7.6.5**), `pwsh` on PATH resolves to it,
+> and **no MSIX PowerShell package remains on the box**. Three repetitions of the entry's own
+> 25-spawn benchmark:
+>
+> | spawn | measured now (3 reps) | B-79's original figure |
+> |---|---:|---:|
+> | `pwsh` 7.6.5 (**MSI**) | 240 / 251 / 266 ms | 265 ms (attributed to MSIX) |
+> | `powershell.exe` 5.1 | 147 / 147 / 158 ms | 143 ms |
+> | `bash` (Git for Windows) | 39 / 41 / 44 ms | 55 ms |
+>
+> The MSI build is statistically indistinguishable from the figure the entry blamed on packaging.
+> Package identity and app-execution-alias resolution were not the cost: pwsh 7 is simply ~1.7x
+> slower to start than Windows PowerShell 5.1 here, whatever the packaging.
+>
+> **What survives:** the entry's measurements were sound and its structural claim still holds — the
+> gate phase is bound by process creation, parallelism plateaus, and ~1350 interpreter spawns per
+> release is the real cost. That is B-138's territory, and the per-file attribution needed to attack
+> it honestly is B-151's. Only the cause and the remedy are refuted.
+>
+> **RCA — why this mattered, and what else is exposed.** Nothing required the hypothesis to be tested
+> before the remedy was adopted. Implemented as written, the change would have been made and a ~45%
+> win claimed on the strength of the entry's own prediction; the true improvement is 0%. The exposed
+> class is **any backlog entry that names both a cause and a fix** — it is proposing an experiment,
+> and the experiment is the deliverable. B-151 argues the same point from the other direction
+> (attribute the cost before designing against it), and B-138's premise was already corrected once
+> by measurement for this reason.
+
+**Effort:** S (environment change, no code) · **Priority:** P3 · found 2026-08-01 profiling the release
+
+**Why:** the release is bound by process creation, not CPU. Measured on the maintainer box:
+
+| spawn | sequential | 8-wide |
+|---|---:|---:|
+| `pwsh` (MSIX) | **265 ms** | 141 ms |
+| `bash` (Git for Windows) | 55 ms | 20 ms |
+| `powershell.exe` 5.1 (native Win32) | **143 ms** | — |
+
+PowerShell 7 starting **1.85x slower than Windows PowerShell 5.1** is backwards — 7 is normally the
+faster of the two to start. The one install present is the Store/MSIX package
+(`C:\Program Files\WindowsApps\Microsoft.PowerShell_7.6.4.0_x64__8wekyb3d8bbwe\pwsh.exe`); there is
+no MSI install under `C:\Program Files\PowerShell\7\`. MSIX packages pay per-launch package identity
+and app-execution-alias resolution that the MSI build does not.
+
+The hook suites spawn a fresh interpreter per assertion (deliberately — that is what makes each
+assertion a real hook invocation with a real exit code), roughly 1350 spawns across the three dists.
+At 265 ms a spawn that is most of the ~6-minute gate phase. Parallelism cannot rescue it: measured
+throttle sweep on one dist suite was 160.7 s (4 lanes) / 152.6 s (6) / 150.3 s (8) / 151.4 s (12) —
+it plateaus, because process creation serialises. Raw spawn throughput only improves ~1.9x from
+8-way parallelism.
+
+**Do:** install PowerShell 7 via MSI (`winget install --id Microsoft.PowerShell`, or the .msi from
+the PowerShell releases page) so `C:\Program Files\PowerShell\7\pwsh.exe` exists, then re-measure:
+
+```
+1..25 | ForEach-Object { & 'C:\Program Files\PowerShell\7\pwsh.exe' -NoProfile -Command "exit 0" }
+```
+
+If startup lands near 5.1's 143 ms, that is ~45% off every `pwsh` spawn and the largest available
+win on release time — with no code change and no test weakened. Keep both installs and compare
+before switching what the hooks register (WSD-026 pins an absolute interpreter path, so that
+registration would need updating deliberately, not incidentally).
+
+**Not:** disabling Defender real-time scanning, which also taxes every spawn. Declined by the
+maintainer 2026-08-01 as a security decision, not a build tweak. Noted here only so the next person
+profiling this does not rediscover it and assume it was missed.
+
+---
+
+**B-75 is DONE — shipped in v0.60.0 (2026-08-18); see `meta/BACKLOG-DONE.md`.**
