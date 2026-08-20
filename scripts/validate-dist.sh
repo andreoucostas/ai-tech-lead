@@ -386,12 +386,23 @@ if command -v pwsh >/dev/null 2>&1; then PWSH="pwsh"
 elif command -v powershell >/dev/null 2>&1; then PWSH="powershell"
 elif command -v powershell.exe >/dev/null 2>&1; then PWSH="powershell.exe"
 else
-  echo "FATAL: neither pwsh nor powershell is available to parse *.ps1 files." >&2
-  exit 2
+  # Git Bash can inherit a broken/truncated PATH. Recover from the usual Windows installs before
+  # calling this a missing prerequisite; the MSIX package directory is version-stamped.
+  for candidate in \
+    "/c/Program Files/PowerShell/7/pwsh.exe" \
+    /c/Program\ Files/WindowsApps/Microsoft.PowerShell_*_x64__8wekyb3d8bbwe/pwsh.exe \
+    "/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+  do
+    if [ -x "$candidate" ]; then PWSH="$candidate"; break; fi
+  done
+  if [ -z "$PWSH" ]; then
+    echo "FATAL: no PowerShell host found on PATH or at any known location; this is a host/PATH problem, not a dist problem, so *.ps1 syntax could not be checked." >&2
+    exit 2
+  fi
 fi
 ps1fails=""
 # ONE PowerShell process for the whole tree, not one per file. Starting pwsh costs ~265 ms on this
-# box (it is the MSIX build), so the old per-file loop spent ~8.5 s of a run purely on process
+# box, so the old per-file loop spent ~8.5 s of a run purely on process
 # startup for ~32 files, and every one of those parses is identical work the runtime could do
 # back-to-back. The parse itself is unchanged: same Parser::ParseFile, same per-file verdict.
 # NOTE: positional args after `pwsh -Command '<script>'` do NOT bind to $args (they're silently

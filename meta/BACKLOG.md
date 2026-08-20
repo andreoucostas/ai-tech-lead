@@ -460,63 +460,9 @@ reading, not a string match; a check that pretends otherwise is the theatre this
 
 **B-84 is DONE (2026-08-18) — `.claude/hooks/tests/_MutationHelper.ps1`; see `meta/BACKLOG-DONE.md`.**
 
-### B-85 · Two gate scripts cannot run from Git Bash on the maintainer box
-**Effort:** S · **Priority:** P3 · filed 2026-08-02 (RCA of v0.44.0)
+**B-85 is DONE (2026-08-20) — the bash validator now recovers a PowerShell host from known absolute locations; see `meta/BACKLOG-DONE.md`.**
 
-**Why:** `bash scripts/validate-dist.sh <dist>` exits **FATAL at check 4** on this machine —
-"neither pwsh nor powershell is available to parse *.ps1 files" — because the session `PATH` is the
-corrupted one (a literal unexpanded `${PATH}`), and `pwsh` lives under a `WindowsApps` MSIX path that
-Git Bash does not inherit. It works only when the caller manually prepends
-`/c/Program Files/WindowsApps/Microsoft.PowerShell_7.6.4.0_x64__8wekyb3d8bbwe`. Same root cause as
-the `copilot.cmd` → `'"node"' is not recognized` failure hit in the same session, and as B-71's
-`powershell.exe` skip.
-
-The consequence is not "a script is inconvenient": it is that the **bash leg of the twin gates is
-effectively unrunnable locally**, so twin parity is verified on CI or not at all, and a local
-maintainer will read the FATAL as "this dist is broken" rather than "my PATH is broken". The
-`Invoke-BashProbe` vantage-point flaw (B-63) is the same family.
-
-**Do:** have the bash twin, on failing to resolve a PowerShell host, probe the well-known absolute
-locations before declaring FATAL — including the `WindowsApps` MSIX path — and, if it still cannot,
-say *why* ("no PowerShell host on PATH; this is a host/PATH problem, not a dist problem") rather than
-implying the dist failed. Mirror B-71's conclusion: a failure caused by a broken `PATH` is not the
-same fact as a host that lacks the tool, and reporting them identically is what lets the gap persist.
-
-**Not:** do not hard-code this box's version-stamped MSIX directory — glob it. And do not silently
-skip check 4: an unrunnable check must stay FATAL, only better explained. (B-79 separately proposes
-replacing the MSIX build; if that lands, this becomes cheaper but not moot — consumers hit it too.)
-
----
-
-### B-87 · A commit subject can still be mangled by the shell — B-73's class, outside `release.ps1`
-**Effort:** S · **Priority:** P3 · filed 2026-08-02, observed the same day
-
-**Why:** B-73 added a guard against MSYS path conversion corrupting `-Summary`, but it lives inside
-`release.ps1` and matches one specific corruption. The class is wider and recurred immediately: the
-2026-08-02 docs commit was authored with a PowerShell here-string (`@'…'@`) in a **POSIX sh** shell,
-which is not here-string syntax there — so `@` became the subject line and a trailing `@` the last
-body line. Caught by eye, after the push, and fixed only by an amend + `--force-with-lease` on
-`master` (a public repo). The v0.40.0 subject is permanently corrupted by the sibling defect, so
-this is twice that a shell quirk has reached the permanent record through a different door.
-
-**Do:** a `commit-msg` hook (opt-in, maintainer-side — this is *our* repo, not shipped) that rejects
-a degenerate subject: shorter than ~10 characters, consisting only of punctuation, or matching the
-MSYS-path signature `release.ps1` already knows. That catches both observed instances and does not
-depend on remembering which shell you are in. Red-test with a literal `@` subject.
-
-**Not:** don't extend `release.ps1`'s pattern list instead — the release path is exactly the one
-that was *already* guarded. The gap is every commit made outside it.
-
-**Cross-links:** B-73 (the in-release guard), B-80 (same script, staged-set integrity — both are
-"the commit records something nobody chose").
-
----
-
-**B-123b is REJECTED ON EVIDENCE (2026-08-18) — the premise is invalid; see `meta/BACKLOG-DONE.md`.**
-
-**B-91 is DONE (2026-08-20) — decided in favour of watching, and the release now watches that commit; see `meta/BACKLOG-DONE.md`.**
-
-**B-94 is DONE (2026-08-20) — all three overclaims corrected and the quoted-path refusal fixed; see `meta/BACKLOG-DONE.md`.**
+**B-87 is DONE (2026-08-20) — an opt-in maintainer commit-msg guard now refuses degenerate subjects; see `meta/BACKLOG-DONE.md`.**
 
 ### B-96 · `map-warehouse` maps the ETL, not the warehouse
 **Effort:** M · **Priority:** P2 · found 2026-08-04 (maintainer field report) · **Design:** `.claude/plans/2026-08-05-b96-warehouse-schema-map-design.md` (LOCKED)
@@ -1591,113 +1537,7 @@ harness's $1.25 per-trial cap likely needs raising for that shape specifically b
 reliably counted.
 
 ---
-### B-132 · Agent-eval runner's PowerShell 7 boundary is implicit, inviting invalid 5.1 verification
-**Effort:** S–M · **Priority:** P3 · filed 2026-08-09 from B-124 RCA · **Scope:** maintainer layer
-
-**Why:** the B-124 verification attempted the eval self-test under hostile code page 437 on both
-PowerShell hosts. PowerShell 7 passed; Windows PowerShell 5.1 stopped at the first
-`-Encoding utf8NoBOM` because that value is unavailable in Windows PowerShell 5.1. The incompatibility predates
-B-124: there are **200** `utf8NoBOM` call sites in the runner at the 2026-08-11 HEAD, not the stale
-94 originally recorded here. More importantly, this is not an accidental caller mismatch:
-`AgentEvals.Tests.ps1`, `release.ps1`, and both documented maintainer commands deliberately launch
-the runner with `pwsh`. Root verification policy asks that **at least one** relevant suite be run
-under both hosts and a hostile code page; it does not require every maintainer tool to support 5.1.
-
-**Current guidance and observed baseline (researched 2026-08-11):** Microsoft documents that
-Windows PowerShell 5.1's `-Encoding UTF8` always emits a BOM, while PowerShell 6+ defaults to
-BOMless UTF-8 and exposes `utf8NoBOM`; therefore substituting `UTF8` is not byte-equivalent. (The
-value exists in PowerShell 6+, while this repository's explicit `pwsh` maintainer baseline is 7+.) It also
-describes Desktop and Core as different runtime editions and says the only true compatibility proof
-is tests on every claimed version/edition; PSScriptAnalyzer's syntax, command, cmdlet, and type rules
-are useful screening, not that proof. `#Requires -Version` is the native fail-fast declaration for a
-script's minimum host. Sources: [about Character Encoding](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_character_encoding?view=powershell-7.5),
-[about PowerShell Editions](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_powershell_editions?view=powershell-7.5),
-[Using PSScriptAnalyzer](https://learn.microsoft.com/en-us/powershell/utility-modules/psscriptanalyzer/using-scriptanalyzer?view=ps-modules),
-[UseCompatibleSyntax](https://learn.microsoft.com/en-us/powershell/utility-modules/psscriptanalyzer/rules/usecompatiblesyntax?view=ps-modules),
-and [about Requires](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_requires?view=powershell-7.5).
-The direct Windows PowerShell 5.1 `-SelfTest` was also observed red at the first `Set-Content
--Encoding utf8NoBOM` with exit 1; the ordinary `pwsh` invocation is already the release path.
-
-**Approaches considered:**
-
-1. **Make the whole runner dual-edition.** Introduce a narrowly specified `Write-Utf8NoBom` /
-   append helper backed by `.NET` UTF-8 encoding without a BOM, migrate the 200 writes by operation
-   shape, run all four PSScriptAnalyzer compatibility rules configured for a pinned 5.1 version /
-   platform target, then prove
-   every self-test under Desktop 5.1 and Core 7 with hostile and normal code pages. Rejected for now:
-   it is not a safe enum substitution; `Set-Content`, `Add-Content`, arrays, newlines, and overwrite /
-   append semantics all need preservation, compatibility rules cannot prove behavior, and no user or
-   release path needs the older host.
-2. **Declare the existing PowerShell 7 boundary and repair verification routing — selected.** Add
-   `#Requires -Version 7.0` to the runner, retain explicit `pwsh` calls, and state the boundary beside
-   the self-test/live commands in `DEVELOPING.md`. Do not change the accurate generic hook-test host
-   fallback or root cross-host policy. Use `.claude/hooks/tests/ReleaseCiWatch.Tests.ps1 -SelfTest`
-   for the representative dual-host/hostile-code-page leg: on 2026-08-11 it directly exercised its
-   subject under Desktop 5.1.26100.8875 and Core 7.6.4 at code page 437, reporting 21 passed, 0 failed,
-   0 skipped on each host, and its four planted mutations prove red reachability. Do not launch a
-   test under 5.1 if it merely shells back out to `pwsh`.
-3. **Split a 5.1-compatible grader core from the PS7 fixture/live driver.** This could preserve some
-   cross-host value while keeping BOMless fixture generation in PS7, but creates a second invocation
-   contract and proves only the extracted portion. Keep it as a later option only if a real consumer
-   or defect shows value not covered by approach 2 and the representative cross-host suite.
-
-**Implementation plan (after the review gate):**
-
-1. Freeze `ReleaseCiWatch.Tests.ps1 -SelfTest` as the representative cross-host suite. Retain its
-   current direct-subject behavior and planted red probes; rerun it under Desktop 5.1 and Core 7 at
-   code page 437 for the implementing delivery rather than treating this design-time run as future
-   acceptance evidence.
-2. Add the minimum-version declaration to `run-agent-evals.ps1`. Extend the canonical
-   `AgentEvals.Tests.ps1` recurrence wrapper with a Windows-only direct 5.1 probe that distinguishes
-   the fix from the current failure: require the version-prerequisite error identity/text and reject
-   today's `CannotConvertArgumentNoMessage` encoding failure. Make `release.ps1` invoke this wrapper,
-   not the runner directly, so the boundary oracle is release-reachable; retain an explicit `pwsh`
-   outer host. Direct PS7 `-SelfTest` must remain green. Because the selected change does not touch
-   fixture writers and no fixture-byte oracle currently exists, verify that the diff changes none of
-   the 200 encoding operations; do not claim the self-test proves BOMless fixture bytes.
-3. Update `DEVELOPING.md` and the canonical verification wording only as needed to distinguish the
-   PS7-only agent-eval harness from the repository-level representative dual-host obligation. Verify
-   references with `rg`, run the normal self-test/release recurrence path, and record the named
-   cross-host suite, host versions, code page, commands, red mutation, and green results. Do not
-   change root `CLAUDE.md` / `AGENTS.md`: their representative-suite policy is already correct.
-
-**Required closure RCA:** no gate caught this because every supported release/live caller already
-selected `pwsh`; the defect lived in a later plan's overly broad host-verification claim, outside the
-ordinary release path. Sweep remaining maintainer-only scripts and open designs for language copied
-from the repository-level “at least one suite” rule, and distinguish declared host support from a
-wrapper that silently delegates to another host.
-
-**Proportionality:** the observed harm is an inaccurate verification promise and wasted 5.1 attempt,
-not a failed supported release path. A fail-fast declaration plus honest routing removes that harm in
-S effort. Reworking 200 byte-sensitive writes and accepting perpetual dual-edition test ownership
-would be M+ risk without a consumer; reopen that choice only on concrete demand or a defect that the
-representative cross-host suite cannot expose.
-
-**Done when:** the PS7 prerequisite is machine-enforced and documented; a direct 5.1 run fails
-clearly with the prerequisite failure rather than the old encoding error; PS7 self-test remains
-green; all callers and prose agree; and the named, red-proven `ReleaseCiWatch` suite directly
-exercises its own subject under both hosts and hostile code page 437, satisfying the unchanged
-repository-level cross-host policy.
-
-**Design/review gate:** write and lock a design before implementation, including the proportionality
-case and at least two approaches. Then obtain an independent adversarial review with **Claude Opus**;
-the review may reject the premise or split the scope. If Opus is rate- or spend-limited, mark the
-review **WAITING — OPUS LIMIT** and continue only independent design/backlog work. Do not substitute
-a lower tier and call the review complete.
-
-**Fresh-context adversarial review (Codex, 2026-08-11):** **REJECTED the first design as written.**
-It found that the claimed BOMless-fixture oracle did not exist, a nonzero 5.1 assertion was already
-green before the proposed fix, the recurrence wrapper was not release-reachable, the replacement
-cross-host success world was unnamed, the generic hook fallback/root policy were already accurate,
-and the closure RCA was absent. The revision above removes the false byte claim, asserts the changed
-failure identity, routes release through the recurrence wrapper, names and independently reruns the
-red-proven `ReleaseCiWatch` suite on both hosts at CP437, narrows the prose edit, and supplies the RCA.
-This independent Codex review **does not satisfy the required Claude Opus gate**.
-
-**Status: AWAITING OPUS REVIEW.** This revised design is not locked and authorises no implementation.
-If Opus is genuinely unavailable due to limits, record `WAITING — OPUS LIMIT`.
-
----
+**B-132 is DONE (2026-08-20) — the agent-eval runner declares its PowerShell 7 boundary and the wrapper proves it; see `meta/BACKLOG-DONE.md`.**
 
 ### B-133 · Make durable-learning promotion part of normal work, without turning reuse into truth
 **Effort:** S for the evidence/design phase; M only if the baseline justifies a shipped change ·
@@ -2461,6 +2301,52 @@ deliverable. More broadly this is the third recorded case of *the gate for a kno
 being structurally unable to see a variant of it* (B-59, B-64, now this), and all three were found by
 reading what the instrument points at rather than by running it — B-112's lesson, now with a
 deterministic-gate example beside its behavioural ones.
+
+### B-153 · The bash validator silently fails every `.ps1` when handed an MSYS-style dist root, and its twin does not
+**Effort:** S · **Priority:** P3 · found 2026-08-20 while verifying B-85's bash leg · **Invariants:** #3
+
+**Why — measured, four invocations, same box, same tree.** `scripts/validate-dist.sh` check 4 depends
+on the *spelling* of the dist root it is given:
+
+| invocation | result |
+|---|---|
+| `bash scripts/validate-dist.sh dotnet -Check ps-syntax` (relative, the normal form) | `OK: all 38 *.ps1 files parse cleanly` |
+| `bash scripts/validate-dist.sh dotnet 'C:/TEMP/.../dist' -Check ps-syntax` (Windows absolute) | `OK: all 38 *.ps1 files parse cleanly` |
+| `bash scripts/validate-dist.sh dotnet '/c/TEMP/.../dist' -Check ps-syntax` (**MSYS absolute**) | `FAIL: PowerShell scan could not read:` **every one of the 38 files** |
+| `validate-dist.ps1 dotnet '/c/TEMP/.../dist' -Check ps-syntax` (the twin, same MSYS root) | `all 38 *.ps1 files parse cleanly` |
+
+The bash twin builds its file list with `find "$DIST"`, so an MSYS root yields `/c/...` paths, and the
+Windows PowerShell host it then invokes cannot open them. The `.ps1` twin parses in-process via
+`[Parser]::ParseFile`, and .NET resolves the same string, so it is unaffected. **That is a twin
+behavioural divergence [#3] on an input the repo's own documentation produces.**
+
+**Why this matters more than "an unusual argument".** `DEVELOPING.md`'s red-test recipes for checks 8
+and 12 build their scratch root with `S=$(mktemp -d)/dc`, which in Git Bash **is** an MSYS absolute
+path. The check-8 recipe asserts `exit=1` — and it does exit 1, but a full run of it would now fail
+at **check 4** for a reason unrelated to the planted defect. A recipe that passes for the wrong
+reason is the same class of instrument failure as B-64 and B-112, and it is documented as evidence.
+
+**Not caused by B-85 — uncovered by it.** Before that fix, this box could not resolve a PowerShell
+host at all and check 4 exited FATAL before ever reading a file, so the divergence was masked. On any
+box with `pwsh` on `PATH` the old code would have failed identically. The fix is correct; it simply
+gets far enough to expose the next defect.
+
+**Do:** translate the file list to Windows paths before handing it to the PowerShell host — `cygpath
+-w` is the obvious tool, but **check its availability rather than assuming it** (the same class of
+assumption B-85 exists to punish), and fall back to a clear diagnostic rather than a silent
+per-file read failure. Then assert the twins agree on all three root spellings.
+
+**Red-test:** run check 4 through the bash twin with an MSYS root and observe the current 38-file read
+failure, then the clean parse after. Add the MSYS-root spelling to whatever fixture covers dist-root
+handling so the divergence cannot return silently.
+
+**Not:** do not "fix" this by forbidding MSYS roots or by rewriting the documented recipes to use
+Windows paths — the twin should accept what its own documentation generates, and the `.ps1` twin
+already does.
+
+**Cross-links:** B-85 (whose fix revealed it), B-63 and B-71 (the vantage-point family — a failure
+whose cause is the environment must not be reported as a property of the artifact), B-70 (this was
+found only because the reviewer ran the bash leg the implementer could not reach).
 
 **B-146 is DONE (2026-08-18) — check B shipped, check A dropped on evidence; see `meta/BACKLOG-DONE.md`.**
 

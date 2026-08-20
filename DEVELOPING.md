@@ -22,6 +22,15 @@ Commands, not philosophy. The rules and the meta-invariant list live in `CLAUDE.
 | `meta/` | `BACKLOG.md`, `workspace-decisions.md`, `LEARNINGS.md`, `ci-handover.md`, `changelogs/legacy-*.md` | maintainer layer; never ships. No root `docs/` — that name is the consumer's |
 | `scripts/meta-denylist.txt` | the `no-meta-leak` patterns [#6] | one file, read by BOTH twins so it cannot drift |
 
+The maintainer commit-subject guard is deliberately opt-in. Enable it for this clone with:
+
+```powershell
+git config core.hooksPath .claude/git-hooks
+```
+
+It rejects obviously shell-mangled subjects before Git records them; it is a bypassable local
+convenience net, not a shipped or server-side policy.
+
 ## Compose the dists + freshness [#1]
 
 ```powershell
@@ -276,13 +285,18 @@ events, git state, file bytes — never transcript prose alone. It never runs in
 a release; see the locked design in `.claude/plans/2026-07-17-b41-agent-behavior-harness-design.md`
 and results in `meta/eval-results.md`.
 
+The agent-eval harness requires PowerShell 7. The repository-level obligation to run a
+representative suite under both PowerShell hosts and a hostile code page still applies; use
+`.claude/hooks/tests/ReleaseCiWatch.Tests.ps1 -SelfTest` for that cross-host leg. The canonical
+agent-eval recurrence wrapper below also verifies that Windows PowerShell 5.1 fails immediately at
+the declared version boundary rather than later at an unsupported encoding operation.
+
 ```powershell
 # free, no network — proves the harness's own typed-evidence grading on synthetic/adversarial
 # fixtures (malformed streams, keyword echoes, developer checkpoints, inverted tool-result
-# semantics, ...). .claude/evals/tests/AgentEvals.Tests.ps1 wraps this same check but is not
-# auto-discovered by the hook runner above — evals are deliberately a separate suite from hooks,
-# so run either the wrapper or the flag directly:
-pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -SelfTest
+# semantics, ...). Evals are deliberately a separate suite from hooks, so run their canonical
+# recurrence wrapper (release.ps1 runs this same command):
+pwsh -NoProfile -File .claude/evals/tests/AgentEvals.Tests.ps1
 
 # spends real budget — requires dist/ to match the checked-out release (version == root
 # CHANGELOG head) with no local diff

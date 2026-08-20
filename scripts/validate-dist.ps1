@@ -424,6 +424,15 @@ else { OK "all $($shInputs.Count) *.sh files parse cleanly (bash -n)." }
 
 if (Test-CheckSelected 'ps-syntax') {
 # --- 4. PowerShell AST parse on every *.ps1 -----------------------------------------------------------
+# The bash twin must resolve a host from PATH or known Windows locations. This twin already runs
+# inside a resolved host, so retain its in-process parser rather than silently upgrading a
+# deliberate 5.1 run. The same host/PATH diagnostic is retained for the impossible-to-continue
+# case where the current process cannot identify its own executable.
+$currentPowerShellHost = (Get-Process -Id $PID).Path
+if (-not $currentPowerShellHost) {
+    [Console]::Error.WriteLine('FATAL: no PowerShell host found on PATH or at any known location; this is a host/PATH problem, not a dist problem, so *.ps1 syntax could not be checked.')
+    exit 2
+}
 $ps1Fails = @()
 $ps1ReadFails = @()
 $ps1Inputs = @()

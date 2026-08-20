@@ -172,8 +172,8 @@ function Assert-GateBudget {
 # Every slash-command this framework documents (/bootstrap, /adopt, /review, /fix, /feature,
 # /design, /debt, /map-warehouse) triggers it. Neither the Git install path nor the repo path can
 # legitimately appear in a release summary, so treat either as proof of conversion and refuse.
-$gitRootPattern = '(?i)(Program Files[\\/]+Git|Git[\\/]+usr[\\/]+bin|[A-Za-z]:[\\/]+.*[\\/]+(?:bootstrap|adopt|review|fix|feature|design|debt|map-warehouse)\b)'
-if ($Summary -match $gitRootPattern -or $Summary -like "*$repo*") {
+. (Join-Path $PSScriptRoot '_commit-subject.ps1')
+if ((Test-MsysMangledSubject $Summary) -or $Summary -like "*$repo*") {
     [Console]::Error.WriteLine(@"
 FATAL: -Summary looks MSYS-mangled -- it contains a filesystem path that cannot be intentional:
   $Summary
@@ -593,8 +593,8 @@ try {
 }
 }
 Measure-Stage 'eval-selftest' {
-    & pwsh -NoProfile -File (Join-Path $repo '.claude/evals/run-agent-evals.ps1') -SelfTest
-    Gate ($LASTEXITCODE -eq 0) 'agent-eval harness self-test (no network)'
+    & pwsh -NoProfile -File (Join-Path $repo '.claude/evals/tests/AgentEvals.Tests.ps1')
+    Gate ($LASTEXITCODE -eq 0) 'agent-eval harness recurrence wrapper (no network)'
 }
 Assert-GateBudget
 
