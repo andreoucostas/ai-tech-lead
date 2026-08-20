@@ -1169,3 +1169,12 @@ a single CI cycle — and, unprompted, identified the last unexplained failure i
 2026-08-08 on an encoding hypothesis) as the maintainer box's corrupted `PATH`: a bare `powershell`
 spawn resolving to nothing. Both members of that entry were one environment defect in an encoding
 costume. When a diagnostic is cheap and the failure is remote, improve the diagnostic first.
+
+## 2026-08-20 — Preserve a subprocess's third outcome
+
+Shell content checks often treat exit 0 as "present" and exit 1 as "absent", but external tools
+also have an execution-error outcome. Negation and `|| true` erase that distinction and can turn a
+host/resource failure into a precise-looking defect in the artifact. Capture the status at the
+subprocess boundary, reserve content findings for the tool's documented no-match code, and make
+every other code a host FATAL. The same boundary rule applies to path dialects: translate MSYS paths
+before handing them to a Windows host, and fail explicitly when the translator is unavailable.

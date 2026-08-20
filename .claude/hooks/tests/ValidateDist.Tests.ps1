@@ -311,6 +311,21 @@ try {
     It 'case 17: a missing framework-rules import fails the full validator' { Assert-Case 'missing-framework-import' { param($d) $p=Join-Path $d 'CLAUDE.md'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,$t.Replace('@.github/instructions/framework-rules.instructions.md','')) } 'CLAUDE.md is missing required import @.github/instructions/framework-rules.instructions.md.' 'carrier-import' }
     It 'case 18: a citation to a moved CLAUDE.md section fails the full validator' { Assert-Case 'moved-section-citation' { param($d) $p=Join-Path $d 'README.md'; [IO.File]::AppendAllText($p,"`nPlant: ``CLAUDE.md > SOLID```n") } 'cites CLAUDE.md > SOLID, but that heading does not exist' 'section-path' }
     It 'case 19: prose after valid finite-registry citations does not become a heading' { Assert-Case 'citation-prose' { param($d) $p=Join-Path $d 'README.md'; [IO.File]::AppendAllText($p,"`nCLAUDE.md > Conventions wins on any conflict.`nCLAUDE.md > Boy Scout Rule before considering the work complete.`n[CLAUDE.md](./CLAUDE.md) > Conventions.`n") } 'all registered section-path references resolve' 'section-path' -Green }
+    It 'case 38: a grep execution failure is a host FATAL, not a missing-heading finding' {
+        $root = New-DistCopy
+        $shim = Join-Path ([IO.Path]::GetTempPath()) ('vd-dead-grep-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $shim -Force | Out-Null
+        [IO.File]::WriteAllText((Join-Path $shim 'grep'), "#!/usr/bin/env bash`nexit 2`n")
+        & $bashExe -c "chmod +x '$(Convert-ToBashPath (Join-Path $shim 'grep'))'" 2>$null
+        Assert ($LASTEXITCODE -eq 0) 'could not make the grep shim executable'
+        $script:scratch += $shim
+        $r = Invoke-Validator -Root $root -UseBash -ExtraPathDir $shim -Check section-path
+        Write-Host "[ValidateDist bash failed-grep] EXIT=$($r.Exit)"; Write-Host $r.Out
+        Assert ($r.Exit -eq 2) "failed-grep/bash should be a host FATAL (EXIT=2), got $($r.Exit)"
+        Assert ($r.Out -match 'could not execute grep while resolving section-path citations') "failed-grep/bash did not name grep execution: $($r.Out)"
+        Assert ($r.Out -match 'host/resource problem, not a content problem') "failed-grep/bash misclassified the host failure: $($r.Out)"
+        Assert ($r.Out -notmatch 'heading does not exist') "failed-grep/bash emitted a false content finding: $($r.Out)"
+    }
     It 'case 20: a missing stack snippet fails marker expansion without touching the live source tree' {
         foreach ($leg in @('ps','bash')) {
             $isolated = New-ValidatorRepoCopy
@@ -439,6 +454,16 @@ try {
         Write-Host "[ValidateDist bash failed-parser-child] EXIT=$($r.Exit)"; Write-Host $r.Out
         Assert ($r.Exit -ne 0) 'failed-parser-child/bash should be red'
         Assert ($r.Out -match 'PowerShell parser process failed while scanning') "failed-parser-child/bash did not name the child-process failure: $($r.Out)"
+    }
+    It 'case 39: the bash PowerShell scan accepts an MSYS-style absolute dist root' {
+        $root = New-DistCopy
+        $expected = @(Get-ChildItem -LiteralPath (Join-Path $root 'dotnet') -Recurse -Force -File -Filter *.ps1).Count
+        Assert ($expected -gt 0) 'MSYS-root PowerShell inventory is empty; the control would be vacuous'
+        $msysRoot = Convert-ToBashPath $root
+        $r = Invoke-Validator -Root $msysRoot -UseBash -Check ps-syntax
+        Write-Host "[ValidateDist bash msys-root-ps-syntax] EXIT=$($r.Exit)"; Write-Host $r.Out
+        Assert ($r.Exit -eq 0) "MSYS-root ps-syntax/bash should be green, got EXIT=$($r.Exit)"
+        Assert ($r.Out.Contains("all $expected *.ps1 files parse cleanly")) "MSYS-root ps-syntax/bash did not report the independent count ${expected}: $($r.Out)"
     }
     It 'case 32: a dangling rendered markdown link fails both validators while code examples stay out of scope' {
         Assert-Case 'dangling-markdown-link' {
