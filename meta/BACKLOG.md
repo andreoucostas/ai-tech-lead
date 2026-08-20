@@ -133,6 +133,34 @@ failure. The remaining B-42 work (success metrics, the pilot itself) is untouche
 
 ### B-43 · Host-compatibility recertification cadence (the one-time verifications are rotting)
 **Effort:** S per cycle, recurring · **Invariants:** #5 · **execution vehicle: B-49's quarterly drill**
+> **STATUS CORRECTED 2026-08-20 — this entry is much further along than its heading implies, and
+> "B-43 is open" currently reads as "nothing is certified", which is false.**
+>
+> **Already exists.** `meta/host-certification.md` **is** the dated "last certified: host X version Y"
+> table this entry asks for. It has per-surface rows, explicit `not certified — quota` /
+> `not certified — no seat` values rather than blanks, and it distinguishes `Direct fixture` (which
+> proves hook *output*) from end-to-end host *consumption* — the distinction this entry cares about.
+> Two rows were re-dated 2026-08-20 by B-50's canary on Copilot CLI 1.0.80.
+>
+> **Also already exists, and the entry does not name it:** a canary kit library —
+> `meta/canaries/{agent-stop-delivery,b52-copilot-two-hook,b50-copilot-posttooluse}` plus five
+> `.claude/scripts/canary-*.ps1`.
+>
+> **Remaining, and only this:**
+> 1. **The checklist** — no single "run these canaries, in this order, expect these observations"
+>    recipe exists in `DEVELOPING.md`. The kits exist; the index does not.
+> 2. **The cadence** — quarterly or on any major host release, sharing B-49's calendar slot by design
+>    (one sitting, two checklists).
+> 3. **The VS Code leg** — never verified on any leg, open since B-03. **This cannot be closed by any
+>    agent session**: it needs a human at a VS Code window with Preview agent-hooks enabled, and those
+>    are org-gated. **It escalates**, and the rest of this entry should not stay open on its account.
+>
+> **Fold in when writing the checklist:** B-50's three-arm design should become the *stated standard*
+> for any new canary — a positive control chosen because it is **known-good on the surface under
+> test**, a negative control ruling out environment leakage, and a side-effect marker separating "the
+> hook never ran" from "it ran and its output was discarded". This entry's instinct to "reuse the
+> B-03 canary design" points at the older, weaker pattern; B-143's canary failed precisely by lacking
+> a valid positive control.
 
 **Why:** the enforcement matrix rests on *dated, one-shot* live verifications: Copilot CLI 1.0.68
 canary (2026-07-04) established which hook legs are live vs dead; VS Code agent-mode consumption
@@ -241,29 +269,50 @@ failures: one hard checklist failure = a defect entry, regardless of the rubric 
 
 **B-50 is DONE (2026-08-20) — an isolated three-arm canary confirmed the channel on CLI 1.0.80 and both stale passages are reconciled; see `meta/BACKLOG-DONE.md`.**
 
-### B-44 · Host-native overlap watch — retirement triggers for framework machinery
-**Effort:** S · **Invariants:** #7
-
-**Why:** the hosts are absorbing the framework's territory from below: Claude Code has grown
-native memory (overlaps B-27 wiki), native code review (overlaps the `/review` fan-out), plan
-mode (overlaps plan-first rails), and first-class skills; Copilot keeps moving too. The
-framework's value is the **delta over host-native behavior**, and that delta shrinks every
-host release. With no deprecation policy, the framework's fate is to become redundant
-scaffolding that costs consumers context (the exact failure B-32 exists to measure) while
-duplicating what the host does better.
-
-**Do:** add a table (suggest `meta/overlap-watch.md`, linked from this file): one row per
-framework mechanism — the host-native feature that would obsolete it, the detection signal
-("host X ships Y / doc Z announces"), and the retirement action (drop it, thin it to
-configuration of the native feature, or keep with a written justification). Review the table as
-part of every B-43 recertification cycle. First candidates to assess honestly: wiki memory vs
-Claude Code auto-memory, `/review` agents vs host-native review, `route-prompt` vs improving
-native intent handling, `post-write` build feedback vs host-native diagnostics.
-
-**B-46 is DONE — part 1 (verify + disclose) shipped in v0.56.0 and part 2 (version awareness) in v0.57.0; see `meta/BACKLOG-DONE.md`.**
+**B-44 is DONE (2026-08-20) — the retirement-trigger table is `meta/overlap-watch.md`; see `meta/BACKLOG-DONE.md`.**
 
 ### B-48 · Enforcement-bypass audit — the guard's known end-runs, decided honestly
 **Effort:** M · **Invariants:** #3 #5 · needs a WSD record
+> **DECISION PROPOSED 2026-08-20 (Claude), maintainer to ratify — PARTIALLY DONE, the analysis is
+> settled and the one shipped fix is STILL OPEN.** This entry's own framing is right: blocking-vs-
+> advisory is the key judgment, and a false-positive block on a legitimate test refactor costs more
+> trust than the gap. Three bypasses, three different answers; treating them uniformly is what kept
+> this open.
+>
+> **(1) Shell-write gap → DOCUMENT, do not harden.** Hardening means content-sniffing arbitrary shell
+> commands. That is unbounded: the guard cannot know what a command *will write* without running it
+> (`sed -i`, a heredoc, a redirect, a script three levels down), and sniffing command *text* for
+> secret-shaped strings blocks **reading** as readily as writing — `grep AKIA app.log` and every
+> legitimate investigation of a leak would be refused. A security tool that blocks security work is
+> worse than none, and the blast radius is the terminal, the most-used tool in any session. The
+> control is already disclosed accurately in `docs/enforcement-surfaces.md`'s scope caveat, which
+> names the `CLAUDE.md` rules as binding for that path. **What is missing is the decision record, not
+> the caveat** — plus a re-read of the caveat's prominence, since it sits below a table a skimming
+> reader may not reach.
+>
+> **(2) Test-defeat by weakening → ADVISORY, never blocking.** "Assertions removed or weakened in a
+> diff" cannot be separated from a legitimate refactor by any rule available to us: deleting a
+> duplicated case, replacing three assertions with one stronger one, migrating an assertion library,
+> or removing a test for deleted behaviour all look identical to the defect. A blocking rule would
+> refuse correct work, and this repo has already measured where that leads — B-94 records
+> `-AllowExtraStagedPaths` being passed reflexively once a guard refuses correct releases. Build an
+> added/removed-lines diff heuristic over test files that **reports** to the model and to `/review`
+> with no exit code. **State the limit wherever it is documented:** an advisory control is defeated by
+> an agent that ignores it; it raises the cost of the bypass and makes it reviewable, and must never
+> be described as enforcement.
+>
+> **(3) Multi-line attribute lists → HARDEN. This is the one that ships, and it is not yet built.**
+> `[Test,\n Ignore("flaky")]` is legal C# that no formatter forbids and a one-line evasion of a gate
+> the framework advertises as deterministic. Unlike (1) and (2) the fix is bounded with a
+> near-zero false-positive surface: **normalise the input** — join physical lines within a bracketed
+> attribute list into one logical line — then run the existing patterns unchanged. No pattern is
+> loosened. Red-test both the single-line and split forms, plus a legitimate multi-line attribute list
+> carrying no suppression, which must pass.
+>
+> **The durable output is the test, not the three answers:** **harden** where the defect has a
+> canonical form to normalise to; go **advisory** where it is distinguishable from correct work only
+> by intent; **document** where the control would have to guess at side effects it cannot observe.
+> That is reusable on the next bypass.
 
 **Why:** two known bypasses have been deferred-by-decision and neither has a written honest
 disclosure: (1) the **shell-write gap** — `guard` registers on editor/file-write tools only, so
@@ -2415,14 +2464,7 @@ Key traps recorded there: Angular needs a cobertura reporter wired; CI must fetc
 
 **B-25-EXEC is DONE — v0.26.0 shipped 2026-07-12 (WSD-018); see `meta/BACKLOG-DONE.md`.**
 
-### B-26 · Accepted-debt watch list (no action unless symptoms appear)
-- `route-prompt` keyword-grep intent classification is brittle by design (accepted 2026-07-01);
-  revisit only with evidence of misrouting.
-- CLAUDE.md §1 rails reach the model up to 3× per prompt on Claude Code (CLAUDE.md +
-  session-start + route-prompt) — token cost accepted for salience. **The "re-measure if
-  context budgets tighten" trigger fired 2026-07-11** (consumer token-cost consciousness);
-  the watch item is superseded by **B-32** (context-footprint gate, design LOCKED — WSD-017),
-  which makes the re-measurement permanent. The salience-over-bytes trade itself stands.
+**B-26 is DONE (2026-08-20) — one bullet was already discharged by B-32 and the other folded into the overlap watch; see `meta/BACKLOG-DONE.md`.**
 
 ## Completed entries
 

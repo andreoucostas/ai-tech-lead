@@ -5495,3 +5495,77 @@ deliverable. More broadly this is the third recorded case of *the gate for a kno
 being structurally unable to see a variant of it* (B-59, B-64, now this), and all three were found by
 reading what the instrument points at rather than by running it — B-112's lesson, now with a
 deterministic-gate example beside its behavioural ones.
+
+---
+
+### B-44 · Host-native overlap watch — retirement triggers for framework machinery
+> **DONE 2026-08-20 — `meta/overlap-watch.md`.** Thirteen rows, each naming the framework mechanism,
+> the host-native feature that would obsolete it, a **detection signal you could observe on a
+> Tuesday** (not "when it feels redundant"), and one of three actions: drop, thin to configuration of
+> the native feature, or keep with the justification written out. Reviewed in every B-43
+> recertification cycle, in the same sitting.
+>
+> Two rows are worth surfacing here because they are the ones with consequences:
+> - **`route-prompt` (row 13)** is the only mechanism whose value is **measurable today** with the
+>   B-41 harness rather than waiting on a vendor — a bare-model arm against a routed arm on the same
+>   prompts would settle whether it earns its context. This row is B-26's surviving bullet, folded in.
+> - **The `AGENTS.md` mirror (row 12)** is the highest-probability retirement on the table and would
+>   remove an entire meta-invariant (#2), its gate, `/generate-copilot`, and `sync-agent-files`.
+>
+> **Two rows exist to prevent the opposite error** from the one this file is about — retiring
+> something because its name or carrier resembles a host feature when the value was never the
+> carrier: shipped **skills** (the format is already host-native; the repo-grounded *content* is the
+> product) and **`framework-doctor`** (a different subject from a host `/doctor`, recorded so nobody
+> assumes overlap from the shared name).
+>
+> The file states honestly, where true, that an advantage is **unmeasured** rather than claiming it.
+
+**Effort:** S · **Invariants:** #7
+
+**Why:** the hosts are absorbing the framework's territory from below: Claude Code has grown
+native memory (overlaps B-27 wiki), native code review (overlaps the `/review` fan-out), plan
+mode (overlaps plan-first rails), and first-class skills; Copilot keeps moving too. The
+framework's value is the **delta over host-native behavior**, and that delta shrinks every
+host release. With no deprecation policy, the framework's fate is to become redundant
+scaffolding that costs consumers context (the exact failure B-32 exists to measure) while
+duplicating what the host does better.
+
+**Do:** add a table (suggest `meta/overlap-watch.md`, linked from this file): one row per
+framework mechanism — the host-native feature that would obsolete it, the detection signal
+("host X ships Y / doc Z announces"), and the retirement action (drop it, thin it to
+configuration of the native feature, or keep with a written justification). Review the table as
+part of every B-43 recertification cycle. First candidates to assess honestly: wiki memory vs
+Claude Code auto-memory, `/review` agents vs host-native review, `route-prompt` vs improving
+native intent handling, `post-write` build feedback vs host-native diagnostics.
+
+**B-46 is DONE — part 1 (verify + disclose) shipped in v0.56.0 and part 2 (version awareness) in v0.57.0; see `meta/BACKLOG-DONE.md`.**
+
+---
+
+### B-26 · Accepted-debt watch list (no action unless symptoms appear)
+> **DONE 2026-08-20 — closed by discharging one bullet and rehoming the other.** A "no action unless
+> symptoms appear" entry is never re-read, which is the whole problem with keeping it open.
+>
+> **Bullet 2 was already discharged and simply not closed.** The `CLAUDE.md` §1 rails reaching the
+> model up to 3× per prompt was accepted for salience with a "re-measure if context budgets tighten"
+> trigger. That trigger **fired 2026-07-11**, and this entry records its own resolution: B-32's
+> `context-footprint` gate shipped and makes the re-measurement permanent and machine-checked. The
+> salience-over-bytes trade stands, now measured rather than assumed.
+>
+> **Bullet 1 moved to `meta/overlap-watch.md` row 13** (`route-prompt` keyword-grep classification is
+> brittle by design). It is the same shape as every row there — a mechanism whose continued existence
+> should be a decision re-read on a cadence — and that table is reviewed every B-43 cycle whereas this
+> entry was reviewed never. The row is also **stronger than the original bullet**: "revisit only with
+> evidence of misrouting" waits for a symptom nobody is instrumented to notice, while the row names a
+> constructible experiment (a bare arm vs a routed arm on the same prompts, via the B-41 harness).
+>
+> **Not a decision to retire `route-prompt`** — only to watch it somewhere it is actually watched, and
+> to record that the question is answerable rather than merely open.
+
+- `route-prompt` keyword-grep intent classification is brittle by design (accepted 2026-07-01);
+  revisit only with evidence of misrouting.
+- CLAUDE.md §1 rails reach the model up to 3× per prompt on Claude Code (CLAUDE.md +
+  session-start + route-prompt) — token cost accepted for salience. **The "re-measure if
+  context budgets tighten" trigger fired 2026-07-11** (consumer token-cost consciousness);
+  the watch item is superseded by **B-32** (context-footprint gate, design LOCKED — WSD-017),
+  which makes the re-measurement permanent. The salience-over-bytes trade itself stands.
