@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "hooks": {
+    "userPromptSubmitted": [
+      { "type": "command", "bash": ".github/hooks/post-token.sh", "powershell": ".github/hooks/post-token.ps1", "timeoutSec": 10 }
+    ]
+  }
+}
