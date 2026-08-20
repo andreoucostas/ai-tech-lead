@@ -1774,6 +1774,40 @@ the original `ScriptTwinParity` docs-sync-check 5.1 divergence is STILL OPEN. Se
 ### B-130 · Diagnose or retire the historical Windows PowerShell 5.1 parity failures
 **Effort:** S · **Priority:** P3 · filed 2026-08-08 · **Invariants:** #3
 
+> **MEASURED 2026-08-20 BY THE REVIEWER, and it changes both halves of this entry. An attempted fix
+> was REVERTED; read this before trying again.**
+>
+> **(b) NO LONGER REPRODUCES — this half is closed on evidence.** `ScriptTwinParity.Tests.ps1` is
+> **9 passed / 0 failed under BOTH hosts** on the maintainer box, including the
+> `docs-sync-check branches and advisory prose agree` case this entry was filed for. The entry also
+> asks that the assertion be made to print the actual exit codes "before diagnosing further" — that
+> is **already done**: `AssertExit` at `:20` prints both exit codes and both twins' stdout and stderr.
+> The entry is stale on both points. An implementer working from it saw a failure only because its
+> sandbox cannot start bash at all (`PowerShell exit 0, bash-wrapper exit 256`), which is a property
+> of that sandbox, not of the twins.
+>
+> **(a) NOT FIXED, and the single-cause hypothesis is wrong.** The stderr-decoration strip was
+> implemented and measured: **41 passed / 41 failed under 5.1**, identical to the pre-change ratio.
+> No improvement. The `powershell.exe : ` prefix is still present in the compared text. But the
+> failures also show a **second, unrelated divergence this entry never recorded, and it is not stderr
+> at all** — Windows PowerShell 5.1's `ConvertTo-Json` escapes an apostrophe as `\u0027` while the
+> bash twin emits `'` literally:
+>
+> ```
+> guard.ps1='{"permissionDecisionReason":"... it adds \u0027#pragma warning disable\u0027 — ..."}'
+> guard.sh ='{"permissionDecisionReason":"... it adds '#pragma warning disable' — ..."}'
+> ```
+>
+> That is a **stdout** difference in shipped hook output, host-dependent (pwsh 7 does not escape it),
+> and semantically harmless — `\u0027` is valid JSON decoding to `'` — but the suite compares strings.
+> So "normalise the stderr decoration" cannot fix this suite on its own, and any next attempt must
+> handle both channels or normalise the JSON before comparison.
+>
+> **Why the attempt was reverted rather than kept:** it also added a cross-host self-arm that runs the
+> suite under 5.1 and fails when 5.1 fails. Since 5.1 still fails, shipping it would have taken CI's
+> windows leg red on a suite that composes into all three dists. The arm is well-designed and worth
+> keeping **once 5.1 actually passes** — not before.
+
 **Why:** discovered incidentally while resuming B-54: `src/core/tests/hooks/ScriptTwinParity.Tests.ps1`'s
 `docs-sync-check branches and advisory prose agree` case fails with "docs exit mismatch" when run
 under Windows PowerShell 5.1 (`powershell.exe`), even on unmodified `master` at `9500f5f` — pwsh 7
@@ -2278,185 +2312,63 @@ fail in the world the entry is about; see `meta/BACKLOG-DONE.md`.**
 
 **B-152 is DONE (2026-08-20) — the duplicate heads are merged and both gate twins now read the whole file; see `meta/BACKLOG-DONE.md`.**
 
-### B-153 · The bash validator silently fails every `.ps1` when handed an MSYS-style dist root, and its twin does not
-**Effort:** S · **Priority:** P3 · found 2026-08-20 while verifying B-85's bash leg · **Invariants:** #3
+**B-153 is DONE (2026-08-20) — the bash validator now accepts every dist-root spelling; see `meta/BACKLOG-DONE.md`.**
 
-**Why — measured, four invocations, same box, same tree.** `scripts/validate-dist.sh` check 4 depends
-on the *spelling* of the dist root it is given:
+**B-154 is DONE (2026-08-20) — a dated release head with no tag now fails the meta suite; see `meta/BACKLOG-DONE.md`.**
 
-| invocation | result |
+**B-155 is DONE (2026-08-20) — a grep that cannot run is now a host fatal, not a content finding; see `meta/BACKLOG-DONE.md`.**
+
+### B-156 · The "grep exit status as content verdict" conflation is class-wide, and most instances are in SHIPPED scripts
+**Effort:** M · **Priority:** P2 · found 2026-08-20 by B-155's RCA sweep · **Invariants:** #3 #5
+
+**Why.** B-155 fixed one site in `scripts/validate-dist.sh` (authoring-only) where `grep -q`'s
+non-zero exit was read as "the content is absent" when it also means "grep could not run". The sweep
+that entry required found the same shape across the **shipped** twin scripts, where it reaches
+consumers:
+
+| script | conflating sites |
 |---|---|
-| `bash scripts/validate-dist.sh dotnet -Check ps-syntax` (relative, the normal form) | `OK: all 38 *.ps1 files parse cleanly` |
-| `bash scripts/validate-dist.sh dotnet 'C:/TEMP/.../dist' -Check ps-syntax` (Windows absolute) | `OK: all 38 *.ps1 files parse cleanly` |
-| `bash scripts/validate-dist.sh dotnet '/c/TEMP/.../dist' -Check ps-syntax` (**MSYS absolute**) | `FAIL: PowerShell scan could not read:` **every one of the 38 files** |
-| `validate-dist.ps1 dotnet '/c/TEMP/.../dist' -Check ps-syntax` (the twin, same MSYS root) | `all 38 *.ps1 files parse cleanly` |
+| `src/core/scripts/docs-sync-check.sh` | banner, mirrored headings, README skill/agent mentions, architecture hash — each a `grep -q` / `\|\| missing=…` content verdict |
+| `src/core/scripts/framework-doctor.sh` | import, heading, and pending-marker `grep -q` branches |
+| `src/core/scripts/impact-run.sh` | project-detection `grep -q .` — an execution failure becomes a **routing decision** |
+| `warehouse-map-check.sh`, `template-checks.sh`, `wiki-check.sh` | extractor-shaped `\|\| true` where no-match is expected but execution failure is swallowed too |
 
-The bash twin builds its file list with `find "$DIST"`, so an MSYS root yields `/c/...` paths, and the
-Windows PowerShell host it then invokes cannot open them. The `.ps1` twin parses in-process via
-`[Parser]::ParseFile`, and .NET resolves the same string, so it is unaffected. **That is a twin
-behavioural divergence [#3] on an input the repo's own documentation produces.**
+**Why this is worse in the shipped set than it was in the validator.** `framework-doctor` is the
+diagnostic a consumer runs *when something is already wrong* — the moment their machine is most
+likely to be short of resources, and the moment a false "your documentation has drifted" is most
+expensive. B-130 already recorded exactly this outcome from the same family: the doctor reported
+*"CLAUDE.md and AGENTS.md or version stamps have drifted. Fix: run /generate-copilot"* — a specific,
+false, actionable diagnosis handed to a consumer whose documentation was fine — because a bare
+interpreter name failed to resolve. That was a *different* cause with the *same* reporting defect.
+`impact-run` is sharper still: there a failed `grep` does not merely mis-report, it silently changes
+which project the tool decides it is looking at.
 
-**Why this matters more than "an unusual argument".** `DEVELOPING.md`'s red-test recipes for checks 8
-and 12 build their scratch root with `S=$(mktemp -d)/dc`, which in Git Bash **is** an MSYS absolute
-path. The check-8 recipe asserts `exit=1` — and it does exit 1, but a full run of it would now fail
-at **check 4** for a reason unrelated to the planted defect. A recipe that passes for the wrong
-reason is the same class of instrument failure as B-64 and B-112, and it is documented as evidence.
+**Do:** apply B-155's discrimination to each site — `0` = found, `1` = genuinely absent (a product
+finding), **anything else = could not run**, reported as a distinct host/resource condition and never
+as a content verdict. Both twins per script [#3]; the `.ps1` twins should be **checked rather than
+assumed** to be exempt (B-155's PowerShell twin was genuinely exempt because it works in-process, and
+that is a real asymmetry, not a general rule).
 
-**Not caused by B-85 — uncovered by it.** Before that fix, this box could not resolve a PowerShell
-host at all and check 4 exited FATAL before ever reading a file, so the divergence was masked. On any
-box with `pwsh` on `PATH` the old code would have failed identically. The fix is correct; it simply
-gets far enough to expose the next defect.
+**This is deliberately not one batch edit.** The implementer's sweep is explicit that these "require
+coordinated twin/test work, not a one-line batch edit", and that the extractor-shaped `|| true` uses
+each "need a separate contract decision before editing" — for some of them, swallowing a failure may
+be the intended contract. Decide per site and record which are deliberate.
 
-**Do:** translate the file list to Windows paths before handing it to the PowerShell host — `cygpath
--w` is the obvious tool, but **check its availability rather than assuming it** (the same class of
-assumption B-85 exists to punish), and fall back to a clear diagnostic rather than a silent
-per-file read failure. Then assert the twins agree on all three root spellings.
+**Proportionality, stated before locking:** the observed harm is real but indirect — no consumer
+incident is recorded for these specific sites, and the one measured instance of the *class*
+(B-130's doctor row) came from a different cause. So the cheap half — `framework-doctor` and
+`impact-run`, where a false verdict is either handed to a confused consumer or silently changes
+behaviour — is worth doing first and may be all that is proportionate. The extractor `|| true` sites
+may be fine as they are once someone states that they are.
 
-**Red-test:** run check 4 through the bash twin with an MSYS root and observe the current 38-file read
-failure, then the clean parse after. Add the MSYS-root spelling to whatever fixture covers dist-root
-handling so the divergence cannot return silently.
+**Red-test:** a stub `grep` on `PATH` that exits 2 is the cheap forcing function; show the new
+host/resource message, then the ordinary absent path still reporting a product finding, then a clean
+pass.
 
-**Not:** do not "fix" this by forbidding MSYS roots or by rewriting the documented recipes to use
-Windows paths — the twin should accept what its own documentation generates, and the `.ps1` twin
-already does.
-
-**Cross-links:** B-85 (whose fix revealed it), B-63 and B-71 (the vantage-point family — a failure
-whose cause is the environment must not be reported as a property of the artifact), B-70 (this was
-found only because the reviewer ran the bash leg the implementer could not reach).
-
-### B-154 · A version can be "released" in the changelog with no tag, and nothing reconciles the two
-**Effort:** S · **Priority:** P3 · found 2026-08-20 by B-123's post-ship review · **Invariants:** #7
-
-**Why — measured, and it is a single isolated instance, which is what makes it worth a check rather
-than a shrug.** `v0.48.0` has **no git tag**, locally or on origin. A sweep of every dated version
-head in the root `CHANGELOG.md` against `refs/tags/` found it is the **only** one:
-
-```
-for v in <every ## X.Y.Z head>; do git rev-parse -q --verify refs/tags/v$v || echo "NO TAG: v$v"; done
-→ NO TAG: v0.48.0        (and nothing else)
-```
-
-**The tooling did the right thing.** CI **failed** on the release commit `beface1` (run
-`31120229196`, conclusion `failure`), and `release.ps1` withholds the tag on a red watch by design —
-that is B-88 and WSD-029 ("a release tag follows CI-verified green") working exactly as intended. It
-even prints the recovery instruction: *"Release X is ON MASTER but NOT TAGGED … re-run the SAME
-command — it will re-watch and tag if CI is green."*
-
-**Nobody re-ran it.** So the durable record now says two different things: `CHANGELOG.md` presents
-v0.48.0 as a released version with a date, and git has no such release. Whatever broke CI was fixed
-by v0.49.0 two days later, and the untagged commit was simply never revisited.
-
-**Do NOT retroactively tag `beface1`.** CI was red on it; tagging it now would assert a
-CI-verified-green release that never existed, which is the opposite of what WSD-029 protects. The
-honest options are (a) leave it untagged and say so **in the changelog entry itself**, so a reader
-is not misled, or (b) tag the first subsequent green commit that contains v0.48.0's content and
-record that it is a post-hoc marker, not the release commit. (a) is cheaper and more honest.
-
-**Then close the gap that let it go unnoticed for two weeks:** nothing ever compares "the changelog
-claims a release" against "a tag exists". The sweep above is three lines and belongs in the meta
-suite, with a declared exception list so a deliberately-untagged version (like this one, once
-documented) does not fail forever. Red-test by deleting a tag in a scratch clone.
-
-**Not:** do not make this block a release — it is a *record* reconciliation, and the release path
-already has the correct behaviour. It should fail the meta suite, where an unfinished release is
-noticed the next time anyone runs the gates, rather than gate the next release on the last one's
-paperwork.
-
-**Cross-links:** B-88 (the watch that correctly withheld the tag), B-123 (the post-ship review that
-found this — the first thing that review produced that no gate could have), B-83 (same family: the
-record and the reality drift apart and nothing correlates them).
-
-### B-155 · The `section-path` check cannot tell "no match" from "grep could not run", and it took a release red
-**Effort:** S · **Priority:** P2 · found 2026-08-20 during the v0.62.0 release · **Invariants:** #3 #5
-
-**Why — observed, and the reproduction is the evidence.** The v0.62.0 release commit `358b2f8` was
-pushed to master and then **refused its tag** because CI's `linux` leg went red on
-`ValidateDist.Tests` case 12 ("an unmutated dist stays green under the FULL validator"), with:
-
-```
-FAIL: unresolved section-path references in shipped content -- 1.
-  [section-path-reference] specs/README.md:44 cites CLAUDE.md > Conventions, but that heading does not exist
-```
-
-**The citation is valid.** `dist/dotnet/specs/README.md:44` contains `` `CLAUDE.md > Conventions` ``
-and `dist/dotnet/CLAUDE.md:43` is `## Conventions`. Nothing in the v0.62.0 change touches either file.
-
-**Established intermittent, not platform-specific:**
-- Re-running the **identical commit** (`gh run rerun 32345575665 --failed`) came back **all 8 legs
-  green**, same sha, same tree.
-- In the **original failing run**, on the same Linux machine, the other dists passed the identical
-  check reporting "169 textual file(s) scanned".
-- Locally the bash twin passes for all three dists under `LC_ALL` of default, `C`, `C.UTF-8` and
-  `POSIX`, so locale and multi-byte handling of the `›` separator are ruled out.
-- Batch 1's CI was green on all 8 legs two hours earlier with the same check.
-
-**The mechanism, and this is the part worth fixing.** The per-citation resolution is:
-
-```bash
-elif ! printf '%s\n' "$target_headings" | grep -qE "^#+[[:space:]]+$heading[[:space:]]*$"; then
-    # ... report "but that heading does not exist"
-```
-
-`grep -q` exits non-zero for **two different reasons**: it found no match, or it could not run.
-The `!` treats both as "heading missing". **Demonstrated, not inferred** — the same construct run
-three ways:
-
-| case | condition | reported |
-|---|---|---|
-| 1 | heading present, `grep` runs | resolved |
-| 2 | heading absent, `grep` runs | "heading does not exist" — correct content finding |
-| 3 | **heading present**, `grep` cannot run | "heading does not exist" — **identical to case 2** |
-
-Case 3 is indistinguishable from case 2 in the check's output, which is exactly what a reader of the
-CI log sees. Under the parallelism this check runs in — the same check
-already carries a comment recording that an earlier draft "exhausted the process table
-(`dofork: ... Resource temporarily unavailable`)" on Git-for-Windows — a **single** transient fork
-failure produces **exactly one** spurious unresolved citation, which is precisely the shape observed.
-The sibling read is equally exposed: `target_headings=$(grep -E '^#+[[:space:]]+' "$target" || true)`
-swallows a failure into an empty string, which would report *every* citation in that file as
-unresolved.
-
-This is B-85's and B-130's thesis again, in a new place: **a failure caused by the environment must
-not be reported as a property of the artifact.** Here it is reported as a defect in shipped content,
-and it cost a red master commit plus a withheld release tag.
-
-**Do:**
-1. Distinguish the two outcomes. Capture `grep`'s exit status explicitly: `0` = found, `1` = genuinely
-   absent, **anything else = could not run**, which must be a distinct FATAL ("could not execute grep
-   while resolving section-path citations — this is a host/resource problem, not a content problem"),
-   never a content finding. Same for the `|| true` on `target_headings`: an empty result must be
-   distinguishable from a failed read.
-2. **The `.ps1` twin does NOT need the same fix, and I checked rather than assumed.** It resolves
-   citations entirely **in-process** — `[IO.File]::ReadAllLines`, .NET `Regex`, and two
-   `HashSet[string]` lookups — and spawns no subprocess at all, so it has no failed-to-run state to
-   conflate. That is consistent with the observation: the **linux** leg (bash twin) went red while
-   the **windows** leg (PowerShell twin) was green in the same run.
-
-   **This is a twin-parity issue of a subtler kind than B-153's, and worth stating as its own
-   lesson.** The twins agree on every *decision* — that is what `ScriptTwinParity` tests — but they
-   have structurally different *robustness*: one is deterministic and in-process, the other spawns a
-   subprocess per citation and is therefore resource-sensitive. Invariant #3 is about behavioural
-   parity and says nothing about failure-mode parity, so no gate looks for this. A bash twin that
-   can fail where its PowerShell counterpart cannot is a real asymmetry, and it is the reason only
-   one of the eight legs went red.
-3. Red-test both: force the failing-to-run condition (e.g. point the check at an unreadable target,
-   or stub a `grep` that exits 2) and show a FATAL that names the host, then the normal absent-heading
-   path still reporting a content finding.
-
-**Not:** do not "fix" this by retrying, and do not reduce the check's parallelism — the conflation is
-the defect, and it would still mis-report on any other resource failure. Do not add a
-`-AllowFailingGate` waiver for it either; a gate that occasionally lies is worse than one that fails
-honestly, and waiving it hides the next real finding.
-
-**RCA — what else is exposed.** Every `grep -q`/`|| true` in the shipped and authoring gate scripts
-where a non-zero exit is read as a content verdict. That sweep is the deliverable, not just this one
-site. Note also that **nothing distinguishes a flaky gate from a real one** in the release path: the
-release correctly withheld the tag, but the operator has no signal that says "this failure did not
-reproduce" — establishing that took a manual rerun of the identical commit.
-
-**Cross-links:** B-85 and B-130 (a host/PATH failure must not be reported as an artifact defect),
-B-153 (twin divergence in the same validator), B-154 (a release left on master untagged — this is the
-second instance in one day, and the first one caused by a flake).
+**Cross-links:** B-155 (the instance and the discrimination pattern), B-130 (the same reporting
+defect from a different cause, with a measured false diagnosis), B-85 (a host/PATH failure must not
+be reported as an artifact defect — this entry is that thesis applied to `grep` rather than to an
+interpreter).
 
 **B-146 is DONE (2026-08-18) — check B shipped, check A dropped on evidence; see `meta/BACKLOG-DONE.md`.**
 

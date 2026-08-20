@@ -33,6 +33,24 @@ It 'the root README version stamp matches what is actually shipped' {
     Assert ($Matches[1] -eq $shipped) "README says v$($Matches[1]); dists are stamped v$shipped"
 }
 
+It 'every dated root changelog release has a corresponding git tag or declared exception' {
+    # v0.48.0 is deliberately untagged: its release commit's CI failed, so WSD-029 correctly
+    # withheld the tag. The changelog entry records that history inline; do not retroactively tag it.
+    $untaggedReleaseExceptions = @('0.48.0')
+    $changelog = [IO.File]::ReadAllLines((Join-Path $repoRoot 'CHANGELOG.md'), [Text.Encoding]::UTF8)
+    $versions = @($changelog | ForEach-Object {
+        if ($_ -match '^## ([0-9]+\.[0-9]+\.[0-9]+) — [0-9]{4}-[0-9]{2}-[0-9]{2}$') { $Matches[1] }
+    })
+    Assert ($versions.Count -gt 0) 'root CHANGELOG.md yielded zero dated release heads -- the heading grammar changed and this gate is blind'
+    $missing = @($versions | Where-Object {
+        if ($_ -in $untaggedReleaseExceptions) { return $false }
+        git -C $repoRoot rev-parse -q --verify "refs/tags/v$_" *> $null
+        return ($LASTEXITCODE -ne 0)
+    })
+    if ($missing) { Assert $false ("dated root changelog release(s) have no git tag: " + (($missing | ForEach-Object { "v$_" }) -join ', ')) }
+    Assert $true 'clean'
+}
+
 # --- 2. no phantom syntax -----------------------------------------------------------------------
 It 'no doc documents `@@INCLUDE` -- the composer has never implemented it' {
     # CHANGELOG.md excluded: it is a dated record of what we believed, not live guidance.

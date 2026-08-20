@@ -598,6 +598,9 @@ stubs in an unrelated CI-watch test. Both halves of that are addressed.
   PowerShell 5.1 and could not run bash at all, and said so.
 ## 0.48.0 — 2026-08-06
 
+> **Deliberately untagged.** CI failed on the release commit, so the release process correctly
+> withheld `v0.48.0`; the content was superseded by the subsequent green release.
+
 **Verification Rule 11 — "read the repository's own description of a subsystem before writing against
 it" — and it is the first shipped rule whose effect on behaviour was measured before it shipped, not
 after (B-98 step 2).**

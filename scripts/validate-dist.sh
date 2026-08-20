@@ -279,8 +279,22 @@ citation_problems=""
 # finished; the PowerShell twin completed the same work in ~10s. Here one grep pass per cited file
 # finds the candidate lines, and only those few lines are examined individually.
 text_list_file=$(mktemp)
-find "$DIST" -type f ! -name CHANGELOG.md -print0 | xargs -0 grep -Il . > "$text_list_file" 2>/dev/null || true
-text_files_scanned=$(grep -c . "$text_list_file" || true)
+mapfile -t text_candidates < <(find "$DIST" -type f ! -name CHANGELOG.md) || {
+  echo "FATAL: could not enumerate files while resolving section-path citations — this is a host/resource problem, not a content problem." >&2
+  rm -f "$text_list_file"
+  exit 2
+}
+if [ "${#text_candidates[@]}" -gt 0 ]; then
+  grep -Il . "${text_candidates[@]}" > "$text_list_file" 2>/dev/null
+  grep_status=$?
+  if [ "$grep_status" -gt 1 ]; then
+    echo "FATAL: could not execute grep while resolving section-path citations — this is a host/resource problem, not a content problem." >&2
+    rm -f "$text_list_file"
+    exit 2
+  fi
+fi
+text_files_scanned=$(wc -l < "$text_list_file" | tr -d ' ')
+mapfile -t text_files < "$text_list_file"
 
 for cited_file in $citation_files; do
   escaped_file=$(printf '%s' "$cited_file" | sed 's/[.[\*^$()+?{|\\]/\\&/g')
@@ -288,7 +302,25 @@ for cited_file in $citation_files; do
   link_pattern='\['"$escaped_file"'\]\([^)]*\)'"$citation_sep($citation_headings)"'($|[`;,.):]])'
   target="$DIST/$cited_file"
   target_headings=''
-  [ -f "$target" ] && target_headings=$(grep -E '^#+[[:space:]]+' "$target" || true)
+  if [ -f "$target" ]; then
+    target_headings=$(grep -E '^#+[[:space:]]+' "$target")
+    grep_status=$?
+    if [ "$grep_status" -gt 1 ]; then
+      echo "FATAL: could not execute grep while resolving section-path citations — this is a host/resource problem, not a content problem." >&2
+      rm -f "$text_list_file"
+      exit 2
+    fi
+  fi
+  citation_hits=$(mktemp)
+  if [ "${#text_files[@]}" -gt 0 ]; then
+    grep -nHE "$plain_pattern|$link_pattern" "${text_files[@]}" > "$citation_hits" 2>/dev/null
+    grep_status=$?
+    if [ "$grep_status" -gt 1 ]; then
+      echo "FATAL: could not execute grep while resolving section-path citations — this is a host/resource problem, not a content problem." >&2
+      rm -f "$text_list_file" "$citation_hits"
+      exit 2
+    fi
+  fi
   while IFS= read -r hit; do
     [ -n "$hit" ] || continue
     hit_file=${hit%%:*}; rest=${hit#*:}; line_no=${rest%%:*}; line=${rest#*:}
@@ -299,11 +331,20 @@ for cited_file in $citation_files; do
     if [ ! -f "$target" ]; then
       citation_problems="$citation_problems
 ${hit_file#"$DIST/"}:$line_no cites $cited_file > $heading, but $cited_file is missing"
-    elif ! printf '%s\n' "$target_headings" | grep -qE "^#+[[:space:]]+$heading[[:space:]]*$"; then
-      citation_problems="$citation_problems
+    else
+      printf '%s\n' "$target_headings" | grep -qE "^#+[[:space:]]+$heading[[:space:]]*$"
+      grep_status=$?
+      if [ "$grep_status" -eq 1 ]; then
+        citation_problems="$citation_problems
 ${hit_file#"$DIST/"}:$line_no cites $cited_file > $heading, but that heading does not exist"
+      elif [ "$grep_status" -gt 1 ]; then
+        echo "FATAL: could not execute grep while resolving section-path citations — this is a host/resource problem, not a content problem." >&2
+        rm -f "$text_list_file" "$citation_hits"
+        exit 2
+      fi
     fi
-  done < <(tr '\n' '\0' < "$text_list_file" | xargs -0 grep -nHE "$plain_pattern|$link_pattern" 2>/dev/null || true)
+  done < "$citation_hits"
+  rm -f "$citation_hits"
 done
 rm -f "$text_list_file"
 citation_count=$(printf '%s\n' "$citation_problems" | grep -c . || true)
@@ -415,6 +456,25 @@ find "$DIST" -name '*.ps1' -type f > "$_ps1_list" || ps1_enum_ok=0
 ps1_count=$(wc -l < "$_ps1_list" | tr -d ' ')
 ps1_tool_ok=1
 if [ "$ps1_count" -gt 0 ]; then
+  # MSYS roots (`/c/...`) are meaningful to bash but not to the Windows PowerShell host below.
+  # Translate the list at the boundary between those two path dialects; relative and C:/ paths
+  # already work in both and must retain their original spelling.
+  if grep -qE '^/[A-Za-z]/' "$_ps1_list"; then
+    if ! command -v cygpath >/dev/null 2>&1; then
+      echo "FATAL: cygpath is required to translate MSYS-style PowerShell file paths for the Windows host, but it is unavailable." >&2
+      rm -f "$_ps1_list" "$_ps1_read_fails" "$_ps1_parse_fails"
+      exit 2
+    fi
+    _ps1_windows_list=$(mktemp)
+    while IFS= read -r _ps1_path; do
+      cygpath -w "$_ps1_path" >> "$_ps1_windows_list" || {
+        echo "FATAL: cygpath could not translate MSYS-style PowerShell file path: $_ps1_path" >&2
+        rm -f "$_ps1_list" "$_ps1_windows_list" "$_ps1_read_fails" "$_ps1_parse_fails"
+        exit 2
+      }
+    done < "$_ps1_list"
+    mv "$_ps1_windows_list" "$_ps1_list"
+  fi
   VALIDATE_DIST_PS1_LIST="$_ps1_list" VALIDATE_DIST_PS1_READ_FAILS="$_ps1_read_fails" VALIDATE_DIST_PS1_PARSE_FAILS="$_ps1_parse_fails" "$PWSH" -NoProfile -NonInteractive -Command '
     $bad = @()
     foreach ($p in [IO.File]::ReadAllLines($env:VALIDATE_DIST_PS1_LIST)) {
