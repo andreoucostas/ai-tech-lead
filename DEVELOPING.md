@@ -22,6 +22,15 @@ Commands, not philosophy. The rules and the meta-invariant list live in `CLAUDE.
 | `meta/` | `BACKLOG.md`, `workspace-decisions.md`, `LEARNINGS.md`, `ci-handover.md`, `changelogs/legacy-*.md` | maintainer layer; never ships. No root `docs/` — that name is the consumer's |
 | `scripts/meta-denylist.txt` | the `no-meta-leak` patterns [#6] | one file, read by BOTH twins so it cannot drift |
 
+The maintainer commit-subject guard is deliberately opt-in. Enable it for this clone with:
+
+```powershell
+git config core.hooksPath .claude/git-hooks
+```
+
+It rejects obviously shell-mangled subjects before Git records them; it is a bypassable local
+convenience net, not a shipped or server-side policy.
+
 ## Compose the dists + freshness [#1]
 
 ```powershell
@@ -276,13 +285,18 @@ events, git state, file bytes — never transcript prose alone. It never runs in
 a release; see the locked design in `.claude/plans/2026-07-17-b41-agent-behavior-harness-design.md`
 and results in `meta/eval-results.md`.
 
+The agent-eval harness requires PowerShell 7. The repository-level obligation to run a
+representative suite under both PowerShell hosts and a hostile code page still applies; use
+`.claude/hooks/tests/ReleaseCiWatch.Tests.ps1 -SelfTest` for that cross-host leg. The canonical
+agent-eval recurrence wrapper below also verifies that Windows PowerShell 5.1 fails immediately at
+the declared version boundary rather than later at an unsupported encoding operation.
+
 ```powershell
 # free, no network — proves the harness's own typed-evidence grading on synthetic/adversarial
 # fixtures (malformed streams, keyword echoes, developer checkpoints, inverted tool-result
-# semantics, ...). .claude/evals/tests/AgentEvals.Tests.ps1 wraps this same check but is not
-# auto-discovered by the hook runner above — evals are deliberately a separate suite from hooks,
-# so run either the wrapper or the flag directly:
-pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -SelfTest
+# semantics, ...). Evals are deliberately a separate suite from hooks, so run their canonical
+# recurrence wrapper (release.ps1 runs this same command):
+pwsh -NoProfile -File .claude/evals/tests/AgentEvals.Tests.ps1
 
 # spends real budget — requires dist/ to match the checked-out release (version == root
 # CHANGELOG head) with no local diff
@@ -435,7 +449,16 @@ pwsh -NoProfile -File .claude/scripts/watch-ci.ps1 -Sha <sha>   # 0 green / 1 re
 
 **What it does not do:** it does not *prevent* a red commit reaching `master` — releases push
 directly to master by decision (B-53: releasing on a branch destroyed v0.34.0's release commit), so a
-red release is detected and left untagged, not stopped. It also does not close B-70.
+red release is detected and left untagged, not stopped.
+
+**Cross-leg test evidence (B-70) is a rule, not a watcher.** The watch above tells you *that* CI went
+red; it cannot tell you a new test case was ever *reached* on the leg that matters. CI runs the `.ps1`
+twin on Windows and the `.sh` twin on Linux, so a case authored on this box is proven on one leg and
+assumed on the other — and where your environment cannot execute a leg at all (codex's sandbox has no
+working `bash`; Git Bash here needs an absolute PowerShell path), that leg has **no** evidence, not
+weak evidence. The Definition of done in `CLAUDE.md` therefore requires any test-carrying change to be
+demonstrated *running* on every leg that will execute it, and treats the first green CI run as part of
+the change rather than a post-hoc check. Run the bash twin yourself before reviewing such a diff.
 
 **Do not run the gate suites while an implementer session is editing the tree.** A hook suite once
 raced a concurrent run's writes and produced a transient failure that cost a diagnosis cycle. The

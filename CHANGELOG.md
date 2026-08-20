@@ -778,13 +778,14 @@ whichever branch a machine lacks untested. A normalization bug surfaced during t
 translating each backslash separately turned `.claude\\hooks\\x.ps1` into `.claude//hooks//x.ps1`,
 which resolves on both platforms and so hid the sloppiness; runs of backslashes now collapse to one.
 
-**`release.ps1` no longer commits whatever is in the tree (B-80).** The blanket `git add -A` is
-deliberate — the stamps, the rebuilt `dist/` and the footprint baseline must land together — but it
+**`release.ps1` now refuses staged paths outside the repo's known top-level locations (B-80).** The
+blanket `git add -A` is deliberate — the stamps, the rebuilt `dist/` and the footprint baseline must land together — but it
 also swept in anything else present, and the script printed no manifest. v0.42.0 and v0.43.0 each
 shipped a stray worktree gitlink that way. The staged set is now classified before commit: a
 mode-`160000` gitlink is a **hard refusal with no escape hatch** (this repo has no submodules), and
 a path outside where the repo keeps files refuses unless `-AllowExtraStagedPaths` is passed. The
-manifest prints either way, and a refusal `git reset`s so the index is left as found.
+manifest prints either way, and a refusal `git reset`s the index while leaving the worktree
+untouched.
 
 Classification happens *after* staging because that is the only point mode `160000` exists — an
 unadded worktree is merely untracked (verified against `90f331d`).

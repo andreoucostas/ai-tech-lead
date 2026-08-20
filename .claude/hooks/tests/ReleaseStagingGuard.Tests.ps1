@@ -96,15 +96,29 @@ try {
         Assert ($r.Out -match 'Staged manifest') 'no staged manifest printed'
     }
 
-    It 'a stray untracked file is refused, and the index is left as found' {
+    It 'a stray untracked file is refused, the index is reset, and the worktree is untouched' {
         $d = New-ScratchRepo; $script:scratch += $d
         Set-Content -LiteralPath (Join-Path $d 'src/thing.txt') -Value 'release change'
+        git -C $d add src/thing.txt
+        $preStaged = (@(git -C $d diff --cached --name-only) -join ',')
+        Assert ($preStaged -eq 'src/thing.txt') "pre-staged fixture is not in the index: '$preStaged'"
         Set-Content -LiteralPath (Join-Path $d 'scratch-notes.txt') -Value 'oops'
         $r = Invoke-Guard -Repo $d
         Assert ($r.Exit -eq 2) "expected EXIT=2, got $($r.Exit): $($r.Out)"
         Assert ($r.Out -match 'scratch-notes\.txt') 'the offending path is not named in the refusal'
         $idx = (@(git -C $d diff --cached --name-only) -join ',')
         Assert ([string]::IsNullOrWhiteSpace($idx)) "index not reset after refusal: '$idx'"
+        $worktree = [IO.File]::ReadAllText((Join-Path $d 'src/thing.txt')).Trim()
+        Assert ($worktree -eq 'release change') "pre-staged worktree content was lost: '$worktree'"
+    }
+
+    It 'a staged non-ASCII path under meta is classified as expected' {
+        $d = New-ScratchRepo; $script:scratch += $d
+        New-Item -ItemType Directory -Path (Join-Path $d 'meta') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $d 'meta/café.txt') -Value 'release evidence'
+        $r = Invoke-Guard -Repo $d
+        Assert ($r.Exit -eq 0) "expected EXIT=0, got $($r.Exit): $($r.Out)"
+        Assert ($r.Out -match 'GUARD PASSED') 'legitimate non-ASCII path did not pass the guard'
     }
 
     It '-AllowExtraStagedPaths proceeds on a stray file, but still warns' {

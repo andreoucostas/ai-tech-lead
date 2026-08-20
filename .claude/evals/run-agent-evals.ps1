@@ -1,4 +1,5 @@
-﻿# B-41 maintainer-only live agent eval harness. This intentionally has no bash twin: meta tooling
+﻿#Requires -Version 7.0
+# B-41 maintainer-only live agent eval harness. This intentionally has no bash twin: meta tooling
 # is PowerShell-only by WSD-012. It never runs in CI and spends API/subscription budget only with
 # the explicit -Live switch.
 [CmdletBinding(DefaultParameterSetName = 'Explain')]
