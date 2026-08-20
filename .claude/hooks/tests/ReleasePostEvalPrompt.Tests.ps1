@@ -31,9 +31,16 @@ if ($condition) {
     [IO.File]::WriteAllText($harness, $body, [Text.UTF8Encoding]::new($true))
     try {
         $p = Start-Process -FilePath (Get-PsExe) -ArgumentList @('-NoProfile', '-File', $harness) -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
-        $exited = $p.WaitForExit(3000)
+        # 30s, not 3s. The property under test is "does it EXIT rather than block forever" -- a
+        # parked process never exits, so a generous timeout still catches the defect while a tight
+        # one only measures the box. The first version used 3000ms against a measured idle-box
+        # runtime of 1818/1876/1828/1842/1946 ms: a 1.6x margin, in a test that runs inside a
+        # 28-file parallel aggregate spawning hundreds of interpreters. It passed every standalone
+        # run, including its review, and failed in the aggregate -- which is where it matters.
+        # Do not tighten this to "make the suite faster": the wait only elapses when the test fails.
+        $exited = $p.WaitForExit(30000)
         if (-not $exited) { $p.Kill(); $p.WaitForExit() }
-        Assert $exited 'detached harness parked at Read-Host with stdout redirected and stdin left alone'
+        Assert $exited 'detached harness did not exit within 30s with stdout redirected and stdin left alone -- it parked at Read-Host'
         $out = if (Test-Path $stdout) { [IO.File]::ReadAllText($stdout) } else { '' }
         Assert ($out -match 'Agent eval reminder \(non-interactive; not run\)') "skip reminder missing: '$out'"
     } finally {

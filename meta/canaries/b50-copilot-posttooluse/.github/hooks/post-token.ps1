@@ -1,4 +1,4 @@
-$tok = if ($env:CANARY_POST) { $env:CANARY_POST } else { "MISSING_POST" }
+﻿$tok = if ($env:CANARY_POST) { $env:CANARY_POST } else { "MISSING_POST" }
 $marker = if ($env:CANARY_MARKER) { $env:CANARY_MARKER } else { Join-Path $env:TEMP 'b50-marker' }
 Add-Content -LiteralPath $marker -Value 'ran'
 $evt = if ($env:CANARY_EVENT) { $env:CANARY_EVENT } else { 'PostToolUse' }
