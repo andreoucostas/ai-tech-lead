@@ -1991,6 +1991,63 @@ not.
 ### B-138 · The gate suite is bound by per-assertion process spawning, and its cost ceiling will always eventually be outgrown
 **Effort:** M · **Priority:** P2 · filed 2026-08-13 · **Invariants:** #3 #4
 
+> **SECOND MEASURED CORRECTION, 2026-08-20 (v0.62.0) — and it refutes this entry's *Do* ordering.**
+> B-151 shipped per-unit `TIMING` for `dist-gates` in the same campaign, which this entry named as
+> "the cheap prerequisite to diagnosing it, and should come first". It came first, and here is what
+> it says. Every number below is from one real release run, not a serial per-file pass — the
+> methodological trap this entry already records.
+>
+> **`dist-gates` (627.2s wall clock, ceiling 700s):**
+>
+> | unit | dotnet | angular | monorepo |
+> |---|---:|---:|---:|
+> | job wall clock | 621.7s | 626.7s | 623.8s |
+> | `validate-dist` | **14.2s** | **13.3s** | **14.7s** |
+> | dist hook suite | **607.0s** | **612.6s** | **608.3s** |
+>
+> plus `context-footprint` at **205.1s** — a fourth parallel unit that had **no attribution at all**
+> before this release, and which is a third of the stage's wall clock (hidden only because it runs
+> concurrently).
+>
+> **What this refutes.** This entry's *Do* says to attack "the highest-cost files
+> (`ValidateDist.Tests.ps1` first, `dist-gates`'s per-dist hook suites second)". For the `dist-gates`
+> stage that ordering is backwards and the first target is not worth touching at all: the
+> **`validate-dist` script is ~14 seconds, 2.3% of its job**. The dist **hook suites** are **97.6%**.
+> `gate-budget.json`'s own `next-target` note — "three per-dist suites in parallel, each spawning
+> ~234 fresh pwsh/bash processes" — attributed those spawns to the stage as a whole; they are
+> essentially all in the hook suites.
+>
+> **Keep two similarly-named things apart, because this entry has already conflated them once.**
+> `validate-dist` (the gate script, 14s, inside `dist-gates`) is *not* `ValidateDist.Tests.ps1` (the
+> meta-suite file that tests it, 506.9s, inside `meta-suite`). Only the second is expensive.
+>
+> **Current cost ranking across the whole release (1234.4s of local gates):**
+>
+> | # | unit | cost | stage |
+> |---|---|---:|---|
+> | 1 | dist hook suite (×3, parallel) | ~608s each | dist-gates |
+> | 2 | `GuardPatternErrors.Tests.ps1` | 548.3s | meta-suite |
+> | 3 | `ValidateDist.Tests.ps1` | 506.9s | meta-suite |
+> | 4 | `UpdateDelivery.Tests.ps1` | 303.6s | meta-suite |
+> | 5 | `context-footprint` | 205.1s | dist-gates |
+> | 6 | `InstallerContract.Tests.ps1` | 196.7s | meta-suite |
+>
+> **So the revised target list is:** the **dist hook suites** first (they are now the single largest
+> cost in the release, larger than `GuardPatternErrors` even after B-138's own earlier fix), then
+> `GuardPatternErrors` and `ValidateDist.Tests.ps1`, then `context-footprint`. `validate-dist` itself
+> comes off the list entirely.
+>
+> **Apply this entry's own proportionality lesson before writing any code:** its first fix was
+> *not* the prescribed re-architecture but a `foreach` → throttled jobs change costing a few lines
+> (418.5s → 230.3s). Check the dist hook runner for the same trivially-parallel structure **before**
+> reaching for in-process session reuse. Note it may already be throttled — `HOOKTESTS_THROTTLE` is
+> set per job by `release.ps1` — in which case the remaining win is genuinely per-assertion spawn
+> cost and the expensive fix is warranted.
+>
+> **Also still true and now quantified:** four individual `validate-dist` checks exceeded their own
+> 25s sub-ceiling in the v0.61.0 run, warning but not failing. Against a 14s total for the whole
+> validator here, that sub-ceiling accounting needs re-reading — the two numbers cannot both be right.
+
 **Why:** `meta/gate-budget.json` already diagnoses these suites as "bound by process creation, not
 CPU" — each assertion spawns a fresh `pwsh`/`bash` child. That means wall-clock cost scales roughly
 linearly with assertion count, so any fixed time ceiling is guaranteed to be outgrown again as more
@@ -2225,6 +2282,98 @@ paperwork.
 **Cross-links:** B-88 (the watch that correctly withheld the tag), B-123 (the post-ship review that
 found this — the first thing that review produced that no gate could have), B-83 (same family: the
 record and the reality drift apart and nothing correlates them).
+
+### B-155 · The `section-path` check cannot tell "no match" from "grep could not run", and it took a release red
+**Effort:** S · **Priority:** P2 · found 2026-08-20 during the v0.62.0 release · **Invariants:** #3 #5
+
+**Why — observed, and the reproduction is the evidence.** The v0.62.0 release commit `358b2f8` was
+pushed to master and then **refused its tag** because CI's `linux` leg went red on
+`ValidateDist.Tests` case 12 ("an unmutated dist stays green under the FULL validator"), with:
+
+```
+FAIL: unresolved section-path references in shipped content -- 1.
+  [section-path-reference] specs/README.md:44 cites CLAUDE.md > Conventions, but that heading does not exist
+```
+
+**The citation is valid.** `dist/dotnet/specs/README.md:44` contains `` `CLAUDE.md > Conventions` ``
+and `dist/dotnet/CLAUDE.md:43` is `## Conventions`. Nothing in the v0.62.0 change touches either file.
+
+**Established intermittent, not platform-specific:**
+- Re-running the **identical commit** (`gh run rerun 32345575665 --failed`) came back **all 8 legs
+  green**, same sha, same tree.
+- In the **original failing run**, on the same Linux machine, the other dists passed the identical
+  check reporting "169 textual file(s) scanned".
+- Locally the bash twin passes for all three dists under `LC_ALL` of default, `C`, `C.UTF-8` and
+  `POSIX`, so locale and multi-byte handling of the `›` separator are ruled out.
+- Batch 1's CI was green on all 8 legs two hours earlier with the same check.
+
+**The mechanism, and this is the part worth fixing.** The per-citation resolution is:
+
+```bash
+elif ! printf '%s\n' "$target_headings" | grep -qE "^#+[[:space:]]+$heading[[:space:]]*$"; then
+    # ... report "but that heading does not exist"
+```
+
+`grep -q` exits non-zero for **two different reasons**: it found no match, or it could not run.
+The `!` treats both as "heading missing". **Demonstrated, not inferred** — the same construct run
+three ways:
+
+| case | condition | reported |
+|---|---|---|
+| 1 | heading present, `grep` runs | resolved |
+| 2 | heading absent, `grep` runs | "heading does not exist" — correct content finding |
+| 3 | **heading present**, `grep` cannot run | "heading does not exist" — **identical to case 2** |
+
+Case 3 is indistinguishable from case 2 in the check's output, which is exactly what a reader of the
+CI log sees. Under the parallelism this check runs in — the same check
+already carries a comment recording that an earlier draft "exhausted the process table
+(`dofork: ... Resource temporarily unavailable`)" on Git-for-Windows — a **single** transient fork
+failure produces **exactly one** spurious unresolved citation, which is precisely the shape observed.
+The sibling read is equally exposed: `target_headings=$(grep -E '^#+[[:space:]]+' "$target" || true)`
+swallows a failure into an empty string, which would report *every* citation in that file as
+unresolved.
+
+This is B-85's and B-130's thesis again, in a new place: **a failure caused by the environment must
+not be reported as a property of the artifact.** Here it is reported as a defect in shipped content,
+and it cost a red master commit plus a withheld release tag.
+
+**Do:**
+1. Distinguish the two outcomes. Capture `grep`'s exit status explicitly: `0` = found, `1` = genuinely
+   absent, **anything else = could not run**, which must be a distinct FATAL ("could not execute grep
+   while resolving section-path citations — this is a host/resource problem, not a content problem"),
+   never a content finding. Same for the `|| true` on `target_headings`: an empty result must be
+   distinguishable from a failed read.
+2. **The `.ps1` twin does NOT need the same fix, and I checked rather than assumed.** It resolves
+   citations entirely **in-process** — `[IO.File]::ReadAllLines`, .NET `Regex`, and two
+   `HashSet[string]` lookups — and spawns no subprocess at all, so it has no failed-to-run state to
+   conflate. That is consistent with the observation: the **linux** leg (bash twin) went red while
+   the **windows** leg (PowerShell twin) was green in the same run.
+
+   **This is a twin-parity issue of a subtler kind than B-153's, and worth stating as its own
+   lesson.** The twins agree on every *decision* — that is what `ScriptTwinParity` tests — but they
+   have structurally different *robustness*: one is deterministic and in-process, the other spawns a
+   subprocess per citation and is therefore resource-sensitive. Invariant #3 is about behavioural
+   parity and says nothing about failure-mode parity, so no gate looks for this. A bash twin that
+   can fail where its PowerShell counterpart cannot is a real asymmetry, and it is the reason only
+   one of the eight legs went red.
+3. Red-test both: force the failing-to-run condition (e.g. point the check at an unreadable target,
+   or stub a `grep` that exits 2) and show a FATAL that names the host, then the normal absent-heading
+   path still reporting a content finding.
+
+**Not:** do not "fix" this by retrying, and do not reduce the check's parallelism — the conflation is
+the defect, and it would still mis-report on any other resource failure. Do not add a
+`-AllowFailingGate` waiver for it either; a gate that occasionally lies is worse than one that fails
+honestly, and waiving it hides the next real finding.
+
+**RCA — what else is exposed.** Every `grep -q`/`|| true` in the shipped and authoring gate scripts
+where a non-zero exit is read as a content verdict. That sweep is the deliverable, not just this one
+site. Note also that **nothing distinguishes a flaky gate from a real one** in the release path: the
+release correctly withheld the tag, but the operator has no signal that says "this failure did not
+reproduce" — establishing that took a manual rerun of the identical commit.
+
+**Cross-links:** B-85 and B-130 (a host/PATH failure must not be reported as an artifact defect),
+B-153 (twin divergence in the same validator), B-154 (a release left on master untagged — this is the
+second instance in one day, and the first one caused by a flake).
 
 **B-146 is DONE (2026-08-18) — check B shipped, check A dropped on evidence; see `meta/BACKLOG-DONE.md`.**
 
