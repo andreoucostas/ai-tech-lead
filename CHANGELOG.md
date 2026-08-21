@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.66.0 — Unreleased
+## 0.66.0 — 2026-08-21
 
 **B-163: `GuardPatternErrors.Tests.ps1` drops from 234s to 15s — and the speedup that produced it was
 inert for half its cases until review caught it.** This file is the meta suite's dominant cost, and

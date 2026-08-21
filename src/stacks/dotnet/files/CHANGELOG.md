@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.66.0 — Unreleased
+## 0.66.0 — 2026-08-21
 
 **`tests/hooks/Guard.Tests.ps1` can now run a subset of its cases.** Set `GUARD_TEST_POLICY` to a
 policy name to run only the guard cases tagged with it, which is useful when you are iterating on one
