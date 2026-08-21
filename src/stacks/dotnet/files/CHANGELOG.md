@@ -4,6 +4,19 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.65.0 — Unreleased
+
+**The hook test suite's slowest file now runs its cases concurrently — roughly 1.7x faster.**
+`tests/hooks/Guard.Tests.ps1` checks the write guard against every case in its table, on both
+supported agent surfaces and in both the PowerShell and Bash implementations. Those checks are
+independent of one another but were running one at a time, which made this single file most of the
+suite's total runtime. It now runs them in parallel, bounded by the same `HOOKTESTS_THROTTLE` lane
+count the runner already uses, and reports results in the same order as before so the output is
+unchanged apart from being quicker.
+
+Behaviour is identical: every case is still checked against its expected decision on both
+implementations, and the two are still compared against each other afterwards.
+
 ## 0.64.0 — 2026-08-21
 
 **`framework-doctor` and `impact-run` no longer report a machine problem as a problem with your

@@ -11,6 +11,34 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.65.0 — Unreleased
+
+**B-138: `Guard.Tests.ps1` now runs its cases concurrently — 137s to 79s, a 1.73x cut on the file
+that is ~95% of the release's largest stage.** The per-file instrumentation shipped in v0.64.0
+immediately named the culprit: `dist-gates` 579.2s, of which the dist hook suites are ~561s (97%),
+of which `Guard.Tests.ps1` alone is 554.6s (99%). Forty cases crossed with two surfaces and two
+twins is 160 process spawns, and they ran strictly serially despite every case being independent by
+construction. Cases now run as throttled jobs — the same fix, and the same shape, as
+`GuardPatternErrors.Tests.ps1` (1.82x), which is the third time this entry's expensive
+reused-runspace prescription has turned out to be unnecessary.
+
+The throttle honours `HOOKTESTS_THROTTLE` with the same default and eight-lane ceiling as the
+aggregate runner, so inner width cannot oversubscribe the outer per-file lanes. Results are replayed
+in declared case order, so the transcript stays deterministic regardless of completion order.
+
+**The safety property was verified independently, because this file is the framework's main
+behavioural gate and a parallel rewrite that swallowed failures would be far worse than a slow
+suite.** With `exit 2` mutated to `exit 0` in `guard.ps1`, the parallelised suite reports
+**54 passed / 28 failed, exit 28**; restored, **82 passed / 0 failed, exit 0**. Both twins are still
+each checked against the expected decision *before* being compared with one another — the property
+the file's header exists to protect, since a fault present in both twins used to pass.
+
+**A measurement caveat worth keeping.** The implementer measured this change as flat (32.2s to
+32.5s) and correctly reported it as an unproven speedup rather than claiming a win. That host had no
+bash, so it ran 80 spawns instead of 160 and never exercised the `.sh` legs where the cost actually
+is. The 1.73x is from a bash-present host, same machine, same 82 passed / 0 failed. A performance
+number is only meaningful on a host that runs the expensive half.
+
 ## 0.64.0 — 2026-08-21
 
 **B-156 (cheap half): `grep`'s exit status is no longer read as a content verdict.** A non-zero
