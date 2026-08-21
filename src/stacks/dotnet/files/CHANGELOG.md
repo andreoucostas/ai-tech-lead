@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.63.0 — Unreleased
+## 0.63.0 — 2026-08-21
 
 - The enforcement-surface guide now says explicitly that the write guard is a deterministic floor
   only for editor/file-write tool calls. Shell-authored and externally written files bypass it, so

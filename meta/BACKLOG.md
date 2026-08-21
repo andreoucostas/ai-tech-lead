@@ -2323,6 +2323,127 @@ claim), B-32 (context footprint — a different cost of the same material, alrea
 
 **B-144 is DONE (2026-08-18) — see `meta/BACKLOG-DONE.md`.**
 
+### B-158 · The static-context budget is effectively exhausted, and nothing says so until a release refuses
+**Filed against:** v0.63.0 (2026-08-21)
+**Effort:** S · **Priority:** P2 · found 2026-08-21 while asking whether more skills should ship · **Invariants:** #7
+
+**Why — measured from `meta/context-footprint.json` on 2026-08-21, not estimated:**
+
+| dist | `static.claude` | ceiling | headroom |
+|---|---:|---:|---:|
+| dotnet | 39,501 | 40,000 | **499 chars (1.2%)** |
+| angular | 38,239 | 40,000 | 1,761 chars (4.4%) |
+| monorepo | 47,917 | 48,000 | **83 chars (0.17%)** |
+
+B-110 made these a hard failure, which was right. The consequence nobody has stated is that the
+framework now sits within a rounding error of its own budget on two of three dists, so **any**
+static-context addition — a paragraph in `CLAUDE.md`, a rule on the carrier, a skill, an agent — is
+near-blocked on dotnet and effectively blocked on monorepo. Shipped skill *frontmatter* (the part
+that counts) averages **689 chars** across the 16 monorepo skills (min 285, max 1,086), so the next
+skill costs roughly **8x the entire monorepo headroom**, and even the smallest existing one is 3.4x
+over it. Skills compose into monorepo from both stacks, so a new .NET *or* Angular skill lands there.
+
+**The failure mode is discovery-by-refusal.** Nothing warns at authoring time; you find out when a
+release stops. That is the same shape the ceilings themselves had before B-110 — a real limit that
+only announces itself at the worst moment.
+
+**Do:** (a) surface remaining headroom in the *authoring* path, not only pass/fail at release — one
+line, "dotnet: 499 chars from ceiling", is enough; (b) decide deliberately whether these numbers are
+still the right ceilings and record the decision. They were set when the framework was smaller.
+Raising them on purpose is legitimate; discovering them is not.
+
+**Not:** do not raise a ceiling to unblock a specific change in the same commit as that change. That
+is how a budget stops being one.
+
+**Cross-links:** B-110 (made the ceiling a hard failure), B-139 (the sibling drift problem in the
+per-stage ceilings), B-44 (retirement is the other way to create headroom), B-157 (per-file install
+volume, the other cost of the same material), B-159, B-160.
+
+### B-159 · Nobody has measured whether the always-loaded rails actually trigger the `/review` fan-out
+**Filed against:** v0.63.0 (2026-08-21)
+**Effort:** S · **Priority:** P2 · found 2026-08-21 · **Invariants:** #5
+
+**Why.** `/review` spawns its five auditors **deterministically**, not by model routing — its own
+body says so: "In a single message, spawn all five subagents via the `Task` tool"
+(`src/core/.claude/commands/review.md`, Step 1), and its frontmatter description repeats the roster.
+That is a reliable invocation path, and it is the reason agents should not be converted into skills
+(see B-160).
+
+**But developers rarely type `/review`.** In practice the fan-out depends on §1 of
+`framework-rules.instructions.md` — on the always-loaded carrier — telling the model to classify
+intent and run the workflow unasked. **That dependency has never been measured.** The carrier is the
+channel B-98 proved *does* arrive (map reach 0/6 -> 6/6 when the same guidance moved onto it), so the
+mechanism is plausible; plausible is what this repo files entries about.
+
+**Do:** one scenario in the B-41 harness — a diff-shaped prompt that never says "review", scored on
+whether the five subagents were actually spawned, from a typed tool event rather than transcript
+prose. Pre-register the threshold. Record "rails unreached" as its own outcome rather than as a
+failure, per WSD-042's precedent.
+
+**Not:** do not respond to a poor result by making the review workflow model-selected. That is the
+mechanism measured at 0/16 and 0/6; it would trade the reliable path for the unreliable one.
+
+**Cross-links:** B-98 and WSD-032 (the carrier is the channel that arrives), B-41 (the harness),
+B-160 (the same carrier-versus-routing question one level down), B-158 (no headroom to add a new
+carrier rule without a decision).
+
+### B-160 · Selective skill routing has been measured four times, all warehouse-shaped — and there is no bar for a new skill
+**Filed against:** v0.63.0 (2026-08-21)
+**Effort:** S (the static audit) · M (only if a live arm is justified) · **Priority:** P3 · raised by the maintainer 2026-08-21 · **Invariants:** #5
+
+**Why.** Everything known about whether shipped skills actually fire:
+
+| probe | result |
+|---|---|
+| B-127 | **16/16** trials `ROUTING_NON_REACH` — `map-warehouse` never read or selected once |
+| B-98 | `r = 0/6` — neither skill nor map reached |
+| B-126 | `add-warehouse-load` fired in only **1 of 6** counted trials (correct answers, misattributed to the skill) |
+| B-117 | `add-warehouse-load` selected **6/6** on load-shaped prompts |
+
+The other ~12 shipped skills have **no evidence at all**, and **no threshold exists** saying what
+selection rate is acceptable — so a new number could not produce a decision even if we bought one.
+That is B-112's trap, and it is why the live arm is last here rather than first.
+
+**One variable separates every observed result, and it is free to check:** every reaching case had
+the skill's own vocabulary in the prompt ("add a warehouse load" -> `add-warehouse-load`), and every
+non-reaching case did not ("help me write this report" -> `map-warehouse`). Hypothesis, not
+conclusion.
+
+**Do — cheapest first, because live trials spend the resource that still has B-129 blocked:**
+
+1. **A static trigger-vocabulary audit.** Validate it against the four known results *first*: if it
+   does not reproduce the 6/6 vs 16/16-non-reach split, it is worthless and stop there. If it does,
+   it ranks the unmeasured skills for nothing.
+2. **Pre-register a selection threshold before any live run**, and record "carrier unreachable" as a
+   distinct outcome rather than a failure (WSD-042).
+3. **Spend live budget only on the skills the audit cannot call.**
+4. **Write the resulting bar into the maintenance model.** Candidate to be confirmed rather than
+   assumed: a new skill is justified only when the task is write-shaped, the natural prompt carries
+   the skill's own vocabulary, a measurement is named in advance, and the ceiling cost (B-158) is
+   explicitly accepted.
+
+**Asked and answered 2026-08-21 — do not migrate agents to skills.** The proposal assumed skills fire
+automatically and agents never do. The first half is what these measurements refute; the second half
+misreads the mechanism, because the agents are a deterministic fan-out from a command (B-159). It is
+also unaffordable: agent frontmatter counts against the same ceiling with 83 chars free.
+
+**Not — and this is the entry's main risk:** the audit is a **proxy**, and this repo's record with
+proxies is poor (B-70's cheap local proxy would have caught neither Linux-only defect). It may rank
+what to measure; it must never be reported as evidence that a skill does or does not fire. Also
+standing: no always-on router and no no-match hook (`meta/BACKLOG-DONE.md B-98`).
+
+**Honest limits on the evidence above:** the sample is warehouse-heavy — B-98, B-126, B-127 and the
+one positive all sit in that domain — and nearly all of it is Claude Code, while the framework's own
+docs call Copilot in VS Code the primary surface. B-140's 2026-08-20 codex probe reached a skill by
+`rg --files --hidden .claude` rather than by routing, and its prompt telegraphed ("add a widget" ->
+`add-widget`), so it is a weak positive and carries no weight here.
+
+**Cross-links:** B-98 and WSD-032 (carrier beats selective routing, measured), B-117 (the one clear
+positive), B-126 and B-127 (the non-reach evidence), B-96 (its outstanding behavioural arm is
+effectively the retirement test for a read-side skill), B-44 row 13 (`route-prompt`, the sibling
+question, already flagged as measurable today), B-112 (a number that cannot produce a decision),
+B-158 (no headroom regardless), B-159.
+
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see `meta/BACKLOG-DONE.md`.**

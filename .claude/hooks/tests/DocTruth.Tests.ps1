@@ -33,22 +33,69 @@ It 'the root README version stamp matches what is actually shipped' {
     Assert ($Matches[1] -eq $shipped) "README says v$($Matches[1]); dists are stamped v$shipped"
 }
 
+# v0.48.0 is deliberately untagged: its release commit's CI failed, so WSD-029 correctly withheld
+# the tag. The changelog entry records that history inline; do not retroactively tag it.
+$untaggedReleaseExceptions = @('0.48.0')
+
+# The decision is a pure function so it can be driven with fixtures. The version it exempts is the
+# whole risk here -- an exemption that widens by one character stops being an exemption and starts
+# being a disabled gate -- and that is not observable by running it against the real repo, where the
+# answer is "no missing tags" on every healthy day.
+function Get-MissingReleaseTags {
+    param(
+        [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$Versions,
+        [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$Declared,
+        [string]$InFlight,
+        [Parameter(Mandatory)][scriptblock]$TagExists
+    )
+    # The release being cut right now is dated but not yet tagged, and cannot be: release.ps1 stamps
+    # the changelog in stage 2, runs this suite in stage 4, and only tags in stage 5d once CI is
+    # observed green (WSD-029). Without this, the check is unsatisfiable during the one workflow it
+    # has to coexist with -- which is exactly how it refused v0.63.0. `release.ps1` sets the variable
+    # for its own meta-suite child and clears it afterwards, so the exemption covers precisely one
+    # version for one run. If that run ends with the tag withheld (the v0.48.0 case), the next
+    # ordinary suite run sees no variable and correctly reports the untagged release.
+    $exempt = @($Declared)
+    if ($InFlight) { $exempt += $InFlight }
+    return @($Versions | Where-Object {
+        if ($_ -in $exempt) { return $false }
+        return (-not (& $TagExists $_))
+    })
+}
+
 It 'every dated root changelog release has a corresponding git tag or declared exception' {
-    # v0.48.0 is deliberately untagged: its release commit's CI failed, so WSD-029 correctly
-    # withheld the tag. The changelog entry records that history inline; do not retroactively tag it.
-    $untaggedReleaseExceptions = @('0.48.0')
     $changelog = [IO.File]::ReadAllLines((Join-Path $repoRoot 'CHANGELOG.md'), [Text.Encoding]::UTF8)
     $versions = @($changelog | ForEach-Object {
         if ($_ -match '^## ([0-9]+\.[0-9]+\.[0-9]+) — [0-9]{4}-[0-9]{2}-[0-9]{2}$') { $Matches[1] }
     })
     Assert ($versions.Count -gt 0) 'root CHANGELOG.md yielded zero dated release heads -- the heading grammar changed and this gate is blind'
-    $missing = @($versions | Where-Object {
-        if ($_ -in $untaggedReleaseExceptions) { return $false }
-        git -C $repoRoot rev-parse -q --verify "refs/tags/v$_" *> $null
-        return ($LASTEXITCODE -ne 0)
-    })
+    $missing = @(Get-MissingReleaseTags -Versions $versions -Declared $untaggedReleaseExceptions `
+        -InFlight $env:RELEASE_IN_FLIGHT_VERSION -TagExists {
+            param($v)
+            git -C $repoRoot rev-parse -q --verify "refs/tags/v$v" *> $null
+            return ($LASTEXITCODE -eq 0)
+        })
     if ($missing) { Assert $false ("dated root changelog release(s) have no git tag: " + (($missing | ForEach-Object { "v$_" }) -join ', ')) }
     Assert $true 'clean'
+}
+
+It 'the in-flight exemption covers the release being cut and nothing else' {
+    $versions = @('0.63.0', '0.62.0', '0.48.0')
+    $tagged = { param($v) return ($v -eq '0.62.0') }
+    # Unset: the dated-but-untagged head is reported. This is the state that refused v0.63.0, and it
+    # must stay reachable -- it is the only reason the check exists.
+    $none = @(Get-MissingReleaseTags -Versions $versions -Declared $untaggedReleaseExceptions -InFlight '' -TagExists $tagged)
+    Assert ($none -contains '0.63.0') 'with no release in flight, an untagged dated release must still be reported'
+    # In flight: exactly that version is exempt.
+    $inFlight = @(Get-MissingReleaseTags -Versions $versions -Declared $untaggedReleaseExceptions -InFlight '0.63.0' -TagExists $tagged)
+    Assert ($inFlight.Count -eq 0) "the in-flight release must not be reported: $($inFlight -join ', ')"
+    # A different in-flight version exempts nothing here -- the exemption is scoped to one string,
+    # not to "a release is happening".
+    $other = @(Get-MissingReleaseTags -Versions $versions -Declared $untaggedReleaseExceptions -InFlight '0.64.0' -TagExists $tagged)
+    Assert ($other -contains '0.63.0') 'an unrelated in-flight version must not exempt this release'
+    # The declared exception still stands on its own, and a tagged release is never reported.
+    Assert ($none -notcontains '0.48.0') 'the declared exception must remain exempt'
+    Assert ($none -notcontains '0.62.0') 'a tagged release must never be reported as missing'
 }
 
 # --- 2. no phantom syntax -----------------------------------------------------------------------

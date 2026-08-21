@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.63.0 — Unreleased
+## 0.63.0 — 2026-08-21
 
 **B-100: the enforcement-surface guide now states the write guard's actual boundary.** The guard
 does not run for shell-authored or externally written files, so it is a deterministic floor only
@@ -27,6 +27,15 @@ advisory `Assert $true`, which is the inert-check shape B-59 and B-64 exist to r
 compliance was already 22/22 enforcing it cost nothing. Note that the meta suite *is* a release gate,
 so a future entry filed without a stamp will refuse a release until it is added.
 
+Meta-only: the B-154 tag-reconciliation check refused this very release. It reports a dated changelog
+head with no git tag, and during a release that is necessarily true — the stamp lands in stage 2, the
+meta suite runs in stage 4, and the tag only follows CI-verified green in stage 5d (WSD-029). The
+check was validated against fixtures and never against a real release, so it shipped unsatisfiable in
+the one workflow it must coexist with. release.ps1 now names the in-flight version for its own
+meta-suite child and clears it afterwards, exempting exactly one version for one run; a release that
+ends with its tag withheld is still reported by the next ordinary run. The decision is now a pure
+function with fixtures, because the real risk — an exemption widening from ''this version'' to ''a
+release is happening'' — is invisible when the check is run against a healthy repo.
 ## 0.62.0 — 2026-08-20
 
 **B-152: changelog validation now reads every release head instead of trusting only the first.**
