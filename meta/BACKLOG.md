@@ -951,6 +951,31 @@ presence* — is EF Core actually in this repo — not *semantic invariants of t
 The plan gate (§2) asks for assumptions but defines no schema and no verification obligation, and it
 catches uncertainty, which is the wrong instrument: the model was confident and wrong.
 
+> **THE RECORDED BLOCKER IS STALE, AND THE REAL ONE IS DIFFERENT — 2026-08-21.**
+>
+> The refutation above is dated 2026-08-05 and says a shipped Verification Rule cannot reach an
+> existing consumer because the installer protects the whole of `CLAUDE.md`. **That was true when
+> written and is not true now.** B-97's Option A shipped in v0.45.0 the same day: the four
+> framework-owned blocks — Verification Rules included — moved to
+> `.github/instructions/framework-rules.instructions.md`, which is **unprotected** and therefore
+> arrives on update. B-97's own annotation records the consequence: *"B-96/B-99 are unblocked on the
+> delivery axis"*. This entry never picked that up.
+>
+> **What actually blocks it now is the context ceiling.** Verified 2026-08-21: the carrier is counted
+> in `static.claude` (`scripts/context-footprint.ps1:246-247`, 20,027 bytes of the monorepo total),
+> and the measured headroom is **83 characters on monorepo** and 499 on dotnet. A Verification Rule
+> written to be useful is several hundred characters. **Adding one fails the release**, and B-158
+> forbids raising a ceiling in the same change that wants the room.
+>
+> So the sequence is: **B-158(b) — decide whether 40000/48000 are still the right numbers — gates this
+> entry.** That is a decision, not an implementation, and it is not this entry's to make.
+>
+> **The generalisable point, which is why this is written here rather than silently fixed:** a
+> "blocked by X" annotation is a *measurement with a date*, and it rots exactly like a cost table
+> does. This one survived two weeks past its refutation and would have sent the next person to argue
+> with B-97 about a problem that no longer exists. Any entry claiming to be blocked should be
+> re-checked against the tree before it is believed, not just read.
+
 > **DELIVERY PREMISE REFUTED, 2026-08-05 — read this before implementing.** This entry was filed
 > claiming to be *"the only warehouse-adjacent fix not blocked"*, on the reasoning that a Verification
 > Rule escapes B-97 because `/bootstrap` rewrites Conventions and not the always-on blocks. The
