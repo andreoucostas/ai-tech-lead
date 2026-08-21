@@ -1087,6 +1087,91 @@ This is the archive of completed framework backlog entries. Entries are appended
   `Stack toolchain` regex-vs-glob branch stays unexercised; both are stated in the test rather than
   implied as coverage.
 
+### B-156 · The "grep exit status as content verdict" conflation is class-wide, and most instances are in SHIPPED scripts
+
+> **DONE 2026-08-21 — both halves, all sites, both twins each.** The cheap half (`framework-doctor`,
+> `impact-run`) shipped in v0.64.0; the extractor half shipped in v0.67.0.
+>
+> **This entry hedged that swallowing might be the intended contract for some extractor sites. It is
+> intended for none, and the reason is uniform:** an empty extraction is indistinguishable from a
+> failed one, and in every case the empty path is the **permissive** one — `warehouse-map-check`
+> decides the repo is not a warehouse and skips itself, `template-checks` finds no changelog heads and
+> therefore no duplicates, `wiki-check` finds no index entries and therefore no bad ones. All three
+> fail open, which is *worse* than the sites fixed first: `framework-doctor` at least said something
+> false and visible.
+>
+> **Correction to this entry:** `docs-sync-check.sh` is listed here as carrying extractor-shaped
+> `|| true` sites. It has none. It does still carry the older conditional content-verdict patterns,
+> which are a different shape and were deliberately left alone.
+>
+> **Verified on the bash legs by the reviewer** (the implementer has no working bash and declined to
+> claim them): stub `grep` exiting 2 → all three exit 2 with a distinct host/resource message naming
+> the file; clean tree → all three exit 0; a genuinely non-warehouse repo still proceeds with no host
+> claim. That last arm is what stops the fix trading a silent false pass for a noisy false failure —
+> the mistake the first cut of the cheap half made in the opposite direction, reporting an absent
+> `CLAUDE.md` as a host problem because `grep` exits 2 for a missing file too.
+
+**Filed against:** v0.62.0 (2026-08-20)
+**Effort:** M · **Priority:** P2 · found 2026-08-20 by B-155's RCA sweep · **Invariants:** #3 #5
+
+**Why.** B-155 fixed one site in `scripts/validate-dist.sh` (authoring-only) where `grep -q`'s
+non-zero exit was read as "the content is absent" when it also means "grep could not run". The sweep
+that entry required found the same shape across the **shipped** twin scripts, where it reaches
+consumers:
+
+| script | conflating sites |
+|---|---|
+| `src/core/scripts/docs-sync-check.sh` | banner, mirrored headings, README skill/agent mentions, architecture hash — each a `grep -q` / `\|\| missing=…` content verdict |
+| `src/core/scripts/framework-doctor.sh` | import, heading, and pending-marker `grep -q` branches |
+| `src/core/scripts/impact-run.sh` | project-detection `grep -q .` — an execution failure becomes a **routing decision** |
+| `warehouse-map-check.sh`, `template-checks.sh`, `wiki-check.sh` | extractor-shaped `\|\| true` where no-match is expected but execution failure is swallowed too |
+
+**Why this is worse in the shipped set than it was in the validator.** `framework-doctor` is the
+diagnostic a consumer runs *when something is already wrong* — the moment their machine is most
+likely to be short of resources, and the moment a false "your documentation has drifted" is most
+expensive. B-130 already recorded exactly this outcome from the same family: the doctor reported
+*"CLAUDE.md and AGENTS.md or version stamps have drifted. Fix: run /generate-copilot"* — a specific,
+false, actionable diagnosis handed to a consumer whose documentation was fine — because a bare
+interpreter name failed to resolve. That was a *different* cause with the *same* reporting defect.
+`impact-run` is sharper still: there a failed `grep` does not merely mis-report, it silently changes
+which project the tool decides it is looking at.
+
+**Do:** apply B-155's discrimination to each site — `0` = found, `1` = genuinely absent (a product
+finding), **anything else = could not run**, reported as a distinct host/resource condition and never
+as a content verdict. Both twins per script [#3]; the `.ps1` twins should be **checked rather than
+assumed** to be exempt (B-155's PowerShell twin was genuinely exempt because it works in-process, and
+that is a real asymmetry, not a general rule).
+
+**This is deliberately not one batch edit.** The implementer's sweep is explicit that these "require
+coordinated twin/test work, not a one-line batch edit", and that the extractor-shaped `|| true` uses
+each "need a separate contract decision before editing" — for some of them, swallowing a failure may
+be the intended contract. Decide per site and record which are deliberate.
+
+**Proportionality, stated before locking:** the observed harm is real but indirect — no consumer
+incident is recorded for these specific sites, and the one measured instance of the *class*
+(B-130's doctor row) came from a different cause. So the cheap half — `framework-doctor` and
+`impact-run`, where a false verdict is either handed to a confused consumer or silently changes
+behaviour — is worth doing first and may be all that is proportionate. The extractor `|| true` sites
+may be fine as they are once someone states that they are.
+
+**Red-test:** a stub `grep` on `PATH` that exits 2 is the cheap forcing function; show the new
+host/resource message, then the ordinary absent path still reporting a product finding, then a clean
+pass.
+
+**Cross-links:** B-155 (the instance and the discrimination pattern), B-130 (the same reporting
+defect from a different cause, with a measured false diagnosis), B-85 (a host/PATH failure must not
+be reported as an artifact defect — this entry is that thesis applied to `grep` rather than to an
+interpreter).
+
+**Delivery RCA (cheap half).** No existing gate caught this because the script fixtures exercised
+content-present and content-absent states but did not replace the content-inspection primitive with
+one that fails to execute; syntax and twin-shape checks cannot distinguish those runtime meanings.
+The same class remains exposed in `docs-sync-check.sh`, `warehouse-map-check.sh`,
+`template-checks.sh`, and `wiki-check.sh`, whose extractor-shaped failure swallowing needs the
+separate per-site contract decision already required above. The PowerShell sweep also found the
+analogous class in caught/suppressed in-process reads and enumeration, so the two in-scope twins
+were corrected even though they do not invoke grep.
+
 ### RCA of v0.41.0 — filed 2026-08-01
 
 **Finding 1 (fixed in this release): the shipped test harness scored a failing suite as green.**

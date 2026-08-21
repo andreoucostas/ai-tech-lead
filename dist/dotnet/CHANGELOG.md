@@ -4,6 +4,22 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.67.0 — Unreleased
+
+**Three more checks stopped reporting success for work they never did.** `warehouse-map-check`,
+`template-checks` and `wiki-check` each search a file or a file list to decide what to inspect. If
+that search could not *run* — a missing tool, a machine short of resources — they saw an empty result
+and read it as "nothing to check here", then passed. `warehouse-map-check` would conclude your repo
+was not a data warehouse; `template-checks` would find no changelog headings and therefore no
+problems with them; `wiki-check` would find no wiki entries and therefore no bad ones.
+
+All three now tell the difference between *nothing found* and *could not look*. A genuinely empty
+result behaves exactly as before — a repo with no warehouse files, or a wiki index with no entries,
+is still perfectly valid and still passes. A search that could not execute now stops with a message
+naming the file and saying it is a host or resource problem, not a verdict about your repository.
+
+This completes the change begun in v0.64.0 for `framework-doctor` and `impact-run`.
+
 ## 0.66.0 — 2026-08-21
 
 **`tests/hooks/Guard.Tests.ps1` can now run a subset of its cases.** Set `GUARD_TEST_POLICY` to a

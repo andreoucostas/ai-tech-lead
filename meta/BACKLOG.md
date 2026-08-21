@@ -2338,68 +2338,6 @@ fail in the world the entry is about; see `meta/BACKLOG-DONE.md`.**
 
 **B-155 is DONE (2026-08-20) — a grep that cannot run is now a host fatal, not a content finding; see `meta/BACKLOG-DONE.md`.**
 
-### B-156 · The "grep exit status as content verdict" conflation is class-wide, and most instances are in SHIPPED scripts
-**Filed against:** v0.62.0 (2026-08-20)
-**Effort:** M · **Priority:** P2 · found 2026-08-20 by B-155's RCA sweep · **Invariants:** #3 #5
-
-**Why.** B-155 fixed one site in `scripts/validate-dist.sh` (authoring-only) where `grep -q`'s
-non-zero exit was read as "the content is absent" when it also means "grep could not run". The sweep
-that entry required found the same shape across the **shipped** twin scripts, where it reaches
-consumers:
-
-| script | conflating sites |
-|---|---|
-| `src/core/scripts/docs-sync-check.sh` | banner, mirrored headings, README skill/agent mentions, architecture hash — each a `grep -q` / `\|\| missing=…` content verdict |
-| `src/core/scripts/framework-doctor.sh` | import, heading, and pending-marker `grep -q` branches |
-| `src/core/scripts/impact-run.sh` | project-detection `grep -q .` — an execution failure becomes a **routing decision** |
-| `warehouse-map-check.sh`, `template-checks.sh`, `wiki-check.sh` | extractor-shaped `\|\| true` where no-match is expected but execution failure is swallowed too |
-
-**Why this is worse in the shipped set than it was in the validator.** `framework-doctor` is the
-diagnostic a consumer runs *when something is already wrong* — the moment their machine is most
-likely to be short of resources, and the moment a false "your documentation has drifted" is most
-expensive. B-130 already recorded exactly this outcome from the same family: the doctor reported
-*"CLAUDE.md and AGENTS.md or version stamps have drifted. Fix: run /generate-copilot"* — a specific,
-false, actionable diagnosis handed to a consumer whose documentation was fine — because a bare
-interpreter name failed to resolve. That was a *different* cause with the *same* reporting defect.
-`impact-run` is sharper still: there a failed `grep` does not merely mis-report, it silently changes
-which project the tool decides it is looking at.
-
-**Do:** apply B-155's discrimination to each site — `0` = found, `1` = genuinely absent (a product
-finding), **anything else = could not run**, reported as a distinct host/resource condition and never
-as a content verdict. Both twins per script [#3]; the `.ps1` twins should be **checked rather than
-assumed** to be exempt (B-155's PowerShell twin was genuinely exempt because it works in-process, and
-that is a real asymmetry, not a general rule).
-
-**This is deliberately not one batch edit.** The implementer's sweep is explicit that these "require
-coordinated twin/test work, not a one-line batch edit", and that the extractor-shaped `|| true` uses
-each "need a separate contract decision before editing" — for some of them, swallowing a failure may
-be the intended contract. Decide per site and record which are deliberate.
-
-**Proportionality, stated before locking:** the observed harm is real but indirect — no consumer
-incident is recorded for these specific sites, and the one measured instance of the *class*
-(B-130's doctor row) came from a different cause. So the cheap half — `framework-doctor` and
-`impact-run`, where a false verdict is either handed to a confused consumer or silently changes
-behaviour — is worth doing first and may be all that is proportionate. The extractor `|| true` sites
-may be fine as they are once someone states that they are.
-
-**Red-test:** a stub `grep` on `PATH` that exits 2 is the cheap forcing function; show the new
-host/resource message, then the ordinary absent path still reporting a product finding, then a clean
-pass.
-
-**Cross-links:** B-155 (the instance and the discrimination pattern), B-130 (the same reporting
-defect from a different cause, with a measured false diagnosis), B-85 (a host/PATH failure must not
-be reported as an artifact defect — this entry is that thesis applied to `grep` rather than to an
-interpreter).
-
-**Delivery RCA (cheap half).** No existing gate caught this because the script fixtures exercised
-content-present and content-absent states but did not replace the content-inspection primitive with
-one that fails to execute; syntax and twin-shape checks cannot distinguish those runtime meanings.
-The same class remains exposed in `docs-sync-check.sh`, `warehouse-map-check.sh`,
-`template-checks.sh`, and `wiki-check.sh`, whose extractor-shaped failure swallowing needs the
-separate per-site contract decision already required above. The PowerShell sweep also found the
-analogous class in caught/suppressed in-process reads and enumeration, so the two in-scope twins
-were corrected even though they do not invoke grep.
-
 ### B-157 · Installing the framework produces a ~164-file commit nobody can review, and nothing in the tree says which files the consumer owns
 **Filed against:** v0.62.0 (2026-08-21)
 **Effort:** S (the manifest) · M (if optional components are chosen) · **Priority:** P3 · raised by the maintainer 2026-08-21 · **Invariants:** #6

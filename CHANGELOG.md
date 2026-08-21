@@ -11,6 +11,35 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.67.0 — Unreleased
+
+**B-156 is complete: the extractor sites no longer fail open when `grep` cannot run.** The cheap half
+(`framework-doctor`, `impact-run`) shipped in v0.64.0. This is the half the entry deferred pending a
+per-site contract decision, and the decision is that **none of them should swallow** — the entry's
+hedge that some might legitimately do so does not survive reading them.
+
+The reason is uniform across all three. An empty extraction is indistinguishable from a failed one,
+and in every case **the empty path is the permissive one**: `warehouse-map-check` concludes the repo
+is not a warehouse and skips itself, `template-checks` finds no changelog heads and therefore no
+duplicates, `wiki-check` finds no index entries and therefore no bad ones. All three report success
+for work that never happened — *worse* than the sites fixed first, where `framework-doctor` at least
+said something false and visible.
+
+Each now discriminates: **0** found, **1** genuinely empty and handled exactly as before, **2+** a
+distinct host/resource condition naming the file, never a content verdict.
+
+**The arm that mattered in review was the legitimate-empty one.** A repo genuinely may have no
+warehouse artifacts and a wiki index genuinely may be empty, so a careless fix trades a silent false
+pass for a noisy false failure. Verified on the bash legs: stub `grep` exiting 2 → exit 2 with the
+host/resource message on all three; clean tree → exit 0 on all three; a genuinely non-warehouse repo
+proceeds with no host claim. That is the same distinction the first cut of the cheap half got
+backwards, reporting an absent `CLAUDE.md` as a host problem — because `grep` exits 2 for a missing
+file as well as for a failure to run.
+
+**Correction to the entry, recorded rather than quietly dropped:** `docs-sync-check.sh` is listed as
+carrying extractor-shaped `|| true` sites. It has none. It does still carry the older conditional
+content-verdict patterns, which are a different shape and were deliberately left alone.
+
 ## 0.66.0 — 2026-08-21
 
 **B-163: `GuardPatternErrors.Tests.ps1` drops from 234s to 15s — and the speedup that produced it was
