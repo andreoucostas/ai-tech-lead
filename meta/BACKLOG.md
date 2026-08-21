@@ -2006,6 +2006,31 @@ not.
 > 25s sub-ceiling in the v0.61.0 run, warning but not failing. Against a 14s total for the whole
 > validator here, that sub-ceiling accounting needs re-reading — the two numbers cannot both be right.
 
+> **THIRD MEASURED CORRECTION, 2026-08-21 (v0.63.0) — the cheap prerequisite is still outstanding,
+> and an earlier reading of this entry assumed B-151 had already delivered it. It had not.**
+>
+> B-151 delivered *unit*-level attribution for `dist-gates` (validate-dist vs hook-suite), which is
+> what produced the 97.6% figure above. It did **not** deliver per-file attribution, and the reason
+> is concrete: **there are two hook runners and only one of them is instrumented.**
+>
+> | runner | lines | `TIMING` emitters |
+> |---|---:|---:|
+> | `.claude/hooks/tests/Invoke-HookTests.ps1` (meta) | 162 | 2 |
+> | `src/core/tests/hooks/Invoke-HookTests.ps1` (shipped — this is what `dist-gates` runs) | 55 | 0 |
+>
+> Verified against the v0.63.0 release log: every per-file `TIMING` line in it comes from the meta
+> suite. The three dist suites emit only `=== Hook test suite: 0 failure(s) across 18 file(s) ===`.
+> So the largest single cost in the release — `dist/*/hook-suite` at 515.5s, 514.7s and 515.4s on a
+> 533.4s stage — has **no per-file attribution at all**, exactly as this entry has said since
+> 2026-08-13, and "measure first" remains undischarged for the 97% that matters.
+>
+> **A design question to settle before implementing, not after:** the runner that needs instrumenting
+> is a **shipped** file, so adding `TIMING` output sends it to consumers too. Either that is a useful
+> diagnostic for them, or it is maintainer noise belonging behind an environment variable the way
+> `HOOKTESTS_THROTTLE` already is. Recommendation: the env-var gate — a consumer running their hook
+> suite has no release budget to blow and no ceiling to diagnose — but **state the choice rather than
+> defaulting into it**, because it changes what ships [#6].
+
 **Why:** `meta/gate-budget.json` already diagnoses these suites as "bound by process creation, not
 CPU" — each assertion spawns a fresh `pwsh`/`bash` child. That means wall-clock cost scales roughly
 linearly with assertion count, so any fixed time ceiling is guaranteed to be outgrown again as more
@@ -2246,6 +2271,15 @@ pass.
 defect from a different cause, with a measured false diagnosis), B-85 (a host/PATH failure must not
 be reported as an artifact defect — this entry is that thesis applied to `grep` rather than to an
 interpreter).
+
+**Delivery RCA (cheap half).** No existing gate caught this because the script fixtures exercised
+content-present and content-absent states but did not replace the content-inspection primitive with
+one that fails to execute; syntax and twin-shape checks cannot distinguish those runtime meanings.
+The same class remains exposed in `docs-sync-check.sh`, `warehouse-map-check.sh`,
+`template-checks.sh`, and `wiki-check.sh`, whose extractor-shaped failure swallowing needs the
+separate per-site contract decision already required above. The PowerShell sweep also found the
+analogous class in caught/suppressed in-process reads and enumeration, so the two in-scope twins
+were corrected even though they do not invoke grep.
 
 ### B-157 · Installing the framework produces a ~164-file commit nobody can review, and nothing in the tree says which files the consumer owns
 **Filed against:** v0.62.0 (2026-08-21)

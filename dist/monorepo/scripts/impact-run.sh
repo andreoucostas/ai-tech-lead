@@ -57,7 +57,19 @@ fi
 
 # Infer a build command for this repo (used for tasks with \"build\": true).
 build_cmd=""
-if ls "$ROOT"/*.sln >/dev/null 2>&1 || find "$ROOT" -maxdepth 3 -name '*.csproj' -not -path '*/bin/*' 2>/dev/null | grep -q .; then
+dotnet_project=0
+if ls "$ROOT"/*.sln >/dev/null 2>&1; then
+  dotnet_project=1
+else
+  find "$ROOT" -maxdepth 3 -name '*.csproj' -not -path '*/bin/*' 2>/dev/null | grep -q .
+  grep_status=$?
+  if [ "$grep_status" -eq 0 ]; then dotnet_project=1
+  elif [ "$grep_status" -ne 1 ]; then
+    echo "Could not inspect project files with grep (exit $grep_status) — this is a host/resource problem, so project type cannot be determined." >&2
+    exit 2
+  fi
+fi
+if [ "$dotnet_project" -eq 1 ]; then
   command -v dotnet >/dev/null 2>&1 && build_cmd="dotnet build --nologo --verbosity quiet"
 elif [ -f "$ROOT/angular.json" ]; then
   command -v npx >/dev/null 2>&1 && build_cmd="npx --no-install tsc --noEmit"

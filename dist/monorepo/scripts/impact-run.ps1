@@ -55,8 +55,13 @@ $agentCmd = $(if ($resolved -match '[\\/]') { '& "' + $resolved + '"' } else { $
 
 # Infer a build command for this repo (used for tasks with "build": true).
 $buildCmd = $null
-$hasDotnet = Get-ChildItem -Path . -Recurse -File -Include *.sln, *.csproj -ErrorAction SilentlyContinue |
-    Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' } | Select-Object -First 1
+try {
+    $hasDotnet = Get-ChildItem -Path . -Recurse -File -Include *.sln, *.csproj -ErrorAction Stop |
+        Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' } | Select-Object -First 1
+} catch {
+    Write-Error 'Could not inspect project files; this is a host/resource problem, so project type cannot be determined.'
+    exit 2
+}
 if ($hasDotnet) {
     if (Get-Command dotnet -ErrorAction SilentlyContinue) { $buildCmd = 'dotnet build --nologo --verbosity quiet' }
 } elseif (Test-Path 'angular.json') {

@@ -58,10 +58,13 @@ $claudePath = Join-Path $root 'CLAUDE.md'
 $carrierPath = Join-Path $root '.github/instructions/framework-rules.instructions.md'
 $importLine = '@.github/instructions/framework-rules.instructions.md'
 $claudeContent = $null
+$claudeReadFailed = $false
 if (Test-Path -LiteralPath $claudePath) {
-    try { $claudeContent = Get-Content -Raw -LiteralPath $claudePath -ErrorAction Stop } catch { }
+    try { $claudeContent = Get-Content -Raw -LiteralPath $claudePath -ErrorAction Stop } catch { $claudeReadFailed = $true }
 }
-if ((Test-Path -LiteralPath $carrierPath) -and $claudeContent -and $claudeContent.Contains($importLine)) {
+if ((Test-Path -LiteralPath $carrierPath) -and $claudeReadFailed) {
+    Row CANT-VERIFY 'Framework rules delivery' 'PowerShell could not inspect CLAUDE.md; this is a host/resource problem, not evidence that the framework rules import is absent.'
+} elseif ((Test-Path -LiteralPath $carrierPath) -and $claudeContent -and $claudeContent.Contains($importLine)) {
     Row OK 'Framework rules delivery' 'CLAUDE.md imports the current framework rules carrier.'
 } elseif (Test-Path -LiteralPath $carrierPath) {
     Row MISSING 'Framework rules delivery' ('the carrier is installed but CLAUDE.md does not import it. Fix: add {0} where the Verification Rules, Leanness, SOLID, and Agentic Workflow sections belong.' -f $importLine)
@@ -72,6 +75,8 @@ if ((Test-Path -LiteralPath $carrierPath) -and $claudeContent -and $claudeConten
 $frameworkHeadings = @('Verification Rules', 'Leanness', 'SOLID', 'Agentic Workflow')
 if (-not (Test-Path -LiteralPath $claudePath -PathType Leaf)) {
     Row MISSING 'Protected-file sync' 'CLAUDE.md is absent; protected-file migration state cannot be inspected.'
+} elseif ($claudeReadFailed) {
+    Row CANT-VERIFY 'Protected-file sync' 'PowerShell could not inspect CLAUDE.md; this is a host/resource problem, so protected-file migration state cannot be verified.'
 } elseif (-not ((Test-Path -LiteralPath $carrierPath -PathType Leaf) -and $claudeContent -and $claudeContent.Contains($importLine))) {
     # $claudeContent is null for an EMPTY or unreadable CLAUDE.md (Get-Content -Raw returns null, not '').
     # Without the null guard this row threw and vanished from the report entirely -- an inert
@@ -90,11 +95,14 @@ if (-not (Test-Path -LiteralPath $claudePath -PathType Leaf)) {
 
 $adoption = Test-Path -LiteralPath (Join-Path $root '.claude/adoption-pending.json')
 $bootstrap = $false
+$bootstrapReadFailed = $false
 if (Test-Path -LiteralPath $claudePath) {
-    $bootstrap = [bool](Select-String -Quiet -SimpleMatch 'BOOTSTRAP_PENDING' -LiteralPath $claudePath)
+    try { $bootstrap = [bool](Select-String -Quiet -SimpleMatch 'BOOTSTRAP_PENDING' -LiteralPath $claudePath -ErrorAction Stop) }
+    catch { $bootstrapReadFailed = $true }
 }
 $pending = $adoption -or $bootstrap
 if ($adoption) { Row PENDING 'Bootstrap/adoption state' 'adoption pending. A developer must run /adopt.' }
+elseif ($bootstrapReadFailed) { Row CANT-VERIFY 'Bootstrap/adoption state' 'PowerShell could not inspect CLAUDE.md; this is a host/resource problem, not evidence that repository setup is complete.' }
 elseif ($bootstrap) { Row PENDING 'Bootstrap/adoption state' 'bootstrap pending. A developer must run /bootstrap.' }
 else { Row OK 'Bootstrap/adoption state' 'repository setup is complete.' }
 

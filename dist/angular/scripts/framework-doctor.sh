@@ -115,10 +115,14 @@ row OK 'Install state' "template=$template; version=$version; applied=$applied"
 claude="$root/CLAUDE.md"
 carrier="$root/.github/instructions/framework-rules.instructions.md"
 import_line='@.github/instructions/framework-rules.instructions.md'
-if [ -f "$carrier" ] && grep -qF "$import_line" "$claude" 2>/dev/null; then
+import_status=1
+if [ -f "$carrier" ]; then grep -qF "$import_line" "$claude" 2>/dev/null; import_status=$?; fi
+if [ -f "$carrier" ] && [ "$import_status" -eq 0 ]; then
   row OK 'Framework rules delivery' 'CLAUDE.md imports the current framework rules carrier.'
-elif [ -f "$carrier" ]; then
+elif [ -f "$carrier" ] && [ "$import_status" -eq 1 ]; then
   row MISSING 'Framework rules delivery' "the carrier is installed but CLAUDE.md does not import it. Fix: add $import_line where the Verification Rules, Leanness, SOLID, and Agentic Workflow sections belong."
+elif [ -f "$carrier" ]; then
+  row CANT-VERIFY 'Framework rules delivery' 'grep could not inspect CLAUDE.md; this is a host/resource problem, not evidence that the framework rules import is absent.'
 else
   row MISSING 'Framework rules delivery' 'the framework rules carrier is absent. Fix: re-run the framework installer.'
 fi
@@ -129,21 +133,30 @@ SOLID
 Agentic Workflow'
 if [ ! -f "$claude" ]; then
   row MISSING 'Protected-file sync' 'CLAUDE.md is absent; protected-file migration state cannot be inspected.'
-elif [ ! -f "$carrier" ] || ! grep -qF "$import_line" "$claude" 2>/dev/null; then
+elif [ ! -f "$carrier" ] || [ "$import_status" -eq 1 ]; then
   row OK 'Protected-file sync' 'deferred to Framework rules delivery.'
+elif [ "$import_status" -ne 0 ]; then
+  row CANT-VERIFY 'Protected-file sync' 'grep could not inspect CLAUDE.md; this is a host/resource problem, so protected-file migration state cannot be verified.'
 else
   heading_count=0
   inline_headings=''
+  heading_probe_failed=0
   while IFS= read -r heading; do
     [ -z "$heading" ] && continue
     heading_count=$((heading_count + 1))
-    if grep -q "^##[[:space:]][[:space:]]*$heading[[:space:]]*$" "$claude" 2>/dev/null; then
+    grep -q "^##[[:space:]][[:space:]]*$heading[[:space:]]*$" "$claude" 2>/dev/null
+    heading_status=$?
+    if [ "$heading_status" -eq 0 ]; then
       if [ -n "$inline_headings" ]; then inline_headings="$inline_headings, $heading"; else inline_headings=$heading; fi
+    elif [ "$heading_status" -ne 1 ]; then
+      heading_probe_failed=1
     fi
   done <<EOF
 $framework_headings
 EOF
-  if [ "$heading_count" -ne 4 ]; then
+  if [ "$heading_probe_failed" -eq 1 ]; then
+    row CANT-VERIFY 'Protected-file sync' 'grep could not inspect CLAUDE.md headings; this is a host/resource problem, so protected-file migration state cannot be verified.'
+  elif [ "$heading_count" -ne 4 ]; then
     row MISSING 'Protected-file sync' 'framework heading inspection is incomplete; protected-file migration state cannot be verified.'
   elif [ -z "$inline_headings" ]; then
     row OK 'Protected-file sync' 'migrated - the carrier is authoritative.'
@@ -155,9 +168,16 @@ fi
 pending=0
 if [ -f "$root/.claude/adoption-pending.json" ]; then
   row PENDING 'Bootstrap/adoption state' 'adoption pending. A developer must run /adopt.'; pending=1
-elif grep -q 'BOOTSTRAP_PENDING' "$root/CLAUDE.md" 2>/dev/null; then
-  row PENDING 'Bootstrap/adoption state' 'bootstrap pending. A developer must run /bootstrap.'; pending=1
-else row OK 'Bootstrap/adoption state' 'repository setup is complete.'
+else
+  grep -q 'BOOTSTRAP_PENDING' "$root/CLAUDE.md" 2>/dev/null
+  pending_status=$?
+  if [ "$pending_status" -eq 0 ]; then
+    row PENDING 'Bootstrap/adoption state' 'bootstrap pending. A developer must run /bootstrap.'; pending=1
+  elif [ "$pending_status" -eq 1 ]; then
+    row OK 'Bootstrap/adoption state' 'repository setup is complete.'
+  else
+    row CANT-VERIFY 'Bootstrap/adoption state' 'grep could not inspect CLAUDE.md; this is a host/resource problem, not evidence that repository setup is complete.'
+  fi
 fi
 
 settings="$root/.claude/settings.json"
