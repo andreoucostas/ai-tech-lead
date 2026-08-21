@@ -122,6 +122,16 @@ breaches=""
 "
 [ "$ratio_permille" -le 1500 ]||breaches="${breaches}monorepo CLAUDE.md is ${ratio_permille} permille of the larger single-stack, ceiling 1500.
 "
+# B-158: state remaining headroom on every run, not only the overshoot on a failing one. The
+# ceilings are hard failures (B-110), which is right, but their only signal was a release stopping --
+# discovery-by-refusal. Must match the .ps1 twin's format exactly [#3].
+for pair in "dotnet:$dotnet_claude_total:40000" "angular:$angular_claude_total:40000" "monorepo:$monorepo_claude_total:48000"; do
+  d=${pair%%:*}; rest=${pair#*:}; used=${rest%%:*}; limit=${rest#*:}
+  left=$((limit-used))
+  pct=$(awk -v l="$left" -v m="$limit" 'BEGIN{printf "%.2f", 100*l/m}')
+  printf 'HEADROOM %-9s static.claude %s / %s chars, %s left (%s%%)\n' "$d" "$used" "$limit" "$left" "$pct"
+done
+
 if [ -n "$breaches" ];then
   prefix="FAIL:"
   [ "$allow_ceiling_breach" -eq 0 ]||prefix="WARN (CEILING WAIVED):"

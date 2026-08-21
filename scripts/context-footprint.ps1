@@ -340,6 +340,23 @@ try {
     $r = $derived['monorepo-claude-ratio-permille']
     if ($r -gt 1500) { $breaches += "monorepo CLAUDE.md is ${r} permille of the larger single-stack, ceiling 1500." }
 
+    # B-158: state the remaining headroom on every run, not only the overshoot on a failing one.
+    # The ceilings are hard failures (B-110), which is right, but the only signal they ever gave was
+    # a release stopping -- discovery-by-refusal. Measured 2026-08-21: dotnet had 499 chars of
+    # headroom (1.2%) and monorepo 83 (0.17%), while the mean shipped skill frontmatter is 689 chars.
+    # Anyone adding a paragraph to CLAUDE.md, a rule to the carrier, or a skill was already
+    # near-blocked and had no way to know until the gate fired.
+    foreach ($dist in @('dotnet', 'angular', 'monorepo')) {
+        $limit = if ($dist -eq 'monorepo') { 48000 } else { 40000 }
+        $used = $derived[$dist]['static.claude.chars']
+        $left = $limit - $used
+        # F2, not Round(): Round drops a trailing zero (4.4) where the twin's awk prints 4.40, and
+        # the twins must render identically [#3]. Same class as the ordinal-sort divergence B-157
+        # hit -- identical values, different bytes, only visible by running both.
+        $pct = (100.0 * $left / $limit).ToString('F2', [Globalization.CultureInfo]::InvariantCulture)
+        Write-Output ("HEADROOM {0,-9} static.claude {1} / {2} chars, {3} left ({4}%)" -f $dist, $used, $limit, $left, $pct)
+    }
+
     # @(...) guard: under Windows PowerShell 5.1 a bare .Count on a single-element pipeline result
     # returns $null (the v0.41.0 RCA).
     if (@($breaches).Count -gt 0) {
