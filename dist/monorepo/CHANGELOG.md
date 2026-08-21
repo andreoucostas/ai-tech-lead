@@ -5,6 +5,26 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.68.0 — Unreleased
+
+**New, and off unless you ask for it: a pre-commit convenience net.** Install it with
+`-GitHooks` (PowerShell) or `--git-hooks` (bash) when you run the installer, or run
+`scripts/setup-git-hooks.ps1` / `.sh` later. Nothing is wired up unless you choose it.
+
+What it does: before a commit, it sends **only the lines you are adding** through the same guard the
+agent already uses, and stops the commit if one of them contains something that should not be
+committed — a token, a key, a hardcoded credential. Lines already in the file are not examined, so
+editing a file that has a pre-existing problem will not block you for someone else's code.
+
+**It is a convenience, not a guarantee.** `git commit --no-verify` skips it, and any client or
+workflow that does not run local hooks never sees it. Treat it as a helpful catch on the way past,
+not as a control you can rely on — if you need enforcement, that belongs in CI where it cannot be
+bypassed.
+
+**It will not touch an existing hook setup.** If you already use `core.hooksPath`, have your own
+`.git/hooks/pre-commit`, or use husky, setup stops and tells you what it found rather than
+overwriting it. Your existing checks are yours.
+
 ## 0.67.0 — 2026-08-21
 
 **Three more checks stopped reporting success for work they never did.** `warehouse-map-check`,

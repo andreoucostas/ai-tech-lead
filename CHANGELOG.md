@@ -11,6 +11,41 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.68.0 — Unreleased
+
+**B-18: an opt-in pre-commit convenience net, labelled as exactly that.** `setup-git-hooks.{ps1,sh}`
+ships, wired to `-GitHooks` / `--git-hooks` on both installers. **Opt-in only** — the entry recorded
+that silent default wiring was explicitly rejected, and it stays rejected.
+
+The hook sends **only staged added lines** through the shipped guard, reusing B-100's property that
+the guard is *invoked* rather than its patterns copied, so the scan cannot drift from what the guard
+actually enforces.
+
+**Setup refuses rather than clobbers.** An existing `core.hooksPath`, an existing
+`.git/hooks/pre-commit`, or a `.husky/` directory each stop it with a message naming what was found
+and confirming nothing was written. A framework that silently disables a team's existing checks has
+done real harm, and this is the same failure shape as B-97, where a correct protective change severed
+delivery because nobody traced its consequence.
+
+**It is documented as a bypassable convenience net, not enforcement, in those words** — in
+`docs/enforcement-surfaces.md`, the file B-100 corrected for precisely this reason, and the honesty
+B-48 exists to keep. `git commit --no-verify` skips it; clients that do not run local hooks never see
+it. One of the red-test arms *demonstrates the bypass*, so the documentation matches observed
+behaviour rather than intent.
+
+**The arm that decides whether a team keeps it or disables it on first contact** is the diff scoping,
+and it was verified by construction rather than by reading the code: a **clean** addition to a file
+that already contains a secret **passes**, while a new bad line in that same file still blocks. A
+scan that flagged inherited content would block a developer for someone else's code, and would be
+switched off permanently the first time it happened.
+
+Verified on the bash legs by the reviewer — the implementer has no working bash, and a git hook is an
+extensionless POSIX script, so it declined to claim arms it could not run rather than fabricating
+them.
+
+**Documentation deliberately did not go in `CLAUDE.md`:** monorepo static context has 83 characters
+of headroom (see v0.67.0's `HEADROOM` reporting), and the figures are unchanged after this change.
+
 ## 0.67.0 — 2026-08-21
 
 **B-156 is complete: the extractor sites no longer fail open when `grep` cannot run.** The cheap half
