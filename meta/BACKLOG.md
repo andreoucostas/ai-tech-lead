@@ -2006,6 +2006,46 @@ not.
 > 25s sub-ceiling in the v0.61.0 run, warning but not failing. Against a 14s total for the whole
 > validator here, that sub-ceiling accounting needs re-reading — the two numbers cannot both be right.
 
+> **PARALLELISING `Guard.Tests.ps1` WAS TRIED, MEASURED, AND REVERTED, 2026-08-21. Do not retry it
+> without reading this.** The measurement above named the file; the obvious fix made things worse.
+>
+> Running its 40 cases as throttled jobs is a genuine **1.73x standalone** win (137s -> 79s, bash
+> present, same host, 82 passed / 0 failed both ways). Inside the release it is a **net loss**:
+>
+> | unit | serial | parallel-4 |
+> |---|---:|---:|
+> | `Guard.Tests.ps1` | 554.6s | **371.6s** |
+> | `FrameworkDoctor.Tests.ps1` | 504.3s | **662.9s** |
+> | `HazardCheck.Tests.ps1` | 200.4s | 360.1s |
+> | `RoutePrompt.Tests.ps1` | 112.7s | 215.5s |
+> | **dist hook suite (makespan)** | **560.8s** | **667.6s** |
+>
+> **Why: inner width ADDS to the lane budget instead of borrowing from it.** The runner grants each
+> test file one of its `HOOKTESTS_THROTTLE` lanes. Re-reading that same variable as this file's own
+> width means 3 dists x 4 file-lanes x 4 inner lanes, so the target file speeds up by starving every
+> other file in its suite. `FrameworkDoctor` simply inherited the makespan, 31% slower than the file
+> it replaced. The release stage went 579.2s -> 684.7s and the meta-suite breached its 650s ceiling.
+>
+> **Serialising the nested case does not rescue it.** With inner width forced to 1, the job machinery
+> is pure overhead: 167s nested against 142s for the original inline loop, a ~18% tax on scheduling
+> that buys nothing. Two code paths in the framework's main behavioural gate to win 58s for a
+> developer running one file by hand is not proportionate (Maintenance rule 6), so the change was
+> reverted whole and the file is byte-identical to its pre-change state.
+>
+> **What this establishes, and it is worth more than the 58s:** this suite is **already saturating
+> its lanes**. Adding concurrency anywhere inside it redistributes time rather than reducing it.
+> That is a different diagnosis from "bound by process creation" — the spawns are expensive *and*
+> the machine is already full — and it means the remaining wins are in **doing fewer spawns**, not in
+> arranging them better. `Guard.Tests` does 160 (40 cases x 2 surfaces x 2 twins); the honest question
+> is whether the case table needs 40 rows against both twins, not how to run them faster.
+>
+> **The methodological point, which is this entry's own trap for the third time:** a standalone
+> measurement did not predict behaviour under contention, exactly as the serial-vs-parallel warning
+> above says. It was reviewed, red-tested (mutating `exit 2` -> `exit 0` gave 54 passed / 28 failed),
+> and would have shipped on the strength of a real 1.73x that was measured in the wrong context.
+> **Only the release run caught it.** Any future performance change here must be measured inside a
+> real `dist-gates`, not standalone.
+
 > **FIRST PER-FILE MEASUREMENT OF THE DIST SUITES, 2026-08-21 (v0.64.0 release run).** The
 > instrumentation above shipped and immediately answered the question this entry has carried since
 > 2026-08-13. These are **parallel makespan** numbers taken inside a real release with the throttle
