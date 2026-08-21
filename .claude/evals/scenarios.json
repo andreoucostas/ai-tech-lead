@@ -27,6 +27,7 @@
     },
     {
       "id": "skill-add-tests",
+      "measures": "COMPLIANCE, not routing: the prompt names the skill (\"Use the add-tests skill\"), so a pass shows the skill was followed correctly, never that it would have been selected unprompted. Do not cite this scenario as routing evidence.",
       "budgetUsd": 1.25,
       "prompt": "Use the add-tests skill to extend the existing tests/Test-Calculator.ps1 regression suite with focused lower-bound and upper-bound cases for Calculator.IsWithinInclusiveRange, then run that script and report the observed result. I confirm this existing PowerShell suite and file placement; no new test framework or project is needed.",
       "assertion": "skillArtifactAndVerification"
@@ -51,6 +52,7 @@
     },
     {
       "id": "angular-form-control",
+      "measures": "SATURATED: it passed with no forms guidance shipped, so a pass does not attribute to the framework. Treat a PASS here as uninformative until the scenario is re-scoped.",
       "stack": "angular",
       "budgetUsd": 1.00,
       "prompt": "Add a reusable text input component under `src/app/shared/` that our reactive forms can bind to directly with `formControlName`, like `<app-text-field formControlName=\"email\" label=\"Email\" />`. It should render its own label and show its own validation error when the field is invalid and touched. Follow this repository's conventions. One component is enough; no tests needed. I approve this change in advance: do not stop for a plan or ask for confirmation -- implement it now in this session, then report what you built.",

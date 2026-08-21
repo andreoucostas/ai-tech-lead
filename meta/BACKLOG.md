@@ -1053,8 +1053,13 @@ gated and this one is not), B-32/WSD-017 (the context-footprint gate this must p
 > 2. `docs-tier-nopointer` — resolve the interpretation from the typed signals; its latest rows are
 >    still INCONCLUSIVE/FAIL rather than a settled reachability result.
 > 3. A **bare `route-fix` arm** has still never been run, so its saturation is still unassessed.
-> 4. `skill-add-tests` — the disposition (compliance evidence, not routing evidence) exists in this
->    entry's audit text but not at the scenario definition, where a reader would meet it.
+> 4. `skill-add-tests` — **DONE 2026-08-21.** Its disposition now sits on the scenario itself as a
+>    `measures` field: COMPLIANCE, not routing, because the prompt names the skill outright ("Use the
+>    add-tests skill"). `angular-form-control` carries its SATURATED verdict the same way — it passed
+>    with no forms guidance shipped, so a PASS there attributes to nothing. `archived-redirect` and
+>    `docs-tier-nopointer` are deliberately **not** annotated: their interpretation is still open
+>    (follow-ups 1 and 2), and recording a verdict for an unsettled scenario would be this entry's own
+>    defect inverted — an instrument asserting a result it cannot support.
 >
 > Then record a stable reachability + saturation verdict **beside each scenario**, which is the part
 > of the *Do* that makes the sweep durable rather than a one-time document.
