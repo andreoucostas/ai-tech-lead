@@ -11,6 +11,36 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.69.0 — Unreleased
+
+**B-130: the shipped hook suite passes under Windows PowerShell 5.1 — 41 passed / 41 failed becomes
+82 / 0.** A consumer without pwsh 7 can now run `tests/hooks/` and get true results instead of 41
+phantom failures.
+
+**The recorded diagnosis was wrong, and correcting it was most of the work.** The entry attributed
+the failures to 5.1's `ConvertTo-Json` escaping an apostrophe as `'`. That is a real divergence
+but a *separate* one, on stdout. The 41 failures came from 5.1 rendering the child's stderr as an
+**ErrorRecord** before writing it to the redirect file — adding the executable name *and a stack
+trace naming the parent harness's own call site*. Which is exactly why the earlier attempt, which
+stripped the `powershell.exe : ` prefix, measured **41/41 again**: it removed the prefix and left the
+trailing `At …` block.
+
+`Invoke-RawProcess` now reads the child's streams directly, so neither host's native-command adapter
+can decorate them. Chosen over pattern-stripping deliberately — stripping is a denylist, and the next
+rendering variant defeats it, which is how the first attempt failed.
+
+**A regression that only running it could catch.** Reading the streams raw also stops *hiding* that a
+PowerShell child terminates lines with CRLF while a bash child uses LF (measured on one guard
+message: stderr ending `13,10` against `10`). The twins are compared byte-for-byte, so the first cut
+of this fix took **pwsh 7 from 82/0 to 54/28** — repairing one host by breaking the healthy one. The
+harness now normalises the line ending and nothing else; content differences survive intact.
+
+**The arm that mattered, and why the number was suspicious.** With `exit 2` mutated to `exit 0` the
+suite reports **54/28 on both hosts** — the comparison still detects real differences. That check was
+not ceremony: **54/28 is also what a broken comparison produces**, and a suite that jumps from
+failing to passing has the same signature as one that quietly stopped comparing. Full shipped suite:
+**0 failures across 19 files**.
+
 ## 0.68.0 — 2026-08-21
 
 **B-18: an opt-in pre-commit convenience net, labelled as exactly that.** `setup-git-hooks.{ps1,sh}`

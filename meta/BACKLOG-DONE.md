@@ -1087,6 +1087,297 @@ This is the archive of completed framework backlog entries. Entries are appended
   `Stack toolchain` regex-vs-glob branch stays unexercised; both are stated in the test rather than
   implied as coverage.
 
+### B-130 · Diagnose or retire the historical Windows PowerShell 5.1 parity failures
+
+> **DONE 2026-08-21 — both halves. (b) closed on evidence 2026-08-20; (a) fixed and shipped in
+> v0.69.0. The diagnosis in this entry was wrong and is corrected below.**
+>
+> **What actually caused the 41 failures.** Not `ConvertTo-Json`'s `\u0027`. That is a real but
+> *separate* stdout divergence. The Claude-surface failures came from Windows PowerShell 5.1
+> rendering the child's stderr as an **ErrorRecord** before writing it to the redirect file — adding
+> the executable name *and a stack trace naming the parent harness's own call site*. That is why the
+> earlier attempt, which stripped only the `powershell.exe : ` prefix, measured **41/41 again**: it
+> removed the prefix and left the trailing `At …` / `+ …` block.
+>
+> **The fix.** `Invoke-RawProcess` in `_HookHarness.ps1` reads the child's streams directly via
+> `Start-Process`, so neither host's native-command adapter can decorate them. Chosen over
+> pattern-stripping deliberately: stripping is a denylist, and the next rendering variant defeats it —
+> which is precisely how the first attempt failed.
+>
+> **A regression the implementer's version introduced, caught by running it.** Reading the streams raw
+> also stops *hiding* that a PowerShell child terminates lines with CRLF while a bash child uses LF
+> (measured on one guard message: stderr ending `13,10` against `10`). Since the twins are compared
+> byte-for-byte, that took **pwsh 7 from 82/0 to 54/28**. The harness now normalises the line ending
+> and nothing else.
+>
+> **Evidence, all four arms on both hosts:** before — 41/41 under 5.1, 82/0 under pwsh 7. After —
+> **82/0 under BOTH**. With `exit 2` mutated to `exit 0` — **54/28 under BOTH**, so the comparison
+> still detects real differences rather than having been quietly disabled. That arm mattered: 54/28 is
+> also what a *broken comparison* would produce, and a suite that jumps from failing to passing has
+> the same signature as one that stopped comparing. Full shipped suite: **0 failures across 19 files**.
+>
+> **Consequence worth stating:** a consumer without pwsh 7 can now run `tests/hooks/` and get true
+> results instead of 41 phantom failures. The cross-host arm this entry's first attempt added — which
+> was reverted because 5.1 still failed — is now viable and should be considered separately.
+
+**Filed against:** v0.51.4 (2026-08-08)
+**Effort:** S · **Priority:** P3 · filed 2026-08-08 · **Invariants:** #3
+
+> **MEASURED 2026-08-20 BY THE REVIEWER, and it changes both halves of this entry. An attempted fix
+> was REVERTED; read this before trying again.**
+>
+> **(b) NO LONGER REPRODUCES — this half is closed on evidence.** `ScriptTwinParity.Tests.ps1` is
+> **9 passed / 0 failed under BOTH hosts** on the maintainer box, including the
+> `docs-sync-check branches and advisory prose agree` case this entry was filed for. The entry also
+> asks that the assertion be made to print the actual exit codes "before diagnosing further" — that
+> is **already done**: `AssertExit` at `:20` prints both exit codes and both twins' stdout and stderr.
+> The entry is stale on both points. An implementer working from it saw a failure only because its
+> sandbox cannot start bash at all (`PowerShell exit 0, bash-wrapper exit 256`), which is a property
+> of that sandbox, not of the twins.
+>
+> **(a) NOT FIXED, and the single-cause hypothesis is wrong.** The stderr-decoration strip was
+> implemented and measured: **41 passed / 41 failed under 5.1**, identical to the pre-change ratio.
+> No improvement. The `powershell.exe : ` prefix is still present in the compared text. But the
+> failures also show a **second, unrelated divergence this entry never recorded, and it is not stderr
+> at all** — Windows PowerShell 5.1's `ConvertTo-Json` escapes an apostrophe as `\u0027` while the
+> bash twin emits `'` literally:
+>
+> ```
+> guard.ps1='{"permissionDecisionReason":"... it adds \u0027#pragma warning disable\u0027 — ..."}'
+> guard.sh ='{"permissionDecisionReason":"... it adds '#pragma warning disable' — ..."}'
+> ```
+>
+> That is a **stdout** difference in shipped hook output, host-dependent (pwsh 7 does not escape it),
+> and semantically harmless — `\u0027` is valid JSON decoding to `'` — but the suite compares strings.
+> So "normalise the stderr decoration" cannot fix this suite on its own, and any next attempt must
+> handle both channels or normalise the JSON before comparison.
+>
+> **Why the attempt was reverted rather than kept:** it also added a cross-host self-arm that runs the
+> suite under 5.1 and fails when 5.1 fails. Since 5.1 still fails, shipping it would have taken CI's
+> windows leg red on a suite that composes into all three dists. The arm is well-designed and worth
+> keeping **once 5.1 actually passes** — not before.
+
+**Why:** discovered incidentally while resuming B-54: `src/core/tests/hooks/ScriptTwinParity.Tests.ps1`'s
+`docs-sync-check branches and advisory prose agree` case fails with "docs exit mismatch" when run
+under Windows PowerShell 5.1 (`powershell.exe`), even on unmodified `master` at `9500f5f` — pwsh 7
+passes cleanly. Not investigated beyond confirming it is pre-existing and unrelated to B-54 (stashed
+all B-54 changes and reproduced the same failure on baseline). The `Assert` call that fails
+(`Assert ($p.Exit-eq$s.Exit) "docs exit mismatch"`) doesn't interpolate the actual exit codes, so the
+next person will need to add that before diagnosing further.
+
+> **SECOND INSTANCE, 2026-08-18 — and this one reddens the shipped hook suite on all three dists.**
+> `FrameworkDoctor.Tests.ps1:141` (`PowerShell twin runs under Windows PowerShell 5.1`) fails on this
+> box: it builds a fixture repo, runs `scripts/framework-doctor.ps1` under `powershell.exe`, and gets
+> `5.1 exit=1` where it asserts 0. Consequence: `dist/{dotnet,angular,monorepo}/tests/hooks/Invoke-HookTests.ps1`
+> each report **1 failure across 18 files**, and that suite is a `release.ps1` gate.
+>
+> **Established by execution, so nobody re-hunts it:** identical at `HEAD` and at the **`v0.58.0`
+> tag** (29 passed / 1 failed / 1 skipped in all three trees), so it predates the 2026-08-18 work
+> entirely and **the last release shipped with it**. Not caused by B-147, which was verified against
+> the same baseline. Also: running the doctor *directly* from a dist root exits **0** under both
+> hosts — so the divergence is **fixture-dependent**, not a plain 5.1 incompatibility in the doctor,
+> and that is the thread to pull. Start by making the assertion print the doctor's own failing rows
+> rather than just its exit code; today it reports `5.1 exit=1: <whole stdout>`, which buries the row
+> that actually failed.
+>
+> **The uncomfortable part, which belongs to this entry rather than to B-147:** a shipped tag has a
+> red hook suite on the maintainer box, and the release that produced it did not stop. Whatever the
+> cause, the gate either did not run this leg during that release or was waived; either way the
+> record should say which, because "the gates were green" is a claim this repo makes routinely.
+>
+> **DIAGNOSED AND FIXED, same day — and it was a real shipped defect, not an environment quirk.**
+> The doctor's *Mirror and version integrity* row ran `template-checks` through a **bare interpreter
+> name**: `$hostExe = if ($PSVersionTable.PSEdition -eq 'Core') { 'pwsh' } else { 'powershell' }`.
+> Under Windows PowerShell 5.1 that resolves `powershell` against the PATH the agent host supplies —
+> and this box's child processes inherit
+> `C:\Program Files\PowerShell\7;C:\Program Files\Git\bin;${PATH}`, with the literal unexpanded
+> `${PATH}` leaving `System32` off it. Proven by execution inside a 5.1 child:
+> `Get-Command powershell -> NOT RESOLVED`. The interpreter never started, `$LASTEXITCODE` was
+> non-zero, and the doctor reported **"CLAUDE.md and AGENTS.md or version stamps have drifted. Fix:
+> run /generate-copilot"** — a specific, false, actionable diagnosis handed to a consumer whose
+> documentation was fine. Under pwsh 7 the same row read OK, which is why it looked like a 5.1
+> parity curiosity rather than the reporting defect it was.
+>
+> **This is B-85's thesis, shipped:** *a failure caused by a broken PATH is not the same fact as the
+> thing being diagnosed, and reporting them identically is what lets the gap persist.* Fixed in both
+> twins. The `.ps1` now self-hosts — it runs `template-checks` with **this process's own executable**
+> (`(Get-Process -Id $PID).Path`, the same self-hosting contract `Get-PsExe` uses), falling back to
+> the bare name only if that cannot be read, and emits a **distinct** row when the host cannot be
+> started at all: *"could not start a PowerShell host to run template-checks, so drift is UNKNOWN
+> rather than found. This is a host/PATH problem, not a documentation problem."* The `.sh` twin gained
+> the same separation (exit 126/127 = could not execute) plus the *"template-checks is missing"*
+> message the `.ps1` already had and it did not — a twin divergence in messaging, found while fixing
+> this.
+>
+> **Measured, same box:** `FrameworkDoctor.Tests` **29 passed / 1 failed** at `HEAD` and at the
+> `v0.58.0` tag → **30 passed / 0 failed** on all three dists after the fix; the full dist hook
+> suites went from **1 failure across 18 files** each to **0 failures**. That before/after on an
+> unchanged host is the red observation this fix rests on.
+>
+> **Still open on this entry:** the original `ScriptTwinParity.Tests.ps1` docs-sync-check 5.1
+> divergence, which is a different assertion and was not touched. And the unanswered process
+> question above — how v0.58.0 shipped with this red — remains worth an answer.
+
+> **THIRD INSTANCE, 2026-08-18 (found while verifying B-59) — the largest of the three, and it is
+> a TEST defect, not a product one.** `Guard.Tests.ps1` fails en masse under Windows PowerShell 5.1
+> while passing cleanly under pwsh 7. Measured at `HEAD` **before** B-59: **36 passed / 30 failed**
+> under 5.1 versus **66 passed / 0 failed** under pwsh 7, same tree, same box. So it is pre-existing
+> and has nothing to do with B-59.
+>
+> **Cause, visible in the failure text:** the suite compares the two twins' **stderr**, and 5.1
+> decorates error-stream output with the invoking command name — `guard.ps1='powershell.exe :
+> Blocked write to …'` where pwsh 7 emits `Blocked write to …`. Every case that asserts on stderr
+> text therefore diverges by host. The guard's *decisions* are identical: `TwinParity.Tests` (which
+> compares decisions rather than stderr) is **13/0 under 5.1**. So the product is fine and the
+> instrument is host-dependent — which is precisely the shape this entry exists to collect.
+>
+> **B-59 enlarged its footprint without causing it:** the new mixed-case and multi-line fixtures are
+> also stderr-comparing, so the counts moved from 30/66 failing to **41/82** — a slightly worse
+> ratio because there are simply more stderr assertions now. Under pwsh 7 the same suite is
+> **82 passed / 0 failed**.
+>
+> **Not a release blocker, and the record should be precise about why:** the release gate runs
+> `dist/<stack>/tests/hooks/Invoke-HookTests.ps1` under pwsh 7, where all three dists report
+> **0 failures across 18 files**. The 5.1 failure appears only when a human explicitly re-runs the
+> suite under `powershell.exe`, which is exactly what a maintainer diagnosing a consumer's Windows
+> box would do — so it is worth fixing, just not urgent.
+>
+> **Do:** normalise the captured stderr before comparison (strip a leading `<command> : ` decoration)
+> rather than weakening the assertions, and add a 5.1 arm so the divergence cannot return silently —
+> the same remedy shipped for `DocTruth` in B-141.
+
+**Do:** reproduce, capture both hosts' actual exit codes and stdout for the `docs-sync-check.ps1`/`.sh`
+twins over `DocsFixture`/`TemplateFixture`, and find the 5.1-specific divergence (likely another
+BOM-less-file default-encoding case, per invariant #4's known class — see B-54's fix in
+`template-checks.ps1` step 1 for the pattern: replace `Get-Content` with an absolute-path
+`[IO.File]::ReadAllText`). Confirm whether this already fails in CI's Windows leg or is silently
+masked there too.
+
+**Update 2026-08-16 (found while shipping B-58/B-60/B-82) — one member of this family is solved, and
+it was never an encoding bug.** `FrameworkDoctor.Tests.ps1`'s `PowerShell twin runs under Windows
+PowerShell 5.1` case fails on baseline (`58393d7`, verified in a clean worktree, so not caused by
+that cluster) with `[MISSING] Mirror and version integrity`. The cause is **this box's corrupted
+`PATH`**, not the doctor and not 5.1 semantics: `framework-doctor.ps1:203-204` spawns a bare
+`powershell` when running under Desktop edition, and `(Get-Command powershell).Source` returns
+**nothing** here because the session `PATH` is the known-broken one (third entry is the literal
+string `${PATH}`, and `C:\Windows\System32` is absent entirely — see the corrupted-PATH hazard in
+`DEVELOPING.md`). The spawn fails, `$LASTEXITCODE` is non-zero, and the doctor reports drift that
+does not exist.
+
+Proof, same command, same tree, only `PATH` changed:
+
+```
+PATH as-is            -> FrameworkDoctor.Tests: 29 passed, 1 failed, 1 skipped
+PATH + System32 etc.  -> FrameworkDoctor.Tests: 31 passed, 0 failed, 0 skipped
+```
+
+**Two consequences worth more than the fix.** First, the corrupted `PATH` does not merely produce a
+false failure — it produced a false *skip*, silently costing a case of real coverage, which is the
+`INVARIANT-GUARDING SKIPS` problem arriving through a channel that heading does not cover. Second,
+**any gate run from a shell with this `PATH` is measuring a machine that does not exist**; a release
+run from such a shell would refuse on a dist hook suite, and a dist gate cannot be waived by design.
+Prepend `C:\Windows\System32;C:\Windows;C:\Windows\System32\WindowsPowerShell\v1.0` before running
+gates, and treat any 5.1-only failure as PATH-suspect **before** diagnosing it as an encoding bug —
+this entry's own original hypothesis was encoding, and for this member it was wrong.
+
+**Update 2026-08-17 — the other member is the SAME cause, and this entry can close.** The
+`docs-sync-check branches and advisory prose agree` divergence is also the corrupted `PATH`, not
+encoding. Found immediately once the suite's exit-mismatch assertion was made to print both twins'
+output — the diagnostic gap this entry itself asked for. The interpolated stderr said it outright:
+
+```
+[FAIL] docs-sync-check exit mismatch 1/0
+PS ERR: & : The term 'powershell' is not recognized as the name of a cmdlet ...
+```
+
+`docs-sync-check.ps1` spawns a bare `powershell` for its `template-checks` delegation, exactly as
+`framework-doctor.ps1` does. With `PATH` repaired the whole suite is `9 passed, 0 failed, 0 skipped`
+under Windows PowerShell 5.1. **Both members of this family were one environment defect wearing an
+encoding costume**, and the entry's original hypothesis was wrong for both.
+
+Two things worth keeping when this closes: (1) `AssertExit` in `ScriptTwinParity.Tests.ps1` now
+interpolates both twins' stdout/stderr on any exit mismatch — that is what made this a two-minute
+diagnosis instead of another deferral; (2) the remaining real question is not "is 5.1 broken" but
+"should shipped scripts spawn a bare interpreter name at all" — see B-104's class. That is a
+separate decision and deliberately not made here.
+
+**Second, separate pre-existing 5.1-only failure found in the same B-54 validation pass:**
+`dist/<d>/tests/hooks/FrameworkDoctor.Tests.ps1`'s `PowerShell twin runs under Windows PowerShell
+5.1` case also fails on unmodified master (reproduced with all B-54 changes stashed) — the healthy
+fixture reports `[MISSING] Mirror and version integrity` under 5.1 only. Not investigated further;
+may or may not be the same root cause as the item above. Both were confirmed pre-existing and out
+of scope for B-54 by stashing all B-54 changes and reproducing on baseline `master` (`9ddc97a`).
+
+**Current diagnosis and guidance (researched 2026-08-11):** ordinary direct Windows PowerShell
+5.1.26100.8875 runs at code page 437 are green (`ScriptTwinParity.Tests`: 7/0/0;
+`FrameworkDoctor.Tests`: 30/0/1, with one unrelated missing-Python skip), but that is only the
+control. The historical defect is deterministic when the parent is launched by absolute 5.1 path
+and neither `pwsh` nor `powershell.exe` is visible to the child through `PATH`: `docs-sync-check.ps1`
+and `framework-doctor.ps1` both select a **bare** child host, reproducing `docs exit mismatch` at
+`9500f5f` and the exact `[MISSING] Mirror and version integrity` at `9ddc97a`. Their relevant subject,
+test, and harness blobs are unchanged through HEAD (apart from an unrelated changelog test), so the
+ambient green is environmental, not an intervening fix. This matches B-71 and the documented
+maintainer environment whose `PATH` omitted System32. Encoding was a hypothesis, not the cause.
+Microsoft documents distinct Desktop/Core runtimes and says claimed cross-edition compatibility
+ultimately requires tests on every supported edition. Sources:
+[about Character Encoding](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_character_encoding?view=powershell-7.5)
+and [about PowerShell Editions](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_powershell_editions?view=powershell-7.5).
+
+**Approaches considered:**
+
+1. **Apply the suspected `ReadAllText` encoding fix.** Rejected: the trigger is child-host visibility,
+   not decoded content. This would leave the command-resolution defect live.
+2. **Resolve the child host absolutely and regression-test the missing-`PATH` world — selected.** For
+   `framework-doctor.ps1`, invoke `template-checks.ps1` with the current process executable. For
+   `docs-sync-check.ps1`, preserve the deliberate PS7 preference when its resolved command has a
+   usable absolute `.Source`, otherwise fall back to the current process executable; never retain a
+   bare token after resolution. This preserves existing policy while removing ambient `PATH` from
+   the child launch.
+3. **Make every child inherit the current host.** Simpler, but could silently remove docs-sync's
+   deliberate preference for PS7 where installed. Select it only if review establishes that the
+   preference has no supported semantic purpose.
+
+**Proportional implementation plan (after review):**
+
+1. Improve the parity failure to print host/version, fixture branch, both exits, stdout, and stderr.
+   Add a docs consumer/reachability fixture that actually includes the child checks; today's
+   `DocsFixture` copies only docs-sync and cannot exercise the relevant launch.
+2. For each subject, pre-register controlled `PATH` fixtures with an exit-0 child, an exit-17 child,
+   and an unavailable bare child. Prove before the fix that the missing-host world goes red and that
+   the old logic can leave misleading exit/output; after the fix require the marker/exit to prove
+   the intended child ran, exit 17 to propagate as failure, no command-resolution stderr, and no
+   false success. Run host `{5.1, 7}` × child-host visibility `{present, absent}` once per
+   deterministic cell; 437 and 65001 are secondary one-shot controls, not repeated causal axes.
+3. Implement the narrow absolute-resolution policy in both authored PowerShell subjects, compose all
+   dists, and run twin parity plus framework-doctor suites on both hosts. Audit the same selector
+   shape in shipped and maintainer `Invoke-HookTests.ps1`; preserve B-90's permitted `pwsh`
+   preference, but ensure any selected command retains an absolute source or current-host fallback.
+   Split the item only if implementation proves the two subjects require genuinely different policy.
+
+**Proportionality:** the defect is current and constructible: supported 5.1 validation failed and the
+doctor falsely diagnosed a healthy mirror when child `PATH` differed from the parent invocation.
+Resolving two existing selectors absolutely, plus two deterministic regressions and a bounded
+same-shape audit, is smaller and more probative than repeated environmental stress or encoding edits.
+
+**Review gate — AWAITING OPUS REVIEW:** obtain a fresh independent Claude Opus review of the closure
+threshold, matrix, diagnostic oracle, and decision not to patch the subjects. A separate
+fresh-context Codex critique must first try to falsify the current baseline and this design, but does
+not satisfy that gate. If Opus is unavailable due to limits, record `WAITING — OPUS LIMIT`; no
+implementation is authorised.
+
+**Fresh-context adversarial review (Codex, 2026-08-11):** **REJECTED the retirement design.** It
+reproduced both exact historical failures by controlling child-host visibility, proved the relevant
+blobs had not changed, identified the shared bare-host selector, showed that the proposed matrix
+omitted the causal axis and duplicated code-page cells, and found that `DocsFixture` never reached
+the child. The revised design above uses the constructible trigger, child reachability/exit markers,
+absolute resolution, and the smaller host × visibility matrix. This Codex review does **not satisfy
+the required Claude Opus gate**.
+
+**Status: AWAITING OPUS REVIEW.** This revised design is not locked and authorises no
+implementation. If Opus is genuinely unavailable due to limits, record `WAITING — OPUS LIMIT`.
+
+**B-131 is DONE (2026-08-19) — marker-scoped changelog grammar; see `meta/BACKLOG-DONE.md`.**
+
 ### B-18 · WS-6: opt-in git-hook convenience net
 
 > **DONE 2026-08-21 — shipped v0.68.0.** `setup-git-hooks.{ps1,sh}` plus `-GitHooks` / `--git-hooks`

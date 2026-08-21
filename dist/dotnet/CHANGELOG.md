@@ -4,6 +4,22 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.69.0 — Unreleased
+
+**The hook test suite now passes on Windows PowerShell 5.1.** If you ran `tests/hooks/` with
+`powershell.exe` rather than `pwsh`, you would have seen roughly half the guard cases fail — 41 of
+82 — with messages showing two apparently identical strings. Those failures were not real. Windows
+PowerShell 5.1 was adding its own decoration to the captured output, including a stack trace, so the
+comparison was of PowerShell's formatting rather than of the hooks themselves.
+
+The test harness now reads the hooks' output directly, so both PowerShell editions see the same
+thing, and line endings are normalised between the PowerShell and Bash implementations, which
+legitimately differ. Nothing about the hooks themselves changed, and the suite still fails when it
+should: it was re-checked against a deliberately broken guard and reported the failures correctly on
+both editions.
+
+If you skipped the suite because it looked broken, it is worth running again.
+
 ## 0.68.0 — 2026-08-21
 
 **New, and off unless you ask for it: a pre-commit convenience net.** Install it with
