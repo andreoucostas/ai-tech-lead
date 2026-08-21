@@ -88,7 +88,48 @@ for FILES in $OVERLAYS; do
   fi
 done
 
-# 3. validate: no unresolved markers
+# 3. Generate the installed-path ownership manifest. Both installer twins are read so a policy
+# change in only one leg fails composition instead of silently producing a misleading manifest.
+ps_protected=$(sed -n '/^\$protected[[:space:]]*=/,/)/p' "$DIST/scripts/install.ps1" | grep -o "'[^']*'" | tr -d "'" | tr '\n' ' ' | sed 's/ $//')
+sh_protected=$(sed -n 's/^protected="\([^"]*\)"/\1/p' "$DIST/scripts/install.sh")
+if [ -z "$ps_protected" ] || [ -z "$sh_protected" ]; then
+  echo "ERROR: ownership manifest could not read protected policy from both installers" >&2; exit 1
+fi
+for p in $ps_protected; do case " $sh_protected " in *" $p "*) ;; *) echo "ERROR: ownership policy disagreement: consumer-owned/protected in install.ps1 but not install.sh: $p" >&2; exit 1;; esac; done
+for p in $sh_protected; do case " $ps_protected " in *" $p "*) ;; *) echo "ERROR: ownership policy disagreement: consumer-owned/protected in install.sh but not install.ps1: $p" >&2; exit 1;; esac; done
+
+ps_meta=$(sed -n 's/^\$metaFiles[[:space:]]*=[[:space:]]*@\((.*)\)/\1/p' "$DIST/scripts/install.ps1" | grep -o "'[^']*'" | tr -d "'" | tr '\n' ' ' | sed 's/ $//')
+[ -n "$ps_meta" ] || { echo "ERROR: ownership manifest could not read meta policy from install.ps1" >&2; exit 1; }
+for p in $ps_meta; do grep -Fq "$p" "$DIST/scripts/install.sh" || { echo "ERROR: ownership policy disagreement: excluded by install.ps1 but not install.sh: $p" >&2; exit 1; }; done
+
+manifest="$DIST/framework-ownership.json"
+tmp_paths=$(mktemp); trap 'rm -f "$tmp_paths"' EXIT
+# LC_ALL=C so this collates by byte, matching the ordinal comparison the .ps1 twin uses. Without it
+# the two composers order an identical path set differently and emit byte-different manifests.
+(cd "$DIST" && find . -type f | sed 's#^\./##' | LC_ALL=C sort) | while IFS= read -r rel; do
+  case " $ps_meta scripts/install.ps1 scripts/install.sh .github/workflows/template-ci.yml " in *" $rel "*) continue;; esac
+  if [ "$rel" = '.claude/settings.json' ]; then ownership='mixed'
+  else
+    case " $ps_protected docs/wiki/INDEX.md LICENSES/ai-tech-lead-MIT.txt " in
+      *" $rel "*) ownership='consumer-owned/protected';;
+      *) ownership='framework-owned/overwritten';;
+    esac
+  fi
+  printf '%s\t%s\n' "$rel" "$ownership"
+done > "$tmp_paths"
+printf '%s\t%s\n' 'framework-ownership.json' 'framework-owned/overwritten' >> "$tmp_paths"
+sort -o "$tmp_paths" "$tmp_paths"
+{
+  printf '{\n  "schema-version": 1,\n  "paths": [\n'
+  first=1
+  while IFS="$(printf '\t')" read -r rel ownership; do
+    [ "$first" -eq 1 ] || printf ',\n'; first=0
+    printf '    { "path": "%s", "ownership": "%s" }' "$rel" "$ownership"
+  done < "$tmp_paths"
+  printf '\n  ]\n}\n'
+} > "$manifest"
+
+# 4. validate: no unresolved markers
 if grep -rIlE '@stack:[A-Za-z0-9_-]+' "$DIST" 2>/dev/null; then
   echo "ERROR: unresolved @stack markers in $DIST (files listed above)" >&2; exit 1
 fi

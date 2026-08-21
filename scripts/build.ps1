@@ -197,7 +197,76 @@ foreach ($FILES in $OVERLAYS) {
     }
 }
 
-# 3. validate: no unresolved markers
+# 3. Generate the installed-path ownership manifest. The path inventory comes from the composed
+# dist; installer policy is read from both twins so changing either installer cannot silently make
+# the manifest describe behavior that the other twin does not implement.
+function Get-SingleQuotedValues {
+    param([string]$Text)
+    $values = New-Object System.Collections.Generic.List[string]
+    foreach ($m in [regex]::Matches($Text, "'([^']+)'")) { $values.Add($m.Groups[1].Value) }
+    return $values.ToArray()
+}
+
+$psInstaller = (Read-TextFile (Join-Path $DIST 'scripts/install.ps1')).Text
+$shInstaller = (Read-TextFile (Join-Path $DIST 'scripts/install.sh')).Text
+$psProtectedMatch = [regex]::Match($psInstaller, '(?ms)^\$protected\s*=\s*@\((.*?)\)')
+$psMetaMatch = [regex]::Match($psInstaller, '(?m)^\$metaFiles\s*=\s*@\(([^\r\n]+)\)')
+$shProtectedMatch = [regex]::Match($shInstaller, '(?m)^protected="([^"]+)"')
+if (-not $psProtectedMatch.Success -or -not $psMetaMatch.Success -or -not $shProtectedMatch.Success) {
+    [Console]::Error.WriteLine('ERROR: ownership manifest could not read protected/meta policy from both installers')
+    exit 1
+}
+$psProtected = @(Get-SingleQuotedValues $psProtectedMatch.Groups[1].Value)
+$psMeta = @(Get-SingleQuotedValues $psMetaMatch.Groups[1].Value)
+$shProtected = @($shProtectedMatch.Groups[1].Value -split ' ' | Where-Object { $_ })
+$policyProblems = New-Object System.Collections.Generic.List[string]
+foreach ($p in $psProtected) { if ($p -notin $shProtected) { $policyProblems.Add("consumer-owned/protected in install.ps1 but not install.sh: $p") } }
+foreach ($p in $shProtected) { if ($p -notin $psProtected) { $policyProblems.Add("consumer-owned/protected in install.sh but not install.ps1: $p") } }
+foreach ($p in $psMeta) {
+    if ($shInstaller -notmatch [regex]::Escape($p)) { $policyProblems.Add("excluded by install.ps1 but not install.sh: $p") }
+}
+if ($policyProblems.Count -gt 0) {
+    foreach ($problem in $policyProblems) { [Console]::Error.WriteLine("ERROR: ownership policy disagreement: $problem") }
+    exit 1
+}
+
+$notInstalled = @($psMeta + @('scripts/install.ps1', 'scripts/install.sh', '.github/workflows/template-ci.yml'))
+$extraProtected = @('docs/wiki/INDEX.md', 'LICENSES/ai-tech-lead-MIT.txt')
+$manifestPath = Join-Path $DIST 'framework-ownership.json'
+$paths = New-Object System.Collections.Generic.List[object]
+foreach ($rel in @((Get-RelativeFiles $DIST) | Sort-Object)) {
+    if ($rel -in $notInstalled) { continue }
+    if ($rel -eq '.claude/settings.json') { $ownership = 'mixed' }
+    elseif ($rel -in $psProtected -or $rel -in $extraProtected) { $ownership = 'consumer-owned/protected' }
+    else { $ownership = 'framework-owned/overwritten' }
+    $paths.Add([ordered]@{ path = $rel; ownership = $ownership })
+}
+$paths.Add([ordered]@{ path = 'framework-ownership.json'; ownership = 'framework-owned/overwritten' })
+# Ordinal, not culture-aware. PowerShell's default Sort-Object is case-insensitive and
+# culture-sensitive while `sort` in the .sh twin collates by locale, so the two composers emitted
+# byte-different manifests for an identical set of 163 paths (`.github/PULL_REQUEST_TEMPLATE.md` and
+# the upper-case root files landed in different places). Same content, different bytes, from a file
+# that SHIPS -- an invariant #3 break that only appears when both twins are actually run. The .sh
+# twin pins `LC_ALL=C` for the same reason.
+$byPath = @{}
+foreach ($entry in $paths) { $byPath[[string]$entry.path] = $entry }
+$orderedKeys = [string[]]@($byPath.Keys)
+[array]::Sort($orderedKeys, [System.StringComparer]::Ordinal)
+$sortedPaths = @($orderedKeys | ForEach-Object { $byPath[$_] })
+$jsonLines = New-Object System.Collections.Generic.List[string]
+$jsonLines.Add('{')
+$jsonLines.Add('  "schema-version": 1,')
+$jsonLines.Add('  "paths": [')
+for ($i = 0; $i -lt $sortedPaths.Count; $i++) {
+    $comma = if ($i -lt $sortedPaths.Count - 1) { ',' } else { '' }
+    $pathJson = $sortedPaths[$i].path.Replace('\', '\\').Replace('"', '\"')
+    $jsonLines.Add(('    {{ "path": "{0}", "ownership": "{1}" }}{2}' -f $pathJson, $sortedPaths[$i].ownership, $comma))
+}
+$jsonLines.Add('  ]')
+$jsonLines.Add('}')
+Write-TextFile -Path $manifestPath -HasBom $false -Text (($jsonLines -join "`n") + "`n")
+
+# 4. validate: no unresolved markers
 $badFiles = New-Object System.Collections.Generic.List[string]
 if (Test-Path $DIST) {
     foreach ($f in (Get-ChildItem -LiteralPath $DIST -Recurse -File -Force)) {
