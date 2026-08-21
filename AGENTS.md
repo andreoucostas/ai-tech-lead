@@ -116,6 +116,20 @@ Rules 2–4 are enforced by `release.ps1`, not by this prose.
    was proportionate to seven low-churn files when cheaper machinery (B-109's DENY-pattern gate)
    might close most of the same gap. Lives inside rule 1's critique, not a second pass.
 
+7. **A gate must distinguish "the artifact is wrong" from "I could not examine the artifact",
+   whatever the mechanism.** Reporting the second as the first hands a confident, false, actionable
+   diagnosis to whoever is least able to dismiss it. Four entries each fixed one mechanism without
+   stating the principle — B-85 (unresolvable interpreter reported as a dist defect), B-130 (a bare
+   interpreter name producing a false *"CLAUDE.md and AGENTS.md have drifted"*), B-155 (`grep -q`
+   conflating "absent" with "could not run"), B-156 (the same conflation in extractors, where the
+   swallowed path was also the passing one) — and a fifth instance then refused v0.67.0 through a
+   **file lock** on `context-footprint.ps1`'s own output, a mechanism none of them enumerated.
+   Enumerating sites has not converged, so the obligation sits on the gate author: a non-zero exit
+   must be able to say which of the two things happened. The symmetry matters too — `grep` exits 2
+   for a *missing file* as well as a failure to run, so a content fact reported as a host problem is
+   the same defect inverted. B-164 tracks whether this is mechanically enforceable or stays guidance;
+   per WSD-028 a rule is real only where tooling can refuse.
+
 `release.ps1` refuses to release without either `-ReviewEvidence` (the reviewer's re-run command
 and its observed exit code) or `-NoIndependentReview`, which is allowed but records
 `reviewer: none` in `meta/review-ledger.md` and files the post-ship review item automatically.

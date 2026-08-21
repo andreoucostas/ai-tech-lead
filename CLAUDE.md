@@ -185,7 +185,25 @@ binding. Rules 2–4 are enforced by `release.ps1`'s review ledger, not by this 
    two sentences in the plan document is enough. Do not let the proportionality check itself become
    the thing that needs a proportionality check.
 
-Evidence trail for all six: `meta/LEARNINGS.md`. Working hazards that are *not* principles (e.g.
+7. **A gate must distinguish "the artifact is wrong" from "I could not examine the artifact",
+   whatever the mechanism.** Reporting the second as the first hands a confident, false, actionable
+   diagnosis to whoever is least able to dismiss it — usually a consumer whose machine is already in
+   trouble, which is exactly when they run the doctor. This rule is written down because four
+   separate entries each fixed one mechanism and none stated the principle: **B-85** (interpreter
+   could not be resolved → reported as a dist defect), **B-130** (a bare interpreter name failed to
+   resolve → *"CLAUDE.md and AGENTS.md have drifted. Fix: run /generate-copilot"*, false and
+   specific), **B-155** (`grep -q`'s exit conflating "absent" with "could not run"), **B-156** (the
+   same conflation in extractors, where the swallowed path was also the *passing* path). A fifth
+   instance then refused v0.67.0 through a mechanism none of them enumerated — a **file lock** on
+   `context-footprint.ps1`'s own output — in a script none of them listed. Enumerating sites has not
+   converged, so the obligation sits on the gate author: if your check exits non-zero, it must be
+   able to say which of the two things happened. Note the symmetry, learned the hard way in v0.64.0:
+   `grep` exits 2 for a *missing file* as well as for a failure to run, so a content fact reported as
+   a host problem is the same defect inverted. B-164 tracks whether this can be enforced mechanically
+   or stays guidance; per WSD-028 a rule is real only where tooling can refuse, so that question is
+   open rather than settled.
+
+Evidence trail for all seven: `meta/LEARNINGS.md`. Working hazards that are *not* principles (e.g.
 never run the gate suites concurrently with an implementer round) live in `DEVELOPING.md`.
 
 ## Definition of done per artifact type
