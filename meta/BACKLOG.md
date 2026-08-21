@@ -2733,6 +2733,50 @@ narrows on its own and this entry's urgency drops without any code change. Measu
 B-162 (a likely contributor to the variance), B-158 (the standing rule against raising a budget to
 unblock a change), B-139 (the sibling drift problem in per-stage ceilings).
 
+### B-164 · Four entries have fixed the same rule in four mechanisms, and the rule itself has never been written down
+**Filed against:** v0.67.0 (2026-08-21)
+**Effort:** S (state the rule) · M (any detection) · **Priority:** P2 · found 2026-08-21 when a fifth instance refused a release · **Invariants:** #5 #7
+
+**The rule, which is implicit in four shipped fixes and stated in none of them:**
+
+> A gate must distinguish **"the artifact is wrong"** from **"I could not examine the artifact"**,
+> whatever the mechanism, and must never report the second as the first.
+
+**The four entries that each fixed one mechanism:**
+
+| entry | mechanism | what a host problem was reported as |
+|---|---|---|
+| B-85 | interpreter could not be resolved | a dist defect |
+| B-130 | a bare interpreter name failed to resolve | *"CLAUDE.md and AGENTS.md have drifted. Fix: run /generate-copilot"* — a specific, false, actionable diagnosis |
+| B-155 | `grep -q` exit conflation | content absent |
+| B-156 | extractor `\|\| true` | nothing to check, therefore pass |
+
+**The fifth instance, which is why this is filed:** on 2026-08-21 `scripts/context-footprint.ps1`
+failed a release with *"The process cannot access the file … `ps.out` … because it is being used by
+another process."* A **file lock** — held by something else while the footprint job ran concurrently
+with the three dist jobs — refused a release as a failed gate. Same rule, a mechanism none of the
+four entries enumerated, in a script none of them listed. It cost a release cycle and a retry.
+
+**Why enumerating sites is not working.** Each entry fixed the instances it could see and named the
+scripts it knew about. `context-footprint.ps1` was in no list, so it was never examined — and the
+next mechanism (a network timeout, a full disk, a locked directory) will be in no list either. Four
+entries in, the instance rate is not falling.
+
+**Do:** write the rule where gate authors meet it, and decide honestly whether it can be enforced or
+is guidance only. **WSD-028 says a maintenance rule is real only where tooling can refuse**, so state
+which this is rather than leaving it implied — that ambiguity is B-134's subject. A candidate
+mechanical check exists and should be assessed before assuming it doesn't: a gate that exits non-zero
+without emitting either a content finding or an explicit host/resource marker is, by construction,
+reporting something it cannot classify.
+
+**Not:** do not open a fifth site-enumeration sweep. That is the approach whose failure this entry
+records.
+
+**Cross-links:** B-85, B-130, B-155, B-156 (the four mechanisms), B-161 (the same shape one level up
+— a gate whose premise nobody had written down), WSD-028 (a rule is real only where tooling can
+refuse), B-59 and B-64 (the sibling class: checks that cannot fail, which today produced three
+instances in three disguises and were caught by none of the existing detection).
+
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see `meta/BACKLOG-DONE.md`.**
