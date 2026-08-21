@@ -27,6 +27,29 @@ it. Red-tested by removing `CLAUDE.md` from `install.ps1`'s `$protected` list: *
 disagreement: consumer-owned/protected in install.sh but not install.ps1: CLAUDE.md"*, exit 1 from
 `build.ps1` **and** `build.sh`, exit 0 once restored.
 
+**B-162 (meta-only): the test harness now sweeps abandoned scratch trees at start-up, because a
+killed process never runs its `finally`.** `ValidateDist.Tests.ps1` and `Invoke-MutationRedTest`
+create per-case scratch copies under the temp root and remove them on teardown — correct for a run
+that finishes and for one that fails, useless for one that is killed. Measured after a day of release
+attempts: **2,075 temp entries**, including **223 `validate-dist-*` directories** (each a full ~170-
+file dist copy, roughly **38,000 files**) and 569 loose `.tmp` files. Debris slows every later temp
+operation, `GetTempFileName()` included, so a killed run makes the next run slower — and `dist-gates`
+drifted **533.4s → 579.2s → 638.9s → 677.3s across four runs of identical work**. Whether that loop
+fully explains the drift is *not* established and the entry says so; the run that would have tested
+it was itself killed before emitting a stage timing.
+
+The sweep removes only `validate-dist-*` and `mutation-helper-*` directories older than **six hours**.
+The age threshold is load-bearing rather than decorative: the release runs three dist jobs in
+parallel and each owns a live scratch tree, so a sweep matching by pattern alone would delete a
+concurrent run's working directory and surface as a baffling dist failure. A removal that fails —
+locked, permissions — is swallowed and never reported as a test result, which is the same
+discrimination B-155 and B-156 apply to `grep`: a housekeeping problem is not a product verdict.
+Red-tested on all three arms, with the one that matters being a **fresh** directory surviving.
+
+The existing `finally` blocks are untouched; they are right for every case they can reach. This is
+meta-side only — `scripts/validate-dist.ps1` does not create scratch trees, the meta test does — so
+no shipped file changes and WSD-005 means no `.sh` twin.
+
 **A twin-parity defect was found in review and fixed [#3].** PowerShell's `Sort-Object` is
 culture-aware and case-insensitive; `sort(1)` collates by locale. The two composers therefore emitted
 **byte-different manifests for an identical 163-path set** — `.github/PULL_REQUEST_TEMPLATE.md` and

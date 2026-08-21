@@ -12,12 +12,14 @@
 # Set VALIDATE_DIST_TESTS_THROTTLE=1 to force the old sequential behaviour when diagnosing.
 param([string]$Only)
 . (Join-Path $PSScriptRoot '_HookHarness.ps1')
+. (Join-Path $PSScriptRoot '_MutationHelper.ps1')
 Reset-Tests
 $repo = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
 $validator = Join-Path $repo 'scripts\validate-dist.ps1'
 $bashValidator = Join-Path $repo 'scripts/validate-dist.sh'
 $bashExe = Get-BashPath
 $scratch = @()
+Remove-StaleTestScratchTrees
 
 function New-DistCopy {
     param([string]$Prefix = 'validate-dist-')

@@ -1,5 +1,23 @@
 ﻿# Scratch-only mutation helper for executable meta red-tests. Dot-source this file from a suite.
 
+function Remove-StaleTestScratchTrees {
+    param([int]$MinimumAgeHours = 6)
+
+    $tempRoot = [IO.Path]::GetTempPath()
+    $cutoffUtc = [DateTime]::UtcNow.AddHours(-$MinimumAgeHours)
+    foreach ($prefix in @('validate-dist-', 'mutation-helper-')) {
+        Get-ChildItem -LiteralPath $tempRoot -Directory -Filter "$prefix*" -ErrorAction SilentlyContinue |
+            Where-Object { $_.LastWriteTimeUtc -lt $cutoffUtc } |
+            ForEach-Object {
+                try {
+                    Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction Stop
+                } catch {
+                    # Best-effort housekeeping: a lock or permission failure is not a product verdict.
+                }
+            }
+    }
+}
+
 function Invoke-MutationRedTest {
     [CmdletBinding(DefaultParameterSetName = 'FindReplace')]
     param(
@@ -19,6 +37,7 @@ function Invoke-MutationRedTest {
         throw "Target file is outside ScratchSourceRoot: $TargetFile"
     }
 
+    Remove-StaleTestScratchTrees
     $scratchParent = Join-Path ([IO.Path]::GetTempPath()) ('mutation-helper-' + [guid]::NewGuid().ToString('N'))
     $scratchRoot = Join-Path $scratchParent 'subject'
     New-Item -ItemType Directory -Path $scratchRoot -Force | Out-Null

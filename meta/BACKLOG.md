@@ -2686,6 +2686,12 @@ tree, and the release runs three dist jobs in parallel.
 **Cross-links:** B-138 (the stage where this shows up, and its host-kill observation), B-163 (the
 ceiling this pushes runs over), B-151 (per-unit timing, which is how the drift became visible at all).
 
+**Delivery RCA (2026-08-21):** No gate caught scratch trees abandoned by killed processes because
+all existing cleanup assertions exercised reachable `finally` blocks; process termination is outside
+that control flow. The same class remains possible for other uniquely-prefixed temp trees, but the
+observed material exposure is confined to the two high-volume patterns swept here; broadening the
+sweep without equivalent measurements would risk deleting unrelated or live work.
+
 ### B-163 · The meta-suite ceiling now sits inside the suite's own run-to-run variance
 **Filed against:** v0.64.0 (2026-08-21)
 **Effort:** M · **Priority:** P2 · found 2026-08-21 · **Invariants:** #7
