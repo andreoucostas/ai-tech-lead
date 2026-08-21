@@ -2737,6 +2737,35 @@ sweep without equivalent measurements would risk deleting unrelated or live work
 **Filed against:** v0.64.0 (2026-08-21)
 **Effort:** M · **Priority:** P2 · found 2026-08-21 · **Invariants:** #7
 
+> **RESOLVED for the immediate risk, measured in-release 2026-08-21 (v0.66.0).** The ceiling is no
+> longer inside the variance band:
+>
+> | | before | after |
+> |---|---:|---:|
+> | `GuardPatternErrors.Tests.ps1` | 548.3s | **40.6s** |
+> | meta-suite | 643.5s | **427.2s** |
+> | headroom under the 650s ceiling | 6.5s | **223s** |
+>
+> The fix was **fewer spawns, not rescheduling**, as this entry required: each mutation case ran the
+> full 40-case `Guard.Tests` suite to observe one broken pattern, and now runs only the tagged case.
+>
+> **Note the contention inflation, because it is this entry's own trap and it held again:** standalone
+> the file measured **15s**; in the real release it measured **40.6s**, 2.7x more. A standalone number
+> still does not predict a parallel makespan. The difference from the Guard experiment reverted the
+> same day is that this change *removes work* rather than redistributing it, so the win survived the
+> inflation instead of being erased by it.
+>
+> **The speedup also shipped an inert check, caught in review** — see the v0.66.0 changelog. The
+> filter's empty-match branch exited 1, which the mutation harness reads as "the mutation was caught",
+> so two of four cases silently tested nothing. Sentinel exit 111 now distinguishes them. Recorded
+> here because the lesson generalises: **when a test's exit code carries data, every new exit path
+> collides with it.**
+>
+> **Still open:** `ValidateDist.Tests.ps1` (506.9s) is now the meta suite's dominant file and has the
+> same structure — assertions that each invoke `validate-dist` as a fresh process. The same question
+> applies: does every assertion need its own spawn, or can the subject be exercised once per class of
+> assertion? Re-measure before acting; the ceiling is comfortable now, so this is no longer urgent.
+
 **Four measurements of the same suite on the same host, 2026-08-21:** 594.3s, 612.8s, 653.0s,
 707.2s. The ceiling is **650s**. So the limit falls in the middle of the observed spread and a
 release now refuses roughly half the time for no reason anyone can act on — v0.65.0 was refused at
