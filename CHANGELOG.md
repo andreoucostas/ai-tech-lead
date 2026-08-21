@@ -11,6 +11,36 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.65.0 — Unreleased
+
+**B-157: each dist now ships `framework-ownership.json`, a generated manifest of every installed path
+and who owns it.** Installing the framework lands ~164 committed paths, and nothing in the tree said
+which of them the framework silently overwrites on update. 163 paths are classified into B-46's three
+existing classes — 152 framework-owned/overwritten, 10 consumer-owned/protected, 1 mixed
+(`.claude/settings.json`). It is generated during composition, so it cannot describe a tree other
+than the one that shipped.
+
+**The consistency check is the deliverable as much as the manifest.** It reads the preservation
+policy out of **both** installers and refuses to compose when they disagree — a manifest that can
+silently drift from the behaviour it describes is worse than none, because a reviewer will believe
+it. Red-tested by removing `CLAUDE.md` from `install.ps1`'s `$protected` list: *"ownership policy
+disagreement: consumer-owned/protected in install.sh but not install.ps1: CLAUDE.md"*, exit 1 from
+`build.ps1` **and** `build.sh`, exit 0 once restored.
+
+**A twin-parity defect was found in review and fixed [#3].** PowerShell's `Sort-Object` is
+culture-aware and case-insensitive; `sort(1)` collates by locale. The two composers therefore emitted
+**byte-different manifests for an identical 163-path set** — `.github/PULL_REQUEST_TEMPLATE.md` and
+the upper-case root files landed in different positions. Both sides are now ordinal
+(`[StringComparer]::Ordinal` and `LC_ALL=C`). This is the Windows-only blind-spot class: the
+implementer has no working bash, so only running the twin exposed it, and a byte-comparison gate
+would have started failing on whichever composer ran last.
+
+**Deletion remains rejected, on the measurement already recorded in B-157.** `tests/` is load-bearing
+for the shipped `template-ci.yml` workflow, and the update path restores framework-owned files
+anyway, so a cleanup step would fight the delivery model rather than tidy it. The complaint the entry
+actually identified was never volume — it was that the first commit is unreviewable and that nothing
+states ownership. One generated file answers both.
+
 ## 0.64.0 — 2026-08-21
 
 **B-156 (cheap half): `grep`'s exit status is no longer read as a content verdict.** A non-zero

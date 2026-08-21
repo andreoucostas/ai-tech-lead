@@ -6,16 +6,24 @@
 
 ## 0.65.0 — Unreleased
 
-**The hook test suite's slowest file now runs its cases concurrently — roughly 1.7x faster.**
-`tests/hooks/Guard.Tests.ps1` checks the write guard against every case in its table, on both
-supported agent surfaces and in both the PowerShell and Bash implementations. Those checks are
-independent of one another but were running one at a time, which made this single file most of the
-suite's total runtime. It now runs them in parallel, bounded by the same `HOOKTESTS_THROTTLE` lane
-count the runner already uses, and reports results in the same order as before so the output is
-unchanged apart from being quicker.
+**New: `framework-ownership.json` tells you which files in your repository the framework owns.**
+Installing this framework adds around 164 files to your repository, and until now nothing in the tree
+told you which ones are ours and which are yours. That matters in two places: a reviewer facing the
+first commit has no way to separate the product from the scaffolding, and six months later a
+developer editing something like `scripts/framework-doctor.ps1` has no way to know their change will
+be replaced the next time you update.
 
-Behaviour is identical: every case is still checked against its expected decision on both
-implementations, and the two are still compared against each other afterwards.
+The manifest lists every installed path with one of three ownership classes:
+
+| class | what it means for you |
+|---|---|
+| `framework-owned/overwritten` | We replace this on every update. Do not edit it — your changes will be lost. |
+| `consumer-owned/protected` | Yours. We create it once if it is absent and never touch it again. |
+| `mixed` | Shared. `.claude/settings.json` carries our hook registrations alongside your own settings. |
+
+It is generated when the distribution is built rather than maintained by hand, so it always describes
+the version you actually installed. If you want to know whether an edit will survive an update, this
+file is the answer.
 
 ## 0.64.0 — 2026-08-21
 
