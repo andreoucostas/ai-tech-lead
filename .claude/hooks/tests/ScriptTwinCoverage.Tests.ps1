@@ -17,6 +17,7 @@ It 'classifies every shipped script twin' {
         'warehouse-map-check'='covered by tests/hooks/WarehouseMapCheck.Tests.ps1'
         'hazard-check'='covered by tests/hooks/HazardCheck.Tests.ps1'
         'impact-run'='deliberately excluded: requires an external agent CLI, git worktrees and paid API calls'
+        'setup-git-hooks'='covered by tests/hooks/SetupGitHooks.Tests.ps1 (the refusal contract; the scan itself is the shipped guard, covered by Guard.Tests)'
     }
     foreach($name in $pairs){Assert (($covered-contains$name)-or$ack.ContainsKey($name)) "unclassified script twin '$name': add a behavioural case or record a written reason"}
 }

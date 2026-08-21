@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.68.0 — Unreleased
+## 0.68.0 — 2026-08-21
 
 **B-18: an opt-in pre-commit convenience net, labelled as exactly that.** `setup-git-hooks.{ps1,sh}`
 ships, wired to `-GitHooks` / `--git-hooks` on both installers. **Opt-in only** — the entry recorded

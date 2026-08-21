@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.68.0 — Unreleased
+## 0.68.0 — 2026-08-21
 
 **New, and off unless you ask for it: a pre-commit convenience net.** Install it with
 `-GitHooks` (PowerShell) or `--git-hooks` (bash) when you run the installer, or run

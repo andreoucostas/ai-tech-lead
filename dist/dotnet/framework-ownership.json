@@ -158,6 +158,7 @@
     { "path": "tests/hooks/SessionStartHazard.Tests.ps1", "ownership": "framework-owned/overwritten" },
     { "path": "tests/hooks/SessionStartVersionAwareness.Tests.ps1", "ownership": "framework-owned/overwritten" },
     { "path": "tests/hooks/SessionStartWiki.Tests.ps1", "ownership": "framework-owned/overwritten" },
+    { "path": "tests/hooks/SetupGitHooks.Tests.ps1", "ownership": "framework-owned/overwritten" },
     { "path": "tests/hooks/TwinParity.Tests.ps1", "ownership": "framework-owned/overwritten" },
     { "path": "tests/hooks/WarehouseMapCheck.Tests.ps1", "ownership": "framework-owned/overwritten" },
     { "path": "tests/hooks/WikiCheck.Tests.ps1", "ownership": "framework-owned/overwritten" },
