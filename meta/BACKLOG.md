@@ -2562,6 +2562,47 @@ the skill's own vocabulary in the prompt ("add a warehouse load" -> `add-warehou
 non-reaching case did not ("help me write this report" -> `map-warehouse`). Hypothesis, not
 conclusion.
 
+> **STEP (a) DONE 2026-08-21 — the static trigger-vocabulary audit, run and validated against the
+> four known results first, as this entry requires. VERDICT: it reproduces the extremes and fails in
+> the middle, so it may rank candidates and must not be used to predict any single skill.**
+>
+> **Validation against the measured cases:**
+>
+> | case | measured | vocabulary match | agrees? |
+> |---|---|---|---|
+> | `add-warehouse-load` (B-117) | **6/6** | description opens *"Add a new fact or dimension load"*; natural prompt is "add a warehouse load" — direct | ✅ |
+> | `map-warehouse` (B-127) | **0/16** | description says *"Map a warehouse codebase"*; the prompts asked to trace an attribute or write a report and never said "map" | ✅ |
+> | `add-entity` (B-117) | **0/4** counted | correctly not selected on a warehouse-load prompt — a true negative, not a miss | ✅ |
+> | `add-warehouse-load` (B-126) | **1/6** | description explicitly covers *"or extend an existing one"* and *"slowly-changing-dimension"*, which the enhancement prompts did use | ❌ |
+>
+> **The B-126 row is the finding.** Vocabulary overlap was present and selection was still 1 in 6, on
+> the *same skill* that scored 6/6 elsewhere. So trigger vocabulary is not sufficient: the same words
+> in a differently-shaped task produced a sixfold difference. The audit therefore discriminates
+> *confident match* from *confident mismatch* but has **no resolution in the middle** — which is
+> exactly where the unmeasured skills mostly sit. Recorded as a limit on the instrument rather than
+> discovered later as a wrong prediction.
+>
+> **Ranking of the 16 shipped skills, for choosing what to measure — NOT evidence of behaviour:**
+>
+> - **Write-shaped with direct vocabulary** (the `add-warehouse-load` 6/6 shape): `add-component`,
+>   `add-endpoint`, `add-entity`, `add-lazy-route`, `add-service`, `add-signal-store`, `add-tests`,
+>   `add-warehouse-load`, `register-service`. A developer asking for these says the skill's own noun.
+> - **Read/analysis-shaped** (the `map-warehouse` 0/16 shape): `map-warehouse`, `perf`,
+>   `dependency-audit`, `enforce-architecture`, `enforce-standards`. Natural phrasing is "is this
+>   slow?", "check my dependencies", "does this follow our architecture" — none of which carries the
+>   skill's trigger words.
+> - **Ambiguous**: `create-adr`, `remember-for-team`. Write-shaped, but the natural prompt ("we
+>   decided X", "remember this for the team") only partly overlaps.
+>
+> **What this changes about the plan.** The read-shaped group is where the risk is concentrated and
+> it is also the group the audit is *least* able to call, given the B-126 result. So the live budget,
+> when it exists, should buy measurements of **read-shaped skills on naturally-phrased prompts** —
+> `perf` and `dependency-audit` first, since unlike `map-warehouse` they have no measurement at all
+> and are not warehouse-domain, which would also break the warehouse-heavy sampling bias this entry
+> already records.
+>
+> **Cost: zero.** No live trials were spent to produce this, which was the point of doing it first.
+
 **Do — cheapest first, because live trials spend the resource that still has B-129 blocked:**
 
 1. **A static trigger-vocabulary audit.** Validate it against the four known results *first*: if it
