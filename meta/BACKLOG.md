@@ -2444,6 +2444,63 @@ effectively the retirement test for a read-side skill), B-44 row 13 (`route-prom
 question, already flagged as measurable today), B-112 (a number that cannot produce a decision),
 B-158 (no headroom regardless), B-159.
 
+### B-161 · RCA: a meta-suite gate asserted against live release state, and the suite had no rule saying it must not
+**Filed against:** v0.63.0 (2026-08-21)
+**Effort:** S · **Priority:** P2 · found 2026-08-21 when it refused its own release twice · **Invariants:** #5 #7
+
+**What happened.** B-154's tag-reconciliation check (shipped v0.63.0) reports a dated root changelog
+head with no git tag. On a release commit that condition is unavoidable: the changelog is stamped in
+`release.ps1` stage 2, the meta suite runs in stage 4, and the tag only follows CI-verified green in
+stage 5d (WSD-029). It refused v0.63.0's local release. The first fix exempted the in-flight version
+through an environment variable set by `release.ps1`; local gates went green and **CI then failed on
+both legs for exactly the same reason** — CI is not `release.ps1`, so it never saw the variable. The
+cycle has no exit: the tag waits on CI, CI runs the suite, the suite waited on the tag.
+
+**Why no gate caught it.** The check was red-tested against fixtures and never against a real
+release. But the deeper cause is a property nobody had written down:
+
+> **Every other gate in the meta suite is hermetic.** Its result depends only on repository
+> *content*, never on where the repo sits in the release lifecycle.
+
+Verified by sweep, 2026-08-21 — of the four suites touching git, the other three do not read live
+state: `FidelityCheck` uses `rev-parse` against a deliberately invalid ref (a fixture),
+`PushAndCheck` stubs git wholesale (`__BRANCH__`/`__SHA__`), and `ReleaseCiWatch` parses transcript
+text. B-154's check was **the only non-hermetic gate in the suite** — the first member of its class,
+so there was no convention to violate visibly and no existing gate positioned to notice.
+
+**The fix that shipped, and why it is the only satisfiable shape.** Reconcile every dated head
+*except the newest*, deciding from the changelog's own ordering. Nothing is given up: a release that
+was dated and never tagged (the v0.48.0 case) is only *knowable* as abandoned once a later release is
+dated above it, at which point it is checked normally. Detection is deferred by one release, not
+disabled — and there is a fixture asserting exactly that, because an exemption with no such assertion
+is a disabled gate wearing a comment.
+
+**Do:** state the hermetic property where gate authors will meet it — a gate asserts against
+repository content; if it must know the repo's lifecycle position, that position is an *input*
+(as `Get-MissingReleaseTags` now takes its versions and a tag probe), never something it discovers
+from the environment. Then decide whether it can be enforced or is guidance only: WSD-028 says a
+maintenance rule is real only where tooling can refuse, and it is not obvious that this one can be
+mechanically detected. **Say which it is rather than leaving it implied** — that ambiguity is
+what B-134 is about.
+
+**Proportionality, stated before locking:** the shipped defect cost three release cycles and put a
+red commit on master, but the class currently has exactly one member and it is now fixed. So the
+deliverable is the written rule plus a decision on enforceability — **not** a new gate, unless the
+enforceability question answers yes cheaply.
+
+**The second lesson, which is about method rather than code:** the first fix was validated on the
+leg where it was authored and shipped without asking whether its premise held on the other leg. That
+is the same shape as [[windows-only-verification-blind-spots]] — a twin change is not done until both
+legs are green — applied to local-vs-CI instead of Windows-vs-Linux. Worth folding into the same
+sentence in the maintenance model rather than filed as a separate lesson.
+
+**Cross-links:** B-154 (the check), B-112 (instruments whose first version could not produce the
+result they claimed to test for — this is that pattern with the failure inverted, a false positive in
+the real workflow), B-59 and B-64 (inert checks, the failure mode an exemption drifts into),
+B-134 (implementation evidence masquerading as intent), WSD-028 (a rule is real only where tooling
+can refuse), WSD-029 (a release tag follows CI-verified green — the constraint the check collided
+with).
+
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see `meta/BACKLOG-DONE.md`.**
