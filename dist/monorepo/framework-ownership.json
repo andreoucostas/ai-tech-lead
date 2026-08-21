@@ -138,6 +138,8 @@
     { "path": "scripts/impact-run.sh", "ownership": "framework-owned/overwritten" },
     { "path": "scripts/metrics.ps1", "ownership": "framework-owned/overwritten" },
     { "path": "scripts/metrics.sh", "ownership": "framework-owned/overwritten" },
+    { "path": "scripts/setup-git-hooks.ps1", "ownership": "framework-owned/overwritten" },
+    { "path": "scripts/setup-git-hooks.sh", "ownership": "framework-owned/overwritten" },
     { "path": "scripts/sync-agent-files.ps1", "ownership": "framework-owned/overwritten" },
     { "path": "scripts/sync-agent-files.sh", "ownership": "framework-owned/overwritten" },
     { "path": "scripts/template-checks.ps1", "ownership": "framework-owned/overwritten" },

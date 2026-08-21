@@ -48,6 +48,18 @@ starting `## dotnet build failed` or `## tsc --noEmit failed` proves that host p
 
 > **Scope caveat — the write floor only sees editor/file-write tools.** `guard.*` is registered on the `Write`/`Edit` tool calls (Claude Code) and on Copilot tool calls carrying a file path + content — nothing else. A write routed through a **terminal/shell tool** — Claude Code's `Bash`/PowerShell tool running `sed -i`, `echo >>`, a heredoc, `Set-Content`, etc. — carries no `Write`/`Edit` payload, so the secrets / test-defeat / suppression floor **does not fire on it at all**. For shell-authored or externally written content, the guard is not a floor. It is a strong backstop only on the editor path the agents use by default, **not** an all-writes guarantee. Wherever an agent can run shell commands, the `CLAUDE.md`/`AGENTS.md` rules (secrets, no test-defeats, no suppressions) are the binding control for that path — treat them as such.
 
+### Optional pre-commit convenience net
+
+Pass `-GitHooks` to `install.ps1`, or `--git-hooks` to `install.sh`, to install an opt-in
+pre-commit hook. It sends only staged added lines through the shipped guard, so inherited matching
+content in a touched file is not reported and the guard's pattern list is not duplicated. Setup
+refuses to write when `core.hooksPath`, an existing `.git/hooks/pre-commit`, or `.husky/` indicates
+another hook owner.
+
+This hook is a **bypassable convenience net, not enforcement**. `git commit --no-verify` skips it,
+and clients or workflows that do not run local hooks remain outside its reach. Do not treat a
+successful commit as a protection, guarantee, or gate supplied by this option.
+
 ## Why the differences (the load-bearing facts)
 - **Claude Code** consumes `UserPromptSubmit` stdout and honours `PreToolUse` `exit 2`. `route-prompt` detects this surface (Claude events carry `hook_event_name`) and emits plain stdout there.
 - **Copilot CLI** added `userPromptSubmitted` `additionalContext` injection in **v1.0.65** and hardened it in **v1.0.76**. On **CLI 1.0.80 (observed 2026-08-18)** only the last `userPromptSubmitted` entry is delivered, so the framework registers one `route-prompt` entry and composes routing, plan-gate, security-pass, and queued Boy Scout text inside it; `session-start` emits the same model-facing shape on its separate event. Older versions ignore it as a harmless no-op, so routing then rests entirely on `AGENTS.md`. The `agentStop` event arrived in **v1.0.72**, enabling the Boy Scout scan after a turn. `preToolUse` JSON is honoured, so the write hard-blocks work regardless.

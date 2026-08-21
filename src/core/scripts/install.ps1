@@ -1,5 +1,5 @@
 ﻿# Install the AI Tech Lead Framework into a target repository.
-# Usage: pwsh scripts/install.ps1 C:\path\to\target-repo
+# Usage: pwsh scripts/install.ps1 [-GitHooks] C:\path\to\target-repo
 #
 # Copies the template's framework files into the target, EXCLUDING the .git directory, the
 # .template-repo marker (which would disable the consumer's CI guardrail), the template repo's own
@@ -14,7 +14,10 @@
 #   update     — target already carries .claude/framework-version.json. Consumer-owned protected
 #                paths are restored; framework-owned machinery is overwritten; mixed-ownership
 #                .claude/settings.json is backed up, refreshed, and adapted to the host.
-param([Parameter(Mandatory = $true)][string]$Target)
+param(
+    [Parameter(Mandatory = $true)][string]$Target,
+    [switch]$GitHooks
+)
 $ErrorActionPreference = 'Stop'
 
 if (-not (Test-Path -LiteralPath $Target -PathType Container)) { Write-Error "Target '$Target' is not a directory."; exit 2 }
@@ -22,6 +25,11 @@ if (-not (Test-Path -LiteralPath $Target -PathType Container)) { Write-Error "Ta
 $src = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $tgt = (Resolve-Path $Target).Path
 if ($tgt -eq $src) { Write-Error "Target is the template repo itself — choose a different target."; exit 2 }
+
+if ($GitHooks) {
+    & (Join-Path $src 'scripts/setup-git-hooks.ps1') -Target $tgt -CheckOnly
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
 
 # Template-repo meta files that must never land in (or overwrite their namesakes in) a consumer repo.
 $metaFiles = @('.git', '.template-repo', 'README.md', 'CHANGELOG.md', '.gitignore', '.gitattributes')
@@ -199,6 +207,11 @@ if (-not (Get-Command pwsh -ErrorAction SilentlyContinue)) {
         Copy-Item -Force -LiteralPath $sjw -Destination $sj
         Write-Output "  pwsh not found - activated Windows PowerShell 5.1 hooks (settings.windows.json -> settings.json)."
     }
+}
+
+if ($GitHooks) {
+    & (Join-Path $tgt 'scripts/setup-git-hooks.ps1') -Target $tgt
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
 Write-Output ""

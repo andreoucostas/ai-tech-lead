@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # AI Tech Lead Framework — root installer wrapper.
-# Usage: bash install.sh [--stack dotnet|angular|monorepo] /path/to/target-repo
+# Usage: bash install.sh [--stack dotnet|angular|monorepo] [--git-hooks] /path/to/target-repo
 #
 # Thin dispatcher only: it selects a stack, then delegates to
 # dist/<stack>/scripts/install.sh, which does all the real work (greenfield / brownfield /
@@ -17,15 +17,17 @@
 # Every error exits 2 with an actionable message.
 set -euo pipefail
 
-usage="Usage: bash install.sh [--stack dotnet|angular|monorepo] /path/to/target-repo"
+usage="Usage: bash install.sh [--stack dotnet|angular|monorepo] [--git-hooks] /path/to/target-repo"
 self_dir="$(cd "$(dirname "$0")" && pwd)"
 
 stack=""
+git_hooks=0
 target=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --stack)   stack="${2:-}"; shift 2 ;;
     --stack=*) stack="${1#--stack=}"; shift ;;
+    --git-hooks) git_hooks=1; shift ;;
     -h|--help) echo "$usage"; exit 0 ;;
     -*)        echo "Unknown option: $1" >&2; echo "$usage" >&2; exit 2 ;;
     *)         if [ -z "$target" ]; then target="$1"; shift
@@ -88,4 +90,5 @@ delegate="$self_dir/dist/$stack/scripts/install.sh"
 echo "Stack: $stack (via $reason)"
 echo "Delegating to dist/$stack/scripts/install.sh ..."
 echo
+if [ "$git_hooks" -eq 1 ]; then exec bash "$delegate" --git-hooks "$tgt"; fi
 exec bash "$delegate" "$tgt"

@@ -2804,6 +2804,16 @@ scan reusing guard's patterns; must detect and refuse on existing `core.hooksPat
 documented as bypassable convenience, **not** enforcement. Silent default wiring was explicitly
 rejected — keep it opt-in.
 
+> **IMPLEMENTATION READY FOR REVIEW 2026-08-21.** Both shipped setup twins install only on an
+> explicit installer option, refuse `core.hooksPath`, an existing pre-commit hook, and husky, and
+> delegate an added-lines-only staged snapshot to the shipped guard rather than carrying patterns.
+> The enforcement-surface documentation calls the result a bypassable convenience net, not
+> enforcement. **RCA:** no existing delivery check could catch this absence because local Git-hook
+> installation is deliberately outside default framework installation and the staged-index scanner
+> existed only on the maintainer side. Other optional local integrations remain exposed to the same
+> discoverability-versus-enforcement confusion; their documentation must state both opt-in status
+> and bypass paths rather than inheriting claims from deterministic agent hooks.
+
 ### B-20 · Coverage-as-diagnostic + diff-scoped mutation testing (the former v0.24.0 testing release)
 **Filed against:** v0.26.0 (2026-07-12)
 **Effort:** L · needs a **new version slot** — ≥ v0.28.0 (0.26.0 = merge, 0.27.0 = B-27 per WSD-012)

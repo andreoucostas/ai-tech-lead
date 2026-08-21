@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Install the AI Tech Lead Framework into a target repository.
-# Usage: bash scripts/install.sh /path/to/target-repo
+# Usage: bash scripts/install.sh [--git-hooks] /path/to/target-repo
 #
 # Copies the template's framework files into the target, EXCLUDING the .git directory, the
 # .template-repo marker (which would disable the consumer's CI guardrail), the template repo's own
@@ -17,13 +17,16 @@
 #                .claude/settings.json is backed up, refreshed, and adapted to the host.
 set -euo pipefail
 
+git_hooks=0
+if [ "${1:-}" = "--git-hooks" ]; then git_hooks=1; shift; fi
 target="${1:-}"
-if [ -z "$target" ]; then echo "Usage: bash scripts/install.sh /path/to/target-repo"; exit 2; fi
+if [ -z "$target" ]; then echo "Usage: bash scripts/install.sh [--git-hooks] /path/to/target-repo"; exit 2; fi
 [ -d "$target" ] || { echo "Target '$target' is not a directory."; exit 2; }
 
 src="$(cd "$(dirname "$0")/.." && pwd)"
 tgt="$(cd "$target" && pwd)"
 if [ "$tgt" = "$src" ]; then echo "Target is the template repo itself — choose a different target."; exit 2; fi
+if [ "$git_hooks" -eq 1 ]; then bash "$src/scripts/setup-git-hooks.sh" --target "$tgt" --check-only; fi
 
 # Consumer files the copy below would otherwise clobber. Brownfield: archived so /adopt can merge
 # them. Update: snapshotted and restored — after bootstrap/adopt the consumer owns their content.
@@ -199,6 +202,7 @@ if [ -f "$sj" ] && ! command -v pwsh >/dev/null 2>&1; then
   sed -E 's#pwsh -NoProfile -ExecutionPolicy Bypass -File \.claude/hooks/([A-Za-z-]+)\.ps1#bash .claude/hooks/\1.sh#g' "$sj" > "$tmp" && mv "$tmp" "$sj"
   echo "  pwsh not found - switched Claude Code hooks to the bash twins."
 fi
+if [ "$git_hooks" -eq 1 ]; then bash "$tgt/scripts/setup-git-hooks.sh" --target "$tgt"; fi
 echo
 echo "Each developer should run  bash scripts/framework-doctor.sh  once on their own machine."
 if [ "$update_mode" -eq 1 ]; then

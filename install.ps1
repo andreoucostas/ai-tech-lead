@@ -1,5 +1,5 @@
 ﻿# AI Tech Lead Framework — root installer wrapper.
-# Usage: pwsh install.ps1 [-Stack dotnet|angular|monorepo] C:\path\to\target-repo
+# Usage: pwsh install.ps1 [-Stack dotnet|angular|monorepo] [-GitHooks] C:\path\to\target-repo
 #
 # Thin dispatcher only: it selects a stack, then delegates to
 # dist/<stack>/scripts/install.ps1, which does all the real work (greenfield / brownfield /
@@ -18,11 +18,12 @@
 # interactive prompt — matching install.sh.
 param(
     [Parameter()][string]$Stack,
+    [Parameter()][switch]$GitHooks,
     [Parameter(Position = 0)][string]$Target
 )
 $ErrorActionPreference = 'Stop'
 
-$usage = 'Usage: pwsh install.ps1 [-Stack dotnet|angular|monorepo] C:\path\to\target-repo'
+$usage = 'Usage: pwsh install.ps1 [-Stack dotnet|angular|monorepo] [-GitHooks] C:\path\to\target-repo'
 # Exit 2 with an actionable message on stderr. Write-Error is avoided on purpose: under
 # ErrorActionPreference=Stop it throws before the following exit runs, which -File maps to
 # exit code 1 — this keeps every wrapper-level failure at the documented exit 2.
@@ -82,5 +83,5 @@ if (-not (Test-Path -LiteralPath $delegate -PathType Leaf)) { Die "Internal erro
 Write-Output "Stack: $Stack (via $reason)"
 Write-Output "Delegating to dist/$Stack/scripts/install.ps1 ..."
 Write-Output ""
-& $delegate $tgt
+& $delegate -Target $tgt -GitHooks:$GitHooks
 exit $LASTEXITCODE
