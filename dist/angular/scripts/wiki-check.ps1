@@ -7,7 +7,7 @@ $wiki = Join-Path $Root 'docs/wiki'; $index = Join-Path $wiki 'INDEX.md'; $fails
 function Fail($m){$script:fails++;Write-Output "FAIL: $m"}; function Warn($m){Write-Output "WARN: $m"}
 $signal='(?i)(ignore|disregard|override|forget|instead of|regardless of|do not tell|system prompt|you are|you must|<!--[^>]*(do|run|execute|ignore|must)|[A-Za-z0-9+/]{80,}={0,2}|[\u200B-\u200F\u202A-\u202E\u2060-\u206F]|https?://\S*(exfil|webhook|collect|upload))'
 if(-not(Test-Path -LiteralPath $index)){Fail 'docs/wiki/INDEX.md is missing';Write-Output "$fails wiki-check failure(s).";exit 1}
-$idx=[IO.File]::ReadAllText($index).TrimStart([char]0xFEFF)-replace"`r",''
+try{$idx=[IO.File]::ReadAllText($index).TrimStart([char]0xFEFF)-replace"`r",''}catch{[Console]::Error.WriteLine('PowerShell could not inspect docs/wiki/INDEX.md; this is a host/resource problem, so wiki index entries cannot be verified.');exit 2}
 $lines=@($idx -split"`n"|Where-Object{$_ -match'^- \['});$slugs=@()
 foreach($line in $lines){if($line -notmatch'^- \[(gotcha|context|recipe|failed-approach)\] \[([a-z0-9]+(?:-[a-z0-9]+)*)\]\(\./\2\.md\) — (.+)$'){Fail "invalid INDEX line: $line"}else{$slugs+=$Matches[2]};if($line-match$signal){Fail "injection marker in INDEX line: $line"}}
 $sorted=[string[]]@($slugs);[Array]::Sort($sorted,[StringComparer]::Ordinal);if(($slugs -join"`n") -ne ($sorted -join"`n")){Fail 'INDEX entries are not sorted by slug'}

@@ -3,9 +3,14 @@ $ErrorActionPreference = 'Stop'
 $rootPath = (Resolve-Path -LiteralPath $Root).Path
 $signalFile = Join-Path $PSScriptRoot 'warehouse-signals.tsv'
 if (-not (Test-Path -LiteralPath $signalFile)) { Write-Error 'warehouse-signals.tsv is missing'; exit 2 }
-$files = @(Get-ChildItem -LiteralPath $rootPath -Recurse -File -Force -ErrorAction SilentlyContinue | Where-Object {
-    $_.FullName -notmatch '[\\/](\.git|node_modules|bin|obj|dist)[\\/]' -and ($_.Extension -in @('.sql','.sqlproj') -or $_.Name -eq 'dbt_project.yml' -or ($_.Extension -in @('.yml','.yaml','.json') -and $_.FullName -match '(?i)[\\/](etl|pipelines?|warehouse|datafactory|synapse|dags?)[\\/]|(pipeline|datafactory|synapse|dag)[^\\/]*\.(yml|yaml|json)$'))
-})
+try {
+    $files = @(Get-ChildItem -LiteralPath $rootPath -Recurse -File -Force -ErrorAction Stop | Where-Object {
+        $_.FullName -notmatch '[\\/](\.git|node_modules|bin|obj|dist)[\\/]' -and ($_.Extension -in @('.sql','.sqlproj') -or $_.Name -eq 'dbt_project.yml' -or ($_.Extension -in @('.yml','.yaml','.json') -and $_.FullName -match '(?i)[\\/](etl|pipelines?|warehouse|datafactory|synapse|dags?)[\\/]|(pipeline|datafactory|synapse|dag)[^\\/]*\.(yml|yaml|json)$'))
+    })
+} catch {
+    [Console]::Error.WriteLine('Could not enumerate warehouse artifacts; this is a host/resource problem, so warehouse applicability cannot be determined.')
+    exit 2
+}
 $hits = @()
 foreach ($line in Get-Content -LiteralPath $signalFile) {
     if ($line.StartsWith('#') -or [string]::IsNullOrWhiteSpace($line)) { continue }

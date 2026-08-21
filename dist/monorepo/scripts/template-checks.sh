@@ -19,7 +19,12 @@ v_claude=""; v_json=""; v_log=""; v_log_line=""; changelog_heads=""; is_template
 [ -f CLAUDE.md ] && v_claude=$(head -10 CLAUDE.md | sed -n 's/^[[:space:]]*version:[[:space:]]*\([^[:space:]]*\).*/\1/p' | head -1)
 [ -f .claude/framework-version.json ] && v_json=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' .claude/framework-version.json | head -1)
 if [ "$is_template_repo" -eq 1 ] && [ -f CHANGELOG.md ]; then
-  changelog_heads=$(grep -E '^## [0-9]+\.[0-9]+\.[0-9]+ — (Unreleased|[0-9]{4}-[0-9]{2}-[0-9]{2})$' CHANGELOG.md || true)
+  changelog_heads=$(grep -E '^## [0-9]+\.[0-9]+\.[0-9]+ — (Unreleased|[0-9]{4}-[0-9]{2}-[0-9]{2})$' CHANGELOG.md)
+  grep_status=$?
+  if [ "$grep_status" -gt 1 ]; then
+    echo "FAIL: grep could not inspect CHANGELOG.md (exit $grep_status) — this is a host/resource problem, so changelog headings cannot be verified."
+    exit 2
+  fi
   v_log_line=$(sed -n '/^## /{p;q;}' CHANGELOG.md)
   stamped_dated=$(printf '%s\n' "$changelog_heads" | grep -E "^## $v_json — [0-9]{4}-[0-9]{2}-[0-9]{2}$" | head -1)
   if [ -n "$stamped_dated" ]; then

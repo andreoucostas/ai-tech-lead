@@ -18,7 +18,13 @@ signal="(ignore|disregard|override|forget|instead of|regardless of|do not tell|s
 index_re='^- \[(gotcha|context|recipe|failed-approach)\] \[([a-z0-9]+(-[a-z0-9]+)*)\]\(\./([a-z0-9]+(-[a-z0-9]+)*)\.md\) — (.+)$'
 [ -f "$index" ] || { fail 'docs/wiki/INDEX.md is missing'; echo "$fails wiki-check failure(s)."; exit 1; }
 tmp="${TMPDIR:-/tmp}/wiki-check-$$"; trap 'rm -rf "$tmp"' EXIT; mkdir -p "$tmp"
-sed '1s/^﻿//;s/\r$//' "$index" > "$tmp/index"; grep '^- \[' "$tmp/index" > "$tmp/lines" || true; : > "$tmp/slugs"
+sed '1s/^﻿//;s/\r$//' "$index" > "$tmp/index"; grep '^- \[' "$tmp/index" > "$tmp/lines"
+grep_status=$?
+if [ "$grep_status" -gt 1 ]; then
+ echo "grep could not inspect docs/wiki/INDEX.md (exit $grep_status) — this is a host/resource problem, so wiki index entries cannot be verified." >&2
+ exit 2
+fi
+: > "$tmp/slugs"
 while IFS= read -r line; do
  if [[ "$line" =~ $index_re ]] && [ "${BASH_REMATCH[2]}" = "${BASH_REMATCH[4]}" ]; then echo "${BASH_REMATCH[2]}" >> "$tmp/slugs"; else fail "invalid INDEX line: $line"; fi
  echo "$line" | LC_ALL=C grep -Eqi "$signal" && fail "injection marker in INDEX line: $line"

@@ -35,7 +35,11 @@ if ($isTemplateRepo -and (Test-Path -LiteralPath 'CHANGELOG.md' -PathType Leaf))
     # non-ASCII em dash in the head line. Read the bytes directly via an absolute path: Set-Location
     # above updates the PowerShell provider location but not the .NET process CWD, so a relative
     # [IO.File] path would resolve against the wrong directory.
-    $clText = [IO.File]::ReadAllText((Resolve-Path -LiteralPath 'CHANGELOG.md').Path)
+    try { $clText = [IO.File]::ReadAllText((Resolve-Path -LiteralPath 'CHANGELOG.md').Path) }
+    catch {
+        Write-Output 'FAIL: PowerShell could not inspect CHANGELOG.md; this is a host/resource problem, so changelog headings cannot be verified.'
+        exit 2
+    }
     foreach ($l in ($clText -split "`r?`n")) {
         if (-not $vLogLine -and $l -cmatch '^## ') { $vLogLine = $l }
         if ($l -cmatch '^## ([0-9]+\.[0-9]+\.[0-9]+) — (Unreleased|[0-9]{4}-[0-9]{2}-[0-9]{2})$') {

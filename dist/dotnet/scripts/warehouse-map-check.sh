@@ -2,7 +2,12 @@
 set -u
 root="${1:-$(cd "$(dirname "$0")/.." && pwd)}"; here=$(cd "$(dirname "$0")" && pwd); signals="$here/warehouse-signals.tsv"
 [ -f "$signals" ] || { echo 'warehouse-signals.tsv is missing' >&2; exit 2; }
-files=$(find "$root" -type f \( -name '*.sql' -o -name '*.sqlproj' -o -name 'dbt_project.yml' -o -name '*.yml' -o -name '*.yaml' -o -name '*.json' \) ! -path '*/.git/*' ! -path '*/node_modules/*' ! -path '*/bin/*' ! -path '*/obj/*' ! -path '*/dist/*' 2>/dev/null | grep -Ei '\.sql(proj)?$|/dbt_project\.yml$|/(etl|pipelines?|warehouse|datafactory|synapse|dags?)/|/(pipeline|datafactory|synapse|dag)[^/]*\.(yml|yaml|json)$' || true)
+files=$(find "$root" -type f \( -name '*.sql' -o -name '*.sqlproj' -o -name 'dbt_project.yml' -o -name '*.yml' -o -name '*.yaml' -o -name '*.json' \) ! -path '*/.git/*' ! -path '*/node_modules/*' ! -path '*/bin/*' ! -path '*/obj/*' ! -path '*/dist/*' 2>/dev/null | grep -Ei '\.sql(proj)?$|/dbt_project\.yml$|/(etl|pipelines?|warehouse|datafactory|synapse|dags?)/|/(pipeline|datafactory|synapse|dag)[^/]*\.(yml|yaml|json)$')
+grep_status=$?
+if [ "$grep_status" -gt 1 ]; then
+  echo "Could not enumerate warehouse artifacts with grep (exit $grep_status) — this is a host/resource problem, so warehouse applicability cannot be determined." >&2
+  exit 2
+fi
 hits=0
 while IFS=$'\t' read -r category pattern; do
   case "$category" in ''|'#'*) continue ;; esac
