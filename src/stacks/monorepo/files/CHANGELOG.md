@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.67.0 — Unreleased
+## 0.67.0 — 2026-08-21
 
 **Three more checks stopped reporting success for work they never did.** `warehouse-map-check`,
 `template-checks` and `wiki-check` each search a file or a file list to decide what to inspect. If

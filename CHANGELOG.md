@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.67.0 — Unreleased
+## 0.67.0 — 2026-08-21
 
 **B-156 is complete: the extractor sites no longer fail open when `grep` cannot run.** The cheap half
 (`framework-doctor`, `impact-run`) shipped in v0.64.0. This is the half the entry deferred pending a
