@@ -2006,6 +2006,45 @@ not.
 > 25s sub-ceiling in the v0.61.0 run, warning but not failing. Against a 14s total for the whole
 > validator here, that sub-ceiling accounting needs re-reading — the two numbers cannot both be right.
 
+> **FIRST PER-FILE MEASUREMENT OF THE DIST SUITES, 2026-08-21 (v0.64.0 release run).** The
+> instrumentation above shipped and immediately answered the question this entry has carried since
+> 2026-08-13. These are **parallel makespan** numbers taken inside a real release with the throttle
+> applied — not the serial per-file kind that misled this entry twice.
+>
+> | file (dotnet leg) | seconds |
+> |---|---:|
+> | `Guard.Tests.ps1` | **554.6** |
+> | `FrameworkDoctor.Tests.ps1` | 504.3 |
+> | `ScriptTwinParity.Tests.ps1` | 208.3 |
+> | `HazardCheck.Tests.ps1` | 200.4 |
+> | `RoutePrompt.Tests.ps1` | 112.7 |
+> | `TwinParity.Tests.ps1` | 101.0 |
+>
+> Chained up: `dist-gates` 579.2s -> hook suites ~561s of it (97%) -> `Guard.Tests.ps1` 554.6s of
+> that (**99%**). **One test file is ~95% of the largest stage in the release**, and until this run
+> nobody could name it. `FrameworkDoctor` finishes inside its shadow; every other file is noise.
+>
+> **This is the same shape the meta suite had**, where `GuardPatternErrors.Tests.ps1` was 96% of its
+> wall clock. Two independent suites, each dominated by a single guard-related file. That is a
+> pattern, not two coincidences: the guard has the most branches, so it attracts the most assertions,
+> and each assertion spawns a process.
+>
+> **Next step, and apply this entry's own proportionality lesson before writing code:** check whether
+> `Guard.Tests.ps1` has the trivially-parallel structure `GuardPatternErrors` turned out to have.
+> That fix was a `foreach` -> throttled jobs change worth 1.82x standalone for a few lines, and it is
+> the reason the meta suite is no longer urgent. If `Guard.Tests.ps1` is the same shape, the release's
+> biggest stage roughly halves for comparable effort, and the in-process re-architecture stays
+> unnecessary for a third time. Only if it is genuinely serial by construction is the expensive fix
+> warranted.
+>
+> **A new symptom worth recording, because it changes the argument for fixing this.** Four separate
+> release attempts on 2026-08-21 were **killed by the host** partway through `dist-gates` — the stage
+> that runs three parallel suites, each spawning hundreds of fresh interpreters, alongside a fourth
+> footprint job. Each kill left a clean tree (nothing stages until the gates pass), so the cost was
+> time, not damage. But the entry has framed this cost as a budget problem, and "the release does not
+> survive the stage" is a sharper argument than "the stage takes 579 seconds". Not yet diagnosed to
+> root cause — recorded as an observation, not a conclusion.
+
 > **THIRD MEASURED CORRECTION, 2026-08-21 (v0.63.0) — the cheap prerequisite is still outstanding,
 > and an earlier reading of this entry assumed B-151 had already delivered it. It had not.**
 >
