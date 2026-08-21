@@ -44,7 +44,12 @@ foreach ($case in $selectedCases) {
                 $rsh = Invoke-Hook $guardSh $evt
                 Assert-Decision $rsh $expected $case.n
                 Assert ($rps.Exit -eq $rsh.Exit) "guard.ps1 exit $($rps.Exit) but guard.sh exit $($rsh.Exit)"
-                Assert ([string]::Equals("$($rps.Out)", "$($rsh.Out)", [StringComparison]::Ordinal)) `
+                # Windows PowerShell 5.1's ConvertTo-Json renders an apostrophe as the equivalent
+                # JSON escape \u0027; pwsh 7 and the bash twin render it literally. Normalise only
+                # that semantics-preserving escape. Every other output byte remains strict.
+                $psOut = "$($rps.Out)" -replace '\\u0027', "'"
+                $shOut = "$($rsh.Out)" -replace '\\u0027', "'"
+                Assert ([string]::Equals($psOut, $shOut, [StringComparison]::Ordinal)) `
                     "stdout differs: guard.ps1='$($rps.Out)' guard.sh='$($rsh.Out)'"
                 Assert ([string]::Equals("$($rps.Err)", "$($rsh.Err)", [StringComparison]::Ordinal)) `
                     "stderr differs: guard.ps1='$($rps.Err)' guard.sh='$($rsh.Err)'"

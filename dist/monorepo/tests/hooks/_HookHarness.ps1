@@ -38,50 +38,83 @@ function Get-BashPath {
     return $null
 }
 
+# Invoke a native child without routing either output stream through PowerShell's native-command
+# adapter. Windows PowerShell 5.1 turns redirected stderr into ErrorRecords and then renders those
+# records into the target file, adding the executable name and this harness's call site. Reading the
+# process streams directly observes the child's output instead, identically under Desktop and Core.
+function Invoke-RawProcess {
+    param(
+        [Parameter(Mandatory)][string]$FileName,
+        [Parameter(Mandatory)][string[]]$Arguments,
+        [string]$Stdin = ''
+    )
+    # ProcessStartInfo.Arguments is one command-line string on .NET Framework. These harness paths
+    # cannot contain a literal quote; quoting every argument preserves spaces without a shell.
+    foreach ($arg in $Arguments) {
+        if ($arg -match '"') { throw "Cannot invoke a harness argument containing a quote: $arg" }
+    }
+    $stdinFile = [IO.Path]::GetTempFileName()
+    $stdoutFile = [IO.Path]::GetTempFileName()
+    $stderrFile = [IO.Path]::GetTempFileName()
+    try {
+        [IO.File]::WriteAllText($stdinFile, $Stdin, (New-Object System.Text.UTF8Encoding($false)))
+        $argumentString = (($Arguments | ForEach-Object { '"' + $_ + '"' }) -join ' ')
+        $p = Start-Process -FilePath $FileName -ArgumentList $argumentString -NoNewWindow -Wait -PassThru `
+            -RedirectStandardInput $stdinFile -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
+        return [pscustomobject]@{
+            Exit = $p.ExitCode
+            # Normalise the LINE ENDING, nothing else. Reading the streams raw (which is the point of
+            # this function) also stops hiding that a PowerShell child terminates lines with CRLF
+            # while a bash child uses LF: measured on the same guard message, stderr ended 13,10
+            # against 10. That is a host convention, in the same class as the ErrorRecord decoration
+            # this function exists to avoid, and the twins are compared byte-for-byte -- so without
+            # this every stderr comparison fails on both hosts. Content differences survive intact.
+            Out = [IO.File]::ReadAllText($stdoutFile).Replace("`r`n", "`n").TrimEnd("`n")
+            Err = [IO.File]::ReadAllText($stderrFile).Replace("`r`n", "`n")
+        }
+    } finally {
+        foreach ($tempFile in $stdinFile,$stdoutFile,$stderrFile) {
+            if (Test-Path -LiteralPath $tempFile) { [IO.File]::Delete($tempFile) }
+        }
+    }
+}
+
 # Run a hook with $Json on stdin. Returns @{Exit;Out;Err} -- or $null for a .sh when no bash exists
 # (caller treats $null as "skip", never as pass/fail).
 function Invoke-Hook {
     param([Parameter(Mandatory)][string]$Path, [string]$Json = '')
-    $ef = [IO.Path]::GetTempFileName()
-    # PowerShell decodes a native child's stdout bytes using [Console]::OutputEncoding. On a non-UTF-8
-    # console code page (e.g. 437/850) the hooks' UTF-8 output -- em dashes, ⚠/🔴 -- arrives mangled and
-    # -match silently misses. Pin UTF-8 (no BOM) for the capture, restore after (try/catch guards a
-    # console-less host where the setter throws). This is the capture-leg twin of the hooks' own
-    # IsOutputRedirected guard.
+    # The child inherits the attached console's output encoding even though its streams are pipes.
+    # Pin that inherited encoding so UTF-8 hook text is not replaced before raw capture can read it.
     $prevOut = [Console]::OutputEncoding; $encChanged = $false
     try {
         try { [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false); $encChanged = $true } catch { }
         if ($Path -match '\.ps1$') {
-            $out = $Json | & (Get-PsExe) -NoProfile -ExecutionPolicy Bypass -File $Path 2>$ef
-        } else {
-            $bash = Get-BashPath
-            if (-not $bash) { return $null }
-            $out = $Json | & $bash $Path 2>$ef
+            return Invoke-RawProcess -FileName (Get-PsExe) `
+                -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $Path) -Stdin $Json
         }
-        $code = $LASTEXITCODE
-        $err  = [IO.File]::ReadAllText($ef)
-        return [pscustomobject]@{ Exit = $code; Out = ($out -join "`n"); Err = $err }
+        $bash = Get-BashPath
+        if (-not $bash) { return $null }
+        return Invoke-RawProcess -FileName $bash -Arguments @($Path) -Stdin $Json
     } finally {
         if ($encChanged) { try { [Console]::OutputEncoding = $prevOut } catch { } }
-        if (Test-Path -LiteralPath $ef) { [IO.File]::Delete($ef) }
     }
 }
 
 # Run a script with zero or more arguments. Returns $null for a .sh when bash is unavailable.
 function RunArg {
     param([Parameter(Mandatory)][string]$Path, [string[]]$Arguments = @())
-    $ef = [IO.Path]::GetTempFileName()
-    # PowerShell decodes a native child's stdout bytes using [Console]::OutputEncoding. On a non-UTF-8
-    # console code page the child's UTF-8 output arrives mangled and -match silently misses.
     $prevOut = [Console]::OutputEncoding; $encChanged = $false
     try {
         try { [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false); $encChanged = $true } catch { }
-        if ($Path -match '\.ps1$') { $out = & (Get-PsExe) -NoProfile -ExecutionPolicy Bypass -File $Path @Arguments 2>$ef }
-        else { $bash = Get-BashPath; if (-not $bash) { return $null }; $out = & $bash $Path @Arguments 2>$ef }
-        return [pscustomobject]@{ Exit=$LASTEXITCODE; Out=($out -join "`n"); Err=[IO.File]::ReadAllText($ef) }
+        if ($Path -match '\.ps1$') {
+            return Invoke-RawProcess -FileName (Get-PsExe) `
+                -Arguments (@('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $Path) + $Arguments)
+        }
+        $bash = Get-BashPath
+        if (-not $bash) { return $null }
+        return Invoke-RawProcess -FileName $bash -Arguments (@($Path) + $Arguments)
     } finally {
         if ($encChanged) { try { [Console]::OutputEncoding = $prevOut } catch { } }
-        if (Test-Path -LiteralPath $ef) { [IO.File]::Delete($ef) }
     }
 }
 
