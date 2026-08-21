@@ -1087,6 +1087,45 @@ This is the archive of completed framework backlog entries. Entries are appended
   `Stack toolchain` regex-vs-glob branch stays unexercised; both are stated in the test rather than
   implied as coverage.
 
+### B-18 · WS-6: opt-in git-hook convenience net
+
+> **DONE 2026-08-21 — shipped v0.68.0.** `setup-git-hooks.{ps1,sh}` plus `-GitHooks` / `--git-hooks`
+> on both installers. Opt-in only; this entry's rejection of silent default wiring stands. The hook
+> scans **staged added lines only**, through the shipped guard rather than a copied pattern list
+> (B-100's property), and setup **refuses** when `core.hooksPath`, an existing `.git/hooks/pre-commit`
+> or `.husky/` names another owner.
+>
+> **Documented as a bypassable convenience net, not enforcement, in those words** — one red-test arm
+> demonstrates the `--no-verify` bypass, so the claim matches observed behaviour rather than intent.
+>
+> **The arm that mattered:** a clean addition to a file that already contains a secret PASSES, while a
+> new bad line in the same file still blocks. A scan that flagged inherited content would block a
+> developer for someone else's code and be disabled on first contact.
+>
+> **`ScriptTwinCoverage` refused the first release attempt** because the new twin had neither a
+> behavioural case nor a written exemption. An exemption would have been the wrong answer: the
+> refusal logic's failure mode is **silent** — a wrongly-installed hook does not error, the team's own
+> checks simply stop running. `SetupGitHooks.Tests.ps1` now covers it, red-tested by breaking husky
+> detection (3 passed / 1 failed, restored 4/4). `no-meta-leak` then caught that new test file
+> carrying backlog ids into shipped content [#6]. Two gates, two real catches, on one small addition.
+
+**Filed against:** v0.26.0 (2026-07-12)
+**Effort:** M
+`scripts/setup-git-hooks.ps1/.sh` (+ `install.ps1 -GitHooks` flag), added-lines-only staged
+scan reusing guard's patterns; must detect and refuse on existing `core.hooksPath`/husky;
+documented as bypassable convenience, **not** enforcement. Silent default wiring was explicitly
+rejected — keep it opt-in.
+
+> **IMPLEMENTATION READY FOR REVIEW 2026-08-21.** Both shipped setup twins install only on an
+> explicit installer option, refuse `core.hooksPath`, an existing pre-commit hook, and husky, and
+> delegate an added-lines-only staged snapshot to the shipped guard rather than carrying patterns.
+> The enforcement-surface documentation calls the result a bypassable convenience net, not
+> enforcement. **RCA:** no existing delivery check could catch this absence because local Git-hook
+> installation is deliberately outside default framework installation and the staged-index scanner
+> existed only on the maintainer side. Other optional local integrations remain exposed to the same
+> discoverability-versus-enforcement confusion; their documentation must state both opt-in status
+> and bypass paths rather than inheriting claims from deterministic agent hooks.
+
 ### B-156 · The "grep exit status as content verdict" conflation is class-wide, and most instances are in SHIPPED scripts
 
 > **DONE 2026-08-21 — both halves, all sites, both twins each.** The cheap half (`framework-doctor`,
