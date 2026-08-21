@@ -27,15 +27,17 @@ advisory `Assert $true`, which is the inert-check shape B-59 and B-64 exist to r
 compliance was already 22/22 enforcing it cost nothing. Note that the meta suite *is* a release gate,
 so a future entry filed without a stamp will refuse a release until it is added.
 
-Meta-only: the B-154 tag-reconciliation check refused this very release. It reports a dated changelog
-head with no git tag, and during a release that is necessarily true — the stamp lands in stage 2, the
-meta suite runs in stage 4, and the tag only follows CI-verified green in stage 5d (WSD-029). The
-check was validated against fixtures and never against a real release, so it shipped unsatisfiable in
-the one workflow it must coexist with. release.ps1 now names the in-flight version for its own
-meta-suite child and clears it afterwards, exempting exactly one version for one run; a release that
-ends with its tag withheld is still reported by the next ordinary run. The decision is now a pure
-function with fixtures, because the real risk — an exemption widening from ''this version'' to ''a
-release is happening'' — is invisible when the check is run against a healthy repo.
+Meta-only: the B-154 tag-reconciliation check refused this very release, twice. It reports a dated
+changelog head with no git tag, and on a release commit that is unavoidable: the tag follows
+CI-verified green (WSD-029), CI runs this suite, and the suite was waiting on the tag — a cycle with
+no exit. A first fix exempted the in-flight version through an environment variable set by
+release.ps1; that cleared the local gate and then failed CI on both legs, because CI is not
+release.ps1. The check now reconciles every dated head **except the newest**, deciding from the
+changelog''s own ordering rather than from the environment, so it returns the same answer locally, in
+CI, and on a clone. Nothing is given up: a release that was dated and never tagged is only knowable
+as abandoned once a later release is dated above it, at which point it is checked normally. The
+decision is a pure function with fixtures, including the assertion that detection is deferred by one
+release rather than disabled.
 ## 0.62.0 — 2026-08-20
 
 **B-152: changelog validation now reads every release head instead of trusting only the first.**

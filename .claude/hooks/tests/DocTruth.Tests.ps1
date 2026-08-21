@@ -45,20 +45,24 @@ function Get-MissingReleaseTags {
     param(
         [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$Versions,
         [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$Declared,
-        [string]$InFlight,
         [Parameter(Mandatory)][scriptblock]$TagExists
     )
-    # The release being cut right now is dated but not yet tagged, and cannot be: release.ps1 stamps
-    # the changelog in stage 2, runs this suite in stage 4, and only tags in stage 5d once CI is
-    # observed green (WSD-029). Without this, the check is unsatisfiable during the one workflow it
-    # has to coexist with -- which is exactly how it refused v0.63.0. `release.ps1` sets the variable
-    # for its own meta-suite child and clears it afterwards, so the exemption covers precisely one
-    # version for one run. If that run ends with the tag withheld (the v0.48.0 case), the next
-    # ordinary suite run sees no variable and correctly reports the untagged release.
-    $exempt = @($Declared)
-    if ($InFlight) { $exempt += $InFlight }
-    return @($Versions | Where-Object {
-        if ($_ -in $exempt) { return $false }
+    # The NEWEST dated head is never checked, and this is not a loophole -- it is the only shape that
+    # can ever be satisfied. A release tag follows CI-verified green (WSD-029), so on the release
+    # commit itself the newest head is dated and necessarily untagged, in a cycle with no exit:
+    # the tag waits on CI, CI runs this suite, this suite would wait on the tag. v0.63.0 hit both
+    # halves -- first refusing its own local release, then, after an environment-variable exemption
+    # that only release.ps1 could set, failing CI on both legs for exactly the same reason.
+    #
+    # Nothing is lost. This check exists for releases that were dated and then never tagged because
+    # their CI went red (v0.48.0) -- and such a release is only *knowable* as abandoned once a later
+    # release is dated above it. At that point it is no longer the newest head and is checked
+    # normally. Detection is deferred by one release; it is not given up. Deciding this from the
+    # changelog's own ordering rather than from an environment variable also keeps the gate hermetic:
+    # it returns the same answer locally, in CI, and on a developer's clone.
+    $checkable = @($Versions | Select-Object -Skip 1)
+    return @($checkable | Where-Object {
+        if ($_ -in $Declared) { return $false }
         return (-not (& $TagExists $_))
     })
 }
@@ -69,8 +73,7 @@ It 'every dated root changelog release has a corresponding git tag or declared e
         if ($_ -match '^## ([0-9]+\.[0-9]+\.[0-9]+) — [0-9]{4}-[0-9]{2}-[0-9]{2}$') { $Matches[1] }
     })
     Assert ($versions.Count -gt 0) 'root CHANGELOG.md yielded zero dated release heads -- the heading grammar changed and this gate is blind'
-    $missing = @(Get-MissingReleaseTags -Versions $versions -Declared $untaggedReleaseExceptions `
-        -InFlight $env:RELEASE_IN_FLIGHT_VERSION -TagExists {
+    $missing = @(Get-MissingReleaseTags -Versions $versions -Declared $untaggedReleaseExceptions -TagExists {
             param($v)
             git -C $repoRoot rev-parse -q --verify "refs/tags/v$v" *> $null
             return ($LASTEXITCODE -eq 0)
@@ -79,23 +82,24 @@ It 'every dated root changelog release has a corresponding git tag or declared e
     Assert $true 'clean'
 }
 
-It 'the in-flight exemption covers the release being cut and nothing else' {
-    $versions = @('0.63.0', '0.62.0', '0.48.0')
+It 'the newest dated head is exempt, and every older one is still reconciled' {
     $tagged = { param($v) return ($v -eq '0.62.0') }
-    # Unset: the dated-but-untagged head is reported. This is the state that refused v0.63.0, and it
-    # must stay reachable -- it is the only reason the check exists.
-    $none = @(Get-MissingReleaseTags -Versions $versions -Declared $untaggedReleaseExceptions -InFlight '' -TagExists $tagged)
-    Assert ($none -contains '0.63.0') 'with no release in flight, an untagged dated release must still be reported'
-    # In flight: exactly that version is exempt.
-    $inFlight = @(Get-MissingReleaseTags -Versions $versions -Declared $untaggedReleaseExceptions -InFlight '0.63.0' -TagExists $tagged)
-    Assert ($inFlight.Count -eq 0) "the in-flight release must not be reported: $($inFlight -join ', ')"
-    # A different in-flight version exempts nothing here -- the exemption is scoped to one string,
-    # not to "a release is happening".
-    $other = @(Get-MissingReleaseTags -Versions $versions -Declared $untaggedReleaseExceptions -InFlight '0.64.0' -TagExists $tagged)
-    Assert ($other -contains '0.63.0') 'an unrelated in-flight version must not exempt this release'
-    # The declared exception still stands on its own, and a tagged release is never reported.
-    Assert ($none -notcontains '0.48.0') 'the declared exception must remain exempt'
-    Assert ($none -notcontains '0.62.0') 'a tagged release must never be reported as missing'
+    # The release being cut: newest head untagged, and it must NOT be reported -- reporting it is the
+    # deadlock (tag waits on CI, CI runs this, this waits on the tag) that broke v0.63.0 twice.
+    $cutting = @(Get-MissingReleaseTags -Versions @('0.63.0', '0.62.0') -Declared @() -TagExists $tagged)
+    Assert ($cutting.Count -eq 0) "the newest dated head must not be reported: $($cutting -join ', ')"
+    # One release later, the same abandoned release IS reported -- detection is deferred, not given
+    # up. This is the assertion that keeps the exemption from becoming a disabled gate.
+    $later = @(Get-MissingReleaseTags -Versions @('0.64.0', '0.63.0', '0.62.0') -Declared @() -TagExists $tagged)
+    Assert ($later -contains '0.63.0') 'once a newer release is dated above it, an untagged release must be reported'
+    Assert ($later -notcontains '0.62.0') 'a tagged release must never be reported as missing'
+    Assert ($later -notcontains '0.64.0') 'the newest head must stay exempt regardless of depth'
+    # A declared exception still stands on its own, below the newest head.
+    $declared = @(Get-MissingReleaseTags -Versions @('0.64.0', '0.48.0') -Declared @('0.48.0') -TagExists $tagged)
+    Assert ($declared.Count -eq 0) 'a declared exception must remain exempt'
+    # Degenerate inputs must not throw or silently pass everything.
+    Assert (@(Get-MissingReleaseTags -Versions @('0.63.0') -Declared @() -TagExists $tagged).Count -eq 0) 'a single head is the newest head'
+    Assert (@(Get-MissingReleaseTags -Versions @() -Declared @() -TagExists $tagged).Count -eq 0) 'no dated heads yields nothing'
 }
 
 # --- 2. no phantom syntax -----------------------------------------------------------------------

@@ -570,12 +570,6 @@ $waiversApplied = @()
 Measure-Stage 'meta-suite' {
 $metaLog = [System.IO.Path]::GetTempFileName()
 try {
-    # Tell the suite which release is mid-flight. DocTruth reconciles dated changelog heads against
-    # git tags, and this run's head is necessarily dated-but-untagged: the stamp lands in stage 2 and
-    # the tag only in stage 5d, after CI is observed green (WSD-029). Scoped to this one version for
-    # the duration of this one run -- cleared below, so a release that ends with the tag withheld is
-    # still reported by the next ordinary suite run.
-    $env:RELEASE_IN_FLIGHT_VERSION = $Version
     & pwsh -NoProfile -File (Join-Path $repo '.claude/hooks/tests/Invoke-HookTests.ps1') *> $metaLog
     $metaExit = $LASTEXITCODE
     $metaText = [System.IO.File]::ReadAllText($metaLog)
@@ -595,7 +589,6 @@ try {
     if ($outcome.Refused) { $script:fatal = $true }
     Gate ($outcome.BlockingFailures -eq 0) $outcome.GateLabel
 } finally {
-    $env:RELEASE_IN_FLIGHT_VERSION = $null
     Remove-Item -LiteralPath $metaLog -Force -ErrorAction SilentlyContinue
 }
 }
