@@ -92,7 +92,10 @@ Rules 2–4 are enforced by `release.ps1`, not by this prose.
 
 1. **Locked design + adversarial critique before implementing any M+ item.** The critique may
    reject the item's *premise*, not just its approach. A reviewer's corrections are input, not
-   verdict — re-verify them.
+   verdict — re-verify them. **Re-validate the premise of any entry filed more than ~5 minor
+   versions ago** — every open entry carries a `**Filed against:** vN (date)` stamp saying how much
+   history to check. Premise rot is real and measured: B-79, B-138 and B-130 were all refuted or
+   stale when finally read.
 2. **Implementer ≠ reviewer** (different tier where available). Reviewer tier ≤ implementer tier
    means the review did not happen: auto-file a post-ship review instead of pretending it did.
 3. **Nothing enters the record as observed unless you observed it** — self-reports, a spec's

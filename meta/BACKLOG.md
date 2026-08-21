@@ -76,6 +76,7 @@ B-30 shipped in v0.25.4). **B-38, B-39 (both phases), B-36, and B-34 all shipped
 >    the consumer-lifecycle half of the same story — plus **B-44/B-46/B-48** as capacity allows.
 
 ### B-42 · Field pilot — install into ≥1 real production repo and let evidence drive the backlog
+**Filed against:** v0.31.0 (2026-07-17)
 **Effort:** M to set up · elapsed weeks to harvest · **Invariants:** #6
 
 > **PREMISE CORRECTED 2026-08-19 by the maintainer — the original *Why* below is factually wrong and
@@ -132,6 +133,7 @@ reports to date are complaints, so nothing in the intake path can currently evid
 failure. The remaining B-42 work (success metrics, the pilot itself) is untouched.
 
 ### B-43 · Host-compatibility recertification cadence (the one-time verifications are rotting)
+**Filed against:** v0.31.0 (2026-07-17)
 **Effort:** S per cycle, recurring · **Invariants:** #5 · **execution vehicle: B-49's quarterly drill**
 > **STATUS CORRECTED 2026-08-20 — this entry is much further along than its heading implies, and
 > "B-43 is open" currently reads as "nothing is certified", which is false.**
@@ -178,6 +180,7 @@ whichever first; each run either re-dates the table or files a defect entry. Fol
 canary prompt). Close the VS Code gap in the first cycle.
 
 ### B-49 · Quarterly live-fire drill — install into a real OSS repo, verify behavior, measure value-add
+**Filed against:** v0.31.0 (2026-07-17)
 **Effort:** drill #0 = 1 session (freezes the Appendix) · ~½ session per quarter thereafter ·
 **Invariants:** #5 #6 · maintainer-decided 2026-07-17 · executes B-43 on a cadence; complements
 (does **not** replace) B-42
@@ -272,6 +275,7 @@ failures: one hard checklist failure = a defect entry, regardless of the rubric 
 **B-44 is DONE (2026-08-20) — the retirement-trigger table is `meta/overlap-watch.md`; see `meta/BACKLOG-DONE.md`.**
 
 ### B-48 · Enforcement-bypass audit — the guard's known end-runs, decided honestly
+**Filed against:** v0.31.0 (2026-07-17)
 **Effort:** M · **Invariants:** #3 #5 · needs a WSD record
 > **DECISION PROPOSED 2026-08-20 (Claude), maintainer to ratify — PARTIALLY DONE, the analysis is
 > settled and the one shipped fix is STILL OPEN.** This entry's own framing is right: blocking-vs-
@@ -349,6 +353,7 @@ gap. Record the decision as a WSD either way.
 **B-70 is DONE (2026-08-20) — the cross-leg evidence rule is now in the Definition of done; see `meta/BACKLOG-DONE.md`.**
 
 ### B-72 · A behavioural probe can be defeated by the guidance it measures, and `angular-form-control` does not reproduce its field report
+**Filed against:** v0.39.0 (2026-07-31)
 **Effort:** M · **Priority:** P2 · **Invariants:** #5 · found 2026-07-31 while shipping B-66
 
 > **TRIAGE 2026-08-20 — PARTIALLY DONE; parts (c) and (d) are shipped, (a) and (b) are not.**
@@ -411,76 +416,10 @@ and the fixture is reusable. The defect is the prompt and the `cva` conflation, 
 
 **B-79 is REJECTED ON EVIDENCE (2026-08-20) — the MSIX hypothesis is refuted by measurement on the MSI build; see `meta/BACKLOG-DONE.md`.**
 
-### B-83 · A backlog entry's *Do* can be contradicted by a later shipped decision, and nothing notices
-**Effort:** M · **Priority:** P2 · filed 2026-08-02 (RCA of v0.44.0)
-
-**Sibling defect measured 2026-08-16 — the same rot, in the heading rather than the body.** A full
-audit of all 71 claimed-open entries (`meta/backlog-heading-audit-2026-08-16.md`) found **16 whose
-work had demonstrably shipped while the heading still read open** — B-61, B-62, B-78, B-80, B-103,
-B-104, B-105, B-107, B-110, B-113, B-115, B-116, B-118, B-119, B-120, B-121. Ten of the sixteen
-already carried an inline `> **DONE …**` marker *in their own body*, so the entry contradicted its own
-heading and nothing noticed. Headings are now corrected. This was found the expensive way: while
-picking "the next item to work on", B-80 was selected and turned out to be fully implemented
-(`release.ps1` step 5a + `ReleaseStagingGuard.Tests.ps1`, whose header names B-80) — i.e. the backlog
-actively misdirected real work. The audit also flagged **13 UNCLEAR** entries (B-50, B-64, B-65,
-B-66, B-70, B-72, B-96, B-97, B-98, B-101, B-102, B-112, B-117) where the shipped state only
-partially matches the entry's *Do*; those were deliberately NOT auto-closed and each needs a human
-read. Whatever mechanism this item lands on should cover heading/body/Done-section agreement, not
-just the *Do*-versus-decision drift it was originally filed for.
-
-> **Rate evidence, 2026-08-20 — the rot regenerates faster than an audit clears it.** A single
-> triage session found **three** more entries whose work had fully shipped while the heading read open
-> (**B-98**, **B-117**, **B-148**), *four days* after the 2026-08-16 audit corrected sixteen. B-148 is
-> the sharpest of the three: it shipped complete — both twins, a planted-defect red test, and a
-> COVERED row in `meta/gate-redtest-coverage.md` — and still read open. So the defect is not that
-> entries are hard to verify; B-148 was trivially verifiable. It is that **nothing makes closing the
-> entry part of shipping the work**, and the audit that fixes instances leaves that mechanism
-> untouched. Roughly 8% of the open list was stale again within four days.
->
-> This sharpens the item's *Do* in one way worth stating: a "filed against vN" stamp (part a) helps a
-> reader judge staleness, but it would not have caught any of these three, because their problem is
-> not an aged premise — it is a shipped deliverable that nobody walked back to the heading. The
-> cheapest thing that *would* have caught all three is a check on the other side of the ledger: an
-> entry whose id appears in a shipped `CHANGELOG.md` entry, or in `meta/gate-redtest-coverage.md`,
-> while still carrying an open heading. That is a string match on a deliberate signal rather than a
-> reading of intent, so it does not fall foul of this entry's own "do not try to make this a
-> deterministic gate" — which is about judging *contradiction*, not about noticing that an id was
-> shipped and never closed.
-
-**Why:** B-62 was filed as a P1 and sat open. Its instruction — "fail on a bare interpreter name in a
-shipped settings file" — was *already wrong when read*, because **v0.38.1** had deliberately reverted
-absolute-path interpreter pinning, making a bare name the intended shipped value. An implementer
-following the entry literally would have written a gate that fails every settings file on purpose,
-watched three dists go red, and either weakened the gate until it passed or reverted a correct
-shipped decision. It was caught only because a critique pass read v0.38.1's changelog entry.
-
-This is a **staleness class, not a one-off**. Entries are self-contained by design (the file says so
-at the top) and are written against the repo as it was on their filing date. Ten versions later the
-premise can be false with no signal: no gate reads `BACKLOG.md`, and nothing correlates an entry
-against changelog entries that postdate it. The longer an entry waits — and P1s wait longest when
-they look expensive — the likelier its premise has rotted.
-
-**Do:** (a) add a dated **"filed against vN"** stamp to every open entry, so the reader knows how much
-history to check; (b) require any entry older than ~5 minor versions to be re-validated against the
-changelog *before* implementation, and write that into the maintenance model's rule 1 (the critique
-pass is the natural home — it is already licensed to reject the premise); (c) sweep the currently
-open entries for the same rot. Start with those filed before v0.38.1/v0.39.0, which is where the
-interpreter/liveness decisions landed: **B-15, B-17, B-18, B-20, B-26, B-41…B-49** all predate it.
-
-**Not:** do not try to make this a deterministic gate. Whether a decision contradicts an entry is a
-reading, not a string match; a check that pretends otherwise is the theatre this repo keeps removing.
-
-**Cross-links:** B-44 (retirement triggers — same "reality moved, the entry did not" shape).
-
----
-
-**B-84 is DONE (2026-08-18) — `.claude/hooks/tests/_MutationHelper.ps1`; see `meta/BACKLOG-DONE.md`.**
-
-**B-85 is DONE (2026-08-20) — the bash validator now recovers a PowerShell host from known absolute locations; see `meta/BACKLOG-DONE.md`.**
-
-**B-87 is DONE (2026-08-20) — an opt-in maintainer commit-msg guard now refuses degenerate subjects; see `meta/BACKLOG-DONE.md`.**
+**B-83 is DONE (2026-08-21) — filed-against stamps, a delivery-ledger correlation, and the re-validation rule; see `meta/BACKLOG-DONE.md`.**
 
 ### B-96 · `map-warehouse` maps the ETL, not the warehouse
+**Filed against:** v0.44.0 (2026-08-04)
 **Effort:** M · **Priority:** P2 · found 2026-08-04 (maintainer field report) · **Design:** `.claude/plans/2026-08-05-b96-warehouse-schema-map-design.md` (LOCKED)
 
 > **TRIAGE 2026-08-20 — PARTIALLY DONE. The artifact shipped in v0.49.0; only the behavioural
@@ -614,6 +553,7 @@ original DW capability and its no-execution property).
 ---
 
 ### B-97 · No change to `CLAUDE.md` — or any protected file — reaches an already-bootstrapped consumer
+**Filed against:** v0.44.0 (2026-08-04)
 
 > **PARTIALLY DONE — shipped v0.45.0 (2026-08-05), WSD-031.** The four framework-owned blocks now
 > ship in `.github/instructions/framework-rules.instructions.md` — one unprotected carrier read
@@ -953,6 +893,7 @@ B-96 (blocked by this).
 **B-98 is DONE (2026-08-20) — all three steps of its *Do* are shipped, confirmed by triage against the tree; see `meta/BACKLOG-DONE.md`.**
 
 ### B-99 · Nothing tells the model not to re-do a resolution an earlier stage already performed
+**Filed against:** v0.44.0 (2026-08-05)
 **Effort:** S–M · **Priority:** P2 · found 2026-08-05 (generalised from ledger report #4) · **Invariants:** #1 #2
 
 **Why:** the warehouse defect in report #4 is one instance of a class. When an earlier stage has
@@ -1053,82 +994,10 @@ gated and this one is not), B-32/WSD-017 (the context-footprint gate this must p
 
 ---
 
-### B-100 · A file created by a shell command passes no hook — the guard is not a floor
-**Effort:** M · **Priority:** P2 · found 2026-08-05 (RCA on three red CI runs) · **Invariants:** #4 #5
-
-> **AND AGAIN, SAME RELEASE, DIFFERENT GATE.** The second v0.57.0 attempt was refused by
-> `RepositoryPrivacy.Tests`: the implementer's own report carried a concrete
-> `C:\Users\<name>\AppData\Local\Temp\...` fixture path into `.claude/plans/`, which is
-> committed and public (B-122's class). Two refusals, two different gates, one delivery — and
-> **both gates that caught it are whole-tree sweeps that never ask how the file arrived**, while
-> every hook-based check saw nothing. That is the argument for sweeps over hooks, stated in
-> evidence rather than in principle. Cost so far: two refused releases in one delivery.
-
-> **RECURRED 2026-08-17, caught by the BOM gate.** Shipping B-46 part 2, the implementer created
-> `src/core/tests/hooks/SessionStartVersionAwareness.Tests.ps1` through its own sandbox rather than
-> through a tool call, so `bom-fix` (a PostToolUse hook on Write/Edit) never saw it and the file
-> shipped BOM-less into all three dists. `release.ps1` refused the release; nothing was committed.
-> This is the second recorded instance of the class and it now has a measured cost: one refused
-> release. **What worked:** the repo-wide BOM sweep is a genuine floor precisely because it does not
-> depend on how the file arrived. **What still does not:** any hook-based check remains unreachable
-> for shell- and sandbox-authored files, which is exactly this entry's thesis. Note the delivery
-> model has changed since this entry was filed — an external implementer now writes most files
-> without passing a single tool call, so the exposure is larger than "a file created by a shell
-> command", not smaller.
-
-**The incident.** `.claude/scripts/canary-import-resolution.ps1` was committed without a UTF-8 BOM,
-breaking meta-invariant #4 and reddening CI for **five consecutive pushes** before anyone looked —
-runs `30992016878`, `30992071114`, `30992915143`, `30993263252`, `30993847982`. (Recorded as "three"
-when first filed; two more were still in flight at the time and also went red. Corrected here rather
-than left, because the count is the measure of how long the signal went unread.)
-One line, one file, caught only by the repo-wide BOM gate in the meta suite:
-`[FAIL] every .ps1 in the repo carries a UTF-8 BOM (invariant #4) -- BOM missing in:
-.claude\scripts\canary-import-resolution.ps1`.
-
-**Why no gate caught it before the push — two independent failures:**
-
-1. **The `bom-fix` hook never had a chance.** It is a PostToolUse hook on Write/Edit. That file was
-   created in the repo with `Copy-Item` from a scratchpad — a **shell** copy, which fires no tool
-   hook at all. Every other `.ps1` added the same day went through `Write`, was auto-fixed, and
-   passed. The auto-fixer worked perfectly and was simply never invoked.
-2. **Targeted verification gave false confidence.** A BOM check *was* run that day and reported
-   `BOM present: OK` — on `build-block-manifest.ps1`, the file created via `Write`. Checking the
-   file that went through the hook proves nothing about the file that bypassed it. The meta suite,
-   which checks the whole repo, was not run before pushing.
-
-**What else is exposed to the same class — this is the part worth acting on.** The defect is not
-about BOMs. **Every hook-based enforcement in this repo is bypassed by a file that arrives without a
-Write/Edit tool call.** That includes:
-
-- **The `guard` hook** — PreToolUse on Write/Edit, the deterministic block on secrets, test-defeats
-  and suppressions. A file produced by `Copy-Item`, by `Set-Content` inside a Bash/PowerShell call,
-  by `git checkout`, or by an external tool never passes it. The guard is documented as a floor
-  (`docs/enforcement-surfaces.md`); for shell-created content it is **not a floor at all**.
-- **Implementer rounds specifically.** codex/terra writes files directly to disk. So every
-  externally-implemented change bypasses the guard entirely. The working model already compensates
-  ("Claude alone reviews diffs"), but that is a *human* control standing in for a deterministic one,
-  and nothing in the record says so.
-
-**Do:** decide where the second line of defence belongs, given the hook cannot be it. Candidates:
-fold a BOM + guard-pattern scan into the **staged set** at commit time (B-80's guard already
-inspects the staged set — the cheapest place to add this); extend **B-18**'s opt-in git-hook net,
-which is the same idea already scoped; or accept it and make "run the meta suite before pushing" an
-explicit step in `DEVELOPING.md` rather than tribal habit. The first is enforcement, the third is
-process — do not pretend the third is the second.
-
-**Cross-links:** B-80 (staged-set guard — the natural host), B-18 (opt-in git hooks), B-48
-(enforcement-bypass audit — **this is a concrete, demonstrated entry for that list**), B-88 (nothing
-tells you a release broke CI; three runs went red here before it was raised by the maintainer, not by
-tooling).
-
-**B-101 is DONE (2026-08-18) — measured, fixed and re-red-tested 2026-08-06; the remaining
-per-assertion-spawn class is tracked as B-138. See `meta/BACKLOG-DONE.md`.**
-
-**B-102 is DONE — the core fix shipped in v0.45.0 and its three unshipped residues became B-104, B-105 and B-106, all since delivered; see `meta/BACKLOG-DONE.md`.**
-
-**B-111 is DONE (2026-08-20) — the owed v0.47.0 post-ship review was performed and its findings filed; see `meta/BACKLOG-DONE.md`.**
+**B-100 is DONE (2026-08-21) — the staged-set scan closes the shell-authored bypass, and the guard's real boundary is now shipped; see `meta/BACKLOG-DONE.md`.**
 
 ### B-112 · RCA: every behavioural instrument's first version could not produce the result it claimed to test for
+**Filed against:** v0.47.0 (2026-08-06)
 **Effort:** S (the rule) · M (the sweep) · **Priority:** P2 · filed 2026-08-06 · **Invariants:** #5
 · generalises B-72; sibling of B-64/B-74/B-75 on the deterministic side
 
@@ -1311,6 +1180,7 @@ saturation verdict beside every scenario so this is never re-derived.
 **B-123 is DONE (2026-08-20) — the owed v0.48.0 post-ship review was performed and produced B-154; see `meta/BACKLOG-DONE.md`.**
 
 ### B-129 · Design and review the warehouse reporting consumption layer
+**Filed against:** v0.51.0 (2026-08-08)
 **Effort:** M–L · **Priority:** P2 · filed 2026-08-08 · **Capability:** warehouse technical leadership
 
 **Why:** `map-warehouse` records consumption views/marts and teaches a report author to follow the
@@ -1534,6 +1404,7 @@ reliably counted.
 **B-132 is DONE (2026-08-20) — the agent-eval runner declares its PowerShell 7 boundary and the wrapper proves it; see `meta/BACKLOG-DONE.md`.**
 
 ### B-133 · Make durable-learning promotion part of normal work, without turning reuse into truth
+**Filed against:** v0.52.0 (2026-08-11)
 **Effort:** S for the evidence/design phase; M only if the baseline justifies a shipped change ·
 **Priority:** P3 · filed 2026-08-11 · **Invariants:** #1 #2 #3 #6 #7 · **Capability:** team knowledge
 
@@ -1634,6 +1505,7 @@ authorises neither Phase 0 execution nor shipped changes until the required Clau
 ---
 
 ### B-134 · Prevent implementation evidence from masquerading as product intent
+**Filed against:** v0.52.0 (2026-08-11)
 **Effort:** M for research, behavioral baselines, and design; shipped effort must be re-estimated
 after review · **Priority:** P2 · filed 2026-08-11 · **Invariants:** #1 #2 #6 #7 ·
 **Capability:** product and experience leadership
@@ -1772,6 +1644,7 @@ authorises neither Phase 0 execution nor shipped changes until the required Clau
 the original `ScriptTwinParity` docs-sync-check 5.1 divergence is STILL OPEN. See below.**
 
 ### B-130 · Diagnose or retire the historical Windows PowerShell 5.1 parity failures
+**Filed against:** v0.51.4 (2026-08-08)
 **Effort:** S · **Priority:** P3 · filed 2026-08-08 · **Invariants:** #3
 
 > **MEASURED 2026-08-20 BY THE REVIEWER, and it changes both halves of this entry. An attempted fix
@@ -2030,6 +1903,7 @@ implementation. If Opus is genuinely unavailable due to limits, record `WAITING 
 **B-131 is DONE (2026-08-19) — marker-scoped changelog grammar; see `meta/BACKLOG-DONE.md`.**
 
 ### B-136 · Make affected framework artifacts part of completing an AI-authored change
+**Filed against:** v0.52.0 (2026-08-11)
 **Effort:** M · **Priority:** P2 · filed 2026-08-11 · **Invariants:** #1 #2 #7
 
 **Why:** the shipped Agentic Workflow and shared `.claude/workflow.md` currently require an AI to
@@ -2072,6 +1946,7 @@ documentation graph, automatic classifier, mutating `/docs-sync`, or exhaustive 
 not.
 
 ### B-138 · The gate suite is bound by per-assertion process spawning, and its cost ceiling will always eventually be outgrown
+**Filed against:** v0.52.0 (2026-08-13)
 **Effort:** M · **Priority:** P2 · filed 2026-08-13 · **Invariants:** #3 #4
 
 > **SECOND MEASURED CORRECTION, 2026-08-20 (v0.62.0) — and it refutes this entry's *Do* ordering.**
@@ -2217,6 +2092,7 @@ first, and re-check for trivially-parallel structure before assuming in-process 
 that check alone was worth 1.82x on the file this entry used to be about.
 
 ### B-140 · Investigate a codex execution path for the live-eval harness (budget diversification)
+**Filed against:** v0.52.1 (2026-08-16)
 
 > **FIRST DIRECT OBSERVATION, 2026-08-20 — the premise is half right, and the half that is wrong was
 > being asserted rather than observed.** This entry says codex "has no equivalent routing mechanism".
@@ -2319,6 +2195,7 @@ fail in the world the entry is about; see `meta/BACKLOG-DONE.md`.**
 **B-155 is DONE (2026-08-20) — a grep that cannot run is now a host fatal, not a content finding; see `meta/BACKLOG-DONE.md`.**
 
 ### B-156 · The "grep exit status as content verdict" conflation is class-wide, and most instances are in SHIPPED scripts
+**Filed against:** v0.62.0 (2026-08-20)
 **Effort:** M · **Priority:** P2 · found 2026-08-20 by B-155's RCA sweep · **Invariants:** #3 #5
 
 **Why.** B-155 fixed one site in `scripts/validate-dist.sh` (authoring-only) where `grep -q`'s
@@ -2370,6 +2247,78 @@ defect from a different cause, with a measured false diagnosis), B-85 (a host/PA
 be reported as an artifact defect — this entry is that thesis applied to `grep` rather than to an
 interpreter).
 
+### B-157 · Installing the framework produces a ~164-file commit nobody can review, and nothing in the tree says which files the consumer owns
+**Filed against:** v0.62.0 (2026-08-21)
+**Effort:** S (the manifest) · M (if optional components are chosen) · **Priority:** P3 · raised by the maintainer 2026-08-21 · **Invariants:** #6
+
+**The question asked:** the install leaves a large amount of framework material to be checked in;
+is a cleanup step preferable or desirable?
+
+**Answer, on measurement: a cleanup step that deletes things is NOT desirable, and the two obvious
+candidates are already handled or load-bearing.** But the underlying complaint is real and has a
+cheaper remedy than deletion.
+
+**What actually lands** (dotnet dist, measured 2026-08-21): `.claude/` 51 files, `.github/` 38,
+`scripts/` 27, `tests/` 26, `docs/` 14, `specs/` 1, plus root files — **~164 committed paths**.
+
+**Two things a reader would assume are wrong, and are not:**
+1. **The framework does not clobber the consumer's `README.md` or `CHANGELOG.md`.** The installer's
+   `$metaFiles` list explicitly excludes `.git`, `.template-repo`, `README.md`, `CHANGELOG.md`,
+   `.gitignore` and `.gitattributes` from the copy. The `.template-repo` marker in particular would
+   disable the consumer's own CI guardrail if it travelled, and it doesn't.
+2. **`tests/` (26 files, 261K) is the obvious trim candidate and is load-bearing.** The **shipped**
+   `.github/workflows/template-ci.yml` runs `tests/hooks`, and `scripts/template-checks.{ps1,sh}`
+   references it. Deleting it would break a shipped workflow and a shipped gate, so "clean it up"
+   is not a local change.
+
+**Why deletion is the wrong shape generally.** Nearly all of this is *team configuration*, and being
+committed is the point: hooks must exist for every developer who clones, skills and commands must be
+in the tree for the agent to find, `CLAUDE.md` and the instructions carrier are the product. More
+sharply — the framework's update path *restores* framework-owned files, and B-97 exists because
+protected files **fail** to reach existing consumers. A consumer who deletes machinery gets it back
+on the next update, or gets a `framework-doctor` reporting missing components. Cleanup would fight
+the delivery model rather than tidy it.
+
+**So what is the real complaint? Two things, neither of which is volume:**
+
+1. **The first commit is unreviewable.** A reviewer facing ~164 added paths cannot separate the
+   product from the scaffolding, and has no basis to approve or question any of it. That is a
+   genuine onboarding cost and it is paid once per repo, by someone who did not choose the framework.
+2. **Nothing in the tree states ownership.** A developer looking at `scripts/framework-doctor.ps1`
+   six months later has no way to know it is framework-owned and that their edits will be silently
+   overwritten on update. v0.56.0 (B-46) shipped exactly this disclosure — three ownership classes,
+   printed **at install time**. A printed message scrolls away; the files carry nothing. That is the
+   same delivery gap B-97 is about, applied to ownership rather than to rules.
+
+**Recommended — cheap, and it is the thing already described in prose but encoded nowhere:**
+ship a **manifest of framework-owned paths with their ownership class** (framework-owned/overwritten,
+consumer-owned/protected, mixed — the three classes B-46 already defines). It gives a PR reviewer one
+file to read instead of 164; it gives `framework-doctor` something to check the installed tree
+against rather than inferring; and it makes "will my edit survive an update?" answerable from the
+repo rather than from a message nobody kept. Cross-check it against the installer's own
+`$protected` / `$metaFiles` lists so the manifest cannot drift from the behaviour it describes —
+that check is the deliverable as much as the manifest.
+
+**Also worth doing regardless:** say in the shipped `README.md` what the install adds and why it has
+to be committed. Currently a consumer discovers the file count by running it.
+
+**Considered and not recommended:**
+- **Optional components at install** (e.g. omit `tests/`): fragments the install matrix, and
+  `template-checks` plus the shipped workflow would both need to tolerate absence. Real cost, and it
+  buys 26 files.
+- **A broader `.gitignore`**: the shipped one ignores only `docs/impact/runs/`. Ignoring machinery
+  would break the team-config property that makes any of it work.
+
+**Evidence gap, stated rather than assumed:** "unreviewable" is a *consumer friction* claim and the
+author cannot self-generate it — this is exactly the population **B-42** exists to hear from. The
+manifest is cheap enough to justify on its own reasoning, but if a real installer reports that the
+volume was never the problem, drop the rest of this entry rather than building for a complaint
+nobody made.
+
+**Cross-links:** B-46 (the three ownership classes, disclosed at install time only), B-97 (the same
+delivery gap for rules rather than ownership), B-42 (the only source of evidence for the friction
+claim), B-32 (context footprint — a different cost of the same material, already measured).
+
 **B-146 is DONE (2026-08-18) — check B shipped, check A dropped on evidence; see `meta/BACKLOG-DONE.md`.**
 
 **B-144 is DONE (2026-08-18) — see `meta/BACKLOG-DONE.md`.**
@@ -2379,6 +2328,7 @@ interpreter).
 **B-14 shipped in v0.25.3 (2026-07-05) — see `meta/BACKLOG-DONE.md`.**
 
 ### B-15 · WS-3: one *verified* Jenkins/Bamboo required-build recipe (P1 of the self-sufficiency roadmap)
+**Filed against:** v0.26.0 (2026-07-12)
 **Effort:** M–L
 Consumers are Bitbucket Data Center shops; the only deterministic outer-loop primitive they can
 use without a DC admin is a **required-build merge check** running their existing CI. Ship one
@@ -2393,6 +2343,7 @@ request.
 **B-17 was REJECTED on evidence 2026-08-17 (WSD-045) — see `meta/BACKLOG-DONE.md`.**
 
 ### B-18 · WS-6: opt-in git-hook convenience net
+**Filed against:** v0.26.0 (2026-07-12)
 **Effort:** M
 `scripts/setup-git-hooks.ps1/.sh` (+ `install.ps1 -GitHooks` flag), added-lines-only staged
 scan reusing guard's patterns; must detect and refuse on existing `core.hooksPath`/husky;
@@ -2400,6 +2351,7 @@ documented as bypassable convenience, **not** enforcement. Silent default wiring
 rejected — keep it opt-in.
 
 ### B-20 · Coverage-as-diagnostic + diff-scoped mutation testing (the former v0.24.0 testing release)
+**Filed against:** v0.26.0 (2026-07-12)
 **Effort:** L · needs a **new version slot** — ≥ v0.28.0 (0.26.0 = merge, 0.27.0 = B-27 per WSD-012)
 Execution-ready plan exists: `<home>\.claude\plans\v0_24_0-shipped-framework-testing.md`
 (WS-T9 coverage holes-map + optional off-by-default patch-coverage gate, roll-your-own diff

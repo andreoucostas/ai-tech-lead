@@ -5823,3 +5823,225 @@ ran the shipped suite under pwsh 7 only, where the capture decoration does not e
 because shell boolean shorthand erased grep's third outcome; the sibling sweep found the same risk
 class in maintainer-facing `docs-sync-check.sh` and `framework-doctor.sh`, plus extractor-shaped
 `|| true` sites whose empty-result semantics need individual review rather than a batch rewrite.
+
+---
+
+### B-100 · A file created by a shell command passes no hook — the guard is not a floor
+> **DONE 2026-08-21.** The bypass is real and had four recorded instances, the newest during this
+> campaign: a `.ps1` created through a shell heredoc never passed `bom-fix` and shipped BOM-less.
+> Earlier ones cost **five consecutive red CI pushes** and **two refused releases in one delivery**.
+>
+> **The remedy went where B-87's plumbing already was, not where the entry proposed.** The entry
+> suggested `release.ps1` step 5a; a **pre-commit** scan in `.claude/git-hooks/` catches the file
+> before it enters history rather than at release time, and that infrastructure had landed two days
+> earlier. Entries do not know what shipped after them — this is the benign face of the staleness B-83
+> exists for.
+>
+> **`check-staged-content.ps1` invokes the shipped guard rather than copying its patterns**, with the
+> reason in its own comment: "so its patterns cannot drift". A forked pattern set would have been
+> worse than no check at all.
+>
+> **Red-tested by the reviewer against a real staged set**, which the implementer's sandbox cannot do:
+> a BOM-less `.ps1` is refused; a staged AWS key is refused **in the guard's own wording** — which is
+> what proves the reuse works end to end rather than merely structurally; an ordinary file exits 0.
+>
+> **The only shipped change is the honesty half:** `docs/enforcement-surfaces.md` now states that for
+> shell-authored or externally written content the guard **is not a floor**. The hook itself is
+> maintainer-only and verified absent from `dist/`. It is deliberately **not** described as restoring
+> the floor — this entry is explicit that "the first is enforcement, the third is process — do not
+> pretend the third is the second", and an opt-in local hook is the third.
+
+**Filed against:** v0.44.0 (2026-08-05)
+**Effort:** M · **Priority:** P2 · found 2026-08-05 (RCA on three red CI runs) · **Invariants:** #4 #5
+
+> **IMPLEMENTATION READY FOR REVIEW 2026-08-21.** The existing opt-in maintainer hook path now has
+> a pre-commit staged-snapshot scan: every staged `.ps1` is checked for its BOM and every staged
+> blob is sent through the canonical `guard.ps1`, so no pattern copy can drift. `DEVELOPING.md`
+> calls it a bypassable convenience net, not enforcement. **RCA:** no pre-history check caught the
+> class because all deterministic write checks were coupled to editor tool events; only later
+> whole-tree suites ignored file provenance. Every event-scoped hook remains exposed to content
+> created by shell commands and external tools; this local opt-in net reduces that exposure but
+> cannot restore an enforcement floor.
+
+> **AND AGAIN, SAME RELEASE, DIFFERENT GATE.** The second v0.57.0 attempt was refused by
+> `RepositoryPrivacy.Tests`: the implementer's own report carried a concrete
+> `C:\Users\<name>\AppData\Local\Temp\...` fixture path into `.claude/plans/`, which is
+> committed and public (B-122's class). Two refusals, two different gates, one delivery — and
+> **both gates that caught it are whole-tree sweeps that never ask how the file arrived**, while
+> every hook-based check saw nothing. That is the argument for sweeps over hooks, stated in
+> evidence rather than in principle. Cost so far: two refused releases in one delivery.
+
+> **RECURRED 2026-08-17, caught by the BOM gate.** Shipping B-46 part 2, the implementer created
+> `src/core/tests/hooks/SessionStartVersionAwareness.Tests.ps1` through its own sandbox rather than
+> through a tool call, so `bom-fix` (a PostToolUse hook on Write/Edit) never saw it and the file
+> shipped BOM-less into all three dists. `release.ps1` refused the release; nothing was committed.
+> This is the second recorded instance of the class and it now has a measured cost: one refused
+> release. **What worked:** the repo-wide BOM sweep is a genuine floor precisely because it does not
+> depend on how the file arrived. **What still does not:** any hook-based check remains unreachable
+> for shell- and sandbox-authored files, which is exactly this entry's thesis. Note the delivery
+> model has changed since this entry was filed — an external implementer now writes most files
+> without passing a single tool call, so the exposure is larger than "a file created by a shell
+> command", not smaller.
+
+**The incident.** `.claude/scripts/canary-import-resolution.ps1` was committed without a UTF-8 BOM,
+breaking meta-invariant #4 and reddening CI for **five consecutive pushes** before anyone looked —
+runs `30992016878`, `30992071114`, `30992915143`, `30993263252`, `30993847982`. (Recorded as "three"
+when first filed; two more were still in flight at the time and also went red. Corrected here rather
+than left, because the count is the measure of how long the signal went unread.)
+One line, one file, caught only by the repo-wide BOM gate in the meta suite:
+`[FAIL] every .ps1 in the repo carries a UTF-8 BOM (invariant #4) -- BOM missing in:
+.claude\scripts\canary-import-resolution.ps1`.
+
+**Why no gate caught it before the push — two independent failures:**
+
+1. **The `bom-fix` hook never had a chance.** It is a PostToolUse hook on Write/Edit. That file was
+   created in the repo with `Copy-Item` from a scratchpad — a **shell** copy, which fires no tool
+   hook at all. Every other `.ps1` added the same day went through `Write`, was auto-fixed, and
+   passed. The auto-fixer worked perfectly and was simply never invoked.
+2. **Targeted verification gave false confidence.** A BOM check *was* run that day and reported
+   `BOM present: OK` — on `build-block-manifest.ps1`, the file created via `Write`. Checking the
+   file that went through the hook proves nothing about the file that bypassed it. The meta suite,
+   which checks the whole repo, was not run before pushing.
+
+**What else is exposed to the same class — this is the part worth acting on.** The defect is not
+about BOMs. **Every hook-based enforcement in this repo is bypassed by a file that arrives without a
+Write/Edit tool call.** That includes:
+
+- **The `guard` hook** — PreToolUse on Write/Edit, the deterministic block on secrets, test-defeats
+  and suppressions. A file produced by `Copy-Item`, by `Set-Content` inside a Bash/PowerShell call,
+  by `git checkout`, or by an external tool never passes it. The guard is documented as a floor
+  (`docs/enforcement-surfaces.md`); for shell-created content it is **not a floor at all**.
+- **Implementer rounds specifically.** codex/terra writes files directly to disk. So every
+  externally-implemented change bypasses the guard entirely. The working model already compensates
+  ("Claude alone reviews diffs"), but that is a *human* control standing in for a deterministic one,
+  and nothing in the record says so.
+
+**Do:** decide where the second line of defence belongs, given the hook cannot be it. Candidates:
+fold a BOM + guard-pattern scan into the **staged set** at commit time (B-80's guard already
+inspects the staged set — the cheapest place to add this); extend **B-18**'s opt-in git-hook net,
+which is the same idea already scoped; or accept it and make "run the meta suite before pushing" an
+explicit step in `DEVELOPING.md` rather than tribal habit. The first is enforcement, the third is
+process — do not pretend the third is the second.
+
+**Cross-links:** B-80 (staged-set guard — the natural host), B-18 (opt-in git hooks), B-48
+(enforcement-bypass audit — **this is a concrete, demonstrated entry for that list**), B-88 (nothing
+tells you a release broke CI; three runs went red here before it was raised by the maintainer, not by
+tooling).
+
+**B-101 is DONE (2026-08-18) — measured, fixed and re-red-tested 2026-08-06; the remaining
+per-assertion-spawn class is tracked as B-138. See `meta/BACKLOG-DONE.md`.**
+
+**B-102 is DONE — the core fix shipped in v0.45.0 and its three unshipped residues became B-104, B-105 and B-106, all since delivered; see `meta/BACKLOG-DONE.md`.**
+
+**B-111 is DONE (2026-08-20) — the owed v0.47.0 post-ship review was performed and its findings filed; see `meta/BACKLOG-DONE.md`.**
+
+---
+
+### B-83 · A backlog entry's *Do* can be contradicted by a later shipped decision, and nothing notices
+> **DONE 2026-08-21 — all three parts, and part (b) is what makes the other two useful.**
+>
+> **(a) Stamps.** All 22 open entries carry `**Filed against:** vN (date)`. Spot-checked against the
+> entries' own text rather than trusted: B-42's `v0.31.0 (2026-07-17)` matches its recorded
+> "2026-07-17, framework v0.31.0" exactly, so they are derived, not invented.
+>
+> **(b) The rule.** Maintenance model rule 1 now requires re-validating the premise of any entry
+> filed more than ~5 minor versions ago, with the stamp saying how much history to check, and the
+> `AGENTS.md` mirror follows [#2]. Without this the stamps are inert data. The rule cites the measured
+> instances rather than arguing from principle: **B-79** (the MSIX hypothesis refuted — the predicted
+> 45% win was 0%), **B-138** (wrong optimisation target, twice), **B-130** (both halves stale, one no
+> longer reproducing at all and the diagnostic it requested already present).
+>
+> **(c) The ledger correlation.** An entry id appearing in a shipped `CHANGELOG.md` or in
+> `meta/gate-redtest-coverage.md` while its heading still reads **open** is reported for a human to
+> resolve — never auto-closed. It would have caught all three of 2026-08-20's stale headings; B-148 in
+> particular had shipped complete, with a COVERED row in the red-test ledger, and still read open. It
+> carries the archived-id false-positive control, so an id mentioned in a changelog whose entry is
+> already archived is not reported.
+>
+> **This stays on the right side of the standing constraint** ("do not try to make this a
+> deterministic gate", `meta/BACKLOG.md B-83`): that forbids machine-judging whether a decision
+> *contradicts* an entry, which is a reading. Matching an id someone deliberately wrote into a
+> delivery record is a string match on an intentional signal, not a judgement.
+>
+> **Reviewer change:** the stamp check shipped as `Assert $true 'advisory finding completed'` — a
+> check that cannot fail, which is the inert-check shape B-59 and B-64 exist to remove. Compliance was
+> already 22/22, so enforcing cost nothing; made blocking and red-tested (removing B-15's stamp fails
+> naming B-15). Note the meta suite **is** a release gate, so this can now refuse a release — the root
+> changelog was corrected, having claimed the work "neither auto-closes entries nor blocks a release".
+
+**Filed against:** v0.43.0 (2026-08-02)
+**Effort:** M · **Priority:** P2 · filed 2026-08-02 (RCA of v0.44.0)
+
+> **IMPLEMENTATION READY FOR REVIEW 2026-08-21.** Every open entry now carries a filed-against
+> release and date. `BacklogHygiene.Tests.ps1` also correlates open headings with explicit ids in
+> the maintainer changelog and red-test ledger, printing candidates for human resolution without
+> failing the meta suite or auto-closing anything. **RCA:** no gate caught stale headings because
+> the backlog and delivery ledgers were never correlated. The same class remains exposed wherever
+> delivery is partial: an id can be a legitimate candidate without the whole entry being done, so
+> deterministic closure would be wrong and the finding must remain advisory.
+
+**Sibling defect measured 2026-08-16 — the same rot, in the heading rather than the body.** A full
+audit of all 71 claimed-open entries (`meta/backlog-heading-audit-2026-08-16.md`) found **16 whose
+work had demonstrably shipped while the heading still read open** — B-61, B-62, B-78, B-80, B-103,
+B-104, B-105, B-107, B-110, B-113, B-115, B-116, B-118, B-119, B-120, B-121. Ten of the sixteen
+already carried an inline `> **DONE …**` marker *in their own body*, so the entry contradicted its own
+heading and nothing noticed. Headings are now corrected. This was found the expensive way: while
+picking "the next item to work on", B-80 was selected and turned out to be fully implemented
+(`release.ps1` step 5a + `ReleaseStagingGuard.Tests.ps1`, whose header names B-80) — i.e. the backlog
+actively misdirected real work. The audit also flagged **13 UNCLEAR** entries (B-50, B-64, B-65,
+B-66, B-70, B-72, B-96, B-97, B-98, B-101, B-102, B-112, B-117) where the shipped state only
+partially matches the entry's *Do*; those were deliberately NOT auto-closed and each needs a human
+read. Whatever mechanism this item lands on should cover heading/body/Done-section agreement, not
+just the *Do*-versus-decision drift it was originally filed for.
+
+> **Rate evidence, 2026-08-20 — the rot regenerates faster than an audit clears it.** A single
+> triage session found **three** more entries whose work had fully shipped while the heading read open
+> (**B-98**, **B-117**, **B-148**), *four days* after the 2026-08-16 audit corrected sixteen. B-148 is
+> the sharpest of the three: it shipped complete — both twins, a planted-defect red test, and a
+> COVERED row in `meta/gate-redtest-coverage.md` — and still read open. So the defect is not that
+> entries are hard to verify; B-148 was trivially verifiable. It is that **nothing makes closing the
+> entry part of shipping the work**, and the audit that fixes instances leaves that mechanism
+> untouched. Roughly 8% of the open list was stale again within four days.
+>
+> This sharpens the item's *Do* in one way worth stating: a "filed against vN" stamp (part a) helps a
+> reader judge staleness, but it would not have caught any of these three, because their problem is
+> not an aged premise — it is a shipped deliverable that nobody walked back to the heading. The
+> cheapest thing that *would* have caught all three is a check on the other side of the ledger: an
+> entry whose id appears in a shipped `CHANGELOG.md` entry, or in `meta/gate-redtest-coverage.md`,
+> while still carrying an open heading. That is a string match on a deliberate signal rather than a
+> reading of intent, so it does not fall foul of this entry's own "do not try to make this a
+> deterministic gate" — which is about judging *contradiction*, not about noticing that an id was
+> shipped and never closed.
+
+**Why:** B-62 was filed as a P1 and sat open. Its instruction — "fail on a bare interpreter name in a
+shipped settings file" — was *already wrong when read*, because **v0.38.1** had deliberately reverted
+absolute-path interpreter pinning, making a bare name the intended shipped value. An implementer
+following the entry literally would have written a gate that fails every settings file on purpose,
+watched three dists go red, and either weakened the gate until it passed or reverted a correct
+shipped decision. It was caught only because a critique pass read v0.38.1's changelog entry.
+
+This is a **staleness class, not a one-off**. Entries are self-contained by design (the file says so
+at the top) and are written against the repo as it was on their filing date. Ten versions later the
+premise can be false with no signal: no gate reads `BACKLOG.md`, and nothing correlates an entry
+against changelog entries that postdate it. The longer an entry waits — and P1s wait longest when
+they look expensive — the likelier its premise has rotted.
+
+**Do:** (a) add a dated **"filed against vN"** stamp to every open entry, so the reader knows how much
+history to check; (b) require any entry older than ~5 minor versions to be re-validated against the
+changelog *before* implementation, and write that into the maintenance model's rule 1 (the critique
+pass is the natural home — it is already licensed to reject the premise); (c) sweep the currently
+open entries for the same rot. Start with those filed before v0.38.1/v0.39.0, which is where the
+interpreter/liveness decisions landed: **B-15, B-17, B-18, B-20, B-26, B-41…B-49** all predate it.
+
+**Not:** do not try to make this a deterministic gate. Whether a decision contradicts an entry is a
+reading, not a string match; a check that pretends otherwise is the theatre this repo keeps removing.
+
+**Cross-links:** B-44 (retirement triggers — same "reality moved, the entry did not" shape).
+
+---
+
+**B-84 is DONE (2026-08-18) — `.claude/hooks/tests/_MutationHelper.ps1`; see `meta/BACKLOG-DONE.md`.**
+
+**B-85 is DONE (2026-08-20) — the bash validator now recovers a PowerShell host from known absolute locations; see `meta/BACKLOG-DONE.md`.**
+
+**B-87 is DONE (2026-08-20) — an opt-in maintainer commit-msg guard now refuses degenerate subjects; see `meta/BACKLOG-DONE.md`.**

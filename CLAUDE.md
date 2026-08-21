@@ -133,7 +133,17 @@ including a false "gates green"; every externally-implemented item (B-32, B-21, 
 had 2–5 real findings caught **before** ship. That discipline was tribal — these six rules make it
 binding. Rules 2–4 are enforced by `release.ps1`'s review ledger, not by this prose.
 
-1. **Locked design + adversarial critique before implementation, for every M+ item.** The critique
+1. **Locked design + adversarial critique before implementation, for every M+ item.**
+   **Re-validate the premise of any entry filed more than ~5 minor versions ago, before implementing
+   it.** Every open backlog entry now carries a `**Filed against:** vN (date)` stamp, so the amount of
+   history to check is stated rather than guessed. The critique pass is the natural home for this — it
+   is already licensed to reject the premise. This is not hypothetical: in a single campaign, B-79's
+   MSIX hypothesis was refuted by measurement (the predicted 45% win was 0%), B-138 named the wrong
+   optimisation target twice, and both halves of B-130 turned out stale — one no longer reproduced at
+   all, and the diagnostic it asked for already existed. An entry is written against the tree as it
+   was on its filing date; the longer it waits, the likelier its premise has rotted, and P1s wait
+   longest because they look expensive.
+ The critique
    is licensed to reject the item's *premise*, not merely tighten the approach — twice it has
    killed an already-approved plan, and both times that was the right outcome. But **a reviewer's
    corrections are input, not verdict**: a second pass once caught a factual error in the first
