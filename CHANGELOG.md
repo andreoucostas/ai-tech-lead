@@ -11,6 +11,34 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.66.0 — Unreleased
+
+**B-163: `GuardPatternErrors.Tests.ps1` drops from 234s to 15s — and the speedup that produced it was
+inert for half its cases until review caught it.** This file is the meta suite's dominant cost, and
+the reason was structural: each of its four mutation cases ran the **entire 40-case `Guard.Tests`
+suite** — 160 guard invocations, ~137s — in order to observe that **one** pattern had stopped
+matching. `Guard.Tests` now accepts an opt-in `GUARD_TEST_POLICY` filter, and the mutation harness
+asks only for the case that exercises the pattern it broke. That is logically sufficient rather than
+a weakening: the suite's exit code is its failure count, so a filtered subset going red proves the
+full suite goes red.
+
+**The defect, recorded because it is the more useful half of this entry.** The first implementation
+exited **1** when the filter matched no cases. But the harness decides "the mutation was caught" from
+a **non-zero exit**, and this suite's ordinary exit code *is* its failure count — so "no cases
+matched" was byte-identical to "one case failed". Removing the `secret` tag produced
+**4 passed while two mutations tested nothing**. It now exits **111**, a sentinel outside any
+plausible failure count, which the harness rejects by name. Re-verified in both directions: tag
+removed → 2 passed / 2 failed; restored → 4 passed / 0 failed.
+
+That is the B-59/B-64/B-75 inert-check class arriving inside the gate that protects the write guard,
+disguised as a 14x speedup. **A faster test that silently stops testing is worse than the slow one it
+replaced.** The generalisable rule: **when a test's exit code carries data, every new exit path
+collides with it** — and reading the diff was not enough to see it. Only deliberately breaking the
+tagging exposed it.
+
+With the filter unset the shipped suite is unchanged: 82 passed, 0 failed, and the composed copies
+are byte-identical to source.
+
 ## 0.65.0 — 2026-08-21
 
 **B-157: each dist now ships `framework-ownership.json`, a generated manifest of every installed path

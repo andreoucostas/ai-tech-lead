@@ -5,6 +5,16 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.66.0 — Unreleased
+
+**`tests/hooks/Guard.Tests.ps1` can now run a subset of its cases.** Set `GUARD_TEST_POLICY` to a
+policy name to run only the guard cases tagged with it, which is useful when you are iterating on one
+pattern and do not want to wait for the whole table. Unset — the normal case — nothing changes: the
+full suite runs exactly as before.
+
+If the value you set matches no cases the suite stops with exit 111 and says so, rather than
+reporting a pass for work it never did.
+
 ## 0.65.0 — 2026-08-21
 
 **New: `framework-ownership.json` tells you which files in your repository the framework owns.**
