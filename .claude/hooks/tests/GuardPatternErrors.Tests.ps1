@@ -61,9 +61,19 @@ try {
                     Invoke-MutationRedTest -TargetFile $target -ScratchSourceRoot $sourceRoot -Find $case.Find -Replacement $case.Replace -Command {
                         param($scratchTarget, $scratchRoot)
                         $suite = Join-Path $scratchRoot 'tests\hooks\Guard.Tests.ps1'
+                        # The mutation claim is only that the full suite goes red. Its exit code is
+                        # the sum of case failures, so a policy-filtered subset going red proves the
+                        # full suite necessarily goes red; this reduces spawns without weakening the
+                        # claim. Guard.Tests rejects a filter that selects no cases, loudly.
+                        $env:GUARD_TEST_POLICY = $case.Policy
                         & pwsh -NoProfile -File $suite
                         $suiteExit = $LASTEXITCODE
                         if ($suiteExit -eq 0) { throw 'mutated Guard.Tests suite stayed green' }
+                        # 111 means the policy filter selected NO cases, so the suite proved nothing.
+                        # Without this the red test is inert: a non-zero exit is how "the mutation was
+                        # caught" is decided, and an empty filter also exits non-zero. Observed with
+                        # the 'secret' tag removed -- 4 passed while two cases tested nothing.
+                        if ($suiteExit -eq 111) { throw "Guard.Tests ran no cases for policy '$($case.Policy)' -- the filter matched nothing, so this mutation was never exercised" }
 
                         # $evt, not $event: $Event is a PowerShell automatic variable, and this now
                         # runs inside a job rather than at script scope.

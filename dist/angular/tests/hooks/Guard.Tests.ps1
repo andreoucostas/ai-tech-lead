@@ -17,7 +17,21 @@ $guardSh = Join-Path $hooks 'guard.sh'
 $bash    = Get-BashPath
 
 Reset-Tests
-foreach ($case in $GuardCases) {
+$selectedCases = @($GuardCases)
+if ($env:GUARD_TEST_POLICY) {
+    $selectedCases = @($GuardCases | Where-Object { $_.policy -eq $env:GUARD_TEST_POLICY })
+    if ($selectedCases.Count -eq 0) {
+        # Exit 111, NOT 1. The mutation harness decides "the mutation was caught" from a non-zero
+        # exit, and this suite's normal exit code is its failure COUNT -- so exiting 1 here is
+        # byte-identical to "one case failed" and an untagged case would silently convert the red
+        # test into a pass. Verified: with the 'secret' tag removed, GuardPatternErrors reported
+        # 4 passed while testing nothing. 111 is outside any plausible failure count and the harness
+        # rejects it explicitly.
+        [Console]::Error.WriteLine("Guard.Tests: GUARD_TEST_POLICY '$($env:GUARD_TEST_POLICY)' matched no cases")
+        exit 111
+    }
+}
+foreach ($case in $selectedCases) {
     foreach ($surface in 'Claude','Copilot') {
         $evt = if ($surface -eq 'Claude') { New-ClaudeEvent $case.f $case.c } else { New-CopilotEvent $case.f $case.c }
         $expected = if (-not $case.block) { 'ALLOW' } elseif ($surface -eq 'Claude') { 'BLOCK' } else { 'DENY' }
