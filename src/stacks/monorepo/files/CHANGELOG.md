@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.65.0 — Unreleased
+## 0.65.0 — 2026-08-21
 
 **New: `framework-ownership.json` tells you which files in your repository the framework owns.**
 Installing this framework adds around 164 files to your repository, and until now nothing in the tree

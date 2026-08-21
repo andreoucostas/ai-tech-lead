@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.65.0 — Unreleased
+## 0.65.0 — 2026-08-21
 
 **B-157: each dist now ships `framework-ownership.json`, a generated manifest of every installed path
 and who owns it.** Installing the framework lands ~164 committed paths, and nothing in the tree said

@@ -2654,6 +2654,71 @@ B-134 (implementation evidence masquerading as intent), WSD-028 (a rule is real 
 can refuse), WSD-029 (a release tag follows CI-verified green — the constraint the check collided
 with).
 
+### B-162 · Scratch trees are cleaned in a `finally`, which a killed run never reaches — and the debris slows the next run
+**Filed against:** v0.64.0 (2026-08-21)
+**Effort:** S · **Priority:** P2 · found 2026-08-21 while losing seven release attempts · **Invariants:** #7
+
+**Measured, not inferred.** After a day of release attempts, `%LOCALAPPDATA%\Temp` held **2,075
+entries**: 223 `validate-dist-<guid>` directories (each a full ~170-file dist copy, so roughly
+**38,000 files**), 14 `mutation-helper-<guid>` trees, and 569 loose `.tmp` files. Clearing them
+removed 778 entries.
+
+**Why it accumulates.** `Invoke-MutationRedTest` and `validate-dist` both remove their scratch trees
+in a `finally` block. That is correct for a normal run and for a failing one — but **a process that
+is killed never runs its `finally`**, so every killed run leaks a full dist copy per mutation case.
+
+**Why that is worse than untidy: it is a feedback loop.** Debris slows every subsequent temp
+operation, including `GetTempFileName()`, which scans for a free name. A slower run is more likely to
+breach a ceiling or be killed, which leaks more debris. `dist-gates` drifted **533.4s -> 579.2s ->
+638.9s -> 677.3s across four runs of identical work** on 2026-08-21, and the meta-suite only began
+breaching its ceiling after several kills had accumulated. That is consistent with the loop; it is
+**not proof** of it, because the run that would have tested the cleanup was itself killed before
+emitting a stage timing. Recorded as a hypothesis with its supporting measurement, not as a cause.
+
+**Do:** sweep at **start-up**, not only at teardown — the harness should delete `validate-dist-*` and
+`mutation-helper-*` trees older than a threshold before it begins. You cannot catch a kill, so the
+system has to be self-correcting rather than merely well-behaved. Keep the `finally` blocks; they are
+right for every case they can reach.
+
+**Not:** do not delete by pattern without an age threshold — a concurrent run owns its own scratch
+tree, and the release runs three dist jobs in parallel.
+
+**Cross-links:** B-138 (the stage where this shows up, and its host-kill observation), B-163 (the
+ceiling this pushes runs over), B-151 (per-unit timing, which is how the drift became visible at all).
+
+### B-163 · The meta-suite ceiling now sits inside the suite's own run-to-run variance
+**Filed against:** v0.64.0 (2026-08-21)
+**Effort:** M · **Priority:** P2 · found 2026-08-21 · **Invariants:** #7
+
+**Four measurements of the same suite on the same host, 2026-08-21:** 594.3s, 612.8s, 653.0s,
+707.2s. The ceiling is **650s**. So the limit falls in the middle of the observed spread and a
+release now refuses roughly half the time for no reason anyone can act on — v0.65.0 was refused at
+**653.0s, a 0.5% overshoot**.
+
+**Why this is worse than a ceiling that is simply too low.** A limit that fires on cause teaches
+people to fix the cause. A limit that fires on variance teaches people to **retry**, and a retry
+habit is exactly what stops the next real breach from being noticed. It also makes the gate's own
+signal worthless: nobody can tell a genuine regression from a slow afternoon.
+
+**Do NOT just raise it.** B-138 records that raising a ceiling delays the failure without changing
+its cause, and B-158 states the rule directly: never raise a budget to unblock a specific change in
+the same commit as that change. Raising 650 to 750 would buy a few weeks and cost the gate's meaning.
+
+**Do:** reduce the cost, and reduce it by doing **fewer spawns** rather than by rescheduling. The
+meta suite's two dominant files are `GuardPatternErrors.Tests.ps1` (548.3s) and
+`ValidateDist.Tests.ps1` (506.9s). B-138's Guard experiment on 2026-08-21 established that adding
+concurrency inside an already-saturated suite **redistributes** time rather than reducing it — a
+1.73x standalone win became a 19% loss in the release — so scheduling is not the lever here.
+The honest question for both files is whether their assertion counts need the process-per-assertion
+shape at all.
+
+**Also worth settling:** whether B-162's debris explains part of the variance. If it does, the spread
+narrows on its own and this entry's urgency drops without any code change. Measure after B-162.
+
+**Cross-links:** B-138 (cost structure, the dominant files, and the measured Guard result),
+B-162 (a likely contributor to the variance), B-158 (the standing rule against raising a budget to
+unblock a change), B-139 (the sibling drift problem in per-stage ceilings).
+
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see `meta/BACKLOG-DONE.md`.**
