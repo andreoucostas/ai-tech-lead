@@ -22,14 +22,16 @@ Commands, not philosophy. The rules and the meta-invariant list live in `CLAUDE.
 | `meta/` | `BACKLOG.md`, `workspace-decisions.md`, `LEARNINGS.md`, `ci-handover.md`, `changelogs/legacy-*.md` | maintainer layer; never ships. No root `docs/` — that name is the consumer's |
 | `scripts/meta-denylist.txt` | the `no-meta-leak` patterns [#6] | one file, read by BOTH twins so it cannot drift |
 
-The maintainer commit-subject guard is deliberately opt-in. Enable it for this clone with:
+The maintainer git hooks are deliberately opt-in. Enable them for this clone with:
 
 ```powershell
 git config core.hooksPath .claude/git-hooks
 ```
 
-It rejects obviously shell-mangled subjects before Git records them; it is a bypassable local
-convenience net, not a shipped or server-side policy.
+The commit-message hook rejects obviously shell-mangled subjects. The pre-commit hook checks every
+staged `.ps1` for its BOM and passes staged blobs through the canonical write guard, including files
+created by shell commands or external tools. Both are bypassable local convenience nets, **not
+enforcement**, and neither is shipped or server-side policy.
 
 ## Compose the dists + freshness [#1]
 

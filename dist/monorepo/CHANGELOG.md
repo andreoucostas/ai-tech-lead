@@ -5,6 +5,12 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.63.0 — Unreleased
+
+- The enforcement-surface guide now says explicitly that the write guard is a deterministic floor
+  only for editor/file-write tool calls. Shell-authored and externally written files bypass it, so
+  it is not an all-writes guarantee.
+
 ## 0.62.0 — 2026-08-20
 
 - Changelog validation now examines every semantic-version heading. It rejects duplicate release

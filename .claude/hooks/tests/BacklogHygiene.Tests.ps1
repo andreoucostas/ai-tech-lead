@@ -1,7 +1,8 @@
 ﻿param(
     [ValidateSet('', 'finished-heading', 'dangling-pointer', 'broken-index',
         'vacuous-headings', 'vacuous-pointers', 'vacuous-index',
-        'decision-outside-backlog', 'vacuous-decision-subjects')]
+        'decision-outside-backlog', 'vacuous-decision-subjects',
+        'stale-ledger', 'archived-ledger', 'missing-filed-stamp')]
     [string]$RedTest = ''
 )
 
@@ -58,6 +59,23 @@ function Get-ArchiveIds {
     param([string]$Text)
     return @([regex]::Matches($Text, '\bB-[0-9]+(?:[A-Za-z-]*)?\b') |
         ForEach-Object Value | Sort-Object -Unique)
+}
+
+function Get-LedgerCandidates {
+    param([string]$BacklogText, [string[]]$LedgerTexts)
+    $openIds = @((Get-BacklogRecords $BacklogText) | ForEach-Object Id | Sort-Object -Unique)
+    $deliveredIds = @($LedgerTexts | ForEach-Object {
+        [regex]::Matches($_, '\bB-[0-9]+(?:[A-Za-z-]*)?\b') | ForEach-Object Value
+    } | Sort-Object -Unique)
+    if ($script:RedTestIncludeArchived) { return $deliveredIds }
+    return @($openIds | Where-Object { $deliveredIds -contains $_ })
+}
+
+function Get-MissingFiledAgainstStamps {
+    param([string]$BacklogText)
+    return @((Get-BacklogRecords $BacklogText) | Where-Object {
+        $_.Text -notmatch '(?m)^\*\*Filed against:\*\* v[0-9]+\.[0-9]+(?:\.[0-9]+)? \([0-9]{4}-[0-9]{2}-[0-9]{2}\)'
+    } | ForEach-Object Id)
 }
 
 function Assert-ArchivePointers {
@@ -148,6 +166,19 @@ if ($RedTest) {
             'vacuous-index' { Assert-DecisionIndex "# no entries`n" $repoRoot }
             'decision-outside-backlog' { Assert-DecisionsRecordedInBacklog "### B-900 · Example`nBody.`n" @('Reject B-900 on evidence') }
             'vacuous-decision-subjects' { Assert-DecisionsRecordedInBacklog "### B-900 · Example`nBody.`n" @() }
+            'stale-ledger' {
+                $ids = @(Get-LedgerCandidates "### B-900 · Example`nBody.`n" @('Delivered B-900.'))
+                throw "candidate stale heading: $($ids -join ', ')"
+            }
+            'archived-ledger' {
+                $script:RedTestIncludeArchived = $true
+                $ids = @(Get-LedgerCandidates "### B-900 · Open`nBody.`n" @('Delivered B-901.'))
+                if ($ids.Count -ne 0) { throw "archived id was reported: $($ids -join ', ')" }
+            }
+            'missing-filed-stamp' {
+                $ids = @(Get-MissingFiledAgainstStamps "### B-900 · Example`nBody.`n")
+                throw "missing filed-against stamp: $($ids -join ', ')"
+            }
         }
         Write-Error "red test '$RedTest' unexpectedly passed"
         exit 1
@@ -189,6 +220,43 @@ It 'decision-index sources and quoted phrases resolve' {
     Assert-DecisionIndex `
         ([IO.File]::ReadAllText((Join-Path $repoRoot 'meta/decisions-index.md'), [Text.Encoding]::UTF8)) `
         $repoRoot
+}
+
+It 'delivery ledgers report candidate stale open headings without auto-closing them' {
+    $backlog = [IO.File]::ReadAllText((Join-Path $repoRoot 'meta/BACKLOG.md'), [Text.Encoding]::UTF8)
+    $ledgerTexts = @(
+        [IO.File]::ReadAllText((Join-Path $repoRoot 'CHANGELOG.md'), [Text.Encoding]::UTF8),
+        [IO.File]::ReadAllText((Join-Path $repoRoot 'meta/gate-redtest-coverage.md'), [Text.Encoding]::UTF8)
+    )
+    $ids = @(Get-LedgerCandidates $backlog $ledgerTexts)
+    if ($ids.Count -eq 0) { Write-Host '[finding] no candidate stale backlog headings in delivery ledgers' }
+    else { Write-Host ("[finding] candidate stale backlog headings (human review required): " + ($ids -join ', ')) }
+    Assert $true 'advisory finding completed'
+}
+
+It 'an explicit delivery id is detected while its heading remains open' {
+    $ids = @(Get-LedgerCandidates "### B-900 · Open`nBody.`n" @('Delivered B-900.'))
+    Assert (($ids -join ',') -eq 'B-900') "open delivered B-900 was not detected: $($ids -join ', ')"
+}
+
+It 'an archived ledger id is not a candidate stale open heading' {
+    $ids = @(Get-LedgerCandidates "### B-900 · Open`nBody.`n" @('Delivered B-901.'))
+    Assert ($ids.Count -eq 0) "archived-only B-901 was reported: $($ids -join ', ')"
+}
+
+It 'every open entry records the version and date it was filed against' {
+    $backlog = [IO.File]::ReadAllText((Join-Path $repoRoot 'meta/BACKLOG.md'), [Text.Encoding]::UTF8)
+    $ids = @(Get-MissingFiledAgainstStamps $backlog)
+    # Blocking, not advisory. Every open entry carries the stamp today (22/22 when this landed), so
+    # enforcing costs nothing now and stops the next entry regressing it. `Assert $true` prints a
+    # finding and can never fail -- that is the inert-check shape B-59 and B-64 exist to remove, and
+    # this repo has learned that a check which cannot fail gets ignored.
+    Assert ($ids.Count -eq 0) ("open entries missing a filed-against stamp: " + ($ids -join ', '))
+}
+
+It 'a fixture without a filed-against stamp is detected' {
+    $ids = @(Get-MissingFiledAgainstStamps "### B-900 · Example`nBody.`n")
+    Assert (($ids -join ',') -eq 'B-900') "unstamped B-900 was not detected: $($ids -join ', ')"
 }
 
 exit (Write-TestSummary 'BacklogHygiene.Tests')

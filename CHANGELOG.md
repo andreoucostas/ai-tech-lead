@@ -11,6 +11,22 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.63.0 — Unreleased
+
+**B-100: the enforcement-surface guide now states the write guard's actual boundary.** The guard
+does not run for shell-authored or externally written files, so it is a deterministic floor only
+for editor/file-write tool calls, not for all writes. An authoring-only, opt-in pre-commit
+convenience scan now checks staged PowerShell BOMs and sends staged blobs through the canonical
+guard; it is deliberately not presented as enforcement and does not ship.
+
+Meta-only: B-83 adds filed-against release stamps to all 22 open backlog entries plus two meta-suite
+checks. The delivery-ledger correlation — an entry id appearing in a shipped changelog or the
+red-test coverage ledger while its heading still reads open — **reports** candidates for a human to
+resolve and never auto-closes anything. The filed-against stamp check **blocks**: it shipped as an
+advisory `Assert $true`, which is the inert-check shape B-59 and B-64 exist to remove, and since
+compliance was already 22/22 enforcing it cost nothing. Note that the meta suite *is* a release gate,
+so a future entry filed without a stamp will refuse a release until it is added.
+
 ## 0.62.0 — 2026-08-20
 
 **B-152: changelog validation now reads every release head instead of trusting only the first.**
