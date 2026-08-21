@@ -507,6 +507,11 @@ try {
         $job = Start-Job -ArgumentList $repo, $d, $log, $lanes -ScriptBlock {
             param($repo, $dist, $log, $lanes)
             $env:HOOKTESTS_THROTTLE = "$lanes"
+            # Per-file attribution for the dist suites (B-138). They are ~97% of this stage's wall
+            # clock and had none: B-151 split the job into validate-dist vs hook-suite, which is how
+            # the 97% was measured, but the shipped runner emitted nothing per file. Opt-in because
+            # that runner ships -- a consumer running their own suite has no ceiling to diagnose.
+            $env:HOOKTESTS_TIMING = '1'
             # Time the two halves separately (B-151). A single per-dist number cannot answer the only
             # question a breach actually raises -- validate-dist or the hook suite? -- because this
             # job runs both, sequentially, and the answer has been guessed wrong before.

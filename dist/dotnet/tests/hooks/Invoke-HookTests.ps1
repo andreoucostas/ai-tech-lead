@@ -25,12 +25,15 @@ while ($next -lt $files.Count -or $running.Count -gt 0) {
         $file = $files[$index]
         $running += Start-Job -ArgumentList $psExe, $file.FullName, $index -ScriptBlock {
             param($exe, $path, $resultIndex)
+            $began = Get-Date
             $output = @(& $exe -NoProfile -ExecutionPolicy Bypass -File $path 2>&1 |
                 ForEach-Object { $_.ToString() })
             [pscustomobject]@{
                 Index    = $resultIndex
                 ExitCode = [int]$LASTEXITCODE
                 Output   = $output
+                Begin    = $began
+                End      = Get-Date
             }
         }
         $next++
@@ -49,6 +52,9 @@ for ($i = 0; $i -lt $files.Count; $i++) {
     $result = $results[$i]
     Write-Host ("--- {0} ---" -f $f.Name)
     foreach ($line in $result.Output) { Write-Host $line }
+    if ($env:HOOKTESTS_TIMING) {
+        Write-Host ("TIMING {0} {1:N1}" -f $f.Name, ($result.End - $result.Begin).TotalSeconds)
+    }
     $total += [int]$result.ExitCode
 }
 Write-Host ("=== Hook test suite: {0} failure(s) across {1} file(s) ===" -f $total, $files.Count)

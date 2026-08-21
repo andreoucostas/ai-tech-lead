@@ -5,6 +5,24 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.64.0 — 2026-08-21
+
+**`framework-doctor` and `impact-run` no longer report a machine problem as a problem with your
+files.** Both used a text search whose failure to *run* looked identical to the searched text being
+*absent*. So on a machine short of resources — often exactly when you are running the doctor,
+because something is already wrong — you could be told your documentation had drifted when it had
+not, with a confident fix to apply. `impact-run` was worse: a failed search there silently changed
+which project type it decided your repository was, and it carried on.
+
+Both now separate the two. A genuine absence still reports as a finding with the same fix as
+before; a search that could not execute reports as a host or resource condition and never as a
+verdict about your files. `impact-run` stops rather than guessing at your project type.
+
+**Optional per-file timing for the hook test suite.** Set `HOOKTESTS_TIMING=1` to have
+`tests/hooks/Invoke-HookTests.ps1` print `TIMING <file> <seconds>` for each test file. It is off by
+default and output is unchanged when unset — it is there for when a suite has grown slow enough
+that you want to know which file is responsible.
+
 ## 0.63.0 — 2026-08-21
 
 - The enforcement-surface guide now says explicitly that the write guard is a deterministic floor

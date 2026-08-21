@@ -11,6 +11,45 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.64.0 — 2026-08-21
+
+**B-156 (cheap half): `grep`'s exit status is no longer read as a content verdict.** A non-zero
+`grep` means either "the pattern is absent" (exit 1) or "grep could not run" (exit 2+), and
+`framework-doctor` and `impact-run` conflated them — so a host or resource problem reached a
+consumer as a specific, false, actionable claim about their files. `framework-doctor` is what
+someone runs *when something is already wrong*, which is exactly when their machine is most likely
+to be short of resources; `impact-run` was sharper still, because there a failed `grep` silently
+changed which project type the tool decided it was looking at. Both twins of both scripts now
+discriminate: `0` found, `1` a genuine product finding, anything else a distinct host/resource
+condition. Verified on the bash leg with a stub `grep` exiting 2 — `CANT-VERIFY` naming the host
+problem; with the import genuinely removed — `[MISSING]` with a fix; clean — 6 ok / 0 missing. The
+PowerShell twins were **not** exempt: they never invoke `grep` but carried the same fail-open shape
+through swallowed read and enumeration errors. The extractor-shaped `|| true` sites in
+`docs-sync-check`, `warehouse-map-check`, `template-checks` and `wiki-check` are deliberately
+untouched — each needs its own contract decision first, and for some, swallowing may be intended.
+
+**The first cut of that change got the discrimination backwards in the bash twin, and the twin-parity
+gate caught it.** `grep` exits 2 for a file that *cannot be read* **and** for a file that *is not
+there* — so an absent `CLAUDE.md`, which is a content fact, was reported as a host/resource problem.
+The `.ps1` twin was already correct, because its `Test-Path` guard happens to encode the distinction
+for free; the two therefore disagreed, and `FrameworkDoctor.Tests` failed on all three dists
+(36 passed / 2 failed) before anything was committed. Both probes now check that the file exists
+before reading `grep`'s exit code as "could not run" (38 passed / 0 failed). Recorded because it is
+the entry's own thesis failing in the opposite direction: the fix for conflating a host problem with
+a content verdict introduced a conflation of a content fact with a host problem.
+
+**B-138: the dist hook suites can finally be attributed per file.** They are ~97% of `dist-gates`
+(515.5s / 514.7s / 515.4s of a 533.4s stage at v0.63.0) and had no per-file attribution at all,
+because there are two hook runners and only the meta one emitted `TIMING`. The shipped runner —
+the one `dist-gates` actually executes — now emits `TIMING <file> <seconds>` when
+`HOOKTESTS_TIMING` is set, and `release.ps1` sets it for the dist jobs alongside
+`HOOKTESTS_THROTTLE`. **Opt-in on purpose:** that runner ships, and a consumer running their own
+suite has no release budget to blow and no ceiling to diagnose. With the variable unset the output
+is byte-identical to before (verified by `cmp` against the pre-change runner on the same fixture),
+and a `TIMING` line is not matched by the release's `^RESULT\s+(\S+)\s+(\d+)\s*$` parser. This is
+the measurement prerequisite the entry has asked for since 2026-08-13; the re-architecture it also
+describes remains deliberately not done, because three prior measurements each redirected it.
+
 ## 0.63.0 — 2026-08-21
 
 **B-100: the enforcement-surface guide now states the write guard's actual boundary.** The guard

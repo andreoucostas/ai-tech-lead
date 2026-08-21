@@ -116,7 +116,10 @@ claude="$root/CLAUDE.md"
 carrier="$root/.github/instructions/framework-rules.instructions.md"
 import_line='@.github/instructions/framework-rules.instructions.md'
 import_status=1
-if [ -f "$carrier" ]; then grep -qF "$import_line" "$claude" 2>/dev/null; import_status=$?; fi
+# An absent CLAUDE.md is a CONTENT fact, not a host failure. grep exits 2 for BOTH a missing file
+# and a genuine execution failure, so the file has to be checked before that exit code can be read
+# as "could not run". The .ps1 twin gets this for free from its Test-Path guard.
+if [ -f "$carrier" ] && [ -f "$claude" ]; then grep -qF "$import_line" "$claude" 2>/dev/null; import_status=$?; fi
 if [ -f "$carrier" ] && [ "$import_status" -eq 0 ]; then
   row OK 'Framework rules delivery' 'CLAUDE.md imports the current framework rules carrier.'
 elif [ -f "$carrier" ] && [ "$import_status" -eq 1 ]; then
@@ -169,8 +172,13 @@ pending=0
 if [ -f "$root/.claude/adoption-pending.json" ]; then
   row PENDING 'Bootstrap/adoption state' 'adoption pending. A developer must run /adopt.'; pending=1
 else
-  grep -q 'BOOTSTRAP_PENDING' "$root/CLAUDE.md" 2>/dev/null
-  pending_status=$?
+  # Same discrimination: no CLAUDE.md means nothing is pending, not that grep broke.
+  if [ -f "$root/CLAUDE.md" ]; then
+    grep -q 'BOOTSTRAP_PENDING' "$root/CLAUDE.md" 2>/dev/null
+    pending_status=$?
+  else
+    pending_status=1
+  fi
   if [ "$pending_status" -eq 0 ]; then
     row PENDING 'Bootstrap/adoption state' 'bootstrap pending. A developer must run /bootstrap.'; pending=1
   elif [ "$pending_status" -eq 1 ]; then
