@@ -538,6 +538,35 @@ well as precision** — via the B-41 harness, not a second one.
 >   batch-to-batch variance. Treat as a reason the labelled-fixture work is worth doing, not as a
 >   baseline. The answer-key fixture criterion 5 requires is still owed.
 
+> **THE PREREQUISITE IS SETTLED, AND THE ANSWER IS NO — 2026-08-21.**
+>
+> This entry defers to B-98 step 1 on whether `map-warehouse` fires at all on an incident-shaped
+> prompt. **That question has been answered twice, both times negatively**, and B-98 is archived:
+>
+> | probe | result |
+> |---|---|
+> | B-98 step 1 | `r = 0/6` — neither the skill nor the map was reached |
+> | B-127 | **16/16 `ROUTING_NON_REACH`** — `map-warehouse` was never read or selected once |
+>
+> **Apply this entry's own criterion to that result.** It states: *"if it does not fire, this content
+> work does not reach the developer however good it is, and the description change in the design
+> (§3.5) is insufficient."* It does not fire. So the design as written is **invalidated by its own
+> prerequisite**, and improving `map-warehouse`'s content would produce something correct that nobody
+> receives. Do not implement §3.5 as specified.
+>
+> **The remedy that demonstrably works is the one B-98 found:** moving the guidance onto the
+> unprotected always-loaded carrier took map reach from **0/6 to 6/6**. WSD-032 already locks that for
+> read-side guidance. That is the shape this entry should take.
+>
+> **Which makes its real blocker the same as B-99's:** the carrier is counted in `static.claude`
+> (`scripts/context-footprint.ps1:246-247`) and monorepo has **83 characters** of headroom. There is
+> no room to move this content onto the channel that would deliver it. **B-158(b) gates this entry.**
+>
+> **Not:** do not respond to the 0/16 by making the skill's description more attractive. That is
+> tuning the mechanism measured at zero, and B-160 records that trigger vocabulary did not even
+> predict the one middling case (1/6 on prompts that used the skill's own words). The channel is the
+> problem, not the wording.
+
 **Gated by B-98 step 1.** Whether `map-warehouse` fires at all on an incident-shaped prompt is a
 *prerequisite*, not a ship gate: if it does not fire, this content work does not reach the developer
 however good it is, and the description change in the design (§3.5) is insufficient. Settle B-98
