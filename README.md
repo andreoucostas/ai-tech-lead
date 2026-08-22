@@ -50,6 +50,26 @@ recorded in the target's `.claude/framework-version.json` (update mode) rather t
 re-detecting. The root installers are a thin dispatcher only — all real copy/detect logic lives
 in the chosen dist's own `scripts/install.{sh,ps1}`.
 
+### What the install adds, and why it is committed
+
+Installing lands **166 files** for the .NET or Angular dist and **176** for the monorepo — the exact set is enumerated in the manifest below — and they are meant to be committed.
+That is not incidental: hooks have to exist in the tree for every developer who clones, skills and
+commands have to be on disk for the agent to find them, and `CLAUDE.md` plus the instructions
+carrier *are* the product. Nothing here is build output.
+
+Each dist ships **`framework-ownership.json`**, a generated manifest listing every installed path
+with one of three ownership classes:
+
+| class | what it means for you |
+|---|---|
+| `framework-owned/overwritten` | replaced on every update — do not edit, your changes will be lost |
+| `consumer-owned/protected` | yours; created once if absent, never touched again |
+| `mixed` | shared — `.claude/settings.json` carries our hook registrations alongside your settings |
+
+Read that file rather than the diff when reviewing the first commit, and consult it before editing
+anything under `.claude/` or `scripts/` if you want the edit to survive an update. It is generated
+during composition and cross-checked against the installer's own preservation lists, so it cannot
+quietly disagree with what the installer actually does.
 ## Quick start
 
 The installers run *from a local clone of this repo* against a target repo elsewhere on disk — so

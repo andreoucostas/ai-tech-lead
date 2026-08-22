@@ -1087,6 +1087,107 @@ This is the archive of completed framework backlog entries. Entries are appended
   `Stack toolchain` regex-vs-glob branch stays unexercised; both are stated in the test rather than
   implied as coverage.
 
+### B-157 · Installing the framework produces a ~164-file commit nobody can review, and nothing in the tree says which files the consumer owns
+
+> **DONE 2026-08-22 — both halves, and the answer to the question asked was "no".**
+>
+> **The cleanup step this entry was raised to consider is NOT desirable**, on measurement: `tests/`
+> is load-bearing for the shipped `template-ci.yml` workflow, and the update path *restores*
+> framework-owned files anyway, so deleting them would fight the delivery model rather than tidy it.
+> That conclusion stands unchanged.
+>
+> **What shipped instead (v0.65.0):** `framework-ownership.json`, generated during composition, in
+> every dist — 166 paths for the single-stack dists and 176 for monorepo, each classified into B-46's
+> three existing classes. The consistency check is the real deliverable: it reads the preservation
+> policy from **both** installers and refuses to compose when they disagree, so the manifest cannot
+> quietly drift from the behaviour it describes. Red-tested by removing `CLAUDE.md` from
+> `install.ps1`'s `$protected` list: clear message, exit 1 from `build.ps1` **and** `build.sh`.
+>
+> A twin-parity defect surfaced in review and was fixed [#3]: `Sort-Object` is culture-aware and
+> case-insensitive while `sort(1)` collates by locale, so the two composers emitted byte-different
+> manifests for an identical path set. Both are ordinal now.
+>
+> **The second half shipped 2026-08-22:** the README now states what the install adds and why it must
+> be committed, with the counts taken from the manifest rather than approximated, and points a
+> reviewer at the manifest instead of the diff. The entry's own complaint was never volume — it was
+> that the first commit is unreviewable and that nothing in the tree states ownership. One generated
+> file and one README section answer both.
+
+**Filed against:** v0.62.0 (2026-08-21)
+**Effort:** S (the manifest) · M (if optional components are chosen) · **Priority:** P3 · raised by the maintainer 2026-08-21 · **Invariants:** #6
+
+**The question asked:** the install leaves a large amount of framework material to be checked in;
+is a cleanup step preferable or desirable?
+
+**Answer, on measurement: a cleanup step that deletes things is NOT desirable, and the two obvious
+candidates are already handled or load-bearing.** But the underlying complaint is real and has a
+cheaper remedy than deletion.
+
+**What actually lands** (dotnet dist, measured 2026-08-21): `.claude/` 51 files, `.github/` 38,
+`scripts/` 27, `tests/` 26, `docs/` 14, `specs/` 1, plus root files — **~164 committed paths**.
+
+**Two things a reader would assume are wrong, and are not:**
+1. **The framework does not clobber the consumer's `README.md` or `CHANGELOG.md`.** The installer's
+   `$metaFiles` list explicitly excludes `.git`, `.template-repo`, `README.md`, `CHANGELOG.md`,
+   `.gitignore` and `.gitattributes` from the copy. The `.template-repo` marker in particular would
+   disable the consumer's own CI guardrail if it travelled, and it doesn't.
+2. **`tests/` (26 files, 261K) is the obvious trim candidate and is load-bearing.** The **shipped**
+   `.github/workflows/template-ci.yml` runs `tests/hooks`, and `scripts/template-checks.{ps1,sh}`
+   references it. Deleting it would break a shipped workflow and a shipped gate, so "clean it up"
+   is not a local change.
+
+**Why deletion is the wrong shape generally.** Nearly all of this is *team configuration*, and being
+committed is the point: hooks must exist for every developer who clones, skills and commands must be
+in the tree for the agent to find, `CLAUDE.md` and the instructions carrier are the product. More
+sharply — the framework's update path *restores* framework-owned files, and B-97 exists because
+protected files **fail** to reach existing consumers. A consumer who deletes machinery gets it back
+on the next update, or gets a `framework-doctor` reporting missing components. Cleanup would fight
+the delivery model rather than tidy it.
+
+**So what is the real complaint? Two things, neither of which is volume:**
+
+1. **The first commit is unreviewable.** A reviewer facing ~164 added paths cannot separate the
+   product from the scaffolding, and has no basis to approve or question any of it. That is a
+   genuine onboarding cost and it is paid once per repo, by someone who did not choose the framework.
+2. **Nothing in the tree states ownership.** A developer looking at `scripts/framework-doctor.ps1`
+   six months later has no way to know it is framework-owned and that their edits will be silently
+   overwritten on update. v0.56.0 (B-46) shipped exactly this disclosure — three ownership classes,
+   printed **at install time**. A printed message scrolls away; the files carry nothing. That is the
+   same delivery gap B-97 is about, applied to ownership rather than to rules.
+
+**Recommended — cheap, and it is the thing already described in prose but encoded nowhere:**
+ship a **manifest of framework-owned paths with their ownership class** (framework-owned/overwritten,
+consumer-owned/protected, mixed — the three classes B-46 already defines). It gives a PR reviewer one
+file to read instead of 164; it gives `framework-doctor` something to check the installed tree
+against rather than inferring; and it makes "will my edit survive an update?" answerable from the
+repo rather than from a message nobody kept. Cross-check it against the installer's own
+`$protected` / `$metaFiles` lists so the manifest cannot drift from the behaviour it describes —
+that check is the deliverable as much as the manifest.
+
+**Also worth doing regardless:** say in the shipped `README.md` what the install adds and why it has
+to be committed. Currently a consumer discovers the file count by running it.
+
+**Considered and not recommended:**
+- **Optional components at install** (e.g. omit `tests/`): fragments the install matrix, and
+  `template-checks` plus the shipped workflow would both need to tolerate absence. Real cost, and it
+  buys 26 files.
+- **A broader `.gitignore`**: the shipped one ignores only `docs/impact/runs/`. Ignoring machinery
+  would break the team-config property that makes any of it work.
+
+**Evidence gap, stated rather than assumed:** "unreviewable" is a *consumer friction* claim and the
+author cannot self-generate it — this is exactly the population **B-42** exists to hear from. The
+manifest is cheap enough to justify on its own reasoning, but if a real installer reports that the
+volume was never the problem, drop the rest of this entry rather than building for a complaint
+nobody made.
+
+**Cross-links:** B-46 (the three ownership classes, disclosed at install time only), B-97 (the same
+delivery gap for rules rather than ownership), B-42 (the only source of evidence for the friction
+claim), B-32 (context footprint — a different cost of the same material, already measured).
+
+**B-146 is DONE (2026-08-18) — check B shipped, check A dropped on evidence; see `meta/BACKLOG-DONE.md`.**
+
+**B-144 is DONE (2026-08-18) — see `meta/BACKLOG-DONE.md`.**
+
 ### B-130 · Diagnose or retire the historical Windows PowerShell 5.1 parity failures
 
 > **DONE 2026-08-21 — both halves. (b) closed on evidence 2026-08-20; (a) fixed and shipped in
