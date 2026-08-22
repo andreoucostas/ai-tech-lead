@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.69.0 — Unreleased
+## 0.69.0 — 2026-08-22
 
 **B-130: the shipped hook suite passes under Windows PowerShell 5.1 — 41 passed / 41 failed becomes
 82 / 0.** A consumer without pwsh 7 can now run `tests/hooks/` and get true results instead of 41

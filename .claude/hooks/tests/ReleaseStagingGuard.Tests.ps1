@@ -156,7 +156,7 @@ try {
     # also touched .claude/hooks/tests/. Verified: that pattern produces 10 false positives over the
     # same 266 paths this test replays. A guard that refuses correct releases gets its escape hatch
     # passed every time, and then it guards nothing.
-    It 'the allowlist refuses none of the last 8 real releases' {
+    It 'the allowlist refuses none of a sufficient sample of real releases' {
         # @() is load-bearing twice over. Without it a single matching line is a bare [string] and
         # [0] yields its first CHARACTER, so the regex below extracts an EMPTY pattern -- and
         # `-notmatch ''` is never true, so this test reports zero false positives having classified
@@ -176,7 +176,21 @@ try {
         # silent skip here means the allowlist regression check quietly stops running, which is the
         # exact thing it exists to prevent. The message has to name the cause, or the next person
         # reads "5 passed, 1 failed" and goes looking in release.ps1.
-        $tags = @(git -C $repoRoot tag --sort=-v:refname | Select-Object -First 8)
+        # Walk tags newest-first and stop once the sample is big enough, rather than fixing the
+        # window at 8 tags. The assertion below cares about PATHS -- it wants the allowlist exercised
+        # against enough real release content to mean something -- and a fixed tag count is a proxy
+        # for that which breaks the moment release granularity changes. It did: on 2026-08-21 seven
+        # small releases shipped in one day, and the last 8 tags yielded 83 paths against a threshold
+        # of 100, failing a release for a property nothing was actually wrong with. Cap the walk so a
+        # repository with tiny tags cannot turn this into a full-history scan.
+        $allTags = @(git -C $repoRoot tag --sort=-v:refname | Select-Object -First 24)
+        $tags = @(); $sampled = 0
+        foreach ($candidate in $allTags) {
+            $tags += $candidate
+            $sampled += @(git -C $repoRoot show --name-only --format='' $candidate |
+                Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and $_ -notmatch '^(tag |Tagger:|ai-tech-lead v)' }).Count
+            if ($sampled -ge 100 -and @($tags).Count -ge 8) { break }
+        }
         # Single-quoted on purpose: in a double-quoted PowerShell string a backtick starts an escape,
         # so "`fetch-depth" renders as a FORM FEED plus "etch-depth". The first cut of this message
         # said "etch-depth: 0" -- an error message about a misconfiguration, itself misconfigured.

@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.69.0 — Unreleased
+## 0.69.0 — 2026-08-22
 
 **The hook test suite now passes on Windows PowerShell 5.1.** If you ran `tests/hooks/` with
 `powershell.exe` rather than `pwsh`, you would have seen roughly half the guard cases fail — 41 of
