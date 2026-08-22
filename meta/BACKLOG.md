@@ -2682,6 +2682,61 @@ produce their claimed result — this is the same defect after shipping rather t
 B-164 (the sibling: one rule, many mechanisms, enumeration failing to converge), B-163 and B-156 and
 B-130 (the instances).
 
+### B-166 · RCA: "verified on both hosts" was mistaken for "verified on both legs", and CI caught what four local instruments could not
+**Filed against:** v0.70.0 (2026-08-22)
+**Effort:** S · **Priority:** P2 · found 2026-08-22 when v0.70.0's CI went red · **Invariants:** #3 #7
+
+**What happened.** B-130's fix replaced the harness's stderr capture with `Invoke-RawProcess`, to stop
+Windows PowerShell 5.1 rendering a child's stderr as an ErrorRecord. That fix was correct and is
+shipped. The **delivery also rewired `RunArg`** through the same function — which B-130 never
+required — and on Linux, redirecting stdin to a child that never reads it raises **EPIPE**. v0.70.0's
+CI failed on `linux-hooks (monorepo)` alone: `[FAIL] missing context skips -- Broken pipe`. One test,
+one platform.
+
+**Why no local instrument caught it.** All four that ran were real, and all four were blind here:
+
+| instrument | why it passed |
+|---|---|
+| `Guard.Tests` on pwsh 7 **and** 5.1 | both are Windows; EPIPE-on-unread-stdin is a POSIX behaviour |
+| full 19-file shipped suite | run on Windows only |
+| mutation red-test (`exit 2` → `exit 0`) | proves the suite can fail, not that it runs everywhere |
+| `validate-dist` on both twin legs | syntax and content, not runtime process semantics |
+
+**The specific error, and it is a reading error not a process gap.** `meta/LEARNINGS.md` and the
+maintainer's own memory already say *a twin change is not done until CI is green on both legs*. I
+treated **"both PowerShell hosts on Windows"** as satisfying that. It does not: the two legs are
+**windows and linux**, and running two editions of PowerShell on one OS tests the host axis while
+leaving the platform axis untested. The rule was right; my instantiation of it was wrong.
+
+**The second cause, which is the more general one: scope creep in an accepted delivery.** B-130 was
+about `Invoke-Hook`'s byte-for-byte *twin comparison*. `RunArg`'s callers assert on exit codes and
+stdout text and never on stderr equality, so raw capture bought them nothing and cost a platform
+regression. **I reviewed that diff and did not ask why a function outside the entry's scope had
+changed.** Reviewing a diff for correctness is not the same as reviewing it for *scope* — an
+unnecessary change is a pure risk contribution, and it is the one that failed.
+
+**What else is exposed to the same class.** Every change to `_HookHarness.ps1` or to process
+invocation generally, because the harness runs on Windows locally and on both platforms in CI, and
+the local instruments are Windows-only by construction. The concrete gap: **nothing in the local gate
+set exercises a POSIX process model**, so any Windows-passing change carries unmeasured Linux risk
+until CI. That is not fixable by adding another Windows check.
+
+**Do:**
+1. **State the axis explicitly** wherever the both-legs rule appears: the legs are **platforms**
+   (windows, linux), not hosts (pwsh 7, 5.1). Both matter and they are independent; today's change
+   needed all four cells and only two were covered.
+2. **Add a scope question to diff review**: for each changed function, does the entry require it? An
+   unrequired change should be justified or reverted before acceptance. Cheap, and it would have
+   caught this one by inspection.
+
+**Not:** do not try to reproduce POSIX process semantics locally with a shim. A shim that
+approximates EPIPE would be a proxy, and this repo's record with proxies is poor (B-70, B-160). CI is
+the real instrument; the fix is to *believe* it is required rather than to simulate it.
+
+**Cross-links:** B-130 (the delivery), B-70 (cheap local proxies that would have caught neither
+Linux-only defect — the same finding, two months earlier), B-164 and B-165 (the sibling RCAs from
+this campaign: one rule many mechanisms, and inert checks in many shapes).
+
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see `meta/BACKLOG-DONE.md`.**
