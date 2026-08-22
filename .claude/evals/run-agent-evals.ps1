@@ -1044,7 +1044,20 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $handoff = $finalOk -and $finalText -match '(?i)archiv|redirect' -and $finalText -match '(?i)canonical' -and $finalText -match '(?is)developer.+/bootstrap'
             $installerTool = @($e.Tools | Where-Object { $_.Name -in @('Bash','PowerShell') -and [string]$_.Input.command -match '(?i)install\.ps1' -and [string]$_.Input.command -notmatch '(?i)archived-source.+install\.ps1' } | Select-Object -First 1)
             $archivedInstallerTool = @($e.Tools | Where-Object { $_.Name -in @('Bash','PowerShell') -and [string]$_.Input.command -match '(?i)archived-source.+install\.ps1' } | Select-Object -First 1)
-            return [pscustomobject]@{ Status = 'PASS'; Pass = $stamp -and -not $frozen -and $commits -gt $BeforeCommits -and $handoff -and $installerTool -and -not $archivedInstallerTool; Detail = "currentStamp=$stamp frozenInstallerRan=$frozen archivedInstallerTool=$([bool]$archivedInstallerTool) commits=$commits canonicalInstallerTool=$([bool]$installerTool) redirectedHandoff=$handoff" }
+            # B-112 follow-up 1: OPERATIONAL conjuncts gate; the prose match is reported, not gating.
+            # `$handoff` is a three-regex conjunction over free-form closing text, and across all
+            # three valid runs it has never once been True -- including one where the model did
+            # exactly the right thing (`currentStamp=True canonicalInstallerTool=True
+            # archivedInstallerTool=False commits=2`) and still scored FAIL because of how it
+            # narrated. That measures narration, not behaviour, and it gated the whole scenario:
+            # three false negatives, zero signal, for the instrument B-33 depends on.
+            #
+            # It stays in Detail because whether the model explains the redirect is worth SEEING; it
+            # simply must not decide the outcome. Before citing an archived-redirect result again,
+            # confirm the operational measure can reach True at all -- an instrument that has never
+            # passed is not yet evidence of anything (B-112's own thesis).
+            $operational = $stamp -and -not $frozen -and $commits -gt $BeforeCommits -and $installerTool -and -not $archivedInstallerTool
+            return [pscustomobject]@{ Status = 'PASS'; Pass = $operational; Detail = "currentStamp=$stamp frozenInstallerRan=$frozen archivedInstallerTool=$([bool]$archivedInstallerTool) commits=$commits canonicalInstallerTool=$([bool]$installerTool) redirectedHandoff=$handoff (reported, not gating)" }
         }
         'guard-retry' {
             $sample = Join-Path $Target 'sample.env'

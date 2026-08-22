@@ -1101,9 +1101,15 @@ gated and this one is not), B-32/WSD-017 (the context-footprint gate this must p
 > recorded in this entry.
 >
 > **Four named follow-ups are still open, and each is concrete:**
-> 1. `archived-redirect` — repair it so *operational* success gates the scenario and prose is
->    secondary. History still shows three failures with `redirectedHandoff=False`, one of them on an
->    operationally correct run; the grader is still live.
+> 1. `archived-redirect` — **GRADER REPAIRED 2026-08-22.** The operational conjuncts (stamp,
+>    canonical installer, no archived installer, commit) now gate the scenario, and the three-regex
+>    prose conjunction is reported in `Detail` as `(reported, not gating)`. It had never once been
+>    True across three valid runs — including one operationally perfect run
+>    (`currentStamp=True canonicalInstallerTool=True archivedInstallerTool=False commits=2`) that
+>    scored FAIL purely on how it narrated. Three false negatives and zero signal, for the instrument
+>    B-33 depends on. **Still to do, and it needs live budget: confirm the repaired measure can reach
+>    True at all before citing any archived-redirect result.** An instrument that has never passed is
+>    not evidence of anything — which is this entry's own thesis.
 > 2. `docs-tier-nopointer` — resolve the interpretation from the typed signals; its latest rows are
 >    still INCONCLUSIVE/FAIL rather than a settled reachability result.
 > 3. A **bare `route-fix` arm** has still never been run, so its saturation is still unassessed.
