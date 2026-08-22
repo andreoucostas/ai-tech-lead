@@ -276,7 +276,27 @@ failures: one hard checklist failure = a defect entry, regardless of the rubric 
 
 ### B-48 · Enforcement-bypass audit — the guard's known end-runs, decided honestly
 **Filed against:** v0.31.0 (2026-07-17)
-**Effort:** M · **Invariants:** #3 #5 · needs a WSD record
+**Effort:** M · **Invariants:** #3 #5 · **WSD-047 recorded 2026-08-22**
+
+> **TWO OF THREE DONE 2026-08-22. Item (2) is all that remains.**
+>
+> - **(1) shell-write gap → DOCUMENT: DONE.** The decision this entry said was missing is now
+>   **WSD-047**, which records all three answers and — more usefully — the *rule* that produced them:
+>   harden where the defect has a canonical form, advise where it is distinguishable from correct work
+>   only by intent, document where the control would have to guess at side effects it cannot observe.
+> - **(3) multi-line attribute lists → HARDEN: DONE, shipped v0.71.0.** And the entry was half wrong:
+>   the bypass existed in `guard.sh` **only**. `guard.ps1` already blocked it, because .NET negated
+>   character classes span newlines while `grep` is line-oriented. Had it been hardened in both twins
+>   as filed, the more sensitive one would have been changed for nothing. Three cases were added to
+>   the shipped guard table, which had no multi-line content at all — the coverage hole that let it
+>   survive.
+> - **(2) test-defeat by weakening → ADVISORY: still open**, and it is the only remaining work here.
+>   An added/removed-lines diff heuristic over test files that reports to the model and to `/review`
+>   with **no exit code**. WSD-047 fixes the shape; building it is M effort.
+>
+> **Still to do beyond (2):** re-read the shell-write caveat's *prominence* in
+> `docs/enforcement-surfaces.md`. It is accurate, but it sits below a table a skimming reader may
+> never reach, and an accurate disclosure nobody reads is not a disclosure.
 > **DECISION PROPOSED 2026-08-20 (Claude), maintainer to ratify — PARTIALLY DONE, the analysis is
 > settled and the one shipped fix is STILL OPEN.** This entry's own framing is right: blocking-vs-
 > advisory is the key judgment, and a false-positive block on a legitimate test refactor costs more

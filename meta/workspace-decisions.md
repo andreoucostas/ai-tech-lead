@@ -2092,3 +2092,48 @@ outside the typed 20-pattern set, and its existing two-stage filtering pipeline 
 every category (a low-confidence pattern defect could block ordinary work); making PowerShell's file
 routing case-sensitive to match the defective shell behavior; and claiming every grep error is loud
 while the generic credential pipeline remains intentionally fail-open.
+
+## WSD-047: Bypasses are answered by kind — harden, advise, or document — never uniformly (2026-08-22)
+
+**Context.** The write guard has three known end-runs, and B-48 stayed open for a year because they
+kept being treated as one problem needing one answer. They are not alike. A shell command can write
+anything the guard never sees; a test can be defeated by weakening assertions rather than adding a
+suppression; and an attribute list split across lines was, until v0.71.0, invisible to the shell twin.
+Deciding them together forced a choice between hardening everything — which blocks correct work — and
+hardening nothing, which leaves the framework claiming enforcement it does not have.
+
+**Decision.** Answer each bypass by what the defect's *shape* permits, and record which answer applies:
+
+- **HARDEN where the defect has a canonical form to normalise to.** The multi-line attribute list
+  qualifies: fold newlines inside a bracketed list, then run the existing patterns unchanged. Bounded,
+  near-zero false-positive surface, no pattern loosened. Shipped v0.71.0.
+- **ADVISE where the defect is distinguishable from correct work only by intent.** Assertions removed
+  or weakened in a diff cannot be separated from a legitimate refactor by any rule available to us —
+  deleting a duplicated case, replacing three assertions with one stronger one, migrating an assertion
+  library, and removing a test for deleted behaviour all look identical. Report to the model and to
+  `/review` with **no exit code**, and state the limit wherever it is documented: an advisory control
+  is defeated by an agent that ignores it. It raises the cost of the bypass and makes it reviewable.
+  It is **not** enforcement and must never be described as such.
+- **DOCUMENT where the control would have to guess at side effects it cannot observe.** The
+  shell-write gap qualifies. Hardening means content-sniffing arbitrary shell commands, which is
+  unbounded — the guard cannot know what `sed -i`, a heredoc, a redirect, or a script three levels
+  down *will write* without running it. Worse, sniffing command text for secret-shaped strings blocks
+  **reading** as readily as writing: `grep AKIA app.log` and every legitimate investigation of a leak
+  would be refused. A security tool that blocks security work is worse than none, and the blast radius
+  is the terminal, the most-used tool in any session.
+
+**Consequences.** The framework states, per surface, which controls are deterministic and which are
+advisory, and never advertises the second as the first. Three bypasses now have three recorded
+answers rather than one unresolved argument, and the *rule* is reusable on the next one — which
+matters more than the three answers, because there will be a next one.
+
+The cost of getting this wrong is measured, not hypothetical: B-94 records `-AllowExtraStagedPaths`
+being passed reflexively once a guard began refusing correct releases. **A false positive on correct
+work does not merely annoy — it teaches people to bypass the control entirely**, which is strictly
+worse than the gap it was added to close.
+
+**Evidence.** v0.71.0's fix also demonstrated why the *kind* must be established by measurement
+rather than assumed: the multi-line bypass was recorded as a uniform gap and turned out to exist in
+`guard.sh` only, because .NET negated character classes span newlines while `grep` is line-oriented.
+Had it been "hardened" in both twins as filed, the more sensitive one would have been changed for
+nothing.
