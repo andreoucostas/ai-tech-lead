@@ -1753,6 +1753,18 @@ but even that does not establish the general post-change duty to refresh a map w
 relationships, grain, load behavior, or consumption surface the current task changed. The result is
 a permitted “code done, known repository truth stale” handoff.
 
+> **CONSTRAINED BY THE CONTEXT CEILING — checked 2026-08-21.** This entry rewrites the shipped
+> **Agentic Workflow**, which lives on `.github/instructions/framework-rules.instructions.md` — the
+> carrier counted in `static.claude` (`scripts/context-footprint.ps1:246-247`). Measured headroom is
+> **83 characters on monorepo**, 499 on dotnet.
+>
+> That does not block this entry the way it blocks B-96 and B-99, because a *replacement* can be
+> size-neutral: report-only text goes out as reconciliation text comes in. But it does impose a hard
+> design constraint that the entry does not currently state — **the new wording must be no larger than
+> the old**, and "add narrowly stack-owned triggers" is net-additive by definition. Budget it before
+> designing, not after, or the first release will refuse.
+>
+> Third entry found routing through B-158(b). That decision is now gating a category, not an item.
 **Do:** replace report-only completion with change-scoped affected-artifact reconciliation. Inspect
 the diff and its consequences; update writable canonical truth made stale by this task; regenerate
 derived mirrors rather than hand-editing them; respect append-only, register, security, and
@@ -2499,7 +2511,16 @@ sweep without equivalent measurements would risk deleting unrelated or live work
 > here because the lesson generalises: **when a test's exit code carries data, every new exit path
 > collides with it.**
 >
-> **Still open:** `ValidateDist.Tests.ps1` (506.9s) is now the meta suite's dominant file and has the
+> **RE-MEASURED 2026-08-21 (v0.69.0), and the figure above was already stale.** In-release:
+> `ValidateDist.Tests.ps1` **397.3s**, not 506.9s, against a meta-suite makespan of **428.3s** — so it
+> is **93% of the stage** and everything else, `UpdateDelivery` at 234.9s included, finishes inside its
+> shadow. `GuardPatternErrors` is now **39.3s**, down from 548.3s, so that fix holds across four
+> consecutive releases.
+>
+> **Deliberately not acted on.** 428.3s against a 650s ceiling is 34% of headroom, and Maintenance
+> rule 6 asks whether the cost matches the harm before locking a fix. It does not, yet. Recorded so
+> the next person starts from a real number rather than re-deriving one — and note that this entry's
+> own figure rotted within a day, which is the third cost table in this backlog to do so.
 > same structure — assertions that each invoke `validate-dist` as a fresh process. The same question
 > applies: does every assertion need its own spawn, or can the subject be exercised once per class of
 > assertion? Re-measure before acting; the ceiling is comfortable now, so this is no longer urgent.
