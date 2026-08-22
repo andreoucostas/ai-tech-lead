@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.70.0 — Unreleased
+## 0.70.0 — 2026-08-22
 
 **`docs-sync-check` will no longer tell you your documentation has drifted when the real problem is
 your machine.** The check looks inside `AGENTS.md` for a banner and a set of headings. If that search

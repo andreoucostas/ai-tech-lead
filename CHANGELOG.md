@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.70.0 — Unreleased
+## 0.70.0 — 2026-08-22
 
 **`docs-sync-check` no longer reports a machine problem as documentation drift, in both twins — and
 the instance was found by tooling rather than by an incident.** B-164 established that maintenance
