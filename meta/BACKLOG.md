@@ -1491,6 +1491,20 @@ update, so much of the proposed rule would not reach the installed population. T
 incorporated below. **Do not resurrect IDs, counters, receipt blocks, threshold parsers, hook writes,
 or automatic movement as the default implementation.**
 
+> **BLOCKED ON EVAL BUDGET — checked 2026-08-22. The effort estimate misleads about what is
+> currently possible.** The header reads *"S for the evidence/design phase"*, which invites the next
+> person to pick this up as tractable. It is not: Phase 0 step 2 requires **repeated trials on every
+> scriptable supported surface**, which is live-eval spend, and step 1's fixture only has value as
+> input to those trials. There is no design work that can be usefully completed ahead of the
+> measurement, because the entry's own stop rule is defined in terms of what the trials show.
+>
+> That makes **five** entries behind the same budget — B-49, B-97, B-129, B-134 and this one — which
+> is the majority of what remains open and is not a coincidence: the deterministic work has largely
+> been done, and what is left is the work that requires observing model behaviour.
+>
+> Nothing here needs re-deciding first. The rejected first design is recorded, its defects are
+> incorporated, and the standing prohibition (no IDs, counters, receipt blocks, threshold parsers,
+> hook writes, or automatic movement) still holds. This entry is waiting on spend, not on thought.
 **Implementation plan — Phase 0, test the premise before changing shipped guidance:**
 
 1. Add a maintainer-only behavioral fixture with an existing dated `LEARNINGS.md` entry and four
