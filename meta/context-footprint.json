@@ -407,8 +407,8 @@
         },
         {
           "path": ".claude/commands/review.md#body",
-          "chars": 3741,
-          "tok": 935
+          "chars": 4021,
+          "tok": 1005
         },
         {
           "path": ".claude/commands/security-review.md#body",
@@ -871,8 +871,8 @@
         },
         {
           "path": ".claude/commands/review.md#body",
-          "chars": 3732,
-          "tok": 933
+          "chars": 4012,
+          "tok": 1003
         },
         {
           "path": ".claude/commands/security-review.md#body",
@@ -1355,8 +1355,8 @@
         },
         {
           "path": ".claude/commands/review.md#body",
-          "chars": 3924,
-          "tok": 981
+          "chars": 4204,
+          "tok": 1051
         },
         {
           "path": ".claude/commands/security-review.md#body",

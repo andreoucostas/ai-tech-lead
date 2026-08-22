@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.72.0 — Unreleased
+## 0.72.0 — 2026-08-22
 
 **B-48 is complete after a year open, and the durable output is WSD-047 rather than the three fixes.**
 The entry stalled because three known guard bypasses kept being treated as one problem needing one

@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.72.0 — Unreleased
+## 0.72.0 — 2026-08-22
 
 **New: a test-weakening advisory, consulted during `/review`.** Run
 `pwsh scripts/test-weakening-scan.ps1` (or the `.sh` twin) and it reports test files whose staged
