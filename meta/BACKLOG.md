@@ -2711,6 +2711,54 @@ the real instrument; the fix is to *believe* it is required rather than to simul
 Linux-only defect — the same finding, two months earlier), B-164 and B-165 (the sibling RCAs from
 this campaign: one rule many mechanisms, and inert checks in many shapes).
 
+### B-167 · RCA: the reviewer's own verification was wrong three times, always in the direction of reporting success
+**Filed against:** v0.72.0 (2026-08-22)
+**Effort:** S · **Priority:** P2 · found 2026-08-22 across one session's deliveries · **Invariants:** #5
+
+**Why this is filed rather than shrugged off.** The maintenance model puts the reviewer between the
+implementer and the release: rule 3 says nothing enters the record as observed unless observed, and
+rule 4 says a green result counts only from an instrument seen red. Both assume the reviewer's *own*
+checking is sound. On 2026-08-22 it was not, three times, and **every failure reported success**:
+
+| # | what I ran | what it reported | what was true |
+|---|---|---|---|
+| 1 | `AgentEvals.Tests.ps1 \| grep -c '^FAIL'` | `0` | the suite was **throwing** and exiting 1; it signals by exception, not by a FAIL line |
+| 2 | a probe grepping for `weaken` to detect "did it report?" | every arm "reported" | the word appears in the *nothing qualifies* line too, so the probe could not distinguish |
+| 3 | comparing two twins' output visually | "TWINS AGREE" | the console had folded an em dash into a hyphen; comparing **bytes** showed they differed |
+
+A fourth belongs beside them: a postcondition I wrote asserted the three pinned strings I already
+knew about, and two more existed. It could not detect what I had missed, which is B-164's
+site-enumeration failure arriving in my own tooling.
+
+**The pattern is one-directional and that is the dangerous part.** A verification that is wrong
+randomly produces false alarms, which get investigated. These were all wrong in the direction of
+*looks fine* — a grep that finds nothing, a match that is too loose, a comparison the display already
+normalised. **A silent verification failure is indistinguishable from a pass**, which is the same
+property that makes inert checks dangerous (B-165) and the reason four instruments in this repo
+shipped broken (B-112).
+
+**What caught each one:** #1 the exit code, checked separately on a hunch; #2 reading the actual
+output instead of the grep's count; #3 `od -c`; #4 running the test rather than trusting the script.
+In every case the fix was **looking at the thing itself** rather than at a summary of it.
+
+**Do:**
+1. **Check the exit code, not the output, when asking "did this pass?"** A harness that reports by
+   exception, or that prints `[FAIL]` in a format your pattern does not match, will answer "0
+   failures" to a grep while failing.
+2. **A detection grep must be red-tested like any other instrument** — confirm it fires on a known
+   positive *and* stays silent on a known negative before trusting either. #2 above would have taken
+   one extra run to catch.
+3. **Compare bytes, not rendered text**, whenever the question is "are these identical?" The console
+   normalises; `cmp` and `od -c` do not. This is the same class as invariant #4's BOM rule.
+
+**Not:** do not add tooling for this. It is a discipline about how the reviewer looks, and a checker
+that verified the verifications would need verifying. Recording the three shapes is the deliverable.
+
+**Cross-links:** B-165 (inert checks — the same one-directional failure on the authoring side),
+B-112 (instruments that could not produce the result they claimed to test for), B-164 (enumeration
+that cannot detect what it did not enumerate), B-166 (the same session's cross-platform blind spot,
+also a verification that was real but pointed at the wrong thing).
+
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see `meta/BACKLOG-DONE.md`.**
