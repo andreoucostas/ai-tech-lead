@@ -1750,12 +1750,32 @@ repair path; over-triggered whole-map refreshes; and lacked negative/blocked wor
 uses artifact semantics, bounded causal triggers, negative controls, and honest structural-versus-
 behavioral evidence. This review does **not** satisfy the Claude Opus gate.
 
-**Review gate — AWAITING OPUS REVIEW:** ask Opus to attack the causal ownership model, update-versus-
-flag boundary, durability of the artifact inventory, warehouse trigger, protected records, delivery
-surfaces, oracle reachability, and proportionality. Opus should explicitly consider whether a
-shared-rule-only change removes most of the harm. No implementation is authorised until its findings
-are verified/incorporated and the decision is locked in `meta/workspace-decisions.md`. If unavailable,
-record `WAITING — OPUS LIMIT`.
+**Review gate — OPUS REVIEW DONE 2026-08-22: REQUEST CHANGES.** Recorded in full at the end of
+`.claude/plans/2026-08-11-b136-change-owned-artifact-freshness-design.md`. **Implementation is not
+authorised.** Two blockers and one scope reduction:
+
+1. **Step 1 is unbudgeted.** The Agentic Workflow lives on the carrier counted in `static.claude`,
+   and "reconcile" wording is necessarily longer than "flag" wording — against **83 characters** of
+   monorepo headroom. Either author it size-neutral against a *named* displacement, or wait on
+   B-158(b). This is the fourth entry found routing through that decision.
+2. **The artifact/action table must not ship as a table.** It is the second inventory this entry
+   forbids, and B-164 measured that shape failing: four entries enumerated the scripts they knew
+   about and a fifth defect appeared in an unlisted one. Ship the durable principle; leave
+   file-specific triggers with the artifacts that own them. Keep the table in the plan as rationale.
+3. **The behavioural half is unbuildable now** — five entries are already behind the eval budget and
+   B-112 found four instruments broken on first version. Ship the rendered contract, prove delivery
+   structurally, and record compliance as **UNMEASURED** rather than implying it was tested.
+
+**Proportionality, answered as asked: yes, a shared-rule-only change removes most of the harm.**
+B-98 measured carrier-delivered guidance going 0/6 → 6/6 while the same content in a routed skill
+stayed 0/6. Ship step 1 alone; defer the warehouse trigger until the general rule is observed — it is
+additive text on the same budget and its marginal value is unmeasured. Note it would cost the
+monorepo twice, since skills compose there from both stacks.
+
+**Confirmed sound:** carrier placement genuinely reaches installed consumers (B-97 Option A), which
+is the opposite of what `CLAUDE.md` placement would do — state that reasoning in the change so a
+later editor does not "tidy" it into the protected file. **One addition:** an artifact the agent
+cannot *read* must report a blocker, never `Affected artifacts: none` — maintenance rule 7.
 
 **Proportionality:** the current report-only wording is directly observed and is the requested harm.
 A shared completion-rule correction plus the smallest domain-specific trigger removes most of it; a

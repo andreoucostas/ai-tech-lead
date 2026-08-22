@@ -1,6 +1,6 @@
 # B-136 — make artifact freshness part of completing an AI-authored change
 
-**Status:** REVISED AFTER CODEX ADVERSARIAL REVIEW — awaiting Claude Opus review
+**Status:** OPUS REVIEW COMPLETE 2026-08-22 — REQUEST CHANGES. Two blockers before implementation; see the review at the end of this document.
 
 **Scope:** shipped Agentic Workflow/self-review tail, workflow commands, and the smallest
 stack-specific recipe additions needed to keep repository descriptions and registers aligned with
@@ -143,3 +143,82 @@ behavior without stack-specific edits.
 No implementation is authorised until Opus findings are independently checked and incorporated and
 the resulting decision is locked in `meta/workspace-decisions.md`. If Opus is unavailable because of
 limits, record `WAITING — OPUS LIMIT`; do not substitute this self-review for the required gate.
+
+## Claude Opus review — 2026-08-22
+
+**Verdict: REQUEST CHANGES.** The causal ownership model is sound and the codex round removed the
+dangerous parts. Two findings block implementation as written, and a third shrinks the deliverable.
+
+### 1. BLOCKING — step 1 is not deliverable within the context budget, and the plan never checks
+
+Step 1 revises the canonical Agentic Workflow §5–6, which lives on
+`.github/instructions/framework-rules.instructions.md`. That carrier is **counted in
+`static.claude`** (`scripts/context-footprint.ps1:246-247`). Measured 2026-08-22:
+
+| dist | used | ceiling | headroom |
+|---|---:|---:|---:|
+| dotnet | 39,501 | 40,000 | **499** |
+| angular | 38,239 | 40,000 | 1,761 |
+| monorepo | 47,917 | 48,000 | **83** |
+
+"Reconcile change-owned artifacts" is necessarily *longer* than "flag drift": it must carry
+inspect-the-diff, update-canonical, regenerate-derivatives, and the `none`/blocked report. That is
+hundreds of characters against 83 on monorepo, and the ceiling is a **hard failure** since B-110.
+
+The plan is not wrong, it is **unbudgeted**. Either the replacement is authored size-neutral —
+displacing existing carrier text, which must then be named — or this waits on B-158(b). Do not
+discover this at a release refusal; that is the failure mode B-158 exists to prevent.
+
+### 2. BLOCKING — the artifact/action table must not ship as a table
+
+The plan asks whether the table becomes "a second, stale inventory". It does. Today's B-164 recorded
+the same shape failing: four entries each enumerated the scripts they knew about, and a fifth instance
+of the same defect appeared in a script none of them listed. An artifact inventory rots identically,
+and worse — a *stale* inventory of what to reconcile is read as authoritative and will suppress
+reconciliation of anything absent from it.
+
+**Take the refinement the plan already proposes:** state the durable principle in the shared workflow
+("the actor that invalidated an artifact owns refreshing it, according to that artifact's ownership
+semantics") and leave file-specific triggers with the artifacts and skills that already own them. The
+table is excellent *design reasoning* and should stay in this plan document as rationale. It should
+not become shipped text.
+
+### 3. SCOPE — the behavioural half is unbuildable now; say so rather than implying it
+
+Step 4 conditions fixtures on "if an existing agent-eval scenario can distinguish…". Two facts settle
+that today: the eval budget blocks five entries already (B-49, B-97, B-129, B-133, B-134), and B-112
+found **four instruments broken in their first version**. So the honest deliverable is: ship the
+rendered contract, prove *delivery* structurally, and record compliance as **UNMEASURED**. The plan's
+own closing paragraph draws exactly this line — promote it from a caveat to the scope.
+
+### 4. Proportionality — yes, a shared-rule-only change removes most of the harm
+
+The plan asks this directly. **Yes**, and there is evidence rather than intuition: B-98 measured
+guidance moved onto the always-loaded carrier going from **0/6 to 6/6 reach**, while the same content
+in a selectively-routed skill stayed at 0/6. The general completion rule is the high-reach half.
+
+Step 3's warehouse trigger is *additive text on the same constrained budget*, and its marginal value
+over the general rule is unmeasured. **Recommend shipping step 1 alone**, deferring step 3 until the
+general rule's effect is observed. That also halves the budget problem in finding 1. Note the cost
+lands twice: skills compose into monorepo from both stacks, so a dotnet-owned trigger also consumes
+the 83 characters.
+
+### 5. Confirmed sound — the delivery surface, which was worth checking
+
+A new rule on the carrier **does** reach already-installed consumers: the carrier is unprotected and
+arrives on update (B-97 Option A, v0.45.0). Had this rule been placed in `CLAUDE.md`, it would have
+reached nobody, which is B-97's original defect. The plan's placement is right for the wrong-adjacent
+reason — it should say *why* explicitly, so a later editor does not "tidy" it into `CLAUDE.md`.
+
+### 6. Protected records — sound, with one addition
+
+The append-only, register, and security boundaries are correctly drawn. Add one explicit case the
+plan omits: **an artifact the agent cannot read** (locked, permission-denied) must be reported as a
+blocker, not as `Affected artifacts: none`. That is maintenance rule 7's distinction — "I could not
+examine it" is not "it is fine" — and this session shipped four fixes for exactly that conflation.
+
+### Disposition
+
+Implementation is **not** authorised. Two blockers first: budget the carrier text against a named
+displacement or B-158(b), and reduce the table to a principle. Then step 1 alone, with compliance
+recorded as unmeasured.
