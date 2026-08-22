@@ -5,6 +5,26 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.72.0 — Unreleased
+
+**New: a test-weakening advisory, consulted during `/review`.** Run
+`pwsh scripts/test-weakening-scan.ps1` (or the `.sh` twin) and it reports test files whose staged
+diff removes more assertion-shaped lines than it adds — the shape of a test being quietly gutted
+rather than refactored.
+
+**It never fails anything.** It prints what it found and exits 0, every time, including when it
+reports. That is deliberate: removing assertions is not by itself wrong. Deleting a duplicated case,
+replacing three weak assertions with one strong one, migrating to a different assertion library, or
+removing a test for behaviour you deleted all look exactly like weakening a test, and no rule can
+tell them apart. A check that blocked on this would refuse correct work, and you would quickly learn
+to skip it.
+
+So treat it as a prompt to look, not a verdict. It is a reviewable signal that can be defeated by
+ignoring it; it is not enforcement, and it is not a substitute for reading the diff.
+
+One limit worth knowing: it counts *lines*, so three assertions written on one line and then deleted
+register as a single removal.
+
 ## 0.71.0 — 2026-08-22
 
 **Security fix: the write guard no longer misses a test suppression split across two lines.** Writing

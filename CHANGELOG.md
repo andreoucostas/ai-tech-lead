@@ -11,6 +11,40 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.72.0 — Unreleased
+
+**B-48 is complete after a year open, and the durable output is WSD-047 rather than the three fixes.**
+The entry stalled because three known guard bypasses kept being treated as one problem needing one
+answer. They are not alike, and the recorded rule is what makes the next one tractable: **harden**
+where the defect has a canonical form to normalise to, **advise** where it is distinguishable from
+correct work only by intent, **document** where the control would have to guess at side effects it
+cannot observe.
+
+**Shipping now: the test-weakening advisory.** `scripts/test-weakening-scan.{ps1,sh}` reports
+assertion-shaped removals in test-file diffs, and `/review` consults it. **It always exits 0.**
+
+That exit code is the design, not an oversight. Assertions removed or weakened in a diff cannot be
+separated from a legitimate refactor by any rule available to us — deleting a duplicated case,
+replacing three assertions with one stronger one, migrating an assertion library, and removing a test
+for deleted behaviour all look identical to the defect. So the moment this can fail a run, it starts
+refusing correct work, and B-94 already measured where that leads: `-AllowExtraStagedPaths` passed
+reflexively once a guard began refusing correct releases. **A false positive on correct work teaches
+people to bypass the control entirely**, which is strictly worse than the gap.
+
+Both twins and `/review` describe it identically: *"a reviewable signal that can be defeated by
+ignoring it; it is not enforcement."* Its own test asserts that phrase is present **and** that the
+script never says "guarantees", "prevents" or "blocks the commit" — overclaiming is the specific
+failure WSD-047 exists to prevent, so it is machine-checked rather than left to review habit.
+
+**Two limits written down rather than discovered later.** The heuristic counts assertion-shaped
+*lines*, so three assertions collapsed onto one line and deleted register as a single removal — that
+is inherent to a diff-line heuristic and is now stated in both twins. And an advisory is defeated by
+an agent that ignores it; what it buys is a raised cost and a reviewable signal, nothing more.
+
+**A twin-rendering defect was caught by comparing bytes, not output.** The two scripts used an em dash
+and a hyphen respectively, and the first check "passed" only because the console mangled the em dash
+into a hyphen on display. Both are ASCII now and byte-identical [#3].
+
 ## 0.71.0 — 2026-08-22
 
 **B-48(3): a real guard bypass is closed — and it existed in only ONE twin, which the entry did not
