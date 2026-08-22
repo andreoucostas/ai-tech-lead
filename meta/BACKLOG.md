@@ -1253,12 +1253,35 @@ as the outcome, and demote the prose match to a reported-but-not-gating signal �
 free-form regexes with one, chosen because a correct run must produce it. Then re-run and confirm
 the measure can reach True at all before citing any archived-redirect result again.
 
-**2. `docs-tier-nopointer` has also never passed** — and it is precisely the arm B-65's 2026-07-31
-amendment leans on when it says agents reach on-demand `docs/` files unaided. That amendment cites
-"one valid no-pointer run" where the agent opened the file; the ledger shows the *scenario* never
-scored PASS. Those are compatible (`loaded=True` with `followed=False` still fails), but the entry
-reads as stronger evidence than the instrument has produced. Re-check B-65's claim against the actual
-rows before it is used to justify keeping or dropping the pointer.
+**2. `docs-tier-nopointer` has also never passed — RE-CHECKED 2026-08-22 against the actual rows.
+B-65's claim is narrowly true and generally overstated, and the correction is a rate, not a
+retraction.**
+
+The three recorded runs (`meta/eval-results.md:124,145,152`):
+
+| run | outcome | signals |
+|---|---|---|
+| 1 | **ERROR** — stream schema | no evidence obtained |
+| 2 | **INCONCLUSIVE** | `loaded=True followed=False` |
+| 3 | **FAIL** | `loaded=False`, class `OrderFulfillmentOrchestrator` |
+
+**What B-65 actually says:** *"in one valid no-pointer run, the agent opened the file unaided."* That
+is **true** — run 2 has `loaded=True`. And "the scenario never scored PASS" is **not** evidence
+against it, because `loaded=True` with `followed=False` scores INCONCLUSIVE by design; the two
+statements are compatible, exactly as this entry supposed.
+
+**What overstates it** is the sentence before: *"Agents do reach on-demand `docs/` files in
+bootstrapped repos"* — a categorical drawn from **1 of 2 valid runs**, the other of which was
+`loaded=False`. The honest form is *"in 1 of 2 valid runs (a third ERRORed), the agent opened the
+file unaided"*. At n=2 that is a signal, not a property.
+
+**B-65 is partly self-limiting already** — the same paragraph says the causal question "needs more
+runs before the framework asserts anything about pointers in shipped documentation", which is the
+right posture. The defect is that the categorical sentence is what a reader carries away.
+
+**Disposition: no re-run needed for this follow-up.** State the rate where the claim is made and stop
+citing the categorical. Whether the pointer *increases load probability* remains the open causal
+question and does need budget — but that was always B-65's own caveat, not a new finding.
 
 **3. `route-fix`'s saturation is unassessed and the risk is high.** Its measure is red-test-then-fix;
 a competent model does that unprompted as ordinary practice. It has never been run bare, so its 2
