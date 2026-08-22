@@ -2923,8 +2923,23 @@ use without a DC admin is a **required-build merge check** running their existin
 recipe (docs + pipeline file) that runs `docs-sync-check` + build + test + lint. "Verified"
 means actually executed against a local Jenkins container with evidence, per the workspace
 verification rules. Details: `.claude/plans/2026-07-02-self-sufficiency-forensic-review.md`
-(WS-3). Pre-receive hooks / Code Insights: rejected there — do not resurrect without a consumer
-request.
+(WS-3). Pre-receive hooks / Code Insights: rejected there — do not resurrect without a consumer request.
+
+> **ENVIRONMENT-BLOCKED, checked 2026-08-22.** This entry defines "verified" as *actually executed
+> against a local Jenkins container with evidence*, which is the right bar and is why it has not
+> quietly shipped as an unverified recipe. **There is no Docker on this machine** — not on `PATH`,
+> and Docker Desktop is not installed — so the container cannot be started and the verification
+> standard cannot be met here.
+>
+> Writing the recipe *without* running it would produce exactly what the entry's own wording forbids:
+> a pipeline file nobody has seen work, published to consumers who cannot easily tell the difference.
+> That is the same failure class as shipping an unvalidated instrument (B-112) or claiming enforcement
+> that is really advisory (B-48, WSD-047).
+>
+> **What it needs:** a host with Docker, or a Jenkins/Bamboo instance to run the recipe against. It is
+> not blocked on design, effort, or a decision — only on an execution environment. Grouped with B-42
+> and B-43 as the entries requiring something outside this machine rather than something outside this
+> session.
 
 **B-16 is implemented for v0.32.0 — see `meta/BACKLOG-DONE.md`.**
 
