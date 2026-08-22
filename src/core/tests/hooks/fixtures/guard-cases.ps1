@@ -5,6 +5,15 @@
 $GuardCases = @(
     @{ n='cs #pragma warning disable';         f='src/Foo.cs';                c='#pragma warning disable CS8602';                       block=$true; policy='test-defeat/suppression' }
     @{ n='cs [Fact(Skip=...)]';                f='tests/FooTests.cs';         c='[Fact(Skip="flaky")] public void T(){}';               block=$true }
+    # MULTI-LINE ATTRIBUTE LISTS. The table had no multi-line content at all, which is why a real
+    # twin divergence survived: .NET's [^]]* spans a newline, so guard.ps1 blocked the split forms,
+    # while grep is line-oriented and guard.sh ALLOWED them -- a working evasion for any consumer
+    # whose hooks run through bash, of a gate advertised as deterministic. Measured 2026-08-22.
+    # The third case is the one that matters most: a legitimate split attribute list must still pass,
+    # because a false positive on correct work is what teaches people to bypass the guard (B-94).
+    @{ n='cs [Test,<nl>Ignore(...)] split';    f='tests/FooTests.cs'; c="[Test,`n Ignore(`"flaky`")] public void T(){}";                          block=$true }
+    @{ n='cs [Fact(<nl>Skip=...)] split';      f='tests/FooTests.cs'; c="[Fact(`n  Skip=`"flaky`")] public void T(){}";                           block=$true }
+    @{ n='cs legit split attribute list';      f='tests/FooTests.cs'; c="[Theory,`n InlineData(1),`n InlineData(2)] public void T(int x){}";      block=$false }
     @{ n='cs NUnit [Test, Ignore(...)]';       f='tests/FooTests.cs';         c='[Test, Ignore("flaky")] public void T(){}';            block=$true }
     @{ n='cs MSTest [Ignore] attribute';       f='tests/FooTests.cs';         c='[Ignore]';                                             block=$true }
     @{ n='cs NUnit [TestCase(.. Ignore = ..)]';f='tests/FooTests.cs';         c='[TestCase(1, Ignore = "flaky")]';                      block=$true }

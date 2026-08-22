@@ -87,6 +87,32 @@ case "$tool" in
 esac
 [ -z "$content" ] && exit 0
 
+# grep evaluates one physical line at a time, while the PowerShell twin's regexes evaluate the
+# whole string. Fold only newlines inside bracketed attribute lists so both twins inspect the same
+# logical construct. Newlines at bracket depth zero are preserved, so line-anchored patterns cannot
+# be made to match text that did not begin a physical line.
+normalize_bracket_lines() {
+  local text=$1 out="" line ch
+  local depth=0 first=1 i
+  while IFS= read -r line || [ -n "$line" ]; do
+    if [ "$first" -eq 0 ]; then
+      if [ "$depth" -gt 0 ]; then out+=" "; else out+=$'\n'; fi
+    fi
+    first=0
+    out+="$line"
+    for ((i=0; i<${#line}; i++)); do
+      ch=${line:i:1}
+      if [ "$ch" = "[" ]; then
+        depth=$((depth + 1))
+      elif [ "$ch" = "]" ] && [ "$depth" -gt 0 ]; then
+        depth=$((depth - 1))
+      fi
+    done
+  done <<< "$text"
+  printf '%s' "$out"
+}
+content=$(normalize_bracket_lines "$content")
+
 reasons=()
 
 # 0 = matched, 1 = no match, 2+ = grep could not answer (bad regex or another operational error).
