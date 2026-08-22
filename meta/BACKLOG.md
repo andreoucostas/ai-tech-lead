@@ -2955,6 +2955,31 @@ StrykerJS `--incremental`; WS-T11 wire survivors into `test-critic`; WS-T12 docs
 Key traps recorded there: Angular needs a cobertura reporter wired; CI must fetch the base ref;
 "CI-enforced" = runs+reports by default, only the opt-in floor blocks.
 
+> **THE CITED PLAN IS MISSING — verified 2026-08-22, and this changes the entry's status.** The entry
+> says *"Execution-ready plan exists: `<home>\.claude\plans\v0_24_0-shipped-framework-testing.md`"*.
+> That file does not exist. Searched: the cited path; all 27 plans under `~/.claude/plans/`; every
+> `.claude/plans/*.md` in the repo; a filename search across both trees; and git history for a blob
+> of that name. The only surviving mention of `WS-T9` anywhere is **this entry itself**. A branch
+> named `claude/meta-framework-testing-strategy-ib0583` exists but carries B-33's composer work, not
+> this.
+>
+> **So the four lines above are not a pointer to a design — they ARE the design**, and they are a
+> seed, not an execution-ready plan. Maintenance model rule 1 requires a locked design plus
+> adversarial critique before implementation of an M+ item, and this is L. **Status corrected from
+> "execution-ready" to "needs design from scratch, seeded by the summary below".**
+>
+> The surviving summary is still worth having and should not be discarded: WS-T9 coverage holes-map
+> with an optional off-by-default patch-coverage gate, diff coverage over `scripts/metrics.*`
+> cobertura intersected with `git diff`; WS-T10 Stryker.NET `--since` / StrykerJS `--incremental`;
+> WS-T11 wire survivors into `test-critic`; WS-T12 docs/parity. Plus the recorded traps — Angular
+> needs a cobertura reporter wired, CI must fetch the base ref, and "CI-enforced" means runs-and-
+> reports by default with only the opt-in floor blocking.
+>
+> **Fourth status-rot finding of the day** (after B-99's refuted blocker, B-96's answered
+> prerequisite, and B-133's misleading effort estimate) and the most severe, because it is a *missing
+> artifact* rather than a stale claim. An entry that says its design is done, when the design is gone,
+> will cost whoever picks it up a planning cycle before they discover it.
+
 **B-25-EXEC is DONE — v0.26.0 shipped 2026-07-12 (WSD-018); see `meta/BACKLOG-DONE.md`.**
 
 **B-26 is DONE (2026-08-20) — one bullet was already discharged by B-32 and the other folded into the overlap watch; see `meta/BACKLOG-DONE.md`.**
