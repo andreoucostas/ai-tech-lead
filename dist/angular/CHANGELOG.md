@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.71.0 — Unreleased
+## 0.71.0 — 2026-08-22
 
 **Security fix: the write guard no longer misses a test suppression split across two lines.** Writing
 

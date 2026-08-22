@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.71.0 — Unreleased
+## 0.71.0 — 2026-08-22
 
 **B-48(3): a real guard bypass is closed — and it existed in only ONE twin, which the entry did not
 know.** `[Test,` newline ` Ignore("flaky")]` is legal C# that no formatter forbids, and B-48 records
