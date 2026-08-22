@@ -2583,6 +2583,39 @@ scripts it knew about. `context-footprint.ps1` was in no list, so it was never e
 next mechanism (a network timeout, a full disk, a locked directory) will be in no list either. Four
 entries in, the instance rate is not falling.
 
+> **ENFORCEABILITY ASSESSED 2026-08-21 — the answer is "advisory, not a gate", with evidence.**
+>
+> WSD-028 says a maintenance rule is real only where tooling can refuse, so this entry's open
+> question was whether rule 7 admits a mechanical check. Two candidates were measured against the 11
+> shipped scripts and their twins.
+>
+> **The naive check — "exits non-zero without emitting a host/resource marker" — is too noisy to
+> gate.** It flags `install` (4 exit paths, 0 markers) and `setup-git-hooks` (6, 0), both of which are
+> *correct*: their non-zero exits are legitimate content decisions — a licence that differs, an
+> existing hook owner — not unclassified conditions.
+>
+> **The refined check — "invokes an external tool AND exits non-zero AND emits no host marker" —
+> flags 2 of 11, and both are genuine:**
+>
+> | flagged | site | severity |
+> |---|---|---|
+> | `docs-sync-check.sh` | `:74,:76` — `grep -q … \|\| missing="banner"` | **harmful**: an unrunnable grep yields *"AGENTS.md is missing its banner"*, a false content verdict. This is the site B-156 deferred as "a different shape" |
+> | `install.sh` | `:72` — `grep -Fq 'FRAMEWORK-OWNED' … \|\|` then refuses to overwrite | **fails safe**: a broken grep makes the installer protective rather than destructive, so it is the class without the harm |
+>
+> **So: 2 flags, 2 real instances, 0 false positives on this sample — but it still cannot be a hard
+> gate**, because `install.sh` would fail it today and its behaviour is defensible. A gate that
+> refuses correct code teaches people to waive it, which is how the release-gate habit forms
+> (see B-163's ceiling-inside-variance finding for the same dynamic).
+>
+> **Disposition: build it as an ADVISORY sweep, not a gate, and say so.** It is cheap, its output is
+> two lines a human can adjudicate in a minute, and on its first run it found a real defect nobody had
+> queued. Under WSD-028 that makes rule 7 **guidance backed by a triage tool**, not an enforced rule —
+> and the entry should say exactly that rather than implying enforcement it does not have. That
+> distinction is B-48's subject and the framework has been wrong about it before.
+>
+> **Next concrete work this produced:** `docs-sync-check.sh:74,:76` is a queued instance of rule 7,
+> found by the tool rather than by an incident. Fix it the way B-156's cheap half fixed the others.
+
 **Do:** write the rule where gate authors meet it, and decide honestly whether it can be enforced or
 is guidance only. **WSD-028 says a maintenance rule is real only where tooling can refuse**, so state
 which this is rather than leaving it implied — that ambiguity is B-134's subject. A candidate
