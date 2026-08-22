@@ -2495,9 +2495,28 @@ sweep without equivalent measurements would risk deleting unrelated or live work
 > rule 6 asks whether the cost matches the harm before locking a fix. It does not, yet. Recorded so
 > the next person starts from a real number rather than re-deriving one — and note that this entry's
 > own figure rotted within a day, which is the third cost table in this backlog to do so.
-> same structure — assertions that each invoke `validate-dist` as a fresh process. The same question
-> applies: does every assertion need its own spawn, or can the subject be exercised once per class of
-> assertion? Re-measure before acting; the ceiling is comfortable now, so this is no longer urgent.
+> **CLOSED ON STRUCTURE, 2026-08-22 — there is no cheap win in `ValidateDist.Tests.ps1`, and it should
+> not be re-opened without new evidence.** It was named as the next target after `GuardPatternErrors`,
+> which assumed it had the same untapped structure. It does not.
+>
+> **It is already parallelised and already lane-budgeted on purpose.** It carries its own measured
+> curve — *throttle 4 = 218s, 8 = 183s, 12 = 179s, sequential = 391s* — and its own note that "the
+> floor is the longest single case, so past ~8 there is nothing left to win". The meta runner computes
+> `outerLanes = max(2, min(4, cores/3)) = 4` and `innerLanes = max(2, cores/outerLanes) = 3`, and
+> hands that file `VALIDATE_DIST_TESTS_THROTTLE=3`.
+>
+> **So the in-release 397.3s is contention, not sequential execution.** At throttle 3 its own curve
+> puts it near 250s standalone, and 397.3s is the ~1.6x inflation B-138 already measured for this
+> suite. Nothing is being left on the table: the lanes are deliberately restricted to prevent exactly
+> the oversubscription that made the `Guard.Tests` parallelisation a net loss the same week.
+>
+> **The remaining lever is the one this entry already names — fewer spawns, not more lanes.** Its 39
+> cases each invoke `validate-dist` as a fresh process, and the honest question is whether every
+> assertion needs its own invocation. That is a re-architecture, its cost is real, and with the meta
+> suite at ~405s against a 650s ceiling the harm does not justify it (Maintenance rule 6).
+>
+> Recorded so the next person does not spend an afternoon rediscovering the throttle line — which is
+> where this stops being an optimisation question and becomes a measured no.
 
 **Four measurements of the same suite on the same host, 2026-08-21:** 594.3s, 612.8s, 653.0s,
 707.2s. The ceiling is **650s**. So the limit falls in the middle of the observed spread and a
