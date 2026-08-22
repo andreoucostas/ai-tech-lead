@@ -1122,7 +1122,15 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             }
             $texts = @($added | ForEach-Object { Get-Content -Raw -LiteralPath (Join-Path $Target $_) })
             $allText = $texts -join "`n"
-            $cva = $allText -match '\bControlValueAccessor\b' -or $allText -match '\bNG_VALUE_ACCESSOR\b'
+            # B-72(a): report the interface and the provider SEPARATELY. Combined as one boolean,
+            # the correct pattern and the circular-DI double registration scored identically, so the
+            # probe could not distinguish "implements ControlValueAccessor and provides
+            # NG_VALUE_ACCESSOR" from a component that registers itself twice. $cva is retained as
+            # the derived pass signal so the outcome is unchanged; the two conjuncts are now visible
+            # in Detail, which is where a reader decides what a result means.
+            $cvaInterface = [bool]($allText -match '\bControlValueAccessor\b')
+            $cvaProvider  = [bool]($allText -match '\bNG_VALUE_ACCESSOR\b')
+            $cva = $cvaInterface -or $cvaProvider
             $ngcontrol = $allText -match '\binject\s*\(\s*NgControl\b' -or $allText -match '(?s)constructor\s*\([^)]*:\s*NgControl\b'
             $controlType = '(?:AbstractControl|FormControl|FormGroup|NgControl)'
             $controlAsInput = $allText -match "(?im)@Input\s*(?:\([^)]*\))?\s*(?:(?:public|protected|private|readonly)\s+)*[A-Za-z_][A-Za-z0-9_]*[!?]?\s*:\s*$controlType\b" -or
@@ -1137,7 +1145,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
                 foreach ($match in [regex]::Matches($text, '(?im)\b(required|disabled|errors|errorMessage|invalid|touched)\s*=\s*input(?:\.required)?(?:\s*<[^;=()]+>)?\s*\(')) { $formInputs.Add($match.Groups[1].Value) }
             }
             $inputNames = @($formInputs | Sort-Object -Unique)
-            return [pscustomobject]@{ Status = 'PASS'; Pass = ($cva -or $ngcontrol) -and $inputNames.Count -eq 0; Detail = "cva=$cva ngcontrol=$ngcontrol controlAsInput=$controlAsInput formInputs=$($inputNames -join ',') readDefaults=$readDefaults usedSkill=$usedSkill" }
+            return [pscustomobject]@{ Status = 'PASS'; Pass = ($cva -or $ngcontrol) -and $inputNames.Count -eq 0; Detail = "cva=$cva cvaInterface=$cvaInterface cvaProvider=$cvaProvider ngcontrol=$ngcontrol controlAsInput=$controlAsInput formInputs=$($inputNames -join ',') readDefaults=$readDefaults usedSkill=$usedSkill" }
         }
         { $_ -in @('warehouse-route-p1','warehouse-route-p2','warehouse-route-p3') } {
             $successful = @($e.Tools | Where-Object {
@@ -1961,7 +1969,7 @@ export class FormFieldComponent {
 }
 '@ | Set-Content (Join-Path $shared 'form-field.component.ts') -Encoding utf8NoBOM
         $angularWrapper = Test-ScenarioEvidence 'angular-form-control' $angularTemp $angularEvidence 1
-        if ($angularWrapper.Pass -or $angularWrapper.Detail -notmatch '^cva=False ngcontrol=False controlAsInput=True formInputs= readDefaults=True usedSkill=False$') { throw "angular-form-control failed to identify control-as-input wrapper: $($angularWrapper.Detail)" }
+        if ($angularWrapper.Pass -or $angularWrapper.Detail -notmatch '^cva=False cvaInterface=False cvaProvider=False ngcontrol=False controlAsInput=True formInputs= readDefaults=True usedSkill=False$') { throw "angular-form-control failed to identify control-as-input wrapper: $($angularWrapper.Detail)" }
         Remove-Item -LiteralPath (Join-Path $shared 'form-field.component.ts')
         @'
 import { Component, forwardRef } from '@angular/core';
@@ -1975,7 +1983,7 @@ export class FormFieldComponent implements ControlValueAccessor {
 }
 '@ | Set-Content (Join-Path $shared 'form-field.component.ts') -Encoding utf8NoBOM
         $angularCva = Test-ScenarioEvidence 'angular-form-control' $angularTemp $angularEvidence 1
-        if (-not $angularCva.Pass -or $angularCva.Detail -notmatch '^cva=True ngcontrol=False controlAsInput=False formInputs= readDefaults=True usedSkill=False$') { throw "angular-form-control rejected CVA component: $($angularCva.Detail)" }
+        if (-not $angularCva.Pass -or $angularCva.Detail -notmatch '^cva=True cvaInterface=True cvaProvider=True ngcontrol=False controlAsInput=False formInputs= readDefaults=True usedSkill=False$') { throw "angular-form-control rejected CVA component: $($angularCva.Detail)" }
         Remove-Item -LiteralPath (Join-Path $shared 'form-field.component.ts')
         @'
 import { Component, Input } from '@angular/core';
@@ -1987,7 +1995,7 @@ export class FormFieldComponent {
 }
 '@ | Set-Content (Join-Path $shared 'form-field.component.ts') -Encoding utf8NoBOM
         $angularInputs = Test-ScenarioEvidence 'angular-form-control' $angularTemp $angularEvidence 1
-        if ($angularInputs.Pass -or $angularInputs.Detail -notmatch '^cva=False ngcontrol=False controlAsInput=False formInputs=disabled,required readDefaults=True usedSkill=False$') { throw "angular-form-control accepted form-owned inputs or failed to list them: $($angularInputs.Detail)" }
+        if ($angularInputs.Pass -or $angularInputs.Detail -notmatch '^cva=False cvaInterface=False cvaProvider=False ngcontrol=False controlAsInput=False formInputs=disabled,required readDefaults=True usedSkill=False$') { throw "angular-form-control accepted form-owned inputs or failed to list them: $($angularInputs.Detail)" }
         Remove-Item -LiteralPath (Join-Path $shared 'form-field.component.ts')
         # Grader-defeat regressions. Both components below ARE the reported defect -- a value
         # accessor that re-declares state the FormControl already owns -- and both scored PASS
@@ -2010,7 +2018,7 @@ export class FormFieldComponent implements ControlValueAccessor {
 }
 '@ | Set-Content (Join-Path $shared 'form-field.component.ts') -Encoding utf8NoBOM
         $angularAccessorInputs = Test-ScenarioEvidence 'angular-form-control' $angularTemp $angularEvidence 1
-        if ($angularAccessorInputs.Pass -or $angularAccessorInputs.Detail -notmatch '^cva=True ngcontrol=False controlAsInput=False formInputs=disabled,errors readDefaults=True usedSkill=False$') { throw "angular-form-control missed form-owned inputs declared as @Input() set/get: $($angularAccessorInputs.Detail)" }
+        if ($angularAccessorInputs.Pass -or $angularAccessorInputs.Detail -notmatch '^cva=True cvaInterface=True cvaProvider=True ngcontrol=False controlAsInput=False formInputs=disabled,errors readDefaults=True usedSkill=False$') { throw "angular-form-control missed form-owned inputs declared as @Input() set/get: $($angularAccessorInputs.Detail)" }
         Remove-Item -LiteralPath (Join-Path $shared 'form-field.component.ts')
         @'
 import { Component, forwardRef, input } from '@angular/core';
@@ -2026,7 +2034,7 @@ export class FormFieldComponent implements ControlValueAccessor {
 }
 '@ | Set-Content (Join-Path $shared 'form-field.component.ts') -Encoding utf8NoBOM
         $angularSignalInputs = Test-ScenarioEvidence 'angular-form-control' $angularTemp $angularEvidence 1
-        if ($angularSignalInputs.Pass -or $angularSignalInputs.Detail -notmatch '^cva=True ngcontrol=False controlAsInput=False formInputs=disabled,required readDefaults=True usedSkill=False$') { throw "angular-form-control missed form-owned inputs declared as input.required<T>(): $($angularSignalInputs.Detail)" }
+        if ($angularSignalInputs.Pass -or $angularSignalInputs.Detail -notmatch '^cva=True cvaInterface=True cvaProvider=True ngcontrol=False controlAsInput=False formInputs=disabled,required readDefaults=True usedSkill=False$') { throw "angular-form-control missed form-owned inputs declared as input.required<T>(): $($angularSignalInputs.Detail)" }
         Remove-Item -LiteralPath (Join-Path $shared 'form-field.component.ts')
         # usedSkill must actually observe a Skill tool event, or the tier-attribution signal is inert.
         $angularSkillEvidence = [pscustomobject]@{ Events = @(
