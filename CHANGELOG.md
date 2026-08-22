@@ -11,6 +11,43 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.71.0 — Unreleased
+
+**B-48(3): a real guard bypass is closed — and it existed in only ONE twin, which the entry did not
+know.** `[Test,` newline ` Ignore("flaky")]` is legal C# that no formatter forbids, and B-48 records
+it as a one-line evasion of a gate the framework advertises as deterministic, with a prescribed fix
+"not yet built". Probing before building changed the picture entirely:
+
+| content written to a test file | `guard.ps1` | `guard.sh` |
+|---|---|---|
+| `[Test, Ignore("flaky")]` one line | BLOCK | BLOCK |
+| `[Test,` ⏎ ` Ignore("flaky")]` | **BLOCK** | **ALLOW** |
+| `[Fact(` ⏎ `  Skip="flaky")]` | **BLOCK** | **ALLOW** |
+| `[Theory,` ⏎ ` InlineData(1),` ⏎ ` InlineData(2)]` | ALLOW | ALLOW |
+
+`guard.ps1` was **already correct**: .NET's negated character class `[^]]` matches a newline, so its
+pattern spanned the break unaided. `guard.sh` allowed it because `grep` evaluates one physical line
+at a time. So the bypass was never uniform — it was an **unrecorded invariant #3 divergence**, live
+for every consumer whose hooks run through bash and absent on Windows. Building the prescribed
+normaliser in both twins would have been redundant work in the more sensitive one.
+
+`guard.sh` now folds newlines **only inside bracketed attribute lists**, tracking bracket depth so
+newlines at depth zero survive and line-anchored patterns cannot be made to match text that never
+began a physical line. **No pattern was loosened or rewritten** — the existing patterns run unchanged
+against a normalised input, which is what B-48 prescribed. Verified bash-3.2 safe (no `mapfile`,
+`readarray`, `declare -A`, or case conversion), since the shipped scripts run on macOS.
+
+**The durable half is the coverage hole, not the fix.** The guard case table had **no multi-line
+content at all** across 40 cases, which is exactly why this survived. Three cases now sit beside
+their single-line originals: both split forms, and a **legitimate** `[Theory, InlineData, InlineData]`
+spread over lines that must still ALLOW. That third one is the one that matters — a false positive on
+correct work is what teaches people to bypass a guard entirely, which B-94 already measured with
+`-AllowExtraStagedPaths`.
+
+Red-tested: with the normalisation reverted the new cases report *"expected BLOCK, got ALLOW"* — four
+failures naming the exact evasion. Restored: **88 passed / 0 failed**, on pwsh 7 and Windows
+PowerShell 5.1 alike.
+
 ## 0.70.0 — 2026-08-22
 
 **`docs-sync-check` no longer reports a machine problem as documentation drift, in both twins — and

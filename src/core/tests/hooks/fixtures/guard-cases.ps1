@@ -10,7 +10,7 @@ $GuardCases = @(
     # while grep is line-oriented and guard.sh ALLOWED them -- a working evasion for any consumer
     # whose hooks run through bash, of a gate advertised as deterministic. Measured 2026-08-22.
     # The third case is the one that matters most: a legitimate split attribute list must still pass,
-    # because a false positive on correct work is what teaches people to bypass the guard (B-94).
+    # because a false positive on correct work is what teaches people to bypass the guard entirely.
     @{ n='cs [Test,<nl>Ignore(...)] split';    f='tests/FooTests.cs'; c="[Test,`n Ignore(`"flaky`")] public void T(){}";                          block=$true }
     @{ n='cs [Fact(<nl>Skip=...)] split';      f='tests/FooTests.cs'; c="[Fact(`n  Skip=`"flaky`")] public void T(){}";                           block=$true }
     @{ n='cs legit split attribute list';      f='tests/FooTests.cs'; c="[Theory,`n InlineData(1),`n InlineData(2)] public void T(int x){}";      block=$false }

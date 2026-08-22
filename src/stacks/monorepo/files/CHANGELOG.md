@@ -5,6 +5,32 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.71.0 — Unreleased
+
+**Security fix: the write guard no longer misses a test suppression split across two lines.** Writing
+
+```csharp
+[Test,
+ Ignore("flaky")]
+```
+
+was blocked on Windows but **allowed** wherever the hooks run through Bash — macOS, Linux, or WSL.
+Same for `[Fact(` on one line and `Skip="flaky")]` on the next. It is legal C# that no formatter
+objects to, so it was a quiet way past a guard you were told was deterministic.
+
+Both implementations now agree. The Bash guard joins lines *inside* a bracketed attribute list before
+matching, so the two halves are seen as the one construct they are. No pattern changed, and nothing
+became stricter: an ordinary multi-line attribute list such as
+
+```csharp
+[Theory,
+ InlineData(1),
+ InlineData(2)]
+```
+
+still passes, on both implementations. If you write attributes across lines for readability, nothing
+about your code needs to change.
+
 ## 0.70.0 — 2026-08-22
 
 **`docs-sync-check` will no longer tell you your documentation has drifted when the real problem is
