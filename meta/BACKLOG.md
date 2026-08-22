@@ -1563,8 +1563,51 @@ If Opus is unavailable or limited, mark `WAITING — OPUS LIMIT`; do not substit
 lower tier and call the gate complete. Opus may reject the premise, change the stop rule, or reduce
 the scope further.
 
-**Status: AWAITING OPUS REVIEW.** The evidence-first design is captured but not locked, and
-authorises neither Phase 0 execution nor shipped changes until the required Claude Opus review.
+**Status: OPUS REVIEW DONE 2026-08-22 — design APPROVED, Phase 0 DEPRIORITISED.** Findings below.
+
+> **CLAUDE OPUS REVIEW — 2026-08-22. Verdict: APPROVED AS DESIGN, BUT DEPRIORITISE PHASE 0.** The
+> design is sound and the fresh-context review already removed the dangerous version. The finding is
+> about *ordering*, not correctness.
+>
+> **1. The entry's own harm statement is the argument against spending on it now.** It says plainly:
+> *"No missed promotion has yet been observed in a consumer repo, so this is a plausible
+> reliance-on-memory gap, not evidence for a new telemetry subsystem."* That is the right posture —
+> and it means Phase 0 would spend **constrained live-eval budget measuring a mechanism for a harm
+> nobody has yet observed**, while B-129 and B-134 wait on the same budget for defects that *are*
+> observed. Maintenance rule 6 asks whether cost matches harm; here the harm is hypothetical and the
+> cost is the scarcest resource in the project.
+>
+> **Recommendation: B-133 yields budget priority to B-134 and B-129.** Nothing about the design needs
+> revisiting when it comes back up. This is a queue decision, not a rejection.
+>
+> **2. The evidence that would actually justify it comes from B-42, not from an eval.** Phase 0 tests
+> whether the *framework offers promotion*; it cannot tell you whether a real team lost a durable
+> learning, which is the harm this entry exists for. That evidence is a field observation, and B-42
+> (field pilot, install into ≥1 real production repo) is the entry that produces it. **Sequence:
+> B-42 → observed instance → Phase 0.** Running Phase 0 first risks a precise measurement of
+> something nobody needs.
+>
+> **3. Budget warning, inherited from the sibling reviews.** Whatever Phase 0 concludes, the shipped
+> change lands in the completion checklist — carrier text counted in `static.claude`, with **83
+> characters** of monorepo headroom (measured 2026-08-22). B-136 and B-134 both hit this. Budget the
+> wording before designing it, or the first release refuses.
+>
+> **4. Sound and worth preserving verbatim:** the standing prohibition — no IDs, counters, receipt
+> blocks, threshold parsers, hook writes, or automatic movement — and the KCS-derived principle that
+> **reuse may nominate a claim for attention but repetition must never manufacture `verified`
+> status**. That second point is the load-bearing one: it is what separates this from a popularity
+> counter, and it should survive any future redesign. The four pre-registered cases (materially
+> helped / merely cited / applied-but-unverified / genuinely new) are well chosen, and case (c) is the
+> one that makes the grader honest.
+>
+> **5. One addition.** The grader must distinguish *offering* `remember-for-team` from *claiming
+> knowledge was already promoted* — the entry says this. Add the third state it omits: **the agent
+> could not determine whether the learning applied**, which must not be scored as either. This
+> session shipped four fixes for the same conflation (maintenance rule 7): "I could not examine it"
+> is not "it is fine".
+>
+> **Disposition:** design approved, Phase 0 deprioritised behind B-134 and B-129, and sequenced after
+> B-42 rather than ahead of it. No redesign required.
 
 ---
 
