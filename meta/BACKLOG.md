@@ -288,9 +288,28 @@ failures: one hard checklist failure = a defect entry, regardless of the rubric 
 > combined signal, `$cva = ControlValueAccessor OR NG_VALUE_ACCESSOR`
 > (`.claude/evals/run-agent-evals.ps1:1111`), and reports only `cva=…`, so the correct pattern and
 > the circular-DI **double registration** still score identically; its fixture contains both the
-> interface and the provider, so it cannot demonstrate the distinction. Part (b) — the prompt in
-> `.claude/evals/scenarios.json:53-56` still names the mechanism (bindable with `formControlName`,
-> shows its own invalid/touched error), which is the telegraphing the entry objects to.
+> interface and the provider, so it cannot demonstrate the distinction. Part (b) — the prompt in `.claude/evals/scenarios.json` still names the mechanism (bindable with
+`formControlName`, shows its own invalid/touched error), which is the telegraphing the entry objects
+to.
+
+> **PART (b) DELIBERATELY NOT DONE, 2026-08-22 — and the reasoning is not "later", it is a
+> constraint.** The obvious objection to deferring is that the scenario is already **SATURATED**
+> (B-112: it passed with no forms guidance shipped), so its prior results attribute to nothing and
+> invalidating them costs nothing. That much is true, and it was recorded on the scenario itself
+> today as a `measures` field.
+>
+> **The blocker is different: de-telegraphing the prompt without being able to run it would ship an
+> unvalidated instrument.** A rewritten prompt is a new measuring device, and B-112's whole finding is
+> that **every behavioural instrument in this repo was broken in its first version** — four of them,
+> each in a different direction, none caught by reading. Editing the prompt now would produce a
+> scenario nobody has observed either passing or failing, which is precisely the state that entry
+> exists to prevent. The saturation argument removes the *cost* of the change; it does not supply the
+> *validation* the change needs.
+>
+> **So part (b) is correctly sequenced with the measurement pass, not before it** — rewrite the
+> prompt and run it in the same pass, with a bare arm to test whether de-telegraphing actually
+> un-saturates the scenario. That is one question, and splitting it across two sessions answers
+> neither half.
 >
 > **The baseline remains saturated**: it passed with no forms guidance shipped and no skill used, so
 > this scenario still cannot red-test the guidance it exists to measure. Re-baselining after (b) is
