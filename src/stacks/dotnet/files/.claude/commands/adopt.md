@@ -16,7 +16,7 @@ $ARGUMENTS
 
 `/adopt` is normally developer-interactive. It also runs **headless** — non-interactively, driven by an operator's one-shot prompt — when `$ARGUMENTS` contains a `--headless` directive (the `.github/prompts/adopt.prompt.md` wrapper forwards it). Headless `/adopt` **prepares** adoption autonomously and **stages** every change to canonical guidance for a human to apply at PR review. It never finalizes a merge of discovered content, and it never opens or merges the PR.
 
-**The trust boundary is intact by construction.** Nothing derived from an untrusted discovered file is ever *applied* to `CLAUDE.md` or `TECH_DEBT.md` without a person. The agent does only the mechanical, reversible work — branch, archive, provenance + adversarial screen, impact baseline, PR structuring — and writes every proposed merge as a clearly-marked, attributed, normalized proposal that a reviewer approves on the branch. This holds on every surface (Claude Code via `claude -p`, Copilot CLI via its `-p` equivalent), so it does not depend on `disable-model-invocation` (a prompt wrapper does not honour that flag anyway).
+**The trust boundary is intact by construction.** Nothing derived from an untrusted discovered file is ever *applied* to `CLAUDE.md` or `TECH_DEBT.md` without a person. The agent does only the mechanical, reversible work — branch, archive, provenance + adversarial screen, PR structuring — and writes every proposed merge as a clearly-marked, attributed, normalized proposal that a reviewer approves on the branch. This holds on every surface (Claude Code via `claude -p`, Copilot CLI via its `-p` equivalent), so it does not depend on `disable-model-invocation` (a prompt wrapper does not honour that flag anyway).
 
 **Precondition.** The operator commits the installed framework files to the **default branch** first. Headless then runs on an otherwise-clean tree; a dirty tree that is not just the pending install stops the run and reports — reversibility matters more when unattended.
 
@@ -40,8 +40,6 @@ When `--headless` is set, apply these per-phase overrides in place of the intera
 
 **Embedded `/bootstrap` (Phase 7) runs headless too.** The `--headless` directive propagates into the Phase-7 `/bootstrap`. Its Phase 3d-bis hazard confirmation is not auto-answered as real: take the "skip all — mark as unverified" path, so every candidate hazard is written unverified and surfaced on the checklist — never auto-confirm a hazard unattended. Bootstrap's code-derived `CLAUDE.md` population documents the operator's *own* source (not external agent-instruction artifacts), so it proceeds as it does in greenfield, with its usual convention-checklist handling; the stage-don't-apply rule above applies specifically to merges of *discovered external artifacts*.
 
-**Phase 9 impact stays mandatory** (already automatic — unchanged).
-
 **End the run** by printing the branch name, the PR-description seed, and an explicit next step: "open a PR from `adopt-ai-framework`; the CLAUDE.md / TECH_DEBT changes are **proposed** — review and apply them; N files were quarantined and NOT merged — review each before trusting it." Do **not** open or merge the PR.
 
 ---
@@ -52,11 +50,6 @@ When `--headless` is set, apply these per-phase overrides in place of the intera
 2. **Recommend a branch** — tell the user: "I recommend running this on a new branch: `git checkout -b adopt-ai-framework`. Review everything and merge when satisfied." Wait for confirmation.
 3. **Locate the repository root** — use the Git root. A `.sln` identifies an application repository when present, but pure SQL/SSDT/dbt repositories need no solution file. All paths are relative to the Git root.
 4. **Read the installer's adoption marker (if present).** If `.claude/adoption-pending.json` exists, the framework installer already detected the pre-existing AI tooling and **moved the originals its copy would have overwritten** (the repo's previous `CLAUDE.md`, `AGENTS.md`, `TECH_DEBT.md`, Copilot instructions, …) to `docs/pre-adoption/`. Read its `detectedArtifacts` and `archivedOriginals` lists — they seed Phase 1 discovery. Consequence: the `CLAUDE.md` now at the repo root is the **framework template**, not the consumer's original; the original (if any) is already at `docs/pre-adoption/CLAUDE.md`.
-5. **Capture the impact baseline (before any changes).** This freezes the "before" for the impact report — do it now or it's lost:
-   - `git tag -f pre-adoption HEAD` and write the resolved SHA to `.claude/impact-baseline.ref`.
-   - `mkdir -p docs/impact && bash scripts/metrics.sh > docs/impact/baseline.json` (the original codebase scorecard).
-   The `pre-adoption` tag becomes the "old framework" arm of the behavioral A/B in Phase 9. (Requires the framework's `scripts/` — copied in before `/adopt`.)
-
 ---
 
 ## Phase 1 — Discovery
@@ -314,27 +307,14 @@ Remind the user to:
 4. Commit: `git add -A && git commit -m "Adopt AI Tech Lead Framework"`
 5. Optionally delete `docs/pre-adoption/` once they're confident nothing was lost (keep it for at least one release cycle)
 
-**This is not the end of `/adopt`.** Proceed immediately to Phase 9 and generate the impact report — that is the deliverable the user asked for by running `/adopt`.
-
----
-
-## Phase 9 — Impact report (MANDATORY — this is the deliverable, do not skip)
-
-**The impact report is the point of `/adopt` for the tech leads — do not present adoption as complete until `docs/impact/IMPACT.md` exists.** Running it is automatic and needs no confirmation from the user.
-
-Execute `/impact` now (after the Phase-8 commit, so `HEAD` reflects this framework). Follow its workflow in full — including the **behavioral A/B (Tier 2)**, which is the part most worth having:
-
-1. **Detect the headless agent properly before deciding anything.** The user runs Copilot in VS Code, and the Copilot CLI is typically an npm-global install that appears as `copilot.cmd` on Windows — a bare `command -v copilot` will miss it. Do **not** declare Tier 2 unavailable on a single failed check. Instead just run the runner — `bash scripts/impact-run.sh <pre_ref> <post_ref> --smoke` (or `pwsh scripts/impact-run.ps1 <pre_ref> <post_ref> --smoke` on Windows) — which itself probes the `.cmd`/`.exe` shims and npm-global dirs and uses short, `core.longpaths` worktrees. Treat Tier 2 as unavailable **only if the runner exits 3.**
-2. If the runner reports it cannot find the CLI, say so explicitly in the report and still deliver Tier 1 (capability diff + scorecard). Never silently omit the A/B.
-
-`/impact` writes `docs/impact/IMPACT.md` (+ `docs/impact/impact.html`): the **capability diff**, the **deterministic scorecard** vs the Phase-0 baseline, and the **behavioral A/B** (same tasks run against the `pre-adoption` tag vs `HEAD`, several trials each). This report is what you hand the tech leads.
-
 ### Definition of done for `/adopt`
 Adoption is complete only when **all** of these exist and you have reported them:
 - Updated `CLAUDE.md` (+ generated `AGENTS.md`, `.github/copilot-instructions.md`)
 - Archived originals under `docs/pre-adoption/`
 - `.claude/adoption-pending.json` deleted (Phase 3) — the SessionStart hook and `docs-sync-check` flag the repo while it exists
-- `docs/impact/baseline.json` (Phase 0) **and** `docs/impact/IMPACT.md` (Phase 9)
 - The Phase-8 commit
 
-If `docs/impact/IMPACT.md` is missing, you have not finished — go back and run `/impact`.
+After adoption, a developer may run `/impact` to create a descriptive inventory/capability comparison
+and current repository scorecard. The former pre/post experiment is invalid because its supposed
+pre-adoption reference was captured after installation; do not describe the optional record as an
+A/B result or as proof that adoption caused a change.

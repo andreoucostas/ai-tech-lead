@@ -16,7 +16,7 @@ It 'classifies every shipped script twin' {
         'framework-doctor'='covered by tests/hooks/FrameworkDoctor.Tests.ps1'
         'warehouse-map-check'='covered by tests/hooks/WarehouseMapCheck.Tests.ps1'
         'hazard-check'='covered by tests/hooks/HazardCheck.Tests.ps1'
-        'impact-run'='deliberately excluded: requires an external agent CLI, git worktrees and paid API calls'
+        'impact-run'='covered by tests/ImpactRetirement.Tests.ps1 (inert tombstone contract; no external agent, worktree, or paid API call)'
         'setup-git-hooks'='covered by tests/hooks/SetupGitHooks.Tests.ps1 (the refusal contract; the scan itself is the shipped guard, covered by Guard.Tests)'
         'test-weakening-scan'='covered by tests/hooks/TestWeakeningScan.Tests.ps1 (the advisory contract: it reports, and it never fails a run)'
     }

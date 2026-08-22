@@ -75,7 +75,7 @@ if (Test-Path .git) {
 
 # 2. Adoption / bootstrap state warning
 if (Test-Path .claude/adoption-pending.json) {
-    Write-Output "- 🔴 **ADOPTION PENDING — this repo is not consolidated yet.** The installer detected pre-existing AI tooling; the originals it displaced are archived under ``docs/pre-adoption/`` and inventoried in ``.claude/adoption-pending.json``. The required next step is ``/adopt`` — NOT ``/bootstrap``, which would skip the archive/merge/provenance flow and the impact baseline. ``/adopt`` is developer-initiated and cannot be invoked by the model: if you are an agent, stop and tell the developer to type ``/adopt``."
+    Write-Output "- 🔴 **ADOPTION PENDING — this repo is not consolidated yet.** The installer detected pre-existing AI tooling; the originals it displaced are archived under ``docs/pre-adoption/`` and inventoried in ``.claude/adoption-pending.json``. The required next step is ``/adopt`` — NOT ``/bootstrap``, which would skip the archive/merge/provenance flow. ``/adopt`` is developer-initiated and cannot be invoked by the model: if you are an agent, stop and tell the developer to type ``/adopt``."
 } elseif (Test-Path CLAUDE.md) {
     $claude = Get-Content CLAUDE.md -Raw
     if ($claude -and $claude -match 'BOOTSTRAP_PENDING') {

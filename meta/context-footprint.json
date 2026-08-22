@@ -87,8 +87,8 @@
         },
         {
           "path": ".claude/commands/impact.md#frontmatter",
-          "chars": 224,
-          "tok": 56
+          "chars": 207,
+          "tok": 52
         },
         {
           "path": ".claude/commands/rebootstrap.md#frontmatter",
@@ -352,13 +352,13 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 27430,
-          "tok": 6858
+          "chars": 25226,
+          "tok": 6306
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 31831,
-          "tok": 7958
+          "chars": 31818,
+          "tok": 7954
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -392,8 +392,8 @@
         },
         {
           "path": ".claude/commands/impact.md#body",
-          "chars": 5709,
-          "tok": 1427
+          "chars": 1640,
+          "tok": 410
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
@@ -561,8 +561,8 @@
         },
         {
           "path": ".claude/commands/impact.md#frontmatter",
-          "chars": 224,
-          "tok": 56
+          "chars": 207,
+          "tok": 52
         },
         {
           "path": ".claude/commands/rebootstrap.md#frontmatter",
@@ -816,13 +816,13 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 27379,
-          "tok": 6845
+          "chars": 25175,
+          "tok": 6294
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 27365,
-          "tok": 6841
+          "chars": 27352,
+          "tok": 6838
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -856,8 +856,8 @@
         },
         {
           "path": ".claude/commands/impact.md#body",
-          "chars": 5700,
-          "tok": 1425
+          "chars": 1640,
+          "tok": 410
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
@@ -1015,8 +1015,8 @@
         },
         {
           "path": ".claude/commands/impact.md#frontmatter",
-          "chars": 224,
-          "tok": 56
+          "chars": 207,
+          "tok": 52
         },
         {
           "path": ".claude/commands/rebootstrap.md#frontmatter",
@@ -1300,13 +1300,13 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 28084,
-          "tok": 7021
+          "chars": 25880,
+          "tok": 6470
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 39597,
-          "tok": 9899
+          "chars": 39584,
+          "tok": 9896
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1340,8 +1340,8 @@
         },
         {
           "path": ".claude/commands/impact.md#body",
-          "chars": 5709,
-          "tok": 1427
+          "chars": 1640,
+          "tok": 410
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
@@ -1453,24 +1453,24 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 39501,
-      "static.claude.tok": 9875,
+      "static.claude.chars": 39484,
+      "static.claude.tok": 9871,
       "static.copilot.chars": 43561,
       "static.copilot.tok": 10890,
       "prompt.max.chars": 2253,
       "prompt.max.tok": 563
     },
     "angular": {
-      "static.claude.chars": 38239,
-      "static.claude.tok": 9560,
+      "static.claude.chars": 38222,
+      "static.claude.tok": 9556,
       "static.copilot.chars": 44352,
       "static.copilot.tok": 11088,
       "prompt.max.chars": 2323,
       "prompt.max.tok": 581
     },
     "monorepo": {
-      "static.claude.chars": 47917,
-      "static.claude.tok": 11979,
+      "static.claude.chars": 47900,
+      "static.claude.tok": 11975,
       "static.copilot.chars": 52437,
       "static.copilot.tok": 13109,
       "prompt.max.chars": 2668,

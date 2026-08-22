@@ -1201,3 +1201,27 @@ first archive preflight accepted a `docs/pre-adoption` junction and moved consum
 outside target while reporting an in-repository archive path. Check every existing source and
 destination component for links/reparse points before mutation, including dangling link leaves;
 string prefixes and `PathType Container` establish neither physical containment nor ownership.
+
+## 2026-08-22 — A comparison label cannot create the pre-treatment state it needs
+
+The retired impact workflow had careful-looking controls — fixed tasks, repeated trials, a stated
+same-model rule, and a tag named `pre-adoption` — but `/adopt` ran after installation had copied the
+framework. The tag therefore recorded a treated repository, not the old setup. The experiment was
+not merely missing an optional CLI run; its claimed comparison arm was impossible, so no resulting
+delta could support an A/B or causal value claim.
+
+The corrective pattern is deliberately small: stop the claim, keep only descriptive evidence that
+the available files can support, and turn the old executable surface into a stable non-zero
+compatibility tombstone until ownership-aware removal is safe. Direct invocation belongs in the
+regression suite even when a command no longer reaches the script: the original harm included what
+an explicit runner call could launch. A reachable mutation of the tombstone output made the focused
+suite fail, which distinguishes the new test from a static green check that never observes its
+subject.
+
+The first retirement sweep still missed the bootstrap pre-flight carrier, which repeated the same
+`impact baseline` instruction even after `/adopt` stopped creating one. Active guidance is a path,
+not just a command: the regression scan now covers bootstrap, session-start, and installer twins as
+well as adoption/impact prompts, while deliberately leaving historical changelogs and the broader
+claim-correction sweep out of scope. For direct tombstone invocation, stable output and a non-zero
+exit prove only the contract; a controlled working-directory fingerprint plus `git worktree list`
+before/after now also proves the tested call made no observable file-tree or worktree change.

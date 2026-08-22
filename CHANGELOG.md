@@ -11,6 +11,20 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.74.0 — 2026-08-22
+
+**Recovery increment 2 retires the invalid impact A/B path.** The former `/adopt` workflow tagged
+its supposed pre-adoption reference after installation, so it could not support an old-versus-new
+comparison or a causal value claim. Adoption now completes without an impact baseline, a headless
+agent, or an impact report. It retains only an optional descriptive archived-configuration capability
+comparison and current repository scorecard.
+
+The shipped `impact-run` twins are now stable non-zero tombstones: they ignore all arguments, invoke
+no agent, tool, or worktree, and explain why no comparative claim can be made. Their five retained
+compatibility paths remain installed until the planned ownership-reconciliation retirement release.
+Focused composed-dist coverage exercises hostile direct invocation, the no-execution scan, stale
+adoption claims, and a reachable tombstone mutation.
+
 ## 0.73.0 — 2026-08-22
 
 **Recovery increment 1 closes the known installer data-loss paths.** Brownfield installation now

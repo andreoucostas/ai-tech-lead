@@ -6723,3 +6723,42 @@ both composers. The independent review's junction exploit is retained as a compo
 The exposed class is any future installer policy that is described in one artifact
 but executed from a separate enumeration. Increment 4 replaces additive copying with a validated
 operation plan and trusted retirement intersection rather than adding more exceptions here.
+
+---
+
+### B-169 · RCA: an adoption-time tag was presented as a baseline from before installation
+
+**DONE 2026-08-22 · planned v0.74.0 · P0 · Invariants #1 #3 #4 #7**
+
+**What happened.** `/adopt` ran only after the installer had copied the framework, but its Phase 0
+tag and scorecard were described as a pre-adoption/old-framework arm. It then required a Tier 2
+headless-agent run and reported a comparison where the claimed untreated arm already contained the
+installed framework. The claimed control did not exist, so the immediate behavioural-value claim was
+invalid rather than merely incomplete.
+
+**Root cause.** The adoption workflow confused an archived configuration inventory with a historical
+repository state. No gate exercised direct runner invocation or checked that the timing of the tag
+made the advertised A/B arm impossible. The runner's substantial external behavior made its former
+ScriptTwinCoverage exclusion look reasonable, leaving both the unsafe execution path and its claim
+unexamined.
+
+**Fix.** The three adoption commands no longer capture a baseline or require `/impact`; they may
+offer only a descriptive archived-configuration capability comparison and current scorecard. The
+shared impact command and prompt state why the former experiment is invalid. Both runners are now
+argument-agnostic exit-2 tombstones with one stable explanation and no agent, tool, or worktree
+execution. The two runner paths and three `tests/impact/` compatibility paths remain present for
+Increment 4's manifest-authorized removal. `ImpactRetirement.Tests.ps1` directly invokes both
+tombstones across all composed dists, proves a controlled working-directory fingerprint and Git
+worktree list remain unchanged for hostile arguments, scans the active impact carriers (adopt,
+bootstrap, impact prompt, session-start, and installer twins), and has a reachable bootstrap
+baseline mutation control; `DocClaims.Tests.ps1` rejects an active old-framework-arm claim.
+
+**Evidence and exposed class.** Before prose changed, the new narrow claim assertion failed on the
+released dist with `invalid post-install impact arm in dotnet/.claude/commands/adopt.md`. After
+composition, `ImpactRetirement.Tests.ps1` passed 5/0. Its widened scan first failed on the composed
+dotnet bootstrap's retained `impact baseline` claim; the scratch bootstrap mutation restored that
+claim, re-ran the suite red, and restored byte-identically. `DocClaims.Tests.ps1` passed 3/0;
+`ScriptTwinCoverage.Tests.ps1` passed 1/0; and `validate-dist.ps1` passed for dotnet, angular, and
+monorepo. The exposed class is any measurement whose stated control is assembled after a treatment
+has already occurred. A comparator name, matched task set, or stable model cannot repair a missing
+pre-treatment state; timing must be checked before a causal claim is shipped.

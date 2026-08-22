@@ -99,6 +99,20 @@ function Assert-Completeness {
     }
 }
 
+function Assert-NoInvalidImpactArm {
+    param([object[]]$DistEntries)
+    foreach ($dist in $DistEntries) {
+        $adoptPath = Join-Path $dist.Root '.claude/commands/adopt.md'
+        if (-not (Test-Path -LiteralPath $adoptPath -PathType Leaf)) { throw "adoption command is missing in $($dist.Name): .claude/commands/adopt.md" }
+        $adoptText = Read-Utf8Text $adoptPath
+        # The installer is already present when /adopt begins. A tag made here cannot describe an
+        # old-framework arm, regardless of the task/model controls claimed around it.
+        if ($adoptText -match '(?is)pre-adoption.{0,240}(?:old\s+framework\s+arm|behavioral\s+A/B|only\s+the\s+framework\s+differs)') {
+            throw "invalid post-install impact arm in $($dist.Name)/.claude/commands/adopt.md: a pre-adoption tag captured during /adopt is not an old-framework comparison arm"
+        }
+    }
+}
+
 function New-Fixture {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('doc-claims-' + [guid]::NewGuid().ToString('N'))
     [IO.Directory]::CreateDirectory($root) | Out-Null
@@ -175,6 +189,10 @@ It 'every registered doc claim still exists and is true of its command' {
 It 'every narrow command-maintenance claim is registered' {
     $hits = @(Get-ClaimHits -DistEntries $distEntries)
     Assert-Completeness -Registry $contracts -Hits $hits
+}
+
+It 'adoption never presents its post-install tag as an old-framework A/B arm' {
+    Assert-NoInvalidImpactArm -DistEntries $distEntries
 }
 
 exit (Write-TestSummary 'DocClaims.Tests')

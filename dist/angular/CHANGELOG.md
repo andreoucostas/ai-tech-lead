@@ -4,6 +4,18 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.74.0 — 2026-08-22
+
+**Impact A/B retirement.** Adoption no longer requires an impact baseline, an agent CLI, or an
+impact report to finish. The previous pre/post comparison was invalid because its supposed
+pre-adoption reference was captured after installation. `/impact` can still create a descriptive
+archive-to-capability inventory and current repository scorecard, but neither is an A/B result or
+proof that adoption caused a change.
+
+The retained `impact-run` scripts now safely stop with a clear non-zero retirement message and do
+not start agents, tools, or worktrees. Compatibility files remain until a later framework update
+removes them safely.
+
 ## 0.73.0 — 2026-08-22
 
 **Installer safety fix: existing repository files and audit history are no longer disposable

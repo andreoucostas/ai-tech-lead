@@ -305,8 +305,8 @@ elif [ "$adopt_mode" -eq 1 ]; then
   echo "  2. A DEVELOPER must start a Claude Code session in the target repo and type:  /adopt"
   echo "     - /adopt is developer-initiated: AI agents and the model CANNOT invoke it, and it"
   echo "       only exists inside a session started in the target repo."
-  echo "     - Do NOT run /bootstrap instead - it would skip the archive/merge/provenance flow"
-  echo "       and the impact baseline. The SessionStart hook and docs-sync-check flag this"
+  echo "     - Do NOT run /bootstrap instead - it would skip the archive/merge/provenance flow."
+  echo "       The SessionStart hook and docs-sync-check flag this"
   echo "       repo until /adopt has run."
   echo
   echo "  IF YOU ARE AN AI AGENT running this installer: your task is NOT complete until you"

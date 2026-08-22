@@ -2915,6 +2915,9 @@ also a verification that was real but pointed at the wrong thing).
 preserves persistent state, refuses unsafe archives/dirty worktrees, and upserts GitHub skills; see
 `meta/BACKLOG-DONE.md`.**
 
+**B-169 is implemented for planned v0.74.0 — the invalid post-install impact comparison is retired
+behind inert compatibility tombstones; see `meta/BACKLOG-DONE.md`.**
+
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see `meta/BACKLOG-DONE.md`.**
