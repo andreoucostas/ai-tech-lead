@@ -2577,6 +2577,57 @@ records.
 refuse), B-59 and B-64 (the sibling class: checks that cannot fail, which today produced three
 instances in three disguises and were caught by none of the existing detection).
 
+### B-165 · Inert-check detection recognises one shape; three others shipped in a single day
+**Filed against:** v0.69.0 (2026-08-21)
+**Effort:** S (record the shapes) · M (any detection) · **Priority:** P2 · found 2026-08-21 across four deliveries · **Invariants:** #5 #7
+
+**B-59 and B-64 exist to catch checks that cannot fail.** They look for the *syntactic* shape — a
+literal `Assert $true`, a source-text grep standing in for a behavioural assertion. On 2026-08-21
+three further instances shipped or nearly shipped, and **none of them has that shape**. All three were
+caught by deliberately breaking the instrument; none by reading the diff, and I read all three.
+
+| # | where | the shape | why detection missed it |
+|---|---|---|---|
+| 1 | B-83 | `Assert $true 'advisory finding completed'` | the known shape — caught, and it is the only one that would be |
+| 2 | B-163 | **exit-code collision**: the policy filter exited `1` for "no cases matched", and the mutation harness reads any non-zero as "the mutation was caught". With the `secret` tag removed: **4 passed while two mutations tested nothing** | the assertion is real and the code is ordinary; the defect is that two distinct states share one value |
+| 3 | B-156 | **the failing path is the passing path**: an unrunnable `grep` yields an empty extraction, and empty means "nothing to check", so the gate passes | no `Assert` is suspicious; the check simply never runs |
+| 4 | B-130 | **a comparison that stops comparing**: reading process streams raw fixed one host and, uncaught, would have normalised away real differences. `54 passed / 28 failed` is what a *broken comparison* produces — the same number a genuine regression produces | indistinguishable from success by summary line alone |
+
+**The generalisation, which is the deliverable:** an inert check is not a syntactic pattern, it is a
+**semantic property** — *no reachable input makes this check fail*. Shapes 2–4 all satisfy it while
+looking completely ordinary. Two of them arrived **inside a performance improvement**, which is the
+dangerous packaging: a suite that got 14x faster and a suite that went from failing to passing both
+have the same signature as a suite that stopped testing.
+
+**Do:**
+1. **Record the four shapes** where check authors meet them, alongside Maintenance model rule 4. That
+   rule already says a green result counts only from an instrument seen red — these are the ways an
+   instrument *looks* red-capable and is not.
+2. **State the two rules the instances actually turn on**, because both are checkable by a human in
+   seconds: (a) *when a test's exit code carries data, every new exit path collides with it* —
+   B-163's filter needed a sentinel outside the failure-count range; (b) *when an empty result and a
+   failed result are the same value, the check has no failing input* — B-156's `grep` and B-165's own
+   examples.
+3. **Then assess whether detection is possible at all**, honestly. WSD-028: a rule is real only where
+   tooling can refuse. A mutation-based check ("does this test fail when its subject is broken?") is
+   the only mechanically sound detector, and it is expensive — `GuardPatternErrors` exists precisely
+   because that is what it does for one file. Do not assume it generalises cheaply.
+
+**Not:** do not extend B-59/B-64's grep to more patterns. Shapes 2–4 have no shared syntax to grep
+for, and a wider denylist would give false confidence — the same failure mode as B-164's site
+enumeration, which stopped converging after four entries.
+
+**Proportionality:** four instances in one day is the case for recording the shapes, which costs
+almost nothing. It is **not** yet the case for building a general detector — that needs a real
+mutation harness per suite, which is exactly the cost B-138 spent the day reducing. Record first;
+decide detection separately.
+
+**Cross-links:** B-59 and B-64 (the existing detection and its one shape), B-75 (an assertion too
+weak to fail — the nearest recorded relative), B-112 (instruments whose first version could not
+produce their claimed result — this is the same defect after shipping rather than before),
+B-164 (the sibling: one rule, many mechanisms, enumeration failing to converge), B-163 and B-156 and
+B-130 (the instances).
+
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see `meta/BACKLOG-DONE.md`.**
