@@ -2088,6 +2088,49 @@ that check alone was worth 1.82x on the file this entry used to be about.
 > that the carrier arrives, not that codex selects skills the way Claude Code does. That distinction
 > is exactly the one this entry already draws, and it still holds — routing-attribution scenarios
 > remain non-portable.
+>
+> **PORTABILITY AUDIT, 2026-08-22 — this is the investigation deliverable this entry is scoped for
+> (M, investigation only). With delivery now observed, the remaining question was which scenarios
+> could actually move, and the answer is most of them.**
+>
+> **Method:** a scenario is *non-portable as written* if its grader reads `$e.Tools` — the host's typed
+> tool-event stream. That stream is Claude Code's; codex emits its own shell-shaped calls and nothing
+> equivalent, so any verdict computed from it cannot be reproduced. A scenario whose grader reads only
+> the produced artifacts (files, git state, SQL, docs) has no such dependency.
+>
+> **Result: 8 of 42 scenarios reference `$e.Tools`.** The other **34 grade artifacts only** and are
+> therefore *candidate-portable*.
+>
+> | non-portable as written | what it needs the tool stream for |
+> |---|---|
+> | `angular-form-control` | `usedSkill` attribution |
+> | `archived-redirect` | which installer was invoked |
+> | `guard-retry` | the `Write` that the guard blocked |
+> | `install-handoff` | whether bootstrap/installer was run |
+> | `route-fix` | red-test-then-fix **ordering** of tool events |
+> | `skill-add-tests` | `Skill` selection |
+> | `warehouse-health-decision-a` | typed decision evidence |
+> | `warehouse-partition-mismatch` | typed evidence ordering |
+>
+> That list is coherent rather than arbitrary: every one of them measures *how the host behaved*, and
+> those are precisely the scenarios this entry already said do not port. The 34 that remain measure
+> **what the agent produced**, which is host-independent by construction.
+>
+> **So the scoping answer is:** a codex executor is worth building for the artifact-graded majority,
+> and the eight host-behaviour scenarios stay on Claude Code permanently — not as a limitation to fix
+> later, but because measuring Claude Code's routing on a different host is a category error, which is
+> WSD-042's point.
+>
+> **Do NOT read this as "34 scenarios are ready to run."** *Candidate-portable* means only that no
+> tool-event dependency was found. Each still needs its fixture to build on the codex path, its
+> grader to be driven from a codex transcript, and a **red-test against a planted failing transcript**
+> before any result is banked — B-112's rule, and the reason four instruments in this repo shipped
+> broken. The audit narrows the work; it does not do it.
+>
+> **Cross-check before building:** `run-agent-evals.ps1` is Claude-Code-hardcoded well beyond the
+> graders (invocation, stream parsing, budget flags). The executor is the larger follow-on this entry
+> already flags as out of scope; nothing above changes that.
+
 
 > from the assertion.
 **Effort:** M (investigation only; implementation is a separate, larger follow-on) · **Priority:** P3
