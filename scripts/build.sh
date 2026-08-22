@@ -92,11 +92,15 @@ done
 # change in only one leg fails composition instead of silently producing a misleading manifest.
 ps_protected=$(sed -n '/^\$protected[[:space:]]*=/,/)/p' "$DIST/scripts/install.ps1" | grep -o "'[^']*'" | tr -d "'" | tr '\n' ' ' | sed 's/ $//')
 sh_protected=$(sed -n 's/^protected="\([^"]*\)"/\1/p' "$DIST/scripts/install.sh")
-if [ -z "$ps_protected" ] || [ -z "$sh_protected" ]; then
-  echo "ERROR: ownership manifest could not read protected policy from both installers" >&2; exit 1
+ps_persistent=$(sed -n '/^\$persistentCopyIfAbsent[[:space:]]*=/,/)/p' "$DIST/scripts/install.ps1" | grep -o "'[^']*'" | tr -d "'" | tr '\n' ' ' | sed 's/ $//')
+sh_persistent=$(sed -n 's/^persistent_copy_if_absent="\([^"]*\)"/\1/p' "$DIST/scripts/install.sh")
+if [ -z "$ps_protected" ] || [ -z "$sh_protected" ] || [ -z "$ps_persistent" ] || [ -z "$sh_persistent" ]; then
+  echo "ERROR: ownership manifest could not read protected/persistent policy from both installers" >&2; exit 1
 fi
 for p in $ps_protected; do case " $sh_protected " in *" $p "*) ;; *) echo "ERROR: ownership policy disagreement: consumer-owned/protected in install.ps1 but not install.sh: $p" >&2; exit 1;; esac; done
 for p in $sh_protected; do case " $ps_protected " in *" $p "*) ;; *) echo "ERROR: ownership policy disagreement: consumer-owned/protected in install.sh but not install.ps1: $p" >&2; exit 1;; esac; done
+for p in $ps_persistent; do case " $sh_persistent " in *" $p "*) ;; *) echo "ERROR: ownership policy disagreement: persistent/copy-if-absent in install.ps1 but not install.sh: $p" >&2; exit 1;; esac; done
+for p in $sh_persistent; do case " $ps_persistent " in *" $p "*) ;; *) echo "ERROR: ownership policy disagreement: persistent/copy-if-absent in install.sh but not install.ps1: $p" >&2; exit 1;; esac; done
 
 ps_meta=$(sed -n 's/^\$metaFiles[[:space:]]*=[[:space:]]*@\((.*)\)/\1/p' "$DIST/scripts/install.ps1" | grep -o "'[^']*'" | tr -d "'" | tr '\n' ' ' | sed 's/ $//')
 [ -n "$ps_meta" ] || { echo "ERROR: ownership manifest could not read meta policy from install.ps1" >&2; exit 1; }
@@ -110,7 +114,7 @@ tmp_paths=$(mktemp); trap 'rm -f "$tmp_paths"' EXIT
   case " $ps_meta scripts/install.ps1 scripts/install.sh .github/workflows/template-ci.yml " in *" $rel "*) continue;; esac
   if [ "$rel" = '.claude/settings.json' ]; then ownership='mixed'
   else
-    case " $ps_protected docs/wiki/INDEX.md LICENSES/ai-tech-lead-MIT.txt " in
+    case " $ps_protected $ps_persistent docs/wiki/INDEX.md LICENSES/ai-tech-lead-MIT.txt " in
       *" $rel "*) ownership='consumer-owned/protected';;
       *) ownership='framework-owned/overwritten';;
     esac

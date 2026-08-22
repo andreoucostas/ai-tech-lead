@@ -210,18 +210,24 @@ function Get-SingleQuotedValues {
 $psInstaller = (Read-TextFile (Join-Path $DIST 'scripts/install.ps1')).Text
 $shInstaller = (Read-TextFile (Join-Path $DIST 'scripts/install.sh')).Text
 $psProtectedMatch = [regex]::Match($psInstaller, '(?ms)^\$protected\s*=\s*@\((.*?)\)')
+$psPersistentMatch = [regex]::Match($psInstaller, '(?ms)^\$persistentCopyIfAbsent\s*=\s*@\((.*?)\)')
 $psMetaMatch = [regex]::Match($psInstaller, '(?m)^\$metaFiles\s*=\s*@\(([^\r\n]+)\)')
 $shProtectedMatch = [regex]::Match($shInstaller, '(?m)^protected="([^"]+)"')
-if (-not $psProtectedMatch.Success -or -not $psMetaMatch.Success -or -not $shProtectedMatch.Success) {
-    [Console]::Error.WriteLine('ERROR: ownership manifest could not read protected/meta policy from both installers')
+$shPersistentMatch = [regex]::Match($shInstaller, '(?m)^persistent_copy_if_absent="([^"]+)"')
+if (-not $psProtectedMatch.Success -or -not $psPersistentMatch.Success -or -not $psMetaMatch.Success -or -not $shProtectedMatch.Success -or -not $shPersistentMatch.Success) {
+    [Console]::Error.WriteLine('ERROR: ownership manifest could not read protected/persistent/meta policy from both installers')
     exit 1
 }
 $psProtected = @(Get-SingleQuotedValues $psProtectedMatch.Groups[1].Value)
+$psPersistent = @(Get-SingleQuotedValues $psPersistentMatch.Groups[1].Value)
 $psMeta = @(Get-SingleQuotedValues $psMetaMatch.Groups[1].Value)
 $shProtected = @($shProtectedMatch.Groups[1].Value -split ' ' | Where-Object { $_ })
+$shPersistent = @($shPersistentMatch.Groups[1].Value -split ' ' | Where-Object { $_ })
 $policyProblems = New-Object System.Collections.Generic.List[string]
 foreach ($p in $psProtected) { if ($p -notin $shProtected) { $policyProblems.Add("consumer-owned/protected in install.ps1 but not install.sh: $p") } }
 foreach ($p in $shProtected) { if ($p -notin $psProtected) { $policyProblems.Add("consumer-owned/protected in install.sh but not install.ps1: $p") } }
+foreach ($p in $psPersistent) { if ($p -notin $shPersistent) { $policyProblems.Add("persistent/copy-if-absent in install.ps1 but not install.sh: $p") } }
+foreach ($p in $shPersistent) { if ($p -notin $psPersistent) { $policyProblems.Add("persistent/copy-if-absent in install.sh but not install.ps1: $p") } }
 foreach ($p in $psMeta) {
     if ($shInstaller -notmatch [regex]::Escape($p)) { $policyProblems.Add("excluded by install.ps1 but not install.sh: $p") }
 }
@@ -231,7 +237,7 @@ if ($policyProblems.Count -gt 0) {
 }
 
 $notInstalled = @($psMeta + @('scripts/install.ps1', 'scripts/install.sh', '.github/workflows/template-ci.yml'))
-$extraProtected = @('docs/wiki/INDEX.md', 'LICENSES/ai-tech-lead-MIT.txt')
+$extraProtected = @('docs/wiki/INDEX.md', 'LICENSES/ai-tech-lead-MIT.txt') + $psPersistent
 $manifestPath = Join-Path $DIST 'framework-ownership.json'
 $paths = New-Object System.Collections.Generic.List[object]
 foreach ($rel in @((Get-RelativeFiles $DIST) | Sort-Object)) {

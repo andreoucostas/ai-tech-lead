@@ -6688,3 +6688,38 @@ reading, not a string match; a check that pretends otherwise is the theatre this
 **B-85 is DONE (2026-08-20) — the bash validator now recovers a PowerShell host from known absolute locations; see `meta/BACKLOG-DONE.md`.**
 
 **B-87 is DONE (2026-08-20) — an opt-in maintainer commit-msg guard now refuses degenerate subjects; see `meta/BACKLOG-DONE.md`.**
+
+---
+
+### B-168 · RCA: installer ownership was descriptive metadata while mutation policy remained a set of exceptions
+
+**DONE 2026-08-22 · v0.73.0 · P0 · Invariants #1 #3 #4 #7**
+
+**What happened.** Brownfield installation archived a short hard-coded list and then bulk-copied the
+distribution, so existing settings, hook configuration, commands, and skills outside that list could
+be replaced before `/adopt` saw them. Update treated `.claude/ai-audit.log` as ordinary framework
+content and both installer twins carried a destructive GitHub-skill reset on the representative
+update path. An existing archive destination was overwritten rather than treated as ambiguity.
+
+**Root cause.** The repository already shipped `framework-ownership.json`, but installers did not use
+it to decide which incoming paths could collide. Ownership was therefore documentation for a future
+reconciler, not an input to today's mutation plan. Three special cases—`$brownfieldCollisions`, the
+bulk `.claude` copy, and whole-directory skill mirroring—each encoded a different partial idea of
+consumer ownership. None could detect a new path introduced outside its own list.
+
+**Fix.** The incoming manifest is now the brownfield collision inventory. Both installers preflight
+the complete archive plan, preserve exact relative paths, and refuse an existing/ambiguous archive
+before target mutation. Reparse/symlink collision sources and archive destinations are refused so
+logical in-repository paths cannot redirect a move outside the target. Audit state is a
+twin-verified persistent copy-if-absent policy and is
+manifested protected. Skill mirroring is an upsert that leaves unknown descendants alone. Dirty Git
+brownfield/update targets refuse unless the stack installer receives an explicit named override.
+Existing copy-if-absent paths such as `docs/wiki/INDEX.md` are excluded from collision archiving.
+
+**Evidence and exposed class.** A corrected v0.72.0 composed-dist fixture made every destructive
+branch reachable on both twins before asserting the sentinel; the fixed lifecycle is green on both.
+Composer mutation tests prove that changing persistent policy in only one installer is rejected by
+both composers. The independent review's junction exploit is retained as a composed-dist red case.
+The exposed class is any future installer policy that is described in one artifact
+but executed from a separate enumeration. Increment 4 replaces additive copying with a validated
+operation plan and trusted retirement intersection rather than adding more exceptions here.

@@ -1,5 +1,5 @@
 ﻿# Install the AI Tech Lead Framework into a target repository.
-# Usage: pwsh scripts/install.ps1 [-GitHooks] C:\path\to\target-repo
+# Usage: pwsh scripts/install.ps1 [-GitHooks] [-AllowDirtyTree] C:\path\to\target-repo
 #
 # Copies the template's framework files into the target, EXCLUDING the .git directory, the
 # .template-repo marker (which would disable the consumer's CI guardrail), the template repo's own
@@ -16,7 +16,8 @@
 #                .claude/settings.json is backed up, refreshed, and adapted to the host.
 param(
     [Parameter(Mandatory = $true)][string]$Target,
-    [switch]$GitHooks
+    [switch]$GitHooks,
+    [switch]$AllowDirtyTree
 )
 $ErrorActionPreference = 'Stop'
 
@@ -25,6 +26,24 @@ if (-not (Test-Path -LiteralPath $Target -PathType Container)) { Write-Error "Ta
 $src = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $tgt = (Resolve-Path $Target).Path
 if ($tgt -eq $src) { Write-Error "Target is the template repo itself — choose a different target."; exit 2 }
+
+# Brownfield archive paths must never traverse a reparse point. Resolving a target path is not
+# enough: a junction/symlink below it can redirect either the collision source or the archive
+# destination outside the consumer repository before Move-Item gets a chance to report anything.
+function Get-ReparsePointAncestor {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    $current = $Path
+    while ($true) {
+        # Get-Item -Force sees a dangling link where Test-Path reports false. Do not replace this
+        # with a Test-Path guard: that was the route by which a broken link escaped preflight.
+        $item = Get-Item -Force -LiteralPath $current -ErrorAction SilentlyContinue
+        if ($item -and (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) { return $current }
+        if ($current -eq $tgt) { return $null }
+        $parent = Split-Path -Parent $current
+        if (-not $parent -or $parent -eq $current) { return $null }
+        $current = $parent
+    }
+}
 
 if ($GitHooks) {
     & (Join-Path $src 'scripts/setup-git-hooks.ps1') -Target $tgt -CheckOnly
@@ -38,7 +57,15 @@ $metaFiles = @('.git', '.template-repo', 'README.md', 'CHANGELOG.md', '.gitignor
 # them. Update: snapshotted and restored — after bootstrap/adopt the consumer owns their content.
 $protected = @('CLAUDE.md', 'AGENTS.md', 'TECH_DEBT.md', 'SECURITY_FINDINGS.md', 'LEARNINGS.md',
     'FRAMEWORK-CONTEXT.md', '.github/copilot-instructions.md', 'docs/ARCHITECTURE.md')
-$brownfieldCollisions = $protected + @('.github/instructions/framework-rules.instructions.md')
+# Persistent state is copied only when absent. The composer reads this policy from both installer
+# twins and emits it as consumer-owned/protected in framework-ownership.json.
+$persistentCopyIfAbsent = @(
+    '.claude/ai-audit.log'
+)
+# These are never bulk-replaced, so brownfield must not archive them merely because the incoming
+# ownership manifest lists them. The audit entry remains the separately composer-verified
+# persistent policy above.
+$copyIfAbsent = $persistentCopyIfAbsent + @('docs/wiki/INDEX.md')
 
 # Signals that the target already has AI tooling and therefore needs /adopt, not /bootstrap
 # (mirrors /adopt Phase 1 discovery).
@@ -55,6 +82,20 @@ if (-not $updateMode) {
     $detected = @($adoptionSignals | Where-Object { Test-Path -LiteralPath (Join-Path $tgt $_) })
 }
 $adoptMode = (-not $updateMode) -and ($detected.Count -gt 0)
+
+# The incoming manifest is the sole brownfield collision inventory. Read and validate the complete
+# archive plan before the first target mutation: an archive collision must refuse, never overwrite.
+$incomingManifest = Join-Path $src 'framework-ownership.json'
+try {
+    $incomingPaths = @((Get-Content -Raw -LiteralPath $incomingManifest | ConvertFrom-Json).paths | ForEach-Object { [string]$_.path })
+} catch {
+    [Console]::Error.WriteLine("ERROR: Cannot read incoming framework ownership manifest '$incomingManifest': $($_.Exception.Message)")
+    exit 3
+}
+if ($incomingPaths.Count -eq 0) {
+    [Console]::Error.WriteLine("ERROR: Incoming framework ownership manifest '$incomingManifest' contains no paths.")
+    exit 3
+}
 
 # These legal files are neither protected nor ordinary framework files. Protection would freeze a
 # stale framework-owned notice; bulk copying would silently clobber consumer files. Preflight their
@@ -80,6 +121,26 @@ if ((Test-Path -LiteralPath $targetNotice -PathType Leaf) -and
     exit 3
 }
 
+# Refuse a dirty Git target before any installer mutation. This does not make Git a prerequisite:
+# greenfield/non-Git targets remain valid. An override is intentionally noisy and never implicit.
+if (($adoptMode -or $updateMode) -and (Get-Command git -ErrorAction SilentlyContinue)) {
+    & git -C $tgt rev-parse --is-inside-work-tree *> $null
+    if ($LASTEXITCODE -eq 0) {
+        $dirty = @(& git -C $tgt status --porcelain=v1 --untracked-files=all)
+        if ($LASTEXITCODE -ne 0) {
+            [Console]::Error.WriteLine('CANT-VERIFY: Git identified this target as a worktree, but its status could not be read. Commit, stash, or copy local changes, then repair Git and re-run the installer.')
+            exit 4
+        }
+        if ($dirty.Count -gt 0) {
+            if (-not $AllowDirtyTree) {
+                [Console]::Error.WriteLine('ERROR: Refusing to mutate a dirty Git target. Commit, stash, or copy local changes, then re-run; use -AllowDirtyTree only after doing so deliberately.')
+                exit 4
+            }
+            Write-Output '  override: -AllowDirtyTree (--allow-dirty-tree) accepted for this dirty Git target.'
+        }
+    }
+}
+
 Write-Output "Installing AI Tech Lead Framework"
 Write-Output "  from: $src"
 Write-Output "  into: $tgt"
@@ -94,19 +155,49 @@ if ($updateMode) {
 }
 
 $archived = @()
+$archivePlan = New-Object System.Collections.Generic.List[object]
 if ($adoptMode) {
-    # Move originals out of the copy's way so /adopt can merge them later — without this they
-    # would be overwritten by the template versions and lost from the working tree.
-    foreach ($f in $brownfieldCollisions) {
+    $archivePaths = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::Ordinal)
+    foreach ($f in $incomingPaths) {
+        if ($f -in $copyIfAbsent -or $f -in @($legalLicense, $legalNotice)) { continue }
         $orig = Join-Path $tgt $f
-        if (Test-Path -LiteralPath $orig -PathType Leaf) {
-            $rel  = 'docs/pre-adoption/' + $f.TrimStart('.')
-            $dest = Join-Path $tgt $rel
-            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $dest) | Out-Null
-            Move-Item -Force -LiteralPath $orig -Destination $dest
-            $archived += $rel
-            Write-Output "  archived: $f -> $rel"
+        $sourceReparse = Get-ReparsePointAncestor -Path $orig
+        if ($sourceReparse) {
+            [Console]::Error.WriteLine("ERROR: Refusing brownfield collision '$f': source path traverses reparse/symlink '$sourceReparse'. Remove the link or copy the original into the repository, then re-run.")
+            exit 3
         }
+        if (-not (Test-Path -LiteralPath $orig)) { continue }
+        if (-not (Test-Path -LiteralPath $orig -PathType Leaf)) {
+            [Console]::Error.WriteLine("ERROR: Refusing brownfield collision '$f': the target path is not a file and cannot be archived safely.")
+            exit 3
+        }
+        $rel = 'docs/pre-adoption/' + $f
+        $dest = Join-Path $tgt $rel
+        $destinationReparse = Get-ReparsePointAncestor -Path $dest
+        if ($destinationReparse) {
+            [Console]::Error.WriteLine("ERROR: Refusing brownfield install: archive destination traverses reparse/symlink '$destinationReparse'. Remove the link, then re-run.")
+            exit 3
+        }
+        if (-not $archivePaths.Add($rel) -or (Test-Path -LiteralPath $dest)) {
+            [Console]::Error.WriteLine("ERROR: Refusing brownfield install: archive destination already exists or is ambiguous: '$rel'.")
+            exit 3
+        }
+        $parent = Split-Path -Parent $dest
+        while ($parent -and $parent.StartsWith($tgt, [StringComparison]::OrdinalIgnoreCase)) {
+            if ((Test-Path -LiteralPath $parent) -and -not (Test-Path -LiteralPath $parent -PathType Container)) {
+                [Console]::Error.WriteLine("ERROR: Refusing brownfield install: archive destination parent is not a directory: '$parent'.")
+                exit 3
+            }
+            if ($parent -eq $tgt) { break }
+            $parent = Split-Path -Parent $parent
+        }
+        $archivePlan.Add([pscustomobject]@{ Original = $orig; Relative = $rel; Destination = $dest })
+    }
+    foreach ($entry in $archivePlan) {
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $entry.Destination) | Out-Null
+        Move-Item -LiteralPath $entry.Original -Destination $entry.Destination
+        $archived += $entry.Relative
+        Write-Output "  archived: $($entry.Relative.Substring('docs/pre-adoption/'.Length)) -> $($entry.Relative)"
     }
 }
 
@@ -136,8 +227,21 @@ if ($updateMode) {
 }
 
 Get-ChildItem -Force -LiteralPath $src |
-    Where-Object { $_.Name -notin $metaFiles -and $_.Name -notin @('docs', 'LICENSES', $legalNotice) } |
+    Where-Object { $_.Name -notin $metaFiles -and $_.Name -notin @('docs', 'LICENSES', $legalNotice, '.claude') } |
     ForEach-Object { Copy-Item -Recurse -Force -LiteralPath $_.FullName -Destination $tgt }
+
+# Preserve the append-only audit log byte-for-byte. All other .claude content remains normal
+# framework machinery and is refreshed by the bulk copy.
+$sourceClaude = Join-Path $src '.claude'
+if (Test-Path -LiteralPath $sourceClaude -PathType Container) {
+    $targetClaude = New-Item -ItemType Directory -Force -Path (Join-Path $tgt '.claude')
+    Get-ChildItem -Force -LiteralPath $sourceClaude | ForEach-Object {
+        $rel = '.claude/' + $_.Name
+        $dest = Join-Path $targetClaude.FullName $_.Name
+        if ($rel -in $persistentCopyIfAbsent -and (Test-Path -LiteralPath $dest)) { return }
+        Copy-Item -Recurse -Force -LiteralPath $_.FullName -Destination $targetClaude.FullName
+    }
+}
 
 # Copy docs normally except for the consumer-owned wiki index, which is copy-if-absent.
 $sourceDocs = Join-Path $src 'docs'
@@ -180,7 +284,7 @@ if ($updateMode -and $snapshot -and (Test-Path -LiteralPath $snapshot)) {
     if(Test-Path -LiteralPath $oldSkills){foreach($dir in Get-ChildItem -LiteralPath $oldSkills -Directory){$oldFile=Join-Path $dir.FullName 'SKILL.md';if(-not(Test-Path -LiteralPath $oldFile)){continue};$oldText=Get-Content -LiteralPath $oldFile -Raw;$dest=Join-Path $tgt ".claude/skills/$($dir.Name)";if($oldText-match'(?m)^origin:\s*discovered\s*$'){if(Test-Path -LiteralPath $dest){Remove-Item -Recurse -Force -LiteralPath $dest};Copy-Item -Recurse -Force -LiteralPath $dir.FullName -Destination $dest;continue};$ex=[regex]::Match($oldText,'(?m)^For a concrete current instance in this repo, see .+$');$newFile=Join-Path $dest 'SKILL.md';if($ex.Success-and(Test-Path -LiteralPath $newFile)){$newText=Get-Content -LiteralPath $newFile -Raw;$newText=[regex]::Replace($newText,'(?m)^For a concrete current instance in this repo, see .+\r?\n?','');Set-Content -LiteralPath $newFile -Value($newText.TrimEnd()+"`n`n"+$ex.Value+"`n") -Encoding UTF8}}}
     $savedLearnings=Join-Path $snapshot 'LEARNINGS.md'
     if(Test-Path -LiteralPath $savedLearnings){foreach($m in [regex]::Matches((Get-Content -LiteralPath $savedLearnings -Raw),'(?m)^## Disabled framework skill:\s*([a-z0-9-]+)\s*$')){$name=$m.Groups[1].Value;$active=Join-Path $tgt ".claude/skills/$name";$inactive=Join-Path $tgt ".claude/disabled-skills/$name";if(Test-Path -LiteralPath $active){New-Item -ItemType Directory -Force -Path(Split-Path -Parent $inactive)|Out-Null;if(Test-Path -LiteralPath $inactive){Remove-Item -Recurse -Force -LiteralPath $inactive};Move-Item -LiteralPath $active -Destination $inactive}}}
-    $githubSkills=Join-Path $tgt '.github/skills';if(Test-Path -LiteralPath $githubSkills){Remove-Item -Recurse -Force -LiteralPath $githubSkills};New-Item -ItemType Directory -Force -Path $githubSkills|Out-Null;Get-ChildItem -LiteralPath(Join-Path $tgt '.claude/skills') -Directory -ErrorAction SilentlyContinue|ForEach-Object{Copy-Item -Recurse -Force -LiteralPath $_.FullName -Destination $githubSkills}
+    $githubSkills=New-Item -ItemType Directory -Force -Path (Join-Path $tgt '.github/skills');Get-ChildItem -LiteralPath(Join-Path $tgt '.claude/skills') -Directory -ErrorAction SilentlyContinue|ForEach-Object{Copy-Item -Recurse -Force -LiteralPath $_.FullName -Destination $githubSkills.FullName}
     Remove-Item -Recurse -Force -LiteralPath $snapshot
     Write-Output "  consumer-owned content files left untouched ($($protected -join ', '))."
 }

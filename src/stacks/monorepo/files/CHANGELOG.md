@@ -5,6 +5,26 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.73.0 — 2026-08-22
+
+**Installer safety fix: existing repository files and audit history are no longer disposable
+framework inputs.** On brownfield installation, every incoming file collision the copy would
+replace is discovered from the shipped ownership manifest and archived at its exact relative path under
+`docs/pre-adoption/` before framework files are copied. If an archive destination already exists,
+installation refuses before changing the target instead of replacing the earlier archive.
+Archive sources and destinations that traverse a symlink or junction are also refused before any
+move, so `docs/pre-adoption/` cannot redirect your originals outside the repository.
+
+An existing `.claude/ai-audit.log` now remains byte-for-byte unchanged through installation and
+update. Unknown GitHub-only skills under `.github/skills/` also survive framework skill syncing.
+The consumer-owned `docs/wiki/INDEX.md` remains active and unarchived, as its copy-if-absent policy
+requires.
+
+Brownfield and update installs into a dirty Git worktree now refuse with a commit/stash/copy
+recovery action. If you have deliberately reviewed those changes, the stack installer provides the
+explicit `-AllowDirtyTree` / `--allow-dirty-tree` override and names its use on stdout. Greenfield
+non-Git installation is unchanged.
+
 ## 0.72.0 — 2026-08-22
 
 **New: a test-weakening advisory, consulted during `/review`.** Run

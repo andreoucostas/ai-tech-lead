@@ -1178,3 +1178,26 @@ host/resource failure into a precise-looking defect in the artifact. Capture the
 subprocess boundary, reserve content findings for the tool's documented no-match code, and make
 every other code a host FATAL. The same boundary rule applies to path dialects: translate MSYS paths
 before handing them to a Windows host, and fail explicitly when the translator is unavailable.
+
+## 2026-08-22 — A lifecycle fixture must make the destructive branch reachable
+
+A minimal update fixture initially reported that the PowerShell installer preserved an unknown
+GitHub-only skill even though the committed code plainly removed the whole directory. The apparent
+contradiction was in the fixture: without a protected file or existing `.claude/skills`, the
+temporary snapshot directory was never created, so the old installer's entire post-copy update block
+was skipped. Seeding `CLAUDE.md` made the destructive branch reachable and both old twins failed as
+the source predicted. A mode stamp proves only mode selection; every stateful regression fixture must
+also construct and assert the prerequisites for the exact mutation branch under test.
+
+Two review corollaries landed with it. First, an incoming manifest is not automatically a collision
+list: `docs/wiki/INDEX.md` is listed but copied only when absent, so archiving it would have regressed
+an existing consumer-owned contract. Intersect manifest membership with the actual operation policy.
+Second, a `sed` address range cannot close on the same line that opens it; parsing a single-line
+PowerShell array that way silently absorbed the following policy declaration. Keep the extracted
+shape explicit and exercise the unmodified green path as well as the mismatch red path.
+
+A path that is lexically beneath the target is not necessarily physically contained there. The
+first archive preflight accepted a `docs/pre-adoption` junction and moved consumer originals into its
+outside target while reporting an in-repository archive path. Check every existing source and
+destination component for links/reparse points before mutation, including dangling link leaves;
+string prefixes and `PathType Container` establish neither physical containment nor ownership.

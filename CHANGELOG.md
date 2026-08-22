@@ -11,6 +11,35 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.73.0 — 2026-08-22
+
+**Recovery increment 1 closes the known installer data-loss paths.** Brownfield installation now
+derives the complete inventory of incoming paths the copy would replace from the ownership
+manifest, validates every archive destination before the first target mutation, and preserves each
+displaced file at its exact relative path under `docs/pre-adoption/`. A pre-existing archive
+destination is an explicit refusal, never an overwrite.
+
+`.claude/ai-audit.log` is now persistent copy-if-absent state and is emitted as
+`consumer-owned/protected` in every distribution manifest. Existing bytes survive both brownfield
+installation and update. GitHub skill mirroring now upserts framework skills without deleting
+unknown `.github/skills` descendants. Brownfield and update installs also refuse dirty Git
+worktrees unless the stack installer receives its explicit, named override.
+
+The proof is a composed-dist lifecycle suite on both installer twins: the corrected v0.72.0
+fixture produced 22 independent failures, including both audit paths, settings/hooks/command/skill
+collisions, archive replacement, both GitHub-skill resets, and dirty update/brownfield mutation;
+the patched distribution passes all cases. Composer mutation fixtures also prove both composers
+reject a one-twin persistent-policy change, while normal extraction emits protected audit ownership.
+
+One review correction mattered: `docs/wiki/INDEX.md` was already copy-if-absent and therefore was
+not a bulk-copy collision. The first manifest-driven draft would have archived it unnecessarily;
+the final policy leaves it active and unarchived, with a regression sentinel.
+
+The independent review found and blocked a physical-containment escape in the first draft: a
+`docs/pre-adoption` junction could redirect archive moves outside the repository. Both twins now
+refuse reparse/symlink collision sources and archive destinations—including dangling link leaves—
+before any move; the old exploit is a composed-dist red fixture.
+
 ## 0.72.0 — 2026-08-22
 
 **B-48 is complete after a year open, and the durable output is WSD-047 rather than the three fixes.**

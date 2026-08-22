@@ -9,7 +9,7 @@
     { "path": ".claude/agents/security-auditor.md", "ownership": "framework-owned/overwritten" },
     { "path": ".claude/agents/solid-check.md", "ownership": "framework-owned/overwritten" },
     { "path": ".claude/agents/test-critic.md", "ownership": "framework-owned/overwritten" },
-    { "path": ".claude/ai-audit.log", "ownership": "framework-owned/overwritten" },
+    { "path": ".claude/ai-audit.log", "ownership": "consumer-owned/protected" },
     { "path": ".claude/commands/adopt.md", "ownership": "framework-owned/overwritten" },
     { "path": ".claude/commands/bootstrap.md", "ownership": "framework-owned/overwritten" },
     { "path": ".claude/commands/debt.md", "ownership": "framework-owned/overwritten" },

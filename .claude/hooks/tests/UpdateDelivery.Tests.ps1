@@ -68,10 +68,15 @@ Repo-specific conventions the consumer owns. Populated by /bootstrap. DO NOT CLO
 }
 
 function Invoke-Installer {
-    param([string]$Twin, [string]$Dist, [string]$Target)
+    param([string]$Twin, [string]$Dist, [string]$Target, [switch]$AllowDirtyTree)
     $inst = Join-Path $repoRoot "dist/$Dist/scripts/install.$Twin"
-    if ($Twin -eq 'ps1') { & (Get-PsExe) -NoProfile -File $inst $Target 2>&1 | Out-String }
-    else { & $bash $inst $Target 2>&1 | Out-String }
+    if ($Twin -eq 'ps1') {
+        if ($AllowDirtyTree) { & (Get-PsExe) -NoProfile -File $inst -Target $Target -AllowDirtyTree 2>&1 | Out-String }
+        else { & (Get-PsExe) -NoProfile -File $inst -Target $Target 2>&1 | Out-String }
+    } else {
+        if ($AllowDirtyTree) { & $bash $inst --allow-dirty-tree $Target 2>&1 | Out-String }
+        else { & $bash $inst $Target 2>&1 | Out-String }
+    }
 }
 
 function Get-Hash { param([string]$P) (Get-FileHash -LiteralPath $P -Algorithm SHA256).Hash }
@@ -223,6 +228,277 @@ foreach ($twin in @('ps1', 'sh')) {
             $archived = @(Get-ChildItem -Recurse -Force -LiteralPath (Join-Path $t 'docs/pre-adoption') -ErrorAction SilentlyContinue |
                 Where-Object { -not $_.PSIsContainer -and (Get-Content -LiteralPath $_.FullName -Raw) -match 'PRE-EXISTING CONSUMER INSTRUCTIONS' })
             Assert ($archived.Count -ge 1) 'the pre-existing carrier was destroyed rather than archived to docs/pre-adoption/'
+        } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+    }
+}
+
+foreach ($twin in @('ps1', 'sh')) {
+    if ($twin -eq 'sh' -and -not $bash) { Skip "brownfield copy-if-absent wiki ($twin)" 'no bash on this host'; continue }
+    It "brownfield leaves the copy-if-absent wiki index active and unarchived ($twin)" {
+        $t = Join-Path ([IO.Path]::GetTempPath()) ('no-loss-wiki-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Force -Path (Join-Path $t 'docs/wiki') | Out-Null
+        Set-Content -LiteralPath (Join-Path $t 'TECH_DEBT.md') -Value 'BROWNFIELD SIGNAL' -Encoding utf8
+        Set-Content -LiteralPath (Join-Path $t 'docs/wiki/INDEX.md') -Value 'CONSUMER WIKI INDEX SENTINEL' -Encoding utf8
+        try {
+            Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t | Out-Null
+            $wiki = Join-Path $t 'docs/wiki/INDEX.md'
+            $archiveRel = 'docs/pre-adoption/docs/wiki/INDEX.md'
+            Assert ([IO.File]::ReadAllText($wiki).Contains('CONSUMER WIKI INDEX SENTINEL')) 'brownfield replaced a copy-if-absent wiki index'
+            Assert (-not (Test-Path -LiteralPath (Join-Path $t $archiveRel))) 'brownfield unnecessarily archived a copy-if-absent wiki index'
+            $marker = Get-Content -LiteralPath (Join-Path $t '.claude/adoption-pending.json') -Raw | ConvertFrom-Json
+            Assert (-not ($marker.archivedOriginals -contains $archiveRel)) 'adoption marker listed a copy-if-absent wiki index as archived'
+        } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+    }
+}
+
+# Recovery increment 1: these fixtures are deliberately run against the composed, unfixed dist
+# first. Each sentinel is a consumer byte that v0.72.0 loses: settings/hooks/commands on
+# brownfield, audit state on both modes, and a GitHub-only skill on update. The update fixture
+# seeds a protected file so both baseline twins reach their post-copy GitHub-skill sync path.
+function New-NoLossBrownfieldConsumer {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('no-loss-brown-' + [guid]::NewGuid())
+    foreach ($rel in @('.claude/commands', '.github/hooks', '.github/skills/local-only')) {
+        New-Item -ItemType Directory -Force -Path (Join-Path $t $rel) | Out-Null
+    }
+    Set-Content -LiteralPath (Join-Path $t 'TECH_DEBT.md') -Value 'BROWNFIELD SIGNAL' -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $t '.claude/settings.json') -Value 'SETTINGS SENTINEL' -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $t '.github/hooks/hooks.json') -Value 'HOOKS SENTINEL' -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $t '.claude/commands/feature.md') -Value 'COMMAND SENTINEL' -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $t '.github/skills/local-only/SKILL.md') -Value 'GITHUB-ONLY SKILL SENTINEL' -Encoding utf8
+    [IO.File]::WriteAllBytes((Join-Path $t '.claude/ai-audit.log'), [byte[]](0, 1, 2, 255, 10, 13, 0))
+    return $t
+}
+
+function Assert-BytesEqual {
+    param([byte[]]$Expected, [byte[]]$Actual, [string]$Message)
+    Assert ($Expected.Length -eq $Actual.Length -and
+        [Convert]::ToBase64String($Expected) -ceq [Convert]::ToBase64String($Actual)) $Message
+}
+
+function New-ArchiveEscapeLink {
+    param([Parameter(Mandatory)][string]$Link, [Parameter(Mandatory)][string]$Target)
+    New-Item -ItemType Directory -Force -Path $Target | Out-Null
+    if ($env:OS -eq 'Windows_NT') { New-Item -ItemType Junction -Path $Link -Target $Target | Out-Null }
+    else { New-Item -ItemType SymbolicLink -Path $Link -Target $Target | Out-Null }
+}
+
+# Both directions matter. A destination link leaks archived originals outside the repository;
+# a source-side link lets the installer mutate a collision that was never inside it. These run
+# against the composed dotnet installer because path semantics are runtime behavior, not prose.
+foreach ($twin in @('ps1', 'sh')) {
+    if ($twin -eq 'sh' -and -not $bash) { Skip "brownfield archive escape ($twin)" 'no bash on this host'; continue }
+    It "brownfield refuses a reparse/symlink archive destination before moving originals ($twin)" {
+        $t = Join-Path ([IO.Path]::GetTempPath()) ('no-loss-dest-link-' + [guid]::NewGuid())
+        $outside = Join-Path ([IO.Path]::GetTempPath()) ('no-loss-outside-' + [guid]::NewGuid())
+        $collision = '.github/instructions/framework-rules.instructions.md'
+        try {
+            New-Item -ItemType Directory -Force -Path (Join-Path $t 'docs') | Out-Null
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent (Join-Path $t $collision)) | Out-Null
+            New-ArchiveEscapeLink -Link (Join-Path $t 'docs/pre-adoption') -Target $outside
+            Set-Content -LiteralPath (Join-Path $t 'TECH_DEBT.md') -Value 'BROWNFIELD SIGNAL' -Encoding utf8
+            Set-Content -LiteralPath (Join-Path $t $collision) -Value 'DESTINATION ESCAPE SENTINEL' -Encoding utf8
+            $out = Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t
+            Assert ($LASTEXITCODE -ne 0) "archive destination reparse/symlink did not refuse. Output:`n$out"
+            Assert ($out -match 'reparse/symlink') "archive destination refusal did not identify the reparse/symlink. Output:`n$out"
+            Assert ([IO.File]::ReadAllText((Join-Path $t $collision)).Contains('DESTINATION ESCAPE SENTINEL')) 'archive destination preflight moved the original before refusing'
+            Assert (@(Get-ChildItem -LiteralPath $outside -Recurse -Force -ErrorAction SilentlyContinue).Count -eq 0) 'archive destination escape wrote outside the target'
+        } finally { Remove-Item -Recurse -Force $t,$outside -ErrorAction SilentlyContinue }
+    }
+
+    It "brownfield refuses a reparse/symlink collision source before moving originals ($twin)" {
+        $t = Join-Path ([IO.Path]::GetTempPath()) ('no-loss-source-link-' + [guid]::NewGuid())
+        $outside = Join-Path ([IO.Path]::GetTempPath()) ('no-loss-source-outside-' + [guid]::NewGuid())
+        $collision = '.github/instructions/framework-rules.instructions.md'
+        try {
+            New-Item -ItemType Directory -Force -Path $t | Out-Null
+            New-ArchiveEscapeLink -Link (Join-Path $t '.github') -Target $outside
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent (Join-Path $t $collision)) | Out-Null
+            Set-Content -LiteralPath (Join-Path $t 'TECH_DEBT.md') -Value 'BROWNFIELD SIGNAL' -Encoding utf8
+            Set-Content -LiteralPath (Join-Path $t $collision) -Value 'SOURCE ESCAPE SENTINEL' -Encoding utf8
+            $out = Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t
+            Assert ($LASTEXITCODE -ne 0) "collision source reparse/symlink did not refuse. Output:`n$out"
+            Assert ($out -match 'reparse/symlink') "collision source refusal did not identify the reparse/symlink. Output:`n$out"
+            Assert ([IO.File]::ReadAllText((Join-Path $t $collision)).Contains('SOURCE ESCAPE SENTINEL')) 'source reparse/symlink preflight moved the outside original'
+            Assert (-not (Test-Path -LiteralPath (Join-Path $t 'docs/pre-adoption'))) 'source reparse/symlink preflight mutated the target before refusing'
+        } finally { Remove-Item -Recurse -Force $t,$outside -ErrorAction SilentlyContinue }
+    }
+}
+
+foreach ($twin in @('ps1', 'sh')) {
+    if ($twin -eq 'sh' -and -not $bash) { Skip "no-loss lifecycle ($twin)" 'no bash on this host'; continue }
+    It "brownfield archives every incoming collision and preserves audit state ($twin)" {
+        $t = New-NoLossBrownfieldConsumer
+        $auditBefore = [IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log'))
+        try {
+            $out = Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t
+            Assert ($LASTEXITCODE -eq 0) "brownfield install failed (exit $LASTEXITCODE): $out"
+            foreach ($case in @(
+                @{ Rel = '.claude/settings.json'; Text = 'SETTINGS SENTINEL' },
+                @{ Rel = '.github/hooks/hooks.json'; Text = 'HOOKS SENTINEL' },
+                @{ Rel = '.claude/commands/feature.md'; Text = 'COMMAND SENTINEL' }
+            )) {
+                $archiveRel = "docs/pre-adoption/$($case.Rel)"
+                $archive = Join-Path $t $archiveRel
+                Assert (Test-Path -LiteralPath $archive -PathType Leaf) "brownfield collision $($case.Rel) was not archived at its exact original-relative path"
+                Assert ((Get-Content -LiteralPath $archive -Raw) -match $case.Text) "brownfield collision $($case.Rel) lost its sentinel"
+                $marker = Get-Content -LiteralPath (Join-Path $t '.claude/adoption-pending.json') -Raw | ConvertFrom-Json
+                Assert ($marker.archivedOriginals -contains $archiveRel) "adoption marker omitted archive mapping $archiveRel"
+            }
+            Assert-BytesEqual -Expected $auditBefore -Actual ([IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log'))) -Message 'brownfield overwrote persistent ai-audit.log bytes'
+            Assert ((Get-Content -LiteralPath (Join-Path $t '.github/skills/local-only/SKILL.md') -Raw) -match 'GITHUB-ONLY SKILL SENTINEL') 'brownfield deleted an unknown GitHub-only skill'
+
+            $update = Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t
+            Assert ($LASTEXITCODE -eq 0) "update install failed (exit $LASTEXITCODE): $update"
+            Assert-BytesEqual -Expected $auditBefore -Actual ([IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log'))) -Message 'update overwrote persistent ai-audit.log bytes'
+            Assert ((Get-Content -LiteralPath (Join-Path $t '.github/skills/local-only/SKILL.md') -Raw) -match 'GITHUB-ONLY SKILL SENTINEL') 'update deleted an unknown GitHub-only skill'
+        } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+    }
+
+    It "archive-destination collision refuses before target mutation ($twin)" {
+        $t = Join-Path ([IO.Path]::GetTempPath()) ('no-loss-preflight-' + [guid]::NewGuid())
+        $collision = '.github/instructions/framework-rules.instructions.md'
+        $archive = Join-Path $t "docs/pre-adoption/$collision"
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent (Join-Path $t $collision)) | Out-Null
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $archive) | Out-Null
+        Set-Content -LiteralPath (Join-Path $t 'TECH_DEBT.md') -Value 'BROWNFIELD SIGNAL' -Encoding utf8
+        Set-Content -LiteralPath (Join-Path $t $collision) -Value 'ORIGINAL COLLISION SENTINEL' -Encoding utf8
+        Set-Content -LiteralPath $archive -Value 'EARLIER ARCHIVE SENTINEL' -Encoding utf8
+        try {
+            $out = Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t
+            Assert ($LASTEXITCODE -ne 0) "pre-existing archive destination did not refuse. Output:`n$out"
+            Assert ($out -match 'archive destination') "refusal did not identify the archive collision. Output:`n$out"
+            Assert ((Get-Content -LiteralPath (Join-Path $t $collision) -Raw) -match 'ORIGINAL COLLISION SENTINEL') 'preflight mutated the original collision before refusing'
+            Assert ((Get-Content -LiteralPath $archive -Raw) -match 'EARLIER ARCHIVE SENTINEL') 'preflight replaced an earlier archive'
+        } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+    }
+}
+
+# Keep every loss mode independently observable. The combined lifecycle case above is the
+# end-to-end acceptance fixture; these narrow cases prevent its first failure from masking another
+# v0.72.0 data-loss regression in the red transcript.
+foreach ($twin in @('ps1', 'sh')) {
+    if ($twin -eq 'sh' -and -not $bash) { Skip "independent no-loss evidence ($twin)" 'no bash on this host'; continue }
+    It "brownfield keeps persistent audit bytes ($twin)" {
+        $t = New-NoLossBrownfieldConsumer
+        $before = [IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log'))
+        try {
+            Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t | Out-Null
+            Assert-BytesEqual -Expected $before -Actual ([IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log'))) -Message 'brownfield overwrote persistent ai-audit.log bytes'
+        } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+    }
+
+    It "update keeps persistent audit bytes ($twin)" {
+        $t = Join-Path ([IO.Path]::GetTempPath()) ('no-loss-audit-update-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude') | Out-Null
+        [IO.File]::WriteAllBytes((Join-Path $t '.claude/ai-audit.log'), [byte[]](0, 1, 2, 255, 10, 13, 0))
+        Set-Content -LiteralPath (Join-Path $t '.claude/framework-version.json') -Value '{"version":"0.72.0"}' -Encoding utf8
+        $before = [IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log'))
+        try {
+            Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t | Out-Null
+            Assert-BytesEqual -Expected $before -Actual ([IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log'))) -Message 'update overwrote persistent ai-audit.log bytes'
+        } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+    }
+
+    It "brownfield archives a same-path command collision from the manifest ($twin)" {
+        $t = New-NoLossBrownfieldConsumer
+        try {
+            Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t | Out-Null
+            $archive = Join-Path $t 'docs/pre-adoption/.claude/commands/feature.md'
+            Assert (Test-Path -LiteralPath $archive -PathType Leaf) 'same-path command collision was not archived before replacement'
+            Assert ([IO.File]::ReadAllText($archive).Contains('COMMAND SENTINEL')) 'same-path command archive lost its sentinel'
+        } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+    }
+
+    It "brownfield archives a same-path skill collision from the manifest ($twin)" {
+        $t = New-NoLossBrownfieldConsumer
+        $skillRel = '.claude/skills/add-endpoint/SKILL.md'
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent (Join-Path $t $skillRel)) | Out-Null
+        Set-Content -LiteralPath (Join-Path $t $skillRel) -Value 'SKILL COLLISION SENTINEL' -Encoding utf8
+        try {
+            Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t | Out-Null
+            $archive = Join-Path $t "docs/pre-adoption/$skillRel"
+            Assert (Test-Path -LiteralPath $archive -PathType Leaf) 'same-path skill collision was not archived before replacement'
+            Assert ([IO.File]::ReadAllText($archive).Contains('SKILL COLLISION SENTINEL')) 'same-path skill archive lost its sentinel'
+        } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+    }
+
+    It "update retains an unknown GitHub-only skill ($twin)" {
+        $t = Join-Path ([IO.Path]::GetTempPath()) ('no-loss-github-skill-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude') | Out-Null
+        New-Item -ItemType Directory -Force -Path (Join-Path $t '.github/skills/local-only') | Out-Null
+        Set-Content -LiteralPath (Join-Path $t '.claude/framework-version.json') -Value '{"version":"0.72.0"}' -Encoding utf8
+        Set-Content -LiteralPath (Join-Path $t 'CLAUDE.md') -Value 'PROTECTED SNAPSHOT SEED' -Encoding utf8
+        Set-Content -LiteralPath (Join-Path $t '.github/skills/local-only/SKILL.md') -Value 'GITHUB-ONLY SKILL SENTINEL' -Encoding utf8
+        try {
+            Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t | Out-Null
+            $skill = Join-Path $t '.github/skills/local-only/SKILL.md'
+            Assert (Test-Path -LiteralPath $skill -PathType Leaf) 'update deleted an unknown GitHub-only skill'
+            Assert ([IO.File]::ReadAllText($skill).Contains('GITHUB-ONLY SKILL SENTINEL')) 'update changed an unknown GitHub-only skill'
+        } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+    }
+}
+
+# The preservation check itself must have a constructible failure world; otherwise it could be a
+# vacuous assertion that passes even when both installer and fixture are wrong.
+It 'audit-byte preservation assertion rejects a deliberately mutated fixture' {
+    $expected = [byte[]](0, 1, 2, 255)
+    $mutated = [byte[]](0, 1, 99, 255)
+    $rejected = $false
+    try { Assert-BytesEqual -Expected $expected -Actual $mutated -Message 'deliberate mutation must fail' } catch { $rejected = $true }
+    Assert $rejected 'audit preservation assertion accepted a deliberately mutated fixture'
+}
+
+foreach ($twin in @('ps1', 'sh')) {
+    if ($twin -eq 'sh' -and -not $bash) { Skip "dirty-tree safety ($twin)" 'no bash on this host'; continue }
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) { Skip "dirty-tree safety ($twin)" 'git is unavailable'; continue }
+    It "dirty Git update refuses before mutation and explicit override is observable ($twin)" {
+        $t = Join-Path ([IO.Path]::GetTempPath()) ('no-loss-dirty-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude') | Out-Null
+        Set-Content -LiteralPath (Join-Path $t '.claude/framework-version.json') -Value '{"version":"0.72.0"}' -Encoding utf8
+        Set-Content -LiteralPath (Join-Path $t '.claude/ai-audit.log') -Value 'DIRTY AUDIT SENTINEL' -Encoding utf8
+        try {
+            & git -C $t init -q
+            & git -C $t config user.email 'tests@example.invalid'
+            & git -C $t config user.name 'installer tests'
+            Set-Content -LiteralPath (Join-Path $t 'tracked.txt') -Value 'clean' -Encoding utf8
+            & git -C $t add .
+            & git -C $t commit -qm initial
+            Set-Content -LiteralPath (Join-Path $t 'tracked.txt') -Value 'dirty' -Encoding utf8
+            $before = Get-Content -LiteralPath (Join-Path $t 'tracked.txt') -Raw
+            $out = Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t
+            Assert ($LASTEXITCODE -ne 0) "dirty Git target was mutated without refusal. Output:`n$out"
+            Assert ($out -match 'commit, stash, or copy') "dirty-tree refusal omitted recovery action. Output:`n$out"
+            Assert ((Get-Content -LiteralPath (Join-Path $t 'tracked.txt') -Raw) -eq $before) 'dirty-tree preflight mutated the target before refusing'
+            $override = Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t -AllowDirtyTree
+            Assert ($LASTEXITCODE -eq 0) "explicit dirty-tree override failed (exit $LASTEXITCODE): $override"
+            Assert ($override -match 'override: .*allow-dirty-tree') "dirty-tree override was not named on stdout. Output:`n$override"
+        } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+    }
+}
+
+foreach ($twin in @('ps1', 'sh')) {
+    if ($twin -eq 'sh' -and -not $bash) { Skip "brownfield dirty-tree safety ($twin)" 'no bash on this host'; continue }
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) { Skip "brownfield dirty-tree safety ($twin)" 'git is unavailable'; continue }
+    It "dirty Git brownfield refuses before mutation and explicit override is observable ($twin)" {
+        $t = Join-Path ([IO.Path]::GetTempPath()) ('no-loss-brown-dirty-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Force -Path $t | Out-Null
+        try {
+            & git -C $t init -q
+            & git -C $t config user.email 'tests@example.invalid'
+            & git -C $t config user.name 'installer tests'
+            Set-Content -LiteralPath (Join-Path $t 'tracked.txt') -Value 'clean' -Encoding utf8
+            & git -C $t add .
+            & git -C $t commit -qm initial
+            Set-Content -LiteralPath (Join-Path $t 'TECH_DEBT.md') -Value 'DIRTY BROWNFIELD SENTINEL' -Encoding utf8
+            $before = Get-Content -LiteralPath (Join-Path $t 'TECH_DEBT.md') -Raw
+            $out = Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t
+            Assert ($LASTEXITCODE -ne 0) "dirty Git brownfield target was mutated without refusal. Output:`n$out"
+            Assert ($out -match 'commit, stash, or copy') "brownfield dirty-tree refusal omitted recovery action. Output:`n$out"
+            Assert ((Get-Content -LiteralPath (Join-Path $t 'TECH_DEBT.md') -Raw) -eq $before) 'brownfield dirty-tree preflight mutated the target before refusing'
+            $override = Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t -AllowDirtyTree
+            Assert ($LASTEXITCODE -eq 0) "explicit brownfield dirty-tree override failed (exit $LASTEXITCODE): $override"
+            Assert ($override -match 'override: .*allow-dirty-tree') "brownfield dirty-tree override was not named on stdout. Output:`n$override"
+            Assert (Test-Path -LiteralPath (Join-Path $t 'docs/pre-adoption/TECH_DEBT.md') -PathType Leaf) 'explicit brownfield override did not complete the collision archive'
         } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
     }
 }

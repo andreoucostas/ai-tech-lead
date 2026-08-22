@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Install the AI Tech Lead Framework into a target repository.
-# Usage: bash scripts/install.sh [--git-hooks] /path/to/target-repo
+# Usage: bash scripts/install.sh [--git-hooks] [--allow-dirty-tree] /path/to/target-repo
 #
 # Copies the template's framework files into the target, EXCLUDING the .git directory, the
 # .template-repo marker (which would disable the consumer's CI guardrail), the template repo's own
@@ -18,20 +18,42 @@
 set -euo pipefail
 
 git_hooks=0
-if [ "${1:-}" = "--git-hooks" ]; then git_hooks=1; shift; fi
+allow_dirty_tree=0
+while [ "${1:-}" = "--git-hooks" ] || [ "${1:-}" = "--allow-dirty-tree" ]; do
+  if [ "$1" = "--git-hooks" ]; then git_hooks=1; else allow_dirty_tree=1; fi
+  shift
+done
 target="${1:-}"
-if [ -z "$target" ]; then echo "Usage: bash scripts/install.sh [--git-hooks] /path/to/target-repo"; exit 2; fi
+if [ -z "$target" ]; then echo "Usage: bash scripts/install.sh [--git-hooks] [--allow-dirty-tree] /path/to/target-repo"; exit 2; fi
 [ -d "$target" ] || { echo "Target '$target' is not a directory."; exit 2; }
 
 src="$(cd "$(dirname "$0")/.." && pwd)"
 tgt="$(cd "$target" && pwd)"
 if [ "$tgt" = "$src" ]; then echo "Target is the template repo itself — choose a different target."; exit 2; fi
+
+# A brownfield archive must stay inside the target. Check every existing source/destination
+# ancestor: a symlink/junction below the target root otherwise redirects mv outside the repo.
+find_reparse_ancestor() {
+  probe="$1"
+  while :; do
+    if [ -L "$probe" ]; then printf '%s' "$probe"; return 0; fi
+    [ "$probe" = "$tgt" ] && return 1
+    parent="$(dirname "$probe")"
+    [ "$parent" = "$probe" ] && return 1
+    probe="$parent"
+  done
+}
 if [ "$git_hooks" -eq 1 ]; then bash "$src/scripts/setup-git-hooks.sh" --target "$tgt" --check-only; fi
 
 # Consumer files the copy below would otherwise clobber. Brownfield: archived so /adopt can merge
 # them. Update: snapshotted and restored — after bootstrap/adopt the consumer owns their content.
 protected="CLAUDE.md AGENTS.md TECH_DEBT.md SECURITY_FINDINGS.md LEARNINGS.md FRAMEWORK-CONTEXT.md .github/copilot-instructions.md docs/ARCHITECTURE.md"
-brownfield_collisions="$protected .github/instructions/framework-rules.instructions.md"
+# Persistent state is copy-if-absent. The composer verifies this policy against the PowerShell
+# twin and records it as consumer-owned/protected in framework-ownership.json.
+persistent_copy_if_absent=".claude/ai-audit.log"
+# These paths are copied only when absent and so are not brownfield bulk-copy collisions. The
+# audit entry remains the separately composer-verified persistent policy above.
+copy_if_absent="$persistent_copy_if_absent docs/wiki/INDEX.md"
 
 # Signals that the target already has AI tooling and therefore needs /adopt, not /bootstrap
 # (mirrors /adopt Phase 1 discovery).
@@ -49,6 +71,13 @@ if [ "$update_mode" -eq 0 ]; then
 fi
 adopt_mode=0
 if [ "$update_mode" -eq 0 ] && [ -n "$detected" ]; then adopt_mode=1; fi
+
+# Read the incoming manifest before planning brownfield archive operations. Its file paths, not a
+# hand-maintained allowlist, are the complete collision inventory for the incoming release.
+incoming_manifest="$src/framework-ownership.json"
+[ -f "$incoming_manifest" ] || { echo "ERROR: Cannot read incoming framework ownership manifest '$incoming_manifest'." >&2; exit 3; }
+incoming_paths=$(sed -n 's/^[[:space:]]*{ "path": "\([^"]*\)", "ownership": "[^"]*" }[,]\{0,1\}[[:space:]]*$/\1/p' "$incoming_manifest")
+[ -n "$incoming_paths" ] || { echo "ERROR: Incoming framework ownership manifest '$incoming_manifest' contains no paths." >&2; exit 3; }
 
 # These legal files are neither protected nor ordinary framework files. Protection would freeze a
 # stale framework-owned notice; bulk copying would silently clobber consumer files. Preflight their
@@ -74,6 +103,22 @@ if [ -f "$tgt/$legal_notice" ] && ! grep -Fq 'FRAMEWORK-OWNED' "$tgt/$legal_noti
   exit 3
 fi
 
+# Git is optional, but a brownfield/update target that is a Git worktree must be clean before the
+# installer mutates it. The escape hatch is deliberately explicit and visible on stdout.
+if { [ "$adopt_mode" -eq 1 ] || [ "$update_mode" -eq 1 ]; } && command -v git >/dev/null 2>&1 && git -C "$tgt" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  if ! dirty=$(git -C "$tgt" status --porcelain=v1 --untracked-files=all); then
+    echo 'CANT-VERIFY: Git identified this target as a worktree, but its status could not be read. Commit, stash, or copy local changes, then repair Git and re-run the installer.' >&2
+    exit 4
+  fi
+  if [ -n "$dirty" ]; then
+    if [ "$allow_dirty_tree" -ne 1 ]; then
+      echo 'ERROR: Refusing to mutate a dirty Git target. Commit, stash, or copy local changes, then re-run; use --allow-dirty-tree only after doing so deliberately.' >&2
+      exit 4
+    fi
+    echo '  override: --allow-dirty-tree accepted for this dirty Git target.'
+  fi
+fi
+
 echo "Installing AI Tech Lead Framework"
 echo "  from: $src"
 echo "  into: $tgt"
@@ -89,16 +134,48 @@ fi
 
 archived=""
 if [ "$adopt_mode" -eq 1 ]; then
-  # Move originals out of the copy's way so /adopt can merge them later — without this they
-  # would be overwritten by the template versions and lost from the working tree.
-  for f in $brownfield_collisions; do
-    if [ -f "$tgt/$f" ]; then
-      rel="docs/pre-adoption/${f#.}"
-      mkdir -p "$(dirname "$tgt/$rel")"
-      mv -f "$tgt/$f" "$tgt/$rel"
-      archived="$archived $rel"
-      echo "  archived: $f -> $rel"
+  archive_files=""
+  archive_relatives=""
+  # Complete preflight: validate every original, destination, and parent before moving anything.
+  for f in $incoming_paths; do
+    case " $copy_if_absent $legal_license $legal_notice " in *" $f "*) continue;; esac
+    if source_reparse=$(find_reparse_ancestor "$tgt/$f"); then
+      echo "ERROR: Refusing brownfield collision '$f': source path traverses reparse/symlink '$source_reparse'. Remove the link or copy the original into the repository, then re-run." >&2
+      exit 3
     fi
+    [ ! -e "$tgt/$f" ] && continue
+    if [ ! -f "$tgt/$f" ]; then
+      echo "ERROR: Refusing brownfield collision '$f': the target path is not a file and cannot be archived safely." >&2
+      exit 3
+    fi
+    rel="docs/pre-adoption/$f"
+    if destination_reparse=$(find_reparse_ancestor "$tgt/$rel"); then
+      echo "ERROR: Refusing brownfield install: archive destination traverses reparse/symlink '$destination_reparse'. Remove the link, then re-run." >&2
+      exit 3
+    fi
+    case " $archive_relatives " in *" $rel "*) echo "ERROR: Refusing brownfield install: archive destination already exists or is ambiguous: '$rel'." >&2; exit 3;; esac
+    if [ -e "$tgt/$rel" ]; then
+      echo "ERROR: Refusing brownfield install: archive destination already exists or is ambiguous: '$rel'." >&2
+      exit 3
+    fi
+    parent=$(dirname "$tgt/$rel")
+    while [ "$parent" != "$tgt" ]; do
+      if [ -e "$parent" ] && [ ! -d "$parent" ]; then
+        echo "ERROR: Refusing brownfield install: archive destination parent is not a directory: '$parent'." >&2
+        exit 3
+      fi
+      parent=$(dirname "$parent")
+    done
+    archive_files="$archive_files $f"
+    archive_relatives="$archive_relatives $rel"
+  done
+  archive_files="${archive_files# }"
+  for f in $archive_files; do
+    rel="docs/pre-adoption/$f"
+    mkdir -p "$(dirname "$tgt/$rel")"
+    mv "$tgt/$f" "$tgt/$rel"
+    archived="$archived $rel"
+    echo "  archived: $f -> $rel"
   done
   archived="${archived# }"
 fi
@@ -131,8 +208,18 @@ for entry in "$src"/*; do
     # Template-repo meta files that must never land in (or overwrite their namesakes in) a consumer repo.
     .git|.template-repo|README.md|CHANGELOG.md|.gitignore|.gitattributes|LICENSES|NOTICE-ai-tech-lead.md) continue ;;
   esac
-  if [ "$name" != docs ]; then cp -r "$entry" "$tgt"/; fi
+  if [ "$name" != docs ] && [ "$name" != .claude ]; then cp -r "$entry" "$tgt"/; fi
 done
+# Preserve .claude/ai-audit.log byte-for-byte when present; all other .claude content remains
+# framework-owned machinery and is refreshed normally.
+if [ -d "$src/.claude" ]; then
+  mkdir -p "$tgt/.claude"
+  for entry in "$src/.claude"/*; do
+    name="$(basename "$entry")"
+    if [ ".claude/$name" = '.claude/ai-audit.log' ] && [ -e "$tgt/.claude/$name" ]; then continue; fi
+    cp -r "$entry" "$tgt/.claude"/
+  done
+fi
 # Copy docs normally except for the consumer-owned wiki index, which is copy-if-absent.
 if [ -d "$src/docs" ]; then
   mkdir -p "$tgt/docs"
@@ -174,7 +261,7 @@ if [ "$update_mode" -eq 1 ] && [ -n "$snapshot" ]; then
   if [ -f "$snapshot/LEARNINGS.md" ]; then { grep -E '^## Disabled framework skill:[[:space:]]*[a-z0-9-]+[[:space:]]*$' "$snapshot/LEARNINGS.md" || true; }|sed -E 's/^## Disabled framework skill:[[:space:]]*//'|while read -r name;do active="$tgt/.claude/skills/$name";inactive="$tgt/.claude/disabled-skills/$name";if [ -d "$active" ];then mkdir -p "$(dirname "$inactive")";rm -rf "$inactive";mv "$active" "$inactive";fi;done;fi
   # Same -e hazard: a bare `[ -d ... ] && cp` is a STATEMENT, so a false test is a non-zero status
   # and aborts. Written as an if, it is a condition and cannot.
-  rm -rf "$tgt/.github/skills";mkdir -p "$tgt/.github/skills";if [ -d "$tgt/.claude/skills" ];then cp -r "$tgt/.claude/skills"/* "$tgt/.github/skills/";fi
+  mkdir -p "$tgt/.github/skills";if [ -d "$tgt/.claude/skills" ];then cp -r "$tgt/.claude/skills"/* "$tgt/.github/skills/";fi
   rm -rf "$snapshot"
   echo "  consumer-owned content files left untouched ($protected)."
 fi

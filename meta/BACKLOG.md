@@ -2911,6 +2911,10 @@ B-112 (instruments that could not produce the result they claimed to test for), 
 that cannot detect what it did not enumerate), B-166 (the same session's cross-platform blind spot,
 also a verification that was real but pointed at the wrong thing).
 
+**B-168 is implemented for v0.73.0 — the installer now derives brownfield collisions from ownership,
+preserves persistent state, refuses unsafe archives/dirty worktrees, and upserts GitHub skills; see
+`meta/BACKLOG-DONE.md`.**
+
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see `meta/BACKLOG-DONE.md`.**
