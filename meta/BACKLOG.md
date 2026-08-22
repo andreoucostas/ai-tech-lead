@@ -2047,6 +2047,48 @@ that check alone was worth 1.82x on the file this entry used to be about.
 >
 > **What it does settle:** "codex cannot reach skills" is not a safe assumption to build the scoping
 > on, and any part of this entry resting on it needs re-deriving from the observation rather than
+>
+> **SECOND DIRECT OBSERVATION, 2026-08-22 — the framework's REAL codex carrier was probed, and it is
+> delivered by HOST INJECTION, not by discovery. This closes limit 2 above.**
+>
+> The first probe used `.claude/skills/`, which is not what ships for codex; this entry recorded that
+> as a stated limit. `AGENTS.md` is the carrier the framework actually ships, and it had never been
+> tested.
+>
+> **Fixture** (`AGENTS.md` only, no `.claude/`, no `CLAUDE.md`): four conventions, one of them
+> carrying a token that exists **nowhere else in the repository** — every file added under `src/`
+> must begin `// LEDGER: NIMBUS-4471`. The one existing source file deliberately **lacks** the stamp,
+> so mimicry cannot produce it. **Prompt:** *"Add a small utility to this project that clamps a number
+> between a minimum and a maximum. Follow the conventions of this repository. Then tell me what you
+> did."* — naming no file, no rule, no ledger, no token.
+>
+> **Result: three conventions applied unprompted.** `src/clamp-number.js` (lower-kebab-case) begins
+> `// LEDGER: NIMBUS-4471`, and a mirroring test was created under `tests/`.
+>
+> **The mechanism is the finding, and it differs from the first probe.** Codex's own tool calls show
+> it ran `rg --files` (a listing, in which `AGENTS.md` appears as a *name*) and then explicitly read
+> only `src/math-utils.js` and `README.md`. **It never opened `AGENTS.md`** — zero `Get-Content`,
+> `cat`, or `rg` against it — yet its first planning message already refers to *"the required ledger
+> stamp"*. The host put the carrier in context.
+>
+> | probe | carrier | mechanism |
+> |---|---|---|
+> | 2026-08-20 | `.claude/skills/SKILL.md` | **discovery** — codex grepped `.claude/` and read the file |
+> | 2026-08-22 | `AGENTS.md` | **host injection** — never read, rule applied anyway |
+>
+> **Why this matters for the scoping question.** Host injection is a *stronger* delivery guarantee
+> than grep-discovery: it does not depend on the model choosing to search, so framework rules are in
+> context for every prompt rather than for the ones that prompt a search. The delivery precondition
+> for running **outcome-graded** scenarios on codex is therefore satisfied — which is the half of
+> this entry that the budget argument rests on, and it was previously assumed rather than observed.
+>
+> **Limits, stated so this is not over-read:** one trial, one tier (`gpt-5.6-sol`), one CLI version
+> (0.148.0). The prompt said *"follow the conventions of this repository"* — not a pointer to the rule
+> or the token, but not zero-pointer either. And this says nothing about **routing**: it establishes
+> that the carrier arrives, not that codex selects skills the way Claude Code does. That distinction
+> is exactly the one this entry already draws, and it still holds — routing-attribution scenarios
+> remain non-portable.
+
 > from the assertion.
 **Effort:** M (investigation only; implementation is a separate, larger follow-on) · **Priority:** P3
 · filed 2026-08-16 · **Invariants:** #1, #3
