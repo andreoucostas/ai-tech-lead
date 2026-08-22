@@ -5,6 +5,18 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.70.0 — Unreleased
+
+**`docs-sync-check` will no longer tell you your documentation has drifted when the real problem is
+your machine.** The check looks inside `AGENTS.md` for a banner and a set of headings. If that search
+could not *run* — a missing tool, a locked file, a machine short of resources — it saw no matches and
+concluded the file had drifted, then told you to run `/generate-copilot` to regenerate a file it had
+never actually read.
+
+Both the PowerShell and Bash versions now tell the difference. A genuinely stale `AGENTS.md` reports
+exactly as before, with the same fix. A search that could not execute reports a host or resource
+problem instead, and says plainly that it is not evidence your documentation has drifted.
+
 ## 0.69.0 — 2026-08-22
 
 **The hook test suite now passes on Windows PowerShell 5.1.** If you ran `tests/hooks/` with

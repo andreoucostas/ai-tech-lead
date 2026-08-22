@@ -11,6 +11,33 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.70.0 — Unreleased
+
+**`docs-sync-check` no longer reports a machine problem as documentation drift, in both twins — and
+the instance was found by tooling rather than by an incident.** B-164 established that maintenance
+rule 7 (*a gate must distinguish "the artifact is wrong" from "I could not examine the artifact"*)
+cannot be a hard gate but does admit a cheap advisory sweep. That sweep — *invokes an external tool,
+exits non-zero, emits no host/resource marker* — flags **2 of 11 shipped scripts**, and both flags
+were genuine. This is the harmful one.
+
+`grep -q "GENERATED FILE" AGENTS.md || missing="banner"` turned an unrunnable `grep` into
+*"AGENTS.md is not a current generated mirror — run `/generate-copilot`"*: a specific, confident,
+actionable instruction to regenerate a file that was never actually inspected.
+
+**The PowerShell twin was not exempt either**, which is the third time in this release series that a
+twin looked safe because it does not shell out. `Select-String -Quiet` returns nothing when it cannot
+**read** a file, which is indistinguishable from "the pattern is absent" — so a locked or unreadable
+`AGENTS.md` would have been reported as drift. `-ErrorAction Stop` separates the two.
+
+Three arms, both twins agreeing: a clean tree reports the mirror OK; a genuinely stripped banner still
+reports drift with the same `/generate-copilot` fix; and a `grep` that cannot execute reports a host
+condition and says explicitly that it is **not** evidence of drift.
+
+The other flag, `install.sh:72`, carries the same conflation but **fails safe** — a broken `grep`
+makes the installer refuse to overwrite rather than overwrite wrongly. Left as it is, deliberately,
+and recorded in B-164: it is the class without the harm, and a gate that refused it would be refusing
+correct code.
+
 ## 0.69.0 — 2026-08-22
 
 **B-130: the shipped hook suite passes under Windows PowerShell 5.1 — 41 passed / 41 failed becomes
