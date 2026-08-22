@@ -1701,8 +1701,59 @@ pass on the materially redesigned plan before calling it locked. If Opus is rate
 mark `WAITING — OPUS LIMIT`; do not substitute a lower tier or this existing review and call the
 gate satisfied.
 
-**Status: AWAITING OPUS REVIEW.** The evidence-first design is captured but not locked, and
-authorises neither Phase 0 execution nor shipped changes until the required Claude Opus review.
+**Status: OPUS REVIEW DONE 2026-08-22 — REQUEST CHANGES.** Phase 0 execution and shipped changes remain unauthorised; the findings are below.
+
+> **CLAUDE OPUS REVIEW — 2026-08-22. Verdict: REQUEST CHANGES.** The defect is real and the
+> fresh-context review already removed the worst of the first design. Three findings: one blocking,
+> one that shrinks the deliverable to roughly a sentence, and one on durability.
+>
+> **1. BLOCKING — the smallest candidate implementation is unbudgeted, exactly like B-136's.**
+> Step 1 says "strengthen the existing compact `Codebase Context`" with purpose, actors, critical
+> journeys, domain vocabulary, intended outcomes, constraints/non-goals, sources, authority/owner and
+> open questions — then step 2 adds six per-claim dimensions (Basis, Status, Source, Authority, Scope,
+> review date). That template text lives in the shipped `CLAUDE.md`, which is **counted in
+> `static.claude`** (`scripts/context-footprint.ps1:245`). Measured 2026-08-22: **83 characters** of
+> monorepo headroom, 499 on dotnet, against a hard failure since B-110. Nine fields plus a
+> six-dimension claim schema is hundreds of characters. **This cannot ship as written**, and the
+> plan never checks. Fourth entry routing through B-158(b) — fifth counting B-136.
+>
+> **2. PROPORTIONALITY — the concrete defect is one instruction, and the fix is close to one
+> sentence. The schema is not proportionate to it.** The entry names the harm precisely: all three
+> `/bootstrap` variants tell the model to replace `Codebase Context` with *"real findings from this
+> codebase"*, so routes, DTOs, forms and test names become unmarked claims about users and intent.
+> The minimal correction is to that instruction — **code establishes an implemented surface, never
+> why it exists, who should use it, or whether it creates value; label code-derived claims as
+> implementation observations and leave product intent explicitly unknown rather than inferred.**
+> That removes the false-authority defect. A six-dimension provenance schema is a *different, larger*
+> project whose value over the labelled-unknown version is unmeasured. **Recommend shipping the
+> instruction correction first and re-testing before designing the schema.**
+>
+> **3. DURABILITY — an unenforced structured schema decays into something worse than prose.** Six
+> dimensions per claim, in a consumer-owned file, with no check, will be filled once at bootstrap and
+> then rot — and a stale `Status: supported` with a two-year-old review date is *more* authoritative
+> to a reader than the unmarked prose it replaced. This repo has the evidence: `docs/wiki/` carries
+> frontmatter **and a machine check** (`wiki-check`), and B-83's filed-against stamps only became
+> reliable when made blocking. **If the schema ships at all, it needs an enforcing check or an
+> explicit statement that it is advisory and will rot** — WSD-047's rule applied to a record format
+> rather than a guard.
+>
+> **4. Sound, and worth keeping as-is:** the pre-registered stop rules — including *"close with no
+> shipped change if the unchanged framework already avoids unsupported intent claims"* — are the right
+> shape and are what stop this becoming a capability build in search of a defect. The
+> value/usability/feasibility/viability separation and the refusal to treat an AI persona as product
+> authority are both correct. The privacy boundary is correct and should be **strengthened one step**:
+> `CLAUDE.md` is version-controlled and shared, so the default should be *references to controlled
+> systems*, not minimized summaries of sensitive material — a summary in git is permanent.
+>
+> **5. On Phase 0 authorisation:** clearing this review gate does **not** make Phase 0 runnable. Ten
+> scenario classes at three runs per host is live-eval spend, and five entries are already behind that
+> budget. Authorise the design, but record that execution waits on the same decision as B-49, B-97,
+> B-129 and B-133 — and note that B-112 found **four instruments broken in their first version**, so
+> the graders here need red-testing against planted transcripts before any result is banked.
+>
+> **Disposition:** not authorised as written. Budget the template text against a named displacement
+> or B-158(b); ship the `/bootstrap` instruction correction first and measure before building the
+> schema; and if the schema ships, decide honestly whether it is enforced or advisory.
 
 **B-130 is PARTIALLY DONE (2026-08-18) — the framework-doctor instance is FIXED and shipped;
 the original `ScriptTwinParity` docs-sync-check 5.1 divergence is STILL OPEN. See below.**
