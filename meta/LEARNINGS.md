@@ -1225,3 +1225,15 @@ well as adoption/impact prompts, while deliberately leaving historical changelog
 claim-correction sweep out of scope. For direct tombstone invocation, stable output and a non-zero
 exit prove only the contract; a controlled working-directory fingerprint plus `git worktree list`
 before/after now also proves the tested call made no observable file-tree or worktree change.
+
+## 2026-08-22 — Local release breadth is not CI breadth
+
+The same full hook suite has a different cost model on a maintainer workstation and on CI. CI gives
+each dist/host leg its own runner, so dotnet/angular/monorepo coverage on Windows and Linux is genuine
+breadth. A local release put three complete suites, their child processes, and an outer-parallel meta
+suite on one host; the result was contention, not a stronger proof. A sequential representative was
+also not a useful compromise: it passed all 20 files with 0 failures but took 924.1s, making
+dist-gates 1004.0s. Preserve every assertion, leave all shipped-hook coverage to the all-dist/all-host
+CI matrix before tag, and keep the full root meta suite locally because it protects authoring and
+release mechanics before push. Do not call any final speedup until a measured release transcript
+proves one.

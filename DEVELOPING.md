@@ -398,10 +398,13 @@ stamp drift twice:
 3. Run `pwsh -NoProfile -File .claude/scripts/release.ps1 -Version <v> -Summary "<one line>"
    -ReviewEvidence "reviewer <who>; re-ran <command>; EXIT=<code>; implementer <who>"`.
    It stamps `src/core/CLAUDE.md` + the three `framework-version.json` files, rebuilds all three
-   dists, runs every gate (freshness, validate-dist ×3, hook suites ×3, meta suite), **refuses to
-   commit on any failure**, appends the review row to `meta/review-ledger.md`, then commits to
-   `master`, pushes, **waits for CI**, and tags. Local gates take ~5–7 min; the CI wait adds
-   ~7–8 min on recent history. `-NoPush` for a dry-ish run.
+    dists, runs local gates (freshness, validate-dist ×3 plus the footprint update, and the full
+    root meta suite on its default throttled runner), **refuses to commit on any failure**, appends
+    the review row to `meta/review-ledger.md`, then commits to `master`, pushes, **waits for CI**,
+    and tags. No shipped dist hook suite runs locally: a normal tag requires CI's full dotnet,
+    angular, and monorepo hook matrices on both Windows and Linux. The rejected sequential
+    representative took 924.1s for 20 green files (dist-gates 1004.0s), so no final speedup is
+    claimed. `-NoPush` for a dry-ish run.
 
    It **refuses to start** without either `-ReviewEvidence` or `-NoIndependentReview`. The latter
    is allowed — sometimes there is no second session — but never silent: it records

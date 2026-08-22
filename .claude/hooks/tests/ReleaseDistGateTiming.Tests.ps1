@@ -1,4 +1,8 @@
 ﻿# Regression test for release.ps1's per-unit gate timing attribution (B-151). Does NOT ship.
+# B-170 also prevents the release runner from quietly reintroducing even one local shipped hook
+# suite after the measured representative sequential attempt was rejected. It proves structure from
+# the real release source, then mutates that source in scratch and re-runs itself so the assertion
+# has a reachable red world.
 #
 # Why this file executes the emission instead of grepping for it. The first version of this test
 # asserted that release.ps1's source *contained* `PSBeginTime`, `PSEndTime` and the literal format
@@ -8,14 +12,18 @@
 # rather than inferred, and a check that never observes an emitted line cannot underwrite that. So
 # each case below extracts the real emitting expressions from the script and runs them.
 #
-# What this still does not cover, stated rather than implied: it does not run the dist-gates stage
-# (that is a ~10-minute release stage), so it proves the emission's shape and arithmetic, not that
-# the stage reaches it. The unattributed-breach scenario the entry describes would show up here as a
-# missing TIMING line for one of the four units.
+# It deliberately does not run the release stage. It proves the emitted shape and the bounded gate
+# topology, while the controlled scratch mutation proves the new topology check can actually fail.
+[CmdletBinding()]
+param([switch]$SkipRedTest)
+
 . (Join-Path $PSScriptRoot '_HookHarness.ps1')
+. (Join-Path $PSScriptRoot '_MutationHelper.ps1')
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $release = Join-Path $repoRoot '.claude/scripts/release.ps1'
 $text = [IO.File]::ReadAllText($release)
+$ci = [IO.File]::ReadAllText((Join-Path $repoRoot '.github/workflows/ci.yml'))
+$metaRunner = [IO.File]::ReadAllText((Join-Path $repoRoot '.claude/hooks/tests/Invoke-HookTests.ps1'))
 
 Reset-Tests
 
@@ -28,19 +36,68 @@ $timingPattern = '^TIMING \S+ \d+\.\d$'
 $start = $text.IndexOf("Measure-Stage 'dist-gates'")
 $end = $text.IndexOf("Measure-Stage 'meta-suite'", $start)
 $stage = if ($start -ge 0 -and $end -gt $start) { $text.Substring($start, $end - $start) } else { '' }
+$metaEnd = $text.IndexOf("Measure-Stage 'eval-selftest'", $end)
+$metaStage = if ($end -ge 0 -and $metaEnd -gt $end) { $text.Substring($end, $metaEnd - $end) } else { '' }
+
+function Get-CiJob([string]$Name) {
+    $job = [regex]::Match($ci, "(?ms)^  $([regex]::Escape($Name)):\r?\n.*?(?=^  [A-Za-z0-9_-]+:|\z)")
+    Assert ($job.Success) "CI job '$Name' is missing"
+    return $job.Value
+}
+
+function Assert-CiHookMatrix([string]$Name) {
+    $job = Get-CiJob $Name
+    Assert ($job -match '(?ms)matrix:\s*\r?\n\s*dist:\s*\[dotnet, angular, monorepo\]') "CI job '$Name' no longer declares the complete dotnet/angular/monorepo matrix"
+    Assert ($job -match 'dist/\$\{\{ matrix\.dist \}\}/tests/hooks/Invoke-HookTests\.ps1') "CI job '$Name' no longer invokes the selected shipped hook suite"
+}
+
+function Assert-CiRootMetaSuite([string]$Name) {
+    $job = Get-CiJob $Name
+    Assert ($job -match '(?m)^\s*run:\s*pwsh -NoProfile -File \.claude/hooks/tests/Invoke-HookTests\.ps1\s*$') "CI job '$Name' no longer invokes the root meta suite"
+}
 
 It 'the dist-gates stage was located for inspection' {
     Assert ($stage -ne '') 'could not extract the dist-gates stage from release.ps1'
 }
 
+It 'local dist-gates validate all three dists but invoke zero shipped hook suites' {
+    Assert ($text -match '(?m)^\$dists\s*=\s*@\(''dotnet'', ''angular'', ''monorepo''\)') 'release.ps1 no longer declares the three required dist names'
+    Assert ($stage -match 'foreach\s*\(\$d\s+in\s+\$dists\)') 'dist-gates no longer iterates every declared dist'
+    $validators = @([regex]::Matches($stage, 'validate-dist\.ps1'))
+    Assert ($validators.Count -eq 1) "expected one validator invocation inside the all-dist loop, found $($validators.Count)"
+    Assert ($stage -match 'validate-dist\.ps1''\) \$dist') 'the validator no longer receives the loop dist'
+
+    $hookInvocations = @([regex]::Matches($stage, 'Invoke-HookTests\.ps1'))
+    Assert ($hookInvocations.Count -eq 0) "expected zero local shipped hook-suite invocations, found $($hookInvocations.Count)"
+    $allShippedHookInvocations = @([regex]::Matches($text, 'dist/[^\s''""\)]+/tests/hooks/Invoke-HookTests\.ps1'))
+    Assert ($allShippedHookInvocations.Count -eq 0) "release.ps1 contains $($allShippedHookInvocations.Count) shipped hook-suite invocation(s) outside dist-gates"
+    Assert ($stage -notmatch 'TIMING \{0\}/hook-suite ') 'dist-gates still attributes a retired local hook-suite run'
+}
+
+It 'the full root meta suite remains on its existing default throttled runner with RESULT and waiver parsing' {
+    Assert ($metaStage -ne '') 'could not extract the meta-suite stage from release.ps1'
+    Assert ($metaStage -match 'Invoke-HookTests\.ps1''\) \*> \$metaLog') 'the root meta suite no longer receives its default invocation'
+    Assert ($metaStage -notmatch "Invoke-HookTests\.ps1'\) -Sequential") 'release.ps1 forces the root meta suite into sequential mode'
+    Assert ($metaRunner -match '\$outerLanes\s*=') 'the root meta runner no longer contains its measured throttled default branch'
+    Assert ($metaStage -match 'Resolve-GateWaiverOutcome') 'the default meta invocation bypassed waiver parsing'
+    Assert ($metaStage.Contains('(?m)^RESULT\s+(\S+)\s+(\d+)\s*$')) 'the default meta invocation no longer parses per-file RESULT lines'
+}
+
+It 'CI retains full root meta execution and Windows/Linux three-dist hook matrices before a normal tag' {
+    Assert-CiHookMatrix 'windows-hooks'
+    Assert-CiHookMatrix 'linux-hooks'
+    Assert-CiRootMetaSuite 'windows'
+    Assert-CiRootMetaSuite 'linux'
+}
+
 It 'every TIMING expression in dist-gates emits a line the RESULT parser cannot swallow' {
     $emitters = @([regex]::Matches($stage, '(?m)^\s*Write-Host \("(TIMING [^"]+)" -f ([^\r\n]+)\)\s*$'))
-    Assert ($emitters.Count -ge 4) "expected at least 4 TIMING emitters (3 dist units + context-footprint), found $($emitters.Count)"
+    Assert ($emitters.Count -ge 3) "expected at least 3 TIMING emitters (dist job, validator, and context-footprint), found $($emitters.Count)"
 
     # Stand-ins for the values the real expressions read, chosen so a formatting bug is visible:
     # a fractional value that must round to one decimal place.
     $d = 'monorepo'
-    $result = [pscustomobject]@{ ValidateSeconds = 234.94; HookSeconds = 322.86 }
+    $result = [pscustomobject]@{ ValidateSeconds = 234.94 }
     $jobSeconds = 557.81
     $footprintSeconds = 12.25
 
@@ -60,8 +117,8 @@ It 'a TIMING value appended to a RESULT line would be swallowed -- the reason fo
     Assert (-not ("RESULT ValidateDist.Tests.ps1 0 234.9" -match $resultPattern)) 'a three-field RESULT line must NOT parse -- if it does, this entire design is unnecessary'
 }
 
-It 'each of the four parallel units in dist-gates is attributed' {
-    foreach ($unit in @('TIMING {0} ', 'TIMING {0}/validate-dist ', 'TIMING {0}/hook-suite ', 'TIMING context-footprint ')) {
+It 'each distinct local dist-gate unit is attributed' {
+    foreach ($unit in @('TIMING {0} ', 'TIMING {0}/validate-dist ', 'TIMING context-footprint ')) {
         Assert ($stage.Contains($unit)) "no TIMING emitter for unit '$unit' -- a breach in it could only be inferred"
     }
 }
@@ -75,4 +132,17 @@ It 'the job wall-clock emitter survives a job whose times were never set' {
     Assert ((("TIMING {0} {1:N1}" -f 'dotnet', $seconds)) -match $timingPattern) 'the null-time fallback does not format as a TIMING line'
 }
 
-exit (Write-TestSummary 'ReleaseDistGateTiming.Tests (B-151 dist-gate attribution)')
+if (-not $SkipRedTest) {
+    It 'one local shipped hook suite makes this suite fail and restores release.ps1 byte-identically' {
+        Invoke-MutationRedTest -TargetFile $release -ScratchSourceRoot $repoRoot `
+            -Find "    Gate (`$footprintExit -eq 0) 'update context-footprint baseline'" `
+            -Replacement "    & pwsh -NoProfile -File (Join-Path `$repo 'dist/monorepo/tests/hooks/Invoke-HookTests.ps1') *> `$footprintLog; Gate (`$footprintExit -eq 0) 'update context-footprint baseline'" -Command {
+                param($scratchTarget, $scratchRoot)
+                $test = Join-Path $scratchRoot '.claude/hooks/tests/ReleaseDistGateTiming.Tests.ps1'
+                $process = Start-Process -FilePath (Get-PsExe) -ArgumentList @('-NoProfile','-File',$test,'-SkipRedTest') -Wait -PassThru -NoNewWindow
+                $global:LASTEXITCODE = $process.ExitCode
+            } | Out-Null
+    }
+}
+
+exit (Write-TestSummary 'ReleaseDistGateTiming.Tests (B-151/B-170 local gate attribution)')

@@ -6762,3 +6762,44 @@ claim, re-ran the suite red, and restored byte-identically. `DocClaims.Tests.ps1
 monorepo. The exposed class is any measurement whose stated control is assembled after a treatment
 has already occurred. A comparator name, matched task set, or stable model cannot repair a missing
 pre-treatment state; timing must be checked before a causal claim is shipped.
+
+---
+
+### B-170 · RCA: the local release runner multiplied independent suites into one saturated host
+
+**DONE 2026-08-22 · planned v0.74.0 · P1 · Invariants #3 #5 #7**
+
+**What happened.** Local `release.ps1` started three dist jobs, and each job ran a full shipped hook
+suite after its validator. It then started the root meta suite in its own outer parallel mode. The
+tests were individually green, but their nested subprocess creation contended on the same maintainer
+host and made release gates pathological.
+
+**Root cause and rejected design.** The local release path copied CI's breadth without CI's separate
+runners. Evidence in `meta/gate-budget.json` already recorded that one dist suite spawned about 234
+fresh processes, that unthrottled meta parallelism took 1,335.7s against a 399s serial run, and that
+scheduling order did not cure contention. A fresh audit found all 20 current hook test files
+byte-identical across the three composed dists, so one sequential monorepo representative was tried.
+It was functionally green (20 files, 0 failures) but took 924.1s; dist-gates took 1004.0s. That is
+evidence to reject the representative local hook run, not a speedup to claim.
+
+**Fix.** Local release keeps `validate-dist` for dotnet, angular, and monorepo plus the footprint
+update in parallel, then runs the full root meta suite with its existing default throttled runner.
+It runs zero shipped dist hook suites locally, and the temporary shipped-runner `-Sequential` support
+was removed. No test or assertion was removed. CI remains unchanged: `windows-hooks` and
+`linux-hooks` each run dotnet, angular, and monorepo, while the `windows` and `linux` jobs run the
+root meta suite; a normal tag waits for that CI evidence. `ReleaseDistGateTiming` scans the actual
+release and CI sources for zero local shipped hooks, the root meta default invocation, both CI
+matrices, and both CI root-meta jobs. Its scratch mutation inserts one local shipped hook call and
+must make the guard red before restoring target bytes.
+
+**Evidence and exposed class.** This is a scheduling correction, not a final performance claim: the
+only new measurement is the rejected 924.1s representative / 1004.0s dist-gates result, and no budget
+increase is recorded. `ReleaseDistGateTiming.Tests.ps1` passed 9/0; its scratch insertion of one
+local monorepo hook call re-ran red at 7/1 and restored `release.ps1` byte-identically.
+`ReleaseCiWatch.Tests.ps1` passed 18/0, `ReleaseGateWaiver.Tests.ps1` passed 11/0, and
+`Composer.Tests.ps1` passed 8/0. Re-composition left the reverted shipped runner, consumer
+changelogs, and all three dists clean; changed PowerShell files parsed with BOMs intact and
+`meta/gate-budget.json` parsed. The next actual release must retain its emitted per-validator,
+footprint, and meta stage timings. The exposed class is a local runner that treats isolated test
+fixtures as CPU-parallel work while each fixture launches more processes; in that shape, adding a
+local representative can still be slower without adding coverage.

@@ -9,7 +9,9 @@
 # "Unreleased" on any of them is stamped with the release date -- B-54: all four are mandatory, not
 # just root) and the working tree contains exactly the release changes.
 #
-# Gates (in order): compose all three dists -> validate-dist ×3 -> hook suites ×3 -> meta suite.
+# Gates (in order): compose all three dists -> validate-dist ×3 + context footprint -> full root
+# meta suite. Shipped hook suites run exclusively in CI: before a normal tag, CI must observe the
+# three-dist hook matrix on both Windows and Linux.
 # fidelity-check is deliberately NOT run here: it is the migration-era gate pinned to the
 # freeze-v0.25.5 tags, and the first release that changes shipped content must consciously
 # retire/re-baseline it (and the CI fidelity legs) in the same change — see WSD-016.
@@ -256,12 +258,13 @@ if ($branch -ne 'master') {
 # timeout mid-gates, which is indistinguishable from a gate failure and leaves a stamped, rebuilt
 # tree that looks like a botched release. Say so before the operator starts waiting.
 # Runtime is dominated by process creation, not CPU: the hook suites spawn a fresh pwsh (~265ms on
-# the maintainer box) or bash (~55ms) per assertion. Measured end to end at v0.43.0: ~6 min total.
-# This banner read "roughly 30 minutes" for a long time and had never been measured -- it was ~4x
-# the truth. If you change the gates, re-measure and update this rather than padding it: an estimate
-# this wrong is what makes a release feel unaffordable and invites skipping it.
-Write-Host "Releasing $Version. Local gates take roughly 5-7 minutes (compose x3 -> validate-dist x3 -> hook suites x3 -> meta suite -> eval self-test)."
-Write-Host "Then the CI watch (B-88) waits for GitHub Actions on the release commit -- historically ~7-8 min, not yet measured end to end on this path."
+# the maintainer box) or bash (~55ms) per assertion. The attempted representative sequential suite
+# was functionally green (20 files, 0 failures) but took 924.1s and made dist-gates 1004.0s, so it
+# is not a useful local gate. Local release keeps its full root meta suite on the existing default
+# throttled runner; CI owns all shipped-hook coverage. Do not infer a new timing from this change:
+# re-measure before changing the budget or this banner.
+Write-Host "Releasing $Version. Local gates: compose x3 -> validate-dist x3 + context footprint -> full root meta suite (default throttled runner) -> eval self-test."
+Write-Host "Before a normal tag, CI must pass the full shipped-hook matrix: dotnet, angular, and monorepo on both Windows and Linux."
 # The interruption promise used to be "nothing has been committed", full stop. After the push that is
 # simply false, and B-88 makes the window longer by adding a multi-minute wait to it. State the three
 # durable states instead; all three are safe to re-run the same command from (step 5 now falls
@@ -482,18 +485,20 @@ if ($fatal) {
     exit 1
 }
 
-# ---- 4. Deterministic gates: validate-dist + hook suite per dist, the context-footprint baseline,
-# then the meta suite.
+# ---- 4. Deterministic gates: validate-dist per dist and the context-footprint baseline, then the
+# full root meta suite.
 #
 # The footprint re-measure (which must run after the version stamps have flowed into dist, and whose
-# baseline lands in the release commit) is independent of the dist gates: it writes
-# meta/context-footprint.json, which no gate reads. It used to run serially ahead of them and cost
-# its full ~39s of wall time; it now rides along with the dist legs.
-#
-# Each dist suite is handed a share of the machine rather than all three assuming they own it. The
-# suites are bound by process creation, not CPU -- every assertion spawns a fresh pwsh or bash -- so
-# three suites at the full default lane count oversubscribe and every lane gets slower.
+# baseline lands in the release commit) is independent of the validators: it writes
+# meta/context-footprint.json, which no gate reads, so it rides alongside the three bounded validator
+# jobs. Shipped hook suites are deliberately absent from this local stage: a measured sequential
+# monorepo attempt was green but cost 924.1s (1004.0s for dist-gates). CI is the all-dist/all-host
+# proof required before tag. The full root meta suite still protects local authoring and release
+# mechanics before push.
 Measure-Stage 'dist-gates' {
+$footprintLog = $null
+$footprintJob = $null
+$distGateJobs = @()
 try {
     $footprintLog = [System.IO.Path]::GetTempFileName()
     $footprintJob = Start-Job -ArgumentList $repo, $footprintLog -ScriptBlock {
@@ -501,33 +506,18 @@ try {
         & pwsh -NoProfile -File (Join-Path $repo 'scripts/context-footprint.ps1') -Update *> $log
         $LASTEXITCODE
     }
-    $lanes = [math]::Max(2, [int]([Environment]::ProcessorCount / $dists.Count))
     $distGateJobs = foreach ($d in $dists) {
         $log = [System.IO.Path]::GetTempFileName()
-        $job = Start-Job -ArgumentList $repo, $d, $log, $lanes -ScriptBlock {
-            param($repo, $dist, $log, $lanes)
-            $env:HOOKTESTS_THROTTLE = "$lanes"
-            # Per-file attribution for the dist suites (B-138). They are ~97% of this stage's wall
-            # clock and had none: B-151 split the job into validate-dist vs hook-suite, which is how
-            # the 97% was measured, but the shipped runner emitted nothing per file. Opt-in because
-            # that runner ships -- a consumer running their own suite has no ceiling to diagnose.
-            $env:HOOKTESTS_TIMING = '1'
-            # Time the two halves separately (B-151). A single per-dist number cannot answer the only
-            # question a breach actually raises -- validate-dist or the hook suite? -- because this
-            # job runs both, sequentially, and the answer has been guessed wrong before.
+        $job = Start-Job -ArgumentList $repo, $d, $log -ScriptBlock {
+            param($repo, $dist, $log)
             $sw = [System.Diagnostics.Stopwatch]::StartNew()
             & pwsh -NoProfile -File (Join-Path $repo 'scripts/validate-dist.ps1') $dist *> $log
             $validateExit = $LASTEXITCODE
             $validateSeconds = $sw.Elapsed.TotalSeconds
-            $sw.Restart()
-            & pwsh -NoProfile -File (Join-Path $repo "dist/$dist/tests/hooks/Invoke-HookTests.ps1") *>> $log
-            $hookExit = $LASTEXITCODE
             $sw.Stop()
             [pscustomobject]@{
                 ValidateExit    = $validateExit
-                HookExit        = $hookExit
                 ValidateSeconds = $validateSeconds
-                HookSeconds     = $sw.Elapsed.TotalSeconds
             }
         }
         [pscustomobject]@{ Dist = $d; Log = $log; Job = $job }
@@ -538,25 +528,19 @@ try {
         Write-Host -NoNewline ([System.IO.File]::ReadAllText($distGateJob.Log))
         $d = $distGateJob.Dist
         # Keep timing on its own line: RESULT parsing is anchored at both ends (B-151).
-        #
-        # Three numbers, not one. The job wall clock is what the stage budget is spent on, but it
-        # hides which half spent it, so the two inner measurements are reported beside it. They will
-        # not sum to the wall clock -- job scheduling and the `pwsh` spawns sit outside the
-        # stopwatches -- and that gap is itself informative, so do not "fix" it by deriving one from
-        # the others.
+        # The job wall clock is what the stage budget spends, while the inner measurement isolates
+        # the validator. They will not be equal: job scheduling and pwsh startup sit outside the
+        # stopwatch, and that gap is evidence rather than arithmetic to hide.
         $jobSeconds = if ($distGateJob.Job.PSEndTime -and $distGateJob.Job.PSBeginTime) {
             ($distGateJob.Job.PSEndTime - $distGateJob.Job.PSBeginTime).TotalSeconds
         } else { 0 }
         Write-Host ("TIMING {0} {1:N1}" -f $d, $jobSeconds)
         Write-Host ("TIMING {0}/validate-dist {1:N1}" -f $d, [double]$result.ValidateSeconds)
-        Write-Host ("TIMING {0}/hook-suite {1:N1}" -f $d, [double]$result.HookSeconds)
         Gate ($result.ValidateExit -eq 0) "validate-dist $d"
-        Gate ($result.HookExit -eq 0) "dist/$d hook test suite"
     }
     $footprintJob | Wait-Job | Out-Null
     $footprintExit = Receive-Job $footprintJob
     Write-Host -NoNewline ([System.IO.File]::ReadAllText($footprintLog))
-    # The fourth parallel unit in this stage, and the only one that was still unattributed (B-151).
     $footprintSeconds = if ($footprintJob.PSEndTime -and $footprintJob.PSBeginTime) {
         ($footprintJob.PSEndTime - $footprintJob.PSBeginTime).TotalSeconds
     } else { 0 }
@@ -575,6 +559,8 @@ $waiversApplied = @()
 Measure-Stage 'meta-suite' {
 $metaLog = [System.IO.Path]::GetTempFileName()
 try {
+    # The full local meta suite protects authoring/release mechanics before push. Its existing
+    # default throttled runner is retained; RESULT lines and waiver parsing are unchanged.
     & pwsh -NoProfile -File (Join-Path $repo '.claude/hooks/tests/Invoke-HookTests.ps1') *> $metaLog
     $metaExit = $LASTEXITCODE
     $metaText = [System.IO.File]::ReadAllText($metaLog)
@@ -775,9 +761,9 @@ if (-not $nothingToCommit) {
     # in the commit body with its owning item, so `git log` alone answers what this release did and
     # did not prove.
     $gateNote = if ($waiversApplied.Count -gt 0) {
-        "Released via .claude/scripts/release.ps1 — deterministic gates green (compose ×3, validate-dist ×3, hook suites ×3, meta suite) EXCEPT these recorded waivers: $($waiversApplied -join '; ')."
+        "Released via .claude/scripts/release.ps1 — local deterministic gates green (compose ×3, validate-dist ×3 + context footprint, full root meta suite) EXCEPT these recorded waivers: $($waiversApplied -join '; '). No shipped dist hook suite runs locally; normal tagging waits for CI's Windows/Linux three-dist hook matrices."
     } else {
-        'Released via .claude/scripts/release.ps1 — all deterministic gates green (compose ×3, validate-dist ×3, hook suites ×3, meta suite).'
+        'Released via .claude/scripts/release.ps1 — all local deterministic gates green (compose ×3, validate-dist ×3 + context footprint, full root meta suite). No shipped dist hook suite runs locally; normal tagging waits for CI''s Windows/Linux three-dist hook matrices.'
     }
     git -C $repo commit -m "v${Version}: $Summary" -m $gateNote
     if ($LASTEXITCODE -ne 0) { Write-Host 'Commit FAILED.'; exit 1 }
@@ -867,13 +853,18 @@ if ($existingSha) {
         exit 1
     }
 } else {
-    # The annotation carries the CI verdict (B-88). A tag now MEANS "CI observed green", so the one
-    # case where it does not -- an operator waiver, or a -NoPush local tag -- has to say so on the
-    # artifact itself, not only in a terminal that scrolls away.
+    # The annotation carries the CI verdict (B-88). A normal tag means CI observed green, including
+    # its complete Windows/Linux × three-dist hook matrices. The two exception paths -- an operator
+    # waiver or a -NoPush local tag -- must say that those matrices were not verified on the artifact.
     # A gate waiver changes what the tag means just as much as an unverified-CI waiver does, so it
     # rides on the same annotation rather than living only in a terminal that scrolls away.
     $tagWaiverNote = if ($waiversApplied.Count -gt 0) { " — gate waivers: $($waiversApplied -join '; ')" } else { '' }
-    git -C $repo tag -a $tagName -m "ai-tech-lead $tagName$($ciDecision.TagNote)$tagWaiverNote" $releaseSha
+    $ciMatrixNote = if ($ciDecision.Status -eq 'GREEN') {
+        ' — CI verified root meta suites plus shipped hook suites for dotnet, angular, and monorepo on Windows and Linux before tag'
+    } else {
+        ' — CI full hook matrix not verified (see CI waiver/status)'
+    }
+    git -C $repo tag -a $tagName -m "ai-tech-lead $tagName$($ciDecision.TagNote)$ciMatrixNote$tagWaiverNote" $releaseSha
     if ($LASTEXITCODE -ne 0) { Write-Host "Tag FAILED: could not create $tagName."; exit 1 }
     Write-Host "Tagged $tagName at $($releaseSha.Substring(0,7))."
 }

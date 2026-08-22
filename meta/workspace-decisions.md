@@ -2168,3 +2168,27 @@ not a permanent rolling archive. WSD-020/021/033 still reject a SQL distribution
 wholesale policy profiles, forced host parity, and arbitrary installed-file targets remain
 unauthorised until B-42/B-49/B-158..160 produce the evidence they require. WSD-029's release flow is
 not changed by the recovery plan; a candidate-ref alternative is a later measured experiment.
+
+---
+
+## WSD-049: CI exclusively proves shipped-hook coverage; local release keeps root meta (2026-08-22)
+
+**Context.** The former local release runner validated every dist and then ran all three complete
+shipped hook suites concurrently on the same maintainer host, while the root meta runner also used
+outer parallelism. The recorded bound is child-process creation rather than CPU. CI has the opposite
+shape: `windows-hooks` and `linux-hooks` each use a three-dist matrix on separate runners, and the
+release CI watch requires every resulting job before a normal tag.
+
+**Decision.** Local release continues to validate dotnet, angular, and monorepo and to update the
+context footprint, then runs the full root meta suite with its existing default throttled runner. It
+runs zero shipped dist hook suites locally. CI retains both three-dist hook matrices, and `windows`
+and `linux` retain the root meta invocation; a normal tag means those CI jobs were observed green.
+The attempted sequential monorepo representative was functionally green (20 files, 0 failures) but
+took 924.1s and made dist-gates 1004.0s, so it is rejected rather than treated as a local sample.
+This deletes no assertion and does not revise any time ceiling or claim a final speedup.
+
+**Rejected.** Running all three local suites with more lanes (already measured to increase
+contention); retaining the sequential representative despite its 924.1s measurement; deleting any
+test or assertion (would confuse local scheduling with coverage removal); weakening the CI matrices
+(would remove the only all-host proof); and raising the budget before a measured improvement (would
+turn an unknown outcome into an unbounded allowance).

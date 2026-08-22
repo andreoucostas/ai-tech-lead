@@ -25,6 +25,15 @@ compatibility paths remain installed until the planned ownership-reconciliation 
 Focused composed-dist coverage exercises hostile direct invocation, the no-execution scan, stale
 adoption claims, and a reachable tombstone mutation.
 
+**Release-gate recovery keeps shipped-hook coverage exclusively in CI.** Local release runs
+`validate-dist` for all three distributions plus the footprint update, then the full root meta suite
+on its existing default throttled runner; it runs no shipped dist hook suite. The attempted sequential
+monorepo representative was functionally green (20 files, 0 failures) but took 924.1s, making
+dist-gates 1004.0s, so it was rejected rather than called an improvement. A normal tag still waits
+for CI's complete dotnet/angular/monorepo hook matrices on both Windows and Linux, while the root meta
+suite continues to guard local authoring and release mechanics before push. No assertion or CI matrix
+was removed, and no final speedup is claimed.
+
 ## 0.73.0 — 2026-08-22
 
 **Recovery increment 1 closes the known installer data-loss paths.** Brownfield installation now
