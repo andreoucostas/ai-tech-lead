@@ -26,6 +26,7 @@ phrase inside the cited entry.
 - “Scoped test-file instructions buy locality, not coverage — B-17 is rejected.” — `meta/workspace-decisions.md WSD-045`
 - “Guard regex errors split by confidence; content case is exact and routing folds.” — `meta/workspace-decisions.md WSD-046`
 - “Bypasses are answered by kind — harden, advise, or document — never uniformly.” — `meta/workspace-decisions.md WSD-047`
+- “Recover consumer state and evidence integrity before structural redesign.” — `meta/workspace-decisions.md WSD-048`
 - “do not add a third CI leg” — `meta/BACKLOG-DONE.md B-70`
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`

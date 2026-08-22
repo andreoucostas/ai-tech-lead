@@ -2137,3 +2137,34 @@ rather than assumed: the multi-line bypass was recorded as a uniform gap and tur
 `guard.sh` only, because .NET negated character classes span newlines while `grep` is line-oriented.
 Had it been "hardened" in both twins as filed, the more sensitive one would have been changed for
 nothing.
+
+---
+
+## WSD-048: recover consumer state and evidence integrity before structural redesign (2026-08-22)
+
+**Context.** An end-to-end forensic review and an independent fresh-context adversarial pass found
+that brownfield install can replace pre-existing settings/hooks before `/adopt` sees them; update
+overwrites `.claude/ai-audit.log`; installer sync deletes unknown `.github/skills`; the mandatory
+adoption report presents a post-install tag as an old-framework A/B arm; enforcement/compliance
+summaries exceed the honest surface matrix; and warehouse-only fallback enters a lifecycle that
+still requires .NET solution artifacts. The same critique rejected file count alone as evidence for
+a modular rewrite and corrected several overstatements about review and host evidence.
+
+**Decision.** Recovery is sequenced and targeted. Pause feature releases until consumer-state
+preservation, invalid-impact retirement, and claim correction ship. Treat `ai-audit.log` as
+persistent consumer state; archive every manifest-known brownfield collision before replacement;
+preserve unknown GitHub skills; then add path-validated reconciliation that intersects prior
+ownership evidence with an incoming, cumulative framework-authored retirement ledger (append-only
+until a machine-enforced supported-source-version horizon exists), downgrade refusal, a
+mutation-free dry run, and only evidence-backed rollback claims. Remove Tier 2 from the adoption
+deliverable rather than repairing its already-contaminated baseline in place: ship inert non-zero
+runner tombstones first, then retire them through the trusted reconciliation path. Temporarily
+refuse automatic warehouse-only routing in the pre-thaw corrective release, until the existing
+dotnet/monorepo lifecycle is genuinely solution-free. Full implementation sequence and red/green worlds:
+`.claude/plans/2026-08-22-framework-recovery-implementation-plan.md`.
+
+**Boundaries.** WSD-043's settings backup/update contract remains; an ephemeral failure journal is
+not a permanent rolling archive. WSD-020/021/033 still reject a SQL distribution. Optional packs,
+wholesale policy profiles, forced host parity, and arbitrary installed-file targets remain
+unauthorised until B-42/B-49/B-158..160 produce the evidence they require. WSD-029's release flow is
+not changed by the recovery plan; a candidate-ref alternative is a later measured experiment.
