@@ -103,21 +103,27 @@ function Invoke-Hook {
 # Run a script with zero or more arguments. Returns $null for a .sh when bash is unavailable.
 function RunArg {
     param([Parameter(Mandatory)][string]$Path, [string[]]$Arguments = @())
+    # Deliberately NOT Invoke-RawProcess. That exists for Invoke-Hook, where 5.1's ErrorRecord
+    # rendering corrupted a byte-for-byte TWIN COMPARISON. RunArg's callers assert on exit codes and
+    # on stdout text, never on stderr equality, so they never needed it -- and routing them through
+    # it regressed CI on linux/monorepo with "[FAIL] missing context skips -- Broken pipe":
+    # Start-Process redirecting stdin for a child that never reads it raises EPIPE there, a platform
+    # difference invisible on Windows where both hosts were verified. Narrow the fix to what needed
+    # fixing.
+    $ef = [IO.Path]::GetTempFileName()
+    # PowerShell decodes a native child's stdout bytes using [Console]::OutputEncoding. On a non-UTF-8
+    # console code page the child's UTF-8 output arrives mangled and -match silently misses.
     $prevOut = [Console]::OutputEncoding; $encChanged = $false
     try {
         try { [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false); $encChanged = $true } catch { }
-        if ($Path -match '\.ps1$') {
-            return Invoke-RawProcess -FileName (Get-PsExe) `
-                -Arguments (@('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $Path) + $Arguments)
-        }
-        $bash = Get-BashPath
-        if (-not $bash) { return $null }
-        return Invoke-RawProcess -FileName $bash -Arguments (@($Path) + $Arguments)
+        if ($Path -match '\.ps1$') { $out = & (Get-PsExe) -NoProfile -ExecutionPolicy Bypass -File $Path @Arguments 2>$ef }
+        else { $bash = Get-BashPath; if (-not $bash) { return $null }; $out = & $bash $Path @Arguments 2>$ef }
+        return [pscustomobject]@{ Exit=$LASTEXITCODE; Out=($out -join "`n"); Err=[IO.File]::ReadAllText($ef) }
     } finally {
         if ($encChanged) { try { [Console]::OutputEncoding = $prevOut } catch { } }
+        if (Test-Path -LiteralPath $ef) { [IO.File]::Delete($ef) }
     }
 }
-
 # Normalise a hook result to a decision: BLOCK (Claude exit 2), DENY (Copilot JSON), ALLOW (exit 0,
 # no deny), SKIP (no bash), or EXITn for anything unexpected.
 function Get-Decision {
