@@ -61,12 +61,20 @@ if (Test-Path "CLAUDE.md") {
 if (-not (Test-Path "AGENTS.md")) {
     Fail "AGENTS.md is missing — run /generate-copilot."
 } else {
+    # Maintenance rule 7, and the twin is NOT exempt just because it does not shell out. A
+    # Select-String that cannot READ the file returns nothing under -Quiet, which is indistinguishable
+    # from "the pattern is absent" -- so a locked or unreadable AGENTS.md would be reported as drift
+    # and send someone to regenerate a file nothing ever inspected. -ErrorAction Stop separates them.
     $missing = @()
-    if (-not (Select-String -Path "AGENTS.md" -Pattern "GENERATED FILE" -Quiet)) { $missing += "banner" }
-    foreach ($h in @("## Verification Rules","## Leanness","## Boy Scout Rule","## Agentic Workflow")) {
-        if (-not (Select-String -Path "AGENTS.md" -SimpleMatch -Pattern $h -Quiet)) { $missing += $h }
-    }
-    if ($missing.Count -gt 0) { Fail ("AGENTS.md is not a current generated mirror (missing: " + ($missing -join ', ') + ") — run /generate-copilot.") }
+    $probeFailed = $false
+    try {
+        if (-not (Select-String -Path "AGENTS.md" -Pattern "GENERATED FILE" -Quiet -ErrorAction Stop)) { $missing += "banner" }
+        foreach ($h in @("## Verification Rules","## Leanness","## Boy Scout Rule","## Agentic Workflow")) {
+            if (-not (Select-String -Path "AGENTS.md" -SimpleMatch -Pattern $h -Quiet -ErrorAction Stop)) { $missing += $h }
+        }
+    } catch { $probeFailed = $true }
+    if ($probeFailed) { Fail "PowerShell could not inspect AGENTS.md — this is a host/resource problem, so mirror currency cannot be verified. It is not evidence that AGENTS.md has drifted." }
+    elseif ($missing.Count -gt 0) { Fail ("AGENTS.md is not a current generated mirror (missing: " + ($missing -join ', ') + ") — run /generate-copilot.") }
     else { OK "AGENTS.md is a generated mirror of CLAUDE.md's portable rules." }
 }
 

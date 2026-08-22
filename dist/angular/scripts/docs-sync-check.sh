@@ -70,12 +70,21 @@ fi
 if [ ! -f "AGENTS.md" ]; then
   fail "AGENTS.md is missing — run /generate-copilot."
 else
+  # Maintenance rule 7: an unrunnable grep is not evidence that the banner or a heading is absent.
+  # The file exists (checked above), so exit 2+ here means grep itself could not run -- and reporting
+  # that as "AGENTS.md is not a current generated mirror" sends someone to regenerate a file that was
+  # never inspected. 0 found, 1 genuinely absent, anything else a host condition.
   missing=""
-  grep -q "GENERATED FILE" "AGENTS.md" 2>/dev/null || missing="banner"
+  probe_failed=""
+  grep -q "GENERATED FILE" "AGENTS.md" 2>/dev/null
+  case $? in 0) ;; 1) missing="banner";; *) probe_failed=1;; esac
   for h in "## Verification Rules" "## Leanness" "## Boy Scout Rule" "## Agentic Workflow"; do
-    grep -qF "$h" "AGENTS.md" 2>/dev/null || missing="$missing '$h'"
+    grep -qF "$h" "AGENTS.md" 2>/dev/null
+    case $? in 0) ;; 1) missing="$missing '$h'";; *) probe_failed=1;; esac
   done
-  if [ -n "$missing" ]; then
+  if [ -n "$probe_failed" ]; then
+    fail "grep could not inspect AGENTS.md — this is a host/resource problem, so mirror currency cannot be verified. It is not evidence that AGENTS.md has drifted."
+  elif [ -n "$missing" ]; then
     fail "AGENTS.md is not a current generated mirror (missing:$missing) — run /generate-copilot."
   else
     ok "AGENTS.md is a generated mirror of CLAUDE.md's portable rules."
