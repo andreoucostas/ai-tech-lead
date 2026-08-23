@@ -76,7 +76,7 @@ SOLID is **mandatory** in this codebase. It governs structure; [Leanness](#leann
 
 **Mechanism** — .NET: define `IFoo` beside `Foo`; register `services.AddScoped<IFoo, Foo>()` via the project's DI extension; inject `IFoo`; implementations may be `sealed`. Angular: prefer `abstract class Foo` as the token with `{ provide: Foo, useClass: FooImpl }` (TypeScript `interface`s don't exist at runtime); use `interface` + `InjectionToken<T>` where an abstract class is awkward.
 
-**Deterministic backstop**: dependency *direction* is enforced in CI by architecture tests — **NetArchTest** for the .NET projects (e.g. Domain must not reference Infrastructure) and **dependency-cruiser** (or `eslint-plugin-boundaries`) for the Angular code. The `solid-check` agent covers the semantic principles per diff and is run by `/review`. Scaffold both gates with the `enforce-architecture` skill.
+**Deterministic backstops**: `solid-check` is advisory. NetArchTest and `dependency-cruiser` are scaffoldable and enforce direction only after the consumer wires them into CI with `enforce-architecture`.
 
 ---
 
@@ -110,7 +110,7 @@ Recipes live as auto-discovered **skills**, available to both Claude Code (`.cla
 - `enforce-architecture` — wire the deterministic DIP/layering CI gates (NetArchTest for .NET, dependency-cruiser for Angular)
 - `enforce-standards` — make warnings, skipped tests, and analyzer/lint findings build-breaking (.NET: `TreatWarningsAsErrors` + `.editorconfig` severities; Angular: ESLint `noInlineConfig` + rule severities)
 
-**Registers**: [TECH_DEBT.md](./TECH_DEBT.md) tracks delivery debt. [SECURITY_FINDINGS.md](./SECURITY_FINDINGS.md) tracks security findings separately with remediation SLAs (Critical = 7 days, High = 30 days). AI-assisted file changes are appended to `.claude/ai-audit.log` automatically by the PostToolUse hook.
+**Registers**: [TECH_DEBT.md](./TECH_DEBT.md) tracks delivery debt. [SECURITY_FINDINGS.md](./SECURITY_FINDINGS.md) tracks security findings separately with remediation SLAs (Critical = 7 days, High = 30 days). Supported hooked editor/file-write events append mutable local telemetry to `.claude/ai-audit.log`; shell/external writes and unavailable hooks are blind spots.
 
 ---
 

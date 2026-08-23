@@ -31,9 +31,9 @@ No marketing. Each item is a concrete mechanism and the effect it produces.
 
 4. **The AI stops inventing your codebase.** Verification rules force it to confirm any component, service, route, selector, or npm package exists (via Read/Grep) before referencing it, and to honour version pinning — signals, `takeUntilDestroyed`, and the new control flow are version-gated, so it won't suggest them against a version that lacks them. Fewer hallucinated APIs means fewer wrong diffs and less rework.
 
-5. **Type errors caught the moment they're written.** A PostToolUse hook runs `tsc --noEmit` (1–2 s) after every `.ts` write, so a type error surfaces on the next step instead of compounding across ten files.
+5. **Fast type feedback on supported editor writes.** When the PostToolUse hook and interpreter are live, a `.ts` editor/file-write event runs `tsc --noEmit`; shell/external writes do not trigger it.
 
-6. **Bad writes blocked deterministically — no review round-trip.** A PreToolUse hook hard-blocks any write that adds a suppression (`// eslint-disable`, `@ts-ignore`, `@ts-nocheck`) or a hardcoded secret. Enforced by code, not by remembering to check.
+6. **Defined bad editor writes blocked deterministically.** On supported hosts with hooks available, the PreToolUse guard blocks editor/file-write events that add a suppression (`// eslint-disable`, `@ts-ignore`, `@ts-nocheck`) or a hardcoded secret. Shell/terminal writes are outside that event scope.
 
 7. **Natural language routes to the right workflow — no slash commands to memorise.** Typing *"the export button is broken"* auto-injects the `/fix` rails (regression-test-first, blast-radius cleanup). The seven workflows are still available as explicit slash commands when you want deterministic routing.
 
@@ -43,7 +43,7 @@ No marketing. Each item is a concrete mechanism and the effect it produces.
 
 10. **Security is systematic, not heroic.** `/security-review` runs an OWASP-style pass (XSS via unsafe HTML binding, auth/route-guard gaps, secrets in source, sensitive data in logs or responses) on every change; findings land in `SECURITY_FINDINGS.md` with remediation SLAs.
 
-11. **One source of truth across every tool.** `CLAUDE.md` drives Claude Code; its mirror `AGENTS.md` drives Copilot agent/CLI, Codex, Cursor, Gemini, Aider; a ≤80-line `copilot-instructions.md` drives inline completions. Every developer and every tool gets the same rules — no per-developer drift.
+11. **One authored rule source, surface-dependent delivery.** `CLAUDE.md`, its `AGENTS.md` mirror, and `copilot-instructions.md` carry the same framework rules where a client loads them; host support and hook enforcement still vary by surface.
 
 12. **Built for any stack alongside Angular.** Path-scoped Copilot instructions (`applyTo:`) let a colocated .NET/Node/Python backend get its own rules while `.ts` files keep the Angular ones. One repo, correct rules per file type.
 
@@ -74,7 +74,7 @@ docs/playbook.md                    → methodology guide
 
 All of these files should be committed to version control — they're shared team configuration, not local settings.
 
-> **Hook prerequisite — the shell wired in `.claude/settings.json` must exist on every developer machine.** As shipped, Claude Code hooks run via **PowerShell 7 (`pwsh`)**, and `settings.json` is committed team config — every clone inherits it. A machine without the wired shell gets **no hooks, silently**: no write guard, no build feedback, no audit trail (the CLAUDE.md rules still instruct the model, but nothing enforces at write time). Either install PowerShell 7 on every dev machine — macOS and Linux included — or rewire once at install time: `scripts/install.sh` switches the hooks to the `.sh` (bash) twins when the installing box lacks pwsh, and `scripts/install.ps1` falls back to Windows PowerShell 5.1 (`settings.windows.json`). Whichever variant your team commits becomes the team-wide prerequisite.
+> **Hook prerequisite — the interpreter wired in `.claude/settings.json` must resolve in the agent host.** The host may show the developer a launch-error notice, but this framework and the model do not recover the missing guard, feedback, or telemetry. The installer selects a PowerShell or bash twin for the installing machine; committed team config must work on every developer machine. VS Code agent hooks are Preview, off by default, org-gated, and the full lifecycle is not certified. See `docs/enforcement-surfaces.md` and verify with the actual-host canaries.
 > Not sure what is live on your machine? Run `pwsh scripts/framework-doctor.ps1` or `bash scripts/framework-doctor.sh` once per developer machine.
 
 ### 2. Bootstrap (greenfield) **or** Adopt (existing setup)
@@ -120,7 +120,7 @@ Both Claude Code and Copilot Chat use the same slash-command names:
 /docs-sync                 — check documentation for drift
 /adopt                     — ingest existing AI-framework artifacts into this layout
 /generate-copilot          — regenerate the slim copilot-instructions.md (for inline completions)
-/impact                    — before/after impact report for tech leads (auto-run by /adopt)
+/impact                    — descriptive current-state metrics; not auto-run by /adopt and makes no A/B claim
 ```
 
 In **Claude Code**, these are loaded from `.claude/commands/`. In **Copilot Chat**, the same names are loaded from `.github/prompts/` — those files are thin wrappers that delegate to the canonical `.claude/commands/*.md` files, so there's a single source of truth per workflow.
@@ -152,9 +152,9 @@ To pull template updates, re-run the installer from a fresh template checkout ag
 | `.claude/settings.json` | Registers hooks for Claude Code: SessionStart, UserPromptSubmit, PreToolUse (`guard` before `.ts` writes), PostToolUse (`tsc --noEmit` after `.ts` writes), and Stop. |
 | `.github/hooks/hooks.json` | Registers the same hooks for Copilot cloud agent and CLI (on Bitbucket, the CLI surface only). Points to the same scripts in `.claude/hooks/`. |
 | `.github/skills/`, `.github/agents/` | **Generated** Copilot-facing mirrors: `.github/skills/` is a byte-identical copy of `.claude/skills/` (via `scripts/sync-agent-files.*`); `.github/agents/*.agent.md` wrap the subagents as Copilot custom agents. |
-| `scripts/` | Host-agnostic helpers: `install.{sh,ps1}` (install into a target repo), `docs-sync-check.{sh,ps1}` (CI guardrail), `sync-agent-files.{sh,ps1}` (skills mirror), `build-architecture-html.{sh,ps1}`, `metrics.{sh,ps1}` + `impact-run.{sh,ps1}` (impact harness), `ci/` samples (Bitbucket Pipelines, dependency-cruiser). |
+| `scripts/` | Host-agnostic helpers include `metrics.{sh,ps1}` and retired `impact-run.{sh,ps1}` compatibility tombstones; `ci/` contains dependency-cruiser scaffolding to wire in consumer CI. |
 | `specs/` | Persistent feature specs (spec-driven development). `/design` writes one, `/feature` implements against it, `/review` verifies. See `specs/README.md`. |
-| `tests/impact/` + `docs/impact/` | Before/after impact harness — task suite + config; the generated report (`IMPACT.md` + `impact.html`) lands in `docs/impact/`. |
+| `tests/impact/` + `docs/impact/` | Retained compatibility task/config artifacts and optional descriptive metrics; no executable A/B harness or comparative report. |
 | `TECH_DEBT.md` | **Generated** by `/bootstrap` — prioritised debt register with Trojan Horse opportunities. |
 | `LEARNINGS.md` | Append-only log of what worked / what didn't / what rule changed. Read on non-trivial work. |
 | `docs/playbook.md` | Methodology guide (the "why" behind the framework). |
@@ -176,20 +176,21 @@ Every workflow command follows the same execution model:
 |------|------|--------------|
 | `SessionStart` | New session | Preloads branch, last 3 commits, the adoption-pending warning (`.claude/adoption-pending.json` present → steer to `/adopt`, not `/bootstrap`) or the `BOOTSTRAP_PENDING` warning, the workflow-routing primer, and the count of TECH_DEBT entries touching files modified in the last 14 days |
 | `UserPromptSubmit` | Every prompt | Regex-classifies natural-language prompts as `fix`/`feature`/`refactor`/`test`/`design`/`debt`/`review` and injects that workflow's hard rules. Skips explicit `/command` invocations. Copilot injects `additionalContext` on CLI ≥ v1.0.65 and in VS Code when Preview agent-hooks are enabled; older versions or disabled hooks ignore it, so the `SessionStart` primer and `AGENTS.md` self-classification carry routing there. |
-| `PreToolUse` (Write/Edit) | Before every `.ts` write | **Hard-blocks** the write if it adds a suppression (`// eslint-disable`, `@ts-ignore`, `@ts-nocheck`) or a hardcoded secret (private key, cloud token, credential literal). Deterministic enforcement of Verification Rule #7. Runs in Claude Code **and** Copilot CLI. |
-| `PostToolUse` (Write/Edit) | After every `.ts` write | Runs `tsc --noEmit` (1-2 s) — catches type errors before they compound |
+| `PreToolUse` (Write/Edit) | Supported `.ts` editor/file-write events | Blocks defined suppression and secret patterns when the registered hook and interpreter are live. Shell writes are outside the event scope. |
+| `PostToolUse` (Write/Edit) | Supported `.ts` editor/file-write events | Runs `tsc --noEmit` and appends mutable local telemetry when the hooks are live. |
 | `Stop` / `agentStop` | End of a write turn | Scans modified `.ts` files for the always-apply Boy Scout patterns (manual `ngOnDestroy` + `subscribe`, nested `subscribe`, `any`, commented-out code blocks); soft-warns the model. `OnPush` is intentionally excluded — switching a component to `OnPush` is a semantic change, not a drive-by cleanup. Claude Code uses `Stop`. Copilot CLI ≥ 1.0.72 scans at `agentStop` and delivers the queued nudge at the next prompt; the VS Code `Stop` path remains unverified and requires Preview agent-hooks. |
 
 The router is the key piece. **In Claude Code**, a developer who types *"the export button is broken"* gets the `/fix` rails (regression-test-first, blast-radius Boy Scout) auto-injected per-prompt, without typing a slash command. **In supported Copilot versions**, the same per-prompt injection applies; the session primer and `AGENTS.md` self-classification are the fallback when hooks are unavailable. Either way, the seven workflows are also invokable explicitly as slash commands (`/feature`, `/fix`, …) for deterministic routing.
 
 #### Hook compatibility
 
-The same hook logic runs across Claude Code and GitHub Copilot, shipped as both a bash script and a PowerShell twin. Two hook surfaces are supported:
+The same hook logic ships as bash and PowerShell twins across three client surfaces, with different certification:
 
 | Surface | Config file | Payload shape | Notes |
 |---------|-------------|---------------|-------|
 | **Claude Code** (CLI + VS Code extension) | `.claude/settings.json` | `tool_name` ∈ {`Write`,`Edit`}; `tool_input.file_path` | Native hook support with `matcher` field — hooks already filtered by tool name before the script runs. |
-| **GitHub Copilot** (cloud agent + CLI) | `.github/hooks/hooks.json` | `toolName` ∈ {`edit`,`create`}; `toolArgs.filePath` (parsed object, not a JSON string) | No `matcher` support — the scripts filter by tool name internally. |
+| **GitHub Copilot CLI** | `.github/hooks/hooks.json` | `toolName` ∈ {`edit`,`create`}; `toolArgs.filePath` | Dated hook evidence: CLI 1.0.80, 2026-08-20; folder trust and interpreter resolution are prerequisites. |
+| **Copilot in VS Code** | `.github/hooks/hooks.json` | VS Code tool payload | Preview, off by default, org-gated; guard shape is canary-verified, but the full lifecycle is uncertified. |
 
 Hook interpreter by platform. **Claude Code's `settings.json` defaults to the PowerShell (`pwsh`) twins** — so hooks fire on Windows without git-bash (the old bash default silently no-opped there). The installer adapts the interpreter to your machine, so this is automatic:
 
@@ -270,10 +271,10 @@ If the secondary stack is .NET, consider installing the **monorepo** distributio
 
 This framework grew up around GitHub conventions, but its **local layer is host-agnostic** — it behaves the same whether your remote is GitHub, Bitbucket Cloud, or **Bitbucket Data Center / Server**. Only the *cloud-automation* layer is GitHub-specific. Here's precisely what applies on a self-hosted Bitbucket repo.
 
-### Works unchanged (everything local)
-- **GitHub Copilot in the IDE** (VS Code / JetBrains) — completions, chat, and **agent mode** — reads `.github/copilot-instructions.md`, `.github/instructions/`, `.github/prompts/`, `.github/agents/`, `.github/skills/`, and `AGENTS.md` **from the working tree, regardless of git host**. The `.github/` folder name carries no GitHub dependency here; Copilot just looks there.
+### Local files, subject to client prerequisites
+- **GitHub Copilot in the IDE** (VS Code / JetBrains) can read its working-tree instruction carriers regardless of git host. That does not certify Preview VS Code hooks; enable them where permitted and run the canaries before relying on enforcement.
 - **Claude Code** (CLI + IDE extension) — reads `CLAUDE.md` and everything under `.claude/`. Host-agnostic.
-- **GitHub Copilot CLI** (GA Feb 2026) — runs `.github/hooks/hooks.json` hooks **locally on your machine**: the PreToolUse guard and the `tsc --noEmit` type-check fire. (Only the *cloud-agent* half of hooks.json is inert on Bitbucket — the CLI half works.)
+- **GitHub Copilot CLI** — on CLI 1.0.80 (observed 2026-08-20), trusted-folder hooks run locally when the interpreter resolves; guard, type feedback, and mutable telemetry remain limited to their registered events.
 - **Skills, custom agents, prompts, slash commands** — all file-driven in the repo; no platform service required.
 
 ### Does NOT apply on Bitbucket (GitHub-only)

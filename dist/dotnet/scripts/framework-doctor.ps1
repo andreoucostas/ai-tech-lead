@@ -247,7 +247,7 @@ else {
 $audit = Join-Path $root '.claude/ai-audit.log'
 if ($pending) { Row PENDING 'Audit trail substrate' 'not checked until /bootstrap or /adopt completes.' }
 elseif (-not (Test-Path -LiteralPath $audit)) {
-    Row MISSING 'Audit trail substrate' '.claude/ai-audit.log is missing, so regulated-environment changes are not being captured. Fix: create the file and ensure developers can append to it.'
+    Row MISSING 'Audit trail substrate' '.claude/ai-audit.log is missing, so local hook telemetry cannot be appended. Fix: create the file and ensure developers can append to it.'
 } else {
     try {
         $stream = [IO.File]::Open($audit, 'Append', 'Write', 'ReadWrite'); $stream.Close()

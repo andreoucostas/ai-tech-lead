@@ -114,11 +114,11 @@
       <span class="kicker">Engineering Briefing</span>
       <h1>The AI&nbsp;Tech&nbsp;Lead Framework</h1>
       <div class="tagline">Governed, consistent, <em style="color:var(--accent2);font-style:normal">measurable</em> AI-assisted development.</div>
-      <p class="lead">One source of truth that every AI tool reads and obeys — turning our conventions into something the AI can't ignore.</p>
-      <div class="meta">.NET &amp; Angular · Runs entirely on local Bitbucket + Windows · No cloud dependency</div>
+      <p class="lead">One authored ruleset, delivered through client-specific carriers and reinforced by hooks and CI where their prerequisites are live.</p>
+      <div class="meta">.NET &amp; Angular · Supports local Bitbucket + Windows · Client data boundaries still apply</div>
     </div>
     <aside class="notes">
-      <p><b>Opening line:</b> "AI is already writing a meaningful share of our code. This is how we make sure it writes <i>our</i> code, to <i>our</i> standards — and how we prove it."</p>
+      <p><b>Opening line:</b> "AI is already writing a meaningful share of our code. This gives it our standards, adds bounded machine backstops, and makes the remaining gaps explicit."</p>
       <p>Set the frame: this is not a new tool to learn so much as a set of rails that make our existing standards automatic. Two audiences today: leads first (governance + impact), then teams (daily workflow).</p>
       <p>Keep this slide up while people settle. 30 seconds.</p>
     </aside>
@@ -154,7 +154,7 @@
         <div class="card badc"><h3>Hides failures</h3><p>Wraps errors in try/catch, silences analyzers with <code>#pragma</code> to make red go green.</p></div>
         <div class="card badc"><h3>Ignores conventions</h3><p>Doesn't know our layering, naming, DI, or testing patterns unless told every time.</p></div>
         <div class="card badc"><h3>Inconsistent output</h3><p>Every dev and every tool produces a different shape for the same task.</p></div>
-        <div class="card badc"><h3>No audit trail</h3><p>No record of what the AI changed, or why — a governance and review blind spot.</p></div>
+        <div class="card badc"><h3>Weak local trace</h3><p>Without hook telemetry, even supported editor events leave no lightweight local trace for review.</p></div>
       </div>
     </div>
     <aside class="notes">
@@ -170,8 +170,8 @@
       <span class="kicker">The Idea</span>
       <h2>An operating system for AI-assisted development</h2>
       <ul class="points">
-        <li><b>A repo-level standard</b> every AI tool reads and obeys — authored once.</li>
-        <li><b>Tool-agnostic.</b> Claude Code, GitHub Copilot (agent &amp; CLI), Cursor, Gemini, Aider — same rules.</li>
+        <li><b>A repo-level standard</b> authored once and emitted through client-specific instruction carriers.</li>
+        <li><b>Portable, with explicit limits.</b> Claude Code, Copilot, and AGENTS.md-native tools receive the carriers they support; delivery and hooks vary by host.</li>
         <li><b>Adopted as a template</b> — drop it into a repo; it learns your codebase.</li>
         <li><b>Three distributions, one source</b> — .NET, Angular, and a mixed .NET + Angular monorepo, composed from the same rails.</li>
       </ul>
@@ -187,7 +187,7 @@
   <section class="slide">
     <div class="wrap">
       <span class="kicker">Architecture</span>
-      <h2>Write the rules once — every tool obeys</h2>
+      <h2>Write the rules once — generate the client carriers</h2>
       <div class="flow">
         <div class="node src"><div class="t">CLAUDE.md</div><div class="s">authored · single source</div></div>
         <div class="arrow">→</div>
@@ -234,16 +234,16 @@
       <span class="kicker">Teeth</span>
       <h2>Enforced — not just documented</h2>
       <div class="grid two">
-        <div class="card"><h3>⛔ Real-time hooks</h3><p>A pre-write guard <b>blocks</b> suppressions and secrets before they hit disk. Every AI edit triggers a build + an audit-log entry.</p></div>
+        <div class="card"><h3>⛔ Scoped real-time hooks</h3><p>On a live supported editor/file-write event, the guard blocks defined suppressions and secrets and post-write handlers run. Shell/external writes remain outside this scope.</p></div>
         <div class="card"><h3>🔍 Review subagents</h3><p>Specialised reviewers for security, SOLID, conventions, and bloat run on demand — a second pair of eyes that never gets tired.</p></div>
-        <div class="card"><h3>🧱 CI guardrails</h3><p>Architecture tests (dependency direction) and a docs-sync check fail the pipeline on violations or drift.</p></div>
-        <div class="card"><h3>🧾 Audit trail</h3><p>Every AI-assisted change is appended to an audit log; security findings tracked separately with remediation SLAs.</p></div>
+        <div class="card"><h3>🧱 CI guardrails</h3><p>Docs-sync ships ready to wire. NetArchTest/dependency-cruiser are scaffolds and enforce dependency direction only after the consumer makes them blocking CI.</p></div>
+        <div class="card"><h3>🧾 Local telemetry</h3><p>Supported hooked editor events append mutable local telemetry; shell/external writes and unavailable hooks are blind spots. Security findings are tracked separately with remediation SLAs.</p></div>
       </div>
       <div class="punch">Rules that aren't enforced are just <em>suggestions.</em></div>
     </div>
     <aside class="notes">
       <p><b>This is the slide leads care about most.</b> The difference between a style guide nobody reads and a system that holds the line.</p>
-      <p>Concrete: the PreToolUse hook hard-blocks <code>#pragma warning disable</code> and obvious secrets — the AI literally cannot write them.</p>
+      <p>Concrete: on supported hosts with hooks available, the PreToolUse guard blocks defined editor/file-write events. Shell and external writes remain outside its scope.</p>
       <p>Bitbucket note: CI guardrails run via Bamboo/Jenkins or a pre-receive hook, and publish to PRs through Bitbucket Code Insights. No cloud needed.</p>
     </aside>
   </section>
@@ -259,7 +259,7 @@
           <ul class="points">
             <li>Your conventions become <b>executable</b>, not tribal knowledge.</li>
             <li><b>Consistency</b> across the team and across AI tools.</li>
-            <li>Governance: an <b>audit trail</b> and tracked security findings with SLAs.</li>
+            <li>Governance inputs: bounded local hook telemetry and tracked security findings with SLAs.</li>
             <li>You spend review time on <b>design</b>, not catching boilerplate slips.</li>
           </ul>
         </div>
@@ -315,20 +315,20 @@
   <!-- 10 MEASURABLE IMPACT -->
   <section class="slide">
     <div class="wrap">
-      <span class="kicker">Proof, Not Faith</span>
-      <h2>We measure the difference</h2>
-      <p class="lead">Adopting the framework runs a before/after automatically — no manual setup.</p>
+      <span class="kicker">Inspect, Don't Overclaim</span>
+      <h2>We can record the current state</h2>
+      <p class="lead"><code>/impact</code> runs only on request and reports descriptive current-state metrics. Adoption does not create a baseline or behavioral A/B.</p>
       <div class="grid three" style="margin-top:1.2rem">
-        <div class="card"><span class="tag">Tier 1</span><h3>Capability diff</h3><p>What the old setup lacked vs what's now in place, gap by gap.</p></div>
-        <div class="card"><span class="tag">Tier 1</span><h3>Deterministic scorecard</h3><p>Anti-patterns, SOLID/DIP, security, test counts — measured, baselined at adoption.</p></div>
-        <div class="card"><span class="tag">Tier 2</span><h3>Behavioral A/B</h3><p>The same tasks run through a real agent against the <i>old</i> framework vs the <i>new</i> one, several trials each.</p></div>
+        <div class="card"><span class="tag">Descriptive</span><h3>Capability inventory</h3><p>Which framework mechanisms are present now, with no causal attribution.</p></div>
+        <div class="card"><span class="tag">Descriptive</span><h3>Current-state scorecard</h3><p>Repository counts and patterns at the time the command runs; mutable project context, not a baseline.</p></div>
+        <div class="card"><span class="tag">Retired</span><h3>Comparative runner</h3><p>The compatibility tombstone does not execute an old-vs-new agent experiment.</p></div>
       </div>
-      <div class="punch" style="font-size:1.3rem">Same model, same tasks — the only difference is the framework. <em>Honest, repeatable evidence.</em></div>
+      <div class="punch" style="font-size:1.3rem">Use the metrics as discussion input, <em>not proof of adoption impact.</em></div>
     </div>
     <aside class="notes">
-      <p><b>Differentiator.</b> Most "AI standards" decks ask for faith. This produces a report on <i>your</i> codebase.</p>
-      <p>Be honest about stochasticity: LLM runs vary, so we run trials and read distributions, not a single number. The capability diff is concrete immediately; the A/B is the behavioral evidence.</p>
-      <p><b>Before the meeting:</b> run <code>/adopt</code> on a pilot repo and paste the real headline numbers here. Don't invent figures — the whole point is that they're measured.</p>
+      <p><b>Boundary.</b> Current-state counts can guide a discussion, but they cannot show what the framework caused.</p>
+      <p>The retired runner remains only as an explicit compatibility refusal until its paths are removed; no behavioral trial is available.</p>
+      <p><b>Before the meeting:</b> inspect the installed controls and, if useful, run <code>/impact</code> separately. Do not present the output as a before/after.</p>
     </aside>
   </section>
 
@@ -338,10 +338,10 @@
       <span class="kicker">No Cloud Required</span>
       <h2>Built for our environment</h2>
       <div class="grid two">
-        <div class="card good"><h3>Local &amp; self-hosted</h3><p>VS Code + Copilot, Claude Code, and the Copilot CLI all run locally. Works with <b>Bitbucket Data Center</b> — nothing leaves the building it shouldn't.</p></div>
+        <div class="card good"><h3>Repository-local controls</h3><p>The files work with <b>Bitbucket Data Center</b>. VS Code hooks are Preview, off by default, org-gated, and the full lifecycle is uncertified; each AI client's data boundary also applies.</p></div>
         <div class="card good"><h3>CI on our terms</h3><p>Guardrails run in Bamboo / Jenkins / a pre-receive hook and report to PRs via Bitbucket Code Insights.</p></div>
         <div class="card good"><h3>Windows-first</h3><p>Every script ships as a bash <i>and</i> a PowerShell twin.</p></div>
-        <div class="card good"><h3>Both stacks</h3><p>.NET (NetArchTest, EF Core) and Angular (dependency-cruiser, RxJS) — same doctrine, stack-appropriate teeth.</p></div>
+        <div class="card good"><h3>Both stacks</h3><p>.NET and Angular share doctrine; NetArchTest and dependency-cruiser remain scaffoldable until wired into consumer CI.</p></div>
       </div>
     </div>
     <aside class="notes">
@@ -359,14 +359,14 @@
       <div class="steps">
         <div class="step"><div><b>Run <code>/adopt</code> on a pilot repo</b><span>Ingests any existing AI config (Cursor, Copilot, Aider…) and <b>archives originals</b> — nothing is lost, fully reversible.</span></div></div>
         <div class="step"><div><b><code>/bootstrap</code> learns the codebase</b><span>Fills CLAUDE.md from your actual structure, conventions, and tech debt.</span></div></div>
-        <div class="step"><div><b>Impact report is generated</b><span>The before/after lands automatically — that's what you review as a lead.</span></div></div>
+        <div class="step"><div><b>Verify the installed surfaces</b><span>Run the doctor and actual-host canaries; optionally run <code>/impact</code> for descriptive current-state metrics.</span></div></div>
         <div class="step"><div><b>The team works through slash commands</b><span>Day-to-day development, now on rails. Expand to more repos when convinced.</span></div></div>
       </div>
     </div>
     <aside class="notes">
       <p><b>Goal:</b> make starting feel safe and small. The word that matters is <i>reversible</i> — adoption archives, never deletes.</p>
       <p>Recommend: pilot on one active-but-not-critical repo for a sprint. Low blast radius, real signal.</p>
-      <p>Note the recently-hardened bits: adoption now <i>always</i> produces the impact report, detects the Copilot CLI on Windows reliably, and uses short worktree paths so it doesn't trip Windows' path-length limit.</p>
+      <p>Adoption archives existing AI material before reconciliation, then hands setup to <code>/bootstrap</code>. It does not auto-run comparative impact evidence.</p>
     </aside>
   </section>
 
@@ -396,14 +396,14 @@
       <h1 style="font-size:clamp(2rem,5vw,3.6rem)">Pilot one repo this sprint.</h1>
       <ul class="points" style="font-size:clamp(1.1rem,1.9vw,1.45rem)">
         <li>Pick one active repo and run <code>/adopt</code>.</li>
-        <li>We review the <b>impact report</b> together — real numbers, your code.</li>
-        <li>Decide rollout on the evidence, not the pitch.</li>
+        <li>We review the archive, installed controls, doctor/canary results, and project-specific fit.</li>
+        <li>Decide rollout from that evidence and an observed pilot, not a causal claim the framework cannot measure.</li>
       </ul>
-      <div class="meta">Questions? Let's look at the report. · AI Tech Lead Framework</div>
+      <div class="meta">Questions? Let's inspect the actual surfaces. · AI Tech Lead Framework</div>
     </div>
     <aside class="notes">
       <p><b>Close with a small, concrete ask</b> — not "adopt everywhere," just "one repo, one sprint, then we look at numbers."</p>
-      <p>If the room is warm, offer to run the pilot adoption live or this week and book the follow-up to review the report.</p>
+      <p>If the room is warm, offer to run the pilot adoption live or this week and book a follow-up to review observed use and controls.</p>
       <p>Leave the title up for Q&amp;A.</p>
     </aside>
   </section>

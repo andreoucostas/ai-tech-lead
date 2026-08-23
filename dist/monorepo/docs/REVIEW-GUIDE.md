@@ -4,15 +4,15 @@
 
 ## 30-second orientation
 
-One file is authored by hand — **`CLAUDE.md`**. Everything an AI tool actually obeys is either that file or generated from it and drift-checked. The framework's two opposing forces are **Boy Scout** (improve every file you touch) and **Leanness + `bloat-radar`** (resist over-abstraction); **SOLID** is mandated on top, reconciled with Leanness via a seam/data distinction. Determinism lives in **hooks** (block bad writes, build/type-check after writes) and **CI** (`scripts/docs-sync-check.sh`); judgement lives in **subagents** invoked by `/review` and `/security-review`.
+One file is authored by hand — **`CLAUDE.md`**. Supported clients load it or generated carriers from it; actual model delivery and hook enforcement vary by host. The framework's two opposing forces are **Boy Scout** and **Leanness + `bloat-radar`**; deterministic controls apply only on their documented hooked/CI surfaces.
 
 ## Reading order (≈45 min)
 
-1. **`CLAUDE.md`** — the source of truth. Read Verification Rules, Leanness, SOLID, Boy Scout. *Guarantees:* every AI tool gets the same rules.
+1. **`CLAUDE.md`** — the authored framework-rule source. Read Verification Rules, Leanness, SOLID, Boy Scout; verify the client carrier and host support before relying on delivery.
 2. **`docs/ARCHITECTURE.md`** + open **`docs/architecture.html`** — how the pieces connect (diagrams).
 3. **`.claude/commands/`** — the workflows. Read `feature.md`, `fix.md`, `review.md`, `bootstrap.md`. *Guarantees:* a repeatable execution model (plan → verified subtasks → Boy Scout → self-review).
 4. **`.claude/agents/`** — `solid-check`, `convention-check`, `bloat-radar`, `security-auditor`, `debt-radar`. *Guarantees:* `/review` is backed by specialist passes, not one model's vibe.
-5. **`.claude/hooks/`** — `guard` (PreToolUse), `post-write`, `route-prompt`, `boy-scout-check`. *Guarantees:* deterministic enforcement that doesn't rely on the model remembering.
+5. **`.claude/hooks/`** — `guard` (PreToolUse), `post-write`, `route-prompt`, `boy-scout-check`. *Guarantees only when live:* deterministic actions on the supported events; shell writes and unavailable hooks remain outside that scope.
 6. **`tests/evals/cases.yaml`** — a readable catalogue of intended behavior. The fastest way to see what the framework *promises* (and refuses).
 7. **`CHANGELOG.md`** — how it got here and why.
 
@@ -31,7 +31,7 @@ One file is authored by hand — **`CLAUDE.md`**. Everything an AI tool actually
 - **Literal SOLID is heavier in Angular than in .NET.** TS interfaces don't exist at runtime, so DIP on the frontend means an `abstract class` DI token (or `interface` + `InjectionToken`) per service — more ceremony than idiomatic Angular. If the mandate is really backend-only, that side can be relaxed to principled-DIP while the .NET side keeps literal SOLID.
 - **Deterministic DIP backstop isn't wired.** `solid-check` is semantic (an LLM pass). The deterministic dependency-direction enforcement — **NetArchTest** in a test project (.NET) / **dependency-cruiser** or `eslint-plugin-boundaries` (Angular) — is documented but must be added in the consumer repo. Until then, DIP direction isn't build-enforced on either stack.
 - **Bitbucket Data Center.** Only the local layer applies — no Copilot cloud agent, no GitHub Actions, no Rovo Dev. The CI guardrail must be wired into Bamboo/Jenkins/pre-receive + Code Insights. See README.
-- **Hooks need a shell.** git-bash or PowerShell; they degrade gracefully (a failing hook loses its contribution, doesn't break the session). Copilot only runs them via the CLI surface, not the cloud agent.
+- **Hooks need a working interpreter and client support.** Claude Code and dated Copilot CLI canaries cover their registered events. VS Code hooks are Preview, off by default, org-gated, and the full lifecycle remains uncertified; shell writes are outside the editor guard.
 - **Evals are intentionally tiny** — a regression tripwire for the framework's own rules, not test coverage for your app.
 - **Generated files will lag if not regenerated.** `AGENTS.md`, `copilot-instructions.md`, `.github/skills`, `architecture.html` are generated; review `CLAUDE.md`/`ARCHITECTURE.md`, and let `docs-sync` / CI catch staleness.
 
@@ -39,7 +39,7 @@ One file is authored by hand — **`CLAUDE.md`**. Everything an AI tool actually
 
 - [ ] Is `CLAUDE.md` genuinely the only hand-authored ruleset, with everything else generated + drift-checked?
 - [ ] Do the workflows force *verification before reference* (anti-hallucination) and *tests before fixes*?
-- [ ] Is quality enforced both deterministically (hooks, CI) **and** by judgement (subagents), not just one?
+- [ ] Which hooks and CI jobs are actually live and blocking here, and which controls remain instruction or judgement only?
 - [ ] Does the SOLID/Leanness reconciliation actually hold in the eval cases?
 - [ ] Is Angular's literal-SOLID ceremony worth it for us, or should that side relax to principled-DIP?
 - [ ] For our platform (Bitbucket DC): is the CI guardrail wired where Actions can't run?

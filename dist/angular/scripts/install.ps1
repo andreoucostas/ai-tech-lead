@@ -355,7 +355,7 @@ if ($updateMode) {
     Write-Output "       only exists inside a session started in the target repo."
     Write-Output "  3. Until /bootstrap has run, docs-sync-check FAILS by design - that is expected at this"
     Write-Output "     stage, not a defect to fix. After it has run, verify:  pwsh scripts/docs-sync-check.ps1"
-    Write-Output "  4. Review the generated CLAUDE.md - it is the source of truth that drives every tool."
+    Write-Output "  4. Review the generated CLAUDE.md - it is canonical; client delivery varies (see docs/enforcement-surfaces.md)."
     Write-Output ""
     Write-Output "  IF YOU ARE AN AI AGENT running this installer: your task is NOT complete until you"
     Write-Output "  have done step 1 and then told the developer, explicitly, to start a Claude Code"

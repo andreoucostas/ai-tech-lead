@@ -11,6 +11,31 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.75.0 — 2026-08-23
+
+**Recovery increment 3 replaces assurance language with the framework's observable boundaries.**
+Active READMEs, presentations, review guides, architecture docs, hook comments, doctor output, and
+portable rule carriers now distinguish supported editor/file-write events from shell/external
+writes; describe `.claude/ai-audit.log` as mutable local hook telemetry rather than regulatory or
+compliance evidence; and call NetArchTest/dependency-cruiser scaffoldable until a consumer wires the
+gate into CI. Copilot CLI evidence remains dated, while VS Code hooks are explicitly Preview,
+off-by-default, organization-gated, and uncertified across the full lifecycle.
+
+Root delivery documentation now defers file counts to each distribution's ownership manifest,
+states the licence/notice paths that physically ship, and removes stale numeric status summaries.
+`ClaimTruth.Tests.ps1` narrowly rejects the three harmful current-claim families with independent
+red fixtures; `DocTruth.Tests.ps1` checks manifest authority, legal delivery, and non-numeric status
+pointers without turning general prose into a linter.
+
+**Warehouse-only auto-detection now refuses before mutation.** Two distinct warehouse signal
+categories with no .NET, Angular, or mixed marker no longer silently enter the .NET lifecycle,
+which still cannot certify solution-free adoption. Both root installer twins name the observed
+signals, exit 2, and offer explicit `dotnet` stack selection as an informed override. Focused tests
+cover refusal, override, ordinary .NET, mixed routing, and reachable mutations on both twins.
+
+All three composed distributions validate. Static-context limits are unchanged and the corrected
+wording reduces the v0.74.0 totals by 142 characters for .NET, 94 for Angular, and 206 for monorepo.
+
 ## 0.74.0 — 2026-08-22
 
 **Recovery increment 2 retires the invalid impact A/B path.** The former `/adopt` workflow tagged

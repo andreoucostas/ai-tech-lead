@@ -1,8 +1,10 @@
-﻿# PostToolUse hook — append every AI-assisted file write to .claude\ai-audit.log.
+﻿# PostToolUse hook — append local, mutable telemetry for supported hooked editor/file-write events.
 # Format: ISO-8601-UTC TAB git-branch TAB file-path
+# Shell/external writes and unavailable hooks are blind spots; this is not compliance evidence.
 # Tool surfaces handled:
 #   Claude Code (CLI + VS Code extension)  — tool_name in {Write,Edit}; path at tool_input.file_path
-#   GitHub Copilot (cloud agent + CLI)     — toolName  in {edit,create}; path at toolArgs.filePath
+#   GitHub Copilot CLI (dated evidence)    — toolName in {edit,create}; path at toolArgs.filePath
+#   Copilot VS Code Preview hooks          — path + content payload; org policy may disable hooks
 
 $ErrorActionPreference = 'SilentlyContinue'
 

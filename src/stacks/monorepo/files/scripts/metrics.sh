@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Deterministic codebase scorecard for the impact before/after. Emits JSON to stdout.
+# Descriptive current-state codebase scorecard for /impact. Emits JSON to stdout.
 # Monorepo variant: counts both stacks' anti-patterns (.NET over *.cs, Angular over *.ts/*.html)
 # in one flat metrics object; the three shared-name counters are the sum of both stacks' counts.
-# Counts the framework's own anti-patterns so a pre-adoption baseline can be contrasted with a later
-# scan (or with the diff produced by an A/B run). No build, no install — just grep over source.
+# Counts selected anti-patterns as a descriptive current-state scan. No build, no install — just
+# grep over source.
 #
 # Usage:
 #   bash scripts/metrics.sh                 # scan the whole repo
-#   bash scripts/metrics.sh file1 file2 …   # scan only these paths (e.g. an A/B run's changed files)
+#   bash scripts/metrics.sh file1 file2 …   # scan only these explicitly supplied paths
 set -u
 cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 

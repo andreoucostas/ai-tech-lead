@@ -12,7 +12,9 @@
 #   3. auto-detect        *.csproj or *.sln -> dotnet ; angular.json -> angular ;
 #                         both -> monorepo (mixed repo: both stacks' rails install together).
 #                         Searched in the target root plus two directory levels below it.
-#   4. nothing detected   error: pass -Stack.
+#   4. warehouse-only     refuse: this release does not certify solution-free adoption;
+#                          -Stack dotnet remains an informed override.
+#   5. nothing detected   error: pass -Stack.
 # Every error exits 2 with an actionable message on stderr. -Stack / -Target are validated by
 # hand (not via ValidateSet / Mandatory) so bad input also exits 2 — and the twin, not an
 # interactive prompt — matching install.sh.
@@ -30,12 +32,18 @@ $usage = 'Usage: pwsh install.ps1 [-Stack dotnet|angular|monorepo] [-GitHooks] C
 function Die([string]$msg) { [Console]::Error.WriteLine($msg); exit 2 }
 
 $selfDir = $PSScriptRoot
-function Test-WarehouseRepo([string]$Path) {
-    $signals = Join-Path $selfDir 'dist/dotnet/scripts/warehouse-signals.tsv'; if (-not (Test-Path -LiteralPath $signals)) { return $false }
+function Get-WarehouseSignals([string]$Path) {
+    $signals = Join-Path $selfDir 'dist/dotnet/scripts/warehouse-signals.tsv'; if (-not (Test-Path -LiteralPath $signals)) { return @() }
     $files = @(Get-ChildItem -LiteralPath $Path -Recurse -File -Force -ErrorAction SilentlyContinue | Where-Object { $_.FullName -notmatch '[\\/](\.git|node_modules|bin|obj|dist)[\\/]' -and ($_.Extension -in @('.sql','.sqlproj') -or $_.Name -eq 'dbt_project.yml' -or ($_.Extension -in @('.yml','.yaml','.json') -and $_.FullName -match '(?i)[\\/](etl|pipelines?|warehouse|datafactory|synapse|dags?)[\\/]|(pipeline|datafactory|synapse|dag)[^\\/]*\.(yml|yaml|json)$')) })
-    $hits=0
-    foreach($line in Get-Content -LiteralPath $signals){if($line.StartsWith('#')-or[string]::IsNullOrWhiteSpace($line)){continue};$parts=$line-split"`t",2;foreach($file in $files){if($file.Name-match$parts[1]-or(Select-String -LiteralPath $file.FullName -Pattern $parts[1] -Quiet)){$hits++;break}}}
-    return $hits -ge 2
+    $hits = [System.Collections.Generic.List[string]]::new()
+    foreach($line in Get-Content -LiteralPath $signals){if($line.StartsWith('#')-or[string]::IsNullOrWhiteSpace($line)){continue};$parts=$line-split"`t",2;foreach($file in $files){if($file.Name-match$parts[1]-or(Select-String -LiteralPath $file.FullName -Pattern $parts[1] -Quiet)){$hits.Add($parts[0]);break}}}
+    return $hits.ToArray()
+}
+function Get-WarehouseRefusal([string[]]$Signals) {
+    $observed = $Signals -join ', '
+    return ("Warehouse-only auto-detection refused: found warehouse signals: $observed.`n" +
+        'No *.csproj/*.sln or angular.json was found. This release does not certify solution-free adoption.' + "`n" +
+        'Use -Stack dotnet only as an informed override after confirming that the .NET lifecycle is appropriate.')
 }
 
 if (-not $Target) { Die $usage }
@@ -69,10 +77,13 @@ else {
         }
         elseif ($hasDotnet) { $Stack = 'dotnet'; $reason = 'auto-detected (found *.csproj/*.sln)' }
         elseif ($hasAngular) { $Stack = 'angular'; $reason = 'auto-detected (found angular.json)' }
-        elseif (Test-WarehouseRepo $tgt) { $Stack='dotnet'; $reason='warehouse SQL fallback (at least two independent signals)' }
         else {
-            Die ("Could not determine the stack for '$tgt': no *.csproj/*.sln and no angular.json in the target root or two levels below.`n" +
-                'Pass it explicitly: -Stack dotnet|angular|monorepo.')
+            $warehouseSignals = @(Get-WarehouseSignals $tgt)
+            if ($warehouseSignals.Count -ge 2) { Die (Get-WarehouseRefusal -Signals $warehouseSignals) }
+            else {
+                Die ("Could not determine the stack for '$tgt': no *.csproj/*.sln and no angular.json in the target root or two levels below.`n" +
+                    'Pass it explicitly: -Stack dotnet|angular|monorepo.')
+            }
         }
     }
 }

@@ -2192,3 +2192,26 @@ contention); retaining the sequential representative despite its 924.1s measurem
 test or assertion (would confuse local scheduling with coverage removal); weakening the CI matrices
 (would remove the only all-host proof); and raising the budget before a measured improvement (would
 turn an unknown outcome into an unbounded allowance).
+
+---
+
+## WSD-050: gate high-risk assurance claims against the observable surface, not all prose (2026-08-22)
+
+**Context.** The recovery review found repeated active claims about universal write blocking,
+regulatory audit evidence, and already-enforced architecture gates. The carriers agreed with one
+another, but the enforcement matrix did not. A broad prose linter would create a new maintenance
+taxonomy, reject legitimate historical discussion, and encourage euphemisms rather than accuracy.
+
+**Decision.** `src/core/docs/enforcement-surfaces.md` remains the factual vocabulary. A maintainer-
+side claim test scans a curated list of active authored carriers and rejects only three expensive
+assurance families: absolute write coverage, SR 11-7/DORA satisfaction, and unwired architecture
+enforcement. Historical changelogs, plans, `meta/`, and generated dists are excluded deliberately.
+Each family has an independent deliberate-red fixture. Root delivery facts receive deterministic
+checks for manifest authority, physical licence/notice delivery, and non-numeric status pointers.
+Warehouse-only auto-routing refuses before mutation until the full lifecycle is solution-free;
+explicit `dotnet` selection is an informed override, not certification.
+
+**Rejected.** Linting persuasive language generally (high false-positive and wording-game cost),
+putting the claim gate in consumer repositories (maintainer claims are maintainer-owned), treating
+mirror consistency as truth, claiming local hook telemetry is compliance evidence, and preserving
+warehouse fallback merely because explicit .NET selection can still be forced.

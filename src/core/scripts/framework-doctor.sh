@@ -313,7 +313,7 @@ fi
 
 audit="$root/.claude/ai-audit.log"
 if [ "$pending" -eq 1 ]; then row PENDING 'Audit trail substrate' 'not checked until /bootstrap or /adopt completes.'
-elif [ ! -f "$audit" ]; then row MISSING 'Audit trail substrate' '.claude/ai-audit.log is missing, so regulated-environment changes are not being captured. Fix: create the file and ensure developers can append to it.'
+elif [ ! -f "$audit" ]; then row MISSING 'Audit trail substrate' '.claude/ai-audit.log is missing, so local hook telemetry cannot be appended. Fix: create the file and ensure developers can append to it.'
 elif [ -w "$audit" ]; then row OK 'Audit trail substrate' 'audit log exists and is appendable.'
 else row MISSING 'Audit trail substrate' 'audit log is not appendable. Fix: grant the developer write access to .claude/ai-audit.log.'
 fi

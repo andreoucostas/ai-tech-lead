@@ -13,12 +13,18 @@
 #   3. auto-detect        *.csproj or *.sln -> dotnet ; angular.json -> angular ;
 #                         both -> monorepo (mixed repo: both stacks' rails install together).
 #                         Searched in the target root plus two directory levels below it.
-#   4. nothing detected   error: pass --stack.
+#   4. warehouse-only     refuse: this release does not certify solution-free adoption;
+#                          --stack dotnet remains an informed override.
+#   5. nothing detected   error: pass --stack.
 # Every error exits 2 with an actionable message.
 set -euo pipefail
 
 usage="Usage: bash install.sh [--stack dotnet|angular|monorepo] [--git-hooks] /path/to/target-repo"
 self_dir="$(cd "$(dirname "$0")" && pwd)"
+find_cmd="find"
+# Git Bash can inherit Windows' find.exe ahead of GNU find on PATH. Prefer the POSIX binary
+# when available; /usr/bin/find is also the standard location on the supported Unix hosts.
+[ -x /usr/bin/find ] && find_cmd="/usr/bin/find"
 
 stack=""
 git_hooks=0
@@ -40,13 +46,23 @@ if [ -z "$target" ]; then echo "$usage" >&2; exit 2; fi
 tgt="$(cd "$target" && pwd)"
 
 valid_stack() { [ "$1" = "dotnet" ] || [ "$1" = "angular" ] || [ "$1" = "monorepo" ]; }
-is_warehouse_repo() {
-  signals="$self_dir/dist/dotnet/scripts/warehouse-signals.tsv"; [ -f "$signals" ] || return 1; hits=0
-  files=$(find "$tgt" -type f \( -name '*.sql' -o -name '*.sqlproj' -o -name 'dbt_project.yml' -o -name '*.yml' -o -name '*.yaml' -o -name '*.json' \) ! -path '*/.git/*' ! -path '*/node_modules/*' ! -path '*/bin/*' ! -path '*/obj/*' ! -path '*/dist/*' 2>/dev/null | grep -Ei '\.sql(proj)?$|/dbt_project\.yml$|/(etl|pipelines?|warehouse|datafactory|synapse|dags?)/|/(pipeline|datafactory|synapse|dag)[^/]*\.(yml|yaml|json)$' || true)
+warehouse_signals=()
+get_warehouse_signals() {
+  local signals category pattern matched f
+  signals="$self_dir/dist/dotnet/scripts/warehouse-signals.tsv"; [ -f "$signals" ] || return 1; warehouse_signals=()
+  files=$("$find_cmd" "$tgt" -type f \( -name '*.sql' -o -name '*.sqlproj' -o -name 'dbt_project.yml' -o -name '*.yml' -o -name '*.yaml' -o -name '*.json' \) ! -path '*/.git/*' ! -path '*/node_modules/*' ! -path '*/bin/*' ! -path '*/obj/*' ! -path '*/dist/*' 2>/dev/null | grep -Ei '\.sql(proj)?$|/dbt_project\.yml$|/(etl|pipelines?|warehouse|datafactory|synapse|dags?)/|/(pipeline|datafactory|synapse|dag)[^/]*\.(yml|yaml|json)$' || true)
   while IFS=$'\t' read -r category pattern; do case "$category" in ''|'#'*) continue;; esac; matched=0; while IFS= read -r f; do [ -n "$f" ]||continue; if { basename "$f"; cat "$f"; }|grep -Eiq "$pattern";then matched=1;break;fi; done <<EOF
 $files
 EOF
-  [ "$matched" -eq 1 ]&&hits=$((hits+1)); done < "$signals"; [ "$hits" -ge 2 ]
+  [ "$matched" -eq 1 ] && warehouse_signals+=("$category"); done < "$signals"; [ "${#warehouse_signals[@]}" -ge 2 ]
+}
+warehouse_only_refusal() {
+  local observed="${warehouse_signals[0]}" category
+  for category in "${warehouse_signals[@]:1}"; do observed+=", $category"; done
+  echo "Warehouse-only auto-detection refused: found warehouse signals: $observed" >&2
+  echo "No *.csproj/*.sln or angular.json was found. This release does not certify solution-free adoption." >&2
+  echo "Use --stack dotnet only as an informed override after confirming that the .NET lifecycle is appropriate." >&2
+  exit 2
 }
 
 reason=""
@@ -69,13 +85,14 @@ else
     # Auto-detect from build markers in the target root + two levels below (maxdepth 3:
     # depth 1 = root files, depth 3 = two subdirectory levels down).
     has_dotnet=0; has_angular=0
-    if [ -n "$(find "$tgt" -maxdepth 3 \( -name '*.csproj' -o -name '*.sln' \) -print -quit 2>/dev/null)" ]; then has_dotnet=1; fi
-    if [ -n "$(find "$tgt" -maxdepth 3 -name 'angular.json' -print -quit 2>/dev/null)" ]; then has_angular=1; fi
+    if [ -n "$("$find_cmd" "$tgt" -maxdepth 3 \( -name '*.csproj' -o -name '*.sln' \) -print -quit 2>/dev/null)" ]; then has_dotnet=1; fi
+    if [ -n "$("$find_cmd" "$tgt" -maxdepth 3 -name 'angular.json' -print -quit 2>/dev/null)" ]; then has_angular=1; fi
     if [ "$has_dotnet" -eq 1 ] && [ "$has_angular" -eq 1 ]; then
       stack="monorepo"; reason="auto-detected (found both *.csproj/*.sln and angular.json — mixed repo)"
     elif [ "$has_dotnet" -eq 1 ]; then stack="dotnet";  reason="auto-detected (found *.csproj/*.sln)"
     elif [ "$has_angular" -eq 1 ]; then stack="angular"; reason="auto-detected (found angular.json)"
-    elif is_warehouse_repo; then stack="dotnet"; reason="warehouse SQL fallback (at least two independent signals)"
+    elif get_warehouse_signals; then
+      warehouse_only_refusal
     else
       echo "Could not determine the stack for '$tgt': no *.csproj/*.sln and no angular.json in the target root or two levels below." >&2
       echo "Pass it explicitly: --stack dotnet|angular|monorepo." >&2

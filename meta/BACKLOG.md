@@ -2918,6 +2918,13 @@ preserves persistent state, refuses unsafe archives/dirty worktrees, and upserts
 **B-169 is implemented for planned v0.74.0 — the invalid post-install impact comparison is retired
 behind inert compatibility tombstones; see `meta/BACKLOG-DONE.md`.**
 
+**B-170 is implemented in v0.74.0 — local release scheduling no longer duplicates shipped-hook
+coverage already required from CI; see `meta/BACKLOG-DONE.md`.**
+
+**B-171 is implemented for planned v0.75.0 — active assurance claims are scoped to observable
+surfaces and warehouse-only auto-routing refuses the uncertified lifecycle; see
+`meta/BACKLOG-DONE.md`.**
+
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see `meta/BACKLOG-DONE.md`.**

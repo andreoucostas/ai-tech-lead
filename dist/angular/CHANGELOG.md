@@ -4,6 +4,23 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.75.0 — 2026-08-23
+
+**The documentation now matches what the installed controls can prove.** Editor/file-write guards
+and local telemetry are explicitly hook- and client-dependent; shell/external writes remain outside
+that surface, and `.claude/ai-audit.log` is mutable local telemetry rather than compliance evidence.
+`dependency-cruiser` is a scaffoldable backstop and becomes enforcement only after you wire it into
+blocking CI. Copilot CLI evidence is dated, while VS Code hooks are Preview, off by default,
+organization-gated, and not certified across the full lifecycle.
+
+Install counts now come from `framework-ownership.json`, and the README names the licence and notice
+that ship in this distribution. `/impact` remains an optional descriptive current-state report; it
+does not create an adoption baseline or A/B result.
+
+Root auto-detection now refuses a warehouse-only repository before changing it because solution-free
+adoption is not yet certified. An explicit `dotnet` selection remains available as an informed
+override; ordinary Angular and mixed-repository detection are unchanged.
+
 ## 0.74.0 — 2026-08-22
 
 **Impact A/B retirement.** Adoption no longer requires an impact baseline, an agent CLI, or an

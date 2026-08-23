@@ -299,15 +299,9 @@ user. Generated `dist/` changes belong in the same commit as the `src/` change t
 
 ## Status
 
-Current shipped version: **v0.50.0** (2026-08-07). The work list is `meta/BACKLOG.md`; read it
-rather than this paragraph for what is open, because a summary here rots — this one claimed "no open
-P1/P2/P3 items remain" for twelve versions while P2 and P3 items were open, and scoped the strategic
-section as "B-41…B-48" after it had grown past B-80.
-
-Two sections hold the open work: the **"Strategic backlog — post-Fable horizon"** (added
-2026-07-17, with a recommended execution order — start there) and **"Known deferred work"**
-(B-15/B-17/B-18/B-20/B-26, a longer-horizon feature list; B-23 and B-29 are absorbed by B-41).
-Items filed since are appended to the strategic section in number order.
+Version authority is the machine-readable `dist/*/.claude/framework-version.json` stamps; release
+history is `CHANGELOG.md` plus tags. The current work list is `meta/BACKLOG.md`, not a status summary
+here, because a summary rots.
 
 Gotcha: `scripts/fidelity-check.{ps1,sh}` still exist but are **no longer wired to CI** — they are
 manual re-audit tools against the `pre-restructure` tag, not gates.

@@ -146,13 +146,9 @@ Commit to `master` and push when done — never leave changes uncommitted.
 
 ## Status
 
-Current shipped version: **v0.43.0** (2026-08-01). Read `meta/BACKLOG.md` for what is open rather
-than this paragraph — a summary here rots, and this one claimed "no open P1/P2/P3 items remain" for
-twelve versions while P2 and P3 items were open.
-
-Open work lives in two sections: the **"Strategic backlog — post-Fable horizon"** (added
-2026-07-17, with a recommended execution order — start there) and **"Known deferred work"**
-(B-15/B-17/B-18/B-20/B-26; B-23 and B-29 are absorbed by B-41).
+Version authority is the machine-readable `dist/*/.claude/framework-version.json` stamps; release
+history is `CHANGELOG.md` plus tags. Read `meta/BACKLOG.md` for current work rather than a status
+summary here.
 
 Gotcha: `scripts/fidelity-check.{ps1,sh}` still exist but are **no longer wired to CI** — they are
 manual re-audit tools against the `pre-restructure` tag, not gates.

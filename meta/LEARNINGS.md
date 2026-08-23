@@ -1237,3 +1237,22 @@ dist-gates 1004.0s. Preserve every assertion, leave all shipped-hook coverage to
 CI matrix before tag, and keep the full root meta suite locally because it protects authoring and
 release mechanics before push. Do not call any final speedup until a measured release transcript
 proves one.
+
+## 2026-08-22 — A mirror can make a false claim look more authoritative
+
+Verbatim carriers, generated copies, and polished presentations answer distribution consistency;
+they do not answer whether the repeated sentence is true. The strongest assurance language needs a
+small maintainer-owned test tied to the actual event/host boundary, with history excluded so the
+instrument cannot erase the record it is meant to correct. Keep the denylist narrow: universal
+write coverage, regulatory satisfaction, and unwired deterministic enforcement have a high cost
+when wrong and a clear qualified form when right; general persuasive prose does not.
+
+The first composed validation after the correction caught the complementary failure: AGENTS and the
+portable rule carrier had been edited to equivalent meanings but were no longer verbatim. Truth and
+consistency are separate gates, and both are necessary. The fix shortened one shared sentence,
+restored exact mirroring, and increased static-context headroom without weakening the qualification.
+
+A routing marker has the same boundary problem. Two warehouse signal categories prove that a
+repository is warehouse-shaped; they do not prove the selected stack can complete adoption without
+a solution. Until that lifecycle is supported end to end, refusing before mutation and naming an
+explicit informed override is more honest than silently choosing the nearest implementation.

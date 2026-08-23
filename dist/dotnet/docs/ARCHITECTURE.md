@@ -8,7 +8,7 @@
 
 ## 1. What it is
 
-A template that turns Claude Code and GitHub Copilot into a "tech lead" for a .NET codebase: it gives every AI tool the team's actual conventions, architecture, and debt priorities from one source of truth, and enforces a consistent execution model (plan → verified subtasks → Boy Scout → self-review) across tools and developers. Quality improves as a side effect of normal work (Trojan Horse), and an explicit Leanness doctrine plus a `bloat-radar` counterweight stop AI from over-abstracting.
+A repository framework that authors the team's conventions, architecture, debt priorities, and workflows once, then delivers them through client-specific instruction carriers and hooks. Model delivery and enforcement vary by host and prerequisites; [enforcement-surfaces.md](./enforcement-surfaces.md) is the authoritative matrix.
 
 It is installed into a target repo (see README "Quick Start" / `scripts/install.sh`), then `/bootstrap` (greenfield) or `/adopt` (existing AI setup) populates it from the real codebase.
 
@@ -86,7 +86,7 @@ Same names in Claude Code (`.claude/commands/`) and Copilot Chat (`.github/promp
 | `/docs-sync` | Cross-check docs vs code and the generated mirrors for drift |
 | `/rebootstrap` | Deeper periodic re-alignment |
 | `/generate-copilot` | Regenerate copilot-instructions.md + AGENTS.md from CLAUDE.md, sync skills |
-| `/impact` | Before/after impact report — capability diff + deterministic scorecard + (if Copilot CLI present) a behavioral A/B. Auto-run by `/adopt`; fully automated |
+| `/impact` | Descriptive current-state metrics only; retired A/B execution is unavailable and `/adopt` does not auto-run it. |
 
 ---
 
@@ -127,10 +127,10 @@ sequenceDiagram
     H-->>A: branch, recent commits, debt heat, security findings, workflow primer
     U->>H: UserPromptSubmit (Claude Code)
     H-->>A: route-prompt injects the matched workflow's rails
-    A->>H: PreToolUse (before Write/Edit)
-    H-->>A: guard — BLOCK if write adds #pragma warning disable or a secret
-    A->>H: PostToolUse (after .cs write)
-    H-->>A: dotnet build (output only on failure) + SR 11-7/DORA audit line
+    A->>H: PreToolUse (supported editor/file-write event)
+    H-->>A: guard — BLOCK defined suppression/secret patterns when the hook is live; shell writes are outside scope
+    A->>H: PostToolUse (supported .cs editor/file-write event)
+    H-->>A: dotnet build (output only on failure) + mutable local hook-telemetry append
     A->>H: Stop (end of turn)
     H-->>A: boy-scout-check flags always-apply cleanups
 ```
@@ -141,7 +141,7 @@ sequenceDiagram
 
 - **Verification Rules** — verify before referencing; never invent APIs; honour version pinning; failures are signals (never silence). Anti-hallucination.
 - **Leanness** — counterweight to Boy Scout's add-bias; no abstraction on data or for speculation. Reconciled with SOLID (#below).
-- **SOLID (mandatory)** — literal classic SOLID: an interface for **every injected service** (DIP) plus SRP/OCP/LSP/ISP. Enforced semantically by `solid-check`; deterministic dependency-direction backstop is **NetArchTest** in CI. Data carriers are exempt.
+- **SOLID (mandatory)** — literal classic SOLID: an interface for **every injected service** (DIP) plus SRP/OCP/LSP/ISP. `solid-check` is semantic; NetArchTest is scaffoldable and enforces direction only after the consumer wires it into CI. Data carriers are exempt.
 - **Boy Scout Rule** — leave touched files cleaner (symmetric: add missing pieces *and* remove dead weight).
 - **Trojan Horse** — bundle nearby debt cleanup into feature/fix work, so quality compounds without debt sprints.
 - **Financial-domain invariants** — decimal precision, idempotency, TOCTOU/check-then-act, rounding — treated as always-possible states even in internal code.
@@ -150,11 +150,12 @@ sequenceDiagram
 
 ## 9. GitHub vs Bitbucket Data Center
 
-The **local layer is host-agnostic**; only the cloud layer is GitHub-specific. See README "Running on Bitbucket Data Center".
+The local files do not depend on the Git remote, but their client delivery does vary. Copilot VS Code hooks are Preview, off by default, org-gated, and the full lifecycle remains uncertified; see README and `docs/enforcement-surfaces.md`.
 
 | Surface | GitHub | Bitbucket Data Center |
 |---------|--------|------------------------|
 | Copilot in IDE (reads `.github/*`, `AGENTS.md`) | ✅ | ✅ (reads from working tree, any host) |
+| Copilot VS Code hooks | Preview + org policy; verify with canaries | Same — the Git remote does not enable them |
 | Claude Code (`CLAUDE.md`, `.claude/**`) | ✅ | ✅ |
 | Copilot CLI hooks (`.github/hooks/`) | ✅ | ✅ (run locally) |
 | Copilot coding agent (cloud) | ✅ | ❌ github.com only |
@@ -187,9 +188,9 @@ LEARNINGS.md                  append-only lessons
 .claude/settings*.json        hook registration (bash + Windows variants)
 .github/prompts|skills|agents|hooks|instructions   Copilot surfaces (generated/mirrored)
 .github/workflows/            GitHub Actions (GitHub-only)
-scripts/                      docs-sync-check, sync-agent-files, install, build-architecture-html, metrics, impact-run, ci/
+scripts/                      docs-sync-check, sync-agent-files, install, build-architecture-html, metrics, retired impact-run tombstone, ci/
 specs/                        persistent feature specs (spec-driven development)
-tests/impact/                 impact A/B task suite + config; docs/impact/ holds the generated report
+tests/impact/                 retired-runner compatibility task/config; docs/impact/ holds optional descriptive output
 docs/                         playbook, defaults, ARCHITECTURE (this), REVIEW-GUIDE, architecture-decisions
 tests/evals/                  framework behavior eval suite
 ```

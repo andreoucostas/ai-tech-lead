@@ -76,7 +76,7 @@ SOLID is **mandatory** in this codebase. It governs structure; [Leanness](#leann
 
 **Mechanism**: define `IFoo` beside `Foo`; register `services.AddScoped<IFoo, Foo>()` via the project's DI extension; inject `IFoo`. Implementations may be `sealed`.
 
-**Deterministic backstop**: dependency *direction* is enforced in CI by architecture tests (**NetArchTest** — e.g. Domain must not reference Infrastructure). The `solid-check` agent covers the semantic principles per diff and is run by `/review`. Scaffold the NetArchTest gate with the `enforce-architecture` skill.
+**Deterministic backstop**: `solid-check` is advisory. NetArchTest is scaffoldable and enforces direction only after the consumer wires it into CI with `enforce-architecture`.
 
 ---
 
@@ -106,7 +106,7 @@ Recipes live as auto-discovered **skills**, available to both Claude Code (`.cla
 - `enforce-architecture` — wire the deterministic DIP/layering CI gate (NetArchTest)
 - `enforce-standards` — make warnings, skipped tests, and analyzer findings build-breaking (`TreatWarningsAsErrors` + `.editorconfig` severities)
 
-**Registers**: [TECH_DEBT.md](./TECH_DEBT.md) tracks delivery debt. [SECURITY_FINDINGS.md](./SECURITY_FINDINGS.md) tracks security findings separately with remediation SLAs (Critical = 7 days, High = 30 days). AI-assisted file changes are appended to `.claude/ai-audit.log` automatically by the PostToolUse hook.
+**Registers**: [TECH_DEBT.md](./TECH_DEBT.md) tracks delivery debt. [SECURITY_FINDINGS.md](./SECURITY_FINDINGS.md) tracks security findings separately with remediation SLAs (Critical = 7 days, High = 30 days). Supported hooked editor/file-write events append mutable local telemetry to `.claude/ai-audit.log`; shell/external writes and unavailable hooks are blind spots.
 
 ---
 

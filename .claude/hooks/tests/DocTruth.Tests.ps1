@@ -210,6 +210,54 @@ It 'root CLAUDE.md and AGENTS.md headings have an explicit mirror mapping' {
     Assert $true 'clean'
 }
 
+# --- 6. root delivery facts ---------------------------------------------------------------
+function Get-RootDeliveryFactViolations([string]$Readme, [string]$Claude, [string]$Agents, [hashtable]$ManifestPaths, [hashtable]$DeliveredLegalPaths) {
+    $bad = @()
+    if ($Readme -match '(?is)\binstall(?:ing|ed)?\b.{0,80}\b[0-9,]+\s+files\b') { $bad += 'README has a brittle installed-file count' }
+    if ($Readme -notmatch 'framework-ownership\.json.{0,100}(?i:authoritative)') { $bad += 'README does not name framework-ownership.json as authoritative' }
+    if ($Readme -notmatch 'LICENSES/ai-tech-lead-MIT\.txt' -or $Readme -notmatch 'NOTICE-ai-tech-lead\.md') { $bad += 'README omits shipped licence/notice paths' }
+    foreach ($stack in @('dotnet','angular','monorepo')) {
+        $paths = @($ManifestPaths[$stack])
+        if ($paths -notcontains 'LICENSES/ai-tech-lead-MIT.txt' -or $paths -notcontains 'NOTICE-ai-tech-lead.md') { $bad += "$stack manifest omits licence or notice" }
+        $delivered = @($DeliveredLegalPaths[$stack])
+        if ($delivered -notcontains 'LICENSES/ai-tech-lead-MIT.txt' -or $delivered -notcontains 'NOTICE-ai-tech-lead.md') { $bad += "$stack dist omits licence or notice" }
+    }
+    foreach ($doc in @(@{ Name='CLAUDE.md'; Text=$Claude }, @{ Name='AGENTS.md'; Text=$Agents })) {
+        if ($doc.Text -notmatch '(?ms)^## Status\s*(?<status>.*?)(?=^## |\z)') { $bad += "$($doc.Name) omits its Status section" }
+        elseif ($Matches.status -match '(?i)current shipped version|\bv?\d+\.\d+\.\d+\b|\bB-\d+\b|\b20\d{2}-\d{2}-\d{2}\b') { $bad += "$($doc.Name) retains a numeric status summary" }
+        foreach ($required in @('dist/*/.claude/framework-version.json','CHANGELOG.md','tags','meta/BACKLOG.md')) { if (-not $doc.Text.Contains($required)) { $bad += "$($doc.Name) omits $required pointer" } }
+    }
+    return $bad
+}
+
+It 'root delivery facts defer counts to manifests, ship licence plus notice, and keep status pointers non-numeric' {
+    $readme = Get-Content -Raw (Join-Path $repoRoot 'README.md')
+    $claude = Get-Content -Raw (Join-Path $repoRoot 'CLAUDE.md')
+    $agents = Get-Content -Raw (Join-Path $repoRoot 'AGENTS.md')
+    $manifests = @{}
+    $delivered = @{}
+    foreach ($stack in @('dotnet','angular','monorepo')) {
+        $manifests[$stack] = @((Get-Content -Raw (Join-Path $repoRoot "dist/$stack/framework-ownership.json") | ConvertFrom-Json).paths | ForEach-Object path)
+        $delivered[$stack] = @('LICENSES/ai-tech-lead-MIT.txt','NOTICE-ai-tech-lead.md') | Where-Object { Test-Path -LiteralPath (Join-Path $repoRoot "dist/$stack/$_") }
+    }
+    $bad = @(Get-RootDeliveryFactViolations $readme $claude $agents $manifests $delivered)
+    Assert ($bad.Count -eq 0) ($bad -join '; ')
+}
+
+It 'root delivery fact helper rejects brittle counts, omitted legal paths, and numeric status fixtures' {
+    $paths = @{ dotnet=@('LICENSES/ai-tech-lead-MIT.txt','NOTICE-ai-tech-lead.md'); angular=@('LICENSES/ai-tech-lead-MIT.txt','NOTICE-ai-tech-lead.md'); monorepo=@('LICENSES/ai-tech-lead-MIT.txt','NOTICE-ai-tech-lead.md') }
+    $good = 'framework-ownership.json is authoritative. LICENSES/ai-tech-lead-MIT.txt NOTICE-ai-tech-lead.md'
+    $pointers = "## Status`nVersion authority is dist/*/.claude/framework-version.json. Release history: CHANGELOG.md and tags. Work: meta/BACKLOG.md."
+    foreach ($fixture in @('Installing lands 166 files', 'framework-ownership.json is informative', 'LICENSES/ai-tech-lead-MIT.txt', 'NOTICE-ai-tech-lead.md')) {
+        $readme = if ($fixture -eq 'framework-ownership.json is informative') { $fixture + ' LICENSES/ai-tech-lead-MIT.txt NOTICE-ai-tech-lead.md' } elseif ($fixture -match 'LICENSE|NOTICE') { 'framework-ownership.json is authoritative. ' + $fixture } else { $good + ' ' + $fixture }
+        Assert (@(Get-RootDeliveryFactViolations $readme $pointers $pointers $paths $paths).Count -gt 0) "red fixture was accepted: $fixture"
+    }
+    Assert (@(Get-RootDeliveryFactViolations $good ($pointers + "`nCurrent shipped version: v1.2.3") $pointers $paths $paths).Count -gt 0) 'numeric CLAUDE status fixture was accepted'
+    Assert (@(Get-RootDeliveryFactViolations $good $pointers ($pointers + "`nB-123 is current") $paths $paths).Count -gt 0) 'numeric AGENTS status fixture was accepted'
+    $missingDelivery = @{} + $paths; $missingDelivery.dotnet = @('NOTICE-ai-tech-lead.md')
+    Assert (@(Get-RootDeliveryFactViolations $good $pointers $pointers $paths $missingDelivery).Count -gt 0) 'missing physical licence fixture was accepted'
+}
+
 # The 5.1 arm. Both defects this guards against (a `-Include` that does not filter, a BOM-less file
 # decoded against the system codepage) are INVISIBLE under pwsh 7, which is how they survived to
 # v0.58.0 while this suite reported 8/8. Re-running the whole suite under the other host is the only

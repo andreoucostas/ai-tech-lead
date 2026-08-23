@@ -327,7 +327,7 @@ else
   echo "       only exists inside a session started in the target repo."
   echo "  3. Until /bootstrap has run, docs-sync-check FAILS by design - that is expected at this"
   echo "     stage, not a defect to fix. After it has run, verify:  bash scripts/docs-sync-check.sh"
-  echo "  4. Review the generated CLAUDE.md - it is the source of truth that drives every tool."
+  echo "  4. Review the generated CLAUDE.md - it is canonical; client delivery varies (see docs/enforcement-surfaces.md)."
   echo
   echo "  IF YOU ARE AN AI AGENT running this installer: your task is NOT complete until you"
   echo "  have done step 1 and then told the developer, explicitly, to start a Claude Code"

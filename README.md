@@ -9,8 +9,9 @@
 commands, subagents, and deterministic hooks — that makes AI coding agents (Claude Code and
 GitHub Copilot, dual-surface) follow a team's conventions, architecture, and risk posture instead
 of inventing their own. It targets .NET and Angular shops running on Bitbucket Data Center and
-Windows, and ships enforcement as code (build-time gates, write-time guards, an audit trail) next
-to the instructions, not just prose the model might skip.
+Windows, and ships machine checks plus scoped write-time guards and local hook-dependent telemetry
+next to the instructions. Exact guarantees depend on the client and host prerequisites documented
+in each dist's `docs/enforcement-surfaces.md`.
 
 This repository is the **authoring repo** for the framework, not a consumer project. It used to
 be two separate template repos — `ai-tech-lead-dotnet` and `ai-tech-lead-angular` — merged into
@@ -52,7 +53,7 @@ in the chosen dist's own `scripts/install.{sh,ps1}`.
 
 ### What the install adds, and why it is committed
 
-Installing lands **166 files** for the .NET or Angular dist and **176** for the monorepo — the exact set is enumerated in the manifest below — and they are meant to be committed.
+Each dist's generated **`framework-ownership.json` is authoritative** for the installed path set and ownership class; review that manifest rather than relying on a hard-coded file count. The installed framework files are meant to be committed.
 That is not incidental: hooks have to exist in the tree for every developer who clones, skills and
 commands have to be on disk for the agent to find them, and `CLAUDE.md` plus the instructions
 carrier *are* the product. Nothing here is build output.
@@ -130,7 +131,7 @@ by hand, are in [`DEVELOPING.md`](./DEVELOPING.md).
 
 ## Status
 
-Current shipped version is **v0.74.0** across all three dists
+Current shipped version is **v0.75.0** across all three dists
 (`dist/*/.claude/framework-version.json`). The merge is complete: this repo is the single home for
 framework development, and the two legacy repos (`ai-tech-lead-dotnet`, `ai-tech-lead-angular`) are
 archived and read-only, frozen at v0.25.5.
@@ -145,6 +146,6 @@ archived and read-only, frozen at v0.25.5.
 
 ## Licence
 
-[MIT](./LICENSE) — copyright (c) 2026 Costas Andreou. The licence lives at the repo root; the
-per-stack contents of `dist/` do not carry their own copy, so if your compliance process needs the
-licence text alongside the files you copy in, take it from here.
+[MIT](./LICENSE) — copyright (c) 2026 Costas Andreou. Every dist also ships
+`LICENSES/ai-tech-lead-MIT.txt` and `NOTICE-ai-tech-lead.md`, so the licence and notice travel with
+the installed framework files.

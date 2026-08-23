@@ -6803,3 +6803,40 @@ changelogs, and all three dists clean; changed PowerShell files parsed with BOMs
 footprint, and meta stage timings. The exposed class is a local runner that treats isolated test
 fixtures as CPU-parallel work while each fixture launches more processes; in that shape, adding a
 local representative can still be slower without adding coverage.
+
+---
+
+### B-171 · RCA: consistency gates preserved false assurance consistently
+
+**DONE 2026-08-22 · planned v0.75.0 · P1 · Invariants #1 #3 #4 #5 #7**
+
+**What happened.** Active documentation said guards covered any write, local audit lines satisfied
+regulatory expectations, and scaffolded architecture tools were already enforced in CI. Other
+surfaces omitted shell-write and VS Code hook limits. Separately, root auto-detection treated two
+warehouse signals as sufficient reason to enter the .NET lifecycle even though later adoption still
+required solution artifacts.
+
+**Root cause.** Existing gates proved composition, mirror equality, paths, syntax, and vendor-claim
+denylists; none asked whether the framework's own strongest assurance phrases were supported by the
+event and host matrix. Repetition then made the claims look corroborated. Root installer tests also
+proved marker selection but did not construct a warehouse-only target and follow the selected
+lifecycle to its unsupported boundary.
+
+**Fix.** Active READMEs, presentations, review/architecture docs, hook comments, doctor messages,
+and rule carriers now use the vocabulary in `docs/enforcement-surfaces.md`: supported
+editor/file-write events, mutable local telemetry with blind spots, scaffoldable architecture gates,
+dated Copilot CLI evidence, and Preview/off-by-default/org-gated/full-lifecycle-uncertified VS Code
+hooks. Root delivery truth defers file counts to each ownership manifest, proves the licence and
+notice physically ship, and replaces numeric status snapshots with authoritative pointers. A
+curated meta test rejects only the three high-risk current-claim families and exempts historical
+records. Root installers now return exit 2 before mutation for warehouse-only auto-detection while
+preserving explicit `dotnet`, ordinary .NET/Angular, and mixed selection.
+
+**Evidence and exposed class.** `ClaimTruth.Tests.ps1` passed 3/0; each of its absolute, regulatory,
+and architecture red fixtures independently failed 2/1. `DocTruth.Tests.ps1` passed 13/0 including
+Windows PowerShell 5.1. `RootInstallerWarehouse.Tests.ps1` passed 10/0 after each twin's reachable
+fallback mutation failed and restored bytes. All three composed distributions passed every
+`validate-dist` check. Context limits were unchanged and static Claude context fell by 142, 94, and
+206 characters for dotnet, angular, and monorepo. The exposed class is a claim copied across
+consistent carriers without any instrument binding it to the implementation boundary; mirror
+agreement can amplify a falsehood as easily as a truth.

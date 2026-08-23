@@ -23,11 +23,10 @@ You're presenting to two audiences. Use the **same deck**, but change emphasis a
 
 ## Pre-meeting checklist (do this once, before the leads session)
 
-1. **Run a pilot adoption** on one real repo: `/adopt` → it produces `docs/impact/IMPACT.md`.
-2. **Open the impact report** and copy the headline numbers (capability gaps closed, scorecard deltas,
-   and — if the Copilot CLI is installed — the behavioral A/B acceptance/build rates).
-3. **Paste those real numbers into slide 10's talking track.** Do **not** invent figures — the entire
-   credibility of that slide is that the numbers are measured on *your* code.
+1. **Run a pilot adoption** on one real repo and inspect the archive plus generated project context.
+2. **Run the doctor and actual-host canaries.** Record which instruction, hook, and CI surfaces are live.
+3. Optionally run `/impact` for descriptive current-state metrics. Do **not** present them as an
+   adoption baseline, before/after, or behavioral A/B.
 4. Have the repo open in VS Code in case someone wants to see CLAUDE.md or run a command live.
 5. Decide your concrete ask (slide 14): which repo, which sprint, who champions it.
 
@@ -67,10 +66,10 @@ These mirror the in-deck speaker notes (press **N**), collected here for printin
   that structure* — they're reconciled, not in conflict.
 
 ### 7 · Enforced, not documented  *(leads' favourite)*
-- The pre-write hook **hard-blocks** suppressions (`#pragma warning disable`) and secrets — the AI
-  literally cannot write them.
-- Subagents review; CI guardrails fail the build on drift / architecture violations; every AI change
-  is logged.
+- On supported hosts with hooks available, the editor/file-write guard blocks defined suppressions
+  and secrets; shell/terminal writes and unavailable hooks remain blind spots.
+- Subagents review; wired CI can block drift and configured architecture violations; supported hooked
+  editor events append mutable local telemetry.
 - **Bitbucket:** guardrails run in Bamboo/Jenkins or a pre-receive hook and post to PRs via Code
   Insights. No cloud required.
 - Punchline: **rules that aren't enforced are just suggestions.**
@@ -89,22 +88,24 @@ These mirror the in-deck speaker notes (press **N**), collected here for printin
   escape hatch for genuine hotfixes.
 
 ### 10 · Measurable impact  *(the differentiator)*
-- Most "AI standards" decks ask for faith. **This produces a report on your codebase.**
-- Tier 1 = capability diff + deterministic scorecard (immediate). Tier 2 = behavioral A/B through a
-  real agent, old framework vs new, **same model, same tasks** — several trials.
+- `/impact` can record descriptive current-state metrics on the codebase when explicitly requested.
+- `/impact` records descriptive current-state metrics only. The retired runner cannot support a
+  before/after or behavioral A/B claim.
 - Be honest about **stochasticity**: read distributions, not single runs.
-- **← paste your pilot's real headline numbers here.**
+- **Do not turn current-state counts into an adoption-impact claim.**
 
 ### 11 · Fits our environment
 - Kills the "but we're on local Bitbucket, not GitHub cloud" objection up front.
 - GitHub Actions / Copilot cloud agent / Rovo Dev are **not** required. Host-agnostic; CI wired to
   what we already run. Every script has a **PowerShell twin** (Windows-first).
+- VS Code hooks are Preview, off by default, org-gated, and the full lifecycle remains uncertified;
+  use the actual-host canaries before claiming the hooks are live.
 
 ### 12 · Adoption path
 - The word that matters: **reversible.** Adoption **archives** originals, never deletes.
 - Recommend piloting one active-but-not-critical repo for a sprint — low blast radius, real signal.
-- Recently hardened: adoption now *always* produces the impact report, reliably detects the Copilot
-  CLI on Windows, and uses short worktree paths so it doesn't trip Windows' 260-char path limit.
+- Adoption archives existing AI material, reconciles it, and invokes `/bootstrap`; it does not
+  automatically run the retired comparative runner.
 
 ### 13 · Honest tradeoffs  *(credibility)*
 - Name the costs yourself — it disarms skeptics who've seen silver-bullet pitches.
@@ -142,8 +143,8 @@ Yes — that's a design constraint, not an afterthought. Everything runs locally
 Bamboo/Jenkins/pre-receive + Bitbucket Code Insights. No GitHub-cloud features required.
 
 **"How do we know it actually helps?"**
-The impact harness. `/adopt` produces a before/after on your own repo — capability diff, deterministic
-scorecard, and a same-model behavioral A/B. We decide rollout on that evidence.
+`/impact` can record current-state metrics for discussion. `/adopt` does not run it automatically,
+and the retained compatibility tombstone makes no comparative claim.
 
 **"What's the maintenance burden?"**
 Mainly keeping CLAUDE.md current as conventions evolve — a few hundred budgeted lines, with drift
@@ -157,5 +158,5 @@ The Boy Scout / cleanup rules have a documented skip for hotfixes and incidents 
 
 ## One-line summary (for the calendar invite / Slack)
 
-> A repo-level standard that makes every AI assistant follow our conventions, enforces them with hooks
-> and CI, and measures the before/after on our own code — built for local Bitbucket on Windows.
+> A repo-level standard that delivers shared conventions through client-specific carriers and adds
+> scoped hooks and wireable CI controls — built for local Bitbucket on Windows.

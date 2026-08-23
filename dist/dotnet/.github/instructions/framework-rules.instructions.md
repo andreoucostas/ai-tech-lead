@@ -67,7 +67,7 @@ SOLID is **mandatory** in this codebase. It governs structure; [Leanness](#leann
 
 **Mechanism**: define `IFoo` beside `Foo`; register `services.AddScoped<IFoo, Foo>()` via the project's DI extension; inject `IFoo`. Implementations may be `sealed`.
 
-**Deterministic backstop**: dependency *direction* is enforced in CI by architecture tests (**NetArchTest** — e.g. Domain must not reference Infrastructure). The `solid-check` agent covers the semantic principles per diff and is run by `/review`. Scaffold the NetArchTest gate with the `enforce-architecture` skill.
+**Deterministic backstop**: `solid-check` is advisory. NetArchTest is scaffoldable and enforces direction only after the consumer wires it into CI with `enforce-architecture`.
 
 ---
 
