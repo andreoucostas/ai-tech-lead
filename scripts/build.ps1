@@ -136,6 +136,44 @@ function Get-RelativeFiles {
     return , $out.ToArray()
 }
 
+function Test-NormalizedRepoPath {
+    param([string]$Path)
+    if ([string]::IsNullOrWhiteSpace($Path) -or $Path.Contains('\') -or $Path.Contains([char]0) -or
+        $Path.StartsWith('/') -or $Path.StartsWith('//') -or $Path -match '^[A-Za-z]:' ) { return $false }
+    foreach ($segment in $Path.Split('/')) {
+        if ([string]::IsNullOrEmpty($segment) -or $segment -eq '.' -or $segment -eq '..') { return $false }
+    }
+    return $true
+}
+
+function Get-ValidatedRetirements {
+    param([object]$Document, [string]$Label)
+    if (-not $Document -or [int]$Document.'schema-version' -ne 1 -or $null -eq $Document.retirements) {
+        throw "$Label has an unsupported or missing retirement schema"
+    }
+    $entries = @($Document.retirements)
+    $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    $previousPath = $null
+    foreach ($entry in $entries) {
+        $path = [string]$entry.path
+        $version = [string]$entry.'retired-in'
+        $hashes = @($entry.'known-content-sha256' | ForEach-Object { [string]$_ })
+        if (-not (Test-NormalizedRepoPath $path)) { throw "$Label contains unsafe or non-normalized path '$path'" }
+        if (-not $seen.Add($path)) { throw "$Label contains duplicate path '$path'" }
+        if ($previousPath -and [StringComparer]::Ordinal.Compare($previousPath, $path) -ge 0) { throw "$Label paths are not in ordinal order at '$path'" }
+        if ($version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$') { throw "$Label has invalid retired-in version '$version' for '$path'" }
+        if ($hashes.Count -eq 0) { throw "$Label has no known-content-sha256 values for '$path'" }
+        $previousHash = $null
+        foreach ($hash in $hashes) {
+            if ($hash -cnotmatch '^[0-9a-f]{64}$') { throw "$Label has invalid SHA-256 '$hash' for '$path'" }
+            if ($previousHash -and [StringComparer]::Ordinal.Compare($previousHash, $hash) -ge 0) { throw "$Label hashes are not unique ordinal values for '$path'" }
+            $previousHash = $hash
+        }
+        $previousPath = $path
+    }
+    return , $entries
+}
+
 if ($Mode -eq 'monorepo') {
     # In monorepo mode the file collision check must pass before anything is composed.
     $collide = $false
@@ -147,6 +185,62 @@ if ($Mode -eq 'monorepo') {
         }
     }
     if ($collide) { exit 1 }
+}
+
+$retirementBaselines = New-Object System.Collections.Generic.List[object]
+$maintainerLedgerPath = 'meta/framework-retirements-baseline.json'
+try {
+    if (-not (Test-Path -LiteralPath $maintainerLedgerPath -PathType Leaf)) {
+        throw "missing retirement ledger: $maintainerLedgerPath"
+    }
+    $maintainerLedger = (Read-TextFile $maintainerLedgerPath).Text | ConvertFrom-Json
+    $maintainerRetirements = Get-ValidatedRetirements -Document $maintainerLedger -Label $maintainerLedgerPath
+    foreach ($entry in $maintainerRetirements) { $retirementBaselines.Add($entry) }
+} catch {
+    [Console]::Error.WriteLine("ERROR: $($_.Exception.Message)")
+    exit 1
+}
+
+$previousLedgerPath = Join-Path $DIST 'framework-retirements.json'
+if (Test-Path -LiteralPath $previousLedgerPath -PathType Leaf) {
+    try {
+        $previousLedger = (Read-TextFile $previousLedgerPath).Text | ConvertFrom-Json
+        foreach ($entry in (Get-ValidatedRetirements -Document $previousLedger -Label "existing $previousLedgerPath")) { $retirementBaselines.Add($entry) }
+    } catch {
+        [Console]::Error.WriteLine("ERROR: $($_.Exception.Message)")
+        exit 1
+    }
+}
+
+# The maintainer baseline provides bootstrap authority even though v0.75 and earlier have no ledger.
+# The generated dist remains a useful archive snapshot. In this repository's own Git worktree, add
+# HEAD and the nearest release tag so later releases retain committed history too. Merely being
+# nested beneath some unrelated worktree must not make an unpacked source archive consult that repo.
+if (Get-Command git -ErrorAction SilentlyContinue) {
+    $gitTopLevel = @(& git rev-parse --show-toplevel 2>$null)
+    $gitTopLevelExit = $LASTEXITCODE
+    $composerRoot = [IO.Path]::GetFullPath((Get-Location).Path).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
+    $gitRoot = if ($gitTopLevelExit -eq 0 -and $gitTopLevel.Count -eq 1 -and $gitTopLevel[0]) {
+        [IO.Path]::GetFullPath([string]$gitTopLevel[0]).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
+    } else { $null }
+    if ($gitRoot -and [StringComparer]::OrdinalIgnoreCase.Equals($gitRoot, $composerRoot)) {
+        $baselineRefs = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+        [void]$baselineRefs.Add('HEAD')
+        $nearestTag = @(& git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD 2>$null)
+        $nearestTagExit = $LASTEXITCODE
+        if ($nearestTagExit -eq 0 -and $nearestTag.Count -eq 1 -and $nearestTag[0]) { [void]$baselineRefs.Add([string]$nearestTag[0]) }
+        foreach ($ref in $baselineRefs) {
+            $ledgerLines = @(& git show "${ref}:src/core/framework-retirements.json" 2>$null)
+            if ($LASTEXITCODE -ne 0) { continue }
+            try {
+                $document = (($ledgerLines -join "`n") + "`n") | ConvertFrom-Json
+                foreach ($entry in (Get-ValidatedRetirements -Document $document -Label "$ref`:src/core/framework-retirements.json")) { $retirementBaselines.Add($entry) }
+            } catch {
+                [Console]::Error.WriteLine("ERROR: $($_.Exception.Message)")
+                exit 1
+            }
+        }
+    }
 }
 
 if (Test-Path $DIST) { Remove-Item -Recurse -Force $DIST }
@@ -272,7 +366,63 @@ $jsonLines.Add('  ]')
 $jsonLines.Add('}')
 Write-TextFile -Path $manifestPath -HasBom $false -Text (($jsonLines -join "`n") + "`n")
 
-# 4. validate: no unresolved markers
+# 4. Validate the framework-authored, cumulative retirement authority. Historical authority comes
+# from the existing dist plus independent Git baselines captured before composition. A retired path
+# may never also be an incoming installed path.
+$ledgerPath = Join-Path $DIST 'framework-retirements.json'
+try {
+    $ledger = (Read-TextFile $ledgerPath).Text | ConvertFrom-Json
+    $retirements = Get-ValidatedRetirements -Document $ledger -Label $ledgerPath
+} catch {
+    [Console]::Error.WriteLine("ERROR: $($_.Exception.Message)")
+    exit 1
+}
+$retirementsByPath = @{}
+foreach ($entry in $retirements) {
+    $path = [string]$entry.path
+    if ($byPath.ContainsKey($path)) {
+        [Console]::Error.WriteLine("ERROR: retirement '$path' is still present in the incoming ownership manifest")
+        exit 1
+    }
+    $retirementsByPath[$path] = $entry
+}
+if ($retirements.Count -ne $maintainerRetirements.Count) {
+    [Console]::Error.WriteLine("ERROR: $ledgerPath and $maintainerLedgerPath must contain the same cumulative retirement entries")
+    exit 1
+}
+for ($i = 0; $i -lt $retirements.Count; $i++) {
+    $current = $retirements[$i]
+    $maintained = $maintainerRetirements[$i]
+    $currentHashes = @($current.'known-content-sha256' | ForEach-Object { [string]$_ })
+    $maintainedHashes = @($maintained.'known-content-sha256' | ForEach-Object { [string]$_ })
+    if ([string]$current.path -cne [string]$maintained.path -or
+        [string]$current.'retired-in' -cne [string]$maintained.'retired-in' -or
+        $currentHashes.Count -ne $maintainedHashes.Count -or
+        (Compare-Object -ReferenceObject $maintainedHashes -DifferenceObject $currentHashes -CaseSensitive)) {
+        [Console]::Error.WriteLine("ERROR: $ledgerPath and $maintainerLedgerPath must contain the same cumulative retirement entries")
+        exit 1
+    }
+}
+foreach ($old in $retirementBaselines) {
+    $path = [string]$old.path
+    if (-not $retirementsByPath.ContainsKey($path)) {
+        [Console]::Error.WriteLine("ERROR: cumulative retirement '$path' disappeared from $ledgerPath")
+        exit 1
+    }
+    $current = $retirementsByPath[$path]
+    if ([string]$current.'retired-in' -cne [string]$old.'retired-in') {
+        [Console]::Error.WriteLine("ERROR: retirement version changed for '$path'")
+        exit 1
+    }
+    foreach ($hash in @($old.'known-content-sha256')) {
+        if ([string]$hash -notin @($current.'known-content-sha256' | ForEach-Object { [string]$_ })) {
+            [Console]::Error.WriteLine("ERROR: known historical digest disappeared for retirement '$path'")
+            exit 1
+        }
+    }
+}
+
+# 5. validate: no unresolved markers
 $badFiles = New-Object System.Collections.Generic.List[string]
 if (Test-Path $DIST) {
     foreach ($f in (Get-ChildItem -LiteralPath $DIST -Recurse -File -Force)) {

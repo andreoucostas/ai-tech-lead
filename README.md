@@ -131,7 +131,7 @@ by hand, are in [`DEVELOPING.md`](./DEVELOPING.md).
 
 ## Status
 
-Current shipped version is **v0.75.0** across all three dists
+Current shipped version is **v0.76.0** across all three dists
 (`dist/*/.claude/framework-version.json`). The merge is complete: this repo is the single home for
 framework development, and the two legacy repos (`ai-tech-lead-dotnet`, `ai-tech-lead-angular`) are
 archived and read-only, frozen at v0.25.5.

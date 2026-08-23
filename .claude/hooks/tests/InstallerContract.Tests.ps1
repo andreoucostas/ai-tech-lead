@@ -63,6 +63,10 @@ foreach ($dist in @('dotnet', 'angular', 'monorepo')) {
                 if ($twin -eq 'ps1') { $out = & (Get-PsExe) -NoProfile -File $inst $target 2>&1 | Out-String }
                 else { $out = & $bash $inst $target 2>&1 | Out-String }
                 $code = $LASTEXITCODE
+                # The operation plan names every shipped command file. It is machine-readable
+                # deployment data, not user guidance; otherwise PLAN create .../adopt.md makes a
+                # correct greenfield /bootstrap handoff look like it recommends both workflows.
+                $guidance = (($out -split "\r?\n") | Where-Object { $_ -notmatch '^PLAN ' }) -join [Environment]::NewLine
 
                 It "installer states the whole agent contract: $label" {
                     # Exit first: this suite asserted stdout only, so an installer that printed the
@@ -72,19 +76,19 @@ foreach ($dist in @('dotnet', 'angular', 'monorepo')) {
                     # banner, while three suites with the path in scope stayed green (B-144).
                     Assert ($code -eq 0) `
                         "$label : installer exited $code. Output can be complete on a run that failed."
-                    Assert ($out -match 'IF YOU ARE AN AI AGENT') `
+                    Assert ($guidance -match 'IF YOU ARE AN AI AGENT') `
                         "$label : no agent-addressed block at all. An installing agent is the primary reader of this output."
                     foreach ($c in $contract) {
-                        Assert ($out -match $c.Pattern) `
+                        Assert ($guidance -match $c.Pattern) `
                             "$label : installer never $($c.Name) (no match for /$($c.Pattern)/). Agents get this wrong without being told."
                     }
-                    Assert ($out -match [regex]::Escape($expectCmd)) `
+                    Assert ($guidance -match [regex]::Escape($expectCmd)) `
                         "$label : never names $expectCmd -- the developer is left with a half-installed repo."
                     # The wrong populate command is worse than none: /bootstrap on a brownfield repo
                     # skips the archive/merge/provenance flow the installer just staged.
                     $wrongCmd = if ($mode -eq 'greenfield') { '/adopt' } else { '/bootstrap' }
                     if ($mode -eq 'greenfield') {
-                        Assert (-not ($out -match [regex]::Escape($wrongCmd))) "$label : names $wrongCmd, which is the other mode's command"
+                        Assert (-not ($guidance -match [regex]::Escape($wrongCmd))) "$label : names $wrongCmd, which is the other mode's command"
                     }
                 }
             }

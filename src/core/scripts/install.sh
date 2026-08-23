@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Install the AI Tech Lead Framework into a target repository.
-# Usage: bash scripts/install.sh [--git-hooks] [--allow-dirty-tree] /path/to/target-repo
+# Usage: bash scripts/install.sh [--git-hooks] [--allow-dirty-tree] [--dry-run] [--allow-downgrade] /path/to/target-repo
 #
 # Copies the template's framework files into the target, EXCLUDING the .git directory, the
 # .template-repo marker (which would disable the consumer's CI guardrail), the template repo's own
@@ -19,17 +19,113 @@ set -euo pipefail
 
 git_hooks=0
 allow_dirty_tree=0
-while [ "${1:-}" = "--git-hooks" ] || [ "${1:-}" = "--allow-dirty-tree" ]; do
-  if [ "$1" = "--git-hooks" ]; then git_hooks=1; else allow_dirty_tree=1; fi
+dry_run=0
+allow_downgrade=0
+target=""
+usage="Usage: bash scripts/install.sh [--git-hooks] [--allow-dirty-tree] [--dry-run] [--allow-downgrade] /path/to/target-repo"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --git-hooks) git_hooks=1;;
+    --allow-dirty-tree) allow_dirty_tree=1;;
+    --dry-run) dry_run=1;;
+    --allow-downgrade) allow_downgrade=1;;
+    -*) echo "Unknown option: $1" >&2; echo "$usage" >&2; exit 2;;
+    *) if [ -z "$target" ]; then target="$1"; else echo "Unexpected extra argument: $1" >&2; echo "$usage" >&2; exit 2; fi;;
+  esac
   shift
 done
-target="${1:-}"
-if [ -z "$target" ]; then echo "Usage: bash scripts/install.sh [--git-hooks] [--allow-dirty-tree] /path/to/target-repo"; exit 2; fi
+if [ -z "$target" ]; then echo "$usage"; exit 2; fi
 [ -d "$target" ] || { echo "Target '$target' is not a directory."; exit 2; }
 
 src="$(cd "$(dirname "$0")/.." && pwd)"
 tgt="$(cd "$target" && pwd)"
 if [ "$tgt" = "$src" ]; then echo "Target is the template repo itself — choose a different target."; exit 2; fi
+
+temp_files=""
+sort_cmd=sort
+[ -x /usr/bin/sort ] && sort_cmd=/usr/bin/sort
+find_cmd=find
+[ -x /usr/bin/find ] && find_cmd=/usr/bin/find
+new_temp_file() { new_temp=$(mktemp); temp_files="$temp_files $new_temp"; }
+cleanup_temp_files() { for temp_file in $temp_files; do rm -f "$temp_file"; done; }
+trap cleanup_temp_files EXIT
+
+valid_repo_path() {
+  local path="$1" segment
+  [ -n "$path" ] || return 1
+  case "$path" in /*|\\*|//*|[A-Za-z]:*|*\\*) return 1;; esac
+  IFS='/' read -r -a path_segments <<< "$path"
+  for segment in "${path_segments[@]}"; do [ -n "$segment" ] && [ "$segment" != . ] && [ "$segment" != .. ] || return 1; done
+}
+
+validate_ownership_manifest() {
+  local file="$1" label="$2" output="$3" stripped parsed expected path ownership folded
+  declare -A seen_paths=()
+  [ -f "$file" ] || { echo "missing $label" >&2; return 1; }
+  [ "$(grep -Ec '^[[:space:]]*"schema-version"[[:space:]]*:[[:space:]]*1,?[[:space:]]*$' "$file")" -eq 1 ] || { echo "$label has an unsupported or missing schema" >&2; return 1; }
+  new_temp_file; stripped=$new_temp; tr -d '\000' < "$file" > "$stripped"; cmp -s "$file" "$stripped" || { echo "$label contains NUL bytes" >&2; return 1; }
+  new_temp_file; parsed=$new_temp
+  sed -n 's/^[[:space:]]*{ "path": "\([^"]*\)", "ownership": "\([^"]*\)" }[,]\{0,1\}[[:space:]]*$/\1\	\2/p' "$file" > "$parsed"
+  expected=$(grep -c '"path"' "$file" || true)
+  [ "$expected" -gt 0 ] && [ "$expected" -eq "$(wc -l < "$parsed" | tr -d ' ')" ] || { echo "$label contains malformed path entries" >&2; return 1; }
+  : > "$output"
+  while IFS=$'\t' read -r path ownership; do
+    valid_repo_path "$path" || { echo "$label contains unsafe or non-normalized path '$path'" >&2; return 1; }
+    case "$ownership" in framework-owned/overwritten|consumer-owned/protected|mixed) ;; *) echo "$label has unsupported ownership '$ownership' for '$path'" >&2; return 1;; esac
+    folded=${path,,}
+    [ -z "${seen_paths[$folded]+x}" ] || { echo "$label contains duplicate path '$path'" >&2; return 1; }
+    seen_paths[$folded]=1
+    printf '%s\t%s\t%s\n' "$folded" "$path" "$ownership" >> "$output"
+  done < "$parsed"
+}
+
+validate_retirement_ledger() {
+  local file="$1" label="$2" output="$3" stripped parsed expected path version hashes hash folded previous_hash
+  declare -A seen_paths=()
+  [ -f "$file" ] || { echo "missing $label" >&2; return 1; }
+  [ "$(grep -Ec '^[[:space:]]*"schema-version"[[:space:]]*:[[:space:]]*1,?[[:space:]]*$' "$file")" -eq 1 ] || { echo "$label has an unsupported or missing schema" >&2; return 1; }
+  new_temp_file; stripped=$new_temp; tr -d '\000' < "$file" > "$stripped"; cmp -s "$file" "$stripped" || { echo "$label contains NUL bytes" >&2; return 1; }
+  new_temp_file; parsed=$new_temp
+  sed -n 's/^[[:space:]]*{ "path": "\([^"]*\)", "retired-in": "\([^"]*\)", "known-content-sha256": \[\(.*\)\] }[,]\{0,1\}[[:space:]]*$/\1\	\2\	\3/p' "$file" > "$parsed"
+  expected=$(grep -c '"retired-in"' "$file" || true)
+  [ "$expected" -eq "$(wc -l < "$parsed" | tr -d ' ')" ] || { echo "$label contains a malformed retirement entry" >&2; return 1; }
+  : > "$output"
+  while IFS=$'\t' read -r path version hashes; do
+    valid_repo_path "$path" || { echo "$label contains unsafe or non-normalized path '$path'" >&2; return 1; }
+    [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "$label has invalid retired-in version '$version' for '$path'" >&2; return 1; }
+    folded=${path,,}
+    [ -z "${seen_paths[$folded]+x}" ] || { echo "$label contains duplicate path '$path'" >&2; return 1; }
+    seen_paths[$folded]=1
+    hashes=$(printf '%s' "$hashes" | sed 's/",[[:space:]]*"/ /g; s/"//g')
+    [ -n "$hashes" ] || { echo "$label has no known-content-sha256 values for '$path'" >&2; return 1; }
+    previous_hash=""
+    for hash in $hashes; do
+      [[ "$hash" =~ ^[0-9a-f]{64}$ ]] || { echo "$label has invalid SHA-256 '$hash' for '$path'" >&2; return 1; }
+      if [ -n "$previous_hash" ] && [[ ! "$previous_hash" < "$hash" ]]; then echo "$label hashes are not unique ordinal values for '$path'" >&2; return 1; fi
+      printf '%s\t%s\t%s\t%s\n' "$folded" "$path" "$version" "$hash" >> "$output"
+      previous_hash="$hash"
+    done
+  done < "$parsed"
+}
+
+version_is_greater() {
+  local left="$1" right="$2" i a b
+  [[ "$left" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && [[ "$right" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 2
+  IFS=. read -r -a left_parts <<< "$left"; IFS=. read -r -a right_parts <<< "$right"
+  for i in 0 1 2; do
+    a=$(printf '%s' "${left_parts[$i]}" | sed 's/^0*//'); b=$(printf '%s' "${right_parts[$i]}" | sed 's/^0*//'); [ -n "$a" ] || a=0; [ -n "$b" ] || b=0
+    [ "${#a}" -gt "${#b}" ] && return 0; [ "${#a}" -lt "${#b}" ] && return 1
+    [[ "$a" > "$b" ]] && return 0; [[ "$a" < "$b" ]] && return 1
+  done
+  return 1
+}
+
+sha256_file() {
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print tolower($1)}'
+  elif command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | awk '{print tolower($1)}'
+  elif command -v openssl >/dev/null 2>&1; then openssl dgst -sha256 "$1" | sed 's/^.*= //' | tr '[:upper:]' '[:lower:]'
+  else return 1; fi
+}
 
 # A brownfield archive must stay inside the target. Check every existing source/destination
 # ancestor: a symlink/junction below the target root otherwise redirects mv outside the repo.
@@ -38,15 +134,49 @@ find_reparse_ancestor() {
   while :; do
     if [ -L "$probe" ]; then printf '%s' "$probe"; return 0; fi
     [ "$probe" = "$tgt" ] && return 1
-    parent="$(dirname "$probe")"
+    parent="${probe%/*}"; [ -n "$parent" ] || parent=/
     [ "$parent" = "$probe" ] && return 1
     probe="$parent"
   done
 }
-if [ "$git_hooks" -eq 1 ]; then bash "$src/scripts/setup-git-hooks.sh" --target "$tgt" --check-only; fi
+assert_target_mutation() {
+  local relative="$1" kind="${2:-file}" destination="$tgt/$relative" probe parent physical
+  valid_repo_path "$relative" || { echo "ERROR: Refusing install mutation: unsafe or non-normalized path '$relative'." >&2; return 1; }
+  if reparse=$(find_reparse_ancestor "$destination"); then
+    echo "ERROR: Refusing install mutation '$relative': target path traverses reparse/symlink '$reparse'. Remove the link, then re-run." >&2
+    return 1
+  fi
+  if { [ -e "$destination" ] || [ -L "$destination" ]; } && [ "$kind" = file ] && [ ! -f "$destination" ]; then
+    echo "ERROR: Refusing install mutation '$relative': existing target is not a regular file." >&2
+    return 1
+  fi
+  probe="$destination"
+  while [ ! -e "$probe" ] && [ ! -L "$probe" ]; do parent="${probe%/*}"; [ "$parent" != "$probe" ] || break; probe="$parent"; done
+  if [ "$probe" != "$destination" ] && [ ! -d "$probe" ]; then
+    echo "ERROR: Refusing install mutation '$relative': existing parent '$probe' is not a directory." >&2
+    return 1
+  fi
+  if [ -d "$probe" ]; then physical=$(cd "$probe" 2>/dev/null && pwd -P) || return 1
+  else physical=$(cd "${probe%/*}" 2>/dev/null && pwd -P) || return 1
+  fi
+  case "$physical" in "$tgt"|"$tgt"/*) return 0;;
+    *) echo "ERROR: Refusing install mutation '$relative': physical parent escapes the target through '$physical'." >&2; return 1;;
+  esac
+}
+git_hook_relative=""
+if [ "$git_hooks" -eq 1 ]; then
+  bash "$src/scripts/setup-git-hooks.sh" --target "$tgt" --check-only
+  git_root=$(git -C "$tgt" rev-parse --show-toplevel 2>/dev/null) || { echo 'ERROR: Git-hook setup target could not be resolved.' >&2; exit 3; }
+  git_dir=$(git -C "$tgt" rev-parse --git-dir 2>/dev/null) || { echo 'ERROR: Git-hook directory could not be resolved.' >&2; exit 3; }
+  case "$git_dir" in /*) ;; *) git_dir="$git_root/$git_dir";; esac
+  git_dir_physical=$(cd "$git_dir" 2>/dev/null && pwd -P) || { echo 'ERROR: Git-hook directory could not be resolved physically.' >&2; exit 3; }
+  case "$git_dir_physical/hooks/pre-commit" in "$tgt"/*) git_hook_relative="${git_dir_physical#"$tgt"/}/hooks/pre-commit";;
+    *) echo "ERROR: Git-hook setup would write outside the selected target ('$git_dir_physical/hooks/pre-commit'). Linked/external Git directories are not supported by installer planning." >&2; exit 3;;
+  esac
+fi
 
 # Consumer files the copy below would otherwise clobber. Brownfield: archived so /adopt can merge
-# them. Update: snapshotted and restored — after bootstrap/adopt the consumer owns their content.
+# them. Update: skipped directly — after bootstrap/adopt the consumer owns their content.
 protected="CLAUDE.md AGENTS.md TECH_DEBT.md SECURITY_FINDINGS.md LEARNINGS.md FRAMEWORK-CONTEXT.md .github/copilot-instructions.md docs/ARCHITECTURE.md"
 # Persistent state is copy-if-absent. The composer verifies this policy against the PowerShell
 # twin and records it as consumer-owned/protected in framework-ownership.json.
@@ -72,12 +202,33 @@ fi
 adopt_mode=0
 if [ "$update_mode" -eq 0 ] && [ -n "$detected" ]; then adopt_mode=1; fi
 
-# Read the incoming manifest before planning brownfield archive operations. Its file paths, not a
-# hand-maintained allowlist, are the complete collision inventory for the incoming release.
+# Validate the incoming installed-path inventory and the separate, framework-authored retirement
+# authority before planning any target mutation.
 incoming_manifest="$src/framework-ownership.json"
-[ -f "$incoming_manifest" ] || { echo "ERROR: Cannot read incoming framework ownership manifest '$incoming_manifest'." >&2; exit 3; }
-incoming_paths=$(sed -n 's/^[[:space:]]*{ "path": "\([^"]*\)", "ownership": "[^"]*" }[,]\{0,1\}[[:space:]]*$/\1/p' "$incoming_manifest")
-[ -n "$incoming_paths" ] || { echo "ERROR: Incoming framework ownership manifest '$incoming_manifest' contains no paths." >&2; exit 3; }
+new_temp_file; incoming_entries=$new_temp
+if ! validate_ownership_manifest "$incoming_manifest" 'incoming framework ownership manifest' "$incoming_entries"; then echo 'ERROR: Cannot validate incoming framework ownership manifest.' >&2; exit 3; fi
+incoming_paths=$(cut -f2 "$incoming_entries")
+while IFS= read -r incoming_path; do [ -f "$src/$incoming_path" ] || { echo "ERROR: Incoming manifest path '$incoming_path' is not a shipped file." >&2; exit 3; }; done <<EOF
+$incoming_paths
+EOF
+new_temp_file; retirement_entries=$new_temp
+if ! validate_retirement_ledger "$src/framework-retirements.json" 'incoming framework retirement ledger' "$retirement_entries"; then echo 'ERROR: Cannot validate incoming framework retirement ledger.' >&2; exit 3; fi
+while IFS=$'\t' read -r _ retired_path _; do
+  if awk -F '\t' -v p="$retired_path" '$2 == p { found=1 } END { exit !found }' "$incoming_entries"; then echo "ERROR: Retirement '$retired_path' is still present in the incoming ownership manifest." >&2; exit 3; fi
+done < "$retirement_entries"
+
+incoming_version=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$src/.claude/framework-version.json" | head -1)
+[[ "$incoming_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "ERROR: Incoming framework version must use release SemVer form X.Y.Z (found '$incoming_version')." >&2; exit 3; }
+version_comparison=0
+installed_version=""
+if [ "$update_mode" -eq 1 ]; then
+  installed_version=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$tgt/.claude/framework-version.json" | head -1)
+  [[ "$installed_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "CANT-VERIFY: Installed framework version must use release SemVer form X.Y.Z (found '$installed_version')." >&2; exit 4; }
+  if version_is_greater "$installed_version" "$incoming_version"; then version_comparison=1; fi
+  if [ "$version_comparison" -eq 1 ] && [ "$allow_downgrade" -ne 1 ]; then
+    echo "ERROR: Refusing framework downgrade from $installed_version to $incoming_version before mutation. Re-run with --allow-downgrade only after reviewing the older release." >&2; exit 4
+  fi
+fi
 
 # These legal files are neither protected nor ordinary framework files. Protection would freeze a
 # stale framework-owned notice; bulk copying would silently clobber consumer files. Preflight their
@@ -103,9 +254,64 @@ if [ -f "$tgt/$legal_notice" ] && ! grep -Fq 'FRAMEWORK-OWNED' "$tgt/$legal_noti
   exit 3
 fi
 
+delete_paths=""
+retirement_preserve=""
+reconciliation_messages=""
+add_reconciliation_message() { reconciliation_messages="${reconciliation_messages}${reconciliation_messages:+
+}$1"; }
+if [ "$update_mode" -eq 1 ]; then
+  previous_manifest="$tgt/framework-ownership.json"
+  if [ ! -f "$previous_manifest" ]; then
+    add_reconciliation_message 'CANT-VERIFY: previous framework-ownership.json is missing; additive compatibility mode will perform no stale deletion.'
+  elif previous_manifest_reparse=$(find_reparse_ancestor "$previous_manifest"); then
+    add_reconciliation_message 'CANT-VERIFY: previous framework-ownership.json traverses a reparse/symlink; additive compatibility mode will perform no stale deletion.'
+  else
+    new_temp_file; previous_entries=$new_temp
+    new_temp_file; previous_errors=$new_temp
+    if ! validate_ownership_manifest "$previous_manifest" 'previous framework ownership manifest' "$previous_entries" 2>"$previous_errors"; then
+      add_reconciliation_message "CANT-VERIFY: previous framework-ownership.json is malformed or unsafe; additive compatibility mode will perform no stale deletion. $(tr '\n' ' ' < "$previous_errors")"
+    else
+      while IFS= read -r retired_path; do
+        previous_ownership=$(awk -F '\t' -v p="$retired_path" '$2 == p { print $3; exit }' "$previous_entries")
+        [ "$previous_ownership" = 'framework-owned/overwritten' ] || continue
+        if awk -F '\t' -v p="$retired_path" '$2 == p { found=1 } END { exit !found }' "$incoming_entries"; then continue; fi
+        case " $persistent_copy_if_absent " in *" $retired_path "*) continue;; esac
+        candidate="$tgt/$retired_path"
+        if [ ! -e "$candidate" ] && [ ! -L "$candidate" ]; then continue; fi
+        if candidate_reparse=$(find_reparse_ancestor "$candidate"); then
+          add_reconciliation_message "CANT-VERIFY: retired path '$retired_path' traverses reparse/symlink '$candidate_reparse'; preserving it."
+          retirement_preserve="${retirement_preserve}${retirement_preserve:+
+}$retired_path"
+          continue
+        fi
+        if [ ! -f "$candidate" ]; then
+          add_reconciliation_message "CANT-VERIFY: retired path '$retired_path' is not a regular file; preserving it."
+          retirement_preserve="${retirement_preserve}${retirement_preserve:+
+}$retired_path"
+          continue
+        fi
+        if ! digest=$(sha256_file "$candidate"); then
+          add_reconciliation_message "CANT-VERIFY: retired path '$retired_path' could not be hashed; preserving it."
+          retirement_preserve="${retirement_preserve}${retirement_preserve:+
+}$retired_path"
+          continue
+        fi
+        if ! awk -F '\t' -v p="$retired_path" -v h="$digest" '$2 == p && $4 == h { found=1 } END { exit !found }' "$retirement_entries"; then
+          add_reconciliation_message "CANT-VERIFY: retired path '$retired_path' has consumer-modified or unknown content; preserving it."
+          retirement_preserve="${retirement_preserve}${retirement_preserve:+
+}$retired_path"
+          continue
+        fi
+        delete_paths="${delete_paths}${delete_paths:+
+}$retired_path"
+      done < <(awk -F '\t' '!seen[$2]++ { print $2 }' "$retirement_entries")
+    fi
+  fi
+fi
+
 # Git is optional, but a brownfield/update target that is a Git worktree must be clean before the
 # installer mutates it. The escape hatch is deliberately explicit and visible on stdout.
-if { [ "$adopt_mode" -eq 1 ] || [ "$update_mode" -eq 1 ]; } && command -v git >/dev/null 2>&1 && git -C "$tgt" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+if [ "$dry_run" -ne 1 ] && { [ "$adopt_mode" -eq 1 ] || [ "$update_mode" -eq 1 ]; } && command -v git >/dev/null 2>&1 && git -C "$tgt" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   if ! dirty=$(git -C "$tgt" status --porcelain=v1 --untracked-files=all); then
     echo 'CANT-VERIFY: Git identified this target as a worktree, but its status could not be read. Commit, stash, or copy local changes, then repair Git and re-run the installer.' >&2
     exit 4
@@ -125,6 +331,13 @@ echo "  into: $tgt"
 if [ "$update_mode" -eq 1 ]; then echo "  mode: update (existing install detected via .claude/framework-version.json)"
 elif [ "$adopt_mode" -eq 1 ]; then echo "  mode: brownfield (pre-existing AI tooling detected: $detected)"
 else echo "  mode: greenfield"; fi
+if [ "$update_mode" -eq 1 ] && [ "$version_comparison" -eq 1 ] && [ "$allow_downgrade" -eq 1 ]; then
+  echo "  override: --allow-downgrade accepted for downgrade $installed_version -> $incoming_version."
+fi
+if [ -n "$reconciliation_messages" ]; then while IFS= read -r message; do echo "  $message"; done <<EOF
+$reconciliation_messages
+EOF
+fi
 
 if [ "$update_mode" -eq 1 ]; then
   echo "  UPDATE PREFLIGHT: This update replaces framework-owned files, including .claude/settings.json."
@@ -170,101 +383,171 @@ if [ "$adopt_mode" -eq 1 ]; then
     archive_relatives="$archive_relatives $rel"
   done
   archive_files="${archive_files# }"
-  for f in $archive_files; do
-    rel="docs/pre-adoption/$f"
-    mkdir -p "$(dirname "$tgt/$rel")"
-    mv "$tgt/$f" "$tgt/$rel"
-    archived="$archived $rel"
-    echo "  archived: $f -> $rel"
-  done
-  archived="${archived# }"
 fi
 
-snapshot=""
+# Compute a deterministic, complete plan before the first target mutation. Protected files are
+# skipped directly; skill backup, disable and mirror operations are represented leaf-by-leaf.
+new_temp_file; operation_plan=$new_temp; : > "$operation_plan"
+new_temp_file; apply_paths=$new_temp; : > "$apply_paths"
+new_temp_file; backup_pairs=$new_temp; : > "$backup_pairs"
+new_temp_file; disabled_carry_pairs=$new_temp; : > "$disabled_carry_pairs"
+new_temp_file; disabled_incoming_pairs=$new_temp; : > "$disabled_incoming_pairs"
+new_temp_file; mirror_pairs=$new_temp; : > "$mirror_pairs"
+new_temp_file; skill_delete_paths=$new_temp; : > "$skill_delete_paths"
+new_temp_file; disabled_names=$new_temp; : > "$disabled_names"
+new_temp_file; skill_exemplars=$new_temp; : > "$skill_exemplars"
+new_temp_file; incoming_framework_skill_names=$new_temp; : > "$incoming_framework_skill_names"
+new_temp_file; final_active_files=$new_temp; : > "$final_active_files"
+command -v tar >/dev/null 2>&1 || { echo 'ERROR: tar is required to apply the manifest-driven install.' >&2; exit 3; }
+
+is_disabled_skill() { grep -Fqx "$1" "$disabled_names"; }
+is_incoming_framework_skill() { grep -Fqx "$1" "$incoming_framework_skill_names"; }
+is_discovered_claude_skill() {
+  local relative="$1" rest name skill_file
+  case "$relative" in .claude/skills/*) rest="${relative#.claude/skills/}";; *) return 1;; esac
+  name="${rest%%/*}"; skill_file="$tgt/.claude/skills/$name/SKILL.md"
+  [ -f "$skill_file" ] && grep -Eq '^origin:[[:space:]]*discovered[[:space:]]*$' "$skill_file"
+}
+plan_write() {
+  local relative="$1" force_create="${2:-0}"
+  assert_target_mutation "$relative" file || exit 3
+  if [ "$force_create" -eq 1 ] || { [ ! -e "$tgt/$relative" ] && [ ! -L "$tgt/$relative" ]; }; then printf 'create\t%s\n' "$relative" >> "$operation_plan"
+  else printf 'replace\t%s\n' "$relative" >> "$operation_plan"; fi
+}
+
 if [ "$update_mode" -eq 1 ]; then
-  if [ -f "$tgt/.claude/settings.json" ]; then
-    mkdir -p "$tgt/.claude/.state"
-    cp "$tgt/.claude/settings.json" "$tgt/.claude/.state/settings.json.pre-update"
-    echo "  saved pre-update settings: .claude/.state/settings.json.pre-update"
-  fi
-  # Snapshot consumer-owned content files; restored after the copy.
-  snapshot="$(mktemp -d)"
-  for f in $protected; do
-    if [ -f "$tgt/$f" ]; then
-      mkdir -p "$snapshot/$(dirname "$f")"
-      cp -p "$tgt/$f" "$snapshot/$f"
-    fi
-  done
-  mkdir -p "$snapshot/skill-state/.claude"
-  [ -d "$tgt/.claude/skills" ] && cp -r "$tgt/.claude/skills" "$snapshot/skill-state/.claude/"
-  [ -d "$tgt/.claude/disabled-skills" ] && cp -r "$tgt/.claude/disabled-skills" "$snapshot/skill-state/.claude/"
-  if [ ! -d "$tgt/.claude/framework-update-backup/skills" ] && [ -d "$tgt/.claude/skills" ]; then mkdir -p "$tgt/.claude/framework-update-backup"; cp -r "$tgt/.claude/skills" "$tgt/.claude/framework-update-backup/"; fi
-fi
-
-shopt -s dotglob nullglob 2>/dev/null || true
-for entry in "$src"/*; do
-  name="$(basename "$entry")"
-  case "$name" in
-    # Template-repo meta files that must never land in (or overwrite their namesakes in) a consumer repo.
-    .git|.template-repo|README.md|CHANGELOG.md|.gitignore|.gitattributes|LICENSES|NOTICE-ai-tech-lead.md) continue ;;
-  esac
-  if [ "$name" != docs ] && [ "$name" != .claude ]; then cp -r "$entry" "$tgt"/; fi
-done
-# Preserve .claude/ai-audit.log byte-for-byte when present; all other .claude content remains
-# framework-owned machinery and is refreshed normally.
-if [ -d "$src/.claude" ]; then
-  mkdir -p "$tgt/.claude"
-  for entry in "$src/.claude"/*; do
-    name="$(basename "$entry")"
-    if [ ".claude/$name" = '.claude/ai-audit.log' ] && [ -e "$tgt/.claude/$name" ]; then continue; fi
-    cp -r "$entry" "$tgt/.claude"/
-  done
-fi
-# Copy docs normally except for the consumer-owned wiki index, which is copy-if-absent.
-if [ -d "$src/docs" ]; then
-  mkdir -p "$tgt/docs"
-  for entry in "$src/docs"/*; do
-    name="$(basename "$entry")"
-    if [ "$name" != wiki ]; then cp -r "$entry" "$tgt/docs"/; fi
-  done
-  if [ -d "$src/docs/wiki" ]; then
-    mkdir -p "$tgt/docs/wiki"
-    for entry in "$src/docs/wiki"/*; do
-      name="$(basename "$entry")"
-      if [ "$name" = INDEX.md ] && [ -e "$tgt/docs/wiki/INDEX.md" ]; then continue; fi
-      cp -r "$entry" "$tgt/docs/wiki"/
+  if [ -f "$tgt/LEARNINGS.md" ]; then { grep -E '^## Disabled framework skill:[[:space:]]*[a-z0-9-]+[[:space:]]*$' "$tgt/LEARNINGS.md" || true; } | sed -E 's/^## Disabled framework skill:[[:space:]]*//' | LC_ALL=C "$sort_cmd" -u > "$disabled_names"; fi
+  while IFS=$'\t' read -r _ incoming_path ownership; do
+    case "$incoming_path" in
+      .claude/skills/*/*)
+        [ "$ownership" = 'framework-owned/overwritten' ] || continue
+        incoming_rest="${incoming_path#.claude/skills/}"
+        printf '%s\n' "${incoming_rest%%/*}" >> "$incoming_framework_skill_names"
+        ;;
+    esac
+  done < "$incoming_entries"
+  LC_ALL=C "$sort_cmd" -u "$incoming_framework_skill_names" -o "$incoming_framework_skill_names"
+  if [ -d "$tgt/.claude/skills" ]; then
+    while IFS= read -r item; do
+      relative="${item#"$tgt"/}"
+      assert_target_mutation "$relative" tree || { echo "ERROR: Refusing update skill reconciliation at '$relative'." >&2; exit 3; }
+    done < <("$find_cmd" "$tgt/.claude/skills" -mindepth 1 -print)
+    for skill_dir in "$tgt/.claude/skills"/*; do
+      [ -d "$skill_dir" ] || continue; name="${skill_dir##*/}"; skill_file="$skill_dir/SKILL.md"; [ -f "$skill_file" ] || continue
+      if ! grep -Eq '^origin:[[:space:]]*discovered[[:space:]]*$' "$skill_file" && is_incoming_framework_skill "$name"; then
+        exemplar=$(grep -E '^For a concrete current instance in this repo, see .+$' "$skill_file" | head -1 || true)
+        [ -z "$exemplar" ] || printf '%s\t%s\n' "$name" "$exemplar" >> "$skill_exemplars"
+      fi
     done
   fi
 fi
-# Explicit legal-file policy above owns these paths; keeping them out of both protected and the bulk
-# copy lets the notice travel on update without asserting ownership over consumer collisions.
-mkdir -p "$tgt/$(dirname "$legal_license")"
-if [ "$copy_legal_license" -eq 1 ]; then cp "$src/$legal_license" "$tgt/$legal_license"; fi
-cp "$src/$legal_notice" "$tgt/$legal_notice"
-# The installer is meta — don't ship it into the consumer repo. template-ci.yml is the TEMPLATE
-# repo's own CI (hook suite + framework checks on push); consumers get the same framework checks
-# via docs-sync-check -> template-checks, wired into their own CI.
-rm -f "$tgt/scripts/install.sh" "$tgt/scripts/install.ps1" "$tgt/.github/workflows/template-ci.yml"
 
-if [ "$update_mode" -eq 1 ] && [ -n "$snapshot" ]; then
-  for f in $protected; do
-    if [ -f "$snapshot/$f" ]; then cp -p "$snapshot/$f" "$tgt/$f"; fi
-  done
-  if [ -d "$snapshot/skill-state/.claude/skills" ]; then
-    for old in "$snapshot/skill-state/.claude/skills"/*; do [ -d "$old" ]||continue;name=$(basename "$old");old_file="$old/SKILL.md";dest="$tgt/.claude/skills/$name";[ -f "$old_file" ]||continue;if grep -Eq '^origin:[[:space:]]*discovered[[:space:]]*$' "$old_file";then rm -rf "$dest";cp -r "$old" "$dest";continue;fi;exemplar=$(grep -E '^For a concrete current instance in this repo, see .+$' "$old_file"|head -1||true);if [ -n "$exemplar" ]&&[ -f "$dest/SKILL.md" ];then sed -i.bak '/^For a concrete current instance in this repo, see .\+$/d' "$dest/SKILL.md";rm -f "$dest/SKILL.md.bak";printf '\n%s\n' "$exemplar">>"$dest/SKILL.md";fi;done
-  fi
-  # `|| true` is load-bearing under `set -euo pipefail`: NO disabled-skill heading is the normal
-  # case, and a no-match grep returns 1, which pipefail promotes to a pipeline failure and -e turns
-  # into an abort of the whole installer. That aborted every UPDATE here -- past the file copy but
-  # before the "Done (update)" banner -- so consumers saw a silent exit 1 on a good install while
-  # the .ps1 twin exited 0. Do not remove it to "simplify".
-  if [ -f "$snapshot/LEARNINGS.md" ]; then { grep -E '^## Disabled framework skill:[[:space:]]*[a-z0-9-]+[[:space:]]*$' "$snapshot/LEARNINGS.md" || true; }|sed -E 's/^## Disabled framework skill:[[:space:]]*//'|while read -r name;do active="$tgt/.claude/skills/$name";inactive="$tgt/.claude/disabled-skills/$name";if [ -d "$active" ];then mkdir -p "$(dirname "$inactive")";rm -rf "$inactive";mv "$active" "$inactive";fi;done;fi
-  # Same -e hazard: a bare `[ -d ... ] && cp` is a STATEMENT, so a false test is a non-zero status
-  # and aborts. Written as an if, it is a condition and cannot.
-  mkdir -p "$tgt/.github/skills";if [ -d "$tgt/.claude/skills" ];then cp -r "$tgt/.claude/skills"/* "$tgt/.github/skills/";fi
-  rm -rf "$snapshot"
-  echo "  consumer-owned content files left untouched ($protected)."
+if [ "$update_mode" -eq 1 ] && [ -d "$tgt/.claude/skills" ] && [ ! -e "$tgt/.claude/framework-update-backup/skills" ]; then
+  while IFS= read -r source; do
+    under_skills="${source#"$tgt/.claude/skills/"}"; relative=".claude/framework-update-backup/skills/$under_skills"
+    plan_write "$relative" 1; printf '%s\t%s\n' "$source" "$relative" >> "$backup_pairs"
+  done < <("$find_cmd" "$tgt/.claude/skills" -type f -print)
 fi
+
+while IFS= read -r name; do
+  [ -n "$name" ] || continue
+  active="$tgt/.claude/skills/$name"
+  if [ -d "$active" ]; then
+    while IFS= read -r source; do
+      under_skill="${source#"$active/"}"; relative=".claude/disabled-skills/$name/$under_skill"
+      plan_write "$relative"; printf '%s\t%s\n' "$source" "$relative" >> "$disabled_carry_pairs"
+    done < <("$find_cmd" "$active" -type f -print)
+    assert_target_mutation ".claude/skills/$name" tree || exit 3
+    printf '%s\n' ".claude/skills/$name" >> "$skill_delete_paths"
+  fi
+  if [ -e "$tgt/.github/skills/$name" ] || [ -L "$tgt/.github/skills/$name" ]; then
+    assert_target_mutation ".github/skills/$name" tree || exit 3
+    printf '%s\n' ".github/skills/$name" >> "$skill_delete_paths"
+  fi
+done < "$disabled_names"
+
+while IFS= read -r relative; do
+  case "$relative" in
+    .claude/skills/*)
+      rest="${relative#.claude/skills/}"; name="${rest%%/*}"
+      if [ "$update_mode" -eq 1 ] && is_disabled_skill "$name"; then inactive=".claude/disabled-skills/$rest"; plan_write "$inactive"; printf '%s\t%s\n' "$relative" "$inactive" >> "$disabled_incoming_pairs"; continue; fi;;
+    .github/skills/*)
+      rest="${relative#.github/skills/}"; name="${rest%%/*}"
+      if [ "$update_mode" -eq 1 ] && is_disabled_skill "$name"; then continue; fi;;
+  esac
+  destination="$tgt/$relative"; exists=0; if [ -e "$destination" ] || [ -L "$destination" ]; then exists=1; fi
+  preserve=0
+  if [ "$exists" -eq 1 ]; then
+    case " $copy_if_absent " in *" $relative "*) preserve=1;; esac
+    if [ "$update_mode" -eq 1 ]; then case " $protected " in *" $relative "*) preserve=1;; esac; fi
+    if [ "$relative" = "$legal_license" ] && [ "$copy_legal_license" -eq 0 ]; then preserve=1; fi
+    if is_discovered_claude_skill "$relative"; then preserve=1; fi
+  fi
+  if [ "$preserve" -eq 1 ]; then printf 'preserve\t%s\n' "$relative" >> "$operation_plan"; continue; fi
+  force_create=0; case " ${archive_files:-} " in *" $relative "*) force_create=1;; esac
+  plan_write "$relative" "$force_create"; printf './%s\n' "$relative" >> "$apply_paths"
+done <<EOF
+$incoming_paths
+EOF
+if [ -n "$retirement_preserve" ]; then while IFS= read -r relative; do printf 'preserve\t%s\n' "$relative" >> "$operation_plan"; done <<EOF
+$retirement_preserve
+EOF
+fi
+
+settings_backup_relative=""
+if [ "$update_mode" -eq 1 ] && [ -f "$tgt/.claude/settings.json" ]; then settings_backup_relative='.claude/.state/settings.json.pre-update'; plan_write "$settings_backup_relative"; fi
+
+if [ "$update_mode" -eq 1 ]; then
+  if [ -d "$tgt/.claude/skills" ]; then
+    while IFS= read -r source; do
+      under_skills="${source#"$tgt/.claude/skills/"}"; name="${under_skills%%/*}"; is_disabled_skill "$name" || printf '%s\n' ".claude/skills/$under_skills" >> "$final_active_files"
+    done < <("$find_cmd" "$tgt/.claude/skills" -type f -print)
+  fi
+  while IFS= read -r relative; do
+    case "$relative" in .claude/skills/*) rest="${relative#.claude/skills/}"; name="${rest%%/*}"; is_disabled_skill "$name" || printf '%s\n' "$relative" >> "$final_active_files";; esac
+  done <<EOF
+$incoming_paths
+EOF
+  LC_ALL=C "$sort_cmd" -u "$final_active_files" -o "$final_active_files"
+  while IFS= read -r source_relative; do
+    [ -n "$source_relative" ] || continue; mirror_relative=".github/skills/${source_relative#.claude/skills/}"
+    plan_write "$mirror_relative"; printf '%s\t%s\n' "$source_relative" "$mirror_relative" >> "$mirror_pairs"
+  done < "$final_active_files"
+fi
+
+if [ "$adopt_mode" -eq 1 ]; then plan_write '.claude/adoption-pending.json'; fi
+if [ "$git_hooks" -eq 1 ]; then plan_write "$git_hook_relative" 1; fi
+for f in ${archive_files:-}; do printf 'archive\tdocs/pre-adoption/%s\n' "$f" >> "$operation_plan"; done
+if [ -n "$delete_paths" ]; then while IFS= read -r relative; do printf 'delete\t%s\n' "$relative" >> "$operation_plan"; done <<EOF
+$delete_paths
+EOF
+fi
+while IFS= read -r relative; do [ -z "$relative" ] || printf 'delete\t%s\n' "$relative" >> "$operation_plan"; done < "$skill_delete_paths"
+if [ "$update_mode" -eq 1 ]; then mode_name=update; elif [ "$adopt_mode" -eq 1 ]; then mode_name=brownfield; else mode_name=greenfield; fi
+echo "OPERATION-PLAN schema=1 mode=$mode_name"
+for category in create replace preserve archive delete; do LC_ALL=C "$sort_cmd" -u "$operation_plan" | awk -F '\t' -v c="$category" '$1 == c { print "PLAN " $1 " " $2 }'; done
+if [ "$dry_run" -eq 1 ]; then echo 'Dry run complete; target was not modified.'; exit 0; fi
+
+for f in ${archive_files:-}; do rel="docs/pre-adoption/$f"; mkdir -p "$(dirname "$tgt/$rel")"; mv "$tgt/$f" "$tgt/$rel"; archived="$archived $rel"; echo "  archived: $f -> $rel"; done
+archived="${archived# }"
+if [ -n "$delete_paths" ]; then while IFS= read -r relative; do rm -f "$tgt/$relative"; echo "  retired: $relative"; done <<EOF
+$delete_paths
+EOF
+fi
+if [ -n "$settings_backup_relative" ]; then mkdir -p "$(dirname "$tgt/$settings_backup_relative")"; cp "$tgt/.claude/settings.json" "$tgt/$settings_backup_relative"; echo "  saved pre-update settings: $settings_backup_relative"; fi
+while IFS=$'\t' read -r source relative; do [ -n "$source" ] || continue; mkdir -p "$(dirname "$tgt/$relative")"; cp -p "$source" "$tgt/$relative"; done < "$backup_pairs"
+while IFS=$'\t' read -r source relative; do [ -n "$source" ] || continue; mkdir -p "$(dirname "$tgt/$relative")"; cp -p "$source" "$tgt/$relative"; done < "$disabled_carry_pairs"
+
+# The main manifest payload remains one archive stream; skill side writes are small planned copies.
+(cd "$src" && tar -cf - -T "$apply_paths") | tar -xf - -C "$tgt"
+while IFS=$'\t' read -r source_relative relative; do [ -n "$source_relative" ] || continue; mkdir -p "$(dirname "$tgt/$relative")"; cp -p "$src/$source_relative" "$tgt/$relative"; done < "$disabled_incoming_pairs"
+while IFS=$'\t' read -r name exemplar; do
+  [ -n "$name" ] || continue; if is_disabled_skill "$name"; then new_file="$tgt/.claude/disabled-skills/$name/SKILL.md"; else new_file="$tgt/.claude/skills/$name/SKILL.md"; fi
+  if [ -f "$new_file" ]; then sed -i.bak '/^For a concrete current instance in this repo, see .\+$/d' "$new_file"; rm -f "$new_file.bak"; printf '\n%s\n' "$exemplar" >> "$new_file"; fi
+done < "$skill_exemplars"
+while IFS= read -r relative; do [ -z "$relative" ] || rm -rf "$tgt/$relative"; done < "$skill_delete_paths"
+while IFS=$'\t' read -r source_relative relative; do [ -n "$source_relative" ] || continue; [ -f "$tgt/$source_relative" ] || continue; mkdir -p "$(dirname "$tgt/$relative")"; cp -p "$tgt/$source_relative" "$tgt/$relative"; done < "$mirror_pairs"
+if [ "$update_mode" -eq 1 ]; then echo "  consumer-owned content files left untouched ($protected)."; fi
 
 if [ "$adopt_mode" -eq 1 ]; then
   # Durable adoption marker: the SessionStart hook warns every new session, and docs-sync-check
@@ -293,7 +576,7 @@ if [ "$git_hooks" -eq 1 ]; then bash "$tgt/scripts/setup-git-hooks.sh" --target 
 echo
 echo "Each developer should run  bash scripts/framework-doctor.sh  once on their own machine."
 if [ "$update_mode" -eq 1 ]; then
-  echo "Done (update). Framework-owned machinery refreshed; the listed protected paths were restored; .claude/settings.json was backed up and refreshed."
+  echo "Done (update). Framework-owned machinery refreshed; the listed protected paths were left untouched; .claude/settings.json was backed up and refreshed."
   echo "  Next: review the diff, run  bash scripts/docs-sync-check.sh , then commit."
 elif [ "$adopt_mode" -eq 1 ]; then
   echo "Done - but this repo is NOT ready for AI-assisted work yet: it has pre-existing AI"

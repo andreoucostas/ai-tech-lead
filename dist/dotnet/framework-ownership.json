@@ -112,6 +112,7 @@
     { "path": "docs/wiki/INDEX.md", "ownership": "consumer-owned/protected" },
     { "path": "docs/wiki/_template.md", "ownership": "framework-owned/overwritten" },
     { "path": "framework-ownership.json", "ownership": "framework-owned/overwritten" },
+    { "path": "framework-retirements.json", "ownership": "framework-owned/overwritten" },
     { "path": "scripts/build-architecture-html.ps1", "ownership": "framework-owned/overwritten" },
     { "path": "scripts/build-architecture-html.sh", "ownership": "framework-owned/overwritten" },
     { "path": "scripts/ci/ArchitectureTests.sample.cs", "ownership": "framework-owned/overwritten" },
@@ -124,8 +125,6 @@
     { "path": "scripts/framework-doctor.sh", "ownership": "framework-owned/overwritten" },
     { "path": "scripts/hazard-check.ps1", "ownership": "framework-owned/overwritten" },
     { "path": "scripts/hazard-check.sh", "ownership": "framework-owned/overwritten" },
-    { "path": "scripts/impact-run.ps1", "ownership": "framework-owned/overwritten" },
-    { "path": "scripts/impact-run.sh", "ownership": "framework-owned/overwritten" },
     { "path": "scripts/metrics.ps1", "ownership": "framework-owned/overwritten" },
     { "path": "scripts/metrics.sh", "ownership": "framework-owned/overwritten" },
     { "path": "scripts/setup-git-hooks.ps1", "ownership": "framework-owned/overwritten" },
@@ -166,9 +165,6 @@
     { "path": "tests/hooks/WarehouseMapCheck.Tests.ps1", "ownership": "framework-owned/overwritten" },
     { "path": "tests/hooks/WikiCheck.Tests.ps1", "ownership": "framework-owned/overwritten" },
     { "path": "tests/hooks/_HookHarness.ps1", "ownership": "framework-owned/overwritten" },
-    { "path": "tests/hooks/fixtures/guard-cases.ps1", "ownership": "framework-owned/overwritten" },
-    { "path": "tests/impact/README.md", "ownership": "framework-owned/overwritten" },
-    { "path": "tests/impact/config.json", "ownership": "framework-owned/overwritten" },
-    { "path": "tests/impact/tasks.json", "ownership": "framework-owned/overwritten" }
+    { "path": "tests/hooks/fixtures/guard-cases.ps1", "ownership": "framework-owned/overwritten" }
   ]
 }

@@ -152,9 +152,9 @@ To pull template updates, re-run the installer from a fresh template checkout ag
 | `.claude/settings.json` | Registers hooks for Claude Code: SessionStart, UserPromptSubmit, PreToolUse (`guard` before `.ts` writes), PostToolUse (`tsc --noEmit` after `.ts` writes), and Stop. |
 | `.github/hooks/hooks.json` | Registers the same hooks for Copilot cloud agent and CLI (on Bitbucket, the CLI surface only). Points to the same scripts in `.claude/hooks/`. |
 | `.github/skills/`, `.github/agents/` | **Generated** Copilot-facing mirrors: `.github/skills/` is a byte-identical copy of `.claude/skills/` (via `scripts/sync-agent-files.*`); `.github/agents/*.agent.md` wrap the subagents as Copilot custom agents. |
-| `scripts/` | Host-agnostic helpers include `metrics.{sh,ps1}` and retired `impact-run.{sh,ps1}` compatibility tombstones; `ci/` contains dependency-cruiser scaffolding to wire in consumer CI. |
+| `scripts/` | Host-agnostic helpers include `metrics.{sh,ps1}`; `ci/` contains dependency-cruiser scaffolding to wire in consumer CI. |
 | `specs/` | Persistent feature specs (spec-driven development). `/design` writes one, `/feature` implements against it, `/review` verifies. See `specs/README.md`. |
-| `tests/impact/` + `docs/impact/` | Retained compatibility task/config artifacts and optional descriptive metrics; no executable A/B harness or comparative report. |
+| `docs/impact/` | Optional descriptive metrics; no executable A/B harness or comparative report. |
 | `TECH_DEBT.md` | **Generated** by `/bootstrap` — prioritised debt register with Trojan Horse opportunities. |
 | `LEARNINGS.md` | Append-only log of what worked / what didn't / what rule changed. Read on non-trivial work. |
 | `docs/playbook.md` | Methodology guide (the "why" behind the framework). |

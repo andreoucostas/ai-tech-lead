@@ -25,6 +25,49 @@ case "$MODE" in dotnet|angular|monorepo) ;; *) echo "usage: build.sh {dotnet|ang
 CORE="src/core"
 DIST="dist/$MODE"
 
+temp_files=""
+new_temp_file() { new_temp=$(mktemp); temp_files="$temp_files $new_temp"; }
+cleanup() { for f in $temp_files; do rm -f "$f"; done; }
+trap cleanup EXIT
+
+valid_repo_path() {
+  local path="$1" segment
+  [ -n "$path" ] || return 1
+  case "$path" in /*|\\*|//*|[A-Za-z]:*|*\\*) return 1;; esac
+  IFS='/' read -r -a segments <<< "$path"
+  for segment in "${segments[@]}"; do [ -n "$segment" ] && [ "$segment" != . ] && [ "$segment" != .. ] || return 1; done
+}
+
+# Emit path<TAB>retired-in<TAB>hash rows after validating the deliberately narrow canonical JSON
+# form shipped by this repo. Refusing a reformatted file is safe: composer metadata is authored,
+# generated and reviewed here rather than accepted as a general-purpose JSON interchange format.
+validate_ledger() {
+  local file="$1" label="$2" output="$3" stripped parsed expected path version hashes hash previous_path="" previous_hash
+  [ -f "$file" ] || { echo "ERROR: missing retirement ledger: $label" >&2; return 1; }
+  [ "$(grep -Ec '^[[:space:]]*"schema-version"[[:space:]]*:[[:space:]]*1,?[[:space:]]*$' "$file")" -eq 1 ] || { echo "ERROR: $label has an unsupported or missing retirement schema" >&2; return 1; }
+  new_temp_file; stripped=$new_temp; tr -d '\000' < "$file" > "$stripped"; cmp -s "$file" "$stripped" || { echo "ERROR: $label contains NUL bytes" >&2; return 1; }
+  new_temp_file; parsed=$new_temp
+  sed -n 's/^[[:space:]]*{ "path": "\([^"]*\)", "retired-in": "\([^"]*\)", "known-content-sha256": \[\(.*\)\] }[,]\{0,1\}[[:space:]]*$/\1\	\2\	\3/p' "$file" > "$parsed"
+  expected=$(grep -c '"retired-in"' "$file" || true)
+  [ "$expected" -eq "$(wc -l < "$parsed" | tr -d ' ')" ] || { echo "ERROR: $label contains a malformed retirement entry" >&2; return 1; }
+  : > "$output"
+  while IFS=$'\t' read -r path version hashes; do
+    valid_repo_path "$path" || { echo "ERROR: $label contains unsafe or non-normalized path '$path'" >&2; return 1; }
+    [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "ERROR: $label has invalid retired-in version '$version' for '$path'" >&2; return 1; }
+    if [ -n "$previous_path" ] && [[ ! "$previous_path" < "$path" ]]; then echo "ERROR: $label paths are not unique ordinal values at '$path'" >&2; return 1; fi
+    hashes=$(printf '%s' "$hashes" | sed 's/",[[:space:]]*"/ /g; s/"//g')
+    [ -n "$hashes" ] || { echo "ERROR: $label has no known-content-sha256 values for '$path'" >&2; return 1; }
+    previous_hash=""
+    for hash in $hashes; do
+      [[ "$hash" =~ ^[0-9a-f]{64}$ ]] || { echo "ERROR: $label has invalid SHA-256 '$hash' for '$path'" >&2; return 1; }
+      if [ -n "$previous_hash" ] && [[ ! "$previous_hash" < "$hash" ]]; then echo "ERROR: $label hashes are not unique ordinal values for '$path'" >&2; return 1; fi
+      printf '%s\t%s\t%s\n' "$path" "$version" "$hash" >> "$output"
+      previous_hash="$hash"
+    done
+    previous_path="$path"
+  done < "$parsed"
+}
+
 if [ "$MODE" = "monorepo" ]; then
   # In monorepo mode the file collision check must pass before anything is composed.
   collide=0
@@ -35,6 +78,41 @@ if [ "$MODE" = "monorepo" ]; then
     fi
   done < <(cd src/stacks/dotnet/files && find . -type f | sed 's#^\./##')
   [ "$collide" -eq 0 ] || exit 1
+fi
+
+new_temp_file; retirement_baselines=$new_temp; : > "$retirement_baselines"
+maintainer_ledger="meta/framework-retirements-baseline.json"
+new_temp_file; maintainer_retirements=$new_temp
+validate_ledger "$maintainer_ledger" "$maintainer_ledger" "$maintainer_retirements" || exit 1
+cat "$maintainer_retirements" >> "$retirement_baselines"
+
+if [ -f "$DIST/framework-retirements.json" ]; then
+  new_temp_file; previous_retirements=$new_temp
+  validate_ledger "$DIST/framework-retirements.json" "existing $DIST/framework-retirements.json" "$previous_retirements" || exit 1
+  cat "$previous_retirements" >> "$retirement_baselines"
+fi
+
+# The maintainer baseline provides bootstrap authority even though v0.75 and earlier have no ledger.
+# Keep the generated dist as an archive snapshot. Add HEAD and the nearest tag only when this source
+# root is itself the Git worktree root; an archive nested below an unrelated repo must ignore it.
+composer_root=$(pwd -P)
+git_root=""
+if command -v git >/dev/null 2>&1; then
+  candidate_git_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
+  if [ -n "$candidate_git_root" ]; then git_root=$(cd "$candidate_git_root" 2>/dev/null && pwd -P || true); fi
+fi
+if [ -n "$git_root" ] && [ "$git_root" = "$composer_root" ]; then
+  baseline_refs="HEAD"
+  nearest_tag=$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD 2>/dev/null || true)
+  [ -z "$nearest_tag" ] || baseline_refs="$baseline_refs $nearest_tag"
+  for ref in $baseline_refs; do
+    new_temp_file; historical_ledger=$new_temp
+    if git show "$ref:src/core/framework-retirements.json" > "$historical_ledger" 2>/dev/null; then
+      new_temp_file; historical_retirements=$new_temp
+      validate_ledger "$historical_ledger" "$ref:src/core/framework-retirements.json" "$historical_retirements" || exit 1
+      cat "$historical_retirements" >> "$retirement_baselines"
+    fi
+  done
 fi
 
 rm -rf "$DIST"; mkdir -p "$DIST"
@@ -107,7 +185,7 @@ ps_meta=$(sed -n 's/^\$metaFiles[[:space:]]*=[[:space:]]*@\((.*)\)/\1/p' "$DIST/
 for p in $ps_meta; do grep -Fq "$p" "$DIST/scripts/install.sh" || { echo "ERROR: ownership policy disagreement: excluded by install.ps1 but not install.sh: $p" >&2; exit 1; }; done
 
 manifest="$DIST/framework-ownership.json"
-tmp_paths=$(mktemp); trap 'rm -f "$tmp_paths"' EXIT
+new_temp_file; tmp_paths=$new_temp
 # LC_ALL=C so this collates by byte, matching the ordinal comparison the .ps1 twin uses. Without it
 # the two composers order an identical path set differently and emit byte-different manifests.
 (cd "$DIST" && find . -type f | sed 's#^\./##' | LC_ALL=C sort) | while IFS= read -r rel; do
@@ -133,7 +211,21 @@ sort -o "$tmp_paths" "$tmp_paths"
   printf '\n  ]\n}\n'
 } > "$manifest"
 
-# 4. validate: no unresolved markers
+# 4. The incoming ledger is the only shipped deletion authority. Compare it with every captured
+# maintainer/archive/Git baseline, then reject an active path.
+new_temp_file; current_retirements=$new_temp
+validate_ledger "$DIST/framework-retirements.json" "$DIST/framework-retirements.json" "$current_retirements" || exit 1
+cmp -s "$maintainer_retirements" "$current_retirements" || { echo "ERROR: $DIST/framework-retirements.json and $maintainer_ledger must contain the same cumulative retirement entries" >&2; exit 1; }
+LC_ALL=C sort -u "$retirement_baselines" | while IFS= read -r old; do
+  [ -z "$old" ] || grep -Fqx "$old" "$current_retirements" || { echo "ERROR: cumulative retirement entry or historical digest disappeared: $old" >&2; exit 1; }
+done
+while IFS=$'\t' read -r retired_path _; do
+  if awk -F '\t' -v p="$retired_path" '$1 == p { found=1 } END { exit !found }' "$tmp_paths"; then
+    echo "ERROR: retirement '$retired_path' is still present in the incoming ownership manifest" >&2; exit 1
+  fi
+done < "$current_retirements"
+
+# 5. validate: no unresolved markers
 if grep -rIlE '@stack:[A-Za-z0-9_-]+' "$DIST" 2>/dev/null; then
   echo "ERROR: unresolved @stack markers in $DIST (files listed above)" >&2; exit 1
 fi

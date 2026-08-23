@@ -1256,3 +1256,51 @@ A routing marker has the same boundary problem. Two warehouse signal categories 
 repository is warehouse-shaped; they do not prove the selected stack can complete adoption without
 a solution. Until that lifecycle is supported end to end, refusing before mutation and naming an
 explicit informed override is more honest than silently choosing the nearest implementation.
+
+## 2026-08-23 — Ownership metadata says who supplied a path, not whose bytes are there now
+
+A previous manifest entry and a trusted incoming tombstone can establish that the framework once
+owned a path and now wants it gone. They cannot establish that the file still contains framework
+bytes: consumers edit framework-owned files, and the previous manifest itself is mutable. Safe
+retirement therefore needs a third fact—the current digest matches a known shipped digest authored
+into the cumulative ledger. A mismatch is a preservation decision, not a deletion failure.
+
+Operation planning exposed a cost trap in the first implementation. Applying 165 manifest entries
+with one shell process per file made the Windows/Git Bash installer several minutes slower across
+the lifecycle suite. Keep the file-level authority and plan, but batch the already-validated list
+through one archive stream. Precision in policy does not require process-per-file execution.
+
+The same proportionality rule applies to tests. Once inert compatibility code is deleted, hostile
+argument permutations against that code no longer protect a live boundary. Replace them with the
+distinct destructive worlds—known bytes, custom bytes, malformed authority, reparse escape,
+dry-run, and downgrade—and remove repeated full installs where composition already proves the core
+installer is identical across distributions.
+## 2026-08-23 — A matching dry/apply plan can be identically incomplete
+
+Comparing dry-run output with apply-run output proves determinism, not truth. Both installer twins
+printed the same incomplete plan while post-copy skill backup, disable, and mirror logic mutated
+additional paths. The useful oracle is the target transition: every changed leaf must be covered by
+a planned write or a planned tree deletion, and a deliberate omitted-plan mutation must make that
+assertion red. Refactoring protected files from snapshot/restore to direct skip also removed writes
+that existed only to compensate for the old bulk-copy implementation.
+
+A generated artifact is similarly not independent history. Comparing a retirement ledger only with
+the current mutable dist permits source and dist to forget the same entry together. The first
+ledger-bearing release needs a required maintainer baseline because neither its current HEAD nor its
+preceding tag contains that history yet; committed and nearest-release ledgers then continue the
+chain. Use Git history only when the composer root is the worktree root—an archive nested below an
+unrelated repository must not inherit its authority. Test synchronized source/dist/baseline deletion
+as well as source/dist drift.
+
+Planning also exposed an ownership boundary hidden inside content carry-forward. A pre-existing
+skill can contain a framework exemplar sentence without being an incoming framework skill. Treating
+that sentence as sufficient authority rewrites an unknown consumer file outside the operation plan.
+Scope exemplar merging to names in the incoming manifest; consumer-only skills may be mirrored, but
+their active bytes are not framework payload.
+
+The release retry exposed the same distinction at the test-host boundary. The agent-eval recurrence
+test meant to prove that Windows PowerShell 5.1 reaches and rejects a PowerShell-7-only runner, but
+its child invocation omitted `-ExecutionPolicy Bypass`; on a host where 5.1's effective policy was
+Restricted, policy refusal happened before version parsing and the intended assertion was
+unreachable. A test of an interpreter boundary must neutralize unrelated host script policy just as
+the hook harness already does, then assert the specific version failure it was built to observe.

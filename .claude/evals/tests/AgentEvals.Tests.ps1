@@ -9,7 +9,7 @@ if ($IsWindows) {
     if (-not (Test-Path -LiteralPath $windowsPowerShell)) {
         throw 'Windows PowerShell 5.1 is unavailable; the agent-eval minimum-version boundary was not tested.'
     }
-    $legacyOutput = & $windowsPowerShell -NoProfile -File $runner -SelfTest 2>&1
+    $legacyOutput = & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File $runner -SelfTest 2>&1
     $legacyText = $legacyOutput -join "`n"
     if ($LASTEXITCODE -eq 0) { throw 'Agent eval runner unexpectedly accepted Windows PowerShell 5.1.' }
     if ($legacyText -notmatch 'ScriptRequiresUnmatchedPSVersion|requires PowerShell 7\.0') {

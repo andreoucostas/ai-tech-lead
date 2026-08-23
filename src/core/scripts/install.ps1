@@ -1,5 +1,5 @@
 ﻿# Install the AI Tech Lead Framework into a target repository.
-# Usage: pwsh scripts/install.ps1 [-GitHooks] [-AllowDirtyTree] C:\path\to\target-repo
+# Usage: pwsh scripts/install.ps1 [-GitHooks] [-AllowDirtyTree] [-WhatIf] [-AllowDowngrade] C:\path\to\target-repo
 #
 # Copies the template's framework files into the target, EXCLUDING the .git directory, the
 # .template-repo marker (which would disable the consumer's CI guardrail), the template repo's own
@@ -17,7 +17,9 @@
 param(
     [Parameter(Mandatory = $true)][string]$Target,
     [switch]$GitHooks,
-    [switch]$AllowDirtyTree
+    [switch]$AllowDirtyTree,
+    [switch]$WhatIf,
+    [switch]$AllowDowngrade
 )
 $ErrorActionPreference = 'Stop'
 
@@ -45,16 +47,133 @@ function Get-ReparsePointAncestor {
     }
 }
 
+function Get-ContainedTargetPath {
+    param([Parameter(Mandatory = $true)][string]$Relative)
+    if ([string]::IsNullOrWhiteSpace($Relative) -or $Relative.Contains('\') -or $Relative.Contains([char]0) -or
+        $Relative.StartsWith('/') -or $Relative.StartsWith('//') -or $Relative -match '^[A-Za-z]:' ) {
+        throw "unsafe or non-normalized path '$Relative'"
+    }
+    foreach ($segment in $Relative.Split('/')) {
+        if ([string]::IsNullOrEmpty($segment) -or $segment -eq '.' -or $segment -eq '..') {
+            throw "unsafe or non-normalized path '$Relative'"
+        }
+    }
+    $full = [IO.Path]::GetFullPath((Join-Path $tgt ($Relative -replace '/', [IO.Path]::DirectorySeparatorChar)))
+    $prefix = $tgt.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
+    if (-not $full.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)) { throw "path escapes the target: '$Relative'" }
+    return $full
+}
+
+function Assert-SafeTargetMutation {
+    param([Parameter(Mandatory = $true)][string]$Relative, [switch]$AllowTree)
+    $destination = Get-ContainedTargetPath -Relative $Relative
+    $reparse = Get-ReparsePointAncestor -Path $destination
+    if ($reparse) {
+        [Console]::Error.WriteLine("ERROR: Refusing install mutation '$Relative': target path traverses reparse/symlink '$reparse'. Remove the link, then re-run.")
+        exit 3
+    }
+    $item = Get-Item -Force -LiteralPath $destination -ErrorAction SilentlyContinue
+    if ($item -and -not $AllowTree -and -not (Test-Path -LiteralPath $destination -PathType Leaf)) {
+        [Console]::Error.WriteLine("ERROR: Refusing install mutation '$Relative': existing target is not a regular file.")
+        exit 3
+    }
+    $parent = Split-Path -Parent $destination
+    while ($parent -and $parent.StartsWith($tgt, [StringComparison]::OrdinalIgnoreCase)) {
+        $parentItem = Get-Item -Force -LiteralPath $parent -ErrorAction SilentlyContinue
+        if ($parentItem -and -not (Test-Path -LiteralPath $parent -PathType Container)) {
+            [Console]::Error.WriteLine("ERROR: Refusing install mutation '$Relative': parent '$parent' is not a directory.")
+            exit 3
+        }
+        if ($parent -eq $tgt) { break }
+        $parent = Split-Path -Parent $parent
+    }
+    return $destination
+}
+
+function Read-OwnershipManifest {
+    param([Parameter(Mandatory = $true)][string]$Path, [Parameter(Mandatory = $true)][string]$Label)
+    $document = Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json
+    if ([int]$document.'schema-version' -ne 1 -or $null -eq $document.paths) { throw "$Label has an unsupported or missing schema" }
+    $entries = @($document.paths)
+    if ($entries.Count -eq 0) { throw "$Label contains no paths" }
+    $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    $byPath = @{}
+    foreach ($entry in $entries) {
+        $relative = [string]$entry.path
+        $ownership = [string]$entry.ownership
+        [void](Get-ContainedTargetPath -Relative $relative)
+        if (-not $seen.Add($relative)) { throw "$Label contains duplicate path '$relative'" }
+        if ($ownership -notin @('framework-owned/overwritten', 'consumer-owned/protected', 'mixed')) {
+            throw "$Label has unsupported ownership '$ownership' for '$relative'"
+        }
+        $byPath[$relative] = $ownership
+    }
+    return [pscustomobject]@{ Entries = $entries; ByPath = $byPath }
+}
+
+function Read-RetirementLedger {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    $document = Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json
+    if ([int]$document.'schema-version' -ne 1 -or $null -eq $document.retirements) { throw 'retirement ledger has an unsupported or missing schema' }
+    $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    $byPath = @{}
+    foreach ($entry in @($document.retirements)) {
+        $relative = [string]$entry.path
+        $version = [string]$entry.'retired-in'
+        $hashes = @($entry.'known-content-sha256' | ForEach-Object { [string]$_ })
+        [void](Get-ContainedTargetPath -Relative $relative)
+        if (-not $seen.Add($relative)) { throw "retirement ledger contains duplicate path '$relative'" }
+        if ($version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$') { throw "retirement ledger has invalid retired-in version '$version' for '$relative'" }
+        if ($hashes.Count -eq 0 -or @($hashes | Where-Object { $_ -cnotmatch '^[0-9a-f]{64}$' }).Count -gt 0 -or @($hashes | Select-Object -Unique).Count -ne $hashes.Count) {
+            throw "retirement ledger has invalid or duplicate known-content-sha256 values for '$relative'"
+        }
+        $byPath[$relative] = [pscustomobject]@{ Version = $version; Hashes = $hashes }
+    }
+    return $byPath
+}
+
+function Compare-ReleaseVersion {
+    param([string]$Left, [string]$Right)
+    if ($Left -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$' -or $Right -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$') {
+        throw "versions must use release SemVer form X.Y.Z (installed='$Left', incoming='$Right')"
+    }
+    $a = $Left.Split('.'); $b = $Right.Split('.')
+    for ($i = 0; $i -lt 3; $i++) {
+        $an = $a[$i].TrimStart('0'); if ($an.Length -eq 0) { $an = '0' }
+        $bn = $b[$i].TrimStart('0'); if ($bn.Length -eq 0) { $bn = '0' }
+        if ($an.Length -lt $bn.Length) { return -1 }
+        if ($an.Length -gt $bn.Length) { return 1 }
+        $cmp = [StringComparer]::Ordinal.Compare($an, $bn)
+        if ($cmp -lt 0) { return -1 }; if ($cmp -gt 0) { return 1 }
+    }
+    return 0
+}
+
+$gitHookRelative = $null
 if ($GitHooks) {
     & (Join-Path $src 'scripts/setup-git-hooks.ps1') -Target $tgt -CheckOnly
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    $gitRoot = [string]((& git -C $tgt rev-parse --show-toplevel 2>$null) -join "`n").Trim()
+    $gitDir = [string]((& git -C $tgt rev-parse --git-dir 2>$null) -join "`n").Trim()
+    if ($LASTEXITCODE -ne 0 -or -not $gitRoot -or -not $gitDir) {
+        [Console]::Error.WriteLine('ERROR: Git-hook setup passed its check but the installer could not resolve its mutation target.')
+        exit 3
+    }
+    if (-not [IO.Path]::IsPathRooted($gitDir)) { $gitDir = Join-Path $gitRoot $gitDir }
+    $gitHookPath = [IO.Path]::GetFullPath((Join-Path $gitDir 'hooks/pre-commit'))
+    $targetPrefix = $tgt.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
+    if (-not $gitHookPath.StartsWith($targetPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        [Console]::Error.WriteLine("ERROR: Git-hook setup would write outside the selected target ('$gitHookPath'). Linked/external Git directories are not supported by installer planning.")
+        exit 3
+    }
+    $gitHookRelative = $gitHookPath.Substring($targetPrefix.Length) -replace '\\', '/'
 }
 
 # Template-repo meta files that must never land in (or overwrite their namesakes in) a consumer repo.
 $metaFiles = @('.git', '.template-repo', 'README.md', 'CHANGELOG.md', '.gitignore', '.gitattributes')
 
 # Consumer files the copy below would otherwise clobber. Brownfield: archived so /adopt can merge
-# them. Update: snapshotted and restored — after bootstrap/adopt the consumer owns their content.
+# them. Update: skipped directly — after bootstrap/adopt the consumer owns their content.
 $protected = @('CLAUDE.md', 'AGENTS.md', 'TECH_DEBT.md', 'SECURITY_FINDINGS.md', 'LEARNINGS.md',
     'FRAMEWORK-CONTEXT.md', '.github/copilot-instructions.md', 'docs/ARCHITECTURE.md')
 # Persistent state is copied only when absent. The composer reads this policy from both installer
@@ -83,18 +202,44 @@ if (-not $updateMode) {
 }
 $adoptMode = (-not $updateMode) -and ($detected.Count -gt 0)
 
-# The incoming manifest is the sole brownfield collision inventory. Read and validate the complete
-# archive plan before the first target mutation: an archive collision must refuse, never overwrite.
+# The incoming manifest inventories installed files; the separately authored retirement ledger is
+# the only stale-path deletion authority. Validate both before any target mutation.
 $incomingManifest = Join-Path $src 'framework-ownership.json'
 try {
-    $incomingPaths = @((Get-Content -Raw -LiteralPath $incomingManifest | ConvertFrom-Json).paths | ForEach-Object { [string]$_.path })
+    $incoming = Read-OwnershipManifest -Path $incomingManifest -Label 'incoming framework ownership manifest'
+    $incomingPaths = @($incoming.Entries | ForEach-Object { [string]$_.path })
+    foreach ($relative in $incomingPaths) {
+        if (-not (Test-Path -LiteralPath (Join-Path $src $relative) -PathType Leaf)) { throw "incoming manifest path '$relative' is not a shipped file" }
+    }
+    $retirementLedger = Read-RetirementLedger -Path (Join-Path $src 'framework-retirements.json')
+    foreach ($retiredPath in $retirementLedger.Keys) {
+        if ($incoming.ByPath.ContainsKey($retiredPath)) { throw "retirement '$retiredPath' is still present in the incoming ownership manifest" }
+    }
 } catch {
-    [Console]::Error.WriteLine("ERROR: Cannot read incoming framework ownership manifest '$incomingManifest': $($_.Exception.Message)")
+    [Console]::Error.WriteLine("ERROR: Cannot validate incoming framework metadata: $($_.Exception.Message)")
     exit 3
 }
-if ($incomingPaths.Count -eq 0) {
-    [Console]::Error.WriteLine("ERROR: Incoming framework ownership manifest '$incomingManifest' contains no paths.")
+
+$incomingVersionPath = Join-Path $src '.claude/framework-version.json'
+try {
+    $incomingVersion = [string](Get-Content -Raw -LiteralPath $incomingVersionPath | ConvertFrom-Json).version
+    [void](Compare-ReleaseVersion -Left $incomingVersion -Right $incomingVersion)
+} catch {
+    [Console]::Error.WriteLine("ERROR: Cannot validate incoming framework version: $($_.Exception.Message)")
     exit 3
+}
+if ($updateMode) {
+    try {
+        $installedVersion = [string](Get-Content -Raw -LiteralPath (Join-Path $tgt '.claude/framework-version.json') | ConvertFrom-Json).version
+        $versionComparison = Compare-ReleaseVersion -Left $installedVersion -Right $incomingVersion
+    } catch {
+        [Console]::Error.WriteLine("CANT-VERIFY: Installed framework version cannot be compared safely: $($_.Exception.Message)")
+        exit 4
+    }
+    if ($versionComparison -gt 0 -and -not $AllowDowngrade) {
+        [Console]::Error.WriteLine("ERROR: Refusing framework downgrade from $installedVersion to $incomingVersion before mutation. Re-run with -AllowDowngrade only after reviewing the older release.")
+        exit 4
+    }
 }
 
 # These legal files are neither protected nor ordinary framework files. Protection would freeze a
@@ -121,9 +266,63 @@ if ((Test-Path -LiteralPath $targetNotice -PathType Leaf) -and
     exit 3
 }
 
+# Previous ownership is consumer-mutable evidence, never deletion authority. Reconciliation is
+# enabled only when the whole previous manifest is valid, and every candidate also matches bytes
+# named by the incoming framework-authored ledger.
+$deletePlan = New-Object System.Collections.Generic.List[string]
+$retirementPreserve = New-Object System.Collections.Generic.List[string]
+$reconciliationMessages = New-Object System.Collections.Generic.List[string]
+if ($updateMode) {
+    $previousManifestPath = Join-Path $tgt 'framework-ownership.json'
+    if (-not (Test-Path -LiteralPath $previousManifestPath -PathType Leaf)) {
+        $reconciliationMessages.Add('CANT-VERIFY: previous framework-ownership.json is missing; additive compatibility mode will perform no stale deletion.')
+    } elseif (Get-ReparsePointAncestor -Path $previousManifestPath) {
+        $reconciliationMessages.Add('CANT-VERIFY: previous framework-ownership.json traverses a reparse/symlink; additive compatibility mode will perform no stale deletion.')
+    } else {
+        try {
+            $previous = Read-OwnershipManifest -Path $previousManifestPath -Label 'previous framework ownership manifest'
+        } catch {
+            $previous = $null
+            $reconciliationMessages.Add("CANT-VERIFY: previous framework-ownership.json is malformed or unsafe; additive compatibility mode will perform no stale deletion. $($_.Exception.Message)")
+        }
+        if ($previous) {
+            foreach ($retiredPath in @($retirementLedger.Keys | Sort-Object)) {
+                if (-not $previous.ByPath.ContainsKey($retiredPath) -or
+                    $previous.ByPath[$retiredPath] -ne 'framework-owned/overwritten' -or
+                    $incoming.ByPath.ContainsKey($retiredPath) -or $retiredPath -in $persistentCopyIfAbsent) { continue }
+                $candidate = Get-ContainedTargetPath -Relative $retiredPath
+                if (-not (Test-Path -LiteralPath $candidate)) { continue }
+                $reparse = Get-ReparsePointAncestor -Path $candidate
+                if ($reparse) {
+                    $reconciliationMessages.Add("CANT-VERIFY: retired path '$retiredPath' traverses reparse/symlink '$reparse'; preserving it.")
+                    $retirementPreserve.Add($retiredPath)
+                    continue
+                }
+                if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+                    $reconciliationMessages.Add("CANT-VERIFY: retired path '$retiredPath' is not a regular file; preserving it.")
+                    $retirementPreserve.Add($retiredPath)
+                    continue
+                }
+                try { $digest = (Get-FileHash -LiteralPath $candidate -Algorithm SHA256).Hash.ToLowerInvariant() }
+                catch {
+                    $reconciliationMessages.Add("CANT-VERIFY: retired path '$retiredPath' could not be hashed; preserving it.")
+                    $retirementPreserve.Add($retiredPath)
+                    continue
+                }
+                if ($digest -notin @($retirementLedger[$retiredPath].Hashes)) {
+                    $reconciliationMessages.Add("CANT-VERIFY: retired path '$retiredPath' has consumer-modified or unknown content; preserving it.")
+                    $retirementPreserve.Add($retiredPath)
+                    continue
+                }
+                $deletePlan.Add($retiredPath)
+            }
+        }
+    }
+}
+
 # Refuse a dirty Git target before any installer mutation. This does not make Git a prerequisite:
 # greenfield/non-Git targets remain valid. An override is intentionally noisy and never implicit.
-if (($adoptMode -or $updateMode) -and (Get-Command git -ErrorAction SilentlyContinue)) {
+if (-not $WhatIf -and ($adoptMode -or $updateMode) -and (Get-Command git -ErrorAction SilentlyContinue)) {
     & git -C $tgt rev-parse --is-inside-work-tree *> $null
     if ($LASTEXITCODE -eq 0) {
         $dirty = @(& git -C $tgt status --porcelain=v1 --untracked-files=all)
@@ -147,6 +346,10 @@ Write-Output "  into: $tgt"
 if ($updateMode)    { Write-Output "  mode: update (existing install detected via .claude/framework-version.json)" }
 elseif ($adoptMode) { Write-Output "  mode: brownfield (pre-existing AI tooling detected: $($detected -join ', '))" }
 else                { Write-Output "  mode: greenfield" }
+if ($updateMode -and $versionComparison -gt 0 -and $AllowDowngrade) {
+    Write-Output "  override: -AllowDowngrade accepted for downgrade $installedVersion -> $incomingVersion."
+}
+foreach ($message in $reconciliationMessages) { Write-Output "  $message" }
 
 if ($updateMode) {
     Write-Output "  UPDATE PREFLIGHT: This update replaces framework-owned files, including .claude/settings.json."
@@ -193,101 +396,228 @@ if ($adoptMode) {
         }
         $archivePlan.Add([pscustomobject]@{ Original = $orig; Relative = $rel; Destination = $dest })
     }
-    foreach ($entry in $archivePlan) {
-        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $entry.Destination) | Out-Null
-        Move-Item -LiteralPath $entry.Original -Destination $entry.Destination
-        $archived += $entry.Relative
-        Write-Output "  archived: $($entry.Relative.Substring('docs/pre-adoption/'.Length)) -> $($entry.Relative)"
-    }
 }
 
-$snapshot = $null
+# Compute the complete deployment/reconciliation plan before the first target mutation. Legacy
+# snapshot/restore writes are gone: protected files are skipped directly, and every skill backup,
+# disable and mirror leaf is now planned and preflighted before execution.
+$createPlan = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+$replacePlan = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+$preservePlan = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+$archiveSources = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+$ordinaryApplyPaths = New-Object System.Collections.Generic.List[string]
+$skillBackupPlan = New-Object System.Collections.Generic.List[object]
+$disabledCarryPlan = New-Object System.Collections.Generic.List[object]
+$disabledIncomingPlan = New-Object System.Collections.Generic.List[object]
+$skillMirrorPlan = New-Object System.Collections.Generic.List[object]
+$skillDeletePlan = New-Object System.Collections.Generic.List[string]
+foreach ($entry in $archivePlan) { [void]$archiveSources.Add($entry.Relative.Substring('docs/pre-adoption/'.Length)) }
+
+function Add-PlannedWrite {
+    param([string]$Relative, [switch]$ForceCreate)
+    $destination = Assert-SafeTargetMutation -Relative $Relative
+    [void]$preservePlan.Remove($Relative)
+    if ($ForceCreate -or -not (Test-Path -LiteralPath $destination)) {
+        [void]$replacePlan.Remove($Relative); [void]$createPlan.Add($Relative)
+    } else {
+        [void]$createPlan.Remove($Relative); [void]$replacePlan.Add($Relative)
+    }
+    return $destination
+}
+
+$disabledSkillNames = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+$discoveredSkillNames = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+$skillExemplars = @{}
+$incomingFrameworkSkillNames = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+$incoming.Entries | ForEach-Object {
+    $frameworkSkill = [regex]::Match([string]$_.path, '^\.claude/skills/([^/]+)/')
+    if ($frameworkSkill.Success -and [string]$_.ownership -eq 'framework-owned/overwritten') {
+        [void]$incomingFrameworkSkillNames.Add($frameworkSkill.Groups[1].Value)
+    }
+}
+$activeSkillsRoot = Join-Path $tgt '.claude/skills'
 if ($updateMode) {
-    $settings = Join-Path $tgt '.claude/settings.json'
-    if (Test-Path -LiteralPath $settings -PathType Leaf) {
-        $settingsBackup = Join-Path $tgt '.claude/.state/settings.json.pre-update'
-        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $settingsBackup) | Out-Null
-        Copy-Item -Force -LiteralPath $settings -Destination $settingsBackup
-        Write-Output "  saved pre-update settings: .claude/.state/settings.json.pre-update"
+    $learnings = Join-Path $tgt 'LEARNINGS.md'
+    if (Test-Path -LiteralPath $learnings -PathType Leaf) {
+        foreach ($m in [regex]::Matches((Get-Content -Raw -LiteralPath $learnings), '(?m)^## Disabled framework skill:\s*([a-z0-9-]+)\s*$')) { [void]$disabledSkillNames.Add($m.Groups[1].Value) }
     }
-    # Snapshot consumer-owned content files; restored after the copy.
-    $snapshot = Join-Path ([IO.Path]::GetTempPath()) ('ai-tech-lead-update-' + [IO.Path]::GetRandomFileName())
-    foreach ($f in $protected) {
-        $orig = Join-Path $tgt $f
-        if (Test-Path -LiteralPath $orig -PathType Leaf) {
-            $dest = Join-Path $snapshot $f
-            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $dest) | Out-Null
-            Copy-Item -Force -LiteralPath $orig -Destination $dest
+    if (Test-Path -LiteralPath $activeSkillsRoot -PathType Container) {
+        foreach ($item in Get-ChildItem -LiteralPath $activeSkillsRoot -Recurse -Force) {
+            if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                [Console]::Error.WriteLine("ERROR: Refusing update skill reconciliation: '$($item.FullName)' is a reparse/symlink."); exit 3
+            }
         }
-    }
-    $skillState = Join-Path $snapshot 'skill-state/.claude'
-    foreach ($rel in @('skills','disabled-skills')) { $orig=Join-Path $tgt ".claude/$rel"; if(Test-Path -LiteralPath $orig -PathType Container){New-Item -ItemType Directory -Force -Path $skillState|Out-Null;Copy-Item -Recurse -Force -LiteralPath $orig -Destination $skillState} }
-    $backup=Join-Path $tgt '.claude/framework-update-backup/skills'
-    if(-not(Test-Path -LiteralPath $backup)-and(Test-Path -LiteralPath (Join-Path $tgt '.claude/skills'))){New-Item -ItemType Directory -Force -Path (Split-Path -Parent $backup)|Out-Null;Copy-Item -Recurse -Force -LiteralPath (Join-Path $tgt '.claude/skills') -Destination $backup}
-}
-
-Get-ChildItem -Force -LiteralPath $src |
-    Where-Object { $_.Name -notin $metaFiles -and $_.Name -notin @('docs', 'LICENSES', $legalNotice, '.claude') } |
-    ForEach-Object { Copy-Item -Recurse -Force -LiteralPath $_.FullName -Destination $tgt }
-
-# Preserve the append-only audit log byte-for-byte. All other .claude content remains normal
-# framework machinery and is refreshed by the bulk copy.
-$sourceClaude = Join-Path $src '.claude'
-if (Test-Path -LiteralPath $sourceClaude -PathType Container) {
-    $targetClaude = New-Item -ItemType Directory -Force -Path (Join-Path $tgt '.claude')
-    Get-ChildItem -Force -LiteralPath $sourceClaude | ForEach-Object {
-        $rel = '.claude/' + $_.Name
-        $dest = Join-Path $targetClaude.FullName $_.Name
-        if ($rel -in $persistentCopyIfAbsent -and (Test-Path -LiteralPath $dest)) { return }
-        Copy-Item -Recurse -Force -LiteralPath $_.FullName -Destination $targetClaude.FullName
-    }
-}
-
-# Copy docs normally except for the consumer-owned wiki index, which is copy-if-absent.
-$sourceDocs = Join-Path $src 'docs'
-if (Test-Path -LiteralPath $sourceDocs -PathType Container) {
-    $targetDocs = New-Item -ItemType Directory -Force -Path (Join-Path $tgt 'docs')
-    Get-ChildItem -Force -LiteralPath $sourceDocs |
-        Where-Object { $_.Name -ne 'wiki' } |
-        ForEach-Object { Copy-Item -Recurse -Force -LiteralPath $_.FullName -Destination $targetDocs.FullName }
-    $sourceWiki = Join-Path $sourceDocs 'wiki'
-    if (Test-Path -LiteralPath $sourceWiki -PathType Container) {
-        $targetWiki = New-Item -ItemType Directory -Force -Path (Join-Path $targetDocs.FullName 'wiki')
-        Get-ChildItem -Force -LiteralPath $sourceWiki | ForEach-Object {
-            if ($_.Name -eq 'INDEX.md' -and (Test-Path -LiteralPath (Join-Path $targetWiki.FullName 'INDEX.md'))) { return }
-            Copy-Item -Recurse -Force -LiteralPath $_.FullName -Destination $targetWiki.FullName
+        foreach ($skillDir in Get-ChildItem -LiteralPath $activeSkillsRoot -Directory) {
+            $skillFile = Join-Path $skillDir.FullName 'SKILL.md'
+            if (-not (Test-Path -LiteralPath $skillFile -PathType Leaf)) { continue }
+            $oldText = Get-Content -Raw -LiteralPath $skillFile
+            if ($oldText -match '(?m)^origin:\s*discovered\s*$') { [void]$discoveredSkillNames.Add($skillDir.Name); continue }
+            # An exemplar belongs to a framework skill only when this incoming manifest still
+            # carries that skill. Rewriting an unknown consumer skill just to re-append the same
+            # line changes its bytes despite the framework having no ownership of that path.
+            if (-not $incomingFrameworkSkillNames.Contains($skillDir.Name)) { continue }
+            $exemplar = [regex]::Match($oldText, '(?m)^For a concrete current instance in this repo, see .+$')
+            if ($exemplar.Success) { $skillExemplars[$skillDir.Name] = $exemplar.Value }
         }
     }
 }
 
-# Explicit legal-file policy above owns these paths; keeping them out of both $protected and the
-# bulk copy lets the notice travel on update without asserting ownership over consumer collisions.
-New-Item -ItemType Directory -Force -Path (Split-Path -Parent $targetLicense) | Out-Null
-if ($copyLegalLicense) { Copy-Item -Force -LiteralPath $sourceLicense -Destination $targetLicense }
-Copy-Item -Force -LiteralPath (Join-Path $src $legalNotice) -Destination $targetNotice
-
-# The installer is meta — don't ship it into the consumer repo. template-ci.yml is the TEMPLATE
-# repo's own CI (hook suite + framework checks on push); consumers get the same framework checks
-# via docs-sync-check -> template-checks, wired into their own CI.
-foreach ($f in @('scripts/install.sh', 'scripts/install.ps1', '.github/workflows/template-ci.yml')) {
-    Remove-Item -Force -ErrorAction SilentlyContinue -LiteralPath (Join-Path $tgt $f)
-}
-
-if ($updateMode -and $snapshot -and (Test-Path -LiteralPath $snapshot)) {
-    foreach ($f in $protected) {
-        $saved = Join-Path $snapshot $f
-        if (Test-Path -LiteralPath $saved -PathType Leaf) {
-            Copy-Item -Force -LiteralPath $saved -Destination (Join-Path $tgt $f)
-        }
+# The one-time backup is a set of leaf copies, not an opaque recursive directory mutation.
+$backupSkillsRoot = Join-Path $tgt '.claude/framework-update-backup/skills'
+if ($updateMode -and (Test-Path -LiteralPath $activeSkillsRoot -PathType Container) -and -not (Test-Path -LiteralPath $backupSkillsRoot)) {
+    foreach ($file in Get-ChildItem -LiteralPath $activeSkillsRoot -Recurse -File -Force) {
+        $underSkills = $file.FullName.Substring($activeSkillsRoot.Length).TrimStart('\', '/') -replace '\\', '/'
+        $relative = ".claude/framework-update-backup/skills/$underSkills"
+        [void](Add-PlannedWrite -Relative $relative -ForceCreate)
+        $skillBackupPlan.Add([pscustomobject]@{ Source = $file.FullName; Relative = $relative })
     }
-    $oldSkills=Join-Path $snapshot 'skill-state/.claude/skills'
-    if(Test-Path -LiteralPath $oldSkills){foreach($dir in Get-ChildItem -LiteralPath $oldSkills -Directory){$oldFile=Join-Path $dir.FullName 'SKILL.md';if(-not(Test-Path -LiteralPath $oldFile)){continue};$oldText=Get-Content -LiteralPath $oldFile -Raw;$dest=Join-Path $tgt ".claude/skills/$($dir.Name)";if($oldText-match'(?m)^origin:\s*discovered\s*$'){if(Test-Path -LiteralPath $dest){Remove-Item -Recurse -Force -LiteralPath $dest};Copy-Item -Recurse -Force -LiteralPath $dir.FullName -Destination $dest;continue};$ex=[regex]::Match($oldText,'(?m)^For a concrete current instance in this repo, see .+$');$newFile=Join-Path $dest 'SKILL.md';if($ex.Success-and(Test-Path -LiteralPath $newFile)){$newText=Get-Content -LiteralPath $newFile -Raw;$newText=[regex]::Replace($newText,'(?m)^For a concrete current instance in this repo, see .+\r?\n?','');Set-Content -LiteralPath $newFile -Value($newText.TrimEnd()+"`n`n"+$ex.Value+"`n") -Encoding UTF8}}}
-    $savedLearnings=Join-Path $snapshot 'LEARNINGS.md'
-    if(Test-Path -LiteralPath $savedLearnings){foreach($m in [regex]::Matches((Get-Content -LiteralPath $savedLearnings -Raw),'(?m)^## Disabled framework skill:\s*([a-z0-9-]+)\s*$')){$name=$m.Groups[1].Value;$active=Join-Path $tgt ".claude/skills/$name";$inactive=Join-Path $tgt ".claude/disabled-skills/$name";if(Test-Path -LiteralPath $active){New-Item -ItemType Directory -Force -Path(Split-Path -Parent $inactive)|Out-Null;if(Test-Path -LiteralPath $inactive){Remove-Item -Recurse -Force -LiteralPath $inactive};Move-Item -LiteralPath $active -Destination $inactive}}}
-    $githubSkills=New-Item -ItemType Directory -Force -Path (Join-Path $tgt '.github/skills');Get-ChildItem -LiteralPath(Join-Path $tgt '.claude/skills') -Directory -ErrorAction SilentlyContinue|ForEach-Object{Copy-Item -Recurse -Force -LiteralPath $_.FullName -Destination $githubSkills.FullName}
-    Remove-Item -Recurse -Force -LiteralPath $snapshot
-    Write-Output "  consumer-owned content files left untouched ($($protected -join ', '))."
 }
+
+# Preserve every existing leaf of a disabled skill in its inactive location, then overlay the
+# incoming framework version. Active and GitHub copies are removed as explicit tree operations.
+foreach ($name in $disabledSkillNames) {
+    $activeRoot = Join-Path $activeSkillsRoot $name
+    if (Test-Path -LiteralPath $activeRoot -PathType Container) {
+        foreach ($file in Get-ChildItem -LiteralPath $activeRoot -Recurse -File -Force) {
+            $underSkill = $file.FullName.Substring($activeRoot.Length).TrimStart('\', '/') -replace '\\', '/'
+            $relative = ".claude/disabled-skills/$name/$underSkill"
+            [void](Add-PlannedWrite -Relative $relative)
+            $disabledCarryPlan.Add([pscustomobject]@{ Source = $file.FullName; Relative = $relative })
+        }
+        [void](Assert-SafeTargetMutation -Relative ".claude/skills/$name" -AllowTree)
+        $skillDeletePlan.Add(".claude/skills/$name")
+    }
+    $githubRoot = Join-Path $tgt ".github/skills/$name"
+    if (Test-Path -LiteralPath $githubRoot) {
+        [void](Assert-SafeTargetMutation -Relative ".github/skills/$name" -AllowTree)
+        $skillDeletePlan.Add(".github/skills/$name")
+    }
+}
+
+foreach ($relative in $incomingPaths) {
+    $claudeSkill = [regex]::Match($relative, '^\.claude/skills/([^/]+)/(.*)$')
+    $githubSkill = [regex]::Match($relative, '^\.github/skills/([^/]+)/(.*)$')
+    if ($updateMode -and $claudeSkill.Success -and $disabledSkillNames.Contains($claudeSkill.Groups[1].Value)) {
+        $inactive = ".claude/disabled-skills/$($claudeSkill.Groups[1].Value)/$($claudeSkill.Groups[2].Value)"
+        [void](Add-PlannedWrite -Relative $inactive)
+        $disabledIncomingPlan.Add([pscustomobject]@{ Source = $relative; Relative = $inactive })
+        continue
+    }
+    if ($updateMode -and $githubSkill.Success -and $disabledSkillNames.Contains($githubSkill.Groups[1].Value)) { continue }
+    $destination = Get-ContainedTargetPath -Relative $relative
+    $exists = $null -ne (Get-Item -Force -LiteralPath $destination -ErrorAction SilentlyContinue)
+    $preserveDiscovered = $claudeSkill.Success -and $discoveredSkillNames.Contains($claudeSkill.Groups[1].Value)
+    $preserve = $exists -and ($relative -in $copyIfAbsent -or
+        ($updateMode -and $relative -in $protected) -or
+        ($relative -eq $legalLicense -and -not $copyLegalLicense) -or $preserveDiscovered)
+    if ($preserve) { [void]$preservePlan.Add($relative); continue }
+    [void](Add-PlannedWrite -Relative $relative -ForceCreate:$archiveSources.Contains($relative))
+    $ordinaryApplyPaths.Add($relative)
+}
+foreach ($relative in $retirementPreserve) { [void]$preservePlan.Add($relative) }
+
+$settingsBackupRelative = $null
+if ($updateMode -and (Test-Path -LiteralPath (Join-Path $tgt '.claude/settings.json') -PathType Leaf)) {
+    $settingsBackupRelative = '.claude/.state/settings.json.pre-update'
+    [void](Add-PlannedWrite -Relative $settingsBackupRelative)
+}
+
+# Mirror the final active skill leaf set. This includes project-discovered/custom skills that do
+# not appear in the incoming manifest and makes their GitHub writes visible in the plan.
+$finalActiveFiles = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+if ($updateMode -and (Test-Path -LiteralPath $activeSkillsRoot -PathType Container)) {
+    foreach ($file in Get-ChildItem -LiteralPath $activeSkillsRoot -Recurse -File -Force) {
+        $underSkills = $file.FullName.Substring($activeSkillsRoot.Length).TrimStart('\', '/') -replace '\\', '/'
+        $name = $underSkills.Split('/')[0]
+        if (-not $disabledSkillNames.Contains($name)) { [void]$finalActiveFiles.Add(".claude/skills/$underSkills") }
+    }
+}
+if ($updateMode) {
+    foreach ($relative in $incomingPaths) {
+        $m = [regex]::Match($relative, '^\.claude/skills/([^/]+)/(.*)$')
+        if ($m.Success -and -not $disabledSkillNames.Contains($m.Groups[1].Value)) { [void]$finalActiveFiles.Add($relative) }
+    }
+    foreach ($sourceRelative in $finalActiveFiles) {
+        $mirrorRelative = '.github/skills/' + $sourceRelative.Substring('.claude/skills/'.Length)
+        [void](Add-PlannedWrite -Relative $mirrorRelative)
+        $skillMirrorPlan.Add([pscustomobject]@{ Source = $sourceRelative; Relative = $mirrorRelative })
+    }
+}
+
+$adoptionMarkerRelative = $null
+if ($adoptMode) { $adoptionMarkerRelative = '.claude/adoption-pending.json'; [void](Add-PlannedWrite -Relative $adoptionMarkerRelative) }
+if ($GitHooks) { [void](Add-PlannedWrite -Relative $gitHookRelative -ForceCreate) }
+
+$modeName = if ($updateMode) { 'update' } elseif ($adoptMode) { 'brownfield' } else { 'greenfield' }
+Write-Output "OPERATION-PLAN schema=1 mode=$modeName"
+foreach ($category in @(
+    [pscustomobject]@{ Name = 'create'; Values = $createPlan },
+    [pscustomobject]@{ Name = 'replace'; Values = $replacePlan },
+    [pscustomobject]@{ Name = 'preserve'; Values = $preservePlan },
+    [pscustomobject]@{ Name = 'archive'; Values = @($archivePlan | ForEach-Object { $_.Relative }) },
+    [pscustomobject]@{ Name = 'delete'; Values = @($deletePlan) + @($skillDeletePlan) }
+)) {
+    foreach ($relative in @($category.Values | Sort-Object -Unique)) { Write-Output "PLAN $($category.Name) $relative" }
+}
+if ($WhatIf) { Write-Output 'Dry run complete; target was not modified.'; exit 0 }
+
+foreach ($entry in $archivePlan) {
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $entry.Destination) | Out-Null
+    Move-Item -LiteralPath $entry.Original -Destination $entry.Destination
+    $archived += $entry.Relative
+    Write-Output "  archived: $($entry.Relative.Substring('docs/pre-adoption/'.Length)) -> $($entry.Relative)"
+}
+foreach ($relative in $deletePlan) {
+    Remove-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $relative)
+    Write-Output "  retired: $relative"
+}
+if ($settingsBackupRelative) {
+    $settingsBackup = Get-ContainedTargetPath -Relative $settingsBackupRelative
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $settingsBackup) | Out-Null
+    Copy-Item -Force -LiteralPath (Join-Path $tgt '.claude/settings.json') -Destination $settingsBackup
+    Write-Output "  saved pre-update settings: $settingsBackupRelative"
+}
+foreach ($entry in $skillBackupPlan) {
+    $destination = Get-ContainedTargetPath -Relative $entry.Relative
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
+    Copy-Item -Force -LiteralPath $entry.Source -Destination $destination
+}
+foreach ($entry in $disabledCarryPlan) {
+    $destination = Get-ContainedTargetPath -Relative $entry.Relative
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
+    Copy-Item -Force -LiteralPath $entry.Source -Destination $destination
+}
+foreach ($relative in $ordinaryApplyPaths) {
+    $destination = Get-ContainedTargetPath -Relative $relative
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
+    Copy-Item -Force -LiteralPath (Join-Path $src $relative) -Destination $destination
+}
+foreach ($entry in $disabledIncomingPlan) {
+    $destination = Get-ContainedTargetPath -Relative $entry.Relative
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
+    Copy-Item -Force -LiteralPath (Join-Path $src $entry.Source) -Destination $destination
+}
+foreach ($name in $skillExemplars.Keys) {
+    $base = if ($disabledSkillNames.Contains($name)) { ".claude/disabled-skills/$name" } else { ".claude/skills/$name" }
+    $newFile = Join-Path $tgt "$base/SKILL.md"
+    if (Test-Path -LiteralPath $newFile -PathType Leaf) {
+        $newText = Get-Content -LiteralPath $newFile -Raw
+        $newText = [regex]::Replace($newText, '(?m)^For a concrete current instance in this repo, see .+\r?\n?', '')
+        Set-Content -LiteralPath $newFile -Value ($newText.TrimEnd() + "`n`n" + $skillExemplars[$name] + "`n") -Encoding UTF8
+    }
+}
+foreach ($relative in $skillDeletePlan) {
+    $path = Get-ContainedTargetPath -Relative $relative
+    if (Test-Path -LiteralPath $path) { Remove-Item -Recurse -Force -LiteralPath $path }
+}
+foreach ($entry in $skillMirrorPlan) {
+    $source = Get-ContainedTargetPath -Relative $entry.Source
+    if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { continue }
+    $destination = Get-ContainedTargetPath -Relative $entry.Relative
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
+    Copy-Item -Force -LiteralPath $source -Destination $destination
+}
+if ($updateMode) { Write-Output "  consumer-owned content files left untouched ($($protected -join ', '))." }
 
 if ($adoptMode) {
     # Durable adoption marker: the SessionStart hook warns every new session, and docs-sync-check
@@ -321,7 +651,7 @@ if ($GitHooks) {
 Write-Output ""
 Write-Output "Each developer should run  pwsh scripts/framework-doctor.ps1  once on their own machine."
 if ($updateMode) {
-    Write-Output "Done (update). Framework-owned machinery refreshed; the listed protected paths were restored; .claude/settings.json was backed up and refreshed."
+    Write-Output "Done (update). Framework-owned machinery refreshed; the listed protected paths were left untouched; .claude/settings.json was backed up and refreshed."
     Write-Output "  Next: review the diff, run  pwsh scripts/docs-sync-check.ps1 , then commit."
 } elseif ($adoptMode) {
     Write-Output "Done - but this repo is NOT ready for AI-assisted work yet: it has pre-existing AI"

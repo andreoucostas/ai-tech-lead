@@ -45,15 +45,19 @@ function Get-GitWorktrees([string]$Target) {
     return ((& git -C $Target worktree list --porcelain 2>$null) -join "`n")
 }
 
-function Invoke-RootInstaller([string]$Twin, [string]$Target, [string]$Stack = '') {
+function Invoke-RootInstaller([string]$Twin, [string]$Target, [string]$Stack = '', [switch]$DryRun, [switch]$AllowDowngrade) {
     if ($Twin -eq 'ps1') {
         $arguments = @('-NoProfile', '-File', (Join-Path $repo 'install.ps1'))
         if ($Stack) { $arguments += @('-Stack', $Stack) }
+        if ($DryRun) { $arguments += '-WhatIf' }
+        if ($AllowDowngrade) { $arguments += '-AllowDowngrade' }
         $arguments += $Target
         $out = @(& (Get-PsExe) @arguments 2>&1 | ForEach-Object { $_.ToString() })
     } else {
         $arguments = @((Join-Path $repo 'install.sh'))
         if ($Stack) { $arguments += @('--stack', $Stack) }
+        if ($DryRun) { $arguments += '--dry-run' }
+        if ($AllowDowngrade) { $arguments += '--allow-downgrade' }
         $arguments += $Target
         $out = @(& $bash @arguments 2>&1 | ForEach-Object { $_.ToString() })
     }
@@ -90,17 +94,17 @@ foreach ($twin in @('ps1', 'sh')) {
     It "explicit dotnet override remains observable for warehouse-only target ($twin)" {
         $target = New-Target 'warehouse'
         try {
-            $result = Invoke-RootInstaller $twin $target 'dotnet'
+            $result = Invoke-RootInstaller $twin $target 'dotnet' -DryRun
             Assert ($result.Exit -eq 0) "explicit dotnet override exited $($result.Exit): $($result.Output)"
             Assert ($result.Output -match 'Stack: dotnet \(via (?:-Stack|--stack) flag\)') "explicit dotnet override was not observable: $($result.Output)"
-            Assert (Test-Path -LiteralPath (Join-Path $target '.claude/commands/adopt.md')) 'explicit override did not delegate to the dotnet installer'
+            Assert ($result.Output -match 'OPERATION-PLAN schema=1 mode=greenfield') 'explicit override did not delegate to the dotnet installer dry-run'
         } finally { Remove-Item -LiteralPath $target -Recurse -Force }
     }
 
     It "ordinary dotnet auto-detection remains available ($twin)" {
         $target = New-Target 'dotnet'
         try {
-            $result = Invoke-RootInstaller $twin $target
+            $result = Invoke-RootInstaller $twin $target -DryRun
             Assert ($result.Exit -eq 0) "ordinary dotnet auto-detection exited $($result.Exit): $($result.Output)"
             Assert ($result.Output -match 'Stack: dotnet \(via auto-detected') "ordinary dotnet target did not select dotnet: $($result.Output)"
         } finally { Remove-Item -LiteralPath $target -Recurse -Force }
@@ -109,12 +113,28 @@ foreach ($twin in @('ps1', 'sh')) {
     It "mixed auto-detection remains monorepo rather than warehouse refusal ($twin)" {
         $target = New-Target 'mixed'
         try {
-            $result = Invoke-RootInstaller $twin $target
+            $result = Invoke-RootInstaller $twin $target -DryRun
             Assert ($result.Exit -eq 0) "mixed auto-detection exited $($result.Exit): $($result.Output)"
             Assert ($result.Output -match 'Stack: monorepo \(via auto-detected') "mixed target did not select monorepo: $($result.Output)"
             Assert ($result.Output -notmatch 'Warehouse-only auto-detection refused') "mixed target reached the warehouse-only refusal: $($result.Output)"
         } finally { Remove-Item -LiteralPath $target -Recurse -Force }
-}
+    }
+
+    It "root dispatcher forwards deliberate downgrade and dry-run flags to every stack ($twin)" {
+        foreach ($stack in @('dotnet','angular','monorepo')) {
+            $target = New-Target 'dotnet'
+            try {
+                New-Item -ItemType Directory -Force -Path (Join-Path $target '.claude') | Out-Null
+                [IO.File]::WriteAllText((Join-Path $target '.claude/framework-version.json'), "{`"version`":`"99.0.0`",`"template`":`"$stack`"}", [Text.UTF8Encoding]::new($false))
+                $before = Get-TargetFingerprint $target
+                $result = Invoke-RootInstaller $twin $target $stack -DryRun -AllowDowngrade
+                Assert ($result.Exit -eq 0) "$stack flag forwarding exited $($result.Exit): $($result.Output)"
+                Assert ($result.Output -match 'allow-downgrade accepted|AllowDowngrade accepted') "$stack did not observe the downgrade override"
+                Assert ($result.Output -match 'Dry run complete; target was not modified') "$stack did not observe the dry-run flag"
+                Assert ((Get-TargetFingerprint $target) -ceq $before) "$stack root dry-run changed target bytes"
+            } finally { Remove-Item -LiteralPath $target -Recurse -Force }
+        }
+    }
 }
 
 if (-not $SkipRedTest) {

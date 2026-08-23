@@ -5,6 +5,22 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.76.0 — 2026-08-23
+
+**Updates are now inspectable and converge across skipped releases.** The installer prints a
+deterministic create/replace/preserve/archive/delete plan before changing your repository. Use
+`-WhatIf` or `--dry-run` to inspect the same operation set without changing target bytes. Installing
+an older framework release now refuses before mutation unless you deliberately pass
+`-AllowDowngrade` or `--allow-downgrade`; the root installer forwards both controls.
+The plan also names settings backup and each skill backup, disable, and mirror write; installer-
+owned side paths are checked for symlink/junction escape before any change.
+
+The retired `impact-run` scripts and three `tests/impact/` compatibility files are removed on update
+only when your previous ownership manifest names them as framework-owned and their bytes match a
+known shipped framework version. A custom or edited file at one of those names is preserved. Missing,
+malformed, unsafe, or unexaminable previous metadata enters a named additive compatibility mode and
+performs no stale deletion.
+
 ## 0.75.0 — 2026-08-23
 
 **The documentation now matches what the installed controls can prove.** Editor/file-write guards

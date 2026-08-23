@@ -1,5 +1,0 @@
-{
-  "_comment": "Retired compatibility artifact. The former pre/post baseline was captured after installation and cannot support a comparative claim. No runner reads this file and no agent or tool execution is configured.",
-  "status": "retired",
-  "reason": "The purported pre-adoption reference was captured after the framework installation."
-}

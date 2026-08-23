@@ -2925,6 +2925,10 @@ coverage already required from CI; see `meta/BACKLOG-DONE.md`.**
 surfaces and warehouse-only auto-routing refuses the uncertified lifecycle; see
 `meta/BACKLOG-DONE.md`.**
 
+**B-172 is implemented for planned v0.76.0 — updates now plan before mutation, reconcile only
+content-qualified cumulative retirements, and refuse implicit downgrades; see
+`meta/BACKLOG-DONE.md`.**
+
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see `meta/BACKLOG-DONE.md`.**

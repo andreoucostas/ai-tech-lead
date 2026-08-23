@@ -30,7 +30,10 @@ function Find-PrivateHomePath {
 
 function Get-RepositoryPrivacyFindings {
     param([string]$Root)
-    $paths = @(& git -C $Root ls-files --cached --others --exclude-standard 2>&1)
+    # File enumeration is stdout. Git may warn on stderr about an unreadable user-level ignore
+    # file while still returning a complete exit-0 list; merging that warning turns it into a
+    # bogus repository-relative path. A real enumeration failure remains explicit via the exit.
+    $paths = @(& git -C $Root ls-files --cached --others --exclude-standard 2>$null)
     $gitExit = $LASTEXITCODE
     if ($gitExit -ne 0) { return @("git enumeration failed with exit $gitExit") }
     if ($paths.Count -eq 0) { return @('git enumeration yielded zero files') }

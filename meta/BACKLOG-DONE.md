@@ -6840,3 +6840,48 @@ fallback mutation failed and restored bytes. All three composed distributions pa
 206 characters for dotnet, angular, and monorepo. The exposed class is a claim copied across
 consistent carriers without any instrument binding it to the implementation boundary; mirror
 agreement can amplify a falsehood as easily as a truth.
+
+---
+
+### B-172 · RCA: update ownership could describe stale files but could not retire them safely
+
+**DONE 2026-08-23 · planned v0.76.0 · P1 · Invariants #1 #3 #4 #7**
+
+**What happened.** Updates copied incoming framework files additively. Removed framework paths
+survived forever, including the five v0.74.0 impact compatibility files, while accepting an older
+dist could silently downgrade an installed repository. Installers disclosed update ownership but
+offered neither a complete pre-mutation operation plan nor a mutation-free preview.
+
+**Why no gate caught it.** The ownership manifest was generated and schema-shaped for description,
+not consumed as a convergent state transition. The retirement suite deliberately required the five
+tombstones to remain, so it proved the temporary compatibility state and could not prove the later
+removal boundary. No existing fixture compared installed and incoming versions or hashed a dry-run
+target. More generally, previous ownership records path classification but not whether current bytes
+are still the framework's; path-only deletion would have converted the missing gate into data loss.
+
+**Fix.** Every distribution now carries a cumulative retirement ledger with normalized paths,
+retirement versions, and known shipped content hashes. Both installers validate incoming metadata
+and previous ownership before mutation, delete only the trusted prior-owned/absent-incoming/
+ledger-authorized/content-matching intersection, and preserve every unclassifiable or mismatched
+case. They print deterministic operation plans, support mutation-free dry-run, and refuse semantic
+version downgrades unless explicitly overridden through either root dispatcher. Composer twins make
+the ledger append-only and reject an active retirement.
+
+**Evidence and exposed class.** `InstallerConvergence.Tests.ps1` passed 12/0 across both twins for
+real v0.75.0 bytes, plan parity, custom content, malformed/out-of-root metadata, reparse paths, and
+downgrade refusal/override, full skill/backup plan accounting, and three installer-owned side-write
+escape roots. Replacing one authorized historical digest with a false digest made the two original
+convergence cases fail (6/2); removing a PowerShell mirror plan record made the richer suite fail
+11/1; restoring the old all-skill exemplar rewrite in both twins made it fail 10/2 on the unplanned
+consumer-skill mutation. All controlled mutations were restored byte-for-byte or by recomposition.
+`Composer.Tests.ps1` passed 16/0 after each twin visibly
+rejected unsafe, still-shipped, synchronized source/dist disappearance against the required
+maintainer bootstrap baseline, and synchronized source/dist/baseline disappearance against
+committed history; the nested-parent fixture also proved unrelated Git history is ignored. The
+obsolete tombstone suite was replaced by this boundary
+suite; `UpdateDelivery.Tests.ps1` removed 22 repeated full installs and still passed 45/0 in 119.3s.
+The complete root meta run passed all 31 files without a waiver before independent review exposed
+the synchronized-authority and hidden-side-write gaps; the corrected aggregate result is recorded by
+the release gate. The exposed class is every future framework file removal and every consumer-state
+migration: provenance must include current content, and a temporary compatibility surface needs an
+explicit tested retirement transition rather than an indefinite additive copy.

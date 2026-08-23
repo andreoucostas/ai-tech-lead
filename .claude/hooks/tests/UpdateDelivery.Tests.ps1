@@ -92,6 +92,12 @@ foreach ($twin in @('ps1', 'sh')) {
 
     $before = Get-Hash $claudePath
     $out = Invoke-Installer -Twin $twin -Dist $dist -Target $target
+    $installExit = $LASTEXITCODE
+
+    It "update completes and reports success ($twin)" {
+        Assert ($installExit -eq 0) "update exited ${installExit}: $out"
+        Assert ($out -match 'Done \(update\)') "update did not print its completion banner: $out"
+    }
 
     It "update mode is detected ($twin)" {
         Assert ($out -match 'mode: update') "installer did not enter update mode. stdout:`n$out"
@@ -213,23 +219,6 @@ foreach ($twin in @('ps1', 'sh')) {
     }
 
     Remove-Item -Recurse -Force $target -ErrorAction SilentlyContinue
-}
-
-# Brownfield collision: a pre-existing file at the carrier path must be archived, not destroyed.
-foreach ($twin in @('ps1', 'sh')) {
-    if ($twin -eq 'sh' -and -not $bash) { Skip "brownfield carrier collision ($twin)" 'no bash on this host'; continue }
-    It "brownfield archives a pre-existing carrier with provenance ($twin)" {
-        $t = Join-Path ([IO.Path]::GetTempPath()) "b97brown-$(Get-Random)"
-        New-Item -ItemType Directory -Force -Path (Join-Path $t '.github/instructions') | Out-Null
-        Set-Content (Join-Path $t 'TECH_DEBT.md') '# debt' -Encoding utf8   # adoption signal -> brownfield
-        Set-Content (Join-Path $t $carrierRel) 'PRE-EXISTING CONSUMER INSTRUCTIONS' -Encoding utf8
-        try {
-            Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t | Out-Null
-            $archived = @(Get-ChildItem -Recurse -Force -LiteralPath (Join-Path $t 'docs/pre-adoption') -ErrorAction SilentlyContinue |
-                Where-Object { -not $_.PSIsContainer -and (Get-Content -LiteralPath $_.FullName -Raw) -match 'PRE-EXISTING CONSUMER INSTRUCTIONS' })
-            Assert ($archived.Count -ge 1) 'the pre-existing carrier was destroyed rather than archived to docs/pre-adoption/'
-        } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
-    }
 }
 
 foreach ($twin in @('ps1', 'sh')) {
@@ -373,42 +362,11 @@ foreach ($twin in @('ps1', 'sh')) {
     }
 }
 
-# Keep every loss mode independently observable. The combined lifecycle case above is the
-# end-to-end acceptance fixture; these narrow cases prevent its first failure from masking another
-# v0.72.0 data-loss regression in the red transcript.
+# Keep only the collision class not already exercised by the combined lifecycle fixture above.
+# The former audit/command/GitHub repetitions each performed another full install while asserting
+# a strict subset of that fixture's postconditions.
 foreach ($twin in @('ps1', 'sh')) {
     if ($twin -eq 'sh' -and -not $bash) { Skip "independent no-loss evidence ($twin)" 'no bash on this host'; continue }
-    It "brownfield keeps persistent audit bytes ($twin)" {
-        $t = New-NoLossBrownfieldConsumer
-        $before = [IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log'))
-        try {
-            Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t | Out-Null
-            Assert-BytesEqual -Expected $before -Actual ([IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log'))) -Message 'brownfield overwrote persistent ai-audit.log bytes'
-        } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
-    }
-
-    It "update keeps persistent audit bytes ($twin)" {
-        $t = Join-Path ([IO.Path]::GetTempPath()) ('no-loss-audit-update-' + [guid]::NewGuid())
-        New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude') | Out-Null
-        [IO.File]::WriteAllBytes((Join-Path $t '.claude/ai-audit.log'), [byte[]](0, 1, 2, 255, 10, 13, 0))
-        Set-Content -LiteralPath (Join-Path $t '.claude/framework-version.json') -Value '{"version":"0.72.0"}' -Encoding utf8
-        $before = [IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log'))
-        try {
-            Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t | Out-Null
-            Assert-BytesEqual -Expected $before -Actual ([IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log'))) -Message 'update overwrote persistent ai-audit.log bytes'
-        } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
-    }
-
-    It "brownfield archives a same-path command collision from the manifest ($twin)" {
-        $t = New-NoLossBrownfieldConsumer
-        try {
-            Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t | Out-Null
-            $archive = Join-Path $t 'docs/pre-adoption/.claude/commands/feature.md'
-            Assert (Test-Path -LiteralPath $archive -PathType Leaf) 'same-path command collision was not archived before replacement'
-            Assert ([IO.File]::ReadAllText($archive).Contains('COMMAND SENTINEL')) 'same-path command archive lost its sentinel'
-        } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
-    }
-
     It "brownfield archives a same-path skill collision from the manifest ($twin)" {
         $t = New-NoLossBrownfieldConsumer
         $skillRel = '.claude/skills/add-endpoint/SKILL.md'
@@ -422,20 +380,6 @@ foreach ($twin in @('ps1', 'sh')) {
         } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
     }
 
-    It "update retains an unknown GitHub-only skill ($twin)" {
-        $t = Join-Path ([IO.Path]::GetTempPath()) ('no-loss-github-skill-' + [guid]::NewGuid())
-        New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude') | Out-Null
-        New-Item -ItemType Directory -Force -Path (Join-Path $t '.github/skills/local-only') | Out-Null
-        Set-Content -LiteralPath (Join-Path $t '.claude/framework-version.json') -Value '{"version":"0.72.0"}' -Encoding utf8
-        Set-Content -LiteralPath (Join-Path $t 'CLAUDE.md') -Value 'PROTECTED SNAPSHOT SEED' -Encoding utf8
-        Set-Content -LiteralPath (Join-Path $t '.github/skills/local-only/SKILL.md') -Value 'GITHUB-ONLY SKILL SENTINEL' -Encoding utf8
-        try {
-            Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t | Out-Null
-            $skill = Join-Path $t '.github/skills/local-only/SKILL.md'
-            Assert (Test-Path -LiteralPath $skill -PathType Leaf) 'update deleted an unknown GitHub-only skill'
-            Assert ([IO.File]::ReadAllText($skill).Contains('GITHUB-ONLY SKILL SENTINEL')) 'update changed an unknown GitHub-only skill'
-        } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
-    }
 }
 
 # The preservation check itself must have a constructible failure world; otherwise it could be a
@@ -500,33 +444,6 @@ foreach ($twin in @('ps1', 'sh')) {
             Assert ($override -match 'override: .*allow-dirty-tree') "brownfield dirty-tree override was not named on stdout. Output:`n$override"
             Assert (Test-Path -LiteralPath (Join-Path $t 'docs/pre-adoption/TECH_DEBT.md') -PathType Leaf) 'explicit brownfield override did not complete the collision archive'
         } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
-    }
-}
-
-# An UPDATE must SUCCEED, and both twins must agree that it did. This is not a formality: the bash
-# installer runs under `set -euo pipefail`, and its disabled-skill restore pipes a grep whose
-# NO-MATCH case is the normal one. pipefail promoted that to a pipeline failure and -e aborted the
-# whole installer -- after the files were copied but before the "Done (update)" banner -- so every
-# update exited 1 with no error text while install.ps1 exited 0. A consumer wiring the documented
-# installer into CI saw a red pipeline on a good install, and an AI agent running it saw a bare
-# failure. Greenfield masked it because a different branch ran last, which is why exit code alone is
-# not enough here: assert the completion banner too, or a future early abort passes again.
-It 'an update completes and reports success on both twins, for every dist' {
-    foreach ($dist in @('dotnet','angular','monorepo')) {
-        foreach ($twin in @('ps1','sh')) {
-            if ($twin -eq 'sh' -and -not $bash) { continue }
-            $t = Join-Path ([IO.Path]::GetTempPath()) ('upd-exit-' + [guid]::NewGuid())
-            New-Item -ItemType Directory -Force $t | Out-Null
-            try {
-                $first = Invoke-Installer -Twin $twin -Dist $dist -Target $t
-                Assert ($LASTEXITCODE -eq 0) "$dist/$twin greenfield install failed (exit $LASTEXITCODE): $first"
-                Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/.state/settings.json.pre-update'))) "$dist/$twin greenfield created an update-only settings backup"
-                $second = Invoke-Installer -Twin $twin -Dist $dist -Target $t
-                $code = $LASTEXITCODE
-                Assert ($code -eq 0) "$dist/$twin UPDATE exited $code; a successful update must exit 0. Output:`n$second"
-                Assert ($second -match 'Done \(update\)') "$dist/$twin update did not print its completion banner, so it aborted part-way even though it exited 0. Output:`n$second"
-            } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
-        }
     }
 }
 

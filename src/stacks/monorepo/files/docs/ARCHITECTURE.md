@@ -190,9 +190,9 @@ LEARNINGS.md                  append-only lessons
 .claude/settings*.json        hook registration (bash + Windows variants)
 .github/prompts|skills|agents|hooks|instructions   Copilot surfaces (generated/mirrored)
 .github/workflows/            GitHub Actions (GitHub-only)
-scripts/                      docs-sync-check, sync-agent-files, install, build-architecture-html, metrics, retired impact-run tombstone, ci/
+scripts/                      docs-sync-check, sync-agent-files, install, build-architecture-html, metrics, ci/
 specs/                        persistent feature specs (spec-driven development)
-tests/impact/                 retired-runner compatibility task/config; docs/impact/ holds optional descriptive output
+docs/impact/                  optional descriptive output
 docs/                         playbook, defaults, ARCHITECTURE (this), REVIEW-GUIDE, architecture-decisions
 tests/evals/                  framework behavior eval suite
 ```

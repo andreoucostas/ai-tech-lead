@@ -11,6 +11,34 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.76.0 — 2026-08-23
+
+**Recovery increment 4 makes updates convergent, inspectable, and downgrade-safe.** Both installer
+twins validate incoming/previous ownership metadata and a cumulative framework-authored retirement
+ledger before mutation, then print deterministic create/replace/preserve/archive/delete plans.
+`-WhatIf` / `--dry-run` returns after planning with a byte-stable target. An older incoming release
+is refused before mutation unless `-AllowDowngrade` / `--allow-downgrade` is explicit; root
+dispatchers forward both controls for dotnet, angular, and monorepo.
+
+The five v0.74.0 impact compatibility files now retire only when the previous manifest classified
+the exact path as framework-owned and the current bytes match a hash authored into the incoming
+ledger. Missing/malformed/unsafe previous metadata takes an explicit additive `CANT-VERIFY` path;
+consumer-modified, unknown, protected, mixed, out-of-root, and reparse paths survive. Both composers
+reject unsafe/duplicate ledger paths, a retirement still present in incoming ownership, and any
+cumulative path/version/hash that disappears. A required maintainer baseline closes the first-
+release bootstrap gap; this repository's committed HEAD and nearest release continue the history
+chain, while an unrelated parent worktree is ignored. Plans include settings and per-file skill
+backup, disable, and mirror mutations; every installer-owned target path is containment-checked
+first, and unknown consumer skills remain byte-identical.
+
+Test cost was reduced at the same time: the obsolete tombstone invocation suite was replaced by
+twelve destructive-boundary convergence cases; twenty-two repeated full installs were removed from
+`UpdateDelivery`; root routing checks now use dry-run instead of mutating full installs. The new
+coverage keeps the materially distinct loss worlds. Recoverable mid-apply rollback remains open and
+is not claimed because no reliable cross-platform induced-failure proof ships in this increment.
+The maintainer eval recurrence check also bypasses ambient Windows PowerShell script policy so its
+PowerShell-7 prerequisite assertion reaches the version boundary it is intended to test.
+
 ## 0.75.0 — 2026-08-23
 
 **Recovery increment 3 replaces assurance language with the framework's observable boundaries.**

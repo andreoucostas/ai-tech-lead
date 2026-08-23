@@ -1,0 +1,10 @@
+{
+  "schema-version": 1,
+  "retirements": [
+    { "path": "scripts/impact-run.ps1", "retired-in": "0.76.0", "known-content-sha256": ["7d8475664bde430626725ee7fdb774380ec5ca200c220a582313ab020d889587"] },
+    { "path": "scripts/impact-run.sh", "retired-in": "0.76.0", "known-content-sha256": ["17ba01bb2e17fe045731443056a58e2b4fd017dd07a24b67cbbfad1424b2e566"] },
+    { "path": "tests/impact/README.md", "retired-in": "0.76.0", "known-content-sha256": ["fde7bc2939d36f0193384260e89159a82b84060b9aa29c619b52da493eeeff7d"] },
+    { "path": "tests/impact/config.json", "retired-in": "0.76.0", "known-content-sha256": ["7563d89f64076e42a910fab56547e387e2a5e444808c763d4661402b1afb0ac8"] },
+    { "path": "tests/impact/tasks.json", "retired-in": "0.76.0", "known-content-sha256": ["04a24d78581b534d4c09399f8276bb45550370b2dab2b8f4bd5f697546f8375f", "56b0f3fba795a63a4c99262a043edaacd463ede4772c4634883adcd271fa1998", "a9cb3ff1b8169e4d0efafa6e12a94e289632cbd84b62f6b8189482f62073d5f3"] }
+  ]
+}

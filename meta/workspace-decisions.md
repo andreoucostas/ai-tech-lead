@@ -2215,3 +2215,42 @@ explicit `dotnet` selection is an informed override, not certification.
 putting the claim gate in consumer repositories (maintainer claims are maintainer-owned), treating
 mirror consistency as truth, claiming local hook telemetry is compliance evidence, and preserving
 warehouse fallback merely because explicit .NET selection can still be forced.
+
+---
+
+## WSD-051: retirement authority is path-and-content qualified; planning precedes mutation (2026-08-23)
+
+**Context.** Increment 4 needs to remove obsolete framework files after skipped releases without
+turning the consumer-mutable previous ownership manifest into deletion authority. Exact path plus
+old `framework-owned/overwritten` classification is still insufficient: a consumer may have edited
+that old framework path, or forged the manifest, after installation. The former tombstone suite also
+spent many invocations proving inert code remained inert when the release now removes that code.
+
+**Decision.** A cumulative incoming `framework-retirements.json` authorizes an exact normalized path,
+retirement version, and all known shipped SHA-256 digests. Deletion requires the locked-plan
+intersection plus a current-byte match; mismatched, missing, malformed, protected, mixed, unknown,
+out-of-root, and reparse state is preserved or enters explicit additive `CANT-VERIFY` mode. Both
+composers reject unsafe/duplicate entries, retirements still present in incoming ownership, and any
+previous path/version/hash that disappears. The maintainer-only
+`meta/framework-retirements-baseline.json` must exactly match the incoming ledger and supplies
+independent bootstrap authority before the first ledger-bearing release. Existing generated dist is
+an archive snapshot, not the sole authority; when the composer root is itself a Git worktree root,
+committed HEAD plus the nearest reachable release tag continue the chain. An archive nested beneath
+an unrelated worktree does not consult that parent's history.
+Installers compute and print the full deployment and reconciliation plan before mutation; dry-run
+exits there. Protected update files are skipped directly rather than redundantly restored, while
+every skill-backup, disable, mirror, settings-backup, adoption-marker, and opt-in hook target is
+planned and containment-checked. Exemplar carry-forward is limited to incoming framework skills;
+unknown consumer skills are mirrored without rewriting their active bytes. Shell applies the
+validated main file list in one archive stream so file-level planning does not regress into a
+process per file.
+
+**Test proportionality.** Replace the obsolete direct-tombstone permutation suite with destructive-
+boundary convergence cases. Remove the all-dist repetition of the same core update behavior and use
+dry-run for root routing/forwarding cases; composition and twin tests retain the boundaries those
+permutations previously approximated. Recoverable mid-apply rollback remains open and unclaimed:
+the plan explicitly requires an induced cross-platform failure proof, and this increment has none.
+
+**Rejected.** Path-only deletion; trusting previous ownership as provenance; permanent retirement
+expiry without a supported-source-version horizon; string version comparison; retaining obsolete
+tombstone invocations alongside convergence tests; and claiming transactionality from preflight.

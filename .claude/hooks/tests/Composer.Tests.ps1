@@ -19,6 +19,7 @@ function Initialize-ComposerSubject {
     New-Item -ItemType Directory -Path (Join-Path $SubjectRoot 'scripts') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $SubjectRoot 'src/core/scripts') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $SubjectRoot 'src/core/.claude') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $SubjectRoot 'meta') -Force | Out-Null
     foreach ($stack in @('dotnet','angular','monorepo')) {
         New-Item -ItemType Directory -Path (Join-Path $SubjectRoot "src/stacks/$stack/files") -Force | Out-Null
         New-Item -ItemType Directory -Path (Join-Path $SubjectRoot "src/stacks/$stack/snippets") -Force | Out-Null
@@ -29,6 +30,8 @@ function Initialize-ComposerSubject {
     Copy-Item -LiteralPath (Join-Path $repoRoot 'src/core/scripts/install.ps1') -Destination (Join-Path $SubjectRoot 'src/core/scripts') -Force
     Copy-Item -LiteralPath (Join-Path $repoRoot 'src/core/scripts/install.sh') -Destination (Join-Path $SubjectRoot 'src/core/scripts') -Force
     Copy-Item -LiteralPath (Join-Path $repoRoot 'src/core/.claude/ai-audit.log') -Destination (Join-Path $SubjectRoot 'src/core/.claude') -Force
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'src/core/framework-retirements.json') -Destination (Join-Path $SubjectRoot 'src/core') -Force
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'meta/framework-retirements-baseline.json') -Destination (Join-Path $SubjectRoot 'meta') -Force
 }
 
 $failed = 0
@@ -91,7 +94,71 @@ foreach ($twin in @('ps1','sh')) {
     } catch { $failed++; [Console]::Error.WriteLine("[FAIL] $twin persistent-policy extraction: $($_.Exception.Message)") }
     finally { if (Test-Path -LiteralPath $normalRoot) { Remove-Item -Recurse -Force -LiteralPath $normalRoot } }
 }
-$total = $cases.Count + $greenChecks
+
+# Retirement metadata authorizes deletion in consumers, so its three composer boundaries are worth
+# direct behavioral coverage. Keep these in this existing composer suite rather than creating a
+# second gate with another full subject setup.
+$retirementChecks = 0
+foreach ($twin in @('ps1','sh')) {
+    if ($twin -eq 'sh' -and -not $bash) { Write-Host "[skip] $twin retirement composer checks: no bash on this host"; continue }
+    foreach ($kind in @('unsafe-path','still-shipped','disappeared','synchronized-disappearance')) {
+        $container = Join-Path ([IO.Path]::GetTempPath()) ('composer-retirement-' + [guid]::NewGuid())
+        $subject = if ($kind -eq 'synchronized-disappearance') { Join-Path $container 'nested-subject' } else { $container }
+        try {
+            Initialize-ComposerSubject -SubjectRoot $subject -Twin $twin
+            $ledgerPath = Join-Path $subject 'src/core/framework-retirements.json'
+            $maintainerLedgerPath = Join-Path $subject 'meta/framework-retirements-baseline.json'
+            if ($kind -eq 'unsafe-path') {
+                $text = [IO.File]::ReadAllText($ledgerPath).Replace('scripts/impact-run.ps1', '../outside')
+                [IO.File]::WriteAllText($ledgerPath, $text, [Text.UTF8Encoding]::new($false))
+            } elseif ($kind -eq 'still-shipped') {
+                [IO.File]::WriteAllText((Join-Path $subject 'src/core/scripts/impact-run.ps1'), 'retired path must not ship', [Text.UTF8Encoding]::new($false))
+            }
+            $invoke = {
+                if ($twin -eq 'ps1') { $process = Start-Process -FilePath pwsh -ArgumentList @('-NoProfile','-File',(Join-Path $subject 'scripts/build.ps1'),'dotnet') -WorkingDirectory $subject -Wait -PassThru -NoNewWindow }
+                else { $process = Start-Process -FilePath $bash -ArgumentList @((Join-Path $subject 'scripts/build.sh'),'dotnet') -WorkingDirectory $subject -Wait -PassThru -NoNewWindow }
+                return [pscustomobject]@{ Exit = [int]$process.ExitCode; Output = '' }
+            }
+            if ($kind -in @('disappeared','synchronized-disappearance')) {
+                if ($kind -eq 'synchronized-disappearance') {
+                    # An archive may be unpacked beneath an unrelated worktree. A malformed ledger
+                    # in that parent must not contaminate this composer's authority chain.
+                    New-Item -ItemType Directory -Path (Join-Path $container 'src/core') -Force | Out-Null
+                    [IO.File]::WriteAllText((Join-Path $container 'src/core/framework-retirements.json'), "{}`n", [Text.UTF8Encoding]::new($false))
+                    & git -C $container init --quiet
+                    & git -C $container config user.email 'composer-parent@example.invalid'
+                    & git -C $container config user.name 'Unrelated Parent'
+                    & git -C $container add src/core/framework-retirements.json
+                    & git -C $container commit --quiet -m 'unrelated parent ledger'
+                    if ($LASTEXITCODE -ne 0) { throw 'could not establish unrelated parent worktree fixture' }
+                }
+                $first = & $invoke
+                if ($first.Exit -ne 0) { throw "initial cumulative-ledger build exited $($first.Exit): $($first.Output)" }
+                if ($kind -eq 'synchronized-disappearance') {
+                    & git -C $subject init --quiet
+                    & git -C $subject config user.email 'composer-test@example.invalid'
+                    & git -C $subject config user.name 'Composer Test'
+                    & git -C $subject add --all
+                    & git -C $subject commit --quiet -m 'retirement baseline'
+                    & git -C $subject tag v0.76.0
+                    if ($LASTEXITCODE -ne 0) { throw 'could not establish independent committed retirement baseline' }
+                }
+                $remaining = @(Get-Content -LiteralPath $ledgerPath | Where-Object { $_ -notmatch '"path": "scripts/impact-run\.ps1"' })
+                [IO.File]::WriteAllText($ledgerPath, (($remaining -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))
+                $distLedger = Join-Path $subject 'dist/dotnet/framework-retirements.json'
+                [IO.File]::WriteAllText($distLedger, (($remaining -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))
+                if ($kind -eq 'synchronized-disappearance') { [IO.File]::WriteAllText($maintainerLedgerPath, (($remaining -join "`n") + "`n"), [Text.UTF8Encoding]::new($false)) }
+            }
+            $result = & $invoke
+            if ($result.Exit -eq 0) { throw "$kind retirement mutation stayed green. Output: $($result.Output)" }
+            $retirementChecks++
+            Write-Host "[ok] $twin retirement ${kind}: composer went red"
+        } catch { $failed++; [Console]::Error.WriteLine("[FAIL] $twin retirement ${kind}: $($_.Exception.Message)") }
+        finally { if (Test-Path -LiteralPath $container) { Remove-Item -Recurse -Force -LiteralPath $container } }
+    }
+}
+
+$total = $cases.Count + $greenChecks + $retirementChecks
 if ($failed -eq 0) { Write-Host "Composer.Tests: $total passed, 0 failed" }
 else { [Console]::Error.WriteLine("Composer.Tests: $($total - $failed) passed, $failed failed") }
 exit ([int]($failed -gt 0))
