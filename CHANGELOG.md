@@ -62,6 +62,12 @@ and two post-write routing cases were consolidated while adding the SSDT no-buil
 shared warehouse regex table now stays inside the .NET/POSIX-ERE intersection, artifact read
 failures are explicit instead of false absence, and a test of PowerShell's own null semantics was
 removed because it could not catch a framework regression.
+The first release CI run exposed two more test-only couplings in that matrix: stack-canary parity
+compared the entire report footer, including unrelated host-dependent OK totals, and a mutation-only
+parser probe depended on an obsolete control-flow shape. Canary parity now compares only the named
+stack-canary contract. The mutation probe was removed because the adjacent black-box cases already
+prove both outcomes: a working interpreter exposed only as `python` is accepted, while a
+name-resolving Microsoft Store stub is rejected.
 This corrects B-115's premature v0.51.0 closure: that release proved selection/install only; it did
 not prove the downstream lifecycle.
 

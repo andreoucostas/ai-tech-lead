@@ -164,6 +164,11 @@ function Parse-DoctorResult($Result) {
     $expectedExit=if($missing-gt 0){1}else{0};Assert ($Result.Exit-eq$expectedExit) "doctor exit=$($Result.Exit), expected=$expectedExit from $missing MISSING rows"
     $canaries=if($parts.Count-gt 1){$parts[1]}else{''};[pscustomobject]@{Rows=$rows;Ok=$ok;Missing=$missing;Canaries=$canaries}
 }
+function Get-StackCanary($Parsed) {
+    $match=[regex]::Match($Parsed.Canaries,'(?m)^\[CANT-VERIFY\] Agent-host stack toolchain - .+$')
+    Assert $match.Success "agent-host stack canary absent: $($Parsed.Canaries)"
+    return $match.Value
+}
 function Compare-DoctorResults($PowerShellResult,$BashResult,[string[]]$ExpectedDivergentRows=@()) {
     $p=Parse-DoctorResult $PowerShellResult;$s=Parse-DoctorResult $BashResult;$actual=@()
     foreach($name in $script:DoctorRowNames){$pr=$p.Rows[$name];$sr=$s.Rows[$name];$pv=Normal("[$($pr.State)] $name - $($pr.Detail)");$sv=Normal("[$($sr.State)] $name - $($sr.Detail)");if($pv-ne$sv){$actual+=$name}}
@@ -471,7 +476,7 @@ It 'Stack toolchain rows use byte-identical doctor-process wording for every tem
                     $env:PATH=$pbin;$p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$pp=Parse-DoctorResult $p
                     $env:PATH=$sbin;$s=Run (Join-Path $r 'scripts/framework-doctor.sh');$sp=Parse-DoctorResult $s
                     $expectedState=if($present){'OK'}else{'MISSING'};$pr=$pp.Rows['Stack toolchain'];$sr=$sp.Rows['Stack toolchain'];Assert ($pr.State-eq$expectedState) "PS $template present=$present state=$($pr.State)";Assert ($sr.State-eq$pr.State) "SH $template state=$($sr.State), PS=$($pr.State)";Assert ($pr.Detail-eq$sr.Detail) "Stack detail mismatch PS='$($pr.Detail)' SH='$($sr.Detail)'";Assert ($pr.Detail-match'this doctor process environment') "generic environment boundary absent: $($pr.Detail)";Assert ($pr.Detail-notmatch'PowerShell doctor|Bash doctor') "shell-specific environment leaked: $($pr.Detail)"
-                    if($present){$selected=if($template-eq'dotnet'){'.NET file'}elseif($template-eq'angular'){'Angular file'}else{'.NET or Angular file'};Assert ($pp.Canaries-match[regex]::Escape($selected)) "PS $template canary did not select its constructible application world: $($pp.Canaries)";Assert ($sp.Canaries-eq$pp.Canaries) "SH $template canary mismatch: PS='$($pp.Canaries)' SH='$($sp.Canaries)'"}
+                    if($present){$selected=if($template-eq'dotnet'){'.NET file'}elseif($template-eq'angular'){'Angular file'}else{'.NET or Angular file'};$pc=Get-StackCanary $pp;$sc=Get-StackCanary $sp;Assert ($pc-match[regex]::Escape($selected)) "PS $template canary did not select its constructible application world: $pc";Assert ($sc-eq$pc) "SH $template canary mismatch: PS='$pc' SH='$sc'"}
                 }finally{Remove-Item -Recurse -Force $r,$pbin,$sbin}
             }
         }
@@ -487,7 +492,7 @@ It 'Stack toolchain rows use byte-identical doctor-process wording for every tem
                 $env:PATH=$sbin;$s=Run (Join-Path $r 'scripts/framework-doctor.sh');$sp=Parse-DoctorResult $s
                 Assert ($pp.Rows['Stack toolchain'].State-eq'OK'-and$pp.Rows['Stack toolchain'].Detail-match[regex]::Escape($cross.Label)) "PowerShell erased cross-template $($cross.Label) evidence: $($p.Out)"
                 Assert ($sp.Rows['Stack toolchain'].State-eq$pp.Rows['Stack toolchain'].State-and$sp.Rows['Stack toolchain'].Detail-eq$pp.Rows['Stack toolchain'].Detail) "cross-template $($cross.Label) mismatch: PS='$($pp.Rows['Stack toolchain'].Detail)' SH='$($sp.Rows['Stack toolchain'].Detail)'"
-                Assert ($pp.Canaries-match[regex]::Escape($cross.Label+' file')) "PowerShell cross-template canary did not select $($cross.Label): $($pp.Canaries)";Assert ($sp.Canaries-eq$pp.Canaries) "Bash cross-template canary mismatch: PS='$($pp.Canaries)' SH='$($sp.Canaries)'"
+                $pc=Get-StackCanary $pp;$sc=Get-StackCanary $sp;Assert ($pc-match[regex]::Escape($cross.Label+' file')) "PowerShell cross-template canary did not select $($cross.Label): $pc";Assert ($sc-eq$pc) "Bash cross-template canary mismatch: PS='$pc' SH='$sc'"
             }finally{Remove-Item -Recurse -Force $r,$pbin,$sbin}
         }
         $r=Fixture -Pending $false -CopilotBash $false -Template dotnet
@@ -507,8 +512,9 @@ It 'Stack toolchain rows use byte-identical doctor-process wording for every tem
             Assert ($pr.Detail-eq$sr.Detail) "warehouse-only toolchain detail mismatch PS='$($pr.Detail)' SH='$($sr.Detail)'"
             Assert ($pr.Detail-match'not applicable') "warehouse-only result did not name non-applicability: $($pr.Detail)"
             Assert ($pr.Detail-match'no repository-evidenced') "warehouse-only result did not name the evidence boundary: $($pr.Detail)"
-            Assert ($pp.Canaries-match'not applicable: no repository-evidenced') "PowerShell warehouse-only canary remained applicable: $($pp.Canaries)"
-            Assert ($sp.Canaries-eq$pp.Canaries) "Bash warehouse-only canary mismatch: PS='$($pp.Canaries)' SH='$($sp.Canaries)'"
+            $pc=Get-StackCanary $pp;$sc=Get-StackCanary $sp
+            Assert ($pc-match'not applicable: no repository-evidenced') "PowerShell warehouse-only canary remained applicable: $pc"
+            Assert ($sc-eq$pc) "Bash warehouse-only canary mismatch: PS='$pc' SH='$sc'"
         }finally{Remove-Item -Recurse -Force $r,$pbin,$sbin}
         $r=Fixture -Pending $false -CopilotBash $false -Template monorepo
         $pbin=New-ParserProbeBin $bash $true $true monorepo;$sbin=New-ParserProbeBin $bash $true $true monorepo $true
@@ -630,7 +636,7 @@ It 'Stack toolchain rows use byte-identical doctor-process wording for every tem
             $env:PATH=$sbin;$s=Run $sdoc;$sp=Parse-DoctorResult $s
             Assert ($pp.Rows['Stack toolchain'].State-eq'CANT-VERIFY') "PowerShell incomplete marker scan was not honest: $($p.Out)"
             Assert ($sp.Rows['Stack toolchain'].State-eq$pp.Rows['Stack toolchain'].State-and$sp.Rows['Stack toolchain'].Detail-eq$pp.Rows['Stack toolchain'].Detail) "incomplete marker scan mismatch: PS='$($pp.Rows['Stack toolchain'].Detail)' SH='$($sp.Rows['Stack toolchain'].Detail)'"
-            Assert ($pp.Canaries-match'cannot be verified') "PowerShell incomplete-marker canary remained actionable: $($pp.Canaries)";Assert ($sp.Canaries-eq$pp.Canaries) "Bash incomplete-marker canary mismatch: PS='$($pp.Canaries)' SH='$($sp.Canaries)'"
+            $pc=Get-StackCanary $pp;$sc=Get-StackCanary $sp;Assert ($pc-match'cannot be verified') "PowerShell incomplete-marker canary remained actionable: $pc";Assert ($sc-eq$pc) "Bash incomplete-marker canary mismatch: PS='$pc' SH='$sc'"
         }finally{Remove-Item -Recurse -Force $r,$pbin,$sbin}
     }finally{$env:PATH=$old}
 }
@@ -674,33 +680,6 @@ It 'bash twin does not accept the Microsoft Store alias stub as a working parser
         Assert ($s.Out-match'\[CANT-VERIFY\] Guard JSON parser') "expected CANT-VERIFY while registrations and parser availability are both unverifiable, got: $($s.Out)`nSTDERR: $($s.Err)"
         Assert ($s.Out-notmatch'\[OK\] Guard JSON parser') "Store alias stub was accepted as a working interpreter: $($s.Out)"
     }finally{$env:PATH=$old;Remove-Item -Recurse -Force $r,$pbin}}
-# The Store-stub-rejection case above cannot go red against the pre-fix script (pre-fix never
-# considered bare `python` at all, so it happened to reject the stub too, by accident rather than
-# design -- not a regression test). This case proves the property that actually matters: an
-# EXECUTION check is load-bearing, a NAME-only probe is not. It mutates a copy of the real,
-# already-fixed script so ONLY the Guard JSON parser row's own resolution accepts any candidate
-# that merely resolves by name (no round-trip JSON check) -- the shape of probe every other
-# parser-dependent hook in this repo deliberately avoids -- and shows that naive variant wrongly
-# accepting the Store stub as OK. (The earlier, shared resolve_pybin used to parse
-# framework-version.json is left untouched, so this stays a surgical, single-row mutation instead
-# of cascading into an early script exit that would never reach the row under test.)
-It 'a NAME-only python probe (no execution check) wrongly accepts the Store stub -- proves the execution check is load-bearing' {
-    $r=Fixture -Shell 'bash' -Pending $true
-    try{
-        $doc=Join-Path $r 'scripts/framework-doctor.sh'
-        $text=[IO.File]::ReadAllText($doc)
-        $q=[char]39
-        $searchText='    resolve_pybin'+"`n"+'    if [ -n "$_pybin" ]; then row OK '+$q+'Guard JSON parser'+$q+' '+$q+'jq or a working python interpreter is available in this Bash environment.'+$q
-        Assert ($text.Contains($searchText)) 'could not locate the Guard JSON parser row''s resolve_pybin call to mutate -- framework-doctor.sh may have changed shape; update this test'
-        $naiveText='    _pybin=""'+"`n"+'    for _naivecand in python3 python py; do command -v "$_naivecand" >/dev/null 2>&1 && { _pybin=$_naivecand; break; }; done'+"`n"+'    if [ -n "$_pybin" ]; then row OK '+$q+'Guard JSON parser'+$q+' '+$q+'jq or a working python interpreter is available in this Bash environment.'+$q
-        $mutated=$text.Replace($searchText,$naiveText)
-        $mutated=$mutated.Replace('if [ "$settings_read_failed" -eq 1 ] || [ "$settings_unknown" -eq 1 ] || [ "$copilot_read_failed" -eq 1 ]; then','if [ "$settings_read_failed" -eq 1 ] || [ "$copilot_read_failed" -eq 1 ]; then')
-        Assert ($mutated -ne $text) 'mutation did not change the file'
-        [IO.File]::WriteAllText($doc,$mutated)
-        $stub="#!/usr/bin/env bash`nprintf 'Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Manage App Execution Aliases.\n' >&2`nexit 49`n"
-        $s=Invoke-Sandboxed -Bash $bash -ScriptPath $doc -Utilities $doctorUtils -FakeBins @{ python = $stub }
-        Assert ($s.Out-match'\[OK\] Guard JSON parser') "the naive NAME-only probe should have wrongly accepted the stub as OK -- if this does not reproduce, the mutation is not exercising the intended branch. Got: $($s.Out)`nSTDERR: $($s.Err)"
-    }finally{Remove-Item -Recurse -Force $r}}
 }else{Skip 'framework-doctor.sh parity' 'no bash found' -Invariant}
 It 'pinned canary strings exist in the hooks they quote' {
     $hooks=(Resolve-Path (Join-Path $scripts '..\.claude\hooks')).Path

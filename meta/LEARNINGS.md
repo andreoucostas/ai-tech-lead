@@ -1398,3 +1398,17 @@ removed roughly 4.6–5.5K static characters per profile without raising a ceili
 negative carrier assertions. When an authoritative data table replaces duplicated prose, update
 deterministic evals to consume that table too; otherwise the test preserves the duplication the
 production change intentionally removed.
+
+## 2026-08-24 — Compare the contract, not its neighbouring report
+
+A parity assertion for one canary compared the complete doctor footer. The canary bytes agreed,
+but a Linux host legitimately produced one fewer unrelated `OK` row, so its footer summary differed
+and all three Linux shipped-hook jobs went red. The redundant mutation probe failed independently
+on the three Windows jobs, leaving every shipped-hook job red. Extract and compare the named record
+whose parity matters; whole-report equality is appropriate only when the whole report is the contract.
+
+Mutation tests need the same proportionality check as production tests. A parser mutation recreated
+an obsolete branch shape and failed without saying anything new: the neighbouring black-box cases
+already accept a real interpreter available only as `python` and reject a name-resolving Store stub.
+Those paired outcomes protect the behavior directly. Delete a mutation proof when it duplicates that
+oracle and adds structural coupling rather than independent fault detection.
