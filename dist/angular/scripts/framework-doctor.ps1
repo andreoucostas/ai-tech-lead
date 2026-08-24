@@ -4,6 +4,7 @@ $root = Split-Path -Parent $PSScriptRoot
 $script:missing = 0
 $script:missingRows = 0
 $script:ok = 0
+$script:stackCanary = 'through the actual agent, make and then revert a harmless deliberate compile/type error in a real build-relevant file after the post-write throttle has elapsed; pass = the hook output starts with "## dotnet build failed" or "## tsc --noEmit failed". Model diagnosis or a direct terminal build is not a pass.'
 
 function Row($State, $Name, $Detail) {
     Write-Output ("[{0}] {1} - {2}" -f $State, $Name, $Detail)
@@ -11,6 +12,46 @@ function Row($State, $Name, $Detail) {
     if ($State -eq 'MISSING') { $script:missing = 1; $script:missingRows++ }
 }
 function Has($Name) { [bool](Get-Command $Name -ErrorAction SilentlyContinue) }
+# Keep every doctor JSON decision on the strict jq/Python grammar. ConvertFrom-Json alone accepts
+# JavaScript extensions under PowerShell 5.1/7 (comments, single quotes, unquoted keys, trailing
+# commas, NaN/Infinity, and leading-zero numbers).
+function ConvertFrom-StrictJson([string]$Text) {
+    $state = [pscustomobject]@{ Text = $Text; Index = 0; Length = $Text.Length }
+    function Fail-StrictJson { throw 'invalid strict JSON' }
+    function Skip-JsonWhitespace { while ($state.Index -lt $state.Length -and ([int]$state.Text[$state.Index] -in @(0x20,0x09,0x0A,0x0D))) { $state.Index++ } }
+    function Read-JsonString { if($state.Index-ge$state.Length-or$state.Text[$state.Index]-ne'"'){Fail-StrictJson};$state.Index++;while($state.Index-lt$state.Length){$c=$state.Text[$state.Index];$state.Index++;if($c-eq'"'){return};if([int]$c-lt0x20){Fail-StrictJson};if($c-eq'\'){if($state.Index-ge$state.Length){Fail-StrictJson};$escape=$state.Text[$state.Index];$state.Index++;if('"\/bfnrt'.IndexOf($escape)-ge0){continue};if($escape-ne'u'-or$state.Index+4-gt$state.Length){Fail-StrictJson};for($h=0;$h-lt4;$h++){if(-not[Uri]::IsHexDigit($state.Text[$state.Index+$h])){Fail-StrictJson}};$state.Index+=4}};Fail-StrictJson }
+    function Read-JsonNumber { if($state.Text[$state.Index]-eq'-'){$state.Index++;if($state.Index-ge$state.Length){Fail-StrictJson}};$code=[int]$state.Text[$state.Index];if($code-eq0x30){$state.Index++;if($state.Index-lt$state.Length-and[int]$state.Text[$state.Index]-ge0x30-and[int]$state.Text[$state.Index]-le0x39){Fail-StrictJson}}elseif($code-ge0x31-and$code-le0x39){do{$state.Index++}while($state.Index-lt$state.Length-and[int]$state.Text[$state.Index]-ge0x30-and[int]$state.Text[$state.Index]-le0x39)}else{Fail-StrictJson};if($state.Index-lt$state.Length-and$state.Text[$state.Index]-eq'.'){$state.Index++;$start=$state.Index;while($state.Index-lt$state.Length-and[int]$state.Text[$state.Index]-ge0x30-and[int]$state.Text[$state.Index]-le0x39){$state.Index++};if($state.Index-eq$start){Fail-StrictJson}};if($state.Index-lt$state.Length-and($state.Text[$state.Index]-eq'e'-or$state.Text[$state.Index]-eq'E')){$state.Index++;if($state.Index-lt$state.Length-and($state.Text[$state.Index]-eq'+'-or$state.Text[$state.Index]-eq'-')){$state.Index++};$start=$state.Index;while($state.Index-lt$state.Length-and[int]$state.Text[$state.Index]-ge0x30-and[int]$state.Text[$state.Index]-le0x39){$state.Index++};if($state.Index-eq$start){Fail-StrictJson}} }
+    function Read-JsonArray { $state.Index++;Skip-JsonWhitespace;if($state.Index-lt$state.Length-and$state.Text[$state.Index]-eq']'){$state.Index++;return};while($true){Read-JsonValue;Skip-JsonWhitespace;if($state.Index-ge$state.Length){Fail-StrictJson};$c=$state.Text[$state.Index];$state.Index++;if($c-eq']'){return};if($c-ne','){Fail-StrictJson};Skip-JsonWhitespace} }
+    function Read-JsonObject { $state.Index++;Skip-JsonWhitespace;if($state.Index-lt$state.Length-and$state.Text[$state.Index]-eq'}'){$state.Index++;return};while($true){Read-JsonString;Skip-JsonWhitespace;if($state.Index-ge$state.Length-or$state.Text[$state.Index]-ne':'){Fail-StrictJson};$state.Index++;Read-JsonValue;Skip-JsonWhitespace;if($state.Index-ge$state.Length){Fail-StrictJson};$c=$state.Text[$state.Index];$state.Index++;if($c-eq'}'){return};if($c-ne','){Fail-StrictJson};Skip-JsonWhitespace} }
+    function Read-JsonValue { Skip-JsonWhitespace;if($state.Index-ge$state.Length){Fail-StrictJson};$c=$state.Text[$state.Index];if($c-eq'"'){Read-JsonString;return};if($c-eq'{'){Read-JsonObject;return};if($c-eq'['){Read-JsonArray;return};foreach($literal in @('true','false','null')){if($state.Index+$literal.Length-le$state.Length-and$state.Text.Substring($state.Index,$literal.Length)-ceq$literal){$state.Index+=$literal.Length;return}};if($c-eq'-'-or([int]$c-ge0x30-and[int]$c-le0x39)){Read-JsonNumber;return};Fail-StrictJson }
+    Read-JsonValue;Skip-JsonWhitespace;if($state.Index-ne$state.Length){Fail-StrictJson};return($Text|ConvertFrom-Json -ErrorAction Stop)
+}
+function Test-PackageAngularCore($Root) {
+    if (-not ($Root -is [System.Management.Automation.PSCustomObject])) { return $false }
+    foreach ($sectionName in @('dependencies','devDependencies','peerDependencies','optionalDependencies')) {
+        $section = $Root.PSObject.Properties | Where-Object { $_.Name -ceq $sectionName } | Select-Object -First 1
+        if ($section -and $section.Value -is [System.Management.Automation.PSCustomObject] -and
+            ($section.Value.PSObject.Properties.Name -ccontains '@angular/core')) { return $true }
+    }
+    return $false
+}
+function Test-ExactAngularPackageToken($Value) {
+    return $Value -is [string] -and $Value -cmatch '^@(angular|nx/angular|angular-devkit|schematics/angular)(/[^\s]+|:[^\s]+)$'
+}
+function Get-ExactJsonPropertyValue($Object, [string]$Name) {
+    if (-not ($Object -is [System.Management.Automation.PSCustomObject])) { return $null }
+    $property = $Object.PSObject.Properties | Where-Object { $_.Name -ceq $Name } | Select-Object -First 1
+    if ($property) { return $property.Value }
+    return $null
+}
+function Test-NxAngularEvidence($Node) {
+    if (-not ($Node -is [System.Management.Automation.PSCustomObject])) { return $false }
+    $plugins = $Node.PSObject.Properties | Where-Object Name -ceq 'plugins' | Select-Object -First 1
+    foreach ($plugin in @($plugins.Value)) { if ((Test-ExactAngularPackageToken $plugin) -or ($plugin -is [System.Management.Automation.PSCustomObject] -and (Test-ExactAngularPackageToken (Get-ExactJsonPropertyValue $plugin 'plugin')))) { return $true } }
+    foreach ($mapName in @('generators','schematics')) { $map=$Node.PSObject.Properties|Where-Object Name -ceq $mapName|Select-Object -First 1;if($map.Value-is[System.Management.Automation.PSCustomObject]){foreach($candidate in $map.Value.PSObject.Properties.Name){if(Test-ExactAngularPackageToken $candidate){return $true}}} }
+    foreach ($mapName in @('targets','architect','targetDefaults')) { $map=$Node.PSObject.Properties|Where-Object Name -ceq $mapName|Select-Object -First 1;if(-not($map.Value-is[System.Management.Automation.PSCustomObject])){continue};foreach($entry in $map.Value.PSObject.Properties){if($mapName-ceq'targetDefaults'-and(Test-ExactAngularPackageToken $entry.Name)){return $true};if($entry.Value-is[System.Management.Automation.PSCustomObject]){foreach($field in @('executor','generator','collection','plugin')){if(Test-ExactAngularPackageToken (Get-ExactJsonPropertyValue $entry.Value $field)){return $true}}}} }
+    return $false
+}
 function Test-GuardShTarget($Command) {
     $normalized = [string]$Command -replace '\\\\','/' -replace '\\','/'
     return [bool]($normalized -match '(?i)^\s*(?:"(?:\./)?\.claude/hooks/guard\.sh"|''(?:\./)?\.claude/hooks/guard\.sh''|(?:\./)?\.claude/hooks/guard\.sh)(?=$|\s)')
@@ -32,7 +73,7 @@ function Finish {
     Write-Output '[CANT-VERIFY] Claude write guard - ask it to create tmp-doctor-canary.txt containing AKIA plus 16 uppercase letters/digits; pass = the hook says "Blocked write to". A polite refusal is not a pass; delete the file if it lands.'
     Write-Output '[CANT-VERIFY] Copilot VS Code hooks - use the same canary in agent mode; pass = permissionDecisionReason says "Blocked write to". No deny means Preview agent hooks are disabled by you or your GitHub organization administrator.'
     Write-Output '[CANT-VERIFY] Copilot CLI trust - use the same canary after opening and trusting this folder interactively; pass = permissionDecisionReason says "Blocked write to".'
-    Write-Output '[CANT-VERIFY] Agent-host stack toolchain - through the actual agent, make and then revert a harmless deliberate compile/type error in a real build-relevant file after the post-write throttle has elapsed; pass = the hook output starts with "## dotnet build failed" or "## tsc --noEmit failed". Model diagnosis or a direct terminal build is not a pass.'
+    Write-Output ("[CANT-VERIFY] Agent-host stack toolchain - {0}" -f $script:stackCanary)
     Write-Output ("Script-verifiable checks: {0} ok / {1} missing." -f $script:ok, $script:missingRows)
     Write-Output 'Enforcement is only FULL if the canaries above also pass; a script cannot see inside your agent.'
     exit $script:missing
@@ -45,14 +86,31 @@ if (-not (Test-Path -LiteralPath $stampPath)) {
     Row MISSING 'Install state' 'not a framework install. Fix: run the framework installer for this repository.'
     Finish
 }
-try { $stamp = Get-Content -Raw -LiteralPath $stampPath | ConvertFrom-Json } catch { $stamp = $null }
-if (-not $stamp) {
+$stampReadFailed = $false
+try { $stampContent = Get-Content -Raw -LiteralPath $stampPath -ErrorAction Stop } catch { $stampReadFailed = $true }
+if ($stampReadFailed) {
+    Row CANT-VERIFY 'Install state' '.claude/framework-version.json exists but could not be read; its install state is unknown. Fix read access and rerun the doctor.'
+    Finish
+}
+try { $stamp = ConvertFrom-StrictJson $stampContent } catch { $stamp = $null }
+if ($null -eq $stamp) {
     Row MISSING 'Install state' '.claude/framework-version.json is invalid JSON. Fix: re-run the framework installer.'
     Finish
 }
-$template = [string]$stamp.template
-if (-not $template) { $template = 'unknown' }
-Row OK 'Install state' ("template={0}; version={1}; applied={2}" -f $template, $stamp.version, $stamp.applied)
+if ($stampContent -notmatch '^\s*\{') {
+    Row MISSING 'Install state' '.claude/framework-version.json is valid JSON but lacks the required non-empty string "template". Fix: re-run the framework installer.'
+    Finish
+}
+$template = Get-ExactJsonPropertyValue $stamp 'template'
+if (-not ($template -is [string]) -or [string]::IsNullOrWhiteSpace($template)) {
+    Row MISSING 'Install state' '.claude/framework-version.json is valid JSON but lacks the required non-empty string "template". Fix: re-run the framework installer.'
+    Finish
+}
+if ($template -cne 'dotnet' -and $template -cne 'angular' -and $template -cne 'monorepo') {
+    Row MISSING 'Install state' ('.claude/framework-version.json names unsupported template "{0}"; expected dotnet, angular, or monorepo. Fix: re-run the framework installer.' -f $template)
+    Finish
+}
+Row OK 'Install state' ("template={0}; version={1}; applied={2}" -f $template, (Get-ExactJsonPropertyValue $stamp 'version'), (Get-ExactJsonPropertyValue $stamp 'applied'))
 
 $claudePath = Join-Path $root 'CLAUDE.md'
 $carrierPath = Join-Path $root '.github/instructions/framework-rules.instructions.md'
@@ -108,25 +166,37 @@ else { Row OK 'Bootstrap/adoption state' 'repository setup is complete.' }
 
 $commands = @()
 $settingsPath = Join-Path $root '.claude/settings.json'
-if (Test-Path -LiteralPath $settingsPath) {
+$settingsExists = Test-Path -LiteralPath $settingsPath
+$settingsReadFailed = $false
+$settingsInvalid = $false
+if ($settingsExists) {
     try {
-        $settings = Get-Content -Raw -LiteralPath $settingsPath | ConvertFrom-Json
+        $rawSettings = Get-Content -Raw -LiteralPath $settingsPath -ErrorAction Stop
+    } catch { $settingsReadFailed = $true }
+    if (-not $settingsReadFailed) {
+        try { $settings = ConvertFrom-StrictJson $rawSettings } catch { $settingsInvalid = $true }
+    }
+    if (-not $settingsReadFailed -and -not $settingsInvalid) {
+        try {
         function Walk($Value) {
             if ($null -eq $Value -or $Value -is [string]) { return }
             if ($Value -is [System.Collections.IEnumerable]) { foreach ($v in $Value) { Walk $v }; return }
             foreach ($p in $Value.PSObject.Properties) {
-                if ($p.Name -eq 'command' -and $p.Value -is [string]) { $script:commands += [string]$p.Value }
+                if ($p.Name -ceq 'command' -and $p.Value -is [string]) { $script:commands += [string]$p.Value }
                 else { Walk $p.Value }
             }
         }
         Walk $settings
-    } catch { }
+        } catch { $settingsInvalid = $true; $commands = @() }
+    }
 }
 $shells = @($commands | ForEach-Object {
     if ($_ -match '^\s*"([^"]+)"') { $matches[1] }
     elseif ($_ -match '^\s*([^\s]+)') { $matches[1] }
 } | Select-Object -Unique)
-if ($shells.Count -eq 0) {
+if ($settingsReadFailed) {
+    Row CANT-VERIFY 'Wired hook shell' '.claude/settings.json exists but could not be read; the wired interpreter is unknown. Fix read access and rerun the doctor.'
+} elseif ($shells.Count -eq 0) {
     Row MISSING 'Wired hook shell' 'no hook interpreter could be read from .claude/settings.json. Fix: re-run the installer to rewire hooks.'
 } else {
     $missingShells = @()
@@ -147,7 +217,7 @@ if ($shells.Count -eq 0) {
 
 $livenessPath = Join-Path $root '.claude/.state/last-session-start'
 try { $lastSessionStart = Get-Content -Raw -LiteralPath $livenessPath -ErrorAction Stop } catch { $lastSessionStart = $null }
-if ($null -ne $lastSessionStart) {
+if (-not [string]::IsNullOrWhiteSpace($lastSessionStart)) {
     Row OK 'Hook liveness' ("hooks have demonstrably run in this repo, most recently at '{0}'." -f $lastSessionStart.Trim())
 } else {
     Row CANT-VERIFY 'Hook liveness' 'no hook has recorded a run here; if you have already started a Claude Code session in this repo, your hooks are not firing -- check the wired interpreter above, and see docs/enforcement-surfaces.md.'
@@ -163,12 +233,17 @@ foreach ($command in $commands) {
 }
 $copilotPath = Join-Path $root '.github/hooks/hooks.json'
 $copilotValid = $false
+$copilotInvalid = $false
 $copilotExists = Test-Path -LiteralPath $copilotPath
+$copilotReadFailed = $false
 $copilotBashCommands = @()
 if ($copilotExists) {
-    try { $rawCopilot = Get-Content -Raw -LiteralPath $copilotPath -ErrorAction Stop } catch { $rawCopilot = $null }
-    if ($rawCopilot) {
-        try { $null = $rawCopilot | ConvertFrom-Json; $copilotValid = $true } catch { }
+    try { $rawCopilot = Get-Content -Raw -LiteralPath $copilotPath -ErrorAction Stop } catch { $rawCopilot = $null; $copilotReadFailed = $true }
+    if (-not $copilotReadFailed -and $rawCopilot) {
+        try { $null = ConvertFrom-StrictJson $rawCopilot; $copilotValid = $true } catch { }
+    }
+    if (-not $copilotReadFailed -and -not $copilotValid) { $copilotInvalid = $true }
+    if ($copilotValid) {
         [regex]::Matches($rawCopilot, '"(?:bash|powershell)"\s*:\s*"([^" ]+)[^"]*"') | ForEach-Object {
             $path = $_.Groups[1].Value -replace '\\\\','/'
             if ($path.StartsWith('./')) { $path = $path.Substring(2) }
@@ -181,15 +256,25 @@ if ($copilotExists) {
 }
 $hookPaths = @($hookPaths | Select-Object -Unique)
 $missingHooks = @($hookPaths | Where-Object { -not (Test-Path -LiteralPath (Join-Path $root $_)) })
-if ($hookPaths.Count -eq 0 -or $missingHooks.Count) {
+if ($copilotInvalid) {
+    Row MISSING 'Hook files' '.github/hooks/hooks.json is malformed, so its apparent registrations are not active. Fix: re-run the installer or correct the file.'
+} elseif ($missingHooks.Count) {
     $names = if ($missingHooks.Count) { $missingHooks -join ',' } else { '<no registrations>' }
     Row MISSING 'Hook files' ("registration points at a missing file; hooks are silently dead. Fix: re-run the installer. Missing: {0}" -f $names)
+} elseif ($settingsReadFailed -or $copilotReadFailed) {
+    Row CANT-VERIFY 'Hook files' 'hook registrations could not be completely read from .claude/settings.json and .github/hooks/hooks.json; file presence cannot be certified. Fix read access and rerun the doctor.'
+} elseif ($hookPaths.Count -eq 0) {
+    Row MISSING 'Hook files' 'registration points at a missing file; hooks are silently dead. Fix: re-run the installer. Missing: <no registrations>'
 } else { Row OK 'Hook files' ("{0} registered files are present." -f $hookPaths.Count) }
 
 $bashGuardRegistered = @($commands | Where-Object { Test-ClaudeBashGuardCommand $_ }).Count -gt 0
 if (-not $bashGuardRegistered) { $bashGuardRegistered = @($copilotBashCommands | Where-Object { Test-GuardShTarget $_ }).Count -gt 0 }
 # PARSER-VANTAGE-BRANCH-BEGIN
-if ($bashGuardRegistered) {
+if ($copilotInvalid) {
+    Row MISSING 'Guard JSON parser' '.github/hooks/hooks.json is malformed, so no parser requirement can be inferred from its apparent commands. Fix: re-run the installer or correct the file.'
+} elseif ($settingsReadFailed -or $copilotReadFailed) {
+    Row CANT-VERIFY 'Guard JSON parser' 'hook registrations could not be completely read, so whether a Bash guard parser is required cannot be verified. Fix read access and rerun the doctor.'
+} elseif ($bashGuardRegistered) {
     Row CANT-VERIFY 'Guard JSON parser' 'PowerShell cannot observe the runtime PATH supplied to guard.sh. Run framework-doctor.sh to inspect this Bash environment; only the write-guard canary below proves the actual agent host.'
 } else { Row OK 'Guard JSON parser' 'not required by the registered PowerShell guards.' }
 # PARSER-VANTAGE-BRANCH-END
@@ -197,14 +282,73 @@ if ($bashGuardRegistered) {
 if ($pending) { Row PENDING 'Stack toolchain' 'not checked until /bootstrap or /adopt completes.' }
 else {
     $missingTools = @()
-    if ($template -match 'dotnet|monorepo') { if (-not (Has dotnet)) { $missingTools += 'dotnet' } }
-    if ($template -match 'angular|monorepo') {
+    # Application manifests live at the root or within two project-container levels in the
+    # supported layouts. Keep this bounded and do not mistake generated/dependency artifacts for
+    # source applications; an incomplete walk is not evidence that no application exists.
+    $markerScanDepth = 2
+    $markerExcludedDirectories = @('.git', 'node_modules', 'bower_components', 'vendor', 'bin', 'obj', 'dist', 'build', 'out', '.next', '.angular', '.nx', 'coverage')
+    $markerNames = @('angular.json', 'nx.json', 'project.json', 'package.json')
+    $markerScanFailed = $false
+    $applicationMarkers = @()
+    $markerDirectories = @([IO.DirectoryInfo]$root)
+    for ($depth = 0; $depth -le $markerScanDepth; $depth++) {
+        $nextMarkerDirectories = @()
+        foreach ($markerDirectory in $markerDirectories) {
+            try { $entries = @(Get-ChildItem -LiteralPath $markerDirectory.FullName -Force -ErrorAction Stop) }
+            catch { $markerScanFailed = $true; continue }
+            foreach ($entry in $entries) {
+                # A solution alone can contain only SSDT/sqlproj projects. Require an actual C#
+                # project before treating this repository as a .NET application.
+                $isMarker = $entry.Extension -eq '.csproj' -or $entry.Name -in $markerNames
+                $isReparsePoint = ($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0
+                if ($isReparsePoint) {
+                    if (($entry.PSIsContainer -and $markerExcludedDirectories -notcontains $entry.Name) -or $isMarker) { $markerScanFailed = $true }
+                    continue
+                }
+                if ($entry.PSIsContainer) {
+                    if ($isMarker) { $markerScanFailed = $true }
+                    elseif ($depth -lt $markerScanDepth -and $markerExcludedDirectories -notcontains $entry.Name) { $nextMarkerDirectories += $entry }
+                } elseif ($isMarker) { $applicationMarkers += $entry }
+            }
+        }
+        $markerDirectories = $nextMarkerDirectories
+    }
+    $needsDotnet = @($applicationMarkers | Where-Object { $_.Extension -eq '.csproj' }).Count -gt 0
+    $needsAngular = $false
+    foreach ($marker in $applicationMarkers) {
+        if ($marker.Name -notin $markerNames) { continue }
+        try { $content = Get-Content -LiteralPath $marker.FullName -Raw -ErrorAction Stop }
+        catch { $markerScanFailed = $true; continue }
+        try {
+            if ($content -notmatch '^\s*\{') { throw 'marker root is not an object' }
+            $markerJson = ConvertFrom-StrictJson $content
+        } catch { $markerScanFailed = $true; continue }
+        if (($marker.Name -eq 'angular.json') -or
+            ($marker.Name -eq 'package.json' -and (Test-PackageAngularCore $markerJson)) -or
+            ($marker.Name -in @('nx.json', 'project.json') -and (Test-NxAngularEvidence $markerJson))) {
+            $needsAngular = $true
+        }
+    }
+    if ($needsDotnet) { if (-not (Has dotnet)) { $missingTools += 'dotnet' } }
+    if ($needsAngular) {
         if (-not (Has node)) { $missingTools += 'node' }
         if (-not (Has npx)) { $missingTools += 'npx' }
     }
-    if ($missingTools.Count) {
+    if ($markerScanFailed) {
+        Row CANT-VERIFY 'Stack toolchain' 'repository application markers could not be completely enumerated or read within two directory levels; generated/dependency directories (.git, node_modules, bower_components, vendor, bin, obj, dist, build, out, .next, .angular, .nx, coverage) are intentionally excluded. No toolchain conclusion was inferred. Fix: restore read/list access and rerun framework doctor.'
+        $script:stackCanary = 'repository application markers could not be completely enumerated or read, so whether a compile/type-error canary applies cannot be verified. Fix the marker access issue, then use the actual agent rather than a direct terminal build.'
+    } elseif ($missingTools.Count) {
         Row MISSING 'Stack toolchain' ("the required toolchain commands are absent from this doctor process environment: {0}; this does not prove the agent host's post-write environment. Fix: install them on this machine if the actual-host canary also fails." -f ($missingTools -join ','))
-    } else { Row OK 'Stack toolchain' ("required {0} toolchain commands are available in this doctor process environment; this does not prove the agent host's post-write environment." -f $template) }
+    } elseif (-not $needsDotnet -and -not $needsAngular) {
+        Row OK 'Stack toolchain' ("not applicable: no repository-evidenced .NET or Angular application markers were found; no command was inferred from template '{0}'." -f $template)
+        $script:stackCanary = 'not applicable: no repository-evidenced .NET or Angular application markers were found, so this repository has no compile/type-error canary to run.'
+    } else {
+        $toolchainLabel = if ($needsDotnet -and $needsAngular) { '.NET and Angular' } elseif ($needsDotnet) { '.NET' } else { 'Angular' }
+        Row OK 'Stack toolchain' ("required repository-evidenced {0} toolchain commands are available in this doctor process environment; this does not prove the agent host's post-write environment." -f $toolchainLabel)
+        if ($needsDotnet -and $needsAngular) { $script:stackCanary = 'through the actual agent, make and then revert a harmless deliberate compile/type error in one selected real build-relevant .NET or Angular file after the post-write throttle has elapsed; pass = the hook output starts with "## dotnet build failed" or "## tsc --noEmit failed". Model diagnosis or a direct terminal build is not a pass.' }
+        elseif ($needsDotnet) { $script:stackCanary = 'through the actual agent, make and then revert a harmless deliberate compile/type error in a selected real build-relevant .NET file after the post-write throttle has elapsed; pass = the hook output starts with "## dotnet build failed". Model diagnosis or a direct terminal build is not a pass.' }
+        else { $script:stackCanary = 'through the actual agent, make and then revert a harmless deliberate type error in a selected real build-relevant Angular file after the post-write throttle has elapsed; pass = the hook output starts with "## tsc --noEmit failed". Model diagnosis or a direct terminal build is not a pass.' }
+    }
 }
 
 # Twin divergence by design: the .sh twin adds a CANT-VERIFY branch here for "hooks.json exists
@@ -212,7 +356,8 @@ else {
 if ($copilotValid) {
     if (Has copilot) { Row OK 'Copilot surface' 'hooks.json is valid and Copilot CLI is available in this doctor process environment.' }
     else { Row OK 'Copilot surface' 'hooks.json is valid; Copilot CLI is absent from this doctor process environment. Claude-only teams need no action; Copilot teams must use the actual-surface canaries below.' }
-} elseif ($copilotExists) { Row MISSING 'Copilot surface' '.github/hooks/hooks.json exists but is not valid JSON. Fix: re-run the installer or correct the file.' }
+} elseif ($copilotReadFailed) { Row CANT-VERIFY 'Copilot surface' '.github/hooks/hooks.json exists but could not be read; its validity and Copilot hook surface are unknown. Fix read access and rerun the doctor.' }
+elseif ($copilotExists) { Row MISSING 'Copilot surface' '.github/hooks/hooks.json exists but is not valid JSON. Fix: re-run the installer or correct the file.' }
 else { Row MISSING 'Copilot surface' '.github/hooks/hooks.json is missing. Fix: re-run the installer.' }
 
 if ($pending) { Row PENDING 'Mirror and version integrity' 'not checked until /bootstrap or /adopt completes.' }
@@ -237,7 +382,7 @@ else {
         try { & $hostExe -NoProfile -ExecutionPolicy Bypass -File $check *> $null }
         catch { $checkRan = $false }
         if (-not $checkRan) {
-            Row MISSING 'Mirror and version integrity' 'could not start a PowerShell host to run template-checks, so drift is UNKNOWN rather than found. This is a host/PATH problem, not a documentation problem. Fix: run scripts/template-checks.ps1 yourself and act on what it says.'
+            Row CANT-VERIFY 'Mirror and version integrity' 'could not start a PowerShell host to run template-checks, so drift is UNKNOWN rather than found. This is a host/PATH problem, not a documentation problem. Fix: run scripts/template-checks.ps1 yourself and act on what it says.'
         }
         elseif ($LASTEXITCODE -eq 0) { Row OK 'Mirror and version integrity' 'template-checks passed.' }
         else { Row MISSING 'Mirror and version integrity' 'CLAUDE.md and AGENTS.md or version stamps have drifted. Fix: run /generate-copilot, then scripts/docs-sync-check.ps1.' }

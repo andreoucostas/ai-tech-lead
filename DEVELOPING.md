@@ -360,10 +360,12 @@ assignment in the `.ps1`), and sweep agent-authored artifacts for tool-syntax le
 
 ```bash
 rm -rf /c/temp/install-smoke-green && mkdir -p /c/temp/install-smoke-green
-bash install.sh /c/temp/install-smoke-green            # root installer: prompts/detects the stack
+printf '<Project />\n' > /c/temp/install-smoke-green/Smoke.csproj
+bash install.sh /c/temp/install-smoke-green            # root installer: detects dotnet from repository evidence
 bash dist/dotnet/scripts/install.sh /c/temp/install-smoke-green   # or a dist installer directly
 # brownfield: pre-seed a colliding file, then install into the same kind of dir
-# monorepo detection: seed both a .csproj and an angular.json in the target first
+# monorepo detection: combine .NET with Angular evidence (angular.json, exact-case "@angular/core" JSON property,
+# or Angular Nx/project evidence), or combine Angular evidence with >=2 warehouse signal categories
 ```
 
 ## Hazard: reviewing a branch that is still moving

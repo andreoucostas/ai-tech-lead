@@ -1,1 +1,1 @@
-- [ ] `dotnet build && dotnet test` pass locally
+- [ ] Applicable commands in `CLAUDE.md > Conventions > Verification Commands` pass locally, or unavailable categories are recorded as `not available`

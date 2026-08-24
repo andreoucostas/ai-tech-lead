@@ -1,1 +1,1 @@
-Implement a new feature in this .NET codebase. Every decision must comply with the conventions and patterns in CLAUDE.md.
+Implement a new feature in this repository. Derive its technologies, layers, and verification from repository evidence; do not infer a .NET application from this framework distribution. Every decision must comply with the conventions and patterns in CLAUDE.md.

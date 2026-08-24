@@ -22,7 +22,8 @@ One file is authored by hand — **`CLAUDE.md`**. Supported clients load it or g
 - **Hooks actually fire:** `echo '{"prompt":"the export endpoint is broken"}' | bash .claude/hooks/route-prompt.sh` → should print the `/fix` rails. The guard, per stack:
   - .NET: `echo '{"tool_name":"Write","tool_input":{"file_path":"Foo.cs","content":"#pragma warning disable CS8602"}}' | bash .claude/hooks/guard.sh; echo $?` → blocks (exit 2).
   - Angular: `echo '{"tool_name":"Write","tool_input":{"file_path":"a.ts","content":"// @ts-ignore"}}' | bash .claude/hooks/guard.sh; echo $?` → blocks (exit 2).
-- **`/review` runs the build itself** (review.md Step 2) — it doesn't trust that tests pass.
+- **`/review` derives and runs applicable repository-evidenced checks itself** (review.md Step 2) —
+  it does not trust unverified pass claims, and reports unsupported categories as `not available`.
 - **Behavior is documented as cases:** read `tests/evals/cases.yaml`. e.g. `dotnet-001` requires an interface for an injected service (DIP) and `angular-001` requires a DI abstraction (token) for one; `dotnet-004` / `angular-004` require it **and** forbid a speculative provider factory/layer (the SOLID-vs-future-proofing line).
 
 ## Tradeoffs worth probing (named honestly)

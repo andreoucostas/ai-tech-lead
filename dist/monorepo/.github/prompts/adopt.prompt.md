@@ -1,6 +1,6 @@
 ---
 agent: agent
-description: Adopt this mixed .NET + Angular repo into the AI Tech Lead Framework — discovers existing AI artifacts (Cursor, Copilot, Aider, Continue, generic docs) and merges them into our canonical structure without losing work.
+description: Adopt this repository into the AI Tech Lead Framework — discovers existing AI artifacts (Cursor, Copilot, Aider, Continue, generic docs) and merges them into the canonical structure without losing work; derive applicable profiles from repository evidence.
 ---
 
 Read `.claude/commands/adopt.md` in this repository, then execute the adoption workflow defined there.

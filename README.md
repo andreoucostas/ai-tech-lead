@@ -41,15 +41,22 @@ local edits to framework-owned files before updating, and review the resulting d
 
 | Dist | Who it's for | Root installer (auto-detect) | Direct dist installer |
 |------|---------------|-------------------------------|------------------------|
-| `dist/dotnet` | .NET solutions (`*.csproj`/`*.sln` present) | `bash install.sh /path/to/repo` or `pwsh install.ps1 /path/to/repo` | `bash dist/dotnet/scripts/install.sh /path/to/repo` or `pwsh dist/dotnet/scripts/install.ps1 /path/to/repo` |
-| `dist/angular` | Angular workspaces (`angular.json` present) | same, auto-detects `angular` | `bash dist/angular/scripts/install.sh /path/to/repo` |
-| `dist/monorepo` | Mixed repos — both a `.csproj`/`.sln` **and** an `angular.json` present (searched at the target root and two directory levels below) | same, auto-detects `monorepo` (union of both stacks' rails) | `bash dist/monorepo/scripts/install.sh /path/to/repo` |
+| `dist/dotnet` | Repositories with `.NET` application evidence, or warehouse-SQL repositories with at least two independent warehouse signal categories | `bash install.sh /path/to/repo` or `pwsh install.ps1 /path/to/repo` | `bash dist/dotnet/scripts/install.sh /path/to/repo` or `pwsh dist/dotnet/scripts/install.ps1 /path/to/repo` |
+| `dist/angular` | Angular workspaces evidenced by `angular.json`, an exact-case `"@angular/core"` dependency-map key, or an exact-case Angular token in an Nx/project plugin, executor, generator, schematic, or target-default field | same, auto-detects `angular` | `bash dist/angular/scripts/install.sh /path/to/repo` |
+| `dist/monorepo` | Mixed repositories with both .NET and Angular evidence, or Angular plus warehouse-SQL evidence | same, auto-detects `monorepo` (union of the applicable profiles' rails) | `bash dist/monorepo/scripts/install.sh /path/to/repo` |
 
 Pass `--stack dotnet|angular|monorepo` (`-Stack` on the PowerShell side) to override
 auto-detection. On an existing install, the root installer defaults to whatever stack is
 recorded in the target's `.claude/framework-version.json` (update mode) rather than
-re-detecting. The root installers are a thin dispatcher only — all real copy/detect logic lives
-in the chosen dist's own `scripts/install.{sh,ps1}`.
+re-detecting. If the repository's evidenced profiles change, rerun the root installer with the
+appropriate explicit `--stack`/`-Stack` (usually `monorepo` when profiles coexist) before
+running `/rebootstrap`. Application markers are searched at the target root and two directory levels below;
+warehouse evidence is classified repository-wide while generated and dependency directories are
+pruned. The Bash dispatcher requires `jq` or a working `python3`/`python`/`py` when it must read an
+existing stamp or structurally inspect `angular.json`/`package.json`/`nx.json`/`project.json` Angular evidence; if
+none is available, pass `--stack` explicitly. The PowerShell dispatcher uses an embedded strict JSON reader.
+The root installers are a thin dispatcher only — all real copy logic
+lives in the chosen dist's own `scripts/install.{sh,ps1}`.
 
 ### What the install adds, and why it is committed
 
@@ -131,7 +138,7 @@ by hand, are in [`DEVELOPING.md`](./DEVELOPING.md).
 
 ## Status
 
-Current shipped version is **v0.76.0** across all three dists
+Current shipped version is **v0.77.0** across all three dists
 (`dist/*/.claude/framework-version.json`). The merge is complete: this repo is the single home for
 framework development, and the two legacy repos (`ai-tech-lead-dotnet`, `ai-tech-lead-angular`) are
 archived and read-only, frozen at v0.25.5.

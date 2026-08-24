@@ -8,11 +8,21 @@ description: >
   DO NOT USE FOR: the semantic SOLID review of a diff — that is the `solid-check` agent / `/review`.
 ---
 
-# Enforce architecture deterministically (Angular — dependency-cruiser)
+# Enforce architecture deterministically (evidenced Angular only)
 
-`solid-check` covers SOLID semantically per diff; this makes the *structural* part (layer / feature dependency direction) a **build-breaking** CI gate. Pairs with the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools)`.
+`solid-check` covers SOLID semantically per diff; this makes the *structural* part (layer / feature dependency direction) a **build-breaking** CI gate. Pairs with the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools).
 
-1. **Install**: `npm i -D dependency-cruiser`.
-2. **Config**: copy `scripts/ci/dependency-cruiser.sample.js` to `.dependency-cruiser.js` at the repo root and adjust the globs to this project's layering (core/shared vs features; no feature→feature imports; no deep cross-boundary imports).
-3. **npm script + CI**: add `"depcruise": "depcruise src --config .dependency-cruiser.js"` and run it in CI so violations fail the build. On Bitbucket Data Center, that's your Bamboo/Jenkins/pipeline step (no GitHub Actions).
-4. **Don't weaken rules to go green** — record current violations in `TECH_DEBT.md` (Category: Architecture) and burn them down via the Trojan Horse.
+1. **Applicability**: proceed only when manifests/configuration evidence an Angular workspace. If it
+   is absent, report **not applicable** and change nothing. Derive the package manager, install
+   syntax, source roots, script invocation, and CI command from committed repository evidence; the
+   delivery profile does not prove npm, a `src` root, or any exact command.
+2. **Install**: add `dependency-cruiser` with the evidenced package manager's development-dependency
+   command. If no package manager/install command is evidenced, report it **not available** and stop.
+3. **Config**: copy `scripts/ci/dependency-cruiser.sample.js` to `.dependency-cruiser.js` at the repo root and adjust the globs to this project's evidenced layering and source roots (core/shared vs features; no feature→feature imports; no deep cross-boundary imports).
+4. **Script + CI**: add a package script whose command targets those evidenced roots, then put the
+   exact repository-evidenced invocation in CI so violations fail the build. On Bitbucket Data
+   Center, that is the repository's Bamboo/Jenkins/pipeline step, not an invented GitHub Action.
+5. **Verification inventory**: derive applicable build, test, format, lint, migration/deploy, and
+   data-validation commands from repository evidence; run only applicable commands and report each
+   unsupported category as **not available**.
+6. **Don't weaken rules to go green** — record current violations in `TECH_DEBT.md` (Category: Architecture) and burn them down via the Trojan Horse.

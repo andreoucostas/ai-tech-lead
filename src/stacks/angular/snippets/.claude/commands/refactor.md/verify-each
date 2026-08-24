@@ -1,1 +1,1 @@
-- After each meaningful change, run `ng build` and `ng test --watch=false --browsers=ChromeHeadless`
+- After each meaningful change, run only evidence-supported **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands for the changed area; record each unavailable category as **not available**.

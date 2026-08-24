@@ -64,10 +64,10 @@ if ($filePath -notmatch '\.(cs|csproj|sln|props|targets|razor|cshtml)$') { exit 
 # Bail cleanly if no dotnet CLI on PATH.
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) { exit 0 }
 
-# Discover the build target: walk up from the written file to the nearest .sln so the whole
-# solution is built and cross-project breaks are caught; fall back to the nearest .csproj if no
-# solution exists up the tree. The old root-cwd `dotnet build` silently built nothing when the
-# solution lived in a subdirectory.
+# Discover the build target: walk up from the written file to the nearest solution that actually
+# references a C# project, so an SSDT-only .sln is not mistaken for a .NET application. Build that
+# whole solution for cross-project breaks; fall back to the nearest .csproj. The old root-cwd
+# `dotnet build` silently built nothing when the solution lived in a subdirectory.
 $fileDir = Split-Path -Parent $filePath
 if ([string]::IsNullOrEmpty($fileDir)) { $fileDir = '.' }
 try { $dir = (Resolve-Path -LiteralPath $fileDir -ErrorAction Stop).Path } catch { exit 0 }
@@ -75,7 +75,11 @@ try { $dir = (Resolve-Path -LiteralPath $fileDir -ErrorAction Stop).Path } catch
 $target = $null
 $probe = $dir
 while ($probe) {
-    $sln = Get-ChildItem -LiteralPath $probe -Filter *.sln -File -ErrorAction SilentlyContinue | Select-Object -First 1
+    $sln = $null
+    foreach ($candidate in @(Get-ChildItem -LiteralPath $probe -Filter *.sln -File -ErrorAction SilentlyContinue)) {
+        try { $solutionText = Get-Content -LiteralPath $candidate.FullName -Raw -ErrorAction Stop } catch { continue }
+        if ($solutionText -match '(?i)\.csproj') { $sln = $candidate; break }
+    }
     if ($sln) { $target = $sln.FullName; break }
     $parent = Split-Path -Parent $probe
     if ($parent -eq $probe) { break }

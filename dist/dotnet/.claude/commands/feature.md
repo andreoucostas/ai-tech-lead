@@ -3,7 +3,7 @@ description: "Full feature workflow: plan gate, ordered subtasks with build+test
 argument-hint: "[feature description]"
 ---
 
-Implement a new feature in this .NET codebase. Every decision must comply with the conventions and patterns in CLAUDE.md.
+Implement a new feature in this repository. Derive its technologies, layers, and verification from repository evidence; do not infer a .NET application from this framework distribution. Every decision must comply with the conventions and patterns in CLAUDE.md.
 
 ## Input
 $ARGUMENTS
@@ -28,12 +28,15 @@ State the plan: files to create/modify, order of operations, test strategy, debt
 ### Step 2 — Execute in subtasks
 Decompose into ordered subtasks. Execute each fully before starting the next:
 
-1. **Domain/model layer** — entities, value objects, enums + unit tests
-2. **Service/application layer** — business logic, interfaces + unit tests
-3. **API/controller layer** — DTOs, validators, controller actions + unit tests
-4. **Integration / end-to-end test** — verify the full flow through the real pipeline via `WebApplicationFactory`, exercising the endpoint as a caller would (real routing, model binding, serialization, middleware), not just the unit
+Choose only layers and validation that repository evidence supports. When the repository is a .NET application with these layers, an appropriate order may be:
+1. **Domain/model layer** — entities, value objects, enums + applicable tests
+2. **Service/application layer** — business logic, interfaces + applicable tests
+3. **API/controller layer** — DTOs, validators, controller actions + applicable tests
+4. **Integration / end-to-end validation** — where an ASP.NET test harness exists, verify the full flow through it (for example `WebApplicationFactory`); otherwise use the strongest evidenced validation.
 
-After each subtask, run `dotnet build`, `dotnet test`, and `dotnet format`. Fix any compilation errors, test failures, or formatting violations before starting the next subtask. Never leave the codebase in a broken state.
+For a repository without those application layers or a test harness, use its documented structure and strongest evidenced validation. Report tests as **not available** when no harness exists; do not introduce a foreign harness solely for this feature.
+
+Before the first subtask, derive exact **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands from `CLAUDE.md`, committed CI, scripts, manifests, and configuration. After each subtask, run only the commands applicable to the changed area. A .NET profile establishes only profile applicability; use any command, project, configuration, runner, or flags only when that exact full form is explicitly recorded in the evidence. Record every category without a supported command as **not available**; fix applicable-command failures before the next subtask. Never leave the codebase in a broken state.
 
 ### Step 3 — Boy Scout
 Apply the Boy Scout Rule (CLAUDE.md > Boy Scout Rule) to every file you modified. Mandatory.

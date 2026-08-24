@@ -1,8 +1,8 @@
 <!--
 ai-tech-lead-framework
   template: monorepo
-  version: 0.76.0
-  applied: 2026-08-23
+  version: 0.77.0
+  applied: 2026-08-24
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
 # [Project Name]
@@ -26,7 +26,7 @@ ai-tech-lead-framework
 
 <!-- Populated by /bootstrap — do not fill manually -->
 
-What this application does, who uses it, key domain concepts, and critical user journeys.
+What this repository delivers, who uses its outputs, key domain concepts, and critical journeys.
 
 ---
 
@@ -34,16 +34,16 @@ What this application does, who uses it, key domain concepts, and critical user 
 
 <!-- Populated by /bootstrap — replaces separate CODEMAP.md -->
 
-Layout for both stacks — .NET: projects, layering strategy, dependency direction between projects, entry points; Angular: top-level folders, feature module boundaries, shared/core contents, routing structure — and where to put new code in each.
+Evidence-backed layout, boundaries, entry points, change locations for each selected profile.
 
-Include a text or mermaid diagram showing project and module dependencies (both stacks).
+Evidence-backed dependency/data-flow diagram, when applicable.
 
 ---
 
 ## Conventions
 
 <!-- BOOTSTRAP_PENDING: run /bootstrap to replace this entire section with conventions observed in the actual codebase. -->
-<!-- Until /bootstrap runs, defer to docs/defaults.md for greenfield .NET and Angular 17+ conventions. -->
+<!-- Until /bootstrap, use applicable docs/defaults.md blocks only; the profile proves nothing. -->
 <!-- Each convention: the rule, then 1-2 sentence rationale. -->
 
 _Not yet populated. Until you run `/bootstrap`, the greenfield defaults in [docs/defaults.md](./docs/defaults.md) apply. After bootstrap, this section becomes the authoritative source._
@@ -63,7 +63,8 @@ A one-line index of significant decisions (including accidental ones that became
 
 ## Common Tasks
 
-Recipes live as **skills**, auto-discovered by both Claude Code (`.claude/skills/`) and GitHub Copilot (`.github/skills/`) — the model triggers the relevant one when you describe that kind of task. Current skills:
+Skills are a delivery-profile superset, not evidence that they apply. Use only when repository
+evidence satisfies the gate:
 
 - `add-endpoint` — add a new HTTP API endpoint end-to-end (domain → service → DTO → validator → controller → integration test)
 - `add-entity` — add a new EF Core entity with configuration and migration review
@@ -94,6 +95,8 @@ When touching any file, leave it cleaner than you found it. The rule is symmetri
 
 ### Always apply (low-effort, low-risk — do these on every touched file):
 
+Apply only entries whose technology exists here; the profile proves none.
+
 **Add:**
 1. Missing `CancellationToken` propagation (.NET)
 2. Replace string-interpolated log messages with structured logging (.NET)
@@ -114,8 +117,8 @@ When touching any file, leave it cleaner than you found it. The rule is symmetri
 ### Apply only when the file is the primary target of the change:
 
 **Add:**
-12. Split fat methods (>30 lines) into focused private methods
-13. Missing unit tests for public methods you're modifying
+12. Split mixed-responsibility methods; never use a line-count threshold
+13. Add risk-relevant tests only, and only with a harness
 14. Replace manual `.subscribe()` with `async` pipe where possible (Angular)
 15. Extract complex template expressions into component methods or pipes (Angular)
 16. Add `ChangeDetectionStrategy.OnPush` — but only after verifying the component's data flow (immutable inputs, no in-place mutation, no reliance on ambient ticking) and after manual/test verification that the view still updates correctly. (Angular)

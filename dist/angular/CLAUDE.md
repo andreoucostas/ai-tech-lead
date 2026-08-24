@@ -1,8 +1,8 @@
 <!--
 ai-tech-lead-framework
   template: angular
-  version: 0.76.0
-  applied: 2026-08-23
+  version: 0.77.0
+  applied: 2026-08-24
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
 # [Project Name]
@@ -26,7 +26,7 @@ ai-tech-lead-framework
 
 <!-- Populated by /bootstrap — do not fill manually -->
 
-What this application does, who uses it, key domain concepts, and critical user journeys.
+What this repository delivers, who uses its outputs, key domain concepts, and critical journeys.
 
 ---
 
@@ -34,16 +34,16 @@ What this application does, who uses it, key domain concepts, and critical user 
 
 <!-- Populated by /bootstrap — replaces separate CODEMAP.md -->
 
-Top-level folder layout, feature module boundaries, shared/core module contents, routing structure, and where to put new code.
+Evidence-backed layout, boundaries, entry points, change locations.
 
-Include a text or mermaid diagram showing the module dependency graph.
+Evidence-backed dependency diagram, when applicable.
 
 ---
 
 ## Conventions
 
 <!-- BOOTSTRAP_PENDING: run /bootstrap to replace this entire section with conventions observed in the actual codebase. -->
-<!-- Until /bootstrap runs, defer to docs/defaults.md for greenfield Angular 17+ conventions. -->
+<!-- Until /bootstrap, use Angular defaults only when Git-root evidence selects that profile. -->
 <!-- Each convention: the rule, then 1-2 sentence rationale. -->
 
 _Not yet populated. Until you run `/bootstrap`, the greenfield defaults in [docs/defaults.md](./docs/defaults.md) apply. After bootstrap, this section becomes the authoritative source._
@@ -63,7 +63,8 @@ A one-line index of significant decisions (including accidental ones that became
 
 ## Common Tasks
 
-Recipes live as **skills**, auto-discovered by both Claude Code (`.claude/skills/`) and GitHub Copilot (`.github/skills/`) — the model triggers the relevant one when you describe that kind of task. Current skills:
+Skills are a delivery-profile superset, not evidence that they apply. Use only when repository
+evidence satisfies the gate:
 
 - `add-component` — add a new Angular feature component end-to-end
 - `add-service` — add an HTTP / business-logic / signal-store service
@@ -87,6 +88,8 @@ Recipes live as **skills**, auto-discovered by both Claude Code (`.claude/skills
 When touching any file, leave it cleaner than you found it. The rule is symmetric: improvements *add* missing pieces and *remove* dead weight. Deletion is a contribution.
 
 ### Always apply (low-effort, low-risk — do these on every touched file):
+
+Apply only entries whose technology exists here; the profile proves none.
 
 **Add:**
 1. Replace manual `ngOnDestroy` subscription cleanup with `takeUntilDestroyed()`

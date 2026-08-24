@@ -1,1 +1,2 @@
-Run `ng build` and `ng test --watch=false --browsers=ChromeHeadless` after each subtask. Fix failures before moving on.
+Apply Verification command discovery after each subtask. The Angular delivery profile proves no command;
+run only exact recorded invocations and fix their failures before continuing.

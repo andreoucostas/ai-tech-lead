@@ -1,6 +1,6 @@
 # AI Tech Lead Framework — .NET C#
 
-A working template that turns Claude Code and GitHub Copilot into a tech lead for your .NET codebase. Clone it, run one command, and get AI-driven development with built-in conventions, verification, and continuous improvement.
+A working template that turns Claude Code and GitHub Copilot into a tech lead for a .NET application, a warehouse-SQL repository, or both. Clone it, run one command, and get AI-driven development with built-in conventions, verification, and continuous improvement.
 
 ## 1. For AI agents (LLMs)
 
@@ -13,7 +13,7 @@ If you are an AI agent reading this repository, start here.
 2. **Commit the copied files** in the target repo — they are team-shared config, not local settings.
 3. **Hand off to the developer.** Populating is done by **`/adopt`** (brownfield — the installer wrote `.claude/adoption-pending.json`) or **`/bootstrap`** (greenfield). Both are **developer-initiated**: the model cannot invoke them, and they only exist inside a Claude Code session started in the target repo — so you cannot run them, and you must not try to replicate them by hand. End your run by telling the developer, verbatim: *"start a Claude Code session in `<target repo>` and type `/adopt`"* (or `/bootstrap`). Until that happens, the SessionStart hook warns every new session and `scripts/docs-sync-check` fails CI — expect that check to fail at this stage; it passes only after the developer has run the command.
 
-**If you were asked to do development work in a repo that already has this installed:** follow the **Agentic Workflow** in `CLAUDE.md` — classify intent, post a plan and wait for go-ahead, execute in verified subtasks (build + test after each), Boy Scout every touched file, self-review with a verification line. Trigger the matching skill in `.claude/skills/` when the task fits one.
+**If you were asked to do development work in a repo that already has this installed:** follow the **Agentic Workflow** in `CLAUDE.md` — classify intent, post a plan and wait for go-ahead, execute in verified subtasks using repository-evidenced commands, Boy Scout every touched file, self-review with a verification line. Trigger the matching skill in `.claude/skills/` when the task fits one.
 
 Architecture: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) · Reviewer's tour: [docs/REVIEW-GUIDE.md](./docs/REVIEW-GUIDE.md) · Full methodology: [docs/playbook.md](./docs/playbook.md).
 
@@ -25,17 +25,17 @@ No marketing. Each item is a concrete mechanism and the effect it produces.
 
 2. **Less context burned per review — subagents run isolated.** `/review` and `/security-review` fan out to subagents (solid-check, convention-check, bloat-radar, debt-radar, test-critic, security-auditor) that each run in their own context window. Their file-reading and intermediate reasoning never enter the main conversation — the parent gets one structured findings table per agent, not the full transcript.
 
-3. **One command instead of hours hand-writing the AI's context.** `/bootstrap` (or `/adopt`) analyses architecture, domain, DI, API surface, testing, and code quality, then writes `CLAUDE.md`, `TECH_DEBT.md`, `AGENTS.md`, and `copilot-instructions.md`. You stop hand-authoring AI context — it's derived from the real codebase.
+3. **One command instead of hours hand-writing the AI's context.** `/bootstrap` (or brownfield `/adopt`) selects .NET application and/or warehouse-SQL profiles from Git-root evidence, runs only their analysis passes, then writes `CLAUDE.md`, `TECH_DEBT.md`, `AGENTS.md`, and `copilot-instructions.md`. You stop hand-authoring AI context — it's derived from the real codebase.
 
-4. **The AI stops inventing your codebase.** Verification rules force it to confirm any class, method, NuGet package, or route exists (via Read/Grep) before referencing it, and to honour version pinning. Fewer hallucinated APIs means fewer wrong diffs and less rework.
+4. **The AI stops inventing your repository.** Verification rules force it to confirm referenced classes, methods, packages, routes, SQL objects, and data transforms exist before using them, and to honour evidenced version pinning. Fewer hallucinated constructs means fewer wrong diffs and less rework.
 
 5. **Fast compile feedback on supported editor writes.** When the PostToolUse hook and interpreter are live, a `.cs` editor/file-write event runs an incremental `dotnet build`; shell/external writes do not trigger it.
 
 6. **Defined bad editor writes blocked deterministically.** On supported hosts with hooks available, the PreToolUse guard blocks editor/file-write events that add a warning-suppression (`#pragma warning disable`) or a hardcoded secret. Shell/terminal writes are outside that event scope.
 
-7. **Natural language routes to the right workflow — no slash commands to memorise.** Typing *"the export endpoint is broken"* auto-injects the `/fix` rails (regression-test-first, blast-radius cleanup). The seven workflows are still available as explicit slash commands when you want deterministic routing.
+7. **Natural language routes to the right workflow — no slash commands to memorise.** Typing *"the export endpoint is broken"* auto-injects the `/fix` rails (cause-first diagnosis, an evidenced regression test when a harness exists, blast-radius cleanup). The seven workflows are still available as explicit slash commands when you want deterministic routing.
 
-8. **Common tasks can't be done wrong.** Skills encode the correct end-to-end recipe (add-endpoint: domain → service → DTO → validator → thin controller → integration test). Juniors get senior-level scaffolding; the agent follows *your* recipe, not a generic one.
+8. **Common tasks carry explicit guardrails.** Skills encode repository-grounded recipes (for example, add-endpoint follows the evidenced domain, service, DTO, validation, controller, and verification patterns). The agent follows *your* recipe, not a generic one.
 
 9. **Quality improves as a side effect of normal work.** The Boy Scout Rule cleans every file the agent touches; the Trojan Horse principle bundles debt cleanup into feature and fix tickets; a leanness counterweight stops it adding abstraction you don't need. No dedicated debt sprints.
 
@@ -48,7 +48,8 @@ No marketing. Each item is a concrete mechanism and the effect it produces.
 ## Quick Start
 
 ### 1. Copy into your project
-Copy the following into your existing .NET **solution root** (where your `.sln` file lives):
+Copy the following into the repository **Git root**. For a .NET application this is normally the
+solution root; a warehouse-only repository does not need a `.sln` or `*.csproj`.
 ```
 .claude/                            → Claude Code commands and hooks
 .github/prompts/                    → GitHub Copilot Chat workflows (mirror of .claude/commands/)
@@ -107,8 +108,8 @@ Read the generated `CLAUDE.md`. It should accurately describe your codebase. Fix
 Both Claude Code and Copilot Chat use the same slash-command names:
 
 ```
-/feature [description]     — implement a feature across all layers
-/fix [description]         — diagnose and fix a bug (regression test first)
+/feature [description]     — implement a feature at evidenced boundaries
+/fix [description]         — diagnose and fix a bug (test when a harness exists)
 /design [description]      — think through design before coding
 /review                    — review changes as a tech lead
 /security-review           — OWASP-style scan + senior judgement on auth, data flow, secrets
@@ -164,7 +165,7 @@ To pull template updates, re-run the installer from a fresh template checkout ag
 
 Every workflow command follows the same execution model:
 1. **Plan** before coding (CLAUDE.md is auto-loaded — no need to re-read)
-2. **Execute in verified subtasks** (build + test + format after each)
+2. **Execute in verified subtasks** (run only applicable repository-evidenced checks after each)
 3. **Boy Scout** every touched file
 4. **Self-review** against conventions (shared `@.claude/workflow.md` tail)
 5. **Flag drift** in documentation
@@ -175,10 +176,10 @@ Every workflow command follows the same execution model:
 | `SessionStart` | New session | Preloads branch, last 3 commits, the adoption-pending warning (`.claude/adoption-pending.json` present → steer to `/adopt`, not `/bootstrap`) or the `BOOTSTRAP_PENDING` warning, the workflow-routing primer, the count of TECH_DEBT entries touching files modified in the last 14 days, and any overdue `SECURITY_FINDINGS` |
 | `UserPromptSubmit` | Every prompt | Regex-classifies natural-language prompts as `fix`/`feature`/`refactor`/`test`/`design`/`debt`/`review` and injects that workflow's hard rules. Skips explicit `/command` invocations. Copilot injects `additionalContext` on CLI ≥ v1.0.65 and in VS Code when Preview agent-hooks are enabled; older versions or disabled hooks ignore it, so the `SessionStart` primer and `AGENTS.md` self-classification carry routing there. |
 | `PreToolUse` (Write/Edit) | Supported `.cs` editor/file-write events | Blocks defined warning-suppression and secret patterns when the registered hook and interpreter are live. Shell writes are outside the event scope. |
-| `PostToolUse` (Write/Edit) | After supported `.cs` editor/file-write events | Runs solution-level incremental `dotnet build`; a second handler appends local, mutable hook telemetry. Shell writes and unavailable hooks are outside this scope. |
+| `PostToolUse` (Write/Edit) | After supported `.cs` editor/file-write events | Runs incremental `dotnet build` against the nearest solution, or the nearest project when no solution exists; a second handler appends local, mutable hook telemetry. Shell writes and unavailable hooks are outside this scope. |
 | `Stop` / `agentStop` | End of a write turn | Scans modified `.cs` files for the always-apply Boy Scout patterns (async without `CancellationToken`, interpolated logger calls, EF read queries without `AsNoTracking()`, excess null-forgiving `!`); soft-warns the model. Claude Code uses `Stop`. Copilot CLI ≥ 1.0.72 scans at `agentStop` and delivers the queued nudge at the next prompt; the VS Code `Stop` path remains unverified and requires Preview agent-hooks. |
 
-The router is the key piece. **In Claude Code**, a developer who types *"the export endpoint is broken"* gets the `/fix` rails (regression-test-first, blast-radius Boy Scout) auto-injected per-prompt, without typing a slash command. **In supported Copilot versions**, the same per-prompt injection applies; the session primer and `AGENTS.md` self-classification are the fallback when hooks are unavailable. Either way, the seven workflows are also invokable explicitly as slash commands (`/feature`, `/fix`, …) for deterministic routing.
+The router is the key piece. **In Claude Code**, a developer who types *"the export endpoint is broken"* gets the `/fix` rails (cause-first diagnosis, an evidenced regression test when a harness exists, blast-radius Boy Scout) auto-injected per-prompt, without typing a slash command. **In supported Copilot versions**, the same per-prompt injection applies; the session primer and `AGENTS.md` self-classification are the fallback when hooks are unavailable. Either way, the seven workflows are also invokable explicitly as slash commands (`/feature`, `/fix`, …) for deterministic routing.
 
 #### Hook compatibility
 
@@ -233,7 +234,7 @@ Seven subagents live in `.claude/agents/` — the six user-facing ones are mirro
 | `bloat-radar` | Flags speculative abstractions, shallow wrappers, parallel implementations, comment debris, trivial tests. Read-only. | `/review` Step 1; ad-hoc |
 | `test-critic` | Audits the test changes for integrity — would each test fail if the code under test broke? Flags over-mocking, tautological/weak assertions, missing paths, nondeterminism. Read-only. | `/review` Step 1; ad-hoc |
 | `debt-radar` | Maps a file path or feature area to TECH_DEBT entries; suggests trojan-horse bundles. Read-only. | `/review` Step 1; `/feature` Step 1; ad-hoc |
-| `bootstrap-pass` | Runs a single bootstrap analysis pass (A1–A8) in isolation. Read-only. | `/bootstrap` Phase 1 (eight in parallel) |
+| `bootstrap-pass` | Runs one selected-profile pass (.NET A1–A7 / warehouse-SQL W1–W3) or shared A8 skill discovery in isolation. Read-only. | `/bootstrap` Phase 1 (parallel) |
 
 Subagents run in isolated context — analysis chatter does not pollute the parent's main conversation. The parent receives one structured message per subagent and synthesises.
 
@@ -285,14 +286,14 @@ This framework grew up around GitHub conventions, but its **local layer is host-
 > Net: on Bitbucket Data Center your agentic story is **local CLI agents + IDE Copilot**, not a cloud agent, and there is no platform-side AI PR reviewer. Gate quality with `/review` and `/security-review` *before* you push, and with the CI guardrail *after*.
 
 ### The CI guardrail on Bitbucket — a required build is expected, not optional
-**Every repo using this framework is expected to wire one required build in its own CI (Bamboo/Jenkins/TeamCity) that gates PR merges.** The full recipe — what the build must run (the shipped `scripts/docs-sync-check.sh`/`.ps1` framework-state check **plus** `dotnet build -warnaserror` + `dotnet test` as the code-standards gate), Bamboo and Jenkins configurations, and how to make it blocking via Bitbucket DC's *required builds* merge check (repo-admin only, no server plugins) — lives in **[docs/ci-integration.md](./docs/ci-integration.md)**.
+**Every repo using this framework is expected to wire one required build in its own CI (Bamboo/Jenkins/TeamCity) that gates PR merges.** The full recipe — the shipped `scripts/docs-sync-check.sh`/`.ps1` framework-state check plus only the code gates evidenced by this repository (or an explicit `not available` gap), Bamboo and Jenkins configurations, and Bitbucket DC's *required builds* merge check — lives in **[docs/ci-integration.md](./docs/ci-integration.md)**.
 - **Also enable** Bitbucket DC's native **secret scanning** (8.12+, push-time blocking — zero custom code).
 - **Optionally surface it on the PR** via the **Code Insights REST API** (`/rest/insights/1.0/...`); cosmetic on top of required builds, not a substitute.
 - **Bitbucket Cloud** repos: copy `scripts/ci/bitbucket-pipelines.example.yml` into `bitbucket-pipelines.yml`.
 
 ### Standing scanners on Bitbucket
-- **Dependencies**: Dependabot is GitHub-only — use **Renovate** (self-hostable) or the `dependency-audit` skill's CI fallback (`dotnet list package --vulnerable --include-transitive`).
-- **SAST**: CodeQL is GitHub-only — run **Semgrep** or **SonarQube** in CI and publish via Code Insights.
+- **Dependencies**: Dependabot is GitHub-only — when committed package manifests evidence an applicable ecosystem, use **Renovate** (self-hostable) or the exact CI fallback derived by `dependency-audit`; otherwise record dependency scanning as `not available`.
+- **SAST**: CodeQL is GitHub-only — configure **Semgrep**, **SonarQube**, or another existing scanner only for repository-evidenced languages, then publish via Code Insights.
 
 ## Keeping it alive
 

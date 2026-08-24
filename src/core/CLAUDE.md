@@ -1,8 +1,8 @@
 <!--
 ai-tech-lead-framework
 <!-- @stack:stamp -->
-  version: 0.76.0
-  applied: 2026-08-23
+  version: 0.77.0
+  applied: 2026-08-24
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
 # [Project Name]
@@ -26,7 +26,7 @@ ai-tech-lead-framework
 
 <!-- Populated by /bootstrap — do not fill manually -->
 
-What this application does, who uses it, key domain concepts, and critical user journeys.
+What this repository delivers, who uses its outputs, key domain concepts, and critical journeys.
 
 ---
 
@@ -63,7 +63,8 @@ A one-line index of significant decisions (including accidental ones that became
 
 ## Common Tasks
 
-Recipes live as **skills**, auto-discovered by both Claude Code (`.claude/skills/`) and GitHub Copilot (`.github/skills/`) — the model triggers the relevant one when you describe that kind of task. Current skills:
+Skills are a delivery-profile superset, not evidence that they apply. Use only when repository
+evidence satisfies the gate:
 
 <!-- @stack:skills-list -->
 - `create-adr` — record a significant architecture decision in Architecture Decisions
@@ -81,6 +82,8 @@ Recipes live as **skills**, auto-discovered by both Claude Code (`.claude/skills
 When touching any file, leave it cleaner than you found it. The rule is symmetric: improvements *add* missing pieces and *remove* dead weight. Deletion is a contribution.
 
 ### Always apply (low-effort, low-risk — do these on every touched file):
+
+Apply only entries whose technology exists here; the profile proves none.
 
 **Add:**
 <!-- @stack:bs-add -->

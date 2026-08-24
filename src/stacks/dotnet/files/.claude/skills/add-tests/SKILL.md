@@ -7,28 +7,30 @@ description: >
   USE FOR: backfilling tests on untested code, adding edge/error-path cases, writing a regression
   test for a bug, raising coverage on a module you're about to change, or pinning the current
   behavior of untested legacy code before a refactor (characterization mode).
-  DO NOT USE FOR: scaffolding a brand-new endpoint (use add-endpoint, which already includes its
-  tests), or runtime profiling/benchmarking.
+  DO NOT USE FOR: scaffolding a brand-new endpoint (use add-endpoint, which assesses tests only
+  against an evidenced harness), or runtime profiling/benchmarking.
 ---
 
 # Add tests following project patterns
 
-Match `CLAUDE.md > Conventions > Testing` and the Test leanness rules in the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools)`. If conventions are unbootstrapped, follow `docs/defaults.md`.
+Match `CLAUDE.md > Conventions > Testing` and the Test leanness rules in the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools). If conventions are unbootstrapped, follow `docs/defaults.md`.
+
+**Applicability gate:** confirm the code under test belongs to a repository-evidenced .NET project. If no such project exists, report this skill as **not applicable**; do not create a test suite for a stale delivery-profile label. Suite bootstrap remains available only through the explicit developer-agreement checkpoint below.
 
 1. **Evidence gate — derive, don't assume.** Apply Verification Rule #10 before writing a test:
    read every test project's `.csproj` package references, then `Grep` a sibling test class. Detect
    the runner, mocking library, assertion library, naming convention, and base fixtures, builders,
    or `WebApplicationFactory` subclasses. Mirror everything found; never introduce a second test
    framework or parallel infrastructure (Verification Rule #6, Test leanness #13). If nothing is
-   found anywhere in the solution, switch to **Suite bootstrap mode** below.
+   found anywhere in the repository/project graph, switch to **Suite bootstrap mode** below.
    On an NUnit suite, `[Explicit]` is a legitimate opt-in marker for long-running or manual tests,
    but `[Ignore]` is a skip and stays subject to the project's no-skipping rule — as does MSTest's
    `[Ignore]` and xUnit's `[Fact(Skip=…)]`.
-2. **Decide the level.** Pure logic / branching → unit test against the concrete class. Full HTTP path (routing, model binding, middleware, auth, serialization) → integration test via `WebApplicationFactory<Program>`.
-3. **Cover behavior, not implementation.** Happy path, edge cases, error paths, boundary conditions. Do **not** test getters/setters, DI resolution, or that EF Core/model-binding works (Test leanness #11, #12). Mock only true external boundaries — never the type under test or owned collaborators you can construct cheaply (Test leanness #14). Every test needs a real oracle: assert a return value, state change, or thrown exception — not merely that a mock was called or that `Assert.True(true)` (Test leanness #15–16).
+2. **Decide the level.** Pure logic / branching → unit test against the concrete class. For a full HTTP path, mirror the repository's established integration boundary (for example `WebApplicationFactory<Program>` where already evidenced); do not introduce one just because this is the .NET distribution.
+3. **Cover behavior, not implementation.** Choose the smallest risk-relevant set: the principal behavior plus only consequential error, edge, or boundary cases. Do not create one test per category or public member. Do **not** test getters/setters, DI resolution, or that EF Core/model-binding works (Test leanness #11, #12). Mock only true external boundaries — never the type under test or owned collaborators you can construct cheaply (Test leanness #14). Every test needs a real oracle: assert a return value, state change, or thrown exception — not merely that a mock was called or that `Assert.True(true)` (Test leanness #15–16).
 4. **Financial domain**: if the code touches money/balances/ledgers, add cases for decimal precision, negative amounts, duplicate transaction IDs (idempotency), and rounding (`MidpointRounding`). These are the highest-value tests in this codebase.
 5. **Arrange-Act-Assert**, one logical assertion focus per test. Descriptive names per the project convention (e.g. `Method_Scenario_ExpectedResult`).
-6. **Run** `dotnet test` (scoped to the affected project) and confirm green — then confirm each new test can **fail**. A test you have not watched go red may be over-mocked or tautological (Verification Rule #9): for a regression test, confirm it fails against the unfixed code first; for any other new test, briefly break the code under test (or assert a deliberately wrong value) to see it fail for the right reason, then restore.
+6. **Run** the exact scoped test command supported by `CLAUDE.md > Conventions > Verification Commands`, committed CI, scripts, manifests, and runner configuration; do not infer a solution-level `dotnet test`. Confirm green, then confirm each new test can **fail**. A test you have not watched go red may be over-mocked or tautological (Verification Rule #9): for a regression test, confirm it fails against the unfixed code first; for any other new test, briefly break the code under test (or assert a deliberately wrong value) to see it fail for the right reason, then restore. If no executable command is evidenced, report tests as **not available** rather than claiming a pass.
 7. **Report** what was covered and what remains uncovered — do not claim coverage you didn't add.
 
 ---
@@ -47,13 +49,18 @@ When the goal is to make untested legacy code *safe to change* (e.g. before `/re
 
 ## Suite bootstrap mode — when no test project exists
 
-1. **Confirm before scaffolding.** First inspect the whole solution and confirm no test project
+1. **Confirm before scaffolding.** First inspect the whole repository/project graph and confirm no test project
    exists anywhere, not merely beside the code under test. In one message, ask the developer to
    confirm the test framework and test-project location. Prefer
-   `CLAUDE.md > Conventions > Testing`; if it is unbootstrapped and the solution is genuinely
+   `CLAUDE.md > Conventions > Testing`; if it is unbootstrapped and the repository is genuinely
    test-free, propose xUnit + NSubstitute. This is a real checkpoint — do not create files until
    they answer.
-2. **Scaffold the minimum.** Create one unit-test project referencing the primary domain/application project and add it to the solution with `dotnet sln add`. Only when the repo exposes an HTTP surface, add one integration fixture using a `WebApplicationFactory<Program>` subclass; minimal APIs may require `public partial class Program` or `InternalsVisibleTo`. Add no E2E project, coverage tooling, or extra test layers on day one.
-3. **Wire it so it cannot rot.** Ensure `dotnet test` runs the new project(s) in the repo's existing CI/build, following `docs/ci-integration.md`. If no CI exists, flag that and route CI setup to the `enforce-standards` skill; do not build CI in this task.
+2. **Scaffold the minimum.** Create one unit-test project referencing the primary domain/application
+   project. Only when a solution is evidenced, derive and run its exact project-registration command;
+   a solution-free `*.csproj` repository remains valid and uses project-level CI/command wiring.
+   Only when the repo exposes an HTTP surface, add one integration fixture using an evidenced
+   `WebApplicationFactory<Program>` boundary; minimal APIs may require `public partial class Program`
+   or `InternalsVisibleTo`. Add no E2E project, coverage tooling, or extra test layers on day one.
+3. **Wire it so it cannot rot.** Record the new exact test command in `CLAUDE.md > Conventions > Verification Commands` and ensure the repo's existing CI/build runs the new project(s), following `docs/ci-integration.md`. If no CI exists, flag that and route CI setup to the `enforce-standards` skill; do not build CI in this task.
 4. **Start risk-first, not coverage-first.** Test in this order: `FRAMEWORK-CONTEXT.md > Known Hazard Areas`; financial-domain invariants from step 4 above when present; critical journeys from `CLAUDE.md > Codebase Context`; then pure domain logic with branching. Write only a handful that prove the harness end to end, and apply step 6's red-check to every test.
 5. **Record the remainder honestly.** Add one `TECH_DEBT.md` entry: `Test suite bootstrapped <date>; backfill areas: …`. Do not imply broader coverage. Update `CLAUDE.md > Conventions > Testing` with the real framework, naming, and fixture location, and flag that documentation drift under Agentic Workflow §6.

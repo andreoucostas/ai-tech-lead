@@ -1,1 +1,2 @@
-Run the touched stack's gates after each subtask — .NET: `dotnet build` + `dotnet test`; Angular: `ng build` + `ng test --watch=false --browsers=ChromeHeadless`. Fix failures before moving on.
+Apply Verification command discovery after each subtask. Delivery-profile membership proves no command;
+run only exact recorded invocations for changed technologies and fix failures before continuing.

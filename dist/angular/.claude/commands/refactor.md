@@ -1,9 +1,9 @@
 ---
-description: "Behavior-preserving refactor workflow: verify the baseline is green first, add baseline tests if missing, refactor incrementally with build+test after each step, report a before/after summary with net LOC delta."
+description: "Behavior-preserving refactor workflow: derive applicable verification from repository evidence, establish a green baseline, add characterization coverage where a harness exists, refactor incrementally, and report net LOC delta."
 argument-hint: "[target code and goal]"
 ---
 
-Refactor code in this Angular codebase without changing behavior. Every decision must comply with the conventions in CLAUDE.md.
+Refactor code in this repository without changing behavior. Derive applicable technologies and validation from repository evidence; do not infer Angular from this framework distribution. Every decision must comply with the conventions in CLAUDE.md.
 
 ## Input
 $ARGUMENTS
@@ -11,10 +11,13 @@ $ARGUMENTS
 ## Execution
 
 ### Step 1 — Verify starting state
-Run `ng build` and `ng test --watch=false --browsers=ChromeHeadless`. Both must pass before changing anything. If tests don't exist for the code being refactored, write baseline tests FIRST (see Step 2).
+Derive the applicable baseline **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands from `CLAUDE.md`, committed CI, scripts, manifests, and configuration. Run only supported commands before changing anything; an Angular profile establishes only profile applicability, so use any command, target, runner, browser, project, configuration, or flags only when that exact full form is explicitly recorded in the evidence. Record every unavailable category as **not available**. Add baseline tests first only when the repository has an applicable harness (see Step 2).
 
 ### Step 2 — Baseline / characterization tests (if needed)
-If the code you're refactoring has no test coverage, pin its **current** behavior first — use the `add-tests` skill's **Characterization mode**:
+If the repository has an applicable test harness and the code you're refactoring has no coverage,
+pin its **current** behavior first — use the `add-tests` skill's **Characterization mode**. If no
+harness or test command is evidenced, report tests as **not available** and identify the strongest
+existing validation you will use instead; do not introduce a foreign test stack just to refactor:
 - Generate the spec skeleton, run it once to capture the actual outputs, and assert those (never invent expected values); label them characterization, not correctness.
 - Run them — they must pass against the current code. They are the safety net for the refactor.
 - **Auth / security / money code: HALT and ask the developer to confirm the captured behavior is correct before trusting it** — a characterization spec can otherwise lock in an insecure or wrong behavior as "approved."
@@ -22,17 +25,17 @@ If the code you're refactoring has no test coverage, pin its **current** behavio
 ### Step 3 — Refactor
 - Stay within the blast radius — only change what's needed
 - Make changes incrementally, not all at once
-- After each meaningful change, run `ng build` and `ng test --watch=false --browsers=ChromeHeadless`
+- After each meaningful change, run only evidence-supported **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands for the changed area; record each unavailable category as **not available**.
 - If tests fail, the refactor introduced a behavior change — fix it or revert
 
 ### Step 4 — Boy Scout
 Apply Boy Scout Rule (CLAUDE.md > Boy Scout Rule) to every file you touched.
 
 ### Step 5 — Verify final state
-Run `ng build`, `ng test --watch=false --browsers=ChromeHeadless`, and `ng lint` (if configured). All must pass. No behavior should have changed.
+Derive exact **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands from `CLAUDE.md`, committed CI, scripts, manifests, and configuration. Run only commands supported by that evidence for the changed area; record each unavailable category as **not available**. All applicable commands must pass. No behavior should have changed.
 
 ### Step 6 — Wrap up
 @.claude/workflow.md
 
 ### Step 7 — Present
-Before/after summary: what was refactored and why, what CLAUDE.md patterns were applied, **net LOC delta**, test results confirming no behavior change, any TECH_DEBT.md items resolved. Per the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools), a refactor that grows the codebase needs an explicit reason in the summary.
+Before/after summary: what was refactored and why, what CLAUDE.md patterns were applied, **net LOC delta**, test results or strongest evidenced validation confirming no behavior change (including why tests are **not available**), and any TECH_DEBT.md items resolved. Per the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools), a refactor that grows the codebase needs an explicit reason in the summary.

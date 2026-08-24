@@ -61,6 +61,14 @@ if (-not $bash) { Skip 'guard .sh twin parity (all cases)' 'no bash found -- can
 
 # Empty stdin and malformed JSON must degrade-safe to ALLOW (exit 0), never crash.
 It 'guard.ps1 empty stdin -> allow'     { Assert-Decision (Invoke-Hook $guardPs '')             'ALLOW' 'empty' }
-It 'guard.ps1 malformed json -> allow'  { Assert-Decision (Invoke-Hook $guardPs 'not json {')   'ALLOW' 'malformed' }
+It 'guard parser edge cases degrade safely and a broken jq falls back to working Python' {
+    Assert-Decision (Invoke-Hook $guardPs 'not json {') 'ALLOW' 'malformed'
+    if ($bash -and (Resolve-HostPython)) {
+        $evt = New-ClaudeEvent 'src/Secret.cs' 'const string token = "AKIA1234567890ABCDEF";'
+        $r = Invoke-Sandboxed -Bash $bash -ScriptPath $guardSh -Utilities @('cat','grep','sed') `
+            -FakeBins @{ jq = "#!/usr/bin/env bash`nexit 49`n" } -ExposeInterpreterAs python -Stdin $evt
+        Assert-Decision $r 'BLOCK' 'broken jq with working Python fallback'
+    }
+}
 
 exit (Write-TestSummary 'Guard.Tests (guard.ps1 + .sh twin parity)')

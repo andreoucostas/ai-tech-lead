@@ -11,6 +11,60 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.77.0 — 2026-08-24
+
+**Recovery increment 5 restores warehouse-only installation after making the selected lifecycle
+solution-free.** Root installers again route repositories with at least two independent shared
+warehouse signal categories to the dotnet delivery profile; Angular plus warehouse evidence selects
+monorepo so neither profile is discarded. `/bootstrap` now selects evidenced
+.NET, Angular, and warehouse-SQL profiles from the Git root, dispatches only applicable analysis
+passes, and records exact build, test, format, lint, migration/deploy, and data-validation commands
+under `Conventions > Verification Commands`; an unsupported category is `not available`, not an
+invented distribution default. Migration/deploy entries are inventory, not execution authority:
+they remain manual/CI-only unless the exact command is a non-mutating validation/dry-run or the
+developer authorizes a known target. `/rebootstrap` recomputes the same profile, command, and
+execution-policy inventory. `/adopt` remains the brownfield archive/merge workflow and carries the
+selected profiles into its Phase-7 `/bootstrap` run. It now protects every live path in
+`framework-ownership.json` from re-archival and retains the adoption marker until merge/custom-asset
+work is complete, deleting it only immediately before that embedded bootstrap.
+
+Feature, fix, refactor, review, test, and debt carriers, route-prompt rails, verification-bearing
+skills, greenfield defaults, CI guidance, READMEs, architecture views, and generated AGENTS mirrors
+now use the same repository-evidence boundary. Defaults no longer demand one test per public member
+or introduce a new harness as incidental verification: new suites are explicit, agreed work and
+tests target the smallest consequential risk set. The doctor requires .NET/Angular tooling only
+when corresponding application markers exist, including Angular package/Nx evidence, so a
+warehouse-only dotnet install reports the application toolchain and app canary as not applicable.
+Its marker walk is bounded, excludes generated/dependency trees, and reports `CANT-VERIFY` rather
+than inferring absence when enumeration or marker reads fail. A C# project, not a solution
+container by itself, is .NET application evidence; SSDT `.sln` + `.sqlproj` repositories remain on
+the warehouse-only path through bootstrap, doctor, and post-write canaries. Angular package/Nx
+evidence, including `angular.json` itself, is structurally parsed from supported workspace,
+dependency, plugin, executor, and generator fields, so malformed manifests and property-shaped prose
+cannot activate the profile. Hook registration JSON
+is likewise validated before its apparent commands are trusted. The Jenkins reference is a
+self-contained, framework-only reference shape and tells consumers to add a code-gate stage
+only when bootstrap recorded real commands.
+
+Framework-shipped skills now remain byte-stable as an applicability-gated delivery-profile
+superset. Bootstrap advertises only evidenced tasks and adds distinct consumer-owned discovered
+skills where needed; it no longer deletes, rewrites, or appends repository-specific exemplars to
+shipped recipes merely because a profile is absent or its implementation differs.
+
+The test change is deliberately smaller than the behavior surface: the two obsolete warehouse-
+refusal cases became real greenfield/brownfield lifecycle installs, and those existing cases inspect
+a finite set of installed handoff carriers. The warehouse/SSDT doctor scenarios were folded into
+the existing toolchain matrix rather than added as another test. A redundant protected-sync arm that
+only replayed already-covered states was removed, saving 16 child doctor launches; deep warehouse,
+generated-marker, cross-template, malformed-registration, structural-package, and package-string
+worlds were added inside existing matrices. Route parity now compares exact normalized rail content,
+and two post-write routing cases were consolidated while adding the SSDT no-build boundary. The
+shared warehouse regex table now stays inside the .NET/POSIX-ERE intersection, artifact read
+failures are explicit instead of false absence, and a test of PowerShell's own null semantics was
+removed because it could not catch a framework regression.
+This corrects B-115's premature v0.51.0 closure: that release proved selection/install only; it did
+not prove the downstream lifecycle.
+
 ## 0.76.0 — 2026-08-23
 
 **Recovery increment 4 makes updates convergent, inspectable, and downgrade-safe.** Both installer

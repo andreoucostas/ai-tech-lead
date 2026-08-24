@@ -1,1 +1,1 @@
-Diagnose and fix a bug in this .NET codebase. Every decision must comply with the conventions and patterns in CLAUDE.md.
+Diagnose and fix a bug in this repository. Derive its applicable technologies and validation from repository evidence; do not infer .NET from this framework distribution. Every decision must comply with the conventions and patterns in CLAUDE.md.

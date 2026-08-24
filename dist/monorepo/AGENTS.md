@@ -25,6 +25,8 @@ These apply to every workflow, before any convention-level rule. The difference 
 5. **Tests are immutable safety nets during fixes and refactors.** When an existing test fails, production is wrong (or the test is wrong for a documented reason). Do not edit assertions to make them pass without flagging it explicitly.
 6. **No invented fixtures.** When sample data, builders, factories, or mocks already exist, reuse them. Do not fabricate parallel ones.
 7. **Failures are signals.** Build, test, `tsc`, lint, or analyser failures are diagnostic. Read the message and fix the cause; never wrap in try/catch, `#pragma warning disable`, `// @ts-ignore`, or `as any` to silence. (A PreToolUse hook hard-blocks **editor/file writes** that add `#pragma warning disable` / `// eslint-disable` / `@ts-ignore` / `@ts-nocheck`; writes routed through a terminal tool are not intercepted — see `docs/enforcement-surfaces.md`.)
+
+**Verification command discovery.** For **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation**, use exact applicable commands from repository evidence (`CLAUDE.md`, CI, scripts, manifests, or configuration); mark missing categories **not available**. A delivery profile proves no technology or command. Migration/deploy is **manual/CI-only** unless the exact command is an evidenced non-mutating validation/dry-run or the developer authorizes a known target; otherwise do not run it.
 8. **No future-proofing.** Do not add code for hypothetical requirements. Three similar lines is better than a premature abstraction.
 9. **A new test must be seen to fail before it is trusted.** Before relying on a new behavioral test as green, confirm it actually goes red when the behavior is broken — write it before the fix (bug fixes), or briefly break the code under test and watch it fail for the right reason. Where running the red is impractical, state the specific defect the test would catch. *Why: AI-generated tests are the highest-risk for tautological or over-mocked assertions that pass even against broken code; a test you have watched fail cannot be vacuous.*
 10. **Derive, don't assume.** Before applying or recommending any technology-specific rule or recipe (ORM/data access, validation, HTTP client, test framework, state management), verify that technology is present in this repo via a package reference, import, or config. If a default or skill assumes an absent technology, say so explicitly and derive the convention from what the codebase actually uses instead.
@@ -82,16 +84,16 @@ SOLID is **mandatory** in this codebase. It governs structure; [Leanness](#leann
 
 ## Conventions
 
-<!-- Mirrored from CLAUDE.md > Conventions by /bootstrap. Until /bootstrap runs, the greenfield
-     defaults in docs/defaults.md apply, and CLAUDE.md > Conventions remains authoritative. -->
+<!-- Mirrored from CLAUDE.md > Conventions by /bootstrap. Until /bootstrap runs, apply only the
+     docs/defaults.md blocks selected by Git-root evidence; CLAUDE.md > Conventions remains authoritative. -->
 
-_Project conventions are populated by `/bootstrap` into `CLAUDE.md > Conventions` and mirrored here. Until then, follow the greenfield defaults in [docs/defaults.md](./docs/defaults.md). `CLAUDE.md > Conventions` is authoritative if this section lags._
+_Project conventions are populated by `/bootstrap` into `CLAUDE.md > Conventions` and mirrored here. Until then, follow only the [docs/defaults.md](./docs/defaults.md) blocks supported by Git-root evidence. `CLAUDE.md > Conventions` is authoritative if this section lags._
 
 ---
 
 ## Common Tasks
 
-Recipes live as auto-discovered **skills**, available to both Claude Code (`.claude/skills/`) and GitHub Copilot (`.github/skills/`). The model triggers the relevant one when you describe that kind of task. Current skills:
+Skills are a delivery-profile superset, not evidence that they apply. Use only when repository evidence satisfies the gate:
 
 - `add-endpoint` — add a new HTTP API endpoint end-to-end (domain → service → DTO → validator → controller → integration test)
 - `add-entity` — add a new EF Core entity with configuration and migration review
@@ -120,6 +122,8 @@ When touching any file, leave it cleaner than you found it. The rule is symmetri
 
 ### Always apply (low-effort, low-risk — do these on every touched file):
 
+Apply only entries whose technology exists here; the profile proves none.
+
 **Add:**
 1. Missing `CancellationToken` propagation (.NET)
 2. Replace string-interpolated log messages with structured logging (.NET)
@@ -140,8 +144,8 @@ When touching any file, leave it cleaner than you found it. The rule is symmetri
 ### Apply only when the file is the primary target of the change:
 
 **Add:**
-12. Split fat methods (>30 lines) into focused private methods
-13. Missing unit tests for public methods you're modifying
+12. Split mixed-responsibility methods; never use a line-count threshold
+13. Add risk-relevant tests only, and only with a harness
 14. Replace manual `.subscribe()` with `async` pipe where possible (Angular)
 15. Extract complex template expressions into component methods or pipes (Angular)
 16. Add `ChangeDetectionStrategy.OnPush` — but only after verifying the component's data flow (immutable inputs, no in-place mutation, no reliance on ambient ticking) and after manual/test verification that the view still updates correctly. (Angular)
@@ -167,12 +171,12 @@ Developers will rarely type a slash command. Treat any natural-language request 
 
 > These rails are the **canonical definition** of each workflow. `commands/*.md` and the `route-prompt` hook elaborate them but must not contradict them; `/docs-sync` checks they stay aligned. Where hooks are off (Copilot VS Code without Preview agent-hooks, Copilot CLI < v1.0.65) this text is the *only* thing that reaches the model — treat it as binding, not advisory.
 
-- **Feature** — *add / implement / create / build new …*: design check first (affected layers, files to create/modify, failure modes, test strategy — pick levels per `Conventions > Testing` / the Test shape heuristic, say which this change needs and why, and flag missing infrastructure via `add-tests` suite-bootstrap mode) → decompose into ordered subtasks, running the touched stack's build + tests after each (.NET: `dotnet build` + `dotnet test`; Angular: `ng build` + `ng test --watch=false --browsers=ChromeHeadless`) → Boy Scout every touched file → self-review against Conventions → present what was built and tested. Honour Leanness: no new interface/service/abstraction without a second consumer in this change-set.
-- **Bug fix** — *broken / bug / crash / failing / "not working" / "looks off"*: **state the root cause before writing any code** → write a failing regression test that fails for the *right reason* **before** touching production code → apply the *minimal* fix (no unrelated refactor) → verify the regression test + related suite + build + lint all pass → apply Boy Scout to the **blast radius only** → report root cause, fix, regression coverage, blast radius.
-- **Refactor** — *cleanup / extract / rename / simplify / restructure*: **build + tests must pass before you touch anything**; if the target has no tests, write baseline (characterization) tests first → refactor incrementally, building + testing after each step → Boy Scout touched files → verify behaviour is unchanged → present a before/after summary **including net LOC delta**.
-- **Test** — *write / add tests, increase coverage*: match existing test structure, naming, framework, mocking → cover happy path, edge cases, error paths, boundaries → **assert observable behaviour (return values, rendered output, emitted events, store state), not framework internals or implementation detail; no over-mocking, no tautological assertions** → a new behavioural test must be *seen to fail* before it is trusted (red before green) → verify new tests pass → report what's tested and what's still uncovered.
+- **Feature** — *add / implement / create / build new …*: design affected boundaries, failure modes, and the smallest useful tests when a harness exists; never add one incidentally → implement in evidenced dependency order → apply Verification command discovery for each technology → Boy Scout touched files → self-review → report delivery and validation. No new interface/service/abstraction without a second consumer.
+- **Bug fix** — *broken / bug / crash / failing / "not working" / "looks off"*: state root cause → with an applicable harness, first write a regression test that fails correctly; otherwise use the strongest evidenced validation, report tests **not available**, and add no foreign harness → make the minimal fix → apply Verification command discovery → Boy Scout the blast radius → report cause, fix, validation, and radius.
+- **Refactor** — *cleanup / extract / rename / simplify / restructure*: establish an evidenced green baseline; add characterization coverage only to an existing applicable harness, otherwise report tests **not available** → refactor incrementally with verification → Boy Scout touched files → prove unchanged behavior → report before/after and net LOC.
+- **Test** — *write / add tests, increase coverage*: match the existing harness → cover the principal behavior plus consequential risks only → assert observable behavior, not internals or mock trivia → see each new behavioral test fail correctly → apply Verification command discovery → report coverage and gaps.
 - **Investigation / design** — *design X / approach for / trade-offs / "how should I"*: **write no code** → understand the requirement → analyse impact → weigh at least two approaches with pros/cons + effort → recommend with specifics (structure, state, services, tests) → surface open questions before implementation.
-- **Debt cleanup** — *tech debt / cleanup debt*: read `TECH_DEBT.md` and find items in the area → confirm each still exists in the code (may already be fixed) → recommend fix-now vs defer with reasons → after fixes, update `TECH_DEBT.md` → Boy Scout touched files → report fixed/deferred plus the `TECH_DEBT.md` diff.
+- **Debt cleanup** — *tech debt / cleanup debt*: confirm relevant `TECH_DEBT.md` items still exist → apply Verification command discovery; without a harness, use the strongest evidenced check rather than adding one → recommend fix-now vs defer → update the file after fixes → Boy Scout touched files → report outcomes, validation, and diff.
 
 What is *guaranteed* vs merely *instructed* here depends on the surface — see `docs/enforcement-surfaces.md`. On Claude Code — and on Copilot where hooks are enabled (CLI ≥ v1.0.65, VS Code Preview agent-hooks) — these rails are reinforced by a per-prompt hook and a write-time guard; where hooks are off, only this text reaches the model.
 
@@ -180,10 +184,10 @@ What is *guaranteed* vs merely *instructed* here depends on the surface — see 
 
 ### Steps 2–6 (condensed — full text in [.github/instructions/framework-rules.instructions.md](./.github/instructions/framework-rules.instructions.md) › Agentic Workflow)
 
-2. **Plan before coding** — for any non-trivial task, present a plan (files to create/modify, order of operations, what tests verify success) **plus clarifying questions for anything underspecified, then wait for the developer's go-ahead before writing code** (skip the wait only for trivial, unambiguous changes, and say so). For larger features, persist a spec to `specs/<slug>.md` (see `/design`) and implement against it.
-3. **Execute in verified subtasks** — identify which stack(s) the change touches and decompose into ordered layers (.NET: domain → service → API → integration test; Angular: models/services → state → component → E2E; full-stack changes do .NET first). Run the touched stack's build + tests after each; fix failures before moving on.
+2. **Plan before coding** — for any non-trivial task, present a plan (files to create/modify, order of operations, repository-evidenced validation including tests only where a harness exists) **plus clarifying questions for anything underspecified, then wait for the developer's go-ahead before writing code** (skip the wait only for trivial, unambiguous changes, and say so). For larger features, persist a spec to `specs/<slug>.md` (see `/design`) and implement against it.
+3. **Execute in verified subtasks** — identify only the repository-evidenced profiles and layers the change touches; run applicable commands after each subtask and report unsupported categories as **not available**.
 4. **Boy Scout every touched file** — apply the always-apply list above to every file you modify.
-5. **Self-review before presenting** — review against `CLAUDE.md > Conventions`; verify build + tests pass; flag new patterns, resolved TECH_DEBT items, and any convention contradictions. **Close with a Verification & confidence line**: separate what you verified by running it (build/tests/lint) from what you assert without having run it, and flag anything unverified. Show the evidence — the command you ran and its observed result (e.g. `dotnet test` → 142 passed, 0 failed; `ng test --watch=false` → 87 passed, 0 failed), not the bare claim "tests pass."
+5. **Self-review before presenting** — review against `CLAUDE.md > Conventions`; verify every applicable repository-evidenced check; flag new patterns, resolved TECH_DEBT items, and any convention contradictions. **Close with a Verification & confidence line**: separate what you verified by running it from what is **not available** or otherwise unverified. Show the command and observed result, not the bare claim "tests pass."
 6. **Flag documentation drift** — note new patterns to document, TECH_DEBT/SECURITY_FINDINGS changes, and whether `copilot-instructions.md` / this file need regeneration (`/generate-copilot`).
 
 ---

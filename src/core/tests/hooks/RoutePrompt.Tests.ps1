@@ -3,7 +3,8 @@
 # (JSON without hook_event_name) must get the dual-shape JSON (top-level additionalContext +
 # hookSpecificOutput wrapper). The .sh twin must agree at decision level (output present/absent,
 # exit 0, same salience markers) -- byte shape may differ when the bash env lacks jq/python3,
-# where the .sh degrades to plain stdout by design.
+# where the .sh degrades to plain stdout by design; its plain text must still equal the PowerShell
+# twin's parsed additionalContext.
 if (-not (Get-Command Invoke-Hook -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot '_HookHarness.ps1') }
 $hooks = (Resolve-Path (Join-Path $PSScriptRoot '..\..\.claude\hooks')).Path
 $rpPs  = Join-Path $hooks 'route-prompt.ps1'
@@ -31,6 +32,11 @@ It 'route-prompt.ps1 Claude event -> plain rails (fix intent)' {
     $r = Invoke-Hook $rpPs (New-ClaudePrompt 'fix the broken date formatting')
     Assert ($r.Exit -eq 0) "exit $($r.Exit)"
     Assert ($r.Out -match '## Routed intent: `fix`') 'rails missing'
+    Assert ($r.Out -match 'repository evidence') 'verification rail does not require repository evidence'
+    Assert ($r.Out -match 'not available') 'verification rail does not expose unsupported categories'
+    Assert ($r.Out -match 'applicable test harness') 'fix rail still unconditionally requires a regression test'
+    Assert ($r.Out -match 'strongest evidenced validation') 'fix rail omits the no-harness validation path'
+    Assert ($r.Out -match 'foreign harness') 'fix rail permits adding a foreign harness solely for a fix'
     Assert (-not $r.Out.TrimStart().StartsWith('{')) 'Claude surface must not get JSON'
 }
 
@@ -116,6 +122,11 @@ foreach ($twin in @(@{ Name = 'ps1'; File = 'route-prompt.ps1' }, @{ Name = 'sh'
             $r = Invoke-Hook (Join-Path $fixture.Hooks $twin.File) (New-CopilotPrompt 'fix the broken date formatting')
             $o = $r.Out | ConvertFrom-Json
             Assert ($o.additionalContext -match 'Routed intent: `fix`') 'routing text missing'
+            Assert ($o.additionalContext -match 'repository evidence') 'verification rail does not require repository evidence'
+            Assert ($o.additionalContext -match 'not available') 'verification rail does not expose unsupported categories'
+            Assert ($o.additionalContext -match 'applicable test harness') 'fix rail still unconditionally requires a regression test'
+            Assert ($o.additionalContext -match 'strongest evidenced validation') 'fix rail omits the no-harness validation path'
+            Assert ($o.additionalContext -match 'foreign harness') 'fix rail permits adding a foreign harness solely for a fix'
             Assert ($o.additionalContext -notmatch 'B147_.*_SENTINEL') 'unexpected Boy Scout text'
         } finally { Remove-Item -LiteralPath $fixture.Dir -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -147,10 +158,10 @@ if (-not $bash) {
     Skip 'route-prompt twin surface agreement' 'no bash found'
 } else {
     $twinCases = @(
-        @{ n = 'fix intent (Claude)';    evt = (New-ClaudePrompt  'fix the broken date formatting'); marker = 'Routed intent' },
-        @{ n = 'fix intent (Copilot)';   evt = (New-CopilotPrompt 'fix the broken date formatting'); marker = 'Routed intent' },
-        @{ n = 'security (Copilot)';     evt = (New-CopilotPrompt 'implement payment processing');   marker = 'Security-sensitive' },
-        @{ n = 'slash no-op (Copilot)';  evt = (New-CopilotPrompt '/review');                        marker = '' }
+        @{ n = 'fix intent (Claude)';    surface = 'Claude';  evt = (New-ClaudePrompt  'fix the broken date formatting'); marker = 'Routed intent' },
+        @{ n = 'fix intent (Copilot)';   surface = 'Copilot'; evt = (New-CopilotPrompt 'fix the broken date formatting'); marker = 'Routed intent' },
+        @{ n = 'security (Copilot)';     surface = 'Copilot'; evt = (New-CopilotPrompt 'implement payment processing');   marker = 'Security-sensitive' },
+        @{ n = 'slash no-op (Copilot)';  surface = 'Copilot'; evt = (New-CopilotPrompt '/review');                        marker = '' }
     )
     foreach ($case in $twinCases) {
         It "route-prompt twins agree: $($case.n)" {
@@ -158,6 +169,20 @@ if (-not $bash) {
             Assert ($rps.Exit -eq 0 -and $rsh.Exit -eq 0) "exits: ps1=$($rps.Exit) sh=$($rsh.Exit)"
             if ($case.marker) {
                 Assert ($rps.Out -match $case.marker -and $rsh.Out -match $case.marker) "marker '$($case.marker)': ps1=$($rps.Out -match $case.marker) sh=$($rsh.Out -match $case.marker)"
+                if ($case.surface -eq 'Claude') {
+                    $psText=($rps.Out -replace "`r`n","`n").TrimEnd();$shText=($rsh.Out -replace "`r`n","`n").TrimEnd()
+                    Assert ($psText -ceq $shText) "Claude rail text diverged between twins"
+                } else {
+                    $psPayload=$rps.Out|ConvertFrom-Json
+                    Assert ($psPayload.hookSpecificOutput.additionalContext -ceq $psPayload.additionalContext) 'PowerShell Copilot wrapper diverged from top-level context'
+                    if ($rsh.Out.TrimStart().StartsWith('{')) {
+                        $shPayload=$rsh.Out|ConvertFrom-Json
+                        Assert ($shPayload.hookSpecificOutput.additionalContext -ceq $shPayload.additionalContext) 'Bash Copilot wrapper diverged from top-level context'
+                        $shContext=$shPayload.additionalContext
+                    } else { $shContext=$rsh.Out }
+                    $psText=($psPayload.additionalContext -replace "`r`n","`n").TrimEnd();$shText=($shContext -replace "`r`n","`n").TrimEnd()
+                    Assert ($psText -ceq $shText) 'Copilot additionalContext diverged between twins'
+                }
             } else {
                 Assert ([string]::IsNullOrWhiteSpace($rps.Out) -and [string]::IsNullOrWhiteSpace($rsh.Out)) 'both twins must stay silent'
             }
@@ -189,6 +214,12 @@ if (-not $bash) {
         $o = $r.Out | ConvertFrom-Json
         Assert ($o.additionalContext -match 'Routed intent') 'top-level additionalContext missing rails'
         Assert ($o.hookSpecificOutput.additionalContext -eq $o.additionalContext) 'wrapped context differs from top-level'
+        $brokenJq="#!/bin/sh`nexit 49`n"
+        $r = Invoke-Sandboxed -Bash $bash -ScriptPath $rpSh -Utilities @('cat','grep','tr') -FakeBins @{jq=$brokenJq} -ExposeInterpreterAs 'python' -Stdin (New-CopilotPrompt 'fix the broken date formatting')
+        Assert ($r.Exit-eq 0) "broken-jq fallback exit=$($r.Exit): $($r.Err)"
+        $o=$r.Out|ConvertFrom-Json
+        Assert ($o.additionalContext -match 'Routed intent') "broken jq suppressed working-Python rails: $($r.Out)"
+        Assert ($o.hookSpecificOutput.additionalContext -eq $o.additionalContext) 'broken-jq Python wrapper differs from top-level'
     }
     } else { Skip 'route-prompt.sh sandboxed: no jq, working interpreter only as `python` -> emits JSON' 'no working python interpreter found on this host (set $env:ATL_TEST_PYTHON to an absolute interpreter path to exercise this case)' -Invariant }
     $jqReal = Resolve-HostJq

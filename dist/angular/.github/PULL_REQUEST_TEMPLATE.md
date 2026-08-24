@@ -14,8 +14,8 @@
 - [ ] Resolved DEBT items removed from TECH_DEBT.md
 
 ## Testing
-- [ ] Tests added/updated for changed behaviour
-- [ ] `ng build && ng test` pass locally
+- [ ] Smallest risk-relevant tests added/updated when an applicable harness exists; otherwise tests are recorded as `not available`
+- [ ] Applicable commands in `CLAUDE.md > Conventions > Verification Commands` pass locally, or unavailable categories are recorded as `not available`
 
 ## AI tools used
 <!-- Which slash commands or prompts you ran, if any — helps the team learn what works -->

@@ -1,1 +1,1 @@
-- After each meaningful change, run `dotnet build` and `dotnet test`
+- After each meaningful change, run the applicable repository-evidenced checks; never substitute `dotnet` commands for a warehouse-only target

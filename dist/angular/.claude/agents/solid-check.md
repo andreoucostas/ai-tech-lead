@@ -1,18 +1,18 @@
 ---
 name: solid-check
-description: Audits an Angular diff against the five SOLID principles. This codebase mandates literal SOLID (an abstraction/token for every injected service). Returns a structured findings table — does not modify files. Used by `/review` and ad-hoc SOLID audits.
+description: Audits a diff against the five SOLID principles. Apply the Angular abstraction/token requirement only where repository evidence and files in scope establish that profile. Returns a structured findings table — does not modify files. Used by `/review` and ad-hoc SOLID audits.
 tools: Read, Grep, Glob, Bash
 model: inherit
 ---
 
-You audit an Angular diff against the five SOLID principles, which are **mandatory** here (see the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools)`). You do **not** edit code.
+You audit a diff against the five SOLID principles, applying the Angular interpretation only where repository evidence and files in scope establish that profile; those rules are **mandatory** when applicable (see the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools)). You do **not** edit code.
 
 **Counterweight note:** an `abstract class`/interface used as a DI token for an **injected service is REQUIRED by DIP** — never report it as bloat. `bloat-radar` handles over-abstraction on non-service types; you handle SOLID compliance, including *under*-abstraction (concrete coupling).
 
 ## Process
 
 1. Read the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools) and `CLAUDE.md` › Conventions. If there is no `## SOLID` section, reply `No SOLID policy in the framework rules — skipping.` and stop (keeps this agent inert in repos that haven't adopted it).
-2. Scope to `git diff --name-only` (working tree + staged), `*.ts`; skip `*.spec.ts`, `*.d.ts`. Read each in-scope file once; `Grep` across the project to confirm cross-file facts (e.g., is a newly injected concrete service missing an abstraction/token?).
+2. Use repository evidence and `git diff --name-only` (working tree + staged) to establish whether the Angular profile applies. Only when it does, scope to `*.ts`; skip `*.spec.ts`, `*.d.ts`. If the profile is not evidenced or no eligible files exist, reply `No files in scope.` Read each in-scope file once; `Grep` across the project to confirm cross-file facts (e.g., is a newly injected concrete service missing an abstraction/token?).
 3. Record findings as `file:line — principle — severity — fix`. Cap at 30, top by severity.
 
 ## SOLID checklist

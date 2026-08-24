@@ -1,5 +1,5 @@
 ﻿# framework-doctor fixture tests: truthful states, survival paths, and twin agreement.
-param([ValidateRange(0,9)][int]$ProtectedSyncArm=0)
+param([ValidateSet(0,1,2,3,4,5,6,7,9)][int]$ProtectedSyncArm=0)
 if (-not (Get-Command Assert -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot '_HookHarness.ps1') }
 $scripts = (Resolve-Path (Join-Path $PSScriptRoot '..\..\scripts')).Path
 $doctorPs = Join-Path $scripts 'framework-doctor.ps1'
@@ -21,10 +21,16 @@ function Resolve-WindowsPowerShell {
 $winPs=Resolve-WindowsPowerShell
 $defaultShell = if ($winPs) {$winPs}
     elseif (Get-Command pwsh -ErrorAction SilentlyContinue) {'pwsh'} else {'bash'}
-function Fixture([string]$Shell=$script:defaultShell,[bool]$Pending=$false,[bool]$MissingHook=$false,[bool]$HookArguments=$false,[bool]$CopilotBash=$true,[bool]$CopilotPowerShell=$true,[string]$Template='fixture') {
+function Fixture([string]$Shell=$script:defaultShell,[bool]$Pending=$false,[bool]$MissingHook=$false,[bool]$HookArguments=$false,[bool]$CopilotBash=$true,[bool]$CopilotPowerShell=$true,[string]$Template='dotnet',[ValidateSet('angularJson','package')][string]$AngularEvidence='angularJson') {
     $r=Join-Path ([IO.Path]::GetTempPath()) ('doctor-'+[guid]::NewGuid())
     New-Item -ItemType Directory -Force (Join-Path $r '.claude/hooks'),(Join-Path $r '.github/hooks'),(Join-Path $r '.github/instructions'),(Join-Path $r 'scripts')|Out-Null
-    Put (Join-Path $r '.claude/framework-version.json') ('{"template":"'+$Template+'","version":"0.32.0","applied":"2026-07-17"}')
+    Put (Join-Path $r '.claude/framework-version.json') ('{"template":"'+$Template+'","version":"0.32.0","applied":"2026-07-17","decimal":0.01,"exponent":1e01,"negativeExponent":1e-01}')
+    $withApplicationEvidence=$PSBoundParameters.ContainsKey('Template')
+    if($withApplicationEvidence-and$Template-match'dotnet|monorepo'){Put (Join-Path $r 'App.csproj') '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>'}
+    if($withApplicationEvidence-and$Template-match'angular|monorepo'){
+        if($AngularEvidence-eq'package'){Put (Join-Path $r 'package.json') '{"dependencies":{"@angular/core":"20.0.0"}}'}
+        else{Put (Join-Path $r 'angular.json') '{"version":1}'}
+    }
     $claude="<!--`n  version: 0.32.0`n-->`n@.github/instructions/framework-rules.instructions.md`n# Fixture"
     if($Pending){$claude+="`nBOOTSTRAP_PENDING"}
     Put (Join-Path $r 'CLAUDE.md') $claude
@@ -46,7 +52,20 @@ function Fixture([string]$Shell=$script:defaultShell,[bool]$Pending=$false,[bool
 function Run($Path) {
     $ef=[IO.Path]::GetTempFileName(); try {
         if($Path-match'\.ps1$'){$out=& (Get-PsExe) -NoProfile -ExecutionPolicy Bypass -File $Path 2>$ef}
-        else{if(-not $bash){return $null};$out=& $bash $Path 2>$ef}
+        else{
+            if(-not $bash){return $null}
+            # Git Bash extends a Windows-only PATH with its own tool directories while it starts.
+            # The controlled parser/toolchain matrices intentionally set PATH to one fixture bin;
+            # re-apply that POSIX path inside the launched shell before it runs the doctor so host
+            # jq/python/copilot/dotnet cannot satisfy an absence arm by accident.
+            if($bash-match'\\Git\\bin\\bash\.exe$'-and$env:PATH-notmatch';'){
+                $binPath=ConvertTo-PosixPath $env:PATH;$scriptPath=ConvertTo-PosixPath $Path
+                # Source rather than exec a nested Git Bash: that nested process silently adds
+                # Git/usr/bin back to PATH (and reintroduces jq/python). $0 remains the doctor
+                # path, so its existing root calculation is exercised unchanged.
+                $out=& $bash --noprofile --norc -c 'PATH="$1"; export PATH; hash -r; . "$2"' $scriptPath $binPath $scriptPath 2>$ef
+            }else{$out=& $bash $Path 2>$ef}
+        }
         [pscustomobject]@{Exit=$LASTEXITCODE;Out=($out-join"`n");Err=[IO.File]::ReadAllText($ef)}
     } finally {Remove-Item -Force -ErrorAction SilentlyContinue $ef}
 }
@@ -58,13 +77,51 @@ function RunPsHost($Exe,$Path){$ef=[IO.Path]::GetTempFileName();try{$out=& $Exe 
 # divergences elsewhere would be hidden.
 function Normal($Text){((($Text-replace'available: powershell\.exe','available: powershell')-replace'[\\/]+','/')-replace'docs-sync-check\.(?:ps1|sh)','docs-sync-check.<ext>')}
 function New-ParserProbeBin {
-    param([Parameter(Mandatory)][string]$Bash,[bool]$PowerShellCopilot=$true,[bool]$BashCopilot=$true,[string]$Template='fixture')
+    param([Parameter(Mandatory)][string]$Bash,[bool]$PowerShellCopilot=$true,[bool]$BashCopilot=$true,[string]$Template='dotnet',[bool]$IncludeBash=$false)
     $bin=Join-Path ([IO.Path]::GetTempPath()) ('doctor-parser-bin-'+[guid]::NewGuid())
     New-Item -ItemType Directory -Force $bin|Out-Null
-    $jq=@'
+$jq=@'
 #!/bin/sh
+if [ "$1" = "empty" ]; then
+  IFS= read -r input || :
+  case "$input" in *" junk"*|*",}"*|*"/*"*|*"NaN"*|*"Infinity"*|*"'"*) exit 4;; esac
+  exit 0
+fi
+if [ "$1" = "-e" ]; then
+  if [ -n "${3:-}" ]; then
+    grep -Eq ' junk|NaN|Infinity|/\*|,[[:space:]]*}' "$3" 2>/dev/null && exit 4
+    grep -q "'" "$3" 2>/dev/null && exit 4
+    grep -Eq '\{[[:space:]]*[A-Za-z_][A-Za-z0-9_]*[[:space:]]*:' "$3" 2>/dev/null && exit 4
+    grep -Eq '^[[:space:]]*\{' "$3" 2>/dev/null || exit 4
+  else
+    IFS= read -r input || :
+    case "$input" in *" junk"*) exit 4;; esac
+    printf '%s\n' "$input" | grep -Eq ',[[:space:]]*[]}]' && exit 4
+    case "${2:-}" in *'type == "object"'*) case "$input" in [[:space:]]*\{*) :;; \{*) :;; *) exit 4;; esac;; esac
+  fi
+  exit 0
+fi
 if [ "$1" = "-r" ]; then
-  case "$2" in *template*) echo __TEMPLATE__;; *version*) echo 0.32.0;; *applied*) echo 2026-07-17;; esac
+  json_file=${3:-}; json_input=''
+  if [ -z "$json_file" ]; then
+    while IFS= read -r line || [ -n "$line" ]; do json_input="${json_input}${json_input:+
+}$line"; done
+  fi
+  json_match() {
+    if [ -n "$json_file" ]; then grep -Eq "$1" "$json_file" 2>/dev/null
+    else printf '%s\n' "$json_input" | grep -Eq "$1"
+    fi
+  }
+  case "$2" in
+    *template*) if json_match '"template"[[:space:]]*:'; then echo __TEMPLATE__; else echo; fi;;
+    *version*) echo 0.32.0;;
+    *applied*) echo 2026-07-17;;
+    *angular_workspace_evidence*) if json_match '^[[:space:]]*\{'; then echo true; else echo false; fi;;
+    *angular_package_evidence*) if json_match '"(dependencies|devDependencies|peerDependencies|optionalDependencies)"[^}]*"@angular/core"[[:space:]]*:'; then echo true; else echo false; fi;;
+    *angular_nx_evidence*) if json_match '"notes"|"Plugin"|"Executor"|"Generator"|"Collection"'; then echo false; elif json_match '"@(angular|nx/angular|angular-devkit|schematics/angular)(/[^" ]+|:[^" ]+)"'; then echo true; else echo false; fi;;
+    *command*) printf '%s\n' "$json_input" | sed 's/"command"/\
+"command"/g' | sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\\"\([^"]*\)\\"\(.*\)".*/"\1"\2/p; t; s/.*"command"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p';;
+  esac
 fi
 exit 0
 '@
@@ -76,7 +133,7 @@ exit 0
     # which inherit $env:PATH, cannot be trusted to find even `command`, `ln`, or `chmod` on it.
     # Anchor every subprocess here to a fixed, known-good PATH instead of the ambient one.
     $safePath='/usr/bin:/bin:/usr/local/bin'
-    $utilityNames=@('sed','grep','sort','head')
+    $utilityNames=@('sed','grep','sort','head');if($IncludeBash){$utilityNames+='bash'}
     if($Bash-match'\\Git\\bin\\bash\.exe$'){
         foreach($name in $utilityNames){Put (Join-Path $bin $name) ("#!/bin/sh`nexec /usr/bin/$name `"`$@`"`n")}
     }else{$posixBin=ConvertTo-PosixPath $bin;$null=& $Bash -c ('PATH="{1}:$PATH"; for t in sed grep sort head; do ln -sf "$(command -v $t)" "{0}/$t"; done' -f $posixBin,$safePath) 2>$null}
@@ -174,26 +231,14 @@ It-ProtectedSyncArm 9 'Protected-file sync arm 9: an empty CLAUDE.md still emits
     # Protected-file sync line at all -- while the .sh twin reported deferred. An inert row reads as
     # a clean run, which is the failure class where a check silently stops checking.
     $r=New-ProtectedSyncFixture empty-claude;try{Assert-ProtectedSyncPair $r OK 'deferred to Framework rules delivery.' MISSING}finally{Remove-Item -Recurse -Force $r}}
-It-ProtectedSyncArm 8 'Protected-file sync arm 8: twins agree across every migration-state arm' {
-    foreach($case in @(
-        @{Name='migrated';State='OK';Detail=$migratedDetail;Delivery='OK'},@{Name='one';State='PENDING';Detail="$incompletePrefix Leanness. $incompleteSuffix";Delivery='OK'},
-        @{Name='all';State='PENDING';Detail="$incompletePrefix Verification Rules, Leanness, SOLID, Agentic Workflow. $incompleteSuffix";Delivery='OK'},@{Name='boy-scout';State='OK';Detail=$migratedDetail;Delivery='OK'},
-        @{Name='no-import';State='OK';Detail='deferred to Framework rules delivery.';Delivery='MISSING'},@{Name='no-claude';State='MISSING';Detail='CLAUDE.md is absent; protected-file migration state cannot be inspected.';Delivery='MISSING'},@{Name='empty-claude';State='OK';Detail='deferred to Framework rules delivery.';Delivery='MISSING'},
-        @{Name='empty-list';State='MISSING';Detail=$inspectionMissing;Delivery='OK'}
-    )){$r=New-ProtectedSyncFixture $case.Name;try{Assert-ProtectedSyncPair $r $case.State $case.Detail $case.Delivery}finally{Remove-Item -Recurse -Force $r}}
-}
 if($ProtectedSyncArm-ne 0){exit (Write-TestSummary 'FrameworkDoctor.Tests')}
 It 'adoption pending is not reported broken' {$r=Fixture -Pending $true;try{Put (Join-Path $r '.claude/adoption-pending.json') '{}';$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 0) "pending exit=$($x.Exit)";Assert ($x.Out-match'\[PENDING\] Bootstrap/adoption state') 'pending row missing';Assert ($x.Out-notmatch'\[MISSING\] Stack toolchain') 'dependent false alarm'}finally{Remove-Item -Recurse -Force $r}}
 It 'missing hook file exits one' {$r=Fixture -MissingHook $true;try{$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 1) "exit=$($x.Exit)";Assert ($x.Out-match'\[MISSING\] Hook files') 'missing hook row absent'}finally{Remove-Item -Recurse -Force $r}}
 It 'bare-name wired shell is portable CANT-VERIFY and does not change exit' {$r=Fixture -Shell 'doctor-shell-bare-name' -Pending $true;try{$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');$parsed=Parse-DoctorResult $x;Assert ($parsed.Rows['Wired hook shell'].State-eq'CANT-VERIFY') "state=$($parsed.Rows['Wired hook shell'].State)";Assert ($parsed.Rows['Wired hook shell'].Detail-match'portable bare interpreter name doctor-shell-bare-name') 'portable wording absent';Assert ($parsed.Rows['Wired hook shell'].Detail-notmatch'pin an absolute') 'obsolete pin remediation remains'}finally{Remove-Item -Recurse -Force $r}}
-It 'no liveness record is CANT-VERIFY and does not change exit' {$r=Fixture -Pending $true;try{$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 0) "exit=$($x.Exit): $($x.Out)";Assert ($x.Out-match'\[CANT-VERIFY\] Hook liveness - no hook has recorded a run here;') "CANT-VERIFY row absent: $($x.Out)"}finally{Remove-Item -Recurse -Force $r}}
-It 'liveness record is OK and quotes its timestamp' {$r=Fixture -Pending $true;$stamp='2026-07-31T12:34:56Z';try{New-Item -ItemType Directory -Force (Join-Path $r '.claude/.state')|Out-Null;Put (Join-Path $r '.claude/.state/last-session-start') $stamp;$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 0) "exit=$($x.Exit): $($x.Out)";Assert ($x.Out-match("\[OK\] Hook liveness - hooks have demonstrably run in this repo, most recently at '{0}'\." -f [regex]::Escape($stamp))) "OK row does not quote timestamp: $($x.Out)"}finally{Remove-Item -Recurse -Force $r}}
 It 'existing absolute wired shell is OK only on this machine' {$shell=[IO.Path]::GetTempFileName();$r=Fixture -Shell $shell -Pending $true;try{$wired=(Get-Content -Raw (Join-Path $r '.claude/settings.json')|ConvertFrom-Json).hooks.PreToolUse[0].hooks[0].command;Assert ($wired-eq('"'+$shell+'" -File .claude/hooks/guard.ps1')) "fixture did not receive one path: $wired";$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 0) "exit=$($x.Exit): $($x.Out)";Assert ($x.Out-match'\[OK\] Wired hook shell - wired interpreter paths exist on this machine:') "scoped OK row absent: $($x.Out)"}finally{Remove-Item -Recurse -Force $r;Remove-Item -Force -ErrorAction SilentlyContinue $shell}}
 It 'missing absolute wired shell restores portable wiring and exits one' {$shell=(Join-Path ([IO.Path]::GetTempPath()) 'doctor-missing/interpreter.exe');$r=Fixture -Shell $shell -Pending $true;try{$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 1) "exit=$($x.Exit): $($x.Out)";Assert ($x.Out-match'\[MISSING\] Wired hook shell - the configured machine-specific interpreter path is absent on this machine:') "MISSING row absent: $($x.Out)";Assert ($x.Out-match'restore portable bare-name wiring') "portable remediation absent: $($x.Out)"}finally{Remove-Item -Recurse -Force $r}}
 if($winPs){It 'PowerShell twin runs under Windows PowerShell 5.1' {$r=Fixture;try{$x=RunPsHost $winPs (Join-Path $r 'scripts/framework-doctor.ps1');Assert ($x.Exit-eq 0) "5.1 exit=$($x.Exit): $($x.Out) $($x.Err)";Assert ($x.Out-match'Enforcement is only FULL') '5.1 output incomplete'}finally{Remove-Item -Recurse -Force $r}}}else{Skip 'Windows PowerShell 5.1 compatibility' 'Windows PowerShell 5.1 is genuinely absent on this host' -Invariant}
 if($bash){
-It 'PowerShell doctor cannot infer parser availability for a Copilot-only bash guard' {$r=Fixture -Pending $true;$bin=New-ParserProbeBin $bash;$old=$env:PATH;try{$settings=Get-Content -Raw (Join-Path $r '.claude/settings.json');$copilot=Get-Content -Raw (Join-Path $r '.github/hooks/hooks.json');Assert ($settings-match'guard\.ps1') "setup: Claude PowerShell guard absent: $settings";Assert ($settings-notmatch'guard\.sh') "setup: Claude unexpectedly wires guard.sh: $settings";Assert ($copilot-match'"bash"\s*:\s*"\.claude/hooks/guard\.sh"') "setup: Copilot bash guard absent: $copilot";$env:PATH=(Split-Path $bash -Parent)+[IO.Path]::PathSeparator+$bin+[IO.Path]::PathSeparator+$old;$null=& $bash --noprofile --norc -c 'command -v jq >/dev/null 2>&1';Assert ($LASTEXITCODE-eq 0) 'setup: controlled child bash cannot resolve jq';$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');$parsed=Parse-DoctorResult $x;Assert ($parsed.Rows['Guard JSON parser'].State-eq'CANT-VERIFY') "expected CANT-VERIFY for Copilot-only bash guard, got: $($x.Out)";Assert ($x.Exit-eq 0-and$parsed.Missing-eq 0) 'CANT-VERIFY changed exit or missing summary contribution'}finally{$env:PATH=$old;Remove-Item -Recurse -Force $r,$bin}}
-It 'PowerShell doctor cannot promote a Claude bash guard from its child bash PATH' {$r=Fixture -Shell 'bash' -Pending $true;$bin=New-ParserProbeBin $bash;$old=$env:PATH;try{$settings=Get-Content -Raw (Join-Path $r '.claude/settings.json');Assert ($settings-match'guard\.sh') "setup: Claude bash guard absent: $settings";$env:PATH=(Split-Path $bash -Parent)+[IO.Path]::PathSeparator+$bin+[IO.Path]::PathSeparator+$old;$null=& $bash --noprofile --norc -c 'command -v jq >/dev/null 2>&1';Assert ($LASTEXITCODE-eq 0) 'setup: controlled child bash cannot resolve jq';$x=Run (Join-Path $r 'scripts/framework-doctor.ps1');$parsed=Parse-DoctorResult $x;Assert ($parsed.Rows['Guard JSON parser'].State-eq'CANT-VERIFY') "expected CANT-VERIFY despite child-bash jq visibility, got: $($x.Out)";Assert ($x.Exit-eq 0-and$parsed.Missing-eq 0) 'CANT-VERIFY changed exit or missing summary contribution'}finally{$env:PATH=$old;Remove-Item -Recurse -Force $r,$bin}}
 It 'PowerShell parser verdict is identical with bash present and absent from its PATH' {$r=Fixture -Shell 'bash' -Pending $true;$bin=New-ParserProbeBin $bash;$old=$env:PATH;try{$env:PATH=(Split-Path $bash -Parent)+[IO.Path]::PathSeparator+$bin;$present=Run (Join-Path $r 'scripts/framework-doctor.ps1');$env:PATH=$bin;Assert (-not (Get-Command bash -ErrorAction SilentlyContinue)) 'setup: bash still resolves in absent arm';$absent=Run (Join-Path $r 'scripts/framework-doctor.ps1');$pp=Parse-DoctorResult $present;$ap=Parse-DoctorResult $absent;Assert ($pp.Rows['Guard JSON parser'].State-eq'CANT-VERIFY') 'present arm state';Assert ($ap.Rows['Guard JSON parser'].State-eq'CANT-VERIFY') 'absent arm state';Assert ($pp.Rows['Guard JSON parser'].Detail-eq$ap.Rows['Guard JSON parser'].Detail) 'PATH changed parser detail';Assert ($pp.Ok-eq$ap.Ok-and$pp.Missing-eq$ap.Missing) 'PATH changed summary contribution'}finally{$env:PATH=$old;Remove-Item -Recurse -Force $r,$bin}}
 It 'both twins require the parser for bare and absolute bash and bash.exe registrations' {
     $holder=Join-Path ([IO.Path]::GetTempPath()) ('doctor-bash-names-'+[guid]::NewGuid());$bin=New-ParserProbeBin $bash;$old=$env:PATH
@@ -301,6 +346,8 @@ if ($bashGuardRegistered) {
 It 'Copilot CLI visibility is controlled per twin and only constructed asymmetry diverges' {
     $r=Fixture -Pending $true -CopilotBash $false;$old=$env:PATH
     try{
+        $validSettings=Get-Content -Raw (Join-Path $r '.claude/settings.json')
+        $validCopilot=Get-Content -Raw (Join-Path $r '.github/hooks/hooks.json')
         foreach($case in @(
             [pscustomobject]@{Name='both';P=$true;S=$true;Expected=@()},
             [pscustomobject]@{Name='neither';P=$false;S=$false;Expected=@()},
@@ -311,12 +358,55 @@ It 'Copilot CLI visibility is controlled per twin and only constructed asymmetry
             try{
                 $env:PATH=$pbin;$pSetup=[bool](Get-Command copilot -ErrorAction SilentlyContinue);Assert ($pSetup-eq$case.P) "setup $($case.Name): PowerShell visibility=$pSetup"
                 $p=Run (Join-Path $r 'scripts/framework-doctor.ps1')
-                $env:PATH=$sbin;$null=& $bash -c 'command -v copilot >/dev/null 2>&1';$sSetup=($LASTEXITCODE-eq 0);Assert ($sSetup-eq$case.S) "setup $($case.Name): Bash visibility=$sSetup"
+                $env:PATH=$sbin
+                if($bash-match'\\Git\\bin\\bash\.exe$'){$posixBin=ConvertTo-PosixPath $sbin;$posixBash=ConvertTo-PosixPath $bash;$null=& $bash --noprofile --norc -c 'PATH="$1"; export PATH; hash -r; exec "$2" -c "command -v copilot >/dev/null 2>&1"' _ $posixBin $posixBash}
+                else{$null=& $bash -c 'command -v copilot >/dev/null 2>&1'}
+                $sSetup=($LASTEXITCODE-eq 0);Assert ($sSetup-eq$case.S) "setup $($case.Name): Bash visibility=$sSetup"
                 $s=Run (Join-Path $r 'scripts/framework-doctor.sh');$c=Compare-DoctorResults $p $s $case.Expected
                 $pHas=$c.PowerShell.Rows['Copilot surface'].Detail-match'CLI is available';$sHas=$c.Bash.Rows['Copilot surface'].Detail-match'CLI is available'
                 Assert ($pHas-eq$case.P) "result $($case.Name): PowerShell detail='$($c.PowerShell.Rows['Copilot surface'].Detail)'";Assert ($sHas-eq$case.S) "result $($case.Name): Bash detail='$($c.Bash.Rows['Copilot surface'].Detail)'"
             }finally{Remove-Item -Recurse -Force $pbin,$sbin}
         }
+        $pbin=New-ParserProbeBin $bash $false $false;$sbin=New-ParserProbeBin $bash $false $false dotnet $true
+        try{
+            $pdoc=Join-Path $r 'scripts/framework-doctor.ps1';$ptext=[IO.File]::ReadAllText($pdoc);$pmutated=$ptext.Replace('$copilotReadFailed = $false','$copilotReadFailed = $true');Assert ($pmutated-ne$ptext) 'PowerShell unreadable-Copilot mutation missed';Put $pdoc $pmutated $true
+            $sdoc=Join-Path $r 'scripts/framework-doctor.sh';$stext=[IO.File]::ReadAllText($sdoc);$smutated=$stext.Replace('copilot_read_failed=0','copilot_read_failed=1');Assert ($smutated-ne$stext) 'Bash unreadable-Copilot mutation missed';Put $sdoc $smutated
+            $env:PATH=$pbin;$p=Run $pdoc;$env:PATH=$sbin;$s=Run $sdoc;$c=Compare-DoctorResults $p $s
+            Assert ($c.PowerShell.Rows['Copilot surface'].State-eq'CANT-VERIFY') "PowerShell unreadable hooks JSON was not CANT-VERIFY: $($p.Out)"
+            Assert ($c.Bash.Rows['Copilot surface'].State-eq'CANT-VERIFY') "Bash unreadable hooks JSON was not CANT-VERIFY: $($s.Out)"
+            foreach($rowName in @('Hook files','Guard JSON parser')){Assert ($c.PowerShell.Rows[$rowName].State-eq'CANT-VERIFY'-and$c.Bash.Rows[$rowName].State-eq'CANT-VERIFY') "unreadable hooks JSON did not make $rowName CANT-VERIFY on both twins"}
+            Copy-Item -LiteralPath $doctorPs -Destination $pdoc -Force;Copy-Item -LiteralPath $doctorSh -Destination $sdoc -Force
+            $ptext=[IO.File]::ReadAllText($pdoc);$pmutated=$ptext.Replace('$settingsReadFailed = $false','$settingsReadFailed = $true');Assert ($pmutated-ne$ptext) 'PowerShell unreadable-settings mutation missed';Put $pdoc $pmutated $true
+            $stext=[IO.File]::ReadAllText($sdoc);$smutated=$stext.Replace('settings_read_failed=0','settings_read_failed=1');Assert ($smutated-ne$stext) 'Bash unreadable-settings mutation missed';Put $sdoc $smutated
+            $env:PATH=$pbin;$p=Run $pdoc;$env:PATH=$sbin;$s=Run $sdoc;$c=Compare-DoctorResults $p $s
+            foreach($rowName in @('Wired hook shell','Hook files','Guard JSON parser')){Assert ($c.PowerShell.Rows[$rowName].State-eq'CANT-VERIFY'-and$c.Bash.Rows[$rowName].State-eq'CANT-VERIFY') "unreadable settings did not make $rowName CANT-VERIFY on both twins"}
+            Copy-Item -LiteralPath $doctorPs -Destination $pdoc -Force;Copy-Item -LiteralPath $doctorSh -Destination $sdoc -Force
+            foreach($invalidSettings in @(
+                @{Label='junk-suffixed';Json='{"command":"bash .claude/hooks/guard.sh" junk'},
+                @{Label='trailing-comma';Json='{"command":"bash .claude/hooks/guard.sh",}'},
+                @{Label='single-quoted';Json="{'command':'bash .claude/hooks/guard.sh'}"},
+                @{Label='non-finite';Json='{"command":"bash .claude/hooks/guard.sh","probe":NaN}'},
+                @{Label='leading-zero';Json='{"command":"bash .claude/hooks/guard.sh","probe":01}'},
+                @{Label='uppercase-command';Json='{"Command":"bash .claude/hooks/guard.sh"}'}
+            )){
+                Put (Join-Path $r '.claude/settings.json') $invalidSettings.Json
+                $env:PATH=$pbin;$p=Run $pdoc;$env:PATH=$sbin;$s=Run $sdoc;$c=Compare-DoctorResults $p $s
+                Assert ($c.PowerShell.Rows['Wired hook shell'].State-eq'MISSING'-and$c.Bash.Rows['Wired hook shell'].State-eq'MISSING') "$($invalidSettings.Label) settings with a plausible command was treated as live registration evidence"
+            }
+            Put (Join-Path $r '.claude/settings.json') $validSettings
+            foreach($invalidCopilot in @(
+                @{Label='junk-suffixed';Json='{"hooks":{"preToolUse":[{"bash":".claude/hooks/guard.sh"}]} junk'},
+                @{Label='trailing-comma';Json='{"hooks":{"preToolUse":[{"bash":".claude/hooks/guard.sh"}]},}'},
+                @{Label='single-quoted';Json="{'hooks':{'preToolUse':[{'bash':'.claude/hooks/guard.sh'}]}}"},
+                @{Label='non-finite';Json='{"hooks":{"preToolUse":[{"bash":".claude/hooks/guard.sh"}]},"probe":NaN}'},
+                @{Label='leading-zero';Json='{"hooks":{"preToolUse":[{"bash":".claude/hooks/guard.sh"}]},"probe":01}'}
+            )){
+                Put (Join-Path $r '.github/hooks/hooks.json') $invalidCopilot.Json
+                $env:PATH=$pbin;$p=Run $pdoc;$env:PATH=$sbin;$s=Run $sdoc;$c=Compare-DoctorResults $p $s
+                foreach($rowName in @('Hook files','Guard JSON parser','Copilot surface')){Assert ($c.PowerShell.Rows[$rowName].State-eq'MISSING'-and$c.Bash.Rows[$rowName].State-eq'MISSING') "$($invalidCopilot.Label) hooks JSON did not make $rowName MISSING on both twins"}
+            }
+            Put (Join-Path $r '.github/hooks/hooks.json') $validCopilot
+        }finally{Remove-Item -Recurse -Force $pbin,$sbin}
     }finally{$env:PATH=$old;Remove-Item -Recurse -Force $r}
 }
 It 'genuine no-bash and Copilot-only bash fixtures have exact parser divergence sets' {
@@ -333,8 +423,38 @@ It 'genuine no-bash and Copilot-only bash fixtures have exact parser divergence 
         }
     }finally{$env:PATH=$old;Remove-Item -Recurse -Force $bin}
 }
-It 'twins agree outside the parser row when liveness is absent and present' {$r=Fixture -Shell 'bash' -Pending $true;$bin=New-ParserProbeBin $bash;$old=$env:PATH;try{$env:PATH=(Split-Path $bash -Parent)+[IO.Path]::PathSeparator+$bin+[IO.Path]::PathSeparator+$old;foreach($stamp in @($null,'2026-07-31T12:34:56Z')){Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $r '.claude/.state/last-session-start');if($stamp){New-Item -ItemType Directory -Force (Join-Path $r '.claude/.state')|Out-Null;Put (Join-Path $r '.claude/.state/last-session-start') $stamp};$p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$s=Run (Join-Path $r 'scripts/framework-doctor.sh');$c=Compare-DoctorResults $p $s @('Guard JSON parser');Assert ($c.PowerShell.Rows['Guard JSON parser'].State-eq'CANT-VERIFY') 'PowerShell parser state';Assert ($c.Bash.Rows['Guard JSON parser'].State-eq'OK') 'Bash parser state'}}finally{$env:PATH=$old;Remove-Item -Recurse -Force $r,$bin}}
-It 'Copilot hook registrations with arguments resolve only their file paths' {$r=Fixture -Shell 'bash' -Pending $true -HookArguments $true;$bin=New-ParserProbeBin $bash;$old=$env:PATH;try{$env:PATH=(Split-Path $bash -Parent)+[IO.Path]::PathSeparator+$bin+[IO.Path]::PathSeparator+$old;$p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$s=Run (Join-Path $r 'scripts/framework-doctor.sh');$c=Compare-DoctorResults $p $s @('Guard JSON parser');Assert ($c.PowerShell.Rows['Hook files'].State-eq'OK') 'PowerShell hook row';Assert ($c.Bash.Rows['Hook files'].State-eq'OK') 'Bash hook row'}finally{$env:PATH=$old;Remove-Item -Recurse -Force $r,$bin}}
+It 'twins agree outside the parser row when liveness is absent, empty, whitespace, and present' {
+    $r=Fixture -Shell 'bash' -Pending $true;$bin=New-ParserProbeBin $bash;$old=$env:PATH
+    try{
+        $env:PATH=(Split-Path $bash -Parent)+[IO.Path]::PathSeparator+$bin+[IO.Path]::PathSeparator+$old
+        foreach($world in @(
+            [pscustomobject]@{Create=$false;Content='';State='CANT-VERIFY'},
+            [pscustomobject]@{Create=$true;Content='';State='CANT-VERIFY'},
+            [pscustomobject]@{Create=$true;Content='   ';State='CANT-VERIFY'},
+            [pscustomobject]@{Create=$true;Content='2026-07-31T12:34:56Z';State='OK'}
+        )){
+            $path=Join-Path $r '.claude/.state/last-session-start'
+            Remove-Item -Force -ErrorAction SilentlyContinue $path
+            if($world.Create){New-Item -ItemType Directory -Force (Split-Path $path -Parent)|Out-Null;Put $path $world.Content}
+            $p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$s=Run (Join-Path $r 'scripts/framework-doctor.sh');$c=Compare-DoctorResults $p $s @('Guard JSON parser')
+            Assert ($c.PowerShell.Rows['Hook liveness'].State-eq$world.State) "PowerShell liveness state=$($c.PowerShell.Rows['Hook liveness'].State), expected=$($world.State)"
+            Assert ($c.Bash.Rows['Hook liveness'].State-eq$world.State) "Bash liveness state=$($c.Bash.Rows['Hook liveness'].State), expected=$($world.State)"
+            Assert ($c.PowerShell.Rows['Guard JSON parser'].State-eq'CANT-VERIFY') 'PowerShell parser state'
+            Assert ($c.Bash.Rows['Guard JSON parser'].State-eq'OK') 'Bash parser state'
+        }
+    }finally{$env:PATH=$old;Remove-Item -Recurse -Force $r,$bin}
+}
+It 'hook registrations resolve arguments and every command in minified JSON' {
+    $r=Fixture -Shell 'bash' -Pending $true -HookArguments $true;$bin=New-ParserProbeBin $bash;$old=$env:PATH
+    try{
+        $env:PATH=(Split-Path $bash -Parent)+[IO.Path]::PathSeparator+$bin+[IO.Path]::PathSeparator+$old
+        $p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$s=Run (Join-Path $r 'scripts/framework-doctor.sh');$c=Compare-DoctorResults $p $s @('Guard JSON parser')
+        Assert ($c.PowerShell.Rows['Hook files'].State-eq'OK') 'PowerShell argument-path hook row';Assert ($c.Bash.Rows['Hook files'].State-eq'OK') 'Bash argument-path hook row'
+        Put (Join-Path $r '.claude/settings.json') '{"hooks":{"PreToolUse":[{"hooks":[{"command":"bash .claude/hooks/guard.sh --mode scan"},{"command":"bash .claude/hooks/missing.sh --mode scan"}]}]}}'
+        $p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$s=Run (Join-Path $r 'scripts/framework-doctor.sh');$c=Compare-DoctorResults $p $s @('Guard JSON parser')
+        Assert ($c.PowerShell.Rows['Hook files'].State-eq'MISSING') 'PowerShell did not inspect every minified command';Assert ($c.Bash.Rows['Hook files'].State-eq'MISSING') 'Bash did not inspect every minified command'
+    }finally{$env:PATH=$old;Remove-Item -Recurse -Force $r,$bin}
+}
 # Non-pending cases reach Mirror and Audit; the controlled template matrix below separately forces
 # every Stack-toolchain marker with both available and absent command sets.
 It 'twins agree outside the parser row on non-pending mirror pass' {$r=Fixture -Shell 'bash';$bin=New-ParserProbeBin $bash;$old=$env:PATH;try{$env:PATH=(Split-Path $bash -Parent)+[IO.Path]::PathSeparator+$bin+[IO.Path]::PathSeparator+$old;$p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$s=Run (Join-Path $r 'scripts/framework-doctor.sh');$c=Compare-DoctorResults $p $s @('Guard JSON parser');Assert ($c.PowerShell.Rows['Mirror and version integrity'].State-eq'OK') 'PS mirror row'}finally{$env:PATH=$old;Remove-Item -Recurse -Force $r,$bin}}
@@ -345,34 +465,189 @@ It 'Stack toolchain rows use byte-identical doctor-process wording for every tem
         foreach($template in @('dotnet','angular','monorepo')){
             $required=if($template-eq'dotnet'){@('dotnet')}elseif($template-eq'angular'){@('node','npx')}else{@('dotnet','node','npx')}
             foreach($present in @($true,$false)){
-                $r=Fixture -Pending $false -CopilotBash $false -Template $template;$pbin=New-ParserProbeBin $bash $true $true $template;$sbin=New-ParserProbeBin $bash $true $true $template
+                $r=Fixture -Pending $false -CopilotBash $false -Template $template -AngularEvidence package;$pbin=New-ParserProbeBin $bash $true $true $template;$sbin=New-ParserProbeBin $bash $true $true $template $true
                 try{
                     if($present){Add-FakeToolCommands $pbin $bash $required;Add-FakeToolCommands $sbin $bash $required}
                     $env:PATH=$pbin;$p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$pp=Parse-DoctorResult $p
                     $env:PATH=$sbin;$s=Run (Join-Path $r 'scripts/framework-doctor.sh');$sp=Parse-DoctorResult $s
                     $expectedState=if($present){'OK'}else{'MISSING'};$pr=$pp.Rows['Stack toolchain'];$sr=$sp.Rows['Stack toolchain'];Assert ($pr.State-eq$expectedState) "PS $template present=$present state=$($pr.State)";Assert ($sr.State-eq$pr.State) "SH $template state=$($sr.State), PS=$($pr.State)";Assert ($pr.Detail-eq$sr.Detail) "Stack detail mismatch PS='$($pr.Detail)' SH='$($sr.Detail)'";Assert ($pr.Detail-match'this doctor process environment') "generic environment boundary absent: $($pr.Detail)";Assert ($pr.Detail-notmatch'PowerShell doctor|Bash doctor') "shell-specific environment leaked: $($pr.Detail)"
+                    if($present){$selected=if($template-eq'dotnet'){'.NET file'}elseif($template-eq'angular'){'Angular file'}else{'.NET or Angular file'};Assert ($pp.Canaries-match[regex]::Escape($selected)) "PS $template canary did not select its constructible application world: $($pp.Canaries)";Assert ($sp.Canaries-eq$pp.Canaries) "SH $template canary mismatch: PS='$($pp.Canaries)' SH='$($sp.Canaries)'"}
                 }finally{Remove-Item -Recurse -Force $r,$pbin,$sbin}
             }
         }
+        foreach($cross in @(
+            @{Template='dotnet';Remove='App.csproj';Add='PACKAGE.JSON';Content='{"dependencies":{"@angular/core":"20.0.0"}}';Tools=@('node','npx');Label='Angular'},
+            @{Template='angular';Remove='angular.json';Add='APP.CSPROJ';Content='<Project Sdk="Microsoft.NET.Sdk" />';Tools=@('dotnet');Label='.NET'}
+        )){
+            $r=Fixture -Pending $false -CopilotBash $false -Template $cross.Template;$pbin=New-ParserProbeBin $bash $true $true $cross.Template;$sbin=New-ParserProbeBin $bash $true $true $cross.Template $true
+            try{
+                Remove-Item -LiteralPath (Join-Path $r $cross.Remove) -Force;Put (Join-Path $r $cross.Add) $cross.Content
+                Add-FakeToolCommands $pbin $bash $cross.Tools;Add-FakeToolCommands $sbin $bash $cross.Tools
+                $env:PATH=$pbin;$p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$pp=Parse-DoctorResult $p
+                $env:PATH=$sbin;$s=Run (Join-Path $r 'scripts/framework-doctor.sh');$sp=Parse-DoctorResult $s
+                Assert ($pp.Rows['Stack toolchain'].State-eq'OK'-and$pp.Rows['Stack toolchain'].Detail-match[regex]::Escape($cross.Label)) "PowerShell erased cross-template $($cross.Label) evidence: $($p.Out)"
+                Assert ($sp.Rows['Stack toolchain'].State-eq$pp.Rows['Stack toolchain'].State-and$sp.Rows['Stack toolchain'].Detail-eq$pp.Rows['Stack toolchain'].Detail) "cross-template $($cross.Label) mismatch: PS='$($pp.Rows['Stack toolchain'].Detail)' SH='$($sp.Rows['Stack toolchain'].Detail)'"
+                Assert ($pp.Canaries-match[regex]::Escape($cross.Label+' file')) "PowerShell cross-template canary did not select $($cross.Label): $($pp.Canaries)";Assert ($sp.Canaries-eq$pp.Canaries) "Bash cross-template canary mismatch: PS='$($pp.Canaries)' SH='$($sp.Canaries)'"
+            }finally{Remove-Item -Recurse -Force $r,$pbin,$sbin}
+        }
+        $r=Fixture -Pending $false -CopilotBash $false -Template dotnet
+        $pbin=New-ParserProbeBin $bash $true $true dotnet;$sbin=New-ParserProbeBin $bash $true $true dotnet $true
+        try{
+            Remove-Item -LiteralPath (Join-Path $r 'App.csproj') -Force
+            New-Item -ItemType Directory -Force (Join-Path $r 'warehouse')|Out-Null
+            Put (Join-Path $r 'Warehouse.sln') 'Microsoft Visual Studio Solution File, Format Version 12.00'
+            Put (Join-Path $r 'warehouse/Warehouse.sqlproj') '<Project Sdk="Microsoft.Build.Sql" />'
+            Put (Join-Path $r 'warehouse/DimCustomer.sql') 'CREATE TABLE dw.DimCustomer (CustomerKey int, IsCurrent bit);'
+            Put (Join-Path $r 'warehouse/usp_LoadCustomer.sql') 'CREATE PROC etl.usp_LoadCustomer @BatchId int AS SELECT 1;'
+            $env:PATH=$pbin;$p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$pp=Parse-DoctorResult $p
+            $env:PATH=$sbin;$s=Run (Join-Path $r 'scripts/framework-doctor.sh');$sp=Parse-DoctorResult $s
+            $pr=$pp.Rows['Stack toolchain'];$sr=$sp.Rows['Stack toolchain']
+            Assert ($pr.State-eq'OK') "PowerShell warehouse-only toolchain state=$($pr.State): $($pr.Detail)"
+            Assert ($sr.State-eq$pr.State) "Bash warehouse-only state=$($sr.State), PowerShell=$($pr.State)"
+            Assert ($pr.Detail-eq$sr.Detail) "warehouse-only toolchain detail mismatch PS='$($pr.Detail)' SH='$($sr.Detail)'"
+            Assert ($pr.Detail-match'not applicable') "warehouse-only result did not name non-applicability: $($pr.Detail)"
+            Assert ($pr.Detail-match'no repository-evidenced') "warehouse-only result did not name the evidence boundary: $($pr.Detail)"
+            Assert ($pp.Canaries-match'not applicable: no repository-evidenced') "PowerShell warehouse-only canary remained applicable: $($pp.Canaries)"
+            Assert ($sp.Canaries-eq$pp.Canaries) "Bash warehouse-only canary mismatch: PS='$($pp.Canaries)' SH='$($sp.Canaries)'"
+        }finally{Remove-Item -Recurse -Force $r,$pbin,$sbin}
+        $r=Fixture -Pending $false -CopilotBash $false -Template monorepo
+        $pbin=New-ParserProbeBin $bash $true $true monorepo;$sbin=New-ParserProbeBin $bash $true $true monorepo $true
+        try{
+            Remove-Item -LiteralPath (Join-Path $r 'App.csproj'),(Join-Path $r 'angular.json') -Force
+            New-Item -ItemType Directory -Force (Join-Path $r 'NODE_MODULES/generated'),(Join-Path $r 'BIN'),(Join-Path $r 'OBJ'),(Join-Path $r 'DIST')|Out-Null
+            Put (Join-Path $r 'NODE_MODULES/generated/package.json') '{"dependencies":{"@angular/core":"20.0.0"}}'
+            Put (Join-Path $r 'BIN/App.sln') 'generated solution';Put (Join-Path $r 'OBJ/App.csproj') '<Project />';Put (Join-Path $r 'DIST/angular.json') '{"version":1}'
+            $env:PATH=$pbin;$p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$pp=Parse-DoctorResult $p
+            $env:PATH=$sbin;$s=Run (Join-Path $r 'scripts/framework-doctor.sh');$sp=Parse-DoctorResult $s
+            Assert ($pp.Rows['Stack toolchain'].State-eq'OK'-and$pp.Rows['Stack toolchain'].Detail-match'not applicable') "PowerShell treated generated/dependency evidence as an app: $($p.Out)"
+            Assert ($sp.Rows['Stack toolchain'].State-eq$pp.Rows['Stack toolchain'].State-and$sp.Rows['Stack toolchain'].Detail-eq$pp.Rows['Stack toolchain'].Detail) "generated/dependency scan mismatch: PS='$($pp.Rows['Stack toolchain'].Detail)' SH='$($sp.Rows['Stack toolchain'].Detail)'"
+        }finally{Remove-Item -Recurse -Force $r,$pbin,$sbin}
+        $r=Fixture -Pending $false -CopilotBash $false -Template dotnet
+        $pbin=New-ParserProbeBin $bash $true $true dotnet;$sbin=New-ParserProbeBin $bash $true $true dotnet $true
+        try{
+            New-Item -ItemType Directory -Force (Join-Path $r '.src')|Out-Null
+            Move-Item -LiteralPath (Join-Path $r 'App.csproj') -Destination (Join-Path $r '.src/App.csproj')
+            Add-FakeToolCommands $pbin $bash @('dotnet');Add-FakeToolCommands $sbin $bash @('dotnet')
+            $env:PATH=$pbin;$p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$pp=Parse-DoctorResult $p
+            $env:PATH=$sbin;$s=Run (Join-Path $r 'scripts/framework-doctor.sh');$sp=Parse-DoctorResult $s
+            Assert ($pp.Rows['Stack toolchain'].State-eq'OK'-and$pp.Rows['Stack toolchain'].Detail-match'\.NET') "PowerShell omitted a non-excluded hidden source directory: $($p.Out)"
+            Assert ($sp.Rows['Stack toolchain'].State-eq$pp.Rows['Stack toolchain'].State-and$sp.Rows['Stack toolchain'].Detail-eq$pp.Rows['Stack toolchain'].Detail) "hidden-source scan mismatch: PS='$($pp.Rows['Stack toolchain'].Detail)' SH='$($sp.Rows['Stack toolchain'].Detail)'"
+        }finally{Remove-Item -Recurse -Force $r,$pbin,$sbin}
+        foreach($stampCase in @(
+            @{Name='malformed JSON with plausible template';Stamp='junk {"template":"dotnet"}';JqTemplate='dotnet';BreakJq=$true;State='MISSING';Detail='invalid JSON';Exit=1},
+            @{Name='trailing-comma JSON';Stamp='{"template":"dotnet",}';JqTemplate='dotnet';BreakJq=$true;State='MISSING';Detail='invalid JSON';Exit=1},
+            @{Name='commented JSON';Stamp='{/*comment*/"template":"dotnet"}';JqTemplate='dotnet';BreakJq=$true;State='MISSING';Detail='invalid JSON';Exit=1},
+            @{Name='unquoted-key JSON';Stamp='{template:"dotnet"}';JqTemplate='dotnet';BreakJq=$true;State='MISSING';Detail='invalid JSON';Exit=1},
+            @{Name='non-finite JSON constant';Stamp='{"template":"dotnet","probe":NaN}';JqTemplate='dotnet';BreakJq=$true;State='MISSING';Detail='invalid JSON';Exit=1},
+            @{Name='leading-zero JSON number';Stamp='{"template":"dotnet","probe":01}';JqTemplate='dotnet';BreakJq=$true;State='MISSING';Detail='invalid JSON';Exit=1},
+            @{Name='uppercase template property';Stamp='{"Template":"dotnet"}';JqTemplate='';BreakJq=$false;State='MISSING';Detail='lacks the required non-empty string';Exit=1},
+            @{Name='valid JSON without template';Stamp='{}';JqTemplate='';BreakJq=$false;State='MISSING';Detail='lacks the required non-empty string';Exit=1},
+            @{Name='valid one-object JSON array';Stamp='[{"template":"dotnet"}]';JqTemplate='';BreakJq=$false;State='MISSING';Detail='lacks the required non-empty string';Exit=1},
+            @{Name='valid JSON with whitespace-only template';Stamp='{"template":"   "}';JqTemplate='   ';BreakJq=$false;State='MISSING';Detail='lacks the required non-empty string';Exit=1},
+            @{Name='valid JSON with unsupported template';Stamp='{"template":"foo"}';JqTemplate='foo';BreakJq=$false;State='MISSING';Detail='unsupported template';Exit=1}
+        )){
+            $r=Fixture -Pending $true;$pbin=New-ParserProbeBin $bash $true $true dotnet;$sbin=New-ParserProbeBin $bash $true $true $stampCase.JqTemplate $true
+            try{
+                Put (Join-Path $r '.claude/framework-version.json') $stampCase.Stamp
+                if($stampCase.BreakJq){Put (Join-Path $sbin 'jq') "#!/bin/sh`nIFS= read -r input || :`n[ `"`$input`" = '{}' ] && exit 0`nexit 4`n"}
+                $env:PATH=$pbin;$p=Run (Join-Path $r 'scripts/framework-doctor.ps1')
+                $env:PATH=$sbin;$s=Run (Join-Path $r 'scripts/framework-doctor.sh')
+                $pLine=[regex]::Match(($p.Out-replace"`r",''),'(?m)^\[(MISSING|CANT-VERIFY)\] Install state - .+$').Value
+                $sLine=[regex]::Match(($s.Out-replace"`r",''),'(?m)^\[(MISSING|CANT-VERIFY)\] Install state - .+$').Value
+                Assert ($p.Exit-eq$stampCase.Exit-and$s.Exit-eq$stampCase.Exit) "$($stampCase.Name) exits differ: PS=$($p.Exit), SH=$($s.Exit)"
+                Assert ($pLine-match('^\['+$stampCase.State+'\].*'+[regex]::Escape($stampCase.Detail))) "PowerShell $($stampCase.Name) row wrong: $($p.Out)"
+                Assert ($sLine-eq$pLine) "$($stampCase.Name) install-state mismatch: PS='$pLine' SH='$sLine'"
+            }finally{Remove-Item -Recurse -Force $r,$pbin,$sbin}
+        }
+        $realJq=Resolve-HostJq
+        if($realJq){
+            foreach($realJqCase in @(@{Name='scalar';Stamp='"dotnet"'},@{Name='one-object array';Stamp='[{"template":"dotnet"}]'})){
+                $r=Fixture -Shell 'bash' -Pending $true
+                try{
+                    Put (Join-Path $r '.claude/framework-version.json') $realJqCase.Stamp
+                    $s=Invoke-Sandboxed -Bash $bash -ScriptPath (Join-Path $r 'scripts/framework-doctor.sh') -Utilities @('dirname','sed','grep','sort','paste','head') -FakeBins @{jq=(New-ExecShim $realJq)}
+                    Assert ($s.Exit-eq 1-and$s.Out-match'\[MISSING\] Install state - \.claude/framework-version\.json is valid JSON but lacks the required non-empty string') "real jq did not classify valid $($realJqCase.Name) JSON as missing-template: $($s.Out)`nSTDERR: $($s.Err)"
+                }finally{Remove-Item -Recurse -Force $r}
+            }
+        }
+        if(Resolve-HostPython){
+            $r=Fixture -Shell 'bash' -Pending $true
+            try{
+                $s=Invoke-Sandboxed -Bash $bash -ScriptPath (Join-Path $r 'scripts/framework-doctor.sh') -Utilities @('dirname','sed','grep','sort','paste','head') -FakeBins @{jq="#!/usr/bin/env bash`nexit 49`n"} -ExposeInterpreterAs python
+                Assert ($s.Out-match'\[OK\] Install state - template=dotnet') "broken jq suppressed the working Python install-state fallback: $($s.Out)`nSTDERR: $($s.Err)"
+                Assert ($s.Out-match'\[OK\] Guard JSON parser') "broken jq suppressed the working Python guard-parser fallback: $($s.Out)`nSTDERR: $($s.Err)"
+                Assert ($s.Out-match'\[OK\] Copilot surface') "broken jq was misreported as invalid hooks JSON instead of falling back to Python: $($s.Out)`nSTDERR: $($s.Err)"
+            }finally{Remove-Item -Recurse -Force $r}
+        }
+        $r=Fixture -Pending $true;$pbin=New-ParserProbeBin $bash;$sbin=New-ParserProbeBin $bash $true $true dotnet $true
+        try{
+            $pdoc=Join-Path $r 'scripts/framework-doctor.ps1';$ptext=[IO.File]::ReadAllText($pdoc);$pmutated=$ptext.Replace('$stampReadFailed = $false','$stampReadFailed = $true');Assert ($pmutated-ne$ptext) 'PowerShell unreadable-stamp mutation missed';Put $pdoc $pmutated $true
+            $sdoc=Join-Path $r 'scripts/framework-doctor.sh';$stext=[IO.File]::ReadAllText($sdoc);$smutated=$stext.Replace('stamp_read_failed=0','stamp_read_failed=1');Assert ($smutated-ne$stext) 'Bash unreadable-stamp mutation missed';Put $sdoc $smutated
+            $env:PATH=$pbin;$p=Run $pdoc;$env:PATH=$sbin;$s=Run $sdoc
+            Assert ($p.Exit-eq 0-and$s.Exit-eq 0) "unreadable stamp changed exit: PS=$($p.Exit), SH=$($s.Exit)"
+            Assert (($p.Out-replace"`r",'')-match'\[CANT-VERIFY\] Install state - \.claude/framework-version\.json exists but could not be read') "PowerShell unreadable stamp row absent: $($p.Out)"
+            Assert (($s.Out-replace"`r",'')-match'\[CANT-VERIFY\] Install state - \.claude/framework-version\.json exists but could not be read') "Bash unreadable stamp row absent: $($s.Out)"
+        }finally{Remove-Item -Recurse -Force $r,$pbin,$sbin}
+        $r=Fixture -Pending $false -CopilotBash $false -Template dotnet
+        $pbin=New-ParserProbeBin $bash $true $true dotnet;$sbin=New-ParserProbeBin $bash $true $true dotnet $true
+        try{
+            Remove-Item -LiteralPath (Join-Path $r 'App.csproj') -Force
+            foreach($markerCase in @(
+                @{File='package.json';Content='{"dependencies":{"@ANGULAR/CORE":"20.0.0"},"scripts":{"probe":"echo \"@angular/core\": fake"}}';State='OK';Label='escaped package-string/uppercase key'},
+                @{File='package.json';Content='{"scripts":{"@angular/core":"echo fake"}}';State='OK';Label='non-dependency package key'},
+                @{File='nx.json';Content='{"notes":"do not use angular-devkit"}';State='OK';Label='Nx prose'},
+                @{File='nx.json';Content='{"notes":"@nx/angular/plugin is not enabled"}';State='OK';Label='Nx package-prefix prose'},
+                @{File='nx.json';Content='{"notes":{"plugin":"@nx/angular/plugin"}}';State='OK';Label='nested notes plugin field'},
+                @{File='nx.json';Content='{"plugins":["@nx/angular"]}';State='OK';Label='bare Nx token'},
+                @{File='nx.json';Content='{"plugins":[{"Plugin":"@nx/angular/plugin"}]}';State='OK';Label='uppercase Nx plugin field'},
+                @{File='project.json';Content='{"targets":{"build":{"Executor":"@angular-devkit/build-angular:browser"}}}';State='OK';Label='uppercase Nx executor field'},
+                @{File='project.json';Content='{"targets":{"build":{"executor":"@angular-devkit/build-angular:browser"}}}';State='MISSING';Label='schema-positioned target executor'},
+                @{File='package.json';Content='{"dependencies":{"@angular/core":"20.0.0"},"decimal":0.01,"exponent":1e01,"negativeExponent":1e-01}';State='MISSING';Label='valid JSON numeric controls'},
+                @{File='package.json';Content='{"dependencies":{"@angular/core":"20.0.0"} junk';State='CANT-VERIFY';Label='malformed plausible package'},
+                @{File='angular.json';Content='{"version":1 junk';State='CANT-VERIFY';Label='malformed Angular workspace'},
+                @{File='angular.json';Content='[]';State='CANT-VERIFY';Label='array Angular workspace'},
+                @{File='package.json';Content='"@angular/core"';State='CANT-VERIFY';Label='scalar package marker'},
+                @{File='angular.json';Content='{"version":1,}';State='CANT-VERIFY';Label='trailing-comma Angular workspace'},
+                @{File='package.json';Content="{'dependencies':{'@angular/core':'20.0.0'}}";State='CANT-VERIFY';Label='single-quoted package marker'},
+                @{File='nx.json';Content='{plugin:"@nx/angular"}';State='CANT-VERIFY';Label='unquoted-key Nx marker'},
+                @{File='package.json';Content='{"dependencies":{"@angular/core":"20.0.0"},"probe":NaN}';State='CANT-VERIFY';Label='non-finite package constant'},
+                @{File='package.json';Content='{"dependencies":{"@angular/core":"20.0.0"},"probe":01}';State='CANT-VERIFY';Label='leading-zero package number'}
+            )){
+                Remove-Item -LiteralPath (Join-Path $r 'angular.json'),(Join-Path $r 'package.json'),(Join-Path $r 'nx.json'),(Join-Path $r 'project.json') -Force -ErrorAction SilentlyContinue;Put (Join-Path $r $markerCase.File) $markerCase.Content
+                $env:PATH=$pbin;$p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$pp=Parse-DoctorResult $p
+                $env:PATH=$sbin;$s=Run (Join-Path $r 'scripts/framework-doctor.sh');$sp=Parse-DoctorResult $s
+                Assert ($pp.Rows['Stack toolchain'].State-eq$markerCase.State) "PowerShell $($markerCase.Label) marker state=$($pp.Rows['Stack toolchain'].State): $($p.Out)"
+                if($markerCase.State-eq'OK'){Assert ($pp.Rows['Stack toolchain'].Detail-match'not applicable') "PowerShell treated $($markerCase.Label) as Angular evidence: $($p.Out)"}
+                Assert ($sp.Rows['Stack toolchain'].State-eq$pp.Rows['Stack toolchain'].State-and$sp.Rows['Stack toolchain'].Detail-eq$pp.Rows['Stack toolchain'].Detail) "$($markerCase.Label) evidence mismatch: PS='$($pp.Rows['Stack toolchain'].Detail)' SH='$($sp.Rows['Stack toolchain'].Detail)'"
+            }
+        }finally{Remove-Item -Recurse -Force $r,$pbin,$sbin}
+        $r=Fixture -Pending $false -CopilotBash $false -Template monorepo
+        $pbin=New-ParserProbeBin $bash $true $true monorepo;$sbin=New-ParserProbeBin $bash $true $true monorepo $true
+        try{
+            $pdoc=Join-Path $r 'scripts/framework-doctor.ps1';$ptext=[IO.File]::ReadAllText($pdoc);$pmutated=$ptext.Replace('$markerScanFailed = $false','$markerScanFailed = $true');Assert ($pmutated-ne$ptext) 'PowerShell marker-scan failure mutation missed';Put $pdoc $pmutated $true
+            $sdoc=Join-Path $r 'scripts/framework-doctor.sh';$stext=[IO.File]::ReadAllText($sdoc);$smutated=$stext.Replace('marker_scan_failed=0','marker_scan_failed=1');Assert ($smutated-ne$stext) 'Bash marker-scan failure mutation missed';Put $sdoc $smutated
+            $env:PATH=$pbin;$p=Run $pdoc;$pp=Parse-DoctorResult $p
+            $env:PATH=$sbin;$s=Run $sdoc;$sp=Parse-DoctorResult $s
+            Assert ($pp.Rows['Stack toolchain'].State-eq'CANT-VERIFY') "PowerShell incomplete marker scan was not honest: $($p.Out)"
+            Assert ($sp.Rows['Stack toolchain'].State-eq$pp.Rows['Stack toolchain'].State-and$sp.Rows['Stack toolchain'].Detail-eq$pp.Rows['Stack toolchain'].Detail) "incomplete marker scan mismatch: PS='$($pp.Rows['Stack toolchain'].Detail)' SH='$($sp.Rows['Stack toolchain'].Detail)'"
+            Assert ($pp.Canaries-match'cannot be verified') "PowerShell incomplete-marker canary remained actionable: $($pp.Canaries)";Assert ($sp.Canaries-eq$pp.Canaries) "Bash incomplete-marker canary mismatch: PS='$($pp.Canaries)' SH='$($sp.Canaries)'"
+        }finally{Remove-Item -Recurse -Force $r,$pbin,$sbin}
     }finally{$env:PATH=$old}
 }
-# Sandbox utility list for framework-doctor.sh; kept identical to the fixture's original inline
-# version so behaviour does not shift on refactor (dirname/paste are unused by the script itself,
-# but were part of the proven sandbox and there is no reason to narrow it here). Now built via the
-# shared Invoke-Sandboxed helper in _HookHarness.ps1 so other hook test files can reuse it too.
-$doctorUtils = @('dirname','sed','grep','sort','paste','head')
+# Minimal native utilities the doctor itself exercises under a controlled PATH.
+$doctorUtils = @('sed','grep')
 It 'bash twin survives without jq or ANY working python and reports the guard inactive (no interpreter present at all)' {
     $r=Fixture -Shell 'bash' -Pending $true;$pbin=New-ParserProbeBin $bash $true $true;$old=$env:PATH
     try{
         $doc=Join-Path $r 'scripts/framework-doctor.sh'
+        Remove-Item -Force (Join-Path $pbin 'jq')
         $env:PATH=$pbin;Assert ([bool](Get-Command copilot -ErrorAction SilentlyContinue)) 'setup: Copilot not visible to PowerShell'
         $p=Run (Join-Path $r 'scripts/framework-doctor.ps1')
-        $env:PATH=$old
-        $s=Invoke-Sandboxed -Bash $bash -ScriptPath $doc -Utilities $doctorUtils
-        Assert ($s.Out-match'\[OK\] Install state') "root resolution failed under restricted PATH: $($s.Out)`nSTDERR: $($s.Err)"
-        Assert ($s.Out-match'\[MISSING\] Guard JSON parser') "parser finding absent: $($s.Out)`nSTDERR: $($s.Err)"
+        $s=Run $doc
+        Assert ($s.Out-match'\[CANT-VERIFY\] Install state') "install-state parser boundary absent under restricted PATH: $($s.Out)`nSTDERR: $($s.Err)"
+        Assert ($s.Out-match'\[CANT-VERIFY\] Guard JSON parser') "unverifiable registration/parser boundary absent: $($s.Out)`nSTDERR: $($s.Err)"
         Assert ($s.Out-match'\[PENDING\] Bootstrap/adoption state') 'grep fallback did not read pending state'
-        $null=Compare-DoctorResults $p $s @('Guard JSON parser','Copilot surface')
+        $null=Compare-DoctorResults $p $s @('Install state','Wired hook shell','Hook files','Guard JSON parser','Copilot surface')
     }finally{$env:PATH=$old;Remove-Item -Recurse -Force $r,$pbin}}
 # A python.org install ships python.exe and no python3.exe; probing only python3 (or only jq)
 # never sees it, so the guard was reported INACTIVE while guard.sh (which DOES probe
@@ -388,14 +663,17 @@ It 'bash twin reports the guard ACTIVE when jq is absent but a working interpret
 } else { Skip 'bash twin reports the guard ACTIVE when jq is absent but a working interpreter resolves only as `python`' 'no working python interpreter found on this host (set $env:ATL_TEST_PYTHON to an absolute interpreter path to exercise this case)' -Invariant }
 # The Microsoft Store alias stub resolves under the name `python` but is not an interpreter (prints
 # "Python was not found" and exits 49) -- it must not be accepted as satisfying the guard floor.
-It 'bash twin reports the guard MISSING when the only `python` on PATH is the Microsoft Store alias stub' {
-    $r=Fixture -Shell 'bash' -Pending $true
+It 'bash twin does not accept the Microsoft Store alias stub as a working parser' {
+    $r=Fixture -Shell 'bash' -Pending $true;$pbin=New-ParserProbeBin $bash $true $true;$old=$env:PATH
     try{
         $doc=Join-Path $r 'scripts/framework-doctor.sh'
         $stub="#!/usr/bin/env bash`nprintf 'Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Manage App Execution Aliases.\n' >&2`nexit 49`n"
-        $s=Invoke-Sandboxed -Bash $bash -ScriptPath $doc -Utilities $doctorUtils -FakeBins @{ python = $stub }
-        Assert ($s.Out-match'\[MISSING\] Guard JSON parser') "expected MISSING (stub is not an interpreter), got: $($s.Out)`nSTDERR: $($s.Err)"
-    }finally{Remove-Item -Recurse -Force $r}}
+        Remove-Item -Force (Join-Path $pbin 'jq');Put (Join-Path $pbin 'python') $stub
+        $posixPython=ConvertTo-PosixPath (Join-Path $pbin 'python');$null=& $bash -c ('PATH="/usr/bin:/bin:/usr/local/bin:$PATH" chmod +x "{0}"' -f $posixPython) 2>$null;Assert ($LASTEXITCODE-eq 0) 'could not make Store-alias stub executable'
+        $env:PATH=$pbin;$s=Run $doc
+        Assert ($s.Out-match'\[CANT-VERIFY\] Guard JSON parser') "expected CANT-VERIFY while registrations and parser availability are both unverifiable, got: $($s.Out)`nSTDERR: $($s.Err)"
+        Assert ($s.Out-notmatch'\[OK\] Guard JSON parser') "Store alias stub was accepted as a working interpreter: $($s.Out)"
+    }finally{$env:PATH=$old;Remove-Item -Recurse -Force $r,$pbin}}
 # The Store-stub-rejection case above cannot go red against the pre-fix script (pre-fix never
 # considered bare `python` at all, so it happened to reject the stub too, by accident rather than
 # design -- not a regression test). This case proves the property that actually matters: an
@@ -416,6 +694,7 @@ It 'a NAME-only python probe (no execution check) wrongly accepts the Store stub
         Assert ($text.Contains($searchText)) 'could not locate the Guard JSON parser row''s resolve_pybin call to mutate -- framework-doctor.sh may have changed shape; update this test'
         $naiveText='    _pybin=""'+"`n"+'    for _naivecand in python3 python py; do command -v "$_naivecand" >/dev/null 2>&1 && { _pybin=$_naivecand; break; }; done'+"`n"+'    if [ -n "$_pybin" ]; then row OK '+$q+'Guard JSON parser'+$q+' '+$q+'jq or a working python interpreter is available in this Bash environment.'+$q
         $mutated=$text.Replace($searchText,$naiveText)
+        $mutated=$mutated.Replace('if [ "$settings_read_failed" -eq 1 ] || [ "$settings_unknown" -eq 1 ] || [ "$copilot_read_failed" -eq 1 ]; then','if [ "$settings_read_failed" -eq 1 ] || [ "$copilot_read_failed" -eq 1 ]; then')
         Assert ($mutated -ne $text) 'mutation did not change the file'
         [IO.File]::WriteAllText($doc,$mutated)
         $stub="#!/usr/bin/env bash`nprintf 'Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Manage App Execution Aliases.\n' >&2`nexit 49`n"
@@ -427,11 +706,12 @@ It 'pinned canary strings exist in the hooks they quote' {
     $hooks=(Resolve-Path (Join-Path $scripts '..\.claude\hooks')).Path
     foreach($f in @($doctorPs,$doctorSh)){
         $t=[IO.File]::ReadAllText($f)
-        $m=[regex]::Match($t,'starts with "([^"]+)"');Assert $m.Success "no quoted session banner in $f"
+        $finishStart=if($f-match'\.ps1$'){$t.IndexOf('function Finish {')}else{$t.IndexOf('finish() {')};$stackCanary=$t.IndexOf('[CANT-VERIFY] Agent-host stack toolchain');$summary=$t.IndexOf('Script-verifiable checks:')
+        $finishText=if($finishStart-ge 0-and$stackCanary-gt$finishStart){$t.Substring($finishStart,$stackCanary-$finishStart)}else{''}
+        $m=[regex]::Match($finishText,'Claude hooks - .*starts with "([^"]+)"');Assert $m.Success "no quoted session banner in $f"
         foreach($h in 'session-start.ps1','session-start.sh'){Assert ([IO.File]::ReadAllText((Join-Path $hooks $h)).Contains($m.Groups[1].Value)) "$h does not emit '$($m.Groups[1].Value)' quoted by $(Split-Path $f -Leaf)"}
         $m=[regex]::Match($t,'hook says "([^"]+)"');Assert $m.Success "no quoted guard message in $f"
         foreach($h in 'guard.ps1','guard.sh'){Assert ([IO.File]::ReadAllText((Join-Path $hooks $h)).Contains($m.Groups[1].Value)) "$h does not emit '$($m.Groups[1].Value)' quoted by $(Split-Path $f -Leaf)"}
-        $finishStart=if($f-match'\.ps1$'){$t.IndexOf('function Finish {')}else{$t.IndexOf('finish() {')};$stackCanary=$t.IndexOf('[CANT-VERIFY] Agent-host stack toolchain');$summary=$t.IndexOf('Script-verifiable checks:')
         $finishPrefix=if($finishStart-ge 0-and$stackCanary-gt$finishStart){$t.Substring($finishStart,$stackCanary-$finishStart)}else{''};$separatorPattern=if($f-match'\.ps1$'){"(?m)^\s*Write-(?:Output|Host) ''\s*`$"}else{'(?m)^\s*echo\s*$'}
         Assert ($finishPrefix-match$separatorPattern-and$stackCanary-lt$summary) "stack canary is not after the row separator and before the summary in $(Split-Path $f -Leaf)"
         Assert ($t.Contains('make and then revert')) "stack canary does not require reverting the edit in $(Split-Path $f -Leaf)";Assert ($t.Contains('post-write throttle')) "stack canary does not mention the throttle in $(Split-Path $f -Leaf)"

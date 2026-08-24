@@ -1,1 +1,1 @@
-description: Security review of changed .NET code. OWASP-style scan plus senior judgement (auth, data flow, error envelopes).
+description: Security review of changed code in this repository. Apply profile-specific OWASP checks only where repository evidence and changed files support them; use senior judgement for auth, data flow, and error envelopes.

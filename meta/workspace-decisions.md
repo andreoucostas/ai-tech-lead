@@ -2254,3 +2254,49 @@ the plan explicitly requires an induced cross-platform failure proof, and this i
 **Rejected.** Path-only deletion; trusting previous ownership as provenance; permanent retirement
 expiry without a supported-source-version horizon; string version comparison; retaining obsolete
 tombstone invocations alongside convergence tests; and claiming transactionality from preflight.
+
+---
+
+## WSD-052: a delivery profile is not technology evidence; lifecycle commands bind to the repository (2026-08-24)
+
+**Context.** The root installer needs a concrete distribution to deliver, but a pure SQL warehouse
+has no dedicated distribution by design. Earlier work treated selection of the nearest dotnet
+bundle as proof that the rest of the lifecycle could assume a solution and `dotnet` commands. The
+v0.51.0 B-115 test proved only installability; v0.75.0 correctly refused automatic routing once the
+unsupported downstream boundary was noticed.
+
+**Decision.** Keep the three distributions. Root warehouse fallback selects the dotnet delivery
+profile only after dotnet/angular detection misses and the shared signal table reports at least two
+independent warehouse categories. Angular plus that warehouse threshold selects monorepo so both
+profiles remain available; one category still refuses and asks for an explicit stack. `/bootstrap`
+then independently selects evidenced .NET, Angular,
+and warehouse-SQL profiles from the Git root and runs only their passes. `/adopt` remains the
+brownfield archive/provenance/merge workflow and invokes `/bootstrap` in Phase 7 with that profile
+set. Exact build, test, format, lint, migration/deploy, and data-validation commands come from committed
+repository evidence and live under `CLAUDE.md > Conventions > Verification Commands`; an absent
+category is `not available`. Migration/deploy inventory confers no execution authority: it remains
+manual/CI-only unless the exact invocation is evidenced as a non-mutating validation/dry-run or the
+developer explicitly authorizes a known target. Adoption excludes every live manifest path from its
+legacy inventory and retains its pending marker through archive/merge, releasing it only immediately
+before the Phase-7 bootstrap. The doctor requires application tooling from actual markers, including
+structurally valid Angular workspace/package/Nx evidence, never from the distribution stamp alone. A `*.csproj` is .NET
+application evidence; a `.sln` alone may be an SSDT/`*.sqlproj` warehouse container and is only a
+solution locator after C# project evidence exists. Framework-shipped skills remain a byte-stable,
+applicability-gated delivery-profile superset: bootstrap changes the advertised task list and may
+add consumer-owned discovered skills, but does not delete or rewrite shipped recipes.
+
+**Test proportionality.** Do not create a model-workflow execution harness or another installer
+permutation matrix. Keep the primary `It` counts flat and remove redundant dynamic arms that replay
+already-covered states. Replace the two obsolete refusal/override cases with real greenfield and
+brownfield lifecycle installs, inspect a finite set of installed handoff carriers inside those
+cases, strengthen the existing route suite, and fold warehouse, SSDT-solution, cross-template,
+generated-marker, and false package-string doctor worlds into the existing toolchain matrix. Carrier predicates must
+reject the unconditional assumption, not a conditional sentence that contains the same words.
+Composition and mirror gates retain distribution coverage.
+The shared warehouse signal syntax must stay in the .NET/POSIX-ERE intersection and unreadable
+artifacts fail explicitly; tests of host-language semantics with no product seam are removed.
+
+**Rejected.** A fourth SQL distribution (wrong altitude and recurring composition/CI cost); keeping
+the v0.75 refusal after the downstream lifecycle is supported; inferring default commands from a
+distribution name or technology marker; treating framework-state CI as a code-validation pass;
+and adding broad Markdown string tests that duplicate composition without proving applicability.

@@ -1304,3 +1304,97 @@ its child invocation omitted `-ExecutionPolicy Bypass`; on a host where 5.1's ef
 Restricted, policy refusal happened before version parsing and the intended assertion was
 unreachable. A test of an interpreter boundary must neutralize unrelated host script policy just as
 the hook harness already does, then assert the specific version failure it was built to observe.
+
+## 2026-08-24 — A distribution name is a delivery decision, not repository evidence
+
+Successfully copying a bundle into a repository says nothing about whether the bundle's next-step
+commands apply. The original warehouse fixture proved root selection and installation, then stopped
+before `/bootstrap`, `/adopt`, workflow rails, CI guidance, and the doctor inherited a nonexistent
+solution. That made B-115 look complete while the developer handoff remained unusable. Bind each
+lifecycle stage to fresh Git-root evidence and keep one durable inventory for exact commands;
+`not available` is more truthful and more actionable than a default command that happens to be
+common in the distribution's usual consumer.
+
+This is also a test-design lesson. Executing Markdown through a real language model would be slow,
+nondeterministic, and still would not isolate the carrier contract. More installer permutations
+would only prove the same copy seam again. The proportionate boundary is a real greenfield and
+brownfield install plus a finite inspection of the installed handoff carriers, then focused tests
+for the deterministic router and doctor decisions. Fold a new world into an existing matrix when
+it exercises the same decision; do not create a new test merely to give the finding its own title.
+
+## 2026-08-24 — A green carrier check can still certify the wrong sentence
+
+Positive keyword checks proved that workflow files mentioned repository evidence and `not
+available`, while contradictory unconditional application/test instructions survived elsewhere in
+the same carriers. The useful contract needs both sides: require the evidence-bound branch and
+reject the exact unconditional assumption. Keep the negative predicate narrow—a substring such as
+"write a failing regression test" also appears in the correct conditional rule and creates a false
+failure that rewards weaker wording.
+
+The Bash warehouse classifier exposed a second test-quality trap. Piping `basename` plus file
+content into `grep -q` under `pipefail` lets an early filename match close the pipe while the writer
+is still active; the writer's SIGPIPE can turn a true match into failure. Check filename and content
+separately. A cross-platform oracle should assert the ordered category result, because merely
+asserting the selected distribution would not reveal one twin silently dropping a category.
+
+Testing guidance must also be proportional in the product, not only in this framework's own suite.
+"Every public behavior has a test" and incidental suite bootstrapping invite low-value, framework-
+shaped tests. Prefer the smallest set that protects consequential branches, boundaries, and known
+regressions; establishing a new harness is an explicit design choice rather than a side effect of
+feature or cleanup work.
+
+The same audit found a concrete framework-suite example: one protected-sync arm reran every state
+already exercised by arms 1-7 and 9, adding 16 child doctor launches without a distinct oracle.
+Deleting that arm was safer than retaining it for a larger pass count. New adversarial worlds—deep
+warehouse paths, false package-string evidence, cross-template markers, and generated-tree decoys—
+were folded into the existing decision matrices instead of receiving duplicate top-level tests.
+
+## 2026-08-24 — A container filename and property-shaped text are not technology evidence
+
+A solution file identifies a container, not the project types inside it. SSDT commonly puts only
+`*.sqlproj` projects in a `.sln`; treating that filename as a C# application activated .NET
+analysis, toolchain checks, and post-write builds in a warehouse-only repository. Require an actual
+`*.csproj` to select the application profile, and inspect a solution for C# project references
+before choosing it as a build target.
+
+The same rule applies inside JSON. Regex over raw package/Nx text accepted escaped script prose,
+arbitrary notes, and even malformed files as Angular evidence; regex extraction from malformed
+Copilot hook JSON invented registrations that were not active. Parse first, require the property in
+a field whose semantics establish the technology, then extract. An unreadable or unparseable
+candidate is incomplete evidence (`CANT-VERIFY`/refusal), not proof of absence and not a live
+registration. These adversarial worlds belong in existing decision matrices because they exercise
+the same classifier boundary rather than deserving separate suites.
+
+“Parse first” still needs a named grammar. PowerShell's `ConvertFrom-Json` and `jq` accept
+different JavaScript/number extensions from Python's standard decoder, so three successful parses
+can describe three different evidence boundaries. Put a strict lexical/grammar check in front of
+the permissive parser, reject non-finite and leading-zero numeric forms explicitly on the `jq`
+path, and keep valid decimal/exponent controls in the same matrix so strictness does not become
+accidental rejection.
+
+An inventory is also not authority to execute what it discovers. Deployment-shaped commands can
+be perfectly evidenced and still mutate the wrong environment; record them as manual/CI-only until
+the exact invocation is a non-mutating validation/dry-run or a developer authorizes a known target.
+Likewise, a post-install adoption scan must distinguish archived legacy bytes from the live framework
+it just installed: use the ownership manifest as an exclusion set, and keep the pending marker until
+all pre-bootstrap archive and merge phases are genuinely complete.
+
+Shared regex data is executable dialect, not inert configuration. A token such as `\s` can agree in
+.NET and GNU grep yet diverge on BSD grep; stay within the actual common subset or translate at each
+consumer boundary. Reads are part of classification too—an unreadable candidate is an incomplete
+scan, never an ordinary non-match.
+
+## 2026-08-24 — Cross-carrier consistency does not require cross-carrier repetition
+
+A rule can be correct everywhere and still be over-engineered in aggregate. The first v0.77.0
+release attempt repeated the same six-category verification and execution-authority contract in
+workflow classification, subtask execution, self-review, and stack-specific fragments. Every
+carrier agreed, but the always-loaded Claude footprint exceeded all three declared ceilings by
+6.7–10.9%. The release gate refused before commit.
+
+State a cross-cutting contract once in the canonical always-loaded rules and make workflows refer
+to it. Keep routing frontmatter about applicability, not the agent body's full checklist. This
+removed roughly 4.6–5.5K static characters per profile without raising a ceiling or losing the
+negative carrier assertions. When an authoritative data table replaces duplicated prose, update
+deterministic evals to consume that table too; otherwise the test preserves the duplication the
+production change intentionally removed.

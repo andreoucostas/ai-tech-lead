@@ -13,8 +13,10 @@ shipped `docs-sync-check.yml` workflow already does the equivalent.
 
 ## What the required build must run
 
-Two legs. Both are non-negotiable; each gates a different thing. This is a mixed .NET + Angular
-repo, so leg 2 runs **both** stacks' gates.
+Two decisions are non-negotiable: always run the framework-state leg, and explicitly identify the
+repository-evidenced code gates for every profile that is actually present. Do not infer that both
+application stacks exist from the installed distribution, and do not turn a missing command into a
+false green.
 
 ### Leg 1 — framework-state check (shipped with this repo)
 
@@ -38,28 +40,27 @@ suppressed warning, an `fdescribe`, or an `eslint-disable` passes leg 1. That is
 
 ### Leg 2 — code-standards gate (your toolchain)
 
-```
-# .NET backend
-dotnet build --configuration Release -warnaserror
-dotnet test  --configuration Release --no-build
+Use the exact build, test, format, lint, migration/deploy, and data-validation commands recorded by
+`/bootstrap` in `CLAUDE.md > Conventions > Verification Commands`. That six-category inventory must
+cite committed evidence: an existing CI definition, repository script/task runner, documented
+command, manifest, or tool configuration.
+The installed `monorepo` distribution is not evidence that either application stack—or its usual
+commands—exists.
 
-# Angular frontend
-npm ci
-npx eslint .
-npx ng build --configuration production
-npx ng test --watch=false --browsers=ChromeHeadless
-```
+An evidenced .NET or Angular application may already use `dotnet`, `npm`, `npx eslint`, or `ng`
+commands; run only the exact commands the repository supports, and only for profiles present in the
+change. For SQL/SSDT/dbt or warehouse sources, preserve their existing project-native
+migration/deploy and data-validation checks when evidenced. Do not introduce any tool merely to
+fill this recipe.
 
-On the .NET side, warnings-as-errors plus analyzer severities are what make
-`#pragma warning disable`, skipped tests, and sloppy patterns *build-breaking* instead of
-advisory. On the Angular side, lint rules configured as **errors**
-(`@typescript-eslint/ban-ts-comment`, `noInlineConfig`, focused/disabled-spec bans) are what make
-`@ts-ignore`, `eslint-disable`, and `fdescribe` build-breaking. The compilers, analyzers, and lint
-layer are the deterministic enforcement that AI instructions can never be. Wire them with the
-`enforce-standards` skill (`scripts/ci/Directory.Build.props.sample` for .NET,
-`scripts/ci/eslint-standards.sample.mjs` for Angular). If the repo has the architecture backstops
-(see the `enforce-architecture` skill): the NetArchTest tests run inside `dotnet test`
-automatically, and add `npx depcruise src --config .dependency-cruiser.js` as an Angular step here.
+Inventory is not execution authority. Add a migration/deploy command to a PR build only when the
+repository already establishes that exact command as a controlled CI validation/deployment gate
+with a known target, or when it is explicitly evidenced as a non-mutating validation/dry-run.
+Otherwise keep it documented as `manual/CI-only` and do not add or run it as PR verification.
+
+If a verification category has no evidenced command, record `not available` in the build result and
+CI documentation. Leg 1 can still gate framework state, but it is not a code-validation pass;
+creating a real code gate is an explicit follow-up rather than a success claim.
 
 ## When it runs
 
@@ -90,44 +91,38 @@ One plan, one job, two script tasks (order matters — fail fast on framework st
 
 - **Task 1 (Script)**: inline, interpreter *Shell* on Linux agents — `bash scripts/docs-sync-check.sh`
   — or *Windows PowerShell* on Windows agents — `pwsh -NoProfile -File scripts/docs-sync-check.ps1`.
-- **Task 2 (Script)**: `dotnet build --configuration Release -warnaserror && dotnet test --configuration Release --no-build && npm ci && npx eslint . && npx ng build --configuration production && npx ng test --watch=false --browsers=ChromeHeadless`.
+- **Task 2 (Script)**: the exact applicable commands from `CLAUDE.md > Conventions > Verification
+  Commands` whose execution policy permits this CI context. If it says `not available` or marks a
+  command manual/CI-only without an established controlled CI target, omit that command and record
+  the gap; do not substitute distribution-default commands.
 - Trigger: *Bitbucket Server repository triggered*; branch plan creation for PRs enabled, so every
   PR branch gets a build and therefore a build status for the merge check.
 
 ## Jenkins recipe
 
 ```groovy
-// Reference configuration — adapt agent labels, .NET SDK, and Node/Chrome provisioning to your controller.
+// Reference shape — use only repository-evidenced profiles and commands.
 pipeline {
   agent any
   stages {
     stage('Framework state') {
       steps { sh 'bash scripts/docs-sync-check.sh' }   // or: pwsh 'scripts/docs-sync-check.ps1'
     }
-    stage('Build + test (standards gate)') {
-      steps {
-        // .NET backend
-        sh 'dotnet build --configuration Release -warnaserror'
-        sh 'dotnet test  --configuration Release --no-build'
-        // Angular frontend
-        sh 'npm ci'
-        sh 'npx eslint .'
-        sh 'npx ng build --configuration production'
-        sh 'npx ng test --watch=false --browsers=ChromeHeadless'
-      }
-    }
   }
 }
 ```
+
+Add a second `Repository-evidenced code gates` stage only when `/bootstrap` recorded applicable
+commands; put those exact commands in its `steps`. If they are `not available`, leave the stage
+out and report the code-gate gap.
 
 With the Bitbucket Branch Source plugin, PR branches build automatically and the build status
 feeds the required-builds merge check.
 
 > These recipes are **reference configurations**: they document the expected shape, but your
-> agent labels, SDK / Node / Chrome provisioning, and plan naming are yours. Verify the first run
-> end-to-end — open a deliberately-failing PR (e.g. add a `#pragma warning disable` on the .NET
-> side or an `fdescribe` / `// eslint-disable` on the Angular side) and confirm the merge button
-> locks.
+> agent labels, tool provisioning, and plan naming are yours. Verify the first run end-to-end —
+> open a deliberately-failing PR using a failure your evidenced code gate detects and confirm the
+> merge button locks. If the command inventory says `not available`, do not claim this verification.
 
 ## Recommended alongside (not part of the required build)
 

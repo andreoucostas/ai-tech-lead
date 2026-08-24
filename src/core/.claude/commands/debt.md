@@ -22,10 +22,10 @@ If TECH_DEBT.md is empty or contains only the template placeholder, run a fresh 
 
 ### Step 2 — Fix
 For each item marked "fix now":
-- Verify existing tests pass before touching anything
+- Derive applicable test and other validation commands from repository evidence: CLAUDE.md, committed CI, scripts, manifests, and configuration. If a test harness exists, establish its green baseline; otherwise report tests as **not available** and identify the strongest evidenced validation. Do not introduce a foreign harness solely for debt cleanup.
 - Apply the fix
 <!-- @stack:verify-cmds -->
-- If no tests exist for the affected code, write baseline tests first
+- If an applicable test harness exists but the affected code lacks coverage, add characterization coverage only when it is proportionate to the debt item.
 
 ### Step 3 — Update the register
 - Remove resolved items from TECH_DEBT.md — items are per-block: to remove a resolved item, delete its `## DEBT-NNN` block. To add a new item, follow the template at the top of TECH_DEBT.md.
@@ -40,5 +40,5 @@ Apply Boy Scout Rule (CLAUDE.md > Boy Scout Rule) to every file touched during t
 
 ### Step 6 — Report
 - What was fixed and what was deferred (with reason)
-- Test results
+- Test results or strongest validation, including any category that is **not available**
 - Updated TECH_DEBT.md diff

@@ -20,7 +20,7 @@ $ARGUMENTS
 
 ## Part A — `.github/copilot-instructions.md` (slim, inline-completions only)
 
-1. Read CLAUDE.md, focusing on: **Conventions** (all subsections) and **Boy Scout Rule**.
+1. Read CLAUDE.md, focusing on: **Conventions** (all populated subsections), its `Verification Commands` inventory, and **Boy Scout Rule**. Derive applicable profiles and constructs from those populated sections and repository evidence; never infer an application profile from this framework distribution.
 
 2. Convert each rule into one imperative line. Inline completions only see a few hundred lines of context; brevity matters more than completeness.
 
@@ -29,16 +29,10 @@ $ARGUMENTS
    When generating code in this repo, follow these rules. The full conventions, architecture, and common tasks are in CLAUDE.md (read it for non-trivial work).
    ```
 
-4. Structure the output:
-   - **Naming** — one line per rule
-   - **Architecture** — dependency direction + layering rules only
-   - **SOLID** — interface per injected service (DIP); one line each for SRP/OCP/LSP/ISP
-   - **Dependency Injection** — lifetimes + registration pattern
-   - **Data Access** — query placement, AsNoTracking, repository usage
-   - **API Design** — controller thinness, DTO separation, validation
-   - **Async** — CancellationToken, no async void / sync-over-async
-   - **Null Handling** — nullable enabled, no unjustified `!`
-   - **Logging** — structured only, no string interpolation
+4. Structure the output. Select only headings whose source convention is populated in `CLAUDE.md` or whose profile/construct is established by repository evidence. Omit absent application-profile headings rather than emitting a template default. Include warehouse schema, migration/deploy, and data-validation rules when the warehouse profile is evidenced. For Testing, name the evidenced harness; if no harness or command is evidenced, state **not available** rather than inventing one:
+   - **Naming** — only when populated
+   - **.NET Architecture / SOLID / Dependency Injection / Data Access / API Design / Async / Null Handling / Logging** — only when the .NET profile and each source convention are evidenced/populated
+   - **Warehouse schema / migration/deploy / data-validation** — only when the warehouse profile and each source convention are evidenced/populated
    - **Testing** — name the framework evidenced in `CLAUDE.md > Conventions`; if absent, require mirroring the existing suite
    - **Boy Scout (always-apply items only)** — the numbered list from CLAUDE.md's "Always apply" subsection
 

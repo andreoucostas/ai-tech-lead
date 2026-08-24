@@ -36,7 +36,7 @@ When `--headless` is set, apply these per-phase overrides in place of the intera
 | Phase 6 custom-command adoption | **Never auto-add** a custom command (it expands the command surface). Leave it under `docs/pre-adoption/`. | list them in the report |
 | Phase 8 commit | **Commit to the `adopt-ai-framework` branch only.** | the Phase 8 report is the PR-description seed |
 
-**Marker and guard lifecycle.** The installer wrote `.claude/adoption-pending.json`; the precondition commits it, with the install, to the **default branch**. Headless deletes it only on the `adopt-ai-framework` branch (Phase 3). So on the default branch the marker persists — the SessionStart warning and `docs-sync-check` keep firing until a human merges the reviewed PR. The guards release when a person merges the adoption, not when the headless run finishes.
+**Marker and guard lifecycle.** The installer wrote `.claude/adoption-pending.json`; the precondition commits it, with the install, to the **default branch**. Headless keeps it through archive, review, merge proposals, and custom-asset handling, then deletes it only on the `adopt-ai-framework` branch immediately before the embedded Phase-7 bootstrap. So on the default branch the marker persists — the SessionStart warning and `docs-sync-check` keep firing until a human merges the reviewed PR. The guards release when a person merges the adoption, not when the headless run finishes.
 
 **Embedded `/bootstrap` (Phase 7) runs headless too.** The `--headless` directive propagates into the Phase-7 `/bootstrap`. Its Phase 3d-bis hazard confirmation is not auto-answered as real: take the "skip all — mark as unverified" path, so every candidate hazard is written unverified and surfaced on the checklist — never auto-confirm a hazard unattended. Bootstrap's code-derived `CLAUDE.md` population documents the operator's *own* source (not external agent-instruction artifacts), so it proceeds as it does in greenfield, with its usual convention-checklist handling; the stage-don't-apply rule above applies specifically to merges of *discovered external artifacts*.
 
@@ -50,11 +50,14 @@ When `--headless` is set, apply these per-phase overrides in place of the intera
 2. **Recommend a branch** — tell the user: "I recommend running this on a new branch: `git checkout -b adopt-ai-framework`. Review everything and merge when satisfied." Wait for confirmation.
 3. **Locate the repo root** — use the Git root. Locate `.sln` when the .NET side is an application, and `angular.json` (or `nx.json`/`project.json`) for Angular; a SQL/SSDT/dbt side need not have a solution file. All paths are relative to that root.
 4. **Read the installer's adoption marker (if present).** If `.claude/adoption-pending.json` exists, the framework installer already detected the pre-existing AI tooling and **moved the originals its copy would have overwritten** (the repo's previous `CLAUDE.md`, `AGENTS.md`, `TECH_DEBT.md`, Copilot instructions, …) to `docs/pre-adoption/`. Read its `detectedArtifacts` and `archivedOriginals` lists — they seed Phase 1 discovery. Consequence: the `CLAUDE.md` now at the repo root is the **framework template**, not the consumer's original; the original (if any) is already at `docs/pre-adoption/CLAUDE.md`.
+5. **Establish the protected live framework set.** Read the root `framework-ownership.json` and require a valid `paths` inventory; if it is missing or malformed, STOP without archiving anything and repair/reinstall the framework first. Every live path named by that manifest — regardless of whether its ownership is framework-owned, mixed, or consumer-protected — plus the manifest, version stamp, and adoption marker is protected current install state. Never inventory, archive, move, delete, or merge from those live paths. For a protected path displaced during this install, only its `archivedOriginals` mapping under `docs/pre-adoption/` is legacy input. `detectedArtifacts` supplies discovery leads, not authority to move a live path.
 ---
 
 ## Phase 1 — Discovery
 
 Scan the repo for AI-framework and AI-adjacent artifacts. Build an inventory. Do not modify anything in this phase.
+
+Apply the Phase-0 protected set before adding any live match to the inventory. A directory scan such as `.claude/commands/`, `.claude/skills/`, or `.github/prompts/` may include only children not listed in `framework-ownership.json`; this preserves genuinely custom extensions without mistaking the freshly installed framework for legacy input.
 
 ### 1a. Other AI agent instruction files
 Look for these at the repo root and in standard locations:
@@ -172,7 +175,7 @@ Wait for the user to confirm or amend the plan.
 
 ## Phase 3 — Archive originals
 
-Move every file in the discovery inventory (except toolchain config and Screen-in-place wiki candidates) to `docs/pre-adoption/<original-relative-path>`. Clean wiki candidates stay in place; flagged wiki files were moved to `docs/pre-adoption/quarantine/` in Phase 1 and their INDEX lines remain. **Do not delete anything.** Use `git mv` where possible to preserve history.
+Move only approved legacy files in the discovery inventory (except toolchain config and Screen-in-place wiki candidates) to `docs/pre-adoption/<original-relative-path>`. Immediately before each move, re-check that its normalized live path is absent from the Phase-0 protected set; if it is protected, STOP and report the inventory error. Never archive, move, or delete current stamp-owned/shipped framework state. Clean wiki candidates stay in place; flagged wiki files were moved to `docs/pre-adoption/quarantine/` in Phase 1 and their INDEX lines remain. **Do not delete anything.** Use `git mv` where possible to preserve history.
 
 Examples:
 - `.cursorrules` → `docs/pre-adoption/cursorrules.md` (rename to .md so it renders)
@@ -182,8 +185,6 @@ Examples:
 - `TODO.md` → `docs/pre-adoption/TODO.md`
 
 Files the installer already archived (Phase 0 marker) need no further move.
-
-Finally, **delete `.claude/adoption-pending.json`** (the installer's adoption marker): archival is complete, the SessionStart/CI warnings can stop, and this releases `/bootstrap`'s pre-flight guard so Phase 7 can run it.
 
 After archive, run `git status` and present the moves to the user.
 
@@ -203,7 +204,7 @@ Merge principles:
 
 ### 4a — Merge into Conventions
 Read `.cursorrules`, `.cursor/rules/*.mdc`, `docs/CONVENTIONS.md`, `.windsurfrules`, `.clinerules`, Aider's `CONVENTIONS.md`, and any other instruction file. For each rule:
-1. Categorise into a CLAUDE.md Conventions subsection (.NET: Architecture, Naming, DI, Data Access, API Design, Async, Null Handling, Logging, Testing; Angular: Architecture, Component Design, Forms, State Management, RxJS, API/HTTP, Typing, Styling, SSR/Hydration, Testing). In this mixed repo, populate each stack's subsection from that stack's directories and cite exemplar paths from the correct stack.
+1. Categorise into a CLAUDE.md Conventions subsection for an evidenced profile: .NET (Architecture, Naming, DI, Data Access, API Design, Async, Null Handling, Logging, Testing); Angular (Architecture, Component Design, Forms, State Management, RxJS, API/HTTP, Typing, Styling, SSR/Hydration, Testing); or warehouse-SQL (schema/layer boundaries, grains/keys, load ordering/idempotency, deployment, validation/testing). Populate only selected profiles and cite matching exemplar paths.
 2. Skip rules that duplicate existing CLAUDE.md content.
 3. For rules that contradict existing CLAUDE.md content, ask a plain engineering question — never frame it as an AI-artifact choice. For each contradiction, ask: "Your existing codebase has **[A]** for [area]; your `[filename]` says **[B]**. Which is the intended approach — or do both apply in different contexts?" The safe default is to keep the in-code pattern (it reflects reality). If the developer says "accept all defaults" or "skip", apply the safe default to all unresolved contradictions without prompting per item. Whenever the safe default keeps [A] — whether chosen explicitly or through "accept all defaults" / "skip" — immediately append `<!-- DEFAULTED: [area] — kept [A] over [B] from [file] -->` to the relevant CLAUDE.md Conventions subsection. This durable review-handoff trace is required because the full `/bootstrap` pipeline runs before Phase 8; do not rely on conversation memory.
 
@@ -216,8 +217,8 @@ Present to the user:
 
 ### 4b — Merge into Repository Structure
 If `CODEMAP.md`, `ARCHITECTURE.md`, or `docs/architecture/*` exist, extract:
-- Project/folder layout / module dependency diagram, both stacks (preserve mermaid)
-- Layering strategy (.NET) and feature module boundaries (Angular)
+- Project/folder layout / dependency diagram for the evidenced profiles (preserve mermaid)
+- Evidenced layering strategy: application layers, Angular feature boundaries, and/or warehouse schema/load layers
 - Where to put new code
 
 Merge into CLAUDE.md > Repository Structure. Preserve diagrams.
@@ -228,7 +229,7 @@ For each ADR found in `docs/adr/*` or `docs/decisions/*`:
 - For lengthy ADRs: summarise to decision + one-line consequence in `docs/architecture-decisions.md` and reference the archived original under `docs/pre-adoption/`.
 
 ### 4d — Merge into Codebase Context
-If `CONTRIBUTING.md` or top-of-`README.md` describes what the app does and who uses it, extract that into CLAUDE.md > Codebase Context. Don't duplicate the README — extract only the "what / who / domain" framing.
+If `CONTRIBUTING.md` or top-of-`README.md` describes what the repository/system does, who consumes it, and its domain, extract that into CLAUDE.md > Codebase Context. Don't duplicate the README — extract only the "what / who / domain" framing.
 
 ### 4e — Merge into Testing conventions
 If `docs/TESTING.md` or `TESTING.md` exists, merge testing strategy and patterns into CLAUDE.md > Conventions > Testing.
@@ -260,7 +261,10 @@ For any `.github/prompts/*.prompt.md`, `.github/chatmodes/*.chatmode.md`, `.curs
 
 ## Phase 7 — Fill gaps via /bootstrap
 
+Only after Phases 4–6 have completed, **delete `.claude/adoption-pending.json`** immediately before invoking `/bootstrap`. Until this point the marker must remain present so an interrupted adoption cannot appear complete or bypass the brownfield guard.
+
 Now that adopted content has been merged, run the `/bootstrap` workflow against the codebase to:
+- Re-run bootstrap's Git-root evidence scan and propagate its selected profile(s) into Phase 7; a warehouse-SQL repo is valid here even with no .NET or Angular workspace, and no absent-profile command may be invented
 - Fill any CLAUDE.md sections still empty (use the bootstrap analysis passes)
 - Add any tech debt the bootstrap discovers that wasn't in the adopted backlog
 - Draft `FRAMEWORK-CONTEXT.md > Known Hazard Areas` from the analysis, and surface it in the report for maintainer confirmation
@@ -311,7 +315,7 @@ Remind the user to:
 Adoption is complete only when **all** of these exist and you have reported them:
 - Updated `CLAUDE.md` (+ generated `AGENTS.md`, `.github/copilot-instructions.md`)
 - Archived originals under `docs/pre-adoption/`
-- `.claude/adoption-pending.json` deleted (Phase 3) — the SessionStart hook and `docs-sync-check` flag the repo while it exists
+- `.claude/adoption-pending.json` deleted only immediately before the Phase-7 bootstrap — the SessionStart hook and `docs-sync-check` flag every incomplete earlier phase
 - The Phase-8 commit
 
 After adoption, a developer may run `/impact` to create a descriptive inventory/capability comparison

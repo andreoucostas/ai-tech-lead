@@ -3,7 +3,7 @@ description: "Re-align the framework after drift: refresh conventions, hazards, 
 disable-model-invocation: true
 ---
 
-Refresh the AI Tech Lead framework configuration for this mixed .NET + Angular codebase. Use when conventions have drifted, new patterns have emerged, or the team wants to re-align after months of evolution.
+Refresh the AI Tech Lead framework configuration for this repository's currently evidenced .NET, Angular, and/or warehouse-SQL profiles. Use when conventions have drifted, new patterns have emerged, or the team wants to re-align after months of evolution.
 
 This is NOT a replacement for `/bootstrap`. It assumes CLAUDE.md is already populated and merges updates into it rather than overwriting.
 
@@ -21,6 +21,11 @@ Before doing anything else:
 
 2. **Confirm git is available** — this command uses git history to focus analysis. If the repo has no commits, skip the git log step and proceed with a full scan.
 
+3. **Re-select profiles from the Git root** — apply `/bootstrap`'s current shared evidence rules
+   again; do not carry a profile forward merely because this distribution is installed. Partial-
+   stack and warehouse-only repositories are valid. Refresh the six-row Verification Commands
+   inventory only from current evidence, preserving explicit `not available` rows.
+
 ---
 
 ## Pre-step — What changed since last time?
@@ -33,9 +38,12 @@ From this output, identify the **actively changed areas** — files and director
 
 ## Phase 1 — Re-analysis
 
-Perform the same analysis passes as `/bootstrap` (.NET A1–A8 for the .NET side, Angular A1–A7 for the Angular side; skill discovery runs once for both), but **scoped to the actively changed areas** identified above — re-run only the passes whose stack actually changed. For unchanged areas, carry forward existing CLAUDE.md content unless you spot an obvious contradiction.
+Perform only the current `/bootstrap` passes for the re-selected profiles: .NET A1–A7, Angular
+A1–A6, warehouse-SQL W1–W3, and `shared A8` once when at least one profile exists. Scope them to
+the actively changed areas identified above and never dispatch an absent profile. For unchanged
+areas, carry forward existing CLAUDE.md content unless you spot an obvious contradiction.
 
-### .NET passes
+### .NET passes (only when the .NET profile is selected)
 
 #### A1: Solution Architecture
 Re-examine the project layout, layering strategy, dependency direction, entry points, and configuration approach. Note any new projects or removed projects since the last bootstrap.
@@ -58,7 +66,7 @@ Re-examine async hygiene, null handling, exception handling, logging, NuGet depe
 #### A7: Financial Domain Invariants
 Only if the codebase shows financial-domain signals (see the `#### A7:` gate in `bootstrap.md`). Re-examine monetary precision (`decimal` vs `double`/`float`), negative-amount guards, idempotency-key enforcement, check-then-act races on balances, regulatory-calculation isolation, rounding strategy, and audit trails on financial mutations — scoped to the changed areas. If no financial signals, note `A7: skipped — no financial domain signals` and move on.
 
-### Angular passes
+### Angular passes (only when the Angular profile is selected)
 
 #### A1: Module Architecture & Lazy Loading
 Re-examine module layout, lazy loading strategy, barrel files, shared/core module contents, routing structure, and circular dependencies. Note any new modules, migrated NgModules, or new standalone components introduced.
@@ -78,8 +86,14 @@ Re-examine service structure, interceptors, request/response typing, error handl
 #### A6: Build, Testing & Code Quality
 Re-examine Angular version, tsconfig strictness, package.json dependencies, test coverage, and code quality. Flag outdated packages and any newly introduced `any` or console.log patterns.
 
-### Shared pass — A8 (.NET) / A7 (Angular): Project-Specific Skill Discovery
-Re-run the discovery pass **once for both stacks** (same shared definition as in `bootstrap.md`), scoped to the actively changed areas and any new naming clusters that appeared in the git log period. **Before proposing candidates**, check `LEARNINGS.md` for `## Declined recipe:` entries and skip anything that matches — the team removed those deliberately.
+### Warehouse-SQL passes (only when the warehouse-SQL profile is selected)
+
+Re-run W1–W3 using their current definitions in `/bootstrap`: structure/dependency mapping, load
+semantics/idempotency, and validation/deployment evidence. Do not translate them into application
+layers or commands.
+
+### Shared A8: Project-Specific Skill Discovery
+Re-run the discovery pass **once across the repository-evidenced profiles** (same shared definition as in `bootstrap.md`), scoped to the actively changed areas and any new naming clusters that appeared in the git log period. **Before proposing candidates**, check `LEARNINGS.md` for `## Declined recipe:` entries and skip anything that matches — the team removed those deliberately.
 
 ---
 
@@ -122,7 +136,12 @@ Wait for the user's response before applying each chunk. If the user says "edit"
 ### 3a: Update CLAUDE.md
 
 Apply accepted changes section by section:
-- **Conventions**: add new conventions, update stale ones, remove obsolete ones
+- **Conventions**: add new conventions, update stale ones, remove obsolete ones; keep the fixed
+  build/test/format/lint/migration/deploy/data-validation command inventory aligned to exact current
+  evidence, recompute its execution-policy column, retain `not available` for every unsupported
+  category, and keep migration/deploy `manual/CI-only` unless the exact invocation is evidenced as
+  non-mutating validation/dry-run; any other execution requires explicit developer authorization
+  against a known target
 - **Architecture Decisions**: add new decisions; mark old decisions as superseded if applicable
 - **Common Tasks**: update patterns to reflect current codebase reality. The two changes below are proposed through the **same diff-and-confirm gate** as every other Phase-3 change — show the before/after and wait for the user, do not apply silently:
   - **Exemplar re-pinning**: for any instance-shaped skill (`add-endpoint`, `add-entity`, `register-service`, `add-warehouse-load`, `add-component`, `add-service`, `add-lazy-route`, `add-signal-store`, any mined `add-X`) whose pinned exemplar file no longer exists or a clearly cleaner instance now exists — propose updating the exemplar prose line. Confirm the new path resolves (Verification Rule #1) and cite it from the correct stack.

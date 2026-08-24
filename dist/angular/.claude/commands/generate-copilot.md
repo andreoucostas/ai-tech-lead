@@ -20,7 +20,7 @@ $ARGUMENTS
 
 ## Part A — `.github/copilot-instructions.md` (slim, inline-completions only)
 
-1. Read CLAUDE.md, focusing on: **Conventions** (all subsections) and **Boy Scout Rule**.
+1. Read CLAUDE.md, focusing on: **Conventions** (all populated subsections), its `Verification Commands` inventory, and **Boy Scout Rule**. Derive applicable profiles and constructs from those populated sections and repository evidence; never infer an application profile from this framework distribution.
 
 2. Convert each rule into one imperative line. Inline completions only see a few hundred lines of context; brevity matters more than completeness.
 
@@ -29,15 +29,8 @@ $ARGUMENTS
    When generating code in this repo, follow these rules. The full conventions, architecture, and common tasks are in CLAUDE.md (read it for non-trivial work).
    ```
 
-4. Structure the output:
-   - **Architecture** — standalone components, inject(), lazy loading, barrel-file rules
-   - **SOLID** — abstraction/token per injected service (DIP); one line each for SRP/OCP/LSP/ISP
-   - **Component Design** — OnPush, smart/dumb split, control flow syntax, signals preference
-   - **State Management** — local vs shared, no prop drilling, server state
-   - **RxJS** — async pipe preference, takeUntilDestroyed, no nested subscribes, error handling
-   - **API / HTTP** — typed services, interceptors, environment URLs
-   - **Typing** — strict, no `any`, interfaces over classes
-   - **Styling** — encapsulation, scoping, global rules
+4. Structure the output. Select only headings whose source convention is populated in `CLAUDE.md` or whose profile/construct is established by repository evidence. Omit absent application-profile headings rather than emitting a template default. Include warehouse schema, migration/deploy, and data-validation rules when the warehouse profile is evidenced. For Testing, name the evidenced harness; if no harness or command is evidenced, state **not available** rather than inventing one:
+   - **Angular Architecture / SOLID / Component Design / State Management / RxJS / API / HTTP / Typing / Styling** — only when the Angular profile and each source convention are evidenced/populated
    - **Testing** — name the framework evidenced in `CLAUDE.md > Conventions`; if absent, require mirroring the existing suite
    - **Boy Scout (always-apply items only)** — the numbered list from CLAUDE.md's "Always apply" subsection
 

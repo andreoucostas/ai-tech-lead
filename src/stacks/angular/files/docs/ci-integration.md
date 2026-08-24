@@ -13,7 +13,8 @@ shipped `docs-sync-check.yml` workflow already does the equivalent.
 
 ## What the required build must run
 
-Two legs. Both are non-negotiable; each gates a different thing.
+Two decisions are non-negotiable: always run the framework-state leg, and explicitly identify the
+repository-evidenced code gates. Do not turn a missing code command into a false green.
 
 ### Leg 1 — framework-state check (shipped with this repo)
 
@@ -32,25 +33,30 @@ findings printed to stdout. It verifies the framework itself is healthy: adoptio
 `adoption-pending.json`), `CLAUDE.md` bootstrapped, `AGENTS.md` / `copilot-instructions.md`
 mirrors current, version stamps in sync, hook twins and BOM intact (via `template-checks`).
 
-**What it does *not* do: gate your code.** A commit with a hardcoded secret, an `fdescribe`, or an
-`eslint-disable` passes leg 1. That is leg 2's job.
+**What it does *not* do: gate your code.** A commit with a hardcoded secret, a skipped test, or a
+suppressed warning passes leg 1. That is leg 2's job.
 
 ### Leg 2 — code-standards gate (your toolchain)
 
-```
-npm ci
-npx eslint .
-npx ng build --configuration production
-npx ng test --watch=false --browsers=ChromeHeadless
-```
+Use the exact build, test, format, lint, migration/deploy, and data-validation commands recorded by
+`/bootstrap` in `CLAUDE.md > Conventions > Verification Commands`. That six-category inventory must
+cite committed evidence: an existing CI definition, repository script/task runner, documented
+command, manifest, or tool configuration.
+The installed `angular` distribution is not evidence that an Angular command or browser applies.
 
-Lint rules configured as **errors** (`@typescript-eslint/ban-ts-comment`, `noInlineConfig`,
-focused/disabled-spec bans) are what make `@ts-ignore`, `eslint-disable`, and `fdescribe`
-*build-breaking* instead of advisory — the compiler and lint layer are the deterministic
-enforcement that AI instructions can never be. Wire them with the `enforce-standards` skill
-(`scripts/ci/eslint-standards.sample.mjs`). If the repo has the dependency-cruiser boundary
-gate (see the `enforce-architecture` skill), add `npx depcruise src --config .dependency-cruiser.js`
-as a step here.
+For an evidenced Angular application, the repository may use Angular CLI, Nx, Jest, Vitest, Karma,
+or another configured runner; use only the exact scripts and flags the repository supports. When
+standards or architecture gates are installed, include the commands their committed configuration
+or skill output records rather than reconstructing them from examples.
+
+Inventory is not execution authority. Add a migration/deploy command to a PR build only when the
+repository already establishes that exact command as a controlled CI validation/deployment gate
+with a known target, or when it is explicitly evidenced as a non-mutating validation/dry-run.
+Otherwise keep it documented as `manual/CI-only` and do not add or run it as PR verification.
+
+For each category with no evidenced command, record `not available` in the build result and CI documentation.
+Leg 1 can still gate framework state, but it is not a code-validation pass; creating a real code gate
+is an explicit follow-up rather than a success claim.
 
 ## When it runs
 
@@ -81,39 +87,38 @@ One plan, one job, two script tasks (order matters — fail fast on framework st
 
 - **Task 1 (Script)**: inline, interpreter *Shell* on Linux agents — `bash scripts/docs-sync-check.sh`
   — or *Windows PowerShell* on Windows agents — `pwsh -NoProfile -File scripts/docs-sync-check.ps1`.
-- **Task 2 (Script)**: `npm ci && npx eslint . && npx ng build --configuration production && npx ng test --watch=false --browsers=ChromeHeadless`.
+- **Task 2 (Script)**: the exact applicable commands from `CLAUDE.md > Conventions > Verification
+  Commands` whose execution policy permits this CI context. If it says `not available` or marks a
+  command manual/CI-only without an established controlled CI target, omit that command and record
+  the gap; do not substitute a distribution-default command.
 - Trigger: *Bitbucket Server repository triggered*; branch plan creation for PRs enabled, so every
   PR branch gets a build and therefore a build status for the merge check.
 
 ## Jenkins recipe
 
 ```groovy
-// Reference configuration — adapt agent labels and Node/Chrome provisioning to your controller.
+// Reference configuration — adapt agent labels and toolchain provisioning to your controller.
 pipeline {
   agent any
   stages {
     stage('Framework state') {
       steps { sh 'bash scripts/docs-sync-check.sh' }   // or: pwsh 'scripts/docs-sync-check.ps1'
     }
-    stage('Lint + build + test (standards gate)') {
-      steps {
-        sh 'npm ci'
-        sh 'npx eslint .'
-        sh 'npx ng build --configuration production'
-        sh 'npx ng test --watch=false --browsers=ChromeHeadless'
-      }
-    }
   }
 }
 ```
+
+Add a second `Repository-evidenced code gates` stage only when `/bootstrap` recorded applicable
+commands; put those exact commands in its `steps`. If they are `not available`, leave the stage
+out and report the code-gate gap.
 
 With the Bitbucket Branch Source plugin, PR branches build automatically and the build status
 feeds the required-builds merge check.
 
 > These recipes are **reference configurations**: they document the expected shape, but your
-> agent labels, Node/Chrome provisioning, and plan naming are yours. Verify the first run
-> end-to-end — open a deliberately-failing PR (e.g. add an `fdescribe` or `// eslint-disable`
-> somewhere) and confirm the merge button locks.
+> agent labels, toolchain provisioning, and plan naming are yours. Verify the first run end-to-end
+> — open a deliberately-failing PR using a failure your evidenced code gate detects and confirm the
+> merge button locks. If the command inventory says `not available`, do not claim this verification.
 
 ## Recommended alongside (not part of the required build)
 
@@ -126,7 +131,7 @@ feeds the required-builds merge check.
 
 ## What CI still cannot gate
 
-Semantic standards — Leanness, SOLID beyond dependency direction, test *quality* beyond what the
-lint rules catch — have no deterministic check. They are enforced by `/review` +
+Semantic standards — Leanness, SOLID beyond dependency direction, and test *quality* — have no
+universal deterministic check. They are enforced by `/review` +
 `/security-review` before push and by human PR review. The required build is the floor, not the
 ceiling; see `docs/enforcement-surfaces.md` for the full guaranteed-vs-instructed matrix.

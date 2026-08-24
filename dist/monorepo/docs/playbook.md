@@ -43,12 +43,12 @@ Claude Code loads `CLAUDE.md` directly. **GitHub Copilot (agent mode & CLI), Cod
 ### Tier 3 — Explicit (workflow commands)
 **Files**: `.claude/commands/*.md` (canonical), `.github/prompts/*.prompt.md` (Copilot Chat wrappers)
 
-Purpose-built workflows invoked via `/command` in either Claude Code or Copilot Chat. Each encodes a specific methodology: `/feature` decomposes into subtasks, `/fix` writes regression tests first, `/design` forces design thinking before code. The Copilot prompt files are thin wrappers that delegate to the canonical `.claude/commands/` files — single source of truth per workflow.
+Purpose-built workflows invoked via `/command` in either Claude Code or Copilot Chat. Each encodes a specific methodology: `/feature` decomposes into subtasks, `/fix` reproduces first and uses a red regression test when an applicable harness exists, and `/design` forces design thinking before code. The Copilot prompt files are thin wrappers that delegate to the canonical `.claude/commands/` files — single source of truth per workflow.
 
 ### Automated Verification (Hooks)
 **File**: `.claude/settings.json`
 
-Hooks fire automatically after Claude Code writes source files. After a `.cs` write they run `dotnet build` (solution-level incremental build); after a `.ts` write they run `npx tsc --noEmit` (type-check only, 1-2 seconds). Either way, compilation/type errors surface immediately and the agent self-corrects without the developer intervening. Full test suites (`dotnet test`, `ng test`) and `ng build` run explicitly within command workflows, not as hooks — they're too slow for per-file-write execution.
+Where the corresponding application profile is evidenced, hooks fire automatically after Claude Code writes source files: a `.cs` write may run the nearest solution's incremental build, or the nearest project when no solution exists, and a `.ts` write may run the configured type-check. A warehouse-only repository triggers neither application hook. Compilation/type errors surface immediately and the agent self-corrects without the developer intervening. Full repository-evidenced test/build commands run explicitly within command workflows, not as hooks — they're too slow for per-file-write execution.
 
 ---
 
@@ -68,7 +68,7 @@ Developer types: "add export button to dashboard"
                     │
                     ▼ (after each file write)
          Hooks (settings.json)
-         .cs → dotnet build · .ts → tsc --noEmit → catch errors → self-correct
+         evidenced application write → applicable check → catch errors → self-correct
                     │
                     ▼ (on next Copilot interaction)
          copilot-instructions.md (Tier 1)

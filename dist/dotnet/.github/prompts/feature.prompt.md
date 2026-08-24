@@ -1,11 +1,11 @@
 ---
 agent: agent
-description: Implement a new feature in this .NET codebase end-to-end (domain → service → API → tests).
+description: Implement a new feature in this repository end-to-end, deriving its technologies and layers from repository evidence.
 ---
 
 Read `CLAUDE.md` and `.claude/commands/feature.md` in this repository, then execute the feature workflow defined there for the request below.
 
-`.claude/commands/feature.md` is the single source of truth for this workflow. Follow it exactly: design check → ordered subtasks (domain → service → API → integration test) with `dotnet build` and `dotnet test` between each → Boy Scout on touched files → self-review against `CLAUDE.md` conventions → present.
+`.claude/commands/feature.md` is the single source of truth for this workflow. Follow it exactly: design check → repository-appropriate ordered subtasks → derive and run only evidence-supported **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands between each (report unsupported categories as **not available**) → Boy Scout on touched files → self-review against `CLAUDE.md` conventions → present.
 
 ## Request
 

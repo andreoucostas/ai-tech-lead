@@ -2,7 +2,7 @@
 
 A working template that turns Claude Code and GitHub Copilot into a tech lead for your Angular codebase. Clone it, run one command, and get AI-driven development with built-in conventions, verification, and continuous improvement.
 
-Targets **Angular 17+** (standalone components, signals, new control flow, `inject()`, `takeUntilDestroyed`). Bootstrap auto-detects your Angular version and adjusts conventions accordingly.
+When repository evidence selects an Angular profile, the framework supports Angular 17+ defaults (standalone components, signals, new control flow, `inject()`, `takeUntilDestroyed`). `/bootstrap` detects the workspace and version before applying any Angular convention; an Angular distribution name is not evidence by itself.
 
 ## 1. For AI agents (LLMs)
 
@@ -15,7 +15,7 @@ If you are an AI agent reading this repository, start here.
 2. **Commit the copied files** in the target repo — they are team-shared config, not local settings.
 3. **Hand off to the developer.** Populating is done by **`/adopt`** (brownfield — the installer wrote `.claude/adoption-pending.json`) or **`/bootstrap`** (greenfield). Both are **developer-initiated**: the model cannot invoke them, and they only exist inside a Claude Code session started in the target repo — so you cannot run them, and you must not try to replicate them by hand. End your run by telling the developer, verbatim: *"start a Claude Code session in `<target repo>` and type `/adopt`"* (or `/bootstrap`). Until that happens, the SessionStart hook warns every new session and `scripts/docs-sync-check` fails CI — expect that check to fail at this stage; it passes only after the developer has run the command.
 
-**If you were asked to do development work in a repo that already has this installed:** follow the **Agentic Workflow** in `CLAUDE.md` — classify intent, post a plan and wait for go-ahead, execute in verified subtasks (build + test after each), Boy Scout every touched file, self-review with a verification line. Trigger the matching skill in `.claude/skills/` when the task fits one.
+**If you were asked to do development work in a repo that already has this installed:** follow the **Agentic Workflow** in `CLAUDE.md` — classify intent, post a plan and wait for go-ahead, execute in verified subtasks using repository-evidenced commands for the changed area, Boy Scout every touched file, self-review with a verification line. Trigger the matching skill in `.claude/skills/` when the task fits one.
 
 Architecture: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) · Reviewer's tour: [docs/REVIEW-GUIDE.md](./docs/REVIEW-GUIDE.md) · Full methodology: [docs/playbook.md](./docs/playbook.md).
 
@@ -27,7 +27,7 @@ No marketing. Each item is a concrete mechanism and the effect it produces.
 
 2. **Less context burned per review — subagents run isolated.** `/review` and `/security-review` fan out to subagents (solid-check, convention-check, bloat-radar, debt-radar, test-critic, security-auditor) that each run in their own context window. Their file-reading and intermediate reasoning never enter the main conversation — the parent gets one structured findings table per agent, not the full transcript.
 
-3. **One command instead of hours hand-writing the AI's context.** `/bootstrap` (or `/adopt`) analyses modules, state management, components, RxJS, the API layer, and testing, then writes `CLAUDE.md`, `TECH_DEBT.md`, `AGENTS.md`, and `copilot-instructions.md`. You stop hand-authoring AI context — it's derived from the real codebase.
+3. **One command instead of hours hand-writing the AI's context.** `/bootstrap` (or brownfield `/adopt`) first proves an Angular profile from Git-root evidence, runs only the applicable module, state, component, RxJS, API, and verification passes, then writes `CLAUDE.md`, `TECH_DEBT.md`, `AGENTS.md`, and `copilot-instructions.md`. You stop hand-authoring AI context — it's derived from the real codebase.
 
 4. **The AI stops inventing your codebase.** Verification rules force it to confirm any component, service, route, selector, or npm package exists (via Read/Grep) before referencing it, and to honour version pinning — signals, `takeUntilDestroyed`, and the new control flow are version-gated, so it won't suggest them against a version that lacks them. Fewer hallucinated APIs means fewer wrong diffs and less rework.
 
@@ -35,9 +35,9 @@ No marketing. Each item is a concrete mechanism and the effect it produces.
 
 6. **Defined bad editor writes blocked deterministically.** On supported hosts with hooks available, the PreToolUse guard blocks editor/file-write events that add a suppression (`// eslint-disable`, `@ts-ignore`, `@ts-nocheck`) or a hardcoded secret. Shell/terminal writes are outside that event scope.
 
-7. **Natural language routes to the right workflow — no slash commands to memorise.** Typing *"the export button is broken"* auto-injects the `/fix` rails (regression-test-first, blast-radius cleanup). The seven workflows are still available as explicit slash commands when you want deterministic routing.
+7. **Natural language routes to the right workflow — no slash commands to memorise.** Typing *"the export button is broken"* auto-injects the `/fix` rails (cause-first diagnosis, an evidenced regression test when a harness exists, blast-radius cleanup). The seven workflows are still available as explicit slash commands when you want deterministic routing.
 
-8. **Common tasks can't be done wrong.** Skills encode the correct end-to-end recipe (add-component: scaffold → routing → models → service wiring → state choice → tests). Juniors get senior-level scaffolding; the agent follows *your* recipe, not a generic one.
+8. **Common tasks carry explicit guardrails.** Skills encode repository-grounded recipes (for example, add-component follows the evidenced scaffold, routing, model, service, state, and verification patterns). The agent follows *your* recipe, not a generic one.
 
 9. **Quality improves as a side effect of normal work.** The Boy Scout Rule cleans every file the agent touches — manual `ngOnDestroy` cleanup → `takeUntilDestroyed()`, nested subscribes flattened, `any` replaced with real types; the Trojan Horse principle bundles debt cleanup into feature and fix tickets; a leanness counterweight stops it adding abstraction you don't need. (Semantic changes like switching to `OnPush` are deliberately excluded from drive-by cleanup.) No dedicated debt sprints.
 
@@ -50,7 +50,7 @@ No marketing. Each item is a concrete mechanism and the effect it produces.
 ## Quick Start
 
 ### 1. Copy into your project
-Copy the following into your existing Angular **project root** (where `angular.json` lives):
+Copy the following into your existing repository's **Git root**. `angular.json` (or an exact-case Angular token in an Nx/project plugin/executor/generator/schematic/target-default field, or an exact-case `"@angular/core"` key in a `package.json` dependency map) is Angular evidence, not an installation-root requirement; a key/string elsewhere in a manifest is not:
 ```
 .claude/                            → Claude Code commands and hooks
 .github/prompts/                    → GitHub Copilot Chat workflows (mirror of .claude/commands/)
@@ -66,7 +66,7 @@ CLAUDE.md                           → template, populated by /bootstrap
 FRAMEWORK-CONTEXT.md                → cross-repo context (shared libs, multi-tenancy, dashboard contracts)
 LEARNINGS.md                        → append-only log of what works/doesn't
 TECH_DEBT.md                        → template, populated by /bootstrap
-docs/defaults.md                    → greenfield Angular conventions (used until /bootstrap runs)
+docs/defaults.md                    → evidence-conditional Angular defaults (used only when Angular is evidenced, until /bootstrap runs)
 docs/playbook.md                    → methodology guide
 ```
 
@@ -109,8 +109,8 @@ Read the generated `CLAUDE.md`. It should accurately describe your codebase. Fix
 Both Claude Code and Copilot Chat use the same slash-command names:
 
 ```
-/feature [description]     — implement a feature across all layers
-/fix [description]         — diagnose and fix a bug (regression test first)
+/feature [description]     — implement a feature at evidenced boundaries
+/fix [description]         — diagnose and fix a bug (test when a harness exists)
 /design [description]      — think through design before coding
 /review                    — review changes as a tech lead
 /security-review           — OWASP-style scan + senior judgement on auth, trust boundaries, secrets
@@ -166,7 +166,7 @@ To pull template updates, re-run the installer from a fresh template checkout ag
 
 Every workflow command follows the same execution model:
 1. **Plan** before coding (CLAUDE.md is auto-loaded — no need to re-read)
-2. **Execute in verified subtasks** (build + test + lint after each)
+2. **Execute in verified subtasks** (run only applicable repository-evidenced checks after each; report unavailable categories)
 3. **Boy Scout** every touched file
 4. **Self-review** against conventions (shared `@.claude/workflow.md` tail)
 5. **Flag drift** in documentation
@@ -180,7 +180,7 @@ Every workflow command follows the same execution model:
 | `PostToolUse` (Write/Edit) | Supported `.ts` editor/file-write events | Runs `tsc --noEmit` and appends mutable local telemetry when the hooks are live. |
 | `Stop` / `agentStop` | End of a write turn | Scans modified `.ts` files for the always-apply Boy Scout patterns (manual `ngOnDestroy` + `subscribe`, nested `subscribe`, `any`, commented-out code blocks); soft-warns the model. `OnPush` is intentionally excluded — switching a component to `OnPush` is a semantic change, not a drive-by cleanup. Claude Code uses `Stop`. Copilot CLI ≥ 1.0.72 scans at `agentStop` and delivers the queued nudge at the next prompt; the VS Code `Stop` path remains unverified and requires Preview agent-hooks. |
 
-The router is the key piece. **In Claude Code**, a developer who types *"the export button is broken"* gets the `/fix` rails (regression-test-first, blast-radius Boy Scout) auto-injected per-prompt, without typing a slash command. **In supported Copilot versions**, the same per-prompt injection applies; the session primer and `AGENTS.md` self-classification are the fallback when hooks are unavailable. Either way, the seven workflows are also invokable explicitly as slash commands (`/feature`, `/fix`, …) for deterministic routing.
+The router is the key piece. **In Claude Code**, a developer who types *"the export button is broken"* gets the `/fix` rails (cause-first diagnosis, an evidenced regression test when a harness exists, blast-radius Boy Scout) auto-injected per-prompt, without typing a slash command. **In supported Copilot versions**, the same per-prompt injection applies; the session primer and `AGENTS.md` self-classification are the fallback when hooks are unavailable. Either way, the seven workflows are also invokable explicitly as slash commands (`/feature`, `/fix`, …) for deterministic routing.
 
 #### Hook compatibility
 
@@ -239,7 +239,7 @@ Seven subagents live in `.claude/agents/` — the six user-facing ones are mirro
 
 Subagents run in isolated context — analysis chatter does not pollute the parent's main conversation. The parent receives one structured message per subagent and synthesises.
 
-Full `ng build` and `ng test` run inside command workflows, not as hooks — they're too slow for per-write execution.
+All repository-evidenced verification commands run inside command workflows, not as hooks — they're too slow for per-write execution.
 
 ## Mixed-stack repos (Angular + backend in one repository)
 
@@ -289,14 +289,14 @@ This framework grew up around GitHub conventions, but its **local layer is host-
 > Net: on Bitbucket Data Center your agentic story is **local CLI agents + IDE Copilot**, not a cloud agent, and there is no platform-side AI PR reviewer. Gate quality with `/review` and `/security-review` *before* you push, and with the CI guardrail *after*.
 
 ### The CI guardrail on Bitbucket — a required build is expected, not optional
-**Every repo using this framework is expected to wire one required build in its own CI (Bamboo/Jenkins/TeamCity) that gates PR merges.** The full recipe — what the build must run (the shipped `scripts/docs-sync-check.sh`/`.ps1` framework-state check **plus** `eslint` + `ng build` + `ng test` as the code-standards gate), Bamboo and Jenkins configurations, and how to make it blocking via Bitbucket DC's *required builds* merge check (repo-admin only, no server plugins) — lives in **[docs/ci-integration.md](./docs/ci-integration.md)**.
+**Every repo using this framework is expected to wire one required build in its own CI (Bamboo/Jenkins/TeamCity) that gates PR merges.** The full recipe — the shipped `scripts/docs-sync-check.sh`/`.ps1` framework-state check plus only the code gates evidenced by this repository (or an explicit `not available` gap), Bamboo and Jenkins configurations, and how to make it blocking via Bitbucket DC's *required builds* merge check (repo-admin only, no server plugins) — lives in **[docs/ci-integration.md](./docs/ci-integration.md)**.
 - **Also enable** Bitbucket DC's native **secret scanning** (8.12+, push-time blocking — zero custom code).
 - **Optionally surface it on the PR** via the **Code Insights REST API** (`/rest/insights/1.0/...`); cosmetic on top of required builds, not a substitute.
 - **Bitbucket Cloud** repos: copy `scripts/ci/bitbucket-pipelines.example.yml` into `bitbucket-pipelines.yml`.
 
 ### Standing scanners on Bitbucket
-- **Dependencies**: Dependabot is GitHub-only — use **Renovate** (self-hostable) or the `dependency-audit` skill's CI fallback (`npm audit --audit-level=high`).
-- **SAST**: CodeQL is GitHub-only — run **Semgrep** or **SonarQube** (JS/TS) in CI and publish via Code Insights.
+- **Dependencies**: Dependabot is GitHub-only — when committed package manifests evidence an applicable ecosystem, use **Renovate** (self-hostable) or the exact CI fallback derived by `dependency-audit`; otherwise record dependency scanning as `not available`.
+- **SAST**: CodeQL is GitHub-only — configure **Semgrep**, **SonarQube**, or another existing scanner only for repository-evidenced languages, then publish via Code Insights.
 
 ## Keeping it alive
 

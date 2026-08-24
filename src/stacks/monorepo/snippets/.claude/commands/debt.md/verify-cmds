@@ -1,1 +1,1 @@
-- Run the touched stack's gates after each fix — .NET: `dotnet build`, `dotnet test`, and `dotnet format`; Angular: `ng build`, `ng test --watch=false --browsers=ChromeHeadless`, and `ng lint` (if configured)
+- Derive exact applicable **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands for the touched area from `CLAUDE.md`, committed CI, scripts, manifests, and configuration; run them after each fix and report every unsupported category as **not available**

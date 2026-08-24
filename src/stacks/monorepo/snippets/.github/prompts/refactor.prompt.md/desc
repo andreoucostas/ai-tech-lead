@@ -1,1 +1,1 @@
-description: Refactor code in this mixed .NET + Angular codebase without changing behavior. Verified with tests.
+description: Refactor code without changing behavior, using only repository-evidenced profile checks and reporting unavailable checks.

@@ -1,1 +1,1 @@
-Run the touched stack's gates — .NET: `dotnet build`, `dotnet test`, and `dotnet format`; Angular: `ng build`, `ng test --watch=false --browsers=ChromeHeadless`, and `ng lint` (if configured). All must pass. No behavior should have changed.
+Run every applicable repository-evidenced **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** command for the target. Applicable checks must pass; repeat **not available** for unsupported categories. No behavior should have changed.

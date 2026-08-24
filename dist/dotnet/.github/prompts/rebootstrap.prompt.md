@@ -1,6 +1,6 @@
 ---
 agent: agent
-description: Refresh the AI Tech Lead framework config for this .NET codebase — diff-aware merge into existing CLAUDE.md and TECH_DEBT.md after months of evolution.
+description: Refresh the AI Tech Lead framework config for this repository — derive applicable profiles from repository evidence, then make a diff-aware merge into existing CLAUDE.md and TECH_DEBT.md after months of evolution.
 ---
 
 Read `CLAUDE.md` and `.claude/commands/rebootstrap.md` in this repository, then execute the rebootstrap workflow defined there.

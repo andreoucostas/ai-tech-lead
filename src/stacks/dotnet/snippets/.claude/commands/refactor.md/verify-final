@@ -1,1 +1,1 @@
-Run `dotnet build`, `dotnet test`, and `dotnet format`. All must pass. No behavior should have changed.
+Run every applicable repository-evidenced **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** command. Applicable checks must pass; repeat **not available** for unsupported categories. No behavior should have changed.

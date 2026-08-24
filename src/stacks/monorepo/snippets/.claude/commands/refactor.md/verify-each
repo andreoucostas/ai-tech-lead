@@ -1,1 +1,1 @@
-- After each meaningful change, run the touched stack's gates — .NET: `dotnet build` and `dotnet test`; Angular: `ng build` and `ng test --watch=false --browsers=ChromeHeadless`
+- After each meaningful change, run the applicable repository-evidenced checks for the target; do not run commands for absent profiles

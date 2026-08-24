@@ -1,13 +1,24 @@
-# Greenfield Conventions — Defaults
+# Greenfield Conventions — Evidence-Matched Defaults
 
-> Reference defaults for a modern .NET solution and an Angular 17+ frontend in this mixed .NET + Angular codebase. These apply only when CLAUDE.md > Conventions has not been populated by `/bootstrap`.
+> Reference defaults for the technologies this repository actually evidences: .NET, Angular 17+, and/or SQL/warehouse sources. These apply only when CLAUDE.md > Conventions has not been populated by `/bootstrap`.
 > Once `/bootstrap` runs, CLAUDE.md > Conventions is the authoritative source — these defaults are for cold-start scaffolding only.
 
-This repo carries both stacks. Apply the `.NET defaults` to backend C# code and the `Angular defaults` to the frontend; each section stands on its own.
+The distribution name is not technology evidence. Apply only the sections whose application markers
+exist; the raw-SQL and warehouse blocks under .NET Data Access also stand on their own for a
+warehouse-only repository.
+
+### Verification Commands
+
+For each durable category — **build**, **test**, **format**, **lint**, **migration/deploy**, and
+**data-validation** — use an exact command only when committed repository evidence names it:
+CLAUDE.md conventions, CI definitions, scripts/task runners, manifests, or tool configuration.
+Record that exact evidence path with the command. If a category has no applicable selected profile
+or evidenced command, report `not available (no evidenced command)`; never invent a .NET or Angular
+command from this distribution's name.
 
 ---
 
-## .NET defaults
+## .NET application defaults (only when .NET application markers exist)
 
 ### .editorconfig & Analysers
 <!-- Check for .editorconfig, Directory.Build.props, and Roslyn analyser rules. Reference them here so AI tools respect toolchain-enforced conventions. -->
@@ -25,6 +36,8 @@ This repo carries both stacks. Apply the `.NET defaults` to backend C# code and 
 - Services: scoped. Factories and stateless helpers: transient. Caches and config: singleton.
 - Register via extension methods per project, not in Program.cs directly.
 - Use `IOptions<T>` for static config, `IOptionsMonitor<T>` for config that can change at runtime, `IOptionsSnapshot<T>` for scoped config refresh.
+
+## Evidence-matched data-access defaults
 
 ### Data Access
 Data-access defaults are conditional on what the repo evidences in csproj package references or repo artifacts such as SQL project/source trees. Apply only the matching block; if none match, ask.
@@ -59,6 +72,8 @@ Data-access defaults are conditional on what the repo evidences in csproj packag
 **If none detected:**
 - For greenfield work, ask the developer before introducing a data-access stack.
 
+## .NET application defaults (continued)
+
 ### API Design
 - Controllers are thin — delegate to services immediately. Minimal APIs are acceptable for simple endpoints if the project uses them.
 - Request/response DTOs are separate from domain entities. Never expose domain models in API contracts.
@@ -92,17 +107,19 @@ Mocking: `NSubstitute` · `Moq` · `FakeItEasy`. Assertions: `FluentAssertions` 
   the job, raise it in `TECH_DEBT.md` and get a human decision rather than migrating as a side effect
   of adding tests.
 
-**If no test suite exists anywhere in the solution (greenfield only):**
-- Unit tests: xUnit + NSubstitute. Integration tests: `WebApplicationFactory`.
-- Test naming: `MethodName_Scenario_ExpectedResult`.
-
-- No test suite yet? Use the `add-tests` skill — its suite-bootstrap mode scaffolds the harness and first risk-first tests.
-- Every public behavior has a test. Test behavior, not implementation details.
+**If no test suite exists anywhere in the repository (greenfield only):**
+- Do not create a harness as an incidental side effect of feature, fix, refactor, or debt work.
+- When establishing tests is explicitly in scope, use the `add-tests` skill to propose the smallest
+  harness and first risk-first tests; get agreement before adding a framework.
+- Prefer a few tests for consequential branching, boundaries, and regressions over one test per
+  public member. Test observable behavior, not implementation details.
 
 ### Test shape
 Choose the level by what the test actually exercises — *push each test to the lowest level that still runs real behavior; test at the boundary, not the mock.* A heuristic, not a fixed ratio; `/bootstrap` replaces it with the shape your codebase warrants.
 - Domain / application logic (rules, calculations, branching, validation) → unit-dense.
-- Cross-cutting paths (routing, model binding, data access, auth, serialization) → integration via `WebApplicationFactory`; exercise the real pipeline, don't mock it.
+- Cross-cutting paths (routing, model binding, data access, auth, serialization) → use the
+  repository's established integration boundary (for example `WebApplicationFactory` where already
+  evidenced); exercise the real pipeline, don't invent or over-mock it.
 - Critical journeys → a sparse top layer of full-stack behavioral checks. Few, high-value.
 - Boundary-heavy / gateway services → weight toward integration (honeycomb / risk-based), not unit.
 - Anti-shape: the inverted suite (mostly slow end-to-end tests over a thin unit base). Slow + flaky = wrong shape.
@@ -113,16 +130,15 @@ Choose the level by what the test actually exercises — *push each test to the 
 
 ---
 
-## Angular defaults
+## Angular defaults (only when Angular application markers exist)
 
 ### Angular Version & Tooling
 <!-- Check angular.json, package.json, tsconfig.json. Reference strict mode, build optimisations, and any non-standard config. -->
 
 ### Build & Test Commands
-- **Build**: `ng build`
-- **Test**: `ng test --watch=false --browsers=ChromeHeadless`
-- **Lint**: `ng lint`
-<!-- If using Jest: "npx jest". If using Vitest: "npx vitest run". Bootstrap should detect and set these. -->
+Record the exact Angular build, test, and lint commands only when the repository evidences them in
+CI, scripts, `package.json`, workspace targets, or configuration. Angular presence does not prove a
+particular runner, browser, lint target, or flag set; unavailable categories remain `not available`.
 
 ### Architecture
 - Standalone components as default. NgModules only where the codebase hasn't migrated yet.
@@ -204,9 +220,13 @@ provider and component back to `NgControl`. A separate accessor class does not c
 
 ### Testing
 - Detect the spec runner (Karma/Jasmine, Jest, or Vitest) and assertion style from workspace config and existing specs; mirror them, never replace them.
-- No test suite yet? Use the `add-tests` skill — its suite-bootstrap mode scaffolds the harness and first risk-first tests.
-- Every public behavior has a test. Test behavior, not implementation details.
-- Component tests use `TestBed` with component harnesses where available.
+- No test suite yet? Do not create one as an incidental side effect of feature, fix, refactor, or
+  debt work. When establishing tests is explicitly in scope, use the `add-tests` skill to propose
+  the smallest harness and first risk-first tests; get agreement before adding a runner.
+- Prefer a few tests for consequential branching, boundaries, and regressions over one test per
+  public member. Test observable behavior, not implementation details.
+- Component tests mirror the repository's established component integration boundary (for example
+  `TestBed` with harnesses where already evidenced).
 - Service tests mock HTTP via `provideHttpClientTesting` (preferred) or `HttpClientTestingModule` (legacy).
 - Test naming: `should [expected behavior] when [condition]`.
 - No `fdescribe`, `fit`, or `xdescribe`, `xit` committed to main.
@@ -214,7 +234,8 @@ provider and component back to `NgControl`. A separate accessor class does not c
 ### Test shape
 Choose the level by what the test actually exercises — *push each test to the lowest level that still runs real behavior; test at the boundary, not the mock.* A heuristic, not a fixed ratio; `/bootstrap` replaces it with the shape your codebase warrants. Frontend testing is **trophy-shaped**, not a pyramid:
 - Static analysis (strict TypeScript + lint) is the wide base — it catches a whole class of bugs before a test runs.
-- Component / integration tests (`TestBed` with the real template + DI, harnesses) are the **centre of gravity** — they exercise rendering, inputs/outputs, and interaction the way a user hits them.
+- Component / integration tests using the repository's real template + DI approach are the **centre
+  of gravity** — they exercise rendering, inputs/outputs, and interaction the way a user hits them.
 - A thin layer of E2E (Cypress/Playwright) for critical journeys.
 - Fewest isolated unit tests — reserve them for pure pipes, pure functions, and signal/store state transitions.
 - Anti-shape: the inverted suite (mostly slow E2E over a thin base). Slow + flaky = wrong shape.

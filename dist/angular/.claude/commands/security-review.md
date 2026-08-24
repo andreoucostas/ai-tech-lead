@@ -5,10 +5,14 @@ argument-hint: "[files or PR; empty = uncommitted changes]"
 
 Run a security review of changed code as a senior tech lead. This is a quality gate, not a rubber stamp — every finding must be acted on, deferred with rationale, or rejected with rationale.
 
+Apply the Angular-specific review steps and checklists below only when repository evidence and files in scope establish that profile. Otherwise do not infer it from this framework distribution; perform only applicable repository-generic review and report unavailable profile checks as **not available**.
+
 ## Input
 $ARGUMENTS
 
 If no specific files or PR given, review the most recent uncommitted changes (both staged and unstaged).
+
+Before invoking verification or a dependency scan, derive exact applicable **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands from `CLAUDE.md`, committed CI, scripts, manifests, and configuration. Run only commands supported by that evidence; report every unsupported category and any dependency scan without an evidenced command as **not available**.
 
 ## Execution
 
@@ -64,7 +68,7 @@ fragments, secret-derived fingerprints, or unapproved references/URLs.
 - New surface introduced: yes / no, describe
 
 ### Dependencies flagged
-- (Auditor output, summarised; recommend `npm audit --omit=dev` if this is a release-bound branch)
+- Auditor output, summarised. For a release-bound branch, recommend or run only the exact repository-evidenced dependency scan; otherwise report the dependency scan as **not available**.
 
 ### Recommended next actions
 1. ...
@@ -91,7 +95,7 @@ Never ingest or restate legacy active, accepted-risk, resolved, or `docs/securit
 
 `/security-review` is the per-change gate. Back it with automated scanning so regressions are caught between reviews:
 
-- **Dependencies**: run the `dependency-audit` skill — `npm audit` plus Dependabot (GitHub) or Renovate (Bitbucket / host-agnostic).
+- **Dependencies**: only where repository evidence establishes a supported package profile, run the `dependency-audit` skill using the exact evidenced dependency command and configure Dependabot (GitHub) or Renovate (Bitbucket / host-agnostic). If no dependency scanner is evidenced, record it as **not available**; never infer an npm command from this framework distribution.
 - **SAST**: on GitHub, enable **CodeQL** code scanning (JavaScript/TypeScript). On **Bitbucket Data Center**, CodeQL is unavailable — run a SAST tool (Semgrep, SonarQube) in Bitbucket Pipelines / Bamboo / Jenkins and publish results via the **Code Insights API** so findings appear inline on the PR. See the README "Running on Bitbucket Data Center" section.
 
 These are infrastructure, not review steps — recommend them once, then let CI carry them.

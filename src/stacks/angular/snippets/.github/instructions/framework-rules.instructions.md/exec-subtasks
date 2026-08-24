@@ -1,4 +1,2 @@
-1. Models/interfaces and service layer + tests
-2. State management changes (store/signals/service) + tests
-3. Component implementation + tests
-4. E2E or integration verification
+Choose only evidenced boundaries. An Angular application may flow model/service → state → component
+→ integration; another repository follows its documented structure. Omit absent layers and tests.

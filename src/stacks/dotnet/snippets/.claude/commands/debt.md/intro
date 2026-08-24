@@ -1,1 +1,1 @@
-Find and fix tech debt in a specific area of this .NET codebase. Read TECH_DEBT.md before starting (CLAUDE.md is already loaded).
+Find and fix tech debt in a specific area of this repository. Derive applicable technologies and validation from repository evidence; do not infer .NET from this framework distribution. Read TECH_DEBT.md before starting (CLAUDE.md is already loaded).

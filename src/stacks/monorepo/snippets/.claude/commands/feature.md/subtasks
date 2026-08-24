@@ -1,13 +1,15 @@
-Pick the subtask list(s) for the stack(s) this feature touches — a full-stack feature runs the .NET list first, then the Angular list.
+Identify only the repository-evidenced technologies this feature touches, then choose appropriate layers and validation. A full-stack feature may run backend work before frontend work only when that is the repository's actual dependency flow.
 
 **.NET:**
-1. **Domain/model layer** — entities, value objects, enums + unit tests
-2. **Service/application layer** — business logic, interfaces + unit tests
-3. **API/controller layer** — DTOs, validators, controller actions + unit tests
-4. **Integration / end-to-end test** — verify the full flow through the real pipeline via `WebApplicationFactory`, exercising the endpoint as a caller would (real routing, model binding, serialization, middleware), not just the unit
+1. **Domain/model layer** — entities, value objects, enums + applicable tests
+2. **Service/application layer** — business logic, interfaces + applicable tests
+3. **API/controller layer** — DTOs, validators, controller actions + applicable tests
+4. **Integration / end-to-end validation** — where an ASP.NET test harness exists, verify the full flow through it (for example `WebApplicationFactory`); otherwise use the strongest evidenced validation.
 
 **Angular:**
-1. **Models/interfaces** — data shapes, DTOs, enums + type tests if complex
-2. **Service/state layer** — HTTP services, stores/signals, business logic + unit tests
-3. **Component layer** — smart and dumb components, templates, styles + component tests
-4. **Integration/E2E** — end-to-end verification of the feature flow
+1. **Models/interfaces** — data shapes, DTOs, enums + applicable tests
+2. **Service/state layer** — HTTP services, stores/signals, business logic + applicable tests
+3. **Component layer** — smart and dumb components, templates, styles + applicable tests
+4. **Integration/E2E validation** — only where a repository-evidenced harness exists.
+
+For a repository without these application layers or a test harness, use its documented structure and strongest evidenced validation. Report tests as **not available** when no harness exists; do not introduce a foreign harness solely for this feature.

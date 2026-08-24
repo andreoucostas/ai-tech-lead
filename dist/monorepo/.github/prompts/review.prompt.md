@@ -5,7 +5,7 @@ description: Review code as a senior tech lead. This is a quality gate, not a ru
 
 Read `CLAUDE.md` and `.claude/commands/review.md`, then execute the review workflow defined there for the scope below.
 
-`.claude/commands/review.md` is the single source of truth. Follow it exactly: correctness & convention compliance → test quality & coverage → verify by running the touched stack's gates yourself (.NET: `dotnet build` and `dotnet test`; Angular: `ng build` and `ng test`) → architecture & debt trajectory → report in the structured format with verdict APPROVE or REQUEST CHANGES.
+`.claude/commands/review.md` is the single source of truth. Follow it exactly: correctness & convention compliance → test quality & coverage → derive and run only evidence-supported **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands yourself (report unavailable categories as **not available**) → architecture & debt trajectory → report in the structured format with verdict APPROVE or REQUEST CHANGES.
 
 Be direct. Do not praise code for meeting baseline expectations.
 

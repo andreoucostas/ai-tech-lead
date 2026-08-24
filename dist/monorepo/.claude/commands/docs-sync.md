@@ -11,7 +11,7 @@ $ARGUMENTS
 
 ### Step 1 — Check CLAUDE.md against codebase
 For each section in CLAUDE.md:
-- **Codebase Context**: does it still accurately describe what the app does?
+- **Codebase Context**: does it still accurately describe what the repository/system does, its consumers, and its domain?
 - **Repository Structure**: do the projects, layers, folders, modules, and dependencies match reality?
 - **Conventions**: for each convention, verify it's actually followed. Check for conventions the codebase follows that aren't documented.
 - **Data Access — warehouse map**: if `docs/warehouse-map.md` exists, check whether the SQL tree has changed since it was written (new or dropped tables, renamed load procs, changed load ordering). If it has, report the map as stale and recommend re-running `map-warehouse`. Do **not** re-derive the map here — that is the skill's job, and doing it twice costs the scan twice.
@@ -34,7 +34,7 @@ Two files are generated from CLAUDE.md by `/generate-copilot` and must not drift
 - It must still begin with the `GENERATED FILE — do not edit by hand` banner. If someone hand-edited AGENTS.md, flag it and recommend re-running `/generate-copilot`.
 
 **`route-prompt.ps1` / `route-prompt.sh` rails** (Claude-only just-in-time salience copy of §1):
-- The six per-workflow rail blocks (`$railsFix`/`$railsFeature`/… and the `.sh` here-docs) are a *bound salience copy* of the framework rules (`.github/instructions/framework-rules.instructions.md` › Agentic Workflow; `AGENTS.md` › Agentic Workflow on AGENTS.md-native tools) §1`, not an independent source. Cross-check each rail against the matching §1 workflow: flag any **non-negotiable present in §1 but missing from the rail** (e.g. "regression test before production code", "build+tests pass before you touch anything", "net LOC delta", "red before green"), or any rail instruction that **contradicts** §1. They need not be word-identical (§1 is prose, the rails are terse), but they must not diverge in substance.
+- The six per-workflow rail blocks (`$railsFix`/`$railsFeature`/… and the `.sh` here-docs) are a *bound salience copy* of the framework rules (`.github/instructions/framework-rules.instructions.md` › Agentic Workflow; `AGENTS.md` › Agentic Workflow on AGENTS.md-native tools) §1, not an independent source. Cross-check each rail against the matching §1 workflow: flag any **non-negotiable present in §1 but missing from the rail** (e.g. "red regression test before production code when an applicable harness exists; strongest evidenced reproduction otherwise", "applicable validation green before and during refactor", "net LOC delta", "new behavioral tests seen red before green"), or any rail instruction that **contradicts** §1. They need not be word-identical (§1 is prose, the rails are terse), but they must not diverge in substance.
 
 If any file has drifted, recommend `/generate-copilot` (for the mirror) and a manual rail/§1 reconciliation (for `route-prompt`).
 

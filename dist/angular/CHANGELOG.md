@@ -4,6 +4,27 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.77.0 — 2026-08-24
+
+- Verification commands are now derived from committed repository evidence and unavailable
+  categories are reported as `not available` across build, test, format, lint, migration/deploy,
+  and data validation; workflow, routing, rebootstrap, verification-bearing skills, defaults, and
+  CI guidance no longer assumes a particular Angular runner, browser, lint target, or flag set.
+  Migration/deploy inventory remains manual/CI-only unless the exact command is non-mutating or
+  explicitly authorized for a known target.
+- `framework-doctor` recognises Angular application evidence from `angular.json`, `package.json`
+  with an exact-case `"@angular/core"` dependency-map key, and exact-case Angular tokens in supported Nx/project plugin, executor, generator, schematic, or target-default fields before requiring Node tooling;
+  every JSON marker, including `angular.json`, must parse as an object; incomplete bounded marker
+  scans report `CANT-VERIFY` and generated/dependency trees are excluded.
+- Bootstrap dispatches no application analysis when Angular evidence is absent, and brownfield
+  adoption is rooted at the Git root. Testing defaults prefer the smallest risk-relevant set and do
+  not create a foreign harness as an incidental side effect.
+- Framework-shipped skills remain installed byte-stable as an applicability-gated superset;
+  bootstrap advertises only evidenced tasks and adds separate project-specific skills instead of
+  deleting or tailoring shipped recipes.
+- Brownfield `/adopt` excludes every current path in `framework-ownership.json` from legacy
+  archival and keeps the pending marker until immediately before its Phase-7 `/bootstrap` handoff.
+
 ## 0.76.0 — 2026-08-23
 
 **Updates are now inspectable and converge across skipped releases.** The installer prints a

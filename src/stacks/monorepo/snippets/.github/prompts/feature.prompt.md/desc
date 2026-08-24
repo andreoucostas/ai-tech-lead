@@ -1,1 +1,1 @@
-description: Implement a new feature in this mixed .NET + Angular codebase end-to-end (.NET: domain → service → API → tests; Angular: models → state → component → tests).
+description: Implement a new feature in this repository end-to-end, deriving its technologies and layers from repository evidence.

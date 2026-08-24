@@ -1,16 +1,27 @@
-# Greenfield Conventions — Angular Defaults
+# Greenfield Conventions — Evidence-Matched Defaults
 
-> Reference defaults targeting Angular 17+. These apply only when CLAUDE.md > Conventions has not been populated by `/bootstrap`.
+> Reference defaults for technologies this repository actually evidences, including an Angular application. These apply only when CLAUDE.md > Conventions has not been populated by `/bootstrap`.
 > Once `/bootstrap` runs, CLAUDE.md > Conventions is the authoritative source — these defaults are for cold-start scaffolding only.
+
+The distribution name is not technology evidence. Apply the Angular headings only when the
+repository contains Angular application markers such as `angular.json`, an exact-case
+`"@angular/core"` dependency-map key in `package.json`, or an exact-case Angular token in a
+supported plugin, executor, generator, schematic, or target-default field of Nx/project
+configuration. A string mention elsewhere in a manifest is not evidence.
+
+### Verification Commands
+
+For each durable category — **build**, **test**, **format**, **lint**, **migration/deploy**, and
+**data-validation** — use an exact command only when committed repository evidence names it:
+CLAUDE.md conventions, CI definitions, scripts/task runners, manifests, or tool configuration.
+Record that exact evidence path with the command. If a category has no applicable Angular profile or
+evidenced command, report `not available (no evidenced command)`; never invent `ng build`, `ng test`,
+a browser flag, or another command from this distribution's name.
+
+## Angular application defaults (only when Angular application markers exist)
 
 ### Angular Version & Tooling
 <!-- Check angular.json, package.json, tsconfig.json. Reference strict mode, build optimisations, and any non-standard config. -->
-
-### Build & Test Commands
-- **Build**: `ng build`
-- **Test**: `ng test --watch=false --browsers=ChromeHeadless`
-- **Lint**: `ng lint`
-<!-- If using Jest: "npx jest". If using Vitest: "npx vitest run". Bootstrap should detect and set these. -->
 
 ### Architecture
 - Standalone components as default. NgModules only where the codebase hasn't migrated yet.
@@ -92,9 +103,13 @@ provider and component back to `NgControl`. A separate accessor class does not c
 
 ### Testing
 - Detect the spec runner (Karma/Jasmine, Jest, or Vitest) and assertion style from workspace config and existing specs; mirror them, never replace them.
-- No test suite yet? Use the `add-tests` skill — its suite-bootstrap mode scaffolds the harness and first risk-first tests.
-- Every public behavior has a test. Test behavior, not implementation details.
-- Component tests use `TestBed` with component harnesses where available.
+- No test suite yet? Do not create one as an incidental side effect of feature, fix, refactor, or
+  debt work. When establishing tests is explicitly in scope, use the `add-tests` skill to propose
+  the smallest harness and first risk-first tests; get agreement before adding a runner.
+- Prefer a few tests for consequential branching, boundaries, and regressions over one test per
+  public member. Test observable behavior, not implementation details.
+- Component tests mirror the repository's established component integration boundary (for example
+  `TestBed` with harnesses where already evidenced).
 - Service tests mock HTTP via `provideHttpClientTesting` (preferred) or `HttpClientTestingModule` (legacy).
 - Test naming: `should [expected behavior] when [condition]`.
 - No `fdescribe`, `fit`, or `xdescribe`, `xit` committed to main.
@@ -102,7 +117,8 @@ provider and component back to `NgControl`. A separate accessor class does not c
 ### Test shape
 Choose the level by what the test actually exercises — *push each test to the lowest level that still runs real behavior; test at the boundary, not the mock.* A heuristic, not a fixed ratio; `/bootstrap` replaces it with the shape your codebase warrants. Frontend testing is **trophy-shaped**, not a pyramid:
 - Static analysis (strict TypeScript + lint) is the wide base — it catches a whole class of bugs before a test runs.
-- Component / integration tests (`TestBed` with the real template + DI, harnesses) are the **centre of gravity** — they exercise rendering, inputs/outputs, and interaction the way a user hits them.
+- Component / integration tests using the repository's real template + DI approach are the **centre
+  of gravity** — they exercise rendering, inputs/outputs, and interaction the way a user hits them.
 - A thin layer of E2E (Cypress/Playwright) for critical journeys.
 - Fewest isolated unit tests — reserve them for pure pipes, pure functions, and signal/store state transitions.
 - Anti-shape: the inverted suite (mostly slow E2E over a thin base). Slow + flaky = wrong shape.

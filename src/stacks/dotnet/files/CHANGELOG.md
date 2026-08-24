@@ -4,6 +4,32 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.77.0 — 2026-08-24
+
+- Warehouse-only repositories can now install through root auto-detection and complete `/bootstrap`
+  or brownfield `/adopt` without a `.sln` or `*.csproj`. Setup selects a warehouse-SQL profile from
+  the shared signal table and runs only applicable analysis passes.
+- Bootstrap records exact repository-evidenced verification commands under `CLAUDE.md >
+  Conventions > Verification Commands` for build, test, format, lint, migration/deploy, and data
+  validation; unavailable categories stay explicitly `not available`. Feature, fix, refactor,
+  review, test, debt, rebootstrap, routing, verification-bearing skills, defaults, and CI guidance
+  no longer infer .NET commands from this distribution's name. Migration/deploy inventory remains
+  manual/CI-only unless the exact command is non-mutating or explicitly authorized for a known target.
+- `framework-doctor` requires the .NET toolchain only when repository application markers exist.
+  A warehouse-only install now reports that toolchain and its app canary as not applicable instead
+  of missing. An incomplete bounded marker scan is `CANT-VERIFY`; generated/dependency trees are
+  excluded. A `.sln` containing only SSDT/`*.sqlproj` projects is not .NET application evidence and
+  does not activate the dotnet post-write canary.
+- Framework-shipped skills remain installed byte-stable as an applicability-gated superset.
+  Bootstrap advertises only evidenced tasks and adds separate project-specific skills rather than
+  deleting or tailoring shipped recipes.
+- `/adopt` remains the brownfield path: it archives and merges existing AI instructions, then runs
+  `/bootstrap` in Phase 7 with the same detected profile set. It never re-archives live paths named
+  by `framework-ownership.json`, and keeps the pending marker until immediately before Phase 7 so an
+  interrupted archive/merge cannot appear complete.
+- Testing defaults now prefer the smallest risk-relevant set. Feature/fix/refactor/debt work does
+  not create a foreign harness incidentally; establishing a suite is explicit, agreed work.
+
 ## 0.76.0 — 2026-08-23
 
 **Updates are now inspectable and converge across skipped releases.** The installer prints a

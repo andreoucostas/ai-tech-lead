@@ -23,16 +23,16 @@ if ([Console]::IsOutputRedirected) {
 
 $railsFix = @'
 1. Diagnose root cause first; state it before writing any code.
-2. Write a failing regression test BEFORE touching production code; confirm it fails for the right reason.
+2. When the repository evidences an applicable test harness, write a failing regression test BEFORE touching production code; otherwise reproduce with the strongest evidenced validation and report tests as not available — never introduce a foreign harness solely for this fix.
 3. Apply the minimal fix; do not refactor unrelated code.
-4. Verify the regression test passes, the full related suite passes, build is clean, lint is clean.
+4. Derive exact regression and suite commands plus applicable build, test, format, lint, migration/deploy, and data-validation commands from repository evidence; run only safely executable applicable commands under the execution boundary above and report each unsupported category as not available.
 5. Apply Boy Scout to BLAST RADIUS only — never boy-scout unrelated files in a fix.
 6. Report root cause, fix, regression-test coverage, blast radius.
 '@
 
 $railsFeature = @'
 1. Design check first — list affected layers, files to create/modify, failure modes, test strategy.
-2. Decompose into ordered subtasks; run build + test + lint after each before continuing.
+2. Decompose into ordered subtasks; derive exact build, test, format, lint, migration/deploy, and data-validation commands from repository evidence, then run only safely executable applicable commands under the execution boundary above after each before continuing (report unsupported categories as not available).
 3. Apply Boy Scout to every file you touch.
 4. Self-review against CLAUDE.md > Conventions; flag new patterns or resolved tech debt.
 5. Present what was implemented and tested.
@@ -45,9 +45,9 @@ Leanness constraints (the framework rules (`.github/instructions/framework-rules
 '@
 
 $railsRefactor = @'
-1. Verify starting state — build and tests must pass BEFORE touching anything.
-2. If no tests exist for the target code, write baseline tests FIRST.
-3. Refactor incrementally; build + test after each meaningful change.
+1. Derive exact build, test, format, lint, migration/deploy, and data-validation commands from repository evidence and establish a green baseline BEFORE touching anything; report unsupported categories as not available.
+2. If the repository has an applicable test harness but the target lacks coverage, write baseline tests FIRST; otherwise report tests as not available, use the strongest evidenced validation, and never introduce a foreign harness solely for this refactor.
+3. Refactor incrementally; run applicable checks after each meaningful change.
 4. Apply Boy Scout to every file you touched.
 5. Verify final state — no behavior should have changed.
 6. Present a before/after summary INCLUDING net LOC delta.
@@ -60,9 +60,9 @@ Leanness constraints (the framework rules (`.github/instructions/framework-rules
 
 $railsTest = @'
 1. Match existing test structure, naming convention, framework, and mocking approach.
-2. Cover happy path, edge cases, error paths, boundary conditions.
+2. Choose the smallest risk-relevant set: the principal behavior plus only consequential error, edge, or boundary cases; do not build a case matrix for its own sake.
 3. Do not test framework behavior — test public behavior only.
-4. Verify all new tests pass.
+4. Derive exact applicable build, test, format, lint, migration/deploy, and data-validation commands from repository evidence; run only safely executable applicable commands under the execution boundary above and report every unsupported category as not available.
 5. Report what was tested and what's still uncovered.
 '@
 
@@ -78,17 +78,18 @@ $railsDesign = @'
 $railsDebt = @'
 1. Read TECH_DEBT.md and find items in the specified area.
 2. Confirm each item still exists in the code (it may have been fixed already).
-3. Recommend fix-now vs defer per item, with reason.
-4. After fixes: update TECH_DEBT.md — remove resolved items, add newly discovered.
-5. Apply Boy Scout to every file touched.
-6. Report what was fixed/deferred plus the updated TECH_DEBT diff.
+3. Derive applicable tests and other validation from repository evidence; when no test harness exists, report tests as not available and use the strongest evidenced validation — never introduce a foreign harness solely for debt cleanup.
+4. Recommend fix-now vs defer per item, with reason.
+5. After fixes: update TECH_DEBT.md — remove resolved items, add newly discovered.
+6. Apply Boy Scout to every file touched.
+7. Report what was fixed/deferred plus the validation results and updated TECH_DEBT diff.
 '@
 
 $railsReview = @'
 This is a quality gate, not a rubber stamp.
 1. Check correctness and every CLAUDE.md > Conventions item per changed file.
 2. Check test quality — behavior coverage, descriptive names, regression detection.
-3. Run build + tests yourself — do not trust they pass.
+3. Derive and run only safely executable build, test, format, lint, migration/deploy, and data-validation commands supported by repository evidence yourself, subject to the execution boundary above; do not trust they pass, and report unsupported categories as not available.
 4. Check architecture/debt trajectory and Boy Scout application.
 Output: APPROVE or REQUEST CHANGES with a severity-tagged issues table.
 '@
@@ -107,6 +108,11 @@ If this prompt does NOT actually touch a sensitive surface, say so and skip this
 $railsPlanGate = @'
 ## Plan gate (present -> clarify -> confirm)
 Before writing code: post a short plan (files to change, order of operations, how you'll verify) AND any clarifying questions for whatever is underspecified — do not guess past a material ambiguity to seem helpful. Then WAIT for the developer's explicit go-ahead before editing code. Skip the wait only for a trivial, unambiguous change (typo, one-liner), and say that you're skipping it and why.
+'@
+
+$railsExecutionSafety = @'
+## Verification execution boundary
+Derive all six command categories, but run only safely executable verification. A recorded migration/deploy command is manual/CI-only unless repository evidence identifies that exact invocation as non-mutating validation/dry-run, or the developer explicitly authorizes execution against a known target. Otherwise report it as recorded but not run.
 '@
 
 $inputJson = [Console]::In.ReadToEnd()
@@ -160,6 +166,8 @@ if (-not [string]::IsNullOrEmpty($intent)) {
     $parts.Add("## Routed intent: ``$intent``")
     $parts.Add('')
     $parts.Add("This natural-language prompt was classified as **$intent**. The rails below mirror the framework rules (``.github/instructions/framework-rules.instructions.md`` › Agentic Workflow; ``AGENTS.md`` › Agentic Workflow on AGENTS.md-native tools) section 1 — the canonical definition, already in your context; they are repeated here for salience. Apply them before responding. If the actual intent differs, say so and proceed normally.")
+    $parts.Add('')
+    $parts.Add($railsExecutionSafety)
     $parts.Add('')
 
     if ($intent -in @('fix','feature','refactor','test')) {

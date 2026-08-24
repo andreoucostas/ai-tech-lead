@@ -1,5 +1,5 @@
 ---
-description: "Tech-lead quality gate on a diff: spawns convention-check, solid-check, debt-radar, bloat-radar, and test-critic subagents in parallel, runs build+tests itself, applies senior judgement, returns APPROVE or REQUEST CHANGES. Invoke when completed work needs the full gate, not for a quick inline question."
+description: "Tech-lead quality gate on a diff: spawns convention-check, solid-check, debt-radar, bloat-radar, and test-critic subagents in parallel, derives and runs applicable repository-evidenced verification, applies senior judgement, and returns APPROVE or REQUEST CHANGES. Invoke when completed work needs the full gate, not for a quick inline question."
 argument-hint: "[files or PR; empty = uncommitted changes]"
 ---
 
@@ -23,8 +23,8 @@ In a single message, spawn all five subagents via the `Task` tool:
 
 Wait for all five to return their structured output. Use those findings as the spine of the review — do not redo the scans yourself.
 
-### Step 2 — Verify the build yourself
-Run `ng build` and `ng test --watch=false --browsers=ChromeHeadless`. Do not trust that the code being reviewed already passes. If lint is configured, run `ng lint` too. Record any failures as high-severity issues.
+### Step 2 — Verify applicable evidence-backed checks yourself
+Derive exact **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands from `CLAUDE.md`, committed CI, scripts, manifests, and configuration. Run only commands supported by that evidence for the reviewed area; an Angular profile establishes only profile applicability, so use any command, target, runner, browser, project, configuration, or flags only when that exact full form is explicitly recorded in the evidence. Do not trust that the code being reviewed already passes. Record unavailable verification categories as **not available** and applicable-command failures as high-severity issues.
 
 ### Step 3 — Apply senior judgement
 Before judging the diff, run `pwsh scripts/test-weakening-scan.ps1` (or the `.sh` twin) and consult

@@ -1,4 +1,7 @@
-1. **Domain/model layer** — entities, value objects, enums + unit tests
-2. **Service/application layer** — business logic, interfaces + unit tests
-3. **API/controller layer** — DTOs, validators, controller actions + unit tests
-4. **Integration / end-to-end test** — verify the full flow through the real pipeline via `WebApplicationFactory`, exercising the endpoint as a caller would (real routing, model binding, serialization, middleware), not just the unit
+Choose only layers and validation that repository evidence supports. When the repository is a .NET application with these layers, an appropriate order may be:
+1. **Domain/model layer** — entities, value objects, enums + applicable tests
+2. **Service/application layer** — business logic, interfaces + applicable tests
+3. **API/controller layer** — DTOs, validators, controller actions + applicable tests
+4. **Integration / end-to-end validation** — where an ASP.NET test harness exists, verify the full flow through it (for example `WebApplicationFactory`); otherwise use the strongest evidenced validation.
+
+For a repository without those application layers or a test harness, use its documented structure and strongest evidenced validation. Report tests as **not available** when no harness exists; do not introduce a foreign harness solely for this feature.

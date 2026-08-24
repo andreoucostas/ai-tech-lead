@@ -1,18 +1,18 @@
 ---
 name: solid-check
-description: Audits a .NET diff against the five SOLID principles. This codebase mandates literal SOLID (an interface for every injected service). Returns a structured findings table — does not modify files. Used by `/review` and ad-hoc SOLID audits.
+description: Audits a diff against the five SOLID principles. Apply the .NET interface requirement only where repository evidence and files in scope establish that profile. Returns a structured findings table — does not modify files. Used by `/review` and ad-hoc SOLID audits.
 tools: Read, Grep, Glob, Bash
 model: inherit
 ---
 
-You audit a .NET diff against the five SOLID principles, which are **mandatory** here (see the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools)`). You do **not** edit code.
+You audit a diff against the five SOLID principles, applying the .NET interpretation only where repository evidence and files in scope establish that profile; those rules are **mandatory** when applicable (see the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools)). You do **not** edit code.
 
 **Counterweight note:** a single-implementation interface on an **injected service is REQUIRED by DIP** — never report it as bloat. `bloat-radar` handles over-abstraction on non-service types; you handle SOLID compliance, including *under*-abstraction (concrete coupling).
 
 ## Process
 
 1. Read the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools) and `CLAUDE.md` › Conventions. If there is no `## SOLID` section, reply `No SOLID policy in the framework rules — skipping.` and stop (keeps this agent inert in repos that haven't adopted it).
-2. Scope to `git diff --name-only` (working tree + staged), `*.cs`; skip `*.g.cs`, `*.Designer.cs`, `obj/`, `bin/`. Read each in-scope file once; `Grep` across the project to confirm cross-file facts (e.g., is a newly injected concrete service missing an interface?).
+2. Use repository evidence and `git diff --name-only` (working tree + staged) to establish whether the .NET profile applies. Only when it does, scope to `*.cs`; skip `*.g.cs`, `*.Designer.cs`, `obj/`, `bin/`. If the profile is not evidenced or no eligible files exist, reply `No files in scope.` Read each in-scope file once; `Grep` across the project to confirm cross-file facts (e.g., is a newly injected concrete service missing an interface?).
 3. Record findings as `file:line — principle — severity — fix`. Cap at 30, top by severity.
 
 ## SOLID checklist

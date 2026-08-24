@@ -2929,6 +2929,49 @@ surfaces and warehouse-only auto-routing refuses the uncertified lifecycle; see
 content-qualified cumulative retirements, and refuse implicit downgrades; see
 `meta/BACKLOG-DONE.md`.**
 
+**B-173 is implemented for planned v0.77.0 — warehouse-only routing now enters an evidence-selected,
+solution-free lifecycle instead of inheriting application assumptions from the delivery profile;
+see `meta/BACKLOG-DONE.md`.**
+
+### B-174 · Normalize duplicate-key and wrong-root JSON semantics across doctor/installer parsers
+**Filed against:** v0.77.0 (2026-08-24)
+**Effort:** S–M · **Priority:** P3
+
+v0.77.0 aligns the accepted JSON *syntax* across PowerShell, `jq`, and Python, including comments,
+single quotes, unquoted keys, trailing commas, non-finite constants, and leading-zero integers.
+Three lower-value semantic edges remain: duplicate or case-colliding object keys are not rejected
+consistently across the three parsers; a syntactically valid scalar or array Copilot hook file is
+treated as “no registration” rather than diagnosed as the wrong root shape; and the doctor can
+mistake a `command`, `bash`, or `powershell` property under an unrelated object for a real hook
+registration. Choose one fail-closed duplicate-member/root-shape and registration-schema contract,
+apply it recursively to all three parser paths, and fold case-colliding keys, scalar/array hook
+roots, and unrelated nested properties into the existing strict-JSON matrices.
+Also distinguish “`jq` parsed this input as invalid” from “the installed `jq` passed
+the basic probe but cannot execute the required query,” so the latter can try a working Python
+fallback. Do not add a fourth parser or a standalone suite.
+
+### B-175 · Give template-check resource failures a distinct doctor-visible status
+**Filed against:** v0.77.0 (2026-08-24)
+**Effort:** S · **Priority:** P3
+
+`template-checks.ps1`/`.sh` can exit 2 both for two ordinary findings and for host/resource
+read failure. `framework-doctor` therefore cannot tell “verified drift” from “could not verify” and
+currently reports either as `MISSING`. Introduce one unambiguous checker status or output marker for
+resource failure, map that to `CANT-VERIFY` in both doctor twins, and fold it into the existing
+mirror-pass/failure matrix. Do not reserve a status without a reachable red test.
+
+### B-176 · Enforce unique warehouse signal-category definitions
+**Filed against:** v0.77.0 (2026-08-24)
+**Effort:** S · **Priority:** P3
+
+The shipped signal catalog currently has one row per category, but the root selectors and the bash
+warehouse checker count matching rows while the PowerShell checker deduplicates category names.
+A future duplicate row could therefore inflate the two-category threshold differently across
+consumers. Add one catalog-integrity check for unique category keys, make all four runtime readers
+count distinct categories, and make the eval's authoritative-catalog fixture reject duplicates too.
+Fold a duplicate-row mutation into the existing warehouse map checker suite; do not create a
+standalone catalog suite.
+
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see `meta/BACKLOG-DONE.md`.**

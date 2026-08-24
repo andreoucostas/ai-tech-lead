@@ -14,7 +14,7 @@
 - [ ] Resolved DEBT items removed from TECH_DEBT.md
 
 ## Testing
-- [ ] Tests added/updated for changed behaviour
+- [ ] Smallest risk-relevant tests added/updated when an applicable harness exists; otherwise tests are recorded as `not available`
 <!-- @stack:check -->
 
 ## AI tools used

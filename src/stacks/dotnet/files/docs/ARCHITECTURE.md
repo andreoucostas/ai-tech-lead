@@ -73,13 +73,13 @@ Same names in Claude Code (`.claude/commands/`) and Copilot Chat (`.github/promp
 
 | Command | Purpose |
 |---------|---------|
-| `/bootstrap` | One-time: analyse the codebase (8 parallel passes A1–A8, incl. financial-domain invariants + skill discovery), populate CLAUDE.md + TECH_DEBT.md, generate AGENTS.md + copilot-instructions, sync skills |
+| `/bootstrap` | One-time: analyse selected .NET A1–A7 and/or warehouse-SQL W1–W3 profiles, plus one shared A8 skill-discovery pass, then populate CLAUDE.md + TECH_DEBT.md, generate AGENTS.md + copilot-instructions, sync skills |
 | `/adopt` | Ingest existing AI artifacts (Cursor/Copilot/Aider/ADRs) into this layout, then `/bootstrap` the gaps |
-| `/feature` | Implement across layers; checks for a `specs/<slug>.md` first; verified subtasks; Boy Scout; self-review |
-| `/fix` | Regression-test-first; minimal fix; blast-radius-only Boy Scout |
-| `/refactor` | Behavior-preserving; baseline tests first; reports net LOC delta |
+| `/feature` | Implement at repository-evidenced boundaries; checks for a `specs/<slug>.md` first; verified subtasks; Boy Scout; self-review |
+| `/fix` | Cause-first diagnosis; regression test when an evidenced harness exists; minimal fix; blast-radius-only Boy Scout |
+| `/refactor` | Behavior-preserving; baseline tests when available plus other evidenced checks; reports net LOC delta |
 | `/design` | Design-only; persists a spec to `specs/<slug>.md` (spec-driven development) |
-| `/test` | Tests following project patterns |
+| `/test` | Smallest risk-relevant tests following project patterns |
 | `/debt` | Find/fix bundleable tech debt (Trojan Horse) |
 | `/review` | Quality gate — dispatches the auditor subagents (below) |
 | `/security-review` | OWASP-style scan + senior judgement + SECURITY_FINDINGS SLAs |
@@ -96,7 +96,7 @@ Run in isolated context; return a structured findings table to the parent. Model
 
 | Agent | Role | Model |
 |-------|------|-------|
-| `bootstrap-pass` | One analysis pass (A1–A8) during `/bootstrap` | inherit (strong) |
+| `bootstrap-pass` | One selected-profile pass (.NET A1–A7 / warehouse-SQL W1–W3) or shared A8 skill discovery during `/bootstrap` | inherit (strong) |
 | `security-auditor` | OWASP-style scan; feeds `/security-review` | inherit (strong) |
 | `solid-check` | Audits the diff against the five SOLID principles (literal SOLID is mandatory here); feeds `/review` | inherit (strong) |
 | `test-critic` | Test-integrity audit — would each test go red if the code under test broke? Catches over-mocking and tautological/weak assertions; feeds `/review` | inherit (strong) |

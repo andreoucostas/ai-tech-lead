@@ -3,7 +3,7 @@ description: "Re-align the framework after drift: refresh conventions, hazards, 
 disable-model-invocation: true
 ---
 
-Refresh the AI Tech Lead framework configuration for this Angular codebase. Use when conventions have drifted, new patterns have emerged, or the team wants to re-align after months of evolution.
+Refresh the AI Tech Lead framework configuration for this repository's currently evidenced Angular profile. Use when conventions have drifted, new patterns have emerged, or the team wants to re-align after months of evolution.
 
 This is NOT a replacement for `/bootstrap`. It assumes CLAUDE.md is already populated and merges updates into it rather than overwriting.
 
@@ -21,6 +21,12 @@ Before doing anything else:
 
 2. **Confirm git is available** — this command uses git history to focus analysis. If the repo has no commits, skip the git log step and proceed with a full scan.
 
+3. **Re-select the Angular profile from the Git root** — apply `/bootstrap`'s current evidence
+   rules again; do not carry Angular forward merely because this distribution is installed. If no
+   Angular profile is evidenced, report that re-analysis is not applicable and dispatch no pass.
+   Refresh the six-row Verification Commands inventory only from current evidence, preserving
+   explicit `not available` rows.
+
 ---
 
 ## Pre-step — What changed since last time?
@@ -33,7 +39,10 @@ From this output, identify the **actively changed areas** — files and director
 
 ## Phase 1 — Re-analysis
 
-Perform the same seven analysis passes as `/bootstrap` (A1–A7), but **scoped to the actively changed areas** identified above. For unchanged areas, carry forward existing CLAUDE.md content unless you spot an obvious contradiction.
+When the Angular profile is selected, perform its current `/bootstrap` passes A1–A7, scoped to the
+actively changed areas identified above. When it is absent, dispatch nothing.
+For unchanged areas, carry forward existing CLAUDE.md content unless you spot an obvious
+contradiction.
 
 ### A1: Module Architecture & Lazy Loading
 Re-examine module layout, lazy loading strategy, barrel files, shared/core module contents, routing structure, and circular dependencies. Note any new modules, migrated NgModules, or new standalone components introduced.
@@ -97,7 +106,12 @@ Wait for the user's response before applying each chunk. If the user says "edit"
 ### 3a: Update CLAUDE.md
 
 Apply accepted changes section by section:
-- **Conventions**: add new conventions, update stale ones, remove obsolete ones
+- **Conventions**: add new conventions, update stale ones, remove obsolete ones; keep the fixed
+  build/test/format/lint/migration/deploy/data-validation command inventory aligned to exact current
+  evidence, recompute its execution-policy column, retain `not available` for every unsupported
+  category, and keep migration/deploy `manual/CI-only` unless the exact invocation is evidenced as
+  non-mutating validation/dry-run; any other execution requires explicit developer authorization
+  against a known target
 - **Architecture Decisions**: add new decisions; mark old decisions as superseded if applicable
 - **Common Tasks**: update patterns to reflect current codebase reality. The two changes below are proposed through the **same diff-and-confirm gate** as every other Phase-3 change — show the before/after and wait for the user, do not apply silently:
   - **Exemplar re-pinning**: for any instance-shaped skill (`add-component`, `add-service`, `add-lazy-route`, `add-signal-store`, any mined `add-X`) whose pinned exemplar file no longer exists or a clearly cleaner instance now exists — propose updating the exemplar prose line. Confirm the new path resolves (Verification Rule #1).

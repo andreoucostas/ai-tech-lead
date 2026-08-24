@@ -3161,11 +3161,14 @@ check to the meta suite — a five-line scan over `^### B-\d+`, in the file that
 repo's documentation for truth.
 
 ---
-### B-115 · Pure SQL / SSDT / dbt repos cannot be installed, and `/adopt` cannot run in one — **DONE, heading corrected 2026-08-16, see Done section**
+### B-115 · Pure SQL / SSDT / dbt repos needed a solution-free lifecycle — **DONE v0.77.0; earlier closure corrected**
 **Effort:** S · **Priority:** P3 · found 2026-08-07 (dimension-binding work)
 
-> **DONE in v0.51.0.** Root fallback uses the shared category signal table after application-stack
-> detection misses; PowerShell/Bash behavior tests install a pure-SQL fixture without a solution.
+> **CORRECTED in v0.77.0.** v0.51.0 proved root selection and file installation only; it did not
+> prove that `/bootstrap`, `/adopt`, workflows, CI guidance, and diagnostics could operate without
+> a solution or refrain from inventing .NET commands. v0.75.0 therefore disabled automatic routing
+> at that unsupported boundary. v0.77.0 makes the selected lifecycle profile- and evidence-driven,
+> then restores root fallback through the shared warehouse signal table.
 
 **Why:** three independent blocks, none of which the installer reports as a stack problem:
 1. auto-detect covers only `*.csproj`/`*.sln`/`angular.json`, so a bare `.sqlproj`, a dbt project, or
@@ -6885,3 +6888,65 @@ the synchronized-authority and hidden-side-write gaps; the corrected aggregate r
 the release gate. The exposed class is every future framework file removal and every consumer-state
 migration: provenance must include current content, and a temporary compatibility surface needs an
 explicit tested retirement transition rather than an indefinite additive copy.
+
+---
+
+### B-173 · RCA: installer selection was mistaken for lifecycle applicability
+
+**DONE 2026-08-24 · planned v0.77.0 · P1 · Invariants #1 #2 #3 #4 #7**
+
+**What happened.** B-115 was closed in v0.51.0 after a pure-SQL fixture selected the dotnet
+distribution and installed files without a solution. Downstream carriers still located a `.sln`,
+dispatched .NET analysis, prescribed `dotnet` commands, and diagnosed the .NET toolchain from the
+distribution stamp. The installer therefore delivered a framework that its own next-step handoff
+could not honestly use. v0.75.0 caught the overclaim and disabled automatic warehouse routing.
+
+**Why no gate caught it.** The root test stopped at selection/install, while composition and mirror
+gates proved only that the same files arrived. None bound the selected delivery bundle to the
+repository capabilities assumed by `/bootstrap`, `/adopt`, workflow rails, CI documentation, and
+the doctor. Markdown commands are model-executed and cannot be made into honest unit tests by
+pretending to execute model reasoning; the missing deterministic seam was a finite assertion over
+the installed handoff carriers plus real greenfield/brownfield install outcomes.
+
+**Fix.** `/bootstrap` selects .NET, Angular, and warehouse-SQL profiles from Git-root evidence and
+runs only matching passes. It writes exact evidenced commands for build, test, format, lint,
+migration/deploy, and data validation to one durable `Conventions > Verification Commands`
+inventory and writes `not available` for unsupported categories. Migration/deploy stays
+manual/CI-only unless its exact invocation is evidenced as non-mutating validation/dry-run or a
+developer explicitly authorizes a known target. `/rebootstrap` uses the same inventory. `/adopt`
+remains the brownfield archive/merge workflow, protects every current ownership-manifest path from
+legacy archival, keeps the pending marker through its merge phases, and propagates those profiles
+to its Phase-7 bootstrap. Workflow, routing, default, CI, README, architecture, skill, and AGENTS
+carriers use the same boundary; testing defaults prefer the smallest risk-relevant set and never
+bootstrap a foreign harness as an incidental feature/fix/refactor/debt side effect. The doctor
+derives toolchain applicability from repository markers rather than the distribution name. Root
+routing is restored only after those carriers became solution-free; Angular plus warehouse evidence
+selects monorepo so neither profile is discarded.
+
+**Evidence and exposed class.** The seven existing `It` definitions in
+`RootInstallerWarehouse.Tests.ps1` now exercise a folded matrix of runtime outcomes: real greenfield/brownfield
+installs on both twins, one-category refusal without byte changes, ordinary .NET, .NET+Angular and
+Angular+warehouse monorepo priority, flag forwarding, plus two reachable red mutations with
+byte-identical restoration. The greenfield case inspects a finite installed-carrier contract; it
+does not claim to execute model-authored Markdown. The warehouse fixture puts its signals deeper
+than the application-marker bound, while generated/dependency trees carry misleading app and
+warehouse markers; this proves the repository-wide warehouse scan and exclusions at the existing
+boundary. Each composed route-prompt suite passed 23/0, and all three distributions passed full
+validation. Warehouse-only, generated-artifact, cross-template, package-string, and forced
+incomplete-scan reporting worlds were folded into the existing toolchain matrix rather than added
+as new `It` cases.
+The redundant protected-sync arm that merely replayed arms 1-7 and 9 was removed, eliminating 16
+spawned doctor processes while keeping each distinct state. Two parser-availability doctor cases
+subsumed by the registration, historical-mutation, and exact-divergence matrices were also removed.
+Primary `It`-definition counts are doctor 25, installer 7, router 15; the new adversarial worlds
+are folded into those behavior matrices instead of buying shallow top-level count.
+The first release attempt was correctly refused by the static-context budget: repeating the same
+six-category verification boundary in every workflow had pushed all three profiles over their
+ceilings. `validate-dist` does not measure context size; the release footprint gate is the intended
+backstop and caught this before commit. The remediation centralized the contract once, made
+workflow rails reference it, shortened routing frontmatter without weakening bodies, and retained
+the existing ceilings. This exposes every always-loaded carrier to the same accretion risk: a new
+cross-cutting rule needs one canonical statement and compact references, not full restatement at
+each call site.
+The exposed class is every delivery-profile or template label: it says which framework bundle was
+selected, not which technologies or commands the consumer repository actually supports.

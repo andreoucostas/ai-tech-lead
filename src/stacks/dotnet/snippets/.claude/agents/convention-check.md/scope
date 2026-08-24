@@ -1,1 +1,1 @@
-2. If the caller did not specify files, scope to `git diff --name-only` (working tree + staged) limited to `*.cs`. Skip `*Tests.cs`, `*Test.cs`, `*.g.cs`, `*.Designer.cs`, anything in `obj/` or `bin/`.
+2. If the caller did not specify files, use repository evidence and `git diff --name-only` (working tree + staged) to establish whether the .NET profile applies. Only when it does, scope to `*.cs`. Skip `*Tests.cs`, `*Test.cs`, `*.g.cs`, `*.Designer.cs`, anything in `obj/` or `bin/`. If the profile is not evidenced or no eligible files exist, reply `No files in scope.`

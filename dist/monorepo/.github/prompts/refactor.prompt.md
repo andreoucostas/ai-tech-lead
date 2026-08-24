@@ -1,13 +1,13 @@
 ---
 agent: agent
-description: Refactor code in this mixed .NET + Angular codebase without changing behavior. Verified with tests.
+description: Refactor code without changing behavior, using only repository-evidenced profile checks and reporting unavailable checks.
 ---
 
 Read `CLAUDE.md` and `.claude/commands/refactor.md` in this repository, then execute the refactor workflow defined there for the target below.
 
-`.claude/commands/refactor.md` is the single source of truth. Follow it exactly: verify starting state → write baseline tests if missing → refactor incrementally (build + test after each change) → Boy Scout → verify final state → present before/after.
+`.claude/commands/refactor.md` is the single source of truth. Follow it exactly: derive and verify the starting validation state → write characterization coverage only when an applicable harness exists, otherwise report tests as **not available** and use the strongest evidenced validation → refactor incrementally with applicable checks → Boy Scout → verify final state → present before/after.
 
-Do not change behavior. If tests fail, you've changed behavior — fix it or revert.
+Do not change behavior. If an applicable test or other evidenced validation fails, fix the change or revert; never introduce a foreign harness solely for this refactor.
 
 ## Target
 

@@ -3,8 +3,8 @@ name: add-component
 description: >
   Use when the user wants to add a new Angular feature component (standalone or module-bound),
   including a custom form control or ControlValueAccessor.
-  Covers component scaffold, routing, models, service wiring, state choice, and required test
-  coverage.
+  Covers component scaffold, routing, models, service wiring, state choice, and harness-evidenced
+  test coverage.
   USE FOR: a component that does not exist yet — a new screen, dialog, or reusable presentational
   component.
   DO NOT USE FOR: changing an existing component's template, inputs, or behaviour (use `/feature`
@@ -15,6 +15,10 @@ description: >
 # Add a new feature component
 
 Match the conventions in CLAUDE.md > Conventions > Component Design before scaffolding. If the codebase uses a state pattern (signals, NgRx, NGXS), match it; do not introduce a new pattern.
+
+**Applicability gate:** confirm a repository-evidenced Angular workspace and that the target belongs
+to it. If either is absent, report this skill as **not applicable**; the selected distribution and
+template defaults do not establish an Angular project.
 
 ## Custom form control branch
 
@@ -36,11 +40,18 @@ detail when that section exists.
 
 0. **Confirm the screen or UI responsibility does not already exist.** Search routes, selectors, templates, and component names by user-visible capability. Extend or compose an existing component through ordinary `/feature` work instead of creating a parallel screen.
 
-1. Create component with `ng generate component` (standalone by default).
+1. Use a generator only when its exact invocation is evidenced by CLAUDE.md > Conventions >
+   Verification Commands, committed scripts, manifests, or workspace configuration. Otherwise
+   create the files manually by mirroring an existing component; do not infer `ng generate`.
 2. Add route in the feature's routing config (lazy-loaded).
 3. Create interfaces/models for the feature's data shapes (no `any`).
 4. Create or extend a service for backend communication (typed end-to-end).
 5. Wire up state (signals, store, or service — match existing pattern).
-6. Write component test + service test.
+6. When an applicable test harness is evidenced, add the smallest behavior-focused test(s) that
+   follow its conventions. Do not create spec files, a runner, test configuration, or HTTP testing
+   infrastructure incidentally; otherwise report the test category as **not available**.
 
-After scaffolding, follow the standard `/feature` flow: build/test/lint after each subtask, Boy Scout every touched file, self-review against CLAUDE.md > Conventions.
+After scaffolding, derive build, test, format, lint, migration/deploy, and data-validation commands
+from CLAUDE.md > Conventions > Verification Commands, committed CI, scripts, manifests, and
+configuration. Run only exact evidenced commands and report every unavailable category as **not
+available**. Boy Scout every touched file and self-review against CLAUDE.md > Conventions.

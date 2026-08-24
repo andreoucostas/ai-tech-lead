@@ -15,6 +15,8 @@ description: >
 
 Match CLAUDE.md > Conventions > Dependency Injection (lifetimes, registration via extension methods, IOptions variants).
 
+**Applicability gate:** confirm a repository-evidenced .NET project and an existing DI registration pattern (`IServiceCollection`, `AddXxxServices`, or equivalent). If either is absent, report this skill as **not applicable**; do not introduce a DI framework because this distribution includes the recipe.
+
 0. **Confirm no existing service already owns the responsibility.** Search interfaces, implementations, and registrations by capability, not only the proposed class name. Extend or replace an existing registration through ordinary `/feature` or `/refactor` work instead of creating overlapping ownership.
 
 1. Create the interface and implementation. Interface is meaningful — don't create an interface just to mock it; consider whether a sealed class would do.
@@ -24,3 +26,5 @@ Match CLAUDE.md > Conventions > Dependency Injection (lifetimes, registration vi
    - **Transient** — factories and stateless helpers.
    - **Singleton** — caches and config.
 4. Inject via constructor — never resolve from `IServiceProvider` directly. Watch for lifetime mismatches (singleton holding scoped is a leak).
+
+Derive build, test, format, lint, migration/deploy, and data-validation commands from `CLAUDE.md > Conventions > Verification Commands`, committed CI, scripts, manifests, and configuration. Run only applicable evidenced commands and report every unavailable category as **not available**.

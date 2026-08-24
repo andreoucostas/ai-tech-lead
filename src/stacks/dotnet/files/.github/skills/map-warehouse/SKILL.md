@@ -20,24 +20,14 @@ Match CLAUDE.md > Conventions > Data Access. Produces a structural map of the wa
 layers, entities, keys, relationships, loads, controls — so changes follow the patterns that are
 already there, and so a report can be written against the joins the warehouse actually has.
 
-0. **Confirm this repo is a SQL data warehouse.** Two checks, both required:
-   - It is a SQL codebase: a `.sql` source tree (e.g. `Tables/`, `StoredProcedures/`, `Views/`),
-     a SQL project (e.g. SSDT `.sqlproj`/DACPAC), or `dbt_project.yml`.
-   - Warehouse signals — grep **inside the SQL artifacts only** (`*.sql`, project files, pipeline
-     definitions), never the whole tree, and require **at least two** independent hits:
-
-     | Signal | Grep (in `*.sql` / project files) |
-     |--------|-----------------------------------|
-     | Layer schemas | `\b(stg\|staging\|raw\|ods\|dim\|fact\|mart\|dw)\.` |
-     | Dimensional naming | `\bDim[A-Z][a-z]` or `\bFact[A-Z][a-z]` |
-     | Load/orchestration procs | `usp_Load\|usp_Process\|EXEC.*Load` |
-     | Batch/run control | `LoadRun\|BatchId\|LoadId\|Watermark` |
-     | Change-tracking columns | `EffectiveFrom\|EffectiveTo\|IsCurrent\|RowHash` |
-     | Partitioning | `PARTITION FUNCTION\|PARTITION SCHEME\|SWITCH PARTITION` |
-     | ETL pipeline artifacts | `*.dtsx`, ADF/Synapse pipeline JSON, dbt models |
-
-   If either check fails, STOP — this recipe does not apply. This repo's data access follows a
-   different pattern; see `docs/defaults.md` > Data Access.
+0. **Confirm this repo is a SQL data warehouse with the shared classifier.** Run
+   `pwsh scripts/warehouse-map-check.ps1` (or `bash scripts/warehouse-map-check.sh`). The command
+   and `scripts/warehouse-signals.tsv` are the authoritative applicability gate used by bootstrap.
+   Continue when it reports `WAREHOUSE_MAP missing`, `stale`, `current`, or `declined`: each means
+   at least two independent warehouse signal categories were found. If it reports
+   `WAREHOUSE_MAP not-applicable`, STOP — this recipe does not apply. If it exits 2, do not guess;
+   report that applicability could not be determined. The richer patterns below are mapping
+   guidance only, never a second activation threshold.
 
 1. **Layers.** Identify each database/schema and its role: staging/raw (landing), ODS,
    warehouse core (dims + facts), marts, and the consumption surface — the reporting

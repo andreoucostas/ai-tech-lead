@@ -79,14 +79,18 @@ esac
 # Bail cleanly if no dotnet CLI on PATH.
 command -v dotnet >/dev/null 2>&1 || exit 0
 
-# Discover the build target: nearest .sln up the tree (build the whole solution so cross-project
-# breaks are caught), falling back to the nearest .csproj. The old root-cwd build silently built
-# nothing when the solution lived in a subdirectory.
+# Discover the build target: nearest solution that actually references a C# project (an SSDT-only
+# .sln is not .NET application evidence), falling back to the nearest .csproj. The old root-cwd
+# build silently built nothing when the solution lived in a subdirectory.
 dir=$(CDPATH= cd -- "$(dirname -- "$file_path")" 2>/dev/null && pwd) || exit 0
 target=""
 probe="$dir"
 while [ -n "$probe" ]; do
-  sln=$(find "$probe" -maxdepth 1 -name '*.sln' -type f 2>/dev/null | head -n1)
+  sln=""
+  for candidate in "$probe"/*.sln; do
+    [ -f "$candidate" ] || continue
+    if grep -Eqi '\.csproj' "$candidate" 2>/dev/null; then sln="$candidate"; break; fi
+  done
   if [ -n "$sln" ]; then target="$sln"; break; fi
   parent=$(dirname -- "$probe")
   [ "$parent" = "$probe" ] && break

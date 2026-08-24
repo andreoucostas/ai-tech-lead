@@ -17,8 +17,12 @@ The write-time guard hook blocks `#pragma warning disable`, skipped tests across
 **build**, where it binds every developer, every agent, and CI. Pairs with `docs/ci-integration.md`
 (leg 2) and `docs/enforcement-surfaces.md`.
 
+**Applicability gate:** confirm committed .NET projects and their compiler/test configuration. If
+none exist, report this skill as not applicable; do not add .NET build or analyzer infrastructure
+because the dotnet delivery profile was selected for a warehouse-only repository.
+
 1. **Warnings as errors**: copy `scripts/ci/Directory.Build.props.sample` to `Directory.Build.props`
-   at the solution root (or merge into an existing one — Leanness: don't duplicate). It sets
+   at the repository's evidenced build root (or merge into an existing one — Leanness: don't duplicate). It sets
    `TreatWarningsAsErrors`, `AnalysisLevel=latest-recommended`, and `EnforceCodeStyleInBuild`.
    The sample's `.editorconfig` fragment is xUnit-specific; use step 2 for NUnit or MSTest.
 2. **Test-integrity severities**: detect the test framework from package references and apply only
@@ -37,8 +41,10 @@ The write-time guard hook blocks `#pragma warning disable`, skipped tests across
        echo "NUnit [Ignore] is forbidden"; exit 1
      fi
      ```
-3. **CI**: nothing extra to add — `dotnet build` / `dotnet test` in the required build
-   (`docs/ci-integration.md`) now enforce it. Run the build once locally and show the result.
+3. **CI**: update `CLAUDE.md > Conventions > Verification Commands` with the exact evidenced build
+   and test invocations that exercise these settings, and put those commands in the required build
+   (`docs/ci-integration.md`). Do not infer a solution-level `dotnet build` / `dotnet test`. Run the
+   recorded command locally and show the result.
 4. **Don't weaken to go green** — a pre-existing warning wall is normal in brownfield: keep
    `TreatWarningsAsErrors` scoped (e.g. per-project opt-in or `<WarningsAsErrors>` for specific
    codes first), record the remainder in `TECH_DEBT.md` (Category: Standards), and ratchet up.

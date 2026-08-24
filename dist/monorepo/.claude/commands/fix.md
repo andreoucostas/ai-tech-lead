@@ -1,9 +1,9 @@
 ---
-description: "Bug-fix workflow: diagnose root cause first, write the failing regression test before any production code, apply the minimal fix, Boy Scout the blast radius only. Invoke for bugs, crashes, failing tests, and regressions."
+description: "Bug-fix workflow: diagnose and reproduce first, use a red regression test when an evidenced harness exists, apply the minimal fix, and Boy Scout the blast radius only. Invoke for bugs, crashes, failing tests, and regressions."
 argument-hint: "[bug description or failing test]"
 ---
 
-Diagnose and fix a bug in this mixed .NET + Angular codebase. Every decision must comply with the conventions and patterns in CLAUDE.md.
+Diagnose and fix a bug in this repository. Derive its applicable technologies and validation from repository evidence; do not infer .NET or Angular from this framework distribution. Every decision must comply with the conventions and patterns in CLAUDE.md.
 
 ## Input
 $ARGUMENTS
@@ -16,18 +16,17 @@ $ARGUMENTS
 - Determine the blast radius (what other code could be affected?)
 - State the root cause and your fix strategy before writing code
 
-### Step 2 — Write a failing regression test FIRST
-Before touching any production code:
-- Write a test that reproduces the bug
-- Run it — confirm it fails for the right reason
-- This test becomes the proof that the fix works
+### Step 2 — Reproduce before fixing
+Before touching production code, derive the repository's applicable test harness and validation commands from CLAUDE.md, committed CI, scripts, manifests, and configuration.
+- When an applicable harness exists, write a regression test that reproduces the bug and confirm it fails for the right reason before the fix. This test becomes the proof that the fix works.
+- When no applicable harness or test command exists, reproduce the bug with the strongest evidenced validation, report tests as **not available**, and do not introduce a foreign harness solely for this fix.
 
 ### Step 3 — Fix
 - Apply the minimal fix that addresses the root cause
 - Do not refactor unrelated code in the same change (that's what `/refactor` is for)
 
 ### Step 4 — Verify
-Run the touched stack's gates — the regression test must pass and nothing else should break. .NET: `dotnet build`, `dotnet test`, and `dotnet format`; Angular: `ng build`, `ng test --watch=false --browsers=ChromeHeadless`, and `ng lint` (if configured).
+Derive exact regression and related-suite commands plus applicable **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands for the changed technology from `CLAUDE.md`, committed CI, scripts, manifests, and configuration. Run only commands supported by that evidence; the regression test must pass and nothing else should break. Stack presence establishes only profile applicability; use any .NET or Angular command, runner, target, browser, project, configuration, or flags only when that exact full form is explicitly recorded in the evidence. Record each unavailable verification category as **not available**.
 
 ### Step 5 — Boy Scout (blast radius only)
 Apply Boy Scout Rule (CLAUDE.md > Boy Scout Rule) to files within the blast radius only. Do not boy-scout unrelated files in a bug fix.
@@ -38,5 +37,5 @@ Apply Boy Scout Rule (CLAUDE.md > Boy Scout Rule) to files within the blast radi
 ### Step 7 — Report
 - Root cause: what was wrong and why
 - Fix: what you changed
-- Regression test: what the new test covers
+- Regression test or strongest validation: what reproduced the bug and what verifies the fix (or why tests are **not available**)
 - Blast radius: what else was affected

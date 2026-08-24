@@ -1,1 +1,1 @@
-- Run `ng build`, `ng test --watch=false --browsers=ChromeHeadless`, and `ng lint` (if configured) after each fix
+- Derive exact applicable **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands from `CLAUDE.md`, committed CI, scripts, manifests, and configuration; run them after each fix and report every unsupported category as **not available**

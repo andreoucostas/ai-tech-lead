@@ -24,7 +24,7 @@ input=$(cat)
 SEP=$'\x1f'
 tool=""; fp=""; content=""
 
-if command -v jq >/dev/null 2>&1; then
+if command -v jq >/dev/null 2>&1 && printf '{}' | jq -e . >/dev/null 2>&1; then
   tool=$(printf '%s' "$input" | jq -r '.tool_name // .toolName // ""' 2>/dev/null)
   fp=$(printf '%s' "$input" | jq -r '.tool_input.file_path // .tool_input.filePath // .tool_input.path // .toolArgs.filePath // .toolArgs.file_path // .toolArgs.path // ""' 2>/dev/null)
   # file_text / new_str cover VS Code agent mode's text-editor tools (create / str_replace / insert).
@@ -42,8 +42,8 @@ else
   #      prints "Python was not found" and exits 49. A name-only probe would select it, and the
   #      parse below would then yield empty output under 2>/dev/null -- turning a loud INACTIVE
   #      warning into a silent failure open, which is strictly worse.
-  # So: execute each candidate and require it to actually round-trip JSON. Only runs when jq is
-  # absent, so the common path costs nothing extra.
+  # So: execute each candidate and require it to actually round-trip JSON. This fallback runs
+  # when jq is absent OR resolves by name but fails its own execution probe.
   pybin=""
   for cand in python3 python py; do
     if command -v "$cand" >/dev/null 2>&1 &&

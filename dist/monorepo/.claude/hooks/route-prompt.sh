@@ -17,9 +17,23 @@ if printf '%s' "$input" | grep -q '"hook_event_name"'; then is_claude="1"; fi
 # working interpreter exists, fall back to a regex that handles escaped quotes as a last resort.
 prompt=""
 pybin=""
-if command -v jq >/dev/null 2>&1; then
-  prompt=$(printf '%s' "$input" | jq -r '.prompt // ""' 2>/dev/null)
-else
+pybin_resolved=""
+jq_working=""
+if command -v jq >/dev/null 2>&1 && printf '{}' | jq -e . >/dev/null 2>&1; then jq_working="1"; fi
+resolve_pybin() {
+  [ -n "$pybin_resolved" ] && return
+  pybin_resolved="1"
+  for cand in python3 python py; do
+    if command -v "$cand" >/dev/null 2>&1 &&
+       [ "$(printf '{}' | "$cand" -c 'import json,sys; json.load(sys.stdin); sys.stdout.write("ok")' 2>/dev/null)" = "ok" ]; then
+      pybin=$cand; return
+    fi
+  done
+}
+if [ -n "$jq_working" ]; then
+  prompt=$(printf '%s' "$input" | jq -r '.prompt // ""' 2>/dev/null) || jq_working=""
+fi
+if [ -z "$jq_working" ]; then
   # Resolve a WORKING python, not merely a resolvable name -- same grammar as guard.sh, on which
   # this is modelled: a python.org install ships python.exe and no python3.exe, so probing only
   # `python3` guarantees this fallback never engages on Windows; and the Microsoft Store alias
@@ -27,12 +41,7 @@ else
   # found" and exits 49) -- a name-only probe would select it and then silently produce nothing.
   # So: execute each candidate and require it to actually round-trip JSON. Resolved lazily here
   # (only when jq is absent) and at most once per run, so the common jq path costs nothing extra.
-  for cand in python3 python py; do
-    if command -v "$cand" >/dev/null 2>&1 &&
-       [ "$(printf '{}' | "$cand" -c 'import json,sys; json.load(sys.stdin); sys.stdout.write("ok")' 2>/dev/null)" = "ok" ]; then
-      pybin=$cand; break
-    fi
-  done
+  resolve_pybin
   if [ -n "$pybin" ]; then
     prompt=$(printf '%s' "$input" | "$pybin" -c 'import json,sys
 try:
@@ -100,6 +109,9 @@ cat <<EOF
 
 This natural-language prompt was classified as **$intent**. The rails below mirror the framework rules (\`.github/instructions/framework-rules.instructions.md\` › Agentic Workflow; \`AGENTS.md\` › Agentic Workflow on AGENTS.md-native tools) section 1 — the canonical definition, already in your context; they are repeated here for salience. Apply them before responding. If the actual intent differs, say so and proceed normally.
 
+## Verification execution boundary
+Derive all six command categories, but run only safely executable verification. A recorded migration/deploy command is manual/CI-only unless repository evidence identifies that exact invocation as non-mutating validation/dry-run, or the developer explicitly authorizes execution against a known target. Otherwise report it as recorded but not run.
+
 EOF
 
 case "$intent" in
@@ -115,9 +127,9 @@ case "$intent" in
   fix)
     cat <<'EOF'
 1. Diagnose root cause first; state it before writing any code.
-2. Write a failing regression test BEFORE touching production code; confirm it fails for the right reason.
+2. When the repository evidences an applicable test harness, write a failing regression test BEFORE touching production code; otherwise reproduce with the strongest evidenced validation and report tests as not available — never introduce a foreign harness solely for this fix.
 3. Apply the minimal fix; do not refactor unrelated code.
-4. Verify the regression test passes, the full related suite passes, build is clean, lint is clean.
+4. Derive exact regression and suite commands plus applicable build, test, format, lint, migration/deploy, and data-validation commands from repository evidence; run only safely executable applicable commands under the execution boundary above and report each unsupported category as not available.
 5. Apply Boy Scout to BLAST RADIUS only — never boy-scout unrelated files in a fix.
 6. Report root cause, fix, regression-test coverage, blast radius.
 EOF
@@ -125,7 +137,7 @@ EOF
   feature)
     cat <<'EOF'
 1. Design check first — list affected layers, files to create/modify, failure modes, test strategy.
-2. Decompose into ordered subtasks; run build + test + lint after each before continuing.
+2. Decompose into ordered subtasks; derive exact build, test, format, lint, migration/deploy, and data-validation commands from repository evidence, then run only safely executable applicable commands under the execution boundary above after each before continuing (report unsupported categories as not available).
 3. Apply Boy Scout to every file you touch.
 4. Self-review against CLAUDE.md > Conventions; flag new patterns or resolved tech debt.
 5. Present what was implemented and tested.
@@ -139,9 +151,9 @@ EOF
     ;;
   refactor)
     cat <<'EOF'
-1. Verify starting state — build and tests must pass BEFORE touching anything.
-2. If no tests exist for the target code, write baseline tests FIRST.
-3. Refactor incrementally; build + test after each meaningful change.
+1. Derive exact build, test, format, lint, migration/deploy, and data-validation commands from repository evidence and establish a green baseline BEFORE touching anything; report unsupported categories as not available.
+2. If the repository has an applicable test harness but the target lacks coverage, write baseline tests FIRST; otherwise report tests as not available, use the strongest evidenced validation, and never introduce a foreign harness solely for this refactor.
+3. Refactor incrementally; run applicable checks after each meaningful change.
 4. Apply Boy Scout to every file you touched.
 5. Verify final state — no behavior should have changed.
 6. Present a before/after summary INCLUDING net LOC delta.
@@ -155,9 +167,9 @@ EOF
   test)
     cat <<'EOF'
 1. Match existing test structure, naming convention, framework, and mocking approach.
-2. Cover happy path, edge cases, error paths, boundary conditions.
+2. Choose the smallest risk-relevant set: the principal behavior plus only consequential error, edge, or boundary cases; do not build a case matrix for its own sake.
 3. Do not test framework behavior — test public behavior only.
-4. Verify all new tests pass.
+4. Derive exact applicable build, test, format, lint, migration/deploy, and data-validation commands from repository evidence; run only safely executable applicable commands under the execution boundary above and report every unsupported category as not available.
 5. Report what was tested and what's still uncovered.
 EOF
     ;;
@@ -175,10 +187,11 @@ EOF
     cat <<'EOF'
 1. Read TECH_DEBT.md and find items in the specified area.
 2. Confirm each item still exists in the code (it may have been fixed already).
-3. Recommend fix-now vs defer per item, with reason.
-4. After fixes: update TECH_DEBT.md — remove resolved items, add newly discovered.
-5. Apply Boy Scout to every file touched.
-6. Report what was fixed/deferred plus the updated TECH_DEBT diff.
+3. Derive applicable tests and other validation from repository evidence; when no test harness exists, report tests as not available and use the strongest evidenced validation — never introduce a foreign harness solely for debt cleanup.
+4. Recommend fix-now vs defer per item, with reason.
+5. After fixes: update TECH_DEBT.md — remove resolved items, add newly discovered.
+6. Apply Boy Scout to every file touched.
+7. Report what was fixed/deferred plus the validation results and updated TECH_DEBT diff.
 EOF
     ;;
   review)
@@ -186,7 +199,7 @@ EOF
 This is a quality gate, not a rubber stamp.
 1. Check correctness and every CLAUDE.md > Conventions item per changed file.
 2. Check test quality — behavior coverage, descriptive names, regression detection.
-3. Run build + tests yourself — do not trust they pass.
+3. Derive and run only safely executable build, test, format, lint, migration/deploy, and data-validation commands supported by repository evidence yourself, subject to the execution boundary above; do not trust they pass, and report unsupported categories as not available.
 4. Check architecture/debt trajectory and Boy Scout application.
 Output: APPROVE or REQUEST CHANGES with a severity-tagged issues table.
 EOF
@@ -239,9 +252,13 @@ else
 $queued_text"; else body=$queued_text; fi
   fi
   [ -z "$body" ] && exit 0
-  if command -v jq >/dev/null 2>&1; then
-  printf '%s' "$body" | jq -Rs '{additionalContext: ., hookSpecificOutput: {hookEventName: "UserPromptSubmit", additionalContext: .}}'
-  elif [ -n "$pybin" ]; then
+  if [ -n "$jq_working" ]; then
+    encoded=$(printf '%s' "$body" | jq -Rs '{additionalContext: ., hookSpecificOutput: {hookEventName: "UserPromptSubmit", additionalContext: .}}' 2>/dev/null) || encoded=""
+    if [ -n "$encoded" ]; then printf '%s\n' "$encoded"; exit 0; fi
+    jq_working=""
+  fi
+  resolve_pybin
+  if [ -n "$pybin" ]; then
   printf '%s' "$body" | "$pybin" -c 'import json,sys
 b = sys.stdin.read()
 print(json.dumps({"additionalContext": b, "hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": b}}))'

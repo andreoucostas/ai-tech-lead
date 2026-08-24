@@ -5,10 +5,14 @@ argument-hint: "[files or PR; empty = uncommitted changes]"
 
 Run a security review of changed code as a senior tech lead. This is a quality gate, not a rubber stamp — every finding must be acted on, deferred with rationale, or rejected with rationale.
 
+Apply every profile-labelled review step and checklist below only when repository evidence and files in scope establish that profile. Do not infer .NET, Angular, or a package ecosystem from this framework distribution; report unavailable profile checks as **not available**.
+
 ## Input
 $ARGUMENTS
 
 If no specific files or PR given, review the most recent uncommitted changes (both staged and unstaged).
+
+Before invoking verification or a dependency scan, derive exact applicable **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands from `CLAUDE.md`, committed CI, scripts, manifests, and configuration. Run only commands supported by that evidence; report every unsupported category and any dependency scan without an evidenced command as **not available**.
 
 ## Execution
 
@@ -19,16 +23,16 @@ In a single message, spawn the `security-auditor` subagent via the `Task` tool a
 Read `FRAMEWORK-CONTEXT.md`. If it documents tenancy boundaries/resolution, dashboard auth contracts, or shared-library auth/token patterns:
 - Verify the changes do not bypass tenant isolation / tenant context (subdomain / header / claim).
 - Verify auth/token patterns from `Shared Libraries` are used correctly (not reimplemented).
-- **.NET:** Flag any direct use of low-level auth APIs when a shared-library wrapper exists.
-- **Angular:** Flag any direct `localStorage.setItem('token', ...)` when a shared interceptor or auth client exists.
+- **.NET (only when evidenced):** Flag any direct use of low-level auth APIs when a shared-library wrapper exists.
+- **Angular (only when evidenced):** Flag any direct `localStorage.setItem('token', ...)` when a shared interceptor or auth client exists.
 
 ### Step 3 — Apply senior judgement
 The auditor handles pattern-level checks. You handle what static patterns cannot:
 
-- **Authorisation logic** — **.NET:** does each endpoint enforce the right permission for the resource it touches? Object-level auth (a user can only mutate their own records) is invisible to a pattern scan. **Angular:** client-side hide-if-not-admin is UX, not security — verify the backend re-checks on every state-changing request.
-- **Data flow / trust boundaries** — **.NET:** does sensitive data leave the trust boundary it should stay within? (DB → API DTO → log — does anything sensitive reach a place it shouldn't?) **Angular:** anything coming from the user, the URL, the DOM, or `postMessage` is untrusted. Trace it through the flow.
-- **Concurrency / race conditions** (.NET): are check-then-act sequences correct? (e.g., balance check then debit)
-- **Token lifecycle** (Angular): how is the token acquired, stored, refreshed, revoked? Is there a logout that actually invalidates server-side?
+- **Authorisation logic** — **.NET (only when evidenced):** does each endpoint enforce the right permission for the resource it touches? Object-level auth (a user can only mutate their own records) is invisible to a pattern scan. **Angular (only when evidenced):** client-side hide-if-not-admin is UX, not security — verify the backend re-checks on every state-changing request.
+- **Data flow / trust boundaries** — **.NET (only when evidenced):** does sensitive data leave the trust boundary it should stay within? (DB → API DTO → log — does anything sensitive reach a place it shouldn't?) **Angular (only when evidenced):** anything coming from the user, the URL, the DOM, or `postMessage` is untrusted. Trace it through the flow.
+- **Concurrency / race conditions** (.NET only when evidenced): are check-then-act sequences correct? (e.g., balance check then debit)
+- **Token lifecycle** (Angular only when evidenced): how is the token acquired, stored, refreshed, revoked? Is there a logout that actually invalidates server-side?
 - **Error envelopes**: do error responses leak schema (SQL state, full type names, stack traces; full backend stack, internal hostnames) outside Development?
 
 ### Step 4 — Verify the auditor's findings
@@ -57,8 +61,8 @@ fragments, secret-derived fingerprints, or unapproved references/URLs.
 |---|----------|-----------|------|--------|
 
 ### Auth / authz / token analysis
-- Object-level checks present (.NET): yes / no / partial
-- Token storage location (Angular): localStorage / sessionStorage / httpOnly cookie / memory
+- Object-level checks present (where .NET is evidenced): yes / no / partial / not available
+- Token storage location (where Angular is evidenced): localStorage / sessionStorage / httpOnly cookie / memory / not available
 - Tenant isolation / context propagation verified: yes / no / n/a
 - Bypass paths considered: ...
 
@@ -67,7 +71,7 @@ fragments, secret-derived fingerprints, or unapproved references/URLs.
 - New surface introduced: yes / no, describe
 
 ### Dependencies flagged
-- (Auditor output, summarised; recommend the touched stack's scan if this is a release-bound branch — .NET: `dotnet list package --vulnerable --include-transitive`; Angular: `npm audit --omit=dev`)
+- Auditor output, summarised. For a release-bound branch, recommend or run only the exact repository-evidenced dependency scan for an applicable profile; otherwise report the dependency scan as **not available**.
 
 ### Recommended next actions
 1. ...
@@ -116,7 +120,7 @@ If the verdict is `APPROVE` (no critical or high findings), note this in the out
 
 `/security-review` is the per-change gate. Back it with automated scanning so regressions are caught between reviews:
 
-- **Dependencies**: run the `dependency-audit` skill — vulnerable/deprecated NuGet **and** npm packages plus Dependabot (GitHub) or Renovate (Bitbucket / host-agnostic).
+- **Dependencies**: for each repository-evidenced package profile, run the `dependency-audit` skill using only its exact evidenced dependency command and configure Dependabot (GitHub) or Renovate (Bitbucket / host-agnostic). For warehouse-only or other profiles without an evidenced dependency scanner, record the scan as **not available**; never infer NuGet or npm commands from this framework distribution.
 - **SAST**: on GitHub, enable **CodeQL** code scanning (C# **and** JavaScript/TypeScript). On **Bitbucket Data Center**, CodeQL is unavailable — run a SAST tool (Semgrep, SonarQube) in Bitbucket Pipelines / Bamboo / Jenkins and publish results via the **Code Insights API** so findings appear inline on the PR. See the README "Running on Bitbucket Data Center" section.
 
 These are infrastructure, not review steps — recommend them once, then let CI carry them.

@@ -5,6 +5,32 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.77.0 — 2026-08-24
+
+- Bootstrap now selects only the .NET, Angular, and warehouse-SQL profiles evidenced from the Git
+  root. Warehouse-only and partial-stack repositories no longer need an absent application
+  workspace or receive analysis for one.
+- Exact repository-evidenced commands are recorded under `CLAUDE.md > Conventions > Verification
+  Commands` for build, test, format, lint, migration/deploy, and data validation; unsupported
+  categories remain `not available`. Feature, fix, refactor, review, test, debt, rebootstrap,
+  routing, verification-bearing skills, defaults, and CI guidance no longer infer both application
+  stacks or their commands from this distribution's name. Migration/deploy inventory remains
+  manual/CI-only unless the exact command is non-mutating or explicitly authorized for a known target.
+- `framework-doctor` requires toolchains only for evidenced application markers, including
+  structurally valid Angular workspace/package/Nx evidence. SQL-only repositories report application tooling and its app canary as not
+  applicable; incomplete bounded marker scans are `CANT-VERIFY` and generated/dependency trees are
+  excluded. A `.sln` containing only SSDT/`*.sqlproj` projects is not .NET application evidence and
+  does not activate the dotnet post-write branch.
+- Brownfield `/adopt` still owns archive and merge, then passes the detected profiles into its
+  Phase-7 `/bootstrap` run. It excludes every current path in `framework-ownership.json` from
+  legacy archival and retains the pending marker until immediately before that handoff.
+- Root auto-detection selects this distribution for Angular plus warehouse evidence so neither
+  profile is lost. Testing defaults prefer the smallest risk-relevant set and do not create a
+  foreign harness as an incidental side effect.
+- Framework-shipped skills remain installed byte-stable as an applicability-gated superset;
+  bootstrap advertises only evidenced tasks and adds separate project-specific skills instead of
+  deleting or tailoring shipped recipes.
+
 ## 0.76.0 — 2026-08-23
 
 **Updates are now inspectable and converge across skipped releases.** The installer prints a

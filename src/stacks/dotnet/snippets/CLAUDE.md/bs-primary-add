@@ -1,2 +1,2 @@
-8. Split fat methods (>30 lines) into focused private methods
-9. Missing unit tests for public methods you're modifying
+8. Split mixed-responsibility methods; never use a line-count threshold
+9. Add risk-relevant tests only, and only with a harness

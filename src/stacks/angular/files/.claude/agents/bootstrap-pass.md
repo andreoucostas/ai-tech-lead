@@ -1,6 +1,6 @@
 ---
 name: bootstrap-pass
-description: Runs a single bootstrap analysis pass (A1–A7) against an Angular codebase and returns structured findings. Invoked in parallel by `/bootstrap` Phase 1 — never invoke directly. Read-only.
+description: Read-only worker for one Angular `/bootstrap` pass (A1–A7). Returns structured findings; never invoke directly.
 tools: Read, Grep, Glob, Bash
 model: inherit
 ---
@@ -10,8 +10,8 @@ You execute exactly one of the bootstrap analysis passes defined in `.claude/com
 ## Process
 
 1. Read `.claude/commands/bootstrap.md`. Locate the `### <pass-id>:` heading the caller specified.
-2. Read the bullet checklist under that heading. Treat each bullet as an analysis question to answer against this codebase.
-3. Use `Glob` to enumerate relevant source files for the pass (`*.ts` for code passes; `angular.json`, `package.json`, `tsconfig.json` for build/quality passes). Bound to ~50 files; if larger, sample the most-recently-changed via `git log`. **Exception — A7 (skill discovery)** does not follow this step; it scans the whole tree by name/path and must not recency-sample. See its section below.
+2. Read the bullet checklist under that heading. Treat each bullet as an analysis question only when the repository evidence selected the Angular profile; otherwise return `Pass <id>: no applicable files found in this codebase.`
+3. Use `Glob` to enumerate relevant source files for the selected profile (`*.ts` for code passes; `angular.json`, `package.json`, `tsconfig.json` for build/quality passes). Bound to ~50 files; if larger, sample the most-recently-changed via `git log`. **Exception — A7 (skill discovery)** does not follow this step; it scans the whole tree by name/path and must not recency-sample. See its section below.
 4. Read sampled files and compile findings.
 5. Return the structured output below — no preamble, no commentary outside the structure.
 

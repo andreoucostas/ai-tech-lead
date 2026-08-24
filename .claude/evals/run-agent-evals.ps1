@@ -2067,38 +2067,23 @@ export class FormFieldComponent implements ControlValueAccessor {
         $sqlFiles = @(Get-ChildItem -LiteralPath $warehouseTemp -Filter '*.sql' -File -Recurse)
         if ($sqlFiles.Count -eq 0) { throw 'warehouse fixture has no SQL source tree' }
         $sqlText = ($sqlFiles | ForEach-Object { Get-Content -Raw -LiteralPath $_.FullName }) -join "`n"
-        # Copied exactly from the six SQL-signal rows in map-warehouse/SKILL.md step 0.
-        $stepZeroPatterns = @(
-            '\b(stg|staging|raw|ods|dim|fact|mart|dw)\.',
-            '\bDim[A-Z][a-z]|\bFact[A-Z][a-z]',
-            'usp_Load|usp_Process|EXEC.*Load',
-            'LoadRun|BatchId|LoadId|Watermark',
-            'EffectiveFrom|EffectiveTo|IsCurrent|RowHash',
-            'PARTITION FUNCTION|PARTITION SCHEME|SWITCH PARTITION'
-        )
-        # Parse the whole shipped signal table. Six rows are SQL regexes; the final ETL-artifact
-        # row is deliberately a file-discovery signal and must not be applied to concatenated SQL.
+        # The shared catalog, not the skill prose, is the classifier contract. Prove the skill
+        # delegates to it and prove this fixture still reaches the catalog's two-category boundary.
         $skillPath = Join-Path $repo 'src/stacks/dotnet/files/.claude/skills/map-warehouse/SKILL.md'
-        $skillLines = @(Get-Content -LiteralPath $skillPath)
-        $signalHeaderIndex = -1
-        for ($lineIndex = 0; $lineIndex -lt $skillLines.Count; $lineIndex++) { if ($skillLines[$lineIndex] -match '^\s*\|\s*Signal\s*\|') { $signalHeaderIndex = $lineIndex; break } }
-        if ($signalHeaderIndex -lt 0 -or $skillLines[$signalHeaderIndex + 1] -notmatch '^\s*\|[-| ]+\|\s*$') { throw 'map-warehouse SKILL.md step-0 signal table header was not found.' }
+        $skillText = Get-Content -Raw -LiteralPath $skillPath
+        if ($skillText -notmatch 'scripts/warehouse-map-check\.ps1' -or $skillText -notmatch 'scripts/warehouse-signals\.tsv' -or $skillText -notmatch 'authoritative applicability gate') { throw 'map-warehouse SKILL.md no longer delegates applicability to the authoritative checker and signal catalog.' }
+        $signalPath = Join-Path $repo 'src/core/scripts/warehouse-signals.tsv'
         $signalRows = @()
-        for ($lineIndex = $signalHeaderIndex + 2; $lineIndex -lt $skillLines.Count -and $skillLines[$lineIndex] -match '^\s*\|'; $lineIndex++) { $signalRows += $skillLines[$lineIndex] }
-        if ($signalRows.Count -ne 7) { throw "map-warehouse SKILL.md step-0 signal table has $($signalRows.Count) data rows; expected exactly 7 (six SQL regex rows plus one ETL file-discovery row)." }
-        $shippedSqlPatterns = @()
-        foreach ($signalRow in $signalRows[0..5]) {
-            $rowPatterns = @([regex]::Matches($signalRow, '`([^`]+)`') | ForEach-Object { $_.Groups[1].Value -replace '\\\|', '|' })
-            if ($rowPatterns.Count -eq 0) { throw "map-warehouse SKILL.md SQL signal row carries no backticked pattern: $signalRow" }
-            $shippedSqlPatterns += ($rowPatterns -join '|')
+        foreach ($signalLine in Get-Content -LiteralPath $signalPath) {
+            if ([string]::IsNullOrWhiteSpace($signalLine) -or $signalLine.StartsWith('#')) { continue }
+            $parts = $signalLine -split "`t"
+            if ($parts.Count -ne 2 -or -not $parts[0] -or -not $parts[1]) { throw "warehouse-signals.tsv carries an invalid row: $signalLine" }
+            try { $null = [regex]::new($parts[1]) } catch { throw "warehouse-signals.tsv carries an invalid .NET regex for '$($parts[0])': $($parts[1])" }
+            $signalRows += [pscustomobject]@{ Category=$parts[0]; Pattern=$parts[1] }
         }
-        if ($signalRows[6] -notmatch '^\s*\|\s*ETL pipeline artifacts\s*\|\s*`\*\.dtsx`,\s*ADF/Synapse pipeline JSON,\s*dbt models\s*\|\s*$') { throw 'map-warehouse SKILL.md final step-0 row is no longer the expected ETL file-discovery signal.' }
-        if ($stepZeroPatterns.Count -ne $shippedSqlPatterns.Count) { throw "warehouse fixture carries $($stepZeroPatterns.Count) SQL signal patterns but map-warehouse/SKILL.md carries $($shippedSqlPatterns.Count)." }
-        for ($patternIndex = 0; $patternIndex -lt $stepZeroPatterns.Count; $patternIndex++) {
-            if ($stepZeroPatterns[$patternIndex] -cne $shippedSqlPatterns[$patternIndex]) { throw "warehouse fixture step-0 SQL pattern $($patternIndex + 1) drifted from map-warehouse/SKILL.md: fixture='$($stepZeroPatterns[$patternIndex])' shipped='$($shippedSqlPatterns[$patternIndex])'" }
-        }
-        $stepZeroHits = @($stepZeroPatterns | Where-Object { $sqlText -match $_ })
-        if ($stepZeroHits.Count -lt 2) { throw "warehouse fixture failed exact shipped step-0 signal patterns: hits=$($stepZeroHits.Count)" }
+        if ($signalRows.Count -lt 2) { throw 'warehouse-signals.tsv cannot express the two-category applicability boundary.' }
+        $stepZeroHits = @($signalRows | Where-Object { $sqlText -match $_.Pattern })
+        if ($stepZeroHits.Count -lt 2) { throw "warehouse fixture matched only $($stepZeroHits.Count) authoritative signal categories; expected at least 2." }
         $factText = Get-Content -Raw -LiteralPath (Join-Path $warehouseTemp 'Tables/fact.FactSales.sql')
         foreach ($deadColumn in 'RegionName','CategoryName','SegmentName') {
             if ($factText -notmatch "\b$deadColumn\b") { throw "warehouse fixture is missing dead fact column $deadColumn" }

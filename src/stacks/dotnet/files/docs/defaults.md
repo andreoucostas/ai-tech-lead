@@ -1,7 +1,22 @@
-# Greenfield Conventions — .NET Defaults
+# Greenfield Conventions — Evidence-Matched Defaults
 
-> Reference defaults for a modern .NET solution. These apply only when CLAUDE.md > Conventions has not been populated by `/bootstrap`.
+> Reference defaults for the technologies this repository actually evidences, including a .NET application and/or SQL/warehouse sources. These apply only when CLAUDE.md > Conventions has not been populated by `/bootstrap`.
 > Once `/bootstrap` runs, CLAUDE.md > Conventions is the authoritative source — these defaults are for cold-start scaffolding only.
+
+The distribution name is not technology evidence. Apply the .NET application headings only when
+one or more `*.csproj` files exist; a `.sln` is only a locator after that evidence. The raw-SQL and
+warehouse blocks under Data Access stand on their own for a warehouse-only repository.
+
+### Verification Commands
+
+For each durable category — **build**, **test**, **format**, **lint**, **migration/deploy**, and
+**data-validation** — use an exact command only when committed repository evidence names it:
+CLAUDE.md conventions, CI definitions, scripts/task runners, manifests, or tool configuration.
+Record that exact evidence path with the command. If a category has no applicable profile or
+evidenced command, report `not available (no evidenced command)`; never invent `dotnet build`,
+`dotnet test`, or another command from this distribution's name.
+
+## .NET application defaults (only when .NET application markers exist)
 
 ### .editorconfig & Analysers
 <!-- Check for .editorconfig, Directory.Build.props, and Roslyn analyser rules. Reference them here so AI tools respect toolchain-enforced conventions. -->
@@ -19,6 +34,8 @@
 - Services: scoped. Factories and stateless helpers: transient. Caches and config: singleton.
 - Register via extension methods per project, not in Program.cs directly.
 - Use `IOptions<T>` for static config, `IOptionsMonitor<T>` for config that can change at runtime, `IOptionsSnapshot<T>` for scoped config refresh.
+
+## Evidence-matched data-access defaults
 
 ### Data Access
 Data-access defaults are conditional on what the repo evidences in csproj package references or repo artifacts such as SQL project/source trees. Apply only the matching block; if none match, ask.
@@ -53,6 +70,8 @@ Data-access defaults are conditional on what the repo evidences in csproj packag
 **If none detected:**
 - For greenfield work, ask the developer before introducing a data-access stack.
 
+## .NET application defaults (continued)
+
 ### API Design
 - Controllers are thin — delegate to services immediately. Minimal APIs are acceptable for simple endpoints if the project uses them.
 - Request/response DTOs are separate from domain entities. Never expose domain models in API contracts.
@@ -86,17 +105,19 @@ Mocking: `NSubstitute` · `Moq` · `FakeItEasy`. Assertions: `FluentAssertions` 
   the job, raise it in `TECH_DEBT.md` and get a human decision rather than migrating as a side effect
   of adding tests.
 
-**If no test suite exists anywhere in the solution (greenfield only):**
-- Unit tests: xUnit + NSubstitute. Integration tests: `WebApplicationFactory`.
-- Test naming: `MethodName_Scenario_ExpectedResult`.
-
-- No test suite yet? Use the `add-tests` skill — its suite-bootstrap mode scaffolds the harness and first risk-first tests.
-- Every public behavior has a test. Test behavior, not implementation details.
+**If no test suite exists anywhere in the repository (greenfield only):**
+- Do not create a harness as an incidental side effect of feature, fix, refactor, or debt work.
+- When establishing tests is explicitly in scope, use the `add-tests` skill to propose the smallest
+  harness and first risk-first tests; get agreement before adding a framework.
+- Prefer a few tests for consequential branching, boundaries, and regressions over one test per
+  public member. Test observable behavior, not implementation details.
 
 ### Test shape
 Choose the level by what the test actually exercises — *push each test to the lowest level that still runs real behavior; test at the boundary, not the mock.* A heuristic, not a fixed ratio; `/bootstrap` replaces it with the shape your codebase warrants.
 - Domain / application logic (rules, calculations, branching, validation) → unit-dense.
-- Cross-cutting paths (routing, model binding, data access, auth, serialization) → integration via `WebApplicationFactory`; exercise the real pipeline, don't mock it.
+- Cross-cutting paths (routing, model binding, data access, auth, serialization) → use the
+  repository's established integration boundary (for example `WebApplicationFactory` where already
+  evidenced); exercise the real pipeline, don't invent or over-mock it.
 - Critical journeys → a sparse top layer of full-stack behavioral checks. Few, high-value.
 - Boundary-heavy / gateway services → weight toward integration (honeycomb / risk-based), not unit.
 - Anti-shape: the inverted suite (mostly slow end-to-end tests over a thin unit base). Slow + flaky = wrong shape.

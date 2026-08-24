@@ -1,1 +1,1 @@
-Refactor code in this .NET codebase without changing behavior. Every decision must comply with the conventions in CLAUDE.md.
+Refactor code in this repository without changing behavior. Derive the applicable technology from repository evidence; do not infer .NET from this framework distribution. Every decision must comply with the conventions in CLAUDE.md.

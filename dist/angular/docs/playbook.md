@@ -43,12 +43,12 @@ Claude Code loads `CLAUDE.md` directly. **GitHub Copilot (agent mode & CLI), Cod
 ### Tier 3 — Explicit (workflow commands)
 **Files**: `.claude/commands/*.md` (canonical), `.github/prompts/*.prompt.md` (Copilot Chat wrappers)
 
-Purpose-built workflows invoked via `/command` in either Claude Code or Copilot Chat. Each encodes a specific methodology: `/feature` decomposes into subtasks, `/fix` writes regression tests first, `/design` forces design thinking before code. The Copilot prompt files are thin wrappers that delegate to the canonical `.claude/commands/` files — single source of truth per workflow.
+Purpose-built workflows invoked via `/command` in either Claude Code or Copilot Chat. Each encodes a specific methodology: `/feature` decomposes into subtasks, `/fix` reproduces first and uses a red regression test when an applicable harness exists, and `/design` forces design thinking before code. The Copilot prompt files are thin wrappers that delegate to the canonical `.claude/commands/` files — single source of truth per workflow.
 
 ### Automated Verification (Hooks)
 **File**: `.claude/settings.json`
 
-Hooks fire automatically after Claude Code writes `.ts` files. They run `npx tsc --noEmit` (type-check only, 1-2 seconds) to catch compilation errors immediately. The agent sees the output and self-corrects without the developer intervening. Full `ng build` and `ng test` run inside command workflows, not as hooks — they're too slow for per-file-write execution.
+In a repository with evidenced Angular application markers, hooks fire automatically after Claude Code writes `.ts` files. They run the configured type-check path to catch compilation errors immediately. A repository without those markers triggers no Angular application hook. Full repository-evidenced build and test commands run explicitly within command workflows, not as hooks — they're too slow for per-file-write execution.
 
 ---
 

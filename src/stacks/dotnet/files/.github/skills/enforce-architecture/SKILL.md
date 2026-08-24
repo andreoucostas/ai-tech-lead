@@ -10,13 +10,20 @@ description: >
 
 # Enforce architecture deterministically (.NET — NetArchTest)
 
-`solid-check` covers SOLID semantically per diff; this makes the *structural* part (DIP / dependency direction) a **build-breaking** CI gate. Pairs with the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools)`.
+`solid-check` covers SOLID semantically per diff; this makes the *structural* part (DIP / dependency direction) a **build-breaking** CI gate. Pairs with the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools).
+
+**Applicability gate:** confirm committed .NET projects and real dependency boundaries first. If
+none exist, report this skill as not applicable; the dotnet delivery profile alone does not justify
+creating a .NET architecture-test project in a warehouse-only repository.
 
 1. **Test project**: add NetArchTest to an existing test project if one exists (Leanness — don't create a parallel project); otherwise add `tests/ArchitectureTests/ArchitectureTests.csproj` referencing `NetArchTest.Rules` + the projects to govern.
 2. **Rules**: copy `scripts/ci/ArchitectureTests.sample.cs`, translate it to the repo's existing
-   test framework if that is not xUnit, and adjust the namespaces to this solution. Cover at least:
+   test framework if that is not xUnit, and adjust the namespaces to this repository's project graph. Cover at least:
    - Domain has **no** dependency on Application / Infrastructure / API (inward-only).
    - Application does not depend on Infrastructure / API.
    - (Optional, where detectable) controllers/handlers depend on service **interfaces**, not concretes — supports DIP.
-3. **CI**: it runs under `dotnet test`, so ensure the architecture project is in the solution / test run. On Bitbucket Data Center, that's your Bamboo/Jenkins/pipeline `dotnet test` step (no GitHub Actions).
+3. **CI**: derive the exact scoped command that runs the new architecture project in this repo
+   (for example a targeted `dotnet test` when that is the established runner), record it under
+   `CLAUDE.md > Conventions > Verification Commands`, and put that exact command in the required
+   build. Do not assume a solution-level invocation or add the project to a nonexistent solution.
 4. **Don't weaken rules to go green** — record current violations in `TECH_DEBT.md` (Category: Architecture) and burn them down via the Trojan Horse.

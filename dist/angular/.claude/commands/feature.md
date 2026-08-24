@@ -3,7 +3,7 @@ description: "Full feature workflow: plan gate, ordered subtasks with build+test
 argument-hint: "[feature description]"
 ---
 
-Implement a new feature in this Angular codebase. Every decision must comply with the conventions and patterns in CLAUDE.md.
+Implement a new feature in this repository. Derive its applicable technologies, layers, and validation from repository evidence; do not infer Angular from this framework distribution. Every decision must comply with the conventions and patterns in CLAUDE.md.
 
 ## Input
 $ARGUMENTS
@@ -33,7 +33,7 @@ Decompose into ordered subtasks. Execute each fully before starting the next:
 3. **Component layer** — smart and dumb components, templates, styles + component tests
 4. **Integration/E2E** — end-to-end verification of the feature flow
 
-After each subtask, run `ng build`, `ng test --watch=false --browsers=ChromeHeadless`, and `ng lint` (if configured). Fix any compilation errors, test failures, or lint violations before starting the next subtask. Never leave the codebase in a broken state.
+Before the first subtask, derive exact **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands from `CLAUDE.md`, committed CI, scripts, manifests, and configuration. After each subtask, run only commands applicable to the changed area. An Angular profile establishes only profile applicability; use any command, target, runner, browser, project, configuration, or flags only when that exact full form is explicitly recorded in the evidence. Record every category without a supported command as **not available**; fix applicable-command failures before the next subtask. Never leave the codebase in a broken state.
 
 ### Step 3 — Boy Scout
 Apply the Boy Scout Rule (CLAUDE.md > Boy Scout Rule) to every file you modified. Mandatory.
