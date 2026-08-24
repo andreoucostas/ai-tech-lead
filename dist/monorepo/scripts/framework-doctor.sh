@@ -503,24 +503,27 @@ else
           if [ -f "$marker" ]; then needs_dotnet=1; else marker_scan_failed=1; fi
         elif [ -L "$marker" ]; then marker_scan_failed=1; fi
       done
-      for marker in "$marker_dir"/angular.json "$marker_dir"/package.json "$marker_dir"/nx.json "$marker_dir"/project.json; do
-        if [ -L "$marker" ]; then marker_scan_failed=1; continue; fi
-        if [ ! -e "$marker" ]; then [ -L "$marker" ] && marker_scan_failed=1; continue; fi
-        if [ ! -f "$marker" ]; then marker_scan_failed=1; continue; fi
+      # Literal paths such as "$marker_dir/package.json" never enter glob matching, so nocaseglob
+      # cannot make them find PACKAGE.JSON on a case-sensitive filesystem. Enumerate once, then use
+      # nocasematch to select the exact supported marker names.
+      for marker in "$marker_dir"/*; do
         marker_name=${marker##*/}
         case "$marker_name" in
-          angular.json)
-            if [ ! -r "$marker" ]; then marker_scan_failed=1; continue; fi
-            angular_json_evidence workspace "$marker"; marker_status=$?
-            if [ "$marker_status" -eq 0 ]; then needs_angular=1; else marker_scan_failed=1; fi;;
-          package.json)
-            if [ ! -r "$marker" ]; then marker_scan_failed=1; continue; fi
-            angular_json_evidence package "$marker"; marker_status=$?
-            if [ "$marker_status" -eq 0 ]; then needs_angular=1; elif [ "$marker_status" -ne 1 ]; then marker_scan_failed=1; fi;;
-          nx.json|project.json)
-            if [ ! -r "$marker" ]; then marker_scan_failed=1; continue; fi
-            angular_json_evidence nx "$marker"; marker_status=$?
-            if [ "$marker_status" -eq 0 ]; then needs_angular=1; elif [ "$marker_status" -ne 1 ]; then marker_scan_failed=1; fi;;
+          angular.json|package.json|nx.json|project.json)
+            if [ -L "$marker" ]; then marker_scan_failed=1; continue; fi
+            if [ ! -e "$marker" ]; then [ -L "$marker" ] && marker_scan_failed=1; continue; fi
+            if [ ! -f "$marker" ] || [ ! -r "$marker" ]; then marker_scan_failed=1; continue; fi
+            case "$marker_name" in
+              angular.json)
+                angular_json_evidence workspace "$marker"; marker_status=$?
+                if [ "$marker_status" -eq 0 ]; then needs_angular=1; else marker_scan_failed=1; fi;;
+              package.json)
+                angular_json_evidence package "$marker"; marker_status=$?
+                if [ "$marker_status" -eq 0 ]; then needs_angular=1; elif [ "$marker_status" -ne 1 ]; then marker_scan_failed=1; fi;;
+              nx.json|project.json)
+                angular_json_evidence nx "$marker"; marker_status=$?
+                if [ "$marker_status" -eq 0 ]; then needs_angular=1; elif [ "$marker_status" -ne 1 ]; then marker_scan_failed=1; fi;;
+            esac;;
         esac
       done
       if [ "$depth" -lt "$marker_scan_depth" ]; then

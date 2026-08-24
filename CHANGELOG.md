@@ -68,6 +68,10 @@ parser probe depended on an obsolete control-flow shape. Canary parity now compa
 stack-canary contract. The mutation probe was removed because the adjacent black-box cases already
 prove both outcomes: a working interpreter exposed only as `python` is accepted, while a
 name-resolving Microsoft Store stub is rejected.
+That correction exposed a real Bash classifier defect behind the earlier assertion failure:
+`nocaseglob` does not affect literal `package.json`/`angular.json` paths, so the Bash doctor missed
+uppercase application markers on case-sensitive filesystems. It now enumerates directory entries
+once and applies the existing case-insensitive exact-name filter to the resulting basenames.
 This corrects B-115's premature v0.51.0 closure: that release proved selection/install only; it did
 not prove the downstream lifecycle.
 

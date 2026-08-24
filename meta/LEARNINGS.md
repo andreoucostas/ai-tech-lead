@@ -1412,3 +1412,9 @@ an obsolete branch shape and failed without saying anything new: the neighbourin
 already accept a real interpreter available only as `python` and reject a name-resolving Store stub.
 Those paired outcomes protect the behavior directly. Delete a mutation proof when it duplicates that
 oracle and adds structural coupling rather than independent fault detection.
+
+Enabling Bash `nocaseglob` does not make a literal pathname case-insensitive: a word such as
+`$dir/package.json` has no wildcard, so there is no glob operation for the option to influence.
+This passed on Windows and missed `PACKAGE.JSON` on Linux. Enumerate directory entries with a real
+glob, then apply `nocasematch` to the basename when the supported marker set is deliberately
+case-insensitive.
