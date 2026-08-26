@@ -136,6 +136,34 @@ general class.
 
 ---
 
+## Report #5 — mature brownfield onboarding, one-shot analysis and workflow routing
+
+| | |
+|---|---|
+| **Date received** | 2026-08-25 |
+| **Stack / repo shape** | Mature, well-documented brownfield repository; stack not captured |
+| **Framework installed** | yes; version not captured |
+| **What misfired** | Four related observations: bootstrap findings changed between runs and had no independent verification; a previously rejected debt proposal could be surfaced again; adoption archived existing architecture/ADR material and re-derived framework-shaped context; a discussion containing “tech debt” triggered the debt workflow, while compound requests such as fix + test can receive only one regex-selected intent. |
+| **What fired** | Bootstrap/adoption analysis and the natural-language intent hook. Exact transcript/tool events were not retained. |
+| **What got ignored** | Existing mature documentation as an authoritative source in place; the developer's prior disposition of a false debt proposal; compound workflow aspects after the first regex match. |
+| **Hook noise** | Yes — an explanatory debt discussion was routed as debt cleanup. Reproduced later against both shipped hook twins with `Why is this tech debt?`. |
+| **Token pain** | Not quantified. The reporter explicitly recognised that repeated discovery plus verification costs more; the maintainer identified current usage limits as the reason bootstrap had previously run on Sonnet rather than Opus. |
+| **Reporter** | external senior developer |
+
+**Epistemic status.** The magnitude of run-to-run bootstrap variance is reporter-observed but no raw
+runs were retained, so it remains to be measured. The current tree independently corroborates the
+mechanisms behind the other observations: no dismissed-debt memory; adopt moves `docs/adr/**`,
+`docs/decisions/**`, and `docs/architecture/**`; bootstrap/rebootstrap derive Boy Scout priorities
+from current debt; and the router is an exclusive priority chain. The exact debt-question false
+positive was reproduced on both PowerShell and bash hooks on 2026-08-26.
+
+**Outcome:** B-178 (three-run repeatability baseline), B-179 (debt-question escape), B-180
+(dismissed-proposal memory), B-181 (mature-doc screen-in-place), and B-182 (stop debt-derived Boy
+Scout augmentation). B-177 already owns deterministic bootstrap completion gating; B-44/B-159 own
+the broader supported-host router experiment.
+
+---
+
 ## Intake gaps (a finding in its own right)
 
 Reports arrive as a sentence or two about one defect, and most table fields go uncaptured.
@@ -153,12 +181,11 @@ Reports arrive as a sentence or two about one defect, and most table fields go u
    those demand opposite fixes.
 2. **Arrival dates are not recorded at intake.** Report #1's is unrecoverable. Reports #3 and #4
    have them — treat that as the standard.
-3. **Every report to date names a *coverage* defect, not a workflow one — now four of four.** Three
-   of the four are outright silence (#2 Angular forms, #3 and #4 the warehouse read side); #1 is the
-   inverse, guidance present but overridden by a parenthetical. The framework's weak spot is the
-   **breadth of what it knows about a stack**, not how it drives a task. Reports #3 and #4 sharpen it
-   further: both are *read-side* gaps against *write-side* capabilities, which is the asymmetry
-   B-98 step 3 exists to sweep.
+3. **Report #5 is the first workflow/mechanism report; the previous four were coverage defects.**
+   Reports #2–#4 were silence in a stack/domain area and #1 was guidance overridden by a
+   parenthetical. Report #5 instead concerns sampling, state preservation, document ownership, and
+   routing. Do not generalise the earlier four-of-four pattern now that the intake population has
+   changed; keep coverage and workflow failures as separate cuts of the improvement ledger.
 
 Capture the table fields **at intake**, before the defect is diagnosed — by then attention has moved
 to the fix and the context is lost.

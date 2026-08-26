@@ -3062,13 +3062,106 @@ generator or parser.
 3. Make `/bootstrap` and `/generate-copilot` run the existing deterministic docs-sync check before
    claiming completion, repair failures within scope, and report `CANT-VERIFY` when the check could
    not run. Add a regression case for the one-line Boy Scout applicability drift.
-4. Re-run the real Sonnet onboarding path and observe a first-pass green check before closing.
+4. Re-run the installed onboarding workflow programmatically with `gpt-5.6-sol` and observe a
+   first-pass green check before closing. **Carrier amendment, maintainer decision 2026-08-26:** the
+   earlier Sonnet-only acceptance was a budget workaround, not the subject being measured. This
+   defect is the final artifact postcondition, so Sol may execute the same checked-in workflow and
+   the deterministic checker grades it. Record the carrier honestly: this does not certify
+   Claude/Copilot command dispatch, hook consumption, or typed tool ordering.
 
 **RCA:** no release gate can validate model-generated consumer-instance content before a model runs.
 The installed workflows described verification but did not bind their completion claim to its exit
 and exact output. The same class exposes `/adopt` (which invokes bootstrap), `/rebootstrap`,
 `/docs-sync`, and any future workflow that regenerates protected carriers. Do not weaken
 `docs-sync-check`; it is the instrument that caught the failure.
+
+### B-178 · Measure bootstrap repeatability before multiplying discovery by three
+**Filed against:** v0.77.0 (2026-08-26) · **Effort:** M experiment, no product code by default ·
+**Priority:** P2 · **Input:** field report #5 · **Plan:**
+`.claude/plans/2026-08-26-bootstrap-feedback-convergence-design.md` (LOCKED)
+
+An external senior developer reports that bootstrap's debt, conventions, and hazard findings change
+between runs. The current workflow structurally takes one sample per pass, but no retained runs
+quantify the variance. Do not infer that `3/3` agreement means true: it can erase a real low-frequency
+finding and preserve a repeated misconception.
+
+**Do:** run three fresh `gpt-5.6-sol` sessions against independently writable, byte-identical copies
+of one mature documented fixture. Freeze candidate identity as same claim + consequence + overlapping
+scope; keep ambiguous matches separate. Form one blinded pool from the union plus planted positive
+and negative claims, verify it from repository evidence in a fresh context, and report per-candidate
+`n/3` as stability only. The metric is **discovered-pool coverage**, not recall. Preserve every run
+outcome and distinguish `RUN-FAILED`, `TIMEOUT`, `MODEL/HOST-MISMATCH`, `ARTIFACT-FAILED`, and
+`CANT-EXAMINE`.
+
+**Decision gate:** ship repeated discovery only if it adds material verified correctness beyond the
+cheaper B-177/B-180/B-181/B-182 controls at acceptable wall-time/usage cost. Variation alone is not
+value. A one-off direct Codex CLI run is sufficient for this experiment; do not implement B-140's
+permanent executor follow-on here. Sol grades final artifacts and cannot establish Claude/Copilot
+hook or typed-event behavior.
+
+### B-179 · Answer-only debt discussions trigger the debt-cleanup workflow
+**Filed against:** v0.77.0 (2026-08-26) · **Effort:** S · **Priority:** P1 · **Input:** field report #5
+
+Both route-prompt twins deterministically emit the complete debt workflow for
+`Why is this tech debt?`. The answer-only carve-out clears `fix`, `feature`, `refactor`, and `test`
+but omits `debt`. This is the exact reported symptom and contradicts the carve-out's own comment.
+
+**Do:** add the exact question as a failing PowerShell/bash regression on both Claude- and
+Copilot-shaped events, then include `debt` in the answer-only escape. Preserve the security overlay
+and Copilot Boy Scout queue composition. This item does not authorize retiring the classifier:
+B-44/`meta/overlap-watch.md` owns that supported-host A/B, and B-159 owns review fan-out evidence.
+
+### B-180 · Dismissed bootstrap debt has no resurrection guard
+**Filed against:** v0.77.0 (2026-08-26) · **Effort:** M · **Priority:** P1 · **Input:** field report #5
+
+The reporter says a reviewed false-positive debt item can reappear on a later bootstrap. The tree
+explains why: active `DEBT-NNN` blocks are deleted when resolved, and no workflow preserves a human
+decision that a proposed claim was not debt. Adding four lifecycle states to every active item would
+be larger than the evidence warrants.
+
+**Do:** keep active blocks and resolved deletion. Add a compact `Dismissed proposals — do not
+re-propose without changed evidence` registry to `TECH_DEBT.md`: readable stable key
+(`<area>::<claim-slug>`), paths/symbols, evidence reviewed, date, and reason. `/debt`, bootstrap, and
+rebootstrap suppress a matching claim. They may reopen only when materially changed evidence is
+named, without deleting the prior dismissal. Reuse the declined-recipe resurrection-guard pattern.
+
+**Proof:** bootstrap -> plant a dismissal -> unchanged rebootstrap suppresses it -> change cited
+evidence -> rebootstrap may propose it only with the delta named. Do not add `Accepted`/retained
+`Resolved` states unless later field evidence needs them.
+
+### B-181 · Adopt moves and re-derives mature architecture documentation
+**Filed against:** v0.77.0 (2026-08-26) · **Effort:** M–L · **Priority:** P1 ·
+**Input:** field report #5 · **Decision impact:** narrow amendment to WSD-014
+
+The external report says a mature, well-documented repository had its existing architecture/ADR
+material archived and then re-derived. Current `/adopt` explicitly inventories
+`docs/architecture/**`, `docs/adr/**`, and `docs/decisions/**`, moves approved legacy files under
+`docs/pre-adoption/`, and reconstructs framework-shaped summaries. Bytes remain recoverable, but
+original paths, relative links, and project ownership can break.
+
+**Do:** apply the existing provenance/adversarial screen in place to mature architecture documents.
+Clean documents retain path and bytes; adoption indexes/references them and reports concrete gaps,
+contradictions, dead links, or missing required fields. Path A remains for unsafe/ambiguous content;
+quarantine flagged material, and require a human choice when several indexes claim authority.
+Continue sending new framework ADRs to `docs/architecture-decisions.md`; do not silently redirect all
+ADR producers in this increment.
+
+**Proof fixture:** multiple linked clean ADRs, a clean architecture index, a flagged document, and a
+second ambiguous index. Assert clean byte/path/link preservation, flagged-content containment, no
+automatic authority choice, and a concrete gap report. Do not weaken WSD-014's human merge boundary.
+
+### B-182 · Bootstrap turns finite debt into always-loaded Boy Scout work
+**Filed against:** v0.77.0 (2026-08-26) · **Effort:** S · **Priority:** P2 · **Input:** field report #5
+
+The shipped default Boy Scout list is a stable touched-file practice filter. Bootstrap and
+rebootstrap nevertheless instruct the model to replace/update it from current debt, duplicating
+finite work already owned by `TECH_DEBT.md` or an external tracker and leaving no reliable exit when
+the work is fixed elsewhere.
+
+**Do:** remove debt-derived Boy Scout augmentation from bootstrap and rebootstrap across all stack
+profiles. Preserve the stable framework practices. Add composition/contract tests proving generated
+workflows cannot tell the model to turn debt into the Boy Scout list. Do not add Jira integration or
+a new practice classifier.
 
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 

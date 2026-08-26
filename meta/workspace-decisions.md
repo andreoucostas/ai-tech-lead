@@ -2378,3 +2378,51 @@ generated exact diagnosis remains part of the end-to-end FRAMEWORK treatment and
 deleted, but it limits component attribution. The run also exposed two R2 test-style checks that
 duplicated R3, so future R2 checks must be independent of R3 and R5. The observed raw `9/6` rubric
 delta is retained but cannot support a benefit claim.
+
+---
+
+## WSD-054: onboarding preserves evidence and project ownership; repeated samples describe stability, not truth (2026-08-26)
+
+**Context.** An external senior developer reported four onboarding/workflow problems: one-shot
+bootstrap findings vary; dismissed false debt can recur; adopt moved mature architecture material
+and re-derived it; finite debt was promoted into Boy Scout guidance. They also reported an
+answer-only debt discussion being classified as cleanup. Tree inspection corroborated every
+mechanism, and both routing twins reproduced the exact debt-question defect. The size of bootstrap
+variance was not retained and remains an experiment, not a fact established by this repo.
+
+**Decision.** **Onboarding preserves evidence and project ownership; repeated samples describe
+stability, not truth.** Run three history-free bootstrap discoveries only as a pre-registered
+experiment. Verify the blinded union against repository evidence and record `n/3` descriptively;
+never require `3/3` for truth or call union coverage recall. Multi-sample discovery does not ship
+unless it demonstrates material correctness value beyond cheaper controls.
+
+Keep active `DEBT-NNN` blocks and resolved deletion. Preserve reviewed false-positive decisions in a
+separate dismissed-proposal registry and require named changed evidence before re-proposal. Remove
+bootstrap/rebootstrap's debt-derived Boy Scout augmentation while retaining stable framework
+practices.
+
+This decision narrowly amends WSD-014: mature project-owned architecture/ADR documents are screened
+in place. Clean documents keep their path and bytes and are referenced rather than regenerated.
+Unsafe or ambiguous content remains under Path A's quarantine/archive and human-merge boundary;
+multiple competing authorities require a human choice. New framework ADRs continue to use
+`docs/architecture-decisions.md` in this increment.
+
+The directly reproduced debt-question escape is fixed independently. Broader `route-prompt`
+retirement stays with B-44/B-159 on a supported host; retiring keyword classification must not remove
+the composed security overlay or Copilot Boy Scout queue delivery.
+
+**Carrier boundary.** The maintainer has available Codex/Sol usage and limited Claude usage. A
+programmatic `gpt-5.6-sol` run may execute bootstrap and grade final artifacts, including B-177's
+deterministic docs-sync postcondition. It cannot certify Claude/Copilot command dispatch, hook
+consumption, typed tool ordering, or reviewer fan-out. No permanent Codex executor is authorized;
+that remains B-140's separately reviewed follow-on.
+
+**Proportionality.** The product changes are the smallest controls matching the observed harms: one
+answer-only escape, deletion of debt-derived Boy Scout instructions, a dismissal registry, and
+screen-in-place preservation. Permanent repeated multi-agent orchestration would multiply the most
+expensive onboarding stage and therefore remains conditional on experiment evidence.
+
+**Rejected.** Treating `3/3` intersection as correctness; adding a four-state lifecycle to active
+debt; moving every ADR producer to a newly inferred canonical file; deleting the whole composed
+prompt hook based on a classifier result; using a Codex carrier to make Claude/Copilot host claims;
+and building a second eval rig.
