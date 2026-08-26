@@ -897,6 +897,15 @@ swaps now explicitly reset the A/B trend series; T2 symptoms must be unit-verifi
 frozen; `claude -p` hook firing is verified at drill #0 rather than assumed; and the A/B's
 Claude-only scope is a stated standing limitation. Full list in the plan's findings section.
 
+**Execution addendum (2026-08-26):** the first field-study dry run exercised B-49's frozen T2 and
+proved that empty remotes do not isolate task history. The planted latest commit exposed its clean
+parent and exact one-line mutation; BARE read it with `git show`. All future B-49 A/B arms are
+therefore neutral, history-free, single-commit exports. T2 is planted before the neutral root commit
+so no diff reveals the answer; T3 remains an identical uncommitted diff because reviewing it is the
+task. R2 checks must also be independent of R3 and R5. The exact tasks, prompts, rubric wording, and
+target pins remain frozen; this addendum repairs measurement validity rather than re-deriving the
+design.
+
 ## WSD-023: B-16 honest framework-doctor — design locked (2026-07-17)
 
 **Context.** WS-4 of the self-sufficiency roadmap (WSD-008), promoted by the strategic review:
@@ -2300,3 +2309,72 @@ artifacts fail explicitly; tests of host-language semantics with no product seam
 the v0.75 refusal after the downstream lifecycle is supported; inferring default commands from a
 distribution name or technology marker; treating framework-state CI as a code-validation pass;
 and adding broad Markdown string tests that duplicate composition without proving applicability.
+
+---
+
+## WSD-053: issue intake is not sentiment evidence; balanced field outcomes use a replay plus diary (2026-08-26)
+
+**Context.** B-42 described the two non-author issue reports as complaints and treated that fact as
+the available field distribution. The maintainer clarified that only actionable feedback was
+recorded; positive feedback was received but not logged. `meta/field-reports.md` was deliberately
+operating as an improvement queue, so neither its negative entries nor the uncounted positives can
+support a value, satisfaction, or adoption claim. B-49 separately asked for a consumer-runnable A/B
+but had no prepared protocol, privacy boundary, or result record.
+
+**Decision.** Keep `meta/field-reports.md` improvement-only and label it accordingly. Balanced
+outcomes go through `meta/field-study-kit.md` and into `meta/field-study-results.md`, preserving
+`maintainer` versus `independent` source. The minimum study is one controlled replay of an
+already-completed, non-sensitive fix from a history-free snapshot of its pre-fix commit: same tree,
+prompt, day, host, model, and green baseline in remote-less FRAMEWORK and BARE repositories. A
+detached clone is insufficient because later objects/refs can reveal the fix. The installed arm's
+onboarding time is measured separately. Both arms use the single frozen rubric in
+`meta/value-rubric.md`—fabrication, three predeclared repository conventions independent of the
+other dimensions, test discipline, verification evidence, and leanness—plus separate task
+acceptability, active/wall time, and human-intervention counts. A three-consecutive-
+eligible-task live diary is the ecological-validity half: it records helpful, harmful, no-visible-
+effect, and not-observable surfaces without pretending to have a bare counterfactual.
+
+Raw repositories, prompts, transcripts, diffs, command output, client vocabulary, and identifying
+details remain local. Only the sanitised response form returns. Results are classified as benefit,
+harm, mixed, no detectable difference, or void using thresholds fixed before execution; raw
+measures remain visible and hard failures are never averaged away. Maintainer runs can establish
+mechanism reach and author-workflow effects, but cannot establish non-author comprehension,
+acceptance, team friction, or team value. Those claims require an independent participant. No
+team-value aggregate is made before three complete independent replays, and even then the first
+reading is descriptive, not statistically significant.
+
+**Proportionality.** This is meta-only documentation, not a shipped command, telemetry feature, or
+new agent surface. The smallest adequate first step is a shareable packet and response form. Run it
+once locally and once independently before deciding whether a consumer self-assessment belongs in
+`dist/`; shipping still requires an independent design review.
+
+**Rejected.** Treating issue counts as satisfaction data; recording testimonials as outcomes;
+survey-only evidence; a diary with no controlled replay as the whole design; requiring raw client
+artifacts; adding automatic telemetry before consent and host coverage are solved; and duplicating
+the frozen rubric between execution kits.
+
+**Execution amendment (FS-20260826-RERUN-02).** Setup model/tier and its availability constraint are
+recorded separately from the task model; setup quality cannot be attributed to an unavailable
+higher tier. The first post-bootstrap `docs-sync-check` must pass before the treatment baseline is
+frozen. Force-add is limited to the initial history-free archive contents, before build outputs
+exist. A test command is green only when the expected test/probe is shown to execute and pass:
+exit zero with no matching test, a skipped/unloadable assembly, or no execution count is
+`cannot verify`. The corrected maintainer replay produced byte-identical acceptable outcomes,
+scores `10/9`, and no material primary difference; that clears the independent-pilot protocol gate
+without supporting a team-value claim.
+
+**Dry-run addendum 1 (2026-08-26).** Exact v0.77.0 installation into an existing .NET codebase
+selected installer mode `greenfield` and required the developer-initiated `/bootstrap` handoff. The
+first packet had incorrectly prescribed `/adopt` from the repository's ordinary brownfield status.
+The binding rule is now the installed lifecycle's printed command: complete `/bootstrap` unless the
+installer/adoption marker redirects to `/adopt`. An AI coordinator stops and hands this step to the
+developer.
+
+**Dry-run addendum 2 (2026-08-26).** Both arms completed, but the result is void. The planted latest
+commit retained a parent and diff that revealed the solution; BARE used it directly. This exposes a
+general flaw in the former detached-clone recipe: real later fix commits also remain in the object
+database and refs. Both arms now begin as identical neutral, single-commit snapshots. Bootstrap's
+generated exact diagnosis remains part of the end-to-end FRAMEWORK treatment and is disclosed, not
+deleted, but it limits component attribution. The run also exposed two R2 test-style checks that
+duplicated R3, so future R2 checks must be independent of R3 and R5. The observed raw `9/6` rubric
+delta is retained but cannot support a benefit claim.

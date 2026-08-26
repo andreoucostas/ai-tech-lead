@@ -1418,3 +1418,91 @@ Enabling Bash `nocaseglob` does not make a literal pathname case-insensitive: a 
 This passed on Windows and missed `PACKAGE.JSON` on Linux. Enumerate directory entries with a real
 glob, then apply `nocasematch` to the basename when the supported marker set is deliberately
 case-insensitive.
+
+## 2026-08-26 — An improvement ledger and a balanced evidence ledger answer different questions
+
+The field-report ledger contained negative reports because the maintainer recorded feedback that
+could drive a change and did not record the positive feedback also received. Reading that shape as
+user sentiment would be a category error: it is the output of an actionability filter. The positive
+feedback cannot repair the inference either because its count, context, and denominator were never
+captured. Preserve issue intake for defect diagnosis; use a protocol that records benefit, harm,
+mixed effects, and no detectable difference symmetrically for value claims.
+
+Designing that protocol exposed a second version of the same mistake. `meta/drill-kit.md` called its
+table the frozen B-49 rubric, but its fifth row was review findings; the locked design's fifth row was
+leanness, with review findings scored separately. Two plausible-looking copies had silently become
+different instruments. A shared measurement contract needs one executable copy, even when it is
+prose. `meta/value-rubric.md` now serves both the maintainer drill and field study; changing it starts
+a new series rather than rewriting the meaning of old results.
+
+## 2026-08-26 — Repository age does not select the framework lifecycle
+
+An existing application repository can still be a `greenfield` framework install. The first field-
+study packet called the codebase brownfield and therefore prescribed `/adopt`, but exact v0.77.0
+correctly selected its own lifecycle and printed `/bootstrap`. Bind instructions and measurement
+fields to the installer's observed handoff, not to an experimenter's informal label for the repo.
+
+That handoff is also a real experimental boundary. Bootstrap is developer-initiated by design; an
+AI coordinator cannot turn a maintainer-only replay into a fully autonomous test by silently
+reproducing it. A protocol dry run should record that stop, correct the packet, and preserve the
+partial result. Doing so measures usability while keeping human-governed setup genuinely human.
+
+## 2026-08-26 — A detached checkout still carries the answer key
+
+Removing a remote and detaching at a pre-fix commit isolates push risk, not history. The object
+database and refs still contain later fixes; a locally planted latest commit is worse because its
+parent and one-line diff state the intended answer directly. In the first field-study run, the BARE
+agent used `git show` on that planted commit and solved the task from its diff. Historical replay
+arms must therefore be exported as identical content snapshots and re-initialised with one neutral
+root commit. Confirming empty remotes is necessary but not sufficient.
+
+Bootstrap discovery creates a different, legitimate asymmetry. In the same run, FRAMEWORK wrote the
+exact bug and recommended regression test into its generated debt register, then the task agent used
+that diagnosis. Do not delete that output to make the comparison look cleaner: repo understanding is
+part of the installed treatment. Disclose it and limit attribution to the complete package. If the
+question is task-time rails alone, design a separate execution-only ablation whose framework context
+was prepared on the accepted clean state before the history-free defective snapshot is created.
+
+Finally, rubric rows can be individually reasonable and jointly double-count the same behavior. Two
+of the three frozen convention checks were test-style checks, so an omitted regression test lost R2
+and R3. Require R2 checks to be independent of test existence/order and leanness before a run; do
+not repair the scores after seeing the result.
+
+## 2026-08-26 — Exit zero is not evidence that the expected test ran
+
+The corrected field replay's private probe rebuilt both test projects. One arm executed and passed;
+Windows Application Control blocked the other arm's test assembly, yet `dotnet test` exited zero
+and printed that no test matched. Treating process status alone as green would have converted
+`cannot examine` into `passed`—the same maintenance-rule-7 failure this framework has already
+fixed in several product gates. A targeted verifier needs positive execution evidence: the expected
+name/count ran and passed. Preserve load/skip/no-match output as a host failure and do not retry it
+until green.
+
+The same run exposed a staging hazard. `git add --force --all` is appropriate when turning an
+exported source tree into its first neutral root, before any build exists. Reusing it after baseline
+tests force-tracked thousands of ignored `bin/` and `obj/` files. The error was caught before an
+agent ran by inspecting the prepared commit, and a fresh arm replaced it. Scope destructive or
+override-shaped commands to the phase that needs them; later commits use ordinary add plus a staged-
+path inspection.
+
+Setup model is also part of the treatment record, not an incidental host detail. Opus usage was
+unavailable, so the developer bootstrapped with Sonnet. That path took 23.9 minutes and 11 follow-ups,
+then claimed completion with docs sync red; a Sonnet mirror repair also claimed parity while leaving
+one line stale. The deterministic gate, not either completion statement, established readiness.
+Record setup and task models separately, including quota-driven selection, and never attribute a
+lower-tier onboarding result to the intended higher-tier path.
+
+## 2026-08-26 — History isolation removed the apparent value delta
+
+Once the answer-bearing Git history was removed, BARE no longer read the planted mutation's diff.
+Both Sonnet arms independently produced byte-identical production changes and the same regression
+test. FRAMEWORK demonstrated the test red first and scored `10/10`; BARE changed production first
+and scored `9/10`. The frozen material threshold is two points, so the valid result is no
+detectable difference. The void run's apparent `+3` benefit was therefore mostly an instrument
+artifact, not evidence that should have been rescued.
+
+This does not prove the framework has no value. It proves one small, obvious boundary fix did not
+need enough repository guidance for the measured outcome to diverge. FRAMEWORK's route/session/audit
+surfaces were reached and its sequence was stronger, but BARE solved the task acceptably with zero
+intervention. The next useful evidence is a non-author run or a more discriminating predeclared task
+series—not lowering the threshold or choosing a task after seeing likely performance.

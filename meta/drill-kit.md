@@ -20,7 +20,8 @@ report; never turn an unrun step into an observation.
 
 1. Create scratch space outside this authoring repo. Clone the selected target, check out the exact
    commit, record `git rev-parse HEAD`, and immediately remove its `origin` remote. Record OS,
-   framework release tag, agent/model versions, and toolchain versions.
+   framework release tag, setup model, task model, any model-availability constraint, and toolchain
+   versions. Setup and task models are separate observations even when they match.
 2. Establish the untouched baseline: count source files using a recorded inclusion rule, inspect the
    domain code, restore dependencies, build, and run the target's documented tests. Pass only when
    the count is 50–500, real domain logic is evidenced by named files, and the baseline commands exit
@@ -30,8 +31,9 @@ report; never turn an unrun step into an observation.
    agent-handoff contract is printed. Pass only if all three are present and the installer exits zero.
 4. In an interactive maintainer-driven agent session, run `/bootstrap`. Pass only if it completes,
    replaces bootstrap placeholders with repository-specific content, and leaves its required
-   verification evidence. Snapshot this clean post-bootstrap state; every later probe and task gets
-   its own copy so residue cannot cross-contaminate results.
+   verification evidence. Run `scripts/docs-sync-check` after the completion claim and require it
+   to pass; record every repair needed to reach green. Snapshot this clean post-bootstrap state;
+   every later probe and task gets its own copy so residue cannot cross-contaminate results.
 5. Run two or three representative tasks in fresh copies of the snapshot:
    - a small feature using the applicable skill recipe;
    - a planted, unit-demonstrable defect addressed through `/fix`;
@@ -57,14 +59,28 @@ Use the same repository SHA, task prompt, day, and model for both arms. `FRAMEWO
 fresh post-bootstrap snapshot; `BARE` starts from a fresh clone with no framework files. Score from
 the transcript, diff, and command output before calculating any delta.
 
-| Dimension | 2 | 1 | 0 |
-|---|---|---|---|
-| Hallucinated APIs referenced | None in the final diff, verified by build and targeted inspection | Exactly one, self-corrected before completion | Any unresolved reference, or more than one |
-| Convention adherence | All three target-specific checks pass | Two of three pass | Fewer than two pass |
-| Test written before fix | Regression test is shown failing before the fix, then passing | Test exists but was not shown failing first | No regression test |
-| Verification evidence shown | Relevant build/tests shown before the completion claim; gaps stated honestly | Partial relevant evidence | Completion claimed without relevant evidence |
-| Review findings caught | All three frozen planted findings caught | Two caught | Zero or one caught |
+Before an A/B agent runs, turn each arm into a **history-free, neutral single-commit snapshot** using
+the export/re-init recipe in `meta/field-study-kit.md` A3. Empty remotes are not enough: a detached
+clone still exposes later objects and refs. For T2, apply the frozen mutation to both exported trees
+**before** creating their neutral root commits, so neither `git show` nor `git diff` reveals the clean
+answer. For T3, create the clean neutral roots first and then apply the identical uncommitted review
+diff, because the visible diff is the task. Verify `git log --all` contains one neutral commit in
+each arm before starting the agent.
 
-Record `FRAMEWORK − BARE` per dimension and per task. Single runs are anecdotes: the signal is the
-delta across comparable quarters, not one absolute score. Keep this wording and scoring frozen; if a
-target changes, start a new trend series rather than splicing incomparable quarters together.
+Use forced add only for the initial archive contents. Once restore/build/test has created ignored
+outputs, preserve installer/bootstrap state with an ordinary add and inspect the staged paths so
+`bin/`, `obj/`, coverage, package, and host-cache artifacts do not enter the arm history.
+
+A test/probe is green only when its output names or counts the expected case as executed and passed.
+Exit zero with `No test matches`, a skipped/unloadable assembly, or no executed-test evidence is
+`cannot verify`, not a pass. Preserve the host failure; do not retry it into green.
+
+Use `meta/value-rubric.md`; it is the canonical executable copy shared with the field study. Score T3
+separately as planted review findings caught, `0–3` per arm. Record `FRAMEWORK − BARE` per dimension
+and per task. Single runs are anecdotes: the signal is the delta across comparable quarters, not one
+absolute score. If a target changes, start a new trend series rather than splicing incomparable
+quarters together.
+
+Freeze T1/T2's three R2 convention checks before execution and confirm they do not restate R3 test
+existence/order or R5 leanness. Cross-dimension duplication invalidates the total even when each row
+looks reasonable on its own.

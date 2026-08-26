@@ -262,6 +262,23 @@ order: drop T1 A/B → drop T3 A/B → *never* drop the checklist, T2, or the re
 
 ## Appendix (frozen at drill #0 — 2026-07-17)
 
+> **Execution amendment — 2026-08-26, observed in FS-20260826-DRY-01.** D2/D4's fresh clones do not
+> isolate Git history: detaching and removing `origin` leaves later objects/refs, while committing a
+> planted T2 mutation exposes its clean parent and exact diff. The BARE agent used `git show` to read
+> that answer. Before any future A/B agent, export and re-initialise each prepared arm as a neutral
+> single-commit repository per `meta/field-study-kit.md` A3. Apply T2 before the neutral root commit;
+> apply T3 after it because the diff is the review subject. Also reject R2 checks that duplicate R3
+> or R5. This amendment changes isolation and scoring validity, not the frozen task, prompt, or rubric.
+>
+> **Execution amendment — 2026-08-26, observed in FS-20260826-RERUN-02.** Record setup model and its
+> availability constraint separately from the task model; a Sonnet bootstrap cannot be reported as
+> the intended Opus path when quota selected it. Require the first post-bootstrap
+> `docs-sync-check` to pass rather than accepting the setup agent's completion claim. Force-add only
+> the initial archive snapshot, never ignored build outputs generated before a later setup commit.
+> Finally, an exit-zero test command is green only when the expected probe actually executed and
+> passed: `No test matches`, an unloadable assembly, or an absent execution count is
+> `cannot verify`. These strengthen evidence integrity without changing the frozen tasks or rubric.
+
 ### Version and target pins
 
 - Framework: release **v0.32.2**, commit `29e57fea78adc1446426ad27b742a294bde3e3bb`.

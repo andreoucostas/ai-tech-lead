@@ -85,19 +85,22 @@ B-30 shipped in v0.25.4). **B-38, B-39 (both phases), B-36, and B-34 all shipped
 > "every design decision came from maintainer introspection" understates the evidence base — a
 > maintainer who ships with the tool daily is generating real friction data, not introspecting.
 >
-> **What B-42 actually lacks, and all it should now claim:** field evidence from a developer who is
-> **not the author**. That distinction is the whole remaining item — the author cannot report the
-> onboarding friction of someone who did not write the thing, cannot notice guidance that only reads
-> as obvious to its author, and shares every blind spot the design has. The two ledger reports to
-> date (`meta/field-reports.md`) are both from other people and are both complaints, which is
-> exactly the signal the author cannot self-generate.
+> **What B-42 actually lacks, and all it should now claim:** balanced protocol evidence from a
+> developer who is **not the author**. The author cannot report the onboarding friction of someone
+> who did not write the framework, cannot notice guidance that only reads as obvious to its author,
+> and shares every design blind spot. **The two non-author entries in `meta/field-reports.md` are not
+> a satisfaction sample:** the maintainer recorded actionable defects and did not record the positive
+> feedback that was also received. That issue-only ledger therefore supports defect diagnosis, not a
+> positive or negative adoption claim.
 >
 > **Consequences for the *Do* below:** step 2 ("install into at least one real work repo") is
-> **already satisfied** — do not re-do it. Steps 1 (success metrics), 3 (intake discipline) and 4
-> (convert findings, re-order the backlog) remain open, and the intake gap the ledger records is
-> now the sharpest part: neither existing report captured arrival date, what fired, hook noise, or
-> token pain. **Nothing in this entry should any longer be read as "the framework is unproven in
-> the field."**
+> **already satisfied** — do not re-do it. WSD-053 now fixes the success metrics and separates what
+> a maintainer can measure from the independent-user claims they cannot. The ready-to-run packet is
+> `meta/field-study-kit.md`, with a sanitised response form and balanced result ledger. Remaining:
+> ask a non-author to run it, then re-order the backlog from the returned evidence. The required
+> corrected maintainer replay completed validly on 2026-08-26; see the execution note below.
+> **Nothing here should be read as "the framework is unproven in the field"; the unresolved question
+> is independent, balanced outcome evidence.**
 
 **Why (ORIGINAL, SUPERSEDED — see the correction above):** the framework has shipped 31 minor
 versions with — as far as the meta layer records —
@@ -124,13 +127,29 @@ their friction reports outweigh the maintainer's.
 everywhere instead of injecting `NgControl` on a custom form control. B-66 is the first defect
 derived from that report.
 
-**`meta/field-reports.md` now exists (created 2026-07-31)** and is the ledger — record every report
-there, at intake. Two corrections it makes to the paragraph above, both left visible rather than
-rewritten: the Angular report is **#2**, not #1 (the NUnit report behind B-57 is also a field report
-from a real install and landed earlier); and the arrival dates, "what fired", hook noise and token
-pain were **never captured for either report**, which the ledger records as an intake gap. Both
-reports to date are complaints, so nothing in the intake path can currently evidence value — only
-failure. The remaining B-42 work (success metrics, the pilot itself) is untouched.
+**`meta/field-reports.md` now exists (created 2026-07-31)** as the improvement-only issue ledger.
+Two corrections it makes to the paragraph above remain visible rather than rewritten: the Angular
+report is **#2**, not #1 (the NUnit report behind B-57 landed earlier); and arrival dates, "what
+fired", hook noise and token pain were not captured for either external report. **Status correction
+2026-08-26:** its complaint-only contents are deliberate selection, not evidence of negative
+sentiment. WSD-053 and `meta/field-study-{kit,response-template,results}.md` now provide the balanced
+measurement path; the pilot execution itself remains open.
+
+> **MAINTAINER PROTOCOL GATE PASSED 2026-08-26; INDEPENDENT PILOT IS NOW THE ONLY B-42 EXECUTION
+> REMAINING.** FS-20260826-RERUN-02 used history-free neutral roots, same-day Sonnet task arms, three
+> R2 checks independent of test discipline/leanness, and green `44/44` baselines. Both arms returned
+> the same acceptable, byte-identical fix and regression test with zero intervention. FRAMEWORK
+> demonstrated the test red first and scored `10/10`; BARE changed production first and scored
+> `9/10`. The `+1` delta is below the frozen `2/10` threshold, so this one valid maintainer replay
+> is **no detectable difference**, not benefit. It does not answer non-author onboarding, team
+> friction, or team value.
+>
+> Onboarding was not clean: Opus usage was unavailable, so the developer ran bootstrap on Sonnet;
+> it needed 11 follow-ups across 23.9 minutes and claimed completion while `docs-sync-check` was
+> red. B-177 tracks that product defect. The protocol now records setup model separately, refuses
+> exit-zero test commands that did not execute the expected probe, and forbids force-adding ignored
+> post-build artifacts. The next action is one independent Module A run, not another maintainer
+> replay.
 
 ### B-43 · Host-compatibility recertification cadence (the one-time verifications are rotting)
 **Filed against:** v0.31.0 (2026-07-17)
@@ -269,6 +288,50 @@ failures: one hard checklist failure = a defect entry, regardless of the rubric 
 > because this is maintainer process infrastructure, not a malformed shipped artifact. The same
 > exposure applies to the still-unrun host-recertification/report templates; drill #0 must exercise
 > them rather than treating the existence of prose as execution evidence.
+>
+> **FIELD-STUDY DESIGN AND META PILOT PACKET DELIVERED 2026-08-26; FIRST DRY RUN COMPLETE BUT VOID.**
+> WSD-053 and `.claude/plans/2026-08-26-b42-field-evidence-study-design.md` lock a controlled
+> historical-fix replay plus a three-consecutive-task diary. `meta/field-study-kit.md` is the
+> execution packet, `meta/field-study-response-template.md` returns sanitised scores only, and
+> `meta/field-study-results.md` records benefit, harm, mixed, no-difference, and void outcomes.
+> This is intentionally meta-only until a dry run and independent run show that the protocol is
+> usable; promoting it into `dist/` still requires an independent design review and a shipped
+> surface decision.
+>
+> **Dry-run result 2026-08-26:** the pinned .NET fixture's wrong result was reachable; both arms had
+> the same 44-test green baseline; exact v0.77.0 installed, bootstrapped, and passed docs sync. The
+> installer-command defect was corrected (`/bootstrap`, not the packet's hard-coded `/adopt`). Both
+> Claude Sonnet 5 arms then produced acceptable fixes and passed the same private verifier.
+> FRAMEWORK added a red-first regression test and scored a raw 9/10 in 6.43 minutes with one
+> intervention; BARE added no test and scored 6/10 in 1.23 minutes with none.
+>
+> **No value direction is claimed.** The result is void because the planted latest commit exposed
+> its clean parent and exact mutation; BARE read that answer through `git show`. FRAMEWORK also read
+> the exact diagnosis generated by bootstrap—real mechanism reach, but not separable task-time
+> evidence. Two frozen R2 checks additionally duplicated R3 test discipline. The packet now uses
+> history-free neutral snapshots, discloses bootstrap task discovery, and forbids R2/R3/R5 overlap.
+> RCA: a remote-less detached clone was mistaken for history isolation, and plausible rubric rows
+> were reviewed individually rather than for cross-dimension independence. A corrected maintainer
+> replay was the next gate and is now recorded below. The same history flaw affected B-49's frozen
+> planted T2, so `meta/drill-kit.md`, the locked B-49 plan, and WSD-022 now carry the same neutral-
+> snapshot amendment; otherwise the quarterly instrument would knowingly repeat the void run.
+>
+> **RCA found while sharing the rubric:** `meta/drill-kit.md` called its table the frozen B-49
+> rubric but omitted the locked design's R5 leanness dimension and substituted review findings.
+> No gate caught it because the same rubric was duplicated in prose and meta process docs have no
+> semantic parity check. `meta/value-rubric.md` is now the one executable copy used by both kits;
+> the review task's planted-findings score remains separate, as the locked design requires. The
+> wider exposure is any supposedly shared prose contract copied between maintainer artifacts.
+>
+> **CORRECTED FIELD REPLAY COMPLETE 2026-08-26.** The neutral-history rerun is valid and classified
+> `no detectable difference`: acceptable outcomes `2/2`, rubric `10/9`, active participant time
+> `<1/<1` minutes, interventions `0/0`. Both final code/test files were byte-identical and both
+> independent applicable suites passed `45/45`. FRAMEWORK's observable difference was red-first
+> sequencing and broader verification; the `+1` score is below the frozen material threshold.
+> This clears the protocol gate for an independent participant but does not execute B-49 drill #0.
+> The rerun also proved that exit zero is not enough for a test instrument: Windows Application
+> Control blocked one rebuilt assembly while `dotnet test` said no test matched and exited zero.
+> The drill kit and locked plan now require expected-test execution evidence.
 
 **B-50 is DONE (2026-08-20) — an isolated three-arm canary confirmed the channel on CLI 1.0.80 and both stale passages are reconciled; see `meta/BACKLOG-DONE.md`.**
 
@@ -2971,6 +3034,41 @@ consumers. Add one catalog-integrity check for unique category keys, make all fo
 count distinct categories, and make the eval's authoritative-catalog fixture reject duplicates too.
 Fold a duplicate-row mutation into the existing warehouse map checker suite; do not create a
 standalone catalog suite.
+
+### B-177 · Bootstrap and mirror regeneration can claim completion while deterministic docs sync is red
+**Filed against:** v0.77.0 (2026-08-26)
+**Effort:** M · **Priority:** P1 · found by FS-20260826-RERUN-02 · **Invariants:** #2 #5
+
+Exact released v0.77.0 was installed into a history-isolated, real .NET OSS repo and the developer
+ran `/bootstrap` with `claude-sonnet-5` because Opus usage was unavailable. Bootstrap completed
+after 11 follow-ups but its required postcondition was red: generated hazard rows wrapped every
+status in backticks, one hazard area named a namespace-like token rather than a real path, and
+`AGENTS.md` retained a stale Boy Scout applicability line. A fresh Sonnet
+`/generate-copilot` session repaired most drift, reported the relevant sections byte-identical,
+and still left that one Boy Scout line stale. The third `docs-sync-check` passed only after an
+exact manual mirror correction.
+
+This is a product failure, not a field-study scoring issue: the deterministic gate correctly
+rejected the artifacts, but both model workflows claimed completion before satisfying it. The
+smaller adequate fix is to make completion conditional on the existing check, not add another
+generator or parser.
+
+**Do:**
+1. Reproduce the three output defects from the preserved local fixture/transcripts without copying
+   raw study artifacts into the repo; use the existing B-41/model-workflow harness if a stochastic
+   case is needed rather than building another harness.
+2. Tighten bootstrap's hazard-table output contract: bare status tokens from the accepted set and
+   repository paths that the existing checker can resolve.
+3. Make `/bootstrap` and `/generate-copilot` run the existing deterministic docs-sync check before
+   claiming completion, repair failures within scope, and report `CANT-VERIFY` when the check could
+   not run. Add a regression case for the one-line Boy Scout applicability drift.
+4. Re-run the real Sonnet onboarding path and observe a first-pass green check before closing.
+
+**RCA:** no release gate can validate model-generated consumer-instance content before a model runs.
+The installed workflows described verification but did not bind their completion claim to its exit
+and exact output. The same class exposes `/adopt` (which invokes bootstrap), `/rebootstrap`,
+`/docs-sync`, and any future workflow that regenerates protected carriers. Do not weaken
+`docs-sync-check`; it is the instrument that caught the failure.
 
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 

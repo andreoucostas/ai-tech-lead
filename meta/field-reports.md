@@ -1,8 +1,9 @@
 # Field reports
 
-Evidence from people using the framework on real work, as opposed to maintainer introspection.
-Created 2026-07-31 for **B-42**, which asks that field findings be recorded here and used to
-re-order the backlog.
+Improvement-only issue intake from people using the framework on real work, as opposed to
+maintainer introspection. Created 2026-07-31 for **B-42**, which asks that field findings be recorded
+here and used to re-order the backlog. This is deliberately not a balanced feedback or satisfaction
+ledger; executed balanced studies live in `meta/field-study-results.md`.
 
 > **Confidentiality rule — binding.** Reports arrive from client repositories. Record the
 > *technical shape only*: stack, repo shape, what the model did, which framework surface was
@@ -139,12 +140,14 @@ general class.
 
 Reports arrive as a sentence or two about one defect, and most table fields go uncaptured.
 
-1. **"We only hear about defects" — CLOSED by maintainer decision, 2026-08-05. Not a sampling flaw.**
-   This previously read as a consequence to act on: that the ledger cannot show value, only failure,
-   and any adoption argument built on it would be reading a biased sample. That is not what the
-   ledger is for. Everything shipped is tested and carries its own evidence, so testimonial intake
-   buys nothing; the reports are **deliberately improvement-only**, and what matters is excellence
-   and further value. **Do not add a "what did it get right" field, and do not re-raise this.**
+1. **"We only hear about defects" — CLARIFIED by maintainer, 2026-08-26. Deliberate selection, not
+   sentiment evidence.** The maintainer acted on feedback that exposed something actionable and did
+   not record the positive feedback that was also received. The negative distribution here is
+   therefore an intake rule, not evidence that overall experience is negative. Nor can the
+   unrecorded positive feedback support a value claim: its count, context, and denominator are
+   unknown. Keep this ledger **deliberately improvement-only**; do not add testimonial fields to it.
+   Capture benefit, harm, mixed effects, and no detectable difference symmetrically through
+   `meta/field-study-kit.md` and record executed results in `meta/field-study-results.md`.
    `what fired` / `what got ignored` stay — they are diagnostic, not testimonial: report #1's cause
    was *the framework spoke and was ignored*, reports #2 and #4's was *the framework was silent*, and
    those demand opposite fixes.
