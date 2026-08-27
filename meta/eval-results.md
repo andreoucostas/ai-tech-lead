@@ -1433,3 +1433,65 @@ disposition either way. **B-129 remains open, still blocked on the account's mon
 resetting** — see `meta/BACKLOG.md` B-129 and `meta/workspace-decisions.md` WSD-042 for the
 corresponding status notes.
 
+## B-178 bootstrap repeatability baseline — three Sol runs plus verifier, 2026-08-27
+
+**Fixture and carrier.** Public `ardalis/CleanArchitecture` pinned at upstream
+`fbdc0951879f5e8dca1bebc273d4b28cb2934469`; root pre-existing AI instruction files removed so the
+exact v0.77.0 dotnet installer selected greenfield, while the mature Hugo/architecture-decision docs
+remained. Each arm was a remote-less, byte-identical, one-root-commit repository at
+`e16a1ae6cf6fff09c70c1395008b83df5a2533ce`. Three fresh Codex CLI 0.149.0
+`gpt-5.6-sol`/high sessions executed the checked-in bootstrap workflow with two disclosed carrier
+adaptations: serial pass execution where Task was unavailable, and the headless skip/unverified path
+for human questions. No raw repository, transcript, or generated artifact is committed here.
+
+**Protocol correction, preserved rather than hidden.** The first launcher invocation failed before
+model contact because this CLI makes `--approve-for-me` mutually exclusive with explicit
+`--sandbox workspace-write`; those setup failures are not trials. The corrected runs started at
+02:12:47–50 and were stopped uniformly at the post-launch 60-minute ceiling. The design had required
+an external timeout but failed to name its value; 60 minutes was therefore fixed while the runs were
+active, not pre-registered. All three results are `TIMEOUT`, not completed bootstraps. A read-only
+verifier launch separately could not read even `CLAUDE.md`; it was stopped and replaced by an
+auto-reviewed workspace-write carrier whose prompt was read-only. The committed verifier base stayed
+byte-clean, so the replacement is valid and the failed launch is `CANT-EXAMINE` setup evidence.
+
+**Artifact postcondition at timeout.** Run 1's deterministic `docs-sync-check` was green. Runs 2 and
+3 were red. Run 2 had three missing discovered-skill mirrors and one hazard row containing a
+non-resolving `Data/Migrations` path. Run 3 had two missing skill mirrors, Boy Scout and Common Tasks
+mirror drift, and five placeholder-style `MinimalClean/...` hazard paths. Thus: `TIMEOUT/PASS`,
+`TIMEOUT/ARTIFACT-FAILED`, `TIMEOUT/ARTIFACT-FAILED`. The model processes had continued making
+progress; the timeout measures cost/proportionality, not a deadlock. This independently reproduces
+B-177's class: model-facing generation can stop/claim progress while the deterministic consumer
+postcondition differs across runs.
+
+**Discovery output before verification.** Debt blocks were 13 / 11 / 13. After the frozen identity
+rubric (same problem + consequence + overlapping scope), the union held 20 candidates. A fresh Sol
+verifier read the original fixture, passed all three instrument controls (`VERIFIED` known positive,
+`REJECTED` planted MongoDB claim, `CANT-EXAMINE` absent private collector), and classified the union:
+19 evidence-supported, one rejected. The rejected candidate was run 1's claim that direct endpoint
+delegation violated intended mediator/DI seams; ADR-004 explicitly permits the observed direct CRUD
+shape.
+
+| run | published blocks | verified precision | verified discovered-pool coverage |
+|---|---:|---:|---:|
+| 1 | 13 | 12/13 | 12/19 |
+| 2 | 11 | 11/11 | 11/19 |
+| 3 | 13 | 13/13 | 12/19 (one normalized claim split into two blocks) |
+| three-run union | 20 normalized | 19/20 | 19/19 |
+
+Only five verified claims appeared `3/3`; six appeared `2/3`; eight appeared `1/3`. This confirms
+material run-to-run coverage variance without pretending the discovered union is recall. It also
+confirms why `3/3` intersection is unsafe: it would retain only 5 of the 19 evidence-supported pool
+claims. The verifier improved precision but cannot recover candidates absent from its supplied pool.
+
+**Skill-discovery finding.** Discovered skills were 1 / 3 / 2 with zero candidate shared across
+runs. Run 1 proposed the consumer-grounded `add-localized-domain-error`; runs 2 and 3 instead proposed
+five different skills about workflow carriers/cross-platform framework checks. Those candidates were
+mined from the installed framework's own `.claude`, `.github`, scripts, and tests, not consumer tribal
+knowledge. B-183 records that newly exposed ownership-boundary defect.
+
+**Disposition.** The reporter's nondeterminism concern is confirmed, but default three-run bootstrap
+is rejected on proportionality: it tripled a workflow that still had 3/3 timeouts and only 1/3 green
+artifact sets. Do not ship repeated discovery or use `3/3` as truth. Proceed with the cheaper
+deterministic completion, dismissal-memory, mature-doc ownership, Boy Scout, and routing controls.
+Revisit multi-sample discovery only if a bounded design can retain the observed coverage gain without
+three full repository analyses.

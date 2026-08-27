@@ -3099,6 +3099,16 @@ value. A one-off direct Codex CLI run is sufficient for this experiment; do not 
 permanent executor follow-on here. Sol grades final artifacts and cannot establish Claude/Copilot
 hook or typed-event behavior.
 
+> **Result (2026-08-27): experiment complete; default three-run bootstrap rejected.** Three fresh
+> `gpt-5.6-sol` runs over byte-identical copies of a pinned public fixture found 13/11/13 debt
+> blocks. A separate verifier accepted 19 of the 20 normalized union candidates, but only five
+> verified claims appeared in all three runs; a `3/3` publication threshold would therefore have
+> hidden 14 evidence-supported claims from the discovered pool. All three runs hit the uniform
+> 60-minute ceiling and only one artifact set passed `docs-sync-check`, so the coverage gain does not
+> justify tripling the complete bootstrap workflow. Full evidence, controls, limitations, and the
+> post-launch timeout correction are in `meta/eval-results.md`. B-183 captures the separate
+> framework-ownership leak exposed by the skill candidates.
+
 ### B-179 · Answer-only debt discussions trigger the debt-cleanup workflow
 **Filed against:** v0.77.0 (2026-08-26) · **Effort:** S · **Priority:** P1 · **Input:** field report #5
 
@@ -3162,6 +3172,26 @@ the work is fixed elsewhere.
 profiles. Preserve the stable framework practices. Add composition/contract tests proving generated
 workflows cannot tell the model to turn debt into the Boy Scout list. Do not add Jira integration or
 a new practice classifier.
+
+### B-183 · Bootstrap skill discovery mistakes installed framework machinery for consumer knowledge
+**Filed against:** v0.77.0 (2026-08-27) · **Effort:** S–M · **Priority:** P1 · found by B-178 ·
+**Invariants:** #1 #2 #3
+
+B-178's three byte-identical bootstrap runs proposed 1/3/2 project-specific skills with no candidate
+shared across runs. The one consumer-grounded candidate captured a recurring localized-domain-error
+recipe. The other five described framework workflow carriers, cross-platform checks, or framework
+installation mechanics mined from the installed `.claude`, `.github`, scripts, and tests. A8 is
+therefore learning the framework's own implementation as though it were consumer tribal knowledge.
+
+**Do:** before A8 discovery, load `framework-ownership.json` and exclude shipped framework-owned
+carriers from the evidence corpus. Preserve consumer-owned and genuinely mixed project evidence;
+do not replace ownership with a blanket `scripts/` or `tests/` path exclusion, because real consumer
+recipes can live there. Apply the rule to bootstrap/rebootstrap/adopt and every composed stack.
+
+**Proof:** a fixture containing one recurring consumer convention plus installed framework carriers
+must surface only the consumer candidate. Composition and mirror checks must pass for dotnet,
+angular, and monorepo. This is a candidate-generation boundary, not a claim that any generated skill
+is automatically true or useful.
 
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
