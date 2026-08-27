@@ -122,7 +122,6 @@ Apply accepted changes section by section:
     ## Declined recipe: <name>
     The team removed this auto-mined skill. Do not re-propose it.
     ```
-- **Boy Scout Rule**: update the priority list based on newly found debt
 - **LEARNINGS.md** (root file, no longer in CLAUDE.md): append any new lessons — never overwrite existing entries
 
 Do NOT touch the Codebase Context or Repository Structure sections unless a structural change was found (e.g., a new feature module, an Nx migration, a routing restructure).

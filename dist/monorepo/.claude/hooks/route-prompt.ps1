@@ -156,7 +156,7 @@ elseif ($lc -match '(\badd\b|\bimplement\b|\bcreate\b|\bbuild\b|new (feature|end
 # below still fires if the question touches a sensitive surface.
 $isQuestion = ($lc -match "^\s*(why|what|what'?s|how come|when|where|which|who|is|are|does|do|can|could|would|should)\b") -or ($prompt.TrimEnd() -match '\?$')
 $hasImperative = $lc -match '\b(add|fix|implement|create|build|make|change|update|modify|remove|delete|refactor|rename|extract|write|test|review|clean\s?up|migrate|wire|integrate|introduce)\b'
-if ($isQuestion -and -not $hasImperative -and $intent -in @('fix','feature','refactor','test')) { $intent = '' }
+if ($isQuestion -and -not $hasImperative -and $intent -in @('fix','feature','refactor','test','debt')) { $intent = '' }
 
 # Security overlay fires IN ADDITION to any workflow intent -- it is not an
 # exclusive intent, so a security-relevant feature still gets the feature rails.

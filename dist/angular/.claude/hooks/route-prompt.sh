@@ -91,7 +91,7 @@ isq=""; imp=""
 if echo "$lc" | grep -qE "^[[:space:]]*(why|what|what'?s|how come|when|where|which|who|is|are|does|do|can|could|would|should)\b" || printf '%s' "$prompt" | grep -qE '\?[[:space:]]*$'; then isq="1"; fi
 if echo "$lc" | grep -qE '\b(add|fix|implement|create|build|make|change|update|modify|remove|delete|refactor|rename|extract|write|test|review|clean ?up|migrate|wire|integrate|introduce)\b'; then imp="1"; fi
 case "$intent" in
-  fix|feature|refactor|test) [ -n "$isq" ] && [ -z "$imp" ] && intent="" ;;
+  fix|feature|refactor|test|debt) [ -n "$isq" ] && [ -z "$imp" ] && intent="" ;;
 esac
 
 # Security overlay fires IN ADDITION to any workflow intent (DORA: AI amplifies

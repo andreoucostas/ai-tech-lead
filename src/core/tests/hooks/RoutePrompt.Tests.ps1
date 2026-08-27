@@ -72,7 +72,12 @@ It 'route-prompt.ps1 slash command -> no output (both surfaces)' {
     }
 }
 It 'route-prompt.ps1 answer-only question -> no rails (both surfaces)' {
-    foreach ($evt in (New-ClaudePrompt 'why does it keep crashing?'), (New-CopilotPrompt 'why does it keep crashing?')) {
+    foreach ($evt in (
+        (New-ClaudePrompt 'why does it keep crashing?'),
+        (New-CopilotPrompt 'why does it keep crashing?'),
+        (New-ClaudePrompt 'Why is this tech debt?'),
+        (New-CopilotPrompt 'Why is this tech debt?')
+    )) {
         $r = Invoke-Hook $rpPs $evt
         Assert ($r.Exit -eq 0 -and [string]::IsNullOrWhiteSpace($r.Out)) 'question carve-out must suppress rails'
     }
@@ -161,7 +166,9 @@ if (-not $bash) {
         @{ n = 'fix intent (Claude)';    surface = 'Claude';  evt = (New-ClaudePrompt  'fix the broken date formatting'); marker = 'Routed intent' },
         @{ n = 'fix intent (Copilot)';   surface = 'Copilot'; evt = (New-CopilotPrompt 'fix the broken date formatting'); marker = 'Routed intent' },
         @{ n = 'security (Copilot)';     surface = 'Copilot'; evt = (New-CopilotPrompt 'implement payment processing');   marker = 'Security-sensitive' },
-        @{ n = 'slash no-op (Copilot)';  surface = 'Copilot'; evt = (New-CopilotPrompt '/review');                        marker = '' }
+        @{ n = 'slash no-op (Copilot)';  surface = 'Copilot'; evt = (New-CopilotPrompt '/review');                        marker = '' },
+        @{ n = 'debt question no-op (Claude)';  surface = 'Claude';  evt = (New-ClaudePrompt 'Why is this tech debt?');  marker = '' },
+        @{ n = 'debt question no-op (Copilot)'; surface = 'Copilot'; evt = (New-CopilotPrompt 'Why is this tech debt?'); marker = '' }
     )
     foreach ($case in $twinCases) {
         It "route-prompt twins agree: $($case.n)" {

@@ -113,6 +113,20 @@ function Assert-NoInvalidImpactArm {
     }
 }
 
+function Assert-NoDebtDerivedBoyScout {
+    param([object[]]$DistEntries)
+    foreach ($dist in $DistEntries) {
+        foreach ($relative in @('.claude/commands/bootstrap.md', '.claude/commands/rebootstrap.md')) {
+            $path = Join-Path $dist.Root $relative
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "workflow is missing in $($dist.Name): $relative" }
+            $text = Read-Utf8Text $path
+            if ($text -match '(?i)Boy Scout Rule.{0,120}(?:actual debt|newly found debt|priority list)') {
+                throw "debt-derived Boy Scout instruction remains in $($dist.Name)/$relative"
+            }
+        }
+    }
+}
+
 function New-Fixture {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('doc-claims-' + [guid]::NewGuid().ToString('N'))
     [IO.Directory]::CreateDirectory($root) | Out-Null
@@ -193,6 +207,10 @@ It 'every narrow command-maintenance claim is registered' {
 
 It 'adoption never presents its post-install tag as an old-framework A/B arm' {
     Assert-NoInvalidImpactArm -DistEntries $distEntries
+}
+
+It 'bootstrap workflows do not turn finite debt into the Boy Scout list' {
+    Assert-NoDebtDerivedBoyScout -DistEntries $distEntries
 }
 
 exit (Write-TestSummary 'DocClaims.Tests')
