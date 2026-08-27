@@ -75,12 +75,25 @@ function Get-NextBacklogId {
     param([Parameter(Mandatory)][string[]]$Texts)
     $numbers = @(
         foreach ($text in $Texts) {
-            [regex]::Matches($text, '(?m)^### B-(\d+)') |
-                ForEach-Object { [int]$_.Groups[1].Value }
+            foreach ($match in [regex]::Matches($text, '(?m)^### B-(\d+)(?:…B-(\d+))?')) {
+                [int]$match.Groups[1].Value
+                if ($match.Groups[2].Success) { [int]$match.Groups[2].Value }
+            }
         }
     )
     if ($numbers.Count -eq 0) { return 1 }
     return (($numbers | Measure-Object -Maximum).Maximum) + 1
+}
+
+function Test-ReleaseReviewRecord {
+    param(
+        [Parameter(Mandatory)][string]$Text,
+        [Parameter(Mandatory)][string]$Version,
+        [Parameter(Mandatory)][ValidateSet('ledger', 'backlog')][string]$Surface
+    )
+    $escaped = [regex]::Escape($Version)
+    if ($Surface -eq 'ledger') { return [regex]::IsMatch($Text, "(?m)^\| v$escaped \|") }
+    return [regex]::IsMatch($Text, "(?m)^### B-\d+ · Post-ship review owed for v$escaped(?:\s|$)")
 }
 
 # ---- Gate time budget -------------------------------------------------------------------------
@@ -632,8 +645,13 @@ $evidenceCell = if ($NoIndependentReview) {
     # Collapse to one line and escape the cell delimiter so the row cannot break the table.
     $ReviewEvidence -replace '\r?\n', ' ' -replace '\|', '\|'
 }
-Add-Content -LiteralPath $ledger -Value "| v$Version | $today | $evidenceCell |" -Encoding utf8
-Write-Host "Review ledger: $evidenceCell"
+$ledgerText = [IO.File]::ReadAllText($ledger)
+if (Test-ReleaseReviewRecord -Text $ledgerText -Version $Version -Surface ledger) {
+    Write-Host "Review ledger: existing v$Version row retained (release retry)."
+} else {
+    Add-Content -LiteralPath $ledger -Value "| v$Version | $today | $evidenceCell |" -Encoding utf8
+    Write-Host "Review ledger: $evidenceCell"
+}
 
 if ($NoIndependentReview) {
     # Maintenance model #2: when no independent review happened, the debt is filed automatically
@@ -642,14 +660,18 @@ if ($NoIndependentReview) {
     $archive = Join-Path $repo 'meta/BACKLOG-DONE.md'
     $anchor  = '## Known deferred work'
     $text    = [IO.File]::ReadAllText($backlog)
-    $idTexts = @($text)
-    if (Test-Path -LiteralPath $archive -PathType Leaf) {
-        $idTexts += [IO.File]::ReadAllText($archive)
-    }
-    $next = Get-NextBacklogId -Texts $idTexts
-    $stub    = @"
+    if (Test-ReleaseReviewRecord -Text $text -Version $Version -Surface backlog) {
+        Write-Host "Post-ship review for v$Version is already filed (release retry)."
+    } else {
+        $idTexts = @($text)
+        if (Test-Path -LiteralPath $archive -PathType Leaf) {
+            $idTexts += [IO.File]::ReadAllText($archive)
+        }
+        $next = Get-NextBacklogId -Texts $idTexts
+        $stub    = @"
 ### B-$next · Post-ship review owed for v$Version
 **Effort:** S · **Priority:** P2 · filed automatically by ``release.ps1`` on $today
+**Filed against:** v$Version ($today)
 
 **Why:** v$Version shipped with ``-NoIndependentReview``, so no second session re-ran a gate or a
 red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
@@ -662,11 +684,12 @@ close this entry, recording what was re-run.
 ---
 
 "@
-    if (([regex]::Matches($text, [regex]::Escape($anchor))).Count -eq 1) {
-        [IO.File]::WriteAllText($backlog, $text.Replace($anchor, $stub + $anchor), [Text.UTF8Encoding]::new($false))
-        Write-Host "Filed B-$next (post-ship review owed for v$Version)."
-    } else {
-        Write-Host "WARNING: could not file the post-ship review stub -- '$anchor' anchor not unique in meta/BACKLOG.md. File it by hand."
+        if (([regex]::Matches($text, [regex]::Escape($anchor))).Count -eq 1) {
+            [IO.File]::WriteAllText($backlog, $text.Replace($anchor, $stub + $anchor), [Text.UTF8Encoding]::new($false))
+            Write-Host "Filed B-$next (post-ship review owed for v$Version)."
+        } else {
+            Write-Host "WARNING: could not file the post-ship review stub -- '$anchor' anchor not unique in meta/BACKLOG.md. File it by hand."
+        }
     }
 }
 

@@ -3035,8 +3035,9 @@ count distinct categories, and make the eval's authoritative-catalog fixture rej
 Fold a duplicate-row mutation into the existing warehouse map checker suite; do not create a
 standalone catalog suite.
 
-### B-178 · Post-ship review owed for v0.78.0
+### B-184 · Post-ship review owed for v0.78.0
 **Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-27
+**Filed against:** v0.78.0 (2026-08-27)
 
 **Why:** v0.78.0 shipped with `-NoIndependentReview`, so no second session re-ran a gate or a
 red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
