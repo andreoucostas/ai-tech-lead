@@ -5,6 +5,29 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.78.0 — 2026-08-27
+
+- `/bootstrap`, `/rebootstrap`, `/adopt`, and `/generate-copilot` now run the installed
+  deterministic documentation checks before claiming completion. A failing generated artifact is
+  repaired when it is in scope; otherwise the workflow reports failure or `CANT-VERIFY`. Hazard rows
+  require a supported bare status token and at least one resolving repository path.
+- `TECH_DEBT.md` retains dismissed proposals separately from active debt. Matching claims remain
+  suppressed until materially changed evidence is named; reopening preserves the dismissal and
+  records the specific delta.
+- Brownfield adoption screens mature architecture and ADR documents in place. Clean documents keep
+  their original bytes, paths, and links; flagged content is quarantined; broken references are
+  reported; and competing indexes require your choice.
+- Project-specific skill discovery excludes framework-owned carriers through
+  `framework-ownership.json` while keeping eligible consumer-owned and corroborated mixed evidence.
+  Finite debt is no longer copied into the always-loaded Boy Scout list.
+- Asking why something is technical debt is answer-only and no longer triggers cleanup; the
+  existing security overlay and queued Boy Scout behavior remain intact.
+- Updates protect a pre-existing project `docs/ARCHITECTURE.md`, and Bash skill synchronization no
+  longer resolves Windows `FIND.EXE` accidentally.
+- Boy Scout, hazard, and wiki checks now select POSIX `sort`/`find` under non-login Git Bash, where
+  Windows commands could previously hide findings or reject a clean index. Audit logs redact every
+  path outside the repository, including existing paths.
+
 ## 0.77.0 — 2026-08-24
 
 - Bootstrap now selects only the .NET, Angular, and warehouse-SQL profiles evidenced from the Git

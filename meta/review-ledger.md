@@ -59,3 +59,4 @@ legitimate outcome, deliberately not a silent one: it files a post-ship review i
 | v0.77.0 | 2026-08-24 | reviewer /root/increment5_independent_review; pwsh -NoProfile -File src/core/tests/hooks/FrameworkDoctor.Tests.ps1 EXIT=0 (33 passed, 0 failed, 0 skipped); source + all three dist copies SHA-256 03C9ADB3C73525295BE103A35444F9388B49F477C00812EF9C755450A345F03F; git diff --check EXIT=0; implementer /root |
 | v0.77.0 | 2026-08-24 | reviewer /root/increment5_independent_review: no blockers; SHA-identical source and three dist copies; bash -n and dotnet/angular/monorepo dist syntax validation green; implementer /root |
 | v0.77.0 | 2026-08-24 | reviewer /root/increment5_independent_review: no blockers; SHA-identical source and three dist copies; bash -n and dotnet/angular/monorepo dist syntax validation green; implementer /root |
+| v0.78.0 | 2026-08-27 | reviewer: none -- post-ship review owed |

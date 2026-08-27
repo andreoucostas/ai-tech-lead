@@ -5,6 +5,10 @@ set -u
 # Root comes from the argument (docs-sync-check passes it) or self-anchors to scripts/.., never stdin.
 root="${1:-}"; [ -n "$root" ] || root="$(cd "$(dirname "$0")/.." && pwd)"
 root="${root//\\//}"; if command -v cygpath >/dev/null 2>&1 && [[ "$root" =~ ^[A-Za-z]:/ ]]; then root="$(cygpath -u "$root")"; fi
+# Git Bash can inherit a PATH where Windows find.exe wins over POSIX find. The Windows command
+# treats the root/options as text-search arguments, producing an empty filename index.
+find_cmd=find
+[ -x /usr/bin/find ] && find_cmd=/usr/bin/find
 context="$root/FRAMEWORK-CONTEXT.md"; fails=0
 fail(){ echo "FAIL: $*"; fails=$((fails+1)); }
 # Portable calendar validation. BSD/macOS `date` has no GNU `-d <datestring>` and BSD strptime is
@@ -58,7 +62,7 @@ while IFS= read -r line; do
   # A candidate with no '/' is a bare filename -- see the .ps1 twin's comment for why those resolve
   # tree-wide rather than against the root. `find -printf` is GNU-only, so strip directories with sed.
   if [ "$rooted" -eq 1 ];then [ -e "$root/$candidate" ]||fail "hazard row names a path that does not exist: $candidate (row: $area)";continue;fi
-  if [ ! -f "$tmp/names" ];then find "$root" -type f ! -path '*/.git/*' ! -path '*/node_modules/*' ! -path '*/bin/*' ! -path '*/obj/*' ! -path '*/dist/*' -print 2>/dev/null|sed 's|.*/||' > "$tmp/names";fi
+  if [ ! -f "$tmp/names" ];then "$find_cmd" "$root" -type f ! -path '*/.git/*' ! -path '*/node_modules/*' ! -path '*/bin/*' ! -path '*/obj/*' ! -path '*/dist/*' -print 2>/dev/null|sed 's|.*/||' > "$tmp/names";fi
   if ! grep -Fxq -- "$candidate" "$tmp/names";then fail "hazard row names a path that does not exist: $candidate (row: $area)";fi
  done < "$tmp/candidates"
 done < "$tmp/context"

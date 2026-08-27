@@ -83,7 +83,10 @@ if command -v realpath >/dev/null 2>&1 && realpath --relative-to=. "$file_path" 
 elif _pybin=$(for c in python3 python py; do command -v "$c" >/dev/null 2>&1 && [ "$(printf '{}' | "$c" -c 'import json,sys;json.load(sys.stdin);sys.stdout.write("ok")' 2>/dev/null)" = ok ] && { printf '%s' "$c"; break; }; done); [ -n "$_pybin" ]; then
   rel=$("$_pybin" -c 'import os,sys; print(os.path.relpath(sys.argv[1]))' "$file_path" 2>/dev/null) || rel="[path-normalisation-failed]"
 fi
-[ -z "$rel" ] && rel="[path-normalisation-failed]"
+rel="${rel//\\//}"
+# `realpath --relative-to` and Python's relpath can both succeed for a path outside the repository,
+# yielding a traversal path that leaks local layout. Only retain paths contained by the hook cwd.
+case "$rel" in ''|..|../*|/*|[A-Za-z]:/*) rel="[path-normalisation-failed]";; esac
 
 printf "%s\t%s\t%s\n" "$timestamp" "$branch" "$rel" >> .claude/ai-audit.log
 

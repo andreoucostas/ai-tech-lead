@@ -8,6 +8,11 @@ root="${root//\\//}"
 if command -v cygpath >/dev/null 2>&1 && [[ "$root" =~ ^[A-Za-z]:/ ]]; then root="$(cygpath -u "$root")"; fi
 wiki="$root/docs/wiki"; index="$wiki/INDEX.md"; fails=0
 fail(){ echo "FAIL: $*"; fails=$((fails+1)); }; warn(){ echo "WARN: $*"; }
+# A non-login Git Bash inherits the Windows PATH order, where system32/sort.exe can precede
+# Git's POSIX sort. The Windows command rewrites line endings and does not implement the same
+# options, so even a one-entry index can look unsorted. Prefer the known POSIX tool when present.
+sort_cmd=sort
+[ -x /usr/bin/sort ] && sort_cmd=/usr/bin/sort
 # Portable calendar validation. BSD/macOS `date` has no GNU `-d <datestring>` and BSD strptime is
 # lenient, so reject non-calendar dates (e.g. 2026-02-30) with a pure-shell month-length + leap-year
 # check that is deterministic on every platform. Input is already ^\d{4}-\d{2}-\d{2}$; 10# forces
@@ -29,7 +34,7 @@ while IFS= read -r line; do
  if [[ "$line" =~ $index_re ]] && [ "${BASH_REMATCH[2]}" = "${BASH_REMATCH[4]}" ]; then echo "${BASH_REMATCH[2]}" >> "$tmp/slugs"; else fail "invalid INDEX line: $line"; fi
  echo "$line" | LC_ALL=C grep -Eqi "$signal" && fail "injection marker in INDEX line: $line"
 done < "$tmp/lines"
-LC_ALL=C sort "$tmp/slugs" > "$tmp/sorted"; cmp -s "$tmp/slugs" "$tmp/sorted" || fail 'INDEX entries are not sorted by slug'
+LC_ALL=C "$sort_cmd" "$tmp/slugs" > "$tmp/sorted"; cmp -s "$tmp/slugs" "$tmp/sorted" || fail 'INDEX entries are not sorted by slug'
 # Staleness cutoff (90 days ago) as a YYYY-MM-DD string, computed once. Zero-padded ISO dates compare
 # correctly as plain strings, so the per-entry check is a lexical compare. Feature-detect GNU
 # `date -d` then BSD `date -v`; if neither yields a valid date, leave cutoff empty and skip the

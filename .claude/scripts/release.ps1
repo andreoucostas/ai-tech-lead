@@ -71,6 +71,18 @@ $today = Get-Date -Format 'yyyy-MM-dd'
 $fatal = $false
 function Gate($ok, $what) { if ($ok) { Write-Host "GATE ok:   $what" } else { Write-Host "GATE FAIL: $what"; $script:fatal = $true } }
 
+function Get-NextBacklogId {
+    param([Parameter(Mandatory)][string[]]$Texts)
+    $numbers = @(
+        foreach ($text in $Texts) {
+            [regex]::Matches($text, '(?m)^### B-(\d+)') |
+                ForEach-Object { [int]$_.Groups[1].Value }
+        }
+    )
+    if ($numbers.Count -eq 0) { return 1 }
+    return (($numbers | Measure-Object -Maximum).Maximum) + 1
+}
+
 # ---- Gate time budget -------------------------------------------------------------------------
 # The suite grew by accretion until releasing became impractical -- every RCA added a gate and
 # nothing ever measured what the set cost. Static context had the identical failure mode and was
@@ -627,10 +639,14 @@ if ($NoIndependentReview) {
     # Maintenance model #2: when no independent review happened, the debt is filed automatically
     # rather than left to memory -- the B-37 pattern, which is how it was missed before.
     $backlog = Join-Path $repo 'meta/BACKLOG.md'
+    $archive = Join-Path $repo 'meta/BACKLOG-DONE.md'
     $anchor  = '## Known deferred work'
     $text    = [IO.File]::ReadAllText($backlog)
-    $nums    = [regex]::Matches($text, '(?m)^### B-(\d+)') | ForEach-Object { [int]$_.Groups[1].Value }
-    $next    = (($nums | Measure-Object -Maximum).Maximum) + 1
+    $idTexts = @($text)
+    if (Test-Path -LiteralPath $archive -PathType Leaf) {
+        $idTexts += [IO.File]::ReadAllText($archive)
+    }
+    $next = Get-NextBacklogId -Texts $idTexts
     $stub    = @"
 ### B-$next · Post-ship review owed for v$Version
 **Effort:** S · **Priority:** P2 · filed automatically by ``release.ps1`` on $today

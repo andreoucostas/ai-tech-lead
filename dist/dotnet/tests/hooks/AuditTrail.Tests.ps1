@@ -36,7 +36,7 @@ It 'both twins use only the constant path-normalisation failure sentinel in fall
     Assert ($srcPs -match 'catch \{ \$rel = ''\[path-normalisation-failed\]'' \}') '.ps1 catch sentinel missing'
     Assert ($srcPs -notmatch 'catch\s*\{\s*\$rel\s*=\s*\$filePath') '.ps1 still falls back to the failed path'
     Assert (($srcSh | Select-String -Pattern 'rel="\[path-normalisation-failed\]"' -AllMatches).Matches.Count -eq 4) `
-        '.sh must use the constant sentinel in its initial, realpath, python, and empty-result fallbacks'
+        '.sh must use the constant sentinel in its initial, realpath, python, and containment fallbacks'
     Assert ($srcSh -notmatch 'rel="\$file_path"') '.sh still falls back to the failed path'
 }
 
@@ -104,6 +104,19 @@ try {
         Assert (@($lines)[0] -notmatch 'SENTINEL-FAKE-HOME|SENTINEL-SECRET-LOCATION') 'failed path leaked'
     }
 
+    It 'existing path outside the repository is redacted (.ps1)' {
+        [System.IO.File]::WriteAllText($logPath, '')
+        $outside = [IO.Path]::GetTempFileName()
+        try {
+            $r = Invoke-Hook $hookPs (New-ClaudeEvent $outside 'synthetic content')
+            Assert ($r.Exit -eq 0) "hook exited $($r.Exit)"
+            $lines = Get-AuditLines
+            Assert ($lines.Count -eq 1) "expected retained traceability line, got $($lines.Count)"
+            Assert (@($lines)[0] -match '\[path-normalisation-failed\]') 'outside path was not redacted'
+            Assert (@($lines)[0] -notmatch [regex]::Escape([IO.Path]::GetFileName($outside))) 'outside filename leaked'
+        } finally { Remove-Item -LiteralPath $outside -Force -ErrorAction SilentlyContinue }
+    }
+
     # 4. .sh twin (skipped when no bash found)
     $bash = Get-BashPath
     if (-not $bash) {
@@ -149,8 +162,21 @@ try {
             Assert ($r.Exit -eq 0) "hook exited $($r.Exit), stderr: $($r.Err)"
             $lines = Get-AuditLines
             Assert ($lines.Count -eq 1) "expected retained traceability line, got $($lines.Count)"
-            Assert (@($lines)[0] -match '\[path-normalisation-failed\]') 'constant sentinel missing'
+            Assert (@($lines)[0] -match '\[path-normalisation-failed\]') "constant sentinel missing; line='$(@($lines)[0])'"
             Assert (@($lines)[0] -notmatch 'SENTINEL-FAKE-HOME|SENTINEL-SECRET-LOCATION') 'failed path leaked'
+        }
+
+        It 'existing path outside the repository is redacted (.sh)' {
+            [System.IO.File]::WriteAllText($logPath, '')
+            $outside = [IO.Path]::GetTempFileName()
+            try {
+                $r = Invoke-Hook $hookSh (New-ClaudeEvent $outside 'synthetic content')
+                Assert ($r.Exit -eq 0) "hook exited $($r.Exit), stderr: $($r.Err)"
+                $lines = Get-AuditLines
+                Assert ($lines.Count -eq 1) "expected retained traceability line, got $($lines.Count)"
+                Assert (@($lines)[0] -match '\[path-normalisation-failed\]') 'outside path was not redacted'
+                Assert (@($lines)[0] -notmatch [regex]::Escape([IO.Path]::GetFileName($outside))) 'outside filename leaked'
+            } finally { Remove-Item -LiteralPath $outside -Force -ErrorAction SilentlyContinue }
         }
     }
 } finally {

@@ -66,7 +66,13 @@ $timestamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
 $rel = '[path-normalisation-failed]'
 try {
     $r = Resolve-Path -LiteralPath $filePath -Relative -ErrorAction Stop
-    if ($r) { $rel = [string]$r }
+    if ($r) {
+        $candidate = [string]$r
+        $portable = $candidate.Replace('\', '/')
+        if ($portable -ne '..' -and -not $portable.StartsWith('../') -and -not [IO.Path]::IsPathRooted($candidate)) {
+            $rel = $candidate
+        }
+    }
 } catch { $rel = '[path-normalisation-failed]' }
 
 "$timestamp`t$branch`t$rel" | Out-File -FilePath '.claude\ai-audit.log' -Append -Encoding utf8

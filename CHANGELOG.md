@@ -11,6 +11,38 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.78.0 — 2026-08-27
+
+**Onboarding now preserves reviewed project knowledge and cannot claim completion over red generated
+artifacts.** Bootstrap, rebootstrap, adopt, and Copilot/AGENTS regeneration bind their completion
+claim to the existing deterministic docs-sync gate. Hazard output requires bare accepted status
+tokens and resolving repository paths. A current installed dotnet bootstrap executed programmatically
+with Sol passed the first post-generation gate and an independent rerun; the carrier result is
+deliberately limited to final artifacts and does not stand in for Claude/Copilot hook evidence.
+
+Debt workflows now preserve a compact dismissed-proposal registry and suppress a matching claim
+until materially changed evidence is named. Mature architecture/ADR corpora are provenance-screened
+in place: clean files keep their bytes, paths, and relative links; unsafe material is quarantined;
+competing indexes remain a human authority choice. Bootstrap/rebootstrap no longer turn finite debt
+into Boy Scout guidance. Shared skill discovery excludes framework-owned installation machinery and
+accepts mixed paths only when consumer-authored evidence is corroborated outside framework-owned
+paths. The exact answer-only question `Why is this tech debt?` no longer triggers cleanup routing.
+
+Three full repeatability trials confirmed high discovery variance, but all hit a 60-minute ceiling
+and only one generated artifact set was green. Default three-run bootstrap and a `3/3` truth vote
+were therefore rejected in favor of the smaller controls above. Retained focused fixtures passed
+three fresh runs each for dismissal reopening, skill ownership, and mature-document filesystem
+preservation. Installer collision recovery protects a pre-existing `docs/ARCHITECTURE.md`, and the
+Bash skill-sync script no longer resolves Windows `find.exe` accidentally. Release bookkeeping now
+allocates automatic post-ship-review IDs across both open and completed backlog history.
+
+The full installed-hook gate exposed the same non-login Git Bash PATH collision in Boy Scout,
+hazard, and wiki checks: Windows `sort.exe`/`find.exe` could erase candidate streams or reject a
+clean index. Those scripts now select Git's POSIX tools explicitly. The gate also exposed that
+Git Bash `realpath` can successfully render an outside path as `../../...`; both audit twins now
+record the constant redaction sentinel for every path outside the repository, including existing
+paths, and retain only contained repository-relative paths.
+
 ## 0.77.0 — 2026-08-24
 
 **Recovery increment 5 restores warehouse-only installation after making the selected lifecycle

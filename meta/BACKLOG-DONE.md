@@ -6950,3 +6950,38 @@ cross-cutting rule needs one canonical statement and compact references, not ful
 each call site.
 The exposed class is every delivery-profile or template label: it says which framework bundle was
 selected, not which technologies or commands the consumer repository actually supports.
+### B-177…B-183 · Senior onboarding feedback convergence — **DONE v0.78.0 (2026-08-27)**
+
+The seven-item increment is complete under WSD-054 and the locked
+`2026-08-26-bootstrap-feedback-convergence-design.md` plan.
+
+- **B-177:** bootstrap, rebootstrap, adopt, and mirror generation bind completion to the existing
+  deterministic docs-sync gate; hazard status/path contracts are explicit. A current installed
+  dotnet bootstrap run under Sol passed the first post-generation gate and an independent rerun.
+- **B-178:** three byte-identical full bootstrap trials confirmed material output variance but all
+  timed out at 60 minutes and only one artifact set was green. Default three-run bootstrap and a
+  `3/3` truth threshold were rejected; `n/3` remains descriptive stability metadata.
+- **B-179:** both route-prompt twins now keep the exact answer-only question
+  `Why is this tech debt?` silent on Claude- and Copilot-shaped events while preserving composition.
+- **B-180:** `TECH_DEBT.md` carries a durable dismissed-proposal registry. Debt workflows suppress
+  matching claims and reopen only with a preserved dismissal plus named evidence delta.
+- **B-181:** mature project architecture/ADR documents are screened in place. Clean bytes, paths,
+  and links remain project-owned; flagged content is quarantined; competing indexes require a human.
+- **B-182:** bootstrap/rebootstrap no longer turn finite debt into always-loaded Boy Scout guidance.
+- **B-183:** A8 excludes paths classified `framework-owned/overwritten` and accepts mixed evidence
+  only when consumer-authored and corroborated outside framework-owned paths.
+
+Deterministic focused tests passed: route-prompt composed dist 25/25, DocClaims 7/7,
+UpdateDelivery 47/47 on both installer twins, and ScriptTwinParity 10/10. Retained synthetic
+fixtures then passed nine fresh Sol runs plus an independent artifact grader: dismissal 3/3,
+ownership-filtered A8 3/3, and mature-document filesystem disposition 3/3 with
+`TOTAL_FAILURES=0`. The installed onboarding proof changed no product source. Full protocols,
+usage, setup failures, and carrier limits are in `meta/eval-results.md`; fixtures and schemas are in
+`meta/eval-fixtures/bootstrap-feedback/`. Same-tier Sol evidence does not certify Claude/Copilot
+dispatch, hooks, or typed ordering. Every recomposed distribution subsequently passed its complete
+installed hook suite (0 failures across 20 files per stack) and `validate-dist`. Those gates exposed
+and closed non-login Git Bash `sort`/`find` command collisions plus an audit-path containment leak;
+focused regressions are wiki 14/14, twin parity 13/13, hazards 27/27, and audit 15/15. B-184 records
+the mandatory post-ship independent review.
+
+---

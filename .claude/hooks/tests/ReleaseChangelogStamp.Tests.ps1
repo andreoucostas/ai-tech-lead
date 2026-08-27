@@ -34,6 +34,16 @@ if ($functionsReady) {
     }
 }
 
+$idFunctionAst = @($releaseAst.FindAll({
+    param($node)
+    $node -is [Management.Automation.Language.FunctionDefinitionAst] -and
+        $node.Name -eq 'Get-NextBacklogId'
+}, $true))
+$idFunctionReady = ($parseErrors.Count -eq 0 -and $idFunctionAst.Count -eq 1)
+if ($idFunctionReady) {
+    . ([scriptblock]::Create($idFunctionAst[0].Extent.Text))
+}
+
 # The fallback is bounded by stable numbered release-step markers. It exists only to make the
 # original root-only behavior an observable red; every post-fix assertion drives extracted helpers.
 $step1Start = $releaseText.IndexOf('# ---- 1.')
@@ -100,6 +110,14 @@ function Invoke-StampFixture([string]$Root) {
 }
 
 try {
+    It 'post-ship review allocation includes archived ids and cannot reuse a completed item id' {
+        Assert $idFunctionReady "release helper Get-NextBacklogId is missing or ambiguous (found $($idFunctionAst.Count))"
+        $open = "### B-176 · Open`n"
+        $archive = "### B-177 · Done`n### B-183 · Done`n"
+        Assert ((Get-NextBacklogId -Texts @($open, $archive)) -eq 184) 'allocator ignored the archive and would reuse B-177'
+        Assert ((Get-NextBacklogId -Texts @("no ids`n")) -eq 1) 'empty history did not start at B-1'
+    }
+
     It 'the bounded release stamp dates the root and all three authored consumer changelogs' {
         $root = New-ChangelogWorld
         $result = Invoke-StampFixture $root

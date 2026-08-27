@@ -13,6 +13,10 @@
 
 set -u
 if [ -t 0 ]; then input=""; else input=$(cat); fi
+# A non-login Git Bash can resolve system32/sort.exe before Git's POSIX sort. Prefer the
+# compatible implementation so `-u` cannot silently erase the candidate-file stream.
+sort_cmd=sort
+[ -x /usr/bin/sort ] && sort_cmd=/usr/bin/sort
 
 explicit_mode=""
 case ${1-} in
@@ -34,6 +38,7 @@ fi
 hook_dir=$(cd "$(dirname "$0")" && pwd)
 candidate_root=$(cd "$hook_dir/../.." && pwd)
 repo_root=$(git -C "$candidate_root" rev-parse --show-toplevel 2>/dev/null) || exit 0
+if command -v cygpath >/dev/null 2>&1 && [[ "$repo_root" =~ ^[A-Za-z]:/ ]]; then repo_root=$(cygpath -u "$repo_root"); fi
 state_dir="$repo_root/.claude/.state"
 queue_file="$state_dir/boy-scout-queue"
 if [ "$mode" = deliver ]; then
@@ -54,7 +59,7 @@ files=$(
   { git -C "$repo_root" diff --name-only -- '*.cs' 2>/dev/null
     git -C "$repo_root" diff --cached --name-only -- '*.cs' 2>/dev/null
     git -C "$repo_root" ls-files --others --exclude-standard -- '*.cs' 2>/dev/null
-  } | sort -u | head -30
+  } | "$sort_cmd" -u | head -30
 )
 [ -z "$files" ] && exit 0
 
@@ -129,7 +134,7 @@ done <<< "$files"
 # Avoids re-emitting the same warnings on every turn while the user iterates.
 mkdir -p "$state_dir" 2>/dev/null
 hash_file="$repo_root/.claude/.state/last-boy-scout-hash"
-joined=$(printf '%s\n' "${findings[@]}" | LC_ALL=C sort)
+joined=$(printf '%s\n' "${findings[@]}" | LC_ALL=C "$sort_cmd")
 if command -v sha1sum >/dev/null 2>&1; then
   current_hash=$(printf '%s' "$joined" | sha1sum | awk '{print $1}')
 elif command -v shasum >/dev/null 2>&1; then

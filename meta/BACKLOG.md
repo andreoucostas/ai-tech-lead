@@ -3035,164 +3035,18 @@ count distinct categories, and make the eval's authoritative-catalog fixture rej
 Fold a duplicate-row mutation into the existing warehouse map checker suite; do not create a
 standalone catalog suite.
 
-### B-177 · Bootstrap and mirror regeneration can claim completion while deterministic docs sync is red
-**Filed against:** v0.77.0 (2026-08-26)
-**Effort:** M · **Priority:** P1 · found by FS-20260826-RERUN-02 · **Invariants:** #2 #5
+### B-178 · Post-ship review owed for v0.78.0
+**Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-27
 
-Exact released v0.77.0 was installed into a history-isolated, real .NET OSS repo and the developer
-ran `/bootstrap` with `claude-sonnet-5` because Opus usage was unavailable. Bootstrap completed
-after 11 follow-ups but its required postcondition was red: generated hazard rows wrapped every
-status in backticks, one hazard area named a namespace-like token rather than a real path, and
-`AGENTS.md` retained a stale Boy Scout applicability line. A fresh Sonnet
-`/generate-copilot` session repaired most drift, reported the relevant sections byte-identical,
-and still left that one Boy Scout line stale. The third `docs-sync-check` passed only after an
-exact manual mirror correction.
+**Why:** v0.78.0 shipped with `-NoIndependentReview`, so no second session re-ran a gate or a
+red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
+it did not happen. Summary of what shipped: preserve onboarding evidence and bind generated artifacts to deterministic completion gates
 
-This is a product failure, not a field-study scoring issue: the deterministic gate correctly
-rejected the artifacts, but both model workflows claimed completion before satisfying it. The
-smaller adequate fix is to make completion conditional on the existing check, not add another
-generator or parser.
+**Do:** review the v0.78.0 diff as an independent session -- re-run at least one gate and one
+red-test yourself, do not read the release output as evidence -- and file whatever it finds. Then
+close this entry, recording what was re-run.
 
-**Do:**
-1. Reproduce the three output defects from the preserved local fixture/transcripts without copying
-   raw study artifacts into the repo; use the existing B-41/model-workflow harness if a stochastic
-   case is needed rather than building another harness.
-2. Tighten bootstrap's hazard-table output contract: bare status tokens from the accepted set and
-   repository paths that the existing checker can resolve.
-3. Make `/bootstrap` and `/generate-copilot` run the existing deterministic docs-sync check before
-   claiming completion, repair failures within scope, and report `CANT-VERIFY` when the check could
-   not run. Add a regression case for the one-line Boy Scout applicability drift.
-4. Re-run the installed onboarding workflow programmatically with `gpt-5.6-sol` and observe a
-   first-pass green check before closing. **Carrier amendment, maintainer decision 2026-08-26:** the
-   earlier Sonnet-only acceptance was a budget workaround, not the subject being measured. This
-   defect is the final artifact postcondition, so Sol may execute the same checked-in workflow and
-   the deterministic checker grades it. Record the carrier honestly: this does not certify
-   Claude/Copilot command dispatch, hook consumption, or typed tool ordering.
-
-**RCA:** no release gate can validate model-generated consumer-instance content before a model runs.
-The installed workflows described verification but did not bind their completion claim to its exit
-and exact output. The same class exposes `/adopt` (which invokes bootstrap), `/rebootstrap`,
-`/docs-sync`, and any future workflow that regenerates protected carriers. Do not weaken
-`docs-sync-check`; it is the instrument that caught the failure.
-
-### B-178 · Measure bootstrap repeatability before multiplying discovery by three
-**Filed against:** v0.77.0 (2026-08-26) · **Effort:** M experiment, no product code by default ·
-**Priority:** P2 · **Input:** field report #5 · **Plan:**
-`.claude/plans/2026-08-26-bootstrap-feedback-convergence-design.md` (LOCKED)
-
-An external senior developer reports that bootstrap's debt, conventions, and hazard findings change
-between runs. The current workflow structurally takes one sample per pass, but no retained runs
-quantify the variance. Do not infer that `3/3` agreement means true: it can erase a real low-frequency
-finding and preserve a repeated misconception.
-
-**Do:** run three fresh `gpt-5.6-sol` sessions against independently writable, byte-identical copies
-of one mature documented fixture. Freeze candidate identity as same claim + consequence + overlapping
-scope; keep ambiguous matches separate. Form one blinded pool from the union plus planted positive
-and negative claims, verify it from repository evidence in a fresh context, and report per-candidate
-`n/3` as stability only. The metric is **discovered-pool coverage**, not recall. Preserve every run
-outcome and distinguish `RUN-FAILED`, `TIMEOUT`, `MODEL/HOST-MISMATCH`, `ARTIFACT-FAILED`, and
-`CANT-EXAMINE`.
-
-**Decision gate:** ship repeated discovery only if it adds material verified correctness beyond the
-cheaper B-177/B-180/B-181/B-182 controls at acceptable wall-time/usage cost. Variation alone is not
-value. A one-off direct Codex CLI run is sufficient for this experiment; do not implement B-140's
-permanent executor follow-on here. Sol grades final artifacts and cannot establish Claude/Copilot
-hook or typed-event behavior.
-
-> **Result (2026-08-27): experiment complete; default three-run bootstrap rejected.** Three fresh
-> `gpt-5.6-sol` runs over byte-identical copies of a pinned public fixture found 13/11/13 debt
-> blocks. A separate verifier accepted 19 of the 20 normalized union candidates, but only five
-> verified claims appeared in all three runs; a `3/3` publication threshold would therefore have
-> hidden 14 evidence-supported claims from the discovered pool. All three runs hit the uniform
-> 60-minute ceiling and only one artifact set passed `docs-sync-check`, so the coverage gain does not
-> justify tripling the complete bootstrap workflow. Full evidence, controls, limitations, and the
-> post-launch timeout correction are in `meta/eval-results.md`. B-183 captures the separate
-> framework-ownership leak exposed by the skill candidates.
-
-### B-179 · Answer-only debt discussions trigger the debt-cleanup workflow
-**Filed against:** v0.77.0 (2026-08-26) · **Effort:** S · **Priority:** P1 · **Input:** field report #5
-
-Both route-prompt twins deterministically emit the complete debt workflow for
-`Why is this tech debt?`. The answer-only carve-out clears `fix`, `feature`, `refactor`, and `test`
-but omits `debt`. This is the exact reported symptom and contradicts the carve-out's own comment.
-
-**Do:** add the exact question as a failing PowerShell/bash regression on both Claude- and
-Copilot-shaped events, then include `debt` in the answer-only escape. Preserve the security overlay
-and Copilot Boy Scout queue composition. This item does not authorize retiring the classifier:
-B-44/`meta/overlap-watch.md` owns that supported-host A/B, and B-159 owns review fan-out evidence.
-
-### B-180 · Dismissed bootstrap debt has no resurrection guard
-**Filed against:** v0.77.0 (2026-08-26) · **Effort:** M · **Priority:** P1 · **Input:** field report #5
-
-The reporter says a reviewed false-positive debt item can reappear on a later bootstrap. The tree
-explains why: active `DEBT-NNN` blocks are deleted when resolved, and no workflow preserves a human
-decision that a proposed claim was not debt. Adding four lifecycle states to every active item would
-be larger than the evidence warrants.
-
-**Do:** keep active blocks and resolved deletion. Add a compact `Dismissed proposals — do not
-re-propose without changed evidence` registry to `TECH_DEBT.md`: readable stable key
-(`<area>::<claim-slug>`), paths/symbols, evidence reviewed, date, and reason. `/debt`, bootstrap, and
-rebootstrap suppress a matching claim. They may reopen only when materially changed evidence is
-named, without deleting the prior dismissal. Reuse the declined-recipe resurrection-guard pattern.
-
-**Proof:** bootstrap -> plant a dismissal -> unchanged rebootstrap suppresses it -> change cited
-evidence -> rebootstrap may propose it only with the delta named. Do not add `Accepted`/retained
-`Resolved` states unless later field evidence needs them.
-
-### B-181 · Adopt moves and re-derives mature architecture documentation
-**Filed against:** v0.77.0 (2026-08-26) · **Effort:** M–L · **Priority:** P1 ·
-**Input:** field report #5 · **Decision impact:** narrow amendment to WSD-014
-
-The external report says a mature, well-documented repository had its existing architecture/ADR
-material archived and then re-derived. Current `/adopt` explicitly inventories
-`docs/architecture/**`, `docs/adr/**`, and `docs/decisions/**`, moves approved legacy files under
-`docs/pre-adoption/`, and reconstructs framework-shaped summaries. Bytes remain recoverable, but
-original paths, relative links, and project ownership can break.
-
-**Do:** apply the existing provenance/adversarial screen in place to mature architecture documents.
-Clean documents retain path and bytes; adoption indexes/references them and reports concrete gaps,
-contradictions, dead links, or missing required fields. Path A remains for unsafe/ambiguous content;
-quarantine flagged material, and require a human choice when several indexes claim authority.
-Continue sending new framework ADRs to `docs/architecture-decisions.md`; do not silently redirect all
-ADR producers in this increment.
-
-**Proof fixture:** multiple linked clean ADRs, a clean architecture index, a flagged document, and a
-second ambiguous index. Assert clean byte/path/link preservation, flagged-content containment, no
-automatic authority choice, and a concrete gap report. Do not weaken WSD-014's human merge boundary.
-
-### B-182 · Bootstrap turns finite debt into always-loaded Boy Scout work
-**Filed against:** v0.77.0 (2026-08-26) · **Effort:** S · **Priority:** P2 · **Input:** field report #5
-
-The shipped default Boy Scout list is a stable touched-file practice filter. Bootstrap and
-rebootstrap nevertheless instruct the model to replace/update it from current debt, duplicating
-finite work already owned by `TECH_DEBT.md` or an external tracker and leaving no reliable exit when
-the work is fixed elsewhere.
-
-**Do:** remove debt-derived Boy Scout augmentation from bootstrap and rebootstrap across all stack
-profiles. Preserve the stable framework practices. Add composition/contract tests proving generated
-workflows cannot tell the model to turn debt into the Boy Scout list. Do not add Jira integration or
-a new practice classifier.
-
-### B-183 · Bootstrap skill discovery mistakes installed framework machinery for consumer knowledge
-**Filed against:** v0.77.0 (2026-08-27) · **Effort:** S–M · **Priority:** P1 · found by B-178 ·
-**Invariants:** #1 #2 #3
-
-B-178's three byte-identical bootstrap runs proposed 1/3/2 project-specific skills with no candidate
-shared across runs. The one consumer-grounded candidate captured a recurring localized-domain-error
-recipe. The other five described framework workflow carriers, cross-platform checks, or framework
-installation mechanics mined from the installed `.claude`, `.github`, scripts, and tests. A8 is
-therefore learning the framework's own implementation as though it were consumer tribal knowledge.
-
-**Do:** before A8 discovery, load `framework-ownership.json` and exclude shipped framework-owned
-carriers from the evidence corpus. Preserve consumer-owned and genuinely mixed project evidence;
-do not replace ownership with a blanket `scripts/` or `tests/` path exclusion, because real consumer
-recipes can live there. Apply the rule to bootstrap/rebootstrap/adopt and every composed stack.
-
-**Proof:** a fixture containing one recurring consumer convention plus installed framework carriers
-must surface only the consumer candidate. Composition and mirror checks must pass for dotnet,
-angular, and monorepo. This is a candidate-generation boundary, not a claim that any generated skill
-is automatically true or useful.
-
+---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see `meta/BACKLOG-DONE.md`.**

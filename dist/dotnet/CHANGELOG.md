@@ -4,6 +4,34 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.78.0 — 2026-08-27
+
+- `/bootstrap`, `/rebootstrap`, `/adopt`, and `/generate-copilot` now run the installed
+  deterministic documentation checks before claiming completion. A failing generated artifact is
+  repaired when it is in scope; otherwise the workflow reports failure or `CANT-VERIFY` instead of
+  presenting setup as complete. Generated hazard rows must use a supported bare status token and at
+  least one resolving repository path.
+- `TECH_DEBT.md` now retains dismissed proposals separately from active debt. Bootstrap and debt
+  refreshes suppress the same claim until materially changed evidence is named; reopening preserves
+  the earlier decision and records the specific evidence delta.
+- Brownfield adoption screens mature architecture and ADR documents in place. Clean documents keep
+  their original bytes, paths, and links. Flagged content goes to quarantine, broken references are
+  reported, and competing indexes require your choice rather than being silently consolidated.
+- Project-specific skill discovery excludes framework-owned files using
+  `framework-ownership.json`; consumer-owned scripts and tests remain eligible, and mixed files need
+  corroborating consumer evidence. Finite debt is no longer copied into the always-loaded Boy Scout
+  list.
+- Asking why something is technical debt is treated as an answer-only question rather than an
+  automatic debt-cleanup request. The stable routing, security overlay, and queued Boy Scout
+  behavior are otherwise unchanged.
+- Updates no longer overwrite a pre-existing project `docs/ARCHITECTURE.md`; legacy collision
+  recovery restores the project document after screening and retains the installed framework map
+  separately. Bash skill synchronization also works when Git Bash runs on Windows and `find` would
+  otherwise resolve to `FIND.EXE`.
+- Boy Scout, hazard, and wiki checks now select POSIX `sort`/`find` under non-login Git Bash, where
+  Windows commands could previously hide findings or reject a clean index. Audit logs redact every
+  path outside the repository to `[path-normalisation-failed]`, even when that outside path exists.
+
 ## 0.77.0 — 2026-08-24
 
 - Warehouse-only repositories can now install through root auto-detection and complete `/bootstrap`

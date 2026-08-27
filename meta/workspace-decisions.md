@@ -2422,6 +2422,19 @@ answer-only escape, deletion of debt-derived Boy Scout instructions, a dismissal
 screen-in-place preservation. Permanent repeated multi-agent orchestration would multiply the most
 expensive onboarding stage and therefore remains conditional on experiment evidence.
 
+**Outcome, 2026-08-27.** The three full bootstrap trials timed out at 60 minutes and only one of
+three artifact sets passed the deterministic gate; default repeated bootstrap is therefore rejected.
+The cheaper controls were implemented across every composed stack. A current installed dotnet
+bootstrap executed programmatically by Sol passed `docs-sync-check` on the first post-generation
+attempt and on an independent rerun. Three fresh focused runs per remaining model-facing boundary
+all passed mechanical grading: unchanged dismissals suppressed 3/3 and changed evidence reopened
+3/3 only with the named delta; A8 surfaced only the consumer recipe 3/3 with zero framework-owned
+evidence; mature adoption preserved every clean byte/path/link, quarantined the flagged file,
+declined automatic authority selection, and reported the planted gaps 3/3. The reusable synthetic
+fixtures and schemas are retained under `meta/eval-fixtures/bootstrap-feedback/`; full carrier,
+usage, setup-failure, and artifact evidence is in `meta/eval-results.md`. These repetitions remain
+stability observations, not votes on truth.
+
 **Rejected.** Treating `3/3` intersection as correctness; adding a four-state lifecycle to active
 debt; moving every ADR producer to a newly inferred canonical file; deleting the whole composed
 prompt hook based on a classifier result; using a Codex carrier to make Claude/Copilot host claims;

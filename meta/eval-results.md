@@ -1495,3 +1495,57 @@ artifact sets. Do not ship repeated discovery or use `3/3` as truth. Proceed wit
 deterministic completion, dismissal-memory, mature-doc ownership, Boy Scout, and routing controls.
 Revisit multi-sample discovery only if a bounded design can retain the observed coverage gain without
 three full repository analyses.
+
+## B-177/B-180/B-181/B-183 focused Sol proofs — 2026-08-27
+
+**Retained fixtures and grading boundary.** Commit `77dd2bd` stores synthetic dismissal, ownership,
+and mature-document fixtures plus output schemas under
+`meta/eval-fixtures/bootstrap-feedback/`. No consumer data or answer-bearing Git history is present.
+Every focused arm used Codex CLI 0.149.0 with `gpt-5.6-sol`/high in a fresh ephemeral context. Three
+runs describe carrier stability only. The checked-in workflow was the authority; prompts excluded
+the fixture README, backlog, plans, decisions, and previous results. A separate PowerShell grader
+read the structured outputs and filesystems; `TOTAL_FAILURES=0` across all nine focused runs.
+
+**B-177 installed end-to-end onboarding.** Current composed dotnet output was installed into a
+remote-less synthetic .NET payment repository and committed before the run. Sol executed the full
+checked-in bootstrap workflow with the pre-authorized noninteractive convention/hazard paths. It
+changed six onboarding artifacts and no `src/` or `tests/` file. The first deterministic completion
+gate after artifact generation was exactly
+`pwsh -NoProfile -File scripts/docs-sync-check.ps1`: exit 0, final line
+`All AI Tech Lead framework checks passed.` An independent rerun returned the same exit/final line;
+hazard statuses were bare accepted tokens, every hazard row contained resolving paths, the Boy Scout
+section mirrored verbatim, and skill mirrors matched. The run also correctly recorded that the
+fixture's solution-level CI command selected no project rather than treating exit 0 as product
+verification. Usage was 263,263 tokens. Three pre-trial launcher/setup failures (network-denied,
+read-only process denial, and Git safe-directory mismatch) are not product attempts and remain
+excluded. Carrier limitation: this proves final artifacts under Sol, not Claude/Copilot dispatch,
+hooks, or typed ordering.
+
+**B-180 dismissal sequence, 3/3.** Each run compared independent unchanged and changed roots.
+Unchanged evidence produced zero proposals in all three runs. Removing
+`_processedKeys.Add(idempotencyKey)` produced exactly one proposal in all three, each preserving the
+dismissal and carrying both
+`Reopens dismissal: payments::duplicate-charge-guard-absent` and a specific `Evidence delta` naming
+the removed guard. Usage: 27,958 / 25,754 / 25,761 tokens.
+
+**B-183 ownership-filtered A8, 3/3.** Every run found exactly one candidate,
+`add-not-found-error`, based on the three consumer-owned code/resource/mapper constellations. Every
+evidence path and exemplar was under `consumer/`; all three paths under `framework/` were explicitly
+excluded and none contributed recurrence or tribal knowledge. Usage: 31,870 / 32,969 / 34,267
+tokens.
+
+**B-181 Phase-1j filesystem disposition, 3/3.** Each run used a separate six-commit Git repository.
+All five clean architecture/index files retained their original paths and SHA-256 bytes; their clean
+relative links still resolved. The planted adversarial ADR moved byte-identically to
+`docs/pre-adoption/quarantine/docs/architecture/ADR-099-injected.md`; its inbound index link remained
+visible for human repair. Every run declined to choose between the competing indexes and reported
+the missing `ADR-404-missing.md` reference. The mechanical grader confirmed each worktree contained
+only that 100%-similarity rename. Run 1 corrected an over-strict path-containment check before the
+move; run 3 corrected its own first link-grader command before reporting. These observable internal
+errors do not change the artifact grade and are retained here rather than hidden. Usage: 40,350 /
+41,500 / 73,149 tokens.
+
+**Decision.** The smaller controls passed every focused arm. Together with B-178's cost and artifact
+results, this closes the decision gate against default three-run bootstrap: retain optional repeated
+experiments for stability measurement, but ship deterministic completion, durable dismissals,
+screen-in-place mature documents, finite Boy Scout scope, and framework-ownership exclusion.
