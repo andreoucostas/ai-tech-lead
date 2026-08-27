@@ -95,9 +95,19 @@ This makes `.github/skills/` a byte-identical copy of `.claude/skills/`. The doc
 
 After Parts A–C, run exactly one host-native framework check from the repository root:
 
+Windows PowerShell 5.1 (Windows without `pwsh`):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/docs-sync-check.ps1
+```
+
+PowerShell 7 (`pwsh`):
+
 ```powershell
 pwsh -NoProfile -File scripts/docs-sync-check.ps1
 ```
+
+Bash (macOS/Linux or Windows Git Bash):
 
 ```bash
 bash scripts/docs-sync-check.sh

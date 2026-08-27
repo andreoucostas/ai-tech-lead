@@ -357,8 +357,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 41382,
-          "tok": 10346
+          "chars": 41596,
+          "tok": 10399
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -387,8 +387,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#body",
-          "chars": 7490,
-          "tok": 1872
+          "chars": 7704,
+          "tok": 1926
         },
         {
           "path": ".claude/commands/impact.md#body",
@@ -397,8 +397,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 14355,
-          "tok": 3589
+          "chars": 14569,
+          "tok": 3642
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -821,8 +821,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 34566,
-          "tok": 8642
+          "chars": 34780,
+          "tok": 8695
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -851,8 +851,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#body",
-          "chars": 7297,
-          "tok": 1824
+          "chars": 7511,
+          "tok": 1878
         },
         {
           "path": ".claude/commands/impact.md#body",
@@ -861,8 +861,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 13231,
-          "tok": 3308
+          "chars": 13445,
+          "tok": 3361
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -1305,8 +1305,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 48991,
-          "tok": 12248
+          "chars": 49205,
+          "tok": 12301
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1335,8 +1335,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#body",
-          "chars": 7710,
-          "tok": 1928
+          "chars": 7924,
+          "tok": 1981
         },
         {
           "path": ".claude/commands/impact.md#body",
@@ -1345,8 +1345,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 15940,
-          "tok": 3985
+          "chars": 16154,
+          "tok": 4038
         },
         {
           "path": ".claude/commands/refactor.md#body",

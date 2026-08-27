@@ -3054,23 +3054,6 @@ date to agree with the `Reviewed` column. First observe red fixtures for pure pr
 filename, truncated/garbage reviewed status, and conflicting dates. Keep placeholder/no-section
 skip semantics unchanged, and prove both twins plus the enclosing docs-sync completion result.
 
-### B-187 · Expose the mandatory completion check on supported PowerShell-5.1-only Windows
-**Filed against:** v0.78.0 (2026-08-27) · found by B-184 post-ship review
-**Effort:** S · **Priority:** P1 · **Invariants:** #1 #3 #6
-
-The README explicitly supports Windows without `pwsh` or Git Bash by activating Windows PowerShell
-5.1, and `docs-sync-check.ps1` runs successfully there. The new bootstrap, rebootstrap, adopt, and
-generate-copilot completion sections nevertheless offer only `pwsh ...docs-sync-check.ps1` or bash
-while requiring exactly one host-native check. A consumer on that documented configuration cannot
-execute the prescribed mandatory gate and must report `CANT-VERIFY` despite having a compatible
-interpreter.
-
-Add the explicit Windows PowerShell 5.1 invocation to every authored completion carrier and keep it
-distinct from the PowerShell 7 command. Extend the finite documentation-claim check so removing any
-supported-host invocation goes red, compose all three distributions, and execute the installed
-checker under both PowerShell hosts. Do not weaken the exit-code plus final-success-line requirement.
-
----
 ### B-188 · Post-ship review owed for v0.78.1
 **Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-27
 **Filed against:** v0.78.1 (2026-08-27)
@@ -3080,6 +3063,19 @@ red-test against it. Maintenance model #2 requires the review to be filed rather
 it did not happen. Summary of what shipped: protect consumer ADR history during installer updates
 
 **Do:** review the v0.78.1 diff as an independent session -- re-run at least one gate and one
+red-test yourself, do not read the release output as evidence -- and file whatever it finds. Then
+close this entry, recording what was re-run.
+
+---
+### B-189 · Post-ship review owed for v0.78.2
+**Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-27
+**Filed against:** v0.78.2 (2026-08-27)
+
+**Why:** v0.78.2 shipped with `-NoIndependentReview`, so no second session re-ran a gate or a
+red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
+it did not happen. Summary of what shipped: expose completion checks on Windows PowerShell 5.1
+
+**Do:** review the v0.78.2 diff as an independent session -- re-run at least one gate and one
 red-test yourself, do not read the release output as evidence -- and file whatever it finds. Then
 close this entry, recording what was re-run.
 

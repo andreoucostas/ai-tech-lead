@@ -5,6 +5,14 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.78.2 — 2026-08-27
+
+- `/bootstrap`, `/rebootstrap`, and `/generate-copilot` now show separate copy-pasteable completion
+  commands for Windows PowerShell 5.1, PowerShell 7, and bash. On Windows without `pwsh`, use the
+  `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/docs-sync-check.ps1` command.
+- Completion still requires exit code 0 and the exact final success line; this change adds a
+  supported invocation and does not weaken the gate.
+
 ## 0.78.1 — 2026-08-27
 
 - Updates now preserve `docs/architecture-decisions.md` byte-for-byte, and brownfield installation

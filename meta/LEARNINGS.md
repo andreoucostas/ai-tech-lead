@@ -1540,3 +1540,15 @@ fixture was corrected to copy the canonical source file before the assertion was
 independent lifecycle instrument had already produced the valid pre-fix red—four failures showing
 the sentinel overwritten or relocated on both twins. A test about a path's metadata must first
 assert or construct the path's presence, just as a routing test must prove its branch was reached.
+
+## 2026-08-27 — Runtime compatibility is not a delivered command
+
+`docs-sync-check.ps1` already ran under Windows PowerShell 5.1, and the READMEs already supported a
+Windows-without-`pwsh` configuration, yet every new mandatory completion block named only `pwsh` or
+bash. Compatible bytes do not help a consumer who is given no command that starts them. A finite
+host matrix must assert exact, separately labelled invocations inside the workflow section that
+owns them; checking only that a `.ps1` path appears lets one PowerShell host stand in for another.
+
+Delegation is also part of the boundary. `/adopt` consumes `/bootstrap`'s one completion result, so
+copying the commands into adopt would create a second authority rather than improve support. Add the
+missing command at direct execution points and keep delegating carriers single-sourced.

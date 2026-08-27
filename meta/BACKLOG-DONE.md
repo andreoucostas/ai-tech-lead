@@ -7052,3 +7052,36 @@ framework seed that later becomes consumer state: parity between policy copies i
 behavioral lifecycle sentinel at the production path is what establishes the owner.
 
 ---
+
+### B-187 · Expose mandatory completion on Windows PowerShell 5.1 — **DONE 2026-08-27 · planned v0.78.2**
+
+**What happened.** The framework documented Windows without `pwsh` or Git Bash as supported and the
+checker was 5.1-compatible, but the new mandatory completion sections offered only a `pwsh` command
+or bash. A consumer on that supported host therefore had to report `CANT-VERIFY` despite having a
+working interpreter.
+
+**Why no gate caught it.** The finite completion-claim assertion required only
+`scripts/docs-sync-check.ps1` and `.sh` substrings. The PowerShell 7 command satisfied the `.ps1`
+check, so the test had no host cardinality and could not distinguish one PowerShell runtime from
+two. B-177 copied a known-good `pwsh` example into the new sections without reconciling the existing
+5.1 support matrix.
+
+**Fix and boundary.** The seven direct canonical completion carriers—shared generate-copilot plus
+bootstrap/rebootstrap for each stack—now label and expose exact commands for Windows PowerShell 5.1,
+PowerShell 7, and bash. The 5.1 command uses `-ExecutionPolicy Bypass`; the other commands and the
+exit-0 plus exact-final-success-line contract are unchanged. `/adopt` still delegates to the one
+Phase-7 bootstrap gate, and Copilot prompt wrappers still delegate to their canonical command; no
+duplicate matrices were added.
+
+**Evidence and exposed class.** The strengthened `DocClaims.Tests.ps1` first failed on the composed
+v0.78.1 tree at 7/1, naming the missing 5.1 label, then passed 8/0 after composition. Independent
+scratch mutations removed the 5.1, PowerShell 7, and bash command in turn; every mutation made the
+suite exit 1 and restored byte-identically; a separate hostile fixture also proved that swapping the
+two PowerShell commands beneath the wrong labels is rejected. A consumer-shaped dotnet install ran
+the shipped checker under PowerShell 7 and under Windows PowerShell 5.1 with `pwsh` absent from
+`PATH`; both exited 0 and ended exactly `All AI Tech Lead framework checks passed.`. The exposed
+class is any compatibility claim whose script bytes support a host but whose owning workflow
+supplies no runnable invocation; future finite command matrices must assert host cardinality and
+label/command pairing inside the execution section, not merely the presence of a shared script path.
+
+---

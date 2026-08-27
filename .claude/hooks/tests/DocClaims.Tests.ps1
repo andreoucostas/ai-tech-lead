@@ -21,6 +21,16 @@ $contracts = @(
     [pscustomobject]@{ Claim = '.github/prompts/docs-sync.prompt.md'; Line = 'all six steps'; Command = '.claude/commands/docs-sync.md'; Requires = $null; RequiresStepCount = 6; Dists = $allDists }
 )
 
+$completionHosts = @(
+    [pscustomobject]@{ Label = 'Windows PowerShell 5.1'; Command = 'powershell -NoProfile -ExecutionPolicy Bypass -File scripts/docs-sync-check.ps1' }
+    [pscustomobject]@{ Label = 'PowerShell 7'; Command = 'pwsh -NoProfile -File scripts/docs-sync-check.ps1' }
+    [pscustomobject]@{ Label = 'Bash'; Command = 'bash scripts/docs-sync-check.sh' }
+)
+$completionResultContract = @(
+    'PASS requires exit code 0'
+    'All AI Tech Lead framework checks passed.'
+)
+
 # A quoted/backticked subject, then a maintenance verb and /command within the same clause.
 # Clause boundaries are intentionally strict so provenance/routing phrases do not become claims.
 $claimGrammar = '(?im)(?:"[^"\r\n]+"|`[^`\r\n]+`)[^.;\r\n]*(?:\b(?:is|are)\s+)?(?:also\s+)?(?:refreshed|re-confirmed|reconfirmed|regenerated|repopulated|maintained|updated)\s+by\s+`?/[A-Za-z0-9-]+`?'
@@ -37,6 +47,59 @@ function Get-MarkdownBody {
     $closing = [regex]::Match($Text.Substring($offset), '(?m)^---\s*$')
     if (-not $closing.Success) { return $Text }
     return $Text.Substring($offset + $closing.Index + $closing.Length).TrimStart("`r", "`n")
+}
+
+function Get-LevelTwoSection {
+    param([string]$Text, [string]$Heading, [string]$Label)
+    $escaped = [regex]::Escape($Heading)
+    $match = [regex]::Match($Text, "(?ms)^## $escaped\s*`$.*?(?=^##\s|\z)")
+    if (-not $match.Success) { throw "$Label has no '## $Heading' section" }
+    return $match.Value
+}
+
+function Assert-CompletionHostMatrix {
+    param([string]$Section, [string]$Label)
+    $labelMatches = @()
+    $commandMatches = @()
+    foreach ($hostContract in $completionHosts) {
+        $labelPattern = '(?m)^' + [regex]::Escape($hostContract.Label) + '[^\r\n]*:\s*$'
+        $hostLabelMatches = @([regex]::Matches($Section, $labelPattern))
+        if ($hostLabelMatches.Count -eq 0) {
+            throw "$Label omits supported host label '$($hostContract.Label)'"
+        }
+        if ($hostLabelMatches.Count -ne 1) {
+            throw "$Label repeats supported host label '$($hostContract.Label)'"
+        }
+
+        $commandPattern = '(?m)^' + [regex]::Escape($hostContract.Command) + '\s*$'
+        $hostCommandMatches = @([regex]::Matches($Section, $commandPattern))
+        if ($hostCommandMatches.Count -eq 0) {
+            throw "$Label omits supported host invocation '$($hostContract.Command)'"
+        }
+        if ($hostCommandMatches.Count -ne 1) {
+            throw "$Label repeats supported host invocation '$($hostContract.Command)'"
+        }
+
+        $labelMatches += $hostLabelMatches[0]
+        $commandMatches += $hostCommandMatches[0]
+    }
+    for ($index = 0; $index -lt $completionHosts.Count; $index++) {
+        $blockEnd = $Section.Length
+        foreach ($otherLabel in $labelMatches) {
+            if ($otherLabel.Index -gt $labelMatches[$index].Index -and $otherLabel.Index -lt $blockEnd) {
+                $blockEnd = $otherLabel.Index
+            }
+        }
+        if ($commandMatches[$index].Index -le $labelMatches[$index].Index -or
+            $commandMatches[$index].Index -ge $blockEnd) {
+            throw "$Label does not pair supported host label '$($completionHosts[$index].Label)' with invocation '$($completionHosts[$index].Command)'"
+        }
+    }
+    foreach ($required in $completionResultContract) {
+        if ($Section.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+            throw "$Label weakens the completion result contract: missing '$required'"
+        }
+    }
 }
 
 function Assert-Contracts {
@@ -172,10 +235,10 @@ function Assert-OnboardingCompletionGates {
     param([object[]]$DistEntries)
     foreach ($dist in $DistEntries) {
         $checks = @(
-            @{ Path = '.claude/commands/bootstrap.md'; Required = @('## Deterministic completion gate', 'scripts/docs-sync-check.ps1', 'scripts/docs-sync-check.sh', 'CANT-VERIFY', 'Do not claim completion', 'bare text', 'repository-root-relative path', 'resolves') },
-            @{ Path = '.claude/commands/rebootstrap.md'; Required = @('## Deterministic completion gate', 'scripts/docs-sync-check.ps1', 'scripts/docs-sync-check.sh', 'CANT-VERIFY', 'Do not claim completion') },
-            @{ Path = '.claude/commands/generate-copilot.md'; Required = @('## Deterministic completion gate', 'scripts/docs-sync-check.ps1', 'scripts/docs-sync-check.sh', 'CANT-VERIFY', 'Do not claim completion') },
-            @{ Path = '.claude/commands/adopt.md'; Required = @("Phase-7 bootstrap's deterministic completion gate", 'PASS', 'Do not claim adoption complete') }
+            @{ Path = '.claude/commands/bootstrap.md'; Direct = $true; Required = @('## Deterministic completion gate', 'scripts/docs-sync-check.ps1', 'scripts/docs-sync-check.sh', 'CANT-VERIFY', 'Do not claim completion', 'bare text', 'repository-root-relative path', 'resolves') },
+            @{ Path = '.claude/commands/rebootstrap.md'; Direct = $true; Required = @('## Deterministic completion gate', 'scripts/docs-sync-check.ps1', 'scripts/docs-sync-check.sh', 'CANT-VERIFY', 'Do not claim completion') },
+            @{ Path = '.claude/commands/generate-copilot.md'; Direct = $true; Required = @('## Deterministic completion gate', 'scripts/docs-sync-check.ps1', 'scripts/docs-sync-check.sh', 'CANT-VERIFY', 'Do not claim completion') },
+            @{ Path = '.claude/commands/adopt.md'; Direct = $false; Required = @("Phase-7 bootstrap's deterministic completion gate", 'PASS', 'Do not claim adoption complete') }
         )
         foreach ($check in $checks) {
             $path = Join-Path $dist.Root $check.Path
@@ -185,6 +248,11 @@ function Assert-OnboardingCompletionGates {
                 if ($text.IndexOf($required, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
                     throw "completion-gate carrier $($dist.Name)/$($check.Path) omits '$required'"
                 }
+            }
+            if ($check.Direct) {
+                $label = "completion-gate carrier $($dist.Name)/$($check.Path)"
+                $section = Get-LevelTwoSection -Text $text -Heading 'Deterministic completion gate' -Label $label
+                Assert-CompletionHostMatrix -Section $section -Label $label
             }
         }
     }
@@ -286,6 +354,42 @@ It 'adoption screens mature architecture docs in place without re-deriving them'
 
 It 'onboarding and mirror workflows bind completion to deterministic docs sync' {
     Assert-OnboardingCompletionGates -DistEntries $distEntries
+}
+
+It 'each supported completion host invocation is independently required' {
+    $valid = @"
+## Deterministic completion gate
+
+Windows PowerShell 5.1:
+$($completionHosts[0].Command)
+
+PowerShell 7:
+$($completionHosts[1].Command)
+
+Bash:
+$($completionHosts[2].Command)
+
+PASS requires exit code 0 and the final line ``All AI Tech Lead framework checks passed.``
+"@
+    Assert-CompletionHostMatrix -Section $valid -Label 'negative-control baseline'
+    foreach ($hostContract in $completionHosts) {
+        $mutated = $valid.Replace($hostContract.Command, '<removed invocation>')
+        Assert ($mutated -cne $valid) "negative control did not remove $($hostContract.Label)"
+        $caught = $null
+        try { Assert-CompletionHostMatrix -Section $mutated -Label 'negative-control mutation' }
+        catch { $caught = $_.Exception.Message }
+        Assert ($caught -like "*omits supported host invocation*$($hostContract.Command)*") `
+            "removing $($hostContract.Label) was not rejected precisely: $caught"
+    }
+
+    $swapMarker = '<swapped PowerShell invocation>'
+    $swapped = $valid.Replace($completionHosts[0].Command, $swapMarker).
+        Replace($completionHosts[1].Command, $completionHosts[0].Command).
+        Replace($swapMarker, $completionHosts[1].Command)
+    $caught = $null
+    try { Assert-CompletionHostMatrix -Section $swapped -Label 'negative-control swapped matrix' }
+    catch { $caught = $_.Exception.Message }
+    Assert ($caught -like '*does not pair*') "swapping the PowerShell invocations was not rejected precisely: $caught"
 }
 
 exit (Write-TestSummary 'DocClaims.Tests')

@@ -331,9 +331,19 @@ See `.claude/commands/generate-copilot.md` for the exact rules for each file.
 
 Before Phase 4, run exactly one host-native framework check from the repository root:
 
+Windows PowerShell 5.1 (Windows without `pwsh`):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/docs-sync-check.ps1
+```
+
+PowerShell 7 (`pwsh`):
+
 ```powershell
 pwsh -NoProfile -File scripts/docs-sync-check.ps1
 ```
+
+Bash (macOS/Linux or Windows Git Bash):
 
 ```bash
 bash scripts/docs-sync-check.sh

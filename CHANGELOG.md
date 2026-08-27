@@ -11,6 +11,24 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.78.2 — 2026-08-27
+
+**The mandatory completion gate is now executable on the documented Windows-PowerShell-5.1-only
+host.** B-187 adds a separately labelled `powershell -NoProfile -ExecutionPolicy Bypass -File
+scripts/docs-sync-check.ps1` invocation to the seven direct bootstrap, rebootstrap, and
+generate-copilot completion carriers. PowerShell 7 and bash remain distinct choices, `/adopt`
+continues to consume its one Phase-7 bootstrap gate, and the exit-0 plus exact-final-line completion
+contract is unchanged.
+
+The prior finite claim test required only the two script-path substrings, so one `pwsh` example could
+satisfy the PowerShell path check without exposing every supported host. The strengthened check
+extracts the actual completion section in every composed distribution and requires three exact
+label/command pairs plus the result contract. It failed on v0.78.1 at 7/1 for the missing 5.1 label,
+then passed 8/0. Removing the 5.1, PowerShell 7, or bash invocation independently made the suite exit
+1 in isolated scratch dists, and swapping the two PowerShell commands beneath the wrong labels was
+also rejected. A consumer-shaped dotnet install reached the exact final success line with exit 0
+under both PowerShell 7 and Windows PowerShell 5.1 with `pwsh` absent from `PATH`.
+
 ## 0.78.1 — 2026-08-27
 
 **Hotfix: updates no longer erase the consumer's append-only architecture-decision history.**

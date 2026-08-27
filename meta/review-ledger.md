@@ -61,3 +61,4 @@ legitimate outcome, deliberately not a silent one: it files a post-ship review i
 | v0.77.0 | 2026-08-24 | reviewer /root/increment5_independent_review: no blockers; SHA-identical source and three dist copies; bash -n and dotnet/angular/monorepo dist syntax validation green; implementer /root |
 | v0.78.0 | 2026-08-27 | post-ship reviewer Codex (`/root`), B-184 discharged: reviewed `v0.77.0..v0.78.0`; `validate-dist.ps1` dotnet/angular/monorepo EXIT=0; ScriptTwinParity 10/0 with observed Boy Scout drift red; ReleaseCiWatch SelfTest 21/0 under CP437 on PS7+PS5.1; DocClaims 7/0, ReleaseChangelogStamp 7/0, HazardCheck 27/0, UpdateDelivery 47/0; findings filed B-185 P0 ADR-log overwrite, B-186 P2 hazard-oracle false-green, B-187 P1 missing supported PS5.1 completion invocation; review-only, no implementer changes |
 | v0.78.1 | 2026-08-27 | reviewer: none -- post-ship review owed |
+| v0.78.2 | 2026-08-27 | reviewer: none -- post-ship review owed |
