@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["preservedPaths", "quarantinedPaths", "authorityDecision", "gaps"],
+  "properties": {
+    "preservedPaths": { "type": "array", "items": { "type": "string" } },
+    "quarantinedPaths": { "type": "array", "items": { "type": "string" } },
+    "authorityDecision": { "type": "string" },
+    "gaps": { "type": "array", "items": { "type": "string" } }
+  }
+}

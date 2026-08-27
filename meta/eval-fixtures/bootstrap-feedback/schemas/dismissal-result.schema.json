@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["unchangedProposals", "changedProposals", "dismissalPreserved"],
+  "properties": {
+    "unchangedProposals": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/proposal" }
+    },
+    "changedProposals": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/proposal" }
+    },
+    "dismissalPreserved": { "type": "boolean" }
+  },
+  "$defs": {
+    "proposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "reopensDismissal", "evidenceDelta"],
+      "properties": {
+        "key": { "type": "string" },
+        "reopensDismissal": { "type": "string" },
+        "evidenceDelta": { "type": "string" }
+      }
+    }
+  }
+}

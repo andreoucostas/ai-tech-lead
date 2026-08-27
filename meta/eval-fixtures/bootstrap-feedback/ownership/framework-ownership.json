@@ -1,0 +1,8 @@
+{
+  "schema-version": 1,
+  "paths": [
+    { "path": "framework/workflow-one.md", "ownership": "framework-owned/overwritten" },
+    { "path": "framework/workflow-two.md", "ownership": "framework-owned/overwritten" },
+    { "path": "framework/workflow-three.md", "ownership": "framework-owned/overwritten" }
+  ]
+}
