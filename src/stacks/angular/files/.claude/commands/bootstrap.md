@@ -23,6 +23,7 @@ Before starting analysis:
 5. **Check for existing configuration** — if `CLAUDE.md` already has populated content (not just template defaults), back up the existing conventions section and merge your findings with what's already there rather than overwriting. Never touch `LEARNINGS.md` — it is append-only.
 6. **Large codebases** — if the selected Angular profile has more than 200 components, focus analysis on the most actively changed areas (check git log). Note which areas were analysed and which were skipped.
 7. **Mixed-stack detection** — use the same bounded, excluded scope to count `.cs` / `.csproj` files. If a `*.csproj` exists or more than ~50 `.cs` source files exist, flag this as a mixed-stack repo. A `.sln` alone may be an SSDT warehouse container and is not .NET application evidence. After Phase 3 generation, add a note in the final report recommending the user create `.github/instructions/<stack>.instructions.md` with `applyTo:` frontmatter (see README "Mixed-stack repos" section). Do not auto-generate the secondary-stack instructions file — the user picks the rules.
+8. **Establish ownership and dismissal boundaries.** Read root `framework-ownership.json` and require a valid `paths` inventory. Exclude every `framework-owned/overwritten` path from A7's evidence corpus; a `mixed` path may support a candidate only when the cited constellation is consumer-authored and corroborated outside framework-owned paths. If `TECH_DEBT.md` already contains `## Dismissed proposals`, freeze those rows before analysis so generation cannot overwrite or re-propose them.
 
 ---
 
@@ -106,6 +107,7 @@ Mine this codebase for **tribal-knowledge recipes** — multi-step operations th
 2. **Carries tribal knowledge** — at least one step in the sequence is non-obvious and repo-specific (e.g., "every new feature module also requires a route registration, a NavBar entry, and a permission check"). Pure structural repetition dictated by the framework does **not** qualify.
 
 **Exclusions — never propose these (framework-mandated shapes, not tribal knowledge):**
+- Every path marked `framework-owned/overwritten` in root `framework-ownership.json`. Do not infer ownership from a broad directory glob. A `mixed` path is evidence only for its consumer-authored portion and only with corroborating consumer evidence.
 - Generated code: `node_modules/`, `dist/`, `.angular/`
 - Every `*.component.ts` scaffolded shell (the framework shapes its structure)
 - Every `*.service.ts` that only wraps `HttpClient` with no repo-specific behaviour
@@ -189,6 +191,7 @@ Create TECH_DEBT.md in the project root with this structure:
 
 ## DEBT-001: <Short title>
 
+- **Key**: <area>::<claim-slug>
 - **Category**: <see list below>
 - **Severity**: Critical | High | Medium | Low
 - **Effort**: S (<1hr) | M (half day) | L (1-2 days) | XL (needs spike)
@@ -199,6 +202,14 @@ Create TECH_DEBT.md in the project root with this structure:
 
 ### Recommended fix
 <1-3 sentences on the change and any risks>
+
+---
+
+## Dismissed proposals — do not re-propose without materially changed evidence
+
+| Key | Affected paths / symbols | Evidence reviewed | Dismissed | Reason |
+|-----|--------------------------|-------------------|-----------|--------|
+| _(none)_ | _ | _ | _ | _ |
 
 ---
 
@@ -215,6 +226,8 @@ Severity: Critical / High / Medium / Low
 Effort: S (< 1hr) / M (half day) / L (1-2 days) / XL (needs spike)
 
 Sort by severity then effort. One `## DEBT-NNN` block per item.
+
+Before replacing the register, preserve every existing `## Dismissed proposals` row byte-for-byte. Derive `<area>::<claim-slug>` from the stable subsystem and problem, not severity or remedy. Suppress a candidate with the same key, or the same problem and consequence over overlapping paths/symbols. Reopen only for materially changed evidence; keep the dismissal and add `Reopens dismissal: <key>` plus `Evidence delta: <specific change>` to the new active block.
 
 If A6 found no spec files, write one Severity-High Testing entry whose recommended fix explicitly names the `add-tests` skill's suite-bootstrap mode. In Phase 4, surface that entry in the top 3 quick wins.
 
@@ -265,6 +278,13 @@ Map each answer to a row status:
 
 Then write the `## Known Hazard Areas` table to FRAMEWORK-CONTEXT.md with the answered statuses. One row per hazard: `Area / file(s)` · `Hazard` (the specific risk) · `Status` · `Reviewed` (today's date in ISO `YYYY-MM-DD` format).
 
+- Write the Status cell as **bare text**, never inside Markdown code delimiters/backticks. Its complete
+  value must be one accepted token: `[VERIFIED]`, `[SUSPECTED]`, `[UNVERIFIED]`, or
+  `[REVIEWED: not a hazard — YYYY-MM-DD]`.
+- `Area / file(s)` must include at least one exact **repository-root-relative path** that currently
+  **resolves**. A namespace, project name, subsystem label, placeholder, or guessed path is not a
+  path. A short human-readable area may follow a resolving path, but cannot replace it.
+
 - **Delete the `KNOWN_HAZARD_AREAS_PENDING` marker** once written. If nothing notable surfaced, replace the table body with `_No notable hazards detected — confirm with the team._` and still delete the marker.
 - Keep it tight (≤ ~12 rows); deeper items belong in TECH_DEBT.md.
 - Do not upgrade `[UNVERIFIED]` rows yourself; only the developer can do that.
@@ -304,6 +324,27 @@ Run the `/generate-copilot` workflow. It regenerates **both** derived files from
 - **`AGENTS.md`** — full mirror of CLAUDE.md's portable rules (Verification, Leanness, Conventions, Boy Scout, Agentic Workflow, Common Tasks), preserving the `GENERATED FILE` banner. For **AGENTS.md-native tools** (Copilot agent mode & CLI, Codex, Cursor, Gemini, Aider) — they get the real ruleset, not a pointer.
 
 See `.claude/commands/generate-copilot.md` for the exact rules for each file.
+
+---
+
+## Deterministic completion gate
+
+Before Phase 4, run exactly one host-native framework check from the repository root:
+
+```powershell
+pwsh -NoProfile -File scripts/docs-sync-check.ps1
+```
+
+```bash
+bash scripts/docs-sync-check.sh
+```
+
+PASS requires exit code 0 and the final line `All AI Tech Lead framework checks passed.`. If it
+fails, repair only artifacts this workflow generated or owns, then rerun until it passes. If the
+remaining failure is outside this workflow's scope, report it with the failing check and **do not
+claim completion**. If neither checker can be executed or its result cannot be examined, report
+`CANT-VERIFY` with the reason and **do not claim completion**. Include the command and PASS,
+failure, or CANT-VERIFY result in Phase 4.
 
 ---
 

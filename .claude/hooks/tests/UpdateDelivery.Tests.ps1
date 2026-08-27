@@ -81,6 +81,12 @@ function Invoke-Installer {
 
 function Get-Hash { param([string]$P) (Get-FileHash -LiteralPath $P -Algorithm SHA256).Hash }
 
+function Assert-BytesEqual {
+    param([byte[]]$Expected, [byte[]]$Actual, [string]$Message)
+    Assert ($Expected.Length -eq $Actual.Length -and
+        [Convert]::ToBase64String($Expected) -ceq [Convert]::ToBase64String($Actual)) $Message
+}
+
 Reset-Tests
 
 foreach ($twin in @('ps1', 'sh')) {
@@ -240,6 +246,26 @@ foreach ($twin in @('ps1', 'sh')) {
     }
 }
 
+foreach ($twin in @('ps1', 'sh')) {
+    if ($twin -eq 'sh' -and -not $bash) { Skip "brownfield screen-in-place architecture ($twin)" 'no bash on this host'; continue }
+    It "brownfield leaves mature architecture active and unarchived for in-place screening ($twin)" {
+        $t = Join-Path ([IO.Path]::GetTempPath()) ('no-loss-architecture-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Force -Path (Join-Path $t 'docs') | Out-Null
+        Set-Content -LiteralPath (Join-Path $t 'TECH_DEBT.md') -Value 'BROWNFIELD SIGNAL' -Encoding utf8
+        $architecture = Join-Path $t 'docs/ARCHITECTURE.md'
+        [IO.File]::WriteAllText($architecture, "# Consumer architecture`n`n[ADR](./adr/0001.md)`n", [Text.UTF8Encoding]::new($false))
+        $before = [IO.File]::ReadAllBytes($architecture)
+        try {
+            Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t | Out-Null
+            Assert-BytesEqual -Expected $before -Actual ([IO.File]::ReadAllBytes($architecture)) -Message 'brownfield replaced mature architecture before adoption could screen it in place'
+            $archiveRel = 'docs/pre-adoption/docs/ARCHITECTURE.md'
+            Assert (-not (Test-Path -LiteralPath (Join-Path $t $archiveRel))) 'brownfield archived mature architecture that must remain at its project-owned path'
+            $marker = Get-Content -LiteralPath (Join-Path $t '.claude/adoption-pending.json') -Raw | ConvertFrom-Json
+            Assert (-not ($marker.archivedOriginals -contains $archiveRel)) 'adoption marker listed screen-in-place architecture as archived'
+        } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+    }
+}
+
 # Recovery increment 1: these fixtures are deliberately run against the composed, unfixed dist
 # first. Each sentinel is a consumer byte that v0.72.0 loses: settings/hooks/commands on
 # brownfield, audit state on both modes, and a GitHub-only skill on update. The update fixture
@@ -256,12 +282,6 @@ function New-NoLossBrownfieldConsumer {
     Set-Content -LiteralPath (Join-Path $t '.github/skills/local-only/SKILL.md') -Value 'GITHUB-ONLY SKILL SENTINEL' -Encoding utf8
     [IO.File]::WriteAllBytes((Join-Path $t '.claude/ai-audit.log'), [byte[]](0, 1, 2, 255, 10, 13, 0))
     return $t
-}
-
-function Assert-BytesEqual {
-    param([byte[]]$Expected, [byte[]]$Actual, [string]$Message)
-    Assert ($Expected.Length -eq $Actual.Length -and
-        [Convert]::ToBase64String($Expected) -ceq [Convert]::ToBase64String($Actual)) $Message
 }
 
 function New-ArchiveEscapeLink {

@@ -183,7 +183,7 @@ protected="CLAUDE.md AGENTS.md TECH_DEBT.md SECURITY_FINDINGS.md LEARNINGS.md FR
 persistent_copy_if_absent=".claude/ai-audit.log"
 # These paths are copied only when absent and so are not brownfield bulk-copy collisions. The
 # audit entry remains the separately composer-verified persistent policy above.
-copy_if_absent="$persistent_copy_if_absent docs/wiki/INDEX.md"
+copy_if_absent="$persistent_copy_if_absent docs/wiki/INDEX.md docs/ARCHITECTURE.md"
 
 # Signals that the target already has AI tooling and therefore needs /adopt, not /bootstrap
 # (mirrors /adopt Phase 1 discovery).
@@ -347,6 +347,18 @@ fi
 
 archived=""
 if [ "$adopt_mode" -eq 1 ]; then
+  # Screen-in-place carriers remain at their consumer-owned paths, but only regular in-repo
+  # files qualify. Refuse links/non-files before the broad collision loop skips them.
+  for f in $copy_if_absent; do
+    if source_reparse=$(find_reparse_ancestor "$tgt/$f"); then
+      echo "ERROR: Refusing screen-in-place path '$f': source path traverses reparse/symlink '$source_reparse'. Remove the link or copy the original into the repository, then re-run." >&2
+      exit 3
+    fi
+    if [ -e "$tgt/$f" ] && [ ! -f "$tgt/$f" ]; then
+      echo "ERROR: Refusing screen-in-place path '$f': the target path is not a regular file." >&2
+      exit 3
+    fi
+  done
   archive_files=""
   archive_relatives=""
   # Complete preflight: validate every original, destination, and parent before moving anything.

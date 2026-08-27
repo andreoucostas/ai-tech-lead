@@ -15,9 +15,9 @@ If TECH_DEBT.md is empty or contains only the template placeholder, run a fresh 
 ## Execution
 
 ### Step 1 — Assess
-- Read TECH_DEBT.md and find all items in the specified area
+- Read TECH_DEBT.md, including `## Dismissed proposals`, and find all active items in the specified area. Dismissed rows are decision memory, not active debt.
 - Read the affected files to confirm the debt still exists (it may have been fixed already)
-- For each item, recommend: **fix now** (bundleable into current work) or **defer** (needs dedicated effort)
+- For each active item, recommend: **fix now** (bundleable into current work), **defer** (needs dedicated effort), or **Dismiss as not debt** (a false-positive claim). The last choice requires developer confirmation plus the evidence reviewed and a reason; never equate defer/decline-for-now with dismissal.
 - Present the assessment before proceeding
 
 ### Step 2 — Fix
@@ -29,6 +29,8 @@ For each item marked "fix now":
 
 ### Step 3 — Update the register
 - Remove resolved items from TECH_DEBT.md — items are per-block: to remove a resolved item, delete its `## DEBT-NNN` block. To add a new item, follow the template at the top of TECH_DEBT.md.
+- For an item the developer confirms is not debt, remove its active block and append a row under `## Dismissed proposals` with stable key `<area>::<claim-slug>`, affected paths/symbols, evidence reviewed, today's date, and the developer's reason. Preserve every earlier dismissal row.
+- Before adding newly discovered debt, compare its problem, consequence, and path/symbol scope with the dismissal registry. Suppress a match. Reopen only for materially changed evidence, and put `Reopens dismissal: <key>` plus `Evidence delta: <specific change>` in the new active block without deleting the prior row.
 - Update the "Trojan Horse Opportunities" section if feature area groupings changed
 - If you discovered new debt during the fix, add it to the register using the per-block format
 

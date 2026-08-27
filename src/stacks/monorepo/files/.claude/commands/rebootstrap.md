@@ -26,6 +26,8 @@ Before doing anything else:
    stack and warehouse-only repositories are valid. Refresh the six-row Verification Commands
    inventory only from current evidence, preserving explicit `not available` rows.
 
+4. **Establish ownership and dismissal boundaries** — require a valid root `framework-ownership.json` `paths` inventory and exclude every `framework-owned/overwritten` path from shared A8 evidence. A `mixed` path may contribute only consumer-authored evidence corroborated outside framework-owned paths. Read and freeze every row under `TECH_DEBT.md > ## Dismissed proposals` before analysis.
+
 ---
 
 ## Pre-step — What changed since last time?
@@ -93,7 +95,7 @@ semantics/idempotency, and validation/deployment evidence. Do not translate them
 layers or commands.
 
 ### Shared A8: Project-Specific Skill Discovery
-Re-run the discovery pass **once across the repository-evidenced profiles** (same shared definition as in `bootstrap.md`), scoped to the actively changed areas and any new naming clusters that appeared in the git log period. **Before proposing candidates**, check `LEARNINGS.md` for `## Declined recipe:` entries and skip anything that matches — the team removed those deliberately.
+Re-run the discovery pass **once across the repository-evidenced profiles** (same shared definition as in `bootstrap.md`), scoped to the actively changed areas and any new naming clusters that appeared in the git log period. Apply its `framework-ownership.json` boundary before inspecting candidate evidence: no `framework-owned/overwritten` path may establish recurrence, tribal knowledge, or an exemplar. **Before proposing candidates**, check `LEARNINGS.md` for `## Declined recipe:` entries and skip anything that matches — the team removed those deliberately.
 
 ---
 
@@ -103,7 +105,7 @@ Compare findings against the current CLAUDE.md:
 
 1. **New conventions** — patterns that now exist in the codebase but aren't documented
 2. **Stale conventions** — documented rules that the codebase no longer follows (removed, replaced, or contradicted)
-3. **New debt** — issues found that aren't in TECH_DEBT.md
+3. **New debt** — issues found that are neither active nor represented under `## Dismissed proposals` in TECH_DEBT.md
 4. **Resolved debt** — TECH_DEBT.md items that appear to be fixed in the codebase
 5. **Unchanged areas** — explicitly note what was not re-analysed and why
 
@@ -160,8 +162,10 @@ Do NOT touch the Codebase Context or Repository Structure sections unless a stru
 ### 3b: Update TECH_DEBT.md
 
 For each resolved item found in Phase 2, propose deletion of its `## DEBT-NNN` block.
-For each new item found, propose a new block using the standard per-item format.
+For each new item found, derive stable key `<area>::<claim-slug>` and compare its problem, consequence, and path/symbol scope with `## Dismissed proposals`. Suppress a matching dismissal. Reopen only for materially changed evidence, preserving the prior row and adding `Reopens dismissal: <key>` plus `Evidence delta: <specific change>` to the proposed active block.
 For each item whose recommended fix has changed, propose an update to the Recommended fix section.
+
+If the developer rejects a proposed new item, distinguish **Reject this run** from **Dismiss as not debt**. Only the latter, with a developer-supplied reason, appends a dismissal row (key, affected paths/symbols, evidence reviewed, date, reason). Never turn defer or silence into a dismissal, and never delete prior dismissal rows.
 
 Reminder: items are per-block — to remove a resolved item, delete its `## DEBT-NNN` block. To add a new item, follow the template at the top of TECH_DEBT.md.
 
@@ -180,9 +184,34 @@ Ask all three passes' questions in a **single message** (not dripped), with a "s
 - **(b) not a risk** → `Status = [REVIEWED: not a hazard — YYYY-MM-DD]` (keep the row — it is kept for auditability, not dropped)
 - **(c) unsure / skip all** → leave an existing row's status and date exactly as they are; a *new* candidate is written `[UNVERIFIED]`
 
+When writing or changing a row, keep the Status cell as bare text with no Markdown code delimiters,
+and require `Area / file(s)` to include at least one repository-root-relative path that resolves.
+
 **Do not upgrade an `[UNVERIFIED]` row yourself** — only the developer can, and only by answering its question. Never re-date a row the developer did not answer: a fresh `Reviewed` date on an unconfirmed row manufactures precisely the false confidence this table exists to prevent. Keep the table tight (≤ ~12 rows); deeper items belong in TECH_DEBT.md.
 
 If this command is ever run with no developer present to answer, take the "skip all" path — change nothing, and report the unanswered rows.
+
+---
+
+If any skill was added, removed, or updated, run `/generate-copilot` now, before the gate below, so
+the skills mirror and `AGENTS.md` Common Tasks list are part of the checked artifact set.
+
+## Deterministic completion gate
+
+Run exactly one host-native framework check from the repository root:
+
+```powershell
+pwsh -NoProfile -File scripts/docs-sync-check.ps1
+```
+
+```bash
+bash scripts/docs-sync-check.sh
+```
+
+PASS requires exit code 0 and the final line `All AI Tech Lead framework checks passed.`. Repair
+only artifacts this workflow changed, then rerun. If a remaining failure is outside this workflow's
+scope, report it and **do not claim completion**. If neither checker can execute or its result cannot
+be examined, report `CANT-VERIFY` with the reason and **do not claim completion**.
 
 ---
 
@@ -198,4 +227,4 @@ After all accepted changes are applied, output:
 - **Hazard areas re-confirmed**: rows verified, re-pointed, retired, or left unanswered this run (or "none")
 - **Areas not re-analysed**: explicit list with reason (e.g., "no changes in last 3 months")
 - **Declined recipes recorded**: list any `## Declined recipe:` blocks appended to `LEARNINGS.md` this run by the resurrection guard (or "none")
-- **Required when skill set changed**: if any skill was added, removed, or updated during this rebootstrap, run `/generate-copilot` now — do not merely suggest it. This regenerates `.github/skills/` and `AGENTS.md`'s Common Tasks list so Copilot CLI and AGENTS.md-native tools stay in sync with the current skill set.
+- **Deterministic completion gate**: command run and PASS, failure, or CANT-VERIFY result; when the skill set changed, confirm `/generate-copilot` ran before this gate.

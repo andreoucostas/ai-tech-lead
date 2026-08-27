@@ -87,7 +87,7 @@ If the repo **already has AI artifacts** (CLAUDE.md from another template, `.cur
 ```
 /adopt
 ```
-`/adopt` discovers everything, archives originals to `docs/pre-adoption/`, merges useful content into our canonical structure (CLAUDE.md + TECH_DEBT.md), then runs `/bootstrap` to fill gaps. Nothing is deleted.
+`/adopt` discovers and screens everything. Clean mature architecture/ADR and wiki evidence keeps its project-owned path and bytes; other approved merge candidates are archived to `docs/pre-adoption/` before useful content is merged into CLAUDE.md + TECH_DEBT.md. It then runs `/bootstrap` to fill gaps. Nothing is deleted.
 
 > **Installed by an AI agent?** The installer detects the brownfield case itself: it archives the artifacts its copy would overwrite to `docs/pre-adoption/` and writes `.claude/adoption-pending.json`. From then on, every new Claude Code session and every `docs-sync-check` run points at `/adopt` until a developer runs it. `/adopt` and `/bootstrap` are deliberately **not model-invocable** — an agent-driven install ends with a handoff message ("type `/adopt`"), never with the agent running or imitating the command.
 

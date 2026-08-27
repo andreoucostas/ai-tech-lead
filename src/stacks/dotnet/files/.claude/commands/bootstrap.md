@@ -22,6 +22,7 @@ Before starting analysis:
 4. **Record executable commands from evidence.** Inspect committed CI workflow/pipeline files, documented developer commands, checked-in scripts/Makefiles, and applicable manifests. Record a row for each durable category: **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation**. Each available row must give an exact root-relative command, its exact evidence path, and an execution policy; a manifest script may be recorded as its package-manager invocation. Mark migration/deploy `manual/CI-only` unless the exact invocation is evidenced as non-mutating validation/dry-run: inventory is not permission to mutate an environment. For a category with no applicable selected profile or no evidenced command, write `not available (no evidenced command)`. Never invent `dotnet build`, `dotnet test`, `dotnet format`, or any substitute command.
 5. **Check for existing configuration** — if `CLAUDE.md` already has populated content (not just template defaults), back up the existing conventions section and merge findings rather than overwriting. Never touch `LEARNINGS.md` — it is append-only.
 6. **Scale only selected profiles.** If .NET has more than 30 projects, focus on the most actively changed projects; if warehouse-SQL has a large object set, focus on the most actively changed schema/load areas. Note what was analysed and skipped. If substantial Angular source is present, flag a mixed stack and recommend path-scoped instructions; do not analyse it through this distribution.
+7. **Establish ownership and dismissal boundaries.** Read root `framework-ownership.json` and require a valid `paths` inventory. Exclude every `framework-owned/overwritten` path from shared A8's evidence corpus; a `mixed` path may support a candidate only when the cited constellation is consumer-authored and corroborated outside framework-owned paths. If `TECH_DEBT.md` already contains `## Dismissed proposals`, freeze those rows before analysis so generation cannot overwrite or re-propose them.
 
 ---
 
@@ -113,6 +114,7 @@ Mine this codebase for **tribal-knowledge recipes** — multi-step operations th
 2. **Carries tribal knowledge** — at least one step in the sequence is non-obvious and repo-specific (e.g., "every new tenant also requires a `SeedData` row, a feature-flag entry, and a migration"). Pure structural repetition dictated by the framework does **not** qualify.
 
 **Exclusions — never propose these (framework-mandated shapes, not tribal knowledge):**
+- Every path marked `framework-owned/overwritten` in root `framework-ownership.json`. Do not infer ownership from a broad directory glob. A `mixed` path is evidence only for its consumer-authored portion and only with corroborating consumer evidence.
 - `Migrations/` files and EF Core scaffolded output
 - `obj/` / `bin/` contents
 - Every `*Controller` class
@@ -214,6 +216,7 @@ Create TECH_DEBT.md in the project root with this structure:
 
 ## DEBT-001: <Short title>
 
+- **Key**: <area>::<claim-slug>
 - **Category**: <see list below>
 - **Severity**: Critical | High | Medium | Low
 - **Effort**: S (<1hr) | M (half day) | L (1-2 days) | XL (needs spike)
@@ -224,6 +227,14 @@ Create TECH_DEBT.md in the project root with this structure:
 
 ### Recommended fix
 <1-3 sentences on the change and any risks>
+
+---
+
+## Dismissed proposals — do not re-propose without materially changed evidence
+
+| Key | Affected paths / symbols | Evidence reviewed | Dismissed | Reason |
+|-----|--------------------------|-------------------|-----------|--------|
+| _(none)_ | _ | _ | _ | _ |
 
 ---
 
@@ -240,6 +251,8 @@ Severity: Critical / High / Medium / Low
 Effort: S (< 1hr) / M (half day) / L (1-2 days) / XL (needs spike)
 
 Sort by severity then effort. One `## DEBT-NNN` block per item.
+
+Before replacing the register, preserve every existing `## Dismissed proposals` row byte-for-byte. Derive `<area>::<claim-slug>` from the stable subsystem and problem, not severity or remedy. Suppress a candidate with the same key, or the same problem and consequence over overlapping paths/symbols. Reopen only for materially changed evidence; keep the dismissal and add `Reopens dismissal: <key>` plus `Evidence delta: <specific change>` to the new active block.
 
 Use only selected-profile paths and categories in the register: a warehouse-only repo uses SQL/load/orchestration paths and warehouse validation/deployment categories, not the `.cs` examples above. If the .NET profile's A5 found no test projects, write one Severity-High Testing entry whose recommended fix explicitly names the `add-tests` skill's suite-bootstrap mode. If W3 found no warehouse test or validation assets, write a warehouse Testing entry based on that finding, without naming a .NET tool. Surface applicable entries in the top 3 quick wins.
 
@@ -290,6 +303,13 @@ Map each answer to a row status:
 
 Then write the `## Known Hazard Areas` table to FRAMEWORK-CONTEXT.md with the answered statuses. One row per hazard: `Area / file(s)` · `Hazard` (the specific risk) · `Status` · `Reviewed` (today's date in ISO `YYYY-MM-DD` format).
 
+- Write the Status cell as **bare text**, never inside Markdown code delimiters/backticks. Its complete
+  value must be one accepted token: `[VERIFIED]`, `[SUSPECTED]`, `[UNVERIFIED]`, or
+  `[REVIEWED: not a hazard — YYYY-MM-DD]`.
+- `Area / file(s)` must include at least one exact **repository-root-relative path** that currently
+  **resolves**. A namespace, project name, subsystem label, placeholder, or guessed path is not a
+  path. A short human-readable area may follow a resolving path, but cannot replace it.
+
 - **Delete the `KNOWN_HAZARD_AREAS_PENDING` marker** once written. If nothing notable surfaced, replace the table body with `_No notable hazards detected — confirm with the team._` and still delete the marker.
 - Keep it tight (≤ ~12 rows); deeper items belong in TECH_DEBT.md.
 - Do not upgrade `[UNVERIFIED]` rows yourself; only the developer can do that.
@@ -331,6 +351,27 @@ Run the `/generate-copilot` workflow. It regenerates **both** derived files from
 - **`AGENTS.md`** — full mirror of CLAUDE.md's portable rules (Verification, Leanness, Conventions, Boy Scout, Agentic Workflow, Common Tasks), preserving the `GENERATED FILE` banner. For **AGENTS.md-native tools** (Copilot agent mode & CLI, Codex, Cursor, Gemini, Aider) — they get the real ruleset, not a pointer.
 
 See `.claude/commands/generate-copilot.md` for the exact rules for each file.
+
+---
+
+## Deterministic completion gate
+
+Before Phase 4, run exactly one host-native framework check from the repository root:
+
+```powershell
+pwsh -NoProfile -File scripts/docs-sync-check.ps1
+```
+
+```bash
+bash scripts/docs-sync-check.sh
+```
+
+PASS requires exit code 0 and the final line `All AI Tech Lead framework checks passed.`. If it
+fails, repair only artifacts this workflow generated or owns, then rerun until it passes. If the
+remaining failure is outside this workflow's scope, report it with the failing check and **do not
+claim completion**. If neither checker can be executed or its result cannot be examined, report
+`CANT-VERIFY` with the reason and **do not claim completion**. Include the command and PASS,
+failure, or CANT-VERIFY result in Phase 4.
 
 ---
 

@@ -127,6 +127,69 @@ function Assert-NoDebtDerivedBoyScout {
     }
 }
 
+function Assert-OnboardingMemoryContracts {
+    param([object[]]$DistEntries)
+    foreach ($dist in $DistEntries) {
+        $checks = @(
+            @{ Path = 'TECH_DEBT.md'; Required = @('## Dismissed proposals', 'Affected paths / symbols', 'Evidence reviewed', 'do not re-propose without materially changed evidence') },
+            @{ Path = '.claude/commands/debt.md'; Required = @('Dismiss as not debt', 'materially changed evidence', 'Evidence delta') },
+            @{ Path = '.claude/commands/bootstrap.md'; Required = @('framework-ownership.json', 'framework-owned/overwritten', '## Dismissed proposals', 'Evidence delta') },
+            @{ Path = '.claude/commands/rebootstrap.md'; Required = @('framework-ownership.json', 'framework-owned/overwritten', '## Dismissed proposals', 'Evidence delta') },
+            @{ Path = '.claude/commands/docs-sync.md'; Required = @('## Dismissed proposals', 'materially changed evidence', 'evidence delta') }
+        )
+        foreach ($check in $checks) {
+            $path = Join-Path $dist.Root $check.Path
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "onboarding carrier is missing in $($dist.Name): $($check.Path)" }
+            $text = Read-Utf8Text $path
+            foreach ($required in $check.Required) {
+                if ($text.IndexOf($required, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+                    throw "onboarding carrier $($dist.Name)/$($check.Path) omits '$required'"
+                }
+            }
+        }
+    }
+}
+
+function Assert-MatureArchitecturePreservation {
+    param([object[]]$DistEntries)
+    foreach ($dist in $DistEntries) {
+        $path = Join-Path $dist.Root '.claude/commands/adopt.md'
+        $text = Read-Utf8Text $path
+        foreach ($required in @('Mature architecture corpus (screen in place)', 'path and bytes byte-for-byte', 'broken relative links', 'multiple indexes claim authority', 'Legacy installer collision recovery', 'restore the archived bytes')) {
+            if ($text.IndexOf($required, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+                throw "adoption carrier $($dist.Name)/.claude/commands/adopt.md omits '$required'"
+            }
+        }
+        foreach ($forbidden in @('docs/pre-adoption/adr/0001-', 'Append the full ADR')) {
+            if ($text.IndexOf($forbidden, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+                throw "adoption carrier $($dist.Name)/.claude/commands/adopt.md still rehomes/re-derives mature docs via '$forbidden'"
+            }
+        }
+    }
+}
+
+function Assert-OnboardingCompletionGates {
+    param([object[]]$DistEntries)
+    foreach ($dist in $DistEntries) {
+        $checks = @(
+            @{ Path = '.claude/commands/bootstrap.md'; Required = @('## Deterministic completion gate', 'scripts/docs-sync-check.ps1', 'scripts/docs-sync-check.sh', 'CANT-VERIFY', 'Do not claim completion', 'bare text', 'repository-root-relative path', 'resolves') },
+            @{ Path = '.claude/commands/rebootstrap.md'; Required = @('## Deterministic completion gate', 'scripts/docs-sync-check.ps1', 'scripts/docs-sync-check.sh', 'CANT-VERIFY', 'Do not claim completion') },
+            @{ Path = '.claude/commands/generate-copilot.md'; Required = @('## Deterministic completion gate', 'scripts/docs-sync-check.ps1', 'scripts/docs-sync-check.sh', 'CANT-VERIFY', 'Do not claim completion') },
+            @{ Path = '.claude/commands/adopt.md'; Required = @("Phase-7 bootstrap's deterministic completion gate", 'PASS', 'Do not claim adoption complete') }
+        )
+        foreach ($check in $checks) {
+            $path = Join-Path $dist.Root $check.Path
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "completion-gate carrier is missing in $($dist.Name): $($check.Path)" }
+            $text = Read-Utf8Text $path
+            foreach ($required in $check.Required) {
+                if ($text.IndexOf($required, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+                    throw "completion-gate carrier $($dist.Name)/$($check.Path) omits '$required'"
+                }
+            }
+        }
+    }
+}
+
 function New-Fixture {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('doc-claims-' + [guid]::NewGuid().ToString('N'))
     [IO.Directory]::CreateDirectory($root) | Out-Null
@@ -211,6 +274,18 @@ It 'adoption never presents its post-install tag as an old-framework A/B arm' {
 
 It 'bootstrap workflows do not turn finite debt into the Boy Scout list' {
     Assert-NoDebtDerivedBoyScout -DistEntries $distEntries
+}
+
+It 'onboarding preserves debt dismissals and excludes framework-owned skill evidence' {
+    Assert-OnboardingMemoryContracts -DistEntries $distEntries
+}
+
+It 'adoption screens mature architecture docs in place without re-deriving them' {
+    Assert-MatureArchitecturePreservation -DistEntries $distEntries
+}
+
+It 'onboarding and mirror workflows bind completion to deterministic docs sync' {
+    Assert-OnboardingCompletionGates -DistEntries $distEntries
 }
 
 exit (Write-TestSummary 'DocClaims.Tests')

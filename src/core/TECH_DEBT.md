@@ -13,6 +13,17 @@
 
 ---
 
+## Dismissed proposals — do not re-propose without materially changed evidence
+
+> These are reviewed claims the team determined are not debt. Keep every row for auditability.
+> A later scan may reopen one only by naming the concrete evidence delta in a new active item.
+
+| Key | Affected paths / symbols | Evidence reviewed | Dismissed | Reason |
+|-----|--------------------------|-------------------|-----------|--------|
+| _(none)_ | _ | _ | _ | _ |
+
+---
+
 ## Trojan Horse Opportunities
 
 _Group debt items by feature area so developers can bundle cleanup into feature work._

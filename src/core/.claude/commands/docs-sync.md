@@ -50,7 +50,10 @@ If any file has drifted, recommend `/generate-copilot` (for the mirror) and a ma
 
 ### Step 5 — Check TECH_DEBT.md against codebase
 - Are resolved items still in the register? Flag for removal.
-- Are there obvious debt patterns in the code not captured in the register? Flag for addition.
+- Are there obvious debt patterns in the code not captured in the active register? Before flagging
+  one for addition, compare it with `## Dismissed proposals`; suppress a matching claim unless
+  materially changed evidence is named, and report that evidence delta without deleting the prior
+  dismissal.
 - Are effort estimates still accurate?
 - Is the Trojan Horse Opportunities grouping still correct?
 

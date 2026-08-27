@@ -184,7 +184,7 @@ $persistentCopyIfAbsent = @(
 # These are never bulk-replaced, so brownfield must not archive them merely because the incoming
 # ownership manifest lists them. The audit entry remains the separately composer-verified
 # persistent policy above.
-$copyIfAbsent = $persistentCopyIfAbsent + @('docs/wiki/INDEX.md')
+$copyIfAbsent = $persistentCopyIfAbsent + @('docs/wiki/INDEX.md', 'docs/ARCHITECTURE.md')
 
 # Signals that the target already has AI tooling and therefore needs /adopt, not /bootstrap
 # (mirrors /adopt Phase 1 discovery).
@@ -360,6 +360,20 @@ if ($updateMode) {
 $archived = @()
 $archivePlan = New-Object System.Collections.Generic.List[object]
 if ($adoptMode) {
+    # Screen-in-place carriers remain at their consumer-owned paths, but only regular in-repo
+    # files qualify. Refuse links/non-files before the broad collision loop skips them.
+    foreach ($f in $copyIfAbsent) {
+        $candidate = Join-Path $tgt $f
+        $sourceReparse = Get-ReparsePointAncestor -Path $candidate
+        if ($sourceReparse) {
+            [Console]::Error.WriteLine("ERROR: Refusing screen-in-place path '$f': source path traverses reparse/symlink '$sourceReparse'. Remove the link or copy the original into the repository, then re-run.")
+            exit 3
+        }
+        if ((Test-Path -LiteralPath $candidate) -and -not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+            [Console]::Error.WriteLine("ERROR: Refusing screen-in-place path '$f': the target path is not a regular file.")
+            exit 3
+        }
+    }
     $archivePaths = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::Ordinal)
     foreach ($f in $incomingPaths) {
         if ($f -in $copyIfAbsent -or $f -in @($legalLicense, $legalNotice)) { continue }

@@ -185,11 +185,11 @@ EOF
     ;;
   debt)
     cat <<'EOF'
-1. Read TECH_DEBT.md and find items in the specified area.
+1. Read TECH_DEBT.md, including dismissed-proposal decision memory, and find active items in the specified area.
 2. Confirm each item still exists in the code (it may have been fixed already).
 3. Derive applicable tests and other validation from repository evidence; when no test harness exists, report tests as not available and use the strongest evidenced validation — never introduce a foreign harness solely for debt cleanup.
 4. Recommend fix-now vs defer per item, with reason.
-5. After fixes: update TECH_DEBT.md — remove resolved items, add newly discovered.
+5. After fixes: update TECH_DEBT.md — remove resolved items, preserve dismissals, and do not re-propose one without naming materially changed evidence.
 6. Apply Boy Scout to every file touched.
 7. Report what was fixed/deferred plus the validation results and updated TECH_DEBT diff.
 EOF
