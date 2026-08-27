@@ -3035,17 +3035,64 @@ count distinct categories, and make the eval's authoritative-catalog fixture rej
 Fold a duplicate-row mutation into the existing warehouse map checker suite; do not create a
 standalone catalog suite.
 
-### B-184 · Post-ship review owed for v0.78.0
-**Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-27
-**Filed against:** v0.78.0 (2026-08-27)
+### B-185 · Hotfix the installer so updates cannot erase the consumer's append-only ADR log
+**Filed against:** v0.78.0 (2026-08-27) · found by B-184 post-ship review
+**Effort:** S–M · **Priority:** P0 · **Invariants:** #1 #3 #4 #7
 
-**Why:** v0.78.0 shipped with `-NoIndependentReview`, so no second session re-ran a gate or a
-red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
-it did not happen. Summary of what shipped: preserve onboarding evidence and bind generated artifacts to deterministic completion gates
+`docs/architecture-decisions.md` begins as framework scaffolding but is explicitly the consumer's
+append-only ADR log: `create-adr` appends decisions there, the changelog says product decisions live
+there, and WSD-054 says new framework ADRs continue to use that path. The ownership manifest instead
+classifies it `framework-owned/overwritten`; neither installer twin protects or copies it only when
+absent. Direct v0.78.0 reproductions proved both supported update twins replace a sentinel ADR, and
+PowerShell brownfield installation moves the live file to `docs/pre-adoption/`. That contradicts
+v0.78.0's in-place mature-document promise and can destroy consumer history on the normal update
+path. `UpdateDelivery.Tests.ps1` still passes 47/47 because its new exact-path case covers only
+`docs/ARCHITECTURE.md`; the mature-document eval uses `docs/architecture/**` and `docs/decisions/**`,
+not the colliding canonical file.
 
-**Do:** review the v0.78.0 diff as an independent session -- re-run at least one gate and one
-red-test yourself, do not read the release output as evidence -- and file whatever it finds. Then
-close this entry, recording what was re-run.
+Reclassify the exact path as consumer-owned/protected and copy-if-absent in both source installer
+twins, regenerate all ownership manifests/distributions, and add update byte-preservation plus
+brownfield screen-in-place cases for both twins. Plant a sentinel at the exact canonical path and
+observe the current release lose or relocate it before accepting green. Sweep other framework-seeded
+files whose workflows later turn them into consumer state, but do not widen protection without the
+same semantic evidence. Ship this before lower-priority work. The release note must tell consumers
+already updated to v0.78.0 that overwritten ADRs cannot be reconstructed by the framework and should
+be restored from version-control history or another backup.
+
+### B-186 · Make the hazard oracle enforce the completion contract v0.78.0 now claims
+**Filed against:** v0.78.0 (2026-08-27) · found by B-184 post-ship review
+**Effort:** S–M · **Priority:** P2 · **Invariants:** #1 #3 #4
+
+Bootstrap now requires each real hazard row to contain one exact, resolving repository-root-relative
+path and one complete status token. The checker that decides the new completion gate still accepts
+any status beginning `[REVIEWED: not a hazard`, accepts rows with no path candidate, and searches a
+bare filename anywhere in the tree. Its 27/27 green suite explicitly treats pure prose as valid and
+a nested match for `PaymentService.cs` as sufficient. `docs-sync-check` delegates directly to that
+oracle, so malformed generated output can satisfy the deterministic completion gate.
+
+Bring both hazard-check twins and their tests to the authored contract: require at least one literal
+resolving path candidate per real row; resolve a root-level filename only at the repository root;
+allow labels, symbols, URLs, or globs only as ancillary text, not as the required exact path; accept
+only the three simple tokens or a calendar-valid complete reviewed token; and require its embedded
+date to agree with the `Reviewed` column. First observe red fixtures for pure prose, nested-only bare
+filename, truncated/garbage reviewed status, and conflicting dates. Keep placeholder/no-section
+skip semantics unchanged, and prove both twins plus the enclosing docs-sync completion result.
+
+### B-187 · Expose the mandatory completion check on supported PowerShell-5.1-only Windows
+**Filed against:** v0.78.0 (2026-08-27) · found by B-184 post-ship review
+**Effort:** S · **Priority:** P1 · **Invariants:** #1 #3 #6
+
+The README explicitly supports Windows without `pwsh` or Git Bash by activating Windows PowerShell
+5.1, and `docs-sync-check.ps1` runs successfully there. The new bootstrap, rebootstrap, adopt, and
+generate-copilot completion sections nevertheless offer only `pwsh ...docs-sync-check.ps1` or bash
+while requiring exactly one host-native check. A consumer on that documented configuration cannot
+execute the prescribed mandatory gate and must report `CANT-VERIFY` despite having a compatible
+interpreter.
+
+Add the explicit Windows PowerShell 5.1 invocation to every authored completion carrier and keep it
+distinct from the PowerShell 7 command. Extend the finite documentation-claim check so removing any
+supported-host invocation goes red, compose all three distributions, and execute the installed
+checker under both PowerShell hosts. Do not weaken the exit-code plus final-success-line requirement.
 
 ---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)

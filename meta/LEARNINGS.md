@@ -1506,3 +1506,27 @@ need enough repository guidance for the measured outcome to diverge. FRAMEWORK's
 surfaces were reached and its sequence was stronger, but BARE solved the task acceptably with zero
 intervention. The next useful evidence is a non-author run or a more discriminating predeclared task
 series—not lowering the threshold or choosing a task after seeing likely performance.
+
+## 2026-08-27 — A synchronized ownership policy can still synchronize the wrong owner
+
+The v0.78.0 installer twins, composer, generated ownership manifests, and 47-case update suite all
+agreed that `docs/architecture-decisions.md` was framework-owned. The framework's own `create-adr`
+workflow simultaneously defined that exact path as the consumer's append-only history. Agreement
+therefore made the destructive behavior consistent on both hosts; it did not make the classification
+true. Ownership needs a semantic assertion derived from every writer and lifecycle, not only parity
+between policy copies. When framework scaffolding becomes consumer state after onboarding, test the
+exact colliding path through greenfield, brownfield, and update transitions with sentinel bytes.
+
+A neighbouring fixture is not evidence for a collision boundary. The mature-document eval preserved
+files under `docs/architecture/` and `docs/decisions/`, while the installer test preserved
+`docs/ARCHITECTURE.md`; neither exercised `docs/architecture-decisions.md`. Use the production
+canonical name when the risk is path identity, even if broader-looking directory fixtures already
+exist.
+
+The same review found a contract/oracle version of the error. Bootstrap prose now requires a complete
+status token and an exact repository-relative path, but the older hazard checker deliberately accepts
+pure prose, prefix statuses, and tree-wide bare-filename matches. A new completion gate inherits the
+truth boundary of every delegated checker. Tightening authored instructions without planting the old
+accepted worlds against that checker creates a stronger claim, not stronger enforcement. Supported
+host commands are part of that boundary too: if Windows PowerShell 5.1 is advertised and the script
+runs there, mandatory workflow prose must expose that invocation rather than naming only `pwsh`.

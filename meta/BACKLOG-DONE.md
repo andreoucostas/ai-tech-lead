@@ -6984,4 +6984,39 @@ and closed non-login Git Bash `sort`/`find` command collisions plus an audit-pat
 focused regressions are wiki 14/14, twin parity 13/13, hazards 27/27, and audit 15/15. B-184 records
 the mandatory post-ship independent review.
 
+### B-184 · Post-ship review of v0.78.0 — **DONE 2026-08-27 (review-only closure)**
+
+The review was warranted. v0.78.0 shipped without an independent reviewer and changed 175 files
+across onboarding workflows, installer ownership, routing hooks, audit handling, release allocation,
+and their generated distributions. This session reviewed the authored `v0.77.0..v0.78.0` diff and
+did not treat the release transcript as evidence.
+
+Independent verification was green where the release claims internal consistency: all three
+`validate-dist.ps1` runs exited 0; `ScriptTwinParity.Tests.ps1` passed 10/0 after its observed
+one-line Boy Scout mutation made both twins fail; `ReleaseCiWatch.Tests.ps1 -SelfTest` passed 21/0
+under code page 437 on both PowerShell 7 and Windows PowerShell 5.1, including four planted defects;
+and focused `DocClaims`, `ReleaseChangelogStamp`, `HazardCheck`, and `UpdateDelivery` suites passed
+7/0, 7/0, 27/0, and 47/0 respectively. Windows PowerShell 5.1 also ran the installed dotnet
+`docs-sync-check.ps1` to its exact final success line.
+
+The review found three defects and filed each rather than folding it into this closure:
+
+- **B-185 (P0):** both update twins overwrite `docs/architecture-decisions.md`, and brownfield
+  installation archives it, although the framework defines that exact file as the consumer's
+  append-only ADR log. Sentinel reproductions observed changed bytes and lost live content.
+- **B-186 (P2):** the hazard oracle accepts pure prose, tree-wide bare-filename matches, and any
+  reviewed-status prefix despite v0.78.0's exact path/status completion contract.
+- **B-187 (P1):** the mandatory completion prose omits a Windows PowerShell 5.1 command on the
+  explicitly supported Windows-without-`pwsh` configuration, even though the checker works there.
+
+**RCA and exposed class.** The ownership gates prove that installer twins and generated manifests
+agree, but cannot prove that the agreed owner matches how workflows use a file. The new installer
+test named `docs/ARCHITECTURE.md`, while the behavioral mature-document fixture used neighbouring
+directories rather than the exact colliding ADR-log path. Separately, B-177 tightened workflow
+prose without tightening the older permissive hazard oracle, and copied a PowerShell 7 invocation
+without reconciling the existing 5.1 support claim. The wider class is framework-seeded content
+that becomes consumer state, plus any prose contract tightened without a semantic oracle and a
+supported-host command matrix. B-184 closes only the review obligation; B-185–B-187 remain open,
+with B-185 the next release priority.
+
 ---
