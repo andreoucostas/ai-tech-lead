@@ -7019,4 +7019,36 @@ that becomes consumer state, plus any prose contract tightened without a semanti
 supported-host command matrix. B-184 closes only the review obligation; B-185–B-187 remain open,
 with B-185 the next release priority.
 
+### B-185 · Preserve the consumer's append-only ADR log — **DONE 2026-08-27 · v0.78.1**
+
+**What happened.** `docs/architecture-decisions.md` shipped as a framework seed and remained
+classified `framework-owned/overwritten` even after bootstrap, adoption, and `create-adr` made that
+exact path the consumer's append-only decision history. Both v0.78.0 update twins replaced a
+sentinel ADR; brownfield installation moved it under `docs/pre-adoption/`, contradicting the same
+release's screen-in-place promise.
+
+**Why no gate caught it.** Composer gates proved the installer twins and generated manifests agreed
+about ownership, not that the agreed owner matched every writer. `UpdateDelivery.Tests.ps1` covered
+the neighbouring `docs/ARCHITECTURE.md`, and the mature-document eval covered files under
+`docs/architecture/` and `docs/decisions/`; neither used the exact canonical collision. The first
+new composer assertion also failed vacuously until its minimal fixture was corrected to contain the
+file, so that red was not counted as evidence.
+
+**Fix and recovery boundary.** Both installer twins now classify the canonical lower-case path as
+protected and copy-if-absent. Update preserves existing bytes; brownfield keeps the live path for
+in-place screening and omits it from the archive/adoption marker; greenfield still seeds a missing
+log. All three generated manifests say `consumer-owned/protected`, and the authored READMEs disclose
+the class. No migration or automatic Markdown merge was added: v0.78.0 cannot reconstruct content it
+already erased, so the consumer changelog directs affected teams to version control or another
+backup. A semantic sweep found no sibling framework-owned scaffold with the same clear writer/lifecycle
+collision.
+
+**Evidence and exposed class.** Before the policy change, the exact-path lifecycle assertions failed
+4 cases: update replacement and brownfield relocation on both PowerShell and Bash (`43/4`). The same
+suite then passed 47/0 with byte equality, `PLAN preserve`, archive absence, and marker state all
+checked. `Composer.Tests.ps1` passed 16/0 after its fixture carried the actual canonical file, and
+dotnet/angular/monorepo manifests each emitted exactly one protected row. The exposed class is every
+framework seed that later becomes consumer state: parity between policy copies is necessary, but a
+behavioral lifecycle sentinel at the production path is what establishes the owner.
+
 ---

@@ -5,6 +5,15 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.78.1 — 2026-08-27
+
+- Updates now preserve `docs/architecture-decisions.md` byte-for-byte, and brownfield installation
+  leaves it at its project-owned path for in-place screening. A missing file is still seeded for a
+  new installation.
+- If you already updated through v0.78.0 after recording decisions, inspect version-control history
+  or another backup and restore any lost ADR content; the framework cannot reconstruct overwritten
+  decisions.
+
 ## 0.78.0 — 2026-08-27
 
 - `/bootstrap`, `/rebootstrap`, `/adopt`, and `/generate-copilot` now run the installed

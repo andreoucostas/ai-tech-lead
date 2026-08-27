@@ -172,10 +172,11 @@ if ($GitHooks) {
 # Template-repo meta files that must never land in (or overwrite their namesakes in) a consumer repo.
 $metaFiles = @('.git', '.template-repo', 'README.md', 'CHANGELOG.md', '.gitignore', '.gitattributes')
 
-# Consumer files the copy below would otherwise clobber. Brownfield: archived so /adopt can merge
-# them. Update: skipped directly — after bootstrap/adopt the consumer owns their content.
+# Consumer files the copy below would otherwise clobber. Update skips them directly; brownfield
+# archives them unless the copy-if-absent policy below keeps the live path for in-place screening.
 $protected = @('CLAUDE.md', 'AGENTS.md', 'TECH_DEBT.md', 'SECURITY_FINDINGS.md', 'LEARNINGS.md',
-    'FRAMEWORK-CONTEXT.md', '.github/copilot-instructions.md', 'docs/ARCHITECTURE.md')
+    'FRAMEWORK-CONTEXT.md', '.github/copilot-instructions.md', 'docs/ARCHITECTURE.md',
+    'docs/architecture-decisions.md')
 # Persistent state is copied only when absent. The composer reads this policy from both installer
 # twins and emits it as consumer-owned/protected in framework-ownership.json.
 $persistentCopyIfAbsent = @(
@@ -184,7 +185,9 @@ $persistentCopyIfAbsent = @(
 # These are never bulk-replaced, so brownfield must not archive them merely because the incoming
 # ownership manifest lists them. The audit entry remains the separately composer-verified
 # persistent policy above.
-$copyIfAbsent = $persistentCopyIfAbsent + @('docs/wiki/INDEX.md', 'docs/ARCHITECTURE.md')
+$copyIfAbsent = $persistentCopyIfAbsent + @(
+    'docs/wiki/INDEX.md', 'docs/ARCHITECTURE.md', 'docs/architecture-decisions.md'
+)
 
 # Signals that the target already has AI tooling and therefore needs /adopt, not /bootstrap
 # (mirrors /adopt Phase 1 discovery).

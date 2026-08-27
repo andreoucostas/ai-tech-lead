@@ -99,7 +99,7 @@
     { "path": "TECH_DEBT.md", "ownership": "consumer-owned/protected" },
     { "path": "docs/ARCHITECTURE.md", "ownership": "consumer-owned/protected" },
     { "path": "docs/REVIEW-GUIDE.md", "ownership": "framework-owned/overwritten" },
-    { "path": "docs/architecture-decisions.md", "ownership": "framework-owned/overwritten" },
+    { "path": "docs/architecture-decisions.md", "ownership": "consumer-owned/protected" },
     { "path": "docs/architecture.html", "ownership": "framework-owned/overwritten" },
     { "path": "docs/ci-integration.md", "ownership": "framework-owned/overwritten" },
     { "path": "docs/defaults.md", "ownership": "framework-owned/overwritten" },

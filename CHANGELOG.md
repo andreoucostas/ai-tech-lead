@@ -11,6 +11,21 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.78.1 — 2026-08-27
+
+**Hotfix: updates no longer erase the consumer's append-only architecture-decision history.**
+B-185 reclassifies the exact canonical `docs/architecture-decisions.md` path as
+consumer-owned/protected and copy-if-absent in both installer twins. Update now preserves its bytes;
+brownfield installation keeps it live for the v0.78.0 in-place mature-document screen; greenfield
+still receives the seed. All three generated ownership manifests carry the corrected class.
+
+The regression was observed before the fix on both twins: `UpdateDelivery.Tests.ps1` failed 4 cases
+covering update replacement and brownfield relocation, then passed 47/47 with exact bytes, operation
+plans, archive absence, and adoption-marker state asserted. `Composer.Tests.ps1` passes 16/16 with
+the canonical file present in its fixture and protected in both generated manifests. v0.78.0 cannot
+reconstruct decisions it already overwrote; affected consumers must restore them from version
+control or another backup.
+
 ## 0.78.0 — 2026-08-27
 
 **Onboarding now preserves reviewed project knowledge and cannot claim completion over red generated

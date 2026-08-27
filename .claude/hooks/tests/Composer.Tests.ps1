@@ -19,6 +19,7 @@ function Initialize-ComposerSubject {
     New-Item -ItemType Directory -Path (Join-Path $SubjectRoot 'scripts') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $SubjectRoot 'src/core/scripts') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $SubjectRoot 'src/core/.claude') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $SubjectRoot 'src/core/docs') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $SubjectRoot 'meta') -Force | Out-Null
     foreach ($stack in @('dotnet','angular','monorepo')) {
         New-Item -ItemType Directory -Path (Join-Path $SubjectRoot "src/stacks/$stack/files") -Force | Out-Null
@@ -30,6 +31,7 @@ function Initialize-ComposerSubject {
     Copy-Item -LiteralPath (Join-Path $repoRoot 'src/core/scripts/install.ps1') -Destination (Join-Path $SubjectRoot 'src/core/scripts') -Force
     Copy-Item -LiteralPath (Join-Path $repoRoot 'src/core/scripts/install.sh') -Destination (Join-Path $SubjectRoot 'src/core/scripts') -Force
     Copy-Item -LiteralPath (Join-Path $repoRoot 'src/core/.claude/ai-audit.log') -Destination (Join-Path $SubjectRoot 'src/core/.claude') -Force
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'src/core/docs/architecture-decisions.md') -Destination (Join-Path $SubjectRoot 'src/core/docs') -Force
     Copy-Item -LiteralPath (Join-Path $repoRoot 'src/core/framework-retirements.json') -Destination (Join-Path $SubjectRoot 'src/core') -Force
     Copy-Item -LiteralPath (Join-Path $repoRoot 'meta/framework-retirements-baseline.json') -Destination (Join-Path $SubjectRoot 'meta') -Force
 }
@@ -75,11 +77,11 @@ foreach ($case in $cases) {
 }
 
 # The mutation cases prove a mismatch goes red. This companion green check proves the normal,
-# unmodified extraction reaches manifest generation with audit protected and without accidentally
-# absorbing the following copy-if-absent wiki policy line.
+# unmodified extraction reaches manifest generation with persistent audit state and the append-only
+# ADR log protected, without accidentally absorbing unrelated framework scaffolds.
 $greenChecks = 0
 foreach ($twin in @('ps1','sh')) {
-    if ($twin -eq 'sh' -and -not $bash) { Write-Host "[skip] $twin persistent-policy extraction: no bash on this host"; continue }
+    if ($twin -eq 'sh' -and -not $bash) { Write-Host "[skip] $twin ownership-policy extraction: no bash on this host"; continue }
     $normalRoot = Join-Path ([IO.Path]::GetTempPath()) ('composer-policy-green-' + [guid]::NewGuid())
     try {
         Initialize-ComposerSubject -SubjectRoot $normalRoot -Twin $twin
@@ -89,9 +91,11 @@ foreach ($twin in @('ps1','sh')) {
         $manifest = Get-Content -Raw -LiteralPath (Join-Path $normalRoot 'dist/dotnet/framework-ownership.json') | ConvertFrom-Json
         $audit = @($manifest.paths | Where-Object path -eq '.claude/ai-audit.log')
         if ($audit.Count -ne 1 -or $audit[0].ownership -cne 'consumer-owned/protected') { throw "unmodified $twin composer did not emit protected audit ownership" }
+        $adr = @($manifest.paths | Where-Object path -eq 'docs/architecture-decisions.md')
+        if ($adr.Count -ne 1 -or $adr[0].ownership -cne 'consumer-owned/protected') { throw "unmodified $twin composer did not emit protected append-only ADR ownership" }
         $greenChecks++
-        Write-Host "[ok] $twin persistent-policy extraction: composer stayed green"
-    } catch { $failed++; [Console]::Error.WriteLine("[FAIL] $twin persistent-policy extraction: $($_.Exception.Message)") }
+        Write-Host "[ok] $twin ownership-policy extraction: composer stayed green"
+    } catch { $failed++; [Console]::Error.WriteLine("[FAIL] $twin ownership-policy extraction: $($_.Exception.Message)") }
     finally { if (Test-Path -LiteralPath $normalRoot) { Remove-Item -Recurse -Force -LiteralPath $normalRoot } }
 }
 

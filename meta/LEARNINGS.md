@@ -1530,3 +1530,13 @@ truth boundary of every delegated checker. Tightening authored instructions with
 accepted worlds against that checker creates a stronger claim, not stronger enforcement. Supported
 host commands are part of that boundary too: if Windows PowerShell 5.1 is advertised and the script
 runs there, mandatory workflow prose must expose that invocation rather than naming only `pwsh`.
+
+## 2026-08-27 — A manifest assertion needs the path in its fixture
+
+The first B-185 composer assertion went red on both twins, but for an invalid reason: the minimal
+composer subject did not contain `docs/architecture-decisions.md`, so the manifest could not emit a
+row under either ownership class. That red did not prove the old classification was rejected. The
+fixture was corrected to copy the canonical source file before the assertion was accepted; the
+independent lifecycle instrument had already produced the valid pre-fix red—four failures showing
+the sentinel overwritten or relocated on both twins. A test about a path's metadata must first
+assert or construct the path's presence, just as a routing test must prove its branch was reached.

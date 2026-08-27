@@ -10,8 +10,8 @@
 # existing consumer actually runs, had no test at all.
 #
 # The two properties that must never silently swap places:
-#   PROTECTED  (CLAUDE.md)  -> update must leave it byte-identical, forever.
-#   UNPROTECTED (carrier)   -> update must overwrite it, forever, even if edited.
+#   PROTECTED  (CLAUDE.md and the append-only ADR log) -> update leaves consumer bytes identical.
+#   UNPROTECTED (carrier)                              -> update overwrites it, even if edited.
 # A regression in either direction is invisible in a diff and catastrophic in the field, which is
 # why this is asserted by running the installer rather than by reading its source.
 . (Join-Path $PSScriptRoot '_HookHarness.ps1')
@@ -95,8 +95,12 @@ foreach ($twin in @('ps1', 'sh')) {
     $target = New-LegacyConsumer -Stack $dist
     $claudePath = Join-Path $target 'CLAUDE.md'
     $carrierPath = Join-Path $target $carrierRel
+    $adrPath = Join-Path $target 'docs/architecture-decisions.md'
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $adrPath) | Out-Null
+    [IO.File]::WriteAllText($adrPath, "# Architecture Decisions`n`n## ADR-042: Consumer sentinel`n- **Decision**: preserve these bytes.`n", [Text.UTF8Encoding]::new($false))
 
     $before = Get-Hash $claudePath
+    $adrBefore = [IO.File]::ReadAllBytes($adrPath)
     $out = Invoke-Installer -Twin $twin -Dist $dist -Target $target
     $installExit = $LASTEXITCODE
 
@@ -125,9 +129,11 @@ foreach ($twin in @('ps1', 'sh')) {
         Assert (-not ((Get-Content -LiteralPath (Join-Path $target '.claude/settings.json') -Raw) -match 'recover me')) 'framework settings were not refreshed after backup'
     }
 
-    # THE assertion. If this ever fails, the framework is destroying consumer content.
-    It "update leaves the protected CLAUDE.md byte-identical ($twin)" {
+    # THE assertions. If either fails, the framework is destroying consumer content.
+    It "update leaves protected consumer documents byte-identical ($twin)" {
         Assert ((Get-Hash $claudePath) -eq $before) 'update mode modified CLAUDE.md -- the v0.20.0 protection has regressed'
+        Assert-BytesEqual -Expected $adrBefore -Actual ([IO.File]::ReadAllBytes($adrPath)) -Message 'update mode replaced the consumer append-only ADR log'
+        Assert ($out -match '(?m)^PLAN preserve docs/architecture-decisions\.md\r?$') "update operation plan did not classify the consumer ADR log as preserved. Output:`n$out"
     }
 
     It "update delivers the unprotected carrier ($twin)" {
@@ -247,21 +253,32 @@ foreach ($twin in @('ps1', 'sh')) {
 }
 
 foreach ($twin in @('ps1', 'sh')) {
-    if ($twin -eq 'sh' -and -not $bash) { Skip "brownfield screen-in-place architecture ($twin)" 'no bash on this host'; continue }
-    It "brownfield leaves mature architecture active and unarchived for in-place screening ($twin)" {
+    if ($twin -eq 'sh' -and -not $bash) { Skip "brownfield screen-in-place architecture and ADRs ($twin)" 'no bash on this host'; continue }
+    It "brownfield leaves mature architecture and ADRs active and unarchived for in-place screening ($twin)" {
         $t = Join-Path ([IO.Path]::GetTempPath()) ('no-loss-architecture-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Force -Path (Join-Path $t 'docs') | Out-Null
         Set-Content -LiteralPath (Join-Path $t 'TECH_DEBT.md') -Value 'BROWNFIELD SIGNAL' -Encoding utf8
-        $architecture = Join-Path $t 'docs/ARCHITECTURE.md'
-        [IO.File]::WriteAllText($architecture, "# Consumer architecture`n`n[ADR](./adr/0001.md)`n", [Text.UTF8Encoding]::new($false))
-        $before = [IO.File]::ReadAllBytes($architecture)
+        $documents = @(
+            @{ Relative = 'docs/ARCHITECTURE.md'; Text = "# Consumer architecture`n`n[ADR](./adr/0001.md)`n" },
+            @{ Relative = 'docs/architecture-decisions.md'; Text = "# Architecture Decisions`n`n## ADR-042: Consumer sentinel`n- **Decision**: preserve these bytes.`n" }
+        )
+        $before = @{}
+        foreach ($document in $documents) {
+            $path = Join-Path $t $document.Relative
+            [IO.File]::WriteAllText($path, $document.Text, [Text.UTF8Encoding]::new($false))
+            $before[$document.Relative] = [IO.File]::ReadAllBytes($path)
+        }
         try {
-            Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t | Out-Null
-            Assert-BytesEqual -Expected $before -Actual ([IO.File]::ReadAllBytes($architecture)) -Message 'brownfield replaced mature architecture before adoption could screen it in place'
-            $archiveRel = 'docs/pre-adoption/docs/ARCHITECTURE.md'
-            Assert (-not (Test-Path -LiteralPath (Join-Path $t $archiveRel))) 'brownfield archived mature architecture that must remain at its project-owned path'
+            $out = Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t
             $marker = Get-Content -LiteralPath (Join-Path $t '.claude/adoption-pending.json') -Raw | ConvertFrom-Json
-            Assert (-not ($marker.archivedOriginals -contains $archiveRel)) 'adoption marker listed screen-in-place architecture as archived'
+            foreach ($document in $documents) {
+                $path = Join-Path $t $document.Relative
+                $archiveRel = "docs/pre-adoption/$($document.Relative)"
+                Assert-BytesEqual -Expected $before[$document.Relative] -Actual ([IO.File]::ReadAllBytes($path)) -Message "brownfield replaced $($document.Relative) before adoption could screen it in place"
+                Assert (-not (Test-Path -LiteralPath (Join-Path $t $archiveRel))) "brownfield archived $($document.Relative) instead of preserving its project-owned path"
+                Assert (-not ($marker.archivedOriginals -contains $archiveRel)) "adoption marker listed screen-in-place document as archived: $($document.Relative)"
+                Assert ($out -match "(?m)^PLAN preserve $([regex]::Escape($document.Relative))\r?$") "brownfield operation plan did not classify $($document.Relative) as preserved. Output:`n$out"
+            }
         } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
     }
 }

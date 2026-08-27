@@ -3035,30 +3035,6 @@ count distinct categories, and make the eval's authoritative-catalog fixture rej
 Fold a duplicate-row mutation into the existing warehouse map checker suite; do not create a
 standalone catalog suite.
 
-### B-185 · Hotfix the installer so updates cannot erase the consumer's append-only ADR log
-**Filed against:** v0.78.0 (2026-08-27) · found by B-184 post-ship review
-**Effort:** S–M · **Priority:** P0 · **Invariants:** #1 #3 #4 #7
-
-`docs/architecture-decisions.md` begins as framework scaffolding but is explicitly the consumer's
-append-only ADR log: `create-adr` appends decisions there, the changelog says product decisions live
-there, and WSD-054 says new framework ADRs continue to use that path. The ownership manifest instead
-classifies it `framework-owned/overwritten`; neither installer twin protects or copies it only when
-absent. Direct v0.78.0 reproductions proved both supported update twins replace a sentinel ADR, and
-PowerShell brownfield installation moves the live file to `docs/pre-adoption/`. That contradicts
-v0.78.0's in-place mature-document promise and can destroy consumer history on the normal update
-path. `UpdateDelivery.Tests.ps1` still passes 47/47 because its new exact-path case covers only
-`docs/ARCHITECTURE.md`; the mature-document eval uses `docs/architecture/**` and `docs/decisions/**`,
-not the colliding canonical file.
-
-Reclassify the exact path as consumer-owned/protected and copy-if-absent in both source installer
-twins, regenerate all ownership manifests/distributions, and add update byte-preservation plus
-brownfield screen-in-place cases for both twins. Plant a sentinel at the exact canonical path and
-observe the current release lose or relocate it before accepting green. Sweep other framework-seeded
-files whose workflows later turn them into consumer state, but do not widen protection without the
-same semantic evidence. Ship this before lower-priority work. The release note must tell consumers
-already updated to v0.78.0 that overwritten ADRs cannot be reconstructed by the framework and should
-be restored from version-control history or another backup.
-
 ### B-186 · Make the hazard oracle enforce the completion contract v0.78.0 now claims
 **Filed against:** v0.78.0 (2026-08-27) · found by B-184 post-ship review
 **Effort:** S–M · **Priority:** P2 · **Invariants:** #1 #3 #4
@@ -3093,6 +3069,19 @@ Add the explicit Windows PowerShell 5.1 invocation to every authored completion 
 distinct from the PowerShell 7 command. Extend the finite documentation-claim check so removing any
 supported-host invocation goes red, compose all three distributions, and execute the installed
 checker under both PowerShell hosts. Do not weaken the exit-code plus final-success-line requirement.
+
+---
+### B-188 · Post-ship review owed for v0.78.1
+**Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-27
+**Filed against:** v0.78.1 (2026-08-27)
+
+**Why:** v0.78.1 shipped with `-NoIndependentReview`, so no second session re-ran a gate or a
+red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
+it did not happen. Summary of what shipped: protect consumer ADR history during installer updates
+
+**Do:** review the v0.78.1 diff as an independent session -- re-run at least one gate and one
+red-test yourself, do not read the release output as evidence -- and file whatever it finds. Then
+close this entry, recording what was re-run.
 
 ---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)

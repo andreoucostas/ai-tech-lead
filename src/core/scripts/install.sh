@@ -175,15 +175,15 @@ if [ "$git_hooks" -eq 1 ]; then
   esac
 fi
 
-# Consumer files the copy below would otherwise clobber. Brownfield: archived so /adopt can merge
-# them. Update: skipped directly — after bootstrap/adopt the consumer owns their content.
-protected="CLAUDE.md AGENTS.md TECH_DEBT.md SECURITY_FINDINGS.md LEARNINGS.md FRAMEWORK-CONTEXT.md .github/copilot-instructions.md docs/ARCHITECTURE.md"
+# Consumer files the copy below would otherwise clobber. Update skips them directly; brownfield
+# archives them unless the copy-if-absent policy below keeps the live path for in-place screening.
+protected="CLAUDE.md AGENTS.md TECH_DEBT.md SECURITY_FINDINGS.md LEARNINGS.md FRAMEWORK-CONTEXT.md .github/copilot-instructions.md docs/ARCHITECTURE.md docs/architecture-decisions.md"
 # Persistent state is copy-if-absent. The composer verifies this policy against the PowerShell
 # twin and records it as consumer-owned/protected in framework-ownership.json.
 persistent_copy_if_absent=".claude/ai-audit.log"
 # These paths are copied only when absent and so are not brownfield bulk-copy collisions. The
 # audit entry remains the separately composer-verified persistent policy above.
-copy_if_absent="$persistent_copy_if_absent docs/wiki/INDEX.md docs/ARCHITECTURE.md"
+copy_if_absent="$persistent_copy_if_absent docs/wiki/INDEX.md docs/ARCHITECTURE.md docs/architecture-decisions.md"
 
 # Signals that the target already has AI tooling and therefore needs /adopt, not /bootstrap
 # (mirrors /adopt Phase 1 discovery).
