@@ -94,8 +94,11 @@ A behavioral failure, missing artifact, or contamination is never replaced.
 Add one `warehouseUpstreamDecision` assertion; leave B-127's `warehouseTraceBaseline` semantics and
 history untouched. The committed fixture is the oracle, not final prose.
 
-1. Require exactly one untracked file, `analysis/shipment-carrier-history.sql`, no staged changes,
-   no other worktree changes, and no commit after the condition commit. This is `treeExact`.
+1. Require exactly one untracked agent-authored file, `analysis/shipment-carrier-history.sql`, no
+   staged changes, no commit after the condition commit, and no other agent-authored worktree
+   changes. The installed `audit-trail` hook may append one or more unstaged telemetry rows only when
+   every added row matches its strict timestamp/branch/path schema and names that requested SQL file;
+   reject audit rewrites, removals, other paths, or any other tree delta. This is `treeExact`.
 2. Strip SQL comments and quoted literals before matching so a comment cannot satisfy or violate the
    decision. Both worlds must directly join `fact.FactShipment` to `dim.DimCarrier` and project the
    three requested fields.
@@ -167,3 +170,16 @@ rows, one assertion branch, and at most four counted live trials are proportiona
 fixture family, skill, hook, shipped artifact, distribution change, version bump, or candidate arm.
 Its output is evidence: close with no product churn, or a separately reviewed Phase 1 grounded in an
 observed current failure.
+
+## 7. Live-oracle correction (2026-08-29)
+
+The first transport attempt was void (`ConnectionRefused`, zero tokens). The one allowed replacement
+returned a semantically correct deferred artifact and final response, but the mechanical verdict was
+`FAIL` solely because the installed `PostToolUse` audit hook appended the requested SQL path to the
+tracked `.claude/ai-audit.log`. That append is framework-owned telemetry caused by the requested
+write, not a second agent-authored artifact. The original verdict is invalid under stop rule 5.
+
+Before any further paid run, red-test that exact false negative, narrow `treeExact` as specified in
+step 1, and add adversarial cases proving an unrelated audit path or audit rewrite still fails. The
+corrected run is a fresh trial under this recorded oracle revision; the invalid mechanical verdict
+does not count as a behavioral failure or as one of the two required deferred passes.

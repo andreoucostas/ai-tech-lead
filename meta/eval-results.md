@@ -1549,3 +1549,21 @@ errors do not change the artifact grade and are retained here rather than hidden
 results, this closes the decision gate against default three-run bootstrap: retain optional repeated
 experiments for stability measurement, but ship deterministic completion, durable dismissals,
 screen-in-place mature documents, finite Boy Scout scope, and framework-ownership exclusion.
+
+## 2026-08-29 11:44:05 +01:00 — framework v0.78.3 (076b61be7314d3063629853c7f284db64b7e8039)
+
+Host: Claude Code 2.1.247 (Claude Code) · scratch: retained=True
+
+- **ERROR warehouse-upstream-deferred** (model=sonnet) — agentExit=1 timedOut=False costUsd=0 tokensIn=0 tokensOut=0; world=deferred output=False treeExact=False directJoin=False projects=False carrierKeyJoin=False durableKeyJoin=False lowerBound=False upperBound=False predicateEscape=False usesCurrent=False usesEffective=False mapRead=False factRead=False loadRead=False viewRead=False skillSelected=False skillRead=False skillReached=False finalOk=False
+
+
+## 2026-08-29 12:01:31 +01:00 — framework v0.78.3 (076b61be7314d3063629853c7f284db64b7e8039)
+
+Host: Claude Code 2.1.247 (Claude Code) · scratch: retained=True
+
+- **FAIL warehouse-upstream-deferred** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3646542 tokensIn=20 tokensOut=6355; world=deferred output=True treeExact=False directJoin=True projects=True carrierKeyJoin=False durableKeyJoin=True lowerBound=True upperBound=True predicateEscape=False usesCurrent=False usesEffective=True mapRead=True factRead=True loadRead=True viewRead=True skillSelected=False skillRead=False skillReached=False finalOk=True
+
+> **Invalidated oracle verdict.** Raw inspection found the only second tree delta was the installed
+> `PostToolUse` audit hook appending the requested SQL path. The artifact and all semantic checks
+> were correct. WSD-056 records the red-tested, hostile-case-bounded oracle correction; this row is
+> retained as evidence but is neither a behavioral failure nor a counted trial.

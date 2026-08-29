@@ -1347,7 +1347,30 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
 
             $commits = [int](git -C $Target rev-list --count HEAD)
             $treeState = @((git -C $Target status --porcelain=v1 --untracked-files=all) | ForEach-Object { ([string]$_).Replace('\\','/').TrimEnd() })
-            $treeExact = $commits -eq $BeforeCommits -and $treeState.Count -eq 1 -and $treeState[0] -ceq "?? $queryRelative"
+            # A successful Claude Write/Edit invokes the installed audit-trail hook, so the live
+            # surface legitimately appends telemetry even when the agent authors only the requested
+            # artifact. Permit only an unstaged, append-only audit delta whose every row names that
+            # artifact; all other tracked/untracked/staged/committed mutations still fail.
+            $auditRelative = '.claude/ai-audit.log'
+            $auditState = " M $auditRelative"
+            $auditStates = @($treeState | Where-Object { $_ -ceq $auditState })
+            $nonAuditTreeState = @($treeState | Where-Object { $_ -cne $auditState })
+            $auditAppendExact = $auditStates.Count -le 1
+            if ($auditStates.Count -eq 1) {
+                $auditNumstat = @((git -C $Target diff --numstat -- $auditRelative) | ForEach-Object { [string]$_ })
+                $auditDiff = @((git -C $Target diff --unified=0 -- $auditRelative) | ForEach-Object { [string]$_ })
+                $addedAuditLines = @($auditDiff | Where-Object { $_ -cmatch '^\+(?!\+\+)' })
+                $removedAuditLines = @($auditDiff | Where-Object { $_ -cmatch '^-(?!--)' })
+                $numstat = if ($auditNumstat.Count -eq 1) {
+                    [regex]::Match($auditNumstat[0], '^(?<added>\d+)\s+0\s+\.claude/ai-audit\.log$')
+                } else { [Text.RegularExpressions.Match]::Empty }
+                $auditLinePattern = '^\+\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\t[^\t\r\n]+\t(?:\.[\\/])?analysis[\\/]shipment-carrier-history\.sql$'
+                $auditAppendExact = $numstat.Success -and [int]$numstat.Groups['added'].Value -ge 1 -and
+                    [int]$numstat.Groups['added'].Value -eq $addedAuditLines.Count -and $removedAuditLines.Count -eq 0 -and
+                    @($addedAuditLines | Where-Object { $_ -cnotmatch $auditLinePattern }).Count -eq 0
+            }
+            $treeExact = $commits -eq $BeforeCommits -and $nonAuditTreeState.Count -eq 1 -and
+                $nonAuditTreeState[0] -ceq "?? $queryRelative" -and $auditAppendExact
 
             $factTable = [regex]::Match($sqlCode, '(?is)\bFROM\s+fact\s*\.\s*FactShipment(?:\s+(?:AS\s+)?(?<alias>(?!(?:INNER|LEFT|RIGHT|FULL|CROSS|JOIN|WHERE|ON|GROUP|ORDER)\b)[A-Za-z_][A-Za-z0-9_]*))?')
             $dimensionTable = [regex]::Match($sqlCode, '(?is)\bJOIN\s+dim\s*\.\s*DimCarrier(?:\s+(?:AS\s+)?(?<alias>(?!(?:ON|INNER|LEFT|RIGHT|FULL|CROSS|JOIN|WHERE|GROUP|ORDER)\b)[A-Za-z_][A-Za-z0-9_]*))?')
@@ -1386,7 +1409,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             return [pscustomobject]@{
                 Status = $status
                 Pass = $pass
-                Detail = "world=$world output=$outputExists treeExact=$treeExact directJoin=$directJoin projects=$projectsRequested carrierKeyJoin=$carrierKeyJoin durableKeyJoin=$durableKeyJoin lowerBound=$lowerBound upperBound=$upperBound predicateEscape=$predicateEscape usesCurrent=$usesCurrent usesEffective=$usesEffective mapRead=$mapRead factRead=$factRead loadRead=$loadRead viewRead=$viewRead skillSelected=$skillSelected skillRead=$skillRead skillReached=$skillReached finalOk=$finalOk"
+                Detail = "world=$world output=$outputExists treeExact=$treeExact auditAppendExact=$auditAppendExact directJoin=$directJoin projects=$projectsRequested carrierKeyJoin=$carrierKeyJoin durableKeyJoin=$durableKeyJoin lowerBound=$lowerBound upperBound=$upperBound predicateEscape=$predicateEscape usesCurrent=$usesCurrent usesEffective=$usesEffective mapRead=$mapRead factRead=$factRead loadRead=$loadRead viewRead=$viewRead skillSelected=$skillSelected skillRead=$skillRead skillReached=$skillReached finalOk=$finalOk"
             }
         }
         { $_ -like 'warehouse-trace-*' } {
@@ -3252,6 +3275,30 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         $deferredGreen = & $newUpstreamCase 'upstream-deferred-green' deferred $deferredSql
         $deferredGreenResult = Test-ScenarioEvidence 'warehouse-upstream-deferred' $deferredGreen.Path $ordinaryEvidence $deferredGreen.Before
         if (-not $deferredGreenResult.Pass -or $deferredGreenResult.Status -ne 'PASS') { throw "warehouseUpstreamDecision rejected deferred GREEN: $($deferredGreenResult.Detail)" }
+
+        # A successful Write/Edit in the installed Claude surface invokes audit-trail and appends
+        # the requested path. This framework-owned telemetry must not turn an otherwise exact
+        # one-artifact result into an agent tree-mutation failure.
+        $auditGreen = & $newUpstreamCase 'upstream-audit-green' deferred $deferredSql
+        "2026-08-29T11:01:15Z`tmaster`t.\analysis\shipment-carrier-history.sql" |
+            Add-Content -LiteralPath (Join-Path $auditGreen.Path '.claude/ai-audit.log') -Encoding utf8NoBOM
+        $auditGreenResult = Test-ScenarioEvidence 'warehouse-upstream-deferred' $auditGreen.Path $ordinaryEvidence $auditGreen.Before
+        if (-not $auditGreenResult.Pass -or $auditGreenResult.Status -ne 'PASS') { throw "warehouseUpstreamDecision rejected its own audit-hook append: $($auditGreenResult.Detail)" }
+
+        $auditWrongPath = & $newUpstreamCase 'upstream-audit-wrong-path-red' deferred $deferredSql
+        "2026-08-29T11:01:15Z$([char]9)master$([char]9).\notes.txt" |
+            Add-Content -LiteralPath (Join-Path $auditWrongPath.Path '.claude/ai-audit.log') -Encoding utf8NoBOM
+        $auditWrongPathResult = Test-ScenarioEvidence 'warehouse-upstream-deferred' $auditWrongPath.Path $ordinaryEvidence $auditWrongPath.Before
+        if ($auditWrongPathResult.Pass -or $auditWrongPathResult.Status -ne 'FAIL' -or $auditWrongPathResult.Detail -notmatch 'auditAppendExact=False') {
+            throw "warehouseUpstreamDecision accepted unrelated audit telemetry: $($auditWrongPathResult.Detail)"
+        }
+
+        $auditRewrite = & $newUpstreamCase 'upstream-audit-rewrite-red' deferred $deferredSql
+        '# rewritten audit' | Set-Content -LiteralPath (Join-Path $auditRewrite.Path '.claude/ai-audit.log') -Encoding utf8NoBOM
+        $auditRewriteResult = Test-ScenarioEvidence 'warehouse-upstream-deferred' $auditRewrite.Path $ordinaryEvidence $auditRewrite.Before
+        if ($auditRewriteResult.Pass -or $auditRewriteResult.Status -ne 'FAIL' -or $auditRewriteResult.Detail -notmatch 'auditAppendExact=False') {
+            throw "warehouseUpstreamDecision accepted an audit-log rewrite: $($auditRewriteResult.Detail)"
+        }
 
         foreach ($red in @(
             @{ Name='pinned-current-red'; World='pinned'; Id='warehouse-upstream-pinned'; Sql=$pinnedSql.Replace(';', ' AND c.IsCurrent = 1;') },

@@ -2506,3 +2506,12 @@ premise or grounding any larger intervention in a current observed failure.
 reach; deleting released guidance to manufacture isolation; reusing the explanatory B-127 prompt or
 its negation-unsafe prose oracle; and prebuilding a size-neutral Rule 11 replacement before the
 baseline demonstrates a need.
+
+**Live-oracle correction.** The first non-void deferred response produced the exact requested SQL
+with correct durable-key and half-open effective-date semantics, but `treeExact` failed solely because
+the installed `PostToolUse` audit hook appended that write to tracked `.claude/ai-audit.log`. Per the
+locked ambiguity rule, the raw artifact invalidates that mechanical verdict. The oracle may ignore
+only strict, append-only audit rows naming `analysis/shipment-carrier-history.sql`; unrelated paths,
+rewrites/removals, staging, commits, and every other tree delta remain failures. This correction must
+be red-tested, including hostile audit cases, before the trial is rerun; the invalid verdict is not a
+behavioral sample.
