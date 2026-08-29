@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-29  
 **Filed against:** v0.78.3  
-**Status:** LOCKED 2026-08-29 — two independent adversarial audits approved the amended cross-twin design
+**Status:** RE-LOCKED 2026-08-29 — two independent hostile reviews approved the amended contract and bounded tests
 
 ## Value decision
 
@@ -34,28 +34,41 @@ The classifier runs only before a mutating update or brownfield install. Greenfi
    target whose alternate `GIT_INDEX_FILE` made porcelain status empty.
 2. Inspect repository evidence without following it away: any `.git` directory entry from target
    through ancestors counts, including a file, directory, reparse point, symlink, or dangling link.
-   Inability to inspect an ancestor is `CANT-VERIFY`, not absence. A bare signature at the target is
-   `HEAD` as a leaf plus `objects/` and `refs/` as directories. Do not widen the signature to any
-   two-of-three heuristic.
+   Inability to traverse an ancestor is `CANT-VERIFY`, not absence. Traversal/execute permission is
+   sufficient to inspect a known child; do not require directory-list/read permission. A bare
+   signature at the target is `HEAD` as a leaf plus `objects/` and `refs/` as directories. Do not
+   widen the signature to any two-of-three heuristic. On MSYS Git Bash (`OSTYPE=msys*`), derive the
+   scan cursor with its proven built-in `pwd -W`, validate the mixed drive or UNC shape, and stop
+   after checking the actual `X:/` drive root or `//server/share` root. Never ascend into MSYS's
+   virtual `/` or a non-traversable `//server` pseudo-parent; conversion failure or malformed output
+   is `CANT-VERIFY`. Do not claim an unverified `pwd -W` contract for Cygwin; other POSIX scanning
+   remains conservative through `/`.
 3. Resolve Git as an application. If Git is absent and repository evidence exists, refuse exit 4;
    if Git is absent and evidence does not exist, the target is non-Git and may proceed.
 4. If Git exists, always run `git -C <target> rev-parse --is-inside-work-tree` through a bounded
    native-command helper. Keep stdout separate from stderr. In PowerShell, suppress expected native
    stderr under function-local `ErrorActionPreference=Continue`, restore the prior preference in
-   `finally`, and return whether the process started, its exit, and normalized stdout. No global
-   preference change, stderr parsing, `Start-Process`, location change, or host-specific
-   `$PSNativeCommandUseErrorActionPreference` dependency.
-5. Exit 0 with stdout exactly `true` identifies a worktree. Exit 0 with `false`, empty, or any other
-   stdout is `CANT-VERIFY` (including a bare repository). A nonzero/launch failure with repository
-   evidence is `CANT-VERIFY`; the same result with no evidence is ordinary non-Git. Thus unusual
-   topologies Git can authoritatively identify still work, while broken metadata cannot disappear.
-6. For an identified worktree, run `git -C <target> status --porcelain=v1 --untracked-files=all`
-   through the same host-safe path. Status stderr never joins porcelain stdout. A failed/unstarted
-   status is the existing actionable `CANT-VERIFY`, exit 4. Empty stdout is clean; non-empty stdout
-   retains the existing refusal and explicit `AllowDirtyTree`/`--allow-dirty-tree` override.
+   `finally`, and return whether the process started, its exit, normalized stdout, and captured
+   stdout record count. No global preference change, stderr parsing, `Start-Process`, location
+   change, or host-specific `$PSNativeCommandUseErrorActionPreference` dependency.
+5. Exit 0 with normalized stdout exactly `true` identifies a worktree. PowerShell's line adapter
+   normalizes a terminal CR, so twin parity accepts exactly four raw shapes: `true`, `true` plus CR,
+   `true` plus LF, or `true` plus CRLF; reject all others rather than trimming general whitespace.
+   Exit 0 with `false`, empty, or any other stdout is `CANT-VERIFY` (including a bare repository). A
+   nonzero/launch failure with repository evidence is `CANT-VERIFY`; the same result with no
+   evidence is ordinary non-Git. Thus unusual topologies Git can authoritatively identify still
+   work, while broken metadata cannot disappear.
+6. For an identified worktree, run
+   `git --no-optional-locks -C <target> status --porcelain=v1 --untracked-files=all` through the same
+   host-safe path. The global option is mandatory: ordinary `git status` may refresh index stat data
+   before the installer refuses a dirty target. Status stderr never joins porcelain stdout. A
+   failed/unstarted status is the existing actionable `CANT-VERIFY`, exit 4. Zero stdout records is
+   clean; any stdout record/bytes, including a blank line, retains the existing refusal and explicit
+   `AllowDirtyTree`/`--allow-dirty-tree` override.
 7. Every classifier refusal occurs before target mutation, omits installer completion, and leaves a
-   whole-tree fingerprint unchanged. Preserve Git-optional plain targets, clean worktrees, dirty
-   refusal/override, ownership/archive behavior, exit codes, and success banners.
+   whole-tree fingerprint unchanged, including Git administrative files. Preserve Git-optional
+   plain targets, clean worktrees, dirty refusal/override, ownership/archive behavior, exit codes,
+   and success banners.
 8. PowerShell and Bash implement the same state machine. Keep Bash 3.2-compatible syntax and
    PowerShell 5.1 compatibility; add no dependency or shared abstraction.
 
@@ -80,11 +93,19 @@ child results before its first assertion. Do not create a new suite or duplicate
 and dirty controls.
 
 1. **Plain non-Git remains supported.** Capture native absolute Windows PowerShell 5.1 update and
-   brownfield installs with real Git on child `PATH` and `pwsh` absent. Require exit 0, completion,
-   exact protected/update carrier/settings-fallback behavior, and exact brownfield archive/adoption
-   behavior. In the same group, a PATH-prepended Git stub that records invocation and exits nonzero
-   must still allow a no-evidence update through both twins; assert the out-of-target invocation
-   sentinel so real Git cannot make the control vacuous.
+   brownfield installs with real Git on the child `PATH` and `pwsh` absent from that `PATH`. Require
+   exit 0, completion, exact protected/update carrier behavior, and exact brownfield archive/adoption
+   behavior. The absolute `powershell.exe` subject is the host boundary. The Codex process launcher
+   was observed prepending its toolchain after environment inheritance, so the fixture resets PATH
+   inside the already-started child and proves Git/pwsh visibility there with `where.exe`. App Paths
+   behavior may vary by host; do not mutate the registry or mock command discovery to widen this
+   preflight test into the unrelated settings-fallback branch. In the same group, a PATH-prepended
+   Git stub that records invocation and exits nonzero must still allow a no-evidence update through
+   both twins; assert the out-of-target invocation sentinel so real Git cannot make the control
+   vacuous. On native Linux, also run the Bash update beneath an execute-only/no-list ancestor to
+   prove a traversable plain target is not falsely refused. Before the installer child, require a
+   captured Bash prerequisite to observe `-x` true and `-r` false after `chmod 311`; a privileged or
+   ACL-altered runner must fail the fixture instead of certifying the old read-permission check.
 2. **Evidence or routing that cannot be trusted refuses.** Capture corrupt `.git` metadata with real
    Git under PowerShell 7, native PowerShell 5.1, and Bash; repository evidence with Git absent under
    both twins; and a genuinely dirty repository whose ambient `GIT_INDEX_FILE` hides the change
@@ -99,10 +120,24 @@ reversed broken-Git/no-evidence decision; group 2 covers failed classification w
 missing Git, and an observed ambient false-clean; group 3 covers post-classification examination.
 Re-run, rather than duplicate, the committed clean-Git brownfield control in
 `RootInstallerWarehouse.Tests.ps1` and the existing dirty update/brownfield refusal/override cases.
+Strengthen the existing dirty-update case (without adding another `It`) with one clean tracked file
+whose mtime is advanced after commit and another dirty tracked file; fingerprint `.git/index` before
+and after refusal. Force `GIT_OPTIONAL_LOCKS=1`, calibrate that ordinary status both sees the dirty
+file and changes the saved index bytes, restore those bytes exactly, then require the installer's
+refusal to preserve the whole-tree fingerprint. This is the discriminating proof that the product
+disables optional locking rather than inheriting a convenient host default.
+
+Do not add full-installer children for defensive wrapper-only byte shapes. In bounded scratch probes,
+prove Bash accepts exact `true` with no terminator/CR/LF/CRLF and rejects extra CR, blank records,
+and spaces; prove the PowerShell helper reports a blank status line as observed output under both
+PowerShell 7 and 5.1. Also prove the Windows scan-parent transitions
+`C:/a/b -> C:/a -> C:/` and `//server/share/a -> //server/share`; a live UNC share is not required
+for this namespace-only boundary.
 
 Before implementation, the unchanged candidate must make the new matrix red while every child
 surface is observed. After green, weaken the PowerShell native invocation and Bash evidence/refusal
-branches independently in scratch; each mutation must turn its discriminating case red, restore
+branches independently in scratch; separately remove `--no-optional-locks` from each twin and
+restore Bash's read-permission check. Each mutation must turn its discriminating case red, restore
 byte-identically, and return clean.
 
 ## Verification and release boundary
@@ -116,4 +151,3 @@ byte-identically, and return clean.
 - Independent immutable-range hostile review under WSD-057. Because both installer twins and a
   data-preservation preflight change, Windows and native Linux candidate CI are mandatory before
   release. Git Bash is not Linux/macOS or Bash 3.2 runtime evidence.
-

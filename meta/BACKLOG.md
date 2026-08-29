@@ -2913,6 +2913,48 @@ count distinct categories, and make the eval's authoritative-catalog fixture rej
 Fold a duplicate-row mutation into the existing warehouse map checker suite; do not create a
 standalone catalog suite.
 
+### B-197 · Make Bash installer temporary-file handling path-safe
+**Effort:** S · **Priority:** P2 · **planned ≥ v0.78.5**
+**Filed against:** v0.78.3 (2026-08-29)
+
+**Why:** B-194's hostile implementation review found a pre-existing Bash lifecycle defect outside
+the Git-classifier change. The installer stores `mktemp` paths in a space-delimited scalar and later
+iterates it unquoted. A `TMPDIR` containing spaces is therefore word-split and glob-expanded during
+cleanup: the real temporary files can leak, and a split relative fragment can name an unrelated file
+under the caller's working directory. Separately, putting `TMPDIR` inside an otherwise clean target
+makes the installer's own pre-status temporary files appear untracked, producing a deterministic
+dirty-tree false refusal. No consumer incident is known, so this is P2 rather than B-194 scope.
+
+**Do:** revalidate the portable temp-root contract, then replace the scalar registry with a
+Bash-3.2-safe path-preserving structure and ensure preflight allocations cannot make the selected
+target dirty (or fail cleanly before relying on status). Add one focused behavioral subject that
+uses both a spaced temp path and a clean target-confined temp path, proves cleanup cannot touch a
+sentinel named like a split fragment, and distinguishes success/refusal from leakage. Do not add a
+new suite or duplicate ordinary clean/dirty controls. Compose all dists, run native Linux coverage,
+and use one cleanup-registry mutation to prove the subject is discriminating.
+
+---
+
+### B-196 · Honor a BOM-prefixed disabled-skill ledger in the Bash installer
+**Effort:** S · **Priority:** P1 · **planned v0.78.5**
+**Filed against:** v0.78.3 (2026-08-29)
+
+**Why:** B-194's required native Windows PowerShell 5.1/CP437 run exposed a separate reachable
+cross-host failure. PS5's normal UTF-8 writer can prefix `LEARNINGS.md` with a BOM. The PowerShell
+installer still recognizes a first-line `## Disabled framework skill: perf`, but the Bash
+installer's anchored `grep` does not; an update then recreates the deliberately disabled framework
+skill in `.claude/skills/perf`. B-194 made its general fixture bytes host-invariant so its own
+classifier matrix is trustworthy, but that is not evidence that the product accepts BOM input.
+
+**Do:** revalidate the disabled-skill ledger contract, then make the Bash reader tolerate a UTF-8
+BOM only where the first record is parsed without modifying the consumer file or weakening the
+heading grammar. Add one targeted red-first UpdateDelivery subject that distinguishes BOM handling
+from ordinary disable reconciliation; do not add a suite or repeat the full B-194 matrix. Confirm
+PowerShell behavior remains unchanged, compose all dists, run the focused Windows/Linux gates, and
+use a byte-restored Bash mutation to prove the case is discriminating.
+
+---
+
 ### B-195 · Preserve unterminated final advisory rows in Bash session start
 **Effort:** S · **Priority:** P2 · **planned ≥ v0.78.5**
 **Filed against:** v0.78.3 (2026-08-29)

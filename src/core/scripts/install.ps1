@@ -323,22 +323,109 @@ if ($updateMode) {
     }
 }
 
-# Refuse a dirty Git target before any installer mutation. This does not make Git a prerequisite:
-# greenfield/non-Git targets remain valid. An override is intentionally noisy and never implicit.
-if (-not $WhatIf -and ($adoptMode -or $updateMode) -and (Get-Command git -ErrorAction SilentlyContinue)) {
-    & git -C $tgt rev-parse --is-inside-work-tree *> $null
-    if ($LASTEXITCODE -eq 0) {
-        $dirty = @(& git -C $tgt status --porcelain=v1 --untracked-files=all)
-        if ($LASTEXITCODE -ne 0) {
-            [Console]::Error.WriteLine('CANT-VERIFY: Git identified this target as a worktree, but its status could not be read. Commit, stash, or copy local changes, then repair Git and re-run the installer.')
-            exit 4
+# Find one named directory entry without dereferencing it. Get-Item -Force sees a dangling link
+# where Test-Path reports false. A direct lookup also works when an ancestor grants traversal but
+# not directory-list permission; only ItemNotFound means absence, while any other failure escapes.
+function Get-GitChildEntry {
+    param([Parameter(Mandatory = $true)][string]$Directory, [Parameter(Mandatory = $true)][string]$Name)
+    try { return (Get-Item -Force -LiteralPath (Join-Path $Directory $Name) -ErrorAction Stop).FullName }
+    catch [Management.Automation.ItemNotFoundException] { return $null }
+}
+
+function Test-GitRepositoryEvidence {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    $current = [IO.DirectoryInfo]::new([IO.Path]::GetFullPath($Path))
+    while ($null -ne $current) {
+        if (Get-GitChildEntry -Directory $current.FullName -Name '.git') { return $true }
+        $current = $current.Parent
+    }
+
+    # Bare repositories have no .git entry. Keep this signature deliberately strict: weakening it
+    # makes ordinary directories look repository-like and turns optional Git into a prerequisite.
+    $head = Get-GitChildEntry -Directory $Path -Name 'HEAD'
+    $objects = Get-GitChildEntry -Directory $Path -Name 'objects'
+    $refs = Get-GitChildEntry -Directory $Path -Name 'refs'
+    if (-not $head -or -not $objects -or -not $refs) { return $false }
+    $directory = [IO.FileAttributes]::Directory
+    $headAttributes = [IO.File]::GetAttributes($head)
+    $objectAttributes = [IO.File]::GetAttributes($objects)
+    $refAttributes = [IO.File]::GetAttributes($refs)
+    return (($headAttributes -band $directory) -eq 0 -and
+        ($objectAttributes -band $directory) -ne 0 -and ($refAttributes -band $directory) -ne 0)
+}
+
+# Windows PowerShell 5.1 promotes redirected native stderr to NativeCommandError when the caller's
+# preference is Stop. Keep the suppression function-local, capture stdout separately, and retain a
+# nullable exit so a launch failure can never be mistaken for exit 0. Preserve the record count as
+# well: a blank native stdout line normalizes to an empty string but is still non-empty status.
+function Invoke-GitText {
+    param([Parameter(Mandatory = $true)][string]$GitPath, [Parameter(Mandatory = $true)][string[]]$Arguments)
+    $priorPreference = $ErrorActionPreference
+    $stdout = @()
+    $exitCode = $null
+    try {
+        $ErrorActionPreference = 'Continue'
+        # LASTEXITCODE is maintained in the runspace's global scope. Creating a local variable here
+        # shadows the value the native adapter updates and makes a successful launch look absent.
+        $global:LASTEXITCODE = $null
+        try {
+            $stdout = @(& $GitPath @Arguments 2>$null)
+            $exitCode = $global:LASTEXITCODE
+        } catch {
+            $stdout = @()
+            $exitCode = $null
         }
-        if ($dirty.Count -gt 0) {
-            if (-not $AllowDirtyTree) {
-                [Console]::Error.WriteLine('ERROR: Refusing to mutate a dirty Git target. Commit, stash, or copy local changes, then re-run; use -AllowDirtyTree only after doing so deliberately.')
+    } finally {
+        $ErrorActionPreference = $priorPreference
+    }
+    $normalized = (@($stdout | ForEach-Object { ([string]$_).TrimEnd("`r") }) -join "`n")
+    return [pscustomobject]@{
+        Started = ($null -ne $exitCode)
+        ExitCode = $exitCode
+        Output = $normalized
+        RecordCount = $stdout.Count
+    }
+}
+
+function Stop-UnverifiableGitPreflight {
+    [Console]::Error.WriteLine('CANT-VERIFY: Git state for this update/brownfield target could not be verified safely. Unset Git routing variables, install or repair Git, or repair/remove corrupt repository metadata, then re-run the installer.')
+    exit 4
+}
+
+# Git is optional for a plain target, but repository evidence or redirected Git state must never be
+# reinterpreted as non-Git. Refuse before mutation unless Git authoritatively identifies the target
+# and its porcelain status can be read through the selected target path.
+if (-not $WhatIf -and ($adoptMode -or $updateMode)) {
+    foreach ($name in @('GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE')) {
+        $value = [Environment]::GetEnvironmentVariable($name, 'Process')
+        if ($null -ne $value -and $value.Length -gt 0) { Stop-UnverifiableGitPreflight }
+    }
+
+    try { $repositoryEvidence = Test-GitRepositoryEvidence -Path $tgt }
+    catch { Stop-UnverifiableGitPreflight }
+
+    $gitCommands = @(Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)
+    if ($gitCommands.Count -eq 0) {
+        if ($repositoryEvidence) { Stop-UnverifiableGitPreflight }
+    } else {
+        $gitPath = [string]$gitCommands[0].Source
+        $probe = Invoke-GitText -GitPath $gitPath -Arguments @('-C', $tgt, 'rev-parse', '--is-inside-work-tree')
+        if ($probe.Started -and $probe.ExitCode -eq 0) {
+            if ($probe.Output -cne 'true') { Stop-UnverifiableGitPreflight }
+            $status = Invoke-GitText -GitPath $gitPath -Arguments @('--no-optional-locks', '-C', $tgt, 'status', '--porcelain=v1', '--untracked-files=all')
+            if (-not $status.Started -or $status.ExitCode -ne 0) {
+                [Console]::Error.WriteLine('CANT-VERIFY: Git identified this target as a worktree, but its status could not be read. Commit, stash, or copy local changes, then repair Git and re-run the installer.')
                 exit 4
             }
-            Write-Output '  override: -AllowDirtyTree (--allow-dirty-tree) accepted for this dirty Git target.'
+            if ($status.RecordCount -gt 0) {
+                if (-not $AllowDirtyTree) {
+                    [Console]::Error.WriteLine('ERROR: Refusing to mutate a dirty Git target. Commit, stash, or copy local changes, then re-run; use -AllowDirtyTree only after doing so deliberately.')
+                    exit 4
+                }
+                Write-Output '  override: -AllowDirtyTree (--allow-dirty-tree) accepted for this dirty Git target.'
+            }
+        } elseif ($repositoryEvidence) {
+            Stop-UnverifiableGitPreflight
         }
     }
 }

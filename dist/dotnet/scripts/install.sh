@@ -309,19 +309,121 @@ if [ "$update_mode" -eq 1 ]; then
   fi
 fi
 
-# Git is optional, but a brownfield/update target that is a Git worktree must be clean before the
-# installer mutates it. The escape hatch is deliberately explicit and visible on stdout.
-if [ "$dry_run" -ne 1 ] && { [ "$adopt_mode" -eq 1 ] || [ "$update_mode" -eq 1 ]; } && command -v git >/dev/null 2>&1 && git -C "$tgt" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  if ! dirty=$(git -C "$tgt" status --porcelain=v1 --untracked-files=all); then
-    echo 'CANT-VERIFY: Git identified this target as a worktree, but its status could not be read. Commit, stash, or copy local changes, then repair Git and re-run the installer.' >&2
-    exit 4
-  fi
-  if [ -n "$dirty" ]; then
-    if [ "$allow_dirty_tree" -ne 1 ]; then
-      echo 'ERROR: Refusing to mutate a dirty Git target. Commit, stash, or copy local changes, then re-run; use --allow-dirty-tree only after doing so deliberately.' >&2
-      exit 4
+git_preflight_cant_verify() {
+  echo 'CANT-VERIFY: Git state for this update/brownfield target could not be verified safely. Unset Git routing variables, install or repair Git, or repair/remove corrupt repository metadata, then re-run the installer.' >&2
+  exit 4
+}
+
+# Return 0 for repository evidence, 1 for none, and 2 when an ancestor cannot be inspected. The
+# explicit -L arm is the lstat-equivalent that keeps a dangling .git link from disappearing. Git
+# Bash needs its real Windows namespace root; MSYS / and //server are virtual parents that Git for
+# Windows would never inspect while discovering from a drive or UNC share.
+git_repository_evidence() {
+  local cursor="$tgt" parent scan_root="" scan_kind="" remainder server share_and_rest share
+  case "${OSTYPE:-}" in
+    msys*)
+      cursor=$(cd "$tgt" 2>/dev/null && pwd -W) || return 2
+      case "$cursor" in
+        [A-Za-z]:/*)
+          scan_root="${cursor%%/*}/"
+          scan_kind=drive
+          ;;
+        //?*/?*)
+          remainder=${cursor#//}
+          server=${remainder%%/*}
+          share_and_rest=${remainder#*/}
+          share=${share_and_rest%%/*}
+          [ -n "$server" ] && [ -n "$share" ] || return 2
+          scan_root="//$server/$share"
+          case "$cursor" in "$scan_root"|"$scan_root"/*) ;; *) return 2;; esac
+          scan_kind=unc
+          ;;
+        *) return 2;;
+      esac
+      ;;
+  esac
+  while :; do
+    [ -x "$cursor" ] || return 2
+    if [ -e "$cursor/.git" ] || [ -L "$cursor/.git" ]; then return 0; fi
+    if [ -n "$scan_root" ]; then
+      [ "$cursor" = "$scan_root" ] && break
+    else
+      [ "$cursor" = / ] && break
     fi
-    echo '  override: --allow-dirty-tree accepted for this dirty Git target.'
+    parent=${cursor%/*}; [ -n "$parent" ] || parent=/
+    case "$scan_kind" in
+      drive)
+        [ "$parent" = "${scan_root%/}" ] && parent=$scan_root
+        case "$parent" in "$scan_root"*) ;; *) return 2;; esac
+        ;;
+      unc)
+        case "$parent" in "$scan_root"|"$scan_root"/*) ;; *) return 2;; esac
+        ;;
+    esac
+    [ "$parent" != "$cursor" ] || break
+    cursor="$parent"
+  done
+  if [ -f "$tgt/HEAD" ] && [ -d "$tgt/objects" ] && [ -d "$tgt/refs" ]; then return 0; fi
+  return 1
+}
+
+# Allocate classifier output with mktemp and register it with the installer's existing trap.
+# Unlike new_temp_file, this safety-boundary caller handles allocation failure explicitly.
+new_git_preflight_temp() {
+  git_preflight_temp=""
+  if ! git_preflight_temp=$(mktemp); then return 1; fi
+  [ -n "$git_preflight_temp" ] || return 1
+  temp_files="$temp_files $git_preflight_temp"
+}
+
+# Git is optional for a plain target, but repository evidence or redirected Git state must never be
+# reinterpreted as non-Git. This helper block introduces no syntax newer than Bash 3.2.
+if [ "$dry_run" -ne 1 ] && { [ "$adopt_mode" -eq 1 ] || [ "$update_mode" -eq 1 ]; }; then
+  if [ -n "${GIT_DIR:-}" ] || [ -n "${GIT_WORK_TREE:-}" ] || [ -n "${GIT_COMMON_DIR:-}" ] || [ -n "${GIT_INDEX_FILE:-}" ]; then
+    git_preflight_cant_verify
+  fi
+
+  repository_evidence=0
+  if git_repository_evidence; then
+    repository_evidence=1
+  else
+    evidence_exit=$?
+    [ "$evidence_exit" -eq 1 ] || git_preflight_cant_verify
+  fi
+
+  git_path=$(type -P git 2>/dev/null || true)
+  if [ -z "$git_path" ]; then
+    [ "$repository_evidence" -eq 0 ] || git_preflight_cant_verify
+  else
+    new_git_preflight_temp || git_preflight_cant_verify
+    git_probe_output=$git_preflight_temp
+    if "$git_path" -C "$tgt" rev-parse --is-inside-work-tree > "$git_probe_output" 2>/dev/null; then
+      if printf 'true' | cmp -s - "$git_probe_output"; then :
+      elif printf 'true\r' | cmp -s - "$git_probe_output"; then :
+      elif printf 'true\n' | cmp -s - "$git_probe_output"; then :
+      elif printf 'true\r\n' | cmp -s - "$git_probe_output"; then :
+      else git_preflight_cant_verify
+      fi
+
+      new_git_preflight_temp || git_preflight_cant_verify
+      git_status_output=$git_preflight_temp
+      if "$git_path" --no-optional-locks -C "$tgt" status --porcelain=v1 --untracked-files=all > "$git_status_output" 2>/dev/null; then
+        if [ -s "$git_status_output" ]; then
+          if [ "$allow_dirty_tree" -ne 1 ]; then
+            echo 'ERROR: Refusing to mutate a dirty Git target. Commit, stash, or copy local changes, then re-run; use --allow-dirty-tree only after doing so deliberately.' >&2
+            exit 4
+          fi
+          echo '  override: --allow-dirty-tree accepted for this dirty Git target.'
+        fi
+      else
+        git_status_exit=$?
+        echo 'CANT-VERIFY: Git identified this target as a worktree, but its status could not be read. Commit, stash, or copy local changes, then repair Git and re-run the installer.' >&2
+        exit 4
+      fi
+    else
+      git_probe_exit=$?
+      [ "$repository_evidence" -eq 0 ] || git_preflight_cant_verify
+    fi
   fi
 fi
 

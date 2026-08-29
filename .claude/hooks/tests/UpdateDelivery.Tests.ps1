@@ -63,7 +63,9 @@ Repo-specific conventions the consumer owns. Populated by /bootstrap. DO NOT CLO
     Set-Content (Join-Path $t '.claude/skills/add-warehouse-load/SKILL.md') "---`nname: add-warehouse-load`n---`n# Old framework body`n`nFor a concrete current instance in this repo, see ``warehouse/LoadSales.sql`` — reproduce its **conventions and structure**, not its contents; CLAUDE.md > Conventions wins on any conflict.`n" -Encoding utf8
     New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude/skills/local-release') | Out-Null
     Set-Content (Join-Path $t '.claude/skills/local-release/SKILL.md') "---`nname: local-release`norigin: discovered`n---`n# Consumer recipe`n" -Encoding utf8
-    Set-Content (Join-Path $t 'LEARNINGS.md') "## Disabled framework skill: perf`nDisabled: 2026-08-01`nReason: not used here.`n" -Encoding utf8
+    # PS5's `Set-Content -Encoding utf8` adds a BOM while PS7's does not. Bash anchors this first
+    # heading, so write deterministic no-BOM fixture bytes on both supported PowerShell hosts.
+    [IO.File]::WriteAllText((Join-Path $t 'LEARNINGS.md'), "## Disabled framework skill: perf`nDisabled: 2026-08-01`nReason: not used here.`n", [Text.UTF8Encoding]::new($false))
     return $t
 }
 
@@ -85,6 +87,223 @@ function Assert-BytesEqual {
     param([byte[]]$Expected, [byte[]]$Actual, [string]$Message)
     Assert ($Expected.Length -eq $Actual.Length -and
         [Convert]::ToBase64String($Expected) -ceq [Convert]::ToBase64String($Actual)) $Message
+}
+
+# B-194's three grouped tests deliberately retain every subprocess result before their first
+# assertion.  This small capture helper also keeps native stdout and stderr separate, which is the
+# contract the installer itself must preserve when probing optional Git.
+function Invoke-B194Process {
+    param(
+        [string]$Executable,
+        [string[]]$Arguments = @(),
+        [hashtable]$Environment = @{}
+    )
+    $stderrFile = [IO.Path]::GetTempFileName()
+    $saved = @{}
+    $started = $false
+    $exitCode = $null
+    $stdout = @()
+    $exception = ''
+    $priorPreference = $ErrorActionPreference
+    try {
+        foreach ($name in $Environment.Keys) {
+            $saved[$name] = [Environment]::GetEnvironmentVariable([string]$name, 'Process')
+            if ($null -eq $Environment[$name]) {
+                Remove-Item -LiteralPath ("Env:" + [string]$name) -Force -ErrorAction SilentlyContinue
+            } else {
+                [Environment]::SetEnvironmentVariable([string]$name, [string]$Environment[$name], 'Process')
+            }
+        }
+        if (-not $Executable -or -not (Test-Path -LiteralPath $Executable -PathType Leaf)) {
+            throw "executable is unavailable: '$Executable'"
+        }
+        $ErrorActionPreference = 'Continue'
+        $started = $true
+        $stdout = @(& $Executable @Arguments 2>$stderrFile)
+        $exitCode = $LASTEXITCODE
+    } catch {
+        $started = $false
+        $exception = $_.Exception.Message
+    } finally {
+        $ErrorActionPreference = $priorPreference
+        foreach ($name in $Environment.Keys) {
+            if ($null -eq $saved[$name]) {
+                Remove-Item -LiteralPath ("Env:" + [string]$name) -Force -ErrorAction SilentlyContinue
+            } else {
+                [Environment]::SetEnvironmentVariable([string]$name, [string]$saved[$name], 'Process')
+            }
+        }
+    }
+    try { $stderr = [IO.File]::ReadAllText($stderrFile) } catch { $stderr = $_.Exception.Message }
+    try { [IO.File]::Delete($stderrFile) } catch { }
+    [pscustomobject]@{
+        Started = $started
+        Exit = $exitCode
+        Out = (($stdout | ForEach-Object { [string]$_ }) -join "`n")
+        Err = $stderr
+        Exception = $exception
+    }
+}
+
+function Invoke-B194Installer {
+    param(
+        [ValidateSet('ps1','sh')][string]$Twin,
+        [string]$Target,
+        [string]$PowerShellExe,
+        [hashtable]$Environment = @{}
+    )
+    $isolated = @{
+        GIT_DIR = $null
+        GIT_WORK_TREE = $null
+        GIT_COMMON_DIR = $null
+        GIT_INDEX_FILE = $null
+    }
+    foreach ($name in $Environment.Keys) { $isolated[$name] = $Environment[$name] }
+    if ($Twin -eq 'ps1') {
+        $installer = Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'
+        if ($isolated.ContainsKey('B194_PS_PATH')) {
+            # The Codex process launcher prepends its own dependency PATH after inheriting the
+            # requested environment. Reset PATH inside the already-started native child so this
+            # fixture can actually prove its no-pwsh-on-PATH premise.
+            $controlledPath = [string]$isolated['B194_PS_PATH']
+            $isolated.Remove('B194_PS_PATH')
+            $path64 = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($controlledPath))
+            $installer64 = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($installer))
+            $target64 = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($Target))
+            # A normally completed script can leave its last native Git probe code (for example
+            # non-repository 128) in LASTEXITCODE. Explicit installer `exit` calls terminate this
+            # child immediately; reaching the statement after invocation therefore means success.
+            $command = "`$env:PATH=[Text.Encoding]::Unicode.GetString([Convert]::FromBase64String('$path64'));`$installer=[Text.Encoding]::Unicode.GetString([Convert]::FromBase64String('$installer64'));`$target=[Text.Encoding]::Unicode.GetString([Convert]::FromBase64String('$target64'));& `$installer -Target `$target;exit 0"
+            $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
+            return Invoke-B194Process -Executable $PowerShellExe -Arguments @(
+                '-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $encoded
+            ) -Environment $isolated
+        }
+        return Invoke-B194Process -Executable $PowerShellExe -Arguments @(
+            '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $installer, '-Target', $Target
+        ) -Environment $isolated
+    }
+    $installer = Join-Path $repoRoot 'dist/dotnet/scripts/install.sh'
+    if ($isolated.ContainsKey('B194_BASH_PATH')) {
+        $controlledPath = [string]$isolated['B194_BASH_PATH']
+        $isolated.Remove('B194_BASH_PATH')
+        return Invoke-B194Process -Executable $bash -Arguments @(
+            '-c', 'PATH="$1"; export PATH; exec "$BASH" "$2" "$3"', '_', $controlledPath, $installer, $Target
+        ) -Environment $isolated
+    }
+    return Invoke-B194Process -Executable $bash -Arguments @($installer, $Target) -Environment $isolated
+}
+
+function New-B194UpdateTarget {
+    param([string]$Parent, [string]$Name)
+    $target = Join-Path $Parent $Name
+    New-Item -ItemType Directory -Force -Path (Join-Path $target '.claude') | Out-Null
+    [IO.File]::WriteAllText((Join-Path $target '.claude/framework-version.json'), "{`"version`":`"0.78.2`"}`n", [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $target '.claude/settings.json'), "{`n  `"consumerEdit`": `"B194 SETTINGS SENTINEL`"`n}`n", [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $target 'CLAUDE.md'), "B194 PROTECTED UPDATE SENTINEL`n", [Text.UTF8Encoding]::new($false))
+    return $target
+}
+
+function New-B194BrownfieldTarget {
+    param([string]$Parent, [string]$Name)
+    $target = Join-Path $Parent $Name
+    New-Item -ItemType Directory -Force -Path $target | Out-Null
+    [IO.File]::WriteAllText((Join-Path $target 'TECH_DEBT.md'), "B194 BROWNFIELD ARCHIVE SENTINEL`n", [Text.UTF8Encoding]::new($false))
+    return $target
+}
+
+function Get-B194Fingerprint {
+    param([string]$Root)
+    $rootPath = [IO.Path]::GetFullPath($Root).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
+    $entries = [System.Collections.Generic.List[string]]::new()
+    foreach ($item in @(Get-ChildItem -LiteralPath $rootPath -Force -Recurse -ErrorAction Stop)) {
+        $relative = $item.FullName.Substring($rootPath.Length).TrimStart([char[]]@('\','/')).Replace('\','/')
+        if ($item.PSIsContainer) {
+            $entries.Add("D|$relative")
+        } else {
+            $hash = (Get-FileHash -LiteralPath $item.FullName -Algorithm SHA256 -ErrorAction Stop).Hash
+            $entries.Add("F|$relative|$hash")
+        }
+    }
+    $payload = [Text.UTF8Encoding]::new($false).GetBytes((($entries | Sort-Object -CaseSensitive) -join "`n"))
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try { return ([BitConverter]::ToString($sha.ComputeHash($payload))).Replace('-', '') }
+    finally { $sha.Dispose() }
+}
+
+function Add-B194CaptureProblem {
+    param([System.Collections.Generic.List[string]]$Problems, [string]$Label, $Capture)
+    if (-not $Capture.Started) { $Problems.Add("${Label}: child did not start ($($Capture.Exception))") | Out-Null }
+}
+
+function Add-B194SuccessProblems {
+    param([System.Collections.Generic.List[string]]$Problems, [string]$Label, $Capture, [string]$Completion)
+    Add-B194CaptureProblem -Problems $Problems -Label $Label -Capture $Capture
+    if ($Capture.Exit -ne 0) { $Problems.Add("${Label}: exit $($Capture.Exit); stdout=[$($Capture.Out)]; stderr=[$($Capture.Err)]") | Out-Null }
+    if ($Capture.Out -notmatch $Completion) { $Problems.Add("${Label}: completion banner missing; stdout=[$($Capture.Out)]") | Out-Null }
+    if ($Capture.Err) { $Problems.Add("${Label}: unexpected stderr=[$($Capture.Err)]") | Out-Null }
+}
+
+function Add-B194RefusalProblems {
+    param([System.Collections.Generic.List[string]]$Problems, [string]$Label, $Capture, [string]$Before, [string]$After)
+    Add-B194CaptureProblem -Problems $Problems -Label $Label -Capture $Capture
+    if ($Capture.Exit -ne 4) { $Problems.Add("${Label}: expected exit 4, got $($Capture.Exit); stdout=[$($Capture.Out)]; stderr=[$($Capture.Err)]") | Out-Null }
+    if (($Capture.Out + "`n" + $Capture.Err) -notmatch 'CANT-VERIFY') { $Problems.Add("${Label}: CANT-VERIFY missing") | Out-Null }
+    if (($Capture.Out + "`n" + $Capture.Err) -match 'Done \(update\)|Done - but this repo|Done\. Next steps') { $Problems.Add("${Label}: refusal printed a completion banner") | Out-Null }
+    if ($Before -cne $After) { $Problems.Add("${Label}: target fingerprint changed ($Before -> $After)") | Out-Null }
+}
+
+function Add-B194ExpectedProcessProblems {
+    param([System.Collections.Generic.List[string]]$Problems, [string]$Label, $Capture, [int]$ExpectedExit)
+    Add-B194CaptureProblem -Problems $Problems -Label $Label -Capture $Capture
+    if ($Capture.Exit -ne $ExpectedExit) {
+        $Problems.Add("${Label}: expected setup exit $ExpectedExit, got $($Capture.Exit); stdout=[$($Capture.Out)]; stderr=[$($Capture.Err)]") | Out-Null
+    }
+}
+
+function Test-B194BytesEqual {
+    param([byte[]]$Left, [byte[]]$Right)
+    return ($Left.Length -eq $Right.Length -and
+        [Convert]::ToBase64String($Left) -ceq [Convert]::ToBase64String($Right))
+}
+
+function New-B194BashNoGitPath {
+    param([string]$Root)
+    if ($env:OS -eq 'Windows_NT') { return '/usr/bin:/bin' }
+    $bin = Join-Path $Root 'bash-no-git-bin'
+    New-Item -ItemType Directory -Force -Path $bin | Out-Null
+    foreach ($name in @('awk','cat','cmp','cp','cut','date','dirname','find','grep','head','mkdir','mktemp','mv','openssl','rm','sed','sha256sum','shasum','sort','tar','tr','wc')) {
+        $command = Get-Command $name -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($command) {
+            New-Item -ItemType SymbolicLink -Path (Join-Path $bin $name) -Target $command.Source -ErrorAction Stop | Out-Null
+        }
+    }
+    return $bin
+}
+
+function ConvertTo-B194BashPath {
+    param([string]$Path)
+    if ($env:OS -eq 'Windows_NT' -and $Path -match '^([A-Za-z]):[\\/](.*)$') {
+        return ('/' + $matches[1].ToLowerInvariant() + '/' + $matches[2].Replace('\','/'))
+    }
+    return $Path
+}
+
+function Initialize-B194GitTarget {
+    param([string]$Target, [string]$GitExe, [hashtable]$Environment = @{})
+    $steps = [System.Collections.Generic.List[object]]::new()
+    foreach ($step in @(
+        @{ Name = 'init'; Args = @('-C', $Target, 'init', '-q') },
+        @{ Name = 'add'; Args = @('-C', $Target, 'add', '.') },
+        @{ Name = 'commit'; Args = @('-C', $Target, '-c', 'user.name=B194 fixture', '-c', 'user.email=b194@example.invalid', 'commit', '-qm', 'initial') }
+    )) {
+        $steps.Add([pscustomobject]@{
+            Label = "$Target $($step.Name)"
+            Capture = (Invoke-B194Process -Executable $GitExe -Arguments $step.Args -Environment $Environment)
+            ExpectedExit = 0
+        }) | Out-Null
+    }
+    return $steps.ToArray()
 }
 
 Reset-Tests
@@ -429,31 +648,344 @@ It 'audit-byte preservation assertion rejects a deliberately mutated fixture' {
     Assert $rejected 'audit preservation assertion accepted a deliberately mutated fixture'
 }
 
+# B-194 red-first matrix.  Keep these as exactly three results: each branch is expensive because it
+# runs the shipped installer, and the existing suites already own clean/dirty Git controls.
+It 'B-194 plain non-Git update and brownfield remain supported when Git is optional' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b194-nongit-' + [guid]::NewGuid())
+    New-Item -ItemType Directory -Force -Path $root | Out-Null
+    try {
+        $problems = [System.Collections.Generic.List[string]]::new()
+        $pwshCommand = Get-Command pwsh -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+        $pwshExe = if ($pwshCommand) { $pwshCommand.Source } else { '' }
+        $gitCommand = Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+        $gitExe = if ($gitCommand) { $gitCommand.Source } else { '' }
+        $gitConfig = Join-Path $root 'empty.gitconfig'
+        [IO.File]::WriteAllText($gitConfig, '', [Text.UTF8Encoding]::new($false))
+        $cleanGitEnvironment = @{
+            GIT_DIR = $null; GIT_WORK_TREE = $null; GIT_COMMON_DIR = $null; GIT_INDEX_FILE = $null
+            GIT_CONFIG_GLOBAL = $gitConfig
+        }
+
+        $nativeUpdate = $null
+        $nativeBrownfield = $null
+        $nativeUpdateTarget = ''
+        $nativeBrownfieldTarget = ''
+        $nativeUpdateProtected = [byte[]]@()
+        $nativeBrownfieldProtected = [byte[]]@()
+        $nativePrerequisite = $null
+        if ($env:OS -eq 'Windows_NT') {
+            $nativePs = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+            $pathParts = @()
+            if ($gitExe) { $pathParts += (Split-Path -Parent $gitExe) }
+            $pathParts += @((Join-Path $env:SystemRoot 'System32'), $env:SystemRoot, (Split-Path -Parent $nativePs))
+            $nativePath = (($pathParts | Where-Object { $_ } | Select-Object -Unique) -join [IO.Path]::PathSeparator)
+            $nativeEnvironment = @{
+                PATH = $nativePath; B194_PS_PATH = $nativePath; GIT_CONFIG_GLOBAL = $gitConfig
+                GIT_DIR = $null; GIT_WORK_TREE = $null; GIT_COMMON_DIR = $null; GIT_INDEX_FILE = $null
+            }
+            $path64 = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($nativePath))
+            $prerequisiteCommand = "`$env:PATH=[Text.Encoding]::Unicode.GetString([Convert]::FromBase64String('$path64'));`$gitOnPath=@(& where.exe git 2>`$null);`$pwshOnPath=@(& where.exe pwsh 2>`$null);`$git=Get-Command git -CommandType Application -ErrorAction SilentlyContinue;if(-not `$git -or `$gitOnPath.Count -eq 0){Write-Error 'real Git is absent from PATH';exit 11};if(`$pwshOnPath.Count -gt 0){Write-Error 'pwsh unexpectedly exists on PATH';exit 12};Write-Output `$git.Source;exit 0"
+            $prerequisiteEncoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($prerequisiteCommand))
+            $prerequisiteEnvironment = $nativeEnvironment.Clone()
+            $prerequisiteEnvironment.Remove('B194_PS_PATH')
+            $nativePrerequisite = Invoke-B194Process -Executable $nativePs -Arguments @(
+                '-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $prerequisiteEncoded
+            ) -Environment $prerequisiteEnvironment
+            $nativeUpdateTarget = New-B194UpdateTarget -Parent $root -Name 'native-update'
+            $nativeBrownfieldTarget = New-B194BrownfieldTarget -Parent $root -Name 'native-brownfield'
+            $nativeUpdateProtected = [IO.File]::ReadAllBytes((Join-Path $nativeUpdateTarget 'CLAUDE.md'))
+            $nativeBrownfieldProtected = [IO.File]::ReadAllBytes((Join-Path $nativeBrownfieldTarget 'TECH_DEBT.md'))
+            $nativeUpdate = Invoke-B194Installer -Twin ps1 -Target $nativeUpdateTarget -PowerShellExe $nativePs -Environment $nativeEnvironment
+            $nativeBrownfield = Invoke-B194Installer -Twin ps1 -Target $nativeBrownfieldTarget -PowerShellExe $nativePs -Environment $nativeEnvironment
+        }
+
+        $stubBin = Join-Path $root 'broken-git-bin'
+        New-Item -ItemType Directory -Force -Path $stubBin | Out-Null
+        $cmdStub = Join-Path $stubBin 'git.cmd'
+        $shStub = Join-Path $stubBin 'git'
+        [IO.File]::WriteAllText($cmdStub, "@echo off`r`n>>`"%B194_GIT_SENTINEL%`" echo %*`r`necho B194 broken Git stub 1>&2`r`nexit /b 86`r`n", [Text.ASCIIEncoding]::new())
+        [IO.File]::WriteAllText($shStub, "#!/bin/sh`nprintf '%s\\n' `"`$*`" >> `"`$B194_GIT_SENTINEL`"`nprintf '%s\\n' 'B194 broken Git stub' >&2`nexit 86`n", [Text.UTF8Encoding]::new($false))
+        $chmodCapture = Invoke-B194Process -Executable $bash -Arguments @('-c', 'chmod +x "$1"', '_', $shStub)
+
+        $stubPsTarget = New-B194UpdateTarget -Parent $root -Name 'stub-ps1-update'
+        $stubShTarget = New-B194UpdateTarget -Parent $root -Name 'stub-sh-update'
+        $stubPsProtected = [IO.File]::ReadAllBytes((Join-Path $stubPsTarget 'CLAUDE.md'))
+        $stubShProtected = [IO.File]::ReadAllBytes((Join-Path $stubShTarget 'CLAUDE.md'))
+        $stubPsSentinel = Join-Path $root 'stub-ps1.calls'
+        $stubShSentinel = Join-Path $root 'stub-sh.calls'
+        $stubPath = $stubBin + [IO.Path]::PathSeparator + $env:PATH
+        $stubBashPath = (ConvertTo-B194BashPath $stubBin) + ':/usr/bin:/bin:/cmd'
+        $stubPsCapture = Invoke-B194Installer -Twin ps1 -Target $stubPsTarget -PowerShellExe $pwshExe -Environment @{
+            PATH = $stubPath; B194_GIT_SENTINEL = $stubPsSentinel; GIT_CONFIG_GLOBAL = $gitConfig
+        }
+        $stubShCapture = Invoke-B194Installer -Twin sh -Target $stubShTarget -Environment @{
+            B194_BASH_PATH = $stubBashPath; B194_GIT_SENTINEL = $stubShSentinel; GIT_CONFIG_GLOBAL = $gitConfig
+        }
+
+        $executeOnlyRestrict = $null
+        $executeOnlyRestore = $null
+        $executeOnlyCapture = $null
+        $executeOnlyTarget = ''
+        $executeOnlyProtected = [byte[]]@()
+        if ($env:OS -ne 'Windows_NT' -and $bash) {
+            $executeOnlyParent = Join-Path $root 'execute-only-parent'
+            $executeOnlyTarget = New-B194UpdateTarget -Parent $executeOnlyParent -Name 'bash-update'
+            $executeOnlyProtected = [IO.File]::ReadAllBytes((Join-Path $executeOnlyTarget 'CLAUDE.md'))
+            $executeOnlyRestrict = Invoke-B194Process -Executable $bash -Arguments @(
+                '-c', 'chmod 311 "$1" || exit 91; [ -x "$1" ] || exit 92; [ ! -r "$1" ] || exit 93', '_', $executeOnlyParent
+            )
+            $executeOnlyCapture = Invoke-B194Installer -Twin sh -Target $executeOnlyTarget -Environment $cleanGitEnvironment
+            $executeOnlyRestore = Invoke-B194Process -Executable $bash -Arguments @('-c', 'chmod 700 "$1"', '_', $executeOnlyParent)
+        }
+
+        # All installer and setup children above are captured before validation begins.
+        Add-B194ExpectedProcessProblems -Problems $problems -Label 'broken-Git stub chmod' -Capture $chmodCapture -ExpectedExit 0
+        if ($env:OS -eq 'Windows_NT') {
+            Add-B194ExpectedProcessProblems -Problems $problems -Label 'native PowerShell 5.1 real-Git/no-pwsh-on-PATH prerequisite' -Capture $nativePrerequisite -ExpectedExit 0
+            if (-not $nativePrerequisite.Out) { $problems.Add('native PowerShell 5.1 prerequisite did not identify the resolved Git application') | Out-Null }
+            Add-B194SuccessProblems -Problems $problems -Label 'native PowerShell 5.1 non-Git update' -Capture $nativeUpdate -Completion 'Done \(update\)'
+            Add-B194SuccessProblems -Problems $problems -Label 'native PowerShell 5.1 non-Git brownfield' -Capture $nativeBrownfield -Completion 'Done - but this repo'
+            if (-not (Test-B194BytesEqual $nativeUpdateProtected ([IO.File]::ReadAllBytes((Join-Path $nativeUpdateTarget 'CLAUDE.md'))))) {
+                $problems.Add('native PowerShell 5.1 update changed protected CLAUDE.md bytes') | Out-Null
+            }
+            $carrier = Join-Path $nativeUpdateTarget $carrierRel
+            if (-not (Test-Path -LiteralPath $carrier -PathType Leaf) -or (Get-Hash $carrier) -ne (Get-Hash (Join-Path $repoRoot "dist/dotnet/$carrierRel"))) {
+                $problems.Add('native PowerShell 5.1 update did not deliver the exact carrier') | Out-Null
+            }
+            $archive = Join-Path $nativeBrownfieldTarget 'docs/pre-adoption/TECH_DEBT.md'
+            if (-not (Test-Path -LiteralPath $archive -PathType Leaf) -or -not (Test-B194BytesEqual $nativeBrownfieldProtected ([IO.File]::ReadAllBytes($archive)))) {
+                $problems.Add('native PowerShell 5.1 brownfield did not preserve exact TECH_DEBT archive bytes') | Out-Null
+            }
+            try {
+                $marker = Get-Content -LiteralPath (Join-Path $nativeBrownfieldTarget '.claude/adoption-pending.json') -Raw -ErrorAction Stop | ConvertFrom-Json
+                if (-not ($marker.archivedOriginals -contains 'docs/pre-adoption/TECH_DEBT.md')) {
+                    $problems.Add('native PowerShell 5.1 brownfield marker omitted the TECH_DEBT archive') | Out-Null
+                }
+            } catch { $problems.Add("native PowerShell 5.1 brownfield marker unreadable: $($_.Exception.Message)") | Out-Null }
+        }
+
+        foreach ($case in @(
+            @{ Label = 'PowerShell broken Git without repository evidence'; Capture = $stubPsCapture; Target = $stubPsTarget; Protected = $stubPsProtected; Sentinel = $stubPsSentinel },
+            @{ Label = 'Bash broken Git without repository evidence'; Capture = $stubShCapture; Target = $stubShTarget; Protected = $stubShProtected; Sentinel = $stubShSentinel }
+        )) {
+            Add-B194SuccessProblems -Problems $problems -Label $case.Label -Capture $case.Capture -Completion 'Done \(update\)'
+            if (-not (Test-B194BytesEqual $case.Protected ([IO.File]::ReadAllBytes((Join-Path $case.Target 'CLAUDE.md'))))) {
+                $problems.Add("$($case.Label): protected CLAUDE.md bytes changed") | Out-Null
+            }
+            $calls = if (Test-Path -LiteralPath $case.Sentinel -PathType Leaf) { [IO.File]::ReadAllText($case.Sentinel) } else { '' }
+            if (-not $calls -or $calls -notmatch '(?m)(^| )-C( |$)') { $problems.Add("$($case.Label): out-of-target Git invocation sentinel was not observed") | Out-Null }
+            if ([IO.Path]::GetFullPath($case.Sentinel).StartsWith([IO.Path]::GetFullPath($case.Target) + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+                $problems.Add("$($case.Label): Git invocation sentinel was inside the mutation target") | Out-Null
+            }
+        }
+        if ($env:OS -ne 'Windows_NT' -and $bash) {
+            Add-B194ExpectedProcessProblems -Problems $problems -Label 'execute-only/no-read ancestor prerequisite' -Capture $executeOnlyRestrict -ExpectedExit 0
+            Add-B194ExpectedProcessProblems -Problems $problems -Label 'execute-only ancestor restore' -Capture $executeOnlyRestore -ExpectedExit 0
+            Add-B194SuccessProblems -Problems $problems -Label 'Bash plain target beneath execute-only ancestor' -Capture $executeOnlyCapture -Completion 'Done \(update\)'
+            if (-not (Test-B194BytesEqual $executeOnlyProtected ([IO.File]::ReadAllBytes((Join-Path $executeOnlyTarget 'CLAUDE.md'))))) {
+                $problems.Add('Bash execute-only-ancestor update changed protected CLAUDE.md bytes') | Out-Null
+            }
+            $executeOnlyCarrier = Join-Path $executeOnlyTarget $carrierRel
+            if (-not (Test-Path -LiteralPath $executeOnlyCarrier -PathType Leaf) -or (Get-Hash $executeOnlyCarrier) -ne (Get-Hash (Join-Path $repoRoot "dist/dotnet/$carrierRel"))) {
+                $problems.Add('Bash execute-only-ancestor update did not deliver the exact carrier') | Out-Null
+            }
+        }
+        Assert ($problems.Count -eq 0) ($problems -join "`n")
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'B-194 corrupt repository evidence and ambient Git routing refuse before mutation' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b194-evidence-' + [guid]::NewGuid())
+    New-Item -ItemType Directory -Force -Path $root | Out-Null
+    try {
+        $problems = [System.Collections.Generic.List[string]]::new()
+        $setup = [System.Collections.Generic.List[object]]::new()
+        $refusals = [System.Collections.Generic.List[object]]::new()
+        $pwshCommand = Get-Command pwsh -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+        $pwshExe = if ($pwshCommand) { $pwshCommand.Source } else { '' }
+        $nativePs = if ($env:OS -eq 'Windows_NT') { Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe' } else { '' }
+        $gitCommand = Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+        $gitExe = if ($gitCommand) { $gitCommand.Source } else { '' }
+        $gitConfig = Join-Path $root 'empty.gitconfig'
+        [IO.File]::WriteAllText($gitConfig, '', [Text.UTF8Encoding]::new($false))
+        $cleanGitEnvironment = @{
+            GIT_DIR = $null; GIT_WORK_TREE = $null; GIT_COMMON_DIR = $null; GIT_INDEX_FILE = $null
+            GIT_CONFIG_GLOBAL = $gitConfig
+        }
+
+        $corruptHosts = @(
+            @{ Label = 'corrupt .git PowerShell 7'; Twin = 'ps1'; Host = $pwshExe },
+            @{ Label = 'corrupt .git Bash'; Twin = 'sh'; Host = '' }
+        )
+        if ($env:OS -eq 'Windows_NT') { $corruptHosts += @{ Label = 'corrupt .git native PowerShell 5.1'; Twin = 'ps1'; Host = $nativePs } }
+        foreach ($hostCase in $corruptHosts) {
+            $target = New-B194UpdateTarget -Parent $root -Name ($hostCase.Label -replace '[^A-Za-z0-9]+','-')
+            New-Item -ItemType Directory -Force -Path (Join-Path $target '.git') | Out-Null
+            $before = Get-B194Fingerprint $target
+            $capture = Invoke-B194Installer -Twin $hostCase.Twin -Target $target -PowerShellExe $hostCase.Host -Environment $cleanGitEnvironment
+            $refusals.Add([pscustomobject]@{ Label = $hostCase.Label; Capture = $capture; Before = $before; After = (Get-B194Fingerprint $target) }) | Out-Null
+        }
+
+        $noGitBin = Join-Path $root 'ps-no-git-bin'
+        New-Item -ItemType Directory -Force -Path $noGitBin | Out-Null
+        $psGitProbe = Invoke-B194Process -Executable $pwshExe -Arguments @('-NoProfile','-Command','if (Get-Command git -CommandType Application -ErrorAction SilentlyContinue) { exit 9 } else { exit 0 }') -Environment @{ PATH = $noGitBin }
+        $psNoGitTarget = New-B194UpdateTarget -Parent $root -Name 'evidence-no-git-ps1'
+        New-Item -ItemType Directory -Force -Path (Join-Path $psNoGitTarget '.git') | Out-Null
+        $psNoGitBefore = Get-B194Fingerprint $psNoGitTarget
+        $psNoGitCapture = Invoke-B194Installer -Twin ps1 -Target $psNoGitTarget -PowerShellExe $pwshExe -Environment @{ PATH = $noGitBin; GIT_CONFIG_GLOBAL = $gitConfig }
+        $refusals.Add([pscustomobject]@{ Label = 'repository evidence with Git absent PowerShell'; Capture = $psNoGitCapture; Before = $psNoGitBefore; After = (Get-B194Fingerprint $psNoGitTarget) }) | Out-Null
+
+        $bashNoGitPath = New-B194BashNoGitPath -Root $root
+        $bashGitProbe = Invoke-B194Process -Executable $bash -Arguments @('-c','PATH="$1"; export PATH; command -v git','_', $bashNoGitPath)
+        $bashNoGitTarget = New-B194UpdateTarget -Parent $root -Name 'evidence-no-git-sh'
+        New-Item -ItemType Directory -Force -Path (Join-Path $bashNoGitTarget '.git') | Out-Null
+        $bashNoGitBefore = Get-B194Fingerprint $bashNoGitTarget
+        $bashNoGitCapture = Invoke-B194Installer -Twin sh -Target $bashNoGitTarget -Environment @{ B194_BASH_PATH = $bashNoGitPath; GIT_CONFIG_GLOBAL = $gitConfig }
+        $refusals.Add([pscustomobject]@{ Label = 'repository evidence with Git absent Bash'; Capture = $bashNoGitCapture; Before = $bashNoGitBefore; After = (Get-B194Fingerprint $bashNoGitTarget) }) | Out-Null
+
+        foreach ($ambientHost in @(
+            @{ Label = 'ambient alternate index PowerShell 7'; Twin = 'ps1'; Host = $pwshExe },
+            @{ Label = 'ambient alternate index Bash'; Twin = 'sh'; Host = '' }
+        )) {
+            $target = New-B194UpdateTarget -Parent $root -Name ($ambientHost.Label -replace '[^A-Za-z0-9]+','-')
+            [IO.File]::WriteAllText((Join-Path $target 'tracked.txt'), "clean`n", [Text.UTF8Encoding]::new($false))
+            foreach ($step in @(Initialize-B194GitTarget -Target $target -GitExe $gitExe -Environment $cleanGitEnvironment)) { $setup.Add($step) | Out-Null }
+            $alternateIndex = Join-Path $root (($ambientHost.Label -replace '[^A-Za-z0-9]+','-') + '.index')
+            $ambientEnvironment = @{
+                GIT_DIR = $null; GIT_WORK_TREE = $null; GIT_COMMON_DIR = $null
+                GIT_INDEX_FILE = $alternateIndex; GIT_CONFIG_GLOBAL = $gitConfig
+            }
+            $setup.Add([pscustomobject]@{ Label = "$($ambientHost.Label) read-tree"; Capture = (Invoke-B194Process -Executable $gitExe -Arguments @('-C',$target,'read-tree','HEAD') -Environment $ambientEnvironment); ExpectedExit = 0 }) | Out-Null
+            $setup.Add([pscustomobject]@{ Label = "$($ambientHost.Label) assume-unchanged"; Capture = (Invoke-B194Process -Executable $gitExe -Arguments @('-C',$target,'update-index','--assume-unchanged','tracked.txt') -Environment $ambientEnvironment); ExpectedExit = 0 }) | Out-Null
+            [IO.File]::WriteAllText((Join-Path $target 'tracked.txt'), "dirty`n", [Text.UTF8Encoding]::new($false))
+            $normalStatus = Invoke-B194Process -Executable $gitExe -Arguments @('-C',$target,'status','--porcelain=v1','--untracked-files=all') -Environment $cleanGitEnvironment
+            $hiddenStatus = Invoke-B194Process -Executable $gitExe -Arguments @('-C',$target,'status','--porcelain=v1','--untracked-files=all') -Environment $ambientEnvironment
+            $setup.Add([pscustomobject]@{ Label = "$($ambientHost.Label) normal dirty status"; Capture = $normalStatus; ExpectedExit = 0; Output = 'dirty' }) | Out-Null
+            $setup.Add([pscustomobject]@{ Label = "$($ambientHost.Label) ambient hidden status"; Capture = $hiddenStatus; ExpectedExit = 0; Output = 'empty' }) | Out-Null
+            $before = Get-B194Fingerprint $target
+            $capture = Invoke-B194Installer -Twin $ambientHost.Twin -Target $target -PowerShellExe $ambientHost.Host -Environment $ambientEnvironment
+            $refusals.Add([pscustomobject]@{ Label = $ambientHost.Label; Capture = $capture; Before = $before; After = (Get-B194Fingerprint $target) }) | Out-Null
+        }
+
+        # Every child surface is now captured; only validation follows.
+        Add-B194ExpectedProcessProblems -Problems $problems -Label 'PowerShell Git-absence probe' -Capture $psGitProbe -ExpectedExit 0
+        Add-B194ExpectedProcessProblems -Problems $problems -Label 'Bash Git-absence probe' -Capture $bashGitProbe -ExpectedExit 1
+        foreach ($step in $setup) {
+            Add-B194ExpectedProcessProblems -Problems $problems -Label $step.Label -Capture $step.Capture -ExpectedExit $step.ExpectedExit
+            if ($step.Output -eq 'dirty' -and $step.Capture.Out -notmatch 'tracked\.txt') { $problems.Add("$($step.Label): ordinary index did not expose tracked.txt") | Out-Null }
+            if ($step.Output -eq 'empty' -and $step.Capture.Out.Trim().Length -ne 0) { $problems.Add("$($step.Label): alternate index did not hide the dirty file: $($step.Capture.Out)") | Out-Null }
+        }
+        foreach ($case in $refusals) { Add-B194RefusalProblems -Problems $problems -Label $case.Label -Capture $case.Capture -Before $case.Before -After $case.After }
+        Assert ($problems.Count -eq 0) ($problems -join "`n")
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'B-194 a classified worktree with unreadable status refuses before mutation' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b194-status-' + [guid]::NewGuid())
+    New-Item -ItemType Directory -Force -Path $root | Out-Null
+    try {
+        $problems = [System.Collections.Generic.List[string]]::new()
+        $setup = [System.Collections.Generic.List[object]]::new()
+        $refusals = [System.Collections.Generic.List[object]]::new()
+        $pwshCommand = Get-Command pwsh -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+        $pwshExe = if ($pwshCommand) { $pwshCommand.Source } else { '' }
+        $nativePs = if ($env:OS -eq 'Windows_NT') { Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe' } else { '' }
+        $gitCommand = Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+        $gitExe = if ($gitCommand) { $gitCommand.Source } else { '' }
+        $gitConfig = Join-Path $root 'empty.gitconfig'
+        [IO.File]::WriteAllText($gitConfig, '', [Text.UTF8Encoding]::new($false))
+        $cleanGitEnvironment = @{
+            GIT_DIR = $null; GIT_WORK_TREE = $null; GIT_COMMON_DIR = $null; GIT_INDEX_FILE = $null
+            GIT_CONFIG_GLOBAL = $gitConfig
+        }
+        $hosts = @(
+            @{ Label = 'corrupt index PowerShell 7'; Twin = 'ps1'; Host = $pwshExe },
+            @{ Label = 'corrupt index Bash'; Twin = 'sh'; Host = '' }
+        )
+        if ($env:OS -eq 'Windows_NT') { $hosts += @{ Label = 'corrupt index native PowerShell 5.1'; Twin = 'ps1'; Host = $nativePs } }
+        foreach ($hostCase in $hosts) {
+            $target = New-B194UpdateTarget -Parent $root -Name ($hostCase.Label -replace '[^A-Za-z0-9]+','-')
+            [IO.File]::WriteAllText((Join-Path $target 'tracked.txt'), "clean`n", [Text.UTF8Encoding]::new($false))
+            foreach ($step in @(Initialize-B194GitTarget -Target $target -GitExe $gitExe -Environment $cleanGitEnvironment)) { $setup.Add($step) | Out-Null }
+            [IO.File]::WriteAllBytes((Join-Path $target '.git/index'), [byte[]](66,49,57,52,0,255,1,2,3))
+            $revParse = Invoke-B194Process -Executable $gitExe -Arguments @('-C',$target,'rev-parse','--is-inside-work-tree') -Environment $cleanGitEnvironment
+            $status = Invoke-B194Process -Executable $gitExe -Arguments @('-C',$target,'status','--porcelain=v1','--untracked-files=all') -Environment $cleanGitEnvironment
+            $setup.Add([pscustomobject]@{ Label = "$($hostCase.Label) rev-parse"; Capture = $revParse; ExpectedExit = 0; Output = 'true' }) | Out-Null
+            $setup.Add([pscustomobject]@{ Label = "$($hostCase.Label) corrupt status"; Capture = $status; ExpectedExit = $null; Output = 'failed' }) | Out-Null
+            $before = Get-B194Fingerprint $target
+            $capture = Invoke-B194Installer -Twin $hostCase.Twin -Target $target -PowerShellExe $hostCase.Host -Environment $cleanGitEnvironment
+            $refusals.Add([pscustomobject]@{ Label = $hostCase.Label; Capture = $capture; Before = $before; After = (Get-B194Fingerprint $target) }) | Out-Null
+        }
+
+        # Every child surface is now captured; only validation follows.
+        foreach ($step in $setup) {
+            if ($step.Output -eq 'failed') {
+                Add-B194CaptureProblem -Problems $problems -Label $step.Label -Capture $step.Capture
+                if ($null -eq $step.Capture.Exit -or $step.Capture.Exit -eq 0) { $problems.Add("$($step.Label): corrupt index status unexpectedly succeeded") | Out-Null }
+            } else {
+                Add-B194ExpectedProcessProblems -Problems $problems -Label $step.Label -Capture $step.Capture -ExpectedExit $step.ExpectedExit
+            }
+            if ($step.Output -eq 'true' -and $step.Capture.Out.Trim() -cne 'true') { $problems.Add("$($step.Label): expected exact true, got [$($step.Capture.Out)]") | Out-Null }
+        }
+        foreach ($case in $refusals) { Add-B194RefusalProblems -Problems $problems -Label $case.Label -Capture $case.Capture -Before $case.Before -After $case.After }
+        Assert ($problems.Count -eq 0) ($problems -join "`n")
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
 foreach ($twin in @('ps1', 'sh')) {
     if ($twin -eq 'sh' -and -not $bash) { Skip "dirty-tree safety ($twin)" 'no bash on this host'; continue }
     if (-not (Get-Command git -ErrorAction SilentlyContinue)) { Skip "dirty-tree safety ($twin)" 'git is unavailable'; continue }
     It "dirty Git update refuses before mutation and explicit override is observable ($twin)" {
         $t = Join-Path ([IO.Path]::GetTempPath()) ('no-loss-dirty-' + [guid]::NewGuid())
-        New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude') | Out-Null
-        Set-Content -LiteralPath (Join-Path $t '.claude/framework-version.json') -Value '{"version":"0.72.0"}' -Encoding utf8
-        Set-Content -LiteralPath (Join-Path $t '.claude/ai-audit.log') -Value 'DIRTY AUDIT SENTINEL' -Encoding utf8
+        $priorOptionalLocks = [Environment]::GetEnvironmentVariable('GIT_OPTIONAL_LOCKS', 'Process')
         try {
+            [Environment]::SetEnvironmentVariable('GIT_OPTIONAL_LOCKS', '1', 'Process')
+            New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude') | Out-Null
+            Set-Content -LiteralPath (Join-Path $t '.claude/framework-version.json') -Value '{"version":"0.72.0"}' -Encoding utf8
+            Set-Content -LiteralPath (Join-Path $t '.claude/ai-audit.log') -Value 'DIRTY AUDIT SENTINEL' -Encoding utf8
             & git -C $t init -q
             & git -C $t config user.email 'tests@example.invalid'
             & git -C $t config user.name 'installer tests'
-            Set-Content -LiteralPath (Join-Path $t 'tracked.txt') -Value 'clean' -Encoding utf8
+            $statRefreshPath = Join-Path $t 'stat-refresh.txt'
+            $dirtyPath = Join-Path $t 'dirty.txt'
+            [IO.File]::WriteAllText($statRefreshPath, "same`n", [Text.UTF8Encoding]::new($false))
+            [IO.File]::WriteAllText($dirtyPath, "before`n", [Text.UTF8Encoding]::new($false))
             & git -C $t add .
             & git -C $t commit -qm initial
-            Set-Content -LiteralPath (Join-Path $t 'tracked.txt') -Value 'dirty' -Encoding utf8
-            $before = Get-Content -LiteralPath (Join-Path $t 'tracked.txt') -Raw
+            # A normal `git status` refreshes this clean file's cached stat data in .git/index even
+            # though the installer subsequently refuses because dirty.txt changed. The preflight
+            # must use --no-optional-locks so its own safety check does not mutate the target.
+            [IO.File]::SetLastWriteTimeUtc($statRefreshPath, [IO.File]::GetLastWriteTimeUtc($statRefreshPath).AddMinutes(5))
+            [IO.File]::WriteAllText($dirtyPath, "after`n", [Text.UTF8Encoding]::new($false))
+            $before = [IO.File]::ReadAllText($dirtyPath)
+            $indexPath = Join-Path $t '.git/index'
+            $indexBefore = [IO.File]::ReadAllBytes($indexPath)
+            $calibration = (& git -C $t status --porcelain=v1 --untracked-files=all 2>&1 | Out-String)
+            $calibrationExit = $LASTEXITCODE
+            $calibrationChangedIndex = -not (Test-B194BytesEqual $indexBefore ([IO.File]::ReadAllBytes($indexPath)))
+            [IO.File]::WriteAllBytes($indexPath, $indexBefore)
+            $fingerprintBefore = Get-B194Fingerprint $t
             $out = Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t
-            Assert ($LASTEXITCODE -ne 0) "dirty Git target was mutated without refusal. Output:`n$out"
+            $installerExit = $LASTEXITCODE
+            $fingerprintAfter = Get-B194Fingerprint $t
+            Assert ($calibrationExit -eq 0) "ordinary-status calibration failed (exit $calibrationExit): $calibration"
+            Assert ($calibration -match 'dirty\.txt') "ordinary-status calibration did not observe dirty.txt: $calibration"
+            Assert $calibrationChangedIndex 'ordinary-status calibration did not refresh .git/index; fixture cannot discriminate optional locking'
+            Assert ($installerExit -ne 0) "dirty Git target was mutated without refusal. Output:`n$out"
             Assert ($out -match 'commit, stash, or copy') "dirty-tree refusal omitted recovery action. Output:`n$out"
-            Assert ((Get-Content -LiteralPath (Join-Path $t 'tracked.txt') -Raw) -eq $before) 'dirty-tree preflight mutated the target before refusing'
+            Assert ([IO.File]::ReadAllText($dirtyPath) -eq $before) 'dirty-tree preflight mutated dirty.txt before refusing'
+            Assert ($fingerprintAfter -ceq $fingerprintBefore) 'dirty-tree preflight changed the target fingerprint before refusing'
             $override = Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t -AllowDirtyTree
             Assert ($LASTEXITCODE -eq 0) "explicit dirty-tree override failed (exit $LASTEXITCODE): $override"
             Assert ($override -match 'override: .*allow-dirty-tree') "dirty-tree override was not named on stdout. Output:`n$override"
-        } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+        } finally {
+            if ($null -eq $priorOptionalLocks) {
+                Remove-Item -LiteralPath Env:GIT_OPTIONAL_LOCKS -Force -ErrorAction SilentlyContinue
+            } else {
+                [Environment]::SetEnvironmentVariable('GIT_OPTIONAL_LOCKS', $priorOptionalLocks, 'Process')
+            }
+            Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue
+        }
     }
 }
 
@@ -502,7 +1034,11 @@ foreach ($twin in @('ps1','sh')) {
                 $out = Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t
                 $code = $LASTEXITCODE
                 Assert ($code -eq 3) "legal-file refusal exit changed from 3 to $code. Output:`n$out"
-                Assert ($out -match [regex]::Escape($case.Message)) "legal-file refusal message changed. Output:`n$out"
+                # PS5 formats native stderr as a wrapped ErrorRecord. Collapse host-inserted
+                # whitespace while retaining an exact content comparison for the refusal words.
+                $messageText = (($out -replace '\s+', ' ').Trim())
+                $expectedText = (($case.Message -replace '\s+', ' ').Trim())
+                Assert ($messageText -match [regex]::Escape($expectedText)) "legal-file refusal message changed. Output:`n$out"
                 Assert ($out -notmatch 'Done \(update\)') "failed update printed the success-only completion banner. Output:`n$out"
             } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
         }
