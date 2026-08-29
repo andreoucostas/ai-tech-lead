@@ -17,6 +17,15 @@
   reads a final row even without a newline, and rejects drive-prefixed or exact `.`/`..` segments
   before sentence punctuation is removed. Valid dot-named paths such as `.github/...` and
   `.cache/...` remain accepted.
+- Update and brownfield installation now works on a plain non-Git target under Windows PowerShell
+  5.1 as well as PowerShell 7 and Bash. Git remains optional when the target and its ancestors
+  contain no repository evidence.
+- Before changing an update or brownfield target, both installers now refuse with `CANT-VERIFY`
+  when ambient `GIT_DIR`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`, or `GIT_INDEX_FILE` can redirect
+  inspection (including casing variants under Git Bash on Windows), repository metadata cannot be
+  classified, Git is unavailable despite repository evidence, or worktree status cannot be read.
+  Unset the routing variables or repair/install Git, then rerun. Existing dirty-tree refusal and its
+  explicit override are unchanged.
 
 ## 0.78.3 — 2026-08-27
 

@@ -2913,6 +2913,29 @@ count distinct categories, and make the eval's authoritative-catalog fixture rej
 Fold a duplicate-row mutation into the existing warehouse map checker suite; do not create a
 standalone catalog suite.
 
+### B-198 · Restore Bash 3.2 compatibility in the shipped installer
+**Effort:** S–M · **Priority:** P1 · **planned v0.78.5**
+**Filed against:** v0.78.3 (2026-08-29)
+
+**Why:** the framework directs macOS consumers to run this installer and its authoring contract
+treats stock Bash 3.2 as supported, but the current duplicate-path guards contain two Bash-4-only
+associative arrays (`declare -A`) and two Bash-4-only lowercase expansions (`${path,,}`). Those
+constructs can abort before installation on a supported host. Ubuntu CI and `bash -n` under a newer
+Bash cannot certify this compatibility boundary. They were reintroduced in v0.76 despite the
+existing recorded lesson that shipped scripts must avoid Bash-4-only constructs.
+
+**Do:** revalidate the case-insensitive duplicate-path contract, then replace only those four
+constructs with a Bash-3.2-safe membership mechanism that preserves the existing collision and
+normalization behavior. Under the exact same captured Bash 3.2 interpreter—stock `/bin/bash` on
+macOS is acceptable—prove the old tree red and the correction green on existing
+installer/convergence policy surfaces. A generic macOS label or Homebrew/newer Bash is not evidence.
+Do not add a broad syntax-grep suite or duplicate the installer matrix; add a permanent compatibility
+oracle only if it runs the shipped script under the claimed interpreter and a focused mutation
+proves it discriminating. Compose every distribution and retain the current newer-Bash and
+PowerShell parity gates.
+
+---
+
 ### B-197 · Make Bash installer temporary-file handling path-safe
 **Effort:** S · **Priority:** P2 · **planned ≥ v0.78.5**
 **Filed against:** v0.78.3 (2026-08-29)
@@ -2981,8 +3004,12 @@ native Linux CI as required release evidence rather than treating Git Bash as Li
 **Effort:** M · **Priority:** P1 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-29)
 
-**Status: DESIGN LOCKED 2026-08-29 after two independent adversarial reviews.** Implement
-`.claude/plans/2026-08-29-b194-git-preflight-classifier-design.md`.
+**Status: AMENDED IMPLEMENTATION CANDIDATE; FIRST CI PENDING.** Candidate `6818a4a` was rejected when
+a fresh immutable review reproduced a Windows Git Bash lowercase-routing bypass. The re-locked
+MSYS-only correction and one non-vacuous child in the existing group are implemented and locally
+green (UpdateDelivery 50/0 under PowerShell 7 and native Windows PowerShell 5.1/CP437, Bash
+observed). Keep this item open until the exact amended commit passes its first Windows/Linux CI; Git
+Bash is not Linux evidence.
 
 **Why:** B-188's independent review found a pre-existing supported-host failure outside v0.78.1's
 ADR-preservation diff. Under Windows PowerShell 5.1 with `$ErrorActionPreference = 'Stop'`, the
@@ -2999,7 +3026,61 @@ dirty file. Implement the locked cross-twin classifier: exact Git worktree/statu
 repository state exists, fail-closed ambient routing, and ordinary non-Git continuation when no
 evidence exists. Add only the three grouped, branch-discriminating UpdateDelivery cases in the
 plan; reuse the existing clean/dirty controls. Compose all dists and require independent hostile
-review plus native Windows/Linux candidate CI before release.
+review plus native Windows/Linux candidate CI before completion and release.
+
+---
+
+### B-193 · Close the remaining hazard-oracle false-green grammar — **IMPLEMENTED CANDIDATE; FIRST CI PENDING**
+**Effort:** M · **Priority:** P1 · **planned v0.78.4**
+**Filed against:** v0.78.3 (2026-08-29)
+
+**Status correction (2026-08-29).** This was archived after local cross-host verification and an
+immutable hostile review, but `CLAUDE.md` is stricter: a change carrying new or modified tests is not
+done until its first Windows/Linux CI run is green. Git Bash is not Linux evidence. No implementation
+work is being reopened; the same v0.78.4 candidate CI required by B-194 must pass before this record
+can return to `meta/BACKLOG-DONE.md`.
+
+**Value decision and scope.** The B-77 skip states were reasonable while the hazard checker was an
+optional drift detector, but became false completion after v0.78.0 made it a mandatory
+`docs-sync-check` dependency. The caller and consequence changed; historical behavior was therefore
+re-derived rather than preserved as doctrine. The bounded fix remains the two existing checker
+twins and their existing suite—no parser dependency, new script, Markdown migration, recursive
+lookup, or semantic hazard-truth claim.
+
+**Implementation.** Missing, pending, zero/multiple-heading, placeholder, empty, prose-only, and
+mixed sentinel/row states now fail. Backticked text is data rather than Bash replacement syntax;
+balanced bracket classes are ancillary wildcards; final non-newline records are consumed. A finite
+lexical transform repeatedly peels terminal comma/semicolon and exactly matching endpoint wrappers,
+while preserving at most one sentence suffix for safety. Unsafe raw/display forms are checked before
+empty/path-shape filtering, so exact dot segments and drive prefixes cannot normalize away while
+dot-named paths and unmatched wrappers remain literal.
+
+**Test-value audit.** No standalone suite or dependency was added. Each new case maps to a reproduced
+false green, a distinct lifecycle/parser branch, or a false-rejection control. High-cardinality
+spellings share executions without sharing evidence: twelve unsafe forms occupy one consumer
+fixture with exact per-output diagnostic counts, ten positive forms occupy independent required-path
+rows in one fixture, and grouped lifecycle worlds reuse one install. This matters empirically: the
+unchanged v0.78.3 checker was 40/67; fresh review broke two later green candidates; and a planted
+single-token skip was detected at 66/67. Coverage is 67 `It` results and 63 leaf + 14 wrapper
+subjects per twin (154 total), with an explicit cardinality oracle preventing short-circuit masking.
+
+**Adversarial evidence.** The initial implementation commit `56e8ba9` passed its suite but two fresh
+reviewers blocked bare `.`, framed traversal, and exterior-punctuation handling. A later oracle
+review blocked grouped positives because one valid token could hide nine ignored ones. The amended
+source blobs were independently approved, then blind-first reviewer
+`/root/b193_final_immutable_review` reviewed immutable range `56e8ba9..fb35803` and candidate tree
+`c2d24f7`. Its isolated Bash-only safety mutation made the full suite 66/1 while both twins still
+executed 77 subjects; reverse patch restored the exact Bash hash and clean 67/0.
+
+**Hosts, composition, and boundary.** PowerShell 7.6.5 and native Windows PowerShell
+5.1.26100.9168/CP437 each passed 67/0 with Git Bash observed. Dotnet, Angular, and monorepo each
+passed 67/0 and `validate-dist`; source and all three generated copies share exact checker/test
+hashes. PowerShell and login-shell Bash composition produced identical 525-file trees. BacklogHygiene
+10/0, DocTruth 13/0, DocClaims 8/0, ScriptTwinParity 10/0, and Composer 16/0 passed with their
+relevant red mutations. No native Linux/macOS or Bash 3.2 runtime was available, so the first
+Windows/Linux immutable-candidate matrix remains mandatory before completion and release; Git Bash
+is not claimed as that evidence. The same-class advisory EOF defect is deliberately separate,
+proportionally sized as B-195.
 
 ---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)

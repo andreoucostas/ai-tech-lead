@@ -31,12 +31,31 @@ paths such as `.github/...` and `.cache/...` remain valid.
 The red-first 67-case matrix passed 40 and failed 27 against the unchanged v0.78.3 checkers. A first
 green candidate was still blocked by fresh reviewers who reproduced bare-dot, framed traversal,
 exterior-punctuation, and grouped-positive-oracle false greens; those findings amended both parser
-and test design before closure. The final implementation passes all 67 cases while proving 63 leaf
-and 14 wrapper subjects per twin (154 executions total) under PowerShell 7/Git Bash and under native
-Windows PowerShell 5.1 with code page 437. Separate PowerShell and Bash hostile mutations each made
-12 discriminating cases fail; a later one-token skip mutation made the strengthened suite 66/67;
-each byte-identical restore returned to 67/67. All three composed distributions pass the same suite
-and their validators.
+and test design before the current candidate was frozen. The current candidate passes all 67 cases
+locally while proving 63 leaf and 14 wrapper subjects per twin (154 executions total) under
+PowerShell 7/Git Bash and under native Windows PowerShell 5.1 with code page 437. Separate
+PowerShell and Bash hostile mutations each made 12 discriminating cases fail; a later one-token skip
+mutation made the strengthened suite 66/67; each byte-identical restore returned to 67/67. All three
+composed distributions pass the same suite and their validators locally. Its first Windows/Linux
+candidate CI run remains mandatory, so B-193 remains open.
+
+**Update and brownfield installation now distinguish an ordinary non-Git target from Git state that
+cannot be examined safely.** B-194 fixes the supported native Windows PowerShell 5.1 path, where
+expected non-repository stderr previously became a terminating `NativeCommandError`. Both installer
+twins now reject ambient Git routing—including Windows Git Bash casing variants—repository evidence
+that Git cannot classify, unexpected worktree output, and unreadable status before target mutation;
+a plain target with no repository evidence still proceeds when Git is absent or broken. Worktree
+status disables optional Git locks so a dirty-tree refusal preserves Git administrative bytes as
+well as project files.
+
+Exactly three grouped UpdateDelivery results exercise 15 Windows installer children without
+duplicating the existing clean/dirty controls. Against the unchanged installer the revised 50-case
+suite was 48/2. A fresh review then made candidate `6818a4a` fail 49/1 by reproducing a lowercase
+Git-for-Windows routing bypass; the corrected candidate passed 50/0 under PowerShell 7 and native
+Windows PowerShell 5.1/CP437 with Bash observed. InstallerConvergence passed 12/0,
+InstallerContract 13/0, and RootInstallerWarehouse 12/0; both composers produced identical
+525-file trees and all three validators passed. Native Windows/Linux candidate CI remains required,
+so B-194 remains open.
 
 ## 0.78.3 — 2026-08-27
 

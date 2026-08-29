@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-29  
 **Filed against:** v0.78.3  
-**Status:** RE-LOCKED 2026-08-29 — two independent hostile reviews approved the amended contract and bounded tests
+**Status:** RE-LOCKED 2026-08-29 — the original amendment had two hostile approvals; the later MSYS environment-casing amendment was independently approved before implementation
 
 ## Value decision
 
@@ -118,14 +118,18 @@ and dirty controls.
    Git under PowerShell 7, native PowerShell 5.1, and Bash; repository evidence with Git absent under
    both twins; and a genuinely dirty repository whose ambient `GIT_INDEX_FILE` hides the change
    under PowerShell 7 and Bash. On Windows, add one representative Git Bash child using lowercase
-   `git_index_file` against its own real alternate index. Establish the lowercase spelling inside
-   the already-started Bash process with uppercase `GIT_INDEX_FILE` explicitly unset; capture a
-   prerequisite proving the lowercase value is the expected non-empty path and the uppercase name
-   is absent before calibrating that ordinary status sees the dirty file while the redirected
-   status is empty. Do not pass the spelling through PowerShell's case-insensitive environment
-   hashtable and accidentally repeat the uppercase case. Capture every child before the group's
-   first assertion. Keep this child inside the same grouped result rather than adding a fourth
-   `It`. Each refusal exits 4 with `CANT-VERIFY`, no completion, and an unchanged target fingerprint.
+   `git_index_file` against its own real alternate index. First capture `OSTYPE=msys*` from the same
+   resolved Bash as an expected-zero host prerequisite. Schedule the lowercase product child only
+   when that prerequisite passes; retain a failed prerequisite as a missing-host-evidence failure
+   rather than misreporting exact-case Cygwin/POSIX behavior as a product defect. Establish the
+   lowercase spelling inside the already-started Bash process with uppercase `GIT_INDEX_FILE`
+   explicitly unset; capture a prerequisite proving the lowercase value is the expected non-empty
+   path and the uppercase name is absent before calibrating that ordinary status sees the dirty file
+   while the redirected status is empty. Do not pass the spelling through PowerShell's
+   case-insensitive environment hashtable and accidentally repeat the uppercase case. Capture every
+   child before the group's first assertion. Keep this child inside the same grouped result rather
+   than adding a fourth `It`. Each refusal exits 4 with `CANT-VERIFY`, no completion, and an
+   unchanged target fingerprint.
 3. **Classification success does not excuse unreadable status.** Capture a real worktree with a
    corrupt index under PowerShell 7, native PowerShell 5.1, and Bash. `rev-parse` succeeds but status
    fails; require the same exit-4/no-completion/unchanged-tree contract.

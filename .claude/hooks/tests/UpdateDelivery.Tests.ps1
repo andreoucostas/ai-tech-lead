@@ -145,6 +145,18 @@ function Invoke-B194Process {
     }
 }
 
+function Invoke-B194BashWithLowercaseGitIndex {
+    param(
+        [string]$WrapperPath,
+        [string]$IndexPath,
+        [ValidateSet('host','probe','status','installer')][string]$Mode,
+        [string[]]$Arguments = @(),
+        [hashtable]$Environment = @{}
+    )
+    $wrappedArguments = @($WrapperPath, $IndexPath, $Mode) + @($Arguments)
+    return Invoke-B194Process -Executable $bash -Arguments $wrappedArguments -Environment $Environment
+}
+
 function Invoke-B194Installer {
     param(
         [ValidateSet('ps1','sh')][string]$Twin,
@@ -808,6 +820,32 @@ It 'B-194 corrupt repository evidence and ambient Git routing refuse before muta
         $gitExe = if ($gitCommand) { $gitCommand.Source } else { '' }
         $gitConfig = Join-Path $root 'empty.gitconfig'
         [IO.File]::WriteAllText($gitConfig, '', [Text.UTF8Encoding]::new($false))
+        $lowercaseRoutingWrapper = Join-Path $root 'lowercase-git-routing.sh'
+        $lowercaseRoutingScript = @'
+#!/usr/bin/env bash
+index_path=$1
+mode=$2
+shift 2
+if [ "$mode" = host ]; then
+  case "${OSTYPE:-}" in
+    msys*) printf 'msys\n'; exit 0 ;;
+    *) exit 14 ;;
+  esac
+fi
+unset GIT_INDEX_FILE
+git_index_file=$index_path
+export git_index_file
+case "$mode" in
+  probe)
+    [ "$git_index_file" = "$index_path" ] && [ -z "${GIT_INDEX_FILE+x}" ] || exit 12
+    printf '%s\n' "$git_index_file"
+    ;;
+  status) exec git -C "$1" status --porcelain=v1 --untracked-files=all ;;
+  installer) exec "$BASH" "$1" "$2" ;;
+  *) exit 13 ;;
+esac
+'@ -replace "`r`n", "`n"
+        [IO.File]::WriteAllText($lowercaseRoutingWrapper, $lowercaseRoutingScript, [Text.UTF8Encoding]::new($false))
         $cleanGitEnvironment = @{
             GIT_DIR = $null; GIT_WORK_TREE = $null; GIT_COMMON_DIR = $null; GIT_INDEX_FILE = $null
             GIT_CONFIG_GLOBAL = $gitConfig
@@ -843,10 +881,18 @@ It 'B-194 corrupt repository evidence and ambient Git routing refuse before muta
         $bashNoGitCapture = Invoke-B194Installer -Twin sh -Target $bashNoGitTarget -Environment @{ B194_BASH_PATH = $bashNoGitPath; GIT_CONFIG_GLOBAL = $gitConfig }
         $refusals.Add([pscustomobject]@{ Label = 'repository evidence with Git absent Bash'; Capture = $bashNoGitCapture; Before = $bashNoGitBefore; After = (Get-B194Fingerprint $bashNoGitTarget) }) | Out-Null
 
-        foreach ($ambientHost in @(
+        $ambientHosts = @(
             @{ Label = 'ambient alternate index PowerShell 7'; Twin = 'ps1'; Host = $pwshExe },
             @{ Label = 'ambient alternate index Bash'; Twin = 'sh'; Host = '' }
-        )) {
+        )
+        if ($env:OS -eq 'Windows_NT') {
+            $msysHostProbe = Invoke-B194BashWithLowercaseGitIndex -WrapperPath $lowercaseRoutingWrapper -IndexPath '_' -Mode host -Environment $cleanGitEnvironment
+            $setup.Add([pscustomobject]@{ Label = 'lowercase routing MSYS host prerequisite'; Capture = $msysHostProbe; ExpectedExit = 0; ExactOutput = 'msys' }) | Out-Null
+            if ($msysHostProbe.Started -and $msysHostProbe.Exit -eq 0) {
+                $ambientHosts += @{ Label = 'ambient lowercase alternate index Git Bash'; Twin = 'sh'; Host = ''; Lowercase = $true }
+            }
+        }
+        foreach ($ambientHost in $ambientHosts) {
             $target = New-B194UpdateTarget -Parent $root -Name ($ambientHost.Label -replace '[^A-Za-z0-9]+','-')
             [IO.File]::WriteAllText((Join-Path $target 'tracked.txt'), "clean`n", [Text.UTF8Encoding]::new($false))
             foreach ($step in @(Initialize-B194GitTarget -Target $target -GitExe $gitExe -Environment $cleanGitEnvironment)) { $setup.Add($step) | Out-Null }
@@ -859,11 +905,22 @@ It 'B-194 corrupt repository evidence and ambient Git routing refuse before muta
             $setup.Add([pscustomobject]@{ Label = "$($ambientHost.Label) assume-unchanged"; Capture = (Invoke-B194Process -Executable $gitExe -Arguments @('-C',$target,'update-index','--assume-unchanged','tracked.txt') -Environment $ambientEnvironment); ExpectedExit = 0 }) | Out-Null
             [IO.File]::WriteAllText((Join-Path $target 'tracked.txt'), "dirty`n", [Text.UTF8Encoding]::new($false))
             $normalStatus = Invoke-B194Process -Executable $gitExe -Arguments @('-C',$target,'status','--porcelain=v1','--untracked-files=all') -Environment $cleanGitEnvironment
-            $hiddenStatus = Invoke-B194Process -Executable $gitExe -Arguments @('-C',$target,'status','--porcelain=v1','--untracked-files=all') -Environment $ambientEnvironment
+            if ($ambientHost.Lowercase) {
+                $caseProbe = Invoke-B194BashWithLowercaseGitIndex -WrapperPath $lowercaseRoutingWrapper -IndexPath $alternateIndex -Mode probe -Environment $cleanGitEnvironment
+                $setup.Add([pscustomobject]@{ Label = "$($ambientHost.Label) lowercase boundary"; Capture = $caseProbe; ExpectedExit = 0; ExactOutput = $alternateIndex }) | Out-Null
+                $hiddenStatus = Invoke-B194BashWithLowercaseGitIndex -WrapperPath $lowercaseRoutingWrapper -IndexPath $alternateIndex -Mode status -Arguments @($target) -Environment $cleanGitEnvironment
+            } else {
+                $hiddenStatus = Invoke-B194Process -Executable $gitExe -Arguments @('-C',$target,'status','--porcelain=v1','--untracked-files=all') -Environment $ambientEnvironment
+            }
             $setup.Add([pscustomobject]@{ Label = "$($ambientHost.Label) normal dirty status"; Capture = $normalStatus; ExpectedExit = 0; Output = 'dirty' }) | Out-Null
             $setup.Add([pscustomobject]@{ Label = "$($ambientHost.Label) ambient hidden status"; Capture = $hiddenStatus; ExpectedExit = 0; Output = 'empty' }) | Out-Null
             $before = Get-B194Fingerprint $target
-            $capture = Invoke-B194Installer -Twin $ambientHost.Twin -Target $target -PowerShellExe $ambientHost.Host -Environment $ambientEnvironment
+            if ($ambientHost.Lowercase) {
+                $installer = Join-Path $repoRoot 'dist/dotnet/scripts/install.sh'
+                $capture = Invoke-B194BashWithLowercaseGitIndex -WrapperPath $lowercaseRoutingWrapper -IndexPath $alternateIndex -Mode installer -Arguments @($installer,$target) -Environment $cleanGitEnvironment
+            } else {
+                $capture = Invoke-B194Installer -Twin $ambientHost.Twin -Target $target -PowerShellExe $ambientHost.Host -Environment $ambientEnvironment
+            }
             $refusals.Add([pscustomobject]@{ Label = $ambientHost.Label; Capture = $capture; Before = $before; After = (Get-B194Fingerprint $target) }) | Out-Null
         }
 
@@ -872,6 +929,7 @@ It 'B-194 corrupt repository evidence and ambient Git routing refuse before muta
         Add-B194ExpectedProcessProblems -Problems $problems -Label 'Bash Git-absence probe' -Capture $bashGitProbe -ExpectedExit 1
         foreach ($step in $setup) {
             Add-B194ExpectedProcessProblems -Problems $problems -Label $step.Label -Capture $step.Capture -ExpectedExit $step.ExpectedExit
+            if ($null -ne $step.ExactOutput -and $step.Capture.Out -ne [string]$step.ExactOutput) { $problems.Add("$($step.Label): expected exact output '$($step.ExactOutput)', got '$($step.Capture.Out)'") | Out-Null }
             if ($step.Output -eq 'dirty' -and $step.Capture.Out -notmatch 'tracked\.txt') { $problems.Add("$($step.Label): ordinary index did not expose tracked.txt") | Out-Null }
             if ($step.Output -eq 'empty' -and $step.Capture.Out.Trim().Length -ne 0) { $problems.Add("$($step.Label): alternate index did not hide the dirty file: $($step.Capture.Out)") | Out-Null }
         }

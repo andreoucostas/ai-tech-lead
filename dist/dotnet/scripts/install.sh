@@ -376,10 +376,28 @@ new_git_preflight_temp() {
   temp_files="$temp_files $git_preflight_temp"
 }
 
+git_ambient_routing_present() {
+  if [ -n "${GIT_DIR:-}" ] || [ -n "${GIT_WORK_TREE:-}" ] || [ -n "${GIT_COMMON_DIR:-}" ] || [ -n "${GIT_INDEX_FILE:-}" ]; then
+    return 0
+  fi
+  case "${OSTYPE:-}" in
+    msys*)
+      while IFS= read -r git_env_name; do
+        case "$git_env_name" in
+          [Gg][Ii][Tt]_[Dd][Ii][Rr]|[Gg][Ii][Tt]_[Ww][Oo][Rr][Kk]_[Tt][Rr][Ee][Ee]|[Gg][Ii][Tt]_[Cc][Oo][Mm][Mm][Oo][Nn]_[Dd][Ii][Rr]|[Gg][Ii][Tt]_[Ii][Nn][Dd][Ee][Xx]_[Ff][Ii][Ll][Ee]) ;;
+          *) continue ;;
+        esac
+        [ -n "${!git_env_name}" ] && return 0
+      done < <(compgen -e)
+      ;;
+  esac
+  return 1
+}
+
 # Git is optional for a plain target, but repository evidence or redirected Git state must never be
 # reinterpreted as non-Git. This helper block introduces no syntax newer than Bash 3.2.
 if [ "$dry_run" -ne 1 ] && { [ "$adopt_mode" -eq 1 ] || [ "$update_mode" -eq 1 ]; }; then
-  if [ -n "${GIT_DIR:-}" ] || [ -n "${GIT_WORK_TREE:-}" ] || [ -n "${GIT_COMMON_DIR:-}" ] || [ -n "${GIT_INDEX_FILE:-}" ]; then
+  if git_ambient_routing_present; then
     git_preflight_cant_verify
   fi
 
