@@ -1,11 +1,12 @@
 ﻿param([string]$Root)
 $ErrorActionPreference = 'Stop'
-# Read-only validation of Known Hazard Areas. Wildcards validate only their longest leading
-# wildcard-free directory prefix; matching the wildcard expression itself is deliberately out of scope.
+# Read-only validation of Known Hazard Areas. Only literal repository-root-relative paths satisfy
+# row evidence; URLs, symbols, and wildcard expressions may be ancillary but prove no path exists.
 # Root comes from the argument (docs-sync-check passes it) or self-anchors to scripts/.., never stdin.
 if (-not $Root) { $Root = Split-Path $PSScriptRoot -Parent }
 $context = Join-Path $Root 'FRAMEWORK-CONTEXT.md'; $fails=0
 function Fail($m){$script:fails++;Write-Output "FAIL: $m"}
+function Test-IsoDate($value){if($value-cnotmatch'^[0-9]{4}-[0-9]{2}-[0-9]{2}$'){return $false};try{$null=[datetime]::ParseExact($value,'yyyy-MM-dd',[Globalization.CultureInfo]::InvariantCulture);return $true}catch{return $false}}
 if(-not(Test-Path -LiteralPath $context)){Write-Output 'hazard-check skipped (no FRAMEWORK-CONTEXT.md).';exit 0}
 $raw=[IO.File]::ReadAllText($context).TrimStart([char]0xFEFF)-replace"`r",''
 if($raw-match'KNOWN_HAZARD_AREAS_PENDING'){Write-Output 'hazard-check skipped (hazard table not yet drafted).';exit 0}
@@ -22,29 +23,29 @@ foreach($line in ($raw-split"`n")){
  if($area-eq'_(drafted by /bootstrap)_'){continue}
  if($cells.Count-ne6){Fail "hazard row does not have 4 cells: $line";continue}
  $hazard=$cells[2];$status=$cells[3];$reviewed=$cells[4]
- if($status-notin@('[VERIFIED]','[SUSPECTED]','[UNVERIFIED]')-and-not$status.StartsWith('[REVIEWED: not a hazard')){Fail "hazard row has an unrecognised Status '$status' (expected [VERIFIED], [SUSPECTED], [UNVERIFIED], or [REVIEWED: not a hazard ...]): $area"}
- $dateOK=$reviewed-match'^[0-9]{4}-[0-9]{2}-[0-9]{2}$';if($dateOK){try{$null=[datetime]::ParseExact($reviewed,'yyyy-MM-dd',[Globalization.CultureInfo]::InvariantCulture)}catch{$dateOK=$false}}
+ $statusDate=$null
+ if(-not(@('[VERIFIED]','[SUSPECTED]','[UNVERIFIED]')-ccontains$status)){
+  $statusMatch=[regex]::Match($status,'^\[REVIEWED: not a hazard — ([0-9]{4}-[0-9]{2}-[0-9]{2})\]$')
+  if(-not$statusMatch.Success){Fail "hazard row has an unrecognised Status '$status' (expected [VERIFIED], [SUSPECTED], [UNVERIFIED], or [REVIEWED: not a hazard — YYYY-MM-DD]): $area"}
+  elseif(-not(Test-IsoDate $statusMatch.Groups[1].Value)){Fail "hazard row has an invalid reviewed Status date '$($statusMatch.Groups[1].Value)' (expected a calendar-valid YYYY-MM-DD): $area"}
+  else{$statusDate=$statusMatch.Groups[1].Value}
+ }
+ $dateOK=Test-IsoDate $reviewed
  if(-not$dateOK){Fail "hazard row has an invalid Reviewed date '$reviewed' (expected YYYY-MM-DD): $area"}
+ if($null-ne$statusDate-and$dateOK-and$statusDate-cne$reviewed){Fail "hazard row reviewed Status date '$statusDate' does not match Reviewed column '$reviewed': $area"}
  $candidates=@();$without=$area
  foreach($m in [regex]::Matches($area,'`([^`]*)`')){$candidates+=$m.Groups[1].Value}
  $without=[regex]::Replace($without,'`[^`]*`',' ');$candidates+=@($without-split'[\s,]+'|Where-Object{$_})
+ $literalCandidates=0;$invalidPath=$false
  foreach($rawCandidate in $candidates){
   $candidate=$rawCandidate.Trim('(',')','"',"'").TrimEnd(',','.',';',':')
-  if(-not($candidate-match'/'-or$candidate-match'\.[A-Za-z0-9]{1,10}$')){continue}
   if($candidate-match'^[A-Za-z][A-Za-z0-9+.-]*://'-or$candidate.StartsWith('www.')){continue}
-  if(-not$candidate){continue};$candidate=$candidate-replace'\\','/';$candidate=$candidate-replace'^\./',''
-  # Decide the resolution mode BEFORE wildcard truncation: truncating 'src/ap*p/x' yields 'src', which
-  # has no '/' left but is still a directory path, not a bare filename.
-  $rooted=$candidate-match'/'
-  if($candidate-match'[?*]'){$parts=@($candidate-split'/');$keep=@();foreach($part in $parts){if($part-match'[?*]'){break};$keep+=$part};$candidate=$keep-join'/';if(-not$candidate){continue}}
-  # A candidate with no '/' is a bare filename. /bootstrap drafts this cell freely, so a row naming
-  # just 'PaymentService.cs' is normal -- resolving that against the repo root would fail a blocking
-  # gate on ordinary input. Match it anywhere in the tree instead; a renamed or deleted file, which is
-  # the defect this check exists to catch, still has no match. Ordinal (case-sensitive) so the bash
-  # twin agrees. -Force is required or dot-directories are skipped on Linux and not on Windows.
-  if($rooted){if(-not(Test-Path -LiteralPath (Join-Path $Root $candidate))){Fail "hazard row names a path that does not exist: $candidate (row: $area)"};continue}
-  if($null-eq$names){$names=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal);foreach($f in @(Get-ChildItem -LiteralPath $Root -Recurse -File -Force -ErrorAction SilentlyContinue|Where-Object{$_.FullName-notmatch'[\\/](\.git|node_modules|bin|obj|dist)[\\/]'})){$null=$names.Add($f.Name)}}
-  if(-not$names.Contains($candidate)){Fail "hazard row names a path that does not exist: $candidate (row: $area)"}
+  if(-not$candidate-or$candidate-match'[?*]'){continue};$candidate=$candidate-replace'\\','/';$candidate=$candidate-replace'^\./',''
+  if(-not($candidate-match'/'-or$candidate-match'\.[A-Za-z0-9]{1,10}$')){continue}
+  if($candidate-match'^/'-or$candidate-match'^[A-Za-z]:/'-or$candidate.Contains('//')-or("/$candidate/"-match'/\.\.?/')){Fail "hazard row names a path that is not a safe repository-root-relative path: $candidate (row: $area)";$invalidPath=$true;continue}
+  $literalCandidates++
+  if(-not(Test-Path -LiteralPath (Join-Path $Root $candidate))){Fail "hazard row names a path that does not exist: $candidate (row: $area)"}
  }
+ if($literalCandidates-eq0-and-not$invalidPath){Fail "hazard row must include at least one exact resolving repository-root-relative path: $area"}
 }
 if($fails){Write-Output "$fails hazard-check failure(s).";exit 1};Write-Output 'hazard-check passed.';exit 0

@@ -11,6 +11,23 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.78.3 — 2026-08-27
+
+**The hazard oracle now enforces the completion contract that v0.78.0 put in front of it.** B-186
+requires every real hazard row to contain a literal, resolving, repository-root-relative path.
+Pure prose, symbols, URLs, and globs remain valid ancillary text but cannot supply that evidence; a
+bare filename resolves only at the repository root, and absolute/traversal paths are rejected.
+Status values are case-sensitive complete tokens. A reviewed-not-hazard token must contain a
+calendar-valid ISO date identical to the `Reviewed` column.
+
+The old 27/27 suite encoded the false behavior as green. Against the unchanged v0.78.2 oracle, the
+revised 38-case matrix passed 23 and failed 15, including the full `docs-sync-check` wrapper accepting
+a pure-prose row. After the twin fix, authored and all three composed suites pass 38/38; both
+PowerShell 7 and Windows PowerShell 5.1 pass under code page 437 with Bash exercised alongside them.
+A case-sensitivity weakening in the PowerShell twin made the suite exit 1, while bypassing Bash path
+existence made it exit 5; both scratch copies restored byte-identically. The stricter calendar case
+also closed a year-zero divergence where Bash passed a date that .NET correctly rejected.
+
 ## 0.78.2 — 2026-08-27
 
 **The mandatory completion gate is now executable on the documented Windows-PowerShell-5.1-only

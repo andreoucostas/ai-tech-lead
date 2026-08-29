@@ -1552,3 +1552,18 @@ owns them; checking only that a `.ps1` path appears lets one PowerShell host sta
 Delegation is also part of the boundary. `/adopt` consumes `/bootstrap`'s one completion result, so
 copying the commands into adopt would create a second authority rather than improve support. Add the
 missing command at direct execution points and keep delegating carriers single-sourced.
+
+## 2026-08-27 — Evidence identity includes its resolution scope
+
+The old hazard checker made a bare `PaymentService.cs` look robust by searching the whole repository.
+That convenience changed the claimed identity: a root-level reference silently became whichever
+nested file shared the name. Wildcard-prefix validation did the same thing, turning a pattern into a
+directory assertion. An evidence oracle must resolve the exact identifier at the scope its authoring
+contract names. Broader search is discovery, not validation; labels, URLs, symbols, and globs can
+remain explanatory only when a separate exact reference carries the proof.
+
+String prefixes are likewise not token grammars. `[REVIEWED: not a hazard` accepted truncated text,
+garbage suffixes, impossible dates, and a date contradicting the adjacent column. Anchor the whole
+token, validate captured values semantically, and bind duplicated facts to each other. Finally, test
+the delegating completion wrapper: leaf parity alone would not have demonstrated that malformed
+hazards actually made `docs-sync-check` withhold its final success line.

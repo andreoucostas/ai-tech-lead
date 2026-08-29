@@ -5,6 +5,16 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.78.3 — 2026-08-27
+
+- `scripts/hazard-check.ps1` and `.sh` now require every real `Known Hazard Areas` row to name an
+  exact resolving repository-root-relative path. Pure prose, labels, symbols, URLs, and globs may
+  accompany that path but cannot replace it; a bare filename now means a file at the repository root.
+- Hazard statuses must be complete case-sensitive tokens. A
+  `[REVIEWED: not a hazard — YYYY-MM-DD]` date must be calendar-valid and match the `Reviewed` column.
+  Existing placeholder, pending, and missing-section skip behavior is unchanged. If the stricter
+  check finds an older row, replace its area with an exact path and reconcile its review dates.
+
 ## 0.78.2 — 2026-08-27
 
 - `/bootstrap`, `/rebootstrap`, and `/generate-copilot` now show separate copy-pasteable completion

@@ -3035,25 +3035,6 @@ count distinct categories, and make the eval's authoritative-catalog fixture rej
 Fold a duplicate-row mutation into the existing warehouse map checker suite; do not create a
 standalone catalog suite.
 
-### B-186 · Make the hazard oracle enforce the completion contract v0.78.0 now claims
-**Filed against:** v0.78.0 (2026-08-27) · found by B-184 post-ship review
-**Effort:** S–M · **Priority:** P2 · **Invariants:** #1 #3 #4
-
-Bootstrap now requires each real hazard row to contain one exact, resolving repository-root-relative
-path and one complete status token. The checker that decides the new completion gate still accepts
-any status beginning `[REVIEWED: not a hazard`, accepts rows with no path candidate, and searches a
-bare filename anywhere in the tree. Its 27/27 green suite explicitly treats pure prose as valid and
-a nested match for `PaymentService.cs` as sufficient. `docs-sync-check` delegates directly to that
-oracle, so malformed generated output can satisfy the deterministic completion gate.
-
-Bring both hazard-check twins and their tests to the authored contract: require at least one literal
-resolving path candidate per real row; resolve a root-level filename only at the repository root;
-allow labels, symbols, URLs, or globs only as ancillary text, not as the required exact path; accept
-only the three simple tokens or a calendar-valid complete reviewed token; and require its embedded
-date to agree with the `Reviewed` column. First observe red fixtures for pure prose, nested-only bare
-filename, truncated/garbage reviewed status, and conflicting dates. Keep placeholder/no-section
-skip semantics unchanged, and prove both twins plus the enclosing docs-sync completion result.
-
 ### B-188 · Post-ship review owed for v0.78.1
 **Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-27
 **Filed against:** v0.78.1 (2026-08-27)
@@ -3076,6 +3057,19 @@ red-test against it. Maintenance model #2 requires the review to be filed rather
 it did not happen. Summary of what shipped: expose completion checks on Windows PowerShell 5.1
 
 **Do:** review the v0.78.2 diff as an independent session -- re-run at least one gate and one
+red-test yourself, do not read the release output as evidence -- and file whatever it finds. Then
+close this entry, recording what was re-run.
+
+---
+### B-190 · Post-ship review owed for v0.78.3
+**Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-29
+**Filed against:** v0.78.3 (2026-08-29)
+
+**Why:** v0.78.3 shipped with `-NoIndependentReview`, so no second session re-ran a gate or a
+red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
+it did not happen. Summary of what shipped: enforce exact hazard evidence in completion checks
+
+**Do:** review the v0.78.3 diff as an independent session -- re-run at least one gate and one
 red-test yourself, do not read the release output as evidence -- and file whatever it finds. Then
 close this entry, recording what was re-run.
 

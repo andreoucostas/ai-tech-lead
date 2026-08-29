@@ -7085,3 +7085,35 @@ supplies no runnable invocation; future finite command matrices must assert host
 label/command pairing inside the execution section, not merely the presence of a shared script path.
 
 ---
+
+### B-186 · Make the hazard oracle enforce the completion contract — **DONE 2026-08-27 · planned v0.78.3**
+
+**What happened.** v0.78.0 made exact hazard paths and complete status tokens mandatory before
+bootstrap could report deterministic completion, but both delegated hazard-check twins retained
+their older permissive semantics. Pure prose had no candidate and therefore no failure; a bare
+filename searched the entire tree; wildcard prefixes stood in for literals; and any reviewed-status
+prefix passed without an embedded-date grammar or agreement check.
+
+**Why no gate caught it.** The 27-case behavioral suite asserted those accommodations as positive
+behavior, so twin agreement merely proved both oracles were permissive in the same way. B-177
+tightened workflow prose and delegated it to a pre-existing checker without planting the formerly
+accepted malformed worlds against that checker or the enclosing docs-sync result.
+
+**Fix and boundary.** Every real row now needs a safe literal repository-root-relative candidate,
+and every named literal must resolve exactly. Bare filenames resolve only at the repository root;
+absolute and traversal forms fail; URLs, symbols, labels, and globs are ancillary and cannot satisfy
+the requirement. The three simple statuses are case-sensitive exact tokens. The reviewed form is
+fully anchored, its embedded date is calendar-valid, and it must equal `Reviewed`. Pending, missing,
+placeholder, header/separator, and no-notable-hazard semantics are unchanged. The oracle still does
+not decide whether the hazard is true or upgrade its epistemic status.
+
+**Evidence and exposed class.** The unchanged v0.78.2 oracle passed 23 and failed 15 under the revised
+38-case suite, including a consumer-shaped docs-sync wrapper incorrectly reaching its exact final
+success line for a pure-prose row. After the twin fix, authored and dotnet/angular/monorepo suites
+passed 38/0; PowerShell 7 and Windows PowerShell 5.1 also passed under code page 437 with Bash
+exercised. Weakening PowerShell's case-sensitive membership made the suite exit 1; bypassing Bash
+path existence made it exit 5; both scratch targets restored byte-identically. The exposed class is
+any strengthened workflow contract delegated to an older oracle: agreement and green history do not
+establish that the oracle recognizes the new invalid worlds or preserves evidence identity.
+
+---
