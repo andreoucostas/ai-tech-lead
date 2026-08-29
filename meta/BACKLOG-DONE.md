@@ -7360,3 +7360,49 @@ The frozen plan's intentional Markdown hard-break makes historical `git diff --c
 recorded as P3 evidence, not product debt. All review scratch artifacts were removed.
 
 ---
+
+### B-193 · Close the remaining hazard-oracle false-green grammar — **DONE 2026-08-29 · implemented for v0.78.4**
+
+**Value decision and scope.** The B-77 skip states were reasonable while the hazard checker was an
+optional drift detector, but became false completion after v0.78.0 made it a mandatory
+`docs-sync-check` dependency. The caller and consequence changed; historical behavior was therefore
+re-derived rather than preserved as doctrine. The bounded fix remains the two existing checker
+twins and their existing suite—no parser dependency, new script, Markdown migration, recursive
+lookup, or semantic hazard-truth claim.
+
+**Implementation.** Missing, pending, zero/multiple-heading, placeholder, empty, prose-only, and
+mixed sentinel/row states now fail. Backticked text is data rather than Bash replacement syntax;
+balanced bracket classes are ancillary wildcards; final non-newline records are consumed. A finite
+lexical transform repeatedly peels terminal comma/semicolon and exactly matching endpoint wrappers,
+while preserving at most one sentence suffix for safety. Unsafe raw/display forms are checked before
+empty/path-shape filtering, so exact dot segments and drive prefixes cannot normalize away while
+dot-named paths and unmatched wrappers remain literal.
+
+**Test-value audit.** No standalone suite or dependency was added. Each new case maps to a reproduced
+false green, a distinct lifecycle/parser branch, or a false-rejection control. High-cardinality
+spellings share executions without sharing evidence: twelve unsafe forms occupy one consumer
+fixture with exact per-output diagnostic counts, ten positive forms occupy independent required-path
+rows in one fixture, and grouped lifecycle worlds reuse one install. This matters empirically: the
+unchanged v0.78.3 checker was 40/67; fresh review broke two later green candidates; and a planted
+single-token skip was detected at 66/67. Coverage is 67 `It` results and 63 leaf + 14 wrapper
+subjects per twin (154 total), with an explicit cardinality oracle preventing short-circuit masking.
+
+**Adversarial evidence.** The initial implementation commit `56e8ba9` passed its suite but two fresh
+reviewers blocked bare `.`, framed traversal, and exterior-punctuation handling. A later oracle
+review blocked grouped positives because one valid token could hide nine ignored ones. The amended
+source blobs were independently approved, then blind-first reviewer
+`/root/b193_final_immutable_review` reviewed immutable range `56e8ba9..fb35803` and candidate tree
+`c2d24f7`. Its isolated Bash-only safety mutation made the full suite 66/1 while both twins still
+executed 77 subjects; reverse patch restored the exact Bash hash and clean 67/0.
+
+**Hosts, composition, and boundary.** PowerShell 7.6.5 and native Windows PowerShell
+5.1.26100.9168/CP437 each passed 67/0 with Git Bash observed. Dotnet, Angular, and monorepo each
+passed 67/0 and `validate-dist`; source and all three generated copies share exact checker/test
+hashes. PowerShell and login-shell Bash composition produced identical 525-file trees. BacklogHygiene
+10/0, DocTruth 13/0, DocClaims 8/0, ScriptTwinParity 10/0, and Composer 16/0 passed with their
+relevant red mutations. No native Linux/macOS or Bash 3.2 runtime was available, so the first
+Windows/Linux immutable-candidate matrix remains mandatory before release; Git Bash is not claimed
+as that evidence. The same-class advisory EOF defect is deliberately separate, proportionally sized
+as B-195.
+
+---

@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-29  
 **Filed against:** v0.78.3  
-**Status:** LOCKED 2026-08-29 — approved by two independent adversarial reviewers plus a portability re-review; implementation-review amendments approved, immutable-candidate review pending
+**Status:** VERIFIED 2026-08-29 — immutable candidate `fb35803` approved; native Linux/Bash 3.2 remains release evidence
 
 ## Premise and value decision
 

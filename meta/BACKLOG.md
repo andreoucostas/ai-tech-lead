@@ -2958,40 +2958,6 @@ contract requires parity, compose all dists, and run the update-delivery/install
 independent hostile/clean review before shipping.
 
 ---
-### B-193 · Close the remaining hazard-oracle false-green grammar
-**Effort:** M · **Priority:** P1 · **planned v0.78.4**
-**Filed against:** v0.78.3 (2026-08-29)
-
-**Why:** B-190's qualifying blind-first review reproduced five findings covering six remaining
-false-green shapes in the v0.78.3 completion oracle. Bash can lose a later literal while removing
-backticked ancillary text and can skip an unterminated final row; both twins treat balanced bracket
-globs as literal paths, exempt a row whose Area exactly equals the placeholder token even when its
-other cells or framing differ, accept a leading `./` segment, and ignore a second hazard section
-after another H2. The backtick and bracket cases reached the enclosing
-`docs-sync-check` exact success line, so these are live completion bypasses, not grammar niceties.
-Pre-lock review then found that B-77's missing/pending/no-section skips and placeholder pass predate
-the checker's v0.78.0 mandatory completion role: incomplete, header-only, and arbitrary-prose
-outcomes can still reach the same wrapper success line. It also reproduced both twins erasing
-terminal dot-segment and bare-drive-prefix safety evidence during sentence-punctuation trimming.
-
-**Do:** implement the locked
-`.claude/plans/2026-08-29-b193-hazard-oracle-same-class-closure.md`. In the two existing checker twins,
-make backtick extraction data-safe, classify `*`, `?`, and balanced bracket classes as ancillary
-wildcard syntax, consume final non-newline-terminated lines in both Bash loops, reject incomplete
-lifecycle sentinels, require either real rows or the exact no-notable outcome, reject duplicate
-`Known Hazard Areas` sections, and inspect safety-significant raw tokens before trimming terminal
-`.`/`:` punctuation. Reject exact `.`/`..` segments and every drive-prefixed form without rejecting
-valid dot-named directories.
-Add discriminating leaf fixtures for the parser boundaries, representative consumer-shaped wrapper
-cases for parser bypasses, and exhaustive wrapper states for the incomplete lifecycle contract. Keep
-the existing epistemic boundary and table-escaping non-goal; do not preserve a historical pass state
-whose current completion caller can prove is incomplete.
-Compose all three dists; verify PowerShell 7, native Windows PowerShell 5.1/CP437, Git Bash, all three
-validators, clean source/dist parity, and a post-green mutation per twin. Because this changes a
-false-green completion gate, WSD-057 requires an independent reviewer plus an orthogonal execution
-vantage before release.
-
----
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see `meta/BACKLOG-DONE.md`.**
