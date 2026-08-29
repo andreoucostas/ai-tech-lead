@@ -384,8 +384,10 @@ time** regardless of how long ago verification finished. Prefer verifying agains
 (`git show <hash>:<path>`, `git diff <a>..<b>`) over the live working tree whenever the two could
 disagree. And for a shipped-behavior change specifically, prefer letting `release.ps1` below run the
 authoritative full gate suite over re-running it all by hand first — it refuses to commit on
-failure, so a manual pre-pass mostly duplicates it while being more exposed to this exact race; one
-targeted red-test re-run is enough evidence for `-ReviewEvidence`.
+failure, so a manual pre-pass mostly duplicates it while being more exposed to this exact race. The
+independent reviewer still records the frozen contract/range, reviewer model, no implementation
+participation, blind-first threat model, one release-specific hostile case or mutation observed red,
+the clean rerun, environment, and gaps for `-ReviewEvidence`.
 
 ## Release process
 
@@ -395,10 +397,15 @@ stamp drift twice:
 1. Author the release: make the change in `src/` (+ twins [#3] + monorepo siblings [#1]), write a
    `## <version>` entry in the **root** `CHANGELOG.md` (update the shipped changelog content in
    `src/` too if the notes should reach consumers).
-2. Have a **different session** review it and re-run at least one gate and one red-test themselves
-   (CLAUDE.md → Maintenance model #2/#3). Keep their command and its observed exit code.
+2. Have a reviewer who did not participate in implementation use a **separate session**. Starting
+   from the frozen contract and immutable range before the implementation narrative, record their
+   model/agent, blind-first threat model, one release-specific hostile case or mutation observed
+   red, the clean rerun, environment, and gaps (CLAUDE.md → Maintenance model #2/#3). Add an
+   orthogonal reviewer or execution vantage for data-loss, security-bypass, or false-green changes.
 3. Run `pwsh -NoProfile -File .claude/scripts/release.ps1 -Version <v> -Summary "<one line>"
-   -ReviewEvidence "reviewer <who>; re-ran <command>; EXIT=<code>; implementer <who>"`.
+   -ReviewEvidence "contract <path/hash>; range <commits>; reviewer <agent/model>; independence
+   <no implementation participation; blind-first>; hostile <case> RED; clean <command> EXIT=0;
+   environment/gaps <facts>; implementer <who>"`.
    It stamps `src/core/CLAUDE.md` + the three `framework-version.json` files, rebuilds all three
     dists, runs local gates (freshness, validate-dist ×3 plus the footprint update, and the full
     root meta suite on its default throttled runner), **refuses to commit on any failure**, appends
@@ -409,8 +416,10 @@ stamp drift twice:
     claimed. `-NoPush` for a dry-ish run.
 
    It **refuses to start** without either `-ReviewEvidence` or `-NoIndependentReview`. The latter
-   is allowed — sometimes there is no second session — but never silent: it records
-   `reviewer: none` in the ledger and auto-files a post-ship review item in `meta/BACKLOG.md`.
+   is allowed — sometimes qualifying evidence is unavailable — but never silent: it records
+   `review evidence: none supplied` in the ledger and auto-files a post-ship review item in
+   `meta/BACKLOG.md`. The switch keeps its legacy name; absence of supplied evidence does not prove
+   that no review occurred.
 4. Append to `LEARNINGS.md` if there's a lesson, and file the RCA (Maintenance model #5).
 
 ### The CI watch — a tag means CI-verified green (B-88, WSD-028)

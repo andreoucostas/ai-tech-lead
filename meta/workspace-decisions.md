@@ -1157,6 +1157,11 @@ was re-run. It cannot judge whether the review was any good, and nothing here pr
 `no-meta-leak` does not prove good prose either. What every gate in this repo does is make an absence
 impossible to hide, and that is the whole claim.
 
+**Boundary corrected prospectively (2026-08-29).** WSD-057 narrows the machine claim further: **a
+gate can expose evidence or absence without certifying independence or quality**. A non-empty
+free-text field proves only that evidence was supplied, not that a review happened or was
+independent. The original release behavior and this historical rationale remain recorded.
+
 **Alternatives rejected.** *Prose plus a section-exists gate* — rejected as theatre; it verifies a
 heading, not a practice, and would pass with the rules hollowed out. *Making it meta-invariant #8* —
 rejected for now: invariants #1–#7 each have a deterministic machine check, and adding an
@@ -2545,3 +2550,115 @@ constraint. Both defects are now red-tested. `warehouseUpstreamDecision` is the 
 that requires an exact one-artifact tree. The older `warehouse-route-*` scenarios intentionally grade
 routing engagement rather than artifact correctness, so their historical conclusions are unaffected
 by the SQL-project confound.
+
+---
+
+## WSD-057: historic decisions are rebuttable; independent review is evidence-bound and risk-scaled (2026-08-29)
+
+**Context.** The maintainer clarified that the objective is current value, not fidelity to an old
+decision after model, tool, host, cost, or evidence conditions change. That prompted a re-audit of
+Maintenance model rule 2's categorical claim that a reviewer at or below the implementer's tier
+means no review occurred. The ledger contradicts the proxy: separate peer-tier reviews at v0.50.0
+and v0.58.0 found material defects, including two blocking Bash-only failures after four independent
+mutations; B-184's later Codex review of a Codex-produced release found P0, P1, and P2 defects.
+Higher-tier successes are inseparable from fresh context, different hosts/tools, independent threat
+models, and direct hostile execution. `release.ps1` itself can inspect none of those qualities; it
+only records supplied text or explicit absence. WSD-028 acknowledged that evidence quality was
+outside the gate, but still overclaimed that non-empty text proved a review happened.
+
+**Decision.** Historic decisions are evidence-bearing defaults, not doctrine. Materially changed
+models, hosts, tools, costs, or outcomes authorize a premise re-audit; they do not themselves prove
+the old answer wrong. Re-open only when the changed condition could alter the outcome and expected
+decision value exceeds audit cost. Preserve the original record and result, supersede or amend it
+explicitly, and start a new result series whenever the measurement contract changes.
+
+Independent review is evidence-bound, not rank-bound. A qualifying reviewer uses a separate session,
+did not participate in implementation, starts from the frozen contract and immutable commit range
+before reading the implementer's narrative, forms an independent adversarial threat model, and
+records its model, environment, one release-specific hostile case or applied mutation observed red,
+a clean rerun, and coverage gaps. Prefer a different model family, host, or toolchain where available,
+but rank alone neither qualifies nor disqualifies. Data-loss, security-bypass, and false-green release/enforcement
+changes require a second orthogonal reviewer or execution vantage; absent that, record incomplete
+coverage and retain review debt.
+
+This prospectively supersedes the rank qualification in WSD-028 and WSD-036 without rewriting their
+historical context. The release gate remains deliberately bounded: it exposes a non-empty evidence
+claim versus `-NoIndependentReview`, records the claim verbatim, and files absence. It cannot certify
+that the session was independent or the evidence was good. Root policy, ledger wording, and release prompts
+now state that boundary consistently rather than claiming rules 2–4 are machine-enforced.
+
+**Proportionality.** Ordinary work still needs one independent review, not more. The stronger second
+vantage is reserved for three high-harm classes. Replacing an unsupported rank proxy makes current
+frontier reviewers usable while demanding observable work rather than a model label.
+
+**Rejected.** Retaining tier rank despite direct counterexamples; allowing same-session self-review;
+treating a different model name as sufficient; removing orthogonal coverage from destructive,
+security, or false-green changes; and pretending the release script can judge review quality.
+
+---
+
+## WSD-058: the independent field pilot starts a convention-rich FS2 series (2026-08-29)
+
+**Context.** WSD-053's first valid maintainer replay, FS-20260826-RERUN-02, returned acceptable
+byte-identical outputs and a 10/9 rubric result below the frozen 2/10 materiality threshold. That is
+an honest FS1 null, not evidence of harm or benefit. Re-audit found a construct ceiling in the
+executed task shape: the one-line bounded fix left fabrication, leanness, and most repository
+decisions little room to vary, so only red-first test ordering and verification breadth separated
+the arms. A1 permitted that shape because it had no minimum mechanism-exposure gate. R2 also
+compressed three different convention decisions into two points; feature work can make fix-specific
+R3 inapplicable while still presenting a misleading `/10` total.
+
+**Decision.** Preserve FS1 and RERUN-02 unchanged. The next independent paired replay begins FS2 and
+is never aggregated with FS1. Retain WSD-053's privacy, history isolation, setup disclosure,
+onboarding measures, equal-arm controls, and optional live diary. Prospectively select the first
+chronologically eligible accepted historical feature/change in a frozen candidate window whose
+source population and endpoints are chosen only from availability and recency constraints, not
+expected framework fit. Traverse accepted mainline changes newest-to-oldest and record sanitised
+exclusions. The change touches 3–8 hand-authored files across at least two architectural areas and
+requires three independent non-local repository decisions including one integration/ownership
+decision. None of their outcomes is stated in the prompt; every acceptable outcome and hard/soft
+label is justified from pre-change evidence or a pre-existing immutable contract rather than
+hindsight from the accepted solution. Every supported alternative passes executable acceptance plus
+all applicable D1–D3 checks, or an immutable pre-change contract proves there are none. It has executable private acceptance and a
+green baseline reconfirmed in both prepared arms after FRAMEWORK setup, exposes no answer through
+history/setup, enforces filesystem isolation for setup and task agents, and fits the participant's
+time/cost cap.
+
+Both task arms use equal per-arm time/cost caps. Personal, memory, and organisation instructions are
+identical and contain no framework-derived or answer-bearing task guidance; otherwise the control is
+not BARE.
+
+Before agent use, demonstrate that the complete primary oracle stack—executable acceptance plus all
+applicable D1–D3 checks—passes the main valid implementation and every supported alternative, or
+freeze the immutable pre-change contract showing none exist. Separately demonstrate that executable
+acceptance rejects a plausible invalid/pre-change world and a targeted plausible violation is
+rejected for each of the three decisions.
+Run one same-day FRAMEWORK/BARE pair with the same current frontier exact model, exact prompt,
+host/toolchain, fresh sessions, random order, and execution scopes that cannot address the other arm/results, accepted source
+history, or the private card/oracle. The setup agent uses that same canary-proven scope. Before setup,
+freeze the exact allowed-path set from installer ownership/dry-run evidence and declared setup
+outputs, plus any generated/cache ignored exclusions frozen from the pre-setup inventory; after
+setup, any other byte/name-status delta is retained as onboarding harm and voids the pair rather than
+being repaired away. Primary quality outcomes are task
+acceptability, executable acceptance, and the three named decisions recorded separately; a hard
+decision failure is material. R1–R5 remain descriptive continuity data without an FS2 composite
+total. Active-time and intervention thresholds remain burden signals. Preserve the first valid pair
+whether directional or null; do not tune and retry.
+
+**Stop rules.** Mark a candidate ineligible and take the next chronological one if history or
+setup/task filesystem isolation, allowed-path containment, baseline, supported-alternative or
+decision-specific oracle reachability, or three independent pre-change-grounded decisions cannot be
+shown, or setup gives away the requested change.
+Stop and retain partial/harm evidence at the participant's privacy, time, or cost boundary. `cannot
+examine` is unordered and not an arm failure; it makes the pair void only when acceptability or arm
+comparability becomes unjudgeable.
+
+**Proportionality.** FS2 still spends two task runs, not four. It adds objective selection, one
+executable red/green oracle, three decision-specific red worlds, and an isolation proof for materially
+more room to observe the framework's intended value. Expected participant effort rises from 60–90
+to roughly 90–150 minutes and must be capped; cost is measured rather than predicted from the $0.474
+one-line replay.
+
+**Rejected.** More bounded-fix repetitions before addressing the observed ceiling; retroactive
+rescoring; merely upweighting R2 after a null; selecting a framework-favorable task; adding four arms;
+dropping independent-user onboarding/friction evidence; and aggregating FS1 with FS2.

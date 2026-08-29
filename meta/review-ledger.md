@@ -1,10 +1,12 @@
 # Review ledger
 
 One row per release, written by `.claude/scripts/release.ps1` and committed with the release it
-describes. It records **whether** an independent review happened and what the reviewer re-ran --
-never whether the review was any good, which no gate here can judge. A `reviewer: none` row is a
-legitimate outcome, deliberately not a silent one: it files a post-ship review item in
-`meta/BACKLOG.md`. See root `CLAUDE.md` > Maintenance model.
+describes. It records supplied review evidence or its explicit absence—never whether a review
+occurred, was independent, or was good, which no gate here can judge. New releases without supplied
+evidence use `review evidence: none supplied` and file a post-ship review item in `meta/BACKLOG.md`.
+Legacy `reviewer: none` rows retain their historical wording; they likewise mean that qualifying
+evidence was not supplied, not that the ledger proved no review occurred. See root `CLAUDE.md` >
+Maintenance model.
 
 | version | date | evidence |
 |---------|------|----------|

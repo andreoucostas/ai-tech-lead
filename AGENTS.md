@@ -87,17 +87,25 @@ disciplines in `src/core/CLAUDE.md` bind meta-work too.
 
 ## Maintenance model
 
-Canonical definitions live in `CLAUDE.md` > Maintenance model — same six rules, condensed here.
-Rules 2–4 are enforced by `release.ps1`, not by this prose.
+Canonical definitions live in `CLAUDE.md` > Maintenance model — same seven rules, condensed here.
+For rules 2–4, `release.ps1` exposes supplied evidence or its absence; it cannot judge review
+independence, quality, or truth.
 
 1. **Locked design + adversarial critique before implementing any M+ item.** The critique may
    reject the item's *premise*, not just its approach. A reviewer's corrections are input, not
    verdict — re-verify them. **Re-validate the premise of any entry filed more than ~5 minor
    versions ago** — every open entry carries a `**Filed against:** vN (date)` stamp saying how much
    history to check. Premise rot is real and measured: B-79, B-138 and B-130 were all refuted or
-   stale when finally read.
-2. **Implementer ≠ reviewer** (different tier where available). Reviewer tier ≤ implementer tier
-   means the review did not happen: auto-file a post-ship review instead of pretending it did.
+   stale when finally read. Historic decisions are evidence-bearing defaults, not doctrine: changed
+   models, hosts, tools, cost, or outcomes license a recorded re-audit when the change could alter
+   the outcome and expected decision value exceeds audit cost—not silent history rewriting.
+2. **Independent review is evidence-bound, not rank-bound.** Use a separate session whose reviewer
+   did not participate in implementation, a frozen contract and immutable range, a blind-first
+   threat model, a release-specific hostile case or applied mutation observed red, a clean rerun,
+   and explicit environment/gaps. Prefer another
+   model family, host, or toolchain, but rank alone neither qualifies nor disqualifies. Data-loss,
+   security-bypass, and false-green release/enforcement changes also require an orthogonal reviewer
+   or execution vantage; otherwise file the remaining debt.
 3. **Nothing enters the record as observed unless you observed it** — self-reports, a spec's
    file-layout claims, a plan's assumptions, any number you quote. Verify in the environment that
    matters, or attribute the claim rather than asserting it.
@@ -128,11 +136,14 @@ Rules 2–4 are enforced by `release.ps1`, not by this prose.
    must be able to say which of the two things happened. The symmetry matters too — `grep` exits 2
    for a *missing file* as well as a failure to run, so a content fact reported as a host problem is
    the same defect inverted. B-164 tracks whether this is mechanically enforceable or stays guidance;
-   per WSD-028 a rule is real only where tooling can refuse.
+   per WSD-028/WSD-057, mechanise only what tooling can honestly distinguish and keep unjudgeable
+   quality as an explicit evidence obligation.
 
-`release.ps1` refuses to release without either `-ReviewEvidence` (the reviewer's re-run command
-and its observed exit code) or `-NoIndependentReview`, which is allowed but records
-`reviewer: none` in `meta/review-ledger.md` and files the post-ship review item automatically.
+`release.ps1` refuses to release without either `-ReviewEvidence` (the supplied range, hostile/red
+and clean evidence, environment/gaps, and identities) or `-NoIndependentReview`, which is allowed
+but records `review evidence: none supplied` in `meta/review-ledger.md` and files the post-ship
+review item automatically. The switch retains its legacy name; the script exposes supplied-evidence
+presence or absence and does not infer whether a review occurred or certify the claim.
 
 ## Conventions
 

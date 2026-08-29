@@ -137,6 +137,11 @@ try {
         Assert (-not (Test-ReleaseReviewRecord -Text $backlog -Version '0.7' -Surface backlog)) 'backlog matcher accepted a version substring'
     }
 
+    It 'the no-evidence path records only evidence absence, not an inferred absent reviewer' {
+        Assert ($releaseText -match [regex]::Escape("'review evidence: none supplied -- post-ship review owed'")) 'release does not emit the truthful no-evidence ledger cell'
+        Assert (-not ($releaseText -match [regex]::Escape("'reviewer: none -- post-ship review owed'"))) 'release still infers that no reviewer existed from missing evidence'
+    }
+
     It 'automatic post-ship review stubs carry the backlog filed-against stamp' {
         Assert ($releaseText -match '\*\*Filed against:\*\* v\$Version \(\$today\)') 'release stub omits the mandatory filed-against version/date stamp'
     }

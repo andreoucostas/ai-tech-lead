@@ -28,14 +28,17 @@ param(
     # Escape hatch for the branch precondition below. Deliberately named for what it risks, not for
     # what it enables -- releasing off master is how v0.34.0 lost its release commit.
     [switch]$AllowNonMasterHead,
-    # The reviewer's evidence: the gate/red-test they re-ran INDEPENDENTLY, its observed exit code,
-    # and who implemented vs who reviewed. Recorded verbatim in meta/review-ledger.md.
+    # The reviewer's evidence: frozen contract, immutable range, reviewer model/agent, no
+    # implementation participation + blind-first fact, independent hostile case or applied mutation
+    # observed red, clean rerun, environment/gaps, and implementer identity. Recorded verbatim in
+    # meta/review-ledger.md.
+    # The script can expose presence or absence, not judge evidence quality.
     # NOT [Parameter(Mandatory)] -- that prompts, and a prompt hangs a non-interactive release. The
     # precondition below refuses instead.
     [string]$ReviewEvidence,
-    # Escape hatch for that precondition, named for what it risks. Releasing without an independent
-    # review is allowed -- it is sometimes the right call -- but it is never silent: the ledger
-    # records that none happened and a post-ship review item is filed automatically.
+    # Legacy-named escape hatch for that precondition. It means qualifying evidence was not supplied,
+    # not that the script can know whether any review occurred. That absence is never silent: the
+    # ledger records it and a post-ship review item is filed automatically.
     [switch]$NoIndependentReview,
     # Escape hatch for the staged-set precondition at step 5 (B-80), named for what it risks: the
     # release commit will carry files that are not part of a release. There is deliberately NO
@@ -211,12 +214,13 @@ or invoke from PowerShell directly, or lead the summary with a non-slash word.
     exit 2
 }
 
-# ---- 0a1. Require review evidence, or an explicit acknowledgement that there was none (B-45) ----
-# Maintenance model #2/#3: the reviewer must be a different session and must have re-run something
-# themselves. Prose could not hold this -- invariant #6 was written down from the start and still
-# shipped ~190 leaking lines -- so it is enforced where every shipped change already passes.
-# This gate does NOT judge whether the review was good; no gate here does (no-meta-leak does not
-# prove good prose either). It makes the ABSENCE of a review impossible to ship silently.
+# ---- 0a1. Require review evidence, or acknowledge that qualifying evidence was not supplied (B-45) ----
+# Maintenance model #2/#3: the reviewer must use a separate session, must not have participated in
+# implementation, and must supply its own hostile/red and clean evidence. Prose could not hold this
+# -- invariant #6 was written down from the start and still shipped ~190 leaking lines -- so presence
+# versus explicit absence is exposed where every shipped change already passes. This gate cannot
+# judge independence or evidence quality; it makes only the ABSENCE of supplied review evidence
+# impossible to ship silently.
 $hasEvidence = -not [string]::IsNullOrWhiteSpace($ReviewEvidence)
 if ($hasEvidence -and $NoIndependentReview) {
     [Console]::Error.WriteLine(
@@ -229,14 +233,18 @@ FATAL: no review evidence. Nothing has been stamped or committed.
 
 Maintenance model #2/#3 (root CLAUDE.md): the implementer's self-report is not evidence -- it has
 been a false pass twice, both times because the check ran in a sandbox whose PATH differed from the
-real environment. A different session must have re-run at least one gate and one red-test.
+real environment. A separate reviewer who did not participate in implementation must record the
+frozen contract, immutable range, reviewer model/agent, blind-first fact, an independent hostile
+case or applied mutation observed red, a clean rerun, environment, and coverage gaps. High-risk
+changes also need an orthogonal reviewer or execution vantage.
 
 Re-run with the reviewer's evidence:
-  -ReviewEvidence "reviewer <who>; re-ran <command>; EXIT=<code>; implementer <who>"
+  -ReviewEvidence "contract <path/hash>; range <commits>; reviewer <agent/model>; independence <no implementation participation; blind-first>; hostile <case> RED; clean <command> EXIT=0; environment/gaps <facts>; implementer <who>"
 
-Or acknowledge there was none -- allowed, never silent:
+Or acknowledge that qualifying evidence was not supplied -- allowed, never silent:
   -NoIndependentReview
-which records "reviewer: none" in meta/review-ledger.md and files a post-ship review item.
+which records "review evidence: none supplied" in meta/review-ledger.md and files a post-ship
+review item. The legacy switch name does not assert that no review occurred.
 "@)
     exit 2
 }
@@ -620,7 +628,7 @@ if ($fatal) {
     exit 1
 }
 
-# ---- 4b. Record the review in the ledger, and file the debt when there wasn't one (B-45) ----
+# ---- 4b. Record supplied review evidence, or file the debt when none was supplied (B-45) ----
 # Written after the gates pass and before `git add -A`, so the ledger row lands in the release
 # commit itself -- a claim about a release that is not in that release's commit is not evidence.
 $ledger = Join-Path $repo 'meta/review-ledger.md'
@@ -629,10 +637,10 @@ if (-not (Test-Path -LiteralPath $ledger)) {
 # Review ledger
 
 One row per release, written by ``.claude/scripts/release.ps1`` and committed with the release it
-describes. It records **whether** an independent review happened and what the reviewer re-ran --
-never whether the review was any good, which no gate here can judge. A ``reviewer: none`` row is a
-legitimate outcome, deliberately not a silent one: it files a post-ship review item in
-``meta/BACKLOG.md``. See root ``CLAUDE.md`` > Maintenance model.
+describes. It records supplied review evidence or its explicit absence -- never whether a review
+occurred, was independent, or was good, which no gate here can judge. A ``review evidence: none
+supplied`` row is a legitimate outcome, deliberately not a silent one: it files a post-ship review
+item in ``meta/BACKLOG.md``. See root ``CLAUDE.md`` > Maintenance model.
 
 | version | date | evidence |
 |---------|------|----------|
@@ -640,7 +648,7 @@ legitimate outcome, deliberately not a silent one: it files a post-ship review i
 "@.TrimEnd("`r", "`n") + "`n", [Text.UTF8Encoding]::new($false))
 }
 $evidenceCell = if ($NoIndependentReview) {
-    'reviewer: none -- post-ship review owed'
+    'review evidence: none supplied -- post-ship review owed'
 } else {
     # Collapse to one line and escape the cell delimiter so the row cannot break the table.
     $ReviewEvidence -replace '\r?\n', ' ' -replace '\|', '\|'
@@ -654,7 +662,7 @@ if (Test-ReleaseReviewRecord -Text $ledgerText -Version $Version -Surface ledger
 }
 
 if ($NoIndependentReview) {
-    # Maintenance model #2: when no independent review happened, the debt is filed automatically
+    # Maintenance model #2: when no review evidence was supplied, the debt is filed automatically
     # rather than left to memory -- the B-37 pattern, which is how it was missed before.
     $backlog = Join-Path $repo 'meta/BACKLOG.md'
     $archive = Join-Path $repo 'meta/BACKLOG-DONE.md'
@@ -673,13 +681,15 @@ if ($NoIndependentReview) {
 **Effort:** S · **Priority:** P2 · filed automatically by ``release.ps1`` on $today
 **Filed against:** v$Version ($today)
 
-**Why:** v$Version shipped with ``-NoIndependentReview``, so no second session re-ran a gate or a
-red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
-it did not happen. Summary of what shipped: $Summary
+**Why:** v$Version shipped with ``-NoIndependentReview``, so no qualifying second-session evidence
+was supplied. Maintenance model #2 requires the review to be filed rather than inferred from missing
+evidence. Summary of what shipped: $Summary
 
-**Do:** review the v$Version diff as an independent session -- re-run at least one gate and one
-red-test yourself, do not read the release output as evidence -- and file whatever it finds. Then
-close this entry, recording what was re-run.
+**Do:** have a reviewer who did not participate in implementation review the immutable v$Version
+diff in a separate session, starting from its frozen contract before reading the release output.
+Record the contract, reviewer model/agent, blind-first fact, an independent hostile case or applied
+mutation observed red, the clean rerun, environment, and gaps; add an orthogonal vantage for a
+high-risk surface. File any findings, then close this entry with the observed evidence.
 
 ---
 

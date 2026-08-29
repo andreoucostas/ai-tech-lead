@@ -16,7 +16,7 @@ phrase inside the cited entry.
 - “The Copilot Boy Scout nudge remains advisory; never block.” — `meta/workspace-decisions.md WSD-024`
 - “Capability probes use the consumer’s vantage point.” — `meta/workspace-decisions.md WSD-026`
 - “Automation never sets or upgrades warehouse-map status.” — `meta/workspace-decisions.md WSD-027`
-- “A maintenance rule is real only where tooling can refuse.” — `meta/workspace-decisions.md WSD-028`
+- “A gate can expose evidence or absence without certifying independence or quality” — `meta/workspace-decisions.md WSD-028`
 - “A release tag follows CI-verified green.” — `meta/workspace-decisions.md WSD-029`
 - “Framework-owned rules have one unprotected carrier.” — `meta/workspace-decisions.md WSD-031`
 - “Read-side guidance travels on the measured channel.” — `meta/workspace-decisions.md WSD-032`
@@ -29,6 +29,9 @@ phrase inside the cited entry.
 - “Recover consumer state and evidence integrity before structural redesign.” — `meta/workspace-decisions.md WSD-048`
 - “issue intake is not sentiment evidence; balanced field outcomes use a replay plus diary” — `meta/workspace-decisions.md WSD-053`
 - “Onboarding preserves evidence and project ownership; repeated samples describe stability, not truth.” — `meta/workspace-decisions.md WSD-054`
+- “Historic decisions are evidence-bearing defaults, not doctrine.” — `meta/workspace-decisions.md WSD-057`
+- “Independent review is evidence-bound, not rank-bound.” — `meta/workspace-decisions.md WSD-057`
+- “The next independent paired replay begins FS2 and is never aggregated with FS1.” — `meta/workspace-decisions.md WSD-058`
 - “do not add a third CI leg” — `meta/BACKLOG-DONE.md B-70`
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`

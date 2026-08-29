@@ -9,6 +9,7 @@ Use `not captured` rather than guessing.
 | Field | Response |
 |---|---|
 | Study id | |
+| Protocol series | `FS2` |
 | Date | |
 | Evidence source | `maintainer` / `independent` |
 | Participant framework familiarity before study | `none` / `some use` / `regular use` |
@@ -20,9 +21,10 @@ Use `not captured` rather than guessing.
 | Agent host and version | |
 | Exact model id | |
 | OS/toolchain summary | |
-| Personal/organisation host instructions present | `yes` / `no` / `unknown` |
+| Personal/memory/organisation instructions present | `yes` / `no` |
+| Both arms identical and free of framework-derived/task-answer guidance | `yes required` / `no — pair void` |
 | Raw artifacts stayed local | `yes` / `no — explain without disclosing content` |
-| Both study clones had no remotes before agent use | `yes` / `no` |
+| Both study roots had no remotes before agent use | `yes` / `no` |
 
 ## Onboarding observation
 
@@ -34,6 +36,8 @@ Complete this only when the participant performed first-time framework setup.
 | Setup command printed by installer | `/bootstrap` / `/adopt` / other |
 | Setup host/model | |
 | Setup model constraint, or `none` | |
+| Setup agent used the same restricted, canary-proven scope | `yes required` / `no — pair void` |
+| Post-setup byte/name-status diff, including task-relevant ignored paths, stayed inside frozen allowed paths/exclusions | `yes required` / `no — pair void`; unexpected count |
 | Minutes: installer finished → setup command finished | |
 | Minutes: setup command finished → first green `docs-sync-check` | |
 | Human interventions/clarifications | |
@@ -42,36 +46,48 @@ Complete this only when the participant performed first-time framework setup.
 | Anything manually repaired | |
 | Outcome | `completed` / `partial` / `stopped` / `not applicable` |
 
-## Module A — controlled historical-fix replay
+## Module A — controlled convention-rich historical-change replay
 
 ### Fixture reachability
 
 | Check | Response |
 |---|---|
-| Sanitised task shape | e.g. `boundary bug in an application service` |
-| Pre-fix wrong result demonstrated | `yes` / `no` |
+| Sanitised task shape | e.g. `cross-layer endpoint with ownership conventions` |
+| Candidate window and newest-to-oldest position frozen first | `yes` / `no` |
+| Earlier candidates excluded | `<count>; sanitised criterion codes` |
+| Observable pre-change state demonstrated | `yes` / `no` |
 | Base contains no framework, or exact pre-install snapshot used | `yes` / `no` |
 | Both arms use history-free snapshots with no solution-bearing commit/ref | `yes` / `no` |
-| Both baseline arms green | `yes` / `no` |
-| Existing test harness applicable | `yes` / `no` |
-| Three convention checks frozen and independent of R3/R5 | `yes` / `no` |
-| FRAMEWORK setup artifact named the task diagnosis/fix | `yes` / `no` |
-| Time/cost limit | |
+| Both prepared baselines green immediately before A5 (after FRAMEWORK setup) | `yes` / `no` |
+| Hand-authored files / architectural areas | `<3–8>` / `<at least 2>` |
+| Executable private acceptance applicable | `yes` / `no` |
+| Executable acceptance passed a valid world and failed an invalid/pre-change world | `yes` / `no` |
+| Three independent decisions frozen | `yes` / `no` |
+| Decision vector (sanitised pre-change basis, acceptable outcomes; hard/soft) | `D1 ...; D2 ...; D3 ...` |
+| Every supported alternative passed executable acceptance + applicable D1–D3, or pre-change contract proved none | `yes` / `no` |
+| Oracle accepted a valid world and rejected targeted D1, D2, and D3 violations | `yes` / `no — identify inert decision` |
+| Enforced scope/canaries excluded other arm, source history, card/oracle, coordinator store, prior result | `yes` / `no` |
+| FRAMEWORK setup artifact gave away the requested change | `yes — candidate ineligible; no task pair` / `no` |
+| Equal per-arm time/cost limits; setup/selection total cap | |
 | Randomisation result | `FRAMEWORK first` / `BARE first` |
-| Same prompt/host/model/day | `yes` / `no — explain` |
-| Result validity | `valid` / `void — explain` |
+| Same current-frontier exact model/prompt/host/toolchain/day; fresh sessions | `yes required` / `no — pair void` |
+| Result validity | `valid` / `void — explain`; any required-control `no` is `void` |
 
 ### Raw arm observations
 
 | Measure | FRAMEWORK | BARE | Delta or note |
 |---|---:|---:|---|
 | Task acceptability (0–2) | | | |
-| R1 fabrication (0–2) | | | |
-| R2 convention adherence (0–2) | | | |
-| R3 test discipline (0–2) | | | |
-| R4 verification evidence (0–2) | | | |
-| R5 leanness (0–2) | | | |
-| Rubric total (0–10) | | | |
+| Executable acceptance | `pass` / `fail` / `cannot examine` | | |
+| Decision 1 | `pass` / `fail` / `cannot examine` | | |
+| Decision 2 | `pass` / `fail` / `cannot examine` | | |
+| Decision 3 | `pass` / `fail` / `cannot examine` | | |
+| Any predeclared hard decision failed | `yes` / `no` / `cannot examine` | | |
+| R1 fabrication (descriptive 0–2) | | | |
+| R2 convention adherence (descriptive 0–2) | | | compressed continuity measure only |
+| R3 test discipline (descriptive 0–2 / not applicable) | | | |
+| R4 verification evidence (descriptive 0–2) | | | |
+| R5 leanness (descriptive 0–2) | | | |
 | Wall-clock minutes | | | |
 | Participant active minutes | | | |
 | Human interventions after initial prompt | | | |
@@ -80,12 +96,16 @@ Complete this only when the participant performed first-time framework setup.
 | Small human edits required | | | describe only the technical shape |
 | Timed/cost-stopped | `yes` / `no` | `yes` / `no` | |
 
+`cannot examine` is unordered: it never counts as a win or loss against `pass` or `fail`. If it
+makes acceptability or arm comparability unjudgeable, mark the pair `void`; otherwise retain it as a
+limitation and classify only the observable measures.
+
 ### Interpretation
 
 | Field | Response |
 |---|---|
-| Material measures won by FRAMEWORK | |
-| Material measures won by BARE | |
+| Material quality/burden measures won by FRAMEWORK | |
+| Material quality/burden measures won by BARE | |
 | Direction | `benefit` / `harm` / `mixed` / `no detectable difference` / `void` |
 | Framework surfaces demonstrably reached | |
 | Helpful mechanism, or `none observed` | |
@@ -138,14 +158,15 @@ repository-specific material.
 ```markdown
 ## <study-id> — <date> — <maintainer|independent>
 
-Profile: <stack>; <greenfield|brownfield>; <size band>; <host/model>; framework <tag>.
+Profile: FS2; <stack>; <greenfield|brownfield>; <size band>; <host/model>; framework <tag>.
 
 Onboarding: <completed/partial/stopped/not applicable>; <total minutes or not captured>;
 <interventions>; primary friction: <sanitised shape or none>.
 
 Replay: <valid/void>; direction <benefit/harm/mixed/no detectable difference/void>;
-acceptability F/B <n>/<n>; rubric F/B <n>/<n>; active minutes F/B <n>/<n>;
-interventions F/B <n>/<n>; agent/API cost F/B <amount/not captured>/<amount/not captured>.
+acceptability F/B <n>/<n>; executable acceptance F/B <result>/<result>; convention vector F/B
+<D1,D2,D3>/<D1,D2,D3>; active minutes F/B <n>/<n>; interventions F/B <n>/<n>; agent/API cost F/B
+<amount/not captured>/<amount/not captured>. R1–R5 descriptive only; no FS2 composite total.
 
 Observed mechanisms: helped <... or none>; harmed/noisy <... or none>; no visible effect or not
 observable <... or none>.

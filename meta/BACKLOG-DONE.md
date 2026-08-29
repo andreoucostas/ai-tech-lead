@@ -7184,3 +7184,73 @@ engagement, so their historical decisions are unaffected. Full design and outcom
 `.claude/plans/2026-08-29-b99-upstream-decision-preservation-design.md`; WSD-056.
 
 ---
+
+### B-191 · Revalidate rank-bound independent review — **DONE 2026-08-29 · meta-only**
+
+**Premise.** Maintenance model rule 2 treated model rank as dispositive: a reviewer at or below the
+implementer's tier counted as no review. That proxy is contradicted by the repository's own ledger.
+Separate peer-tier sessions at v0.50.0 and v0.58.0 found material defects; the latter applied four
+independent mutations and found two blocking Bash-only failures. B-184's later Codex review of a
+Codex-produced release found one P0, one P1, and one P2 defect. No controlled evidence isolates
+ordinal tier as the cause of higher-tier review yield.
+
+**Decision.** WSD-057 makes independent review evidence-bound and risk-scaled. A qualifying reviewer
+uses a separate session with no implementation participation, frozen contract, immutable range,
+reviewer model/agent, blind-first threat model, release-specific hostile case or applied mutation
+observed red, clean rerun, and explicit environment/gaps. Different model families, hosts, and
+toolchains remain preferred diversity; rank alone neither qualifies nor disqualifies. Data-loss,
+security-bypass, and false-green release/enforcement changes additionally need an orthogonal
+reviewer or execution vantage, or the remaining debt stays open.
+
+**Implementation boundary.** Root `CLAUDE.md`, its condensed `AGENTS.md` mirror, and `DEVELOPING.md`
+now state the rule. The release prompt and ledger describe their honest machine boundary: non-empty supplied
+evidence versus explicit absence, not a certification of independence or quality. Release
+diagnostics and future generated debt-stub prose changed; release control flow and gate semantics did
+not. No consumer artifact, version, changelog, distribution, or context budget changed.
+
+**RCA and sweep.** The tier claim survived because successful higher-tier reviews also differed in
+session context, environment, and hostile execution, while contrary peer-tier examples were buried
+in release rows rather than compared to the rule. The same proxy-rot class exposed WSD-053's bounded-
+fix study: its first valid null challenged the task shape rather than the value question itself.
+That separate prospective amendment is B-192/WSD-058. Full design and adversarial comparison:
+`.claude/plans/2026-08-29-decision-revalidation-and-value-evidence-design.md`.
+
+---
+
+### B-192 · Revalidate the field-study task class — **DONE 2026-08-29 · FS2 prospective amendment**
+
+**Observed trigger.** FS-20260826-RERUN-02 remains the first valid FS1 replay: both arms produced
+acceptable byte-identical output, FRAMEWORK scored 10/10 versus BARE 9/10 below the frozen 2/10
+threshold, and FRAMEWORK cost more time and money. Its one-line bounded fix also left fabrication,
+leanness, and most repository-decision behavior little room to vary. Repeating that task class had
+low expected information gain even though the null itself was valid.
+
+**Decision.** WSD-058 starts FS2 prospectively and neither rescores nor aggregates FS1. The next
+independent pair traverses a frozen window newest-to-oldest with recorded exclusions and uses the
+first eligible accepted historical change: 3–8 hand-authored files, at least two architectural areas,
+three independent non-local decisions whose outcomes are absent from the prompt and justified from
+pre-change evidence rather than the accepted solution; executable acceptance; history- and
+setup/task-filesystem isolation; a green baseline; and equal per-arm time/cost caps. The complete
+primary oracle stack—executable acceptance plus applicable D1–D3—must first accept the main valid
+implementation and every pre-change-supported alternative (or freeze an immutable no-alternative
+contract), then reject a targeted plausible violation for every decision; executable acceptance
+must separately fail a plausible invalid/pre-change world.
+
+**Measure.** Primary outcomes are acceptability, executable acceptance, and the three named decision
+results; only an observed `pass`/`fail` difference is directional, while `cannot examine` stays an
+unordered gap. R1–R5 remain raw descriptive continuity data with no FS2 composite total. Isolation,
+privacy, onboarding, same current-frontier exact model/exact prompt/day/host/toolchain, fresh-session
+controls, random order, and the live diary remain. Each task-agent scope excludes the other
+arm/results, accepted source history, and private
+card/oracle; the setup agent uses the same canary-proven boundary and any change outside its frozen
+allowed-path set is retained as onboarding harm and voids the pair. Host-level instructions are
+identical and treatment-free. The first valid pair is retained whether directional or null.
+
+**RCA and proportionality.** A1 guarded against trivial tasks but had no minimum mechanism-exposure
+gate, while R2 compressed three checks into two points and fix-specific R3 made `/10` ambiguous on
+feature work. Those limits became visible only after the first valid run. FS2 still uses two task
+runs rather than four; it raises participant burden to an explicit 90–150-minute range in exchange
+for a task capable of exercising the framework's intended architectural value. Full adversarial
+comparison: `.claude/plans/2026-08-29-decision-revalidation-and-value-evidence-design.md`.
+
+---

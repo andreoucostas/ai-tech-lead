@@ -23,6 +23,8 @@ details never belong here. Each entry is copied from the sanitised summary in
 6. Before three complete independent replays exist, describe each result individually. At three or
    more, aggregate descriptively; do not imply statistical significance.
 7. A protocol failure is a result: record it and fix the packet before inviting another participant.
+8. Preserve each protocol series. FS1 ends with FS-20260826-RERUN-02; FS2 begins prospectively on
+   2026-08-29. Never rescore or aggregate outcomes across those measurement contracts.
 
 ## Runs
 

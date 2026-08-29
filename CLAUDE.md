@@ -130,8 +130,9 @@ These replace the shipped consumer workflows for meta-work.
 The shipping quality of this framework has depended on a second, independent reviewer, and the
 record proves it: B-37's post-ship review of a lower-tier implementation found **six real defects**
 including a false "gates green"; every externally-implemented item (B-32, B-21, B-35, B-36, B-27)
-had 2–5 real findings caught **before** ship. That discipline was tribal — these six rules make it
-binding. Rules 2–4 are enforced by `release.ps1`'s review ledger, not by this prose.
+had 2–5 real findings caught **before** ship. That discipline was tribal — these seven rules make it
+binding. For rules 2–4, `release.ps1` makes supplied evidence or its absence visible; it cannot judge
+review independence, quality, or truth, which remain evidence-review obligations.
 
 1. **Locked design + adversarial critique before implementation, for every M+ item.**
    **Re-validate the premise of any entry filed more than ~5 minor versions ago, before implementing
@@ -148,9 +149,21 @@ binding. Rules 2–4 are enforced by `release.ps1`'s review ledger, not by this 
    killed an already-approved plan, and both times that was the right outcome. But **a reviewer's
    corrections are input, not verdict**: a second pass once caught a factual error in the first
    pass's own remediation. Re-verify what a reviewer tells you before acting on it.
-2. **Implementer and reviewer are different sessions**, different model tier where available. When
-   the reviewer's tier is at or below the implementer's, the review did not happen in the sense
-   that matters — **auto-file a post-ship review entry** rather than pretending it did.
+   **Historic decisions are evidence-bearing defaults, not doctrine.** A material change in models,
+   hosts, tools, cost, or observed outcomes licenses a premise re-audit. Preserve the old record;
+   amend or supersede it explicitly, and start a new result series when the measurement contract
+   changes. Re-open only when the changed condition could alter the outcome and the expected decision
+   value exceeds the audit cost. “Models are better now” is a reason to re-test, not by itself
+   evidence to reverse.
+2. **Independent review is evidence-bound, not rank-bound.** The reviewer uses a separate session
+   and did not participate in implementation. The reviewer starts from the frozen contract and
+   immutable range before reading the implementer's narrative, forms an independent adversarial
+   threat model, and records its model/agent, environment, at least one release-specific hostile case
+   or applied mutation observed red, a clean rerun, and coverage gaps. Prefer another model family,
+   host, or toolchain where available, but model rank alone neither qualifies nor disqualifies a review.
+   Changes capable of data loss, security bypass, or false-green release/enforcement behavior require
+   a second orthogonal reviewer or execution vantage; otherwise record incomplete coverage and file
+   review debt rather than treating one correlated pass as sufficient.
 3. **Nothing enters the record as observed unless you observed it.** This covers implementer
    self-reports, a spec's claims about file layout, the assumption a plan rests on, and any number
    you quote. Verify it **in the environment that matters** — a sandbox whose `PATH` differed from
@@ -200,8 +213,8 @@ binding. Rules 2–4 are enforced by `release.ps1`'s review ledger, not by this 
    able to say which of the two things happened. Note the symmetry, learned the hard way in v0.64.0:
    `grep` exits 2 for a *missing file* as well as for a failure to run, so a content fact reported as
    a host problem is the same defect inverted. B-164 tracks whether this can be enforced mechanically
-   or stays guidance; per WSD-028 a rule is real only where tooling can refuse, so that question is
-   open rather than settled.
+   or stays guidance; per WSD-028/WSD-057, mechanise only what tooling can honestly distinguish and
+   keep unjudgeable quality as an explicit evidence obligation.
 
 Evidence trail for all seven: `meta/LEARNINGS.md`. Working hazards that are *not* principles (e.g.
 never run the gate suites concurrently with an implementer round) live in `DEVELOPING.md`.

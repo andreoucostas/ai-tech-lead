@@ -1598,3 +1598,33 @@ tree assertions form one contract. Before measuring model behavior, prove that t
 is valid in the destination without a forbidden companion change. Correct shared confounds in both
 worlds and invalidate affected samples—never relabel a mechanically accurate failure as the desired
 semantic result.
+
+## 2026-08-29 — A useful proxy must remain defeasible
+
+The maintenance rules equated reviewer rank with review validity even though the ledger's own
+peer-tier reviews found blocking defects. Rank had been a proxy for the things that actually varied:
+fresh context, independent hypotheses, another host or toolchain, and hostile evidence the
+implementer had not chosen. Once frontier models reach the top available tier, the proxy becomes
+both impossible to satisfy and less informative than the work the reviewer demonstrably performs.
+
+Keep the valuable invariant—no implementer self-certification—but specify observable independence.
+Record the immutable range, blind-first threat model, applied red case, clean rerun, environment,
+and gaps. Add an orthogonal vantage where the harm warrants it. More generally, a dated decision is
+not a command to ignore changed dependencies: preserve why it was made, then re-audit and supersede
+it explicitly when evidence changes. “The model is better” opens that audit; a task-shaped result,
+not optimism, decides it.
+
+## 2026-08-29 — A valid null can expose a low-information task class
+
+RERUN-02 was methodologically valid and its no-difference result remains exactly that. Its one-line
+fix also revealed that the chosen task left three rubric dimensions near their ceiling for any
+competent agent. Repeating the same shape would add samples without necessarily adding information.
+That is a reason to start a prospective series with a stronger construct, not permission to alter or
+bury the null.
+
+For convention-sensitive value, select tasks objectively before arm order, require several
+independent architectural decisions, and prove the grader recognizes both valid and violating
+worlds. Keep those decisions as a vector: compressing three different failures into one small score
+hides severity and identity. New model capability should push measurements toward tasks where
+judgment can vary, while chronological selection, frozen oracles, and first-result retention prevent
+that move becoming outcome shopping.

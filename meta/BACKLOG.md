@@ -64,8 +64,8 @@ B-30 shipped in v0.25.4). **B-38, B-39 (both phases), B-36, and B-34 all shipped
 >
 > **Recommended execution order** (deliberate, not file order):
 > 1. ~~**B-45**~~ and ~~**B-47**~~ — both **done 2026-08-01**, see `meta/BACKLOG-DONE.md`. B-45 shipped in
->    a stronger form than written: enforced by `release.ps1`'s review ledger rather than by prose,
->    after an adversarial pass argued a prose-only version would not bind. B-47 landed MIT root-only;
+>    a stronger form than written: evidence or its explicit absence is exposed by `release.ps1`'s
+>    review ledger rather than left only in prose; quality remains human-judged. B-47 landed MIT root-only;
 >    the dist-travel half is deferred and filed separately.
 > 2. **B-42** (field pilot) — start it early because its value is elapsed time; it runs in the
 >    background while other items proceed, and its evidence should re-prioritize everything else.
@@ -74,6 +74,11 @@ B-30 shipped in v0.25.4). **B-38, B-39 (both phases), B-36, and B-34 all shipped
 >    it becomes the recurring vehicle that *executes* B-43 (and reviews B-44) every quarter.
 > 5. Then interleave: **B-15** (CI recipe) from the deferred list — it is
 >    the consumer-lifecycle half of the same story — plus **B-44/B-46/B-48** as capacity allows.
+>
+> **REVIEW QUALIFICATION REVALIDATED 2026-08-29.** WSD-057 prospectively supersedes any still-visible
+> rank-only or “Opus only” qualification in open-entry history. Completed Opus findings and their
+> dispositions remain evidence. Future plan critique and implementation review follow the current
+> evidence-bound rule; high-risk surfaces retain the orthogonal-vantage requirement.
 
 ### B-42 · Field pilot — install into ≥1 real production repo and let evidence drive the backlog
 **Filed against:** v0.31.0 (2026-07-17)
@@ -94,8 +99,8 @@ B-30 shipped in v0.25.4). **B-38, B-39 (both phases), B-36, and B-34 all shipped
 > positive or negative adoption claim.
 >
 > **Consequences for the *Do* below:** step 2 ("install into at least one real work repo") is
-> **already satisfied** — do not re-do it. WSD-053 now fixes the success metrics and separates what
-> a maintainer can measure from the independent-user claims they cannot. The ready-to-run packet is
+> **already satisfied** — do not re-do it. WSD-053/WSD-058 fix the success metrics and separate what
+> a maintainer can measure from the independent-user claims they cannot. The ready-to-run FS2 packet is
 > `meta/field-study-kit.md`, with a sanitised response form and balanced result ledger. Remaining:
 > ask a non-author to run it, then re-order the backlog from the returned evidence. The required
 > corrected maintainer replay completed validly on 2026-08-26; see the execution note below.
@@ -150,6 +155,23 @@ measurement path; the pilot execution itself remains open.
 > exit-zero test commands that did not execute the expected probe, and forbids force-adding ignored
 > post-build artifacts. The next action is one independent Module A run, not another maintainer
 > replay.
+>
+> **PROTOCOL PREMISE REVALIDATED 2026-08-29 — THE NEXT RUN STARTS FS2.** The maintainer clarified
+> that historic decisions should be challenged when current models or evidence change and doing so
+> improves value. RERUN-02 stays valid and unchanged, but its one-line bounded fix exposed a low-
+> discrimination task shape: fabrication, leanness, and most convention behavior had little room to
+> vary, while three convention checks were compressed into two points. WSD-058 prospectively replaces
+> the next paired task with the first objectively eligible convention-rich historical change while
+> traversing a frozen window newest-to-oldest and recording exclusions: 3–8 files, at least two
+> architectural areas, three independent
+> pre-change-grounded decisions, executable acceptance, enforced setup/task isolation, an allowlisted
+> post-setup diff, and one targeted rejecting oracle world per decision. Every pre-change-supported
+> alternative must pass the complete primary oracle stack (executable acceptance plus applicable
+> D1–D3), or an immutable contract must prove none exist. Executable acceptance separately needs observed
+> valid-pass and invalid/pre-change-fail worlds. It remains one two-arm run with equal per-arm caps,
+> preserves the privacy/onboarding/diary controls, and never aggregates FS1 with FS2. The next action
+> is one independent FS2 Module A pair; equal valid outcomes remain an honest null, never a reason to
+> tune and retry.
 
 ### B-43 · Host-compatibility recertification cadence (the one-time verifications are rotting)
 **Filed against:** v0.31.0 (2026-07-17)
@@ -332,6 +354,12 @@ failures: one hard checklist failure = a defect entry, regardless of the rubric 
 > The rerun also proved that exit zero is not enough for a test instrument: Windows Application
 > Control blocked one rebuilt assembly while `dotnet test` said no test matched and exited zero.
 > The drill kit and locked plan now require expected-test execution evidence.
+>
+> **WSD-058 SERIES BOUNDARY (2026-08-29).** B-49 retains its frozen longitudinal drill rubric.
+> FS2 preserves R1–R5 only as descriptive continuity data and uses a separate convention-rich
+> primary outcome contract; its results must not be aggregated with FS1 or the B-49 quarterly
+> series. The older requirement that both populations share one composite rubric is therefore
+> superseded for B-42, not silently imposed on the redesigned field pilot.
 
 **B-50 is DONE (2026-08-20) — an isolated three-arm canary confirmed the channel on CLI 1.0.80 and both stale passages are reconciled; see `meta/BACKLOG-DONE.md`.**
 
@@ -2893,9 +2921,11 @@ standalone catalog suite.
 red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
 it did not happen. Summary of what shipped: protect consumer ADR history during installer updates
 
-**Do:** review the v0.78.1 diff as an independent session -- re-run at least one gate and one
-red-test yourself, do not read the release output as evidence -- and file whatever it finds. Then
-close this entry, recording what was re-run.
+**Do — WSD-057 supersedes the generated clause:** start blind from the frozen contract and immutable
+v0.78.1 range in a separate session whose reviewer did not implement it. Record reviewer model/agent,
+an independent hostile case or applied mutation observed red, the clean rerun, environment, and
+gaps. Because this is consumer-data preservation, add an orthogonal reviewer or execution vantage.
+File findings and close only with that evidence; model rank alone neither clears nor blocks it.
 
 ---
 ### B-189 · Post-ship review owed for v0.78.2
@@ -2906,9 +2936,11 @@ close this entry, recording what was re-run.
 red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
 it did not happen. Summary of what shipped: expose completion checks on Windows PowerShell 5.1
 
-**Do:** review the v0.78.2 diff as an independent session -- re-run at least one gate and one
-red-test yourself, do not read the release output as evidence -- and file whatever it finds. Then
-close this entry, recording what was re-run.
+**Do — WSD-057 supersedes the generated clause:** start blind from the frozen contract and immutable
+v0.78.2 range in a separate session whose reviewer did not implement it. One reviewer may close this
+ordinary host-exposure change by recording reviewer model/agent, an independent hostile case or
+applied mutation observed red, clean PowerShell 5.1 and 7 evidence, environment, and gaps. File
+findings and close only with that evidence; model rank alone neither clears nor blocks it.
 
 ---
 ### B-190 · Post-ship review owed for v0.78.3
@@ -2919,9 +2951,13 @@ close this entry, recording what was re-run.
 red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
 it did not happen. Summary of what shipped: enforce exact hazard evidence in completion checks
 
-**Do:** review the v0.78.3 diff as an independent session -- re-run at least one gate and one
-red-test yourself, do not read the release output as evidence -- and file whatever it finds. Then
-close this entry, recording what was re-run.
+**Do — WSD-057 supersedes the generated clause:** start blind from the frozen contract and immutable
+v0.78.3 range in a separate session whose reviewer did not implement it. Record reviewer model/agent,
+an independent hostile case or applied mutation observed red, the clean rerun, environment, and
+gaps. Because this is a false-green completion gate, add an orthogonal reviewer or execution vantage.
+Claude's earlier clean-gate audit is useful attributed evidence but did not apply a release-specific
+hostile mutation, so it does not close the entry by itself. Model rank alone neither clears nor
+blocks it.
 
 ---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
