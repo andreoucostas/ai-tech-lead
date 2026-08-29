@@ -874,6 +874,7 @@ function Initialize-FactBindingScenario([string]$Path, [switch]$NeutralKeySemant
 - SQL source is organised by `Tables/`, `StoredProcedures/`, and `Views/`.
 - Derive relationship and version semantics from the repository's DDL, loads, and reporting SQL.
 - Use `LoadRunId` and explicit insert column lists; deploy through the SQL project.
+- Ad-hoc analytical queries live under `analysis/` and are excluded from the DACPAC build.
 - `docs/warehouse-map.md` is the current warehouse inventory, verified against this SQL tree.
 '@ } else { @'
 <!-- EVAL_BOOTSTRAPPED: repository conventions observed for this fixture. -->
@@ -885,6 +886,17 @@ function Initialize-FactBindingScenario([string]$Path, [switch]$NeutralKeySemant
 '@ }
     $claudeText = [regex]::Replace($claudeText, '(?s)<!-- EVAL_BOOTSTRAPPED:.*?_Not yet populated\..*?\r?\n(?=\r?\n---)', $ordinaryConventions)
     $claudeText | Set-Content $claudePath -Encoding utf8NoBOM
+    if ($NeutralKeySemantics) {
+        @'
+<Project Sdk="Microsoft.Build.Sql/0.2.0">
+  <ItemGroup>
+    <!-- analysis/ contains ad-hoc queries, not deployable schema objects. -->
+    <Build Remove="analysis/**/*.sql" />
+    <None Include="analysis/**/*.sql" />
+  </ItemGroup>
+</Project>
+'@ | Set-Content -LiteralPath (Join-Path $Path 'warehouse.sqlproj') -Encoding utf8NoBOM
+    }
     git -C $Path add -A
     git -C $Path commit --quiet -m 'fact-binding scenario setup'
     return [int](git -C $Path rev-list --count HEAD)
@@ -3191,6 +3203,11 @@ FROM stg.StgSupplierInvoice s;
             if ($neutralMap -notmatch 'records locations, not modelling conclusions' -or $neutralMap -match '(?i)Pinned at load|effective-date predicate') {
                 throw 'B-99 map is not answer-neutral'
             }
+            $upstreamProject = Get-Content -Raw -LiteralPath (Join-Path $base 'warehouse.sqlproj')
+            if ($upstreamProject -notmatch '<Build\s+Remove="analysis/\*\*/\*\.sql"\s*/>' -or
+                $upstreamProject -notmatch '<None\s+Include="analysis/\*\*/\*\.sql"\s*/>') {
+                throw 'B-99 fixture asks for an ad-hoc SQL artifact without excluding analysis/**/*.sql from the DACPAC build'
+            }
         }
         $upstreamFilesPinned = @(git -C $upstreamPinnedBase ls-files)
         $upstreamFilesDeferred = @(git -C $upstreamDeferredBase ls-files)
@@ -3336,10 +3353,11 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         $failedResult = Test-ScenarioEvidence 'warehouse-upstream-pinned' $failedCase.Path $failedEvidence $failedCase.Before
         if (-not $failedResult.Pass -or $failedResult.Detail -notmatch 'factRead=False') { throw "warehouseUpstreamDecision credited failed evidence: $($failedResult.Detail)" }
 
-        foreach ($integrity in @('extra','staged','committed','deleted')) {
+        foreach ($integrity in @('extra','tracked','staged','committed','deleted')) {
             $case = & $newUpstreamCase "upstream-integrity-$integrity" pinned $pinnedSql
             switch ($integrity) {
                 'extra' { 'extra' | Set-Content -LiteralPath (Join-Path $case.Path 'notes.txt') -Encoding utf8NoBOM }
+                'tracked' { '<!-- unexpected agent edit -->' | Add-Content -LiteralPath (Join-Path $case.Path 'warehouse.sqlproj') -Encoding utf8NoBOM }
                 'staged' { git -C $case.Path add analysis/shipment-carrier-history.sql }
                 'committed' { git -C $case.Path add analysis/shipment-carrier-history.sql; git -C $case.Path commit --quiet -m 'unexpected agent commit' }
                 'deleted' { Remove-Item -LiteralPath (Join-Path $case.Path 'Views/rpt.vwShipment.sql') }

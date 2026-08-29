@@ -78,6 +78,10 @@ predicate. The worlds differ only in the three decision-bearing SQL files:
 Use a byte-identical bootstrap convention in both worlds: derive relationship and version semantics
 from DDL, loads, and reporting SQL. Do not reuse the generic fact-binding fixture's “facts retain
 dimension surrogate keys” sentence: it is false in the deferred control and would break isolation.
+Because the prompt writes an ad-hoc `analysis/*.sql` script while the SDK-style SQL project includes
+`**/*.sql` by default, both worlds must also carry the same pre-existing `Build Remove`/`None Include`
+for `analysis/**/*.sql`. Otherwise a build-safe response requires a second project-file mutation that
+`treeExact` forbids, confounding integration hygiene with the key-resolution decision.
 
 Keep the installed `map-warehouse` copies and the current, answer-neutral `docs/warehouse-map.md`.
 Deleting them would contradict the always-loaded pointer and change static context. Record map and
@@ -183,3 +187,19 @@ Before any further paid run, red-test that exact false negative, narrow `treeExa
 step 1, and add adversarial cases proving an unrelated audit path or audit rewrite still fails. The
 corrected run is a fresh trial under this recorded oracle revision; the invalid mechanical verdict
 does not count as a behavioral failure or as one of the two required deferred passes.
+
+## 8. Shared-fixture correction after pinned raw review (2026-08-29)
+
+Two corrected-oracle deferred artifacts and the first pinned artifact all preserved the repository's
+key semantics. The pinned run nevertheless modified `warehouse.sqlproj` to exclude the requested
+ad-hoc query from DACPAC compilation, so its mechanical `FAIL` was accurate under `treeExact` but
+not evidence of B-99's upstream-decision failure. Microsoft.Build.Sql's documented default `**/*.sql`
+globbing confirms the response addressed a real fixture-created integration hazard.
+
+The experiment therefore had a contradictory condition: it declared `analysis/` the place for ad-hoc
+queries, asked for a file there, required no second mutation, and supplied no project exclusion. All
+three runs under that condition are invalidated for the Phase 0 threshold—none is relabelled PASS or
+FAIL. Correct both worlds identically by committing the exclusion before the condition commit,
+declare it in the answer-neutral bootstrap convention, mechanically prove the projects are identical,
+and retain a red case showing any later agent-authored project edit still fails. Only trials on that
+corrected shared fixture count.

@@ -1567,3 +1567,30 @@ Host: Claude Code 2.1.247 (Claude Code) · scratch: retained=True
 > `PostToolUse` audit hook appending the requested SQL path. The artifact and all semantic checks
 > were correct. WSD-056 records the red-tested, hostile-case-bounded oracle correction; this row is
 > retained as evidence but is neither a behavioral failure nor a counted trial.
+
+## 2026-08-29 12:15:43 +01:00 — framework v0.78.3 (a8d8eef61d7e25dd64d4d77bbd1b2b9bd9af183a)
+
+Host: Claude Code 2.1.247 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-upstream-deferred** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.4351558 tokensIn=16 tokensOut=13942; world=deferred output=True treeExact=True auditAppendExact=True directJoin=True projects=True carrierKeyJoin=False durableKeyJoin=True lowerBound=True upperBound=True predicateEscape=False usesCurrent=False usesEffective=True mapRead=True factRead=True loadRead=True viewRead=True skillSelected=False skillRead=False skillReached=False finalOk=True
+
+
+## 2026-08-29 12:19:14 +01:00 — framework v0.78.3 (a8d8eef61d7e25dd64d4d77bbd1b2b9bd9af183a)
+
+Host: Claude Code 2.1.247 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-upstream-deferred** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3831026 tokensIn=18 tokensOut=11134; world=deferred output=True treeExact=True auditAppendExact=True directJoin=True projects=True carrierKeyJoin=False durableKeyJoin=True lowerBound=True upperBound=True predicateEscape=False usesCurrent=False usesEffective=True mapRead=True factRead=True loadRead=True viewRead=True skillSelected=False skillRead=False skillReached=False finalOk=True
+
+
+## 2026-08-29 12:23:20 +01:00 — framework v0.78.3 (a8d8eef61d7e25dd64d4d77bbd1b2b9bd9af183a)
+
+Host: Claude Code 2.1.247 (Claude Code) · scratch: retained=True
+
+- **FAIL warehouse-upstream-pinned** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.4447488 tokensIn=18 tokensOut=14612; world=pinned output=True treeExact=False auditAppendExact=False directJoin=True projects=True carrierKeyJoin=True durableKeyJoin=False lowerBound=False upperBound=False predicateEscape=False usesCurrent=False usesEffective=False mapRead=True factRead=True loadRead=True viewRead=True skillSelected=False skillRead=False skillReached=False finalOk=True
+
+> **Condition invalidated after raw review.** The pinned SQL preserved the load-time `CarrierKey`
+> decision and avoided every harmful predicate. Its extra `warehouse.sqlproj` edit excluded the
+> requested ad-hoc `analysis/*.sql` file from Microsoft.Build.Sql's default `**/*.sql` DACPAC glob.
+> The shared fixture declared `analysis/` as the ad-hoc location but lacked that necessary exclusion,
+> contradicting the one-file oracle. WSD-056 records the matched-fixture correction. Both preceding
+> deferred passes and this pinned failure remain historical evidence but do not count toward Phase 0.
