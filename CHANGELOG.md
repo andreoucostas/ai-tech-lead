@@ -11,6 +11,28 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.78.4 — Unreleased
+
+**The hazard completion oracle now refuses incomplete discovery instead of reporting framework
+completion.** B-193 explicitly supersedes the B-77-era skip behavior after v0.78.0 made this
+formerly optional drift check part of a mandatory completion gate. A missing context file, a
+pending marker, a missing or duplicate exact hazard heading, the exact bootstrap placeholder, and
+an empty or arbitrary-prose section now fail. A completed section contains real rows or the exact
+no-notable sentinel, never both.
+
+The path grammar now preserves every backticked token without reusing untrusted text as a Bash
+pattern, treats balanced bracket classes as ancillary wildcard syntax, consumes a final line with
+no newline in both Bash loops, and checks raw plus once-trimmed forms before sentence punctuation
+can erase a drive prefix or exact `.`/`..` segment. Legitimate dot-named paths such as
+`.github/...` and `.cache/...` remain valid.
+
+The red-first 67-case matrix passed 40 and failed 27 against the unchanged v0.78.3 checkers. The
+implementation passes all 67 cases while proving 63 leaf and 12 wrapper subjects per twin (150
+executions total) under PowerShell 7/Git Bash and under native Windows PowerShell 5.1 with code page
+437. Separate PowerShell and Bash hostile mutations each made 12 discriminating cases fail; each
+byte-identical restore returned to 67/67. All three composed distributions pass the same suite and
+their validators.
+
 ## 0.78.3 — 2026-08-27
 
 **The hazard oracle now enforces the completion contract that v0.78.0 put in front of it.** B-186

@@ -1628,3 +1628,28 @@ worlds. Keep those decisions as a vector: compressing three different failures i
 hides severity and identity. New model capability should push measurements toward tasks where
 judgment can vary, while chronological selection, frozen oracles, and first-result retention prevent
 that move becoming outcome shopping.
+
+## 2026-08-29 — A caller can turn a valid skip into a false-green completion
+
+B-77's hazard checker was an optional drift detector, so missing, pending, and placeholder input
+could reasonably mean “nothing to validate yet.” v0.78.0 later put that checker beneath a mandatory
+completion wrapper without re-auditing its null states. The same exits then meant “the framework is
+complete.” The old decision was not foolish; its caller and consequence changed. Whenever an
+instrument moves from advisory observation to completion authority, re-derive every absent,
+pending, empty, placeholder, duplicate, and mixed outcome from the new caller contract instead of
+inheriting historical green states.
+
+The remaining parser bypasses shared the same finite-list mistake. Tests named familiar examples
+but did not partition the grammar: quoted versus unquoted tokens, wildcard families, terminated
+versus unterminated records, raw versus display-normalized paths, or real-row versus sentinel
+cardinality. Bash then reused an untrusted regex capture while rewriting its own search string, and
+both twins trimmed punctuation before asking whether the original token carried safety-significant
+evidence. Each local operation looked harmless because the suite asserted examples rather than
+transform boundaries.
+
+For completion oracles, capture every subject before asserting, gate the expected subject count,
+exercise leaf and wrapper states, and mutate each independent twin after green. Preserve raw and
+display forms until safety classification is complete, make sentinels exact whole outcomes, and
+test both false acceptance and false rejection. A better model is useful here because it can
+re-derive the state space and challenge old assumptions; it is not itself evidence that the new
+grammar is sound.

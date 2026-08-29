@@ -4,6 +4,19 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.78.4 — Unreleased
+
+- The hazard completion check now fails when `FRAMEWORK-CONTEXT.md` is missing, still pending,
+  lacks exactly one `## Known Hazard Areas` section, retains the exact bootstrap placeholder, or
+  contains neither real rows nor the exact no-notable sentence. It also rejects mixing that
+  sentence with real rows. These states mean discovery is incomplete rather than successfully
+  complete. If an update exposes one, finish `/bootstrap` or `/rebootstrap` and rerun the documented
+  completion command.
+- Path evidence now handles backticked text safely, treats balanced bracket patterns as globs,
+  reads a final row even without a newline, and rejects drive-prefixed or exact `.`/`..` segments
+  before sentence punctuation is removed. Valid dot-named paths such as `.github/...` and
+  `.cache/...` remain accepted.
+
 ## 0.78.3 — 2026-08-27
 
 - `scripts/hazard-check.ps1` and `.sh` now require every real `Known Hazard Areas` row to name an
