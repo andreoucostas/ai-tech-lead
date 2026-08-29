@@ -1653,3 +1653,18 @@ display forms until safety classification is complete, make sentinels exact whol
 test both false acceptance and false rejection. A better model is useful here because it can
 re-derive the state space and challenge old assumptions; it is not itself evidence that the new
 grammar is sound.
+
+Green is not closure when the grammar transform itself has not been partitioned. The first B-193
+candidate passed its expanded suite but fresh reviewers still found bare-dot, punctuation-order,
+and exterior-suffix bypasses. Repeatedly peeling only matching lexical endpoints while preserving
+one detached safety suffix made the transformation finite and reviewable. The review then found an
+oracle defect too: ten positive spellings in one row proved only that *one* spelling resolved. Put
+each independently claimed positive in its own required-evidence row, even when all rows share one
+fixture and execution, then plant a mutation that skips exactly one. Coverage cardinality counts
+executions; it does not by itself prove that each token inside an execution is discriminating.
+
+The same-class sweep found two plain Bash `read` loops in session-start advisories that can drop a
+final non-newline security or hazard row. Their consequence is lost or downgraded visibility, not a
+completion false green, so B-195 owns that smaller P2 fix instead of silently widening B-193. Sweep
+mechanisms across the repository, but size and schedule each disposition from its actual caller and
+harm.

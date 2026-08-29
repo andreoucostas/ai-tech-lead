@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-29  
 **Filed against:** v0.78.3  
-**Status:** LOCKED 2026-08-29 — approved by two independent adversarial reviewers plus a portability re-review
+**Status:** LOCKED 2026-08-29 — approved by two independent adversarial reviewers plus a portability re-review; implementation-review amendments approved, immutable-candidate review pending
 
 ## Premise and value decision
 
@@ -52,9 +52,11 @@ prospectively rather than preserved merely because v0.58.0 once chose them.
    satisfy the full contract.
 5. Backticked tokens are data, never shell patterns. Both twins extract every closed backticked token
    and inspect the remaining prose without using captured content as replacement syntax.
-6. Derive two forms after removing enclosing parentheses/quotes and terminal comma/semicolon: a
-   safety-preserving token that retains terminal `.`/`:`, and a display/existence token that removes
-   **at most one** sentence-final `.` or `:`. Filter URLs and ancillary wildcards using the display form. A
+6. Derive two forms with a terminating, lexical endpoint transform. Repeatedly remove terminal
+   comma/semicolon, detach and preserve **at most one** terminal `.`/`:`, then remove one exactly
+   matching endpoint pair (`()`, `""`, or `''`); repeat until unchanged. Reattach the detached suffix
+   only to the safety form and omit it from the display/existence form. Unmatched wrappers remain
+   literal data; do not infer Markdown balance. Filter URLs and ancillary wildcards using the display form. A
    `*`, `?`, or `[` followed later by `]` makes a token ancillary wildcard syntax; it never satisfies
    literal-path evidence, even when the filesystem contains those characters literally. An
    unmatched bracket remains literal; wildcard escaping is unsupported and out of scope.
@@ -135,14 +137,19 @@ grouped lifecycle-wrapper case—and observe current v0.78.3 fail the discrimina
 18. a consumer-shaped backtick-divergence world makes both docs-sync twins fail and omit the exact
     final success line;
 19. the shared bracket-glob bypass does the same;
-20. safety-preserving `src/.`, `src/..`, `src/..:`, and `src/...` candidates report unsafe exact-dot
-    segments in the raw or once-trimmed form even when `src/` exists;
+20. twelve safety-preserving exact-dot candidates cover bare, simple, single-/double-quoted,
+    parenthesized, nested, sentence-punctuated, and repeated comma/semicolon frames beside a valid
+    literal. Create every known wrong-normalized path, then capture both leaves and both wrappers
+    before asserting exactly twelve unsafe diagnostics per output, no missing-path diagnostic,
+    nonzero exits, and no leaf or wrapper completion line;
 21. a bare `C:` beside a valid literal still reports an unsafe drive prefix;
 22. a header/separator-only section fails for having no completed outcome;
 23. an arbitrary-non-table-prose-only section fails for the same reason;
 24. an exact no-notable line mixed with a valid real row fails as contradictory completion modes;
-25. a valid sentence-punctuated literal beneath `.github/` or `src/.cache/` passes, proving exact-dot
-    rejection was not broadened to dot-named segments and display punctuation still resolves;
+25. ten consumer-shaped rows independently prove each matching-frame transform and each
+    Windows-valid unmatched-wrapper spelling beneath `src/.cache/`; stripped unmatched-wrapper
+    controls are absent, all four leaf/wrapper subjects are captured before assertions, and every
+    row must independently supply exact literal evidence;
 26. existing literal paths followed by sentence-final `.` and `:` still pass after display-form
     trimming, proving the raw-safety fix did not disable ordinary prose punctuation;
 27. a case-variant no-notable line fails rather than exploiting PowerShell's default case-insensitive
@@ -154,8 +161,8 @@ grouped lifecycle-wrapper case—and observe current v0.78.3 fail the discrimina
     no-notable success state against both wrappers before making any assertion. Each failure omits
     the exact final success line.
 
-The final suite has exactly 67 `It` results. Per twin it invokes 63 leaf states and 12 wrapper states
-(75 subjects, 150 across both twins). Every new test identifies its intended diagnostic or output so
+The final suite has exactly 67 `It` results. Per twin it invokes 63 leaf states and 14 wrapper states
+(77 subjects, 154 across both twins). Every new test identifies its intended diagnostic or output so
 a generic earlier error cannot counterfeit coverage. Counts describe the frozen coverage; they did
 not constrain which cases the reviews were allowed to add.
 
@@ -171,6 +178,15 @@ ambiguous. The outer check remains an independent integration control, not the s
 Both reviewers and the nested portability reviewer re-read the amended contract and returned
 APPROVE with no residual blocker; this is the locked implementation boundary.
 
+Post-implementation review did not rubber-stamp that boundary. Two fresh reviewers independently
+blocked the first candidate: bare `.` was still skipped after normalization, and wrapper removal
+before punctuation removal made `(src/..);` false-green while rejecting `(src/.cache/config.json);`.
+The first amendment fixed ordering but a second review found exterior sentence punctuation such as
+`(src/..).` still masked the traversal. The detached-suffix transform above replaces that amendment.
+A later oracle review then blocked a grouped positive row because one resolving spelling could hide
+nine ignored spellings. One-row-per-spelling coverage and a planted single-token skip mutation closed
+that gap; independent code and oracle reviewers approved the amended source blobs.
+
 ## Verification and adversarial closure
 
 1. Capture the pre-fix focused-suite RED count against the new fixtures and prove all 75 subjects per
@@ -179,7 +195,7 @@ APPROVE with no residual blocker; this is the locked implementation boundary.
    adversarial review before code proceeds.
 3. Run the authored focused suite to exactly 67/0 under PowerShell 7 and native Windows PowerShell
    5.1 with an isolated WindowsPowerShell module path and hostile code page 437; require Git Bash
-   execution and prove the 75-per-twin subject count from instrumented output or an equivalent
+   execution and prove the 77-per-twin subject count from instrumented output or an equivalent
    inspectable oracle.
 4. Compose dotnet, Angular, and monorepo; run the focused suite against all three dists, `bash -n`,
    all validators, and the relevant doc/backlog/meta gates. Preserve the PowerShell BOM.

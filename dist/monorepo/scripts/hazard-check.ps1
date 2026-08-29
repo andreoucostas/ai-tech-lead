@@ -7,6 +7,16 @@ if (-not $Root) { $Root = Split-Path $PSScriptRoot -Parent }
 $context = Join-Path $Root 'FRAMEWORK-CONTEXT.md'; $fails=0
 function Fail($m){$script:fails++;Write-Output "FAIL: $m"}
 function Test-IsoDate($value){if($value-cnotmatch'^[0-9]{4}-[0-9]{2}-[0-9]{2}$'){return $false};try{$null=[datetime]::ParseExact($value,'yyyy-MM-dd',[Globalization.CultureInfo]::InvariantCulture);return $true}catch{return $false}}
+function Get-CandidateForms($value){
+ $core=[string]$value;$suffix=''
+ do{
+  $changed=$false
+  while($core.Length-gt0-and($core.EndsWith(',')-or$core.EndsWith(';'))){$core=$core.Substring(0,$core.Length-1);$changed=$true}
+  if(-not$suffix-and$core.Length-gt0){$last=$core[$core.Length-1];if($last-ceq'.'-or$last-ceq':'){$suffix=[string]$last;$core=$core.Substring(0,$core.Length-1);$changed=$true}}
+  if($core.Length-ge2){$first=$core[0];$last=$core[$core.Length-1];if(($first-ceq'('-and$last-ceq')')-or($first-ceq'"'-and$last-ceq'"')-or($first-ceq"'"-and$last-ceq"'")){$core=$core.Substring(1,$core.Length-2);$changed=$true}}
+ }while($changed)
+ [pscustomobject]@{Safety=$core+$suffix;Display=$core}
+}
 if(-not(Test-Path -LiteralPath $context)){Fail 'FRAMEWORK-CONTEXT.md is missing; Known Hazard Areas cannot be validated.';Write-Output "$fails hazard-check failure(s).";exit 1}
 $raw=[IO.File]::ReadAllText($context).TrimStart([char]0xFEFF)-replace"`r",''
 if($raw.Contains('KNOWN_HAZARD_AREAS_PENDING')){Fail 'Known Hazard Areas are still pending; complete /bootstrap and remove KNOWN_HAZARD_AREAS_PENDING.';Write-Output "$fails hazard-check failure(s).";exit 1}
@@ -44,15 +54,15 @@ foreach($line in $lines){
  $without=[regex]::Replace($without,'`[^`]*`',' ');$candidates+=@($without-split'[\s,]+'|Where-Object{$_})
  $literalCandidates=0;$invalidPath=$false
  foreach($rawCandidate in $candidates){
-  $safetyCandidate=$rawCandidate.Trim('(',')','"',"'").TrimEnd(',',';');$candidate=$safetyCandidate
-  if($candidate.Length-gt0-and($candidate.EndsWith('.')-or$candidate.EndsWith(':'))){$candidate=$candidate.Substring(0,$candidate.Length-1)}
+  $forms=Get-CandidateForms $rawCandidate;$safetyCandidate=$forms.Safety;$candidate=$forms.Display
   if($candidate-match'^[A-Za-z][A-Za-z0-9+.-]*://'-or$candidate.StartsWith('www.')){continue}
   $openBracket=$candidate.IndexOf('[');$balancedBracket=$openBracket-ge0-and$candidate.IndexOf(']',$openBracket+1)-ge0
-  if(-not$candidate-or$candidate-match'[?*]'-or$balancedBracket){continue}
+  if($candidate-match'[?*]'-or$balancedBracket){continue}
   $safetyCandidate=$safetyCandidate-replace'\\','/';$candidate=$candidate-replace'\\','/'
   $unsafe=$false
   foreach($form in @($safetyCandidate,$candidate)){if($form-match'^/'-or$form-match'^[A-Za-z]:'-or$form.Contains('//')-or("/$form/"-match'/\.\.?/')){$unsafe=$true;break}}
   if($unsafe){Fail "hazard row names a path that is not a safe repository-root-relative path: $safetyCandidate (row: $area)";$invalidPath=$true;continue}
+  if(-not$candidate){continue}
   if(-not($candidate-match'/'-or$candidate-match'\.[A-Za-z0-9]{1,10}$')){continue}
   $literalCandidates++
   if(-not(Test-Path -LiteralPath (Join-Path $Root $candidate))){Fail "hazard row names a path that does not exist: $candidate (row: $area)"}

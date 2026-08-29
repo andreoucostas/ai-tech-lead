@@ -12,6 +12,17 @@ fail(){ echo "FAIL: $*"; fails=$((fails+1)); }
 # check that is deterministic on every platform. Input is already ^\d{4}-\d{2}-\d{2}$; 10# forces
 # base-10 so 08/09 don't parse as invalid octal.
 valid_cal(){ local y=$((10#${1:0:4})) m=$((10#${1:5:2})) d=$((10#${1:8:2})) dim; [ "$y" -ge 1 ]||return 1; [ "$m" -ge 1 ]&&[ "$m" -le 12 ]||return 1; [ "$d" -ge 1 ]||return 1; case "$m" in 1|3|5|7|8|10|12)dim=31;;4|6|9|11)dim=30;;2)if [ $((y%4)) -eq 0 ]&&{ [ $((y%100)) -ne 0 ]||[ $((y%400)) -eq 0 ]; };then dim=29;else dim=28;fi;;esac; [ "$d" -le "$dim" ]; }
+derive_candidate_forms(){
+ local core="$1" suffix='' changed
+ while :;do
+  changed=0
+  while :;do case "$core" in *,|*';')core="${core%?}";changed=1;;*)break;;esac;done
+  if [ -z "$suffix" ];then case "$core" in *.)suffix='.';core="${core%?}";changed=1;;*:)suffix=':';core="${core%?}";changed=1;;esac;fi
+  case "$core" in \(*\)|\"*\"|\'*\')core="${core#?}";core="${core%?}";changed=1;;esac
+  [ "$changed" -eq 1 ]||break
+ done
+ candidate="$core";safety_candidate="$core$suffix"
+}
 reviewed_status_re='^\[REVIEWED: not a hazard — ([0-9]{4}-[0-9]{2}-[0-9]{2})\]$'
 [ -f "$context" ] || { fail 'FRAMEWORK-CONTEXT.md is missing; Known Hazard Areas cannot be validated.'; echo "$fails hazard-check failure(s)."; exit 1; }
 tmp="${TMPDIR:-/tmp}/hazard-check-$$"; trap 'rm -rf "$tmp"' EXIT; mkdir -p "$tmp"
@@ -51,15 +62,15 @@ while IFS= read -r line || [ -n "$line" ]; do
  printf '%s\n' "$rest"|tr ',[:space:]' '\n' >> "$tmp/candidates"
  literal_candidates=0;invalid_path=0
  while IFS= read -r candidate;do
-  safety_candidate=$(printf '%s' "$candidate"|sed "s/^[()\"']*//;s/[()\"']*$//;s/[,;]*$//");candidate="$safety_candidate"
-  case "$candidate" in *.)candidate="${candidate%?}";;*:)candidate="${candidate%?}";;esac
-  if [[ "$candidate" =~ ^[A-Za-z][A-Za-z0-9+.-]*:// ]]||[[ "$candidate" = www.* ]]||[ -z "$candidate" ];then continue;fi
+  derive_candidate_forms "$candidate"
+  if [[ "$candidate" =~ ^[A-Za-z][A-Za-z0-9+.-]*:// ]]||[[ "$candidate" = www.* ]];then continue;fi
   balanced_bracket_re='\[.*\]'
   if [[ "$candidate" = *'*'* ]]||[[ "$candidate" = *'?'* ]]||[[ "$candidate" =~ $balanced_bracket_re ]];then continue;fi
   safety_candidate="${safety_candidate//\\//}";candidate="${candidate//\\//}"
   unsafe_path=0
   for form in "$safety_candidate" "$candidate";do if [[ "$form" = /* ]]||[[ "$form" =~ ^[A-Za-z]: ]]||[[ "$form" = *'//'* ]]||[[ "/$form/" = *'/../'* ]]||[[ "/$form/" = *'/./'* ]];then unsafe_path=1;break;fi;done
   if [ "$unsafe_path" -eq 1 ];then fail "hazard row names a path that is not a safe repository-root-relative path: $safety_candidate (row: $area)";invalid_path=1;continue;fi
+  [ -z "$candidate" ]&&continue
   if [[ "$candidate" != */* ]]&&! [[ "$candidate" =~ \.[A-Za-z0-9]{1,10}$ ]];then continue;fi
   literal_candidates=$((literal_candidates+1))
   [ -e "$root/$candidate" ]||fail "hazard row names a path that does not exist: $candidate (row: $area)"

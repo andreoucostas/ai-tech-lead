@@ -2913,6 +2913,28 @@ count distinct categories, and make the eval's authoritative-catalog fixture rej
 Fold a duplicate-row mutation into the existing warehouse map checker suite; do not create a
 standalone catalog suite.
 
+### B-195 · Preserve unterminated final advisory rows in Bash session start
+**Effort:** S · **Priority:** P2 · **planned ≥ v0.78.5**
+**Filed against:** v0.78.3 (2026-08-29)
+
+**Why:** B-193's independent RCA sweep found the same newline-sensitive Bash reader pattern in two
+separate advisory paths outside the locked completion-oracle scope. In isolated current-dist
+fixtures whose final byte was the row's closing `|`, an unterminated overdue
+`SECURITY_FINDINGS.md` row made PowerShell emit the red SLA-breach warning while Bash downgraded it
+to the generic open-finding message; an unterminated old `[UNVERIFIED]` hazard row made PowerShell
+emit the 90-day nudge while Bash emitted no hazard line. Both twins exited 0. The security impact is
+lost urgency rather than bypassed enforcement, so this is P2 rather than an expansion of B-193.
+
+**Do:** in `session-start.sh`, initialize a distinct loop variable before each security and hazard
+scan and consume `read` failure when that variable still contains a final non-newline record. Do
+not share state between the loops or change the advisory thresholds. Add an EOF/no-CRLF overdue
+case to the existing session-start security parity matrix, whose fixtures currently always append a
+newline, and EOF stale plus fresh controls to `SessionStartHazard.Tests.ps1`, whose fixture currently
+adds trailing content. Capture both twins before assertions; require exact severity/nudge parity,
+exit 0, clean stderr, and an explicit final-byte assertion. Prove current Bash red with PowerShell
+as the positive control, run a post-green Bash mutation, compose all three distributions, and leave
+native Linux CI as required release evidence rather than treating Git Bash as Linux.
+
 ### B-194 · Make the PowerShell 5.1 installer tolerate non-Git targets
 **Effort:** S · **Priority:** P2 · **planned ≥ v0.78.4**
 **Filed against:** v0.78.3 (2026-08-29)
