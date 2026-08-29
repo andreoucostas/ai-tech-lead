@@ -31,7 +31,15 @@ The classifier runs only before a mutating update or brownfield install. Greenfi
 1. Treat these non-empty ambient variables as untrusted Git routing and refuse immediately with
    `CANT-VERIFY`, exit 4: `GIT_DIR`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`, and `GIT_INDEX_FILE`. Do not
    let ambient state redirect the target's repository or index. One review constructed a dirty
-   target whose alternate `GIT_INDEX_FILE` made porcelain status empty.
+   target whose alternate `GIT_INDEX_FILE` made porcelain status empty. On POSIX hosts, retain the
+   platform's exact-case environment-name semantics. On MSYS Git Bash (`OSTYPE=msys*`), enumerate
+   exported Bash names with the Bash-3.2-safe `compgen -e`, match these four names with explicit
+   ASCII case patterns, and inspect the matching value through indirect expansion. Do not parse
+   line-oriented `env` output, use locale-sensitive folding, enable shell-global case matching, add
+   a dependency, or use Bash-4-only case conversion. Git for Windows consumes its Windows
+   environment case-insensitively even though Bash variable lookup is case-sensitive. A non-empty
+   casing variant such as `git_index_file` must therefore refuse too. Do not generalize the MSYS
+   rule to Cygwin without equivalent host evidence.
 2. Inspect repository evidence without following it away: any `.git` directory entry from target
    through ancestors counts, including a file, directory, reparse point, symlink, or dangling link.
    Inability to traverse an ancestor is `CANT-VERIFY`, not absence. Traversal/execute permission is
@@ -109,8 +117,15 @@ and dirty controls.
 2. **Evidence or routing that cannot be trusted refuses.** Capture corrupt `.git` metadata with real
    Git under PowerShell 7, native PowerShell 5.1, and Bash; repository evidence with Git absent under
    both twins; and a genuinely dirty repository whose ambient `GIT_INDEX_FILE` hides the change
-   under PowerShell 7 and Bash. Each exits 4 with `CANT-VERIFY`, no completion, and an unchanged
-   target fingerprint.
+   under PowerShell 7 and Bash. On Windows, add one representative Git Bash child using lowercase
+   `git_index_file` against its own real alternate index. Establish the lowercase spelling inside
+   the already-started Bash process with uppercase `GIT_INDEX_FILE` explicitly unset; capture a
+   prerequisite proving the lowercase value is the expected non-empty path and the uppercase name
+   is absent before calibrating that ordinary status sees the dirty file while the redirected
+   status is empty. Do not pass the spelling through PowerShell's case-insensitive environment
+   hashtable and accidentally repeat the uppercase case. Capture every child before the group's
+   first assertion. Keep this child inside the same grouped result rather than adding a fourth
+   `It`. Each refusal exits 4 with `CANT-VERIFY`, no completion, and an unchanged target fingerprint.
 3. **Classification success does not excuse unreadable status.** Capture a real worktree with a
    corrupt index under PowerShell 7, native PowerShell 5.1, and Bash. `rev-parse` succeeds but status
    fails; require the same exit-4/no-completion/unchanged-tree contract.
