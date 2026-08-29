@@ -203,3 +203,31 @@ FAIL. Correct both worlds identically by committing the exclusion before the con
 declare it in the answer-neutral bootstrap convention, mechanically prove the projects are identical,
 and retain a red case showing any later agent-authored project edit still fails. Only trials on that
 corrected shared fixture count.
+
+## 9. Phase 0 outcome and closure (2026-08-29)
+
+The corrected, committed fixture at `ced2b0d` produced the preregistered result:
+
+| world | valid trials | semantic decision | tree / attribution |
+|---|---:|---|---|
+| deferred | 2/2 PASS | `CarrierDurableKey` plus `ShipmentDate >= EffectiveFrom` and `ShipmentDate < EffectiveTo` | exact requested artifact; matching audit append; map/fact/load/view read; skill not reached |
+| pinned | 2/2 PASS | `CarrierKey` equijoin only; no durable key, `IsCurrent`, or effective-date condition | exact requested artifact; matching audit append; map/fact/load/view read; skill not reached |
+
+All four SQL artifacts and raw traces were inspected after mechanical grading. The valid set cost
+USD 1.1350878 with 66 reported input tokens and 34,714 output tokens. Total paid investigation,
+including the condition-invalid development runs retained in `meta/eval-results.md`, was USD
+2.7627492; the initial transport error cost zero.
+
+Apply stop rule 1: close B-99 without a consumer change. The experiment shows that the current
+released framework plus repository evidence handles the exact incident and its legitimate deferred
+control; it does not causally attribute that behavior to one rule. No twelfth verification rule,
+Rule 11 replacement, skill edit, context-budget change, dist rebuild, version bump, changelog entry,
+or release is justified.
+
+RCA: the old field report had no incident-shaped write regression, while the inherited B-127 probe
+asked only for explanation and used a negation-unsafe prose oracle. Phase 0 also exposed two
+maintainer-instrument defects before closure: exact-tree grading omitted the installed audit hook's
+own append, and the shared SQL fixture made its requested ad-hoc path part of the DACPAC build while
+forbidding the necessary project edit. Both are now red-tested. A same-class sweep found no other
+exact-tree live grader; the older `warehouse-route-*` cases observe routing and explicitly do not
+score artifact correctness, so their historical decisions are not reclassified.

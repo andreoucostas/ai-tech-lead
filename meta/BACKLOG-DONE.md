@@ -7146,3 +7146,41 @@ size-neutral displacement.” Full review:
 `.claude/plans/2026-08-29-b158-static-context-ceiling-review.md`.
 
 ---
+
+### B-99 · Preserve upstream decisions downstream — **DONE 2026-08-29 · no product change**
+
+**Premise and design.** The 2026-08-05 field report showed a report query joining a fact's
+version-pinned dimension surrogate while also adding `EffectiveTo IS NULL`, which silently removed
+historical facts. Before spending permanent static context on a twelfth verification rule, Phase 0
+reproduced the exact downstream write against matched pinned and deferred warehouse worlds. The
+locked design used the current v0.78.3 framework, an answer-neutral map, the installed skill, an
+artifact-first SQL oracle, and two fresh trials per world. A reached answer-bearing skill would have
+contaminated rather than supported the always-loaded carrier claim.
+
+**Instrument corrections.** Raw review invalidated the first mechanically failed deferred result:
+the requested SQL was correct and the only extra tree delta was the installed `PostToolUse` audit
+hook appending its own telemetry. The narrowed oracle accepts only strict append-only rows naming
+the requested SQL and rejects unrelated paths, rewrites, staging, commits, or any other file. A
+later pinned run correctly edited `warehouse.sqlproj` because the fixture's SDK-style SQL project
+included the requested `analysis/**/*.sql` ad-hoc query in its DACPAC build. Both worlds received
+the same committed `Build Remove`/`None Include` exclusion, and all samples from the contradictory
+condition were invalidated rather than relabelled. Hostile tests preserve both boundaries.
+
+**Evidence.** On the corrected fixture (`ced2b0d`), deferred resolution passed 2/2 using
+`CarrierDurableKey` plus the half-open shipment-date effective range; pinned resolution passed 2/2
+using only the load-selected `CarrierKey`. Every raw artifact and trace agreed with the mechanical
+grade, read the neutral map and decisive fact/load/view SQL, reached no answer-bearing skill, and
+left only the requested query plus its matching audit append. The valid set cost USD 1.1350878;
+total paid investigation including retained condition-invalid runs was USD 2.7627492.
+
+**Decision and RCA.** The preregistered stop rule closes B-99 without a consumer change. Current
+released behavior handles the incident and legitimate control, so a new always-loaded rule, Rule 11
+replacement, skill edit, context-budget change, rebuild, version bump, changelog entry, or release
+would be unjustified. The original report lacked an incident-shaped write regression; B-127 later
+asked only for explanation and used negation-unsafe prose matching. Phase 0 exposed and red-tested
+its own omitted hook side effect and destination-build contradiction. A same-class sweep found no
+other exact-one-artifact live grader; older `warehouse-route-*` cases intentionally measure routing
+engagement, so their historical decisions are unaffected. Full design and outcome:
+`.claude/plans/2026-08-29-b99-upstream-decision-preservation-design.md`; WSD-056.
+
+---

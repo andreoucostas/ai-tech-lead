@@ -1582,3 +1582,19 @@ Likewise, do not compress proven rails merely to make a dashboard look spacious.
 cross-host budget stable until a separately reviewed, observed benefit cannot fit after reasonable
 displacement or new measurements change the cost trade. The payload that wants room must not also
 decide that the room exists.
+
+## 2026-08-29 — An artifact oracle must include framework side effects and destination semantics
+
+A one-file live oracle initially rejected correct SQL because the installed `PostToolUse` audit hook
+appended its own telemetry. Directly constructing the file in self-tests had bypassed that side
+effect. Exact-tree grading must distinguish narrowly validated framework-owned consequences from
+agent-authored scope: here, only append-only audit rows naming the requested artifact are allowed,
+and unrelated rows, rewrites, staging, commits, or other paths still fail.
+
+The next run exposed the other half of the same lesson. The fixture declared `analysis/` as the
+home for ad-hoc queries, but its SDK-style SQL project included every `**/*.sql`; a build-safe agent
+therefore edited the project, violating the one-file oracle for a good reason. Prompts, fixtures, and
+tree assertions form one contract. Before measuring model behavior, prove that the requested output
+is valid in the destination without a forbidden companion change. Correct shared confounds in both
+worlds and invalidate affected samples—never relabel a mechanically accurate failure as the desired
+semantic result.

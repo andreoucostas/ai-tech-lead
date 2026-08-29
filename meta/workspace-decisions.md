@@ -2526,3 +2526,22 @@ the same committed `Build Remove`/`None Include` for `analysis/**/*.sql`, the ne
 will state that fact, and a hostile test will continue to reject any agent-authored project edit.
 Only fresh trials under that corrected fixture count; this removes an integration confound without
 changing the decision-bearing fact/load/view delta.
+
+**Outcome.** On the corrected fixture, deferred resolution passed 2/2 and load-pinned resolution
+passed 2/2. Every raw artifact and trace agreed with the mechanical verdict: all four runs read the
+neutral map and decisive fact/load/view SQL, none reached `map-warehouse`, and each authored only the
+requested query while preserving the appropriate upstream decision. The counted set cost USD
+1.1350878; total paid investigation including retained condition-invalid runs was USD 2.7627492.
+
+Per the locked stop rule, B-99 closes without a consumer change. Current released behavior handles
+the incident shape, so a new always-loaded rule or Rule 11 replacement would spend scarce recurring
+context without an observed present failure. This is evidence for the current baseline, not a causal
+claim about one instruction. No dist rebuild, version bump, changelog entry, or release follows.
+
+**RCA and same-class sweep.** The original defect lacked an incident-shaped write regression; the
+later B-127 explanatory probe could not substitute for one and its prose oracle accepted negated
+answers. Phase 0's own first versions also omitted a real hook side effect and a destination-build
+constraint. Both defects are now red-tested. `warehouseUpstreamDecision` is the only live grader
+that requires an exact one-artifact tree. The older `warehouse-route-*` scenarios intentionally grade
+routing engagement rather than artifact correctness, so their historical conclusions are unaffected
+by the SQL-project confound.

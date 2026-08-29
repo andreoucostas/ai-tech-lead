@@ -33,6 +33,5 @@ phrase inside the cited entry.
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`
-- “Do not override an upstream decision without tracing it.” — `meta/BACKLOG.md B-99`
 - “B-129/WSD-042 is out of scope for this item” — `meta/BACKLOG.md B-140`
 - “Vendor-capability claims are maintainer-owned and gated meta-side, never in a consumer's build.” — `meta/BACKLOG-DONE.md B-55`

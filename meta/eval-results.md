@@ -1594,3 +1594,37 @@ Host: Claude Code 2.1.247 (Claude Code) · scratch: retained=True
 > The shared fixture declared `analysis/` as the ad-hoc location but lacked that necessary exclusion,
 > contradicting the one-file oracle. WSD-056 records the matched-fixture correction. Both preceding
 > deferred passes and this pinned failure remain historical evidence but do not count toward Phase 0.
+
+## 2026-08-29 12:32:19 +01:00 — framework v0.78.3 (ced2b0dd07ec790f44259f6e5e7757cd3f7c70a7)
+
+Host: Claude Code 2.1.247 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-upstream-deferred** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2568202 tokensIn=14 tokensOut=7597; world=deferred output=True treeExact=True auditAppendExact=True directJoin=True projects=True carrierKeyJoin=False durableKeyJoin=True lowerBound=True upperBound=True predicateEscape=False usesCurrent=False usesEffective=True mapRead=True factRead=True loadRead=True viewRead=True skillSelected=False skillRead=False skillReached=False finalOk=True
+
+
+## 2026-08-29 12:35:05 +01:00 — framework v0.78.3 (ced2b0dd07ec790f44259f6e5e7757cd3f7c70a7)
+
+Host: Claude Code 2.1.247 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-upstream-deferred** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3114104 tokensIn=14 tokensOut=10447; world=deferred output=True treeExact=True auditAppendExact=True directJoin=True projects=True carrierKeyJoin=False durableKeyJoin=True lowerBound=True upperBound=True predicateEscape=False usesCurrent=False usesEffective=True mapRead=True factRead=True loadRead=True viewRead=True skillSelected=False skillRead=False skillReached=False finalOk=True
+
+
+## 2026-08-29 12:37:46 +01:00 — framework v0.78.3 (ced2b0dd07ec790f44259f6e5e7757cd3f7c70a7)
+
+Host: Claude Code 2.1.247 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-upstream-pinned** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3025968 tokensIn=20 tokensOut=9834; world=pinned output=True treeExact=True auditAppendExact=True directJoin=True projects=True carrierKeyJoin=True durableKeyJoin=False lowerBound=False upperBound=False predicateEscape=False usesCurrent=False usesEffective=False mapRead=True factRead=True loadRead=True viewRead=True skillSelected=False skillRead=False skillReached=False finalOk=True
+
+
+## 2026-08-29 12:39:54 +01:00 — framework v0.78.3 (ced2b0dd07ec790f44259f6e5e7757cd3f7c70a7)
+
+Host: Claude Code 2.1.247 (Claude Code) · scratch: retained=True
+
+- **PASS warehouse-upstream-pinned** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2642604 tokensIn=18 tokensOut=6836; world=pinned output=True treeExact=True auditAppendExact=True directJoin=True projects=True carrierKeyJoin=True durableKeyJoin=False lowerBound=False upperBound=False predicateEscape=False usesCurrent=False usesEffective=False mapRead=True factRead=True loadRead=True viewRead=True skillSelected=False skillRead=False skillReached=False finalOk=True
+
+> **B-99 Phase 0 decision.** The corrected shared fixture produced deferred 2/2 PASS and pinned
+> 2/2 PASS. Raw inspection agreed with every counted verdict; all four runs read the neutral map and
+> decisive fact/load/view SQL, reached no answer-bearing skill, and left only the requested query
+> plus its matching audit append. Counted cost: USD 1.1350878, 66 input tokens, 34,714 output tokens.
+> Total paid investigation including retained condition-invalid runs: USD 2.7627492. Apply the
+> preregistered stop rule: close B-99 without a consumer change.
