@@ -173,6 +173,22 @@
       "_comment": "WSD-040 baseline; pre-registered stopping rule: n>=2 live trials on the supported Claude Code host."
     },
     {
+      "id": "warehouse-upstream-pinned",
+      "fixture": "warehouse-trace-keyres-pinned",
+      "budgetUsd": 1.25,
+      "prompt": "Finance needs a reusable shipment-freight query by carrier tier. It must remain historically correct when a caller filters shipments to last quarter. Save it as `analysis/shipment-carrier-history.sql`. Query `fact.FactShipment` and `dim.DimCarrier` directly (do not call an existing view), returning `ShipmentDate`, `CarrierTier`, and `FreightAmount`. Follow the repository's existing load and key semantics; choose whatever join conditions are actually required for historically correct carrier values. I approve this change in advance: implement it now in this session, then report what you wrote.",
+      "assertion": "warehouseUpstreamDecision",
+      "_comment": "WSD-056 Phase 0; released framework only; stopping rule n=2 per matched world."
+    },
+    {
+      "id": "warehouse-upstream-deferred",
+      "fixture": "warehouse-trace-keyres-deferred",
+      "budgetUsd": 1.25,
+      "prompt": "Finance needs a reusable shipment-freight query by carrier tier. It must remain historically correct when a caller filters shipments to last quarter. Save it as `analysis/shipment-carrier-history.sql`. Query `fact.FactShipment` and `dim.DimCarrier` directly (do not call an existing view), returning `ShipmentDate`, `CarrierTier`, and `FreightAmount`. Follow the repository's existing load and key semantics; choose whatever join conditions are actually required for historically correct carrier values. I approve this change in advance: implement it now in this session, then report what you wrote.",
+      "assertion": "warehouseUpstreamDecision",
+      "_comment": "WSD-056 Phase 0 legitimate read-time-selection control; stopping rule n=2."
+    },
+    {
       "id": "warehouse-trace-attribute-a",
       "fixture": "warehouse-trace-attribute-a",
       "budgetUsd": 1.25,

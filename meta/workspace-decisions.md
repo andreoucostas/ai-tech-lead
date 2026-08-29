@@ -2471,3 +2471,38 @@ ratchet); dynamic, percentage, growth-only, or per-model ceilings (moving depend
 cross-host determinism); and immediate compression or lower limits without observed harm. The
 v0.78.0 release refusal is positive evidence for the retained design: it exposed duplicated static
 prose and produced centralization instead of normalizing the excess.
+
+---
+
+## WSD-056: reproduce the downstream write before designing an upstream-decision rule (2026-08-29)
+
+**Context.** B-99 came from a query that redundantly applied `EffectiveTo IS NULL` after a warehouse
+load had already pinned a dimension-version surrogate key, silently removing historical facts. Its
+delivery blocker is gone, but current Rule 11 and Leanness Rule 5 may already prevent the incident.
+The inherited B-127 prompt only requested an explanation, and its prose regexes were directly shown
+to accept negated wrong answers. Removing the installed map/skill to isolate the static carrier also
+left a broken pointer and changed the released context.
+
+**Decision.** Run a true Phase 0 only: two matched current-release write scenarios, reusing the
+pinned and deferred fixtures and producing one directly-joined report SQL file. Keep the installed
+skill and answer-neutral map. Grade the SQL semantics plus an exact one-file worktree invariant;
+track successful source reads and map/skill reach separately. A reached answer-bearing skill makes
+the trial contaminated, not evidence for the always-loaded mechanism. Exact read paths are not a
+PASS gate, preserving WSD-040's decision against false-negative artifact-read scoring. Give both
+worlds the same neutral convention to derive relationship/version semantics from SQL; the generic
+fixture's surrogate-key claim is false in the deferred control and is excluded here.
+
+Two clean trials per world are directional premise evidence only. Four verified passes close B-99
+without consumer change. A pinned failure with a stable deferred control authorizes a new Phase 1
+design, not a prewritten remedy. No candidate text, Rule 11 replacement, static-context change, or
+release is authorized by this decision. The locked design and adversarial disposition are in
+`.claude/plans/2026-08-29-b99-upstream-decision-preservation-design.md`.
+
+**Proportionality.** The smallest incident-shaped test reuses the existing fixture and harness. It
+adds no product surface and spends at most four counted live trials before either closing the stale
+premise or grounding any larger intervention in a current observed failure.
+
+**Rejected.** An immediate twelfth rule; adding skill content to fix a channel observed at 0/16
+reach; deleting released guidance to manufacture isolation; reusing the explanatory B-127 prompt or
+its negation-unsafe prose oracle; and prebuilding a size-neutral Rule 11 replacement before the
+baseline demonstrates a need.

@@ -865,17 +865,24 @@ independently before joining two facts through a conformed dimension.
     return [int](git -C $Path rev-list --count HEAD)
 }
 
-function Initialize-FactBindingScenario([string]$Path) {
+function Initialize-FactBindingScenario([string]$Path, [switch]$NeutralKeySemantics) {
     $claudePath = Join-Path $Path 'CLAUDE.md'
     $claudeText = (Get-Content -Raw $claudePath).Replace('BOOTSTRAP_PENDING', 'EVAL_BOOTSTRAPPED')
-    $ordinaryConventions = @'
+    $ordinaryConventions = if ($NeutralKeySemantics) { @'
+<!-- EVAL_BOOTSTRAPPED: repository conventions observed for this fixture. -->
+
+- SQL source is organised by `Tables/`, `StoredProcedures/`, and `Views/`.
+- Derive relationship and version semantics from the repository's DDL, loads, and reporting SQL.
+- Use `LoadRunId` and explicit insert column lists; deploy through the SQL project.
+- `docs/warehouse-map.md` is the current warehouse inventory, verified against this SQL tree.
+'@ } else { @'
 <!-- EVAL_BOOTSTRAPPED: repository conventions observed for this fixture. -->
 
 - SQL source is organised by `Tables/`, `StoredProcedures/`, and `Views/`.
 - Facts retain dimension surrogate keys; load dimensions before facts.
 - Use `LoadRunId` and explicit insert column lists; deploy through the SQL project.
 - `docs/warehouse-map.md` is the current warehouse inventory, verified against this SQL tree.
-'@
+'@ }
     $claudeText = [regex]::Replace($claudeText, '(?s)<!-- EVAL_BOOTSTRAPPED:.*?_Not yet populated\..*?\r?\n(?=\r?\n---)', $ordinaryConventions)
     $claudeText | Set-Content $claudePath -Encoding utf8NoBOM
     git -C $Path add -A
@@ -1291,6 +1298,96 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $engaged = $warehouseTreeCall -or $changedSql
             $status = if (-not $engaged) { 'INCONCLUSIVE' } elseif ($pass) { 'PASS' } else { 'FAIL' }
             return [pscustomobject]@{ Status=$status; Pass=$pass; Detail="category=$category channels=$($channels -join ',') outcome=$(if ($abstain) {'ABSTAIN'} elseif ($discountExtended) {'EXTEND'} elseif ($snapshotFact) {'PERIODIC_SNAPSHOT'} elseif ($paymentFact) {'NEW_TRANSACTION'} else {'UNRESOLVED'}) targetFact=$(if ($discountExtended) {'FactOrderLine'} elseif ($newFacts.Count) {$newFacts -join ','} else {'none'}) grainStatement=$($finalText -match '(?i)grain') ddlWritten=$changedSql mixedGrain=$allocationOnExisting missingFacts=$(if ($abstain) {'source-authority,grain'} else {'none'}) evidence=$warehouseTreeCall liveSqlEvidence=$liveSqlCall" }
+        }
+        { $_ -in @('warehouse-upstream-pinned','warehouse-upstream-deferred') } {
+            # WSD-056: score the requested SQL artifact, not answer prose. Source reads remain
+            # attribution dimensions because WSD-040 already showed that exact-read gating creates
+            # false negatives. A reached answer-bearing skill is separated as contamination.
+            $successful = @($e.Tools | Where-Object {
+                $e.ToolResults.ContainsKey($_.Id) -and -not $e.ToolResults[$_.Id].is_error
+            })
+            $readEvidence = {
+                param([string]$PathPattern, [string]$ContentPattern)
+                return [bool]@($successful | Where-Object {
+                    $tool = $_
+                    $resultText = Get-ToolResultText $e $tool
+                    if (-not $resultText.Trim() -or $resultText -notmatch $ContentPattern) { return $false }
+                    $toolPath = (Get-ToolPath $tool) -replace '\\','/'
+                    $directRead = $tool.Name -match '^(?i:Read|ReadFile|read_file)$' -and $toolPath -match $PathPattern
+                    $command = [string]$tool.Input.command
+                    $commandPathText = '/' + (((($command -replace '\\','/') -replace '["'']','') -replace '\s+','/'))
+                    $contentCommand = $tool.Name -match '^(?i:Bash|PowerShell|Shell|Terminal)$' -and
+                        $command -match '(?i)(?:^|\s)(?:rg|grep|cat|sed|type|Get-Content|Select-String)(?:\s|$)' -and
+                        $command -notmatch '(?i)(?:^|[;|&]\s*|\s)(?:echo|printf|Write-Output)(?:\s|$)' -and
+                        $commandPathText -match $PathPattern
+                    $directRead -or $contentCommand
+                } | Select-Object -First 1)
+            }
+            $mapRead = & $readEvidence '(?i)(?:^|/)docs/warehouse-map\.md$' '(?is)#\s*Warehouse map.*(?:records locations|Inventory)'
+            $factRead = & $readEvidence '(?i)(?:^|/)Tables/fact\.FactShipment\.sql$' '(?is)CREATE\s+TABLE\s+(?:\[?fact\]?\s*\.\s*)?\[?FactShipment\]?'
+            $loadRead = & $readEvidence '(?i)(?:^|/)StoredProcedures/usp_LoadFactShipment\.sql$' '(?is)CREATE\s+PROCEDURE\s+(?:\[?dbo\]?\s*\.\s*)?\[?usp_LoadFactShipment\]?'
+            $viewRead = & $readEvidence '(?i)(?:^|/)Views/rpt\.vwShipment\.sql$' '(?is)CREATE\s+VIEW\s+(?:\[?rpt\]?\s*\.\s*)?\[?vwShipment\]?'
+            $skillSelected = [bool]@($successful | Where-Object {
+                $_.Name -match '^(?i:Skill)$' -and [string]$_.Input.skill -eq 'map-warehouse'
+            } | Select-Object -First 1)
+            $skillRead = & $readEvidence '(?i)(?:^|/)(?:\.claude|\.github)/skills/map-warehouse/SKILL\.md$' '(?is)(?:Pinned at load|effective-date predicate only when)'
+            $skillReached = $skillSelected -or $skillRead
+
+            $queryRelative = 'analysis/shipment-carrier-history.sql'
+            $queryPath = Join-Path $Target $queryRelative
+            $outputExists = Test-Path -LiteralPath $queryPath -PathType Leaf
+            $sqlCode = ''
+            if ($outputExists) {
+                $sqlCode = Get-Content -Raw -LiteralPath $queryPath
+                $sqlCode = [regex]::Replace($sqlCode, '(?s)/\*.*?\*/', ' ')
+                $sqlCode = [regex]::Replace($sqlCode, '(?m)--.*$', ' ')
+                $sqlCode = [regex]::Replace($sqlCode, "'(?:''|[^'])*'", "''")
+                $sqlCode = $sqlCode -replace '[\[\]]',''
+            }
+
+            $commits = [int](git -C $Target rev-list --count HEAD)
+            $treeState = @((git -C $Target status --porcelain=v1 --untracked-files=all) | ForEach-Object { ([string]$_).Replace('\\','/').TrimEnd() })
+            $treeExact = $commits -eq $BeforeCommits -and $treeState.Count -eq 1 -and $treeState[0] -ceq "?? $queryRelative"
+
+            $factTable = [regex]::Match($sqlCode, '(?is)\bFROM\s+fact\s*\.\s*FactShipment(?:\s+(?:AS\s+)?(?<alias>(?!(?:INNER|LEFT|RIGHT|FULL|CROSS|JOIN|WHERE|ON|GROUP|ORDER)\b)[A-Za-z_][A-Za-z0-9_]*))?')
+            $dimensionTable = [regex]::Match($sqlCode, '(?is)\bJOIN\s+dim\s*\.\s*DimCarrier(?:\s+(?:AS\s+)?(?<alias>(?!(?:ON|INNER|LEFT|RIGHT|FULL|CROSS|JOIN|WHERE|GROUP|ORDER)\b)[A-Za-z_][A-Za-z0-9_]*))?')
+            $joinTail = if ($dimensionTable.Success) { $sqlCode.Substring($dimensionTable.Index + $dimensionTable.Length) } else { '' }
+            $joinPredicateMatch = [regex]::Match($joinTail, '(?is)^\s*ON\b(?<predicate>.*?)(?=\bWHERE\b|\bGROUP\s+BY\b|\bORDER\s+BY\b|\bHAVING\b|;|$)')
+            $joinPredicate = if ($joinPredicateMatch.Success) { $joinPredicateMatch.Groups['predicate'].Value } else { '' }
+            $directJoin = $factTable.Success -and $dimensionTable.Success -and $joinPredicateMatch.Success
+            $factQualifier = if ($factTable.Success -and $factTable.Groups['alias'].Success) { [regex]::Escape($factTable.Groups['alias'].Value) } else { '(?:fact\s*\.\s*)?FactShipment' }
+            $dimensionQualifier = if ($dimensionTable.Success -and $dimensionTable.Groups['alias'].Success) { [regex]::Escape($dimensionTable.Groups['alias'].Value) } else { '(?:dim\s*\.\s*)?DimCarrier' }
+            $factColumn = "(?:$factQualifier)\s*\.\s*"
+            $dimensionColumn = "(?:$dimensionQualifier)\s*\.\s*"
+            $carrierKeyJoin = $joinPredicate -match "(?is)(?:${factColumn}CarrierKey\b\s*=\s*${dimensionColumn}CarrierKey\b|${dimensionColumn}CarrierKey\b\s*=\s*${factColumn}CarrierKey\b)"
+            $durableKeyJoin = $joinPredicate -match "(?is)(?:${factColumn}CarrierDurableKey\b\s*=\s*${dimensionColumn}CarrierDurableKey\b|${dimensionColumn}CarrierDurableKey\b\s*=\s*${factColumn}CarrierDurableKey\b)"
+            $shipmentDate = "${factColumn}ShipmentDate\b"
+            $effectiveFrom = "${dimensionColumn}EffectiveFrom\b"
+            $effectiveTo = "${dimensionColumn}EffectiveTo\b"
+            $lowerBound = $joinPredicate -match "(?is)(?:$shipmentDate\s*>=\s*$effectiveFrom|$effectiveFrom\s*<=\s*$shipmentDate)"
+            $upperBound = $joinPredicate -match "(?is)(?:$shipmentDate\s*<\s*$effectiveTo|$effectiveTo\s*>\s*$shipmentDate)"
+            $predicateEscape = $joinPredicate -match '(?i)\b(?:OR|NOT)\b'
+            $usesCurrent = $sqlCode -match '(?i)(?<![A-Za-z0-9_])IsCurrent(?![A-Za-z0-9_])'
+            $usesEffective = $sqlCode -match '(?i)(?<![A-Za-z0-9_])Effective(?:From|To)(?![A-Za-z0-9_])'
+            $usesCarrierKey = $sqlCode -match '(?i)(?<![A-Za-z0-9_])CarrierKey(?![A-Za-z0-9_])'
+            $projectionMatch = [regex]::Match($sqlCode, '(?is)\bSELECT\b(?<projection>.*?)\bFROM\b')
+            $projection = if ($projectionMatch.Success) { $projectionMatch.Groups['projection'].Value } else { '' }
+            $projectsRequested = $projection -match '(?i)(?<![A-Za-z0-9_])ShipmentDate(?![A-Za-z0-9_])' -and
+                $projection -match '(?i)(?<![A-Za-z0-9_])CarrierTier(?![A-Za-z0-9_])' -and
+                $projection -match '(?i)(?<![A-Za-z0-9_])FreightAmount(?![A-Za-z0-9_])'
+            $world = if ($Id -eq 'warehouse-upstream-pinned') { 'pinned' } else { 'deferred' }
+            $semantics = if ($world -eq 'pinned') {
+                $directJoin -and $projectsRequested -and $carrierKeyJoin -and -not $durableKeyJoin -and -not $usesCurrent -and -not $usesEffective -and -not $predicateEscape
+            } else {
+                $directJoin -and $projectsRequested -and $durableKeyJoin -and $lowerBound -and $upperBound -and -not $usesCurrent -and -not $usesCarrierKey -and -not $predicateEscape
+            }
+            $pass = $finalOk -and $outputExists -and $treeExact -and $semantics -and -not $skillReached
+            $status = if ($skillReached) { 'CONTAMINATED' } elseif ($pass) { 'PASS' } else { 'FAIL' }
+            return [pscustomobject]@{
+                Status = $status
+                Pass = $pass
+                Detail = "world=$world output=$outputExists treeExact=$treeExact directJoin=$directJoin projects=$projectsRequested carrierKeyJoin=$carrierKeyJoin durableKeyJoin=$durableKeyJoin lowerBound=$lowerBound upperBound=$upperBound predicateEscape=$predicateEscape usesCurrent=$usesCurrent usesEffective=$usesEffective mapRead=$mapRead factRead=$factRead loadRead=$loadRead viewRead=$viewRead skillSelected=$skillSelected skillRead=$skillRead skillReached=$skillReached finalOk=$finalOk"
+            }
         }
         { $_ -like 'warehouse-trace-*' } {
             # WSD-040 attribution is deliberately outside the decision score. A plain-language
@@ -3047,6 +3144,171 @@ FROM stg.StgSupplierInvoice s;
             if ($pairPrompts.Count -ne 2 -or $pairPrompts[0] -cne $pairPrompts[1]) { throw "B-127 pair prompts are not byte-identical: $($pair -join ',')" }
         }
 
+        # B-99/WSD-056 Phase 0: incident-shaped artifact scoring, pre-registered and exercised
+        # against frozen worlds before any live run. The two reusable bases retain the released
+        # framework, its answer-neutral map, and both skill mirrors; each test clone then varies
+        # only the produced query or a planted integrity/evidence defect.
+        $upstreamPinnedBase = Join-Path $temp 'upstream-pinned-base'
+        $upstreamDeferredBase = Join-Path $temp 'upstream-deferred-base'
+        New-EvalRepo $upstreamPinnedBase warehouse-trace-keyres-pinned
+        Install-Framework $upstreamPinnedBase dotnet | Out-Null
+        [void](Initialize-FactBindingScenario $upstreamPinnedBase -NeutralKeySemantics)
+        New-EvalRepo $upstreamDeferredBase warehouse-trace-keyres-deferred
+        Install-Framework $upstreamDeferredBase dotnet | Out-Null
+        [void](Initialize-FactBindingScenario $upstreamDeferredBase -NeutralKeySemantics)
+        foreach ($base in @($upstreamPinnedBase,$upstreamDeferredBase)) {
+            foreach ($required in @('docs/warehouse-map.md','.claude/skills/map-warehouse/SKILL.md','.github/skills/map-warehouse/SKILL.md')) {
+                if (-not (Test-Path -LiteralPath (Join-Path $base $required))) { throw "B-99 fixture lost released artifact $required" }
+            }
+            $upstreamClaude = Get-Content -Raw -LiteralPath (Join-Path $base 'CLAUDE.md')
+            if ($upstreamClaude -match 'Facts retain dimension surrogate keys' -or $upstreamClaude -notmatch 'Derive relationship and version semantics from the repository') {
+                throw 'B-99 fixture exposes a false or answer-bearing key convention'
+            }
+            $neutralMap = Get-Content -Raw -LiteralPath (Join-Path $base 'docs/warehouse-map.md')
+            if ($neutralMap -notmatch 'records locations, not modelling conclusions' -or $neutralMap -match '(?i)Pinned at load|effective-date predicate') {
+                throw 'B-99 map is not answer-neutral'
+            }
+        }
+        $upstreamFilesPinned = @(git -C $upstreamPinnedBase ls-files)
+        $upstreamFilesDeferred = @(git -C $upstreamDeferredBase ls-files)
+        if (($upstreamFilesPinned -join "`n") -cne ($upstreamFilesDeferred -join "`n")) { throw 'B-99 fixture file lists differ' }
+        $upstreamPairDifferences = @($upstreamFilesPinned | Where-Object {
+            $left = [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $upstreamPinnedBase $_)))
+            $right = [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $upstreamDeferredBase $_)))
+            $left -cne $right
+        })
+        $expectedUpstreamDifferences = @('StoredProcedures/usp_LoadFactShipment.sql','Tables/fact.FactShipment.sql','Views/rpt.vwShipment.sql')
+        $actualUpstreamDifferenceList = (@($upstreamPairDifferences | Sort-Object) -join "`n")
+        $expectedUpstreamDifferenceList = (@($expectedUpstreamDifferences | Sort-Object) -join "`n")
+        if ($actualUpstreamDifferenceList -cne $expectedUpstreamDifferenceList) {
+            throw "B-99 fixture pair varies outside the three decision-bearing files: $($upstreamPairDifferences -join ',')"
+        }
+        $upstreamPrompts = @($traceConfig.scenarios | Where-Object id -in @('warehouse-upstream-pinned','warehouse-upstream-deferred') | ForEach-Object prompt)
+        if ($upstreamPrompts.Count -ne 2 -or $upstreamPrompts[0] -cne $upstreamPrompts[1]) { throw 'B-99 paired prompts are not byte-identical' }
+
+        $newUpstreamCase = {
+            param([string]$Name, [ValidateSet('pinned','deferred')][string]$World, [string]$Sql)
+            $path = Join-Path $temp $Name
+            $source = if ($World -eq 'pinned') { $upstreamPinnedBase } else { $upstreamDeferredBase }
+            git clone --quiet $source $path
+            git -C $path config user.email 'agent-evals@invalid.local'
+            git -C $path config user.name 'Agent Evals'
+            $before = [int](git -C $path rev-list --count HEAD)
+            if ($null -ne $Sql) {
+                New-Item -ItemType Directory -Path (Join-Path $path 'analysis') -Force | Out-Null
+                $Sql | Set-Content -LiteralPath (Join-Path $path 'analysis/shipment-carrier-history.sql') -Encoding utf8NoBOM
+            }
+            return [pscustomobject]@{ Path=$path; Before=$before }
+        }
+        $newUpstreamTranscript = {
+            param([string]$Name, [string]$Final, [ValidateSet('reads','echo','failed','empty','skill','skill-shell')][string]$EvidenceMode = 'reads')
+            $lines = @('{"type":"system","subtype":"init"}')
+            if ($EvidenceMode -eq 'reads') {
+                $lines += @(
+                    '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"map","name":"Read","input":{"file_path":"docs/warehouse-map.md"}},{"type":"tool_use","id":"fact","name":"Read","input":{"file_path":"Tables/fact.FactShipment.sql"}},{"type":"tool_use","id":"load","name":"Read","input":{"file_path":"StoredProcedures/usp_LoadFactShipment.sql"}},{"type":"tool_use","id":"view","name":"Read","input":{"file_path":"Views/rpt.vwShipment.sql"}}]}}',
+                    '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"map","is_error":false,"content":"# Warehouse map — records locations, not modelling conclusions"},{"type":"tool_result","tool_use_id":"fact","is_error":false,"content":"CREATE TABLE fact.FactShipment (ShipmentKey BIGINT, CarrierKey INT)"},{"type":"tool_result","tool_use_id":"load","is_error":false,"content":"CREATE PROCEDURE dbo.usp_LoadFactShipment AS INSERT fact.FactShipment SELECT c.CarrierKey"},{"type":"tool_result","tool_use_id":"view","is_error":false,"content":"CREATE VIEW rpt.vwShipment AS SELECT CarrierTier FROM fact.FactShipment"}]}}'
+                )
+            } elseif ($EvidenceMode -eq 'echo') {
+                $lines += @(
+                    '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"echo","name":"Bash","input":{"command":"echo CREATE TABLE fact.FactShipment; echo CREATE PROCEDURE dbo.usp_LoadFactShipment; echo CREATE VIEW rpt.vwShipment"}}]}}',
+                    '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"echo","is_error":false,"content":"CREATE TABLE fact.FactShipment CREATE PROCEDURE dbo.usp_LoadFactShipment CREATE VIEW rpt.vwShipment"}]}}'
+                )
+            } elseif ($EvidenceMode -eq 'failed') {
+                $lines += @(
+                    '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"fact","name":"Read","input":{"file_path":"Tables/fact.FactShipment.sql"}}]}}',
+                    '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"fact","is_error":true,"content":"CREATE TABLE fact.FactShipment"}]}}'
+                )
+            } elseif ($EvidenceMode -eq 'skill') {
+                $lines += @(
+                    '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"skill","name":"Skill","input":{"skill":"map-warehouse"}}]}}',
+                    '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"skill","is_error":false,"content":"Add an effective-date predicate only when the key does not identify one version."}]}}'
+                )
+            } elseif ($EvidenceMode -eq 'skill-shell') {
+                $lines += @(
+                    '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"skill-shell","name":"PowerShell","input":{"command":"Get-Content .claude/skills/map-warehouse/SKILL.md"}}]}}',
+                    '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"skill-shell","is_error":false,"content":"Pinned at load; add an effective-date predicate only when the key does not identify one version."}]}}'
+                )
+            }
+            $lines += (@{ type='result'; is_error=$false; result=$Final } | ConvertTo-Json -Compress)
+            return & $writeFrozenTranscript "$Name.jsonl" $lines
+        }
+        $pinnedSql = @'
+SELECT f.ShipmentDate, c.CarrierTier, f.FreightAmount
+FROM fact.FactShipment AS f
+JOIN dim.DimCarrier AS c ON c.CarrierKey = f.CarrierKey;
+'@
+        $deferredSql = @'
+SELECT f.ShipmentDate, c.CarrierTier, f.FreightAmount
+FROM fact.FactShipment AS f
+JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
+ AND f.ShipmentDate >= c.EffectiveFrom
+ AND f.ShipmentDate < c.EffectiveTo;
+'@
+        $ordinaryEvidence = & $newUpstreamTranscript 'upstream-ordinary-evidence' 'Implemented the requested query.' reads
+
+        $pinnedGreen = & $newUpstreamCase 'upstream-pinned-green' pinned $pinnedSql
+        $pinnedGreenResult = Test-ScenarioEvidence 'warehouse-upstream-pinned' $pinnedGreen.Path $ordinaryEvidence $pinnedGreen.Before
+        if (-not $pinnedGreenResult.Pass -or $pinnedGreenResult.Status -ne 'PASS' -or $pinnedGreenResult.Detail -notmatch 'mapRead=True factRead=True loadRead=True viewRead=True') { throw "warehouseUpstreamDecision rejected pinned GREEN: $($pinnedGreenResult.Detail)" }
+        $deferredGreen = & $newUpstreamCase 'upstream-deferred-green' deferred $deferredSql
+        $deferredGreenResult = Test-ScenarioEvidence 'warehouse-upstream-deferred' $deferredGreen.Path $ordinaryEvidence $deferredGreen.Before
+        if (-not $deferredGreenResult.Pass -or $deferredGreenResult.Status -ne 'PASS') { throw "warehouseUpstreamDecision rejected deferred GREEN: $($deferredGreenResult.Detail)" }
+
+        foreach ($red in @(
+            @{ Name='pinned-current-red'; World='pinned'; Id='warehouse-upstream-pinned'; Sql=$pinnedSql.Replace(';', ' AND c.IsCurrent = 1;') },
+            @{ Name='pinned-dates-red'; World='pinned'; Id='warehouse-upstream-pinned'; Sql=$pinnedSql.Replace(';', ' AND f.ShipmentDate >= c.EffectiveFrom AND f.ShipmentDate < c.EffectiveTo;') },
+            @{ Name='deferred-no-dates-red'; World='deferred'; Id='warehouse-upstream-deferred'; Sql='SELECT f.ShipmentDate,c.CarrierTier,f.FreightAmount FROM fact.FactShipment f JOIN dim.DimCarrier c ON c.CarrierDurableKey=f.CarrierDurableKey;' },
+            @{ Name='deferred-current-red'; World='deferred'; Id='warehouse-upstream-deferred'; Sql='SELECT f.ShipmentDate,c.CarrierTier,f.FreightAmount FROM fact.FactShipment f JOIN dim.DimCarrier c ON c.CarrierDurableKey=f.CarrierDurableKey AND c.IsCurrent=1;' },
+            @{ Name='deferred-missing-projection-red'; World='deferred'; Id='warehouse-upstream-deferred'; Sql='SELECT c.CarrierTier,f.FreightAmount FROM fact.FactShipment f JOIN dim.DimCarrier c ON c.CarrierDurableKey=f.CarrierDurableKey AND f.ShipmentDate>=c.EffectiveFrom AND f.ShipmentDate<c.EffectiveTo;' },
+            @{ Name='deferred-or-bypass-red'; World='deferred'; Id='warehouse-upstream-deferred'; Sql='SELECT f.ShipmentDate,c.CarrierTier,f.FreightAmount FROM fact.FactShipment f JOIN dim.DimCarrier c ON c.CarrierDurableKey=f.CarrierDurableKey AND (f.ShipmentDate>=c.EffectiveFrom AND f.ShipmentDate<c.EffectiveTo OR 1=1);' },
+            @{ Name='deferred-projection-predicates-red'; World='deferred'; Id='warehouse-upstream-deferred'; Sql='SELECT f.ShipmentDate,c.CarrierTier,f.FreightAmount, CASE WHEN f.ShipmentDate>=c.EffectiveFrom AND f.ShipmentDate<c.EffectiveTo THEN 1 ELSE 0 END AS InRange FROM fact.FactShipment f JOIN dim.DimCarrier c ON c.CarrierDurableKey=f.CarrierDurableKey;' },
+            @{ Name='deferred-surrogate-red'; World='deferred'; Id='warehouse-upstream-deferred'; Sql=$pinnedSql }
+        )) {
+            $case = & $newUpstreamCase $red.Name $red.World $red.Sql
+            $result = Test-ScenarioEvidence $red.Id $case.Path $ordinaryEvidence $case.Before
+            if ($result.Pass -or $result.Status -ne 'FAIL') { throw "warehouseUpstreamDecision accepted $($red.Name): $($result.Detail)" }
+        }
+
+        $wrongSqlCorrectProse = & $newUpstreamCase 'upstream-wrong-sql-correct-prose' pinned ($pinnedSql.Replace(';', ' AND c.IsCurrent = 1;'))
+        $correctProse = & $newUpstreamTranscript 'upstream-correct-prose' 'The surrogate CarrierKey is pinned at load; no current or effective-date predicate is needed.' reads
+        if ((Test-ScenarioEvidence 'warehouse-upstream-pinned' $wrongSqlCorrectProse.Path $correctProse $wrongSqlCorrectProse.Before).Pass) { throw 'warehouseUpstreamDecision let correct prose rescue wrong SQL' }
+        $correctSqlWrongProse = & $newUpstreamCase 'upstream-correct-sql-wrong-prose' pinned $pinnedSql
+        $wrongProse = & $newUpstreamTranscript 'upstream-wrong-prose' 'It is not pinned at load, so historical values are not shown and IsCurrent is required.' reads
+        if (-not (Test-ScenarioEvidence 'warehouse-upstream-pinned' $correctSqlWrongProse.Path $wrongProse $correctSqlWrongProse.Before).Pass) { throw 'warehouseUpstreamDecision let negated final prose override correct SQL' }
+
+        $pinnedComment = & $newUpstreamCase 'upstream-pinned-comment-green' pinned ("-- c.IsCurrent and EffectiveFrom/EffectiveTo are deliberately absent`n" + $pinnedSql)
+        if (-not (Test-ScenarioEvidence 'warehouse-upstream-pinned' $pinnedComment.Path $ordinaryEvidence $pinnedComment.Before).Pass) { throw 'warehouseUpstreamDecision treated a comment as executable pinned SQL' }
+        $deferredCommentOnly = & $newUpstreamCase 'upstream-deferred-comment-red' deferred ("-- AND f.ShipmentDate >= c.EffectiveFrom AND f.ShipmentDate < c.EffectiveTo`nSELECT 'f.ShipmentDate >= c.EffectiveFrom AND f.ShipmentDate < c.EffectiveTo' AS Note, f.ShipmentDate,c.CarrierTier,f.FreightAmount FROM fact.FactShipment f JOIN dim.DimCarrier c ON c.CarrierDurableKey=f.CarrierDurableKey;")
+        if ((Test-ScenarioEvidence 'warehouse-upstream-deferred' $deferredCommentOnly.Path $ordinaryEvidence $deferredCommentOnly.Before).Pass) { throw 'warehouseUpstreamDecision accepted date predicates present only in comments/literals' }
+
+        $echoCase = & $newUpstreamCase 'upstream-echo-evidence' pinned $pinnedSql
+        $echoEvidence = & $newUpstreamTranscript 'upstream-echo-evidence-transcript' 'done' echo
+        $echoResult = Test-ScenarioEvidence 'warehouse-upstream-pinned' $echoCase.Path $echoEvidence $echoCase.Before
+        if (-not $echoResult.Pass -or $echoResult.Detail -notmatch 'mapRead=False factRead=False loadRead=False viewRead=False') { throw "warehouseUpstreamDecision credited shell echo as source evidence: $($echoResult.Detail)" }
+        $failedCase = & $newUpstreamCase 'upstream-failed-evidence' pinned $pinnedSql
+        $failedEvidence = & $newUpstreamTranscript 'upstream-failed-evidence-transcript' 'done' failed
+        $failedResult = Test-ScenarioEvidence 'warehouse-upstream-pinned' $failedCase.Path $failedEvidence $failedCase.Before
+        if (-not $failedResult.Pass -or $failedResult.Detail -notmatch 'factRead=False') { throw "warehouseUpstreamDecision credited failed evidence: $($failedResult.Detail)" }
+
+        foreach ($integrity in @('extra','staged','committed','deleted')) {
+            $case = & $newUpstreamCase "upstream-integrity-$integrity" pinned $pinnedSql
+            switch ($integrity) {
+                'extra' { 'extra' | Set-Content -LiteralPath (Join-Path $case.Path 'notes.txt') -Encoding utf8NoBOM }
+                'staged' { git -C $case.Path add analysis/shipment-carrier-history.sql }
+                'committed' { git -C $case.Path add analysis/shipment-carrier-history.sql; git -C $case.Path commit --quiet -m 'unexpected agent commit' }
+                'deleted' { Remove-Item -LiteralPath (Join-Path $case.Path 'Views/rpt.vwShipment.sql') }
+            }
+            $result = Test-ScenarioEvidence 'warehouse-upstream-pinned' $case.Path $ordinaryEvidence $case.Before
+            if ($result.Pass -or $result.Status -ne 'FAIL' -or $result.Detail -notmatch 'treeExact=False') { throw "warehouseUpstreamDecision missed $integrity tree mutation: $($result.Detail)" }
+        }
+        $skillCase = & $newUpstreamCase 'upstream-skill-contaminated' pinned $pinnedSql
+        $skillEvidence = & $newUpstreamTranscript 'upstream-skill-contaminated-transcript' 'done' skill
+        $skillResult = Test-ScenarioEvidence 'warehouse-upstream-pinned' $skillCase.Path $skillEvidence $skillCase.Before
+        if ($skillResult.Pass -or $skillResult.Status -ne 'CONTAMINATED') { throw "warehouseUpstreamDecision did not separate answer-bearing skill reach: $($skillResult.Detail)" }
+        $skillShellCase = & $newUpstreamCase 'upstream-skill-shell-contaminated' pinned $pinnedSql
+        $skillShellEvidence = & $newUpstreamTranscript 'upstream-skill-shell-contaminated-transcript' 'done' skill-shell
+        $skillShellResult = Test-ScenarioEvidence 'warehouse-upstream-pinned' $skillShellCase.Path $skillShellEvidence $skillShellCase.Before
+        if ($skillShellResult.Pass -or $skillShellResult.Status -ne 'CONTAMINATED') { throw "warehouseUpstreamDecision did not separate shell-read skill contamination: $($skillShellResult.Detail)" }
+
         # B-128 partition probe: retain literal stream-JSON fixtures so the typed-evidence boundary
         # is reviewable. The red final deliberately echoes the desired conclusion; it must still
         # fail because no typed question raised it before the implementation write.
@@ -3186,6 +3448,7 @@ FROM stg.StgSupplierInvoice s;
         Write-Output 'PASS: B-126 pair prompts are byte-identical, the pair varies only in consumer construction, and all three closed-world premise files are byte-identical'
         Write-Output "PASS: warehouseTraceBaseline frozen graders: $($traceSelfTestResults -join '; ')"
         Write-Output "PASS: warehouseTraceBaseline routing non-reach status=$($routingResult.Status), outcome is not scored, and paired prompts are byte-identical"
+        Write-Output "PASS: warehouseUpstreamDecision pinned GREEN=$($pinnedGreenResult.Status) deferred GREEN=$($deferredGreenResult.Status), semantic reds/tree mutations/echo evidence rejected, skill reach separated"
         Write-Output 'PASS: warehousePartitionMismatch rejects silent family-scheme conformance/final-text echo and accepts a typed pre-write mismatch question'
         Write-Output 'PASS: developer checkpoint is INCONCLUSIVE, not PASS/FAIL'
         Write-Output 'PASS: install graders require an observed installer tool event'
@@ -3298,6 +3561,9 @@ Classes that orchestrate multi-step domain work are suffixed `Coordinator` in th
             { $_ -in @('warehouse-fact-existing','warehouse-fact-new','warehouse-fact-snapshot','warehouse-fact-abstain','warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete','warehouse-partition-mismatch') } {
                 $before = Initialize-FactBindingScenario $target
             }
+            { $_ -in @('warehouse-upstream-pinned','warehouse-upstream-deferred') } {
+                $before = Initialize-FactBindingScenario $target -NeutralKeySemantics
+            }
             { $_ -like 'warehouse-trace-*' } {
                 $before = Initialize-FactBindingScenario $target
             }
@@ -3353,7 +3619,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             # not be scored as a decision-outcome pass or fail -- it means the trial never exercised
             # what B-127's baseline measures. Without this branch it fell through to 'FAIL' below,
             # silently reintroducing the exact conflation the locked design exists to prevent.
-            $status = if ($agentExit -ne 0) { 'ERROR' } elseif ($evidence.Status -eq 'ROUTING_NON_REACH') { 'ROUTING_NON_REACH' } elseif ($evidence.Pass) { 'PASS' } elseif ($evidence.Status -eq 'INCONCLUSIVE') { 'INCONCLUSIVE' } else { 'FAIL' }
+            $status = if ($agentExit -ne 0) { 'ERROR' } elseif ($evidence.Status -in @('ROUTING_NON_REACH','CONTAMINATED')) { $evidence.Status } elseif ($evidence.Pass) { 'PASS' } elseif ($evidence.Status -eq 'INCONCLUSIVE') { 'INCONCLUSIVE' } else { 'FAIL' }
             # The terminal result event already carries spend and token counts; recording them makes
             # the cost of a suite run measurable instead of guessed from the per-case budget CAP,
             # which is an upper bound and not what a run actually consumes.
