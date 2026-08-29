@@ -2936,26 +2936,28 @@ as the positive control, run a post-green Bash mutation, compose all three distr
 native Linux CI as required release evidence rather than treating Git Bash as Linux.
 
 ### B-194 · Make the PowerShell 5.1 installer tolerate non-Git targets
-**Effort:** S · **Priority:** P2 · **planned ≥ v0.78.4**
+**Effort:** M · **Priority:** P1 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-29)
+
+**Status: DESIGN LOCKED 2026-08-29 after two independent adversarial reviews.** Implement
+`.claude/plans/2026-08-29-b194-git-preflight-classifier-design.md`.
 
 **Why:** B-188's independent review found a pre-existing supported-host failure outside v0.78.1's
 ADR-preservation diff. Under Windows PowerShell 5.1 with `$ErrorActionPreference = 'Stop'`, the
 installer's `git rev-parse --is-inside-work-tree *> $null` probe promotes Git's expected
 non-repository stderr to `NativeCommandError` and exits 1 before a mutating non-Git update or
 brownfield install on a host where Git is available. The installer explicitly supports non-Git
-targets. The failure is fail-safe and mutates nothing, so it is P2 rather than data-loss risk; a
-committed Git target passes.
+targets. That original failure is fail-safe and mutates nothing, so it was initially P2; a committed
+Git target passes. The amended P1 priority comes from the separately reproduced shared false-green
+paths described below.
 
-**Do:** design the smallest scoped native-command probe that treats Git's non-repository exit as a
-normal `not in Git` result under both Windows PowerShell 5.1 and PowerShell 7 without masking a real
-installer error. Add native PS5.1 non-Git update and brownfield fixtures that prove the installer
-proceeds, preserves its normal ownership behavior, and does not require `pwsh`. Retain the existing
-clean and dirty Git-target controls, and add a broken-Git negative control that must refuse before
-mutation so the fix cannot reinterpret every probe failure as “not a repository”. Sweep the installer
-for the same stderr-plus-`Stop` pattern, keep Bash behavior unchanged unless the
-contract requires parity, compose all dists, and run the update-delivery/installer matrices plus an
-independent hostile/clean review before shipping.
+**Amended scope:** the original PowerShell-only premise is incomplete. Review reproduced both
+current twins mutating a target with corrupt `.git` metadata and an ambient alternate index hiding a
+dirty file. Implement the locked cross-twin classifier: exact Git worktree/status evidence when
+repository state exists, fail-closed ambient routing, and ordinary non-Git continuation when no
+evidence exists. Add only the three grouped, branch-discriminating UpdateDelivery cases in the
+plan; reuse the existing clean/dirty controls. Compose all dists and require independent hostile
+review plus native Windows/Linux candidate CI before release.
 
 ---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
