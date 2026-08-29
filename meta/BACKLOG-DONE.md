@@ -7288,3 +7288,75 @@ consumer-shaped fixture changed only its two pending sentinel comments. The revi
 scratch copy and left the shared repository clean.
 
 ---
+
+### B-190 · Post-ship review owed for v0.78.3 — **DONE 2026-08-29 · findings filed B-193**
+
+**Review contract.** `/root/b190_independent_review` (Codex GPT-5 family; deployment suffix was not
+exposed) used a separate session with no implementation participation. It first read only
+`v0.78.3:.claude/plans/2026-08-27-b186-hazard-oracle-contract-design.md`, recorded an independent
+threat model, then reviewed immutable range `c84d62499f5dbed02ac0539347621921fe625420` through
+`6fdbef91d744e22924166bc2276543ddf5a3cd0b`. Earlier Claude evidence was attributed context, not
+closure evidence.
+
+**Hostile and clean evidence.** The nominal 38-case suite passed under PowerShell 7.6.5 plus Git
+Bash and under native Windows PowerShell 5.1/CP437 plus Git Bash. A PowerShell status-membership
+weakening failed 37/1; an independent Bash path-existence weakening failed 33/5. Both checker files
+were restored to their original SHA-256 bytes and the suite returned to 38/0. This established a
+primary independent review plus materially distinct `.ps1`/.NET Core, `.ps1`/.NET Framework, and
+`.sh`/MSYS execution paths; the remaining gaps are one physical Windows host/model family, no
+Linux/macOS rerun, and no independently retrievable CI logs.
+
+**Findings.** Five findings covered six reproduced failure shapes. Live shipped-byte probes found
+three P1 false greens: Bash backtick-token removal can
+hide a later missing literal, with the Bash docs-sync wrapper reaching its exact completion line;
+character-class glob syntax counts as a literal path in both twins and both wrappers; and Bash skips
+an unterminated final hazard row. Two P2 classes also reproduced on both twins: the placeholder
+exemption checks only its Area cell rather than the exact row, and leading-dot paths plus a later
+duplicate hazard section bypass the frozen grammar. B-193 carries the consolidated same-class fix;
+this closure records that review happened and found defects, not that v0.78.3 is sound.
+
+**Integrity and disposition.** Checker/test blobs matched across source and all three dists;
+recomposition had zero manifest delta and all three validators passed. The 2026-08-27 changelog date
+versus 2026-08-29 applied/commit/tag date is informational under the existing cross-day retry rule.
+All scratch artifacts were removed and the shared tree remained clean. B-190 closes because its
+review obligation is fulfilled and every finding is now explicit in B-193.
+
+---
+
+### B-188 · Post-ship review owed for v0.78.1 — **DONE 2026-08-29 · P2 filed B-194**
+
+**Review contract.** `/root/b188_independent_review` (Codex GPT-5 family; deployment suffix was not
+exposed) used a separate session with no implementation participation. It read only frozen contract
+`v0.78.1:.claude/plans/2026-08-27-b185-adr-log-hotfix-design.md`, recorded its independent threat
+model, then inspected immutable base `d0b3cd155060b31a973aea4db187b13460b5dffb` through release
+`9891b7c090ac39b909c6b59a249230936ed7762c`.
+
+**Hostile and clean evidence.** Pristine and post-red `UpdateDelivery.Tests.ps1` runs passed 47/0.
+A PowerShell-only rollback of the ADR protection failed 45/2, with only that twin's update-overwrite
+and brownfield-relocation cases red while Bash stayed green; the symmetric Bash-only rollback also
+failed exactly its two cases. Native `.ps1`/.NET and `.sh`/POSIX oracles independently confirmed
+exact update bytes and `PLAN preserve`, live brownfield history with no archive/marker, missing-file
+creation during update, dry-run no side write, convergence, and mixed-settings backup. A separate
+direct two-twin probe confirmed greenfield seed creation; `UpdateDelivery.Tests.ps1` covered
+framework-carrier overwrite. The hostile installers reproduced ADR overwrite/relocation while still
+exiting success. A committed-Git fixture also passed the clean lifecycle under Windows PowerShell
+5.1.
+
+**Composition and orthogonality.** Removing the policy from only the PowerShell authored twin made
+both `build.ps1` and `build.sh` reject the exact mismatch; post-RED pristine builds passed. Composer tests were
+16/0 with their internal mutation reds, dotnet/Angular/monorepo trees matched across tag and both
+composers, and all three validators passed. The separate policy branches, copy/archive engines, JSON
+writers, and native byte/JSON versus POSIX `cmp`/`grep`/`find` oracles materially satisfy WSD-057 for
+the affected data-preservation behavior. Remaining correlation is the same Windows/NTFS host with no
+Unix-native case-sensitive-filesystem run; exact lowercase manifest paths and absence of variants
+were statically verified.
+
+**Finding and disposition.** No v0.78.1-specific data-loss defect was found, so B-188 closes. The
+review separately reproduced a pre-existing, fail-safe P2: Windows PowerShell 5.1 aborts before
+an update or brownfield install on a non-Git target where Git is available because expected
+`git rev-parse --is-inside-work-tree` stderr becomes a terminating native command error under
+`Stop`; no target mutation occurs and a Git target passes. B-194 owns that fix.
+The frozen plan's intentional Markdown hard-break makes historical `git diff --check` exit 2; this is
+recorded as P3 evidence, not product debt. All review scratch artifacts were removed.
+
+---

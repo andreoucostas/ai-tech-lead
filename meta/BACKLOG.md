@@ -2913,36 +2913,61 @@ count distinct categories, and make the eval's authoritative-catalog fixture rej
 Fold a duplicate-row mutation into the existing warehouse map checker suite; do not create a
 standalone catalog suite.
 
-### B-188 · Post-ship review owed for v0.78.1
-**Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-27
-**Filed against:** v0.78.1 (2026-08-27)
-
-**Why:** v0.78.1 shipped with `-NoIndependentReview`, so no second session re-ran a gate or a
-red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
-it did not happen. Summary of what shipped: protect consumer ADR history during installer updates
-
-**Do — WSD-057 supersedes the generated clause:** start blind from the frozen contract and immutable
-v0.78.1 range in a separate session whose reviewer did not implement it. Record reviewer model/agent,
-an independent hostile case or applied mutation observed red, the clean rerun, environment, and
-gaps. Because this is consumer-data preservation, add an orthogonal reviewer or execution vantage.
-File findings and close only with that evidence; model rank alone neither clears nor blocks it.
-
----
-### B-190 · Post-ship review owed for v0.78.3
-**Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-29
+### B-194 · Make the PowerShell 5.1 installer tolerate non-Git targets
+**Effort:** S · **Priority:** P2 · **planned ≥ v0.78.4**
 **Filed against:** v0.78.3 (2026-08-29)
 
-**Why:** v0.78.3 shipped with `-NoIndependentReview`, so no second session re-ran a gate or a
-red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
-it did not happen. Summary of what shipped: enforce exact hazard evidence in completion checks
+**Why:** B-188's independent review found a pre-existing supported-host failure outside v0.78.1's
+ADR-preservation diff. Under Windows PowerShell 5.1 with `$ErrorActionPreference = 'Stop'`, the
+installer's `git rev-parse --is-inside-work-tree *> $null` probe promotes Git's expected
+non-repository stderr to `NativeCommandError` and exits 1 before a mutating non-Git update or
+brownfield install on a host where Git is available. The installer explicitly supports non-Git
+targets. The failure is fail-safe and mutates nothing, so it is P2 rather than data-loss risk; a
+committed Git target passes.
 
-**Do — WSD-057 supersedes the generated clause:** start blind from the frozen contract and immutable
-v0.78.3 range in a separate session whose reviewer did not implement it. Record reviewer model/agent,
-an independent hostile case or applied mutation observed red, the clean rerun, environment, and
-gaps. Because this is a false-green completion gate, add an orthogonal reviewer or execution vantage.
-Claude's earlier clean-gate audit is useful attributed evidence but did not apply a release-specific
-hostile mutation, so it does not close the entry by itself. Model rank alone neither clears nor
-blocks it.
+**Do:** design the smallest scoped native-command probe that treats Git's non-repository exit as a
+normal `not in Git` result under both Windows PowerShell 5.1 and PowerShell 7 without masking a real
+installer error. Add native PS5.1 non-Git update and brownfield fixtures that prove the installer
+proceeds, preserves its normal ownership behavior, and does not require `pwsh`. Retain the existing
+clean and dirty Git-target controls, and add a broken-Git negative control that must refuse before
+mutation so the fix cannot reinterpret every probe failure as “not a repository”. Sweep the installer
+for the same stderr-plus-`Stop` pattern, keep Bash behavior unchanged unless the
+contract requires parity, compose all dists, and run the update-delivery/installer matrices plus an
+independent hostile/clean review before shipping.
+
+---
+### B-193 · Close the remaining hazard-oracle false-green grammar
+**Effort:** M · **Priority:** P1 · **planned v0.78.4**
+**Filed against:** v0.78.3 (2026-08-29)
+
+**Why:** B-190's qualifying blind-first review reproduced five findings covering six remaining
+false-green shapes in the v0.78.3 completion oracle. Bash can lose a later literal while removing
+backticked ancillary text and can skip an unterminated final row; both twins treat balanced bracket
+globs as literal paths, exempt a row whose Area exactly equals the placeholder token even when its
+other cells or framing differ, accept a leading `./` segment, and ignore a second hazard section
+after another H2. The backtick and bracket cases reached the enclosing
+`docs-sync-check` exact success line, so these are live completion bypasses, not grammar niceties.
+Pre-lock review then found that B-77's missing/pending/no-section skips and placeholder pass predate
+the checker's v0.78.0 mandatory completion role: incomplete, header-only, and arbitrary-prose
+outcomes can still reach the same wrapper success line. It also reproduced both twins erasing
+terminal dot-segment and bare-drive-prefix safety evidence during sentence-punctuation trimming.
+
+**Do:** implement the locked
+`.claude/plans/2026-08-29-b193-hazard-oracle-same-class-closure.md`. In the two existing checker twins,
+make backtick extraction data-safe, classify `*`, `?`, and balanced bracket classes as ancillary
+wildcard syntax, consume final non-newline-terminated lines in both Bash loops, reject incomplete
+lifecycle sentinels, require either real rows or the exact no-notable outcome, reject duplicate
+`Known Hazard Areas` sections, and inspect safety-significant raw tokens before trimming terminal
+`.`/`:` punctuation. Reject exact `.`/`..` segments and every drive-prefixed form without rejecting
+valid dot-named directories.
+Add discriminating leaf fixtures for the parser boundaries, representative consumer-shaped wrapper
+cases for parser bypasses, and exhaustive wrapper states for the incomplete lifecycle contract. Keep
+the existing epistemic boundary and table-escaping non-goal; do not preserve a historical pass state
+whose current completion caller can prove is incomplete.
+Compose all three dists; verify PowerShell 7, native Windows PowerShell 5.1/CP437, Git Bash, all three
+validators, clean source/dist parity, and a post-green mutation per twin. Because this changes a
+false-green completion gate, WSD-057 requires an independent reviewer plus an orthogonal execution
+vantage before release.
 
 ---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
