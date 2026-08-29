@@ -2928,21 +2928,6 @@ gaps. Because this is consumer-data preservation, add an orthogonal reviewer or 
 File findings and close only with that evidence; model rank alone neither clears nor blocks it.
 
 ---
-### B-189 · Post-ship review owed for v0.78.2
-**Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-27
-**Filed against:** v0.78.2 (2026-08-27)
-
-**Why:** v0.78.2 shipped with `-NoIndependentReview`, so no second session re-ran a gate or a
-red-test against it. Maintenance model #2 requires the review to be filed rather than assumed when
-it did not happen. Summary of what shipped: expose completion checks on Windows PowerShell 5.1
-
-**Do — WSD-057 supersedes the generated clause:** start blind from the frozen contract and immutable
-v0.78.2 range in a separate session whose reviewer did not implement it. One reviewer may close this
-ordinary host-exposure change by recording reviewer model/agent, an independent hostile case or
-applied mutation observed red, clean PowerShell 5.1 and 7 evidence, environment, and gaps. File
-findings and close only with that evidence; model rank alone neither clears nor blocks it.
-
----
 ### B-190 · Post-ship review owed for v0.78.3
 **Effort:** S · **Priority:** P2 · filed automatically by `release.ps1` on 2026-08-29
 **Filed against:** v0.78.3 (2026-08-29)

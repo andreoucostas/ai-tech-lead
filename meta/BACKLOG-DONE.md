@@ -7241,8 +7241,8 @@ results; only an observed `pass`/`fail` difference is directional, while `cannot
 unordered gap. R1–R5 remain raw descriptive continuity data with no FS2 composite total. Isolation,
 privacy, onboarding, same current-frontier exact model/exact prompt/day/host/toolchain, fresh-session
 controls, random order, and the live diary remain. Each task-agent scope excludes the other
-arm/results, accepted source history, and private
-card/oracle; the setup agent uses the same canary-proven boundary and any change outside its frozen
+arm/results, accepted source history, and private card/oracle; the setup agent uses the same
+canary-proven boundary and any change outside its frozen
 allowed-path set is retained as onboarding harm and voids the pair. Host-level instructions are
 identical and treatment-free. The first valid pair is retained whether directional or null.
 
@@ -7252,5 +7252,39 @@ feature work. Those limits became visible only after the first valid run. FS2 st
 runs rather than four; it raises participant burden to an explicit 90–150-minute range in exchange
 for a task capable of exercising the framework's intended architectural value. Full adversarial
 comparison: `.claude/plans/2026-08-29-decision-revalidation-and-value-evidence-design.md`.
+
+---
+
+### B-189 · Post-ship review owed for v0.78.2 — **DONE 2026-08-29 · independent review, no findings**
+
+**Original debt.** v0.78.2 shipped with `-NoIndependentReview`; the release exposed mandatory
+completion commands on Windows PowerShell 5.1 and therefore owed qualifying evidence against the
+immutable release. WSD-057 classified this as an ordinary host-exposure change that one independent
+reviewer could close.
+
+**Blind-first review.** `/root/b189_independent_review` (Codex GPT-5 family; deployment suffix was not
+exposed) used a separate session with no implementation participation. It read only the frozen
+contract at
+`v0.78.2:.claude/plans/2026-08-27-b187-powershell51-completion-design.md`, recorded its own threat
+model, then inspected immutable range `9891b7c090ac39b909c6b59a249230936ed7762c` through
+`c84d62499f5dbed02ac0539347621921fe625420`.
+
+**Hostile and clean evidence.** In an isolated git-archive copy, removing the exact PowerShell 5.1
+invocation from dotnet bootstrap's deterministic-completion section while leaving the same command
+under Phase 4 made `DocClaims.Tests.ps1` fail 7/1, exit 1, under both Windows PowerShell 5.1 and
+PowerShell 7. Swapping the two PowerShell commands beneath their labels independently failed 7/1,
+exit 1. Untouched clean-after-red runs passed 8/0, exit 0, under both hosts and again under code page
+437. The v0.78.2 greenfield installer exited 0. In a consumer-shaped fixture derived from that install
+by replacing only its two bootstrap-pending sentinel comments, both exact documented PowerShell
+commands exited 0 and ended on the exact final success line; the 5.1 leg proved `pwsh` was absent from
+`PATH`.
+
+**Scope and gaps.** All seven authored and nine composed carriers contained exactly one correctly
+paired 5.1/7/bash invocation plus exit-0 and final-line semantics. Dotnet, Angular, and monorepo
+builds exited 0, left all 525 dist file hashes unchanged, and `validate-dist.ps1` passed for all
+three. No checker, `/adopt`, or prompt-wrapper scope expansion was found; findings were P0/P1/P2/P3
+all zero. No live interactive `/bootstrap` was run because it is developer-initiated; the
+consumer-shaped fixture changed only its two pending sentinel comments. The reviewer removed every
+scratch copy and left the shared repository clean.
 
 ---
