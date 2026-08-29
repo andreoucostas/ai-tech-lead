@@ -7117,3 +7117,32 @@ any strengthened workflow contract delegated to an older oracle: agreement and g
 establish that the oracle recognizes the new invalid worlds or preserves evidence identity.
 
 ---
+
+### B-158 · Surface and decide the static-context budget — **DONE 2026-08-29 · decision-only closure**
+
+**Part (a) had already shipped.** Commit `c8aa1bc` (included from v0.68.0 onward) made both
+`context-footprint` twins print remaining headroom on every run, including a passing authoring run.
+The original discovery-by-release-refusal defect was therefore stale; the open work was only the
+ceiling decision.
+
+**Premise revalidated at v0.78.3.** The current Claude static totals are dotnet 39,582/40,000,
+angular 38,105/40,000, and monorepo 47,098/48,000. WSD-017's original totals were 34,605, 33,951,
+and 41,443, giving roughly 16% initial room. Its committed policy was nevertheless an absolute
+40,000/48,000 maximum, not a promise to replenish that margin as it was consumed.
+
+**Decision.** WSD-055 retains both ceilings. They govern recurring always-loaded cost and salience,
+not model capacity or desired free space. New static content must normally fund itself through a
+named, behavior-preserving retirement, consolidation, or replacement. Raising to about 47k/56k to
+restore the original percentage was rejected as a budget ratchet; dynamic/per-model limits would
+weaken deterministic cross-host governance; immediate compression has no observed harm to justify
+it. A later raise needs independent evidence and a change separate from the payload that wants room.
+
+**Adversarial and proportionality result.** The strongest objection—retention may block a useful
+rule—is real, but being unable to fit a validated benefit after reasonable displacement is exactly
+the new evidence a later review should assess. Nearness to the limit is circular evidence for an
+increase. No product bytes or gate behavior changed, so no release, version, changelog, or new test
+was warranted. Direct dependants were corrected from “waiting on B-158” to “requires named
+size-neutral displacement.” Full review:
+`.claude/plans/2026-08-29-b158-static-context-ceiling-review.md`.
+
+---

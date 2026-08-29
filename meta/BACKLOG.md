@@ -566,6 +566,10 @@ well as precision** — via the B-41 harness, not a second one.
 > (`scripts/context-footprint.ps1:246-247`) and monorepo has **83 characters** of headroom. There is
 > no room to move this content onto the channel that would deliver it. **B-158(b) gates this entry.**
 >
+> **GATE RESOLVED 2026-08-29 — the ceilings stay.** WSD-055 retains 40,000/48,000 as stable
+> recurring-context budgets. This entry is no longer waiting on a decision, but it has no additive
+> budget: proceed only with a named, behavior-preserving displacement or close without shipping.
+>
 > **Not:** do not respond to the 0/16 by making the skill's description more attractive. That is
 > tuning the mechanism measured at zero, and B-160 records that trigger vocabulary did not even
 > predict the one middling case (1/6 on prompts that used the skill's own words). The channel is the
@@ -1002,6 +1006,10 @@ catches uncertainty, which is the wrong instrument: the model was confident and 
 >
 > So the sequence is: **B-158(b) — decide whether 40000/48000 are still the right numbers — gates this
 > entry.** That is a decision, not an implementation, and it is not this entry's to make.
+>
+> **GATE RESOLVED 2026-08-29 — the ceilings stay.** WSD-055 leaves this entry independently
+> actionable only as a size-neutral replacement: the proposed rule must name what it displaces and
+> preserve that material's behavior. Near-full headroom is not authority to raise the budget.
 >
 > **The generalisable point, which is why this is written here rather than silently fixed:** a
 > "blocked by X" annotation is a *measurement with a date*, and it rots exactly like a cost table
@@ -1842,6 +1850,10 @@ gate satisfied.
 > six-dimension claim schema is hundreds of characters. **This cannot ship as written**, and the
 > plan never checks. Fourth entry routing through B-158(b) — fifth counting B-136.
 >
+> **BUDGET DECISION 2026-08-29.** WSD-055 retains the ceiling. Only the review's smaller
+> instruction correction may proceed, and only against a named, behavior-preserving displacement;
+> the larger schema has neither proportionality nor static-context authority.
+>
 > **2. PROPORTIONALITY — the concrete defect is one instruction, and the fix is close to one
 > sentence. The schema is not proportionate to it.** The entry names the harm precisely: all three
 > `/bootstrap` variants tell the model to replace `Codebase Context` with *"real findings from this
@@ -1933,7 +1945,9 @@ authorised.** Two blockers and one scope reduction:
 1. **Step 1 is unbudgeted.** The Agentic Workflow lives on the carrier counted in `static.claude`,
    and "reconcile" wording is necessarily longer than "flag" wording — against **83 characters** of
    monorepo headroom. Either author it size-neutral against a *named* displacement, or wait on
-   B-158(b). This is the fourth entry found routing through that decision.
+   B-158(b). This is the fourth entry found routing through that decision. **WSD-055 resolved the
+   decision on 2026-08-29 by retaining the ceiling; a named size-neutral displacement is therefore
+   required.**
 2. **The artifact/action table must not ship as a table.** It is the second inventory this entry
    forbids, and B-164 measured that shape failing: four entries enumerated the scripts they knew
    about and a fifth defect appeared in an unlisted one. Ship the durable principle; leave
@@ -2395,42 +2409,6 @@ fail in the world the entry is about; see `meta/BACKLOG-DONE.md`.**
 **B-154 is DONE (2026-08-20) — a dated release head with no tag now fails the meta suite; see `meta/BACKLOG-DONE.md`.**
 
 **B-155 is DONE (2026-08-20) — a grep that cannot run is now a host fatal, not a content finding; see `meta/BACKLOG-DONE.md`.**
-
-### B-158 · The static-context budget is effectively exhausted, and nothing says so until a release refuses
-**Filed against:** v0.63.0 (2026-08-21)
-**Effort:** S · **Priority:** P2 · found 2026-08-21 while asking whether more skills should ship · **Invariants:** #7
-
-**Why — measured from `meta/context-footprint.json` on 2026-08-21, not estimated:**
-
-| dist | `static.claude` | ceiling | headroom |
-|---|---:|---:|---:|
-| dotnet | 39,501 | 40,000 | **499 chars (1.2%)** |
-| angular | 38,239 | 40,000 | 1,761 chars (4.4%) |
-| monorepo | 47,917 | 48,000 | **83 chars (0.17%)** |
-
-B-110 made these a hard failure, which was right. The consequence nobody has stated is that the
-framework now sits within a rounding error of its own budget on two of three dists, so **any**
-static-context addition — a paragraph in `CLAUDE.md`, a rule on the carrier, a skill, an agent — is
-near-blocked on dotnet and effectively blocked on monorepo. Shipped skill *frontmatter* (the part
-that counts) averages **689 chars** across the 16 monorepo skills (min 285, max 1,086), so the next
-skill costs roughly **8x the entire monorepo headroom**, and even the smallest existing one is 3.4x
-over it. Skills compose into monorepo from both stacks, so a new .NET *or* Angular skill lands there.
-
-**The failure mode is discovery-by-refusal.** Nothing warns at authoring time; you find out when a
-release stops. That is the same shape the ceilings themselves had before B-110 — a real limit that
-only announces itself at the worst moment.
-
-**Do:** (a) surface remaining headroom in the *authoring* path, not only pass/fail at release — one
-line, "dotnet: 499 chars from ceiling", is enough; (b) decide deliberately whether these numbers are
-still the right ceilings and record the decision. They were set when the framework was smaller.
-Raising them on purpose is legitimate; discovering them is not.
-
-**Not:** do not raise a ceiling to unblock a specific change in the same commit as that change. That
-is how a budget stops being one.
-
-**Cross-links:** B-110 (made the ceiling a hard failure), B-139 (the sibling drift problem in the
-per-stage ceilings), B-44 (retirement is the other way to create headroom), B-157 (per-file install
-volume, the other cost of the same material), B-159, B-160.
 
 ### B-159 · Nobody has measured whether the always-loaded rails actually trigger the `/review` fan-out
 **Filed against:** v0.63.0 (2026-08-21)

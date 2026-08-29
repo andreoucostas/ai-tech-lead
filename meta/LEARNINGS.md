@@ -1567,3 +1567,18 @@ garbage suffixes, impossible dates, and a date contradicting the adjacent column
 token, validate captured values semantically, and bind duplicated facts to each other. Finally, test
 the delegating completion wrapper: leaf parity alone would not have demonstrated that malformed
 hazards actually made `docs-sync-check` withhold its final success line.
+
+## 2026-08-29 — Remaining budget is not evidence that the budget is wrong
+
+The static-context ceilings began with roughly 16% growth room and later approached their hard
+limits. Treating that initial margin as something to restore would create a ratchet: every addition
+could consume the allowance and then cite low headroom as evidence for the next increase. A stable
+budget becomes useful precisely when it forces new permanent material to displace, consolidate, or
+out-rank old material.
+
+Separate capacity from cost. A model's larger context window says it can accept more input; it does
+not show that repeatedly loading more framework prose is free or improves instruction salience.
+Likewise, do not compress proven rails merely to make a dashboard look spacious. Keep an absolute
+cross-host budget stable until a separately reviewed, observed benefit cannot fit after reasonable
+displacement or new measurements change the cost trade. The payload that wants room must not also
+decide that the room exists.

@@ -2439,3 +2439,35 @@ stability observations, not votes on truth.
 debt; moving every ADR producer to a newly inferred canonical file; deleting the whole composed
 prompt hook based on a classifier result; using a Codex carrier to make Claude/Copilot host claims;
 and building a second eval rig.
+
+---
+
+## WSD-055: static-context ceilings are budgets, not renewable headroom targets (2026-08-29)
+
+**Context.** B-158(a) already made both footprint twins report headroom on every authoring run.
+Part (b) asked whether the 40,000-byte single-stack and 48,000-byte monorepo Claude static-context
+ceilings remain right now that v0.78.3 measures 39,582, 38,105, and 47,098 bytes respectively.
+WSD-017 set those absolute ceilings with roughly 16% initial growth room; it did not promise that
+percentage forever. B-110 made them hard limits so additions would force an explicit decision.
+
+**Decision.** Retain 40,000/48,000. They govern stable, repeatedly loaded prompt cost and salience,
+not a model's maximum context capacity and not a target amount of unused space. A new static addition
+must normally name a retirement, consolidation, or smaller behavior-preserving replacement. A future
+increase requires separate, new decision-relevant evidence—such as an observed material benefit that
+cannot fit after reasonable displacement or measurements that change the recurring-cost trade—and
+must not be coupled to the payload seeking room.
+
+This resolves B-158 dependencies without granting budget. B-96, B-99, B-133, and B-136 may proceed
+only with a validated displacement or close without a shipped addition. The full premise audit and
+adversarial comparison are locked in
+`.claude/plans/2026-08-29-b158-static-context-ceiling-review.md`.
+
+**Proportionality.** No runtime behavior changes. Recording the decision and correcting stale
+backlog gates is sufficient; changing scripts, baselines, consumer artifacts, versions, or
+changelogs would manufacture work without evidence.
+
+**Rejected.** Raising to approximately 47k/56k merely to recreate the original margin (a perpetual
+ratchet); dynamic, percentage, growth-only, or per-model ceilings (moving dependencies and weaker
+cross-host determinism); and immediate compression or lower limits without observed harm. The
+v0.78.0 release refusal is positive evidence for the retained design: it exposed duplicated static
+prose and produced centralization instead of normalizing the excess.
