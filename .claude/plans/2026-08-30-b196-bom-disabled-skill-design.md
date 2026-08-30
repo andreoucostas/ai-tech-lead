@@ -2,6 +2,7 @@
 
 **Date:** 2026-08-30  
 **Filed against:** v0.78.3  
+**Planned:** v0.78.4
 **Status:** IMPLEMENTED CANDIDATE — local verification complete; first Windows/Linux CI pending
 
 ## Value decision

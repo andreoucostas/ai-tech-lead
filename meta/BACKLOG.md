@@ -2982,7 +2982,7 @@ and use one cleanup-registry mutation to prove the subject is discriminating.
 ---
 
 ### B-196 · Honor a BOM-prefixed disabled-skill ledger in the Bash installer
-**Effort:** S · **Priority:** P1 · **planned v0.78.5**
+**Effort:** S · **Priority:** P1 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-29)
 **Status:** IMPLEMENTED CANDIDATE — local verification complete; first Windows/Linux CI pending
 

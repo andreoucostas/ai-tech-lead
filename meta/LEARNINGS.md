@@ -1683,3 +1683,8 @@ only in the parsing stream, and keep that stage visible to `pipefail`. Then use 
 to both recognize the record and emit its normalized key. Prefer strengthening an existing
 end-to-end outcome with independently specified hostile bytes and orthogonal mutations over adding
 a new result that recounts the same behavior. Test count is not evidence density.
+
+Release metadata is linear too. Do not put a future `Unreleased` H2 above a still-pending release:
+the release tool deliberately treats the first H2 as the only release head, so parallel heads make
+the earlier candidate unreleasable. Either finish the current release first or explicitly replan
+the new work into it, then exercise the release-head parser—not just generic documentation gates.

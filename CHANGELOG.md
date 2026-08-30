@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.78.5 — Unreleased
+## 0.78.4 — Unreleased
 
 **Bash updates now preserve durable disabled-skill intent in protected ledgers written by Windows
 PowerShell.** B-196 removes exactly one standard UTF-8 BOM only at byte zero of the parsing stream,
@@ -33,8 +33,6 @@ selected-file read failure. In separate exact-`49420ad` copies, removing only BO
 restoring only prefix-based name extraction each made that same Bash result fail at 49/1 while all
 PowerShell results stayed green. The exact candidate's first Windows/Linux CI run remains mandatory
 before completion or release.
-
-## 0.78.4 — Unreleased
 
 **The hazard completion oracle now refuses incomplete discovery instead of reporting framework
 completion.** B-193 explicitly supersedes the B-77-era skip behavior after v0.78.0 made this
