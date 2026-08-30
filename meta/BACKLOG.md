@@ -2892,7 +2892,8 @@ candidate rather than completion or release.
 ### B-206 · Make InstallerConvergence junction teardown non-interactive under Windows PowerShell 5.1
 **Effort:** S · **Priority:** P2 · **planned ≥ v0.78.5**
 **Filed against:** v0.78.3 (2026-08-30)
-**Status:** REPRODUCED — separate from B-198 product behavior
+**Status:** DESIGN LOCKED — implement next; separate from B-198 product behavior
+**Plan:** `.claude/plans/2026-08-30-b206-installer-convergence-junction-teardown-design.md`
 
 **Why:** B-198's required native Windows PowerShell 5.1/CP437 run returned 10/2 even though its two
 strengthened case-variant results passed. Both failures were the unchanged
@@ -2909,6 +2910,17 @@ fingerprint assertion, verify exact link and both generated roots are absent aft
 retain body failures if cleanup also fails. Strengthen that existing result or its lifecycle; add no
 suite or `It`. Require ordinary 12/0 under both PowerShell hosts plus the existing Linux CI, and do
 not generalize into another cleanup framework or fold it into B-198's Bash product change.
+
+**Value/design review (2026-08-30):** two independent adversarial reviews returned IMPLEMENT for a
+narrow meta-test repair. The result covers WSD-051's successful-retirement preservation boundary;
+the side-write reparse refusal result is not a substitute, so deletion would lose distinct safety
+evidence. A fresh isolated native 5.1 replay returned the exact 10/2 shape and four leaked roots.
+Across both reviews and primary-agent probes, the non-recursive `[IO.Directory]::Delete` primitive
+unlinked only the populated junction while preserving the outside sentinel under PowerShell 7 and
+5.1; confirmation controls still failed. The locked design captures body and cleanup failures
+separately, verifies link/root absence, retains the existing POSIX unlink, and keeps six `It`
+blocks/twelve runtime results. It rejects a one-line-only fix, B-204 helper reuse, retries,
+product/dist changes, and new permanent cases. Native Linux remains an explicit candidate gap.
 
 ---
 
