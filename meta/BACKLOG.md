@@ -2892,7 +2892,7 @@ candidate rather than completion or release.
 ### B-206 · Make InstallerConvergence junction teardown non-interactive under Windows PowerShell 5.1
 **Effort:** S · **Priority:** P2 · **planned ≥ v0.78.5**
 **Filed against:** v0.78.3 (2026-08-30)
-**Status:** IMPLEMENTED CANDIDATE — local PowerShell 7/5.1 evidence green; immutable review and native Linux/CI pending
+**Status:** IMPLEMENTED CANDIDATE `aa374fdd7c17f641021adc58b1db00609fe1efb1` — immutable review approved; native Linux/CI pending
 **Plan:** `.claude/plans/2026-08-30-b206-installer-convergence-junction-teardown-design.md`
 
 **Why:** B-198's required native Windows PowerShell 5.1/CP437 run returned 10/2 even though its two
@@ -2940,12 +2940,24 @@ enumeration was added, both independent reviewers approved. One reran the amende
 isolated 5.1 with zero residue and exercised missing-link, non-link, and outside-byte hostile worlds;
 unsafe worlds retained both roots/sentinel and surfaced both failure causes.
 
+**Immutable review:** a detached no-hardlinks review approved exact candidate
+`aa374fdd7c17f641021adc58b1db00609fe1efb1`, tree
+`e573c69d3e30c4e2f94493f4367c7d5cd2ca6fd8`, from sole design parent
+`bf1bd24788fb70973a4c601a3010548ff787688e`. Native Windows PowerShell 5.1/CP437 independently
+reproduced the parent at 10/2 with exactly four residues and the candidate at 12/0 with none;
+PowerShell 7/Git Bash also passed 12/0 without residue. The dual-failure mutation made both twin
+messages retain both unique causes before exact-byte restoration. Non-link replacement, ambiguous
+parent enumeration, access failure, and outside-byte mutation each failed the targeted twin and
+retained both roots rather than authorizing recursion. Six `It` blocks/twelve results, BOM/AST,
+record gates, exact blob/hash, and five-file scope were reconfirmed. No native POSIX/Linux or CI run
+occurred, so approval is candidate evidence rather than completion or release approval.
+
 **RCA/census:** no gate caught this because the populated-junction teardown had not been executed
 headlessly under the supported Windows PowerShell 5.1 provider; normal PS7 cleanup and the product
 assertions were green. The only other generated-junction cleanup is this file's side-write result.
 Its outside directory is invariantly empty, and it passed the exact old-red run plus every candidate
 run without observed residue, so B-206 does not widen on mechanism resemblance alone. Native Linux
-must still exercise the POSIX symlink path, and immutable review/CI remain pending.
+must still exercise the POSIX symlink path, and candidate CI remains pending.
 
 ---
 

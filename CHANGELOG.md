@@ -49,8 +49,17 @@ The native 5.1/CP437 file moved from the preserved 10/2 cleanup failure to 12/0;
 passed 12/0 and both left no current fixture entry. A temporary post-body/post-cleanup mutation made
 both twin results fail with both unique causes before exact-byte restoration returned 12/0. The only
 other generated-junction cleanup targets an empty outside directory and passed the old and current
-runs, so it was not widened without observed consequence. Native Linux/CI and immutable review
-remain candidate gaps.
+runs, so it was not widened without observed consequence.
+
+Independent immutable review approved exact candidate
+`aa374fdd7c17f641021adc58b1db00609fe1efb1`, tree
+`e573c69d3e30c4e2f94493f4367c7d5cd2ca6fd8`, from sole design parent `bf1bd247`. In a detached
+no-hardlinks clone, native Windows PowerShell 5.1/CP437 reproduced the parent at 10/2 with four
+residues and the candidate at 12/0 with none; PowerShell 7/Git Bash also passed 12/0 without residue.
+Dual-failure mutation retained both causes, while non-link, ambiguity, access, and outside-byte
+hostile worlds all blocked recursion and retained both roots. Exact scope/hash, cardinality,
+BOM/AST, and record gates were clean. Native POSIX/Linux and CI remain unobserved, so B-206 stays an
+implemented candidate rather than complete or releaseable.
 
 **Warehouse maps no longer have a hidden declined state.** B-202 revalidates and supersedes the
 explicit-decline clause of WSD-033: no shipped workflow wrote or taught the exact protected

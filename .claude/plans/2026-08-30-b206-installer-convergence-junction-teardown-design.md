@@ -105,5 +105,25 @@ after proven absence or retained both roots/sentinel and surfaced both failure c
 The same-class census found one other generated junction cleanup in this file's side-write result.
 It targets an invariantly empty outside directory, passed in the exact native 5.1 10/2 baseline and
 all candidate runs, and has no observed masked verdict or residue; widening B-206 to it would be
-mechanism-driven scope without consequence evidence. Native Linux/CI and immutable review remain
-pending, so this is not completion or release approval.
+mechanism-driven scope without consequence evidence.
+
+## Immutable review (2026-08-30)
+
+A detached no-hardlinks review approved exact candidate
+`aa374fdd7c17f641021adc58b1db00609fe1efb1`, tree
+`e573c69d3e30c4e2f94493f4367c7d5cd2ca6fd8`, from sole design parent
+`bf1bd24788fb70973a4c601a3010548ff787688e`. Native Windows PowerShell 5.1/CP437 independently
+reproduced the parent at 10/2 with exactly four residues, then ran the candidate at 12/0 with an
+empty isolated temp directory. PowerShell 7/Git Bash also passed 12/0 with no residue. Six syntactic
+`It` blocks/twelve results, the recorded blob/SHA, BOM, AST, exact five-file scope, and record gates
+were reconfirmed.
+
+The dual-failure mutation produced 10/2 with both body and cleanup sentinels in both twin messages
+before exact-byte restoration. Hostile non-link replacement, ambiguous exact-parent enumeration,
+access failure, and outside-byte mutation each failed the targeted twin and retained both roots;
+none authorized recursion. Normal cleanup exercised the direct-miss fallback after unlink, while
+only `ItemNotFoundException` could enter non-recursive parent enumeration and ordinal leaf matching.
+All review mutations, isolated clones, and generated review roots were removed safely.
+
+No native POSIX/Linux, CI, push, tag, or release evidence exists. B-206 therefore remains an
+implemented candidate until the unchanged POSIX symlink branch and exact candidate pass required CI.
