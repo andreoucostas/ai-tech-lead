@@ -4,6 +4,12 @@
 reviews approved after narrowing the reach claim, preserving Bash transport, making both doctor
 messages causally generic, and requiring independent `2`/`3` boundary mutations.
 
+**Pre-implementation evidence correction.** The first captured red run disproved both reviewers'
+claim that the existing `9.9.9` fixture alone creates two findings: it creates one because the
+version checks are one `if`/`elseif` chain. The contract is unchanged; the locked fixture now pairs
+that version drift with an independently missing `copilot-instructions.md` to construct exactly two
+verified findings rather than assuming them.
+
 **Decision record:** `meta/workspace-decisions.md` WSD-063 · **Backlog entry:** B-175
 
 ## Premise and value
@@ -57,11 +63,12 @@ compatible.
 
 No result is added.
 
-1. Extend `ScriptTwinParity.Tests.ps1`'s existing clean/planted-drift result. Its `9.9.9` mutation
-   creates two findings: require the preserved `2 framework check(s) FAILED.` summary and fixed exit
-   `3` from both twins. In the same result, mutate disposable checker copies through asserted unique
-   anchors that change only the real CHANGELOG input operand to an asserted absent path; require
-   exit `2` and the exact shared diagnostic. Do not synthesize the status.
+1. Extend `ScriptTwinParity.Tests.ps1`'s existing clean/planted-drift result. Pair its `9.9.9`
+   version mutation with an independently missing `.github/copilot-instructions.md` to construct
+   exactly two findings; require the preserved `2 framework check(s) FAILED.` summary and fixed
+   exit `3` from both twins. In the same result, mutate disposable checker copies through asserted
+   unique anchors that change only the real CHANGELOG input operand to an asserted absent path;
+   require exit `2` and the exact shared diagnostic. Do not synthesize the status.
 2. Keep `FrameworkDoctor.Tests.ps1`'s existing mirror-pass result. Expand its existing
    mirror-failure result into a stub-status matrix: `3 -> MISSING`, `2 -> CANT-VERIFY`, and
    representative abnormal `1 -> CANT-VERIFY`. Twin comparison already proves summary counts and
