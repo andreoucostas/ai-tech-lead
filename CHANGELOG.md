@@ -13,6 +13,20 @@
 
 ## 0.78.4 — Unreleased
 
+**The shipped Bash installer no longer requires Bash 4 for manifest validation.** B-198 replaces
+the two associative arrays and two lowercase expansions introduced in v0.76 with one guarded,
+C-locale `awk` preprocessing pass per validator. ASCII case-variant duplicate paths remain a
+pre-mutation error, normalized validator output and PowerShell behavior are unchanged, and all
+three distributions still come from the one authored script.
+
+The existing forged-manifest convergence result now uses a case-variant duplicate and requires its
+exact diagnostic; no suite or result was added. WSD-061 narrowly supersedes B-70's absolute
+“third CI leg” wording with one required, non-matrix `macos-portability` job because neither existing
+runner can execute the supported stock macOS `/bin/bash` 3.2 provider. Its first run must show the
+frozen old installer red/no-mutation and the candidate green; that historical arm is then removed
+and the stable candidate must pass macOS plus the normal Windows/Linux CI before completion or
+release. Local newer-Bash evidence is not reported as macOS or Bash 3.2 proof.
+
 **Warehouse maps no longer have a hidden declined state.** B-202 revalidates and supersedes the
 explicit-decline clause of WSD-033: no shipped workflow wrote or taught the exact protected
 `LEARNINGS.md` heading, its append-only preference had no revocation state, and its only permanent

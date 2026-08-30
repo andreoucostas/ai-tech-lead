@@ -11,7 +11,7 @@
 #
 # THE EXIT CONTRACT IS THE POINT -- three outcomes, not two:
 #   0  the CI workflow's push run for -Sha completed AND concluded success, AND every expected job
-#      (the two CI legs) concluded success.
+#      concluded success.
 #   1  it concluded failure/cancelled/timed_out/action_required/startup_failure, or an expected job
 #      concluded something other than success.
 #   3  CANT-VERIFY -- the result could not be observed at all: no gh, gh failed, output did not
@@ -45,7 +45,7 @@ param(
     # GitHub names a matrix job "<job> (<value>)" -- if that naming ever changes, this list must
     # follow, and it failing loudly is the intended direction.
     [string[]]$ExpectedJobs = @(
-        'windows', 'linux',
+        'windows', 'linux', 'macos-portability',
         'windows-hooks (dotnet)', 'windows-hooks (angular)', 'windows-hooks (monorepo)',
         'linux-hooks (dotnet)', 'linux-hooks (angular)', 'linux-hooks (monorepo)'
     )
@@ -308,10 +308,10 @@ if (@($unknown).Count -gt 0) {
     Exit-CantVerify -Reason "unrecognised conclusion: $names." -Hint "See $($watched[0].url)"
 }
 
-# ---- 6. Both legs must have actually run ---------------------------------------------------------
+# ---- 6. Every required job must have actually run -----------------------------------------------
 # A workflow-level success does not prove every job ran: a leg can be skipped by a condition, or
-# quietly removed. B-70 is about a test never exercised on a leg before shipping; watching only the
-# aggregate conclusion cannot see that. (This narrows the exposure -- it does NOT close B-70.)
+# quietly removed. B-70 is about a test never exercised on a leg before shipping; WSD-061 adds one
+# unique provider rather than a generic proxy. Watching only the aggregate cannot see either gap.
 $jobs = @()
 foreach ($w in $watched) {
     $view = Invoke-GhJson -GhArgs @('run', 'view', "$($w.databaseId)", '-R', $slug, '--json', 'jobs') `

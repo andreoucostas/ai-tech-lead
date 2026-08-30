@@ -1769,3 +1769,24 @@ the ordinary missing/current/stale worlds, and use a disposable old-red/new-gree
 compatibility boundary. Do not invert the deleted result into a permanent assertion about hidden
 prose: that would retain the same maintenance cost under a different name. Historic decisions and
 existing tests are evidence to inspect, not obligations to preserve when their value premise fails.
+
+## 2026-08-30 — Provider-specific evidence should be narrower than a generic third test leg
+
+B-70 correctly rejected another broad CI runner for a Windows/Linux process gap, but its absolute
+wording became wrong when the product promised stock macOS Bash 3.2 and neither required runner
+could execute it. Historic infrastructure constraints deserve the same premise revalidation as
+product decisions. The useful distinction is not “two jobs versus three”; it is whether the added
+provider observes a shipped contract that every existing provider literally cannot.
+
+Pay only for that missing fact. Composition already proves one authored installer reaches all three
+distributions, and the existing convergence suite exercises its modes and reconciliation policies.
+The recurring macOS work therefore needs one committed-dist greenfield smoke under an asserted
+`/bin/bash` 3.2, not another three-dist or hook/meta matrix. A frozen-parent failure is valuable once
+to prove the new instrument discriminates; retaining that history dependency after the first
+observed red/green would turn evidence into recurring archaeology.
+
+Hostile-host runs can also uncover unrelated test truth. The required Windows PowerShell 5.1 run
+passed B-198's changed result but failed an older junction cleanup through a headless confirmation
+path. Diagnose and preserve that red, file the distinct consequence, and do not either absorb it
+into the current product patch or weaken the run until it looks green. Test count, runner count, and
+green count are all proxies; the valuable unit is a reachable decision with a trustworthy verdict.

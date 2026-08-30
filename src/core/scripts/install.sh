@@ -59,8 +59,7 @@ valid_repo_path() {
 }
 
 validate_ownership_manifest() {
-  local file="$1" label="$2" output="$3" stripped parsed expected path ownership folded
-  declare -A seen_paths=()
+  local file="$1" label="$2" output="$3" stripped parsed expected path ownership folded duplicate
   [ -f "$file" ] || { echo "missing $label" >&2; return 1; }
   [ "$(grep -Ec '^[[:space:]]*"schema-version"[[:space:]]*:[[:space:]]*1,?[[:space:]]*$' "$file")" -eq 1 ] || { echo "$label has an unsupported or missing schema" >&2; return 1; }
   new_temp_file; stripped=$new_temp; tr -d '\000' < "$file" > "$stripped"; cmp -s "$file" "$stripped" || { echo "$label contains NUL bytes" >&2; return 1; }
@@ -68,20 +67,21 @@ validate_ownership_manifest() {
   sed -n 's/^[[:space:]]*{ "path": "\([^"]*\)", "ownership": "\([^"]*\)" }[,]\{0,1\}[[:space:]]*$/\1\	\2/p' "$file" > "$parsed"
   expected=$(grep -c '"path"' "$file" || true)
   [ "$expected" -gt 0 ] && [ "$expected" -eq "$(wc -l < "$parsed" | tr -d ' ')" ] || { echo "$label contains malformed path entries" >&2; return 1; }
+  if ! LC_ALL=C awk -F $'\t' 'BEGIN { OFS = FS } { folded = tolower($1); print folded, (seen[folded]++ ? 1 : 0), $0 }' "$parsed" > "$stripped"; then
+    echo "$label could not be case-folded for duplicate validation" >&2
+    return 1
+  fi
   : > "$output"
-  while IFS=$'\t' read -r path ownership; do
+  while IFS=$'\t' read -r folded duplicate path ownership; do
     valid_repo_path "$path" || { echo "$label contains unsafe or non-normalized path '$path'" >&2; return 1; }
     case "$ownership" in framework-owned/overwritten|consumer-owned/protected|mixed) ;; *) echo "$label has unsupported ownership '$ownership' for '$path'" >&2; return 1;; esac
-    folded=${path,,}
-    [ -z "${seen_paths[$folded]+x}" ] || { echo "$label contains duplicate path '$path'" >&2; return 1; }
-    seen_paths[$folded]=1
+    [ "$duplicate" -eq 0 ] || { echo "$label contains duplicate path '$path'" >&2; return 1; }
     printf '%s\t%s\t%s\n' "$folded" "$path" "$ownership" >> "$output"
-  done < "$parsed"
+  done < "$stripped"
 }
 
 validate_retirement_ledger() {
-  local file="$1" label="$2" output="$3" stripped parsed expected path version hashes hash folded previous_hash
-  declare -A seen_paths=()
+  local file="$1" label="$2" output="$3" stripped parsed expected path version hashes hash folded previous_hash duplicate
   [ -f "$file" ] || { echo "missing $label" >&2; return 1; }
   [ "$(grep -Ec '^[[:space:]]*"schema-version"[[:space:]]*:[[:space:]]*1,?[[:space:]]*$' "$file")" -eq 1 ] || { echo "$label has an unsupported or missing schema" >&2; return 1; }
   new_temp_file; stripped=$new_temp; tr -d '\000' < "$file" > "$stripped"; cmp -s "$file" "$stripped" || { echo "$label contains NUL bytes" >&2; return 1; }
@@ -89,13 +89,15 @@ validate_retirement_ledger() {
   sed -n 's/^[[:space:]]*{ "path": "\([^"]*\)", "retired-in": "\([^"]*\)", "known-content-sha256": \[\(.*\)\] }[,]\{0,1\}[[:space:]]*$/\1\	\2\	\3/p' "$file" > "$parsed"
   expected=$(grep -c '"retired-in"' "$file" || true)
   [ "$expected" -eq "$(wc -l < "$parsed" | tr -d ' ')" ] || { echo "$label contains a malformed retirement entry" >&2; return 1; }
+  if ! LC_ALL=C awk -F $'\t' 'BEGIN { OFS = FS } { folded = tolower($1); print folded, (seen[folded]++ ? 1 : 0), $0 }' "$parsed" > "$stripped"; then
+    echo "$label could not be case-folded for duplicate validation" >&2
+    return 1
+  fi
   : > "$output"
-  while IFS=$'\t' read -r path version hashes; do
+  while IFS=$'\t' read -r folded duplicate path version hashes; do
     valid_repo_path "$path" || { echo "$label contains unsafe or non-normalized path '$path'" >&2; return 1; }
     [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "$label has invalid retired-in version '$version' for '$path'" >&2; return 1; }
-    folded=${path,,}
-    [ -z "${seen_paths[$folded]+x}" ] || { echo "$label contains duplicate path '$path'" >&2; return 1; }
-    seen_paths[$folded]=1
+    [ "$duplicate" -eq 0 ] || { echo "$label contains duplicate path '$path'" >&2; return 1; }
     hashes=$(printf '%s' "$hashes" | sed 's/",[[:space:]]*"/ /g; s/"//g')
     [ -n "$hashes" ] || { echo "$label has no known-content-sha256 values for '$path'" >&2; return 1; }
     previous_hash=""
@@ -105,7 +107,7 @@ validate_retirement_ledger() {
       printf '%s\t%s\t%s\t%s\n' "$folded" "$path" "$version" "$hash" >> "$output"
       previous_hash="$hash"
     done
-  done < "$parsed"
+  done < "$stripped"
 }
 
 version_is_greater() {

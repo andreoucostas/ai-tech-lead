@@ -158,7 +158,7 @@ foreach ($twin in @('ps1','sh')) {
   "schema-version": 1,
   "paths": [
     { "path": "scripts/impact-run.ps1", "ownership": "framework-owned/overwritten" },
-    { "path": "scripts/impact-run.ps1", "ownership": "framework-owned/overwritten" },
+    { "path": "Scripts/Impact-Run.ps1", "ownership": "framework-owned/overwritten" },
     { "path": "../outside", "ownership": "framework-owned/overwritten" },
     { "path": "C:/outside", "ownership": "framework-owned/overwritten" },
     { "path": "consumer.txt", "ownership": "consumer-owned/protected" }
@@ -172,6 +172,7 @@ foreach ($twin in @('ps1','sh')) {
             Assert ([IO.File]::ReadAllText((Join-Path $target 'consumer.txt')).Contains('CONSUMER SENTINEL')) 'consumer-owned sentinel changed'
             Assert ([IO.File]::ReadAllText($outside).Contains('OUTSIDE SENTINEL')) 'out-of-root sentinel changed'
             Assert ($result.Output -match 'CANT-VERIFY: previous framework-ownership.json is malformed or unsafe') 'additive compatibility was not explicit'
+            Assert ($result.Output.Contains("duplicate path 'Scripts/Impact-Run.ps1'")) 'ASCII case-variant duplicate was not the decisive manifest failure'
         } finally {
             Remove-Item -Recurse -Force -LiteralPath $target -ErrorAction SilentlyContinue
             Remove-Item -Force -LiteralPath $outside -ErrorAction SilentlyContinue

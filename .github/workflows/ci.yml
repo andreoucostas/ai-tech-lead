@@ -119,3 +119,69 @@ jobs:
           fetch-tags: true
       - name: Hook test suite (${{ matrix.dist }}, exercises the .sh twins via bash)
         run: pwsh -NoProfile -File dist/${{ matrix.dist }}/tests/hooks/Invoke-HookTests.ps1
+
+  # Provider-specific compatibility proof (WSD-061), not a third generic test leg. Windows and
+  # Linux cannot execute stock macOS /bin/bash 3.2; composition already proves this one authored
+  # installer reaches every dist, so one direct committed-dotnet smoke is the complete recurring
+  # scope. The frozen-parent step is transitional B-198 evidence and is removed after its first
+  # observed red/current-green run; the current shipped smoke remains.
+  macos-portability:
+    runs-on: macos-26
+    defaults:
+      run:
+        shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Assert the stock Bash 3.2 provider
+        run: |
+          [ "$BASH" = /bin/bash ] || { echo "expected /bin/bash, found '$BASH'" >&2; exit 1; }
+          case "$BASH_VERSION" in
+            3.2.57*) ;;
+            *) echo "expected stock Bash 3.2.57, found '$BASH_VERSION'" >&2; exit 1 ;;
+          esac
+          /bin/bash --version
+      - name: Frozen installer is red before mutation (transitional B-198 evidence)
+        env:
+          B198_FROZEN_TREE: 82383666425b0916c23fe2475ee71ef48a9327db
+          PATH: /usr/bin:/bin:/usr/sbin:/sbin
+        run: |
+          fail() { echo "B-198 frozen-tree oracle: $*" >&2; exit 1; }
+          frozen="$RUNNER_TEMP/b198-frozen"
+          target="$RUNNER_TEMP/b198-frozen-target"
+          oracle="$RUNNER_TEMP/b198-frozen-Smoke.csproj"
+          mkdir -p "$frozen" "$target"
+          git archive "$B198_FROZEN_TREE" dist/dotnet | tar -x -C "$frozen"
+          printf '<Project Sdk="Microsoft.NET.Sdk">\n</Project>\n' > "$oracle"
+          cp "$oracle" "$target/Smoke.csproj"
+          set +e
+          output=$(/bin/bash "$frozen/dist/dotnet/scripts/install.sh" "$target" 2>&1)
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          [ "$status" -ne 0 ] || fail 'the Bash-4 installer unexpectedly exited zero'
+          printf '%s\n' "$output" | grep -E 'declare: -A: invalid option|bad substitution' >/dev/null || fail 'the expected Bash-4 diagnostic was absent'
+          [ "$(find "$target" -mindepth 1 -maxdepth 1 -print | wc -l | tr -d ' ')" -eq 1 ] || fail 'the frozen installer mutated the target tree'
+          cmp -s "$oracle" "$target/Smoke.csproj" || fail 'the frozen installer changed the consumer sentinel'
+      - name: Current shipped installer is green under stock Bash 3.2
+        env:
+          PATH: /usr/bin:/bin:/usr/sbin:/sbin
+        run: |
+          fail() { echo "B-198 current-tree oracle: $*" >&2; exit 1; }
+          target="$RUNNER_TEMP/b198-current-target"
+          oracle="$RUNNER_TEMP/b198-current-Smoke.csproj"
+          mkdir -p "$target"
+          printf '<Project Sdk="Microsoft.NET.Sdk">\n</Project>\n' > "$oracle"
+          cp "$oracle" "$target/Smoke.csproj"
+          set +e
+          output=$(/bin/bash dist/dotnet/scripts/install.sh "$target" 2>&1)
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          [ "$status" -eq 0 ] || fail "installer exited $status"
+          printf '%s\n' "$output" | grep -F 'mode: greenfield' >/dev/null || fail 'greenfield mode was not observed'
+          printf '%s\n' "$output" | grep -F 'Done. Next steps in the target repo:' >/dev/null || fail 'greenfield completion was not observed'
+          cmp -s "$oracle" "$target/Smoke.csproj" || fail 'the installer changed the consumer sentinel'
+          cmp -s dist/dotnet/.claude/framework-version.json "$target/.claude/framework-version.json" || fail 'the installed version stamp differs from the committed dist'
+          cmp -s dist/dotnet/framework-ownership.json "$target/framework-ownership.json" || fail 'the installed ownership manifest differs from the committed dist'

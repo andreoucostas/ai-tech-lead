@@ -6,6 +6,11 @@
 
 ## 0.78.4 — Unreleased
 
+- The Bash installer no longer needs Bash 4 while validating its ownership and retirement
+  inventories, so the documented installer path works with stock macOS `/bin/bash` 3.2. ASCII
+  case-variant duplicate paths are still rejected before target changes; PowerShell behavior and
+  the installed file set are unchanged.
+
 - Warehouse-map checking no longer recognizes the undocumented
   `## Declined artifact: warehouse-map` heading. An applicable warehouse without
   `docs/warehouse-map.md` now reports `missing` even when that old heading is present. The map stays

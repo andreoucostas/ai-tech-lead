@@ -2889,6 +2889,29 @@ candidate rather than completion or release.
 
 ---
 
+### B-206 · Make InstallerConvergence junction teardown non-interactive under Windows PowerShell 5.1
+**Effort:** S · **Priority:** P2 · **planned ≥ v0.78.5**
+**Filed against:** v0.78.3 (2026-08-30)
+**Status:** REPRODUCED — separate from B-198 product behavior
+
+**Why:** B-198's required native Windows PowerShell 5.1/CP437 run returned 10/2 even though its two
+strengthened case-variant results passed. Both failures were the unchanged
+`consumer-modified and reparse retirement paths survive` result. A temporary detailed transcript
+located the exception in its `finally`: `Remove-Item -Force` on the generated directory junction
+entered `PromptForChoice`, and this headless 5.1 console threw `NullReferenceException`. The cleanup
+exception masks the result verdict and leaves both target and outside fixture roots behind. An
+ambient `$ConfirmPreference='None'` rerun reproduced the same failure, so this is not honestly
+resolved by runner configuration.
+
+**Do:** revalidate the safest non-traversing directory-link deletion under PowerShell 7, native 5.1,
+and POSIX symlinks. Make only the existing fixture cleanup non-interactive, preserve the outside
+fingerprint assertion, verify exact link and both generated roots are absent after the result, and
+retain body failures if cleanup also fails. Strengthen that existing result or its lifecycle; add no
+suite or `It`. Require ordinary 12/0 under both PowerShell hosts plus the existing Linux CI, and do
+not generalize into another cleanup framework or fold it into B-198's Bash product change.
+
+---
+
 ### B-205 · Restore Bash 3.2 compatibility in skill-mirror sync
 **Effort:** S · **Priority:** P2 · **planned ≥ v0.78.5**
 **Filed against:** v0.78.3 (2026-08-30)
@@ -2910,7 +2933,7 @@ control. Reuse B-198's focused provider job, but do not expand B-198 to implemen
 ### B-198 · Restore Bash 3.2 compatibility in the shipped installer
 **Effort:** S–M · **Priority:** P1 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-29)
-**Status:** DESIGN LOCKED — implementation pending; exact macOS proof and final-candidate Windows/Linux/macOS CI required
+**Status:** IMPLEMENTED CANDIDATE — local newer-Bash evidence green; immutable review, exact macOS proof, and final-candidate Windows/Linux/macOS CI pending
 **Plan:** `.claude/plans/2026-08-30-b198-bash32-installer-design.md`
 **Decision:** WSD-061
 
@@ -2931,6 +2954,26 @@ normal final-candidate Windows/Linux CI. A generic label, Homebrew/newer Bash, `
 syntax grep, three-dist macOS matrix, or full third test leg is not evidence. The locked contract is
 the plan above; WSD-061 records why this focused provider narrowly supersedes B-70's absolute
 wording without weakening its rejection of generic CI duplication.
+
+**Candidate evidence (2026-08-30):** the authored Bash installer now replaces the four Bash-4-only
+constructs with one guarded `LC_ALL=C awk` preprocessing pass in each validator. Disposable current-
+dist greenfield, ownership-collision, and retirement-collision worlds passed; the hostile paths used
+ASCII case variants plus glob metacharacters as data, both failures exited 3 with the exact duplicate
+diagnostic, and targets stayed byte-stable. Both composers agreed on all 525 generated files. Both
+validator twins passed all three 173/169/183-file distributions; an initial Bash-validator attempt
+that hid every JSON provider through an operator PATH error failed closed and is not counted.
+A disposable `awk` shim exiting 91 then reached the new explicit failure guard, emitted its dedicated
+diagnostic, exited 3, and left the one-file target unchanged.
+
+The existing InstallerConvergence file stayed at 12 results and passed 12/0 under PowerShell 7 with
+Git Bash 5.2.37. Native Windows PowerShell 5.1/CP437 passed both strengthened forged-manifest results
+but returned 10/2 because the unchanged reparse result's junction cleanup entered a headless
+`PromptForChoice` and threw at line 144 for both twins. B-206 records that separately; the temporary
+diagnostic edit was restored byte-identically and only these diagnostic runs' 12 generated roots
+were removed.
+CI topology, push-watch, and release-watch checks passed, workflow YAML parses, all edited PowerShell
+files retain BOM/AST integrity, and all installer copies pass Bash syntax. No macOS or Bash 3.2 run,
+immutable review, Windows/Linux candidate CI, push, tag, or release is claimed.
 
 ---
 

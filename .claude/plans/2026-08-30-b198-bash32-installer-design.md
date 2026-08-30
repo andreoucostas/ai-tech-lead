@@ -3,7 +3,7 @@
 **Date:** 2026-08-30  
 **Filed against:** v0.78.3  
 **Planned:** v0.78.4  
-**Status:** DESIGN LOCKED — implementation pending; exact macOS and final-candidate CI evidence required
+**Status:** IMPLEMENTED CANDIDATE — local newer-Bash evidence complete; immutable review, exact macOS, and final-candidate CI pending
 
 ## Value and proportionality decision
 
@@ -94,3 +94,31 @@ it is not implemented here. B-205 owns the separately discovered Bash-4-only `gl
 `sync-agent-files.sh`; it also may reuse the provider but is not B-198 scope. B-197's temporary-file
 registry, root installer routing, PowerShell behavior, manifests, retirement contents, and release
 mechanics are unchanged. No push, tag, or release is authorized by this plan.
+
+## Candidate evidence (2026-08-30)
+
+The authored installer now uses the locked two-pass total awk mechanism and all three composed
+copies are byte-identical. Disposable current-dist probes passed one greenfield install and
+independent ownership/retirement ASCII-case collisions containing `[`/`]`/`*` as data; each hostile
+world exited 3 with its exact duplicate diagnostic and left the target byte-stable. Both composers
+agreed on all 525 generated files. PowerShell and correctly provisioned Bash validator twins passed
+173/169/183-file distributions; the first Bash-validator attempt deliberately does not count because
+an over-narrow operator PATH hid both JSON providers and the validator failed closed before product
+checks. A disposable PATH shim then made `awk` exit 91; the guarded validator surfaced its dedicated
+diagnostic, exited 3, and left the one-file target unchanged.
+
+The 12-result InstallerConvergence surface passed 12/0 under PowerShell 7/Git Bash
+5.2.37, including the strengthened result for both twins. Native Windows PowerShell 5.1/CP437
+returned 10/2: both strengthened forged-manifest results passed, while the two unchanged
+reparse-retirement results failed in `finally`. A temporary detailed transcript located both at
+line 144's `Remove-Item -Force` of a directory junction: the headless 5.1 host entered
+`PromptForChoice` and threw `NullReferenceException`. The diagnostic harness change was restored
+byte-identically and the 12 generated roots from these diagnostic runs were safely removed. B-206
+owns that separate test-cleanup defect; it is not reported as a B-198 product regression or silently
+fixed here.
+
+Focused CI-topology, push watcher, and release watcher files passed 9/0 (after their intended
+planted 7/1 red), 7/0, and 18/0. Workflow YAML parses; edited PowerShell files retain BOMs and parse;
+all Bash installer copies pass syntax. No macOS job has run, so stock Bash 3.2, transitional
+old-red/current-green, final stable macOS, and normal candidate Windows/Linux CI remain explicit
+gaps. No push, tag, or release occurred.

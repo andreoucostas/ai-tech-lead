@@ -64,7 +64,7 @@ function New-Row {
 # Deriving the list means the next person to widen ExpectedJobs cannot break these cases by omission.
 # The naming shape itself ('<job> (<value>)' for matrix legs) is no longer an assumption: run
 # 31168445026 produced exactly windows, linux, windows-hooks (dotnet|angular|monorepo) and
-# linux-hooks (dotnet|angular|monorepo), which is what the default declares.
+# linux-hooks (dotnet|angular|monorepo), which are the existing matrix job names.
 function Get-ExpectedJobNames {
     $watchPath = Join-Path $repoRoot '.claude/scripts/watch-ci.ps1'
     $errors = $null
@@ -202,7 +202,7 @@ $probes = @{
 
 try {
     # ---- the exit contract ----------------------------------------------------------------------
-    It 'a completed successful run with both legs green exits 0' {
+    It 'a completed successful run with every required job green exits 0' {
         $s = New-GhStub -ListResponses @('[' + (New-Row) + ']')
         $r = Invoke-Watch -Stub $s
         Assert ($r.Exit -eq 0) "expected EXIT=0, got $($r.Exit): $($r.Out)"
