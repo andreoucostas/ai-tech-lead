@@ -2889,9 +2889,30 @@ candidate rather than completion or release.
 
 ---
 
+### B-205 · Restore Bash 3.2 compatibility in skill-mirror sync
+**Effort:** S · **Priority:** P2 · **planned ≥ v0.78.5**
+**Filed against:** v0.78.3 (2026-08-30)
+
+**Why:** `/generate-copilot` documents `bash scripts/sync-agent-files.sh` for macOS, but the v0.78.0
+count-provider correction introduced Bash-4-only `globstar`/`**`. On stock Bash 3.2 the script
+reaches that failure only after replacing `.github/skills`, so a correct mirror can be left behind
+with a false-red exit and no success verdict. This is separate from B-198's installer and B-200's
+date provider.
+
+**Do:** first challenge whether the informational count warrants a provider at all. If retained,
+use a Bash-3.2-safe mechanism without reintroducing Windows Git Bash's `find.exe` collision.
+Strengthen the existing sync twin result rather than adding a suite or `It`; require exact macOS
+Bash 3.2 old-red/new-green evidence, mirror-byte/count/exit assertions, and the existing Git Bash
+control. Reuse B-198's focused provider job, but do not expand B-198 to implement this item.
+
+---
+
 ### B-198 · Restore Bash 3.2 compatibility in the shipped installer
-**Effort:** S–M · **Priority:** P1 · **planned v0.78.5**
+**Effort:** S–M · **Priority:** P1 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-29)
+**Status:** DESIGN LOCKED — implementation pending; exact macOS proof and final-candidate Windows/Linux/macOS CI required
+**Plan:** `.claude/plans/2026-08-30-b198-bash32-installer-design.md`
+**Decision:** WSD-061
 
 **Why:** the framework directs macOS consumers to run this installer and its authoring contract
 treats stock Bash 3.2 as supported, but the current duplicate-path guards contain two Bash-4-only
@@ -2900,15 +2921,16 @@ constructs can abort before installation on a supported host. Ubuntu CI and `bas
 Bash cannot certify this compatibility boundary. They were reintroduced in v0.76 despite the
 existing recorded lesson that shipped scripts must avoid Bash-4-only constructs.
 
-**Do:** revalidate the case-insensitive duplicate-path contract, then replace only those four
-constructs with a Bash-3.2-safe membership mechanism that preserves the existing collision and
-normalization behavior. Under the exact same captured Bash 3.2 interpreter—stock `/bin/bash` on
-macOS is acceptable—prove the old tree red and the correction green on existing
-installer/convergence policy surfaces. A generic macOS label or Homebrew/newer Bash is not evidence.
-Do not add a broad syntax-grep suite or duplicate the installer matrix; add a permanent compatibility
-oracle only if it runs the shipped script under the claimed interpreter and a focused mutation
-proves it discriminating. Compose every distribution and retain the current newer-Bash and
-PowerShell parity gates.
+**Do:** preserve ASCII-case collision rejection for the framework-authored path inventories with
+one guarded, C-locale, Bash-3.2-safe preprocessing pass per validator; do not grow this into a
+Unicode normalizer. Strengthen the existing forged-manifest result with a case variant and exact
+diagnostic rather than adding a suite or `It`. Under the exact same captured stock macOS
+`/bin/bash` 3.2 interpreter, first prove the frozen parent red/no-mutation and the candidate green,
+then remove that history-dependent arm and require the permanent direct dotnet-dist smoke plus the
+normal final-candidate Windows/Linux CI. A generic label, Homebrew/newer Bash, `BASH_COMPAT`, broad
+syntax grep, three-dist macOS matrix, or full third test leg is not evidence. The locked contract is
+the plan above; WSD-061 records why this focused provider narrowly supersedes B-70's absolute
+wording without weakening its rejection of generic CI duplication.
 
 ---
 
@@ -3023,7 +3045,7 @@ BSD/macOS, or Bash 3.2 runtime was available. First Windows/Linux CI still gates
 ### B-200 · Restore the Bash hazard-staleness cutoff under BSD/macOS `date`
 **Effort:** S · **Priority:** P2 · **planned ≥ v0.78.5**
 **Filed against:** v0.78.3 (2026-08-30)
-**Status:** ENVIRONMENT-BLOCKED — exact BSD/macOS runtime unavailable on this host
+**Status:** EXACT RUNTIME IDENTIFIED, NOT RUN — unavailable locally; coordinate native BSD/macOS evidence with B-198's focused macOS CI job; no B-200 candidate evidence yet
 
 **Why:** B-195's adversarial review found that `session-start.sh` still computes its 90-day cutoff
 with GNU-only `date -d`. Stock macOS/BSD `date` rejects that option, leaves the guarded cutoff empty,

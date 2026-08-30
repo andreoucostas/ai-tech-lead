@@ -2748,3 +2748,45 @@ refresh decline; adding a revocation grammar or preference subsystem; keeping th
 because it was historically decided; deleting consumer marker bytes; changing advisory severity;
 inverting or replacing the declined `It`; and expanding into bootstrap, installers, ownership,
 signals, other decline/disabled-skill markers, or warehouse-map quality.
+
+---
+
+## WSD-061: a unique shipped provider can justify one focused required CI leg (2026-08-30)
+
+**Context.** B-70 correctly rejected a cheap local proxy and a generic third CI leg after new tests
+repeatedly reached Windows but not Linux. The gap was process: another broad runner could not replace
+observing the actual Windows/PowerShell and Linux/Bash paths. Its absolute “do not add a third CI
+leg” wording now collides with a different fact. The framework explicitly directs macOS users to
+the Bash installer, v0.76 introduced Bash-4-only constructs into its unconditional manifest
+validation, and neither required job supplies stock macOS `/bin/bash` 3.2. Windows and Linux can
+execute the same file under newer Bash but can never observe the promised interpreter/provider.
+
+**Decision.** **Do not add a generic third CI leg; allow a focused provider leg only when neither
+existing required leg can execute a shipped compatibility contract.** B-198 may add one required
+`macos-portability` job. It asserts the exact stock `/bin/bash` 3.2 interpreter and directly smokes
+the committed dotnet distribution's greenfield installer. Composition remains the proof that the
+same authored installer reaches all three distributions. The job runs no composer, validator,
+three-dist matrix, hook suite, or root meta suite and never substitutes for Windows or Linux.
+Release watching names it exactly, so absence cannot look green.
+
+The first evidence run temporarily requires the frozen old installer to fail with its Bash-4
+diagnostic and no target mutation before the candidate succeeds under the same interpreter and
+fixture contract. Once observed, remove that history dependency and retain only the current shipped
+smoke. The stable candidate then requires ordinary Windows/Linux and focused macOS CI before
+completion or release. The same job may later host another equally narrow macOS-only provider proof,
+such as B-200, but that work remains separately designed and reviewed.
+
+This narrowly supersedes only B-70's absolute infrastructure wording; its evidence rule and its
+rejection of a generic compensating leg remain standing. A platform label without an exact provider
+assertion, a compatibility flag on a newer runtime, syntax search, or a permanent old-history replay
+does not qualify.
+
+**Proportionality.** One direct install is recurring work the two existing jobs cannot perform. A
+third full matrix would duplicate composition and hooks at high cost; no macOS job would leave an
+explicitly supported whole-platform path permanently unexercised after the same compatibility class
+recurred. The focused provider is the smaller evidence-bearing middle.
+
+**Rejected.** Dropping macOS/Bash 3.2 support without changing consumer promises; deleting
+case-insensitive duplicate protection; `BASH_COMPAT=3.2`; a broad syntax grep; Homebrew Bash; a
+three-distribution or full hook/meta macOS matrix; treating the macOS job as Windows/Linux evidence;
+and keeping the frozen-parent replay after its first observed red/green run.

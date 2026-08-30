@@ -82,6 +82,10 @@ three dists) and asserts its stdout states the whole agent-handoff contract, and
 asserts the authoring docs describe the repo that actually exists. Both were written after three
 defects shipped straight through the parser gates — see `meta/LEARNINGS.md`.
 
+Do not answer a Windows/Linux execution gap with a generic third CI leg. WSD-061 permits one focused
+provider leg only when neither existing required leg can execute a shipped compatibility contract;
+that provider never replaces the required Windows/Linux evidence.
+
 The **Verification Rules**, **Leanness**, **SOLID**, **Boy Scout Rule**, and self-review
 disciplines in `src/core/CLAUDE.md` bind meta-work too.
 

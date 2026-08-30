@@ -32,7 +32,7 @@ phrase inside the cited entry.
 - “Historic decisions are evidence-bearing defaults, not doctrine.” — `meta/workspace-decisions.md WSD-057`
 - “Independent review is evidence-bound, not rank-bound.” — `meta/workspace-decisions.md WSD-057`
 - “The next independent paired replay begins FS2 and is never aggregated with FS1.” — `meta/workspace-decisions.md WSD-058`
-- “do not add a third CI leg” — `meta/BACKLOG-DONE.md B-70`
+- “Do not add a generic third CI leg; allow a focused provider leg only when neither existing required leg can execute a shipped compatibility contract.” — `meta/workspace-decisions.md WSD-061`
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`

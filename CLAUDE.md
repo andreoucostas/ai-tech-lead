@@ -244,8 +244,9 @@ fabricate a test, and do not skip verification — pick the right evidence for t
   the fifth was the first where the *implementer* could not reach the leg at all. Do not substitute a
   local proxy for the run — enumerating skipped cases would have caught neither of the two Linux-only
   defects (a mode-644 script Windows ignores and Linux enforces; `Get-ChildItem -Recurse` silently
-  skipping dot-directories on Linux). And do not respond to this by adding a third CI leg — the gap
-  is process, not infrastructure (B-70).
+  skipping dot-directories on Linux). Do not answer that cross-leg process gap with a generic third
+  CI leg. A focused provider leg is permitted only under WSD-061 when neither existing required leg
+  can execute a shipped compatibility contract; it does not replace Windows/Linux evidence.
 
 ## Verification (evidence-based — name the command, show the result)
 
