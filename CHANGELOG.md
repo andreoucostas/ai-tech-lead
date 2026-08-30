@@ -31,6 +31,16 @@ maintainer runner passed all 31 files with zero failures and no new residue. Nat
 link evidence and first Windows/Linux candidate CI still gate completion; this is not release
 approval.
 
+Independent immutable review approved exact candidate
+`2e72fecd088c85cf0a7c98803aa76d64513b28fd` from contract `617dd4f`. In a detached no-hardlinks
+clone, the reviewer reproduced the old locked-file false green, then passed the candidate's exact
+retry cadence, containment, case-alias, junction, partial-deletion, post-inspection, dual-failure,
+PATH-restoration, and Windows PowerShell oracle probes under PowerShell 7 and 5.1. A sentinel
+mutation made the outer anti-vacuity result red before byte-identical restoration; focused
+PowerShell, Windows PowerShell, and Git Bash runs returned 2/0. Blob hash, BOM/AST, result cardinality,
+scope, RCA census, record gates, and residue were independently reconfirmed. Native Linux and first
+candidate CI remain unavailable, so B-204 stays open.
+
 **Docs-sync now distinguishes verified warehouse-map debt from a checker it could not run.** B-203
 captures the `warehouse-map-check` status once in both wrapper twins, preserves the existing
 missing/stale note only for exit 1, and emits an explicit unable-to-verify advisory for every other

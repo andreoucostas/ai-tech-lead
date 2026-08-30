@@ -2804,7 +2804,7 @@ out-of-scope Linux regression and is intentionally rejected.
 ### B-204 · Make RootInstallerWarehouse fixture teardown fail honestly
 **Effort:** S · **Priority:** P2 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-30)
-**Status:** IMPLEMENTED CANDIDATE — local Windows gates green; native Linux and first CI pending
+**Status:** IMPLEMENTED CANDIDATE `2e72fecd088c85cf0a7c98803aa76d64513b28fd` — immutable review approved; native Linux and first CI pending
 **Plan:** `.claude/plans/2026-08-30-b204-root-installer-fixture-teardown-design.md`
 
 **Why:** the unchanged B-203 full maintainer run printed a Windows sharing-violation from
@@ -2839,6 +2839,15 @@ concurrent runner; the full maintainer battery passed 31 files with zero failure
 runs left no new fixture path. No suite or `It` was added. Seven historical roots remain untouched.
 Native-Linux dangling-link execution and the first Windows/Linux candidate CI remain explicit gaps,
 so this item is not complete and is not release-approved.
+
+**Immutable review:** a fresh reviewer approved exact range
+`617dd4f6aa909fa1a97d80a973dd3231a9cc3a25..2e72fecd088c85cf0a7c98803aa76d64513b28fd`
+from a detached no-hardlinks clone after independently replaying the locked-file false green and the
+candidate's retry, containment, case-alias, junction, partial-deletion, post-inspection,
+dual-failure, PATH, WPS5-oracle, and mutation anti-vacuity boundaries. Exact SHA/BOM/AST/cardinality,
+scope, record gates, and no new residue were reconfirmed. The reviewer had no native-Linux vantage
+and did not rerun the full concurrent battery, so approval remains bounded to the immutable Windows
+candidate rather than completion or release.
 
 ---
 

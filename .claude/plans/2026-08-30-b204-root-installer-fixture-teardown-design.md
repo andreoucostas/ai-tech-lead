@@ -3,7 +3,7 @@
 **Date:** 2026-08-30
 **Filed against:** v0.78.3
 **Planned:** v0.78.4
-**Status:** IMPLEMENTED CANDIDATE — local Windows gates green; native Linux and first CI pending
+**Status:** IMPLEMENTED CANDIDATE `2e72fecd088c85cf0a7c98803aa76d64513b28fd` — immutable review approved; native Linux and first CI pending
 
 ## Value and proportionality decision
 
@@ -165,6 +165,19 @@ are clean.
 Native-Linux execution of the exact helper against a dangling root link is still unavailable, as is
 the candidate's first Windows/Linux CI. Those are evidence gaps, not inferred greens, so B-204 stays
 open and no release is authorized.
+
+A fresh reviewer with no implementation participation approved exact immutable range
+`617dd4f6aa909fa1a97d80a973dd3231a9cc3a25..2e72fecd088c85cf0a7c98803aa76d64513b28fd`
+from a detached no-hardlinks clone. The reviewer independently reproduced the old locked-file false
+green (`completed=True`, two non-terminating errors, target survived), then exercised the candidate
+under PowerShell 7 and native Windows PowerShell 5.1: exact six-removal/five-sleep retry cadence,
+transient and persistent locks, containment/case/escaped paths, root/interior/dangling junctions,
+partial deletion, decisive post-inspection failure, dual-error aggregation, and PATH restoration.
+An applied sentinel mutation made the outer anti-vacuity result fail before exact-byte restoration.
+Focused PowerShell 7, Windows PowerShell 5.1, and Git Bash candidate runs each returned 2/0. The
+reviewer reconfirmed the exact blob hash, cardinality, BOM/AST, scope, RCA census, record gates, main
+tree cleanliness, and zero review residue. Native Linux, first candidate CI, and an independent full
+31-file rerun remain unclaimed; the maintainer's earlier full local run supplies only the last.
 
 ## RCA boundary
 

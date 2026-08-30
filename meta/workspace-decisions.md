@@ -2662,3 +2662,40 @@ one-line replay.
 **Rejected.** More bounded-fix repetitions before addressing the observed ceiling; retroactive
 rescoring; merely upweighting R2 after a null; selecting a framework-favorable task; adding four arms;
 dropping independent-user onboarding/friction evidence; and aggregating FS1 with FS2.
+
+---
+
+## WSD-059: fixture teardown is a verdict-bearing lifecycle, not a best-effort epilogue (2026-08-30)
+
+**Context.** The unchanged full maintainer battery printed a Windows sharing violation while
+`RootInstallerWarehouse.Tests.ps1` removed a fixture, then reported that file 12/0 and the whole run
+green. The suite's harness counts only thrown body failures; its twelve recursive cleanup sites used
+PowerShell's default non-terminating error behavior. Seven older GUID-scoped roots across three dates
+made the isolation leak recurrent, although their mixed provenance cannot attribute each one to the
+observed run. A disposable locked-file replay under PowerShell 7 and 5.1 confirmed the verdict defect:
+cleanup emitted errors, left the path, and the miniature harness still passed.
+
+**Decision.** For this suite only, fixture completion means both the body outcome and verified target
+absence. Route its eleven generated target trees and one broken-jq scratch tree through one local
+exact-path remover and one lifecycle wrapper. The remover accepts only the two generated basename
+namespaces beneath their exact trusted parents, validates the stored entry ordinally, rejects root or
+interior reparse/link entries, retries transient/provider/removal failures at most six times with
+1.5 seconds total backoff, and re-reads typed absence after every outcome. Containment and link-policy
+failures do not retry. The wrapper preserves body and cleanup ErrorRecords independently and
+aggregates both when necessary. Existing mutation callbacks must prove their intended assertion and
+sentinel so a cleanup-only red cannot satisfy them.
+
+The same required Windows PowerShell run exposed two pre-existing false-red solution queries. Fold
+only those two expressions into the decision by filtering recursively enumerated files on extension;
+do not broaden the cleanup census or add a result. This is meta-only and remains a candidate until
+native-Linux dangling-link execution and first Windows/Linux CI are observed green.
+
+**Proportionality.** The implementation is large for teardown, but independent hostile execution
+required each nontrivial boundary: the simpler `-ErrorAction Stop` fix masks body failures, while a
+short retry wrapper loses wrong-tree/case-alias, dangling-link, post-inspection, or dual-failure
+truth. No suite or `It` was added; the existing normal matrix executes cleanup repeatedly. The change
+does not generalize into a cleanup framework or sweep unowned historical roots.
+
+**Rejected.** Ignore the warning as housekeeping; add only `-ErrorAction Stop`; best-effort terminal
+warnings; a global stale-root sweeper; a repository-wide cleanup rewrite; a new permanent hostile
+suite; deleting the seven unowned roots; and treating local Windows execution as native Linux or CI.
