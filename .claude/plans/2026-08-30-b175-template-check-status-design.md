@@ -1,9 +1,10 @@
 # B-175 · Template-check status contract — locked design
 
-**Status: IMPLEMENTED CANDIDATE 2026-08-30 — two immutable reviews approved; first candidate CI
-pending.** Two independent exact-record reviews approved after narrowing the reach claim,
-preserving Bash transport, making both doctor messages causally generic, and requiring independent
-`2`/`3` boundary mutations.
+**Status: AMENDMENT DESIGN LOCKED 2026-08-30 — two adversarial reviews approved; implementation
+pending.** Final local preflight rejected the first candidate's docs-sync wrapper compatibility; the
+approved checker/doctor core remains intact. The original two independent exact-record reviews
+approved after narrowing the reach claim, preserving Bash transport, making both doctor messages
+causally generic, and requiring independent `2`/`3` boundary mutations.
 
 **Pre-implementation evidence correction.** The first captured red run disproved both reviewers'
 claim that the existing `9.9.9` fixture alone creates two findings: it creates one because the
@@ -26,8 +27,8 @@ self-host context whose required CHANGELOG cannot be inspected. That branch does
 consumer state because installers exclude `.template-repo`; installed consumers are statically
 exposed to the same false `MISSING` classification if the checker terminates abnormally, but no such
 consumer failure is claimed as observed here. The defect is uncommon and remains P3, but it violates
-the framework's gate-truth rule. The bounded fix below is
-proportionate: four small product branches and extensions to two existing results; no new file
+the framework's gate-truth rule. The bounded fix below is proportionate: six small product branches,
+extensions to two existing results, and reuse of one existing wrapper-contract result; no new file
 format, dependency, abstraction, test file, or `It`.
 
 ## Contract
@@ -91,9 +92,15 @@ required release evidence; local Git Bash is not a substitute.
 
 ## Compatibility and rejected approaches
 
-Repository callers were inspected and consume only zero/nonzero, so their behavior is preserved.
-An external caller that interpreted the old numeric exit as a finding count must instead read the
-unchanged printed count; the consumer changelog will state this explicitly.
+Validators, CI, and the consumer branch of docs-sync consume only zero/nonzero. Final local preflight
+disproved the broader original census claim: the template-repo docs-sync branch republishes its
+child status through a script whose documented public contract is `0` pass / `1` fail. Normalize
+that one delegation boundary to `0/1` after preserving the child's output. An external caller that
+invokes template-checks directly and interpreted the old numeric exit as a finding count must
+instead read the unchanged printed count. A template-repo docs-sync caller that relied on the
+undocumented, contract-inconsistent child-status pass-through will now receive documented wrapper
+status `1` instead of child
+`2` or `3`; the consumer changelog will state both compatibility boundaries explicitly.
 
 Rejected: parsing a textual marker in the doctor (encoding, stream, and spoofing surface); reserving
 a high status while retaining an unbounded count (future collision); using status `1` for findings
@@ -127,3 +134,30 @@ and 33/0, a space-containing `0/3/2/4` plus missing-checker matrix, native Windo
 focused mappings, and a disposable `2 -> MISSING` mutation before exact restoration. Neither
 reviewer found an actionable defect. Native POSIX/Bash 3.2 and exact-candidate provider CI remain
 release evidence rather than locally claimed proof.
+
+## Final-preflight correction and bounded amendment
+
+The first full-root preflight after immutable review finished with one attributed failure across 31
+meta files: `DocsSyncCheck.Tests.ps1` rejected both wrapper twins (`0/2`) because the planted
+template-repo drift returned the checker's new status `3`, not the wrappers' required public failure
+status `1`. This is a real compatibility gap, not a stale test: both shipped docs-sync headers say
+`Exit 0 = pass, 1 = fail`, the existing B-149 mutation result predates B-175 and intentionally
+asserts `1`, and the consumer path already normalizes checker nonzero to its own final `1`.
+
+Amend only the `.template-repo` branch in `docs-sync-check.ps1` and `.sh`: run the existing checker
+unchanged, preserve its stdout/stderr, capture its status immediately, return `0` only for child `0`,
+and return `1` for every child nonzero. Do not parse output, distinguish `2` from `3` at this wrapper,
+change the ordinary consumer branch, change checker/doctor behavior, edit the existing B-149 result,
+or add a result. The already-captured 0/2 preflight is the red; after implementation require that
+exact existing result 2/0, ScriptTwinParity 10/0, the full meta suite green, both composers and all
+generated copies converged, and the normal distribution/provider gates. Because ScriptTwinParity
+proves only clean-world twin equality rather than the documented numeric success status, also run
+one disposable clean marked-template probe that requires exact wrapper exit `0` from both twins.
+Apply an independent temporary pass-through-status mutation to each wrapper only if the existing
+red is not itself sufficiently attributable; do not add permanent machinery for any probe.
+
+Two independent read-only amendment reviews approved this scope. The transport review required an
+explicit disclosure that callers relying on the wrapper's exact child status will observe a change.
+The value review corrected unsupported “accidental” language to “undocumented,
+contract-inconsistent” and required the disposable exact-`0` clean probe above. Both rejected a new
+permanent test or weakening the existing B-149 wrapper contract.

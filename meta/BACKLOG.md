@@ -2702,7 +2702,9 @@ fallback. Do not add a fourth parser or a standalone suite.
 ### B-175 · Give template-check resource failures a distinct doctor-visible status
 **Filed against:** v0.77.0 (2026-08-24)
 **Effort:** S · **Priority:** P3
-**Status:** IMPLEMENTED CANDIDATE `22f7a08b79097068acde9664bc05ed5071b52139` — two immutable reviews approved; first Windows/Linux CI required
+**Status:** AMENDMENT DESIGN LOCKED — two adversarial reviews approved; final local preflight
+rejected first candidate `22f7a08b79097068acde9664bc05ed5071b52139`, whose checker/doctor
+review remains valid
 **Plan:** `.claude/plans/2026-08-30-b175-template-check-status-design.md`
 **Decision:** WSD-063
 
@@ -2732,11 +2734,12 @@ files match all generated copies. Native Linux and first candidate CI remain pen
 **RCA/census:** no gate caught the collision because the checker intentionally used its finding
 count as process status and the doctor result covered only pass plus a generic exit-1 failure. The
 result never constructed two findings, resource inability, or abnormal termination, and its old
-assertion accepted the same false remediation for every nonzero. All repository callers were swept:
-both validators and both docs-sync wrappers consume only zero/nonzero and remain compatible; the
-doctor is the only caller that assigns meaning within nonzero statuses. The hostile-host run exposed
-one separate legacy native-argument transport defect in the doctor test harness; B-207 keeps that
-test-truth repair out of this product change.
+assertion accepted the same false remediation for every nonzero. The first caller census correctly
+found that validators, CI, and the consumer docs-sync branch consume only zero/nonzero, but wrongly
+treated the template-repo docs-sync pass-through as internal consumption rather than an externally
+visible status. The doctor remains the only caller that assigns diagnostic meaning within nonzero
+statuses. The hostile-host run exposed one separate legacy native-argument transport defect in the
+doctor test harness; B-207 keeps that test-truth repair out of this product change.
 
 **Immutable review:** two independent read-only reviews approved exact candidate
 `22f7a08b79097068acde9664bc05ed5071b52139`, tree
@@ -2747,6 +2750,17 @@ the fixed status boundary, and the evidence-bounded records. Independent executi
 and 33/0 under PowerShell 7, a space-containing `0/3/2/4` plus missing-checker matrix, focused native
 Windows PowerShell 5.1 mappings, and a disposable `2 -> MISSING` mutation before exact restoration.
 No actionable defect was found. Native POSIX/Bash 3.2 and first exact-candidate CI remain pending.
+
+**Final-preflight correction:** the full root meta suite later finished with one attributed failure
+across 31 files: existing `DocsSyncCheck.Tests.ps1` rejected both wrapper twins (0/2) because planted
+template-repo drift now propagated checker status `3`, while both docs-sync headers and the existing
+B-149 contract require wrapper exit `1`. The earlier census confused “does not interpret nonzero”
+with “does not expose the exact status.” Preserve the approved checker/doctor core; normalize only
+the two `.template-repo` delegation branches back to public `0/1`, preserve child output, reuse the
+existing red result unchanged, and add no test/result/parser. WSD-063 and the plan carry the bounded
+amendment. Two read-only reviews approved after requiring explicit compatibility disclosure, using
+“undocumented” rather than unevidenced intent language, and adding a disposable exact-`0` clean
+probe; both rejected new permanent test surface.
 
 ### B-176 · Enforce unique warehouse signal-category definitions
 **Filed against:** v0.77.0 (2026-08-24)

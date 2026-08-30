@@ -42,6 +42,14 @@ boundary. Independent execution passed the focused suites 10/0 and 33/0, a space
 disposable `2 -> MISSING` mutation before exact restoration. No actionable defect was found. Native
 POSIX/Bash 3.2 and first exact-candidate CI remain pending.
 
+Final local preflight then rejected that first candidate rather than waiving it: the full root meta
+suite had one attributed failing file because both docs-sync twins propagated checker status `3`
+through scripts whose documented public contract is `0` pass / `1` fail. The existing B-149
+mutation result failed 0/2 and exposed the incomplete caller census. The bounded amendment preserves
+all checker output and the approved checker/doctor protocol while normalizing only the template-repo
+docs-sync delegation back to `0/1`. Two adversarial design reviews approved after requiring explicit
+compatibility disclosure and a disposable exact-`0` clean probe; the amendment adds no test.
+
 **B-49's stale live-fire packet is paused before it consumes provider quota.** WSD-062 records that
 the July attempt ended incomplete and cannot be resumed across changed models, hosts, and framework
 versions. The packet omits required checklist/canary work, invokes nonexistent scripts, lacks the
