@@ -2805,8 +2805,9 @@ candidate's first Windows/Linux CI before completion or release. Git Bash is not
 ---
 
 ### B-195 · Preserve unterminated final advisory rows in Bash session start
-**Effort:** S · **Priority:** P2 · **planned ≥ v0.78.5**
+**Effort:** S · **Priority:** P2 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-29)
+**Status:** DESIGN LOCKED — implementation not started
 
 **Why:** B-193's independent RCA sweep found the same newline-sensitive Bash reader pattern in two
 separate advisory paths outside the locked completion-oracle scope. In isolated current-dist
@@ -2816,15 +2817,47 @@ to the generic open-finding message; an unterminated old `[UNVERIFIED]` hazard r
 emit the 90-day nudge while Bash emitted no hazard line. Both twins exited 0. The security impact is
 lost urgency rather than bypassed enforcement, so this is P2 rather than an expansion of B-193.
 
-**Do:** in `session-start.sh`, initialize a distinct loop variable before each security and hazard
-scan and consume `read` failure when that variable still contains a final non-newline record. Do
-not share state between the loops or change the advisory thresholds. Add an EOF/no-CRLF overdue
-case to the existing session-start security parity matrix, whose fixtures currently always append a
-newline, and EOF stale plus fresh controls to `SessionStartHazard.Tests.ps1`, whose fixture currently
-adds trailing content. Capture both twins before assertions; require exact severity/nudge parity,
-exit 0, clean stderr, and an explicit final-byte assertion. Prove current Bash red with PowerShell
-as the positive control, run a post-green Bash mutation, compose all three distributions, and leave
-native Linux CI as required release evidence rather than treating Git Bash as Linux.
+**Revalidated design:** in `session-start.sh`, initialize distinct security and hazard loop variables
+and consume `read` failure when the assigned variable still contains a final non-newline record.
+Adversarial review also reproduced ordinary CRLF and admitted trailing-horizontal-whitespace hazard
+headings being skipped, and showed that exposing EOF without a minimum five-delimiter row frame
+would make Bash warn on a malformed row the PowerShell twin skips. Strip one terminal CR in the
+hazard parsing stream, reuse `hazard-check.sh`'s anchored horizontal-whitespace heading grammar, and
+enforce the PowerShell-equivalent minimum frame before extracting cells. Do not share loop state,
+change thresholds/status/date semantics, rewrite PowerShell, or sweep unrelated readers.
+
+Keep the existing no-open/future-open security controls and add only the distinct overdue-EOF matrix
+result under an explicit Claude event. Strengthen the existing hazard twin-agreement result with EOF
+stale, terminated CRLF, trailing-heading-whitespace, and malformed-EOF worlds; collect all world
+failures before its one aggregate assertion and add no hazard result or suite. Reuse
+`hazard-check.sh`'s Bash-3.2-safe pipe-count idiom before any field extraction. Require exact bytes,
+severity/nudge class and count, both exits and stderr, and staged red-first implementation evidence
+for the five independent decisions instead of redundant post-green mutations. Compose and require
+first Windows/Linux candidate CI. The locked design is
+`.claude/plans/2026-08-30-b195-session-start-advisory-reader-design.md`. A separately found GNU-only
+cutoff provider is B-200 rather than an unverified macOS scope expansion.
+
+---
+
+### B-200 · Restore the Bash hazard-staleness cutoff under BSD/macOS `date`
+**Effort:** S · **Priority:** P2 · **planned ≥ v0.78.5**
+**Filed against:** v0.78.3 (2026-08-30)
+**Status:** ENVIRONMENT-BLOCKED — exact BSD/macOS runtime unavailable on this host
+
+**Why:** B-195's adversarial review found that `session-start.sh` still computes its 90-day cutoff
+with GNU-only `date -d`. Stock macOS/BSD `date` rejects that option, leaves the guarded cutoff empty,
+and silently disables every hazard-staleness nudge on a supported Bash 3.2 consumer. This is the same
+portability fact B-37 already fixed in `wiki-check.sh`, but a separate provider and consequence from
+B-195's line reader. It remains P2 because the hook is advisory and exits 0 by design.
+
+**Do:** challenge B-21's historic GNU-only guard, then reuse the proven feature-detected GNU
+`date -d` → BSD `date -v-90d` → empty/no-warning fallback with strict `YYYY-MM-DD` output validation.
+Do not change the 90-day policy, introduce epoch/calendar arithmetic, or claim native compatibility
+from a newer Bash, Linux `date`, or a grep for flags. A permanent oracle is valuable only if a PATH
+shim executes the shipped hook and proves GNU failure/BSD success plus invalid/empty-provider
+fallback without retyping the product logic; completion additionally requires the exact candidate
+against native BSD/macOS `date` under the claimed Bash 3.2 interpreter. Coordinate that environment
+with B-198.
 
 ### B-194 · Make the PowerShell 5.1 installer tolerate non-Git targets
 **Effort:** M · **Priority:** P1 · **planned v0.78.4**
