@@ -2961,20 +2961,28 @@ and use one cleanup-registry mutation to prove the subject is discriminating.
 ### B-196 · Honor a BOM-prefixed disabled-skill ledger in the Bash installer
 **Effort:** S · **Priority:** P1 · **planned v0.78.5**
 **Filed against:** v0.78.3 (2026-08-29)
+**Status:** DESIGN LOCKED — independently approved; implementation pending
 
 **Why:** B-194's required native Windows PowerShell 5.1/CP437 run exposed a separate reachable
 cross-host failure. PS5's normal UTF-8 writer can prefix `LEARNINGS.md` with a BOM. The PowerShell
 installer still recognizes a first-line `## Disabled framework skill: perf`, but the Bash
 installer's anchored `grep` does not; an update then recreates the deliberately disabled framework
-skill in `.claude/skills/perf`. B-194 made its general fixture bytes host-invariant so its own
-classifier matrix is trustworthy, but that is not evidence that the product accepts BOM input.
+skill in `.claude/skills/perf`. Adversarial review also reproduced the same policy reversal for
+trailing whitespace already admitted by that anchored grammar: the prefix-only extraction leaves
+HT, spaces, or a CR attached to the name, so the exact lookup misses it. These are one parser and
+one consequence, not separate backlog items. B-194 made its general fixture bytes host-invariant so
+its own classifier matrix is trustworthy, but that is not evidence that the product accepts BOM
+input.
 
-**Do:** revalidate the disabled-skill ledger contract, then make the Bash reader tolerate a UTF-8
-BOM only where the first record is parsed without modifying the consumer file or weakening the
-heading grammar. Add one targeted red-first UpdateDelivery subject that distinguishes BOM handling
-from ordinary disable reconciliation; do not add a suite or repeat the full B-194 matrix. Confirm
-PowerShell behavior remains unchanged, compose all dists, run the focused Windows/Linux gates, and
-use a byte-restored Bash mutation to prove the case is discriminating.
+**Do:** make the Bash reader tolerate exactly one UTF-8 BOM only at byte zero and capture only the
+validated skill name, without modifying the protected consumer file or weakening the existing
+anchored grammar. Challenge the historic proposal to add a subject: instead, make the existing
+UpdateDelivery fixture deterministic BOM + HT + CRLF input, assert its independently specified
+bytes before and after installation, and reuse its existing skill-reconciliation result. The
+BOM-less InstallerConvergence fixture remains the ordinary control. Add no suite or `It`; use
+separate BOM-strip and clean-name-extraction mutations to prove the same existing Bash result is
+discriminating, confirm PowerShell behavior is unchanged, compose all dists, and require the exact
+candidate's first Windows/Linux CI before completion or release. Git Bash is not Linux evidence.
 
 ---
 
