@@ -3205,6 +3205,8 @@ with B-198.
 ### B-201 · Windows PowerShell 5.1 falsely capability-skips Bash Copilot JSON hook tests
 **Effort:** S · **Priority:** P2 · **planned ≥ v0.78.5**
 **Filed against:** v0.78.3 (2026-08-30)
+**Status:** DESIGN LOCKED — two adversarial reviews approved the zero-growth test-truth repair; implementation pending
+**Plan:** `.claude/plans/2026-08-30-b201-wps51-json-probe-design.md`
 
 **Why:** B-195 verification ran `SessionStartHazard.Tests.ps1` under native Windows PowerShell 5.1.
 Its `$bash -c $probeCmd` call lost nested quoting through legacy native-argument marshalling, Bash
@@ -3223,6 +3225,10 @@ and skips, while the correction runs each existing JSON arm under native Windows
 without stderr. Retain a controlled no-jq/no-working-Python world that still produces the honest
 invariant skip, and retain PowerShell 7 behavior. Compose all distributions and require modified-
 test Windows/Linux CI; do not hard-code this maintainer's jq path or weaken the capability check.
+The locked design strengthens the original suggestion after adversarial review: the stdin probe must
+emit explicit case-sensitive `yes`/`no`, because exit 0 with empty channels is also consistent with
+an omitted stdin script and cannot honestly prove capability absence. Any empty/unexpected stdout,
+stderr, or nonzero exit fails setup rather than becoming a skip.
 
 ### B-194 · Make the PowerShell 5.1 installer tolerate non-Git targets
 **Effort:** M · **Priority:** P1 · **planned v0.78.4**
