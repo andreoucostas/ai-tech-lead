@@ -30,6 +30,12 @@ required before completion or release. Two independent read-only implementation 
 the stable local diff with no findings while explicitly withholding completion approval until those
 provider runs are observed.
 
+Independent immutable review approved exact candidate
+`49bcbe9ecc39d987045e98d7b8d68c8709b1a372`, tree
+`ae45d5129e0599f5db0444ee6a5fde9ff6bab0da`, from design parent `f766e87`. It reconfirmed the exact
+24-file scope, functional blob identity, source/generated carrier parity, and clean worktree. Native
+macOS evidence, frozen-arm retirement, and final candidate CI remain unclaimed.
+
 **The Bash installer now treats each temporary pathname as exact owned state.** B-197 replaces its
 space-delimited cleanup scalar with one Bash-3.2-safe counted indexed registry shared by all five
 allocation sites. Each entry is registered before inspection, canonicalized to physical identity,

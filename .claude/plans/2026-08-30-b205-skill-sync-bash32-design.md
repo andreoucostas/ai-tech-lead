@@ -1,6 +1,6 @@
 # B-205 — Bash 3.2-safe skill-mirror sync
 
-**Status:** IMPLEMENTED CANDIDATE — TWO LOCAL REVIEWS APPROVED · **Date:** 2026-08-30 · **Scope:** sync twins, existing twin result, focused macOS provider
+**Status:** IMPLEMENTED CANDIDATE `49bcbe9ecc39d987045e98d7b8d68c8709b1a372` — IMMUTABLE REVIEW APPROVED · **Date:** 2026-08-30 · **Scope:** sync twins, existing twin result, focused macOS provider
 
 ## Value decision
 
@@ -108,3 +108,10 @@ focused on evidence value and confirmed cardinality remains 10 `It` blocks, seve
 matrices; the other independently reran ScriptTwinParity 10/0/0 and ReleaseDistGateTiming 9/0/0 on
 both PowerShell hosts and checked Bash-3.2 syntax/quoting, the reachable frozen tree, and generated
 hash/BOM parity. Neither review substitutes for the unobserved native provider or final CI.
+
+The same portability reviewer then approved immutable candidate
+`49bcbe9ecc39d987045e98d7b8d68c8709b1a372`, tree
+`ae45d5129e0599f5db0444ee6a5fde9ff6bab0da`, from sole design parent
+`f766e87b7165b89ddf8d5be682aa2e1ae6c22981`. It verified exact 24-file scope, functional blob
+identity with the stable reviewed diff, authored/generated parity, and no worktree residue. The
+review explicitly leaves stock macOS evidence, frozen-arm retirement, and final CI pending.

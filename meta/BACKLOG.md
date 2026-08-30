@@ -2964,7 +2964,7 @@ must still exercise the POSIX symlink path, and candidate CI remains pending.
 ### B-205 · Restore Bash 3.2 compatibility in skill-mirror sync
 **Effort:** S · **Priority:** P2 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-30)
-**Status:** IMPLEMENTED CANDIDATE — two independent local reviews approved; exact macOS proof and final-candidate Windows/Linux/macOS CI pending
+**Status:** IMPLEMENTED CANDIDATE `49bcbe9ecc39d987045e98d7b8d68c8709b1a372` — immutable review approved; exact macOS proof and final-candidate Windows/Linux/macOS CI pending
 **Plan:** `.claude/plans/2026-08-30-b205-skill-sync-bash32-design.md`
 
 **Why:** `/generate-copilot` documents `bash scripts/sync-agent-files.sh` for macOS, but the v0.78.0
@@ -3002,6 +3002,13 @@ an unchanged copy mechanism. The portability review independently reran the focu
 PowerShell hosts, verified the frozen tree is reachable and archiveable, and approved the Bash 3.2
 syntax, quoting, PATH, diagnostics, and topology design. Both explicitly withheld completion
 approval until native macOS and final CI are observed.
+
+Immutable review approved exact candidate `49bcbe9ecc39d987045e98d7b8d68c8709b1a372`, tree
+`ae45d5129e0599f5db0444ee6a5fde9ff6bab0da`, from sole design parent
+`f766e87b7165b89ddf8d5be682aa2e1ae6c22981`. It confirmed the exact 24 modified files, no path or
+mode changes, reviewed functional blobs, authored/generated carrier parity, and a residue-free
+worktree. Completion remains blocked only on the explicitly unobserved native provider and final CI
+sequence; no push or release is authorized by this record.
 
 ---
 
