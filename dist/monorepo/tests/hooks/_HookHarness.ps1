@@ -102,7 +102,11 @@ function Invoke-Hook {
 
 # Run a script with zero or more arguments. Returns $null for a .sh when bash is unavailable.
 function RunArg {
-    param([Parameter(Mandatory)][string]$Path, [string[]]$Arguments = @())
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [string[]]$Arguments = @(),
+        [string[]]$BashOptions = @()
+    )
     # Deliberately NOT Invoke-RawProcess. That exists for Invoke-Hook, where 5.1's ErrorRecord
     # rendering corrupted a byte-for-byte TWIN COMPARISON. RunArg's callers assert on exit codes and
     # on stdout text, never on stderr equality, so they never needed it -- and routing them through
@@ -117,7 +121,7 @@ function RunArg {
     try {
         try { [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false); $encChanged = $true } catch { }
         if ($Path -match '\.ps1$') { $out = & (Get-PsExe) -NoProfile -ExecutionPolicy Bypass -File $Path @Arguments 2>$ef }
-        else { $bash = Get-BashPath; if (-not $bash) { return $null }; $out = & $bash $Path @Arguments 2>$ef }
+        else { $bash = Get-BashPath; if (-not $bash) { return $null }; $out = & $bash @BashOptions $Path @Arguments 2>$ef }
         return [pscustomobject]@{ Exit=$LASTEXITCODE; Out=($out -join "`n"); Err=[IO.File]::ReadAllText($ef) }
     } finally {
         if ($encChanged) { try { [Console]::OutputEncoding = $prevOut } catch { } }

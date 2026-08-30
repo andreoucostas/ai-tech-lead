@@ -83,11 +83,19 @@ else
   # never inspected. 0 found, 1 genuinely absent, anything else a host condition.
   missing=""
   probe_failed=""
-  grep -q "GENERATED FILE" "AGENTS.md" 2>/dev/null
-  case $? in 0) ;; 1) missing="banner";; *) probe_failed=1;; esac
+  if grep -q "GENERATED FILE" "AGENTS.md" 2>/dev/null; then
+    probe_status=0
+  else
+    probe_status=$?
+  fi
+  case "$probe_status" in 0) ;; 1) missing="banner";; *) probe_failed=1;; esac
   for h in "## Verification Rules" "## Leanness" "## Boy Scout Rule" "## Agentic Workflow"; do
-    grep -qF "$h" "AGENTS.md" 2>/dev/null
-    case $? in 0) ;; 1) missing="$missing '$h'";; *) probe_failed=1;; esac
+    if grep -qF "$h" "AGENTS.md" 2>/dev/null; then
+      probe_status=0
+    else
+      probe_status=$?
+    fi
+    case "$probe_status" in 0) ;; 1) missing="$missing '$h'";; *) probe_failed=1;; esac
   done
   if [ -n "$probe_failed" ]; then
     fail "grep could not inspect AGENTS.md — this is a host/resource problem, so mirror currency cannot be verified. It is not evidence that AGENTS.md has drifted."
@@ -165,8 +173,11 @@ if [ -f "$here/hazard-check.sh" ]; then
   bash "$here/hazard-check.sh" "$(cd "$here/.." && pwd)" || fail "hazard map checks failed (see above)."
 fi
 if [ -f "$here/warehouse-map-check.sh" ]; then
-  bash "$here/warehouse-map-check.sh" "$(cd "$here/.." && pwd)"
-  warehouse_status=$?
+  if bash "$here/warehouse-map-check.sh" "$(cd "$here/.." && pwd)"; then
+    warehouse_status=0
+  else
+    warehouse_status=$?
+  fi
   case "$warehouse_status" in
     0) ;;
     1) echo 'NOTE: warehouse map is missing or stale; refresh it before a warehouse write. (advisory - not a failure)' ;;

@@ -125,6 +125,12 @@ Independent read-only immutable review approved exact candidate
 source/dist-parity, or record defect, while explicitly leaving native Linux, stock macOS Bash 3.2,
 and candidate CI unclaimed.
 
+The v0.78.4 whole-range review nevertheless rejected the release record because all three shipped
+changelogs omitted this consumer-visible safety change. They now disclose the exact-path cleanup,
+unrelated-path deletion risk, exit-3 cleanup failure, and target-contained `TMPDIR` refusal. No test
+was added: this repairs delivery truth, while the existing old-red behavior result already proves
+the product boundary.
+
 **Windows PowerShell 5.1 no longer turns broken Bash capability-probe transport into false test
 coverage.** B-201 sends the three existing session-start JSON probes to Bash through `-s` stdin
 using the harness's raw process path. Each probe now emits exact `yes` or `no`; nonzero exit, stderr,
@@ -269,6 +275,22 @@ to 10/0. The reviewer also reproduced the Windows PowerShell renderer boundary a
 unredirected behavior, then reconfirmed byte parity, BOM/AST integrity, Bash syntax, unchanged test
 cardinality, both composers and validators, and the focused maintainer gates. Native Linux,
 Bash 3.2, and first candidate CI remain pending.
+
+Whole-range adversarial review then rejected candidate `e1cdb23`: an explicit `bash -e` could exit
+at the warehouse child before the next-line status capture, leaking statuses 1/2/7 and omitting the
+advisory and terminal verdict. A bounded census found the same unreachable-capture shape in the two
+AGENTS.md probes in this wrapper. The approved amendment places only those three fallible commands
+in conditionals, captures their status in both arms, and preserves every classification, stream,
+message, and final exit policy. The existing parity result passes `-e` to its same five Bash worlds
+through one backwards-compatible harness option; it adds no test, result, fixture, or execution.
+
+That strengthened result failed 9/1 against the unchanged product and passes 10/0 against the
+correction under PowerShell 7, Windows PowerShell 5.1, and a code-page-437 run. A disposable
+ordinary-mode rerun also passed 10/0 before exact test restoration. Independent banner-missing and
+heading-missing probes returned exit 1 on both products, but the old product omitted each required
+diagnosis and aggregate verdict while the correction emitted each exactly once. Exported
+`SHELLOPTS=errexit` is deliberately not the oracle: it changes nested scripts too and exposed a
+broader, unpublished compatibility question now bounded as non-release-gating B-208.
 
 PowerShell and login-shell Bash composition produced the same 525-file aggregate (173/169/183).
 Both validator twins passed all three distributions, and all 12 changed authored/composed carrier

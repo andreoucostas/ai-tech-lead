@@ -1905,3 +1905,11 @@ Do not generalise a hostile preference into product work without a changed conse
 7's opt-in native-error preference can terminate through a different mechanism, but the wrapper
 still returned its documented `0/1` and retained both child streams in the tested matrix. Expanding
 that branch would add complexity without repairing an observed contract failure.
+
+Interpreter-local fail-fast and process-tree strict mode are different contracts. Passing `-e`
+directly before one wrapper path tests whether that wrapper can reach the status branches it owns.
+Exporting `SHELLOPTS=errexit` also changes every Bash descendant and can expose a much broader set of
+manual captures. B-203 repaired three proven unreachable branches in one wrapper; B-208 separately
+asks whether supporting inherited strict mode across all shipped scripts creates enough value to
+justify a complete census. Do not turn that hostile discovery into piecemeal fixes or an accidental
+public promise.

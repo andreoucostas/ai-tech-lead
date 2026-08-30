@@ -28,6 +28,15 @@
   case-variant duplicate paths are still rejected before target changes; PowerShell behavior and
   the installed file set are unchanged.
 
+- The Bash installer now treats every temporary file as one exact owned path, so `TMPDIR` names
+  containing spaces or glob characters are no longer word-split or expanded during cleanup. The
+  previous behavior could delete an unrelated caller-directory path and leave the real temporary
+  files behind. Cleanup attempts every retained path, reports its own failures without hiding an
+  earlier installer failure, and exits `3` when target work succeeds but cleanup does not. A
+  `TMPDIR` that resolves inside the selected target now refuses with exit `3` and no persistent
+  target change instead of causing a false dirty-tree refusal; set `TMPDIR` outside the target and
+  rerun.
+
 - Warehouse-map checking no longer recognizes the undocumented
   `## Declined artifact: warehouse-map` heading. An applicable warehouse without
   `docs/warehouse-map.md` now reports `missing` even when that old heading is present. The map stays
@@ -39,7 +48,10 @@
 - When the warehouse-map checker cannot examine your repository, `docs-sync-check` now says the
   map could not be verified and that this is not evidence it is missing or stale. A checker that
   verifies a missing or stale map keeps the existing refresh note. The warehouse branch remains
-  advisory and the overall docs-sync exit policy is unchanged.
+  advisory and the overall docs-sync exit policy is unchanged. The same classifications now remain
+  reachable when custom automation invokes `bash -e scripts/docs-sync-check.sh`; an interpreted
+  child status no longer terminates the wrapper before its advisory or final verdict. This does not
+  make inherited strict mode a general framework contract.
 
 - Bash session start now consumes a final security row even when the file has no trailing newline,
   so an overdue security finding retains its red SLA warning. Where the existing 90-day cutoff is

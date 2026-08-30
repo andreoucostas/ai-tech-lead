@@ -193,13 +193,13 @@ It 'docs-sync-check branches and advisory prose agree' {
     try {
         CopyPair docs-sync-check $r
         Put (Join-Path $r '.template-repo') ''
-        $templateResult=[pscustomobject]@{Name='template';Ps=RunArg (Join-Path $r scripts/docs-sync-check.ps1);Sh=RunArg (Join-Path $r scripts/docs-sync-check.sh)}
+        $templateResult=[pscustomobject]@{Name='template';Ps=RunArg (Join-Path $r scripts/docs-sync-check.ps1);Sh=RunArg (Join-Path $r scripts/docs-sync-check.sh) -BashOptions @('-e')}
     } finally { Remove-Item -Recurse -Force $r }
 
     $r=DocsFixture
     try {
         SetWarehouseStub $r 0 0 stdout 'WAREHOUSE_CHILD_STATUS_0'
-        $consumerResults['status-0']=[pscustomobject]@{Name='status-0';Ps=RunArg (Join-Path $r scripts/docs-sync-check.ps1);Sh=RunArg (Join-Path $r scripts/docs-sync-check.sh)}
+        $consumerResults['status-0']=[pscustomobject]@{Name='status-0';Ps=RunArg (Join-Path $r scripts/docs-sync-check.ps1);Sh=RunArg (Join-Path $r scripts/docs-sync-check.sh) -BashOptions @('-e')}
 
         Put (Join-Path $r '.github/skills/my-skill/SKILL.md') "# skill`n"
         foreach($world in @(
@@ -208,7 +208,7 @@ It 'docs-sync-check branches and advisory prose agree' {
             [pscustomobject]@{Name='unexpected';PsStatus=-1;ShStatus=7;Stream='stderr';Sentinel='WAREHOUSE_CHILD_STATUS_UNEXPECTED'}
         )) {
             SetWarehouseStub $r $world.PsStatus $world.ShStatus $world.Stream $world.Sentinel
-            $consumerResults[$world.Name]=[pscustomobject]@{Name=$world.Name;Ps=RunArg (Join-Path $r scripts/docs-sync-check.ps1);Sh=RunArg (Join-Path $r scripts/docs-sync-check.sh)}
+            $consumerResults[$world.Name]=[pscustomobject]@{Name=$world.Name;Ps=RunArg (Join-Path $r scripts/docs-sync-check.ps1);Sh=RunArg (Join-Path $r scripts/docs-sync-check.sh) -BashOptions @('-e')}
         }
     } finally { Remove-Item -Recurse -Force $r }
 

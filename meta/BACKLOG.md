@@ -3474,7 +3474,8 @@ proportionally sized as B-195.
 
 ### B-208 · Decide whether inherited Bash strict mode is a valuable public compatibility contract
 **Effort:** S for evidence/decision; M only if support is justified · **Priority:** P2 · no earlier than v0.78.5
-**Filed against:** v0.78.4 candidate (2026-08-30)
+**Filed against:** v0.78.4 (2026-08-30)
+**Evidence source:** v0.78.4 candidate release-range review
 
 **Why:** v0.78.4 release-range review exported `SHELLOPTS=errexit` into the shipped Bash process
 tree. That is materially different from invoking one wrapper with `bash -e`: nested scripts inherit
