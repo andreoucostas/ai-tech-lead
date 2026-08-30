@@ -226,8 +226,8 @@
         },
         {
           "path": "docs/ci-integration.md",
-          "chars": 7807,
-          "tok": 1952
+          "chars": 7830,
+          "tok": 1958
         },
         {
           "path": "docs/defaults.md",
@@ -357,8 +357,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 41596,
-          "tok": 10399
+          "chars": 41590,
+          "tok": 10398
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -387,8 +387,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#body",
-          "chars": 7704,
-          "tok": 1926
+          "chars": 7690,
+          "tok": 1922
         },
         {
           "path": ".claude/commands/impact.md#body",
@@ -397,8 +397,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 14569,
-          "tok": 3642
+          "chars": 14563,
+          "tok": 3641
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -690,8 +690,8 @@
         },
         {
           "path": "docs/ci-integration.md",
-          "chars": 7649,
-          "tok": 1912
+          "chars": 7672,
+          "tok": 1918
         },
         {
           "path": "docs/defaults.md",
@@ -821,8 +821,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 34780,
-          "tok": 8695
+          "chars": 34774,
+          "tok": 8694
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -851,8 +851,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#body",
-          "chars": 7511,
-          "tok": 1878
+          "chars": 7497,
+          "tok": 1874
         },
         {
           "path": ".claude/commands/impact.md#body",
@@ -861,8 +861,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 13445,
-          "tok": 3361
+          "chars": 13439,
+          "tok": 3360
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -1174,8 +1174,8 @@
         },
         {
           "path": "docs/ci-integration.md",
-          "chars": 7875,
-          "tok": 1969
+          "chars": 7898,
+          "tok": 1974
         },
         {
           "path": "docs/defaults.md",
@@ -1305,8 +1305,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 49205,
-          "tok": 12301
+          "chars": 49199,
+          "tok": 12300
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1335,8 +1335,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#body",
-          "chars": 7924,
-          "tok": 1981
+          "chars": 7910,
+          "tok": 1978
         },
         {
           "path": ".claude/commands/impact.md#body",
@@ -1345,8 +1345,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 16154,
-          "tok": 4038
+          "chars": 16148,
+          "tok": 4037
         },
         {
           "path": ".claude/commands/refactor.md#body",

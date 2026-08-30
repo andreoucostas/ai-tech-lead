@@ -4,7 +4,7 @@
 **Filed against:** v0.78.3  
 **Status:** RE-LOCKED 2026-08-30 — original implementation approved; modern Git-for-Windows host
 identity amendment approved by two independent adversarial reviews; provider-red/current-green
-evidence pending
+evidence still unobserved (`33331472488` did not reach the oracle)
 
 ## Value decision
 
@@ -206,3 +206,14 @@ single precomputed flag/cursor, compose all three distributions, and require the
 result to pass on local legacy Git Bash and the modern Windows CI provider. Generic Cygwin remains
 an explicit unexecuted boundary; the finite identity plus built-in namespace capability prevents
 silently granting it Git-for-Windows semantics.
+
+Provider-red attempt `33331472488` at head
+`aac420fddca414b6392feb3500f8af7ef52c4925` was inconclusive for B-194. Both required main jobs
+stopped at context-footprint snapshot drift before distribution validation or the root meta suite,
+so the provider identity probe, lowercase-routing calibration, and unchanged-product child did not
+run. All six independent per-distribution hook-matrix jobs passed, but none contains the
+maintainer-only UpdateDelivery result; those jobs provide no B-194 red or green evidence. The
+baseline mismatch was exactly the already-committed B-209 generated-document delta, not a B-194
+behavior result. Modern-provider product red and corrected-product green therefore remain wholly
+unobserved; after correcting that measured baseline, the next exact candidate run must still
+observe the unchanged product red before any product implementation.

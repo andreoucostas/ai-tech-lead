@@ -3419,7 +3419,8 @@ so the item stays open and is not releaseable.
 **Effort:** M · **Priority:** P1 · **planned v0.79.0**
 **Filed against:** v0.78.3 (2026-08-29)
 
-**Status: PROVIDER-RED CANDIDATE; MODERN PRODUCT CORRECTION NOT YET IMPLEMENTED.** Candidate
+**Status: TEST-ONLY PROVIDER-RED ORACLE READY; MODERN PROVIDER VERDICT UNOBSERVED; PRODUCT
+CORRECTION NOT IMPLEMENTED.** Candidate
 `6818a4a` was rejected when a fresh immutable review reproduced a lowercase-routing bypass on
 legacy `OSTYPE=msys*` Git Bash. That bounded correction was locally green. First candidate run
 `33328114479` then showed Git for Windows `2.55.0.windows.5` reports a different Bash identity, so
@@ -3427,8 +3428,14 @@ the existing host prerequisite stopped before its product child. The current tes
 recognizes the finite legacy/current provider identities, proves `builtin pwd -W`, and retains the
 same real alternate-index child with no new result or process. It is locally green on legacy Git
 Bash; the unchanged product's modern-provider red remains pending and no modern product green is
-claimed. After that observation, implement the separately re-locked shared classifier and require
-exact Windows/Linux CI before completion. Git Bash is not native Linux evidence.
+claimed. Provider-red attempt `33331472488` at head
+`aac420fddca414b6392feb3500f8af7ef52c4925` was inconclusive: both main jobs stopped at
+context-footprint snapshot drift before distribution validation or the root meta suite, so the
+provider probe, lowercase-routing calibration, and unchanged-product child did not run. All six
+per-distribution hook-matrix jobs passed, but none contains maintainer-only UpdateDelivery and they
+provide no B-194 verdict. After the corrected baseline permits the next exact run to make the
+required red observation, implement the separately re-locked shared classifier and require exact
+Windows/Linux CI before completion. Git Bash is not native Linux evidence.
 
 **Why:** B-188's independent review found a pre-existing supported-host failure outside v0.78.1's
 ADR-preservation diff. Under Windows PowerShell 5.1 with `$ErrorActionPreference = 'Stop'`, the
@@ -3543,7 +3550,15 @@ composers produced the same 173/169/183-file dist diff; both validator twins pas
 correction was a case-sensitive match inside the existing UpdateDelivery result. Directly affected
 BacklogHygiene 10/0, ClaimTruth 3/0, DocTruth 13/0, ReleaseDistGateTiming 9/0, and UpdateDelivery
 51/0 were rerun green afterward. Two independent read-only implementation reviews approved the
-scope after those corrections. Exact supported Windows/Linux CI remains pending.
+scope after those corrections. In candidate run `33331472488` at `aac420f`, all six supported
+hook-matrix jobs passed, but both main jobs correctly stopped at context-footprint before later
+distribution/meta gates. The generated B-209 docs had changed while their measured baseline had
+not. Regenerating it changed only `chars`/`tok` for the four altered carriers in each distribution;
+static totals and ceilings remain 39,582/40,000, 38,105/40,000, and 47,098/48,000. Both baseline
+twins pass locally. The run did not reach B-194's provider child and is neither provider-red nor
+product-green evidence. The next exact run must first reach B-194's expected unchanged-product red;
+after that product correction, a later all-green supported Windows/Linux candidate remains
+mandatory for release.
 
 ---
 

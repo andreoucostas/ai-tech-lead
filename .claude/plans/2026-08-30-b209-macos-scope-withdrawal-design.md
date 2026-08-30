@@ -94,3 +94,20 @@ Two independent read-only implementation reviews found no public/CI scope defect
 bounded corrections to active v0.78.4 plan targets, one lingering Bash-3.2 maintenance phrase, and
 the staged B-194 evidence wording. Those corrections are incorporated. Exact supported
 Windows/Linux CI remains mandatory because tests changed; no macOS evidence is required or claimed.
+
+The first exact candidate run after this implementation, `33331472488` at
+`aac420fddca414b6392feb3500f8af7ef52c4925`, made all six Windows/Linux hook-matrix jobs green. Both
+main jobs stopped at the context-footprint gate: the committed generated distributions contained
+the intended B-209 documentation changes, while their measured per-file baseline still described
+the preceding tree. Distribution validation and the root meta suite were consequently skipped.
+The run reached neither B-194's modern-provider product child nor the remaining gates and supplies
+neither provider-red nor product-green evidence.
+
+Regenerating the baseline changed only `chars`/`tok` for the same four altered carriers in each of
+the three distributions (`docs/ci-integration.md` and the bodies of `bootstrap`,
+`generate-copilot`, and `rebootstrap`). The static totals and ceilings remain unchanged at
+39,582/40,000 for dotnet, 38,105/40,000 for Angular, and 47,098/48,000 for monorepo. Both the
+PowerShell and login-shell Bash context-footprint checks pass with that exact baseline. A new exact
+candidate run must now reach B-194's unchanged-product provider red; it is not expected to be the
+release-green run. After the bounded B-194 product correction, a later all-green supported
+Windows/Linux candidate remains mandatory for release.
