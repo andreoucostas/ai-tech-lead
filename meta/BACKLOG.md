@@ -3039,8 +3039,10 @@ run occurred, so approval is bounded to the immutable local candidate and B-198 
 ---
 
 ### B-197 · Make Bash installer temporary-file handling path-safe
-**Effort:** S · **Priority:** P2 · **planned ≥ v0.78.5**
+**Effort:** S · **Priority:** P1 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-29)
+**Status:** DESIGN LOCKED — two adversarial reviews approved the bounded P1 repair; implementation pending
+**Plan:** `.claude/plans/2026-08-30-b197-bash-temp-path-design.md`
 
 **Why:** B-194's hostile implementation review found a pre-existing Bash lifecycle defect outside
 the Git-classifier change. The installer stores `mktemp` paths in a space-delimited scalar and later
@@ -3048,15 +3050,23 @@ iterates it unquoted. A `TMPDIR` containing spaces is therefore word-split and g
 cleanup: the real temporary files can leak, and a split relative fragment can name an unrelated file
 under the caller's working directory. Separately, putting `TMPDIR` inside an otherwise clean target
 makes the installer's own pre-status temporary files appear untracked, producing a deterministic
-dirty-tree false refusal. No consumer incident is known, so this is P2 rather than B-194 scope.
+dirty-tree false refusal. A controlled exact-current replay has now converted the first risk into
+observed product data loss: the composed dotnet installer exited 0 and reported greenfield success
+while deleting the owned unrelated split-prefix sentinel and leaking all 17 generated temp files.
+A second clean committed-update replay exited 4 with the false dirty-tree diagnosis. No consumer
+incident is known, but successful unrelated-byte deletion makes this P1 rather than deferrable P2.
 
-**Do:** revalidate the portable temp-root contract, then replace the scalar registry with a
-Bash-3.2-safe path-preserving structure and ensure preflight allocations cannot make the selected
-target dirty (or fail cleanly before relying on status). Add one focused behavioral subject that
-uses both a spaced temp path and a clean target-confined temp path, proves cleanup cannot touch a
-sentinel named like a split fragment, and distinguishes success/refusal from leakage. Do not add a
-new suite or duplicate ordinary clean/dirty controls. Compose all dists, run native Linux coverage,
-and use one cleanup-registry mutation to prove the subject is discriminating.
+**Do:** replace all five `mktemp` call sites with one Bash-3.2-safe counted indexed registry; preserve
+body failure status while making cleanup failure explicit; and reject a physically target-contained
+temp parent with exact exit 3, cleanup, and no persistent target mutation before relying on Git
+status. Propagate validator/top-level/prior-manifest/preflight allocation failures without using
+`set -e` as control flow or degrading host failure into additive compatibility. Add one focused
+Bash-only result in the existing update-delivery suite: literal relative `TMPDIR='prefix dir'` must
+preserve its split-prefix sentinel and leak nothing, while a clean tracked target-confined temp root
+must refuse specifically and restore its fingerprint. Do not add a suite, PowerShell twin case,
+three-dist runtime matrix, or duplicate ordinary clean/dirty controls. Compose all dists, require
+native Linux plus stock macOS Bash 3.2 evidence, and use one unquoted-element mutation to prove the
+new result discriminates the data-loss defect.
 
 ---
 
