@@ -2708,26 +2708,50 @@ count distinct categories, and make the eval's authoritative-catalog fixture rej
 Fold a duplicate-row mutation into the existing warehouse map checker suite; do not create a
 standalone catalog suite.
 
-### B-199 · Honor a BOM-prefixed warehouse-map decline in the Bash checker
-**Effort:** S · **Priority:** P2 · **planned v0.78.5**
+### B-202 · Persist an explicit warehouse-map decline at the point of choice
+**Effort:** S · **Priority:** P2 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-30)
 
-**Why:** B-196's same-class parser sweep reproduced another PS/Bash divergence without widening the
-installer fix. With a real two-category warehouse fixture and an exact BOM + CRLF first-line
-`## Declined artifact: warehouse-map`, `warehouse-map-check.ps1` reports `declined`/0 while
-`warehouse-map-check.sh` reports `missing`/1. `docs-sync-check` treats this checker as advisory, so
-the consequence is fail-safe false work and contradictory host guidance rather than silent policy
-reversal; P2 is proportionate. This is not a duplicate of B-196 because it is a separate shipped
-reader and outcome.
+**Why:** B-199 revalidation found that the checker recognizes an exact durable decline marker but no
+shipped consumer workflow or instruction ever writes or teaches it. `/map-warehouse` says “offer,
+don't force”; when a developer declines, the decision disappears and later sessions can keep
+recommending the same map work. This reachable contract gap leaves every explicit decline
+unrecorded and can cause repeated guidance; it is more valuable than normalizing B-199's unsupported
+first-line-only file shape.
 
-**Do:** preserve the exact anchored, case-sensitive decline grammar and the protected file's bytes,
-but let the Bash checker ignore exactly one standard UTF-8 BOM only at byte zero of its parsing
-stream and propagate a selected-file read/tool failure. Keep the existing BOM-less decline check,
-then add exact BOM + CRLF bytes and pre/post identity inside that same declined-map `It`; add no
-suite or result. Confirm PowerShell behavior stays unchanged, compose all distributions, use one
-BOM-stage mutation to make that existing result red, and require the modified test's first
-Windows/Linux CI before completion or release. Do not absorb the lower-value PowerShell regex
-permissiveness without a reproduced harmful input.
+**Do:** first revalidate that durable decline remains preferable to deleting the dead checker state.
+If retained, update both authored agent-surface copies of `map-warehouse`: when a human declines
+writing or refreshing the map, explain that recording the decision suppresses repeat guidance and
+ask whether to record it. Append the exact `## Declined artifact: warehouse-map` marker to the
+existing protected `LEARNINGS.md` only after a separate affirmative answer. Never infer consent from
+silence, non-invocation, a missing map, an autonomous/model-invoked run, or the initial refusal;
+never overwrite or reorder existing content; do not duplicate an existing marker. In the existing
+checker result, copy the installed root `LEARNINGS.md` fixture and append the marker instead of
+retyping a first-line approximation; add no suite or `It`. Verify authored agent-surface parity,
+dotnet/monorepo composition, and an install smoke; do not add a test that merely searches for prose.
+
+---
+
+### B-203 · Preserve warehouse-map verification failure in the docs-sync advisory
+**Effort:** S · **Priority:** P2 · **planned v0.78.4**
+**Filed against:** v0.78.3 (2026-08-30)
+
+**Why:** both `docs-sync-check` twins currently translate every nonzero `warehouse-map-check` exit
+into “missing or stale.” Exit 1 is that content state, but exit 2 means the checker could not read,
+enumerate, or classify the repository. The checker's accurate stderr survives and is then followed
+by a contradictory diagnosis. The warehouse-map branch remains advisory, but its wrapper violates
+maintenance rule 7 exactly when the host is least trustworthy.
+
+**Do:** capture the checker status once in each twin. Preserve the current missing/stale note only
+for exit 1. For exit 2 or greater, retain the checker's stderr and the warehouse-map branch's
+non-failing contract, then emit exactly: `NOTE: warehouse map could not be verified; this is not
+evidence that the map is missing or stale. (advisory - not a failure)`. Strengthen the existing
+`docs-sync-check branches and advisory prose agree` result with controlled status 0, 1, 2, and 7
+worlds. The 2/7 stubs emit a unique stderr sentinel; assert it survives exactly once, the new note
+appears exactly once, the missing/stale note is absent, and the wrapper remains non-failing. Add no
+suite or `It`, and prove the unchanged wrapper red before correction. Compose all distributions,
+run both validator twins, and require the modified test's first Windows/Linux CI before completion
+or release.
 
 ---
 

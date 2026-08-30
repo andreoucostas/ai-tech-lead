@@ -7397,3 +7397,28 @@ source and all dist twins remain byte-identical, and the changelog/review ledger
 evidence.
 
 ---
+
+### B-199 · Honor a BOM-prefixed warehouse-map decline in the Bash checker — **CLOSED 2026-08-30 · premise invalidated, no product change**
+
+The crafted BOM + CRLF first-line decline fixture is a real parser divergence: PowerShell
+reports `declined`/0 and Bash `missing`/1, with the protected file unchanged. Revalidation rejected
+the premise, however. The shipped `LEARNINGS.md` has always begun with `# What We've Learned`, and no
+shipped consumer workflow or instruction writes the hidden decline marker. With BOM + CRLF on that
+real template and the marker appended later, both twins report `declined`/0 and preserve the file. The
+checker and its synthetic first-line fixture were introduced together in `1c26516f`; the test
+therefore proved a constructible parser shape without proving a reachable product path.
+
+Normalizing the reader and permanently expanding that fixture would add maintenance cost for an
+unsupported layout whose observed framework consequence is fail-safe advisory repeat-work. B-202
+instead owns the valuable gap—persisting an explicit human decline at the point `/map-warehouse`
+asks—and will reuse the existing checker result with the real file shape. B-203 separately owns the
+observed wrapper defect where `docs-sync-check` describes checker exit 2 (“could not verify”) as
+“missing or stale.”
+
+**RCA:** the original checker and test specified the consumer state from each other rather than from
+an end-to-end producer. No gate asks whether a supposedly supported state is reachable through a
+shipped workflow. The same class exposes any fixture-only state whose writer, instruction, or human
+transition is absent; future premise audits must trace producer → persisted bytes → reader before
+hardening the reader grammar.
+
+---
