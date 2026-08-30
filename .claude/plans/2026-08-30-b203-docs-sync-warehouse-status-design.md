@@ -248,7 +248,7 @@ Both validator twins passed all three distributions. The three shipped hook batt
 authored/generated carriers are byte-identical, both changed PowerShell sources retain their BOM
 and parse with zero AST errors, and all four Bash carriers pass `bash -n`. Test/result/fixture and
 execution cardinalities are unchanged. Three independent read-only reviews approved the design,
-implementation, records, and test value.
+implementation, and test value.
 
 The first immutable review of exact product/test commit
 `16dbd95743163f5a92e9aacb23a946e056421a40`, tree
