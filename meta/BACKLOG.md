@@ -2823,7 +2823,10 @@ suite or `It`, no generic cleanup framework, and no stale-root sweeper. Disposab
 dual-failure, invalid-path, and interior-link probes must discriminate the boundary; retain 12
 results and intended mutation-red diagnostics under PowerShell 7/5.1 plus the standard concurrent
 meta runner. The existing mutation callbacks must reject a cleanup-only red by machine-checking and
-re-emitting their intended warehouse assertion/sentinel. Meta-only; first Windows/Linux CI and a
+re-emitting their intended warehouse assertion/sentinel. Also replace only the two same-file
+solution-free `Get-ChildItem -Include` expressions with explicit extension filtering: 5.1 otherwise
+counts every recursively enumerated file and cannot run this candidate, while the assertion itself
+remains valuable. Add no result for that folded prerequisite. Meta-only; first Windows/Linux CI and a
 separately recorded native-Linux dangling-link probe still gate completion because the test file and
 host-sensitive cleanup contract change.
 

@@ -3,7 +3,7 @@
 **Date:** 2026-08-30
 **Filed against:** v0.78.3
 **Planned:** v0.78.4
-**Status:** DESIGN AMENDED AFTER ADVERSARIAL REVIEW — implementation pending
+**Status:** DESIGN AMENDED AFTER ADVERSARIAL REVIEW — implementation in progress
 
 ## Value and proportionality decision
 
@@ -40,6 +40,14 @@ Route every recursive suite-owned tree lifecycle through the wrapper: the eleven
 fixture sites and the adjacent `root-broken-jq-*` scratch site. Keep the deliberate non-recursive
 `App.csproj` fixture mutation unchanged. Use wrapper-local names that cannot dynamically shadow the
 fixture-body variables used by this PowerShell file.
+
+Implementation-time native Windows PowerShell 5.1 execution exposed one pre-existing false-red
+oracle in the same file. Its two solution-free assertions use `Get-ChildItem -LiteralPath ...
+-Include *.sln,*.csproj`; under 5.1 that shape returns every recursively enumerated file, while
+PowerShell 7 filters as intended. Fold only those two expressions into B-204: enumerate files, then
+filter explicitly by `.Extension -in @('.sln', '.csproj')`. Do not sweep other `-Include` uses or
+weaken/remove the solution-free assertion. This two-expression prerequisite enables the already
+required 5.1 run and adds no helper, suite, or result.
 
 The helper must:
 
@@ -100,6 +108,10 @@ A disposable partial-deletion mutation must throw from removal after deleting th
 prove the post-error reinspection accepts only genuine root absence. The broken-jq dual-failure
 probe must show `PATH` restored before the cleanup failure escapes. These are one-off probes, not
 permanent test results.
+
+For the folded 5.1 oracle amendment, a disposable directory containing only nonmatching files must
+show the old 5.1 query falsely nonzero and the corrected query zero; after adding one `.csproj`, the
+corrected query must return exactly one under both PowerShell hosts. No permanent result is added.
 
 Require the existing file to retain exactly 12 `It` results and its existing red mutations. Amend
 each existing mutation callback to capture and re-emit its nested transcript, then deliberately
