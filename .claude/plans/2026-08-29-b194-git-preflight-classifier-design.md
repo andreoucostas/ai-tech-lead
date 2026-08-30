@@ -169,4 +169,4 @@ byte-identically, and return clean.
   dist hashes and BOM/syntax. Compare whole trees after login-shell Bash composition.
 - Independent immutable-range hostile review under WSD-057. Because both installer twins and a
   data-preservation preflight change, Windows and native Linux candidate CI are mandatory before
-  release. Git Bash is not Linux/macOS or Bash 3.2 runtime evidence.
+  completion and release. Git Bash is not Linux/macOS or Bash 3.2 runtime evidence.
