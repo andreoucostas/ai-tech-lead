@@ -2933,7 +2933,7 @@ control. Reuse B-198's focused provider job, but do not expand B-198 to implemen
 ### B-198 · Restore Bash 3.2 compatibility in the shipped installer
 **Effort:** S–M · **Priority:** P1 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-29)
-**Status:** IMPLEMENTED CANDIDATE — local newer-Bash evidence green; immutable review, exact macOS proof, and final-candidate Windows/Linux/macOS CI pending
+**Status:** IMPLEMENTED CANDIDATE `f71473f4830e8696e6b220ffb7e07eebe82e01a3` — immutable review approved; exact macOS proof and final-candidate Windows/Linux/macOS CI pending
 **Plan:** `.claude/plans/2026-08-30-b198-bash32-installer-design.md`
 **Decision:** WSD-061
 
@@ -2973,7 +2973,19 @@ diagnostic edit was restored byte-identically and only these diagnostic runs' 12
 were removed.
 CI topology, push-watch, and release-watch checks passed, workflow YAML parses, all edited PowerShell
 files retain BOM/AST integrity, and all installer copies pass Bash syntax. No macOS or Bash 3.2 run,
-immutable review, Windows/Linux candidate CI, push, tag, or release is claimed.
+Windows/Linux candidate CI, push, tag, or release is claimed.
+
+**Immutable review:** a fresh reviewer approved exact candidate
+`f71473f4830e8696e6b220ffb7e07eebe82e01a3`, tree
+`9d543e1e50c03ddfb736a41b7534760771024dd9`, from sole design parent
+`0062e9901afd8f7724ba2c4e0e01e0017179eebe` in a detached no-hardlinks clone. Exact 20-file scope,
+authored/three-dist installer hashes, unchanged result cardinalities, source/dist changelogs,
+YAML/BOM/AST/Bash syntax, focused suites, and record/release gates were reconfirmed. Independent
+ownership and retirement case/glob collisions plus a forced `awk` exit all failed closed without
+target mutation. Changing only the Bash ownership duplicate decision made the strengthened existing
+result fail 11/1 before exact candidate restoration. The reviewer withdrew an initial generic-BSD
+`find` objection after checking the pinned macOS 26 implementation. No native macOS/Bash 3.2 or CI
+run occurred, so approval is bounded to the immutable local candidate and B-198 remains open.
 
 ---
 

@@ -122,3 +122,23 @@ planted 7/1 red), 7/0, and 18/0. Workflow YAML parses; edited PowerShell files r
 all Bash installer copies pass syntax. No macOS job has run, so stock Bash 3.2, transitional
 old-red/current-green, final stable macOS, and normal candidate Windows/Linux CI remain explicit
 gaps. No push, tag, or release occurred.
+
+## Immutable review (2026-08-30)
+
+A fresh reviewer approved exact candidate
+`f71473f4830e8696e6b220ffb7e07eebe82e01a3` (tree
+`9d543e1e50c03ddfb736a41b7534760771024dd9`) from the sole design parent
+`0062e9901afd8f7724ba2c4e0e01e0017179eebe` in a detached no-hardlinks clone. The reviewer
+reconfirmed the 20-file scope, exact authored/three-dist installer hash
+`20C3527D8AFF41E8CA30EAC49D5273122B6325F244097521312117C16AFC5326`, unchanged result
+cardinality, YAML/BOM/AST/Bash syntax, focused suites, and record/release gates. Independent
+ownership and retirement collisions containing ASCII case variants and glob metacharacters exited
+3 with the exact second-path diagnostic and no target mutation; a fake `awk` exit 91 reached the
+dedicated guard and also left the target unchanged.
+
+Mutating only the Bash ownership duplicate decision made the strengthened existing result fail
+11/1 with its intended diagnostic before exact commit/tree restoration; the unmodified candidate
+passed 12/0. An initial reviewer objection to `find -mindepth/-maxdepth` was withdrawn after checking
+the pinned macOS 26 provider's own documentation and Apple implementation. Approval is bounded to
+the immutable local candidate: native macOS/Bash 3.2, transitional CI, removal of the frozen-history
+arm, and final Windows/Linux/macOS CI remain unobserved, so B-198 is not complete or releaseable.

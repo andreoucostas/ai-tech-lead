@@ -27,6 +27,17 @@ frozen old installer red/no-mutation and the candidate green; that historical ar
 and the stable candidate must pass macOS plus the normal Windows/Linux CI before completion or
 release. Local newer-Bash evidence is not reported as macOS or Bash 3.2 proof.
 
+Independent immutable review approved exact candidate
+`f71473f4830e8696e6b220ffb7e07eebe82e01a3` from design parent `0062e990` and tree
+`9d543e1e50c03ddfb736a41b7534760771024dd9`. In a detached no-hardlinks clone, the reviewer
+reconfirmed exact 20-file scope and source/dist hashes, replayed ownership and retirement case/glob
+collisions plus a forced `awk` failure with no target mutation, and made the strengthened existing
+result fail 11/1 by suppressing only the Bash ownership duplicate decision before exact restoration
+to 12/0. Focused topology/watch suites, YAML/BOM/AST/Bash syntax, and six record/release gates were
+green. Native macOS/Bash 3.2, transitional CI, removal of the frozen-history arm, and final
+Windows/Linux/macOS CI remain pending, so this is candidate approval rather than completion or
+release approval.
+
 **Warehouse maps no longer have a hidden declined state.** B-202 revalidates and supersedes the
 explicit-decline clause of WSD-033: no shipped workflow wrote or taught the exact protected
 `LEARNINGS.md` heading, its append-only preference had no revocation state, and its only permanent
