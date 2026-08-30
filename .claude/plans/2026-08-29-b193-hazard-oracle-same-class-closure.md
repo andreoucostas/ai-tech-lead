@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-29  
 **Filed against:** v0.78.3  
-**Status:** VERIFIED 2026-08-29 — immutable candidate `fb35803` approved; native Linux/Bash 3.2 remains release evidence
+**Status:** VERIFIED 2026-08-29 — immutable candidate `fb35803` approved; Windows/Linux CI remains release evidence
 
 ## Premise and value decision
 
@@ -212,8 +212,8 @@ that gap; independent code and oracle reviewers approved the amended source blob
    execution vantage before release. Same-host PowerShell/Bash diversity counts only when a surface-
    specific mutation and observed divergence prove material independence; otherwise retain review
    debt. The first Windows and Linux three-dist CI matrix for the immutable candidate must be green.
-   Git Bash is not Linux/macOS evidence; if Bash 3.2/macOS is unavailable, record that compatibility
-   gap rather than claiming it was run.
+   Git Bash is not native Linux evidence; the first exact Windows/Linux candidate run must remain
+   green rather than being inferred from local cross-shell execution.
 
 ## RCA boundary
 
@@ -224,3 +224,8 @@ shape, section cardinality, completed-outcome cardinality, lifecycle role, and r
 candidate order were not threat-modeled. The same-class sweep is the finite parser boundary above,
 not every possible Markdown construct. Record this in `meta/LEARNINGS.md`, B-193's Done entry, and
 root/consumer changelogs without claiming semantic truth enforcement.
+
+B-209/WSD-064 subsequently withdrew macOS, BSD-provider behavior, and stock Bash 3.2 from the
+supported and tested host contract. The provider-gap wording above is retained as historical review
+context, not an active completion gate; native Linux and the supported Windows/Linux CI remain the
+release evidence boundary.

@@ -194,15 +194,16 @@ The same hook logic ships as bash and PowerShell twins across three client surfa
 | **GitHub Copilot CLI** | `.github/hooks/hooks.json` | `toolName` ∈ {`edit`,`create`}; `toolArgs.filePath` | Dated hook evidence: CLI 1.0.80, 2026-08-20; folder trust and interpreter resolution are prerequisites. |
 | **Copilot in VS Code** | `.github/hooks/hooks.json` | VS Code tool payload | Preview, off by default, org-gated; guard shape is canary-verified, but the full lifecycle is uncertified. |
 
-Hook interpreter by platform. **Claude Code's `settings.json` defaults to the PowerShell (`pwsh`) twins** — so hooks fire on Windows without git-bash (the old bash default silently no-opped there). The installer adapts the interpreter to your machine, so this is automatic:
+Hook interpreter by platform. **Windows and Linux are supported and release-tested; macOS is unsupported and untested.** Claude Code's `settings.json` defaults to the PowerShell (`pwsh`) twins — so hooks fire on Windows without git-bash (the old bash default silently no-opped there). The installer adapts the interpreter on supported hosts, so this is automatic:
 
 | Platform | Hook interpreter | Notes |
 |----------|------------------|-------|
 | Windows + PowerShell 7 (`pwsh`) | `pwsh` (default) | Works out of the box — no git-bash required. |
 | Windows, no `pwsh` | Windows PowerShell 5.1 | `install.ps1` auto-activates `settings.windows.json` (5.1 is preinstalled on every Windows box). |
 | Windows + Git for Windows (git-bash) | `pwsh`, or bash if preferred | Run `install.sh` under git-bash to switch to the bash twins. `.gitattributes` pins `*.sh` to LF so CRLF can't break them. |
-| macOS / Linux + `pwsh` | `pwsh` (default) | Works out of the box. |
-| macOS / Linux, no `pwsh` | bash | `install.sh` switches to the bash twins (`git`, `grep`, `tr`, `printf`, `wc` are all default). |
+| Linux + `pwsh` | `pwsh` (default) | Works out of the box. |
+| Linux, no `pwsh` | bash | `install.sh` switches to the bash twins (`git`, `grep`, `tr`, `printf`, `wc` are all default). |
+| macOS | — | Unsupported and untested; incidental compatibility is not a release contract. |
 | Windows + WSL only | — | Not recommended: `/mnt/c/...` path translation breaks the hooks. Install Git for Windows or PowerShell alongside WSL. |
 
 > GitHub Copilot's `.github/hooks/hooks.json` already declares both a `bash` and a `powershell` command per hook and picks per-OS, so Copilot is unaffected — this change brings Claude Code to parity on Windows.
@@ -210,7 +211,7 @@ Hook interpreter by platform. **Claude Code's `settings.json` defaults to the Po
 **Verify your setup** after copying the template into your repo:
 
 ```bash
-# Bash version (macOS / Linux / Windows + git-bash):
+# Bash version (Linux / Windows + git-bash):
 echo '{"prompt":"the export endpoint is broken"}' | bash .claude/hooks/route-prompt.sh
 # Expected: "## Routed intent: `fix` ..." plus the fix-workflow rules.
 ```

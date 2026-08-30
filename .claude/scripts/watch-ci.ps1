@@ -45,7 +45,7 @@ param(
     # GitHub names a matrix job "<job> (<value>)" -- if that naming ever changes, this list must
     # follow, and it failing loudly is the intended direction.
     [string[]]$ExpectedJobs = @(
-        'windows', 'linux', 'macos-portability',
+        'windows', 'linux',
         'windows-hooks (dotnet)', 'windows-hooks (angular)', 'windows-hooks (monorepo)',
         'linux-hooks (dotnet)', 'linux-hooks (angular)', 'linux-hooks (monorepo)'
     )

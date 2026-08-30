@@ -7422,3 +7422,23 @@ transition is absent; future premise audits must trace producer → persisted by
 hardening the reader grammar.
 
 ---
+
+---
+
+### B-200 · Restore the Bash hazard-staleness cutoff under BSD/macOS `date` — CLOSED, NO IMPLEMENTATION (2026-08-30)
+**Effort:** S · **Priority:** P2 · **Filed against:** v0.78.3 (2026-08-30)
+
+**Original premise.** `session-start.sh` computes its advisory 90-day cutoff with GNU-only
+`date -d`; stock BSD/macOS `date` rejects that provider and silently omits the staleness nudge. The
+item proposed a feature-detected GNU/BSD fallback plus exact native evidence.
+
+**Closure.** B-209/WSD-064 withdraws macOS, BSD-provider behavior, and stock Bash 3.2 from the
+supported/tested contract after the owner confirmed the platform is not needed and review found no
+consumer evidence to justify its recurring cost. B-200 therefore no longer adds value and closes
+without product or test changes. Existing incidental BSD portability elsewhere is not removed.
+
+**RCA and sweep.** No prior gate caught this because macOS was documented as supported without an
+exact provider leg until B-198; the first such leg exposed the cost and triggered a premise re-audit.
+The same-class risk was every active macOS promise, not every technical `BSD` comment. B-209 sweeps
+the three READMEs, active commands, CI docs, unreleased changelogs, watcher/topology contract, and
+open completion records while preserving released history and useful portability defenses.

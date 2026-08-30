@@ -26,11 +26,11 @@ It also runs `hazard-check`, validating hazard-table Status tokens, Reviewed dat
 
 
 ```
-bash scripts/docs-sync-check.sh          # Linux/macOS build agents
+bash scripts/docs-sync-check.sh          # Linux build agents
 pwsh -NoProfile -File scripts/docs-sync-check.ps1   # Windows build agents
 ```
 
-Host-agnostic, no dependencies beyond bash **or** PowerShell. Exit `0` = pass, non-zero = fail,
+On supported Windows/Linux hosts, there are no dependencies beyond bash **or** PowerShell. Exit `0` = pass, non-zero = fail,
 findings printed to stdout. It verifies the framework itself is healthy: adoption completed (no
 `adoption-pending.json`), `CLAUDE.md` bootstrapped, `AGENTS.md` / `copilot-instructions.md`
 mirrors current, version stamps in sync, hook twins and BOM intact (via `template-checks`).

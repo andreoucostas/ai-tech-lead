@@ -56,19 +56,6 @@ function Assert-CiRootMetaSuite([string]$Name) {
     Assert ($job -match '(?m)^\s*run:\s*pwsh -NoProfile -File \.claude/hooks/tests/Invoke-HookTests\.ps1\s*$') "CI job '$Name' no longer invokes the root meta suite"
 }
 
-function Assert-CiMacosPortability {
-    $job = Get-CiJob 'macos-portability'
-    Assert ($job -match '(?m)^\s*runs-on:\s*macos-26\s*$') 'macos-portability no longer pins the current GA macOS provider'
-    Assert ($job -match '(?m)^\s*shell:\s*/bin/bash\b.*\{0\}\s*$') 'macos-portability no longer invokes run steps through stock /bin/bash'
-    Assert ($job -match 'BASH_VERSION' -and $job -match '3\.2\.57') 'macos-portability no longer asserts the claimed Bash 3.2.57 runtime'
-    Assert ($job -match '/bin/bash dist/dotnet/scripts/install\.sh') 'macos-portability no longer executes the committed dotnet installer directly'
-    Assert ($job -match '/bin/bash "\$GITHUB_WORKSPACE/dist/dotnet/scripts/sync-agent-files\.sh"') 'macos-portability no longer executes the committed dotnet skill sync directly'
-    Assert ($job -match 'dist/dotnet/\.claude/framework-version\.json') 'macos-portability no longer verifies the installed version stamp'
-    Assert ($job -match 'dist/dotnet/framework-ownership\.json') 'macos-portability no longer verifies the installed ownership manifest'
-    Assert ($job -notmatch '(?m)^\s*matrix:') 'macos-portability expanded into a matrix'
-    Assert ($job -notmatch 'Invoke-HookTests\.ps1|\bpwsh\b|scripts/(?:build|validate-dist)\.(?:ps1|sh)') 'macos-portability expanded into generic composition, validation, or test work'
-}
-
 It 'the dist-gates stage was located for inspection' {
     Assert ($stage -ne '') 'could not extract the dist-gates stage from release.ps1'
 }
@@ -96,12 +83,11 @@ It 'the full root meta suite remains on its existing default throttled runner wi
     Assert ($metaStage.Contains('(?m)^RESULT\s+(\S+)\s+(\d+)\s*$')) 'the default meta invocation no longer parses per-file RESULT lines'
 }
 
-It 'CI retains Windows/Linux coverage plus one bounded stock-macOS provider before a normal tag' {
+It 'CI retains the supported Windows/Linux coverage before a normal tag' {
     Assert-CiHookMatrix 'windows-hooks'
     Assert-CiHookMatrix 'linux-hooks'
     Assert-CiRootMetaSuite 'windows'
     Assert-CiRootMetaSuite 'linux'
-    Assert-CiMacosPortability
 }
 
 It 'every TIMING expression in dist-gates emits a line the RESULT parser cannot swallow' {

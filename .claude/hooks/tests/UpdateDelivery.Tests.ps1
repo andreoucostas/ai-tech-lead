@@ -977,10 +977,36 @@ index_path=$1
 mode=$2
 shift 2
 if [ "$mode" = host ]; then
-  case "${OSTYPE:-}" in
-    msys*) printf 'msys\n'; exit 0 ;;
-    *) exit 14 ;;
+  ostype_value=${OSTYPE:-}
+  msystem_value=${MSYSTEM:-}
+  case "$ostype_value:$msystem_value" in
+    msys*:*|cygwin*:MINGW32|cygwin*:MINGW64|cygwin*:UCRT64|cygwin*:CLANGARM64) ;;
+    *) printf 'OSTYPE=%s;MSYSTEM=%s;PWD_W=\n' "$ostype_value" "$msystem_value"; exit 14 ;;
   esac
+  windows_path=$(builtin pwd -W 2>/dev/null) || {
+    printf 'OSTYPE=%s;MSYSTEM=%s;PWD_W=\n' "$ostype_value" "$msystem_value"
+    exit 15
+  }
+  case "$windows_path" in
+    [A-Za-z]:/*) ;;
+    //?*/?*)
+      remainder=${windows_path#//}
+      server=${remainder%%/*}
+      share_and_rest=${remainder#*/}
+      share=${share_and_rest%%/*}
+      [ -n "$server" ] && [ -n "$share" ] || {
+        printf 'OSTYPE=%s;MSYSTEM=%s;PWD_W=%s\n' "$ostype_value" "$msystem_value" "$windows_path"
+        exit 16
+      }
+      case "$windows_path" in "//$server/$share"|"//$server/$share"/*) ;; *) exit 16 ;; esac
+      ;;
+    *)
+      printf 'OSTYPE=%s;MSYSTEM=%s;PWD_W=%s\n' "$ostype_value" "$msystem_value" "$windows_path"
+      exit 16
+      ;;
+  esac
+  printf 'OSTYPE=%s;MSYSTEM=%s;PWD_W=%s\n' "$ostype_value" "$msystem_value" "$windows_path"
+  exit 0
 fi
 unset GIT_INDEX_FILE
 git_index_file=$index_path
@@ -1037,7 +1063,7 @@ esac
         )
         if ($env:OS -eq 'Windows_NT') {
             $msysHostProbe = Invoke-B194BashWithLowercaseGitIndex -WrapperPath $lowercaseRoutingWrapper -IndexPath '_' -Mode host -Environment $cleanGitEnvironment
-            $setup.Add([pscustomobject]@{ Label = 'lowercase routing MSYS host prerequisite'; Capture = $msysHostProbe; ExpectedExit = 0; ExactOutput = 'msys' }) | Out-Null
+            $setup.Add([pscustomobject]@{ Label = 'lowercase routing Git-for-Windows host prerequisite'; Capture = $msysHostProbe; ExpectedExit = 0; HostEvidence = $true }) | Out-Null
             if ($msysHostProbe.Started -and $msysHostProbe.Exit -eq 0) {
                 $ambientHosts += @{ Label = 'ambient lowercase alternate index Git Bash'; Twin = 'sh'; Host = ''; Lowercase = $true }
             }
@@ -1080,6 +1106,11 @@ esac
         foreach ($step in $setup) {
             Add-B194ExpectedProcessProblems -Problems $problems -Label $step.Label -Capture $step.Capture -ExpectedExit $step.ExpectedExit
             if ($null -ne $step.ExactOutput -and $step.Capture.Out -ne [string]$step.ExactOutput) { $problems.Add("$($step.Label): expected exact output '$($step.ExactOutput)', got '$($step.Capture.Out)'") | Out-Null }
+            if ($step.HostEvidence) {
+                $hostEvidencePattern = '^OSTYPE=(?:msys[^;]*;MSYSTEM=[^;]*|cygwin[^;]*;MSYSTEM=(?:MINGW32|MINGW64|UCRT64|CLANGARM64));PWD_W=(?:[A-Za-z]:/.*|//[^/]+/[^/]+(?:/.*)?)$'
+                if ($step.Capture.Out -cnotmatch $hostEvidencePattern) { $problems.Add("$($step.Label): malformed provider evidence '$($step.Capture.Out)'") | Out-Null }
+                elseif ($step.Capture.Exit -eq 0) { Write-Host "INFO B-194 provider evidence: $($step.Capture.Out)" }
+            }
             if ($step.Output -eq 'dirty' -and $step.Capture.Out -notmatch 'tracked\.txt') { $problems.Add("$($step.Label): ordinary index did not expose tracked.txt") | Out-Null }
             if ($step.Output -eq 'empty' -and $step.Capture.Out.Trim().Length -ne 0) { $problems.Add("$($step.Label): alternate index did not hide the dirty file: $($step.Capture.Out)") | Out-Null }
         }

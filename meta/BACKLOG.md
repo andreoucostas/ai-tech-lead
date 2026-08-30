@@ -2703,7 +2703,7 @@ fallback. Do not add a fourth parser or a standalone suite.
 **Filed against:** v0.77.0 (2026-08-24)
 **Effort:** S · **Priority:** P3
 **Status:** IMPLEMENTED CANDIDATE `b36c6e99b61daf099ba227e8a566a342f5efd625` — two immutable
-reviews approved; exact-candidate provider CI and native Bash 3.2 pending
+reviews approved; exact-candidate Windows/Linux CI pending
 **Plan:** `.claude/plans/2026-08-30-b175-template-check-status-design.md`
 **Decision:** WSD-063
 
@@ -2748,7 +2748,7 @@ doctor test harness; B-207 keeps that test-truth repair out of this product chan
 the fixed status boundary, and the evidence-bounded records. Independent execution passed 10/0
 and 33/0 under PowerShell 7, a space-containing `0/3/2/4` plus missing-checker matrix, focused native
 Windows PowerShell 5.1 mappings, and a disposable `2 -> MISSING` mutation before exact restoration.
-No actionable defect was found. Native POSIX/Bash 3.2 and first exact-candidate CI remain pending.
+No actionable defect was found. Native Linux and first exact-candidate CI remain pending.
 
 **Final-preflight correction:** the full root meta suite later finished with one attributed failure
 across 31 files: existing `DocsSyncCheck.Tests.ps1` rejected both wrapper twins (0/2) because planted
@@ -2769,7 +2769,7 @@ finding, inability, missing-child, stream-preservation, WPS5.1, syntax, converge
 and second full-meta 0/31 checks. Both implementation reviewers approved the product and judged one
 permanent change newly justified: invoke the existing B-149 Bash arm with `-e`. That exact existing
 run is red on `d3e19c5` and green on `ae5d0c0`, while adding no test, `It`, result, fixture, runtime
-pass, or backlog item. Native Bash 3.2 and exact-final-candidate provider CI remain pending.
+pass, or backlog item. Exact-final-candidate Windows/Linux CI remains pending.
 
 **Final immutable review:** two independent read-only reviews approved exact candidate
 `b36c6e99b61daf099ba227e8a566a342f5efd625`, tree
@@ -2782,8 +2782,8 @@ under PowerShell 7 and native Windows PowerShell 5.1, the full root meta suite p
 both composer diffs matched, all six validators passed, source/generated blobs converge, syntax and
 BOM gates passed, and both context-footprint twins retained the accepted baseline. Caller-`-e` and
 inherited-`SHELLOPTS` hostile matrices preserved child streams and mapped clean to `0` plus
-finding/inability/abnormal/missing-child to `1`. Native Bash 3.2 and exact-candidate provider CI
-remain release evidence rather than local claims.
+finding/inability/abnormal/missing-child to `1`. Exact-candidate Windows/Linux CI remains release
+evidence rather than a local claim.
 
 ### B-176 · Enforce unique warehouse signal-category definitions
 **Filed against:** v0.77.0 (2026-08-24)
@@ -2798,7 +2798,7 @@ Fold a duplicate-row mutation into the existing warehouse map checker suite; do 
 standalone catalog suite.
 
 ### B-202 · Remove the unreachable warehouse-map decline state
-**Effort:** S · **Priority:** P2 · **planned v0.78.4**
+**Effort:** S · **Priority:** P2 · **planned v0.79.0**
 **Filed against:** v0.78.3 (2026-08-30)
 **Status:** IMPLEMENTED CANDIDATE `fb689c2daec4c54ffb68a5e1769eefd061d96b85` — immutable review approved; first Windows/Linux CI pending
 **Decision:** WSD-060
@@ -2860,9 +2860,9 @@ gates independently passed. Native Linux and first candidate CI remain the only 
 ---
 
 ### B-203 · Preserve warehouse-map verification failure in the docs-sync advisory
-**Effort:** S · **Priority:** P2 · **planned v0.78.4**
+**Effort:** S · **Priority:** P2 · **planned v0.79.0**
 **Filed against:** v0.78.3 (2026-08-30)
-**Status:** AMENDED IMPLEMENTATION CANDIDATE `4e472a65166d7746c5321c3c346dc8dc6c68b9b9` — corrected-record immutable review approved; first provider CI pending
+**Status:** AMENDED IMPLEMENTATION CANDIDATE `4e472a65166d7746c5321c3c346dc8dc6c68b9b9` — corrected-record immutable review approved; first Windows/Linux CI pending
 **Plan:** `.claude/plans/2026-08-30-b203-docs-sync-warehouse-status-design.md`
 
 **Why:** both `docs-sync-check` twins currently translate every nonzero `warehouse-map-check` exit
@@ -2903,8 +2903,8 @@ all three distributions. Each distribution's standard hook runner passed 20 file
 failures, including ScriptTwinParity 10/0 and WarehouseMapCheck 4/0; the maintainer runner passed 31
 files with zero failures, including Composer 16/0, BacklogHygiene 10/0, DocTruth 13/0, DocClaims 8/0,
 and release-head 8/0. Twelve changed authored/composed carrier pairs are byte-identical; BOM, AST,
-and Bash syntax checks pass. This remains a candidate because Git Bash is neither native Linux nor
-Bash 3.2, and the modified test's first Windows/Linux CI has not run.
+and Bash syntax checks pass. This remains a candidate because Git Bash is not native Linux and the
+modified test's first Windows/Linux CI has not run.
 
 Independent reviewer `/root/b203_immutable` approved exact immutable range
 `76cde44aa5cd0f0504267561fc0ae9795b4343e9..4e847b422f0267f65c474bb2091301905f956650`
@@ -2914,8 +2914,8 @@ candidate blobs returned source and all three composed results to 10/0. The revi
 reproduced the Windows PowerShell 5.1 renderer boundary and direct unredirected behavior, then
 reconfirmed source/dist hashes, PowerShell BOM/AST integrity under both PowerShell hosts, Bash
 syntax, unchanged test cardinality, both composers, both validator twins, and the focused warehouse,
-backlog, document, claim, and release-head gates. Native Linux, Bash 3.2, and first candidate CI
-remain unavailable, so the item stays open.
+backlog, document, claim, and release-head gates. Native Linux and first candidate CI remain
+unavailable, so the item stays open.
 
 **Release-range amendment evidence:** whole-range review rejected later candidate `e1cdb23` because
 explicit `bash -e` made the Bash warehouse branch leak statuses 1/2/7 before its intended capture;
@@ -2938,8 +2938,8 @@ The first immutable review reproduced the old-red/current-green behavior and rej
 record truth: this entry and its plan still named the pre-amendment candidate, while the RCA called
 the rejected raw-process reroute any `RunArg` change. This corrected record makes that boundary
 explicit without changing product or test bytes. Exported inherited `SHELLOPTS` remains the separate
-non-gating B-208 decision. Native Linux, stock macOS Bash 3.2, transitional frozen-parent evidence,
-and exact provider CI remain unclaimed, so B-203 stays open.
+non-gating B-208 decision. Native Linux and exact Windows/Linux CI remain unclaimed, so B-203 stays
+open.
 
 Independent reviewer `/root/v0784_candidate_review` approved exact corrected candidate
 `4e472a65166d7746c5321c3c346dc8dc6c68b9b9`, tree
@@ -2950,7 +2950,7 @@ rejections first removed the stale candidate/RCA contradiction and then one coll
 overclaim. The final review confirmed every product, test, dist, consumer-changelog, and learning
 blob remains
 exactly the approved `16dbd95743163f5a92e9aacb23a946e056421a40` version and the worktree is clean.
-Native/provider evidence remains pending rather than inferred.
+Native Windows/Linux CI evidence remains pending rather than inferred.
 
 **RCA:** the direct checker suite distinguished exits 1 and 2, but the wrapper parity fixture never
 installed the checker, so its translation branch did not execute. B-164's bounded sweep selected
@@ -2965,7 +2965,7 @@ amendment instead appends one Bash-only interpreter-options array to the existin
 ---
 
 ### B-204 · Make RootInstallerWarehouse fixture teardown fail honestly
-**Effort:** S · **Priority:** P2 · **planned v0.78.4**
+**Effort:** S · **Priority:** P2 · **planned v0.79.0**
 **Filed against:** v0.78.3 (2026-08-30)
 **Status:** IMPLEMENTED CANDIDATE `2e72fecd088c85cf0a7c98803aa76d64513b28fd` — immutable review approved; native Linux and first CI pending
 **Plan:** `.claude/plans/2026-08-30-b204-root-installer-fixture-teardown-design.md`
@@ -3108,18 +3108,20 @@ and require first modified-test Windows/Linux CI before completion.
 ---
 
 ### B-205 · Restore Bash 3.2 compatibility in skill-mirror sync
-**Effort:** S · **Priority:** P2 · **planned v0.78.4**
+**Effort:** S · **Priority:** P2 · **planned v0.79.0**
 **Filed against:** v0.78.3 (2026-08-30)
-**Status:** IMPLEMENTED CANDIDATE `49bcbe9ecc39d987045e98d7b8d68c8709b1a372` — immutable review approved; exact macOS proof and final-candidate Windows/Linux/macOS CI pending
+**Status:** IMPLEMENTED CANDIDATE `49bcbe9ecc39d987045e98d7b8d68c8709b1a372` — immutable review approved; macOS/Bash-3.2 premise superseded by B-209/WSD-064; Windows/Linux CI pending
 **Plan:** `.claude/plans/2026-08-30-b205-skill-sync-bash32-design.md`
 
-**Why:** `/generate-copilot` documents `bash scripts/sync-agent-files.sh` for macOS, but the v0.78.0
+**Original why (superseded by B-209/WSD-064):** `/generate-copilot` documented
+`bash scripts/sync-agent-files.sh` for macOS, but the v0.78.0
 count-provider correction introduced Bash-4-only `globstar`/`**`. On stock Bash 3.2 the script
 reaches that failure only after replacing `.github/skills`, so a correct mirror can be left behind
 with a false-red exit and no success verdict. This is separate from B-198's installer and B-200's
 date provider.
 
-**Do:** remove the informational count from both twins: it has no external contract and replacing it
+**Original implementation/evidence contract (macOS portions superseded by B-209/WSD-064):** remove
+the informational count from both twins: it has no external contract and replacing it
 would add traversal/provider semantics only to preserve decorative output after two real provider
 failures. Keep one exact count-free success verdict. Strengthen the existing sync twin result rather
 than adding a suite or `It`; require each exact-zero exit, empty stderr, exact stdout, and each
@@ -3138,41 +3140,45 @@ matrix was added. PowerShell and Bash composers converged at 173/169/183 files; 
 generated script/test copies have exact SHA-256 parity. Both validator twins passed all three
 distributions. YAML parsing, ReleaseDistGateTiming 9/0/0 on both hosts, PushAndCheck 7/0/0,
 ReleaseCiWatch 18/0/0, and DocTruth 13/0/0 were green. The existing macOS job contains the frozen
-old-red/current-green steps, but stock Bash 3.2 and final candidate CI remain unobserved and
-mandatory; Git Bash is recorded only as the Windows control.
+old-red/current-green steps, but stock Bash 3.2 and final candidate CI were then unobserved and
+mandatory; Git Bash was recorded only as the Windows control. B-209/WSD-064 later removed the
+macOS/Bash-3.2 provider obligation; supported Windows/Linux CI remains mandatory.
 
 Two independent read-only implementation reviews approved the stable diff with no findings. The
 value review confirmed permanent cardinality remains 10 `It` blocks, seven CI jobs, and two
 matrices, and rejected permissions/symlink/empty-directory expansion as low-value scope growth for
 an unchanged copy mechanism. The portability review independently reran the focused suites on both
 PowerShell hosts, verified the frozen tree is reachable and archiveable, and approved the Bash 3.2
-syntax, quoting, PATH, diagnostics, and topology design. Both explicitly withheld completion
-approval until native macOS and final CI are observed.
+syntax, quoting, PATH, diagnostics, and topology design. At review time both withheld completion
+approval for native macOS and final CI; B-209/WSD-064 later superseded only the macOS boundary.
 
 Immutable review approved exact candidate `49bcbe9ecc39d987045e98d7b8d68c8709b1a372`, tree
 `ae45d5129e0599f5db0444ee6a5fde9ff6bab0da`, from sole design parent
 `f766e87b7165b89ddf8d5be682aa2e1ae6c22981`. It confirmed the exact 24 modified files, no path or
 mode changes, reviewed functional blobs, authored/generated carrier parity, and a residue-free
-worktree. Completion remains blocked only on the explicitly unobserved native provider and final CI
-sequence; no push or release is authorized by this record.
+worktree. B-209/WSD-064 removes the unobserved provider/frozen-history boundary. The count deletion
+remains valuable simplification on supported hosts; completion now requires exact Windows/Linux CI.
+No push or release is authorized by this record.
 
 ---
 
 ### B-198 · Restore Bash 3.2 compatibility in the shipped installer
-**Effort:** S–M · **Priority:** P1 · **planned v0.78.4**
+**Effort:** S–M · **Priority:** P1 · **planned v0.79.0**
 **Filed against:** v0.78.3 (2026-08-29)
-**Status:** IMPLEMENTED CANDIDATE `f71473f4830e8696e6b220ffb7e07eebe82e01a3` — immutable review approved; exact macOS proof and final-candidate Windows/Linux/macOS CI pending
+**Status:** IMPLEMENTED CANDIDATE `f71473f4830e8696e6b220ffb7e07eebe82e01a3` — immutable review approved; portability implementation retained under B-209/WSD-064; Windows/Linux CI pending
 **Plan:** `.claude/plans/2026-08-30-b198-bash32-installer-design.md`
-**Decision:** WSD-061
+**Decision:** WSD-061, superseded for macOS by WSD-064
 
-**Why:** the framework directs macOS consumers to run this installer and its authoring contract
+**Original why (superseded by B-209/WSD-064):** the framework directed macOS consumers to run this
+installer and its authoring contract
 treats stock Bash 3.2 as supported, but the current duplicate-path guards contain two Bash-4-only
 associative arrays (`declare -A`) and two Bash-4-only lowercase expansions (`${path,,}`). Those
 constructs can abort before installation on a supported host. Ubuntu CI and `bash -n` under a newer
 Bash cannot certify this compatibility boundary. They were reintroduced in v0.76 despite the
 existing recorded lesson that shipped scripts must avoid Bash-4-only constructs.
 
-**Do:** preserve ASCII-case collision rejection for the framework-authored path inventories with
+**Original implementation/evidence contract (macOS portions superseded by B-209/WSD-064):** preserve
+ASCII-case collision rejection for the framework-authored path inventories with
 one guarded, C-locale, Bash-3.2-safe preprocessing pass per validator; do not grow this into a
 Unicode normalizer. Strengthen the existing forged-manifest result with a case variant and exact
 diagnostic rather than adding a suite or `It`. Under the exact same captured stock macOS
@@ -3215,12 +3221,20 @@ result fail 11/1 before exact candidate restoration. The reviewer withdrew an in
 `find` objection after checking the pinned macOS 26 implementation. No native macOS/Bash 3.2 or CI
 run occurred, so approval is bounded to the immutable local candidate and B-198 remains open.
 
+**First exact-provider run and scope supersession (2026-08-30):** pull-request run `33328114479`
+verified macOS 26 and stock `/bin/bash` 3.2.57, then ran frozen `8238366`. The old installer emitted
+both Bash-4 diagnostics but returned status 0; the temporary oracle stopped before no-mutation or
+current-tree checks. B-209/WSD-064 then withdrew macOS/Bash-3.2 from the supported contract. The job
+and frozen archaeology are removed rather than corrected. Retain the reviewed awk implementation as
+best-effort portability because it preserves duplicate-path safety and uses an existing dependency;
+do not claim macOS/Bash-3.2 support. Exact Windows/Linux CI remains mandatory.
+
 ---
 
 ### B-197 · Make Bash installer temporary-file handling path-safe
-**Effort:** S · **Priority:** P1 · **planned v0.78.4**
+**Effort:** S · **Priority:** P1 · **planned v0.79.0**
 **Filed against:** v0.78.3 (2026-08-29)
-**Status:** IMPLEMENTED CANDIDATE — local validation complete; native Linux, stock macOS Bash 3.2, and first candidate CI pending
+**Status:** IMPLEMENTED CANDIDATE — local validation complete; native Linux and first candidate CI pending
 **Plan:** `.claude/plans/2026-08-30-b197-bash-temp-path-design.md`
 
 **Why:** B-194's hostile implementation review found a pre-existing Bash lifecycle defect outside
@@ -3244,7 +3258,7 @@ Bash-only result in the existing update-delivery suite: literal relative `TMPDIR
 preserve its split-prefix sentinel and leak nothing, while a clean tracked target-confined temp root
 must refuse specifically and restore its fingerprint. Do not add a suite, PowerShell twin case,
 three-dist runtime matrix, or duplicate ordinary clean/dirty controls. Compose all dists, require
-native Linux plus stock macOS Bash 3.2 evidence, and use one unquoted-element mutation to prove the
+native Linux evidence, and use one unquoted-element mutation to prove the
 new result discriminates the data-loss defect.
 
 **Implementation candidate (2026-08-30):** the authored Bash installer now registers every
@@ -3264,7 +3278,7 @@ covered allocator failure during prior-manifest validation, junction/case contai
 and dual-failure cleanup status, all-path cleanup attempts, and released-path recreation. Both
 composers converged at 173/169/183 files; InstallerConvergence passed 12/0/0, ScriptTwinParity
 10/0/0, Bash syntax/source-dist hashes and all three distribution validators were clean. No native
-Linux, stock macOS Bash 3.2, or candidate CI ran, so B-197 remains open and is not releaseable.
+Linux or candidate CI ran, so B-197 remains open and is not releaseable.
 Independent read-only immutable review then approved exact candidate
 `66bc95e5eafdf977dac59aea6a5f3e2c159b2d4e`, tree
 `eb00500eec59b3ab5313b120926583845d072245`, from design parent `fe193fd`; it found no code, test,
@@ -3274,7 +3288,7 @@ CI providers.
 ---
 
 ### B-196 · Honor a BOM-prefixed disabled-skill ledger in the Bash installer
-**Effort:** S · **Priority:** P1 · **planned v0.78.4**
+**Effort:** S · **Priority:** P1 · **planned v0.79.0**
 **Filed against:** v0.78.3 (2026-08-29)
 **Status:** IMPLEMENTED CANDIDATE — local verification complete; first Windows/Linux CI pending
 
@@ -3302,7 +3316,7 @@ candidate's first Windows/Linux CI before completion or release. Git Bash is not
 ---
 
 ### B-195 · Preserve unterminated final advisory rows in Bash session start
-**Effort:** S · **Priority:** P2 · **planned v0.78.4**
+**Effort:** S · **Priority:** P2 · **planned v0.79.0**
 **Filed against:** v0.78.3 (2026-08-29)
 **Status:** IMPLEMENTED CANDIDATE — local verification complete; first Windows/Linux CI pending
 
@@ -3332,7 +3346,8 @@ severity/nudge class and count, both exits and stderr, and staged red-first impl
 for the five independent decisions instead of redundant post-green mutations. Compose and require
 first Windows/Linux candidate CI. The locked design is
 `.claude/plans/2026-08-30-b195-session-start-advisory-reader-design.md`. A separately found GNU-only
-cutoff provider is B-200 rather than an unverified macOS scope expansion.
+cutoff provider was assigned to B-200 rather than widening B-195. B-209/WSD-064 later closed B-200
+without implementation because macOS/BSD-provider behavior is outside the supported contract.
 
 **Implementation candidate (2026-08-30):** the authored Bash hook now gives each loop an initialized
 variable, consumes a non-empty failed EOF read, strips one terminal CR from hazard records, accepts
@@ -3357,32 +3372,8 @@ PowerShell BOM/AST, both three-dist validator twins, and the four maintainer gat
 review used PowerShell 7.6.5, Windows PowerShell 5.1, and Git Bash 5.2.37; no native Linux,
 BSD/macOS, or Bash 3.2 runtime was available. First Windows/Linux CI still gates completion.
 
----
-
-### B-200 · Restore the Bash hazard-staleness cutoff under BSD/macOS `date`
-**Effort:** S · **Priority:** P2 · **planned ≥ v0.78.5**
-**Filed against:** v0.78.3 (2026-08-30)
-**Status:** EXACT RUNTIME IDENTIFIED, NOT RUN — unavailable locally; coordinate native BSD/macOS evidence with B-198's focused macOS CI job; no B-200 candidate evidence yet
-
-**Why:** B-195's adversarial review found that `session-start.sh` still computes its 90-day cutoff
-with GNU-only `date -d`. Stock macOS/BSD `date` rejects that option, leaves the guarded cutoff empty,
-and silently disables every hazard-staleness nudge on a supported Bash 3.2 consumer. This is the same
-portability fact B-37 already fixed in `wiki-check.sh`, but a separate provider and consequence from
-B-195's line reader. It remains P2 because the hook is advisory and exits 0 by design.
-
-**Do:** challenge B-21's historic GNU-only guard, then reuse the proven feature-detected GNU
-`date -d` → BSD `date -v-90d` → empty/no-warning fallback with strict `YYYY-MM-DD` output validation.
-Do not change the 90-day policy, introduce epoch/calendar arithmetic, or claim native compatibility
-from a newer Bash, Linux `date`, or a grep for flags. A permanent oracle is valuable only if a PATH
-shim executes the shipped hook and proves GNU failure/BSD success plus invalid/empty-provider
-fallback without retyping the product logic; completion additionally requires the exact candidate
-against native BSD/macOS `date` under the claimed Bash 3.2 interpreter. Coordinate that environment
-with B-198.
-
----
-
 ### B-201 · Windows PowerShell 5.1 falsely capability-skips Bash Copilot JSON hook tests
-**Effort:** S · **Priority:** P2 · **planned v0.78.4**
+**Effort:** S · **Priority:** P2 · **planned v0.79.0**
 **Filed against:** v0.78.3 (2026-08-30)
 **Status:** IMPLEMENTED CANDIDATE — local cross-host verification complete; first exact-candidate Windows/Linux CI pending
 **Plan:** `.claude/plans/2026-08-30-b201-wps51-json-probe-design.md`
@@ -3420,20 +3411,24 @@ diagnostic before exact hash restoration. Both composers converged at 173/169/18
 source blobs exactly match all nine generated copies with BOMs intact, and every distribution
 validator passed. Independent implementation review approved the exact 12-file scope with no
 finding. The original ≥v0.78.5 target is superseded: including this zero-growth test-truth repair in
-the still-unreleased v0.78.4 candidate improves that release's evidence without changing product
+the still-unreleased v0.79.0 candidate improves that release's evidence without changing product
 behavior or adding a CI leg. Native Linux and first exact-candidate Windows/Linux CI remain pending,
 so the item stays open and is not releaseable.
 
 ### B-194 · Make the PowerShell 5.1 installer tolerate non-Git targets
-**Effort:** M · **Priority:** P1 · **planned v0.78.4**
+**Effort:** M · **Priority:** P1 · **planned v0.79.0**
 **Filed against:** v0.78.3 (2026-08-29)
 
-**Status: AMENDED IMPLEMENTATION CANDIDATE; FIRST CI PENDING.** Candidate `6818a4a` was rejected when
-a fresh immutable review reproduced a Windows Git Bash lowercase-routing bypass. The re-locked
-MSYS-only correction and one non-vacuous child in the existing group are implemented and locally
-green (UpdateDelivery 50/0 under PowerShell 7 and native Windows PowerShell 5.1/CP437, Bash
-observed). Keep this item open until the exact amended commit passes its first Windows/Linux CI; Git
-Bash is not Linux evidence.
+**Status: PROVIDER-RED CANDIDATE; MODERN PRODUCT CORRECTION NOT YET IMPLEMENTED.** Candidate
+`6818a4a` was rejected when a fresh immutable review reproduced a lowercase-routing bypass on
+legacy `OSTYPE=msys*` Git Bash. That bounded correction was locally green. First candidate run
+`33328114479` then showed Git for Windows `2.55.0.windows.5` reports a different Bash identity, so
+the existing host prerequisite stopped before its product child. The current test-only amendment
+recognizes the finite legacy/current provider identities, proves `builtin pwd -W`, and retains the
+same real alternate-index child with no new result or process. It is locally green on legacy Git
+Bash; the unchanged product's modern-provider red remains pending and no modern product green is
+claimed. After that observation, implement the separately re-locked shared classifier and require
+exact Windows/Linux CI before completion. Git Bash is not native Linux evidence.
 
 **Why:** B-188's independent review found a pre-existing supported-host failure outside v0.78.1's
 ADR-preservation diff. Under Windows PowerShell 5.1 with `$ErrorActionPreference = 'Stop'`, the
@@ -3455,13 +3450,13 @@ review plus native Windows/Linux candidate CI before completion and release.
 ---
 
 ### B-193 · Close the remaining hazard-oracle false-green grammar — **IMPLEMENTED CANDIDATE; FIRST CI PENDING**
-**Effort:** M · **Priority:** P1 · **planned v0.78.4**
+**Effort:** M · **Priority:** P1 · **planned v0.79.0**
 **Filed against:** v0.78.3 (2026-08-29)
 
 **Status correction (2026-08-29).** This was archived after local cross-host verification and an
 immutable hostile review, but `CLAUDE.md` is stricter: a change carrying new or modified tests is not
 done until its first Windows/Linux CI run is green. Git Bash is not Linux evidence. No implementation
-work is being reopened; the same v0.78.4 candidate CI required by B-194 must pass before this record
+work is being reopened; the same v0.79.0 candidate CI required by B-194 must pass before this record
 can return to `meta/BACKLOG-DONE.md`.
 
 **Value decision and scope.** The B-77 skip states were reasonable while the hazard checker was an
@@ -3501,15 +3496,59 @@ executed 77 subjects; reverse patch restored the exact Bash hash and clean 67/0.
 passed 67/0 and `validate-dist`; source and all three generated copies share exact checker/test
 hashes. PowerShell and login-shell Bash composition produced identical 525-file trees. BacklogHygiene
 10/0, DocTruth 13/0, DocClaims 8/0, ScriptTwinParity 10/0, and Composer 16/0 passed with their
-relevant red mutations. No native Linux/macOS or Bash 3.2 runtime was available, so the first
-Windows/Linux immutable-candidate matrix remains mandatory before completion and release; Git Bash
+relevant red mutations. No native Linux runtime was available, so the first Windows/Linux
+immutable-candidate matrix remains mandatory before completion and release; Git Bash
 is not claimed as that evidence. The same-class advisory EOF defect is deliberately separate,
 proportionally sized as B-195.
 
 ---
 
+### B-209 · Withdraw macOS from the supported and tested host contract
+**Effort:** M · **Priority:** P1 · **planned v0.79.0**
+**Filed against:** v0.78.4 (2026-08-30)
+**Evidence source:** unreleased v0.78.4 candidate
+**Status:** IMPLEMENTED CANDIDATE — design and implementation independently reviewed; local gates
+green; exact supported Windows/Linux CI pending
+**Plan:** `.claude/plans/2026-08-30-b209-macos-scope-withdrawal-design.md`
+**Decision:** WSD-064
+
+**Why:** the owner confirmed macOS is not needed, the root positioning targets Windows teams, and
+the maintainer record contains no macOS consumer evidence. The three shipped READMEs nevertheless
+promise macOS works out of the box, while stock Bash 3.2/BSD providers have repeatedly added
+special-case implementation, review, and CI cost. Deleting only the first red macOS job would leave
+a false support promise; the value-bearing decision is to withdraw the platform coherently.
+
+**Do:** make Windows and Linux the explicit supported/release-tested hosts; mark macOS, BSD-provider
+behavior, and stock Bash 3.2 unsupported and untested. Remove the focused job and its watcher/test
+dependencies, update all active consumer instructions and unreleased changelogs, compose all dists,
+and add no replacement or negative absence test. Preserve released history and useful incidental
+portability. Scope-close B-200; retain B-198/B-205 code where duplicate safety and simplification
+remain valuable. Retarget the breaking unreleased head to v0.79.0 and require supported-host CI.
+
+**Design evidence:** both independent reviews found the same false-promise surface and accepted the
+withdrawal only as a public support-boundary change. After deleting the job, the unchanged existing
+ReleaseDistGateTiming result was observed red at 8/1 on the missing `macos-portability` job; its
+ordinary mutation arm also remained red, then restored byte-identically. The implementation removes
+only the obsolete macOS helper/assertions while retaining the same result and Windows/Linux
+coverage. Run `33328114479` remains evidence for a historical false-green, not a release gate.
+
+**Implementation evidence:** the workflow now has four supported-platform job definitions expanding
+to the eight exact watched jobs. No replacement job, suite, result, fixture, matrix, or negative
+absence test was added; ReleaseDistGateTiming remains 9/0 after its ordinary mutation red and exact
+restore, PushAndCheck remains 7/0, and ReleaseCiWatch remains 18/0. Public source and generated docs
+state the Windows/Linux boundary, all seven Unreleased changelog heads are v0.79.0, and active
+completion records no longer require macOS/Bash-3.2 evidence. PowerShell and login-shell Bash
+composers produced the same 173/169/183-file dist diff; both validator twins passed all dists. The
+31-file maintainer suite was green before final reviewer-requested corrections; the only executable
+correction was a case-sensitive match inside the existing UpdateDelivery result. Directly affected
+BacklogHygiene 10/0, ClaimTruth 3/0, DocTruth 13/0, ReleaseDistGateTiming 9/0, and UpdateDelivery
+51/0 were rerun green afterward. Two independent read-only implementation reviews approved the
+scope after those corrections. Exact supported Windows/Linux CI remains pending.
+
+---
+
 ### B-208 · Decide whether inherited Bash strict mode is a valuable public compatibility contract
-**Effort:** S for evidence/decision; M only if support is justified · **Priority:** P2 · no earlier than v0.78.5
+**Effort:** S for evidence/decision; M only if support is justified · **Priority:** P2 · no earlier than v0.79.1
 **Filed against:** v0.78.4 (2026-08-30)
 **Evidence source:** v0.78.4 candidate release-range review
 
@@ -3521,7 +3560,7 @@ template-checks resource world lost its required `CANT-VERIFY` diagnostic. A bou
 also found manual next-line status captures in other shipped scripts, including `wiki-check.sh` and
 `framework-doctor.sh`. These are real signals, but exported `SHELLOPTS` is not part of the published
 invocation and ordinary CI shells do not automatically export their `-e` setting into nested Bash.
-It is therefore evidence for a decision, not a reason to expand B-203 or block v0.78.4.
+It is therefore evidence for a decision, not a reason to expand B-203 or block v0.79.0.
 
 **Do:** first establish whether inherited strict mode occurs in realistic supported consumer/CI
 usage and whether making it a public contract creates net value. If yes, census every shipped Bash

@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-30
 **Filed against:** v0.78.3
-**Planned:** v0.78.4
+**Planned:** v0.79.0
 **Status:** IMPLEMENTED CANDIDATE `2e72fecd088c85cf0a7c98803aa76d64513b28fd` — immutable review approved; native Linux and first CI pending
 
 ## Value and proportionality decision

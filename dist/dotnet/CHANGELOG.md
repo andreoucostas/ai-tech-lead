@@ -4,7 +4,12 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.78.4 — Unreleased
+## 0.79.0 — Unreleased
+
+- Supported and release-tested hosts are now explicitly Windows and Linux. macOS is unsupported and
+  untested; any compatibility there is incidental and carries no release guarantee. This withdraws
+  the previous “works out of the box” macOS claim. Teams using macOS should evaluate the framework
+  independently before upgrading.
 
 - The framework doctor now reports deterministic-check findings separately from checks it could
   not complete. `scripts/template-checks` uses exit `0` for clean, `3` for one or more verified
@@ -17,15 +22,15 @@
   relied on the wrapper passing through child status `2` or `3` must invoke `template-checks`
   directly if it needs that diagnostic distinction.
 
-- The Copilot skill-mirror script now works with stock macOS `/bin/bash` 3.2. Its completion
-  message is now `Synced skills: .claude/skills -> .github/skills`; the informational count was
+- The Bash Copilot skill-mirror script no longer uses recursive globbing to calculate a decorative
+  count. Its completion message is now `Synced skills: .claude/skills -> .github/skills`; the count was
   removed from both script variants because it did not affect mirroring. If automation parses the
   old count-bearing message, update it to match the new verdict. Mirrored files are unchanged.
 
-- The Bash installer no longer needs Bash 4 while validating its ownership and retirement
-  inventories, so the documented installer path works with stock macOS `/bin/bash` 3.2. ASCII
-  case-variant duplicate paths are still rejected before target changes; PowerShell behavior and
-  the installed file set are unchanged.
+- The Bash installer no longer uses Bash-4-only arrays or lowercase expansion while validating its
+  ownership and retirement inventories. ASCII case-variant duplicate paths are still rejected
+  before target changes; PowerShell behavior and the installed file set are unchanged. This is
+  best-effort portability and does not establish macOS or stock-Bash-3.2 support.
 
 - The Bash installer now treats every temporary file as one exact owned path, so `TMPDIR` names
   containing spaces or glob characters are no longer word-split or expanded during cleanup. The
@@ -82,7 +87,7 @@
   contain no repository evidence.
 - Before changing an update or brownfield target, both installers now refuse with `CANT-VERIFY`
   when ambient `GIT_DIR`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`, or `GIT_INDEX_FILE` can redirect
-  inspection (including casing variants under Git Bash on Windows), repository metadata cannot be
+  inspection, repository metadata cannot be
   classified, Git is unavailable despite repository evidence, or worktree status cannot be read.
   Unset the routing variables or repair/install Git, then rerun. Existing dirty-tree refusal and its
   explicit override are unchanged.

@@ -2,8 +2,8 @@
 
 **Date:** 2026-08-30  
 **Filed against:** v0.78.3  
-**Planned:** v0.78.4  
-**Status:** IMPLEMENTED CANDIDATE — local newer-Bash evidence complete; immutable review, exact macOS, and final-candidate CI pending
+**Planned:** v0.79.0
+**Status:** IMPLEMENTED CANDIDATE — portability implementation retained; macOS/Bash-3.2 premise superseded by B-209/WSD-064; Windows/Linux CI pending
 
 ## Value and proportionality decision
 
@@ -12,7 +12,7 @@ Do B-198 now. The three consumer READMEs direct macOS users without PowerShell t
 expansions that require Bash 4. Stock macOS still supplies `/bin/bash` 3.2, so every installer mode
 can abort while validating the incoming manifest, before any target mutation. This is a reachable
 P1 regression on a promised whole-platform delivery path, not speculative cleanup, and belongs in
-the already-unreleased v0.78.4 rather than being deferred to v0.78.5.
+the already-unreleased v0.79.0 rather than being deferred to a later release.
 
 Preserve the duplicate-path guard. Both installer twins use a case-insensitive key because a
 framework-authored inventory with two spellings of one path is ambiguous on common consumer file
@@ -63,7 +63,7 @@ interpreter and equivalent fixture, requires that old installer to fail with its
 and leave the target byte-stable before requiring the candidate to succeed. After that transitional
 red/green run is observed, remove the history-dependent arm while retaining the current direct
 smoke. The resulting stable candidate must then pass the required macOS job and the normal Windows
-and Linux jobs before B-198 can complete or v0.78.4 can release.
+and Linux jobs before B-198 can complete or v0.79.0 can release.
 
 Add `macos-portability` to the release watcher's exact expected-job list and update only dependent
 stubs. Strengthen the existing CI-topology result to require the explicit macOS runner, exact stock
@@ -142,3 +142,20 @@ passed 12/0. An initial reviewer objection to `find -mindepth/-maxdepth` was wit
 the pinned macOS 26 provider's own documentation and Apple implementation. Approval is bounded to
 the immutable local candidate: native macOS/Bash 3.2, transitional CI, removal of the frozen-history
 arm, and final Windows/Linux/macOS CI remain unobserved, so B-198 is not complete or releaseable.
+
+## Provider observation and scope supersession (2026-08-30)
+
+Pull-request run `33328114479` executed the pinned macOS 26 provider and proved stock
+`/bin/bash` 3.2.57. The frozen installer emitted both `declare: -A: invalid option` and
+`${path,,}: bad substitution` but returned status 0. The transitional oracle incorrectly assumed
+those diagnostics implied a nonzero process status and stopped before its target-state checks; the
+current B-198 probe and both B-205 probes were consequently skipped. The run is provider evidence
+for the historical false-green only, not no-mutation, current compatibility, or completion.
+
+B-209/WSD-064 subsequently withdraws macOS, BSD-provider behavior, and stock Bash 3.2 from the
+supported/tested contract. That supersedes this plan's provider leg and transitional completion
+boundary, so correcting or rerunning frozen archaeology would add no supported-platform decision
+value. Remove the job rather than adding another oracle. Retain the reviewed awk implementation as
+best-effort portability because it preserves the duplicate-path safety contract and uses an
+existing dependency; do not claim macOS or Bash-3.2 support. B-198 now requires only the supported
+Windows/Linux candidate CI shared by the release.

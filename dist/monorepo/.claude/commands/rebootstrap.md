@@ -212,7 +212,7 @@ PowerShell 7 (`pwsh`):
 pwsh -NoProfile -File scripts/docs-sync-check.ps1
 ```
 
-Bash (macOS/Linux or Windows Git Bash):
+Bash (Linux or Windows Git Bash):
 
 ```bash
 bash scripts/docs-sync-check.sh

@@ -2776,6 +2776,13 @@ smoke. The stable candidate then requires ordinary Windows/Linux and focused mac
 completion or release. The same job may later host another equally narrow macOS-only provider proof,
 such as B-200, but that work remains separately designed and reviewed.
 
+**Provider observation and supersession (2026-08-30).** The first exact-provider run
+`33328114479` showed that frozen `8238366` emits both Bash-4 incompatibility diagnostics yet returns
+status 0. The temporary oracle stopped on its nonzero assumption before target-state or current-tree
+evidence. WSD-064 subsequently withdraws macOS/Bash-3.2 from the supported contract, so no corrected
+history-dependent rerun is warranted and the provider job is removed. The false-green observation
+remains useful evidence; it is not current-product compatibility proof.
+
 This narrowly supersedes only B-70's absolute infrastructure wording; its evidence rule and its
 rejection of a generic compensating leg remain standing. A platform label without an exact provider
 assertion, a compatibility flag on a newer runtime, syntax search, or a permanent old-history replay
@@ -2895,8 +2902,42 @@ Its 19-path range contains exactly the 14 product/consumer-changelog paths, four
 records, and the one strengthened B-149 result. The exact candidate passed that result 2/0 under
 PowerShell 7 and Windows PowerShell 5.1, six distribution validators, matching composer output,
 source/generated convergence, syntax/BOM/context gates, hostile errexit/stream matrices, and the
-full 31-file root meta suite. Native Bash 3.2 and exact-candidate provider CI remain pending.
+full 31-file root meta suite. B-209/WSD-064 later removed Bash 3.2/macOS-provider evidence from the
+release boundary; exact supported Windows/Linux candidate CI remains pending.
 
 **Rejected.** A textual marker parsed by the doctor; an unbounded finding count plus a high reserved
 status; status `1` for verified findings; a sidecar; ACL-based resource fixtures; a new suite or
 `It`; and broad exception normalization outside this checker/doctor boundary.
+
+---
+
+## WSD-064: supported host scope is Windows and Linux; macOS is out of scope (2026-08-30)
+
+**Context.** The framework's root positioning targets Windows teams and the maintainer record has no
+macOS consumer or field evidence. The three shipped READMEs nevertheless promise that macOS works
+out of the box. Supporting that promise has repeatedly added stock-Bash-3.2/BSD-specific product,
+review, and CI work. The exact provider job did find a real historical false-green, so deleting only
+the job would be evidence destruction and would leave the public promise false. The owner has
+confirmed that macOS is not needed.
+
+**Decision.** **Windows and Linux are the supported and release-tested host platforms. macOS,
+BSD-provider behavior, and stock Bash 3.2 are unsupported and untested.** Compatibility outside the
+supported hosts may exist incidentally but carries no release gate or maintenance guarantee. Remove
+the `macos-portability` job and its exact watcher/topology dependencies; update all active consumer
+instructions and the unreleased changelog to state the boundary. Do not add a Darwin refusal: out of
+scope means no promise, not intentionally broken behavior.
+
+WSD-061 remains the historical record for when a unique supported provider can justify a focused
+leg, but its B-198/macOS authorization is superseded. Retain B-198's reviewed duplicate-safe awk
+implementation as best-effort portability and B-205's count deletion as independent simplification.
+Close B-200 without implementation. General Bash/Linux safety and test-truth work remains in scope.
+Because this withdraws an advertised platform, retarget the unreleased head to 0.79.0.
+
+**Proportionality.** The change deletes one runner and obsolete assertions, adds no replacement
+suite/result/fixture/matrix, and edits only active support claims. Released changelog history and
+useful portability defenses remain. This removes recurring cost tied to a platform with no observed
+target value while making the breaking boundary conspicuous.
+
+**Rejected.** Deleting only the red provider job; continuing to claim macOS as untested-but-
+supported; rewriting historical releases; reverting already-reviewed safety/simplification code;
+adding a permanent negative job-absence test; or deliberately rejecting Darwin at runtime.

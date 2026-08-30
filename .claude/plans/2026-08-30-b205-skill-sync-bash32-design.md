@@ -1,10 +1,10 @@
 # B-205 — Bash 3.2-safe skill-mirror sync
 
-**Status:** IMPLEMENTED CANDIDATE `49bcbe9ecc39d987045e98d7b8d68c8709b1a372` — IMMUTABLE REVIEW APPROVED · **Date:** 2026-08-30 · **Scope:** sync twins, existing twin result, focused macOS provider
+**Status:** IMPLEMENTED CANDIDATE `49bcbe9ecc39d987045e98d7b8d68c8709b1a372` — IMMUTABLE REVIEW APPROVED; macOS/Bash-3.2 premise superseded by B-209/WSD-064; Windows/Linux CI pending · **Date:** 2026-08-30
 
 ## Value decision
 
-Implement B-205 as P2/S for v0.78.4. The documented macOS command reaches a Bash-4-only
+Original pre-B-209 decision: implement B-205 as P2/S for v0.78.4. The documented macOS command reaches a Bash-4-only
 `shopt -s globstar` after `.github/skills` has already been replaced, so stock `/bin/bash` 3.2 can
 leave a correct mirror behind while returning a false-red result and withholding completion. This
 is a reachable shipped-provider defect, not a syntax-style preference.
@@ -115,3 +115,12 @@ The same portability reviewer then approved immutable candidate
 `f766e87b7165b89ddf8d5be682aa2e1ae6c22981`. It verified exact 24-file scope, functional blob
 identity with the stable reviewed diff, authored/generated parity, and no worktree residue. The
 review explicitly leaves stock macOS evidence, frozen-arm retirement, and final CI pending.
+
+## Scope supersession (2026-08-30)
+
+B-209/WSD-064 withdraws macOS and stock Bash 3.2 from the supported/tested host contract. The
+provider steps and frozen-history completion gate are therefore removed rather than rerun. Retain
+the implemented count deletion: removing decorative traversal and requiring an exact actionable
+verdict remains a smaller, better contract on supported Windows/Linux hosts independent of macOS.
+Do not claim Bash-3.2 compatibility. Retain the simplification in v0.79.0; completion now requires
+the shared exact-candidate Windows/Linux CI only.

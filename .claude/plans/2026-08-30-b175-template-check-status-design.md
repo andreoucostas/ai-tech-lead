@@ -1,7 +1,7 @@
 # B-175 · Template-check status contract — locked design
 
 **Status: IMPLEMENTED CANDIDATE `b36c6e99b61daf099ba227e8a566a342f5efd625` 2026-08-30 — two
-immutable reviews approved; exact-candidate provider CI and native Bash 3.2 remain pending.** Final
+immutable reviews approved; exact-candidate Windows/Linux CI remains pending.** Final
 local preflight rejected the first checker/doctor candidate's docs-sync wrapper compatibility, and
 immutable review later rejected wrapper candidate `d3e19c5c24b8f8e3e789191bf873bcde5413f252`
 under Bash errexit. The approved checker/doctor core remains intact.
@@ -87,8 +87,8 @@ No result is added.
 Run the focused source suites under PowerShell 7 and native Windows PowerShell 5.1, including a
 hostile code page. Compose all three distributions with both composers; prove generated freshness,
 run both validator twins for all distributions, and rerun the focused composed suites. Parse all
-PowerShell/Bash files and verify BOMs. Native Bash 3.2 and first Windows/Linux candidate CI remain
-required release evidence; local Git Bash is not a substitute.
+PowerShell/Bash files and verify BOMs. First Windows/Linux candidate CI remains required release
+evidence; local Git Bash is not a substitute for native Linux.
 
 ## Compatibility and rejected approaches
 
@@ -132,7 +132,7 @@ Two independent read-only reviews approved exact candidate
 remediation, and the fixed `0/3/2` boundary. Independent execution passed the source suites 10/0
 and 33/0, a space-containing `0/3/2/4` plus missing-checker matrix, native Windows PowerShell 5.1
 focused mappings, and a disposable `2 -> MISSING` mutation before exact restoration. Neither
-reviewer found an actionable defect. Native POSIX/Bash 3.2 and exact-candidate provider CI remain
+reviewer found an actionable defect. Native Linux and exact-candidate Windows/Linux CI remain
 release evidence rather than locally claimed proof.
 
 ## Final-preflight correction and bounded amendment
@@ -172,8 +172,8 @@ exited on the child simple command before `$?` capture. Corrected product candid
 passed normal, `bash -e`, and inherited-`SHELLOPTS` clean/finding probes with child streams intact.
 Both implementation reviewers approved that product and independently judged a one-argument
 strengthening of B-149's existing Bash invocation high-value: it is red on `d3e19c5`, green on
-`ae5d0c0`, and adds no test, `It`, result, fixture, or additional execution pass. Native Bash 3.2
-and exact final-candidate provider CI remain release evidence.
+`ae5d0c0`, and adds no test, `It`, result, fixture, or additional execution pass. Exact final-
+candidate Windows/Linux CI remains release evidence.
 
 ## Final immutable candidate and evidence
 
@@ -192,7 +192,7 @@ override; the exact backend model identifier is not exposed. Both used this same
 with PowerShell 7,
 Windows PowerShell 5.1, and Git Bash 5.2, so their model/host correlation is explicit rather than
 mistaken for an orthogonal provider vantage. The hostile cases, clean reruns, and remaining native
-Bash 3.2/provider gaps below bound that correlation.
+Linux/provider gap below bound that correlation.
 
 The exact candidate passed B-149 2/0 under PowerShell 7 and native Windows PowerShell 5.1, including
 the Bash `-e` arm and byte-identical scratch restoration. Normal, caller-`-e`, and inherited exported
@@ -200,5 +200,7 @@ the Bash `-e` arm and byte-identical scratch restoration. Normal, caller-`-e`, a
 while retaining child stdout/stderr. Both composers produced the same binary diff; both validator
 twins passed all three distributions; source/generated script and changelog blobs converge; syntax,
 BOM, and both context-footprint twins are green. The full root meta suite passed with zero failures
-across all 31 files on the exact final candidate. Native Bash 3.2 and exact-candidate provider CI
-remain required release evidence rather than locally claimed proof.
+across all 31 files on the exact final candidate. Exact-candidate Windows/Linux CI remains required
+release evidence rather than locally claimed proof. B-209/WSD-064 subsequently withdrew stock
+Bash 3.2 and macOS/BSD-provider behavior from the supported and tested host contract; earlier
+Bash-3.2 gap statements above are preserved as historical review bounds, not active release gates.

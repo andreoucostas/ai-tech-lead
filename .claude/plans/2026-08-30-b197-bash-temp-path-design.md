@@ -1,10 +1,11 @@
 # B-197 — Bash installer path-safe temporary lifecycle
 
-**Status:** IMPLEMENTED CANDIDATE · **Date:** 2026-08-30 · **Scope:** Bash installer only
+**Status:** IMPLEMENTED CANDIDATE — Windows/Linux CI pending; macOS/Bash-3.2 evidence superseded by
+B-209/WSD-064 · **Date:** 2026-08-30 · **Scope:** Bash installer only
 
 ## Value decision
 
-Implement this item as P1/S for v0.78.4. This is no longer merely a hypothetical path-style defect.
+Implement this item as P1/S for v0.79.0. This is no longer merely a hypothetical path-style defect.
 An exact controlled replay of the current composed dotnet installer used an owned `TMPDIR` named
 `prefix dir`, an owned unrelated sibling file named `prefix`, and an empty target. The installer
 reported greenfield success and exited 0, but deleted the sibling and leaked all 17 temporary files.
@@ -159,8 +160,7 @@ than converted into test ceremony.
 Final local gates passed: Bash syntax for source plus all three distributions, exact source/dist
 hash parity, both composers (173/169/183 files), UpdateDelivery 51/0/0 on both PowerShell hosts,
 InstallerConvergence 12/0/0, ScriptTwinParity 10/0/0, and the three distribution validators. Native
-Linux, stock macOS Bash 3.2, and candidate CI remain unobserved, so this is not completion or release
-approval.
+Linux and candidate CI remain unobserved, so this is not completion or release approval.
 
 Independent read-only immutable review approved exact candidate
 `66bc95e5eafdf977dac59aea6a5f3e2c159b2d4e`, tree
@@ -169,7 +169,7 @@ code, test, parity, or record defect and independently confirmed the counted-arr
 boundary, registration-before-inspection, physical `-ef` identity, cleanup status disposition,
 validator status 2 propagation, settings ownership release, identical source/dist blob, and the
 permanent result's non-vacuous value. The review was deliberately static and read-only; it does not
-replace the unobserved native Linux, stock macOS Bash 3.2, or candidate CI gates.
+replace the unobserved native Linux or candidate CI gates.
 
 ## Acceptance boundary
 
@@ -199,7 +199,13 @@ replace the unobserved native Linux, stock macOS Bash 3.2, or candidate CI gates
 - PowerShell and Bash composition converge; both validator twins and the focused maintainer record
   gates pass.
 - Freeze an immutable candidate and obtain an independent hostile review. Native Linux and the
-  focused stock macOS Bash 3.2 provider remain required before completion/release; Git Bash and
-  syntax checks are not substitutes.
+  supported Windows/Linux CI remain required before completion/release; Git Bash and syntax checks
+  are not substitutes for native Linux.
+
+B-209/WSD-064 subsequently withdrew macOS, BSD-provider behavior, and stock Bash 3.2 from the
+supported and tested host contract. Earlier stock-macOS/Bash-3.2 evidence gaps above remain an
+accurate history of the immutable review, but they are no longer completion or release gates. The
+path-safe temporary lifecycle remains required on supported Windows/Linux hosts because its
+demonstrated sibling deletion and temp leakage are platform-independent data-safety defects.
 
 No push, tag, or release is authorized by this plan.

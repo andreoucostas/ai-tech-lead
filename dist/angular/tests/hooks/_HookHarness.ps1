@@ -29,7 +29,7 @@ function Get-BashPath {
     $cands = @()
     if ($env:ProgramFiles)        { $cands += (Join-Path $env:ProgramFiles 'Git\bin\bash.exe') }
     if (${env:ProgramFiles(x86)}) { $cands += (Join-Path ${env:ProgramFiles(x86)} 'Git\bin\bash.exe') }
-    # Then a `bash` on PATH (Linux/macOS CI, or a user who put Git's bin on PATH) -- the path that
+    # Then a `bash` on PATH (Linux CI, or a user who put Git's bin on PATH) -- the path that
     # makes the .sh twin tests actually run on Unix.
     $onPath = (Get-Command bash -ErrorAction SilentlyContinue | Select-Object -First 1).Source
     if ($onPath) { $cands += $onPath }

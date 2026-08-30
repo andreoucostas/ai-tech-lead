@@ -13,6 +13,9 @@ Windows, and ships machine checks plus scoped write-time guards and local hook-d
 next to the instructions. Exact guarantees depend on the client and host prerequisites documented
 in each dist's `docs/enforcement-surfaces.md`.
 
+The supported and release-tested host platforms are **Windows and Linux**. macOS is outside the
+support and CI scope; behavior there is incidental and carries no compatibility guarantee.
+
 This repository is the **authoring repo** for the framework, not a consumer project. It used to
 be two separate template repos — `ai-tech-lead-dotnet` and `ai-tech-lead-angular` — merged into
 one with history preserved. Shared content (conventions, skills, hooks, commands) is authored

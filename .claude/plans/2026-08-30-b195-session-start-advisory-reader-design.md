@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-30  
 **Filed against:** v0.78.3  
-**Planned:** v0.78.4  
+**Planned:** v0.79.0
 **Status:** IMPLEMENTED CANDIDATE `f84bc093ba6a7d9e68a4f02d29d1f037e28df7a2` — immutable review approved; first Windows/Linux CI pending
 
 ## Value decision
@@ -93,7 +93,7 @@ Run the focused red and green suites, Bash syntax, composer parity, all three va
 hash parity, test AST/BOM, relevant doc/backlog gates, and an independent immutable-candidate review.
 Because tests change, B-195 remains an implemented candidate until the exact candidate's first
 Windows/Linux CI is green. Git Bash is not Linux evidence. Fold this implementation into the
-existing linear v0.78.4 Unreleased head; never create a future Unreleased heading above it.
+existing linear v0.79.0 Unreleased head; never create a future Unreleased heading above it.
 
 ## Immutable candidate review
 
@@ -109,3 +109,9 @@ The review used Windows PowerShell 5.1, PowerShell 7.6.5, and Git Bash 5.2.37. I
 confirmed B-201's unrelated false capability skip and B-200's unchanged cutoff boundary. No native
 Linux, BSD/macOS, or Bash 3.2 runtime was available, so approval is local-candidate evidence only;
 the first Windows/Linux CI for the exact candidate still gates completion and release.
+
+B-209/WSD-064 subsequently withdrew macOS, BSD-provider behavior, and stock Bash 3.2 from the
+supported/tested host contract and closed B-200 without implementation. Earlier B-200/provider-gap
+statements above remain historical review context, not active work or release gates. B-195's
+bounded EOF/record-parser correction remains valuable on supported Windows/Linux hosts, and exact
+Windows/Linux candidate CI remains its completion boundary.

@@ -79,7 +79,7 @@ Do **not** copy into AGENTS.md the project-narrative sections (Codebase Context,
 Skills are authored in `.claude/skills/` and mirrored to `.github/skills/` so GitHub Copilot CLI and the cloud agent discover them (VS Code Copilot already reads `.claude/skills/`). After any skill change, regenerate the mirror:
 
 ```bash
-bash scripts/sync-agent-files.sh        # macOS / Linux / Windows git-bash
+bash scripts/sync-agent-files.sh        # Linux / Windows git-bash
 ```
 ```powershell
 pwsh scripts/sync-agent-files.ps1       # Windows PowerShell
@@ -105,7 +105,7 @@ PowerShell 7 (`pwsh`):
 pwsh -NoProfile -File scripts/docs-sync-check.ps1
 ```
 
-Bash (macOS/Linux or Windows Git Bash):
+Bash (Linux or Windows Git Bash):
 
 ```bash
 bash scripts/docs-sync-check.sh

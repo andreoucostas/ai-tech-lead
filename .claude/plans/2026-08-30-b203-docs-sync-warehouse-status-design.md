@@ -2,8 +2,8 @@
 
 **Date:** 2026-08-30
 **Filed against:** v0.78.3
-**Planned:** v0.78.4
-**Status:** AMENDED IMPLEMENTATION CANDIDATE `4e472a65166d7746c5321c3c346dc8dc6c68b9b9` — corrected-record immutable review approved; first provider CI pending
+**Planned:** v0.79.0
+**Status:** AMENDED IMPLEMENTATION CANDIDATE `4e472a65166d7746c5321c3c346dc8dc6c68b9b9` — corrected-record immutable review approved; supported Windows/Linux CI pending
 
 ## Value and proportionality decision
 
@@ -229,7 +229,7 @@ direct interpreter `-e`, exported shell options propagate into `template-checks.
 separate template-checks and warehouse-checker failures; the bounded source census identified the
 additional candidates. That broader strict-mode contract is not documented and is not silently
 claimed here. B-208 owns the evidence-first decision and full shipped-script census; it is
-explicitly not a v0.78.4 gate.
+explicitly not a v0.79.0 gate.
 
 ## Release-range amendment implementation evidence
 
@@ -257,8 +257,8 @@ the 10/0 candidate green under both PowerShell hosts, plus both discriminating A
 Git Bash launched from PowerShell 7. It rejected only stale authoritative record text: this plan
 and B-203 still named the pre-amendment candidate, and the RCA
 described the rejected raw-process reroute too broadly as any `RunArg` change. The current record
-correction fixes that semantic defect without changing product or test bytes. Native Linux, stock
-macOS Bash 3.2, the transitional frozen-parent run, and exact provider CI remain unclaimed gates.
+correction fixes that semantic defect without changing product or test bytes. Native Linux and
+exact supported Windows/Linux CI remain unclaimed gates.
 
 ## Corrected-record immutable review
 
@@ -274,3 +274,10 @@ the raw-process reroute, and all product, test, dist, consumer-changelog, and le
 exactly those of
 `16dbd95743163f5a92e9aacb23a946e056421a40`, and the worktree is clean. No native or provider
 evidence was inferred from that approval.
+
+## Platform-scope supersession
+
+B-209/WSD-064 subsequently withdrew macOS, BSD-provider behavior, and stock Bash 3.2 from the
+supported and tested host contract. The earlier unavailable-provider statements remain truthful
+history of the immutable review, but no longer gate B-203. Exact supported Windows/Linux CI remains
+required because the status mapping changes both maintained script twins.

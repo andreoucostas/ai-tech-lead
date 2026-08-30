@@ -4,9 +4,9 @@
 
 ## Value decision
 
-Implement this item as P2/S for v0.78.4. It was filed for no earlier than v0.78.5, but that target
+Implement this item as P2/S for v0.79.0. It was filed for no earlier than v0.78.5, but that target
 was revalidated after the bounded implementation: withholding a zero-growth test-truth correction
-from the still-unreleased v0.78.4 tree would add branch/release complexity while making that
+from the still-unreleased v0.79.0 tree would add branch/release complexity while making that
 release's Windows evidence less trustworthy. It changes no product behavior and can use the same
 pending Windows/Linux candidate CI, so earlier inclusion adds value without widening release risk.
 

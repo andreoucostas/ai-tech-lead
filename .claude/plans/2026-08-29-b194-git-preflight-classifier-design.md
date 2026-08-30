@@ -2,7 +2,9 @@
 
 **Date:** 2026-08-29  
 **Filed against:** v0.78.3  
-**Status:** RE-LOCKED 2026-08-29 — the original amendment had two hostile approvals; the later MSYS environment-casing amendment was independently approved before implementation
+**Status:** RE-LOCKED 2026-08-30 — original implementation approved; modern Git-for-Windows host
+identity amendment approved by two independent adversarial reviews; provider-red/current-green
+evidence pending
 
 ## Value decision
 
@@ -33,7 +35,7 @@ The classifier runs only before a mutating update or brownfield install. Greenfi
    let ambient state redirect the target's repository or index. One review constructed a dirty
    target whose alternate `GIT_INDEX_FILE` made porcelain status empty. On POSIX hosts, retain the
    platform's exact-case environment-name semantics. On MSYS Git Bash (`OSTYPE=msys*`), enumerate
-   exported Bash names with the Bash-3.2-safe `compgen -e`, match these four names with explicit
+   exported Bash names with the existing `compgen -e`, match these four names with explicit
    ASCII case patterns, and inspect the matching value through indirect expansion. Do not parse
    line-oriented `env` output, use locale-sensitive folding, enable shell-global case matching, add
    a dependency, or use Bash-4-only case conversion. Git for Windows consumes its Windows
@@ -77,8 +79,9 @@ The classifier runs only before a mutating update or brownfield install. Greenfi
    whole-tree fingerprint unchanged, including Git administrative files. Preserve Git-optional
    plain targets, clean worktrees, dirty refusal/override, ownership/archive behavior, exit codes,
    and success banners.
-8. PowerShell and Bash implement the same state machine. Keep Bash 3.2-compatible syntax and
-   PowerShell 5.1 compatibility; add no dependency or shared abstraction.
+8. PowerShell and Bash implement the same state machine. Prefer the existing broadly portable Bash
+   constructs and retain PowerShell 5.1 compatibility; add no unnecessary shell-version dependency
+   or shared abstraction. This is not a stock-Bash-3.2 support guarantee after B-209/WSD-064.
 
 ## Bounded implementation
 
@@ -169,4 +172,37 @@ byte-identically, and return clean.
   dist hashes and BOM/syntax. Compare whole trees after login-shell Bash composition.
 - Independent immutable-range hostile review under WSD-057. Because both installer twins and a
   data-preservation preflight change, Windows and native Linux candidate CI are mandatory before
-  completion and release. Git Bash is not Linux/macOS or Bash 3.2 runtime evidence.
+  completion and release. Git Bash is not native Linux evidence.
+
+## 2026-08-30 modern Git-for-Windows provider amendment
+
+The first candidate run, `33328114479`, used Git for Windows `2.55.0.windows.5`. Its Bash no longer
+reported the plan's frozen `OSTYPE=msys*` prerequisite, so the existing result stopped before the
+lowercase-routing product child. This is a real product boundary, not merely a stale fixture:
+`install.sh` uses the same `msys*` selector both for case-insensitive ambient Git routing and for
+Windows-namespace repository discovery. A modern Git Bash update can therefore bypass the former
+and traverse the wrong virtual-root model in the latter.
+
+Retain the existing result, child, real alternate-index calibration, and result/`It`/process
+cardinality. Amend only its host probe first so it independently recognizes either legacy
+`OSTYPE=msys*` or modern `OSTYPE=cygwin*` with `MSYSTEM` in the finite set `MINGW32`, `MINGW64`,
+`UCRT64`, or `CLANGARM64`; requires `builtin pwd -W`; validates a drive or UNC shape; and emits the
+raw `OSTYPE`, `MSYSTEM`, and Windows path as inspectable provider evidence. The unchanged product
+must then be observed red on the modern provider before implementation.
+
+For the product, classify once inside the existing mutating update/brownfield preflight and share
+that decision between both existing functions. Legacy `msys*` is selected. `cygwin*` is selected
+only with one of the four allowlisted `MSYSTEM` values. Plain `cygwin*` with an empty `MSYSTEM`
+remains generic Cygwin/POSIX; an unknown non-empty `MSYSTEM` fails `CANT-VERIFY` rather than silently
+falling through as a possible future Git-for-Windows false green. A selected host must resolve the
+target through `cd "$tgt" && builtin pwd -W` and validate its drive/UNC shape before either
+case-insensitive environment scanning or Windows-root traversal; failure is `CANT-VERIFY`.
+`builtin` is required because an ordinary or exported `pwd` function can shadow bare `pwd -W`; an
+independent review reproduced that shadow locally while `builtin pwd -W` retained the real path.
+Do not add `uname`, `cygpath`, executable inspection, a new test, or a generic-Cygwin simulation.
+
+After the provider-red observation, replace the two duplicated `OSTYPE=msys*` selectors with the
+single precomputed flag/cursor, compose all three distributions, and require the same existing
+result to pass on local legacy Git Bash and the modern Windows CI provider. Generic Cygwin remains
+an explicit unexecuted boundary; the finite identity plus built-in namespace capability prevents
+silently granting it Git-for-Windows semantics.
