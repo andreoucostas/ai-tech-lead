@@ -1,10 +1,10 @@
 # B-175 · Template-check status contract — locked design
 
-**Status: AMENDMENT DESIGN LOCKED 2026-08-30 — two adversarial reviews approved; implementation
-pending.** Final local preflight rejected the first candidate's docs-sync wrapper compatibility; the
-approved checker/doctor core remains intact. The original two independent exact-record reviews
-approved after narrowing the reach claim, preserving Bash transport, making both doctor messages
-causally generic, and requiring independent `2`/`3` boundary mutations.
+**Status: EXISTING-RESULT AMENDMENT LOCKED 2026-08-30 — two adversarial implementation reviews
+approved the corrected product; one zero-growth regression-oracle change remains pending.** Final
+local preflight rejected the first checker/doctor candidate's docs-sync wrapper compatibility, and
+immutable review later rejected wrapper candidate `d3e19c5c24b8f8e3e789191bf873bcde5413f252`
+under Bash errexit. The approved checker/doctor core remains intact.
 
 **Pre-implementation evidence correction.** The first captured red run disproved both reviewers'
 claim that the existing `9.9.9` fixture alone creates two findings: it creates one because the
@@ -146,18 +146,31 @@ asserts `1`, and the consumer path already normalizes checker nonzero to its own
 
 Amend only the `.template-repo` branch in `docs-sync-check.ps1` and `.sh`: run the existing checker
 unchanged, preserve its stdout/stderr, capture its status immediately, return `0` only for child `0`,
-and return `1` for every child nonzero. Do not parse output, distinguish `2` from `3` at this wrapper,
-change the ordinary consumer branch, change checker/doctor behavior, edit the existing B-149 result,
-or add a result. The already-captured 0/2 preflight is the red; after implementation require that
-exact existing result 2/0, ScriptTwinParity 10/0, the full meta suite green, both composers and all
-generated copies converged, and the normal distribution/provider gates. Because ScriptTwinParity
-proves only clean-world twin equality rather than the documented numeric success status, also run
-one disposable clean marked-template probe that requires exact wrapper exit `0` from both twins.
-Apply an independent temporary pass-through-status mutation to each wrapper only if the existing
-red is not itself sufficiently attributable; do not add permanent machinery for any probe.
+and return `1` for every child nonzero. The Bash child invocation must be inside an errexit-safe
+conditional so `bash -e` and inherited exported `SHELLOPTS` cannot terminate before normalization.
+Do not parse output, distinguish `2` from `3` at this wrapper, change the ordinary consumer branch,
+change checker/doctor behavior, or add a result. Strengthen only the existing B-149 Bash arm to use
+`bash -e` for its same planted-drift invocation; keep its PowerShell arm, mutation, expected status,
+fixture, result, and execution cardinality unchanged. The already-captured 0/2 preflight is the
+original red; after implementation require that exact existing result 2/0, ScriptTwinParity 10/0,
+the full meta suite green, both composers and all generated copies converged, and the normal
+distribution/provider gates. Because ScriptTwinParity proves only clean-world twin equality rather
+than the documented numeric success status, also run one disposable clean marked-template probe
+that requires exact wrapper exit `0` from both twins.
 
 Two independent read-only amendment reviews approved this scope. The transport review required an
 explicit disclosure that callers relying on the wrapper's exact child status will observe a change.
 The value review corrected unsupported “accidental” language to “undocumented,
 contract-inconsistent” and required the disposable exact-`0` clean probe above. Both rejected a new
 permanent test or weakening the existing B-149 wrapper contract.
+
+Immutable implementation review supplied new evidence and narrowly supersedes only the decision to
+leave B-149 byte-unchanged. Candidate `d3e19c5c24b8f8e3e789191bf873bcde5413f252`
+passed ordinary invocation but leaked checker status `3` when launched with `bash -e`: the shell
+exited on the child simple command before `$?` capture. Corrected product candidate
+`ae5d0c0522f34e1967805b9d27a5d5e2920423df` puts the child in an errexit-safe conditional and
+passed normal, `bash -e`, and inherited-`SHELLOPTS` clean/finding probes with child streams intact.
+Both implementation reviewers approved that product and independently judged a one-argument
+strengthening of B-149's existing Bash invocation high-value: it is red on `d3e19c5`, green on
+`ae5d0c0`, and adds no test, `It`, result, fixture, or additional execution pass. Native Bash 3.2
+and exact final-candidate provider CI remain release evidence.

@@ -2702,9 +2702,8 @@ fallback. Do not add a fourth parser or a standalone suite.
 ### B-175 · Give template-check resource failures a distinct doctor-visible status
 **Filed against:** v0.77.0 (2026-08-24)
 **Effort:** S · **Priority:** P3
-**Status:** AMENDMENT DESIGN LOCKED — two adversarial reviews approved; final local preflight
-rejected first candidate `22f7a08b79097068acde9664bc05ed5071b52139`, whose checker/doctor
-review remains valid
+**Status:** EXISTING-RESULT AMENDMENT LOCKED — corrected wrapper product `ae5d0c0` approved by two
+adversarial implementation reviews; zero-growth B-149 Bash `-e` oracle pending
 **Plan:** `.claude/plans/2026-08-30-b175-template-check-status-design.md`
 **Decision:** WSD-063
 
@@ -2757,10 +2756,20 @@ template-repo drift now propagated checker status `3`, while both docs-sync head
 B-149 contract require wrapper exit `1`. The earlier census confused “does not interpret nonzero”
 with “does not expose the exact status.” Preserve the approved checker/doctor core; normalize only
 the two `.template-repo` delegation branches back to public `0/1`, preserve child output, reuse the
-existing red result unchanged, and add no test/result/parser. WSD-063 and the plan carry the bounded
-amendment. Two read-only reviews approved after requiring explicit compatibility disclosure, using
+existing red result, and add no test/result/parser. WSD-063 and the plan carry the bounded amendment.
+Two read-only design reviews approved after requiring explicit compatibility disclosure, using
 “undocumented” rather than unevidenced intent language, and adding a disposable exact-`0` clean
-probe; both rejected new permanent test surface.
+probe; both rejected new permanent test surface on the evidence then available.
+
+**Implementation-review correction:** immutable review rejected wrapper candidate `d3e19c5` after
+its ordinary-green Bash branch leaked checker status `3` when invoked with `bash -e`; errexit stopped
+the shell before the following `$?` capture. Product correction `ae5d0c0` puts the child in an
+errexit-safe conditional and independently passed normal, caller-`-e`, inherited-`SHELLOPTS`, clean,
+finding, inability, missing-child, stream-preservation, WPS5.1, syntax, convergence, six-validator,
+and second full-meta 0/31 checks. Both implementation reviewers approved the product and judged one
+permanent change newly justified: invoke the existing B-149 Bash arm with `-e`. That exact existing
+run is red on `d3e19c5` and green on `ae5d0c0`, while adding no test, `It`, result, fixture, runtime
+pass, or backlog item. Native Bash 3.2 and exact-final-candidate provider CI remain pending.
 
 ### B-176 · Enforce unique warehouse signal-category definitions
 **Filed against:** v0.77.0 (2026-08-24)

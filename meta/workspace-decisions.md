@@ -2858,20 +2858,34 @@ status from child text.
 
 At the docs-sync delegation boundary, preserve the checker's output but normalize child `0` to
 wrapper `0` and every child nonzero to wrapper `1`. That keeps the documented docs-sync contract and
-matches its ordinary consumer branch without weakening the fixed checker/doctor protocol.
+matches its ordinary consumer branch without weakening the fixed checker/doctor protocol. Invoke
+the Bash child inside an `if` condition so caller-enabled or inherited errexit cannot terminate the
+wrapper before it captures and normalizes the child status.
 
 Reuse the existing template clean/drift and doctor mirror pass/failure results. Strengthen them with
 the two-finding/fixed-exit world, a disposable resource-branch mutation, and a `3/2/1` doctor matrix.
-Do not add a test file or result.
+Strengthen the existing B-149 wrapper result in place by invoking only its Bash arm with `bash -e`;
+keep the same mutation, expected wrapper status, fixture, result, and run cardinality. Do not add a
+test file, `It`, result, fixture, or execution pass.
 
 **Proportionality.** The resource branch is rare, so this stays a P3 bounded truth fix: six small
-runtime branches, two existing-result extensions, and one existing wrapper-contract result reused
-unchanged. The fixed status removes the whole known collision without adding a transport format or
-general exception taxonomy. Direct template-checks callers that treated the old process status as
-the count must use the unchanged printed summary. Template-repo docs-sync callers that relied on its
-undocumented, contract-inconsistent child-status pass-through will now receive the documented
-wrapper status `1` instead of child `2` or `3`; that is a supported-contract repair but still an
-observable compatibility change. The consumer changelog will disclose both boundaries.
+runtime branches, two existing-result extensions, and one existing wrapper-contract result
+strengthened in place without another execution. The fixed status removes the whole known collision
+without adding a transport format or general exception taxonomy. Direct template-checks callers
+that treated the old process status as the count must use the unchanged printed summary.
+Template-repo docs-sync callers that relied on its undocumented, contract-inconsistent child-status
+pass-through will now receive the documented wrapper status `1` instead of child `2` or `3`; that is
+a supported-contract repair but still an observable compatibility change. The consumer changelog
+will disclose both boundaries.
+
+**Implementation-review correction.** Immutable review rejected wrapper candidate `d3e19c5` after
+a disposable `bash -e` probe returned child status `3` instead of wrapper `1`: a simple child command
+under errexit terminated before the following `$?` capture. Corrected candidate `ae5d0c0` uses the
+conditional above and passed normal, caller-`-e`, and inherited-`SHELLOPTS` probes for exact `0/1`
+mapping with both child streams retained. Two reviewers approved the product correction and the
+zero-growth B-149 strengthening because that same invocation is red on `d3e19c5` and green on
+`ae5d0c0`. This new observed escape supersedes the earlier evidence-bounded choice to leave B-149
+unchanged; it does not justify a new suite, result, fixture, run, or backlog item.
 
 **Rejected.** A textual marker parsed by the doctor; an unbounded finding count plus a high reserved
 status; status `1` for verified findings; a sidecar; ACL-based resource fixtures; a new suite or

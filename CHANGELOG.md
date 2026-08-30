@@ -50,6 +50,14 @@ all checker output and the approved checker/doctor protocol while normalizing on
 docs-sync delegation back to `0/1`. Two adversarial design reviews approved after requiring explicit
 compatibility disclosure and a disposable exact-`0` clean probe; the amendment adds no test.
 
+Immutable implementation review then rejected ordinary-green wrapper candidate `d3e19c5`: under
+`bash -e`, a checker finding terminated the wrapper before `$?` capture and leaked child status `3`.
+Corrected product `ae5d0c0` uses an errexit-safe conditional and passed normal, caller-`-e`, and
+inherited-`SHELLOPTS` exact-`0/1` probes with child output intact. Two reviewers approved the product
+and overturned only the earlier “leave B-149 unchanged” choice: its existing Bash arm will run the
+same planted-drift case with `-e`, which rejects `d3e19c5` without adding a test, result, fixture,
+execution pass, or backlog item.
+
 **B-49's stale live-fire packet is paused before it consumes provider quota.** WSD-062 records that
 the July attempt ended incomplete and cannot be resumed across changed models, hosts, and framework
 versions. The packet omits required checklist/canary work, invokes nonexistent scripts, lacks the
