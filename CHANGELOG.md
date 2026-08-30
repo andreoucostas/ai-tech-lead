@@ -13,6 +13,23 @@
 
 ## 0.78.4 — Unreleased
 
+**The skill-mirror sync no longer depends on Bash 4 for a decorative count.** B-205 removes the
+recursive count from both script twins and emits one exact count-free completion verdict. The
+mirror operation, missing-source behavior, and Git-root fallback are unchanged; consumers that
+parse the old count-bearing stdout must match the new documented line.
+
+No permanent result was added. The existing recursive twin result now requires each implementation
+to exit 0, keep stderr empty, emit exact stdout, and independently reproduce the canonical source
+paths and SHA-256 bytes. It first failed 8/2 against the unchanged count-bearing scripts, later
+rejected an equal-exit-47 mutation of both twins at 8/2, and returned to 10/0/0 after exact byte
+restoration under PowerShell 7 and native Windows PowerShell 5.1; the composed dotnet copy passed
+the same two host runs. Both composers converged at 173/169/183 files, both validator twins passed
+all three distributions, YAML parsed, and the mutation-tested CI topology/watch gates stayed green.
+Exact frozen-red/current-green stock macOS `/bin/bash` 3.2 evidence and final candidate CI remain
+required before completion or release. Two independent read-only implementation reviews approved
+the stable local diff with no findings while explicitly withholding completion approval until those
+provider runs are observed.
+
 **The Bash installer now treats each temporary pathname as exact owned state.** B-197 replaces its
 space-delimited cleanup scalar with one Bash-3.2-safe counted indexed registry shared by all five
 allocation sites. Each entry is registered before inspection, canonicalized to physical identity,

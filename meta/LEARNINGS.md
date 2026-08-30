@@ -1848,3 +1848,19 @@ native argument list simple. Reuse an existing raw-stream helper if it already p
 stdout, and stderr; adding a second helper or a new test result only duplicates machinery. A
 controlled negative capability world and a disposable unexpected-output mutation can validate both
 branches without growing the permanent suite.
+
+## 2026-08-30 — Decorative telemetry is not worth a new portability contract
+
+An informational count can become the least reliable part of an otherwise successful mutation.
+The skill mirror first resolved bare `find` to Windows FIND.EXE, then replaced it with Bash-4-only
+recursive globbing; both providers failed only after the useful copy was complete. No caller used
+the number to make a decision. Removing the metric from both twins preserved the actionable
+completion verdict while deleting PATH, traversal, symlink, newline, zero-match, and shell-version
+semantics that existed solely to decorate stdout.
+
+Twin equality is also weaker than correctness. Two implementations can return the same nonzero
+exit, empty output, or identically incomplete tree. Strengthen the existing result at the decision
+boundary: require exact success, empty stderr, and each generated tree's independent equality with
+the canonical source. A disposable equal-failure mutation proved that boundary without adding a
+permanent result. Test economy means retaining the smallest oracle that can reject the wrong state,
+not preserving every historical observation or growing cardinality whenever an assertion improves.

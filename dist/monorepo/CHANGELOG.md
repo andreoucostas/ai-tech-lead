@@ -7,6 +7,11 @@
 
 ## 0.78.4 — Unreleased
 
+- The Copilot skill-mirror script now works with stock macOS `/bin/bash` 3.2. Its completion
+  message is now `Synced skills: .claude/skills -> .github/skills`; the informational count was
+  removed from both script variants because it did not affect mirroring. If automation parses the
+  old count-bearing message, update it to match the new verdict. Mirrored files are unchanged.
+
 - The Bash installer no longer needs Bash 4 while validating its ownership and retirement
   inventories, so the documented installer path works with stock macOS `/bin/bash` 3.2. ASCII
   case-variant duplicate paths are still rejected before target changes; PowerShell behavior and

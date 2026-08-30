@@ -120,11 +120,11 @@ jobs:
       - name: Hook test suite (${{ matrix.dist }}, exercises the .sh twins via bash)
         run: pwsh -NoProfile -File dist/${{ matrix.dist }}/tests/hooks/Invoke-HookTests.ps1
 
-  # Provider-specific compatibility proof (WSD-061), not a third generic test leg. Windows and
-  # Linux cannot execute stock macOS /bin/bash 3.2; composition already proves this one authored
-  # installer reaches every dist, so one direct committed-dotnet smoke is the complete recurring
-  # scope. The frozen-parent step is transitional B-198 evidence and is removed after its first
-  # observed red/current-green run; the current shipped smoke remains.
+  # Provider-specific compatibility proofs (WSD-061), not a third generic test leg. Windows and
+  # Linux cannot execute stock macOS /bin/bash 3.2; composition proves each authored script reaches
+  # every dist, so direct committed-dotnet smokes are the complete recurring scope. Frozen-parent
+  # steps are transitional evidence and are removed after their first observed red/current-green
+  # run; the current shipped smokes remain.
   macos-portability:
     runs-on: macos-26
     defaults:
@@ -185,3 +185,46 @@ jobs:
           cmp -s "$oracle" "$target/Smoke.csproj" || fail 'the installer changed the consumer sentinel'
           cmp -s dist/dotnet/.claude/framework-version.json "$target/.claude/framework-version.json" || fail 'the installed version stamp differs from the committed dist'
           cmp -s dist/dotnet/framework-ownership.json "$target/framework-ownership.json" || fail 'the installed ownership manifest differs from the committed dist'
+      - name: Frozen skill sync is red after copying under stock Bash 3.2 (transitional B-205 evidence)
+        env:
+          B205_FROZEN_TREE: e1cd30c03fcfc18da49a3d6c053dd33ce669bdce
+          PATH: /usr/bin:/bin:/usr/sbin:/sbin
+        run: |
+          fail() { echo "B-205 frozen-tree oracle: $*" >&2; exit 1; }
+          frozen="$RUNNER_TEMP/b205-frozen"
+          target="$RUNNER_TEMP/b205-frozen-target"
+          stdout="$RUNNER_TEMP/b205-frozen.stdout"
+          stderr="$RUNNER_TEMP/b205-frozen.stderr"
+          mkdir -p "$frozen" "$target/.claude/skills/a/reference"
+          printf '# a\n' > "$target/.claude/skills/a/SKILL.md"
+          printf 'nested\n' > "$target/.claude/skills/a/reference/notes.md"
+          git archive "$B205_FROZEN_TREE" dist/dotnet/scripts/sync-agent-files.sh | tar -x -C "$frozen"
+          set +e
+          (cd "$target" && /bin/bash "$frozen/dist/dotnet/scripts/sync-agent-files.sh") > "$stdout" 2> "$stderr"
+          status=$?
+          set -e
+          [ "$status" -ne 0 ] || fail 'the Bash-4 sync script unexpectedly exited zero'
+          grep -F 'globstar: invalid shell option name' "$stderr" >/dev/null || fail 'the expected globstar diagnostic was absent'
+          [ ! -s "$stdout" ] || fail 'the false-red sync emitted a success verdict'
+          diff -r "$target/.claude/skills" "$target/.github/skills" >/dev/null || fail 'the frozen sync did not copy the source tree before failing'
+      - name: Current shipped skill sync is green under stock Bash 3.2
+        env:
+          PATH: /usr/bin:/bin:/usr/sbin:/sbin
+        run: |
+          fail() { echo "B-205 current-tree oracle: $*" >&2; exit 1; }
+          target="$RUNNER_TEMP/b205-current-target"
+          stdout="$RUNNER_TEMP/b205-current.stdout"
+          stderr="$RUNNER_TEMP/b205-current.stderr"
+          expected="$RUNNER_TEMP/b205-current.expected"
+          mkdir -p "$target/.claude/skills/a/reference"
+          printf '# a\n' > "$target/.claude/skills/a/SKILL.md"
+          printf 'nested\n' > "$target/.claude/skills/a/reference/notes.md"
+          printf 'Synced skills: .claude/skills -> .github/skills\n' > "$expected"
+          set +e
+          (cd "$target" && /bin/bash "$GITHUB_WORKSPACE/dist/dotnet/scripts/sync-agent-files.sh") > "$stdout" 2> "$stderr"
+          status=$?
+          set -e
+          [ "$status" -eq 0 ] || fail "skill sync exited $status"
+          cmp -s "$expected" "$stdout" || fail 'skill sync stdout differs from the exact success verdict'
+          [ ! -s "$stderr" ] || fail 'skill sync wrote to stderr'
+          diff -r "$target/.claude/skills" "$target/.github/skills" >/dev/null || fail 'the current sync mirror differs from its canonical source'

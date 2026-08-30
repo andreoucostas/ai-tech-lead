@@ -1,6 +1,6 @@
 # B-205 — Bash 3.2-safe skill-mirror sync
 
-**Status:** DESIGN LOCKED · **Date:** 2026-08-30 · **Scope:** sync twins, existing twin result, focused macOS provider
+**Status:** IMPLEMENTED CANDIDATE — TWO LOCAL REVIEWS APPROVED · **Date:** 2026-08-30 · **Scope:** sync twins, existing twin result, focused macOS provider
 
 ## Value decision
 
@@ -82,3 +82,29 @@ pass matching nonzero exits, matching empty output, uninspected stderr, and iden
 trees. The locked test strengthening incorporates those findings without growing cardinality.
 
 No push, tag, or release is authorized by this plan.
+
+## Implementation evidence — 2026-08-30
+
+The two count providers are removed and the exact shared success verdict is implemented. Before
+product editing, the two changed existing results alone failed 8/2 against the old count-bearing
+output. After implementation they passed 10/0/0 under PowerShell 7 and native Windows PowerShell
+5.1. A disposable mutation then forced both twins to copy successfully and exit 47 with matching
+stderr; the same suite rejected the false parity 8/2. Exact candidate hashes were restored and the
+source plus composed dotnet suite each returned 10/0/0 on both PowerShell hosts.
+
+PowerShell and Bash composers independently converged at 173/169/183 files. Source and all three
+generated copies share each script/test SHA-256, all PowerShell copies retain BOM and parse, and all
+Bash copies pass syntax. Both validator twins passed dotnet, angular, and monorepo. The workflow
+parses as YAML; ReleaseDistGateTiming passed 9/0/0 on both PowerShell hosts, PushAndCheck 7/0/0,
+ReleaseCiWatch 18/0/0, and DocTruth 13/0/0. The permanent suite/result/job/matrix cardinalities are
+unchanged.
+
+The existing `macos-portability` job now carries the locked transitional frozen-tree oracle and
+current committed-dotnet smoke. Their exact execution under stock `/bin/bash` 3.2, followed by
+normal final-candidate Windows/Linux/macOS CI, remains pending and is not inferred from Git Bash.
+
+Two independent read-only implementation reviews approved the stable diff with no findings. One
+focused on evidence value and confirmed cardinality remains 10 `It` blocks, seven CI jobs, and two
+matrices; the other independently reran ScriptTwinParity 10/0/0 and ReleaseDistGateTiming 9/0/0 on
+both PowerShell hosts and checked Bash-3.2 syntax/quoting, the reachable frozen tree, and generated
+hash/BOM parity. Neither review substitutes for the unobserved native provider or final CI.

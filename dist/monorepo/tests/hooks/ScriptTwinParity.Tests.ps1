@@ -200,7 +200,43 @@ It 'docs-sync-check branches and advisory prose agree' {
     Assert ($issues.Count-eq 0) ("docs-sync matrix failures:`n"+($issues-join"`n"))
 }
 
-It 'sync-agent-files recursively produces identical trees' {$seed=Temp sync-seed;try{Put (Join-Path $seed '.claude/skills/a/SKILL.md') '# a';Put (Join-Path $seed '.claude/skills/a/reference/notes.md') 'nested';foreach($kind in 'ps1','sh'){$r=Temp "sync-$kind";Copy-Item (Join-Path $seed '.claude') $r -Recurse -Force;CopyPair sync-agent-files $r;InitSafe $r;$res=RunHere (Join-Path $r "scripts/sync-agent-files.$kind") $r;if($kind-eq'ps1'){$pr=$res;$proot=$r}else{$sr=$res;$sroot=$r}};try{Assert ($pr.Exit-eq$sr.Exit) 'sync exits differ';Assert ($pr.Out-eq$sr.Out) 'sync stdout differs';$trees=@();foreach($root in $proot,$sroot){$base=(Resolve-Path (Join-Path $root '.github/skills')).Path;$rows=@(Get-ChildItem $base -Recurse -File|ForEach-Object{($_.FullName.Substring($base.Length).TrimStart('\','/')-replace'\\','/')+'|'+(Get-FileHash $_.FullName -Algorithm SHA256).Hash}|Sort-Object);$trees+=,(,$rows)};Assert (($trees[0]|ConvertTo-Json -Compress)-eq($trees[1]|ConvertTo-Json -Compress)) 'sync output trees differ'}finally{Remove-Item -Recurse -Force $proot,$sroot}}finally{Remove-Item -Recurse -Force $seed}}
+It 'sync-agent-files recursively produces identical trees' {
+    $seed=Temp sync-seed
+    $roots=[Collections.Generic.List[string]]::new()
+    try{
+        Put (Join-Path $seed '.claude/skills/a/SKILL.md') '# a'
+        Put (Join-Path $seed '.claude/skills/a/reference/notes.md') 'nested'
+        $sourceBase=(Resolve-Path (Join-Path $seed '.claude/skills')).Path
+        $sourceFingerprint=@(Get-ChildItem $sourceBase -Recurse -File|ForEach-Object{($_.FullName.Substring($sourceBase.Length).TrimStart('\','/')-replace'\\','/')+'|'+(Get-FileHash $_.FullName -Algorithm SHA256).Hash}|Sort-Object)-join"`n"
+        $results=@{}
+        $testRoots=@{}
+        foreach($kind in 'ps1','sh'){
+            $r=Temp "sync-$kind";$roots.Add($r)|Out-Null
+            Copy-Item (Join-Path $seed '.claude') $r -Recurse -Force
+            CopyPair sync-agent-files $r
+            InitSafe $r
+            $results[$kind]=RunHere (Join-Path $r "scripts/sync-agent-files.$kind") $r
+            $testRoots[$kind]=$r
+        }
+        $issues=[Collections.Generic.List[string]]::new()
+        $expected='Synced skills: .claude/skills -> .github/skills'
+        foreach($kind in 'ps1','sh'){
+            $result=$results[$kind]
+            if($result.Exit-ne0){$issues.Add("$kind sync exit=$($result.Exit)")}
+            if($result.Out-cne$expected){$issues.Add("$kind sync stdout differs: [$($result.Out)]")}
+            if(-not[string]::IsNullOrEmpty($result.Err)){$issues.Add("$kind sync stderr was not empty: [$($result.Err)]")}
+            $mirror=Join-Path $testRoots[$kind] '.github/skills'
+            if(-not(Test-Path -LiteralPath $mirror -PathType Container)){$issues.Add("$kind mirror is missing");continue}
+            $mirrorBase=(Resolve-Path $mirror).Path
+            $mirrorFingerprint=@(Get-ChildItem $mirrorBase -Recurse -File|ForEach-Object{($_.FullName.Substring($mirrorBase.Length).TrimStart('\','/')-replace'\\','/')+'|'+(Get-FileHash $_.FullName -Algorithm SHA256).Hash}|Sort-Object)-join"`n"
+            if($mirrorFingerprint-cne$sourceFingerprint){$issues.Add("$kind mirror differs from the canonical source")}
+        }
+        Assert ($issues.Count-eq0) ($issues-join"`n")
+    }finally{
+        foreach($r in $roots){Remove-Item -Recurse -Force $r}
+        Remove-Item -Recurse -Force $seed
+    }
+}
 
 It 'sync-agent-files twins fall back to the current directory outside Git' {
     $seed=Temp sync-nongit-seed
@@ -216,7 +252,7 @@ It 'sync-agent-files twins fall back to the current directory outside Git' {
                 Assert ($LASTEXITCODE-ne 0) "setup: $r unexpectedly resolves inside Git"
                 $res=RunHere (Join-Path $r "scripts/sync-agent-files.$kind") $r
                 Assert ($res.Exit-eq 0) "$kind non-Git sync exit=$($res.Exit): $($res.Err)"
-                Assert ($res.Out-eq'Synced 1 skill(s): .claude/skills -> .github/skills') "$kind non-Git stdout differs: $($res.Out)"
+                Assert ($res.Out-eq'Synced skills: .claude/skills -> .github/skills') "$kind non-Git stdout differs: $($res.Out)"
                 Assert ([string]::IsNullOrEmpty($res.Err)) "$kind non-Git stderr was not empty: $($res.Err)"
                 $mirrored=Join-Path $r '.github/skills/a/reference/notes.md'
                 Assert ((Test-Path -LiteralPath $mirrored)-and([IO.File]::ReadAllText($mirrored)-eq'nested')) "$kind non-Git nested mirror missing"

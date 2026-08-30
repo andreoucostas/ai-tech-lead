@@ -25,10 +25,4 @@ rm -rf "$dst"
 mkdir -p "$dst"
 cp -r "$src/." "$dst/"
 
-# Use Bash's own recursive glob rather than a bare `find`: under non-login Git Bash on Windows,
-# PATH can resolve `find` to Windows FIND.EXE, which copies the mirror successfully and then exits 2
-# while trying to count it.
-shopt -s globstar nullglob
-skill_files=("$dst"/**/SKILL.md)
-count=${#skill_files[@]}
-echo "Synced $count skill(s): $src -> $dst"
+echo "Synced skills: $src -> $dst"

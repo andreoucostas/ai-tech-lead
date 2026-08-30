@@ -33,5 +33,4 @@ if (Test-Path $dst) { Remove-Item -Recurse -Force $dst }
 New-Item -ItemType Directory -Force -Path $dst | Out-Null
 Copy-Item -Recurse -Force (Join-Path $src '*') $dst
 
-$count = (Get-ChildItem -Recurse -Filter SKILL.md $dst | Measure-Object).Count
-Write-Output "Synced $count skill(s): $src -> $dst"
+Write-Output "Synced skills: $src -> $dst"

@@ -62,6 +62,7 @@ function Assert-CiMacosPortability {
     Assert ($job -match '(?m)^\s*shell:\s*/bin/bash\b.*\{0\}\s*$') 'macos-portability no longer invokes run steps through stock /bin/bash'
     Assert ($job -match 'BASH_VERSION' -and $job -match '3\.2\.57') 'macos-portability no longer asserts the claimed Bash 3.2.57 runtime'
     Assert ($job -match '/bin/bash dist/dotnet/scripts/install\.sh') 'macos-portability no longer executes the committed dotnet installer directly'
+    Assert ($job -match '/bin/bash "\$GITHUB_WORKSPACE/dist/dotnet/scripts/sync-agent-files\.sh"') 'macos-portability no longer executes the committed dotnet skill sync directly'
     Assert ($job -match 'dist/dotnet/\.claude/framework-version\.json') 'macos-portability no longer verifies the installed version stamp'
     Assert ($job -match 'dist/dotnet/framework-ownership\.json') 'macos-portability no longer verifies the installed ownership manifest'
     Assert ($job -notmatch '(?m)^\s*matrix:') 'macos-portability expanded into a matrix'

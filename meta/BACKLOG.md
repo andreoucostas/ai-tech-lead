@@ -2964,7 +2964,7 @@ must still exercise the POSIX symlink path, and candidate CI remains pending.
 ### B-205 · Restore Bash 3.2 compatibility in skill-mirror sync
 **Effort:** S · **Priority:** P2 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-30)
-**Status:** DESIGN LOCKED — two adversarial reviews approved count removal and existing-result strengthening; implementation pending
+**Status:** IMPLEMENTED CANDIDATE — two independent local reviews approved; exact macOS proof and final-candidate Windows/Linux/macOS CI pending
 **Plan:** `.claude/plans/2026-08-30-b205-skill-sync-bash32-design.md`
 
 **Why:** `/generate-copilot` documents `bash scripts/sync-agent-files.sh` for macOS, but the v0.78.0
@@ -2982,6 +2982,26 @@ old-red/new-green evidence and the existing Git Bash control. Reuse B-198's focu
 but do not add a job/matrix or expand B-198 to implement this item. The original ≥v0.78.5 target is
 superseded because the same unreleased v0.78.4 provider leg can prove this shipped macOS contract
 without additional recurring CI.
+
+**Candidate evidence (2026-08-30):** both twins now emit the exact count-free verdict and retain the
+same recursive mirror operation. With only existing assertions changed, the unchanged scripts were
+red at 8/2. The candidate passed 10/0/0 on PowerShell 7 and native Windows PowerShell 5.1; an
+equal-exit-47 mutation of both twins was rejected 8/2 after both had copied the source, and exact
+restoration returned source and composed dotnet to 10/0/0 on both hosts. No suite, `It`, job, or
+matrix was added. PowerShell and Bash composers converged at 173/169/183 files; source and all three
+generated script/test copies have exact SHA-256 parity. Both validator twins passed all three
+distributions. YAML parsing, ReleaseDistGateTiming 9/0/0 on both hosts, PushAndCheck 7/0/0,
+ReleaseCiWatch 18/0/0, and DocTruth 13/0/0 were green. The existing macOS job contains the frozen
+old-red/current-green steps, but stock Bash 3.2 and final candidate CI remain unobserved and
+mandatory; Git Bash is recorded only as the Windows control.
+
+Two independent read-only implementation reviews approved the stable diff with no findings. The
+value review confirmed permanent cardinality remains 10 `It` blocks, seven CI jobs, and two
+matrices, and rejected permissions/symlink/empty-directory expansion as low-value scope growth for
+an unchanged copy mechanism. The portability review independently reran the focused suites on both
+PowerShell hosts, verified the frozen tree is reachable and archiveable, and approved the Bash 3.2
+syntax, quoting, PATH, diagnostics, and topology design. Both explicitly withheld completion
+approval until native macOS and final CI are observed.
 
 ---
 
