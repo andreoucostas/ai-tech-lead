@@ -2699,3 +2699,52 @@ does not generalize into a cleanup framework or sweep unowned historical roots.
 **Rejected.** Ignore the warning as housekeeping; add only `-ErrorAction Stop`; best-effort terminal
 warnings; a global stale-root sweeper; a repository-wide cleanup rewrite; a new permanent hostile
 suite; deleting the seven unowned roots; and treating local Windows execution as native Linux or CI.
+
+---
+
+## WSD-060: remove the unreachable warehouse-map decline state instead of adding its writer (2026-08-30)
+
+**Context.** WSD-033 made `docs/warehouse-map.md` optional, including an explicit declined state:
+both checker twins accept `## Declined artifact: warehouse-map` in protected `LEARNINGS.md`, and one
+permanent result constructs that file with the marker first. B-199 later proved that fixture shape
+has no shipped producer. B-202 proposed adding a two-stage human-consent flow to `map-warehouse` so
+the hidden state would become reachable.
+
+Two independent revalidations rejected that producer. No backlog, learning, or eval records actual
+repeat-guidance harm after a decline. The marker changes only an absent-map checker result and one
+non-failing docs-sync note; bootstrap's durable pointer remains, and an explicitly invoked
+`map-warehouse` still offers the artifact. The proposed refresh-decline claim is false because a
+present stale map bypasses the marker. More importantly, consumer-owned append-only `LEARNINGS.md`
+has no append-only revocation state: the marker lies dormant while a map exists, then silently
+reactivates if the map is deleted. A producer would therefore spend a protected team-wide mutation
+and a consent protocol for a narrow, unobserved benefit.
+
+**Decision.** Do not add the writer. Supersede only WSD-033's explicit-decline clause and remove that
+dormant state in B-202: delete the `LEARNINGS.md` probe/output from both checker twins, delete the one
+fixture-only declined result, and remove `declined` from both authored Claude/GitHub copies of
+`map-warehouse` and `add-warehouse-load`. An applicable warehouse without a map reports `missing`/1.
+The map remains optional, and a warehouse write still requires either a current map or the equivalent
+live table/key/relationship/load-order inventory. Preserve every other checker state and every other
+protected marker family.
+
+This intentionally accepts one bounded compatibility change: an unknown external consumer may have
+manually discovered and authored the undocumented exact marker. It will receive `missing`/1 instead
+of `declined`/0. The shipped caller converts that status to an advisory and remains exit 0;
+`add-warehouse-load` already handles missing and declined identically through live evidence, so no
+write becomes blocked. Updates preserve the now-inert heading byte-for-byte. A direct CI job that
+independently treats checker exit 1 as fatal could become red and must be named in the release note.
+An ignore-independent inventory found zero exact markers across 26 `LEARNINGS.md` files in the shared
+workspace; this is bounded local evidence, not a claim about all consumers.
+
+**Proportionality.** B-199 is observed maintainer cost from keeping a test-backed state with no
+producer; the proposed user benefit is hypothetical. Removing a few branches, four status mentions,
+and one result is smaller than creating a durable preference/revocation subsystem and reduces rather
+than grows the test surface. Do not invert the deleted result into a permanent negative contract for
+undocumented bytes. Use a disposable old-red/new-green marker oracle, then retain the ordinary
+not-applicable, missing, current/stale, and unable-to-inspect results.
+
+**Rejected.** The two-stage writer; claiming the marker suppresses all repeat guidance; recording a
+refresh decline; adding a revocation grammar or preference subsystem; keeping the dead state solely
+because it was historically decided; deleting consumer marker bytes; changing advisory severity;
+inverting or replacing the declined `It`; and expanding into bootstrap, installers, ownership,
+signals, other decline/disabled-skill markers, or warehouse-map quality.

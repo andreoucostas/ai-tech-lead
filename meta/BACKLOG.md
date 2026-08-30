@@ -2708,27 +2708,37 @@ count distinct categories, and make the eval's authoritative-catalog fixture rej
 Fold a duplicate-row mutation into the existing warehouse map checker suite; do not create a
 standalone catalog suite.
 
-### B-202 · Persist an explicit warehouse-map decline at the point of choice
+### B-202 · Remove the unreachable warehouse-map decline state
 **Effort:** S · **Priority:** P2 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-30)
+**Status:** DESIGN SUPERSEDED AFTER VALUE AND ADVERSARIAL REVIEW — deletion approved; implementation pending
+**Decision:** WSD-060
 
-**Why:** B-199 revalidation found that the checker recognizes an exact durable decline marker but no
-shipped consumer workflow or instruction ever writes or teaches it. `/map-warehouse` says “offer,
-don't force”; when a developer declines, the decision disappears and later sessions can keep
-recommending the same map work. This reachable contract gap leaves every explicit decline
-unrecorded and can cause repeated guidance; it is more valuable than normalizing B-199's unsupported
-first-line-only file shape.
+**Why:** B-199 found that the checker and its permanent result recognize an exact
+`## Declined artifact: warehouse-map` heading, but no shipped workflow or instruction writes or
+teaches it. B-202 proposed making that fixture-only state reachable. Revalidation rejected the
+premise: no repeated-guidance harm is recorded; the marker suppresses only the checker's absent-map
+status and one non-failing docs-sync advisory, not bootstrap's durable pointer or the skill's own map
+offer; and protected append-only `LEARNINGS.md` has no revocation state. A real-template twin probe
+also showed that a latent marker silently becomes active again if a later map is deleted.
 
-**Do:** first revalidate that durable decline remains preferable to deleting the dead checker state.
-If retained, update both authored agent-surface copies of `map-warehouse`: when a human declines
-writing or refreshing the map, explain that recording the decision suppresses repeat guidance and
-ask whether to record it. Append the exact `## Declined artifact: warehouse-map` marker to the
-existing protected `LEARNINGS.md` only after a separate affirmative answer. Never infer consent from
-silence, non-invocation, a missing map, an autonomous/model-invoked run, or the initial refusal;
-never overwrite or reorder existing content; do not duplicate an existing marker. In the existing
-checker result, copy the installed root `LEARNINGS.md` fixture and append the marker instead of
-retyping a first-line approximation; add no suite or `It`. Verify authored agent-surface parity,
-dotnet/monorepo composition, and an install smoke; do not add a test that merely searches for prose.
+**Do:** remove only the dormant decline state: the `LEARNINGS.md` probe/output in both warehouse-map
+checker twins, `declined` from both authored `map-warehouse` and `add-warehouse-load` agent-surface
+copies, and the existing declined `It`. Add no replacement result or prose-search test. Preserve
+not-applicable, missing, current, stale, and unable-to-inspect behavior; the optional-map contract;
+and `add-warehouse-load`'s mandatory equivalent live inventory. Do not touch docs-sync wrappers,
+installers, ownership manifests, signal definitions, bootstrap/adopt, other `LEARNINGS.md` marker
+families, or existing consumer bytes.
+
+The one theoretical compatibility change is explicit: an external consumer that manually authored
+the undocumented exact marker changes from `declined`/0 to `missing`/1. Shipped docs-sync still
+translates that to a non-failing advisory, and warehouse writes still proceed only from current-map
+or live evidence. Existing hidden headings remain byte-preserved but inert. Before deletion, require
+a disposable real-template-plus-marker oracle expecting `missing`/1 to go red against both old
+twins; after deletion, make it green and prove the file byte-identical. Compose all distributions,
+run both validator twins, the remaining three-result checker worlds under PowerShell 7/5.1 and Git
+Bash, affected composed tests, and bounded dotnet/monorepo delivery smokes. Because a shipped test
+changes, first Windows/Linux CI still gates completion and release.
 
 ---
 
