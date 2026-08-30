@@ -2,9 +2,9 @@
 
 **Date:** 2026-08-29  
 **Filed against:** v0.78.3  
-**Status:** RE-LOCKED 2026-08-30 — original implementation approved; modern Git-for-Windows host
-identity amendment approved by two independent adversarial reviews; provider-red/current-green
-evidence still unobserved (`33331472488` did not reach the oracle)
+**Status:** IMPLEMENTED LOCALLY 2026-08-30 — modern-provider red observed in `33332160632`; two
+independent adversarial reviews approve the bounded correction; corrected modern-provider and
+final Windows/Linux CI green pending
 
 ## Value decision
 
@@ -214,6 +214,50 @@ so the provider identity probe, lowercase-routing calibration, and unchanged-pro
 run. All six independent per-distribution hook-matrix jobs passed, but none contains the
 maintainer-only UpdateDelivery result; those jobs provide no B-194 red or green evidence. The
 baseline mismatch was exactly the already-committed B-209 generated-document delta, not a B-194
-behavior result. Modern-provider product red and corrected-product green therefore remain wholly
-unobserved; after correcting that measured baseline, the next exact candidate run must still
-observe the unchanged product red before any product implementation.
+behavior result. At that point modern-provider product red and corrected-product green therefore
+remained wholly unobserved; after correcting that measured baseline, the next exact candidate run
+still had to observe the unchanged product red before any product implementation.
+
+## Modern-provider red evidence
+
+Exact candidate run `33332160632` at `367bb0cf79777491faba39133cb7a5915a15c8ce`
+reached the amended oracle on Git for Windows and emitted
+`OSTYPE=cygwin;MSYSTEM=MINGW64;PWD_W=D:/a/ai-tech-lead/ai-tech-lead`. The real lowercase
+alternate-index calibration then reached the unchanged product. It returned 0, printed the update
+completion banner, and changed the target fingerprint instead of refusing exit 4. UpdateDelivery
+was 50/1; the full Windows maintainer suite had exactly that one failure across 31 files. Native
+Linux and all six independent Windows/Linux per-distribution hook-matrix jobs were green. This is
+the required unchanged-product provider red, not a release-green run.
+
+Two fresh read-only adversarial reviews approved implementation only through one pre-mutation host
+initializer shared by both existing consumers. They required exact, case-sensitive comparisons for
+the four allowed `MSYSTEM` values so inherited `nocasematch` cannot widen the identity, safe
+`${MSYSTEM:-}` expansion, and no bare failing command under `set -e`. They also found that the
+existing real child discriminates modern identity plus ambient routing but does not execute the
+repository-traversal branch or an unknown-`MSYSTEM` branch. Adding static/cardinality assertions or
+another full-installer child would provide less value than direct source review; immutable review
+must instead verify that no independent `OSTYPE` selector remains, both consumers use the one
+precomputed flag/cursor, and unknown non-empty Cygwin identities fail closed. Generic Cygwin with
+empty `MSYSTEM` remains explicitly unsupported/unexecuted POSIX behavior and must not be claimed.
+
+## Corrected implementation evidence
+
+The authored Bash installer now classifies once at the start of the mutating update/brownfield
+preflight. Legacy `msys*` and current `cygwin*` with one of four exact `MSYSTEM` values select one
+shared Windows namespace flag, cursor, root, and kind. Selected hosts validate `cd "$tgt" && builtin pwd
+-W` before either consumer runs; unknown non-empty Cygwin identities fail through the existing
+pre-mutation CANT-VERIFY path. `git_repository_evidence` and `git_ambient_routing_present` consume
+that shared state, and no independent `OSTYPE` selector remains. Greenfield, dry-run, PowerShell,
+ordinary POSIX, and empty-`MSYSTEM` generic Cygwin paths are unchanged.
+
+After composing all three distributions, local legacy Git Bash emitted
+`OSTYPE=msys;MSYSTEM=MINGW64;PWD_W=C:/TEMP/AIdrivenDev/ai-tech-lead` and UpdateDelivery passed 51/0.
+RootInstallerWarehouse passed 12/0, InstallerContract 13/0, and InstallerConvergence 12/0. Both
+validator twins passed all three 173/169/183-file distributions. PowerShell and login-shell Bash
+composition produced the same binary dist-diff hash
+`403bdf04d01ead9c6964df80e2d9bc22f70b99f3`; source and all three generated installers are
+byte-identical. A fresh independent source review verified single classification, exact allowlist
+comparisons under `set -euo pipefail`, shared cursor/root wiring, fail-closed unknown identities,
+and no mutation-before-refusal path. This direct review is the evidence for branches intentionally
+not duplicated by another permanent test. Current-provider product green and final exact
+Windows/Linux CI remain mandatory.

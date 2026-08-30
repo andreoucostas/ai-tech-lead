@@ -3419,23 +3419,25 @@ so the item stays open and is not releaseable.
 **Effort:** M · **Priority:** P1 · **planned v0.79.0**
 **Filed against:** v0.78.3 (2026-08-29)
 
-**Status: TEST-ONLY PROVIDER-RED ORACLE READY; MODERN PROVIDER VERDICT UNOBSERVED; PRODUCT
-CORRECTION NOT IMPLEMENTED.** Candidate
-`6818a4a` was rejected when a fresh immutable review reproduced a lowercase-routing bypass on
-legacy `OSTYPE=msys*` Git Bash. That bounded correction was locally green. First candidate run
-`33328114479` then showed Git for Windows `2.55.0.windows.5` reports a different Bash identity, so
-the existing host prerequisite stopped before its product child. The current test-only amendment
-recognizes the finite legacy/current provider identities, proves `builtin pwd -W`, and retains the
-same real alternate-index child with no new result or process. It is locally green on legacy Git
-Bash; the unchanged product's modern-provider red remains pending and no modern product green is
-claimed. Provider-red attempt `33331472488` at head
-`aac420fddca414b6392feb3500f8af7ef52c4925` was inconclusive: both main jobs stopped at
-context-footprint snapshot drift before distribution validation or the root meta suite, so the
-provider probe, lowercase-routing calibration, and unchanged-product child did not run. All six
-per-distribution hook-matrix jobs passed, but none contains maintainer-only UpdateDelivery and they
-provide no B-194 verdict. After the corrected baseline permits the next exact run to make the
-required red observation, implement the separately re-locked shared classifier and require exact
-Windows/Linux CI before completion. Git Bash is not native Linux evidence.
+**Status: MODERN PROVIDER RED OBSERVED; CORRECTION IMPLEMENTED LOCALLY; POST-FIX CI PENDING.**
+Candidate `6818a4a` was rejected when review reproduced a lowercase-routing bypass on legacy Git
+Bash. Run `33328114479` then showed that Git for Windows `2.55.0.windows.5` reports a new Bash host
+identity; the amended existing oracle kept the same child/result/process cardinality. Attempt
+`33331472488` was inconclusive because both main jobs stopped at stale context-footprint data before
+the oracle. Exact run `33332160632` at `367bb0cf79777491faba39133cb7a5915a15c8ce` reached it with
+`OSTYPE=cygwin;MSYSTEM=MINGW64;PWD_W=D:/a/ai-tech-lead/ai-tech-lead`: the unchanged installer
+returned 0, printed completion, and changed the target rather than refusing exit 4. UpdateDelivery
+was 50/1 and the only Windows maintainer failure; native Linux and all six distribution hook jobs
+were green.
+
+The correction now classifies once before mutation, validates one built-in Windows cursor/root,
+shares that state between ambient routing and repository discovery, and fails closed on unknown
+non-empty current-style identities. The modern-host amendment added no result, `It`, child, or
+process. Locally, UpdateDelivery is 51/0 on legacy Git Bash, RootInstallerWarehouse 12/0,
+InstallerContract 13/0, InstallerConvergence 12/0, both validator twins pass all distributions, and
+both composers converge byte-identically. An independent adversarial source review approved the
+exact implementation. Modern-provider product green and final exact Windows/Linux CI remain
+unobserved and mandatory; Git Bash is not native Linux evidence.
 
 **Why:** B-188's independent review found a pre-existing supported-host failure outside v0.78.1's
 ADR-preservation diff. Under Windows PowerShell 5.1 with `$ErrorActionPreference = 'Stop'`, the
@@ -3556,8 +3558,9 @@ distribution/meta gates. The generated B-209 docs had changed while their measur
 not. Regenerating it changed only `chars`/`tok` for the four altered carriers in each distribution;
 static totals and ceilings remain 39,582/40,000, 38,105/40,000, and 47,098/48,000. Both baseline
 twins pass locally. The run did not reach B-194's provider child and is neither provider-red nor
-product-green evidence. The next exact run must first reach B-194's expected unchanged-product red;
-after that product correction, a later all-green supported Windows/Linux candidate remains
+product-green evidence. Run `33332160632` subsequently reached B-194's expected unchanged-product
+red with native Linux and all six hook jobs green and exactly one Windows maintainer failure. After
+the bounded product correction, a later all-green supported Windows/Linux candidate remains
 mandatory for release.
 
 ---

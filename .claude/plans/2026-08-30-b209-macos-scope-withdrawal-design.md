@@ -108,6 +108,7 @@ the three distributions (`docs/ci-integration.md` and the bodies of `bootstrap`,
 `generate-copilot`, and `rebootstrap`). The static totals and ceilings remain unchanged at
 39,582/40,000 for dotnet, 38,105/40,000 for Angular, and 47,098/48,000 for monorepo. Both the
 PowerShell and login-shell Bash context-footprint checks pass with that exact baseline. A new exact
-candidate run must now reach B-194's unchanged-product provider red; it is not expected to be the
-release-green run. After the bounded B-194 product correction, a later all-green supported
+candidate run `33332160632` then reached B-194's expected unchanged-product provider red: native
+Linux and all six per-distribution hook jobs were green, while Windows had exactly the one
+UpdateDelivery failure. After the bounded B-194 product correction, a later all-green supported
 Windows/Linux candidate remains mandatory for release.

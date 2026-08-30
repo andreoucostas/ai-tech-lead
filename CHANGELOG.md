@@ -413,9 +413,19 @@ Windows PowerShell 5.1/CP437 with Bash observed. InstallerConvergence passed 12/
 InstallerContract 13/0, and RootInstallerWarehouse 12/0; both composers produced identical
 525-file trees and all three validators passed. First candidate run `33328114479` then found that
 current Git for Windows reports a new Bash host identity and stopped in the test prerequisite. The
-existing oracle is now amended without another test/process; modern-provider product red and the
-re-locked product correction/current green remain pending. Native Windows/Linux candidate CI is
-still required, so B-194 remains open.
+existing oracle was amended without another test/process. Exact run `33332160632` at
+`367bb0cf79777491faba39133cb7a5915a15c8ce` then observed
+`OSTYPE=cygwin;MSYSTEM=MINGW64;PWD_W=D:/a/ai-tech-lead/ai-tech-lead`; the unchanged installer
+returned 0, printed completion, and changed the target instead of refusing exit 4. That was the
+only Windows maintainer failure, while native Linux and all six distribution hook jobs passed.
+
+The Bash installer now classifies the supported Git-for-Windows host once, validates one built-in
+Windows cursor/root, and shares it between ambient routing and repository discovery. Unknown
+non-empty current-style identities fail closed. Local legacy-provider UpdateDelivery is 51/0,
+RootInstallerWarehouse 12/0, InstallerContract 13/0, and InstallerConvergence 12/0; both composers
+and both validator twins converge across all distributions. Independent adversarial source review
+approved the bounded correction. Corrected current-provider and final exact Windows/Linux CI green
+remain mandatory, so B-194 remains open.
 
 ## 0.78.3 — 2026-08-27
 

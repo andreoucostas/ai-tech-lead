@@ -405,34 +405,73 @@ git_preflight_cant_verify() {
   exit 4
 }
 
+git_windows_namespace=0
+git_windows_cursor=""
+git_windows_scan_root=""
+git_windows_scan_kind=""
+
+# Classify the Git-for-Windows Bash host once before either repository discovery or ambient Git
+# routing inspection. Modern Git for Windows reports cygwin OSTYPE with a finite MSYSTEM identity;
+# an unknown non-empty identity fails closed rather than silently receiving generic POSIX handling.
+git_preflight_host_initialize() {
+  local ostype_value="${OSTYPE:-}" msystem_value="${MSYSTEM:-}"
+  local remainder server share_and_rest share
+
+  git_windows_namespace=0
+  git_windows_cursor=""
+  git_windows_scan_root=""
+  git_windows_scan_kind=""
+
+  if [ "${ostype_value#msys}" != "$ostype_value" ]; then
+    git_windows_namespace=1
+  elif [ "${ostype_value#cygwin}" != "$ostype_value" ]; then
+    if [ -z "$msystem_value" ]; then
+      return 0
+    fi
+    if [ "$msystem_value" = "MINGW32" ] || [ "$msystem_value" = "MINGW64" ] ||
+       [ "$msystem_value" = "UCRT64" ] || [ "$msystem_value" = "CLANGARM64" ]; then
+      git_windows_namespace=1
+    else
+      return 2
+    fi
+  else
+    return 0
+  fi
+
+  git_windows_cursor=$(cd "$tgt" 2>/dev/null && builtin pwd -W 2>/dev/null) || return 2
+  case "$git_windows_cursor" in
+    [A-Za-z]:/*)
+      git_windows_scan_root="${git_windows_cursor%%/*}/"
+      git_windows_scan_kind=drive
+      ;;
+    //?*/?*)
+      remainder=${git_windows_cursor#//}
+      server=${remainder%%/*}
+      share_and_rest=${remainder#*/}
+      share=${share_and_rest%%/*}
+      [ -n "$server" ] && [ -n "$share" ] || return 2
+      git_windows_scan_root="//$server/$share"
+      case "$git_windows_cursor" in
+        "$git_windows_scan_root"|"$git_windows_scan_root"/*) ;;
+        *) return 2 ;;
+      esac
+      git_windows_scan_kind=unc
+      ;;
+    *) return 2 ;;
+  esac
+}
+
 # Return 0 for repository evidence, 1 for none, and 2 when an ancestor cannot be inspected. The
 # explicit -L arm is the lstat-equivalent that keeps a dangling .git link from disappearing. Git
 # Bash needs its real Windows namespace root; MSYS / and //server are virtual parents that Git for
 # Windows would never inspect while discovering from a drive or UNC share.
 git_repository_evidence() {
-  local cursor="$tgt" parent scan_root="" scan_kind="" remainder server share_and_rest share
-  case "${OSTYPE:-}" in
-    msys*)
-      cursor=$(cd "$tgt" 2>/dev/null && pwd -W) || return 2
-      case "$cursor" in
-        [A-Za-z]:/*)
-          scan_root="${cursor%%/*}/"
-          scan_kind=drive
-          ;;
-        //?*/?*)
-          remainder=${cursor#//}
-          server=${remainder%%/*}
-          share_and_rest=${remainder#*/}
-          share=${share_and_rest%%/*}
-          [ -n "$server" ] && [ -n "$share" ] || return 2
-          scan_root="//$server/$share"
-          case "$cursor" in "$scan_root"|"$scan_root"/*) ;; *) return 2;; esac
-          scan_kind=unc
-          ;;
-        *) return 2;;
-      esac
-      ;;
-  esac
+  local cursor="$tgt" parent scan_root="" scan_kind=""
+  if [ "$git_windows_namespace" -eq 1 ]; then
+    cursor="$git_windows_cursor"
+    scan_root="$git_windows_scan_root"
+    scan_kind="$git_windows_scan_kind"
+  fi
   while :; do
     [ -x "$cursor" ] || return 2
     if [ -e "$cursor/.git" ] || [ -L "$cursor/.git" ]; then return 0; fi
@@ -470,23 +509,23 @@ git_ambient_routing_present() {
   if [ -n "${GIT_DIR:-}" ] || [ -n "${GIT_WORK_TREE:-}" ] || [ -n "${GIT_COMMON_DIR:-}" ] || [ -n "${GIT_INDEX_FILE:-}" ]; then
     return 0
   fi
-  case "${OSTYPE:-}" in
-    msys*)
-      while IFS= read -r git_env_name; do
-        case "$git_env_name" in
-          [Gg][Ii][Tt]_[Dd][Ii][Rr]|[Gg][Ii][Tt]_[Ww][Oo][Rr][Kk]_[Tt][Rr][Ee][Ee]|[Gg][Ii][Tt]_[Cc][Oo][Mm][Mm][Oo][Nn]_[Dd][Ii][Rr]|[Gg][Ii][Tt]_[Ii][Nn][Dd][Ee][Xx]_[Ff][Ii][Ll][Ee]) ;;
-          *) continue ;;
-        esac
-        [ -n "${!git_env_name}" ] && return 0
-      done < <(compgen -e)
-      ;;
-  esac
+  if [ "$git_windows_namespace" -eq 1 ]; then
+    while IFS= read -r git_env_name; do
+      case "$git_env_name" in
+        [Gg][Ii][Tt]_[Dd][Ii][Rr]|[Gg][Ii][Tt]_[Ww][Oo][Rr][Kk]_[Tt][Rr][Ee][Ee]|[Gg][Ii][Tt]_[Cc][Oo][Mm][Mm][Oo][Nn]_[Dd][Ii][Rr]|[Gg][Ii][Tt]_[Ii][Nn][Dd][Ee][Xx]_[Ff][Ii][Ll][Ee]) ;;
+        *) continue ;;
+      esac
+      [ -n "${!git_env_name}" ] && return 0
+    done < <(compgen -e)
+  fi
   return 1
 }
 
 # Git is optional for a plain target, but repository evidence or redirected Git state must never be
 # reinterpreted as non-Git. This helper block introduces no syntax newer than Bash 3.2.
 if [ "$dry_run" -ne 1 ] && { [ "$adopt_mode" -eq 1 ] || [ "$update_mode" -eq 1 ]; }; then
+  git_preflight_host_initialize || git_preflight_cant_verify
+
   if git_ambient_routing_present; then
     git_preflight_cant_verify
   fi

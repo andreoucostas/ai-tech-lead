@@ -92,6 +92,10 @@
   classified, Git is unavailable despite repository evidence, or worktree status cannot be read.
   Unset the routing variables or repair/install Git, then rerun. Existing dirty-tree refusal and its
   explicit override are unchanged.
+- On Windows, the Bash installer applies the same refusal to case variants such as
+  `git_index_file` under both legacy and current Git-for-Windows Bash host identities. Unknown
+  non-empty Cygwin/`MSYSTEM` identities fail closed rather than being treated as ordinary POSIX;
+  generic Cygwin remains outside the supported host contract.
 
 ## 0.78.3 — 2026-08-27
 
