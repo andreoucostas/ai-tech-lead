@@ -2825,9 +2825,44 @@ availability.
 **Proportionality.** This change adds no product machinery, test, target clone, scheduled work, or
 new backlog item. It prevents a known-invalid experiment from consuming at least six task turns plus
 bootstrap/review/canary sessions. B-175 remains the next local code candidate because it fixes a
-reachable consumer false diagnosis without live budget.
+reachable marked-template/self-host false diagnosis without live budget.
 
 **Rejected.** Continuing July across dates/models; calling an unreleased HEAD run a quarterly data
 point; treating the archived/famous target bias as necessarily conservative; patching only the dead
 script names; cloning/building third-party code before a credential-free boundary exists; using
 process presence as quota evidence; and adding permanent tests for maintainer-only prose.
+
+---
+
+## WSD-063: template-check findings use a fixed status, never their count (2026-08-30)
+
+**Context.** Both `template-checks` twins use exit `2` for a required CHANGELOG read failure and
+also exit with the number of verified findings. Two findings therefore collide with inability to
+verify, and both doctor twins currently turn either into `MISSING` plus documentation-repair advice.
+Repository callers other than the doctor consume only zero/nonzero; the numeric count is already
+printed for humans. The observed read-failure world is limited to the marked template/self-host
+branch because installers exclude `.template-repo`; installed consumers remain statically exposed
+to false `MISSING` on other abnormal checker exits, but no such consumer incident is claimed.
+
+**Decision.** Fix the checker protocol at `0` clean, `3` verified finding(s), and `2` explicit
+required-input inability. Any other nonzero is abnormal/undocumented. Keep the printed finding
+count. Emit one identical ASCII `CANT-VERIFY` resource diagnostic from both checkers. Doctors map
+only `3` to `MISSING`; `2` and every other nonzero map to `CANT-VERIFY`, while an absent checker
+file remains `MISSING`. Status `3` gives generic direct-checker guidance rather than guessing the
+failed artifact or recommending `/generate-copilot`; status `2` also remains causally generic because
+Bash parse/usage failures can share that code. Capture child status immediately and never infer
+status from child text.
+
+Reuse the existing template clean/drift and doctor mirror pass/failure results. Strengthen them with
+the two-finding/fixed-exit world, a disposable resource-branch mutation, and a `3/2/1` doctor matrix.
+Do not add a test file or result.
+
+**Proportionality.** The resource branch is rare, so this stays a P3 bounded truth fix: four small
+runtime branches plus two existing-result extensions. The fixed status removes the whole known
+collision without adding a transport format or general exception taxonomy. The only compatibility
+cost is to external callers that treated the old process status as the count; the unchanged summary
+continues to carry that count and the consumer changelog will disclose the protocol.
+
+**Rejected.** A textual marker parsed by the doctor; an unbounded finding count plus a high reserved
+status; status `1` for verified findings; a sidecar; ACL-based resource fixtures; a new suite or
+`It`; and broad exception normalization outside this checker/doctor boundary.

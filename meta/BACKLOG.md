@@ -2702,12 +2702,19 @@ fallback. Do not add a fourth parser or a standalone suite.
 ### B-175 · Give template-check resource failures a distinct doctor-visible status
 **Filed against:** v0.77.0 (2026-08-24)
 **Effort:** S · **Priority:** P3
+**Status:** DESIGN LOCKED 2026-08-30 — two independent exact-record reviews approved
+**Plan:** `.claude/plans/2026-08-30-b175-template-check-status-design.md`
+**Decision:** WSD-063
 
 `template-checks.ps1`/`.sh` can exit 2 both for two ordinary findings and for host/resource
 read failure. `framework-doctor` therefore cannot tell “verified drift” from “could not verify” and
-currently reports either as `MISSING`. Introduce one unambiguous checker status or output marker for
-resource failure, map that to `CANT-VERIFY` in both doctor twins, and fold it into the existing
-mirror-pass/failure matrix. Do not reserve a status without a reachable red test.
+currently reports either as `MISSING`. Retire count-valued exits: `0` means clean, `3` means one or
+more verified findings, `2` means required input could not be inspected, and any other nonzero means
+abnormal/incomplete verification. The doctor maps only `3` to `MISSING` and all other nonzero
+statuses to `CANT-VERIFY`; neither branch guesses a specific artifact or recommends
+`/generate-copilot`, and the printed finding count remains. Fold fixed-status, resource, and abnormal
+worlds into the two existing twin/doctor results. Add no test file, `It`, output parser, sidecar, or
+general exception taxonomy.
 
 ### B-176 · Enforce unique warehouse signal-category definitions
 **Filed against:** v0.77.0 (2026-08-24)

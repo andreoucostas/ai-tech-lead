@@ -23,6 +23,7 @@ phrase inside the cited entry.
 - “Proportionality belongs inside pre-lock critique.” — `meta/workspace-decisions.md WSD-034`
 - “Updates disclose ownership classes and back up settings.” — `meta/workspace-decisions.md WSD-043`
 - “The stale quarterly-drill protocol is historical; re-lock it before any live spend.” — `meta/workspace-decisions.md WSD-062` (supersedes WSD-022/WSD-044 for execution)
+- “Template-check findings use a fixed status, never their count.” — `meta/workspace-decisions.md WSD-063`
 - “Scoped test-file instructions buy locality, not coverage — B-17 is rejected.” — `meta/workspace-decisions.md WSD-045`
 - “Guard regex errors split by confidence; content case is exact and routing folds.” — `meta/workspace-decisions.md WSD-046`
 - “Bypasses are answered by kind — harden, advise, or document — never uniformly.” — `meta/workspace-decisions.md WSD-047`
