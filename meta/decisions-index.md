@@ -22,7 +22,7 @@ phrase inside the cited entry.
 - “Read-side guidance travels on the measured channel.” — `meta/workspace-decisions.md WSD-032`
 - “Proportionality belongs inside pre-lock critique.” — `meta/workspace-decisions.md WSD-034`
 - “Updates disclose ownership classes and back up settings.” — `meta/workspace-decisions.md WSD-043`
-- “Quarterly drill targets are stable; commit pins are per-drill observations.” — `meta/workspace-decisions.md WSD-044`
+- “The stale quarterly-drill protocol is historical; re-lock it before any live spend.” — `meta/workspace-decisions.md WSD-062` (supersedes WSD-022/WSD-044 for execution)
 - “Scoped test-file instructions buy locality, not coverage — B-17 is rejected.” — `meta/workspace-decisions.md WSD-045`
 - “Guard regex errors split by confidence; content case is exact and routing folds.” — `meta/workspace-decisions.md WSD-046`
 - “Bypasses are answered by kind — harden, advise, or document — never uniformly.” — `meta/workspace-decisions.md WSD-047`

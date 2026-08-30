@@ -1,6 +1,11 @@
 # Quarterly live-fire drill reports
 
-## Drill 0 — 2026-07-17 (framework v0.32.2) — IN PROGRESS
+## Drill 0 — 2026-07-17 (framework v0.32.2) — INCOMPLETE, CLOSED 2026-08-30
+
+This quota-stopped partial is preserved as host/checklist evidence only. It cannot be resumed or
+combined with a later run: no A/B arm ran, months have elapsed, the model/host/framework have
+changed, and WSD-062 invalidated the execution protocol. It makes no value claim and is not the
+first point in any quarterly trend.
 
 Hosts: Claude Code 2.1.212 · Copilot CLI 1.0.70 · dotnet 8.0.423 · Windows 11 / PowerShell 7.6.3.
 
@@ -47,4 +52,3 @@ is the signal. Each quarter is internally controlled, but model and host version
 trends are directional only. Famous pinned targets may inflate the bare arm and understate the
 framework delta. The A/B protocol certifies Claude only; Copilot evidence comes from checklist
 and canaries.
-

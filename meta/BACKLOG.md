@@ -226,7 +226,18 @@ canary prompt). Close the VS Code gap in the first cycle.
 **Invariants:** #5 #6 · maintainer-decided 2026-07-17 · executes B-43 on a cadence; complements
 (does **not** replace) B-42
 
-> **Design LOCKED 2026-07-17, re-locked same day after a second adversarial pass — do not
+> **STATUS REVALIDATED 2026-08-30 — EXECUTION DESIGN INVALIDATED; B-49 REMAINS OPEN.** Two
+> independent audits found that running the current packet would spend provider quota on an
+> instrument that cannot support its claimed verdict. The kit omits required C-rows/canaries and
+> invokes nonexistent convention-check scripts; July's real quota-stopped partial conflicts with
+> later “no drill”/unfrozen-pin records; task oracles and modern-agent isolation are incomplete; and
+> the primary target is archived while no replacement has passed Step 0. WSD-062 supersedes the
+> execution authority of WSD-022/WSD-044 without erasing their history. Do not resume the July run
+> or execute the packet. Re-lock only after a current target, executable valid/invalid oracles,
+> credential-free isolation, ordered canaries, latest released tag, and explicit model/time/credit
+> authority exist. This is a deferral of an invalid instrument, not completion of the value goal.
+>
+> **HISTORICAL design lock: locked 2026-07-17, re-locked same day after a second adversarial pass — do not
 > re-derive.** Full spec (version-under-test rule, targets, safety + state-hygiene protocol,
 > C1–C8 checklist, frozen A/B rubric with documented biases, recert canaries, report template,
 > degradation order; **18 findings folded across two critique passes**):
@@ -303,7 +314,9 @@ failures: one hard checklist failure = a defect entry, regardless of the rubric 
 > retirement signal that item exists to watch for, and this is the only instrument that could
 > produce one from outside this box.
 >
-> **KIT DELIVERED 2026-08-17; no drill run.** WSD-044 pins
+> **HISTORICAL STATUS CORRECTION:** the 2026-08-17 statement “no drill run” was false. A real but
+> incomplete July attempt had already executed C1 and parts of C3/C6 before quota stopped it; it is
+> now closed as incomplete and non-comparable, with no A/B or value claim. WSD-044 pins
 > `dotnet-architecture/eShopOnWeb` and `gothinkster/angular-realworld-example-app`, while leaving
 > both commit SHAs and all size/build/domain qualification explicitly to drill #0. The cold-run
 > checklist and frozen A/B rubric are in `meta/drill-kit.md`. RCA: no gate caught the missing kit

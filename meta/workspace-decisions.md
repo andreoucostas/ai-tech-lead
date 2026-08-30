@@ -2790,3 +2790,44 @@ recurred. The focused provider is the smaller evidence-bearing middle.
 case-insensitive duplicate protection; `BASH_COMPAT=3.2`; a broad syntax grep; Homebrew Bash; a
 three-distribution or full hook/meta macOS matrix; treating the macOS job as Windows/Linux evidence;
 and keeping the frozen-parent replay after its first observed red/green run.
+
+---
+
+## WSD-062: invalidate B-49's stale execution protocol before spending live-agent budget (2026-08-30)
+
+**Context.** B-49's July design was appropriately adversarial for its time, but the instrument did
+not stand still. The only attempted drill stopped on quota before bootstrap or A/B; later records
+incorrectly said no drill ran and that its pins remained future work. The executable kit omits
+locked checklist rows and every recertification canary, and names two convention-check scripts that
+do not exist. The frozen T1 has no functional executable oracle, T2 does not require its unit oracle
+against both final arms, and the protocol neither inventories nor equalizes possible global-
+instruction, memory, plugin/MCP, and session-state influences. Git-history leakage was observed; the
+protocol does not enforce history or cross-arm filesystem isolation. The primary target
+is archived; the active successor and fallback require .NET 10 on the current .NET-8 host, and the
+fallback is a template rather than the required real application. WSD-058 separately demonstrated
+that a one-line bounded task can ceiling current models and produce little discriminatory value.
+
+**Decision.** WSD-022 and WSD-044 remain historical design/target records but no longer authorize
+execution. Close the July attempt as incomplete, non-comparable, and valueless for A/B; retain its
+literal checklist observations. Mark the current kit non-executable rather than partially repairing
+one dead command. Keep B-49 open because the live-fire goal remains valuable, but require a fresh
+adversarial re-lock before any clone/build or provider call is counted as a drill.
+
+The replacement gate is outcome-shaped: latest released framework tag; one exact-SHA target that
+passes source-count/domain/license and Windows baseline build/test qualification; an executable
+valid-pass and invalid/pre-change-fail oracle for each scored task; decision-specific discrimination
+where conventions are scored; a credential-free boundary for third-party restore/build code;
+enforced history/filesystem isolation plus access canaries; one ordered host-canary run book; and
+explicit maintainer choices for exact model, human bootstrap participation, time cap, and provider
+credit/spend cap. No replacement target is currently qualified. Do not spend quota merely to test
+availability.
+
+**Proportionality.** This change adds no product machinery, test, target clone, scheduled work, or
+new backlog item. It prevents a known-invalid experiment from consuming at least six task turns plus
+bootstrap/review/canary sessions. B-175 remains the next local code candidate because it fixes a
+reachable consumer false diagnosis without live budget.
+
+**Rejected.** Continuing July across dates/models; calling an unreleased HEAD run a quarterly data
+point; treating the archived/famous target bias as necessarily conservative; patching only the dead
+script names; cloning/building third-party code before a credential-free boundary exists; using
+process presence as quota evidence; and adding permanent tests for maintainer-only prose.

@@ -1,5 +1,11 @@
 # Quarterly live-fire drill kit
 
+> **EXECUTION PAUSED 2026-08-30 — DO NOT RUN THIS PACKET.** WSD-062 found it is not a faithful
+> implementation of the historical locked design: required checklist/canary work is missing,
+> `scripts/convention-check.ps1`/`.sh` do not exist, the target/pin records conflict, and the task
+> oracles and current-agent isolation boundary cannot support a countable value verdict. The content
+> below is retained as historical input to a future re-lock, not as executable instructions.
+
 This is an execution kit, not evidence that a drill ran. Run it only in a maintainer-approved
 session with real clone, build, and agent budget. Record literal commands and outputs in the drill
 report; never turn an unrun step into an observation.

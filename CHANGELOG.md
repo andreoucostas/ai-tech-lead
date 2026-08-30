@@ -13,6 +13,15 @@
 
 ## 0.78.4 — Unreleased
 
+**B-49's stale live-fire packet is paused before it consumes provider quota.** WSD-062 records that
+the July attempt ended incomplete and cannot be resumed across changed models, hosts, and framework
+versions. The packet omits required checklist/canary work, invokes nonexistent scripts, lacks the
+newer valid/invalid oracle and isolation controls, and has no currently qualified replacement for
+its archived primary target. B-49 remains open because real value evidence still matters, but a
+future run now requires a fresh reviewed protocol, current released tag, Step-0-qualified target,
+credential-free isolation, and explicit model/time/credit authority. No consumer artifact or test
+was added.
+
 **The skill-mirror sync no longer depends on Bash 4 for a decorative count.** B-205 removes the
 recursive count from both script twins and emits one exact count-free completion verdict. The
 mirror operation, missing-source behavior, and Git-root fallback are unchanged; consumers that

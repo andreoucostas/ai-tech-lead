@@ -1,14 +1,43 @@
-# B-49 · Quarterly live-fire drill — design (LOCKED)
+# B-49 · Quarterly live-fire drill — historical design (execution invalidated)
 
-**Status: LOCKED 2026-07-17 (WSD-022), re-locked same day after a second adversarial pass.
-Do not re-derive.** Two critique passes folded: the pre-lock pass (F1–F8) and a maintainer-
-requested post-lock adversarial review (F9–F18) — 18 findings total, listed at the bottom. The
-only outstanding work is execution: drill #0 (which freezes the per-target appendix), then one
-drill per quarter on the reminder.
+**Status: HISTORICAL — DO NOT EXECUTE. WSD-062 invalidated this protocol on 2026-08-30.** The
+2026-07-17 lock and its two critique passes remain below as history, not current authority. A future
+countable live-fire run requires a fresh adversarially reviewed protocol; do not resume the July
+partial or spend provider quota from this document.
 
 **Decision record:** `meta/workspace-decisions.md` WSD-022 · **Backlog entry:** B-49
 **Reminder routine:** `trig_01EL25XDM2pMDaFkRBSGjF1V` fires 08:00 UTC on 1 Jan/Apr/Jul/Oct
 (claude.ai/code/routines). The routine only *reminds*; every drill is maintainer-run, locally.
+
+---
+
+## 2026-08-30 revalidation — why execution stopped
+
+Current-model and instrument-truth revalidation found the executable packet is not a faithful or
+safe implementation of this design. `meta/drill-kit.md` omits locked C2, C4, C6, the explicit C7
+threshold, monorepo smoke, and the recertification canaries, while requiring nonexistent
+`scripts/convention-check.ps1`/`.sh`. The July report is a real quota-stopped partial with no A/B,
+yet later records say no drill ran and that pins remain future work even though this Appendix froze
+them. Continuing it months later would violate the same-day/model control.
+
+The measurement contract also predates later evidence rules. T1 has no executable functional
+oracle, T2 does not explicitly require its unit oracle against both final arms, and the protocol
+does not inventory or equalize possible global-instruction, memory, plugin/MCP, or session-state
+influences; nor does it enforce Git-history and cross-arm filesystem isolation. The primary .NET
+repository is archived; its current
+community successor and the recorded fallback require .NET 10 on a host currently carrying .NET 8,
+and the fallback is a solution template rather than the required real application. The assertion
+that famous/stale target memorisation can only conservatively bias the result is unsupported.
+
+No countable drill starts until a replacement protocol: closes the July attempt as incomplete and
+non-comparable; selects and Step-0-qualifies a current target at an exact SHA; supplies valid-pass
+and invalid-fail executable oracles for every scored task; defines a credential-free supply-chain
+and cross-arm isolation boundary; implements one ordered canary run book; uses the latest released
+framework tag; and freezes model, human-interaction, time, and provider-credit caps with explicit
+maintainer authority. No replacement target is currently qualified.
+
+This invalidation prevents low-value spend. It does not claim the live-fire goal is complete and
+does not weaken the requirement for real value evidence.
 
 ---
 
