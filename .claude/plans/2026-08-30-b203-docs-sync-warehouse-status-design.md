@@ -3,7 +3,7 @@
 **Date:** 2026-08-30
 **Filed against:** v0.78.3
 **Planned:** v0.78.4
-**Status:** DESIGN LOCKED — implementation not started
+**Status:** IMPLEMENTATION IN PROGRESS — red observed; WPS5 oracle amendment approved
 
 ## Value and proportionality decision
 
@@ -76,14 +76,17 @@ so no result can inherit a previous world's stub. Status 1 emits a unique child 
 the existing missing/stale note exactly once, never the new note. Status 2 emits one unique stderr
 sentinel per wrapper. The unexpected world uses a different world-specific sentinel from status 2,
 identical only between its PowerShell stub that exits -1 and Bash stub that exits 7. In both unable
-worlds, require the applicable sentinel and new note exactly once per wrapper, the missing/stale note
-absent, and each clean wrapper to exit 0.
-`RunArg` may decorate redirected native stderr with `NativeCommandError` under Windows PowerShell
-5.1, so the permanent oracle must not assert that this harness decoration is absent; retain a
-separate direct, no-redirection Windows PowerShell 5.1 probe as implementation evidence.
+worlds, split stderr into physical lines on CRLF, LF, or CR; trim each line; and require exactly one
+line whose text ends with the applicable sentinel using ordinal comparison. Require the new note
+literally exactly once per wrapper, the missing/stale note absent, and each clean wrapper to exit 0.
+`RunArg` decorates redirected native stderr with `NativeCommandError` under Windows PowerShell 5.1
+and repeats the sentinel literal inside `CategoryInfo`, so raw literal cardinality and absence of
+that harness decoration are explicitly invalid oracles. Retain a separate direct, no-redirection
+Windows PowerShell 5.1 probe as implementation evidence.
 
 Capture every template/consumer world and both twin results before making assertions, then assert
-exit behavior, normalized stdout agreement, and every sentinel/note cardinality per wrapper. This
+exit behavior, normalized stdout agreement, stdout/note literal cardinality, and the stderr
+terminal-line cardinality per wrapper. This
 prevents the first failing unable world from hiding whether the unexpected-status world also went
 red. Run the changed test against the unchanged wrappers first: both unable worlds must be observed
 failing because the old note appears and the new note does not. The corrected wrappers must make the
@@ -101,6 +104,18 @@ through the permanent harness. It also retains the existing missing-mirror branc
 world, captures all worlds before assertions, and makes every cardinality per wrapper. Both
 reviewers approved this exact corrected contract; the maintainer independently reproduced the
 negative exit behavior under PowerShell 7 and Windows PowerShell 5.1.
+
+## Implementation-time oracle amendment
+
+The changed result against the unchanged wrappers was red exactly in both unable worlds for both
+twins: each lacked the new note and emitted the contradictory old note. After the minimal product
+branches, PowerShell 7 passed 10/10. Native Windows PowerShell 5.1 runs, including code page 437,
+then falsified only the planned raw stderr-substring count: one child emission appeared twice
+literally, first in the primary ErrorRecord line and again in `CategoryInfo`; wrapper notes and exits
+were correct. Reviewers `/root/b199_adversary`, `/root/b203_design`, and `/root/b199_value`
+approved the physical-terminal-line oracle above. It remains exact for one logical diagnostic and
+still fails on two child emissions, without changing `RunArg`, adding a run, or weakening note/status
+coverage.
 
 ## Verification and completion boundary
 

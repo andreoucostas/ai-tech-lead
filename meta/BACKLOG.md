@@ -2735,7 +2735,7 @@ dotnet/monorepo composition, and an install smoke; do not add a test that merely
 ### B-203 · Preserve warehouse-map verification failure in the docs-sync advisory
 **Effort:** S · **Priority:** P2 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-30)
-**Status:** DESIGN LOCKED — implementation not started
+**Status:** IMPLEMENTATION IN PROGRESS — red observed; WPS5 oracle amendment approved
 **Plan:** `.claude/plans/2026-08-30-b203-docs-sync-warehouse-status-design.md`
 
 **Why:** both `docs-sync-check` twins currently translate every nonzero `warehouse-map-check` exit
@@ -2753,10 +2753,13 @@ must retain and assert the existing missing-`.github/skills` directory failure, 
 sentinel, overall exit 1, and absence of either warehouse note. After repairing that mirror, capture
 status 1, status 2, and an unexpected-status world (-1 PowerShell / 7 Bash) before asserting. Give
 status 2 and unexpected different world-specific stderr sentinels, shared only between each world's
-twins; assert the applicable sentinel and new note exactly once per wrapper, the missing/stale note
-absent, and statuses 1/2/unexpected non-failing. Add no suite, `It`, or extra wrapper run, and prove
-both unable worlds red on the unchanged wrappers before correction. Compose all distributions, run
-both validator twins, and require the modified test's first Windows/Linux CI before completion or
+twins. For stderr only, split physical lines on CRLF/LF/CR, trim them, and require exactly one line
+ending ordinally in the applicable sentinel; raw literal count is invalid because Windows
+PowerShell 5.1 repeats the token in ErrorRecord metadata. Keep stdout and wrapper-note literal
+cardinalities exact; require the new note once per wrapper, the missing/stale note absent, and
+statuses 1/2/unexpected non-failing. Add no suite, `It`, or extra wrapper run, and prove both unable
+worlds red on the unchanged wrappers before correction. Compose all distributions, run both
+validator twins, and require the modified test's first Windows/Linux CI before completion or
 release.
 
 ---
