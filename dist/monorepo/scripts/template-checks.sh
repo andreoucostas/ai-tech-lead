@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # AI Tech Lead deterministic framework checks — bash twin of template-checks.ps1.
-# Exit 0 = pass, otherwise the failure count. Runs in the template repo (CI) and in consumer
+# Exit 0 = verified clean, 3 = verified finding(s), 2 = required input could not be inspected.
+# Any other nonzero is an abnormal/incomplete run. Runs in the template repo (CI) and in consumer
 # repos (invoked by docs-sync-check). Checks cover version/mirror/BOM/twin/skills-directory/Common
 # Tasks inventory parity, minus the PS-syntax parse (the CI windows leg covers it).
 set -u
@@ -22,7 +23,7 @@ if [ "$is_template_repo" -eq 1 ] && [ -f CHANGELOG.md ]; then
   changelog_heads=$(grep -E '^## [0-9]+\.[0-9]+\.[0-9]+ — (Unreleased|[0-9]{4}-[0-9]{2}-[0-9]{2})$' CHANGELOG.md)
   grep_status=$?
   if [ "$grep_status" -gt 1 ]; then
-    echo "FAIL: grep could not inspect CHANGELOG.md (exit $grep_status) — this is a host/resource problem, so changelog headings cannot be verified."
+    echo 'CANT-VERIFY: template-checks could not inspect CHANGELOG.md; changelog headings remain UNKNOWN. Fix the host/resource read problem and rerun.'
     exit 2
   fi
   v_log_line=$(sed -n '/^## /{p;q;}' CHANGELOG.md)
@@ -294,6 +295,6 @@ if [ -f CLAUDE.md ] && [ -f AGENTS.md ]; then
 fi
 
 echo ""
-if [ "$failed" -gt 0 ]; then echo "$failed framework check(s) FAILED."; exit "$failed"; fi
+if [ "$failed" -gt 0 ]; then echo "$failed framework check(s) FAILED."; exit 3; fi
 echo "All deterministic framework checks passed."
 exit 0

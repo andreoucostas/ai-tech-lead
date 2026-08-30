@@ -1864,3 +1864,23 @@ boundary: require exact success, empty stderr, and each generated tree's indepen
 the canonical source. A disposable equal-failure mutation proved that boundary without adding a
 permanent result. Test economy means retaining the smallest oracle that can reject the wrong state,
 not preserving every historical observation or growing cardinality whenever an assertion improves.
+
+## 2026-08-30 — Reviewer agreement does not make a fixture fact true
+
+Both independent B-175 reviews said the existing `9.9.9` mutation produced two findings. The first
+captured red run returned one: version validation is a single `if`/`elseif` chain, so one input
+cannot trigger both branches. The correction was to preserve that observation in the locked record
+and construct a second independent finding, not to reinterpret the output or silently rewrite the
+evidence. Adversarial review improves a design, but every factual premise still needs execution.
+
+Finding counts belong in human output, not an overlapping process-status namespace. A fixed finite
+protocol lets a caller distinguish verified findings from incomplete examination; every unassigned
+nonzero must degrade to unknown. The caller should also stay at the checker's abstraction level:
+“integrity findings—run the checker” is truthful, while guessing mirror drift and prescribing
+`/generate-copilot` is false for syntax, BOM, hook-twin, skill, or version findings.
+
+Hostile evidence can expose valid work outside the current consequence. B-175's changed doctor
+matrix passed under native Windows PowerShell 5.1, while a different Copilot-visibility fixture
+failed because another nested Bash `-c` argument was mangled. Keep the current verdict intact,
+record the distinct test-truth debt as B-207, and do not either widen the product patch or call the
+whole host suite green.

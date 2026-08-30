@@ -1,8 +1,9 @@
 # B-175 · Template-check status contract — locked design
 
-**Status: LOCKED 2026-08-30 — implementation has not started.** Two independent exact-record
-reviews approved after narrowing the reach claim, preserving Bash transport, making both doctor
-messages causally generic, and requiring independent `2`/`3` boundary mutations.
+**Status: IMPLEMENTED CANDIDATE 2026-08-30 — immutable review and first candidate CI pending.** Two
+independent exact-record reviews approved after narrowing the reach claim, preserving Bash
+transport, making both doctor messages causally generic, and requiring independent `2`/`3` boundary
+mutations.
 
 **Pre-implementation evidence correction.** The first captured red run disproved both reviewers'
 claim that the existing `9.9.9` fixture alone creates two findings: it creates one because the
@@ -98,3 +99,20 @@ Rejected: parsing a textual marker in the doctor (encoding, stream, and spoofing
 a high status while retaining an unbounded count (future collision); using status `1` for findings
 (ordinary shell/PowerShell failures commonly use it); a sidecar file (new cleanup/resource failure
 surface); a new suite, result, or general checker exception taxonomy.
+
+## Candidate evidence
+
+With only the two existing results changed, the corrected two-finding world failed 9/1 on the
+unchanged checker (`2`, expected fixed `3`) and the unchanged doctor failed 32/1 by retaining guessed
+remediation. The candidate passed 10/0 and 33/0 under PowerShell 7. Four independent temporary
+mutations were rejected: numeric finding exits (9/1), old resource diagnostics (9/1), doctor
+`2 -> MISSING` (32/1), and doctor `3 -> CANT-VERIFY` (32/1); exact restoration returned 10/0 and
+33/0. Native Windows PowerShell 5.1/code page 437 passed ScriptTwinParity 10/0. Its full doctor suite
+ran the changed matrix green but remained 31/1/1 on an unrelated pre-existing Copilot-visibility
+setup transport defect, now B-207; this candidate does not claim that full suite green.
+
+PowerShell and Bash composers converged at 173/169/183 files with one identical 525-file SHA-256
+manifest. Both validator twins passed all three distributions. The composed dotnet focused suites
+passed 10/0 and 33/0, and all six source core files match their eighteen generated counterparts by
+SHA-256. PowerShell parsing, Bash syntax, stack changelog parity, and generated BOM checks passed.
+Native Linux and first exact-candidate Windows/Linux CI remain unavailable local evidence.

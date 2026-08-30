@@ -7,6 +7,13 @@
 
 ## 0.78.4 — Unreleased
 
+- The framework doctor now reports deterministic-check findings separately from checks it could
+  not complete. `scripts/template-checks` uses exit `0` for clean, `3` for one or more verified
+  findings, and `2` when required input could not be inspected; the printed finding count is
+  unchanged. The doctor maps only `3` to `MISSING`, tells you to run the checker and follow its
+  exact findings, and reports other nonzero exits as non-failing `CANT-VERIFY`. If custom automation
+  treated the old exit code as the finding count, read the printed summary or handle `3` instead.
+
 - The Copilot skill-mirror script now works with stock macOS `/bin/bash` 3.2. Its completion
   message is now `Synced skills: .claude/skills -> .github/skills`; the informational count was
   removed from both script variants because it did not affect mirroring. If automation parses the

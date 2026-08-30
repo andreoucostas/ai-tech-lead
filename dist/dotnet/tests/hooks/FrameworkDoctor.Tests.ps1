@@ -463,7 +463,35 @@ It 'hook registrations resolve arguments and every command in minified JSON' {
 # Non-pending cases reach Mirror and Audit; the controlled template matrix below separately forces
 # every Stack-toolchain marker with both available and absent command sets.
 It 'twins agree outside the parser row on non-pending mirror pass' {$r=Fixture -Shell 'bash';$bin=New-ParserProbeBin $bash;$old=$env:PATH;try{$env:PATH=(Split-Path $bash -Parent)+[IO.Path]::PathSeparator+$bin+[IO.Path]::PathSeparator+$old;$p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$s=Run (Join-Path $r 'scripts/framework-doctor.sh');$c=Compare-DoctorResults $p $s @('Guard JSON parser');Assert ($c.PowerShell.Rows['Mirror and version integrity'].State-eq'OK') 'PS mirror row'}finally{$env:PATH=$old;Remove-Item -Recurse -Force $r,$bin}}
-It 'twins agree outside the parser row on non-pending mirror failure' {$r=Fixture -Shell 'bash';$bin=New-ParserProbeBin $bash;$old=$env:PATH;try{Put (Join-Path $r 'scripts/template-checks.ps1') ([char]0xFEFF+'exit 1') $false;Put (Join-Path $r 'scripts/template-checks.sh') "#!/usr/bin/env bash`nexit 1`n";$env:PATH=(Split-Path $bash -Parent)+[IO.Path]::PathSeparator+$bin+[IO.Path]::PathSeparator+$old;$p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$s=Run (Join-Path $r 'scripts/framework-doctor.sh');$c=Compare-DoctorResults $p $s @('Guard JSON parser');Assert ($c.PowerShell.Rows['Mirror and version integrity'].State-eq'MISSING') 'PS mirror row'}finally{$env:PATH=$old;Remove-Item -Recurse -Force $r,$bin}}
+It 'twins agree outside the parser row on non-pending mirror failure' {
+    $r=Fixture -Shell 'bash';$bin=New-ParserProbeBin $bash;$old=$env:PATH
+    try{
+        $env:PATH=(Split-Path $bash -Parent)+[IO.Path]::PathSeparator+$bin+[IO.Path]::PathSeparator+$old
+        foreach($world in @(
+            [pscustomobject]@{Status=3;State='MISSING'},
+            [pscustomobject]@{Status=2;State='CANT-VERIFY'},
+            [pscustomobject]@{Status=1;State='CANT-VERIFY'}
+        )){
+            Put (Join-Path $r 'scripts/template-checks.ps1') ([char]0xFEFF+"exit $($world.Status)") $false
+            Put (Join-Path $r 'scripts/template-checks.sh') "#!/usr/bin/env bash`nexit $($world.Status)`n"
+            $p=Run (Join-Path $r 'scripts/framework-doctor.ps1')
+            $s=Run (Join-Path $r 'scripts/framework-doctor.sh')
+            $c=Compare-DoctorResults $p $s @('Guard JSON parser')
+            $pr=$c.PowerShell.Rows['Mirror and version integrity'];$sr=$c.Bash.Rows['Mirror and version integrity']
+            Assert ($pr.State-eq$world.State) "PowerShell checker status $($world.Status) mapped to $($pr.State), expected $($world.State)"
+            Assert ($sr.State-eq$world.State) "bash checker status $($world.Status) mapped to $($sr.State), expected $($world.State)"
+            Assert ($pr.Detail-notmatch'/generate-copilot'-and$sr.Detail-notmatch'/generate-copilot') "checker status $($world.Status) retained guessed remediation"
+            if($world.Status-eq 3){
+                $expected='template-checks reported integrity findings. Run it directly and follow its exact findings.'
+                Assert ($pr.Detail-ceq$expected-and$sr.Detail-ceq$expected) "verified-finding guidance changed: PS='$($pr.Detail)' SH='$($sr.Detail)'"
+            }else{
+                $needle="did not complete (exit $($world.Status))"
+                Assert ($pr.Detail.Contains($needle)-and$pr.Detail.Contains('UNKNOWN rather than missing')) "PowerShell abnormal status detail changed: $($pr.Detail)"
+                Assert ($sr.Detail.Contains($needle)-and$sr.Detail.Contains('UNKNOWN rather than missing')) "bash abnormal status detail changed: $($sr.Detail)"
+            }
+        }
+    }finally{$env:PATH=$old;Remove-Item -Recurse -Force $r,$bin}
+}
 It 'Stack toolchain rows use byte-identical doctor-process wording for every template and outcome' {
     $old=$env:PATH
     try{

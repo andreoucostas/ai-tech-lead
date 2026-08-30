@@ -51,7 +51,64 @@ function DocsFixture { $r=Temp docs;CopyPair docs-sync-check $r;Put (Join-Path $
 Reset-Tests
 if(-not $bash){foreach($n in 'template-checks clean and drift','docs-sync-check branches and advisories','sync-agent-files recursive mirror','metrics counters'){Skip $n 'bash unavailable; twin comparison requires bash'};exit (Write-TestSummary 'ScriptTwinParity.Tests')}
 
-It 'template-checks clean and planted drift agree in order' {$r=TemplateFixture;try{$ps=Join-Path $r scripts/template-checks.ps1;$sh=Join-Path $r scripts/template-checks.sh;$pt=[IO.File]::ReadAllText($ps);$st=[IO.File]::ReadAllText($sh);Assert (([regex]::Matches($pt,'files parse cleanly\.')).Count-eq 1) 'PowerShell parse-success emission count changed';Assert (([regex]::Matches($st,'files parse cleanly\.')).Count-eq 1) 'bash parse-success emission count changed';foreach($drift in $false,$true){if($drift){Put (Join-Path $r '.claude/framework-version.json') '{"version":"9.9.9"}'};$p=RunArg $ps;$s=RunArg $sh;AssertExit $p $s 'template-checks';$recs=Records $p.Out;AssertSeq $recs (Records $s.Out) 'template-checks';if(-not $drift){foreach($want in $ExpectedChecks){$hits=@($recs|Where-Object{$_-like "*$want*"}).Count;Assert ($hits-ge 1) "check '$want' was never reached -- the fixture stopped exercising it, so the twins would agree vacuously here. Restore the fixture input that triggers it."}};if($drift){Assert ($p.Out.Contains('version-stamp drift: CLAUDE.md says 1.2.3, framework-version.json says 9.9.9.')) 'PowerShell drift failure missing';Assert ($s.Out.Contains('version-stamp drift: CLAUDE.md says 1.2.3, framework-version.json says 9.9.9.')) 'bash drift failure missing'}}}finally{Remove-Item -Recurse -Force $r}}
+It 'template-checks clean and planted drift agree in order' {
+    $r=TemplateFixture
+    try {
+        $ps=Join-Path $r scripts/template-checks.ps1
+        $sh=Join-Path $r scripts/template-checks.sh
+        $pt=[IO.File]::ReadAllText($ps)
+        $st=[IO.File]::ReadAllText($sh)
+        Assert (([regex]::Matches($pt,'files parse cleanly\.')).Count-eq 1) 'PowerShell parse-success emission count changed'
+        Assert (([regex]::Matches($st,'files parse cleanly\.')).Count-eq 1) 'bash parse-success emission count changed'
+
+        $driftResult=$null
+        foreach($drift in $false,$true){
+            if($drift){
+                Put (Join-Path $r '.claude/framework-version.json') '{"version":"9.9.9"}'
+                Remove-Item -LiteralPath (Join-Path $r '.github/copilot-instructions.md') -Force
+            }
+            $p=RunArg $ps;$s=RunArg $sh
+            AssertExit $p $s 'template-checks'
+            $recs=Records $p.Out
+            AssertSeq $recs (Records $s.Out) 'template-checks'
+            if(-not $drift){
+                foreach($want in $ExpectedChecks){
+                    $hits=@($recs|Where-Object{$_-like "*$want*"}).Count
+                    Assert ($hits-ge 1) "check '$want' was never reached -- the fixture stopped exercising it, so the twins would agree vacuously here. Restore the fixture input that triggers it."
+                }
+            }else{
+                Assert ($p.Out.Contains('version-stamp drift: CLAUDE.md says 1.2.3, framework-version.json says 9.9.9.')) 'PowerShell drift failure missing'
+                Assert ($s.Out.Contains('version-stamp drift: CLAUDE.md says 1.2.3, framework-version.json says 9.9.9.')) 'bash drift failure missing'
+                $driftResult=[pscustomobject]@{PowerShell=$p;Bash=$s}
+            }
+        }
+
+        # Reach each twin's real CHANGELOG read-failure branch by changing only its input operand.
+        # Synthesising exit 2 would prove the assertion, not the checker behavior.
+        $absent='CHANGELOG.__b175_absent__'
+        Assert (-not(Test-Path -LiteralPath (Join-Path $r $absent))) 'resource fixture path unexpectedly exists'
+        $psSource=[IO.File]::ReadAllText($ps)
+        $psAnchor="Resolve-Path -LiteralPath 'CHANGELOG.md'"
+        Assert ((LiteralCount $psSource $psAnchor)-eq 1) 'PowerShell CHANGELOG input anchor changed'
+        PutBom $ps ($psSource.Replace($psAnchor,"Resolve-Path -LiteralPath '$absent'"))
+        $shSource=[IO.File]::ReadAllText($sh)
+        $shLines=@($shSource -split "`r?`n"|Where-Object{$_.StartsWith('  changelog_heads=$(grep -E ')})
+        Assert ($shLines.Count-eq 1) 'bash CHANGELOG input anchor changed'
+        Assert ((LiteralCount $shLines[0] 'CHANGELOG.md')-eq 1) 'bash CHANGELOG operand count changed'
+        Put $sh ($shSource.Replace($shLines[0],$shLines[0].Replace('CHANGELOG.md',$absent)))
+        $resourceP=RunArg $ps;$resourceS=RunArg $sh
+        AssertExit $resourceP $resourceS 'template-checks resource failure'
+
+        $summary='2 framework check(s) FAILED.'
+        Assert ($driftResult.PowerShell.Exit-eq 3) "PowerShell two-finding drift exit=$($driftResult.PowerShell.Exit), expected fixed status 3"
+        Assert ($driftResult.Bash.Exit-eq 3) "bash two-finding drift exit=$($driftResult.Bash.Exit), expected fixed status 3"
+        Assert ($driftResult.PowerShell.Out.Contains($summary)) 'PowerShell printed finding count changed'
+        Assert ($driftResult.Bash.Out.Contains($summary)) 'bash printed finding count changed'
+        $resourceDiagnostic='CANT-VERIFY: template-checks could not inspect CHANGELOG.md; changelog headings remain UNKNOWN. Fix the host/resource read problem and rerun.'
+        Assert ($resourceP.Exit-eq 2-and$resourceP.Out.Trim()-ceq$resourceDiagnostic) "PowerShell resource contract changed: exit=$($resourceP.Exit) out='$($resourceP.Out)'"
+        Assert ($resourceS.Exit-eq 2-and$resourceS.Out.Trim()-ceq$resourceDiagnostic) "bash resource contract changed: exit=$($resourceS.Exit) out='$($resourceS.Out)'"
+    }finally{Remove-Item -Recurse -Force $r}
+}
 
 It 'template-checks Common Tasks twins agree on planted inventory failures and edge fixtures' {
     foreach ($case in 'one-sided','duplicate','zero-extraction','absent-one','case-variant','single-slug','absent-both') {

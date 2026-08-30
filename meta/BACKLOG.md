@@ -2702,7 +2702,7 @@ fallback. Do not add a fourth parser or a standalone suite.
 ### B-175 · Give template-check resource failures a distinct doctor-visible status
 **Filed against:** v0.77.0 (2026-08-24)
 **Effort:** S · **Priority:** P3
-**Status:** DESIGN LOCKED 2026-08-30 — two independent exact-record reviews approved
+**Status:** IMPLEMENTED CANDIDATE 2026-08-30 — local review pending; first Windows/Linux CI required
 **Plan:** `.claude/plans/2026-08-30-b175-template-check-status-design.md`
 **Decision:** WSD-063
 
@@ -2715,6 +2715,28 @@ statuses to `CANT-VERIFY`; neither branch guesses a specific artifact or recomme
 `/generate-copilot`, and the printed finding count remains. Fold fixed-status, resource, and abnormal
 worlds into the two existing twin/doctor results. Add no test file, `It`, output parser, sidecar, or
 general exception taxonomy.
+
+**Candidate evidence:** the first captured red invalidated both reviewers' claim that the existing
+version fixture made two findings: it made one. After the record and fixture were corrected to add
+one independent missing-file finding, the unchanged checker failed 9/1 at exit 2 versus required 3;
+the unchanged doctor failed 32/1 on guessed remediation. The candidate passed ScriptTwinParity
+10/0 and FrameworkDoctor 33/0 under PowerShell 7. Numeric-count, old-resource-text,
+`2 -> MISSING`, and `3 -> CANT-VERIFY` mutations each failed the intended existing result before
+exact restoration returned both suites green. Native Windows PowerShell 5.1/code page 437 passed
+ScriptTwinParity 10/0 and ran the changed doctor matrix green; the full doctor file remained 31/1/1
+on a separate pre-existing Copilot-visibility setup failure, now B-207, so no full 5.1 green is
+claimed. Both composers converged at 173/169/183 files and one 525-file SHA-256 manifest; both
+validator twins passed all distributions; composed dotnet passed 10/0 and 33/0; all six core source
+files match all generated copies. Native Linux and first candidate CI remain pending.
+
+**RCA/census:** no gate caught the collision because the checker intentionally used its finding
+count as process status and the doctor result covered only pass plus a generic exit-1 failure. The
+result never constructed two findings, resource inability, or abnormal termination, and its old
+assertion accepted the same false remediation for every nonzero. All repository callers were swept:
+both validators and both docs-sync wrappers consume only zero/nonzero and remain compatible; the
+doctor is the only caller that assigns meaning within nonzero statuses. The hostile-host run exposed
+one separate legacy native-argument transport defect in the doctor test harness; B-207 keeps that
+test-truth repair out of this product change.
 
 ### B-176 · Enforce unique warehouse signal-category definitions
 **Filed against:** v0.77.0 (2026-08-24)
@@ -2978,6 +3000,27 @@ assertions were green. The only other generated-junction cleanup is this file's 
 Its outside directory is invariantly empty, and it passed the exact old-red run plus every candidate
 run without observed residue, so B-206 does not widen on mechanism resemblance alone. Native Linux
 must still exercise the POSIX symlink path, and candidate CI remains pending.
+
+---
+
+### B-207 · Make the doctor Copilot-visibility fixture portable to Windows PowerShell 5.1
+**Effort:** S · **Priority:** P2 · **planned >= v0.78.5**
+**Filed against:** v0.78.3 (2026-08-30)
+
+**Why:** B-175's required native Windows PowerShell 5.1 run executed its changed doctor matrix
+successfully but left the full file at 31/1/1. The existing `Copilot CLI visibility is controlled`
+setup invokes Git Bash with a nested `-c` string containing `>/dev/null`; legacy native-argument
+marshalling turns that fragment into a repository-relative Windows path. Bash reports
+`.../>/dev/null: No such file or directory`, and the constructed `both` world falsely says Copilot
+is absent. PowerShell 7 passes 33/0. This is the same transport class as B-201 but a fourth site
+outside its already-reviewed candidate, not evidence against B-175 product behavior.
+
+**Do:** revalidate the exact PowerShell-5.1 argument corruption, then replace only this setup probe's
+multi-layer `-c` transport with the existing raw-process/stdin mechanism already approved in B-201.
+Preserve the four visibility worlds and doctor product code; add no suite, `It`, helper, hard-coded
+tool path, or new capability claim. Require the existing result to fail on an unexpected/empty probe
+outcome, pass under native 5.1 and PowerShell 7, and retain honest absence. Compose all distributions
+and require first modified-test Windows/Linux CI before completion.
 
 ---
 

@@ -13,6 +13,25 @@
 
 ## 0.78.4 — Unreleased
 
+**The framework doctor now distinguishes verified template-check findings from incomplete checks.**
+B-175 replaces count-valued checker exits with a fixed `0` clean / `3` findings / `2` required-input
+failure contract while preserving the printed finding count. The doctor maps only `3` to `MISSING`,
+uses generic direct-checker guidance instead of guessing `/generate-copilot`, and reports every
+other nonzero as non-failing `CANT-VERIFY`. The existing twin and doctor results were strengthened;
+no test file or result was added. External automation that interpreted the old exit as the finding
+count must read the unchanged summary or treat `3` as findings.
+
+The initial red run also corrected the reviewers' fixture claim before product editing: `9.9.9`
+alone yields one finding because version validation is one `if`/`elseif` chain. Pairing it with an
+independently missing Copilot instructions file constructed the required two-finding world, which
+failed 9/1 at exit `2` before the candidate returned 10/0 at fixed exit `3`. The unchanged doctor
+failed 32/1 on guessed remediation; four independent count, resource-text, status-2, and status-3
+mutations were then rejected before clean 10/0 and 33/0 reruns. PowerShell/Bash composers converged
+at 173/169/183 files and an identical 525-file manifest, both validators passed every distribution,
+and composed dotnet passed 10/0 plus 33/0. Native Windows PowerShell 5.1/code page 437 passed the
+twin suite 10/0 and the changed doctor matrix, but a separate pre-existing Copilot-visibility setup
+case leaves that full host run 31/1/1; B-207 records it. First candidate CI remains required.
+
 **B-49's stale live-fire packet is paused before it consumes provider quota.** WSD-062 records that
 the July attempt ended incomplete and cannot be resumed across changed models, hosts, and framework
 versions. The packet omits required checklist/canary work, invokes nonexistent scripts, lacks the

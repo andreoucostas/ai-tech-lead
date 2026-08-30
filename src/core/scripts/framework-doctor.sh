@@ -578,9 +578,12 @@ else
   # executable" (the exec bit, which Windows does not carry and Linux enforces).
   template_checks_out=$(bash "$root/scripts/template-checks.sh" 2>&1); template_checks_rc=$?
   if [ "$template_checks_rc" -eq 0 ]; then row OK 'Mirror and version integrity' 'template-checks passed.'
+  elif [ "$template_checks_rc" -eq 3 ]; then
+    row MISSING 'Mirror and version integrity' 'template-checks reported integrity findings. Run it directly and follow its exact findings.'
   elif [ "$template_checks_rc" -eq 126 ] || [ "$template_checks_rc" -eq 127 ]; then
     row CANT-VERIFY 'Mirror and version integrity' 'could not execute template-checks, so drift is UNKNOWN rather than found. This is a host problem, not a documentation problem. Fix: run scripts/template-checks.sh yourself and act on what it says.'
-  else row MISSING 'Mirror and version integrity' 'CLAUDE.md and AGENTS.md or version stamps have drifted. Fix: run /generate-copilot, then scripts/docs-sync-check.sh.'
+  else
+    row CANT-VERIFY 'Mirror and version integrity' "template-checks did not complete (exit $template_checks_rc), so integrity is UNKNOWN rather than missing. Run template-checks directly and inspect its output before changing framework files."
   fi
 fi
 

@@ -1,5 +1,6 @@
 ﻿# AI Tech Lead deterministic framework checks — PowerShell twin of template-checks.sh.
-# Exit 0 = pass, otherwise the failure count. Runs in BOTH contexts:
+# Exit 0 = verified clean, 3 = verified finding(s), 2 = required input could not be inspected.
+# Any other nonzero is an abnormal/incomplete run. Runs in BOTH contexts:
 #   - the template repo itself (wired into .github/workflows/template-ci.yml) — this is the gate
 #     that keeps the framework honest about its own invariants;
 #   - a consumer repo (invoked by docs-sync-check) — the same invariants hold after install.
@@ -37,7 +38,7 @@ if ($isTemplateRepo -and (Test-Path -LiteralPath 'CHANGELOG.md' -PathType Leaf))
     # [IO.File] path would resolve against the wrong directory.
     try { $clText = [IO.File]::ReadAllText((Resolve-Path -LiteralPath 'CHANGELOG.md').Path) }
     catch {
-        Write-Output 'FAIL: PowerShell could not inspect CHANGELOG.md; this is a host/resource problem, so changelog headings cannot be verified.'
+        Write-Output 'CANT-VERIFY: template-checks could not inspect CHANGELOG.md; changelog headings remain UNKNOWN. Fix the host/resource read problem and rerun.'
         exit 2
     }
     foreach ($l in ($clText -split "`r?`n")) {
@@ -296,6 +297,6 @@ if ((Test-Path 'CLAUDE.md') -and (Test-Path 'AGENTS.md')) {
 }
 
 Write-Output ''
-if ($failed -gt 0) { Write-Output "$failed framework check(s) FAILED."; exit $failed }
+if ($failed -gt 0) { Write-Output "$failed framework check(s) FAILED."; exit 3 }
 Write-Output 'All deterministic framework checks passed.'
 exit 0

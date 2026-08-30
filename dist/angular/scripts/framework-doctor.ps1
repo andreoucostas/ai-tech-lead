@@ -379,13 +379,18 @@ else {
             $hostExe = if ($PSVersionTable.PSEdition -eq 'Core') { 'pwsh' } else { 'powershell' }
         }
         $checkRan = $true
-        try { & $hostExe -NoProfile -ExecutionPolicy Bypass -File $check *> $null }
+        $checkStatus = $null
+        try {
+            & $hostExe -NoProfile -ExecutionPolicy Bypass -File $check *> $null
+            $checkStatus = $LASTEXITCODE
+        }
         catch { $checkRan = $false }
-        if (-not $checkRan) {
+        if (-not $checkRan -or $null -eq $checkStatus) {
             Row CANT-VERIFY 'Mirror and version integrity' 'could not start a PowerShell host to run template-checks, so drift is UNKNOWN rather than found. This is a host/PATH problem, not a documentation problem. Fix: run scripts/template-checks.ps1 yourself and act on what it says.'
         }
-        elseif ($LASTEXITCODE -eq 0) { Row OK 'Mirror and version integrity' 'template-checks passed.' }
-        else { Row MISSING 'Mirror and version integrity' 'CLAUDE.md and AGENTS.md or version stamps have drifted. Fix: run /generate-copilot, then scripts/docs-sync-check.ps1.' }
+        elseif ($checkStatus -eq 0) { Row OK 'Mirror and version integrity' 'template-checks passed.' }
+        elseif ($checkStatus -eq 3) { Row MISSING 'Mirror and version integrity' 'template-checks reported integrity findings. Run it directly and follow its exact findings.' }
+        else { Row CANT-VERIFY 'Mirror and version integrity' ("template-checks did not complete (exit {0}), so integrity is UNKNOWN rather than missing. Run template-checks directly and inspect its output before changing framework files." -f $checkStatus) }
     } else { Row MISSING 'Mirror and version integrity' 'template-checks is missing. Fix: re-run the installer.' }
 }
 
