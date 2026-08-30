@@ -2702,8 +2702,8 @@ fallback. Do not add a fourth parser or a standalone suite.
 ### B-175 · Give template-check resource failures a distinct doctor-visible status
 **Filed against:** v0.77.0 (2026-08-24)
 **Effort:** S · **Priority:** P3
-**Status:** EXISTING-RESULT AMENDMENT LOCKED — corrected wrapper product `ae5d0c0` approved by two
-adversarial implementation reviews; zero-growth B-149 Bash `-e` oracle pending
+**Status:** IMPLEMENTED CANDIDATE `b36c6e99b61daf099ba227e8a566a342f5efd625` — two immutable
+reviews approved; exact-candidate provider CI and native Bash 3.2 pending
 **Plan:** `.claude/plans/2026-08-30-b175-template-check-status-design.md`
 **Decision:** WSD-063
 
@@ -2770,6 +2770,20 @@ and second full-meta 0/31 checks. Both implementation reviewers approved the pro
 permanent change newly justified: invoke the existing B-149 Bash arm with `-e`. That exact existing
 run is red on `d3e19c5` and green on `ae5d0c0`, while adding no test, `It`, result, fixture, runtime
 pass, or backlog item. Native Bash 3.2 and exact-final-candidate provider CI remain pending.
+
+**Final immutable review:** two independent read-only reviews approved exact candidate
+`b36c6e99b61daf099ba227e8a566a342f5efd625`, tree
+`6bb2fdbb895164373ccbd18e6f0dd03806c95c77`, over the full corrective range from initial
+wrapper-design base
+`581ee3da8fb1bac336a2142378592ee3635e17fb`, with no finding. The 19-path range is exactly 14
+product/consumer-changelog paths, four locked records, and the one existing B-149 result; its final
+commit only adds `-e` to that result's existing Bash argument list. Exact-candidate B-149 passed 2/0
+under PowerShell 7 and native Windows PowerShell 5.1, the full root meta suite passed 31/31 files,
+both composer diffs matched, all six validators passed, source/generated blobs converge, syntax and
+BOM gates passed, and both context-footprint twins retained the accepted baseline. Caller-`-e` and
+inherited-`SHELLOPTS` hostile matrices preserved child streams and mapped clean to `0` plus
+finding/inability/abnormal/missing-child to `1`. Native Bash 3.2 and exact-candidate provider CI
+remain release evidence rather than local claims.
 
 ### B-176 · Enforce unique warehouse signal-category definitions
 **Filed against:** v0.77.0 (2026-08-24)

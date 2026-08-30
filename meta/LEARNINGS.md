@@ -1884,3 +1884,24 @@ matrix passed under native Windows PowerShell 5.1, while a different Copilot-vis
 failed because another nested Bash `-c` argument was mangled. Keep the current verdict intact,
 record the distinct test-truth debt as B-207, and do not either widen the product patch or call the
 whole host suite green.
+
+## 2026-08-30 — Status capture must be reachable under the caller's fail-fast mode
+
+A binary wrapper can pass every ordinary status test and still leak a child's richer exit code.
+B-175 initially ran its Bash child as a simple command and captured `$?` on the next line. Under
+`bash -e` or inherited exported `SHELLOPTS`, a nonzero child terminated the wrapper before that next
+line, so “capture immediately” was not enough. Put a deliberately fallible child in an `if`
+condition, capture `$?` inside the `else`, and only then normalize it; Bash exempts conditional
+commands from errexit while leaving their stdout/stderr attached.
+
+Test economy is about discriminating value, not byte immutability. The first design reasonably left
+the existing B-149 result unchanged because its planted drift already proved ordinary nonzero-to-1.
+Once immutable review found a real `bash -e` escape, adding `-e` to that same Bash invocation became
+the smallest permanent oracle: it was red on the rejected candidate and green on the correction,
+without another test, result, fixture, invocation, or runtime pass. New evidence should overturn an
+earlier no-test decision when it strengthens a reachable decision at zero cardinality cost.
+
+Do not generalise a hostile preference into product work without a changed consequence. PowerShell
+7's opt-in native-error preference can terminate through a different mechanism, but the wrapper
+still returned its documented `0/1` and retained both child streams in the tested matrix. Expanding
+that branch would add complexity without repairing an observed contract failure.

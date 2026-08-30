@@ -1,7 +1,7 @@
 # B-175 · Template-check status contract — locked design
 
-**Status: EXISTING-RESULT AMENDMENT LOCKED 2026-08-30 — two adversarial implementation reviews
-approved the corrected product; one zero-growth regression-oracle change remains pending.** Final
+**Status: IMPLEMENTED CANDIDATE `b36c6e99b61daf099ba227e8a566a342f5efd625` 2026-08-30 — two
+immutable reviews approved; exact-candidate provider CI and native Bash 3.2 remain pending.** Final
 local preflight rejected the first checker/doctor candidate's docs-sync wrapper compatibility, and
 immutable review later rejected wrapper candidate `d3e19c5c24b8f8e3e789191bf873bcde5413f252`
 under Bash errexit. The approved checker/doctor core remains intact.
@@ -174,3 +174,31 @@ Both implementation reviewers approved that product and independently judged a o
 strengthening of B-149's existing Bash invocation high-value: it is red on `d3e19c5`, green on
 `ae5d0c0`, and adds no test, `It`, result, fixture, or additional execution pass. Native Bash 3.2
 and exact final-candidate provider CI remain release evidence.
+
+## Final immutable candidate and evidence
+
+Two independent read-only reviews approved exact candidate
+`b36c6e99b61daf099ba227e8a566a342f5efd625`, tree
+`6bb2fdbb895164373ccbd18e6f0dd03806c95c77`, over the full corrective range from initial
+wrapper-design base `581ee3da8fb1bac336a2142378592ee3635e17fb`, with no actionable finding.
+The exact 19-path range is
+14 product/consumer-changelog paths, four locked record paths, and one existing maintainer result;
+the final commit changes only B-149's Bash argument list from `@($script)` to
+`@('-e',$script)`. No test, `It`, result, fixture, invocation, or backlog item was added.
+
+Reviewers `b175_impl_transport` and `b175_impl_value` were separate read-only Codex subagents that
+did not implement or edit the candidate. Both inherited the primary session's model with no
+override; the exact backend model identifier is not exposed. Both used this same Windows workspace
+with PowerShell 7,
+Windows PowerShell 5.1, and Git Bash 5.2, so their model/host correlation is explicit rather than
+mistaken for an orthogonal provider vantage. The hostile cases, clean reruns, and remaining native
+Bash 3.2/provider gaps below bound that correlation.
+
+The exact candidate passed B-149 2/0 under PowerShell 7 and native Windows PowerShell 5.1, including
+the Bash `-e` arm and byte-identical scratch restoration. Normal, caller-`-e`, and inherited exported
+`SHELLOPTS` probes mapped clean to `0` and finding/inability/abnormal/missing-child worlds to `1`
+while retaining child stdout/stderr. Both composers produced the same binary diff; both validator
+twins passed all three distributions; source/generated script and changelog blobs converge; syntax,
+BOM, and both context-footprint twins are green. The full root meta suite passed with zero failures
+across all 31 files on the exact final candidate. Native Bash 3.2 and exact-candidate provider CI
+remain required release evidence rather than locally claimed proof.

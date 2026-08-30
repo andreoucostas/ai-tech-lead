@@ -58,6 +58,12 @@ and overturned only the earlier “leave B-149 unchanged” choice: its existing
 same planted-drift case with `-e`, which rejects `d3e19c5` without adding a test, result, fixture,
 execution pass, or backlog item.
 
+Two final immutable reviews approved exact candidate `b36c6e9`, tree `6bb2fdb`, with no finding.
+The exact candidate passed the strengthened result 2/0 under PowerShell 7 and Windows PowerShell
+5.1, all six distribution validators, matching composer output, both context-footprint twins, and
+the full 31-file meta suite. Native Bash 3.2 and exact-candidate provider CI remain pending release
+evidence.
+
 **B-49's stale live-fire packet is paused before it consumes provider quota.** WSD-062 records that
 the July attempt ended incomplete and cannot be resumed across changed models, hosts, and framework
 versions. The packet omits required checklist/canary work, invokes nonexistent scripts, lacks the

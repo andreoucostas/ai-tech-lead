@@ -2887,6 +2887,16 @@ zero-growth B-149 strengthening because that same invocation is red on `d3e19c5`
 `ae5d0c0`. This new observed escape supersedes the earlier evidence-bounded choice to leave B-149
 unchanged; it does not justify a new suite, result, fixture, run, or backlog item.
 
+**Final immutable review.** Two independent read-only reviews approved exact candidate
+`b36c6e99b61daf099ba227e8a566a342f5efd625`, tree
+`6bb2fdbb895164373ccbd18e6f0dd03806c95c77`, over the full corrective range from initial
+wrapper-design base `581ee3d`, with no finding.
+Its 19-path range contains exactly the 14 product/consumer-changelog paths, four decision/evidence
+records, and the one strengthened B-149 result. The exact candidate passed that result 2/0 under
+PowerShell 7 and Windows PowerShell 5.1, six distribution validators, matching composer output,
+source/generated convergence, syntax/BOM/context gates, hostile errexit/stream matrices, and the
+full 31-file root meta suite. Native Bash 3.2 and exact-candidate provider CI remain pending.
+
 **Rejected.** A textual marker parsed by the doctor; an unbounded finding count plus a high reserved
 status; status `1` for verified findings; a sidecar; ACL-based resource fixtures; a new suite or
 `It`; and broad exception normalization outside this checker/doctor boundary.
