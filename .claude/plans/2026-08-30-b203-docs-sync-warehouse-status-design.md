@@ -3,7 +3,7 @@
 **Date:** 2026-08-30
 **Filed against:** v0.78.3
 **Planned:** v0.78.4
-**Status:** IMPLEMENTED CANDIDATE `4e847b422f0267f65c474bb2091301905f956650` — immutable review approved; first Windows/Linux CI pending
+**Status:** AMENDED IMPLEMENTATION CANDIDATE — release-range product/test commit `16dbd95743163f5a92e9aacb23a946e056421a40` is locally green; corrected-record rereview and first provider CI pending
 
 ## Value and proportionality decision
 
@@ -230,3 +230,31 @@ separate template-checks and warehouse-checker failures; the bounded source cens
 additional candidates. That broader strict-mode contract is not documented and is not silently
 claimed here. B-208 owns the evidence-first decision and full shipped-script census; it is
 explicitly not a v0.78.4 gate.
+
+## Release-range amendment implementation evidence
+
+The existing result with only the `-e` interpreter option changed failed 9/1 against the exact
+pre-amendment product: Bash leaked warehouse statuses 1, 2, and 7, omitted the applicable note, and
+never printed the terminal verdict. The corrected product returned the result to 10/0 under
+PowerShell 7, native Windows PowerShell 5.1, and code page 437. Removing only the three `-e` options
+for one disposable ordinary-mode run also passed 10/0; restoring them reproduced the exact prior
+test hash. Independent banner-missing and heading-missing probes made both products exit 1, but the
+old product emitted neither the applicable diagnosis nor the aggregate failure line, while the
+correction emitted each exactly once.
+
+PowerShell and login-shell Bash composers produced the same 525-file aggregate at 173/169/183.
+Both validator twins passed all three distributions. The three shipped hook batteries each passed
+20 files with zero failures; the maintainer battery passed 31 files with zero failures. All 12
+authored/generated carriers are byte-identical, both changed PowerShell sources retain their BOM
+and parse with zero AST errors, and all four Bash carriers pass `bash -n`. Test/result/fixture and
+execution cardinalities are unchanged. Three independent read-only reviews approved the design,
+implementation, records, and test value.
+
+The first immutable review of exact product/test commit
+`16dbd95743163f5a92e9aacb23a946e056421a40`, tree
+`da597fefcdf83626addb781632be9b08cd14116e`, reproduced the 9/1 old-product red and 10/0 candidate
+green under both PowerShell hosts, plus both discriminating AGENTS probes. It rejected only stale
+authoritative record text: this plan and B-203 still named the pre-amendment candidate, and the RCA
+described the rejected raw-process reroute too broadly as any `RunArg` change. The current record
+correction fixes that semantic defect without changing product or test bytes. Native Linux, stock
+macOS Bash 3.2, the transitional frozen-parent run, and exact provider CI remain unclaimed gates.

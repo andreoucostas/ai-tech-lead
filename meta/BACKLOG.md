@@ -2862,7 +2862,7 @@ gates independently passed. Native Linux and first candidate CI remain the only 
 ### B-203 · Preserve warehouse-map verification failure in the docs-sync advisory
 **Effort:** S · **Priority:** P2 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-30)
-**Status:** IMPLEMENTED CANDIDATE `4e847b422f0267f65c474bb2091301905f956650` — immutable review approved; first Windows/Linux CI pending
+**Status:** AMENDED IMPLEMENTATION CANDIDATE — release-range product/test commit `16dbd95743163f5a92e9aacb23a946e056421a40` is locally green; corrected-record rereview and first provider CI pending
 **Plan:** `.claude/plans/2026-08-30-b203-docs-sync-warehouse-status-design.md`
 
 **Why:** both `docs-sync-check` twins currently translate every nonzero `warehouse-map-check` exit
@@ -2917,14 +2917,39 @@ syntax, unchanged test cardinality, both composers, both validator twins, and th
 backlog, document, claim, and release-head gates. Native Linux, Bash 3.2, and first candidate CI
 remain unavailable, so the item stays open.
 
+**Release-range amendment evidence:** whole-range review rejected later candidate `e1cdb23` because
+explicit `bash -e` made the Bash warehouse branch leak statuses 1/2/7 before its intended capture;
+the same bounded wrapper census found two AGENTS.md probes whose missing-content classification was
+unreachable under that invocation. The approved correction uses conditionals at only those three
+sites and appends an optional, empty-by-default `BashOptions` parameter to the existing harness.
+The same five Bash worlds now receive `-e`; no suite, result, `It`, fixture, process, or execution
+pass was added.
+
+The changed result failed 9/1 against the exact old product and passes 10/0 against exact product/
+test commit `16dbd95743163f5a92e9aacb23a946e056421a40` under PowerShell 7, native Windows PowerShell 5.1,
+and code page 437. A disposable ordinary-mode run passed 10/0 before exact test restoration. Two
+independent AGENTS probes showed the old and current products both exit 1, but only the correction
+emits the applicable diagnosis and aggregate verdict exactly once. Both composers converged at
+525 files (173/169/183); both validator twins passed every distribution; all three 20-file shipped
+hook batteries and the 31-file maintainer battery reported zero failures; all 12 authored/generated
+carrier pairs are byte-identical; BOM, AST, and Bash syntax checks pass.
+
+The first immutable review reproduced the old-red/current-green behavior and rejected only stale
+record truth: this entry and its plan still named the pre-amendment candidate, while the RCA called
+the rejected raw-process reroute any `RunArg` change. This corrected record makes that boundary
+explicit without changing product or test bytes. Exported inherited `SHELLOPTS` remains the separate
+non-gating B-208 decision. Native Linux, stock macOS Bash 3.2, transitional frozen-parent evidence,
+and exact provider CI remain unclaimed, so B-203 stays open.
+
 **RCA:** the direct checker suite distinguished exits 1 and 2, but the wrapper parity fixture never
 installed the checker, so its translation branch did not execute. B-164's bounded sweep selected
 wrappers that themselves exited nonzero after child failure; this advisory deliberately converts
 the child nonzero to wrapper exit 0 and fell outside that predicate. The same class is any wrapper
 that turns a multi-state child result into a more specific content diagnosis. B-203 fixes only this
 observed warehouse branch; B-175 owns the distinct template-checker/doctor ambiguity. The separate
-WPS5 renderer lesson is recorded in `meta/LEARNINGS.md`; changing `RunArg` would repeat B-165's
-out-of-scope Linux regression and is intentionally rejected.
+WPS5 renderer lesson is recorded in `meta/LEARNINGS.md`. Rerouting `RunArg` through
+`Invoke-RawProcess` would repeat B-165's out-of-scope Linux regression and remains rejected; the
+amendment instead appends one Bash-only interpreter-options array to the existing invocation path.
 
 ---
 
