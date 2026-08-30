@@ -38,6 +38,20 @@ green. Native macOS/Bash 3.2, transitional CI, removal of the frozen-history arm
 Windows/Linux/macOS CI remain pending, so this is candidate approval rather than completion or
 release approval.
 
+**Installer convergence teardown no longer masks its reparse-retirement verdict on Windows
+PowerShell 5.1.** B-206 keeps the existing six cases/twelve results but makes that one fixture
+lifecycle explicit: body and cleanup failures are retained separately, the post-installer link must
+still be a link, Windows unlinks the verified junction non-recursively, POSIX retains its symlink
+unlink, and exact link/root absence plus unchanged outside bytes gate success before recursion. No
+product, distribution, suite, result, retry policy, or shared cleanup framework changed.
+
+The native 5.1/CP437 file moved from the preserved 10/2 cleanup failure to 12/0; PowerShell 7 also
+passed 12/0 and both left no current fixture entry. A temporary post-body/post-cleanup mutation made
+both twin results fail with both unique causes before exact-byte restoration returned 12/0. The only
+other generated-junction cleanup targets an empty outside directory and passed the old and current
+runs, so it was not widened without observed consequence. Native Linux/CI and immutable review
+remain candidate gaps.
+
 **Warehouse maps no longer have a hidden declined state.** B-202 revalidates and supersedes the
 explicit-decline clause of WSD-033: no shipped workflow wrote or taught the exact protected
 `LEARNINGS.md` heading, its append-only preference had no revocation state, and its only permanent

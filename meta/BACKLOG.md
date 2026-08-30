@@ -2892,7 +2892,7 @@ candidate rather than completion or release.
 ### B-206 · Make InstallerConvergence junction teardown non-interactive under Windows PowerShell 5.1
 **Effort:** S · **Priority:** P2 · **planned ≥ v0.78.5**
 **Filed against:** v0.78.3 (2026-08-30)
-**Status:** DESIGN LOCKED — implement next; separate from B-198 product behavior
+**Status:** IMPLEMENTED CANDIDATE — local PowerShell 7/5.1 evidence green; immutable review and native Linux/CI pending
 **Plan:** `.claude/plans/2026-08-30-b206-installer-convergence-junction-teardown-design.md`
 
 **Why:** B-198's required native Windows PowerShell 5.1/CP437 run returned 10/2 even though its two
@@ -2921,6 +2921,31 @@ unlinked only the populated junction while preserving the outside sentinel under
 separately, verifies link/root absence, retains the existing POSIX unlink, and keeps six `It`
 blocks/twelve runtime results. It rejects a one-line-only fix, B-204 helper reuse, retries,
 product/dist changes, and new permanent cases. Native Linux remains an explicit candidate gap.
+
+**Candidate evidence (2026-08-30):** only the existing reparse-retirement result changed. It now
+captures body/cleanup failures independently, asserts the installer preserved the exact link,
+unlinks the verified Windows junction non-recursively through `.NET` while retaining the POSIX
+branch, proves link absence and unchanged outside bytes before recursion, and makes exact-root
+cleanup terminating with absent postconditions. Direct lookup misses are reconciled through
+non-recursive parent enumeration and ordinal leaf matching so provider ambiguity cannot authorize
+recursion. Six `It` blocks/twelve runtime results remain.
+PowerShell 7 and isolated native Windows PowerShell 5.1/CP437 each passed 12/0, replacing the
+preserved 5.1 old-red 10/2. Neither candidate run left a current fixture entry. A two-line
+post-body/post-cleanup mutation made both twin results fail 10/2 with both unique sentinels in each
+outer message; reversal restored exact SHA-256
+`9043008F28577221DE69159B76719216B5933BA867ECA1555DB4F459176CEA6A`/Git blob
+`1ee8331e56851b4c105b110d97b629820a71c564` and the file returned to 12/0. The first implementation
+review rejected treating direct provider `ItemNotFoundException` as absence; after exact-parent
+enumeration was added, both independent reviewers approved. One reran the amended file 12/0 under
+isolated 5.1 with zero residue and exercised missing-link, non-link, and outside-byte hostile worlds;
+unsafe worlds retained both roots/sentinel and surfaced both failure causes.
+
+**RCA/census:** no gate caught this because the populated-junction teardown had not been executed
+headlessly under the supported Windows PowerShell 5.1 provider; normal PS7 cleanup and the product
+assertions were green. The only other generated-junction cleanup is this file's side-write result.
+Its outside directory is invariantly empty, and it passed the exact old-red run plus every candidate
+run without observed residue, so B-206 does not widen on mechanism resemblance alone. Native Linux
+must still exercise the POSIX symlink path, and immutable review/CI remain pending.
 
 ---
 

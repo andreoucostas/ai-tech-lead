@@ -125,26 +125,73 @@ foreach ($twin in @('ps1','sh')) {
     It "consumer-modified and reparse retirement paths survive while verified bytes converge ($twin)" {
         $target = New-LegacyRetirementTarget
         $outside = Join-Path ([IO.Path]::GetTempPath()) ('installer-outside-' + [guid]::NewGuid().ToString('N'))
-        try {
-            [IO.File]::WriteAllText((Join-Path $target 'scripts/impact-run.ps1'), 'CONSUMER CUSTOM RUNNER', [Text.UTF8Encoding]::new($false))
-            New-Item -ItemType Directory -Force -Path $outside | Out-Null
-            Move-Item -LiteralPath (Join-Path $target 'tests/impact') -Destination (Join-Path $outside 'impact')
-            Assert (New-DirectoryLink -Link (Join-Path $target 'tests/impact') -Destination (Join-Path $outside 'impact')) 'could not construct retirement reparse fixture'
-            $outsideBefore = Get-TreeFingerprint $outside
-            $result = Invoke-CurrentInstaller -Twin $twin -Target $target
-            Assert ($result.Exit -eq 0) "safe reconciliation exited $($result.Exit): $($result.Output)"
-            Assert ([IO.File]::ReadAllText((Join-Path $target 'scripts/impact-run.ps1')).Contains('CONSUMER CUSTOM RUNNER')) 'consumer-modified retired path was deleted or overwritten'
-            Assert (-not (Test-Path -LiteralPath (Join-Path $target 'scripts/impact-run.sh'))) 'verified framework runner was not retired'
-            Assert ((Get-TreeFingerprint $outside) -ceq $outsideBefore) 'reparse retirement changed out-of-root bytes'
-            Assert ($result.Output -match 'consumer-modified or unknown content') 'custom-content preservation was not disclosed'
-            Assert ($result.Output -match 'reparse/symlink') 'reparse preservation was not disclosed'
-        } finally {
-            $link = Join-Path $target 'tests/impact'
-            $linkItem = Get-Item -Force -LiteralPath $link -ErrorAction SilentlyContinue
-            if ($linkItem -and (($linkItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) { Remove-Item -Force -LiteralPath $link -ErrorAction SilentlyContinue }
-            if (Test-Path -LiteralPath $target) { Remove-Item -Recurse -Force -LiteralPath $target -ErrorAction SilentlyContinue }
-            if (Test-Path -LiteralPath $outside) { Remove-Item -Recurse -Force -LiteralPath $outside -ErrorAction SilentlyContinue }
+        $link = Join-Path $target 'tests/impact'
+        $outsideBefore = $null
+        $bodyFailure = $null
+        $cleanupFailure = $null
+        $readEntry = {
+            param([string]$Path)
+            try { return Get-Item -Force -LiteralPath $Path -ErrorAction Stop }
+            catch [System.Management.Automation.ItemNotFoundException] {
+                $parent = [IO.Path]::GetDirectoryName($Path)
+                $leaf = [IO.Path]::GetFileName($Path)
+                $parentItem = Get-Item -Force -LiteralPath $parent -ErrorAction Stop
+                if (-not $parentItem.PSIsContainer) { throw "fixture entry parent is not a directory: '$parent'" }
+                $stored = @(Get-ChildItem -Force -LiteralPath $parentItem.FullName -ErrorAction Stop |
+                    Where-Object { $_.Name -ceq $leaf })
+                if ($stored.Count -gt 1) { throw "fixture entry lookup is ambiguous: '$Path'" }
+                if ($stored.Count -eq 1) { return $stored[0] }
+                return $null
+            }
         }
+        try {
+            try {
+                [IO.File]::WriteAllText((Join-Path $target 'scripts/impact-run.ps1'), 'CONSUMER CUSTOM RUNNER', [Text.UTF8Encoding]::new($false))
+                New-Item -ItemType Directory -Force -Path $outside | Out-Null
+                Move-Item -LiteralPath $link -Destination (Join-Path $outside 'impact')
+                Assert (New-DirectoryLink -Link $link -Destination (Join-Path $outside 'impact')) 'could not construct retirement reparse fixture'
+                $outsideBefore = Get-TreeFingerprint $outside
+                $result = Invoke-CurrentInstaller -Twin $twin -Target $target
+                Assert ($result.Exit -eq 0) "safe reconciliation exited $($result.Exit): $($result.Output)"
+                $linkAfter = & $readEntry $link
+                $linkSurvived = $linkAfter -and ((($linkAfter.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) -or
+                    ($linkAfter.PSObject.Properties['LinkType'] -and -not [string]::IsNullOrWhiteSpace([string]$linkAfter.LinkType)))
+                Assert $linkSurvived 'installer removed or replaced the reparse retirement path'
+                Assert ([IO.File]::ReadAllText((Join-Path $target 'scripts/impact-run.ps1')).Contains('CONSUMER CUSTOM RUNNER')) 'consumer-modified retired path was deleted or overwritten'
+                Assert (-not (Test-Path -LiteralPath (Join-Path $target 'scripts/impact-run.sh'))) 'verified framework runner was not retired'
+                Assert ((Get-TreeFingerprint $outside) -ceq $outsideBefore) 'reparse retirement changed out-of-root bytes'
+                Assert ($result.Output -match 'consumer-modified or unknown content') 'custom-content preservation was not disclosed'
+                Assert ($result.Output -match 'reparse/symlink') 'reparse preservation was not disclosed'
+            } catch { $bodyFailure = $_ }
+        } finally {
+            try {
+                $linkItem = & $readEntry $link
+                if ($linkItem) {
+                    $isLink = (($linkItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) -or
+                        ($linkItem.PSObject.Properties['LinkType'] -and -not [string]::IsNullOrWhiteSpace([string]$linkItem.LinkType))
+                    if (-not $isLink) { throw "fixture cleanup refused non-link entry '$($linkItem.FullName)'" }
+                    if ($IsWindows -or $env:OS -eq 'Windows_NT') {
+                        [IO.Directory]::Delete($linkItem.FullName, $false)
+                    } else {
+                        Remove-Item -Force -LiteralPath $linkItem.FullName -ErrorAction Stop
+                    }
+                }
+                if (& $readEntry $link) { throw "fixture cleanup left link '$link'" }
+                if ($null -ne $outsideBefore) {
+                    if (-not (& $readEntry $outside)) { throw "fixture cleanup lost outside root '$outside' before removal" }
+                    if ((Get-TreeFingerprint $outside) -cne $outsideBefore) { throw 'fixture unlink changed out-of-root bytes' }
+                }
+                if (& $readEntry $target) { Remove-Item -Recurse -Force -LiteralPath $target -ErrorAction Stop }
+                if (& $readEntry $outside) { Remove-Item -Recurse -Force -LiteralPath $outside -ErrorAction Stop }
+                if (& $readEntry $target) { throw "fixture cleanup left target root '$target'" }
+                if (& $readEntry $outside) { throw "fixture cleanup left outside root '$outside'" }
+            } catch { $cleanupFailure = $_ }
+        }
+        if ($bodyFailure -and $cleanupFailure) {
+            throw "BODY: $($bodyFailure.Exception.Message)`nCLEANUP: $($cleanupFailure.Exception.Message)"
+        }
+        if ($bodyFailure) { throw $bodyFailure }
+        if ($cleanupFailure) { throw $cleanupFailure }
     }
 
     It "a forged previous manifest enters additive compatibility and deletes nothing ($twin)" {

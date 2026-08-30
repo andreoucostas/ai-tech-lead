@@ -1790,3 +1790,24 @@ passed B-198's changed result but failed an older junction cleanup through a hea
 path. Diagnose and preserve that red, file the distinct consequence, and do not either absorb it
 into the current product patch or weaken the run until it looks green. Test count, runner count, and
 green count are all proxies; the valuable unit is a reachable decision with a trustworthy verdict.
+
+## 2026-08-30 — Link teardown is a provider contract, not ordinary directory cleanup
+
+`Remove-Item -Force` looks non-interactive, yet Windows PowerShell 5.1 prompts when the exact entry
+is a populated directory junction; even `-Confirm:$false` reached the same headless null-reference
+failure. Use a primitive whose contract matches the object being removed. For this Windows-only
+junction boundary, non-recursive `Directory.Delete` unlinks the verified entry without traversing
+its target; keep the existing non-recursive symlink operation on POSIX instead of assuming one host
+proves the other.
+
+Unlink success alone is not the fixture verdict. First prove the installer left the path as a link,
+then prove the link is absent and the outside bytes are unchanged before recursively deleting either
+generated root. Capture body and cleanup errors independently because `finally` otherwise replaces
+the first failure with the second. A temporary failure placed after normal body assertions and a
+second placed after successful teardown demonstrated both causes in one existing result; no new
+test was needed.
+
+The census boundary should follow consequence, not syntax. A second `Remove-Item` junction cleanup
+in the same file targets an empty directory and passed the exact hostile-host baseline without
+leaking state. Record it as exposed, but do not widen the repair until that site reproduces the
+failure class or masks a verdict.

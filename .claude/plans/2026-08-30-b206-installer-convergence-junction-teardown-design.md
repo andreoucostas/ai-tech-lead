@@ -1,6 +1,6 @@
 # B-206 — InstallerConvergence junction teardown design
 
-**Status:** DESIGN LOCKED · **Date:** 2026-08-30 · **Scope:** maintainer test only
+**Status:** IMPLEMENTED CANDIDATE · **Date:** 2026-08-30 · **Scope:** maintainer test only
 
 ## Value decision
 
@@ -73,3 +73,37 @@ POSIX host; Git Bash is not a substitute.
   B-206 can complete. Local Windows evidence creates only an implemented candidate.
 
 No push, tag, release, or B-198 scope expansion is authorized by this plan.
+
+## Candidate evidence (2026-08-30)
+
+The existing result now captures body and cleanup `ErrorRecord`s independently, proves the
+post-installer path is still a reparse/link, uses the non-recursive `.NET` unlink only on Windows,
+retains the POSIX `Remove-Item` unlink, rechecks exact link absence and outside bytes before root
+recursion, and makes both exact-root removals terminating with absent postconditions. A direct
+`Get-Item` miss is reconciled through non-recursive parent enumeration and ordinal leaf matching;
+access failure or ambiguity propagates instead of becoming false absence. Six syntactic
+`It` blocks and twelve runtime results remain unchanged; no product, source, dist, suite, retry, or
+shared cleanup framework changed.
+
+The focused file passed 12/0 under PowerShell 7 and an isolated native Windows PowerShell
+5.1/CP437 host, replacing the preserved 5.1 old-red observation of 10/2. Neither candidate run left
+an `installer-convergence-*`, `installer-outside-*`, or `installer-history-*` entry dated today;
+41 older convergence roots and one older history root predate this work and remain untouched. A
+temporary mutation thrown only after the normal body assertions and after successful cleanup made
+the two twin results fail 10/2, with each outer message containing both `BODY_SENTINEL_B206` and
+`CLEANUP_SENTINEL_B206`. Reversing those two lines restored exact SHA-256
+`9043008F28577221DE69159B76719216B5933BA867ECA1555DB4F459176CEA6A` and Git blob
+`1ee8331e56851b4c105b110d97b629820a71c564`; the restored file then passed 12/0 again.
+
+The first implementation review rejected treating a direct provider `ItemNotFoundException` as
+proof of absence. The corrected reader now reconciles that result against exact parent enumeration;
+both independent reviewers approved the amended blob. One reran that exact file 12/0 under isolated
+Windows PowerShell 5.1 with zero residue and AST-executed the actual result under missing-link,
+non-link replacement, and outside-byte mutation worlds. The hostile worlds either cleaned only
+after proven absence or retained both roots/sentinel and surfaced both failure causes.
+
+The same-class census found one other generated junction cleanup in this file's side-write result.
+It targets an invariantly empty outside directory, passed in the exact native 5.1 10/2 baseline and
+all candidate runs, and has no observed masked verdict or residue; widening B-206 to it would be
+mechanism-driven scope without consequence evidence. Native Linux/CI and immutable review remain
+pending, so this is not completion or release approval.
