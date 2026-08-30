@@ -36,6 +36,12 @@ SHA-256 `26e97642f1326272ad59d12072445305cface41381de0967879a04e2aeac031d`, and
 InstallerConvergence 12/0/0 plus ScriptTwinParity 10/0/0 passed. Native Linux, stock macOS Bash 3.2,
 and first candidate CI remain required before completion or release.
 
+Independent read-only immutable review approved exact candidate
+`66bc95e5eafdf977dac59aea6a5f3e2c159b2d4e`, tree
+`eb00500eec59b3ab5313b120926583845d072245`, from design parent `fe193fd`. It found no code, test,
+source/dist-parity, or record defect, while explicitly leaving native Linux, stock macOS Bash 3.2,
+and candidate CI unclaimed.
+
 **The shipped Bash installer no longer requires Bash 4 for manifest validation.** B-198 replaces
 the two associative arrays and two lowercase expansions introduced in v0.76 with one guarded,
 C-locale `awk` preprocessing pass per validator. ASCII case-variant duplicate paths remain a

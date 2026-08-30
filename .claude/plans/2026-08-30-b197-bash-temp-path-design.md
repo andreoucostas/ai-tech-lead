@@ -162,6 +162,15 @@ InstallerConvergence 12/0/0, ScriptTwinParity 10/0/0, and the three distribution
 Linux, stock macOS Bash 3.2, and candidate CI remain unobserved, so this is not completion or release
 approval.
 
+Independent read-only immutable review approved exact candidate
+`66bc95e5eafdf977dac59aea6a5f3e2c159b2d4e`, tree
+`eb00500eec59b3ab5313b120926583845d072245`, from design parent `fe193fd`. The reviewer found no
+code, test, parity, or record defect and independently confirmed the counted-array Bash 3.2
+boundary, registration-before-inspection, physical `-ef` identity, cleanup status disposition,
+validator status 2 propagation, settings ownership release, identical source/dist blob, and the
+permanent result's non-vacuous value. The review was deliberately static and read-only; it does not
+replace the unobserved native Linux, stock macOS Bash 3.2, or candidate CI gates.
+
 ## Acceptance boundary
 
 - Bash syntax passes for source and all three generated installers; source/dist hashes are exact.
