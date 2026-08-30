@@ -23,7 +23,7 @@ already there, and so a report can be written against the joins the warehouse ac
 0. **Confirm this repo is a SQL data warehouse with the shared classifier.** Run
    `pwsh scripts/warehouse-map-check.ps1` (or `bash scripts/warehouse-map-check.sh`). The command
    and `scripts/warehouse-signals.tsv` are the authoritative applicability gate used by bootstrap.
-   Continue when it reports `WAREHOUSE_MAP missing`, `stale`, `current`, or `declined`: each means
+   Continue when it reports `WAREHOUSE_MAP missing`, `stale`, or `current`: each means
    at least two independent warehouse signal categories were found. If it reports
    `WAREHOUSE_MAP not-applicable`, STOP — this recipe does not apply. If it exits 2, do not guess;
    report that applicability could not be determined. The richer patterns below are mapping

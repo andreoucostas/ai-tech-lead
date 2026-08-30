@@ -6,6 +6,14 @@
 
 ## 0.78.4 — Unreleased
 
+- Warehouse-map checking no longer recognizes the undocumented
+  `## Declined artifact: warehouse-map` heading. An applicable warehouse without
+  `docs/warehouse-map.md` now reports `missing` even when that old heading is present. The map stays
+  optional: `docs-sync-check` remains advisory, and warehouse work can still proceed from the
+  equivalent live table, key, relationship, and load-order evidence. Updates leave existing
+  `LEARNINGS.md` bytes untouched. If custom CI calls the checker directly and relied on the heading
+  to force exit 0, handle the ordinary missing-map exit 1 instead.
+
 - When the warehouse-map checker cannot examine your repository, `docs-sync-check` now says the
   map could not be verified and that this is not evidence it is missing or stale. A checker that
   verifies a missing or stale map keeps the existing refresh note. The warehouse branch remains

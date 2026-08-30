@@ -46,13 +46,8 @@ foreach ($line in $signalLines) {
 }
 $hits = @($hits | Sort-Object -Unique)
 if ($hits.Count -lt 2) { Write-Output "WAREHOUSE_MAP not-applicable ($($hits.Count) independent signal(s))"; exit 0 }
-$map = Join-Path $rootPath 'docs/warehouse-map.md'; $learnings = Join-Path $rootPath 'LEARNINGS.md'
+$map = Join-Path $rootPath 'docs/warehouse-map.md'
 if (-not (Test-Path -LiteralPath $map -PathType Leaf)) {
-    if (Test-Path -LiteralPath $learnings -PathType Leaf) {
-        try { $declined = Select-String -LiteralPath $learnings -Pattern '^## Declined artifact: warehouse-map\s*$' -Quiet -ErrorAction Stop }
-        catch { [Console]::Error.WriteLine('Could not read LEARNINGS.md; warehouse-map disposition cannot be determined.'); exit 2 }
-        if ($declined) { Write-Output 'WAREHOUSE_MAP declined (recorded in LEARNINGS.md)'; exit 0 }
-    }
     Write-Output 'WAREHOUSE_MAP missing - run /map-warehouse or inspect the live schema before a warehouse write.'; exit 1
 }
 $mapTime = (Get-Item -LiteralPath $map).LastWriteTimeUtc

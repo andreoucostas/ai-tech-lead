@@ -1755,3 +1755,17 @@ adversarially reproduced wrong-tree, link, retry, or diagnostic boundary. A shor
 look leaner while silently dropping proven protections. Conversely, the same incident did not
 justify sweeping other cleanup sites or old residue: mechanism similarity is not consequence
 equivalence, and unowned historical paths are not ours to delete.
+
+## 2026-08-30 — A tested state is not automatically a valuable state
+
+B-202 began with a seemingly tidy repair: make an existing `declined` checker result reachable by
+teaching a skill to write its exact marker. Revalidation found that this would turn a fixture into a
+product feature without evidence of user harm. No shipped path wrote or taught the marker, its only
+caller consequence was a non-failing advisory, and the proposed append-only preference could not be
+revoked. A later map deletion could silently reactivate the old decision.
+
+The useful move was subtraction. Remove the dormant branch and its one fixture-only result, preserve
+the ordinary missing/current/stale worlds, and use a disposable old-red/new-green oracle for the
+compatibility boundary. Do not invert the deleted result into a permanent assertion about hidden
+prose: that would retain the same maintenance cost under a different name. Historic decisions and
+existing tests are evidence to inspect, not obligations to preserve when their value premise fails.

@@ -2711,7 +2711,7 @@ standalone catalog suite.
 ### B-202 · Remove the unreachable warehouse-map decline state
 **Effort:** S · **Priority:** P2 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-30)
-**Status:** DESIGN SUPERSEDED AFTER VALUE AND ADVERSARIAL REVIEW — deletion approved; implementation pending
+**Status:** IMPLEMENTED LOCAL CANDIDATE — immutable review and first Windows/Linux CI pending
 **Decision:** WSD-060
 
 **Why:** B-199 found that the checker and its permanent result recognize an exact
@@ -2739,6 +2739,24 @@ twins; after deletion, make it green and prove the file byte-identical. Compose 
 run both validator twins, the remaining three-result checker worlds under PowerShell 7/5.1 and Git
 Bash, affected composed tests, and bounded dotnet/monorepo delivery smokes. Because a shipped test
 changes, first Windows/Linux CI still gates completion and release.
+
+**Implementation evidence:** before product edits, a disposable copy of the real `LEARNINGS.md`
+template plus the exact heading made both unchanged twins return `declined`/0 against an oracle that
+required `missing`/1. After the seven authored deletions, the same class of probe returned
+`missing`/1 from both twins and left `LEARNINGS.md` byte-identical. PowerShell AST/BOM and Bash
+syntax checks passed; both authored skill mirror pairs are byte-identical. The source suite passed
+3/0 under PowerShell 7 and native Windows PowerShell 5.1, then 3/0 again under hostile code page 437
+on both hosts, with Git Bash exercised and no skip.
+
+PowerShell and Bash composers emitted byte-identical manifests for all three distributions. Both
+validator twins passed dotnet, angular, and monorepo. The composed checker suite passed 3/0 in every
+mode under PowerShell 7 and 3/0 in representative dotnet under Windows PowerShell 5.1. Bounded real
+installs covered the dotnet PowerShell installer and monorepo Bash installer; each installed checker
+classified the old heading as `missing`/1, and four installed skill samples contained no declined
+status. The first Bash-validator launch used an over-restricted diagnostic `PATH` and stopped before
+product validation because it hid both JSON engines; the documented Git Bash path was restored and
+the full twin rerun passed. Native Linux and first candidate CI remain unavailable, so this item is
+not complete and grants no release approval.
 
 ---
 

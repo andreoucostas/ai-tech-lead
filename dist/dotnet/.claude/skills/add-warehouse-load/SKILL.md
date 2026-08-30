@@ -19,15 +19,14 @@ Match CLAUDE.md > Conventions > Data Access. The two rules that dominate everyth
 0. **Confirm this repo is a SQL data warehouse with the shared classifier.** Run
    `pwsh scripts/warehouse-map-check.ps1` (or `bash scripts/warehouse-map-check.sh`). The command
    and `scripts/warehouse-signals.tsv` are the authoritative applicability gate used by bootstrap.
-   Continue when it reports `WAREHOUSE_MAP missing`, `stale`, `current`, or `declined`. If it
+   Continue when it reports `WAREHOUSE_MAP missing`, `stale`, or `current`. If it
    reports `WAREHOUSE_MAP not-applicable`, STOP and follow the repo's actual persistence pattern
    or a project-specific skill. If it exits 2, do not guess; report that applicability could not
    be determined. Do not recreate a second warehouse-signal threshold in this skill.
 
 1. **Establish current warehouse evidence, then find the pattern to copy.** A current
    `docs/warehouse-map.md` is preferred, but the artifact is optional: if the check above reports
-   it missing, stale,
-   or deliberately declined, inspect the live SQL/schema/view and orchestration definitions and
+   it missing or stale, inspect the live SQL/schema/view and orchestration definitions and
    write down the equivalent table, business-key, relationship, and load-order inventory before
    continuing. **Do not design a dimension from absent or stale evidence.** The map is a snapshot, not a
    live view** — nothing refreshes it when the warehouse changes. Before copying a pattern out

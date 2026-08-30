@@ -13,6 +13,24 @@
 
 ## 0.78.4 — Unreleased
 
+**Warehouse maps no longer have a hidden declined state.** B-202 revalidates and supersedes the
+explicit-decline clause of WSD-033: no shipped workflow wrote or taught the exact protected
+`LEARNINGS.md` heading, its append-only preference had no revocation state, and its only permanent
+result constructed otherwise unreachable product state. Both checker twins now classify every
+applicable warehouse without `docs/warehouse-map.md` as `missing`/1, the four agent-surface skill
+copies describe only missing/stale/current, and the fixture-only declined result is deleted rather
+than replaced. The map remains optional; docs-sync remains advisory; and warehouse writes still
+require a current map or equivalent live table/key/relationship/load-order evidence.
+
+This intentionally changes one undocumented compatibility edge: a manually authored
+`## Declined artifact: warehouse-map` heading is preserved but inert, so a direct checker caller
+sees `missing`/1 instead of `declined`/0 and custom CI that treated the old exit 0 as authoritative
+may need adjustment. A disposable old-red/new-green twin oracle proved that boundary without adding
+another permanent prose-search test. Both composers emitted byte-identical distributions, both
+validator twins passed all three modes, and the remaining three-result checker suite passed under
+PowerShell 7, Windows PowerShell 5.1, and Git Bash. First Windows/Linux candidate CI still gates
+completion and release.
+
 **Root-installer maintainer teardown now fails honestly and verifies absence.** B-204 replaces twelve
 non-terminating recursive fixture cleanups in the existing `RootInstallerWarehouse` suite with one
 exactly allowlisted, reparse-safe remover and a lifecycle wrapper that preserves product-body and

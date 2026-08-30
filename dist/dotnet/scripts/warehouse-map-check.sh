@@ -45,12 +45,6 @@ EOF
 if [ "$hits" -lt 2 ]; then echo "WAREHOUSE_MAP not-applicable ($hits independent signal(s))"; exit 0; fi
 map="$root/docs/warehouse-map.md"
 if [ ! -f "$map" ]; then
-  if [ -f "$root/LEARNINGS.md" ]; then
-    [ -r "$root/LEARNINGS.md" ] || { echo 'Could not read LEARNINGS.md; warehouse-map disposition cannot be determined.' >&2; exit 2; }
-    grep -Eq '^## Declined artifact: warehouse-map[[:space:]]*$' "$root/LEARNINGS.md"; learning_status=$?
-    if [ "$learning_status" -eq 0 ]; then echo 'WAREHOUSE_MAP declined (recorded in LEARNINGS.md)'; exit 0; fi
-    [ "$learning_status" -eq 1 ] || { echo 'Could not read LEARNINGS.md; warehouse-map disposition cannot be determined.' >&2; exit 2; }
-  fi
   echo 'WAREHOUSE_MAP missing - run /map-warehouse or inspect the live schema before a warehouse write.'; exit 1
 fi
 newer=0
