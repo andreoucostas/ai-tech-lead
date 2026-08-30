@@ -1,0 +1,84 @@
+# B-205 — Bash 3.2-safe skill-mirror sync
+
+**Status:** DESIGN LOCKED · **Date:** 2026-08-30 · **Scope:** sync twins, existing twin result, focused macOS provider
+
+## Value decision
+
+Implement B-205 as P2/S for v0.78.4. The documented macOS command reaches a Bash-4-only
+`shopt -s globstar` after `.github/skills` has already been replaced, so stock `/bin/bash` 3.2 can
+leave a correct mirror behind while returning a false-red result and withholding completion. This
+is a reachable shipped-provider defect, not a syntax-style preference.
+
+The item was filed for no earlier than v0.78.5, but that target is superseded. The still-unreleased
+v0.78.4 candidate already carries the one focused stock-Bash-3.2 job required by B-198, and WSD-061
+allows another equally narrow proof in that same provider leg. Shipping the known false-red one
+release later would weaken the macOS contract and require no less CI; inclusion adds no job or
+matrix and is the lower-risk choice.
+
+## Count decision
+
+Remove the informational skill count from both twins instead of replacing its provider. The useful
+contract is byte-identical mirroring plus an honest completion verdict; no documentation or caller
+parses the number. Only one test literal names it. The count has already caused two post-mutation
+cross-host failures: bare `find` resolved to Windows FIND.EXE, then its Bash-native replacement used
+Bash-4-only `globstar`.
+
+A new recursive provider would add PATH, traversal, symlink, unreadable-directory, newline, and
+zero-match semantics only to retain decorative output. Absolute `/usr/bin/find | /usr/bin/wc` can be
+made fail-honest with `pipefail`, but newline-bearing ancestors still distort a line count; fixing
+that is disproportionate. A recursive shell function adds its own unreadable-directory and symlink
+contract. A one-level glob is smaller but silently changes the PowerShell twin's recursive meaning.
+Delete both count implementations and emit one exact shared verdict:
+
+`Synced skills: .claude/skills -> .github/skills`
+
+Do not replace the number with another metric or claim the success line proves byte equality. The
+copy commands perform the work; tests and docs-sync enforce the mirror contract.
+
+## Locked implementation
+
+1. In `src/core/scripts/sync-agent-files.sh`, remove the `globstar`/`nullglob` option, array, and
+   count. In the PowerShell twin, remove the recursive count provider. Change only their final
+   success text to the exact count-free verdict above. Missing-source behavior, Git-root fallback,
+   recursive replacement/copy behavior, exit semantics, and paths remain unchanged.
+2. Strengthen the existing `sync-agent-files recursively produces identical trees` result without
+   adding a suite or `It`. Require each twin independently to exit 0, emit the exact success line,
+   and keep stderr empty. Fingerprint the canonical source fixture by relative path plus SHA-256 and
+   require each mirror independently to equal it; comparing only the two mirrors allows identical
+   omission or corruption to pass. Retain the nested supporting file so recursive copy remains
+   observed.
+3. Update the existing non-Git fallback result's exact stdout literal to the count-free verdict.
+   Keep its per-twin exit, stderr, fallback calibration, and nested-byte assertions. Do not add a
+   zero-skill or count case: the removed behavior no longer warrants coverage.
+4. Compose both twins to all three distributions. Strengthen the existing macOS-topology assertion
+   only enough to require that the focused job directly executes committed dotnet
+   `sync-agent-files.sh`; do not permit a generic hook suite, composer, validator, matrix, or pwsh.
+5. Add two small steps to the existing `macos-portability` job. A transitional frozen-tree step
+   runs the exact pre-fix dotnet sync script under asserted `/bin/bash` 3.2, requires nonzero status,
+   the `globstar` diagnostic, empty success stdout, and source/mirror byte equality after the false
+   red. A current-tree step requires exit 0, exact count-free stdout, empty stderr, and source/mirror
+   equality. After the first observed red/green run, remove the frozen-history step and retain the
+   current direct smoke.
+
+## Proportional evidence
+
+- Before editing product twins, change only the two existing result assertions and run the exact
+  Git Bash suite through an expected-red wrapper. Both results must reject the old count-bearing
+  output; the main result must also prove its new non-vacuous exit/stderr/source comparisons execute.
+- After implementation, require ScriptTwinParity to return the same 10/0/0 cardinality under
+  PowerShell 7 and native Windows PowerShell 5.1 with Git Bash. Use a temporary equal-nonzero twin
+  mutation to prove the strengthened main result rejects matching failures, then restore exact
+  bytes and rerun green. Add no permanent result.
+- Require source/dist byte parity, PowerShell BOM/AST and Bash syntax, both composers, all three
+  distribution validators, the focused CI-topology/watch suites, and maintainer record gates.
+- Exact stock macOS `/bin/bash` 3.2 old-red/new-green and final Windows/Linux/macOS candidate CI are
+  mandatory before completion or release. Local Git Bash and `bash -n` are not substitutes.
+
+## Adversarial review
+
+Two independent read-only reviews approved IMPLEMENT and independently preferred count removal.
+They rejected a replacement provider as disproportionate and found the existing main result could
+pass matching nonzero exits, matching empty output, uninspected stderr, and identically wrong mirror
+trees. The locked test strengthening incorporates those findings without growing cardinality.
+
+No push, tag, or release is authorized by this plan.

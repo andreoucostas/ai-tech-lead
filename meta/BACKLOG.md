@@ -2962,8 +2962,10 @@ must still exercise the POSIX symlink path, and candidate CI remains pending.
 ---
 
 ### B-205 · Restore Bash 3.2 compatibility in skill-mirror sync
-**Effort:** S · **Priority:** P2 · **planned ≥ v0.78.5**
+**Effort:** S · **Priority:** P2 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-30)
+**Status:** DESIGN LOCKED — two adversarial reviews approved count removal and existing-result strengthening; implementation pending
+**Plan:** `.claude/plans/2026-08-30-b205-skill-sync-bash32-design.md`
 
 **Why:** `/generate-copilot` documents `bash scripts/sync-agent-files.sh` for macOS, but the v0.78.0
 count-provider correction introduced Bash-4-only `globstar`/`**`. On stock Bash 3.2 the script
@@ -2971,11 +2973,15 @@ reaches that failure only after replacing `.github/skills`, so a correct mirror 
 with a false-red exit and no success verdict. This is separate from B-198's installer and B-200's
 date provider.
 
-**Do:** first challenge whether the informational count warrants a provider at all. If retained,
-use a Bash-3.2-safe mechanism without reintroducing Windows Git Bash's `find.exe` collision.
-Strengthen the existing sync twin result rather than adding a suite or `It`; require exact macOS
-Bash 3.2 old-red/new-green evidence, mirror-byte/count/exit assertions, and the existing Git Bash
-control. Reuse B-198's focused provider job, but do not expand B-198 to implement this item.
+**Do:** remove the informational count from both twins: it has no external contract and replacing it
+would add traversal/provider semantics only to preserve decorative output after two real provider
+failures. Keep one exact count-free success verdict. Strengthen the existing sync twin result rather
+than adding a suite or `It`; require each exact-zero exit, empty stderr, exact stdout, and each
+mirror's independent byte equality with the canonical source. Require exact macOS Bash 3.2
+old-red/new-green evidence and the existing Git Bash control. Reuse B-198's focused provider job,
+but do not add a job/matrix or expand B-198 to implement this item. The original ≥v0.78.5 target is
+superseded because the same unreleased v0.78.4 provider leg can prove this shipped macOS contract
+without additional recurring CI.
 
 ---
 
