@@ -49,8 +49,11 @@ The helper must:
    allowed basenames are exactly
    `root-installer-(warehouse|singlewarehouse|angularwarehouse|dotnet|mixed)-<32 lowercase hex>`
    beneath the workspace parent and `root-broken-jq-<32 lowercase hex>` beneath the OS temp root.
-2. Treat only `System.Management.Automation.ItemNotFoundException` from
-   `Get-Item -Force -ErrorAction Stop` as absence. Access, provider, and inspection failures are not
+2. Treat `System.Management.Automation.ItemNotFoundException` from
+   `Get-Item -Force -ErrorAction Stop` as unresolved, not automatically absent. On that outcome,
+   non-recursively enumerate the exact trusted parent with `-Force -ErrorAction Stop` and select by
+   ordinal basename equality. Return absent only when no such directory entry exists; inspect and
+   reject a matching dangling link. Access, provider, and parent-inspection failures are not
    absence. On every attempt, use
    non-recursive breadth-first enumeration and reject the root or any child whose attributes or
    link metadata identify a reparse/symbolic link before enqueueing it. A present target must be a
@@ -98,7 +101,11 @@ prove the post-error reinspection accepts only genuine root absence. The broken-
 probe must show `PATH` restored before the cleanup failure escapes. These are one-off probes, not
 permanent test results.
 
-Require the existing file to retain exactly 12 `It` results and its existing red mutations. Its
+Require the existing file to retain exactly 12 `It` results and its existing red mutations. Amend
+each existing mutation callback to capture and re-emit its nested transcript, then deliberately
+return green to `Invoke-MutationRedTest` unless the transcript contains that mutation's intended
+warehouse assertion and sentinel. This makes a cleanup-only child failure fail the outer oracle
+rather than count as the expected red. Its
 normal matrix executes 79 cleanups, and the two nested mutation-red worlds add six more; measure the
 focused runtime so safety scanning does not silently create material cost. Require each mutation-red
 transcript to retain its intended warehouse assertion. Run the file focused under PowerShell 7 and
@@ -106,9 +113,11 @@ native Windows PowerShell 5.1, then run the standard concurrent meta runner once
 already contains the maintainer gates; rerun only record-sensitive focused gates after later record
 edits. Compare isolated and concurrent results, but do not claim concurrency caused the original
 lock unless reproduced discriminatively. Require BOM and zero AST errors under both PowerShell
-hosts plus `git diff --check` and clean restore checks. First Linux CI must include a dangling-root
-symlink/typed-absence check as well as the ordinary suite; local Windows link evidence is not Linux
-evidence.
+hosts plus `git diff --check` and clean restore checks. The first Linux CI remains the ordinary
+committed suite; it cannot execute an uncommitted one-off. Separately recorded native-Linux
+dangling-root symlink/typed-absence execution of the exact candidate helper gates full safety
+approval. If no such vantage is available, retain that explicit coverage gap and keep B-204 open;
+local Windows link evidence and ordinary Linux CI do not satisfy it.
 
 Because a test file changes, the exact implementation remains a candidate until its first Windows
 and Linux CI runs are green. This meta-only change is not composed into `dist/`; do not run or claim

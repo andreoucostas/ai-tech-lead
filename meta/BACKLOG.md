@@ -2822,7 +2822,10 @@ cumulative 1.5-second failure-path delay, typed absence, and terminal failure in
 suite or `It`, no generic cleanup framework, and no stale-root sweeper. Disposable locked-handle,
 dual-failure, invalid-path, and interior-link probes must discriminate the boundary; retain 12
 results and intended mutation-red diagnostics under PowerShell 7/5.1 plus the standard concurrent
-meta runner. Meta-only; first Windows/Linux CI still gates completion because the test file changes.
+meta runner. The existing mutation callbacks must reject a cleanup-only red by machine-checking and
+re-emitting their intended warehouse assertion/sentinel. Meta-only; first Windows/Linux CI and a
+separately recorded native-Linux dangling-link probe still gate completion because the test file and
+host-sensitive cleanup contract change.
 
 ---
 
