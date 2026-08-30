@@ -2735,6 +2735,8 @@ dotnet/monorepo composition, and an install smoke; do not add a test that merely
 ### B-203 · Preserve warehouse-map verification failure in the docs-sync advisory
 **Effort:** S · **Priority:** P2 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-30)
+**Status:** DESIGN LOCKED — implementation not started
+**Plan:** `.claude/plans/2026-08-30-b203-docs-sync-warehouse-status-design.md`
 
 **Why:** both `docs-sync-check` twins currently translate every nonzero `warehouse-map-check` exit
 into “missing or stale.” Exit 1 is that content state, but exit 2 means the checker could not read,
@@ -2743,15 +2745,19 @@ by a contradictory diagnosis. The warehouse-map branch remains advisory, but its
 maintenance rule 7 exactly when the host is least trustworthy.
 
 **Do:** capture the checker status once in each twin. Preserve the current missing/stale note only
-for exit 1. For exit 2 or greater, retain the checker's stderr and the warehouse-map branch's
-non-failing contract, then emit exactly: `NOTE: warehouse map could not be verified; this is not
-evidence that the map is missing or stale. (advisory - not a failure)`. Strengthen the existing
-`docs-sync-check branches and advisory prose agree` result with controlled status 0, 1, 2, and 7
-worlds. The 2/7 stubs emit a unique stderr sentinel; assert it survives exactly once, the new note
-appears exactly once, the missing/stale note is absent, and the wrapper remains non-failing. Add no
-suite or `It`, and prove the unchanged wrapper red before correction. Compose all distributions,
-run both validator twins, and require the modified test's first Windows/Linux CI before completion
-or release.
+for exit 1. For anything other than 0 or 1, retain the checker's stderr and the warehouse-map
+branch's non-failing contract, then emit exactly: `NOTE: warehouse map could not be verified; this
+is not evidence that the map is missing or stale. (advisory - not a failure)`. Strengthen only the
+existing `docs-sync-check branches and advisory prose agree` result. Its controlled status-0 world
+must retain and assert the existing missing-`.github/skills` directory failure, its status-0 child
+sentinel, overall exit 1, and absence of either warehouse note. After repairing that mirror, capture
+status 1, status 2, and an unexpected-status world (-1 PowerShell / 7 Bash) before asserting. Give
+status 2 and unexpected different world-specific stderr sentinels, shared only between each world's
+twins; assert the applicable sentinel and new note exactly once per wrapper, the missing/stale note
+absent, and statuses 1/2/unexpected non-failing. Add no suite, `It`, or extra wrapper run, and prove
+both unable worlds red on the unchanged wrappers before correction. Compose all distributions, run
+both validator twins, and require the modified test's first Windows/Linux CI before completion or
+release.
 
 ---
 
