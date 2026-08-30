@@ -3,7 +3,7 @@
 **Date:** 2026-08-30
 **Filed against:** v0.78.3
 **Planned:** v0.78.4
-**Status:** AMENDED IMPLEMENTATION CANDIDATE — release-range product/test commit `16dbd95743163f5a92e9aacb23a946e056421a40` is locally green; corrected-record rereview and first provider CI pending
+**Status:** AMENDED IMPLEMENTATION CANDIDATE `4e472a65166d7746c5321c3c346dc8dc6c68b9b9` — corrected-record immutable review approved; first provider CI pending
 
 ## Value and proportionality decision
 
@@ -258,3 +258,16 @@ authoritative record text: this plan and B-203 still named the pre-amendment can
 described the rejected raw-process reroute too broadly as any `RunArg` change. The current record
 correction fixes that semantic defect without changing product or test bytes. Native Linux, stock
 macOS Bash 3.2, the transitional frozen-parent run, and exact provider CI remain unclaimed gates.
+
+## Corrected-record immutable review
+
+Reviewer `/root/v0784_candidate_review` approved exact corrected candidate
+`4e472a65166d7746c5321c3c346dc8dc6c68b9b9`, tree
+`56e34163d00816469a6af16198294b476a231744`. The review independently reproduced the 9/1 exact
+old-product red, 10/0 candidate green under both PowerShell hosts, and both discriminating AGENTS
+probes. Its first pass rejected stale plan/backlog candidate identity plus an overbroad RCA sentence;
+its second pass rejected one collective record-approval overclaim. After those record-only
+corrections, it confirmed the authoritative status and evidence are accurate, the RCA rejects only
+the raw-process reroute, all product/test/dist/changelog/learning blobs remain exactly those of
+`16dbd95743163f5a92e9aacb23a946e056421a40`, and the worktree is clean. No native or provider
+evidence was inferred from that approval.

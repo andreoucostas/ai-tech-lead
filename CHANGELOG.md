@@ -292,6 +292,16 @@ diagnosis and aggregate verdict while the correction emitted each exactly once. 
 `SHELLOPTS=errexit` is deliberately not the oracle: it changes nested scripts too and exposed a
 broader, unpublished compatibility question now bounded as non-release-gating B-208.
 
+Immutable review rejected product/test commit `16dbd957` only because the authoritative B-203
+plan/backlog still named its pre-amendment candidate and described the rejected raw-process harness
+reroute as any `RunArg` change. A second record-only pass removed one collective approval overclaim.
+Reviewer `/root/v0784_candidate_review` then approved exact corrected candidate
+`4e472a65166d7746c5321c3c346dc8dc6c68b9b9`, tree
+`56e34163d00816469a6af16198294b476a231744`, after independently reproducing the 9/1 old-product
+red, 10/0 candidate green under both PowerShell hosts, and both AGENTS diagnostic probes. Product,
+test, distribution, consumer-changelog, and learning bytes remain exactly those of `16dbd957`;
+native/provider evidence remains pending.
+
 PowerShell and login-shell Bash composition produced the same 525-file aggregate (173/169/183).
 Both validator twins passed all three distributions, and all 12 changed authored/composed carrier
 pairs are byte-identical. The dotnet, Angular, and monorepo standard hook runners each passed 20

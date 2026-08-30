@@ -2862,7 +2862,7 @@ gates independently passed. Native Linux and first candidate CI remain the only 
 ### B-203 · Preserve warehouse-map verification failure in the docs-sync advisory
 **Effort:** S · **Priority:** P2 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-30)
-**Status:** AMENDED IMPLEMENTATION CANDIDATE — release-range product/test commit `16dbd95743163f5a92e9aacb23a946e056421a40` is locally green; corrected-record rereview and first provider CI pending
+**Status:** AMENDED IMPLEMENTATION CANDIDATE `4e472a65166d7746c5321c3c346dc8dc6c68b9b9` — corrected-record immutable review approved; first provider CI pending
 **Plan:** `.claude/plans/2026-08-30-b203-docs-sync-warehouse-status-design.md`
 
 **Why:** both `docs-sync-check` twins currently translate every nonzero `warehouse-map-check` exit
@@ -2940,6 +2940,15 @@ the rejected raw-process reroute any `RunArg` change. This corrected record make
 explicit without changing product or test bytes. Exported inherited `SHELLOPTS` remains the separate
 non-gating B-208 decision. Native Linux, stock macOS Bash 3.2, transitional frozen-parent evidence,
 and exact provider CI remain unclaimed, so B-203 stays open.
+
+Independent reviewer `/root/v0784_candidate_review` approved exact corrected candidate
+`4e472a65166d7746c5321c3c346dc8dc6c68b9b9`, tree
+`56e34163d00816469a6af16198294b476a231744`. It reproduced the 9/1 exact old-product red, 10/0
+candidate green under both PowerShell hosts, and both AGENTS diagnostic probes. Two record-only
+rejections first removed the stale candidate/RCA contradiction and then one collective approval
+overclaim. The final review confirmed every product/test/dist/changelog/learning blob remains
+exactly the approved `16dbd95743163f5a92e9aacb23a946e056421a40` version and the worktree is clean.
+Native/provider evidence remains pending rather than inferred.
 
 **RCA:** the direct checker suite distinguished exits 1 and 2, but the wrapper parity fixture never
 installed the checker, so its translation branch did not execute. B-164's bounded sweep selected
