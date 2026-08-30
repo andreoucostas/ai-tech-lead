@@ -2984,7 +2984,7 @@ and use one cleanup-registry mutation to prove the subject is discriminating.
 ### B-196 · Honor a BOM-prefixed disabled-skill ledger in the Bash installer
 **Effort:** S · **Priority:** P1 · **planned v0.78.5**
 **Filed against:** v0.78.3 (2026-08-29)
-**Status:** IMPLEMENTED CANDIDATE — local verification in progress; first Windows/Linux CI pending
+**Status:** IMPLEMENTED CANDIDATE — local verification complete; first Windows/Linux CI pending
 
 **Why:** B-194's required native Windows PowerShell 5.1/CP437 run exposed a separate reachable
 cross-host failure. PS5's normal UTF-8 writer can prefix `LEARNINGS.md` with a BOM. The PowerShell

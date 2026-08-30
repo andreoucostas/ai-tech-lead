@@ -27,8 +27,12 @@ therefore remains 50 results. Against the unchanged Bash reader it passed 49 and
 existing skill-reconciliation result; the implementation passes 50/0 under PowerShell 7 and native
 Windows PowerShell 5.1 with code page 437. The BOM-less InstallerConvergence control passes 12/0,
 InstallerContract 13/0, and Composer 16/0; both validator twins pass all 173/169/183-file
-distributions. Isolated parser mutations and the exact candidate's first Windows/Linux CI run
-remain mandatory before completion or release.
+distributions, and both composers produce the same 525-file aggregate. Direct probes preserve
+BOM-less input, accept only one byte-zero BOM, reject misplaced/malformed variants, and propagate a
+selected-file read failure. In separate exact-`49420ad` copies, removing only BOM stripping and
+restoring only prefix-based name extraction each made that same Bash result fail at 49/1 while all
+PowerShell results stayed green. The exact candidate's first Windows/Linux CI run remains mandatory
+before completion or release.
 
 ## 0.78.4 — Unreleased
 
