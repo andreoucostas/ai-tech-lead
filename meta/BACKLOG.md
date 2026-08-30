@@ -2735,7 +2735,7 @@ dotnet/monorepo composition, and an install smoke; do not add a test that merely
 ### B-203 · Preserve warehouse-map verification failure in the docs-sync advisory
 **Effort:** S · **Priority:** P2 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-30)
-**Status:** IMPLEMENTATION IN PROGRESS — red observed; WPS5 oracle amendment approved
+**Status:** IMPLEMENTED CANDIDATE — local verification complete; first Windows/Linux CI pending
 **Plan:** `.claude/plans/2026-08-30-b203-docs-sync-warehouse-status-design.md`
 
 **Why:** both `docs-sync-check` twins currently translate every nonzero `warehouse-map-check` exit
@@ -2761,6 +2761,32 @@ statuses 1/2/unexpected non-failing. Add no suite, `It`, or extra wrapper run, a
 worlds red on the unchanged wrappers before correction. Compose all distributions, run both
 validator twins, and require the modified test's first Windows/Linux CI before completion or
 release.
+
+**Implementation evidence:** baseline ScriptTwinParity passed 10/0. Changing only its existing
+docs-sync result made the unchanged wrappers pass 9/10, with one aggregate failure naming both
+unable worlds for both twins; no suite or `It` was added. The minimal product branches restored
+10/0 under PowerShell 7. Native Windows PowerShell 5.1 then falsified only the first raw stderr
+literal-count oracle, not the product behavior; after the three-reviewer physical-line amendment,
+the suite passed 10/0 under both PowerShell hosts at code page 437 with Git Bash observed. A direct,
+no-redirection 5.1 fixture preserved the child sentinel, emitted only the new warehouse note and the
+final success line, omitted the contradictory old note, and exited 0.
+
+Both composers produced byte-identical 525-file trees (173/169/183). Both validator twins passed
+all three distributions. Each distribution's standard hook runner passed 20 files with zero
+failures, including ScriptTwinParity 10/0 and WarehouseMapCheck 4/0; the maintainer runner passed 31
+files with zero failures, including Composer 16/0, BacklogHygiene 10/0, DocTruth 13/0, DocClaims 8/0,
+and release-head 8/0. Twelve changed authored/composed carrier pairs are byte-identical; BOM, AST,
+and Bash syntax checks pass. This remains a candidate because Git Bash is neither native Linux nor
+Bash 3.2, and the modified test's first Windows/Linux CI has not run.
+
+**RCA:** the direct checker suite distinguished exits 1 and 2, but the wrapper parity fixture never
+installed the checker, so its translation branch did not execute. B-164's bounded sweep selected
+wrappers that themselves exited nonzero after child failure; this advisory deliberately converts
+the child nonzero to wrapper exit 0 and fell outside that predicate. The same class is any wrapper
+that turns a multi-state child result into a more specific content diagnosis. B-203 fixes only this
+observed warehouse branch; B-175 owns the distinct template-checker/doctor ambiguity. The separate
+WPS5 renderer lesson is recorded in `meta/LEARNINGS.md`; changing `RunArg` would repeat B-165's
+out-of-scope Linux regression and is intentionally rejected.
 
 ---
 

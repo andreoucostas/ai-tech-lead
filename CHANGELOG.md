@@ -13,6 +13,32 @@
 
 ## 0.78.4 — Unreleased
 
+**Docs-sync now distinguishes verified warehouse-map debt from a checker it could not run.** B-203
+captures the `warehouse-map-check` status once in both wrapper twins, preserves the existing
+missing/stale note only for exit 1, and emits an explicit unable-to-verify advisory for every other
+observed nonzero status. The checker still runs once, its stderr remains visible, the warehouse
+branch remains non-failing, and the final docs-sync success policy is unchanged.
+
+One existing ScriptTwinParity result now reaches status 0, 1, 2, and an unexpected negative/nonzero
+pair without adding a suite or result. Against the unchanged wrappers it passed 9/10 and named both
+unable worlds for both twins; the minimal product branches made PowerShell 7 pass 10/10. A native
+Windows PowerShell 5.1 run then caught a false test premise: its `RunArg` renderer repeats a child
+stderr token inside ErrorRecord metadata. Three adversarial reviews approved counting exactly one
+physical diagnostic line ending in the sentinel instead. The amended result passes 10/10 under
+PowerShell 7 and Windows PowerShell 5.1 at code page 437. A separate direct, no-redirection 5.1
+probe preserved the child diagnostic, emitted only the new wrapper note, reached the final success
+line, and exited 0. The exact candidate's first Windows/Linux CI remains mandatory before
+completion or release.
+
+PowerShell and login-shell Bash composition produced the same 525-file aggregate (173/169/183).
+Both validator twins passed all three distributions, and all 12 changed authored/composed carrier
+pairs are byte-identical. The dotnet, Angular, and monorepo standard hook runners each passed 20
+files with zero failures, including their composed ScriptTwinParity 10/0 and warehouse checker 4/0.
+The maintainer runner passed 31 files with zero failures, including Composer 16/0,
+BacklogHygiene 10/0, DocTruth 13/0, DocClaims 8/0, and release-head 8/0. BOM, PowerShell AST, and Bash
+syntax checks are clean. These remain local Windows/Git Bash results rather than the required native
+CI evidence.
+
 **Bash session start now preserves time-sensitive advisory rows across supported text shapes.**
 B-195 gives the security and hazard scans separate initialized EOF state, so a final non-newline
 record is consumed rather than silently dropped. The hazard reader also strips one CR in its parsing

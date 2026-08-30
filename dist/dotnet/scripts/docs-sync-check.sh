@@ -158,7 +158,13 @@ if [ -f "$here/hazard-check.sh" ]; then
   bash "$here/hazard-check.sh" "$(cd "$here/.." && pwd)" || fail "hazard map checks failed (see above)."
 fi
 if [ -f "$here/warehouse-map-check.sh" ]; then
-  bash "$here/warehouse-map-check.sh" "$(cd "$here/.." && pwd)" || echo 'NOTE: warehouse map is missing or stale; refresh it before a warehouse write. (advisory - not a failure)'
+  bash "$here/warehouse-map-check.sh" "$(cd "$here/.." && pwd)"
+  warehouse_status=$?
+  case "$warehouse_status" in
+    0) ;;
+    1) echo 'NOTE: warehouse map is missing or stale; refresh it before a warehouse write. (advisory - not a failure)' ;;
+    *) echo 'NOTE: warehouse map could not be verified; this is not evidence that the map is missing or stale. (advisory - not a failure)' ;;
+  esac
 fi
 
 # 7. architecture.html freshness (advisory) — regenerate after editing ARCHITECTURE.md.

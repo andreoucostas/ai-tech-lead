@@ -149,7 +149,9 @@ if (Test-Path $hc) {
 $wmc = Join-Path $here 'warehouse-map-check.ps1'
 if (Test-Path $wmc) {
     & $psExe -NoProfile -ExecutionPolicy Bypass -File $wmc (Split-Path -Parent $here)
-    if ($LASTEXITCODE -ne 0) { Write-Output 'NOTE: warehouse map is missing or stale; refresh it before a warehouse write. (advisory - not a failure)' }
+    $warehouseStatus = $LASTEXITCODE
+    if ($warehouseStatus -eq 1) { Write-Output 'NOTE: warehouse map is missing or stale; refresh it before a warehouse write. (advisory - not a failure)' }
+    elseif ($warehouseStatus -ne 0) { Write-Output 'NOTE: warehouse map could not be verified; this is not evidence that the map is missing or stale. (advisory - not a failure)' }
 }
 
 # 7. architecture.html freshness (advisory) -- regenerate after editing ARCHITECTURE.md.

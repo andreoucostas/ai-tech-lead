@@ -7,6 +7,11 @@
 
 ## 0.78.4 — Unreleased
 
+- When the warehouse-map checker cannot examine your repository, `docs-sync-check` now says the
+  map could not be verified and that this is not evidence it is missing or stale. A checker that
+  verifies a missing or stale map keeps the existing refresh note. The warehouse branch remains
+  advisory and the overall docs-sync exit policy is unchanged.
+
 - Bash session start now consumes a final security row even when the file has no trailing newline,
   so an overdue security finding retains its red SLA warning. Where the existing 90-day cutoff is
   available, the Bash hazard reader also consumes a final unterminated row and recognizes ordinary

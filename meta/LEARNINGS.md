@@ -1710,3 +1710,25 @@ collecting the named failures first preserved one result without collapsing its 
 value test rejected an EOF-fresh world: the ordinary terminated fresh controls already pin the
 threshold, and the extra shape passed both old and new readers. Test count should grow only when a
 new product decision does—as it did for the previously untested overdue-security severity branch.
+
+## 2026-08-30 — Count logical diagnostics, not renderer metadata
+
+B-203's first locked oracle required a unique child stderr sentinel to occur literally once. That
+was true under PowerShell 7 and false under Windows PowerShell 5.1 even though the product invoked
+the child once: `RunArg` renders native stderr as an ErrorRecord whose primary line contains the
+sentinel, then repeats the same token inside `CategoryInfo`. A literal count therefore measured the
+host renderer as though it were product duplication. The hostile host run caught the test, not a
+wrapper defect.
+
+Do not weaken this class to `Contains` or “at least once”; either would miss a child invoked twice.
+Count the logical record at the narrowest stable boundary instead. Here, split physical stderr
+lines, trim each, and require exactly one line ending ordinally in an ASCII world-specific sentinel.
+The real diagnostic line matches under both hosts, renderer metadata does not, and two child writes
+still produce two matches. Keep literal exact counts for stdout and wrapper-owned notes, where the
+renderer does not manufacture copies.
+
+Hostile execution is also a design input, not a final ceremony. The product status mapping was
+already correct when the 5.1 run failed; changing the runner or discarding the assertion would have
+expanded scope or lost duplicate-execution coverage. Freezing the evidence-driven oracle amendment
+before correcting the assertion preserved the reason for the change and added no suite, result, or
+wrapper run.

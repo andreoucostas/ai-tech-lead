@@ -3,7 +3,7 @@
 **Date:** 2026-08-30
 **Filed against:** v0.78.3
 **Planned:** v0.78.4
-**Status:** IMPLEMENTATION IN PROGRESS — red observed; WPS5 oracle amendment approved
+**Status:** IMPLEMENTED CANDIDATE — local verification complete; first Windows/Linux CI pending
 
 ## Value and proportionality decision
 
@@ -86,12 +86,11 @@ Windows PowerShell 5.1 probe as implementation evidence.
 
 Capture every template/consumer world and both twin results before making assertions, then assert
 exit behavior, normalized stdout agreement, stdout/note literal cardinality, and the stderr
-terminal-line cardinality per wrapper. This
-prevents the first failing unable world from hiding whether the unexpected-status world also went
-red. Run the changed test against the unchanged wrappers first: both unable worlds must be observed
-failing because the old note appears and the new note does not. The corrected wrappers must make the
-same result green. This direct old-tree red is sufficient; do not add a ceremonial post-green
-mutation, another wrapper run, or a new result.
+terminal-line cardinality per wrapper. This prevents the first failing unable world from hiding
+whether the unexpected-status world also went red. Run the changed test against the unchanged
+wrappers first: both unable worlds must be observed failing because the old note appears and the new
+note does not. The corrected wrappers must make the same result green. This direct old-tree red is
+sufficient; do not add a ceremonial post-green mutation, another wrapper run, or a new result.
 
 ## Design-lock review
 
@@ -102,7 +101,7 @@ decorate stderr with `NativeCommandError`. The corrected design therefore maps e
 status outside 0/1, uses the negative unexpected-status oracle, and tests only sentinel survival
 through the permanent harness. It also retains the existing missing-mirror branch in the status-0
 world, captures all worlds before assertions, and makes every cardinality per wrapper. Both
-reviewers approved this exact corrected contract; the maintainer independently reproduced the
+reviewers approved that pre-implementation contract; the maintainer independently reproduced the
 negative exit behavior under PowerShell 7 and Windows PowerShell 5.1.
 
 ## Implementation-time oracle amendment
@@ -142,3 +141,25 @@ converts its child's nonzero status into advisory exit 0, so it fell outside tha
 Twin agreement therefore said nothing about the child-status contract. The exposed class is any
 wrapper that turns a multi-state child exit into a more specific content diagnosis; B-203 fixes only
 this observed warehouse branch, while B-175 owns the distinct template-checker/doctor ambiguity.
+
+## Local candidate evidence
+
+Baseline source ScriptTwinParity passed 10/0. With only the existing result changed, the unchanged
+wrappers passed 9/10 and the aggregate failure named status 2 and unexpected for both twins: each
+unable world lacked the new note and emitted the contradictory old one. The two minimal product
+branches made the suite pass 10/0 under PowerShell 7. After the evidence-driven stderr-oracle
+amendment, the same source result passed 10/0 under PowerShell 7 and native Windows PowerShell 5.1,
+both at code page 437 with Git Bash observed. A direct, no-redirection 5.1 fixture printed the child
+sentinel, the new note, and final success line, omitted the old note and harness decoration, and
+exited 0.
+
+PowerShell and login-shell Bash composers each produced the same 525-file aggregate
+(173/169/183), with zero hash differences. Both validator twins passed all three distributions.
+Each distribution's standard hook runner passed 20 files with zero failures, including its composed
+ScriptTwinParity 10/0 and warehouse checker 4/0; the maintainer runner passed 31 files with zero
+failures, including Composer 16/0, BacklogHygiene 10/0, DocTruth 13/0, DocClaims 8/0, and release-head
+8/0. All 12 changed source-to-dist carriers are byte-identical; both PowerShell files retain their
+BOM and parse with zero AST errors, and the Bash product twin passes `bash -n`.
+
+These are local Windows/Git Bash results, not native Linux or Bash 3.2 evidence. Because the existing
+test changed, the exact candidate remains open until its first Windows/Linux CI is green.

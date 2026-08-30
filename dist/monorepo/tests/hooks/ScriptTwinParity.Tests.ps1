@@ -38,6 +38,14 @@ function CarrierTemplateFixture { $r=TemplateFixture;Put (Join-Path $r CLAUDE.md
 # the reached set turns "this check never ran" into a failure instead of a green line.
 $ExpectedChecks = @('version stamps in sync','mirrored verbatim','Agentic Workflow','copilot-instructions.md present','carry a UTF-8 BOM','<framework scripts parse cleanly>','every hook has its','skills and .github/skills are in sync','Common Tasks skill inventory matches')
 function NormDocs($text) { $known='sync-agent-files|template-checks|wiki-check|warehouse-map-check|build-architecture-html';$x=$text-replace("("+$known+")\.(ps1|sh)"),'$1.<script>';($x-replace'all framework \.(ps1|sh) files parse cleanly\.','all framework scripts parse cleanly.') }
+function LiteralCount($text,$needle) { @([regex]::Matches([string]$text,[regex]::Escape($needle))).Count }
+function TerminalLineCount($text,$sentinel) { @(([string]$text -split '\r\n|\n|\r') | Where-Object { $_.Trim().EndsWith($sentinel,[StringComparison]::Ordinal) }).Count }
+function SetWarehouseStub($root,[int]$psStatus,[int]$shStatus,[string]$stream,[string]$sentinel) {
+    $psWrite=if($stream-eq'stderr'){"[Console]::Error.WriteLine('$sentinel')"}else{"Write-Output '$sentinel'"}
+    $shRedirect=if($stream-eq'stderr'){' >&2'}else{''}
+    PutBom (Join-Path $root 'scripts/warehouse-map-check.ps1') "$psWrite`nexit $psStatus`n"
+    Put (Join-Path $root 'scripts/warehouse-map-check.sh') "#!/usr/bin/env bash`nprintf '%s\n' '$sentinel'$shRedirect`nexit $shStatus`n"
+}
 function DocsFixture { $r=Temp docs;CopyPair docs-sync-check $r;Put (Join-Path $r 'docs/enforcement-surfaces.md') "fixture`n";Put (Join-Path $r CLAUDE.md) "# ready`n";Put (Join-Path $r AGENTS.md) "GENERATED FILE`n## Verification Rules`n## Leanness`n## Boy Scout Rule`n## Agentic Workflow`n";Put (Join-Path $r '.github/copilot-instructions.md') "fixture`n";Put (Join-Path $r TECH_DEBT.md) "# debt`n";Put (Join-Path $r FRAMEWORK-CONTEXT.md) "# context`n";Put (Join-Path $r README.md) "# fixture`n";Put (Join-Path $r '.claude/skills/my-skill/SKILL.md') "# skill`n";Put (Join-Path $r '.claude/agents/my-agent.md') "# agent`n";$r }
 
 Reset-Tests
@@ -119,7 +127,78 @@ It 'template-checks rejects the observed one-line Boy Scout applicability drift'
 
 It 'template-checks rejects an Unreleased head at the stamped version but accepts a dated one' {foreach($case in 'dated','unreleased'){$r=TemplateFixture;try{$head=if($case-eq'dated'){'## 1.2.3 — 2026-08-08'}else{'## 1.2.3 — Unreleased'};Put (Join-Path $r 'CHANGELOG.md') "# Changelog`n`n$head`n`n- Fixture.`n";$p=RunArg (Join-Path $r scripts/template-checks.ps1);$s=RunArg (Join-Path $r scripts/template-checks.sh);AssertExit $p $s $case;AssertSeq (Records $p.Out) (Records $s.Out) "$case template-checks";if($case-eq'dated'){Assert ($p.Exit-eq 0) "dated head at the stamped version should pass: $($p.Out)"}else{Assert ($p.Exit-ne 0) 'Unreleased head at the stamped version should fail';$want="still reads '$head' — stamp it with a real release date before shipping.";Assert ($p.Out.Contains($want)) "PowerShell placeholder finding absent: $($p.Out)";Assert ($s.Out.Contains($want)) "bash placeholder finding absent: $($s.Out)"}}finally{Remove-Item -Recurse -Force $r}}}
 
-It 'docs-sync-check branches and advisory prose agree' {foreach($template in $true,$false){$r=if($template){TemplateFixture}else{DocsFixture};try{if($template){CopyPair docs-sync-check $r;Put (Join-Path $r '.template-repo') ''};$p=RunArg (Join-Path $r scripts/docs-sync-check.ps1);$s=RunArg (Join-Path $r scripts/docs-sync-check.sh);AssertExit $p $s 'docs-sync-check';Assert ((NormDocs $p.Out)-eq(NormDocs $s.Out)) "docs stdout differs`nPS:`n$($p.Out)`nSH:`n$($s.Out)";if(-not$template){$a="NOTE: docs/ci-integration.md is missing — restore it from the template if you need the portable required-build recipe. (advisory — not a failure)";$b="NOTE: README.md does not mention: skill:my-skill agent:my-agent — update the What's-in-the-box / subagents tables (they may have drifted). (advisory — not a failure)";foreach($x in $a,$b){Assert ($p.Out.Contains($x)) "PowerShell advisory differs: $x";Assert ($s.Out.Contains($x)) "bash advisory differs: $x"}}}finally{Remove-Item -Recurse -Force $r}}}
+It 'docs-sync-check branches and advisory prose agree' {
+    # Capture every process before asserting. On the old wrappers both unable worlds must be visible
+    # in the one aggregate failure; an early status-2 assertion must not hide the unexpected status.
+    $templateResult=$null
+    $consumerResults=[ordered]@{}
+    $r=TemplateFixture
+    try {
+        CopyPair docs-sync-check $r
+        Put (Join-Path $r '.template-repo') ''
+        $templateResult=[pscustomobject]@{Name='template';Ps=RunArg (Join-Path $r scripts/docs-sync-check.ps1);Sh=RunArg (Join-Path $r scripts/docs-sync-check.sh)}
+    } finally { Remove-Item -Recurse -Force $r }
+
+    $r=DocsFixture
+    try {
+        SetWarehouseStub $r 0 0 stdout 'WAREHOUSE_CHILD_STATUS_0'
+        $consumerResults['status-0']=[pscustomobject]@{Name='status-0';Ps=RunArg (Join-Path $r scripts/docs-sync-check.ps1);Sh=RunArg (Join-Path $r scripts/docs-sync-check.sh)}
+
+        Put (Join-Path $r '.github/skills/my-skill/SKILL.md') "# skill`n"
+        foreach($world in @(
+            [pscustomobject]@{Name='status-1';PsStatus=1;ShStatus=1;Stream='stdout';Sentinel='WAREHOUSE_CHILD_STATUS_1'},
+            [pscustomobject]@{Name='status-2';PsStatus=2;ShStatus=2;Stream='stderr';Sentinel='WAREHOUSE_CHILD_STATUS_2'},
+            [pscustomobject]@{Name='unexpected';PsStatus=-1;ShStatus=7;Stream='stderr';Sentinel='WAREHOUSE_CHILD_STATUS_UNEXPECTED'}
+        )) {
+            SetWarehouseStub $r $world.PsStatus $world.ShStatus $world.Stream $world.Sentinel
+            $consumerResults[$world.Name]=[pscustomobject]@{Name=$world.Name;Ps=RunArg (Join-Path $r scripts/docs-sync-check.ps1);Sh=RunArg (Join-Path $r scripts/docs-sync-check.sh)}
+        }
+    } finally { Remove-Item -Recurse -Force $r }
+
+    $issues=[Collections.Generic.List[string]]::new()
+    function Expect($condition,$message) { if(-not$condition){[void]$issues.Add($message)} }
+    foreach($pair in @($templateResult)+@($consumerResults.Values)) {
+        Expect ($pair.Ps.Exit-eq$pair.Sh.Exit) "$($pair.Name) exit mismatch $($pair.Ps.Exit)/$($pair.Sh.Exit)`nPS OUT:`n$($pair.Ps.Out)`nPS ERR:`n$($pair.Ps.Err)`nSH OUT:`n$($pair.Sh.Out)`nSH ERR:`n$($pair.Sh.Err)"
+        Expect ((NormDocs $pair.Ps.Out)-eq(NormDocs $pair.Sh.Out)) "$($pair.Name) stdout differs`nPS:`n$($pair.Ps.Out)`nSH:`n$($pair.Sh.Out)"
+    }
+
+    $oldNote='NOTE: warehouse map is missing or stale; refresh it before a warehouse write. (advisory - not a failure)'
+    $newNote='NOTE: warehouse map could not be verified; this is not evidence that the map is missing or stale. (advisory - not a failure)'
+    $zero=$consumerResults['status-0']
+    foreach($twin in @(@('PowerShell',$zero.Ps,'FAIL: .github/skills is missing — run scripts/sync-agent-files.ps1.'),@('bash',$zero.Sh,'FAIL: .github/skills is missing — run scripts/sync-agent-files.sh.'))) {
+        $label=$twin[0];$result=$twin[1];$missingMirror=$twin[2]
+        Expect ($result.Exit-eq 1) "$label status-0/missing-mirror exit should be 1, got $($result.Exit)"
+        Expect ((LiteralCount $result.Out 'WAREHOUSE_CHILD_STATUS_0')-eq 1) "$label status-0 checker sentinel cardinality differs"
+        Expect ((LiteralCount $result.Out $missingMirror)-eq 1) "$label missing-mirror finding cardinality differs"
+        Expect ((LiteralCount $result.Out $oldNote)-eq 0) "$label status 0 emitted the missing/stale warehouse note"
+        Expect ((LiteralCount $result.Out $newNote)-eq 0) "$label status 0 emitted the unable-to-verify warehouse note"
+    }
+    $a="NOTE: docs/ci-integration.md is missing — restore it from the template if you need the portable required-build recipe. (advisory — not a failure)"
+    $b="NOTE: README.md does not mention: skill:my-skill agent:my-agent — update the What's-in-the-box / subagents tables (they may have drifted). (advisory — not a failure)"
+    foreach($advisory in $a,$b){Expect ($zero.Ps.Out.Contains($advisory)) "PowerShell advisory differs: $advisory";Expect ($zero.Sh.Out.Contains($advisory)) "bash advisory differs: $advisory"}
+
+    $one=$consumerResults['status-1']
+    foreach($twin in @(@('PowerShell',$one.Ps),@('bash',$one.Sh))) {
+        $label=$twin[0];$result=$twin[1]
+        Expect ($result.Exit-eq 0) "$label status-1 wrapper should remain non-failing, got $($result.Exit)"
+        Expect ((LiteralCount $result.Out 'WAREHOUSE_CHILD_STATUS_1')-eq 1) "$label status-1 checker sentinel cardinality differs"
+        Expect ((LiteralCount $result.Out $oldNote)-eq 1) "$label status 1 missing/stale note cardinality differs"
+        Expect ((LiteralCount $result.Out $newNote)-eq 0) "$label status 1 emitted unable-to-verify note"
+    }
+
+    foreach($world in @(@('status-2','WAREHOUSE_CHILD_STATUS_2'),@('unexpected','WAREHOUSE_CHILD_STATUS_UNEXPECTED'))) {
+        $pair=$consumerResults[$world[0]];$sentinel=$world[1]
+        foreach($twin in @(@('PowerShell',$pair.Ps),@('bash',$pair.Sh))) {
+            $label=$twin[0];$result=$twin[1]
+            Expect ($result.Exit-eq 0) "$label $($world[0]) wrapper should remain non-failing, got $($result.Exit)"
+            $sentinelCount=TerminalLineCount $result.Err $sentinel
+            Expect ($sentinelCount-eq 1) "$label $($world[0]) stderr sentinel cardinality differs (got $sentinelCount)`nERR:`n$($result.Err)"
+            Expect ((LiteralCount $result.Out $newNote)-eq 1) "$label $($world[0]) unable-to-verify note cardinality differs"
+            Expect ((LiteralCount $result.Out $oldNote)-eq 0) "$label $($world[0]) emitted contradictory missing/stale note"
+        }
+    }
+    Assert ($issues.Count-eq 0) ("docs-sync matrix failures:`n"+($issues-join"`n"))
+}
 
 It 'sync-agent-files recursively produces identical trees' {$seed=Temp sync-seed;try{Put (Join-Path $seed '.claude/skills/a/SKILL.md') '# a';Put (Join-Path $seed '.claude/skills/a/reference/notes.md') 'nested';foreach($kind in 'ps1','sh'){$r=Temp "sync-$kind";Copy-Item (Join-Path $seed '.claude') $r -Recurse -Force;CopyPair sync-agent-files $r;InitSafe $r;$res=RunHere (Join-Path $r "scripts/sync-agent-files.$kind") $r;if($kind-eq'ps1'){$pr=$res;$proot=$r}else{$sr=$res;$sroot=$r}};try{Assert ($pr.Exit-eq$sr.Exit) 'sync exits differ';Assert ($pr.Out-eq$sr.Out) 'sync stdout differs';$trees=@();foreach($root in $proot,$sroot){$base=(Resolve-Path (Join-Path $root '.github/skills')).Path;$rows=@(Get-ChildItem $base -Recurse -File|ForEach-Object{($_.FullName.Substring($base.Length).TrimStart('\','/')-replace'\\','/')+'|'+(Get-FileHash $_.FullName -Algorithm SHA256).Hash}|Sort-Object);$trees+=,(,$rows)};Assert (($trees[0]|ConvertTo-Json -Compress)-eq($trees[1]|ConvertTo-Json -Compress)) 'sync output trees differ'}finally{Remove-Item -Recurse -Force $proot,$sroot}}finally{Remove-Item -Recurse -Force $seed}}
 
