@@ -548,7 +548,11 @@ plan_write() {
 }
 
 if [ "$update_mode" -eq 1 ]; then
-  if [ -f "$tgt/LEARNINGS.md" ]; then { grep -E '^## Disabled framework skill:[[:space:]]*[a-z0-9-]+[[:space:]]*$' "$tgt/LEARNINGS.md" || true; } | sed -E 's/^## Disabled framework skill:[[:space:]]*//' | LC_ALL=C "$sort_cmd" -u > "$disabled_names"; fi
+  if [ -f "$tgt/LEARNINGS.md" ]; then
+    LC_ALL=C sed $'1s/^\357\273\277//' "$tgt/LEARNINGS.md" |
+      sed -n -E 's/^## Disabled framework skill:[[:space:]]*([a-z0-9-]+)[[:space:]]*$/\1/p' |
+      LC_ALL=C "$sort_cmd" -u > "$disabled_names"
+  fi
   while IFS=$'\t' read -r _ incoming_path ownership; do
     case "$incoming_path" in
       .claude/skills/*/*)

@@ -2913,6 +2913,29 @@ count distinct categories, and make the eval's authoritative-catalog fixture rej
 Fold a duplicate-row mutation into the existing warehouse map checker suite; do not create a
 standalone catalog suite.
 
+### B-199 · Honor a BOM-prefixed warehouse-map decline in the Bash checker
+**Effort:** S · **Priority:** P2 · **planned v0.78.5**
+**Filed against:** v0.78.3 (2026-08-30)
+
+**Why:** B-196's same-class parser sweep reproduced another PS/Bash divergence without widening the
+installer fix. With a real two-category warehouse fixture and an exact BOM + CRLF first-line
+`## Declined artifact: warehouse-map`, `warehouse-map-check.ps1` reports `declined`/0 while
+`warehouse-map-check.sh` reports `missing`/1. `docs-sync-check` treats this checker as advisory, so
+the consequence is fail-safe false work and contradictory host guidance rather than silent policy
+reversal; P2 is proportionate. This is not a duplicate of B-196 because it is a separate shipped
+reader and outcome.
+
+**Do:** preserve the exact anchored, case-sensitive decline grammar and the protected file's bytes,
+but let the Bash checker ignore exactly one standard UTF-8 BOM only at byte zero of its parsing
+stream and propagate a selected-file read/tool failure. Keep the existing BOM-less decline check,
+then add exact BOM + CRLF bytes and pre/post identity inside that same declined-map `It`; add no
+suite or result. Confirm PowerShell behavior stays unchanged, compose all distributions, use one
+BOM-stage mutation to make that existing result red, and require the modified test's first
+Windows/Linux CI before completion or release. Do not absorb the lower-value PowerShell regex
+permissiveness without a reproduced harmful input.
+
+---
+
 ### B-198 · Restore Bash 3.2 compatibility in the shipped installer
 **Effort:** S–M · **Priority:** P1 · **planned v0.78.5**
 **Filed against:** v0.78.3 (2026-08-29)
@@ -2961,7 +2984,7 @@ and use one cleanup-registry mutation to prove the subject is discriminating.
 ### B-196 · Honor a BOM-prefixed disabled-skill ledger in the Bash installer
 **Effort:** S · **Priority:** P1 · **planned v0.78.5**
 **Filed against:** v0.78.3 (2026-08-29)
-**Status:** DESIGN LOCKED — independently approved; implementation pending
+**Status:** IMPLEMENTED CANDIDATE — local verification in progress; first Windows/Linux CI pending
 
 **Why:** B-194's required native Windows PowerShell 5.1/CP437 run exposed a separate reachable
 cross-host failure. PS5's normal UTF-8 writer can prefix `LEARNINGS.md` with a BOM. The PowerShell

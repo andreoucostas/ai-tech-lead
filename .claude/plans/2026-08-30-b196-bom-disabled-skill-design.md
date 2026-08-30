@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-30  
 **Filed against:** v0.78.3  
-**Status:** DESIGN LOCKED — independently approved; implementation pending
+**Status:** IMPLEMENTED CANDIDATE — local verification in progress; first Windows/Linux CI pending
 
 ## Value decision
 

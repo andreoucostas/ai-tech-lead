@@ -21,6 +21,16 @@ $bash = Get-BashPath
 $carrierRel = '.github/instructions/framework-rules.instructions.md'
 $importLine = '@.github/instructions/framework-rules.instructions.md'
 $staleVersion = '0.40.0'
+$learningsFixtureText = "## Disabled framework skill: perf`t`r`nDisabled: 2026-08-01`r`nReason: not used here.`r`n"
+[byte[]]$learningsExpectedBytes = @(
+    0xEF, 0xBB, 0xBF, 0x23, 0x23, 0x20, 0x44, 0x69, 0x73, 0x61, 0x62, 0x6C, 0x65, 0x64,
+    0x20, 0x66, 0x72, 0x61, 0x6D, 0x65, 0x77, 0x6F, 0x72, 0x6B, 0x20, 0x73, 0x6B, 0x69,
+    0x6C, 0x6C, 0x3A, 0x20, 0x70, 0x65, 0x72, 0x66, 0x09, 0x0D, 0x0A, 0x44, 0x69, 0x73,
+    0x61, 0x62, 0x6C, 0x65, 0x64, 0x3A, 0x20, 0x32, 0x30, 0x32, 0x36, 0x2D, 0x30, 0x38,
+    0x2D, 0x30, 0x31, 0x0D, 0x0A, 0x52, 0x65, 0x61, 0x73, 0x6F, 0x6E, 0x3A, 0x20, 0x6E,
+    0x6F, 0x74, 0x20, 0x75, 0x73, 0x65, 0x64, 0x20, 0x68, 0x65, 0x72, 0x65, 0x2E, 0x0D,
+    0x0A
+)
 
 # A consumer as they exist in the field: bootstrapped (Conventions populated), carrying the four
 # framework-owned sections INLINE at whatever version they installed, and no carrier import.
@@ -63,9 +73,9 @@ Repo-specific conventions the consumer owns. Populated by /bootstrap. DO NOT CLO
     Set-Content (Join-Path $t '.claude/skills/add-warehouse-load/SKILL.md') "---`nname: add-warehouse-load`n---`n# Old framework body`n`nFor a concrete current instance in this repo, see ``warehouse/LoadSales.sql`` — reproduce its **conventions and structure**, not its contents; CLAUDE.md > Conventions wins on any conflict.`n" -Encoding utf8
     New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude/skills/local-release') | Out-Null
     Set-Content (Join-Path $t '.claude/skills/local-release/SKILL.md') "---`nname: local-release`norigin: discovered`n---`n# Consumer recipe`n" -Encoding utf8
-    # PS5's `Set-Content -Encoding utf8` adds a BOM while PS7's does not. Bash anchors this first
-    # heading, so write deterministic no-BOM fixture bytes on both supported PowerShell hosts.
-    [IO.File]::WriteAllText((Join-Path $t 'LEARNINGS.md'), "## Disabled framework skill: perf`nDisabled: 2026-08-01`nReason: not used here.`n", [Text.UTF8Encoding]::new($false))
+    # A protected ledger can be written by PS5 with a BOM and CRLF. The trailing HT is already
+    # admitted by the heading grammar and keeps dirty extraction observable even if a host masks CR.
+    [IO.File]::WriteAllText((Join-Path $t 'LEARNINGS.md'), $learningsFixtureText, [Text.UTF8Encoding]::new($true))
     return $t
 }
 
@@ -332,6 +342,8 @@ foreach ($twin in @('ps1', 'sh')) {
 
     $before = Get-Hash $claudePath
     $adrBefore = [IO.File]::ReadAllBytes($adrPath)
+    $learningsPath = Join-Path $target 'LEARNINGS.md'
+    $learningsBefore = [IO.File]::ReadAllBytes($learningsPath)
     $out = Invoke-Installer -Twin $twin -Dist $dist -Target $target
     $installExit = $LASTEXITCODE
 
@@ -364,6 +376,8 @@ foreach ($twin in @('ps1', 'sh')) {
     It "update leaves protected consumer documents byte-identical ($twin)" {
         Assert ((Get-Hash $claudePath) -eq $before) 'update mode modified CLAUDE.md -- the v0.20.0 protection has regressed'
         Assert-BytesEqual -Expected $adrBefore -Actual ([IO.File]::ReadAllBytes($adrPath)) -Message 'update mode replaced the consumer append-only ADR log'
+        Assert-BytesEqual -Expected $learningsExpectedBytes -Actual $learningsBefore -Message 'disabled-skill fixture was not exact BOM + HT + CRLF input'
+        Assert-BytesEqual -Expected $learningsBefore -Actual ([IO.File]::ReadAllBytes($learningsPath)) -Message 'update mode modified the protected disabled-skill ledger'
         Assert ($out -match '(?m)^PLAN preserve docs/architecture-decisions\.md\r?$') "update operation plan did not classify the consumer ADR log as preserved. Output:`n$out"
     }
 

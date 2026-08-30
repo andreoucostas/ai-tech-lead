@@ -11,6 +11,25 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.78.5 — Unreleased
+
+**Bash updates now preserve durable disabled-skill intent in protected ledgers written by Windows
+PowerShell.** B-196 removes exactly one standard UTF-8 BOM only at byte zero of the parsing stream,
+then uses one anchored capture to emit the validated skill name without admitted horizontal
+whitespace or a CRLF carriage return. The consumer's `LEARNINGS.md` remains byte-identical;
+doubled, partial, misplaced, or leading-space BOMs do not expand the heading grammar, and a selected
+file that cannot be parsed fails before target mutation. PowerShell installer behavior is
+unchanged.
+
+Adversarial review rejected the proposed extra test subject and instead strengthened an existing
+UpdateDelivery fixture with an independently specified 85-byte BOM + HT + CRLF oracle. The suite
+therefore remains 50 results. Against the unchanged Bash reader it passed 49 and failed only the
+existing skill-reconciliation result; the implementation passes 50/0 under PowerShell 7 and native
+Windows PowerShell 5.1 with code page 437. The BOM-less InstallerConvergence control passes 12/0,
+InstallerContract 13/0, and Composer 16/0; both validator twins pass all 173/169/183-file
+distributions. Isolated parser mutations and the exact candidate's first Windows/Linux CI run
+remain mandatory before completion or release.
+
 ## 0.78.4 — Unreleased
 
 **The hazard completion oracle now refuses incomplete discovery instead of reporting framework

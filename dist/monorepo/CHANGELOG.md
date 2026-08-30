@@ -5,6 +5,15 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.78.5 — Unreleased
+
+- Bash updates now keep a framework skill disabled when protected `LEARNINGS.md` starts with the
+  standard UTF-8 BOM commonly written by Windows PowerShell 5.1, or when the exact disabled-skill
+  heading uses CRLF or admitted trailing whitespace. The file stays byte-identical, malformed or
+  misplaced BOMs do not broaden the syntax, and PowerShell behavior is unchanged. If an earlier
+  Bash update reactivated such a skill, update again to move the current framework copy back under
+  `.claude/disabled-skills/`.
+
 ## 0.78.4 — Unreleased
 
 - The hazard completion check now fails when `FRAMEWORK-CONTEXT.md` is missing, still pending,

@@ -1668,3 +1668,18 @@ final non-newline security or hazard row. Their consequence is lost or downgrade
 completion false green, so B-195 owns that smaller P2 fix instead of silently widening B-193. Sweep
 mechanisms across the repository, but size and schedule each disposition from its actual caller and
 harm.
+
+## 2026-08-30 — Parse accepted records once; do not validate and extract with different grammars
+
+The disabled-skill reader first used an anchored `grep` to admit trailing whitespace, then a second
+prefix-only `sed` to remove only the heading. A line could therefore pass validation while leaving
+HT, spaces, or CR attached to the lookup key and silently reactivating the skill. The surrounding
+`grep || true` also collapsed a genuine read/tool failure into the same empty ledger as an ordinary
+no-match. Each command looked reasonable in isolation; their composed language and failure model
+were different.
+
+At a byte-sensitive parser boundary, normalize only the exact encoding marker the contract admits,
+only in the parsing stream, and keep that stage visible to `pipefail`. Then use one anchored capture
+to both recognize the record and emit its normalized key. Prefer strengthening an existing
+end-to-end outcome with independently specified hostile bytes and orthogonal mutations over adding
+a new result that recounts the same behavior. Test count is not evidence density.
