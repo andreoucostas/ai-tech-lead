@@ -14,7 +14,7 @@ foreach ($case in $cases) {
             param($scratchTarget, $scratchRoot)
             $script = Join-Path $scratchRoot "dist/dotnet/scripts/docs-sync-check.$($case.Twin)"
             if ($case.Twin -eq 'ps1') { $process = Start-Process -FilePath pwsh -ArgumentList @('-NoProfile','-File',$script) -Wait -PassThru -NoNewWindow }
-            else { $process = Start-Process -FilePath $bash -ArgumentList @($script) -Wait -PassThru -NoNewWindow }
+            else { $process = Start-Process -FilePath $bash -ArgumentList @('-e',$script) -Wait -PassThru -NoNewWindow }
             $global:LASTEXITCODE = $process.ExitCode
         } | Out-Null
         Write-Host "[ok] $($case.Name): planted drift went red"
