@@ -298,8 +298,9 @@ reroute as any `RunArg` change. A second record-only pass removed one collective
 Reviewer `/root/v0784_candidate_review` then approved exact corrected candidate
 `4e472a65166d7746c5321c3c346dc8dc6c68b9b9`, tree
 `56e34163d00816469a6af16198294b476a231744`, after independently reproducing the 9/1 old-product
-red, 10/0 candidate green under both PowerShell hosts, and both AGENTS diagnostic probes. Product,
-test, distribution, consumer-changelog, and learning bytes remain exactly those of `16dbd957`;
+red under PowerShell 7, the 10/0 candidate green under both PowerShell hosts, and both AGENTS
+diagnostic probes under Git Bash launched from PowerShell 7. Product, test, distribution,
+consumer-changelog, and learning bytes remain exactly those of `16dbd957`;
 native/provider evidence remains pending.
 
 PowerShell and login-shell Bash composition produced the same 525-file aggregate (173/169/183).

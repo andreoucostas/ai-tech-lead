@@ -2943,10 +2943,12 @@ and exact provider CI remain unclaimed, so B-203 stays open.
 
 Independent reviewer `/root/v0784_candidate_review` approved exact corrected candidate
 `4e472a65166d7746c5321c3c346dc8dc6c68b9b9`, tree
-`56e34163d00816469a6af16198294b476a231744`. It reproduced the 9/1 exact old-product red, 10/0
-candidate green under both PowerShell hosts, and both AGENTS diagnostic probes. Two record-only
+`56e34163d00816469a6af16198294b476a231744`. It reproduced the 9/1 exact old-product red under
+PowerShell 7, the 10/0 candidate green under both PowerShell hosts, and both AGENTS diagnostic
+probes under Git Bash launched from PowerShell 7. Two record-only
 rejections first removed the stale candidate/RCA contradiction and then one collective approval
-overclaim. The final review confirmed every product/test/dist/changelog/learning blob remains
+overclaim. The final review confirmed every product, test, dist, consumer-changelog, and learning
+blob remains
 exactly the approved `16dbd95743163f5a92e9aacb23a946e056421a40` version and the worktree is clean.
 Native/provider evidence remains pending rather than inferred.
 
