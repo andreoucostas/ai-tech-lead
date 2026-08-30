@@ -2711,6 +2711,38 @@ count distinct categories, and make the eval's authoritative-catalog fixture rej
 Fold a duplicate-row mutation into the existing warehouse map checker suite; do not create a
 standalone catalog suite.
 
+### B-210 · Make root meta-test hashing independent of inherited PowerShell module paths
+**Effort:** S · **Priority:** P1 · **planned v0.79.0**
+**Filed against:** v0.79.0 (2026-08-30)
+**Evidence source:** unreleased v0.79.0 candidate whole-range review
+**Status:** DESIGN APPROVED — implementation and exact-candidate CI pending
+**Plan:** `.claude/plans/2026-08-30-b210-wps51-hash-provider-design.md`
+
+**Why:** whole-range adversarial review launched the existing native-Windows-PowerShell evidence
+through the maintainer's real PowerShell 7 → `cmd.exe`/CP437 → Windows PowerShell 5.1 path. Its
+inherited PowerShell-7-first `PSModulePath` leaves `Get-FileHash` unavailable, producing 41/10,
+2/10, and 4/8 in UpdateDelivery, InstallerConvergence, and RootInstallerWarehouse. With only
+`PSModulePath` absent so 5.1 reconstructs its native roots, the same commands return 51/0, 12/0,
+and 12/0. This is a root harness false red rather than a product failure, but it makes the current
+unqualified 5.1/CP437 release evidence incomplete and is therefore release-blocking.
+
+**Do:** add one dependency-free streaming SHA-256 helper to the already shared root `_HookHarness`,
+route the complete five-call census in those three suites through it, and correct one stale watcher
+comment that still describes WSD-061's macOS provider as active after WSD-064. Preserve uppercase
+64-hex output, literal-path and throw-on-unreadable semantics, explicit disposal, Windows
+PowerShell 5.1 syntax/BOM, every existing test body, and result cardinality. Add no test, suite,
+fixture, lane, product dependency, or shipped change. Two independent design reviews approved this
+as the smallest fix that removes a repeatable maintainer-path false red; module imports and caller
+environment rewriting were rejected as unreliable or over-broad.
+
+**Evidence gate:** retain the exact old 41/10, 2/10, and 4/8 runs; require post-fix 51/0, 12/0,
+and 12/0 under poisoned 5.1/CP437, native-root 5.1/CP437, and PowerShell 7. Verify fixed binary and
+text SHA-256 oracles under both hosts, zero remaining same-class calls, unchanged cardinality,
+BOM/AST, full root meta green, first exact-candidate Windows/Linux CI, and fresh immutable
+implementation plus whole-release adversarial review before completion.
+
+---
+
 ### B-204 · Make RootInstallerWarehouse fixture teardown fail honestly
 **Effort:** S · **Priority:** P2 · **planned v0.79.0**
 **Filed against:** v0.78.3 (2026-08-30)
