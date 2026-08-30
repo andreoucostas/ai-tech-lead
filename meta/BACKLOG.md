@@ -3203,9 +3203,9 @@ with B-198.
 ---
 
 ### B-201 · Windows PowerShell 5.1 falsely capability-skips Bash Copilot JSON hook tests
-**Effort:** S · **Priority:** P2 · **planned ≥ v0.78.5**
+**Effort:** S · **Priority:** P2 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-30)
-**Status:** DESIGN LOCKED — two adversarial reviews approved the zero-growth test-truth repair; implementation pending
+**Status:** IMPLEMENTED CANDIDATE — local cross-host verification complete; first exact-candidate Windows/Linux CI pending
 **Plan:** `.claude/plans/2026-08-30-b201-wps51-json-probe-design.md`
 
 **Why:** B-195 verification ran `SessionStartHazard.Tests.ps1` under native Windows PowerShell 5.1.
@@ -3229,6 +3229,21 @@ The locked design strengthens the original suggestion after adversarial review: 
 emit explicit case-sensitive `yes`/`no`, because exit 0 with empty channels is also consistent with
 an omitted stdin script and cannot honestly prove capability absence. Any empty/unexpected stdout,
 stderr, or nonzero exit fails setup rather than becoming a skip.
+
+**Implementation candidate (2026-08-30):** the three existing probes now emit explicit `yes`/`no`,
+travel through `Invoke-RawProcess` as Bash `-s` stdin, and fail setup on any nonzero exit, stderr,
+empty/unexpected stdout, or non-exact sentinel. No product hook, harness helper, suite, `It`, `Skip`,
+or result count changed. Native Windows PowerShell 5.1 moved from the reproduced syntax-error false
+skips at Hazard 18/0/1, Wiki 12/0/1, and FrameworkRules 9/0/1 to 19/0/0, 14/0/0, and 10/0/0;
+PowerShell 7 and composed dotnet passed the same counts. A probe-local empty PATH retained the three
+honest named skips, while an unexpected-output mutation made every file exit 1 with the setup
+diagnostic before exact hash restoration. Both composers converged at 173/169/183 files, the three
+source blobs exactly match all nine generated copies with BOMs intact, and every distribution
+validator passed. Independent implementation review approved the exact 12-file scope with no
+finding. The original ≥v0.78.5 target is superseded: including this zero-growth test-truth repair in
+the still-unreleased v0.78.4 candidate improves that release's evidence without changing product
+behavior or adding a CI leg. Native Linux and first exact-candidate Windows/Linux CI remain pending,
+so the item stays open and is not releaseable.
 
 ### B-194 · Make the PowerShell 5.1 installer tolerate non-Git targets
 **Effort:** M · **Priority:** P1 · **planned v0.78.4**

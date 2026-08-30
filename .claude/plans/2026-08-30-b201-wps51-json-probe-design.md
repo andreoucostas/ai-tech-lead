@@ -1,10 +1,16 @@
 # B-201 — Windows PowerShell 5.1-safe Bash JSON capability probes
 
-**Status:** DESIGN LOCKED · **Date:** 2026-08-30 · **Scope:** three existing session-start test probes only
+**Status:** IMPLEMENTED CANDIDATE · **Date:** 2026-08-30 · **Scope:** three existing session-start test probes only
 
 ## Value decision
 
-Implement this item as P2/S for a release no earlier than v0.78.5. Native Windows PowerShell 5.1
+Implement this item as P2/S for v0.78.4. It was filed for no earlier than v0.78.5, but that target
+was revalidated after the bounded implementation: withholding a zero-growth test-truth correction
+from the still-unreleased v0.78.4 tree would add branch/release complexity while making that
+release's Windows evidence less trustworthy. It changes no product behavior and can use the same
+pending Windows/Linux candidate CI, so earlier inclusion adds value without widening release risk.
+
+Native Windows PowerShell 5.1
 currently corrupts the nested quoting in each direct `$bash -c $probeCmd` invocation. Bash prints a
 syntax error, but the test files reduce the empty captured stdout to the same value as genuine tool
 absence and record invariant capability skips. Exact current runs reproduced this on all three
@@ -74,5 +80,29 @@ Two independent read-only reviews approved IMPLEMENT/P2 and rejected both new te
 shared helper. One review required fail-closed use of exit/stderr/stdout around `Invoke-RawProcess`;
 the other blocked the initial empty-output design and required explicit case-sensitive `yes`/`no`
 sentinels. The locked design incorporates both findings.
+
+## Implementation evidence
+
+All three authored probes now emit explicit `yes`/`no`, pass the script to the existing raw-process
+helper through Bash `-s` stdin, and throw a diagnostic setup error for any nonzero exit, stderr,
+empty/unexpected stdout, or non-exact sentinel. No hook, harness helper, suite, `It`, `Skip`, or
+result count changed. Each source file is byte-identical to all three composed copies: Hazard
+SHA-256 `d03ce9c7e12e4411eb25f424b9a5d55a892512cc8ba949917fd518d37d7cb8de`, Wiki
+`beb31a3d07ad1fe2323f1fe3eb72ff8239d8761f7b1a009ef1882470dedf8336`, and FrameworkRules
+`b496189839327a1c6549f380d59f50fd00988128785651593d2d2f09ff4f8141`.
+
+The exact old Windows PowerShell 5.1 files emitted Bash's syntax error and falsely finished at
+18/0/1, 12/0/1, and 9/0/1 despite working jq. The candidate ran the existing Bash JSON arms at
+19/0/0, 14/0/0, and 10/0/0 under both native Windows PowerShell 5.1 and PowerShell 7, for authored
+source and the composed dotnet distribution. A probe-local empty PATH produced exact `no` and the
+same three honest named invariant skips without a syntax error. An unexpected-output mutation made
+all three files exit 1 with the setup diagnostic; an outer oracle succeeded only after confirming
+all three expected failures, then exact hashes were restored before green composition.
+
+Both composers converged at 173/169/183 files, all twelve authored/generated files retained their
+required BOMs and exact parity, both PowerShell parsers reported zero errors, and all three
+distribution validators passed. Independent read-only implementation review found no defect and
+confirmed exact scope. Native Linux and first exact-candidate Windows/Linux CI remain unobserved, so
+this is an implemented candidate rather than completion or release approval.
 
 No product behavior, push, tag, or release is authorized by this plan.

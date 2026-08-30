@@ -1833,3 +1833,18 @@ permanent result has already failed against the untouched shipped implementation
 consequence. Preserve that old-red evidence and do not rebreak generated output just to satisfy a
 ceremonial checklist. The question is whether the oracle discriminated the reachable product
 decision, not whether every planned way of making it red was performed.
+
+## 2026-08-30 — Capability absence needs an explicit outcome
+
+An optional-capability probe cannot safely encode “unavailable” as exit 0 plus empty output. The
+same shape can mean the script was omitted, stdin was never read, argument quoting was corrupted, or
+the child stopped before its decision. Treating all of those as an invariant skip turns transport
+failure into reported coverage. Make both terminal states explicit—such as exact `yes` and `no`—and
+fail setup for empty, noisy, differently cased, stderr, or nonzero outcomes.
+
+Cross-shell quoting is a transport concern, not product logic. When a supported orchestrator has a
+legacy native-argument marshaller, pass a multi-layer script through the child's stdin and keep the
+native argument list simple. Reuse an existing raw-stream helper if it already preserves exit,
+stdout, and stderr; adding a second helper or a new test result only duplicates machinery. A
+controlled negative capability world and a disposable unexpected-output mutation can validate both
+branches without growing the permanent suite.

@@ -22,8 +22,12 @@ It 'PowerShell Copilot JSON carries the pointer in both shapes' {$r=Root $true $
 # Probe by EXECUTION across jq / python3 / python / py -- same reach as session-start.sh's own
 # resolver (a python.org install has no python3.exe; a name-only python3 probe would falsely skip
 # this case on exactly the host the resolver targets).
-$probeCmd='if command -v jq >/dev/null 2>&1; then echo yes; else for c in python3 python py; do if command -v "$c" >/dev/null 2>&1 && printf "{}" | "$c" -c "import json,sys;json.load(sys.stdin)" >/dev/null 2>&1; then echo yes; break; fi; done; fi'
-$shJson=$false;if($bash){$probe="$(& $bash -c $probeCmd)";$shJson=($probe.Trim()-eq'yes')}
+$probeCmd='if command -v jq >/dev/null 2>&1; then printf "yes\n"; else probe_result=no; for c in python3 python py; do if command -v "$c" >/dev/null 2>&1 && printf "{}" | "$c" -c "import json,sys;json.load(sys.stdin)" >/dev/null 2>&1; then probe_result=yes; break; fi; done; printf "%s\n" "$probe_result"; fi'
+$shJson=$false;if($bash){
+    $probe=Invoke-RawProcess -FileName $bash -Arguments @('-s') -Stdin $probeCmd
+    if($probe.Exit-ne0-or$probe.Err-cne''-or($probe.Out-cne'yes'-and$probe.Out-cne'no')){throw "Bash JSON capability probe failed for '$bash' (exit=$($probe.Exit); stdout=[$($probe.Out)]; stderr=[$($probe.Err)])"}
+    $shJson=($probe.Out-ceq'yes')
+}
 if($bash-and$shJson){It 'bash Copilot JSON carries the pointer in both shapes' {$r=Root $true $true $false;try{$o=RunAt $sh $r $copilot|Select-Object -ExpandProperty Out|ConvertFrom-Json;Assert($o.additionalContext-match[regex]::Escape($pointer))'top-level missing';Assert($o.hookSpecificOutput.additionalContext-match[regex]::Escape($pointer))'wrapped missing'}finally{Remove-Item -Recurse -Force $r}}}elseif($bash){Skip 'session-start.sh Copilot JSON migration case' 'no jq and no working python3/python/py in bash -- this host cannot exercise the JSON-encode branch at all' -Invariant}
 if(-not$bash){Skip 'session-start.sh framework-rules cases' 'no bash found'}
 exit(Write-TestSummary 'SessionStartFrameworkRules.Tests')

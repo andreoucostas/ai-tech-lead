@@ -15,8 +15,12 @@ It 'Copilot JSON contains large summary in both additionalContext shapes' {$r=Ro
 # bash without one. Probe by EXECUTION across jq / python3 / python / py -- same reach as
 # session-start.sh's own resolver (a python.org install has no python3.exe; a name-only python3
 # probe would falsely skip this case on exactly the host the resolver targets).
-$probeCmd='if command -v jq >/dev/null 2>&1; then echo yes; else for c in python3 python py; do if command -v "$c" >/dev/null 2>&1 && printf "{}" | "$c" -c "import json,sys;json.load(sys.stdin)" >/dev/null 2>&1; then echo yes; break; fi; done; fi'
-$shJson=$false;if($bash){$p="$(& $bash -c $probeCmd)";$shJson=($p.Trim()-eq'yes')}
+$probeCmd='if command -v jq >/dev/null 2>&1; then printf "yes\n"; else probe_result=no; for c in python3 python py; do if command -v "$c" >/dev/null 2>&1 && printf "{}" | "$c" -c "import json,sys;json.load(sys.stdin)" >/dev/null 2>&1; then probe_result=yes; break; fi; done; printf "%s\n" "$probe_result"; fi'
+$shJson=$false;if($bash){
+    $probe=Invoke-RawProcess -FileName $bash -Arguments @('-s') -Stdin $probeCmd
+    if($probe.Exit-ne0-or$probe.Err-cne''-or($probe.Out-cne'yes'-and$probe.Out-cne'no')){throw "Bash JSON capability probe failed for '$bash' (exit=$($probe.Exit); stdout=[$($probe.Out)]; stderr=[$($probe.Err)])"}
+    $shJson=($probe.Out-ceq'yes')
+}
 if($bash -and $shJson){
 It 'Copilot JSON (sh twin) contains wiki in both additionalContext shapes' {$r=Root 2;try{$o=RunAt $sh $r $copilot|Select-Object -ExpandProperty Out|ConvertFrom-Json;Assert($o.additionalContext-match'entry-2')'top-level missing';Assert($o.hookSpecificOutput.additionalContext-match'entry-2')'wrapped missing'}finally{Remove-Item -Recurse -Force $r}}
 It 'Copilot JSON (sh twin) contains large summary in both additionalContext shapes' {$r=Root 31;try{$o=RunAt $sh $r $copilot|Select-Object -ExpandProperty Out|ConvertFrom-Json;Assert($o.additionalContext-match'31 wiki entries')'top-level missing';Assert($o.hookSpecificOutput.additionalContext-match'31 wiki entries')'wrapped missing'}finally{Remove-Item -Recurse -Force $r}}

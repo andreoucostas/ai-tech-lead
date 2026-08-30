@@ -42,6 +42,21 @@ Independent read-only immutable review approved exact candidate
 source/dist-parity, or record defect, while explicitly leaving native Linux, stock macOS Bash 3.2,
 and candidate CI unclaimed.
 
+**Windows PowerShell 5.1 no longer turns broken Bash capability-probe transport into false test
+coverage.** B-201 sends the three existing session-start JSON probes to Bash through `-s` stdin
+using the harness's raw process path. Each probe now emits exact `yes` or `no`; nonzero exit, stderr,
+empty/unexpected stdout, and non-exact sentinels fail test setup instead of becoming an invariant
+“no encoder” skip. No product hook, harness helper, suite, result, or CI leg was added.
+
+The unchanged Windows PowerShell 5.1 suites moved from syntax-error false skips at 18/0/1, 12/0/1,
+and 9/0/1 to Hazard 19/0/0, Wiki 14/0/0, and FrameworkRules 10/0/0; PowerShell 7 and composed dotnet
+passed the same counts. A probe-local absent-capability world retained the honest named skips, and an
+unexpected-output mutation made all three files fail setup before exact restoration. Both composers,
+source/generated hash and BOM parity, all three distribution validators, and independent
+implementation review were clean. The original ≥v0.78.5 target is superseded because including this
+zero-growth test-truth repair improves the still-unreleased v0.78.4 evidence without changing
+product behavior. First exact-candidate Windows/Linux CI remains required.
+
 **The shipped Bash installer no longer requires Bash 4 for manifest validation.** B-198 replaces
 the two associative arrays and two lowercase expansions introduced in v0.76 with one guarded,
 C-locale `awk` preprocessing pass per validator. ASCII case-variant duplicate paths remain a
