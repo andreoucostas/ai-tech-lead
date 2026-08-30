@@ -2735,7 +2735,7 @@ dotnet/monorepo composition, and an install smoke; do not add a test that merely
 ### B-203 · Preserve warehouse-map verification failure in the docs-sync advisory
 **Effort:** S · **Priority:** P2 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-30)
-**Status:** IMPLEMENTED CANDIDATE — local verification complete; first Windows/Linux CI pending
+**Status:** IMPLEMENTED CANDIDATE `4e847b422f0267f65c474bb2091301905f956650` — immutable review approved; first Windows/Linux CI pending
 **Plan:** `.claude/plans/2026-08-30-b203-docs-sync-warehouse-status-design.md`
 
 **Why:** both `docs-sync-check` twins currently translate every nonzero `warehouse-map-check` exit
@@ -2778,6 +2778,17 @@ files with zero failures, including Composer 16/0, BacklogHygiene 10/0, DocTruth
 and release-head 8/0. Twelve changed authored/composed carrier pairs are byte-identical; BOM, AST,
 and Bash syntax checks pass. This remains a candidate because Git Bash is neither native Linux nor
 Bash 3.2, and the modified test's first Windows/Linux CI has not run.
+
+Independent reviewer `/root/b203_immutable` approved exact immutable range
+`76cde44aa5cd0f0504267561fc0ae9795b4343e9..4e847b422f0267f65c474bb2091301905f956650`
+in an isolated no-hardlinks clone. Candidate tests over the exact contract wrapper blobs made
+ScriptTwinParity pass 9/10 and enumerate all eight expected wrong-status symptoms; restoring the
+candidate blobs returned source and all three composed results to 10/0. The review independently
+reproduced the Windows PowerShell 5.1 renderer boundary and direct unredirected behavior, then
+reconfirmed source/dist hashes, PowerShell BOM/AST integrity under both PowerShell hosts, Bash
+syntax, unchanged test cardinality, both composers, both validator twins, and the focused warehouse,
+backlog, document, claim, and release-head gates. Native Linux, Bash 3.2, and first candidate CI
+remain unavailable, so the item stays open.
 
 **RCA:** the direct checker suite distinguished exits 1 and 2, but the wrapper parity fixture never
 installed the checker, so its translation branch did not execute. B-164's bounded sweep selected

@@ -30,6 +30,15 @@ probe preserved the child diagnostic, emitted only the new wrapper note, reached
 line, and exited 0. The exact candidate's first Windows/Linux CI remains mandatory before
 completion or release.
 
+Independent immutable review approved exact candidate
+`4e847b422f0267f65c474bb2091301905f956650` from contract `76cde44`. In an isolated no-hardlinks
+clone, candidate tests over the exact contract wrapper blobs reproduced 9/10 with all eight
+wrong-status symptoms named; restoring the candidate returned source and all three composed results
+to 10/0. The reviewer also reproduced the Windows PowerShell renderer boundary and direct
+unredirected behavior, then reconfirmed byte parity, BOM/AST integrity, Bash syntax, unchanged test
+cardinality, both composers and validators, and the focused maintainer gates. Native Linux,
+Bash 3.2, and first candidate CI remain pending.
+
 PowerShell and login-shell Bash composition produced the same 525-file aggregate (173/169/183).
 Both validator twins passed all three distributions, and all 12 changed authored/composed carrier
 pairs are byte-identical. The dotnet, Angular, and monorepo standard hook runners each passed 20

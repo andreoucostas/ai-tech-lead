@@ -3,7 +3,7 @@
 **Date:** 2026-08-30
 **Filed against:** v0.78.3
 **Planned:** v0.78.4
-**Status:** IMPLEMENTED CANDIDATE — local verification complete; first Windows/Linux CI pending
+**Status:** IMPLEMENTED CANDIDATE `4e847b422f0267f65c474bb2091301905f956650` — immutable review approved; first Windows/Linux CI pending
 
 ## Value and proportionality decision
 
@@ -163,3 +163,22 @@ BOM and parse with zero AST errors, and the Bash product twin passes `bash -n`.
 
 These are local Windows/Git Bash results, not native Linux or Bash 3.2 evidence. Because the existing
 test changed, the exact candidate remains open until its first Windows/Linux CI is green.
+
+## Immutable candidate review
+
+Independent reviewer `/root/b203_immutable` began with this frozen contract and immutable range
+`76cde44aa5cd0f0504267561fc0ae9795b4343e9..4e847b422f0267f65c474bb2091301905f956650`
+in an isolated no-hardlinks clone. Replacing only the two authored product wrappers with their exact
+contract blobs made the candidate test pass 9/10 and enumerate all eight expected failures: both
+twins, both unable worlds, the missing new note, and the contradictory old note. Restoring the exact
+candidate blobs returned the source result to 10/0 under PowerShell 7 and native Windows PowerShell
+5.1 at code page 437; all three composed results also passed 10/0.
+
+The review independently reproduced the Windows PowerShell renderer boundary (two raw sentinel
+occurrences but one logical terminal diagnostic line) and a direct unredirected exit-2 run that
+preserved the child diagnostic, emitted the exact new note and final success line, omitted the old
+note, and exited 0. It also reconfirmed 12 source/dist hash pairs, eight BOM-bearing zero-AST-error
+PowerShell carriers under both hosts, four `bash -n`-clean Bash carriers, unchanged suite/result
+cardinality, both composers, both three-distribution validator twins, and the focused warehouse,
+backlog, document, claim, and release-head gates. No native Linux or Bash 3.2 runtime was available;
+approval is local-candidate evidence only, and first Windows/Linux CI still gates completion.
