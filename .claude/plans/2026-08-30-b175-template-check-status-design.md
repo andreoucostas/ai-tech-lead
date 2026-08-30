@@ -1,9 +1,9 @@
 # B-175 · Template-check status contract — locked design
 
-**Status: IMPLEMENTED CANDIDATE 2026-08-30 — immutable review and first candidate CI pending.** Two
-independent exact-record reviews approved after narrowing the reach claim, preserving Bash
-transport, making both doctor messages causally generic, and requiring independent `2`/`3` boundary
-mutations.
+**Status: IMPLEMENTED CANDIDATE 2026-08-30 — two immutable reviews approved; first candidate CI
+pending.** Two independent exact-record reviews approved after narrowing the reach claim,
+preserving Bash transport, making both doctor messages causally generic, and requiring independent
+`2`/`3` boundary mutations.
 
 **Pre-implementation evidence correction.** The first captured red run disproved both reviewers'
 claim that the existing `9.9.9` fixture alone creates two findings: it creates one because the
@@ -116,3 +116,14 @@ manifest. Both validator twins passed all three distributions. The composed dotn
 passed 10/0 and 33/0, and all six source core files match their eighteen generated counterparts by
 SHA-256. PowerShell parsing, Bash syntax, stack changelog parity, and generated BOM checks passed.
 Native Linux and first exact-candidate Windows/Linux CI remain unavailable local evidence.
+
+Two independent read-only reviews approved exact candidate
+`22f7a08b79097068acde9664bc05ed5071b52139`, tree
+`7630b2f9d7f763fc4e48a3b2ff64ce92a1aff5fe`, from sole design parent
+`0ba2ed284336a238c67813cc891f88fc41be9a2e`. They reconfirmed the 34-path scope, unchanged
+10/24 `It` cardinality, six-source/eighteen-generated blob parity, stack changelog parity, generic
+remediation, and the fixed `0/3/2` boundary. Independent execution passed the source suites 10/0
+and 33/0, a space-containing `0/3/2/4` plus missing-checker matrix, native Windows PowerShell 5.1
+focused mappings, and a disposable `2 -> MISSING` mutation before exact restoration. Neither
+reviewer found an actionable defect. Native POSIX/Bash 3.2 and exact-candidate provider CI remain
+release evidence rather than locally claimed proof.

@@ -2702,7 +2702,7 @@ fallback. Do not add a fourth parser or a standalone suite.
 ### B-175 · Give template-check resource failures a distinct doctor-visible status
 **Filed against:** v0.77.0 (2026-08-24)
 **Effort:** S · **Priority:** P3
-**Status:** IMPLEMENTED CANDIDATE 2026-08-30 — local review pending; first Windows/Linux CI required
+**Status:** IMPLEMENTED CANDIDATE `22f7a08b79097068acde9664bc05ed5071b52139` — two immutable reviews approved; first Windows/Linux CI required
 **Plan:** `.claude/plans/2026-08-30-b175-template-check-status-design.md`
 **Decision:** WSD-063
 
@@ -2737,6 +2737,16 @@ both validators and both docs-sync wrappers consume only zero/nonzero and remain
 doctor is the only caller that assigns meaning within nonzero statuses. The hostile-host run exposed
 one separate legacy native-argument transport defect in the doctor test harness; B-207 keeps that
 test-truth repair out of this product change.
+
+**Immutable review:** two independent read-only reviews approved exact candidate
+`22f7a08b79097068acde9664bc05ed5071b52139`, tree
+`7630b2f9d7f763fc4e48a3b2ff64ce92a1aff5fe`, from sole design parent
+`0ba2ed284336a238c67813cc891f88fc41be9a2e`. They reconfirmed the exact 34-path scope, unchanged
+10/24 `It` cardinality, all six source/all eighteen generated core blobs, stack changelog parity,
+the fixed status boundary, and the evidence-bounded records. Independent execution passed 10/0
+and 33/0 under PowerShell 7, a space-containing `0/3/2/4` plus missing-checker matrix, focused native
+Windows PowerShell 5.1 mappings, and a disposable `2 -> MISSING` mutation before exact restoration.
+No actionable defect was found. Native POSIX/Bash 3.2 and first exact-candidate CI remain pending.
 
 ### B-176 · Enforce unique warehouse signal-category definitions
 **Filed against:** v0.77.0 (2026-08-24)

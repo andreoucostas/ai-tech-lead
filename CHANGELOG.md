@@ -32,6 +32,16 @@ and composed dotnet passed 10/0 plus 33/0. Native Windows PowerShell 5.1/code pa
 twin suite 10/0 and the changed doctor matrix, but a separate pre-existing Copilot-visibility setup
 case leaves that full host run 31/1/1; B-207 records it. First candidate CI remains required.
 
+Two independent immutable reviews approved exact candidate
+`22f7a08b79097068acde9664bc05ed5071b52139`, tree
+`7630b2f9d7f763fc4e48a3b2ff64ce92a1aff5fe`, from sole design parent
+`0ba2ed284336a238c67813cc891f88fc41be9a2e`. They reconfirmed the exact 34-path scope, unchanged
+10/24 test-result cardinality, six-source/eighteen-generated core parity, and the fixed status
+boundary. Independent execution passed the focused suites 10/0 and 33/0, a space-containing
+`0/3/2/4` plus missing-checker matrix, focused native Windows PowerShell 5.1 mappings, and a
+disposable `2 -> MISSING` mutation before exact restoration. No actionable defect was found. Native
+POSIX/Bash 3.2 and first exact-candidate CI remain pending.
+
 **B-49's stale live-fire packet is paused before it consumes provider quota.** WSD-062 records that
 the July attempt ended incomplete and cannot be resumed across changed models, hosts, and framework
 versions. The packet omits required checklist/canary work, invokes nonexistent scripts, lacks the
