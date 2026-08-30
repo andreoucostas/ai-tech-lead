@@ -182,3 +182,51 @@ PowerShell carriers under both hosts, four `bash -n`-clean Bash carriers, unchan
 cardinality, both composers, both three-distribution validator twins, and the focused warehouse,
 backlog, document, claim, and release-head gates. No native Linux or Bash 3.2 runtime was available;
 approval is local-candidate evidence only, and first Windows/Linux CI still gates completion.
+
+## Release-range amendment — errexit-safe manual status capture
+
+The v0.78.4 whole-range review invalidated one implementation assumption before release. The
+locked Bash design said to invoke the warehouse checker as a standalone simple command and capture
+`$?` on the next line. When a caller explicitly adds `-e` before the documented script path, a
+warehouse child status `1`, `2`, or `7` terminates the wrapper before that capture. Direct `-e` is
+not a published general strict-mode contract. This amendment guarantees only that the wrapper's
+three intentionally interpreted child-status branches remain reachable when a caller adds it. That
+is worth preserving because B-203 and maintenance rule 7 deliberately distinguish content findings
+from host/resource failures; bypassing those decisions loses the diagnostics the branches exist to
+provide. Immutable candidate `e1cdb23` passes the normal source result 10/0, while the same
+five-world matrix with explicit interpreter `-e` makes the B-203 result fail: the Bash twin leaks
+each child status, omits the applicable advisory note, and never reaches the final success line.
+The PowerShell twin retains the locked exit-0 behavior.
+
+A bounded census found the same unreachable-capture shape in the wrapper's two AGENTS.md `grep`
+probes. Status `1` can bypass the intended missing-content classification and status `2+` can leak
+outside the documented wrapper `0/1` contract. Amend all three wrapper sites, and no others, to
+errexit-safe conditionals: assign status `0` in the success arm and capture `$?` in the failure
+arm. For the two `grep` probes, change the `case` selector from `$?` to that captured status while
+retaining every case arm and message byte-for-byte; retain the warehouse `case` byte-for-byte.
+Each child still runs exactly once; streams, status distinctions, accumulated-failure policy, and
+final exit contract remain unchanged. Do not add `set +e`, change the PowerShell twin, suppress
+output, or change any nested checker.
+
+Strengthen only `docs-sync-check branches and advisory prose agree`: append a backwards-compatible
+optional Bash-interpreter-options parameter to the existing `RunArg` harness. It defaults empty,
+is prepended only in the Bash branch before `$Path`, and leaves existing script arguments,
+positional callers, and PowerShell calls unchanged. Pass `-e` before the docs-sync Bash script path
+in its five existing worlds. Keep the same processes, assertions, `It`, suite, result, fixtures,
+and execution cardinalities. Evidence order is: recorded pre-amendment normal baseline 10/0;
+changed-result/old-product explicit-`-e` with one existing `It` red; corrected-product explicit-`-e`
+10/0; then one disposable ordinary-mode five-world rerun against corrected product, restored
+afterward. Independently probe banner-missing and heading-missing AGENTS worlds red/green without
+making either a permanent run. Exit `1` is not discriminating because both old and fixed worlds
+return it: require the applicable `missing:banner` or missing-heading diagnosis and the terminal
+aggregate failure line to be absent before the fix and present exactly once after it. Two probes
+are justified because the banner failure prevents the old wrapper from reaching the loop site;
+growing the permanent matrix would add less value than this direct evidence and bounded census.
+
+The first design review correctly rejected exported `SHELLOPTS=errexit` as the B-203 oracle. Unlike
+direct interpreter `-e`, exported shell options propagate into `template-checks.sh`,
+`warehouse-map-check.sh`, `wiki-check.sh`, and any further Bash descendants. Concrete probes exposed
+separate template-checks and warehouse-checker failures; the bounded source census identified the
+additional candidates. That broader strict-mode contract is not documented and is not silently
+claimed here. B-208 owns the evidence-first decision and full shipped-script census; it is
+explicitly not a v0.78.4 gate.

@@ -3471,6 +3471,29 @@ is not claimed as that evidence. The same-class advisory EOF defect is deliberat
 proportionally sized as B-195.
 
 ---
+
+### B-208 · Decide whether inherited Bash strict mode is a valuable public compatibility contract
+**Effort:** S for evidence/decision; M only if support is justified · **Priority:** P2 · no earlier than v0.78.5
+**Filed against:** v0.78.4 candidate (2026-08-30)
+
+**Why:** v0.78.4 release-range review exported `SHELLOPTS=errexit` into the shipped Bash process
+tree. That is materially different from invoking one wrapper with `bash -e`: nested scripts inherit
+the option too. The hostile run made ScriptTwinParity fail 8/2 and WarehouseMapCheck fail 0/3;
+`warehouse-map-check.sh` silently returned `1` for a normally not-applicable repository, while a
+template-checks resource world lost its required `CANT-VERIFY` diagnostic. A bounded source census
+also found manual next-line status captures in other shipped scripts, including `wiki-check.sh` and
+`framework-doctor.sh`. These are real signals, but exported `SHELLOPTS` is not part of the published
+invocation and ordinary CI shells do not automatically export their `-e` setting into nested Bash.
+It is therefore evidence for a decision, not a reason to expand B-203 or block v0.78.4.
+
+**Do:** first establish whether inherited strict mode occurs in realistic supported consumer/CI
+usage and whether making it a public contract creates net value. If yes, census every shipped Bash
+manual-status capture and lock one cross-script design before implementation; do not repair the
+observed files piecemeal. Reuse existing behavioral suites and hostile invocation modes wherever
+they discriminate, adding no suite merely to count status sites. If evidence does not justify the
+contract, record deliberate non-support and close this entry rather than keeping speculative debt.
+
+---
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
 **B-14 shipped in v0.25.3 (2026-07-05) — see `meta/BACKLOG-DONE.md`.**
