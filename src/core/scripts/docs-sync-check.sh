@@ -18,8 +18,11 @@ cd "$here/.." || exit 1
 if [ -f ".template-repo" ]; then
   echo "Framework template repo (.template-repo present) — consumer-state checks don't apply;"
   echo "running the deterministic framework checks (scripts/template-checks.sh) instead."
-  bash "$here/template-checks.sh"
-  template_status=$?
+  if bash "$here/template-checks.sh"; then
+    template_status=0
+  else
+    template_status=$?
+  fi
   if [ "$template_status" -eq 0 ]; then
     exit 0
   fi
