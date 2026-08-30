@@ -2852,7 +2852,13 @@ that separate test-truth defect and the skip is not counted as B-195 coverage.
 Exact implementation and oracle reviews approved the source diff. Both composers produced the same
 525-file aggregate; all three composed focused suites and both validator twins passed, as did the
 full 20-file dotnet hook battery, Composer, BacklogHygiene, DocTruth, DocClaims, and release-head
-gates. An immutable-candidate review and first Windows/Linux CI still gate completion.
+gates. Independent reviewer `/root/b195_immutable` then approved exact immutable candidate
+`f84bc093ba6a7d9e68a4f02d29d1f037e28df7a2` from parent `01e7c3c` in an isolated clone: candidate
+tests over the parent hook made TwinParity 6/1/1 and hazard 18/1; restoring the exact candidate made
+the same source suites 7/0/1 and 19/0/0 and composed dotnet 14/0 and 19/0. Source/dist hashes,
+PowerShell BOM/AST, both three-dist validator twins, and the four maintainer gates were clean. The
+review used PowerShell 7.6.5, Windows PowerShell 5.1, and Git Bash 5.2.37; no native Linux,
+BSD/macOS, or Bash 3.2 runtime was available. First Windows/Linux CI still gates completion.
 
 ---
 

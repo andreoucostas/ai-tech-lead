@@ -32,6 +32,13 @@ SessionStartHazard 19/0/0 under PowerShell 7/Git Bash. Native Windows PowerShell
 modified branches. Independent implementation and oracle reviews approved the source diff. The
 exact candidate's first Windows/Linux CI remains mandatory before completion or release.
 
+Independent immutable review approved exact candidate
+`f84bc093ba6a7d9e68a4f02d29d1f037e28df7a2`. In an isolated clone, the candidate tests over its
+parent hook reproduced TwinParity 6/1/1 and hazard 18/1, then restored to source 7/0/1 and 19/0/0
+and composed-dotnet 14/0 and 19/0 on the exact candidate. The review also reconfirmed byte parity,
+BOM/AST integrity, both validator twins, and the B-200/B-201 boundaries. Its PowerShell 7, Windows
+PowerShell 5.1, and Git Bash evidence is not native Linux, BSD/macOS, or Bash 3.2 evidence.
+
 PowerShell and Bash composition produced the same 525-file aggregate. All three distributions
 passed TwinParity (14/0 dotnet, 9/0/1 angular, 14/0 monorepo), SessionStartHazard 19/0, and both
 173/169/183-file validators; the full dotnet hook battery passed with zero failures across 20 files.

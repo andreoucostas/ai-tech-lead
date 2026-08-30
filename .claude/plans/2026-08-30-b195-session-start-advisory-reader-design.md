@@ -3,7 +3,7 @@
 **Date:** 2026-08-30  
 **Filed against:** v0.78.3  
 **Planned:** v0.78.4  
-**Status:** IMPLEMENTED CANDIDATE — local verification complete; first Windows/Linux CI pending
+**Status:** IMPLEMENTED CANDIDATE `f84bc093ba6a7d9e68a4f02d29d1f037e28df7a2` — immutable review approved; first Windows/Linux CI pending
 
 ## Value decision
 
@@ -94,3 +94,18 @@ hash parity, test AST/BOM, relevant doc/backlog gates, and an independent immuta
 Because tests change, B-195 remains an implemented candidate until the exact candidate's first
 Windows/Linux CI is green. Git Bash is not Linux evidence. Fold this implementation into the
 existing linear v0.78.4 Unreleased head; never create a future Unreleased heading above it.
+
+## Immutable candidate review
+
+Independent reviewer `/root/b195_immutable` began from this contract and immutable parent
+`01e7c3ccf79c0839114ab9a52032decaea2261bd` in an isolated clean clone. Candidate tests against the
+parent hook made TwinParity 6/1/1 (generic rather than red overdue-security output) and hazard 18/1
+(EOF, CRLF, and heading-whitespace misses named). Restoring the exact candidate made the same source
+suites 7/0/1 and 19/0/0, and the composed dotnet suites 14/0 and 19/0; the malformed EOF row remained
+silent with exit 0 and clean stderr. Source/dist hashes, test BOM/AST checks, both three-dist
+validator twins, and the four maintainer gates also passed.
+
+The review used Windows PowerShell 5.1, PowerShell 7.6.5, and Git Bash 5.2.37. It independently
+confirmed B-201's unrelated false capability skip and B-200's unchanged cutoff boundary. No native
+Linux, BSD/macOS, or Bash 3.2 runtime was available, so approval is local-candidate evidence only;
+the first Windows/Linux CI for the exact candidate still gates completion and release.
