@@ -7360,3 +7360,40 @@ The frozen plan's intentional Markdown hard-break makes historical `git diff --c
 recorded as P3 evidence, not product debt. All review scratch artifacts were removed.
 
 ---
+
+### B-162 · Abandoned test scratch trees self-heal on the next relevant harness run — **DONE 2026-08-30 · landed in v0.65.0**
+
+Commit `1f218a0` added a six-hour, prefix-bounded startup sweep for the measured
+`validate-dist-*` and `mutation-helper-*` temp trees. ValidateDist invokes it before scratch
+allocation and every `Invoke-MutationRedTest` invokes it before creating its tree; both original
+`finally` cleanups remain. Failed housekeeping is non-verdict best effort. Revalidation on
+2026-08-30 removed both stale prefixes, preserved a fresh concurrent-run control, and swallowed a
+locked-tree failure. The measured runtime feedback loop remains a hypothesis, not a claimed
+outcome. Meta-only per WSD-005; landed, tagged, and documented in v0.65.0.
+
+---
+
+### B-163 · Restore meta-suite headroom without raising the ceiling — **DONE 2026-08-30 · shipped v0.66.0**
+
+Commit `b2471bd` reduced GuardPatternErrors cost by running only the tagged policy case per
+mutation and added exit-111 anti-vacuity protection. In-release measurement fell 548.3s→40.6s and
+the full meta suite 643.5s→427.2s under the unchanged 650s ceiling; post-B-162 measurement remained
+39.3s/428.3s. ValidateDist was separately proven already parallel and lane-budgeted; eliminating its
+remaining process isolation would be disproportionate rearchitecture at about 34% headroom, so that
+arm closes as a measured no-change. Current revalidation passed all four mutation cases, confirmed
+an empty filter exits 111, and retained source/dist parity. Reopen runtime work only on new measured
+evidence.
+
+---
+
+### B-164 · Rule-authoring failures need an explicit maintenance principle — **DONE 2026-08-30 · shipped v0.70.0**
+
+Commit `8a8e43f` added maintenance rule 7 to `CLAUDE.md` and `AGENTS.md`. A measured 11-script
+survey in `2b4fcff` rejected hard enforcement as overbroad, retained bounded advisory human
+triage, and found the docs-sync false diagnosis fixed in both twins by `2961299` and released in
+v0.70.0. No hard gate was added because one true-positive class member has defensible fail-safe
+behavior; refusing it would be a policy false positive and reduce rather than add value. Current
+source and all dist twins remain byte-identical, and the changelog/review ledger retain the three-arm
+evidence.
+
+---

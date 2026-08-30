@@ -212,9 +212,9 @@ review independence, quality, or truth, which remain evidence-review obligations
    converged, so the obligation sits on the gate author: if your check exits non-zero, it must be
    able to say which of the two things happened. Note the symmetry, learned the hard way in v0.64.0:
    `grep` exits 2 for a *missing file* as well as for a failure to run, so a content fact reported as
-   a host problem is the same defect inverted. B-164 tracks whether this can be enforced mechanically
-   or stays guidance; per WSD-028/WSD-057, mechanise only what tooling can honestly distinguish and
-   keep unjudgeable quality as an explicit evidence obligation.
+   a host problem is the same defect inverted. B-164 established that this remains guidance backed
+   by bounded advisory triage, not an enforced gate; per WSD-028/WSD-057, mechanise only what tooling
+   can honestly distinguish and keep unjudgeable quality as an explicit evidence obligation.
 
 Evidence trail for all seven: `meta/LEARNINGS.md`. Working hazards that are *not* principles (e.g.
 never run the gate suites concurrently with an implementer round) live in `DEVELOPING.md`.

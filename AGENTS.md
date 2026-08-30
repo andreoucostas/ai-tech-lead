@@ -135,9 +135,9 @@ independence, quality, or truth.
    Enumerating sites has not converged, so the obligation sits on the gate author: a non-zero exit
    must be able to say which of the two things happened. The symmetry matters too — `grep` exits 2
    for a *missing file* as well as a failure to run, so a content fact reported as a host problem is
-   the same defect inverted. B-164 tracks whether this is mechanically enforceable or stays guidance;
-   per WSD-028/WSD-057, mechanise only what tooling can honestly distinguish and keep unjudgeable
-   quality as an explicit evidence obligation.
+   the same defect inverted. B-164 established that this remains guidance backed by bounded advisory
+   triage, not an enforced gate; per WSD-028/WSD-057, mechanise only what tooling can honestly
+   distinguish and keep unjudgeable quality as an explicit evidence obligation.
 
 `release.ps1` refuses to release without either `-ReviewEvidence` (the supplied range, hostile/red
 and clean evidence, environment/gaps, and identities) or `-NoIndependentReview`, which is allowed
