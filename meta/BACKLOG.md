@@ -2711,7 +2711,7 @@ standalone catalog suite.
 ### B-202 · Remove the unreachable warehouse-map decline state
 **Effort:** S · **Priority:** P2 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-30)
-**Status:** IMPLEMENTED LOCAL CANDIDATE — immutable review and first Windows/Linux CI pending
+**Status:** IMPLEMENTED CANDIDATE `fb689c2daec4c54ffb68a5e1769eefd061d96b85` — immutable review approved; first Windows/Linux CI pending
 **Decision:** WSD-060
 
 **Why:** B-199 found that the checker and its permanent result recognize an exact
@@ -2757,6 +2757,16 @@ status. The first Bash-validator launch used an over-restricted diagnostic `PATH
 product validation because it hid both JSON engines; the documented Git Bash path was restored and
 the full twin rerun passed. Native Linux and first candidate CI remain unavailable, so this item is
 not complete and grants no release approval.
+
+**Immutable review:** a fresh reviewer with no implementation participation approved frozen range
+`235055c9ad719b875c1f96cadfb7e25e57216f13..fb689c2daec4c54ffb68a5e1769eefd061d96b85`
+and tree `7b54539fdaf6facfe4cc1bb45ddbfaf870379659` in a no-hardlinks isolated clone. It independently
+reproduced old-red `declined`/0 and candidate-green `missing`/1 on both twins with unchanged learning
+bytes, confirmed the exact 33-path allowlist and zero product references, and retained 3/0 under
+PowerShell 7 and Windows PowerShell 5.1 at code page 437 with Git Bash exercised. An exit-1-to-0
+mutation failed the intended missing world 2/1 before byte restoration returned 3/0. Both composers,
+both validator twins in all modes, source/generated hashes, BOM/AST/Bash syntax, and the four record
+gates independently passed. Native Linux and first candidate CI remain the only accepted gap.
 
 ---
 

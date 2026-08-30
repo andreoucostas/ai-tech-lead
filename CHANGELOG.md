@@ -31,6 +31,16 @@ validator twins passed all three modes, and the remaining three-result checker s
 PowerShell 7, Windows PowerShell 5.1, and Git Bash. First Windows/Linux candidate CI still gates
 completion and release.
 
+Independent immutable review approved exact candidate
+`fb689c2daec4c54ffb68a5e1769eefd061d96b85` from contract `235055c` and tree
+`7b54539fdaf6facfe4cc1bb45ddbfaf870379659`. In a no-hardlinks isolated clone, the reviewer
+reproduced old `declined`/0 versus candidate `missing`/1 on both checker twins with byte-identical
+`LEARNINGS.md`, then made an exit-1-to-0 mutation fail the intended missing world 2/1 before restoring
+3/0. PowerShell 7 and Windows PowerShell 5.1 at code page 437 exercised Git Bash; all source,
+mirror, and generated hashes agreed; both composers reproduced all three distributions; and both
+validator twins plus the four record gates passed. Native Linux and first candidate CI remain
+unavailable, so B-202 stays open.
+
 **Root-installer maintainer teardown now fails honestly and verifies absence.** B-204 replaces twelve
 non-terminating recursive fixture cleanups in the existing `RootInstallerWarehouse` suite with one
 exactly allowlisted, reparse-safe remover and a lifecycle wrapper that preserves product-body and
