@@ -16,7 +16,9 @@ if (Test-Path ".template-repo") {
     Write-Output "Framework template repo (.template-repo present) — consumer-state checks don't apply;"
     Write-Output "running the deterministic framework checks (scripts/template-checks.ps1) instead."
     & $psExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $here 'template-checks.ps1')
-    exit $LASTEXITCODE
+    $templateStatus = $LASTEXITCODE
+    if ($templateStatus -eq 0) { exit 0 }
+    exit 1
 }
 
 $failed = $false

@@ -13,6 +13,10 @@
   unchanged. The doctor maps only `3` to `MISSING`, tells you to run the checker and follow its
   exact findings, and reports other nonzero exits as non-failing `CANT-VERIFY`. If custom automation
   treated the old exit code as the finding count, read the printed summary or handle `3` instead.
+  `scripts/docs-sync-check` retains its documented `0` pass / `1` fail contract: in template repos
+  it preserves checker output but maps every nonzero checker status to wrapper `1`. Automation that
+  relied on the wrapper passing through child status `2` or `3` must invoke `template-checks`
+  directly if it needs that diagnostic distinction.
 
 - The Copilot skill-mirror script now works with stock macOS `/bin/bash` 3.2. Its completion
   message is now `Synced skills: .claude/skills -> .github/skills`; the informational count was

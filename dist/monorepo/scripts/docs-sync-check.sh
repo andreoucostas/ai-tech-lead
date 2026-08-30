@@ -19,7 +19,11 @@ if [ -f ".template-repo" ]; then
   echo "Framework template repo (.template-repo present) — consumer-state checks don't apply;"
   echo "running the deterministic framework checks (scripts/template-checks.sh) instead."
   bash "$here/template-checks.sh"
-  exit $?
+  template_status=$?
+  if [ "$template_status" -eq 0 ]; then
+    exit 0
+  fi
+  exit 1
 fi
 
 FAILED=0
