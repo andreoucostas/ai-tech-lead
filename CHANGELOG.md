@@ -13,6 +13,24 @@
 
 ## 0.78.4 — Unreleased
 
+**Root-installer maintainer teardown now fails honestly and verifies absence.** B-204 replaces twelve
+non-terminating recursive fixture cleanups in the existing `RootInstallerWarehouse` suite with one
+exactly allowlisted, reparse-safe remover and a lifecycle wrapper that preserves product-body and
+cleanup failures independently. Transient handle contention gets six bounded attempts (1.5 seconds
+total backoff); a surviving fixture is terminal, and simultaneous body/cleanup failures expose both
+causes. The existing mutation callbacks now reject cleanup-only reds by requiring their intended
+warehouse assertion and sentinel. No suite or test result was added.
+
+Native Windows PowerShell 5.1 execution also exposed a pre-existing false-red premise in the two
+solution-free assertions: recursive `Get-ChildItem -Include` counted every file on that host. Only
+those expressions now filter enumerated files by extension, retaining the assertions and their
+cardinality. Two independent adversarial reviews approved keeping the larger local remover after
+hostile path, link, lock, partial-deletion, aggregation, and post-inspection probes under PowerShell
+7 and 5.1. The unchanged 12-result file passed 12/0 under both hosts and concurrently; the standard
+maintainer runner passed all 31 files with zero failures and no new residue. Native-Linux dangling-
+link evidence and first Windows/Linux candidate CI still gate completion; this is not release
+approval.
+
 **Docs-sync now distinguishes verified warehouse-map debt from a checker it could not run.** B-203
 captures the `warehouse-map-check` status once in both wrapper twins, preserves the existing
 missing/stale note only for exit 1, and emits an explicit unable-to-verify advisory for every other

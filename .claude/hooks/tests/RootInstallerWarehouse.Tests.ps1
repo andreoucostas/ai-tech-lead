@@ -15,6 +15,171 @@ function ConvertTo-PosixPath([string]$Path) {
     return $Path.Replace('\', '/')
 }
 
+function Remove-TestFixtureTree([string]$AtlFixturePath) {
+    if ([string]::IsNullOrWhiteSpace($AtlFixturePath)) {
+        throw [System.Security.SecurityException]::new('fixture cleanup rejected a null or blank path')
+    }
+
+    $atlTrimChars = [char[]]@([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
+    try {
+        $atlCanonicalPath = [IO.Path]::GetFullPath($AtlFixturePath).TrimEnd($atlTrimChars)
+    } catch {
+        throw [System.Security.SecurityException]::new("fixture cleanup could not canonicalize '$AtlFixturePath'", $_.Exception)
+    }
+
+    $atlLeaf = [IO.Path]::GetFileName($atlCanonicalPath)
+    $atlWorkspaceParent = [IO.Path]::GetFullPath((Split-Path -Parent $repo)).TrimEnd($atlTrimChars)
+    $atlTempParent = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd($atlTrimChars)
+    $atlTrustedParent = $null
+    if ($atlLeaf -cmatch '^root-installer-(?:warehouse|singlewarehouse|angularwarehouse|dotnet|mixed)-[0-9a-f]{32}$') {
+        $atlTrustedParent = $atlWorkspaceParent
+    } elseif ($atlLeaf -cmatch '^root-broken-jq-[0-9a-f]{32}$') {
+        $atlTrustedParent = $atlTempParent
+    }
+    if ($null -eq $atlTrustedParent) {
+        throw [System.Security.SecurityException]::new("fixture cleanup rejected non-allowlisted path '$atlCanonicalPath'")
+    }
+
+    $atlExpectedPath = [IO.Path]::GetFullPath((Join-Path $atlTrustedParent $atlLeaf)).TrimEnd($atlTrimChars)
+    if (-not [string]::Equals($atlCanonicalPath, $atlExpectedPath, [StringComparison]::Ordinal)) {
+        throw [System.Security.SecurityException]::new("fixture cleanup rejected path outside its exact parent: '$atlCanonicalPath'")
+    }
+
+    $atlPolicyMarker = 'B204FixtureCleanupPolicy'
+    $atlNewPolicyFailure = {
+        param([string]$AtlPolicyMessage)
+        $atlPolicyException = [System.Security.SecurityException]::new($AtlPolicyMessage)
+        $atlPolicyException.Data[$atlPolicyMarker] = $true
+        return $atlPolicyException
+    }
+    $atlValidateExpectedEntry = {
+        param($AtlEntry, [string]$AtlLookupPath, [string]$AtlLookupLeaf)
+        $atlEntryPath = [IO.Path]::GetFullPath($AtlEntry.FullName).TrimEnd($atlTrimChars)
+        if (-not [string]::Equals([string]$AtlEntry.Name, $AtlLookupLeaf, [StringComparison]::Ordinal) -or
+            -not [string]::Equals($atlEntryPath, $AtlLookupPath, [StringComparison]::Ordinal)) {
+            throw (& $atlNewPolicyFailure "fixture cleanup resolved a case/path alias instead of exact entry '$AtlLookupPath': '$($AtlEntry.FullName)'")
+        }
+        return $AtlEntry
+    }
+
+    $atlReadEntry = {
+        param([string]$AtlLookupPath, [string]$AtlLookupParent, [string]$AtlLookupLeaf)
+        $atlDirectResolved = $false
+        try {
+            $null = Get-Item -LiteralPath $AtlLookupPath -Force -ErrorAction Stop
+            $atlDirectResolved = $true
+        } catch [System.Management.Automation.ItemNotFoundException] {
+            # A missing target and a dangling link can both reach this branch. Parent enumeration
+            # below distinguishes no directory entry from an unresolved reparse entry.
+        }
+        $atlOrdinalMatches = @(
+            Get-ChildItem -LiteralPath $AtlLookupParent -Force -ErrorAction Stop |
+                Where-Object { [string]::Equals([string]$_.Name, $AtlLookupLeaf, [StringComparison]::Ordinal) }
+        )
+        if ($atlOrdinalMatches.Count -eq 0) {
+            if ($atlDirectResolved) {
+                throw (& $atlNewPolicyFailure "fixture cleanup resolved '$AtlLookupPath' only through a case/path alias")
+            }
+            return $null
+        }
+        if ($atlOrdinalMatches.Count -ne 1) {
+            throw (& $atlNewPolicyFailure "fixture cleanup found multiple ordinal entries named '$AtlLookupLeaf' beneath '$AtlLookupParent'")
+        }
+        return (& $atlValidateExpectedEntry $atlOrdinalMatches[0] $AtlLookupPath $AtlLookupLeaf)
+    }
+
+    $atlLastFailure = $null
+    $atlLastDetail = 'target remained present'
+    for ($atlAttempt = 1; $atlAttempt -le 6; $atlAttempt++) {
+        $atlAttemptFailure = $null
+        $atlEntry = $null
+        try {
+            $atlEntry = & $atlReadEntry $atlCanonicalPath $atlTrustedParent $atlLeaf
+            if ($null -eq $atlEntry) { return }
+
+            $atlRootLink = (($atlEntry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) -or
+                ($atlEntry.PSObject.Properties['LinkType'] -and -not [string]::IsNullOrWhiteSpace([string]$atlEntry.LinkType))
+            if ($atlRootLink) {
+                throw (& $atlNewPolicyFailure "fixture cleanup rejected reparse/link root '$($atlEntry.FullName)'")
+            }
+            if (-not $atlEntry.PSIsContainer) {
+                throw (& $atlNewPolicyFailure "fixture cleanup expected a directory but found '$($atlEntry.FullName)'")
+            }
+
+            $atlPending = New-Object 'System.Collections.Generic.Queue[string]'
+            $atlPending.Enqueue($atlCanonicalPath)
+            while ($atlPending.Count -gt 0) {
+                $atlDirectoryPath = $atlPending.Dequeue()
+                $atlDirectory = Get-Item -LiteralPath $atlDirectoryPath -Force -ErrorAction Stop
+                $atlDirectoryLink = (($atlDirectory.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) -or
+                    ($atlDirectory.PSObject.Properties['LinkType'] -and -not [string]::IsNullOrWhiteSpace([string]$atlDirectory.LinkType))
+                if ($atlDirectoryLink) {
+                    throw (& $atlNewPolicyFailure "fixture cleanup rejected reparse/link directory '$($atlDirectory.FullName)'")
+                }
+                if (-not $atlDirectory.PSIsContainer) {
+                    throw (& $atlNewPolicyFailure "fixture cleanup expected a directory but found '$($atlDirectory.FullName)'")
+                }
+
+                foreach ($atlChild in @(Get-ChildItem -LiteralPath $atlDirectory.FullName -Force -ErrorAction Stop)) {
+                    $atlChildLink = (($atlChild.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) -or
+                        ($atlChild.PSObject.Properties['LinkType'] -and -not [string]::IsNullOrWhiteSpace([string]$atlChild.LinkType))
+                    if ($atlChildLink) {
+                        throw (& $atlNewPolicyFailure "fixture cleanup rejected reparse/link entry '$($atlChild.FullName)'")
+                    }
+                    if ($atlChild.PSIsContainer) { $atlPending.Enqueue($atlChild.FullName) }
+                }
+            }
+
+            Remove-Item -LiteralPath $atlCanonicalPath -Recurse -Force -ErrorAction Stop
+        } catch {
+            if ($_.Exception.Data -and $_.Exception.Data.Contains($atlPolicyMarker)) { throw }
+            $atlAttemptFailure = $_
+        }
+
+        $atlPostEntry = $null
+        $atlPostInspectionFailed = $false
+        try {
+            $atlPostEntry = & $atlReadEntry $atlCanonicalPath $atlTrustedParent $atlLeaf
+        } catch {
+            if ($_.Exception.Data -and $_.Exception.Data.Contains($atlPolicyMarker)) { throw }
+            $atlPostInspectionFailed = $true
+            # This later failure is decisive: we could not establish whether the preceding removal
+            # error nevertheless left the required absent state.
+            $atlAttemptFailure = $_
+        }
+        if (-not $atlPostInspectionFailed -and $null -eq $atlPostEntry) { return }
+
+        $atlLastFailure = $atlAttemptFailure
+        $atlLastDetail = if ($atlAttemptFailure) { $atlAttemptFailure.Exception.Message } else { 'target remained present after removal returned' }
+        if ($atlAttempt -lt 6) { Start-Sleep -Milliseconds (100 * $atlAttempt) }
+    }
+
+    $atlFailureMessage = "fixture cleanup failed for '$atlCanonicalPath' after 6 attempts: $atlLastDetail"
+    if ($atlLastFailure) { throw [IO.IOException]::new($atlFailureMessage, $atlLastFailure.Exception) }
+    throw [IO.IOException]::new($atlFailureMessage)
+}
+
+function Invoke-WithTestFixture(
+    [string]$AtlFixturePath,
+    [scriptblock]$AtlFixtureBody,
+    [object[]]$AtlFixtureBodyArguments = @()
+) {
+    $atlBodyFailure = $null
+    $atlBodyInvocationArguments = @($AtlFixturePath) + @($AtlFixtureBodyArguments)
+    try { & $AtlFixtureBody @atlBodyInvocationArguments } catch { $atlBodyFailure = $_ }
+
+    $atlCleanupFailure = $null
+    try { Remove-TestFixtureTree $AtlFixturePath } catch { $atlCleanupFailure = $_ }
+
+    if ($atlBodyFailure -and $atlCleanupFailure) {
+        $atlAggregateMessage = "fixture body failed for '$AtlFixturePath': $($atlBodyFailure.Exception.Message)`nfixture cleanup also failed for '$AtlFixturePath': $($atlCleanupFailure.Exception.Message)"
+        $atlInnerExceptions = [Exception[]]@($atlBodyFailure.Exception, $atlCleanupFailure.Exception)
+        throw [AggregateException]::new($atlAggregateMessage, $atlInnerExceptions)
+    }
+    if ($atlBodyFailure) { throw $atlBodyFailure }
+    if ($atlCleanupFailure) { throw $atlCleanupFailure }
+}
+
 function Resolve-HostPython {
     foreach ($candidate in @($env:ATL_TEST_PYTHON, 'python3', 'python', 'py')) {
         if ([string]::IsNullOrWhiteSpace($candidate)) { continue }
@@ -143,17 +308,17 @@ foreach ($twin in @('ps1', 'sh')) {
 
     It "warehouse-only auto-detection completes greenfield install without a solution ($twin)" {
         $singleCategoryTarget = New-Target 'singlewarehouse'
-        try {
+        Invoke-WithTestFixture $singleCategoryTarget ({
             $before = Get-TargetFingerprint $singleCategoryTarget
             $singleCategory = Invoke-RootInstaller $twin $singleCategoryTarget
             Assert ($singleCategory.Exit -eq 2) "one warehouse category should not auto-route, exit $($singleCategory.Exit): $($singleCategory.Output)"
             Assert ($singleCategory.Output -match 'Could not determine the stack') "one warehouse category did not produce the ordinary explicit-stack refusal: $($singleCategory.Output)"
             Assert ($singleCategory.Output -notmatch 'Stack: dotnet') "repeated matches from one category incorrectly selected dotnet: $($singleCategory.Output)"
             Assert ((Get-TargetFingerprint $singleCategoryTarget) -ceq $before) 'one-category refusal changed target bytes'
-        } finally { Remove-Item -LiteralPath $singleCategoryTarget -Recurse -Force }
+        }.GetNewClosure())
 
         $target = New-Target 'warehouse'
-        try {
+        Invoke-WithTestFixture $target ({
             $result = Invoke-RootInstaller $twin $target
             Assert ($result.Exit -eq 0) "warehouse-only greenfield install exited $($result.Exit): $($result.Output)"
             Assert ($result.Output -match 'Stack: dotnet \(via auto-detected warehouse SQL profile \(found signals: layers, loads, control, history\)\)') "warehouse categories or their order diverged from the shared classifier: $($result.Output)"
@@ -161,24 +326,24 @@ foreach ($twin in @('ps1', 'sh')) {
             Assert (Test-Path -LiteralPath (Join-Path $target '.claude/commands/bootstrap.md') -PathType Leaf) 'greenfield install omitted /bootstrap'
             Assert-EvidenceBoundLifecycle $target
             Assert (-not (Test-Path -LiteralPath (Join-Path $target '.claude/adoption-pending.json'))) 'greenfield install incorrectly entered adoption mode'
-            Assert (@(Get-ChildItem -LiteralPath $target -Recurse -File -Include *.sln,*.csproj).Count -eq 0) 'warehouse fixture unexpectedly acquired a .NET solution/project'
-        } finally { Remove-Item -LiteralPath $target -Recurse -Force }
+            Assert (@(Get-ChildItem -LiteralPath $target -Recurse -File | Where-Object { $_.Extension -in @('.sln', '.csproj') }).Count -eq 0) 'warehouse fixture unexpectedly acquired a .NET solution/project'
+        }.GetNewClosure())
 
         $ssdtTarget = New-Target 'warehouse'
-        try {
+        Invoke-WithTestFixture $ssdtTarget ({
             [IO.File]::WriteAllText((Join-Path $ssdtTarget 'Warehouse.sln'), 'Microsoft Visual Studio Solution File, Format Version 12.00')
             [IO.File]::WriteAllText((Join-Path $ssdtTarget 'platform/data/domain/warehouse/Warehouse.sqlproj'), '<Project Sdk="Microsoft.Build.Sql" />')
             $result = Invoke-RootInstaller $twin $ssdtTarget -DryRun
             Assert ($result.Exit -eq 0) "SSDT warehouse auto-detection exited $($result.Exit): $($result.Output)"
             Assert ($result.Output -match 'Stack: dotnet \(via auto-detected warehouse SQL profile \(found signals:') "SSDT solution was misclassified as .NET application evidence: $($result.Output)"
-        } finally { Remove-Item -LiteralPath $ssdtTarget -Recurse -Force }
+        }.GetNewClosure())
     }
 
     if ($OnlyWarehouse) { continue }
 
     It "warehouse-only auto-detection completes brownfield install and adoption handoff without a solution ($twin)" {
         $target = New-Target 'warehouse'
-        try {
+        Invoke-WithTestFixture $target ({
             $legacy = "WAREHOUSE LEGACY SENTINEL`nUse the established ETL release flow.`n"
             [IO.File]::WriteAllText((Join-Path $target 'CLAUDE.md'), $legacy, [Text.UTF8Encoding]::new($false))
             & git -C $target add -A 2>$null | Out-Null
@@ -194,17 +359,17 @@ foreach ($twin in @('ps1', 'sh')) {
             $marker = Get-Content -LiteralPath (Join-Path $target '.claude/adoption-pending.json') -Raw | ConvertFrom-Json
             Assert ($marker.archivedOriginals -contains 'docs/pre-adoption/CLAUDE.md') 'adoption marker omitted the archived warehouse instructions'
             Assert ((Get-Content -LiteralPath (Join-Path $target '.claude/commands/adopt.md') -Raw) -match '(?s)Phase 7.+/bootstrap') '/adopt does not retain its /bootstrap Phase-7 handoff'
-            Assert (@(Get-ChildItem -LiteralPath $target -Recurse -File -Include *.sln,*.csproj).Count -eq 0) 'warehouse fixture unexpectedly acquired a .NET solution/project'
-        } finally { Remove-Item -LiteralPath $target -Recurse -Force }
+            Assert (@(Get-ChildItem -LiteralPath $target -Recurse -File | Where-Object { $_.Extension -in @('.sln', '.csproj') }).Count -eq 0) 'warehouse fixture unexpectedly acquired a .NET solution/project'
+        }.GetNewClosure())
     }
 
     It "ordinary dotnet auto-detection remains available ($twin)" {
         $target = New-Target 'dotnet'
-        try {
+        Invoke-WithTestFixture $target ({
             $result = Invoke-RootInstaller $twin $target -DryRun
             Assert ($result.Exit -eq 0) "ordinary dotnet auto-detection exited $($result.Exit): $($result.Output)"
             Assert ($result.Output -match 'Stack: dotnet \(via auto-detected') "ordinary dotnet target did not select dotnet: $($result.Output)"
-        } finally { Remove-Item -LiteralPath $target -Recurse -Force }
+        }.GetNewClosure())
         foreach($markerCase in @(
             @{File='package.json';Content='{"dependencies":{"@ANGULAR/CORE":"20.0.0"}}';Label='uppercase package identifier';Pattern='Could not determine the stack'},
             @{File='package.json';Content='{"scripts":{"probe":"echo \"@angular/core\": fake"}}';Label='escaped property-shaped script string';Pattern='Could not determine the stack'},
@@ -226,7 +391,7 @@ foreach ($twin in @('ps1', 'sh')) {
             @{File='package.json';Content='{"dependencies":{"@angular/core":"20.0.0"},"probe":01}';Label='leading-zero package number';Pattern='Could not inspect repository evidence'}
         )){
             $caseSensitiveTarget = New-Target 'dotnet'
-            try {
+            Invoke-WithTestFixture $caseSensitiveTarget ({
                 Remove-Item -LiteralPath (Join-Path $caseSensitiveTarget 'App.csproj') -Force
                 [IO.File]::WriteAllText((Join-Path $caseSensitiveTarget $markerCase.File), $markerCase.Content, [Text.UTF8Encoding]::new($false))
                 $before = Get-TargetFingerprint $caseSensitiveTarget
@@ -234,31 +399,31 @@ foreach ($twin in @('ps1', 'sh')) {
                 Assert ($result.Exit -eq 2) "$($markerCase.Label) incorrectly routed, exit $($result.Exit): $($result.Output)"
                 Assert ($result.Output -match $markerCase.Pattern) "$($markerCase.Label) did not fail at the expected evidence boundary: $($result.Output)"
                 Assert ((Get-TargetFingerprint $caseSensitiveTarget) -ceq $before) "$($markerCase.Label) refusal changed target bytes"
-            } finally { Remove-Item -LiteralPath $caseSensitiveTarget -Recurse -Force }
+            }.GetNewClosure())
         }
     }
 
     It "mixed application and Angular-plus-warehouse profiles select monorepo ($twin)" {
         $target = New-Target 'mixed'
-        try {
+        Invoke-WithTestFixture $target ({
             $result = Invoke-RootInstaller $twin $target -DryRun
             Assert ($result.Exit -eq 0) "mixed auto-detection exited $($result.Exit): $($result.Output)"
             Assert ($result.Output -match 'Stack: monorepo \(via auto-detected') "mixed target did not select monorepo: $($result.Output)"
-        } finally { Remove-Item -LiteralPath $target -Recurse -Force }
+        }.GetNewClosure())
 
         $angularWarehouse = New-Target 'angularwarehouse'
-        try {
+        Invoke-WithTestFixture $angularWarehouse ({
             $result = Invoke-RootInstaller $twin $angularWarehouse
             Assert ($result.Exit -eq 0) "Angular-plus-warehouse auto-detection exited $($result.Exit): $($result.Output)"
             Assert ($result.Output -match 'Stack: monorepo \(via auto-detected mixed repo \(found Angular \+ warehouse SQL profiles: layers, loads, control, history\)\)') "Angular-plus-warehouse target did not select monorepo with observable categories: $($result.Output)"
             Assert-EvidenceBoundLifecycle $angularWarehouse
-        } finally { Remove-Item -LiteralPath $angularWarehouse -Recurse -Force }
+        }.GetNewClosure())
     }
 
     It "root dispatcher forwards deliberate downgrade and dry-run flags to every stack ($twin)" {
         foreach ($stack in @('dotnet','angular','monorepo')) {
             $target = New-Target 'dotnet'
-            try {
+            Invoke-WithTestFixture $target ({
                 New-Item -ItemType Directory -Force -Path (Join-Path $target '.claude') | Out-Null
                 [IO.File]::WriteAllText((Join-Path $target '.claude/framework-version.json'), "{`"version`":`"99.0.0`",`"template`":`"$stack`"}", [Text.UTF8Encoding]::new($false))
                 $before = Get-TargetFingerprint $target
@@ -267,10 +432,10 @@ foreach ($twin in @('ps1', 'sh')) {
                 Assert ($result.Output -match 'allow-downgrade accepted|AllowDowngrade accepted') "$stack did not observe the downgrade override"
                 Assert ($result.Output -match 'Dry run complete; target was not modified') "$stack did not observe the dry-run flag"
                 Assert ((Get-TargetFingerprint $target) -ceq $before) "$stack root dry-run changed target bytes"
-            } finally { Remove-Item -LiteralPath $target -Recurse -Force }
+            }.GetNewClosure())
         }
         $stampedTarget = New-Target 'dotnet'
-        try {
+        Invoke-WithTestFixture $stampedTarget ({
             New-Item -ItemType Directory -Force -Path (Join-Path $stampedTarget '.claude') | Out-Null
             [IO.File]::WriteAllText((Join-Path $stampedTarget '.claude/framework-version.json'), '{"version":"99.0.0","template":"dotnet","decimal":0.01,"exponent":1e01,"negativeExponent":1e-01}', [Text.UTF8Encoding]::new($false))
             $before = Get-TargetFingerprint $stampedTarget
@@ -283,23 +448,23 @@ foreach ($twin in @('ps1', 'sh')) {
             if ($twin -eq 'sh' -and (Resolve-HostPython)) {
                 $brokenJqBin = Join-Path ([IO.Path]::GetTempPath()) ('root-broken-jq-' + [guid]::NewGuid().ToString('N'))
                 $oldPath = $env:PATH
-                try {
-                    New-Item -ItemType Directory -Force -Path $brokenJqBin | Out-Null
-                    [IO.File]::WriteAllText((Join-Path $brokenJqBin 'jq'), "#!/bin/sh`nexit 49`n", [Text.UTF8Encoding]::new($false))
-                    $posixJq = ConvertTo-PosixPath (Join-Path $brokenJqBin 'jq')
-                    $null = & $bash -c ('PATH="/usr/bin:/bin:/usr/local/bin:$PATH" chmod +x "{0}"' -f $posixJq) 2>$null
-                    Assert ($LASTEXITCODE -eq 0) 'could not make broken jq fixture executable'
-                    $env:PATH = $brokenJqBin + [IO.Path]::PathSeparator + $oldPath
-                    $fallback = Invoke-RootInstaller $twin $stampedTarget -DryRun -AllowDowngrade
-                    Assert ($fallback.Exit -eq 0) "broken jq suppressed the working Python fallback: $($fallback.Output)"
-                    Assert ($fallback.Output -match 'Stack: dotnet \(via update stamp') "Python fallback did not select the valid stamped stack: $($fallback.Output)"
-                    Assert ((Get-TargetFingerprint $stampedTarget) -ceq $before) 'broken-jq Python fallback changed target bytes'
-                } finally {
-                    $env:PATH = $oldPath
-                    if (Test-Path -LiteralPath $brokenJqBin) { Remove-Item -LiteralPath $brokenJqBin -Recurse -Force }
-                }
+                Invoke-WithTestFixture -AtlFixturePath $brokenJqBin -AtlFixtureBody {
+                    param($atlBrokenJqFixture, $atlStampedFixture, $atlTwin, $atlBeforeFingerprint, $atlOriginalPath, $atlBashPath)
+                    try {
+                        New-Item -ItemType Directory -Force -Path $atlBrokenJqFixture | Out-Null
+                        [IO.File]::WriteAllText((Join-Path $atlBrokenJqFixture 'jq'), "#!/bin/sh`nexit 49`n", [Text.UTF8Encoding]::new($false))
+                        $posixJq = ConvertTo-PosixPath (Join-Path $atlBrokenJqFixture 'jq')
+                        $null = & $atlBashPath -c ('PATH="/usr/bin:/bin:/usr/local/bin:$PATH" chmod +x "{0}"' -f $posixJq) 2>$null
+                        Assert ($LASTEXITCODE -eq 0) 'could not make broken jq fixture executable'
+                        $env:PATH = $atlBrokenJqFixture + [IO.Path]::PathSeparator + $atlOriginalPath
+                        $fallback = Invoke-RootInstaller $atlTwin $atlStampedFixture -DryRun -AllowDowngrade
+                        Assert ($fallback.Exit -eq 0) "broken jq suppressed the working Python fallback: $($fallback.Output)"
+                        Assert ($fallback.Output -match 'Stack: dotnet \(via update stamp') "Python fallback did not select the valid stamped stack: $($fallback.Output)"
+                        Assert ((Get-TargetFingerprint $atlStampedFixture) -ceq $atlBeforeFingerprint) 'broken-jq Python fallback changed target bytes'
+                    } finally { $env:PATH = $atlOriginalPath }
+                } -AtlFixtureBodyArguments @($stampedTarget, $twin, $before, $oldPath, $bash)
             }
-        } finally { Remove-Item -LiteralPath $stampedTarget -Recurse -Force }
+        }.GetNewClosure())
         foreach ($case in @(
             @{ Name='uppercase explicit stack'; Stack='DOTNET'; Stamp=$null; Pattern='Unknown stack' },
             @{ Name='uppercase stamped stack'; Stack=''; Stamp='{"version":"99.0.0","template":"DOTNET"}'; Pattern='unknown stack' },
@@ -313,7 +478,7 @@ foreach ($twin in @('ps1', 'sh')) {
             @{ Name='valid stamped one-object JSON array'; Stack=''; Stamp='[{"version":"99.0.0","template":"dotnet"}]'; Pattern='invalid JSON|no non-empty string' }
         )) {
             $target = New-Target 'dotnet'
-            try {
+            Invoke-WithTestFixture $target ({
                 if ($null -ne $case.Stamp) {
                     New-Item -ItemType Directory -Force -Path (Join-Path $target '.claude') | Out-Null
                     [IO.File]::WriteAllText((Join-Path $target '.claude/framework-version.json'), $case.Stamp, [Text.UTF8Encoding]::new($false))
@@ -323,7 +488,7 @@ foreach ($twin in @('ps1', 'sh')) {
                 Assert ($result.Exit -eq 2) "$($case.Name) exited $($result.Exit): $($result.Output)"
                 Assert ($result.Output -match $case.Pattern) "$($case.Name) did not fail actionably: $($result.Output)"
                 Assert ((Get-TargetFingerprint $target) -ceq $before) "$($case.Name) changed target bytes"
-            } finally { Remove-Item -LiteralPath $target -Recurse -Force }
+            }.GetNewClosure())
         }
     }
 }
@@ -336,8 +501,19 @@ if (-not $SkipRedTest) {
                 -Replacement "Die 'mutated warehouse refusal'" -Command {
                     param($scratchTarget, $scratchRoot)
                     $test = Join-Path $scratchRoot '.claude/hooks/tests/RootInstallerWarehouse.Tests.ps1'
-                    $process = Start-Process -FilePath (Get-PsExe) -ArgumentList @('-NoProfile', '-File', $test, '-SkipRedTest', '-OnlyTwin', 'ps1', '-OnlyWarehouse') -Wait -PassThru -NoNewWindow
-                    $global:LASTEXITCODE = $process.ExitCode
+                    $atlMutationTranscript = @(& (Get-PsExe) -NoProfile -File $test -SkipRedTest -OnlyTwin ps1 -OnlyWarehouse 2>&1 | ForEach-Object { $_.ToString() })
+                    $atlMutationExit = [int]$LASTEXITCODE
+                    $atlMutationTranscript | ForEach-Object { Write-Host $_ }
+                    $atlMutationText = $atlMutationTranscript -join "`n"
+                    $atlIntendedRed = $atlMutationExit -ne 0 -and
+                        $atlMutationText.Contains('warehouse-only greenfield install exited 2') -and
+                        $atlMutationText.Contains('mutated warehouse refusal')
+                    if (-not $atlIntendedRed) {
+                        [Console]::Error.WriteLine('PowerShell mutation went red without its intended warehouse assertion and sentinel')
+                        $global:LASTEXITCODE = 0
+                    } else {
+                        $global:LASTEXITCODE = $atlMutationExit
+                    }
                 } | Out-Null
         }
     }
@@ -348,8 +524,19 @@ if (-not $SkipRedTest) {
                 -Replacement '      echo "mutated warehouse refusal" >&2; exit 2' -Command {
                     param($scratchTarget, $scratchRoot)
                     $test = Join-Path $scratchRoot '.claude/hooks/tests/RootInstallerWarehouse.Tests.ps1'
-                    $process = Start-Process -FilePath (Get-PsExe) -ArgumentList @('-NoProfile', '-File', $test, '-SkipRedTest', '-OnlyTwin', 'sh', '-OnlyWarehouse') -Wait -PassThru -NoNewWindow
-                    $global:LASTEXITCODE = $process.ExitCode
+                    $atlMutationTranscript = @(& (Get-PsExe) -NoProfile -File $test -SkipRedTest -OnlyTwin sh -OnlyWarehouse 2>&1 | ForEach-Object { $_.ToString() })
+                    $atlMutationExit = [int]$LASTEXITCODE
+                    $atlMutationTranscript | ForEach-Object { Write-Host $_ }
+                    $atlMutationText = $atlMutationTranscript -join "`n"
+                    $atlIntendedRed = $atlMutationExit -ne 0 -and
+                        $atlMutationText.Contains('warehouse-only greenfield install exited 2') -and
+                        $atlMutationText.Contains('mutated warehouse refusal')
+                    if (-not $atlIntendedRed) {
+                        [Console]::Error.WriteLine('shell mutation went red without its intended warehouse assertion and sentinel')
+                        $global:LASTEXITCODE = 0
+                    } else {
+                        $global:LASTEXITCODE = $atlMutationExit
+                    }
                 } | Out-Null
             }
         }

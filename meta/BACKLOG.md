@@ -2804,7 +2804,7 @@ out-of-scope Linux regression and is intentionally rejected.
 ### B-204 · Make RootInstallerWarehouse fixture teardown fail honestly
 **Effort:** S · **Priority:** P2 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-30)
-**Status:** DESIGN AMENDED AFTER ADVERSARIAL REVIEW — implementation pending
+**Status:** IMPLEMENTED CANDIDATE — local Windows gates green; native Linux and first CI pending
 **Plan:** `.claude/plans/2026-08-30-b204-root-installer-fixture-teardown-design.md`
 
 **Why:** the unchanged B-203 full maintainer run printed a Windows sharing-violation from
@@ -2829,6 +2829,16 @@ counts every recursively enumerated file and cannot run this candidate, while th
 remains valuable. Add no result for that folded prerequisite. Meta-only; first Windows/Linux CI and a
 separately recorded native-Linux dangling-link probe still gate completion because the test file and
 host-sensitive cleanup contract change.
+
+**Candidate evidence:** exact test-file SHA-256
+`C8FB30644FD20B689CF987A4DA0CA30FA31B43DB9BA549699526EA160A13947D`; two independent adversarial
+reviews returned KEEP/APPROVE after finding and fixing a Windows PowerShell case-alias deletion and
+a masked post-inspection failure. Disposable hostile probes passed under PowerShell 7 and native
+Windows PowerShell 5.1. The existing file passed 12/0 under each host and 12/0 in the standard
+concurrent runner; the full maintainer battery passed 31 files with zero failures. All three measured
+runs left no new fixture path. No suite or `It` was added. Seven historical roots remain untouched.
+Native-Linux dangling-link execution and the first Windows/Linux candidate CI remain explicit gaps,
+so this item is not complete and is not release-approved.
 
 ---
 

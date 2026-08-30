@@ -1732,3 +1732,26 @@ already correct when the 5.1 run failed; changing the runner or discarding the a
 expanded scope or lost duplicate-execution coverage. Freezing the evidence-driven oracle amendment
 before correcting the assertion preserved the reason for the change and added no suite, result, or
 wrapper run.
+
+## 2026-08-30 — Executing teardown is not evidence that teardown happened
+
+`RootInstallerWarehouse.Tests.ps1` put recursive cleanup in `finally`, yet a Windows sharing
+violation was non-terminating: the path survived while the harness reported 12/0. Making only the
+command terminating would have created the inverse defect, because cleanup could then mask the
+product assertion that failed first. A fixture lifecycle has two outcomes, not one. Capture the body
+and cleanup independently, verify the required absent postcondition after both successful and failed
+removal calls, and retain both causes when they fail together.
+
+Recursive deletion deserves narrower trust than ordinary test setup. A generated-looking basename
+is insufficient on a case-insensitive provider, and `Get-Item` can echo caller casing rather than the
+stored directory entry under Windows PowerShell 5.1. Derive the one permitted parent and basename,
+compare canonical paths ordinally, enumerate the parent to validate the actual entry, and reject root
+or interior links before recursion. Retries should address only transient removal/provider failures;
+containment and link-policy violations are decisions, not flaky operations.
+
+The value check matters as much as the safety check. B-204 adds substantial local machinery, but no
+suite or result, and every nontrivial branch was demanded by an observed false green or an
+adversarially reproduced wrong-tree, link, retry, or diagnostic boundary. A shorter wrapper would
+look leaner while silently dropping proven protections. Conversely, the same incident did not
+justify sweeping other cleanup sites or old residue: mechanism similarity is not consequence
+equivalence, and unowned historical paths are not ours to delete.

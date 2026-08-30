@@ -3,7 +3,7 @@
 **Date:** 2026-08-30
 **Filed against:** v0.78.3
 **Planned:** v0.78.4
-**Status:** DESIGN AMENDED AFTER ADVERSARIAL REVIEW — implementation in progress
+**Status:** IMPLEMENTED CANDIDATE — local Windows gates green; native Linux and first CI pending
 
 ## Value and proportionality decision
 
@@ -134,6 +134,37 @@ local Windows link evidence and ordinary Linux CI do not satisfy it.
 Because a test file changes, the exact implementation remains a candidate until its first Windows
 and Linux CI runs are green. This meta-only change is not composed into `dist/`; do not run or claim
 distribution composition as evidence. Do not push or release without separate authorization.
+
+## Candidate evidence
+
+The implemented test-file blob is SHA-256
+`C8FB30644FD20B689CF987A4DA0CA30FA31B43DB9BA549699526EA160A13947D` (`+230/-43`, no new suite or
+`It`). Two independent adversarial reviewers returned **KEEP/APPROVE** after challenging whether the
+surface was disproportionate. Their conclusion was that a materially smaller remover would discard
+at least one exercised recursive-deletion boundary: ordinal containment under Windows PowerShell
+5.1, typed absence and dangling-entry inspection, breadth-first reparse rejection, bounded
+postcondition retries, or preservation of simultaneous body and cleanup failures.
+
+Disposable probes under PowerShell 7.6.5 and Windows PowerShell 5.1.26100.9168 exercised exact-path
+and case-alias rejection, escaped parents, root/interior links with an outside sentinel, persistent
+and transient locks, exactly six attempts and five sleeps, idempotent absence, partial deletion plus
+a thrown removal error, body-plus-cleanup aggregation, PATH restoration, and decisive
+post-inspection diagnostics. The folded solution-file oracle reproduced the pre-existing 5.1 defect:
+the old query counted nonmatching files (`1`, then `2`) while the corrected query returned `0`, then
+`1`; PowerShell 7 returned `0`, then `1` for both forms.
+
+The exact blob passed the existing 12-result file under PowerShell 7 (12/0, 159.07 s) and native
+Windows PowerShell 5.1 (12/0, 122.11 s). Both mutation callbacks re-emitted the intended warehouse
+assertion and mutation sentinel before byte-identical restoration. The standard throttled maintainer
+runner then passed 31 files with zero failures in 458.24 s; its concurrent RootInstallerWarehouse
+lane passed 12/0 in 218.1 s. Each measured run reported no newly surviving fixture path. Seven
+historical workspace-parent roots were deliberately left untouched because their ownership is not
+known; no `root-broken-jq-*` scratch root remains. BOM, PowerShell 7/5.1 AST, and `git diff --check`
+are clean.
+
+Native-Linux execution of the exact helper against a dangling root link is still unavailable, as is
+the candidate's first Windows/Linux CI. Those are evidence gaps, not inferred greens, so B-204 stays
+open and no release is authorized.
 
 ## RCA boundary
 
