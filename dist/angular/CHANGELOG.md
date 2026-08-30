@@ -6,6 +6,14 @@
 
 ## 0.78.4 — Unreleased
 
+- Bash session start now consumes a final security row even when the file has no trailing newline,
+  so an overdue security finding retains its red SLA warning. Where the existing 90-day cutoff is
+  available, the Bash hazard reader also consumes a final unterminated row and recognizes ordinary
+  CRLF plus trailing spaces/tabs already accepted on the exact `Known Hazard Areas` heading; an
+  incomplete row without its closing pipe remains ignored. This change does not alter host cutoff
+  availability. PowerShell behavior, thresholds, messages, consumer input files, and advisory exit
+  0 are unchanged.
+
 - Bash updates now keep a framework skill disabled when protected `LEARNINGS.md` starts with the
   standard UTF-8 BOM commonly written by Windows PowerShell 5.1, or when the exact disabled-skill
   heading uses CRLF or admitted trailing whitespace. The file stays byte-identical, malformed or

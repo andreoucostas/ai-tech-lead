@@ -100,10 +100,11 @@ fi
 if [ -f SECURITY_FINDINGS.md ]; then
   today=$(date -u +"%Y-%m-%d")
   overdue=0
-  while IFS= read -r line; do
+  security_line=''
+  while IFS= read -r security_line || [ -n "$security_line" ]; do
     # Rows with status Open and a due date in the past
-    if echo "$line" | grep -qi "| Open " 2>/dev/null; then
-      due=$(echo "$line" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' | sed -n '2p')
+    if echo "$security_line" | grep -qi "| Open " 2>/dev/null; then
+      due=$(echo "$security_line" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' | sed -n '2p')
       if [ -n "$due" ] && [ "$due" \< "$today" ]; then
         overdue=$((overdue + 1))
       fi
@@ -135,15 +136,19 @@ if [ -f FRAMEWORK-CONTEXT.md ] && ! grep -q 'KNOWN_HAZARD_AREAS_PENDING' FRAMEWO
     open_stale=0
     confirmed_stale=0
     in_hazards=0
-    while IFS= read -r line; do
-      if [ "$line" = '## Known Hazard Areas' ]; then in_hazards=1; continue; fi
-      if [ "$in_hazards" -eq 1 ] && case "$line" in '## '*) true;; *) false;; esac; then break; fi
+    hazard_line=''
+    while IFS= read -r hazard_line || [ -n "$hazard_line" ]; do
+      hazard_line=${hazard_line%$'\r'}
+      if [[ "$hazard_line" =~ ^##\ Known\ Hazard\ Areas[[:blank:]]*$ ]]; then in_hazards=1; continue; fi
+      if [ "$in_hazards" -eq 1 ] && case "$hazard_line" in '## '*) true;; *) false;; esac; then break; fi
       [ "$in_hazards" -eq 1 ] || continue
-      case "$line" in \|*) ;; *) continue;; esac
-      area=$(printf '%s' "$line" | cut -d '|' -f 2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-      hazard=$(printf '%s' "$line" | cut -d '|' -f 3 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-      status=$(printf '%s' "$line" | cut -d '|' -f 4 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-      rev=$(printf '%s' "$line" | cut -d '|' -f 5 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+      case "$hazard_line" in \|*) ;; *) continue;; esac
+      hazard_pipes=${hazard_line//[^|]/}
+      [ "${#hazard_pipes}" -ge 5 ] || continue
+      area=$(printf '%s' "$hazard_line" | cut -d '|' -f 2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+      hazard=$(printf '%s' "$hazard_line" | cut -d '|' -f 3 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+      status=$(printf '%s' "$hazard_line" | cut -d '|' -f 4 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+      rev=$(printf '%s' "$hazard_line" | cut -d '|' -f 5 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
       if [ "$area" = '_(drafted by /bootstrap)_' ] && [ "$hazard" = '_' ] && [ "$status" = '_' ] && [ "$rev" = '_' ]; then continue; fi
       case "$status" in '[REVIEWED: not a hazard'* ) continue;; esac
       case "$rev" in ????-??-??) ;; *) continue;; esac

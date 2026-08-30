@@ -203,9 +203,12 @@ if (-not $bash) {
     Skip 'session-start security-preload twins' 'no bash found'
 } else {
     $secHeader = "| ID | Severity | Status | Found | Due | Issue |`n|---|---|---|---|---|---|"
+    $secOpenLine = '- **Security:** 1 open finding(s) in SECURITY_FINDINGS.md.'
+    $secOverdueLine = '- 🔴 **Security:** 1 overdue finding(s) in SECURITY_FINDINGS.md. Remediation SLA breached — review before starting new work.'
     $secCases = @(
-        @{ n = 'no open findings'; rows = '';                                                         expect = $false },
-        @{ n = 'one open finding'; rows = "`n| SF-1 | High | Open | 2026-01-01 | 2099-01-01 | x |";  expect = $true }
+        @{ n = 'no open findings';             rows = '';                                                              eof = $false; line = $null },
+        @{ n = 'one open finding';             rows = "`n| SF-1 | High | Open | 2026-01-01 | 2099-01-01 | x |";       eof = $false; line = $secOpenLine },
+        @{ n = 'one overdue finding at EOF';   rows = "`n| SF-EOF | High | Open | 2000-01-01 | 2000-01-02 | x |";     eof = $true;  line = $secOverdueLine }
     )
     foreach ($case in $secCases) {
         It "session-start twins agree on security preload ($($case.n)), clean stderr" {
@@ -213,11 +216,23 @@ if (-not $bash) {
             New-Item -ItemType Directory -Path $dir -Force | Out-Null
             Push-Location $dir
             try {
-                [IO.File]::WriteAllText((Join-Path $dir 'SECURITY_FINDINGS.md'), ($secHeader + $case.rows + "`n"))
-                $rps = Invoke-Hook $ssPs '{}'; $rsh = Invoke-Hook $ssSh '{}'
+                $securityPath = Join-Path $dir 'SECURITY_FINDINGS.md'
+                $suffix = if ($case.eof) { '' } else { "`n" }
+                [IO.File]::WriteAllText($securityPath, ($secHeader + $case.rows + $suffix), [Text.UTF8Encoding]::new($false))
+                $bytes = [IO.File]::ReadAllBytes($securityPath)
+                $event = '{"hook_event_name":"SessionStart"}'
+                $rps = Invoke-Hook $ssPs $event; $rsh = Invoke-Hook $ssSh $event
+                if ($case.eof) { Assert ($bytes.Length -gt 0 -and $bytes[-1] -eq 124) 'overdue fixture did not end exactly at byte 0x7C' }
+                Assert ($rps.Exit -eq 0 -and $rsh.Exit -eq 0) "session-start exit mismatch/nonzero: ps1=$($rps.Exit) sh=$($rsh.Exit)"
                 Assert ("$($rps.Err)".Trim() -eq '' -and "$($rsh.Err)".Trim() -eq '') "stderr not clean: ps1='$("$($rps.Err)".Trim())' sh='$("$($rsh.Err)".Trim())'"
-                $hasPs = $rps.Out -match '\*\*Security:\*\*'; $hasSh = $rsh.Out -match '\*\*Security:\*\*'
-                Assert (($hasPs -eq $case.expect) -and ($hasSh -eq $case.expect)) "security line present: expected=$($case.expect) ps1=$hasPs sh=$hasSh"
+                $psLines = @(($rps.Out -split "`n") | Where-Object { $_ -match '^- (?:🔴 )?\*\*Security:\*\*' })
+                $shLines = @(($rsh.Out -split "`n") | Where-Object { $_ -match '^- (?:🔴 )?\*\*Security:\*\*' })
+                $expectedCount = if ($null -eq $case.line) { 0 } else { 1 }
+                Assert ($psLines.Count -eq $expectedCount -and $shLines.Count -eq $expectedCount) "security line count mismatch: expected=$expectedCount ps1=$($psLines.Count) sh=$($shLines.Count)"
+                if ($case.line) {
+                    Assert ($psLines[0] -eq $case.line) "PowerShell security class/text drift: $($psLines[0])"
+                    Assert ($shLines[0] -eq $case.line) "Bash security class/text drift: $($shLines[0])"
+                }
             } finally { Pop-Location; Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
         }
     }

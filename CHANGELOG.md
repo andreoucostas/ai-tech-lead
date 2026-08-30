@@ -13,6 +13,32 @@
 
 ## 0.78.4 — Unreleased
 
+**Bash session start now preserves time-sensitive advisory rows across supported text shapes.**
+B-195 gives the security and hazard scans separate initialized EOF state, so a final non-newline
+record is consumed rather than silently dropped. The hazard reader also strips one CR in its parsing
+stream, accepts the same trailing horizontal whitespace on its exact heading as the deterministic
+hazard checker, and requires the PowerShell-equivalent five pipe delimiters before extracting cells.
+PowerShell behavior, advisory thresholds, status/date semantics, messages, consumer bytes, and exit
+0 remain unchanged. The separately found GNU-only macOS cutoff provider is recorded as B-200 rather
+than hidden inside this candidate without native BSD/macOS evidence.
+
+The existing security parity matrix retains its no-open and future-open controls and adds one result
+for the distinct overdue-EOF severity branch; the existing hazard twin result now aggregates EOF,
+CRLF, heading-whitespace, and malformed-EOF worlds, so no hazard result or suite was added. Against
+the unchanged hook, security was 6/1 and hazard 18/1 with all three valid hazard misses named. An
+EOF/CR/heading intermediate made security 7/0 and left hazard 18/1 only because the newly reachable
+malformed row produced a Bash-only warning; adding the frame guard made TwinParity 7/0/1 and
+SessionStartHazard 19/0/0 under PowerShell 7/Git Bash. Native Windows PowerShell 5.1 also passed the
+modified branches. Independent implementation and oracle reviews approved the source diff. The
+exact candidate's first Windows/Linux CI remains mandatory before completion or release.
+
+PowerShell and Bash composition produced the same 525-file aggregate. All three distributions
+passed TwinParity (14/0 dotnet, 9/0/1 angular, 14/0 monorepo), SessionStartHazard 19/0, and both
+173/169/183-file validators; the full dotnet hook battery passed with zero failures across 20 files.
+Composer 16/0, BacklogHygiene 10/0, DocTruth 13/0, DocClaims 8/0, and release-head 8/0 also passed.
+Source and every composed hook/test copy are byte-identical. These are local Windows/Git Bash
+results, not the still-required first native Windows/Linux candidate CI.
+
 **Bash updates now preserve durable disabled-skill intent in protected ledgers written by Windows
 PowerShell.** B-196 removes exactly one standard UTF-8 BOM only at byte zero of the parsing stream,
 then uses one anchored capture to emit the validated skill name without admitted horizontal

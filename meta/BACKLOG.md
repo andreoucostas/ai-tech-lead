@@ -2807,7 +2807,7 @@ candidate's first Windows/Linux CI before completion or release. Git Bash is not
 ### B-195 · Preserve unterminated final advisory rows in Bash session start
 **Effort:** S · **Priority:** P2 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-29)
-**Status:** DESIGN LOCKED — implementation not started
+**Status:** IMPLEMENTED CANDIDATE — local verification complete; first Windows/Linux CI pending
 
 **Why:** B-193's independent RCA sweep found the same newline-sensitive Bash reader pattern in two
 separate advisory paths outside the locked completion-oracle scope. In isolated current-dist
@@ -2837,6 +2837,23 @@ first Windows/Linux candidate CI. The locked design is
 `.claude/plans/2026-08-30-b195-session-start-advisory-reader-design.md`. A separately found GNU-only
 cutoff provider is B-200 rather than an unverified macOS scope expansion.
 
+**Implementation candidate (2026-08-30):** the authored Bash hook now gives each loop an initialized
+variable, consumes a non-empty failed EOF read, strips one terminal CR from hazard records, accepts
+the established horizontal-whitespace heading grammar, and rejects rows with fewer than five pipe
+delimiters before extraction. The PowerShell twin and every threshold/message remain unchanged.
+Red-first evidence was staged rather than replayed as ceremony: the unchanged hook made security
+6/1 and hazard 18/1 with the hazard result naming EOF, CRLF, and heading-whitespace misses; the
+reader-only intermediate made security 7/0 and left hazard 18/1 solely on the newly exposed
+malformed-row false advisory; the frame guard made TwinParity 7/0/1 and SessionStartHazard 19/0/0
+under PowerShell 7/Git Bash. Native Windows PowerShell 5.1 also passed TwinParity 7/0/1 and the
+modified hazard result. Its pre-existing optional Bash JSON probe then corrupted its nested `-c`
+argument, printed a syntax error, and falsely capability-skipped despite a working jq; B-201 owns
+that separate test-truth defect and the skip is not counted as B-195 coverage.
+Exact implementation and oracle reviews approved the source diff. Both composers produced the same
+525-file aggregate; all three composed focused suites and both validator twins passed, as did the
+full 20-file dotnet hook battery, Composer, BacklogHygiene, DocTruth, DocClaims, and release-head
+gates. An immutable-candidate review and first Windows/Linux CI still gate completion.
+
 ---
 
 ### B-200 · Restore the Bash hazard-staleness cutoff under BSD/macOS `date`
@@ -2858,6 +2875,30 @@ shim executes the shipped hook and proves GNU failure/BSD success plus invalid/e
 fallback without retyping the product logic; completion additionally requires the exact candidate
 against native BSD/macOS `date` under the claimed Bash 3.2 interpreter. Coordinate that environment
 with B-198.
+
+---
+
+### B-201 · Windows PowerShell 5.1 falsely capability-skips Bash Copilot JSON hook tests
+**Effort:** S · **Priority:** P2 · **planned ≥ v0.78.5**
+**Filed against:** v0.78.3 (2026-08-30)
+
+**Why:** B-195 verification ran `SessionStartHazard.Tests.ps1` under native Windows PowerShell 5.1.
+Its `$bash -c $probeCmd` call lost nested quoting through legacy native-argument marshalling, Bash
+printed a syntax error, and the suite recorded an invariant “no jq and no working Python” skip even
+though the same Bash resolves and runs jq 1.8.1. The identical probe transport exists in
+SessionStartWiki and SessionStartFrameworkRules. PowerShell 7 executes it correctly, and the B-195
+Claude-mode oracle itself passed, so this is a pre-existing test-truth defect rather than product
+scope. P2 is proportionate because three shipped optional JSON branches can be falsely reported as
+unreachable on a supported test orchestrator.
+
+**Do:** revalidate all three probes, then replace only the multi-layer `-c` argument transport with a
+Windows-PowerShell-5.1-safe execution of the same capability decision (for example, Bash script
+stdin rather than a quoted native argument). Reuse the existing results and invariant skip; add no
+suite or `It`. On a host where Bash can execute jq, prove the unchanged test emits the syntax error
+and skips, while the correction runs each existing JSON arm under native Windows PowerShell 5.1
+without stderr. Retain a controlled no-jq/no-working-Python world that still produces the honest
+invariant skip, and retain PowerShell 7 behavior. Compose all distributions and require modified-
+test Windows/Linux CI; do not hard-code this maintainer's jq path or weaken the capability check.
 
 ### B-194 · Make the PowerShell 5.1 installer tolerate non-Git targets
 **Effort:** M · **Priority:** P1 · **planned v0.78.4**

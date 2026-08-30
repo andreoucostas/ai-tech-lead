@@ -1688,3 +1688,25 @@ Release metadata is linear too. Do not put a future `Unreleased` H2 above a stil
 the release tool deliberately treats the first H2 as the only release head, so parallel heads make
 the earlier candidate unreleasable. Either finish the current release first or explicitly replan
 the new work into it, then exercise the release-head parser—not just generic documentation gates.
+
+## 2026-08-30 — Repairing an EOF false negative can expose a malformed-record false positive
+
+B-195 began as two ordinary Bash loops dropping a final non-newline record. Re-deriving the whole
+reader contract found more than the familiar `read ... || [ -n "$line" ]` fix: CRLF and already-
+admitted heading whitespace also suppressed the hazard section, while making EOF reachable caused
+Bash to count an unterminated four-cell row that PowerShell correctly skipped. A local correctness
+change can move the parser boundary and create the opposite error unless the negative frame is
+tested at the newly reachable boundary.
+
+Stage that evidence instead of manufacturing it twice. The unchanged hook made the three valid
+hostile worlds red. Adding EOF, CR normalization, and the accepted heading grammar made those green
+but deliberately left the malformed world red. Adding the minimum frame last made the suite green.
+Those intermediate product states prove why every line exists more directly than replaying five
+equivalent mutations after green. Mutation is a means to discriminate behavior, not a ritual.
+
+One grouped result is only honest if it evaluates every world before failing. A throwing assertion
+inside the first hostile case would have hidden the CRLF and heading defects behind the EOF failure;
+collecting the named failures first preserved one result without collapsing its evidence. The same
+value test rejected an EOF-fresh world: the ordinary terminated fresh controls already pin the
+threshold, and the extra shape passed both old and new readers. Test count should grow only when a
+new product decision does—as it did for the previously untested overdue-security severity branch.
