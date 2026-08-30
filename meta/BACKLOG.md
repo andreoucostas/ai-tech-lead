@@ -3041,7 +3041,7 @@ run occurred, so approval is bounded to the immutable local candidate and B-198 
 ### B-197 · Make Bash installer temporary-file handling path-safe
 **Effort:** S · **Priority:** P1 · **planned v0.78.4**
 **Filed against:** v0.78.3 (2026-08-29)
-**Status:** DESIGN LOCKED — two adversarial reviews approved the bounded P1 repair; implementation pending
+**Status:** IMPLEMENTED CANDIDATE — local validation complete; native Linux, stock macOS Bash 3.2, and first candidate CI pending
 **Plan:** `.claude/plans/2026-08-30-b197-bash-temp-path-design.md`
 
 **Why:** B-194's hostile implementation review found a pre-existing Bash lifecycle defect outside
@@ -3067,6 +3067,25 @@ must refuse specifically and restore its fingerprint. Do not add a suite, PowerS
 three-dist runtime matrix, or duplicate ordinary clean/dirty controls. Compose all dists, require
 native Linux plus stock macOS Bash 3.2 evidence, and use one unquoted-element mutation to prove the
 new result discriminates the data-loss defect.
+
+**Implementation candidate (2026-08-30):** the authored Bash installer now registers every
+temporary file in one counted Bash-3.2 indexed array, canonicalizes caller and cleanup ownership to
+the same physical file, refuses any temp parent physically inside the selected target, guards every
+cleanup/removal/diagnostic while preserving the body status, treats internal validator allocation
+failure as fatal rather than malformed-prior compatibility, and releases the late settings slot only
+after a successful ownership-transferring move. All three composed installers are byte-identical to
+the source at SHA-256 `26e97642f1326272ad59d12072445305cface41381de0967879a04e2aeac031d`.
+The one new permanent result was demonstrably necessary: before product editing it made the exact
+current installer finish UpdateDelivery at 50/1 while naming both the exit-0 sentinel deletion/17
+leaks and the target-contained false dirty refusal; the candidate passed 51/0/0 under PowerShell 7
+and native Windows PowerShell 5.1/CP437. The planned post-green unquoted cleanup mutation was omitted
+after explicit value revalidation because that stronger exact old-red already proved the same
+oracle decision and another expected-failing full run would add no evidence. Disposable probes
+covered allocator failure during prior-manifest validation, junction/case containment, successful
+and dual-failure cleanup status, all-path cleanup attempts, and released-path recreation. Both
+composers converged at 173/169/183 files; InstallerConvergence passed 12/0/0, ScriptTwinParity
+10/0/0, Bash syntax/source-dist hashes and all three distribution validators were clean. No native
+Linux, stock macOS Bash 3.2, or candidate CI ran, so B-197 remains open and is not releaseable.
 
 ---
 

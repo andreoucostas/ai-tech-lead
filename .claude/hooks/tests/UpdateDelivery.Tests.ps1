@@ -330,6 +330,142 @@ function Initialize-B194GitTarget {
 
 Reset-Tests
 
+$b197TestName = 'B-197 Bash temporary lifecycle is path-safe'
+$b197GitCommand = Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+if (-not $bash) {
+    Skip $b197TestName 'no bash on this host'
+} elseif (-not $b197GitCommand) {
+    Skip $b197TestName 'git is unavailable'
+} else {
+    It $b197TestName {
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('b197-temp-' + [guid]::NewGuid().ToString('N'))
+        $problems = [System.Collections.Generic.List[string]]::new()
+        $isolatedGit = @{
+            GIT_DIR = $null; GIT_WORK_TREE = $null; GIT_COMMON_DIR = $null; GIT_INDEX_FILE = $null
+        }
+        try {
+            New-Item -ItemType Directory -Force -Path $root | Out-Null
+            $xdgConfig = Join-Path $root 'xdg-config'
+            New-Item -ItemType Directory -Force -Path $xdgConfig | Out-Null
+            $gitConfig = Join-Path $root 'empty.gitconfig'
+            [IO.File]::WriteAllText($gitConfig, '', [Text.UTF8Encoding]::new($false))
+            $isolatedGit.GIT_CONFIG_GLOBAL = $gitConfig
+            $isolatedGit.XDG_CONFIG_HOME = $xdgConfig
+            $installer = ConvertTo-B194BashPath (Join-Path $repoRoot 'dist/dotnet/scripts/install.sh')
+            $runner = 'cd "$1" && TMPDIR="$2" && export TMPDIR && shift 2 && exec "$BASH" "$@"'
+
+            $spacedWork = Join-Path $root 'spaced-caller'
+            $spacedTemp = Join-Path $spacedWork 'prefix dir'
+            $spacedTarget = Join-Path $root 'spaced-target'
+            New-Item -ItemType Directory -Force -Path $spacedWork, $spacedTemp, $spacedTarget | Out-Null
+            $spacedSentinel = Join-Path $spacedWork 'prefix'
+            $sentinelBytes = [Text.UTF8Encoding]::new($false).GetBytes("B197 OWNED SENTINEL`n")
+            [IO.File]::WriteAllBytes($spacedSentinel, $sentinelBytes)
+            $spacedBefore = Get-B194Fingerprint $spacedWork
+            $spacedEnvironment = @{}
+            foreach ($name in $isolatedGit.Keys) { $spacedEnvironment[$name] = $isolatedGit[$name] }
+            $spacedCapture = Invoke-B194Process -Executable $bash -Arguments @(
+                '-c', $runner, 'b197-spaced', (ConvertTo-B194BashPath $spacedWork),
+                'prefix dir', $installer, (ConvertTo-B194BashPath $spacedTarget)
+            ) -Environment $spacedEnvironment
+
+            $confinedTarget = Join-Path $root 'confined-target'
+            $confinedTemp = Join-Path $confinedTarget '.tmp'
+            New-Item -ItemType Directory -Force -Path (Join-Path $confinedTarget '.claude'), $confinedTemp | Out-Null
+            [IO.File]::WriteAllText((Join-Path $confinedTarget '.claude/framework-version.json'), '{"version":"0.78.3"}', [Text.UTF8Encoding]::new($false))
+            $confinedSentinel = Join-Path $confinedTemp 'tracked-sentinel.txt'
+            $confinedSentinelBytes = [Text.UTF8Encoding]::new($false).GetBytes("B197 TRACKED TEMP ROOT`n")
+            [IO.File]::WriteAllBytes($confinedSentinel, $confinedSentinelBytes)
+            $gitExe = $b197GitCommand.Source
+            $gitSetup = @(Initialize-B194GitTarget -Target $confinedTarget -GitExe $gitExe -Environment $isolatedGit)
+            $trackedSentinel = Invoke-B194Process -Executable $gitExe -Arguments @(
+                '-C', $confinedTarget, 'ls-files', '--error-unmatch', '--', '.tmp/tracked-sentinel.txt'
+            ) -Environment $isolatedGit
+            $cleanStatus = Invoke-B194Process -Executable $gitExe -Arguments @(
+                '--no-optional-locks', '-C', $confinedTarget, 'status', '--porcelain=v1', '--untracked-files=all'
+            ) -Environment $isolatedGit
+            $confinedBefore = Get-B194Fingerprint $confinedTarget
+            $confinedEnvironment = @{}
+            foreach ($name in $isolatedGit.Keys) { $confinedEnvironment[$name] = $isolatedGit[$name] }
+            $confinedCapture = Invoke-B194Process -Executable $bash -Arguments @(
+                '-c', $runner, 'b197-confined', (ConvertTo-B194BashPath $root),
+                'confined-target/.tmp', $installer,
+                (ConvertTo-B194BashPath $confinedTarget)
+            ) -Environment $confinedEnvironment
+
+            # Both installer children have returned. Capture post-state defensively so a stronger
+            # regression in one world cannot prevent the other world's verdict from being retained.
+            $spacedAfter = ''
+            $spacedWorkExists = Test-Path -LiteralPath $spacedWork -PathType Container
+            if ($spacedWorkExists) {
+                try { $spacedAfter = Get-B194Fingerprint $spacedWork }
+                catch { $problems.Add("spaced TMPDIR post-state could not be fingerprinted: $($_.Exception.Message)") | Out-Null }
+            } else { $problems.Add('spaced TMPDIR installer removed the caller-owned working directory') | Out-Null }
+            $spacedTempExists = Test-Path -LiteralPath $spacedTemp -PathType Container
+            $spacedSentinelExists = Test-Path -LiteralPath $spacedSentinel -PathType Leaf
+            $spacedSentinelAfter = [byte[]]@()
+            if ($spacedSentinelExists) {
+                try { $spacedSentinelAfter = [IO.File]::ReadAllBytes($spacedSentinel) }
+                catch { $problems.Add("spaced TMPDIR sentinel could not be read: $($_.Exception.Message)") | Out-Null }
+            }
+            $spacedResidue = @()
+            if ($spacedTempExists) {
+                try { $spacedResidue = @(Get-ChildItem -LiteralPath $spacedTemp -Recurse -File -Force -ErrorAction Stop) }
+                catch { $problems.Add("spaced TMPDIR residue could not be enumerated: $($_.Exception.Message)") | Out-Null }
+            }
+
+            $confinedAfter = ''
+            if (Test-Path -LiteralPath $confinedTarget -PathType Container) {
+                try { $confinedAfter = Get-B194Fingerprint $confinedTarget }
+                catch { $problems.Add("confined TMPDIR post-state could not be fingerprinted: $($_.Exception.Message)") | Out-Null }
+            } else { $problems.Add('confined TMPDIR installer removed the target directory') | Out-Null }
+            $confinedTempExists = Test-Path -LiteralPath $confinedTemp -PathType Container
+            $confinedSentinelExists = Test-Path -LiteralPath $confinedSentinel -PathType Leaf
+            $confinedSentinelAfter = [byte[]]@()
+            if ($confinedSentinelExists) {
+                try { $confinedSentinelAfter = [IO.File]::ReadAllBytes($confinedSentinel) }
+                catch { $problems.Add("confined TMPDIR sentinel could not be read: $($_.Exception.Message)") | Out-Null }
+            }
+            $confinedResidue = @()
+            if ($confinedTempExists) {
+                try {
+                    $confinedResidue = @(Get-ChildItem -LiteralPath $confinedTemp -Recurse -File -Force -ErrorAction Stop |
+                        Where-Object { $_.FullName -cne $confinedSentinel })
+                } catch { $problems.Add("confined TMPDIR residue could not be enumerated: $($_.Exception.Message)") | Out-Null }
+            }
+
+            Add-B194CaptureProblem -Problems $problems -Label 'spaced TMPDIR installer' -Capture $spacedCapture
+            if ($spacedCapture.Exit -ne 0) { $problems.Add("spaced TMPDIR installer: expected exit 0, got $($spacedCapture.Exit); stdout=[$($spacedCapture.Out)]; stderr=[$($spacedCapture.Err)]") | Out-Null }
+            if ($spacedCapture.Out -notmatch 'Done\. Next steps in the target repo:') { $problems.Add("spaced TMPDIR installer: greenfield completion missing; stdout=[$($spacedCapture.Out)]") | Out-Null }
+            if ($spacedCapture.Err) { $problems.Add("spaced TMPDIR installer: unexpected stderr=[$($spacedCapture.Err)]") | Out-Null }
+            if (-not $spacedTempExists) { $problems.Add('spaced TMPDIR installer removed its caller-owned temp directory') | Out-Null }
+            if (-not $spacedSentinelExists -or -not (Test-B194BytesEqual $sentinelBytes $spacedSentinelAfter)) { $problems.Add('spaced TMPDIR installer deleted or changed the unrelated split-prefix sentinel') | Out-Null }
+            if ($spacedResidue.Count -ne 0) { $problems.Add("spaced TMPDIR installer leaked $($spacedResidue.Count) temporary file(s)") | Out-Null }
+            if ($spacedAfter -and $spacedAfter -cne $spacedBefore) { $problems.Add("spaced TMPDIR installer changed the caller-owned working tree ($spacedBefore -> $spacedAfter)") | Out-Null }
+
+            foreach ($step in $gitSetup) { Add-B194ExpectedProcessProblems -Problems $problems -Label $step.Label -Capture $step.Capture -ExpectedExit $step.ExpectedExit }
+            Add-B194ExpectedProcessProblems -Problems $problems -Label 'confined TMPDIR tracked-sentinel calibration' -Capture $trackedSentinel -ExpectedExit 0
+            if ($trackedSentinel.Out -cne '.tmp/tracked-sentinel.txt' -or $trackedSentinel.Err.Length -ne 0) { $problems.Add("confined TMPDIR sentinel was not proven tracked; stdout=[$($trackedSentinel.Out)]; stderr=[$($trackedSentinel.Err)]") | Out-Null }
+            Add-B194ExpectedProcessProblems -Problems $problems -Label 'confined TMPDIR clean-status calibration' -Capture $cleanStatus -ExpectedExit 0
+            if ($cleanStatus.Out.Length -ne 0 -or $cleanStatus.Err.Length -ne 0) { $problems.Add("confined TMPDIR fixture was not clean; stdout=[$($cleanStatus.Out)]; stderr=[$($cleanStatus.Err)]") | Out-Null }
+            Add-B194CaptureProblem -Problems $problems -Label 'confined TMPDIR installer' -Capture $confinedCapture
+            $confinedCombined = $confinedCapture.Out + "`n" + $confinedCapture.Err
+            if ($confinedCapture.Exit -ne 3) { $problems.Add("confined TMPDIR installer: expected exit 3, got $($confinedCapture.Exit); stdout=[$($confinedCapture.Out)]; stderr=[$($confinedCapture.Err)]") | Out-Null }
+            if ($confinedCombined -notmatch 'Refusing temporary-file placement inside the selected target') { $problems.Add("confined TMPDIR installer: specific containment refusal missing; output=[$confinedCombined]") | Out-Null }
+            if ($confinedCombined -match 'dirty Git target|commit, stash, or copy') { $problems.Add("confined TMPDIR installer falsely diagnosed a dirty target; output=[$confinedCombined]") | Out-Null }
+            if ($confinedCombined -match 'Done \(update\)|Done - but this repo|Done\. Next steps') { $problems.Add("confined TMPDIR installer printed completion; output=[$confinedCombined]") | Out-Null }
+            if ($confinedAfter -and $confinedAfter -cne $confinedBefore) { $problems.Add("confined TMPDIR installer left persistent target mutation ($confinedBefore -> $confinedAfter)") | Out-Null }
+            if (-not $confinedTempExists) { $problems.Add('confined TMPDIR installer removed the tracked temp directory') | Out-Null }
+            if (-not $confinedSentinelExists -or -not (Test-B194BytesEqual $confinedSentinelBytes $confinedSentinelAfter)) { $problems.Add('confined TMPDIR installer deleted or changed the tracked temp-root sentinel') | Out-Null }
+            if ($confinedResidue.Count -ne 0) { $problems.Add("confined TMPDIR installer left $($confinedResidue.Count) generated temporary file(s)") | Out-Null }
+
+            Assert ($problems.Count -eq 0) ($problems -join "`n")
+        } finally {
+            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 foreach ($twin in @('ps1', 'sh')) {
     if ($twin -eq 'sh' -and -not $bash) { Skip "update delivery ($twin)" 'no bash on this host'; continue }
     $dist = 'dotnet'

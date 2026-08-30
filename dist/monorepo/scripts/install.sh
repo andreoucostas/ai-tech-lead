@@ -40,14 +40,95 @@ if [ -z "$target" ]; then echo "$usage"; exit 2; fi
 src="$(cd "$(dirname "$0")/.." && pwd)"
 tgt="$(cd "$target" && pwd)"
 if [ "$tgt" = "$src" ]; then echo "Target is the template repo itself — choose a different target."; exit 2; fi
+tgt_physical="$(cd "$target" && pwd -P)" || { echo "ERROR: Could not resolve the selected target physically." >&2; exit 3; }
 
-temp_files=""
+temp_files=()
+temp_file_count=0
+new_temp=""
+new_temp_index=-1
 sort_cmd=sort
 [ -x /usr/bin/sort ] && sort_cmd=/usr/bin/sort
 find_cmd=find
 [ -x /usr/bin/find ] && find_cmd=/usr/bin/find
-new_temp_file() { new_temp=$(mktemp); temp_files="$temp_files $new_temp"; }
-cleanup_temp_files() { for temp_file in $temp_files; do rm -f "$temp_file"; done; }
+
+temp_parent_is_inside_target() {
+  local probe="$1" parent
+  while :; do
+    [ "$probe" -ef "$tgt_physical" ] && return 0
+    [ "$probe" = / ] && return 1
+    parent="${probe%/*}"; [ -n "$parent" ] || parent=/
+    [ "$parent" != "$probe" ] || return 1
+    probe="$parent"
+  done
+}
+
+new_temp_file() {
+  local candidate parent leaf physical_parent physical_file
+  new_temp=""
+  new_temp_index=-1
+  if ! candidate=$(mktemp); then
+    echo "ERROR: Could not allocate an installer temporary file. Check TMPDIR and available disk space." >&2
+    return 1
+  fi
+  if [ -z "$candidate" ]; then
+    echo "ERROR: The temporary-file provider returned an empty path." >&2
+    return 1
+  fi
+
+  new_temp_index=$temp_file_count
+  temp_files[$new_temp_index]="$candidate"
+  temp_file_count=$((temp_file_count + 1))
+  case "$candidate" in
+    */*) parent="${candidate%/*}"; [ -n "$parent" ] || parent=/; leaf="${candidate##*/}";;
+    *) parent=.; leaf="$candidate";;
+  esac
+  if [ -z "$leaf" ] || ! physical_parent=$(cd -- "$parent" 2>/dev/null && pwd -P); then
+    echo "ERROR: Could not resolve the installer temporary file's physical parent." >&2
+    return 1
+  fi
+  case "$physical_parent" in /) physical_file="/$leaf";; *) physical_file="$physical_parent/$leaf";; esac
+  if [ ! "$physical_file" -ef "$candidate" ]; then
+    echo "ERROR: Could not verify the installer temporary file's physical identity." >&2
+    return 1
+  fi
+  temp_files[$new_temp_index]="$physical_file"
+  new_temp="$physical_file"
+  if temp_parent_is_inside_target "$physical_parent"; then
+    echo "ERROR: Refusing temporary-file placement inside the selected target. Set TMPDIR outside the target, then re-run." >&2
+    return 1
+  fi
+}
+
+release_temp_file() {
+  local index="$1"
+  case "$index" in ''|*[!0-9]*) echo "ERROR: Invalid installer temporary-file registry index '$index'." >&2; return 1;; esac
+  if [ "$index" -ge "$temp_file_count" ] || [ -z "${temp_files[$index]}" ]; then
+    echo "ERROR: Installer temporary-file registry index '$index' is not owned." >&2
+    return 1
+  fi
+  temp_files[$index]=""
+}
+
+cleanup_temp_files() {
+  local body_status="$?" cleanup_failed=0 temp_index=0 temp_file
+  trap - EXIT
+  while [ "$temp_index" -lt "$temp_file_count" ]; do
+    temp_file="${temp_files[$temp_index]}"
+    if [ -n "$temp_file" ] && ! rm -f -- "$temp_file"; then
+      cleanup_failed=1
+      printf "ERROR: Could not remove installer temporary file '%s'.\n" "$temp_file" >&2 || :
+    fi
+    temp_index=$((temp_index + 1))
+  done
+  if [ "$cleanup_failed" -ne 0 ]; then
+    if [ "$body_status" -eq 0 ]; then
+      printf '%s\n' 'ERROR: Installer target work completed, but temporary-file cleanup failed; target changes were not rolled back.' >&2 || :
+      exit 3
+    fi
+    printf "ERROR: Installer failed with exit %s and temporary-file cleanup also failed; preserving the original exit status.\n" "$body_status" >&2 || :
+  fi
+  exit "$body_status"
+}
 trap cleanup_temp_files EXIT
 
 valid_repo_path() {
@@ -62,8 +143,8 @@ validate_ownership_manifest() {
   local file="$1" label="$2" output="$3" stripped parsed expected path ownership folded duplicate
   [ -f "$file" ] || { echo "missing $label" >&2; return 1; }
   [ "$(grep -Ec '^[[:space:]]*"schema-version"[[:space:]]*:[[:space:]]*1,?[[:space:]]*$' "$file")" -eq 1 ] || { echo "$label has an unsupported or missing schema" >&2; return 1; }
-  new_temp_file; stripped=$new_temp; tr -d '\000' < "$file" > "$stripped"; cmp -s "$file" "$stripped" || { echo "$label contains NUL bytes" >&2; return 1; }
-  new_temp_file; parsed=$new_temp
+  new_temp_file || return 2; stripped=$new_temp; tr -d '\000' < "$file" > "$stripped"; cmp -s "$file" "$stripped" || { echo "$label contains NUL bytes" >&2; return 1; }
+  new_temp_file || return 2; parsed=$new_temp
   sed -n 's/^[[:space:]]*{ "path": "\([^"]*\)", "ownership": "\([^"]*\)" }[,]\{0,1\}[[:space:]]*$/\1\	\2/p' "$file" > "$parsed"
   expected=$(grep -c '"path"' "$file" || true)
   [ "$expected" -gt 0 ] && [ "$expected" -eq "$(wc -l < "$parsed" | tr -d ' ')" ] || { echo "$label contains malformed path entries" >&2; return 1; }
@@ -84,8 +165,8 @@ validate_retirement_ledger() {
   local file="$1" label="$2" output="$3" stripped parsed expected path version hashes hash folded previous_hash duplicate
   [ -f "$file" ] || { echo "missing $label" >&2; return 1; }
   [ "$(grep -Ec '^[[:space:]]*"schema-version"[[:space:]]*:[[:space:]]*1,?[[:space:]]*$' "$file")" -eq 1 ] || { echo "$label has an unsupported or missing schema" >&2; return 1; }
-  new_temp_file; stripped=$new_temp; tr -d '\000' < "$file" > "$stripped"; cmp -s "$file" "$stripped" || { echo "$label contains NUL bytes" >&2; return 1; }
-  new_temp_file; parsed=$new_temp
+  new_temp_file || return 2; stripped=$new_temp; tr -d '\000' < "$file" > "$stripped"; cmp -s "$file" "$stripped" || { echo "$label contains NUL bytes" >&2; return 1; }
+  new_temp_file || return 2; parsed=$new_temp
   sed -n 's/^[[:space:]]*{ "path": "\([^"]*\)", "retired-in": "\([^"]*\)", "known-content-sha256": \[\(.*\)\] }[,]\{0,1\}[[:space:]]*$/\1\	\2\	\3/p' "$file" > "$parsed"
   expected=$(grep -c '"retired-in"' "$file" || true)
   [ "$expected" -eq "$(wc -l < "$parsed" | tr -d ' ')" ] || { echo "$label contains a malformed retirement entry" >&2; return 1; }
@@ -207,13 +288,13 @@ if [ "$update_mode" -eq 0 ] && [ -n "$detected" ]; then adopt_mode=1; fi
 # Validate the incoming installed-path inventory and the separate, framework-authored retirement
 # authority before planning any target mutation.
 incoming_manifest="$src/framework-ownership.json"
-new_temp_file; incoming_entries=$new_temp
+new_temp_file || exit 3; incoming_entries=$new_temp
 if ! validate_ownership_manifest "$incoming_manifest" 'incoming framework ownership manifest' "$incoming_entries"; then echo 'ERROR: Cannot validate incoming framework ownership manifest.' >&2; exit 3; fi
 incoming_paths=$(cut -f2 "$incoming_entries")
 while IFS= read -r incoming_path; do [ -f "$src/$incoming_path" ] || { echo "ERROR: Incoming manifest path '$incoming_path' is not a shipped file." >&2; exit 3; }; done <<EOF
 $incoming_paths
 EOF
-new_temp_file; retirement_entries=$new_temp
+new_temp_file || exit 3; retirement_entries=$new_temp
 if ! validate_retirement_ledger "$src/framework-retirements.json" 'incoming framework retirement ledger' "$retirement_entries"; then echo 'ERROR: Cannot validate incoming framework retirement ledger.' >&2; exit 3; fi
 while IFS=$'\t' read -r _ retired_path _; do
   if awk -F '\t' -v p="$retired_path" '$2 == p { found=1 } END { exit !found }' "$incoming_entries"; then echo "ERROR: Retirement '$retired_path' is still present in the incoming ownership manifest." >&2; exit 3; fi
@@ -239,16 +320,14 @@ legal_license="LICENSES/ai-tech-lead-MIT.txt"
 legal_notice="NOTICE-ai-tech-lead.md"
 copy_legal_license=1
 if [ -f "$tgt/$legal_license" ]; then
-  source_lf="$(mktemp)"
-  target_lf="$(mktemp)"
+  new_temp_file || exit 3; source_lf=$new_temp
+  new_temp_file || exit 3; target_lf=$new_temp
   awk '{ sub(/\015$/, ""); print }' "$src/$legal_license" > "$source_lf"
   awk '{ sub(/\015$/, ""); print }' "$tgt/$legal_license" > "$target_lf"
   if ! cmp -s "$source_lf" "$target_lf"; then
-    rm -f "$source_lf" "$target_lf"
     echo "ERROR: Refusing to overwrite '$legal_license': the existing file is not identical to the framework licence." >&2
     exit 3
   fi
-  rm -f "$source_lf" "$target_lf"
   copy_legal_license=0
 fi
 if [ -f "$tgt/$legal_notice" ] && ! grep -Fq 'FRAMEWORK-OWNED' "$tgt/$legal_notice"; then
@@ -268,10 +347,20 @@ if [ "$update_mode" -eq 1 ]; then
   elif previous_manifest_reparse=$(find_reparse_ancestor "$previous_manifest"); then
     add_reconciliation_message 'CANT-VERIFY: previous framework-ownership.json traverses a reparse/symlink; additive compatibility mode will perform no stale deletion.'
   else
-    new_temp_file; previous_entries=$new_temp
-    new_temp_file; previous_errors=$new_temp
-    if ! validate_ownership_manifest "$previous_manifest" 'previous framework ownership manifest' "$previous_entries" 2>"$previous_errors"; then
+    new_temp_file || exit 3; previous_entries=$new_temp
+    new_temp_file || exit 3; previous_errors=$new_temp
+    previous_manifest_status=0
+    validate_ownership_manifest "$previous_manifest" 'previous framework ownership manifest' "$previous_entries" 2>"$previous_errors" || previous_manifest_status=$?
+    if [ "$previous_manifest_status" -eq 1 ]; then
       add_reconciliation_message "CANT-VERIFY: previous framework-ownership.json is malformed or unsafe; additive compatibility mode will perform no stale deletion. $(tr '\n' ' ' < "$previous_errors")"
+    elif [ "$previous_manifest_status" -eq 2 ]; then
+      cat "$previous_errors" >&2
+      echo 'ERROR: Cannot validate previous framework ownership manifest because installer temporary storage is unavailable.' >&2
+      exit 3
+    elif [ "$previous_manifest_status" -ne 0 ]; then
+      cat "$previous_errors" >&2
+      echo "ERROR: Previous framework ownership validator returned unexpected status '$previous_manifest_status'." >&2
+      exit 3
     else
       while IFS= read -r retired_path; do
         previous_ownership=$(awk -F '\t' -v p="$retired_path" '$2 == p { print $3; exit }' "$previous_entries")
@@ -369,13 +458,12 @@ git_repository_evidence() {
   return 1
 }
 
-# Allocate classifier output with mktemp and register it with the installer's existing trap.
-# Unlike new_temp_file, this safety-boundary caller handles allocation failure explicitly.
+# Allocate classifier output through the shared guarded registry; this safety-boundary caller maps
+# a later allocation failure to the Git preflight's existing CANT-VERIFY disposition.
 new_git_preflight_temp() {
   git_preflight_temp=""
-  if ! git_preflight_temp=$(mktemp); then return 1; fi
-  [ -n "$git_preflight_temp" ] || return 1
-  temp_files="$temp_files $git_preflight_temp"
+  new_temp_file || return 1
+  git_preflight_temp=$new_temp
 }
 
 git_ambient_routing_present() {
@@ -521,17 +609,17 @@ fi
 
 # Compute a deterministic, complete plan before the first target mutation. Protected files are
 # skipped directly; skill backup, disable and mirror operations are represented leaf-by-leaf.
-new_temp_file; operation_plan=$new_temp; : > "$operation_plan"
-new_temp_file; apply_paths=$new_temp; : > "$apply_paths"
-new_temp_file; backup_pairs=$new_temp; : > "$backup_pairs"
-new_temp_file; disabled_carry_pairs=$new_temp; : > "$disabled_carry_pairs"
-new_temp_file; disabled_incoming_pairs=$new_temp; : > "$disabled_incoming_pairs"
-new_temp_file; mirror_pairs=$new_temp; : > "$mirror_pairs"
-new_temp_file; skill_delete_paths=$new_temp; : > "$skill_delete_paths"
-new_temp_file; disabled_names=$new_temp; : > "$disabled_names"
-new_temp_file; skill_exemplars=$new_temp; : > "$skill_exemplars"
-new_temp_file; incoming_framework_skill_names=$new_temp; : > "$incoming_framework_skill_names"
-new_temp_file; final_active_files=$new_temp; : > "$final_active_files"
+new_temp_file || exit 3; operation_plan=$new_temp; : > "$operation_plan"
+new_temp_file || exit 3; apply_paths=$new_temp; : > "$apply_paths"
+new_temp_file || exit 3; backup_pairs=$new_temp; : > "$backup_pairs"
+new_temp_file || exit 3; disabled_carry_pairs=$new_temp; : > "$disabled_carry_pairs"
+new_temp_file || exit 3; disabled_incoming_pairs=$new_temp; : > "$disabled_incoming_pairs"
+new_temp_file || exit 3; mirror_pairs=$new_temp; : > "$mirror_pairs"
+new_temp_file || exit 3; skill_delete_paths=$new_temp; : > "$skill_delete_paths"
+new_temp_file || exit 3; disabled_names=$new_temp; : > "$disabled_names"
+new_temp_file || exit 3; skill_exemplars=$new_temp; : > "$skill_exemplars"
+new_temp_file || exit 3; incoming_framework_skill_names=$new_temp; : > "$incoming_framework_skill_names"
+new_temp_file || exit 3; final_active_files=$new_temp; : > "$final_active_files"
 command -v tar >/dev/null 2>&1 || { echo 'ERROR: tar is required to apply the manifest-driven install.' >&2; exit 3; }
 
 is_disabled_skill() { grep -Fqx "$1" "$disabled_names"; }
@@ -706,9 +794,14 @@ fi
 # bash twins (bash is the Unix prerequisite anyway) so the hooks still fire.
 sj="$tgt/.claude/settings.json"
 if [ -f "$sj" ] && ! command -v pwsh >/dev/null 2>&1; then
-  tmp="$(mktemp)"
-  sed -E 's#pwsh -NoProfile -ExecutionPolicy Bypass -File \.claude/hooks/([A-Za-z-]+)\.ps1#bash .claude/hooks/\1.sh#g' "$sj" > "$tmp" && mv "$tmp" "$sj"
-  echo "  pwsh not found - switched Claude Code hooks to the bash twins."
+  new_temp_file || exit 3; tmp=$new_temp; tmp_index=$new_temp_index
+  if sed -E 's#pwsh -NoProfile -ExecutionPolicy Bypass -File \.claude/hooks/([A-Za-z-]+)\.ps1#bash .claude/hooks/\1.sh#g' "$sj" > "$tmp" && mv "$tmp" "$sj"; then
+    release_temp_file "$tmp_index" || exit 3
+    echo "  pwsh not found - switched Claude Code hooks to the bash twins."
+  else
+    echo "ERROR: Could not adapt Claude Code hook settings to the Bash twins." >&2
+    exit 3
+  fi
 fi
 if [ "$git_hooks" -eq 1 ]; then bash "$tgt/scripts/setup-git-hooks.sh" --target "$tgt"; fi
 echo

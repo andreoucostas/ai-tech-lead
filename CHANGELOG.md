@@ -13,6 +13,29 @@
 
 ## 0.78.4 — Unreleased
 
+**The Bash installer now treats each temporary pathname as exact owned state.** B-197 replaces its
+space-delimited cleanup scalar with one Bash-3.2-safe counted indexed registry shared by all five
+allocation sites. Each entry is registered before inspection, canonicalized to physical identity,
+removed as one quoted argument, and explicitly released when a successful settings move ends
+ownership. Cleanup attempts every retained entry, reports its own failures without masking an
+earlier body failure, and returns exit 3 when target work succeeded but cleanup did not. A temp
+parent physically inside the selected target now refuses with exit 3 and no persistent target
+mutation instead of making the installer's own files trigger a false dirty-tree exit 4.
+
+One Bash-only UpdateDelivery result covers the two observed consequences without a new suite or
+PowerShell twin. Before product editing it failed 50/1 and named both exit-0 deletion of an unrelated
+split-prefix sentinel plus 17 leaked temps and the target-contained false refusal; the candidate
+passed 51/0/0 under PowerShell 7 and native Windows PowerShell 5.1/CP437. Disposable probes covered
+allocator, link/case identity, cleanup-status, all-attempted, and released-path boundaries. The
+planned post-green unquoted-element mutation was intentionally omitted because the exact old-red run
+already provided stronger discrimination evidence; repeating an expected nonzero would test no new
+decision.
+
+Both composers converged at 173/169/183 files, source and all three distributed installers share
+SHA-256 `26e97642f1326272ad59d12072445305cface41381de0967879a04e2aeac031d`, and
+InstallerConvergence 12/0/0 plus ScriptTwinParity 10/0/0 passed. Native Linux, stock macOS Bash 3.2,
+and first candidate CI remain required before completion or release.
+
 **The shipped Bash installer no longer requires Bash 4 for manifest validation.** B-198 replaces
 the two associative arrays and two lowercase expansions introduced in v0.76 with one guarded,
 C-locale `awk` preprocessing pass per validator. ASCII case-variant duplicate paths remain a

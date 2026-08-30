@@ -1,6 +1,6 @@
 # B-197 — Bash installer path-safe temporary lifecycle
 
-**Status:** DESIGN LOCKED · **Date:** 2026-08-30 · **Scope:** Bash installer only
+**Status:** IMPLEMENTED CANDIDATE · **Date:** 2026-08-30 · **Scope:** Bash installer only
 
 ## Value decision
 
@@ -123,6 +123,44 @@ Both reviewers rejected CLOSE/DEFER after independently reproducing current exit
 deletion plus 17 leaked temps. They approved one new result because it observes the product harm and
 the distinct target-confined refusal, while rejecting a new suite, PowerShell twin case, and
 three-distribution runtime matrix as duplicate evidence.
+
+## Implementation evidence
+
+The authored installer now uses one counted Bash-3.2 indexed registry for every allocation. It
+registers before inspection, replaces caller and cleanup spelling with one physical identity,
+refuses target-contained temp parents, preserves the body status across guarded cleanup, propagates
+allocator failure without relying on `set -e`, and releases the settings slot only after ownership
+has transferred through a successful move. PowerShell and Bash composition produced the same three
+distribution trees; source and all three composed installers have SHA-256
+`26e97642f1326272ad59d12072445305cface41381de0967879a04e2aeac031d`.
+
+Before product editing, the exact permanent two-world result made the existing installer finish the
+suite at 50/1. Its one failure reported the spaced-relative sentinel deletion and 17 leaked files as
+well as the clean target-contained world's false dirty-tree refusal. Against the candidate, the
+whole UpdateDelivery suite passed 51/0/0 under both PowerShell 7 and native Windows PowerShell
+5.1/CP437. A reviewer-requested assertion hardening initially checked an invented shortened
+completion literal; the completed suite exposed that test bug, the assertion was corrected to the
+established `Done. Next steps in the target repo:` contract, and both hosts were rerun green on the
+exact current bytes.
+
+Disposable hostile probes additionally proved previous-manifest internal allocation failure is
+fatal rather than additive, link/junction and Windows case aliases into the target refuse by
+identity with no mutation, every registered path is attempted when cleanup fails, a simultaneous
+body/cleanup failure preserves the original body status, and a recreated released settings path
+survives EXIT. These probes added no permanent result.
+
+Implementation-time value review superseded the proposed post-fix unquoted-element mutation. The
+exact pre-edit run had already made this same permanent result fail on the real shipped defect, with
+both required causes preserved before the candidate existed. Rebreaking a generated installer would
+duplicate stronger old-red evidence, add another battery-heavy full run, and surface an expected
+nonzero without observing a new decision. The mutation was therefore omitted deliberately rather
+than converted into test ceremony.
+
+Final local gates passed: Bash syntax for source plus all three distributions, exact source/dist
+hash parity, both composers (173/169/183 files), UpdateDelivery 51/0/0 on both PowerShell hosts,
+InstallerConvergence 12/0/0, ScriptTwinParity 10/0/0, and the three distribution validators. Native
+Linux, stock macOS Bash 3.2, and candidate CI remain unobserved, so this is not completion or release
+approval.
 
 ## Acceptance boundary
 

@@ -1811,3 +1811,25 @@ The census boundary should follow consequence, not syntax. A second `Remove-Item
 in the same file targets an empty directory and passed the exact hostile-host baseline without
 leaking state. Record it as exposed, but do not widen the repair until that site reproduces the
 failure class or masks a verdict.
+
+## 2026-08-30 — Temporary-path ownership is identity plus disposition
+
+A temporary filename is not safe cleanup authority merely because `mktemp` returned it. Relative
+spelling depends on a working directory, whitespace and glob characters change unquoted iteration,
+links and case aliases can hide containment, and a later move can end ownership while leaving the
+old name available for reuse. Register each allocation before any fallible inspection, resolve the
+caller-facing and cleanup-facing value to one physical identity, and represent release explicitly
+when ownership transfers. Cleanup should consume only those retained identities, attempt all of
+them, and preserve a body failure even when cleanup also fails.
+
+Failure disposition belongs at the caller boundary. An allocator failure while validating a prior
+manifest is host failure, not evidence that the manifest is merely malformed; using `if !` or
+unguarded `set -e` paths can erase that distinction. Return a distinct internal status, map it
+deliberately at each caller, and keep the EXIT trap responsible for every allocation registered
+before the failure.
+
+Test economy applies after design lock too. A proposed mutation can become redundant when the exact
+permanent result has already failed against the untouched shipped implementation and named the real
+consequence. Preserve that old-red evidence and do not rebreak generated output just to satisfy a
+ceremonial checklist. The question is whether the oracle discriminated the reachable product
+decision, not whether every planned way of making it red was performed.
