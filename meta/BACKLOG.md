@@ -2801,6 +2801,30 @@ out-of-scope Linux regression and is intentionally rejected.
 
 ---
 
+### B-204 · Make RootInstallerWarehouse fixture teardown fail honestly
+**Effort:** S · **Priority:** P2 · **planned v0.78.4**
+**Filed against:** v0.78.3 (2026-08-30)
+**Status:** DESIGN LOCKED — implementation pending adversarial review
+**Plan:** `.claude/plans/2026-08-30-b204-root-installer-fixture-teardown-design.md`
+
+**Why:** the unchanged B-203 full maintainer run printed a Windows sharing-violation from
+`RootInstallerWarehouse.Tests.ps1` fixture cleanup, then reported 12/0 and contributed a green file
+result. Seven GUID-scoped fixture roots remain under the workspace parent; six are empty and one
+retains `.git` plus the exact `Nx prose` fixture. The installer assertions remain valid, but this
+suite's teardown postcondition can fail without reaching its result counter because `Remove-Item`
+errors are non-terminating and the harness records failure only on a thrown exception.
+
+**Do:** add one local, path-allowlisted, bounded-retry cleanup helper; route the file's eleven
+`New-Target` recursive cleanups and one broken-jq scratch cleanup through it. Use at most six
+`-ErrorAction Stop` attempts with a cumulative 1.5-second failure-path delay, verify absence, and
+throw terminal failure into the existing `It`. Add no suite or `It`, no generic cleanup framework,
+and no stale-root sweeper. Prove the old false-green and new hard-failure boundary with a disposable
+locked-handle probe, reject a non-allowlisted path without mutation, retain 12 results, and run the
+focused file under PowerShell 7/5.1 plus the standard concurrent meta runner. Meta-only; first
+Windows/Linux CI still gates completion because the test file changes.
+
+---
+
 ### B-198 · Restore Bash 3.2 compatibility in the shipped installer
 **Effort:** S–M · **Priority:** P1 · **planned v0.78.5**
 **Filed against:** v0.78.3 (2026-08-29)
