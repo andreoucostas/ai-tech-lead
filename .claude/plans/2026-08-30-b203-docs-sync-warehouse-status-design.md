@@ -3,7 +3,10 @@
 **Date:** 2026-08-30
 **Filed against:** v0.78.3
 **Planned:** v0.79.0
-**Status:** AMENDED IMPLEMENTATION CANDIDATE `4e472a65166d7746c5321c3c346dc8dc6c68b9b9` — corrected-record immutable review approved; supported Windows/Linux CI pending
+**Status:** COMPLETE 2026-08-30 — corrected immutable candidate approved and exact supported-host run
+`33333912064` at `dbdc38f508463c3c2fa7cb3d55d830deb7cd014b` green
+
+Any pending-CI statements below preserve the chronology before the final supported-host run.
 
 ## Value and proportionality decision
 

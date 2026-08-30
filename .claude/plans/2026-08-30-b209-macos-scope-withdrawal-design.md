@@ -3,8 +3,18 @@
 **Date:** 2026-08-30
 **Filed against:** unreleased v0.78.4 candidate
 **Planned:** v0.79.0
-**Status:** IMPLEMENTED CANDIDATE — design and implementation independently reviewed; local gates
-green; exact supported Windows/Linux CI pending
+**Status:** COMPLETE 2026-08-30 — design and implementation independently reviewed; exact supported
+Windows/Linux run `33333912064` at `dbdc38f508463c3c2fa7cb3d55d830deb7cd014b` green; planned
+v0.79.0
+
+## Supported-host completion evidence
+
+Both main jobs and all six distribution hook jobs passed. The main jobs completed native
+composition, distribution freshness, context-footprint, all-distribution validation, and the root
+meta suite. This supplies only the previously pending supported-host gate; the earlier topology red,
+public-contract review, and no-replacement-test review remain the behavioral evidence. No macOS job
+or evidence was required or produced under WSD-064, and this is not tag/publication proof. Any
+pending-CI statements below are historical.
 
 ## Value and proportionality decision
 

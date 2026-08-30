@@ -3,7 +3,9 @@
 **Date:** 2026-08-30
 **Filed against:** v0.78.3
 **Planned:** v0.79.0
-**Status:** IMPLEMENTED CANDIDATE `2e72fecd088c85cf0a7c98803aa76d64513b28fd` — immutable review approved; native Linux and first CI pending
+**Status:** IMPLEMENTED CANDIDATE `2e72fecd088c85cf0a7c98803aa76d64513b28fd` — immutable review
+approved and exact supported-host run `33333912064` at
+`dbdc38f508463c3c2fa7cb3d55d830deb7cd014b` green; native-Linux dangling-root one-off still pending
 
 ## Value and proportionality decision
 

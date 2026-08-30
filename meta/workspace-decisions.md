@@ -2903,7 +2903,9 @@ records, and the one strengthened B-149 result. The exact candidate passed that 
 PowerShell 7 and Windows PowerShell 5.1, six distribution validators, matching composer output,
 source/generated convergence, syntax/BOM/context gates, hostile errexit/stream matrices, and the
 full 31-file root meta suite. B-209/WSD-064 later removed Bash 3.2/macOS-provider evidence from the
-release boundary; exact supported Windows/Linux candidate CI remains pending.
+release boundary. Exact supported Windows/Linux run `33333912064` at
+`dbdc38f508463c3c2fa7cb3d55d830deb7cd014b` later passed both main jobs and all six distribution
+hook jobs, satisfying that remaining candidate gate without constituting tag/publication evidence.
 
 **Rejected.** A textual marker parsed by the doctor; an unbounded finding count plus a high reserved
 status; status `1` for verified findings; a sidecar; ACL-based resource fixtures; a new suite or

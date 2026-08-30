@@ -13,6 +13,15 @@
 
 ## 0.79.0 — Unreleased
 
+**Final supported-host candidate evidence.** Exact GitHub Actions run `33333912064` at
+`dbdc38f508463c3c2fa7cb3d55d830deb7cd014b` passed all eight required jobs: the main Windows and
+Linux pipelines plus the dotnet, Angular, and monorepo hook jobs on both hosts. Windows observed
+`OSTYPE=cygwin;MSYSTEM=MINGW64;PWD_W=D:/a/ai-tech-lead/ai-tech-lead`, UpdateDelivery passed 51/0 on
+both main hosts, and both full pipelines completed with zero failures. This supplies the supported-
+host CI gate that the chronological item narratives below correctly record as pending at earlier
+candidate/review stages. It is candidate evidence, not tag or publication evidence; v0.79.0 remains
+unreleased until the canonical release pipeline completes.
+
 **macOS is no longer a supported or release-tested host.** B-209/WSD-064 narrows the platform
 contract to Windows and Linux after revalidation found no macOS consumer evidence and repeated
 stock-Bash-3.2/BSD-specific maintenance cost. The `macos-portability` job and its watcher/topology
@@ -40,7 +49,8 @@ mutations were then rejected before clean 10/0 and 33/0 reruns. PowerShell/Bash 
 at 173/169/183 files and an identical 525-file manifest, both validators passed every distribution,
 and composed dotnet passed 10/0 plus 33/0. Native Windows PowerShell 5.1/code page 437 passed the
 twin suite 10/0 and the changed doctor matrix, but a separate pre-existing Copilot-visibility setup
-case leaves that full host run 31/1/1; B-207 records it. First candidate CI remains required.
+case leaves that full host run 31/1/1; B-207 records it. At that stage, first candidate CI remained
+required.
 
 Two independent immutable reviews approved exact candidate
 `22f7a08b79097068acde9664bc05ed5071b52139`, tree
@@ -49,8 +59,8 @@ Two independent immutable reviews approved exact candidate
 10/24 test-result cardinality, six-source/eighteen-generated core parity, and the fixed status
 boundary. Independent execution passed the focused suites 10/0 and 33/0, a space-containing
 `0/3/2/4` plus missing-checker matrix, focused native Windows PowerShell 5.1 mappings, and a
-disposable `2 -> MISSING` mutation before exact restoration. No actionable defect was found. First
-exact-candidate Windows/Linux CI remains pending.
+disposable `2 -> MISSING` mutation before exact restoration. No actionable defect was found. That
+review intentionally left exact-candidate Windows/Linux CI pending.
 
 Final local preflight then rejected that first candidate rather than waiving it: the full root meta
 suite had one attributed failing file because both docs-sync twins propagated checker status `3`
@@ -71,7 +81,8 @@ execution pass, or backlog item.
 Two final immutable reviews approved exact candidate `b36c6e9`, tree `6bb2fdb`, with no finding.
 The exact candidate passed the strengthened result 2/0 under PowerShell 7 and Windows PowerShell
 5.1, all six distribution validators, matching composer output, both context-footprint twins, and
-the full 31-file meta suite. Exact-candidate Windows/Linux CI remains pending release evidence.
+the full 31-file meta suite. At that point exact-candidate Windows/Linux CI remained release
+evidence.
 
 **B-49's stale live-fire packet is paused before it consumes provider quota.** WSD-062 records that
 the July attempt ended incomplete and cannot be resumed across changed models, hosts, and framework
@@ -94,14 +105,14 @@ rejected an equal-exit-47 mutation of both twins at 8/2, and returned to 10/0/0 
 restoration under PowerShell 7 and native Windows PowerShell 5.1; the composed dotnet copy passed
 the same two host runs. Both composers converged at 173/169/183 files, both validator twins passed
 all three distributions, YAML parsed, and the mutation-tested CI topology/watch gates stayed green.
-Exact Windows/Linux candidate CI remains required before completion or release. Two independent
+At that stage exact Windows/Linux candidate CI remained required before completion or release. Two independent
 read-only implementation reviews approved the stable local diff with no findings.
 
 Independent immutable review approved exact candidate
 `49bcbe9ecc39d987045e98d7b8d68c8709b1a372`, tree
 `ae45d5129e0599f5db0444ee6a5fde9ff6bab0da`, from design parent `f766e87`. It reconfirmed the exact
-24-file scope, functional blob identity, source/generated carrier parity, and clean worktree. Final
-Windows/Linux candidate CI remains unclaimed.
+24-file scope, functional blob identity, source/generated carrier parity, and clean worktree. The
+review did not claim final Windows/Linux candidate CI.
 
 **The Bash installer now treats each temporary pathname as exact owned state.** B-197 replaces its
 space-delimited cleanup scalar with one Bash-3.2-safe counted indexed registry shared by all five
@@ -123,8 +134,8 @@ decision.
 
 Both composers converged at 173/169/183 files, source and all three distributed installers share
 SHA-256 `26e97642f1326272ad59d12072445305cface41381de0967879a04e2aeac031d`, and
-InstallerConvergence 12/0/0 plus ScriptTwinParity 10/0/0 passed. Native Linux and first candidate CI
-remain required before completion or release.
+InstallerConvergence 12/0/0 plus ScriptTwinParity 10/0/0 passed. At that stage native Linux and the
+first candidate CI remained required before completion or release.
 
 Independent read-only immutable review approved exact candidate
 `66bc95e5eafdf977dac59aea6a5f3e2c159b2d4e`, tree
@@ -151,7 +162,7 @@ unexpected-output mutation made all three files fail setup before exact restorat
 source/generated hash and BOM parity, all three distribution validators, and independent
 implementation review were clean. The original ≥v0.78.5 target is superseded because including this
 zero-growth test-truth repair improves the still-unreleased v0.79.0 evidence without changing
-product behavior. First exact-candidate Windows/Linux CI remains required.
+product behavior. At that stage first exact-candidate Windows/Linux CI remained required.
 
 **The shipped Bash installer no longer requires Bash 4 for manifest validation.** B-198 replaces
 the two associative arrays and two lowercase expansions introduced in v0.76 with one guarded,
@@ -172,8 +183,8 @@ reconfirmed exact 20-file scope and source/dist hashes, replayed ownership and r
 collisions plus a forced `awk` failure with no target mutation, and made the strengthened existing
 result fail 11/1 by suppressing only the Bash ownership duplicate decision before exact restoration
 to 12/0. Focused topology/watch suites, YAML/BOM/AST/Bash syntax, and six record/release gates were
-green. Final Windows/Linux CI remains pending, so this is candidate approval rather than completion
-or release approval.
+green. The reviewer intentionally left final Windows/Linux CI pending, so its approval was
+candidate rather than completion or release approval.
 
 **Installer convergence teardown no longer masks its reparse-retirement verdict on Windows
 PowerShell 5.1.** B-206 keeps the existing six cases/twelve results but makes that one fixture
@@ -195,8 +206,8 @@ no-hardlinks clone, native Windows PowerShell 5.1/CP437 reproduced the parent at
 residues and the candidate at 12/0 with none; PowerShell 7/Git Bash also passed 12/0 without residue.
 Dual-failure mutation retained both causes, while non-link, ambiguity, access, and outside-byte
 hostile worlds all blocked recursion and retained both roots. Exact scope/hash, cardinality,
-BOM/AST, and record gates were clean. Native POSIX/Linux and CI remain unobserved, so B-206 stays an
-implemented candidate rather than complete or releaseable.
+BOM/AST, and record gates were clean. At review time native POSIX/Linux and CI remained unobserved,
+so B-206 stayed an implemented candidate rather than complete or releaseable.
 
 **Warehouse maps no longer have a hidden declined state.** B-202 revalidates and supersedes the
 explicit-decline clause of WSD-033: no shipped workflow wrote or taught the exact protected
@@ -213,8 +224,8 @@ sees `missing`/1 instead of `declined`/0 and custom CI that treated the old exit
 may need adjustment. A disposable old-red/new-green twin oracle proved that boundary without adding
 another permanent prose-search test. Both composers emitted byte-identical distributions, both
 validator twins passed all three modes, and the remaining three-result checker suite passed under
-PowerShell 7, Windows PowerShell 5.1, and Git Bash. First Windows/Linux candidate CI still gates
-completion and release.
+PowerShell 7, Windows PowerShell 5.1, and Git Bash. At that stage first Windows/Linux candidate CI
+still gated completion and release.
 
 Independent immutable review approved exact candidate
 `fb689c2daec4c54ffb68a5e1769eefd061d96b85` from contract `235055c` and tree
@@ -223,8 +234,8 @@ reproduced old `declined`/0 versus candidate `missing`/1 on both checker twins w
 `LEARNINGS.md`, then made an exit-1-to-0 mutation fail the intended missing world 2/1 before restoring
 3/0. PowerShell 7 and Windows PowerShell 5.1 at code page 437 exercised Git Bash; all source,
 mirror, and generated hashes agreed; both composers reproduced all three distributions; and both
-validator twins plus the four record gates passed. Native Linux and first candidate CI remain
-unavailable, so B-202 stays open.
+validator twins plus the four record gates passed. Native Linux and first candidate CI were then
+unavailable, so B-202 stayed open pending the final supported-host run recorded above.
 
 **Root-installer maintainer teardown now fails honestly and verifies absence.** B-204 replaces twelve
 non-terminating recursive fixture cleanups in the existing `RootInstallerWarehouse` suite with one
@@ -251,8 +262,9 @@ retry cadence, containment, case-alias, junction, partial-deletion, post-inspect
 PATH-restoration, and Windows PowerShell oracle probes under PowerShell 7 and 5.1. A sentinel
 mutation made the outer anti-vacuity result red before byte-identical restoration; focused
 PowerShell, Windows PowerShell, and Git Bash runs returned 2/0. Blob hash, BOM/AST, result cardinality,
-scope, RCA census, record gates, and residue were independently reconfirmed. Native Linux and first
-candidate CI remain unavailable, so B-204 stays open.
+scope, RCA census, record gates, and residue were independently reconfirmed. The review left both
+the native-Linux dangling-root one-off and first candidate CI unavailable. The final run above now
+supplies the CI half; the one-off remains B-204's completion gate.
 
 **Docs-sync now distinguishes verified warehouse-map debt from a checker it could not run.** B-203
 captures the `warehouse-map-check` status once in both wrapper twins, preserves the existing
@@ -268,8 +280,8 @@ stderr token inside ErrorRecord metadata. Three adversarial reviews approved cou
 physical diagnostic line ending in the sentinel instead. The amended result passes 10/10 under
 PowerShell 7 and Windows PowerShell 5.1 at code page 437. A separate direct, no-redirection 5.1
 probe preserved the child diagnostic, emitted only the new wrapper note, reached the final success
-line, and exited 0. The exact candidate's first Windows/Linux CI remains mandatory before
-completion or release.
+line, and exited 0. At that stage the exact candidate's first Windows/Linux CI remained mandatory
+before completion or release.
 
 Independent immutable review approved exact candidate
 `4e847b422f0267f65c474bb2091301905f956650` from contract `76cde44`. In an isolated no-hardlinks
@@ -277,8 +289,8 @@ clone, candidate tests over the exact contract wrapper blobs reproduced 9/10 wit
 wrong-status symptoms named; restoring the candidate returned source and all three composed results
 to 10/0. The reviewer also reproduced the Windows PowerShell renderer boundary and direct
 unredirected behavior, then reconfirmed byte parity, BOM/AST integrity, Bash syntax, unchanged test
-cardinality, both composers and validators, and the focused maintainer gates. Native Linux and
-first candidate CI remain pending.
+cardinality, both composers and validators, and the focused maintainer gates. The reviewer
+intentionally left native Linux and first candidate CI pending.
 
 Whole-range adversarial review then rejected candidate `e1cdb23`: an explicit `bash -e` could exit
 at the warehouse child before the next-line status capture, leaking statuses 1/2/7 and omitting the
@@ -304,8 +316,8 @@ Reviewer `/root/v0784_candidate_review` then approved exact corrected candidate
 `56e34163d00816469a6af16198294b476a231744`, after independently reproducing the 9/1 old-product
 red under PowerShell 7, the 10/0 candidate green under both PowerShell hosts, and both AGENTS
 diagnostic probes under Git Bash launched from PowerShell 7. Product, test, distribution,
-consumer-changelog, and learning bytes remain exactly those of `16dbd957`;
-native/provider evidence remains pending.
+consumer-changelog, and learning bytes remain exactly those of `16dbd957`; the reviewer did not
+claim native/provider evidence.
 
 PowerShell and login-shell Bash composition produced the same 525-file aggregate (173/169/183).
 Both validator twins passed all three distributions, and all 12 changed authored/composed carrier
@@ -313,8 +325,8 @@ pairs are byte-identical. The dotnet, Angular, and monorepo standard hook runner
 files with zero failures, including their composed ScriptTwinParity 10/0 and warehouse checker 4/0.
 The maintainer runner passed 31 files with zero failures, including Composer 16/0,
 BacklogHygiene 10/0, DocTruth 13/0, DocClaims 8/0, and release-head 8/0. BOM, PowerShell AST, and Bash
-syntax checks are clean. These remain local Windows/Git Bash results rather than the required native
-CI evidence.
+syntax checks are clean. These were local Windows/Git Bash results rather than the required native
+CI evidence later supplied by the final run above.
 
 **Bash session start now preserves time-sensitive advisory rows across supported text shapes.**
 B-195 gives the security and hazard scans separate initialized EOF state, so a final non-newline
@@ -333,7 +345,8 @@ EOF/CR/heading intermediate made security 7/0 and left hazard 18/1 only because 
 malformed row produced a Bash-only warning; adding the frame guard made TwinParity 7/0/1 and
 SessionStartHazard 19/0/0 under PowerShell 7/Git Bash. Native Windows PowerShell 5.1 also passed the
 modified branches. Independent implementation and oracle reviews approved the source diff. The
-exact candidate's first Windows/Linux CI remains mandatory before completion or release.
+exact candidate's first Windows/Linux CI remained mandatory before completion or release at that
+stage.
 
 Independent immutable review approved exact candidate
 `f84bc093ba6a7d9e68a4f02d29d1f037e28df7a2`. In an isolated clone, the candidate tests over its
@@ -346,8 +359,8 @@ PowerShell and Bash composition produced the same 525-file aggregate. All three 
 passed TwinParity (14/0 dotnet, 9/0/1 angular, 14/0 monorepo), SessionStartHazard 19/0, and both
 173/169/183-file validators; the full dotnet hook battery passed with zero failures across 20 files.
 Composer 16/0, BacklogHygiene 10/0, DocTruth 13/0, DocClaims 8/0, and release-head 8/0 also passed.
-Source and every composed hook/test copy are byte-identical. These are local Windows/Git Bash
-results, not the still-required first native Windows/Linux candidate CI.
+Source and every composed hook/test copy are byte-identical. These were local Windows/Git Bash
+results, not the first native Windows/Linux candidate CI later supplied by the final run above.
 
 **Bash updates now preserve durable disabled-skill intent in protected ledgers written by Windows
 PowerShell.** B-196 removes exactly one standard UTF-8 BOM only at byte zero of the parsing stream,
@@ -367,8 +380,17 @@ distributions, and both composers produce the same 525-file aggregate. Direct pr
 BOM-less input, accept only one byte-zero BOM, reject misplaced/malformed variants, and propagate a
 selected-file read failure. In separate exact-`49420ad` copies, removing only BOM stripping and
 restoring only prefix-based name extraction each made that same Bash result fail at 49/1 while all
-PowerShell results stayed green. The exact candidate's first Windows/Linux CI run remains mandatory
-before completion or release.
+PowerShell results stayed green. The final run above now supplies the exact Windows/Linux CI gate;
+the separately required independent immutable B-196 review is not inferred from it.
+
+Blind-first reviewer `/root/b196_blind_immutable_review` then approved immutable implementation
+`ca8b79a..49420ad` as it survives at exact final candidate `dbdc38f`. In a detached clone, a
+one-octal-byte BOM-matcher mutation made only the existing Bash skill-reconciliation result fail at
+50/1 while PowerShell stayed green; exact restoration returned UpdateDelivery 51/0 under
+PowerShell 7 and native Windows PowerShell 5.1/CP437 with Bash executed. Direct byte/grammar/failure
+boundaries passed 15/15, InstallerConvergence 12/0, Bash syntax and all three validators passed,
+protected ledger bytes were unchanged, and authored/all-dist installers were byte-identical. The
+reviewer attributed native Linux only to run `33333912064` and reported no finding.
 
 **The hazard completion oracle now refuses incomplete discovery instead of reporting framework
 completion.** B-193 explicitly supersedes the B-77-era skip behavior after v0.78.0 made this
@@ -394,7 +416,7 @@ PowerShell 7/Git Bash and under native Windows PowerShell 5.1 with code page 437
 PowerShell and Bash hostile mutations each made 12 discriminating cases fail; a later one-token skip
 mutation made the strengthened suite 66/67; each byte-identical restore returned to 67/67. All three
 composed distributions pass the same suite and their validators locally. Its first Windows/Linux
-candidate CI run remains mandatory, so B-193 remains open.
+candidate CI remained mandatory at that stage and is supplied by the final run above.
 
 **Update and brownfield installation now distinguish an ordinary non-Git target from Git state that
 cannot be examined safely.** B-194 fixes the supported native Windows PowerShell 5.1 path, where
@@ -424,8 +446,9 @@ Windows cursor/root, and shares it between ambient routing and repository discov
 non-empty current-style identities fail closed. Local legacy-provider UpdateDelivery is 51/0,
 RootInstallerWarehouse 12/0, InstallerContract 13/0, and InstallerConvergence 12/0; both composers
 and both validator twins converge across all distributions. Independent adversarial source review
-approved the bounded correction. Corrected current-provider and final exact Windows/Linux CI green
-remain mandatory, so B-194 remains open.
+approved the bounded correction. Exact run `33333912064` then exercised the corrected
+`cygwin`/`MINGW64` provider, passed UpdateDelivery 51/0 on both main hosts, and made all eight
+supported-host jobs green. That closes B-194's candidate gate without claiming publication.
 
 ## 0.78.3 — 2026-08-27
 

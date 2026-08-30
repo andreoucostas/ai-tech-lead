@@ -7442,3 +7442,835 @@ exact provider leg until B-198; the first such leg exposed the cost and triggere
 The same-class risk was every active macOS promise, not every technical `BSD` comment. B-209 sweeps
 the three READMEs, active commands, CI docs, unreleased changelogs, watcher/topology contract, and
 open completion records while preserving released history and useful portability defenses.
+
+---
+
+## v0.79.0 supported-host candidate completions (2026-08-30)
+
+Exact product/test candidate `dbdc38f508463c3c2fa7cb3d55d830deb7cd014b` passed GitHub
+Actions run `33333912064`: both main Windows/Linux jobs and all six per-distribution hook jobs were
+green. Windows exercised the current Git-for-Windows `cygwin`/`MINGW64` provider; UpdateDelivery
+passed 51/0 on both main hosts. This block supplies the supported-host CI gate recorded as pending
+at earlier stages inside the chronological evidence below. Present-tense “pending” or “open” wording
+inside those imported narratives is preserved verbatim as dated stage evidence and is superseded by
+each COMPLETE status plus this later run. It is not tag/publication evidence and claims no macOS,
+BSD-provider, or stock-Bash-3.2 coverage under WSD-064.
+
+---
+
+### B-175 · Give template-check resource failures a distinct doctor-visible status
+**Filed against:** v0.77.0 (2026-08-24)
+**Effort:** S · **Priority:** P3
+**Status:** COMPLETE 2026-08-30 — exact supported-host CI green in run `33333912064` at
+`dbdc38f508463c3c2fa7cb3d55d830deb7cd014b`; this record does not claim publication
+**Plan:** `.claude/plans/2026-08-30-b175-template-check-status-design.md`
+**Decision:** WSD-063
+
+`template-checks.ps1`/`.sh` can exit 2 both for two ordinary findings and for host/resource
+read failure. `framework-doctor` therefore cannot tell “verified drift” from “could not verify” and
+currently reports either as `MISSING`. Retire count-valued exits: `0` means clean, `3` means one or
+more verified findings, `2` means required input could not be inspected, and any other nonzero means
+abnormal/incomplete verification. The doctor maps only `3` to `MISSING` and all other nonzero
+statuses to `CANT-VERIFY`; neither branch guesses a specific artifact or recommends
+`/generate-copilot`, and the printed finding count remains. Fold fixed-status, resource, and abnormal
+worlds into the two existing twin/doctor results. Add no test file, `It`, output parser, sidecar, or
+general exception taxonomy.
+
+**Candidate evidence:** the first captured red invalidated both reviewers' claim that the existing
+version fixture made two findings: it made one. After the record and fixture were corrected to add
+one independent missing-file finding, the unchanged checker failed 9/1 at exit 2 versus required 3;
+the unchanged doctor failed 32/1 on guessed remediation. The candidate passed ScriptTwinParity
+10/0 and FrameworkDoctor 33/0 under PowerShell 7. Numeric-count, old-resource-text,
+`2 -> MISSING`, and `3 -> CANT-VERIFY` mutations each failed the intended existing result before
+exact restoration returned both suites green. Native Windows PowerShell 5.1/code page 437 passed
+ScriptTwinParity 10/0 and ran the changed doctor matrix green; the full doctor file remained 31/1/1
+on a separate pre-existing Copilot-visibility setup failure, now B-207, so no full 5.1 green is
+claimed. Both composers converged at 173/169/183 files and one 525-file SHA-256 manifest; both
+validator twins passed all distributions; composed dotnet passed 10/0 and 33/0; all six core source
+files match all generated copies. Native Linux and first candidate CI remain pending.
+
+**RCA/census:** no gate caught the collision because the checker intentionally used its finding
+count as process status and the doctor result covered only pass plus a generic exit-1 failure. The
+result never constructed two findings, resource inability, or abnormal termination, and its old
+assertion accepted the same false remediation for every nonzero. The first caller census correctly
+found that validators, CI, and the consumer docs-sync branch consume only zero/nonzero, but wrongly
+treated the template-repo docs-sync pass-through as internal consumption rather than an externally
+visible status. The doctor remains the only caller that assigns diagnostic meaning within nonzero
+statuses. The hostile-host run exposed one separate legacy native-argument transport defect in the
+doctor test harness; B-207 keeps that test-truth repair out of this product change.
+
+**Immutable review:** two independent read-only reviews approved exact candidate
+`22f7a08b79097068acde9664bc05ed5071b52139`, tree
+`7630b2f9d7f763fc4e48a3b2ff64ce92a1aff5fe`, from sole design parent
+`0ba2ed284336a238c67813cc891f88fc41be9a2e`. They reconfirmed the exact 34-path scope, unchanged
+10/24 `It` cardinality, all six source/all eighteen generated core blobs, stack changelog parity,
+the fixed status boundary, and the evidence-bounded records. Independent execution passed 10/0
+and 33/0 under PowerShell 7, a space-containing `0/3/2/4` plus missing-checker matrix, focused native
+Windows PowerShell 5.1 mappings, and a disposable `2 -> MISSING` mutation before exact restoration.
+No actionable defect was found. Native Linux and first exact-candidate CI remain pending.
+
+**Final-preflight correction:** the full root meta suite later finished with one attributed failure
+across 31 files: existing `DocsSyncCheck.Tests.ps1` rejected both wrapper twins (0/2) because planted
+template-repo drift now propagated checker status `3`, while both docs-sync headers and the existing
+B-149 contract require wrapper exit `1`. The earlier census confused “does not interpret nonzero”
+with “does not expose the exact status.” Preserve the approved checker/doctor core; normalize only
+the two `.template-repo` delegation branches back to public `0/1`, preserve child output, reuse the
+existing red result, and add no test/result/parser. WSD-063 and the plan carry the bounded amendment.
+Two read-only design reviews approved after requiring explicit compatibility disclosure, using
+“undocumented” rather than unevidenced intent language, and adding a disposable exact-`0` clean
+probe; both rejected new permanent test surface on the evidence then available.
+
+**Implementation-review correction:** immutable review rejected wrapper candidate `d3e19c5` after
+its ordinary-green Bash branch leaked checker status `3` when invoked with `bash -e`; errexit stopped
+the shell before the following `$?` capture. Product correction `ae5d0c0` puts the child in an
+errexit-safe conditional and independently passed normal, caller-`-e`, inherited-`SHELLOPTS`, clean,
+finding, inability, missing-child, stream-preservation, WPS5.1, syntax, convergence, six-validator,
+and second full-meta 0/31 checks. Both implementation reviewers approved the product and judged one
+permanent change newly justified: invoke the existing B-149 Bash arm with `-e`. That exact existing
+run is red on `d3e19c5` and green on `ae5d0c0`, while adding no test, `It`, result, fixture, runtime
+pass, or backlog item. Exact-final-candidate Windows/Linux CI remains pending.
+
+**Final immutable review:** two independent read-only reviews approved exact candidate
+`b36c6e99b61daf099ba227e8a566a342f5efd625`, tree
+`6bb2fdbb895164373ccbd18e6f0dd03806c95c77`, over the full corrective range from initial
+wrapper-design base
+`581ee3da8fb1bac336a2142378592ee3635e17fb`, with no finding. The 19-path range is exactly 14
+product/consumer-changelog paths, four locked records, and the one existing B-149 result; its final
+commit only adds `-e` to that result's existing Bash argument list. Exact-candidate B-149 passed 2/0
+under PowerShell 7 and native Windows PowerShell 5.1, the full root meta suite passed 31/31 files,
+both composer diffs matched, all six validators passed, source/generated blobs converge, syntax and
+BOM gates passed, and both context-footprint twins retained the accepted baseline. Caller-`-e` and
+inherited-`SHELLOPTS` hostile matrices preserved child streams and mapped clean to `0` plus
+finding/inability/abnormal/missing-child to `1`. Exact-candidate Windows/Linux CI remains release
+evidence rather than a local claim.
+
+---
+
+### B-193 · Close the remaining hazard-oracle false-green grammar — **COMPLETE 2026-08-30**
+**Effort:** M · **Priority:** P1 · **planned v0.79.0**
+**Filed against:** v0.78.3 (2026-08-29)
+
+**Completion status (2026-08-30).** This was archived after local cross-host verification and an
+immutable hostile review, but `CLAUDE.md` is stricter: a change carrying new or modified tests is not
+done until its first Windows/Linux CI run is green. Git Bash is not Linux evidence. No implementation
+work is being reopened; the same v0.79.0 candidate CI required by B-194 must pass before this record
+can return to `meta/BACKLOG-DONE.md`.
+
+**Value decision and scope.** The B-77 skip states were reasonable while the hazard checker was an
+optional drift detector, but became false completion after v0.78.0 made it a mandatory
+`docs-sync-check` dependency. The caller and consequence changed; historical behavior was therefore
+re-derived rather than preserved as doctrine. The bounded fix remains the two existing checker
+twins and their existing suite—no parser dependency, new script, Markdown migration, recursive
+lookup, or semantic hazard-truth claim.
+
+**Implementation.** Missing, pending, zero/multiple-heading, placeholder, empty, prose-only, and
+mixed sentinel/row states now fail. Backticked text is data rather than Bash replacement syntax;
+balanced bracket classes are ancillary wildcards; final non-newline records are consumed. A finite
+lexical transform repeatedly peels terminal comma/semicolon and exactly matching endpoint wrappers,
+while preserving at most one sentence suffix for safety. Unsafe raw/display forms are checked before
+empty/path-shape filtering, so exact dot segments and drive prefixes cannot normalize away while
+dot-named paths and unmatched wrappers remain literal.
+
+**Test-value audit.** No standalone suite or dependency was added. Each new case maps to a reproduced
+false green, a distinct lifecycle/parser branch, or a false-rejection control. High-cardinality
+spellings share executions without sharing evidence: twelve unsafe forms occupy one consumer
+fixture with exact per-output diagnostic counts, ten positive forms occupy independent required-path
+rows in one fixture, and grouped lifecycle worlds reuse one install. This matters empirically: the
+unchanged v0.78.3 checker was 40/67; fresh review broke two later green candidates; and a planted
+single-token skip was detected at 66/67. Coverage is 67 `It` results and 63 leaf + 14 wrapper
+subjects per twin (154 total), with an explicit cardinality oracle preventing short-circuit masking.
+
+**Adversarial evidence.** The initial implementation commit `56e8ba9` passed its suite but two fresh
+reviewers blocked bare `.`, framed traversal, and exterior-punctuation handling. A later oracle
+review blocked grouped positives because one valid token could hide nine ignored ones. The amended
+source blobs were independently approved, then blind-first reviewer
+`/root/b193_final_immutable_review` reviewed immutable range `56e8ba9..fb35803` and candidate tree
+`c2d24f7`. Its isolated Bash-only safety mutation made the full suite 66/1 while both twins still
+executed 77 subjects; reverse patch restored the exact Bash hash and clean 67/0.
+
+**Hosts, composition, and boundary.** PowerShell 7.6.5 and native Windows PowerShell
+5.1.26100.9168/CP437 each passed 67/0 with Git Bash observed. Dotnet, Angular, and monorepo each
+passed 67/0 and `validate-dist`; source and all three generated copies share exact checker/test
+hashes. PowerShell and login-shell Bash composition produced identical 525-file trees. BacklogHygiene
+10/0, DocTruth 13/0, DocClaims 8/0, ScriptTwinParity 10/0, and Composer 16/0 passed with their
+relevant red mutations. No native Linux runtime was available, so the first Windows/Linux
+immutable-candidate matrix remains mandatory before completion and release; Git Bash
+is not claimed as that evidence. The same-class advisory EOF defect is deliberately separate,
+proportionally sized as B-195.
+
+---
+
+### B-194 · Make the PowerShell 5.1 installer tolerate non-Git targets
+**Effort:** M · **Priority:** P1 · **planned v0.79.0**
+**Filed against:** v0.78.3 (2026-08-29)
+
+**Status: COMPLETE 2026-08-30 — MODERN PROVIDER RED OBSERVED, CORRECTED, AND EXACT POST-FIX CI GREEN.**
+Candidate `6818a4a` was rejected when review reproduced a lowercase-routing bypass on legacy Git
+Bash. Run `33328114479` then showed that Git for Windows `2.55.0.windows.5` reports a new Bash host
+identity; the amended existing oracle kept the same child/result/process cardinality. Attempt
+`33331472488` was inconclusive because both main jobs stopped at stale context-footprint data before
+the oracle. Exact run `33332160632` at `367bb0cf79777491faba39133cb7a5915a15c8ce` reached it with
+`OSTYPE=cygwin;MSYSTEM=MINGW64;PWD_W=D:/a/ai-tech-lead/ai-tech-lead`: the unchanged installer
+returned 0, printed completion, and changed the target rather than refusing exit 4. UpdateDelivery
+was 50/1 and the only Windows maintainer failure; native Linux and all six distribution hook jobs
+were green.
+
+The correction now classifies once before mutation, validates one built-in Windows cursor/root,
+shares that state between ambient routing and repository discovery, and fails closed on unknown
+non-empty current-style identities. The modern-host amendment added no result, `It`, child, or
+process. Locally, UpdateDelivery is 51/0 on legacy Git Bash, RootInstallerWarehouse 12/0,
+InstallerContract 13/0, InstallerConvergence 12/0, both validator twins pass all distributions, and
+both composers converge byte-identically. An independent adversarial source review approved the
+exact implementation. Modern-provider product green and final exact Windows/Linux CI remain
+unobserved and mandatory; Git Bash is not native Linux evidence.
+
+**Why:** B-188's independent review found a pre-existing supported-host failure outside v0.78.1's
+ADR-preservation diff. Under Windows PowerShell 5.1 with `$ErrorActionPreference = 'Stop'`, the
+installer's `git rev-parse --is-inside-work-tree *> $null` probe promotes Git's expected
+non-repository stderr to `NativeCommandError` and exits 1 before a mutating non-Git update or
+brownfield install on a host where Git is available. The installer explicitly supports non-Git
+targets. That original failure is fail-safe and mutates nothing, so it was initially P2; a committed
+Git target passes. The amended P1 priority comes from the separately reproduced shared false-green
+paths described below.
+
+**Amended scope:** the original PowerShell-only premise is incomplete. Review reproduced both
+current twins mutating a target with corrupt `.git` metadata and an ambient alternate index hiding a
+dirty file. Implement the locked cross-twin classifier: exact Git worktree/status evidence when
+repository state exists, fail-closed ambient routing, and ordinary non-Git continuation when no
+evidence exists. Add only the three grouped, branch-discriminating UpdateDelivery cases in the
+plan; reuse the existing clean/dirty controls. Compose all dists and require independent hostile
+review plus native Windows/Linux candidate CI before completion and release.
+
+---
+
+### B-195 · Preserve unterminated final advisory rows in Bash session start
+**Effort:** S · **Priority:** P2 · **planned v0.79.0**
+**Filed against:** v0.78.3 (2026-08-29)
+**Status:** COMPLETE 2026-08-30 — exact supported-host CI green in run `33333912064` at
+`dbdc38f508463c3c2fa7cb3d55d830deb7cd014b`; this record does not claim publication
+
+**Why:** B-193's independent RCA sweep found the same newline-sensitive Bash reader pattern in two
+separate advisory paths outside the locked completion-oracle scope. In isolated current-dist
+fixtures whose final byte was the row's closing `|`, an unterminated overdue
+`SECURITY_FINDINGS.md` row made PowerShell emit the red SLA-breach warning while Bash downgraded it
+to the generic open-finding message; an unterminated old `[UNVERIFIED]` hazard row made PowerShell
+emit the 90-day nudge while Bash emitted no hazard line. Both twins exited 0. The security impact is
+lost urgency rather than bypassed enforcement, so this is P2 rather than an expansion of B-193.
+
+**Revalidated design:** in `session-start.sh`, initialize distinct security and hazard loop variables
+and consume `read` failure when the assigned variable still contains a final non-newline record.
+Adversarial review also reproduced ordinary CRLF and admitted trailing-horizontal-whitespace hazard
+headings being skipped, and showed that exposing EOF without a minimum five-delimiter row frame
+would make Bash warn on a malformed row the PowerShell twin skips. Strip one terminal CR in the
+hazard parsing stream, reuse `hazard-check.sh`'s anchored horizontal-whitespace heading grammar, and
+enforce the PowerShell-equivalent minimum frame before extracting cells. Do not share loop state,
+change thresholds/status/date semantics, rewrite PowerShell, or sweep unrelated readers.
+
+Keep the existing no-open/future-open security controls and add only the distinct overdue-EOF matrix
+result under an explicit Claude event. Strengthen the existing hazard twin-agreement result with EOF
+stale, terminated CRLF, trailing-heading-whitespace, and malformed-EOF worlds; collect all world
+failures before its one aggregate assertion and add no hazard result or suite. Reuse
+`hazard-check.sh`'s Bash-3.2-safe pipe-count idiom before any field extraction. Require exact bytes,
+severity/nudge class and count, both exits and stderr, and staged red-first implementation evidence
+for the five independent decisions instead of redundant post-green mutations. Compose and require
+first Windows/Linux candidate CI. The locked design is
+`.claude/plans/2026-08-30-b195-session-start-advisory-reader-design.md`. A separately found GNU-only
+cutoff provider was assigned to B-200 rather than widening B-195. B-209/WSD-064 later closed B-200
+without implementation because macOS/BSD-provider behavior is outside the supported contract.
+
+**Implementation candidate (2026-08-30):** the authored Bash hook now gives each loop an initialized
+variable, consumes a non-empty failed EOF read, strips one terminal CR from hazard records, accepts
+the established horizontal-whitespace heading grammar, and rejects rows with fewer than five pipe
+delimiters before extraction. The PowerShell twin and every threshold/message remain unchanged.
+Red-first evidence was staged rather than replayed as ceremony: the unchanged hook made security
+6/1 and hazard 18/1 with the hazard result naming EOF, CRLF, and heading-whitespace misses; the
+reader-only intermediate made security 7/0 and left hazard 18/1 solely on the newly exposed
+malformed-row false advisory; the frame guard made TwinParity 7/0/1 and SessionStartHazard 19/0/0
+under PowerShell 7/Git Bash. Native Windows PowerShell 5.1 also passed TwinParity 7/0/1 and the
+modified hazard result. Its pre-existing optional Bash JSON probe then corrupted its nested `-c`
+argument, printed a syntax error, and falsely capability-skipped despite a working jq; B-201 owns
+that separate test-truth defect and the skip is not counted as B-195 coverage.
+Exact implementation and oracle reviews approved the source diff. Both composers produced the same
+525-file aggregate; all three composed focused suites and both validator twins passed, as did the
+full 20-file dotnet hook battery, Composer, BacklogHygiene, DocTruth, DocClaims, and release-head
+gates. Independent reviewer `/root/b195_immutable` then approved exact immutable candidate
+`f84bc093ba6a7d9e68a4f02d29d1f037e28df7a2` from parent `01e7c3c` in an isolated clone: candidate
+tests over the parent hook made TwinParity 6/1/1 and hazard 18/1; restoring the exact candidate made
+the same source suites 7/0/1 and 19/0/0 and composed dotnet 14/0 and 19/0. Source/dist hashes,
+PowerShell BOM/AST, both three-dist validator twins, and the four maintainer gates were clean. The
+review used PowerShell 7.6.5, Windows PowerShell 5.1, and Git Bash 5.2.37; no native Linux,
+BSD/macOS, or Bash 3.2 runtime was available. First Windows/Linux CI still gates completion.
+
+---
+
+### B-196 · Honor a BOM-prefixed disabled-skill ledger in the Bash installer
+**Effort:** S · **Priority:** P1 · **planned v0.79.0**
+**Filed against:** v0.78.3 (2026-08-29)
+**Status:** COMPLETE 2026-08-30 — independent immutable review approved and exact supported-host CI
+green in run `33333912064` at `dbdc38f508463c3c2fa7cb3d55d830deb7cd014b`; no publication claim
+**Plan:** `.claude/plans/2026-08-30-b196-bom-disabled-skill-design.md`
+
+**Why:** B-194's required native Windows PowerShell 5.1/CP437 run exposed a separate reachable
+cross-host failure. PS5's normal UTF-8 writer can prefix `LEARNINGS.md` with a BOM. The PowerShell
+installer still recognizes a first-line `## Disabled framework skill: perf`, but the Bash
+installer's anchored `grep` does not; an update then recreates the deliberately disabled framework
+skill in `.claude/skills/perf`. Adversarial review also reproduced the same policy reversal for
+trailing whitespace already admitted by that anchored grammar: the prefix-only extraction leaves
+HT, spaces, or a CR attached to the name, so the exact lookup misses it. These are one parser and
+one consequence, not separate backlog items. B-194 made its general fixture bytes host-invariant so
+its own classifier matrix is trustworthy, but that is not evidence that the product accepts BOM
+input.
+
+**Do:** make the Bash reader tolerate exactly one UTF-8 BOM only at byte zero and capture only the
+validated skill name, without modifying the protected consumer file or weakening the existing
+anchored grammar. Challenge the historic proposal to add a subject: instead, make the existing
+UpdateDelivery fixture deterministic BOM + HT + CRLF input, assert its independently specified
+bytes before and after installation, and reuse its existing skill-reconciliation result. The
+BOM-less InstallerConvergence fixture remains the ordinary control. Add no suite or `It`; use
+separate BOM-strip and clean-name-extraction mutations to prove the same existing Bash result is
+discriminating, confirm PowerShell behavior is unchanged, compose all dists, and require the exact
+candidate's first Windows/Linux CI before completion or release. Git Bash is not Linux evidence.
+
+**Implementation evidence:** authored candidate `49420ad` reused the existing UpdateDelivery
+skill-reconciliation result. Against the unchanged Bash reader that 50-result suite was 49/1; the
+candidate was 50/0, while the BOM-less InstallerConvergence control stayed 12/0. Removing only
+byte-zero BOM stripping and separately restoring prefix-only name extraction each returned the
+same result to 49/1 before exact restoration. Later B-194 work expanded UpdateDelivery to 51
+results without replacing this oracle; exact supported-host run `33333912064` passed 51/0 on both
+main hosts. At that point the independent immutable implementation review required by the plan
+remained a separate completion gate; the later review below satisfies it rather than inferring it
+from CI.
+
+**Independent immutable review:** `/root/b196_blind_immutable_review` (Codex GPT-5) had no
+implementation participation, read frozen contract `ca8b79a` and formed its threat model before
+current narrative, then reviewed exact implementation `ca8b79a..49420ad` and final survival at
+`dbdc38f`. In a detached clone, a one-byte final-head BOM-matcher mutation made only the existing
+Bash skill-reconciliation result fail at 50/1 while PowerShell stayed green; exact restoration
+returned 51/0 under PowerShell 7 and native Windows PowerShell 5.1/CP437 with Bash executed. Direct
+boundaries passed 15/15, InstallerConvergence 12/0, all three validators, Bash syntax, protected-byte
+identity, and authored/all-dist SHA-256 parity were green. Native Linux was attributed only to run
+`33333912064`; BSD/macOS and Bash 3.2 were neither executed nor required under WSD-064. No finding.
+
+---
+
+### B-197 · Make Bash installer temporary-file handling path-safe
+**Effort:** S · **Priority:** P1 · **planned v0.79.0**
+**Filed against:** v0.78.3 (2026-08-29)
+**Status:** COMPLETE 2026-08-30 — exact supported-host CI green in run `33333912064` at
+`dbdc38f508463c3c2fa7cb3d55d830deb7cd014b`; this record does not claim publication
+**Plan:** `.claude/plans/2026-08-30-b197-bash-temp-path-design.md`
+
+**Why:** B-194's hostile implementation review found a pre-existing Bash lifecycle defect outside
+the Git-classifier change. The installer stores `mktemp` paths in a space-delimited scalar and later
+iterates it unquoted. A `TMPDIR` containing spaces is therefore word-split and glob-expanded during
+cleanup: the real temporary files can leak, and a split relative fragment can name an unrelated file
+under the caller's working directory. Separately, putting `TMPDIR` inside an otherwise clean target
+makes the installer's own pre-status temporary files appear untracked, producing a deterministic
+dirty-tree false refusal. A controlled exact-current replay has now converted the first risk into
+observed product data loss: the composed dotnet installer exited 0 and reported greenfield success
+while deleting the owned unrelated split-prefix sentinel and leaking all 17 generated temp files.
+A second clean committed-update replay exited 4 with the false dirty-tree diagnosis. No consumer
+incident is known, but successful unrelated-byte deletion makes this P1 rather than deferrable P2.
+
+**Do:** replace all five `mktemp` call sites with one Bash-3.2-safe counted indexed registry; preserve
+body failure status while making cleanup failure explicit; and reject a physically target-contained
+temp parent with exact exit 3, cleanup, and no persistent target mutation before relying on Git
+status. Propagate validator/top-level/prior-manifest/preflight allocation failures without using
+`set -e` as control flow or degrading host failure into additive compatibility. Add one focused
+Bash-only result in the existing update-delivery suite: literal relative `TMPDIR='prefix dir'` must
+preserve its split-prefix sentinel and leak nothing, while a clean tracked target-confined temp root
+must refuse specifically and restore its fingerprint. Do not add a suite, PowerShell twin case,
+three-dist runtime matrix, or duplicate ordinary clean/dirty controls. Compose all dists, require
+native Linux evidence, and use one unquoted-element mutation to prove the
+new result discriminates the data-loss defect.
+
+**Implementation candidate (2026-08-30):** the authored Bash installer now registers every
+temporary file in one counted Bash-3.2 indexed array, canonicalizes caller and cleanup ownership to
+the same physical file, refuses any temp parent physically inside the selected target, guards every
+cleanup/removal/diagnostic while preserving the body status, treats internal validator allocation
+failure as fatal rather than malformed-prior compatibility, and releases the late settings slot only
+after a successful ownership-transferring move. All three composed installers are byte-identical to
+the source at SHA-256 `26e97642f1326272ad59d12072445305cface41381de0967879a04e2aeac031d`.
+The one new permanent result was demonstrably necessary: before product editing it made the exact
+current installer finish UpdateDelivery at 50/1 while naming both the exit-0 sentinel deletion/17
+leaks and the target-contained false dirty refusal; the candidate passed 51/0/0 under PowerShell 7
+and native Windows PowerShell 5.1/CP437. The planned post-green unquoted cleanup mutation was omitted
+after explicit value revalidation because that stronger exact old-red already proved the same
+oracle decision and another expected-failing full run would add no evidence. Disposable probes
+covered allocator failure during prior-manifest validation, junction/case containment, successful
+and dual-failure cleanup status, all-path cleanup attempts, and released-path recreation. Both
+composers converged at 173/169/183 files; InstallerConvergence passed 12/0/0, ScriptTwinParity
+10/0/0, Bash syntax/source-dist hashes and all three distribution validators were clean. No native
+Linux or candidate CI ran, so B-197 remains open and is not releaseable.
+Independent read-only immutable review then approved exact candidate
+`66bc95e5eafdf977dac59aea6a5f3e2c159b2d4e`, tree
+`eb00500eec59b3ab5313b120926583845d072245`, from design parent `fe193fd`; it found no code, test,
+parity, or record defect and explicitly bounded approval away from the still-unobserved native and
+CI providers.
+
+---
+
+### B-198 · Restore Bash 3.2 compatibility in the shipped installer
+**Effort:** S–M · **Priority:** P1 · **planned v0.79.0**
+**Filed against:** v0.78.3 (2026-08-29)
+**Status:** COMPLETE 2026-08-30 — portability implementation retained under B-209/WSD-064 and
+passed exact supported-host run `33333912064` at `dbdc38f508463c3c2fa7cb3d55d830deb7cd014b`
+**Plan:** `.claude/plans/2026-08-30-b198-bash32-installer-design.md`
+**Decision:** WSD-061, superseded for macOS by WSD-064
+
+**Original why (superseded by B-209/WSD-064):** the framework directed macOS consumers to run this
+installer and its authoring contract
+treats stock Bash 3.2 as supported, but the current duplicate-path guards contain two Bash-4-only
+associative arrays (`declare -A`) and two Bash-4-only lowercase expansions (`${path,,}`). Those
+constructs can abort before installation on a supported host. Ubuntu CI and `bash -n` under a newer
+Bash cannot certify this compatibility boundary. They were reintroduced in v0.76 despite the
+existing recorded lesson that shipped scripts must avoid Bash-4-only constructs.
+
+**Original implementation/evidence contract (macOS portions superseded by B-209/WSD-064):** preserve
+ASCII-case collision rejection for the framework-authored path inventories with
+one guarded, C-locale, Bash-3.2-safe preprocessing pass per validator; do not grow this into a
+Unicode normalizer. Strengthen the existing forged-manifest result with a case variant and exact
+diagnostic rather than adding a suite or `It`. Under the exact same captured stock macOS
+`/bin/bash` 3.2 interpreter, first prove the frozen parent red/no-mutation and the candidate green,
+then remove that history-dependent arm and require the permanent direct dotnet-dist smoke plus the
+normal final-candidate Windows/Linux CI. A generic label, Homebrew/newer Bash, `BASH_COMPAT`, broad
+syntax grep, three-dist macOS matrix, or full third test leg is not evidence. The locked contract is
+the plan above; WSD-061 records why this focused provider narrowly supersedes B-70's absolute
+wording without weakening its rejection of generic CI duplication.
+
+**Candidate evidence (2026-08-30):** the authored Bash installer now replaces the four Bash-4-only
+constructs with one guarded `LC_ALL=C awk` preprocessing pass in each validator. Disposable current-
+dist greenfield, ownership-collision, and retirement-collision worlds passed; the hostile paths used
+ASCII case variants plus glob metacharacters as data, both failures exited 3 with the exact duplicate
+diagnostic, and targets stayed byte-stable. Both composers agreed on all 525 generated files. Both
+validator twins passed all three 173/169/183-file distributions; an initial Bash-validator attempt
+that hid every JSON provider through an operator PATH error failed closed and is not counted.
+A disposable `awk` shim exiting 91 then reached the new explicit failure guard, emitted its dedicated
+diagnostic, exited 3, and left the one-file target unchanged.
+
+The existing InstallerConvergence file stayed at 12 results and passed 12/0 under PowerShell 7 with
+Git Bash 5.2.37. Native Windows PowerShell 5.1/CP437 passed both strengthened forged-manifest results
+but returned 10/2 because the unchanged reparse result's junction cleanup entered a headless
+`PromptForChoice` and threw at line 144 for both twins. B-206 records that separately; the temporary
+diagnostic edit was restored byte-identically and only these diagnostic runs' 12 generated roots
+were removed.
+CI topology, push-watch, and release-watch checks passed, workflow YAML parses, all edited PowerShell
+files retain BOM/AST integrity, and all installer copies pass Bash syntax. No macOS or Bash 3.2 run,
+Windows/Linux candidate CI, push, tag, or release is claimed.
+
+**Immutable review:** a fresh reviewer approved exact candidate
+`f71473f4830e8696e6b220ffb7e07eebe82e01a3`, tree
+`9d543e1e50c03ddfb736a41b7534760771024dd9`, from sole design parent
+`0062e9901afd8f7724ba2c4e0e01e0017179eebe` in a detached no-hardlinks clone. Exact 20-file scope,
+authored/three-dist installer hashes, unchanged result cardinalities, source/dist changelogs,
+YAML/BOM/AST/Bash syntax, focused suites, and record/release gates were reconfirmed. Independent
+ownership and retirement case/glob collisions plus a forced `awk` exit all failed closed without
+target mutation. Changing only the Bash ownership duplicate decision made the strengthened existing
+result fail 11/1 before exact candidate restoration. The reviewer withdrew an initial generic-BSD
+`find` objection after checking the pinned macOS 26 implementation. No native macOS/Bash 3.2 or CI
+run occurred, so approval is bounded to the immutable local candidate and B-198 remains open.
+
+**First exact-provider run and scope supersession (2026-08-30):** pull-request run `33328114479`
+verified macOS 26 and stock `/bin/bash` 3.2.57, then ran frozen `8238366`. The old installer emitted
+both Bash-4 diagnostics but returned status 0; the temporary oracle stopped before no-mutation or
+current-tree checks. B-209/WSD-064 then withdrew macOS/Bash-3.2 from the supported contract. The job
+and frozen archaeology are removed rather than corrected. Retain the reviewed awk implementation as
+best-effort portability because it preserves duplicate-path safety and uses an existing dependency;
+do not claim macOS/Bash-3.2 support. Exact Windows/Linux CI remains mandatory.
+
+---
+
+### B-201 · Windows PowerShell 5.1 falsely capability-skips Bash Copilot JSON hook tests
+**Effort:** S · **Priority:** P2 · **planned v0.79.0**
+**Filed against:** v0.78.3 (2026-08-30)
+**Status:** COMPLETE 2026-08-30 — exact supported-host CI green in run `33333912064` at
+`dbdc38f508463c3c2fa7cb3d55d830deb7cd014b`; this record does not claim publication
+**Plan:** `.claude/plans/2026-08-30-b201-wps51-json-probe-design.md`
+
+**Why:** B-195 verification ran `SessionStartHazard.Tests.ps1` under native Windows PowerShell 5.1.
+Its `$bash -c $probeCmd` call lost nested quoting through legacy native-argument marshalling, Bash
+printed a syntax error, and the suite recorded an invariant “no jq and no working Python” skip even
+though the same Bash resolves and runs jq 1.8.1. The identical probe transport exists in
+SessionStartWiki and SessionStartFrameworkRules. PowerShell 7 executes it correctly, and the B-195
+Claude-mode oracle itself passed, so this is a pre-existing test-truth defect rather than product
+scope. P2 is proportionate because three shipped optional JSON branches can be falsely reported as
+unreachable on a supported test orchestrator.
+
+**Do:** revalidate all three probes, then replace only the multi-layer `-c` argument transport with a
+Windows-PowerShell-5.1-safe execution of the same capability decision (for example, Bash script
+stdin rather than a quoted native argument). Reuse the existing results and invariant skip; add no
+suite or `It`. On a host where Bash can execute jq, prove the unchanged test emits the syntax error
+and skips, while the correction runs each existing JSON arm under native Windows PowerShell 5.1
+without stderr. Retain a controlled no-jq/no-working-Python world that still produces the honest
+invariant skip, and retain PowerShell 7 behavior. Compose all distributions and require modified-
+test Windows/Linux CI; do not hard-code this maintainer's jq path or weaken the capability check.
+The locked design strengthens the original suggestion after adversarial review: the stdin probe must
+emit explicit case-sensitive `yes`/`no`, because exit 0 with empty channels is also consistent with
+an omitted stdin script and cannot honestly prove capability absence. Any empty/unexpected stdout,
+stderr, or nonzero exit fails setup rather than becoming a skip.
+
+**Implementation candidate (2026-08-30):** the three existing probes now emit explicit `yes`/`no`,
+travel through `Invoke-RawProcess` as Bash `-s` stdin, and fail setup on any nonzero exit, stderr,
+empty/unexpected stdout, or non-exact sentinel. No product hook, harness helper, suite, `It`, `Skip`,
+or result count changed. Native Windows PowerShell 5.1 moved from the reproduced syntax-error false
+skips at Hazard 18/0/1, Wiki 12/0/1, and FrameworkRules 9/0/1 to 19/0/0, 14/0/0, and 10/0/0;
+PowerShell 7 and composed dotnet passed the same counts. A probe-local empty PATH retained the three
+honest named skips, while an unexpected-output mutation made every file exit 1 with the setup
+diagnostic before exact hash restoration. Both composers converged at 173/169/183 files, the three
+source blobs exactly match all nine generated copies with BOMs intact, and every distribution
+validator passed. Independent implementation review approved the exact 12-file scope with no
+finding. The original ≥v0.78.5 target is superseded: including this zero-growth test-truth repair in
+the still-unreleased v0.79.0 candidate improves that release's evidence without changing product
+behavior or adding a CI leg. Native Linux and first exact-candidate Windows/Linux CI remain pending,
+so the item stays open and is not releaseable.
+
+---
+
+### B-202 · Remove the unreachable warehouse-map decline state
+**Effort:** S · **Priority:** P2 · **planned v0.79.0**
+**Filed against:** v0.78.3 (2026-08-30)
+**Status:** COMPLETE 2026-08-30 — exact supported-host CI green in run `33333912064` at
+`dbdc38f508463c3c2fa7cb3d55d830deb7cd014b`; this record does not claim publication
+**Decision:** WSD-060
+
+**Why:** B-199 found that the checker and its permanent result recognize an exact
+`## Declined artifact: warehouse-map` heading, but no shipped workflow or instruction writes or
+teaches it. B-202 proposed making that fixture-only state reachable. Revalidation rejected the
+premise: no repeated-guidance harm is recorded; the marker suppresses only the checker's absent-map
+status and one non-failing docs-sync advisory, not bootstrap's durable pointer or the skill's own map
+offer; and protected append-only `LEARNINGS.md` has no revocation state. A real-template twin probe
+also showed that a latent marker silently becomes active again if a later map is deleted.
+
+**Do:** remove only the dormant decline state: the `LEARNINGS.md` probe/output in both warehouse-map
+checker twins, `declined` from both authored `map-warehouse` and `add-warehouse-load` agent-surface
+copies, and the existing declined `It`. Add no replacement result or prose-search test. Preserve
+not-applicable, missing, current, stale, and unable-to-inspect behavior; the optional-map contract;
+and `add-warehouse-load`'s mandatory equivalent live inventory. Do not touch docs-sync wrappers,
+installers, ownership manifests, signal definitions, bootstrap/adopt, other `LEARNINGS.md` marker
+families, or existing consumer bytes.
+
+The one theoretical compatibility change is explicit: an external consumer that manually authored
+the undocumented exact marker changes from `declined`/0 to `missing`/1. Shipped docs-sync still
+translates that to a non-failing advisory, and warehouse writes still proceed only from current-map
+or live evidence. Existing hidden headings remain byte-preserved but inert. Before deletion, require
+a disposable real-template-plus-marker oracle expecting `missing`/1 to go red against both old
+twins; after deletion, make it green and prove the file byte-identical. Compose all distributions,
+run both validator twins, the remaining three-result checker worlds under PowerShell 7/5.1 and Git
+Bash, affected composed tests, and bounded dotnet/monorepo delivery smokes. Because a shipped test
+changes, first Windows/Linux CI still gates completion and release.
+
+**Implementation evidence:** before product edits, a disposable copy of the real `LEARNINGS.md`
+template plus the exact heading made both unchanged twins return `declined`/0 against an oracle that
+required `missing`/1. After the seven authored deletions, the same class of probe returned
+`missing`/1 from both twins and left `LEARNINGS.md` byte-identical. PowerShell AST/BOM and Bash
+syntax checks passed; both authored skill mirror pairs are byte-identical. The source suite passed
+3/0 under PowerShell 7 and native Windows PowerShell 5.1, then 3/0 again under hostile code page 437
+on both hosts, with Git Bash exercised and no skip.
+
+PowerShell and Bash composers emitted byte-identical manifests for all three distributions. Both
+validator twins passed dotnet, angular, and monorepo. The composed checker suite passed 3/0 in every
+mode under PowerShell 7 and 3/0 in representative dotnet under Windows PowerShell 5.1. Bounded real
+installs covered the dotnet PowerShell installer and monorepo Bash installer; each installed checker
+classified the old heading as `missing`/1, and four installed skill samples contained no declined
+status. The first Bash-validator launch used an over-restricted diagnostic `PATH` and stopped before
+product validation because it hid both JSON engines; the documented Git Bash path was restored and
+the full twin rerun passed. Native Linux and first candidate CI remain unavailable, so this item is
+not complete and grants no release approval.
+
+**Immutable review:** a fresh reviewer with no implementation participation approved frozen range
+`235055c9ad719b875c1f96cadfb7e25e57216f13..fb689c2daec4c54ffb68a5e1769eefd061d96b85`
+and tree `7b54539fdaf6facfe4cc1bb45ddbfaf870379659` in a no-hardlinks isolated clone. It independently
+reproduced old-red `declined`/0 and candidate-green `missing`/1 on both twins with unchanged learning
+bytes, confirmed the exact 33-path allowlist and zero product references, and retained 3/0 under
+PowerShell 7 and Windows PowerShell 5.1 at code page 437 with Git Bash exercised. An exit-1-to-0
+mutation failed the intended missing world 2/1 before byte restoration returned 3/0. Both composers,
+both validator twins in all modes, source/generated hashes, BOM/AST/Bash syntax, and the four record
+gates independently passed. Native Linux and first candidate CI remain the only accepted gap.
+
+---
+
+### B-203 · Preserve warehouse-map verification failure in the docs-sync advisory
+**Effort:** S · **Priority:** P2 · **planned v0.79.0**
+**Filed against:** v0.78.3 (2026-08-30)
+**Status:** COMPLETE 2026-08-30 — exact supported-host CI green in run `33333912064` at
+`dbdc38f508463c3c2fa7cb3d55d830deb7cd014b`; this record does not claim publication
+**Plan:** `.claude/plans/2026-08-30-b203-docs-sync-warehouse-status-design.md`
+
+**Why:** both `docs-sync-check` twins currently translate every nonzero `warehouse-map-check` exit
+into “missing or stale.” Exit 1 is that content state, but exit 2 means the checker could not read,
+enumerate, or classify the repository. The checker's accurate stderr survives and is then followed
+by a contradictory diagnosis. The warehouse-map branch remains advisory, but its wrapper violates
+maintenance rule 7 exactly when the host is least trustworthy.
+
+**Do:** capture the checker status once in each twin. Preserve the current missing/stale note only
+for exit 1. For anything other than 0 or 1, retain the checker's stderr and the warehouse-map
+branch's non-failing contract, then emit exactly: `NOTE: warehouse map could not be verified; this
+is not evidence that the map is missing or stale. (advisory - not a failure)`. Strengthen only the
+existing `docs-sync-check branches and advisory prose agree` result. Its controlled status-0 world
+must retain and assert the existing missing-`.github/skills` directory failure, its status-0 child
+sentinel, overall exit 1, and absence of either warehouse note. After repairing that mirror, capture
+status 1, status 2, and an unexpected-status world (-1 PowerShell / 7 Bash) before asserting. Give
+status 2 and unexpected different world-specific stderr sentinels, shared only between each world's
+twins. For stderr only, split physical lines on CRLF/LF/CR, trim them, and require exactly one line
+ending ordinally in the applicable sentinel; raw literal count is invalid because Windows
+PowerShell 5.1 repeats the token in ErrorRecord metadata. Keep stdout and wrapper-note literal
+cardinalities exact; require the new note once per wrapper, the missing/stale note absent, and
+statuses 1/2/unexpected non-failing. Add no suite, `It`, or extra wrapper run, and prove both unable
+worlds red on the unchanged wrappers before correction. Compose all distributions, run both
+validator twins, and require the modified test's first Windows/Linux CI before completion or
+release.
+
+**Implementation evidence:** baseline ScriptTwinParity passed 10/0. Changing only its existing
+docs-sync result made the unchanged wrappers pass 9/10, with one aggregate failure naming both
+unable worlds for both twins; no suite or `It` was added. The minimal product branches restored
+10/0 under PowerShell 7. Native Windows PowerShell 5.1 then falsified only the first raw stderr
+literal-count oracle, not the product behavior; after the three-reviewer physical-line amendment,
+the suite passed 10/0 under both PowerShell hosts at code page 437 with Git Bash observed. A direct,
+no-redirection 5.1 fixture preserved the child sentinel, emitted only the new warehouse note and the
+final success line, omitted the contradictory old note, and exited 0.
+
+Both composers produced byte-identical 525-file trees (173/169/183). Both validator twins passed
+all three distributions. Each distribution's standard hook runner passed 20 files with zero
+failures, including ScriptTwinParity 10/0 and WarehouseMapCheck 4/0; the maintainer runner passed 31
+files with zero failures, including Composer 16/0, BacklogHygiene 10/0, DocTruth 13/0, DocClaims 8/0,
+and release-head 8/0. Twelve changed authored/composed carrier pairs are byte-identical; BOM, AST,
+and Bash syntax checks pass. This remains a candidate because Git Bash is not native Linux and the
+modified test's first Windows/Linux CI has not run.
+
+Independent reviewer `/root/b203_immutable` approved exact immutable range
+`76cde44aa5cd0f0504267561fc0ae9795b4343e9..4e847b422f0267f65c474bb2091301905f956650`
+in an isolated no-hardlinks clone. Candidate tests over the exact contract wrapper blobs made
+ScriptTwinParity pass 9/10 and enumerate all eight expected wrong-status symptoms; restoring the
+candidate blobs returned source and all three composed results to 10/0. The review independently
+reproduced the Windows PowerShell 5.1 renderer boundary and direct unredirected behavior, then
+reconfirmed source/dist hashes, PowerShell BOM/AST integrity under both PowerShell hosts, Bash
+syntax, unchanged test cardinality, both composers, both validator twins, and the focused warehouse,
+backlog, document, claim, and release-head gates. Native Linux and first candidate CI remain
+unavailable, so the item stays open.
+
+**Release-range amendment evidence:** whole-range review rejected later candidate `e1cdb23` because
+explicit `bash -e` made the Bash warehouse branch leak statuses 1/2/7 before its intended capture;
+the same bounded wrapper census found two AGENTS.md probes whose missing-content classification was
+unreachable under that invocation. The approved correction uses conditionals at only those three
+sites and appends an optional, empty-by-default `BashOptions` parameter to the existing harness.
+The same five Bash worlds now receive `-e`; no suite, result, `It`, fixture, process, or execution
+pass was added.
+
+The changed result failed 9/1 against the exact old product and passes 10/0 against exact product/
+test commit `16dbd95743163f5a92e9aacb23a946e056421a40` under PowerShell 7, native Windows PowerShell 5.1,
+and code page 437. A disposable ordinary-mode run passed 10/0 before exact test restoration. Two
+independent AGENTS probes showed the old and current products both exit 1, but only the correction
+emits the applicable diagnosis and aggregate verdict exactly once. Both composers converged at
+525 files (173/169/183); both validator twins passed every distribution; all three 20-file shipped
+hook batteries and the 31-file maintainer battery reported zero failures; all 12 authored/generated
+carrier pairs are byte-identical; BOM, AST, and Bash syntax checks pass.
+
+The first immutable review reproduced the old-red/current-green behavior and rejected only stale
+record truth: this entry and its plan still named the pre-amendment candidate, while the RCA called
+the rejected raw-process reroute any `RunArg` change. This corrected record makes that boundary
+explicit without changing product or test bytes. Exported inherited `SHELLOPTS` remains the separate
+non-gating B-208 decision. Native Linux and exact Windows/Linux CI remain unclaimed, so B-203 stays
+open.
+
+Independent reviewer `/root/v0784_candidate_review` approved exact corrected candidate
+`4e472a65166d7746c5321c3c346dc8dc6c68b9b9`, tree
+`56e34163d00816469a6af16198294b476a231744`. It reproduced the 9/1 exact old-product red under
+PowerShell 7, the 10/0 candidate green under both PowerShell hosts, and both AGENTS diagnostic
+probes under Git Bash launched from PowerShell 7. Two record-only
+rejections first removed the stale candidate/RCA contradiction and then one collective approval
+overclaim. The final review confirmed every product, test, dist, consumer-changelog, and learning
+blob remains
+exactly the approved `16dbd95743163f5a92e9aacb23a946e056421a40` version and the worktree is clean.
+Native Windows/Linux CI evidence remains pending rather than inferred.
+
+**RCA:** the direct checker suite distinguished exits 1 and 2, but the wrapper parity fixture never
+installed the checker, so its translation branch did not execute. B-164's bounded sweep selected
+wrappers that themselves exited nonzero after child failure; this advisory deliberately converts
+the child nonzero to wrapper exit 0 and fell outside that predicate. The same class is any wrapper
+that turns a multi-state child result into a more specific content diagnosis. B-203 fixes only this
+observed warehouse branch; B-175 owns the distinct template-checker/doctor ambiguity. The separate
+WPS5 renderer lesson is recorded in `meta/LEARNINGS.md`. Rerouting `RunArg` through
+`Invoke-RawProcess` would repeat B-165's out-of-scope Linux regression and remains rejected; the
+amendment instead appends one Bash-only interpreter-options array to the existing invocation path.
+
+---
+
+### B-205 · Restore Bash 3.2 compatibility in skill-mirror sync
+**Effort:** S · **Priority:** P2 · **planned v0.79.0**
+**Filed against:** v0.78.3 (2026-08-30)
+**Status:** COMPLETE 2026-08-30 — macOS/Bash-3.2 premise superseded by B-209/WSD-064; retained
+portability work passed exact supported-host run `33333912064` at `dbdc38f508463c3c2fa7cb3d55d830deb7cd014b`
+**Plan:** `.claude/plans/2026-08-30-b205-skill-sync-bash32-design.md`
+
+**Original why (superseded by B-209/WSD-064):** `/generate-copilot` documented
+`bash scripts/sync-agent-files.sh` for macOS, but the v0.78.0
+count-provider correction introduced Bash-4-only `globstar`/`**`. On stock Bash 3.2 the script
+reaches that failure only after replacing `.github/skills`, so a correct mirror can be left behind
+with a false-red exit and no success verdict. This is separate from B-198's installer and B-200's
+date provider.
+
+**Original implementation/evidence contract (macOS portions superseded by B-209/WSD-064):** remove
+the informational count from both twins: it has no external contract and replacing it
+would add traversal/provider semantics only to preserve decorative output after two real provider
+failures. Keep one exact count-free success verdict. Strengthen the existing sync twin result rather
+than adding a suite or `It`; require each exact-zero exit, empty stderr, exact stdout, and each
+mirror's independent byte equality with the canonical source. Require exact macOS Bash 3.2
+old-red/new-green evidence and the existing Git Bash control. Reuse B-198's focused provider job,
+but do not add a job/matrix or expand B-198 to implement this item. The original ≥v0.78.5 target is
+superseded because the same unreleased v0.78.4 provider leg can prove this shipped macOS contract
+without additional recurring CI.
+
+**Candidate evidence (2026-08-30):** both twins now emit the exact count-free verdict and retain the
+same recursive mirror operation. With only existing assertions changed, the unchanged scripts were
+red at 8/2. The candidate passed 10/0/0 on PowerShell 7 and native Windows PowerShell 5.1; an
+equal-exit-47 mutation of both twins was rejected 8/2 after both had copied the source, and exact
+restoration returned source and composed dotnet to 10/0/0 on both hosts. No suite, `It`, job, or
+matrix was added. PowerShell and Bash composers converged at 173/169/183 files; source and all three
+generated script/test copies have exact SHA-256 parity. Both validator twins passed all three
+distributions. YAML parsing, ReleaseDistGateTiming 9/0/0 on both hosts, PushAndCheck 7/0/0,
+ReleaseCiWatch 18/0/0, and DocTruth 13/0/0 were green. The existing macOS job contains the frozen
+old-red/current-green steps, but stock Bash 3.2 and final candidate CI were then unobserved and
+mandatory; Git Bash was recorded only as the Windows control. B-209/WSD-064 later removed the
+macOS/Bash-3.2 provider obligation; supported Windows/Linux CI remains mandatory.
+
+Two independent read-only implementation reviews approved the stable diff with no findings. The
+value review confirmed permanent cardinality remains 10 `It` blocks, seven CI jobs, and two
+matrices, and rejected permissions/symlink/empty-directory expansion as low-value scope growth for
+an unchanged copy mechanism. The portability review independently reran the focused suites on both
+PowerShell hosts, verified the frozen tree is reachable and archiveable, and approved the Bash 3.2
+syntax, quoting, PATH, diagnostics, and topology design. At review time both withheld completion
+approval for native macOS and final CI; B-209/WSD-064 later superseded only the macOS boundary.
+
+Immutable review approved exact candidate `49bcbe9ecc39d987045e98d7b8d68c8709b1a372`, tree
+`ae45d5129e0599f5db0444ee6a5fde9ff6bab0da`, from sole design parent
+`f766e87b7165b89ddf8d5be682aa2e1ae6c22981`. It confirmed the exact 24 modified files, no path or
+mode changes, reviewed functional blobs, authored/generated carrier parity, and a residue-free
+worktree. B-209/WSD-064 removes the unobserved provider/frozen-history boundary. The count deletion
+remains valuable simplification on supported hosts; completion now requires exact Windows/Linux CI.
+No push or release is authorized by this record.
+
+---
+
+### B-206 · Make InstallerConvergence junction teardown non-interactive under Windows PowerShell 5.1
+**Effort:** S · **Priority:** P2 · **planned ≥ v0.78.5**
+**Filed against:** v0.78.3 (2026-08-30)
+**Status:** COMPLETE 2026-08-30 — exact supported-host CI green in run `33333912064` at
+`dbdc38f508463c3c2fa7cb3d55d830deb7cd014b`; this record does not claim publication
+**Plan:** `.claude/plans/2026-08-30-b206-installer-convergence-junction-teardown-design.md`
+
+**Why:** B-198's required native Windows PowerShell 5.1/CP437 run returned 10/2 even though its two
+strengthened case-variant results passed. Both failures were the unchanged
+`consumer-modified and reparse retirement paths survive` result. A temporary detailed transcript
+located the exception in its `finally`: `Remove-Item -Force` on the generated directory junction
+entered `PromptForChoice`, and this headless 5.1 console threw `NullReferenceException`. The cleanup
+exception masks the result verdict and leaves both target and outside fixture roots behind. An
+ambient `$ConfirmPreference='None'` rerun reproduced the same failure, so this is not honestly
+resolved by runner configuration.
+
+**Do:** revalidate the safest non-traversing directory-link deletion under PowerShell 7, native 5.1,
+and POSIX symlinks. Make only the existing fixture cleanup non-interactive, preserve the outside
+fingerprint assertion, verify exact link and both generated roots are absent after the result, and
+retain body failures if cleanup also fails. Strengthen that existing result or its lifecycle; add no
+suite or `It`. Require ordinary 12/0 under both PowerShell hosts plus the existing Linux CI, and do
+not generalize into another cleanup framework or fold it into B-198's Bash product change.
+
+**Value/design review (2026-08-30):** two independent adversarial reviews returned IMPLEMENT for a
+narrow meta-test repair. The result covers WSD-051's successful-retirement preservation boundary;
+the side-write reparse refusal result is not a substitute, so deletion would lose distinct safety
+evidence. A fresh isolated native 5.1 replay returned the exact 10/2 shape and four leaked roots.
+Across both reviews and primary-agent probes, the non-recursive `[IO.Directory]::Delete` primitive
+unlinked only the populated junction while preserving the outside sentinel under PowerShell 7 and
+5.1; confirmation controls still failed. The locked design captures body and cleanup failures
+separately, verifies link/root absence, retains the existing POSIX unlink, and keeps six `It`
+blocks/twelve runtime results. It rejects a one-line-only fix, B-204 helper reuse, retries,
+product/dist changes, and new permanent cases. Native Linux remains an explicit candidate gap.
+
+**Candidate evidence (2026-08-30):** only the existing reparse-retirement result changed. It now
+captures body/cleanup failures independently, asserts the installer preserved the exact link,
+unlinks the verified Windows junction non-recursively through `.NET` while retaining the POSIX
+branch, proves link absence and unchanged outside bytes before recursion, and makes exact-root
+cleanup terminating with absent postconditions. Direct lookup misses are reconciled through
+non-recursive parent enumeration and ordinal leaf matching so provider ambiguity cannot authorize
+recursion. Six `It` blocks/twelve runtime results remain.
+PowerShell 7 and isolated native Windows PowerShell 5.1/CP437 each passed 12/0, replacing the
+preserved 5.1 old-red 10/2. Neither candidate run left a current fixture entry. A two-line
+post-body/post-cleanup mutation made both twin results fail 10/2 with both unique sentinels in each
+outer message; reversal restored exact SHA-256
+`9043008F28577221DE69159B76719216B5933BA867ECA1555DB4F459176CEA6A`/Git blob
+`1ee8331e56851b4c105b110d97b629820a71c564` and the file returned to 12/0. The first implementation
+review rejected treating direct provider `ItemNotFoundException` as absence; after exact-parent
+enumeration was added, both independent reviewers approved. One reran the amended file 12/0 under
+isolated 5.1 with zero residue and exercised missing-link, non-link, and outside-byte hostile worlds;
+unsafe worlds retained both roots/sentinel and surfaced both failure causes.
+
+**Immutable review:** a detached no-hardlinks review approved exact candidate
+`aa374fdd7c17f641021adc58b1db00609fe1efb1`, tree
+`e573c69d3e30c4e2f94493f4367c7d5cd2ca6fd8`, from sole design parent
+`bf1bd24788fb70973a4c601a3010548ff787688e`. Native Windows PowerShell 5.1/CP437 independently
+reproduced the parent at 10/2 with exactly four residues and the candidate at 12/0 with none;
+PowerShell 7/Git Bash also passed 12/0 without residue. The dual-failure mutation made both twin
+messages retain both unique causes before exact-byte restoration. Non-link replacement, ambiguous
+parent enumeration, access failure, and outside-byte mutation each failed the targeted twin and
+retained both roots rather than authorizing recursion. Six `It` blocks/twelve results, BOM/AST,
+record gates, exact blob/hash, and five-file scope were reconfirmed. No native POSIX/Linux or CI run
+occurred, so approval is candidate evidence rather than completion or release approval.
+
+**RCA/census:** no gate caught this because the populated-junction teardown had not been executed
+headlessly under the supported Windows PowerShell 5.1 provider; normal PS7 cleanup and the product
+assertions were green. The only other generated-junction cleanup is this file's side-write result.
+Its outside directory is invariantly empty, and it passed the exact old-red run plus every candidate
+run without observed residue, so B-206 does not widen on mechanism resemblance alone. Native Linux
+must still exercise the POSIX symlink path, and candidate CI remains pending.
+
+---
+
+### B-209 · Withdraw macOS from the supported and tested host contract
+**Effort:** M · **Priority:** P1 · **planned v0.79.0**
+**Filed against:** v0.78.4 (2026-08-30)
+**Evidence source:** unreleased v0.78.4 candidate
+**Status:** COMPLETE 2026-08-30 — design and implementation independently reviewed; exact supported
+Windows/Linux CI green in run `33333912064` at `dbdc38f508463c3c2fa7cb3d55d830deb7cd014b`
+**Plan:** `.claude/plans/2026-08-30-b209-macos-scope-withdrawal-design.md`
+**Decision:** WSD-064
+
+**Why:** the owner confirmed macOS is not needed, the root positioning targets Windows teams, and
+the maintainer record contains no macOS consumer evidence. The three shipped READMEs nevertheless
+promise macOS works out of the box, while stock Bash 3.2/BSD providers have repeatedly added
+special-case implementation, review, and CI cost. Deleting only the first red macOS job would leave
+a false support promise; the value-bearing decision is to withdraw the platform coherently.
+
+**Do:** make Windows and Linux the explicit supported/release-tested hosts; mark macOS, BSD-provider
+behavior, and stock Bash 3.2 unsupported and untested. Remove the focused job and its watcher/test
+dependencies, update all active consumer instructions and unreleased changelogs, compose all dists,
+and add no replacement or negative absence test. Preserve released history and useful incidental
+portability. Scope-close B-200; retain B-198/B-205 code where duplicate safety and simplification
+remain valuable. Retarget the breaking unreleased head to v0.79.0 and require supported-host CI.
+
+**Design evidence:** both independent reviews found the same false-promise surface and accepted the
+withdrawal only as a public support-boundary change. After deleting the job, the unchanged existing
+ReleaseDistGateTiming result was observed red at 8/1 on the missing `macos-portability` job; its
+ordinary mutation arm also remained red, then restored byte-identically. The implementation removes
+only the obsolete macOS helper/assertions while retaining the same result and Windows/Linux
+coverage. Run `33328114479` remains evidence for a historical false-green, not a release gate.
+
+**Implementation evidence:** the workflow now has four supported-platform job definitions expanding
+to the eight exact watched jobs. No replacement job, suite, result, fixture, matrix, or negative
+absence test was added; ReleaseDistGateTiming remains 9/0 after its ordinary mutation red and exact
+restore, PushAndCheck remains 7/0, and ReleaseCiWatch remains 18/0. Public source and generated docs
+state the Windows/Linux boundary, all seven Unreleased changelog heads are v0.79.0, and active
+completion records no longer require macOS/Bash-3.2 evidence. PowerShell and login-shell Bash
+composers produced the same 173/169/183-file dist diff; both validator twins passed all dists. The
+31-file maintainer suite was green before final reviewer-requested corrections; the only executable
+correction was a case-sensitive match inside the existing UpdateDelivery result. Directly affected
+BacklogHygiene 10/0, ClaimTruth 3/0, DocTruth 13/0, ReleaseDistGateTiming 9/0, and UpdateDelivery
+51/0 were rerun green afterward. Two independent read-only implementation reviews approved the
+scope after those corrections. In candidate run `33331472488` at `aac420f`, all six supported
+hook-matrix jobs passed, but both main jobs correctly stopped at context-footprint before later
+distribution/meta gates. The generated B-209 docs had changed while their measured baseline had
+not. Regenerating it changed only `chars`/`tok` for the four altered carriers in each distribution;
+static totals and ceilings remain 39,582/40,000, 38,105/40,000, and 47,098/48,000. Both baseline
+twins pass locally. The run did not reach B-194's provider child and is neither provider-red nor
+product-green evidence. Run `33332160632` subsequently reached B-194's expected unchanged-product
+red with native Linux and all six hook jobs green and exactly one Windows maintainer failure. After
+the bounded product correction, a later all-green supported Windows/Linux candidate remains
+mandatory for release.

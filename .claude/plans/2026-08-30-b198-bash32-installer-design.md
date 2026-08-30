@@ -3,7 +3,11 @@
 **Date:** 2026-08-30  
 **Filed against:** v0.78.3  
 **Planned:** v0.79.0
-**Status:** IMPLEMENTED CANDIDATE — portability implementation retained; macOS/Bash-3.2 premise superseded by B-209/WSD-064; Windows/Linux CI pending
+**Status:** COMPLETE 2026-08-30 — useful portability implementation retained, macOS/Bash-3.2 support
+premise superseded by B-209/WSD-064, and exact supported-host run `33333912064` at
+`dbdc38f508463c3c2fa7cb3d55d830deb7cd014b` green
+
+Any pending-CI statements below preserve the chronology before the final supported-host run.
 
 ## Value and proportionality decision
 

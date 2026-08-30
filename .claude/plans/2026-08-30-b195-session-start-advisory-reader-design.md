@@ -3,7 +3,10 @@
 **Date:** 2026-08-30  
 **Filed against:** v0.78.3  
 **Planned:** v0.79.0
-**Status:** IMPLEMENTED CANDIDATE `f84bc093ba6a7d9e68a4f02d29d1f037e28df7a2` — immutable review approved; first Windows/Linux CI pending
+**Status:** COMPLETE 2026-08-30 — immutable candidate approved and exact supported-host run
+`33333912064` at `dbdc38f508463c3c2fa7cb3d55d830deb7cd014b` green; planned v0.79.0
+
+Any pending-CI statements below preserve the chronology before the final supported-host run.
 
 ## Value decision
 

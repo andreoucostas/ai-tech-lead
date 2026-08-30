@@ -2,7 +2,10 @@
 
 **Date:** 2026-08-29  
 **Filed against:** v0.78.3  
-**Status:** VERIFIED 2026-08-29 — immutable candidate `fb35803` approved; Windows/Linux CI remains release evidence
+**Status:** COMPLETE 2026-08-30 — immutable candidate `fb35803` approved and exact supported-host
+run `33333912064` at `dbdc38f508463c3c2fa7cb3d55d830deb7cd014b` green; planned v0.79.0
+
+Any pending-CI statements below preserve the chronology before the final supported-host run.
 
 ## Premise and value decision
 

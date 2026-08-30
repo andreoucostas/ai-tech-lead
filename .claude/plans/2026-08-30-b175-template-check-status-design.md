@@ -1,10 +1,12 @@
 # B-175 · Template-check status contract — locked design
 
-**Status: IMPLEMENTED CANDIDATE `b36c6e99b61daf099ba227e8a566a342f5efd625` 2026-08-30 — two
-immutable reviews approved; exact-candidate Windows/Linux CI remains pending.** Final
+**Status: COMPLETE 2026-08-30 — exact supported-host run `33333912064` at
+`dbdc38f508463c3c2fa7cb3d55d830deb7cd014b` green; planned v0.79.0.** Final
 local preflight rejected the first checker/doctor candidate's docs-sync wrapper compatibility, and
 immutable review later rejected wrapper candidate `d3e19c5c24b8f8e3e789191bf873bcde5413f252`
 under Bash errexit. The approved checker/doctor core remains intact.
+
+Any pending-CI statements below preserve the chronology before the final supported-host run.
 
 **Pre-implementation evidence correction.** The first captured red run disproved both reviewers'
 claim that the existing `9.9.9` fixture alone creates two findings: it creates one because the

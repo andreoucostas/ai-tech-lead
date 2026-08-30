@@ -1,6 +1,10 @@
 # B-206 — InstallerConvergence junction teardown design
 
-**Status:** IMPLEMENTED CANDIDATE · **Date:** 2026-08-30 · **Scope:** maintainer test only
+**Status:** COMPLETE — exact supported-host run `33333912064` at
+`dbdc38f508463c3c2fa7cb3d55d830deb7cd014b` green · **Date:** 2026-08-30 · **Scope:** maintainer
+test only · **Planned:** v0.79.0 (fulfills the original ≥v0.78.5 target)
+
+Any pending-CI statements below preserve the chronology before the final supported-host run.
 
 ## Value decision
 

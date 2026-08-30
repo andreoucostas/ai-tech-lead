@@ -3,7 +3,20 @@
 **Date:** 2026-08-30  
 **Filed against:** v0.78.3  
 **Planned:** v0.79.0
-**Status:** IMPLEMENTED CANDIDATE — local verification complete; first Windows/Linux CI pending
+**Status:** COMPLETE 2026-08-30 — independent immutable review approved and exact supported-host run
+`33333912064` at `dbdc38f508463c3c2fa7cb3d55d830deb7cd014b` green; planned v0.79.0
+
+## Independent immutable completion review
+
+Blind-first reviewer `/root/b196_blind_immutable_review` (Codex GPT-5; no implementation
+participation) read frozen contract `ca8b79a`, reviewed exact implementation `ca8b79a..49420ad` and
+its survival at `dbdc38f`, then mutated one final octal BOM byte in a detached clone. Only the
+existing Bash skill-reconciliation result failed (50/1); PowerShell stayed green. Exact-byte
+restoration returned UpdateDelivery 51/0 under PowerShell 7 and native Windows PowerShell
+5.1/CP437. Direct boundaries were 15/15, InstallerConvergence 12/0, all validators and Bash syntax
+passed, protected bytes were unchanged, and authored/all-dist installers shared SHA-256
+`4e1ec9bc474af61aa4f098ffd8555f121ee0a00aef7c9473bf955dd0a4c6e282`. Run `33333912064` is
+attributed native-Linux corroboration only; BSD/macOS and Bash 3.2 were not executed or required.
 
 ## Value decision
 

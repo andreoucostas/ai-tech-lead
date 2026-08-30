@@ -1,6 +1,10 @@
 # B-201 — Windows PowerShell 5.1-safe Bash JSON capability probes
 
-**Status:** IMPLEMENTED CANDIDATE · **Date:** 2026-08-30 · **Scope:** three existing session-start test probes only
+**Status:** COMPLETE — exact supported-host run `33333912064` at
+`dbdc38f508463c3c2fa7cb3d55d830deb7cd014b` green · **Date:** 2026-08-30 · **Scope:** three
+existing session-start test probes only · **Planned:** v0.79.0
+
+Any pending-CI statements below preserve the chronology before the final supported-host run.
 
 ## Value decision
 

@@ -1,7 +1,10 @@
 # B-197 — Bash installer path-safe temporary lifecycle
 
-**Status:** IMPLEMENTED CANDIDATE — Windows/Linux CI pending; macOS/Bash-3.2 evidence superseded by
-B-209/WSD-064 · **Date:** 2026-08-30 · **Scope:** Bash installer only
+**Status:** COMPLETE — exact supported-host run `33333912064` at
+`dbdc38f508463c3c2fa7cb3d55d830deb7cd014b` green; macOS/Bash-3.2 evidence superseded by
+B-209/WSD-064 · **Date:** 2026-08-30 · **Scope:** Bash installer only · **Planned:** v0.79.0
+
+Any pending-CI statements below preserve the chronology before the final supported-host run.
 
 ## Value decision
 

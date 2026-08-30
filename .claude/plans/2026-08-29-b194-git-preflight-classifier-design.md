@@ -2,9 +2,18 @@
 
 **Date:** 2026-08-29  
 **Filed against:** v0.78.3  
-**Status:** IMPLEMENTED LOCALLY 2026-08-30 — modern-provider red observed in `33332160632`; two
-independent adversarial reviews approve the bounded correction; corrected modern-provider and
-final Windows/Linux CI green pending
+**Status:** COMPLETE 2026-08-30 — modern-provider red observed in `33332160632`, corrected, and
+exact supported-host run `33333912064` at `dbdc38f508463c3c2fa7cb3d55d830deb7cd014b` green; planned
+v0.79.0
+
+## Corrected-provider and supported-host completion evidence
+
+Run `33333912064` exercised the exact corrected candidate on Git for Windows and emitted
+`OSTYPE=cygwin;MSYSTEM=MINGW64;PWD_W=D:/a/ai-tech-lead/ai-tech-lead`. The three existing B-194
+groups were green, UpdateDelivery passed 51/0 on both main hosts, and the two main jobs plus all six
+distribution hook jobs passed. Generic Cygwin with empty `MSYSTEM` and unknown non-empty identities
+remain outside supported execution evidence; macOS is out of scope under WSD-064. This closes the
+candidate gate but is not tag/publication evidence. Any pending-CI statements below are historical.
 
 ## Value decision
 
