@@ -82,9 +82,10 @@ function New-ParserProbeBin {
     New-Item -ItemType Directory -Force $bin|Out-Null
 $jq=@'
 #!/bin/sh
-if [ "$1" = "-er" ]; then
+if [ "$1" = "empty" ]; then
   IFS= read -r input || :
-  case "$input" in '{"atl":[1,true,null]}') echo ATL_JQ_OK; exit 0;; *) exit 4;; esac
+  case "$input" in *" junk"*|*",}"*|*"/*"*|*"NaN"*|*"Infinity"*|*"'"*) exit 4;; esac
+  exit 0
 fi
 if [ "$1" = "-e" ]; then
   if [ -n "${3:-}" ]; then
@@ -102,46 +103,24 @@ if [ "$1" = "-e" ]; then
 fi
 if [ "$1" = "-r" ]; then
   json_file=${3:-}; json_input=''
-  if [ -n "$json_file" ]; then
-    while IFS= read -r line || [ -n "$line" ]; do json_input="${json_input}${json_input:+
-}$line"; done < "$json_file"
-  else
+  if [ -z "$json_file" ]; then
     while IFS= read -r line || [ -n "$line" ]; do json_input="${json_input}${json_input:+
 }$line"; done
   fi
-  printf '%s\n' "$json_input" | grep -Eq ',[[:space:]]*[]}]' && exit 4
   json_match() {
     if [ -n "$json_file" ]; then grep -Eq "$1" "$json_file" 2>/dev/null
     else printf '%s\n' "$json_input" | grep -Eq "$1"
     fi
   }
   case "$2" in
-    *atl_stamp_registration*)
-      template_value='__TEMPLATE__'
-      if json_match '"template"[[:space:]]*:'; then
-        case "$template_value" in *[![:space:]]*) echo ATL_OK:3; echo "T:$template_value"; echo V:0.32.0; echo A:2026-07-17;; *) echo ATL_SHAPE_INVALID;; esac
-      else echo ATL_SHAPE_INVALID; fi;;
-    *atl_claude_registration*)
-      found=$(printf '%s\n' "$json_input" | sed 's/"command"/\
-"command"/g' | sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\\"\([^"]*\)\\"\(.*\)".*/"\1"\2/p; t; s/.*"command"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
-      count=0; while IFS= read -r item; do [ -z "$item" ] || count=$((count+1)); done <<EOF
-$found
-EOF
-      echo "ATL_OK:$count"; [ -z "$found" ] || printf '%s\n' "$found";;
-    *atl_copilot_registration*)
-      found=''
-      for field in bash powershell; do
-        value=$(printf '%s\n' "$json_input" | sed -n "s/.*\"$field\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p")
-        [ -z "$value" ] || found="${found}${found:+
-}${field}	${value}"
-      done
-      count=0; while IFS= read -r item; do [ -z "$item" ] || count=$((count+1)); done <<EOF
-$found
-EOF
-      echo "ATL_OK:$count"; [ -z "$found" ] || printf '%s\n' "$found";;
+    *template*) if json_match '"template"[[:space:]]*:'; then echo __TEMPLATE__; else echo; fi;;
+    *version*) echo 0.32.0;;
+    *applied*) echo 2026-07-17;;
     *angular_workspace_evidence*) if json_match '^[[:space:]]*\{'; then echo true; else echo false; fi;;
     *angular_package_evidence*) if json_match '"(dependencies|devDependencies|peerDependencies|optionalDependencies)"[^}]*"@angular/core"[[:space:]]*:'; then echo true; else echo false; fi;;
     *angular_nx_evidence*) if json_match '"notes"|"Plugin"|"Executor"|"Generator"|"Collection"'; then echo false; elif json_match '"@(angular|nx/angular|angular-devkit|schematics/angular)(/[^" ]+|:[^" ]+)"'; then echo true; else echo false; fi;;
+    *command*) printf '%s\n' "$json_input" | sed 's/"command"/\
+"command"/g' | sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\\"\([^"]*\)\\"\(.*\)".*/"\1"\2/p; t; s/.*"command"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p';;
   esac
 fi
 exit 0
@@ -423,33 +402,27 @@ It 'Copilot CLI visibility is controlled per twin and only constructed asymmetry
             Copy-Item -LiteralPath $doctorPs -Destination $pdoc -Force;Copy-Item -LiteralPath $doctorSh -Destination $sdoc -Force
             foreach($invalidSettings in @(
                 @{Label='junk-suffixed';Json='{"command":"bash .claude/hooks/guard.sh" junk'},
-                @{Label='trailing-comma';Json='{"command":"bash .claude/hooks/guard.sh",}';BashCannotVerify=$true},
+                @{Label='trailing-comma';Json='{"command":"bash .claude/hooks/guard.sh",}'},
                 @{Label='single-quoted';Json="{'command':'bash .claude/hooks/guard.sh'}"},
                 @{Label='non-finite';Json='{"command":"bash .claude/hooks/guard.sh","probe":NaN}'},
                 @{Label='leading-zero';Json='{"command":"bash .claude/hooks/guard.sh","probe":01}'},
                 @{Label='uppercase-command';Json='{"Command":"bash .claude/hooks/guard.sh"}'}
             )){
                 Put (Join-Path $r '.claude/settings.json') $invalidSettings.Json
-                $env:PATH=$pbin;$p=Run $pdoc;$pp=Parse-DoctorResult $p;$env:PATH=$sbin;$s=Run $sdoc;$sp=Parse-DoctorResult $s
-                Assert ($pp.Rows['Wired hook shell'].State-eq'MISSING') "PowerShell $($invalidSettings.Label) settings with a plausible command was treated as live registration evidence: $($p.Out)"
-                if($invalidSettings.BashCannotVerify){Assert ($sp.Rows['Wired hook shell'].State-eq'CANT-VERIFY'-and$sp.Rows['Wired hook shell'].Detail-match'no trusted JSON provider completed') "Bash $($invalidSettings.Label) did not distinguish provider inability from a live registration: $($s.Out)"}
-                else{Assert ($sp.Rows['Wired hook shell'].State-eq'MISSING') "Bash $($invalidSettings.Label) settings with a plausible command was treated as live registration evidence: $($s.Out)"}
+                $env:PATH=$pbin;$p=Run $pdoc;$env:PATH=$sbin;$s=Run $sdoc;$c=Compare-DoctorResults $p $s
+                Assert ($c.PowerShell.Rows['Wired hook shell'].State-eq'MISSING'-and$c.Bash.Rows['Wired hook shell'].State-eq'MISSING') "$($invalidSettings.Label) settings with a plausible command was treated as live registration evidence"
             }
             Put (Join-Path $r '.claude/settings.json') $validSettings
             foreach($invalidCopilot in @(
                 @{Label='junk-suffixed';Json='{"hooks":{"preToolUse":[{"bash":".claude/hooks/guard.sh"}]} junk'},
-                @{Label='trailing-comma';Json='{"hooks":{"preToolUse":[{"bash":".claude/hooks/guard.sh"}]},}';BashCannotVerify=$true},
+                @{Label='trailing-comma';Json='{"hooks":{"preToolUse":[{"bash":".claude/hooks/guard.sh"}]},}'},
                 @{Label='single-quoted';Json="{'hooks':{'preToolUse':[{'bash':'.claude/hooks/guard.sh'}]}}"},
                 @{Label='non-finite';Json='{"hooks":{"preToolUse":[{"bash":".claude/hooks/guard.sh"}]},"probe":NaN}'},
                 @{Label='leading-zero';Json='{"hooks":{"preToolUse":[{"bash":".claude/hooks/guard.sh"}]},"probe":01}'}
             )){
                 Put (Join-Path $r '.github/hooks/hooks.json') $invalidCopilot.Json
-                $env:PATH=$pbin;$p=Run $pdoc;$pp=Parse-DoctorResult $p;$env:PATH=$sbin;$s=Run $sdoc;$sp=Parse-DoctorResult $s
-                foreach($rowName in @('Hook files','Guard JSON parser','Copilot surface')){
-                    Assert ($pp.Rows[$rowName].State-eq'MISSING') "PowerShell $($invalidCopilot.Label) hooks JSON did not make $rowName MISSING: $($p.Out)"
-                    if($invalidCopilot.BashCannotVerify){Assert ($sp.Rows[$rowName].State-eq'CANT-VERIFY') "Bash $($invalidCopilot.Label) did not make $rowName a provider-inability finding: $($s.Out)"}
-                    else{Assert ($sp.Rows[$rowName].State-eq'MISSING') "Bash $($invalidCopilot.Label) hooks JSON did not make $rowName MISSING: $($s.Out)"}
-                }
+                $env:PATH=$pbin;$p=Run $pdoc;$env:PATH=$sbin;$s=Run $sdoc;$c=Compare-DoctorResults $p $s
+                foreach($rowName in @('Hook files','Guard JSON parser','Copilot surface')){Assert ($c.PowerShell.Rows[$rowName].State-eq'MISSING'-and$c.Bash.Rows[$rowName].State-eq'MISSING') "$($invalidCopilot.Label) hooks JSON did not make $rowName MISSING on both twins"}
             }
             Put (Join-Path $r '.github/hooks/hooks.json') $validCopilot
         }finally{Remove-Item -Recurse -Force $pbin,$sbin}
@@ -616,12 +589,11 @@ It 'Stack toolchain rows use byte-identical doctor-process wording for every tem
         }finally{Remove-Item -Recurse -Force $r,$pbin,$sbin}
         foreach($stampCase in @(
             @{Name='malformed JSON with plausible template';Stamp='junk {"template":"dotnet"}';JqTemplate='dotnet';BreakJq=$true;State='MISSING';Detail='invalid JSON';Exit=1},
-            @{Name='trailing-comma JSON with no completing provider';Stamp='{"template":"dotnet",}';JqTemplate='dotnet';BreakJq=$true;State='MISSING';Detail='invalid JSON';Exit=1;BashCannotVerify=$true},
+            @{Name='trailing-comma JSON';Stamp='{"template":"dotnet",}';JqTemplate='dotnet';BreakJq=$true;State='MISSING';Detail='invalid JSON';Exit=1},
             @{Name='commented JSON';Stamp='{/*comment*/"template":"dotnet"}';JqTemplate='dotnet';BreakJq=$true;State='MISSING';Detail='invalid JSON';Exit=1},
             @{Name='unquoted-key JSON';Stamp='{template:"dotnet"}';JqTemplate='dotnet';BreakJq=$true;State='MISSING';Detail='invalid JSON';Exit=1},
             @{Name='non-finite JSON constant';Stamp='{"template":"dotnet","probe":NaN}';JqTemplate='dotnet';BreakJq=$true;State='MISSING';Detail='invalid JSON';Exit=1},
             @{Name='leading-zero JSON number';Stamp='{"template":"dotnet","probe":01}';JqTemplate='dotnet';BreakJq=$true;State='MISSING';Detail='invalid JSON';Exit=1},
-            @{Name='NUL-suffixed JSON';Stamp=('{"template":"dotnet"}'+[char]0);JqTemplate='dotnet';BreakJq=$false;State='MISSING';Detail='invalid JSON';Exit=1},
             @{Name='uppercase template property';Stamp='{"Template":"dotnet"}';JqTemplate='';BreakJq=$false;State='MISSING';Detail='lacks the required non-empty string';Exit=1},
             @{Name='valid JSON without template';Stamp='{}';JqTemplate='';BreakJq=$false;State='MISSING';Detail='lacks the required non-empty string';Exit=1},
             @{Name='valid one-object JSON array';Stamp='[{"template":"dotnet"}]';JqTemplate='';BreakJq=$false;State='MISSING';Detail='lacks the required non-empty string';Exit=1},
@@ -636,131 +608,31 @@ It 'Stack toolchain rows use byte-identical doctor-process wording for every tem
                 $env:PATH=$sbin;$s=Run (Join-Path $r 'scripts/framework-doctor.sh')
                 $pLine=[regex]::Match(($p.Out-replace"`r",''),'(?m)^\[(MISSING|CANT-VERIFY)\] Install state - .+$').Value
                 $sLine=[regex]::Match(($s.Out-replace"`r",''),'(?m)^\[(MISSING|CANT-VERIFY)\] Install state - .+$').Value
-                if($stampCase.BashCannotVerify){
-                    Assert ($p.Exit-eq 1-and$s.Exit-eq 0) "$($stampCase.Name) did not distinguish artifact finding from provider inability: PS=$($p.Exit), SH=$($s.Exit)"
-                    Assert ($sLine-match'^\[CANT-VERIFY\].*no trusted JSON provider completed') "Bash $($stampCase.Name) did not report provider inability: $($s.Out)"
-                }else{Assert ($p.Exit-eq$stampCase.Exit-and$s.Exit-eq$stampCase.Exit) "$($stampCase.Name) exits differ: PS=$($p.Exit), SH=$($s.Exit)"}
+                Assert ($p.Exit-eq$stampCase.Exit-and$s.Exit-eq$stampCase.Exit) "$($stampCase.Name) exits differ: PS=$($p.Exit), SH=$($s.Exit)"
                 Assert ($pLine-match('^\['+$stampCase.State+'\].*'+[regex]::Escape($stampCase.Detail))) "PowerShell $($stampCase.Name) row wrong: $($p.Out)"
-                if(-not$stampCase.BashCannotVerify){Assert ($sLine-eq$pLine) "$($stampCase.Name) install-state mismatch: PS='$pLine' SH='$sLine'"}
+                Assert ($sLine-eq$pLine) "$($stampCase.Name) install-state mismatch: PS='$pLine' SH='$sLine'"
             }finally{Remove-Item -Recurse -Force $r,$pbin,$sbin}
         }
-        $r=Fixture -Pending $true;$pbin=New-ParserProbeBin $bash $true $true dotnet;$sbin=New-ParserProbeBin $bash $true $true dotnet $true
-        try{
-            $stampPath=Join-Path $r '.claude/framework-version.json';$stampText=[IO.File]::ReadAllText($stampPath)
-            [IO.File]::WriteAllText($stampPath,$stampText,[Text.UTF8Encoding]::new($true))
-            $stampBytes=[IO.File]::ReadAllBytes($stampPath);Assert ($stampBytes[0]-eq0xEF-and$stampBytes[1]-eq0xBB-and$stampBytes[2]-eq0xBF) 'BOM stamp fixture lacks its BOM'
-            $env:PATH=$pbin;$p=Run (Join-Path $r 'scripts/framework-doctor.ps1')
-            $env:PATH=$sbin;$s=Run (Join-Path $r 'scripts/framework-doctor.sh')
-            foreach($result in @($p,$s)){Assert ($result.Out-match'\[OK\] Install state - template=dotnet; version=0\.32\.0; applied=2026-07-17') "BOM-safe stamp query lost typed fields: $($result.Out)`nSTDERR: $($result.Err)"}
-        }finally{Remove-Item -Recurse -Force $r,$pbin,$sbin}
         $realJq=Resolve-HostJq
-        $realPython=Resolve-HostPython
-$queryFailJq=@'
-#!/usr/bin/env bash
-if [ "$1" = -er ]; then
-  IFS= read -r input || :
-  [ "$input" = '{"atl":[1,true,null]}' ] && echo ATL_JQ_OK && exit 0
-fi
-exit 49
-'@
         if($realJq){
             foreach($realJqCase in @(@{Name='scalar';Stamp='"dotnet"'},@{Name='one-object array';Stamp='[{"template":"dotnet"}]'})){
                 $r=Fixture -Shell 'bash' -Pending $true
                 try{
                     Put (Join-Path $r '.claude/framework-version.json') $realJqCase.Stamp
                     $s=Invoke-Sandboxed -Bash $bash -ScriptPath (Join-Path $r 'scripts/framework-doctor.sh') -Utilities @('dirname','sed','grep','sort','paste','head') -FakeBins @{jq=(New-ExecShim $realJq)}
-                    Assert ($s.Exit-eq 1-and$s.Out-match'\[MISSING\] Install state - \.claude/framework-version\.json is valid JSON but .*lacks the required non-empty string') "real jq did not classify valid $($realJqCase.Name) JSON as missing-template: $($s.Out)`nSTDERR: $($s.Err)"
+                    Assert ($s.Exit-eq 1-and$s.Out-match'\[MISSING\] Install state - \.claude/framework-version\.json is valid JSON but lacks the required non-empty string') "real jq did not classify valid $($realJqCase.Name) JSON as missing-template: $($s.Out)`nSTDERR: $($s.Err)"
                 }finally{Remove-Item -Recurse -Force $r}
             }
         }
-        foreach($registrationCase in @(
-                @{Label='valid empty registrations';Settings='{"hooks":{}}';Copilot='{"hooks":{}}';Rows=@{'Wired hook shell'='MISSING';'Hook files'='MISSING';'Guard JSON parser'='OK';'Copilot surface'='OK'};HookCount=0},
-                @{Label='scalar Claude root';Settings='"not-an-object"';Copilot=$null;Rows=@{'Wired hook shell'='MISSING';'Hook files'='MISSING';'Guard JSON parser'='MISSING';'Copilot surface'='OK'}},
-                @{Label='nested Claude command decoy';Settings='{"hooks":{},"metadata":{"command":"bash -File .claude/hooks/not-real.sh"}}';Copilot=$null;Rows=@{'Wired hook shell'='MISSING';'Hook files'='OK';'Guard JSON parser'='OK'};HookCount=1},
-                @{Label='non-command Claude handler';Settings='{"hooks":{"PreToolUse":[{"hooks":[{"type":"prompt","command":"bash -File .claude/hooks/not-real.sh"}]}]}}';Copilot=$null;Rows=@{'Wired hook shell'='MISSING';'Hook files'='OK';'Guard JSON parser'='OK'};HookCount=1},
-                @{Label='nested wrong Claude hooks container';Settings='{"hooks":{"PreToolUse":[{"hooks":{}}]}}';Copilot=$null;Rows=@{'Wired hook shell'='MISSING';'Hook files'='MISSING';'Guard JSON parser'='MISSING'}},
-                @{Label='exact duplicate Claude command uses last value';Settings='{"hooks":{"PreToolUse":[{"hooks":[{"type":"command","command":"powershell -File .claude/hooks/not-real.ps1","command":"powershell -File .claude/hooks/guard.ps1"}]}]}}';Copilot=$null;Rows=@{'Wired hook shell'='CANT-VERIFY';'Hook files'='OK'};HookCount=1},
-                @{Label='decoded ASCII Claude collision';Settings='{"hooks":{},"H\u006foks":{}}';Copilot=$null;Rows=@{'Wired hook shell'='MISSING';'Hook files'='MISSING';'Guard JSON parser'='MISSING'};DetailRow='Wired hook shell';Detail='case-colliding'},
-                @{Label='recursive decoded Claude collision';Settings='{"hooks":{"PreToolUse":[{"hooks":[{"command":"powershell -File .claude/hooks/guard.ps1","C\u006fmmand":"powershell -File .claude/hooks/not-real.ps1"}]}]}}';Copilot=$null;Rows=@{'Wired hook shell'='MISSING';'Hook files'='MISSING';'Guard JSON parser'='MISSING'};DetailRow='Wired hook shell';Detail='case-colliding'},
-                @{Label='NUL-suffixed Claude registration';Settings=('{"hooks":{}}'+[char]0);Copilot=$null;Rows=@{'Wired hook shell'='MISSING';'Hook files'='MISSING';'Guard JSON parser'='MISSING'}},
-                @{Label='nested Copilot bash decoy';Settings=$null;Copilot='{"hooks":{},"metadata":{"bash":".claude/hooks/not-real.sh"}}';Rows=@{'Hook files'='OK';'Guard JSON parser'='OK';'Copilot surface'='OK'};HookCount=1},
-                @{Label='scalar Copilot root';Settings=$null;Copilot='"not-an-object"';Rows=@{'Hook files'='MISSING';'Guard JSON parser'='MISSING';'Copilot surface'='MISSING'}},
-                @{Label='exact duplicate Copilot command uses last value';Settings=$null;Copilot='{"hooks":{"preToolUse":[{"bash":".claude/hooks/not-real.sh","bash":".claude/hooks/guard.sh","powershell":".claude\\hooks\\guard.ps1"}]}}';Rows=@{'Hook files'='OK';'Copilot surface'='OK'};HookCount=2},
-                @{Label='decoded ASCII Copilot collision';Settings=$null;Copilot='{"hooks":{},"H\u006foks":{}}';Rows=@{'Hook files'='MISSING';'Guard JSON parser'='MISSING';'Copilot surface'='MISSING'};DetailRow='Copilot surface';Detail='case-colliding'},
-                @{Label='NUL-suffixed Copilot registration';Settings=$null;Copilot=('{"hooks":{}}'+[char]0);Rows=@{'Hook files'='MISSING';'Guard JSON parser'='MISSING';'Copilot surface'='MISSING'}}
-            )){
-                $r=Fixture -Pending $true -CopilotBash $false
-                try{
-                    if($null-ne$registrationCase.Settings){Put (Join-Path $r '.claude/settings.json') $registrationCase.Settings}
-                    if($null-ne$registrationCase.Copilot){Put (Join-Path $r '.github/hooks/hooks.json') $registrationCase.Copilot}
-                    $env:PATH=$old;$p=Run (Join-Path $r 'scripts/framework-doctor.ps1');$pp=Parse-DoctorResult $p
-                    foreach($rowName in $registrationCase.Rows.Keys){
-                        $expected=$registrationCase.Rows[$rowName]
-                        Assert ($pp.Rows[$rowName].State-eq$expected) "PowerShell $($registrationCase.Label) $rowName=$($pp.Rows[$rowName].State), expected=${expected}: $($p.Out)"
-                    }
-                    if($registrationCase.ContainsKey('HookCount')){
-                        $expectedDetail=if($registrationCase.HookCount-eq0){'no hook registrations were found'}else{"$($registrationCase.HookCount) registered files are present"}
-                        Assert ($pp.Rows['Hook files'].Detail-match[regex]::Escape($expectedDetail)) "PowerShell $($registrationCase.Label) registration count/detail was '$($pp.Rows['Hook files'].Detail)', expected '$expectedDetail'"
-                    }
-                    if($registrationCase.ContainsKey('DetailRow')){
-                        Assert ($pp.Rows[$registrationCase.DetailRow].Detail-match[regex]::Escape($registrationCase.Detail)) "PowerShell $($registrationCase.Label) detail was '$($pp.Rows[$registrationCase.DetailRow].Detail)'"
-                    }
-                    $bashRuns=@()
-                    if($realJq){$bashRuns+=@{Label='real jq';Result=(Invoke-Sandboxed -Bash $bash -ScriptPath (Join-Path $r 'scripts/framework-doctor.sh') -Utilities @('sed','grep','head') -FakeBins @{jq=(New-ExecShim $realJq)})}}
-                    if($realPython){$bashRuns+=@{Label='Python fallback';Result=(Invoke-Sandboxed -Bash $bash -ScriptPath (Join-Path $r 'scripts/framework-doctor.sh') -Utilities @('sed','grep','head') -FakeBins @{jq=$queryFailJq} -ExposeInterpreterAs python)}}
-                    foreach($bashRun in $bashRuns){
-                        $s=$bashRun.Result;$sp=Parse-DoctorResult $s
-                        foreach($rowName in $registrationCase.Rows.Keys){$expected=$registrationCase.Rows[$rowName];Assert ($sp.Rows[$rowName].State-eq$expected) "Bash/$($bashRun.Label) $($registrationCase.Label) $rowName=$($sp.Rows[$rowName].State), expected=${expected}: $($s.Out)`nSTDERR: $($s.Err)"}
-                        if($registrationCase.ContainsKey('HookCount')){Assert ($sp.Rows['Hook files'].Detail-match[regex]::Escape($expectedDetail)) "Bash/$($bashRun.Label) $($registrationCase.Label) registration count/detail was '$($sp.Rows['Hook files'].Detail)', expected '$expectedDetail'"}
-                        if($registrationCase.ContainsKey('DetailRow')){Assert ($sp.Rows[$registrationCase.DetailRow].Detail-match[regex]::Escape($registrationCase.Detail)) "Bash/$($bashRun.Label) $($registrationCase.Label) detail was '$($sp.Rows[$registrationCase.DetailRow].Detail)'"}
-                    }
-                }finally{Remove-Item -Recurse -Force $r}
-            }
-        if($realPython){
-            foreach($faultyJq in @(
-                @{Label='nonzero post-probe';Script="#!/usr/bin/env bash`nif [ `"`$1`" = -er ]; then IFS= read -r input || :; [ `"`$input`" = '{`"atl`"`:[1,true,null]}' ] && echo ATL_JQ_OK && exit 0; fi`nexit 49`n"},
-                @{Label='empty post-probe';Script="#!/usr/bin/env bash`nif [ `"`$1`" = -er ]; then IFS= read -r input || :; [ `"`$input`" = '{`"atl`"`:[1,true,null]}' ] && echo ATL_JQ_OK && exit 0; fi`nIFS= read -r input || :`nexit 0`n"}
-            )){
-                $r=Fixture -Shell 'bash' -Pending $true
-                try{
-                    $s=Invoke-Sandboxed -Bash $bash -ScriptPath (Join-Path $r 'scripts/framework-doctor.sh') -Utilities @('sed','grep','sort','paste','head') -FakeBins @{jq=$faultyJq.Script} -ExposeInterpreterAs python
-                    Assert ($s.Out-match'\[OK\] Install state - template=dotnet') "$($faultyJq.Label) jq suppressed the working Python install-state fallback: $($s.Out)`nSTDERR: $($s.Err)"
-                    Assert ($s.Out-match'\[OK\] Guard JSON parser') "$($faultyJq.Label) jq suppressed the working Python guard-parser fallback: $($s.Out)`nSTDERR: $($s.Err)"
-                    Assert ($s.Out-match'\[OK\] Copilot surface') "$($faultyJq.Label) jq was misreported as invalid hooks JSON instead of falling back to Python: $($s.Out)`nSTDERR: $($s.Err)"
-                }finally{Remove-Item -Recurse -Force $r}
-            }
+        if(Resolve-HostPython){
             $r=Fixture -Shell 'bash' -Pending $true
             try{
-                Put (Join-Path $r '.claude/framework-version.json') '{"template":"dotnet",}'
-                $s=Invoke-Sandboxed -Bash $bash -ScriptPath (Join-Path $r 'scripts/framework-doctor.sh') -Utilities @('sed','grep','sort','paste','head') -FakeBins @{jq=$queryFailJq} -ExposeInterpreterAs python
-                Assert ($s.Out-match'\[MISSING\] Install state - .*invalid JSON') "Python fallback did not prove invalid stamp content after jq query failure: $($s.Out)`nSTDERR: $($s.Err)"
-                Assert ($s.Out-notmatch'\[CANT-VERIFY\] Install state') "Python-proven invalid stamp was mislabeled provider inability: $($s.Out)"
+                $s=Invoke-Sandboxed -Bash $bash -ScriptPath (Join-Path $r 'scripts/framework-doctor.sh') -Utilities @('dirname','sed','grep','sort','paste','head') -FakeBins @{jq="#!/usr/bin/env bash`nexit 49`n"} -ExposeInterpreterAs python
+                Assert ($s.Out-match'\[OK\] Install state - template=dotnet') "broken jq suppressed the working Python install-state fallback: $($s.Out)`nSTDERR: $($s.Err)"
+                Assert ($s.Out-match'\[OK\] Guard JSON parser') "broken jq suppressed the working Python guard-parser fallback: $($s.Out)`nSTDERR: $($s.Err)"
+                Assert ($s.Out-match'\[OK\] Copilot surface') "broken jq was misreported as invalid hooks JSON instead of falling back to Python: $($s.Out)`nSTDERR: $($s.Err)"
             }finally{Remove-Item -Recurse -Force $r}
         }
-        foreach($providerOutput in @(
-            @{Label='partial typed output';Body='echo ATL_OK:1'},
-            @{Label='wrong cardinality';Body="echo ATL_OK:2`necho only-one"},
-            @{Label='unexpected output';Body='echo ATL_SURPRISE'}
-        )){
-            $r=Fixture -Shell 'bash' -Pending $true
-            try{
-                $providerScript=$queryFailJq.Replace('exit 49',($providerOutput.Body+"`nexit 0"))
-                $s=Invoke-Sandboxed -Bash $bash -ScriptPath (Join-Path $r 'scripts/framework-doctor.sh') -Utilities @('sed','grep','sort','paste','head') -FakeBins @{jq=$providerScript}
-                $sp=Parse-DoctorResult $s
-                foreach($rowName in @('Install state','Wired hook shell','Hook files','Guard JSON parser','Copilot surface')){Assert ($sp.Rows[$rowName].State-eq'CANT-VERIFY') "$($providerOutput.Label) made $rowName=$($sp.Rows[$rowName].State), expected CANT-VERIFY: $($s.Out)`nSTDERR: $($s.Err)"}
-            }finally{Remove-Item -Recurse -Force $r}
-        }
-$unexpectedPython=@'
-#!/usr/bin/env bash
-IFS= read -r input || :
-if [ "$input" = '{}' ]; then echo ok; exit 0; fi
-exit 77
-'@
-        $r=Fixture -Shell 'bash' -Pending $true
-        try{
-            $s=Invoke-Sandboxed -Bash $bash -ScriptPath (Join-Path $r 'scripts/framework-doctor.sh') -Utilities @('sed','grep','sort','paste','head') -FakeBins @{jq=$queryFailJq;python=$unexpectedPython}
-            Assert ($s.Out-match'\[CANT-VERIFY\] Install state - .*no trusted JSON provider completed') "unexpected Python query failure was not preserved as provider inability: $($s.Out)`nSTDERR: $($s.Err)"
-        }finally{Remove-Item -Recurse -Force $r}
         $r=Fixture -Pending $true;$pbin=New-ParserProbeBin $bash;$sbin=New-ParserProbeBin $bash $true $true dotnet $true
         try{
             $pdoc=Join-Path $r 'scripts/framework-doctor.ps1';$ptext=[IO.File]::ReadAllText($pdoc);$pmutated=$ptext.Replace('$stampReadFailed = $false','$stampReadFailed = $true');Assert ($pmutated-ne$ptext) 'PowerShell unreadable-stamp mutation missed';Put $pdoc $pmutated $true

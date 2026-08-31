@@ -191,17 +191,12 @@ else {
         # "template" value already matches the dist mode names (dotnet / angular / monorepo).
         try {
             $stampContent = Get-Content -Raw -LiteralPath $vf -ErrorAction Stop
-        }
-        catch {
-            Die "Existing install at '$tgt', but .claude/framework-version.json could not be read, so its stack cannot be determined - fix read access or pass -Stack dotnet|angular|monorepo explicitly."
-        }
-        try {
             $stampObject = ConvertFrom-StrictJson $stampContent
             if ($stampContent -notmatch '^\s*\{') { throw 'framework-version root must be a JSON object' }
             $tmpl = Get-ExactJsonPropertyValue $stampObject 'template'
         }
-        catch { Die "Existing install at '$tgt', but .claude/framework-version.json is invalid JSON under the strict grammar, has case-colliding member names, or has a non-object root - pass -Stack dotnet|angular|monorepo." }
-        if (-not ($tmpl -is [string]) -or [string]::IsNullOrWhiteSpace($tmpl)) { Die "Existing install at '$tgt', but .claude/framework-version.json has no non-empty string ""template"" value - pass -Stack dotnet|angular|monorepo." }
+        catch { Die "Existing install at '$tgt', but .claude/framework-version.json is invalid JSON or has no non-empty string ""template"" value — pass -Stack dotnet|angular|monorepo." }
+        if (-not ($tmpl -is [string]) -or [string]::IsNullOrWhiteSpace($tmpl)) { Die "Existing install at '$tgt', but .claude/framework-version.json is invalid JSON or has no non-empty string ""template"" value — pass -Stack dotnet|angular|monorepo." }
         if ($tmpl -cne 'dotnet' -and $tmpl -cne 'angular' -and $tmpl -cne 'monorepo') { Die "Existing install names an unknown stack ""$tmpl"" in .claude/framework-version.json — pass -Stack dotnet|angular|monorepo." }
         $Stack = $tmpl
         $reason = "update stamp (.claude/framework-version.json template=$tmpl)"
