@@ -65,3 +65,10 @@ REASON Copilot CLI 1.0.65 consumes `userPromptSubmitted` stdout; live-verified 2
 # about top-level `stopReason` stays sayable.
 DENY (?i)\breason[^\w\r\n]{0,3}(?:is|was)\s+shown only to the user
 REASON A Stop hook's `decision:"block"` reason IS shown to Claude as a system reminder; the confusion was with top-level `stopReason`, which is the field that is user-only.
+
+# --- 4. Copilot Boy Scout end-to-end delivery ---------------------------------------------------
+# Was: "Copilot delivers the queued nudge at the next prompt" (presentation event table through
+# v0.79.1). Only the next-prompt channel was observed; the preceding agentStop fire/queue write was
+# never run end to end.
+DENY (?i)Copilot[^.\r\n]{0,80}\bdelivers the queued nudge at the next prompt\b
+REASON Copilot CLI's `userPromptSubmitted` delivery leg is observed, but live `agentStop` firing and its queue write are unverified; registration or a later delivery channel does not prove the full chain.

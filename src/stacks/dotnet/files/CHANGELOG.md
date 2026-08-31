@@ -11,7 +11,8 @@
   scan has not been observed firing end-to-end and is no longer described as guaranteed. VS Code
   Preview-hook prompt, post-tool, and Stop lifecycles remain unverified; its 2026-06-25 guard-deny
   observation is retained as historical evidence because the host and extension versions were not
-  recorded. Hook configuration and runtime behavior are unchanged.
+  recorded. Installer file arrival is now stated separately from dated host-consumption evidence.
+  Hook configuration and runtime behavior are unchanged.
 
 ## 0.79.1 — 2026-08-31
 

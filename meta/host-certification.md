@@ -17,12 +17,14 @@ recorded as inability to examine, not as a capability failure.
 
 | Surface | Capability | Observed | Host version | Certified |
 |---|---|---|---|---|
+| Claude Code | Framework-rules `@import` consumed | Subject/control canary returned the imported-file sentinel with zero tool invocations; the control confirmed it was absent from root `CLAUDE.md` | not recorded | historical observation — 2026-08-05 |
 | Claude Code | SessionStart context | Direct fixture emitted the unbootstrapped warning; end-to-end recert blocked by host session limit | 2.1.212 | not certified — quota |
 | Claude Code | UserPromptSubmit route rails | Direct fixture emitted `/fix` rails for the target prompt; end-to-end recert blocked by host session limit | 2.1.212 | not certified — quota |
 | Claude Code | PreToolUse guard | Direct fixture exited 2 and blocked `AKIAIOSFODNN7EXAMPLE`; end-to-end recert blocked by host session limit | 2.1.212 | not certified — quota |
 | Claude Code | PostToolUse feedback consumed | Not run — host session limit | 2.1.212 | not certified — quota |
 | Claude Code | Stop Boy-Scout nudge | Not run — host session limit | 2.1.212 | not certified — quota |
 | Copilot CLI | Folder-trust prerequisite | Fresh untrusted clone ran no hooks and wrote the fixture key; the already-trusted disposable canary path ran hooks | 1.0.70 | 2026-07-17 |
+| Copilot CLI | Native `.github/instructions/` consumed | Three-way subject/positive/negative-control canary returned only the applicable instruction sentinel; zero tool invocations and no file changes | 1.0.77 | 2026-08-05 |
 | Copilot CLI | SessionStart context consumed | Out-of-band sentinel `B49_SESSION_START_8KP3` returned verbatim | 1.0.70 | 2026-07-17 |
 | Copilot CLI | userPromptSubmitted context consumed | Out-of-band sentinel `B49_OUT_OF_BAND_7QX9` returned verbatim without tools | 1.0.70 | 2026-07-17 |
 | Copilot CLI | userPromptSubmitted single-entry delivery | Four controlled runs established that only the last registered entry reaches the model: two entries, swapped tokens, three entries, and three structurally distinct entries | 1.0.79/1.0.80 | 2026-08-18 |
@@ -31,6 +33,7 @@ recorded as inability to examine, not as a capability failure.
 | Copilot CLI | postToolUse context consumed | **CONFIRMED in an isolated three-arm canary (B-50).** Treatment (`postToolUse`) echoed `B50-POSTTOOL-Q7R4X2` verbatim after a real `create` tool call, and its hook-ran marker fired. Positive control (the same script on `userPromptSubmitted`, a channel already verified on this CLI) also echoed, making a null readable. Negative control (no `hooks.json`) echoed nothing and its marker never fired, ruling out an observed alternative token route under the same prompt; environment-only placement would not have done so by itself. Kit: `meta/canaries/b50-copilot-posttooluse/` | 1.0.80 | 2026-08-20 |
 | Copilot CLI | agentStop firing and Boy Scout queue write | No live run. The event is registered and vendor-documented, but `meta/canaries/agent-stop-delivery/` remains UNRUN and non-certifying as written | not tested | not certified — unrun |
 | Copilot VS Code agent mode | PreToolUse guard deny honored | The legacy v0.23.0 changelog records one end-to-end Preview-hook denial on 2026-06-25; host and extension versions were not recorded | not recorded | historical observation — not current certification |
+| Copilot VS Code agent mode | Native `.github/instructions/` consumed | One manual discriminating-sentinel observation; no transcript or tool-use check was captured | VS Code 1.128 / Copilot Chat 0.56.0 | historical observation — 2026-08-05 |
 | Copilot VS Code agent mode | userPromptSubmitted context consumed | No current live run; no interactive VS Code/Copilot seat available | unavailable | not certified — no seat |
 | Copilot VS Code agent mode | postToolUse context consumed | No current live run; no interactive VS Code/Copilot seat available | unavailable | not certified — no seat |
 | Copilot VS Code agent mode | Stop/agentStop firing and Boy Scout delivery | Event spelling, firing, and output consumption have not been observed; no interactive VS Code/Copilot seat available | unavailable | not certified — no seat |

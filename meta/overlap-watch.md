@@ -6,8 +6,9 @@
 > better — which is exactly the cost `context-footprint` exists to measure. This table names, per
 > mechanism, what would obsolete it, the signal that it has happened, and what we would do about it.
 >
-> **Reviewed as part of every host-recertification cycle (B-43), in the same sitting.** A row whose
-> detection signal has fired is a backlog entry, not a discussion.
+> **Review is evidence-triggered, not calendar-driven.** Re-read the affected row when its detection
+> signal fires, or when a host-facing mechanism changes in a way that could alter the retirement
+> decision under WSD-066. A fired signal becomes a backlog entry, not a discussion.
 >
 > **A row is not a plan to retire.** Most rows should sit at "keep" for a long time. The point is that
 > the *reason* to keep is written down and re-read, so "we still ship this" stays a decision rather

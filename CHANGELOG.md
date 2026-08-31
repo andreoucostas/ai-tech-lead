@@ -19,15 +19,15 @@ certificate.** B-43/WSD-066 retains Copilot CLI's observed `userPromptSubmitted`
 unverified. The legacy v0.23.0 VS Code Preview-hook guard denial remains a narrow 2026-06-25
 observation with host/extension versions unrecorded; VS Code prompt, post-tool, and Stop lifecycles
 remain unverified. The three READMEs, enforcement matrix, hook comment, host ledger, and persisted
-canary statuses now state the same evidence boundary. Hook registration and runtime behavior are
-unchanged.
+canary statuses now state the same evidence boundary. The matrix also separates installer file
+arrival from dated host-consumption evidence. Hook registration and runtime behavior are unchanged.
 
 The recurring quarterly premise is retired rather than replaced with speculative infrastructure.
 Fresh host evidence is required before a stronger claim, or after contrary evidence or a host-
 facing mechanism change when the result could alter a decision. The UNRUN turn-end kit is explicitly
 non-certifying as written, and B-52's historical kit now records its actual four CLI 1.0.79/1.0.80
-runs instead of saying they remain pending. No provider run, new canary, runtime branch, or test was
-added.
+runs instead of saying they remain pending. No provider run, new canary, or runtime branch was
+added; the existing vendor-claim gate now rejects the exact superseded full-chain assurance.
 
 ## 0.79.1 — 2026-08-31
 

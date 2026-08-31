@@ -55,6 +55,16 @@ $provenance = @(
             'The top-level `stopReason` is shown only to the user, unlike the Stop hook `reason`.'
         )
     }
+    [pscustomobject]@{
+        Pattern = '(?i)Copilot[^.\r\n]{0,80}\bdelivers the queued nudge at the next prompt\b'
+        Matches = @(
+            'Scan bounded cleanup candidates; Copilot delivers the queued nudge at the next prompt'
+        )
+        Rejects = @(
+            'Copilot registers the turn-end scan, but live agentStop firing and the resulting queue write remain unverified.'
+            'The userPromptSubmitted delivery channel was separately observed on CLI 1.0.80, not the preceding turn-end leg.'
+        )
+    }
 )
 
 function Read-Utf8Text {
@@ -304,7 +314,7 @@ Reset-Tests
 $denylist = $null
 It 'the superseded-claim denylist parses and every pattern compiles' {
     $script:denylist = Read-Denylist $denyFile
-    Assert (@($script:denylist.Rules).Count -ge 3) 'denylist lost its seeded entries'
+    Assert (@($script:denylist.Rules).Count -ge 4) 'denylist lost its seeded entries'
 }
 
 It 'every denylist pattern catches its historical text and spares the prose that replaced it' {
