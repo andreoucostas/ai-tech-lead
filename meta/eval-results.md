@@ -1628,3 +1628,40 @@ Host: Claude Code 2.1.247 (Claude Code) · scratch: retained=True
 > plus its matching audit append. Counted cost: USD 1.1350878, 66 input tokens, 34,714 output tokens.
 > Total paid investigation including retained condition-invalid runs: USD 2.7627492. Apply the
 > preregistered stop rule: close B-99 without a consumer change.
+
+## B-129 raw Phase-0 sidecar preserved at closure, 2026-08-31
+
+Source: sibling worktree `ai-tech-lead-b129`, branch `codex/b129-publication-routing-probe`, commit
+`80c789eadc1a6772fb9ef89be8639a42bd19c0a7`, `meta/eval-results-b129-live-attempt2.md`. Original:
+3,289 bytes, no BOM, SHA-256
+`516F7F13F434D82EA52D393372383133889CAF0F03A96E6A307A0E1D8AA7A717`; its canonical-LF ledger
+representation is 3,288 bytes, SHA-256
+`4DA551AC349003E54EC108F670E3AD59ACEB50CE7F5775A5BA41FAE3F8C39F0A`. The payload is preserved
+evidence, not a new score; its final status remains `ROUTING PROBE INCOMPLETE` and WSD-042's two
+void dispositions are unchanged.
+
+<!-- B-129-SIDECAR-BEGIN -->
+
+## 2026-08-15 20:09:11 +01:00 — framework v0.52.1 (80c789eadc1a6772fb9ef89be8639a42bd19c0a7)
+
+Host: Claude Code 2.1.233 (Claude Code) · scratch: retained=True
+
+- **SELECTED warehouse-publication-routing-a-reuse-dotnet-1** (model=sonnet) — agentExit=0 timedOut=False costUsd=1.1042682 tokensIn=40 tokensOut=20879; skillSelected=True skillRead=False
+- **SELECTED warehouse-publication-routing-a-reuse-dotnet-2** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.8402676 tokensIn=30 tokensOut=12448; skillSelected=True skillRead=False
+- **ERROR warehouse-publication-routing-a-reuse-monorepo-1** (model=sonnet) — agentExit=1 timedOut=False costUsd=1.2729318 tokensIn=30 tokensOut=25898; skillSelected=True skillRead=True
+- **ERROR warehouse-publication-routing-a-reuse-monorepo-2** (model=sonnet) — agentExit=1 timedOut=False costUsd=1.2579825 tokensIn=30 tokensOut=26420; skillSelected=True skillRead=True
+- **NOT_SELECTED warehouse-publication-routing-a-single-dotnet-1** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.5647047 tokensIn=20 tokensOut=9421; skillSelected=False skillRead=False
+- **NOT_SELECTED warehouse-publication-routing-a-single-dotnet-2** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.6787701 tokensIn=22 tokensOut=12435; skillSelected=False skillRead=False
+- **SELECTED warehouse-publication-routing-a-single-monorepo-1** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.9282774 tokensIn=36 tokensOut=13805; skillSelected=True skillRead=True
+- **SELECTED warehouse-publication-routing-a-single-monorepo-2** (model=sonnet) — agentExit=0 timedOut=False costUsd=1.1889465 tokensIn=42 tokensOut=21088; skillSelected=True skillRead=False
+- **SELECTED warehouse-publication-routing-b-reuse-dotnet-1** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.8441946 tokensIn=28 tokensOut=15325; skillSelected=True skillRead=True
+- **SELECTED warehouse-publication-routing-b-reuse-dotnet-2** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.7718685 tokensIn=26 tokensOut=12345; skillSelected=True skillRead=True
+- **SELECTED warehouse-publication-routing-b-reuse-monorepo-1** (model=sonnet) — agentExit=0 timedOut=False costUsd=1.2492639 tokensIn=32 tokensOut=23770; skillSelected=True skillRead=True
+- **SELECTED warehouse-publication-routing-b-reuse-monorepo-2** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.935268 tokensIn=26 tokensOut=12979; skillSelected=True skillRead=True
+- **ERROR warehouse-publication-routing-b-single-dotnet-1** (model=sonnet) — agentExit=1 timedOut=False costUsd=0.4850379 tokensIn=16 tokensOut=5753; skillSelected=True skillRead=True
+- **ERROR warehouse-publication-routing-b-single-dotnet-2** (model=sonnet) — agentExit=1 timedOut=False costUsd=0 tokensIn=0 tokensOut=0; skillSelected=False skillRead=False
+- **ERROR warehouse-publication-routing-b-single-monorepo-1** (model=sonnet) — agentExit=1 timedOut=False costUsd=0 tokensIn=0 tokensOut=0; skillSelected=False skillRead=False
+- **ERROR warehouse-publication-routing-b-single-monorepo-2** (model=sonnet) — agentExit=1 timedOut=False costUsd=0 tokensIn=0 tokensOut=0; skillSelected=False skillRead=False
+- **ROUTING PROBE INCOMPLETE** — A selected=4/6, read=1/6, clears=False; B selected=4/4, read=4/4, clears=False
+
+<!-- B-129-SIDECAR-END -->
