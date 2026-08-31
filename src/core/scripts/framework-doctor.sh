@@ -79,12 +79,25 @@ _pybin_resolved=0
 _pybin=""
 _jq_working_resolved=0
 _jq_working=0
+_registration_jq_resolved=0
+_registration_jq=0
 has_working_jq() {
   if [ "$_jq_working_resolved" -eq 0 ]; then
     _jq_working_resolved=1
     if command -v jq >/dev/null 2>&1 && printf '{}' | jq -e . >/dev/null 2>&1; then _jq_working=1; fi
   fi
   [ "$_jq_working" -eq 1 ]
+}
+has_registration_jq() {
+  if [ "$_registration_jq_resolved" -eq 0 ]; then
+    _registration_jq_resolved=1
+    probe=''
+    if command -v jq >/dev/null 2>&1; then
+      probe=$(printf '{"atl":[1,true,null]}' | jq -er 'if type == "object" and .atl == [1,true,null] then "ATL_JQ_OK" else empty end' 2>/dev/null) || probe=''
+      [ "$probe" = ATL_JQ_OK ] && _registration_jq=1
+    fi
+  fi
+  [ "$_registration_jq" -eq 1 ]
 }
 # jq deliberately accepts NaN, Infinity, and leading-zero integers. Reject those extensions outside
 # strings before every jq decision so all doctor parser paths share the strict RFC JSON boundary.
@@ -129,6 +142,176 @@ resolve_pybin() {
       _pybin=$cand; return
     fi
   done
+}
+# Accept only a complete, typed provider response. A partial/empty/extra response is a provider
+# failure, never evidence about the JSON artifact. Commands are line-delimited; the installed hook
+# registrations do not contain embedded newlines, and an unexpected newline therefore fails closed
+# to the alternate provider instead of being silently truncated.
+accept_registration_output() {
+  local output=$1 header expected body actual=0 item stamp_index=0
+  output=${output//$'\r\n'/$'\n'}
+  output=${output%$'\r'}
+  registration_state=unknown
+  registration_payload=''
+  registration_stamp_version=''
+  registration_stamp_applied=''
+  case "$output" in
+    ATL_JSON_INVALID) registration_state=invalid; return 0 ;;
+    ATL_COLLISION) registration_state=invalid; return 0 ;;
+    ATL_SHAPE_INVALID) registration_state=shape; return 0 ;;
+    ATL_READ_FAILED) registration_state=read; return 0 ;;
+  esac
+  header=${output%%$'\n'*}
+  case "$header" in ATL_OK:[0-9]*) expected=${header#ATL_OK:} ;; *) return 1 ;; esac
+  case "$expected" in ''|*[!0-9]*) return 1;; esac
+  if [ "$expected" -eq 0 ]; then
+    [ "$output" = "$header" ] || return 1
+    registration_state=ok
+    return 0
+  fi
+  [ "$output" != "$header" ] || return 1
+  body=${output#*$'\n'}
+  while IFS= read -r item; do actual=$((actual + 1)); done <<<"$body"
+  [ "$actual" -eq "$expected" ] || return 1
+  if [ "$registration_kind" = stamp ]; then
+    [ "$expected" -eq 3 ] || return 1
+    while IFS= read -r item; do
+      case "$stamp_index:$item" in
+        0:T:*) registration_payload=${item#T:} ;;
+        1:V:*) registration_stamp_version=${item#V:} ;;
+        2:A:*) registration_stamp_applied=${item#A:} ;;
+        *) return 1 ;;
+      esac
+      stamp_index=$((stamp_index + 1))
+    done <<<"$body"
+  elif [ "$registration_kind" = copilot ]; then
+    while IFS= read -r item; do
+      case "$item" in $'bash\t'?*|$'powershell\t'?*) ;; *) return 1;; esac
+    done <<<"$body"
+    registration_payload=$body
+  else
+    registration_payload=$body
+  fi
+  registration_state=ok
+}
+read_json_file_text() {
+  local path=$1 read_status
+  json_file_text=''
+  json_file_state=unknown
+  if ! exec 9<"$path"; then json_file_state=read; return; fi
+  IFS= read -r -d '' json_file_text <&9
+  read_status=$?
+  exec 9<&-
+  # A zero status means the NUL delimiter was encountered. Bash cannot retain that byte; report
+  # the artifact invalid instead of allowing a provider to inspect silently truncated content.
+  case "$read_status" in 0) json_file_state=nul;; 1) json_file_state=ok;; *) json_file_state=read;; esac
+}
+parse_registration_json() {
+  local kind=$1 path=$2 text=$3 filter output status
+  registration_state=unknown
+  registration_payload=''
+  registration_kind=$kind
+  # Command substitution preserves a UTF-8 BOM. It is not JSON content, and both PowerShell and
+  # Python already read it BOM-safely, so remove one leading BOM before the jq lexical/query path.
+  text=${text#$'\xEF\xBB\xBF'}
+  strict_json_jq_lexemes "$text" || { registration_state=invalid; return; }
+  case "$kind" in
+    stamp) filter='# atl_stamp_registration
+      def atl_fold: explode | map(if . >= 65 and . <= 90 then . + 32 else . end) | implode;
+      def atl_clean: if type == "object" then (([keys_unsorted[] | atl_fold] | length) == ([keys_unsorted[] | atl_fold] | unique | length)) and all(.[]; atl_clean) elif type == "array" then all(.[]; atl_clean) else true end;
+      if (atl_clean | not) then "ATL_COLLISION"
+      elif type == "object" and (.template | type) == "string" and (.template | test("[^[:space:]]")) then
+        "ATL_OK:3", "T:\(.template)", "V:\(if (.version | type) == "string" then .version else "" end)", "A:\(if (.applied | type) == "string" then .applied else "" end)"
+      else "ATL_SHAPE_INVALID" end' ;;
+    claude) filter='# atl_claude_registration
+      def atl_fold: explode | map(if . >= 65 and . <= 90 then . + 32 else . end) | implode;
+      def atl_clean: if type == "object" then (([keys_unsorted[] | atl_fold] | length) == ([keys_unsorted[] | atl_fold] | unique | length)) and all(.[]; atl_clean) elif type == "array" then all(.[]; atl_clean) else true end;
+      def atl_event: type == "array" and all(.[]; type == "object" and has("hooks") and (.hooks | type) == "array" and all(.hooks[]; type == "object"));
+      if (atl_clean | not) then "ATL_COLLISION"
+      elif type == "object" and has("hooks") and (.hooks | type) == "object" and all(.hooks[]; atl_event) then
+        [.hooks[] | .[] | .hooks[] | select((has("type") | not) or .type == "command") | .command? | select(type == "string" and test("[^[:space:]]"))] as $commands |
+        "ATL_OK:\($commands | length)", $commands[]
+      else "ATL_SHAPE_INVALID" end' ;;
+    copilot) filter='# atl_copilot_registration
+      def atl_fold: explode | map(if . >= 65 and . <= 90 then . + 32 else . end) | implode;
+      def atl_clean: if type == "object" then (([keys_unsorted[] | atl_fold] | length) == ([keys_unsorted[] | atl_fold] | unique | length)) and all(.[]; atl_clean) elif type == "array" then all(.[]; atl_clean) else true end;
+      def atl_event: type == "array" and all(.[]; type == "object");
+      if (atl_clean | not) then "ATL_COLLISION"
+      elif type == "object" and has("hooks") and (.hooks | type) == "object" and all(.hooks[]; atl_event) then
+        [.hooks[] | .[] as $entry | ("bash", "powershell") as $field | select(($entry[$field] | type) == "string" and ($entry[$field] | test("[^[:space:]]"))) | "\($field)\t\($entry[$field])"] as $commands |
+        "ATL_OK:\($commands | length)", $commands[]
+      else "ATL_SHAPE_INVALID" end' ;;
+    *) return ;;
+  esac
+  if has_registration_jq; then
+    output=$(jq -r "$filter" "$path" 2>/dev/null); status=$?
+    if [ "$status" -eq 0 ] && accept_registration_output "$output"; then return; fi
+  fi
+  resolve_pybin
+  [ -n "$_pybin" ] || return
+  output=$("$_pybin" -c 'import json,sys
+kind,path=sys.argv[1:]
+class Collision(Exception): pass
+class InvalidConstant(Exception): pass
+def fold(name): return "".join(chr(ord(c)+32) if "A" <= c <= "Z" else c for c in name)
+def pairs(items):
+    result={}; seen={}
+    for key,value in items:
+        folded=fold(key)
+        if folded in seen and seen[folded] != key: raise Collision()
+        seen[folded]=key
+        result[key]=value
+    return result
+try:
+    with open(path,encoding="utf-8-sig") as source:
+        root=json.load(source,object_pairs_hook=pairs,parse_constant=lambda value: (_ for _ in ()).throw(InvalidConstant(value)))
+except OSError: print("ATL_READ_FAILED"); sys.exit(0)
+except (json.JSONDecodeError,UnicodeDecodeError,InvalidConstant): print("ATL_JSON_INVALID"); sys.exit(0)
+except Collision: print("ATL_COLLISION"); sys.exit(0)
+commands=[]
+valid=isinstance(root,dict)
+if kind == "stamp":
+    template=root.get("template") if valid else None
+    valid=isinstance(template,str) and bool(template.strip())
+    version=root.get("version","") if valid else ""
+    applied=root.get("applied","") if valid else ""
+    if valid: commands=["T:"+template,"V:"+(version if isinstance(version,str) else ""),"A:"+(applied if isinstance(applied,str) else "")]
+elif kind == "claude":
+    hooks=root.get("hooks") if valid else None
+    valid=isinstance(hooks,dict)
+    if valid:
+        for event in hooks.values():
+            if not isinstance(event,list): valid=False; break
+            for group in event:
+                if not isinstance(group,dict) or "hooks" not in group or not isinstance(group["hooks"],list): valid=False; break
+                for handler in group["hooks"]:
+                    if not isinstance(handler,dict): valid=False; break
+                    handler_type=handler.get("type",None)
+                    command=handler.get("command")
+                    if ("type" not in handler or handler_type == "command") and isinstance(command,str) and command.strip(): commands.append(command)
+                if not valid: break
+            if not valid: break
+elif kind == "copilot":
+    hooks=root.get("hooks") if valid else None
+    valid=isinstance(hooks,dict)
+    if valid:
+        for event in hooks.values():
+            if not isinstance(event,list): valid=False; break
+            for entry in event:
+                if not isinstance(entry,dict): valid=False; break
+                for field in ("bash","powershell"):
+                    command=entry.get(field)
+                    if isinstance(command,str) and command.strip(): commands.append(field+"\t"+command)
+            if not valid: break
+else: valid=False
+if not valid: print("ATL_SHAPE_INVALID")
+else:
+    print("ATL_OK:%d"%len(commands))
+    for command in commands: print(command)
+' "$kind" "$path" 2>/dev/null); status=$?
+  if [ "$status" -eq 0 ] && accept_registration_output "$output"; then return; fi
+  registration_state=unknown
+  registration_payload=''
 }
 angular_json_evidence() {
   local kind=$1 marker_file=$2 parsed='' json_text=''
@@ -204,46 +387,40 @@ if [ ! -f "$stamp" ]; then
   finish
 fi
 stamp_read_failed=0
-stamp_text=$(<"$stamp") || stamp_read_failed=1
+read_json_file_text "$stamp"
+stamp_text=$json_file_text
+if [ "$json_file_state" = read ]; then
+  row CANT-VERIFY 'Install state' '.claude/framework-version.json exists but could not be read; its install state is unknown. Fix read access and rerun the doctor.'
+  finish
+elif [ "$json_file_state" = nul ]; then
+  row MISSING 'Install state' '.claude/framework-version.json is invalid JSON under the strict grammar or has case-colliding member names. Fix: re-run the framework installer.'
+  finish
+fi
+parse_registration_json stamp "$stamp" "$stamp_text"
+stamp_parsed=0
+stamp_invalid=0
+stamp_shape_invalid=0
+case "$registration_state" in
+  ok) stamp_parsed=1; template=$registration_payload; version=$registration_stamp_version; applied=$registration_stamp_applied ;;
+  invalid) stamp_invalid=1 ;;
+  shape) stamp_shape_invalid=1 ;;
+  read) stamp_read_failed=1 ;;
+esac
 if [ "$stamp_read_failed" -eq 1 ]; then
   row CANT-VERIFY 'Install state' '.claude/framework-version.json exists but could not be read; its install state is unknown. Fix read access and rerun the doctor.'
   finish
 fi
-stamp_parsed=0
-stamp_invalid=0
-if has_working_jq; then
-  if strict_json_jq_lexemes "$stamp_text" && printf '%s' "$stamp_text" | jq -e . >/dev/null 2>&1; then
-    template=$(printf '%s' "$stamp_text" | jq -r 'if type == "object" and (.template | type) == "string" then .template else "" end' 2>/dev/null); template_status=$?
-    version=$(printf '%s' "$stamp_text" | jq -r 'if type == "object" then (.version // "") else "" end' 2>/dev/null); version_status=$?
-    applied=$(printf '%s' "$stamp_text" | jq -r 'if type == "object" then (.applied // "") else "" end' 2>/dev/null); applied_status=$?
-    if [ "$template_status" -eq 0 ] && [ "$version_status" -eq 0 ] && [ "$applied_status" -eq 0 ]; then stamp_parsed=1; else stamp_invalid=1; fi
-  else
-    stamp_invalid=1
-  fi
-else
-  resolve_pybin
-  if [ -n "$_pybin" ]; then
-    values=$(printf '%s' "$stamp_text" | "$_pybin" -c 'import json,sys; reject=lambda value: (_ for _ in ()).throw(ValueError(value)); d=json.load(sys.stdin,parse_constant=reject); t=d.get("template", "") if isinstance(d,dict) else ""; print(t if isinstance(t,str) else ""); print(d.get("version", "") if isinstance(d,dict) else ""); print(d.get("applied", "") if isinstance(d,dict) else "")' 2>/dev/null)
-    if [ $? -eq 0 ]; then
-      template=$(printf '%s\n' "$values" | sed -n '1p')
-      version=$(printf '%s\n' "$values" | sed -n '2p')
-      applied=$(printf '%s\n' "$values" | sed -n '3p')
-      stamp_parsed=1
-    else
-      stamp_invalid=1
-    fi
-  fi
-fi
 if [ "$stamp_invalid" -eq 1 ]; then
-  row MISSING 'Install state' '.claude/framework-version.json is invalid JSON. Fix: re-run the framework installer.'
+  row MISSING 'Install state' '.claude/framework-version.json is invalid JSON under the strict grammar or has case-colliding member names. Fix: re-run the framework installer.'
+  finish
+fi
+if [ "$stamp_shape_invalid" -eq 1 ]; then
+  row MISSING 'Install state' '.claude/framework-version.json is valid JSON but has case-colliding member names, a non-object root, or lacks the required non-empty string "template". Fix: re-run the framework installer.'
   finish
 fi
 if [ "$stamp_parsed" -eq 0 ]; then
   template=unverified
-  row CANT-VERIFY 'Install state' 'no working JSON parser (jq or python3/python/py) is available in this doctor process environment, so .claude/framework-version.json cannot be validated. Install one and rerun the doctor.'
-elif case "$template" in *[![:space:]]*) false;; *) true;; esac; then
-  row MISSING 'Install state' '.claude/framework-version.json is valid JSON but lacks the required non-empty string "template". Fix: re-run the framework installer.'
-  finish
+  row CANT-VERIFY 'Install state' 'no trusted JSON provider completed the required query, so .claude/framework-version.json cannot be validated. Install jq or a working python3/python/py interpreter and rerun the doctor.'
 elif [ "$template" != dotnet ] && [ "$template" != angular ] && [ "$template" != monorepo ]; then
   row MISSING 'Install state' ".claude/framework-version.json names unsupported template \"$template\"; expected dotnet, angular, or monorepo. Fix: re-run the framework installer."
   finish
@@ -329,35 +506,24 @@ fi
 
 settings="$root/.claude/settings.json"
 settings_read_failed=0
-settings_invalid=0
+settings_json_invalid=0
+settings_shape_invalid=0
 settings_unknown=0
-settings_parser=''
 settings_text=''
-if [ -f "$settings" ]; then settings_text=$(<"$settings") || settings_read_failed=1; fi
+if [ -f "$settings" ]; then
+  read_json_file_text "$settings"; settings_text=$json_file_text
+  case "$json_file_state" in read) settings_read_failed=1;; nul) settings_json_invalid=1;; esac
+fi
 commands=''
-if [ "$settings_read_failed" -eq 0 ]; then
-  if [ -f "$settings" ]; then
-    if has_working_jq; then strict_json_jq_lexemes "$settings_text" && printf '%s' "$settings_text" | jq empty >/dev/null 2>&1 && settings_parser=jq || settings_invalid=1
-    else resolve_pybin; if [ -n "$_pybin" ]; then printf '%s' "$settings_text" | "$_pybin" -c 'import json,sys; json.load(sys.stdin,parse_constant=lambda value: (_ for _ in ()).throw(ValueError(value)))' >/dev/null 2>&1 && settings_parser=python || settings_invalid=1; else settings_unknown=1; fi
-    fi
-  fi
-  if [ "$settings_invalid" -eq 0 ] && [ "$settings_unknown" -eq 0 ]; then
-    if [ "$settings_parser" = jq ]; then
-      commands=$(printf '%s' "$settings_text" | jq -r '.. | objects | .command? // empty | select(type == "string")' 2>/dev/null) || settings_read_failed=1
-    elif [ "$settings_parser" = python ]; then
-      commands=$(printf '%s' "$settings_text" | "$_pybin" -c '
-import json,sys
-def walk(v):
-    if isinstance(v,dict):
-        for k,x in v.items():
-            if k == "command" and isinstance(x,str): print(x)
-            else: walk(x)
-    elif isinstance(v,list):
-        for x in v: walk(x)
-walk(json.load(sys.stdin,parse_constant=lambda value: (_ for _ in ()).throw(ValueError(value))))
-' 2>/dev/null) || settings_read_failed=1
-    fi
-  fi
+if [ "$settings_read_failed" -eq 0 ] && [ "$settings_json_invalid" -eq 0 ] && [ -f "$settings" ]; then
+  parse_registration_json claude "$settings" "$settings_text"
+  case "$registration_state" in
+    ok) commands=$registration_payload ;;
+    invalid) settings_json_invalid=1 ;;
+    shape) settings_shape_invalid=1 ;;
+    read) settings_read_failed=1 ;;
+    *) settings_unknown=1 ;;
+  esac
 fi
 shells=$(printf '%s\n' "$commands" | sed -n 's/^[[:space:]]*"\([^"]*\)".*/\1/p; t; s/^[[:space:]]*\([^[:space:]]*\)[[:space:]].*/\1/p' | unique_lines)
 bash_guard_registered=0
@@ -369,8 +535,12 @@ $commands
 EOF
 if [ "$settings_read_failed" -eq 1 ]; then
   row CANT-VERIFY 'Wired hook shell' '.claude/settings.json exists but could not be read; the wired interpreter is unknown. Fix read access and rerun the doctor.'
+elif [ "$settings_json_invalid" -eq 1 ]; then
+  row MISSING 'Wired hook shell' '.claude/settings.json is invalid JSON under the strict grammar or has case-colliding member names, so no hook interpreter is registered. Fix: re-run the installer or correct the file.'
+elif [ "$settings_shape_invalid" -eq 1 ]; then
+  row MISSING 'Wired hook shell' '.claude/settings.json is valid JSON but has a malformed Claude hook registration shape, so no hook interpreter can be inferred. Fix: re-run the installer or correct the file.'
 elif [ "$settings_unknown" -eq 1 ]; then
-  row CANT-VERIFY 'Wired hook shell' '.claude/settings.json exists, but JSON validity and the wired interpreter cannot be checked without jq or a working python interpreter. Install one and rerun the doctor.'
+  row CANT-VERIFY 'Wired hook shell' '.claude/settings.json exists, but no trusted JSON provider completed the required registration query. Install jq or a working python interpreter and rerun the doctor.'
 elif [ -z "$shells" ]; then
   row MISSING 'Wired hook shell' 'no hook interpreter could be read from .claude/settings.json. Fix: re-run the installer to rewire hooks.'
 else
@@ -408,29 +578,43 @@ fi
 copilot_json="$root/.github/hooks/hooks.json"
 copilot_exists=0
 copilot_read_failed=0
+copilot_json_invalid=0
 copilot_text=''
-if [ -f "$copilot_json" ]; then copilot_exists=1; copilot_text=$(<"$copilot_json") || copilot_read_failed=1; fi
+if [ -f "$copilot_json" ]; then
+  copilot_exists=1; read_json_file_text "$copilot_json"; copilot_text=$json_file_text
+  case "$json_file_state" in read) copilot_read_failed=1;; nul) copilot_json_invalid=1;; esac
+fi
 copilot_valid=0
-copilot_invalid=0
+copilot_shape_invalid=0
 copilot_unknown=0
 if [ "$copilot_exists" -eq 1 ]; then
   if [ "$copilot_read_failed" -eq 1 ]; then :
-  elif has_working_jq; then
-    if strict_json_jq_lexemes "$copilot_text" && printf '%s' "$copilot_text" | jq empty >/dev/null 2>&1; then copilot_valid=1; else copilot_invalid=1; fi
+  elif [ "$copilot_json_invalid" -eq 1 ]; then :
   else
-    resolve_pybin
-    if [ -n "$_pybin" ]; then
-      if printf '%s' "$copilot_text" | "$_pybin" -c 'import json,sys; json.load(sys.stdin,parse_constant=lambda value: (_ for _ in ()).throw(ValueError(value)))' >/dev/null 2>&1; then copilot_valid=1; else copilot_invalid=1; fi
-    else
-      copilot_unknown=1
-    fi
+    parse_registration_json copilot "$copilot_json" "$copilot_text"
+    case "$registration_state" in
+      ok) copilot_valid=1; copilot_payload=$registration_payload ;;
+      invalid) copilot_json_invalid=1 ;;
+      shape) copilot_shape_invalid=1 ;;
+      read) copilot_read_failed=1 ;;
+      *) copilot_unknown=1 ;;
+    esac
   fi
 fi
 copilot_hook_commands=''
 copilot_bash_commands=''
 if [ "$copilot_valid" -eq 1 ]; then
-  copilot_hook_commands=$(printf '%s' "$copilot_text" | grep -oE '"(bash|powershell)"[[:space:]]*:[[:space:]]*"[^"]*"' 2>/dev/null | sed -n 's/^"[^"]*"[[:space:]]*:[[:space:]]*"\([^"]*\)"$/\1/p')
-  copilot_bash_commands=$(printf '%s' "$copilot_text" | grep -oE '"bash"[[:space:]]*:[[:space:]]*"[^"]*"' 2>/dev/null | sed -n 's/^"bash"[[:space:]]*:[[:space:]]*"\([^"]*\)"$/\1/p')
+  while IFS= read -r registration; do
+    [ -z "$registration" ] && continue
+    field=${registration%%$'\t'*}
+    command=${registration#*$'\t'}
+    copilot_hook_commands="${copilot_hook_commands}${copilot_hook_commands:+
+}$command"
+    if [ "$field" = bash ]; then copilot_bash_commands="${copilot_bash_commands}${copilot_bash_commands:+
+}$command"; fi
+  done <<EOF
+$copilot_payload
+EOF
 fi
 paths=$( { printf '%s\n' "$commands" | grep -oE '[^ ]*\.claude[\\/]hooks[\\/][^ ]+'; printf '%s\n' "$copilot_hook_commands" | sed 's/[[:space:]].*$//'; } | sed -e 's#\\\\#/#g' -e 's#\\#/#g' -e 's#^"##' -e 's#"$##' -e "s#^'##" -e "s#'\$##" -e 's#^\./##' | unique_lines)
 while IFS= read -r command; do
@@ -447,23 +631,23 @@ while IFS= read -r path; do
 done <<EOF
 $paths
 EOF
-if [ "$copilot_invalid" -eq 1 ]; then
-  row MISSING 'Hook files' '.github/hooks/hooks.json is malformed, so its apparent registrations are not active. Fix: re-run the installer or correct the file.'
+if [ "$settings_json_invalid" -eq 1 ] || [ "$settings_shape_invalid" -eq 1 ] || [ "$copilot_json_invalid" -eq 1 ] || [ "$copilot_shape_invalid" -eq 1 ]; then
+  row MISSING 'Hook files' 'a hook registration file has invalid strict JSON, case-colliding member names, or a malformed registration shape, so apparent registrations are not active. Fix: re-run the installer or correct the file.'
 elif [ -n "$missing_paths" ]; then
   row MISSING 'Hook files' "registration points at a missing file; hooks are silently dead. Fix: re-run the installer. Missing: ${missing_paths:-<no registrations>}"
 elif [ "$settings_read_failed" -eq 1 ] || [ "$settings_unknown" -eq 1 ] || [ "$copilot_read_failed" -eq 1 ] || [ "$copilot_unknown" -eq 1 ]; then
   row CANT-VERIFY 'Hook files' 'hook registrations could not be completely read from .claude/settings.json and .github/hooks/hooks.json; file presence cannot be certified. Fix read access and rerun the doctor.'
 elif [ "$count" -eq 0 ]; then
-  row MISSING 'Hook files' 'registration points at a missing file; hooks are silently dead. Fix: re-run the installer. Missing: <no registrations>'
+  row MISSING 'Hook files' 'no hook registrations were found in .claude/settings.json or .github/hooks/hooks.json. Fix: re-run the installer.'
 else row OK 'Hook files' "$count registered files are present."
 fi
 
-if [ "$copilot_invalid" -eq 1 ]; then
-  row MISSING 'Guard JSON parser' '.github/hooks/hooks.json is malformed, so no parser requirement can be inferred from its apparent commands. Fix: re-run the installer or correct the file.'
+if [ "$settings_json_invalid" -eq 1 ] || [ "$settings_shape_invalid" -eq 1 ] || [ "$copilot_json_invalid" -eq 1 ] || [ "$copilot_shape_invalid" -eq 1 ]; then
+  row MISSING 'Guard JSON parser' 'a hook registration file is malformed, so no parser requirement can be inferred from apparent commands. Fix: re-run the installer or correct the file.'
 elif [ "$settings_read_failed" -eq 1 ] || [ "$settings_unknown" -eq 1 ] || [ "$copilot_read_failed" -eq 1 ] || [ "$copilot_unknown" -eq 1 ]; then
   row CANT-VERIFY 'Guard JSON parser' 'hook registrations could not be completely read, so whether a Bash guard parser is required cannot be verified. Fix read access and rerun the doctor.'
 elif [ "$bash_guard_registered" -eq 1 ]; then
-  if has_working_jq; then row OK 'Guard JSON parser' 'jq or a working python interpreter is available in this Bash environment.'
+  if has_registration_jq; then row OK 'Guard JSON parser' 'jq or a working python interpreter is available in this Bash environment.'
   else
     resolve_pybin
     if [ -n "$_pybin" ]; then row OK 'Guard JSON parser' 'jq or a working python interpreter is available in this Bash environment.'
@@ -561,11 +745,12 @@ fi
 # Twin divergence by design: only this twin can hit the CANT-VERIFY branch below — the .ps1 twin
 # always has a JSON parser (PowerShell native), so it reports valid/invalid directly.
 if [ "$copilot_valid" -eq 1 ]; then
-  if has copilot; then row OK 'Copilot surface' 'hooks.json is valid and Copilot CLI is available in this doctor process environment.'
-  else row OK 'Copilot surface' 'hooks.json is valid; Copilot CLI is absent from this doctor process environment. Claude-only teams need no action; Copilot teams must use the actual-surface canaries below.'; fi
+  if has copilot; then row OK 'Copilot surface' 'hooks.json has the expected registration shape and Copilot CLI is available in this doctor process environment.'
+  else row OK 'Copilot surface' 'hooks.json has the expected registration shape; Copilot CLI is absent from this doctor process environment. Claude-only teams need no action; Copilot teams must use the actual-surface canaries below.'; fi
 elif [ "$copilot_read_failed" -eq 1 ]; then row CANT-VERIFY 'Copilot surface' '.github/hooks/hooks.json exists but could not be read; its validity and Copilot hook surface are unknown. Fix read access and rerun the doctor.'
-elif [ "$copilot_invalid" -eq 1 ]; then row MISSING 'Copilot surface' '.github/hooks/hooks.json exists but is not valid JSON. Fix: re-run the installer or correct the file.'
-elif [ "$copilot_unknown" -eq 1 ]; then row CANT-VERIFY 'Copilot surface' 'hooks.json exists, but JSON validity cannot be checked without jq or a working python interpreter. Install jq, then rerun the doctor.'
+elif [ "$copilot_json_invalid" -eq 1 ]; then row MISSING 'Copilot surface' '.github/hooks/hooks.json is invalid JSON under the strict grammar or has case-colliding member names. Fix: re-run the installer or correct the file.'
+elif [ "$copilot_shape_invalid" -eq 1 ]; then row MISSING 'Copilot surface' '.github/hooks/hooks.json is valid JSON but has a malformed Copilot hook registration shape. Fix: re-run the installer or correct the file.'
+elif [ "$copilot_unknown" -eq 1 ]; then row CANT-VERIFY 'Copilot surface' 'hooks.json exists, but no trusted JSON provider completed the required registration query. Install jq or a working python interpreter, then rerun the doctor.'
 else row MISSING 'Copilot surface' '.github/hooks/hooks.json is missing. Fix: re-run the installer.'
 fi
 

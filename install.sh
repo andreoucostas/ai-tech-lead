@@ -88,26 +88,85 @@ strict_json_jq_lexemes() {
   done
   [ "$quoted" -eq 0 ] && [ "$escaped" -eq 0 ]
 }
-read_stamp_template() {
-  local stamp_path="$1" parsed cand probe stamp_text
-  stamp_template=""
-  if command -v jq >/dev/null 2>&1 && printf '{}' | jq -e . >/dev/null 2>&1; then
-    stamp_text=$(<"$stamp_path") || return 1; strict_json_jq_lexemes "$stamp_text" || return 1
-    parsed=$(printf '%s' "$stamp_text" | jq -er 'if type == "object" and (.template | type) == "string" and (.template | test("[^[:space:]]")) then .template else empty end' 2>/dev/null) || return 1
-    stamp_template="$parsed"
-    return 0
-  fi
+resolve_stamp_python() {
+  stamp_pybin=''
+  local cand probe
   for cand in python3 python py; do
     if command -v "$cand" >/dev/null 2>&1; then
-      probe=$(printf '{}' | "$cand" -c 'import json,sys; json.load(sys.stdin); sys.stdout.write("ok")' 2>/dev/null) || probe=""
-      if [ "$probe" = "ok" ]; then
-        parsed=$("$cand" -c 'import json,sys; reject=lambda value: (_ for _ in ()).throw(ValueError(value)); d=json.load(open(sys.argv[1], encoding="utf-8-sig"),parse_constant=reject); v=d.get("template") if isinstance(d,dict) else None; isinstance(v,str) and v.strip() or sys.exit(2); sys.stdout.write(v)' "$stamp_path" 2>/dev/null) || return 1
-        stamp_template="$parsed"
-        return 0
-      fi
+      probe=$(printf '{}' | "$cand" -c 'import json,sys; json.load(sys.stdin); sys.stdout.write("ATL_PY_OK")' 2>/dev/null) || probe=''
+      if [ "$probe" = ATL_PY_OK ]; then stamp_pybin=$cand; return; fi
     fi
   done
-  return 2
+}
+has_stamp_jq() {
+  local probe=''
+  if command -v jq >/dev/null 2>&1; then
+    probe=$(printf '{"atl":[1,true,null]}' | jq -er 'if type == "object" and .atl == [1,true,null] then "ATL_JQ_OK" else empty end' 2>/dev/null) || probe=''
+  fi
+  [ "$probe" = ATL_JQ_OK ]
+}
+read_stamp_template() {
+  local stamp_path="$1" parsed stamp_text payload py_status read_status
+  stamp_template=""
+  stamp_text=''
+  if ! exec 9<"$stamp_path"; then return 2; fi
+  IFS= read -r -d '' stamp_text <&9
+  read_status=$?
+  exec 9<&-
+  # `read -d ''` returns zero only when it encounters a NUL. Shell variables cannot retain that
+  # byte, so classify it before any provider can accidentally inspect truncated content.
+  case "$read_status" in 0) return 1;; 1) :;; *) return 2;; esac
+  stamp_text=${stamp_text#$'\xEF\xBB\xBF'}
+  strict_json_jq_lexemes "$stamp_text" || return 1
+  if has_stamp_jq; then
+    parsed=$(jq -r '# atl_root_stamp
+      def atl_fold: explode | map(if . >= 65 and . <= 90 then . + 32 else . end) | implode;
+      def atl_clean: if type == "object" then (([keys_unsorted[] | atl_fold] | length) == ([keys_unsorted[] | atl_fold] | unique | length)) and all(.[]; atl_clean) elif type == "array" then all(.[]; atl_clean) else true end;
+      if (atl_clean | not) then "ATL_COLLISION"
+      elif type == "object" and (.template | type) == "string" and (.template | test("[^[:space:]]")) then "ATL_OK:1", .template
+      else "ATL_SHAPE_INVALID" end' "$stamp_path" 2>/dev/null)
+    if [ $? -eq 0 ]; then
+      parsed=${parsed//$'\r\n'/$'\n'}; parsed=${parsed%$'\r'}
+      case "$parsed" in ATL_SHAPE_INVALID|ATL_COLLISION) return 1;; esac
+      if [ "${parsed%%$'\n'*}" = ATL_OK:1 ] && [ "$parsed" != ATL_OK:1 ]; then
+        payload=${parsed#*$'\n'}
+        case "$payload" in *$'\n'*) ;; *) stamp_template=$payload; return 0;; esac
+      fi
+    fi
+  fi
+  resolve_stamp_python
+  [ -n "$stamp_pybin" ] || return 3
+  parsed=$("$stamp_pybin" -c 'import json,sys
+class Collision(Exception): pass
+class InvalidConstant(Exception): pass
+def fold(name): return "".join(chr(ord(c)+32) if "A" <= c <= "Z" else c for c in name)
+def pairs(items):
+    result={}; seen={}
+    for key,value in items:
+        folded=fold(key)
+        if folded in seen and seen[folded] != key: raise Collision()
+        seen[folded]=key; result[key]=value
+    return result
+try:
+    root=json.load(open(sys.argv[1],encoding="utf-8-sig"),object_pairs_hook=pairs,parse_constant=lambda value: (_ for _ in ()).throw(InvalidConstant(value)))
+except OSError: print("ATL_READ_FAILED"); sys.exit(0)
+except (json.JSONDecodeError,UnicodeDecodeError,InvalidConstant): print("ATL_JSON_INVALID"); sys.exit(0)
+except Collision: print("ATL_COLLISION"); sys.exit(0)
+template=root.get("template") if isinstance(root,dict) else None
+if not isinstance(template,str) or not template.strip(): print("ATL_SHAPE_INVALID")
+else: print("ATL_OK:1"); print(template)
+' "$stamp_path" 2>/dev/null); py_status=$?
+  parsed=${parsed//$'\r\n'/$'\n'}; parsed=${parsed%$'\r'}
+  [ "$py_status" -eq 0 ] || return 3
+  case "$parsed" in
+    ATL_READ_FAILED) return 2 ;;
+    ATL_JSON_INVALID|ATL_COLLISION|ATL_SHAPE_INVALID) return 1 ;;
+  esac
+  [ "${parsed%%$'\n'*}" = ATL_OK:1 ] && [ "$parsed" != ATL_OK:1 ] || return 3
+  payload=${parsed#*$'\n'}
+  case "$payload" in *$'\n'*) return 3;; esac
+  stamp_template=$payload
+  return 0
 }
 warehouse_signals=()
 get_warehouse_signals() {
@@ -210,9 +269,11 @@ else
     if read_stamp_template "$vf"; then tmpl="$stamp_template"; else
       stamp_status=$?
       if [ "$stamp_status" -eq 2 ]; then
-        echo "Existing install at '$tgt', but .claude/framework-version.json cannot be verified without jq or a working Python interpreter — install one or pass --stack dotnet|angular|monorepo explicitly." >&2; exit 2
+        echo "Existing install at '$tgt', but .claude/framework-version.json could not be read, so its stack cannot be determined — fix read access or pass --stack dotnet|angular|monorepo explicitly." >&2; exit 2
+      elif [ "$stamp_status" -eq 3 ]; then
+        echo "Existing install at '$tgt', but no trusted JSON provider completed the required stamp query — install jq or a working Python interpreter, or pass --stack dotnet|angular|monorepo explicitly." >&2; exit 2
       fi
-      echo "Existing install at '$tgt', but .claude/framework-version.json is invalid JSON or has no non-empty string \"template\" value — pass --stack dotnet|angular|monorepo." >&2; exit 2
+      echo "Existing install at '$tgt', but .claude/framework-version.json is invalid JSON under the strict grammar, has case-colliding member names, a non-object root, or no non-empty string \"template\" value — pass --stack dotnet|angular|monorepo." >&2; exit 2
     fi
     valid_stack "$tmpl" || { echo "Existing install names an unknown stack \"$tmpl\" in .claude/framework-version.json — pass --stack dotnet|angular|monorepo." >&2; exit 2; }
     stack="$tmpl"

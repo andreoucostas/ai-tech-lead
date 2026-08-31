@@ -38,11 +38,64 @@ function Test-PackageAngularCore($Root) {
 function Test-ExactAngularPackageToken($Value) {
     return $Value -is [string] -and $Value -cmatch '^@(angular|nx/angular|angular-devkit|schematics/angular)(/[^\s]+|:[^\s]+)$'
 }
-function Get-ExactJsonPropertyValue($Object, [string]$Name) {
+function Get-ExactJsonProperty($Object, [string]$Name) {
     if (-not ($Object -is [System.Management.Automation.PSCustomObject])) { return $null }
     $property = $Object.PSObject.Properties | Where-Object { $_.Name -ceq $Name } | Select-Object -First 1
+    return $property
+}
+function Get-ExactJsonPropertyValue($Object, [string]$Name) {
+    $property = Get-ExactJsonProperty $Object $Name
     if ($property) { return $property.Value }
     return $null
+}
+function Test-JsonArray($Value) {
+    return $Value -is [System.Collections.IList] -and -not ($Value -is [string])
+}
+# These extractors intentionally validate only the bounded registration containers the doctor
+# relies on. They do not claim full vendor-schema validation. Exact member names matter; the
+# strict PowerShell parser rejects case-colliding decoded names before either extractor runs.
+function Get-ClaudeHookCommands($Root) {
+    if (-not ($Root -is [System.Management.Automation.PSCustomObject])) { throw 'Claude settings root must be an object' }
+    $hooksProperty = Get-ExactJsonProperty $Root 'hooks'
+    if (-not $hooksProperty -or -not ($hooksProperty.Value -is [System.Management.Automation.PSCustomObject])) { throw 'Claude settings hooks must be an object' }
+    $result = @()
+    foreach ($eventProperty in $hooksProperty.Value.PSObject.Properties) {
+        if (-not (Test-JsonArray $eventProperty.Value)) { throw 'Claude hook event must be an array' }
+        foreach ($group in @($eventProperty.Value)) {
+            if (-not ($group -is [System.Management.Automation.PSCustomObject])) { throw 'Claude hook group must be an object' }
+            $handlersProperty = Get-ExactJsonProperty $group 'hooks'
+            if (-not $handlersProperty -or -not (Test-JsonArray $handlersProperty.Value)) { throw 'Claude hook group hooks must be an array' }
+            foreach ($handler in @($handlersProperty.Value)) {
+                if (-not ($handler -is [System.Management.Automation.PSCustomObject])) { throw 'Claude hook handler must be an object' }
+                $typeProperty = Get-ExactJsonProperty $handler 'type'
+                if ($typeProperty -and (-not ($typeProperty.Value -is [string]) -or $typeProperty.Value -cne 'command')) { continue }
+                $commandProperty = Get-ExactJsonProperty $handler 'command'
+                if ($commandProperty -and $commandProperty.Value -is [string] -and -not [string]::IsNullOrWhiteSpace($commandProperty.Value)) {
+                    $result += [string]$commandProperty.Value
+                }
+            }
+        }
+    }
+    return @($result)
+}
+function Get-CopilotHookCommands($Root) {
+    if (-not ($Root -is [System.Management.Automation.PSCustomObject])) { throw 'Copilot hooks root must be an object' }
+    $hooksProperty = Get-ExactJsonProperty $Root 'hooks'
+    if (-not $hooksProperty -or -not ($hooksProperty.Value -is [System.Management.Automation.PSCustomObject])) { throw 'Copilot hooks must be an object' }
+    $result = @()
+    foreach ($eventProperty in $hooksProperty.Value.PSObject.Properties) {
+        if (-not (Test-JsonArray $eventProperty.Value)) { throw 'Copilot hook event must be an array' }
+        foreach ($entry in @($eventProperty.Value)) {
+            if (-not ($entry -is [System.Management.Automation.PSCustomObject])) { throw 'Copilot hook entry must be an object' }
+            foreach ($field in @('bash','powershell')) {
+                $commandProperty = Get-ExactJsonProperty $entry $field
+                if ($commandProperty -and $commandProperty.Value -is [string] -and -not [string]::IsNullOrWhiteSpace($commandProperty.Value)) {
+                    $result += [pscustomobject]@{ Field = $field; Command = [string]$commandProperty.Value }
+                }
+            }
+        }
+    }
+    return @($result)
 }
 function Test-NxAngularEvidence($Node) {
     if (-not ($Node -is [System.Management.Automation.PSCustomObject])) { return $false }
@@ -94,16 +147,16 @@ if ($stampReadFailed) {
 }
 try { $stamp = ConvertFrom-StrictJson $stampContent } catch { $stamp = $null }
 if ($null -eq $stamp) {
-    Row MISSING 'Install state' '.claude/framework-version.json is invalid JSON. Fix: re-run the framework installer.'
+    Row MISSING 'Install state' '.claude/framework-version.json is invalid JSON under the strict grammar or has case-colliding member names. Fix: re-run the framework installer.'
     Finish
 }
 if ($stampContent -notmatch '^\s*\{') {
-    Row MISSING 'Install state' '.claude/framework-version.json is valid JSON but lacks the required non-empty string "template". Fix: re-run the framework installer.'
+    Row MISSING 'Install state' '.claude/framework-version.json is valid JSON but has case-colliding member names, a non-object root, or lacks the required non-empty string "template". Fix: re-run the framework installer.'
     Finish
 }
 $template = Get-ExactJsonPropertyValue $stamp 'template'
 if (-not ($template -is [string]) -or [string]::IsNullOrWhiteSpace($template)) {
-    Row MISSING 'Install state' '.claude/framework-version.json is valid JSON but lacks the required non-empty string "template". Fix: re-run the framework installer.'
+    Row MISSING 'Install state' '.claude/framework-version.json is valid JSON but has case-colliding member names, a non-object root, or lacks the required non-empty string "template". Fix: re-run the framework installer.'
     Finish
 }
 if ($template -cne 'dotnet' -and $template -cne 'angular' -and $template -cne 'monorepo') {
@@ -168,26 +221,21 @@ $commands = @()
 $settingsPath = Join-Path $root '.claude/settings.json'
 $settingsExists = Test-Path -LiteralPath $settingsPath
 $settingsReadFailed = $false
-$settingsInvalid = $false
+$settingsJsonInvalid = $false
+$settingsShapeInvalid = $false
 if ($settingsExists) {
     try {
         $rawSettings = Get-Content -Raw -LiteralPath $settingsPath -ErrorAction Stop
     } catch { $settingsReadFailed = $true }
     if (-not $settingsReadFailed) {
-        try { $settings = ConvertFrom-StrictJson $rawSettings } catch { $settingsInvalid = $true }
+        try { $settings = ConvertFrom-StrictJson $rawSettings } catch { $settingsJsonInvalid = $true }
     }
-    if (-not $settingsReadFailed -and -not $settingsInvalid) {
+    if (-not $settingsReadFailed -and -not $settingsJsonInvalid) {
         try {
-        function Walk($Value) {
-            if ($null -eq $Value -or $Value -is [string]) { return }
-            if ($Value -is [System.Collections.IEnumerable]) { foreach ($v in $Value) { Walk $v }; return }
-            foreach ($p in $Value.PSObject.Properties) {
-                if ($p.Name -ceq 'command' -and $p.Value -is [string]) { $script:commands += [string]$p.Value }
-                else { Walk $p.Value }
-            }
+            if ($rawSettings -notmatch '^\s*\{') { throw 'Claude settings root must be an object' }
+            $commands = @(Get-ClaudeHookCommands $settings)
         }
-        Walk $settings
-        } catch { $settingsInvalid = $true; $commands = @() }
+        catch { $settingsShapeInvalid = $true; $commands = @() }
     }
 }
 $shells = @($commands | ForEach-Object {
@@ -196,6 +244,10 @@ $shells = @($commands | ForEach-Object {
 } | Select-Object -Unique)
 if ($settingsReadFailed) {
     Row CANT-VERIFY 'Wired hook shell' '.claude/settings.json exists but could not be read; the wired interpreter is unknown. Fix read access and rerun the doctor.'
+} elseif ($settingsJsonInvalid) {
+    Row MISSING 'Wired hook shell' '.claude/settings.json is invalid JSON under the strict grammar or has case-colliding member names, so no hook interpreter is registered. Fix: re-run the installer or correct the file.'
+} elseif ($settingsShapeInvalid) {
+    Row MISSING 'Wired hook shell' '.claude/settings.json is valid JSON but has a malformed Claude hook registration shape, so no hook interpreter can be inferred. Fix: re-run the installer or correct the file.'
 } elseif ($shells.Count -eq 0) {
     Row MISSING 'Wired hook shell' 'no hook interpreter could be read from .claude/settings.json. Fix: re-run the installer to rewire hooks.'
 } else {
@@ -233,45 +285,51 @@ foreach ($command in $commands) {
 }
 $copilotPath = Join-Path $root '.github/hooks/hooks.json'
 $copilotValid = $false
-$copilotInvalid = $false
+$copilotJsonInvalid = $false
+$copilotShapeInvalid = $false
 $copilotExists = Test-Path -LiteralPath $copilotPath
 $copilotReadFailed = $false
+$copilotCommands = @()
 $copilotBashCommands = @()
 if ($copilotExists) {
     try { $rawCopilot = Get-Content -Raw -LiteralPath $copilotPath -ErrorAction Stop } catch { $rawCopilot = $null; $copilotReadFailed = $true }
-    if (-not $copilotReadFailed -and $rawCopilot) {
-        try { $null = ConvertFrom-StrictJson $rawCopilot; $copilotValid = $true } catch { }
+    if (-not $copilotReadFailed) {
+        try { $copilotRoot = ConvertFrom-StrictJson $rawCopilot } catch { $copilotJsonInvalid = $true }
     }
-    if (-not $copilotReadFailed -and -not $copilotValid) { $copilotInvalid = $true }
+    if (-not $copilotReadFailed -and -not $copilotJsonInvalid) {
+        try {
+            if ($rawCopilot -notmatch '^\s*\{') { throw 'Copilot hooks root must be an object' }
+            $copilotCommands = @(Get-CopilotHookCommands $copilotRoot); $copilotValid = $true
+        }
+        catch { $copilotShapeInvalid = $true; $copilotCommands = @() }
+    }
     if ($copilotValid) {
-        [regex]::Matches($rawCopilot, '"(?:bash|powershell)"\s*:\s*"([^" ]+)[^"]*"') | ForEach-Object {
-            $path = $_.Groups[1].Value -replace '\\\\','/'
+        foreach ($registration in $copilotCommands) {
+            $path = ([string]$registration.Command -split '\s+', 2)[0].Trim('"', "'") -replace '\\\\','/' -replace '\\','/'
             if ($path.StartsWith('./')) { $path = $path.Substring(2) }
             $hookPaths += $path
-        }
-        [regex]::Matches($rawCopilot, '"bash"\s*:\s*"([^"]*)"') | ForEach-Object {
-            $copilotBashCommands += $_.Groups[1].Value
+            if ($registration.Field -ceq 'bash') { $copilotBashCommands += [string]$registration.Command }
         }
     }
 }
 $hookPaths = @($hookPaths | Select-Object -Unique)
 $missingHooks = @($hookPaths | Where-Object { -not (Test-Path -LiteralPath (Join-Path $root $_)) })
-if ($copilotInvalid) {
-    Row MISSING 'Hook files' '.github/hooks/hooks.json is malformed, so its apparent registrations are not active. Fix: re-run the installer or correct the file.'
+if ($settingsJsonInvalid -or $settingsShapeInvalid -or $copilotJsonInvalid -or $copilotShapeInvalid) {
+    Row MISSING 'Hook files' 'a hook registration file has invalid strict JSON, case-colliding member names, or a malformed registration shape, so apparent registrations are not active. Fix: re-run the installer or correct the file.'
 } elseif ($missingHooks.Count) {
     $names = if ($missingHooks.Count) { $missingHooks -join ',' } else { '<no registrations>' }
     Row MISSING 'Hook files' ("registration points at a missing file; hooks are silently dead. Fix: re-run the installer. Missing: {0}" -f $names)
 } elseif ($settingsReadFailed -or $copilotReadFailed) {
     Row CANT-VERIFY 'Hook files' 'hook registrations could not be completely read from .claude/settings.json and .github/hooks/hooks.json; file presence cannot be certified. Fix read access and rerun the doctor.'
 } elseif ($hookPaths.Count -eq 0) {
-    Row MISSING 'Hook files' 'registration points at a missing file; hooks are silently dead. Fix: re-run the installer. Missing: <no registrations>'
+    Row MISSING 'Hook files' 'no hook registrations were found in .claude/settings.json or .github/hooks/hooks.json. Fix: re-run the installer.'
 } else { Row OK 'Hook files' ("{0} registered files are present." -f $hookPaths.Count) }
 
 $bashGuardRegistered = @($commands | Where-Object { Test-ClaudeBashGuardCommand $_ }).Count -gt 0
 if (-not $bashGuardRegistered) { $bashGuardRegistered = @($copilotBashCommands | Where-Object { Test-GuardShTarget $_ }).Count -gt 0 }
 # PARSER-VANTAGE-BRANCH-BEGIN
-if ($copilotInvalid) {
-    Row MISSING 'Guard JSON parser' '.github/hooks/hooks.json is malformed, so no parser requirement can be inferred from its apparent commands. Fix: re-run the installer or correct the file.'
+if ($settingsJsonInvalid -or $settingsShapeInvalid -or $copilotJsonInvalid -or $copilotShapeInvalid) {
+    Row MISSING 'Guard JSON parser' 'a hook registration file is malformed, so no parser requirement can be inferred from apparent commands. Fix: re-run the installer or correct the file.'
 } elseif ($settingsReadFailed -or $copilotReadFailed) {
     Row CANT-VERIFY 'Guard JSON parser' 'hook registrations could not be completely read, so whether a Bash guard parser is required cannot be verified. Fix read access and rerun the doctor.'
 } elseif ($bashGuardRegistered) {
@@ -354,10 +412,11 @@ else {
 # Twin divergence by design: the .sh twin adds a CANT-VERIFY branch here for "hooks.json exists
 # but no JSON parser to validate it" — PowerShell parses JSON natively, so this twin cannot hit it.
 if ($copilotValid) {
-    if (Has copilot) { Row OK 'Copilot surface' 'hooks.json is valid and Copilot CLI is available in this doctor process environment.' }
-    else { Row OK 'Copilot surface' 'hooks.json is valid; Copilot CLI is absent from this doctor process environment. Claude-only teams need no action; Copilot teams must use the actual-surface canaries below.' }
+    if (Has copilot) { Row OK 'Copilot surface' 'hooks.json has the expected registration shape and Copilot CLI is available in this doctor process environment.' }
+    else { Row OK 'Copilot surface' 'hooks.json has the expected registration shape; Copilot CLI is absent from this doctor process environment. Claude-only teams need no action; Copilot teams must use the actual-surface canaries below.' }
 } elseif ($copilotReadFailed) { Row CANT-VERIFY 'Copilot surface' '.github/hooks/hooks.json exists but could not be read; its validity and Copilot hook surface are unknown. Fix read access and rerun the doctor.' }
-elseif ($copilotExists) { Row MISSING 'Copilot surface' '.github/hooks/hooks.json exists but is not valid JSON. Fix: re-run the installer or correct the file.' }
+elseif ($copilotJsonInvalid) { Row MISSING 'Copilot surface' '.github/hooks/hooks.json is invalid JSON under the strict grammar or has case-colliding member names. Fix: re-run the installer or correct the file.' }
+elseif ($copilotShapeInvalid) { Row MISSING 'Copilot surface' '.github/hooks/hooks.json is valid JSON but has a malformed Copilot hook registration shape. Fix: re-run the installer or correct the file.' }
 else { Row MISSING 'Copilot surface' '.github/hooks/hooks.json is missing. Fix: re-run the installer.' }
 
 if ($pending) { Row PENDING 'Mirror and version integrity' 'not checked until /bootstrap or /adopt completes.' }
