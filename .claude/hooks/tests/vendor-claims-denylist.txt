@@ -1,9 +1,9 @@
 # Superseded vendor-claim denylist — the machine-checkable half of B-55.
 #
-# WHAT THIS IS. Claims about what Copilot and Claude Code actually *do* are restated across ~6
-# shipped surfaces (docs/enforcement-surfaces.md, the hooks.json _comment, three stack README hook
-# tables, six boy-scout-check headers, the presentation HTML). Four times now, a vendor changed
-# behavior and several surfaces stayed wrong at once — most recently 2026-08-18, when B-147's
+# WHAT THIS IS. Claims about what Copilot and Claude Code actually *do* are restated across many
+# shipped assurance surfaces (docs/enforcement-surfaces.md, hooks.json, stack READMEs and review
+# guides, the always-loaded carrier and mirrors, hook headers, and the presentation HTML).
+# Corrections have repeatedly needed several surfaces at once — on 2026-08-18, B-147's
 # correction had to land in the matrix, the _comment and the narrative simultaneously. This file
 # lists claims we have already learned are FALSE, so the next vendor change fails a gate instead of
 # quietly making six files wrong.
@@ -72,3 +72,31 @@ REASON A Stop hook's `decision:"block"` reason IS shown to Claude as a system re
 # never run end to end.
 DENY (?i)Copilot[^.\r\n]{0,80}\bdelivers the queued nudge at the next prompt\b
 REASON Copilot CLI's `userPromptSubmitted` delivery leg is observed, but live `agentStop` firing and its queue write are unverified; registration or a later delivery channel does not prove the full chain.
+
+# --- 5. Installer file arrival is not automatic Copilot consumption --------------------------------
+# Was: "Copilot receives those rules automatically." (all three stack READMEs through v0.79.1).
+DENY (?i)\bCopilot\s+receives\s+those\s+rules\s+automatically\b
+REASON The installer proves that the native instruction file arrived; file arrival does not prove a particular Copilot client consumed it. Capability-specific dated evidence belongs in docs/enforcement-surfaces.md.
+
+# --- 6. Dated CLI evidence does not certify every registered event ---------------------------------
+# Was: "dated Copilot CLI canaries cover their registered events" (all three review guides through
+# v0.79.1). The canaries did not exercise the registered `agentStop` event.
+DENY (?i)\bdated\s+Copilot\s+CLI\s+canaries\s+cover\s+their\s+registered\s+events\b
+REASON Dated CLI canaries cover only the capabilities they exercised; evidence for prompt and tool events does not certify live `agentStop` firing or its queue write.
+
+# --- 7. Hook-disabled state does not prove an exclusive delivery path ------------------------------
+# Was the always-loaded carrier's exact pre-v0.79.2 off-state assurance. Native instruction delivery
+# and hook lifecycle are independent capabilities.
+DENY (?i)\bWhere\s+hooks\s+are\s+off\s+\(Copilot\s+VS\s+Code\s+without\s+Preview\s+agent-hooks,\s+Copilot\s+CLI\s+<\s+v1\.0\.65\)\s+this\s+text\s+is\s+the\s+\*only\*\s+thing\s+that\s+reaches\s+the\s+model\b
+REASON Native instruction delivery and Preview-hook lifecycle are independent; an enabled or disabled hook setting does not prove which instruction carriers the client consumed.
+
+# --- 8. Enabled Preview registration is not observed prompt/guard reinforcement --------------------
+# Was the always-loaded carrier's exact pre-v0.79.2 enabled-state assurance.
+DENY (?i)\bOn\s+Claude\s+Code\s+—\s+and\s+on\s+Copilot\s+where\s+hooks\s+are\s+enabled\s+\(CLI\s+≥\s+v1\.0\.65,\s+VS\s+Code\s+Preview\s+agent-hooks\)\s+—\s+these\s+rails\s+are\s+reinforced\s+by\s+a\s+per-prompt\s+hook\s+and\s+a\s+write-time\s+guard\b
+REASON Registration proves neither client firing nor output consumption. VS Code prompt delivery is unverified and its guard has only one historical observation with host and extension versions unrecorded.
+
+# --- 9. Enabled Preview registration does not prove automatic security prompting ------------------
+# Was the stack security-pass sentence in the always-loaded carrier and AGENTS mirrors through
+# v0.79.1.
+DENY (?i)\bOn\s+Claude\s+Code\s+—\s+and\s+on\s+Copilot\s+where\s+hooks\s+are\s+enabled\s+—\s+a\s+`UserPromptSubmit`\s+hook\s+flags\s+these\s+automatically\b
+REASON For prompts matching its bounded security vocabulary, the registered prompt hook emits a reminder when invoked; host firing and output consumption require separate, capability-specific evidence, and VS Code prompt consumption remains unverified.

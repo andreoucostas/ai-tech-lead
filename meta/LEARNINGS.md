@@ -1987,3 +1987,18 @@ separate four questions: can the hostile/success world be constructed; does the 
 it; has the resulting defect harmed a current decision or consumer; and would the smallest repair
 change that outcome enough to justify its permanent cost. Passing the first two is necessary
 measurement evidence, not a product-value verdict.
+
+## 2026-08-31 — A capability-claim repair must search by meaning across every assurance surface
+
+The first B-43 candidate corrected the enforcement matrix, hook commentary, README hook tables,
+canary records, and presentation, yet independent review still found the same unsupported assurance
+in stack update prose, review guides, the always-loaded carrier, security snippets, and AGENTS
+mirrors. Source/dist fidelity faithfully preserved the wrong meaning; an artifact list derived from
+the first reported sentence was not a complete claim inventory.
+
+Scope review for a host-evidence correction must search every assurance surface for the underlying
+inference: file arrival versus consumption, registration versus firing, and one observed event
+versus a whole lifecycle. Once concrete historical spellings are found, narrow exact-pattern gates
+can prevent their return and prove both match and rejection directions. That does not justify a
+general prose classifier: semantic completeness still belongs to an independent review of the
+frozen claim boundary.

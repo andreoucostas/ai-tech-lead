@@ -10069,10 +10069,19 @@ unverified and currently guaranteed.
 The v0.79.2 authored correction makes each claim map to one capability row or say unverified.
 Copilot CLI retains its dated `userPromptSubmitted`, `preToolUse`, and `postToolUse` observations;
 `agentStop` firing and the queue write are explicitly unverified. VS Code retains only the narrow
-2026-06-25 guard observation, with its unrecorded host/extension versions and therefore historical-
-only status; prompt, post-tool, and Stop lifecycles remain unverified. Native
+2026-06-25 guard observation, with its unrecorded host/extension versions and therefore
+historical-only status; prompt, post-tool, and Stop lifecycles remain unverified. Native
 `.github/instructions/` delivery remains separate from Preview-hook evidence. Hook registration and
 runtime behavior are unchanged.
+
+The first immutable implementation review rejected `e0f7ff8` after finding three same-class
+assurance families outside the enumerated draft scope: all three update paragraphs said file arrival
+meant Copilot consumed the rules automatically; all three review guides let dated CLI canaries
+certify every registered event; and the always-loaded carrier plus AGENTS mirrors described enabled
+VS Code Preview prompt/guard behavior as automatic. The correction preserves native instruction
+delivery while separating it from hook lifecycle, rewrites only those source claims and mirrors,
+and adds their five exact historical spellings to the existing vendor-claim gate. No host behavior
+or runtime wiring changed.
 
 WSD-066 replaces quarterly blanket recertification with an evidence-triggered rule: obtain fresh
 evidence before strengthening a claim, and after contrary evidence or a host-facing mechanism
@@ -10088,14 +10097,16 @@ reconciles already-recorded evidence. The no-seat VS Code paths remain visible e
 future stronger claim must trigger its own proportionate canary rather than a speculative recurring
 item or unexecuted checklist.
 
-**RCA — why existing gates missed it and what shares the class.** Composition, mirror, hook-
-registration, and vendor-denylist gates can keep repeated strings and files consistent, but none
+**RCA — why existing gates missed it and what shares the class.** Composition, mirror,
+hook-registration, and vendor-denylist gates can keep repeated strings and files consistent, but none
 binds each assurance phrase to a capability-specific dated live-host row. The unrun canary shipped
 beside a guarantee, so artifact presence was mistaken for execution evidence and the same
 unsupported inference propagated consistently across the matrix, three READMEs, hook comment,
-ledger, and canary status. Every host-dependent claim copied among those artifact classes shares
-the exposure. The standing repair is an evidence obligation, not a prose-inference gate that cannot
-honestly judge live consumption.
+ledger, canary status, review guides, and always-loaded carrier/mirrors. Every host-dependent claim
+copied among those artifact classes shares the exposure. The first scope list itself missed those
+last two classes; independent blind-first review, followed by exact historical-spelling controls,
+was the effective backstop. The standing repair remains an evidence obligation, not a semantic
+prose-inference gate that cannot honestly judge live consumption.
 
 ---
 

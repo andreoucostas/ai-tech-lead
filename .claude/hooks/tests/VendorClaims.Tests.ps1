@@ -65,6 +65,56 @@ $provenance = @(
             'The userPromptSubmitted delivery channel was separately observed on CLI 1.0.80, not the preceding turn-end leg.'
         )
     }
+    [pscustomobject]@{
+        Pattern = '(?i)\bCopilot\s+receives\s+those\s+rules\s+automatically\b'
+        Matches = @(
+            'The update also refreshes `.github/instructions/framework-rules.instructions.md`; Copilot receives those rules automatically.'
+        )
+        Rejects = @(
+            'The update proves file arrival, not Copilot host consumption; see `docs/enforcement-surfaces.md` for dated, client-specific consumption evidence.'
+            'Native `.github/instructions/` delivery proves no Preview-hook event.'
+        )
+    }
+    [pscustomobject]@{
+        Pattern = '(?i)\bdated\s+Copilot\s+CLI\s+canaries\s+cover\s+their\s+registered\s+events\b'
+        Matches = @(
+            'Claude Code and dated Copilot CLI canaries cover their registered events.'
+        )
+        Rejects = @(
+            'Dated canaries cover only the capabilities they exercised, not every registered event.'
+            'Copilot CLI `agentStop` firing and its queue write remain unverified.'
+        )
+    }
+    [pscustomobject]@{
+        Pattern = '(?i)\bWhere\s+hooks\s+are\s+off\s+\(Copilot\s+VS\s+Code\s+without\s+Preview\s+agent-hooks,\s+Copilot\s+CLI\s+<\s+v1\.0\.65\)\s+this\s+text\s+is\s+the\s+\*only\*\s+thing\s+that\s+reaches\s+the\s+model\b'
+        Matches = @(
+            'Where hooks are off (Copilot VS Code without Preview agent-hooks, Copilot CLI < v1.0.65) this text is the *only* thing that reaches the model — treat it as binding, not advisory.'
+        )
+        Rejects = @(
+            'The native instruction carrier and hook lifecycle are independent; delivery of one proves no event in the other.'
+            'Treat these rails as binding, not advisory.'
+        )
+    }
+    [pscustomobject]@{
+        Pattern = '(?i)\bOn\s+Claude\s+Code\s+—\s+and\s+on\s+Copilot\s+where\s+hooks\s+are\s+enabled\s+\(CLI\s+≥\s+v1\.0\.65,\s+VS\s+Code\s+Preview\s+agent-hooks\)\s+—\s+these\s+rails\s+are\s+reinforced\s+by\s+a\s+per-prompt\s+hook\s+and\s+a\s+write-time\s+guard\b'
+        Matches = @(
+            'On Claude Code — and on Copilot where hooks are enabled (CLI ≥ v1.0.65, VS Code Preview agent-hooks) — these rails are reinforced by a per-prompt hook and a write-time guard; where hooks are off, only this text reaches the model.'
+        )
+        Rejects = @(
+            'Hook registration proves neither client firing nor output consumption; these rails remain binding independently.'
+            'A host-dependent lifecycle is described as observed only for the exact capability, date, and host/version actually observed.'
+        )
+    }
+    [pscustomobject]@{
+        Pattern = '(?i)\bOn\s+Claude\s+Code\s+—\s+and\s+on\s+Copilot\s+where\s+hooks\s+are\s+enabled\s+—\s+a\s+`UserPromptSubmit`\s+hook\s+flags\s+these\s+automatically\b'
+        Matches = @(
+            'On Claude Code — and on Copilot where hooks are enabled — a `UserPromptSubmit` hook flags these automatically; elsewhere it does not — the rule holds regardless.'
+        )
+        Rejects = @(
+            'For prompts matching its bounded security vocabulary, the registered prompt hook emits this reminder when invoked; host firing and output consumption require separate, capability-specific evidence.'
+            'The rule holds whether or not the hook runs.'
+        )
+    }
 )
 
 function Read-Utf8Text {
@@ -314,7 +364,7 @@ Reset-Tests
 $denylist = $null
 It 'the superseded-claim denylist parses and every pattern compiles' {
     $script:denylist = Read-Denylist $denyFile
-    Assert (@($script:denylist.Rules).Count -ge 4) 'denylist lost its seeded entries'
+    Assert (@($script:denylist.Rules).Count -ge 9) 'denylist lost its seeded entries'
 }
 
 It 'every denylist pattern catches its historical text and spares the prose that replaced it' {

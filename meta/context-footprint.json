@@ -177,8 +177,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17869,
-          "tok": 4467
+          "chars": 17805,
+          "tok": 4451
         },
         {
           "path": "CLAUDE.md",
@@ -194,13 +194,13 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17869,
-          "tok": 4467
+          "chars": 17805,
+          "tok": 4451
         },
         {
           "path": "AGENTS.md",
-          "chars": 22765,
-          "tok": 5691
+          "chars": 22701,
+          "tok": 5675
         }
       ],
       "instructed": [
@@ -216,8 +216,8 @@
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 5239,
-          "tok": 1310
+          "chars": 5329,
+          "tok": 1332
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -641,8 +641,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17723,
-          "tok": 4431
+          "chars": 17659,
+          "tok": 4415
         },
         {
           "path": "CLAUDE.md",
@@ -658,13 +658,13 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17723,
-          "tok": 4431
+          "chars": 17659,
+          "tok": 4415
         },
         {
           "path": "AGENTS.md",
-          "chars": 23322,
-          "tok": 5830
+          "chars": 23258,
+          "tok": 5814
         }
       ],
       "instructed": [
@@ -680,8 +680,8 @@
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 5486,
-          "tok": 1372
+          "chars": 5576,
+          "tok": 1394
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -1125,8 +1125,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 19726,
-          "tok": 4932
+          "chars": 19662,
+          "tok": 4916
         },
         {
           "path": "CLAUDE.md",
@@ -1142,13 +1142,13 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 19726,
-          "tok": 4932
+          "chars": 19662,
+          "tok": 4916
         },
         {
           "path": "AGENTS.md",
-          "chars": 26418,
-          "tok": 6604
+          "chars": 26354,
+          "tok": 6588
         }
       ],
       "instructed": [
@@ -1164,8 +1164,8 @@
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 6208,
-          "tok": 1552
+          "chars": 6298,
+          "tok": 1574
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -1453,26 +1453,26 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 39582,
-      "static.claude.tok": 9896,
-      "static.copilot.chars": 44578,
-      "static.copilot.tok": 11144,
+      "static.claude.chars": 39518,
+      "static.claude.tok": 9880,
+      "static.copilot.chars": 44450,
+      "static.copilot.tok": 11112,
       "prompt.max.chars": 3008,
       "prompt.max.tok": 752
     },
     "angular": {
-      "static.claude.chars": 38105,
-      "static.claude.tok": 9526,
-      "static.copilot.chars": 45479,
-      "static.copilot.tok": 11370,
+      "static.claude.chars": 38041,
+      "static.claude.tok": 9510,
+      "static.copilot.chars": 45351,
+      "static.copilot.tok": 11338,
       "prompt.max.chars": 3078,
       "prompt.max.tok": 770
     },
     "monorepo": {
-      "static.claude.chars": 47098,
-      "static.claude.tok": 11774,
-      "static.copilot.chars": 52373,
-      "static.copilot.tok": 13093,
+      "static.claude.chars": 47034,
+      "static.claude.tok": 11758,
+      "static.copilot.chars": 52245,
+      "static.copilot.tok": 13061,
       "prompt.max.chars": 3423,
       "prompt.max.tok": 856
     },
