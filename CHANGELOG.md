@@ -22,6 +22,15 @@ host CI gate that the chronological item narratives below correctly record as pe
 candidate/review stages. It is candidate evidence, not tag or publication evidence; v0.79.0 remains
 unreleased until the canonical release pipeline completes.
 
+Separate evidence-only run `33359185934`, triggered from disposable workflow commit
+`a42c23eec700b4ca29b8f2557e92a9bd03e2c404`, checked out that same exact candidate and verified
+the exact B-204 test-file hash before exercising its dangling-root cleanup policy on Ubuntu 24.04.4
+LTS with PowerShell 7.6.5. The helper rejected the physical dangling-link entry with the required
+`SecurityException` and policy diagnostic, made zero retry sleeps, preserved the link, absent target,
+and outside sentinel, then left zero owned entries after exact evidence cleanup. This closes B-204's
+last native-Linux evidence gap without adding the disposable workflow to the candidate or release
+tree.
+
 **Pre-release review corrected its own Windows PowerShell 5.1 launcher instead of adding partial
 hashing code.** B-210 records that PowerShell 7 → intermediate `cmd.exe`/CP437 → Windows
 PowerShell inherited incompatible PowerShell 7 module roots because the maintainer command omitted
@@ -267,9 +276,8 @@ those expressions now filter enumerated files by extension, retaining the assert
 cardinality. Two independent adversarial reviews approved keeping the larger local remover after
 hostile path, link, lock, partial-deletion, aggregation, and post-inspection probes under PowerShell
 7 and 5.1. The unchanged 12-result file passed 12/0 under both hosts and concurrently; the standard
-maintainer runner passed all 31 files with zero failures and no new residue. Native-Linux dangling-
-link evidence and first Windows/Linux candidate CI still gate completion; this is not release
-approval.
+maintainer runner passed all 31 files with zero failures and no new residue. At that stage,
+native-Linux dangling-link evidence and first Windows/Linux candidate CI still gated completion.
 
 Independent immutable review approved exact candidate
 `2e72fecd088c85cf0a7c98803aa76d64513b28fd` from contract `617dd4f`. In a detached no-hardlinks
@@ -279,8 +287,12 @@ PATH-restoration, and Windows PowerShell oracle probes under PowerShell 7 and 5.
 mutation made the outer anti-vacuity result red before byte-identical restoration; focused
 PowerShell, Windows PowerShell, and Git Bash runs returned 2/0. Blob hash, BOM/AST, result cardinality,
 scope, RCA census, record gates, and residue were independently reconfirmed. The review left both
-the native-Linux dangling-root one-off and first candidate CI unavailable. The final run above now
-supplies the CI half; the one-off remains B-204's completion gate.
+the native-Linux dangling-root one-off and first candidate CI unavailable. Exact supported-host run
+`33333912064` later supplied the CI half. Exact evidence-only run `33359185934` then checked out the
+same candidate, verified the helper blob, and passed the previously unavailable dangling-root policy
+path on Ubuntu 24.04.4 LTS with PowerShell 7.6.5: required `SecurityException`, zero retry sleeps,
+unchanged link/target/sentinel state, and zero final owned entries. B-204 is complete; the disposable
+workflow is not part of the release tree.
 
 **Docs-sync now distinguishes verified warehouse-map debt from a checker it could not run.** B-203
 captures the `warehouse-map-check` status once in both wrapper twins, preserves the existing

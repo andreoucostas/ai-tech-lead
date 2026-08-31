@@ -3,9 +3,9 @@
 **Date:** 2026-08-30
 **Filed against:** v0.78.3
 **Planned:** v0.79.0
-**Status:** IMPLEMENTED CANDIDATE `2e72fecd088c85cf0a7c98803aa76d64513b28fd` — immutable review
-approved and exact supported-host run `33333912064` at
-`dbdc38f508463c3c2fa7cb3d55d830deb7cd014b` green; native-Linux dangling-root one-off still pending
+**Status:** COMPLETE 2026-08-31 — immutable candidate review approved; exact supported-host run
+`33333912064` at `dbdc38f508463c3c2fa7cb3d55d830deb7cd014b` green; exact native-Linux
+dangling-root evidence run `33359185934` green against the same candidate and helper blob
 
 ## Value and proportionality decision
 
@@ -164,9 +164,10 @@ historical workspace-parent roots were deliberately left untouched because their
 known; no `root-broken-jq-*` scratch root remains. BOM, PowerShell 7/5.1 AST, and `git diff --check`
 are clean.
 
-Native-Linux execution of the exact helper against a dangling root link is still unavailable, as is
-the candidate's first Windows/Linux CI. Those are evidence gaps, not inferred greens, so B-204 stays
-open and no release is authorized.
+At the initial candidate-review stage, native-Linux execution of the exact helper against a dangling
+root link and the candidate's first Windows/Linux CI were unavailable. Those were correctly retained
+as evidence gaps rather than inferred greens, so B-204 stayed open and no release was authorized at
+that stage.
 
 A fresh reviewer with no implementation participation approved exact immutable range
 `617dd4f6aa909fa1a97d80a973dd3231a9cc3a25..2e72fecd088c85cf0a7c98803aa76d64513b28fd`
@@ -179,7 +180,40 @@ An applied sentinel mutation made the outer anti-vacuity result fail before exac
 Focused PowerShell 7, Windows PowerShell 5.1, and Git Bash candidate runs each returned 2/0. The
 reviewer reconfirmed the exact blob hash, cardinality, BOM/AST, scope, RCA census, record gates, main
 tree cleanliness, and zero review residue. Native Linux, first candidate CI, and an independent full
-31-file rerun remain unclaimed; the maintainer's earlier full local run supplies only the last.
+31-file rerun were unclaimed by that reviewer; the maintainer's earlier full local run supplied only
+the last. The later completion evidence below closes the two external-host gaps without broadening
+the implementation.
+
+## Completion evidence
+
+Exact supported-host GitHub Actions run `33333912064` at
+`dbdc38f508463c3c2fa7cb3d55d830deb7cd014b` passed all eight required Windows/Linux jobs. Separate
+evidence-only run `33359185934` (`B-204 native Linux dangling-root evidence`) was triggered from
+disposable branch commit `a42c23eec700b4ca29b8f2557e92a9bd03e2c404`, whose sole changed file
+was the evidence workflow. That workflow checked out exact candidate
+`dbdc38f508463c3c2fa7cb3d55d830deb7cd014b`, verified
+`RootInstallerWarehouse.Tests.ps1` SHA-256
+`C8FB30644FD20B689CF987A4DA0CA30FA31B43DB9BA549699526EA160A13947D`, and extracted the one exact
+`Remove-TestFixtureTree` implementation before probing it on Ubuntu 24.04.4 LTS with PowerShell
+7.6.5.
+
+The native probe created an allowlisted root symlink whose target was absent. On this provider,
+direct `Get-Item` returned the link (`direct=resolved-link`) rather than entering the
+`ItemNotFoundException` fallback. The helper's unconditional ordinal parent enumeration confirmed
+the physical `SymbolicLink` entry, while the wrapper independently confirmed its `readlink` target
+before and after the call. The exact helper rejected that entry
+with `System.Security.SecurityException`, the required policy marker and exact diagnostic, zero
+retry sleeps, and no mutation of the link, absent target, or outside sentinel. Exact unlink then
+left zero owned entries, and a final absence call returned cleanly. The one-off did not add a
+separate native red-control run: its wrapper was fail-closed on every wrong outcome, prior hostile
+and mutation reds supplied anti-vacuity, and the substantive native observation was the required
+exception itself. The job and workflow completed successfully at
+<https://github.com/andreoucostas/ai-tech-lead/actions/runs/33359185934>.
+
+The workflow commit is evidence-only and is not part of the candidate or release tree. Together,
+the ordinary supported-host run and this direct native-Linux policy-path run satisfy the two
+explicit completion gates; B-204 is complete without adding a permanent test, result, fixture,
+matrix, or release lane.
 
 ## RCA boundary
 

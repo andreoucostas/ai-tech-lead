@@ -2711,57 +2711,6 @@ count distinct categories, and make the eval's authoritative-catalog fixture rej
 Fold a duplicate-row mutation into the existing warehouse map checker suite; do not create a
 standalone catalog suite.
 
-### B-204 · Make RootInstallerWarehouse fixture teardown fail honestly
-**Effort:** S · **Priority:** P2 · **planned v0.79.0**
-**Filed against:** v0.78.3 (2026-08-30)
-**Status:** IMPLEMENTED CANDIDATE — exact supported-host CI green in run `33333912064` at
-`dbdc38f508463c3c2fa7cb3d55d830deb7cd014b`; native-Linux dangling-root one-off still pending
-**Plan:** `.claude/plans/2026-08-30-b204-root-installer-fixture-teardown-design.md`
-
-**Why:** the unchanged B-203 full maintainer run printed a Windows sharing-violation from
-`RootInstallerWarehouse.Tests.ps1` fixture cleanup, then reported 12/0 and contributed a green file
-result. Seven GUID-scoped fixture roots remain under the workspace parent; six are empty and one
-retains `.git` plus the exact `Nx prose` fixture. The installer assertions remain valid, but this
-suite's teardown postcondition can fail without reaching its result counter because `Remove-Item`
-errors are non-terminating and the harness records failure only on a thrown exception.
-
-**Do:** add a local exact-path/reparse-safe bounded remover plus a lifecycle wrapper that preserves
-body and cleanup failures separately. Route the file's eleven `New-Target` lifecycles and one
-broken-jq scratch lifecycle through it. Use at most six `-ErrorAction Stop` attempts with a
-cumulative 1.5-second failure-path delay, typed absence, and terminal failure into the existing
-`It`; if body and cleanup both fail, report both rather than masking the product assertion. Add no
-suite or `It`, no generic cleanup framework, and no stale-root sweeper. Disposable locked-handle,
-dual-failure, invalid-path, and interior-link probes must discriminate the boundary; retain 12
-results and intended mutation-red diagnostics under PowerShell 7/5.1 plus the standard concurrent
-meta runner. The existing mutation callbacks must reject a cleanup-only red by machine-checking and
-re-emitting their intended warehouse assertion/sentinel. Also replace only the two same-file
-solution-free `Get-ChildItem -Include` expressions with explicit extension filtering: 5.1 otherwise
-counts every recursively enumerated file and cannot run this candidate, while the assertion itself
-remains valuable. Add no result for that folded prerequisite. Meta-only; first Windows/Linux CI and a
-separately recorded native-Linux dangling-link probe still gate completion because the test file and
-host-sensitive cleanup contract change.
-
-**Candidate evidence:** exact test-file SHA-256
-`C8FB30644FD20B689CF987A4DA0CA30FA31B43DB9BA549699526EA160A13947D`; two independent adversarial
-reviews returned KEEP/APPROVE after finding and fixing a Windows PowerShell case-alias deletion and
-a masked post-inspection failure. Disposable hostile probes passed under PowerShell 7 and native
-Windows PowerShell 5.1. The existing file passed 12/0 under each host and 12/0 in the standard
-concurrent runner; the full maintainer battery passed 31 files with zero failures. All three measured
-runs left no new fixture path. No suite or `It` was added. Seven historical roots remain untouched.
-Native-Linux dangling-link execution and the first Windows/Linux candidate CI remain explicit gaps,
-so this item is not complete and is not release-approved.
-
-**Immutable review:** a fresh reviewer approved exact range
-`617dd4f6aa909fa1a97d80a973dd3231a9cc3a25..2e72fecd088c85cf0a7c98803aa76d64513b28fd`
-from a detached no-hardlinks clone after independently replaying the locked-file false green and the
-candidate's retry, containment, case-alias, junction, partial-deletion, post-inspection,
-dual-failure, PATH, WPS5-oracle, and mutation anti-vacuity boundaries. Exact SHA/BOM/AST/cardinality,
-scope, record gates, and no new residue were reconfirmed. The reviewer had no native-Linux vantage
-and did not rerun the full concurrent battery, so approval remains bounded to the immutable Windows
-candidate rather than completion or release.
-
----
-
 ### B-207 · Make the doctor Copilot-visibility fixture portable to Windows PowerShell 5.1
 **Effort:** S · **Priority:** P2 · **planned >= v0.78.5**
 **Filed against:** v0.78.3 (2026-08-30)

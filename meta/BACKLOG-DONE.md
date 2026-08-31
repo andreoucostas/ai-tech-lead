@@ -8314,3 +8314,53 @@ the environment rule at the intermediate process boundary. The same class affect
 backed command in a PowerShell 7 → intermediate process → Windows PowerShell tree, so the remedy
 belongs in the launcher. Reopen only on a correctly launched supported-host failure or field
 evidence for deliberately supporting poisoned process trees.
+
+---
+
+### B-204 · Make RootInstallerWarehouse fixture teardown fail honestly
+**Effort:** S · **Priority:** P2 · **planned v0.79.0**
+**Filed against:** v0.78.3 (2026-08-30)
+**Status:** COMPLETE 2026-08-31 — immutable implementation review, exact supported-host CI, and
+exact native-Linux dangling-root evidence green
+**Plan:** `.claude/plans/2026-08-30-b204-root-installer-fixture-teardown-design.md`
+
+**Why:** `RootInstallerWarehouse.Tests.ps1` could print a non-terminating fixture-cleanup error,
+leave suite-owned state behind, and still report its existing result green. The product assertions
+were sound; the broken boundary was teardown postcondition accounting. The same file also contained
+two solution-free assertions whose recursive `Get-ChildItem -Include` shape falsely counted
+nonmatching files under native Windows PowerShell 5.1.
+
+**Delivered:** the file's twelve recursive fixture lifecycles now share one exact-path,
+allowlisted, reparse-safe remover and one lifecycle wrapper. Cleanup gets at most six attempts with
+1.5 seconds total backoff, verifies typed absence after removal errors, and preserves body and
+cleanup failures independently. The two 5.1-incompatible solution-file queries now enumerate and
+filter by extension explicitly. Existing mutation callbacks require their intended warehouse
+assertion and sentinel, so a cleanup-only failure cannot satisfy their red oracle. No suite, `It`,
+result, generic cleanup framework, stale-root sweeper, product artifact, or distribution changed.
+
+**Evidence:** exact test-file SHA-256
+`C8FB30644FD20B689CF987A4DA0CA30FA31B43DB9BA549699526EA160A13947D`. Disposable hostile probes
+covered containment, case aliases, escaped parents, root/interior links, persistent and transient
+locks, exact retry cadence, idempotent absence, partial deletion, body-plus-cleanup aggregation,
+PATH restoration, and post-inspection diagnostics under PowerShell 7 and native Windows PowerShell
+5.1. The unchanged 12-result file passed 12/0 on both hosts and in the concurrent runner; the full
+31-file maintainer battery passed with zero failures and no newly surviving fixture. A fresh
+immutable reviewer independently replayed the decisive boundaries and approved exact range
+`617dd4f6aa909fa1a97d80a973dd3231a9cc3a25..2e72fecd088c85cf0a7c98803aa76d64513b28fd`.
+
+Exact supported-host run `33333912064` at
+`dbdc38f508463c3c2fa7cb3d55d830deb7cd014b` then passed all eight required Windows/Linux jobs.
+Evidence-only run `33359185934`, triggered from disposable workflow commit
+`a42c23eec700b4ca29b8f2557e92a9bd03e2c404`, checked out that exact candidate, verified the exact
+test-file hash, extracted the one exact remover, and exercised its dangling-root path on Ubuntu
+24.04.4 LTS with PowerShell 7.6.5. The physical entry and `readlink` target were independently
+confirmed; the helper produced the required `System.Security.SecurityException` and policy
+diagnostic without retrying or mutating the link, absent target, or outside sentinel. Exact cleanup
+left zero owned entries and the job completed successfully. The evidence-only workflow is not part
+of the candidate or release tree.
+
+**RCA:** a `finally` block guaranteed that cleanup was attempted but not that it succeeded, while
+the tiny harness counted only thrown exceptions. Making `Remove-Item` terminating alone would have
+introduced the inverse defect by masking an already-thrown product assertion. Reopen only if an
+allowlisted suite-owned fixture can survive this verified lifecycle without failing its existing
+result, or if supported-host evidence contradicts the exact policy boundary.
