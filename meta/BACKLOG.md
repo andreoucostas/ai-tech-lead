@@ -66,8 +66,9 @@ B-30 shipped in v0.25.4). **B-38, B-39 (both phases), B-36, and B-34 all shipped
 > B-134, B-207, and B-211 are delivered in v0.79.1. Pursue B-42's independent field evidence as
 > soon as a participant exists; its value is elapsed time and it should re-prioritize everything
 > else. B-136 and B-174 are the next bounded implementation candidates. B-49 remains
-> open but its old protocol is invalid under WSD-062; re-lock it before using its session to execute
-> B-43's cadence. B-72, B-112, B-129, B-133, B-159, and B-160 retain specific measurement
+> open but its old protocol is invalid under WSD-062; re-lock it before any live-fire execution.
+> WSD-066 replaces B-43's calendar cadence with capability-specific, evidence-triggered
+> re-certification. B-72, B-112, B-129, B-133, B-159, and B-160 retain specific measurement
 > obligations and are not generic implementation work. No entry is closed merely for age, blockage,
 > or `PARTIALLY DONE` status.
 >
@@ -169,58 +170,11 @@ measurement path; the pilot execution itself remains open.
 > is one independent FS2 Module A pair; equal valid outcomes remain an honest null, never a reason to
 > tune and retry.
 
-### B-43 · Host-compatibility recertification cadence (the one-time verifications are rotting)
-**Filed against:** v0.31.0 (2026-07-17)
-**Effort:** S per cycle, recurring · **Invariants:** #5 · **execution vehicle: B-49's quarterly drill**
-> **STATUS CORRECTED 2026-08-20 — this entry is much further along than its heading implies, and
-> "B-43 is open" currently reads as "nothing is certified", which is false.**
->
-> **Already exists.** `meta/host-certification.md` **is** the dated "last certified: host X version Y"
-> table this entry asks for. It has per-surface rows, explicit `not certified — quota` /
-> `not certified — no seat` values rather than blanks, and it distinguishes `Direct fixture` (which
-> proves hook *output*) from end-to-end host *consumption* — the distinction this entry cares about.
-> Two rows were re-dated 2026-08-20 by B-50's canary on Copilot CLI 1.0.80.
->
-> **Also already exists, and the entry does not name it:** a canary kit library —
-> `meta/canaries/{agent-stop-delivery,b52-copilot-two-hook,b50-copilot-posttooluse}` plus five
-> `.claude/scripts/canary-*.ps1`.
->
-> **Remaining, and only this:**
-> 1. **The checklist** — no single "run these canaries, in this order, expect these observations"
->    recipe exists in `DEVELOPING.md`. The kits exist; the index does not.
-> 2. **The cadence** — quarterly or on any major host release, sharing B-49's calendar slot by design
->    (one sitting, two checklists).
-> 3. **The VS Code leg** — never verified on any leg, open since B-03. **This cannot be closed by any
->    agent session**: it needs a human at a VS Code window with Preview agent-hooks enabled, and those
->    are org-gated. **It escalates**, and the rest of this entry should not stay open on its account.
->
-> **Fold in when writing the checklist:** B-50's three-arm design should become the *stated standard*
-> for any new canary — a positive control chosen because it is **known-good on the surface under
-> test**, a negative control ruling out environment leakage, and a side-effect marker separating "the
-> hook never ran" from "it ran and its output was discarded". This entry's instinct to "reuse the
-> B-03 canary design" points at the older, weaker pattern; B-143's canary failed precisely by lacking
-> a valid positive control.
-
-**Why:** the enforcement matrix rests on *dated, one-shot* live verifications: Copilot CLI 1.0.68
-canary (2026-07-04) established which hook legs are live vs dead; VS Code agent-mode consumption
-was **never verified at all** (open since B-03); Claude Code hook semantics were verified on one
-CLI generation. Agent hosts ship weekly and change hook/context behavior without notice — every
-"live-verified" row in `enforcement-surfaces.md` decays toward fiction, and the framework's
-honesty discipline (its main differentiator) decays with it.
-
-**Do:** write a canary checklist into `DEVELOPING.md` — the sentinel prompts and hook fixtures
-per surface (reuse the B-03 canary design), expected observations, and a dated
-"last certified: host X version Y" table (in `meta/`, or as Status notes in
-`enforcement-surfaces.md` if consumer-visible). Run it quarterly or on any major host release,
-whichever first; each run either re-dates the table or files a defect entry. Fold the
-*consumer-side* half into B-16's doctor (its cannot-verify-from-a-script tier already prints a
-canary prompt). Close the VS Code gap in the first cycle.
-
 ### B-49 · Quarterly live-fire drill — install into a real OSS repo, verify behavior, measure value-add
 **Filed against:** v0.31.0 (2026-07-17)
 **Effort:** drill #0 = 1 session (freezes the Appendix) · ~½ session per quarter thereafter ·
-**Invariants:** #5 #6 · maintainer-decided 2026-07-17 · executes B-43 on a cadence; complements
-(does **not** replace) B-42
+**Invariants:** #5 #6 · maintainer-decided 2026-07-17 · host evidence is separately governed by
+WSD-066; complements (does **not** replace) B-42
 
 > **STATUS REVALIDATED 2026-08-30 — EXECUTION DESIGN INVALIDATED; B-49 REMAINS OPEN.** Two
 > independent audits found that running the current packet would spend provider quota on an
@@ -232,6 +186,9 @@ canary prompt). Close the VS Code gap in the first cycle.
 > or execute the packet. Re-lock only after a current target, executable valid/invalid oracles,
 > credential-free isolation, ordered canaries, latest released tag, and explicit model/time/credit
 > authority exist. This is a deferral of an invalid instrument, not completion of the value goal.
+> WSD-066 also removes the old instruction to execute a general B-43 recertification cycle here.
+> A replacement may include only host evidence required by its freshly locked objective; it does
+> not inherit a calendar-driven certification packet.
 >
 > **HISTORICAL design lock: locked 2026-07-17, re-locked same day after a second adversarial pass — do not
 > re-derive.** Full spec (version-under-test rule, targets, safety + state-hygiene protocol,
@@ -249,10 +206,9 @@ but neither ever exercises the product on a codebase nobody curated. A quarterly
 real open-source repo catches what both miss: bootstrap quality on messy real code, installer
 behavior on repo shapes we didn't design for, host drift since the last drill, and — the half
 nothing else measures — whether the framework demonstrably *adds value* over the same agent bare.
-A fixed cadence also defeats the failure mode the one-shot verifications already exhibited
-(B-03's canary aging out, VS Code never verified): recurring by calendar, not by memory — a
-scheduled reminder fires quarterly (1st of Jan/Apr/Jul/Oct) so the drill happens without anyone
-having to remember it.
+A fixed cadence was also intended to refresh host evidence; WSD-066 supersedes that use of the
+drill. Host re-certification is now triggered by a claim or decision, contrary evidence, or a
+host-facing mechanism change whose result could alter a decision — not by the calendar alone.
 
 **Do — build the kit once (M):**
 1. **Pin the drill targets in a WSD** so quarters are comparable: one mid-size real .NET OSS repo
@@ -270,8 +226,9 @@ having to remember it.
    convention adherence, test-written-before-fix, verification evidence shown, review findings
    caught. Single runs are anecdotes — keep the rubric frozen and track the *delta across
    quarters*, not absolute scores; a shrinking delta is exactly the B-44 retirement signal.
-4. **Fold B-43 in:** the host-recertification canaries run in the same quarterly session (one
-   calendar slot, two checklists); the B-44 overlap table gets reviewed there too.
+4. **Historical only — superseded by WSD-066:** do not run a general host-recertification packet.
+   A re-locked drill may include only the capability evidence needed for its own current claim or
+   decision.
 5. **Record** each drill in `meta/drill-reports.md`: date, host + framework versions, repo SHAs,
    scores, defects filed. Defects become backlog entries; a failed drill is a P1.
 
@@ -318,7 +275,9 @@ failures: one hard checklist failure = a defect entry, regardless of the rubric 
 > checklist and frozen A/B rubric are in `meta/drill-kit.md`. RCA: no gate caught the missing kit
 > because this is maintainer process infrastructure, not a malformed shipped artifact. The same
 > exposure applies to the still-unrun host-recertification/report templates; drill #0 must exercise
-> them rather than treating the existence of prose as execution evidence.
+> them rather than treating the existence of prose as execution evidence. WSD-062 later invalidated
+> that drill packet, and WSD-066 removed its general host-recertification obligation; this paragraph
+> remains historical evidence, not current execution authority.
 >
 > **FIELD-STUDY DESIGN AND META PILOT PACKET DELIVERED 2026-08-26; FIRST DRY RUN COMPLETE BUT VOID.**
 > WSD-053 and `.claude/plans/2026-08-26-b42-field-evidence-study-design.md` lock a controlled

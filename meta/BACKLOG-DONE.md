@@ -10054,6 +10054,51 @@ and require first modified-test Windows/Linux CI before completion.
 
 ---
 
+### B-43 · Host evidence is capability-specific; recurring blanket recertification is retired
+**Filed against:** v0.31.0 (2026-07-17)
+**Status: COMPLETE 2026-08-31 — targeted for v0.79.2.**
+
+The stale premise was not that every host claim lacked evidence. The ledger already carried dated
+Copilot CLI observations, and the legacy v0.23.0 changelog records one real VS Code Preview-hook
+guard denial on 2026-06-25. The defect was that generic dates and repeated prose let evidence for
+one event certify siblings: the Copilot Boy Scout row called the complete
+`agentStop -> queue -> next userPromptSubmitted` chain guaranteed even though the persisted
+turn-end canary had never run, while the VS Code lifecycle was alternately described as wholly
+unverified and currently guaranteed.
+
+The v0.79.2 authored correction makes each claim map to one capability row or say unverified.
+Copilot CLI retains its dated `userPromptSubmitted`, `preToolUse`, and `postToolUse` observations;
+`agentStop` firing and the queue write are explicitly unverified. VS Code retains only the narrow
+2026-06-25 guard observation, with its unrecorded host/extension versions and therefore historical-
+only status; prompt, post-tool, and Stop lifecycles remain unverified. Native
+`.github/instructions/` delivery remains separate from Preview-hook evidence. Hook registration and
+runtime behavior are unchanged.
+
+WSD-066 replaces quarterly blanket recertification with an evidence-triggered rule: obtain fresh
+evidence before strengthening a claim, and after contrary evidence or a host-facing mechanism
+change when the result could alter a decision. A certifying canary needs a known-good positive
+control on the same surface, a no-hook negative control under the same model/tool exposure, and a
+side-effect marker. The negative arm invalidates the instrument if a token arrives without the
+target hook. The UNRUN turn-end kit is now labelled non-certifying as written; B-52's persisted
+README now records its actual four CLI 1.0.79/1.0.80
+runs and last-entry-only result rather than pending work. B-49 no longer executes B-43 on a calendar.
+
+No live host run was needed to close this item: the delivery only weakens unsupported claims and
+reconciles already-recorded evidence. The no-seat VS Code paths remain visible evidence gaps; a
+future stronger claim must trigger its own proportionate canary rather than a speculative recurring
+item or unexecuted checklist.
+
+**RCA — why existing gates missed it and what shares the class.** Composition, mirror, hook-
+registration, and vendor-denylist gates can keep repeated strings and files consistent, but none
+binds each assurance phrase to a capability-specific dated live-host row. The unrun canary shipped
+beside a guarantee, so artifact presence was mistaken for execution evidence and the same
+unsupported inference propagated consistently across the matrix, three READMEs, hook comment,
+ledger, and canary status. Every host-dependent claim copied among those artifact classes shares
+the exposure. The standing repair is an evidence obligation, not a prose-inference gate that cannot
+honestly judge live consumption.
+
+---
+
 ### B-211 · Make the working-Python control quote-stable under Windows PowerShell 5.1
 **Filed against:** v0.79.0 (2026-08-31)
 **Effort:** S · **Priority:** P2 · **Invariants:** #3 #4 #7

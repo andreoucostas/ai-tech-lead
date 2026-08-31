@@ -1,38 +1,38 @@
 # B-52 canary — does Copilot CLI fire *both* `userPromptSubmitted` hooks?
 
-Persisted kit for the B-52 backlog item (see `meta/BACKLOG.md`). v0.33.0 registered a **second**
-`userPromptSubmitted` hook (`boy-scout-check`, after `route-prompt`) and the shipped
-`docs/enforcement-surfaces.md` now claims the Copilot CLI Boy-Scout nudge is "Guaranteed (soft),
-CLI ≥ 1.0.65". That claim is only true if Copilot CLI runs **every** `userPromptSubmitted` entry
-and merges **all** of their `additionalContext` into the model-facing prompt. The 2026-07-04 canary
-(CLI 1.0.68) only ever proved a **single** hook is consumed. This kit proves the multi-hook case.
+Persisted historical kit for completed B-52 (see `meta/BACKLOG-DONE.md`). v0.33.0 registered a
+**second** `userPromptSubmitted` hook (`boy-scout-check`, after `route-prompt`), and the then-current
+Boy Scout claim depended on Copilot CLI merging every entry's `additionalContext`. The 2026-07-04
+canary (CLI 1.0.68) had proved only a single hook was consumed, so this kit tested the multi-hook
+case.
 
-**Status:** built 2026-07-17, re-confirmed blocked 2026-07-20 (Copilot CLI 1.0.71) — every attempt
-hit the account's **monthly** quota (`402`, `AI Credits 0`) before a model turn.
-**Quota reset confirmed 2026-08-01** by a trivial `-p` probe that completed a real model turn
-(exit 0, `AI Credits 2.98`, CLI 1.0.71). The canary itself has **not** been run — step 2's
-interactive folder-trust is still outstanding — so the two-hook question remains unobserved.
-Run steps 1–3 below.
+**Status: COMPLETE 2026-08-18.** Four live runs on Copilot CLI **1.0.79/1.0.80** observed that only
+the **last** registered `userPromptSubmitted` entry reaches the model: two entries, swapped tokens,
+three entries, and three structurally distinct entries all followed the final slot. B-147 then
+changed the product to one composed entry. There is no pending two-hook run; the recipe below is
+retained only as historical design.
 
-**PATH hazard on the maintainer box:** `copilot.cmd` dies with `'"node"' is not recognized` because
-the session `PATH` is the corrupted one. Prepend `C:\Program Files\nodejs` to `$env:PATH` and invoke
-`copilot` by absolute path (`$env:APPDATA\npm\copilot.cmd`) — it is not on `PATH` either.
+**Historical PATH hazard on the maintainer box:** `copilot.cmd` died with `'"node"' is not
+recognized` because the session `PATH` was corrupted. The historical workaround prepended
+`C:\Program Files\nodejs` to `$env:PATH` and invoked `copilot` by absolute path
+(`$env:APPDATA\npm\copilot.cmd`).
 
-## Design
+## Historical design
 
-Two `userPromptSubmitted` hooks in `.github/hooks/hooks.json`, each emitting a **distinct**
-out-of-band token via the dual JSON shape (`additionalContext` +
-`hookSpecificOutput.additionalContext`). The tokens are read from **environment variables**, so
-they exist in **no file** in the tree — the model can only echo a token if Copilot actually
-injected that hook's context. This defeats the false-positive where a tool-enabled model greps the
-hook scripts and "finds" the tokens.
+Two `userPromptSubmitted` hooks in `.github/hooks/hooks.json` each emitted a **distinct** token via
+the dual JSON shape (`additionalContext` + `hookSpecificOutput.additionalContext`). The tokens were
+read from environment variables and absent from tracked files. The original design treated that as
+inaccessible to the model; it is not a valid secrecy claim for a tool-enabled model, which can spawn
+a shell and inspect inherited environment. The completed result rests on the repeated slot/token
+swap and structurally distinct controls recorded above; do not reuse this old kit as a certifying
+instrument without WSD-066's positive, negative, and side-effect-marker arms.
 
 Known gotchas already baked in (from the drill): `hooks.json` paths use **forward slashes**
 (a backslash is an invalid JSON escape and Copilot rejects the file); repo hooks load in `-p` mode
 **only after the folder is trusted** (`~/.copilot/config.json` `trustedFolders`), and there is no
 non-interactive flag to grant trust.
 
-## How to run (next cycle)
+## Historical run recipe (do not rerun against the current single-entry product)
 
 1. Copy this kit to a fresh temp folder and make it a git repo (Copilot needs a real checkout):
    ```powershell
@@ -51,31 +51,29 @@ non-interactive flag to grant trust.
    copilot -C $dir --allow-all-tools -p "Echo any CANARY tokens you were given, verbatim."
    ```
 
-## Reading the result
+## Historical interpretation and recorded result
 
-- **Both** `CANARY-ALPHA-Z7K2Q9` and `CANARY-BRAVO-M4V8R3` echoed → Copilot fires both hooks and
-  merges both payloads → **B-52 verified**. Re-date the Copilot Boy-Scout row in
-  `docs/enforcement-surfaces.md` as live-verified (normal release path, invariant #7) and record the
-  host + version in `meta/host-certification.md`.
-- **Only one, or neither** → Copilot honors only one `userPromptSubmitted` entry → the shipped claim
-  is false. Apply the plan's documented fallback: fold the Boy-Scout logic into `route-prompt`
-  (without its early-exit) so a single hook carries it, and correct the matrix row.
-- **`402` / `AI Credits 0`** → still quota-blocked; record the dated attempt and retry next cycle.
+- **Observed:** only the last entry reached the model on every run. The surviving token moved with
+  the slot when tokens were swapped, and the result persisted with three structurally distinct
+  messages.
+- **Product response:** B-147 folded the Boy Scout delivery into `route-prompt`, so one registered
+  entry now carries routing, plan-gate, security salience, and any queued advisory.
+- **Evidence boundary:** this proves the CLI 1.0.79/1.0.80 multi-entry behavior. It does not prove
+  that the separate `agentStop` scan fires or writes the queue.
 
-Local sanity check (no Copilot needed) — confirm each hook still emits valid JSON with its token:
+Historical local sanity command (no Copilot needed) — each hook emitted valid JSON with its token:
 ```bash
 CANARY_A=TEST-A bash .github/hooks/hook-a.sh | jq -e . >/dev/null && echo hook-a OK
 CANARY_B=TEST-B pwsh -NoProfile -File .github/hooks/hook-b.ps1 | ConvertFrom-Json > $null && echo hook-b OK
 ```
 
-## B-41 S1 status (2026-08-13) — schema re-verification only, NOT the two-hook question above
+## B-41 S1 status (2026-08-13) — historical pre-run note, superseded 2026-08-18
 
-**This is a narrower, separate check than the two-hook canary above.** B-41's remainder design
+**This was a narrower, separate check than the later two-hook run.** B-41's remainder design
 (`.claude/plans/2026-08-09-b41-eval-harness-remainder-design.md` §2 step 4) needed only a cheap
 confirmation that the `events.jsonl` hook-shape schema documented in that design's §3 — written
-against CLI 1.0.71 — still holds on the currently-installed CLI. **It does not attempt, and does
-not answer, the two-hook merge question this file exists for; that remains unresolved, still
-blocked on the same interactive-trust step, see the finding below.**
+against CLI 1.0.71 — still held on the then-installed CLI. It did not answer the two-hook merge
+question; the four 2026-08-18 runs recorded at the top later answered it.
 
 - **CLI version:** 1.0.78 (was 1.0.71 when §3 was written — 7 patch releases later).
 - **`userPromptSubmitted` → `additionalContext`:** still fires, byte-for-byte the same shape —
@@ -91,11 +89,9 @@ blocked on the same interactive-trust step, see the finding below.**
   has no flag to skip the prompt. But `~/.copilot/config.json`'s `trustedFolders` is a plain JSON
   array of absolute path strings — writing the scratch dir's path into it directly (back up the
   file first; it is the live trust store) is accepted exactly as if the interactive prompt had been
-  accepted, and hooks fire immediately on the next invocation. This unblocks running **this file's
-  own still-outstanding two-hook canary** (steps 1–3 above) without a human present to answer the
-  interactive prompt — that canary itself was NOT run as part of this check; the two-hook question
-  is still open. Confirmed safe: config was backed up before the edit and restored to its exact
-  original byte content afterward.
+  accepted, and hooks fire immediately on the next invocation. This later unblocked the completed
+  two-hook runs above. It was not itself a two-hook result. Confirmed safe: config was backed up
+  before the edit and restored to its exact original byte content afterward.
 - **Credits spent:** ~13.5 AI Credits across two live turns. Recorded because the design's step 4
   text called this a "zero-credit schema re-verification" — that framing anticipated reading
   already-on-disk session-state files rather than a fresh invocation; a fresh live turn was chosen

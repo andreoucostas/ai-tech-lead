@@ -31,7 +31,7 @@ $provenance = @(
         )
         Rejects = @(
             '   - **If NUnit:** there is no equivalent analyzer. NUnit1xxx rules are structural, NUnit2xxx are'
-            'Claude Code uses `Stop`. Copilot CLI >= 1.0.72 scans at `agentStop` and delivers the queued nudge at the next prompt; the VS Code `Stop` path remains unverified and requires Preview agent-hooks.'
+            'Copilot CLI documents `agentStop` from 1.0.72 and the framework registers it, but live firing and the resulting queue write remain unverified.'
         )
     }
     [pscustomobject]@{
@@ -198,7 +198,7 @@ function New-Fixture {
 
 ## Hook compatibility
 
-| ``Stop`` / ``agentStop`` | End of a write turn | Claude Code uses ``Stop``. Copilot CLI >= 1.0.72 scans at ``agentStop``. |
+| ``Stop`` / ``agentStop`` | End of a write turn | Claude Code uses ``Stop``. Copilot CLI documents ``agentStop`` from 1.0.72; live firing remains unverified. |
 
 ## Changelog
 
@@ -224,7 +224,7 @@ if ($RedTest) {
                 'superseded-agentstop' {
                     # Plants BEFORE the dated section; the sibling case below plants after it.
                     $before = Read-Utf8Text $readmePath
-                    $after = $before.Replace('scans at `agentStop`.', 'scans at `agentStop`. Copilot has no equivalent event.')
+                    $after = $before.Replace('live firing remains unverified.', 'live firing remains unverified. Copilot has no equivalent event.')
                     Assert ($after -cne $before) 'superseded-agentstop mutation did not change its file'
                     [IO.File]::WriteAllText($readmePath, $after, $utf8)
                     Assert-NoSupersededClaims -DistEntries $fixtureDist -Denylist $denylist

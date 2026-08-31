@@ -1942,3 +1942,30 @@ quote boundary: `chr(111)+chr(107)` is ASCII-only and still emits exactly `ok`. 
 mutation proved the comparison red. Two maintainer-only PowerShell 7 tests use the old quoted shape,
 but no observation or native-5.1 contract gives that exposure a current consequence. Name and bound
 same-class exposure instead of widening a verified supported-host fix into an opportunistic sweep.
+
+## 2026-08-31 — A dated host version is not a blanket certificate
+
+B-43 had live evidence, an evidence table, and several persisted canaries, yet still called an
+unobserved chain guaranteed. The Copilot CLI date beside prompt and post-tool observations migrated
+through generic README wording into apparent certification of `agentStop`; at the same time, the
+real 2026-06-25 VS Code guard denial was flattened into both “the full lifecycle is uncertified” and
+a current guarantee. Consistent repetition can preserve an unsupported inference as effectively as
+drift preserves a stale sentence.
+
+Record host evidence at the capability boundary that was actually observed. A direct fixture,
+registration, vendor document, fired marker, delivered payload, and multi-event chain are different
+facts. An observed final delivery leg does not prove an unobserved producer leg. Unknown host
+versions stay unknown, and inability to launch or observe a canary is not evidence that the target
+artifact is defective.
+
+Persisting an unrun kit is not execution evidence. A certifying canary needs a known-good delivery
+control, a no-hook control under the same model/tool exposure that invalidates the instrument if a
+token arrives by another route, and a separate firing marker. “The token is only in the
+environment” is insufficient when the model has shell tools and can read that environment. Keep
+such historical kits for provenance, but do not promote their echo or null into a claim until the
+instrument can distinguish firing, delivery, leakage, and inability to examine.
+
+Calendar recertification was the wrong repair. Re-run only before strengthening a claim or after
+contrary evidence or a host-facing mechanism change when the result could change a decision. An
+explicit unverified row is often the truthful finished state; recurring provider spend and an
+unexecuted checklist add no value by themselves.

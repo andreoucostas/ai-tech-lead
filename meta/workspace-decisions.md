@@ -2977,3 +2977,51 @@ manual status capture despite no field harm. Recording the boundary preserves or
 it; repairing only the two observed scripts; a cross-script strict-mode rewrite without a consumer
 incident; sourcing shipped scripts as a supported API; and expanding the supported host set beyond
 Windows and Linux.
+
+---
+
+## WSD-066: host evidence is capability-specific and recertification is evidence-triggered (2026-08-31)
+
+**Context.** The v0.79.1 enforcement matrix called the Copilot Boy Scout chain guaranteed even
+though its persisted `agentStop` canary remained UNRUN. Live Copilot evidence existed for separate
+`userPromptSubmitted`, `preToolUse`, and `postToolUse` capabilities, and generic README wording let
+their dates imply certification of every registered event. The opposite flattening affected VS
+Code: the legacy v0.23.0 changelog records one end-to-end Preview-hook guard denial on 2026-06-25,
+but no host or extension versions, while other Preview-hook lifecycles have not been observed. A
+quarterly checklist cannot repair this epistemic mismatch merely by existing, and WSD-062 has
+already invalidated B-49's proposed execution vehicle.
+
+**Decision.** **Host evidence is capability-specific and recertification is evidence-triggered.**
+A host-dependent lifecycle is described as observed only for the exact capability, date, and
+host/version actually observed. Unknown versions stay unknown. Direct fixtures prove output shape,
+registration proves configuration, and vendor documentation proves a documented contract; none
+proves live host consumption. Native `.github/instructions/` delivery proves no Preview-hook event.
+
+Obtain fresh evidence before strengthening a host claim. Re-certify after contrary evidence or a
+host-facing mechanism change only when the result could alter a current decision. Calendar age,
+host release frequency, or an available kit alone creates no execution obligation. An explicit
+unverified row is a complete and honest state, not an automatically escalating defect.
+
+A certifying live canary requires a treatment, a positive control already known to deliver on the
+same host/surface, a no-hook negative control with the same model/tool exposure that invalidates on
+any alternative token arrival, and an independent side-effect marker separating "did not fire"
+from "fired but output was not consumed". An environment-only token is not hidden from a tool-
+enabled model. A launch, trust, interpreter, quota, or observation failure is inability to examine
+the capability and must not be reported as the capability failing.
+
+Retain the 2026-06-25 VS Code guard denial as narrow historical evidence with versions unrecorded,
+not current certification. Leave VS Code prompt, post-tool, and Stop paths unverified until a
+current decision justifies a valid canary. Retain Copilot CLI's dated per-capability evidence while
+describing `agentStop` firing and its queue write as unverified. B-49 may include host evidence only
+when its future re-locked objective needs that evidence; it no longer executes a blanket B-43 cycle.
+
+**Proportionality.** This decision corrects consumer assurances and evidence records without a
+provider run, new canary, recurring task, runtime branch, or prose-inference gate. It spends live
+budget only when an actionable claim or decision exists and makes the current no-seat VS Code gap
+visible without pretending it is a current product failure.
+
+**Rejected.** Keeping "guaranteed" because the event is vendor-documented; treating the observed
+next-prompt delivery leg as proof of the preceding turn-end leg; deleting the real historical VS
+Code guard observation; blanket-downgrading native instruction delivery; executing the non-
+certifying UNRUN kit; adding a quarterly checklist to `DEVELOPING.md`; keeping B-43 open solely for
+a no-seat surface; and mechanising an inference from prose to live-host truth.
