@@ -1913,3 +1913,32 @@ manual captures. B-203 repaired three proven unreachable branches in one wrapper
 asks whether supporting inherited strict mode across all shipped scripts creates enough value to
 justify a complete census. Do not turn that hostile discovery into piecemeal fixes or an accidental
 public promise.
+
+## 2026-08-31 — Re-triage residual obligations, not entry age
+
+`PARTIALLY DONE`, blocked, and old entries are not interchangeable. The first v0.79.1 triage tried
+to archive nineteen records by broad category; adversarial review showed that several still carried
+an exact grader repair, frozen live batch, field trigger, or decision. The corrected pass named every
+remaining obligation and either preserved it or explicitly completed/rejected it with a reopen
+trigger. Age and inconvenience are prompts to revalidate a premise, never evidence that it is gone.
+
+A related execution lesson arrived in B-207. Standard `bash -s` reasoning said the placeholder after
+`-s` would be `$0`, but the actual Git-for-Windows process launched through `Start-Process` fixed
+`$0` to `/usr/bin/bash` and exposed the placeholder as `$1`. The existing result failed 32/1 before
+the candidate could be called green. When stdin programs receive ordinary path arguments across a
+Windows native-process boundary, observe the real positional contract and normalize from the final
+required arguments; do not infer it from a different shell launch shape.
+
+## 2026-08-31 — A capability override is only evidence if its own probe survives the legacy host
+
+B-211's documented `ATL_TEST_PYTHON` escape hatch named a real interpreter, yet native Windows
+PowerShell 5.1 removed the nested quotes from `sys.stdout.write("ok")` before Python saw the `-c`
+program. The helper then called the interpreter unavailable and converted a supported capability
+into an invariant skip. An override does not prevent false skips merely because the named file
+exists; its execution probe must be exercised through every host contract that relies on it.
+
+The smallest correction preserved the JSON parse and exact-output oracle while removing the fragile
+quote boundary: `chr(111)+chr(107)` is ASCII-only and still emits exactly `ok`. A scratch `ox`
+mutation proved the comparison red. Two maintainer-only PowerShell 7 tests use the old quoted shape,
+but no observation or native-5.1 contract gives that exposure a current consequence. Name and bound
+same-class exposure instead of widening a verified supported-host fix into an opportunistic sweep.

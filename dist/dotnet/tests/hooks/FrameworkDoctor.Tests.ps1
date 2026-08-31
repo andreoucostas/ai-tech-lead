@@ -364,9 +364,22 @@ It 'Copilot CLI visibility is controlled per twin and only constructed asymmetry
                 $env:PATH=$pbin;$pSetup=[bool](Get-Command copilot -ErrorAction SilentlyContinue);Assert ($pSetup-eq$case.P) "setup $($case.Name): PowerShell visibility=$pSetup"
                 $p=Run (Join-Path $r 'scripts/framework-doctor.ps1')
                 $env:PATH=$sbin
-                if($bash-match'\\Git\\bin\\bash\.exe$'){$posixBin=ConvertTo-PosixPath $sbin;$posixBash=ConvertTo-PosixPath $bash;$null=& $bash --noprofile --norc -c 'PATH="$1"; export PATH; hash -r; exec "$2" -c "command -v copilot >/dev/null 2>&1"' _ $posixBin $posixBash}
-                else{$null=& $bash -c 'command -v copilot >/dev/null 2>&1'}
-                $sSetup=($LASTEXITCODE-eq 0);Assert ($sSetup-eq$case.S) "setup $($case.Name): Bash visibility=$sSetup"
+                if($bash-match'\\Git\\bin\\bash\.exe$'){
+                    if($PSVersionTable.PSEdition-eq'Desktop'){
+                        $controlledPath=$env:PATH
+                        [Environment]::SetEnvironmentVariable('Path',$null,'Process')
+                        [Environment]::SetEnvironmentVariable('PATH',$controlledPath,'Process')
+                    }
+                    $posixBin=ConvertTo-PosixPath $sbin;$posixBash=ConvertTo-PosixPath $bash
+                    $probeScript='while [ "$#" -gt 2 ]; do shift; done; [ "$#" -eq 2 ] || exit 64; PATH="$1"; export PATH; hash -r; if "$2" -c "command -v copilot >/dev/null 2>&1"; then printf "yes\n"; else printf "no\n"; fi'
+                    $probe=Invoke-RawProcess -FileName $bash -Arguments @('--noprofile','--norc','-s','_',$posixBin,$posixBash) -Stdin $probeScript
+                    Assert ($probe.Exit-eq 0) "setup $($case.Name): Bash probe exit=$($probe.Exit); stderr='$($probe.Err)'"
+                    Assert ($probe.Err-ceq '') "setup $($case.Name): Bash probe stderr='$($probe.Err)'"
+                    Assert (($probe.Out-ceq'yes')-or($probe.Out-ceq'no')) "setup $($case.Name): Bash probe sentinel='$($probe.Out)'"
+                    $sSetup=($probe.Out-ceq'yes')
+                }
+                else{$null=& $bash -c 'command -v copilot >/dev/null 2>&1';$sSetup=($LASTEXITCODE-eq 0)}
+                Assert ($sSetup-eq$case.S) "setup $($case.Name): Bash visibility=$sSetup"
                 $s=Run (Join-Path $r 'scripts/framework-doctor.sh');$c=Compare-DoctorResults $p $s $case.Expected
                 $pHas=$c.PowerShell.Rows['Copilot surface'].Detail-match'CLI is available';$sHas=$c.Bash.Rows['Copilot surface'].Detail-match'CLI is available'
                 Assert ($pHas-eq$case.P) "result $($case.Name): PowerShell detail='$($c.PowerShell.Rows['Copilot surface'].Detail)'";Assert ($sHas-eq$case.S) "result $($case.Name): Bash detail='$($c.Bash.Rows['Copilot surface'].Detail)'"
@@ -412,7 +425,13 @@ It 'Copilot CLI visibility is controlled per twin and only constructed asymmetry
             }
             Put (Join-Path $r '.github/hooks/hooks.json') $validCopilot
         }finally{Remove-Item -Recurse -Force $pbin,$sbin}
-    }finally{$env:PATH=$old;Remove-Item -Recurse -Force $r}
+    }finally{
+        if($PSVersionTable.PSEdition-eq'Desktop'){
+            [Environment]::SetEnvironmentVariable('Path',$null,'Process')
+            [Environment]::SetEnvironmentVariable('PATH',$old,'Process')
+        }else{$env:PATH=$old}
+        Remove-Item -Recurse -Force $r
+    }
 }
 It 'genuine no-bash and Copilot-only bash fixtures have exact parser divergence sets' {
     $bin=New-ParserProbeBin $bash;$old=$env:PATH

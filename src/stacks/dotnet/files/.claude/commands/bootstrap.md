@@ -186,6 +186,8 @@ Enter Phase 3 only when at least one profile was selected. For a warehouse-only 
 
 Read the existing CLAUDE.md template in the project root. Replace every placeholder section with real findings from this codebase:
 
+Code establishes implemented surfaces, not product intent or actual user behavior or value. Label code-derived context as implementation observations. Leave intended purpose and target users unknown unless supplied by a named person or role authorized to decide them; leave actual behavior and value unknown unless supported by direct research or operational evidence.
+
 - **Codebase Context**: what the selected profile does, its domain concepts, and critical journeys. For warehouse-SQL, describe the data domain, sources/consumers, schema/layer purpose, and critical loads — never an absent application, API, or frontend.
 - **Repository Structure**: actual selected-profile layout with dependency diagram; for warehouse-SQL, show SQL roots, schemas/layers, load/orchestration, and only evidenced data-contract connections.
 - **Conventions**: the rules this codebase actually follows (or should follow), with rationale. Use only the selected profile's relevant checklist: .NET (Architecture, Naming, DI, Data Access, API, Async, Null Handling, Logging, Testing) and/or warehouse-SQL (schema/layer boundaries, grains/keys, load ordering/idempotency, deployment, validation/testing). Record observed reality; never name a technology an analysis pass did not evidence. End the applicable Testing/Validation subsection with a one-line target test shape. **Delete the `BOOTSTRAP_PENDING` HTML comment and the "_Not yet populated_" placeholder line** when this section is filled in.

@@ -165,14 +165,14 @@ function ConvertTo-PosixPath {
 function Resolve-HostPython {
     if ($env:ATL_TEST_PYTHON -and (Test-Path -LiteralPath $env:ATL_TEST_PYTHON)) {
         $ok = $null
-        try { $ok = '{}' | & $env:ATL_TEST_PYTHON -c 'import json,sys; json.load(sys.stdin); sys.stdout.write("ok")' 2>$null } catch { }
+        try { $ok = '{}' | & $env:ATL_TEST_PYTHON -c 'import json,sys; json.load(sys.stdin); sys.stdout.write(chr(111)+chr(107))' 2>$null } catch { }
         if ($ok -eq 'ok') { return $env:ATL_TEST_PYTHON }
     }
     foreach ($cand in 'python3', 'python', 'py') {
         $cmd = Get-Command $cand -ErrorAction SilentlyContinue | Select-Object -First 1
         if (-not $cmd -or -not $cmd.Source) { continue }
         $ok = $null
-        try { $ok = '{}' | & $cmd.Source -c 'import json,sys; json.load(sys.stdin); sys.stdout.write("ok")' 2>$null } catch { }
+        try { $ok = '{}' | & $cmd.Source -c 'import json,sys; json.load(sys.stdin); sys.stdout.write(chr(111)+chr(107))' 2>$null } catch { }
         if ($ok -eq 'ok') { return $cmd.Source }
     }
     return $null

@@ -109,7 +109,9 @@ independence, quality, or truth.
    and explicit environment/gaps. Prefer another
    model family, host, or toolchain, but rank alone neither qualifies nor disqualifies. Data-loss,
    security-bypass, and false-green release/enforcement changes also require an orthogonal reviewer
-   or execution vantage; otherwise file the remaining debt.
+   or execution vantage; otherwise file the remaining debt. Review scope too: every changed function
+   must be required by the frozen contract; justify or revert extra surface. Windows and Linux are
+   the two platform legs; multiple hosts on one OS and proxy checks replace neither.
 3. **Nothing enters the record as observed unless you observed it** — self-reports, a spec's
    file-layout claims, a plan's assumptions, any number you quote. Verify in the environment that
    matters, or attribute the claim rather than asserting it.
@@ -117,7 +119,10 @@ independence, quality, or truth.
    the host and code page that matter. **And the other direction: name the constructible state in
    which the measure would register success.** If none can be named the measure is unreachable and
    the experiment is void before it runs — "shown to fail" is satisfied trivially by a measure that
-   always fails (B-112).
+   always fails (B-112). Check four semantic-inertness shapes: literal or syntactically inert
+   assertions, exit-domain collisions, empty/absent conflated with cannot-examine, and
+   normalization/comparison that stops comparing. Use release-specific red evidence; do not infer a
+   generic mutation framework.
 5. **Close every delivery with an RCA** in `meta/BACKLOG.md`: why did no gate catch it, and what
    else is exposed to the same class?
 6. **Before rule 1 locks a design, state the proportionality case, not just the correctness case.**
@@ -141,7 +146,10 @@ independence, quality, or truth.
    for a *missing file* as well as a failure to run, so a content fact reported as a host problem is
    the same defect inverted. B-164 established that this remains guidance backed by bounded advisory
    triage, not an enforced gate; per WSD-028/WSD-057, mechanise only what tooling can honestly
-   distinguish and keep unjudgeable quality as an explicit evidence obligation.
+   distinguish and keep unjudgeable quality as an explicit evidence obligation. Meta gates derive
+   decisions from repository content and explicit lifecycle inputs, never ambient release-state
+   discovery. This is guidance because generic tooling cannot honestly distinguish every deliberate
+   lifecycle input from ambient discovery.
 
 `release.ps1` refuses to release without either `-ReviewEvidence` (the supplied range, hostile/red
 and clean evidence, environment/gaps, and identities) or `-NoIndependentReview`, which is allowed

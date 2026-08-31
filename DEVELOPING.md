@@ -33,6 +33,14 @@ staged `.ps1` for its BOM and passes staged blobs through the canonical write gu
 created by shell commands or external tools. Both are bypassable local convenience nets, **not
 enforcement**, and neither is shipped or server-side policy.
 
+### Verify reviewer-side probes before recording green
+
+For an ad hoc review check, use the subject process exit to decide pass/fail and capture it before a
+filter or following command can replace it; zero matching `FAIL` lines is not a pass oracle. Prove
+every detection filter against both a known positive and a known negative. When the claim is
+equality, compare bytes or hashes rather than rendered console text. These are review disciplines,
+not authorization to build a checker-of-checkers.
+
 ## Compose the dists + freshness [#1]
 
 ```powershell

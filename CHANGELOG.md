@@ -11,6 +11,37 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.79.1 — Unreleased
+
+**Bootstrap no longer turns implementation evidence into unsupported product claims.** B-134 adds
+one authority boundary to all three stack-specific bootstrap commands: code-derived context is
+labelled as implementation observation; intended purpose and target users require a named person or
+role authorized to decide them; actual behavior and value require direct research or operational
+evidence. The command refreshes through every installer mode, but update preserves consumer-owned
+`CLAUDE.md`, so existing populated `Codebase Context` is deliberately not rewritten or silently
+declared corrected.
+
+**The shipped framework-doctor suite is truthful under native Windows PowerShell 5.1.** B-207 moves
+only the existing Git-for-Windows Copilot-visibility setup probe from nested native `-c` argument
+transport to the existing raw-process/stdin path. It accepts only an exact `yes`/`no` outcome with
+zero status and empty stderr, while preserving all four visibility worlds, suite cardinality, and
+doctor product behavior. No test, fixture, suite, or CI leg was added.
+
+**The documented working-Python control no longer self-skips under Windows PowerShell 5.1.** B-211
+replaces only the two existing quoted `Resolve-HostPython` sentinel programs with an ASCII,
+quote-free equivalent. Native 5.1 had removed the nested quotes from `sys.stdout.write("ok")` and
+rejected a real interpreter; both resolver arms now parse the same `{}` input and still require the
+exact `ok` output. The other two identical maintainer-only probe shapes remain outside the native-
+5.1 contract and are named, not silently claimed fixed, in B-211's RCA.
+
+**The active backlog was revalidated against v0.79.0 instead of consumed in file order.** B-15,
+B-20, B-96, B-97, B-138, B-140, B-161, B-165, B-166, B-167, B-176, and B-208 close only through
+item-specific completion or premise rejection; B-134, B-207, and discovered B-211 close through
+delivery, for fifteen closures in total. Eleven distinct items remain open. WSD-065 keeps documented
+Windows/Linux executed-script invocations supported but
+does not promise compatibility for sourced scripts or a deliberately exported inherited
+`SHELLOPTS=errexit` process tree. No Bash product or test code changed for that decision.
+
 ## 0.79.0 — 2026-08-31
 
 **Final supported-host candidate evidence.** Exact GitHub Actions run `33333912064` at

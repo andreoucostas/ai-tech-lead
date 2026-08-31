@@ -163,7 +163,10 @@ review independence, quality, or truth, which remain evidence-review obligations
    host, or toolchain where available, but model rank alone neither qualifies nor disqualifies a review.
    Changes capable of data loss, security bypass, or false-green release/enforcement behavior require
    a second orthogonal reviewer or execution vantage; otherwise record incomplete coverage and file
-   review debt rather than treating one correlated pass as sufficient.
+   review debt rather than treating one correlated pass as sufficient. Review scope as well as
+   correctness: for every changed function, ask whether the frozen contract requires it; justify or
+   revert extra surface. Windows and Linux are the two platform legs. Multiple PowerShell editions
+   on Windows exercise a host axis, not both platform legs, and a proxy substitutes for neither.
 3. **Nothing enters the record as observed unless you observed it.** This covers implementer
    self-reports, a spec's claims about file layout, the assumption a plan rests on, and any number
    you quote. Verify it **in the environment that matters** — a sandbox whose `PATH` differed from
@@ -180,6 +183,10 @@ review independence, quality, or truth, which remain evidence-review obligations
    then produces a false negative wearing the costume of a principled result — see B-112, where all
    three behavioural instruments built here were broken on first draft, in three different
    directions, and every one was caught by *reading what it pointed at* rather than by running it.
+   Inspect the four known semantic-inertness shapes: a literal or syntactically inert assertion; an
+   exit-domain collision; empty or absent data conflated with inability to examine; and a
+   normalization or comparison path that stops comparing. Release-specific red evidence is the
+   proportionate control; these shapes do not justify a generic mutation framework.
 5. **Close every delivery with an RCA** filed into `meta/BACKLOG.md`, answering two questions:
    *why did no gate catch it*, and *what else is exposed to the same class?* Sweep for the second —
    the answer is rarely "nothing".
@@ -214,7 +221,11 @@ review independence, quality, or truth, which remain evidence-review obligations
    `grep` exits 2 for a *missing file* as well as for a failure to run, so a content fact reported as
    a host problem is the same defect inverted. B-164 established that this remains guidance backed
    by bounded advisory triage, not an enforced gate; per WSD-028/WSD-057, mechanise only what tooling
-   can honestly distinguish and keep unjudgeable quality as an explicit evidence obligation.
+   can honestly distinguish and keep unjudgeable quality as an explicit evidence obligation. Meta
+   gates are hermetic: derive their decisions from repository content and explicit lifecycle inputs.
+   If a gate needs lifecycle position, pass it as an input rather than discovering it from ambient
+   release state. This remains evidence guidance because no generic gate can honestly distinguish
+   every deliberate lifecycle input from ambient discovery.
 
 Evidence trail for all seven: `meta/LEARNINGS.md`. Working hazards that are *not* principles (e.g.
 never run the gate suites concurrently with an implementer round) live in `DEVELOPING.md`.

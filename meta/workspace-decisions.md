@@ -2419,8 +2419,14 @@ the composed security overlay or Copilot Boy Scout queue delivery.
 **Carrier boundary.** The maintainer has available Codex/Sol usage and limited Claude usage. A
 programmatic `gpt-5.6-sol` run may execute bootstrap and grade final artifacts, including B-177's
 deterministic docs-sync postcondition. It cannot certify Claude/Copilot command dispatch, hook
-consumption, typed tool ordering, or reviewer fan-out. No permanent Codex executor is authorized;
-that remains B-140's separately reviewed follow-on.
+consumption, typed tool ordering, or reviewer fan-out. No permanent Codex executor is authorized.
+B-140's completed census classified 34 of 42 scenarios as candidate-portable and eight as dependent
+on typed host events. Current Codex 0.149.0 offers headless execution, JSONL, final-output controls,
+and ephemeral runs but no native spend or timeout flag; the one-off path above already proved
+sufficient for final-artifact grading. B-129 remains excluded because its question is routing-
+dependent. **Reject permanent Codex integration unless repeated artifact-only work exposes concrete
+ad-hoc cost or defects and supplies an immutable final-state oracle that can be red-tested.** Re-probe
+the current CLI contract if that trigger occurs.
 
 **Proportionality.** The product changes are the smallest controls matching the observed harms: one
 answer-only escape, deletion of debt-derived Boy Scout instructions, a dismissal registry, and
@@ -2943,3 +2949,31 @@ target value while making the breaking boundary conspicuous.
 **Rejected.** Deleting only the red provider job; continuing to claim macOS as untested-but-
 supported; rewriting historical releases; reverting already-reviewed safety/simplification code;
 adding a permanent negative job-absence test; or deliberately rejecting Darwin at runtime.
+
+---
+
+## WSD-065: inherited exported Bash strict mode is not a compatibility contract (2026-08-31)
+
+**Context.** The v0.78.4 release-range review deliberately exported `SHELLOPTS=errexit` into the
+shipped Bash process tree. ScriptTwinParity and WarehouseMapCheck then failed because nested scripts
+inherited errexit at manual status-capture sites. The locked v0.79.1 audit distinguished that hostile
+environment from the supported invocation: ordinary parent `set -e` does not export `SHELLOPTS`, so
+a separately invoked Bash child starts with errexit off; explicitly exporting `SHELLOPTS` is what
+makes the child inherit it. Repository and CI recipes execute shipped scripts as child processes.
+No supported-consumer incident under a documented recipe is recorded.
+
+**Decision.** Documented executed-script invocations on Windows and Linux remain supported,
+including the specifically promised `bash -e scripts/docs-sync-check.sh` boundary. Sourcing shipped
+scripts or deliberately exporting `SHELLOPTS=errexit` into their Bash process tree is not a public
+compatibility contract. Compatibility in those environments may occur incidentally, but it carries
+no release gate or maintenance guarantee. A documented supported invocation that exports the option,
+or a real Windows/Linux consumer incident under a documented recipe, reopens the decision.
+
+**Proportionality.** Supporting the hostile environment would require a cross-script redesign of
+manual status capture despite no field harm. Recording the boundary preserves ordinary and explicit
+`bash -e` execution without adding product branches, a suite, a result, or recurring hostile runs.
+
+**Rejected.** Treating runner-shell strict mode as proof that separately invoked children inherit
+it; repairing only the two observed scripts; a cross-script strict-mode rewrite without a consumer
+incident; sourcing shipped scripts as a supported API; and expanding the supported host set beyond
+Windows and Linux.

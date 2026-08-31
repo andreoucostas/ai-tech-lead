@@ -30,13 +30,15 @@ phrase inside the cited entry.
 - “Recover consumer state and evidence integrity before structural redesign.” — `meta/workspace-decisions.md WSD-048`
 - “issue intake is not sentiment evidence; balanced field outcomes use a replay plus diary” — `meta/workspace-decisions.md WSD-053`
 - “Onboarding preserves evidence and project ownership; repeated samples describe stability, not truth.” — `meta/workspace-decisions.md WSD-054`
+- “Reject permanent Codex integration unless repeated artifact-only work exposes concrete ad-hoc cost or defects and supplies an immutable final-state oracle that can be red-tested.” — `meta/workspace-decisions.md WSD-054`
 - “Historic decisions are evidence-bearing defaults, not doctrine.” — `meta/workspace-decisions.md WSD-057`
 - “Independent review is evidence-bound, not rank-bound.” — `meta/workspace-decisions.md WSD-057`
 - “The next independent paired replay begins FS2 and is never aggregated with FS1.” — `meta/workspace-decisions.md WSD-058`
 - “A unique supported-provider claim can justify one focused provider leg.” — `meta/workspace-decisions.md WSD-061` (its macOS authorization is superseded by WSD-064)
 - “Supported and release-tested hosts are Windows and Linux; macOS/BSD/Bash 3.2 are out of scope.” — `meta/workspace-decisions.md WSD-064`
+- “Sourcing shipped scripts or deliberately exporting `SHELLOPTS=errexit` into their Bash process tree is not a public compatibility contract.” — `meta/workspace-decisions.md WSD-065`
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`
-- “B-129/WSD-042 is out of scope for this item” — `meta/BACKLOG.md B-140`
+- “B-129/WSD-042 is out of scope for this item” — `meta/BACKLOG-DONE.md B-140`
 - “Vendor-capability claims are maintainer-owned and gated meta-side, never in a consumer's build.” — `meta/BACKLOG-DONE.md B-55`

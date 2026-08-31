@@ -163,6 +163,8 @@ Run Phase 3 only when the Angular profile was selected. Every Angular-specific s
 
 Read the existing CLAUDE.md template in the project root. Replace every placeholder section with real findings from this codebase:
 
+Code establishes implemented surfaces, not product intent or actual user behavior or value. Label code-derived context as implementation observations. Leave intended purpose and target users unknown unless supplied by a named person or role authorized to decide them; leave actual behavior and value unknown unless supported by direct research or operational evidence.
+
 - **Codebase Context**: what the selected Angular application or library does, its users, domain concepts, and critical journeys
 - **Repository Structure**: actual Angular workspace/layout with module dependency diagram
 - **Conventions**: the rules this codebase actually follows (or should follow), with rationale. Use the subsection structure from `docs/defaults.md` (Angular Version, Architecture, Component Design, Forms, State Management, RxJS, API/HTTP, Typing, Testing) as a starting checklist; record observed reality, deviating from defaults where the codebase does. End `Conventions > Testing` with a one-line target test shape for this repo (unit-dense, honeycomb, trophy-shaped, or another shape from the `docs/defaults.md` heuristic), adapted to what A1–A6 found. If Angular version is below 17, adjust conventions to match what's available. **Delete the `BOOTSTRAP_PENDING` HTML comment and the "_Not yet populated_" placeholder line** when this section is filled in.

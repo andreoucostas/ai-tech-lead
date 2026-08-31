@@ -4,6 +4,20 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.79.1 — Unreleased
+
+- `/bootstrap` now treats code as evidence of implemented surfaces, not product intent or actual
+  user behavior or value. Intended purpose and target users require a named person or role authorized
+  to decide them; actual behavior and value require direct research or operational evidence. New and
+  refreshed bootstrap commands receive this boundary, but updates preserve your existing populated
+  `CLAUDE.md > Codebase Context`; review that context manually because it is not rewritten.
+
+- The shipped framework-doctor test suite now constructs its Copilot CLI visibility fixtures
+  portably under Windows PowerShell 5.1. The four visibility cases and doctor behavior are unchanged;
+  running the suite through the documented legacy-host command no longer fails because nested Bash
+  redirection was mis-marshalled as a Windows path. Its working-Python control is also quote-stable,
+  so a configured real interpreter is exercised instead of being reported as unavailable.
+
 ## 0.79.0 — 2026-08-31
 
 - Supported and release-tested hosts are now explicitly Windows and Linux. macOS is unsupported and
