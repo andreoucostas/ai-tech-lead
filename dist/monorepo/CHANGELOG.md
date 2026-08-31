@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.79.2 — Unreleased
+## 0.79.2 — 2026-08-31
 
 - Host compatibility evidence is now stated per capability. Copilot CLI 1.0.80 remains observed
   for single-entry prompt delivery and post-tool context, but the registered `agentStop` Boy Scout

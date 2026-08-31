@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.79.2 — Unreleased
+## 0.79.2 — 2026-08-31
 
 **Host compatibility assurances are now capability-specific instead of inheriting a generic dated
 certificate.** B-43/WSD-066 retains Copilot CLI's observed `userPromptSubmitted`, `preToolUse`, and
