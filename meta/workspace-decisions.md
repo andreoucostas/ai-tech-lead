@@ -2021,6 +2021,17 @@ to the probe itself. B-129 remains blocked on the account's monthly spend limit;
 needs to either raise it (`claude.ai/settings/usage`) or confirm the billing-cycle reset date before a
 third attempt is worth spending on.
 
+**Current-value revalidation (2026-08-31) — the authorised experiment is retired, with both runs
+still void.** The second-run sidecar is now preserved in the main evidence ledger, but it does not
+change the disposition: neither incomplete batch reached the pre-registered routing threshold, so
+neither establishes reachability or content effect. Since the lock, the unmerged probe commit has
+fallen behind the released product and its runner, scenarios, and skill mirrors have materially
+changed. Continuing would require re-locking and porting before another paid batch, while no current
+framework-caused publication-surface error has been observed. Under WSD-057 that expected decision
+value no longer exceeds the cost. B-129 is closed with no shipped change and may reopen only on a
+concrete current publication error. This is a portfolio disposition, not a reinterpretation of the
+two void measurements or a reversal of the original design decision.
+
 ## WSD-043: Updates disclose three ownership classes and back up settings before refresh (2026-08-17)
 
 **Context.** An update overwrites consumer edits to shipped machinery while restoring only eight

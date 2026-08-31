@@ -1969,3 +1969,21 @@ Calendar recertification was the wrong repair. Re-run only before strengthening 
 contrary evidence or a host-facing mechanism change when the result could change a decision. An
 explicit unverified row is often the truthful finished state; recurring provider spend and an
 unexecuted checklist add no value by themselves.
+
+## 2026-08-31 — A constructible hostile world is not evidence that hardening it is worth shipping
+
+B-174 began as three small parser asymmetries. Once the candidate was made honest across decoded
+values, provider fallback, recursive registration positions, shell framing, ordinal comparison,
+control characters, and legacy PowerShell encoding, it occupied eight artifacts and `+1163/-222`
+lines. The hostile inputs were real and the first implementation was wrong in several observable
+ways, but neither fact established consumer harm or selected one synthetic edge as the valuable
+boundary. Preserving the experiment and reverting it was the higher-quality delivery.
+
+The same stop-loss applies to evaluations. B-129's two paid attempts stayed void, then the unmerged
+probe drifted materially behind the product. Honest void classification prevented a false result;
+it did not make a third run valuable. B-72 and B-112 likewise retained the general instrument rules
+while retiring nondiscriminating historical probes. Before expanding a gate or live experiment,
+separate four questions: can the hostile/success world be constructed; does the instrument detect
+it; has the resulting defect harmed a current decision or consumer; and would the smallest repair
+change that outcome enough to justify its permanent cost. Passing the first two is necessary
+measurement evidence, not a product-value verdict.

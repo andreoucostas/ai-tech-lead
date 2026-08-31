@@ -29,6 +29,15 @@ non-certifying as written, and B-52's historical kit now records its actual four
 runs instead of saying they remain pending. No provider run, new canary, or runtime branch was
 added; the existing vendor-claim gate now rejects the exact superseded full-chain assurance.
 
+**Strategic re-triage leaves three evidence-bearing items open instead of preserving work by age.**
+B-42 still needs one balanced, independent FS2 pair; B-49 remains hard-deferred behind a freshly
+valid instrument and explicit spend authority; B-136 remains behind a named context-budget
+displacement and renewed critique. B-72, B-112, B-129, B-133, B-159, B-160, and B-174 move intact to
+the archive with explicit residuals, RCAs, and evidence-based reopen triggers. The two void B-129
+runs remain void; their recovered second-run sidecar is preserved without licensing another paid
+batch. B-174's implementation and corrective-review experiment remains in history and is fully
+reverted because its eight-artifact, `+1163/-222` scope had no observed consumer harm to justify it.
+
 ## 0.79.1 — 2026-08-31
 
 **Bootstrap no longer turns implementation evidence into unsupported product claims.** B-134 adds
