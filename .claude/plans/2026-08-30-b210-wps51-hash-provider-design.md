@@ -1,102 +1,90 @@
-# B-210 — root meta-test hashing independent of inherited module paths
+# B-210 — Windows PowerShell 5.1 intermediate-launch module paths
 
-**Date:** 2026-08-30  
-**Filed against:** unreleased v0.79.0 candidate `58a3d4231a25de2f077fed99a733e55e196b3cf7`  
-**Planned:** v0.79.0  
-**Status:** DESIGN LOCKED — implementation and exact-candidate CI pending
+**Date:** 2026-08-30–2026-08-31
+**Filed against:** unreleased v0.79.0 candidate `58a3d4231a25de2f077fed99a733e55e196b3cf7`
+**Status:** CLOSED — original code premise rejected; maintainer launcher corrected; no product or test change
 
-## Premise, value, and proportionality
+## Final decision
 
-Do this before release. A fresh whole-range review launched the existing Windows PowerShell 5.1
-evidence through the maintainer's real hostile path: PowerShell 7 → `cmd.exe`, code page 437 →
-`powershell.exe -NoProfile`. That child inherits a PowerShell-7-first `PSModulePath`. Windows
-PowerShell then resolves an incompatible `Microsoft.PowerShell.Utility` module and cannot find
-`Get-FileHash`. The unchanged root suites return UpdateDelivery 41/10,
-InstallerConvergence 2/10, and RootInstallerWarehouse 4/8. In the last file both mutation checks
-also go red for the infrastructure failure rather than their intended warehouse sentinels.
+Do not add a hash helper to the root test harness or to one shipped script. The observed failures
+were caused by an invalid maintainer launcher, not by missing framework hashing code.
 
-The same commands with only `PSModulePath` absent, allowing Windows PowerShell to reconstruct its
-native roots, return 51/0, 12/0, and 12/0. Direct native Windows PowerShell is likewise green. This
-separates a maintainer-harness dependency defect from product behavior, but the defect is still a
-release blocker: the hostile CP437 verification path is repeatable, and the current record states
-the 5.1 result without this launcher boundary.
+PowerShell 7 normally adjusts module paths when it starts Windows PowerShell directly. It cannot do
+that when it starts an intermediate `cmd.exe`, which then forwards the unmodified PowerShell 7
+`PSModulePath` to `powershell.exe`. Windows PowerShell resolves the incompatible PowerShell 7
+`Microsoft.PowerShell.Utility` module first and loses module-backed commands including
+`Get-FileHash`. Microsoft documents this exact boundary and requires the intermediate child
+environment to remove `PSModulePath`:
 
-Fixing is proportionate. Merely qualifying the invocation would preserve a recurring false red in
-the exact path maintainers use to collect legacy-host evidence. The same-class census is only five
-calls in three root suites, all of which already dot-source one root-only harness. One dependency-
-free helper plus five substitutions removes the observed harm without adding a suite, result,
-fixture, execution lane, product dependency, or shipped byte. Do not broaden this into a hashing
-library, modify source/composed consumer harnesses, or add a permanent regression result.
+```powershell
+cmd.exe /d /c "set PSModulePath=&& chcp 437 >nul && powershell.exe -NoProfile -ExecutionPolicy Bypass -File <suite>"
+```
 
-Two independent read-only design reviews reproduced the boundary and approved this disposition.
-Generic `Import-Module`, module-qualified invocation, and caller preloading are rejected: under the
-poisoned environment they can select the incompatible PowerShell 7 module while appearing to
-import successfully. Sanitising `PSModulePath` inside each suite is also rejected because it
-mutates unrelated module resolution and treats the launcher symptom rather than the five-call
-dependency.
+The canonical maintainer command is now recorded in `DEVELOPING.md`. The independently true stale
+comment in `.claude/scripts/watch-ci.ps1` is corrected to say WSD-061's unique provider is
+historical and WSD-064 withdrew active macOS coverage. It changes no behavior and is not a hash
+implementation.
 
-## Locked implementation
+## Evidence that rejected the original design
 
-1. Add `Get-TestFileSha256 -LiteralPath <path>` to the root-only
-   `.claude/hooks/tests/_HookHarness.ps1`.
-   - Open the literal path with `[IO.File]::OpenRead` and stream it through a fixed
-     `[Security.Cryptography.SHA256]::Create()` instance.
-   - Return exactly 64 uppercase hexadecimal characters with no separators.
-   - Dispose both stream and hasher through `try`/`finally`. A missing, unreadable, locked, or
-     otherwise unhashable file must throw; do not convert inability to examine into a digest or an
-     empty value.
-   - Use Windows PowerShell 5.1-compatible syntax and preserve the mandatory UTF-8 BOM.
-2. Replace the complete same-class root-meta census:
-   - `UpdateDelivery.Tests.ps1`: retain local `Get-Hash` as a delegating alias for minimal churn,
-     and route its direct tree-fingerprint call through the shared helper (two substitutions).
-   - `InstallerConvergence.Tests.ps1`: route both fingerprint calls through the shared helper.
-   - `RootInstallerWarehouse.Tests.ps1`: route its one fingerprint call through the shared helper.
-3. Correct the stale comment in `.claude/scripts/watch-ci.ps1`: describe WSD-061's unique provider
-   as historical and WSD-064 as having withdrawn active macOS provider coverage. Change no watcher
-   behavior.
-4. Change no file under `src/` or `dist/`, no product code, no test body/cardinality, and no CI
-   topology. This is a root maintainer-harness correction only.
+The original, unnormalised PowerShell 7 → `cmd.exe`/CP437 → Windows PowerShell 5.1 launch made the
+unchanged suites return:
 
-## Adversarial verification contract
+- UpdateDelivery 41/10;
+- InstallerConvergence 2/10;
+- RootInstallerWarehouse 4/8, with both mutation oracles failing for the wrong hash-provider
+  reason.
 
-The already observed poisoned pre-fix runs are the primary red instrument:
+An experimental root-only streaming SHA-256 helper replaced exactly five test-suite
+`Get-FileHash` calls. Its fixed binary and `abc` digests, missing/locked-file throws, and handle
+disposal were correct under both PowerShell hosts. It made UpdateDelivery 51/0 and
+RootInstallerWarehouse 12/0, but InstallerConvergence only 10/2. The two remaining failures reached
+the shipped PowerShell installer, whose own `Get-FileHash` was unavailable. The installer correctly
+entered WSD-051's `CANT-VERIFY` path, planned preservation, changed no outside bytes, and retained
+known retired files rather than deleting without a digest. This proved that hardening five root
+calls could not repair the process environment and could mask it. The helper and all five
+substitutions were therefore reverted exactly before commit.
 
-- UpdateDelivery: 41 passed / 10 failed;
-- InstallerConvergence: 2 passed / 10 failed;
-- RootInstallerWarehouse: 4 passed / 8 failed, with both mutation oracles unusable for the wrong
-  hash-provider reason.
+The same unchanged suites, from the same parent process and at the same code page, were then run
+with only the documented `PSModulePath` removal. Primary execution returned UpdateDelivery 51/0,
+InstallerConvergence 12/0, and RootInstallerWarehouse 12/0. Both warehouse mutations went red for
+their intended `mutated warehouse refusal` sentinel and restored `install.ps1`/`install.sh`
+byte-identically. Independent reviewers had already reproduced the same three corrected-launch
+counts. This is the required red/green discrimination: one child-environment variable, no code or
+test-cardinality difference.
 
-After implementation, require all three existing suites to retain their clean cardinalities under:
+## Adversarial review disposition
 
-1. the exact poisoned PowerShell-7 → `cmd.exe` CP437 → Windows PowerShell 5.1 launcher;
-2. the same child command with `PSModulePath` absent as the native-root control;
-3. PowerShell 7.
+Two initial design reviews approved the five-call helper before the product-reachable convergence
+case ran. That approval is superseded rather than silently reused. Two fresh opposing reviews then
+started from the 10/2 counterexample. One initially recommended a bounded shipped-installer helper;
+the other rejected product expansion. A wider census found another shipped runtime dependency in
+`docs-sync-check.ps1` plus shipped test dependencies, and Microsoft’s official launch contract
+showed that an installer-only change would be partial support for an invalid environment. Both
+reviewers independently converged on **REVERT / PROCEDURE FIX**.
 
-The helper itself must hash exact bytes `00 01 02 7F 80 FF` to
-`DA2CB6AD175BC966DE5E79C6E16777F8A98B610C2424A894132DF2815BE50677` under poisoned Windows
-PowerShell 5.1 and PowerShell 7. A second `abc` oracle must return
-`BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD`; missing and exclusively
-locked inputs must throw, and a successfully hashed file must be immediately reopenable and
-deletable. A disposable helper-removal or one-call reversion may be used only if implementation
-review needs additional discrimination; do not add a permanent case when the three captured
-old-red suites already prove the boundary.
+Rejected alternatives:
 
-Require zero remaining `Get-FileHash` calls in the three affected suites, unchanged `It`
-cardinality, BOM and AST integrity for every changed PowerShell file, and `git diff --check`. Because
-the common root harness changes, run the full root meta suite locally and require the first exact
-candidate Windows/Linux CI to pass. Obtain a fresh independent adversarial implementation review
-of an immutable range, then have the whole-release reviewer re-audit the corrected evidence and
-record before closing B-210.
+1. **Keep the root helper.** It makes selected assertions green while the same process remains
+   unable to load other standard modules; the full evidence surface stays untrustworthy.
+2. **Fix only the installer.** It would improve one safe-degradation case while leaving
+   `docs-sync-check.ps1`, shipped tests, and any other module-backed command exposed, falsely
+   implying coherent poisoned-module support.
+3. **Add a permanent regression result.** The defect is already discriminated by the exact
+   unnormalised/normalised launch pair. Another result would add maintenance without a new decision.
+4. **Declare product failure from the 10/2 run.** WSD-051 deliberately preserves unhashable
+   retirement candidates with explicit `CANT-VERIFY`; the affected invocation is outside the
+   published path (`pwsh` when present, native Windows PowerShell only when `pwsh` is absent).
+
+Reopen product hardening only if a correctly launched supported Windows PowerShell process still
+fails, or field evidence justifies supporting poisoned intermediate process trees. At that point,
+sweep all shipped runtime module dependencies and lock one coherent compatibility design rather
+than patching one call.
 
 ## RCA boundary
 
-No gate caught this because ordinary Windows PowerShell runs reconstruct native module roots and
-ordinary CI uses PowerShell 7. The special CP437 child path was treated as a code-page probe, but
-its inherited module-resolution state was neither controlled nor recorded. The result therefore
-depended on the reviewer's parent shell.
-
-The bounded same-class census found exactly five root-meta `Get-FileHash` uses across these three
-suites and no separate implementation outside the shared harness. All five are in scope. Shipped
-PowerShell scripts are not exposed by this observation: they do not use this root test harness, and
-the supported consumer contract does not require launching Windows PowerShell 5.1 beneath a
-PowerShell-7-poisoned module path. Reopen that boundary only on product evidence, not by analogy.
+No canonical maintainer recipe documented the intermediate-process environment rule, so repeated
+CP437 probes treated a known PowerShell launcher hazard as artifact evidence. The same class is any
+PowerShell 7 → intermediate process → Windows PowerShell launch, not just hashing and not just these
+three suites. The control belongs at the process boundary. `DEVELOPING.md` now states it once and
+warns against command-by-command masking.

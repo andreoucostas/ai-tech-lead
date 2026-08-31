@@ -22,15 +22,21 @@ host CI gate that the chronological item narratives below correctly record as pe
 candidate/review stages. It is candidate evidence, not tag or publication evidence; v0.79.0 remains
 unreleased until the canonical release pipeline completes.
 
-**Pre-release review found and bounded a Windows PowerShell 5.1 maintainer-harness false red.**
-B-210 records that the PowerShell 7 → `cmd.exe`/CP437 → Windows PowerShell 5.1 evidence path
-inherits PowerShell-7 module roots and loses `Get-FileHash`: the unchanged UpdateDelivery,
-InstallerConvergence, and RootInstallerWarehouse suites returned 41/10, 2/10, and 4/8 instead of
-their native-root 51/0, 12/0, and 12/0. Two independent design reviews attribute this to the
-root-only test harness, not installer behavior, and approve replacing its complete five-call
-census with one dependency-free shared SHA-256 helper. The correction adds no permanent test,
-result, fixture, CI lane, product dependency, or shipped byte. Implementation, exact-candidate CI,
-and renewed whole-release review still gate publication.
+**Pre-release review corrected its own Windows PowerShell 5.1 launcher instead of adding partial
+hashing code.** B-210 records that PowerShell 7 → intermediate `cmd.exe`/CP437 → Windows
+PowerShell inherited incompatible PowerShell 7 module roots because the maintainer command omitted
+Microsoft's required `PSModulePath` removal. The unchanged UpdateDelivery, InstallerConvergence,
+and RootInstallerWarehouse suites were 41/10, 2/10, and 4/8 in that invalid process. A technically
+correct experimental five-call helper still left InstallerConvergence 10/2 when the shipped
+installer safely preserved unhashable retirement candidates under WSD-051, proving that isolated
+command hardening would mask rather than repair the host. It was fully reverted.
+
+On identical unchanged code, adding only `set PSModulePath=` to the intermediate launcher returned
+51/0, 12/0, and 12/0; both warehouse mutations failed for their intended sentinel and restored
+bytes. `DEVELOPING.md` now records that canonical legacy-host/CP437 command, and two fresh opposing
+reviews converge on the no-code procedure correction. No product, source/dist, test, result,
+fixture, lane, or test cardinality changed. B-210 is closed rather than retained as artificial
+implementation debt.
 
 **macOS is no longer a supported or release-tested host.** B-209/WSD-064 narrows the platform
 contract to Windows and Linux after revalidation found no macOS consumer evidence and repeated

@@ -8274,3 +8274,43 @@ product-green evidence. Run `33332160632` subsequently reached B-194's expected 
 red with native Linux and all six hook jobs green and exactly one Windows maintainer failure. After
 the bounded product correction, a later all-green supported Windows/Linux candidate remains
 mandatory for release.
+
+---
+
+### B-210 · Correct the Windows PowerShell 5.1 intermediate-launch evidence path
+**Effort:** S · **Priority:** P1 · **planned v0.79.0**
+**Filed against:** v0.79.0 (2026-08-30)
+**Status:** CLOSED 2026-08-31 — original code premise rejected; maintainer procedure corrected;
+no product or test change
+**Plan:** `.claude/plans/2026-08-30-b210-wps51-hash-provider-design.md`
+
+**Why:** whole-range review launched Windows PowerShell 5.1 through PowerShell 7 → intermediate
+`cmd.exe`/CP437 without removing the inherited PowerShell 7 `PSModulePath`. `Get-FileHash` was then
+unavailable and the unchanged UpdateDelivery, InstallerConvergence, and RootInstallerWarehouse
+suites returned 41/10, 2/10, and 4/8. The initial design misclassified that as five root-harness
+dependencies to replace.
+
+**Final decision:** Microsoft documents that this exact intermediate launch must remove
+`PSModulePath`; otherwise Windows PowerShell can resolve incompatible PowerShell 7 modules and lose
+standard commands. A five-call experimental helper was technically correct but exposed the design
+error: it produced 51/0 and 12/0 in two suites while InstallerConvergence remained 10/2 because the
+shipped installer correctly entered WSD-051 `CANT-VERIFY` preservation when its own hash command
+was unavailable. A broader census found another shipped runtime hash dependency and shipped test
+dependencies, so hardening one call or one harness would mask an invalid process without supporting
+it coherently. Both opposing adversarial reviewers converged on revert/procedure-fix after checking
+the official contract. All experimental helper and test substitutions were restored exactly.
+
+**Evidence:** `DEVELOPING.md` now gives the canonical
+`cmd.exe /d /c "set PSModulePath=&& chcp 437 ... powershell.exe ..."` shape and warns against
+command-by-command masking. On unchanged code, primary execution returned UpdateDelivery 51/0,
+InstallerConvergence 12/0, and RootInstallerWarehouse 12/0; both warehouse mutations failed for
+their intended sentinel and restored installer bytes. The earlier unnormalised failures remain the
+red instrument. No suite, result, fixture, lane, source/dist byte, or product behavior was added.
+The stale `watch-ci.ps1` WSD-061 comment was corrected independently to reflect WSD-064; behavior
+is unchanged.
+
+**RCA:** the maintainer record required hostile code-page and legacy-host evidence but did not name
+the environment rule at the intermediate process boundary. The same class affects any module-
+backed command in a PowerShell 7 → intermediate process → Windows PowerShell tree, so the remedy
+belongs in the launcher. Reopen only on a correctly launched supported-host failure or field
+evidence for deliberately supporting poisoned process trees.

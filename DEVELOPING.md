@@ -259,6 +259,22 @@ directory for the child process.
 > That failure was loud only because the check carries a zero-files guard. Without one it would have
 > been a silent green over an empty scan — which is the argument for those guards in one sentence.
 
+> **When PowerShell 7 launches Windows PowerShell 5.1 through an intermediate `cmd.exe`, remove
+> `PSModulePath` from that child environment.** PowerShell 7 corrects module paths when it starts
+> `powershell.exe` directly, but the intermediate process inherits and forwards PowerShell 7's
+> module roots. Windows PowerShell can then select incompatible modules and report built-in commands
+> such as `Get-FileHash` as missing. This is a broken launcher, not product or test evidence.
+> Microsoft documents the boundary and remedy in
+> [`about_PSModulePath`](https://learn.microsoft.com/powershell/module/microsoft.powershell.core/about/about_psmodulepath).
+> For the required legacy-host hostile-code-page run, use this shape (substitute the focused suite):
+>
+> ```powershell
+> cmd.exe /d /c "set PSModulePath=&& chcp 437 >nul && powershell.exe -NoProfile -ExecutionPolicy Bypass -File .claude\hooks\tests\<Suite>.Tests.ps1"
+> ```
+>
+> Do not “fix” a resulting false red by hardening one command inside the subject. An unnormalised
+> process can break any module-backed cmdlet and would leave the rest of that run untrustworthy.
+
 | Tool | Absolute path |
 |---|---|
 | Claude Code | `$env:USERPROFILE\.local\bin\claude.exe` |

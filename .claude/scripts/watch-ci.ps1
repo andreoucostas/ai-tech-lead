@@ -310,8 +310,9 @@ if (@($unknown).Count -gt 0) {
 
 # ---- 6. Every required job must have actually run -----------------------------------------------
 # A workflow-level success does not prove every job ran: a leg can be skipped by a condition, or
-# quietly removed. B-70 is about a test never exercised on a leg before shipping; WSD-061 adds one
-# unique provider rather than a generic proxy. Watching only the aggregate cannot see either gap.
+# quietly removed. B-70 is about a test never exercised on a leg before shipping; WSD-061's unique
+# provider was historical and WSD-064 withdrew its active macOS coverage. The aggregate still
+# cannot expose a missing required job.
 $jobs = @()
 foreach ($w in $watched) {
     $view = Invoke-GhJson -GhArgs @('run', 'view', "$($w.databaseId)", '-R', $slug, '--json', 'jobs') `
