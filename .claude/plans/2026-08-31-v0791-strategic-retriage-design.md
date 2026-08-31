@@ -114,6 +114,12 @@ earlier controlled `$env:PATH` assignments left both inherited `Path` and fixtur
 test-owned duplicate to one controlled process `PATH` before launch and restores one key afterward;
 PowerShell 7 and the non-Git branch stay unchanged.
 
+**Implementation-review correction.** The first frozen candidate gated the collapse on Git Bash plus
+Windows PowerShell Desktop but gated its special cleanup only on Desktop. A native non-Git probe
+therefore changed the process key from `Path` to `PATH`, violating step 5. Track whether the collapse
+actually began; use special restoration only in that case and retain `$env:PATH=$old` otherwise. The
+first immutable review rejected that candidate, so completion requires a new frozen range and review.
+
 ### B-211 amendment: quote-stable interpreter control
 
 The required native-5.1 rerun exposed a second, independent test-truth defect. The documented

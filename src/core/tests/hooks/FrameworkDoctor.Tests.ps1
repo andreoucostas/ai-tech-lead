@@ -349,7 +349,7 @@ if ($bashGuardRegistered) {
     }finally{$env:PATH=$old;Remove-Item -Recurse -Force $r,$bin}
 }
 It 'Copilot CLI visibility is controlled per twin and only constructed asymmetry diverges' {
-    $r=Fixture -Pending $true -CopilotBash $false;$old=$env:PATH
+    $r=Fixture -Pending $true -CopilotBash $false;$old=$env:PATH;$collapsedProcessPath=$false
     try{
         $validSettings=Get-Content -Raw (Join-Path $r '.claude/settings.json')
         $validCopilot=Get-Content -Raw (Join-Path $r '.github/hooks/hooks.json')
@@ -367,6 +367,7 @@ It 'Copilot CLI visibility is controlled per twin and only constructed asymmetry
                 if($bash-match'\\Git\\bin\\bash\.exe$'){
                     if($PSVersionTable.PSEdition-eq'Desktop'){
                         $controlledPath=$env:PATH
+                        $collapsedProcessPath=$true
                         [Environment]::SetEnvironmentVariable('Path',$null,'Process')
                         [Environment]::SetEnvironmentVariable('PATH',$controlledPath,'Process')
                     }
@@ -426,7 +427,7 @@ It 'Copilot CLI visibility is controlled per twin and only constructed asymmetry
             Put (Join-Path $r '.github/hooks/hooks.json') $validCopilot
         }finally{Remove-Item -Recurse -Force $pbin,$sbin}
     }finally{
-        if($PSVersionTable.PSEdition-eq'Desktop'){
+        if($collapsedProcessPath){
             [Environment]::SetEnvironmentVariable('Path',$null,'Process')
             [Environment]::SetEnvironmentVariable('PATH',$old,'Process')
         }else{$env:PATH=$old}
