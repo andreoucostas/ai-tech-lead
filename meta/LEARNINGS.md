@@ -2002,3 +2002,18 @@ versus a whole lifecycle. Once concrete historical spellings are found, narrow e
 can prevent their return and prove both match and rejection directions. That does not justify a
 general prose classifier: semantic completeness still belongs to an independent review of the
 frozen claim boundary.
+
+## 2026-08-31 — Executable comments and diagnostics are assurance surfaces too
+
+The second B-43 review found the same registration-to-consumption inference after the narrative
+carrier sweep was already clean. It lived in hook headers and dispatch comments, a direct-fixture
+heading, two null-result diagnoses, maintenance-command instructions, and generated architecture
+diagrams. These artifacts do not become less persuasive because they sit beside executable code or
+inside a generated page; composition can preserve a false assurance perfectly.
+
+A claim-boundary inventory must include what a consumer reads while operating and diagnosing the
+feature, not only canonical documentation. Direct invocation proves script I/O, a generated arrow
+can show a registered conditional path, and a visible marker can prove one successful run. None
+turns absence into a cause or registration into delivery. Protect recovered concrete spellings with
+narrow controls, but leave semantic completeness to scope review rather than building a prose
+classifier.

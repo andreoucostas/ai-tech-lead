@@ -21,7 +21,8 @@ observation with host/extension versions unrecorded; VS Code prompt, post-tool, 
 remain unverified. The stack READMEs and review guides, always-loaded carrier and AGENTS mirrors,
 enforcement matrix, hook comment, host ledger, and persisted canary statuses now state the same
 evidence boundary. The matrix also separates installer file arrival from dated host-consumption
-evidence. Hook registration and runtime behavior are unchanged.
+evidence. Hook logic and registration are unchanged; the doctor, Boy Scout summary, direct-fixture
+labels, and architecture diagram now distinguish script output from host firing and consumption.
 
 The first immutable review rejected the candidate after finding five surviving assurance spellings:
 automatic consumption after file arrival, all-event certification from partial CLI canaries, and
@@ -29,6 +30,14 @@ three enabled/disabled Preview-hook guarantees in the always-loaded rules. The c
 native instruction delivery while separating it from hook lifecycle, and extends the existing
 exact-claim gate with those five observed historical spellings. No semantic claim classifier or
 host run was added.
+
+The second immutable review rejected the repaired candidate after finding the same inference in
+executable comments, direct-fixture labels, negative diagnostics, routing-maintenance commands, and
+generated architecture diagrams. Those surfaces now describe emitted shapes and registered,
+conditional flows without promoting them to current VS Code behavior. An absent guard denial or
+instruction marker is explicitly inconclusive rather than a diagnosis. Nine narrowly grouped
+historical patterns extend the existing gate; no hook algorithm, provider exercise, or new suite was
+added.
 
 The recurring quarterly premise is retired rather than replaced with speculative infrastructure.
 Fresh host evidence is required before a stronger claim, or after contrary evidence or a

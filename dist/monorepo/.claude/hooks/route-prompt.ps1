@@ -1,9 +1,9 @@
 ﻿# UserPromptSubmit router -- classify natural-language prompts into a workflow
-# and inject the matching workflow's deterministic rails before the model responds.
+# and format the matching workflow's deterministic rails for hook output.
 # PowerShell equivalent of route-prompt.sh, for Windows-only PowerShell teams.
-# Claude Code treats plain stdout as additionalContext; Copilot (CLI >= v1.0.65, VS Code agent
-# mode with Preview agent-hooks) consumes stdout only as JSON additionalContext -- see the
-# surface dispatch at the bottom.
+# For Claude-shaped input this script emits plain stdout; for other JSON input it emits top-level
+# and wrapped JSON additionalContext shapes. Emission and registration do not prove host firing or
+# consumption; current VS Code prompt-hook lifecycles are unverified. See docs/enforcement-surfaces.md.
 # Skips when the user explicitly invoked a slash command (already deterministic).
 #
 # Unicode rendered text is intentional and matches the canonical bash twin. The mandatory UTF-8
@@ -194,12 +194,11 @@ if ($sensitive) {
 
 $body = ($parts -join "`n")
 
-# Surface dispatch. Claude Code includes hook_event_name in the event payload and treats plain
-# stdout as additionalContext. Copilot parses stdout only as JSON: the CLI (>= v1.0.65) and
-# VS Code agent mode (Preview agent-hooks) inject userPromptSubmitted additionalContext into the
-# model-facing prompt -- emit both the top-level and wrapped shapes, mirroring guard.ps1's
-# dual-shape approach. Older Copilot versions ignore this JSON output entirely: harmless no-op,
-# same as before this hook was registered for Copilot.
+# Surface dispatch. `hook_event_name` selects plain stdout. Other input selects top-level and
+# hookSpecificOutput-wrapped UserPromptSubmit additionalContext JSON after queued Boy Scout text is
+# merged. These are script-emitted shapes only: registration and output do not prove that a host
+# fired the event or consumed the result. Current VS Code prompt-hook lifecycles are unverified;
+# dated CLI evidence is recorded in docs/enforcement-surfaces.md.
 if ($inputJson -match '"hook_event_name"') {
     Write-Output $body
 } else {

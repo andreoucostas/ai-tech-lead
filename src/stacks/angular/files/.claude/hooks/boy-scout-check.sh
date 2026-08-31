@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Three-mode hook — flag Boy Scout opportunities in modified .ts files.
-# CLAUDE scans and emits Stop additionalContext; SCAN queues findings and emits Copilot context;
-# DELIVER emits and deletes queued Copilot context without scanning. A Stop hook's block reason
-# is shown to Claude as a system reminder (unlike top-level stopReason). This advisory nudge still
-# uses the softer additionalContext path and never blocks.
+# CLAUDE scans and emits the Stop output shapes; SCAN queues findings and emits a Copilot-shaped
+# response; DELIVER emits and deletes that queued response without scanning. These are script
+# outputs: host firing and consumption are capability-specific. The advisory response uses
+# additionalContext and never blocks.
 #
 # Patterns derived from the always-apply items in CLAUDE.md > Boy Scout Rule:
 #   - manual ngOnDestroy subscription cleanup
@@ -142,9 +142,9 @@ _If these touch files you modified this turn, address them per CLAUDE.md > Boy S
 
 if [ "$mode" = scan ]; then printf '%s' "$text" > "$queue_file"; fi
 
-# additionalContext (above) reaches the model but is invisible in the terminal; emit a short
-# systemMessage so the developer also sees that candidates were flagged.
-summary="Boy Scout: ${#findings[@]} candidate(s) flagged to the model across $checked file(s) (see CLAUDE.md > Boy Scout Rule)."
+# The Claude-mode response includes findings as additionalContext plus a short systemMessage that
+# reports the candidate count; whether a host consumes either field is capability-specific.
+summary="Boy Scout: ${#findings[@]} candidate(s) found across $checked file(s) (see CLAUDE.md > Boy Scout Rule)."
 
 if command -v jq >/dev/null 2>&1; then
   if [ "$mode" = claude ]; then

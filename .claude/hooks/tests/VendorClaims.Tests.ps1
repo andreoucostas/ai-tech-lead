@@ -115,6 +115,109 @@ $provenance = @(
             'The rule holds whether or not the hook runs.'
         )
     }
+    [pscustomobject]@{
+        Pattern = '(?is)(?:mode\s+with\s+Preview\s+agent-hooks\)\s+consumes\s+stdout\s+only\s+as\s+JSON\s+additionalContext|VS\s+Code\s+agent\s+mode\s+\(Preview\s+agent-hooks\)\s+inject\s+userPromptSubmitted\s+additionalContext\s+into\s+the|Copilot\s+\(CLI,\s+and\s+VS\s+Code\s+agent\s+mode\s+with\s+Preview\s+agent-hooks\)\s+consumes\s+stdout\s+only\s+as\s+JSON|on\s+Copilot\s+it\s+lands\s*(?:#\s*)?only\s+via\s+the\s+JSON\s+additionalContext\s+shape\s+emitted\s+below\s+\(CLI,\s+and\s+VS\s+Code\s+agent\s+mode\s+with|Copilot\s+parses\s+stdout\s+only\s+as\s+JSON\s+additionalContext\s+\(CLI,\s+and\s+VS\s+Code\s+agent)'
+        Matches = @(
+            'Copilot (CLI >= v1.0.65, VS Code agent mode with Preview agent-hooks) consumes stdout only as JSON additionalContext'
+            'VS Code agent mode (Preview agent-hooks) inject userPromptSubmitted additionalContext into the model-facing prompt'
+            'Copilot (CLI, and VS Code agent mode with Preview agent-hooks) consumes stdout only as JSON additionalContext'
+            'on Copilot it lands only via the JSON additionalContext shape emitted below (CLI, and VS Code agent mode with Preview agent-hooks'
+            'Copilot parses stdout only as JSON additionalContext (CLI, and VS Code agent mode with Preview agent-hooks)'
+        )
+        Rejects = @(
+            'For non-Claude input the script emits top-level and wrapped JSON additionalContext shapes; registration and emission do not prove host consumption.'
+            'Copilot CLI 1.0.80 prompt delivery was observed on 2026-08-18; current VS Code prompt consumption remains unverified.'
+        )
+    }
+    [pscustomobject]@{
+        Pattern = '(?is)(?:Copilot\s+block\s+\(CLI\s+\+\s+VS\s+Code\s+agent\s+mode\)\s+=\s*(?:#\s*)?permissionDecision\s+JSON\s+deny\s+on\s+stdout|Block\s+=\s+JSON\s+\{"permissionDecision":"deny",\.\.\.\}\s+on\s+stdout\s+\(superset\s+incl\.\s+hookSpecificOutput\)|Copilot\s+\(CLI\s+and\s+VS\s+Code\s+agent\s+mode\)\s*(?:#\s*)?honor\s+a\s+JSON\s+`permissionDecision:\s+deny`\s+on\s+stdout|Copilot\s+\(CLI\s+\+\s+VS\s+Code\s+agent\s+mode\)\s*(?:#\s*)?honor\s+a\s+permissionDecision\s+JSON\s+deny\s+on\s+stdout|Task\s+0\s+confirms\s+VS\s+Code\s+honors\s+this(?:\s+and\s+tolerates\s+the\s+extra\s+top-level\s+key)?)'
+        Matches = @(
+            'Copilot block (CLI + VS Code agent mode) = permissionDecision JSON deny on stdout'
+            'Block = JSON {"permissionDecision":"deny",...} on stdout (superset incl. hookSpecificOutput)'
+            'Copilot (CLI and VS Code agent mode) honor a JSON `permissionDecision: deny` on stdout'
+            'Copilot (CLI + VS Code agent mode) honor a permissionDecision JSON deny on stdout'
+            'Task 0 confirms VS Code honors this and tolerates the extra top-level key'
+            'Task 0 confirms VS Code honors this'
+        )
+        Rejects = @(
+            'The guard emits a top-level and wrapped permissionDecision deny shape for non-Claude tool names; host enforcement requires capability-specific evidence.'
+            'The 2026-06-25 VS Code guard denial is a narrow historical observation with host and extension versions unrecorded.'
+        )
+    }
+    [pscustomobject]@{
+        Pattern = '(?i)(?:SCAN\s+queues\s+findings\s+and\s+emits\s+Copilot\s+context|additionalContext\s+\(above\)\s+reaches\s+the\s+model|candidate\(s\)\s+flagged\s+to\s+the\s+model)'
+        Matches = @(
+            'SCAN queues findings and emits Copilot context'
+            'additionalContext (above) reaches the model'
+            'candidate(s) flagged to the model'
+        )
+        Rejects = @(
+            'SCAN writes queued findings and emits a Copilot-shaped response; live agentStop firing remains unverified.'
+            'Boy Scout: 2 candidate(s) found across 3 file(s) (see CLAUDE.md > Boy Scout Rule).'
+        )
+    }
+    [pscustomobject]@{
+        Pattern = '(?i)\*\*Hooks\s+actually\s+fire:\*\*\s+\x60echo\s+'
+        Matches = @(
+            '**Hooks actually fire:** `echo ''{"prompt":"the export endpoint is broken"}'' | bash .claude/hooks/route-prompt.sh`'
+        )
+        Rejects = @(
+            '**Direct hook-script fixtures:** `echo ''{"prompt":"the export endpoint is broken"}'' | bash .claude/hooks/route-prompt.sh`'
+            'These direct invocations prove parser and output behavior, not client firing or consumption.'
+        )
+    }
+    [pscustomobject]@{
+        Pattern = '(?i)No\s+deny\s+means\s+Preview\s+agent\s+hooks\s+are\s+disabled\s+by\s+you\s+or\s+your\s+GitHub\s+organization\s+administrator'
+        Matches = @(
+            'No deny means Preview agent hooks are disabled by you or your GitHub organization administrator.'
+        )
+        Rejects = @(
+            'A visible deny is positive evidence for that run; no deny is inconclusive.'
+            'Use controlled treatment, positive, negative, and side-effect-marker arms before assigning a cause to an absent denial.'
+        )
+    }
+    [pscustomobject]@{
+        Pattern = '(?i)If\s+the\s+marker\s+does\s+not\s+come\s+back,\s+the\s+file\s+is\s+not\s+reaching\s+the\s+model,\s+and\s+repo-wide\s+\x60copilot-instructions\.md\x60\s+is\s+the\s+only\s+carrier\s+you\s+can\s+currently\s+rely\s+on'
+        Matches = @(
+            'If the marker does not come back, the file is not reaching the model, and repo-wide `copilot-instructions.md` is the only carrier you can currently rely on.'
+        )
+        Rejects = @(
+            'A returned marker is positive evidence of delivery and instruction-following for that run; absence is inconclusive.'
+            'Native instruction delivery and hook delivery are independent capabilities.'
+        )
+    }
+    [pscustomobject]@{
+        Pattern = '(?i)(?:the\s+\*only\*\s+routing\s+surface\s+Copilot\s+has|no\s+hook\s+injects\s+routing\s+context\s+there|Claude-only\s+just-in-time\s+salience\s+copy\s+of\s+§1)'
+        Matches = @(
+            'the *only* routing surface Copilot has'
+            'no hook injects routing context there'
+            'Claude-only just-in-time salience copy of §1'
+        )
+        Rejects = @(
+            'AGENTS section 1 is the canonical file-based routing definition, independent of host-dependent hook delivery.'
+            'The route-prompt twins are a just-in-time salience copy whose host firing and consumption are capability-specific.'
+        )
+    }
+    [pscustomobject]@{
+        Pattern = '(?is)Registered\s+for\s+Claude\s+Code\s+\(\x60\.claude/settings\.json\x60\)\s+and\s+Copilot\s+\(\x60\.github/hooks/hooks\.json\x60\)\.\s+\x60\x60\x60mermaid\s+sequenceDiagram\s+participant\s+U\s+as\s+Developer\s+participant\s+A\s+as\s+Agent\s+participant\s+H\s+as\s+Hooks\s+U->>H:\s+SessionStart'
+        Matches = @(
+            'Registered for Claude Code (`.claude/settings.json`) and Copilot (`.github/hooks/hooks.json`). ```mermaid sequenceDiagram participant U as Developer participant A as Agent participant H as Hooks U->>H: SessionStart'
+        )
+        Rejects = @(
+            'Registration proves configuration only. Each arrow below is conditional script I/O when the exact host event fires.'
+            'U->>H: SessionStart / sessionStart (when fired)'
+        )
+    }
+    [pscustomobject]@{
+        Pattern = '(?i)\|\s*Copilot\s+CLI\s+hooks\s+\(\x60\.github/hooks/\x60\)\s*\|\s*✅\s*\|\s*✅\s+\(run\s+locally\)\s*\|'
+        Matches = @(
+            '| Copilot CLI hooks (`.github/hooks/`) | ✅ | ✅ (run locally) |'
+        )
+        Rejects = @(
+            '| Copilot CLI hook registration (`.github/hooks/`) | Registered | Registered; firing and consumption vary by event |'
+            'See `docs/enforcement-surfaces.md` for capability-specific evidence.'
+        )
+    }
 )
 
 function Read-Utf8Text {
@@ -364,7 +467,7 @@ Reset-Tests
 $denylist = $null
 It 'the superseded-claim denylist parses and every pattern compiles' {
     $script:denylist = Read-Denylist $denyFile
-    Assert (@($script:denylist.Rules).Count -ge 9) 'denylist lost its seeded entries'
+    Assert (@($script:denylist.Rules).Count -ge 18) 'denylist lost its seeded entries'
 }
 
 It 'every denylist pattern catches its historical text and spares the prose that replaced it' {

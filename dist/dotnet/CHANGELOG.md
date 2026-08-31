@@ -12,7 +12,9 @@
   Preview-hook prompt, post-tool, and Stop lifecycles remain unverified; its 2026-06-25 guard-deny
   observation is retained as historical evidence because the host and extension versions were not
   recorded. Installer file arrival is now stated separately from dated host-consumption evidence.
-  Hook configuration and runtime behavior are unchanged.
+  Hook logic and registration are unchanged. Direct fixtures, diagnostics, hook comments, and the
+  architecture diagram now distinguish script output from host firing and consumption; a missing
+  canary response is inconclusive rather than proof of one host failure.
 
 ## 0.79.1 — 2026-08-31
 

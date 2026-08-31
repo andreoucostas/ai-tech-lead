@@ -10072,7 +10072,8 @@ Copilot CLI retains its dated `userPromptSubmitted`, `preToolUse`, and `postTool
 2026-06-25 guard observation, with its unrecorded host/extension versions and therefore
 historical-only status; prompt, post-tool, and Stop lifecycles remain unverified. Native
 `.github/instructions/` delivery remains separate from Preview-hook evidence. Hook registration and
-runtime behavior are unchanged.
+logic are unchanged; user-visible diagnostic and Boy Scout summary text now preserves the same
+evidence boundary.
 
 The first immutable implementation review rejected `e0f7ff8` after finding three same-class
 assurance families outside the enumerated draft scope: all three update paragraphs said file arrival
@@ -10082,6 +10083,15 @@ VS Code Preview prompt/guard behavior as automatic. The correction preserves nat
 delivery while separating it from hook lifecycle, rewrites only those source claims and mirrors,
 and adds their five exact historical spellings to the existing vendor-claim gate. No host behavior
 or runtime wiring changed.
+
+The second immutable review rejected `486fd01` after the first correction still left seven shipped
+assurance families outside its frozen inventory: route/session and guard comments, Boy Scout output
+commentary, direct-fixture labels, doctor and WIDGET null diagnoses, routing-maintenance commands,
+and unconditional architecture diagrams. A fresh adversarial critique accepted the premise but
+rejected runtime redesign. The expanded correction changes only those statements and two displayed
+summaries, regenerates the three architecture HTML files, and adds nine narrowly grouped recovered
+spellings to the existing exact gate (18 seeded patterns total). Hook parsers, branches, payloads,
+queues, registration, and installer behavior remain unchanged.
 
 WSD-066 replaces quarterly blanket recertification with an evidence-triggered rule: obtain fresh
 evidence before strengthening a claim, and after contrary evidence or a host-facing mechanism
@@ -10103,10 +10113,12 @@ binds each assurance phrase to a capability-specific dated live-host row. The un
 beside a guarantee, so artifact presence was mistaken for execution evidence and the same
 unsupported inference propagated consistently across the matrix, three READMEs, hook comment,
 ledger, canary status, review guides, and always-loaded carrier/mirrors. Every host-dependent claim
-copied among those artifact classes shares the exposure. The first scope list itself missed those
-last two classes; independent blind-first review, followed by exact historical-spelling controls,
-was the effective backstop. The standing repair remains an evidence obligation, not a semantic
-prose-inference gate that cannot honestly judge live consumption.
+copied among those artifact classes shares the exposure. The first two scope lists also missed
+executable comments, diagnostic conclusions, maintenance commands, fixture labels, and generated
+human diagrams: parser and composition gates preserve those artifacts faithfully while proving none
+of their host semantics. Independent blind-first review, followed by exact historical-spelling
+controls, was the effective backstop. The standing repair remains an evidence obligation, not a
+semantic prose-inference gate that cannot honestly judge live consumption.
 
 ---
 

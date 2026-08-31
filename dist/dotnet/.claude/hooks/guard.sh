@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
-# PreToolUse guard — hard-block writes that introduce test-defeats, warning-suppressions, or hardcoded secrets.
-# Enforces the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules; `AGENTS.md` › Verification Rules on AGENTS.md-native tools) #5/#7 ("failures are signals; never silence them"; "don't skip
-# tests"), Test leanness #15 (no tautological assertions), and the no-secrets rule deterministically.
+# PreToolUse guard — inspect writes for test-defeats, warning-suppressions, or hardcoded secrets and emit a block response.
+# Implements deterministic checks for the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules; `AGENTS.md` › Verification Rules on AGENTS.md-native tools) #5/#7 ("failures are signals; never silence them"; "don't skip
+# tests"), Test leanness #15 (no tautological assertions), and the no-secrets rule.
 #
 # Tool surfaces:
-#   Claude Code  — tool_name in {Write,Edit}; new content at tool_input.content / tool_input.new_string.
-#                  Block = exit code 2 with the reason on stderr (documented PreToolUse block contract).
-#   GitHub Copilot (CLI + VS Code agent mode, preToolUse) — toolName lowercase/camelCase; content at toolArgs.*.
-#                  Block = JSON {"permissionDecision":"deny",...} on stdout (superset incl. hookSpecificOutput).
+#   Claude-shaped — tool_name in {Write,Edit}; content at tool_input.content / tool_input.new_string;
+#                    emits exit 2 with the reason on stderr.
+#   Copilot-shaped — toolName lowercase/camelCase; content at toolArgs.*; emits the documented
+#                    permissionDecision JSON superset on stdout, including hookSpecificOutput.
+# Emitted shapes and registration do not prove that a client fires the hook or honors its output;
+# client behavior is capability-specific. See docs/enforcement-surfaces.md.
 #
 # Allow = exit 0, no output. Degrades SAFE (allow) on parse failure; the high-confidence secret
 # patterns FAIL CLOSED once content is extracted. If NO JSON parser exists (no jq, and no working
@@ -200,13 +202,12 @@ esac
 joined=$(printf '%s; ' "${reasons[@]}"); joined="${joined%; }"
 msg="Blocked write to ${fp:-the target file}: it ${joined}."
 
-# Block per surface. Claude Code honors exit 2 + stderr; Copilot (CLI + VS Code agent mode)
-# honor a permissionDecision JSON deny on stdout. Claude tools are PascalCase (Edit/Write) — and
-# the ambiguous empty case routes to Claude too (its PreToolUse matcher only fires on Write|Edit);
-# everything else (Copilot CLI lowercase edit/create, VS Code camelCase) gets a SUPERSET JSON
-# carrying both the top-level (CLI shape) and hookSpecificOutput-nested (VS Code shape) decision.
-# Replaces the prior {decision,reason} shape, which no longer matches the Copilot spec (the old
-# Copilot deny had silently become a no-op). Task 0 confirms VS Code honors this.
+# Emit a block response by detected input shape. PascalCase Edit/Write (and the ambiguous empty
+# tool) emit the Claude-shaped signal: reason on stderr plus exit 2. Other shapes emit a documented
+# Copilot-compatible superset deny carrying both the top-level permissionDecision and the same
+# decision nested in hookSpecificOutput. These emitted shapes and registration do not prove that a
+# client fired the hook or honored the denial; client behavior is capability-specific. See
+# docs/enforcement-surfaces.md.
 case "$tool" in
   Edit|Write|"")
     printf '%s\n' "$msg" >&2

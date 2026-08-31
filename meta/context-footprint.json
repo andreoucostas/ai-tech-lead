@@ -211,13 +211,13 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 11757,
-          "tok": 2939
+          "chars": 12318,
+          "tok": 3080
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 5329,
-          "tok": 1332
+          "chars": 5526,
+          "tok": 1382
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -372,8 +372,8 @@
         },
         {
           "path": ".claude/commands/docs-sync.md#body",
-          "chars": 6465,
-          "tok": 1616
+          "chars": 6843,
+          "tok": 1711
         },
         {
           "path": ".claude/commands/feature.md#body",
@@ -387,8 +387,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#body",
-          "chars": 7690,
-          "tok": 1922
+          "chars": 7766,
+          "tok": 1942
         },
         {
           "path": ".claude/commands/impact.md#body",
@@ -675,13 +675,13 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 11837,
-          "tok": 2959
+          "chars": 12398,
+          "tok": 3100
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 5576,
-          "tok": 1394
+          "chars": 5773,
+          "tok": 1443
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -836,8 +836,8 @@
         },
         {
           "path": ".claude/commands/docs-sync.md#body",
-          "chars": 6071,
-          "tok": 1518
+          "chars": 6449,
+          "tok": 1612
         },
         {
           "path": ".claude/commands/feature.md#body",
@@ -851,8 +851,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#body",
-          "chars": 7497,
-          "tok": 1874
+          "chars": 7573,
+          "tok": 1893
         },
         {
           "path": ".claude/commands/impact.md#body",
@@ -1159,13 +1159,13 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 12710,
-          "tok": 3178
+          "chars": 13269,
+          "tok": 3317
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 6298,
-          "tok": 1574
+          "chars": 6523,
+          "tok": 1631
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -1320,8 +1320,8 @@
         },
         {
           "path": ".claude/commands/docs-sync.md#body",
-          "chars": 6589,
-          "tok": 1647
+          "chars": 6967,
+          "tok": 1742
         },
         {
           "path": ".claude/commands/feature.md#body",
@@ -1335,8 +1335,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#body",
-          "chars": 7910,
-          "tok": 1978
+          "chars": 7986,
+          "tok": 1996
         },
         {
           "path": ".claude/commands/impact.md#body",

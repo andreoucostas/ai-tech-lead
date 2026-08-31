@@ -114,25 +114,25 @@ Auto-discovered Common-Tasks recipes; the body loads only when triggered (progre
 
 ---
 
-## 7. Hook lifecycle (deterministic guardrails)
+## 7. Registered hook flows (conditional)
 
-Bash + PowerShell twins. Registered for Claude Code (`.claude/settings.json`) and Copilot (`.github/hooks/hooks.json`).
+Bash + PowerShell twins are registered for Claude Code (`.claude/settings.json`) and Copilot (`.github/hooks/hooks.json`). Registration proves configuration, not event firing or output consumption. Each arrow below describes script input/output only when that exact host event fires; client consumption varies by event and capability (see `docs/enforcement-surfaces.md`).
 
 ```mermaid
 sequenceDiagram
     participant U as Developer
     participant A as Agent
     participant H as Hooks
-    U->>H: SessionStart
-    H-->>A: branch, recent commits, debt heat, security findings, workflow primer
-    U->>H: UserPromptSubmit (Claude Code)
-    H-->>A: route-prompt injects the matched workflow's rails
-    A->>H: PreToolUse (supported editor/file-write event)
-    H-->>A: guard — BLOCK defined suppression/secret patterns when the hook is live; shell writes are outside scope
-    A->>H: PostToolUse (supported .cs editor/file-write event)
-    H-->>A: dotnet build (output only on failure) + mutable local hook-telemetry append
-    A->>H: Stop (end of turn)
-    H-->>A: boy-scout-check flags always-apply cleanups
+    U->>H: SessionStart / sessionStart (if the host fires it)
+    H-->>A: script emits branch, recent commits, debt heat, security findings, workflow primer
+    U->>H: UserPromptSubmit / userPromptSubmitted (if the host fires it)
+    H-->>A: route-prompt emits the matched workflow's rails
+    A->>H: PreToolUse / preToolUse (if the host fires a supported editor/file-write event)
+    H-->>A: guard emits a deny for defined suppression/secret patterns; shell writes are outside scope
+    A->>H: PostToolUse / postToolUse (if the host fires a supported .cs editor/file-write event)
+    H-->>A: script emits dotnet build failures and appends mutable local hook telemetry
+    A->>H: Stop / agentStop (if the host fires the end-of-turn event)
+    H-->>A: boy-scout-check emits advisory always-apply cleanup findings
 ```
 
 ---
@@ -157,7 +157,7 @@ The local files do not depend on the Git remote, but their client delivery does 
 | Copilot in IDE (reads `.github/*`, `AGENTS.md`) | ✅ | ✅ (reads from working tree, any host) |
 | Copilot VS Code hooks | Preview + org policy; verify with canaries | Same — the Git remote does not enable them |
 | Claude Code (`CLAUDE.md`, `.claude/**`) | ✅ | ✅ |
-| Copilot CLI hooks (`.github/hooks/`) | ✅ | ✅ (run locally) |
+| Copilot CLI hooks (`.github/hooks/`) | Registered locally; firing and consumption vary by event — see `docs/enforcement-surfaces.md` | Same — the Git remote does not enable local hooks |
 | Copilot coding agent (cloud) | ✅ | ❌ github.com only |
 | `.github/workflows/` (Actions) | ✅ | ❌ → `scripts/docs-sync-check.sh` in Bamboo/Jenkins/pre-receive + Code Insights |
 | Atlassian Rovo Dev | n/a | ❌ Cloud-only |

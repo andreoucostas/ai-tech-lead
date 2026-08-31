@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# SessionStart hook — preload high-signal context every new session.
-# Output lands in the assistant's context as auxiliary data. Claude Code consumes plain stdout;
-# Copilot (CLI, and VS Code agent mode with Preview agent-hooks) consumes stdout only as JSON
-# additionalContext — see the surface dispatch at the bottom.
+# SessionStart hook — format high-signal context when the script is invoked.
+# For Claude-shaped input this script emits plain stdout; for other JSON input it emits top-level
+# and wrapped JSON additionalContext shapes. Emission and registration do not prove host firing or
+# consumption; current VS Code session-hook lifecycles are unverified. See docs/enforcement-surfaces.md.
 # Keep fast: no expensive scans. Targets git, CLAUDE.md, TECH_DEBT.md, and
 # FRAMEWORK-CONTEXT.md only; the hazard table is capped at ~12 entries, so parsing stays cheap.
 
@@ -68,12 +68,11 @@ if [ -f CLAUDE.md ] && [ -f .github/instructions/framework-rules.instructions.md
 EOF
 fi
 
-# 4. Workflow-routing pointer. Claude Code consumes this as plain stdout; on Copilot it lands
-# only via the JSON additionalContext shape emitted below (CLI, and VS Code agent mode with
-# Preview agent-hooks — older Copilot versions drop it, and routing there rests on
-# the framework rules (`.github/instructions/framework-rules.instructions.md` › Agentic Workflow;
-# `AGENTS.md` › Agentic Workflow on AGENTS.md-native tools), the always-on instruction surface). The full
-# intent->workflow vocabulary lives in section 1 (canonical); we do not re-list it here.
+# 4. Workflow-routing pointer. The script writes this into whichever output shape the surface
+# dispatch selects below. The framework rules (`.github/instructions/framework-rules.instructions.md`
+# › Agentic Workflow; `AGENTS.md` › Agentic Workflow on AGENTS.md-native tools) remain the canonical
+# file-based routing definition. Hook firing and consumption are capability-specific; current VS Code
+# session-hook lifecycles are unverified. The full intent->workflow vocabulary lives in section 1.
 if [ -f CLAUDE.md ]; then
   cat <<'EOF'
 - **Workflow routing:** when a prompt clearly matches a workflow and the developer did not type a `/command`, self-classify and apply that workflow's rails from the framework rules (`.github/instructions/framework-rules.instructions.md` › Agentic Workflow; `AGENTS.md` › Agentic Workflow on AGENTS.md-native tools), section 1. State which workflow you concluded.
@@ -170,13 +169,13 @@ fi
 
 body=$(emit_body)
 
-# Surface dispatch. Claude Code includes hook_event_name in the event payload and treats plain
-# stdout as context. Copilot parses stdout only as JSON additionalContext (CLI, and VS Code agent
-# mode with Preview agent-hooks) — emit both the top-level and wrapped shapes, mirroring
-# guard.sh's dual-shape approach. Older Copilot versions ignore the JSON: harmless no-op, same
-# as pre-port behavior. Empty or non-JSON stdin defaults to plain stdout (Claude-compatible).
-# JSON-encoding needs jq or a working python (same dependency posture as guard.sh); with neither,
-# fall back to plain stdout — Copilot drops it, which is exactly the pre-port behavior.
+# Surface dispatch. Claude-shaped input selects plain stdout. Other JSON input selects top-level
+# and hookSpecificOutput-wrapped SessionStart additionalContext JSON. These are script-emitted
+# shapes only: registration and output do not prove that a host fired the event or consumed the
+# result. Empty or non-JSON stdin selects plain stdout. Current VS Code session-hook lifecycles are
+# unverified; dated CLI evidence is recorded in docs/enforcement-surfaces.md.
+# JSON encoding needs jq or a working Python; with neither, emit plain stdout as a fallback. That
+# emitted fallback says nothing about client behavior.
 is_copilot=""
 case "$input" in
   \{*) printf '%s' "$input" | grep -q '"hook_event_name"' || is_copilot="1" ;;

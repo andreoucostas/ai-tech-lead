@@ -1,7 +1,8 @@
-﻿# PreToolUse guard — hard-block writes that introduce warning-suppressions, hardcoded secrets, or test-defeats.
-# Enforces the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules; `AGENTS.md` › Verification Rules on AGENTS.md-native tools) #5/#7 and the no-secrets rule deterministically.
-# Claude Code block = exit 2 + reason on stderr. Copilot block (CLI + VS Code agent mode) =
-# permissionDecision JSON deny on stdout (exit 0).
+﻿# PreToolUse guard — inspect writes for warning-suppressions, hardcoded secrets, or test-defeats and emit a block response.
+# Implements deterministic checks for the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules; `AGENTS.md` › Verification Rules on AGENTS.md-native tools) #5/#7 and the no-secrets rule.
+# Claude-shaped writes emit exit 2 plus a reason on stderr. Other write shapes emit a documented
+# Copilot-compatible permissionDecision JSON deny on stdout (exit 0). Whether a client fires this
+# hook or honors its output is capability-specific; see docs/enforcement-surfaces.md.
 # Allow = exit 0. Degrades safe on parse failure (except high-confidence secrets, which fail closed).
 $ErrorActionPreference = 'SilentlyContinue'
 
@@ -83,15 +84,12 @@ if ($reasons.Count -eq 0) { exit 0 }
 $target = if ($fp) { $fp } else { 'the target file' }
 $msg = "Blocked write to ${target}: it " + ($reasons -join '; ') + "."
 
-# Block per surface. Claude Code honors exit 2 + stderr; Copilot (CLI and VS Code agent mode)
-# honor a JSON `permissionDecision: deny` on stdout (exit 0). Discriminate by tool-name casing:
-# Claude tools are PascalCase (Edit/Write) -- and the ambiguous empty case routes to Claude too,
-# since the Claude PreToolUse matcher only fires on Write|Edit; everything else (Copilot CLI
-# lowercase edit/create, VS Code camelCase) gets the JSON. Emit a SUPERSET deny -- top-level
-# `permissionDecision` (Copilot CLI shape) AND nested under `hookSpecificOutput` (VS Code shape) --
-# so one output serves both Copilot surfaces. This replaces the prior {decision,reason} shape,
-# which no longer matches the Copilot spec (i.e. the old Copilot deny had silently become a no-op).
-# Task 0 confirms VS Code honors this and tolerates the extra top-level key.
+# Emit a block response by detected input shape. PascalCase Edit/Write (and the ambiguous empty
+# tool) emit the Claude-shaped signal: reason on stderr plus exit 2. Other shapes emit a documented
+# Copilot-compatible superset deny: top-level `permissionDecision` plus the same decision nested in
+# `hookSpecificOutput`. These emitted shapes and registration do not prove that a client fired the
+# hook or honored the denial; client behavior is capability-specific. See
+# docs/enforcement-surfaces.md.
 if ($tool -ceq 'Edit' -or $tool -ceq 'Write' -or $tool -eq '') {
     [Console]::Error.WriteLine($msg)
     exit 2

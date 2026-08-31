@@ -274,7 +274,7 @@ The intent is that `.cs` files see the .NET rules, `.ts` files see the Angular r
 >
 > What we measured, on **Copilot CLI 1.0.80 in `-p` mode**: a narrow `applyTo` delivered **nothing at all**, even with a matching file present and named in the prompt. That held for `"**/*.cs"`, `"**/*.ts"`, `"**/*.{ts,html}"` and `"**/*.ts,**/*.html"` alike — so it is the *narrowness*, not the brace or comma syntax, that defeated delivery. Only `applyTo: "**"` was observed to arrive. **VS Code agent mode — the surface this advice is aimed at — remains unverified.**
 >
-> The cheap check: put a distinctive marker in the scoped file ("begin every reply about this file with WIDGET"), open a matching file, and ask your agent about it. If the marker does not come back, the file is not reaching the model, and repo-wide `copilot-instructions.md` is the only carrier you can currently rely on.
+> The cheap check: put a distinctive marker in the scoped file ("begin every reply about this file with WIDGET"), open a matching file, and ask your agent about it. If the marker comes back, that is positive evidence of delivery and instruction-following for that run. If it does not, the result is inconclusive: delivery, instruction-following, or observation may have failed. Absence neither proves non-delivery nor makes repo-wide `copilot-instructions.md` the only reliable carrier.
 
 ## Running on Bitbucket Data Center
 

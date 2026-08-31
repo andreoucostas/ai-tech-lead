@@ -188,7 +188,7 @@ finish() {
   echo
   echo '[CANT-VERIFY] Claude hooks - start claude here and ask what the session preload contained; pass = the reply quotes a block that starts with "## Session preload". No preload usually means folder trust is pending.'
   echo '[CANT-VERIFY] Claude write guard - ask it to create tmp-doctor-canary.txt containing AKIA plus 16 uppercase letters/digits; pass = the hook says "Blocked write to". A polite refusal is not a pass; delete the file if it lands.'
-  echo '[CANT-VERIFY] Copilot VS Code hooks - use the same canary in agent mode; pass = permissionDecisionReason says "Blocked write to". No deny means Preview agent hooks are disabled by you or your GitHub organization administrator.'
+  echo '[CANT-VERIFY] Copilot VS Code hooks - use the same canary in agent mode; pass = permissionDecisionReason says "Blocked write to". A visible deny is positive only for that run. No deny is inconclusive: trust, launch, interpreter, event, payload, consumption, model compliance, or observation may have failed. Before assigning a cause, compare the treatment with a positive same-surface control, a no-hook negative, and an independent firing marker; see docs/enforcement-surfaces.md.'
   echo '[CANT-VERIFY] Copilot CLI trust - use the same canary after opening and trusting this folder interactively; pass = permissionDecisionReason says "Blocked write to".'
   printf '[CANT-VERIFY] Agent-host stack toolchain - %s\n' "$stack_canary"
   echo "Script-verifiable checks: $ok ok / $missing_rows missing."

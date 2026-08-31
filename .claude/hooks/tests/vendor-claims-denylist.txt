@@ -100,3 +100,39 @@ REASON Registration proves neither client firing nor output consumption. VS Code
 # v0.79.1.
 DENY (?i)\bOn\s+Claude\s+Code\s+—\s+and\s+on\s+Copilot\s+where\s+hooks\s+are\s+enabled\s+—\s+a\s+`UserPromptSubmit`\s+hook\s+flags\s+these\s+automatically\b
 REASON For prompts matching its bounded security vocabulary, the registered prompt hook emits a reminder when invoked; host firing and output consumption require separate, capability-specific evidence, and VS Code prompt consumption remains unverified.
+
+# --- 10. Emitted prompt/session JSON is not blanket VS Code consumption ---------------------------
+DENY (?is)(?:mode\s+with\s+Preview\s+agent-hooks\)\s+consumes\s+stdout\s+only\s+as\s+JSON\s+additionalContext|VS\s+Code\s+agent\s+mode\s+\(Preview\s+agent-hooks\)\s+inject\s+userPromptSubmitted\s+additionalContext\s+into\s+the|Copilot\s+\(CLI,\s+and\s+VS\s+Code\s+agent\s+mode\s+with\s+Preview\s+agent-hooks\)\s+consumes\s+stdout\s+only\s+as\s+JSON|on\s+Copilot\s+it\s+lands\s*(?:#\s*)?only\s+via\s+the\s+JSON\s+additionalContext\s+shape\s+emitted\s+below\s+\(CLI,\s+and\s+VS\s+Code\s+agent\s+mode\s+with|Copilot\s+parses\s+stdout\s+only\s+as\s+JSON\s+additionalContext\s+\(CLI,\s+and\s+VS\s+Code\s+agent)
+REASON The scripts emit documented JSON shapes for non-Claude input; registration and emission do not prove current VS Code firing, consumption, or model delivery.
+
+# --- 11. A Copilot-shaped guard deny is not blanket current VS Code enforcement -------------------
+DENY (?is)(?:Copilot\s+block\s+\(CLI\s+\+\s+VS\s+Code\s+agent\s+mode\)\s+=\s*(?:#\s*)?permissionDecision\s+JSON\s+deny\s+on\s+stdout|Block\s+=\s+JSON\s+\{"permissionDecision":"deny",\.\.\.\}\s+on\s+stdout\s+\(superset\s+incl\.\s+hookSpecificOutput\)|Copilot\s+\(CLI\s+and\s+VS\s+Code\s+agent\s+mode\)\s*(?:#\s*)?honor\s+a\s+JSON\s+`permissionDecision:\s+deny`\s+on\s+stdout|Copilot\s+\(CLI\s+\+\s+VS\s+Code\s+agent\s+mode\)\s*(?:#\s*)?honor\s+a\s+permissionDecision\s+JSON\s+deny\s+on\s+stdout|Task\s+0\s+confirms\s+VS\s+Code\s+honors\s+this(?:\s+and\s+tolerates\s+the\s+extra\s+top-level\s+key)?)
+REASON The guard emits a top-level and wrapped deny shape. Copilot CLI pre-tool denial is dated evidence; VS Code has one narrow 2026-06-25 observation with host and extension versions unrecorded.
+
+# --- 12. Boy Scout script output is not proven model delivery -------------------------------------
+DENY (?i)(?:SCAN\s+queues\s+findings\s+and\s+emits\s+Copilot\s+context|additionalContext\s+\(above\)\s+reaches\s+the\s+model|candidate\(s\)\s+flagged\s+to\s+the\s+model)
+REASON The scan can write its queue and emit a Copilot-shaped response; live agentStop firing and model consumption remain unverified.
+
+# --- 13. Direct script fixtures are not host-firing evidence --------------------------------------
+DENY (?i)\*\*Hooks\s+actually\s+fire:\*\*\s+\x60echo\s+
+REASON Piping fixture JSON directly into a hook proves parser and output behavior, not client firing or consumption.
+
+# --- 14. An absent denial cannot diagnose one host cause ------------------------------------------
+DENY (?i)No\s+deny\s+means\s+Preview\s+agent\s+hooks\s+are\s+disabled\s+by\s+you\s+or\s+your\s+GitHub\s+organization\s+administrator
+REASON An absent denial is inconclusive: trust, launch, interpreter, event, payload, consumption, and observation can fail independently.
+
+# --- 15. An absent instruction marker cannot prove non-delivery or an exclusive carrier -----------
+DENY (?i)If\s+the\s+marker\s+does\s+not\s+come\s+back,\s+the\s+file\s+is\s+not\s+reaching\s+the\s+model,\s+and\s+repo-wide\s+\x60copilot-instructions\.md\x60\s+is\s+the\s+only\s+carrier\s+you\s+can\s+currently\s+rely\s+on
+REASON A returned marker is positive evidence for that run; absence cannot distinguish non-delivery from model noncompliance or inability to observe, and proves no exclusive fallback.
+
+# --- 16. File-based routing is canonical, not Copilot's exclusive live route ----------------------
+DENY (?i)(?:the\s+\*only\*\s+routing\s+surface\s+Copilot\s+has|no\s+hook\s+injects\s+routing\s+context\s+there|Claude-only\s+just-in-time\s+salience\s+copy\s+of\s+§1)
+REASON AGENTS section 1 is the canonical file-based routing definition; separately registered prompt-hook delivery is capability-specific and has dated Copilot CLI evidence.
+
+# --- 17. Architecture registration is not an unconditional event lifecycle -----------------------
+DENY (?is)Registered\s+for\s+Claude\s+Code\s+\(\x60\.claude/settings\.json\x60\)\s+and\s+Copilot\s+\(\x60\.github/hooks/hooks\.json\x60\)\.\s+\x60\x60\x60mermaid\s+sequenceDiagram\s+participant\s+U\s+as\s+Developer\s+participant\s+A\s+as\s+Agent\s+participant\s+H\s+as\s+Hooks\s+U->>H:\s+SessionStart
+REASON Registration proves configuration only; each architecture arrow must remain conditional on the exact host event firing and says nothing by itself about consumption.
+
+# --- 18. A registered local CLI hook is not an all-event execution guarantee ---------------------
+DENY (?i)\|\s*Copilot\s+CLI\s+hooks\s+\(\x60\.github/hooks/\x60\)\s*\|\s*✅\s*\|\s*✅\s+\(run\s+locally\)\s*\|
+REASON The hook files are registered locally; firing and output consumption vary by event and require the capability-specific evidence in docs/enforcement-surfaces.md.
