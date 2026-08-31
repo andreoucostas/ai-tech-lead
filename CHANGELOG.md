@@ -25,7 +25,9 @@ declared corrected.
 only the existing Git-for-Windows Copilot-visibility setup probe from nested native `-c` argument
 transport to the existing raw-process/stdin path. It accepts only an exact `yes`/`no` outcome with
 zero status and empty stderr, while preserving all four visibility worlds, suite cardinality, and
-doctor product behavior. No test, fixture, suite, or CI leg was added.
+doctor product behavior. Its legacy-host PATH normalization now records whether the collapse actually
+occurred, so special restoration cannot rewrite an untouched non-Git process key. No test, fixture,
+suite, or CI leg was added.
 
 **The documented working-Python control no longer self-skips under Windows PowerShell 5.1.** B-211
 replaces only the two existing quoted `Resolve-HostPython` sentinel programs with an ASCII,
@@ -41,6 +43,10 @@ delivery, for fifteen closures in total. Eleven distinct items remain open. WSD-
 Windows/Linux executed-script invocations supported but
 does not promise compatibility for sourced scripts or a deliberately exported inherited
 `SHELLOPTS=errexit` process tree. No Bash product or test code changed for that decision.
+
+Exact candidate [GitHub Actions run `33388977666`](https://github.com/andreoucostas/ai-tech-lead/actions/runs/33388977666)
+at `151aba293ee6ad53e236bd5cb9b30564bfdc4af9` passed all eight required jobs: the main Windows and
+Linux pipelines plus the dotnet, Angular, and monorepo hook jobs on both hosts.
 
 ## 0.79.0 — 2026-08-31
 

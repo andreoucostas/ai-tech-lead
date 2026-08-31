@@ -9793,3 +9793,293 @@ Key traps recorded there: Angular needs a cobertura reporter wired; CI must fetc
 **B-25-EXEC is DONE — v0.26.0 shipped 2026-07-12 (WSD-018); see `meta/BACKLOG-DONE.md`.**
 
 **B-26 is DONE (2026-08-20) — one bullet was already discharged by B-32 and the other folded into the overlap watch; see `meta/BACKLOG-DONE.md`.**
+
+---
+
+## v0.79.1 delivered closures (2026-08-31)
+
+These three records moved only after independent immutable review and exact-candidate Windows/Linux CI passed at the same commit. Their prior histories and bounded reopen conditions remain below.
+
+### B-134 · Prevent implementation evidence from masquerading as product intent
+**Filed against:** v0.52.0 (2026-08-11)
+**Effort:** M for research, behavioral baselines, and design; shipped effort must be re-estimated
+after review · **Priority:** P2 · filed 2026-08-11 · **Invariants:** #1 #2 #6 #7 ·
+**Capability:** product and experience leadership
+
+**Status: COMPLETE 2026-08-31 — independent immutable review approved
+`95cadcffa2e15bc046e283098cf5690d28626449..151aba293ee6ad53e236bd5cb9b30564bfdc4af9`; exact candidate [GitHub Actions run `33388977666`](https://github.com/andreoucostas/ai-tech-lead/actions/runs/33388977666) passed all eight
+required Windows/Linux jobs at `151aba293ee6ad53e236bd5cb9b30564bfdc4af9`.** v0.79.1 takes only the
+Opus-recommended minimal arm: all three bootstrap commands now label code-derived context as
+implementation observation, require named product authority for intended purpose/target users, and
+require direct research or operational evidence for actual behavior/value. The larger schema,
+journey, reviewer, analytics, and always-loaded proposals remain rejected as disproportionate and
+unbudgeted rather than silently delivered.
+
+The exact authority sentence appears once in every authored and composed carrier. A disposable
+three-distribution × three-mode × two-installer matrix passed all 18 cells; every installed command
+carried it once, while update preserved a populated consumer `Codebase Context` byte-for-byte. Both
+composer twins produced the same 525-file tree and both validator twins passed all distributions.
+No persistent test, fixture, schema, evaluator, or always-loaded text was added.
+
+**Delivery RCA:** deterministic gates can prove that a sentence ships, not whether it grants code
+evidence authority over product intent. The earlier heavy review supplied the missing semantic
+challenge and reduced an M-sized capability proposal to the observed three-file prose defect. Reopen
+the larger premise only if direct incidents show this labelled-unknown boundary is insufficient and
+name the decision the additional structure would improve.
+
+**Why:** the framework is strong at deriving architecture, conventions, technical debt, and
+implemented domain behavior from a repository, but it applies the same evidence model to product
+context. `src/core/CLAUDE.md > Codebase Context` asks what the application does, who uses it, its
+domain concepts, and critical user journeys. All three `/bootstrap` variants then tell the model to
+replace that section with "real findings from this codebase". Their clarification phase asks about
+engineering-pattern contradictions, not product purpose, actor authority, desired outcomes,
+non-goals, or whether an implemented journey is intentional. Routes, DTOs, forms, tests, and names
+can therefore become unmarked claims about users and product intent.
+
+This is the concrete defect to solve. The broader idea — product discovery, journey mapping,
+screen/form/button complexity, accessibility, product opportunities, and post-release outcomes —
+is valuable but must not enter as one pre-authorised subsystem. Leading practice consistently
+separates outcome, customer problem, solution, and assumption tests; treats value/usability/
+feasibility/viability as different risks; maps the whole cross-channel journey; combines metrics
+with user research; and keeps product work multidisciplinary. Persistent AI specs improve
+traceability but do not validate the requirements they preserve. Sources:
+[Product Talk](https://www.producttalk.org/discovering-solutions/),
+[SVPG four risks](https://www.svpg.com/four-big-risks/),
+[GOV.UK whole-problem mapping](https://www.gov.uk/service-manual/design/map-a-users-whole-problem),
+[GOV.UK success measures](https://www.gov.uk/service-manual/service-standard/point-10-define-success-publish-performance-data),
+[W3C WCAG 2.2](https://www.w3.org/TR/WCAG22/),
+[Google HEART](https://research.google/pubs/measuring-the-user-experience-on-a-large-scale-user-centered-metrics-for-web-applications/),
+[GitHub Spec Kit](https://github.github.com/spec-kit/), and
+[Anthropic agent evals](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents).
+
+**Fresh-context adversarial review already performed (2026-08-11; not the required Opus review):**
+verdict **REVISE**. It accepted the product-context honesty defect and rejected the proposed
+multi-phase capability build as presently unsupported. It found that one global
+`CONFIRMED / OBSERVED / INFERRED / UNKNOWN` ladder would conflate source, authority, and confidence
+and conflict with existing hazard, characterization-test, and warehouse vocabularies; that code can
+map an implementation surface but not a real user journey; that B-42 has no product/UX field report
+and B-41 has no product-judgment scenario; that consumer-owned context will not automatically
+migrate on update; and that product research introduces privacy, confidentiality, prompt-injection,
+staleness, metric-gaming, and causal-attribution risks. The narrower plan below incorporates those
+findings. This review **does not clear implementation**.
+
+**Phase 0 — evidence and design only:**
+
+1. Freeze fixtures, prompts, graders, success worlds, negative controls, sample count, and stop
+   rules before changing shipped guidance. Red/green every deterministic grader with planted
+   mutations; calibrate subjective judgments against product/UX-capable humans; an unavailable
+   host or truncated output is cannot-verify, never pass.
+2. Exercise at least three independent runs per stochastic case on every available supported host:
+   (a) exact feature request with no outcome; (b) materially ambiguous user-facing feature;
+   (c) authoritative product brief; (d) conflict between code and product evidence; (e) Angular
+   routes/forms without user evidence; (f) .NET API/domain flow without a known actor or channel;
+   (g) trivial fix/refactor; (h) sensitive research material; (i) stale/superseded claim plus a
+   deleted reference; (j) AI vocabulary without evidenced runtime AI behavior.
+3. Measure unsupported product claims, invented actors/journeys/outcomes/metrics/authority,
+   provenance accuracy, correct proceed/ask/abstain behavior, unnecessary blocking questions,
+   sensitive-data leakage, added turns/tokens/always-loaded footprint, and blind human ratings of
+   usefulness and material correctness. Report per host rather than averaging away a dead surface.
+4. Inspect greenfield and already-installed update paths. Record exactly which host reads which
+   carrier. Product knowledge is consumer-owned; framework updates must not overwrite it, while a
+   design that only reaches greenfield installations is not a successful delivery design.
+
+**Pre-registered stop rules:**
+
+- Close B-134 with no shipped change if the unchanged framework already avoids unsupported intent
+  claims, preserves ambiguity, and handles the ten cases correctly.
+- Do not ship if any code-only observation becomes confirmed product intent, raw sensitive research
+  is copied into the repo, an AI persona is treated as product authority, or exact/trivial work is
+  unnecessarily blocked in any repeated run.
+- Do not ship unless the intervention materially reduces unsupported product claims without a
+  material increase in wrong questions, turns, or always-loaded context.
+- Do not begin journey mapping until at least three independent real-work incidents across at least
+  two repositories or teams show that the minimal inline product frame failed because journey
+  structure was missing.
+- Do not add a product/UX reviewer until the same reviewable defect class survives inline framing
+  repeatedly and human reviewers judge the proposed findings materially useful.
+- Do not add outcome feedback until a team has a metric owner, validated instrumentation, baseline,
+  exposure definition, guardrails, and an interpretation rule separating association from causation.
+
+**Smallest candidate implementation — only if Phase 0 proves the defect:**
+
+1. Strengthen the existing compact `Codebase Context`, not a new file by default: purpose, actors,
+   critical journeys, domain vocabulary, intended outcomes, constraints/non-goals, sources,
+   authority/owner, and open questions. Keep it within the existing always-loaded budget.
+2. Use separate claim dimensions rather than a single confidence word: **Basis** (reported,
+   researched, policy, operational data, implementation observation); **Status** (supported,
+   inferred, unknown, disputed/superseded); exact **Source**; named **Authority** or unknown;
+   **Scope**; and human-reviewed date. Code can establish an implemented surface, never why it
+   exists, who should use it, or whether it creates value. "A human said it" is not authority.
+3. Change all three bootstrap variants to cite code-derived implementation observations, ask one
+   grouped set of product-context questions when a knowledgeable person is available, preserve
+   disagreements, and leave skipped/unanswered intent visibly unknown. Store minimized summaries
+   and controlled-system references, never raw interviews, support transcripts, customer identity,
+   health/financial information, or confidential strategy.
+4. Add a bounded **Product frame** to `/design` and the feature-spec template for significant
+   product/domain behavior: actor, problem/opportunity, evidence, intended outcome, affected
+   journey, assumptions, success signal, guardrails, and authority/unknown. Precisely specified
+   work may proceed with `product outcome unavailable` rather than inventing one. Add one concise
+   universal rule: implementation evidence is not evidence of product intent or real user behavior.
+5. Re-run the baseline matrix, install/update smokes, context-footprint gate, composition/freshness,
+   `validate-dist` x3, and applicable host behavior suites. Show both the defect world and the
+   constructible success world; do not call prose presence a behavioral pass.
+
+**Explicitly not authorised by this item:** no `map-product`/`map-journeys` skill, product/UX
+reviewer, screen/button/form numeric limits, automatic product roadmap, synthetic personas as
+evidence, `TECH_DEBT.md` product entries, new product-opportunity register, product-freshness hook,
+analytics integration, automatic causal claims, or conditional human-AI UX module. Each requires
+its own observed harm, proportionality case, design, delivery path, and review. A future journey
+artifact must distinguish observed route/API/state flow from reported cross-channel journey and
+unknown actor/goal/completion. Automated accessibility findings can prove particular structural
+failures; they can never claim complete accessibility or usability without manual/user evidence.
+
+**Product authority and privacy boundary:** a product claim must name who can decide it; developer,
+product owner, policy owner, researcher, analyst, and end user are not interchangeable authorities.
+Disputed claims stay disputed. Treat linked research and support material as untrusted and possibly
+sensitive: define minimisation, consent, redaction, retention, access, and prohibited-data rules;
+never execute commands or follow instructions embedded in research content. A valid path refreshes
+only the reference, not the human claim attached to it.
+
+**Proportionality:** the observed repo defect is an epistemic one in bootstrap, not evidence that
+the framework needs a full product operating model. Phase 0 plus a compact context/spec correction,
+if the baseline fails, removes most of that harm. Larger discovery and UX capabilities remain
+separately gated hypotheses.
+
+**Review gate — BLOCKED FOR IMPLEMENTATION:** before Phase 0 execution or any shipped edit, obtain
+a **heavy independent adversarial review with Claude Opus**. Give Opus the research sources, actual
+bootstrap/design/spec/update surfaces, this entry, and the fresh-context critique. The review is
+licensed to reject the premise, redesign the evidence model, change the evals/stop rules, split the
+item, or conclude that a smaller documentation correction is sufficient. Require a second Opus
+pass on the materially redesigned plan before calling it locked. If Opus is rate- or spend-limited,
+mark `WAITING — OPUS LIMIT`; do not substitute a lower tier or this existing review and call the
+gate satisfied.
+
+**Status: OPUS REVIEW DONE 2026-08-22 — REQUEST CHANGES.** Phase 0 execution and shipped changes remain unauthorised; the findings are below.
+
+> **CLAUDE OPUS REVIEW — 2026-08-22. Verdict: REQUEST CHANGES.** The defect is real and the
+> fresh-context review already removed the worst of the first design. Three findings: one blocking,
+> one that shrinks the deliverable to roughly a sentence, and one on durability.
+>
+> **1. BLOCKING — the smallest candidate implementation is unbudgeted, exactly like B-136's.**
+> Step 1 says "strengthen the existing compact `Codebase Context`" with purpose, actors, critical
+> journeys, domain vocabulary, intended outcomes, constraints/non-goals, sources, authority/owner and
+> open questions — then step 2 adds six per-claim dimensions (Basis, Status, Source, Authority, Scope,
+> review date). That template text lives in the shipped `CLAUDE.md`, which is **counted in
+> `static.claude`** (`scripts/context-footprint.ps1:245`). Measured 2026-08-22: **83 characters** of
+> monorepo headroom, 499 on dotnet, against a hard failure since B-110. Nine fields plus a
+> six-dimension claim schema is hundreds of characters. **This cannot ship as written**, and the
+> plan never checks. Fourth entry routing through B-158(b) — fifth counting B-136.
+>
+> **BUDGET DECISION 2026-08-29.** WSD-055 retains the ceiling. Only the review's smaller
+> instruction correction may proceed, and only against a named, behavior-preserving displacement;
+> the larger schema has neither proportionality nor static-context authority.
+>
+> **2. PROPORTIONALITY — the concrete defect is one instruction, and the fix is close to one
+> sentence. The schema is not proportionate to it.** The entry names the harm precisely: all three
+> `/bootstrap` variants tell the model to replace `Codebase Context` with *"real findings from this
+> codebase"*, so routes, DTOs, forms and test names become unmarked claims about users and intent.
+> The minimal correction is to that instruction — **code establishes an implemented surface, never
+> why it exists, who should use it, or whether it creates value; label code-derived claims as
+> implementation observations and leave product intent explicitly unknown rather than inferred.**
+> That removes the false-authority defect. A six-dimension provenance schema is a *different, larger*
+> project whose value over the labelled-unknown version is unmeasured. **Recommend shipping the
+> instruction correction first and re-testing before designing the schema.**
+>
+> **3. DURABILITY — an unenforced structured schema decays into something worse than prose.** Six
+> dimensions per claim, in a consumer-owned file, with no check, will be filled once at bootstrap and
+> then rot — and a stale `Status: supported` with a two-year-old review date is *more* authoritative
+> to a reader than the unmarked prose it replaced. This repo has the evidence: `docs/wiki/` carries
+> frontmatter **and a machine check** (`wiki-check`), and B-83's filed-against stamps only became
+> reliable when made blocking. **If the schema ships at all, it needs an enforcing check or an
+> explicit statement that it is advisory and will rot** — WSD-047's rule applied to a record format
+> rather than a guard.
+>
+> **4. Sound, and worth keeping as-is:** the pre-registered stop rules — including *"close with no
+> shipped change if the unchanged framework already avoids unsupported intent claims"* — are the right
+> shape and are what stop this becoming a capability build in search of a defect. The
+> value/usability/feasibility/viability separation and the refusal to treat an AI persona as product
+> authority are both correct. The privacy boundary is correct and should be **strengthened one step**:
+> `CLAUDE.md` is version-controlled and shared, so the default should be *references to controlled
+> systems*, not minimized summaries of sensitive material — a summary in git is permanent.
+>
+> **5. On Phase 0 authorisation:** clearing this review gate does **not** make Phase 0 runnable. Ten
+> scenario classes at three runs per host is live-eval spend, and five entries are already behind that
+> budget. Authorise the design, but record that execution waits on the same decision as B-49, B-97,
+> B-129 and B-133 — and note that B-112 found **four instruments broken in their first version**, so
+> the graders here need red-testing against planted transcripts before any result is banked.
+>
+> **Disposition:** not authorised as written. Budget the template text against a named displacement
+> or B-158(b); ship the `/bootstrap` instruction correction first and measure before building the
+> schema; and if the schema ships, decide honestly whether it is enforced or advisory.
+
+**B-130 is DONE (2026-08-21) — both the framework-doctor and `ScriptTwinParity` halves are closed;
+see `meta/BACKLOG-DONE.md`.**
+
+### B-207 · Make the doctor Copilot-visibility fixture portable to Windows PowerShell 5.1
+**Effort:** S · **Priority:** P2 · **planned >= v0.78.5**
+**Filed against:** v0.78.3 (2026-08-30)
+
+**Status: COMPLETE 2026-08-31 — independent immutable review approved
+`95cadcffa2e15bc046e283098cf5690d28626449..151aba293ee6ad53e236bd5cb9b30564bfdc4af9`; exact candidate [GitHub Actions run `33388977666`](https://github.com/andreoucostas/ai-tech-lead/actions/runs/33388977666) passed all eight
+required Windows/Linux jobs at `151aba293ee6ad53e236bd5cb9b30564bfdc4af9`.** The existing Git-for-Windows
+setup probe now sends its program through `Invoke-RawProcess` stdin, accepts only exact case-sensitive
+`yes`/`no` with exit zero and empty stderr, and preserves the four existing visibility worlds and
+33-result cardinality. Observed native-5.1 red was 31/1/1; the final candidate is 33/0/0 under both
+PowerShell 7 and native 5.1/CP437. A complete scratch copy emitting `maybe` made only the existing
+Copilot-visibility result fail (32/1/0), then the clean source reran green. The three composed carriers
+match, both composer and validator twins agree, and no doctor product code, suite, `It`, fixture, or
+CI leg changed. The first immutable review rejected a Desktop-wide cleanup that changed an
+untouched non-Git process key from `Path` to `PATH`; the repaired candidate gates special
+restoration on the actual collapse.
+
+**Delivery RCA:** B-201 fixed three nested Bash probes but its bounded census missed this fourth
+setup-only site, while required CI does not directly invoke the shipped file under native Windows
+PowerShell 5.1. The same-class follow-up remains evidence-triggered: file work only for another
+nested-shell/metacharacter transport or an observed legacy-host failure, not every `$bash -c` use.
+
+**Why:** B-175's required native Windows PowerShell 5.1 run executed its changed doctor matrix
+successfully but left the full file at 31/1/1. The existing `Copilot CLI visibility is controlled`
+setup invokes Git Bash with a nested `-c` string containing `>/dev/null`; legacy native-argument
+marshalling turns that fragment into a repository-relative Windows path. Bash reports
+`.../>/dev/null: No such file or directory`, and the constructed `both` world falsely says Copilot
+is absent. PowerShell 7 passes 33/0. This is the same transport class as B-201 but a fourth site
+outside its already-reviewed candidate, not evidence against B-175 product behavior.
+
+**Do:** revalidate the exact PowerShell-5.1 argument corruption, then replace only this setup probe's
+multi-layer `-c` transport with the existing raw-process/stdin mechanism already approved in B-201.
+Preserve the four visibility worlds and doctor product code; add no suite, `It`, helper, hard-coded
+tool path, or new capability claim. Require the existing result to fail on an unexpected/empty probe
+outcome, pass under native 5.1 and PowerShell 7, and retain honest absence. Compose all distributions
+and require first modified-test Windows/Linux CI before completion.
+
+---
+
+### B-211 · Make the working-Python control quote-stable under Windows PowerShell 5.1
+**Filed against:** v0.79.0 (2026-08-31)
+**Effort:** S · **Priority:** P2 · **Invariants:** #3 #4 #7
+
+**Status: COMPLETE 2026-08-31 — independent immutable review approved
+`95cadcffa2e15bc046e283098cf5690d28626449..151aba293ee6ad53e236bd5cb9b30564bfdc4af9`; exact candidate [GitHub Actions run `33388977666`](https://github.com/andreoucostas/ai-tech-lead/actions/runs/33388977666) passed all eight
+required Windows/Linux jobs at `151aba293ee6ad53e236bd5cb9b30564bfdc4af9`.** B-207's required native-5.1
+rerun supplied `ATL_TEST_PYTHON=C:\Python314\python.exe`, but `Resolve-HostPython` passed
+`sys.stdout.write("ok")` through legacy native-argument marshalling as `sys.stdout.write(ok)`.
+Python exited one, the helper returned null, and the otherwise-green doctor result became 32/0/1.
+The same host/interpreter emitted exact `ok` when the program used
+`sys.stdout.write(chr(111)+chr(107))`.
+
+**Locked proportional fix:** after independent scope critique, only the two identical programs in
+the existing helper changed. JSON parsing, exact `ok` comparison, override/candidate order, and
+failure behavior remain. No abstraction, escape rule, exit-only probe, test, result, fixture, or CI
+leg was added. Both explicit-override and normal candidate discovery returned the real interpreter
+under native 5.1; a scratch `ox` mutation made an external exact-path assertion go red. The full
+doctor result is 33/0/0 under both PowerShell hosts, native-5.1 Guard is 88/0/0, and the composed
+RoutePrompt result is 25/0/0 with its Python-only encoder branch exercised.
+
+**Delivery RCA and bounded exposure:** the resolver had been execution-probed under PowerShell 7 but
+not through native 5.1, so its documented anti-skip override could itself create a false skip. The
+same quoted program shape exists in maintainer-only `RootInstallerWarehouse.Tests.ps1` and
+`ValidateDist.Tests.ps1`; both run under the PowerShell 7 meta contract, and this item does not claim
+to fix them. Reopen that exposure only if either acquires a native-5.1 contract or an observed host
+failure. The independent immutable review and exact candidate run named above supplied completion evidence.
+
+---
