@@ -32,6 +32,14 @@ $usage = 'Usage: pwsh install.ps1 [-Stack dotnet|angular|monorepo] [-GitHooks] [
 # ErrorActionPreference=Stop it throws before the following exit runs, which -File maps to
 # exit code 1 — this keeps every wrapper-level failure at the documented exit 2.
 function Die([string]$msg) { [Console]::Error.WriteLine($msg); exit 2 }
+function Test-OrdinalEquals($Left, $Right) {
+    return [StringComparer]::Ordinal.Equals([string]$Left, [string]$Right)
+}
+function Test-ExactStackName($Value) {
+    return (Test-OrdinalEquals $Value 'dotnet') -or
+        (Test-OrdinalEquals $Value 'angular') -or
+        (Test-OrdinalEquals $Value 'monorepo')
+}
 
 # ConvertFrom-Json accepts JavaScript extensions (comments, single quotes, unquoted keys, trailing
 # commas, NaN/Infinity, and leading-zero numbers) that jq and Python reject. Validate the RFC JSON
@@ -130,34 +138,39 @@ function Get-BoundedRepositoryFiles([string]$Path) {
 function Test-PackageAngularCore($Root) {
     if (-not ($Root -is [System.Management.Automation.PSCustomObject])) { return $false }
     foreach ($sectionName in @('dependencies','devDependencies','peerDependencies','optionalDependencies')) {
-        $section = $Root.PSObject.Properties | Where-Object { $_.Name -ceq $sectionName } | Select-Object -First 1
+        $section = Get-ExactJsonProperty $Root $sectionName
         if ($section -and $section.Value -is [System.Management.Automation.PSCustomObject] -and
-            ($section.Value.PSObject.Properties.Name -ccontains '@angular/core')) { return $true }
+            (Get-ExactJsonProperty $section.Value '@angular/core')) { return $true }
     }
     return $false
 }
 function Test-ExactAngularPackageToken($Value) {
-    return $Value -is [string] -and $Value -cmatch '^@(angular|nx/angular|angular-devkit|schematics/angular)(/[^\s]+|:[^\s]+)$'
+    return $Value -is [string] -and ([string]$Value).IndexOf([char]0) -lt 0 -and
+        $Value -cmatch '^@(angular|nx/angular|angular-devkit|schematics/angular)(/[^\s]+|:[^\s]+)$'
+}
+function Get-ExactJsonProperty($Object, [string]$Name) {
+    if (-not ($Object -is [System.Management.Automation.PSCustomObject])) { return $null }
+    $property = $Object.PSObject.Properties | Where-Object { Test-OrdinalEquals $_.Name $Name } | Select-Object -First 1
+    return $property
 }
 function Get-ExactJsonPropertyValue($Object, [string]$Name) {
-    if (-not ($Object -is [System.Management.Automation.PSCustomObject])) { return $null }
-    $property = $Object.PSObject.Properties | Where-Object { $_.Name -ceq $Name } | Select-Object -First 1
+    $property = Get-ExactJsonProperty $Object $Name
     if ($property) { return $property.Value }
     return $null
 }
 function Test-NxAngularEvidence($Node) {
     if (-not ($Node -is [System.Management.Automation.PSCustomObject])) { return $false }
-    $plugins = $Node.PSObject.Properties | Where-Object Name -ceq 'plugins' | Select-Object -First 1
+    $plugins = Get-ExactJsonProperty $Node 'plugins'
     foreach ($plugin in @($plugins.Value)) { if ((Test-ExactAngularPackageToken $plugin) -or ($plugin -is [System.Management.Automation.PSCustomObject] -and (Test-ExactAngularPackageToken (Get-ExactJsonPropertyValue $plugin 'plugin')))) { return $true } }
     foreach ($mapName in @('generators','schematics')) {
-        $map = $Node.PSObject.Properties | Where-Object Name -ceq $mapName | Select-Object -First 1
+        $map = Get-ExactJsonProperty $Node $mapName
         if ($map.Value -is [System.Management.Automation.PSCustomObject]) { foreach ($candidate in $map.Value.PSObject.Properties.Name) { if (Test-ExactAngularPackageToken $candidate) { return $true } } }
     }
     foreach ($mapName in @('targets','architect','targetDefaults')) {
-        $map = $Node.PSObject.Properties | Where-Object Name -ceq $mapName | Select-Object -First 1
+        $map = Get-ExactJsonProperty $Node $mapName
         if (-not ($map.Value -is [System.Management.Automation.PSCustomObject])) { continue }
         foreach ($entry in $map.Value.PSObject.Properties) {
-            if ($mapName -ceq 'targetDefaults' -and (Test-ExactAngularPackageToken $entry.Name)) { return $true }
+            if ((Test-OrdinalEquals $mapName 'targetDefaults') -and (Test-ExactAngularPackageToken $entry.Name)) { return $true }
             if ($entry.Value -is [System.Management.Automation.PSCustomObject]) { foreach ($field in @('executor','generator','collection','plugin')) { if (Test-ExactAngularPackageToken (Get-ExactJsonPropertyValue $entry.Value $field)) { return $true } } }
         }
     }
@@ -181,7 +194,7 @@ $tgt = (Resolve-Path -LiteralPath $Target).Path
 
 $reason = ''
 if ($Stack) {
-    if ($Stack -cne 'dotnet' -and $Stack -cne 'angular' -and $Stack -cne 'monorepo') { Die "Unknown stack '$Stack' (expected: dotnet, angular, or monorepo)." }
+    if (-not (Test-ExactStackName $Stack)) { Die "Unknown stack '$Stack' (expected: dotnet, angular, or monorepo)." }
     $reason = '-Stack flag'
 }
 else {
@@ -202,7 +215,7 @@ else {
         }
         catch { Die "Existing install at '$tgt', but .claude/framework-version.json is invalid JSON under the strict grammar, has case-colliding member names, or has a non-object root - pass -Stack dotnet|angular|monorepo." }
         if (-not ($tmpl -is [string]) -or [string]::IsNullOrWhiteSpace($tmpl)) { Die "Existing install at '$tgt', but .claude/framework-version.json has no non-empty string ""template"" value - pass -Stack dotnet|angular|monorepo." }
-        if ($tmpl -cne 'dotnet' -and $tmpl -cne 'angular' -and $tmpl -cne 'monorepo') { Die "Existing install names an unknown stack ""$tmpl"" in .claude/framework-version.json — pass -Stack dotnet|angular|monorepo." }
+        if (-not (Test-ExactStackName $tmpl)) { Die 'Existing install names an unknown stack in .claude/framework-version.json - expected dotnet, angular, or monorepo; pass -Stack dotnet|angular|monorepo.' }
         $Stack = $tmpl
         $reason = "update stamp (.claude/framework-version.json template=$tmpl)"
     }
