@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.79.0 — Unreleased
+## 0.79.0 — 2026-08-31
 
 **Final supported-host candidate evidence.** Exact GitHub Actions run `33333912064` at
 `dbdc38f508463c3c2fa7cb3d55d830deb7cd014b` passed all eight required jobs: the main Windows and

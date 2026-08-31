@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.79.0 — Unreleased
+## 0.79.0 — 2026-08-31
 
 - Supported and release-tested hosts are now explicitly Windows and Linux. macOS is unsupported and
   untested; any compatibility there is incidental and carries no release guarantee. This withdraws
