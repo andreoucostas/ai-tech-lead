@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.79.1 — Unreleased
+## 0.79.1 — 2026-08-31
 
 **Bootstrap no longer turns implementation evidence into unsupported product claims.** B-134 adds
 one authority boundary to all three stack-specific bootstrap commands: code-derived context is

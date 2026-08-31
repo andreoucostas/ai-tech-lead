@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.79.1 — Unreleased
+## 0.79.1 — 2026-08-31
 
 - `/bootstrap` now treats code as evidence of implemented surfaces, not product intent or actual
   user behavior or value. Intended purpose and target users require a named person or role authorized
