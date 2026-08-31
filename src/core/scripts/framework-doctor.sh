@@ -143,50 +143,22 @@ resolve_pybin() {
     fi
   done
 }
-# Provider values are UTF-8 base64 records (WSD-030); fixed tags and cardinality remain plain.
-# Decode through the provider that emitted the record, append a non-newline sentinel so command
-# substitution preserves trailing CR/LF, and require an exact base64 round-trip. Executable-command
-# NUL is a shape error; template and informational fields use fixed/escaped artifact outcomes.
-decode_registration_value() {
-  local decoder_kind=$1 decoder_bin=$2 encoded=$3 decoded status
-  decoded_registration_value=''
-  case "$decoder_kind" in
-    jq)
-      decoded=$("$decoder_bin" -jrn --arg encoded "$encoded" '# atl_decode_registration
-        ($encoded | @base64d) as $decoded |
-        if (($decoded | @base64) == $encoded and (($decoded | contains("\u0000")) | not))
-        then $decoded, "\u001e" else error("invalid encoded record") end' 2>/dev/null); status=$? ;;
-    python)
-      decoded=$("$decoder_bin" -c 'import base64,sys
-try:
-    raw=base64.b64decode(sys.argv[1],validate=True)
-    value=raw.decode("utf-8")
-    if base64.b64encode(raw).decode("ascii") != sys.argv[1] or "\0" in value: raise ValueError()
-    sys.stdout.write(value+"\x1e")
-except (ValueError,UnicodeDecodeError): sys.exit(2)
-' "$encoded" 2>/dev/null); status=$? ;;
-    *) return 1 ;;
-  esac
-  [ "$status" -eq 0 ] || return 1
-  case "$decoded" in *$'\x1e') decoded_registration_value=${decoded%$'\x1e'};; *) return 1;; esac
-}
-# Accept only a complete, typed provider response. A partial/empty/extra response or an invalid
-# encoded record is provider inability, never evidence about the JSON artifact.
+# Accept only a complete, typed provider response. A partial/empty/extra response is a provider
+# failure, never evidence about the JSON artifact. Commands are line-delimited; the installed hook
+# registrations do not contain embedded newlines, and an unexpected newline therefore fails closed
+# to the alternate provider instead of being silently truncated.
 accept_registration_output() {
-  local output=$1 header expected body actual=0 item stamp_index=0 encoded field
+  local output=$1 header expected body actual=0 item stamp_index=0
   output=${output//$'\r\n'/$'\n'}
   output=${output%$'\r'}
   registration_state=unknown
   registration_payload=''
   registration_stamp_version=''
   registration_stamp_applied=''
-  registration_values=()
-  registration_fields=()
   case "$output" in
     ATL_JSON_INVALID) registration_state=invalid; return 0 ;;
     ATL_COLLISION) registration_state=invalid; return 0 ;;
     ATL_SHAPE_INVALID) registration_state=shape; return 0 ;;
-    ATL_UNSUPPORTED) registration_state=unsupported; return 0 ;;
     ATL_READ_FAILED) registration_state=read; return 0 ;;
   esac
   header=${output%%$'\n'*}
@@ -205,26 +177,20 @@ accept_registration_output() {
     [ "$expected" -eq 3 ] || return 1
     while IFS= read -r item; do
       case "$stamp_index:$item" in
-        0:T:*) encoded=${item#T:}; decode_registration_value "$registration_decoder_kind" "$registration_decoder_bin" "$encoded" || return 1; registration_payload=$encoded ;;
-        1:V:*) encoded=${item#V:}; decode_registration_value "$registration_decoder_kind" "$registration_decoder_bin" "$encoded" || return 1; registration_stamp_version=$decoded_registration_value ;;
-        2:A:*) encoded=${item#A:}; decode_registration_value "$registration_decoder_kind" "$registration_decoder_bin" "$encoded" || return 1; registration_stamp_applied=$decoded_registration_value ;;
+        0:T:*) registration_payload=${item#T:} ;;
+        1:V:*) registration_stamp_version=${item#V:} ;;
+        2:A:*) registration_stamp_applied=${item#A:} ;;
         *) return 1 ;;
       esac
       stamp_index=$((stamp_index + 1))
     done <<<"$body"
   elif [ "$registration_kind" = copilot ]; then
     while IFS= read -r item; do
-      case "$item" in $'bash\t'?*|$'powershell\t'?*) field=${item%%$'\t'*}; encoded=${item#*$'\t'};; *) return 1;; esac
-      decode_registration_value "$registration_decoder_kind" "$registration_decoder_bin" "$encoded" || return 1
-      registration_fields+=("$field")
-      registration_values+=("$decoded_registration_value")
+      case "$item" in $'bash\t'?*|$'powershell\t'?*) ;; *) return 1;; esac
     done <<<"$body"
+    registration_payload=$body
   else
-    while IFS= read -r encoded; do
-      [ -n "$encoded" ] || return 1
-      decode_registration_value "$registration_decoder_kind" "$registration_decoder_bin" "$encoded" || return 1
-      registration_values+=("$decoded_registration_value")
-    done <<<"$body"
+    registration_payload=$body
   fi
   registration_state=ok
 }
@@ -244,8 +210,6 @@ parse_registration_json() {
   local kind=$1 path=$2 text=$3 filter output status
   registration_state=unknown
   registration_payload=''
-  registration_values=()
-  registration_fields=()
   registration_kind=$kind
   # Command substitution preserves a UTF-8 BOM. It is not JSON content, and both PowerShell and
   # Python already read it BOM-safely, so remove one leading BOM before the jq lexical/query path.
@@ -255,11 +219,9 @@ parse_registration_json() {
     stamp) filter='# atl_stamp_registration
       def atl_fold: explode | map(if . >= 65 and . <= 90 then . + 32 else . end) | implode;
       def atl_clean: if type == "object" then (([keys_unsorted[] | atl_fold] | length) == ([keys_unsorted[] | atl_fold] | unique | length)) and all(.[]; atl_clean) elif type == "array" then all(.[]; atl_clean) else true end;
-      def atl_display: if type == "string" then (tojson | .[1:-1]) else "" end;
       if (atl_clean | not) then "ATL_COLLISION"
-      elif type == "object" and (.template | type) == "string" and (.template | test("[^[:space:]]")) and (.template | contains("\u0000")) then "ATL_UNSUPPORTED"
       elif type == "object" and (.template | type) == "string" and (.template | test("[^[:space:]]")) then
-        "ATL_OK:3", "T:\(.template | @base64)", "V:\(.version | atl_display | @base64)", "A:\(.applied | atl_display | @base64)"
+        "ATL_OK:3", "T:\(.template)", "V:\(if (.version | type) == "string" then .version else "" end)", "A:\(if (.applied | type) == "string" then .applied else "" end)"
       else "ATL_SHAPE_INVALID" end' ;;
     claude) filter='# atl_claude_registration
       def atl_fold: explode | map(if . >= 65 and . <= 90 then . + 32 else . end) | implode;
@@ -268,8 +230,7 @@ parse_registration_json() {
       if (atl_clean | not) then "ATL_COLLISION"
       elif type == "object" and has("hooks") and (.hooks | type) == "object" and all(.hooks[]; atl_event) then
         [.hooks[] | .[] | .hooks[] | select((has("type") | not) or .type == "command") | .command? | select(type == "string" and test("[^[:space:]]"))] as $commands |
-        if any($commands[]; contains("\u0000")) then "ATL_SHAPE_INVALID"
-        else "ATL_OK:\($commands | length)", ($commands[] | @base64) end
+        "ATL_OK:\($commands | length)", $commands[]
       else "ATL_SHAPE_INVALID" end' ;;
     copilot) filter='# atl_copilot_registration
       def atl_fold: explode | map(if . >= 65 and . <= 90 then . + 32 else . end) | implode;
@@ -277,23 +238,18 @@ parse_registration_json() {
       def atl_event: type == "array" and all(.[]; type == "object");
       if (atl_clean | not) then "ATL_COLLISION"
       elif type == "object" and has("hooks") and (.hooks | type) == "object" and all(.hooks[]; atl_event) then
-        [.hooks[] | .[] as $entry | ("bash", "powershell") as $field | select(($entry[$field] | type) == "string" and ($entry[$field] | test("[^[:space:]]"))) | {field:$field,command:$entry[$field]}] as $commands |
-        if any($commands[]; .command | contains("\u0000")) then "ATL_SHAPE_INVALID"
-        else "ATL_OK:\($commands | length)", ($commands[] | .field + "\t" + (.command | @base64)) end
+        [.hooks[] | .[] as $entry | ("bash", "powershell") as $field | select(($entry[$field] | type) == "string" and ($entry[$field] | test("[^[:space:]]"))) | "\($field)\t\($entry[$field])"] as $commands |
+        "ATL_OK:\($commands | length)", $commands[]
       else "ATL_SHAPE_INVALID" end' ;;
     *) return ;;
   esac
   if has_registration_jq; then
-    registration_decoder_kind=jq
-    registration_decoder_bin=jq
     output=$(jq -r "$filter" "$path" 2>/dev/null); status=$?
     if [ "$status" -eq 0 ] && accept_registration_output "$output"; then return; fi
   fi
   resolve_pybin
   [ -n "$_pybin" ] || return
-  registration_decoder_kind=python
-  registration_decoder_bin=$_pybin
-  output=$("$_pybin" -c 'import base64,json,sys
+  output=$("$_pybin" -c 'import json,sys
 kind,path=sys.argv[1:]
 class Collision(Exception): pass
 class InvalidConstant(Exception): pass
@@ -314,14 +270,12 @@ except (json.JSONDecodeError,UnicodeDecodeError,InvalidConstant): print("ATL_JSO
 except Collision: print("ATL_COLLISION"); sys.exit(0)
 commands=[]
 valid=isinstance(root,dict)
-def display(value): return json.dumps(value,ensure_ascii=False)[1:-1] if isinstance(value,str) else ""
 if kind == "stamp":
     template=root.get("template") if valid else None
-    if isinstance(template,str) and template.strip() and "\0" in template: print("ATL_UNSUPPORTED"); sys.exit(0)
     valid=isinstance(template,str) and bool(template.strip())
     version=root.get("version","") if valid else ""
     applied=root.get("applied","") if valid else ""
-    if valid: commands=["T:"+base64.b64encode(template.encode("utf-8")).decode("ascii"),"V:"+base64.b64encode(display(version).encode("utf-8")).decode("ascii"),"A:"+base64.b64encode(display(applied).encode("utf-8")).decode("ascii")]
+    if valid: commands=["T:"+template,"V:"+(version if isinstance(version,str) else ""),"A:"+(applied if isinstance(applied,str) else "")]
 elif kind == "claude":
     hooks=root.get("hooks") if valid else None
     valid=isinstance(hooks,dict)
@@ -334,9 +288,7 @@ elif kind == "claude":
                     if not isinstance(handler,dict): valid=False; break
                     handler_type=handler.get("type",None)
                     command=handler.get("command")
-                    if ("type" not in handler or handler_type == "command") and isinstance(command,str) and command.strip():
-                        if "\0" in command: valid=False; break
-                        commands.append(base64.b64encode(command.encode("utf-8")).decode("ascii"))
+                    if ("type" not in handler or handler_type == "command") and isinstance(command,str) and command.strip(): commands.append(command)
                 if not valid: break
             if not valid: break
 elif kind == "copilot":
@@ -349,10 +301,7 @@ elif kind == "copilot":
                 if not isinstance(entry,dict): valid=False; break
                 for field in ("bash","powershell"):
                     command=entry.get(field)
-                    if isinstance(command,str) and command.strip():
-                        if "\0" in command: valid=False; break
-                        commands.append(field+"\t"+base64.b64encode(command.encode("utf-8")).decode("ascii"))
-                if not valid: break
+                    if isinstance(command,str) and command.strip(): commands.append(field+"\t"+command)
             if not valid: break
 else: valid=False
 if not valid: print("ATL_SHAPE_INVALID")
@@ -363,10 +312,6 @@ else:
   if [ "$status" -eq 0 ] && accept_registration_output "$output"; then return; fi
   registration_state=unknown
   registration_payload=''
-  registration_values=()
-  registration_fields=()
-  registration_decoder_kind=''
-  registration_decoder_bin=''
 }
 angular_json_evidence() {
   local kind=$1 marker_file=$2 parsed='' json_text=''
@@ -455,19 +400,10 @@ parse_registration_json stamp "$stamp" "$stamp_text"
 stamp_parsed=0
 stamp_invalid=0
 stamp_shape_invalid=0
-stamp_unsupported=0
 case "$registration_state" in
-  ok)
-    stamp_parsed=1; version=$registration_stamp_version; applied=$registration_stamp_applied
-    case "$registration_payload" in
-      ZG90bmV0) template=dotnet ;;
-      YW5ndWxhcg==) template=angular ;;
-      bW9ub3JlcG8=) template=monorepo ;;
-      *) stamp_unsupported=1; template=unsupported ;;
-    esac ;;
+  ok) stamp_parsed=1; template=$registration_payload; version=$registration_stamp_version; applied=$registration_stamp_applied ;;
   invalid) stamp_invalid=1 ;;
   shape) stamp_shape_invalid=1 ;;
-  unsupported) stamp_parsed=1; stamp_unsupported=1; template=unsupported ;;
   read) stamp_read_failed=1 ;;
 esac
 if [ "$stamp_read_failed" -eq 1 ]; then
@@ -485,8 +421,8 @@ fi
 if [ "$stamp_parsed" -eq 0 ]; then
   template=unverified
   row CANT-VERIFY 'Install state' 'no trusted JSON provider completed the required query, so .claude/framework-version.json cannot be validated. Install jq or a working python3/python/py interpreter and rerun the doctor.'
-elif [ "$stamp_unsupported" -eq 1 ]; then
-  row MISSING 'Install state' '.claude/framework-version.json names an unsupported template; expected dotnet, angular, or monorepo. Fix: re-run the framework installer.'
+elif [ "$template" != dotnet ] && [ "$template" != angular ] && [ "$template" != monorepo ]; then
+  row MISSING 'Install state' ".claude/framework-version.json names unsupported template \"$template\"; expected dotnet, angular, or monorepo. Fix: re-run the framework installer."
   finish
 else
   row OK 'Install state' "template=$template; version=$version; applied=$applied"
@@ -578,26 +514,25 @@ if [ -f "$settings" ]; then
   read_json_file_text "$settings"; settings_text=$json_file_text
   case "$json_file_state" in read) settings_read_failed=1;; nul) settings_json_invalid=1;; esac
 fi
-commands=()
+commands=''
 if [ "$settings_read_failed" -eq 0 ] && [ "$settings_json_invalid" -eq 0 ] && [ -f "$settings" ]; then
   parse_registration_json claude "$settings" "$settings_text"
   case "$registration_state" in
-    ok) commands=("${registration_values[@]}") ;;
+    ok) commands=$registration_payload ;;
     invalid) settings_json_invalid=1 ;;
     shape) settings_shape_invalid=1 ;;
     read) settings_read_failed=1 ;;
     *) settings_unknown=1 ;;
   esac
 fi
-shell_lines=''
-claude_hook_commands=("${commands[@]}")
+shells=$(printf '%s\n' "$commands" | sed -n 's/^[[:space:]]*"\([^"]*\)".*/\1/p; t; s/^[[:space:]]*\([^[:space:]]*\)[[:space:]].*/\1/p' | unique_lines)
 bash_guard_registered=0
-for command in "${commands[@]}"; do
-  if split_first_command_word "$command"; then shell_lines="${shell_lines}${shell_lines:+
-}$first_word"; fi
+while IFS= read -r command; do
+  [ -z "$command" ] && continue
   if is_claude_bash_guard_command "$command"; then bash_guard_registered=1; fi
-done
-shells=$(printf '%s\n' "$shell_lines" | unique_lines)
+done <<EOF
+$commands
+EOF
 if [ "$settings_read_failed" -eq 1 ]; then
   row CANT-VERIFY 'Wired hook shell' '.claude/settings.json exists but could not be read; the wired interpreter is unknown. Fix read access and rerun the doctor.'
 elif [ "$settings_json_invalid" -eq 1 ]; then
@@ -652,15 +587,13 @@ fi
 copilot_valid=0
 copilot_shape_invalid=0
 copilot_unknown=0
-copilot_fields=()
-copilot_values=()
 if [ "$copilot_exists" -eq 1 ]; then
   if [ "$copilot_read_failed" -eq 1 ]; then :
   elif [ "$copilot_json_invalid" -eq 1 ]; then :
   else
     parse_registration_json copilot "$copilot_json" "$copilot_text"
     case "$registration_state" in
-      ok) copilot_valid=1; copilot_fields=("${registration_fields[@]}"); copilot_values=("${registration_values[@]}") ;;
+      ok) copilot_valid=1; copilot_payload=$registration_payload ;;
       invalid) copilot_json_invalid=1 ;;
       shape) copilot_shape_invalid=1 ;;
       read) copilot_read_failed=1 ;;
@@ -668,31 +601,28 @@ if [ "$copilot_exists" -eq 1 ]; then
     esac
   fi
 fi
-copilot_hook_commands=()
-copilot_bash_commands=()
+copilot_hook_commands=''
+copilot_bash_commands=''
 if [ "$copilot_valid" -eq 1 ]; then
-  for ((registration_index=0; registration_index<${#copilot_values[@]}; registration_index++)); do
-    field=${copilot_fields[$registration_index]}
-    command=${copilot_values[$registration_index]}
-    copilot_hook_commands+=("$command")
-    if [ "$field" = bash ]; then copilot_bash_commands+=("$command"); fi
-  done
+  while IFS= read -r registration; do
+    [ -z "$registration" ] && continue
+    field=${registration%%$'\t'*}
+    command=${registration#*$'\t'}
+    copilot_hook_commands="${copilot_hook_commands}${copilot_hook_commands:+
+}$command"
+    if [ "$field" = bash ]; then copilot_bash_commands="${copilot_bash_commands}${copilot_bash_commands:+
+}$command"; fi
+  done <<EOF
+$copilot_payload
+EOF
 fi
-path_candidates=''
-for command in "${claude_hook_commands[@]}"; do
-  found_paths=$(printf '%s\n' "$command" | grep -oE '[^[:space:]]*\.claude[\\/]hooks[\\/][^[:space:]]+')
-  [ -z "$found_paths" ] || path_candidates="${path_candidates}${path_candidates:+
-}$found_paths"
-done
-for command in "${copilot_hook_commands[@]}"; do
-  found_paths=$(printf '%s\n' "$command" | sed 's/[[:space:]].*$//')
-  [ -z "$found_paths" ] || path_candidates="${path_candidates}${path_candidates:+
-}$found_paths"
-done
-paths=$(printf '%s\n' "$path_candidates" | sed -e 's#\\\\#/#g' -e 's#\\#/#g' -e 's#^"##' -e 's#"$##' -e "s#^'##" -e "s#'\$##" -e 's#^\./##' | unique_lines)
-for command in "${copilot_bash_commands[@]}"; do
+paths=$( { printf '%s\n' "$commands" | grep -oE '[^ ]*\.claude[\\/]hooks[\\/][^ ]+'; printf '%s\n' "$copilot_hook_commands" | sed 's/[[:space:]].*$//'; } | sed -e 's#\\\\#/#g' -e 's#\\#/#g' -e 's#^"##' -e 's#"$##' -e "s#^'##" -e "s#'\$##" -e 's#^\./##' | unique_lines)
+while IFS= read -r command; do
+  [ -z "$command" ] && continue
   if is_guard_sh_target "$command"; then bash_guard_registered=1; fi
-done
+done <<EOF
+$copilot_bash_commands
+EOF
 missing_paths=''; count=0
 while IFS= read -r path; do
   [ -z "$path" ] && continue

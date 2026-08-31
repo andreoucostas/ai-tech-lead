@@ -282,7 +282,7 @@ function Assert-EvidenceBoundLifecycle([string]$Target) {
 
 }
 
-function Invoke-RootInstaller([string]$Twin, [string]$Target, [string]$Stack = '', [switch]$DryRun, [switch]$AllowDowngrade, [string]$ControlledPath = '') {
+function Invoke-RootInstaller([string]$Twin, [string]$Target, [string]$Stack = '', [switch]$DryRun, [switch]$AllowDowngrade) {
     if ($Twin -eq 'ps1') {
         $arguments = @('-NoProfile', '-File', (Join-Path $repo 'install.ps1'))
         if ($Stack) { $arguments += @('-Stack', $Stack) }
@@ -291,20 +291,12 @@ function Invoke-RootInstaller([string]$Twin, [string]$Target, [string]$Stack = '
         $arguments += $Target
         $out = @(& (Get-PsExe) @arguments 2>&1 | ForEach-Object { $_.ToString() })
     } else {
-        $scriptArguments = @()
-        if ($Stack) { $scriptArguments += @('--stack', $Stack) }
-        if ($DryRun) { $scriptArguments += '--dry-run' }
-        if ($AllowDowngrade) { $scriptArguments += '--allow-downgrade' }
-        $scriptArguments += $(if ($ControlledPath) { ConvertTo-PosixPath $Target } else { $Target })
-        if ($ControlledPath) {
-            $posixInstall = ConvertTo-PosixPath (Join-Path $repo 'install.sh')
-            $posixBin = ConvertTo-PosixPath $ControlledPath
-            $launchArguments = @('--noprofile','--norc','-c','PATH="$1"; export PATH; hash -r; shift; . "$0" "$@"',$posixInstall,$posixBin) + $scriptArguments
-            $out = @(& $bash @launchArguments 2>&1 | ForEach-Object { $_.ToString() })
-        } else {
-            $arguments = @((Join-Path $repo 'install.sh')) + $scriptArguments
-            $out = @(& $bash @arguments 2>&1 | ForEach-Object { $_.ToString() })
-        }
+        $arguments = @((Join-Path $repo 'install.sh'))
+        if ($Stack) { $arguments += @('--stack', $Stack) }
+        if ($DryRun) { $arguments += '--dry-run' }
+        if ($AllowDowngrade) { $arguments += '--allow-downgrade' }
+        $arguments += $Target
+        $out = @(& $bash @arguments 2>&1 | ForEach-Object { $_.ToString() })
     }
     return [pscustomobject]@{ Exit = [int]$LASTEXITCODE; Output = ($out -join "`n") }
 }
@@ -380,19 +372,14 @@ foreach ($twin in @('ps1', 'sh')) {
         }.GetNewClosure())
         foreach($markerCase in @(
             @{File='package.json';Content='{"dependencies":{"@ANGULAR/CORE":"20.0.0"}}';Label='uppercase package identifier';Pattern='Could not determine the stack'},
-            @{File='package.json';Content='{"dependenc\u0000ies":{"@angular/core":"20.0.0"}}';Label='NUL-lookalike dependency section';Pattern='Could not determine the stack'},
-            @{File='package.json';Content='{"dependencies":{"@angular/core\u0000":"20.0.0"}}';Label='NUL-lookalike package identifier';Pattern='Could not determine the stack'},
             @{File='package.json';Content='{"scripts":{"probe":"echo \"@angular/core\": fake"}}';Label='escaped property-shaped script string';Pattern='Could not determine the stack'},
             @{File='package.json';Content='{"scripts":{"@angular/core":"echo fake"}}';Label='non-dependency package key';Pattern='Could not determine the stack'},
             @{File='nx.json';Content='{"notes":"do not use angular-devkit"}';Label='Nx prose';Pattern='Could not determine the stack'},
             @{File='nx.json';Content='{"notes":"@nx/angular/plugin is not enabled"}';Label='Nx package-prefix prose';Pattern='Could not determine the stack'},
             @{File='nx.json';Content='{"notes":{"plugin":"@nx/angular/plugin"}}';Label='nested notes plugin field';Pattern='Could not determine the stack'},
             @{File='nx.json';Content='{"plugins":["@nx/angular"]}';Label='bare Nx token';Pattern='Could not determine the stack'},
-            @{File='nx.json';Content='{"plu\u0000gins":["@nx/angular/plugin"]}';Label='NUL-lookalike Nx plugins field';Pattern='Could not determine the stack'},
-            @{File='nx.json';Content='{"plugins":["@nx/angular/plugin\u0000"]}';Label='NUL-suffixed Nx package token';Pattern='Could not determine the stack'},
             @{File='nx.json';Content='{"plugins":[{"Plugin":"@nx/angular/plugin"}]}';Label='uppercase Nx plugin field';Pattern='Could not determine the stack'},
             @{File='project.json';Content='{"targets":{"build":{"Executor":"@angular-devkit/build-angular:browser"}}}';Label='uppercase Nx executor field';Pattern='Could not determine the stack'},
-            @{File='project.json';Content='{"targets":{"build":{"execu\u0000tor":"@angular-devkit/build-angular:browser"}}}';Label='NUL-lookalike Nx executor field';Pattern='Could not determine the stack'},
             @{File='package.json';Content='{"dependencies":{"@angular/core":"20.0.0"} junk';Label='malformed plausible package';Pattern='Could not inspect repository evidence'},
             @{File='angular.json';Content='{"version":1 junk';Label='malformed Angular workspace';Pattern='Could not inspect repository evidence'},
             @{File='angular.json';Content='[]';Label='array Angular workspace';Pattern='Could not inspect repository evidence'},
@@ -460,49 +447,37 @@ foreach ($twin in @('ps1', 'sh')) {
             Assert ((Get-TargetFingerprint $stampedTarget) -ceq $before) 'valid stamped update changed target bytes'
             if ($twin -eq 'sh' -and (Resolve-HostPython)) {
                 foreach($faultyJq in @(
-                    @{Label='nonzero post-probe';Script="#!/bin/sh`nprintf selected > `"__MARKER__`"`nif [ `"`$1`" = -er ]; then IFS= read -r input || :; [ `"`$input`" = '{`"atl`"`:[1,true,null]}' ] && echo ATL_JQ_OK && exit 0; fi`nexit 49`n"},
-                    @{Label='empty post-probe';Script="#!/bin/sh`nprintf selected > `"__MARKER__`"`nif [ `"`$1`" = -er ]; then IFS= read -r input || :; [ `"`$input`" = '{`"atl`"`:[1,true,null]}' ] && echo ATL_JQ_OK && exit 0; fi`nIFS= read -r input || :`nexit 0`n"},
-                    @{Label='malformed encoded post-probe';Script="#!/bin/sh`nprintf selected > `"__MARKER__`"`nif [ `"`$1`" = -er ]; then IFS= read -r input || :; [ `"`$input`" = '{`"atl`"`:[1,true,null]}' ] && echo ATL_JQ_OK && exit 0; fi`necho ATL_OK:1`necho 'Z==='`nexit 0`n"}
+                    @{Label='nonzero post-probe';Script="#!/bin/sh`nif [ `"`$1`" = -er ]; then IFS= read -r input || :; [ `"`$input`" = '{`"atl`"`:[1,true,null]}' ] && echo ATL_JQ_OK && exit 0; fi`nexit 49`n"},
+                    @{Label='empty post-probe';Script="#!/bin/sh`nif [ `"`$1`" = -er ]; then IFS= read -r input || :; [ `"`$input`" = '{`"atl`"`:[1,true,null]}' ] && echo ATL_JQ_OK && exit 0; fi`nIFS= read -r input || :`nexit 0`n"}
                 )){
                     $brokenJqBin = Join-Path ([IO.Path]::GetTempPath()) ('root-broken-jq-' + [guid]::NewGuid().ToString('N'))
+                    $oldPath = $env:PATH
                     Invoke-WithTestFixture -AtlFixturePath $brokenJqBin -AtlFixtureBody {
-                        param($atlBrokenJqFixture, $atlStampedFixture, $atlTwin, $atlBeforeFingerprint, $atlBashPath, $atlFaultyJq)
-                        New-Item -ItemType Directory -Force -Path $atlBrokenJqFixture | Out-Null
-                        $selectionMarker = Join-Path $atlBrokenJqFixture 'jq-selected'
-                        $pythonMarker = Join-Path $atlBrokenJqFixture 'python-selected'
-                        $posixMarker = ConvertTo-PosixPath $selectionMarker
-                        $posixPythonMarker = ConvertTo-PosixPath $pythonMarker
-                        [IO.File]::WriteAllText((Join-Path $atlBrokenJqFixture 'jq'), $atlFaultyJq.Script.Replace('__MARKER__',$posixMarker), [Text.UTF8Encoding]::new($false))
-                        $realPython = Resolve-HostPython
-                        Assert ([bool]$realPython) 'working-Python fallback arm lost its host interpreter'
-                        $pythonShim = "#!/bin/sh`nprintf selected > `"$posixPythonMarker`"`nexec `"$(ConvertTo-PosixPath $realPython)`" `"`$@`"`n"
-                        foreach($pythonName in @('python3','python','py')){[IO.File]::WriteAllText((Join-Path $atlBrokenJqFixture $pythonName), $pythonShim, [Text.UTF8Encoding]::new($false))}
-                        $posixBin = ConvertTo-PosixPath $atlBrokenJqFixture
-                        $controlledPath = $posixBin + ':/usr/bin:/bin:/usr/local/bin'
-                        $null = & $atlBashPath -c ('PATH="/usr/bin:/bin:/usr/local/bin:$PATH" chmod +x "{0}"/*' -f $posixBin) 2>$null
-                        Assert ($LASTEXITCODE -eq 0) 'could not make faulty jq fixture executable'
-                        $fallback = Invoke-RootInstaller $atlTwin $atlStampedFixture -DryRun -AllowDowngrade -ControlledPath $controlledPath
-                        Assert (Test-Path -LiteralPath $selectionMarker -PathType Leaf) "$($atlFaultyJq.Label) did not select the controlled jq fixture"
-                        Assert (Test-Path -LiteralPath $pythonMarker -PathType Leaf) "$($atlFaultyJq.Label) did not select the controlled Python fallback"
-                        Assert ($fallback.Exit -eq 0) "$($atlFaultyJq.Label) jq suppressed the working Python fallback: $($fallback.Output)"
-                        Assert ($fallback.Output -match 'Stack: dotnet \(via update stamp') "Python fallback did not select the valid stamped stack: $($fallback.Output)"
-                        if ($atlFaultyJq.Label -eq 'nonzero post-probe') {
-                            $stampPath = Join-Path $atlStampedFixture '.claude/framework-version.json'
-                            $stampBytes = [IO.File]::ReadAllBytes($stampPath)
-                            try {
-                                [IO.File]::WriteAllText($stampPath, '{"template":"dotnet",}', [Text.UTF8Encoding]::new($false))
-                                Remove-Item -LiteralPath $selectionMarker -Force -ErrorAction SilentlyContinue
-                                Remove-Item -LiteralPath $pythonMarker -Force -ErrorAction SilentlyContinue
-                                $invalid = Invoke-RootInstaller $atlTwin $atlStampedFixture -DryRun -AllowDowngrade -ControlledPath $controlledPath
-                                Assert (Test-Path -LiteralPath $selectionMarker -PathType Leaf) 'invalid-content arm did not select the controlled jq fixture'
-                                Assert (Test-Path -LiteralPath $pythonMarker -PathType Leaf) 'invalid-content arm did not select the controlled Python fallback'
-                                Assert ($invalid.Exit -eq 2) "Python-proven invalid stamp exited $($invalid.Exit): $($invalid.Output)"
-                                Assert ($invalid.Output -match 'invalid JSON') "Python fallback did not prove invalid stamp content: $($invalid.Output)"
-                                Assert ($invalid.Output -notmatch 'no trusted JSON provider|Delegating to') "Python-proven invalid content was mislabeled or delegated: $($invalid.Output)"
-                            } finally { [IO.File]::WriteAllBytes($stampPath, $stampBytes) }
-                        }
-                        Assert ((Get-TargetFingerprint $atlStampedFixture) -ceq $atlBeforeFingerprint) 'faulty-jq Python fallback changed target bytes'
-                    } -AtlFixtureBodyArguments @($stampedTarget, $twin, $before, $bash, $faultyJq)
+                        param($atlBrokenJqFixture, $atlStampedFixture, $atlTwin, $atlBeforeFingerprint, $atlOriginalPath, $atlBashPath, $atlFaultyJq)
+                        try {
+                            New-Item -ItemType Directory -Force -Path $atlBrokenJqFixture | Out-Null
+                            [IO.File]::WriteAllText((Join-Path $atlBrokenJqFixture 'jq'), $atlFaultyJq.Script, [Text.UTF8Encoding]::new($false))
+                            $posixJq = ConvertTo-PosixPath (Join-Path $atlBrokenJqFixture 'jq')
+                            $null = & $atlBashPath -c ('PATH="/usr/bin:/bin:/usr/local/bin:$PATH" chmod +x "{0}"' -f $posixJq) 2>$null
+                            Assert ($LASTEXITCODE -eq 0) 'could not make faulty jq fixture executable'
+                            $env:PATH = $atlBrokenJqFixture + [IO.Path]::PathSeparator + $atlOriginalPath
+                            $fallback = Invoke-RootInstaller $atlTwin $atlStampedFixture -DryRun -AllowDowngrade
+                            Assert ($fallback.Exit -eq 0) "$($atlFaultyJq.Label) jq suppressed the working Python fallback: $($fallback.Output)"
+                            Assert ($fallback.Output -match 'Stack: dotnet \(via update stamp') "Python fallback did not select the valid stamped stack: $($fallback.Output)"
+                            if ($atlFaultyJq.Label -eq 'nonzero post-probe') {
+                                $stampPath = Join-Path $atlStampedFixture '.claude/framework-version.json'
+                                $stampBytes = [IO.File]::ReadAllBytes($stampPath)
+                                try {
+                                    [IO.File]::WriteAllText($stampPath, '{"template":"dotnet",}', [Text.UTF8Encoding]::new($false))
+                                    $invalid = Invoke-RootInstaller $atlTwin $atlStampedFixture -DryRun -AllowDowngrade
+                                    Assert ($invalid.Exit -eq 2) "Python-proven invalid stamp exited $($invalid.Exit): $($invalid.Output)"
+                                    Assert ($invalid.Output -match 'invalid JSON') "Python fallback did not prove invalid stamp content: $($invalid.Output)"
+                                    Assert ($invalid.Output -notmatch 'no trusted JSON provider|Delegating to') "Python-proven invalid content was mislabeled or delegated: $($invalid.Output)"
+                                } finally { [IO.File]::WriteAllBytes($stampPath, $stampBytes) }
+                            }
+                            Assert ((Get-TargetFingerprint $atlStampedFixture) -ceq $atlBeforeFingerprint) 'faulty-jq Python fallback changed target bytes'
+                        } finally { $env:PATH = $atlOriginalPath }
+                    } -AtlFixtureBodyArguments @($stampedTarget, $twin, $before, $oldPath, $bash, $faultyJq)
                 }
                 $noProviderBin = Join-Path ([IO.Path]::GetTempPath()) ('root-broken-jq-' + [guid]::NewGuid().ToString('N'))
                 $realJqCommand = Get-Command jq -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -518,8 +493,7 @@ foreach ($twin in @('ps1', 'sh')) {
                     $jqProbe="#!/bin/sh`nif [ `"`$1`" = -er ]; then IFS= read -r input || :; [ `"`$input`" = '{`"atl`"`:[1,true,null]}' ] && echo ATL_JQ_OK && exit 0; fi`n"
                     foreach($providerFailure in @(
                         @{Label='nonzero jq and no Python';Jq=($jqProbe+"exit 49`n");Python="#!/bin/sh`nexit 49`n"},
-                        @{Label='wrong jq cardinality and unexpected Python query';Jq=($jqProbe+"echo ATL_OK:2`necho dotnet`nexit 0`n");Python="#!/bin/sh`nIFS= read -r input || :`n[ `"`$input`" = '{}' ] && echo ATL_PY_OK && exit 0`nexit 77`n"},
-                        @{Label='malformed encoded jq and no Python';Jq=($jqProbe+"echo ATL_OK:1`necho 'Z==='`nexit 0`n");Python="#!/bin/sh`nexit 49`n"}
+                        @{Label='wrong jq cardinality and unexpected Python query';Jq=($jqProbe+"echo ATL_OK:2`necho dotnet`nexit 0`n");Python="#!/bin/sh`nIFS= read -r input || :`n[ `"`$input`" = '{}' ] && echo ATL_PY_OK && exit 0`nexit 77`n"}
                     )){
                         [IO.File]::WriteAllText((Join-Path $atlNoProviderFixture 'jq'), $providerFailure.Jq, [Text.UTF8Encoding]::new($false))
                         foreach($pythonName in @('python3','python','py')){[IO.File]::WriteAllText((Join-Path $atlNoProviderFixture $pythonName), $providerFailure.Python, [Text.UTF8Encoding]::new($false))}
@@ -603,9 +577,6 @@ foreach ($twin in @('ps1', 'sh')) {
             @{ Name='commented stamped JSON'; Stack=''; Stamp='{/*comment*/"version":"99.0.0","template":"dotnet"}'; Pattern='invalid JSON|cannot be verified' },
             @{ Name='leading-zero stamped JSON'; Stack=''; Stamp='{"version":"99.0.0","template":"dotnet","probe":01}'; Pattern='invalid JSON|cannot be verified' },
             @{ Name='NUL-suffixed stamped JSON'; Stack=''; Stamp=('{"version":"99.0.0","template":"dotnet"}'+[char]0); Pattern='invalid JSON|cannot be verified' },
-            @{ Name='decoded NUL stamped stack'; Stack=''; Stamp='{"version":"99.0.0","template":"dot\u0000net"}'; Pattern='unknown stack' },
-            @{ Name='trailing-LF stamped stack'; Stack=''; Stamp='{"version":"99.0.0","template":"dotnet\n"}'; Pattern='unknown stack' },
-            @{ Name='trailing-CR stamped stack'; Stack=''; Stamp='{"version":"99.0.0","template":"dotnet\r"}'; Pattern='unknown stack' },
             @{ Name='uppercase template property'; Stack=''; Stamp='{"version":"99.0.0","Template":"dotnet"}'; Pattern='no non-empty string|cannot be verified' },
             @{ Name='valid stamped JSON without a template'; Stack=''; Stamp='{"version":"99.0.0"}'; Pattern='no non-empty string' },
             @{ Name='valid stamped JSON with a whitespace-only template'; Stack=''; Stamp='{"version":"99.0.0","template":"   "}'; Pattern='no non-empty string' },

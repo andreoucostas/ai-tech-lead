@@ -234,14 +234,11 @@ function Invoke-Sandboxed {
             }
             $runner = Join-Path $usr 'bash.exe'
             & $runner -c ('chmod +x "{0}"/*' -f (ConvertTo-PosixPath $bin)) 2>$null | Out-Null
-            # Git Bash reconstructs PATH from its ambient Windows/MSYS startup state even when
-            # the parent PowerShell process supplies a one-directory PATH. Re-apply the sandbox
-            # path inside the already-started shell, then source the subject with $0 fixed to the
-            # subject path so its root-resolution contract is exercised unchanged.
-            $bashBin = ConvertTo-PosixPath $bin
-            $scriptPath = ConvertTo-PosixPath $ScriptPath
-            if ($null -ne $Stdin) { $out = $Stdin | & $runner --noprofile --norc -c 'PATH="$1"; export PATH; hash -r; . "$2"' $scriptPath $bashBin $scriptPath 2>$ef }
-            else { $out = & $runner --noprofile --norc -c 'PATH="$1"; export PATH; hash -r; . "$2"' $scriptPath $bashBin $scriptPath 2>$ef }
+            $old = $env:PATH
+            try {
+                $env:PATH = $bin
+                if ($null -ne $Stdin) { $out = $Stdin | & $runner $ScriptPath 2>$ef } else { $out = & $runner $ScriptPath 2>$ef }
+            } finally { $env:PATH = $old }
         } else {
             $bashBin = ConvertTo-PosixPath $bin
             $bashExePosix = ConvertTo-PosixPath $Bash

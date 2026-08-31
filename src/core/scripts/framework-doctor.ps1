@@ -12,9 +12,6 @@ function Row($State, $Name, $Detail) {
     if ($State -eq 'MISSING') { $script:missing = 1; $script:missingRows++ }
 }
 function Has($Name) { [bool](Get-Command $Name -ErrorAction SilentlyContinue) }
-function Test-OrdinalEquals($Left, $Right) {
-    return [StringComparer]::Ordinal.Equals([string]$Left, [string]$Right)
-}
 # Keep every doctor JSON decision on the strict jq/Python grammar. ConvertFrom-Json alone accepts
 # JavaScript extensions under PowerShell 5.1/7 (comments, single quotes, unquoted keys, trailing
 # commas, NaN/Infinity, and leading-zero numbers).
@@ -32,19 +29,18 @@ function ConvertFrom-StrictJson([string]$Text) {
 function Test-PackageAngularCore($Root) {
     if (-not ($Root -is [System.Management.Automation.PSCustomObject])) { return $false }
     foreach ($sectionName in @('dependencies','devDependencies','peerDependencies','optionalDependencies')) {
-        $section = Get-ExactJsonProperty $Root $sectionName
+        $section = $Root.PSObject.Properties | Where-Object { $_.Name -ceq $sectionName } | Select-Object -First 1
         if ($section -and $section.Value -is [System.Management.Automation.PSCustomObject] -and
-            (Get-ExactJsonProperty $section.Value '@angular/core')) { return $true }
+            ($section.Value.PSObject.Properties.Name -ccontains '@angular/core')) { return $true }
     }
     return $false
 }
 function Test-ExactAngularPackageToken($Value) {
-    return $Value -is [string] -and ([string]$Value).IndexOf([char]0) -lt 0 -and
-        $Value -cmatch '^@(angular|nx/angular|angular-devkit|schematics/angular)(/[^\s]+|:[^\s]+)$'
+    return $Value -is [string] -and $Value -cmatch '^@(angular|nx/angular|angular-devkit|schematics/angular)(/[^\s]+|:[^\s]+)$'
 }
 function Get-ExactJsonProperty($Object, [string]$Name) {
     if (-not ($Object -is [System.Management.Automation.PSCustomObject])) { return $null }
-    $property = $Object.PSObject.Properties | Where-Object { Test-OrdinalEquals $_.Name $Name } | Select-Object -First 1
+    $property = $Object.PSObject.Properties | Where-Object { $_.Name -ceq $Name } | Select-Object -First 1
     return $property
 }
 function Get-ExactJsonPropertyValue($Object, [string]$Name) {
@@ -54,32 +50,6 @@ function Get-ExactJsonPropertyValue($Object, [string]$Name) {
 }
 function Test-JsonArray($Value) {
     return $Value -is [System.Collections.IList] -and -not ($Value -is [string])
-}
-function Format-StampDisplayValue($Value) {
-    if (-not ($Value -is [string])) { return '' }
-    $result = New-Object System.Text.StringBuilder
-    foreach ($character in ([string]$Value).ToCharArray()) {
-        $code = [int]$character
-        switch ($code) {
-            0x08 { $null = $result.Append('\b') }
-            0x09 { $null = $result.Append('\t') }
-            0x0A { $null = $result.Append('\n') }
-            0x0C { $null = $result.Append('\f') }
-            0x0D { $null = $result.Append('\r') }
-            0x22 { $null = $result.Append('\"') }
-            0x5C { $null = $result.Append('\\') }
-            default {
-                if ($code -lt 0x20) { $null = $result.Append(('\u{0:x4}' -f $code)) }
-                else { $null = $result.Append($character) }
-            }
-        }
-    }
-    return $result.ToString()
-}
-function Test-ExactTemplateName($Value) {
-    return (Test-OrdinalEquals $Value 'dotnet') -or
-        (Test-OrdinalEquals $Value 'angular') -or
-        (Test-OrdinalEquals $Value 'monorepo')
 }
 # These extractors intentionally validate only the bounded registration containers the doctor
 # relies on. They do not claim full vendor-schema validation. Exact member names matter; the
@@ -98,10 +68,9 @@ function Get-ClaudeHookCommands($Root) {
             foreach ($handler in @($handlersProperty.Value)) {
                 if (-not ($handler -is [System.Management.Automation.PSCustomObject])) { throw 'Claude hook handler must be an object' }
                 $typeProperty = Get-ExactJsonProperty $handler 'type'
-                if ($typeProperty -and (-not ($typeProperty.Value -is [string]) -or -not (Test-OrdinalEquals $typeProperty.Value 'command'))) { continue }
+                if ($typeProperty -and (-not ($typeProperty.Value -is [string]) -or $typeProperty.Value -cne 'command')) { continue }
                 $commandProperty = Get-ExactJsonProperty $handler 'command'
                 if ($commandProperty -and $commandProperty.Value -is [string] -and -not [string]::IsNullOrWhiteSpace($commandProperty.Value)) {
-                    if (([string]$commandProperty.Value).IndexOf([char]0) -ge 0) { throw 'Claude hook command cannot contain NUL' }
                     $result += [string]$commandProperty.Value
                 }
             }
@@ -121,7 +90,6 @@ function Get-CopilotHookCommands($Root) {
             foreach ($field in @('bash','powershell')) {
                 $commandProperty = Get-ExactJsonProperty $entry $field
                 if ($commandProperty -and $commandProperty.Value -is [string] -and -not [string]::IsNullOrWhiteSpace($commandProperty.Value)) {
-                    if (([string]$commandProperty.Value).IndexOf([char]0) -ge 0) { throw 'Copilot hook command cannot contain NUL' }
                     $result += [pscustomobject]@{ Field = $field; Command = [string]$commandProperty.Value }
                 }
             }
@@ -131,10 +99,10 @@ function Get-CopilotHookCommands($Root) {
 }
 function Test-NxAngularEvidence($Node) {
     if (-not ($Node -is [System.Management.Automation.PSCustomObject])) { return $false }
-    $plugins = Get-ExactJsonProperty $Node 'plugins'
+    $plugins = $Node.PSObject.Properties | Where-Object Name -ceq 'plugins' | Select-Object -First 1
     foreach ($plugin in @($plugins.Value)) { if ((Test-ExactAngularPackageToken $plugin) -or ($plugin -is [System.Management.Automation.PSCustomObject] -and (Test-ExactAngularPackageToken (Get-ExactJsonPropertyValue $plugin 'plugin')))) { return $true } }
-    foreach ($mapName in @('generators','schematics')) { $map=Get-ExactJsonProperty $Node $mapName;if($map.Value-is[System.Management.Automation.PSCustomObject]){foreach($candidate in $map.Value.PSObject.Properties.Name){if(Test-ExactAngularPackageToken $candidate){return $true}}} }
-    foreach ($mapName in @('targets','architect','targetDefaults')) { $map=Get-ExactJsonProperty $Node $mapName;if(-not($map.Value-is[System.Management.Automation.PSCustomObject])){continue};foreach($entry in $map.Value.PSObject.Properties){if((Test-OrdinalEquals $mapName 'targetDefaults')-and(Test-ExactAngularPackageToken $entry.Name)){return $true};if($entry.Value-is[System.Management.Automation.PSCustomObject]){foreach($field in @('executor','generator','collection','plugin')){if(Test-ExactAngularPackageToken (Get-ExactJsonPropertyValue $entry.Value $field)){return $true}}}} }
+    foreach ($mapName in @('generators','schematics')) { $map=$Node.PSObject.Properties|Where-Object Name -ceq $mapName|Select-Object -First 1;if($map.Value-is[System.Management.Automation.PSCustomObject]){foreach($candidate in $map.Value.PSObject.Properties.Name){if(Test-ExactAngularPackageToken $candidate){return $true}}} }
+    foreach ($mapName in @('targets','architect','targetDefaults')) { $map=$Node.PSObject.Properties|Where-Object Name -ceq $mapName|Select-Object -First 1;if(-not($map.Value-is[System.Management.Automation.PSCustomObject])){continue};foreach($entry in $map.Value.PSObject.Properties){if($mapName-ceq'targetDefaults'-and(Test-ExactAngularPackageToken $entry.Name)){return $true};if($entry.Value-is[System.Management.Automation.PSCustomObject]){foreach($field in @('executor','generator','collection','plugin')){if(Test-ExactAngularPackageToken (Get-ExactJsonPropertyValue $entry.Value $field)){return $true}}}} }
     return $false
 }
 function Test-GuardShTarget($Command) {
@@ -191,13 +159,11 @@ if (-not ($template -is [string]) -or [string]::IsNullOrWhiteSpace($template)) {
     Row MISSING 'Install state' '.claude/framework-version.json is valid JSON but has case-colliding member names, a non-object root, or lacks the required non-empty string "template". Fix: re-run the framework installer.'
     Finish
 }
-if (-not (Test-ExactTemplateName $template)) {
-    Row MISSING 'Install state' '.claude/framework-version.json names an unsupported template; expected dotnet, angular, or monorepo. Fix: re-run the framework installer.'
+if ($template -cne 'dotnet' -and $template -cne 'angular' -and $template -cne 'monorepo') {
+    Row MISSING 'Install state' ('.claude/framework-version.json names unsupported template "{0}"; expected dotnet, angular, or monorepo. Fix: re-run the framework installer.' -f $template)
     Finish
 }
-$version = Format-StampDisplayValue (Get-ExactJsonPropertyValue $stamp 'version')
-$applied = Format-StampDisplayValue (Get-ExactJsonPropertyValue $stamp 'applied')
-Row OK 'Install state' ("template={0}; version={1}; applied={2}" -f $template, $version, $applied)
+Row OK 'Install state' ("template={0}; version={1}; applied={2}" -f $template, (Get-ExactJsonPropertyValue $stamp 'version'), (Get-ExactJsonPropertyValue $stamp 'applied'))
 
 $claudePath = Join-Path $root 'CLAUDE.md'
 $carrierPath = Join-Path $root '.github/instructions/framework-rules.instructions.md'
@@ -342,7 +308,7 @@ if ($copilotExists) {
             $path = ([string]$registration.Command -split '\s+', 2)[0].Trim('"', "'") -replace '\\\\','/' -replace '\\','/'
             if ($path.StartsWith('./')) { $path = $path.Substring(2) }
             $hookPaths += $path
-            if (Test-OrdinalEquals $registration.Field 'bash') { $copilotBashCommands += [string]$registration.Command }
+            if ($registration.Field -ceq 'bash') { $copilotBashCommands += [string]$registration.Command }
         }
     }
 }

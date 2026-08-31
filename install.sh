@@ -123,32 +123,20 @@ read_stamp_template() {
       def atl_fold: explode | map(if . >= 65 and . <= 90 then . + 32 else . end) | implode;
       def atl_clean: if type == "object" then (([keys_unsorted[] | atl_fold] | length) == ([keys_unsorted[] | atl_fold] | unique | length)) and all(.[]; atl_clean) elif type == "array" then all(.[]; atl_clean) else true end;
       if (atl_clean | not) then "ATL_COLLISION"
-      elif type == "object" and (.template | type) == "string" and (.template | test("[^[:space:]]")) and (.template | contains("\u0000")) then "ATL_UNSUPPORTED"
-      elif type == "object" and (.template | type) == "string" and (.template | test("[^[:space:]]")) then "ATL_OK:1", (.template | @base64)
+      elif type == "object" and (.template | type) == "string" and (.template | test("[^[:space:]]")) then "ATL_OK:1", .template
       else "ATL_SHAPE_INVALID" end' "$stamp_path" 2>/dev/null)
     if [ $? -eq 0 ]; then
       parsed=${parsed//$'\r\n'/$'\n'}; parsed=${parsed%$'\r'}
-      case "$parsed" in ATL_SHAPE_INVALID|ATL_COLLISION) return 1;; ATL_UNSUPPORTED) return 4;; esac
+      case "$parsed" in ATL_SHAPE_INVALID|ATL_COLLISION) return 1;; esac
       if [ "${parsed%%$'\n'*}" = ATL_OK:1 ] && [ "$parsed" != ATL_OK:1 ]; then
         payload=${parsed#*$'\n'}
-        case "$payload" in
-          ZG90bmV0) stamp_template=dotnet; return 0 ;;
-          YW5ndWxhcg==) stamp_template=angular; return 0 ;;
-          bW9ub3JlcG8=) stamp_template=monorepo; return 0 ;;
-          *$'\n'*|''|*[!A-Za-z0-9+/=]*) ;;
-          *)
-            if [ $(( ${#payload} % 4 )) -eq 0 ]; then
-              probe=$(jq -nr --arg payload "$payload" 'try (if (($payload | @base64d | @base64) == $payload) then "ATL_B64_OK" else empty end) catch empty' 2>/dev/null) || probe=''
-              [ "$probe" = ATL_B64_OK ] && return 4
-            fi
-            ;;
-        esac
+        case "$payload" in *$'\n'*) ;; *) stamp_template=$payload; return 0;; esac
       fi
     fi
   fi
   resolve_stamp_python
   [ -n "$stamp_pybin" ] || return 3
-  parsed=$("$stamp_pybin" -c 'import base64,json,sys
+  parsed=$("$stamp_pybin" -c 'import json,sys
 class Collision(Exception): pass
 class InvalidConstant(Exception): pass
 def fold(name): return "".join(chr(ord(c)+32) if "A" <= c <= "Z" else c for c in name)
@@ -165,37 +153,20 @@ except OSError: print("ATL_READ_FAILED"); sys.exit(0)
 except (json.JSONDecodeError,UnicodeDecodeError,InvalidConstant): print("ATL_JSON_INVALID"); sys.exit(0)
 except Collision: print("ATL_COLLISION"); sys.exit(0)
 template=root.get("template") if isinstance(root,dict) else None
-if isinstance(template,str) and template.strip() and "\0" in template: print("ATL_UNSUPPORTED")
-elif not isinstance(template,str) or not template.strip(): print("ATL_SHAPE_INVALID")
-else: print("ATL_OK:1"); print(base64.b64encode(template.encode("utf-8")).decode("ascii"))
+if not isinstance(template,str) or not template.strip(): print("ATL_SHAPE_INVALID")
+else: print("ATL_OK:1"); print(template)
 ' "$stamp_path" 2>/dev/null); py_status=$?
   parsed=${parsed//$'\r\n'/$'\n'}; parsed=${parsed%$'\r'}
   [ "$py_status" -eq 0 ] || return 3
   case "$parsed" in
     ATL_READ_FAILED) return 2 ;;
-    ATL_UNSUPPORTED) return 4 ;;
     ATL_JSON_INVALID|ATL_COLLISION|ATL_SHAPE_INVALID) return 1 ;;
   esac
   [ "${parsed%%$'\n'*}" = ATL_OK:1 ] && [ "$parsed" != ATL_OK:1 ] || return 3
   payload=${parsed#*$'\n'}
-  case "$payload" in
-    ZG90bmV0) stamp_template=dotnet; return 0 ;;
-    YW5ndWxhcg==) stamp_template=angular; return 0 ;;
-    bW9ub3JlcG8=) stamp_template=monorepo; return 0 ;;
-    *$'\n'*|''|*[!A-Za-z0-9+/=]*) return 3 ;;
-    *)
-      [ $(( ${#payload} % 4 )) -eq 0 ] || return 3
-      probe=$("$stamp_pybin" -c 'import base64,sys
-try:
-    raw=base64.b64decode(sys.argv[1],validate=True)
-    raw.decode("utf-8")
-    print("ATL_B64_OK" if base64.b64encode(raw).decode("ascii")==sys.argv[1] else "")
-except (ValueError,UnicodeDecodeError): pass
-' "$payload" 2>/dev/null) || probe=''
-      [ "$probe" = ATL_B64_OK ] && return 4
-      return 3
-      ;;
-  esac
+  case "$payload" in *$'\n'*) return 3;; esac
+  stamp_template=$payload
+  return 0
 }
 warehouse_signals=()
 get_warehouse_signals() {
@@ -301,12 +272,10 @@ else
         echo "Existing install at '$tgt', but .claude/framework-version.json could not be read, so its stack cannot be determined — fix read access or pass --stack dotnet|angular|monorepo explicitly." >&2; exit 2
       elif [ "$stamp_status" -eq 3 ]; then
         echo "Existing install at '$tgt', but no trusted JSON provider completed the required stamp query — install jq or a working Python interpreter, or pass --stack dotnet|angular|monorepo explicitly." >&2; exit 2
-      elif [ "$stamp_status" -eq 4 ]; then
-        echo "Existing install names an unknown stack in .claude/framework-version.json — expected dotnet, angular, or monorepo; pass --stack dotnet|angular|monorepo." >&2; exit 2
       fi
       echo "Existing install at '$tgt', but .claude/framework-version.json is invalid JSON under the strict grammar, has case-colliding member names, a non-object root, or no non-empty string \"template\" value — pass --stack dotnet|angular|monorepo." >&2; exit 2
     fi
-    valid_stack "$tmpl" || { echo "Existing install names an unknown stack in .claude/framework-version.json — expected dotnet, angular, or monorepo; pass --stack dotnet|angular|monorepo." >&2; exit 2; }
+    valid_stack "$tmpl" || { echo "Existing install names an unknown stack \"$tmpl\" in .claude/framework-version.json — pass --stack dotnet|angular|monorepo." >&2; exit 2; }
     stack="$tmpl"
     reason="update stamp (.claude/framework-version.json template=$tmpl)"
   else

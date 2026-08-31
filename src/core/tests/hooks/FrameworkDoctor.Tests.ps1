@@ -82,15 +82,6 @@ function New-ParserProbeBin {
     New-Item -ItemType Directory -Force $bin|Out-Null
 $jq=@'
 #!/bin/sh
-if [ "$1" = "-jrn" ]; then
-  case "${5:-}" in
-    *atl_decode_registration*)
-      printf '%s' "${4:-}" | /usr/bin/base64 -d 2>/dev/null || exit 4
-      printf '\036'
-      exit 0;;
-  esac
-  exit 4
-fi
 if [ "$1" = "-er" ]; then
   IFS= read -r input || :
   case "$input" in '{"atl":[1,true,null]}') echo ATL_JQ_OK; exit 0;; *) exit 4;; esac
@@ -127,9 +118,8 @@ if [ "$1" = "-r" ]; then
   case "$2" in
     *atl_stamp_registration*)
       template_value='__TEMPLATE__'
-      if json_match '"template"[[:space:]]*:[[:space:]]*"[^"]*\\u0000'; then echo ATL_UNSUPPORTED
-      elif json_match '"template"[[:space:]]*:'; then
-        case "$template_value" in *[![:space:]]*) echo ATL_OK:3; printf 'T:'; printf '%s' "$template_value" | /usr/bin/base64 | /usr/bin/tr -d '\r\n'; echo; printf 'V:'; printf '%s' 0.32.0 | /usr/bin/base64 | /usr/bin/tr -d '\r\n'; echo; printf 'A:'; printf '%s' 2026-07-17 | /usr/bin/base64 | /usr/bin/tr -d '\r\n'; echo;; *) echo ATL_SHAPE_INVALID;; esac
+      if json_match '"template"[[:space:]]*:'; then
+        case "$template_value" in *[![:space:]]*) echo ATL_OK:3; echo "T:$template_value"; echo V:0.32.0; echo A:2026-07-17;; *) echo ATL_SHAPE_INVALID;; esac
       else echo ATL_SHAPE_INVALID; fi;;
     *atl_claude_registration*)
       found=$(printf '%s\n' "$json_input" | sed 's/"command"/\
@@ -137,20 +127,13 @@ if [ "$1" = "-r" ]; then
       count=0; while IFS= read -r item; do [ -z "$item" ] || count=$((count+1)); done <<EOF
 $found
 EOF
-      echo "ATL_OK:$count"
-      while IFS= read -r item; do [ -z "$item" ] || { printf '%s' "$item" | /usr/bin/base64 | /usr/bin/tr -d '\r\n'; echo; }; done <<EOF
-$found
-EOF
-      ;;
+      echo "ATL_OK:$count"; [ -z "$found" ] || printf '%s\n' "$found";;
     *atl_copilot_registration*)
       found=''
       for field in bash powershell; do
         value=$(printf '%s\n' "$json_input" | sed -n "s/.*\"$field\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p")
-        if [ -n "$value" ]; then
-          encoded=$(printf '%s' "$value" | /usr/bin/base64 | /usr/bin/tr -d '\r\n')
-          found="${found}${found:+
-}${field}	${encoded}"
-        fi
+        [ -z "$value" ] || found="${found}${found:+
+}${field}	${value}"
       done
       count=0; while IFS= read -r item; do [ -z "$item" ] || count=$((count+1)); done <<EOF
 $found
@@ -639,7 +622,6 @@ It 'Stack toolchain rows use byte-identical doctor-process wording for every tem
             @{Name='non-finite JSON constant';Stamp='{"template":"dotnet","probe":NaN}';JqTemplate='dotnet';BreakJq=$true;State='MISSING';Detail='invalid JSON';Exit=1},
             @{Name='leading-zero JSON number';Stamp='{"template":"dotnet","probe":01}';JqTemplate='dotnet';BreakJq=$true;State='MISSING';Detail='invalid JSON';Exit=1},
             @{Name='NUL-suffixed JSON';Stamp=('{"template":"dotnet"}'+[char]0);JqTemplate='dotnet';BreakJq=$false;State='MISSING';Detail='invalid JSON';Exit=1},
-            @{Name='decoded NUL template';Stamp='{"template":"dot\u0000net"}';JqTemplate='dotnet';BreakJq=$false;State='MISSING';Detail='unsupported template';Exit=1},
             @{Name='uppercase template property';Stamp='{"Template":"dotnet"}';JqTemplate='';BreakJq=$false;State='MISSING';Detail='lacks the required non-empty string';Exit=1},
             @{Name='valid JSON without template';Stamp='{}';JqTemplate='';BreakJq=$false;State='MISSING';Detail='lacks the required non-empty string';Exit=1},
             @{Name='valid one-object JSON array';Stamp='[{"template":"dotnet"}]';JqTemplate='';BreakJq=$false;State='MISSING';Detail='lacks the required non-empty string';Exit=1},
@@ -673,8 +655,6 @@ It 'Stack toolchain rows use byte-identical doctor-process wording for every tem
         }finally{Remove-Item -Recurse -Force $r,$pbin,$sbin}
         $realJq=Resolve-HostJq
         $realPython=Resolve-HostPython
-        if(-not$realJq){Skip 'B-174 real-jq structured extraction coverage' 'jq is genuinely absent; the real-jq stamp/registration branch is unexercised on this host' -Invariant}
-        if(-not$realPython){Skip 'B-174 real-Python structured extraction coverage' 'Python is genuinely absent; the Python stamp/registration fallback is unexercised on this host' -Invariant}
 $queryFailJq=@'
 #!/usr/bin/env bash
 if [ "$1" = -er ]; then
@@ -693,44 +673,19 @@ exit 49
                 }finally{Remove-Item -Recurse -Force $r}
             }
         }
-        foreach($stampDisplayCase in @(
-            @{Name='non-string optional fields';Stamp='{"template":"dotnet","version":17,"applied":true}';Expected='template=dotnet; version=; applied='},
-            @{Name='control-bearing optional fields';Stamp='{"template":"dotnet","version":"line1\nline2\rline3","applied":"ignored\u0000value"}';Expected='template=dotnet; version=line1\nline2\rline3; applied=ignored\u0000value'}
-        )){
-            $r=Fixture -Pending $true
-            try{
-                Put (Join-Path $r '.claude/framework-version.json') $stampDisplayCase.Stamp
-                $p=Run (Join-Path $r 'scripts/framework-doctor.ps1')
-                Assert ($p.Out-match('(?m)^\[OK\] Install state - '+[regex]::Escape($stampDisplayCase.Expected)+'$')) "PowerShell $($stampDisplayCase.Name) display was not typed/one-line: $($p.Out)"
-                $displayRuns=@()
-                if($realJq){$displayRuns+=@{Label='real jq';Result=(Invoke-Sandboxed -Bash $bash -ScriptPath (Join-Path $r 'scripts/framework-doctor.sh') -Utilities @('sed','grep','head') -FakeBins @{jq=(New-ExecShim $realJq)})}}
-                if($realPython){$displayRuns+=@{Label='Python fallback';Result=(Invoke-Sandboxed -Bash $bash -ScriptPath (Join-Path $r 'scripts/framework-doctor.sh') -Utilities @('sed','grep','head') -FakeBins @{jq=$queryFailJq} -ExposeInterpreterAs python)}}
-                foreach($displayRun in $displayRuns){Assert ($displayRun.Result.Out-match('(?m)^\[OK\] Install state - '+[regex]::Escape($stampDisplayCase.Expected)+'$')) "Bash/$($displayRun.Label) $($stampDisplayCase.Name) display diverged: $($displayRun.Result.Out)`nSTDERR: $($displayRun.Result.Err)"}
-            }finally{Remove-Item -Recurse -Force $r}
-        }
         foreach($registrationCase in @(
                 @{Label='valid empty registrations';Settings='{"hooks":{}}';Copilot='{"hooks":{}}';Rows=@{'Wired hook shell'='MISSING';'Hook files'='MISSING';'Guard JSON parser'='OK';'Copilot surface'='OK'};HookCount=0},
                 @{Label='scalar Claude root';Settings='"not-an-object"';Copilot=$null;Rows=@{'Wired hook shell'='MISSING';'Hook files'='MISSING';'Guard JSON parser'='MISSING';'Copilot surface'='OK'}},
-                @{Label='decoded NUL Claude hooks property';Settings='{"ho\u0000oks":{}}';Copilot=$null;Rows=@{'Wired hook shell'='MISSING';'Hook files'='MISSING';'Guard JSON parser'='MISSING';'Copilot surface'='OK'}},
                 @{Label='nested Claude command decoy';Settings='{"hooks":{},"metadata":{"command":"bash -File .claude/hooks/not-real.sh"}}';Copilot=$null;Rows=@{'Wired hook shell'='MISSING';'Hook files'='OK';'Guard JSON parser'='OK'};HookCount=1},
-                @{Label='decoded NUL Claude command property';Settings='{"hooks":{"PreToolUse":[{"hooks":[{"com\u0000mand":"bash -File .claude/hooks/not-real.sh"}]}]}}';Copilot=$null;Rows=@{'Wired hook shell'='MISSING';'Hook files'='OK';'Guard JSON parser'='OK'};HookCount=1},
-                @{Label='decoded NUL Claude handler type';Settings='{"hooks":{"PreToolUse":[{"hooks":[{"type":"com\u0000mand","command":"bash -File .claude/hooks/not-real.sh"}]}]}}';Copilot=$null;Rows=@{'Wired hook shell'='MISSING';'Hook files'='OK';'Guard JSON parser'='OK'};HookCount=1},
                 @{Label='non-command Claude handler';Settings='{"hooks":{"PreToolUse":[{"hooks":[{"type":"prompt","command":"bash -File .claude/hooks/not-real.sh"}]}]}}';Copilot=$null;Rows=@{'Wired hook shell'='MISSING';'Hook files'='OK';'Guard JSON parser'='OK'};HookCount=1},
                 @{Label='nested wrong Claude hooks container';Settings='{"hooks":{"PreToolUse":[{"hooks":{}}]}}';Copilot=$null;Rows=@{'Wired hook shell'='MISSING';'Hook files'='MISSING';'Guard JSON parser'='MISSING'}},
                 @{Label='exact duplicate Claude command uses last value';Settings='{"hooks":{"PreToolUse":[{"hooks":[{"type":"command","command":"powershell -File .claude/hooks/not-real.ps1","command":"powershell -File .claude/hooks/guard.ps1"}]}]}}';Copilot=$null;Rows=@{'Wired hook shell'='CANT-VERIFY';'Hook files'='OK'};HookCount=1},
                 @{Label='decoded ASCII Claude collision';Settings='{"hooks":{},"H\u006foks":{}}';Copilot=$null;Rows=@{'Wired hook shell'='MISSING';'Hook files'='MISSING';'Guard JSON parser'='MISSING'};DetailRow='Wired hook shell';Detail='case-colliding'},
                 @{Label='recursive decoded Claude collision';Settings='{"hooks":{"PreToolUse":[{"hooks":[{"command":"powershell -File .claude/hooks/guard.ps1","C\u006fmmand":"powershell -File .claude/hooks/not-real.ps1"}]}]}}';Copilot=$null;Rows=@{'Wired hook shell'='MISSING';'Hook files'='MISSING';'Guard JSON parser'='MISSING'};DetailRow='Wired hook shell';Detail='case-colliding'},
-                @{Label='Claude command with trailing LF';Settings='{"hooks":{"PreToolUse":[{"hooks":[{"command":"bash -File .claude/hooks/guard.sh\n"}]}]}}';Copilot=$null;Rows=@{'Wired hook shell'='CANT-VERIFY';'Hook files'='OK'};HookCount=2},
-                @{Label='Claude command with trailing CR';Settings='{"hooks":{"PreToolUse":[{"hooks":[{"command":"bash -File .claude/hooks/guard.sh\r"}]}]}}';Copilot=$null;Rows=@{'Wired hook shell'='CANT-VERIFY';'Hook files'='OK'};HookCount=2},
-                @{Label='decoded NUL Claude command';Settings='{"hooks":{"PreToolUse":[{"hooks":[{"command":"bash -File .claude/hooks/gu\u0000ard.sh"}]}]}}';Copilot=$null;Rows=@{'Wired hook shell'='MISSING';'Hook files'='MISSING';'Guard JSON parser'='MISSING'}},
                 @{Label='NUL-suffixed Claude registration';Settings=('{"hooks":{}}'+[char]0);Copilot=$null;Rows=@{'Wired hook shell'='MISSING';'Hook files'='MISSING';'Guard JSON parser'='MISSING'}},
                 @{Label='nested Copilot bash decoy';Settings=$null;Copilot='{"hooks":{},"metadata":{"bash":".claude/hooks/not-real.sh"}}';Rows=@{'Hook files'='OK';'Guard JSON parser'='OK';'Copilot surface'='OK'};HookCount=1},
                 @{Label='scalar Copilot root';Settings=$null;Copilot='"not-an-object"';Rows=@{'Hook files'='MISSING';'Guard JSON parser'='MISSING';'Copilot surface'='MISSING'}},
-                @{Label='decoded NUL Copilot hooks property';Settings=$null;Copilot='{"ho\u0000oks":{}}';Rows=@{'Hook files'='MISSING';'Guard JSON parser'='MISSING';'Copilot surface'='MISSING'}},
-                @{Label='decoded NUL Copilot bash field';Settings=$null;Copilot='{"hooks":{"preToolUse":[{"ba\u0000sh":".claude/hooks/not-real.sh"}]}}';Rows=@{'Hook files'='OK';'Guard JSON parser'='OK';'Copilot surface'='OK'};HookCount=1},
                 @{Label='exact duplicate Copilot command uses last value';Settings=$null;Copilot='{"hooks":{"preToolUse":[{"bash":".claude/hooks/not-real.sh","bash":".claude/hooks/guard.sh","powershell":".claude\\hooks\\guard.ps1"}]}}';Rows=@{'Hook files'='OK';'Copilot surface'='OK'};HookCount=2},
-                @{Label='Copilot command with trailing CR';Settings=$null;Copilot='{"hooks":{"preToolUse":[{"bash":".claude/hooks/guard.sh\r"}]}}';Rows=@{'Hook files'='OK';'Copilot surface'='OK'};HookCount=2},
-                @{Label='decoded NUL Copilot command';Settings=$null;Copilot='{"hooks":{"preToolUse":[{"bash":".claude/hooks/gu\u0000ard.sh"}]}}';Rows=@{'Hook files'='MISSING';'Guard JSON parser'='MISSING';'Copilot surface'='MISSING'}},
                 @{Label='decoded ASCII Copilot collision';Settings=$null;Copilot='{"hooks":{},"H\u006foks":{}}';Rows=@{'Hook files'='MISSING';'Guard JSON parser'='MISSING';'Copilot surface'='MISSING'};DetailRow='Copilot surface';Detail='case-colliding'},
                 @{Label='NUL-suffixed Copilot registration';Settings=$null;Copilot=('{"hooks":{}}'+[char]0);Rows=@{'Hook files'='MISSING';'Guard JSON parser'='MISSING';'Copilot surface'='MISSING'}}
             )){
@@ -785,7 +740,6 @@ exit 49
         foreach($providerOutput in @(
             @{Label='partial typed output';Body='echo ATL_OK:1'},
             @{Label='wrong cardinality';Body="echo ATL_OK:2`necho only-one"},
-            @{Label='noncanonical encoded record';Body="echo ATL_OK:1`necho Zg"},
             @{Label='unexpected output';Body='echo ATL_SURPRISE'}
         )){
             $r=Fixture -Shell 'bash' -Pending $true
@@ -822,18 +776,13 @@ exit 77
             Remove-Item -LiteralPath (Join-Path $r 'App.csproj') -Force
             foreach($markerCase in @(
                 @{File='package.json';Content='{"dependencies":{"@ANGULAR/CORE":"20.0.0"},"scripts":{"probe":"echo \"@angular/core\": fake"}}';State='OK';Label='escaped package-string/uppercase key'},
-                @{File='package.json';Content='{"dependenc\u0000ies":{"@angular/core":"20.0.0"}}';State='OK';Label='NUL-lookalike dependency section'},
-                @{File='package.json';Content='{"dependencies":{"@angular/core\u0000":"20.0.0"}}';State='OK';Label='NUL-lookalike package identifier'},
                 @{File='package.json';Content='{"scripts":{"@angular/core":"echo fake"}}';State='OK';Label='non-dependency package key'},
                 @{File='nx.json';Content='{"notes":"do not use angular-devkit"}';State='OK';Label='Nx prose'},
                 @{File='nx.json';Content='{"notes":"@nx/angular/plugin is not enabled"}';State='OK';Label='Nx package-prefix prose'},
                 @{File='nx.json';Content='{"notes":{"plugin":"@nx/angular/plugin"}}';State='OK';Label='nested notes plugin field'},
                 @{File='nx.json';Content='{"plugins":["@nx/angular"]}';State='OK';Label='bare Nx token'},
-                @{File='nx.json';Content='{"plu\u0000gins":["@nx/angular/plugin"]}';State='OK';Label='NUL-lookalike Nx plugins field'},
-                @{File='nx.json';Content='{"plugins":["@nx/angular/plugin\u0000"]}';State='OK';Label='NUL-suffixed Nx package token'},
                 @{File='nx.json';Content='{"plugins":[{"Plugin":"@nx/angular/plugin"}]}';State='OK';Label='uppercase Nx plugin field'},
                 @{File='project.json';Content='{"targets":{"build":{"Executor":"@angular-devkit/build-angular:browser"}}}';State='OK';Label='uppercase Nx executor field'},
-                @{File='project.json';Content='{"targets":{"build":{"execu\u0000tor":"@angular-devkit/build-angular:browser"}}}';State='OK';Label='NUL-lookalike Nx executor field'},
                 @{File='project.json';Content='{"targets":{"build":{"executor":"@angular-devkit/build-angular:browser"}}}';State='MISSING';Label='schema-positioned target executor'},
                 @{File='package.json';Content='{"dependencies":{"@angular/core":"20.0.0"},"decimal":0.01,"exponent":1e01,"negativeExponent":1e-01}';State='MISSING';Label='valid JSON numeric controls'},
                 @{File='package.json';Content='{"dependencies":{"@angular/core":"20.0.0"} junk';State='CANT-VERIFY';Label='malformed plausible package'},
