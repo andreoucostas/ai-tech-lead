@@ -11129,3 +11129,170 @@ roots, and unrelated nested properties into the existing strict-JSON matrices.
 Also distinguish “`jq` parsed this input as invalid” from “the installed `jq` passed
 the basic probe but cannot execute the required query,” so the latter can try a working Python
 fallback. Do not add a fourth parser or a standalone suite.
+
+---
+
+### B-212 · Audit and align the existing adaptive specification-readiness threshold
+**Filed against:** v0.79.2 (2026-09-01)
+**Effort:** S bounded audit; any design/delivery is re-estimated and separately authorised ·
+**Priority:** P3 ·
+**Invariants:** #1 #2 #5 #7
+
+> **CLOSED 2026-09-01 — Phase 0 completed at its finite stop; no shipped change or fresh design is
+> authorised.** The five frozen cards select proportionate depths under the current canonical
+> contract, and the inspectable field record contains no threshold-attributable material harm.
+> WSD-067 records the decision and reopen trigger.
+>
+> | Frozen card | Routed contract | Material questions and authority | Evidence obligation | Contradiction / ceremony |
+> |---|---|---|---|---|
+> | Trivial typo | **skip** plan/spec wait | none; initial request is sufficient | exact text plus absence check | proportionate; both router twins emit no salience text |
+> | Orders bug | **inline** | diagnose first; ask only if repository evidence exposes a material ambiguity; then explicit go-ahead | reproduced failing integration case, minimal fix, related checks, unchanged schema/order/non-cursor behavior | one plan checkpoint; no persistent-document burden |
+> | Invoice refactor | **inline** | repository patterns select the shared component; explicit go-ahead before edits | green characterization baseline, incremental checks, unchanged behavior, net LOC | task-shaped refactor rail is proportionate |
+> | Weekly-digest feature | **persistent** | day/timezone, opt-out timing, and examples materially change behavior; resolve them and obtain human approval | acceptance criteria, scope, tasks, tests, implementation checks, review | status bookkeeping and the canonical go-ahead can look like two approvals; no measured friction |
+> | Export-storage migration | **persistent after the required intent clarification** | classification plus data/access, retention, compatibility, rollback, and observability decisions; explicit human authority | design alternatives, migration validation from repository evidence, applicable security pass, rollback and review evidence | the prompt hook emits no route; the native carrier still requires classification, clarification, and planning; host consumption is unexamined |
+>
+> **Observed evidence.** The plan/clarify/go-ahead contract is identical in all three rendered
+> carriers. Direct Claude-shaped fixtures against both shipped `route-prompt` twins produced
+> `none / fix / refactor / feature / none` for the cards above, with a plan gate on the three named
+> write routes; this proves script output only, not live firing or consumption. The persistent-spec
+> prose does have a real mismatch: `specs/README.md` describes `Draft -> Approved -> Implemented`
+> and developer-owned open questions, while `/feature` and `/review` do not inspect those tokens.
+> The same canonical carrier nevertheless remains binding over command elaborations and independently
+> forbids code until material questions are asked and the developer gives an explicit go-ahead. A
+> model-editable `Approved` token is therefore not the human authority boundary.
+>
+> No completed Module B record exists: both ledger entries say `Live diary: 0/3 tasks; not run`, so
+> this deliberate re-triage activates B-212's bounded fallback. The one valid balanced maintainer
+> task record is a narrow bug: FRAMEWORK and BARE produced byte-identical accepted source and test
+> files, active time `<1/<1`, interventions `0/0`, and direction `no detectable difference`.
+> FRAMEWORK's helpful red-first test behavior belongs to the fix rail; its extra wall time and host-
+> blocked retry belong to verification. Neither is attributable to specification depth. The
+> improvement-only field reports lack the prompts, planning/approval observations, rework, and cost
+> needed for threshold attribution.
+>
+> **Inference and inability to examine.** The static cards show coherent adaptive depth, not model
+> compliance. This repository cannot examine live host consumption, private transcripts, cross-
+> session approval provenance, a completed Module B diary, or independent-user threshold effects.
+> Adding a status check now would duplicate the actual human gate, could mistake a writable label for
+> authority, or add a second approval without observed benefit. An independent adversarial
+> disposition review therefore selected closure, not a speculative design.
+>
+> **Residual / reopen trigger.** Preserve the lifecycle mismatch as evidence, not as another open
+> item. Reopen only for a completed balanced diary or concrete incident that attributes unauthorised
+> implementation, material rework, or approval friction to the readiness threshold, Draft status,
+> or unresolved questions—or for a repository-grounded task that the canonical contract cannot
+> distinguish at any proportionate depth. Router vocabulary remains governed by B-98's no-no-match-
+> hook decision and is not widened here.
+>
+> **RCA.** No parser gate caught this because the audit concerns proportional task judgment and
+> observed value, not malformed artifacts. The same exposure applies to every model-judged boundary
+> between inline and persistent work. The proportionate control is the existing explicit human gate
+> plus attributable field evidence, not a deterministic threshold checker, another evaluation
+> harness, or duplicated lifecycle machinery.
+
+**Why:** the framework already has the core of specification-driven development; adding a second
+system would duplicate shipped behavior. When its instruction carrier is consumed, the shipped
+Agentic Workflow tells non-trivial tasks to post a plan, ask about material underspecification, and
+await explicit go-ahead. `/design` writes a persistent `specs/<slug>.md`, `/feature` treats an
+existing spec as its contract, `/review` checks it, and small changes are deliberately exempt. The
+useful question is not “should the framework adopt SDD?” but “are the existing readiness threshold
+and lifecycle proportionate, internally aligned, and valuable in observed work?”
+
+The current tree exposes candidates to audit, not demonstrated product defects. Threshold vocabulary
+varies among `trivial/unambiguous`, `non-trivial`, `larger`, `anything beyond trivial`, and
+multi-file/layer or design-risk cues. `specs/README.md` says open questions are decisions required
+before implementation and documents `Draft -> Approved -> Implemented`, but `/feature` checks neither
+resolved questions nor approval status. The displayed `/design` output omits the template's explicit
+Acceptance criteria section; `/review` has no criterion-to-evidence trace or spec-drift rule. Bug and
+refactor rails add further, useful task-shaped depth. Hook registration and output-shape tests prove
+neither host firing/consumption nor model stopping and approval.
+
+**Evidence boundary:** no consumer incident is currently attributed to these gaps, so this entry is
+not implementation authority. External evidence supports selective clarification, not maximal
+documentation. A CMU study found underspecified LLM prompts roughly twice as likely to regress across
+prompt/model changes, while also finding that naively adding every requirement does not reliably
+help ([Yang et al., 2025](https://arxiv.org/abs/2505.13360)). A function-level code-generation
+preprint found four ambiguity classes degraded every evaluated model and were not reliably detected
+by the models themselves ([Orchid, 2026](https://arxiv.org/abs/2604.21505)); neither study proves
+that a repository SDD workflow improves production delivery. Kiro added design-first and bug-fix
+routes after users reported its requirements-first flow was not flexible enough for brownfield work
+([Kiro, 2026](https://kiro.dev/blog/specs-bugfix-and-design-first/)). OpenSpec makes design
+conditional and permits an explicit no-behavior-spec path for refactors/tooling
+([schema](https://github.com/Fission-AI/OpenSpec/blob/main/schemas/spec-driven/schema.yaml)).
+Birgitta Böckeler's hands-on comparison found current SDD tools verbose for small work and still
+vulnerable to ignored or over-applied instructions
+([Thoughtworks, 2025](https://martinfowler.com/articles/exploring-gen-ai/sdd-3-tools.html)). These
+sources justify a bounded value test, not a universal gate.
+
+**Do — Phase 0, evidence before product change:**
+1. Run one static contract audit over five predeclared task cards — trivial, bug, refactor, ordinary
+   feature, and high-risk/cross-boundary — using the current tree and no provider. For each, record
+   the routed contract (`skip`, inline, or persistent), unresolved material questions, approval and
+   evidence obligations, contradiction/over-ceremony, and `cannot examine` separately from a pass or
+   failure.
+2. Read existing B-42 Module B and permitted maintainer evidence for threshold-attributable material
+   misses, helpful catches, rework, harm/noise, active minutes, and interventions. Treat it as
+   secondary, non-causal evidence. Do not change B-42's prompt, participant questions, response form,
+   or scoring; do not alter B-49's invalidated instrument or overload B-136's post-change scope; and
+   do not build another eval harness or spend provider credit solely for this item.
+3. Phase 0 ends after the five-card audit and the first available completed Module B record. If no
+   Module B exists by the next deliberate backlog re-triage, decide from the bounded static/current
+   evidence rather than leave this open indefinitely. Close with no shipped change if current rules
+   route the cards coherently and no observed record shows threshold-attributable material harm, or
+   if inspectable request/repository evidence cannot distinguish the proposed depths. Do not collapse
+   incomparable human cost and delivery harm into one score or tune toward a preferred verdict.
+
+**Phase 0 task cards predeclared 2026-09-01, before contract tracing:**
+
+1. **Trivial:** “Correct `recieve` to `receive` in `docs/README.md`; change no other text or
+   behavior.” The named file and typo are present; completion is the corrected rendered text and an
+   absence search for the misspelling.
+2. **Bug:** “Fix the orders API so page two does not skip its first order when a valid cursor is
+   supplied.” A failing integration fixture reproduces the skip; response schema, ordering, and
+   non-cursor behavior must remain unchanged.
+3. **Refactor:** “Extract duplicated invoice validation from the HTTP handler and background worker
+   into one shared component without changing accepted inputs, errors, API responses, or worker
+   outcomes.” Existing characterization suites cover both call paths.
+4. **Ordinary feature:** “Add a per-user weekly digest toggle across settings UI, API, persistence,
+   and the existing mail worker; default it off and send nothing until enabled.” The request does
+   not decide delivery day/timezone behavior, opt-out timing, or acceptance examples.
+5. **High-risk/cross-boundary:** “Move customer export files from local disk to object storage
+   without downtime.” The request does not decide data classification and access controls,
+   retention, compatibility during migration, rollback, or operational observability.
+
+**Candidate constraints, not a locked design or implementation authority:** if Phase 0 identifies a
+material, addressable gap, it may authorise a fresh proportionate design only. That design must extend
+the existing `/design -> /feature -> /review` path, fit a named size-neutral carrier displacement,
+and receive the required independent critique and separate implementation authority. No new command,
+CLI, state daemon, always-on router, or parallel spec hierarchy. Let the agent draft from request and
+repository evidence, ask one bounded batch only where human judgment can materially change the
+contract, keep short-lived contracts inline, and retain the existing persistent spec only where its
+cross-session/reviewer value exceeds maintenance cost. Candidate task depths are:
+
+- **trivial:** inline intent, exact target, and one observable completion check;
+- **bug:** reproduction/current behavior, expected behavior, behavior that must remain unchanged,
+  bounded fix scope, and the strongest available regression oracle;
+- **refactor:** preserved behavior, permitted structural change, and baseline/characterization
+  evidence;
+- **standard feature:** outcome, authorised users, goals/non-goals, observable rules and examples,
+  constraints, acceptance evidence, and material open questions;
+- **high-risk or cross-boundary:** the standard contract plus applicable security/data/NFR,
+  compatibility, migration, rollout/rollback, and observability decisions;
+- **exploration:** hypothesis, time/safety boundary, learning result, and explicit dispose, promote,
+  or follow-up decision — never a fictional complete implementation spec.
+
+Define **ready** as: intended outcome and human authority are known; scope and non-goals are bounded;
+observable success and consequential negative examples exist; the verification approach is known;
+and no unresolved question can materially change scope, chosen approach, or acceptance evidence.
+Connect `Draft`, explicit human `Approved`, `Implemented`, and review/ship transitions; record any
+implementation discovery that changes the contract before continuing; and let `/review` map each
+criterion to observed evidence or an explicit gap. The model may draft and recommend, but must not
+self-certify product intent, approval, specification quality, or delivery.
+
+**Not:** no full document for every request; no spec-as-source/generated-code-only model; no generic
+hard write gate that claims deterministic enforcement across surfaces; no inferred approval from
+silence or from an implementation request that does not unambiguously approve the displayed spec
+version; no exhaustive questionnaire; no requirement-to-test mechanical matrix that manufactures
+low-value tests; and no new persistent artifact type. Any later delivery closes with an RCA for
+why the existing plan/spec/review rails missed the demonstrated harm and which other task routes
+share the same exposure.

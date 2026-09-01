@@ -38,6 +38,7 @@ phrase inside the cited entry.
 - “Supported and release-tested hosts are Windows and Linux; macOS/BSD/Bash 3.2 are out of scope.” — `meta/workspace-decisions.md WSD-064`
 - “Sourcing shipped scripts or deliberately exporting `SHELLOPTS=errexit` into their Bash process tree is not a public compatibility contract.” — `meta/workspace-decisions.md WSD-065`
 - “Host evidence is capability-specific and recertification is evidence-triggered.” — `meta/workspace-decisions.md WSD-066`
+- “Specification readiness remains adaptive; Draft status is not human authority.” — `meta/workspace-decisions.md WSD-067`
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`

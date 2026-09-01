@@ -3036,3 +3036,59 @@ next-prompt delivery leg as proof of the preceding turn-end leg; deleting the re
 Code guard observation; blanket-downgrading native instruction delivery; executing the non-
 certifying UNRUN kit; adding a quarterly checklist to `DEVELOPING.md`; keeping B-43 open solely for
 a no-seat surface; and mechanising an inference from prose to live-host truth.
+
+---
+
+## WSD-067: keep specification readiness adaptive; close the bounded audit without product change (2026-09-01)
+
+**Context.** B-212 froze five task cards before inspecting the current contracts: a one-file typo,
+an orders pagination bug with a failing integration fixture, a behavior-preserving two-consumer
+refactor, a multi-layer weekly-digest feature with material product questions, and a customer-export
+storage migration with material data and operational questions. The rendered carrier's
+plan/clarify/go-ahead clause is identical across dotnet, angular, and monorepo. It sends trivial,
+unambiguous work past the wait; keeps the bug and refactor on task-shaped inline rails; and makes
+larger, multi-layer, or design-risk features persistent through `/design`, `specs/`, `/feature`, and
+`/review`. A cross-boundary request that genuinely fits two workflows first requires the carrier's
+one intent clarification; repository impact then decides whether persistence earns its cost.
+
+The audit also confirmed a textual lifecycle mismatch. `specs/README.md` describes
+`Draft -> Approved -> Implemented` and calls open questions developer decisions, while `/feature`
+and `/review` do not inspect the status label or the question section. That is an observed omission,
+not an observed authority failure. The canonical carrier explicitly says command files may elaborate
+but not contradict its rails, independently requires material questions before implementation, and
+requires the developer's explicit go-ahead before any non-trivial edit. A model-writable status
+token cannot substitute for that human act.
+
+No completed B-42 Module B diary exists; both recorded runs say `0/3 tasks; not run`, so B-212's
+next-deliberate-re-triage fallback applies. The one valid balanced maintainer task record is a narrow
+bug with byte-identical accepted outcomes, `<1/<1` active minutes, `0/0` interventions, and no
+detectable difference. Its helpful red-first behavior belongs to the fix rail and its extra wall
+time/host retry belongs to verification, not specification depth. Improvement-only field reports do
+not retain the prompt, plan/approval behavior, rework, or cost needed for threshold attribution.
+
+**Decision.** **Specification readiness remains adaptive; Draft status is not human authority.**
+Close B-212 without a shipped change or fresh design. Keep trivial work ceremony-free, bug and
+refactor contracts inline unless repository evidence exposes wider design risk, and persistent specs
+for work whose multi-session/reviewer value exceeds their maintenance cost. Material questions and
+the explicit human go-ahead remain the authority boundary. Do not add a status-token gate, infer
+approval from the token, require a full spec for every non-trivial task, or build another router,
+command, hierarchy, or evaluation harness.
+
+The lifecycle mismatch remains a closure residual rather than a new backlog item. Reopen only for a
+completed balanced diary or concrete incident attributing unauthorised implementation, material
+rework, or approval friction to the readiness threshold, Draft status, or unresolved questions—or
+for a repository-grounded task the canonical contract cannot distinguish at any proportionate
+depth. Static script output, hook registration, and status labels cannot establish live firing,
+model stopping, or cross-session approval provenance; record those as inability to examine.
+
+**Proportionality.** Closing uses the existing human gate and the finite evidence contract. A
+`Status: Approved` check would duplicate that gate, could turn a model-editable label into apparent
+authority, or create a second approval checkpoint without observed benefit. The bounded audit spent
+no provider credit, changed no B-42/B-49 instrument, created no harness, and adds no shipped bytes or
+recurring test burden.
+
+**Rejected.** A fresh lifecycle design on static omission alone; treating absence of a Module B
+record as proof of safety; flattening all five cards into one document depth; adding high-risk
+questionnaires instead of asking only material questions; widening `route-prompt` for the migration
+card despite the standing no-no-match-hook decision; and leaving B-212 open indefinitely for private
+or unavailable evidence.
