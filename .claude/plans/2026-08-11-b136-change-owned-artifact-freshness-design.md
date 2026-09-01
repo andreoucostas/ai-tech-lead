@@ -1,10 +1,10 @@
 # B-136 — make artifact freshness part of completing an AI-authored change
 
-**Status:** OPUS REVIEW COMPLETE 2026-08-22 — REQUEST CHANGES. Two blockers before implementation; see the review at the end of this document.
+**Status:** BOUNDED DESIGN RE-LOCKED 2026-09-01 — APPROVED by a fresh blind-first review.
+WSD-068 locks the exact 470-byte candidate. This design-only session authorises no implementation.
 
-**Scope:** shipped Agentic Workflow/self-review tail, workflow commands, and the smallest
-stack-specific recipe additions needed to keep repository descriptions and registers aligned with
-the change that invalidates them
+**Current scope:** one exact replacement of Agentic Workflow Step 6 in the shared carrier. The
+broader workflow-command and stack-specific scope below is superseded design history.
 
 **Effort:** M under Maintenance model rules 1 and 6
 
@@ -222,3 +222,99 @@ examine it" is not "it is fine" — and this session shipped four fixes for exac
 Implementation is **not** authorised. Two blockers first: budget the carrier text against a named
 displacement or B-158(b), and reduce the table to a principle. Then step 1 alone, with compliance
 recorded as unmeasured.
+
+## Bounded design re-lock — 2026-09-01
+
+This section supersedes the candidate implementation and unresolved disposition above. It preserves
+them as review history; only the bounded decision below is current.
+
+### Frozen contract and premise
+
+The immutable baseline is `e6c597a78824ea587d183ca957a0fac5302c23b9`. On that tree the complete
+`### 6. Flag documentation drift` content, retaining one trailing separator LF, is 477
+LF-normalized UTF-8 bytes with SHA-256
+`9760cabef0c54c416a201f8636e2b4bf86e3ab408bf28382f28001234d4d1b35`. The block is observably
+report-only: it tells the actor to note drift after the task. That establishes a contract mismatch,
+not the frequency of stale handoffs or a behavioral effect.
+
+The first delivery is frozen to one replacement block in
+`src/core/.github/instructions/framework-rules.instructions.md`. It must:
+
+- inspect this task's effects rather than only touched paths or a repository-wide inventory;
+- update affected writable canonical truth in the same task and regenerate derivatives from source;
+- preserve each artifact's ownership, evidence, history, security, and human-intent boundaries;
+- treat inability to read or safely update an affected artifact as a blocker, never `none`; and
+- end in one of three explicit states: none affected, artifacts reconciled, or unresolved blockers.
+
+No artifact table, named-file inventory, warehouse/stack trigger, `/docs-sync` mutation, command,
+hook, eval, or second normative surface is in scope. Structural checks may prove delivery only;
+behavioral compliance remains **UNMEASURED**.
+
+### Alternatives re-weighed
+
+1. **Keep the 477-byte report-only block.** Smallest in implementation cost, but it preserves the
+   exact completion contract B-136 exists to change and retains a named-file inventory.
+2. **Selected: one compact causal principle.** It covers the frozen semantics in 470 bytes and
+   removes seven recurring bytes without another carrier or mechanism.
+3. **Use a 474-byte three-label formulation.** An independent wording pass produced a valid option,
+   but it leaves less margin and compresses artifact-specific history/security behavior into the
+   less direct phrase “preserve history, security, and human intent.” The selected wording binds
+   those dimensions to each artifact's own rules and states the read failure directly.
+4. **Revive the earlier multi-surface/table/warehouse plan.** Rejected by the Opus review and the
+   frozen scope: it is additive, duplicates inventories, and has no measured marginal value over the
+   shared rule.
+
+### Exact selected replacement
+
+The candidate is ASCII and includes exactly one trailing LF:
+
+```markdown
+### 6. Reconcile affected artifacts
+Before finishing, inspect this task's effects on repository truth. Update affected writable canonical artifacts in this task; regenerate derivatives from source. Follow each artifact's ownership, evidence, history, and security rules; never infer human intent. Treat an affected artifact you cannot read or safely update as a blocker, not `none`. End with `Affected artifacts: none`, the reconciled artifacts, or unresolved blockers.
+```
+
+Measured with PowerShell 7.6.5 and .NET UTF-8 encoding: 470 bytes, SHA-256
+`f6cd9c822371970831b93e6ee9d05d50d24ac9e6ca1369eb99eb877f12868fb6`, delta **-7 bytes** against
+the frozen block. The same counter rejected a fuller 573-byte candidate by 96 bytes before accepting
+this one, so the bounded measure has an observed red and a constructible passing state. That proves
+only size; semantic correctness is the review judgment below.
+
+Current generated headroom was separately observed as 482 bytes for dotnet, 1,959 for angular, and
+966 for monorepo. Per WSD-055 those numbers are not spending authority; the negative replacement
+delta is the authority.
+
+### Blind-first adversarial review
+
+Reviewer `/root/b136_blind_review` used a separate Codex sub-agent session on Windows x64 with
+PowerShell 7.6.5. It received the immutable baseline and frozen acceptance contract first, did not
+read the existing plan or candidate, and produced an independent threat model. Only then did it
+receive the exact candidate and read this history. It edited no file.
+
+**Verdict: APPROVE.** The trace found explicit coverage for causal consequences, writable canonical
+truth, source-led regeneration, ownership/evidence/history/security rules, human intent, inability
+to read/update, and the terminal none/reconciled/blockers result. Four hostile mutations were red by
+semantic inspection: restricting inspection to changed files, replacing source regeneration with
+generic file updates, deleting the inability blocker, and deleting the human-intent boundary. These
+are manual semantic mutations, not an automated behavioral instrument.
+
+The reviewer independently reproduced the 477/470/-7 byte result and both SHA-256 identities. It
+also confirmed the excluded scope and proportionality. Coverage gaps are explicit: no behavioral
+agent run, Linux run, build, composition, install smoke, or dist inspection exists because no
+implementation exists. The B-98 carrier result was not rerun. Compliance is **UNMEASURED**.
+
+### Delivery limit and future implementation contract
+
+WSD-031's unprotected carrier is the correct single source: it is refreshed on update and reaches
+Copilot plus greenfield or migrated Claude consumers. Do not turn that into a universal claim;
+legacy unmigrated Claude consumers remain on B-97's documented assisted-migration path. Moving the
+rule into protected `CLAUDE.md` would recreate the delivery wall.
+
+A later, separately authorised implementation may replace only the frozen Step 6 source block with
+the exact candidate above. Generated distributions plus required version/changelog records are
+delivery bookkeeping, not extra normative surfaces. That implementation must compose all three
+distributions, prove the exact rendered rule and negative byte delta, run the Markdown artifact
+verification contract, and describe compliance as **UNMEASURED**. It must not opportunistically edit
+Step 5, `.claude/workflow.md`, commands, skills, hooks, tests, or evals.
+
+**Disposition:** WSD-068 locks this bounded design and clears the two Opus design blockers. No
+shipped file was changed and no implementation is authorised by this design-only session.

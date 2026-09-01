@@ -3092,3 +3092,64 @@ record as proof of safety; flattening all five cards into one document depth; ad
 questionnaires instead of asking only material questions; widening `route-prompt` for the migration
 card despite the standing no-no-match-hook decision; and leaving B-212 open indefinitely for private
 or unavailable evidence.
+
+---
+
+## WSD-068: B-136 re-locks one size-negative reconciliation rule and nothing else (2026-09-01)
+
+**Context.** At immutable baseline `e6c597a78824ea587d183ca957a0fac5302c23b9`, Agentic Workflow
+Step 6 tells the actor to note four kinds of drift after the task. The complete block is 477
+LF-normalized UTF-8 bytes with one trailing separator LF, SHA-256
+`9760cabef0c54c416a201f8636e2b4bf86e3ab408bf28382f28001234d4d1b35`. That directly establishes
+the contract mismatch B-136 names: an actor may hand off code while knowingly leaving repository
+truth made stale by its own change. It does not establish incident frequency or behavioral impact.
+
+The 2026-08-22 Opus review retained the premise but rejected the unbudgeted multi-surface design,
+the shipped artifact table, and the warehouse trigger. WSD-055 then retained the static-context
+ceilings and required a named displacement rather than incidental headroom. The 2026-09-01 recheck
+found 482 bytes of dotnet, 1,959 of angular, and 966 of monorepo headroom, but those figures remain
+capacity observations, not spending authority.
+
+**Decision.** Lock this exact ASCII replacement, including one trailing LF:
+
+```markdown
+### 6. Reconcile affected artifacts
+Before finishing, inspect this task's effects on repository truth. Update affected writable canonical artifacts in this task; regenerate derivatives from source. Follow each artifact's ownership, evidence, history, and security rules; never infer human intent. Treat an affected artifact you cannot read or safely update as a blocker, not `none`. End with `Affected artifacts: none`, the reconciled artifacts, or unresolved blockers.
+```
+
+It is 470 LF-normalized UTF-8 bytes, SHA-256
+`f6cd9c822371970831b93e6ee9d05d50d24ac9e6ca1369eb99eb877f12868fb6`, a seven-byte reduction.
+The same byte counter rejected a 573-byte formulation before accepting this one. Size evidence proves
+the displacement only; it does not prove semantic correctness or model behavior.
+
+A future, separately authorised implementation replaces only the complete Step 6 source block in
+`src/core/.github/instructions/framework-rules.instructions.md`. Generated distributions and the
+required version/changelog records remain ordinary delivery artifacts; no other normative source is
+part of the design. Do not edit Step 5, `.claude/workflow.md`, commands, skills, hooks, or evals; do
+not ship an artifact inventory/table, a warehouse or stack trigger, or a named-file checklist.
+Structural checks prove rendered delivery only. Behavioral compliance is **UNMEASURED**.
+
+The carrier remains the single source required by WSD-031. It refreshes on update for Copilot and
+for greenfield or migrated Claude consumers; legacy unmigrated Claude consumers retain B-97's
+assisted-migration limitation. This decision therefore makes no universal installed-consumer
+delivery claim and does not move the rule into protected `CLAUDE.md`.
+
+**Independent review.** `/root/b136_blind_review`, a separate Codex sub-agent session on Windows
+x64 with PowerShell 7.6.5, formed its threat model from the immutable contract before seeing the
+candidate or prior narrative. It then approved the exact candidate, independently reproduced both
+hashes and the 477/470/-7 result, and observed four semantic mutations red: touched-files-only
+inspection, generic generated-file editing, deletion of the inability blocker, and deletion of the
+human-intent boundary. It edited no files. No behavioral run, Linux run, build, composition, install
+smoke, or dist inspection exists because this is design-only; compliance remains **UNMEASURED**.
+Full trace and alternatives are in
+`.claude/plans/2026-08-11-b136-change-owned-artifact-freshness-design.md`.
+
+**Proportionality.** The selected rule replaces the exact report-only text, reduces recurring
+context by seven bytes, and uses the already-delivered canonical carrier. It creates no file,
+inventory, route, command, hook, test, eval, or domain-specific duplicate. That is the smallest
+identified change that removes most of the observed contract gap.
+
+**Rejected.** Keeping report-only behavior; the earlier table/command/warehouse plan; using current
+headroom as budget; raising the ceiling; moving the rule to a protected file; a 474-byte alternative
+with less margin and weaker artifact-specific wording; claiming B-98's reach result proves B-136
+compliance; or implementing during this design-only session.

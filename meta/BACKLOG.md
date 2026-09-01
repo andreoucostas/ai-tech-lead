@@ -341,6 +341,10 @@ failures: one hard checklist failure = a defect entry, regardless of the rubric 
 **Filed against:** v0.52.0 (2026-08-11)
 **Effort:** M · **Priority:** P2 · filed 2026-08-11 · **Invariants:** #1 #2 #7
 
+> **BOUNDED DESIGN RE-LOCKED 2026-09-01 — implementation requires a separate explicit task.**
+> WSD-068 locks one exact 470-byte shared-carrier replacement. This design-only delivery changes no
+> shipped artifact and records behavioral compliance as **UNMEASURED**.
+
 **Why:** the shipped Agentic Workflow and shared `.claude/workflow.md` currently require an AI to
 **flag** documentation drift at the end of a task, not repair the drift its own change created.
 `/docs-sync` is deliberately read-mostly. Warehouse writes have a stronger pre-write freshness rule,
@@ -353,27 +357,28 @@ a permitted “code done, known repository truth stale” handoff.
 > carrier counted in `static.claude` (`scripts/context-footprint.ps1:246-247`). Current generated
 > headroom is **482 LF-normalized UTF-8 bytes on dotnet, 1,959 on angular, and 966 on monorepo**.
 >
-> The complete current `### 6. Flag documentation drift` block is the named displacement candidate:
-> **477 bytes when one separator LF is retained** (478 with both trailing LFs). That does not lock a
-> replacement or authorise implementation. A fresh critique must prove that the replacement is no
-> larger and preserves protected-artifact and inability-to-examine boundaries; stack-owned triggers
-> remain net-additive and out of the bounded first delivery. Budget it before designing, not after,
-> or the first release will refuse.
->
-> Third entry found routing through B-158(b). That decision is now gating a category, not an item.
-**Do:** replace report-only completion with change-scoped affected-artifact reconciliation. Inspect
-the diff and its consequences; update writable canonical truth made stale by this task; regenerate
-derived mirrors rather than hand-editing them; respect append-only, register, security, and
-human-intent boundaries; and finish with either the artifacts updated, `Affected artifacts: none`, or
-a concrete blocker that prevents claiming full reconciliation. Add narrowly stack-owned triggers
-where the generic rule cannot know artifact semantics—first, a bounded warehouse-map refresh after a
-change to mapped warehouse facts. Do not turn every edit into `/docs-sync`, refresh unrelated docs,
-invent ADR intent, or create a second inventory of framework files.
+> The complete current `### 6. Flag documentation drift` block is the named displacement: **477
+> bytes when one separator LF is retained** (478 with both trailing LFs), SHA-256
+> `9760cabef0c54c416a201f8636e2b4bf86e3ab408bf28382f28001234d4d1b35`. WSD-068 locks a 470-byte
+> ASCII replacement, SHA-256
+> `f6cd9c822371970831b93e6ee9d05d50d24ac9e6ca1369eb99eb877f12868fb6`, for a seven-byte reduction.
+> Stack-owned triggers remain net-additive and outside the delivery.
+
+**Do:** in a later explicitly authorised implementation, replace only the complete canonical Step 6
+source block with WSD-068's exact candidate. It requires causal inspection, same-task repair of
+affected writable canonical truth, source-led regeneration, artifact-specific ownership/evidence/
+history/security boundaries, no inferred human intent, an inability blocker, and the terminal
+none/reconciled/blockers states. Do not edit Step 5, `.claude/workflow.md`, commands, skills, hooks,
+or evals; do not add `/docs-sync` mutation, an artifact inventory/table, a warehouse/stack trigger,
+or a second normative surface. Generated dists and mandatory release records are delivery
+bookkeeping. Structural evidence proves delivery only; compliance stays **UNMEASURED**.
 
 **Design:** `.claude/plans/2026-08-11-b136-change-owned-artifact-freshness-design.md` compares four
 approaches and selects causal, ownership-aware reconciliation. It includes an artifact/action table,
 generic affected/unaffected/protected worlds, warehouse positive and false-positive controls,
-source-to-dist delivery boundaries, implementation steps, and proportionality.
+source-to-dist delivery boundaries, implementation steps, and proportionality. Its 2026-09-01
+amendment supersedes the broad implementation: the table and warehouse cases remain rationale only;
+WSD-068 is the current exact lock.
 
 **Codex adversarial review:** **REQUESTED CHANGES.** The first formulation could overwrite generated,
 append-only, security-sensitive, or human-owned artifacts; mistook report-only `/docs-sync` for a
@@ -381,17 +386,15 @@ repair path; over-triggered whole-map refreshes; and lacked negative/blocked wor
 uses artifact semantics, bounded causal triggers, negative controls, and honest structural-versus-
 behavioral evidence. This review does **not** satisfy the Claude Opus gate.
 
-**Review gate — OPUS REVIEW DONE 2026-08-22: REQUEST CHANGES.** Recorded in full at the end of
-`.claude/plans/2026-08-11-b136-change-owned-artifact-freshness-design.md`. **Implementation is not
-authorised.** Two blockers and one scope reduction:
+**Historical review gate — OPUS REVIEW DONE 2026-08-22: REQUEST CHANGES.** Recorded in full at the
+end of `.claude/plans/2026-08-11-b136-change-owned-artifact-freshness-design.md`. It raised two
+blockers and one scope reduction:
 
-1. **Step 1 has a measured displacement candidate but no re-lock.** At review time the Agentic
+1. **Budget and re-lock — resolved by WSD-068.** At review time the Agentic
    Workflow had only **83 bytes** of monorepo headroom and "reconcile" wording was necessarily longer
    than "flag" wording. The 2026-09-01 recheck names the existing 477-byte completion block and shows
-   966 bytes of monorepo headroom. That resolves the missing-candidate evidence, not the design or
-   review blocker: re-lock an exact nonpositive-byte replacement against that block and obtain a
-   fresh evidence-bound critique. **WSD-055 retained the ceiling; implementation is not authorised
-   by incidental headroom or an unreviewed candidate alone.**
+   966 bytes of monorepo headroom. WSD-068 now locks an independently reviewed 470-byte replacement;
+   incidental headroom remains irrelevant under WSD-055.
 2. **The artifact/action table must not ship as a table.** It is the second inventory this entry
    forbids, and B-164 measured that shape failing: four entries enumerated the scripts they knew
    about and a fifth defect appeared in an unlisted one. Ship the durable principle; leave
@@ -400,21 +403,35 @@ authorised.** Two blockers and one scope reduction:
    B-112 found four instruments broken on first version. Ship the rendered contract, prove delivery
    structurally, and record compliance as **UNMEASURED** rather than implying it was tested.
 
-**Proportionality, answered as asked: yes, a shared-rule-only change removes most of the harm.**
-B-98 measured carrier-delivered guidance going 0/6 → 6/6 while the same content in a routed skill
-stayed 0/6. Ship step 1 alone; defer the warehouse trigger until the general rule is observed — it is
-additive text on the same budget and its marginal value is unmeasured. Note it would cost the
-monorepo twice, since skills compose there from both stacks.
+**Fresh blind-first review — APPROVED 2026-09-01.** A separate reviewer formed its threat model from
+immutable baseline `e6c597a` before seeing the candidate, then approved the exact 470-byte text,
+independently reproduced its hash and the 477/470/-7 measurement, and found four hostile semantic
+mutations red. It made no edit. Gaps: no behavioral, Linux, build, composition, install, or dist
+evidence exists because this was design-only. WSD-068 records the lock; this session does not
+authorise implementation.
 
-**Confirmed sound:** carrier placement genuinely reaches installed consumers (B-97 Option A), which
-is the opposite of what `CLAUDE.md` placement would do — state that reasoning in the change so a
-later editor does not "tidy" it into the protected file. **One addition:** an artifact the agent
-cannot *read* must report a blocker, never `Affected artifacts: none` — maintenance rule 7.
+**Historical Opus proportionality finding:** a shared rule removes most of the observed contract
+gap. B-98 measured carrier-delivered guidance going 0/6 → 6/6 while the same content in a routed
+skill stayed 0/6. The Opus review therefore recommended the shared rule alone; WSD-068 now narrows
+that direction to the exact Step 6 replacement. The warehouse trigger remains outside scope: it is
+additive, its marginal value is unmeasured, and stack skills would cost monorepo twice.
+
+**Confirmed sound, with delivery limit:** the unprotected carrier refreshes for Copilot and for
+greenfield or migrated Claude consumers; legacy unmigrated Claude consumers retain B-97's assisted-
+migration limitation. Protected `CLAUDE.md` would recreate the delivery wall. An affected artifact
+the agent cannot *read* is a blocker, never `Affected artifacts: none` — maintenance rule 7.
 
 **Proportionality:** the current report-only wording is directly observed and is the requested harm.
-A shared completion-rule correction plus the smallest domain-specific trigger removes most of it; a
-documentation graph, automatic classifier, mutating `/docs-sync`, or exhaustive skill inventory does
-not.
+The seven-byte-smaller shared completion-rule replacement is the smallest identified correction. A
+domain trigger, documentation graph, automatic classifier, mutating `/docs-sync`, or exhaustive
+skill inventory has no measured marginal value and is outside the lock.
+
+**Design-delivery RCA:** no parser gate caught the original plan's unbudgeted, inventory-shaped
+scope because no shipped artifact existed for a build gate to examine; the independent critique was
+the first instrument positioned before implementation. The same class exposes any static-carrier
+plan that treats headroom as permission or postpones exact wording until build time. WSD-055's named-
+displacement rule and this frozen candidate move the evidence before implementation; a generic prose-
+quality gate would not honestly judge the ownership or proportionality semantics.
 
 
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
