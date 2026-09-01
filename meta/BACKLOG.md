@@ -62,15 +62,13 @@ B-30 shipped in v0.25.4). **B-38, B-39 (both phases), B-36, and B-34 all shipped
 > evidence, no legal basis for consumption, one-time host verifications going stale, and a
 > maintenance process calibrated to a frontier-model reviewer.
 >
-> **CURRENT PRIORITIES REVALIDATED 2026-09-01 against v0.79.2 — deliberate, not file order.**
-> Only B-42, B-49, and B-136 remain open. B-42 has three non-author issue reporters but
+> **CURRENT PRIORITIES REVALIDATED 2026-09-01 for v0.80.0 — deliberate, not file order.**
+> Only B-42 and B-49 remain open. B-42 has three non-author issue reporters but
 > still zero balanced, independent FS2 Module A pairs; run one when a participant exists and let that evidence
 > reorder the backlog. B-49 is hard-deferred because WSD-062 invalidated its current instrument;
 > no provider work is authorised until a current target, executable oracles, isolation, canaries,
-> released tag, and explicit spend authority are freshly locked. B-136 is the sole bounded product
-> candidate. Its existing completion block is now a named size-neutral displacement candidate, but
-> implementation remains unauthorised until a freshly critiqued design proves a nonpositive-byte
-> replacement against the retained context ceiling. B-212 closed without product change after its
+> released tag, and explicit spend authority are freshly locked. B-136 is DONE for v0.80.0; see
+> `meta/BACKLOG-DONE.md`. B-212 closed without product change after its
 > bounded audit found coherent adaptive depth and no threshold-attributable material harm; WSD-067
 > records the residual lifecycle mismatch and reopen trigger. B-72, B-112, B-129, B-133, B-159, B-160,
 > and B-174 were individually closed or rejected after premise and proportionality review; their
@@ -336,103 +334,6 @@ failures: one hard checklist failure = a defect entry, regardless of the rubric 
 **B-50 is DONE (2026-08-20) — an isolated three-arm canary confirmed the channel on CLI 1.0.80 and both stale passages are reconciled; see `meta/BACKLOG-DONE.md`.**
 
 **B-44 is DONE (2026-08-20) — the retirement-trigger table is `meta/overlap-watch.md`; see `meta/BACKLOG-DONE.md`.**
-
-### B-136 · Make affected framework artifacts part of completing an AI-authored change
-**Filed against:** v0.52.0 (2026-08-11)
-**Effort:** M · **Priority:** P2 · filed 2026-08-11 · **Invariants:** #1 #2 #7
-
-> **BOUNDED DESIGN RE-LOCKED 2026-09-01 — implementation requires a separate explicit task.**
-> WSD-068 locks one exact 470-byte shared-carrier replacement. This design-only delivery changes no
-> shipped artifact and records behavioral compliance as **UNMEASURED**.
-
-**Why:** the shipped Agentic Workflow and shared `.claude/workflow.md` currently require an AI to
-**flag** documentation drift at the end of a task, not repair the drift its own change created.
-`/docs-sync` is deliberately read-mostly. Warehouse writes have a stronger pre-write freshness rule,
-but even that does not establish the general post-change duty to refresh a map whose keys,
-relationships, grain, load behavior, or consumption surface the current task changed. The result is
-a permitted “code done, known repository truth stale” handoff.
-
-> **CONSTRAINED BY THE CONTEXT CEILING — rechecked 2026-09-01.** This entry rewrites the shipped
-> **Agentic Workflow**, which lives on `.github/instructions/framework-rules.instructions.md` — the
-> carrier counted in `static.claude` (`scripts/context-footprint.ps1:246-247`). Current generated
-> headroom is **482 LF-normalized UTF-8 bytes on dotnet, 1,959 on angular, and 966 on monorepo**.
->
-> The complete current `### 6. Flag documentation drift` block is the named displacement: **477
-> bytes when one separator LF is retained** (478 with both trailing LFs), SHA-256
-> `9760cabef0c54c416a201f8636e2b4bf86e3ab408bf28382f28001234d4d1b35`. WSD-068 locks a 470-byte
-> ASCII replacement, SHA-256
-> `f6cd9c822371970831b93e6ee9d05d50d24ac9e6ca1369eb99eb877f12868fb6`, for a seven-byte reduction.
-> Stack-owned triggers remain net-additive and outside the delivery.
-
-**Do:** in a later explicitly authorised implementation, replace only the complete canonical Step 6
-source block with WSD-068's exact candidate. It requires causal inspection, same-task repair of
-affected writable canonical truth, source-led regeneration, artifact-specific ownership/evidence/
-history/security boundaries, no inferred human intent, an inability blocker, and the terminal
-none/reconciled/blockers states. Do not edit Step 5, `.claude/workflow.md`, commands, skills, hooks,
-or evals; do not add `/docs-sync` mutation, an artifact inventory/table, a warehouse/stack trigger,
-or a second normative surface. Generated dists and mandatory release records are delivery
-bookkeeping. Structural evidence proves delivery only; compliance stays **UNMEASURED**.
-
-**Design:** `.claude/plans/2026-08-11-b136-change-owned-artifact-freshness-design.md` compares four
-approaches and selects causal, ownership-aware reconciliation. It includes an artifact/action table,
-generic affected/unaffected/protected worlds, warehouse positive and false-positive controls,
-source-to-dist delivery boundaries, implementation steps, and proportionality. Its 2026-09-01
-amendment supersedes the broad implementation: the table and warehouse cases remain rationale only;
-WSD-068 is the current exact lock.
-
-**Codex adversarial review:** **REQUESTED CHANGES.** The first formulation could overwrite generated,
-append-only, security-sensitive, or human-owned artifacts; mistook report-only `/docs-sync` for a
-repair path; over-triggered whole-map refreshes; and lacked negative/blocked worlds. The revised plan
-uses artifact semantics, bounded causal triggers, negative controls, and honest structural-versus-
-behavioral evidence. This review does **not** satisfy the Claude Opus gate.
-
-**Historical review gate — OPUS REVIEW DONE 2026-08-22: REQUEST CHANGES.** Recorded in full at the
-end of `.claude/plans/2026-08-11-b136-change-owned-artifact-freshness-design.md`. It raised two
-blockers and one scope reduction:
-
-1. **Budget and re-lock — resolved by WSD-068.** At review time the Agentic
-   Workflow had only **83 bytes** of monorepo headroom and "reconcile" wording was necessarily longer
-   than "flag" wording. The 2026-09-01 recheck names the existing 477-byte completion block and shows
-   966 bytes of monorepo headroom. WSD-068 now locks an independently reviewed 470-byte replacement;
-   incidental headroom remains irrelevant under WSD-055.
-2. **The artifact/action table must not ship as a table.** It is the second inventory this entry
-   forbids, and B-164 measured that shape failing: four entries enumerated the scripts they knew
-   about and a fifth defect appeared in an unlisted one. Ship the durable principle; leave
-   file-specific triggers with the artifacts that own them. Keep the table in the plan as rationale.
-3. **The behavioural half is unbuildable now** — five entries are already behind the eval budget and
-   B-112 found four instruments broken on first version. Ship the rendered contract, prove delivery
-   structurally, and record compliance as **UNMEASURED** rather than implying it was tested.
-
-**Fresh blind-first review — APPROVED 2026-09-01.** A separate reviewer formed its threat model from
-immutable baseline `e6c597a` before seeing the candidate, then approved the exact 470-byte text,
-independently reproduced its hash and the 477/470/-7 measurement, and found four hostile semantic
-mutations red. It made no edit. Gaps: no behavioral, Linux, build, composition, install, or dist
-evidence exists because this was design-only. WSD-068 records the lock; this session does not
-authorise implementation.
-
-**Historical Opus proportionality finding:** a shared rule removes most of the observed contract
-gap. B-98 measured carrier-delivered guidance going 0/6 → 6/6 while the same content in a routed
-skill stayed 0/6. The Opus review therefore recommended the shared rule alone; WSD-068 now narrows
-that direction to the exact Step 6 replacement. The warehouse trigger remains outside scope: it is
-additive, its marginal value is unmeasured, and stack skills would cost monorepo twice.
-
-**Confirmed sound, with delivery limit:** the unprotected carrier refreshes for Copilot and for
-greenfield or migrated Claude consumers; legacy unmigrated Claude consumers retain B-97's assisted-
-migration limitation. Protected `CLAUDE.md` would recreate the delivery wall. An affected artifact
-the agent cannot *read* is a blocker, never `Affected artifacts: none` — maintenance rule 7.
-
-**Proportionality:** the current report-only wording is directly observed and is the requested harm.
-The seven-byte-smaller shared completion-rule replacement is the smallest identified correction. A
-domain trigger, documentation graph, automatic classifier, mutating `/docs-sync`, or exhaustive
-skill inventory has no measured marginal value and is outside the lock.
-
-**Design-delivery RCA:** no parser gate caught the original plan's unbudgeted, inventory-shaped
-scope because no shipped artifact existed for a build gate to examine; the independent critique was
-the first instrument positioned before implementation. The same class exposes any static-carrier
-plan that treats headroom as permission or postpones exact wording until build time. WSD-055's named-
-displacement rule and this frozen candidate move the evidence before implementation; a generic prose-
-quality gate would not honestly judge the ownership or proportionality semantics.
-
 
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 

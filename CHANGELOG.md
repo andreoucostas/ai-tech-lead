@@ -11,6 +11,22 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.80.0 — 2026-09-01
+
+**Completing a change now includes reconciling the repository truth that change affects.**
+B-136/WSD-068 replaces only Agentic Workflow Step 6's report-only drift checklist with the frozen
+causal rule: update affected writable canonical artifacts in the same task, regenerate derivatives
+from source, obey each artifact's ownership, evidence, history, and security rules without inferring
+human intent, treat inability to read or safely update an affected artifact as a blocker, and end
+with none affected, reconciled artifacts, or unresolved blockers.
+
+The shared block is 470 LF-normalized UTF-8 bytes versus 477, so every distribution's static
+context falls by exactly seven bytes. The unprotected carrier reaches Copilot plus greenfield and
+migrated Claude consumers; legacy unmigrated Claude consumers retain B-97's assisted-migration
+limitation. Exact source-to-distribution delivery is structural evidence only. Behavioral
+compliance is **UNMEASURED**. No command, skill, hook, test, eval, artifact inventory, warehouse or
+stack trigger, `/docs-sync` behavior, or second normative source changed.
+
 ## 0.79.2 — 2026-08-31
 
 **Host compatibility assurances are now capability-specific instead of inheriting a generic dated

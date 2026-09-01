@@ -4,6 +4,17 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.80.0 — 2026-09-01
+
+- The shared Agentic Workflow now makes reconciliation of affected repository truth part of
+  completing a change. The agent must update affected writable canonical artifacts, regenerate
+  derivatives from source, respect each artifact's ownership, evidence, history, and security rules
+  without inferring human intent, and report none affected, reconciled artifacts, or blockers. An
+  affected artifact it cannot read or safely update is a blocker. This reaches Copilot and new or
+  migrated Claude installations through the shared instructions. Legacy unmigrated Claude
+  installations retain the existing assisted-migration limitation. Exact delivery is verified
+  structurally; model compliance is unmeasured.
+
 ## 0.79.2 — 2026-08-31
 
 - Host compatibility evidence is now stated per capability. Copilot CLI 1.0.80 remains observed

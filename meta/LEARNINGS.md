@@ -2017,3 +2017,17 @@ can show a registered conditional path, and a visible marker can prove one succe
 turns absence into a cause or registration into delivery. Protect recovered concrete spellings with
 narrow controls, but leave semantic completeness to scope review rather than building a prose
 classifier.
+
+## 2026-09-01 — Reconcile causal truth, not a named artifact inventory
+
+B-136's old Agentic Workflow Step 6 permitted completion after flagging four named drift classes.
+The replacement makes the actor that changed repository truth reconcile the actual effects in the
+same task while respecting each artifact's ownership, evidence, history, and security rules. An
+affected artifact the actor cannot read or safely update remains a blocker rather than becoming an
+unexamined `none` result, and uncertain human intent remains uninferred.
+
+A static artifact table is not the durability mechanism: inventories rot and make omitted artifacts
+look unaffected. The durable rule is causal—update writable canonical truth that this task made
+stale, regenerate derivatives from source, and preserve artifact-specific boundaries. The exact
+470-byte source block, its seven-byte reduction, composition, and structural gates prove delivery
+only. Behavioral compliance remains **UNMEASURED**.

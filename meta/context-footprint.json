@@ -177,8 +177,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17805,
-          "tok": 4451
+          "chars": 17798,
+          "tok": 4450
         },
         {
           "path": "CLAUDE.md",
@@ -194,8 +194,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17805,
-          "tok": 4451
+          "chars": 17798,
+          "tok": 4450
         },
         {
           "path": "AGENTS.md",
@@ -641,8 +641,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17659,
-          "tok": 4415
+          "chars": 17652,
+          "tok": 4413
         },
         {
           "path": "CLAUDE.md",
@@ -658,8 +658,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17659,
-          "tok": 4415
+          "chars": 17652,
+          "tok": 4413
         },
         {
           "path": "AGENTS.md",
@@ -1125,8 +1125,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 19662,
-          "tok": 4916
+          "chars": 19655,
+          "tok": 4914
         },
         {
           "path": "CLAUDE.md",
@@ -1142,8 +1142,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 19662,
-          "tok": 4916
+          "chars": 19655,
+          "tok": 4914
         },
         {
           "path": "AGENTS.md",
@@ -1453,26 +1453,26 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 39518,
-      "static.claude.tok": 9880,
-      "static.copilot.chars": 44450,
-      "static.copilot.tok": 11112,
+      "static.claude.chars": 39511,
+      "static.claude.tok": 9878,
+      "static.copilot.chars": 44443,
+      "static.copilot.tok": 11111,
       "prompt.max.chars": 3008,
       "prompt.max.tok": 752
     },
     "angular": {
-      "static.claude.chars": 38041,
-      "static.claude.tok": 9510,
-      "static.copilot.chars": 45351,
-      "static.copilot.tok": 11338,
+      "static.claude.chars": 38034,
+      "static.claude.tok": 9508,
+      "static.copilot.chars": 45344,
+      "static.copilot.tok": 11336,
       "prompt.max.chars": 3078,
       "prompt.max.tok": 770
     },
     "monorepo": {
-      "static.claude.chars": 47034,
-      "static.claude.tok": 11758,
-      "static.copilot.chars": 52245,
-      "static.copilot.tok": 13061,
+      "static.claude.chars": 47027,
+      "static.claude.tok": 11757,
+      "static.copilot.chars": 52238,
+      "static.copilot.tok": 13060,
       "prompt.max.chars": 3423,
       "prompt.max.tok": 856
     },

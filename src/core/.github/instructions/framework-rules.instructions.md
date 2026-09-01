@@ -96,11 +96,7 @@ Before presenting work as complete:
 - If the session surfaced a team-worthy gotcha, recipe, or failed approach, offer `remember-for-team`
 <!-- @stack:verif-conf-line -->
 
-### 6. Flag documentation drift
-At the end of your response, note if:
-- A new pattern was introduced that should be documented here
-- A TECH_DEBT.md entry was resolved or a new one discovered
-- A SECURITY_FINDINGS.md entry was resolved or a new finding discovered
-- `copilot-instructions.md` / `AGENTS.md` need regeneration (run `/generate-copilot` in Claude Code, or ask your agent to rewrite them from this file following the rules in `.claude/commands/generate-copilot.md`)
+### 6. Reconcile affected artifacts
+Before finishing, inspect this task's effects on repository truth. Update affected writable canonical artifacts in this task; regenerate derivatives from source. Follow each artifact's ownership, evidence, history, and security rules; never infer human intent. Treat an affected artifact you cannot read or safely update as a blocker, not `none`. End with `Affected artifacts: none`, the reconciled artifacts, or unresolved blockers.
 
 ---
