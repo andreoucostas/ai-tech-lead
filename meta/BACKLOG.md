@@ -62,14 +62,17 @@ B-30 shipped in v0.25.4). **B-38, B-39 (both phases), B-36, and B-34 all shipped
 > evidence, no legal basis for consumption, one-time host verifications going stale, and a
 > maintenance process calibrated to a frontier-model reviewer.
 >
-> **CURRENT PRIORITIES REVALIDATED 2026-08-31 against v0.79.1 — deliberate, not file order.**
-> Only B-42, B-49, and B-136 remain open. B-42 has three non-author issue reporters but still zero
-> balanced, independent FS2 Module A pairs; run one when a participant exists and let that evidence
+> **CURRENT PRIORITIES REVALIDATED 2026-09-01 against v0.79.2 — deliberate, not file order.**
+> Only B-42, B-49, B-136, and B-212 remain open. B-42 has three non-author issue reporters but
+> still zero balanced, independent FS2 Module A pairs; run one when a participant exists and let that evidence
 > reorder the backlog. B-49 is hard-deferred because WSD-062 invalidated its current instrument;
 > no provider work is authorised until a current target, executable oracles, isolation, canaries,
 > released tag, and explicit spend authority are freshly locked. B-136 is the sole bounded product
 > candidate, but implementation remains unauthorised until a named size-neutral displacement and a
-> reviewed design satisfy the retained context ceiling. B-72, B-112, B-129, B-133, B-159, B-160,
+> reviewed design satisfy the retained context ceiling. B-212 is a bounded evidence/design item,
+> not authority to build a second specification system: audit whether the existing lifecycle loses
+> material intent or creates avoidable rework, then authorise at most a fresh design when the value
+> case exceeds its ceremony. B-72, B-112, B-129, B-133, B-159, B-160,
 > and B-174 were individually closed or rejected after premise and proportionality review; their
 > exact residuals and reopen triggers are preserved in `meta/BACKLOG-DONE.md`.
 >
@@ -411,6 +414,101 @@ cannot *read* must report a blocker, never `Affected artifacts: none` — mainte
 A shared completion-rule correction plus the smallest domain-specific trigger removes most of it; a
 documentation graph, automatic classifier, mutating `/docs-sync`, or exhaustive skill inventory does
 not.
+
+### B-212 · Audit and align the existing adaptive specification-readiness threshold
+**Filed against:** v0.79.2 (2026-09-01)
+**Effort:** S bounded audit; any design/delivery is re-estimated and separately authorised ·
+**Priority:** P3 ·
+**Invariants:** #1 #2 #5 #7
+
+**Why:** the framework already has the core of specification-driven development; adding a second
+system would duplicate shipped behavior. When its instruction carrier is consumed, the shipped
+Agentic Workflow tells non-trivial tasks to post a plan, ask about material underspecification, and
+await explicit go-ahead. `/design` writes a persistent `specs/<slug>.md`, `/feature` treats an
+existing spec as its contract, `/review` checks it, and small changes are deliberately exempt. The
+useful question is not “should the framework adopt SDD?” but “are the existing readiness threshold
+and lifecycle proportionate, internally aligned, and valuable in observed work?”
+
+The current tree exposes candidates to audit, not demonstrated product defects. Threshold vocabulary
+varies among `trivial/unambiguous`, `non-trivial`, `larger`, `anything beyond trivial`, and
+multi-file/layer or design-risk cues. `specs/README.md` says open questions are decisions required
+before implementation and documents `Draft -> Approved -> Implemented`, but `/feature` checks neither
+resolved questions nor approval status. The displayed `/design` output omits the template's explicit
+Acceptance criteria section; `/review` has no criterion-to-evidence trace or spec-drift rule. Bug and
+refactor rails add further, useful task-shaped depth. Hook registration and output-shape tests prove
+neither host firing/consumption nor model stopping and approval.
+
+**Evidence boundary:** no consumer incident is currently attributed to these gaps, so this entry is
+not implementation authority. External evidence supports selective clarification, not maximal
+documentation. A CMU study found underspecified LLM prompts roughly twice as likely to regress across
+prompt/model changes, while also finding that naively adding every requirement does not reliably
+help ([Yang et al., 2025](https://arxiv.org/abs/2505.13360)). A function-level code-generation
+preprint found four ambiguity classes degraded every evaluated model and were not reliably detected
+by the models themselves ([Orchid, 2026](https://arxiv.org/abs/2604.21505)); neither study proves
+that a repository SDD workflow improves production delivery. Kiro added design-first and bug-fix
+routes after users reported its requirements-first flow was not flexible enough for brownfield work
+([Kiro, 2026](https://kiro.dev/blog/specs-bugfix-and-design-first/)). OpenSpec makes design
+conditional and permits an explicit no-behavior-spec path for refactors/tooling
+([schema](https://github.com/Fission-AI/OpenSpec/blob/main/schemas/spec-driven/schema.yaml)).
+Birgitta Böckeler's hands-on comparison found current SDD tools verbose for small work and still
+vulnerable to ignored or over-applied instructions
+([Thoughtworks, 2025](https://martinfowler.com/articles/exploring-gen-ai/sdd-3-tools.html)). These
+sources justify a bounded value test, not a universal gate.
+
+**Do — Phase 0, evidence before product change:**
+1. Run one static contract audit over five predeclared task cards — trivial, bug, refactor, ordinary
+   feature, and high-risk/cross-boundary — using the current tree and no provider. For each, record
+   the routed contract (`skip`, inline, or persistent), unresolved material questions, approval and
+   evidence obligations, contradiction/over-ceremony, and `cannot examine` separately from a pass or
+   failure.
+2. Read existing B-42 Module B and permitted maintainer evidence for threshold-attributable material
+   misses, helpful catches, rework, harm/noise, active minutes, and interventions. Treat it as
+   secondary, non-causal evidence. Do not change B-42's prompt, participant questions, response form,
+   or scoring; do not alter B-49's invalidated instrument or overload B-136's post-change scope; and
+   do not build another eval harness or spend provider credit solely for this item.
+3. Phase 0 ends after the five-card audit and the first available completed Module B record. If no
+   Module B exists by the next deliberate backlog re-triage, decide from the bounded static/current
+   evidence rather than leave this open indefinitely. Close with no shipped change if current rules
+   route the cards coherently and no observed record shows threshold-attributable material harm, or
+   if inspectable request/repository evidence cannot distinguish the proposed depths. Do not collapse
+   incomparable human cost and delivery harm into one score or tune toward a preferred verdict.
+
+**Candidate constraints, not a locked design or implementation authority:** if Phase 0 identifies a
+material, addressable gap, it may authorise a fresh proportionate design only. That design must extend
+the existing `/design -> /feature -> /review` path, fit a named size-neutral carrier displacement,
+and receive the required independent critique and separate implementation authority. No new command,
+CLI, state daemon, always-on router, or parallel spec hierarchy. Let the agent draft from request and
+repository evidence, ask one bounded batch only where human judgment can materially change the
+contract, keep short-lived contracts inline, and retain the existing persistent spec only where its
+cross-session/reviewer value exceeds maintenance cost. Candidate task depths are:
+
+- **trivial:** inline intent, exact target, and one observable completion check;
+- **bug:** reproduction/current behavior, expected behavior, behavior that must remain unchanged,
+  bounded fix scope, and the strongest available regression oracle;
+- **refactor:** preserved behavior, permitted structural change, and baseline/characterization
+  evidence;
+- **standard feature:** outcome, authorised users, goals/non-goals, observable rules and examples,
+  constraints, acceptance evidence, and material open questions;
+- **high-risk or cross-boundary:** the standard contract plus applicable security/data/NFR,
+  compatibility, migration, rollout/rollback, and observability decisions;
+- **exploration:** hypothesis, time/safety boundary, learning result, and explicit dispose, promote,
+  or follow-up decision — never a fictional complete implementation spec.
+
+Define **ready** as: intended outcome and human authority are known; scope and non-goals are bounded;
+observable success and consequential negative examples exist; the verification approach is known;
+and no unresolved question can materially change scope, chosen approach, or acceptance evidence.
+Connect `Draft`, explicit human `Approved`, `Implemented`, and review/ship transitions; record any
+implementation discovery that changes the contract before continuing; and let `/review` map each
+criterion to observed evidence or an explicit gap. The model may draft and recommend, but must not
+self-certify product intent, approval, specification quality, or delivery.
+
+**Not:** no full document for every request; no spec-as-source/generated-code-only model; no generic
+hard write gate that claims deterministic enforcement across surfaces; no inferred approval from
+silence or from an implementation request that does not unambiguously approve the displayed spec
+version; no exhaustive questionnaire; no requirement-to-test mechanical matrix that manufactures
+low-value tests; and no new persistent artifact type. Any later delivery closes with an RCA for
+why the existing plan/spec/review rails missed the demonstrated harm and which other task routes
+share the same exposure.
 
 ## Known deferred work (previously agreed, converted to entries so it survives handover)
 
