@@ -1,11 +1,16 @@
 # Standing decisions index
 
-This is an index of constraints already decided elsewhere. Follow the cited source; do not treat
-this file as a second statement of the decision or its reasoning.
+This is a curated index of standing constraints decided elsewhere, not an exhaustive inventory: a
+constraint written only inside a shipped artifact can be absent. Before locking a design that
+changes a shipped artifact, read its current authoring source under `src/` as well as this index.
+Follow the cited source; do not treat this file as a second statement of the decision or its
+reasoning.
 
-Citations name an **entry id**, never a line number: line numbers move on every edit to the
-backlog, and a citation that rots is worse than none. The hygiene gate resolves each quoted
-phrase inside the cited entry.
+Citations use stable WSD or backlog entry ids, never line numbers: line numbers move on every edit
+to the backlog, and a citation that rots is worse than none. The hygiene gate verifies that each
+cited source and stable id resolves. For backlog-entry citations it also verifies that the displayed
+phrase occurs inside the cited entry; WSD labels are curated summaries, and the cited WSD remains
+authoritative.
 
 - “Meta scripts are PowerShell-only.” — `meta/workspace-decisions.md WSD-005`
 - “Single-source composition; generated distributions are not authored.” — `meta/workspace-decisions.md WSD-012`
@@ -40,6 +45,8 @@ phrase inside the cited entry.
 - “Host evidence is capability-specific and recertification is evidence-triggered.” — `meta/workspace-decisions.md WSD-066`
 - “Specification readiness remains adaptive; Draft status is not human authority.” — `meta/workspace-decisions.md WSD-067`
 - “B-136 re-locks one size-negative reconciliation rule and nothing else” — `meta/workspace-decisions.md WSD-068`
+- “The standing-decisions index is curated meta guidance, not an exhaustive inventory of constraints embedded in shipped artifacts.” — `meta/workspace-decisions.md WSD-069`
+- “Unavailable team intent is not a gradable agent outcome; a direction-of-travel probe must grade asking or unresolved separately from canonizing legacy.” — `meta/workspace-decisions.md WSD-070`
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`

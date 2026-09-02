@@ -11299,6 +11299,176 @@ share the same exposure.
 
 ---
 
+### B-213 · Bootstrap cannot learn a convention's direction of travel, and its own rule suppresses the question
+
+> **CLOSED 2026-09-02 — proposed measurement is non-discriminating; no product change or B-213
+> provider-eval spend.** The customer-risk hypothesis remains unmeasured, not refuted; WSD-070
+> records why this experiment is rejected. The proposed `N`-legacy-plus-one-counter-example fixture
+> contradicts the uniformly applied world in the premise and already matches both current Phase-2b
+> question triggers. Removing the counter-example leaves the intended replacement unavailable to
+> the agent, so a binary artifact grader would reward guessing a hidden owner answer and reject the
+> legitimate ask/unresolved outcome. The existing one-shot non-interactive B-41 executor also cannot
+> complete bootstrap's deliberate developer checkpoints. The cited `39,511` static count is
+> accurate, but the bootstrap command body is on-demand rather than part of that gated total; it
+> does not support the original blanket budget claim.
+>
+> **Residual / reopen trigger.** Reopen only for a concrete supported-field incident where
+> bootstrap records an outgoing convention and the developer identifies the intended replacement
+> during bootstrap review or a subsequent supported task. The incident may expose missing
+> solicitation rather than ignored input, but that evidence must be recorded rather than held as a
+> private fixture answer. A separately constructible experiment must expose its signal to the model,
+> preserve ask/unresolved as a distinct valid outcome, and drive a named decision; it does not
+> retroactively validate this hidden-intent fixture.
+>
+> **RCA.** The proposed fixture was reviewed for plausibility but not checked against the exact
+> current Phase-2b branches or the executor's interaction contract. Its answer key described human
+> intent that its model-visible world deliberately withheld. The same class exposes any behavioral
+> probe whose fixture changes the premise, omits a legitimate abstention/question outcome, or asks
+> an artifact-only runner to cross an interactive checkpoint. Existing grader self-tests cannot
+> catch a wrong experimental world specified consistently in both fixture and grader.
+
+**Filed against:** v0.80.0 (2026-09-01)
+**Effort:** S (fixture + pre-registered probe) · M only if a shipped change is later justified ·
+**Priority:** P3 · raised 2026-09-01 by an adversarial review of four proposed value expansions,
+three of which that review rejected · **Invariants:** #1 #5
+
+**Why.** `/bootstrap` Phase 2b asks three question classes — convention *contradictions* (requires two
+conflicting patterns), *pattern intent* (requires a pattern applied inconsistently), and the .NET
+financial-domain scope question — capped at five questions, and states plainly: **"Do not ask about
+things determinable from code."**
+
+A *uniformly applied deprecated pattern* is one pattern, applied consistently, and it **is**
+determinable from code. It therefore matches no question class and is actively excluded by that
+rule. Bootstrap records it in `CLAUDE.md > Conventions` as the observed convention, and every
+subsequent task is steered toward it. On a large brownfield repository mid-migration — the shape the
+framework most wants to serve — the framework's contribution would then be to entrench the pattern
+the team is trying to leave.
+
+Direction of travel is non-derivable by construction: nothing in the repository states which of two
+patterns is the past. That places it in the one class where this framework has measured effects
+(`meta/BACKLOG-DONE.md B-98`, `r = 0/6 -> 6/6`, Fisher `p ~ 0.002`; and the B-119 dimension-binding
+arm, `regionOnFact` 2/2 -> 0/2).
+
+**Honest status — this does not yet clear the proportionality bar, and must not be built on argument.**
+There is **no observed instance**. No field report records it. Report #1 in `meta/field-reports.md`
+(xUnit asserted over an existing NUnit suite) is the *opposite* direction — the framework asserting a
+fact over repository evidence — and must not be cited as this defect. Maintenance model rule 6
+requires an already-observed harm before a larger fix locks; this entry exists to produce that
+observation or to retire the hypothesis, not to authorise a change.
+
+Partial mitigation already shipped, and it is why this is P3 rather than higher: Phase 4 asks the
+developer to verify the generated Conventions section. But only `<!-- INFERRED -->` items get an
+explicit per-item walkthrough; everything else is reviewed generically, and a convention that reads
+as accurately observed is exactly the kind a reviewer skims past.
+
+**Do — measurement first, in this order:**
+1. **Build the fixture.** A repository whose dominant pattern is deprecated (N files), with one
+   counter-example and no in-repo statement of intent. Reuse the B-41 harness; do not build a second
+   one (`meta/BACKLOG-DONE.md B-98`).
+2. **Red-test the grader offline** against a hand-written follows-the-majority artifact and a
+   hand-written follows-the-counter-example artifact, before any live run (`meta/BACKLOG-DONE.md
+   B-112`: every behavioural instrument built here was broken on its first draft).
+3. **Pre-register** the primary signal, the sample size, and the action threshold before the first
+   run, per B-160's closing instruction that future work start from a concrete missed outcome with a
+   task- and host-specific threshold. Name the world in which the measure would report success.
+4. **Only if the probe shows the agent following the majority**, design a remedy — and state the
+   proportionality case inside the critique, not after it.
+
+**Not:**
+- Do not add a Phase 2b question, a Conventions subsection, or any always-loaded rule before the
+  probe. Static context measures 39,511 of 40,000 chars for dotnet in `meta/context-footprint.json`;
+  B-158 closed the budget decision and there is no headroom to spend on an unmeasured hypothesis.
+- Do not pre-commit to a remedy shape. A carrier pointer, a bootstrap question, and a Phase-4 prompt
+  are all candidates; the probe should discriminate between them.
+- Do not widen this into general convention-quality measurement, or into a second field study.
+
+**Cross-links:** B-42 (independent value evidence; this is a maintainer-runnable probe and does not
+substitute for it), B-160 (the bar for skill/guidance work, and the read-shaped/write-shaped
+ranking), B-98 and WSD-032 (the carrier is the measured channel), B-112 (instruments that cannot
+fail), B-158 (no context headroom), `meta/field-reports.md` report #1 (the adjacent, opposite defect).
+
+---
+
+### B-214 · A decision recorded inside a shipped artifact is invisible to the standing-decisions index
+
+> **CLOSED 2026-09-02 — option (b) selected; meta-only, no shipped change.** WSD-069 records the
+> scope decision. `meta/decisions-index.md` now says it is curated rather than exhaustive, warns
+> that a constraint written only in a shipped artifact can be absent, and directs designers to the
+> affected artifact's current authoring source under `src/` before locking a change.
+>
+> **Proportionality.** Option (a) would need more than adding rows: the current hygiene checker only
+> recognizes `meta/` citations, while arbitrary shipped prose has neither stable decision ids nor a
+> machine-judgeable boundary between operative decisions and ordinary instructions. The bounded
+> source scan returned substantial stack duplication and non-decision noise. Closure red-testing
+> also showed that changing WSD-070's decision phrase while preserving its id left the suite at
+> 10/10. An audit found 22 of 35 WSD labels still do not match their sections after whitespace
+> normalization, so B-214's assertion that every displayed WSD phrase already resolves literally
+> was not the established contract. The preamble and test label now state the actual stable-id
+> boundary rather than imposing a 22-row rewrite and a new whitespace/Markdown normalization
+> contract. These two clarifications remove the false affordances without creating an
+> unmaintainable inventory or gate.
+>
+> **Residual / reopen trigger.** Reopen only after a repeated, attributable design miss survives
+> the explicit applicable-source-reading boundary. Before widening the index, define a stable
+> shipped-source locator and make the hygiene check validate it; curate only genuine standing
+> constraints.
+>
+> **RCA.** No gate caught the old preamble because its weakness was semantic: every indexed citation
+> resolved, but the file did not disclose what it omitted. The hygiene test's former name and the
+> index text also said all quoted phrases resolved even though its WSD branch has always validated
+> only the source and stable WSD id; established paraphrases made the overclaim easy to miss. The
+> same exposure applies to any curated register whose entries validate while its population or
+> validation boundary remains implicit. The proportionate control is to state both boundaries and
+> require reading the affected canonical source, not to claim exhaustive semantic discovery or a
+> new exact-copy contract.
+
+**Filed against:** v0.80.0 (2026-09-01)
+**Effort:** S · **Priority:** P3 · raised 2026-09-01 · **Invariants:** #6
+
+**Why.** `meta/decisions-index.md` exists because, in the words of root `CLAUDE.md` > Conventions,
+"decisions get made inside individual backlog entries and are then invisible to anyone not reading
+that entry". Its rows cite `meta/workspace-decisions.md` WSDs and `meta/BACKLOG-DONE.md` entries.
+Nothing in it covers a decision recorded **inline in a shipped artifact**, and its own preamble does
+not say so.
+
+**Observed instance, 2026-09-01 — the cost was paid before the gap was named.** A design review
+proposed adding an interactive confirmation interview for the four cross-repo sections of
+`FRAMEWORK-CONTEXT.md`, on the premise that they had no producer. Both halves were already settled
+in the shipped artifact: `/bootstrap` §3d-ter drafts all five sections from per-section repository
+evidence, and it closes by explicitly declining the proposed control — *"No interactive confirmation
+here — the drafts land in the PR diff where reviewers correct wrong content"*. `decisions-index.md`
+was read before the proposal was written and did not surface either fact; the proposal reached a
+recommendation and was withdrawn only under adversarial review.
+
+This is the same failure class the index was built to prevent, in a location the index does not
+claim. One instance is not a pattern, and the honest cheapest outcome may be (b) below.
+
+**Do — decide the scope before building anything:**
+1. **Decide what the index claims.** Two acceptable outcomes: **(a)** extend its scope to
+   shipped-artifact decisions and add rows for those that are genuinely standing constraints; or
+   **(b)** state the boundary in the file's preamble, so a reader knows to search `src/` as well
+   before locking a design. (b) is cheaper and may be sufficient.
+2. **If (a), size the population first.** A grep across `src/core/` and `src/stacks/` for declining
+   or superseding phrasing establishes how many such decisions exist before any commitment to
+   maintain rows for them.
+3. Either way the hygiene gate's *"decision-index sources and quoted phrases resolve"* check in
+   `.claude/hooks/tests/BacklogHygiene.Tests.ps1` must still pass: a quoted phrase has to resolve
+   inside the source it cites.
+
+**Not:**
+- Do not add rows for statements that are not standing constraints; an index that lists everything
+  surfaces nothing.
+- **Do not build a gate that scans shipped prose for decision-shaped sentences.** There is one
+  observed instance, judging whether prose constitutes a binding decision is a reading, and the
+  standing constraint from B-83 — *"do not try to make this a deterministic gate"* — already forbids
+  the machine-judgement half of exactly this problem. WSD-028 limits what a gate can honestly certify.
+
+**Cross-links:** B-83 (the adjacent, opposite direction: a backlog entry's *Do* contradicted by a
+later shipped decision — its id/ledger correlation would not have caught this, because an inline
+artifact decision carries no entry id and appears in no delivery ledger), WSD-028.
+
+---
+
 ### B-136 · Make affected framework artifacts part of completing an AI-authored change
 **Filed against:** v0.52.0 (2026-08-11)
 **Effort:** M · **Priority:** P2 · filed 2026-08-11 · **Invariants:** #1 #2 #7

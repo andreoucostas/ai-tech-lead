@@ -216,7 +216,7 @@ It 'archive pointers resolve to archived ids' {
         ([IO.File]::ReadAllText((Join-Path $repoRoot 'meta/BACKLOG-DONE.md'), [Text.Encoding]::UTF8))
 }
 
-It 'decision-index sources and quoted phrases resolve' {
+It 'decision-index sources and stable ids resolve; backlog phrases resolve' {
     Assert-DecisionIndex `
         ([IO.File]::ReadAllText((Join-Path $repoRoot 'meta/decisions-index.md'), [Text.Encoding]::UTF8)) `
         $repoRoot

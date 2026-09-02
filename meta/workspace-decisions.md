@@ -3153,3 +3153,89 @@ identified change that removes most of the observed contract gap.
 headroom as budget; raising the ceiling; moving the rule to a protected file; a 474-byte alternative
 with less margin and weaker artifact-specific wording; claiming B-98's reach result proves B-136
 compliance; or implementing during this design-only session.
+
+---
+
+## WSD-069: disclose the standing-decisions index boundary instead of indexing shipped prose (2026-09-02)
+
+**Context.** B-214 records a design review that proposed an interactive confirmation step for
+`FRAMEWORK-CONTEXT.md` because the standing-decisions index did not surface the existing producer or
+its review policy. The current `/bootstrap` authoring sources independently confirm both product
+facts: §3d-ter drafts all five context sections from repository evidence and explicitly declines an
+additional confirmation interview. The review sequence and time cost are recorded by B-214 but are
+not independently reconstructable from repository artifacts.
+
+The index currently points only to `meta/workspace-decisions.md` and completed backlog entries. Its
+hygiene check verifies each source and stable id; for completed-backlog citations it also verifies
+the displayed phrase, while WSD labels are curated summaries. During this closure, changing the
+WSD-070 decision wording while leaving its id intact kept the normal suite at 10/10. Of 35 current
+WSD rows, 6 labels match literally, 7 more match after whitespace normalization, and 22 still do
+not match after whitespace normalization. The index preamble and test name had therefore overstated
+the established contract; enforcing literal WSD labels now would create a 22-row semantic migration
+and a new Markdown and whitespace-normalization contract, not repair two new rows.
+
+Extending the index to arbitrary `src/` prose would likewise require a new stable citation contract
+and a deliberately red-tested checker change. A bounded phrase search across `src/` returned many
+ordinary instructions, historical changelog statements, and stack duplicates. Whether one sentence
+is a standing decision remains a reading, not an honest deterministic classification.
+
+**Decision.** **The standing-decisions index is curated meta guidance, not an exhaustive inventory
+of constraints embedded in shipped artifacts.** Its preamble must say that a shipped-artifact-only
+constraint can be absent and direct a designer to the affected artifact's current authoring source
+under `src/` before locking a change. Keep index rows as pointers to promoted meta decisions; do not
+duplicate or attempt to discover every operative instruction in shipped prose.
+Revisit a wider scope only after a repeated, attributable design miss survives that explicit
+source-reading boundary and a stable source citation can be validated.
+
+**Proportionality.** One preamble clarification and one test-label correction remove both false
+affordances exposed by the review without adding a parser, citation grammar, scan, recurring
+inventory, shipped byte, or release obligation. The existing citation-integrity check continues to
+validate the stable sources and ids the curated index actually claims, plus literal phrases for
+completed-backlog citations.
+
+**Rejected.** Treating the index as exhaustive; adding only the bootstrap sentence as a special-case
+row; converting the 22 nonmatching WSD labels into literal extracts; inventing a new normalization
+contract solely to make that conversion pass; widening the gate to accept unvalidated `src/`
+citations; scanning for decision-shaped prose; or indexing every `must`, `never`, decline, and
+supersession statement.
+
+---
+
+## WSD-070: reject B-213's hidden-intent direction-of-travel probe (2026-09-02)
+
+**Context.** B-213 hypothesised that bootstrap would canonize one uniformly applied deprecated
+pattern because its direction of travel is unavailable from code. Its proposed fixture did not
+instantiate that world: `N` legacy examples plus one counter-example are two conflicting patterns
+and make the recurring pattern inconsistently applied. Every current bootstrap twin already tells
+Phase 2b to ask the developer in both cases. Asking and stopping is therefore a legitimate current
+outcome omitted by the proposed majority-versus-counter-example artifact grader.
+
+Removing the counter-example restores uniformity but also removes repository evidence of the
+alternative and of which convention the team intends. A private owner answer can label the fixture
+for the grader but cannot make that intent available to the agent. The existing B-41 executor also
+runs one non-interactive `claude -p` process with session persistence disabled, while direct
+`/bootstrap` intentionally pauses for developer input at Phase 2b and Phase 3d-bis. Supplying
+"skip" tests the skip path; supplying the desired answer makes intent prompt-derivable; neither
+executes the filed experiment. No field report in the repository records the hypothesised harm.
+The cited `39,511` static count is current, but the bootstrap command body is classified as on-demand
+and is not part of that gated static total; it cannot support the original blanket budget claim.
+
+**Decision.** **Unavailable team intent is not a gradable agent outcome; a direction-of-travel probe
+must grade asking or unresolved separately from canonizing legacy.** Close B-213 without a fixture,
+live provider run, harness extension, or product change. Reopen it only for a concrete supported-
+field incident where bootstrap records an outgoing convention and the developer identifies the
+intended replacement during bootstrap review or a subsequent supported task. The incident may
+expose missing solicitation rather than ignored input, but the evidence must be recorded rather
+than held as a private fixture answer. A different constructible experiment may be filed separately
+only when its signal is available to the model and its result can drive a named decision; it does
+not make this hidden-intent premise true.
+
+**Proportionality.** Closure preserves the potentially valuable field symptom as a precise trigger
+while spending no provider credit on the proposed experiment and adding no scenario, grader,
+multi-turn executor, bootstrap question, always-loaded context, or recurring maintenance. B-42
+remains the route for balanced non-author value evidence when a participant exists.
+
+**Rejected.** The filed `N + 1` fixture; a binary artifact grader that fails a valid question;
+grading the agent against a hidden owner answer; treating B-98/B-119 guidance effects as evidence of
+this defect; extending the live harness solely to manufacture an unobserved harm; or shipping a
+direction-of-travel question before a supported-field incident.

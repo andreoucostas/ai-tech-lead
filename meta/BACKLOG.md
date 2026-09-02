@@ -50,54 +50,9 @@ the enforcement matrix gained the three missing capability rows. **B-35 shipped 
 **B-12 was already resolved — see `meta/BACKLOG-DONE.md`.** No open P3 items remain from the audit;
 post-audit P3 item B-29 (haiku adequacy evidence) is under "Known deferred work" (its sibling
 B-30 shipped in v0.25.4). **B-38, B-39 (both phases), B-36, and B-34 all shipped 2026-07-16 — see
-`meta/BACKLOG-DONE.md`. No open P3 items remain from the audit band.** Two post-audit P3 entries were
-filed 2026-09-01 and are recorded below (B-214) and in the strategic section (B-213).
-
-### B-214 · A decision recorded inside a shipped artifact is invisible to the standing-decisions index
-**Filed against:** v0.80.0 (2026-09-01)
-**Effort:** S · **Priority:** P3 · raised 2026-09-01 · **Invariants:** #6
-
-**Why.** `meta/decisions-index.md` exists because, in the words of root `CLAUDE.md` > Conventions,
-"decisions get made inside individual backlog entries and are then invisible to anyone not reading
-that entry". Its rows cite `meta/workspace-decisions.md` WSDs and `meta/BACKLOG-DONE.md` entries.
-Nothing in it covers a decision recorded **inline in a shipped artifact**, and its own preamble does
-not say so.
-
-**Observed instance, 2026-09-01 — the cost was paid before the gap was named.** A design review
-proposed adding an interactive confirmation interview for the four cross-repo sections of
-`FRAMEWORK-CONTEXT.md`, on the premise that they had no producer. Both halves were already settled
-in the shipped artifact: `/bootstrap` §3d-ter drafts all five sections from per-section repository
-evidence, and it closes by explicitly declining the proposed control — *"No interactive confirmation
-here — the drafts land in the PR diff where reviewers correct wrong content"*. `decisions-index.md`
-was read before the proposal was written and did not surface either fact; the proposal reached a
-recommendation and was withdrawn only under adversarial review.
-
-This is the same failure class the index was built to prevent, in a location the index does not
-claim. One instance is not a pattern, and the honest cheapest outcome may be (b) below.
-
-**Do — decide the scope before building anything:**
-1. **Decide what the index claims.** Two acceptable outcomes: **(a)** extend its scope to
-   shipped-artifact decisions and add rows for those that are genuinely standing constraints; or
-   **(b)** state the boundary in the file's preamble, so a reader knows to search `src/` as well
-   before locking a design. (b) is cheaper and may be sufficient.
-2. **If (a), size the population first.** A grep across `src/core/` and `src/stacks/` for declining
-   or superseding phrasing establishes how many such decisions exist before any commitment to
-   maintain rows for them.
-3. Either way the hygiene gate's *"decision-index sources and quoted phrases resolve"* check in
-   `.claude/hooks/tests/BacklogHygiene.Tests.ps1` must still pass: a quoted phrase has to resolve
-   inside the source it cites.
-
-**Not:**
-- Do not add rows for statements that are not standing constraints; an index that lists everything
-  surfaces nothing.
-- **Do not build a gate that scans shipped prose for decision-shaped sentences.** There is one
-  observed instance, judging whether prose constitutes a binding decision is a reading, and the
-  standing constraint from B-83 — *"do not try to make this a deterministic gate"* — already forbids
-  the machine-judgement half of exactly this problem. WSD-028 limits what a gate can honestly certify.
-
-**Cross-links:** B-83 (the adjacent, opposite direction: a backlog entry's *Do* contradicted by a
-later shipped decision — its id/ledger correlation would not have caught this, because an inline
-artifact decision carries no entry id and appears in no delivery ledger), WSD-028.
+`meta/BACKLOG-DONE.md`. No open P3 items remain from the audit band.** Post-audit entries B-213 and
+B-214 were closed 2026-09-02 after premise and proportionality review; see
+`meta/BACKLOG-DONE.md`.
 
 
 ## Strategic backlog — post-Fable horizon (added 2026-07-17, Fable strategic review)
@@ -110,9 +65,9 @@ artifact decision carries no entry id and appears in no delivery ledger), WSD-02
 > evidence, no legal basis for consumption, one-time host verifications going stale, and a
 > maintenance process calibrated to a frontier-model reviewer.
 >
-> **CURRENT PRIORITIES REVALIDATED 2026-09-01 for v0.80.0 — deliberate, not file order.**
-> B-42 and B-49 remain the open strategic items; B-213 (P3) was filed 2026-09-01 as a
-> measurement, not a build, and B-214 (P3) is process hygiene. B-42 has three non-author issue reporters but
+> **CURRENT PRIORITIES REVALIDATED 2026-09-02 for v0.80.0 — deliberate, not file order.**
+> B-42 and B-49 remain the open strategic items. B-213 and B-214 were closed 2026-09-02 after
+> premise and proportionality review; see `meta/BACKLOG-DONE.md`. B-42 has three non-author issue reporters but
 > still zero balanced, independent FS2 Module A pairs; run one when a participant exists and let that evidence
 > reorder the backlog. B-49 is hard-deferred because WSD-062 invalidated its current instrument;
 > no provider work is authorised until a current target, executable oracles, isolation, canaries,
@@ -379,67 +334,6 @@ failures: one hard checklist failure = a defect entry, regardless of the rubric 
 > primary outcome contract; its results must not be aggregated with FS1 or the B-49 quarterly
 > series. The older requirement that both populations share one composite rubric is therefore
 > superseded for B-42, not silently imposed on the redesigned field pilot.
-
-### B-213 · Bootstrap cannot learn a convention's direction of travel, and its own rule suppresses the question
-**Filed against:** v0.80.0 (2026-09-01)
-**Effort:** S (fixture + pre-registered probe) · M only if a shipped change is later justified ·
-**Priority:** P3 · raised 2026-09-01 by an adversarial review of four proposed value expansions,
-three of which that review rejected · **Invariants:** #1 #5
-
-**Why.** `/bootstrap` Phase 2b asks three question classes — convention *contradictions* (requires two
-conflicting patterns), *pattern intent* (requires a pattern applied inconsistently), and the .NET
-financial-domain scope question — capped at five questions, and states plainly: **"Do not ask about
-things determinable from code."**
-
-A *uniformly applied deprecated pattern* is one pattern, applied consistently, and it **is**
-determinable from code. It therefore matches no question class and is actively excluded by that
-rule. Bootstrap records it in `CLAUDE.md > Conventions` as the observed convention, and every
-subsequent task is steered toward it. On a large brownfield repository mid-migration — the shape the
-framework most wants to serve — the framework's contribution would then be to entrench the pattern
-the team is trying to leave.
-
-Direction of travel is non-derivable by construction: nothing in the repository states which of two
-patterns is the past. That places it in the one class where this framework has measured effects
-(`meta/BACKLOG-DONE.md B-98`, `r = 0/6 -> 6/6`, Fisher `p ~ 0.002`; and the B-119 dimension-binding
-arm, `regionOnFact` 2/2 -> 0/2).
-
-**Honest status — this does not yet clear the proportionality bar, and must not be built on argument.**
-There is **no observed instance**. No field report records it. Report #1 in `meta/field-reports.md`
-(xUnit asserted over an existing NUnit suite) is the *opposite* direction — the framework asserting a
-fact over repository evidence — and must not be cited as this defect. Maintenance model rule 6
-requires an already-observed harm before a larger fix locks; this entry exists to produce that
-observation or to retire the hypothesis, not to authorise a change.
-
-Partial mitigation already shipped, and it is why this is P3 rather than higher: Phase 4 asks the
-developer to verify the generated Conventions section. But only `<!-- INFERRED -->` items get an
-explicit per-item walkthrough; everything else is reviewed generically, and a convention that reads
-as accurately observed is exactly the kind a reviewer skims past.
-
-**Do — measurement first, in this order:**
-1. **Build the fixture.** A repository whose dominant pattern is deprecated (N files), with one
-   counter-example and no in-repo statement of intent. Reuse the B-41 harness; do not build a second
-   one (`meta/BACKLOG-DONE.md B-98`).
-2. **Red-test the grader offline** against a hand-written follows-the-majority artifact and a
-   hand-written follows-the-counter-example artifact, before any live run (`meta/BACKLOG-DONE.md
-   B-112`: every behavioural instrument built here was broken on its first draft).
-3. **Pre-register** the primary signal, the sample size, and the action threshold before the first
-   run, per B-160's closing instruction that future work start from a concrete missed outcome with a
-   task- and host-specific threshold. Name the world in which the measure would report success.
-4. **Only if the probe shows the agent following the majority**, design a remedy — and state the
-   proportionality case inside the critique, not after it.
-
-**Not:**
-- Do not add a Phase 2b question, a Conventions subsection, or any always-loaded rule before the
-  probe. Static context measures 39,511 of 40,000 chars for dotnet in `meta/context-footprint.json`;
-  B-158 closed the budget decision and there is no headroom to spend on an unmeasured hypothesis.
-- Do not pre-commit to a remedy shape. A carrier pointer, a bootstrap question, and a Phase-4 prompt
-  are all candidates; the probe should discriminate between them.
-- Do not widen this into general convention-quality measurement, or into a second field study.
-
-**Cross-links:** B-42 (independent value evidence; this is a maintainer-runnable probe and does not
-substitute for it), B-160 (the bar for skill/guidance work, and the read-shaped/write-shaped
-ranking), B-98 and WSD-032 (the carrier is the measured channel), B-112 (instruments that cannot
-fail), B-158 (no context headroom), `meta/field-reports.md` report #1 (the adjacent, opposite defect).
 
 **B-50 is DONE (2026-08-20) — an isolated three-arm canary confirmed the channel on CLI 1.0.80 and both stale passages are reconciled; see `meta/BACKLOG-DONE.md`.**
 
