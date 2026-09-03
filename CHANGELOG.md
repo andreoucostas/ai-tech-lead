@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.81.0 — Unreleased
+## 0.81.0 — 2026-09-03
 
 **Consumer application verification no longer mistakes the framework's maintainer hook suite for
 the repository's tests.** B-215/WSD-071 keeps `tests/hooks/**` in source and composed distributions

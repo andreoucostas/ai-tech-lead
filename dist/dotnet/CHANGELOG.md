@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.81.0 — Unreleased
+## 0.81.0 — 2026-09-03
 
 - Framework-maintainer hook tests are no longer installed under `tests/hooks/`, preventing them
   from being selected or reported as your application's test suite. Existing known-clean copies
