@@ -3239,3 +3239,44 @@ remains the route for balanced non-author value evidence when a participant exis
 grading the agent against a hidden owner answer; treating B-98/B-119 guidance effects as evidence of
 this defect; extending the live harness solely to manufacture an unobserved harm; or shipping a
 direction-of-travel question before a supported-field incident.
+
+---
+
+## WSD-071: framework-maintainer tests stay in distributions, not consumer verification (2026-09-03)
+
+**Context.** A real consumer-repository session selected the installed framework-owned
+`tests/hooks/Invoke-HookTests.ps1` as the application's test suite. The resulting green run can hide
+that no application tests ran, wastes execution, and can be persisted by bootstrap's broad command
+inventory. The suite is required by template/release CI, but `template-checks` already skips an
+absent `tests/hooks` directory and consumer CI guidance names `docs-sync-check` instead.
+
+**Decision.** **Framework-maintainer tests stay in source and composed distributions but do not
+install into consumers or evidence application verification.** Exclude `tests/hooks/**` from the
+installed ownership manifests and retire prior known-clean installed copies through the existing
+content-qualified ledger; preserve modified, unsafe, or unverifiable content. The always-loaded
+ownership rule and bootstrap/rebootstrap command discovery must reject framework-owned and retired
+artifacts as evidence for application build, test, format, lint, migration/deploy, or
+data-validation. Explicit framework workflows and developer-requested diagnosis remain allowed and
+are reported separately. `docs-sync-check -> template-checks` remains the consumer framework-state
+gate.
+
+This narrowly supersedes B-157's inference that template-CI use makes consumer installation
+load-bearing. It preserves B-157/WSD-043's ownership model and does not remove the suites from dist.
+Reconsider consumer-local hook diagnostics only for current evidence of a supported consumer CI,
+support runbook, or field need that the doctor and framework-state checks cannot meet.
+
+**Independent review.** A fresh-context `gpt-5.5` reviewer first built a blind threat model, then
+returned `REVISE` on the guarded-runtime candidate. It identified false-green reporting,
+aggregate/leaf bypasses, context-shape cases, normalized stale-command variants, and narrow
+supersession as required constraints. When challenged with the verified optional scan and dist-only
+template-CI boundary, it corrected its recommendation to structural non-installation. The review
+edited no files; implementation and runtime evidence did not yet exist.
+
+**Proportionality.** One excluded prefix plus the existing retirement mechanism removes the
+misleading executable tree while retaining maintainer coverage. One ownership rule and bounded
+discovery filter cover preserved remnants and stale protected commands. A new skill, router, CI
+leg, framework, relocation, or runtime refusal protocol is unnecessary.
+
+**Rejected.** Documentation-only warnings; keeping the installed tree behind a default refusal;
+removing the suite from dist; a new testing skill/router; treating a green framework check as
+application coverage; or weakening safe-retirement preservation.

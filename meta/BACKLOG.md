@@ -34,8 +34,6 @@ dead (feeds B-08 matrix rows + B-09 post-write demotion) and the folder-trust pr
 `framework-doctor` (B-16). The B-01 optional guard hardening was deferred by decision (see `meta/BACKLOG-DONE.md`).
 **B-37 (post-ship review of v0.27.0) shipped in v0.27.1 (2026-07-16) — see `meta/BACKLOG-DONE.md`.**
 
----
-
 ## P2 — gates that lie by omission (drift they were built to catch passes silently)
 
 **All P2 items (B-04…B-09) shipped in v0.25.2 (2026-07-04) — see `meta/BACKLOG-DONE.md`.** The

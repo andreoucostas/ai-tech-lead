@@ -336,6 +336,10 @@ $manifestPath = Join-Path $DIST 'framework-ownership.json'
 $paths = New-Object System.Collections.Generic.List[object]
 foreach ($rel in @((Get-RelativeFiles $DIST) | Sort-Object)) {
     if ($rel -in $notInstalled) { continue }
+    # tests/hooks/** stays in every composed dist for maintainer and template CI, but is not a
+    # consumer artifact: it must never enter framework-ownership.json, so installers never copy it
+    # and its historical bytes are retired via framework-retirements.json (B-215 Slice A).
+    if ($rel -eq 'tests/hooks' -or $rel.StartsWith('tests/hooks/')) { continue }
     if ($rel -eq '.claude/settings.json') { $ownership = 'mixed' }
     elseif ($rel -in $psProtected -or $rel -in $extraProtected) { $ownership = 'consumer-owned/protected' }
     else { $ownership = 'framework-owned/overwritten' }

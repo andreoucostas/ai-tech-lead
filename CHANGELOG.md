@@ -11,6 +11,22 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.81.0 — Unreleased
+
+**Consumer application verification no longer mistakes the framework's maintainer hook suite for
+the repository's tests.** B-215/WSD-071 keeps `tests/hooks/**` in source and composed distributions
+for template/release CI but excludes it from consumer ownership manifests. Updates retire every
+known-clean historical copy through the content-qualified ledger while preserving modified,
+unknown, unsafe, or unverifiable paths. The always-loaded carrier and all bootstrap/rebootstrap
+profiles now exclude framework-owned and retired aggregate/direct commands—including normalized
+separator, quoting, and wrapper variants—from the application Verification Commands inventory;
+explicit framework checks remain separately reported.
+
+The design was formed from an observed consumer incident and reviewed blind-first in a fresh
+context. The reviewer initially preferred guarded retention, then reversed that conclusion after
+the optional `template-checks` scan and dist-only template-CI boundary were reverified. Structural
+delivery and deterministic install behavior are in scope; model compliance remains unmeasured.
+
 ## 0.80.0 — 2026-09-01
 
 **Completing a change now includes reconciling the repository truth that change affects.**

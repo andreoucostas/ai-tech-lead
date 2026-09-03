@@ -177,8 +177,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17798,
-          "tok": 4450
+          "chars": 18223,
+          "tok": 4556
         },
         {
           "path": "CLAUDE.md",
@@ -194,13 +194,13 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17798,
-          "tok": 4450
+          "chars": 18223,
+          "tok": 4556
         },
         {
           "path": "AGENTS.md",
-          "chars": 22701,
-          "tok": 5675
+          "chars": 23126,
+          "tok": 5782
         }
       ],
       "instructed": [
@@ -226,8 +226,8 @@
         },
         {
           "path": "docs/ci-integration.md",
-          "chars": 7830,
-          "tok": 1958
+          "chars": 8126,
+          "tok": 2032
         },
         {
           "path": "docs/defaults.md",
@@ -357,8 +357,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 41960,
-          "tok": 10490
+          "chars": 42559,
+          "tok": 10640
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -397,8 +397,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 14563,
-          "tok": 3641
+          "chars": 15084,
+          "tok": 3771
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -641,8 +641,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17652,
-          "tok": 4413
+          "chars": 18077,
+          "tok": 4519
         },
         {
           "path": "CLAUDE.md",
@@ -658,13 +658,13 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17652,
-          "tok": 4413
+          "chars": 18077,
+          "tok": 4519
         },
         {
           "path": "AGENTS.md",
-          "chars": 23258,
-          "tok": 5814
+          "chars": 23683,
+          "tok": 5921
         }
       ],
       "instructed": [
@@ -690,8 +690,8 @@
         },
         {
           "path": "docs/ci-integration.md",
-          "chars": 7672,
-          "tok": 1918
+          "chars": 7968,
+          "tok": 1992
         },
         {
           "path": "docs/defaults.md",
@@ -821,8 +821,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 35144,
-          "tok": 8786
+          "chars": 35743,
+          "tok": 8936
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -861,8 +861,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 13439,
-          "tok": 3360
+          "chars": 13957,
+          "tok": 3489
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -1125,8 +1125,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 19655,
-          "tok": 4914
+          "chars": 20080,
+          "tok": 5020
         },
         {
           "path": "CLAUDE.md",
@@ -1142,13 +1142,13 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 19655,
-          "tok": 4914
+          "chars": 20080,
+          "tok": 5020
         },
         {
           "path": "AGENTS.md",
-          "chars": 26354,
-          "tok": 6588
+          "chars": 26779,
+          "tok": 6695
         }
       ],
       "instructed": [
@@ -1174,8 +1174,8 @@
         },
         {
           "path": "docs/ci-integration.md",
-          "chars": 7898,
-          "tok": 1974
+          "chars": 8194,
+          "tok": 2048
         },
         {
           "path": "docs/defaults.md",
@@ -1305,8 +1305,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 49569,
-          "tok": 12392
+          "chars": 50168,
+          "tok": 12542
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1345,8 +1345,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 16148,
-          "tok": 4037
+          "chars": 16668,
+          "tok": 4167
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -1453,30 +1453,30 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 39511,
-      "static.claude.tok": 9878,
-      "static.copilot.chars": 44443,
-      "static.copilot.tok": 11111,
+      "static.claude.chars": 39936,
+      "static.claude.tok": 9984,
+      "static.copilot.chars": 45293,
+      "static.copilot.tok": 11323,
       "prompt.max.chars": 3008,
       "prompt.max.tok": 752
     },
     "angular": {
-      "static.claude.chars": 38034,
-      "static.claude.tok": 9508,
-      "static.copilot.chars": 45344,
-      "static.copilot.tok": 11336,
+      "static.claude.chars": 38459,
+      "static.claude.tok": 9615,
+      "static.copilot.chars": 46194,
+      "static.copilot.tok": 11548,
       "prompt.max.chars": 3078,
       "prompt.max.tok": 770
     },
     "monorepo": {
-      "static.claude.chars": 47027,
-      "static.claude.tok": 11757,
-      "static.copilot.chars": 52238,
-      "static.copilot.tok": 13060,
+      "static.claude.chars": 47452,
+      "static.claude.tok": 11863,
+      "static.copilot.chars": 53088,
+      "static.copilot.tok": 13272,
       "prompt.max.chars": 3423,
       "prompt.max.tok": 856
     },
-    "monorepo-claude-ratio-permille": 1190
+    "monorepo-claude-ratio-permille": 1188
   },
   "_notes": [
     "Claude frontmatter is a stable over-approximation of harness injection.",

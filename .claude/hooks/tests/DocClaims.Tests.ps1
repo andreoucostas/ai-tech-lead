@@ -213,6 +213,34 @@ function Assert-OnboardingMemoryContracts {
     }
 }
 
+function Assert-VerificationOwnershipContracts {
+    param([object[]]$DistEntries)
+    foreach ($dist in $DistEntries) {
+        foreach ($relative in @(
+            '.github/instructions/framework-rules.instructions.md',
+            'AGENTS.md',
+            '.claude/commands/bootstrap.md',
+            '.claude/commands/rebootstrap.md'
+        )) {
+            $path = Join-Path $dist.Root $relative
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "verification ownership carrier is missing in $($dist.Name): $relative" }
+            $text = Read-Utf8Text $path
+            foreach ($required in @('framework-owned/overwritten', 'framework-retirements.json', 'application-command evidence', 'report framework checks separately')) {
+                if ($text.IndexOf($required, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+                    throw "verification ownership carrier $($dist.Name)/$relative omits '$required'"
+                }
+            }
+            if ($relative -match 'bootstrap\.md$') {
+                foreach ($required in @('normalize', 'quoted', 'direct leaf', 'do not run')) {
+                    if ($text.IndexOf($required, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+                        throw "verification ownership workflow $($dist.Name)/$relative omits '$required'"
+                    }
+                }
+            }
+        }
+    }
+}
+
 function Assert-MatureArchitecturePreservation {
     param([object[]]$DistEntries)
     foreach ($dist in $DistEntries) {
@@ -346,6 +374,10 @@ It 'bootstrap workflows do not turn finite debt into the Boy Scout list' {
 
 It 'onboarding preserves debt dismissals and excludes framework-owned skill evidence' {
     Assert-OnboardingMemoryContracts -DistEntries $distEntries
+}
+
+It 'verification discovery excludes framework-owned and retired command evidence' {
+    Assert-VerificationOwnershipContracts -DistEntries $distEntries
 }
 
 It 'adoption screens mature architecture docs in place without re-deriving them' {

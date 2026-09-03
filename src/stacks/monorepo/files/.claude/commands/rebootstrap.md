@@ -21,10 +21,16 @@ Before doing anything else:
 
 2. **Confirm git is available** — this command uses git history to focus analysis. If the repo has no commits, skip the git log step and proceed with a full scan.
 
-3. **Re-select profiles from the Git root** — apply `/bootstrap`'s current shared evidence rules
-   again; do not carry a profile forward merely because this distribution is installed. Partial-
-   stack and warehouse-only repositories are valid. Refresh the six-row Verification Commands
-   inventory only from current evidence, preserving explicit `not available` rows.
+3. **Re-select profiles and command ownership from the Git root** — apply `/bootstrap`'s current
+   shared evidence rules again; do not carry a profile forward merely because this distribution is
+   installed. Before refreshing commands, require valid `framework-ownership.json` and
+   `framework-retirements.json`; resolve wrapper targets and normalize quoted paths, leading `./` or
+   `.\`, and slash direction. An aggregate runner or direct leaf that is
+   `framework-owned/overwritten` or retired is framework evidence, not application-command evidence:
+   do not run or retain it; report framework checks separately. Replace every stale Verification Commands
+   row; outside this remediation, flag `/rebootstrap`. Partial-stack and warehouse-only repositories
+   are valid. Refresh the six-row inventory only from current eligible evidence, preserving explicit
+   `not available` rows.
 
 4. **Establish ownership and dismissal boundaries** — require a valid root `framework-ownership.json` `paths` inventory and exclude every `framework-owned/overwritten` path from shared A8 evidence. A `mixed` path may contribute only consumer-authored evidence corroborated outside framework-owned paths. Read and freeze every row under `TECH_DEBT.md > ## Dismissed proposals` before analysis.
 

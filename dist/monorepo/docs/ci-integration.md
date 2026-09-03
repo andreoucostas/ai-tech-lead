@@ -38,6 +38,11 @@ mirrors current, version stamps in sync, hook twins and BOM intact (via `templat
 **What it does *not* do: gate your code.** A commit with a hardcoded secret, a skipped test, a
 suppressed warning, an `fdescribe`, or an `eslint-disable` passes leg 1. That is leg 2's job.
 
+The framework-maintainer `tests/hooks/` suite is retained in the downloadable distribution for its
+own release CI but is not installed into consumer repositories. A leftover copy from an older
+installation is retired framework evidence, not an application-test command; do not use it for
+leg 2.
+
 ### Leg 2 — code-standards gate (your toolchain)
 
 Use the exact build, test, format, lint, migration/deploy, and data-validation commands recorded by

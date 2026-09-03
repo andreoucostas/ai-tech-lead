@@ -190,6 +190,10 @@ new_temp_file; tmp_paths=$new_temp
 # the two composers order an identical path set differently and emit byte-different manifests.
 (cd "$DIST" && find . -type f | sed 's#^\./##' | LC_ALL=C sort) | while IFS= read -r rel; do
   case " $ps_meta scripts/install.ps1 scripts/install.sh .github/workflows/template-ci.yml " in *" $rel "*) continue;; esac
+  # tests/hooks/** stays in every composed dist for maintainer and template CI, but is not a
+  # consumer artifact: it must never enter framework-ownership.json, so installers never copy it
+  # and its historical bytes are retired via framework-retirements.json (B-215 Slice A).
+  case "$rel" in tests/hooks/*) continue;; esac
   if [ "$rel" = '.claude/settings.json' ]; then ownership='mixed'
   else
     case " $ps_protected $ps_persistent docs/wiki/INDEX.md LICENSES/ai-tech-lead-MIT.txt " in

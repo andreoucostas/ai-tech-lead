@@ -11582,3 +11582,34 @@ the first instrument positioned before implementation. The same class exposes an
 plan that treats headroom as permission or postpones exact wording until build time. WSD-055's named-
 displacement rule and this frozen candidate move the evidence before implementation; a generic prose-
 quality gate would not honestly judge the ownership or proportionality semantics.
+
+---
+
+### B-215 · Framework hook tests are misclassified as the consumer application's test suite
+
+**Filed against:** v0.80.0 (2026-09-03)
+**Effort:** M · **Priority:** P1 · observed by the maintainer in a consumer repository ·
+**Invariants:** #1, #2, #3, #5, #6, #7
+
+> **IMPLEMENTED AND CLOSED 2026-09-03 for v0.81.0.** The 23 framework-maintainer hook-test files
+> remain in every distribution for template and release CI, but no longer enter a consumer
+> ownership manifest or greenfield install. The cumulative retirement ledger covers all 99 distinct
+> historical blobs found for those paths across the 79 version tags: known-clean update copies are
+> removed, while consumer-modified copies survive with `CANT-VERIFY`. Always-loaded guidance and
+> bootstrap/rebootstrap now exclude active framework-owned and retired paths from application
+> command evidence and keep framework checks separately reported. WSD-071 records the boundary.
+
+**Implementation evidence:** `B215OwnershipBoundary.Tests.ps1` first observed the pre-change
+ownership boundary red, then passed eight cases across both installer twins: distribution/template-
+CI retention, exact ledger coverage, greenfield absence, clean-update retirement, and modified-file
+preservation. `DocClaims.Tests.ps1` observed the missing ownership rule red and then passed 9/9.
+Both composers produced byte-identical dotnet, angular, and monorepo distributions; independent hash
+enumeration reproduced 23 paths and 99 distinct SHA-256 values.
+
+**RCA:** Existing gates proved the hook suite was present, executable, mirrored, and green; none
+asked whether an executable framework artifact should enter the consumer application's command
+inventory. B-157 treated distribution availability and consumer installation as one boundary, and
+broad command discovery then treated a conventional `tests/` path as application evidence. The same
+class exposed any framework-owned runner, wrapper, configuration, or retired residue that resembles
+a consumer command. The repair separates dist CI from install ownership, retires only content whose
+historical identity is known, and makes ownership—not path shape—the command-evidence boundary.

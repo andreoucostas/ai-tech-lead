@@ -47,6 +47,7 @@ authoritative.
 - “B-136 re-locks one size-negative reconciliation rule and nothing else” — `meta/workspace-decisions.md WSD-068`
 - “The standing-decisions index is curated meta guidance, not an exhaustive inventory of constraints embedded in shipped artifacts.” — `meta/workspace-decisions.md WSD-069`
 - “Unavailable team intent is not a gradable agent outcome; a direction-of-travel probe must grade asking or unresolved separately from canonizing legacy.” — `meta/workspace-decisions.md WSD-070`
+- “Framework-maintainer tests stay in distributions but do not install into consumers or evidence application verification.” — `meta/workspace-decisions.md WSD-071`
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`

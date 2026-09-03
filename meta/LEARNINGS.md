@@ -2031,3 +2031,17 @@ look unaffected. The durable rule is causal—update writable canonical truth th
 stale, regenerate derivatives from source, and preserve artifact-specific boundaries. The exact
 470-byte source block, its seven-byte reduction, composition, and structural gates prove delivery
 only. Behavioral compliance remains **UNMEASURED**.
+
+## 2026-09-03 — Distribution availability and consumer installation are separate boundaries
+
+A file can be load-bearing for template or release CI without belonging in an installed consumer
+repository. Treating those two facts as one boundary put the framework's own executable hook suite
+under a conventional `tests/` path in consumer projects, where command discovery could reasonably
+misclassify it as application evidence. Keeping the suite in each distribution while excluding it
+from the ownership manifest preserves maintainer assurance and removes the greenfield trigger.
+
+Removing a path from the next manifest is not enough for updates. Safe convergence needs cumulative,
+content-qualified retirement across every supported historical blob, preservation plus an explicit
+inability result for modified residues, and model-facing discovery rules that consult both active
+ownership and retirement metadata. Path names describe shape; ownership establishes whose command a
+runner can evidence.

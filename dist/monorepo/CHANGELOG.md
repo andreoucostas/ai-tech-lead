@@ -5,6 +5,15 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.81.0 — Unreleased
+
+- Framework-maintainer hook tests are no longer installed under `tests/hooks/`, preventing them
+  from being selected or reported as your application's test suite. Existing known-clean copies
+  are removed on update; locally changed or unverifiable copies are preserved and reported.
+- Verification-command discovery now excludes framework-owned and retired commands, including
+  wrapped or differently quoted/path-separated forms. Explicit framework checks remain available
+  through their documented workflows and are reported separately from application verification.
+
 ## 0.80.0 — 2026-09-01
 
 - The shared Agentic Workflow now makes reconciliation of affected repository truth part of
