@@ -1,6 +1,6 @@
 # B-219 — Windows-only, PowerShell-only framework consolidation
 
-**Status:** IMPLEMENTED AND INDEPENDENTLY REVIEWED; v0.83.0 release pending.
+**Status:** COMPLETE — v0.83.0 released, all eight Windows CI contexts green, and tag confirmed.
 **Base:** v0.82.0 (`5b918fb`), released and CI-green before this work begins.
 
 ## Decision
@@ -228,3 +228,11 @@ actionable Medium finding. It independently recomputed the added exception diges
 guard's model of exactly 7 outgoing commits and 401 added/changed/modified/renamed blobs. Its scope
 was deliberately narrow; it did not repeat the already-observed full suites or perform the live
 remote push, hosted CI, or tag operation reserved for the release workflow.
+
+The release workflow stamped and committed v0.83.0 at `4f9357f`, scanned the complete outgoing
+range (9 commits, 421 changed blobs, all clean), confirmed `origin/master`, and observed all eight
+required Windows contexts green in GitHub Actions run 33907806431. It then checked the already-
+pushed release revision (1 commit, 19 changed blobs, all clean), created `v0.83.0`, pushed the tag,
+and confirmed it on origin. No release or CI waiver was used; live model evals were intentionally
+skipped because the required client canaries were already recorded and this delivery was conserving
+model credits.

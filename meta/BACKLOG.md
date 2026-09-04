@@ -34,35 +34,6 @@ dead (feeds B-08 matrix rows + B-09 post-write demotion) and the folder-trust pr
 `framework-doctor` (B-16). The B-01 optional guard hardening was deferred by decision (see `meta/BACKLOG-DONE.md`).
 **B-37 (post-ship review of v0.27.0) shipped in v0.27.1 (2026-07-16) — see `meta/BACKLOG-DONE.md`.**
 
-### B-219 · Retire Bash and make the framework Windows/PowerShell-only
-**Filed against:** v0.82.0 (2026-09-04)
-**Priority:** P1 · **Effort:** L · **Invariants:** #1 #2 #3 #4 #5 #6 #7
-
-> **IMPLEMENTATION COMPLETE FOR v0.83.0; RELEASE/CI/TAG PENDING.** Locked contract and detailed
-> implementation/review evidence:
-> `.claude/plans/2026-09-04-b219-windows-powershell-only-consolidation.md`.
-
-**Problem.** The framework is operated only on Windows, but it maintained 80 active `.sh` files,
-two shell-only maintainer Git-hook launchers, Linux CI, dual-language registrations, portable
-provider examples, two composers, and parity/error machinery. That surface repeatedly produced
-Windows-host gaps and doubled the cost of every hook, installer and gate change without exercising
-a supported deployment. Simply deleting it was unsafe: prior consumers can own stock or modified
-shell files, an unowned pre-commit hook can depend on retired helpers, and old PS5 test runners
-silently upgraded their children to PS7.
-
-**Implemented.** Native Windows is the sole supported host, with PS7 primary and PS5.1 fallback.
-Active Bash, Linux CI and dual-language registration are gone; four inert canaries remain. Safe
-content-qualified retirement preserves and durably diagnoses consumer-owned or unverifiable legacy
-content. Maintainer pushes are protected by the new whole-commit PowerShell guard. Both supported
-hosts passed byte-identical 32-suite/308-case root manifests, all three rebuilt distributions passed
-both hosts, live client canaries are recorded, and the requested Terra then Claude Opus/xhigh review
-chain was incorporated. The final Terra pass approved the NUL correction and found only this record
-had been closed before its release existed; B-219 therefore remains open until release observes all
-eight CI contexts and pushes the v0.83.0 tag.
-
-**Done when.** v0.83.0 is pushed, all eight Windows CI contexts are observed green, the tag is
-pushed, and this entry moves to `BACKLOG-DONE.md` with the release evidence and RCA.
-
 ### B-220 · Remove the retired `-GitHooks` compatibility parameter in v0.84
 **Filed against:** v0.83.0 (2026-09-04)
 **Priority:** P2 · **Effort:** S · **Invariants:** #1 #6 #7
