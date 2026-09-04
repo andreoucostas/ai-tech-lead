@@ -62,22 +62,33 @@ function Add-Commit($Fixture, [string]$Path, [string]$Text, [string]$Subject, [b
     $null = Invoke-Git $Fixture.Work @('commit','-q','-m',$Subject)
 }
 
+function Quote-ProcessArgument([string]$Value) {
+    if ($Value -notmatch '[\s"]') { return $Value }
+    $escaped = [regex]::Replace($Value, '(\\*)"', '$1$1\"')
+    $escaped = [regex]::Replace($escaped, '(\\+)$', '$1$1')
+    return '"' + $escaped + '"'
+}
+
 function Invoke-Checker($Fixture, [switch]$AlwaysInspectRevision) {
-    $errorFile = [IO.Path]::GetTempFileName()
-    $previousPreference = $ErrorActionPreference
+    $process = New-Object Diagnostics.Process
     try {
-        $ErrorActionPreference = 'Continue'
         $arguments = @('-NoProfile','-ExecutionPolicy','Bypass','-File',$checker,
             '-RepoRoot',$Fixture.Work,'-Remote','origin','-Revision','HEAD','-GitPath',$git)
         if ($AlwaysInspectRevision) { $arguments += '-AlwaysInspectRevision' }
-        $output = @(& (Get-Process -Id $PID).Path @arguments 2>$errorFile |
-            ForEach-Object { $_.ToString() })
-        $code = [int]$LASTEXITCODE
-        $errorText = [IO.File]::ReadAllText($errorFile)
-        return [pscustomobject]@{ Exit=$code; Out=(($output -join "`n") + "`n" + $errorText) }
+        $process.StartInfo.FileName = (Get-Process -Id $PID).Path
+        $process.StartInfo.Arguments = (($arguments | ForEach-Object { Quote-ProcessArgument $_ }) -join ' ')
+        $process.StartInfo.WorkingDirectory = $Fixture.Work
+        $process.StartInfo.UseShellExecute = $false
+        $process.StartInfo.CreateNoWindow = $true
+        $process.StartInfo.RedirectStandardOutput = $true
+        $process.StartInfo.RedirectStandardError = $true
+        Assert $process.Start() 'could not start outgoing-commit checker'
+        $output = $process.StandardOutput.ReadToEnd()
+        $errorText = $process.StandardError.ReadToEnd()
+        $process.WaitForExit()
+        return [pscustomobject]@{ Exit=$process.ExitCode; Out=($output + "`n" + $errorText) }
     } finally {
-        $ErrorActionPreference = $previousPreference
-        Remove-Item -LiteralPath $errorFile -Force -ErrorAction SilentlyContinue
+        $process.Dispose()
     }
 }
 
@@ -199,6 +210,15 @@ try {
         $result = Invoke-Checker $fixture
         Assert ($result.Exit -eq 0) "binary blob blocked the push: $($result.Out)"
         Assert ($result.Out -match "skipped binary blob 'image\.bin'") "binary skip was not explicit: $($result.Out)"
+    }
+
+    It 'rejects a BOM-prefixed PowerShell blob containing NUL binary content' {
+        $fixture = New-RepositoryFixture
+        Add-Commit $fixture 'binary.ps1' ([char]0xFEFF + "`0AKIAIOSFODNN7EXAMPLE`n") 'Add binary PowerShell payload' $false
+        $result = Invoke-Checker $fixture
+        Assert ($result.Exit -eq 1) "binary PowerShell blob bypassed the outgoing guard: $($result.Out)"
+        Assert ($result.Out -match 'PowerShell file with NUL/binary content:\s*binary\.ps1') "binary PowerShell refusal reason missing: $($result.Out)"
+        Assert ($result.Out -notmatch "skipped binary blob 'binary\.ps1'") "PowerShell blob was treated as skippable binary: $($result.Out)"
     }
 
     It 'can inspect a revision already present on the remote for tag pushes' {

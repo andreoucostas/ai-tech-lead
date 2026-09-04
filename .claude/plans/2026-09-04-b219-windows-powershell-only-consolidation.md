@@ -208,3 +208,8 @@ The review's suggestion to delete the installer metadata policy was rejected: th
 requires the composer to extract and independently pin protected, persistent, metadata, and
 excluded sets from the installer as the single policy authority. The arrays are declarative
 composer input rather than runtime installer branches, and their comments state that boundary.
+
+A bounded Terra follow-up over `e92f5c2..6351dfe` found one High correction defect: the new binary
+skip also accepted a BOM-prefixed `.ps1` containing NUL, bypassing strict decode and the guard. The
+skip now applies only to non-PowerShell blobs; PowerShell NUL/binary content is a push refusal, with
+an exact BOM+NUL hostile case. No other actionable finding was reported in that correction delta.

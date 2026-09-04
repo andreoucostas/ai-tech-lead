@@ -221,17 +221,22 @@ foreach ($commit in $commits) {
             Stop-CantVerify "blob '$path' at commit $commit could not be read. $($blob.Error.Trim())"
         }
         $checkedBlobs++
-        if ($path -match '(?i)\.ps1$' -and ($blob.Bytes.Length -lt 3 -or
+        $isPowerShell = $path -match '(?i)\.ps1$'
+        if ($isPowerShell -and ($blob.Bytes.Length -lt 3 -or
             $blob.Bytes[0] -ne 0xEF -or $blob.Bytes[1] -ne 0xBB -or $blob.Bytes[2] -ne 0xBF)) {
             $violations.Add("commit $commit contains a PowerShell file without UTF-8 BOM: $path")
         }
         if ($blob.Bytes -contains 0) {
-            Write-Host "OUTGOING CHECK: skipped binary blob '$path' at commit $commit."
+            if ($isPowerShell) {
+                $violations.Add("commit $commit contains a PowerShell file with NUL/binary content: $path")
+            } else {
+                Write-Host "OUTGOING CHECK: skipped binary blob '$path' at commit $commit."
+            }
             continue
         }
         try { $content = $utf8.GetString($blob.Bytes) }
         catch {
-            if ($path -match '(?i)\.ps1$') { Stop-CantVerify "PowerShell blob '$path' at commit $commit is not valid UTF-8." }
+            if ($isPowerShell) { Stop-CantVerify "PowerShell blob '$path' at commit $commit is not valid UTF-8." }
             Write-Host "OUTGOING CHECK: skipped non-UTF-8 binary blob '$path' at commit $commit."
             continue
         }

@@ -2108,3 +2108,8 @@ path-only waiver turns a test directory into a secret sink. The release-specific
 is the actual immutable outgoing range, and each caller must prove that a refusal prevents its
 subsequent push. Binary blobs need an explicit non-text classification rather than being reported
 as an inability to inspect the repository.
+
+A binary exception must also be type-aware. Treating every NUL-bearing blob as safely skippable
+allowed a BOM-prefixed PowerShell file to evade both strict decoding and the canonical guard. Files
+whose extension carries an executable text contract must fail closed when their bytes contradict
+that contract; only unrelated binary artifacts may be explicitly skipped.
