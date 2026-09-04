@@ -1,7 +1,7 @@
 ---
 name: test-critic
 description: Read-only integrity audit of in-scope specs, using Angular guidance only when evidenced. Finds specs that survive broken code, weak expectations, over-mocking, coupling, and nondeterminism; used by `/review`.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, PowerShell
 model: inherit
 ---
 

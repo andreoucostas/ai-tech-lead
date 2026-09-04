@@ -1,15 +1,10 @@
 ﻿# route-prompt surface-shape tests (v0.25.0 Copilot injection port).
 # Claude-shaped events (hook_event_name present) must get PLAIN stdout; Copilot-shaped events
 # (JSON without hook_event_name) must get the dual-shape JSON (top-level additionalContext +
-# hookSpecificOutput wrapper). The .sh twin must agree at decision level (output present/absent,
-# exit 0, same salience markers) -- byte shape may differ when the bash env lacks jq/python3,
-# where the .sh degrades to plain stdout by design; its plain text must still equal the PowerShell
-# twin's parsed additionalContext.
+# hookSpecificOutput wrapper).
 if (-not (Get-Command Invoke-Hook -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot '_HookHarness.ps1') }
 $hooks = (Resolve-Path (Join-Path $PSScriptRoot '..\..\.claude\hooks')).Path
 $rpPs  = Join-Path $hooks 'route-prompt.ps1'
-$rpSh  = Join-Path $hooks 'route-prompt.sh'
-$bash  = Get-BashPath
 
 function New-ClaudePrompt  { param($Prompt) (@{ hook_event_name = 'UserPromptSubmit'; prompt = $Prompt } | ConvertTo-Json -Compress) }
 function New-CopilotPrompt { param($Prompt) (@{ prompt = $Prompt; timestamp = 1 } | ConvertTo-Json -Compress) }
@@ -20,7 +15,6 @@ function New-RoutePromptFixture {
     $fixtureHooks = Join-Path $repo '.claude\hooks'
     New-Item -ItemType Directory -Path $fixtureHooks -Force | Out-Null
     Copy-Item -LiteralPath $rpPs -Destination (Join-Path $fixtureHooks 'route-prompt.ps1')
-    Copy-Item -LiteralPath $rpSh -Destination (Join-Path $fixtureHooks 'route-prompt.sh')
     git -C $repo init --quiet
     return [pscustomobject]@{ Dir = $dir; Repo = $repo; Hooks = $fixtureHooks }
 }
@@ -84,47 +78,41 @@ It 'route-prompt.ps1 answer-only question -> no rails (both surfaces)' {
 }
 
 # --- Copilot single-entry composition drains Boy Scout delivery behind the surface gate ---
-foreach ($twin in @(@{ Name = 'ps1'; File = 'route-prompt.ps1' }, @{ Name = 'sh'; File = 'route-prompt.sh' })) {
-    if ($twin.Name -eq 'sh' -and -not $bash) {
-        Skip "route-prompt.$($twin.Name) Copilot queue composition cases" 'no bash found' -Invariant
-        continue
-    }
-
-    It "route-prompt.$($twin.Name) Copilot routing + queue -> one payload, routing first, queue consumed once" {
+    It 'route-prompt.ps1 Copilot routing + queue -> one payload, routing first, queue consumed once' {
         $fixture = New-RoutePromptFixture
         $queue = Join-Path $fixture.Repo '.claude\.state\boy-scout-queue'
         New-Item -ItemType Directory -Path (Split-Path -Parent $queue) -Force | Out-Null
         [IO.File]::WriteAllText($queue, 'B147_BOY_SCOUT_SENTINEL')
         try {
-            $r = Invoke-Hook (Join-Path $fixture.Hooks $twin.File) (New-CopilotPrompt 'fix the broken date formatting')
+            $r = Invoke-Hook (Join-Path $fixture.Hooks 'route-prompt.ps1') (New-CopilotPrompt 'fix the broken date formatting')
             Assert ($r.Exit -eq 0) "exit $($r.Exit): $($r.Err)"
             $o = $r.Out | ConvertFrom-Json
             Assert ($o.additionalContext -match 'Routed intent: `fix`') 'routing text missing'
             Assert ($o.additionalContext -match 'B147_BOY_SCOUT_SENTINEL') 'Boy Scout queue missing'
             Assert ($o.additionalContext.IndexOf('Routed intent') -lt $o.additionalContext.IndexOf('B147_BOY_SCOUT_SENTINEL')) 'routing must precede Boy Scout queue'
             Assert (-not (Test-Path -LiteralPath $queue)) 'queue was not deleted after the read'
-            $second = Invoke-Hook (Join-Path $fixture.Hooks $twin.File) (New-CopilotPrompt 'why is the sky blue?')
+            $second = Invoke-Hook (Join-Path $fixture.Hooks 'route-prompt.ps1') (New-CopilotPrompt 'why is the sky blue?')
             Assert ([string]::IsNullOrEmpty($second.Out)) 'queue was delivered more than once'
         } finally { Remove-Item -LiteralPath $fixture.Dir -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-    It "route-prompt.$($twin.Name) Copilot empty routing + queue -> queue-only payload" {
+    It 'route-prompt.ps1 Copilot empty routing + queue -> queue-only payload' {
         $fixture = New-RoutePromptFixture
         $queue = Join-Path $fixture.Repo '.claude\.state\boy-scout-queue'
         New-Item -ItemType Directory -Path (Split-Path -Parent $queue) -Force | Out-Null
         [IO.File]::WriteAllText($queue, 'B147_QUEUE_ONLY_SENTINEL')
         try {
-            $r = Invoke-Hook (Join-Path $fixture.Hooks $twin.File) (New-CopilotPrompt '/review')
+            $r = Invoke-Hook (Join-Path $fixture.Hooks 'route-prompt.ps1') (New-CopilotPrompt '/review')
             $o = $r.Out | ConvertFrom-Json
             Assert ($o.additionalContext -eq 'B147_QUEUE_ONLY_SENTINEL') "queue-only context differs: '$($o.additionalContext)'"
             Assert (-not (Test-Path -LiteralPath $queue)) 'queue-only delivery did not consume the queue'
         } finally { Remove-Item -LiteralPath $fixture.Dir -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-    It "route-prompt.$($twin.Name) Copilot routing + empty queue -> routing only" {
+    It 'route-prompt.ps1 Copilot routing + empty queue -> routing only' {
         $fixture = New-RoutePromptFixture
         try {
-            $r = Invoke-Hook (Join-Path $fixture.Hooks $twin.File) (New-CopilotPrompt 'fix the broken date formatting')
+            $r = Invoke-Hook (Join-Path $fixture.Hooks 'route-prompt.ps1') (New-CopilotPrompt 'fix the broken date formatting')
             $o = $r.Out | ConvertFrom-Json
             Assert ($o.additionalContext -match 'Routed intent: `fix`') 'routing text missing'
             Assert ($o.additionalContext -match 'repository evidence') 'verification rail does not require repository evidence'
@@ -136,110 +124,25 @@ foreach ($twin in @(@{ Name = 'ps1'; File = 'route-prompt.ps1' }, @{ Name = 'sh'
         } finally { Remove-Item -LiteralPath $fixture.Dir -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-    It "route-prompt.$($twin.Name) Copilot empty routing + empty queue -> no output" {
+    It 'route-prompt.ps1 Copilot empty routing + empty queue -> no output' {
         $fixture = New-RoutePromptFixture
         try {
-            $r = Invoke-Hook (Join-Path $fixture.Hooks $twin.File) (New-CopilotPrompt '/review')
+            $r = Invoke-Hook (Join-Path $fixture.Hooks 'route-prompt.ps1') (New-CopilotPrompt '/review')
             Assert ($r.Exit -eq 0 -and [string]::IsNullOrEmpty($r.Out)) "expected silence, got '$($r.Out)'"
         } finally { Remove-Item -LiteralPath $fixture.Dir -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-    It "route-prompt.$($twin.Name) Claude routing preserves real queue for Stop delivery" {
+    It 'route-prompt.ps1 Claude routing preserves real queue for Stop delivery' {
         $fixture = New-RoutePromptFixture
         $queue = Join-Path $fixture.Repo '.claude\.state\boy-scout-queue'
         New-Item -ItemType Directory -Path (Split-Path -Parent $queue) -Force | Out-Null
         [IO.File]::WriteAllText($queue, 'B147_CLAUDE_QUEUE_SENTINEL')
         try {
-            $r = Invoke-Hook (Join-Path $fixture.Hooks $twin.File) (New-ClaudePrompt 'fix the broken date formatting')
+            $r = Invoke-Hook (Join-Path $fixture.Hooks 'route-prompt.ps1') (New-ClaudePrompt 'fix the broken date formatting')
             Assert ($r.Out -match 'Routed intent: `fix`') 'Claude routing text missing'
             Assert ($r.Out -notmatch 'B147_CLAUDE_QUEUE_SENTINEL') 'Claude path stole Boy Scout delivery'
             Assert (Test-Path -LiteralPath $queue) 'Claude path deleted the Stop delivery queue'
         } finally { Remove-Item -LiteralPath $fixture.Dir -Recurse -Force -ErrorAction SilentlyContinue }
     }
-}
-
-# --- Twin agreement at decision level ---
-if (-not $bash) {
-    Skip 'route-prompt twin surface agreement' 'no bash found'
-} else {
-    $twinCases = @(
-        @{ n = 'fix intent (Claude)';    surface = 'Claude';  evt = (New-ClaudePrompt  'fix the broken date formatting'); marker = 'Routed intent' },
-        @{ n = 'fix intent (Copilot)';   surface = 'Copilot'; evt = (New-CopilotPrompt 'fix the broken date formatting'); marker = 'Routed intent' },
-        @{ n = 'security (Copilot)';     surface = 'Copilot'; evt = (New-CopilotPrompt 'implement payment processing');   marker = 'Security-sensitive' },
-        @{ n = 'slash no-op (Copilot)';  surface = 'Copilot'; evt = (New-CopilotPrompt '/review');                        marker = '' },
-        @{ n = 'debt question no-op (Claude)';  surface = 'Claude';  evt = (New-ClaudePrompt 'Why is this tech debt?');  marker = '' },
-        @{ n = 'debt question no-op (Copilot)'; surface = 'Copilot'; evt = (New-CopilotPrompt 'Why is this tech debt?'); marker = '' }
-    )
-    foreach ($case in $twinCases) {
-        It "route-prompt twins agree: $($case.n)" {
-            $rps = Invoke-Hook $rpPs $case.evt; $rsh = Invoke-Hook $rpSh $case.evt
-            Assert ($rps.Exit -eq 0 -and $rsh.Exit -eq 0) "exits: ps1=$($rps.Exit) sh=$($rsh.Exit)"
-            if ($case.marker) {
-                Assert ($rps.Out -match $case.marker -and $rsh.Out -match $case.marker) "marker '$($case.marker)': ps1=$($rps.Out -match $case.marker) sh=$($rsh.Out -match $case.marker)"
-                if ($case.surface -eq 'Claude') {
-                    $psText=($rps.Out -replace "`r`n","`n").TrimEnd();$shText=($rsh.Out -replace "`r`n","`n").TrimEnd()
-                    Assert ($psText -ceq $shText) "Claude rail text diverged between twins"
-                } else {
-                    $psPayload=$rps.Out|ConvertFrom-Json
-                    Assert ($psPayload.hookSpecificOutput.additionalContext -ceq $psPayload.additionalContext) 'PowerShell Copilot wrapper diverged from top-level context'
-                    if ($rsh.Out.TrimStart().StartsWith('{')) {
-                        $shPayload=$rsh.Out|ConvertFrom-Json
-                        Assert ($shPayload.hookSpecificOutput.additionalContext -ceq $shPayload.additionalContext) 'Bash Copilot wrapper diverged from top-level context'
-                        $shContext=$shPayload.additionalContext
-                    } else { $shContext=$rsh.Out }
-                    $psText=($psPayload.additionalContext -replace "`r`n","`n").TrimEnd();$shText=($shContext -replace "`r`n","`n").TrimEnd()
-                    Assert ($psText -ceq $shText) 'Copilot additionalContext diverged between twins'
-                }
-            } else {
-                Assert ([string]::IsNullOrWhiteSpace($rps.Out) -and [string]::IsNullOrWhiteSpace($rsh.Out)) 'both twins must stay silent'
-            }
-        }
-    }
-}
-
-
-# --- Force the no-jq fallback branch, sandboxed to exactly cat/grep/tr (what route-prompt.sh
-# actually calls) so the sandbox can neither expose a stray real jq/python3 nor break the hook's own
-# plumbing. See Invoke-Sandboxed / New-ExecShim in _HookHarness.ps1.
-$storeStubScript = "#!/usr/bin/env bash`nprintf 'Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Manage App Execution Aliases.\n' >&2`nexit 49`n"
-if (-not $bash) {
-    Skip 'route-prompt.sh sandboxed: no jq, python is the Store stub -> still routes' 'no bash found' -Invariant
-    Skip 'route-prompt.sh sandboxed: no jq, working interpreter only as `python` -> emits JSON' 'no bash found' -Invariant
-    Skip 'route-prompt.sh sandboxed: jq present -> routes via jq (control)' 'no bash found' -Invariant
-} else {
-    It 'route-prompt.sh sandboxed: no jq, no python3, no py, python is the Store stub -> still routes (regex fallback)' {
-        $r = Invoke-Sandboxed -Bash $bash -ScriptPath $rpSh -Utilities @('cat','grep','tr') -FakeBins @{ python = $storeStubScript } -Stdin (New-ClaudePrompt 'fix the broken date formatting')
-        Assert ($r.Exit -eq 0) "exit=$($r.Exit): $($r.Err)"
-        Assert (-not [string]::IsNullOrEmpty($r.Out)) 'no output at all (pre-fix produced zero bytes here -- the elif chain committed to the Store-stub branch and never reached the regex fallback)'
-        Assert ($r.Out -match 'Routed intent') "rails missing: $($r.Out)"
-    }
-    if (Resolve-HostPython) {
-    It 'route-prompt.sh sandboxed: no jq, working interpreter only as `python` -> emits JSON' {
-        $r = Invoke-Sandboxed -Bash $bash -ScriptPath $rpSh -Utilities @('cat','grep','tr') -ExposeInterpreterAs 'python' -Stdin (New-CopilotPrompt 'fix the broken date formatting')
-        Assert ($r.Exit -eq 0) "exit=$($r.Exit): $($r.Err)"
-        Assert ($r.Out.TrimStart().StartsWith('{')) "expected JSON output (python encode path), got plain stdout (pre-fix: the encode site only ever probed jq/python3, never bare python): $($r.Out)"
-        $o = $r.Out | ConvertFrom-Json
-        Assert ($o.additionalContext -match 'Routed intent') 'top-level additionalContext missing rails'
-        Assert ($o.hookSpecificOutput.additionalContext -eq $o.additionalContext) 'wrapped context differs from top-level'
-        $brokenJq="#!/bin/sh`nexit 49`n"
-        $r = Invoke-Sandboxed -Bash $bash -ScriptPath $rpSh -Utilities @('cat','grep','tr') -FakeBins @{jq=$brokenJq} -ExposeInterpreterAs 'python' -Stdin (New-CopilotPrompt 'fix the broken date formatting')
-        Assert ($r.Exit-eq 0) "broken-jq fallback exit=$($r.Exit): $($r.Err)"
-        $o=$r.Out|ConvertFrom-Json
-        Assert ($o.additionalContext -match 'Routed intent') "broken jq suppressed working-Python rails: $($r.Out)"
-        Assert ($o.hookSpecificOutput.additionalContext -eq $o.additionalContext) 'broken-jq Python wrapper differs from top-level'
-    }
-    } else { Skip 'route-prompt.sh sandboxed: no jq, working interpreter only as `python` -> emits JSON' 'no working python interpreter found on this host (set $env:ATL_TEST_PYTHON to an absolute interpreter path to exercise this case)' -Invariant }
-    $jqReal = Resolve-HostJq
-    if ($jqReal) {
-        It 'route-prompt.sh sandboxed: jq present -> routes via jq (control)' {
-            $r = Invoke-Sandboxed -Bash $bash -ScriptPath $rpSh -Utilities @('cat','grep','tr') -FakeBins @{ jq = (New-ExecShim $jqReal) } -Stdin (New-CopilotPrompt 'fix the broken date formatting')
-            Assert ($r.Exit -eq 0) "exit=$($r.Exit): $($r.Err)"
-            $o = $r.Out | ConvertFrom-Json
-            Assert ($o.additionalContext -match 'Routed intent') "jq control: rails missing: $($r.Out)"
-        }
-    } else {
-        Skip 'route-prompt.sh sandboxed: jq present -> routes via jq (control)' 'no working jq found on this host' -Invariant
-    }
-}
 
 exit (Write-TestSummary 'RoutePrompt.Tests (surface shapes)')

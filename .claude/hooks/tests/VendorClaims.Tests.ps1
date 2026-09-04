@@ -263,7 +263,7 @@ function Read-Denylist {
 # shipped README carries a `## Changelog` excerpt whose `### 0.7.2` section correctly quotes the
 # pre-1.0.65 Copilot stdout behavior in the past tense -- excluding files named CHANGELOG.md is not
 # enough. Blanking (rather than removing) keeps line numbers honest. Markdown only: '#' starts a
-# comment in .ps1/.sh, where the boy-scout-check headers this gate must actually read live.
+# comment in a PowerShell script, where the boy-scout-check headers this gate reads live.
 function Remove-HistoricalSections {
     param([string]$Text, [string]$Extension)
     if ($Extension -ne '.md') { return $Text }

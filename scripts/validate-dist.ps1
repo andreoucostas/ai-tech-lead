@@ -1,27 +1,26 @@
-﻿# ai-tech-lead dist validator — PowerShell twin of validate-dist.sh. Validates an ALREADY-COMPOSED
+﻿# ai-tech-lead PowerShell dist validator. Validates an ALREADY-COMPOSED
 # dist/<mode> tree — it does NOT rebuild it (see scripts/build.ps1 for that). Thirteen checks, each
 # with a clear OK/FAIL line:
 #   1. no unresolved @stack:NAME markers survive anywhere in the dist (composer leftovers)
 #   2. every *.json in the dist parses (ConvertFrom-Json)
-#   3. `bash -n` passes on every *.sh in the dist (invokes bash — hard FATAL if unavailable)
+#   3. no active shell script, shell shebang, or non-Windows GitHub runner remains
 #   4. PowerShell AST parse is clean on every *.ps1 in the dist
 #   5. the dist's OWN template-checks.ps1 suite passes, run from inside the dist dir
 #   6. no meta-dev vocabulary leaks into shipped content (scripts/meta-denylist.txt)
 #   7. every script a shipped *.md tells someone to RUN and every rendered relative inline link resolves
-#   8. every hook registration in settings*.json / hooks.json names a script that exists, with its
-#      opposite-language twin (hook-registration)
+#   8. exactly 18 PowerShell hook registrations resolve with case-exact paths and required settings
 #   9. every core @stack marker expands from a non-empty stack snippet into the composed file
 #  10. section-path citations name a heading that exists in the cited shipped file
 #  11. CLAUDE.md imports the shipped framework-rules carrier
 #  12. top-level ordered-list runs are contiguous and prose step references resolve in-file
 #  13. Copilot userPromptSubmitted has at most one entry (only its last entry is delivered)
 # Exit 0 = all checks passed. Exit 1 = at least one check failed. Exit 2 = usage error, missing
-# dist, or a required tool (bash, for check 3) is unavailable — reported as FATAL, never skipped.
+# dist, or an input cannot be examined — reported as FATAL or FAIL, never skipped.
 #   Usage: validate-dist.ps1 {dotnet|angular|monorepo} [dist-root] [-Check name[,name...]]
 #   dist-root defaults to "dist" resolved under the repo root (scripts/..). Pass an explicit path
 #   to validate a scratch copy instead (e.g. to plant failure fixtures without touching dist/).
 # 5.1-safe: no pwsh-only syntax.
-# EAP stays 'Continue': under 5.1 with EAP=Stop, a native command (bash -n, template-checks)
+# EAP stays 'Continue': under 5.1 with EAP=Stop, a native command (template-checks)
 # writing to a REDIRECTED stderr raises a terminating NativeCommandError and kills the script
 # mid-check — exactly when a planted syntax error should have produced a FAIL line instead.
 # Failure detection here is explicit ($LASTEXITCODE / try-catch), not exception-driven.
@@ -46,7 +45,7 @@ for ($i = 0; $i -lt $args.Count; $i++) {
         $CheckArg = "$($args[$i])"
     } else { $positional += $a }
 }
-$ValidChecks = @('markers','json','bash-syntax','ps-syntax','template-checks','no-meta-leak','no-dead-instruction','hook-registration','marker-expansion','section-path','carrier-import','step-references','prompt-hook-cardinality')
+$ValidChecks = @('markers','json','powershell-topology','ps-syntax','template-checks','no-meta-leak','no-dead-instruction','hook-registration','marker-expansion','section-path','carrier-import','step-references','prompt-hook-cardinality')
 $SelectedChecks = @()
 if ($null -ne $CheckArg) {
     $SelectedChecks = @($CheckArg -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
@@ -79,18 +78,15 @@ if (-not (Test-Path $Dist -PathType Container)) {
 }
 # Resolve to absolute NOW: check 5 invokes the dist's own template-checks.ps1, which Set-Location's
 # into the dist dir and does not restore it. Any relative path used after check 5 would resolve
-# against the wrong root. (The bash twin runs template-checks in a subshell, so its cwd survives --
-# resolving up front is what keeps the two legs behaving identically.)
+# against the wrong root.
 $DistAbs = (Resolve-Path $Dist).Path
 
 $failed = 0
-# Per-check elapsed time, mirroring the bash twin [#3]. Every check ends by calling OK or Fail
-# exactly once, so timing the interval between those calls attributes cost without annotating each
-# check by hand.
+# Per-check elapsed time. Every check ends by calling OK or Fail exactly once, so timing the
+# interval between those calls attributes cost without annotating each check by hand.
 #
-# Why this exists: this validator's runtime was governed by nothing. A check once regressed to the
-# point where its bash twin could not finish AT ALL, and that was found only because a maintainer
-# asked why a suite had been running for hours -- every correctness gate stayed green throughout.
+# Why this exists: this validator's runtime was governed by nothing. A check once regressed until a
+# suite ran for hours, while every correctness gate stayed green throughout.
 # Correctness was gated; cost was not, so a 20x regression was invisible in the run that caused it.
 # Timings go to stderr so stdout stays exactly the OK:/FAIL: stream every caller already parses.
 $CheckCeilingSeconds = if ($env:VALIDATE_DIST_CHECK_CEILING_S) { [double]$env:VALIDATE_DIST_CHECK_CEILING_S } else { 25 }
@@ -123,10 +119,8 @@ if ($ContentOnly) {
     Write-Output "NOTE: --content-only -- checks 1-5 were SKIPPED; this is NOT a full validation."
 }
 
-# Resolution for check 8 is CASE-EXACT in both twins. Windows resolves a `.PS1` registration to a
-# `.ps1` file on disk and Linux does not, so a registration whose casing differs from the shipped
-# file passed on the maintainer's box and would break on a consumer's Linux host — the twins
-# disagreeing by PLATFORM rather than by code, which no amount of twin testing on one OS can see.
+# Resolution for check 8 is CASE-EXACT. Windows' default case-insensitive path resolution would
+# otherwise let a `.PS1` registration resolve to a `.ps1` file and conceal non-canonical wiring.
 # Compare each segment against the real directory entry instead of asking the filesystem to match.
 function Test-CaseExactPath {
     param([string]$Root, [string]$Relative)
@@ -140,16 +134,14 @@ function Test-CaseExactPath {
     return $true
 }
 
-# Used by check 8. Returns zero or more problem strings for one referenced hook script: the file
-# itself, and its opposite-language twin (invariant #3 -- a .ps1 registration whose .sh sibling is
-# missing is a half-shipped hook, and the surface that runs the missing one gets nothing).
+# Used by check 8. Returns zero or more problem strings for one referenced PowerShell hook script.
 function Test-HookRef {
     param([string]$Dist, [string]$File, [string]$Script)
     $problems = @()
     # hooks.json writes Windows paths with backslashes, and JSON escaping doubles them, so the raw
     # text holds ".claude\\hooks\\guard.ps1". Collapse any RUN of backslashes to one separator:
-    # translating each one separately yields ".claude//hooks//guard.ps1", which happens to resolve on
-    # both Windows and POSIX and so would have hidden the sloppiness rather than failing on it.
+    # translating each one separately yields ".claude//hooks//guard.ps1", which can still resolve
+    # and so would hide the malformed registration rather than failing on it.
     $rel = $Script -replace '\\+', '/'
     if ($rel -match '^[A-Za-z]:' -or $rel.StartsWith('/')) {
         # Unlike a documentation example (check 7), committed machine wiring must never be absolute.
@@ -158,24 +150,14 @@ function Test-HookRef {
     }
     if (-not (Test-CaseExactPath -Root $Dist -Relative $rel)) {
         $problems += "$File : `"$rel`" does not exist in this dist"
-        return $problems                        # no point asking about the twin of a missing file
-    }
-    if ($rel -match '\.ps1$')     { $twin = ($rel -replace '\.ps1$', '.sh') }
-    elseif ($rel -match '\.sh$')  { $twin = ($rel -replace '\.sh$', '.ps1') }
-    else { return $problems }
-    if (-not (Test-CaseExactPath -Root $Dist -Relative $twin)) {
-        $problems += "$File : `"$rel`" exists but its twin `"$twin`" does not"
+        return $problems
     }
     return $problems
 }
 
-# -Force on every enumeration below is LOAD-BEARING, not defensive. PowerShell treats a leading dot
-# as "hidden" on Linux/macOS, so without it `Get-ChildItem -Recurse` silently skips everything under
-# `.claude/` and `.github/` there — which is most of what a dist ships. On Windows the same call
-# returns those files, so this twin under-scanned on Linux ONLY, and no local run could show it:
-# check 6 would never have looked at a single hook or skill for meta-leaks, and check 7 would have
-# scanned a fraction of the docs while reporting a clean pass. Found by the CI linux leg (2026-08-04)
-# via a test whose mutation had the identical blind spot.
+# -Force on every enumeration below is LOAD-BEARING, not defensive. A leading-dot directory can be
+# classified as hidden by a host/filesystem combination; omitting it can silently skip most of the
+# distribution. The cardinality checks below make an empty or partial scan observable.
 if (-not $ContentOnly) {
 if (Test-CheckSelected 'markers') {
 # --- 1. no unresolved @stack markers -------------------------------------------------------------
@@ -379,55 +361,58 @@ elseif ($jsonFails.Count -gt 0) { Fail ("invalid JSON (ConvertFrom-Json):" + ($j
 else { OK "all $($jsonInputs.Count) *.json files parse (ConvertFrom-Json)." }
 }
 
-if (Test-CheckSelected 'bash-syntax') {
-# --- 3. bash -n on every *.sh ------------------------------------------------------------------------
-# Resolve a REAL bash: prefer Git for Windows (not on PowerShell's PATH on typical boxes), and
-# never trust a bare `bash` blindly — on Windows that can be the WSL stub in System32, which
-# fails without a distro. Probe whatever we picked before using it.
-$bashExe = $null
-foreach ($candidate in @(
-        (Join-Path $env:ProgramFiles 'Git\bin\bash.exe'),
-        (Join-Path $env:ProgramFiles 'Git\usr\bin\bash.exe'))) {
-    if ($candidate -and (Test-Path $candidate)) { $bashExe = $candidate; break }
+if (Test-CheckSelected 'powershell-topology') {
+# --- 3. PowerShell-only executable topology ------------------------------------------------------
+$topologyProblems = @()
+$topologyReadFails = @()
+$topologyFiles = @()
+$topologyEnumError = $null
+try { $topologyFiles = @(Get-ChildItem -Recurse -File -Force -Path $Dist -ErrorAction Stop) }
+catch { $topologyEnumError = $_.Exception.Message }
+foreach ($f in $topologyFiles) {
+    $relative = $f.FullName.Substring($DistAbs.Length).TrimStart('\','/').Replace('\','/')
+    if ($f.Extension -ieq '.sh') { $topologyProblems += "$relative : active .sh implementation" }
+    try {
+        $reader = New-Object IO.StreamReader($f.FullName, [Text.Encoding]::UTF8, $true)
+        try { $firstLine = $reader.ReadLine() } finally { $reader.Dispose() }
+    } catch { $topologyReadFails += "$relative : $($_.Exception.Message)"; continue }
+    if ($firstLine -match '^#!.*(?:^|[/\s])(?:sh|bash|dash|ash|zsh|ksh|fish|csh|tcsh)(?:\s|$)') {
+        $topologyProblems += "$relative : active shell shebang '$firstLine'"
+    }
 }
-if (-not $bashExe) {
-    $bashCmd = Get-Command bash -ErrorAction SilentlyContinue
-    if ($bashCmd) { $bashExe = $bashCmd.Source }
+$workflowRoot = Join-Path $DistAbs '.github/workflows'
+if (Test-Path -LiteralPath $workflowRoot -PathType Container) {
+    foreach ($workflow in @(Get-ChildItem -LiteralPath $workflowRoot -File -Force -ErrorAction SilentlyContinue |
+            Where-Object { $_.Extension -in @('.yml','.yaml') })) {
+        try { $workflowText = [IO.File]::ReadAllText($workflow.FullName) }
+        catch { $topologyReadFails += "$($workflow.Name) : $($_.Exception.Message)"; continue }
+        # A matrix-selected runner does not expose its OS on the runs-on line. Ignore comment-only
+        # lines, then inspect every executable YAML value; container jobs are unsupported too.
+        $activeWorkflow = (($workflowText -split "`r?`n") | Where-Object { $_ -notmatch '^\s*#' }) -join "`n"
+        if ($activeWorkflow -match '(?i)(?:^|[^A-Za-z0-9_])(?:ubuntu|linux|macos)(?:[-_.A-Za-z0-9]*)(?:$|[^A-Za-z0-9_])') {
+            $topologyProblems += ".github/workflows/$($workflow.Name) : unsupported non-Windows runner"
+        }
+        if ($activeWorkflow -match '(?im)^\s*container\s*:') {
+            $topologyProblems += ".github/workflows/$($workflow.Name) : unsupported container job"
+        }
+    }
 }
-$bashWorks = $false
-if ($bashExe) {
-    & $bashExe -c 'exit 0' 2>$null 1>$null
-    if ($LASTEXITCODE -eq 0) { $bashWorks = $true }
-}
-if (-not $bashWorks) {
-    [Console]::Error.WriteLine('FATAL: no working bash found to syntax-check *.sh files (tried Git for Windows + PATH).')
-    exit 2
-}
-$shFails = @()
-$shReadFails = @()
-$shInputs = @()
-$shEnumError = $null
-try { $shInputs = @(Get-ChildItem -Recurse -File -Force -Filter *.sh -Path $Dist -ErrorAction Stop) }
-catch { $shEnumError = $_.Exception.Message }
-foreach ($f in $shInputs) {
-    try { $null = [IO.File]::OpenRead($f.FullName).Dispose() }
-    catch { $shReadFails += $f.FullName; continue }
-    & $bashExe -n ($f.FullName -replace '\\', '/') 2>$null 1>$null
-    if ($LASTEXITCODE -ne 0) { $shFails += $f.FullName }
-}
-if ($null -ne $shEnumError) { Fail "shell scan could not enumerate $Dist : $shEnumError" }
-elseif ($shInputs.Count -eq 0) { Fail "shell scan found zero files in $Dist." }
-elseif ($shReadFails.Count -gt 0) { Fail ("shell scan could not read:" + ($shReadFails -join ' ')) }
-elseif ($shFails.Count -gt 0) { Fail ("bash syntax errors in:" + ($shFails -join ' ')) }
-else { OK "all $($shInputs.Count) *.sh files parse cleanly (bash -n)." }
+if ($null -ne $topologyEnumError) { Fail "PowerShell topology scan could not enumerate $Dist : $topologyEnumError" }
+elseif ($topologyFiles.Count -eq 0) { Fail "PowerShell topology scan found zero files in $Dist." }
+elseif ($topologyReadFails.Count -gt 0) {
+    Fail "PowerShell topology scan could not read $($topologyReadFails.Count) file(s)."
+    $topologyReadFails | Sort-Object -Unique | ForEach-Object { Write-Output "  [powershell-topology] $_" }
+} elseif ($topologyProblems.Count -gt 0) {
+    Fail "PowerShell-only topology has $($topologyProblems.Count) active shell or non-Windows CI surface(s)."
+    $topologyProblems | Sort-Object -Unique | ForEach-Object { Write-Output "  [powershell-topology] $_" }
+} else { OK "PowerShell-only topology: $($topologyFiles.Count) files scanned; no active .sh, shell shebang, or non-Windows GitHub runner." }
 }
 
 if (Test-CheckSelected 'ps-syntax') {
 # --- 4. PowerShell AST parse on every *.ps1 -----------------------------------------------------------
-# The bash twin must resolve a host from PATH or known Windows locations. This twin already runs
-# inside a resolved host, so retain its in-process parser rather than silently upgrading a
-# deliberate 5.1 run. The same host/PATH diagnostic is retained for the impossible-to-continue
-# case where the current process cannot identify its own executable.
+# Parse in the current process rather than silently upgrading a deliberate Windows PowerShell 5.1
+# run to pwsh. Retain a distinct host/PATH diagnostic for the impossible-to-continue case where the
+# current process cannot identify its own executable.
 $currentPowerShellHost = (Get-Process -Id $PID).Path
 if (-not $currentPowerShellHost) {
     [Console]::Error.WriteLine('FATAL: no PowerShell host found on PATH or at any known location; this is a host/PATH problem, not a dist problem, so *.ps1 syntax could not be checked.')
@@ -480,8 +465,7 @@ if (Test-CheckSelected 'no-meta-leak') {
 # The don't-ship boundary (invariant #6) made deterministic. Everything under dist/ lands in a
 # consumer's repo, so the framework's own development vocabulary — tracking ids, the two-repo
 # authoring past, maintainer-only tooling — must not appear there. Patterns live in
-# scripts/meta-denylist.txt and are read by BOTH twins, so the denylist itself cannot drift between
-# the PowerShell and bash legs (invariant #3).
+# scripts/meta-denylist.txt so policy and implementation remain independently reviewable.
 $DenyFile = Join-Path $RepoRoot 'scripts/meta-denylist.txt'
 if (-not (Test-Path $DenyFile)) {
     [Console]::Error.WriteLine("FATAL: missing $DenyFile -- cannot run the no-meta-leak check.")
@@ -509,10 +493,9 @@ foreach ($f in $distFiles) {
     foreach ($a in $allowPaths) { if ($rel -like "*$a*") { $skip = $true; break } }
     if ($skip) { continue }
     foreach ($p in $denyPatterns) {
-        # Select-String is case-insensitive by default -- matches the bash twin's `grep -i`.
+        # Select-String is case-insensitive by default, which is the intended denylist behavior.
         # A read error must be RECORDED, not swallowed: -ErrorAction SilentlyContinue alone let an
-        # unreadable file count as scanned and clean, which is the bash twin's `2>/dev/null || true`
-        # fail-open in PowerShell clothing (B-59, and sol's review of this change).
+        # unreadable file count as scanned and clean (B-59, and sol's review of this change).
         $scanErr = $null
         foreach ($m in (Select-String -Path $f.FullName -Pattern $p -ErrorAction SilentlyContinue -ErrorVariable scanErr)) {
             $leaks += ("{0}:{1}: {2}" -f $rel, $m.LineNumber, $p)
@@ -544,9 +527,9 @@ if (Test-CheckSelected 'no-dead-instruction') {
 # which exists nowhere in that dist — root-installer wording copied into a dist doc. An agent that
 # followed it verbatim got "No such file or directory" (v0.26.3; meta/LEARNINGS.md).
 #
-# Resolution base is the DIST ROOT, not the doc's own directory — the framework documents every
-# command as run from the repo root (`bash scripts/docs-sync-check.sh` in docs/ci-integration.md
-# means from the consumer's root, not from docs/).
+# Resolution base is the DIST ROOT, not the doc's own directory. The extractor intentionally still
+# recognizes stale `bash ... .sh` examples so retiring Bash cannot make dead historical instructions
+# invisible to this diagnostic.
 #
 # CHANGELOG.md is skipped by design: release notes quote commands that WERE wrong in order to say
 # they are now fixed. It is the one shipped doc whose job is to describe the past.
@@ -651,17 +634,9 @@ if (Test-CheckSelected 'hook-registration') {
 # hook simply never runs. No write guard, no post-write feedback, no audit trail, and no error
 # anyone reads.
 #
-# What this deliberately does NOT do: fail on a BARE interpreter name. A bare name is the correct
-# shipped value. Pinning absolute interpreter paths was tried and reverted in v0.38.1 --
-# .claude/settings.json is committed team configuration, so recording the installing developer's
-# machine-specific path breaks every teammate on another OS or profile. Whether a bare name
-# RESOLVES on a given box is a runtime property no build-time check can see; that is what the
-# doctor's `Hook liveness` row (v0.39.0) reports from the consumer's own machine. This check
-# answers the build-time half only: does the thing we point at exist, and do both twins exist.
-#
-# Registrations are parsed as JSON. The bash twin emits the same normalized records through its
-# python3 and jq branches; ValidateDist.Tests.ps1 compares them when both tools are available.
-$SanctionedInterpreters = @('pwsh', 'powershell', 'bash')
+# Bare interpreter names remain intentional team-portable configuration. Runtime resolution is
+# reported by the doctor's `Hook liveness` row; this build-time check proves the configured host,
+# shell routing, cardinality, and case-exact script target.
 $regFiles = @('.claude/settings.json', '.claude/settings.windows.json', '.github/hooks/hooks.json')
 $regProblems = @()
 $regCount = 0
@@ -677,14 +652,15 @@ function Get-FileArgument {
 foreach ($rf in $regFiles) {
     $rfAbs = Join-Path $DistAbs $rf
     if (-not (Test-Path $rfAbs)) { $regProblems += "$rf : registration file missing from this dist"; continue }
-    try { $json = Get-Content $rfAbs -Raw | ConvertFrom-Json } catch { $regProblems += "$rf : registration file is unparseable"; continue }
+    try { $rawRegistration = [IO.File]::ReadAllText($rfAbs); $json = $rawRegistration | ConvertFrom-Json }
+    catch { $regProblems += "$rf : registration file is unreadable or unparseable"; continue }
+    if ($rawRegistration -match '(?i)"bash"\s*:') { $regProblems += "$rf : Bash hook key remains in PowerShell-only configuration" }
     if ($null -eq $json.hooks -or -not ($json.hooks -is [pscustomobject])) { $regProblems += "$rf : registration file has no hooks object"; continue }
     $handlers = 0
-    # Every level is type-checked, and the three parsers (here, python3, jq) must agree on the
-    # message for each malformed shape. They did not: an event whose value was an object rather than
-    # an array produced "no bash/powershell leg" here and in python3 but "not an object" under jq.
-    # A twin that disagrees about WHY only looks like a twin.
     if ($rf -like '.claude/*') {
+        if ([string]$json.env.CLAUDE_CODE_USE_POWERSHELL_TOOL -cne '1') { $regProblems += "$rf : CLAUDE_CODE_USE_POWERSHELL_TOOL must be '1'" }
+        if ([string]$json.defaultShell -cne 'powershell') { $regProblems += "$rf : defaultShell must be exactly 'powershell'" }
+        $expectedInterpreter = if ($rf -ceq '.claude/settings.json') { 'pwsh' } else { 'powershell' }
         foreach ($event in @($json.hooks.PSObject.Properties)) {
             if ($event.Value -isnot [System.Array]) { $regProblems += "$rf : hook event '$($event.Name)' must be an array"; continue }
             foreach ($group in @($event.Value)) {
@@ -692,10 +668,14 @@ foreach ($rf in $regFiles) {
                 foreach ($entry in @($group.hooks)) {
                     if ($entry.type -ne 'command' -or [string]::IsNullOrWhiteSpace([string]$entry.command)) { $regProblems += "$rf : hook entry must have type 'command' and a non-empty command"; continue }
                     $handlers++; $regCount++
-                    $cmd = [string]$entry.command; $interp = (($cmd -split '\s+')[0]).ToLowerInvariant()
-                    if ($SanctionedInterpreters -notcontains $interp) { $regProblems += "$rf : unrecognised interpreter '$interp' in: $cmd" }
+                    $cmd = [string]$entry.command; $interp = ($cmd -split '\s+')[0]
+                    if ($interp -cne $expectedInterpreter) { $regProblems += "$rf : expected interpreter '$expectedInterpreter', found '$interp' in: $cmd" }
+                    if ($cmd -cnotmatch '(?:^|\s)-NoProfile(?:\s|$)') { $regProblems += "$rf : command omits exact -NoProfile: $cmd" }
+                    if ([string]$entry.shell -cne 'powershell') { $regProblems += "$rf : command hook shell must be exactly 'powershell': $cmd" }
                     $script = Get-FileArgument $cmd
-                    if (-not $script) { $regProblems += "$rf : no -File argument in: $cmd" } else { $regProblems += (Test-HookRef -Dist $DistAbs -File $rf -Script $script) }
+                    if (-not $script) { $regProblems += "$rf : no -File argument in: $cmd" }
+                    elseif ($script -notmatch '\.ps1$') { $regProblems += "$rf : non-PowerShell hook target '$script'" }
+                    else { $regProblems += (Test-HookRef -Dist $DistAbs -File $rf -Script $script) }
                 }
             }
         }
@@ -705,22 +685,33 @@ foreach ($rf in $regFiles) {
             if ($event.Value -isnot [System.Array]) { $regProblems += "$rf : hook event '$($event.Name)' must be an array"; continue }
             foreach ($entry in @($event.Value)) {
                 if ($entry -isnot [pscustomobject]) { $regProblems += "$rf : hook entry in event '$($event.Name)' is not an object"; continue }
-                $hasBash = -not [string]::IsNullOrWhiteSpace([string]$entry.bash); $hasPs = -not [string]::IsNullOrWhiteSpace([string]$entry.powershell)
-                if (-not $hasBash -and -not $hasPs) { $regProblems += "$rf : hook entry must have at least one bash/powershell leg; a deliberate single-leg entry requires updating this check on purpose"; continue }
-                if (-not $hasBash -or -not $hasPs) { $regProblems += "$rf : hook entry has only one bash/powershell leg; a deliberate single-leg entry requires updating this check on purpose" }
+                $hasPs = -not [string]::IsNullOrWhiteSpace([string]$entry.powershell)
+                if (-not $hasPs) { $regProblems += "$rf : hook entry must have one non-empty powershell command"; continue }
                 $hookEntries++
-                foreach ($kind in @('bash', 'powershell')) { if (-not [string]::IsNullOrWhiteSpace([string]$entry.$kind)) { $handlers++; $regCount++; $script = (([string]$entry.$kind -split '\s+')[0]); $regProblems += (Test-HookRef -Dist $DistAbs -File $rf -Script $script) } }
+                $handlers++; $regCount++
+                $cmd = [string]$entry.powershell
+                $interp = ($cmd -split '\s+')[0]
+                if ($interp -cne 'pwsh') { $regProblems += "$rf : Copilot command must explicitly invoke 'pwsh', found '$interp' in: $cmd" }
+                if ($cmd -cnotmatch '(?:^|\s)-NoProfile(?:\s|$)') { $regProblems += "$rf : command omits exact -NoProfile: $cmd" }
+                $script = Get-FileArgument $cmd
+                if (-not $script) { $regProblems += "$rf : no -File argument in: $cmd" }
+                elseif ($script -notmatch '\.ps1$') { $regProblems += "$rf : non-PowerShell hook target '$script'" }
+                else { $regProblems += (Test-HookRef -Dist $DistAbs -File $rf -Script $script) }
             }
         }
     }
     if ($handlers -eq 0) { $regProblems += "$rf : registration file yields zero handlers" }
 }
+foreach ($rf in @('.claude/settings.json','.claude/settings.windows.json')) {
+    if ([int]$settingsCounts[$rf] -ne 6) { $regProblems += "$rf : expected exactly 6 command hooks, found $([int]$settingsCounts[$rf])" }
+}
+if ($hookEntries -ne 6) { $regProblems += ".github/hooks/hooks.json : expected exactly 6 PowerShell entries, found $hookEntries" }
+if ($regCount -ne 18) { $regProblems += "all registration files : expected exactly 18 PowerShell handlers, found $regCount" }
 if (@($regProblems).Count -gt 0) {
     Fail ("hook registrations reference {0} missing or invalid target(s) in {1}. A registration that cannot start is a hook that silently never runs." -f @($regProblems).Count, $Dist)
     $regProblems | Sort-Object -Unique | ForEach-Object { Write-Output "  [hook-registration] $_" }
 } else {
-    # The parser is named here too, so both twins' OK lines state how the registrations were read.
-    OK "all $regCount hook registrations resolve (settings.json $($settingsCounts['.claude/settings.json']), settings.windows.json $($settingsCounts['.claude/settings.windows.json']), hooks.json $hookEntries entries × 2 legs; parsed by ConvertFrom-Json)"
+    OK "exactly 18 PowerShell hook registrations resolve (settings.json 6, settings.windows.json 6, hooks.json 6; parsed by ConvertFrom-Json)"
 }
 }
 

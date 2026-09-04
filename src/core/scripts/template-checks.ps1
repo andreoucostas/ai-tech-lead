@@ -1,4 +1,4 @@
-﻿# AI Tech Lead deterministic framework checks — PowerShell twin of template-checks.sh.
+﻿# AI Tech Lead deterministic framework checks.
 # Exit 0 = verified clean, 3 = verified finding(s), 2 = required input could not be inspected.
 # Any other nonzero is an abnormal/incomplete run. Runs in BOTH contexts:
 #   - the template repo itself (wired into .github/workflows/template-ci.yml) — this is the gate
@@ -7,7 +7,7 @@
 # Checks: version-stamp sync (CLAUDE.md header == framework-version.json == CHANGELOG head),
 # CLAUDE.md ↔ AGENTS.md verbatim mirror (rule sections + Agentic Workflow §1),
 # copilot-instructions.md present and <= 80 lines, UTF-8 BOM on framework .ps1 files,
-# .ps1/.sh hook twin existence, PS syntax of framework scripts, skills-directory mirror, and
+# required PowerShell hook set, PS syntax of framework scripts, skills-directory policy, and
 # Common Tasks skill inventory parity.
 # 5.1-safe: no pwsh-only syntax.
 $ErrorActionPreference = 'Stop'
@@ -157,7 +157,7 @@ if ((Test-Path 'CLAUDE.md') -and (Test-Path 'AGENTS.md')) {
 if (-not (Test-Path '.github/copilot-instructions.md')) {
     Fail '.github/copilot-instructions.md is missing — run /generate-copilot.'
 } else {
-    # @().Count matches wc -l in the .sh twin; Measure-Object -Line skips blank lines and diverges.
+    # @().Count includes blank lines; Measure-Object -Line does not.
     $n = @(Get-Content '.github/copilot-instructions.md').Count
     if ($n -gt 80) { Fail ".github/copilot-instructions.md is $n lines (limit 80) — regenerate slimmer." }
     else { OK ".github/copilot-instructions.md present ($n lines <= 80)." }
@@ -174,16 +174,26 @@ foreach ($d in $scanDirs) {
 }
 if ($noBom.Count -gt 0) { Fail ("BOM missing on: " + ($noBom -join ', ')) } else { OK 'all framework .ps1 files carry a UTF-8 BOM.' }
 
-# --- 5. Hook twin existence (.ps1 <-> .sh) -----------------------------------------------------
+# --- 5. Framework PowerShell hook set ----------------------------------------------------------
 if (Test-Path '.claude/hooks') {
-    $orphans = @()
-    foreach ($f in (Get-ChildItem '.claude/hooks' -Filter *.ps1)) {
-        if (-not (Test-Path ($f.FullName -replace '\.ps1$','.sh'))) { $orphans += $f.Name }
+    $requiredHooks = @(
+        'audit-trail.ps1',
+        'boy-scout-check.ps1',
+        'guard.ps1',
+        'post-write.ps1',
+        'route-prompt.ps1',
+        'session-start.ps1'
+    )
+    $missingHooks = @($requiredHooks | Where-Object {
+        -not (Test-Path -LiteralPath (Join-Path '.claude/hooks' $_) -PathType Leaf)
+    })
+    if ($missingHooks.Count -gt 0) {
+        Fail ("required framework PowerShell hooks missing: " + ($missingHooks -join ', ') + '.')
+    } else {
+        OK 'required framework PowerShell hook set present (6).'
     }
-    foreach ($f in (Get-ChildItem '.claude/hooks' -Filter *.sh)) {
-        if (-not (Test-Path ($f.FullName -replace '\.sh$','.ps1'))) { $orphans += $f.Name }
-    }
-    if ($orphans.Count -gt 0) { Fail ("hook twin missing for: " + ($orphans -join ', ')) } else { OK 'every hook has its .ps1/.sh twin.' }
+} else {
+    Fail 'required framework PowerShell hooks missing: .claude/hooks directory is absent.'
 }
 
 # --- 6. PS syntax of framework scripts ---------------------------------------------------------
@@ -205,7 +215,7 @@ if (Test-Path -LiteralPath '.github/skills') {
 } else {
     OK 'canonical project skills use .claude/skills (.github/skills absent).'
 }
-$retiredSkillSync = @('scripts/sync-agent-files.ps1', 'scripts/sync-agent-files.sh') |
+$retiredSkillSync = @('scripts/sync-agent-files.ps1') |
     Where-Object { Test-Path -LiteralPath $_ }
 if ($retiredSkillSync.Count -gt 0) {
     Fail ("retired skill-mirror sync scripts exist: " + ($retiredSkillSync -join ', ') + ' — remove these framework leftovers.')
@@ -216,7 +226,7 @@ if ($retiredSkillSync.Count -gt 0) {
 # --- 8. Common Tasks skill inventory: CLAUDE.md <-> AGENTS.md ---------------------------------
 # The descriptions are intentionally allowed to be condensed in AGENTS.md. The slug inventory is
 # contractual on both surfaces, though: /generate-copilot promises Common Tasks is "the skills
-# list". Normalize BOM/CRLF before parsing so checkout encoding cannot split the script twins.
+# list". Normalize BOM/CRLF before parsing so checkout encoding cannot split the input.
 function Get-CommonTaskInventory($Path) {
     $text = [IO.File]::ReadAllText((Resolve-Path -LiteralPath $Path).Path) -replace "`r`n", "`n"
     if ($text.Length -gt 0 -and $text[0] -eq [char]0xFEFF) { $text = $text.Substring(1) }

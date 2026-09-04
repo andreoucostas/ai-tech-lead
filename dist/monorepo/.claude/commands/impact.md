@@ -23,7 +23,7 @@ of behavioural value.
 
 ### 2. Current repository scorecard
 
-Run the installed `scripts/metrics.ps1` or `scripts/metrics.sh` against the current repository and
+Run the installed `scripts/metrics.ps1` against the current repository and
 record the returned values as a **current repository scorecard**. Do not calculate or imply a delta
 from the retired reference, and do not attribute any value to adoption.
 
@@ -36,4 +36,4 @@ plain-language qualification:
 > after installation. This report is descriptive only: it is not an A/B comparison and does not show
 > that adoption caused a change.
 
-If HTML is useful, render the markdown with `scripts/build-architecture-html.ps1` or `.sh`.
+If HTML is useful, render the markdown with `scripts/build-architecture-html.ps1`.

@@ -1,7 +1,7 @@
 ---
 name: security-auditor
 description: Read-only Angular security audit, used only when that profile is evidenced. Covers XSS, auth/tokens, secrets, sensitive data, and CSP; used by `/security-review`.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, PowerShell
 model: inherit
 ---
 

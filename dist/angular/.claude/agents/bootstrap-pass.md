@@ -1,7 +1,7 @@
 ---
 name: bootstrap-pass
 description: Read-only worker for one Angular `/bootstrap` pass (A1–A7). Returns structured findings; never invoke directly.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, PowerShell
 model: inherit
 ---
 

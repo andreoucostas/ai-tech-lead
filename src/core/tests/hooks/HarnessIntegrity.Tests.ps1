@@ -57,10 +57,30 @@ function New-Fixture {
 $script:SelfHost = (Get-Process -Id $PID).Path
 
 function Invoke-Child {
-    param([Parameter(Mandatory)][string]$Path)
-    $out  = & $script:SelfHost -NoProfile -ExecutionPolicy Bypass -File $Path 2>&1
+    param([Parameter(Mandatory)][string]$Path, [string[]]$Arguments = @())
+    $out  = & $script:SelfHost -NoProfile -ExecutionPolicy Bypass -File $Path @Arguments 2>&1
     $code = $LASTEXITCODE
     return [pscustomobject]@{ Exit = $code; Out = (@($out) -join "`n") }
+}
+
+function Invoke-CardinalityRunnerFixture {
+    param([Parameter(Mandatory)][string]$Body, [Parameter(Mandatory)][string]$Name)
+    $root = Join-Path $sandbox ('cardinality-' + $Name)
+    New-Item -ItemType Directory -Path $root -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Invoke-HookTests.ps1') -Destination $root
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot '_HookHarness.ps1') -Destination $root
+    [IO.File]::WriteAllText((Join-Path $root 'Probe.Tests.ps1'), $Body, (New-Object Text.UTF8Encoding($true)))
+    $manifest = Join-Path $root 'case-counts.txt'
+    $savedErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        $out = & $script:SelfHost -NoProfile -ExecutionPolicy Bypass -File `
+            (Join-Path $root 'Invoke-HookTests.ps1') -FixtureDiscovery -CaseCountPath $manifest 2>&1
+        $exit = [int]$LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $savedErrorActionPreference
+    }
+    return [pscustomobject]@{ Exit=$exit; Out=(@($out) -join "`n"); Manifest=$manifest }
 }
 
 try {
@@ -88,7 +108,7 @@ try {
     It 'the runner exits non-zero when a suite file fails' {
         # The level above: a file can report its own failure correctly while the runner still sums
         # to zero. Both halves have to hold for a red result to reach the caller.
-        $r = Invoke-Child -Path (Join-Path $sandbox 'Invoke-HookTests.ps1')
+        $r = Invoke-Child -Path (Join-Path $sandbox 'Invoke-HookTests.ps1') -Arguments @('-FixtureDiscovery')
         Assert ($r.Out -match 'OneFailure\.Tests\.ps1') "the runner did not discover the planted fixtures: $($r.Out)"
         Assert ($r.Out -match 'failure\(s\) across')    "the runner did not print its summary: $($r.Out)"
         Assert ($r.Exit -ne 0)                          "the runner exited $($r.Exit) with a failing suite file present"
@@ -96,9 +116,57 @@ try {
 
     It 'the runner exits zero when every suite file passes (control)' {
         Remove-Item -LiteralPath (Join-Path $sandbox 'OneFailure.Tests.ps1') -Force
-        $r = Invoke-Child -Path (Join-Path $sandbox 'Invoke-HookTests.ps1')
+        $r = Invoke-Child -Path (Join-Path $sandbox 'Invoke-HookTests.ps1') -Arguments @('-FixtureDiscovery')
         Assert ($r.Out -match 'NoFailure\.Tests\.ps1') "the runner did not discover the remaining fixture: $($r.Out)"
         Assert ($r.Exit -eq 0)                         "the runner exited $($r.Exit) with only passing suite files"
+    }
+
+    It 'the runner rejects a child with no semantic case marker' {
+        $r = Invoke-CardinalityRunnerFixture -Body "exit 0`n" -Name 'missing'
+        Assert ($r.Exit -ne 0) "missing marker stayed green: $($r.Out)"
+        Assert ($r.Out -match 'emitted 0 CASE_COUNT markers') "missing marker was not diagnosed: $($r.Out)"
+        Assert (-not (Test-Path -LiteralPath $r.Manifest)) 'missing marker produced a manifest'
+    }
+
+    It 'the runner rejects a zero semantic case marker' {
+        $r = Invoke-CardinalityRunnerFixture -Body "Write-Host 'CASE_COUNT 0'`nexit 0`n" -Name 'zero'
+        Assert ($r.Exit -ne 0) "zero marker stayed green: $($r.Out)"
+        Assert ($r.Out -match 'non-positive CASE_COUNT') "zero marker was not diagnosed: $($r.Out)"
+        Assert (-not (Test-Path -LiteralPath $r.Manifest)) 'zero marker produced a manifest'
+    }
+
+    It 'the runner rejects a suite whose only semantic case was skipped' {
+        $body = @'
+. (Join-Path $PSScriptRoot '_HookHarness.ps1')
+Reset-Tests
+Skip 'Windows case' 'fixture deliberately did not execute'
+exit (Write-TestSummary 'skip-only fixture')
+'@
+        $r = Invoke-CardinalityRunnerFixture -Body $body -Name 'skip-only'
+        Assert ($r.Exit -ne 0) "skip-only suite stayed green: $($r.Out)"
+        Assert ($r.Out -match 'CASE_COUNT 0' -and $r.Out -match 'non-positive CASE_COUNT') `
+            "skip-only suite was not classified as zero executed cases: $($r.Out)"
+        Assert (-not (Test-Path -LiteralPath $r.Manifest)) 'skip-only suite produced a manifest'
+    }
+
+    It 'the runner rejects duplicate semantic case markers' {
+        $r = Invoke-CardinalityRunnerFixture -Body "Write-Host 'CASE_COUNT 1'`nWrite-Host 'CASE_COUNT 2'`nexit 0`n" -Name 'duplicate'
+        Assert ($r.Exit -ne 0) "duplicate markers stayed green: $($r.Out)"
+        Assert ($r.Out -match 'emitted 2 CASE_COUNT markers') "duplicate markers were not diagnosed: $($r.Out)"
+        Assert (-not (Test-Path -LiteralPath $r.Manifest)) 'duplicate markers produced a manifest'
+    }
+
+    It 'the semantic case manifest is deterministic UTF-8 without BOM' {
+        $body = "Write-Host 'CASE_COUNT 3'`nexit 0`n"
+        $first = Invoke-CardinalityRunnerFixture -Body $body -Name 'valid-first'
+        $second = Invoke-CardinalityRunnerFixture -Body $body -Name 'valid-second'
+        Assert ($first.Exit -eq 0 -and $second.Exit -eq 0) "valid marker failed: $($first.Out)`n$($second.Out)"
+        $a = [IO.File]::ReadAllBytes($first.Manifest)
+        $b = [IO.File]::ReadAllBytes($second.Manifest)
+        Assert ($a.Length -gt 0 -and $b.Length -gt 0) 'valid marker produced an empty manifest'
+        Assert (-not ($a.Length -ge 3 -and $a[0] -eq 0xEF -and $a[1] -eq 0xBB -and $a[2] -eq 0xBF)) 'manifest unexpectedly has a UTF-8 BOM'
+        Assert ([Convert]::ToBase64String($a) -ceq [Convert]::ToBase64String($b)) 'identical runs produced different manifest bytes'
+        Assert ([Text.Encoding]::UTF8.GetString($a) -ceq "Probe.Tests.ps1`t3`nTOTAL`t3`n") 'manifest format/content differs from its canonical form'
     }
 } finally {
     Remove-Item -LiteralPath $sandbox -Recurse -Force -ErrorAction SilentlyContinue

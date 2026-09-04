@@ -1,7 +1,7 @@
 ---
 name: solid-check
 <!-- @stack:desc -->
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, PowerShell
 model: inherit
 ---
 

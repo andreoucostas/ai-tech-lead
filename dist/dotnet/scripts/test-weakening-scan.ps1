@@ -1,5 +1,5 @@
 ﻿# Reports assertion-shaped removals in test-file diffs for review.
-# Usage: pwsh scripts/test-weakening-scan.ps1 [<git-ref-range>]
+# Usage: pwsh -NoProfile -File scripts/test-weakening-scan.ps1 [<git-ref-range>]
 # With no range, inspects staged changes. This is an advisory signal and always exits 0.
 # LIMIT, stated because someone will otherwise read this as a detector: it counts assertion-shaped
 # LINES, so three assertions collapsed onto one line and then deleted register as a single removal,

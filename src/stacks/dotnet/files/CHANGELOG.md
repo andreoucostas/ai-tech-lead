@@ -4,6 +4,18 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.83.0 — Unreleased
+
+- Framework installation, hooks, checks, and supplied CI now use PowerShell on Windows. PowerShell
+  7 is preferred and Windows PowerShell 5.1 remains the supported fallback for framework scripts.
+  Linux, WSL, macOS, BSD, and Copilot cloud hook execution are no longer supported.
+- Claude Code 2.1.141 or newer is required. Project settings enable its native PowerShell tool and
+  select PowerShell explicitly for hooks. Local Copilot hooks require PowerShell 7 on Windows.
+- The optional Git pre-commit hook installer is retired. Existing consumer-owned hooks are never
+  deleted automatically; dependent legacy helpers are preserved and reported until you review and
+  remove or replace the hook. Protected documentation, local settings, and custom CI that still
+  reference retired shell commands are reported without being overwritten.
+
 ## 0.82.0 — 2026-09-04
 
 - Project skills now ship once under `.claude/skills/`, which current Claude Code and GitHub

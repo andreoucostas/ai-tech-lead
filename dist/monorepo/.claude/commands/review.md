@@ -27,7 +27,7 @@ Wait for all five to return their structured output. Use those findings as the s
 Derive exact **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands for the reviewed area from `CLAUDE.md`, committed CI, scripts, manifests, and configuration. Run only commands supported by that evidence. Stack presence establishes only profile applicability; use any .NET or Angular command, runner, target, browser, project, configuration, or flags only when that exact full form is explicitly recorded in the evidence. Do not trust that the code being reviewed already passes. Record unavailable verification categories as **not available** and applicable-command failures as high-severity issues.
 
 ### Step 3 — Apply senior judgement
-Before judging the diff, run `pwsh scripts/test-weakening-scan.ps1` (or the `.sh` twin) and consult
+Before judging the diff, run `pwsh -NoProfile -File scripts/test-weakening-scan.ps1` and consult
 its test-weakening advisory. It reports a reviewable signal that can be defeated by ignoring it; it
 is not enforcement. Include any reported files in the test-quality assessment.
 

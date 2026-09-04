@@ -12,9 +12,8 @@ cited source and stable id resolves. For backlog-entry citations it also verifie
 phrase occurs inside the cited entry; WSD labels are curated summaries, and the cited WSD remains
 authoritative.
 
-- “Meta scripts are PowerShell-only.” — `meta/workspace-decisions.md WSD-005`
 - “Single-source composition; generated distributions are not authored.” — `meta/workspace-decisions.md WSD-012`
-- “Judge additive safety per twin.” — `meta/workspace-decisions.md WSD-015`
+- “A stack-specific source change requires reviewing its monorepo sibling.” — `meta/workspace-decisions.md WSD-015`
 - “Evals are not a release gate.” — `meta/workspace-decisions.md WSD-016`
 - “The meta/product boundary is sealed and machine-checked.” — `meta/workspace-decisions.md WSD-019`
 - “Do not add a separate testing skill or data-warehouse distribution.” — `meta/workspace-decisions.md WSD-020`
@@ -39,16 +38,15 @@ authoritative.
 - “Historic decisions are evidence-bearing defaults, not doctrine.” — `meta/workspace-decisions.md WSD-057`
 - “Independent review is evidence-bound, not rank-bound.” — `meta/workspace-decisions.md WSD-057`
 - “The next independent paired replay begins FS2 and is never aggregated with FS1.” — `meta/workspace-decisions.md WSD-058`
-- “A unique supported-provider claim can justify one focused provider leg.” — `meta/workspace-decisions.md WSD-061` (its macOS authorization is superseded by WSD-064)
-- “Supported and release-tested hosts are Windows and Linux; macOS/BSD/Bash 3.2 are out of scope.” — `meta/workspace-decisions.md WSD-064`
-- “Sourcing shipped scripts or deliberately exporting `SHELLOPTS=errexit` into their Bash process tree is not a public compatibility contract.” — `meta/workspace-decisions.md WSD-065`
+- “A unique supported-provider claim can justify one focused provider leg.” — `meta/workspace-decisions.md WSD-061` (WSD-073 supersedes its multi-platform topology)
 - “Host evidence is capability-specific and recertification is evidence-triggered.” — `meta/workspace-decisions.md WSD-066`
 - “Specification readiness remains adaptive; Draft status is not human authority.” — `meta/workspace-decisions.md WSD-067`
 - “B-136 re-locks one size-negative reconciliation rule and nothing else” — `meta/workspace-decisions.md WSD-068`
 - “The standing-decisions index is curated meta guidance, not an exhaustive inventory of constraints embedded in shipped artifacts.” — `meta/workspace-decisions.md WSD-069`
 - “Unavailable team intent is not a gradable agent outcome; a direction-of-travel probe must grade asking or unresolved separately from canonizing legacy.” — `meta/workspace-decisions.md WSD-070`
 - “Framework-maintainer tests stay in distributions but do not install into consumers or evidence application verification.” — `meta/workspace-decisions.md WSD-071`
-- “Project skills ship once under `.claude/skills`; retire only content-qualified GitHub mirrors and preserve every distinct host adapter.” — `meta/workspace-decisions.md WSD-072`
+- “Project skills ship once under `.claude/skills`; retire only content-qualified GitHub mirrors.” — `meta/workspace-decisions.md WSD-072` (WSD-073 supersedes its Bash-adapter retention)
+- “Supported framework execution is native Windows and PowerShell only.” — `meta/workspace-decisions.md WSD-073`
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`

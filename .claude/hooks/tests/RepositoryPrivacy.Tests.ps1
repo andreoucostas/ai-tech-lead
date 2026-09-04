@@ -53,10 +53,15 @@ function Get-RepositoryPrivacyFindings {
     return @($findings)
 }
 
+$script:MaintainerPwsh = Get-Command pwsh -CommandType Application -ErrorAction SilentlyContinue |
+    Select-Object -First 1 -ExpandProperty Source
+
 function Invoke-ResolveOnly {
     param([string]$Script, [string[]]$Arguments)
-    $exe = (Get-Process -Id $PID).Path
-    $out = & $exe -NoProfile -ExecutionPolicy Bypass -File $Script @Arguments 2>&1
+    if (-not $script:MaintainerPwsh) {
+        return [pscustomobject]@{ Exit = 3; Out = 'PowerShell 7 is required for maintainer canaries.' }
+    }
+    $out = & $script:MaintainerPwsh -NoProfile -ExecutionPolicy Bypass -File $Script @Arguments 2>&1
     [pscustomobject]@{ Exit = $LASTEXITCODE; Out = ($out -join "`n") }
 }
 
@@ -65,6 +70,12 @@ if ($ScanRoot) {
     if ($scanFindings) { $scanFindings | ForEach-Object { Write-Host $_ }; exit 1 }
     Write-Host 'repository privacy scan clean'
     exit 0
+}
+
+It 'maintainer canary resolution explicitly uses PowerShell 7' {
+    Assert (-not [string]::IsNullOrWhiteSpace($script:MaintainerPwsh)) 'pwsh is required for maintainer canaries'
+    $major = [Diagnostics.FileVersionInfo]::GetVersionInfo($script:MaintainerPwsh).ProductMajorPart
+    Assert ($major -ge 7) "resolved maintainer host is not PowerShell 7+: $script:MaintainerPwsh ($major)"
 }
 
 It 'scanner recognizes concrete Windows, MSYS, Linux and macOS homes' {

@@ -1,12 +1,11 @@
 ﻿# The retired fidelity gate remains callable by maintainers even though it is no longer wired to CI.
-# Its invalid-ref path must produce the same concise usage failure under both PowerShell hosts and
-# the Bash twin, without leaking PowerShell 5.1's NativeCommandError rendering.
+# Its invalid-ref path must produce the same concise usage failure under both supported PowerShell
+# hosts without leaking Windows PowerShell 5.1's NativeCommandError rendering.
 . (Join-Path $PSScriptRoot '_HookHarness.ps1')
 Reset-Tests
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $fidelityPs = Join-Path $repoRoot 'scripts/fidelity-check.ps1'
-$fidelitySh = Join-Path $repoRoot 'scripts/fidelity-check.sh'
 $invalidRef = 'b89-invalid-fidelity-ref-does-not-exist'
 $expectedError = "could not archive legacy/dotnet from $invalidRef"
 
@@ -38,7 +37,6 @@ function Invoke-CapturedProcess([string]$Exe,[string[]]$Arguments) {
 }
 
 function Invoke-PowerShellFidelity([string]$Exe) { Invoke-CapturedProcess $Exe @('-NoProfile','-ExecutionPolicy','Bypass','-File',$fidelityPs,'dotnet',$invalidRef) }
-function Invoke-BashFidelity([string]$Exe) { Invoke-CapturedProcess $Exe @($fidelitySh,'dotnet',$invalidRef) }
 
 function Assert-InvalidRefContract($Result,[string]$HostName) {
     Assert ($Result.Exit-eq 2) "$HostName invalid-ref exit=$($Result.Exit), expected 2; stderr=$($Result.Err)"
@@ -66,12 +64,5 @@ if ($isWindowsHost) {
     Skip 'fidelity-check.ps1 current-host invalid-ref contract' 'invariant: the retired PowerShell fidelity script is Windows-only; its System32 tar.exe contract is not broadened by this test'
     Skip 'fidelity-check.ps1 Windows PowerShell 5.1 invalid-ref contract' 'invariant: Windows PowerShell 5.1 is unavailable on a non-Windows host'
 }
-
-$bash = Get-BashPath
-if ($bash) {
-    It 'fidelity-check.sh returns the same friendly invalid-ref contract' {
-        Assert-InvalidRefContract (Invoke-BashFidelity $bash) 'Bash'
-    }
-} else { Skip 'fidelity-check.sh invalid-ref contract' 'Bash is unavailable' }
 
 exit (Write-TestSummary 'FidelityCheck.Tests')

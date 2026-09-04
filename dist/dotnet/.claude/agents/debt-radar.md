@@ -1,7 +1,7 @@
 ---
 name: debt-radar
-description: Surfaces TECH_DEBT.md entries relevant to a given file path or feature area. Invoke before starting work in an area to find trojan-horse opportunities (debt that can be bundled into the current change). Returns matching DEBT entries with severity/effort — does not modify TECH_DEBT.md.
-tools: Read, Grep, Bash
+description: Surfaces TECH_DEBT.md entries relevant to a file path or feature. Invoke before work in an area to find trojan-horse opportunities (debt that fits the current change). Returns matching entries with severity/effort; read-only.
+tools: Read, Grep, PowerShell
 model: haiku
 ---
 

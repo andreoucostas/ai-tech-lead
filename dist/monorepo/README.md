@@ -11,7 +11,7 @@ If you are an AI agent reading this repository, start here.
 **Your source of truth is [`CLAUDE.md`](./CLAUDE.md)** (Claude Code and supported Copilot agent surfaces read it directly) or its generated mirror **[`AGENTS.md`](./AGENTS.md)** (Codex and GitHub code review; Cursor reads both). Read the applicable file before doing anything else — it defines the verification rules, conventions, SOLID/leanness constraints, and the step-by-step workflow you must follow.
 
 **If you were asked to install this framework into a target codebase** — installation is a two-actor flow: you (the agent) copy files and commit; a **developer** must then run the populate command. Your task is not complete until you have handed off explicitly:
-1. **Copy the files in:** `pwsh scripts/install.ps1 <target-repo-path>` (or `bash scripts/install.sh <target-repo-path>`). This installer carries both stacks' rails; it detects the mode itself: **greenfield** (plain copy), **brownfield** (the target already has AI tooling — the originals its copy would overwrite are moved to `docs/pre-adoption/` and `.claude/adoption-pending.json` is written), or **update** (target already stamped with `.claude/framework-version.json` — protected consumer paths are restored, framework machinery is overwritten, and `.claude/settings.json` is backed up before refresh).
+1. **Copy the files in on Windows:** `pwsh -NoProfile -File scripts/install.ps1 <target-repo-path>`. If PowerShell 7 is unavailable, use `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 <target-repo-path>`. This installer carries both stacks' rails; it detects the mode itself: **greenfield** (plain copy), **brownfield** (the target already has AI tooling — the originals its copy would overwrite are moved to `docs/pre-adoption/` and `.claude/adoption-pending.json` is written), or **update** (target already stamped with `.claude/framework-version.json` — protected consumer paths are restored, framework machinery is overwritten, and `.claude/settings.json` is backed up before refresh).
 2. **Commit the copied files** in the target repo — they are team-shared config, not local settings.
 3. **Hand off to the developer.** Populating is done by **`/adopt`** (brownfield — the installer wrote `.claude/adoption-pending.json`) or **`/bootstrap`** (greenfield). Both are **developer-initiated**: the model cannot invoke them, and they only exist inside a Claude Code session started in the target repo — so you cannot run them, and you must not try to replicate them by hand. End your run by telling the developer, verbatim: *"start a Claude Code session in `<target repo>` and type `/adopt`"* (or `/bootstrap`). Until that happens, the SessionStart hook warns every new session and `scripts/docs-sync-check` fails CI — expect that check to fail at this stage; it passes only after the developer has run the command.
 
@@ -57,10 +57,10 @@ Copy the following into your repository's **Git root**. `*.csproj`, Angular work
 .claude/                            → Claude Code commands and hooks
 .github/prompts/                    → GitHub Copilot Chat workflows (mirror of .claude/commands/)
 .github/agents/                     → Copilot custom agents wrapping the subagents
-.github/hooks/hooks.json            → registers the hooks for Copilot CLI / cloud agent
+.github/hooks/hooks.json            → registers PowerShell hooks for local Copilot clients on Windows
 .github/workflows/docs-sync-check.yml → CI guardrail (GitHub Actions; Bitbucket uses scripts/)
 .github/PULL_REQUEST_TEMPLATE.md    → PR template with design rationale + Boy Scout checklist
-scripts/                            → host-agnostic CI guardrail + skills-sync + Bitbucket CI sample
+scripts/                            → Windows PowerShell CI guardrail and framework helpers
 specs/                              → persistent feature specs (spec-driven development)
 AGENTS.md                           → generated rule mirror (Codex + GitHub code review; Cursor reads both)
 CLAUDE.md                           → template, populated by /bootstrap
@@ -75,8 +75,8 @@ docs/playbook.md                    → methodology guide
 
 All of these files should be committed to version control — they're shared team configuration, not local settings.
 
-> **Hook prerequisite — the interpreter wired in `.claude/settings.json` must resolve in the agent host.** The host may show the developer a launch-error notice, but this framework and the model do not recover the missing guard, feedback, or telemetry. The installer selects a PowerShell or bash twin for the installing machine; committed team config must work on every developer machine. VS Code agent hooks are Preview, off by default, org-gated, and the full lifecycle is not certified. See `docs/enforcement-surfaces.md` and verify with the actual-host canaries.
-> Not sure what is live on your machine? Run `pwsh scripts/framework-doctor.ps1` or `bash scripts/framework-doctor.sh` once per developer machine.
+> **Hook prerequisite — Claude Code 2.1.141 or newer and the registered PowerShell interpreter must resolve in the Windows agent host.** PowerShell 7 is primary; native Windows PowerShell 5.1 is the Claude Code fallback. Git Bash, WSL, native Linux, macOS/BSD, and Copilot coding-agent cloud hook execution are unsupported. VS Code agent hooks remain Preview and org-gated. See `docs/enforcement-surfaces.md` and verify with the actual-host canaries.
+> Not sure what is live on your machine? Run `pwsh -NoProfile -File scripts/framework-doctor.ps1` once per developer machine (or use the documented Windows PowerShell 5.1 fallback).
 
 ### 2. Bootstrap (greenfield) **or** Adopt (existing setup)
 
@@ -134,7 +134,7 @@ Each consumer repo records the template version it was last synced from. Two loc
 - A human-readable HTML comment at the top of `CLAUDE.md`
 - A machine-readable `.claude/framework-version.json`
 
-To pull template updates, re-run the installer from a fresh template checkout against your repo (`bash scripts/install.sh /path/to/your-repo` or `pwsh scripts/install.ps1 /path/to/your-repo`) — it detects the existing `.claude/framework-version.json` and switches to **update mode**. Preserve local edits to framework-owned files before running it, then review the resulting diff before committing. Update treats files in three ownership classes: the protected consumer paths named by the installer (`CLAUDE.md`, `AGENTS.md`, `TECH_DEBT.md`, `SECURITY_FINDINGS.md`, `LEARNINGS.md`, `FRAMEWORK-CONTEXT.md`, `.github/copilot-instructions.md`, `docs/ARCHITECTURE.md`, and `docs/architecture-decisions.md`) are restored; framework-owned machinery (hooks, commands, skills, scripts, and the JSON stamp) is overwritten; mixed-ownership `.claude/settings.json` is first backed up to `.claude/.state/settings.json.pre-update`, then refreshed and adapted to the host. Bump the CLAUDE.md header comment yourself as part of the update commit. CI tooling reads the JSON file to detect drift between your repo and the latest template version. If the version stamps disagree, treat the JSON file as authoritative. The update also refreshes `.github/instructions/framework-rules.instructions.md`. The update proves file arrival, not Copilot host consumption; see `docs/enforcement-surfaces.md` for dated, client-specific consumption evidence. Existing Claude Code consumers must once add `@.github/instructions/framework-rules.instructions.md` to `CLAUDE.md` where the four inline framework sections were, then delete those old sections. Until then, `session-start` provides discovery only. The carrier is framework-owned: update deliberately overwrites consumer edits to it. Boy Scout content remains consumer-owned after bootstrap, so future scaffold changes to it are greenfield-only.
+To pull template updates, run `pwsh -NoProfile -File scripts/install.ps1 <target-repo-path>` from a fresh template checkout on Windows — it detects the existing `.claude/framework-version.json` and switches to **update mode**. Preserve local edits to framework-owned files before running it, then review the resulting diff before committing. Update treats files in three ownership classes: the protected consumer paths named by the installer (`CLAUDE.md`, `AGENTS.md`, `TECH_DEBT.md`, `SECURITY_FINDINGS.md`, `LEARNINGS.md`, `FRAMEWORK-CONTEXT.md`, `.github/copilot-instructions.md`, `docs/ARCHITECTURE.md`, and `docs/architecture-decisions.md`) are restored; framework-owned machinery (hooks, commands, skills, scripts, and the JSON stamp) is overwritten; mixed-ownership `.claude/settings.json` is first backed up to `.claude/.state/settings.json.pre-update`, then refreshed and adapted to the host. Bump the CLAUDE.md header comment yourself as part of the update commit. CI tooling reads the JSON file to detect drift between your repo and the latest template version. If the version stamps disagree, treat the JSON file as authoritative. The update also refreshes `.github/instructions/framework-rules.instructions.md`. The update proves file arrival, not Copilot host consumption; see `docs/enforcement-surfaces.md` for dated, client-specific consumption evidence. Existing Claude Code consumers must once add `@.github/instructions/framework-rules.instructions.md` to `CLAUDE.md` where the four inline framework sections were, then delete those old sections. Until then, `session-start` provides discovery only. The carrier is framework-owned: update deliberately overwrites consumer edits to it. Boy Scout content remains consumer-owned after bootstrap, so future scaffold changes to it are greenfield-only.
 
 ## What's in the box
 
@@ -149,11 +149,11 @@ To pull template updates, re-run the installer from a fresh template checkout ag
 | `.claude/skills/*/SKILL.md` | Auto-discovered Common Tasks recipes (add-endpoint, add-entity, register-service, map-warehouse, add-warehouse-load, add-component, add-service, add-lazy-route, add-signal-store, add-tests, perf, dependency-audit, create-adr, enforce-architecture, enforce-standards). Shared canonical location for Claude Code and supported GitHub Copilot skill surfaces; the body loads only when triggered. |
 | `.claude/agents/*.md` | Subagents (security-auditor, solid-check, convention-check, bloat-radar, debt-radar, test-critic, bootstrap-pass). Run in isolated context; return structured findings. The six user-facing ones are mirrored to `.github/agents/*.agent.md` as Copilot custom agents. |
 | `.claude/workflow.md` | Shared self-review + flag-drift tail inlined by the workflow commands via `@.claude/workflow.md`. |
-| `.claude/hooks/*.sh` | SessionStart context preload, UserPromptSubmit intent router, scoped PreToolUse guard, PostToolUse build/type feedback and mutable local telemetry, Stop Boy Scout scanner. Each has a `.ps1` twin. |
+| `.claude/hooks/*.ps1` | SessionStart context preload, UserPromptSubmit intent router, scoped PreToolUse guard, PostToolUse build/type feedback and mutable local telemetry, Stop Boy Scout scanner. |
 | `.claude/settings.json` | Registers hooks for Claude Code; the interpreter and supported editor/file-write events define the live scope. Shell writes remain outside the guard. |
-| `.github/hooks/hooks.json` | Registers the same hooks for Copilot cloud agent and CLI (on Bitbucket, the CLI surface only). Points to the same scripts in `.claude/hooks/`. |
+| `.github/hooks/hooks.json` | Registers PowerShell hooks for local Copilot clients on Windows. Copilot coding-agent cloud hook execution is unsupported. |
 | `.github/agents/` | Copilot custom-agent wrappers around the canonical `.claude/agents/` definitions; retained because the cloud-agent contract is distinct from skill discovery. |
-| `scripts/` | Host-agnostic helpers include `metrics.{sh,ps1}`; `ci/` contains NetArchTest/dependency-cruiser scaffolding to wire in consumer CI. |
+| `scripts/` | Windows PowerShell helpers include `metrics.ps1`; `ci/` contains NetArchTest/dependency-cruiser scaffolding to wire in consumer CI. |
 | `specs/` | Persistent feature specs (spec-driven development). `/design` writes one, `/feature` implements against it, `/review` verifies. See `specs/README.md`. |
 | `docs/impact/` | Optional descriptive metrics; no executable A/B harness or comparative report. |
 | `TECH_DEBT.md` | **Generated** by `/bootstrap` — prioritised debt register with Trojan Horse opportunities. |
@@ -185,7 +185,7 @@ The router is the key piece. **In Claude Code**, a developer who types *"the exp
 
 #### Hook compatibility
 
-The same hook logic ships as bash and PowerShell twins across three client surfaces, with different certification:
+The PowerShell hook logic is registered across three local client surfaces, with capability-specific certification:
 
 | Surface | Config file | Payload shape | Notes |
 |---------|-------------|---------------|-------|
@@ -193,31 +193,21 @@ The same hook logic ships as bash and PowerShell twins across three client surfa
 | **GitHub Copilot CLI** | `.github/hooks/hooks.json` | `toolName` ∈ {`edit`,`create`}; `toolArgs.filePath` | Capability-specific evidence: single-entry prompt delivery on CLI 1.0.80 (2026-08-18) and post-tool context on 1.0.80 (2026-08-20); the registered `agentStop` path is unverified. Folder trust and interpreter resolution are prerequisites. |
 | **Copilot in VS Code** | `.github/hooks/hooks.json` | VS Code tool payload | Preview, off by default, org-gated. One guard deny was observed on 2026-06-25, but host/extension versions were not recorded; prompt, post-tool, and Stop lifecycles remain unverified. |
 
-Hook interpreter by platform. **Windows and Linux are supported and release-tested; macOS is unsupported and untested.** Claude Code's `settings.json` defaults to the PowerShell (`pwsh`) twins — so hooks fire on Windows without git-bash (the old bash default silently no-opped there). The installer adapts the interpreter on supported hosts, so this is automatic:
+Hook execution is supported on Windows only. PowerShell 7 (`pwsh`) is primary; native Windows PowerShell 5.1 is the supported Claude Code fallback. Git Bash, WSL, native Linux, macOS/BSD, and Copilot coding-agent cloud hook execution are unsupported:
 
 | Platform | Hook interpreter | Notes |
 |----------|------------------|-------|
-| Windows + PowerShell 7 (`pwsh`) | `pwsh` (default) | Works out of the box — no git-bash required. |
-| Windows, no `pwsh` | Windows PowerShell 5.1 | `install.ps1` auto-activates `settings.windows.json` (5.1 is preinstalled on every Windows box). |
-| Windows + Git for Windows (git-bash) | `pwsh`, or bash if preferred | Run `install.sh` under git-bash to switch to the bash twins. `.gitattributes` pins `*.sh` to LF so CRLF can't break them. |
-| Linux + `pwsh` | `pwsh` (default) | Works out of the box. |
-| Linux, no `pwsh` | bash | `install.sh` switches to the bash twins (`git`, `grep`, `tr`, `printf`, `wc` are all default). |
-| macOS | — | Unsupported and untested; incidental compatibility is not a release contract. |
-| Windows + WSL only | — | Not recommended: `/mnt/c/...` path translation breaks the hooks. Install Git for Windows or PowerShell alongside WSL. |
+| Windows + PowerShell 7 (`pwsh`) | `pwsh` (default) | Primary supported host. |
+| Windows, no `pwsh` | Windows PowerShell 5.1 | `install.ps1` auto-activates `settings.windows.json`; the 5.1 host must be available. |
+| Other execution environments | — | Unsupported; do not rely on framework commands or hooks firing. |
 
-> GitHub Copilot's `.github/hooks/hooks.json` already declares both a `bash` and a `powershell` command per hook and picks per-OS, so Copilot is unaffected — this change brings Claude Code to parity on Windows.
+> Local Copilot hook registrations explicitly invoke `pwsh`. They do not fall back to Windows PowerShell 5.1 and do not apply to the Copilot coding-agent cloud.
 
 **Verify your setup** after copying the template into your repo:
 
-```bash
-# Bash version (Linux / Windows + git-bash):
-echo '{"prompt":"the export endpoint is broken"}' | bash .claude/hooks/route-prompt.sh
-# Expected: "## Routed intent: `fix` ..." plus the fix-workflow rules.
-```
-
 ```powershell
-# PowerShell version (Windows-only PowerShell teams):
-'{"prompt":"the export endpoint is broken"}' | powershell -NoProfile -ExecutionPolicy Bypass -File .claude\hooks\route-prompt.ps1
+# PowerShell 7 primary:
+'{"prompt":"the export endpoint is broken"}' | pwsh -NoProfile -File .claude\hooks\route-prompt.ps1
 # Expected: "## Routed intent: `fix` ..." plus the fix-workflow rules.
 ```
 
@@ -277,11 +267,11 @@ The intent is that `.cs` files see the .NET rules, `.ts` files see the Angular r
 
 ## Running on Bitbucket Data Center
 
-This framework grew up around GitHub conventions, but its **local layer is host-agnostic** — it behaves the same whether your remote is GitHub, Bitbucket Cloud, or **Bitbucket Data Center / Server**. Only the *cloud-automation* layer is GitHub-specific. Here's precisely what applies on a self-hosted Bitbucket repo.
+This framework supports local command and hook execution on **Windows** whether the remote is GitHub or **Bitbucket Data Center / Server**. Git Bash, WSL, native Linux, macOS/BSD, and Copilot coding-agent cloud hook execution are unsupported. Here's precisely what applies on a self-hosted Bitbucket repo.
 
 ### Local files, subject to client prerequisites
 - **GitHub Copilot in the IDE** (VS Code / Visual Studio / JetBrains) can read its working-tree instruction carriers regardless of git host. That does not certify Preview VS Code hooks; enable them where permitted and run the canaries before relying on enforcement.
-- **Claude Code** (CLI + IDE extension) — reads `CLAUDE.md` and everything under `.claude/`. Host-agnostic.
+- **Claude Code** (CLI + IDE extension) — reads `CLAUDE.md` and everything under `.claude/`; framework command and hook execution is supported on Windows.
 - **GitHub Copilot CLI** — capability-specific observations, not a blanket certificate: single-entry prompt delivery on CLI 1.0.80 (2026-08-18) and post-tool context on 1.0.80 (2026-08-20). Other registered events, including `agentStop`, require their own live evidence; folder trust and interpreter resolution remain prerequisites.
 - **Skills, custom agents, prompts, slash commands** — all file-driven in the repo; no platform service required.
 
@@ -289,7 +279,7 @@ This framework grew up around GitHub conventions, but its **local layer is host-
 | GitHub feature | On Bitbucket DC | Use instead |
 |----------------|-----------------|-------------|
 | Copilot **coding agent** (async, assigned to issues, opens PRs) | Not available (github.com repos only) | Local CLI agents: Claude Code, Copilot CLI |
-| `.github/workflows/docs-sync-check.yml` (**GitHub Actions**) | Does not run | `scripts/docs-sync-check.sh` in Bamboo/Jenkins/pre-receive (below) |
+| `.github/workflows/docs-sync-check.yml` (**GitHub Actions**) | Does not run | `scripts/docs-sync-check.ps1` in Bamboo/Jenkins on a self-hosted Windows agent (below) |
 | `.github/PULL_REQUEST_TEMPLATE.md` | Not auto-applied | Bitbucket repo/project **default PR description** setting |
 | Copilot **PR code review** | Not available | `/review` + `/security-review` locally pre-push; or a SAST step in CI |
 | Atlassian **Rovo Dev** (native AI agent / PR reviewer) | **Cloud-only** — not on Data Center | Local CLI agents + the CI guardrail below |
@@ -297,10 +287,9 @@ This framework grew up around GitHub conventions, but its **local layer is host-
 > Net: on Bitbucket Data Center your agentic story is **local CLI agents + IDE Copilot**, not a cloud agent, and there is no platform-side AI PR reviewer. Gate quality with `/review` and `/security-review` *before* you push, and with the CI guardrail *after*.
 
 ### The CI guardrail on Bitbucket — a required build is expected, not optional
-**Every repo using this framework is expected to wire one required build in its own CI (Bamboo/Jenkins/TeamCity) that gates PR merges.** The full recipe — the shipped `scripts/docs-sync-check.sh`/`.ps1` framework-state check plus only the code gates evidenced by the profiles present in this repository (or an explicit `not available` gap), Bamboo and Jenkins configurations, and Bitbucket DC's *required builds* merge check — lives in **[docs/ci-integration.md](./docs/ci-integration.md)**.
+**Every repo using this framework is expected to wire one required Windows build in its own CI (Bamboo/Jenkins/TeamCity) that gates PR merges.** The full recipe — the shipped `scripts/docs-sync-check.ps1` framework-state check plus only the code gates evidenced by the profiles present in this repository (or an explicit `not available` gap), Windows Bamboo and Jenkins configurations, and Bitbucket DC's *required builds* merge check — lives in **[docs/ci-integration.md](./docs/ci-integration.md)**.
 - **Also enable** Bitbucket DC's native **secret scanning** (8.12+, push-time blocking — zero custom code).
 - **Optionally surface it on the PR** via the **Code Insights REST API** (`/rest/insights/1.0/...`); cosmetic on top of required builds, not a substitute.
-- **Bitbucket Cloud** repos: copy `scripts/ci/bitbucket-pipelines.example.yml` into `bitbucket-pipelines.yml`.
 
 ### Standing scanners on Bitbucket
 - **Dependencies**: Dependabot is GitHub-only — when committed package manifests evidence an applicable ecosystem, use **Renovate** (self-hostable) or the exact CI fallback derived by `dependency-audit`; otherwise record dependency scanning as `not available`.

@@ -1,7 +1,7 @@
 ---
 name: solid-check
 description: Audits a diff in this repository against the five SOLID principles. Apply profile-specific interface or abstraction/token requirements only where repository evidence and files in scope establish that profile. Returns a structured findings table — does not modify files. Used by `/review` and ad-hoc SOLID audits.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, PowerShell
 model: inherit
 ---
 

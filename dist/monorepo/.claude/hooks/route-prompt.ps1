@@ -1,12 +1,12 @@
 ﻿# UserPromptSubmit router -- classify natural-language prompts into a workflow
 # and format the matching workflow's deterministic rails for hook output.
-# PowerShell equivalent of route-prompt.sh, for Windows-only PowerShell teams.
+# Prompt-routing hook for the supported native Windows PowerShell topology.
 # For Claude-shaped input this script emits plain stdout; for other JSON input it emits top-level
 # and wrapped JSON additionalContext shapes. Emission and registration do not prove host firing or
 # consumption; current VS Code prompt-hook lifecycles are unverified. See docs/enforcement-surfaces.md.
 # Skips when the user explicitly invoked a slash command (already deterministic).
 #
-# Unicode rendered text is intentional and matches the canonical bash twin. The mandatory UTF-8
+# Unicode rendered text is intentional. The mandatory UTF-8
 # BOM keeps Windows PowerShell 5.1 decoding these strings correctly.
 
 $ErrorActionPreference = 'SilentlyContinue'

@@ -25,15 +25,18 @@ It also runs `hazard-check`, validating hazard-table Status tokens, Reviewed dat
 `framework-doctor` is a developer-machine diagnostic, not a CI gate; keep `docs-sync-check` as the required build check.
 
 
-```
-bash scripts/docs-sync-check.sh          # Linux build agents
-pwsh -NoProfile -File scripts/docs-sync-check.ps1   # Windows build agents
+```powershell
+pwsh -NoProfile -File scripts/docs-sync-check.ps1
+# Fallback when PowerShell 7 is unavailable:
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/docs-sync-check.ps1
 ```
 
-On supported Windows/Linux hosts, there are no dependencies beyond bash **or** PowerShell. Exit `0` = pass, non-zero = fail,
+Execution is supported on Windows only. PowerShell 7 is primary and native Windows PowerShell 5.1
+is the fallback. Exit `0` = pass, non-zero = fail,
 findings printed to stdout. It verifies the framework itself is healthy: adoption completed (no
 `adoption-pending.json`), `CLAUDE.md` bootstrapped, `AGENTS.md` / `copilot-instructions.md`
-mirrors current, version stamps in sync, hook twins and BOM intact (via `template-checks`).
+mirrors current, version stamps in sync, PowerShell hook registrations and BOM intact (via
+`template-checks`).
 
 **What it does *not* do: gate your code.** A commit with a hardcoded secret, a skipped test, a
 suppressed warning, an `fdescribe`, or an `eslint-disable` passes leg 1. That is leg 2's job.
@@ -94,8 +97,9 @@ the reported Bamboo build key.
 
 One plan, one job, two script tasks (order matters — fail fast on framework state):
 
-- **Task 1 (Script)**: inline, interpreter *Shell* on Linux agents — `bash scripts/docs-sync-check.sh`
-  — or *Windows PowerShell* on Windows agents — `pwsh -NoProfile -File scripts/docs-sync-check.ps1`.
+- **Task 1 (Script)**: on a self-hosted Windows agent, invoke
+  `pwsh -NoProfile -File scripts/docs-sync-check.ps1` (or native Windows PowerShell 5.1 using the
+  fallback command above).
 - **Task 2 (Script)**: the exact applicable commands from `CLAUDE.md > Conventions > Verification
   Commands` whose execution policy permits this CI context. If it says `not available` or marks a
   command manual/CI-only without an established controlled CI target, omit that command and record
@@ -108,10 +112,10 @@ One plan, one job, two script tasks (order matters — fail fast on framework st
 ```groovy
 // Reference shape — use only repository-evidenced profiles and commands.
 pipeline {
-  agent any
+  agent { label 'windows' }
   stages {
     stage('Framework state') {
-      steps { sh 'bash scripts/docs-sync-check.sh' }   // or: pwsh 'scripts/docs-sync-check.ps1'
+      steps { pwsh 'scripts/docs-sync-check.ps1' }
     }
   }
 }

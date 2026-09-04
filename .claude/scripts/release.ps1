@@ -11,13 +11,15 @@
 #
 # Gates (in order): compose all three dists -> validate-dist ×3 + context footprint -> full root
 # meta suite. Shipped hook suites run exclusively in CI: before a normal tag, CI must observe the
-# three-dist hook matrix on both Windows and Linux.
+# three-dist hook matrices under both PowerShell 7 and Windows PowerShell 5.1.
 # fidelity-check is deliberately NOT run here: it is the migration-era gate pinned to the
 # freeze-v0.25.5 tags, and the first release that changes shipped content must consciously
 # retire/re-baseline it (and the CI fidelity legs) in the same change — see WSD-016.
 #
-# PowerShell-only by decision (see meta/workspace-decisions.md): meta scripts run only on the
-# maintainer's box; invariant #3 twin parity applies to shipped hooks/scripts and scripts/.
+# PowerShell-only by decision (see meta/workspace-decisions.md): release/eval automation requires
+# PowerShell 7. Shipped framework scripts retain their separately tested Windows PowerShell 5.1
+# fallback.
+#Requires -Version 7.0
 param(
     [Parameter(Mandatory)][string]$Version,
     [Parameter(Mandatory)][string]$Summary,
@@ -194,22 +196,20 @@ function Assert-GateBudget {
     }
 }
 
-# ---- 0. Reject a -Summary mangled by MSYS path conversion (B-73) ----
-# Invoked from Git Bash, an argument that begins with "/" is rewritten to a Windows path before
-# pwsh ever sees it: -Summary "/bootstrap and /adopt ..." arrived as
-# "C:/Program Files/Git/bootstrap and /adopt ...". v0.40.0 shipped with that in its commit subject.
-# Only the FIRST such token is converted, so the result reads as a typo rather than a tooling bug.
+# ---- 0. Reject a path-expanded -Summary (B-73) -----------------------------------------------
+# A leading slash-command was once rewritten to a filesystem path before PowerShell received it;
+# v0.40.0 shipped that path in its commit subject. Keep the input invariant even though the
+# originating shell is no longer a supported framework execution path.
 # Every slash-command this framework documents (/bootstrap, /adopt, /review, /fix, /feature,
 # /design, /debt, /map-warehouse) triggers it. Neither the Git install path nor the repo path can
 # legitimately appear in a release summary, so treat either as proof of conversion and refuse.
 . (Join-Path $PSScriptRoot '_commit-subject.ps1')
 if ((Test-MsysMangledSubject $Summary) -or $Summary -like "*$repo*") {
     [Console]::Error.WriteLine(@"
-FATAL: -Summary looks MSYS-mangled -- it contains a filesystem path that cannot be intentional:
+FATAL: -Summary contains a filesystem path that cannot be intentional:
   $Summary
-Git Bash rewrites a leading "/word" argument into a Windows path. Re-run with the conversion off:
-  MSYS_NO_PATHCONV=1 pwsh -NoProfile -File .claude/scripts/release.ps1 -Version $Version -Summary "..."
-or invoke from PowerShell directly, or lead the summary with a non-slash word.
+Invoke release.ps1 from PowerShell directly and pass a plain-language summary; lead any referenced
+slash command with a non-slash word.
 "@)
     exit 2
 }
@@ -290,14 +290,14 @@ if ($branch -ne 'master') {
 # The gate sequence runs ~30 minutes; the first v0.40.0 attempt was killed at a 10-minute caller
 # timeout mid-gates, which is indistinguishable from a gate failure and leaves a stamped, rebuilt
 # tree that looks like a botched release. Say so before the operator starts waiting.
-# Runtime is dominated by process creation, not CPU: the hook suites spawn a fresh pwsh (~265ms on
-# the maintainer box) or bash (~55ms) per assertion. The attempted representative sequential suite
+# Runtime is dominated by process creation, not CPU: the hook suites spawn a fresh PowerShell
+# process per assertion. The attempted representative sequential suite
 # was functionally green (20 files, 0 failures) but took 924.1s and made dist-gates 1004.0s, so it
 # is not a useful local gate. Local release keeps its full root meta suite on the existing default
 # throttled runner; CI owns all shipped-hook coverage. Do not infer a new timing from this change:
 # re-measure before changing the budget or this banner.
 Write-Host "Releasing $Version. Local gates: compose x3 -> validate-dist x3 + context footprint -> full root meta suite (default throttled runner) -> eval self-test."
-Write-Host "Before a normal tag, CI must pass the full shipped-hook matrix: dotnet, angular, and monorepo on both Windows and Linux."
+Write-Host "Before a normal tag, CI must pass all eight Windows contexts: root plus three shipped-hook matrices under PowerShell 7 and Windows PowerShell 5.1."
 # The interruption promise used to be "nothing has been committed", full stop. After the push that is
 # simply false, and B-88 makes the window longer by adding a multi-minute wait to it. State the three
 # durable states instead; all three are safe to re-run the same command from (step 5 now falls
@@ -810,9 +810,9 @@ if (-not $nothingToCommit) {
     # in the commit body with its owning item, so `git log` alone answers what this release did and
     # did not prove.
     $gateNote = if ($waiversApplied.Count -gt 0) {
-        "Released via .claude/scripts/release.ps1 — local deterministic gates green (compose ×3, validate-dist ×3 + context footprint, full root meta suite) EXCEPT these recorded waivers: $($waiversApplied -join '; '). No shipped dist hook suite runs locally; normal tagging waits for CI's Windows/Linux three-dist hook matrices."
+        "Released via .claude/scripts/release.ps1 — local deterministic gates green (compose ×3, validate-dist ×3 + context footprint, full root meta suite) EXCEPT these recorded waivers: $($waiversApplied -join '; '). No shipped dist hook suite runs locally; normal tagging waits for CI's PowerShell 7/5.1 three-dist hook matrices."
     } else {
-        'Released via .claude/scripts/release.ps1 — all local deterministic gates green (compose ×3, validate-dist ×3 + context footprint, full root meta suite). No shipped dist hook suite runs locally; normal tagging waits for CI''s Windows/Linux three-dist hook matrices.'
+        'Released via .claude/scripts/release.ps1 — all local deterministic gates green (compose ×3, validate-dist ×3 + context footprint, full root meta suite). No shipped dist hook suite runs locally; normal tagging waits for CI''s PowerShell 7/5.1 three-dist hook matrices.'
     }
     git -C $repo commit -m "v${Version}: $Summary" -m $gateNote
     if ($LASTEXITCODE -ne 0) { Write-Host 'Commit FAILED.'; exit 1 }
@@ -821,6 +821,10 @@ if (-not $nothingToCommit) {
 # exists only on one path is how a message ends up printing an empty sha.
 $releaseCommit = (git -C $repo rev-parse HEAD).Trim()
 if (-not $NoPush) {
+    $outgoingCheck = Join-Path $repo '.claude/scripts/check-outgoing-commits.ps1'
+    & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File $outgoingCheck `
+        -RepoRoot $repo -Remote origin -Revision $releaseCommit
+    if ($LASTEXITCODE -ne 0) { Write-Host "Push REFUSED: outgoing-commit check exited $LASTEXITCODE."; exit $LASTEXITCODE }
     # Push the COMMIT, not the branch name (B-53). `push origin master` pushes whatever the local
     # master ref points at -- which, on a detached HEAD, is not the commit just created. That is how
     # a release exited 0 and printed "complete" having shipped nothing.
@@ -903,13 +907,13 @@ if ($existingSha) {
     }
 } else {
     # The annotation carries the CI verdict (B-88). A normal tag means CI observed green, including
-    # its complete Windows/Linux × three-dist hook matrices. The two exception paths -- an operator
+    # its complete PowerShell 7/5.1 × three-dist hook matrices. The two exception paths -- an operator
     # waiver or a -NoPush local tag -- must say that those matrices were not verified on the artifact.
     # A gate waiver changes what the tag means just as much as an unverified-CI waiver does, so it
     # rides on the same annotation rather than living only in a terminal that scrolls away.
     $tagWaiverNote = if ($waiversApplied.Count -gt 0) { " — gate waivers: $($waiversApplied -join '; ')" } else { '' }
     $ciMatrixNote = if ($ciDecision.Status -eq 'GREEN') {
-        ' — CI verified root meta suites plus shipped hook suites for dotnet, angular, and monorepo on Windows and Linux before tag'
+        ' — CI verified root meta suites plus shipped hook suites for dotnet, angular, and monorepo under PowerShell 7 and Windows PowerShell 5.1 before tag'
     } else {
         ' — CI full hook matrix not verified (see CI waiver/status)'
     }
@@ -918,6 +922,10 @@ if ($existingSha) {
     Write-Host "Tagged $tagName at $($releaseSha.Substring(0,7))."
 }
 if (-not $NoPush) {
+    & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File `
+        (Join-Path $repo '.claude/scripts/check-outgoing-commits.ps1') `
+        -RepoRoot $repo -Remote origin -Revision $releaseSha
+    if ($LASTEXITCODE -ne 0) { Write-Host "Tag push REFUSED: outgoing-commit check exited $LASTEXITCODE."; exit $LASTEXITCODE }
     git -C $repo push origin "refs/tags/$tagName"
     if ($LASTEXITCODE -ne 0) { Write-Host "Tag push FAILED: $tagName exists locally but not on origin."; exit 1 }
     # A tag that exists only locally is the failure this entry is about, so verify rather than assume.
@@ -943,6 +951,10 @@ if (-not $NoEvals -and [Environment]::UserInteractive -and -not [Console]::IsInp
             if (-not $NoPush) {
                 # Same explicit-commit push + postcondition as the release push above (B-53 d).
                 $evalCommit = (git -C $repo rev-parse HEAD).Trim()
+                & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File `
+                    (Join-Path $repo '.claude/scripts/check-outgoing-commits.ps1') `
+                    -RepoRoot $repo -Remote origin -Revision $evalCommit
+                if ($LASTEXITCODE -ne 0) { Write-Host "Eval-results push REFUSED: outgoing-commit check exited $LASTEXITCODE."; exit $LASTEXITCODE }
                 git -C $repo push origin "${evalCommit}:refs/heads/master"
                 if ($LASTEXITCODE -ne 0) { Write-Host 'Eval-results push FAILED; release is shipped but evidence is only local.'; exit 1 }
                 $remoteAfterEval = (git -C $repo ls-remote origin refs/heads/master | ForEach-Object { ($_ -split '\s+')[0] })

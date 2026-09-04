@@ -17,7 +17,7 @@ Match CLAUDE.md > Conventions > Data Access. The two rules that dominate everyth
 **follow the existing load pattern exactly, and never load the same data twice.**
 
 0. **Confirm this repo is a SQL data warehouse with the shared classifier.** Run
-   `pwsh scripts/warehouse-map-check.ps1` (or `bash scripts/warehouse-map-check.sh`). The command
+   `pwsh -NoProfile -File scripts/warehouse-map-check.ps1`. The command
    and `scripts/warehouse-signals.tsv` are the authoritative applicability gate used by bootstrap.
    Continue when it reports `WAREHOUSE_MAP missing`, `stale`, or `current`. If it
    reports `WAREHOUSE_MAP not-applicable`, STOP and follow the repo's actual persistence pattern

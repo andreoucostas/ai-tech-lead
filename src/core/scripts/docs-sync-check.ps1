@@ -1,4 +1,4 @@
-﻿# AI Tech Lead framework-state guardrail — host-agnostic (PowerShell twin of docs-sync-check.sh).
+﻿# AI Tech Lead framework-state guardrail for native Windows PowerShell hosts.
 # Exit 0 = pass, 1 = fail. Use from Bamboo/Jenkins on Windows agents, or locally. See README
 # "Running on Bitbucket Data Center" for wiring options.
 $ErrorActionPreference = 'Stop'
@@ -11,7 +11,11 @@ Set-Location (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Pat
 # don't apply — but the deterministic framework checks DO. Skipping everything here is how
 # version-stamp and mirror drift shipped unnoticed; run template-checks instead of going silent.
 $here  = Split-Path -Parent $MyInvocation.MyCommand.Path
-$psExe = 'powershell'; if (Get-Command pwsh -ErrorAction SilentlyContinue) { $psExe = 'pwsh' }
+try { $psExe = [Diagnostics.Process]::GetCurrentProcess().MainModule.FileName } catch { $psExe = $null }
+if ([string]::IsNullOrWhiteSpace($psExe) -or -not (Test-Path -LiteralPath $psExe -PathType Leaf)) {
+    Write-Output 'CANT-VERIFY: docs-sync-check could not resolve the current PowerShell executable; child checks were not run.'
+    exit 2
+}
 if (Test-Path ".template-repo") {
     Write-Output "Framework template repo (.template-repo present) — consumer-state checks don't apply;"
     Write-Output "running the deterministic framework checks (scripts/template-checks.ps1) instead."
@@ -31,7 +35,7 @@ if (-not (Test-Path "docs/enforcement-surfaces.md")) {
     Fail "framework install incomplete: docs/enforcement-surfaces.md missing — reinstall from the template."
 } else { OK "framework enforcement matrix present." }
 if (-not (Test-Path "docs/ci-integration.md")) {
-    Write-Output "NOTE: docs/ci-integration.md is missing — restore it from the template if you need the portable required-build recipe. (advisory — not a failure)"
+    Write-Output "NOTE: docs/ci-integration.md is missing — restore it from the template if you need the Windows required-build recipe. (advisory — not a failure)"
 }
 
 # 1. Adoption-pending marker — the installer detected pre-existing AI tooling that /adopt must consolidate.
@@ -52,7 +56,7 @@ if (-not (Test-Path "CLAUDE.md") -or ((Get-Item "CLAUDE.md").Length -eq 0)) {
 
 # 1b. CLAUDE.md size budget (advisory — CLAUDE.md loads on nearly every agent turn).
 if (Test-Path "CLAUDE.md") {
-    # @().Count matches wc -l in the .sh twin; Measure-Object -Line skips blank lines and diverges.
+    # @().Count includes blank lines; Measure-Object -Line does not.
     $clLines = @(Get-Content "CLAUDE.md").Count
     if ($clLines -gt 400) {
         Write-Output "NOTE: CLAUDE.md is $clLines lines (soft budget 400). Push verbose Architecture Decisions / Repository Structure detail into on-demand files (docs/, skills) to cut per-turn token cost. (advisory — not a failure)"
@@ -63,7 +67,7 @@ if (Test-Path "CLAUDE.md") {
 if (-not (Test-Path "AGENTS.md")) {
     Fail "AGENTS.md is missing — run /generate-copilot."
 } else {
-    # Maintenance rule 7, and the twin is NOT exempt just because it does not shell out. A
+    # Maintenance rule 7 applies even though this check does not launch a child process. A
     # Select-String that cannot READ the file returns nothing under -Quiet, which is indistinguishable
     # from "the pattern is absent" -- so a locked or unreadable AGENTS.md would be reported as drift
     # and send someone to regenerate a file nothing ever inspected. -ErrorAction Stop separates them.
@@ -116,7 +120,7 @@ if (Test-Path 'README.md') {
 }
 
 # 6b. Deterministic framework checks (version-stamp sync, verbatim CLAUDE.md<->AGENTS.md mirror,
-#     BOM/twin sweeps) -- the same gate the template repo's CI runs; the invariants hold after install.
+#     PowerShell hook/BOM checks) -- the same gate the template repo's CI runs after install.
 # Child process: template-checks.ps1 ends with `exit`, which would terminate this script if dot-run.
 $tc = Join-Path $here 'template-checks.ps1'
 if (Test-Path $tc) {

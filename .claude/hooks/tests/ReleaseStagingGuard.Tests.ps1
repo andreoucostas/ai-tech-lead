@@ -183,32 +183,50 @@ try {
         # small releases shipped in one day, and the last 8 tags yielded 83 paths against a threshold
         # of 100, failing a release for a property nothing was actually wrong with. Cap the walk so a
         # repository with tiny tags cannot turn this into a full-history scan.
-        $allTags = @(git -C $repoRoot tag --sort=-v:refname | Select-Object -First 24)
-        $tags = @(); $sampled = 0
-        foreach ($candidate in $allTags) {
-            $tags += $candidate
-            $sampled += @(git -C $repoRoot show --name-only --format='' $candidate |
-                Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and $_ -notmatch '^(tag |Tagger:|ai-tech-lead v)' }).Count
-            if ($sampled -ge 100 -and @($tags).Count -ge 8) { break }
+        $tagOutput = @(git -C $repoRoot tag --sort=-v:refname)
+        $tagExit = $LASTEXITCODE
+        Assert ($null -ne $tagExit -and $tagExit -eq 0) 'could not enumerate release tags for historical staging replay'
+        $allTags = @($tagOutput | Select-Object -First 25)
+        $releases = @(); $sampled = 0; $sampledInstallSh = $false
+        for ($tagIndex = 0; $tagIndex -lt ($allTags.Count - 1); $tagIndex++) {
+            $candidate = $allTags[$tagIndex]
+            $previous = $allTags[$tagIndex + 1]
+            # release.ps1 stages the complete snapshot delta since the preceding release. `git
+            # show $candidate` inspects only the tagged commit and silently omits preparatory
+            # commits, which made the supposedly permanent install.sh exception unreachable.
+            $pathOutput = @(git -C $repoRoot diff --name-only $previous $candidate --)
+            $diffExit = $LASTEXITCODE
+            Assert ($null -ne $diffExit -and $diffExit -eq 0) "could not enumerate historical release range $previous..$candidate"
+            $paths = @($pathOutput | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            $releases += [pscustomobject]@{ Tag = $candidate; Base = $previous; Paths = $paths }
+            $sampled += $paths.Count
+            if ($paths -ccontains 'install.sh') { $sampledInstallSh = $true }
+            if ($sampled -ge 100 -and @($releases).Count -ge 8 -and $sampledInstallSh) { break }
         }
         # Single-quoted on purpose: in a double-quoted PowerShell string a backtick starts an escape,
         # so "`fetch-depth" renders as a FORM FEED plus "etch-depth". The first cut of this message
         # said "etch-depth: 0" -- an error message about a misconfiguration, itself misconfigured.
-        Assert (@($tags).Count -ge 5) (
-            "only $(@($tags).Count) tag(s) resolved -- refusing to run a vacuous replay. " +
+        Assert (@($releases).Count -ge 5) (
+            "only $(@($releases).Count) release range(s) resolved -- refusing to run a vacuous replay. " +
             'This needs a clone with tags: in CI set actions/checkout fetch-depth: 0 and ' +
             'fetch-tags: true; locally run "git fetch --tags". Nothing is wrong with release.ps1.')
-        $falsePositives = @(); $seen = 0
-        foreach ($t in $tags) {
-            foreach ($f in @(git -C $repoRoot show --name-only --format='' $t)) {
-                if ([string]::IsNullOrWhiteSpace($f)) { continue }
-                if ($f -match '^(tag |Tagger:|ai-tech-lead v)') { continue }   # annotated-tag header
+        $falsePositives = @(); $historicalPaths = @(); $seen = 0; $historicalInstallSh = 0
+        foreach ($releaseRange in $releases) {
+            foreach ($f in $releaseRange.Paths) {
                 $seen++
+                $historicalPaths += $f
+                if ($f -ceq 'install.sh') { $historicalInstallSh++ }
                 if ($f -like '.claude/worktrees/*') { continue }               # the B-80 defect itself
-                if ($f -notmatch $pattern) { $falsePositives += "$t : $f" }
+                if ($f -notmatch $pattern) { $falsePositives += "$($releaseRange.Base)..$($releaseRange.Tag) : $f" }
             }
         }
         Assert ($seen -ge 100) "only $seen path(s) classified -- the replay is not exercising anything"
+        Assert ($historicalInstallSh -gt 0) 'historical replay did not reach install.sh; its permanent staging exception would be untested'
+        $withoutInstallSh = $pattern.Replace('|install\.sh', '')
+        Assert ($withoutInstallSh -cne $pattern) 'could not plant the install.sh allowlist-removal mutation'
+        $mutantFalsePositives = @($historicalPaths | Where-Object { $_ -notmatch $withoutInstallSh })
+        Assert (@($mutantFalsePositives | Where-Object { $_ -ceq 'install.sh' }).Count -gt 0) `
+            'removing install.sh from the allowlist did not make the historical replay go red'
         Assert (@($falsePositives).Count -eq 0) ("the allowlist would have refused $(@($falsePositives).Count) real release path(s): " + (($falsePositives | Select-Object -Unique -First 8) -join '; '))
     }
 } finally {

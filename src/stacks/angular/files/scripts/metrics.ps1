@@ -1,5 +1,5 @@
 ﻿# Descriptive current-state codebase scorecard for /impact. Emits JSON to stdout.
-# PowerShell twin of metrics.sh. Usage: pwsh scripts/metrics.ps1 [path ...]  (default: whole repo)
+# Usage: pwsh -NoProfile -File scripts/metrics.ps1 [path ...]  (default: whole repo)
 $ErrorActionPreference = 'SilentlyContinue'
 $root = (git rev-parse --show-toplevel 2>$null); if (-not $root) { $root = (Get-Location).Path }
 Set-Location $root

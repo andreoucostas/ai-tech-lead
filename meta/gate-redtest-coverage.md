@@ -3,6 +3,10 @@
 Inventory date: 2026-08-18, against v0.60.0 plus the B-149 working-tree changes in this delivery.
 Amended 2026-08-19: one row added for `VendorClaims.Tests.ps1`, a suite created after the inventory
 date by B-55. No other row was re-inventoried, so every verdict below still dates from 2026-08-18.
+**This is a historical evidence snapshot, not the current gate inventory or authority. Preserve its
+dated rows and verdicts unchanged.** For the v0.83 PowerShell-only retirement classification, see
+[`2026-09-04-b219-windows-powershell-only-consolidation.md`](../.claude/plans/2026-09-04-b219-windows-powershell-only-consolidation.md#test-retirement-classification-and-dual-host-evidence);
+the current executable file and semantic-case inventories are pinned by the aggregate runners.
 `COVERED` means an executable negative fixture or mutation exists and a repository record
 shows the subject producing the expected failure/honest adverse row. `HAPPY-PATH-ONLY` means a clean
 test exists but no qualifying red observation could be established. `NONE` means no test was found.

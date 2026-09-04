@@ -1,5 +1,6 @@
 ﻿# Install the AI Tech Lead Framework into a target repository.
-# Usage: pwsh scripts/install.ps1 [-GitHooks] [-AllowDirtyTree] [-WhatIf] [-AllowDowngrade] C:\path\to\target-repo
+# Usage: pwsh -NoProfile -File scripts/install.ps1 [-AllowDirtyTree] [-WhatIf] [-AllowDowngrade] C:\path\to\target-repo
+#        -GitHooks is accepted only as a v0.83 compatibility refusal and never mutates a Git hook.
 #
 # Copies the template's framework files into the target, EXCLUDING the .git directory, the
 # .template-repo marker (which would disable the consumer's CI guardrail), the template repo's own
@@ -22,12 +23,23 @@ param(
     [switch]$AllowDowngrade
 )
 $ErrorActionPreference = 'Stop'
+$followUpPowerShell = if ($PSVersionTable.PSVersion.Major -ge 7) {
+    'pwsh -NoProfile -File'
+} else {
+    'powershell.exe -NoProfile -ExecutionPolicy Bypass -File'
+}
+$pwshAvailable = $PSVersionTable.PSVersion.Major -ge 7 -or
+    $null -ne (Get-Command pwsh -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)
 
 if (-not (Test-Path -LiteralPath $Target -PathType Container)) { Write-Error "Target '$Target' is not a directory."; exit 2 }
 
 $src = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $tgt = (Resolve-Path $Target).Path
 if ($tgt -eq $src) { Write-Error "Target is the template repo itself — choose a different target."; exit 2 }
+if ($GitHooks) {
+    [Console]::Error.WriteLine("-GitHooks was retired in v0.83.0. No Git hook was changed. Inspect .git/hooks/pre-commit and remove or replace any AI Tech Lead convenience hook manually, then run $followUpPowerShell scripts/framework-doctor.ps1.")
+    exit 2
+}
 
 # Brownfield archive paths must never traverse a reparse point. Resolving a target path is not
 # enough: a junction/symlink below it can redirect either the collision source or the archive
@@ -97,7 +109,10 @@ function Read-OwnershipManifest {
     $entries = @($document.paths)
     if ($entries.Count -eq 0) { throw "$Label contains no paths" }
     $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
-    $byPath = @{}
+    # Previous ownership is untrusted deletion authority. Keep duplicate rejection
+    # case-insensitive, but key lookups ordinal: `Scripts/X` must never authorize deleting
+    # canonical `scripts/x` on Windows' case-insensitive filesystem.
+    $byPath = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
     foreach ($entry in $entries) {
         $relative = [string]$entry.path
         $ownership = [string]$entry.ownership
@@ -116,7 +131,7 @@ function Read-RetirementLedger {
     $document = Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json
     if ([int]$document.'schema-version' -ne 1 -or $null -eq $document.retirements) { throw 'retirement ledger has an unsupported or missing schema' }
     $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
-    $byPath = @{}
+    $byPath = New-Object 'System.Collections.Generic.Dictionary[string,object]' ([StringComparer]::Ordinal)
     foreach ($entry in @($document.retirements)) {
         $relative = [string]$entry.path
         $version = [string]$entry.'retired-in'
@@ -149,36 +164,20 @@ function Compare-ReleaseVersion {
     return 0
 }
 
-$gitHookRelative = $null
-if ($GitHooks) {
-    & (Join-Path $src 'scripts/setup-git-hooks.ps1') -Target $tgt -CheckOnly
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-    $gitRoot = [string]((& git -C $tgt rev-parse --show-toplevel 2>$null) -join "`n").Trim()
-    $gitDir = [string]((& git -C $tgt rev-parse --git-dir 2>$null) -join "`n").Trim()
-    if ($LASTEXITCODE -ne 0 -or -not $gitRoot -or -not $gitDir) {
-        [Console]::Error.WriteLine('ERROR: Git-hook setup passed its check but the installer could not resolve its mutation target.')
-        exit 3
-    }
-    if (-not [IO.Path]::IsPathRooted($gitDir)) { $gitDir = Join-Path $gitRoot $gitDir }
-    $gitHookPath = [IO.Path]::GetFullPath((Join-Path $gitDir 'hooks/pre-commit'))
-    $targetPrefix = $tgt.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
-    if (-not $gitHookPath.StartsWith($targetPrefix, [StringComparison]::OrdinalIgnoreCase)) {
-        [Console]::Error.WriteLine("ERROR: Git-hook setup would write outside the selected target ('$gitHookPath'). Linked/external Git directories are not supported by installer planning.")
-        exit 3
-    }
-    $gitHookRelative = $gitHookPath.Substring($targetPrefix.Length) -replace '\\', '/'
-}
-
 # Template-repo meta files that must never land in (or overwrite their namesakes in) a consumer repo.
 $metaFiles = @('.git', '.template-repo', 'README.md', 'CHANGELOG.md', '.gitignore', '.gitattributes')
+# Composition reads this declarative set from the installer. It is intentionally explicit so
+# install.ps1 remains the single ownership-policy authority while a test can pin the complete set.
+$excludedFromInstall = @('.git', '.template-repo', 'README.md', 'CHANGELOG.md', '.gitignore', '.gitattributes',
+    'scripts/install.ps1', '.github/workflows/template-ci.yml')
 
 # Consumer files the copy below would otherwise clobber. Update skips them directly; brownfield
 # archives them unless the copy-if-absent policy below keeps the live path for in-place screening.
 $protected = @('CLAUDE.md', 'AGENTS.md', 'TECH_DEBT.md', 'SECURITY_FINDINGS.md', 'LEARNINGS.md',
     'FRAMEWORK-CONTEXT.md', '.github/copilot-instructions.md', 'docs/ARCHITECTURE.md',
-    'docs/architecture-decisions.md')
+    'docs/architecture-decisions.md', 'docs/wiki/INDEX.md', 'LICENSES/ai-tech-lead-MIT.txt')
 # Persistent state is copied only when absent. The composer reads this policy from both installer
-# twins and emits it as consumer-owned/protected in framework-ownership.json.
+# PowerShell installer authority and emits it as consumer-owned/protected in framework-ownership.json.
 $persistentCopyIfAbsent = @(
     '.claude/ai-audit.log'
 )
@@ -295,14 +294,23 @@ if ($updateMode) {
                     $previous.ByPath[$retiredPath] -ne 'framework-owned/overwritten' -or
                     $incoming.ByPath.ContainsKey($retiredPath) -or $retiredPath -in $persistentCopyIfAbsent) { continue }
                 $candidate = Get-ContainedTargetPath -Relative $retiredPath
-                if (-not (Test-Path -LiteralPath $candidate)) { continue }
+                # Test-Path reports a dangling reparse point as absent. Resolve the directory
+                # entry itself so only a true ItemNotFound result can mean that this retirement
+                # candidate is absent; every other inspection failure is preservation evidence.
+                try { $candidateEntry = Get-Item -Force -LiteralPath $candidate -ErrorAction Stop }
+                catch [Management.Automation.ItemNotFoundException] { continue }
+                catch {
+                    $reconciliationMessages.Add("CANT-VERIFY: retired path '$retiredPath' could not be examined; preserving it.")
+                    $retirementPreserve.Add($retiredPath)
+                    continue
+                }
                 $reparse = Get-ReparsePointAncestor -Path $candidate
                 if ($reparse) {
                     $reconciliationMessages.Add("CANT-VERIFY: retired path '$retiredPath' traverses reparse/symlink '$reparse'; preserving it.")
                     $retirementPreserve.Add($retiredPath)
                     continue
                 }
-                if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+                if ($candidateEntry.PSIsContainer) {
                     $reconciliationMessages.Add("CANT-VERIFY: retired path '$retiredPath' is not a regular file; preserving it.")
                     $retirementPreserve.Add($retiredPath)
                     continue
@@ -320,35 +328,6 @@ if ($updateMode) {
                 }
                 $deletePlan.Add($retiredPath)
             }
-        }
-    }
-}
-
-# A retirement can delete only where the immediately previous manifest grants authority. That
-# limitation must not hide a retained high-priority GitHub skill or the old sync script on a later
-# update: inspect these exact ledger paths read-only, without granting deletion authority.
-if ($updateMode) {
-    foreach ($retiredPath in @($retirementLedger.Keys | Sort-Object)) {
-        $isGitHubSkill = $retiredPath -match '^\.github/skills/([^/]+)/'
-        $slug = if ($isGitHubSkill) { $Matches[1] } else { $null }
-        $isRetiredSyncScript = $retiredPath -in @('scripts/sync-agent-files.ps1', 'scripts/sync-agent-files.sh')
-        if ((-not $isGitHubSkill -and -not $isRetiredSyncScript) -or $deletePlan.Contains($retiredPath)) { continue }
-        $candidate = Get-ContainedTargetPath -Relative $retiredPath
-        try { $entry = Get-Item -Force -LiteralPath $candidate -ErrorAction Stop }
-        catch [Management.Automation.ItemNotFoundException] { continue }
-        catch {
-            $reconciliationMessages.Add("CANT-VERIFY: retained retired path '$retiredPath' could not be examined; preserving it without inspection.")
-            continue
-        }
-        $reparse = Get-ReparsePointAncestor -Path $candidate
-        if ($reparse) {
-            $reconciliationMessages.Add("CANT-VERIFY: retained retired path '$retiredPath' traverses reparse/symlink '$reparse'; preserving it without inspection.")
-            continue
-        }
-        if ($isGitHubSkill) {
-            $reconciliationMessages.Add("CANT-VERIFY: retained retired path '$retiredPath' was not deleted; it may shadow canonical .claude/skills/$slug. Move intentional customization to .claude/skills/$slug and remove the retained GitHub copy after review.")
-        } else {
-            $reconciliationMessages.Add("CANT-VERIFY: retained retired path '$retiredPath' was not deleted; running it may recreate higher-priority .github/skills shadows. Do not run it; migrate or retire it after review.")
         }
     }
 }
@@ -420,6 +399,300 @@ function Invoke-GitText {
 function Stop-UnverifiableGitPreflight {
     [Console]::Error.WriteLine('CANT-VERIFY: Git state for this update/brownfield target could not be verified safely. Unset Git routing variables, install or repair Git, or repair/remove corrupt repository metadata, then re-run the installer.')
     exit 4
+}
+
+# The opt-in pre-commit convenience net was never installer-owned: it lives under .git, outside the
+# ownership manifest. A v0.83+ update therefore diagnoses it but never writes or deletes it. When a
+# safely contained default hook still calls a retired helper, keep that helper's complete executable
+# closure even if ordinary retirement rules would otherwise authorize deletion. Ambiguous routing is non-authority:
+# preserve every possible retired helper rather than following a custom or external hook path.
+$legacyGitHookRetiredDependencies = @(
+    'scripts/setup-git-hooks.ps1',
+    'scripts/setup-git-hooks.sh',
+    '.claude/hooks/guard.sh'
+)
+
+function Get-Sha256Hex {
+    param([Parameter(Mandatory = $true)][byte[]]$Bytes)
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try { return ([BitConverter]::ToString($sha.ComputeHash($Bytes))).Replace('-', '').ToLowerInvariant() }
+    finally { $sha.Dispose() }
+}
+
+function New-LegacyGitHookInspection {
+    param([string]$Kind, [string]$Detail, [string[]]$Dependencies = @())
+    return [pscustomobject]@{ Kind = $Kind; Detail = $Detail; Dependencies = @($Dependencies) }
+}
+
+function Get-LegacyGitHookInspection {
+    foreach ($name in @('GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE')) {
+        $value = [Environment]::GetEnvironmentVariable($name, 'Process')
+        if ($null -ne $value -and $value.Length -gt 0) {
+            return New-LegacyGitHookInspection -Kind 'CANT-VERIFY' -Dependencies $legacyGitHookRetiredDependencies `
+                -Detail "Git routing variable $name is set; the installer did not inspect or modify routed hook state."
+        }
+    }
+
+    try { $gitEntryPath = Get-GitChildEntry -Directory $tgt -Name '.git' }
+    catch {
+        return New-LegacyGitHookInspection -Kind 'CANT-VERIFY' -Dependencies $legacyGitHookRetiredDependencies `
+            -Detail 'the target .git entry could not be examined; no hook path was followed or modified.'
+    }
+    if (-not $gitEntryPath) {
+        try { $repositoryOutsideTarget = Test-GitRepositoryEvidence -Path $tgt }
+        catch {
+            return New-LegacyGitHookInspection -Kind 'CANT-VERIFY' -Dependencies $legacyGitHookRetiredDependencies `
+                -Detail 'repository evidence could not be examined; no hook path was followed or modified.'
+        }
+        if ($repositoryOutsideTarget) {
+            return New-LegacyGitHookInspection -Kind 'CANT-VERIFY' -Dependencies $legacyGitHookRetiredDependencies `
+                -Detail 'Git metadata is not a default .git directory contained by the selected target; linked, nested, bare, or external hook state was not inspected or modified.'
+        }
+        return New-LegacyGitHookInspection -Kind 'NONE' -Detail 'the target has no contained default Git hook.'
+    }
+
+    try { $gitEntry = Get-Item -Force -LiteralPath $gitEntryPath -ErrorAction Stop }
+    catch {
+        return New-LegacyGitHookInspection -Kind 'CANT-VERIFY' -Dependencies $legacyGitHookRetiredDependencies `
+            -Detail 'the target .git entry could not be examined; no hook path was followed or modified.'
+    }
+    if ((Get-ReparsePointAncestor -Path $gitEntryPath) -or -not $gitEntry.PSIsContainer) {
+        return New-LegacyGitHookInspection -Kind 'CANT-VERIFY' -Dependencies $legacyGitHookRetiredDependencies `
+            -Detail 'Git metadata is linked, external, or non-directory state; no hook path was followed or modified.'
+    }
+
+    try { $huskyEntry = Get-GitChildEntry -Directory $tgt -Name '.husky' }
+    catch {
+        return New-LegacyGitHookInspection -Kind 'CANT-VERIFY' -Dependencies $legacyGitHookRetiredDependencies `
+            -Detail 'the .husky routing surface could not be examined; no hook path was followed or modified.'
+    }
+    if ($huskyEntry) {
+        return New-LegacyGitHookInspection -Kind 'CANT-VERIFY' -Dependencies $legacyGitHookRetiredDependencies `
+            -Detail 'a .husky hook surface exists; it remains consumer-owned and was not inspected or modified.'
+    }
+
+    $gitCommands = @(Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)
+    if ($gitCommands.Count -eq 0) {
+        return New-LegacyGitHookInspection -Kind 'CANT-VERIFY' -Dependencies $legacyGitHookRetiredDependencies `
+            -Detail 'Git is unavailable, so core.hooksPath cannot be checked; no hook path was followed or modified.'
+    }
+    $hooksPath = Invoke-GitText -GitPath ([string]$gitCommands[0].Source) -Arguments @('-C', $tgt, 'config', '--get', 'core.hooksPath')
+    if (-not $hooksPath.Started -or $hooksPath.ExitCode -notin @(0, 1)) {
+        return New-LegacyGitHookInspection -Kind 'CANT-VERIFY' -Dependencies $legacyGitHookRetiredDependencies `
+            -Detail 'core.hooksPath could not be examined; no custom hook path was followed or modified.'
+    }
+    if ($hooksPath.ExitCode -eq 0) {
+        return New-LegacyGitHookInspection -Kind 'CANT-VERIFY' -Dependencies $legacyGitHookRetiredDependencies `
+            -Detail "core.hooksPath is configured as '$($hooksPath.Output)'; it remains consumer-owned and was not inspected or modified."
+    }
+
+    $hookRelative = '.git/hooks/pre-commit'
+    $hookPath = Get-ContainedTargetPath -Relative $hookRelative
+    $hookReparse = Get-ReparsePointAncestor -Path $hookPath
+    if ($hookReparse) {
+        return New-LegacyGitHookInspection -Kind 'CANT-VERIFY' -Dependencies $legacyGitHookRetiredDependencies `
+            -Detail "the default pre-commit path traverses reparse/symlink '$hookReparse'; it was not followed or modified."
+    }
+    try { $hookEntry = Get-Item -Force -LiteralPath $hookPath -ErrorAction Stop }
+    catch [Management.Automation.ItemNotFoundException] {
+        return New-LegacyGitHookInspection -Kind 'NONE' -Detail 'the target has no default pre-commit hook.'
+    }
+    catch {
+        return New-LegacyGitHookInspection -Kind 'CANT-VERIFY' -Dependencies $legacyGitHookRetiredDependencies `
+            -Detail 'the default pre-commit hook could not be examined; it was not modified.'
+    }
+    if ($hookEntry.PSIsContainer -or $hookEntry.Length -gt 1048576) {
+        return New-LegacyGitHookInspection -Kind 'CANT-VERIFY' -Dependencies $legacyGitHookRetiredDependencies `
+            -Detail 'the default pre-commit hook is not a regular bounded text file; it was not modified.'
+    }
+
+    try {
+        $hookBytes = [IO.File]::ReadAllBytes($hookPath)
+        $hookText = [Text.UTF8Encoding]::new($false, $true).GetString($hookBytes)
+        $hookDigest = Get-Sha256Hex -Bytes $hookBytes
+    } catch {
+        return New-LegacyGitHookInspection -Kind 'CANT-VERIFY' -Dependencies $legacyGitHookRetiredDependencies `
+            -Detail 'the default pre-commit hook could not be read as UTF-8 text; it was not modified.'
+    }
+
+    $powerShellBody = $hookDigest -ceq '56d2a687f489ffd95519dc56a34179526b175cc56d3b770cb45c0f243fabba1c'
+    $bashBody = $hookDigest -ceq '25da45aa780126e4d2b0a2b1bdf759462bf3fd92be01e6414ed496253c817357'
+    $powerShellReference = $hookText -match '(?i)(?:^|[\s"''\\/])(?:\./)?scripts[\\/]setup-git-hooks\.ps1(?=$|[\s"''])'
+    $bashSetupReference = $hookText -match '(?i)(?:^|[\s"''\\/])(?:\./)?scripts[\\/]setup-git-hooks\.sh(?=$|[\s"''])'
+    $bashGuardReference = $hookText -match '(?i)(?:^|[\s"''\\/])(?:\./)?\.claude[\\/]hooks[\\/]guard\.sh(?=$|[\s"''])'
+    $dependencies = New-Object System.Collections.Generic.List[string]
+    if ($powerShellBody -or $powerShellReference) { $dependencies.Add('scripts/setup-git-hooks.ps1') }
+    if ($bashBody -or $bashSetupReference -or $bashGuardReference) {
+        $dependencies.Add('scripts/setup-git-hooks.sh')
+        $dependencies.Add('.claude/hooks/guard.sh')
+    }
+    if ($dependencies.Count -gt 0) {
+        $flavour = if ($bashBody -or $bashSetupReference -or $bashGuardReference) { 'Bash/degraded and unmaintained' } else { 'PowerShell' }
+        return New-LegacyGitHookInspection -Kind 'LEGACY' -Dependencies @($dependencies | Sort-Object -Unique) `
+            -Detail "$flavour legacy pre-commit references retired framework helpers."
+    }
+    return New-LegacyGitHookInspection -Kind 'CUSTOM' -Detail 'an unrelated custom default pre-commit hook exists; it remains consumer-owned and was not modified.'
+}
+
+function Add-LegacyDependencyPreserve {
+    param([Parameter(Mandatory = $true)][string]$Relative)
+    if (-not $retirementLedger.ContainsKey($Relative)) { return }
+    $wasPlannedForDeletion = $deletePlan.Remove($Relative)
+    $candidate = Get-ContainedTargetPath -Relative $Relative
+    $entryExists = $false
+    try { $entryExists = $null -ne (Get-Item -Force -LiteralPath $candidate -ErrorAction Stop) }
+    catch [Management.Automation.ItemNotFoundException] { $entryExists = $false }
+    catch { $entryExists = $true }
+    if (($wasPlannedForDeletion -or $entryExists) -and -not $retirementPreserve.Contains($Relative)) {
+        $retirementPreserve.Add($Relative)
+    }
+}
+
+$legacyGitHookInspection = Get-LegacyGitHookInspection
+if ($legacyGitHookInspection.Kind -eq 'LEGACY') {
+    foreach ($relative in $legacyGitHookInspection.Dependencies) { Add-LegacyDependencyPreserve -Relative $relative }
+    $reconciliationMessages.Add("MIGRATION: $($legacyGitHookInspection.Detail) The consumer-owned .git/hooks/pre-commit was not changed; preserving present dependency files from $($legacyGitHookInspection.Dependencies -join ', '). Remove or replace the hook manually before deleting those helpers.")
+} elseif ($legacyGitHookInspection.Kind -eq 'CANT-VERIFY') {
+    foreach ($relative in $legacyGitHookInspection.Dependencies) { Add-LegacyDependencyPreserve -Relative $relative }
+    $reconciliationMessages.Add("CANT-VERIFY: Legacy Git-hook retirement could not be classified safely because $($legacyGitHookInspection.Detail) Potential retired helper dependencies were preserved.")
+} elseif ($legacyGitHookInspection.Kind -eq 'CUSTOM') {
+    $reconciliationMessages.Add("NOTICE: $($legacyGitHookInspection.Detail)")
+}
+
+# A retirement can delete only where the immediately previous manifest grants authority. That
+# limitation must not hide high-risk residuals on later updates after the new manifest no longer
+# owns them. Inspect exact ledger paths read-only; this diagnostic grants no deletion authority.
+if ($updateMode) {
+    foreach ($retiredPath in @($retirementLedger.Keys | Sort-Object)) {
+        $isGitHubSkill = $retiredPath -match '^\.github/skills/([^/]+)/'
+        $slug = if ($isGitHubSkill) { $Matches[1] } else { $null }
+        $isRetiredSyncScript = $retiredPath -in @('scripts/sync-agent-files.ps1', 'scripts/sync-agent-files.sh')
+        $isRetiredGitHookHelper = $retiredPath -in $legacyGitHookRetiredDependencies
+        $isV083Retirement = $retirementLedger[$retiredPath].Version -eq '0.83.0'
+        if ((-not $isGitHubSkill -and -not $isRetiredSyncScript -and -not $isRetiredGitHookHelper -and -not $isV083Retirement) -or $deletePlan.Contains($retiredPath)) { continue }
+        $candidate = Get-ContainedTargetPath -Relative $retiredPath
+        try { $entry = Get-Item -Force -LiteralPath $candidate -ErrorAction Stop }
+        catch [Management.Automation.ItemNotFoundException] { continue }
+        catch {
+            $reconciliationMessages.Add("CANT-VERIFY: retained retired path '$retiredPath' could not be examined; preserving it without inspection.")
+            continue
+        }
+        $reparse = Get-ReparsePointAncestor -Path $candidate
+        if ($reparse) {
+            $reconciliationMessages.Add("CANT-VERIFY: retained retired path '$retiredPath' traverses reparse/symlink '$reparse'; preserving it without inspection.")
+            continue
+        }
+        if ($isGitHubSkill) {
+            $reconciliationMessages.Add("CANT-VERIFY: retained retired path '$retiredPath' was not deleted; it may shadow canonical .claude/skills/$slug. Move intentional customization to .claude/skills/$slug and remove the retained GitHub copy after review.")
+        } elseif ($isRetiredSyncScript) {
+            $reconciliationMessages.Add("CANT-VERIFY: retained retired path '$retiredPath' was not deleted; running it may recreate higher-priority .github/skills shadows. Do not run it; migrate or retire it after review.")
+        } elseif ($isRetiredGitHookHelper) {
+            $reconciliationMessages.Add("CANT-VERIFY: retained retired Git-hook helper '$retiredPath' remains. Remove it only after confirming no consumer-owned hook depends on it; run $followUpPowerShell scripts/framework-doctor.ps1 for the current classification.")
+        } elseif ($retiredPath -eq 'scripts/ci/bitbucket-pipelines.example.yml') {
+            $reconciliationMessages.Add("CANT-VERIFY: retained retired sample '$retiredPath' remains. It targets an unsupported Linux container; remove it after review and use a Windows/PowerShell CI example instead.")
+        } else {
+            $replacement = if ($retiredPath.EndsWith('.sh', [StringComparison]::OrdinalIgnoreCase)) {
+                $retiredPath.Substring(0, $retiredPath.Length - 3) + '.ps1'
+            } else { 'the supported PowerShell surface' }
+            $reconciliationMessages.Add("CANT-VERIFY: retained retired framework path '$retiredPath' remains. Do not execute it; migrate references to '$replacement' and remove the retired file after review.")
+        }
+    }
+}
+
+# Protected carriers and consumer CI are not overwritten merely to repair stale commands. Report
+# exact current-release retirements and a concrete replacement before the WhatIf boundary so dry-run
+# and apply classify the same bytes. Enumeration is bounded and never follows reparse points.
+$retiredReferenceReplacements = @{}
+if ((Compare-ReleaseVersion -Left $incomingVersion -Right '0.83.0') -ge 0) {
+    $retiredReferenceReplacements['install.sh'] = "$followUpPowerShell install.ps1"
+    $retiredReferenceReplacements['scripts/install.sh'] = "$followUpPowerShell scripts/install.ps1"
+}
+foreach ($retiredPath in $retirementLedger.Keys) {
+    # Keep diagnostics cumulative: a consumer may skip the release that first retired the path.
+    if ((Compare-ReleaseVersion -Left $retirementLedger[$retiredPath].Version -Right $incomingVersion) -gt 0) { continue }
+    if ($retiredPath -in @('scripts/setup-git-hooks.ps1', 'scripts/setup-git-hooks.sh')) {
+        $retiredReferenceReplacements[$retiredPath] = "the setup feature is retired; inspect .git/hooks/pre-commit, remove or replace the old convenience hook manually, then run $followUpPowerShell scripts/framework-doctor.ps1"
+    } elseif ($retiredPath -eq 'scripts/ci/bitbucket-pipelines.example.yml') {
+        $retiredReferenceReplacements[$retiredPath] = "the Linux container sample is retired; use a Windows runner with $followUpPowerShell scripts/docs-sync-check.ps1"
+    } elseif ($retiredPath.EndsWith('.sh', [StringComparison]::OrdinalIgnoreCase)) {
+        $powerShellPath = $retiredPath.Substring(0, $retiredPath.Length - 3) + '.ps1'
+        if ($incoming.ByPath.ContainsKey($powerShellPath)) {
+            $retiredReferenceReplacements[$retiredPath] = "$followUpPowerShell $powerShellPath"
+        }
+    }
+}
+
+$protectedReferenceCandidates = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+foreach ($relative in $protected + @('.claude/settings.local.json', '.gitlab-ci.yml', '.gitlab-ci.yaml',
+    'azure-pipelines.yml', 'azure-pipelines.yaml', 'bitbucket-pipelines.yml', 'bitbucket-pipelines.yaml',
+    'Jenkinsfile')) { [void]$protectedReferenceCandidates.Add($relative) }
+
+function Add-BoundedReferenceDirectory {
+    param([string]$Relative, [int]$MaxDepth, [string[]]$Extensions)
+    $directory = Get-ContainedTargetPath -Relative $Relative
+    $rootReparse = Get-ReparsePointAncestor -Path $directory
+    if ($rootReparse) {
+        $reconciliationMessages.Add("CANT-VERIFY: protected reference directory '$Relative' traverses reparse/symlink '$rootReparse'; it was not followed.")
+        return
+    }
+    try { $rootEntry = Get-Item -Force -LiteralPath $directory -ErrorAction Stop }
+    catch [Management.Automation.ItemNotFoundException] { return }
+    catch { $reconciliationMessages.Add("CANT-VERIFY: protected reference directory '$Relative' could not be examined; no stale-command conclusion was inferred."); return }
+    if (($rootEntry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or -not $rootEntry.PSIsContainer) {
+        $reconciliationMessages.Add("CANT-VERIFY: protected reference directory '$Relative' is linked or not a directory; it was not traversed.")
+        return
+    }
+    $queue = New-Object System.Collections.Generic.Queue[object]
+    $queue.Enqueue([pscustomobject]@{ Directory = $rootEntry; Depth = 0 })
+    while ($queue.Count -gt 0) {
+        $current = $queue.Dequeue()
+        try { $children = @(Get-ChildItem -Force -LiteralPath $current.Directory.FullName -ErrorAction Stop) }
+        catch {
+            $underTarget = $current.Directory.FullName.Substring($tgt.Length).TrimStart('\', '/') -replace '\\', '/'
+            $reconciliationMessages.Add("CANT-VERIFY: protected reference directory '$underTarget' could not be enumerated; no stale-command conclusion was inferred.")
+            continue
+        }
+        foreach ($child in $children) {
+            $childRelative = $child.FullName.Substring($tgt.Length).TrimStart('\', '/') -replace '\\', '/'
+            if (($child.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                $reconciliationMessages.Add("CANT-VERIFY: protected reference candidate '$childRelative' is a reparse/symlink and was not followed.")
+                continue
+            }
+            if ($child.PSIsContainer) {
+                if ($current.Depth -lt $MaxDepth) { $queue.Enqueue([pscustomobject]@{ Directory = $child; Depth = $current.Depth + 1 }) }
+            } elseif ($Extensions -contains $child.Extension) {
+                [void]$protectedReferenceCandidates.Add($childRelative)
+            }
+        }
+    }
+}
+
+Add-BoundedReferenceDirectory -Relative '.github/workflows' -MaxDepth 0 -Extensions @('.yml', '.yaml')
+Add-BoundedReferenceDirectory -Relative 'bamboo-specs' -MaxDepth 3 -Extensions @('.yml', '.yaml', '.xml', '.java')
+
+foreach ($relative in @($protectedReferenceCandidates | Sort-Object)) {
+    if ($incoming.ByPath.ContainsKey($relative) -and $incoming.ByPath[$relative] -eq 'framework-owned/overwritten') { continue }
+    $candidate = Get-ContainedTargetPath -Relative $relative
+    $reparse = Get-ReparsePointAncestor -Path $candidate
+    if ($reparse) {
+        $reconciliationMessages.Add("CANT-VERIFY: protected reference candidate '$relative' traverses reparse/symlink '$reparse' and was not read.")
+        continue
+    }
+    try { $entry = Get-Item -Force -LiteralPath $candidate -ErrorAction Stop }
+    catch [Management.Automation.ItemNotFoundException] { continue }
+    catch { $reconciliationMessages.Add("CANT-VERIFY: protected reference candidate '$relative' could not be examined; no stale-command conclusion was inferred."); continue }
+    if ($entry.PSIsContainer -or $entry.Length -gt 2097152) {
+        $reconciliationMessages.Add("CANT-VERIFY: protected reference candidate '$relative' is not a regular bounded file and was not read.")
+        continue
+    }
+    try { $content = [Text.UTF8Encoding]::new($false, $true).GetString([IO.File]::ReadAllBytes($candidate)) -replace '\\', '/' }
+    catch { $reconciliationMessages.Add("CANT-VERIFY: protected reference candidate '$relative' could not be read as UTF-8; no stale-command conclusion was inferred."); continue }
+    foreach ($retiredPath in @($retiredReferenceReplacements.Keys | Sort-Object)) {
+        $pattern = '(?i)(?<![A-Za-z0-9_./-])(?:\./)?' + [regex]::Escape($retiredPath) + '(?=$|[\s"''`(){}\[\],;:])'
+        if ($content -match $pattern) {
+            $reconciliationMessages.Add("MIGRATION: protected consumer carrier '$relative' names retired framework path '$retiredPath'. It was not overwritten; replace that reference with: $($retiredReferenceReplacements[$retiredPath]).")
+        }
+    }
 }
 
 # Git is optional for a plain target, but repository evidence or redirected Git state must never be
@@ -650,8 +923,6 @@ if ($updateMode -and (Test-Path -LiteralPath (Join-Path $tgt '.claude/settings.j
 
 $adoptionMarkerRelative = $null
 if ($adoptMode) { $adoptionMarkerRelative = '.claude/adoption-pending.json'; [void](Add-PlannedWrite -Relative $adoptionMarkerRelative) }
-if ($GitHooks) { [void](Add-PlannedWrite -Relative $gitHookRelative -ForceCreate) }
-
 $modeName = if ($updateMode) { 'update' } elseif ($adoptMode) { 'brownfield' } else { 'greenfield' }
 Write-Output "OPERATION-PLAN schema=1 mode=$modeName"
 foreach ($category in @(
@@ -730,8 +1001,9 @@ if ($adoptMode) {
 }
 
 # Claude Code hooks default to pwsh (PowerShell 7). If it isn't installed, fall back to the Windows
-# PowerShell 5.1 variant (preinstalled on every Windows box) so the hooks still fire.
-if (-not (Get-Command pwsh -ErrorAction SilentlyContinue)) {
+# PowerShell 5.1 variant (preinstalled on every Windows box) so the hooks still fire. Reuse that
+# resolved host in the printed follow-up commands; guidance must not name an unavailable executable.
+if (-not $pwshAvailable) {
     $sj  = Join-Path $tgt '.claude/settings.json'
     $sjw = Join-Path $tgt '.claude/settings.windows.json'
     if ((Test-Path $sjw) -and (Test-Path $sj)) {
@@ -740,16 +1012,11 @@ if (-not (Get-Command pwsh -ErrorAction SilentlyContinue)) {
     }
 }
 
-if ($GitHooks) {
-    & (Join-Path $tgt 'scripts/setup-git-hooks.ps1') -Target $tgt
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-}
-
 Write-Output ""
-Write-Output "Each developer should run  pwsh scripts/framework-doctor.ps1  once on their own machine."
+Write-Output "Each developer should run  $followUpPowerShell scripts/framework-doctor.ps1  once on their own machine."
 if ($updateMode) {
     Write-Output "Done (update). Framework-owned machinery refreshed; the listed protected paths were left untouched; .claude/settings.json was backed up and refreshed."
-    Write-Output "  Next: review the diff, run  pwsh scripts/docs-sync-check.ps1 , then commit."
+    Write-Output "  Next: review the diff, run  $followUpPowerShell scripts/docs-sync-check.ps1 , then commit."
 } elseif ($adoptMode) {
     Write-Output "Done - but this repo is NOT ready for AI-assisted work yet: it has pre-existing AI"
     Write-Output "tooling that must be consolidated with /adopt. The originals this install displaced"
@@ -781,7 +1048,7 @@ if ($updateMode) {
     Write-Output "     - /bootstrap is developer-initiated: AI agents and the model CANNOT invoke it, and it"
     Write-Output "       only exists inside a session started in the target repo."
     Write-Output "  3. Until /bootstrap has run, docs-sync-check FAILS by design - that is expected at this"
-    Write-Output "     stage, not a defect to fix. After it has run, verify:  pwsh scripts/docs-sync-check.ps1"
+    Write-Output "     stage, not a defect to fix. After it has run, verify:  $followUpPowerShell scripts/docs-sync-check.ps1"
     Write-Output "  4. Review the generated CLAUDE.md - it is canonical; client delivery varies (see docs/enforcement-surfaces.md)."
     Write-Output ""
     Write-Output "  IF YOU ARE AN AI AGENT running this installer: your task is NOT complete until you"
@@ -789,3 +1056,4 @@ if ($updateMode) {
     Write-Output "  session in the target repo and type /bootstrap. Report that as the required manual next"
     Write-Output "  step in your final summary. Do not attempt /bootstrap yourself or replicate it by hand."
 }
+exit 0

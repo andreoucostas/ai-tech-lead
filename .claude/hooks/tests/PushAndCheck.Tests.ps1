@@ -27,6 +27,9 @@ $dir = '__DIR__'
 $cmd = ($args -join ' ')
 Add-Content -LiteralPath (Join-Path $dir 'git-calls.log') -Value $cmd
 if ($cmd -like '* rev-parse --abbrev-ref HEAD') { Write-Output '__BRANCH__'; exit 0 }
+if ($cmd -like '* rev-parse --verify *^{commit}') { Write-Output '__SHA__'; exit 0 }
+if ($cmd -like '* fetch --quiet --prune --no-tags origin') { exit 0 }
+if ($cmd -like '* rev-list --reverse --topo-order *') { exit 0 }
 if ($cmd -like '* rev-parse HEAD') { Write-Output '__SHA__'; exit 0 }
 if ($cmd -like '* push origin *') {
     Write-Output 'push stdout'
@@ -47,7 +50,7 @@ function New-GhStub {
     $dir = Join-Path ([IO.Path]::GetTempPath()) ('pushcheck-gh-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     $script:scratch += $dir
-    $jobs = @('windows','linux','windows-hooks (dotnet)','windows-hooks (angular)','windows-hooks (monorepo)','linux-hooks (dotnet)','linux-hooks (angular)','linux-hooks (monorepo)' |
+    $jobs = @('windows','windows-ps51','windows-hooks (dotnet)','windows-hooks (angular)','windows-hooks (monorepo)','windows-hooks-ps51 (dotnet)','windows-hooks-ps51 (angular)','windows-hooks-ps51 (monorepo)' |
         ForEach-Object { '{"name":"' + $_ + '","conclusion":"success","status":"completed"}' }) -join ','
     $conclusion = if ($State -eq 'red') { 'failure' } else { 'success' }
     $row = '[{"conclusion":"' + $conclusion + '","databaseId":123,"event":"push","headSha":"' + $SHA + '","status":"completed","url":"https://github.com/owner/repo/actions/runs/123","workflowName":"CI"}]'
@@ -88,6 +91,10 @@ try {
         Assert ($r.Exit -eq 7) "expected 7, got $($r.Exit): $($r.Out)"
         Assert ($r.Out -match 'PUSH FAILED') 'missing PUSH FAILED'
         Assert (-not (Test-Path -LiteralPath $h.Log)) 'watch-ci was invoked after a failed push'
+        $calls = @(Get-Content -LiteralPath $g.Log)
+        $fetchIndex = [Array]::FindIndex([string[]]$calls, [Predicate[string]]{ param($line) $line -like '* fetch --quiet --prune --no-tags origin' })
+        $pushIndex = [Array]::FindIndex([string[]]$calls, [Predicate[string]]{ param($line) $line -like '* push origin master' })
+        Assert ($fetchIndex -ge 0 -and $pushIndex -gt $fetchIndex) 'outgoing range was not checked before git push'
     }
     It 'an unwatched branch pushes, skips watching, and exits 0' {
         $g=New-GitStub; $h=New-GhStub green; $r=Invoke-Subject $g $h -Branch feature/x

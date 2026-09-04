@@ -4,7 +4,9 @@ Maintainer live-fire evidence for claims in the shipped enforcement matrix. Evid
 capability-specific: a date or host version on one row never certifies another event or a chain that
 contains it. `Direct fixture` proves hook output, not host consumption. Native
 `.github/instructions/` delivery is separate from Preview-hook lifecycle evidence. Blank cells are
-forbidden; unavailable or unexamined surfaces say so.
+forbidden; unavailable or unexamined surfaces say so. Command-hook execution and process ancestry
+certify only that execution topology; they do not by themselves certify event-output consumption or
+the behavior of every production hook.
 
 Re-certification is evidence-triggered under WSD-066, not calendar-driven. Before a row can be
 upgraded or re-dated, its canary needs: (1) the treatment; (2) a positive control already known to
@@ -18,13 +20,16 @@ recorded as inability to examine, not as a capability failure.
 | Surface | Capability | Observed | Host version | Certified |
 |---|---|---|---|---|
 | Claude Code | Framework-rules `@import` consumed | Subject/control canary returned the imported-file sentinel with zero tool invocations; the control confirmed it was absent from root `CLAUDE.md` | not recorded | historical observation — 2026-08-05 |
-| Claude Code | SessionStart context | Direct fixture emitted the unbootstrapped warning; end-to-end recert blocked by host session limit | 2.1.212 | not certified — quota |
-| Claude Code | UserPromptSubmit route rails | Direct fixture emitted `/fix` rails for the target prompt; end-to-end recert blocked by host session limit | 2.1.212 | not certified — quota |
-| Claude Code | PreToolUse guard | Direct fixture exited 2 and blocked `AKIAIOSFODNN7EXAMPLE`; end-to-end recert blocked by host session limit | 2.1.212 | not certified — quota |
-| Claude Code | PostToolUse feedback consumed | Not run — host session limit | 2.1.212 | not certified — quota |
-| Claude Code | Stop Boy-Scout nudge | Not run — host session limit | 2.1.212 | not certified — quota |
+| Claude Code | PowerShell hook registration/execution (SessionStart + UserPromptSubmit) | Isolated treatment fired both events with exit 0 and a side-effect marker; equivalent no-hook control wrote no marker; observed ancestry was `pwsh -> pwsh -> claude.exe` | Claude Code 2.1.247 / PowerShell 7.6.5 | 2026-09-04 — local Windows execution topology only |
+| Claude Code | PowerShell tool selection and `!` shell routing | A restricted `--tools PowerShell` treatment advertised and used only the PowerShell tool and wrote its marker; an interactive `!` command reported PowerShell 7.6.5 | Claude Code 2.1.247 / PowerShell 7.6.5 | 2026-09-04 — local Windows execution topology only |
+| Claude Code | SessionStart context | Direct fixture emitted the unbootstrapped warning; end-to-end recertification could not run because of the host session limit | 2.1.212 | historical recertification attempt — quota; not certified |
+| Claude Code | UserPromptSubmit route rails | Direct fixture emitted `/fix` rails for the target prompt; end-to-end recertification could not run because of the host session limit | 2.1.212 | historical recertification attempt — quota; not certified |
+| Claude Code | PreToolUse guard | Direct fixture exited 2 and blocked `AKIAIOSFODNN7EXAMPLE`; end-to-end recertification could not run because of the host session limit | 2.1.212 | historical recertification attempt — quota; not certified |
+| Claude Code | PostToolUse feedback consumed | Not run — host session limit | 2.1.212 | historical recertification attempt — quota; not certified |
+| Claude Code | Stop Boy-Scout nudge | Not run — host session limit | 2.1.212 | historical recertification attempt — quota; not certified |
 | Copilot CLI | Folder-trust prerequisite | Fresh untrusted clone ran no hooks and wrote the fixture key; the already-trusted disposable canary path ran hooks | 1.0.70 | 2026-07-17 |
 | Copilot CLI | Native `.github/instructions/` consumed | Three-way subject/positive/negative-control canary returned only the applicable instruction sentinel; zero tool invocations and no file changes | 1.0.77 | 2026-08-05 |
+| Copilot CLI | Local PowerShell hook registration/execution (two `powershell` entries) | Isolated treatment fired two entries and wrote markers; equivalent no-hook control wrote no marker; observed ancestry was `pwsh -> pwsh -> copilot.exe -> node.exe`. The CLI reported 1.0.80 while debug/package provenance reported older values, and event identity was inferred from payload shape because the payload omitted the event name | CLI-reported 1.0.80 / PowerShell 7.6.5 | 2026-09-04 — local Windows execution topology only; does not certify cloud, PowerShell 5.1, inferred event mapping, or all six production hooks |
 | Copilot CLI | SessionStart context consumed | Out-of-band sentinel `B49_SESSION_START_8KP3` returned verbatim | 1.0.70 | 2026-07-17 |
 | Copilot CLI | userPromptSubmitted context consumed | Out-of-band sentinel `B49_OUT_OF_BAND_7QX9` returned verbatim without tools | 1.0.70 | 2026-07-17 |
 | Copilot CLI | userPromptSubmitted single-entry delivery | Four controlled runs established that only the last registered entry reaches the model: two entries, swapped tokens, three entries, and three structurally distinct entries | 1.0.79/1.0.80 | 2026-08-18 |

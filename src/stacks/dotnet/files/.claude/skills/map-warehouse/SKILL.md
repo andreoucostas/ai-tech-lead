@@ -21,7 +21,7 @@ layers, entities, keys, relationships, loads, controls — so changes follow the
 already there, and so a report can be written against the joins the warehouse actually has.
 
 0. **Confirm this repo is a SQL data warehouse with the shared classifier.** Run
-   `pwsh scripts/warehouse-map-check.ps1` (or `bash scripts/warehouse-map-check.sh`). The command
+   `pwsh -NoProfile -File scripts/warehouse-map-check.ps1`. The command
    and `scripts/warehouse-signals.tsv` are the authoritative applicability gate used by bootstrap.
    Continue when it reports `WAREHOUSE_MAP missing`, `stale`, or `current`: each means
    at least two independent warehouse signal categories were found. If it reports

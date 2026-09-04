@@ -1,7 +1,8 @@
 ﻿# Descriptive current-state codebase scorecard for /impact. Emits JSON to stdout.
-# PowerShell twin of metrics.sh. Monorepo variant: counts both stacks' anti-patterns (.NET over
+# Monorepo variant: counts both stacks' anti-patterns (.NET over
 # *.cs, Angular over *.ts/*.html) in one flat metrics object; the three shared-name counters are
-# the sum of both stacks' counts. Usage: pwsh scripts/metrics.ps1 [path ...]  (default: whole repo)
+# the sum of both stacks' counts. Usage: pwsh -NoProfile -File scripts/metrics.ps1 [path ...]
+# (default: whole repo)
 $ErrorActionPreference = 'SilentlyContinue'
 $root = (git rev-parse --show-toplevel 2>$null); if (-not $root) { $root = (Get-Location).Path }
 Set-Location $root

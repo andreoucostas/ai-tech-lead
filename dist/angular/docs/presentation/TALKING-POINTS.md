@@ -70,8 +70,8 @@ These mirror the in-deck speaker notes (press **N**), collected here for printin
   and secrets; shell/terminal writes and unavailable hooks remain blind spots.
 - Subagents review; wired CI can block drift and configured architecture violations; supported hooked
   editor events append mutable local telemetry.
-- **Bitbucket:** guardrails run in Bamboo/Jenkins or a pre-receive hook and post to PRs via Code
-  Insights. No cloud required.
+- **Bitbucket:** guardrails run in Bamboo/Jenkins on self-hosted Windows agents and post to PRs via
+  Code Insights. Copilot coding-agent cloud hooks are unsupported.
 - Punchline: **rules that aren't enforced are just suggestions.**
 
 ### 8 · For tech leads
@@ -96,8 +96,8 @@ These mirror the in-deck speaker notes (press **N**), collected here for printin
 
 ### 11 · Fits our environment
 - Kills the "but we're on local Bitbucket, not GitHub cloud" objection up front.
-- GitHub Actions / Copilot cloud agent / Rovo Dev are **not** required. Host-agnostic; CI wired to
-  what we already run. Every script has a **PowerShell twin** (Windows-first).
+- GitHub Actions / Copilot cloud agent / Rovo Dev are **not** required. Supported execution is
+  Windows-only: PowerShell 7 primary, native Windows PowerShell 5.1 fallback.
 - VS Code hooks are Preview, off by default, org-gated, and the full lifecycle remains uncertified;
   use the actual-host canaries before claiming the hooks are live.
 
@@ -141,8 +141,8 @@ Up front, slightly — new commands and enforced discipline. Net, it's faster: l
 knows our conventions), fewer review round-trips (guardrails catch slips early), and consistent output.
 
 **"Can it run on our Bitbucket Data Center / behind the firewall?"**
-Yes — that's a design constraint, not an afterthought. Everything runs locally; CI uses
-Bamboo/Jenkins/pre-receive + Bitbucket Code Insights. No GitHub-cloud features required.
+Yes — on supported Windows hosts. CI uses Bamboo/Jenkins Windows agents plus Bitbucket Code
+Insights. Copilot coding-agent cloud hook execution is unsupported.
 
 **"How do we know it actually helps?"**
 `/impact` can record current-state metrics for discussion. `/adopt` does not run it automatically,

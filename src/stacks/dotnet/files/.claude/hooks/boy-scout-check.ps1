@@ -1,5 +1,5 @@
 ﻿# Stop hook -- flag Boy Scout opportunities in modified .cs files.
-# PowerShell equivalent of boy-scout-check.sh, for Windows-only PowerShell teams.
+# Boy-scout hook for the supported native Windows PowerShell topology.
 # CLAUDE scans and emits the Stop output shapes; SCAN queues findings and emits a Copilot-shaped
 # response; DELIVER emits and deletes that queued response without scanning. These are script
 # outputs: host firing and consumption are capability-specific. The advisory response uses

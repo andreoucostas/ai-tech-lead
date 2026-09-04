@@ -13,14 +13,15 @@ Windows, and ships machine checks plus scoped write-time guards and local hook-d
 next to the instructions. Exact guarantees depend on the client and host prerequisites documented
 in each dist's `docs/enforcement-surfaces.md`.
 
-The supported and release-tested host platforms are **Windows and Linux**. macOS is outside the
-support and CI scope; behavior there is incidental and carries no compatibility guarantee.
+The supported and release-tested host platform is **native Windows**. Claude Code 2.1.141 or newer
+is required. PowerShell 7 is preferred; Windows PowerShell 5.1 is the installer and framework-script fallback. Linux, WSL, macOS, BSD, and
+Copilot cloud hook execution are unsupported and untested; incidental execution is not a guarantee.
 
 This repository is the **authoring repo** for the framework, not a consumer project. It used to
 be two separate template repos — `ai-tech-lead-dotnet` and `ai-tech-lead-angular` — merged into
 one with history preserved. Shared content (conventions, skills, hooks, commands) is authored
 **once** under `src/core/`, with per-stack differences layered in from `src/stacks/{dotnet,
-angular,monorepo}/`. A deterministic composer (`scripts/build.ps1`/`.sh`) reads that single
+angular,monorepo}/`. A deterministic PowerShell composer (`scripts/build.ps1`) reads that single
 source and emits three installable, committed distributions under `dist/`: `dist/dotnet`,
 `dist/angular`, and `dist/monorepo` (for repos that mix both stacks — e.g. a .NET API with a
 colocated Angular SPA). Consumers never see `src/`; they install straight from a `dist/`.
@@ -44,22 +45,20 @@ local edits to framework-owned files before updating, and review the resulting d
 
 | Dist | Who it's for | Root installer (auto-detect) | Direct dist installer |
 |------|---------------|-------------------------------|------------------------|
-| `dist/dotnet` | Repositories with `.NET` application evidence, or warehouse-SQL repositories with at least two independent warehouse signal categories | `bash install.sh /path/to/repo` or `pwsh install.ps1 /path/to/repo` | `bash dist/dotnet/scripts/install.sh /path/to/repo` or `pwsh dist/dotnet/scripts/install.ps1 /path/to/repo` |
-| `dist/angular` | Angular workspaces evidenced by `angular.json`, an exact-case `"@angular/core"` dependency-map key, or an exact-case Angular token in an Nx/project plugin, executor, generator, schematic, or target-default field | same, auto-detects `angular` | `bash dist/angular/scripts/install.sh /path/to/repo` |
-| `dist/monorepo` | Mixed repositories with both .NET and Angular evidence, or Angular plus warehouse-SQL evidence | same, auto-detects `monorepo` (union of the applicable profiles' rails) | `bash dist/monorepo/scripts/install.sh /path/to/repo` |
+| `dist/dotnet` | Repositories with `.NET` application evidence, or warehouse-SQL repositories with at least two independent warehouse signal categories | `pwsh -NoProfile -File install.ps1 C:\path\to\repo` | `pwsh -NoProfile -File dist/dotnet/scripts/install.ps1 -Target C:\path\to\repo` |
+| `dist/angular` | Angular workspaces evidenced by `angular.json`, an exact-case `"@angular/core"` dependency-map key, or an exact-case Angular token in an Nx/project plugin, executor, generator, schematic, or target-default field | same, auto-detects `angular` | `pwsh -NoProfile -File dist/angular/scripts/install.ps1 -Target C:\path\to\repo` |
+| `dist/monorepo` | Mixed repositories with both .NET and Angular evidence, or Angular plus warehouse-SQL evidence | same, auto-detects `monorepo` (union of the applicable profiles' rails) | `pwsh -NoProfile -File dist/monorepo/scripts/install.ps1 -Target C:\path\to\repo` |
 
-Pass `--stack dotnet|angular|monorepo` (`-Stack` on the PowerShell side) to override
+Pass `-Stack dotnet|angular|monorepo` to override
 auto-detection. On an existing install, the root installer defaults to whatever stack is
 recorded in the target's `.claude/framework-version.json` (update mode) rather than
 re-detecting. If the repository's evidenced profiles change, rerun the root installer with the
-appropriate explicit `--stack`/`-Stack` (usually `monorepo` when profiles coexist) before
+appropriate explicit `-Stack` (usually `monorepo` when profiles coexist) before
 running `/rebootstrap`. Application markers are searched at the target root and two directory levels below;
 warehouse evidence is classified repository-wide while generated and dependency directories are
-pruned. The Bash dispatcher requires `jq` or a working `python3`/`python`/`py` when it must read an
-existing stamp or structurally inspect `angular.json`/`package.json`/`nx.json`/`project.json` Angular evidence; if
-none is available, pass `--stack` explicitly. The PowerShell dispatcher uses an embedded strict JSON reader.
-The root installers are a thin dispatcher only — all real copy logic
-lives in the chosen dist's own `scripts/install.{sh,ps1}`.
+pruned. The PowerShell dispatcher uses an embedded strict JSON reader. The root installer is a thin
+dispatcher only — all real copy logic lives in the install script under the chosen dist's `scripts/`
+directory.
 
 ### What the install adds, and why it is committed
 
@@ -86,18 +85,18 @@ quietly disagree with what the installer actually does.
 The installers run *from a local clone of this repo* against a target repo elsewhere on disk — so
 get the framework first, then point it at your codebase:
 
-```bash
+```powershell
 git clone https://github.com/andreoucostas/ai-tech-lead.git
 cd ai-tech-lead
-bash install.sh /path/to/your-repo
-# or, on Windows:
-pwsh install.ps1 C:\path\to\your-repo
+pwsh -NoProfile -File install.ps1 C:\path\to\your-repo
+# Windows PowerShell 5.1 fallback:
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File install.ps1 C:\path\to\your-repo
 ```
 
 Installing a mixed .NET + Angular repo, forcing the monorepo dist explicitly:
 
-```bash
-bash install.sh --stack monorepo /path/to/your-repo
+```powershell
+pwsh -NoProfile -File install.ps1 -Stack monorepo C:\path\to\your-repo
 ```
 
 After the copy lands and is committed in the target repo, a developer starts a Claude Code (or
@@ -114,8 +113,8 @@ getting the framework itself into a repo.
 | `src/core/` | Single-source shared content — the common files, with `<!-- @stack:NAME -->` markers where stacks diverge. |
 | `src/stacks/{dotnet,angular,monorepo}/` | Per-dist `snippets/` (marker content) and `files/` (whole-file overrides + stack-only files). |
 | `dist/{dotnet,angular,monorepo}/` | **Generated**, committed golden output. Never hand-edited — CI rebuilds and diffs it against `src/` on every push/PR. |
-| `scripts/` | The composer and its gates, each as a `.ps1`/`.sh` twin: `build`, `validate-dist`, `fidelity-check`. |
-| `install.ps1` / `install.sh` | Root installers — detect the target's stack (or read `--stack`) and delegate to the matching dist installer. |
+| `scripts/` | PowerShell composer/gates: `build`, `validate-dist`, `context-footprint`; `fidelity-check.ps1` remains a manual historical re-audit tool. |
+| `install.ps1` | Root installer — detects the target's stack (or reads `-Stack`) and delegates to the matching dist installer. |
 | `meta/` | **The maintainer layer, kept out of the product's way:** `BACKLOG.md` (work list), `workspace-decisions.md` (ADR log), `LEARNINGS.md` (meta-dev log), `ci-handover.md`, `changelogs/` (frozen pre-merge history). Never ships. |
 | `.github/workflows/ci.yml` | The CI gate — see below. |
 | `CLAUDE.md` / `AGENTS.md` | Governance for developing *this* repo (maintainer instructions — not shipped; distinct from the `CLAUDE.md` templates inside each `dist/`). They must sit at the repo root for Claude Code to load them, so they keep an explicit "you are in the authoring repo" banner as the tie-breaker. |
@@ -124,17 +123,16 @@ getting the framework itself into a repo.
 
 ## How it's built and validated
 
-`scripts/build.ps1`/`.sh` is the composer: it reads `src/core` plus the target dist's
+`scripts/build.ps1` is the composer: it reads `src/core` plus the target dist's
 `src/stacks/<dist>/` overrides and writes a complete `dist/<dist>/` tree. Two gates run against
-that output — `validate-dist` (marker resolution, JSON validity, `bash -n`, PowerShell AST parse,
+that output — `validate-dist.ps1` (marker resolution, JSON validity, PowerShell-only topology and AST parse,
 each dist's own `template-checks` for `CLAUDE.md`↔`AGENTS.md` mirror parity, and `no-meta-leak`,
 which fails if maintainer vocabulary reaches a shipped file) and each dist's own hook test suite
 (`dist/<dist>/tests/hooks/Invoke-HookTests.ps1`, a dependency-free PowerShell harness that pipes
-JSON fixtures at every hook and asserts both the bash and PowerShell twin agree). CI
-(`.github/workflows/ci.yml`) runs those, plus a freshness check that the rebuild matches the
-committed `dist/`, on two legs — a Windows leg that rebuilds with the `.ps1` composer and a Linux
-leg that rebuilds with the `.sh` twin — so composer twin divergence fails a leg on its own.
-`scripts/fidelity-check` (byte-compare of `dist/{dotnet,angular}` against the pre-merge
+JSON fixtures at every hook and asserts the PowerShell semantics). CI (`.github/workflows/ci.yml`)
+runs those plus a freshness check under eight Windows contexts: root and all three distributions
+under PowerShell 7, then the same four under native Windows PowerShell 5.1.
+`scripts/fidelity-check.ps1` (byte-compare of `dist/{dotnet,angular}` against the pre-merge
 `freeze-v0.25.5` baseline) was **retired from CI at v0.26.0**, which deliberately changed shipped
 content; it remains for manual re-audit. Full command recipes, including how to run any single gate
 by hand, are in [`DEVELOPING.md`](./DEVELOPING.md).

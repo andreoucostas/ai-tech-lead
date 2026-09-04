@@ -14,13 +14,14 @@
 The merged monorepo (B-25-EXEC, WSD-012) replacing `ai-tech-lead-dotnet` + `ai-tech-lead-angular`.
 Shared content is authored **once** in `src/`; the composer emits three installable dists.
 The framework's "code" is mostly Markdown (skills, commands, agents, the `CLAUDE.md` templates) +
-PowerShell/bash hooks + installer scripts. There is no app to compile — the "build" is the composer.
+PowerShell hooks and installer scripts. There is no app to compile — the "build" is the composer.
 
 - `src/core/` — single-source shared content (`<!-- @stack:NAME -->` markers where stacks diverge).
 - `src/stacks/{dotnet,angular,monorepo}/` — per-dist `snippets/` + `files/` (overrides, stack-only).
 - `dist/{dotnet,angular,monorepo}/` — **generated** golden output, committed, never hand-edited.
-- `scripts/` — composer + gates (`build`, `validate-dist`, `fidelity-check`), all `.ps1`/`.sh` twins.
-- `install.ps1`/`.sh` — thin root installers; auto-detect the target stack (mixed → monorepo).
+- `scripts/` — PowerShell composer + gates (`build`, `validate-dist`, `context-footprint`), plus the
+  manual historical re-audit tool `fidelity-check.ps1`.
+- `install.ps1` — thin root installer; auto-detects the target stack (mixed → monorepo).
 - `meta/` — maintainer layer: `BACKLOG.md`, `workspace-decisions.md` (ADR log), `LEARNINGS.md`
   (meta-dev log), `ci-handover.md`, `changelogs/legacy-*.md`. Never ships.
 - `.claude/` — maintainer Claude Code config (bom-fix hook, meta tests, `release.ps1`, plans). Never ships.
@@ -38,27 +39,27 @@ Code must load them from the root; the banner above is the tie-breaker.
 2. **`CLAUDE.md` ↔ `AGENTS.md` mirror parity (per dist).** Fix drift in the source, rebuild;
    gate = each dist's `template-checks` via `validate-dist`. This root file mirrors the root
    `CLAUDE.md` by hand.
-3. **`.ps1`/`.sh` twin parity** for every shipped hook/script and every `scripts/` composer/gate
-   script. Edit one → edit the twin in the same task. Meta scripts (`.claude/scripts/`) are
-   PowerShell-only by decision.
+3. **PowerShell-only execution topology.** Framework executable/registration surfaces run on native
+   Windows: PS7 primary, PS5.1 fallback. Four `meta/canaries` shell files and textual history are
+   inert exceptions; consumer-owned files may still use Bash.
 4. **UTF-8 BOM mandatory in every `.ps1`** (PS 5.1 mis-parses BOM-less UTF-8). Auto-fixed by the
    `bom-fix` hook; swept by the meta suite and `template-checks`.
 5. **Hook output semantics differ per surface.** Claude Code: `exit 2`+stderr blocks / stdout JSON
    nudges. Copilot: stdout JSON `permissionDecision: deny`. Enforcing on both surfaces needs both
-   shapes; always test both. Copilot CLI does not consume `postToolUse` additionalContext.
+   shapes; always test both. Copilot CLI `postToolUse` context consumption is version-dependent: it
+   was absent in 1.0.68 and observed in 1.0.80, so tests must not assume it universally.
 6. **Don't-ship boundary — a machine check, not a promise.** Only `dist/` contents reach consumers
    via the installers; the rest of the repo is authoring-only and must never collide with a template
    file. Enforced by `validate-dist` check 6 (`no-meta-leak`): each composed dist is scanned against
    `scripts/meta-denylist.txt`, so our development vocabulary (tracking ids `B-nn`/`WSD-nnn`,
    "lockstep", the two-repo past, maintainer-only tooling) cannot appear in a shipped file. One
-   denylist file, read by both twins. If a legitimate consumer word trips it, add a narrow `ALLOW` —
+   denylist file, read by the validator. If a legitimate consumer word trips it, add a narrow `ALLOW` —
    never weaken a `DENY`. Check 6 guards what shipped docs must not *say*; **check 7
    (`no-dead-instruction`)** guards that the commands they *give* actually resolve — every script a
    shipped doc tells someone to run must exist, resolved from the dist root; **check 8
-   (`hook-registration`)** guards the same for hook wiring — every script named in
-   `.claude/settings*.json` / `.github/hooks/hooks.json` exists in the dist, with its twin [#3]. It
-   deliberately does not reject a bare interpreter name (v0.38.1 made that the intended shipped
-   value); whether it resolves is a runtime fact, reported by the doctor's `Hook liveness` row.
+   (`hook-registration`)** requires exactly 18 PowerShell registrations per dist (six Claude PS7,
+   six Claude PS5.1, six Copilot), case-exact targets, and the PowerShell tool/shell settings. It
+   deliberately accepts bare interpreter names; runtime resolution belongs to `Hook liveness`.
 7. **Versioning.** Shipped behavior change ⇒ root `CHANGELOG.md` entry **and** a matching
    `## <version> — Unreleased` head in all three `src/stacks/*/files/CHANGELOG.md` (mandatory,
    not optional — `release.ps1` refuses to release without all four, B-54), then release via
@@ -71,20 +72,20 @@ Code must load them from the root; the banner above is the tie-breaker.
 
 Meta-workflows (artifact change, hook bug, large change, investigation), the per-artifact
 Definition of done, and the evidence-based verification commands are defined in `CLAUDE.md` and
-`DEVELOPING.md` — follow them there. Core loop: edit `src/` (+ twin + monorepo sibling) → rebuild
+`DEVELOPING.md` — follow them there. Core loop: edit `src/` (+ monorepo sibling) → rebuild
 all three dists → `git status --porcelain dist/` empty → `validate-dist` ×3 → hook suites ×3 +
 meta suite → CHANGELOG/version if shipped behavior changed → commit + push `master`.
 
 Every gate above is a *parser* gate — it proves the artifacts are well-formed, not that they
 work. The product is prose aimed at a model, so two gates in the meta suite cover the behavioral
-surface instead: **`InstallerContract`** runs the shipped installer (both modes × both twins × all
+surface instead: **`InstallerContract`** runs the shipped installer (both modes × all
 three dists) and asserts its stdout states the whole agent-handoff contract, and **`DocTruth`**
 asserts the authoring docs describe the repo that actually exists. Both were written after three
 defects shipped straight through the parser gates — see `meta/LEARNINGS.md`.
 
-Do not answer a Windows/Linux execution gap with a generic third CI leg. WSD-061 permits one focused
-provider leg only when neither existing required leg can execute a shipped compatibility contract;
-that provider never replaces the required Windows/Linux evidence.
+Do not answer a host-execution gap with a generic extra CI leg. WSD-061 permits one focused provider
+leg only when neither required Windows host can execute a shipped compatibility contract; that
+provider never replaces direct PS7 and PS5.1 evidence.
 
 The **Verification Rules**, **Leanness**, **SOLID**, **Boy Scout Rule**, and self-review
 disciplines in `src/core/CLAUDE.md` bind meta-work too.
@@ -110,8 +111,8 @@ independence, quality, or truth.
    model family, host, or toolchain, but rank alone neither qualifies nor disqualifies. Data-loss,
    security-bypass, and false-green release/enforcement changes also require an orthogonal reviewer
    or execution vantage; otherwise file the remaining debt. Review scope too: every changed function
-   must be required by the frozen contract; justify or revert extra surface. Windows and Linux are
-   the two platform legs; multiple hosts on one OS and proxy checks replace neither.
+   must be required by the frozen contract; justify or revert extra surface. Windows is the sole
+   platform leg; direct PS7 and PS5.1 runs are both required and may not relaunch one another.
 3. **Nothing enters the record as observed unless you observed it** — self-reports, a spec's
    file-layout claims, a plan's assumptions, any number you quote. Verify in the environment that
    matters, or attribute the claim rather than asserting it.
@@ -173,5 +174,5 @@ Version authority is the machine-readable `dist/*/.claude/framework-version.json
 history is `CHANGELOG.md` plus tags. Read `meta/BACKLOG.md` for current work rather than a status
 summary here.
 
-Gotcha: `scripts/fidelity-check.{ps1,sh}` still exist but are **no longer wired to CI** — they are
-manual re-audit tools against the `pre-restructure` tag, not gates.
+Gotcha: `scripts/fidelity-check.ps1` still exists but is **no longer wired to CI** — it is a manual
+re-audit tool against the `pre-restructure` tag, not a gate.

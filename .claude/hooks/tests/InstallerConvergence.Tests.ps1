@@ -4,7 +4,7 @@
 . (Join-Path $PSScriptRoot '_HookHarness.ps1')
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
-$bash = Get-BashPath
+$script:IsWindowsHost = [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
 $retiredPaths = @(
     'scripts/impact-run.ps1',
     'scripts/impact-run.sh',
@@ -73,21 +73,14 @@ function New-RichUpdateTarget {
 }
 
 function Invoke-CurrentInstaller {
-    param([string]$Twin, [string]$Target, [string]$SourceRoot, [switch]$DryRun, [switch]$AllowDowngrade)
+    param([string]$Target, [string]$SourceRoot, [switch]$DryRun, [switch]$AllowDowngrade, [switch]$AllowDirtyTree)
     $root = if ($SourceRoot) { $SourceRoot } else { Join-Path $repoRoot 'dist/dotnet' }
-    $installer = Join-Path $root "scripts/install.$Twin"
-    if ($Twin -eq 'ps1') {
-        $arguments = @('-NoProfile','-File',$installer,'-Target',$Target)
-        if ($DryRun) { $arguments += '-WhatIf' }
-        if ($AllowDowngrade) { $arguments += '-AllowDowngrade' }
-        $output = & (Get-PsExe) @arguments 2>&1 | Out-String
-    } else {
-        $arguments = @($installer)
-        if ($DryRun) { $arguments += '--dry-run' }
-        if ($AllowDowngrade) { $arguments += '--allow-downgrade' }
-        $arguments += ($Target -replace '\\', '/')
-        $output = & $bash @arguments 2>&1 | Out-String
-    }
+    $installer = Join-Path $root 'scripts/install.ps1'
+    $arguments = @('-NoProfile','-File',$installer,'-Target',$Target)
+    if ($DryRun) { $arguments += '-WhatIf' }
+    if ($AllowDowngrade) { $arguments += '-AllowDowngrade' }
+    if ($AllowDirtyTree) { $arguments += '-AllowDirtyTree' }
+    $output = & (Get-PsExe) @arguments 2>&1 | Out-String
     return [pscustomobject]@{ Exit = [int]$LASTEXITCODE; Output = $output }
 }
 
@@ -101,22 +94,32 @@ function New-B217CandidateSource {
         Remove-Item -LiteralPath (Join-Path $candidate '.github/skills') -Recurse -Force
     }
     Copy-Item -LiteralPath (Join-Path $repoRoot 'src/core/scripts/install.ps1') -Destination (Join-Path $candidate 'scripts/install.ps1') -Force
-    Copy-Item -LiteralPath (Join-Path $repoRoot 'src/core/scripts/install.sh') -Destination (Join-Path $candidate 'scripts/install.sh') -Force
-
-    $ownershipPath = Join-Path $candidate 'framework-ownership.json'
-    $ownershipLines = Get-Content -LiteralPath $ownershipPath | Where-Object { $_ -notmatch '"path": "\.github/skills/' -and $_ -notmatch '"path": "scripts/sync-agent-files\.' }
-    [IO.File]::WriteAllLines($ownershipPath, [string[]]$ownershipLines, [Text.UTF8Encoding]::new($false))
 
     $stock = '.github/skills/perf/SKILL.md'
     $ledgerPath = Join-Path $candidate 'framework-retirements.json'
     Copy-Item -LiteralPath (Join-Path $repoRoot 'src/core/framework-retirements.json') -Destination $ledgerPath -Force
-    $ledger = Get-Content -LiteralPath $ledgerPath -Raw
-    Assert ($ledger -match [regex]::Escape(('"path": "' + $stock + '"'))) "B-217 source retirement ledger does not name the stock mirror leaf $stock"
-    Assert ($ledger -match '"path": "scripts/sync-agent-files\.ps1"') 'B-217 source retirement ledger does not name sync-agent-files.ps1'
-    $futureRows = '    { "path": ".github/skills/perf/modified.md", "retired-in": "0.82.0", "known-content-sha256": ["a3f4826b6bdf6da3ff876197e4bc386a6a4e66c0bd3c79d90c6bdc29a6de88f1"] }'
-    $ledger = $ledger.TrimEnd() -replace '\r?\n  \]\r?\n\}$', ''
-    $ledger = $ledger + ",`n" + $futureRows + "`n  ]`n}`n"
-    [IO.File]::WriteAllText($ledgerPath, $ledger, [Text.UTF8Encoding]::new($false))
+    $ledger = Get-Content -LiteralPath $ledgerPath -Raw | ConvertFrom-Json
+    $ledgerPaths = @($ledger.retirements | ForEach-Object { [string]$_.path })
+    Assert ($ledgerPaths -ccontains $stock) "B-217 source retirement ledger does not name the stock mirror leaf $stock"
+    Assert ($ledgerPaths -ccontains 'scripts/sync-agent-files.ps1') 'B-217 source retirement ledger does not name sync-agent-files.ps1'
+    $ledger.retirements = @($ledger.retirements) + [pscustomobject]@{
+        path = '.github/skills/perf/modified.md'
+        'retired-in' = '0.82.0'
+        'known-content-sha256' = @('a3f4826b6bdf6da3ff876197e4bc386a6a4e66c0bd3c79d90c6bdc29a6de88f1')
+    }
+    [IO.File]::WriteAllText($ledgerPath, ($ledger | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
+
+    # dist can legitimately lag the authored retirement ledger while this meta test runs. Preserve
+    # its one-entry-per-line formatting while removing every path the candidate ledger retires
+    # instead of naming only the B-217 subset.
+    $retiredSet = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($entry in @($ledger.retirements)) { [void]$retiredSet.Add([string]$entry.path) }
+    $ownershipPath = Join-Path $candidate 'framework-ownership.json'
+    $ownershipLines = foreach ($line in Get-Content -LiteralPath $ownershipPath) {
+        $match = [regex]::Match($line, '"path"\s*:\s*"([^"]+)"')
+        if (-not $match.Success -or -not $retiredSet.Contains($match.Groups[1].Value)) { $line }
+    }
+    [IO.File]::WriteAllLines($ownershipPath, [string[]]$ownershipLines, [Text.UTF8Encoding]::new($false))
     return [pscustomobject]@{ Root = $candidate; Stock = $stock }
 }
 
@@ -163,7 +166,7 @@ function New-B217LegacyManifestTarget {
 
 function New-DirectoryLink {
     param([string]$Link, [string]$Destination)
-    if ($IsWindows -or $env:OS -eq 'Windows_NT') {
+    if ($script:IsWindowsHost) {
         & cmd /c mklink /J $Link $Destination *> $null
     } else {
         & ln -s $Destination $Link
@@ -171,19 +174,104 @@ function New-DirectoryLink {
     return ($LASTEXITCODE -eq 0 -or (Test-Path -LiteralPath $Link))
 }
 
+$legacyGitHookRetiredPaths = @('scripts/setup-git-hooks.ps1', 'scripts/setup-git-hooks.sh', '.claude/hooks/guard.sh')
+$legacyGitHookHelperContent = @{
+    'scripts/setup-git-hooks.ps1' = "# historical PowerShell setup helper fixture`r`n"
+    'scripts/setup-git-hooks.sh' = "#!/usr/bin/env bash`n# historical Bash setup helper fixture`n"
+    '.claude/hooks/guard.sh' = "#!/usr/bin/env bash`n# historical Bash guard fixture`n"
+}
+$legacyPowerShellPreCommit = @'
+#!/bin/sh
+# AI Tech Lead opt-in convenience net. Bypassable with git commit --no-verify; not enforcement.
+repo_root=$(git rev-parse --show-toplevel) || exit 1
+command -v pwsh >/dev/null 2>&1 || { echo 'COMMIT REFUSED: pwsh is required by the installed pre-commit convenience net.' >&2; exit 1; }
+exec pwsh -NoProfile -File "$repo_root/scripts/setup-git-hooks.ps1" -Target "$repo_root" -Scan
+'@
+$legacyBashPreCommit = @'
+#!/bin/sh
+# AI Tech Lead opt-in convenience net. Bypassable with git commit --no-verify; not enforcement.
+repo_root=$(git rev-parse --show-toplevel) || exit 1
+exec bash "$repo_root/scripts/setup-git-hooks.sh" --target "$repo_root" --scan
+'@
+
+function Write-LegacyGitHookHelperFixtures {
+    param([string]$Root)
+    foreach ($relative in $legacyGitHookRetiredPaths) {
+        $path = Join-Path $Root $relative
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $path) | Out-Null
+        $encoding = [Text.UTF8Encoding]::new($relative.EndsWith('.ps1'))
+        [IO.File]::WriteAllText($path, $legacyGitHookHelperContent[$relative], $encoding)
+    }
+}
+
+function New-LegacyGitHookCandidateSource {
+    $candidate = Join-Path ([IO.Path]::GetTempPath()) ('legacy-hook-candidate-' + [guid]::NewGuid().ToString('N'))
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'dist/dotnet') -Destination $candidate -Recurse -Force
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'src/core/scripts/install.ps1') -Destination (Join-Path $candidate 'scripts/install.ps1') -Force
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'src/core/scripts/framework-doctor.ps1') -Destination (Join-Path $candidate 'scripts/framework-doctor.ps1') -Force
+
+    Write-LegacyGitHookHelperFixtures -Root $candidate
+    $digests = @{}
+    foreach ($relative in $legacyGitHookRetiredPaths) {
+        $digests[$relative] = (Get-FileHash -LiteralPath (Join-Path $candidate $relative) -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+    $manifestPath = Join-Path $candidate 'framework-ownership.json'
+    $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
+    $manifest.paths = @($manifest.paths | Where-Object { $_.path -notin $legacyGitHookRetiredPaths })
+    [IO.File]::WriteAllText($manifestPath, ($manifest | ConvertTo-Json -Depth 6), [Text.UTF8Encoding]::new($false))
+
+    $ledgerPath = Join-Path $candidate 'framework-retirements.json'
+    $ledger = Get-Content -Raw -LiteralPath $ledgerPath | ConvertFrom-Json
+    foreach ($relative in $legacyGitHookRetiredPaths) {
+        $ledger.retirements = @($ledger.retirements | Where-Object { $_.path -ne $relative }) +
+            [pscustomobject]@{ path = $relative; 'retired-in' = '0.83.0'; 'known-content-sha256' = @($digests[$relative]) }
+        Remove-Item -Force -LiteralPath (Join-Path $candidate $relative)
+    }
+    [IO.File]::WriteAllText($ledgerPath, ($ledger | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
+
+    $stampPath = Join-Path $candidate '.claude/framework-version.json'
+    $stamp = Get-Content -Raw -LiteralPath $stampPath | ConvertFrom-Json
+    $stamp.version = '0.83.0'
+    [IO.File]::WriteAllText($stampPath, ($stamp | ConvertTo-Json -Depth 4), [Text.UTF8Encoding]::new($false))
+    return $candidate
+}
+
+function New-LegacyGitHookTarget {
+    $target = Join-Path ([IO.Path]::GetTempPath()) ('legacy-hook-target-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Force -Path (Join-Path $target '.claude/hooks'), (Join-Path $target 'scripts') | Out-Null
+    [IO.File]::WriteAllText((Join-Path $target '.claude/framework-version.json'), '{"version":"0.82.0","template":"dotnet"}', [Text.UTF8Encoding]::new($false))
+    $entries = @($legacyGitHookRetiredPaths | ForEach-Object { [pscustomobject]@{ path = $_; ownership = 'framework-owned/overwritten' } })
+    $manifest = [ordered]@{ 'schema-version' = 1; paths = $entries }
+    [IO.File]::WriteAllText((Join-Path $target 'framework-ownership.json'), ($manifest | ConvertTo-Json -Depth 5), [Text.UTF8Encoding]::new($false))
+    Write-LegacyGitHookHelperFixtures -Root $target
+    Copy-Item -Force -LiteralPath (Join-Path $repoRoot 'dist/dotnet/.claude/hooks/guard.ps1') -Destination (Join-Path $target '.claude/hooks/guard.ps1')
+    & git -C $target init -q
+    Assert ($LASTEXITCODE -eq 0) 'could not initialize legacy Git-hook target'
+    & git -C $target config user.name 'Installer Test'
+    & git -C $target config user.email 'installer@example.invalid'
+    & git -C $target add -- .
+    & git -C $target commit -q -m 'fixture'
+    Assert ($LASTEXITCODE -eq 0) 'could not commit legacy Git-hook target fixture'
+    return $target
+}
+
+function Set-LegacyDefaultPreCommit {
+    param([string]$Target, [string]$Content)
+    $path = Join-Path $Target '.git/hooks/pre-commit'
+    [IO.File]::WriteAllText($path, $Content, [Text.UTF8Encoding]::new($false))
+    return $path
+}
+
 Reset-Tests
 
-foreach ($twin in @('ps1','sh')) {
-    if ($twin -eq 'sh' -and -not $bash) { Skip "installer convergence ($twin)" 'no bash on this host'; continue }
-
-    It "dry-run is byte-stable and its plan matches the convergent apply ($twin)" {
+    It 'dry-run is byte-stable and its plan matches the convergent apply' {
         $target = New-LegacyRetirementTarget
         try {
             $before = Get-TreeFingerprint $target
-            $dry = Invoke-CurrentInstaller -Twin $twin -Target $target -DryRun
+            $dry = Invoke-CurrentInstaller -Target $target -DryRun
             Assert ($dry.Exit -eq 0) "dry-run exited $($dry.Exit): $($dry.Output)"
             Assert ((Get-TreeFingerprint $target) -ceq $before) 'dry-run changed target bytes'
-            $apply = Invoke-CurrentInstaller -Twin $twin -Target $target
+            $apply = Invoke-CurrentInstaller -Target $target
             Assert ($apply.Exit -eq 0) "apply exited $($apply.Exit): $($apply.Output)"
             $dryPlan = @(($dry.Output -split "`r?`n") | Where-Object { $_ -match '^PLAN ' })
             $applyPlan = @(($apply.Output -split "`r?`n") | Where-Object { $_ -match '^PLAN ' })
@@ -193,7 +281,7 @@ foreach ($twin in @('ps1','sh')) {
         } finally { Remove-Item -Recurse -Force -LiteralPath $target -ErrorAction SilentlyContinue }
     }
 
-    It "consumer-modified and reparse retirement paths survive while verified bytes converge ($twin)" {
+    It 'consumer-modified and reparse retirement paths survive while verified bytes converge' {
         $target = New-LegacyRetirementTarget
         $outside = Join-Path ([IO.Path]::GetTempPath()) ('installer-outside-' + [guid]::NewGuid().ToString('N'))
         $link = Join-Path $target 'tests/impact'
@@ -222,7 +310,7 @@ foreach ($twin in @('ps1','sh')) {
                 Move-Item -LiteralPath $link -Destination (Join-Path $outside 'impact')
                 Assert (New-DirectoryLink -Link $link -Destination (Join-Path $outside 'impact')) 'could not construct retirement reparse fixture'
                 $outsideBefore = Get-TreeFingerprint $outside
-                $result = Invoke-CurrentInstaller -Twin $twin -Target $target
+                $result = Invoke-CurrentInstaller -Target $target
                 Assert ($result.Exit -eq 0) "safe reconciliation exited $($result.Exit): $($result.Output)"
                 $linkAfter = & $readEntry $link
                 $linkSurvived = $linkAfter -and ((($linkAfter.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) -or
@@ -241,7 +329,7 @@ foreach ($twin in @('ps1','sh')) {
                     $isLink = (($linkItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) -or
                         ($linkItem.PSObject.Properties['LinkType'] -and -not [string]::IsNullOrWhiteSpace([string]$linkItem.LinkType))
                     if (-not $isLink) { throw "fixture cleanup refused non-link entry '$($linkItem.FullName)'" }
-                    if ($IsWindows -or $env:OS -eq 'Windows_NT') {
+                    if ($script:IsWindowsHost) {
                         [IO.Directory]::Delete($linkItem.FullName, $false)
                     } else {
                         Remove-Item -Force -LiteralPath $linkItem.FullName -ErrorAction Stop
@@ -265,7 +353,7 @@ foreach ($twin in @('ps1','sh')) {
         if ($cleanupFailure) { throw $cleanupFailure }
     }
 
-    It "a forged previous manifest enters additive compatibility and deletes nothing ($twin)" {
+    It 'a forged previous manifest enters additive compatibility and deletes nothing' {
         $target = New-LegacyRetirementTarget
         $outside = Join-Path ([IO.Path]::GetTempPath()) ('outside-sentinel-' + [guid]::NewGuid().ToString('N'))
         try {
@@ -284,7 +372,7 @@ foreach ($twin in @('ps1','sh')) {
 }
 "@
             [IO.File]::WriteAllText((Join-Path $target 'framework-ownership.json'), $forged, [Text.UTF8Encoding]::new($false))
-            $result = Invoke-CurrentInstaller -Twin $twin -Target $target
+            $result = Invoke-CurrentInstaller -Target $target
             Assert ($result.Exit -eq 0) "additive compatibility install exited $($result.Exit): $($result.Output)"
             foreach ($relative in $retiredPaths) { Assert (Test-Path -LiteralPath (Join-Path $target $relative)) "forged manifest deleted $relative" }
             Assert ([IO.File]::ReadAllText((Join-Path $target 'consumer.txt')).Contains('CONSUMER SENTINEL')) 'consumer-owned sentinel changed'
@@ -297,11 +385,11 @@ foreach ($twin in @('ps1','sh')) {
         }
     }
 
-    It "retires only qualified mirror leaves, never recreates mirrors, and keeps residual warnings durable ($twin)" {
+    It 'retires only qualified mirror leaves, never recreates mirrors, and keeps residual warnings durable' {
         $candidate = New-B217CandidateSource
         $target = New-B217ResidualTarget -StockPath $candidate.Stock
         try {
-            $first = Invoke-CurrentInstaller -Twin $twin -Target $target -SourceRoot $candidate.Root
+            $first = Invoke-CurrentInstaller -Target $target -SourceRoot $candidate.Root
             Assert ($first.Exit -eq 0) "B-217 first update exited $($first.Exit): $($first.Output)"
             Assert (-not (Test-Path -LiteralPath (Join-Path $target $candidate.Stock))) "known stock mirror leaf was not retired: $($first.Output)"
             Assert ((Get-Content -LiteralPath (Join-Path $target '.github/skills/perf/modified.md') -Raw) -match 'CONSUMER-MODIFIED') 'modified mirror leaf was deleted or overwritten'
@@ -316,7 +404,7 @@ foreach ($twin in @('ps1','sh')) {
             Assert ($LASTEXITCODE -eq 0) 'test-owned modified sync script did not run outside the installer'
             Assert ((Get-Content -LiteralPath (Join-Path $target $candidate.Stock) -Raw) -match 'RECREATED BY CONSUMER') 'modified sync script did not recreate the retired higher-priority mirror'
 
-            $second = Invoke-CurrentInstaller -Twin $twin -Target $target -SourceRoot $candidate.Root
+            $second = Invoke-CurrentInstaller -Target $target -SourceRoot $candidate.Root
             Assert ($second.Exit -eq 0) "B-217 subsequent update exited $($second.Exit): $($second.Output)"
             Assert ($second.Output -match "CANT-VERIFY: retained retired path 'scripts/sync-agent-files\.ps1'.*may recreate") 'sync-script warning disappeared after the new ownership manifest arrived'
             Assert ($second.Output -match "CANT-VERIFY: retained retired path '\.github/skills/perf/SKILL\.md'.*may shadow") 'recreated mirror warning disappeared after the new ownership manifest arrived'
@@ -328,15 +416,13 @@ foreach ($twin in @('ps1','sh')) {
         }
     }
 
-    It "distinguishes an uninspectable retained retirement from an absent path ($twin)" {
+    It 'distinguishes an uninspectable retained retirement from an absent path' {
         $candidate = New-B217CandidateSource
         $target = New-B217ResidualTarget -StockPath $candidate.Stock
         $savedPsFailure = $env:B217_UNREADABLE_PATH
-        $savedShFind = $env:B217_TEST_FIND_CMD
         try {
             $retainedPath = 'scripts/sync-agent-files.ps1'
             $retained = Join-Path $target $retainedPath
-            if ($twin -eq 'ps1') {
                 $installerPath = Join-Path $candidate.Root 'scripts/install.ps1'
                 $installer = [IO.File]::ReadAllText($installerPath)
                 $needle = "`$ErrorActionPreference = 'Stop'"
@@ -355,59 +441,27 @@ function Get-Item {
                 $installer = $installer.Replace($needle, $needle + "`r`n" + $mock)
                 [IO.File]::WriteAllText($installerPath, $installer, [Text.UTF8Encoding]::new($true))
                 $env:B217_UNREADABLE_PATH = $retained
-            } else {
-                $wrapper = Join-Path $candidate.Root '.b217-find-wrapper.sh'
-                [IO.File]::WriteAllText($wrapper, @'
-#!/usr/bin/env bash
-for arg in "$@"; do
-  [ "$arg" = 'sync-agent-files.ps1' ] && exit 2
-done
-exec /usr/bin/find "$@"
-'@, [Text.UTF8Encoding]::new($false))
-                $wrapperForBash = $wrapper -replace '\\', '/'
-                & $bash -c 'chmod +x "$1"' bash $wrapperForBash
-                Assert ($LASTEXITCODE -eq 0) 'could not make the planted find wrapper executable'
-                $installerPath = Join-Path $candidate.Root 'scripts/install.sh'
-                $installer = [IO.File]::ReadAllText($installerPath)
-                $needle = '[ -x /usr/bin/find ] && find_cmd=/usr/bin/find'
-                $replacement = '[ -x /usr/bin/find ] && find_cmd="${B217_TEST_FIND_CMD:-/usr/bin/find}"'
-                Assert ($installer.Contains($needle)) 'could not locate the shell inspection-failure injection point'
-                $mock = @'
-function [ {
-  if test "$#" -eq 3 && test "$1" = '-e'; then
-    case "$2" in */scripts/sync-agent-files.ps1) return 1;; esac
-  fi
-  builtin [ "$@"
-}
-'@
-                $installer = $installer.Replace($needle, $replacement + "`n" + $mock)
-                [IO.File]::WriteAllText($installerPath, $installer, [Text.UTF8Encoding]::new($false))
-                $env:B217_TEST_FIND_CMD = $wrapperForBash
-                $env:B217_UNREADABLE_PATH = ($retained -replace '\\', '/')
-            }
 
             $before = (Get-FileHash -LiteralPath $retained -Algorithm SHA256).Hash
-            $result = Invoke-CurrentInstaller -Twin $twin -Target $target -SourceRoot $candidate.Root
+            $result = Invoke-CurrentInstaller -Target $target -SourceRoot $candidate.Root
             Assert ($result.Exit -eq 0) "inspection-failure update exited $($result.Exit): $($result.Output)"
             Assert ($result.Output -match "CANT-VERIFY: retained retired path 'scripts/sync-agent-files\.ps1' could not be examined") 'inspection failure was silently treated as absence'
             Assert ((Get-FileHash -LiteralPath $retained -Algorithm SHA256).Hash -ceq $before) 'uninspectable retained path changed'
         } finally {
             if ($null -eq $savedPsFailure) { Remove-Item Env:B217_UNREADABLE_PATH -ErrorAction SilentlyContinue }
             else { $env:B217_UNREADABLE_PATH = $savedPsFailure }
-            if ($null -eq $savedShFind) { Remove-Item Env:B217_TEST_FIND_CMD -ErrorAction SilentlyContinue }
-            else { $env:B217_TEST_FIND_CMD = $savedShFind }
             Remove-Item -Recurse -Force -LiteralPath $target, $candidate.Root -ErrorAction SilentlyContinue
         }
     }
 
-    It "preserves pre-manifest and malformed-manifest mirrors with durable manual-migration warnings ($twin)" {
+    It 'preserves pre-manifest and malformed-manifest mirrors with durable manual-migration warnings' {
         $candidate = New-B217CandidateSource
         try {
             foreach ($shape in @('missing', 'malformed')) {
                 $target = New-B217LegacyManifestTarget -StockPath $candidate.Stock -ManifestShape $shape
                 try {
                     $before = (Get-FileHash -LiteralPath (Join-Path $target $candidate.Stock) -Algorithm SHA256).Hash
-                    $first = Invoke-CurrentInstaller -Twin $twin -Target $target -SourceRoot $candidate.Root
+                    $first = Invoke-CurrentInstaller -Target $target -SourceRoot $candidate.Root
                     Assert ($first.Exit -eq 0) "B-217 $shape-manifest update exited $($first.Exit): $($first.Output)"
                     Assert (Test-Path -LiteralPath (Join-Path $target $candidate.Stock) -PathType Leaf) "$shape-manifest update deleted the unqualified stock mirror"
                     Assert ((Get-FileHash -LiteralPath (Join-Path $target $candidate.Stock) -Algorithm SHA256).Hash -ceq $before) "$shape-manifest update changed the unqualified stock mirror"
@@ -415,7 +469,7 @@ function [ {
                     Assert ($first.Output -match "CANT-VERIFY: previous framework-ownership\.json is $shape") "$shape-manifest update did not name the lost deletion authority"
                     Assert ($first.Output -match "CANT-VERIFY: retained retired path '\.github/skills/perf/SKILL\.md'.*may shadow") "$shape-manifest update lacked the exact manual-migration warning"
 
-                    $second = Invoke-CurrentInstaller -Twin $twin -Target $target -SourceRoot $candidate.Root
+                    $second = Invoke-CurrentInstaller -Target $target -SourceRoot $candidate.Root
                     Assert ($second.Exit -eq 0) "B-217 later $shape-manifest update exited $($second.Exit): $($second.Output)"
                     Assert ((Get-FileHash -LiteralPath (Join-Path $target $candidate.Stock) -Algorithm SHA256).Hash -ceq $before) "later $shape-manifest update changed the preserved mirror"
                     Assert ($second.Output -match "CANT-VERIFY: retained retired path '\.github/skills/perf/SKILL\.md'.*may shadow") "later $shape-manifest update lost the durable exact-path warning"
@@ -428,23 +482,23 @@ function [ {
         }
     }
 
-    It "downgrade refusal is pre-mutation and the deliberate override is observable ($twin)" {
+    It 'downgrade refusal is pre-mutation and the deliberate override is observable' {
         $target = New-LegacyRetirementTarget
         try {
             [IO.File]::WriteAllText((Join-Path $target '.claude/framework-version.json'), '{"version":"99.0.0","template":"dotnet"}', [Text.UTF8Encoding]::new($false))
             $before = Get-TreeFingerprint $target
-            $refused = Invoke-CurrentInstaller -Twin $twin -Target $target
+            $refused = Invoke-CurrentInstaller -Target $target
             Assert ($refused.Exit -eq 4) "downgrade refusal exited $($refused.Exit), expected 4: $($refused.Output)"
             Assert ($refused.Output -match 'Refusing framework downgrade') 'downgrade refusal was not actionable'
             Assert ((Get-TreeFingerprint $target) -ceq $before) 'downgrade refusal changed target bytes'
-            $allowed = Invoke-CurrentInstaller -Twin $twin -Target $target -DryRun -AllowDowngrade
+            $allowed = Invoke-CurrentInstaller -Target $target -DryRun -AllowDowngrade
             Assert ($allowed.Exit -eq 0) "allowed downgrade dry-run exited $($allowed.Exit): $($allowed.Output)"
             Assert ($allowed.Output -match 'allow-downgrade accepted|AllowDowngrade accepted') 'downgrade override was not observable'
             Assert ((Get-TreeFingerprint $target) -ceq $before) 'allowed downgrade dry-run changed target bytes'
         } finally { Remove-Item -Recurse -Force -LiteralPath $target -ErrorAction SilentlyContinue }
     }
 
-    It "the rich update plan accounts for every observable skill and backup mutation ($twin)" {
+    It 'the rich update plan accounts for every observable skill and backup mutation' {
         $target = New-RichUpdateTarget
         try {
             $before = Get-FileState $target
@@ -452,7 +506,7 @@ function [ {
             $unknownBefore = $before['.claude/skills/consumer-local/SKILL.md']
             $legacyDiscoveredBefore = $before['.github/skills/local-release/SKILL.md']
             $legacyDisabledBefore = $before['.github/skills/perf/SKILL.md']
-            $dry = Invoke-CurrentInstaller -Twin $twin -Target $target -DryRun
+            $dry = Invoke-CurrentInstaller -Target $target -DryRun
             Assert ($dry.Exit -eq 0) "rich dry-run exited $($dry.Exit): $($dry.Output)"
             $dryPlan = @(($dry.Output -split "`r?`n") | Where-Object { $_ -match '^PLAN ' })
             Assert ($dryPlan -contains 'PLAN create .claude/framework-update-backup/skills/local-release/SKILL.md') 'skill backup leaf was hidden behind an opaque directory plan'
@@ -462,7 +516,7 @@ function [ {
             Assert (@($dryPlan | Where-Object { $_ -match '^PLAN (?:create|replace|delete) \.github/skills(?:/|$)' }).Count -eq 0) 'retired GitHub skill tree still had installer mutation plans'
             Assert ($dry.Output -match "CANT-VERIFY: retained retired path '\.github/skills/perf/SKILL\.md'.*may shadow") 'modified disabled mirror lacked a durable exact-path warning'
 
-            $apply = Invoke-CurrentInstaller -Twin $twin -Target $target
+            $apply = Invoke-CurrentInstaller -Target $target
             Assert ($apply.Exit -eq 0) "rich apply exited $($apply.Exit): $($apply.Output)"
             $applyPlan = @(($apply.Output -split "`r?`n") | Where-Object { $_ -match '^PLAN ' })
             Assert (($dryPlan -join "`n") -ceq ($applyPlan -join "`n")) 'rich dry-run and apply plans differed'
@@ -493,7 +547,7 @@ function [ {
         } finally { Remove-Item -Recurse -Force -LiteralPath $target -ErrorAction SilentlyContinue }
     }
 
-    It "installer-owned side-write parents refuse reparse escape before mutation ($twin)" {
+    It 'installer-owned side-write parents refuse reparse escape before mutation' {
         foreach ($relative in @('.claude/.state', '.claude/framework-update-backup', '.claude/disabled-skills')) {
             $target = New-RichUpdateTarget
             $outside = Join-Path ([IO.Path]::GetTempPath()) ('installer-side-outside-' + [guid]::NewGuid().ToString('N'))
@@ -504,7 +558,7 @@ function [ {
                 Assert (New-DirectoryLink -Link $link -Destination $outside) "could not create side-write reparse fixture at $relative"
                 $targetBefore = Get-TreeFingerprint $target
                 $outsideBefore = Get-TreeFingerprint $outside
-                $result = Invoke-CurrentInstaller -Twin $twin -Target $target
+                $result = Invoke-CurrentInstaller -Target $target
                 Assert ($result.Exit -eq 3) "$relative reparse refusal exited $($result.Exit), expected 3: $($result.Output)"
                 Assert ($result.Output -match 'reparse/symlink|physical parent escapes') "$relative refusal did not name the containment boundary"
                 Assert ((Get-TreeFingerprint $target) -ceq $targetBefore) "$relative refusal changed target bytes"
@@ -516,6 +570,203 @@ function [ {
                 Remove-Item -Recurse -Force -LiteralPath $outside -ErrorAction SilentlyContinue
             }
         }
+    }
+It 'PowerShell legacy pre-commit is untouched and keeps only its retired dependency' {
+    $candidate = New-LegacyGitHookCandidateSource
+    $target = New-LegacyGitHookTarget
+    try {
+        $hook = Set-LegacyDefaultPreCommit -Target $target -Content $legacyPowerShellPreCommit
+        $hookBefore = (Get-FileHash -LiteralPath $hook -Algorithm SHA256).Hash
+        $dry = Invoke-CurrentInstaller -Target $target -SourceRoot $candidate -DryRun
+        Assert ($dry.Exit -eq 0) "legacy PowerShell dry-run exited $($dry.Exit): $($dry.Output)"
+        $apply = Invoke-CurrentInstaller -Target $target -SourceRoot $candidate
+        Assert ($apply.Exit -eq 0) "legacy PowerShell apply exited $($apply.Exit): $($apply.Output)"
+        $dryMigration = @(($dry.Output -split "`r?`n") | Where-Object { $_ -match '^(?:PLAN |  CANT-VERIFY:|  NOTICE:|  MIGRATION:)' })
+        $applyMigration = @(($apply.Output -split "`r?`n") | Where-Object { $_ -match '^(?:PLAN |  CANT-VERIFY:|  NOTICE:|  MIGRATION:)' })
+        Assert (($dryMigration -join "`n") -ceq ($applyMigration -join "`n")) 'WhatIf and apply classified legacy PowerShell state differently'
+        Assert ((Get-FileHash -LiteralPath $hook -Algorithm SHA256).Hash -ceq $hookBefore) 'installer changed consumer-owned pre-commit bytes'
+        Assert (Test-Path -LiteralPath (Join-Path $target 'scripts/setup-git-hooks.ps1') -PathType Leaf) 'PowerShell hook dependency was retired'
+        Assert (-not (Test-Path -LiteralPath (Join-Path $target 'scripts/setup-git-hooks.sh'))) 'unneeded Bash setup helper survived'
+        Assert (-not (Test-Path -LiteralPath (Join-Path $target '.claude/hooks/guard.sh'))) 'unneeded Bash guard survived'
+        Assert ($apply.Output -match 'PLAN preserve scripts/setup-git-hooks\.ps1') 'preserved dependency was absent from operation plan'
+        Assert ($apply.Output -notmatch 'PLAN (?:replace|delete) \.git/hooks/pre-commit') 'consumer-owned hook entered a mutation plan'
+
+        & git -C $target add -- .
+        & git -C $target commit -q -m 'preserved PowerShell hook remains runnable'
+        Assert ($LASTEXITCODE -eq 0) 'the preserved PowerShell legacy hook prevented a post-upgrade commit'
+
+        $second = Invoke-CurrentInstaller -Target $target -SourceRoot $candidate
+        Assert ($second.Exit -eq 0) "second legacy PowerShell update exited $($second.Exit): $($second.Output)"
+        Assert ($second.Output -match "retained retired Git-hook helper 'scripts/setup-git-hooks\.ps1'") 'helper warning disappeared after ownership authority rolled forward'
+        Assert (Test-Path -LiteralPath (Join-Path $target 'scripts/setup-git-hooks.ps1') -PathType Leaf) 'second update deleted the preserved helper'
+    } finally {
+        Remove-Item -Recurse -Force -LiteralPath $target, $candidate -ErrorAction SilentlyContinue
+    }
+}
+
+It 'Bash legacy pre-commit keeps both retired Bash helpers and is marked degraded' {
+    $candidate = New-LegacyGitHookCandidateSource
+    $target = New-LegacyGitHookTarget
+    try {
+        $hook = Set-LegacyDefaultPreCommit -Target $target -Content $legacyBashPreCommit
+        $hookBefore = (Get-FileHash -LiteralPath $hook -Algorithm SHA256).Hash
+        $apply = Invoke-CurrentInstaller -Target $target -SourceRoot $candidate
+        Assert ($apply.Exit -eq 0) "legacy Bash apply exited $($apply.Exit): $($apply.Output)"
+        Assert ((Get-FileHash -LiteralPath $hook -Algorithm SHA256).Hash -ceq $hookBefore) 'installer changed Bash pre-commit bytes'
+        Assert (-not (Test-Path -LiteralPath (Join-Path $target 'scripts/setup-git-hooks.ps1'))) 'unneeded PowerShell setup helper survived'
+        Assert (Test-Path -LiteralPath (Join-Path $target 'scripts/setup-git-hooks.sh') -PathType Leaf) 'Bash setup dependency was retired'
+        Assert (Test-Path -LiteralPath (Join-Path $target '.claude/hooks/guard.sh') -PathType Leaf) 'Bash guard dependency was retired'
+        Assert ($apply.Output -match 'Bash/degraded and unmaintained legacy pre-commit') 'Bash hook was not reported as degraded and unmaintained'
+        Assert ($apply.Output -match 'PLAN preserve \.claude/hooks/guard\.sh') 'Bash guard preservation was absent from plan'
+        Assert ($apply.Output -match 'PLAN preserve scripts/setup-git-hooks\.sh') 'Bash setup preservation was absent from plan'
+        & git -C $target add -- .
+        & git -C $target commit -q -m 'preserved Bash hook remains runnable'
+        Assert ($LASTEXITCODE -eq 0) 'the preserved Bash legacy hook prevented a post-upgrade commit'
+    } finally {
+        Remove-Item -Recurse -Force -LiteralPath $target, $candidate -ErrorAction SilentlyContinue
+    }
+}
+
+It 'modified legacy pre-commit is recognized by its exact retired helper reference' {
+    $candidate = New-LegacyGitHookCandidateSource
+    $target = New-LegacyGitHookTarget
+    try {
+        $modifiedHook = $legacyPowerShellPreCommit + "`n# consumer-added note changes the historical digest`n"
+        $hook = Set-LegacyDefaultPreCommit -Target $target -Content $modifiedHook
+        Assert ((Get-FileHash -LiteralPath $hook -Algorithm SHA256).Hash.ToLowerInvariant() -cne '56d2a687f489ffd95519dc56a34179526b175cc56d3b770cb45c0f243fabba1c') 'modified-hook fixture accidentally retained the historical digest'
+        $apply = Invoke-CurrentInstaller -Target $target -SourceRoot $candidate
+        Assert ($apply.Exit -eq 0) "modified legacy-hook apply exited $($apply.Exit): $($apply.Output)"
+        Assert (Test-Path -LiteralPath (Join-Path $target 'scripts/setup-git-hooks.ps1') -PathType Leaf) 'modified legacy hook lost its referenced helper'
+        Assert ($apply.Output -match 'PowerShell legacy pre-commit references retired framework helpers') 'modified helper reference was not classified as legacy'
+        Assert ([IO.File]::ReadAllText($hook) -ceq $modifiedHook) 'installer changed the modified consumer-owned hook'
+    } finally {
+        Remove-Item -Recurse -Force -LiteralPath $target, $candidate -ErrorAction SilentlyContinue
+    }
+}
+
+It 'unreadable default hook is CANT-VERIFY and preserves every possible retired dependency' {
+    $candidate = New-LegacyGitHookCandidateSource
+    $target = New-LegacyGitHookTarget
+    $lock = $null
+    try {
+        $hook = Set-LegacyDefaultPreCommit -Target $target -Content $legacyPowerShellPreCommit
+        $before = (Get-FileHash -LiteralPath $hook -Algorithm SHA256).Hash
+        $lock = [IO.File]::Open($hook, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::None)
+        $dry = Invoke-CurrentInstaller -Target $target -SourceRoot $candidate -DryRun
+        Assert ($dry.Exit -eq 0) "unreadable-hook dry-run exited $($dry.Exit): $($dry.Output)"
+        $apply = Invoke-CurrentInstaller -Target $target -SourceRoot $candidate
+        Assert ($apply.Exit -eq 0) "unreadable-hook apply exited $($apply.Exit): $($apply.Output)"
+        Assert ($dry.Output -match 'default pre-commit hook could not be read as UTF-8 text') 'dry-run did not distinguish unreadable hook state'
+        Assert ($apply.Output -match 'default pre-commit hook could not be read as UTF-8 text') 'apply did not distinguish unreadable hook state'
+        foreach ($relative in $legacyGitHookRetiredPaths) { Assert (Test-Path -LiteralPath (Join-Path $target $relative) -PathType Leaf) "unreadable hook did not preserve $relative" }
+        $lock.Dispose(); $lock = $null
+        Assert ((Get-FileHash -LiteralPath $hook -Algorithm SHA256).Hash -ceq $before) 'installer changed the unreadable consumer-owned hook'
+    } finally {
+        if ($lock) { $lock.Dispose() }
+        Remove-Item -Recurse -Force -LiteralPath $target, $candidate -ErrorAction SilentlyContinue
+    }
+}
+
+It 'unrelated custom pre-commit is untouched and does not retain obsolete helpers' {
+    $candidate = New-LegacyGitHookCandidateSource
+    $target = New-LegacyGitHookTarget
+    try {
+        $hook = Set-LegacyDefaultPreCommit -Target $target -Content "#!/bin/sh`necho consumer hook`n"
+        $hookBefore = [IO.File]::ReadAllBytes($hook)
+        $apply = Invoke-CurrentInstaller -Target $target -SourceRoot $candidate
+        Assert ($apply.Exit -eq 0) "custom-hook apply exited $($apply.Exit): $($apply.Output)"
+        Assert ([Convert]::ToBase64String([IO.File]::ReadAllBytes($hook)) -ceq [Convert]::ToBase64String($hookBefore)) 'custom pre-commit bytes changed'
+        foreach ($relative in $legacyGitHookRetiredPaths) { Assert (-not (Test-Path -LiteralPath (Join-Path $target $relative))) "unneeded retired helper survived: $relative" }
+        Assert ($apply.Output -match 'NOTICE: an unrelated custom default pre-commit hook exists') 'custom hook was not reported'
+    } finally {
+        Remove-Item -Recurse -Force -LiteralPath $target, $candidate -ErrorAction SilentlyContinue
+    }
+}
+
+It 'custom hook routing is not followed and conservatively preserves possible dependencies' {
+    $candidate = New-LegacyGitHookCandidateSource
+    $target = New-LegacyGitHookTarget
+    $outside = Join-Path ([IO.Path]::GetTempPath()) ('external-hooks-' + [guid]::NewGuid().ToString('N'))
+    try {
+        New-Item -ItemType Directory -Force -Path $outside | Out-Null
+        $outsideHook = Join-Path $outside 'pre-commit'
+        [IO.File]::WriteAllText($outsideHook, 'EXTERNAL SENTINEL', [Text.UTF8Encoding]::new($false))
+        & git -C $target config core.hooksPath $outside
+        Assert ($LASTEXITCODE -eq 0) 'could not configure external hooks path'
+        $before = (Get-FileHash -LiteralPath $outsideHook -Algorithm SHA256).Hash
+        $apply = Invoke-CurrentInstaller -Target $target -SourceRoot $candidate
+        Assert ($apply.Exit -eq 0) "custom-routing apply exited $($apply.Exit): $($apply.Output)"
+        Assert ((Get-FileHash -LiteralPath $outsideHook -Algorithm SHA256).Hash -ceq $before) 'installer followed or changed external hook bytes'
+        foreach ($relative in $legacyGitHookRetiredPaths) { Assert (Test-Path -LiteralPath (Join-Path $target $relative) -PathType Leaf) "ambiguous routing did not preserve $relative" }
+        Assert ($apply.Output -match 'core\.hooksPath.*was not inspected or modified') 'custom routing boundary was not disclosed'
+    } finally {
+        Remove-Item -Recurse -Force -LiteralPath $target, $candidate, $outside -ErrorAction SilentlyContinue
+    }
+}
+
+It 'reparse Git metadata is report-only and its external hook is never inspected or changed' {
+    $candidate = New-LegacyGitHookCandidateSource
+    $target = New-LegacyGitHookTarget
+    $outside = Join-Path ([IO.Path]::GetTempPath()) ('external-git-dir-' + [guid]::NewGuid().ToString('N'))
+    $gitLink = Join-Path $target '.git'
+    try {
+        New-Item -ItemType Directory -Force -Path $outside | Out-Null
+        $externalGitDirectory = Join-Path $outside 'gitdir'
+        Move-Item -LiteralPath $gitLink -Destination $externalGitDirectory
+        Assert (New-DirectoryLink -Link $gitLink -Destination $externalGitDirectory) 'could not construct reparse Git metadata fixture'
+        $outsideHook = Join-Path $externalGitDirectory 'hooks/pre-commit'
+        [IO.File]::WriteAllText($outsideHook, $legacyPowerShellPreCommit, [Text.UTF8Encoding]::new($false))
+        $before = (Get-FileHash -LiteralPath $outsideHook -Algorithm SHA256).Hash
+
+        $apply = Invoke-CurrentInstaller -Target $target -SourceRoot $candidate
+        Assert ($apply.Exit -eq 0) "reparse-Git update exited $($apply.Exit): $($apply.Output)"
+        Assert ($apply.Output -match 'Git metadata is linked, external, or non-directory state; no hook path was followed or modified') 'reparse Git metadata was not classified as report-only'
+        Assert ($apply.Output -notmatch 'PowerShell legacy pre-commit references retired framework helpers') 'installer followed and classified the external hook'
+        Assert ((Get-FileHash -LiteralPath $outsideHook -Algorithm SHA256).Hash -ceq $before) 'installer changed the external hook'
+        foreach ($relative in $legacyGitHookRetiredPaths) { Assert (Test-Path -LiteralPath (Join-Path $target $relative) -PathType Leaf) "reparse metadata did not conservatively preserve $relative" }
+    } finally {
+        try {
+            $linkEntry = Get-Item -Force -LiteralPath $gitLink -ErrorAction Stop
+            Assert (($linkEntry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) 'cleanup refused a non-reparse .git entry'
+            [IO.Directory]::Delete($gitLink, $false)
+        } catch [Management.Automation.ItemNotFoundException] { }
+        Remove-Item -Recurse -Force -LiteralPath $target, $candidate, $outside -ErrorAction SilentlyContinue
+    }
+}
+
+It 'protected stale command reporting is byte-stable and identical in WhatIf and apply' {
+    $candidate = New-LegacyGitHookCandidateSource
+    $target = New-LegacyGitHookTarget
+    try {
+        [IO.File]::WriteAllText((Join-Path $target 'CLAUDE.md'), "Run bash scripts/setup-git-hooks.sh --scan.`n", [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText((Join-Path $target 'bitbucket-pipelines.yml'), "script: ./scripts/setup-git-hooks.sh --scan`n", [Text.UTF8Encoding]::new($false))
+        & git -C $target add -- CLAUDE.md bitbucket-pipelines.yml
+        & git -C $target commit -q -m 'stale protected commands'
+        Assert ($LASTEXITCODE -eq 0) 'could not commit protected-reference fixture'
+        $claudeBefore = (Get-FileHash -LiteralPath (Join-Path $target 'CLAUDE.md') -Algorithm SHA256).Hash
+        $ciBefore = (Get-FileHash -LiteralPath (Join-Path $target 'bitbucket-pipelines.yml') -Algorithm SHA256).Hash
+        $dry = Invoke-CurrentInstaller -Target $target -SourceRoot $candidate -DryRun
+        Assert ($dry.Exit -eq 0) "protected-reference dry-run exited $($dry.Exit): $($dry.Output)"
+        $apply = Invoke-CurrentInstaller -Target $target -SourceRoot $candidate
+        Assert ($apply.Exit -eq 0) "protected-reference apply exited $($apply.Exit): $($apply.Output)"
+        $dryMessages = @(($dry.Output -split "`r?`n") | Where-Object { $_ -match '^  MIGRATION:' })
+        $applyMessages = @(($apply.Output -split "`r?`n") | Where-Object { $_ -match '^  MIGRATION:' })
+        Assert ($dryMessages.Count -eq 2) "expected two protected-reference messages, got $($dryMessages.Count): $($dry.Output)"
+        Assert (($dryMessages -join "`n") -ceq ($applyMessages -join "`n")) 'WhatIf and apply stale-command classifications differ'
+        Assert ((Get-FileHash -LiteralPath (Join-Path $target 'CLAUDE.md') -Algorithm SHA256).Hash -ceq $claudeBefore) 'protected CLAUDE.md was overwritten'
+        Assert ((Get-FileHash -LiteralPath (Join-Path $target 'bitbucket-pipelines.yml') -Algorithm SHA256).Hash -ceq $ciBefore) 'consumer CI carrier was overwritten'
+
+        $futureStampPath = Join-Path $candidate '.claude/framework-version.json'
+        $futureStamp = Get-Content -Raw -LiteralPath $futureStampPath | ConvertFrom-Json
+        $futureStamp.version = '0.84.0'
+        [IO.File]::WriteAllText($futureStampPath, ($futureStamp | ConvertTo-Json -Depth 4), [Text.UTF8Encoding]::new($false))
+        $later = Invoke-CurrentInstaller -Target $target -SourceRoot $candidate -AllowDirtyTree
+        Assert ($later.Exit -eq 0) "later-release protected-reference update exited $($later.Exit): $($later.Output)"
+        $laterMigrations = @(($later.Output -split "`r?`n") | Where-Object { $_ -match '^  MIGRATION:' })
+        Assert (@($laterMigrations | Where-Object { $_ -match "carrier 'CLAUDE\.md'.*'scripts/setup-git-hooks\.sh'" }).Count -eq 1) "CLAUDE.md retired-command diagnostic disappeared after its retirement release: $($later.Output)"
+        Assert (@($laterMigrations | Where-Object { $_ -match "carrier 'bitbucket-pipelines\.yml'.*'scripts/setup-git-hooks\.sh'" }).Count -eq 1) "Bitbucket retired-command diagnostic disappeared after its retirement release: $($later.Output)"
+    } finally {
+        Remove-Item -Recurse -Force -LiteralPath $target, $candidate -ErrorAction SilentlyContinue
     }
 }
 

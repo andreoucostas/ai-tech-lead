@@ -1,7 +1,7 @@
 ---
 name: bootstrap-pass
 description: Read-only worker for one selected `/bootstrap` pass (.NET A1–A7, Angular A1–A6, warehouse W1–W3, or shared A8). Returns structured findings; never invoke directly.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, PowerShell
 model: inherit
 ---
 

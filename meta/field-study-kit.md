@@ -174,7 +174,7 @@ git -C <bare-isolated-root> show -s --format=%T HEAD
 git -C <framework-isolated-root> show -s --format=%T HEAD
 ```
 
-Equivalent bash or snapshot/export commands are acceptable. This recipe prepares content; it does
+Equivalent PowerShell snapshot/export commands are acceptable. This recipe prepares content; it does
 not create the required access boundary. Use a workspace sandbox, container, VM, or OS account whose
 agent-readable scope—including setup and task agents—contains only the assigned arm and, for setup,
 the exact framework release. It excludes the other arm, original source clone or accepted history,
@@ -203,13 +203,7 @@ Run the frozen baseline commands in both arms. Stop if either is not green.
 Install the exact released tag supplied by the coordinator:
 
 ```powershell
-pwsh <framework-release-path>\install.ps1 <framework-isolated-root>
-```
-
-or:
-
-```bash
-bash <framework-release-path>/install.sh <framework-isolated-root>
+pwsh -NoProfile -File <framework-release-path>\install.ps1 <framework-isolated-root>
 ```
 
 Follow the installer's printed handoff exactly; do not choose the setup command from the ordinary

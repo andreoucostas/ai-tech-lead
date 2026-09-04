@@ -1,13 +1,13 @@
-﻿# wiki-check behavioral and twin-parity tests.
+﻿# wiki-check PowerShell behavioral tests.
 if (-not (Get-Command Invoke-Hook -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot '_HookHarness.ps1') }
 $scripts = (Resolve-Path (Join-Path $PSScriptRoot '..\..\scripts')).Path
-$wikiPs = Join-Path $scripts 'wiki-check.ps1'; $wikiSh = Join-Path $scripts 'wiki-check.sh'; $bash = Get-BashPath
+$wikiPs = Join-Path $scripts 'wiki-check.ps1'
 function Put($Path,$Text,[bool]$Bom=$false) { [IO.File]::WriteAllText($Path,$Text,[Text.UTF8Encoding]::new($Bom)) }
 function Entry($Slug='alpha',$Description='A useful fact',$Type='gotcha',$Status='verified',$Body='A factual claim.',$Verified='2026-07-15') { "---`nname: $Slug`ndescription: $Description`ntype: $Type`nscope: src/**`nstatus: $Status`nlast-verified: $Verified`n---`n$Body`n**Evidence:** src/example.cs`n**Verify by:** inspect src/example.cs`n" }
 function Fixture($Lines,$Entries) { $r=Join-Path ([IO.Path]::GetTempPath()) ('wiki-'+[guid]::NewGuid()); $w=Join-Path $r 'docs/wiki'; New-Item -ItemType Directory -Force $w|Out-Null; Put (Join-Path $w INDEX.md) ("# Team Wiki Index`n`n"+($Lines-join"`n")+"`n"); foreach($s in $Entries.Keys){Put (Join-Path $w "$s.md") $Entries[$s]}; $r }
 $ExpectedChecks=@('INDEX entry has no file','entry file has no INDEX line','malformed frontmatter','invalid type','INDEX entries are not sorted by slug','injection marker in INDEX line','injection marker in description','injection marker in body','wiki-check passed','invalid last-verified')
 $ReachedChecks=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-function Check($Root,$Expected,$Label) { $p=RunArg $wikiPs $Root; Assert ($p.Exit-eq$Expected) "$Label ps1 exit $($p.Exit): $($p.Out) $($p.Err)"; $output="$($p.Out)"; foreach($check in $ExpectedChecks){if($output.Contains($check)){$null=$ReachedChecks.Add($check)}}; if($bash){$s=RunArg $wikiSh $Root; Assert ($s.Exit-eq$Expected) "$Label sh exit $($s.Exit): $($s.Out) $($s.Err)"; Assert ($p.Exit-eq$s.Exit) "$Label twins disagree"} }
+function Check($Root,$Expected,$Label) { $p=RunArg $wikiPs $Root; Assert ($p.Exit-eq$Expected) "$Label ps1 exit $($p.Exit): $($p.Out) $($p.Err)"; $output="$($p.Out)"; foreach($check in $ExpectedChecks){if($output.Contains($check)){$null=$ReachedChecks.Add($check)}} }
 Reset-Tests
 $cases=@(
 @{n='index line with no file fails';i=@('- [gotcha] [alpha](./alpha.md) — A useful fact');e=@{};x=1},
@@ -23,7 +23,6 @@ $cases=@(
 @{n='non-calendar last-verified fails (F1)';i=@('- [gotcha] [alpha](./alpha.md) — A useful fact');e=@{alpha=(Entry alpha 'A useful fact' gotcha verified 'A factual claim.' '2026-02-30')};x=1},
 @{n='byte-order hyphen adjacency passes (F3)';i=@('- [gotcha] [a-c](./a-c.md) — first fact','- [gotcha] [ab](./ab.md) — second fact');e=@{'a-c'=(Entry a-c 'first fact');ab=(Entry ab 'second fact')};x=0})
 foreach($c in $cases){It $c.n {$r=Fixture $c.i $c.e;try{Check $r $c.x $c.n}finally{Remove-Item -Recurse -Force $r}}}
-It 'hostile formatting passes and twins agree' {$r=Fixture @('- [context] [colon-value](./colon-value.md) — Endpoint: colon preserved') @{};try{$t=(Entry colon-value 'Endpoint: colon preserved' context)-replace"`n","`r`n";Put (Join-Path $r 'docs/wiki/colon-value.md') $t $true;Check $r 0 'hostile formatting'}finally{Remove-Item -Recurse -Force $r}}
-It 'fixtures reach every expected wiki-check branch' {foreach($check in $ExpectedChecks){Assert ($ReachedChecks.Contains($check)) "check '$check' was never reached -- the fixture stopped exercising it, so the twins would agree vacuously here. Restore the fixture input that triggers it."}}
-if(-not $bash){Skip 'wiki-check.sh parity' 'no bash found'}
+It 'hostile BOM and CRLF formatting passes' {$r=Fixture @('- [context] [colon-value](./colon-value.md) — Endpoint: colon preserved') @{};try{$t=(Entry colon-value 'Endpoint: colon preserved' context)-replace"`n","`r`n";Put (Join-Path $r 'docs/wiki/colon-value.md') $t $true;Check $r 0 'hostile formatting'}finally{Remove-Item -Recurse -Force $r}}
+It 'fixtures reach every expected wiki-check branch' {foreach($check in $ExpectedChecks){Assert ($ReachedChecks.Contains($check)) "check '$check' was never reached -- restore the fixture input that triggers it."}}
 exit (Write-TestSummary 'WikiCheck.Tests')

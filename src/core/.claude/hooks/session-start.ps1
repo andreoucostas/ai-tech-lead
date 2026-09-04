@@ -1,5 +1,5 @@
 ﻿# SessionStart hook -- format high-signal context when the script is invoked.
-# PowerShell equivalent of session-start.sh, for Windows-only PowerShell teams.
+# Session-start hook for the supported native Windows PowerShell topology.
 # For Claude-shaped input this script emits plain stdout; for other JSON input it emits top-level
 # and wrapped JSON additionalContext shapes. Emission and registration do not prove host firing or
 # consumption; current VS Code session-hook lifecycles are unverified. See docs/enforcement-surfaces.md.

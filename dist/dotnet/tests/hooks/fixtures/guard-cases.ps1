@@ -1,14 +1,13 @@
-﻿# Shared guard fixture library -- one case table consumed by BOTH Guard.Tests.ps1 (single-surface
-# behaviour) and TwinParity.Tests.ps1 (.ps1 vs .sh same-decision). Each case is content-only; the
-# harness's New-ClaudeEvent / New-CopilotEvent wrap it into each surface's field names, so the twins
-# and surfaces all receive identical logical input.
+﻿# Shared guard fixture library. Each case is content-only; the harness's New-ClaudeEvent /
+# New-CopilotEvent wrap it into each surface's field names, so both supported surfaces receive
+# identical logical input.
 $GuardCases = @(
     @{ n='cs #pragma warning disable';         f='src/Foo.cs';                c='#pragma warning disable CS8602';                       block=$true; policy='test-defeat/suppression' }
     @{ n='cs [Fact(Skip=...)]';                f='tests/FooTests.cs';         c='[Fact(Skip="flaky")] public void T(){}';               block=$true }
     # MULTI-LINE ATTRIBUTE LISTS. The table had no multi-line content at all, which is why a real
-    # twin divergence survived: .NET's [^]]* spans a newline, so guard.ps1 blocked the split forms,
-    # while grep is line-oriented and guard.sh ALLOWED them -- a working evasion for any consumer
-    # whose hooks run through bash, of a gate advertised as deterministic. Measured 2026-08-22.
+    # a historical implementation divergence survived: .NET's [^]]* spans a newline, while a
+    # line-oriented implementation allowed the split forms. These cases preserve the fixed
+    # PowerShell behavior. Measured 2026-08-22.
     # The third case is the one that matters most: a legitimate split attribute list must still pass,
     # because a false positive on correct work is what teaches people to bypass the guard entirely.
     @{ n='cs [Test,<nl>Ignore(...)] split';    f='tests/FooTests.cs'; c="[Test,`n Ignore(`"flaky`")] public void T(){}";                          block=$true }
@@ -51,6 +50,10 @@ $GuardCases = @(
     @{ n='credential in *Tests* file (allow)'; f='tests/AuthServiceTests.cs'; c='var password = "hunter2hunter2";';                     block=$false }
     @{ n='passwordless connection string';     f='src/AuthService.cs';        c='var connectionString = "Server=localhost;Trusted_Connection=True";'; block=$false }
     @{ n='near-miss fine-grained PAT';         f='src/deploy.cs';             c='var t = "github_pat_too_short";';                       block=$false }
+    # Tagged `secret` so the invalid-regex red test observes both fail-closed directions: the
+    # private-key case must still block, while this near-miss must turn red if every secret probe
+    # is conservatively blocked. A policy filter containing only blocking cases is an inert oracle.
+    @{ n='public key block near-miss';          f='src/deploy.cs';             c='-----BEGIN PUBLIC KEY-----';                            block=$false; policy='secret' }
     @{ n='case-sensitive ASSERT near-miss';    f='tests/FooTests.cs';         c='ASSERT.True(true);';                                   block=$false }
     @{ n='case-sensitive ESLINT near-miss';    f='src/app.ts';                c='// ESLINT-DISABLE-next-line';                          block=$false }
 )

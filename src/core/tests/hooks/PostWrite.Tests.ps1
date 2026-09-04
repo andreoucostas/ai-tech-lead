@@ -4,7 +4,7 @@
 # culture-sensitive, so in comma-decimal locales (de-DE/el-GR/fr-FR) the dots are group separators,
 # the value overflows Int32, and the [int] cast THROWS on every .cs/.ts write -- a terminating error
 # that $ErrorActionPreference='SilentlyContinue' does not swallow. Fix: culture-free integer UTC epoch
-# via [DateTimeOffset]::UtcNow.ToUnixTimeSeconds(), which also matches the .sh twin's `date +%s` (UTC).
+# via [DateTimeOffset]::UtcNow.ToUnixTimeSeconds().
 # These tests are host-independent: they do not rely on 5.1's -UFormat quirk, so they run identically
 # on pwsh 7 and 5.1, and both go RED against the pre-fix hook.
 if (-not (Get-Command Reset-Tests -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot '_HookHarness.ps1') }

@@ -24,7 +24,6 @@ $contracts = @(
 $completionHosts = @(
     [pscustomobject]@{ Label = 'Windows PowerShell 5.1'; Command = 'powershell -NoProfile -ExecutionPolicy Bypass -File scripts/docs-sync-check.ps1' }
     [pscustomobject]@{ Label = 'PowerShell 7'; Command = 'pwsh -NoProfile -File scripts/docs-sync-check.ps1' }
-    [pscustomobject]@{ Label = 'Bash'; Command = 'bash scripts/docs-sync-check.sh' }
 )
 $completionResultContract = @(
     'PASS requires exit code 0'
@@ -263,9 +262,9 @@ function Assert-OnboardingCompletionGates {
     param([object[]]$DistEntries)
     foreach ($dist in $DistEntries) {
         $checks = @(
-            @{ Path = '.claude/commands/bootstrap.md'; Direct = $true; Required = @('## Deterministic completion gate', 'scripts/docs-sync-check.ps1', 'scripts/docs-sync-check.sh', 'CANT-VERIFY', 'Do not claim completion', 'bare text', 'repository-root-relative path', 'resolves') },
-            @{ Path = '.claude/commands/rebootstrap.md'; Direct = $true; Required = @('## Deterministic completion gate', 'scripts/docs-sync-check.ps1', 'scripts/docs-sync-check.sh', 'CANT-VERIFY', 'Do not claim completion') },
-            @{ Path = '.claude/commands/generate-copilot.md'; Direct = $true; Required = @('## Deterministic completion gate', 'scripts/docs-sync-check.ps1', 'scripts/docs-sync-check.sh', 'CANT-VERIFY', 'Do not claim completion') },
+            @{ Path = '.claude/commands/bootstrap.md'; Direct = $true; Required = @('## Deterministic completion gate', 'scripts/docs-sync-check.ps1', 'CANT-VERIFY', 'Do not claim completion', 'bare text', 'repository-root-relative path', 'resolves') },
+            @{ Path = '.claude/commands/rebootstrap.md'; Direct = $true; Required = @('## Deterministic completion gate', 'scripts/docs-sync-check.ps1', 'CANT-VERIFY', 'Do not claim completion') },
+            @{ Path = '.claude/commands/generate-copilot.md'; Direct = $true; Required = @('## Deterministic completion gate', 'scripts/docs-sync-check.ps1', 'CANT-VERIFY', 'Do not claim completion') },
             @{ Path = '.claude/commands/adopt.md'; Direct = $false; Required = @("Phase-7 bootstrap's deterministic completion gate", 'PASS', 'Do not claim adoption complete') }
         )
         foreach ($check in $checks) {
@@ -397,9 +396,6 @@ $($completionHosts[0].Command)
 
 PowerShell 7:
 $($completionHosts[1].Command)
-
-Bash:
-$($completionHosts[2].Command)
 
 PASS requires exit code 0 and the final line ``All AI Tech Lead framework checks passed.``
 "@

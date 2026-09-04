@@ -1,7 +1,7 @@
 # Bamboo Specs starting point for the AI Tech Lead framework-state gate.
-# Replace the project/plan keys and connect the plan to your Bitbucket Data Center repository.
-# Branch plans make this run on pull-request source branches; a Bitbucket required-build merge
-# check must separately require the resulting Bamboo build. This file alone is not a merge gate.
+# Define the custom `windows-powershell` capability only on self-hosted Windows agents that have
+# PowerShell 7. Replace the project and plan keys, connect the Bitbucket Data Center repository, and
+# require the resulting Bamboo build in Bitbucket. This file alone is not a merge gate.
 version: 2
 
 plan:
@@ -18,13 +18,15 @@ stages:
 
 Docs sync check:
   key: DOCSYNC
+  requirements:
+    - windows-powershell
   tasks:
     - checkout:
         force-clean-build: true
     - script:
-        interpreter: BINSH_OR_CMDEXE
+        interpreter: WINDOWS_POWER_SHELL
         scripts:
-          - bash scripts/docs-sync-check.sh
+          - pwsh -NoProfile -File scripts/docs-sync-check.ps1
 
 branches:
   create: for-new-branch

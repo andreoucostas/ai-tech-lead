@@ -1,50 +1,44 @@
 {
-  "_comment": "Copilot CLI documents agentStop from v1.0.72 and the framework registers boy-scout-check there, but live firing and the resulting queue write have not been observed; registration is not host-consumption evidence. agentStop's documented output power is block/force-continuation only, not additionalContext injection, so if the event fires the hook queues advisory findings for userPromptSubmitted. That separate delivery leg is live-observed on Copilot CLI 1.0.80 (2026-08-18), whose additionalContext reaches the model-facing prompt; it does not prove the preceding agentStop leg. boy-scout-check deliberately never emits decision: \"block\": the Boy Scout nudge is advisory. VS Code agent mode documents the turn-end event as Stop (PascalCase), while this config registers agentStop; Preview-hook event spelling, firing, and delivery remain unverified there. Copilot CLI 1.0.80 delivers only the last userPromptSubmitted entry, so the framework registers exactly one and composes routing/plan-gate/security salience with any queued Boy Scout nudge inside route-prompt. Older Copilot versions ignore unsupported events or JSON output as a harmless no-op. route-prompt/session-start self-detect the surface: Claude Code events carry hook_event_name and get plain stdout; everything else gets the JSON shape. Copilot CLI preToolUse deny was honored on 1.0.70 (2026-07-17). A VS Code Preview-hook guard deny was observed on 2026-06-25, but its host and extension versions were not recorded, so that is historical evidence rather than current certification. See docs/enforcement-surfaces.md for the capability-specific matrix. The per-tool 'matcher' field is intentionally omitted (Copilot supports it, but): VS Code agent mode emits write tool names that cannot be fully enumerated (camelCase str_replace/insert/etc.), so guard.* must see every tool call and self-filter on file-path+content -- a 'matcher' regex like 'edit|create' would blind it to those VS Code writes and open a security gap. The fast self-exit on non-write calls is the deliberate cost of that coverage; do not add a matcher here.",
+  "_comment": "Windows-only local Copilot hook registration. Every command explicitly invokes PowerShell 7; Copilot coding-agent cloud hook execution is unsupported. agentStop firing remains unverified, so boy-scout-check queues advisory findings for the observed userPromptSubmitted delivery leg. boy-scout-check never blocks. Exactly one userPromptSubmitted hook composes routing, plan-gate, security salience, and any queued Boy Scout nudge. The per-tool matcher is intentionally omitted because Copilot write-tool names vary; guard.ps1 self-filters by path and content. See docs/enforcement-surfaces.md for the capability matrix.",
   "version": 1,
   "hooks": {
     "sessionStart": [
       {
         "type": "command",
-        "bash": ".claude/hooks/session-start.sh",
-        "powershell": ".claude\\hooks\\session-start.ps1",
+        "powershell": "pwsh -NoProfile -ExecutionPolicy Bypass -File .claude\\hooks\\session-start.ps1",
         "timeoutSec": 15
       }
     ],
     "agentStop": [
       {
         "type": "command",
-        "bash": ".claude/hooks/boy-scout-check.sh --mode scan",
-        "powershell": ".claude\\hooks\\boy-scout-check.ps1 -Mode scan",
+        "powershell": "pwsh -NoProfile -ExecutionPolicy Bypass -File .claude\\hooks\\boy-scout-check.ps1 -Mode scan",
         "timeoutSec": 10
       }
     ],
     "userPromptSubmitted": [
       {
         "type": "command",
-        "bash": ".claude/hooks/route-prompt.sh",
-        "powershell": ".claude\\hooks\\route-prompt.ps1",
+        "powershell": "pwsh -NoProfile -ExecutionPolicy Bypass -File .claude\\hooks\\route-prompt.ps1",
         "timeoutSec": 10
       }
     ],
     "preToolUse": [
       {
         "type": "command",
-        "bash": ".claude/hooks/guard.sh",
-        "powershell": ".claude\\hooks\\guard.ps1",
+        "powershell": "pwsh -NoProfile -ExecutionPolicy Bypass -File .claude\\hooks\\guard.ps1",
         "timeoutSec": 10
       }
     ],
     "postToolUse": [
       {
         "type": "command",
-        "bash": ".claude/hooks/post-write.sh",
-        "powershell": ".claude\\hooks\\post-write.ps1",
+        "powershell": "pwsh -NoProfile -ExecutionPolicy Bypass -File .claude\\hooks\\post-write.ps1",
         "timeoutSec": 120
       },
       {
         "type": "command",
-        "bash": ".claude/hooks/audit-trail.sh",
-        "powershell": ".claude\\hooks\\audit-trail.ps1",
+        "powershell": "pwsh -NoProfile -ExecutionPolicy Bypass -File .claude\\hooks\\audit-trail.ps1",
         "timeoutSec": 10
       }
     ]

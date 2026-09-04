@@ -2,7 +2,7 @@
 
 > **Audience.** This is the canonical, human-readable map of what this repo does and how the pieces fit. A senior reviewer should start here, then use [REVIEW-GUIDE.md](./REVIEW-GUIDE.md).
 > **AI agents do not read this file** — they read `README.md` → `CLAUDE.md` / `AGENTS.md` and run the workflow commands. This doc and its generated `architecture.html` are for people.
-> **Generated view.** `docs/architecture.html` is generated from this file by `scripts/build-architecture-html.sh` (renders the Mermaid diagrams). Edit *this* file; never hand-edit the HTML.
+> **Generated view.** `docs/architecture.html` is generated from this file by `scripts/build-architecture-html.ps1` (renders the Mermaid diagrams). Edit *this* file; never hand-edit the HTML.
 
 ---
 
@@ -10,7 +10,7 @@
 
 A repository framework for a mixed .NET + Angular codebase that authors the team's conventions, architecture, debt priorities, and workflows once, then delivers them through client-specific instruction carriers and hooks. Model delivery and enforcement vary by host and prerequisites; [enforcement-surfaces.md](./enforcement-surfaces.md) is the authoritative matrix.
 
-It is installed into a target repo (see README "Quick Start" / `scripts/install.sh`), then `/bootstrap` (greenfield) or `/adopt` (existing AI setup) populates it from the real codebase.
+It is installed into a target repo (see README "Quick Start" / `scripts/install.ps1`), then `/bootstrap` (greenfield) or `/adopt` (existing AI setup) populates it from the real codebase.
 
 ---
 
@@ -117,7 +117,7 @@ Auto-discovered Common-Tasks recipes; the body loads only when triggered (progre
 
 ## 7. Registered hook flows (conditional)
 
-Bash + PowerShell twins are registered for Claude Code (`.claude/settings.json`) and Copilot (`.github/hooks/hooks.json`). Registration proves configuration, not event firing or output consumption. Each arrow below describes script input/output only when that exact host event fires; client consumption varies by event and capability (see `docs/enforcement-surfaces.md`).
+PowerShell hooks are registered for Claude Code (`.claude/settings.json`) and local Copilot (`.github/hooks/hooks.json`) on Windows. Registration proves configuration, not event firing or output consumption. Each arrow below describes script input/output only when that exact host event fires; client consumption varies by event and capability (see `docs/enforcement-surfaces.md`).
 
 ```mermaid
 sequenceDiagram
@@ -155,19 +155,19 @@ The local files do not depend on the Git remote, but their client delivery does 
 
 | Surface | GitHub | Bitbucket Data Center |
 |---------|--------|------------------------|
-| Copilot in IDE (reads supported repository carriers, including `CLAUDE.md` and `.github` adapters) | ✅ | ✅ (reads from working tree, any host) |
+| Copilot in IDE (reads supported repository carriers, including `CLAUDE.md` and `.github` adapters) | ✅ | ✅ (local Windows working tree) |
 | Copilot VS Code hooks | Preview + org policy; verify with canaries | Same — the Git remote does not enable them |
 | Claude Code (`CLAUDE.md`, `.claude/**`) | ✅ | ✅ |
 | Copilot CLI hooks (`.github/hooks/`) | Registered locally; firing and consumption vary by event — see `docs/enforcement-surfaces.md` | Same — the Git remote does not enable local hooks |
-| Copilot coding agent (cloud) | ✅ | ❌ github.com only |
-| `.github/workflows/` (Actions) | ✅ | ❌ → `scripts/docs-sync-check.sh` in Bamboo/Jenkins/pre-receive + Code Insights |
+| Copilot coding-agent cloud hook execution | Unsupported | Unsupported |
+| `.github/workflows/` (Actions) | Windows runners | ❌ → `scripts/docs-sync-check.ps1` in Bamboo/Jenkins on a self-hosted Windows agent + required build status |
 | Atlassian Rovo Dev | n/a | ❌ Cloud-only |
 
 ---
 
 ## 10. Quality gates & drift control
 
-- **CI guardrail** — `scripts/docs-sync-check.{sh,ps1}` (host-agnostic): CLAUDE.md bootstrapped + size budget; AGENTS.md is a current mirror; copilot-instructions ≤80 lines; project skills exist only at the canonical `.claude/skills` location; FRAMEWORK-CONTEXT populated; architecture.html fresh. Wrapped by `.github/workflows/docs-sync-check.yml` (GitHub) and portable elsewhere.
+- **CI guardrail** — `scripts/docs-sync-check.ps1` on Windows: CLAUDE.md bootstrapped + size budget; AGENTS.md is a current mirror; copilot-instructions ≤80 lines; project skills exist only at the canonical `.claude/skills` location; FRAMEWORK-CONTEXT populated; architecture.html fresh. Wrapped by the GitHub Windows workflow or wired into Bamboo/Jenkins on a self-hosted Windows agent.
 - **Eval cases** — read `tests/evals/cases.yaml` as a declarative spec of intended framework behavior (Verification, Leanness, SOLID/DIP, Boy Scout / `takeUntilDestroyed`, no-defensive-overcoding, `bypassSecurityTrust` safety). It records example response patterns and plain-English review rubrics.
 - **Version stamp** — `.claude/framework-version.json` + the HTML comment atop `CLAUDE.md`; `CHANGELOG.md` records evolution.
 
@@ -185,8 +185,8 @@ LEARNINGS.md                  append-only lessons
 .claude/commands/             canonical workflows
 .claude/agents/               subagents (incl. solid-check)
 .claude/skills/               common-task recipes
-.claude/hooks/                SessionStart, route-prompt, guard, post-write, audit-trail, boy-scout-check (+ .ps1 twins)
-.claude/settings*.json        hook registration (bash + Windows variants)
+.claude/hooks/                PowerShell SessionStart, route-prompt, guard, post-write, audit-trail, boy-scout-check scripts
+.claude/settings*.json        PowerShell hook registration (PS7 primary, PS5.1 fallback)
 .github/prompts|agents|hooks|instructions   distinct Copilot adapters and carriers
 .github/workflows/            GitHub Actions (GitHub-only)
 scripts/                      docs-sync-check, install, build-architecture-html, metrics, ci/
@@ -198,4 +198,4 @@ tests/evals/                  framework behavior eval suite
 
 ---
 
-_Regenerate the HTML after editing this file: `bash scripts/build-architecture-html.sh` (or `pwsh scripts/build-architecture-html.ps1`)._
+_Regenerate the HTML after editing this file: `pwsh -NoProfile -File scripts/build-architecture-html.ps1`._

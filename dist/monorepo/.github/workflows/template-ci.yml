@@ -1,13 +1,7 @@
 name: Template CI
 
-# Deterministic self-enforcement for the framework template itself — the machine gate for the
-# invariants the repo used to enforce by maintainer discipline alone (which shipped drift:
-# version stamps and the AGENTS.md mirror both diverged unnoticed before 0.23.3).
-#
-# windows leg: hook suite under pwsh + template-checks.ps1 (incl. PS-syntax + BOM sweeps).
-# linux leg:   same hook suite (drives every .sh twin via bash) + template-checks.sh.
-# Consumer repos get the same checks via scripts/docs-sync-check.* -> template-checks.*.
-# GitHub-only wrapper; on Bitbucket Data Center wire the same two commands into Bamboo/Jenkins.
+# Deterministic framework self-enforcement on the supported Windows execution surface.
+# PowerShell 7 is primary; native Windows PowerShell 5.1 is the supported fallback.
 
 on:
   pull_request:
@@ -18,19 +12,53 @@ on:
 
 jobs:
   windows:
+    name: windows
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
     steps:
       - uses: actions/checkout@v5
-      - name: Hook test suite (twin parity + surface matrix)
-        run: pwsh -NoProfile -File tests/hooks/Invoke-HookTests.ps1
+      - name: Assert direct PowerShell 7 host
+        run: |
+          $hostPath = (Get-Process -Id $PID).Path
+          $hostLeaf = [IO.Path]::GetFileName($hostPath)
+          if ($PSVersionTable.PSEdition -ne 'Core' -or $PSVersionTable.PSVersion.Major -lt 7 -or $hostLeaf -notmatch '^pwsh(?:\.exe)?$') {
+            throw "Expected direct PowerShell 7 (pwsh); observed $hostLeaf $($PSVersionTable.PSEdition) $($PSVersionTable.PSVersion)."
+          }
+      - name: Hook test suite
+        run: |
+          $hostPath = (Get-Process -Id $PID).Path
+          & $hostPath -NoProfile -File tests/hooks/Invoke-HookTests.ps1
+          exit $LASTEXITCODE
       - name: Deterministic framework checks
-        run: pwsh -NoProfile -File scripts/template-checks.ps1
+        run: |
+          $hostPath = (Get-Process -Id $PID).Path
+          & $hostPath -NoProfile -File scripts/template-checks.ps1
+          exit $LASTEXITCODE
 
-  linux:
-    runs-on: ubuntu-latest
+  windows-ps51:
+    name: windows-ps51
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: powershell
     steps:
       - uses: actions/checkout@v5
-      - name: Hook test suite (exercises the .sh twins via bash)
-        run: pwsh -NoProfile -File tests/hooks/Invoke-HookTests.ps1
-      - name: Deterministic framework checks (bash twin)
-        run: bash scripts/template-checks.sh
+      - name: Assert direct Windows PowerShell 5.1 host
+        run: |
+          $hostPath = (Get-Process -Id $PID).Path
+          $hostLeaf = [IO.Path]::GetFileName($hostPath)
+          if ($PSVersionTable.PSEdition -ne 'Desktop' -or $PSVersionTable.PSVersion.Major -ne 5 -or $PSVersionTable.PSVersion.Minor -ne 1 -or $hostLeaf -notmatch '^powershell(?:\.exe)?$') {
+            throw "Expected direct Windows PowerShell 5.1; observed $hostLeaf $($PSVersionTable.PSEdition) $($PSVersionTable.PSVersion)."
+          }
+      - name: Hook test suite
+        run: |
+          $hostPath = (Get-Process -Id $PID).Path
+          & $hostPath -NoProfile -ExecutionPolicy Bypass -File tests/hooks/Invoke-HookTests.ps1
+          exit $LASTEXITCODE
+      - name: Deterministic framework checks
+        run: |
+          $hostPath = (Get-Process -Id $PID).Path
+          & $hostPath -NoProfile -ExecutionPolicy Bypass -File scripts/template-checks.ps1
+          exit $LASTEXITCODE

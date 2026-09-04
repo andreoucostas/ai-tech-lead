@@ -69,7 +69,7 @@ $raw = ($out | Out-String)
 $sawSentinel = $raw -match [regex]::Escape($sentinel)
 $sawNotInCtx = $raw -match 'NOT-IN-CONTEXT'
 # Any file-access tool invalidates a positive: the model may have found the sentinel by reading.
-$sawFileRead = $raw -match '"name"\s*:\s*"(Read|Glob|Grep|Bash|NotebookRead)"'
+$sawFileRead = $raw -match '"name"\s*:\s*"(Read|Glob|Grep|Bash|PowerShell|NotebookRead)"'
 
 Write-Host ''
 Write-Host '=== RESULT ==='

@@ -78,7 +78,7 @@ foreach ($arm in $arms) {
     $results[$arm.Name] = @{
         Sentinel = [bool]($raw -match [regex]::Escape($arm.Sentinel))
         NotInCtx = [bool]($raw -match 'NOT-IN-CONTEXT')
-        FileTool = [bool]($raw -match '"name"\s*:\s*"(Read|Glob|Grep|Bash|NotebookRead)"')
+        FileTool = [bool]($raw -match '"name"\s*:\s*"(Read|Glob|Grep|Bash|PowerShell|NotebookRead)"')
         Root     = $root
     }
     Write-Host "[$($arm.Name)] sentinel=$($results[$arm.Name].Sentinel) notInCtx=$($results[$arm.Name].NotInCtx) fileTool=$($results[$arm.Name].FileTool)"

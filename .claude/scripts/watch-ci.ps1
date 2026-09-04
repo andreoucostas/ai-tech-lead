@@ -1,7 +1,8 @@
 ﻿# Watch the CI run for a commit and report its conclusion (B-88). Maintainer-only, does NOT ship.
 #
 # Usage:  pwsh -NoProfile -File .claude/scripts/watch-ci.ps1 -Sha <sha> [-TimeoutSeconds 1200]
-#                [-AppearSeconds 180] [-PollSeconds 20] [-GhPath <path>] [-ExpectedJobs windows,linux]
+#                [-AppearSeconds 180] [-PollSeconds 20] [-GhPath <path>]
+#                [-ExpectedJobs windows,windows-ps51,...]
 #
 # WHY THIS EXISTS. release.ps1 ran every local gate, refused to commit on failure, pushed, tagged,
 # and exited -- BEFORE CI had an opinion. So "Release complete" was a statement about the
@@ -22,8 +23,8 @@
 # rule is the whole reason this file is not three lines of `gh run list | grep success`: B-64, B-72,
 # B-74 and B-75 were all instruments that could not fail, reporting success.
 #
-# PowerShell-only by decision (meta/workspace-decisions.md): meta scripts run only on the
-# maintainer's box; invariant #3 twin parity binds shipped hooks/scripts and scripts/, not this.
+# PowerShell-only by decision (meta/workspace-decisions.md): this maintainer script runs only on
+# the supported Windows/PowerShell host and has no alternate shell implementation.
 param(
     [Parameter(Mandatory)][string]$Sha,
     # Overall budget. CI has measured ~7-8 min wall time on this repo; 20 min leaves room for a
@@ -39,15 +40,16 @@ param(
     # Every job in .github/workflows/ci.yml. A workflow-level `success` does not prove each leg
     # ran -- watching only the aggregate is how a silently-skipped leg would look green.
     # The `*-hooks (<dist>)` entries are the per-dist shipped hook suites, split onto their own
-    # runners at B-113 to get the windows leg clear of the 15-minute cancellation ceiling. They are
-    # listed individually and NOT collapsed to a prefix match: the whole point of this list is that
-    # a leg which stops running is caught, and a prefix match would pass on zero matrix legs.
+    # runners at B-113. PowerShell 7 and native Windows PowerShell 5.1 are separate release
+    # evidence, so all eight expanded contexts are listed individually and NOT collapsed to a
+    # prefix match: the whole point of this list is that a leg which stops running is caught.
     # GitHub names a matrix job "<job> (<value>)" -- if that naming ever changes, this list must
     # follow, and it failing loudly is the intended direction.
     [string[]]$ExpectedJobs = @(
-        'windows', 'linux',
+        'windows',
         'windows-hooks (dotnet)', 'windows-hooks (angular)', 'windows-hooks (monorepo)',
-        'linux-hooks (dotnet)', 'linux-hooks (angular)', 'linux-hooks (monorepo)'
+        'windows-ps51',
+        'windows-hooks-ps51 (dotnet)', 'windows-hooks-ps51 (angular)', 'windows-hooks-ps51 (monorepo)'
     )
 )
 $ErrorActionPreference = 'Stop'

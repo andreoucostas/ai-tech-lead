@@ -1,7 +1,7 @@
 ---
 name: convention-check
 <!-- @stack:intro-desc -->
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, PowerShell
 model: haiku
 ---
 

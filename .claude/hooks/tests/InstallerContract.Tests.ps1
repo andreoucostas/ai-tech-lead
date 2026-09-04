@@ -1,5 +1,5 @@
-﻿# Asserts the SHIPPED installer prints the agent-handoff contract -- in every dist, in BOTH modes,
-# from BOTH twins. Does NOT ship.
+﻿# Asserts the shipped PowerShell installer prints the agent-handoff contract in every dist and mode.
+# Does not ship.
 #
 # Why this exists: the installer's closing message is the one surface an installing AI agent is
 # guaranteed to see (it fires at the moment the agent acts, whatever doc it did or didn't read).
@@ -16,7 +16,6 @@ param([switch]$SkipRedTest)
 . (Join-Path $PSScriptRoot '_HookHarness.ps1')
 . (Join-Path $PSScriptRoot '_MutationHelper.ps1')
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
-$bash = Get-BashPath
 
 # Every mode must state ALL of these. They are the things an agent gets wrong without them:
 # leaves files uncommitted / thinks it may finish / hand-rolls the populate step / "fixes" a red check.
@@ -52,16 +51,11 @@ foreach ($dist in @('dotnet', 'angular', 'monorepo')) {
     foreach ($mode in @('greenfield', 'brownfield')) {
         $expectCmd = if ($mode -eq 'greenfield') { '/bootstrap' } else { '/adopt' }
 
-        foreach ($twin in @('ps1', 'sh')) {
-            $label = "$dist/$mode/$twin"
-
-            if ($twin -eq 'sh' -and -not $bash) { Skip "installer contract: $label" 'no bash on this host'; continue }
-
+            $label = "$dist/$mode/ps1"
             $target = New-Target -Mode $mode -Stack $dist
-            $inst = Join-Path $repoRoot "dist/$dist/scripts/install.$twin"
+            $inst = Join-Path $repoRoot "dist/$dist/scripts/install.ps1"
             try {
-                if ($twin -eq 'ps1') { $out = & (Get-PsExe) -NoProfile -File $inst $target 2>&1 | Out-String }
-                else { $out = & $bash $inst $target 2>&1 | Out-String }
+                $out = & (Get-PsExe) -NoProfile -File $inst $target 2>&1 | Out-String
                 $code = $LASTEXITCODE
                 # The operation plan names every shipped command file. It is machine-readable
                 # deployment data, not user guidance; otherwise PLAN create .../adopt.md makes a
@@ -71,9 +65,8 @@ foreach ($dist in @('dotnet', 'angular', 'monorepo')) {
                 It "installer states the whole agent contract: $label" {
                     # Exit first: this suite asserted stdout only, so an installer that printed the
                     # whole contract and THEN aborted was indistinguishable from a clean run. That is
-                    # not hypothetical -- a `set -e` abort shipped in install.sh for an unknown number
-                    # of releases, exiting 1 after the files were copied and before the closing
-                    # banner, while three suites with the path in scope stayed green (B-144).
+                    # not hypothetical: an installer once aborted after copying files while suites
+                    # that asserted only stdout stayed green (B-144).
                     Assert ($code -eq 0) `
                         "$label : installer exited $code. Output can be complete on a run that failed."
                     Assert ($guidance -match 'IF YOU ARE AN AI AGENT') `
@@ -93,8 +86,37 @@ foreach ($dist in @('dotnet', 'angular', 'monorepo')) {
                 }
             }
             finally { Remove-Item -Recurse -Force $target -ErrorAction SilentlyContinue }
-        }
     }
+}
+
+It '-GitHooks remains a non-mutating exit-2 compatibility refusal at both PowerShell entrypoints' {
+    $target = Join-Path ([IO.Path]::GetTempPath()) ('git-hooks-retired-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Force -Path (Join-Path $target '.git/hooks') | Out-Null
+    $hook = Join-Path $target '.git/hooks/pre-commit'
+    [IO.File]::WriteAllText($hook, "#!/bin/sh`nCONSUMER SENTINEL`n", [Text.UTF8Encoding]::new($false))
+    $before = [Convert]::ToBase64String([IO.File]::ReadAllBytes($hook))
+    try {
+        foreach ($entrypoint in @(
+            [pscustomobject]@{ Name = 'root'; Path = (Join-Path $repoRoot 'install.ps1'); Arguments = @('-GitHooks', $target) },
+            [pscustomobject]@{ Name = 'direct'; Path = (Join-Path $repoRoot 'src/core/scripts/install.ps1'); Arguments = @('-Target', $target, '-GitHooks') }
+        )) {
+            $out = & (Get-PsExe) -NoProfile -File $entrypoint.Path @($entrypoint.Arguments) 2>&1 | Out-String
+            $code = $LASTEXITCODE
+            Assert ($code -eq 2) "$($entrypoint.Name) -GitHooks refusal exited $code, expected 2: $out"
+            Assert ($out -match '-GitHooks was retired in v0\.83\.0') "$($entrypoint.Name) refusal lacks retirement guidance"
+            Assert ($out -match 'No Git hook was changed') "$($entrypoint.Name) refusal does not state the mutation boundary"
+            Assert ($out -match 'framework-doctor\.ps1') "$($entrypoint.Name) refusal lacks the diagnostic next step"
+            $expectedDoctor = if ($PSVersionTable.PSVersion.Major -ge 7) {
+                'pwsh -NoProfile -File scripts/framework-doctor.ps1'
+            } else {
+                'powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/framework-doctor.ps1'
+            }
+            $flatOut = ($out -replace '\s+', ' ').Trim()
+            Assert ($flatOut.Contains($expectedDoctor)) "$($entrypoint.Name) refusal did not print the canonical host-specific doctor command: $out"
+            Assert ($out -notmatch 'OPERATION-PLAN|Done') "$($entrypoint.Name) refusal printed plan/completion output"
+            Assert ([Convert]::ToBase64String([IO.File]::ReadAllBytes($hook)) -ceq $before) "$($entrypoint.Name) refusal changed consumer hook bytes"
+        }
+    } finally { Remove-Item -Recurse -Force -LiteralPath $target -ErrorAction SilentlyContinue }
 }
 
 if (-not $SkipRedTest) {
@@ -110,4 +132,4 @@ if (-not $SkipRedTest) {
     }
 }
 
-exit (Write-TestSummary 'InstallerContract.Tests (shipped installer prints the agent contract)')
+exit (Write-TestSummary 'InstallerContract.Tests (shipped PowerShell installer contract)')

@@ -62,9 +62,8 @@ function New-Row {
 # one, which is what -AllowFailingGate now exists for.
 #
 # Deriving the list means the next person to widen ExpectedJobs cannot break these cases by omission.
-# The naming shape itself ('<job> (<value>)' for matrix legs) is no longer an assumption: run
-# 31168445026 produced exactly windows, linux, windows-hooks (dotnet|angular|monorepo) and
-# linux-hooks (dotnet|angular|monorepo), which are the existing matrix job names.
+# The naming shape itself ('<job> (<value>)' for matrix legs) is guarded by the real workflow
+# topology test. This fixture derives the current eight expanded Windows host contexts.
 function Get-ExpectedJobNames {
     $watchPath = Join-Path $repoRoot '.claude/scripts/watch-ci.ps1'
     $errors = $null
@@ -80,14 +79,18 @@ function Get-ExpectedJobNames {
     return $names
 }
 function New-Jobs {
-    param([string]$Windows = 'success', [string]$Linux = 'success', [switch]$OmitLinux)
+    param([string]$Pwsh = 'success', [string]$PowerShell = 'success', [switch]$OmitPowerShell)
     $id = 91483264876
     $j = @()
     foreach ($name in (Get-ExpectedJobNames)) {
-        if ($name -eq 'linux' -and $OmitLinux) { continue }
-        # 'windows'/'linux' keep their per-case conclusions; the derived matrix legs default to
+        if ($name -eq 'windows-ps51' -and $OmitPowerShell) { continue }
+        # The two root host jobs keep their per-case conclusions; derived matrix legs default to
         # success so a case that says nothing about them is not silently testing a red leg.
-        $conclusion = switch ($name) { 'windows' { $Windows } 'linux' { $Linux } default { 'success' } }
+        $conclusion = switch ($name) {
+            'windows' { $Pwsh }
+            'windows-ps51' { $PowerShell }
+            default { 'success' }
+        }
         $j += '{"name":"' + $name + '","conclusion":"' + $conclusion + '","status":"completed","databaseId":' + $id + '}'
         $id++
     }
@@ -175,12 +178,12 @@ $probes = @{
     }
     'legs' = {
         param($w)
-        # The workflow says success; the linux leg did not run. Watching only the aggregate
+        # The workflow says success; the native Windows PowerShell leg did not run. Watching only the aggregate
         # conclusion cannot see this.
-        $s = New-GhStub -ListResponses @('[' + (New-Row) + ']') -JobsResponse (New-Jobs -Linux 'skipped')
+        $s = New-GhStub -ListResponses @('[' + (New-Row) + ']') -JobsResponse (New-Jobs -PowerShell 'skipped')
         $r = Invoke-Watch -Stub $s -Watcher $w
         Assert ($r.Exit -eq 1) "expected EXIT=1 when a leg is not success, got $($r.Exit): $($r.Out)"
-        Assert ($r.Out -match 'linux=skipped') 'the refusal does not name the offending leg'
+        Assert ($r.Out -match 'windows-ps51=skipped') 'the refusal does not name the offending leg'
     }
     'unknown' = {
         param($w)
@@ -202,6 +205,17 @@ $probes = @{
 
 try {
     # ---- the exit contract ----------------------------------------------------------------------
+    It 'the default contract names all eight PS7 and native PS5.1 Windows contexts exactly' {
+        $expected = @(
+            'windows',
+            'windows-hooks (dotnet)', 'windows-hooks (angular)', 'windows-hooks (monorepo)',
+            'windows-ps51',
+            'windows-hooks-ps51 (dotnet)', 'windows-hooks-ps51 (angular)', 'windows-hooks-ps51 (monorepo)'
+        )
+        $actual = @(Get-ExpectedJobNames)
+        Assert (($actual -join '|') -eq ($expected -join '|')) "watcher default CI contexts drifted: $($actual -join ', ')"
+    }
+
     It 'a completed successful run with every required job green exits 0' {
         $s = New-GhStub -ListResponses @('[' + (New-Row) + ']')
         $r = Invoke-Watch -Stub $s
@@ -272,7 +286,7 @@ try {
     It 'an expected leg that is absent is CANT-VERIFY, not a failure' {
         # ABSENT is not FAILED: a renamed job means this script's expectation is stale, which is a
         # different fact from a leg that ran and failed. B-71/B-85's shared lesson.
-        $s = New-GhStub -ListResponses @('[' + (New-Row) + ']') -JobsResponse (New-Jobs -OmitLinux)
+        $s = New-GhStub -ListResponses @('[' + (New-Row) + ']') -JobsResponse (New-Jobs -OmitPowerShell)
         $r = Invoke-Watch -Stub $s
         Assert ($r.Exit -eq 3) "an absent leg must be CANT-VERIFY (3), got $($r.Exit): $($r.Out)"
         Assert ($r.Out -match 'not present') 'did not distinguish absent from failed'

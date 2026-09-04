@@ -52,20 +52,200 @@ function Test-NxAngularEvidence($Node) {
     foreach ($mapName in @('targets','architect','targetDefaults')) { $map=$Node.PSObject.Properties|Where-Object Name -ceq $mapName|Select-Object -First 1;if(-not($map.Value-is[System.Management.Automation.PSCustomObject])){continue};foreach($entry in $map.Value.PSObject.Properties){if($mapName-ceq'targetDefaults'-and(Test-ExactAngularPackageToken $entry.Name)){return $true};if($entry.Value-is[System.Management.Automation.PSCustomObject]){foreach($field in @('executor','generator','collection','plugin')){if(Test-ExactAngularPackageToken (Get-ExactJsonPropertyValue $entry.Value $field)){return $true}}}} }
     return $false
 }
-function Test-GuardShTarget($Command) {
-    $normalized = [string]$Command -replace '\\\\','/' -replace '\\','/'
-    return [bool]($normalized -match '(?i)^\s*(?:"(?:\./)?\.claude/hooks/guard\.sh"|''(?:\./)?\.claude/hooks/guard\.sh''|(?:\./)?\.claude/hooks/guard\.sh)(?=$|\s)')
+function Get-DoctorGitChildEntry([string]$Directory, [string]$Name) {
+    try { return Get-Item -Force -LiteralPath (Join-Path $Directory $Name) -ErrorAction Stop }
+    catch [Management.Automation.ItemNotFoundException] { return $null }
 }
-function Test-ClaudeBashGuardCommand($Command) {
-    $executable = $null; $remainder = $null
-    if ($Command -match '^\s*"([^"]+)"\s*(.*)$') { $executable = $matches[1]; $remainder = $matches[2] }
-    elseif ($Command -match "^\s*'([^']+)'\s*(.*)$") { $executable = $matches[1]; $remainder = $matches[2] }
-    elseif ($Command -match '^\s*([^\s]+)\s*(.*)$') { $executable = $matches[1]; $remainder = $matches[2] }
-    if (-not $executable) { return $false }
-    $leaf = [IO.Path]::GetFileName(($executable -replace '\\','/'))
-    if ($leaf -notmatch '(?i)^bash(?:\.exe)?$') { return $false }
-    $remainder = $remainder -replace '^\s*(?:(?:--noprofile|--norc|-File|--)\s+)*',''
-    return (Test-GuardShTarget $remainder)
+function Test-DoctorExternalRepositoryEvidence([string]$Path) {
+    $current = [IO.DirectoryInfo]::new([IO.Path]::GetFullPath($Path)).Parent
+    while ($null -ne $current) {
+        if (Get-DoctorGitChildEntry $current.FullName '.git') { return $true }
+        $current = $current.Parent
+    }
+
+    # A bare repository has no .git child. Keep the signature strict so an ordinary directory is
+    # not classified as repository evidence merely because it contains one Git-like filename.
+    $head = Get-DoctorGitChildEntry $Path 'HEAD'
+    $objects = Get-DoctorGitChildEntry $Path 'objects'
+    $refs = Get-DoctorGitChildEntry $Path 'refs'
+    return ($null -ne $head -and -not $head.PSIsContainer -and
+        $null -ne $objects -and $objects.PSIsContainer -and
+        $null -ne $refs -and $refs.PSIsContainer)
+}
+function Get-DoctorReparseAncestor([string]$Path) {
+    $current = $Path
+    while ($true) {
+        $entry = Get-Item -Force -LiteralPath $current -ErrorAction SilentlyContinue
+        if ($entry -and (($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) { return $current }
+        if ($current -eq $root) { return $null }
+        $parent = Split-Path -Parent $current
+        if (-not $parent -or $parent -eq $current -or -not $parent.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) { return $null }
+        $current = $parent
+    }
+}
+function Get-DoctorSha256([byte[]]$Bytes) {
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try { return ([BitConverter]::ToString($sha.ComputeHash($Bytes))).Replace('-', '').ToLowerInvariant() }
+    finally { $sha.Dispose() }
+}
+function New-LegacyHookDoctorResult([string]$State, [string]$Detail) {
+    [pscustomobject]@{ State = $State; Detail = $Detail }
+}
+function Get-LegacyHookDoctorResult {
+    $retiredHelpers = @('scripts/setup-git-hooks.ps1', 'scripts/setup-git-hooks.sh', '.claude/hooks/guard.sh')
+    foreach ($name in @('GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE')) {
+        $value = [Environment]::GetEnvironmentVariable($name, 'Process')
+        if ($null -ne $value -and $value.Length -gt 0) {
+            return New-LegacyHookDoctorResult CANT-VERIFY "Git routing variable $name is set; routed hook state was not inspected."
+        }
+    }
+
+    try { $gitEntry = Get-DoctorGitChildEntry $root '.git' }
+    catch { return New-LegacyHookDoctorResult CANT-VERIFY 'the target .git entry could not be examined; no hook path was followed.' }
+    if (-not $gitEntry) {
+        try { $repositoryOutsideTarget = Test-DoctorExternalRepositoryEvidence $root }
+        catch { return New-LegacyHookDoctorResult CANT-VERIFY 'repository evidence could not be examined; no hook path was followed.' }
+        if ($repositoryOutsideTarget) {
+            return New-LegacyHookDoctorResult CANT-VERIFY 'Git metadata is not a default .git directory contained by this target; nested, bare, or external hook state was not inspected.'
+        }
+        return New-LegacyHookDoctorResult OK 'not applicable: no default .git directory exists in this repository root.'
+    }
+    if (($gitEntry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or -not $gitEntry.PSIsContainer) {
+        return New-LegacyHookDoctorResult CANT-VERIFY 'Git metadata is linked, external, or non-directory state; no hook path was followed.'
+    }
+
+    try { $huskyEntry = Get-DoctorGitChildEntry $root '.husky' }
+    catch { return New-LegacyHookDoctorResult CANT-VERIFY 'the .husky routing surface could not be examined.' }
+    if ($huskyEntry) {
+        return New-LegacyHookDoctorResult CANT-VERIFY 'a consumer-owned .husky hook surface exists and was not traversed; inspect it manually for retired framework helper references.'
+    }
+
+    $gitCommands = @(Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)
+    if ($gitCommands.Count -eq 0) {
+        return New-LegacyHookDoctorResult CANT-VERIFY 'Git is unavailable, so core.hooksPath cannot be checked; no hook path was followed.'
+    }
+    $global:LASTEXITCODE = $null
+    try { $hooksPathOutput = @(& ([string]$gitCommands[0].Source) -C $root config --get core.hooksPath 2>$null); $hooksPathExit = $global:LASTEXITCODE }
+    catch { $hooksPathExit = $null; $hooksPathOutput = @() }
+    if ($null -eq $hooksPathExit -or $hooksPathExit -notin @(0, 1)) {
+        return New-LegacyHookDoctorResult CANT-VERIFY 'core.hooksPath could not be examined; no custom hook path was followed.'
+    }
+    if ($hooksPathExit -eq 0) {
+        return New-LegacyHookDoctorResult CANT-VERIFY ("core.hooksPath is configured as '{0}'; this consumer-owned path was not followed. Inspect it manually for retired framework helper references." -f (($hooksPathOutput -join "`n").Trim()))
+    }
+
+    $helperStates = @{}
+    foreach ($relative in $retiredHelpers + @('.claude/hooks/guard.ps1')) {
+        $path = Join-Path $root $relative
+        if (Get-DoctorReparseAncestor $path) { $helperStates[$relative] = 'unverifiable'; continue }
+        try { $entry = Get-Item -Force -LiteralPath $path -ErrorAction Stop }
+        catch [Management.Automation.ItemNotFoundException] { $helperStates[$relative] = 'absent'; continue }
+        catch { $helperStates[$relative] = 'unverifiable'; continue }
+        if (($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $entry.PSIsContainer) { $helperStates[$relative] = 'unverifiable' }
+        else { $helperStates[$relative] = 'present' }
+    }
+    $unverifiableHelpers = @($helperStates.Keys | Where-Object { $helperStates[$_] -eq 'unverifiable' } | Sort-Object)
+    if ($unverifiableHelpers.Count) {
+        return New-LegacyHookDoctorResult CANT-VERIFY ("retired hook helper state could not be examined safely: {0}." -f ($unverifiableHelpers -join ', '))
+    }
+
+    $hookPath = Join-Path $root '.git/hooks/pre-commit'
+    if (Get-DoctorReparseAncestor $hookPath) {
+        return New-LegacyHookDoctorResult CANT-VERIFY 'the default pre-commit path traverses a reparse/symlink and was not followed.'
+    }
+    try { $hookEntry = Get-Item -Force -LiteralPath $hookPath -ErrorAction Stop }
+    catch [Management.Automation.ItemNotFoundException] { $hookEntry = $null }
+    catch { return New-LegacyHookDoctorResult CANT-VERIFY 'the default pre-commit hook could not be examined.' }
+    $residualHelpers = @($retiredHelpers | Where-Object { $helperStates[$_] -eq 'present' })
+    if (-not $hookEntry) {
+        if ($residualHelpers.Count) {
+            return New-LegacyHookDoctorResult PENDING ("retired Git-hook helpers remain without a default hook reference: {0}. Confirm no custom hook depends on them, then remove them manually." -f ($residualHelpers -join ', '))
+        }
+        return New-LegacyHookDoctorResult OK 'no default pre-commit hook or retired Git-hook helper remains.'
+    }
+    if (($hookEntry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $hookEntry.PSIsContainer -or $hookEntry.Length -gt 1048576) {
+        return New-LegacyHookDoctorResult CANT-VERIFY 'the default pre-commit hook is linked or is not a regular bounded text file; it was not read.'
+    }
+    try {
+        $hookBytes = [IO.File]::ReadAllBytes($hookPath)
+        $hookText = [Text.UTF8Encoding]::new($false, $true).GetString($hookBytes)
+        $hookDigest = Get-DoctorSha256 $hookBytes
+    } catch { return New-LegacyHookDoctorResult CANT-VERIFY 'the default pre-commit hook could not be read as UTF-8 text.' }
+
+    $powerShellBody = $hookDigest -ceq '56d2a687f489ffd95519dc56a34179526b175cc56d3b770cb45c0f243fabba1c'
+    $bashBody = $hookDigest -ceq '25da45aa780126e4d2b0a2b1bdf759462bf3fd92be01e6414ed496253c817357'
+    $powerShellReference = $hookText -match '(?i)(?:^|[\s"''\\/])(?:\./)?scripts[\\/]setup-git-hooks\.ps1(?=$|[\s"''])'
+    $bashSetupReference = $hookText -match '(?i)(?:^|[\s"''\\/])(?:\./)?scripts[\\/]setup-git-hooks\.sh(?=$|[\s"''])'
+    $bashGuardReference = $hookText -match '(?i)(?:^|[\s"''\\/])(?:\./)?\.claude[\\/]hooks[\\/]guard\.sh(?=$|[\s"''])'
+    $needed = New-Object System.Collections.Generic.List[string]
+    if ($powerShellBody -or $powerShellReference) {
+        $needed.Add('scripts/setup-git-hooks.ps1'); $needed.Add('.claude/hooks/guard.ps1')
+    }
+    if ($bashBody -or $bashSetupReference -or $bashGuardReference) {
+        $needed.Add('scripts/setup-git-hooks.sh'); $needed.Add('.claude/hooks/guard.sh')
+    }
+    $needed = @($needed | Sort-Object -Unique)
+    if ($needed.Count -eq 0) {
+        if ($residualHelpers.Count) {
+            return New-LegacyHookDoctorResult PENDING ("an unrelated consumer-owned pre-commit hook is present, and retired helpers also remain: {0}. Confirm the hook does not call them, then remove the helpers manually." -f ($residualHelpers -join ', '))
+        }
+        return New-LegacyHookDoctorResult OK 'the consumer-owned default pre-commit hook has no retired framework helper reference.'
+    }
+    $missingNeeded = @($needed | Where-Object { $helperStates[$_] -ne 'present' })
+    if ($missingNeeded.Count) {
+        return New-LegacyHookDoctorResult MISSING ("the consumer-owned pre-commit hook references missing framework helpers, so commits may fail: {0}. Remove or replace the hook manually." -f ($missingNeeded -join ', '))
+    }
+    $flavour = if ($bashBody -or $bashSetupReference -or $bashGuardReference) { 'Bash/degraded and unmaintained' } else { 'PowerShell legacy' }
+    return New-LegacyHookDoctorResult PENDING ("$flavour pre-commit hook and its dependency closure remain. The installer will not modify consumer-owned Git hooks; remove or replace it manually.")
+}
+function Get-RetiredFrameworkResidueResult {
+    $retiredPaths = @(
+        '.claude/hooks/audit-trail.sh',
+        '.claude/hooks/boy-scout-check.sh',
+        '.claude/hooks/guard.sh',
+        '.claude/hooks/post-write.sh',
+        '.claude/hooks/route-prompt.sh',
+        '.claude/hooks/session-start.sh',
+        'scripts/build-architecture-html.sh',
+        'scripts/ci/bitbucket-pipelines.example.yml',
+        'scripts/docs-sync-check.sh',
+        'scripts/framework-doctor.sh',
+        'scripts/hazard-check.sh',
+        'scripts/metrics.sh',
+        'scripts/setup-git-hooks.ps1',
+        'scripts/setup-git-hooks.sh',
+        'scripts/template-checks.sh',
+        'scripts/test-weakening-scan.sh',
+        'scripts/warehouse-map-check.sh',
+        'scripts/wiki-check.sh'
+    )
+    $present = New-Object System.Collections.Generic.List[string]
+    $unverifiable = New-Object System.Collections.Generic.List[string]
+    foreach ($relative in $retiredPaths) {
+        $candidate = Join-Path $root $relative
+        if (Get-DoctorReparseAncestor $candidate) { $unverifiable.Add($relative); continue }
+        try { $entry = Get-Item -Force -LiteralPath $candidate -ErrorAction Stop }
+        catch [Management.Automation.ItemNotFoundException] { continue }
+        catch { $unverifiable.Add($relative); continue }
+        if (($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $entry.PSIsContainer) {
+            $unverifiable.Add($relative)
+            continue
+        }
+        try {
+            $stream = [IO.File]::Open($candidate, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+            try { $null = $stream.ReadByte() } finally { $stream.Dispose() }
+            $present.Add($relative)
+        } catch { $unverifiable.Add($relative) }
+    }
+    if ($unverifiable.Count) {
+        $detail = "retired path state could not be read safely: {0}." -f ((@($unverifiable) | Sort-Object) -join ', ')
+        if ($present.Count) { $detail += " Verified residue also remains: {0}." -f ((@($present) | Sort-Object) -join ', ') }
+        return New-LegacyHookDoctorResult CANT-VERIFY $detail
+    }
+    if ($present.Count) {
+        return New-LegacyHookDoctorResult PENDING ("retired framework files remain: {0}. Do not execute them; review protected references and remove only confirmed consumer-owned residue manually." -f ((@($present) | Sort-Object) -join ', '))
+    }
+    return New-LegacyHookDoctorResult OK 'none of the 18 v0.83 retired framework paths remains.'
 }
 function Finish {
     Write-Output ''
@@ -138,7 +318,7 @@ if (-not (Test-Path -LiteralPath $claudePath -PathType Leaf)) {
 } elseif (-not ((Test-Path -LiteralPath $carrierPath -PathType Leaf) -and $claudeContent -and $claudeContent.Contains($importLine))) {
     # $claudeContent is null for an EMPTY or unreadable CLAUDE.md (Get-Content -Raw returns null, not '').
     # Without the null guard this row threw and vanished from the report entirely -- an inert
-    # diagnostic reading as a clean run -- while the .sh twin still reported deferred [#3].
+    # diagnostic reading as a clean run instead of reporting the protected sync as deferred.
     Row OK 'Protected-file sync' 'deferred to Framework rules delivery.'
 } elseif ($frameworkHeadings.Count -ne 4) {
     Row MISSING 'Protected-file sync' 'framework heading inspection is incomplete; protected-file migration state cannot be verified.'
@@ -223,6 +403,11 @@ if (-not [string]::IsNullOrWhiteSpace($lastSessionStart)) {
     Row CANT-VERIFY 'Hook liveness' 'no hook has recorded a run here; if you have already started a Claude Code session in this repo, your hooks are not firing -- check the wired interpreter above, and see docs/enforcement-surfaces.md.'
 }
 
+$legacyHookRetirement = Get-LegacyHookDoctorResult
+Row $legacyHookRetirement.State 'Legacy Git-hook retirement' $legacyHookRetirement.Detail
+$retiredFrameworkResidue = Get-RetiredFrameworkResidueResult
+Row $retiredFrameworkResidue.State 'Retired framework residue' $retiredFrameworkResidue.Detail
+
 $hookPaths = @()
 foreach ($command in $commands) {
     if ($command -match '([^\s"'']*\.claude[\\/]hooks[\\/][^\s"'']+)') {
@@ -236,7 +421,6 @@ $copilotValid = $false
 $copilotInvalid = $false
 $copilotExists = Test-Path -LiteralPath $copilotPath
 $copilotReadFailed = $false
-$copilotBashCommands = @()
 if ($copilotExists) {
     try { $rawCopilot = Get-Content -Raw -LiteralPath $copilotPath -ErrorAction Stop } catch { $rawCopilot = $null; $copilotReadFailed = $true }
     if (-not $copilotReadFailed -and $rawCopilot) {
@@ -244,13 +428,13 @@ if ($copilotExists) {
     }
     if (-not $copilotReadFailed -and -not $copilotValid) { $copilotInvalid = $true }
     if ($copilotValid) {
-        [regex]::Matches($rawCopilot, '"(?:bash|powershell)"\s*:\s*"([^" ]+)[^"]*"') | ForEach-Object {
-            $path = $_.Groups[1].Value -replace '\\\\','/'
-            if ($path.StartsWith('./')) { $path = $path.Substring(2) }
-            $hookPaths += $path
-        }
-        [regex]::Matches($rawCopilot, '"bash"\s*:\s*"([^"]*)"') | ForEach-Object {
-            $copilotBashCommands += $_.Groups[1].Value
+        [regex]::Matches($rawCopilot, '"(?:bash|powershell)"\s*:\s*"([^"]*)"') | ForEach-Object {
+            $registeredCommand = $_.Groups[1].Value -replace '\\\\','/'
+            if ($registeredCommand -match '([^\s"'']*\.claude/hooks/[^\s"'']+)') {
+                $path = $Matches[1]
+                if ($path.StartsWith('./')) { $path = $path.Substring(2) }
+                $hookPaths += $path
+            }
         }
     }
 }
@@ -267,17 +451,19 @@ if ($copilotInvalid) {
     Row MISSING 'Hook files' 'registration points at a missing file; hooks are silently dead. Fix: re-run the installer. Missing: <no registrations>'
 } else { Row OK 'Hook files' ("{0} registered files are present." -f $hookPaths.Count) }
 
-$bashGuardRegistered = @($commands | Where-Object { Test-ClaudeBashGuardCommand $_ }).Count -gt 0
-if (-not $bashGuardRegistered) { $bashGuardRegistered = @($copilotBashCommands | Where-Object { Test-GuardShTarget $_ }).Count -gt 0 }
-# PARSER-VANTAGE-BRANCH-BEGIN
+$retiredBashRegistration = @($commands | Where-Object {
+    $_ -match '(?i)(?:^|[\s"''])bash(?:\.exe)?(?=$|[\s"''])|\.sh(?=$|[\s"''])'
+}).Count -gt 0
+if (-not $retiredBashRegistration -and $copilotValid) {
+    $retiredBashRegistration = $rawCopilot -match '(?i)"bash"\s*:|\.sh(?:\s|"|$)'
+}
 if ($copilotInvalid) {
-    Row MISSING 'Guard JSON parser' '.github/hooks/hooks.json is malformed, so no parser requirement can be inferred from its apparent commands. Fix: re-run the installer or correct the file.'
+    Row MISSING 'Hook registration topology' '.github/hooks/hooks.json is malformed, so the supported PowerShell registration set cannot be verified. Fix: re-run the installer or correct the file.'
 } elseif ($settingsReadFailed -or $copilotReadFailed) {
-    Row CANT-VERIFY 'Guard JSON parser' 'hook registrations could not be completely read, so whether a Bash guard parser is required cannot be verified. Fix read access and rerun the doctor.'
-} elseif ($bashGuardRegistered) {
-    Row CANT-VERIFY 'Guard JSON parser' 'PowerShell cannot observe the runtime PATH supplied to guard.sh. Run framework-doctor.sh to inspect this Bash environment; only the write-guard canary below proves the actual agent host.'
-} else { Row OK 'Guard JSON parser' 'not required by the registered PowerShell guards.' }
-# PARSER-VANTAGE-BRANCH-END
+    Row CANT-VERIFY 'Hook registration topology' 'hook registrations could not be completely read, so PowerShell-only registration cannot be verified. Fix read access and rerun the doctor.'
+} elseif ($retiredBashRegistration) {
+    Row MISSING 'Hook registration topology' 'a retired Bash hook registration remains. Preserve consumer-owned configuration, replace the obsolete entry with the supported PowerShell registration, and rerun the doctor.'
+} else { Row OK 'Hook registration topology' 'registered framework hooks use the supported PowerShell surface.' }
 
 if ($pending) { Row PENDING 'Stack toolchain' 'not checked until /bootstrap or /adopt completes.' }
 else {
@@ -351,8 +537,6 @@ else {
     }
 }
 
-# Twin divergence by design: the .sh twin adds a CANT-VERIFY branch here for "hooks.json exists
-# but no JSON parser to validate it" — PowerShell parses JSON natively, so this twin cannot hit it.
 if ($copilotValid) {
     if (Has copilot) { Row OK 'Copilot surface' 'hooks.json is valid and Copilot CLI is available in this doctor process environment.' }
     else { Row OK 'Copilot surface' 'hooks.json is valid; Copilot CLI is absent from this doctor process environment. Claude-only teams need no action; Copilot teams must use the actual-surface canaries below.' }

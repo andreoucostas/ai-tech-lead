@@ -1,7 +1,7 @@
 ---
 name: security-auditor
 description: Read-only .NET security audit, used only when that profile is evidenced. Covers injection, auth, secrets, sensitive data, and crypto; used by `/security-review`.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, PowerShell
 model: inherit
 ---
 

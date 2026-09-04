@@ -3325,3 +3325,72 @@ time; moving the canonical tree to `.github`; deleting or thinning AGENTS withou
 replacement; deleting consumer-modified files by digest alone; treating a generic additive-mode
 warning as convergence; automatically interpreting or moving brownfield skills; and a live model
 A/B for deterministic path discovery.
+
+---
+
+## WSD-073: supported framework execution is Windows and PowerShell only (2026-09-04)
+
+**Context.** The framework is operated only on Windows, yet v0.82 ships and tests Bash twins for
+every hook and script, Linux CI, Unix installers and provider recipes, and shell launchers for two
+optional maintainer checks. This is not free portability: the repository records several defects
+where Windows host behavior was hidden by a different interpreter, while every ordinary change
+must still maintain two implementations. Current Claude Code supports a native PowerShell tool and
+per-hook PowerShell selection on Windows; Copilot supports a Windows PowerShell hook field but its
+cloud agent is Linux and ignores that field. An inventory at v0.82 found 80 active `.sh` files plus
+two extensionless shell hook launchers; four additional shell files are frozen canary evidence.
+
+**Decision.** **Supported framework execution is native Windows and PowerShell only.** PowerShell 7
+is primary. Windows PowerShell 5.1 remains a supported fallback for installation, composition,
+validation, shipped hooks, deterministic context measurement and tests; maintainer release, live
+eval and Copilot CLI hook execution may require PS7 where their explicit contract says so. Linux,
+WSL, macOS, BSD and Copilot cloud hooks are unsupported and untested, but the framework neither
+rejects consumer Bash files nor claims PowerShell scripts cannot happen to run elsewhere.
+
+Remove all active Bash implementations, registrations, Linux CI and shell-only samples. Preserve
+historical prose and frozen canaries. New installs are PowerShell-only. Updates delete retired
+installed paths only through WSD-051's immediately-previous ownership plus known-content
+intersection; an unowned `.git/hooks/pre-commit` is never auto-deleted. If such a hook still calls a
+retired helper, preserve its full helper/guard closure and diagnose the degraded state on every
+later update and in the doctor. Replace the two maintainer shell hooks with a PowerShell check of
+the actual outgoing commit range before every supported push path.
+
+Claude project settings enable the native PowerShell tool, choose PowerShell for interactive shell
+commands, and explicitly choose it per command hook; these are separate current client contracts.
+Copilot hook entries retain only the Windows field and explicitly invoke `pwsh`. Protected
+consumer docs, local settings, custom hooks and CI are never overwritten merely to converge; exact
+retired references receive actionable diagnostics.
+
+The Windows evidence topology has eight contexts: root plus three distribution suites under direct
+PS7, and the same four under direct PS5.1. Every child preserves its parent executable and reports
+its edition, so a nominal PS5 job cannot silently test PS7. These are two host legs on one supported
+platform, not a claim of cross-platform coverage. The old Bash composer/policy/render comparisons
+are retired differential oracles; explicit ownership-policy pins, source-to-dist validation,
+deterministic composition, structural active-surface checks, and cutover equality replace the
+parts that remain valuable.
+
+This decision supersedes WSD-005's meta-only boundary only where it distinguished PowerShell from
+otherwise required Bash twins; WSD-006, WSD-017's twin measurement, WSD-023, WSD-026's Git-Bash
+probe, WSD-030's dual hook registration, WSD-049, WSD-063's twin branch, WSD-064, WSD-065, and
+WSD-072's retention of the Bash hook adapter. WSD-061 remains a proportionality rule, but its two-
+platform wording is no longer this product's release topology. WSD-016 and WSD-051 remain fully in
+force. B-87's optional local hooks are replaced rather than silently discarded; detection moves
+from pre-commit to the canonical pre-push/release paths and direct `git push` remains bypassable.
+
+**Proportionality.** Removing the unsupported twin surface removes an entire recurrent maintenance
+class and materially simplifies every future framework change. A smaller documentation-only change
+would retain the code, CI and divergence cost; banning arbitrary consumer tools would exceed the
+observed need. Preserving PS5, safe retirement, substantive tests and consumer-owned bytes keeps the
+deletion from erasing independent compatibility and safety contracts.
+
+**Review.** A fresh-context read-only review returned REVISE on unsafe hook deletion, false PS5
+evidence, vacuous test removal and one-shot warnings. A second independent Claude CLI Opus/xhigh
+review found the historical release allowlist dependency, `$IsWindows` coverage inversion, and the
+maintainer-control loss. Their corrections are in the locked B-219 plan. Current vendor documents
+were checked separately where one reviewer conflated the PowerShell-tool, `defaultShell`, and hook-
+shell contracts. Implementation evidence and an immutable-range review do not yet exist.
+
+**Rejected.** Keeping unsupported twins as reassurance; deleting unowned or modified consumer
+hooks; reporting preserved Bash residue as converged; replacing Linux with nominal PS5 jobs that
+relaunch PS7; deleting whole parity suites without classifying assertions; retaining a Linux-only
+Bitbucket recipe; globally denying consumer Bash; or removing historical `install.sh` from a guard
+whose subject is released history.

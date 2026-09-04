@@ -27,7 +27,7 @@ Wait for all five to return their structured output. Use those findings as the s
 <!-- @stack:verify-cmds -->
 
 ### Step 3 — Apply senior judgement
-Before judging the diff, run `pwsh scripts/test-weakening-scan.ps1` (or the `.sh` twin) and consult
+Before judging the diff, run `pwsh -NoProfile -File scripts/test-weakening-scan.ps1` and consult
 its test-weakening advisory. It reports a reviewable signal that can be defeated by ignoring it; it
 is not enforcement. Include any reported files in the test-quality assessment.
 

@@ -1,9 +1,9 @@
 # CI handover — what to wire into the pipeline (team copy)
 
-**Audience:** the team operating repos built from `ai-tech-lead-dotnet` / `ai-tech-lead-angular`
-on Bitbucket Data Center with Bamboo/Jenkins.
-**Canonical reference:** each repo ships `docs/ci-integration.md` (v0.24.2+) with the full recipe;
-this page is the one-screen handover summary across both stacks.
+**Audience:** teams operating any ai-tech-lead distribution on Bitbucket Data Center with a
+native Windows Bamboo or Jenkins agent.
+**Canonical reference:** each distribution ships `docs/ci-integration.md` with the full recipe;
+this page is the one-screen handover summary across all three distributions.
 
 ## Why this matters (one paragraph)
 
@@ -12,11 +12,16 @@ to follow, or a hook that only fires on some tools/versions. The CI required bui
 gate that binds **every actor** — any AI agent, any IDE, any human, any `git commit --no-verify`.
 If the required build is not wired, the framework's standards are requests, not rules.
 
+## Supported runner
+
+The framework execution path is Windows-only. Use a native Windows agent with PowerShell 7; the
+framework does not support Linux, WSL, macOS, BSD, or Bitbucket Cloud's Linux-only hosted runner.
+
 ## The required build — one plan/job per repo, two steps, in this order
 
 | Step | What runs | What it gates | Artifact (ships in the repo) |
 |---|---|---|---|
-| 1. Framework state | Linux agent: `bash scripts/docs-sync-check.sh` — Windows agent: `pwsh -NoProfile -File scripts/docs-sync-check.ps1` | Adoption completed, CLAUDE.md bootstrapped, AGENTS.md/copilot-instructions mirrors current, version stamps, hook twins + BOM | `scripts/docs-sync-check.sh` / `.ps1` (exit 0 = pass) |
+| 1. Framework state | `pwsh -NoProfile -File scripts/docs-sync-check.ps1` | Adoption completed, CLAUDE.md bootstrapped, AGENTS.md/copilot-instructions mirrors current, version stamps, PowerShell topology + BOM | `scripts/docs-sync-check.ps1` (exit 0 = pass) |
 | 2a. Standards gate (.NET repos) | `dotnet build --configuration Release -warnaserror` then `dotnet test --configuration Release --no-build` | Warnings, analyzer findings, skipped tests (`xUnit1004`), failing tests, NetArchTest layering (if wired) | `scripts/ci/Directory.Build.props.sample` — wire via the `enforce-standards` skill |
 | 2b. Standards gate (Angular repos) | `npm ci` → `npx eslint .` → `npx ng build --configuration production` → `npx ng test --watch=false --browsers=ChromeHeadless` | `@ts-ignore`, `eslint-disable` (dead via `noInlineConfig`), `fdescribe`/`xit`, lint errors, failing build/specs, dependency-cruiser boundaries (if wired) | `scripts/ci/eslint-standards.sample.mjs` — wire via the `enforce-standards` skill |
 
@@ -50,10 +55,9 @@ build key — fix that before trusting anything else on this page.
 ## Artifact inventory (quick reference)
 
 Shipped in every consumer repo, maintained by framework updates — do not hand-edit:
-- `scripts/docs-sync-check.sh` / `.ps1` — the framework-state check (step 1).
-- `scripts/template-checks.sh` / `.ps1` — invoked by step 1 internally; version/mirror/BOM/twin/Common Tasks inventory gates.
+- `scripts/docs-sync-check.ps1` — the framework-state check (step 1).
+- `scripts/template-checks.ps1` — invoked by step 1 internally; version/mirror/BOM/PowerShell-topology/Common Tasks inventory gates.
 - `docs/ci-integration.md` — the full recipe (Bamboo task-by-task, Jenkinsfile example).
-- `scripts/ci/bitbucket-pipelines.example.yml` — Bitbucket **Cloud** only; not applicable on DC.
 
 Wired once per repo by a developer (via the `enforce-standards` / `enforce-architecture` skills),
 then owned by the repo:

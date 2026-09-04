@@ -1,5 +1,5 @@
 ﻿# AI Tech Lead Framework — root installer wrapper.
-# Usage: pwsh install.ps1 [-Stack dotnet|angular|monorepo] [-GitHooks] [-WhatIf] [-AllowDowngrade] C:\path\to\target-repo
+# Usage: pwsh -NoProfile -File install.ps1 [-Stack dotnet|angular|monorepo] [-GitHooks] [-WhatIf] [-AllowDowngrade] C:\path\to\target-repo
 #
 # Thin dispatcher only: it selects a stack, then delegates to
 # dist/<stack>/scripts/install.ps1, which does all the real work (greenfield / brownfield /
@@ -16,8 +16,7 @@
 #                         delivery profile; /bootstrap selects warehouse-SQL from repo evidence.
 #   5. nothing detected   error: pass -Stack.
 # Every error exits 2 with an actionable message on stderr. -Stack / -Target are validated by
-# hand (not via ValidateSet / Mandatory) so bad input also exits 2 — and the twin, not an
-# interactive prompt — matching install.sh.
+# hand (not via ValidateSet / Mandatory) so bad input also exits 2 rather than prompting.
 param(
     [Parameter()][string]$Stack,
     [Parameter()][switch]$GitHooks,
@@ -27,7 +26,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
-$usage = 'Usage: pwsh install.ps1 [-Stack dotnet|angular|monorepo] [-GitHooks] [-WhatIf] [-AllowDowngrade] C:\path\to\target-repo'
+$usage = 'Usage: pwsh -NoProfile -File install.ps1 [-Stack dotnet|angular|monorepo] [-GitHooks (v0.83 compatibility refusal)] [-WhatIf] [-AllowDowngrade] C:\path\to\target-repo'
 # Exit 2 with an actionable message on stderr. Write-Error is avoided on purpose: under
 # ErrorActionPreference=Stop it throws before the following exit runs, which -File maps to
 # exit code 1 — this keeps every wrapper-level failure at the documented exit 2.
@@ -178,6 +177,11 @@ function Test-AngularEvidence([System.IO.FileInfo[]]$Files) {
 if (-not $Target) { Die $usage }
 if (-not (Test-Path -LiteralPath $Target -PathType Container)) { Die "Target '$Target' is not a directory." }
 $tgt = (Resolve-Path -LiteralPath $Target).Path
+if ($GitHooks) {
+    $doctorHost = if ($PSVersionTable.PSVersion.Major -ge 7) { 'pwsh' } else { 'powershell.exe' }
+    $doctorPolicy = if ($PSVersionTable.PSVersion.Major -ge 7) { '' } else { ' -ExecutionPolicy Bypass' }
+    Die "-GitHooks was retired in v0.83.0. No Git hook was changed. Inspect .git/hooks/pre-commit and remove or replace any AI Tech Lead convenience hook manually, then run $doctorHost -NoProfile$doctorPolicy -File scripts/framework-doctor.ps1."
+}
 
 $reason = ''
 if ($Stack) {
@@ -243,5 +247,5 @@ if (-not (Test-Path -LiteralPath $delegate -PathType Leaf)) { Die "Internal erro
 Write-Output "Stack: $Stack (via $reason)"
 Write-Output "Delegating to dist/$Stack/scripts/install.ps1 ..."
 Write-Output ""
-& $delegate -Target $tgt -GitHooks:$GitHooks -WhatIf:$WhatIf -AllowDowngrade:$AllowDowngrade
+& $delegate -Target $tgt -WhatIf:$WhatIf -AllowDowngrade:$AllowDowngrade
 exit $LASTEXITCODE

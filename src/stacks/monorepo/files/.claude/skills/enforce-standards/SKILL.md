@@ -34,10 +34,10 @@ The write-time guard hook blocks floor violations — .NET: `#pragma warning dis
    - **If NUnit:** there is no equivalent analyzer. NUnit1xxx rules are structural, NUnit2xxx are
      assertion rules, and NUnit3xxx are suppressors; none flags an ignored test. Wire a
      build-failing CI step that rejects `[Ignore]`, pointed at this repo's test root:
-     ```bash
-     if grep -rn --include=*.cs '^\s*\[.*\bIgnore\b' tests/; then
-       echo "NUnit [Ignore] is forbidden"; exit 1
-     fi
+     ```powershell
+     $ignored = Get-ChildItem tests -Recurse -File -Filter *.cs |
+       Select-String -Pattern '^\s*\[.*\bIgnore\b'
+     if ($ignored) { $ignored; throw 'NUnit [Ignore] is forbidden' }
      ```
 3. **CI**: update `CLAUDE.md > Conventions > Verification Commands` with the exact evidenced build
    and test invocations that exercise these settings, and put those commands in the required build

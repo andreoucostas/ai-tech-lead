@@ -438,22 +438,16 @@ See `.claude/commands/generate-copilot.md` for the exact rules for each file.
 
 Before Phase 4, run exactly one host-native framework check from the repository root:
 
-Windows PowerShell 5.1 (Windows without `pwsh`):
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/docs-sync-check.ps1
-```
-
-PowerShell 7 (`pwsh`):
+PowerShell 7 (`pwsh`, primary):
 
 ```powershell
 pwsh -NoProfile -File scripts/docs-sync-check.ps1
 ```
 
-Bash (Linux or Windows Git Bash):
+Windows PowerShell 5.1 fallback (Windows without `pwsh`):
 
-```bash
-bash scripts/docs-sync-check.sh
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/docs-sync-check.ps1
 ```
 
 PASS requires exit code 0 and the final line `All AI Tech Lead framework checks passed.`. If it

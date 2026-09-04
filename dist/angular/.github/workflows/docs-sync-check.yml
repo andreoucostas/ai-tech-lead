@@ -1,15 +1,7 @@
 name: Docs sync check
 
-# GitHub Actions wrapper. The actual checks live in scripts/docs-sync-check.sh so they run
-# ANYWHERE — GitHub Actions, Bitbucket Pipelines, Bamboo, Jenkins, a pre-receive hook, or locally.
-#
-# This .yml is GitHub-only. On Bitbucket Data Center (no GitHub Actions), wire
-# scripts/docs-sync-check.sh into a Bamboo/Jenkins job or a pre-receive hook, and optionally publish
-# the result to the PR via the Code Insights API. A Bitbucket Pipelines sample (Bitbucket Cloud) is
-# in scripts/ci/bitbucket-pipelines.example.yml. A Bamboo Specs starting point is in
-# scripts/ci/bamboo-spec.example.yaml; repository linkage, branch plans, and the required-build
-# merge check still need configuring for your Bamboo/Bitbucket installation. See
-# docs/ci-integration.md.
+# GitHub Actions wrapper for the supported Windows execution surface. The same PowerShell check can
+# be wired into a self-hosted Windows Bamboo or Jenkins agent; see docs/ci-integration.md.
 
 on:
   pull_request:
@@ -20,8 +12,43 @@ on:
 
 jobs:
   docs-sync-check:
-    runs-on: ubuntu-latest
+    name: docs-sync-check
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
     steps:
       - uses: actions/checkout@v5
+      - name: Assert direct PowerShell 7 host
+        run: |
+          $hostPath = (Get-Process -Id $PID).Path
+          $hostLeaf = [IO.Path]::GetFileName($hostPath)
+          if ($PSVersionTable.PSEdition -ne 'Core' -or $PSVersionTable.PSVersion.Major -lt 7 -or $hostLeaf -notmatch '^pwsh(?:\.exe)?$') {
+            throw "Expected direct PowerShell 7 (pwsh); observed $hostLeaf $($PSVersionTable.PSEdition) $($PSVersionTable.PSVersion)."
+          }
       - name: AI Tech Lead framework state
-        run: bash scripts/docs-sync-check.sh
+        run: |
+          $hostPath = (Get-Process -Id $PID).Path
+          & $hostPath -NoProfile -File scripts/docs-sync-check.ps1
+          exit $LASTEXITCODE
+
+  docs-sync-check-ps51:
+    name: docs-sync-check-ps51
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v5
+      - name: Assert direct Windows PowerShell 5.1 host
+        run: |
+          $hostPath = (Get-Process -Id $PID).Path
+          $hostLeaf = [IO.Path]::GetFileName($hostPath)
+          if ($PSVersionTable.PSEdition -ne 'Desktop' -or $PSVersionTable.PSVersion.Major -ne 5 -or $PSVersionTable.PSVersion.Minor -ne 1 -or $hostLeaf -notmatch '^powershell(?:\.exe)?$') {
+            throw "Expected direct Windows PowerShell 5.1; observed $hostLeaf $($PSVersionTable.PSEdition) $($PSVersionTable.PSVersion)."
+          }
+      - name: AI Tech Lead framework state
+        run: |
+          $hostPath = (Get-Process -Id $PID).Path
+          & $hostPath -NoProfile -ExecutionPolicy Bypass -File scripts/docs-sync-check.ps1
+          exit $LASTEXITCODE

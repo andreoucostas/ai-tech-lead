@@ -1,7 +1,7 @@
 ---
 name: bloat-radar
 description: Scans a diff for bloat — speculative abstractions, single-use interfaces, shallow wrappers, parallel implementations, comment debris, trivial tests, dead code. Returns a structured findings table for the parent to act on. Read-only. Used by `/review` and ad-hoc cleanup audits.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, PowerShell
 model: haiku
 ---
 

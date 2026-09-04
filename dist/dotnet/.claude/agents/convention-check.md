@@ -1,7 +1,7 @@
 ---
 name: convention-check
 description: Read-only audit of in-scope files against CLAUDE.md conventions, using profile rules only when repository evidence establishes them. Returns structured findings; used by `/review` and ad-hoc audits.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, PowerShell
 model: haiku
 ---
 

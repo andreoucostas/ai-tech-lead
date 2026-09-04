@@ -1,4 +1,4 @@
-﻿# Fidelity gate (.ps1 twin; bash twin: fidelity-check.sh): compare dist/<mode> to the FROZEN
+﻿# Fidelity re-audit tool: compare dist/<mode> to the FROZEN
 # baseline, EOL-normalized. The baseline is the full 138-file legacy/<mode> tree captured at the
 # `pre-restructure` tag (== the freeze-v0.25.5 content). Reports match / mismatch /
 # missing-in-dist / extra-in-dist. Phase 3 semantics: STRICT — any mismatch, missing, or extra
@@ -22,8 +22,8 @@ $dist = Join-Path $root "dist\$Mode"
 if (-not (Test-Path $dist -PathType Container)) {
     [Console]::Error.WriteLine("no dist/$Mode - run scripts/build.ps1 $Mode first"); exit 2
 }
-# Prefer Windows-native bsdtar: with Git Bash on PATH, `tar.exe` can resolve to MSYS tar, which
-# misparses `C:\...` as a remote host ("Cannot connect to C").
+# Prefer Windows-native bsdtar: a POSIX-compatibility tar earlier on PATH can misparse `C:\...`
+# as a remote host ("Cannot connect to C").
 $tarExe = Join-Path $env:SystemRoot 'System32\tar.exe'
 if (-not (Test-Path $tarExe)) {
     $tarCmd = Get-Command tar.exe -ErrorAction SilentlyContinue
@@ -55,7 +55,7 @@ try {
         [Console]::Error.WriteLine("baseline legacy/$Mode not found at $RefSpec"); exit 2
     }
 
-    # EOL-normalized (CR-stripped) content hash, matching the bash twin's `tr -d '\r'` compare.
+    # EOL-normalized (CR-stripped) content hash keeps checkout line endings out of the comparison.
     $sha = [System.Security.Cryptography.SHA256]::Create()
     function Get-NormalizedHash([string]$path) {
         $bytes = [IO.File]::ReadAllBytes($path)

@@ -1,4 +1,4 @@
-﻿# Suite entry point (root meta-dev) -- runs every *.Tests.ps1 here as an isolated pwsh process and
+﻿# Suite entry point (root meta-dev) -- runs every *.Tests.ps1 here as an isolated PowerShell process and
 # exits with the TOTAL number of failures (0 = green). Mirrors ai-tech-lead-*/tests/hooks runner.
 # Usage:  pwsh -NoProfile -File .claude/hooks/tests/Invoke-HookTests.ps1 [-File Name.Tests.ps1] [-Sequential]
 #
@@ -17,11 +17,83 @@
 [CmdletBinding()]
 param(
     [string]$File,
-    [switch]$Sequential
+    [switch]$Sequential,
+    [switch]$FixtureDiscovery,
+    [string]$CaseCountPath
 )
 $ErrorActionPreference = 'Stop'
-if (Get-Command pwsh -ErrorAction SilentlyContinue) { $psExe = 'pwsh' } else { $psExe = 'powershell' }
-$files = Get-ChildItem -LiteralPath $PSScriptRoot -Filter *.Tests.ps1 | Sort-Object Name
+if ($CaseCountPath -and (Test-Path -LiteralPath $CaseCountPath)) {
+    [Console]::Error.WriteLine("CASE CARDINALITY REFUSED: output path already exists: $CaseCountPath")
+    exit 2
+}
+$invokingPsExe = (Get-Process -Id $PID).Path
+$psExe = $invokingPsExe
+
+# Prove the executable we hand to every suite really preserves this runner's host. This is a
+# runtime assertion, not just a source-level assignment: a future resolver or wrapper must not turn
+# an explicit Windows PowerShell 5.1 run into pwsh 7 and silently erase 5.1-only coverage.
+$hostProbeOutput = @(& $psExe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command '[Console]::Out.Write((Get-Process -Id $PID).Path)' 2>&1 |
+    ForEach-Object { $_.ToString() })
+$hostProbeExit = [int]$LASTEXITCODE
+$childPsExe = ($hostProbeOutput -join '').Trim()
+$pathComparison = if ([Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT) {
+    [StringComparison]::OrdinalIgnoreCase
+} else {
+    [StringComparison]::Ordinal
+}
+if ($hostProbeExit -ne 0 -or [string]::IsNullOrWhiteSpace($childPsExe) -or
+    -not [string]::Equals([IO.Path]::GetFullPath($invokingPsExe), [IO.Path]::GetFullPath($childPsExe), $pathComparison)) {
+    [Console]::Error.WriteLine("PowerShell host-preservation probe failed: runner='$invokingPsExe'; child='$childPsExe'; exit=$hostProbeExit")
+    exit 2
+}
+$files = @(Get-ChildItem -LiteralPath $PSScriptRoot -Filter *.Tests.ps1 | Sort-Object Name)
+$expectedTestFiles = @(
+    'B215OwnershipBoundary.Tests.ps1',
+    'BacklogHygiene.Tests.ps1',
+    'ClaimTruth.Tests.ps1',
+    'Composer.Tests.ps1',
+    'DocClaims.Tests.ps1',
+    'DocsSyncCheck.Tests.ps1',
+    'DocTruth.Tests.ps1',
+    'FidelityCheck.Tests.ps1',
+    'GateBudgetConsistency.Tests.ps1',
+    'GuardPatternErrors.Tests.ps1',
+    'InstallerContract.Tests.ps1',
+    'InstallerConvergence.Tests.ps1',
+    'LicenseDelivery.Tests.ps1',
+    'LicenseDrift.Tests.ps1',
+    'MetaHooks.Tests.ps1',
+    'OutgoingCommits.Tests.ps1',
+    'PowerShellTopology.Tests.ps1',
+    'PushAndCheck.Tests.ps1',
+    'ReleaseChangelogStamp.Tests.ps1',
+    'ReleaseCiWatch.Tests.ps1',
+    'ReleaseDistGateTiming.Tests.ps1',
+    'ReleaseGateWaiver.Tests.ps1',
+    'ReleasePostEvalPrompt.Tests.ps1',
+    'ReleaseStagingGuard.Tests.ps1',
+    'RepositoryPrivacy.Tests.ps1',
+    'RootInstallerWarehouse.Tests.ps1',
+    'RunnerHost.Tests.ps1',
+    'SkillListParity.Tests.ps1',
+    'UpdateDelivery.Tests.ps1',
+    'ValidateDist.Tests.ps1',
+    'VendorClaims.Tests.ps1',
+    'WorkspaceBom.Tests.ps1'
+)
+if ($expectedTestFiles.Count -eq 0 -or $files.Count -eq 0) {
+    [Console]::Error.WriteLine("Test-suite cardinality must be nonzero: manifest=$($expectedTestFiles.Count); discovered=$($files.Count)")
+    exit 2
+}
+if (-not $FixtureDiscovery) {
+    $actualNames = @($files.Name)
+    $missing = @($expectedTestFiles | Where-Object { $_ -cnotin $actualNames })
+    $unexpected = @($actualNames | Where-Object { $_ -cnotin $expectedTestFiles })
+    if ($missing.Count -gt 0 -or $unexpected.Count -gt 0) {
+        [Console]::Error.WriteLine("Test manifest drift: missing=[$($missing -join ', ')]; unexpected=[$($unexpected -join ', ')]")
+        exit 2
+    }
+}
 if ($File) {
     $files = @($files | Where-Object { $_.Name -eq $File })
     # A -File that matches nothing must be a loud error, never an empty green run: a typo in a
@@ -56,13 +128,69 @@ function Write-FileTiming([string]$Name, $Begin, $End) {
     Write-Host ("TIMING {0} {1:N1}" -f $Name, ($End - $Begin).TotalSeconds)
 }
 
+function Read-CaseCount {
+    param([Parameter(Mandatory)][string]$Name, [AllowEmptyString()][string]$Text)
+    $matches = [regex]::Matches($Text, '(?m)^CASE_COUNT ([0-9]+)\r?$')
+    if ($matches.Count -ne 1) {
+        throw "$Name emitted $($matches.Count) CASE_COUNT markers; expected exactly one"
+    }
+    $count = [int]$matches[0].Groups[1].Value
+    if ($count -le 0) { throw "$Name emitted a non-positive CASE_COUNT ($count)" }
+    return $count
+}
+
+function Write-CaseCountManifest {
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][hashtable]$Counts)
+    if ($Counts.Count -eq 0) { throw 'case-count manifest would be empty' }
+    $lines = New-Object 'System.Collections.Generic.List[string]'
+    $sum = 0
+    foreach ($name in @($Counts.Keys | Sort-Object)) {
+        $count = [int]$Counts[$name]
+        if ($count -le 0) { throw "case-count manifest contains non-positive count for $name" }
+        $lines.Add("$name`t$count") | Out-Null
+        $sum += $count
+    }
+    if ($sum -le 0) { throw 'case-count manifest total would be zero' }
+    $lines.Add("TOTAL`t$sum") | Out-Null
+    $fullPath = [IO.Path]::GetFullPath($Path)
+    $parent = [IO.Path]::GetDirectoryName($fullPath)
+    if (-not [string]::IsNullOrWhiteSpace($parent)) { [IO.Directory]::CreateDirectory($parent) | Out-Null }
+    $stream = [IO.File]::Open($fullPath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+    try {
+        $writer = New-Object IO.StreamWriter($stream, (New-Object Text.UTF8Encoding($false)))
+        try { $writer.Write(($lines -join "`n") + "`n") } finally { $writer.Dispose() }
+    } finally { $stream.Dispose() }
+}
+
 $total = 0
+$caseCounts = @{}
 if ($Sequential -or $files.Count -eq 1) {
     foreach ($f in $files) {
         Write-Host ("--- {0} ---" -f $f.Name)
         $began = Get-Date
-        & $psExe -NoProfile -ExecutionPolicy Bypass -File $f.FullName
-        $exit = [int]$LASTEXITCODE
+        if ($CaseCountPath) {
+            $log = [IO.Path]::GetTempFileName()
+            $savedErrorActionPreference = $ErrorActionPreference
+            $savedCaseTestPath = $env:ATL_CASE_TEST_PATH
+            try {
+                $ErrorActionPreference = 'Continue'
+                $env:ATL_CASE_TEST_PATH = $f.FullName
+                & $psExe -NoProfile -ExecutionPolicy Bypass -Command `
+                    '$global:AtlEmitCaseCount=$true; & $env:ATL_CASE_TEST_PATH; exit $global:LASTEXITCODE' *> $log
+                $exit = [int]$LASTEXITCODE
+                $text = [IO.File]::ReadAllText($log)
+                Write-Host -NoNewline $text
+                try { $caseCounts[$f.Name] = Read-CaseCount -Name $f.Name -Text $text }
+                catch { [Console]::Error.WriteLine("CASE CARDINALITY REFUSED: $($_.Exception.Message)"); $total++ }
+            } finally {
+                $ErrorActionPreference = $savedErrorActionPreference
+                $env:ATL_CASE_TEST_PATH = $savedCaseTestPath
+                Remove-Item -LiteralPath $log -Force -ErrorAction SilentlyContinue
+            }
+        } else {
+            & $psExe -NoProfile -ExecutionPolicy Bypass -File $f.FullName
+            $exit = [int]$LASTEXITCODE
+        }
         Write-FileResult $f.Name $exit
         Write-FileTiming $f.Name $began (Get-Date)
         $total += $exit
@@ -70,7 +198,7 @@ if ($Sequential -or $files.Count -eq 1) {
 } else {
     # THROTTLED on purpose, and the number is not a guess. The first cut of this launched all ten
     # files at once and measured 1,335s against a 399s serial baseline -- 3.3x SLOWER. These suites
-    # are bound by process creation, not CPU (every assertion spawns a fresh pwsh or bash), so
+    # are bound by process creation, not CPU (many assertions spawn a fresh PowerShell), so
     # unthrottled concurrency just oversubscribes and every lane crawls. release.ps1's dist-gate
     # comment already said exactly this; this runner had to learn it again by measurement.
     #
@@ -131,11 +259,17 @@ if ($Sequential -or $files.Count -eq 1) {
                 Start-Sleep -Milliseconds 200
             }
             $log = [IO.Path]::GetTempFileName()
-            $job = Start-Job -ArgumentList $psExe, $f.FullName, $log, $innerLanes -ScriptBlock {
-                param($psExe, $path, $log, $innerLanes)
+            $job = Start-Job -ArgumentList $psExe, $f.FullName, $log, $innerLanes, ([bool]$CaseCountPath) -ScriptBlock {
+                param($psExe, $path, $log, $innerLanes, $emitCaseCount)
                 $env:VALIDATE_DIST_TESTS_THROTTLE = "$innerLanes"
                 $env:HOOKTESTS_THROTTLE = "$innerLanes"
-                & $psExe -NoProfile -ExecutionPolicy Bypass -File $path *> $log
+                if ($emitCaseCount) {
+                    $env:ATL_CASE_TEST_PATH = $path
+                    & $psExe -NoProfile -ExecutionPolicy Bypass -Command `
+                        '$global:AtlEmitCaseCount=$true; & $env:ATL_CASE_TEST_PATH; exit $global:LASTEXITCODE' *> $log
+                } else {
+                    & $psExe -NoProfile -ExecutionPolicy Bypass -File $path *> $log
+                }
                 $LASTEXITCODE
             }
             $jobs += [pscustomobject]@{ Name = $f.Name; Log = $log; Job = $job }
@@ -143,19 +277,33 @@ if ($Sequential -or $files.Count -eq 1) {
         $jobs.Job | Wait-Job | Out-Null
         foreach ($entry in $jobs) {
             Write-Host ("--- {0} ---" -f $entry.Name)
-            Write-Host -NoNewline ([IO.File]::ReadAllText($entry.Log))
+            $text = [IO.File]::ReadAllText($entry.Log)
+            Write-Host -NoNewline $text
             $exit = Receive-Job $entry.Job
             # A child that died without producing an exit code must count as a failure, not as zero.
             if ($null -eq $exit) { $exit = 1 }
             Write-FileResult $entry.Name ([int]$exit)
             Write-FileTiming $entry.Name $entry.Job.PSBeginTime $entry.Job.PSEndTime
             $total += [int]$exit
+            if ($CaseCountPath) {
+                try { $caseCounts[$entry.Name] = Read-CaseCount -Name $entry.Name -Text $text }
+                catch { [Console]::Error.WriteLine("CASE CARDINALITY REFUSED: $($_.Exception.Message)"); $total++ }
+            }
         }
     } finally {
         if ($jobs) {
             $jobs.Job | Remove-Job -Force -ErrorAction SilentlyContinue
             $jobs.Log | Where-Object { Test-Path -LiteralPath $_ } | Remove-Item -Force -ErrorAction SilentlyContinue
         }
+    }
+}
+if ($CaseCountPath) {
+    if ($caseCounts.Count -ne $files.Count) {
+        [Console]::Error.WriteLine("CASE CARDINALITY REFUSED: collected $($caseCounts.Count) of $($files.Count) per-file counts")
+        $total++
+    } else {
+        try { Write-CaseCountManifest -Path $CaseCountPath -Counts $caseCounts }
+        catch { [Console]::Error.WriteLine("CASE CARDINALITY REFUSED: $($_.Exception.Message)"); $total++ }
     }
 }
 Write-Host ("=== Meta-hook test suite: {0} failure(s) across {1} file(s) ===" -f $total, $files.Count)

@@ -21,11 +21,18 @@ param([switch]$SkipRedTest)
 . (Join-Path $PSScriptRoot '_MutationHelper.ps1')
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $release = Join-Path $repoRoot '.claude/scripts/release.ps1'
+$ciPath = Join-Path $repoRoot '.github/workflows/ci.yml'
 $text = [IO.File]::ReadAllText($release)
-$ci = [IO.File]::ReadAllText((Join-Path $repoRoot '.github/workflows/ci.yml'))
+$ci = [IO.File]::ReadAllText($ciPath)
+$ciNewline = if ($ci.Contains("`r`n")) { "`r`n" } else { "`n" }
 $metaRunner = [IO.File]::ReadAllText((Join-Path $repoRoot '.claude/hooks/tests/Invoke-HookTests.ps1'))
 
 Reset-Tests
+
+It 'maintainer release automation declares its PowerShell 7 boundary' {
+    Assert ($text -match '(?m)^#Requires -Version 7\.0\s*$') `
+        'release.ps1 can start under Windows PowerShell 5.1 despite invoking PowerShell-7-only maintainer tooling'
+}
 
 # `release.ps1:~549` parses per-file results with '(?m)^RESULT\s+(\S+)\s+(\d+)\s*$', anchored at BOTH
 # ends. That anchoring is why TIMING must be its own line: a third field on RESULT matches nothing,
@@ -49,11 +56,43 @@ function Assert-CiHookMatrix([string]$Name) {
     $job = Get-CiJob $Name
     Assert ($job -match '(?ms)matrix:\s*\r?\n\s*dist:\s*\[dotnet, angular, monorepo\]') "CI job '$Name' no longer declares the complete dotnet/angular/monorepo matrix"
     Assert ($job -match 'dist/\$\{\{ matrix\.dist \}\}/tests/hooks/Invoke-HookTests\.ps1') "CI job '$Name' no longer invokes the selected shipped hook suite"
+    Assert ($job -match '(?m)^\s*runs-on:\s*windows-latest\s*$') "CI job '$Name' is no longer direct Windows evidence"
 }
 
 function Assert-CiRootMetaSuite([string]$Name) {
     $job = Get-CiJob $Name
-    Assert ($job -match '(?m)^\s*run:\s*pwsh -NoProfile -File \.claude/hooks/tests/Invoke-HookTests\.ps1\s*$') "CI job '$Name' no longer invokes the root meta suite"
+    Assert ($job -match '& \$hostPath .*\.claude/hooks/tests/Invoke-HookTests\.ps1') "CI job '$Name' no longer invokes the root meta suite through its asserted current host"
+    Assert ($job -match '(?m)^\s*runs-on:\s*windows-latest\s*$') "CI job '$Name' is no longer direct Windows evidence"
+}
+
+function Assert-CiHost([string]$Name, [string]$Shell, [string]$Edition, [int]$Major) {
+    $job = Get-CiJob $Name
+    Assert ($job -match "(?m)^\s*shell:\s*$([regex]::Escape($Shell))\s*`$") "CI job '$Name' no longer selects the $Shell runner shell"
+    Assert ($job -match '\$hostPath\s*=\s*\(Get-Process -Id \$PID\)\.Path') "CI job '$Name' no longer captures the executable actually hosting the step"
+    Assert ($job -match "PSEdition -ne '$([regex]::Escape($Edition))'") "CI job '$Name' no longer asserts PSEdition $Edition"
+    Assert ($job -match "PSVersion\.Major -(?:ne|lt) $Major") "CI job '$Name' no longer asserts PowerShell major version $Major"
+    Assert ($job -match '& \$hostPath .*Invoke-HookTests\.ps1') "CI job '$Name' no longer runs its tests through the asserted current executable"
+}
+
+function Assert-CiCaseCountProducer([string]$Name, [string]$CasePath, [string]$ArtifactName) {
+    $job = Get-CiJob $Name
+    Assert (@([regex]::Matches($job, '-CaseCountPath')).Count -eq 1) "CI job '$Name' must emit exactly one semantic case-count manifest"
+    Assert ($job.Contains("-CaseCountPath `"$CasePath`"")) "CI job '$Name' no longer writes its expected semantic case-count path"
+    Assert (@([regex]::Matches($job, 'actions/upload-artifact@v4')).Count -eq 1) "CI job '$Name' must publish exactly one semantic case-count artifact"
+    Assert ($job.Contains("name: $ArtifactName")) "CI job '$Name' no longer publishes artifact '$ArtifactName'"
+    Assert ($job -match '(?m)^\s*if-no-files-found:\s*error\s*$') "CI job '$Name' permits a missing case-count artifact"
+}
+
+function Assert-CiCaseCountConsumer([string]$Name, [string]$Needs, [string]$CasePath, [string]$ArtifactName) {
+    $job = Get-CiJob $Name
+    Assert ($job -match "(?m)^\s*needs:\s*$([regex]::Escape($Needs))\s*`$") "CI job '$Name' no longer waits for '$Needs'"
+    Assert (@([regex]::Matches($job, '-CaseCountPath')).Count -eq 1) "CI job '$Name' must emit exactly one semantic case-count manifest"
+    Assert ($job.Contains("-CaseCountPath `"$CasePath`"")) "CI job '$Name' no longer writes its expected semantic case-count path"
+    Assert (@([regex]::Matches($job, 'actions/download-artifact@v4')).Count -eq 1) "CI job '$Name' must download exactly one PS7 case-count artifact"
+    Assert ($job.Contains("name: $ArtifactName")) "CI job '$Name' no longer downloads artifact '$ArtifactName'"
+    Assert (@([regex]::Matches($job, '\[IO\.File\]::ReadAllBytes')).Count -eq 2) "CI job '$Name' no longer compares the two manifests as bytes"
+    Assert ($job -match '\$expected\.Length -eq 0\s+-or\s+\$actual\.Length -eq 0') "CI job '$Name' no longer rejects an empty manifest on either host"
+    Assert (@([regex]::Matches($job, '\[Convert\]::ToBase64String')).Count -eq 2) "CI job '$Name' no longer performs a byte-exact manifest comparison"
 }
 
 It 'the dist-gates stage was located for inspection' {
@@ -83,11 +122,29 @@ It 'the full root meta suite remains on its existing default throttled runner wi
     Assert ($metaStage.Contains('(?m)^RESULT\s+(\S+)\s+(\d+)\s*$')) 'the default meta invocation no longer parses per-file RESULT lines'
 }
 
-It 'CI retains the supported Windows/Linux coverage before a normal tag' {
+It 'CI exposes exactly the supported PS7 and native PS5.1 Windows release contexts before a normal tag' {
+    $jobsBody = [regex]::Match($ci, '(?ms)^jobs:\s*\r?\n(?<body>.*)\z')
+    Assert $jobsBody.Success 'CI jobs block was not found'
+    $jobNames = @([regex]::Matches($jobsBody.Groups['body'].Value, '(?m)^  ([A-Za-z0-9_-]+):\s*$') | ForEach-Object { $_.Groups[1].Value })
+    $expected = @('windows', 'windows-hooks', 'windows-ps51', 'windows-hooks-ps51')
+    Assert (($jobNames -join ',') -eq ($expected -join ',')) "expected exactly four Windows job definitions in release order, found: $($jobNames -join ', ')"
+
     Assert-CiHookMatrix 'windows-hooks'
-    Assert-CiHookMatrix 'linux-hooks'
+    Assert-CiHookMatrix 'windows-hooks-ps51'
     Assert-CiRootMetaSuite 'windows'
-    Assert-CiRootMetaSuite 'linux'
+    Assert-CiRootMetaSuite 'windows-ps51'
+    Assert-CiHost 'windows' 'pwsh' 'Core' 7
+    Assert-CiHost 'windows-hooks' 'pwsh' 'Core' 7
+    Assert-CiHost 'windows-ps51' 'powershell' 'Desktop' 5
+    Assert-CiHost 'windows-hooks-ps51' 'powershell' 'Desktop' 5
+
+    Assert (@([regex]::Matches($ci, '-CaseCountPath')).Count -eq 4) 'CI must emit one semantic case-count manifest from each of its four job definitions'
+    Assert (@([regex]::Matches($ci, 'actions/upload-artifact@v4')).Count -eq 2) 'CI must contain exactly two PS7 case-count publishers'
+    Assert (@([regex]::Matches($ci, 'actions/download-artifact@v4')).Count -eq 2) 'CI must contain exactly two PS5.1 case-count consumers'
+    Assert-CiCaseCountProducer 'windows' '${{ runner.temp }}/windows-case-counts.txt' 'b219-case-counts-windows'
+    Assert-CiCaseCountProducer 'windows-hooks' '${{ runner.temp }}/windows-hooks-${{ matrix.dist }}-case-counts.txt' 'b219-case-counts-windows-hooks-${{ matrix.dist }}'
+    Assert-CiCaseCountConsumer 'windows-ps51' 'windows' '${{ runner.temp }}/windows-ps51-case-counts.txt' 'b219-case-counts-windows'
+    Assert-CiCaseCountConsumer 'windows-hooks-ps51' 'windows-hooks' '${{ runner.temp }}/windows-hooks-ps51-${{ matrix.dist }}-case-counts.txt' 'b219-case-counts-windows-hooks-${{ matrix.dist }}'
 }
 
 It 'every TIMING expression in dist-gates emits a line the RESULT parser cannot swallow' {
@@ -133,6 +190,28 @@ It 'the job wall-clock emitter survives a job whose times were never set' {
 }
 
 if (-not $SkipRedTest) {
+    It 'an unsupported runner substitution makes the exact Windows topology assertion fail' {
+        Invoke-MutationRedTest -TargetFile $ciPath -ScratchSourceRoot $repoRoot `
+            -Find ("  windows-ps51:" + $ciNewline + "    name: windows-ps51" + $ciNewline + "    needs: windows" + $ciNewline + "    runs-on: windows-latest") `
+            -Replacement ("  windows-ps51:" + $ciNewline + "    name: windows-ps51" + $ciNewline + "    needs: windows" + $ciNewline + "    runs-on: ubuntu-latest") -Command {
+                param($scratchTarget, $scratchRoot)
+                $test = Join-Path $scratchRoot '.claude/hooks/tests/ReleaseDistGateTiming.Tests.ps1'
+                $process = Start-Process -FilePath (Get-PsExe) -ArgumentList @('-NoProfile','-File',$test,'-SkipRedTest') -Wait -PassThru -NoNewWindow
+                $global:LASTEXITCODE = $process.ExitCode
+            } | Out-Null
+    }
+
+    It 'removing one case-count emission makes the cross-host parity assertion fail' {
+        Invoke-MutationRedTest -TargetFile $ciPath -ScratchSourceRoot $repoRoot `
+            -Find '-CaseCountPath "${{ runner.temp }}/windows-case-counts.txt"' `
+            -Replacement '-CaseCountGone "${{ runner.temp }}/windows-case-counts.txt"' -Command {
+                param($scratchTarget, $scratchRoot)
+                $test = Join-Path $scratchRoot '.claude/hooks/tests/ReleaseDistGateTiming.Tests.ps1'
+                $process = Start-Process -FilePath (Get-PsExe) -ArgumentList @('-NoProfile','-File',$test,'-SkipRedTest') -Wait -PassThru -NoNewWindow
+                $global:LASTEXITCODE = $process.ExitCode
+            } | Out-Null
+    }
+
     It 'one local shipped hook suite makes this suite fail and restores release.ps1 byte-identically' {
         Invoke-MutationRedTest -TargetFile $release -ScratchSourceRoot $repoRoot `
             -Find "    Gate (`$footprintExit -eq 0) 'update context-footprint baseline'" `

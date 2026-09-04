@@ -1,19 +1,12 @@
 ﻿[CmdletBinding()]
 param(
     [switch]$SkipRedTest,
-    [ValidateSet('ps1', 'sh')][string]$OnlyTwin,
     [switch]$OnlyWarehouse
 )
 
 . (Join-Path $PSScriptRoot '_HookHarness.ps1')
 . (Join-Path $PSScriptRoot '_MutationHelper.ps1')
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
-$bash = Get-BashPath
-
-function ConvertTo-PosixPath([string]$Path) {
-    if ($Path -match '^([A-Za-z]):[\\/](.*)$') { return '/' + $Matches[1].ToLowerInvariant() + '/' + $Matches[2].Replace('\', '/') }
-    return $Path.Replace('\', '/')
-}
 
 function Remove-TestFixtureTree([string]$AtlFixturePath) {
     if ([string]::IsNullOrWhiteSpace($AtlFixturePath)) {
@@ -180,19 +173,6 @@ function Invoke-WithTestFixture(
     if ($atlCleanupFailure) { throw $atlCleanupFailure }
 }
 
-function Resolve-HostPython {
-    foreach ($candidate in @($env:ATL_TEST_PYTHON, 'python3', 'python', 'py')) {
-        if ([string]::IsNullOrWhiteSpace($candidate)) { continue }
-        $command = Get-Command $candidate -ErrorAction SilentlyContinue | Select-Object -First 1
-        if (-not $command -or -not $command.Source) { continue }
-        try {
-            $probe = '{}' | & $command.Source -c 'import json,sys; json.load(sys.stdin); sys.stdout.write("ok")' 2>$null
-            if ($probe -eq 'ok') { return $command.Source }
-        } catch { }
-    }
-    return $null
-}
-
 function Add-WarehouseSignals([string]$Target) {
     $warehouse = Join-Path $Target 'warehouse'
     New-Item -ItemType Directory -Force -Path $warehouse | Out-Null
@@ -210,8 +190,8 @@ function Add-OneWarehouseCategory([string]$Target) {
 }
 
 function New-Target([ValidateSet('warehouse', 'singlewarehouse', 'angularwarehouse', 'dotnet', 'mixed')][string]$Kind) {
-    # Keep the fixture beneath the workspace parent so both Windows PowerShell and Git Bash
-    # resolve the same physical path rather than their distinct /tmp mounts.
+    # Keep the fixture beneath the workspace parent so both supported PowerShell hosts resolve the
+    # same physical Windows path.
     $target = Join-Path (Split-Path -Parent $repo) ("root-installer-$Kind-" + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Force -Path $target | Out-Null
     if ($Kind -eq 'warehouse') { Add-WarehouseSignals (Join-Path $target 'platform/data/domain') }
@@ -260,7 +240,6 @@ function Assert-EvidenceBoundLifecycle([string]$Target) {
         @{ Path = '.claude/commands/test.md'; Patterns = @('repository evidence', 'not available'); Forbidden = @() },
         @{ Path = '.claude/workflow.md'; Patterns = @('migration/deploy', 'data-validation', 'not available', 'manual/CI-only', 'non-mutating validation/dry-run'); Forbidden = @('Verify build, tests, and lint pass.') },
         @{ Path = '.claude/hooks/route-prompt.ps1'; Patterns = @('repository evidence', 'not available', 'manual/CI-only', 'non-mutating validation/dry-run'); Forbidden = @('2. Write a failing regression test BEFORE touching production code') },
-        @{ Path = '.claude/hooks/route-prompt.sh'; Patterns = @('repository evidence', 'not available', 'manual/CI-only', 'non-mutating validation/dry-run'); Forbidden = @('2. Write a failing regression test BEFORE touching production code') },
         @{ Path = '.github/instructions/framework-rules.instructions.md'; Patterns = @('repository evidence', 'not available', 'manual/CI-only', 'non-mutating validation/dry-run'); Forbidden = @('Each subtask must leave the codebase compilable and test-passing.', 'Verify all tests pass') },
         @{ Path = '.github/PULL_REQUEST_TEMPLATE.md'; Patterns = @('applicable harness', 'Verification Commands', 'not available'); Forbidden = @('Tests added/updated for changed behaviour', 'dotnet build && dotnet test') },
         @{ Path = '.github/copilot-instructions.md'; Patterns = @('delivery-profile superset', 'not available'); Forbidden = @('No suite anywhere?', 'xUnit + NSubstitute') },
@@ -282,44 +261,32 @@ function Assert-EvidenceBoundLifecycle([string]$Target) {
 
 }
 
-function Invoke-RootInstaller([string]$Twin, [string]$Target, [string]$Stack = '', [switch]$DryRun, [switch]$AllowDowngrade) {
-    if ($Twin -eq 'ps1') {
-        $arguments = @('-NoProfile', '-File', (Join-Path $repo 'install.ps1'))
-        if ($Stack) { $arguments += @('-Stack', $Stack) }
-        if ($DryRun) { $arguments += '-WhatIf' }
-        if ($AllowDowngrade) { $arguments += '-AllowDowngrade' }
-        $arguments += $Target
-        $out = @(& (Get-PsExe) @arguments 2>&1 | ForEach-Object { $_.ToString() })
-    } else {
-        $arguments = @((Join-Path $repo 'install.sh'))
-        if ($Stack) { $arguments += @('--stack', $Stack) }
-        if ($DryRun) { $arguments += '--dry-run' }
-        if ($AllowDowngrade) { $arguments += '--allow-downgrade' }
-        $arguments += $Target
-        $out = @(& $bash @arguments 2>&1 | ForEach-Object { $_.ToString() })
-    }
+function Invoke-RootInstaller([string]$Target, [string]$Stack = '', [switch]$DryRun, [switch]$AllowDowngrade) {
+    $arguments = @('-NoProfile', '-File', (Join-Path $repo 'install.ps1'))
+    if ($Stack) { $arguments += @('-Stack', $Stack) }
+    if ($DryRun) { $arguments += '-WhatIf' }
+    if ($AllowDowngrade) { $arguments += '-AllowDowngrade' }
+    $arguments += $Target
+    $out = @(& (Get-PsExe) @arguments 2>&1 | ForEach-Object { $_.ToString() })
     return [pscustomobject]@{ Exit = [int]$LASTEXITCODE; Output = ($out -join "`n") }
 }
 
 Reset-Tests
-foreach ($twin in @('ps1', 'sh')) {
-    if ($OnlyTwin -and $twin -ne $OnlyTwin) { continue }
-    if ($twin -eq 'sh' -and -not $bash) { Skip "warehouse-only lifecycle ($twin)" 'no bash'; continue }
 
-    It "warehouse-only auto-detection completes greenfield install without a solution ($twin)" {
+    It 'warehouse-only auto-detection completes greenfield install without a solution' {
         $singleCategoryTarget = New-Target 'singlewarehouse'
         Invoke-WithTestFixture $singleCategoryTarget ({
             $before = Get-TargetFingerprint $singleCategoryTarget
-            $singleCategory = Invoke-RootInstaller $twin $singleCategoryTarget
+            $singleCategory = Invoke-RootInstaller $singleCategoryTarget
             Assert ($singleCategory.Exit -eq 2) "one warehouse category should not auto-route, exit $($singleCategory.Exit): $($singleCategory.Output)"
             Assert ($singleCategory.Output -match 'Could not determine the stack') "one warehouse category did not produce the ordinary explicit-stack refusal: $($singleCategory.Output)"
             Assert ($singleCategory.Output -notmatch 'Stack: dotnet') "repeated matches from one category incorrectly selected dotnet: $($singleCategory.Output)"
             Assert ((Get-TargetFingerprint $singleCategoryTarget) -ceq $before) 'one-category refusal changed target bytes'
-        }.GetNewClosure())
+        })
 
         $target = New-Target 'warehouse'
         Invoke-WithTestFixture $target ({
-            $result = Invoke-RootInstaller $twin $target
+            $result = Invoke-RootInstaller $target
             Assert ($result.Exit -eq 0) "warehouse-only greenfield install exited $($result.Exit): $($result.Output)"
             Assert ($result.Output -match 'Stack: dotnet \(via auto-detected warehouse SQL profile \(found signals: layers, loads, control, history\)\)') "warehouse categories or their order diverged from the shared classifier: $($result.Output)"
             Assert ($result.Output -match '(?i)type:\s+/bootstrap') "greenfield handoff did not name /bootstrap: $($result.Output)"
@@ -327,21 +294,21 @@ foreach ($twin in @('ps1', 'sh')) {
             Assert-EvidenceBoundLifecycle $target
             Assert (-not (Test-Path -LiteralPath (Join-Path $target '.claude/adoption-pending.json'))) 'greenfield install incorrectly entered adoption mode'
             Assert (@(Get-ChildItem -LiteralPath $target -Recurse -File | Where-Object { $_.Extension -in @('.sln', '.csproj') }).Count -eq 0) 'warehouse fixture unexpectedly acquired a .NET solution/project'
-        }.GetNewClosure())
+        })
 
         $ssdtTarget = New-Target 'warehouse'
         Invoke-WithTestFixture $ssdtTarget ({
             [IO.File]::WriteAllText((Join-Path $ssdtTarget 'Warehouse.sln'), 'Microsoft Visual Studio Solution File, Format Version 12.00')
             [IO.File]::WriteAllText((Join-Path $ssdtTarget 'platform/data/domain/warehouse/Warehouse.sqlproj'), '<Project Sdk="Microsoft.Build.Sql" />')
-            $result = Invoke-RootInstaller $twin $ssdtTarget -DryRun
+            $result = Invoke-RootInstaller $ssdtTarget -DryRun
             Assert ($result.Exit -eq 0) "SSDT warehouse auto-detection exited $($result.Exit): $($result.Output)"
             Assert ($result.Output -match 'Stack: dotnet \(via auto-detected warehouse SQL profile \(found signals:') "SSDT solution was misclassified as .NET application evidence: $($result.Output)"
-        }.GetNewClosure())
+        })
     }
 
-    if ($OnlyWarehouse) { continue }
+    if ($OnlyWarehouse) { exit (Write-TestSummary 'RootInstallerWarehouse.Tests') }
 
-    It "warehouse-only auto-detection completes brownfield install and adoption handoff without a solution ($twin)" {
+    It 'warehouse-only auto-detection completes brownfield install and adoption handoff without a solution' {
         $target = New-Target 'warehouse'
         Invoke-WithTestFixture $target ({
             $legacy = "WAREHOUSE LEGACY SENTINEL`nUse the established ETL release flow.`n"
@@ -349,7 +316,7 @@ foreach ($twin in @('ps1', 'sh')) {
             & git -C $target add -A 2>$null | Out-Null
             & git -C $target -c user.name=fixture -c user.email=fixture@example.invalid commit -m baseline --quiet 2>$null | Out-Null
             Assert ($LASTEXITCODE -eq 0) 'could not commit the brownfield warehouse fixture'
-            $result = Invoke-RootInstaller $twin $target
+            $result = Invoke-RootInstaller $target
             Assert ($result.Exit -eq 0) "warehouse-only brownfield install exited $($result.Exit): $($result.Output)"
             Assert ($result.Output -match 'Stack: dotnet \(via auto-detected warehouse SQL profile \(found signals:') "warehouse evidence was not observable: $($result.Output)"
             Assert ($result.Output -match '(?i)type:\s+/adopt') "brownfield handoff did not name /adopt: $($result.Output)"
@@ -360,16 +327,16 @@ foreach ($twin in @('ps1', 'sh')) {
             Assert ($marker.archivedOriginals -contains 'docs/pre-adoption/CLAUDE.md') 'adoption marker omitted the archived warehouse instructions'
             Assert ((Get-Content -LiteralPath (Join-Path $target '.claude/commands/adopt.md') -Raw) -match '(?s)Phase 7.+/bootstrap') '/adopt does not retain its /bootstrap Phase-7 handoff'
             Assert (@(Get-ChildItem -LiteralPath $target -Recurse -File | Where-Object { $_.Extension -in @('.sln', '.csproj') }).Count -eq 0) 'warehouse fixture unexpectedly acquired a .NET solution/project'
-        }.GetNewClosure())
+        })
     }
 
-    It "ordinary dotnet auto-detection remains available ($twin)" {
+    It 'ordinary dotnet auto-detection remains available' {
         $target = New-Target 'dotnet'
         Invoke-WithTestFixture $target ({
-            $result = Invoke-RootInstaller $twin $target -DryRun
+            $result = Invoke-RootInstaller $target -DryRun
             Assert ($result.Exit -eq 0) "ordinary dotnet auto-detection exited $($result.Exit): $($result.Output)"
             Assert ($result.Output -match 'Stack: dotnet \(via auto-detected') "ordinary dotnet target did not select dotnet: $($result.Output)"
-        }.GetNewClosure())
+        })
         foreach($markerCase in @(
             @{File='package.json';Content='{"dependencies":{"@ANGULAR/CORE":"20.0.0"}}';Label='uppercase package identifier';Pattern='Could not determine the stack'},
             @{File='package.json';Content='{"scripts":{"probe":"echo \"@angular/core\": fake"}}';Label='escaped property-shaped script string';Pattern='Could not determine the stack'},
@@ -395,76 +362,57 @@ foreach ($twin in @('ps1', 'sh')) {
                 Remove-Item -LiteralPath (Join-Path $caseSensitiveTarget 'App.csproj') -Force
                 [IO.File]::WriteAllText((Join-Path $caseSensitiveTarget $markerCase.File), $markerCase.Content, [Text.UTF8Encoding]::new($false))
                 $before = Get-TargetFingerprint $caseSensitiveTarget
-                $result = Invoke-RootInstaller $twin $caseSensitiveTarget -DryRun
+                $result = Invoke-RootInstaller $caseSensitiveTarget -DryRun
                 Assert ($result.Exit -eq 2) "$($markerCase.Label) incorrectly routed, exit $($result.Exit): $($result.Output)"
                 Assert ($result.Output -match $markerCase.Pattern) "$($markerCase.Label) did not fail at the expected evidence boundary: $($result.Output)"
                 Assert ((Get-TargetFingerprint $caseSensitiveTarget) -ceq $before) "$($markerCase.Label) refusal changed target bytes"
-            }.GetNewClosure())
+            })
         }
     }
 
-    It "mixed application and Angular-plus-warehouse profiles select monorepo ($twin)" {
+    It 'mixed application and Angular-plus-warehouse profiles select monorepo' {
         $target = New-Target 'mixed'
         Invoke-WithTestFixture $target ({
-            $result = Invoke-RootInstaller $twin $target -DryRun
+            $result = Invoke-RootInstaller $target -DryRun
             Assert ($result.Exit -eq 0) "mixed auto-detection exited $($result.Exit): $($result.Output)"
             Assert ($result.Output -match 'Stack: monorepo \(via auto-detected') "mixed target did not select monorepo: $($result.Output)"
-        }.GetNewClosure())
+        })
 
         $angularWarehouse = New-Target 'angularwarehouse'
         Invoke-WithTestFixture $angularWarehouse ({
-            $result = Invoke-RootInstaller $twin $angularWarehouse
+            $result = Invoke-RootInstaller $angularWarehouse
             Assert ($result.Exit -eq 0) "Angular-plus-warehouse auto-detection exited $($result.Exit): $($result.Output)"
             Assert ($result.Output -match 'Stack: monorepo \(via auto-detected mixed repo \(found Angular \+ warehouse SQL profiles: layers, loads, control, history\)\)') "Angular-plus-warehouse target did not select monorepo with observable categories: $($result.Output)"
             Assert-EvidenceBoundLifecycle $angularWarehouse
-        }.GetNewClosure())
+        })
     }
 
-    It "root dispatcher forwards deliberate downgrade and dry-run flags to every stack ($twin)" {
+    It 'root dispatcher forwards deliberate downgrade and dry-run flags to every stack' {
         foreach ($stack in @('dotnet','angular','monorepo')) {
             $target = New-Target 'dotnet'
             Invoke-WithTestFixture $target ({
                 New-Item -ItemType Directory -Force -Path (Join-Path $target '.claude') | Out-Null
                 [IO.File]::WriteAllText((Join-Path $target '.claude/framework-version.json'), "{`"version`":`"99.0.0`",`"template`":`"$stack`"}", [Text.UTF8Encoding]::new($false))
                 $before = Get-TargetFingerprint $target
-                $result = Invoke-RootInstaller $twin $target $stack -DryRun -AllowDowngrade
+                $result = Invoke-RootInstaller $target $stack -DryRun -AllowDowngrade
                 Assert ($result.Exit -eq 0) "$stack flag forwarding exited $($result.Exit): $($result.Output)"
                 Assert ($result.Output -match 'allow-downgrade accepted|AllowDowngrade accepted') "$stack did not observe the downgrade override"
                 Assert ($result.Output -match 'Dry run complete; target was not modified') "$stack did not observe the dry-run flag"
                 Assert ((Get-TargetFingerprint $target) -ceq $before) "$stack root dry-run changed target bytes"
-            }.GetNewClosure())
+            })
         }
         $stampedTarget = New-Target 'dotnet'
         Invoke-WithTestFixture $stampedTarget ({
             New-Item -ItemType Directory -Force -Path (Join-Path $stampedTarget '.claude') | Out-Null
             [IO.File]::WriteAllText((Join-Path $stampedTarget '.claude/framework-version.json'), '{"version":"99.0.0","template":"dotnet","decimal":0.01,"exponent":1e01,"negativeExponent":1e-01}', [Text.UTF8Encoding]::new($false))
             $before = Get-TargetFingerprint $stampedTarget
-            $stamped = Invoke-RootInstaller $twin $stampedTarget -DryRun -AllowDowngrade
+            $stamped = Invoke-RootInstaller $stampedTarget -DryRun -AllowDowngrade
             Assert ($stamped.Exit -eq 0) "valid lowercase update stamp exited $($stamped.Exit): $($stamped.Output)"
             Assert ($stamped.Output -match 'Stack: dotnet \(via update stamp \(\.claude/framework-version\.json template=dotnet\)\)') "valid lowercase update stamp did not select its recorded stack: $($stamped.Output)"
             Assert ($stamped.Output -match 'allow-downgrade accepted|AllowDowngrade accepted') 'valid stamped update did not forward the downgrade override'
             Assert ($stamped.Output -match 'Dry run complete; target was not modified') 'valid stamped update did not forward dry-run'
             Assert ((Get-TargetFingerprint $stampedTarget) -ceq $before) 'valid stamped update changed target bytes'
-            if ($twin -eq 'sh' -and (Resolve-HostPython)) {
-                $brokenJqBin = Join-Path ([IO.Path]::GetTempPath()) ('root-broken-jq-' + [guid]::NewGuid().ToString('N'))
-                $oldPath = $env:PATH
-                Invoke-WithTestFixture -AtlFixturePath $brokenJqBin -AtlFixtureBody {
-                    param($atlBrokenJqFixture, $atlStampedFixture, $atlTwin, $atlBeforeFingerprint, $atlOriginalPath, $atlBashPath)
-                    try {
-                        New-Item -ItemType Directory -Force -Path $atlBrokenJqFixture | Out-Null
-                        [IO.File]::WriteAllText((Join-Path $atlBrokenJqFixture 'jq'), "#!/bin/sh`nexit 49`n", [Text.UTF8Encoding]::new($false))
-                        $posixJq = ConvertTo-PosixPath (Join-Path $atlBrokenJqFixture 'jq')
-                        $null = & $atlBashPath -c ('PATH="/usr/bin:/bin:/usr/local/bin:$PATH" chmod +x "{0}"' -f $posixJq) 2>$null
-                        Assert ($LASTEXITCODE -eq 0) 'could not make broken jq fixture executable'
-                        $env:PATH = $atlBrokenJqFixture + [IO.Path]::PathSeparator + $atlOriginalPath
-                        $fallback = Invoke-RootInstaller $atlTwin $atlStampedFixture -DryRun -AllowDowngrade
-                        Assert ($fallback.Exit -eq 0) "broken jq suppressed the working Python fallback: $($fallback.Output)"
-                        Assert ($fallback.Output -match 'Stack: dotnet \(via update stamp') "Python fallback did not select the valid stamped stack: $($fallback.Output)"
-                        Assert ((Get-TargetFingerprint $atlStampedFixture) -ceq $atlBeforeFingerprint) 'broken-jq Python fallback changed target bytes'
-                    } finally { $env:PATH = $atlOriginalPath }
-                } -AtlFixtureBodyArguments @($stampedTarget, $twin, $before, $oldPath, $bash)
-            }
-        }.GetNewClosure())
+        })
         foreach ($case in @(
             @{ Name='uppercase explicit stack'; Stack='DOTNET'; Stamp=$null; Pattern='Unknown stack' },
             @{ Name='uppercase stamped stack'; Stack=''; Stamp='{"version":"99.0.0","template":"DOTNET"}'; Pattern='unknown stack' },
@@ -484,24 +432,21 @@ foreach ($twin in @('ps1', 'sh')) {
                     [IO.File]::WriteAllText((Join-Path $target '.claude/framework-version.json'), $case.Stamp, [Text.UTF8Encoding]::new($false))
                 }
                 $before = Get-TargetFingerprint $target
-                $result = Invoke-RootInstaller $twin $target $case.Stack -DryRun
+                $result = Invoke-RootInstaller $target $case.Stack -DryRun
                 Assert ($result.Exit -eq 2) "$($case.Name) exited $($result.Exit): $($result.Output)"
                 Assert ($result.Output -match $case.Pattern) "$($case.Name) did not fail actionably: $($result.Output)"
                 Assert ((Get-TargetFingerprint $target) -ceq $before) "$($case.Name) changed target bytes"
-            }.GetNewClosure())
+            })
         }
     }
-}
-
 if (-not $SkipRedTest) {
-    if (-not $OnlyTwin -or $OnlyTwin -eq 'ps1') {
-        It 'a PowerShell mutation that removes warehouse auto-routing makes this suite red and restores bytes' {
+    It 'a PowerShell mutation that removes warehouse auto-routing makes this suite red and restores bytes' {
             Invoke-MutationRedTest -TargetFile (Join-Path $repo 'install.ps1') -ScratchSourceRoot $repo `
                 -Find ('$Stack = ''dotnet''' + "`n" + '                $reason = "auto-detected warehouse SQL profile (found signals: $($warehouseSignals -join '', ''))"') `
                 -Replacement "Die 'mutated warehouse refusal'" -Command {
                     param($scratchTarget, $scratchRoot)
                     $test = Join-Path $scratchRoot '.claude/hooks/tests/RootInstallerWarehouse.Tests.ps1'
-                    $atlMutationTranscript = @(& (Get-PsExe) -NoProfile -File $test -SkipRedTest -OnlyTwin ps1 -OnlyWarehouse 2>&1 | ForEach-Object { $_.ToString() })
+                    $atlMutationTranscript = @(& (Get-PsExe) -NoProfile -File $test -SkipRedTest -OnlyWarehouse 2>&1 | ForEach-Object { $_.ToString() })
                     $atlMutationExit = [int]$LASTEXITCODE
                     $atlMutationTranscript | ForEach-Object { Write-Host $_ }
                     $atlMutationText = $atlMutationTranscript -join "`n"
@@ -515,31 +460,7 @@ if (-not $SkipRedTest) {
                         $global:LASTEXITCODE = $atlMutationExit
                     }
                 } | Out-Null
-        }
     }
-    if ($bash -and (-not $OnlyTwin -or $OnlyTwin -eq 'sh')) {
-        It 'a shell mutation that removes warehouse auto-routing makes this suite red and restores bytes' {
-            Invoke-MutationRedTest -TargetFile (Join-Path $repo 'install.sh') -ScratchSourceRoot $repo `
-                -Find '      stack="dotnet"; reason="auto-detected warehouse SQL profile (found signals: $observed)"' `
-                -Replacement '      echo "mutated warehouse refusal" >&2; exit 2' -Command {
-                    param($scratchTarget, $scratchRoot)
-                    $test = Join-Path $scratchRoot '.claude/hooks/tests/RootInstallerWarehouse.Tests.ps1'
-                    $atlMutationTranscript = @(& (Get-PsExe) -NoProfile -File $test -SkipRedTest -OnlyTwin sh -OnlyWarehouse 2>&1 | ForEach-Object { $_.ToString() })
-                    $atlMutationExit = [int]$LASTEXITCODE
-                    $atlMutationTranscript | ForEach-Object { Write-Host $_ }
-                    $atlMutationText = $atlMutationTranscript -join "`n"
-                    $atlIntendedRed = $atlMutationExit -ne 0 -and
-                        $atlMutationText.Contains('warehouse-only greenfield install exited 2') -and
-                        $atlMutationText.Contains('mutated warehouse refusal')
-                    if (-not $atlIntendedRed) {
-                        [Console]::Error.WriteLine('shell mutation went red without its intended warehouse assertion and sentinel')
-                        $global:LASTEXITCODE = 0
-                    } else {
-                        $global:LASTEXITCODE = $atlMutationExit
-                    }
-                } | Out-Null
-            }
-        }
-    }
+}
 
 exit (Write-TestSummary 'RootInstallerWarehouse.Tests')

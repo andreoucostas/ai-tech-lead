@@ -244,7 +244,7 @@
     <aside class="notes">
       <p><b>This is the slide leads care about most.</b> The difference between a style guide nobody reads and a system that holds the line.</p>
       <p>Concrete: on supported hosts with hooks available, the PreToolUse guard blocks defined editor/file-write events. Shell and external writes remain outside its scope.</p>
-      <p>Bitbucket note: CI guardrails run via Bamboo/Jenkins or a pre-receive hook, and publish to PRs through Bitbucket Code Insights. No cloud needed.</p>
+      <p>Bitbucket note: CI guardrails run via Bamboo/Jenkins on self-hosted Windows agents and publish to PRs through Bitbucket Code Insights. Copilot coding-agent cloud hooks are unsupported.</p>
     </aside>
   </section>
 
@@ -339,15 +339,15 @@
       <h2>Built for our environment</h2>
       <div class="grid two">
         <div class="card good"><h3>Repository-local controls</h3><p>The files work with <b>Bitbucket Data Center</b>. VS Code hooks are Preview, off by default, org-gated, and the full lifecycle is uncertified; each AI client's data boundary also applies.</p></div>
-        <div class="card good"><h3>CI on our terms</h3><p>Guardrails run in Bamboo / Jenkins / a pre-receive hook and report to PRs via Bitbucket Code Insights.</p></div>
-        <div class="card good"><h3>Windows-first</h3><p>Every script ships as a bash <i>and</i> a PowerShell twin.</p></div>
+        <div class="card good"><h3>CI on our terms</h3><p>Guardrails run in Bamboo / Jenkins on self-hosted Windows agents and report to PRs via Bitbucket Code Insights.</p></div>
+        <div class="card good"><h3>Windows-first</h3><p>Supported execution is Windows-only: PowerShell 7 primary, native Windows PowerShell 5.1 fallback.</p></div>
         <div class="card good"><h3>Both stacks</h3><p>.NET and Angular share doctrine; NetArchTest and dependency-cruiser remain scaffoldable until wired into consumer CI.</p></div>
       </div>
     </div>
     <aside class="notes">
       <p><b>Goal:</b> remove the "but we're on local Bitbucket, not GitHub cloud" objection before it's raised.</p>
-      <p>Explicitly: GitHub Actions / Copilot cloud agent / Rovo Dev are <i>not</i> required and not assumed. The framework is host-agnostic; CI is wired to whatever we already run.</p>
-      <p>The PowerShell-twin point matters here — this was built knowing the team is on Windows.</p>
+      <p>Explicitly: GitHub Actions / Copilot cloud agent / Rovo Dev are <i>not</i> required and not assumed. Framework command and hook execution is Windows-only; CI uses Windows runners or agents.</p>
+      <p>The PowerShell-only point matters here — this was built knowing the team is on Windows.</p>
     </aside>
   </section>
 

@@ -1,17 +1,21 @@
 {
-  "_comment": "Windows-only PowerShell variant of settings.json. Use when bash (git-bash) is not available. Copy to settings.json (team-wide) or settings.local.json (per-developer). Uses Windows PowerShell 5.1 (preinstalled on every Windows machine) — no extra install required. PowerShell 7 (pwsh) also works; swap 'powershell' for 'pwsh' if preferred.",
+  "_comment": "Windows PowerShell 5.1 fallback settings. Copy to settings.json (team-wide) or settings.local.json (per-developer) only when PowerShell 7 is unavailable. Windows is the supported execution platform.",
+  "env": {
+    "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1"
+  },
+  "defaultShell": "powershell",
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/session-start.ps1" }
+          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/session-start.ps1", "shell": "powershell" }
         ]
       }
     ],
     "UserPromptSubmit": [
       {
         "hooks": [
-          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/route-prompt.ps1" }
+          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/route-prompt.ps1", "shell": "powershell" }
         ]
       }
     ],
@@ -19,7 +23,7 @@
       {
         "matcher": "Write|Edit",
         "hooks": [
-          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/guard.ps1" }
+          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/guard.ps1", "shell": "powershell" }
         ]
       }
     ],
@@ -27,15 +31,15 @@
       {
         "matcher": "Write|Edit",
         "hooks": [
-          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/post-write.ps1" },
-          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/audit-trail.ps1" }
+          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/post-write.ps1", "shell": "powershell" },
+          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/audit-trail.ps1", "shell": "powershell" }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/boy-scout-check.ps1" }
+          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/boy-scout-check.ps1", "shell": "powershell" }
         ]
       }
     ]

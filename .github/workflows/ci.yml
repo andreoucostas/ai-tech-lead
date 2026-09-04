@@ -1,18 +1,8 @@
 name: CI
 
-# Repo-scale docs-sync-check for the authoring repo: proves src/ -> dist/ freshness on every
-# push/PR (rebuild + diff must be empty), that every dist passes its own template-checks and
-# parse gates (validate-dist), and that the hook test suites pass inside each dist.
-#
-# windows leg drives the .ps1 twins; linux leg drives the .sh twins — each leg rebuilds with
-# its own twin and diffs against the committed golden dist, so composer twin divergence fails
-# one of the two legs.
-#
-# The strict fidelity-check legs (dist == freeze-v0.25.5 baseline) were retired at the v0.26.0
-# release — the merge's zero-behaviour-change was proven and permanently recorded (WSD-012/018),
-# and v0.26.0 deliberately changes shipped content (actions/checkout v4->v5), so the freeze tags
-# are no longer the baseline. The freshness gate (rebuild + git diff) now fully guards src->dist.
-# scripts/fidelity-check.{ps1,sh} remain for manual re-audit against the pre-restructure tag.
+# Authoring-repo release evidence. PowerShell 7 is the primary host and native Windows PowerShell
+# 5.1 is the supported fallback. Both execute the exact candidate composer, validators, context
+# gate, meta suite, and all three generated-dist hook suites on Windows.
 
 on:
   pull_request:
@@ -22,45 +12,67 @@ on:
 
 jobs:
   windows:
+    name: windows
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
     steps:
-      # fetch-tags is REQUIRED, not a nicety. The default checkout is `--depth=1 --no-tags`, and
-      # ReleaseStagingGuard.Tests replays the last 8 release tags to prove the release staging
-      # allowlist has not silently narrowed. With no tags it cannot run, and it refuses to report a
-      # vacuous pass -- so the meta suite fails. Removing this line does not weaken that test
-      # quietly; it turns CI red, which is the intended direction for a check that cannot run.
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           fetch-tags: true
-      - name: Compose dists (build.ps1 twin)
+      - name: Assert direct PowerShell 7 host
         run: |
-          pwsh -NoProfile -File scripts/build.ps1 dotnet
-          pwsh -NoProfile -File scripts/build.ps1 angular
-          pwsh -NoProfile -File scripts/build.ps1 monorepo
+          $hostPath = (Get-Process -Id $PID).Path
+          $hostLeaf = [IO.Path]::GetFileName($hostPath)
+          if ($PSVersionTable.PSEdition -ne 'Core' -or
+              $PSVersionTable.PSVersion.Major -lt 7 -or
+              $hostLeaf -notmatch '^pwsh(?:\.exe)?$') {
+            throw "Expected direct PowerShell 7 (pwsh); observed $hostLeaf $($PSVersionTable.PSEdition) $($PSVersionTable.PSVersion)."
+          }
+      - name: Compose dists under the asserted host
+        run: |
+          $hostPath = (Get-Process -Id $PID).Path
+          foreach ($dist in 'dotnet', 'angular', 'monorepo') {
+            & $hostPath -NoProfile -File scripts/build.ps1 $dist
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
       - name: Dist freshness (rebuild == committed golden dist)
         run: |
           git add -A dist
           git diff --cached --exit-code --stat -- dist
-      - name: Context footprint (context-footprint.ps1 twin)
-        run: pwsh -NoProfile -File scripts/context-footprint.ps1 -Check
-      - name: Validate dists (parse gates + per-dist template-checks)
+      - name: Context footprint under the asserted host
         run: |
-          pwsh -NoProfile -File scripts/validate-dist.ps1 dotnet
-          pwsh -NoProfile -File scripts/validate-dist.ps1 angular
-          pwsh -NoProfile -File scripts/validate-dist.ps1 monorepo
-      - name: Meta-hook test suite (bom-fix + repo-wide BOM gate)
-        run: pwsh -NoProfile -File .claude/hooks/tests/Invoke-HookTests.ps1
+          $hostPath = (Get-Process -Id $PID).Path
+          & $hostPath -NoProfile -File scripts/context-footprint.ps1 -Check
+          exit $LASTEXITCODE
+      - name: Validate dists under the asserted host
+        run: |
+          $hostPath = (Get-Process -Id $PID).Path
+          foreach ($dist in 'dotnet', 'angular', 'monorepo') {
+            & $hostPath -NoProfile -File scripts/validate-dist.ps1 $dist
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+      - name: Meta-hook test suite under the asserted host
+        run: |
+          $hostPath = (Get-Process -Id $PID).Path
+          & $hostPath -NoProfile -File .claude/hooks/tests/Invoke-HookTests.ps1 -CaseCountPath "${{ runner.temp }}/windows-case-counts.txt"
+          exit $LASTEXITCODE
+      - name: Publish PS7 semantic case cardinality
+        uses: actions/upload-artifact@v4
+        with:
+          name: b219-case-counts-windows
+          path: ${{ runner.temp }}/windows-case-counts.txt
+          if-no-files-found: error
+          retention-days: 1
 
-  # The three shipped hook suites used to run serially inside the `windows` job and were its
-  # dominant cost. They are split onto their own runners here (B-113): the suites execute against
-  # the COMMITTED dist/, whose equivalence to src/ the freshness gate in `windows` already proves,
-  # so they need a checkout and nothing else -- no compose, no ordering dependency. Splitting buys
-  # real concurrency rather than more lanes on one box: B-101 measured that added lanes plateau
-  # because process creation serialises, so three suites sharing one runner would not have helped.
-  # fail-fast is off so one dist's failure still reports the other two.
   windows-hooks:
+    name: windows-hooks (${{ matrix.dist }})
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
     strategy:
       fail-fast: false
       matrix:
@@ -70,44 +82,101 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-      - name: Hook test suite (${{ matrix.dist }}, .ps1 twins)
-        run: pwsh -NoProfile -File dist/${{ matrix.dist }}/tests/hooks/Invoke-HookTests.ps1
+      - name: Assert direct PowerShell 7 host
+        run: |
+          $hostPath = (Get-Process -Id $PID).Path
+          $hostLeaf = [IO.Path]::GetFileName($hostPath)
+          if ($PSVersionTable.PSEdition -ne 'Core' -or
+              $PSVersionTable.PSVersion.Major -lt 7 -or
+              $hostLeaf -notmatch '^pwsh(?:\.exe)?$') {
+            throw "Expected direct PowerShell 7 (pwsh); observed $hostLeaf $($PSVersionTable.PSEdition) $($PSVersionTable.PSVersion)."
+          }
+      - name: Hook test suite (${{ matrix.dist }}) under the asserted host
+        run: |
+          $hostPath = (Get-Process -Id $PID).Path
+          & $hostPath -NoProfile -File dist/${{ matrix.dist }}/tests/hooks/Invoke-HookTests.ps1 -CaseCountPath "${{ runner.temp }}/windows-hooks-${{ matrix.dist }}-case-counts.txt"
+          exit $LASTEXITCODE
+      - name: Publish PS7 semantic case cardinality (${{ matrix.dist }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: b219-case-counts-windows-hooks-${{ matrix.dist }}
+          path: ${{ runner.temp }}/windows-hooks-${{ matrix.dist }}-case-counts.txt
+          if-no-files-found: error
+          retention-days: 1
 
-  linux:
-    runs-on: ubuntu-latest
+  windows-ps51:
+    name: windows-ps51
+    needs: windows
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: powershell
     steps:
-      # fetch-tags is REQUIRED, not a nicety. The default checkout is `--depth=1 --no-tags`, and
-      # ReleaseStagingGuard.Tests replays the last 8 release tags to prove the release staging
-      # allowlist has not silently narrowed. With no tags it cannot run, and it refuses to report a
-      # vacuous pass -- so the meta suite fails. Removing this line does not weaken that test
-      # quietly; it turns CI red, which is the intended direction for a check that cannot run.
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           fetch-tags: true
-      - name: Compose dists (build.sh twin)
+      - name: Assert direct Windows PowerShell 5.1 host
         run: |
-          bash scripts/build.sh dotnet
-          bash scripts/build.sh angular
-          bash scripts/build.sh monorepo
+          $hostPath = (Get-Process -Id $PID).Path
+          $hostLeaf = [IO.Path]::GetFileName($hostPath)
+          if ($PSVersionTable.PSEdition -ne 'Desktop' -or
+              $PSVersionTable.PSVersion.Major -ne 5 -or
+              $PSVersionTable.PSVersion.Minor -ne 1 -or
+              $hostLeaf -notmatch '^powershell(?:\.exe)?$') {
+            throw "Expected direct Windows PowerShell 5.1; observed $hostLeaf $($PSVersionTable.PSEdition) $($PSVersionTable.PSVersion)."
+          }
+      - name: Compose dists under the asserted host
+        run: |
+          $hostPath = (Get-Process -Id $PID).Path
+          foreach ($dist in 'dotnet', 'angular', 'monorepo') {
+            & $hostPath -NoProfile -ExecutionPolicy Bypass -File scripts/build.ps1 $dist
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
       - name: Dist freshness (rebuild == committed golden dist)
         run: |
           git add -A dist
           git diff --cached --exit-code --stat -- dist
-      - name: Context footprint (context-footprint.sh twin)
-        run: bash scripts/context-footprint.sh -Check
-      - name: Validate dists (parse gates + per-dist template-checks)
+      - name: Context footprint under the asserted host
         run: |
-          bash scripts/validate-dist.sh dotnet
-          bash scripts/validate-dist.sh angular
-          bash scripts/validate-dist.sh monorepo
-      - name: Meta-hook test suite (bom-fix + repo-wide BOM gate)
-        run: pwsh -NoProfile -File .claude/hooks/tests/Invoke-HookTests.ps1
+          $hostPath = (Get-Process -Id $PID).Path
+          & $hostPath -NoProfile -ExecutionPolicy Bypass -File scripts/context-footprint.ps1 -Check
+          exit $LASTEXITCODE
+      - name: Validate dists under the asserted host
+        run: |
+          $hostPath = (Get-Process -Id $PID).Path
+          foreach ($dist in 'dotnet', 'angular', 'monorepo') {
+            & $hostPath -NoProfile -ExecutionPolicy Bypass -File scripts/validate-dist.ps1 $dist
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+      - name: Meta-hook test suite under the asserted host
+        run: |
+          $hostPath = (Get-Process -Id $PID).Path
+          & $hostPath -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/tests/Invoke-HookTests.ps1 -CaseCountPath "${{ runner.temp }}/windows-ps51-case-counts.txt"
+          exit $LASTEXITCODE
+      - name: Download PS7 semantic case cardinality
+        uses: actions/download-artifact@v4
+        with:
+          name: b219-case-counts-windows
+          path: ${{ runner.temp }}/expected-windows-case-counts
+      - name: Require equal nonzero PS7 and PS5.1 semantic case cardinality
+        run: |
+          $expectedPath = "${{ runner.temp }}/expected-windows-case-counts/windows-case-counts.txt"
+          $actualPath = "${{ runner.temp }}/windows-ps51-case-counts.txt"
+          $expected = [IO.File]::ReadAllBytes($expectedPath)
+          $actual = [IO.File]::ReadAllBytes($actualPath)
+          if ($expected.Length -eq 0 -or $actual.Length -eq 0 -or
+              [Convert]::ToBase64String($expected) -cne [Convert]::ToBase64String($actual)) {
+            throw "PS7 and PS5.1 meta semantic case cardinality differ.`nPS7:`n$([IO.File]::ReadAllText($expectedPath))`nPS5.1:`n$([IO.File]::ReadAllText($actualPath))"
+          }
 
-  # Linux half of the same split. Named separately from windows-hooks so both remain individually
-  # assertable by watch-ci.ps1 -- a leg that silently stops running must fail, not pass quietly.
-  linux-hooks:
-    runs-on: ubuntu-latest
+  windows-hooks-ps51:
+    name: windows-hooks-ps51 (${{ matrix.dist }})
+    needs: windows-hooks
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: powershell
     strategy:
       fail-fast: false
       matrix:
@@ -117,5 +186,33 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-      - name: Hook test suite (${{ matrix.dist }}, exercises the .sh twins via bash)
-        run: pwsh -NoProfile -File dist/${{ matrix.dist }}/tests/hooks/Invoke-HookTests.ps1
+      - name: Assert direct Windows PowerShell 5.1 host
+        run: |
+          $hostPath = (Get-Process -Id $PID).Path
+          $hostLeaf = [IO.Path]::GetFileName($hostPath)
+          if ($PSVersionTable.PSEdition -ne 'Desktop' -or
+              $PSVersionTable.PSVersion.Major -ne 5 -or
+              $PSVersionTable.PSVersion.Minor -ne 1 -or
+              $hostLeaf -notmatch '^powershell(?:\.exe)?$') {
+            throw "Expected direct Windows PowerShell 5.1; observed $hostLeaf $($PSVersionTable.PSEdition) $($PSVersionTable.PSVersion)."
+          }
+      - name: Hook test suite (${{ matrix.dist }}) under the asserted host
+        run: |
+          $hostPath = (Get-Process -Id $PID).Path
+          & $hostPath -NoProfile -ExecutionPolicy Bypass -File dist/${{ matrix.dist }}/tests/hooks/Invoke-HookTests.ps1 -CaseCountPath "${{ runner.temp }}/windows-hooks-ps51-${{ matrix.dist }}-case-counts.txt"
+          exit $LASTEXITCODE
+      - name: Download PS7 semantic case cardinality (${{ matrix.dist }})
+        uses: actions/download-artifact@v4
+        with:
+          name: b219-case-counts-windows-hooks-${{ matrix.dist }}
+          path: ${{ runner.temp }}/expected-windows-hooks-${{ matrix.dist }}-case-counts
+      - name: Require equal nonzero PS7 and PS5.1 semantic case cardinality (${{ matrix.dist }})
+        run: |
+          $expectedPath = "${{ runner.temp }}/expected-windows-hooks-${{ matrix.dist }}-case-counts/windows-hooks-${{ matrix.dist }}-case-counts.txt"
+          $actualPath = "${{ runner.temp }}/windows-hooks-ps51-${{ matrix.dist }}-case-counts.txt"
+          $expected = [IO.File]::ReadAllBytes($expectedPath)
+          $actual = [IO.File]::ReadAllBytes($actualPath)
+          if ($expected.Length -eq 0 -or $actual.Length -eq 0 -or
+              [Convert]::ToBase64String($expected) -cne [Convert]::ToBase64String($actual)) {
+            throw "PS7 and PS5.1 ${{ matrix.dist }} semantic case cardinality differ.`nPS7:`n$([IO.File]::ReadAllText($expectedPath))`nPS5.1:`n$([IO.File]::ReadAllText($actualPath))"
+          }

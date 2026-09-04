@@ -11,6 +11,20 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.83.0 — Unreleased
+
+**Framework execution is now Windows- and PowerShell-only.** B-219/WSD-073 retires the active Bash
+implementations, Linux CI, dual-language hook registrations and shell-only provider examples while
+retaining PowerShell 7 as primary and Windows PowerShell 5.1 as a directly tested fallback. Claude
+project settings select the native PowerShell tool and hook shell; Copilot retains explicit Windows
+PowerShell hooks, while its Linux cloud-agent hook enforcement is withdrawn.
+
+Updates remove only previously owned, known-clean shell bytes. Consumer-owned or modified legacy
+Git hooks are preserved with their dependency closure and receive durable migration diagnostics.
+The optional Git-hook installer is retired, and the two maintainer shell launchers are replaced by
+a PowerShell check over the actual outgoing commit range. Eight Windows CI contexts independently
+exercise the root and three distributions under PS7 and PS5.1.
+
 ## 0.82.0 — 2026-09-04
 
 **Project skills now have one canonical tree instead of a higher-priority generated duplicate.**

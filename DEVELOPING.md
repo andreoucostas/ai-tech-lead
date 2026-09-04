@@ -11,27 +11,29 @@ Commands, not philosophy. The rules and the meta-invariant list live in `CLAUDE.
 | `src/stacks/<dist>/snippets/<rel>/<NAME>` | marker content per dist | monorepo snippet wins; else dotnet+angular concat (WSD-015) |
 | `src/stacks/<dist>/files/` | whole-file overrides + stack-only files | both-stacks collision without a monorepo override = build error |
 | `dist/{dotnet,angular,monorepo}/` | generated golden output (committed) | **never hand-edit** [#1]; `linguist-generated` |
-| `scripts/` | composer + gates, `.ps1`/`.sh` twins [#3] | `build`, `validate-dist`, `fidelity-check` |
-| `install.ps1` / `install.sh` | root installers | detect stack, auto-detect mixed → monorepo, delegate to dist installer |
-| `.claude/hooks/` | meta-dev hook (`bom-fix.ps1`/`.sh` — auto-adds the UTF-8 BOM to written `.ps1`) | this repo only, does not ship |
+| `scripts/` | PowerShell composer + gates [#3] | `build`, `validate-dist`, `context-footprint`; `fidelity-check` is manual |
+| `install.ps1` | root installer | detect stack, auto-detect mixed → monorepo, delegate to dist installer |
+| `.claude/hooks/` | meta-dev `bom-fix.ps1` hook | auto-adds the UTF-8 BOM to written `.ps1`; does not ship |
 | `.claude/hooks/_fixtures/` | JSON event fixtures for testing the hooks | see below |
-| `.claude/scripts/release.ps1` | release automation [#7] | PowerShell-only by decision |
+| `.claude/scripts/release.ps1` | release automation [#7] | maintainer-only; requires PowerShell 7 |
 | `.claude/scripts/watch-ci.ps1` | watches GitHub Actions for a commit; 0 green / 1 red / 3 cannot-verify | used by `release.ps1` step 5c, runnable by hand |
 | `.claude/scripts/_ci-decision.ps1` | the publish decision table (tag / exit code) as a callable function | dot-sourced by `release.ps1` and by its tests |
 | `.claude/plans/` | plans [Conventions] | includes the locked B-21/B-22/B-27 design specs |
 | `meta/` | `BACKLOG.md`, `workspace-decisions.md`, `LEARNINGS.md`, `ci-handover.md`, `changelogs/legacy-*.md` | maintainer layer; never ships. No root `docs/` — that name is the consumer's |
-| `scripts/meta-denylist.txt` | the `no-meta-leak` patterns [#6] | one file, read by BOTH twins so it cannot drift |
+| `scripts/meta-denylist.txt` | the `no-meta-leak` patterns [#6] | one authority, read by `validate-dist.ps1` |
 
-The maintainer git hooks are deliberately opt-in. Enable them for this clone with:
+Every framework push goes through the outgoing-commit guard. The push and release wrappers invoke it
+before mutation; it checks every not-yet-remote commit subject and every added, changed, or renamed
+blob (including merge diffs against every parent):
 
 ```powershell
-git config core.hooksPath .claude/git-hooks
+pwsh -NoProfile -File .claude/scripts/check-outgoing-commits.ps1
+pwsh -NoProfile -File .claude/scripts/push-and-check.ps1
 ```
 
-The commit-message hook rejects obviously shell-mangled subjects. The pre-commit hook checks every
-staged `.ps1` for its BOM and passes staged blobs through the canonical write guard, including files
-created by shell commands or external tools. Both are bypassable local convenience nets, **not
-enforcement**, and neither is shipped or server-side policy.
+The guard exits 3 if it cannot enumerate the destination remote; it never treats CANT-VERIFY as a
+policy failure or success. A direct `git push` remains mechanically possible, so the wrapper is the
+maintainer contract rather than server-side enforcement.
 
 ### Verify reviewer-side probes before recording green
 
@@ -47,17 +49,11 @@ not authorization to build a checker-of-checkers.
 foreach ($d in 'dotnet','angular','monorepo') { pwsh -NoProfile -File scripts/build.ps1 $d }
 git status --porcelain dist/   # MUST print nothing — otherwise commit the dist with your src change
 ```
-```bash
-for d in dotnet angular monorepo; do bash scripts/build.sh "$d"; done   # .sh twin (CI linux leg)
-```
 
-## Validate the dists (markers, JSON, bash -n, PS-AST, per-dist template-checks [#2, including Common Tasks skill inventory], no-meta-leak [#6], no-dead-instruction, hook-registration, step-references)
+## Validate the dists (markers, JSON, PS-AST, topology, per-dist template-checks [#2], no-meta-leak [#6], no-dead-instruction, hook-registration, step-references)
 
 ```powershell
 foreach ($d in 'dotnet','angular','monorepo') { pwsh -NoProfile -File scripts/validate-dist.ps1 $d; "exit=$LASTEXITCODE" }
-```
-```bash
-for d in dotnet angular monorepo; do bash scripts/validate-dist.sh "$d"; echo "exit=$?"; done   # .sh twin
 ```
 
 ### Red-test the `no-meta-leak` gate [#6]
@@ -65,51 +61,57 @@ for d in dotnet angular monorepo; do bash scripts/validate-dist.sh "$d"; echo "e
 A gate you have never seen fail is not a gate. Plant a tracking id in a composed dist, confirm the
 check names the exact `file:line`, then restore:
 
-```bash
-echo 'WSD-999 planted' >> dist/dotnet/README.md
-bash scripts/validate-dist.sh dotnet; echo "exit=$?"   # MUST be 1, naming README.md and the pattern
-git checkout -- dist/dotnet/README.md
-bash scripts/validate-dist.sh dotnet; echo "exit=$?"   # back to 0
+```powershell
+$p = 'dist/dotnet/README.md'; $before = [IO.File]::ReadAllBytes($p)
+try {
+  [IO.File]::AppendAllText($p, "`nWSD-999 planted`n", [Text.UTF8Encoding]::new($false))
+  pwsh -NoProfile -File scripts/validate-dist.ps1 dotnet # MUST exit 1 and name README.md + pattern
+} finally { [IO.File]::WriteAllBytes($p, $before) }
+pwsh -NoProfile -File scripts/validate-dist.ps1 dotnet   # back to 0
 ```
 
 ### Red-test the `no-dead-instruction` gate (check 7)
 
 Check 6 proves shipped docs don't say the wrong *words*. Check 7 proves they don't give the wrong
-*commands*: every `pwsh`/`bash` script path in a shipped `.md` must exist, **resolved from the dist
+*commands*: every framework script path in a shipped `.md` must exist, **resolved from the dist
 root** (the framework documents every command as run from the repo root). `CHANGELOG.md` is skipped
 — release notes quote commands that *were* wrong in order to say they're fixed.
 
-It also reports its coverage: the current dists contain 88/84/96 scanned docs and 30/30/31 inline
-script references. Zero docs or zero extracted references is a failure. Absolute paths in docs remain
-out-of-scope placeholder examples (and are listed); this is deliberately unlike hook registrations.
-`ValidateDist.Tests.ps1` is the executable version of these red-test recipes.
+The extractor deliberately still recognizes retired `bash … .sh` commands. That is a diagnostic
+contract for protected consumer files, not a supported execution path.
 
-```bash
-sed -i 's|pwsh scripts/install.ps1|pwsh install.ps1|' dist/monorepo/README.md
-bash scripts/validate-dist.sh monorepo; echo "exit=$?"   # MUST be 1, naming README.md:14
-pwsh -NoProfile -File scripts/build.ps1 monorepo         # restore from src
+It also reports scanned-document and inline-reference counts. Zero docs or zero extracted references
+is a failure. Absolute paths in docs remain out-of-scope placeholder examples (and are listed); this
+is deliberately unlike hook registrations. `ValidateDist.Tests.ps1` is the executable version of
+these red-test recipes.
+
+```powershell
+$p = 'dist/monorepo/README.md'; $before = [IO.File]::ReadAllBytes($p)
+try {
+  $valid = 'pwsh -NoProfile -File scripts/' + 'install.ps1'
+  $invalid = 'pwsh -NoProfile -File ' + 'install.ps1'
+  $text = [IO.File]::ReadAllText($p).Replace($valid, $invalid)
+  [IO.File]::WriteAllText($p, $text, [Text.UTF8Encoding]::new($false))
+  pwsh -NoProfile -File scripts/validate-dist.ps1 monorepo # MUST exit 1, naming README.md
+} finally { [IO.File]::WriteAllBytes($p, $before) }
 ```
 
 ### Red-test the `hook-registration` gate (check 8)
 
-Check 7 covers commands a shipped **doc** gives a human. Check 8 covers the wiring the **host** acts
-on: every script named in `.claude/settings.json`, `.claude/settings.windows.json` and
-`.github/hooks/hooks.json` must exist in the dist, and so must its opposite-language twin [#3].
-26 registrations per dist. Work on a scratch copy — both twins take a dist-root argument, so you
-never have to mutate `dist/`:
+Check 7 covers commands a shipped **doc** gives a human. Check 8 covers wiring the **host** acts on.
+Each dist must contain exactly 18 registrations: six Claude PowerShell 7 commands in
+`.claude/settings.json`, six Windows PowerShell 5.1 commands in `.claude/settings.windows.json`, and
+six Copilot `powershell` commands explicitly invoking `pwsh`. Every registration is relative,
+case-exact, uses `-NoProfile -File`, resolves to a `.ps1`, and has the expected host selector.
 
-The derived shape is 6 + 6 + 14 registrations: settings.json 6, settings.windows.json 6, and seven
-Copilot entries with both bash and powershell legs. Registration targets may never be absolute;
-interpreter and `.ps1`/`.sh` suffix comparisons are case-insensitive. A deliberately single-leg
-Copilot entry requires updating this check on purpose. `ValidateDist.Tests.ps1` runs these recipes
-against real scratch copies.
-
-```bash
-S=$(mktemp -d)/dc; mkdir -p "$S"; cp -r dist/dotnet "$S/"
-rm "$S/dotnet/.claude/hooks/audit-trail.sh"                       # a half-shipped hook
-pwsh -NoProfile -File scripts/validate-dist.ps1 dotnet "$S"; echo "exit=$?"   # MUST be 1
-bash scripts/validate-dist.sh dotnet "$S"; echo "exit=$?"                     # MUST be 1, same text
-rm -rf "$(dirname "$S")"
+```powershell
+$parent = Join-Path ([IO.Path]::GetTempPath()) ('atl-validate-' + [guid]::NewGuid().ToString('N'))
+$copyRoot = Join-Path $parent 'dc'; New-Item -ItemType Directory $copyRoot | Out-Null
+try {
+  Copy-Item dist/dotnet (Join-Path $copyRoot 'dotnet') -Recurse
+  Remove-Item (Join-Path $copyRoot 'dotnet/.claude/hooks/audit-trail.ps1')
+  pwsh -NoProfile -File scripts/validate-dist.ps1 dotnet $copyRoot # MUST exit 1
+} finally { Remove-Item -LiteralPath $parent -Recurse -Force }
 ```
 
 ### Red-test the `step-references` gate (check 12)
@@ -118,49 +120,37 @@ Check 12 scans top-level ordered-list labels and numbered prose step references 
 commands and agents. It blanks fenced code before both scans, accepts runs starting at `0.` or `1.`,
 and resolves each prose reference against a list label or `Step N` heading in the same file.
 
-```bash
-S=$(mktemp -d)/dc; mkdir -p "$S"; cp -r dist/dotnet "$S/"
-printf '\n1. first\n3. planted\nSee step 1.\n' >> "$S/dotnet/.claude/skills/create-adr/SKILL.md"
-bash scripts/validate-dist.sh dotnet "$S" -Check step-references; echo "exit=$?" # MUST be 1, naming the run at 3
-rm -rf "$(dirname "$S")"
+```powershell
+$parent = Join-Path ([IO.Path]::GetTempPath()) ('atl-steps-' + [guid]::NewGuid().ToString('N'))
+$copyRoot = Join-Path $parent 'dc'; New-Item -ItemType Directory $copyRoot | Out-Null
+try {
+  Copy-Item dist/dotnet (Join-Path $copyRoot 'dotnet') -Recurse
+  Add-Content (Join-Path $copyRoot 'dotnet/.claude/skills/create-adr/SKILL.md') "`n1. first`n3. planted`nSee step 1."
+  pwsh -NoProfile -File scripts/validate-dist.ps1 dotnet $copyRoot -Check step-references # MUST exit 1
+} finally { Remove-Item -LiteralPath $parent -Recurse -Force }
 ```
 
-Two environment variables exist for `ValidateDist.Tests.ps1` and are **never set by `release.ps1` or
-CI**:
+One narrowing argument exists for focused diagnostics and is never used by `release.ps1` or CI:
 
 | Switch | Effect |
 |---|---|
-| `--content-only` (**argument**, both twins) | Skip checks 1–5 and run only 6, 7, 8 and 12. Prints a `NOTE:` line saying so — a partial run must never read as a full one. The suite's green anchors deliberately omit it, so the skipped group stays exercised on both legs. It is an **argument and not an environment variable on purpose**: an ambient switch that narrows a gate's scope can be inherited by a shell that never asked for it, and `release.ps1` sends validator output to a log where the `NOTE:` would go unread. |
-| `VALIDATE_DIST_JSON_TOOL=python3\|jq` (env, bash twin) | Pin the parser branch. Without it, whichever tool a box happens to have decides which branch is ever executed — which is how the two branches came to disagree. Naming an absent tool is FATAL, never a silent fallback: it cannot quietly downgrade a run. |
+| `--content-only` | Skip checks 1–5 and run only 6, 7, 8 and 12. It prints a `NOTE:` so a partial run cannot resemble a full run. The suite's green anchors deliberately omit it. |
 
-Run **both** legs: registrations are JSON-parsed. The bash branch frames each decoded value as
-base64 in a tab-delimited record and the regression suite deliberately runs and compares its jq and
-python3 streams when both are installed. A registration that names a missing script is a
-hook that silently never runs — no guard, no post-write feedback, no audit trail, and no error
-anyone reads. Check 8 deliberately does **not** reject a bare interpreter name; see the check's
-comment for why (v0.38.1).
-
-> **Hazard on this box:** `bash scripts/validate-dist.sh` exits FATAL at check 4 ("neither pwsh nor
-> powershell is available") because the session `PATH` is corrupted and PowerShell's install
-> directory is not visible to Git Bash. Prepend it before running the `.sh` leg:
-> `export PATH="/c/Program Files/PowerShell/7:$PATH"`.
-> That FATAL is a host problem, not a dist problem — see B-85.
+A registration naming a missing script is a hook that silently never runs. Check 8 deliberately
+does not reject a bare interpreter name as a generic rule; it instead enforces the exact supported
+host on each known registration surface.
 
 This is the gate that would have caught the v0.26.3 defect: `dist/monorepo`'s README told installing
-agents to run `pwsh install.ps1`, which exists nowhere in that dist. When you name a twin pair in
-prose, write it as `` `build.{ps1,sh}` `` — the shorthand `` `build.ps1/.sh` `` reads as a *path*
-and will trip the gate.
-
-Both twins must agree. If you add a pattern to `scripts/meta-denylist.txt`, red-test it the same
-way — and prefer a narrow `ALLOW <path-substring>` over weakening a `DENY` when a legitimate
-consumer-facing word trips the check.
+agents to run `pwsh install.ps1`, which exists nowhere in that dist. If you add a pattern to
+`scripts/meta-denylist.txt`, red-test it and prefer a narrow `ALLOW <path-substring>` over weakening
+a `DENY` when a legitimate consumer-facing word trips the check.
 
 ## Fidelity vs the frozen v0.25.5 baseline (manual re-audit only — no longer a CI gate)
 
 Strict EOL-normalized byte-compare of `dist/{dotnet,angular}` against the Phase-0 freeze tags
 (materialized from history — needs full clone depth). **Retired from CI at the v0.26.0 release**,
 which deliberately changed shipped content; the freeze tags are no longer a live baseline. The
-scripts remain for a manual re-audit against the `pre-restructure` tag (see CLAUDE.md → Migration
+script remains for a manual re-audit against the `pre-restructure` tag (see CLAUDE.md → Migration
 status note). `dist/monorepo` never had a baseline (new capability).
 
 ```powershell
@@ -171,8 +161,9 @@ pwsh -NoProfile -File scripts/fidelity-check.ps1 angular
 ## Run the hook test suites (automated — closes the "untested hook" gap [#5])
 
 Dependency-free PowerShell harness (**no Pester** — corporate boxes ship only Pester 3.x). Each
-test pipes a JSON event to a hook and asserts exit code + output shape; **twin** tests run the
-`.ps1` and the `.sh` on the same input and assert the *same decision*.
+test pipes a JSON event to a hook and asserts exit code + output shape. Aggregate runners reuse the
+current process executable, so a suite launched under Windows PowerShell 5.1 cannot silently relaunch
+its children under PowerShell 7.
 
 ```powershell
 # shipped suites — run against the DIST copies (what ships), one per dist
@@ -183,29 +174,6 @@ pwsh -NoProfile -File dist/monorepo/tests/hooks/Invoke-HookTests.ps1
 pwsh -NoProfile -File .claude/hooks/tests/Invoke-HookTests.ps1
 ```
 
-### Set `ATL_TEST_PYTHON` / `ATL_TEST_JQ` on this box, or you lose coverage silently
-
-Several cases need a **real** JSON parser to exercise the no-`jq` fallback the shipped `.sh` hooks
-depend on. They resolve one by execution over `python3`/`python`/`py` — and on this box **none of
-those resolve**, because the session `PATH` is the known corrupted one. Without help those cases take
-an invariant-guarding skip, which is honest but is *not* coverage:
-
-```powershell
-$env:ATL_TEST_PYTHON = 'C:\Python314\python.exe'   # a real python.org install (no python3.exe exists)
-$env:ATL_TEST_JQ     = '<home>\bin\jq.exe'
-```
-
-These are **environment variables on purpose**. The same values were first written as hardcoded
-fallbacks inside `src/core/tests/hooks/_HookHarness.ps1`, which composes into every dist — so a
-consumer would have received a test harness reaching for this machine's username. `no-meta-leak`
-does not catch that (see the backlog entry on machine-local paths); the review did. Keep host
-specifics in your shell, never in a shipped file.
-
-Skips from these cases are printed under an **`INVARIANT-GUARDING SKIPS`** heading in the suite
-summary rather than as an inline `[skip]` line, because a skip that scrolls past inside a green
-total reads as coverage — that is how a permanently-unexercised assertion hid a P1 for as long as it
-existed. If you see that heading, the run did **not** cover those branches.
-
 ### The behavioral gates (meta suite — auto-discovered, no wiring needed)
 
 Everything else in this repo is a **parser** gate: it proves the artifacts are well-formed, not that
@@ -215,16 +183,19 @@ parser gates (v0.26.3). These two cover what a parser cannot. Drop a new `*.Test
 
 | Gate | What it drives | The defect class it exists to catch |
 |------|----------------|--------------------------------------|
-| `InstallerContract.Tests.ps1` | **Runs the shipped installer** — 3 dists × greenfield/brownfield × `.ps1`/`.sh` = 12 real installs into temp targets — and asserts its **stdout** states the whole agent contract (commit the files; task NOT complete until handoff; don't hand-replicate `/bootstrap`\|`/adopt`; `docs-sync-check` is red by design). | A mode branch that quietly stops printing part of the contract. Greenfield had drifted weaker than brownfield and a real agent duly copied files and walked away without committing them. |
+| `InstallerContract.Tests.ps1` | **Runs the shipped PowerShell installer** for all three dists in greenfield and brownfield modes and asserts its **stdout** states the whole agent contract (commit the files; task NOT complete until handoff; don't hand-replicate `/bootstrap`\|`/adopt`; `docs-sync-check` is red by design). | A mode branch that quietly stops printing part of the contract. Greenfield had drifted weaker than brownfield and a real agent duly copied files and walked away without committing them. |
 | `DocTruth.Tests.ps1` | The **authoring** docs vs the repo that exists: one version stamp everywhere, README's claimed version == what's shipped, no phantom marker syntax, every `scripts/…` path in a root doc resolves, every script `ci.yml` invokes exists. | Docs that lie to the *maintainer* — which is how the next defect gets authored. A marker syntax that the composer has never implemented was documented in four files at once. |
 
 Red-test them the same way as any gate — plant the defect, watch it fail, restore:
 
-```bash
+```powershell
 # InstallerContract: regress greenfield to its pre-v0.26.3 wording
-sed -i 's|Do not attempt /bootstrap yourself or replicate it by hand.|Do not attempt /bootstrap yourself.|' dist/dotnet/scripts/install.sh dist/dotnet/scripts/install.ps1
-pwsh -NoProfile -File .claude/hooks/tests/InstallerContract.Tests.ps1   # MUST fail dotnet/greenfield on BOTH twins
-pwsh -NoProfile -File scripts/build.ps1 dotnet                          # restore from src
+$p = 'dist/dotnet/scripts/install.ps1'; $before = [IO.File]::ReadAllBytes($p)
+try {
+  $text = [IO.File]::ReadAllText($p).Replace('Do not attempt /bootstrap yourself or replicate it by hand.','Do not attempt /bootstrap yourself.')
+  [IO.File]::WriteAllText($p, $text, [Text.UTF8Encoding]::new($true))
+  pwsh -NoProfile -File .claude/hooks/tests/InstallerContract.Tests.ps1 # MUST fail dotnet/greenfield
+} finally { [IO.File]::WriteAllBytes($p, $before) }
 ```
 
 **What is still not covered by a gate:** whether the prose actually *steers* a model — that needs a
@@ -234,9 +205,9 @@ the gate gap, and not yet the Copilot host — see `meta/BACKLOG.md`): it is mai
 not automatic, and its results are a trend log, not a pass/fail release condition.
 
 - **Exit code = number of failing tests** (0 = green).
-- **`.sh` fidelity:** on Windows the harness drives `.sh` via Git's `bin\bash.exe` wrapper so
-  `cat`/`grep`/`jq` resolve; `.sh` tests self-skip when no bash is found (pure-Windows safe).
-- **Host:** prefers `pwsh` (7+); falls back to `powershell.exe` [#4 platform].
+- **Host:** the aggregate runner preserves the host that launched it. Run it directly under both
+  `pwsh` 7 and `powershell.exe` 5.1; each child prints and asserts its major version and the two
+  runs must report equal, non-zero case counts.
 
 ### Agent-host paths on this box — none of them resolve by bare name
 
@@ -257,16 +228,6 @@ directory for the child process.
 > Corollary: treat any 5.1-only failure here as `PATH`-suspect **before** diagnosing it as an
 > encoding bug (see B-130 — that was its original hypothesis, and it was wrong for this case).
 >
-> **That repair is for PowerShell ONLY. Never prepend `C:\Windows\System32` inside Git Bash** —
-> Windows ships `find.exe`, `sort.exe` and friends there, so prepending shadows the GNU coreutils
-> every `.sh` gate depends on. Measured 2026-08-17: with it prepended, `which find` resolves to
-> `/c/Windows/System32/find`, and `find … -type f -name '*.md'` answers
-> `FIND: Parameter format not correct` — so `validate-dist.sh`'s step-reference scan saw **zero
-> files** and failed, a broken shell wearing the costume of a broken dist. In bash add only the
-> PowerShell directory: `export PATH="/c/Program Files/PowerShell/7:$PATH"`.
-> That failure was loud only because the check carries a zero-files guard. Without one it would have
-> been a silent green over an empty scan — which is the argument for those guards in one sentence.
-
 > **When PowerShell 7 launches Windows PowerShell 5.1 through an intermediate `cmd.exe`, remove
 > `PSModulePath` from that child environment.** PowerShell 7 corrects module paths when it starts
 > `powershell.exe` directly, but the intermediate process inherits and forwards PowerShell 7's
@@ -293,15 +254,11 @@ directory for the child process.
 
 Each fails differently and none of the errors names `PATH`, which is why this table exists:
 
-- `pwsh` from Git Bash → `No such file or directory`.
 - `claude` → the harness's own `claude CLI is not installed or not on PATH` (accurate, but reads as
   "install it").
 - **`copilot` → `'"node"' is not recognized`** — the npm shim shells out to `node`, so Copilot looks
   broken when the real gap is `C:\Program Files\nodejs`. Prepend **both** the nodejs directory and
   the npm directory before invoking Copilot.
-
-Also beware `cmd 2>&1 | tail -n` in Bash: `$?` then reports `tail`'s status, so a total failure
-prints `EXIT=0`. Capture the exit code before the pipe.
 
 ### The live agent-behavior harness (B-41 — maintainer-triggered, spends budget, not a gate)
 
@@ -335,17 +292,14 @@ persists its evidence in a follow-up commit.
 - **Speed:** slow by design — a process is spawned per hook invocation; a full dist suite takes
   ~1–2 min. Expected, not a hang.
 
-**CI** — `.github/workflows/ci.yml` runs compose→freshness→validate→hook suites on every
-push/PR (windows leg rebuilds with the `.ps1` composer, linux leg with the `.sh` twin — composer
-twin divergence fails a leg), plus the meta suite. Fidelity is **not** a CI step (see above).
+**CI** — `.github/workflows/ci.yml` runs compose→freshness→validate→hook suites on every push/PR.
+The required topology is eight native Windows contexts: `windows`, three `windows-hooks` matrix
+contexts, `windows-ps51`, and three `windows-hooks-ps51` matrix contexts. Fidelity is not a CI step.
 
 Manual one-off (debugging a single hook) — pipe a fixture straight in:
 
 ```powershell
 (Get-Content .claude/hooks/_fixtures/write-bomless-ps1.json -Raw) | pwsh -NoProfile -File .claude/hooks/bom-fix.ps1
-```
-```bash
-bash -n dist/dotnet/.claude/hooks/guard.sh   # bash twin syntax only
 ```
 
 ## Check PowerShell syntax (repo-wide)
@@ -375,18 +329,17 @@ Get-ChildItem -Recurse -Filter *.ps1 -Path src,dist,scripts,.claude | ForEach-Ob
 snippet or stack whole-file that has a monorepo sibling does NOT reach `dist/monorepo` — review
 and update the sibling in the same task.** Core edits, one-sided snippets, and the 5
 concat-derived markers flow to all three dists automatically.
-Two verification rules from the Phase-4 traps (see `LEARNINGS.md` 2026-07-10): judge
-additive-safety **per twin** (a `.sh` line that unions by concatenation can be an overwriting
-assignment in the `.ps1`), and sweep agent-authored artifacts for tool-syntax leakage
-(`grep -rn '</content>\|</invoke>' src/`) before committing.
+Also sweep agent-authored artifacts for tool-syntax leakage before committing:
+`rg -n '</content>|</invoke>' src`.
 
 ## Install smoke test [Definition of done]
 
-```bash
-rm -rf /c/temp/install-smoke-green && mkdir -p /c/temp/install-smoke-green
-printf '<Project />\n' > /c/temp/install-smoke-green/Smoke.csproj
-bash install.sh /c/temp/install-smoke-green            # root installer: detects dotnet from repository evidence
-bash dist/dotnet/scripts/install.sh /c/temp/install-smoke-green   # or a dist installer directly
+```powershell
+$target = Join-Path ([IO.Path]::GetTempPath()) ('atl-install-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory $target | Out-Null
+[IO.File]::WriteAllText((Join-Path $target 'Smoke.csproj'), '<Project />', [Text.UTF8Encoding]::new($false))
+pwsh -NoProfile -File install.ps1 $target                         # root auto-detects dotnet
+pwsh -NoProfile -File dist/dotnet/scripts/install.ps1 $target     # or invoke a dist installer
 # brownfield: pre-seed a colliding file, then install into the same kind of dir
 # monorepo detection: combine .NET with Angular evidence (angular.json, exact-case "@angular/core" JSON property,
 # or Angular Nx/project evidence), or combine Angular evidence with >=2 warehouse signal categories
@@ -418,7 +371,7 @@ the clean rerun, environment, and gaps for `-ReviewEvidence`.
 When shipped behavior changed [#7] — **automated**; the manual checklist this replaces shipped
 stamp drift twice:
 
-1. Author the release: make the change in `src/` (+ twins [#3] + monorepo siblings [#1]), write a
+1. Author the release: make the change in `src/` (+ monorepo siblings [#1]), write a
    `## <version>` entry in the **root** `CHANGELOG.md` (update the shipped changelog content in
    `src/` too if the notes should reach consumers).
 2. Have a reviewer who did not participate in implementation use a **separate session**. Starting
@@ -426,7 +379,7 @@ stamp drift twice:
    model/agent, blind-first threat model, one release-specific hostile case or mutation observed
    red, the clean rerun, environment, and gaps (CLAUDE.md → Maintenance model #2/#3). Add an
    orthogonal reviewer or execution vantage for data-loss, security-bypass, or false-green changes.
-3. Run `pwsh -NoProfile -File .claude/scripts/release.ps1 -Version <v> -Summary "<one line>"
+3. From PowerShell 7, run `pwsh -NoProfile -File .claude/scripts/release.ps1 -Version <v> -Summary "<one line>"
    -ReviewEvidence "contract <path/hash>; range <commits>; reviewer <agent/model>; independence
    <no implementation participation; blind-first>; hostile <case> RED; clean <command> EXIT=0;
    environment/gaps <facts>; implementer <who>"`.
@@ -434,10 +387,8 @@ stamp drift twice:
     dists, runs local gates (freshness, validate-dist ×3 plus the footprint update, and the full
     root meta suite on its default throttled runner), **refuses to commit on any failure**, appends
     the review row to `meta/review-ledger.md`, then commits to `master`, pushes, **waits for CI**,
-    and tags. No shipped dist hook suite runs locally: a normal tag requires CI's full dotnet,
-    angular, and monorepo hook matrices on both Windows and Linux. The rejected sequential
-    representative took 924.1s for 20 green files (dist-gates 1004.0s), so no final speedup is
-    claimed. `-NoPush` for a dry-ish run.
+    and tags. A normal tag requires all eight Windows CI contexts, including direct PowerShell 7
+    and Windows PowerShell 5.1 runs. `-NoPush` provides a dry-ish run.
 
    It **refuses to start** without either `-ReviewEvidence` or `-NoIndependentReview`. The latter
    is allowed — sometimes qualifying evidence is unavailable — but never silent: it records
@@ -491,24 +442,20 @@ pwsh -NoProfile -File .claude/scripts/watch-ci.ps1 -Sha <sha>   # 0 green / 1 re
 directly to master by decision (B-53: releasing on a branch destroyed v0.34.0's release commit), so a
 red release is detected and left untagged, not stopped.
 
-**Cross-leg test evidence (B-70) is a rule, not a watcher.** The watch above tells you *that* CI went
-red; it cannot tell you a new test case was ever *reached* on the leg that matters. CI runs the `.ps1`
-twin on Windows and the `.sh` twin on Linux, so a case authored on this box is proven on one leg and
-assumed on the other — and where your environment cannot execute a leg at all (codex's sandbox has no
-working `bash`; Git Bash here needs an absolute PowerShell path), that leg has **no** evidence, not
-weak evidence. The Definition of done in `CLAUDE.md` therefore requires any test-carrying change to be
-demonstrated *running* on every leg that will execute it, and treats the first green CI run as part of
-the change rather than a post-hoc check. Run the bash twin yourself before reviewing such a diff.
+**Cross-host test evidence (B-70) is a rule, not a watcher.** The watch tells you *that* CI went red;
+it cannot tell you a new case was reached under both PowerShell hosts. Any test-carrying change must
+be observed under native PowerShell 7 and native Windows PowerShell 5.1 with equal, non-zero case
+counts. The aggregate runners preserve their caller executable; a 5.1 run may not delegate to 7.
 
 **Do not run the gate suites while an implementer session is editing the tree.** A hook suite once
 raced a concurrent run's writes and produced a transient failure that cost a diagnosis cycle. The
 suites read the working tree directly; they assume it is still.
 
-**Do not pipe a gate, release, or push command into `tail`/`head`/`grep` and then read its exit
-code.** A shell pipeline reports the *last* stage's status, so the real exit code is discarded and
+**Do not pipe a gate, release, or push command into an output filter and then read its exit
+code.** A pipeline reports the *last* stage's status, so the real exit code is discarded and
 every one of these scripts' carefully-designed non-zero contracts (`watch-ci.ps1`'s 0/1/3,
 `push-and-check.ps1`'s propagation of it, `release.ps1`'s refusals) silently reads as success.
-Observed 2026-08-16: `pwsh -NoProfile -File .claude/scripts/push-and-check.ps1 … | tail -4` was run
+Observed 2026-08-16: a push wrapper was piped into a last-lines filter and run
 from the wrong working directory, so `pwsh` never found the script and exited **64** — but the
 pipeline reported **0** and the push was very nearly recorded as done with `master` still unpushed.
 Note the second trap stacked on the first: a *relative* script path resolves against the caller's

@@ -1,7 +1,7 @@
 ---
 name: test-critic
 description: Read-only integrity audit of in-scope tests/specs, using profile guidance only when evidenced. Finds tests that survive broken code, weak assertions, over-mocking, coupling, and nondeterminism; used by `/review`.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, PowerShell
 model: inherit
 ---
 

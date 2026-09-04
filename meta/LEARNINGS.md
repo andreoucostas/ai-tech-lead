@@ -2067,3 +2067,30 @@ alone. Cumulative known hashes safely remove only prior-owned stock files; every
 priority legacy path needs a durable, path-specific migration warning independent of deletion
 authority. Otherwise a modified mirror or old sync script can keep shadowing or recreate the
 retired surface indefinitely while later updates appear clean.
+
+## 2026-09-04 — A direct host label is not direct-host evidence
+
+The Windows PowerShell aggregate previously selected `pwsh` for its children, so a native 5.1
+parent could report a fully green run whose semantic work happened on PowerShell 7. Fixing the
+launcher was still insufficient until every boundary asserted the exact process executable and the
+two hosts emitted byte-identical, nonzero case manifests. Counting discovered tests or including
+skips in the total would have preserved the false green under a different name.
+
+Host preservation also applies to subprocess details that look unrelated to compatibility. A
+historical Git-blob helper inherited ambient working directory, an untyped negative loop bound
+expanded differently in 5.1, and a successful installer inherited a stale native exit code until
+it exited explicitly. Dual-host evidence must therefore cover semantic cardinality and process
+state, not merely parser success or a parent-version banner.
+
+## 2026-09-04 — Retirement needs two durable authorities: ownership and diagnosis
+
+Deleting a known historical byte is safe only when the immediately previous manifest owns that
+exact, case-sensitive path and the current content matches a released path-specific digest. That
+authority cannot extend to a consumer Git hook merely because its text resembles an old generated
+hook. Such a hook and the helper closure it references must remain untouched, while a permanent
+doctor row and later-update residual scan keep the degraded state visible after the retired paths
+leave the active ownership manifest.
+
+The same distinction applies to protected documentation and CI: an obsolete Bash command can be
+diagnosed precisely without granting the installer permission to rewrite consumer content.
+`-WhatIf` parity is therefore a classification contract, not only a preview convenience.

@@ -1,4 +1,4 @@
-﻿# B-59 executable red-test: prove each guard twin makes the suite fail when a regex becomes inert,
+﻿# B-59 executable red-test: prove the PowerShell guard makes the suite fail when a regex becomes inert,
 # and prove both runtime policies (secret fail-closed; test-defeat/suppression warn + allow).
 . (Join-Path $PSScriptRoot '..\..\..\src\core\tests\hooks\_HookHarness.ps1')
 . (Join-Path $PSScriptRoot '_MutationHelper.ps1')
@@ -6,14 +6,12 @@
 $sourceRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\src\core')).Path
 $cases = @(
     @{ Name = 'PowerShell secret pattern'; File = '.claude\hooks\guard.ps1'; Find = "Test-GuardPattern '-----BEGIN [A-Z ]*PRIVATE KEY-----' 'secret'"; Replace = "Test-GuardPattern '[' 'secret'"; Policy = 'secret' }
-    @{ Name = 'shell secret pattern';      File = '.claude\hooks\guard.sh';  Find = "matches '-----BEGIN [A-Z ]*PRIVATE KEY-----' 'secret'"; Replace = "matches '[' 'secret'"; Policy = 'secret' }
     @{ Name = 'PowerShell suppression pattern'; File = '.claude\hooks\guard.ps1'; Find = "Test-GuardPattern '#pragma\s+warning\s+disable' 'test-defeat/suppression'"; Replace = "Test-GuardPattern '[' 'test-defeat/suppression'"; Policy = 'test-defeat/suppression' }
-    @{ Name = 'shell suppression pattern';      File = '.claude\hooks\guard.sh';  Find = "matches '#pragma[[:space:]]+warning[[:space:]]+disable' 'test-defeat/suppression'"; Replace = "matches '[' 'test-defeat/suppression'"; Policy = 'test-defeat/suppression' }
 )
 
 # PARALLELISED 2026-08-19, because this file WAS the meta suite: measured 651.1s of a 677.6s
 # parallel wall clock (96%) -- every other file, ValidateDist included, finished inside its shadow.
-# The four cases are independent BY CONSTRUCTION, not by luck: Invoke-MutationRedTest copies the
+# The two cases are independent BY CONSTRUCTION, not by luck: Invoke-MutationRedTest copies the
 # subject tree into its own `mutation-helper-<guid>` scratch parent per invocation and removes it in
 # a finally, so no two cases share a path, a file, or any state. They were serial only because of a
 # foreach.
@@ -66,7 +64,7 @@ try {
                         # full suite necessarily goes red; this reduces spawns without weakening the
                         # claim. Guard.Tests rejects a filter that selects no cases, loudly.
                         $env:GUARD_TEST_POLICY = $case.Policy
-                        & pwsh -NoProfile -File $suite
+                        & (Get-PsExe) -NoProfile -File $suite
                         $suiteExit = $LASTEXITCODE
                         if ($suiteExit -eq 0) { throw 'mutated Guard.Tests suite stayed green' }
                         # 111 means the policy filter selected NO cases, so the suite proved nothing.
@@ -121,6 +119,7 @@ try {
     }
 }
 
+if ($global:AtlEmitCaseCount) { Write-Host ("CASE_COUNT {0}" -f $cases.Count) }
 if ($failed -eq 0) { Write-Host "GuardPatternErrors.Tests: $($cases.Count) passed, 0 failed" }
 else { [Console]::Error.WriteLine("GuardPatternErrors.Tests: $($cases.Count - $failed) passed, $failed failed") }
 exit ([int]($failed -gt 0))

@@ -14,7 +14,6 @@
 . (Join-Path $PSScriptRoot '_HookHarness.ps1')
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $rootDocs = @('README.md', 'CLAUDE.md', 'AGENTS.md', 'DEVELOPING.md')
-$docTruthSuitePath = $MyInvocation.MyCommand.Path
 
 Reset-Tests
 
@@ -258,24 +257,18 @@ It 'root delivery fact helper rejects brittle counts, omitted legal paths, and n
     Assert (@(Get-RootDeliveryFactViolations $good $pointers $pointers $paths $missingDelivery).Count -gt 0) 'missing physical licence fixture was accepted'
 }
 
-# The 5.1 arm. Both defects this guards against (a `-Include` that does not filter, a BOM-less file
-# decoded against the system codepage) are INVISIBLE under pwsh 7, which is how they survived to
-# v0.58.0 while this suite reported 8/8. Re-running the whole suite under the other host is the only
-# measure that sees them.
-#
-# It reports SKIP, never a pass, when it cannot actually run 5.1 -- under 5.1 itself (where it would
-# recurse) and on a host without powershell.exe. An arm that verified nothing must not be
-# indistinguishable from one that verified something: that is B-71's class, and reporting a
-# not-run leg as [ok] is the stronger form of it.
-$windowsPowerShell = if ($env:SystemRoot) { Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe' } else { $null }
-if ($PSVersionTable.PSEdition -ne 'Core') {
-    Skip 'the suite also passes under Windows PowerShell 5.1' 'already running under Windows PowerShell; the pwsh 7 run drives this arm'
-} elseif (-not $windowsPowerShell -or -not (Test-Path -LiteralPath $windowsPowerShell)) {
-    Skip 'the suite also passes under Windows PowerShell 5.1' 'no powershell.exe on this host -- NOT a pass; the 5.1 leg was not exercised'
-} else {
-    It 'the suite also passes under Windows PowerShell 5.1' {
-        & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File $docTruthSuitePath *> $null
-        Assert ($LASTEXITCODE -eq 0) "Windows PowerShell 5.1 DocTruth run failed with exit $LASTEXITCODE"
+# CI and the aggregate runner invoke this complete suite directly under both supported hosts. Keep
+# this case host-local: a PS7 parent relaunching the suite under 5.1 made the PS7 manifest count a
+# case that the direct 5.1 run could only skip, defeating equal/nonzero cardinality.
+It 'the suite executes under the directly selected supported PowerShell host' {
+    $hostLeaf = [IO.Path]::GetFileName((Get-Process -Id $PID).Path)
+    if ($PSVersionTable.PSEdition -eq 'Core') {
+        Assert ($PSVersionTable.PSVersion.Major -ge 7 -and $hostLeaf -match '^pwsh(?:\.exe)?$') `
+            "expected direct PowerShell 7, observed $hostLeaf $($PSVersionTable.PSVersion)"
+    } else {
+        Assert ($PSVersionTable.PSEdition -eq 'Desktop' -and $PSVersionTable.PSVersion.Major -eq 5 -and
+            $PSVersionTable.PSVersion.Minor -eq 1 -and $hostLeaf -match '^powershell(?:\.exe)?$') `
+            "expected direct Windows PowerShell 5.1, observed $hostLeaf $($PSVersionTable.PSVersion)"
     }
 }
 

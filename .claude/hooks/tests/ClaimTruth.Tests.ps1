@@ -7,15 +7,15 @@ param([ValidateSet('', 'absolute', 'regulatory', 'backstop')][string]$RedTest = 
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $activePaths = @(
     'README.md', 'CLAUDE.md', 'AGENTS.md',
-    'install.ps1', 'install.sh',
+    'install.ps1',
     'src/core/docs/enforcement-surfaces.md',
     'src/core/docs/presentation/TALKING-POINTS.md',
     'src/core/docs/presentation/framework-briefing.html',
     'src/core/docs/presentation/framework-technical.html',
     'src/core/docs/presentation/framework-system-map.html',
-    'src/core/.claude/hooks/audit-trail.ps1', 'src/core/.claude/hooks/audit-trail.sh',
-    'src/core/scripts/framework-doctor.ps1', 'src/core/scripts/framework-doctor.sh',
-    'src/core/scripts/install.ps1', 'src/core/scripts/install.sh',
+    'src/core/.claude/hooks/audit-trail.ps1',
+    'src/core/scripts/framework-doctor.ps1',
+    'src/core/scripts/install.ps1',
     'src/core/.github/instructions/framework-rules.instructions.md',
     'src/stacks/dotnet/files/README.md', 'src/stacks/angular/files/README.md', 'src/stacks/monorepo/files/README.md',
     'src/stacks/dotnet/files/AGENTS.md', 'src/stacks/angular/files/AGENTS.md', 'src/stacks/monorepo/files/AGENTS.md',
@@ -26,9 +26,9 @@ $activePaths = @(
     'src/stacks/dotnet/files/docs/ARCHITECTURE.md', 'src/stacks/angular/files/docs/ARCHITECTURE.md', 'src/stacks/monorepo/files/docs/ARCHITECTURE.md',
     'src/stacks/dotnet/files/docs/architecture.html', 'src/stacks/angular/files/docs/architecture.html', 'src/stacks/monorepo/files/docs/architecture.html',
     'src/stacks/dotnet/files/docs/REVIEW-GUIDE.md', 'src/stacks/angular/files/docs/REVIEW-GUIDE.md', 'src/stacks/monorepo/files/docs/REVIEW-GUIDE.md',
-    'src/stacks/dotnet/files/scripts/metrics.ps1', 'src/stacks/dotnet/files/scripts/metrics.sh',
-    'src/stacks/angular/files/scripts/metrics.ps1', 'src/stacks/angular/files/scripts/metrics.sh',
-    'src/stacks/monorepo/files/scripts/metrics.ps1', 'src/stacks/monorepo/files/scripts/metrics.sh'
+    'src/stacks/dotnet/files/scripts/metrics.ps1',
+    'src/stacks/angular/files/scripts/metrics.ps1',
+    'src/stacks/monorepo/files/scripts/metrics.ps1'
 )
 $rules = @(
     [pscustomobject]@{ Name = 'absolute write guarantee'; Pattern = '(?i)literally cannot(?:\s+write)?|hard-blocks\s+any\s+write|every\s+AI-assisted(?:\s+file)?\s+(?:change|write)|audit[- ]trail.{0,120}\bappends?\s+AI\s+file[- ]changes' },

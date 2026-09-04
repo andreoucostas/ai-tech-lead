@@ -1,5 +1,5 @@
 ﻿# Push a branch and, when that branch has a CI push trigger, watch the resulting run (B-137).
-# Maintainer-only, does NOT ship. PowerShell-only by the existing .claude/scripts decision.
+# Maintainer-only, does NOT ship. It is part of the Windows/PowerShell-only maintainer topology.
 #
 # Usage: pwsh -NoProfile -File .claude/scripts/push-and-check.ps1 [-Branch <branch>]
 #              [-WatchedBranches master] [-TimeoutSeconds 1200] [-AppearSeconds 180]
@@ -97,6 +97,16 @@ if (-not $Branch) {
         exit $(if ($current.Exit) { $current.Exit } else { 2 })
     }
     $Branch = $current.Out.Trim()
+}
+
+$outgoingCheck = Join-Path $PSScriptRoot 'check-outgoing-commits.ps1'
+Write-Line 'Checking commits that are not yet present on origin...'
+& (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File $outgoingCheck `
+    -RepoRoot $RepoRoot -Remote origin -Revision $Branch -GitPath $git
+$outgoingExit = $LASTEXITCODE
+if ($outgoingExit -ne 0) {
+    Write-Line "PUSH REFUSED: outgoing-commit check exited $outgoingExit."
+    exit $outgoingExit
 }
 
 $push = Invoke-GitCaptured -GitArgs @('-C', $RepoRoot, 'push', 'origin', $Branch) -Live

@@ -1,4 +1,4 @@
-﻿# ai-tech-lead composer (PowerShell twin of build.sh). Composes src/ -> dist/<mode>.
+﻿# ai-tech-lead PowerShell composer. Composes src/ -> dist/<mode>.
 # Modes: dotnet, angular, monorepo. Deterministic LF output.
 #
 # Mechanism (kept dumb -- copy + marker substitution + file overlay, nothing else):
@@ -93,6 +93,22 @@ function Strip-CR {
     return $Line
 }
 
+# Query Git without letting Windows PowerShell 5.1 turn expected native stderr into a terminating
+# ErrorRecord under the script-wide Stop preference. These calls are optional history discovery:
+# their exit code and stdout are data, while stderr is intentionally suppressed on both hosts.
+function Invoke-GitQuery {
+    param([Parameter(Mandatory)][string[]]$Arguments)
+    $savedErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        $output = @(& git @Arguments 2>$null)
+        $exitCode = [int]$LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $savedErrorActionPreference
+    }
+    return [pscustomobject]@{ Output = $output; Exit = $exitCode }
+}
+
 # Mirrors awk's emit_snip: each snippet line is CR-stripped and becomes one output record,
 # regardless of whether the snippet file itself ends with a trailing newline.
 function Get-SnippetLines {
@@ -108,7 +124,7 @@ function Get-SnippetLines {
 
 # Resolve what a marker expands to. Single-stack: that stack's snippet (or nothing).
 # monorepo: the authored monorepo snippet if present, else dotnet then angular concatenated
-# (union semantics; either may be absent). Mirrors build.sh's emit_marker().
+# (union semantics; either may be absent).
 function Get-MarkerLines {
     param([string]$Rel, [string]$Name)
     if ($Mode -eq 'monorepo') {
@@ -217,8 +233,9 @@ if (Test-Path -LiteralPath $previousLedgerPath -PathType Leaf) {
 # HEAD and the nearest release tag so later releases retain committed history too. Merely being
 # nested beneath some unrelated worktree must not make an unpacked source archive consult that repo.
 if (Get-Command git -ErrorAction SilentlyContinue) {
-    $gitTopLevel = @(& git rev-parse --show-toplevel 2>$null)
-    $gitTopLevelExit = $LASTEXITCODE
+    $gitTopLevelQuery = Invoke-GitQuery -Arguments @('rev-parse', '--show-toplevel')
+    $gitTopLevel = @($gitTopLevelQuery.Output)
+    $gitTopLevelExit = $gitTopLevelQuery.Exit
     $composerRoot = [IO.Path]::GetFullPath((Get-Location).Path).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
     $gitRoot = if ($gitTopLevelExit -eq 0 -and $gitTopLevel.Count -eq 1 -and $gitTopLevel[0]) {
         [IO.Path]::GetFullPath([string]$gitTopLevel[0]).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
@@ -226,12 +243,14 @@ if (Get-Command git -ErrorAction SilentlyContinue) {
     if ($gitRoot -and [StringComparer]::OrdinalIgnoreCase.Equals($gitRoot, $composerRoot)) {
         $baselineRefs = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
         [void]$baselineRefs.Add('HEAD')
-        $nearestTag = @(& git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD 2>$null)
-        $nearestTagExit = $LASTEXITCODE
+        $nearestTagQuery = Invoke-GitQuery -Arguments @('describe', '--tags', '--abbrev=0', '--match', 'v[0-9]*', 'HEAD')
+        $nearestTag = @($nearestTagQuery.Output)
+        $nearestTagExit = $nearestTagQuery.Exit
         if ($nearestTagExit -eq 0 -and $nearestTag.Count -eq 1 -and $nearestTag[0]) { [void]$baselineRefs.Add([string]$nearestTag[0]) }
         foreach ($ref in $baselineRefs) {
-            $ledgerLines = @(& git show "${ref}:src/core/framework-retirements.json" 2>$null)
-            if ($LASTEXITCODE -ne 0) { continue }
+            $ledgerQuery = Invoke-GitQuery -Arguments @('show', "${ref}:src/core/framework-retirements.json")
+            $ledgerLines = @($ledgerQuery.Output)
+            if ($ledgerQuery.Exit -ne 0) { continue }
             try {
                 $document = (($ledgerLines -join "`n") + "`n") | ConvertFrom-Json
                 foreach ($entry in (Get-ValidatedRetirements -Document $document -Label "$ref`:src/core/framework-retirements.json")) { $retirementBaselines.Add($entry) }
@@ -292,8 +311,7 @@ foreach ($FILES in $OVERLAYS) {
 }
 
 # 3. Generate the installed-path ownership manifest. The path inventory comes from the composed
-# dist; installer policy is read from both twins so changing either installer cannot silently make
-# the manifest describe behavior that the other twin does not implement.
+# dist; install.ps1 is the sole supported installer and therefore the sole ownership-policy source.
 function Get-SingleQuotedValues {
     param([string]$Text)
     $values = New-Object System.Collections.Generic.List[string]
@@ -302,36 +320,61 @@ function Get-SingleQuotedValues {
 }
 
 $psInstaller = (Read-TextFile (Join-Path $DIST 'scripts/install.ps1')).Text
-$shInstaller = (Read-TextFile (Join-Path $DIST 'scripts/install.sh')).Text
 $psProtectedMatch = [regex]::Match($psInstaller, '(?ms)^\$protected\s*=\s*@\((.*?)\)')
 $psPersistentMatch = [regex]::Match($psInstaller, '(?ms)^\$persistentCopyIfAbsent\s*=\s*@\((.*?)\)')
 $psMetaMatch = [regex]::Match($psInstaller, '(?m)^\$metaFiles\s*=\s*@\(([^\r\n]+)\)')
-$shProtectedMatch = [regex]::Match($shInstaller, '(?m)^protected="([^"]+)"')
-$shPersistentMatch = [regex]::Match($shInstaller, '(?m)^persistent_copy_if_absent="([^"]+)"')
-if (-not $psProtectedMatch.Success -or -not $psPersistentMatch.Success -or -not $psMetaMatch.Success -or -not $shProtectedMatch.Success -or -not $shPersistentMatch.Success) {
-    [Console]::Error.WriteLine('ERROR: ownership manifest could not read protected/persistent/meta policy from both installers')
+$psExcludedMatch = [regex]::Match($psInstaller, '(?ms)^\$excludedFromInstall\s*=\s*@\((.*?)\)')
+if (-not $psProtectedMatch.Success -or -not $psPersistentMatch.Success -or -not $psMetaMatch.Success -or
+    -not $psExcludedMatch.Success) {
+    [Console]::Error.WriteLine('ERROR: ownership manifest could not read protected/persistent/excluded/meta policy from install.ps1')
     exit 1
 }
 $psProtected = @(Get-SingleQuotedValues $psProtectedMatch.Groups[1].Value)
 $psPersistent = @(Get-SingleQuotedValues $psPersistentMatch.Groups[1].Value)
 $psMeta = @(Get-SingleQuotedValues $psMetaMatch.Groups[1].Value)
-$shProtected = @($shProtectedMatch.Groups[1].Value -split ' ' | Where-Object { $_ })
-$shPersistent = @($shPersistentMatch.Groups[1].Value -split ' ' | Where-Object { $_ })
-$policyProblems = New-Object System.Collections.Generic.List[string]
-foreach ($p in $psProtected) { if ($p -notin $shProtected) { $policyProblems.Add("consumer-owned/protected in install.ps1 but not install.sh: $p") } }
-foreach ($p in $shProtected) { if ($p -notin $psProtected) { $policyProblems.Add("consumer-owned/protected in install.sh but not install.ps1: $p") } }
-foreach ($p in $psPersistent) { if ($p -notin $shPersistent) { $policyProblems.Add("persistent/copy-if-absent in install.ps1 but not install.sh: $p") } }
-foreach ($p in $shPersistent) { if ($p -notin $psPersistent) { $policyProblems.Add("persistent/copy-if-absent in install.sh but not install.ps1: $p") } }
-foreach ($p in $psMeta) {
-    if ($shInstaller -notmatch [regex]::Escape($p)) { $policyProblems.Add("excluded by install.ps1 but not install.sh: $p") }
+$psExcluded = @(Get-SingleQuotedValues $psExcludedMatch.Groups[1].Value)
+
+# These explicit pins replace the retired Bash differential oracle. install.ps1 remains the
+# executable authority, but a policy edit must be deliberate in both the installer and composer
+# contract rather than silently changing ownership classification in every generated dist.
+$expectedProtected = @(
+    'CLAUDE.md', 'AGENTS.md', 'TECH_DEBT.md', 'SECURITY_FINDINGS.md', 'LEARNINGS.md',
+    'FRAMEWORK-CONTEXT.md', '.github/copilot-instructions.md', 'docs/ARCHITECTURE.md',
+    'docs/architecture-decisions.md', 'docs/wiki/INDEX.md', 'LICENSES/ai-tech-lead-MIT.txt'
+)
+$expectedPersistent = @('.claude/ai-audit.log')
+$expectedMetadata = @('.git', '.template-repo', 'README.md', 'CHANGELOG.md', '.gitignore', '.gitattributes')
+$expectedExcluded = @($expectedMetadata + @('scripts/install.ps1', '.github/workflows/template-ci.yml'))
+
+function Add-PolicySetProblems {
+    param(
+        [string]$Name,
+        [string[]]$Actual,
+        [string[]]$Expected,
+        [System.Collections.Generic.List[string]]$Problems
+    )
+    $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    foreach ($value in $Actual) {
+        if (-not $seen.Add($value)) { $Problems.Add("$Name contains duplicate path: $value") }
+        if (-not ($Expected -ccontains $value)) { $Problems.Add("$Name contains unexpected path: $value") }
+    }
+    foreach ($value in $Expected) {
+        if (-not ($Actual -ccontains $value)) { $Problems.Add("$Name is missing expected path: $value") }
+    }
 }
+
+$notInstalled = $psExcluded
+$policyProblems = New-Object System.Collections.Generic.List[string]
+Add-PolicySetProblems -Name 'install.ps1 protected policy' -Actual $psProtected -Expected $expectedProtected -Problems $policyProblems
+Add-PolicySetProblems -Name 'install.ps1 persistent policy' -Actual $psPersistent -Expected $expectedPersistent -Problems $policyProblems
+Add-PolicySetProblems -Name 'install.ps1 metadata policy' -Actual $psMeta -Expected $expectedMetadata -Problems $policyProblems
+Add-PolicySetProblems -Name 'install.ps1 exclusion policy' -Actual $psExcluded -Expected $expectedExcluded -Problems $policyProblems
 if ($policyProblems.Count -gt 0) {
-    foreach ($problem in $policyProblems) { [Console]::Error.WriteLine("ERROR: ownership policy disagreement: $problem") }
+    foreach ($problem in $policyProblems) { [Console]::Error.WriteLine("ERROR: ownership policy drift: $problem") }
     exit 1
 }
 
-$notInstalled = @($psMeta + @('scripts/install.ps1', 'scripts/install.sh', '.github/workflows/template-ci.yml'))
-$extraProtected = @('docs/wiki/INDEX.md', 'LICENSES/ai-tech-lead-MIT.txt') + $psPersistent
+$extraProtected = $psPersistent
 $manifestPath = Join-Path $DIST 'framework-ownership.json'
 $paths = New-Object System.Collections.Generic.List[object]
 foreach ($rel in @((Get-RelativeFiles $DIST) | Sort-Object)) {
@@ -347,11 +390,9 @@ foreach ($rel in @((Get-RelativeFiles $DIST) | Sort-Object)) {
 }
 $paths.Add([ordered]@{ path = 'framework-ownership.json'; ownership = 'framework-owned/overwritten' })
 # Ordinal, not culture-aware. PowerShell's default Sort-Object is case-insensitive and
-# culture-sensitive while `sort` in the .sh twin collates by locale, so the two composers emitted
-# byte-different manifests for an identical set of 163 paths (`.github/PULL_REQUEST_TEMPLATE.md` and
-# the upper-case root files landed in different places). Same content, different bytes, from a file
-# that SHIPS -- an invariant #3 break that only appears when both twins are actually run. The .sh
-# twin pins `LC_ALL=C` for the same reason.
+# culture-sensitive, which makes generated bytes depend on the host culture. The explicit comparer
+# keeps manifest ordering deterministic (`.github/PULL_REQUEST_TEMPLATE.md` and upper-case root
+# files are the regression canaries).
 $byPath = @{}
 foreach ($entry in $paths) { $byPath[[string]$entry.path] = $entry }
 $orderedKeys = [string[]]@($byPath.Keys)

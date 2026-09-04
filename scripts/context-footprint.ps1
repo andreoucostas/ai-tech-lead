@@ -1,6 +1,6 @@
-﻿# ai-tech-lead context-footprint gate (PowerShell twin; bash twin is context-footprint.sh).
-# Measures deterministic framework context across all composed dists, renders both hook twins,
-# and compares the canonical result with meta/context-footprint.json.
+﻿# ai-tech-lead context-footprint gate (schema-v2 PowerShell engine).
+# Measures deterministic framework context across all composed dists, renders the supported
+# PowerShell hooks, and compares the canonical result with meta/context-footprint.json.
 # Usage: context-footprint.ps1 [-Check|-Update] [-AllowCeilingBreach]
 # Default/-Check: exit 1 for a missing or changed baseline or hook-render mismatch.
 # -Update: rewrite the BOM-less, LF-only canonical baseline.
@@ -27,12 +27,13 @@ if (-not $Update -and -not (Test-Path $baseline)) {
     [Console]::Error.WriteLine("FAIL: context-footprint baseline missing: $baseline. Run with -Update and review the generated diff.")
     exit 1
 }
-if (-not (Get-Command bash -ErrorAction SilentlyContinue)) {
-    [Console]::Error.WriteLine('FATAL: bash is required to render hook twins.')
-    exit 2
+try {
+    $psHost = [Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
+} catch {
+    $psHost = $null
 }
-if (-not (Get-Command pwsh -ErrorAction SilentlyContinue)) {
-    [Console]::Error.WriteLine('FATAL: pwsh is required to render hook twins.')
+if ([string]::IsNullOrWhiteSpace($psHost) -or -not (Test-Path -LiteralPath $psHost -PathType Leaf)) {
+    [Console]::Error.WriteLine('FATAL: the current PowerShell executable could not be resolved.')
     exit 2
 }
 
@@ -128,36 +129,43 @@ function Invoke-HookFixture(
             $utf8
         )
     }
-    $eventPath = Join-Path $work 'event.json'
-    $shOutput = Join-Path $work 'sh.out'
     $psOutput = Join-Path $work 'ps.out'
-    [IO.File]::WriteAllText($eventPath, $Event, $utf8)
-
-    $workArg = $work.Replace('\', '/')
-    $eventArg = $eventPath.Replace('\', '/')
-    $shOutputArg = $shOutput.Replace('\', '/')
-    $psOutputArg = $psOutput.Replace('\', '/')
-    $shHook = (Join-Path $repo "dist/$Dist/.claude/hooks/$Hook.sh").Replace('\', '/')
-    $psHook = (Join-Path $repo "dist/$Dist/.claude/hooks/$Hook.ps1").Replace('\', '/')
-
-    & bash -c 'cd "$1" && LC_ALL=C bash "$2" < "$3" > "$4" 2>&1' footprint $workArg $shHook $eventArg $shOutputArg
-    if ($LASTEXITCODE -ne 0) {
-        throw "FATAL: bash hook failed: $Dist/$Hook/$Fixture"
+    $psHook = Join-Path $repo "dist/$Dist/.claude/hooks/$Hook.ps1"
+    $psi = New-Object Diagnostics.ProcessStartInfo
+    $psi.FileName = $psHost
+    $psi.Arguments = '-NoProfile -File "' + $psHook.Replace('"', '\"') + '"'
+    $psi.WorkingDirectory = $work
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+    $psi.RedirectStandardInput = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.StandardOutputEncoding = $utf8
+    $psi.StandardErrorEncoding = $utf8
+    $process = New-Object Diagnostics.Process
+    $process.StartInfo = $psi
+    try {
+        if (-not $process.Start()) { throw "FATAL: PowerShell hook did not start: $Dist/$Hook/$Fixture" }
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        $process.StandardInput.Write($Event)
+        $process.StandardInput.Close()
+        $process.WaitForExit()
+        $stdout = $stdoutTask.Result
+        $stderr = $stderrTask.Result
+        if ($process.ExitCode -ne 0) {
+            throw "FATAL: PowerShell hook failed: $Dist/$Hook/$Fixture"
+        }
+    } finally {
+        $process.Dispose()
     }
-    & bash -c 'cd "$1" && pwsh -NoProfile -File "$2" < "$3" > "$4" 2>&1' footprint $workArg $psHook $eventArg $psOutputArg
-    if ($LASTEXITCODE -ne 0) {
-        throw "FATAL: PowerShell hook failed: $Dist/$Hook/$Fixture"
-    }
+    [IO.File]::WriteAllText($psOutput, ($stdout + $stderr), $utf8)
 
-    $shText = Get-NormalizedText $shOutput
     $psText = Get-NormalizedText $psOutput
-    if ($shText -cne $psText) {
-        throw "FAIL: hook twin-render mismatch: $Dist/$Hook/$Fixture"
-    }
-    if ($shText.TrimStart().StartsWith('{')) {
+    if ($psText.TrimStart().StartsWith('{')) {
         throw "FATAL: fixture took JSON output branch: $Dist/$Hook/$Fixture"
     }
-    return $utf8.GetByteCount($shText)
+    return $utf8.GetByteCount($psText)
 }
 
 $prompts = [ordered]@{
@@ -306,8 +314,9 @@ try {
     $derived['monorepo-claude-ratio-permille'] = [int][Math]::Round(1000 * $monorepoClaude / $largestSingle)
 
     $document = [ordered]@{
-        'schema-version' = 1
-        'generated-by' = 'scripts/context-footprint.ps1 + scripts/context-footprint.sh'
+        'schema-version' = 2
+        'engine' = 'powershell'
+        'generated-by' = 'scripts/context-footprint.ps1'
         'counting-rule' = 'LF-normalized UTF-8 bytes; ~tok = round(chars/4)'
         'ceilings' = [ordered]@{
             'static.claude.single-stack.chars' = 40000
@@ -350,10 +359,10 @@ try {
         $limit = if ($dist -eq 'monorepo') { 48000 } else { 40000 }
         $used = $derived[$dist]['static.claude.chars']
         $left = $limit - $used
-        # F2, not Round(): Round drops a trailing zero (4.4) where the twin's awk prints 4.40, and
-        # the twins must render identically [#3]. Same class as the ordinal-sort divergence B-157
-        # hit -- identical values, different bytes, only visible by running both.
-        $pct = (100.0 * $left / $limit).ToString('F2', [Globalization.CultureInfo]::InvariantCulture)
+        # Decimal arithmetic avoids the PS5/.NET Framework versus PS7/.NET binary midpoint split
+        # (3.735 rendered as 3.74 versus 3.73). F2 retains the two-digit public output contract.
+        $pctValue = ([decimal]100 * [decimal]$left) / [decimal]$limit
+        $pct = $pctValue.ToString('F2', [Globalization.CultureInfo]::InvariantCulture)
         Write-Output ("HEADROOM {0,-9} static.claude {1} / {2} chars, {3} left ({4}%)" -f $dist, $used, $limit, $left, $pct)
     }
 
@@ -364,7 +373,7 @@ try {
             Write-Output $(if ($AllowCeilingBreach) { "WARN (CEILING WAIVED): $b" } else { "FAIL: $b" })
         }
         if (-not $AllowCeilingBreach) {
-            Write-Output 'FAIL: context footprint exceeds a declared ceiling. Raising a ceiling is a deliberate decision -- edit it here and in the bash twin and record why -- or pass -AllowCeilingBreach to waive this run.'
+            Write-Output 'FAIL: context footprint exceeds a declared ceiling. Raising a ceiling is a deliberate decision -- edit it here and record why -- or pass -AllowCeilingBreach to waive this run.'
             exit 1
         }
     }

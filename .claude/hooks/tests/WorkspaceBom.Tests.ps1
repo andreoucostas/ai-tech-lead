@@ -25,14 +25,11 @@ It 'every .ps1 in the repo carries a UTF-8 BOM (invariant #4)' {
 }
 
 # --- valid-UTF-8 sweep ---------------------------------------------------------------------------
-# A file holding a byte sequence that is not valid UTF-8 makes the two composer twins DISAGREE:
-# build.sh copies the raw bytes through untouched, while build.ps1 decodes and re-encodes, turning
-# the bad byte into U+FFFD. The committed dist then matches whichever composer produced it and the
-# other CI leg fails the freshness diff. That is a confusing, far-from-the-cause failure, so catch
-# the bad byte at its source instead. (Real occurrence, v0.26.1: an em-dash inside a `sed`
-# character class -- `[-—]` -- is matched BYTEWISE, so sed stripped the two continuation bytes and
-# left a lone 0xE2 in two post-write.sh files. Every local gate passed; only CI's cross-leg rebuild
-# caught it.) Reject-on-invalid is the whole point: UTF8Encoding($false, $true) throws rather than
+# A file holding a byte sequence that is not valid UTF-8 is re-encoded by the composer with U+FFFD.
+# That produces a confusing, far-from-the-cause freshness failure, so catch the bad byte at its
+# source instead. (Real occurrence, v0.26.1: a byte-oriented transformation stripped an em-dash's
+# continuation bytes and left a lone 0xE2 in two hook files.) Reject-on-invalid is the whole point:
+# UTF8Encoding($false, $true) throws rather than
 # silently substituting U+FFFD -- a lenient decode would make this test vacuous.
 function Test-IsValidUtf8 {
     param($path)
@@ -40,7 +37,7 @@ function Test-IsValidUtf8 {
     try { [void]$strict.GetString([IO.File]::ReadAllBytes($path)); $true } catch { $false }
 }
 
-It 'every file in the repo is valid UTF-8 (composer twins diverge on invalid bytes)' {
+It 'every file in the repo is valid UTF-8 (composer cannot silently replace invalid bytes)' {
     $all = Get-ChildItem -LiteralPath $repoRoot -Recurse -File |
            Where-Object { $_.FullName -notmatch '[\\/]\.git[\\/]' }
     Assert ($all.Count -gt 0) "enumeration found no files under $repoRoot -- sweep is broken (vacuous pass)"
@@ -65,7 +62,7 @@ try {
     It 'Test-IsValidUtf8 returns $false for a lone 0xE2 lead byte (positive control)' {
         # Exactly the corruption v0.26.1 shipped: an em-dash (E2 80 94) stripped of its
         # continuation bytes. A lenient decoder would map this to U+FFFD and pass.
-        $f = Join-Path $tmp 'truncated-emdash.sh'
+        $f = Join-Path $tmp 'truncated-emdash.txt'
         [IO.File]::WriteAllBytes($f, [byte[]](0x23, 0x20, 0x61, 0xE2, 0x29, 0x0A))
         Assert (-not (Test-IsValidUtf8 $f)) 'Test-IsValidUtf8 should reject a lone 0xE2 lead byte'
     }

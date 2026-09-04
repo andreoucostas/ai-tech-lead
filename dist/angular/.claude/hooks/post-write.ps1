@@ -13,8 +13,8 @@ $inputJson = [Console]::In.ReadToEnd()
 $filePath = ''
 # Pre-declare so a malformed/empty payload leaves $tn = '' (not $null): the surface-routing at the
 # end uses `$tn -eq ''` for Claude's empty-case exit-2 path, and $null -eq '' is False in PowerShell
-# -- which would misroute a build failure to the Copilot exit-0 branch, diverging from the .sh twin's
-# `case "$tool_name" in ... "")`. Keeping it '' matches the twin.
+# -- which would misroute a build failure to the Copilot exit-0 branch. Keeping it '' preserves the
+# intended Claude empty-payload branch.
 $tn = ''
 
 if (-not [string]::IsNullOrEmpty($inputJson)) {
@@ -63,7 +63,7 @@ if ([string]::IsNullOrEmpty($filePath)) { exit 0 }
 $normalized = $filePath -replace '\\', '/'
 if ($normalized -notmatch '(^|/)tsconfig[^/]*\.json$') {
     if ($filePath -notlike '*.ts') { exit 0 }
-    # Match the bash hook's scope: only .ts files under src/.
+    # Limit the hook's scope to .ts files under src/.
     if ($normalized -notmatch '/src/') { exit 0 }
 }
 
@@ -116,8 +116,7 @@ $buildInfo = Join-Path $repoState "tsbuildinfo-$key"
 # UTC integer epoch. NOT Get-Date -UFormat %s: under Windows PowerShell 5.1 that returns a
 # fractional local-time string, and [double]::Parse is culture-sensitive -- in comma-decimal
 # locales (de-DE/el-GR/fr-FR) the dot is a group separator, so the value overflows Int32 and
-# throws on every write. This form is culture-free, integer, UTC, and agrees with the .sh twin's
-# `date +%s`.
+# throws on every write. This form is culture-free, integer, and UTC.
 $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
 if (Test-Path $stamp) {
     $lastRaw = Get-Content $stamp -Raw
