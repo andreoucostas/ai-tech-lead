@@ -264,6 +264,29 @@ function Set-LegacyDefaultPreCommit {
 
 Reset-Tests
 
+It 'historical PowerShell hook digest is pinned to the bytes WriteAllText emitted' {
+    $bytes = [Text.UTF8Encoding]::new($false).GetBytes($legacyPowerShellPreCommit)
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try { $digest = ([BitConverter]::ToString($sha.ComputeHash($bytes))).Replace('-', '').ToLowerInvariant() }
+    finally { $sha.Dispose() }
+    Assert ($digest -ceq 'd13676bfffea2c3199894f4a610b8931273e161ddbfcfcdc7628bf40e6ca9fb8') "historical hook fixture digest changed: $digest"
+    foreach ($relative in @('src/core/scripts/install.ps1','src/core/scripts/framework-doctor.ps1')) {
+        $text = [IO.File]::ReadAllText((Join-Path $repoRoot $relative))
+        Assert ($text.Contains($digest)) "$relative does not recognize the exact historical PowerShell hook body"
+    }
+}
+
+It 'brownfield consumer install.sh text is not misdiagnosed as a framework migration' {
+    $target = Join-Path ([IO.Path]::GetTempPath()) ('brownfield-own-install-' + [guid]::NewGuid().ToString('N'))
+    try {
+        New-Item -ItemType Directory -Force -Path $target | Out-Null
+        [IO.File]::WriteAllText((Join-Path $target 'Jenkinsfile'), "powershell 'tools/install.sh'`n", [Text.UTF8Encoding]::new($false))
+        $result = Invoke-CurrentInstaller -Target $target
+        Assert ($result.Exit -eq 0) "brownfield install failed: $($result.Output)"
+        Assert ($result.Output -notmatch "MIGRATION:.*Jenkinsfile.*install\.sh") "consumer-owned install.sh was falsely diagnosed: $($result.Output)"
+    } finally { Remove-Item -Recurse -Force -LiteralPath $target -ErrorAction SilentlyContinue }
+}
+
     It 'dry-run is byte-stable and its plan matches the convergent apply' {
         $target = New-LegacyRetirementTarget
         try {
@@ -633,12 +656,28 @@ It 'modified legacy pre-commit is recognized by its exact retired helper referen
     try {
         $modifiedHook = $legacyPowerShellPreCommit + "`n# consumer-added note changes the historical digest`n"
         $hook = Set-LegacyDefaultPreCommit -Target $target -Content $modifiedHook
-        Assert ((Get-FileHash -LiteralPath $hook -Algorithm SHA256).Hash.ToLowerInvariant() -cne '56d2a687f489ffd95519dc56a34179526b175cc56d3b770cb45c0f243fabba1c') 'modified-hook fixture accidentally retained the historical digest'
+        Assert ((Get-FileHash -LiteralPath $hook -Algorithm SHA256).Hash.ToLowerInvariant() -cne 'd13676bfffea2c3199894f4a610b8931273e161ddbfcfcdc7628bf40e6ca9fb8') 'modified-hook fixture accidentally retained the historical digest'
         $apply = Invoke-CurrentInstaller -Target $target -SourceRoot $candidate
         Assert ($apply.Exit -eq 0) "modified legacy-hook apply exited $($apply.Exit): $($apply.Output)"
         Assert (Test-Path -LiteralPath (Join-Path $target 'scripts/setup-git-hooks.ps1') -PathType Leaf) 'modified legacy hook lost its referenced helper'
         Assert ($apply.Output -match 'PowerShell legacy pre-commit references retired framework helpers') 'modified helper reference was not classified as legacy'
         Assert ([IO.File]::ReadAllText($hook) -ceq $modifiedHook) 'installer changed the modified consumer-owned hook'
+    } finally {
+        Remove-Item -Recurse -Force -LiteralPath $target, $candidate -ErrorAction SilentlyContinue
+    }
+}
+
+It 'semicolon-terminated unquoted legacy helper reference preserves its dependency' {
+    $candidate = New-LegacyGitHookCandidateSource
+    $target = New-LegacyGitHookTarget
+    try {
+        $hook = Set-LegacyDefaultPreCommit -Target $target -Content "& scripts/setup-git-hooks.ps1;`n"
+        $hookBefore = [IO.File]::ReadAllBytes($hook)
+        $apply = Invoke-CurrentInstaller -Target $target -SourceRoot $candidate
+        Assert ($apply.Exit -eq 0) "semicolon legacy-hook apply exited $($apply.Exit): $($apply.Output)"
+        Assert (Test-Path -LiteralPath (Join-Path $target 'scripts/setup-git-hooks.ps1') -PathType Leaf) 'semicolon reference lost its retired helper'
+        Assert ($apply.Output -match 'PowerShell legacy pre-commit references retired framework helpers') 'semicolon reference was not classified as legacy'
+        Assert ([Convert]::ToBase64String([IO.File]::ReadAllBytes($hook)) -ceq [Convert]::ToBase64String($hookBefore)) 'installer changed semicolon-terminated consumer hook'
     } finally {
         Remove-Item -Recurse -Force -LiteralPath $target, $candidate -ErrorAction SilentlyContinue
     }

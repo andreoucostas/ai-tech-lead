@@ -2094,3 +2094,17 @@ leave the active ownership manifest.
 The same distinction applies to protected documentation and CI: an obsolete Bash command can be
 diagnosed precisely without granting the installer permission to rewrite consumer content.
 `-WhatIf` parity is therefore a classification contract, not only a preview convenience.
+
+## 2026-09-04 — Run a new enforcement gate against the actual release range
+
+The outgoing-commit replacement passed synthetic subject, BOM, guard, merge, and remote-failure
+tests yet rejected the real v0.83 candidate: canonical guard fixtures necessarily contain the
+patterns they test, and a certification record repeated one public example literally. The caller
+path was also asserted structurally without executing its refusal branch. A gate exercised only on
+fixtures can still be incompatible with the artifact it is meant to admit.
+
+Content exceptions for such a gate must be path-and-digest qualified and visible when applied; a
+path-only waiver turns a test directory into a secret sink. The release-specific acceptance check
+is the actual immutable outgoing range, and each caller must prove that a refusal prevents its
+subsequent push. Binary blobs need an explicit non-text classification rather than being reported
+as an inability to inspect the repository.

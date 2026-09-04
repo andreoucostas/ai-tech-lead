@@ -924,7 +924,7 @@ if ($existingSha) {
 if (-not $NoPush) {
     & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File `
         (Join-Path $repo '.claude/scripts/check-outgoing-commits.ps1') `
-        -RepoRoot $repo -Remote origin -Revision $releaseSha
+        -RepoRoot $repo -Remote origin -Revision $releaseSha -AlwaysInspectRevision
     if ($LASTEXITCODE -ne 0) { Write-Host "Tag push REFUSED: outgoing-commit check exited $LASTEXITCODE."; exit $LASTEXITCODE }
     git -C $repo push origin "refs/tags/$tagName"
     if ($LASTEXITCODE -ne 0) { Write-Host "Tag push FAILED: $tagName exists locally but not on origin."; exit 1 }

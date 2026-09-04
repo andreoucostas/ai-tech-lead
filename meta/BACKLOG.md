@@ -64,6 +64,19 @@ Copilot hook canaries are recorded; all dists rebuild byte-deterministically and
 independent immutable-range review is complete; records/RCA/changelogs are reconciled; and v0.83.0
 is released, pushed, CI-green and tagged.
 
+### B-220 · Remove the retired `-GitHooks` compatibility parameter in v0.84
+**Filed against:** v0.83.0 (2026-09-04)
+**Priority:** P2 · **Effort:** S · **Invariants:** #1 #6 #7
+
+**Problem.** v0.83 retains `-GitHooks` only as a breaking-change bridge that refuses with exit 2
+before mutation. Keeping the dead parameter indefinitely would imply a supported feature surface.
+
+**Do.** In v0.84 or later, remove `-GitHooks` from both installer entrypoints, usage text, tests,
+and migration documentation while retaining doctor detection for legacy consumer hooks/helpers.
+
+**Done when.** Both entrypoints reject `-GitHooks` as an unknown argument, no shipped usage text
+advertises it, durable legacy-hook diagnostics remain, and source/dist tests and changelogs agree.
+
 ### B-216 · Project-adapt instance-shaped skills instead of imposing framework defaults
 **Filed against:** v0.81.0 (2026-09-03)
 **Priority:** P1 · **Effort:** L · **Invariants:** #1 #2 #3 #6 #7

@@ -8,7 +8,8 @@ param(
     [string]$RepoRoot,
     [string]$Remote = 'origin',
     [string]$Revision = 'HEAD',
-    [string]$GitPath
+    [string]$GitPath,
+    [switch]$AlwaysInspectRevision
 )
 $ErrorActionPreference = 'Stop'
 
@@ -96,6 +97,34 @@ function Stop-CantVerify([string]$Reason) {
     exit 3
 }
 
+function Get-Sha256Hex([byte[]]$Bytes) {
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try { return ([BitConverter]::ToString($sha.ComputeHash($Bytes))).Replace('-', '') }
+    finally { $sha.Dispose() }
+}
+
+$exceptionPath = Join-Path $PSScriptRoot 'outgoing-guard-exceptions.json'
+try {
+    $exceptionRaw = [IO.File]::ReadAllText($exceptionPath, $utf8)
+    $exceptionDocument = $exceptionRaw | ConvertFrom-Json
+} catch { Stop-CantVerify "guard exceptions could not be read: $($_.Exception.Message)" }
+if ([int]$exceptionDocument.'schema-version' -ne 1 -or $null -eq $exceptionDocument.exceptions) {
+    Stop-CantVerify 'guard exceptions have an unsupported or missing schema.'
+}
+$guardExceptions = @{}
+foreach ($entry in @($exceptionDocument.exceptions)) {
+    $path = [string]$entry.path
+    $sha256 = ([string]$entry.sha256).ToUpperInvariant()
+    $reason = [string]$entry.reason
+    if ([string]::IsNullOrWhiteSpace($path) -or $path -match '^[\\/]|(^|[\\/])\.\.([\\/]|$)' -or
+        $sha256 -notmatch '^[A-F0-9]{64}$' -or [string]::IsNullOrWhiteSpace($reason)) {
+        Stop-CantVerify "guard exception is malformed: '$path'."
+    }
+    $key = "$path|$sha256"
+    if ($guardExceptions.ContainsKey($key)) { Stop-CantVerify "duplicate guard exception: '$path' / $sha256." }
+    $guardExceptions[$key] = $reason
+}
+
 $verified = Invoke-GitText @('-C',$RepoRoot,'rev-parse','--verify',"$Revision^{commit}")
 if ($null -eq $verified.Exit -or $verified.Exit -ne 0 -or -not $verified.Text.Trim()) {
     Stop-CantVerify "revision '$Revision' could not be resolved. $($verified.Error.Trim())"
@@ -106,11 +135,16 @@ $fetch = Invoke-GitText @('-C',$RepoRoot,'fetch','--quiet','--prune','--no-tags'
 if ($null -eq $fetch.Exit -or $fetch.Exit -ne 0) {
     Stop-CantVerify "remote '$Remote' could not be refreshed. $($fetch.Error.Trim())"
 }
-$range = Invoke-GitText @('-C',$RepoRoot,'rev-list','--reverse','--topo-order',$tip,'--not',"--remotes=$Remote")
-if ($null -eq $range.Exit -or $range.Exit -ne 0) {
-    Stop-CantVerify "the commit range relative to '$Remote' could not be enumerated. $($range.Error.Trim())"
+$commits = @()
+if ($AlwaysInspectRevision) {
+    $commits = @($tip)
+} else {
+    $range = Invoke-GitText @('-C',$RepoRoot,'rev-list','--reverse','--topo-order',$tip,'--not',"--remotes=$Remote")
+    if ($null -eq $range.Exit -or $range.Exit -ne 0) {
+        Stop-CantVerify "the commit range relative to '$Remote' could not be enumerated. $($range.Error.Trim())"
+    }
+    $commits = @($range.Text -split "`r?`n" | Where-Object { $_ })
 }
-$commits = @($range.Text -split "`r?`n" | Where-Object { $_ })
 if ($commits.Count -eq 0) {
     Write-Host "OUTGOING CHECK: no commits absent from '$Remote'; nothing to inspect."
     exit 0
@@ -191,13 +225,27 @@ foreach ($commit in $commits) {
             $blob.Bytes[0] -ne 0xEF -or $blob.Bytes[1] -ne 0xBB -or $blob.Bytes[2] -ne 0xBF)) {
             $violations.Add("commit $commit contains a PowerShell file without UTF-8 BOM: $path")
         }
+        if ($blob.Bytes -contains 0) {
+            Write-Host "OUTGOING CHECK: skipped binary blob '$path' at commit $commit."
+            continue
+        }
         try { $content = $utf8.GetString($blob.Bytes) }
-        catch { Stop-CantVerify "blob '$path' at commit $commit is not valid UTF-8." }
+        catch {
+            if ($path -match '(?i)\.ps1$') { Stop-CantVerify "PowerShell blob '$path' at commit $commit is not valid UTF-8." }
+            Write-Host "OUTGOING CHECK: skipped non-UTF-8 binary blob '$path' at commit $commit."
+            continue
+        }
         $guardResult = Invoke-Guard $path $content
         if ($null -eq $guardResult.Exit) { Stop-CantVerify "guard launch failed for '$path': $($guardResult.Err.Trim())" }
         if ($guardResult.Exit -ne 0) {
-            $detail = @($guardResult.Err.Trim(), $guardResult.Out.Trim() | Where-Object { $_ }) -join ' '
-            $violations.Add("commit $commit guard rejected '$path': $detail")
+            $digest = Get-Sha256Hex -Bytes $blob.Bytes
+            $exceptionKey = "$path|$digest"
+            if ($guardExceptions.ContainsKey($exceptionKey)) {
+                Write-Host "OUTGOING EXCEPTION: '$path' at $digest — $($guardExceptions[$exceptionKey])"
+            } else {
+                $detail = @($guardResult.Err.Trim(), $guardResult.Out.Trim() | Where-Object { $_ }) -join ' '
+                $violations.Add("commit $commit guard rejected '$path': $detail")
+            }
         }
     }
 }

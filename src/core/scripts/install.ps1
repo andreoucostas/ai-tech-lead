@@ -515,11 +515,11 @@ function Get-LegacyGitHookInspection {
             -Detail 'the default pre-commit hook could not be read as UTF-8 text; it was not modified.'
     }
 
-    $powerShellBody = $hookDigest -ceq '56d2a687f489ffd95519dc56a34179526b175cc56d3b770cb45c0f243fabba1c'
+    $powerShellBody = $hookDigest -ceq 'd13676bfffea2c3199894f4a610b8931273e161ddbfcfcdc7628bf40e6ca9fb8'
     $bashBody = $hookDigest -ceq '25da45aa780126e4d2b0a2b1bdf759462bf3fd92be01e6414ed496253c817357'
-    $powerShellReference = $hookText -match '(?i)(?:^|[\s"''\\/])(?:\./)?scripts[\\/]setup-git-hooks\.ps1(?=$|[\s"''])'
-    $bashSetupReference = $hookText -match '(?i)(?:^|[\s"''\\/])(?:\./)?scripts[\\/]setup-git-hooks\.sh(?=$|[\s"''])'
-    $bashGuardReference = $hookText -match '(?i)(?:^|[\s"''\\/])(?:\./)?\.claude[\\/]hooks[\\/]guard\.sh(?=$|[\s"''])'
+    $powerShellReference = $hookText -match '(?i)(?:^|[\s"''\\/])(?:\./)?scripts[\\/]setup-git-hooks\.ps1(?=$|[\s"''`(){}\[\],;:])'
+    $bashSetupReference = $hookText -match '(?i)(?:^|[\s"''\\/])(?:\./)?scripts[\\/]setup-git-hooks\.sh(?=$|[\s"''`(){}\[\],;:])'
+    $bashGuardReference = $hookText -match '(?i)(?:^|[\s"''\\/])(?:\./)?\.claude[\\/]hooks[\\/]guard\.sh(?=$|[\s"''`(){}\[\],;:])'
     $dependencies = New-Object System.Collections.Generic.List[string]
     if ($powerShellBody -or $powerShellReference) { $dependencies.Add('scripts/setup-git-hooks.ps1') }
     if ($bashBody -or $bashSetupReference -or $bashGuardReference) {
@@ -548,7 +548,7 @@ function Add-LegacyDependencyPreserve {
     }
 }
 
-$legacyGitHookInspection = Get-LegacyGitHookInspection
+$legacyGitHookInspection = if ($updateMode) { Get-LegacyGitHookInspection } else { New-LegacyGitHookInspection -Kind 'NONE' -Detail 'legacy hook inspection applies only to updates.' }
 if ($legacyGitHookInspection.Kind -eq 'LEGACY') {
     foreach ($relative in $legacyGitHookInspection.Dependencies) { Add-LegacyDependencyPreserve -Relative $relative }
     $reconciliationMessages.Add("MIGRATION: $($legacyGitHookInspection.Detail) The consumer-owned .git/hooks/pre-commit was not changed; preserving present dependency files from $($legacyGitHookInspection.Dependencies -join ', '). Remove or replace the hook manually before deleting those helpers.")
@@ -603,11 +603,11 @@ if ($updateMode) {
 # exact current-release retirements and a concrete replacement before the WhatIf boundary so dry-run
 # and apply classify the same bytes. Enumeration is bounded and never follows reparse points.
 $retiredReferenceReplacements = @{}
-if ((Compare-ReleaseVersion -Left $incomingVersion -Right '0.83.0') -ge 0) {
+if ($updateMode -and (Compare-ReleaseVersion -Left $incomingVersion -Right '0.83.0') -ge 0) {
     $retiredReferenceReplacements['install.sh'] = "$followUpPowerShell install.ps1"
     $retiredReferenceReplacements['scripts/install.sh'] = "$followUpPowerShell scripts/install.ps1"
 }
-foreach ($retiredPath in $retirementLedger.Keys) {
+foreach ($retiredPath in $(if ($updateMode) { @($retirementLedger.Keys) } else { @() })) {
     # Keep diagnostics cumulative: a consumer may skip the release that first retired the path.
     if ((Compare-ReleaseVersion -Left $retirementLedger[$retiredPath].Version -Right $incomingVersion) -gt 0) { continue }
     if ($retiredPath -in @('scripts/setup-git-hooks.ps1', 'scripts/setup-git-hooks.sh')) {

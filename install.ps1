@@ -1,5 +1,5 @@
 ﻿# AI Tech Lead Framework — root installer wrapper.
-# Usage: pwsh -NoProfile -File install.ps1 [-Stack dotnet|angular|monorepo] [-GitHooks] [-WhatIf] [-AllowDowngrade] C:\path\to\target-repo
+# Usage: pwsh -NoProfile -File install.ps1 [-Stack dotnet|angular|monorepo] [-GitHooks (v0.83 compatibility refusal)] [-WhatIf] [-AllowDowngrade] C:\path\to\target-repo
 #
 # Thin dispatcher only: it selects a stack, then delegates to
 # dist/<stack>/scripts/install.ps1, which does all the real work (greenfield / brownfield /

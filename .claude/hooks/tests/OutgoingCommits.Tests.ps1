@@ -9,6 +9,7 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $checker = Join-Path $repoRoot '.claude\scripts\check-outgoing-commits.ps1'
 $subjectRules = Join-Path $repoRoot '.claude\scripts\_commit-subject.ps1'
 $guardSource = Join-Path $repoRoot 'src\core\.claude\hooks\guard.ps1'
+$guardFixtureSource = Join-Path $repoRoot 'src\core\tests\hooks\fixtures\guard-cases.ps1'
 $git = (Get-Command git -ErrorAction Stop).Source
 $scratch = [Collections.Generic.List[string]]::new()
 $previousXdgConfigHome = $env:XDG_CONFIG_HOME
@@ -61,13 +62,15 @@ function Add-Commit($Fixture, [string]$Path, [string]$Text, [string]$Subject, [b
     $null = Invoke-Git $Fixture.Work @('commit','-q','-m',$Subject)
 }
 
-function Invoke-Checker($Fixture) {
+function Invoke-Checker($Fixture, [switch]$AlwaysInspectRevision) {
     $errorFile = [IO.Path]::GetTempFileName()
     $previousPreference = $ErrorActionPreference
     try {
         $ErrorActionPreference = 'Continue'
-        $output = @(& (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File $checker `
-            -RepoRoot $Fixture.Work -Remote origin -Revision HEAD -GitPath $git 2>$errorFile |
+        $arguments = @('-NoProfile','-ExecutionPolicy','Bypass','-File',$checker,
+            '-RepoRoot',$Fixture.Work,'-Remote','origin','-Revision','HEAD','-GitPath',$git)
+        if ($AlwaysInspectRevision) { $arguments += '-AlwaysInspectRevision' }
+        $output = @(& (Get-Process -Id $PID).Path @arguments 2>$errorFile |
             ForEach-Object { $_.ToString() })
         $code = [int]$LASTEXITCODE
         $errorText = [IO.File]::ReadAllText($errorFile)
@@ -169,6 +172,44 @@ try {
         $result = Invoke-Checker $fixture
         Assert ($result.Exit -eq 1) "unsafe committed blob exit was $($result.Exit): $($result.Out)"
         Assert ($result.Out -match '#pragma\s+warning\s+disable') "canonical guard reason missing: $($result.Out)"
+    }
+
+    It 'permits only the exact content-qualified canonical guard fixture' {
+        $fixture = New-RepositoryFixture
+        $target = Join-Path $fixture.Work 'src\core\tests\hooks\fixtures\guard-cases.ps1'
+        $null = New-Item -ItemType Directory -Force (Split-Path -Parent $target)
+        Copy-Item -LiteralPath $guardFixtureSource -Destination $target
+        $null = Invoke-Git $fixture.Work @('add','--','src/core/tests/hooks/fixtures/guard-cases.ps1')
+        $null = Invoke-Git $fixture.Work @('commit','-q','-m','Add exact canonical guard fixture')
+        $result = Invoke-Checker $fixture
+        Assert ($result.Exit -eq 0) "exact guard fixture was not excepted: $($result.Out)"
+        Assert ($result.Out -match 'OUTGOING EXCEPTION:') "exception use was not reported: $($result.Out)"
+
+        Add-Content -LiteralPath $target -Value '# digest-changing fixture edit'
+        $null = Invoke-Git $fixture.Work @('add','--','src/core/tests/hooks/fixtures/guard-cases.ps1')
+        $null = Invoke-Git $fixture.Work @('commit','-q','-m','Change canonical guard fixture digest')
+        $result = Invoke-Checker $fixture
+        Assert ($result.Exit -eq 1) "changed guard fixture bypassed its content-qualified exception: $($result.Out)"
+        Assert ($result.Out -match 'guard rejected') "changed guard fixture rejection is missing: $($result.Out)"
+    }
+
+    It 'reports and skips a binary blob without weakening PowerShell BOM checks' {
+        $fixture = New-RepositoryFixture
+        Add-Commit $fixture 'image.bin' ("binary`0payload") 'Add binary fixture payload'
+        $result = Invoke-Checker $fixture
+        Assert ($result.Exit -eq 0) "binary blob blocked the push: $($result.Out)"
+        Assert ($result.Out -match "skipped binary blob 'image\.bin'") "binary skip was not explicit: $($result.Out)"
+    }
+
+    It 'can inspect a revision already present on the remote for tag pushes' {
+        $fixture = New-RepositoryFixture
+        Add-Commit $fixture 'tagged.txt' "tag target`n" '@'
+        $null = Invoke-Git $fixture.Work @('push','-q','origin','master')
+        $empty = Invoke-Checker $fixture
+        Assert ($empty.Exit -eq 0 -and $empty.Out -match 'no commits absent') "default range was not empty after push: $($empty.Out)"
+        $result = Invoke-Checker $fixture -AlwaysInspectRevision
+        Assert ($result.Exit -eq 1) "tag-target inspection did not reject the already-pushed bad subject: $($result.Out)"
+        Assert ($result.Out -match 'subject rejected') "tag-target rejection reason missing: $($result.Out)"
     }
 
     It 'checks the merge result against every parent' {

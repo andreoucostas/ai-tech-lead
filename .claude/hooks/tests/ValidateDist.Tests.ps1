@@ -219,6 +219,25 @@ try {
             [IO.File]::WriteAllText($path, ($doc | ConvertTo-Json -Depth 20), (New-Object Text.UTF8Encoding($false)))
         } 'expected exactly 6 PowerShell entries, found 7' 'hook-registration' -AlsoPattern 'expected exactly 18 PowerShell handlers, found 19'
     }
+    It 'case 8c: removing Claude defaultShell fails the PowerShell contract' {
+        Assert-Case 'missing-default-shell' {
+            param($d)
+            $path = Join-Path $d '.claude\settings.json'
+            $doc = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8) | ConvertFrom-Json
+            $doc.PSObject.Properties.Remove('defaultShell')
+            [IO.File]::WriteAllText($path, ($doc | ConvertTo-Json -Depth 20), (New-Object Text.UTF8Encoding($false)))
+        } "defaultShell must be exactly 'powershell'" 'hook-registration'
+    }
+    It 'case 8d: removing a Claude command hook shell fails the PowerShell contract' {
+        Assert-Case 'missing-command-shell' {
+            param($d)
+            $path = Join-Path $d '.claude\settings.json'
+            $doc = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8) | ConvertFrom-Json
+            $firstEvent = @($doc.hooks.PSObject.Properties)[0]
+            $firstEvent.Value[0].hooks[0].PSObject.Properties.Remove('shell')
+            [IO.File]::WriteAllText($path, ($doc | ConvertTo-Json -Depth 20), (New-Object Text.UTF8Encoding($false)))
+        } "command hook shell must be exactly 'powershell'" 'hook-registration'
+    }
     It 'case 9: a dead documented command fails check 7' { Assert-Case 'dead-doc' { param($d) Replace-Text (Join-Path $d 'README.md') 'scripts/install.ps1' 'scripts/definitely-missing.ps1' } 'dead instructions in shipped docs' 'no-dead-instruction' }
     # -Force is load-bearing: most shipped Markdown lives below dot-directories.
     It 'case 10: no markdown files fails check 7' { Assert-Case 'no-docs' { param($d) Get-ChildItem -LiteralPath $d -Recurse -Filter *.md -Force | Remove-Item -Force } 'no-dead-instruction scanned zero documentation files' 'no-dead-instruction' }

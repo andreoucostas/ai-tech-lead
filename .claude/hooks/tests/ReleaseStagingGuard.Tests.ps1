@@ -203,6 +203,20 @@ try {
             if ($paths -ccontains 'install.sh') { $sampledInstallSh = $true }
             if ($sampled -ge 100 -and @($releases).Count -ge 8 -and $sampledInstallSh) { break }
         }
+        # The rolling sample proves breadth, while this immutable release range permanently proves
+        # the install.sh exception. Without the fixed anchor, each new tag eventually pushes the
+        # relevant release outside the 25-tag window and turns environment sampling into a false
+        # product failure.
+        if (-not $sampledInstallSh) {
+            $anchorBase = 'v0.76.0'; $anchorTag = 'v0.77.0'
+            $pathOutput = @(git -C $repoRoot diff --name-only $anchorBase $anchorTag --)
+            $diffExit = $LASTEXITCODE
+            Assert ($null -ne $diffExit -and $diffExit -eq 0) "could not enumerate immutable install.sh anchor $anchorBase..$anchorTag"
+            $paths = @($pathOutput | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            $releases += [pscustomobject]@{ Tag = $anchorTag; Base = $anchorBase; Paths = $paths }
+            $sampled += $paths.Count
+            $sampledInstallSh = $paths -ccontains 'install.sh'
+        }
         # Single-quoted on purpose: in a double-quoted PowerShell string a backtick starts an escape,
         # so "`fetch-depth" renders as a FORM FEED plus "etch-depth". The first cut of this message
         # said "etch-depth: 0" -- an error message about a misconfiguration, itself misconfigured.
@@ -221,7 +235,7 @@ try {
             }
         }
         Assert ($seen -ge 100) "only $seen path(s) classified -- the replay is not exercising anything"
-        Assert ($historicalInstallSh -gt 0) 'historical replay did not reach install.sh; its permanent staging exception would be untested'
+        Assert ($historicalInstallSh -gt 0) 'historical replay and immutable v0.76.0..v0.77.0 anchor did not reach install.sh; its permanent staging exception would be untested'
         $withoutInstallSh = $pattern.Replace('|install\.sh', '')
         Assert ($withoutInstallSh -cne $pattern) 'could not plant the install.sh allowlist-removal mutation'
         $mutantFalsePositives = @($historicalPaths | Where-Object { $_ -notmatch $withoutInstallSh })

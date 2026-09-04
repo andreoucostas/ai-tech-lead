@@ -18,7 +18,7 @@ $SHA = 'a41ab8d090bc7d2927290cf99a8f6c0cab1810b6'
 $scratch = @()
 
 function New-GitStub {
-    param([int]$PushExit = 0, [string]$CurrentBranch = 'master')
+    param([int]$PushExit = 0, [string]$CurrentBranch = 'master', [switch]$BadOutgoingSubject)
     $dir = Join-Path ([IO.Path]::GetTempPath()) ('pushcheck-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     $script:scratch += $dir
@@ -29,7 +29,10 @@ Add-Content -LiteralPath (Join-Path $dir 'git-calls.log') -Value $cmd
 if ($cmd -like '* rev-parse --abbrev-ref HEAD') { Write-Output '__BRANCH__'; exit 0 }
 if ($cmd -like '* rev-parse --verify *^{commit}') { Write-Output '__SHA__'; exit 0 }
 if ($cmd -like '* fetch --quiet --prune --no-tags origin') { exit 0 }
-if ($cmd -like '* rev-list --reverse --topo-order *') { exit 0 }
+if ($cmd -like '* rev-list --reverse --topo-order *') { if (__BADOUTGOING__) { Write-Output '__SHA__' }; exit 0 }
+if ($cmd -like '* show -s --format=%s __SHA__') { Write-Output '@'; exit 0 }
+if ($cmd -like '* rev-list --parents -n 1 __SHA__') { Write-Output '__SHA__'; exit 0 }
+if ($cmd -like '* diff-tree --root *') { exit 0 }
 if ($cmd -like '* rev-parse HEAD') { Write-Output '__SHA__'; exit 0 }
 if ($cmd -like '* push origin *') {
     Write-Output 'push stdout'
@@ -39,7 +42,7 @@ if ($cmd -like '* push origin *') {
 [Console]::Error.WriteLine("unexpected git call: $cmd")
 exit 91
 '@
-    $body = $body.Replace('__DIR__', $dir).Replace('__BRANCH__', $CurrentBranch).Replace('__SHA__', $SHA).Replace('__PUSHEXIT__', "$PushExit")
+    $body = $body.Replace('__DIR__', $dir).Replace('__BRANCH__', $CurrentBranch).Replace('__SHA__', $SHA).Replace('__PUSHEXIT__', "$PushExit").Replace('__BADOUTGOING__', $(if ($BadOutgoingSubject) { '$true' } else { '$false' }))
     $path = Join-Path $dir 'git-stub.ps1'
     [IO.File]::WriteAllText($path, $body, [Text.UTF8Encoding]::new($true))
     return [pscustomobject]@{ Dir=$dir; Path=$path; Log=(Join-Path $dir 'git-calls.log') }
@@ -86,6 +89,14 @@ function Invoke-Subject {
 }
 
 try {
+    It 'an outgoing-check refusal prevents git push' {
+        $g=New-GitStub -BadOutgoingSubject; $h=New-GhStub green; $r=Invoke-Subject $g $h
+        Assert ($r.Exit -eq 1) "expected outgoing refusal exit 1, got $($r.Exit): $($r.Out)"
+        Assert ($r.Out -match 'subject rejected') "outgoing subject-rejection evidence missing: $($r.Out)"
+        Assert ($r.Out -match 'PUSH REFUSED') "caller refusal evidence missing: $($r.Out)"
+        Assert (@(Get-Content $g.Log | Where-Object { $_ -like '* push origin *' }).Count -eq 0) 'git push ran after the outgoing check refused'
+        Assert (-not (Test-Path -LiteralPath $h.Log)) 'CI watch ran after the outgoing check refused'
+    }
     It 'a failed push preserves git exit and never invokes CI watch' {
         $g=New-GitStub -PushExit 7; $h=New-GhStub green; $r=Invoke-Subject $g $h
         Assert ($r.Exit -eq 7) "expected 7, got $($r.Exit): $($r.Out)"

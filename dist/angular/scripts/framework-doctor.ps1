@@ -172,11 +172,11 @@ function Get-LegacyHookDoctorResult {
         $hookDigest = Get-DoctorSha256 $hookBytes
     } catch { return New-LegacyHookDoctorResult CANT-VERIFY 'the default pre-commit hook could not be read as UTF-8 text.' }
 
-    $powerShellBody = $hookDigest -ceq '56d2a687f489ffd95519dc56a34179526b175cc56d3b770cb45c0f243fabba1c'
+    $powerShellBody = $hookDigest -ceq 'd13676bfffea2c3199894f4a610b8931273e161ddbfcfcdc7628bf40e6ca9fb8'
     $bashBody = $hookDigest -ceq '25da45aa780126e4d2b0a2b1bdf759462bf3fd92be01e6414ed496253c817357'
-    $powerShellReference = $hookText -match '(?i)(?:^|[\s"''\\/])(?:\./)?scripts[\\/]setup-git-hooks\.ps1(?=$|[\s"''])'
-    $bashSetupReference = $hookText -match '(?i)(?:^|[\s"''\\/])(?:\./)?scripts[\\/]setup-git-hooks\.sh(?=$|[\s"''])'
-    $bashGuardReference = $hookText -match '(?i)(?:^|[\s"''\\/])(?:\./)?\.claude[\\/]hooks[\\/]guard\.sh(?=$|[\s"''])'
+    $powerShellReference = $hookText -match '(?i)(?:^|[\s"''\\/])(?:\./)?scripts[\\/]setup-git-hooks\.ps1(?=$|[\s"''`(){}\[\],;:])'
+    $bashSetupReference = $hookText -match '(?i)(?:^|[\s"''\\/])(?:\./)?scripts[\\/]setup-git-hooks\.sh(?=$|[\s"''`(){}\[\],;:])'
+    $bashGuardReference = $hookText -match '(?i)(?:^|[\s"''\\/])(?:\./)?\.claude[\\/]hooks[\\/]guard\.sh(?=$|[\s"''`(){}\[\],;:])'
     $needed = New-Object System.Collections.Generic.List[string]
     if ($powerShellBody -or $powerShellReference) {
         $needed.Add('scripts/setup-git-hooks.ps1'); $needed.Add('.claude/hooks/guard.ps1')

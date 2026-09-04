@@ -3386,8 +3386,11 @@ deletion from erasing independent compatibility and safety contracts.
 evidence, vacuous test removal and one-shot warnings. A second independent Claude CLI Opus/xhigh
 review found the historical release allowlist dependency, `$IsWindows` coverage inversion, and the
 maintainer-control loss. Their corrections are in the locked B-219 plan. Current vendor documents
-were checked separately where one reviewer conflated the PowerShell-tool, `defaultShell`, and hook-
-shell contracts. Implementation evidence and an immutable-range review do not yet exist.
+ were checked separately where one reviewer conflated the PowerShell-tool, `defaultShell`, and hook-
+shell contracts. **Implementation amendment:** immutable-range Terra/high and Claude Opus/xhigh
+reviews were completed against the v0.82.0-to-v0.83 candidate. Opus found an outgoing whole-blob
+fixture collision, a legacy-hook terminator/digest miss, and missing hostile caller/settings cases;
+the corrected implementation and disposition are recorded in the locked B-219 plan.
 
 **Rejected.** Keeping unsupported twins as reassurance; deleting unowned or modified consumer
 hooks; reporting preserved Bash residue as converged; replacing Linux with nominal PS5 jobs that

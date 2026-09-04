@@ -181,3 +181,30 @@ hosted GitHub Actions, live Claude/Copilot canaries, or every prose/generated ch
 PS5.1 `InstallerConvergence` attempt did not finish, so it was not counted as evidence. Those are
 explicit reviewer gaps rather than inherited green claims; the direct aggregate/dist/live evidence
 above came from the implementation session.
+
+## Claude Opus/xhigh implementation review
+
+Claude Code 2.1.260 with Opus/xhigh reviewed immutable candidate `5b918fb..e92f5c2` read-only. It
+found one blocker: the new whole-blob outgoing guard rejected the framework's own synthetic guard
+fixtures and a historical certification literal, so the mandated push path could not ship the
+candidate. It also found the historical PowerShell hook digest had been calculated with a newline
+that `WriteAllText` never emitted, helper-reference terminators differed between deletion and
+diagnostic paths, caller refusal and new settings assertions lacked red calibration, the consumer
+docs-sync workflow unnecessarily doubled, the historical staging replay had a sliding window,
+binary blobs were misclassified as unreadable text, greenfield/brownfield carriers could receive a
+false migration diagnosis, and the tag check inspected an empty already-pushed range.
+
+The implementation now uses a separately reviewed path-and-SHA exception ledger: four exact
+canonical fixture copies plus the exact pre-fix historical certification blob, with every applied
+exception printed. Changed fixture bytes remain blocked. The hook digest and all terminator classes
+are corrected in installer and doctor; executable caller refusal, `defaultShell`, per-hook shell,
+semicolon reference, body digest, binary, and already-pushed revision cases are calibrated. The
+consumer workflow remains one PS7 Windows job; authoring CI retains both hosts. The staging test
+has an immutable `v0.76.0..v0.77.0` anchor, non-PowerShell binary blobs are explicitly skipped,
+migration scans apply only to updates, and tag pushes use `-AlwaysInspectRevision`. The v0.84
+parameter-removal follow-up is B-220 and WSD-073 carries an implementation amendment.
+
+The review's suggestion to delete the installer metadata policy was rejected: the frozen contract
+requires the composer to extract and independently pin protected, persistent, metadata, and
+excluded sets from the installer as the single policy authority. The arrays are declarative
+composer input rather than runtime installer branches, and their comments state that boundary.
