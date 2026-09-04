@@ -34,6 +34,44 @@ dead (feeds B-08 matrix rows + B-09 post-write demotion) and the folder-trust pr
 `framework-doctor` (B-16). The B-01 optional guard hardening was deferred by decision (see `meta/BACKLOG-DONE.md`).
 **B-37 (post-ship review of v0.27.0) shipped in v0.27.1 (2026-07-16) — see `meta/BACKLOG-DONE.md`.**
 
+### B-216 · Project-adapt instance-shaped skills instead of imposing framework defaults
+**Filed against:** v0.81.0 (2026-09-03)
+**Priority:** P1 · **Effort:** L · **Invariants:** #1 #2 #3 #6 #7
+
+> **PAUSED FOR B-217; TARGET RETIRED FROM v0.82.0 TO v0.83.0 OR LATER. PRETRIAL NO-GO RECORDED.**
+> Full contract: `.claude/plans/2026-09-03-b216-project-adapted-instance-skills-design.md`.
+> Two independent read-only `claude-opus-5`/`xhigh` critiques returned REVISE; their verified
+> static-budget, generated-mirror, dead-link, ownership, read-observation, exit-domain and gate-cost
+> corrections are folded into the prior plan. The user explicitly selected one sidecar delivery
+> rather than splitting the mechanism into a later item. Copilot Free subsequently changed
+> its Auto-resolved model between the positive and negative observer controls, so the fail-closed
+> route-stability gate stopped before all behavioral trials. The replacement contract uses Claude
+> Code for fixed-model efficacy and Copilot Free only for treatment-only compatibility with GitHub's
+> documented skill/resource behavior. B-217 now retires the mirror delivery assumed by that plan;
+> re-lock the single-tree lifecycle after v0.82.0 before restarting any source implementation.
+
+**Problem.** `register-service` first permits an existing equivalent DI pattern, then prescribes
+`IServiceCollection`, `AddXxxServices` and MS.DI lifetime vocabulary. A reported Unity repository's
+documented composition root is each project's `IoCConfig.Configure(IUnityContainer)`; the concrete
+recipe would create an unsupported parallel container. Other instance-shaped recipes contain fixed
+endpoint, entity or Angular file/layer assumptions even though bootstrap discovers the repository's
+actual pattern and deliberately keeps framework skills byte-stable.
+
+**Do.** Keep the eight framework bodies update-owned and derive-first, while `/bootstrap` and
+`/rebootstrap` place verified, scope-aware project recipes in consumer-owned sibling references.
+Add an on-demand registry and strict lifecycle validation, preserve installer exemplar carry-forward,
+exclude generated recipes from evidence mining/adoption, repair every carrier that can reintroduce
+the old assumptions, and distinguish invalid content from inability to examine it. Before building
+the subsystem, re-lock after B-217 and run the revised Claude/Copilot A/B; failure stops the item without
+threshold tuning.
+
+**Done when.** The A/B passes unchanged; all eight skills follow the frozen precedence; the Unity
+oracle adds registration only to the existing Unity composition root with its evidenced lifetime
+manager and produces no MS.DI artifacts; registry/sidecar mutations are red-tested in both twins;
+consumer-owned bytes survive update/disable flows; static and runtime budgets remain within
+their frozen baselines; all dists, installers, suites and CI legs are green; independent immutable-
+range review is complete; RCA, decisions and changelogs are reconciled; v0.83.0 or later is released.
+
 ## P2 — gates that lie by omission (drift they were built to catch passes silently)
 
 **All P2 items (B-04…B-09) shipped in v0.25.2 (2026-07-04) — see `meta/BACKLOG-DONE.md`.** The

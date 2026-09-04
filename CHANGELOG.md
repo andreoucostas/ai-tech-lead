@@ -11,6 +11,29 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.82.0 — 2026-09-04
+
+**Project skills now have one canonical tree instead of a higher-priority generated duplicate.**
+B-217/WSD-072 removes all 38 byte-identical `.github/skills` files (191,293 bytes across the three
+distributions), the `sync-agent-files` twins, installer reconstruction branches, parity gates and
+mirror-only fixtures. Current GitHub documentation covers `.claude/skills` across the supported
+Copilot skill surfaces, and CLI 1.0.80 independently discovered an isolated Claude-only project
+skill without a model session.
+
+Updates use the existing content-qualified retirement ledger for every historical skill and sync-
+script digest. Qualifying stock copies are removed. A known retired path that survives because its
+content or prior ownership cannot be verified receives a durable path-specific warning because it
+can shadow the canonical skill or recreate the old tree; unknown consumer-only skills remain
+untouched. Any remaining `.github/skills` path keeps the deterministic framework check red until a
+person migrates it. Brownfield detection now routes that path to `/adopt`, which reports the
+untrusted files and stops before archive or merge in both interactive and headless modes.
+
+The whole-surface audit retained Copilot prompt, agent, inline-completion, path-instruction and hook
+adapters, GitHub workflows and the PR template because each still has a distinct contract. It also
+corrects the stale claim that Copilot CLI, Gemini and Aider uniquely or automatically need
+`AGENTS.md`; the full mirror remains for Codex and GitHub code review. B-216 is retargeted to
+v0.83.0 or later so its project-recipe design can be re-locked around this single skill tree.
+
 ## 0.81.0 — 2026-09-03
 
 **Consumer application verification no longer mistakes the framework's maintainer hook suite for

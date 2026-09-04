@@ -73,8 +73,9 @@ function New-RichUpdateTarget {
 }
 
 function Invoke-CurrentInstaller {
-    param([string]$Twin, [string]$Target, [switch]$DryRun, [switch]$AllowDowngrade)
-    $installer = Join-Path $repoRoot "dist/dotnet/scripts/install.$Twin"
+    param([string]$Twin, [string]$Target, [string]$SourceRoot, [switch]$DryRun, [switch]$AllowDowngrade)
+    $root = if ($SourceRoot) { $SourceRoot } else { Join-Path $repoRoot 'dist/dotnet' }
+    $installer = Join-Path $root "scripts/install.$Twin"
     if ($Twin -eq 'ps1') {
         $arguments = @('-NoProfile','-File',$installer,'-Target',$Target)
         if ($DryRun) { $arguments += '-WhatIf' }
@@ -88,6 +89,76 @@ function Invoke-CurrentInstaller {
         $output = & $bash @arguments 2>&1 | Out-String
     }
     return [pscustomobject]@{ Exit = [int]$LASTEXITCODE; Output = $output }
+}
+
+# B-217 needs a source-candidate fixture: it removes the incoming mirror, uses the authored
+# cumulative retirement ledger, and adds one test-only modified leaf. This let the test observe the
+# unfixed installer red before the coordinated source/ledger change was composed into dist.
+function New-B217CandidateSource {
+    $candidate = Join-Path ([IO.Path]::GetTempPath()) ('b217-installer-source-' + [guid]::NewGuid().ToString('N'))
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'dist/dotnet') -Destination $candidate -Recurse -Force
+    if (Test-Path -LiteralPath (Join-Path $candidate '.github/skills')) {
+        Remove-Item -LiteralPath (Join-Path $candidate '.github/skills') -Recurse -Force
+    }
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'src/core/scripts/install.ps1') -Destination (Join-Path $candidate 'scripts/install.ps1') -Force
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'src/core/scripts/install.sh') -Destination (Join-Path $candidate 'scripts/install.sh') -Force
+
+    $ownershipPath = Join-Path $candidate 'framework-ownership.json'
+    $ownershipLines = Get-Content -LiteralPath $ownershipPath | Where-Object { $_ -notmatch '"path": "\.github/skills/' -and $_ -notmatch '"path": "scripts/sync-agent-files\.' }
+    [IO.File]::WriteAllLines($ownershipPath, [string[]]$ownershipLines, [Text.UTF8Encoding]::new($false))
+
+    $stock = '.github/skills/perf/SKILL.md'
+    $ledgerPath = Join-Path $candidate 'framework-retirements.json'
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'src/core/framework-retirements.json') -Destination $ledgerPath -Force
+    $ledger = Get-Content -LiteralPath $ledgerPath -Raw
+    Assert ($ledger -match [regex]::Escape(('"path": "' + $stock + '"'))) "B-217 source retirement ledger does not name the stock mirror leaf $stock"
+    Assert ($ledger -match '"path": "scripts/sync-agent-files\.ps1"') 'B-217 source retirement ledger does not name sync-agent-files.ps1'
+    $futureRows = '    { "path": ".github/skills/perf/modified.md", "retired-in": "0.82.0", "known-content-sha256": ["a3f4826b6bdf6da3ff876197e4bc386a6a4e66c0bd3c79d90c6bdc29a6de88f1"] }'
+    $ledger = $ledger.TrimEnd() -replace '\r?\n  \]\r?\n\}$', ''
+    $ledger = $ledger + ",`n" + $futureRows + "`n  ]`n}`n"
+    [IO.File]::WriteAllText($ledgerPath, $ledger, [Text.UTF8Encoding]::new($false))
+    return [pscustomobject]@{ Root = $candidate; Stock = $stock }
+}
+
+function New-B217ResidualTarget {
+    param([string]$StockPath)
+    $target = Join-Path ([IO.Path]::GetTempPath()) ('b217-installer-target-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Force -Path (Join-Path $target '.claude'), (Join-Path $target '.github/skills/perf'), (Join-Path $target '.github/skills/local-only'), (Join-Path $target 'scripts') | Out-Null
+    [IO.File]::WriteAllText((Join-Path $target '.claude/framework-version.json'), '{"version":"0.81.0","template":"dotnet"}', [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $target 'framework-ownership.json'), @"
+{
+  "schema-version": 1,
+  "paths": [
+    { "path": "$StockPath", "ownership": "framework-owned/overwritten" },
+    { "path": ".github/skills/perf/modified.md", "ownership": "framework-owned/overwritten" }
+  ]
+}
+"@, [Text.UTF8Encoding]::new($false))
+    $canonicalStock = $StockPath -replace '^\.github/skills/', '.claude/skills/'
+    [IO.File]::WriteAllBytes((Join-Path $target $StockPath), [IO.File]::ReadAllBytes((Join-Path $repoRoot ('dist/dotnet/' + $canonicalStock))))
+    [IO.File]::WriteAllText((Join-Path $target '.github/skills/perf/modified.md'), 'CONSUMER-MODIFIED MIRROR', [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $target '.github/skills/local-only/SKILL.md'), 'UNKNOWN GITHUB-ONLY SKILL', [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $target 'scripts/sync-agent-files.ps1'), @"
+# CONSUMER-MODIFIED SYNC SCRIPT
+param([string]`$Target)
+`$destination = Join-Path `$Target '$StockPath'
+New-Item -ItemType Directory -Force -Path (Split-Path -Parent `$destination) | Out-Null
+[IO.File]::WriteAllText(`$destination, 'RECREATED BY CONSUMER SYNC SCRIPT', [Text.UTF8Encoding]::new(`$false))
+"@, [Text.UTF8Encoding]::new($false))
+    return $target
+}
+
+function New-B217LegacyManifestTarget {
+    param([string]$StockPath, [ValidateSet('missing', 'malformed')][string]$ManifestShape)
+    $target = Join-Path ([IO.Path]::GetTempPath()) ('b217-legacy-manifest-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Force -Path (Join-Path $target '.claude'), (Split-Path -Parent (Join-Path $target $StockPath)) | Out-Null
+    [IO.File]::WriteAllText((Join-Path $target '.claude/framework-version.json'), '{"version":"0.64.0","template":"dotnet"}', [Text.UTF8Encoding]::new($false))
+    $canonicalStock = $StockPath -replace '^\.github/skills/', '.claude/skills/'
+    [IO.File]::WriteAllBytes((Join-Path $target $StockPath), [IO.File]::ReadAllBytes((Join-Path $repoRoot ('dist/dotnet/' + $canonicalStock))))
+    if ($ManifestShape -eq 'malformed') {
+        [IO.File]::WriteAllText((Join-Path $target 'framework-ownership.json'), '{"schema-version":1,"paths":[BROKEN]}', [Text.UTF8Encoding]::new($false))
+    }
+    return $target
 }
 
 function New-DirectoryLink {
@@ -226,6 +297,137 @@ foreach ($twin in @('ps1','sh')) {
         }
     }
 
+    It "retires only qualified mirror leaves, never recreates mirrors, and keeps residual warnings durable ($twin)" {
+        $candidate = New-B217CandidateSource
+        $target = New-B217ResidualTarget -StockPath $candidate.Stock
+        try {
+            $first = Invoke-CurrentInstaller -Twin $twin -Target $target -SourceRoot $candidate.Root
+            Assert ($first.Exit -eq 0) "B-217 first update exited $($first.Exit): $($first.Output)"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $target $candidate.Stock))) "known stock mirror leaf was not retired: $($first.Output)"
+            Assert ((Get-Content -LiteralPath (Join-Path $target '.github/skills/perf/modified.md') -Raw) -match 'CONSUMER-MODIFIED') 'modified mirror leaf was deleted or overwritten'
+            Assert ((Get-Content -LiteralPath (Join-Path $target '.github/skills/local-only/SKILL.md') -Raw) -match 'UNKNOWN GITHUB-ONLY') 'unknown GitHub-only skill was deleted or overwritten'
+            Assert ((Get-Content -LiteralPath (Join-Path $target 'scripts/sync-agent-files.ps1') -Raw) -match 'CONSUMER-MODIFIED') 'modified sync script was deleted or overwritten'
+            Assert ($first.Output -match "CANT-VERIFY: retired path '\.github/skills/perf/modified\.md' has consumer-modified or unknown content") 'modified mirror preservation lacked CANT-VERIFY'
+            Assert ($first.Output -match "CANT-VERIFY: retained retired path 'scripts/sync-agent-files\.ps1'.*may recreate") 'modified sync-script shadow risk lacked an exact-path warning'
+            Assert (@(($first.Output -split "`r?`n") | Where-Object { $_ -match '^PLAN (?:create|replace) \.github/skills/' }).Count -eq 0) 'installer recreated a GitHub skill mirror'
+            Assert (-not (Test-Path -LiteralPath (Join-Path $target '.github/skills/add-warehouse-load/SKILL.md'))) 'installer wrote a canonical skill into the retired GitHub path'
+
+            & (Get-PsExe) -NoProfile -File (Join-Path $target 'scripts/sync-agent-files.ps1') -Target $target
+            Assert ($LASTEXITCODE -eq 0) 'test-owned modified sync script did not run outside the installer'
+            Assert ((Get-Content -LiteralPath (Join-Path $target $candidate.Stock) -Raw) -match 'RECREATED BY CONSUMER') 'modified sync script did not recreate the retired higher-priority mirror'
+
+            $second = Invoke-CurrentInstaller -Twin $twin -Target $target -SourceRoot $candidate.Root
+            Assert ($second.Exit -eq 0) "B-217 subsequent update exited $($second.Exit): $($second.Output)"
+            Assert ($second.Output -match "CANT-VERIFY: retained retired path 'scripts/sync-agent-files\.ps1'.*may recreate") 'sync-script warning disappeared after the new ownership manifest arrived'
+            Assert ($second.Output -match "CANT-VERIFY: retained retired path '\.github/skills/perf/SKILL\.md'.*may shadow") 'recreated mirror warning disappeared after the new ownership manifest arrived'
+            Assert ((Get-Content -LiteralPath (Join-Path $target 'scripts/sync-agent-files.ps1') -Raw) -match 'CONSUMER-MODIFIED') 'later update deleted the modified sync script'
+            Assert ((Get-Content -LiteralPath (Join-Path $target $candidate.Stock) -Raw) -match 'RECREATED BY CONSUMER') 'later update deleted or overwrote the recreated consumer mirror'
+        } finally {
+            Remove-Item -Recurse -Force -LiteralPath $target -ErrorAction SilentlyContinue
+            Remove-Item -Recurse -Force -LiteralPath $candidate.Root -ErrorAction SilentlyContinue
+        }
+    }
+
+    It "distinguishes an uninspectable retained retirement from an absent path ($twin)" {
+        $candidate = New-B217CandidateSource
+        $target = New-B217ResidualTarget -StockPath $candidate.Stock
+        $savedPsFailure = $env:B217_UNREADABLE_PATH
+        $savedShFind = $env:B217_TEST_FIND_CMD
+        try {
+            $retainedPath = 'scripts/sync-agent-files.ps1'
+            $retained = Join-Path $target $retainedPath
+            if ($twin -eq 'ps1') {
+                $installerPath = Join-Path $candidate.Root 'scripts/install.ps1'
+                $installer = [IO.File]::ReadAllText($installerPath)
+                $needle = "`$ErrorActionPreference = 'Stop'"
+                Assert ($installer.Contains($needle)) 'could not locate the PowerShell inspection-failure injection point'
+                $mock = @'
+function Get-Item {
+    [CmdletBinding()]
+    param([string]$LiteralPath, [string]$Path, [switch]$Force)
+    $selected = if ($PSBoundParameters.ContainsKey('LiteralPath')) { $LiteralPath } else { $Path }
+    if ($selected -eq $env:B217_UNREADABLE_PATH) {
+        throw [UnauthorizedAccessException]::new('planted retained-path inspection failure')
+    }
+    Microsoft.PowerShell.Management\Get-Item @PSBoundParameters
+}
+'@
+                $installer = $installer.Replace($needle, $needle + "`r`n" + $mock)
+                [IO.File]::WriteAllText($installerPath, $installer, [Text.UTF8Encoding]::new($true))
+                $env:B217_UNREADABLE_PATH = $retained
+            } else {
+                $wrapper = Join-Path $candidate.Root '.b217-find-wrapper.sh'
+                [IO.File]::WriteAllText($wrapper, @'
+#!/usr/bin/env bash
+for arg in "$@"; do
+  [ "$arg" = 'sync-agent-files.ps1' ] && exit 2
+done
+exec /usr/bin/find "$@"
+'@, [Text.UTF8Encoding]::new($false))
+                $wrapperForBash = $wrapper -replace '\\', '/'
+                & $bash -c 'chmod +x "$1"' bash $wrapperForBash
+                Assert ($LASTEXITCODE -eq 0) 'could not make the planted find wrapper executable'
+                $installerPath = Join-Path $candidate.Root 'scripts/install.sh'
+                $installer = [IO.File]::ReadAllText($installerPath)
+                $needle = '[ -x /usr/bin/find ] && find_cmd=/usr/bin/find'
+                $replacement = '[ -x /usr/bin/find ] && find_cmd="${B217_TEST_FIND_CMD:-/usr/bin/find}"'
+                Assert ($installer.Contains($needle)) 'could not locate the shell inspection-failure injection point'
+                $mock = @'
+function [ {
+  if test "$#" -eq 3 && test "$1" = '-e'; then
+    case "$2" in */scripts/sync-agent-files.ps1) return 1;; esac
+  fi
+  builtin [ "$@"
+}
+'@
+                $installer = $installer.Replace($needle, $replacement + "`n" + $mock)
+                [IO.File]::WriteAllText($installerPath, $installer, [Text.UTF8Encoding]::new($false))
+                $env:B217_TEST_FIND_CMD = $wrapperForBash
+                $env:B217_UNREADABLE_PATH = ($retained -replace '\\', '/')
+            }
+
+            $before = (Get-FileHash -LiteralPath $retained -Algorithm SHA256).Hash
+            $result = Invoke-CurrentInstaller -Twin $twin -Target $target -SourceRoot $candidate.Root
+            Assert ($result.Exit -eq 0) "inspection-failure update exited $($result.Exit): $($result.Output)"
+            Assert ($result.Output -match "CANT-VERIFY: retained retired path 'scripts/sync-agent-files\.ps1' could not be examined") 'inspection failure was silently treated as absence'
+            Assert ((Get-FileHash -LiteralPath $retained -Algorithm SHA256).Hash -ceq $before) 'uninspectable retained path changed'
+        } finally {
+            if ($null -eq $savedPsFailure) { Remove-Item Env:B217_UNREADABLE_PATH -ErrorAction SilentlyContinue }
+            else { $env:B217_UNREADABLE_PATH = $savedPsFailure }
+            if ($null -eq $savedShFind) { Remove-Item Env:B217_TEST_FIND_CMD -ErrorAction SilentlyContinue }
+            else { $env:B217_TEST_FIND_CMD = $savedShFind }
+            Remove-Item -Recurse -Force -LiteralPath $target, $candidate.Root -ErrorAction SilentlyContinue
+        }
+    }
+
+    It "preserves pre-manifest and malformed-manifest mirrors with durable manual-migration warnings ($twin)" {
+        $candidate = New-B217CandidateSource
+        try {
+            foreach ($shape in @('missing', 'malformed')) {
+                $target = New-B217LegacyManifestTarget -StockPath $candidate.Stock -ManifestShape $shape
+                try {
+                    $before = (Get-FileHash -LiteralPath (Join-Path $target $candidate.Stock) -Algorithm SHA256).Hash
+                    $first = Invoke-CurrentInstaller -Twin $twin -Target $target -SourceRoot $candidate.Root
+                    Assert ($first.Exit -eq 0) "B-217 $shape-manifest update exited $($first.Exit): $($first.Output)"
+                    Assert (Test-Path -LiteralPath (Join-Path $target $candidate.Stock) -PathType Leaf) "$shape-manifest update deleted the unqualified stock mirror"
+                    Assert ((Get-FileHash -LiteralPath (Join-Path $target $candidate.Stock) -Algorithm SHA256).Hash -ceq $before) "$shape-manifest update changed the unqualified stock mirror"
+                    Assert (@(($first.Output -split "`r?`n") | Where-Object { $_ -eq "PLAN delete $($candidate.Stock)" }).Count -eq 0) "$shape-manifest update planned an unauthorized stock deletion"
+                    Assert ($first.Output -match "CANT-VERIFY: previous framework-ownership\.json is $shape") "$shape-manifest update did not name the lost deletion authority"
+                    Assert ($first.Output -match "CANT-VERIFY: retained retired path '\.github/skills/perf/SKILL\.md'.*may shadow") "$shape-manifest update lacked the exact manual-migration warning"
+
+                    $second = Invoke-CurrentInstaller -Twin $twin -Target $target -SourceRoot $candidate.Root
+                    Assert ($second.Exit -eq 0) "B-217 later $shape-manifest update exited $($second.Exit): $($second.Output)"
+                    Assert ((Get-FileHash -LiteralPath (Join-Path $target $candidate.Stock) -Algorithm SHA256).Hash -ceq $before) "later $shape-manifest update changed the preserved mirror"
+                    Assert ($second.Output -match "CANT-VERIFY: retained retired path '\.github/skills/perf/SKILL\.md'.*may shadow") "later $shape-manifest update lost the durable exact-path warning"
+                } finally {
+                    Remove-Item -Recurse -Force -LiteralPath $target -ErrorAction SilentlyContinue
+                }
+            }
+        } finally {
+            Remove-Item -Recurse -Force -LiteralPath $candidate.Root -ErrorAction SilentlyContinue
+        }
+    }
+
     It "downgrade refusal is pre-mutation and the deliberate override is observable ($twin)" {
         $target = New-LegacyRetirementTarget
         try {
@@ -248,15 +450,17 @@ foreach ($twin in @('ps1','sh')) {
             $before = Get-FileState $target
             $discoveredBefore = $before['.claude/skills/local-release/SKILL.md']
             $unknownBefore = $before['.claude/skills/consumer-local/SKILL.md']
+            $legacyDiscoveredBefore = $before['.github/skills/local-release/SKILL.md']
+            $legacyDisabledBefore = $before['.github/skills/perf/SKILL.md']
             $dry = Invoke-CurrentInstaller -Twin $twin -Target $target -DryRun
             Assert ($dry.Exit -eq 0) "rich dry-run exited $($dry.Exit): $($dry.Output)"
             $dryPlan = @(($dry.Output -split "`r?`n") | Where-Object { $_ -match '^PLAN ' })
             Assert ($dryPlan -contains 'PLAN create .claude/framework-update-backup/skills/local-release/SKILL.md') 'skill backup leaf was hidden behind an opaque directory plan'
             Assert (@($dryPlan | Where-Object { $_ -match '^PLAN (create|replace) \.claude/disabled-skills/perf/SKILL\.md$' }).Count -eq 1) 'disabled-skill destination was absent or contradictory'
             Assert ($dryPlan -contains 'PLAN delete .claude/skills/perf') 'disabled active skill deletion was not planned'
-            Assert ($dryPlan -contains 'PLAN delete .github/skills/perf') 'disabled GitHub mirror deletion was not planned'
             Assert (@($dryPlan | Where-Object { $_ -match '^PLAN (create|replace) \.claude/skills/perf/' }).Count -eq 0) 'plan claimed the disabled skill would remain active'
-            Assert (@($dryPlan | Where-Object { $_ -match '^PLAN (create|replace) \.github/skills/local-release/(SKILL\.md|notes\.md)$' }).Count -eq 2) 'discovered skill mirror leaves were not planned'
+            Assert (@($dryPlan | Where-Object { $_ -match '^PLAN (?:create|replace|delete) \.github/skills(?:/|$)' }).Count -eq 0) 'retired GitHub skill tree still had installer mutation plans'
+            Assert ($dry.Output -match "CANT-VERIFY: retained retired path '\.github/skills/perf/SKILL\.md'.*may shadow") 'modified disabled mirror lacked a durable exact-path warning'
 
             $apply = Invoke-CurrentInstaller -Twin $twin -Target $target
             Assert ($apply.Exit -eq 0) "rich apply exited $($apply.Exit): $($apply.Output)"
@@ -278,14 +482,14 @@ foreach ($twin in @('ps1','sh')) {
                 Assert ($writePlan.Contains($relative) -or $coveredByDelete) "actual mutation was absent from the plan: $relative"
             }
             Assert ($after['.claude/skills/local-release/SKILL.md'] -ceq $discoveredBefore) 'discovered Claude skill changed'
-            Assert ($after['.github/skills/local-release/SKILL.md'] -ceq $discoveredBefore) 'discovered GitHub mirror did not converge to the preserved Claude skill'
+            Assert ($after['.github/skills/local-release/SKILL.md'] -ceq $legacyDiscoveredBefore) 'unknown GitHub-only skill bytes changed'
             Assert ($after['.claude/skills/consumer-local/SKILL.md'] -ceq $unknownBefore) 'unknown consumer skill bytes changed during exemplar carry-forward'
-            Assert ($after['.github/skills/consumer-local/SKILL.md'] -ceq $unknownBefore) 'unknown consumer skill mirror did not use the preserved consumer bytes'
+            Assert (-not $after.ContainsKey('.github/skills/consumer-local/SKILL.md')) 'installer created a GitHub mirror for a canonical consumer skill'
             $frameworkSkill = Get-Content -LiteralPath (Join-Path $target '.claude/skills/add-warehouse-load/SKILL.md') -Raw
             Assert ($frameworkSkill -notmatch 'OLD BODY') 'framework skill was not refreshed before carrying its exemplar forward'
             Assert ($frameworkSkill -match [regex]::Escape('For a concrete current instance in this repo, see `warehouse/LoadSales.sql`.')) 'framework skill lost its prior exemplar'
             Assert (-not $after.ContainsKey('.claude/skills/perf/SKILL.md')) 'disabled skill remained active'
-            Assert (-not $after.ContainsKey('.github/skills/perf/SKILL.md')) 'disabled skill remained active on GitHub'
+            Assert ($after['.github/skills/perf/SKILL.md'] -ceq $legacyDisabledBefore) 'consumer-modified legacy GitHub skill was deleted or overwritten'
         } finally { Remove-Item -Recurse -Force -LiteralPath $target -ErrorAction SilentlyContinue }
     }
 

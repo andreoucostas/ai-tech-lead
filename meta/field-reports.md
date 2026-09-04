@@ -164,6 +164,57 @@ the broader supported-host router experiment.
 
 ---
 
+## Report #6 — .NET brownfield, project DI and endpoint recipes not adapted
+
+| | |
+|---|---|
+| **Date received** | 2026-09-03 |
+| **Stack / repo shape** | .NET brownfield; repository documents Unity registration through each project's `IoCConfig.Configure(IUnityContainer)` and links an existing exemplar |
+| **Framework installed** | yes; version not captured |
+| **What misfired** | Framework instance-shaped skills were used without adapting their concrete recipe to the solution. In particular, `register-service` directed `IServiceCollection`, an `AddXxxServices` extension and MS.DI scoped/transient/singleton vocabulary instead of the documented Unity composition root. Following it would introduce an unsupported parallel DI pattern. `add-endpoint` was also reported as using the bare framework recipe rather than the solution's established pattern. |
+| **What fired** | Framework skills; exact selection/tool transcript not captured |
+| **What got ignored** | The repository's documented convention and linked Unity `IoCConfig` exemplar |
+| **Hook noise** | not captured |
+| **Token pain** | not captured |
+| **Reporter** | not captured |
+
+**Epistemic status.** The client repository and transcript are confidential and were not supplied,
+so the Unity convention and task outcome remain attributed field evidence rather than a local
+reproduction. The authoring tree independently confirms the conflicting framework instruction:
+`register-service` admits an equivalent DI registration pattern, then prescribes
+`IServiceCollection`, `AddXxxServices` and MS.DI lifetime vocabulary. The broader endpoint symptom
+is reported; the framework's fixed endpoint layer/DTO/validation steps are locally observable.
+
+**Outcome:** B-216.
+
+---
+
+## Report #7 — framework authoring, duplicate GitHub skill delivery
+
+| | |
+|---|---|
+| **Date received** | 2026-09-04 |
+| **Stack / repo shape** | AI Tech Lead framework authoring monorepo; dotnet, angular and monorepo distributions |
+| **Framework installed** | n/a — maintainer repository |
+| **What misfired** | The framework kept byte-identical `.github/skills` copies and dedicated sync/update/gate machinery even though current GitHub Copilot documentation supports the canonical `.claude/skills` layout. The broader `.github` tree was being discussed as one duplicate class despite several files having distinct host contracts. |
+| **What fired** | Historical WSD-002 mirror policy, `sync-agent-files` twins, installer mirror reconstruction and parity checks |
+| **What got ignored** | Current capability-specific vendor documentation and the need to distinguish literal copies from host adapters |
+| **Hook noise** | none observed |
+| **Token pain** | not captured |
+| **Reporter** | the maintainer |
+
+**Epistemic status.** The literal duplication, byte counts, producer/consumer graph and historical
+maintenance defects were verified locally. Current GitHub documentation covers `.claude/skills`
+across the named Copilot skill surfaces, and CLI 1.0.80 discovered a Claude-only fixture without a
+model call. Non-CLI discovery remains documentation-backed, not locally executed. Separate primary
+documentation showed that AGENTS remains necessary for Codex and GitHub code review while active
+Gemini/Aider automatic-reader claims are overstated.
+
+**Outcome:** B-217 / WSD-072. Remove the skill mirror and only its exclusive machinery; retain and
+truthfully describe the other adapters.
+
+---
+
 ## Intake gaps (a finding in its own right)
 
 Reports arrive as a sentence or two about one defect, and most table fields go uncaptured.

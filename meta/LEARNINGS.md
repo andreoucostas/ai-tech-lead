@@ -2045,3 +2045,25 @@ content-qualified retirement across every supported historical blob, preservatio
 inability result for modified residues, and model-facing discovery rules that consult both active
 ownership and retirement metadata. Path names describe shape; ownership establishes whose command a
 runner can evidence.
+
+## 2026-09-04 — Revalidate capability duplication per host surface, not per vendor name
+
+B-217 found one literal duplicate inside a much broader set of GitHub adapters. Current GitHub
+documentation and a local Copilot CLI discovery canary support `.claude/skills/` directly, so the
+byte-identical `.github/skills/` tree no longer buys compatibility. Its documented higher priority
+can instead turn a stale copy into the active recipe. The prompt, agent, inline-instruction, scoped-
+instruction, hook, workflow, and pull-request surfaces still have distinct contracts; “Copilot
+supports Claude setup” is not evidence that all `.github` machinery is redundant.
+
+Capability support must therefore be audited as an exact matrix of host surface and artifact, with
+a positive/negative canary where the client exposes a deterministic discovery API. Recheck old
+premises when the host evolves, and correct audience claims rather than preserving them as product
+folklore. A parser gate can enforce an obsolete mirror perfectly while making its deletion look
+like a defect.
+
+Retiring the source is only half the change. Once a consumer's prior ownership manifest no longer
+names a historical path, automatic deletion authority cannot be reconstructed from familiar bytes
+alone. Cumulative known hashes safely remove only prior-owned stock files; every surviving high-
+priority legacy path needs a durable, path-specific migration warning independent of deletion
+authority. Otherwise a modified mirror or old sync script can keep shadowing or recreate the
+retired surface indefinitely while later updates appear clean.

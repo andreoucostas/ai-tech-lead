@@ -7,11 +7,27 @@
   "ceilings-seconds": {
     "compose": 60,
     "dist-gates": 700,
-    "meta-suite": 650,
+    "meta-suite": 1200,
     "eval-selftest": 120,
-    "total-local-gates": 1530
+    "total-local-gates": 2080
   },
   "ceiling-revisions": [
+    {
+      "date": "2026-09-04",
+      "stage": "meta-suite",
+      "from": 650,
+      "to": 1200,
+      "why": "B-217 added a required migration matrix for retiring the GitHub skill mirror safely. Two comparable v0.82.0 release attempts passed every functional gate but the hard budget correctly refused the meta-suite at 802.6s and 828.4s against 650s; their total local-gate times remained 910.5s and 938.2s. InstallerConvergence grew from 12 to 18 assertions and the new cases require 14 cross-shell installer executions covering first/repeat install, missing/malformed manifest, modified content, unknown content, and uninspectable-state preservation. Removing or collapsing those cases would discard the release-specific safety evidence. Set to about 1.45x the worse observation (828.4s), consistent with the recorded loaded-host policy and still able to catch a material regression. No functional test or behavior check was removed; the only enforcement relaxation is this recorded stage ceiling and its mechanically derived aggregate, reflecting the observed cost of the enlarged contract.",
+      "measured": 828.4
+    },
+    {
+      "date": "2026-09-04",
+      "stage": "total-local-gates",
+      "from": 1530,
+      "to": 2080,
+      "why": "Recomputed exactly after the justified meta-suite revision: compose 60 + dist-gates 700 + meta-suite 1200 + eval-selftest 120 = 2080. This preserves B-139's same-commit consistency requirement; it is bookkeeping, not an independent allowance for slower gates. The worse observed total was 938.2s.",
+      "measured": 938.2
+    },
     {
       "date": "2026-08-13",
       "stage": "total-local-gates",

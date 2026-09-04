@@ -82,8 +82,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#frontmatter",
-          "chars": 253,
-          "tok": 63
+          "chars": 149,
+          "tok": 37
         },
         {
           "path": ".claude/commands/impact.md#frontmatter",
@@ -182,8 +182,8 @@
         },
         {
           "path": "CLAUDE.md",
-          "chars": 7873,
-          "tok": 1968
+          "chars": 8024,
+          "tok": 2006
         }
       ],
       "static.copilot": [
@@ -199,8 +199,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 23126,
-          "tok": 5782
+          "chars": 23166,
+          "tok": 5792
         }
       ],
       "instructed": [
@@ -211,13 +211,13 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 12318,
-          "tok": 3080
+          "chars": 12570,
+          "tok": 3142
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 5526,
-          "tok": 1382
+          "chars": 5653,
+          "tok": 1413
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -241,13 +241,13 @@
         },
         {
           "path": "docs/playbook.md",
-          "chars": 9822,
-          "tok": 2456
+          "chars": 9929,
+          "tok": 2482
         },
         {
           "path": "docs/presentation/TALKING-POINTS.md",
-          "chars": 8855,
-          "tok": 2214
+          "chars": 9032,
+          "tok": 2258
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -352,13 +352,13 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 30878,
-          "tok": 7720
+          "chars": 33457,
+          "tok": 8364
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 42559,
-          "tok": 10640
+          "chars": 42804,
+          "tok": 10701
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -387,8 +387,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#body",
-          "chars": 7766,
-          "tok": 1942
+          "chars": 7130,
+          "tok": 1782
         },
         {
           "path": ".claude/commands/impact.md#body",
@@ -397,8 +397,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 15084,
-          "tok": 3771
+          "chars": 15183,
+          "tok": 3796
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -556,8 +556,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#frontmatter",
-          "chars": 253,
-          "tok": 63
+          "chars": 149,
+          "tok": 37
         },
         {
           "path": ".claude/commands/impact.md#frontmatter",
@@ -646,8 +646,8 @@
         },
         {
           "path": "CLAUDE.md",
-          "chars": 8323,
-          "tok": 2081
+          "chars": 8474,
+          "tok": 2118
         }
       ],
       "static.copilot": [
@@ -663,8 +663,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 23683,
-          "tok": 5921
+          "chars": 23723,
+          "tok": 5931
         }
       ],
       "instructed": [
@@ -675,13 +675,13 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 12398,
-          "tok": 3100
+          "chars": 12650,
+          "tok": 3162
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 5773,
-          "tok": 1443
+          "chars": 5900,
+          "tok": 1475
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -705,13 +705,13 @@
         },
         {
           "path": "docs/playbook.md",
-          "chars": 9813,
-          "tok": 2453
+          "chars": 9920,
+          "tok": 2480
         },
         {
           "path": "docs/presentation/TALKING-POINTS.md",
-          "chars": 8855,
-          "tok": 2214
+          "chars": 9032,
+          "tok": 2258
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -816,13 +816,13 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 30387,
-          "tok": 7597
+          "chars": 32966,
+          "tok": 8242
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 35743,
-          "tok": 8936
+          "chars": 35988,
+          "tok": 8997
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -851,8 +851,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#body",
-          "chars": 7573,
-          "tok": 1893
+          "chars": 6937,
+          "tok": 1734
         },
         {
           "path": ".claude/commands/impact.md#body",
@@ -861,8 +861,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 13957,
-          "tok": 3489
+          "chars": 14056,
+          "tok": 3514
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -1010,8 +1010,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#frontmatter",
-          "chars": 253,
-          "tok": 63
+          "chars": 149,
+          "tok": 37
         },
         {
           "path": ".claude/commands/impact.md#frontmatter",
@@ -1130,8 +1130,8 @@
         },
         {
           "path": "CLAUDE.md",
-          "chars": 9940,
-          "tok": 2485
+          "chars": 10091,
+          "tok": 2523
         }
       ],
       "static.copilot": [
@@ -1147,8 +1147,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 26779,
-          "tok": 6695
+          "chars": 26819,
+          "tok": 6705
         }
       ],
       "instructed": [
@@ -1159,13 +1159,13 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 13269,
-          "tok": 3317
+          "chars": 13521,
+          "tok": 3380
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 6523,
-          "tok": 1631
+          "chars": 6650,
+          "tok": 1662
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -1189,13 +1189,13 @@
         },
         {
           "path": "docs/playbook.md",
-          "chars": 10470,
-          "tok": 2618
+          "chars": 10577,
+          "tok": 2644
         },
         {
           "path": "docs/presentation/TALKING-POINTS.md",
-          "chars": 8855,
-          "tok": 2214
+          "chars": 9032,
+          "tok": 2258
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -1300,13 +1300,13 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 31366,
-          "tok": 7842
+          "chars": 33945,
+          "tok": 8486
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 50168,
-          "tok": 12542
+          "chars": 50413,
+          "tok": 12603
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1335,8 +1335,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#body",
-          "chars": 7986,
-          "tok": 1996
+          "chars": 7350,
+          "tok": 1838
         },
         {
           "path": ".claude/commands/impact.md#body",
@@ -1345,8 +1345,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 16668,
-          "tok": 4167
+          "chars": 16767,
+          "tok": 4192
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -1453,26 +1453,26 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 39936,
-      "static.claude.tok": 9984,
-      "static.copilot.chars": 45293,
-      "static.copilot.tok": 11323,
+      "static.claude.chars": 39983,
+      "static.claude.tok": 9996,
+      "static.copilot.chars": 45333,
+      "static.copilot.tok": 11333,
       "prompt.max.chars": 3008,
       "prompt.max.tok": 752
     },
     "angular": {
-      "static.claude.chars": 38459,
-      "static.claude.tok": 9615,
-      "static.copilot.chars": 46194,
-      "static.copilot.tok": 11548,
+      "static.claude.chars": 38506,
+      "static.claude.tok": 9626,
+      "static.copilot.chars": 46234,
+      "static.copilot.tok": 11558,
       "prompt.max.chars": 3078,
       "prompt.max.tok": 770
     },
     "monorepo": {
-      "static.claude.chars": 47452,
-      "static.claude.tok": 11863,
-      "static.copilot.chars": 53088,
-      "static.copilot.tok": 13272,
+      "static.claude.chars": 47499,
+      "static.claude.tok": 11875,
+      "static.copilot.chars": 53128,
+      "static.copilot.tok": 13282,
       "prompt.max.chars": 3423,
       "prompt.max.tok": 856
     },

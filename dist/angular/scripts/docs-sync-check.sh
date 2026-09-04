@@ -130,15 +130,11 @@ else
   ok "FRAMEWORK-CONTEXT.md present and populated."
 fi
 
-# 5. Skills mirror parity: .github/skills must match .claude/skills (run scripts/sync-agent-files).
-if [ -d ".claude/skills" ]; then
-  if [ ! -d ".github/skills" ]; then
-    fail ".github/skills is missing — run scripts/sync-agent-files.sh."
-  elif ! diff -rq ".claude/skills" ".github/skills" >/dev/null 2>&1; then
-    fail ".github/skills is out of sync with .claude/skills — run scripts/sync-agent-files.sh."
-  else
-    ok ".github/skills mirrors .claude/skills."
-  fi
+# 5. Canonical project-skill location.
+if [ -e ".github/skills" ] || [ -L ".github/skills" ]; then
+  fail ".github/skills exists — migrate its contents to .claude/skills, then remove the GitHub path."
+else
+  ok "canonical project skills use .claude/skills (.github/skills absent)."
 fi
 
 # 6. README mentions each skill and agent (advisory) — keep the reference tables current.

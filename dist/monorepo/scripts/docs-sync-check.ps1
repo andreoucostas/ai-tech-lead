@@ -99,24 +99,11 @@ if (-not (Test-Path "FRAMEWORK-CONTEXT.md")) {
     Fail "FRAMEWORK-CONTEXT.md still contains DETECTED_FRAMEWORK_PACKAGES_PENDING — run /bootstrap."
 } else { OK "FRAMEWORK-CONTEXT.md present and populated." }
 
-# 5. Skills mirror parity.
-if (Test-Path ".claude/skills") {
-    if (-not (Test-Path ".github/skills")) {
-        Fail ".github/skills is missing — run scripts/sync-agent-files.ps1."
-    } else {
-        $hash = {
-            param($dir)
-            Get-ChildItem -Recurse -File $dir | Sort-Object FullName | ForEach-Object {
-                $rel = $_.FullName.Substring((Resolve-Path $dir).Path.Length)
-                $rel + ':' + (Get-FileHash $_.FullName -Algorithm SHA1).Hash
-            }
-        }
-        $a = & $hash ".claude/skills"
-        $b = & $hash ".github/skills"
-        if (Compare-Object $a $b) {
-            Fail ".github/skills is out of sync with .claude/skills — run scripts/sync-agent-files.ps1."
-        } else { OK ".github/skills mirrors .claude/skills." }
-    }
+# 5. Canonical project-skill location.
+if (Test-Path -LiteralPath ".github/skills") {
+    Fail ".github/skills exists — migrate its contents to .claude/skills, then remove the GitHub path."
+} else {
+    OK "canonical project skills use .claude/skills (.github/skills absent)."
 }
 
 # 6. README mentions each skill and agent (advisory) -- keep the reference tables current.

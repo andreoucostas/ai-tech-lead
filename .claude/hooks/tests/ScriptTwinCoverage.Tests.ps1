@@ -8,7 +8,7 @@ It 'classifies every shipped script twin' {
     $files=@(Get-ChildItem $core -Filter *.ps1 -File)+@(Get-ChildItem $stack -Recurse -Filter *.ps1 -File|Where-Object{$_.FullName-match'[\\/]files[\\/]scripts[\\/]'} )
     $pairs=@($files|Where-Object{Test-Path ($_.FullName-replace'\.ps1$','.sh')}|ForEach-Object{$_.BaseName}|Sort-Object -Unique)
     $parity=[IO.File]::ReadAllText((Join-Path $root 'src/core/tests/hooks/ScriptTwinParity.Tests.ps1'))
-    $covered=@('template-checks','docs-sync-check','sync-agent-files','metrics')|Where-Object{$parity.Contains($_)}
+    $covered=@('template-checks','docs-sync-check','metrics')|Where-Object{$parity.Contains($_)}
     $ack=@{
         'install'='covered by the installer contract test in this meta suite'
         'wiki-check'='covered by tests/hooks/WikiCheck.Tests.ps1'

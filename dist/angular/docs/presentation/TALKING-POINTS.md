@@ -124,7 +124,9 @@ These mirror the in-deck speaker notes (press **N**), collected here for printin
 
 **"Does this lock us into Claude / one vendor?"**
 No. CLAUDE.md is the source, but it's mirrored to the open `AGENTS.md` standard and to Copilot's
-formats. Copilot, Cursor, Gemini, and Aider all read it. Swap assistants without rewriting the rules.
+formats. Claude Code and supported Copilot agent surfaces read `CLAUDE.md`; Codex and GitHub code
+review use `AGENTS.md`, while Cursor reads both. Gemini and Aider can join when configured for the
+appropriate carrier, so changing assistants does not require rewriting the rules.
 
 **"We already have a coding-standards doc. How is this different?"**
 A doc is advisory and goes stale. This is *executable and enforced* — hooks block violations in real

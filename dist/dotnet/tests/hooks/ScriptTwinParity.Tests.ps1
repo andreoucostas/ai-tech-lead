@@ -31,13 +31,13 @@ function CopyPair($name,$root) { New-Item -ItemType Directory -Force (Join-Path 
 # (B-131: an unmarked consumer owns its changelog convention). A fixture named TemplateFixture that
 # omitted the marker was silently exercising the CONSUMER branch, so its changelog assertions
 # agreed vacuously.
-function TemplateFixture { $r=Temp template;CopyPair template-checks $r;Put (Join-Path $r '.template-repo') "fixture`n";Put (Join-Path $r CHANGELOG.md) "# Changelog`n`n## 1.2.3 — 2026-08-08`n`n- Fixture.`n";Put (Join-Path $r CLAUDE.md) "version: 1.2.3`n## Verification Rules`nSame`n## Leanness`nSame`n## SOLID`nSame`n## Boy Scout Rule`nSame`n### Apply only when the file is the primary target of the change:`nSame primary-target rules`n## Agentic Workflow`n### 1. Classify the intent`nSame`n### 2. Continue`n## Common Tasks`n- ``alpha`` — first → second`n- ``beta`` - plain separator`n";Put (Join-Path $r AGENTS.md) "## Verification Rules`nSame`n## Leanness`nSame`n## SOLID`nSame`n## Boy Scout Rule`nSame`n### Apply only when the file is the primary target of the change:`nSame primary-target rules`n## Agentic Workflow`n### 1. Classify the intent`nSame`n### 2. Continue`n## Common Tasks`n- ``alpha`` — first → second`n- ``beta`` - plain separator`n";Put (Join-Path $r '.claude/framework-version.json') '{"version":"1.2.3"}';Put (Join-Path $r '.github/copilot-instructions.md') "fixture`n";PutBom (Join-Path $r '.claude/hooks/probe.ps1') "# probe`n";Put (Join-Path $r '.claude/hooks/probe.sh') "# probe`n";Put (Join-Path $r '.claude/skills/demo/SKILL.md') "# demo`n";Put (Join-Path $r '.github/skills/demo/SKILL.md') "# demo`n";$r }
+function TemplateFixture { $r=Temp template;CopyPair template-checks $r;Put (Join-Path $r '.template-repo') "fixture`n";Put (Join-Path $r CHANGELOG.md) "# Changelog`n`n## 1.2.3 — 2026-08-08`n`n- Fixture.`n";Put (Join-Path $r CLAUDE.md) "version: 1.2.3`n## Verification Rules`nSame`n## Leanness`nSame`n## SOLID`nSame`n## Boy Scout Rule`nSame`n### Apply only when the file is the primary target of the change:`nSame primary-target rules`n## Agentic Workflow`n### 1. Classify the intent`nSame`n### 2. Continue`n## Common Tasks`n- ``alpha`` — first → second`n- ``beta`` - plain separator`n";Put (Join-Path $r AGENTS.md) "## Verification Rules`nSame`n## Leanness`nSame`n## SOLID`nSame`n## Boy Scout Rule`nSame`n### Apply only when the file is the primary target of the change:`nSame primary-target rules`n## Agentic Workflow`n### 1. Classify the intent`nSame`n### 2. Continue`n## Common Tasks`n- ``alpha`` — first → second`n- ``beta`` - plain separator`n";Put (Join-Path $r '.claude/framework-version.json') '{"version":"1.2.3"}';Put (Join-Path $r '.github/copilot-instructions.md') "fixture`n";PutBom (Join-Path $r '.claude/hooks/probe.ps1') "# probe`n";Put (Join-Path $r '.claude/hooks/probe.sh') "# probe`n";Put (Join-Path $r '.claude/skills/demo/SKILL.md') "# demo`n";$r }
 function CarrierTemplateFixture { $r=TemplateFixture;Put (Join-Path $r CLAUDE.md) "version: 1.2.3`n@.github/instructions/framework-rules.instructions.md`n## Boy Scout Rule`nSame`n### Apply only when the file is the primary target of the change:`nSame primary-target rules`n## Common Tasks`n- ``alpha`` — first → second`n- ``beta`` - plain separator`n";Put (Join-Path $r '.github/instructions/framework-rules.instructions.md') "## Verification Rules`nSame`n## Leanness`nSame`n## SOLID`nSame`n## Agentic Workflow`n### 1. Classify the intent`nSame`n### 2. Carrier-only continuation`n";$r }
 # The checks this fixture must REACH. Several checks are wrapped in "if the directory exists", so a
 # fixture that omits the directory skips the check silently and the twins agree vacuously. Asserting
 # the reached set turns "this check never ran" into a failure instead of a green line.
-$ExpectedChecks = @('version stamps in sync','mirrored verbatim','Agentic Workflow','copilot-instructions.md present','carry a UTF-8 BOM','<framework scripts parse cleanly>','every hook has its','skills and .github/skills are in sync','Common Tasks skill inventory matches')
-function NormDocs($text) { $known='sync-agent-files|template-checks|wiki-check|warehouse-map-check|build-architecture-html';$x=$text-replace("("+$known+")\.(ps1|sh)"),'$1.<script>';($x-replace'all framework \.(ps1|sh) files parse cleanly\.','all framework scripts parse cleanly.') }
+$ExpectedChecks = @('version stamps in sync','mirrored verbatim','Agentic Workflow','copilot-instructions.md present','carry a UTF-8 BOM','<framework scripts parse cleanly>','every hook has its','canonical project skills use .claude/skills','retired skill-mirror sync scripts are absent','Common Tasks skill inventory matches')
+function NormDocs($text) { $known='template-checks|wiki-check|warehouse-map-check|build-architecture-html';$x=$text-replace("("+$known+")\.(ps1|sh)"),'$1.<script>';($x-replace'all framework \.(ps1|sh) files parse cleanly\.','all framework scripts parse cleanly.') }
 function LiteralCount($text,$needle) { @([regex]::Matches([string]$text,[regex]::Escape($needle))).Count }
 function TerminalLineCount($text,$sentinel) { @(([string]$text -split '\r\n|\n|\r') | Where-Object { $_.Trim().EndsWith($sentinel,[StringComparison]::Ordinal) }).Count }
 function SetWarehouseStub($root,[int]$psStatus,[int]$shStatus,[string]$stream,[string]$sentinel) {
@@ -49,7 +49,7 @@ function SetWarehouseStub($root,[int]$psStatus,[int]$shStatus,[string]$stream,[s
 function DocsFixture { $r=Temp docs;CopyPair docs-sync-check $r;Put (Join-Path $r 'docs/enforcement-surfaces.md') "fixture`n";Put (Join-Path $r CLAUDE.md) "# ready`n";Put (Join-Path $r AGENTS.md) "GENERATED FILE`n## Verification Rules`n## Leanness`n## Boy Scout Rule`n## Agentic Workflow`n";Put (Join-Path $r '.github/copilot-instructions.md') "fixture`n";Put (Join-Path $r TECH_DEBT.md) "# debt`n";Put (Join-Path $r FRAMEWORK-CONTEXT.md) "# context`n";Put (Join-Path $r README.md) "# fixture`n";Put (Join-Path $r '.claude/skills/my-skill/SKILL.md') "# skill`n";Put (Join-Path $r '.claude/agents/my-agent.md') "# agent`n";$r }
 
 Reset-Tests
-if(-not $bash){foreach($n in 'template-checks clean and drift','docs-sync-check branches and advisories','sync-agent-files recursive mirror','metrics counters'){Skip $n 'bash unavailable; twin comparison requires bash'};exit (Write-TestSummary 'ScriptTwinParity.Tests')}
+if(-not $bash){foreach($n in 'template-checks clean and drift','docs-sync-check branches and advisories','metrics counters'){Skip $n 'bash unavailable; twin comparison requires bash'};exit (Write-TestSummary 'ScriptTwinParity.Tests')}
 
 It 'template-checks clean and planted drift agree in order' {
     $r=TemplateFixture
@@ -75,6 +75,27 @@ It 'template-checks clean and planted drift agree in order' {
                 foreach($want in $ExpectedChecks){
                     $hits=@($recs|Where-Object{$_-like "*$want*"}).Count
                     Assert ($hits-ge 1) "check '$want' was never reached -- the fixture stopped exercising it, so the twins would agree vacuously here. Restore the fixture input that triggers it."
+                }
+                # A GitHub skill path is a migration defect, not a mirror to repair. Plant the path
+                # after the clean run so the negative assertion observes the real checker behavior.
+                Put (Join-Path $r '.github/skills/rogue/SKILL.md') '# rogue'
+                $pRogue=RunArg $ps;$sRogue=RunArg $sh
+                AssertExit $pRogue $sRogue 'template-checks retired GitHub skill path'
+                Assert ($pRogue.Exit-ne 0) 'present .github/skills should fail template-checks'
+                $migration='.github/skills exists — migrate its contents to .claude/skills, then remove the GitHub path.'
+                Assert ($pRogue.Out.Contains($migration)) 'PowerShell migration finding absent'
+                Assert ($sRogue.Out.Contains($migration)) 'bash migration finding absent'
+                Remove-Item -Recurse -Force (Join-Path $r '.github/skills')
+                foreach ($retiredScript in @('scripts/sync-agent-files.ps1', 'scripts/sync-agent-files.sh')) {
+                    $retiredFull = Join-Path $r $retiredScript
+                    if ($retiredScript.EndsWith('.ps1')) { PutBom $retiredFull "# retired`n" } else { Put $retiredFull "# retired`n" }
+                    $pRetired=RunArg $ps;$sRetired=RunArg $sh
+                    AssertExit $pRetired $sRetired "template-checks retired $retiredScript"
+                    Assert ($pRetired.Exit-ne 0) "$retiredScript should fail template-checks"
+                    $retiredFinding="retired skill-mirror sync scripts exist: $retiredScript — remove these framework leftovers."
+                    Assert ($pRetired.Out.Contains($retiredFinding)) "PowerShell retired-script finding absent for $retiredScript"
+                    Assert ($sRetired.Out.Contains($retiredFinding)) "bash retired-script finding absent for $retiredScript"
+                    Remove-Item -LiteralPath $retiredFull -Force
                 }
             }else{
                 Assert ($p.Out.Contains('version-stamp drift: CLAUDE.md says 1.2.3, framework-version.json says 9.9.9.')) 'PowerShell drift failure missing'
@@ -201,7 +222,6 @@ It 'docs-sync-check branches and advisory prose agree' {
         SetWarehouseStub $r 0 0 stdout 'WAREHOUSE_CHILD_STATUS_0'
         $consumerResults['status-0']=[pscustomobject]@{Name='status-0';Ps=RunArg (Join-Path $r scripts/docs-sync-check.ps1);Sh=RunArg (Join-Path $r scripts/docs-sync-check.sh) -BashOptions @('-e')}
 
-        Put (Join-Path $r '.github/skills/my-skill/SKILL.md') "# skill`n"
         foreach($world in @(
             [pscustomobject]@{Name='status-1';PsStatus=1;ShStatus=1;Stream='stdout';Sentinel='WAREHOUSE_CHILD_STATUS_1'},
             [pscustomobject]@{Name='status-2';PsStatus=2;ShStatus=2;Stream='stderr';Sentinel='WAREHOUSE_CHILD_STATUS_2'},
@@ -222,14 +242,28 @@ It 'docs-sync-check branches and advisory prose agree' {
     $oldNote='NOTE: warehouse map is missing or stale; refresh it before a warehouse write. (advisory - not a failure)'
     $newNote='NOTE: warehouse map could not be verified; this is not evidence that the map is missing or stale. (advisory - not a failure)'
     $zero=$consumerResults['status-0']
-    foreach($twin in @(@('PowerShell',$zero.Ps,'FAIL: .github/skills is missing — run scripts/sync-agent-files.ps1.'),@('bash',$zero.Sh,'FAIL: .github/skills is missing — run scripts/sync-agent-files.sh.'))) {
-        $label=$twin[0];$result=$twin[1];$missingMirror=$twin[2]
-        Expect ($result.Exit-eq 1) "$label status-0/missing-mirror exit should be 1, got $($result.Exit)"
+    foreach($twin in @(@('PowerShell',$zero.Ps),@('bash',$zero.Sh))) {
+        $label=$twin[0];$result=$twin[1]
+        Expect ($result.Exit-eq 0) "$label status-0/canonical-skill exit should be 0, got $($result.Exit)"
         Expect ((LiteralCount $result.Out 'WAREHOUSE_CHILD_STATUS_0')-eq 1) "$label status-0 checker sentinel cardinality differs"
-        Expect ((LiteralCount $result.Out $missingMirror)-eq 1) "$label missing-mirror finding cardinality differs"
+        Expect ((LiteralCount $result.Out '.github/skills exists')-eq 0) "$label unexpectedly reported a GitHub skill path"
         Expect ((LiteralCount $result.Out $oldNote)-eq 0) "$label status 0 emitted the missing/stale warehouse note"
         Expect ((LiteralCount $result.Out $newNote)-eq 0) "$label status 0 emitted the unable-to-verify warehouse note"
     }
+    # The wrapper must surface the deterministic migration blocker when a consumer still has the
+    # retired higher-priority path; this is distinct from the clean canonical case above.
+    $mirrorFixture=DocsFixture
+    try {
+        SetWarehouseStub $mirrorFixture 0 0 stdout 'WAREHOUSE_CHILD_STATUS_MIRROR'
+        Put (Join-Path $mirrorFixture '.github/skills/my-skill/SKILL.md') '# stale'
+        $mirrorPs=RunArg (Join-Path $mirrorFixture scripts/docs-sync-check.ps1)
+        $mirrorSh=RunArg (Join-Path $mirrorFixture scripts/docs-sync-check.sh) -BashOptions @('-e')
+        Expect ($mirrorPs.Exit-ne 0) "PowerShell docs-sync should fail for a present .github/skills path, got $($mirrorPs.Exit)"
+        Expect ($mirrorSh.Exit-ne 0) "bash docs-sync should fail for a present .github/skills path, got $($mirrorSh.Exit)"
+        Expect ($mirrorPs.Out.Contains('.github/skills exists — migrate its contents to .claude/skills, then remove the GitHub path.')) 'PowerShell docs-sync migration finding absent'
+        Expect ($mirrorSh.Out.Contains('.github/skills exists — migrate its contents to .claude/skills, then remove the GitHub path.')) 'bash docs-sync migration finding absent'
+        Expect ((NormDocs $mirrorPs.Out)-eq(NormDocs $mirrorSh.Out)) "mirror-path docs-sync stdout differs`nPS:`n$($mirrorPs.Out)`nSH:`n$($mirrorSh.Out)"
+    } finally { Remove-Item -Recurse -Force $mirrorFixture }
     $a="NOTE: docs/ci-integration.md is missing — restore it from the template if you need the portable required-build recipe. (advisory — not a failure)"
     $b="NOTE: README.md does not mention: skill:my-skill agent:my-agent — update the What's-in-the-box / subagents tables (they may have drifted). (advisory — not a failure)"
     foreach($advisory in $a,$b){Expect ($zero.Ps.Out.Contains($advisory)) "PowerShell advisory differs: $advisory";Expect ($zero.Sh.Out.Contains($advisory)) "bash advisory differs: $advisory"}
@@ -255,67 +289,6 @@ It 'docs-sync-check branches and advisory prose agree' {
         }
     }
     Assert ($issues.Count-eq 0) ("docs-sync matrix failures:`n"+($issues-join"`n"))
-}
-
-It 'sync-agent-files recursively produces identical trees' {
-    $seed=Temp sync-seed
-    $roots=[Collections.Generic.List[string]]::new()
-    try{
-        Put (Join-Path $seed '.claude/skills/a/SKILL.md') '# a'
-        Put (Join-Path $seed '.claude/skills/a/reference/notes.md') 'nested'
-        $sourceBase=(Resolve-Path (Join-Path $seed '.claude/skills')).Path
-        $sourceFingerprint=@(Get-ChildItem $sourceBase -Recurse -File|ForEach-Object{($_.FullName.Substring($sourceBase.Length).TrimStart('\','/')-replace'\\','/')+'|'+(Get-FileHash $_.FullName -Algorithm SHA256).Hash}|Sort-Object)-join"`n"
-        $results=@{}
-        $testRoots=@{}
-        foreach($kind in 'ps1','sh'){
-            $r=Temp "sync-$kind";$roots.Add($r)|Out-Null
-            Copy-Item (Join-Path $seed '.claude') $r -Recurse -Force
-            CopyPair sync-agent-files $r
-            InitSafe $r
-            $results[$kind]=RunHere (Join-Path $r "scripts/sync-agent-files.$kind") $r
-            $testRoots[$kind]=$r
-        }
-        $issues=[Collections.Generic.List[string]]::new()
-        $expected='Synced skills: .claude/skills -> .github/skills'
-        foreach($kind in 'ps1','sh'){
-            $result=$results[$kind]
-            if($result.Exit-ne0){$issues.Add("$kind sync exit=$($result.Exit)")}
-            if($result.Out-cne$expected){$issues.Add("$kind sync stdout differs: [$($result.Out)]")}
-            if(-not[string]::IsNullOrEmpty($result.Err)){$issues.Add("$kind sync stderr was not empty: [$($result.Err)]")}
-            $mirror=Join-Path $testRoots[$kind] '.github/skills'
-            if(-not(Test-Path -LiteralPath $mirror -PathType Container)){$issues.Add("$kind mirror is missing");continue}
-            $mirrorBase=(Resolve-Path $mirror).Path
-            $mirrorFingerprint=@(Get-ChildItem $mirrorBase -Recurse -File|ForEach-Object{($_.FullName.Substring($mirrorBase.Length).TrimStart('\','/')-replace'\\','/')+'|'+(Get-FileHash $_.FullName -Algorithm SHA256).Hash}|Sort-Object)-join"`n"
-            if($mirrorFingerprint-cne$sourceFingerprint){$issues.Add("$kind mirror differs from the canonical source")}
-        }
-        Assert ($issues.Count-eq0) ($issues-join"`n")
-    }finally{
-        foreach($r in $roots){Remove-Item -Recurse -Force $r}
-        Remove-Item -Recurse -Force $seed
-    }
-}
-
-It 'sync-agent-files twins fall back to the current directory outside Git' {
-    $seed=Temp sync-nongit-seed
-    try{
-        Put (Join-Path $seed '.claude/skills/a/SKILL.md') '# a'
-        Put (Join-Path $seed '.claude/skills/a/reference/notes.md') 'nested'
-        foreach($kind in 'ps1','sh'){
-            $r=Temp "sync-nongit-$kind"
-            try{
-                Copy-Item (Join-Path $seed '.claude') $r -Recurse -Force
-                CopyPair sync-agent-files $r
-                $null=git -C $r rev-parse --show-toplevel 2>$null
-                Assert ($LASTEXITCODE-ne 0) "setup: $r unexpectedly resolves inside Git"
-                $res=RunHere (Join-Path $r "scripts/sync-agent-files.$kind") $r
-                Assert ($res.Exit-eq 0) "$kind non-Git sync exit=$($res.Exit): $($res.Err)"
-                Assert ($res.Out-eq'Synced skills: .claude/skills -> .github/skills') "$kind non-Git stdout differs: $($res.Out)"
-                Assert ([string]::IsNullOrEmpty($res.Err)) "$kind non-Git stderr was not empty: $($res.Err)"
-                $mirrored=Join-Path $r '.github/skills/a/reference/notes.md'
-                Assert ((Test-Path -LiteralPath $mirrored)-and([IO.File]::ReadAllText($mirrored)-eq'nested')) "$kind non-Git nested mirror missing"
-            }finally{Remove-Item -Recurse -Force $r}
-        }
-    }finally{Remove-Item -Recurse -Force $seed}
 }
 
 It 'metrics twins agree on every non-zero counter' {$pairs=@();$localPs=Join-Path $scripts metrics.ps1;if(Test-Path $localPs){$pairs+=,$localPs}else{$root=(Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path;$pairs+=@(Get-ChildItem (Join-Path $root 'stacks/*/files/scripts/metrics.ps1'))};foreach($mp in $pairs){$ms=$mp.FullName;if(-not$ms){$ms=$mp};$sh=$ms-replace'\.ps1$','.sh';$r=Temp metrics;try{InitSafe $r;# Canonically-cased source exercises source patterns; case-sensitivity parity is intentionally not asserted.

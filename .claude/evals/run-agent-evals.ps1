@@ -3181,7 +3181,7 @@ FROM stg.StgSupplierInvoice s;
 
         # B-99/WSD-056 Phase 0: incident-shaped artifact scoring, pre-registered and exercised
         # against frozen worlds before any live run. The two reusable bases retain the released
-        # framework, its answer-neutral map, and both skill mirrors; each test clone then varies
+        # framework, its answer-neutral map, and the canonical project skill; each test clone then varies
         # only the produced query or a planted integrity/evidence defect.
         $upstreamPinnedBase = Join-Path $temp 'upstream-pinned-base'
         $upstreamDeferredBase = Join-Path $temp 'upstream-deferred-base'
@@ -3192,7 +3192,7 @@ FROM stg.StgSupplierInvoice s;
         Install-Framework $upstreamDeferredBase dotnet | Out-Null
         [void](Initialize-FactBindingScenario $upstreamDeferredBase -NeutralKeySemantics)
         foreach ($base in @($upstreamPinnedBase,$upstreamDeferredBase)) {
-            foreach ($required in @('docs/warehouse-map.md','.claude/skills/map-warehouse/SKILL.md','.github/skills/map-warehouse/SKILL.md')) {
+            foreach ($required in @('docs/warehouse-map.md','.claude/skills/map-warehouse/SKILL.md')) {
                 if (-not (Test-Path -LiteralPath (Join-Path $base $required))) { throw "B-99 fixture lost released artifact $required" }
             }
             $upstreamClaude = Get-Content -Raw -LiteralPath (Join-Path $base 'CLAUDE.md')

@@ -1,7 +1,7 @@
 # ai-tech-lead authoring repo — agent guide (mirror of CLAUDE.md)
 
-> Generated mirror of `CLAUDE.md` for tools that read `AGENTS.md` (GitHub Copilot, Cursor, Codex,
-> Aider, Gemini). **`CLAUDE.md` is canonical** — if the two ever disagree, follow `CLAUDE.md` and
+> Generated mirror of `CLAUDE.md` for tools that read `AGENTS.md` (including Codex, GitHub Copilot
+> code review, and Cursor). **`CLAUDE.md` is canonical** — if the two ever disagree, follow `CLAUDE.md` and
 > flag the drift. Regenerate this file whenever `CLAUDE.md` changes (kept in sync by hand).
 
 > **YOU ARE IN THE FRAMEWORK AUTHORING REPO, NOT A CONSUMER PROJECT.** Any `CLAUDE.md`/`AGENTS.md`

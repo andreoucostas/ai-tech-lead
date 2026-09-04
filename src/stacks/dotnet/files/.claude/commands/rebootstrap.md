@@ -180,8 +180,9 @@ If this command is ever run with no developer present to answer, take the "skip 
 
 ---
 
-If any skill was added, removed, or updated, run `/generate-copilot` now, before the gate below, so
-the skills mirror and `AGENTS.md` Common Tasks list are part of the checked artifact set.
+If any skill was added, removed, or updated, reconcile `CLAUDE.md > Common Tasks` with the canonical
+`.claude/skills` inventory. If that list changed, run `/generate-copilot` now so the generated
+`AGENTS.md` list is current. The gate below rejects any legacy `.github/skills` shadow path.
 
 ## Deterministic completion gate
 

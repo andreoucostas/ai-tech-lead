@@ -8,7 +8,7 @@ This install carries .NET, Angular, and warehouse-SQL rails in one repo, while `
 
 If you are an AI agent reading this repository, start here.
 
-**Your source of truth is [`CLAUDE.md`](./CLAUDE.md)** (Claude Code reads it directly) or its generated mirror **[`AGENTS.md`](./AGENTS.md)** (Copilot agent/CLI, Codex, Cursor, Gemini, Aider). Read that file before doing anything else — it defines the verification rules, conventions, SOLID/leanness constraints, and the step-by-step workflow you must follow.
+**Your source of truth is [`CLAUDE.md`](./CLAUDE.md)** (Claude Code and supported Copilot agent surfaces read it directly) or its generated mirror **[`AGENTS.md`](./AGENTS.md)** (Codex and GitHub code review; Cursor reads both). Read the applicable file before doing anything else — it defines the verification rules, conventions, SOLID/leanness constraints, and the step-by-step workflow you must follow.
 
 **If you were asked to install this framework into a target codebase** — installation is a two-actor flow: you (the agent) copy files and commit; a **developer** must then run the populate command. Your task is not complete until you have handed off explicitly:
 1. **Copy the files in:** `pwsh scripts/install.ps1 <target-repo-path>` (or `bash scripts/install.sh <target-repo-path>`). This installer carries both stacks' rails; it detects the mode itself: **greenfield** (plain copy), **brownfield** (the target already has AI tooling — the originals its copy would overwrite are moved to `docs/pre-adoption/` and `.claude/adoption-pending.json` is written), or **update** (target already stamped with `.claude/framework-version.json` — protected consumer paths are restored, framework machinery is overwritten, and `.claude/settings.json` is backed up before refresh).
@@ -56,14 +56,13 @@ Copy the following into your repository's **Git root**. `*.csproj`, Angular work
 ```
 .claude/                            → Claude Code commands and hooks
 .github/prompts/                    → GitHub Copilot Chat workflows (mirror of .claude/commands/)
-.github/skills/                     → Copilot-facing mirror of .claude/skills/ (generated)
 .github/agents/                     → Copilot custom agents wrapping the subagents
 .github/hooks/hooks.json            → registers the hooks for Copilot CLI / cloud agent
 .github/workflows/docs-sync-check.yml → CI guardrail (GitHub Actions; Bitbucket uses scripts/)
 .github/PULL_REQUEST_TEMPLATE.md    → PR template with design rationale + Boy Scout checklist
 scripts/                            → host-agnostic CI guardrail + skills-sync + Bitbucket CI sample
 specs/                              → persistent feature specs (spec-driven development)
-AGENTS.md                           → generated mirror of CLAUDE.md's rules (for Copilot/Codex/Cursor)
+AGENTS.md                           → generated rule mirror (Codex + GitHub code review; Cursor reads both)
 CLAUDE.md                           → template, populated by /bootstrap
 FRAMEWORK-CONTEXT.md                → cross-repo context (shared libs, multi-tenancy, dashboard contracts)
 LEARNINGS.md                        → append-only log of what works/doesn't
@@ -100,7 +99,7 @@ Either command:
 - Populates `CLAUDE.md` with your actual conventions and patterns
 - Generates `TECH_DEBT.md` with prioritised debt
 - Audits `.claude/skills/` against your codebase, adjusts default Common-Tasks recipes, and adds new skills for project-specific patterns
-- Generates `AGENTS.md` (full rules mirror of `CLAUDE.md` for Copilot agent / Codex / Cursor / Aider) and mirrors skills to `.github/skills/`
+- Generates `AGENTS.md` (full portable rules mirror for Codex and GitHub code review) and the slim Copilot inline-completion instructions
 - Generates a slim `.github/copilot-instructions.md` for Copilot inline completions
 
 ### 3. Review
@@ -141,19 +140,19 @@ To pull template updates, re-run the installer from a fresh template checkout ag
 
 | File | Purpose |
 |------|---------|
-| `CLAUDE.md` | **Single source of truth** (authored) — conventions, architecture, common tasks, agentic workflow. Read directly by Claude Code. Copilot/Codex/Cursor read its generated mirror `AGENTS.md`. |
+| `CLAUDE.md` | **Single source of truth** (authored) — conventions, architecture, common tasks, agentic workflow. Read directly by Claude Code and supported Copilot agent surfaces; Cursor also loads it. |
 | `FRAMEWORK-CONTEXT.md` | Cross-repo context: shared NuGet + npm libraries, multi-tenancy conventions, dashboard contracts, cross-service patterns. Every section is drafted by `/bootstrap` from the repo's code (cross-repo facts the code can't show are explicitly left to maintainers); "Detected Framework Packages" is also refreshed by `/docs-sync`; "Known Hazard Areas" by `/rebootstrap`. |
-| `AGENTS.md` | **Generated** — full mirror of CLAUDE.md's portable rules (Verification, Leanness, Conventions, Boy Scout, Agentic Workflow) so AGENTS.md-native tools (Copilot agent mode & CLI, Codex, Cursor, Gemini, Aider) get the real ruleset, not a pointer. Refreshed by `/generate-copilot`. |
-| `.github/copilot-instructions.md` | **Generated** — slim imperative ruleset (≤80 lines) for Copilot **inline completions** only. Agent-mode tools read the fuller `AGENTS.md`. |
+| `AGENTS.md` | **Generated** — full mirror of CLAUDE.md's portable rules (Verification, Leanness, Conventions, Boy Scout, Agentic Workflow) for Codex and GitHub code review; Cursor reads both carriers. Gemini defaults to `GEMINI.md`, and Aider needs explicit read configuration. Refreshed by `/generate-copilot`. |
+| `.github/copilot-instructions.md` | **Generated** — slim imperative ruleset (≤80 lines) for Copilot **inline completions** only. Supported Copilot agent surfaces read the fuller `CLAUDE.md`; GitHub code review uses `AGENTS.md`. |
 | `.github/prompts/*.prompt.md` | Copilot Chat workflows. Thin wrappers that delegate to `.claude/commands/`. |
 | `.claude/commands/*.md` | Canonical workflow definitions (used by Claude Code natively, and by the Copilot prompt files). |
-| `.claude/skills/*/SKILL.md` | Auto-discovered Common Tasks recipes (add-endpoint, add-entity, register-service, map-warehouse, add-warehouse-load, add-component, add-service, add-lazy-route, add-signal-store, add-tests, perf, dependency-audit, create-adr, enforce-architecture, enforce-standards). Body loads only when triggered. Mirrored to `.github/skills/` for Copilot. |
+| `.claude/skills/*/SKILL.md` | Auto-discovered Common Tasks recipes (add-endpoint, add-entity, register-service, map-warehouse, add-warehouse-load, add-component, add-service, add-lazy-route, add-signal-store, add-tests, perf, dependency-audit, create-adr, enforce-architecture, enforce-standards). Shared canonical location for Claude Code and supported GitHub Copilot skill surfaces; the body loads only when triggered. |
 | `.claude/agents/*.md` | Subagents (security-auditor, solid-check, convention-check, bloat-radar, debt-radar, test-critic, bootstrap-pass). Run in isolated context; return structured findings. The six user-facing ones are mirrored to `.github/agents/*.agent.md` as Copilot custom agents. |
 | `.claude/workflow.md` | Shared self-review + flag-drift tail inlined by the workflow commands via `@.claude/workflow.md`. |
 | `.claude/hooks/*.sh` | SessionStart context preload, UserPromptSubmit intent router, scoped PreToolUse guard, PostToolUse build/type feedback and mutable local telemetry, Stop Boy Scout scanner. Each has a `.ps1` twin. |
 | `.claude/settings.json` | Registers hooks for Claude Code; the interpreter and supported editor/file-write events define the live scope. Shell writes remain outside the guard. |
 | `.github/hooks/hooks.json` | Registers the same hooks for Copilot cloud agent and CLI (on Bitbucket, the CLI surface only). Points to the same scripts in `.claude/hooks/`. |
-| `.github/skills/`, `.github/agents/` | **Generated** Copilot-facing mirrors: `.github/skills/` is a byte-identical copy of `.claude/skills/` (via `scripts/sync-agent-files.*`); `.github/agents/*.agent.md` wrap the subagents as Copilot custom agents. |
+| `.github/agents/` | Copilot custom-agent wrappers around the canonical `.claude/agents/` definitions; retained because the cloud-agent contract is distinct from skill discovery. |
 | `scripts/` | Host-agnostic helpers include `metrics.{sh,ps1}`; `ci/` contains NetArchTest/dependency-cruiser scaffolding to wire in consumer CI. |
 | `specs/` | Persistent feature specs (spec-driven development). `/design` writes one, `/feature` implements against it, `/review` verifies. See `specs/README.md`. |
 | `docs/impact/` | Optional descriptive metrics; no executable A/B harness or comparative report. |

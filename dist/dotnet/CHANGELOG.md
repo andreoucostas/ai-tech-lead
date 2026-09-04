@@ -4,6 +4,25 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.82.0 — 2026-09-04
+
+- Project skills now ship once under `.claude/skills/`, which current Claude Code and GitHub
+  Copilot skill surfaces both support. The generated `.github/skills/` copy and
+  `scripts/sync-agent-files.*` are removed, along with their update and parity machinery.
+- Updating removes known-clean historical mirror and sync-script files when prior ownership can be
+  verified. A known retired file that cannot be safely removed is preserved and named with
+  migration guidance; unknown consumer-only skills remain untouched. An old GitHub skill can
+  shadow its canonical Claude copy, and an old sync script can recreate that shadow. Move
+  intentional skills to `.claude/skills/` and remove the old copy after review. Framework checks
+  stay red while `.github/skills/` remains.
+- A brownfield repository containing `.github/skills/` now enters adoption. Interactive and
+  headless adoption report the untrusted paths and stop before archiving, moving, deleting, or
+  executing them so a person can migrate conflicts safely.
+- `AGENTS.md` remains a full rules carrier for Codex and GitHub code review. Documentation no longer
+  claims that Copilot CLI, Gemini, or Aider uniquely or automatically require it; the other GitHub
+  adapters remain because prompts, cloud agents, inline completion, path instructions, hooks, CI,
+  and pull requests have separate host contracts.
+
 ## 0.81.0 — 2026-09-03
 
 - Framework-maintainer hook tests are no longer installed under `tests/hooks/`, preventing them

@@ -3280,3 +3280,48 @@ leg, framework, relocation, or runtime refusal protocol is unnecessary.
 **Rejected.** Documentation-only warnings; keeping the installed tree behind a default refusal;
 removing the suite from dist; a new testing skill/router; treating a green framework check as
 application coverage; or weakening safe-retirement preservation.
+
+---
+
+## WSD-072: project skills have one canonical tree; host adapters are removed by capability (2026-09-04)
+
+**Context.** WSD-002 required a byte-identical `.github/skills` copy because Copilot CLI and cloud
+were believed not to read `.claude/skills`. Current GitHub documentation explicitly supports the
+Claude path across CLI, coding agent, code review, the Copilot app and supported IDE agent modes;
+CLI 1.0.80 also discovered a project skill from an isolated Claude-only positive fixture and not
+from its no-skill control. The three current distributions commit 38 duplicate files totalling
+191,293 bytes, plus dedicated sync, installer, parity, fixture and documentation branches. GitHub's
+first-found priority makes a stale `.github` copy capable of shadowing the canonical skill.
+
+**Decision.** **Project skills ship once under `.claude/skills`; retire only content-qualified
+GitHub mirrors and preserve every distinct host adapter.** Remove the framework's `.github/skills`
+tree, sync twins and mirror-only branches. Updates delete a historical leaf only through WSD-051's
+prior-ownership-plus-known-digest authority. Known retired paths whose content or prior ownership
+cannot be verified remain and receive durable path-specific migration warnings; unknown consumer-
+only skills remain untouched. Any `.github/skills` path keeps the canonical-location check red
+until a person resolves the higher-priority shadow. Brownfield `.github/skills` is an
+adoption signal and an inventory-only blocker; interactive and headless adoption neither executes
+nor moves its untrusted content. Retain AGENTS for Codex and GitHub code review, but correct stale
+claims that Copilot CLI, Gemini or Aider uniquely or automatically require it. Retain prompt,
+custom-agent, inline-completion, path-instruction, hook, workflow and PR adapters until their own
+capability has equivalent evidence.
+
+**Proportionality.** This removes the only literal payload duplicate and every mechanism exclusive
+to it without redesigning unrelated hosts. A broad `.github` deletion would break documented cloud
+agents, IDE prompts, inline completions, path instructions, Copilot hook semantics and GitHub
+integration. A pointer-only AGENTS would break the documented/default Codex and code-review paths.
+The durable residual warning is necessary because releases before the ownership manifest and later
+manifests that no longer own a preserved path can never regain automatic deletion authority.
+
+**Evidence and review.** Both v0.81.0 checker twins reject a missing mirror; both old installers
+recreate 12 mirror leaves from an incoming single-tree scratch dist; and neither old installer emits
+the new targeted warning when a valid prior manifest no longer owns a surviving retired path. An
+independent read-only `gpt-5.6-sol`/`xhigh` review returned REVISE twice on migration and oracle gaps,
+then APPROVE after the locked B-217 contract incorporated them. Non-CLI Copilot skill discovery and
+non-Codex audience facts remain primary-documentation evidence rather than local host observations.
+
+**Rejected.** Deleting all `.github` content; keeping the mirror but generating it only at compose
+time; moving the canonical tree to `.github`; deleting or thinning AGENTS without a cross-tool
+replacement; deleting consumer-modified files by digest alone; treating a generic additive-mode
+warning as convergence; automatically interpreting or moving brownfield skills; and a live model
+A/B for deterministic path discovery.

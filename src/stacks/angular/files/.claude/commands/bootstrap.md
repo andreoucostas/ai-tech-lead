@@ -235,7 +235,7 @@ If A6 found no spec files, write one Severity-High Testing entry whose recommend
 
 ### 3c: AGENTS.md (generated full mirror)
 
-`AGENTS.md` is a **generated mirror** of CLAUDE.md's portable rules (Verification, Leanness, Conventions, Boy Scout, Agentic Workflow, Common Tasks). It exists so AGENTS.md-native tools — GitHub Copilot agent mode & CLI, Codex, Cursor, Gemini CLI, Aider — get the actual ruleset, not a pointer. **Do not hand-write a pointer file.**
+`AGENTS.md` is a **generated full mirror** of CLAUDE.md's portable rules (Verification, Leanness, Conventions, Boy Scout, Agentic Workflow, Common Tasks). It is the full rules carrier for **Codex and GitHub code review**; Cursor reads both `CLAUDE.md` and `AGENTS.md`. Claude Code and supported GitHub Copilot agent surfaces read `CLAUDE.md` directly. Gemini defaults to `GEMINI.md`; Aider requires explicit read configuration. **Do not hand-write a pointer file.**
 
 AGENTS.md is produced by the `/generate-copilot` workflow (Part B), which Phase 3f runs **after** Phase 3a has populated `CLAUDE.md > Conventions`. So there is nothing to do here except ensure 3f runs. If a stale or pointer-style `AGENTS.md` already exists, it will be **regenerated** (overwritten) by 3f — do not preserve hand edits to it.
 
@@ -323,7 +323,7 @@ If `SECURITY_FINDINGS.md` already exists, leave it entirely alone.
 Run the `/generate-copilot` workflow. It regenerates **both** derived files from the now-populated CLAUDE.md:
 
 - **`.github/copilot-instructions.md`** — slim (≤80 lines), terse imperative one-liners, Conventions + always-apply Boy Scout only. For **inline editor completions**.
-- **`AGENTS.md`** — full mirror of CLAUDE.md's portable rules (Verification, Leanness, Conventions, Boy Scout, Agentic Workflow, Common Tasks), preserving the `GENERATED FILE` banner. For **AGENTS.md-native tools** (Copilot agent mode & CLI, Codex, Cursor, Gemini, Aider) — they get the real ruleset, not a pointer.
+- **`AGENTS.md`** — full mirror of CLAUDE.md's portable rules (Verification, Leanness, Conventions, Boy Scout, Agentic Workflow, Common Tasks), preserving the `GENERATED FILE` banner. It is for **Codex and GitHub code review**; Cursor reads both `CLAUDE.md` and `AGENTS.md`. Claude Code and supported GitHub Copilot agent surfaces read `CLAUDE.md` directly. Gemini defaults to `GEMINI.md`; Aider requires explicit read configuration.
 
 See `.claude/commands/generate-copilot.md` for the exact rules for each file.
 

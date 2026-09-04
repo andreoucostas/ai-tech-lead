@@ -1,14 +1,14 @@
 <!--
 ai-tech-lead-framework
   template: monorepo
-  version: 0.81.0
-  applied: 2026-09-03
+  version: 0.82.0
+  applied: 2026-09-04
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
 # [Project Name]
 
 > This file is the repo-specific source of truth for AI-assisted development in this repository and imports the framework rules below.
-> Claude Code loads this file directly. GitHub Copilot (agent mode & CLI), Codex, Cursor, Gemini, and Aider read its generated mirror **[AGENTS.md](./AGENTS.md)** (kept in sync by `/generate-copilot`). Edit conventions here, never in AGENTS.md.
+> Claude Code and supported GitHub Copilot agent surfaces load this file directly. **[AGENTS.md](./AGENTS.md)** is the generated portable mirror for Codex and GitHub code review; Cursor loads both. Gemini defaults to `GEMINI.md`, and Aider requires explicit read configuration. Edit conventions here, never in AGENTS.md.
 > Run `/bootstrap` to populate it from your actual codebase.
 >
 > **Companion file**: [FRAMEWORK-CONTEXT.md](./FRAMEWORK-CONTEXT.md) holds cross-repo context (shared libraries, multi-tenancy conventions, dashboard contracts) plus the repo's **Known Hazard Areas**, all of which the agent should load on every non-trivial task — consult the hazard list for the change's blast radius before planning. CLAUDE.md wins on any conflict — but flag the contradiction.
@@ -83,7 +83,7 @@ evidence satisfies the gate:
 - `enforce-architecture` — wire the deterministic DIP/layering CI gates (NetArchTest for .NET, dependency-cruiser for Angular)
 - `enforce-standards` — make warnings, skipped tests, and analyzer/lint findings build-breaking (.NET: `TreatWarningsAsErrors` + `.editorconfig` severities; Angular: ESLint `noInlineConfig` + rule severities)
 
-`/bootstrap` adds project-specific skills under `.claude/skills/`, grounding instance-shaped recipes in a real repo exemplar. Skills are mirrored to `.github/skills/` by `/generate-copilot` (and `scripts/sync-agent-files`) so Copilot CLI/agent see them too.
+`/bootstrap` adds project-specific skills under `.claude/skills/`, the shared canonical location for Claude Code and supported GitHub Copilot skill surfaces, grounding instance-shaped recipes in a real repo exemplar. A legacy `.github/skills/` tree has higher Copilot priority and must be migrated here before framework checks pass.
 
 **Registers**: [TECH_DEBT.md](./TECH_DEBT.md) tracks delivery debt. [SECURITY_FINDINGS.md](./SECURITY_FINDINGS.md) tracks security findings separately with remediation SLAs (Critical = 7 days, High = 30 days). Do not merge them — audit teams treat these differently. Security findings come from `/security-review` and the `security-auditor` agent, not from feature work. AI-assisted file changes are appended to [.claude/ai-audit.log](./.claude/ai-audit.log) automatically by the PostToolUse hook.
 

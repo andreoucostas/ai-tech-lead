@@ -197,36 +197,20 @@ foreach ($d in $scanDirs) {
 }
 if ($parseFails.Count -gt 0) { Fail ("PS syntax errors: " + ($parseFails -join '; ')) } else { OK 'all framework .ps1 files parse cleanly.' }
 
-# --- 7. Skills mirror: .claude/skills must match .github/skills (EOL-normalized) --------------
-# Skills ship twice per repo (Claude reads .claude/skills, Copilot reads .github/skills). They are
-# mirrored by /generate-copilot + scripts/sync-agent-files; without a gate, editing one and
-# forgetting the other ships stale guidance to Copilot with every other check green.
-# Compare CRLF-normalized (matches the .sh twin's `diff --strip-trailing-cr`): with core.autocrlf
-# on Windows the two copies can differ only in line endings in a working tree yet be identical in a
-# clean checkout -- an EOL-only diff must not fail the gate. Use ABSOLUTE paths: [IO.File]::ReadAllText
-# resolves a relative path against the .NET process CWD, which Set-Location does NOT update -- a
-# relative path silently breaks when this script is invoked from another directory.
-function Get-SkillText($p) { ([System.IO.File]::ReadAllText($p)) -replace "`r`n", "`n" }
-$claudeSkills = if (Test-Path '.claude/skills') { (Resolve-Path '.claude/skills').Path } else { $null }
-$githubSkills = if (Test-Path '.github/skills') { (Resolve-Path '.github/skills').Path } else { $null }
-if ($claudeSkills -or $githubSkills) {
-    $mism = @()
-    if ($claudeSkills) {
-        foreach ($f in (Get-ChildItem $claudeSkills -Recurse -File)) {
-            $rel = $f.FullName.Substring($claudeSkills.Length).TrimStart('\', '/')
-            $gh  = if ($githubSkills) { Join-Path $githubSkills $rel } else { $null }
-            if (-not $gh -or -not (Test-Path $gh)) { $mism += ".github/skills/$rel missing" }
-            elseif ((Get-SkillText $f.FullName) -ne (Get-SkillText $gh)) { $mism += "$rel differs" }
-        }
-    }
-    if ($githubSkills) {
-        foreach ($f in (Get-ChildItem $githubSkills -Recurse -File)) {
-            $rel = $f.FullName.Substring($githubSkills.Length).TrimStart('\', '/')
-            if (-not $claudeSkills -or -not (Test-Path (Join-Path $claudeSkills $rel))) { $mism += ".claude/skills/$rel missing (extra under .github/skills)" }
-        }
-    }
-    if ($mism.Count -gt 0) { Fail ("skills mirror drift (.claude/skills vs .github/skills -- run /generate-copilot): " + ($mism -join '; ')) }
-    else { OK ".claude/skills and .github/skills are in sync." }
+# --- 7. Canonical project-skill location ------------------------------------------------------
+# GitHub Copilot documents .claude/skills as a project-skill location. A second .github/skills
+# tree is therefore a higher-priority shadow and a migration defect, not a mirror to repair.
+if (Test-Path -LiteralPath '.github/skills') {
+    Fail '.github/skills exists — migrate its contents to .claude/skills, then remove the GitHub path.'
+} else {
+    OK 'canonical project skills use .claude/skills (.github/skills absent).'
+}
+$retiredSkillSync = @('scripts/sync-agent-files.ps1', 'scripts/sync-agent-files.sh') |
+    Where-Object { Test-Path -LiteralPath $_ }
+if ($retiredSkillSync.Count -gt 0) {
+    Fail ("retired skill-mirror sync scripts exist: " + ($retiredSkillSync -join ', ') + ' — remove these framework leftovers.')
+} else {
+    OK 'retired skill-mirror sync scripts are absent.'
 }
 
 # --- 8. Common Tasks skill inventory: CLAUDE.md <-> AGENTS.md ---------------------------------

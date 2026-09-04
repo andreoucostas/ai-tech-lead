@@ -1665,3 +1665,94 @@ Host: Claude Code 2.1.233 (Claude Code) · scratch: retained=True
 - **ROUTING PROBE INCOMPLETE** — A selected=4/6, read=1/6, clears=False; B selected=4/4, read=4/4, clears=False
 
 <!-- B-129-SIDECAR-END -->
+
+## B-216 sidecar-consumption experiment — preregistration and stopped result, 2026-09-04
+
+**Frozen contract.** Before implementing the project-pattern sidecar subsystem, run a temporary,
+sanitized mixed-scope fixture on Claude Code and Copilot CLI. Control A contains the neutral
+evidence-gated skill, Common Tasks, and live evidence without a sidecar. Treatment B differs only
+by an explicit scoped sidecar. The target uses a non-default container while another project offers
+a plausible competing pattern. Run `n=3` per arm per host with byte-identical prompts and fixtures.
+Claude must use the canonical model resolved by `sonnet` at `high`; Copilot must first disclose its
+default model and then be pinned to that exact model. Claude spend is capped at USD 15 and Copilot
+at 20 AI credits.
+
+**Instrument calibration.** Claude Code 2.1.247, launched as
+`claude -p ... --model sonnet --effort high --allowedTools Read --output-format stream-json --verbose
+--max-budget-usd 2 --no-session-persistence`, reported canonical model `claude-sonnet-5`.
+Its positive control issued a `Read` tool call for the temporary `sentinel.txt` and returned the
+sentinel. Its negative control, instructed not to read files, returned its marker with no `Read`
+tool call. Thus the stream-JSON read-event measure is observed red and green on this host.
+
+**Stop condition observed before trial creation.** GitHub Copilot CLI 1.0.80 was launched with
+`--no-auto-update --output-format json --effort high --max-ai-credits 20`. It rejected the command
+before a model call: `Invalid value for --max-ai-credits: "20". Use at least 30 AI credits.`
+The frozen contract caps Copilot at 20 credits. Therefore its default model could not be observed
+and pinned within the contract, its JSONL read measure could not be calibrated, and no A/B trial was
+run on either host. Raising the cap to 30 or running an unbounded session would weaken the contract.
+
+**Disposition: NO-GO.** The required cross-host `n=3` experiment is incomplete. Treatment has no
+eligible trials, so the required all-trial sidecar reads, 5/6 correct scoped outcomes, zero parallel
+DI artifacts, at least two additional correct completions over control, and malformed/stale stop
+cases are all unmeasured. Do not implement or release B-216 under this plan. Re-plan only after a
+Copilot execution surface can enforce the 20-credit bound, or after an explicitly approved frozen
+contract changes that bound and repeats calibration.
+
+### Authorized free-tier retry amendment and stopped result — 2026-09-04
+
+**Amendment.** The user authorized use of GitHub Copilot CLI 1.0.80's minimum accepted
+`--max-ai-credits 30` as a free-tier soft session limit. No paid upgrade, purchase, or paid usage
+was enabled. The behavioural thresholds, sequential A/B design, and malformed/stale cases remained
+frozen.
+
+**Observed calibration.** `copilot -C <temporary-fixture> -p <sentinel-prompt> --output-format json
+--allow-all --no-auto-update --max-ai-credits 30` completed with exit 0. Its JSONL
+`session.auto_mode_resolved` event reported `chosenModel: claude-haiku-4.5` (available candidates:
+`claude-haiku-4.5`, `gpt-5-mini`; reasoning bucket `low`), and its `tool.execution_start`/complete
+events recorded a successful `view` of the sentinel. Usage was `premiumRequests: 0.33`; no code
+changes occurred. This establishes a positive read observation on the Copilot surface. An attempted
+default calibration with `--effort high` correctly failed before a model call because auto mode does
+not support a reasoning-effort configuration.
+
+**Pin failure and stop.** The immediate pinned negative-control calibration used
+`--model claude-haiku-4.5 --max-ai-credits 30` and failed before a model call: `Model
+"claude-haiku-4.5" from --model flag is not available.` Thus the CLI disclosed an auto-selected
+model identifier that it does not accept for explicit pinning. Auto routing cannot satisfy the
+frozen constant-model condition. No negative control, A/B trial, malformed/stale trial, artifact,
+or additional Copilot usage was run; Claude trials were also not started because the cross-host
+contract had already stopped.
+
+**Disposition: NO-GO (retry).** The free-tier budget amendment removed the first launch blocker but
+did not remove the independent model-pinning stop condition. No threshold was tuned or waived.
+Re-plan only after CLI/model configuration can both disclose and explicitly pin the same supported
+model identifier; recalibrate positive and negative read observations and repeat the full experiment
+from fresh fixtures after that condition is met.
+
+### Free-Auto fail-closed pretrial amendment — 2026-09-04
+
+**Authorization and immutables.** A third and final pretrial retry is authorized on the existing
+free Copilot tier only. Copilot uses `--model auto`, no effort flag, and `--max-ai-credits 30`; no
+paid upgrade, purchase, or paid usage may be enabled. The behavioural scoring thresholds,
+byte-identical prompts, and fixture contract are unchanged.
+
+**Route contract.** Claude runs fresh fixtures in order `ABBAAB` using `sonnet` at `high`. Copilot
+runs fresh fixtures in order `BAABBA` using the already observed `claude-haiku-4.5` auto route.
+The Copilot negative observer, every A/B trial, and its malformed/stale trial must each emit exactly
+one `session.auto_mode_resolved` event naming exactly `claude-haiku-4.5`. A missing, duplicate, or
+different route; a quota refusal/exhaustion; or unknown usage stops that whole leg immediately with
+no recalibration, substitution, retry, replacement, or partial score. Usage is recorded after every
+completed session. The existing positive read calibration is retained; the negative observer is
+recalibrated under these exact flags before trials.
+
+**Observed fail-closed stop.** The fresh-fixture Copilot negative observer ran with the exact
+authorized flags (`--model auto --output-format json --allow-all --no-auto-update
+--max-ai-credits 30`) and exited 0, returning the negative-control marker without file reads.
+It emitted exactly one `session.auto_mode_resolved`, but its `chosenModel` was `gpt-5-mini`, not
+the required `claude-haiku-4.5`; `session.usage_checkpoint` reported `premiumRequests: 0` and the
+final usage likewise reported 0, with no code changes. This is the preregistered different-route
+stop condition. No Claude run, Copilot A/B run, malformed/stale run, replacement, recalibration, or
+partial score followed.
+
+**Disposition: NO-GO (final pretrial retry).** Auto routing is not stable enough to meet the
+amended fixed-route contract. The behavioural thresholds remain wholly unmeasured, and B-216 must
+not implement or release under this experiment design.

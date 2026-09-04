@@ -222,6 +222,38 @@ find_reparse_ancestor() {
     probe="$parent"
   done
 }
+
+# Print exists, absent, or cant-verify for one literal path without collapsing an unreadable
+# ancestor into absence. The residual-retirement diagnostic is read-only, but Rule 7 still applies:
+# a path we could not examine must never be silently treated as a path that is not there.
+classify_path_entry() {
+  local path="$1" parent name parent_state listing status
+  if [ -e "$path" ] || [ -L "$path" ]; then printf '%s' exists; return 0; fi
+  # The recursion ends only at a verified filesystem root. Treat an unreadable/unrecognised root
+  # as CANT-VERIFY rather than absence; Git-for-Windows may preserve a drive-root spelling here.
+  case "$path" in
+    /|[A-Za-z]:/)
+      if [ -d "$path" ]; then printf '%s' exists; else printf '%s' cant-verify; fi
+      return 0
+      ;;
+  esac
+  parent="${path%/*}"; name="${path##*/}"
+  case "$parent" in [A-Za-z]:) parent="$parent/";; esac
+  if [ -z "$parent" ] || [ "$parent" = "$path" ]; then printf '%s' cant-verify; return 0; fi
+  parent_state=$(classify_path_entry "$parent")
+  case "$parent_state" in
+    absent) printf '%s' absent; return 0;;
+    cant-verify) printf '%s' cant-verify; return 0;;
+  esac
+  if [ -L "$parent" ]; then printf '%s' cant-verify; return 0; fi
+  if [ ! -d "$parent" ]; then printf '%s' absent; return 0; fi
+  listing=$("$find_cmd" "$parent" -mindepth 1 -maxdepth 1 -name "$name" -print -quit 2>/dev/null); status=$?
+  if [ "$status" -ne 0 ]; then printf '%s' cant-verify
+  elif [ -n "$listing" ]; then printf '%s' exists
+  else printf '%s' absent
+  fi
+}
+
 assert_target_mutation() {
   local relative="$1" kind="${2:-file}" destination="$tgt/$relative" probe parent physical
   valid_repo_path "$relative" || { echo "ERROR: Refusing install mutation: unsafe or non-normalized path '$relative'." >&2; return 1; }
@@ -270,7 +302,7 @@ copy_if_absent="$persistent_copy_if_absent docs/wiki/INDEX.md docs/ARCHITECTURE.
 
 # Signals that the target already has AI tooling and therefore needs /adopt, not /bootstrap
 # (mirrors /adopt Phase 1 discovery).
-adoption_signals="CLAUDE.md AGENTS.md GEMINI.md .cursorrules .cursor/rules .clinerules .windsurfrules .roomodes .aider.conf.yml .continue .github/copilot-instructions.md .github/instructions .github/chatmodes docs/adr docs/decisions ARCHITECTURE.md docs/ARCHITECTURE.md CODEMAP.md CONVENTIONS.md docs/CONVENTIONS.md TECH_DEBT.md TODO.md BACKLOG.md docs/wiki/INDEX.md"
+adoption_signals="CLAUDE.md AGENTS.md GEMINI.md .cursorrules .cursor/rules .clinerules .windsurfrules .roomodes .aider.conf.yml .continue .github/copilot-instructions.md .github/instructions .github/chatmodes .github/skills docs/adr docs/decisions ARCHITECTURE.md docs/ARCHITECTURE.md CODEMAP.md CONVENTIONS.md docs/CONVENTIONS.md TECH_DEBT.md TODO.md BACKLOG.md docs/wiki/INDEX.md"
 
 update_mode=0
 if [ -f "$tgt/.claude/framework-version.json" ]; then update_mode=1; fi
@@ -282,6 +314,7 @@ if [ "$update_mode" -eq 0 ]; then
   done
   detected="${detected# }"
 fi
+
 adopt_mode=0
 if [ "$update_mode" -eq 0 ] && [ -n "$detected" ]; then adopt_mode=1; fi
 
@@ -398,6 +431,34 @@ if [ "$update_mode" -eq 1 ]; then
       done < <(awk -F '\t' '!seen[$2]++ { print $2 }' "$retirement_entries")
     fi
   fi
+fi
+
+# A retirement can delete only where the immediately previous manifest grants authority. That
+# limitation must not hide a retained high-priority GitHub skill or the old sync script on a later
+# update: inspect these exact ledger paths read-only, without granting deletion authority.
+if [ "$update_mode" -eq 1 ]; then
+  while IFS=$'\t' read -r _ retired_path _ _; do
+    case "$retired_path" in
+      .github/skills/*) slug_rest="${retired_path#.github/skills/}"; slug="${slug_rest%%/*}"; kind=github-skill;;
+      scripts/sync-agent-files.ps1|scripts/sync-agent-files.sh) kind=sync-script;;
+      *) continue;;
+    esac
+    if [ -n "$delete_paths" ] && printf '%s\n' "$delete_paths" | grep -Fqx "$retired_path"; then continue; fi
+    candidate="$tgt/$retired_path"
+    candidate_state=$(classify_path_entry "$candidate")
+    if [ "$candidate_state" = absent ]; then continue; fi
+    if [ "$candidate_state" = cant-verify ]; then
+      add_reconciliation_message "CANT-VERIFY: retained retired path '$retired_path' could not be examined; preserving it without inspection."
+      continue
+    fi
+    if candidate_reparse=$(find_reparse_ancestor "$candidate"); then
+      add_reconciliation_message "CANT-VERIFY: retained retired path '$retired_path' traverses reparse/symlink '$candidate_reparse'; preserving it without inspection."
+    elif [ "$kind" = github-skill ]; then
+      add_reconciliation_message "CANT-VERIFY: retained retired path '$retired_path' was not deleted; it may shadow canonical .claude/skills/$slug. Move intentional customization to .claude/skills/$slug and remove the retained GitHub copy after review."
+    else
+      add_reconciliation_message "CANT-VERIFY: retained retired path '$retired_path' was not deleted; running it may recreate higher-priority .github/skills shadows. Do not run it; migrate or retire it after review."
+    fi
+  done < <(awk -F '\t' '!seen[$2]++ { print }' "$retirement_entries")
 fi
 
 git_preflight_cant_verify() {
@@ -647,18 +708,16 @@ if [ "$adopt_mode" -eq 1 ]; then
 fi
 
 # Compute a deterministic, complete plan before the first target mutation. Protected files are
-# skipped directly; skill backup, disable and mirror operations are represented leaf-by-leaf.
+# skipped directly; skill backup and disable operations are represented leaf-by-leaf.
 new_temp_file || exit 3; operation_plan=$new_temp; : > "$operation_plan"
 new_temp_file || exit 3; apply_paths=$new_temp; : > "$apply_paths"
 new_temp_file || exit 3; backup_pairs=$new_temp; : > "$backup_pairs"
 new_temp_file || exit 3; disabled_carry_pairs=$new_temp; : > "$disabled_carry_pairs"
 new_temp_file || exit 3; disabled_incoming_pairs=$new_temp; : > "$disabled_incoming_pairs"
-new_temp_file || exit 3; mirror_pairs=$new_temp; : > "$mirror_pairs"
 new_temp_file || exit 3; skill_delete_paths=$new_temp; : > "$skill_delete_paths"
 new_temp_file || exit 3; disabled_names=$new_temp; : > "$disabled_names"
 new_temp_file || exit 3; skill_exemplars=$new_temp; : > "$skill_exemplars"
 new_temp_file || exit 3; incoming_framework_skill_names=$new_temp; : > "$incoming_framework_skill_names"
-new_temp_file || exit 3; final_active_files=$new_temp; : > "$final_active_files"
 command -v tar >/dev/null 2>&1 || { echo 'ERROR: tar is required to apply the manifest-driven install.' >&2; exit 3; }
 
 is_disabled_skill() { grep -Fqx "$1" "$disabled_names"; }
@@ -725,10 +784,6 @@ while IFS= read -r name; do
     assert_target_mutation ".claude/skills/$name" tree || exit 3
     printf '%s\n' ".claude/skills/$name" >> "$skill_delete_paths"
   fi
-  if [ -e "$tgt/.github/skills/$name" ] || [ -L "$tgt/.github/skills/$name" ]; then
-    assert_target_mutation ".github/skills/$name" tree || exit 3
-    printf '%s\n' ".github/skills/$name" >> "$skill_delete_paths"
-  fi
 done < "$disabled_names"
 
 while IFS= read -r relative; do
@@ -736,9 +791,6 @@ while IFS= read -r relative; do
     .claude/skills/*)
       rest="${relative#.claude/skills/}"; name="${rest%%/*}"
       if [ "$update_mode" -eq 1 ] && is_disabled_skill "$name"; then inactive=".claude/disabled-skills/$rest"; plan_write "$inactive"; printf '%s\t%s\n' "$relative" "$inactive" >> "$disabled_incoming_pairs"; continue; fi;;
-    .github/skills/*)
-      rest="${relative#.github/skills/}"; name="${rest%%/*}"
-      if [ "$update_mode" -eq 1 ] && is_disabled_skill "$name"; then continue; fi;;
   esac
   destination="$tgt/$relative"; exists=0; if [ -e "$destination" ] || [ -L "$destination" ]; then exists=1; fi
   preserve=0
@@ -761,24 +813,6 @@ fi
 
 settings_backup_relative=""
 if [ "$update_mode" -eq 1 ] && [ -f "$tgt/.claude/settings.json" ]; then settings_backup_relative='.claude/.state/settings.json.pre-update'; plan_write "$settings_backup_relative"; fi
-
-if [ "$update_mode" -eq 1 ]; then
-  if [ -d "$tgt/.claude/skills" ]; then
-    while IFS= read -r source; do
-      under_skills="${source#"$tgt/.claude/skills/"}"; name="${under_skills%%/*}"; is_disabled_skill "$name" || printf '%s\n' ".claude/skills/$under_skills" >> "$final_active_files"
-    done < <("$find_cmd" "$tgt/.claude/skills" -type f -print)
-  fi
-  while IFS= read -r relative; do
-    case "$relative" in .claude/skills/*) rest="${relative#.claude/skills/}"; name="${rest%%/*}"; is_disabled_skill "$name" || printf '%s\n' "$relative" >> "$final_active_files";; esac
-  done <<EOF
-$incoming_paths
-EOF
-  LC_ALL=C "$sort_cmd" -u "$final_active_files" -o "$final_active_files"
-  while IFS= read -r source_relative; do
-    [ -n "$source_relative" ] || continue; mirror_relative=".github/skills/${source_relative#.claude/skills/}"
-    plan_write "$mirror_relative"; printf '%s\t%s\n' "$source_relative" "$mirror_relative" >> "$mirror_pairs"
-  done < "$final_active_files"
-fi
 
 if [ "$adopt_mode" -eq 1 ]; then plan_write '.claude/adoption-pending.json'; fi
 if [ "$git_hooks" -eq 1 ]; then plan_write "$git_hook_relative" 1; fi
@@ -811,7 +845,6 @@ while IFS=$'\t' read -r name exemplar; do
   if [ -f "$new_file" ]; then sed -i.bak '/^For a concrete current instance in this repo, see .\+$/d' "$new_file"; rm -f "$new_file.bak"; printf '\n%s\n' "$exemplar" >> "$new_file"; fi
 done < "$skill_exemplars"
 while IFS= read -r relative; do [ -z "$relative" ] || rm -rf "$tgt/$relative"; done < "$skill_delete_paths"
-while IFS=$'\t' read -r source_relative relative; do [ -n "$source_relative" ] || continue; [ -f "$tgt/$source_relative" ] || continue; mkdir -p "$(dirname "$tgt/$relative")"; cp -p "$tgt/$source_relative" "$tgt/$relative"; done < "$mirror_pairs"
 if [ "$update_mode" -eq 1 ]; then echo "  consumer-owned content files left untouched ($protected)."; fi
 
 if [ "$adopt_mode" -eq 1 ]; then

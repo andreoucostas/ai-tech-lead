@@ -190,19 +190,25 @@ for d in .claude/hooks scripts tests/hooks; do
 done
 if [ -n "$shfails" ]; then fail "bash syntax errors in:$shfails"; else ok "all framework .sh files parse cleanly."; fi
 
-# --- 7. Skills mirror: .claude/skills must byte-match .github/skills ---------------------------
-# Skills ship twice per repo (Claude reads .claude/skills, Copilot reads .github/skills). They are
-# mirrored by /generate-copilot + scripts/sync-agent-files; without a gate, editing one and
-# forgetting the other ships stale guidance to Copilot with every other check green.
-# CRLF-normalized (--strip-trailing-cr): with core.autocrlf on Windows the two copies can differ
-# only in line endings in a working tree yet be identical in a clean checkout -- ignore EOL-only diffs.
-if [ -d .claude/skills ] || [ -d .github/skills ]; then
-  if diff -rq --strip-trailing-cr .claude/skills .github/skills >/dev/null 2>&1; then
-    ok ".claude/skills and .github/skills are in sync."
-  else
-    details=$(diff -rq --strip-trailing-cr .claude/skills .github/skills 2>&1 | tr '\n' ';')
-    fail "skills mirror drift (.claude/skills vs .github/skills — run /generate-copilot): $details"
+# --- 7. Canonical project-skill location ------------------------------------------------------
+# GitHub Copilot documents .claude/skills as a project-skill location. A second .github/skills
+# tree is therefore a higher-priority shadow and a migration defect, not a mirror to repair.
+if [ -e .github/skills ] || [ -L .github/skills ]; then
+  fail ".github/skills exists — migrate its contents to .claude/skills, then remove the GitHub path."
+else
+  ok "canonical project skills use .claude/skills (.github/skills absent)."
+fi
+retired_skill_sync=""
+for retired_path in scripts/sync-agent-files.ps1 scripts/sync-agent-files.sh; do
+  if [ -e "$retired_path" ] || [ -L "$retired_path" ]; then
+    if [ -n "$retired_skill_sync" ]; then retired_skill_sync="$retired_skill_sync, "; fi
+    retired_skill_sync="$retired_skill_sync$retired_path"
   fi
+done
+if [ -n "$retired_skill_sync" ]; then
+  fail "retired skill-mirror sync scripts exist: $retired_skill_sync — remove these framework leftovers."
+else
+  ok "retired skill-mirror sync scripts are absent."
 fi
 
 # --- 8. Common Tasks skill inventory: CLAUDE.md <-> AGENTS.md ---------------------------------

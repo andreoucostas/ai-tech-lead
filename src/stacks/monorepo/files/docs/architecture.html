@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI Tech Lead Framework — Architecture</title>
+<title>AI Tech Lead Framework (Monorepo) — Architecture</title>
 <!-- GENERATED from docs/ARCHITECTURE.md by scripts/build-architecture-html.{sh,ps1} — do not edit by hand. -->
-<!-- src-sha1: 1870088bedc1be9343e1d5865ab55de8558ba4ca -->
+<!-- src-sha1: bcb61d4082f782fc70a246c4df9f43c3496b340d -->
 <style>
   :root { color-scheme: light dark; }
   body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6;
@@ -73,29 +73,28 @@ flowchart TD
 ```
 
 - **Tier 1 — Passive**: `.github/copilot-instructions.md` (≤80 lines, generated) drives Copilot inline completions.
-- **Tier 2 — Directed**: `CLAUDE.md` (authored, canonical) is read by Claude Code; `AGENTS.md` (generated full mirror) is read by Copilot agent-mode/CLI, Codex, Cursor, Gemini, Aider.
+- **Tier 2 — Directed**: `CLAUDE.md` (authored, canonical) is read by Claude Code and supported Copilot agent surfaces; `AGENTS.md` (generated full mirror) serves Codex and GitHub code review, while Cursor reads both. Gemini defaults to `GEMINI.md`; Aider needs explicit read configuration.
 - **Tier 3 — Explicit**: `/feature`, `/fix`, … live canonically in `.claude/commands/`; `.github/prompts/*.prompt.md` are thin wrappers that delegate to them (single source per workflow).
 
 ---
 
 ## 3. Source of truth → generated artifacts
 
-`CLAUDE.md` is the only file authored by hand. Everything below is generated from it and **drift-checked in CI** — the same discipline applied throughout.
+For portable rules, `CLAUDE.md` is the hand-authored source and its generated carriers are **drift-checked in CI**. Project skills are authored once under `.claude/skills/` and discovered there by Claude Code and supported Copilot skill surfaces.
 
 ```mermaid
 flowchart LR
     CLAUDE[CLAUDE.md\nauthored] -->|/generate-copilot Part A| COP[.github/copilot-instructions.md\nslim, ≤80 lines]
     CLAUDE -->|/generate-copilot Part B| AGENTS[AGENTS.md\nfull rule mirror]
-    SK[.claude/skills/*] -->|scripts/sync-agent-files| GSK[.github/skills/*\nbyte-identical mirror]
     AGD[.claude/agents/*] -.wrapped by.-> GAG[.github/agents/*.agent.md]
 ```
 
 | File | Authored or generated | Consumed by |
 |------|----------------------|-------------|
-| `CLAUDE.md` | **Authored** (canonical) | Claude Code |
-| `AGENTS.md` | Generated mirror | Copilot agent/CLI, Codex, Cursor, Gemini, Aider |
+| `CLAUDE.md` | **Authored** (canonical) | Claude Code, supported Copilot agent surfaces, Cursor |
+| `AGENTS.md` | Generated mirror | Codex, GitHub code review, Cursor |
 | `.github/copilot-instructions.md` | Generated (slim) | Copilot inline completions |
-| `.github/skills/` | Generated mirror of `.claude/skills/` | Copilot CLI / cloud agent |
+| `.claude/skills/` | **Authored** (canonical project skills) | Claude Code and supported Copilot skill surfaces |
 | `.github/agents/*.agent.md` | Wrappers over `.claude/agents/` | Copilot custom agents |
 | `docs/architecture.html` | Generated from this file | Humans |
 
@@ -107,7 +106,7 @@ Same names in Claude Code (`.claude/commands/`) and Copilot Chat (`.github/promp
 
 | Command | Purpose |
 |---------|---------|
-| `/bootstrap` | One-time: analyse only selected profiles (.NET: A1–A7 incl. financial-domain invariants; Angular: A1–A6 for modules, state, components, RxJS, API, build/test/quality; warehouse-SQL: W1–W3) plus one shared A8 skill-discovery pass, then populate CLAUDE.md + TECH_DEBT.md, generate AGENTS.md + copilot-instructions, sync skills |
+| `/bootstrap` | One-time: analyse only selected profiles (.NET: A1–A7 incl. financial-domain invariants; Angular: A1–A6 for modules, state, components, RxJS, API, build/test/quality; warehouse-SQL: W1–W3) plus one shared A8 skill-discovery pass, then populate CLAUDE.md + TECH_DEBT.md, generate AGENTS.md + copilot-instructions, and write evidenced project skills under `.claude/skills` |
 | `/adopt` | Ingest existing AI artifacts (Cursor/Copilot/Aider/ADRs) into this layout, then `/bootstrap` the gaps |
 | `/feature` | Implement at repository-evidenced boundaries; checks for a `specs/<slug>.md` first; verified subtasks; Boy Scout; self-review |
 | `/fix` | Cause-first diagnosis; regression test when an evidenced harness exists; minimal fix; blast-radius-only Boy Scout |
@@ -119,7 +118,7 @@ Same names in Claude Code (`.claude/commands/`) and Copilot Chat (`.github/promp
 | `/security-review` | OWASP-style scan (injection, auth/guards, secrets, XSS/DOM sinks) + senior judgement + SECURITY_FINDINGS SLAs |
 | `/docs-sync` | Cross-check docs vs code and the generated mirrors for drift |
 | `/rebootstrap` | Deeper periodic re-alignment |
-| `/generate-copilot` | Regenerate copilot-instructions.md + AGENTS.md from CLAUDE.md, sync skills |
+| `/generate-copilot` | Regenerate copilot-instructions.md + AGENTS.md from CLAUDE.md |
 | `/impact` | Descriptive current-state metrics only; retired A/B execution is unavailable and `/adopt` does not auto-run it. |
 
 ---
@@ -140,7 +139,7 @@ Run in isolated context; return a structured findings table to the parent. Model
 
 ---
 
-## 6. Skills (`.claude/skills/`, mirrored to `.github/skills/`)
+## 6. Skills (`.claude/skills/`)
 
 Auto-discovered Common-Tasks recipes; the body loads only when triggered (progressive disclosure).
 
@@ -190,7 +189,7 @@ The local files do not depend on the Git remote, but their client delivery does 
 
 | Surface | GitHub | Bitbucket Data Center |
 |---------|--------|------------------------|
-| Copilot in IDE (reads `.github/*`, `AGENTS.md`) | ✅ | ✅ (reads from working tree, any host) |
+| Copilot in IDE (reads supported repository carriers, including `CLAUDE.md` and `.github` adapters) | ✅ | ✅ (reads from working tree, any host) |
 | Copilot VS Code hooks | Preview + org policy; verify with canaries | Same — the Git remote does not enable them |
 | Claude Code (`CLAUDE.md`, `.claude/**`) | ✅ | ✅ |
 | Copilot CLI hooks (`.github/hooks/`) | Registered locally; firing and consumption vary by event — see `docs/enforcement-surfaces.md` | Same — the Git remote does not enable local hooks |
@@ -202,7 +201,7 @@ The local files do not depend on the Git remote, but their client delivery does 
 
 ## 10. Quality gates & drift control
 
-- **CI guardrail** — `scripts/docs-sync-check.{sh,ps1}` (host-agnostic): CLAUDE.md bootstrapped + size budget; AGENTS.md is a current mirror; copilot-instructions ≤80 lines; `.github/skills` parity; FRAMEWORK-CONTEXT populated; architecture.html fresh. Wrapped by `.github/workflows/docs-sync-check.yml` (GitHub) and portable elsewhere.
+- **CI guardrail** — `scripts/docs-sync-check.{sh,ps1}` (host-agnostic): CLAUDE.md bootstrapped + size budget; AGENTS.md is a current mirror; copilot-instructions ≤80 lines; project skills exist only at the canonical `.claude/skills` location; FRAMEWORK-CONTEXT populated; architecture.html fresh. Wrapped by `.github/workflows/docs-sync-check.yml` (GitHub) and portable elsewhere.
 - **Eval cases** — read `tests/evals/cases.yaml` as a declarative spec of intended framework behavior (Verification, Leanness, SOLID/DIP, Boy Scout / `takeUntilDestroyed`, no-defensive-overcoding, `bypassSecurityTrust` safety). It records example response patterns and plain-English review rubrics.
 - **Version stamp** — `.claude/framework-version.json` + the HTML comment atop `CLAUDE.md`; `CHANGELOG.md` records evolution.
 
@@ -212,7 +211,7 @@ The local files do not depend on the Git remote, but their client delivery does 
 
 ```
 CLAUDE.md                     authored source of truth (conventions, doctrine, workflow)
-AGENTS.md                     generated mirror for AGENTS.md-native tools
+AGENTS.md                     generated mirror for Codex and GitHub code review; Cursor also reads it
 FRAMEWORK-CONTEXT.md          cross-repo context (shared libs, multi-tenancy, dashboard)
 README.md                     human + AI-agent entrypoint
 TECH_DEBT.md / SECURITY_FINDINGS.md   registers
@@ -222,9 +221,9 @@ LEARNINGS.md                  append-only lessons
 .claude/skills/               common-task recipes
 .claude/hooks/                SessionStart, route-prompt, guard, post-write, audit-trail, boy-scout-check (+ .ps1 twins)
 .claude/settings*.json        hook registration (bash + Windows variants)
-.github/prompts|skills|agents|hooks|instructions   Copilot surfaces (generated/mirrored)
+.github/prompts|agents|hooks|instructions   distinct Copilot adapters and carriers
 .github/workflows/            GitHub Actions (GitHub-only)
-scripts/                      docs-sync-check, sync-agent-files, install, build-architecture-html, metrics, ci/
+scripts/                      docs-sync-check, install, build-architecture-html, metrics, ci/
 specs/                        persistent feature specs (spec-driven development)
 docs/impact/                  optional descriptive output
 docs/                         playbook, defaults, ARCHITECTURE (this), REVIEW-GUIDE, architecture-decisions

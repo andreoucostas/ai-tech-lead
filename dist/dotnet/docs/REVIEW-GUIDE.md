@@ -18,7 +18,7 @@ One file is authored by hand — **`CLAUDE.md`**. Supported clients load it or g
 
 ## How to verify the claims (don't take them on faith)
 
-- **Single source + no drift:** run `bash scripts/docs-sync-check.sh` (it self-skips in the template repo via `.template-repo`; run it in a bootstrapped consumer repo). It checks CLAUDE.md is bootstrapped and within budget, AGENTS.md/copilot-instructions are current, `.github/skills` mirrors `.claude/skills`, and `architecture.html` is fresh.
+- **Single source + no drift:** run `bash scripts/docs-sync-check.sh` (it self-skips in the template repo via `.template-repo`; run it in a bootstrapped consumer repo). It checks CLAUDE.md is bootstrapped and within budget, AGENTS.md/copilot-instructions are current, project skills live only under `.claude/skills`, and `architecture.html` is fresh.
 - **Hook-script input/output fixtures (not host firing):** `echo '{"prompt":"the export endpoint is broken"}' | bash .claude/hooks/route-prompt.sh` → should print the `/fix` rails. The guard: `echo '{"tool_name":"Write","tool_input":{"file_path":"Foo.cs","content":"#pragma warning disable CS8602"}}' | bash .claude/hooks/guard.sh; echo $?` → emits the Claude Code block path (exit 2). These direct commands prove parser and output-shape behavior only; they do not prove that a client fires the event or consumes the output.
 - **`/review` derives and runs applicable repository-evidenced checks itself** (review.md Step 2) —
   it does not trust unverified pass claims, and reports unsupported categories as `not available`.
@@ -31,7 +31,7 @@ One file is authored by hand — **`CLAUDE.md`**. Supported clients load it or g
 - **Bitbucket Data Center.** Only the local layer applies — no Copilot cloud agent, no GitHub Actions, no Rovo Dev. The CI guardrail must be wired into Bamboo/Jenkins/pre-receive + Code Insights. See README.
 - **Hooks need a working interpreter and client support.** Dated canaries cover only the capabilities they exercised, not every registered event; Copilot CLI `agentStop` firing and its queue write remain unverified, as do current VS Code Preview-hook lifecycles. VS Code hooks are Preview, off by default, and org-gated; shell writes are outside the editor guard.
 - **Evals are intentionally tiny** — a regression tripwire for the framework's own rules, not test coverage for your app.
-- **Generated files will lag if not regenerated.** `AGENTS.md`, `copilot-instructions.md`, `.github/skills`, `architecture.html` are generated; review `CLAUDE.md`/`ARCHITECTURE.md`, and let `docs-sync` / CI catch staleness.
+- **Generated files will lag if not regenerated.** `AGENTS.md`, `copilot-instructions.md`, and `architecture.html` are generated; review `CLAUDE.md`/`ARCHITECTURE.md`, and let `docs-sync` / CI catch staleness. Project skills are canonical under `.claude/skills`; a legacy `.github/skills` tree is a migration failure because it can shadow them.
 
 ## Probing checklist
 

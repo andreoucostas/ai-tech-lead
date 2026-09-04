@@ -194,17 +194,17 @@
         <div class="mirrors">
           <div class="node"><div class="t">AGENTS.md</div><div class="s">full mirror</div></div>
           <div class="node"><div class="t">.github/copilot-instructions.md</div><div class="s">slim ≤80 lines</div></div>
-          <div class="node"><div class="t">.github/skills/</div><div class="s">task recipes</div></div>
         </div>
       </div>
       <ul class="points" style="margin-top:1.4rem">
-        <li><b>Generated, not hand-copied</b> — mirrors are produced from the source file.</li>
+        <li><b>Generated, not hand-copied</b> — rule carriers are produced from the source file.</li>
+        <li><b>Skills are also single-source</b> — Claude Code and supported Copilot surfaces discover the same <code>.claude/skills/</code> recipes.</li>
         <li><b>Drift-checked in CI</b> — the build fails if a mirror falls out of sync.</li>
       </ul>
     </div>
     <aside class="notes">
-      <p><b>Goal:</b> show the mechanism that makes "authored once" true. Edit CLAUDE.md → regenerate → all tools updated.</p>
-      <p>Why mirrors at all? Because each tool reads a different file. We don't maintain four sets of rules — we maintain one and project it.</p>
+      <p><b>Goal:</b> show the mechanism that makes "authored once" true. Edit CLAUDE.md → regenerate its carriers; edit a project skill once under .claude/skills.</p>
+      <p>Why retain any mirrors? Codex and GitHub code review still use AGENTS.md, and inline completion has its own concise carrier. The literal skill mirror is gone because supported Copilot skill surfaces read the Claude location directly.</p>
       <p>The drift check is what stops this rotting in six months — emphasize for leads who've seen docs go stale.</p>
     </aside>
   </section>

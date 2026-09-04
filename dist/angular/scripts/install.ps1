@@ -194,6 +194,7 @@ $copyIfAbsent = $persistentCopyIfAbsent + @(
 $adoptionSignals = @('CLAUDE.md', 'AGENTS.md', 'GEMINI.md', '.cursorrules', '.cursor/rules',
     '.clinerules', '.windsurfrules', '.roomodes', '.aider.conf.yml', '.continue',
     '.github/copilot-instructions.md', '.github/instructions', '.github/chatmodes',
+    '.github/skills',
     'docs/adr', 'docs/decisions', 'ARCHITECTURE.md', 'docs/ARCHITECTURE.md', 'CODEMAP.md',
     'CONVENTIONS.md', 'docs/CONVENTIONS.md', 'TECH_DEBT.md', 'TODO.md', 'BACKLOG.md',
     'docs/wiki/INDEX.md')
@@ -319,6 +320,35 @@ if ($updateMode) {
                 }
                 $deletePlan.Add($retiredPath)
             }
+        }
+    }
+}
+
+# A retirement can delete only where the immediately previous manifest grants authority. That
+# limitation must not hide a retained high-priority GitHub skill or the old sync script on a later
+# update: inspect these exact ledger paths read-only, without granting deletion authority.
+if ($updateMode) {
+    foreach ($retiredPath in @($retirementLedger.Keys | Sort-Object)) {
+        $isGitHubSkill = $retiredPath -match '^\.github/skills/([^/]+)/'
+        $slug = if ($isGitHubSkill) { $Matches[1] } else { $null }
+        $isRetiredSyncScript = $retiredPath -in @('scripts/sync-agent-files.ps1', 'scripts/sync-agent-files.sh')
+        if ((-not $isGitHubSkill -and -not $isRetiredSyncScript) -or $deletePlan.Contains($retiredPath)) { continue }
+        $candidate = Get-ContainedTargetPath -Relative $retiredPath
+        try { $entry = Get-Item -Force -LiteralPath $candidate -ErrorAction Stop }
+        catch [Management.Automation.ItemNotFoundException] { continue }
+        catch {
+            $reconciliationMessages.Add("CANT-VERIFY: retained retired path '$retiredPath' could not be examined; preserving it without inspection.")
+            continue
+        }
+        $reparse = Get-ReparsePointAncestor -Path $candidate
+        if ($reparse) {
+            $reconciliationMessages.Add("CANT-VERIFY: retained retired path '$retiredPath' traverses reparse/symlink '$reparse'; preserving it without inspection.")
+            continue
+        }
+        if ($isGitHubSkill) {
+            $reconciliationMessages.Add("CANT-VERIFY: retained retired path '$retiredPath' was not deleted; it may shadow canonical .claude/skills/$slug. Move intentional customization to .claude/skills/$slug and remove the retained GitHub copy after review.")
+        } else {
+            $reconciliationMessages.Add("CANT-VERIFY: retained retired path '$retiredPath' was not deleted; running it may recreate higher-priority .github/skills shadows. Do not run it; migrate or retire it after review.")
         }
     }
 }
@@ -503,8 +533,8 @@ if ($adoptMode) {
 }
 
 # Compute the complete deployment/reconciliation plan before the first target mutation. Legacy
-# snapshot/restore writes are gone: protected files are skipped directly, and every skill backup,
-# disable and mirror leaf is now planned and preflighted before execution.
+# snapshot/restore writes are gone: protected files are skipped directly, and every skill backup
+# and disable leaf is planned and preflighted before execution.
 $createPlan = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
 $replacePlan = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
 $preservePlan = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
@@ -513,7 +543,6 @@ $ordinaryApplyPaths = New-Object System.Collections.Generic.List[string]
 $skillBackupPlan = New-Object System.Collections.Generic.List[object]
 $disabledCarryPlan = New-Object System.Collections.Generic.List[object]
 $disabledIncomingPlan = New-Object System.Collections.Generic.List[object]
-$skillMirrorPlan = New-Object System.Collections.Generic.List[object]
 $skillDeletePlan = New-Object System.Collections.Generic.List[string]
 foreach ($entry in $archivePlan) { [void]$archiveSources.Add($entry.Relative.Substring('docs/pre-adoption/'.Length)) }
 
@@ -578,7 +607,7 @@ if ($updateMode -and (Test-Path -LiteralPath $activeSkillsRoot -PathType Contain
 }
 
 # Preserve every existing leaf of a disabled skill in its inactive location, then overlay the
-# incoming framework version. Active and GitHub copies are removed as explicit tree operations.
+# incoming framework version. Active copies are removed as explicit tree operations.
 foreach ($name in $disabledSkillNames) {
     $activeRoot = Join-Path $activeSkillsRoot $name
     if (Test-Path -LiteralPath $activeRoot -PathType Container) {
@@ -591,23 +620,16 @@ foreach ($name in $disabledSkillNames) {
         [void](Assert-SafeTargetMutation -Relative ".claude/skills/$name" -AllowTree)
         $skillDeletePlan.Add(".claude/skills/$name")
     }
-    $githubRoot = Join-Path $tgt ".github/skills/$name"
-    if (Test-Path -LiteralPath $githubRoot) {
-        [void](Assert-SafeTargetMutation -Relative ".github/skills/$name" -AllowTree)
-        $skillDeletePlan.Add(".github/skills/$name")
-    }
 }
 
 foreach ($relative in $incomingPaths) {
     $claudeSkill = [regex]::Match($relative, '^\.claude/skills/([^/]+)/(.*)$')
-    $githubSkill = [regex]::Match($relative, '^\.github/skills/([^/]+)/(.*)$')
     if ($updateMode -and $claudeSkill.Success -and $disabledSkillNames.Contains($claudeSkill.Groups[1].Value)) {
         $inactive = ".claude/disabled-skills/$($claudeSkill.Groups[1].Value)/$($claudeSkill.Groups[2].Value)"
         [void](Add-PlannedWrite -Relative $inactive)
         $disabledIncomingPlan.Add([pscustomobject]@{ Source = $relative; Relative = $inactive })
         continue
     }
-    if ($updateMode -and $githubSkill.Success -and $disabledSkillNames.Contains($githubSkill.Groups[1].Value)) { continue }
     $destination = Get-ContainedTargetPath -Relative $relative
     $exists = $null -ne (Get-Item -Force -LiteralPath $destination -ErrorAction SilentlyContinue)
     $preserveDiscovered = $claudeSkill.Success -and $discoveredSkillNames.Contains($claudeSkill.Groups[1].Value)
@@ -624,28 +646,6 @@ $settingsBackupRelative = $null
 if ($updateMode -and (Test-Path -LiteralPath (Join-Path $tgt '.claude/settings.json') -PathType Leaf)) {
     $settingsBackupRelative = '.claude/.state/settings.json.pre-update'
     [void](Add-PlannedWrite -Relative $settingsBackupRelative)
-}
-
-# Mirror the final active skill leaf set. This includes project-discovered/custom skills that do
-# not appear in the incoming manifest and makes their GitHub writes visible in the plan.
-$finalActiveFiles = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
-if ($updateMode -and (Test-Path -LiteralPath $activeSkillsRoot -PathType Container)) {
-    foreach ($file in Get-ChildItem -LiteralPath $activeSkillsRoot -Recurse -File -Force) {
-        $underSkills = $file.FullName.Substring($activeSkillsRoot.Length).TrimStart('\', '/') -replace '\\', '/'
-        $name = $underSkills.Split('/')[0]
-        if (-not $disabledSkillNames.Contains($name)) { [void]$finalActiveFiles.Add(".claude/skills/$underSkills") }
-    }
-}
-if ($updateMode) {
-    foreach ($relative in $incomingPaths) {
-        $m = [regex]::Match($relative, '^\.claude/skills/([^/]+)/(.*)$')
-        if ($m.Success -and -not $disabledSkillNames.Contains($m.Groups[1].Value)) { [void]$finalActiveFiles.Add($relative) }
-    }
-    foreach ($sourceRelative in $finalActiveFiles) {
-        $mirrorRelative = '.github/skills/' + $sourceRelative.Substring('.claude/skills/'.Length)
-        [void](Add-PlannedWrite -Relative $mirrorRelative)
-        $skillMirrorPlan.Add([pscustomobject]@{ Source = $sourceRelative; Relative = $mirrorRelative })
-    }
 }
 
 $adoptionMarkerRelative = $null
@@ -713,13 +713,6 @@ foreach ($name in $skillExemplars.Keys) {
 foreach ($relative in $skillDeletePlan) {
     $path = Get-ContainedTargetPath -Relative $relative
     if (Test-Path -LiteralPath $path) { Remove-Item -Recurse -Force -LiteralPath $path }
-}
-foreach ($entry in $skillMirrorPlan) {
-    $source = Get-ContainedTargetPath -Relative $entry.Source
-    if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { continue }
-    $destination = Get-ContainedTargetPath -Relative $entry.Relative
-    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
-    Copy-Item -Force -LiteralPath $source -Destination $destination
 }
 if ($updateMode) { Write-Output "  consumer-owned content files left untouched ($($protected -join ', '))." }
 

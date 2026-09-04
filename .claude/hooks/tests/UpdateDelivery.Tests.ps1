@@ -666,11 +666,11 @@ foreach ($twin in @('ps1', 'sh')) {
 
 # Recovery increment 1: these fixtures are deliberately run against the composed, unfixed dist
 # first. Each sentinel is a consumer byte that v0.72.0 loses: settings/hooks/commands on
-# brownfield, audit state on both modes, and a GitHub-only skill on update. The update fixture
-# seeds a protected file so both baseline twins reach their post-copy GitHub-skill sync path.
+# brownfield, audit state on both modes, and GitHub-only skills on update. B-217 extends the same
+# fixture across unknown, byte-identical historical-path, and conflicting historical-path inputs.
 function New-NoLossBrownfieldConsumer {
     $t = Join-Path ([IO.Path]::GetTempPath()) ('no-loss-brown-' + [guid]::NewGuid())
-    foreach ($rel in @('.claude/commands', '.github/hooks', '.github/skills/local-only')) {
+    foreach ($rel in @('.claude/commands', '.github/hooks', '.github/skills/local-only', '.github/skills/perf', '.github/skills/add-tests')) {
         New-Item -ItemType Directory -Force -Path (Join-Path $t $rel) | Out-Null
     }
     Set-Content -LiteralPath (Join-Path $t 'TECH_DEBT.md') -Value 'BROWNFIELD SIGNAL' -Encoding utf8
@@ -678,6 +678,9 @@ function New-NoLossBrownfieldConsumer {
     Set-Content -LiteralPath (Join-Path $t '.github/hooks/hooks.json') -Value 'HOOKS SENTINEL' -Encoding utf8
     Set-Content -LiteralPath (Join-Path $t '.claude/commands/feature.md') -Value 'COMMAND SENTINEL' -Encoding utf8
     Set-Content -LiteralPath (Join-Path $t '.github/skills/local-only/SKILL.md') -Value 'GITHUB-ONLY SKILL SENTINEL' -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $t '.github/skills/local-only/reference.md') -Value 'GITHUB-ONLY RESOURCE SENTINEL' -Encoding utf8
+    [IO.File]::WriteAllBytes((Join-Path $t '.github/skills/perf/SKILL.md'), [IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/.claude/skills/perf/SKILL.md')))
+    Set-Content -LiteralPath (Join-Path $t '.github/skills/add-tests/SKILL.md') -Value 'CONFLICTING GITHUB SKILL SENTINEL' -Encoding utf8
     [IO.File]::WriteAllBytes((Join-Path $t '.claude/ai-audit.log'), [byte[]](0, 1, 2, 255, 10, 13, 0))
     return $t
 }
@@ -736,6 +739,10 @@ foreach ($twin in @('ps1', 'sh')) {
     It "brownfield archives every incoming collision and preserves audit state ($twin)" {
         $t = New-NoLossBrownfieldConsumer
         $auditBefore = [IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log'))
+        $githubSkillsBefore = @{}
+        foreach ($relative in @('.github/skills/local-only/SKILL.md', '.github/skills/local-only/reference.md', '.github/skills/perf/SKILL.md', '.github/skills/add-tests/SKILL.md')) {
+            $githubSkillsBefore[$relative] = [IO.File]::ReadAllBytes((Join-Path $t $relative))
+        }
         try {
             $out = Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t
             Assert ($LASTEXITCODE -eq 0) "brownfield install failed (exit $LASTEXITCODE): $out"
@@ -752,12 +759,26 @@ foreach ($twin in @('ps1', 'sh')) {
                 Assert ($marker.archivedOriginals -contains $archiveRel) "adoption marker omitted archive mapping $archiveRel"
             }
             Assert-BytesEqual -Expected $auditBefore -Actual ([IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log'))) -Message 'brownfield overwrote persistent ai-audit.log bytes'
-            Assert ((Get-Content -LiteralPath (Join-Path $t '.github/skills/local-only/SKILL.md') -Raw) -match 'GITHUB-ONLY SKILL SENTINEL') 'brownfield deleted an unknown GitHub-only skill'
+            $marker = Get-Content -LiteralPath (Join-Path $t '.claude/adoption-pending.json') -Raw | ConvertFrom-Json
+            Assert ($marker.detectedArtifacts -contains '.github/skills') 'brownfield marker did not route the legacy GitHub skill tree to /adopt'
+            Assert (@($marker.archivedOriginals | Where-Object { $_ -like 'docs/pre-adoption/.github/skills*' }).Count -eq 0) 'brownfield marker claimed a GitHub skill was archived'
+            foreach ($relative in $githubSkillsBefore.Keys) {
+                Assert-BytesEqual -Expected $githubSkillsBefore[$relative] -Actual ([IO.File]::ReadAllBytes((Join-Path $t $relative))) -Message "brownfield changed untrusted GitHub skill input $relative"
+            }
+
+            $adoptCommand = [IO.File]::ReadAllText((Join-Path $t '.claude/commands/adopt.md'))
+            foreach ($required in @('.github/skills/*/SKILL.md', 'every sibling resource', 'both interactive and headless mode', 'STOP before Phase 2', 'Do not move, delete, overwrite, interpret, execute, archive, or merge', '.claude/skills/<slug>', 'explicitly merge or rename', 'reruns `/adopt`', 'template-checks')) {
+                Assert ($adoptCommand.Contains($required)) "shipped /adopt lost the legacy-skill migration contract: $required"
+            }
 
             $update = Invoke-Installer -Twin $twin -Dist 'dotnet' -Target $t
             Assert ($LASTEXITCODE -eq 0) "update install failed (exit $LASTEXITCODE): $update"
             Assert-BytesEqual -Expected $auditBefore -Actual ([IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log'))) -Message 'update overwrote persistent ai-audit.log bytes'
-            Assert ((Get-Content -LiteralPath (Join-Path $t '.github/skills/local-only/SKILL.md') -Raw) -match 'GITHUB-ONLY SKILL SENTINEL') 'update deleted an unknown GitHub-only skill'
+            foreach ($relative in $githubSkillsBefore.Keys) {
+                Assert-BytesEqual -Expected $githubSkillsBefore[$relative] -Actual ([IO.File]::ReadAllBytes((Join-Path $t $relative))) -Message "update changed untrusted GitHub skill input $relative"
+            }
+            Assert ($update -match "CANT-VERIFY: retained retired path '\.github/skills/perf/SKILL\.md'.*may shadow") 'later update did not warn about the identical historical-path GitHub skill'
+            Assert ($update -match "CANT-VERIFY: retained retired path '\.github/skills/add-tests/SKILL\.md'.*may shadow") 'later update did not warn about the conflicting historical-path GitHub skill'
         } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
     }
 

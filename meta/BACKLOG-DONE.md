@@ -11613,3 +11613,109 @@ broad command discovery then treated a conventional `tests/` path as application
 class exposed any framework-owned runner, wrapper, configuration, or retired residue that resembles
 a consumer command. The repair separates dist CI from install ownership, retires only content whose
 historical identity is known, and makes ownership—not path shape—the command-evidence boundary.
+
+---
+
+### B-217 · Retire the redundant `.github/skills` mirror and its machinery
+**Filed against:** v0.81.0 (2026-09-04)
+**Priority:** P1 · **Effort:** L · **Invariants:** #1 #2 #3 #6 #7
+
+> **IMPLEMENTED AND CLOSED 2026-09-04 for v0.82.0.** All three distributions now ship project
+> skills only from `.claude/skills`. The 38 literal `.github/skills` duplicates (191,293 bytes at
+> the v0.81.0 baseline), both sync scripts, and their mirror-only installer/checker machinery are
+> retired. Distinct GitHub prompts, agents, instructions, hooks, workflows, and PR integration are
+> retained because this delivery established no compatible replacement for those contracts.
+
+> **INDEPENDENT FINAL REVIEW — APPROVE, NO FINDINGS.** A non-implementing Codex subagent using
+> `gpt-5.6-terra` at `xhigh` reviewed immutable base
+> `8faa4ca61b3334d3d411fd55633caa91d07eec32` and candidate tree
+> `fab93b1775f297b3b3c82ea47a701fa38a3f5be2`. It formed its threat model before opening the final
+> diff, made no repository changes, independently observed hostile red and restored clean green,
+> and directly verified stock, modified, malformed-manifest, reparse, brownfield, composition, and
+> all-profile validation worlds. Environment: Windows 11, PowerShell 7.6.5, Git Bash 5.2.37, Git
+> 2.52.0. Gaps: no native-Linux or live non-CLI Copilot execution in that review; required release
+> CI supplies the Windows/Linux repository legs, while official GitHub documentation is the
+> compatibility authority for non-CLI skill surfaces.
+
+> **DESIGN LOCKED AFTER INDEPENDENT ADVERSARIAL REVIEW — APPROVE.** Full contract:
+> `.claude/plans/2026-09-04-b217-retire-redundant-github-skill-mirror-design.md`. Current GitHub
+> documentation covers `.claude/skills` across the supported Copilot skill surfaces, and a local
+> CLI 1.0.80 positive/negative metadata canary discovered the Claude-only project skill. Both old
+> checker twins and both old installer twins were observed red/live before implementation. Two
+> review rounds returned REVISE until legacy-manifest, adoption, durable-warning, stale-script,
+> audience-truth, release-order and oracle gaps were closed; the revised contract was approved.
+
+**Problem.** All three distributions ship a byte-identical `.github/skills` copy of the canonical
+`.claude/skills` tree—38 duplicate files and 191,293 bytes—plus two sync scripts, installer mirror
+branches, parity gates, fixtures and documentation. `.github/skills` has higher Copilot discovery
+priority, so a stale copy can shadow the source. The premise predates current GitHub support and the
+machinery has already caused false drift, portability work and destructive-update risk.
+
+**Do.** Ship only `.claude/skills`; retire every known framework mirror leaf and both sync scripts
+through the content-qualified ledger; remove mirror-only source, installer, gate, test and doc
+branches; preserve known retired paths with consumer-modified/unknown content using durable path-
+specific warnings and leave unknown consumer-only skills untouched; make `.github/skills` a
+brownfield adoption signal and a deterministic incomplete-migration finding;
+and correct active claims that Gemini/Aider/Copilot CLI uniquely or automatically need AGENTS.md.
+Retain AGENTS for Codex/code review and retain prompts, agents, inline instructions, path rules,
+hooks, workflows and the PR template because their contracts are distinct.
+
+**Done when.** Fresh dists and installs contain no framework `.github/skills` or sync scripts;
+qualifying stock updates remove only known bytes; legacy/missing/malformed-manifest, modified,
+unknown and reparse states preserve bytes and remain visibly non-converged; brownfield/headless
+adoption cannot pass with a shadow tree; both twins and all profiles pass the frozen migration and
+candidate discovery oracles; the immutable-range review observes hostile red and clean green;
+records/changelogs/RCA are reconciled; v0.82.0 is released and required Windows/Linux CI is green.
+
+**Implementation evidence.** The full maintainer suite passed all 32 test files with zero aggregate
+failures. Focused evidence includes installer convergence 18/18, update delivery 51/51, dist
+validation 40/40, docs-sync 2/2, and both old-checker/old-installer release-specific reds followed
+by clean greens. The cumulative retirement ledger covers 93 historical hashes across 80 tags and
+is byte-identical to its maintainer baseline. GitHub Copilot CLI 1.0.80, in an isolated Git repo
+with an empty `COPILOT_HOME` and no `.github/skills`, discovered all 12 dotnet framework skills as
+enabled project skills under `.claude/skills`; this metadata canary invoked no model and consumed no
+premium request. The final reviewer additionally rebuilt every profile from the candidate tree and
+reproduced each staged distribution byte-for-byte.
+
+**RCA.** No gate caught the duplication because parity enforcement faithfully preserved an obsolete
+vendor-capability premise: it proved that two copies stayed equal, not that the second copy was still
+needed. The same class exposes prompt, agent, instruction, and hook adapters, plus reader-audience
+claims in AGENTS files. Each must be revalidated against exact supported surfaces and safe migration
+behavior; general “Claude setup supported” wording is not evidence that commands, agents, hooks, or
+inline instructions are interchangeable. This delivery removes only the proven literal duplicate
+and records the remaining adapters as distinct until equivalent exact-surface evidence exists.
+
+---
+
+### B-218 · Rebaseline the meta-suite runtime after B-217's migration matrix
+**Filed against:** v0.81.0 (2026-09-04)
+**Priority:** P1 · **Effort:** S · **Invariants:** #4 #5 #7
+
+> **IMPLEMENTED AND CLOSED 2026-09-04 as meta-only release enforcement accompanying v0.82.0.**
+> The `meta-suite` ceiling moves from 650s to 1200s and the internally derived
+> `total-local-gates` ceiling moves from 1530s to 2080s. All other ceilings, tests, and release
+> policy remain unchanged.
+
+**Observed harm and proportionality.** Two comparable v0.82.0 release attempts passed every
+functional gate but were correctly refused by the hard meta-suite budget: 802.6s and 828.4s against
+650s. Their total local-gate times were only 910.5s and 938.2s against 1530s. B-217 expanded
+`InstallerConvergence.Tests.ps1` from 12 to 18 results and added 14 required cross-shell installer
+executions covering first/repeat install, missing/malformed manifests, modified and unknown content,
+and an uninspectable state. Process startup dominates this suite; the full-dist fixture copy was
+measured at only 0.16s. Dropping or weakening the migration cases would erase the evidence that
+retirement preserves consumer-owned content. The smallest honest repair is therefore the existing
+recorded-ceiling mechanism: 1200s is about 1.45 times the worse observation, matching the prior
+loaded-host convention, and 2080s is the exact stage sum (60 + 700 + 1200 + 120).
+
+**Evidence.** The old ceiling was observed red on both full release attempts while all 32 maintainer
+test files were functionally green. `GateBudgetConsistency.Tests.ps1` observes a stale aggregate
+red and a correctly recomputed aggregate green; the final release must pass the new hard ceiling
+without a waiver. The enforcement delta received an independent immutable-tree review, including
+the recorded observations, arithmetic, retained test inventory, and hostile/clean budget behavior.
+
+**RCA.** The budget gate did its job: it caught a genuine stage-cost shift before release. B-217's
+locked design budgeted migration behavior and hostile states but did not project the cumulative
+process-spawn cost of exercising them through both installer twins. The same class exposes any
+behavioral delivery that adds full installer, composer, or validator executions. Future design
+locks must estimate stage-runtime impact alongside functional scope; a measured ceiling change is
+appropriate only after repeated comparable failures with all functional checks green.
