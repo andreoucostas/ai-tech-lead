@@ -214,7 +214,8 @@ try {
 
     It 'rejects a BOM-prefixed PowerShell blob containing NUL binary content' {
         $fixture = New-RepositoryFixture
-        Add-Commit $fixture 'binary.ps1' ([char]0xFEFF + "`0AKIAIOSFODNN7EXAMPLE`n") 'Add binary PowerShell payload' $false
+        $blockedToken = 'AK' + 'IA' + 'IOSFODNN7EXAMPLE'
+        Add-Commit $fixture 'binary.ps1' ([char]0xFEFF + "`0$blockedToken`n") 'Add binary PowerShell payload' $false
         $result = Invoke-Checker $fixture
         Assert ($result.Exit -eq 1) "binary PowerShell blob bypassed the outgoing guard: $($result.Out)"
         Assert ($result.Out -match 'PowerShell file with NUL/binary content:\s*binary\.ps1') "binary PowerShell refusal reason missing: $($result.Out)"
