@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.83.0 — Unreleased
+## 0.83.0 — 2026-09-04
 
 - Framework installation, hooks, checks, and supplied CI now use PowerShell on Windows. PowerShell
   7 is preferred and Windows PowerShell 5.1 remains the supported fallback for framework scripts.

@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.83.0 — Unreleased
+## 0.83.0 — 2026-09-04
 
 **Framework execution is now Windows- and PowerShell-only.** B-219/WSD-073 retires the active Bash
 implementations, Linux CI, dual-language hook registrations and shell-only provider examples while
