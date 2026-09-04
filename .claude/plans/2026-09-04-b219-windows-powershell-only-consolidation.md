@@ -1,6 +1,6 @@
 # B-219 — Windows-only, PowerShell-only framework consolidation
 
-**Status:** IMPLEMENTED; final immutable-range review and v0.83.0 release pending.
+**Status:** IMPLEMENTED AND INDEPENDENTLY REVIEWED; v0.83.0 release pending.
 **Base:** v0.82.0 (`5b918fb`), released and CI-green before this work begins.
 
 ## Decision
@@ -221,3 +221,10 @@ same token at runtime. Both supported hosts still observe the intended NUL refus
 source requires no content exception; the reviewed intermediate blob is qualified separately by its
 exact path and digest. This is release-specific evidence that the outgoing guard examines
 the immutable blobs it actually governs rather than only passing synthetic repository fixtures.
+
+The final bounded Terra confirmation approved `4ec9ab9..2d251e0` with no Critical, High, or
+actionable Medium finding. It independently recomputed the added exception digest from the
+`c5bdbc9` blob, verified the final source contains no literal blocked token, and reproduced the
+guard's model of exactly 7 outgoing commits and 401 added/changed/modified/renamed blobs. Its scope
+was deliberately narrow; it did not repeat the already-observed full suites or perform the live
+remote push, hosted CI, or tag operation reserved for the release workflow.
