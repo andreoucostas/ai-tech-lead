@@ -195,8 +195,9 @@ binary blobs were misclassified as unreadable text, greenfield/brownfield carrie
 false migration diagnosis, and the tag check inspected an empty already-pushed range.
 
 The implementation now uses a separately reviewed path-and-SHA exception ledger: four exact
-canonical fixture copies plus the exact pre-fix historical certification blob, with every applied
-exception printed. Changed fixture bytes remain blocked. The hook digest and all terminator classes
+canonical fixture copies, the exact pre-fix historical certification blob, and the exact reviewed
+intermediate hostile-test blob, with every applied exception printed. Changed bytes remain blocked.
+The hook digest and all terminator classes
 are corrected in installer and doctor; executable caller refusal, `defaultShell`, per-hook shell,
 semicolon reference, body digest, binary, and already-pushed revision cases are calibrated. The
 consumer workflow remains one PS7 Windows job; authoring CI retains both hosts. The staging test
@@ -216,6 +217,7 @@ an exact BOM+NUL hostile case. No other actionable finding was reported in that 
 
 The first real outgoing-range scan after that correction went red on the hostile test source itself:
 the test had embedded its blocked credential-shaped token literally. The fixture now assembles the
-same token at runtime. Both supported hosts still observe the intended NUL refusal, while the source
-requires no content exception. This is release-specific evidence that the outgoing guard examines
+same token at runtime. Both supported hosts still observe the intended NUL refusal, while the final
+source requires no content exception; the reviewed intermediate blob is qualified separately by its
+exact path and digest. This is release-specific evidence that the outgoing guard examines
 the immutable blobs it actually governs rather than only passing synthetic repository fixtures.

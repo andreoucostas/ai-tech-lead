@@ -25,6 +25,11 @@
       "path": "meta/host-certification.md",
       "sha256": "71F5E15A0DFAD507298427FFF5163A7BA2D26076219F705E393B3142DDC47479",
       "reason": "Frozen pre-release certification record named the canonical synthetic AWS example; the follow-up commit removes the literal."
+    },
+    {
+      "path": ".claude/hooks/tests/OutgoingCommits.Tests.ps1",
+      "sha256": "7CCE24F171B4D5DBD764E1225BCA8044473951F9A84B06A124DDF3EEB4BA5053",
+      "reason": "Reviewed intermediate hostile-test blob embedded a synthetic blocked token; the follow-up commit constructs it at runtime."
     }
   ]
 }
