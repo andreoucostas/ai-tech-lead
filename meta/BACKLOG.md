@@ -34,36 +34,6 @@ dead (feeds B-08 matrix rows + B-09 post-write demotion) and the folder-trust pr
 `framework-doctor` (B-16). The B-01 optional guard hardening was deferred by decision (see `meta/BACKLOG-DONE.md`).
 **B-37 (post-ship review of v0.27.0) shipped in v0.27.1 (2026-07-16) — see `meta/BACKLOG-DONE.md`.**
 
-### B-219 · Retire Bash and make the framework Windows/PowerShell-only
-**Filed against:** v0.82.0 (2026-09-04)
-**Priority:** P1 · **Effort:** L · **Invariants:** #1 #2 #3 #4 #5 #6 #7
-
-> **IMPLEMENTING FOR v0.83.0.** Locked contract:
-> `.claude/plans/2026-09-04-b219-windows-powershell-only-consolidation.md`.
-
-**Problem.** The framework is operated only on Windows, but it maintains 80 active `.sh` files,
-two shell-only maintainer Git-hook launchers, Linux CI, dual-language registrations, portable
-provider examples, two composers, and parity/error machinery. That surface has repeatedly produced
-Windows-host gaps and doubles the cost of every hook, installer and gate change without exercising
-a supported deployment. Simply deleting it would still be unsafe: prior consumers can own stock or
-modified shell files, an unowned pre-commit hook can depend on retired helpers, and current PS5 test
-runners silently upgrade their children to PS7.
-
-**Do.** Make native Windows the sole supported host; keep PowerShell 7 primary and Windows
-PowerShell 5.1 as the supported runtime fallback. Establish direct-host PS5 evidence first, then
-remove active Bash implementations, Linux CI and registrations. Preserve substantive PowerShell
-tests and four inert historical canaries. Use cumulative content-qualified retirement for installed
-files, preserve and durably diagnose unowned legacy Git-hook closures, replace maintainer shell
-hooks with an outgoing-commit PowerShell guard, and report rather than overwrite protected consumer
-references. Record the deliberately lost differential oracles and their narrower replacements.
-
-**Done when.** Fresh dists contain no active Bash executable/config surface; exactly eight native
-Windows CI contexts prove root and three-dist behavior under PS7 and PS5.1; every safe-retirement,
-legacy-hook, protected-reference and dry-run state is red/green tested; live Windows Claude and
-Copilot hook canaries are recorded; all dists rebuild byte-deterministically and pass both hosts;
-independent immutable-range review is complete; records/RCA/changelogs are reconciled; and v0.83.0
-is released, pushed, CI-green and tagged.
-
 ### B-220 · Remove the retired `-GitHooks` compatibility parameter in v0.84
 **Filed against:** v0.83.0 (2026-09-04)
 **Priority:** P2 · **Effort:** S · **Invariants:** #1 #6 #7

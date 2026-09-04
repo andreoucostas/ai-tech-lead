@@ -1,6 +1,6 @@
 # B-219 — Windows-only, PowerShell-only framework consolidation
 
-**Status:** LOCKED after independent fresh-context and Claude CLI Opus/xhigh adversarial review.
+**Status:** IMPLEMENTED; final immutable-range review and v0.83.0 release pending.
 **Base:** v0.82.0 (`5b918fb`), released and CI-green before this work begins.
 
 ## Decision
@@ -158,10 +158,10 @@ reports that environment limitation explicitly; the production branch was not cl
 this host. The separate wrong-case ownership hostile case and all-18-path residual case did execute
 and pass under both hosts.
 
-After the final aggregate-only fixes, the complete root suite ran sequentially and directly under
-both hosts: 32 suite files, 298 passing semantic cases, and zero suite failures on each. The two
-case-count manifests were byte-identical at SHA-256
-`93350e5a851b8820a313bfc12986697f86c1f521a819e9f8c0c82a3b20b16130`. The aggregate output also
+After the final review corrections, the complete root suite ran directly under both hosts: 32 suite
+files, 308 passing semantic cases, and zero suite failures on each. The two case-count manifests
+were byte-identical at SHA-256
+`79614ED45F6A0ABDFA2B349D6FD4AC3EE907397B7013B31E41E96327CB2929AD`. The aggregate output also
 contained the expected red transcripts from the release-context, installer-contract,
 warehouse-detection, and guard-pattern hostile mutations; their containing suites returned green
 only after restoring the production artifacts.
@@ -213,3 +213,9 @@ A bounded Terra follow-up over `e92f5c2..6351dfe` found one High correction defe
 skip also accepted a BOM-prefixed `.ps1` containing NUL, bypassing strict decode and the guard. The
 skip now applies only to non-PowerShell blobs; PowerShell NUL/binary content is a push refusal, with
 an exact BOM+NUL hostile case. No other actionable finding was reported in that correction delta.
+
+The first real outgoing-range scan after that correction went red on the hostile test source itself:
+the test had embedded its blocked credential-shaped token literally. The fixture now assembles the
+same token at runtime. Both supported hosts still observe the intended NUL refusal, while the source
+requires no content exception. This is release-specific evidence that the outgoing guard examines
+the immutable blobs it actually governs rather than only passing synthetic repository fixtures.
