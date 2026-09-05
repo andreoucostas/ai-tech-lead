@@ -69,9 +69,11 @@ Repo-specific conventions the consumer owns. Populated by /bootstrap. DO NOT CLO
     Set-Content (Join-Path $t '.claude/framework-version.json') "{`"version`": `"$staleVersion`"}" -Encoding utf8
     Set-Content (Join-Path $t '.claude/settings.json') "{`n  `"consumerEdit`": `"recover me`"`n}`n" -Encoding utf8
     New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude/skills/add-warehouse-load') | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude/skills/add-warehouse-load/references') | Out-Null
     Set-Content (Join-Path $t '.claude/skills/add-warehouse-load/SKILL.md') "---`nname: add-warehouse-load`n---`n# Old framework body`n`nFor a concrete current instance in this repo, see ``warehouse/LoadSales.sql`` — reproduce its **conventions and structure**, not its contents; CLAUDE.md > Conventions wins on any conflict.`n" -Encoding utf8
     New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude/skills/local-release') | Out-Null
     Set-Content (Join-Path $t '.claude/skills/local-release/SKILL.md') "---`nname: local-release`norigin: discovered`n---`n# Consumer recipe`n" -Encoding utf8
+    [IO.File]::WriteAllBytes((Join-Path $t '.claude/skills/add-warehouse-load/references/project-pattern.md'), [Text.UTF8Encoding]::new($false).GetBytes("# Consumer project pattern`r`ncomposition-root: Unity`r`nlifetime: scoped`r`n"))
     # A protected ledger can be written by PS5 with a BOM and CRLF. The trailing HT is already
     # admitted by the heading grammar and keeps dirty extraction observable even if a host masks CR.
     [IO.File]::WriteAllText((Join-Path $t 'LEARNINGS.md'), $learningsFixtureText, [Text.UTF8Encoding]::new($true))
@@ -318,6 +320,8 @@ $powerShellExtension = 'ps1'
     $adrBefore = [IO.File]::ReadAllBytes($adrPath)
     $learningsPath = Join-Path $target 'LEARNINGS.md'
     $learningsBefore = [IO.File]::ReadAllBytes($learningsPath)
+    $patternPath = Join-Path $target '.claude/skills/add-warehouse-load/references/project-pattern.md'
+    $patternBefore = [IO.File]::ReadAllBytes($patternPath)
     $out = Invoke-Installer -Dist $dist -Target $target
     $installExit = $LASTEXITCODE
 
@@ -353,6 +357,7 @@ $powerShellExtension = 'ps1'
         Assert-BytesEqual -Expected $learningsExpectedBytes -Actual $learningsBefore -Message 'disabled-skill fixture was not exact BOM + HT + CRLF input'
         Assert-BytesEqual -Expected $learningsBefore -Actual ([IO.File]::ReadAllBytes($learningsPath)) -Message 'update mode modified the protected disabled-skill ledger'
         Assert ($out -match '(?m)^PLAN preserve docs/architecture-decisions\.md\r?$') "update operation plan did not classify the consumer ADR log as preserved. Output:`n$out"
+        Assert-BytesEqual -Expected $patternBefore -Actual ([IO.File]::ReadAllBytes($patternPath)) -Message 'ordinary update modified consumer-owned project-pattern sidecar'
     }
 
     It "update delivers the unprotected carrier ($powerShellExtension)" {
@@ -505,13 +510,15 @@ $powerShellExtension = 'ps1'
 # fixture across unknown, byte-identical historical-path, and conflicting historical-path inputs.
 function New-NoLossBrownfieldConsumer {
     $t = Join-Path ([IO.Path]::GetTempPath()) ('no-loss-brown-' + [guid]::NewGuid())
-    foreach ($rel in @('.claude/commands', '.github/hooks', '.github/skills/local-only', '.github/skills/perf', '.github/skills/add-tests')) {
+    foreach ($rel in @('.claude/commands', '.claude/skills/add-warehouse-load/references', '.github/hooks', '.github/skills/local-only', '.github/skills/perf', '.github/skills/add-tests')) {
         New-Item -ItemType Directory -Force -Path (Join-Path $t $rel) | Out-Null
     }
     Set-Content -LiteralPath (Join-Path $t 'TECH_DEBT.md') -Value 'BROWNFIELD SIGNAL' -Encoding utf8
     Set-Content -LiteralPath (Join-Path $t '.claude/settings.json') -Value 'SETTINGS SENTINEL' -Encoding utf8
     Set-Content -LiteralPath (Join-Path $t '.github/hooks/hooks.json') -Value 'HOOKS SENTINEL' -Encoding utf8
     Set-Content -LiteralPath (Join-Path $t '.claude/commands/feature.md') -Value 'COMMAND SENTINEL' -Encoding utf8
+    [IO.File]::WriteAllText((Join-Path $t '.claude/skills/add-warehouse-load/SKILL.md'), 'BROWNFIELD FRAMEWORK SKILL COLLISION', [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllBytes((Join-Path $t '.claude/skills/add-warehouse-load/references/project-pattern.md'), [Text.UTF8Encoding]::new($false).GetBytes("# Brownfield project pattern`r`ncomposition-root: Angular`r`nlifetime: singleton`r`n"))
     Set-Content -LiteralPath (Join-Path $t '.github/skills/local-only/SKILL.md') -Value 'GITHUB-ONLY SKILL SENTINEL' -Encoding utf8
     Set-Content -LiteralPath (Join-Path $t '.github/skills/local-only/reference.md') -Value 'GITHUB-ONLY RESOURCE SENTINEL' -Encoding utf8
     [IO.File]::WriteAllBytes((Join-Path $t '.github/skills/perf/SKILL.md'), [IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/.claude/skills/perf/SKILL.md')))
@@ -573,6 +580,8 @@ $powerShellExtension = 'ps1'
     It "brownfield archives every incoming collision and preserves audit state ($powerShellExtension)" {
         $t = New-NoLossBrownfieldConsumer
         $auditBefore = [IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log'))
+        $patternPath = Join-Path $t '.claude/skills/add-warehouse-load/references/project-pattern.md'
+        $patternBefore = [IO.File]::ReadAllBytes($patternPath)
         $githubSkillsBefore = @{}
         foreach ($relative in @('.github/skills/local-only/SKILL.md', '.github/skills/local-only/reference.md', '.github/skills/perf/SKILL.md', '.github/skills/add-tests/SKILL.md')) {
             $githubSkillsBefore[$relative] = [IO.File]::ReadAllBytes((Join-Path $t $relative))
@@ -580,10 +589,12 @@ $powerShellExtension = 'ps1'
         try {
             $out = Invoke-Installer -Dist 'dotnet' -Target $t
             Assert ($LASTEXITCODE -eq 0) "brownfield install failed (exit $LASTEXITCODE): $out"
+            Assert-BytesEqual -Expected $patternBefore -Actual ([IO.File]::ReadAllBytes($patternPath)) -Message 'brownfield adoption modified consumer-owned project-pattern sidecar'
             foreach ($case in @(
                 @{ Rel = '.claude/settings.json'; Text = 'SETTINGS SENTINEL' },
                 @{ Rel = '.github/hooks/hooks.json'; Text = 'HOOKS SENTINEL' },
                 @{ Rel = '.claude/commands/feature.md'; Text = 'COMMAND SENTINEL' }
+                @{ Rel = '.claude/skills/add-warehouse-load/SKILL.md'; Text = 'BROWNFIELD FRAMEWORK SKILL COLLISION' }
             )) {
                 $archiveRel = "docs/pre-adoption/$($case.Rel)"
                 $archive = Join-Path $t $archiveRel
@@ -607,6 +618,7 @@ $powerShellExtension = 'ps1'
 
             $update = Invoke-Installer -Dist 'dotnet' -Target $t
             Assert ($LASTEXITCODE -eq 0) "update install failed (exit $LASTEXITCODE): $update"
+            Assert-BytesEqual -Expected $patternBefore -Actual ([IO.File]::ReadAllBytes($patternPath)) -Message 'post-adoption update modified consumer-owned project-pattern sidecar'
             Assert-BytesEqual -Expected $auditBefore -Actual ([IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log'))) -Message 'update overwrote persistent ai-audit.log bytes'
             foreach ($relative in $githubSkillsBefore.Keys) {
                 Assert-BytesEqual -Expected $githubSkillsBefore[$relative] -Actual ([IO.File]::ReadAllBytes((Join-Path $t $relative))) -Message "update changed untrusted GitHub skill input $relative"

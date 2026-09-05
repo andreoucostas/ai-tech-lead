@@ -59,7 +59,7 @@ function New-LegacyRetirementTarget {
 
 function New-RichUpdateTarget {
     $target = New-LegacyRetirementTarget
-    New-Item -ItemType Directory -Force -Path (Join-Path $target '.claude/skills/add-warehouse-load'), (Join-Path $target '.claude/skills/local-release'), (Join-Path $target '.claude/skills/consumer-local'), (Join-Path $target '.claude/skills/perf'), (Join-Path $target '.github/skills/local-release'), (Join-Path $target '.github/skills/perf') | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $target '.claude/skills/add-warehouse-load'), (Join-Path $target '.claude/skills/add-warehouse-load/references'), (Join-Path $target '.claude/skills/local-release'), (Join-Path $target '.claude/skills/consumer-local'), (Join-Path $target '.claude/skills/perf'), (Join-Path $target '.github/skills/local-release'), (Join-Path $target '.github/skills/perf') | Out-Null
     [IO.File]::WriteAllText((Join-Path $target '.claude/settings.json'), '{"consumerEdit":"recover me"}', [Text.UTF8Encoding]::new($false))
     [IO.File]::WriteAllText((Join-Path $target 'LEARNINGS.md'), "# Learnings`n`n## Disabled framework skill: perf`n", [Text.UTF8Encoding]::new($false))
     [IO.File]::WriteAllText((Join-Path $target '.claude/skills/add-warehouse-load/SKILL.md'), "---`nname: add-warehouse-load`n---`nOLD BODY`nFor a concrete current instance in this repo, see ``warehouse/LoadSales.sql``.`n", [Text.UTF8Encoding]::new($false))
@@ -67,6 +67,7 @@ function New-RichUpdateTarget {
     [IO.File]::WriteAllText((Join-Path $target '.claude/skills/local-release/notes.md'), "consumer notes`n", [Text.UTF8Encoding]::new($false))
     [IO.File]::WriteAllText((Join-Path $target '.claude/skills/consumer-local/SKILL.md'), "---`nname: consumer-local`n---`nLOCAL BODY`nFor a concrete current instance in this repo, see ``warehouse/ConsumerOnly.sql``.`n", [Text.UTF8Encoding]::new($false))
     [IO.File]::WriteAllText((Join-Path $target '.claude/skills/perf/SKILL.md'), "---`nname: perf`n---`nold inactive policy`n", [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllBytes((Join-Path $target '.claude/skills/add-warehouse-load/references/project-pattern.md'), [Text.UTF8Encoding]::new($false).GetBytes("# Consumer project pattern`r`ncomposition-root: Unity`r`nlifetime: scoped`r`n"))
     [IO.File]::WriteAllText((Join-Path $target '.github/skills/local-release/SKILL.md'), "STALE MIRROR`n", [Text.UTF8Encoding]::new($false))
     [IO.File]::WriteAllText((Join-Path $target '.github/skills/perf/SKILL.md'), "STALE ACTIVE MIRROR`n", [Text.UTF8Encoding]::new($false))
     return $target
@@ -527,6 +528,7 @@ function Get-Item {
             $before = Get-FileState $target
             $discoveredBefore = $before['.claude/skills/local-release/SKILL.md']
             $unknownBefore = $before['.claude/skills/consumer-local/SKILL.md']
+            $patternBefore = $before['.claude/skills/add-warehouse-load/references/project-pattern.md']
             $legacyDiscoveredBefore = $before['.github/skills/local-release/SKILL.md']
             $legacyDisabledBefore = $before['.github/skills/perf/SKILL.md']
             $dry = Invoke-CurrentInstaller -Target $target -DryRun
@@ -561,12 +563,33 @@ function Get-Item {
             Assert ($after['.claude/skills/local-release/SKILL.md'] -ceq $discoveredBefore) 'discovered Claude skill changed'
             Assert ($after['.github/skills/local-release/SKILL.md'] -ceq $legacyDiscoveredBefore) 'unknown GitHub-only skill bytes changed'
             Assert ($after['.claude/skills/consumer-local/SKILL.md'] -ceq $unknownBefore) 'unknown consumer skill bytes changed during exemplar carry-forward'
+            Assert ($after['.claude/skills/add-warehouse-load/references/project-pattern.md'] -ceq $patternBefore) 'consumer-owned project-pattern sidecar changed during ordinary update'
             Assert (-not $after.ContainsKey('.github/skills/consumer-local/SKILL.md')) 'installer created a GitHub mirror for a canonical consumer skill'
             $frameworkSkill = Get-Content -LiteralPath (Join-Path $target '.claude/skills/add-warehouse-load/SKILL.md') -Raw
             Assert ($frameworkSkill -notmatch 'OLD BODY') 'framework skill was not refreshed before carrying its exemplar forward'
             Assert ($frameworkSkill -match [regex]::Escape('For a concrete current instance in this repo, see `warehouse/LoadSales.sql`.')) 'framework skill lost its prior exemplar'
             Assert (-not $after.ContainsKey('.claude/skills/perf/SKILL.md')) 'disabled skill remained active'
             Assert ($after['.github/skills/perf/SKILL.md'] -ceq $legacyDisabledBefore) 'consumer-modified legacy GitHub skill was deleted or overwritten'
+
+            # Exercise the same existing disable/re-enable lifecycle for an operation skill. The
+            # sidecar is consumer-owned and must travel with the disabled skill, then return byte
+            # for byte when the consumer removes its disable record.
+            Add-Content -LiteralPath (Join-Path $target 'LEARNINGS.md') -Value "`n## Disabled framework skill: add-warehouse-load`n"
+            $disabled = Invoke-CurrentInstaller -Target $target
+            Assert ($disabled.Exit -eq 0) "operation disable update exited $($disabled.Exit): $($disabled.Output)"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $target '.claude/skills/add-warehouse-load'))) 'disabled operation skill remained active'
+            $inactivePattern = Join-Path $target '.claude/disabled-skills/add-warehouse-load/references/project-pattern.md'
+            Assert (Test-Path -LiteralPath $inactivePattern -PathType Leaf) 'disabled operation sidecar was not retained in inactive location'
+            Assert ((Get-FileHash -LiteralPath $inactivePattern -Algorithm SHA256).Hash -ceq $patternBefore) 'disabled operation sidecar bytes changed'
+            [IO.File]::WriteAllText((Join-Path $target 'LEARNINGS.md'), "# Learnings`n`n## Disabled framework skill: perf`n", [Text.UTF8Encoding]::new($false))
+            # Re-enable is an explicit consumer action: restore the inactive tree before the
+            # next update, then prove the installer leaves its sidecar bytes alone.
+            Move-Item -LiteralPath (Join-Path $target '.claude/disabled-skills/add-warehouse-load') -Destination (Join-Path $target '.claude/skills/add-warehouse-load')
+            $reenabled = Invoke-CurrentInstaller -Target $target
+            Assert ($reenabled.Exit -eq 0) "operation re-enable update exited $($reenabled.Exit): $($reenabled.Output)"
+            $activePattern = Join-Path $target '.claude/skills/add-warehouse-load/references/project-pattern.md'
+            Assert (Test-Path -LiteralPath $activePattern -PathType Leaf) 're-enabled operation skill sidecar was not restored'
+            Assert ((Get-FileHash -LiteralPath $activePattern -Algorithm SHA256).Hash -ceq $patternBefore) 're-enabled operation sidecar bytes changed'
         } finally { Remove-Item -Recurse -Force -LiteralPath $target -ErrorAction SilentlyContinue }
     }
 
