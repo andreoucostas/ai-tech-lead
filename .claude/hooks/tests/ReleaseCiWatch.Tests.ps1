@@ -79,16 +79,21 @@ function Get-ExpectedJobNames {
     return $names
 }
 function New-Jobs {
-    param([string]$Pwsh = 'success', [string]$PowerShell = 'success', [switch]$OmitPowerShell)
+    param(
+        [string]$Pwsh = 'success', [string]$PowerShell = 'success',
+        [string]$Parity = 'success', [switch]$OmitPowerShell, [switch]$OmitParity
+    )
     $id = 91483264876
     $j = @()
     foreach ($name in (Get-ExpectedJobNames)) {
         if ($name -eq 'windows-ps51' -and $OmitPowerShell) { continue }
+        if ($name -eq 'windows-case-parity' -and $OmitParity) { continue }
         # The two root host jobs keep their per-case conclusions; derived matrix legs default to
         # success so a case that says nothing about them is not silently testing a red leg.
         $conclusion = switch ($name) {
             'windows' { $Pwsh }
             'windows-ps51' { $PowerShell }
+            'windows-case-parity' { $Parity }
             default { 'success' }
         }
         $j += '{"name":"' + $name + '","conclusion":"' + $conclusion + '","status":"completed","databaseId":' + $id + '}'
@@ -205,12 +210,13 @@ $probes = @{
 
 try {
     # ---- the exit contract ----------------------------------------------------------------------
-    It 'the default contract names all eight PS7 and native PS5.1 Windows contexts exactly' {
+    It 'the default contract names all eight native execution contexts plus parity exactly' {
         $expected = @(
             'windows',
             'windows-hooks (dotnet)', 'windows-hooks (angular)', 'windows-hooks (monorepo)',
             'windows-ps51',
-            'windows-hooks-ps51 (dotnet)', 'windows-hooks-ps51 (angular)', 'windows-hooks-ps51 (monorepo)'
+            'windows-hooks-ps51 (dotnet)', 'windows-hooks-ps51 (angular)', 'windows-hooks-ps51 (monorepo)',
+            'windows-case-parity'
         )
         $actual = @(Get-ExpectedJobNames)
         Assert (($actual -join '|') -eq ($expected -join '|')) "watcher default CI contexts drifted: $($actual -join ', ')"
@@ -226,6 +232,27 @@ try {
     It 'a failed run exits 1, naming the conclusion and the run URL' { & $probes['red'] $watchCi }
 
     It 'a workflow success with a leg that did not run exits 1' { & $probes['legs'] $watchCi }
+
+    It 'a workflow success with skipped parity exits 1' {
+        $s = New-GhStub -ListResponses @('[' + (New-Row) + ']') -JobsResponse (New-Jobs -Parity 'skipped')
+        $r = Invoke-Watch -Stub $s
+        Assert ($r.Exit -eq 1) "expected EXIT=1 when parity is skipped, got $($r.Exit): $($r.Out)"
+        Assert ($r.Out -match 'windows-case-parity=skipped') 'skipped-parity refusal does not name parity'
+    }
+
+    It 'a workflow success with failed parity exits 1' {
+        $s = New-GhStub -ListResponses @('[' + (New-Row) + ']') -JobsResponse (New-Jobs -Parity 'failure')
+        $r = Invoke-Watch -Stub $s
+        Assert ($r.Exit -eq 1) "expected EXIT=1 when parity fails, got $($r.Exit): $($r.Out)"
+        Assert ($r.Out -match 'windows-case-parity=failure') 'failed-parity refusal does not name parity'
+    }
+
+    It 'a workflow success with absent parity is CANT-VERIFY' {
+        $s = New-GhStub -ListResponses @('[' + (New-Row) + ']') -JobsResponse (New-Jobs -OmitParity)
+        $r = Invoke-Watch -Stub $s
+        Assert ($r.Exit -eq 3) "expected CANT-VERIFY when parity is absent, got $($r.Exit): $($r.Out)"
+        Assert ($r.Out -match 'expected CI leg.*windows-case-parity') 'absent-parity diagnostic does not name parity'
+    }
 
     It 'an unrecognised conclusion is CANT-VERIFY, never green' { & $probes['unknown'] $watchCi }
 

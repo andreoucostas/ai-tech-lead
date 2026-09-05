@@ -48,6 +48,7 @@ authoritative.
 - “Project skills ship once under `.claude/skills`; retire only content-qualified GitHub mirrors.” — `meta/workspace-decisions.md WSD-072` (WSD-073 supersedes its Bash-adapter retention)
 - “Supported framework execution is native Windows and PowerShell only.” — `meta/workspace-decisions.md WSD-073`
 - “Discover repository knowledge broadly; capture grounded drafts in existing carriers and measure ordinary Copilot outcomes before expanding machinery.” — `meta/workspace-decisions.md WSD-074`
+- “Run eight native Windows execution contexts independently, then require one same-platform case-count parity decision.” — `meta/workspace-decisions.md WSD-075`
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`

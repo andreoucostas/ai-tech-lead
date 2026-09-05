@@ -3476,3 +3476,29 @@ loaded coverage, installed context cost, dependency refresh and provider-process
 This is a design critique, not independent certification of future implementation or Copilot value.
 The full contract and review disposition are
 `.claude/plans/2026-09-05-repository-knowledge-strategy.md`; B-222–B-227 detail the new packages.
+
+## WSD-075: native host execution is independent; case-count parity is downstream (2026-09-05)
+
+**Context.** WSD-073 requires eight Windows execution contexts: root and three distribution suites
+under direct PS7, and the same four under direct PS5.1. The v0.83 workflow serialized each PS5.1
+definition behind its PS7 counterpart only so it could download and compare one semantic case-count
+manifest. Baseline run `33980347537` passed all eight contexts in 16m12s; this establishes avoidable
+dependency topology, not the size of a future speedup.
+
+**Decision.** Run the same eight native-host execution contexts independently and preserve their
+commands and exact nonzero per-file case-count output. Each publishes its current-run manifest.
+One additional required Windows job waits for all four execution definitions, requires exactly all
+eight artifacts, validates the existing positive suite-row and matching-TOTAL format, and byte-
+compares the four PS7/PS5.1 pairs. It runs even after an upstream failure so missing evidence cannot
+be hidden by a skipped comparison. The release watcher requires the eight execution contexts plus
+this decision; absence is CANT-VERIFY and skipped/failed is RED.
+
+This adds no compatibility platform or provider leg, removes no test, raises no budget, and permits
+no path-based skip. WSD-073's eight-context platform decision remains intact; this prospectively
+changes only dependency and evidence-decision topology. Runtime improvement remains unobserved until
+an immutable candidate CI run completes.
+
+**Review.** Root accepted the bounded contract with conditions that the comparison reject identical
+malformed manifests, distinguish unreadable inputs from wrong content, propagate its actual exit,
+be registered in the explicit meta-suite manifest, and keep watcher/topology hostile controls. The
+frozen contract is `.claude/plans/2026-09-05-ci-parity-critical-path-contract.md`.

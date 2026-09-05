@@ -83,16 +83,29 @@ function Assert-CiCaseCountProducer([string]$Name, [string]$CasePath, [string]$A
     Assert ($job -match '(?m)^\s*if-no-files-found:\s*error\s*$') "CI job '$Name' permits a missing case-count artifact"
 }
 
-function Assert-CiCaseCountConsumer([string]$Name, [string]$Needs, [string]$CasePath, [string]$ArtifactName) {
+function Assert-CiIndependentProducer([string]$Name, [string]$CasePath, [string]$ArtifactName) {
     $job = Get-CiJob $Name
-    Assert ($job -match "(?m)^\s*needs:\s*$([regex]::Escape($Needs))\s*`$") "CI job '$Name' no longer waits for '$Needs'"
+    Assert ($job -notmatch '(?m)^\s*needs\s*:') "CI execution job '$Name' is serialized behind another job"
     Assert (@([regex]::Matches($job, '-CaseCountPath')).Count -eq 1) "CI job '$Name' must emit exactly one semantic case-count manifest"
     Assert ($job.Contains("-CaseCountPath `"$CasePath`"")) "CI job '$Name' no longer writes its expected semantic case-count path"
-    Assert (@([regex]::Matches($job, 'actions/download-artifact@v4')).Count -eq 1) "CI job '$Name' must download exactly one PS7 case-count artifact"
-    Assert ($job.Contains("name: $ArtifactName")) "CI job '$Name' no longer downloads artifact '$ArtifactName'"
-    Assert (@([regex]::Matches($job, '\[IO\.File\]::ReadAllBytes')).Count -eq 2) "CI job '$Name' no longer compares the two manifests as bytes"
-    Assert ($job -match '\$expected\.Length -eq 0\s+-or\s+\$actual\.Length -eq 0') "CI job '$Name' no longer rejects an empty manifest on either host"
-    Assert (@([regex]::Matches($job, '\[Convert\]::ToBase64String')).Count -eq 2) "CI job '$Name' no longer performs a byte-exact manifest comparison"
+    Assert (@([regex]::Matches($job, 'actions/upload-artifact@v4')).Count -eq 1) "CI job '$Name' must publish exactly one semantic case-count artifact"
+    Assert ($job.Contains("name: $ArtifactName")) "CI job '$Name' no longer publishes artifact '$ArtifactName'"
+    Assert ($job -match '(?m)^\s*if-no-files-found:\s*error\s*$') "CI job '$Name' permits a missing case-count artifact"
+}
+
+function Assert-CiParityDecision {
+    $job = Get-CiJob 'windows-case-parity'
+    Assert ($job -match '(?m)^\s*needs:\s*\[windows, windows-hooks, windows-ps51, windows-hooks-ps51\]\s*$') 'CI parity no longer waits for all four execution definitions'
+    Assert ($job -match '(?m)^\s*if:\s*\$\{\{ always\(\) \}\}\s*$') 'CI parity can be skipped after an upstream failure'
+    Assert ($job -match '(?m)^\s*runs-on:\s*windows-latest\s*$') 'CI parity is no longer a same-platform Windows decision'
+    Assert ($job -notmatch '(?m)^\s*continue-on-error\s*:') 'CI parity permits its failure to be ignored'
+    Assert (@([regex]::Matches($job, 'actions/download-artifact@v4')).Count -eq 1) 'CI parity must download the native-host artifacts exactly once'
+    Assert ($job -match '(?m)^\s*pattern:\s*b219-case-counts-\*\s*$') 'CI parity no longer scopes its current-run artifact download'
+    Assert ($job -notmatch '(?m)^\s*(?:github-token|repository|run-id):') 'CI parity escapes the current workflow run when downloading artifacts'
+    Assert ($job -match '(?m)^\s*merge-multiple:\s*false\s*$') 'CI parity merges artifact directories and erases cardinality evidence'
+    Assert ($job.Contains('path: ${{ runner.temp }}/case-count-artifacts')) 'CI parity no longer uses its dedicated download destination'
+    $call = '(?m)^\s*& \$hostPath -NoProfile -File \.claude/scripts/assert-ci-case-parity\.ps1 -ArtifactRoot "\$\{\{ runner\.temp \}\}/case-count-artifacts"\r?\n\s*exit \$LASTEXITCODE\s*$'
+    Assert ($job -match $call) 'CI parity no longer executes the decision and immediately propagates its exit'
 }
 
 It 'the dist-gates stage was located for inspection' {
@@ -122,12 +135,12 @@ It 'the full root meta suite remains on its existing default throttled runner wi
     Assert ($metaStage.Contains('(?m)^RESULT\s+(\S+)\s+(\d+)\s*$')) 'the default meta invocation no longer parses per-file RESULT lines'
 }
 
-It 'CI exposes exactly the supported PS7 and native PS5.1 Windows release contexts before a normal tag' {
+It 'CI exposes eight independent native-host contexts plus one required parity decision before a normal tag' {
     $jobsBody = [regex]::Match($ci, '(?ms)^jobs:\s*\r?\n(?<body>.*)\z')
     Assert $jobsBody.Success 'CI jobs block was not found'
     $jobNames = @([regex]::Matches($jobsBody.Groups['body'].Value, '(?m)^  ([A-Za-z0-9_-]+):\s*$') | ForEach-Object { $_.Groups[1].Value })
-    $expected = @('windows', 'windows-hooks', 'windows-ps51', 'windows-hooks-ps51')
-    Assert (($jobNames -join ',') -eq ($expected -join ',')) "expected exactly four Windows job definitions in release order, found: $($jobNames -join ', ')"
+    $expected = @('windows', 'windows-hooks', 'windows-ps51', 'windows-hooks-ps51', 'windows-case-parity')
+    Assert (($jobNames -join ',') -eq ($expected -join ',')) "expected exactly four execution definitions plus parity in release order, found: $($jobNames -join ', ')"
 
     Assert-CiHookMatrix 'windows-hooks'
     Assert-CiHookMatrix 'windows-hooks-ps51'
@@ -138,13 +151,14 @@ It 'CI exposes exactly the supported PS7 and native PS5.1 Windows release contex
     Assert-CiHost 'windows-ps51' 'powershell' 'Desktop' 5
     Assert-CiHost 'windows-hooks-ps51' 'powershell' 'Desktop' 5
 
-    Assert (@([regex]::Matches($ci, '-CaseCountPath')).Count -eq 4) 'CI must emit one semantic case-count manifest from each of its four job definitions'
-    Assert (@([regex]::Matches($ci, 'actions/upload-artifact@v4')).Count -eq 2) 'CI must contain exactly two PS7 case-count publishers'
-    Assert (@([regex]::Matches($ci, 'actions/download-artifact@v4')).Count -eq 2) 'CI must contain exactly two PS5.1 case-count consumers'
-    Assert-CiCaseCountProducer 'windows' '${{ runner.temp }}/windows-case-counts.txt' 'b219-case-counts-windows'
-    Assert-CiCaseCountProducer 'windows-hooks' '${{ runner.temp }}/windows-hooks-${{ matrix.dist }}-case-counts.txt' 'b219-case-counts-windows-hooks-${{ matrix.dist }}'
-    Assert-CiCaseCountConsumer 'windows-ps51' 'windows' '${{ runner.temp }}/windows-ps51-case-counts.txt' 'b219-case-counts-windows'
-    Assert-CiCaseCountConsumer 'windows-hooks-ps51' 'windows-hooks' '${{ runner.temp }}/windows-hooks-ps51-${{ matrix.dist }}-case-counts.txt' 'b219-case-counts-windows-hooks-${{ matrix.dist }}'
+    Assert (@([regex]::Matches($ci, '-CaseCountPath')).Count -eq 4) 'CI must emit one semantic case-count manifest from each execution definition'
+    Assert (@([regex]::Matches($ci, 'actions/upload-artifact@v4')).Count -eq 4) 'CI must contain exactly four independently expanding case-count publishers'
+    Assert (@([regex]::Matches($ci, 'actions/download-artifact@v4')).Count -eq 1) 'CI must contain exactly one downstream artifact download'
+    Assert-CiIndependentProducer 'windows' '${{ runner.temp }}/windows-case-counts.txt' 'b219-case-counts-windows'
+    Assert-CiIndependentProducer 'windows-hooks' '${{ runner.temp }}/windows-hooks-${{ matrix.dist }}-case-counts.txt' 'b219-case-counts-windows-hooks-${{ matrix.dist }}'
+    Assert-CiIndependentProducer 'windows-ps51' '${{ runner.temp }}/windows-ps51-case-counts.txt' 'b219-case-counts-windows-ps51'
+    Assert-CiIndependentProducer 'windows-hooks-ps51' '${{ runner.temp }}/windows-hooks-ps51-${{ matrix.dist }}-case-counts.txt' 'b219-case-counts-windows-hooks-ps51-${{ matrix.dist }}'
+    Assert-CiParityDecision
 }
 
 It 'every TIMING expression in dist-gates emits a line the RESULT parser cannot swallow' {
@@ -192,8 +206,8 @@ It 'the job wall-clock emitter survives a job whose times were never set' {
 if (-not $SkipRedTest) {
     It 'an unsupported runner substitution makes the exact Windows topology assertion fail' {
         Invoke-MutationRedTest -TargetFile $ciPath -ScratchSourceRoot $repoRoot `
-            -Find ("  windows-ps51:" + $ciNewline + "    name: windows-ps51" + $ciNewline + "    needs: windows" + $ciNewline + "    runs-on: windows-latest") `
-            -Replacement ("  windows-ps51:" + $ciNewline + "    name: windows-ps51" + $ciNewline + "    needs: windows" + $ciNewline + "    runs-on: ubuntu-latest") -Command {
+            -Find ("  windows-ps51:" + $ciNewline + "    name: windows-ps51" + $ciNewline + "    runs-on: windows-latest") `
+            -Replacement ("  windows-ps51:" + $ciNewline + "    name: windows-ps51" + $ciNewline + "    runs-on: ubuntu-latest") -Command {
                 param($scratchTarget, $scratchRoot)
                 $test = Join-Path $scratchRoot '.claude/hooks/tests/ReleaseDistGateTiming.Tests.ps1'
                 $process = Start-Process -FilePath (Get-PsExe) -ArgumentList @('-NoProfile','-File',$test,'-SkipRedTest') -Wait -PassThru -NoNewWindow
@@ -205,6 +219,27 @@ if (-not $SkipRedTest) {
         Invoke-MutationRedTest -TargetFile $ciPath -ScratchSourceRoot $repoRoot `
             -Find '-CaseCountPath "${{ runner.temp }}/windows-case-counts.txt"' `
             -Replacement '-CaseCountGone "${{ runner.temp }}/windows-case-counts.txt"' -Command {
+                param($scratchTarget, $scratchRoot)
+                $test = Join-Path $scratchRoot '.claude/hooks/tests/ReleaseDistGateTiming.Tests.ps1'
+                $process = Start-Process -FilePath (Get-PsExe) -ArgumentList @('-NoProfile','-File',$test,'-SkipRedTest') -Wait -PassThru -NoNewWindow
+                $global:LASTEXITCODE = $process.ExitCode
+            } | Out-Null
+    }
+
+    It 'bypassing the parity decision call makes the topology assertion fail' {
+        Invoke-MutationRedTest -TargetFile $ciPath -ScratchSourceRoot $repoRoot `
+            -Find '.claude/scripts/assert-ci-case-parity.ps1' `
+            -Replacement '.claude/scripts/assert-ci-case-parity-bypassed.ps1' -Command {
+                param($scratchTarget, $scratchRoot)
+                $test = Join-Path $scratchRoot '.claude/hooks/tests/ReleaseDistGateTiming.Tests.ps1'
+                $process = Start-Process -FilePath (Get-PsExe) -ArgumentList @('-NoProfile','-File',$test,'-SkipRedTest') -Wait -PassThru -NoNewWindow
+                $global:LASTEXITCODE = $process.ExitCode
+            } | Out-Null
+    }
+
+    It 'making parity conditional on upstream success makes the topology assertion fail' {
+        Invoke-MutationRedTest -TargetFile $ciPath -ScratchSourceRoot $repoRoot `
+            -Find 'if: ${{ always() }}' -Replacement 'if: ${{ success() }}' -Command {
                 param($scratchTarget, $scratchRoot)
                 $test = Join-Path $scratchRoot '.claude/hooks/tests/ReleaseDistGateTiming.Tests.ps1'
                 $process = Start-Process -FilePath (Get-PsExe) -ArgumentList @('-NoProfile','-File',$test,'-SkipRedTest') -Wait -PassThru -NoNewWindow

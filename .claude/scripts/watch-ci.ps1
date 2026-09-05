@@ -41,15 +41,17 @@ param(
     # ran -- watching only the aggregate is how a silently-skipped leg would look green.
     # The `*-hooks (<dist>)` entries are the per-dist shipped hook suites, split onto their own
     # runners at B-113. PowerShell 7 and native Windows PowerShell 5.1 are separate release
-    # evidence, so all eight expanded contexts are listed individually and NOT collapsed to a
-    # prefix match: the whole point of this list is that a leg which stops running is caught.
+    # evidence, so all eight expanded execution contexts are listed individually and NOT collapsed
+    # to a prefix match. The downstream parity decision is separately required: a workflow could
+    # otherwise look green after that decision was removed or conditionally skipped.
     # GitHub names a matrix job "<job> (<value>)" -- if that naming ever changes, this list must
     # follow, and it failing loudly is the intended direction.
     [string[]]$ExpectedJobs = @(
         'windows',
         'windows-hooks (dotnet)', 'windows-hooks (angular)', 'windows-hooks (monorepo)',
         'windows-ps51',
-        'windows-hooks-ps51 (dotnet)', 'windows-hooks-ps51 (angular)', 'windows-hooks-ps51 (monorepo)'
+        'windows-hooks-ps51 (dotnet)', 'windows-hooks-ps51 (angular)', 'windows-hooks-ps51 (monorepo)',
+        'windows-case-parity'
     )
 )
 $ErrorActionPreference = 'Stop'
@@ -346,6 +348,6 @@ if (@($missing).Count -gt 0) {
 }
 
 Write-Line ''
-Write-Line "CI GREEN: $(@($good).Count) workflow(s), legs $($ExpectedJobs -join ' + ') all success."
+Write-Line "CI GREEN: $(@($good).Count) workflow(s), eight native execution contexts plus required parity all success."
 Write-Line "  $($watched[0].url)"
 exit $EXIT_GREEN

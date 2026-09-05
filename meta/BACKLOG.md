@@ -252,6 +252,27 @@ coverage, and obtain immutable-range independent review plus an orthogonal execu
 the false-green release behavior. A runtime improvement claim additionally requires comparable
 stable-tree aggregate evidence. Close with the required RCA.
 
+### B-229 · Remove CI host serialization without weakening parity evidence
+**Filed against:** v0.83.0 (2026-09-05)
+**Priority:** P1 · **Effort:** M · **Invariants:** #3 #4
+**Status:** DESIGN ACCEPTED; IMPLEMENTATION AUTHORIZED in
+`.claude/plans/2026-09-05-ci-parity-critical-path-contract.md` with the recorded
+manifest-shape, CANT-VERIFY, decision-exit, runner-registration, and topology-documentation conditions.
+
+**Problem / evidence.** Baseline GitHub run `33980347537` passed all eight Windows contexts in
+16m12s, while the PS5.1 root and dist definitions were serialized behind their PS7 counterparts so
+they could compare case-count manifests. The host executions themselves are independent. Moving the
+comparison downstream is the smallest candidate fix; no runtime benefit is assumed before a stable
+candidate CI observation.
+
+**Do / done when.** Preserve all eight direct native-host contexts and exact nonzero per-file case
+coverage. Let them publish independently, then require one same-platform parity decision to inspect
+all eight artifacts and compare the four root/dist host pairs. Missing/extra/empty/unequal artifacts,
+missing or skipped parity, and an absent native-host context must not read green. Keep watcher and
+workflow-topology expectations exact. Do not add a provider/platform leg, skip paths, delete tests,
+or raise budgets. Direct PS7/5.1 hostile and clean evidence, immutable independent review, full
+stable-tree aggregates, and an observed candidate CI run are required before closure.
+
 ### B-216 · Project-adapt instance-shaped skills instead of imposing framework defaults
 **Filed against:** v0.81.0 (2026-09-03)
 **Priority:** P1 · **Effort:** L · **Invariants:** #1 #2 #3 #6 #7

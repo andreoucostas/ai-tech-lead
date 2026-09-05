@@ -293,8 +293,10 @@ persists its evidence in a follow-up commit.
   ~1–2 min. Expected, not a hang.
 
 **CI** — `.github/workflows/ci.yml` runs compose→freshness→validate→hook suites on every push/PR.
-The required topology is eight native Windows contexts: `windows`, three `windows-hooks` matrix
-contexts, `windows-ps51`, and three `windows-hooks-ps51` matrix contexts. Fidelity is not a CI step.
+The required execution topology is eight native Windows contexts: `windows`, three `windows-hooks`
+matrix contexts, `windows-ps51`, and three `windows-hooks-ps51` matrix contexts. One additional
+required Windows job compares all four PS7/PS5.1 semantic case-count pairs after those contexts;
+it is a same-platform decision, not another compatibility leg. Fidelity is not a CI step.
 
 Manual one-off (debugging a single hook) — pipe a fixture straight in:
 
@@ -387,8 +389,9 @@ stamp drift twice:
     dists, runs local gates (freshness, validate-dist ×3 plus the footprint update, and the full
     root meta suite on its default throttled runner), **refuses to commit on any failure**, appends
     the review row to `meta/review-ledger.md`, then commits to `master`, pushes, **waits for CI**,
-    and tags. A normal tag requires all eight Windows CI contexts, including direct PowerShell 7
-    and Windows PowerShell 5.1 runs. `-NoPush` provides a dry-ish run.
+    and tags. A normal tag requires all eight Windows execution contexts, including direct
+    PowerShell 7 and Windows PowerShell 5.1 runs, plus their downstream case-count parity decision.
+    `-NoPush` provides a dry-ish run.
 
    It **refuses to start** without either `-ReviewEvidence` or `-NoIndependentReview`. The latter
    is allowed — sometimes qualifying evidence is unavailable — but never silent: it records

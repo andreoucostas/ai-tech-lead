@@ -50,6 +50,7 @@ $files = @(Get-ChildItem -LiteralPath $PSScriptRoot -Filter *.Tests.ps1 | Sort-O
 $expectedTestFiles = @(
     'B215OwnershipBoundary.Tests.ps1',
     'BacklogHygiene.Tests.ps1',
+    'CiCaseParity.Tests.ps1',
     'ClaimTruth.Tests.ps1',
     'Composer.Tests.ps1',
     'DocClaims.Tests.ps1',

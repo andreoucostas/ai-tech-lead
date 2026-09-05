@@ -106,7 +106,6 @@ jobs:
 
   windows-ps51:
     name: windows-ps51
-    needs: windows
     runs-on: windows-latest
     defaults:
       run:
@@ -154,25 +153,16 @@ jobs:
           $hostPath = (Get-Process -Id $PID).Path
           & $hostPath -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/tests/Invoke-HookTests.ps1 -CaseCountPath "${{ runner.temp }}/windows-ps51-case-counts.txt"
           exit $LASTEXITCODE
-      - name: Download PS7 semantic case cardinality
-        uses: actions/download-artifact@v4
+      - name: Publish PS5.1 semantic case cardinality
+        uses: actions/upload-artifact@v4
         with:
-          name: b219-case-counts-windows
-          path: ${{ runner.temp }}/expected-windows-case-counts
-      - name: Require equal nonzero PS7 and PS5.1 semantic case cardinality
-        run: |
-          $expectedPath = "${{ runner.temp }}/expected-windows-case-counts/windows-case-counts.txt"
-          $actualPath = "${{ runner.temp }}/windows-ps51-case-counts.txt"
-          $expected = [IO.File]::ReadAllBytes($expectedPath)
-          $actual = [IO.File]::ReadAllBytes($actualPath)
-          if ($expected.Length -eq 0 -or $actual.Length -eq 0 -or
-              [Convert]::ToBase64String($expected) -cne [Convert]::ToBase64String($actual)) {
-            throw "PS7 and PS5.1 meta semantic case cardinality differ.`nPS7:`n$([IO.File]::ReadAllText($expectedPath))`nPS5.1:`n$([IO.File]::ReadAllText($actualPath))"
-          }
+          name: b219-case-counts-windows-ps51
+          path: ${{ runner.temp }}/windows-ps51-case-counts.txt
+          if-no-files-found: error
+          retention-days: 1
 
   windows-hooks-ps51:
     name: windows-hooks-ps51 (${{ matrix.dist }})
-    needs: windows-hooks
     runs-on: windows-latest
     defaults:
       run:
@@ -201,18 +191,32 @@ jobs:
           $hostPath = (Get-Process -Id $PID).Path
           & $hostPath -NoProfile -ExecutionPolicy Bypass -File dist/${{ matrix.dist }}/tests/hooks/Invoke-HookTests.ps1 -CaseCountPath "${{ runner.temp }}/windows-hooks-ps51-${{ matrix.dist }}-case-counts.txt"
           exit $LASTEXITCODE
-      - name: Download PS7 semantic case cardinality (${{ matrix.dist }})
+      - name: Publish PS5.1 semantic case cardinality (${{ matrix.dist }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: b219-case-counts-windows-hooks-ps51-${{ matrix.dist }}
+          path: ${{ runner.temp }}/windows-hooks-ps51-${{ matrix.dist }}-case-counts.txt
+          if-no-files-found: error
+          retention-days: 1
+
+  windows-case-parity:
+    name: windows-case-parity
+    needs: [windows, windows-hooks, windows-ps51, windows-hooks-ps51]
+    if: ${{ always() }}
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v5
+      - name: Download all native-host semantic case cardinality artifacts
         uses: actions/download-artifact@v4
         with:
-          name: b219-case-counts-windows-hooks-${{ matrix.dist }}
-          path: ${{ runner.temp }}/expected-windows-hooks-${{ matrix.dist }}-case-counts
-      - name: Require equal nonzero PS7 and PS5.1 semantic case cardinality (${{ matrix.dist }})
+          pattern: b219-case-counts-*
+          path: ${{ runner.temp }}/case-count-artifacts
+          merge-multiple: false
+      - name: Require valid equal nonzero PS7 and PS5.1 semantic case cardinality
         run: |
-          $expectedPath = "${{ runner.temp }}/expected-windows-hooks-${{ matrix.dist }}-case-counts/windows-hooks-${{ matrix.dist }}-case-counts.txt"
-          $actualPath = "${{ runner.temp }}/windows-hooks-ps51-${{ matrix.dist }}-case-counts.txt"
-          $expected = [IO.File]::ReadAllBytes($expectedPath)
-          $actual = [IO.File]::ReadAllBytes($actualPath)
-          if ($expected.Length -eq 0 -or $actual.Length -eq 0 -or
-              [Convert]::ToBase64String($expected) -cne [Convert]::ToBase64String($actual)) {
-            throw "PS7 and PS5.1 ${{ matrix.dist }} semantic case cardinality differ.`nPS7:`n$([IO.File]::ReadAllText($expectedPath))`nPS5.1:`n$([IO.File]::ReadAllText($actualPath))"
-          }
+          $hostPath = (Get-Process -Id $PID).Path
+          & $hostPath -NoProfile -File .claude/scripts/assert-ci-case-parity.ps1 -ArtifactRoot "${{ runner.temp }}/case-count-artifacts"
+          exit $LASTEXITCODE
