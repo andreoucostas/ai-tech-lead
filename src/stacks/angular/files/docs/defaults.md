@@ -24,10 +24,10 @@ a browser flag, or another command from this distribution's name.
 <!-- Check angular.json, package.json, tsconfig.json. Reference strict mode, build optimisations, and any non-standard config. -->
 
 ### Architecture
-- Standalone components as default. NgModules only where the codebase hasn't migrated yet.
-- Use `inject()` function for dependency injection in new code. Constructor injection is acceptable in existing code but don't mix both in the same file.
+- Follow the project’s evidenced standalone/NgModule shape. A genuinely new choice needs an explicit design decision; this default does not select one.
+- Follow the project’s evidenced injection style. A genuinely new choice between `inject()` and constructor injection needs an explicit design decision; do not mix styles in one file without that evidence.
 - **DIP (see the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools))**: derive a service seam and registration from first-party project evidence and correctness needs. Do not introduce an abstraction, token, or DI container solely from this default; preserve an evidenced dependency boundary. Data carriers (models, DTOs, enums) are not services and get no abstraction.
-- Feature areas are lazy-loaded routes. Eagerly loaded modules should be justified.
+- Follow the project’s evidenced route-loading mechanism. A genuinely new lazy/eager choice needs an explicit design decision; this default does not select one.
 - Barrel files (`index.ts`) only at feature boundaries — not inside feature folders (causes circular deps).
 
 ### Component Design

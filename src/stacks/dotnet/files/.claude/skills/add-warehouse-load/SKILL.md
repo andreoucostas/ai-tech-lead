@@ -13,8 +13,8 @@ description: >
 
 # Add or Extend a Warehouse Load
 
-Match CLAUDE.md > Conventions > Data Access. The two rules that dominate everything below:
-**follow the existing load pattern exactly, and never load the same data twice.**
+Match CLAUDE.md > Conventions > Data Access. Derive the applicable target-family pattern before
+choosing a mechanism; preserve its evidenced rerun, grain, and reconciliation safety.
 
 ## Project-derived pattern authority
 
@@ -36,16 +36,14 @@ Derive this operation's shape from first-party implementation, configuration, te
    live view** — nothing refreshes it when the warehouse changes. Before copying a pattern out
    of it, confirm the entities and load procs it names still exist in the SQL tree; where the
    map and the code disagree the code wins — re-run `map-warehouse` rather than trusting it
-   further. Locate 1–2 existing loads of the same kind — a dimension load for a new dimension,
-   a fact load for a new fact — and mirror their structure exactly: naming, staging shape,
-   procedure layout, error handling, logging, control-table calls. One warehouse, one loading
-   pattern: never introduce a second style. If no comparable load exists, ask the developer
-   before inventing one.
+   further. Locate 1–2 existing loads in the same target family and derive their applicable
+   naming, staging, procedure, error-handling, logging, and control conventions. Do not impose
+   one warehouse-wide style or copy an irrelevant family. If no comparable load exists, ask the
+   developer before inventing one.
 
-2. **Bind to the dimensions that already exist — before designing anything.** Most new loads need
-   **no new dimension**. A duplicate dimension is the expensive mistake here: it splits one business
-   entity across two surrogate-key spaces, and nothing in the load will fail to tell you — the
-   numbers just stop agreeing between two reports months later.
+2. **When the evidenced target family uses dimensions, bind to the existing model before designing anything.** Most such loads need
+   **no new dimension**. A duplicate dimension can split one business entity across distinct key spaces,
+   leaving reports inconsistent without a load failure.
 
    Take every source column that is not a measure and put it in exactly one of three buckets:
    - **Reaches an existing dimension.** Match on the **concept and its business key, not the column
@@ -86,29 +84,27 @@ Derive this operation's shape from first-party implementation, configuration, te
    list is the input to the next step; if you cannot write it, you are not ready to create a table.
 
    In a repo that **also** has an application database, keep the boundary straight: this recipe
-   governs warehouse tables — staging, dimension, fact — in the SQL tree. A table backed by the
-   application's ORM model or its migrations is not a warehouse entity; use the repo's OLTP entity
-   recipe (`add-entity` where the repo evidences EF Core) instead.
+   governs the warehouse target family evidenced in the SQL tree. A table backed by the application's
+   persistence model belongs to that project's applicable OLTP entity/persistence route, which must
+   be derived from its own evidence.
 
-3. **Design the entity.**
-   - Dimension: surrogate key; natural/business key with a unique constraint (scoped to the
-     current row where history is kept); descriptive attributes; the repo's standard
-     change-tracking columns.
-   - Fact: write the grain statement first — one sentence saying what exactly one row
-     represents. **The foreign keys are the key list you just wrote — transcribe it, do not
-     re-decide it here**, and reference dimension surrogate keys (not natural keys, if the repo
-     uses surrogates). A column that appeared in no bucket belongs on neither the fact nor a new
-     table until you can say which dimension owns it. Classify each measure: additive,
-     semi-additive (e.g. balances — never summed across time), or non-additive (ratios —
-     recompute, don't aggregate).
+3. **Design the target from its evidenced family.**
+   - Where the family uses dimensions, follow its established natural/business-key, constraint,
+     history, and key strategy; use surrogate keys only where that family evidences them.
+   - Write the grain statement before changing a fact-like target — one sentence saying what one
+     row represents. Preserve the evidenced relationship-key strategy rather than re-deciding it.
+     A column with no established owner remains unresolved until its role is evidenced. Classify
+     measures when the family uses measures, preserving its additive/semi-additive/non-additive
+     semantics.
 
-4. **Staging.** Land data the way sibling loads do — truncate-and-load or
-   append-with-batch-id, whichever the repo uses. Staging columns stay loosely typed;
-   enforcement happens in the warehouse load. Carry the batch/run ID from the first landing
-   step so every downstream row is traceable to its run.
+4. **Staging, where the target family uses it.** Follow the sibling landing and typing strategy —
+   truncate-and-load, append-with-batch-id, or another evidenced mechanism. Do not require loosely
+   typed staging; preserve the family’s validation and traceability controls, including a run/batch
+   identifier where it evidences one.
 
-5. **Make the load idempotent — the non-negotiable step.** The same data must never be loaded
-   twice, and a rerun after a mid-run failure must be safe. Use the repo's existing mechanism:
+5. **Preserve rerun safety through the target family’s evidenced mechanism.** For a target that
+   appends, merges, or otherwise can duplicate data, the same input must not create an unintended
+   second result and a rerun after mid-run failure must remain safe. Use the repo's existing mechanism:
    - **Watermark**: only pull rows past the stored high-water mark; advance it transactionally
      with the load.
    - **Batch-ID dedup**: refuse or skip a batch already recorded as committed in the control
@@ -128,10 +124,8 @@ Derive this operation's shape from first-party implementation, configuration, te
    Wrap multi-statement loads in an explicit transaction, or make each statement independently
    re-runnable — match the sibling load.
 
-   **Resolve each dimension key by lookup, and decide what a miss does.** For every foreign key on
-   the key list, the load joins staging's business key to the dimension's business key to obtain the
-   surrogate key — and where the dimension keeps history, to the version that applied, using the
-   repo's own as-of rule copied from a sibling load rather than one you invent.
+   **Where the target family resolves dimension keys, use its evidenced lookup and miss handling.**
+   Follow its relationship-key and as-of rules rather than assuming business-to-surrogate lookup.
 
    **Classify a lookup miss before handling it** — only one of these is a late-arriving member, and
    the right response differs:
@@ -147,17 +141,13 @@ Derive this operation's shape from first-party implementation, configuration, te
    What is never right is dropping unmatched rows, or defaulting every miss to one member: that
    makes the fact's totals wrong in a way that reconciles against nothing and surfaces months later.
 
-6. **Slowly changing dimension (SCD) handling.** Apply the same SCD type the target or sibling
-   dimensions already use. Type 1: overwrite in place, no history. Type 2: expire the current
-   row (set `EffectiveTo`, clear `IsCurrent`), insert the new version with a new surrogate key
-   — never update an existing surrogate key. For facts that change after load, do what the
-   repo does: reversal/correction rows, in-place updates, or versioned snapshot runs.
+6. **Slowly changing dimension (SCD) handling, where evidenced.** Apply the target family’s
+   established history strategy; do not select Type 1, Type 2, columns, or keys from this recipe.
+   For facts that change after load, follow the repo’s evidenced correction strategy.
 
-7. **Ordering and orchestration.** Register the load in the orchestration at the right
-   position: dimensions load before the facts that reference them. Update the master
-   procedure, run-order configuration, or pipeline definition — a load that isn't orchestrated
-   doesn't exist. Handle late-arriving dimension members the way the repo does (inferred/stub
-   members updated later, or fail-and-retry).
+7. **Ordering and orchestration, where the target family has dependencies.** Register the load
+   through the evidenced orchestration and preserve its dependency order. Handle late arrivals
+   through the project’s established policy; do not infer inferred members or fail-and-retry.
 
 8. **Partition alignment.** If the target table family is partitioned, the new table joins the
    existing partition function/scheme. If sibling loads use partition switch, create the
@@ -168,17 +158,12 @@ Derive this operation's shape from first-party implementation, configuration, te
    build, migration-scripts folder, or dbt — never ad-hoc scripts against the server. Review
    the generated/authored DDL before it ships.
 
-10. **Review checklist (sign-off before merge).**
-   - Rerun safety: running the load twice for the same batch yields identical target row
-     counts (or, for versioned runs, exactly one run marked current).
-   - No business-key duplicates in the current/active rows of the target.
-   - Reconciliation: staging vs target row counts match or the difference is explained
-     (rejected rows, dedup).
-   - History spot-check: change one attribute on one record, rerun, verify the expected
-     old/new row shape.
-   - Orchestration order verified: the new load runs after every dimension it references.
-   - No dimension was created that duplicates one already in the warehouse: every foreign key on the
-     key list names an existing dimension, an indirect path through one, or a new dimension with the
-     search that justified it.
-   - Every fact foreign key resolves to a dimension row, and the count routed to the
-     unknown/inferred member is **reported** — not assumed to be zero.
+10. **Review checklist (sign-off before merge).** Apply the checks the target family evidences:
+   - Rerun safety: a repeated input preserves the family’s intended result, including after a
+     recoverable mid-run failure where that scenario applies.
+   - Grain/cardinality: target counts and relationship cardinality match the documented grain.
+   - Reconciliation: source/staging and target differences are explained through the project’s
+     control mechanism (for example rejected rows or deduplication).
+   - History and orchestration: exercise the applicable change-history and dependency-order paths.
+   - For dimension/fact targets, justify new dimensions and report unresolved relationship-key
+     rows through the project’s established policy rather than assuming zero.

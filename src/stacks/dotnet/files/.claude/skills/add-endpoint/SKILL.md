@@ -27,7 +27,7 @@ Derive this operation's shape from first-party implementation, configuration, te
 2. Add the application capability at the evidenced boundary; use a service seam only when the project evidence requires one.
 3. Add request/response DTOs only when the evidenced API boundary keeps them separate from domain entities.
 4. Request validation through the repository's evidenced mechanism; do not add FluentValidation from this recipe.
-5. Controller action (thin — delegates to the service immediately) or minimal API endpoint if the project uses them.
+5. Add the endpoint/application boundary the project evidences; keep it thin only where that boundary delegates, and do not introduce a controller, minimal API, or service layer from this recipe.
 6. When an applicable test harness is evidenced, add the smallest behavior-focused test at the level it already uses. Do not create a test project, runner, or fixture incidentally.
 7. Add a full HTTP-path test only when the repository already evidences that boundary (for example a `WebApplicationFactory` fixture). Otherwise report the integration-test category as **not available**.
 

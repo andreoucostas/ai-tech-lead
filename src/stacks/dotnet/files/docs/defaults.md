@@ -32,8 +32,8 @@ evidenced command, report `not available (no evidenced command)`; never invent `
 ### Dependency Injection
 - **DIP (see the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools))**: derive a service seam, registration, and lifetime from first-party project evidence and correctness needs. Do not introduce an interface or DI container solely from this default; preserve an evidenced dependency boundary. Data carriers (DTOs, entities, value objects, `Options`) are not services and get no interface.
 - Where the project already evidences DI, follow its established lifetime and composition-root conventions; this default does not choose scoped, transient, or singleton.
-- Register via extension methods per project, not in Program.cs directly.
-- Use `IOptions<T>` for static config, `IOptionsMonitor<T>` for config that can change at runtime, `IOptionsSnapshot<T>` for scoped config refresh.
+- Follow the project’s evidenced composition-root location and registration mechanism; do not select extension methods or `Program.cs` from this default.
+- Use an options/configuration mechanism only where the project evidences it; do not select `IOptions<T>`, `IOptionsMonitor<T>`, or `IOptionsSnapshot<T>` solely from this default.
 
 ## Evidence-matched data-access defaults
 

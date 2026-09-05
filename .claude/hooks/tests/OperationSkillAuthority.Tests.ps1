@@ -1,6 +1,6 @@
-﻿# B-216 source contract: structural carrier/fixture coverage, not model efficacy evidence.
+﻿# Maintainer-only source contract: structural carrier and raw-fixture coverage, not model efficacy.
 . (Join-Path $PSScriptRoot '_HookHarness.ps1')
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..')).Path
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $skills = @(
     'src/stacks/dotnet/files/.claude/skills/add-endpoint/SKILL.md',
     'src/stacks/dotnet/files/.claude/skills/add-entity/SKILL.md',
@@ -37,8 +37,41 @@ It 'entity and service recipes do not restore EF or DI-extension defaults' {
     Assert ($service.Contains('do not introduce DI from this skill')) 'service recipe does not retain unresolved composition uncertainty'
 }
 
+It 'endpoint and warehouse recipes keep target-family mechanisms conditional' {
+    $endpoint = [IO.File]::ReadAllText((Join-Path $repoRoot 'src/stacks/dotnet/files/.claude/skills/add-endpoint/SKILL.md'), [Text.Encoding]::UTF8)
+    $warehouse = [IO.File]::ReadAllText((Join-Path $repoRoot 'src/stacks/dotnet/files/.claude/skills/add-warehouse-load/SKILL.md'), [Text.Encoding]::UTF8)
+    $normalizedWarehouse = [regex]::Replace($warehouse, '\s+', ' ')
+    Assert ($endpoint.Contains('Add the endpoint/application boundary the project evidences')) 'endpoint recipe does not derive its boundary'
+    Assert (-not $endpoint.Contains('Controller action (thin — delegates to the service immediately)')) 'endpoint recipe restores unconditional service delegation'
+    foreach ($needle in @('same target family', 'use surrogate keys only where that family evidences them', 'Do not require loosely typed staging', 'Preserve rerun safety through the target family')) {
+        Assert ($normalizedWarehouse.Contains($needle)) "warehouse recipe omits conditional target-family safeguard '$needle'"
+    }
+    Assert ($warehouse -match 'Do not impose\s+one warehouse-wide style') 'warehouse recipe restores one warehouse-wide loading style'
+    foreach ($forbidden in @('One warehouse, one loading pattern', 'Staging columns stay loosely typed', 'reference dimension surrogate keys (not natural keys', 'add-entity` where the repo evidences EF Core')) {
+        Assert (-not $warehouse.Contains($forbidden)) "warehouse recipe restores unsupported mechanism '$forbidden'"
+    }
+}
+
+It 'defaults do not select composition or Angular architecture mechanisms' {
+    $dotnet = [IO.File]::ReadAllText((Join-Path $repoRoot 'src/stacks/dotnet/files/docs/defaults.md'), [Text.Encoding]::UTF8)
+    $angular = [IO.File]::ReadAllText((Join-Path $repoRoot 'src/stacks/angular/files/docs/defaults.md'), [Text.Encoding]::UTF8)
+    $monorepo = [IO.File]::ReadAllText((Join-Path $repoRoot 'src/stacks/monorepo/files/docs/defaults.md'), [Text.Encoding]::UTF8)
+    foreach ($text in @($dotnet, $monorepo)) {
+        Assert ($text.Contains('do not select extension methods or `Program.cs` from this default')) 'default does not condition its composition-root mechanism'
+        Assert ($text.Contains('do not select `IOptions<T>`, `IOptionsMonitor<T>`, or `IOptionsSnapshot<T>` solely from this default')) 'default does not condition its options mechanism'
+        Assert (-not $text.Contains('Register via extension methods per project')) 'default restores extension-method mandate'
+    }
+    foreach ($text in @($angular, $monorepo)) {
+        foreach ($needle in @('standalone/NgModule shape', 'choice between `inject()` and constructor injection needs an explicit design decision', 'route-loading mechanism')) {
+            Assert ($text.Contains($needle)) "Angular default omits conditional mechanism '$needle'"
+        }
+        Assert (-not $text.Contains('Standalone components as default')) 'default restores standalone mandate'
+        Assert (-not $text.Contains('Feature areas are lazy-loaded routes')) 'default restores lazy-route mandate'
+    }
+}
+
 It 'raw Unity fixture has only its evidenced composition root and lifetime' {
-    $path = Join-Path $repoRoot 'src/core/tests/fixtures/b216-unity/CompositionRoot.cs'
+    $path = Join-Path $repoRoot '.claude/hooks/tests/fixtures/operation-authority-unity/CompositionRoot.cs'
     $text = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8)
     Assert ($text.Contains('UnityContainer')) 'Unity composition root absent'
     Assert ($text.Contains('ContainerControlledLifetimeManager')) 'evidenced Unity lifetime absent'

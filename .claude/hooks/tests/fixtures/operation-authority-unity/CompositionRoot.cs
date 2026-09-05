@@ -1,9 +1,10 @@
 using Unity;
 using Unity.Lifetime;
 
-namespace B216.UnityFixture;
+namespace OperationAuthority.UnityFixture;
 
 public interface IOrderFeed { }
+
 public sealed class OrderFeed : IOrderFeed { }
 
 public static class CompositionRoot

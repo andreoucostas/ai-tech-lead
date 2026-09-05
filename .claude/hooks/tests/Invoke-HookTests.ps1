@@ -65,6 +65,7 @@ $expectedTestFiles = @(
     'LicenseDrift.Tests.ps1',
     'MetaHooks.Tests.ps1',
     'OutgoingCommits.Tests.ps1',
+    'OperationSkillAuthority.Tests.ps1',
     'PowerShellTopology.Tests.ps1',
     'PushAndCheck.Tests.ps1',
     'ReleaseChangelogStamp.Tests.ps1',
