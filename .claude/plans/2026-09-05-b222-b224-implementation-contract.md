@@ -54,7 +54,8 @@ An independent fresh-context forward test receives only the concrete workflow en
 realistic request and a raw mixed-domain repository fixture in an isolated scratch root; it does
 not receive this conversation, plan, grading key, expected findings or prior conclusions. Its
 read/write scope stays inside that root. The produced candidate and coverage artifacts—not the
-evaluator's self-report—are inspected for a quiet unique fact, helper-derived fact, conflicting scoped patterns,
+evaluator's self-report—are inspected for the actual scoped claims or ordered operation steps, plus
+a quiet unique fact, helper-derived fact, conflicting scoped patterns,
 cross-component operation, generated decoy and inaccessible dependency. The evaluator must retain
 the inaccessible dependency as unresolved and may use quiet non-recurring evidence. Later Copilot
 CLI/VS Code and value observations remain PK-3/B-225 evidence, not substitutes for this test.

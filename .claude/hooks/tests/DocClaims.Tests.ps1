@@ -322,6 +322,7 @@ function Assert-RepositoryKnowledgeDiscoveryContracts {
             'Inventory does not consume the content-read budget.',
             'do not prove intended policy or correctness',
             'is not independent corroboration',
+            '**Claim / operation**',
             '**Selection reason**',
             'never capture secrets.',
             '**Actual content reads**',

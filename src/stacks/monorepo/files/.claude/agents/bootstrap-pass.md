@@ -59,6 +59,7 @@ For W1–W3, report only warehouse evidence. Command findings quote the exact co
 ### Knowledge findings (<n>)
 #### <short fact or operation name>
 - **Kind**: scoped fact | evidenced operation
+- **Claim / operation**: <the actual scoped claim, or ordered evidenced steps; mark unresolved portions explicitly>
 - **Selection reason**: <why this quiet/atypical/common slice was chosen>
 - **Scope**: <applicability and explicit non-applicability>
 - **Evidence**: <repository-relative path(s) and symbol(s); revision when available>
