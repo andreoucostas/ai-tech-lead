@@ -89,6 +89,7 @@ function Assert-CiParityDecision {
     Assert ($job -match '(?m)^\s*needs:\s*\[windows, windows-hooks, windows-ps51, windows-hooks-ps51\]\s*$') 'CI parity no longer waits for all four execution definitions'
     Assert ($job -match '(?m)^\s*if:\s*\$\{\{ always\(\) \}\}\s*$') 'CI parity can be skipped after an upstream failure'
     Assert ($job -match '(?m)^\s*runs-on:\s*windows-latest\s*$') 'CI parity is no longer a same-platform Windows decision'
+    Assert ($job -notmatch '(?m)^    continue-on-error\s*:') 'CI parity permits its whole-job failure to be ignored'
     Assert (@([regex]::Matches($job, 'actions/download-artifact@v4')).Count -eq 1) 'CI parity must download the native-host artifacts exactly once'
     Assert ($job -match '(?m)^\s*pattern:\s*b219-case-counts-\*\s*$') 'CI parity no longer scopes its current-run artifact download'
     Assert ($job -notmatch '(?m)^\s*(?:github-token|repository|run-id):') 'CI parity escapes the current workflow run when downloading artifacts'
@@ -249,6 +250,17 @@ if (-not $SkipRedTest) {
         Invoke-MutationRedTest -TargetFile $ciPath -ScratchSourceRoot $repoRoot `
             -Find ("      - name: Require valid equal nonzero PS7 and PS5.1 semantic case cardinality" + $ciNewline + "        run: |") `
             -Replacement ("      - name: Require valid equal nonzero PS7 and PS5.1 semantic case cardinality" + $ciNewline + '        if: ${{ false }}' + $ciNewline + "        run: |") -Command {
+                param($scratchTarget, $scratchRoot)
+                $test = Join-Path $scratchRoot '.claude/hooks/tests/ReleaseDistGateTiming.Tests.ps1'
+                $process = Start-Process -FilePath (Get-PsExe) -ArgumentList @('-NoProfile','-File',$test,'-SkipRedTest') -Wait -PassThru -NoNewWindow
+                $global:LASTEXITCODE = $process.ExitCode
+            } | Out-Null
+    }
+
+    It 'whole-job continue-on-error makes the parity topology assertion fail' {
+        Invoke-MutationRedTest -TargetFile $ciPath -ScratchSourceRoot $repoRoot `
+            -Find ("  windows-case-parity:" + $ciNewline + "    name: windows-case-parity") `
+            -Replacement ("  windows-case-parity:" + $ciNewline + "    name: windows-case-parity" + $ciNewline + "    continue-on-error: true") -Command {
                 param($scratchTarget, $scratchRoot)
                 $test = Join-Path $scratchRoot '.claude/hooks/tests/ReleaseDistGateTiming.Tests.ps1'
                 $process = Start-Process -FilePath (Get-PsExe) -ArgumentList @('-NoProfile','-File',$test,'-SkipRedTest') -Wait -PassThru -NoNewWindow
