@@ -2,6 +2,8 @@
 # template/release CI, but it is neither installed nor usable as application-command evidence.
 # Does NOT ship.
 . (Join-Path $PSScriptRoot '_HookHarness.ps1')
+$hostProcess = Get-Process -Id $PID -ErrorAction Stop
+Write-Host ("HOST executable={0}; version={1}" -f $hostProcess.Path, $PSVersionTable.PSVersion)
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $prefix = 'tests/hooks/'
@@ -144,20 +146,37 @@ function Invoke-GitBytes {
     param([string[]]$Arguments)
     $git = @(Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)
     Assert ($git.Count -eq 1) 'git executable is unavailable'
-    $stdout = [IO.Path]::GetTempFileName()
-    $stderr = [IO.Path]::GetTempFileName()
+    $quoted = @('-C', $repoRoot) + $Arguments
+    $argumentString = (($quoted | ForEach-Object { '"' + $_.Replace('"', '\"') + '"' }) -join ' ')
+    $startInfo = New-Object Diagnostics.ProcessStartInfo
+    $startInfo.FileName = $git[0].Source
+    $startInfo.Arguments = $argumentString
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $process = New-Object Diagnostics.Process
+    $process.StartInfo = $startInfo
+    $stdout = New-Object IO.MemoryStream
+    $stderrTask = $null
+    $stdoutTask = $null
     try {
-        $quoted = @('-C', $repoRoot) + $Arguments
-        $argumentString = (($quoted | ForEach-Object { '"' + $_.Replace('"', '\"') + '"' }) -join ' ')
-        $process = Start-Process -FilePath $git[0].Source -ArgumentList $argumentString -NoNewWindow -Wait -PassThru `
-            -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+        [void]$process.Start()
+        # Start both drains before waiting. Git's stdout may be binary, so never let PowerShell's
+        # native-output adapter decode it; stderr remains text for actionable failure diagnostics.
+        $stdoutTask = $process.StandardOutput.BaseStream.CopyToAsync($stdout)
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        $process.WaitForExit()
+        $stdoutTask.GetAwaiter().GetResult()
+        $stderr = $stderrTask.GetAwaiter().GetResult()
         return [pscustomobject]@{
             Exit = [int]$process.ExitCode
-            Bytes = [IO.File]::ReadAllBytes($stdout)
-            Error = [IO.File]::ReadAllText($stderr)
+            Bytes = $stdout.ToArray()
+            Error = $stderr
         }
     } finally {
-        Remove-Item -Force -LiteralPath $stdout,$stderr -ErrorAction SilentlyContinue
+        $stdout.Dispose()
+        $process.Dispose()
     }
 }
 
@@ -247,6 +266,34 @@ It 'v0.83 ledger contains every raw path-specific digest released through v0.82 
     try { Assert-TaggedDigestCompleteness $observations $badMap }
     catch { $caught = $_.Exception.Message -match 'missing tagged digest' }
     Assert $caught 'removing a released digest did not make the completeness checker go red'
+}
+
+It 'raw Git capture preserves binary bytes and nonzero stderr' {
+    $objects = Join-Path ([IO.Path]::GetTempPath()) ('b215-objects-' + [guid]::NewGuid().ToString('N'))
+    $blobPath = Join-Path ([IO.Path]::GetTempPath()) ('b215-binary-' + [guid]::NewGuid().ToString('N') + '.bin')
+    $previousObjects = $env:GIT_OBJECT_DIRECTORY
+    try {
+        New-Item -ItemType Directory -Force -Path $objects | Out-Null
+        [byte[]]$expected = 0x00, 0x80, 0xFF, 0x0A, 0xC3, 0xA9
+        [IO.File]::WriteAllBytes($blobPath, $expected)
+        $env:GIT_OBJECT_DIRECTORY = $objects
+        $oid = (& git -C $repoRoot hash-object -w -t blob $blobPath | Out-String).Trim()
+        Assert ($LASTEXITCODE -eq 0 -and $oid -match '^[0-9a-f]{40}$') 'could not create the isolated binary Git object'
+
+        $binary = Invoke-GitBytes @('cat-file','blob',$oid)
+        Assert ($binary.Exit -eq 0) "binary Git read failed: $($binary.Error)"
+        Assert ([Convert]::ToBase64String([byte[]]$binary.Bytes) -ceq [Convert]::ToBase64String($expected)) `
+            'binary Git stdout was decoded, normalized, or truncated'
+
+        $missing = Invoke-GitBytes @('cat-file','blob',('0' * 40))
+        Assert ($missing.Exit -ne 0) 'missing Git object unexpectedly exited zero'
+        Assert (-not [string]::IsNullOrWhiteSpace($missing.Error)) 'nonzero Git stderr was lost'
+    } finally {
+        if ($null -eq $previousObjects) { Remove-Item Env:GIT_OBJECT_DIRECTORY -ErrorAction SilentlyContinue }
+        else { $env:GIT_OBJECT_DIRECTORY = $previousObjects }
+        Remove-Item -LiteralPath $blobPath -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $objects -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }
 
 It 'install.sh remains historical staging data, never an installed retirement entry' {

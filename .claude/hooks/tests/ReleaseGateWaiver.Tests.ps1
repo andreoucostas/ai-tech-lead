@@ -10,6 +10,8 @@
 # someone renames a comment. If the function is renamed or removed, extraction fails loudly here.
 . (Join-Path $PSScriptRoot '_HookHarness.ps1')
 Reset-Tests
+$hostProcess = Get-Process -Id $PID -ErrorAction Stop
+Write-Host ("HOST executable={0}; version={1}" -f $hostProcess.Path, $PSVersionTable.PSVersion)
 $repoRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
 $release  = Join-Path $repoRoot '.claude/scripts/release.ps1'
 
@@ -94,6 +96,78 @@ It 'with NO per-file results and no waivers, the summed total still gates' {
     Assert (-not $r.Refused) 'no waiver, nothing to refuse'
 }
 
+# Extract the actual budget function, its top-level caller statement, and the actual refusal branch.
+# The caller is selected as a top-level AST statement containing the command, not as a copied line;
+# wrapping it in a false conditional or deleting it therefore changes the executable fixture.
+$budgetExtractError = $null
+$gateFn = $null
+$budgetFn = $null
+$budgetCallStatement = $null
+$refusalStatement = $null
+if ($null -eq $releaseAst) {
+    $budgetExtractError = $extractError
+} else {
+    $gateFn = $releaseAst.FindAll({ param($n)
+        $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Gate'
+    }, $true) | Select-Object -First 1
+    $budgetFn = $releaseAst.FindAll({ param($n)
+        $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Assert-GateBudget'
+    }, $true) | Select-Object -First 1
+    $budgetCallStatements = @($releaseAst.EndBlock.Statements | Where-Object {
+        @($_.FindAll({ param($n)
+            $n -is [System.Management.Automation.Language.CommandAst] -and $n.GetCommandName() -eq 'Assert-GateBudget'
+        }, $true)).Count -gt 0
+    })
+    if ($budgetCallStatements.Count -eq 1) { $budgetCallStatement = $budgetCallStatements[0] }
+    $refusalStatements = @($releaseAst.EndBlock.Statements | Where-Object {
+        $_.Extent.StartOffset -gt $(if ($budgetCallStatement) { $budgetCallStatement.Extent.EndOffset } else { [int]::MaxValue }) -and
+        $_.Extent.Text -match '(?s)\$fatal.*?exit\s+1'
+    })
+    if ($refusalStatements.Count -eq 1) { $refusalStatement = $refusalStatements[0] }
+    if ($null -eq $gateFn -or $null -eq $budgetFn -or $null -eq $budgetCallStatement -or $null -eq $refusalStatement) {
+        $budgetExtractError = 'release.ps1 AST did not expose exactly one Gate, Assert-GateBudget caller, and downstream fatal refusal statement'
+    }
+}
+
+function New-BudgetBoundaryScript {
+    param([switch]$OverBudget)
+    Assert ($null -eq $budgetExtractError) "$budgetExtractError"
+    $seconds = if ($OverBudget) { '2.0' } else { '0.5' }
+    $lines = @(
+        '$ErrorActionPreference = ''Stop''',
+        '$gateBudget = [pscustomobject]@{ ''ceilings-seconds'' = [pscustomobject]@{ probe = 1.0; ''total-local-gates'' = 1.0 } }',
+        ('$stageTimings = [ordered]@{ probe = ' + $seconds + ' }'),
+        '$script:fatal = $false',
+        $gateFn.Extent.Text,
+        $budgetFn.Extent.Text,
+        $budgetCallStatement.Extent.Text,
+        $refusalStatement.Extent.Text,
+        "Write-Output 'BUDGET_BOUNDARY downstream-reached'",
+        'exit 0'
+    )
+    return ($lines -join "`n")
+}
+
+function Invoke-BudgetBoundary {
+    param([switch]$OverBudget)
+    $path = Join-Path ([IO.Path]::GetTempPath()) ('release-budget-boundary-' + [guid]::NewGuid().ToString('N') + '.ps1')
+    try {
+        [IO.File]::WriteAllText($path, (New-BudgetBoundaryScript -OverBudget:$OverBudget), (New-Object Text.UTF8Encoding($true)))
+        return Invoke-RawProcess -FileName (Get-PsExe) -Arguments @('-NoProfile','-ExecutionPolicy','Bypass','-File',$path)
+    } finally { Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue }
+}
+
+It 'the actual release budget caller allows clean work and refuses over-budget work downstream' {
+    $clean = Invoke-BudgetBoundary
+    Assert ($clean.Exit -eq 0) "within-budget source boundary did not allow: EXIT=$($clean.Exit); OUT=$($clean.Out); ERR=$($clean.Err)"
+    Assert ($clean.Out -match 'BUDGET_BOUNDARY downstream-reached') 'within-budget boundary did not reach downstream continuation'
+
+    $over = Invoke-BudgetBoundary -OverBudget
+    Assert ($over.Exit -eq 1) "over-budget source boundary did not refuse: EXIT=$($over.Exit); OUT=$($over.Out); ERR=$($over.Err)"
+    Assert ($over.Out -match 'Release REFUSED: fix the failing gate') 'over-budget boundary did not execute the release refusal branch'
+    Assert ($over.Out -notmatch 'BUDGET_BOUNDARY downstream-reached') 'over-budget boundary reached downstream success continuation'
+}
+
 # --- the runtime budget -------------------------------------------------------------------------
 
 It 'the gate budget file exists, parses, and declares a ceiling for every stage release.ps1 times' {
@@ -112,12 +186,10 @@ It 'the gate budget file exists, parses, and declares a ceiling for every stage 
     Assert ($null -ne $budget.'ceilings-seconds'.'total-local-gates') 'no total-local-gates ceiling'
 }
 
-It 'release.ps1 still enforces the budget rather than only printing it' {
-    $text = Get-Content -Raw -LiteralPath $release
-    Assert ($text -match 'Assert-GateBudget') 'release.ps1 no longer calls Assert-GateBudget'
-    # B-110's lesson, aimed at this file: a ceiling that only prints is not a ceiling. The enforcing
-    # call must reach Gate (which sets $fatal), not Write-Host.
-    Assert ($text -match '(?s)function Assert-GateBudget.*?Gate\s*\(') 'Assert-GateBudget no longer routes through Gate -- the budget went back to being advisory'
+It 'release.ps1 exposes the same budget function used by the executable boundary' {
+    Assert ($null -eq $budgetExtractError) "$budgetExtractError"
+    Assert ($budgetFn.Name -ceq 'Assert-GateBudget') 'budget function extraction did not select the actual source function'
+    Assert ($budgetCallStatement.Extent.Text.Trim() -match '^Assert-GateBudget\s*$') 'budget caller is no longer the expected direct source statement'
 }
 
 exit (Write-TestSummary 'ReleaseGateWaiver.Tests (gate waiver + runtime budget)')
