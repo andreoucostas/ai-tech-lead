@@ -78,7 +78,9 @@ doctor diagnostics still identify owned historical helpers without deleting cons
 It writes only to a caller-supplied fresh temporary directory outside the repository. Its exact
 PowerShell parameter contract is `-Mode Uncommitted|Range|WholeFile`, mandatory `-OutputPath`,
 `-Base` and `-Head` only for `Range`, and optional `-PathFile` pointing to a UTF-8 JSON array of
-repository-relative path filters. This avoids the invalid repeated-named-parameter shape and is run
+repository-relative path filters. Optional `-RangeKind TwoDot|ThreeDot` is valid only for `Range`
+and defaults to `TwoDot`; `ThreeDot` records both supplied endpoints and the effective merge-base.
+This avoids the invalid repeated-named-parameter shape and is run
 directly under both native hosts. No repository/index/config file is written. Bundle inputs and
 manifest paths are literal, contained beneath the selected repository/bundle, reject traversal and
 reparse escapes, and never execute captured source or patch text. No ambient PR lookup or base
