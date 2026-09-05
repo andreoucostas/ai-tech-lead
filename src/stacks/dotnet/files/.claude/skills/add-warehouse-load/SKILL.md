@@ -2,7 +2,8 @@
 name: add-warehouse-load
 description: >
   SQL data-warehouse repos only — verifies before scaffolding. Add a new fact or dimension
-  load, or extend an existing one, following the repo's existing staging → warehouse patterns.
+  load, or extend an existing one, deriving only the applicable staging → warehouse pattern from
+  first-party evidence; conflicting evidence and correctness-material gaps remain unresolved.
   Covers staging, the load procedure, batch/watermark control wiring, slowly-changing-dimension
   handling, load ordering, partition alignment, and the deployment path.
   USE FOR: a new fact or dimension table plus its load, a new source feeding an existing
@@ -138,8 +139,9 @@ Derive this operation's shape from first-party implementation, configuration, te
    - the load ran before a dimension it depends on → fix the orchestration; a stub here hides a
      sequencing bug that will recur every run.
 
-   What is never right is dropping unmatched rows, or defaulting every miss to one member: that
-   makes the fact's totals wrong in a way that reconciles against nothing and surfaces months later.
+   Do not silently drop unmatched rows or default every miss to one member. An evidenced
+   reject/quarantine path is valid when it preserves the target family’s reconciled counts and
+   makes the loss and reason visible; otherwise retain the miss as unresolved rather than hiding it.
 
 6. **Slowly changing dimension (SCD) handling, where evidenced.** Apply the target family’s
    established history strategy; do not select Type 1, Type 2, columns, or keys from this recipe.
@@ -154,9 +156,10 @@ Derive this operation's shape from first-party implementation, configuration, te
    switch-aligned staging table: same filegroup, same indexes, check constraint matching the
    target partition.
 
-9. **Deployment.** Schema changes go through the repo's one existing vehicle — SQL project
-   build, migration-scripts folder, or dbt — never ad-hoc scripts against the server. Review
-   the generated/authored DDL before it ships.
+9. **Deployment.** Use the applicable target-family deployment vehicle evidenced by the repo
+   (for example SQL project build, migration-scripts folder, or dbt); do not choose one or run
+   ad-hoc scripts against a server from this recipe. Review generated/authored DDL when that
+   vehicle produces it.
 
 10. **Review checklist (sign-off before merge).** Apply the checks the target family evidences:
    - Rerun safety: a repeated input preserves the family’s intended result, including after a

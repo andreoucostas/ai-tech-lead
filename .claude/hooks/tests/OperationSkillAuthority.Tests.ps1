@@ -43,11 +43,11 @@ It 'endpoint and warehouse recipes keep target-family mechanisms conditional' {
     $normalizedWarehouse = [regex]::Replace($warehouse, '\s+', ' ')
     Assert ($endpoint.Contains('Add the endpoint/application boundary the project evidences')) 'endpoint recipe does not derive its boundary'
     Assert (-not $endpoint.Contains('Controller action (thin — delegates to the service immediately)')) 'endpoint recipe restores unconditional service delegation'
-    foreach ($needle in @('same target family', 'use surrogate keys only where that family evidences them', 'Do not require loosely typed staging', 'Preserve rerun safety through the target family')) {
+    foreach ($needle in @('conflicting evidence and correctness-material gaps remain unresolved', 'same target family', 'use surrogate keys only where that family evidences them', 'Do not require loosely typed staging', 'Preserve rerun safety through the target family', 'evidenced reject/quarantine path is valid', 'applicable target-family deployment vehicle')) {
         Assert ($normalizedWarehouse.Contains($needle)) "warehouse recipe omits conditional target-family safeguard '$needle'"
     }
     Assert ($warehouse -match 'Do not impose\s+one warehouse-wide style') 'warehouse recipe restores one warehouse-wide loading style'
-    foreach ($forbidden in @('One warehouse, one loading pattern', 'Staging columns stay loosely typed', 'reference dimension surrogate keys (not natural keys', 'add-entity` where the repo evidences EF Core')) {
+    foreach ($forbidden in @('following the repo''s existing staging → warehouse patterns', 'What is never right is dropping unmatched rows', 'repo''s one existing vehicle', 'One warehouse, one loading pattern', 'Staging columns stay loosely typed', 'reference dimension surrogate keys (not natural keys', 'add-entity` where the repo evidences EF Core')) {
         Assert (-not $warehouse.Contains($forbidden)) "warehouse recipe restores unsupported mechanism '$forbidden'"
     }
 }
