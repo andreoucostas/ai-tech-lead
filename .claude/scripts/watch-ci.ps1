@@ -348,6 +348,6 @@ if (@($missing).Count -gt 0) {
 }
 
 Write-Line ''
-Write-Line "CI GREEN: $(@($good).Count) workflow(s), eight native execution contexts plus required parity all success."
+Write-Line "CI GREEN: $(@($good).Count) workflow(s), required jobs $($ExpectedJobs -join ' + ') all success."
 Write-Line "  $($watched[0].url)"
 exit $EXIT_GREEN
