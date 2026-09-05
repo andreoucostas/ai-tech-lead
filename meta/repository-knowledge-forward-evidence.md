@@ -49,3 +49,65 @@ of the 40-file budget. Several proposed “meaningful rechecks” required resto
 even where rereading the exact source predicate would be the smaller semantic recheck; PK-2 must
 distinguish a minimal source recheck from runtime or business-behaviour proof. A redundant numeric
 finding count should be omitted rather than supported by a new counting mechanism.
+
+## PK-2 capture observations
+
+These were fresh-context `gpt-5.6-luna` authoring evaluations, not installed Copilot/VS Code runs.
+Each evaluator received only the actual `remember-for-team` skill, monorepo bootstrap Phase 3a-bis,
+an isolated raw fixture, and the same realistic request to preserve useful facts and repeatable
+operations. Expected claims were withheld. The retained fixtures are under `.forward-eval/` for
+independent inspection; they are not product fixtures or efficacy evidence.
+
+The first run (`pk2-capture`, input commit `2d979b012751507b9b406490e6ff634fbe7309d8`)
+created a grounded package-promotion skill/reference without changing tracked owner content. The
+independent root reviewer read every raw file and output and confirmed the existing owner wiki and
+skill hashes remained `3FD17A0304FE842758F13114695D126D921EEF27BE53BA0D4098B0238453B645`
+and `C58AD59B02DF48F3D598ED07A69E61116A3B8A83C37588E076402AB96086AB4D`.
+However, the SKILL did not link its reference and kept the explicit refresh trigger/result only in
+the report. Its unmodified skill/reference/report hashes are respectively
+`D9339BA0596DBF11D0689B12FBBDB45BF18AD25B00D64D1EE5663118FBE51CCF`,
+`533A1FE113A95F2B3065F147DB38CD25847D349C6735A06645E9E8245D841690`, and
+`1B76CC14696A68B66E37152AF2ADFE0AD18A8EABE98FA9DDE4E2EEC2807CFC3D`.
+
+Two follow-ups expose instruction sensitivity rather than being silently discarded. Run 2
+(`pk2-capture-2`, input commit `df298356fe1c0940eb0015a0c3c13c9ac95db34c`) drafted wiki facts and
+an operation skill but again omitted the focused reference; its report also disclosed that an
+over-tight evaluator write boundary prevented the required INDEX update. Run 3 (`pk2-capture-3`,
+the same raw commit after the “both files” clarification) created two linked skill/reference pairs
+with durable source rechecks and no tracked owner edits. It defensibly treated the lease wrapper as
+a multi-step operation rather than a wiki fact. Its “success-only acknowledgement” wording is
+broader than the exact source fact—`$LASTEXITCODE -eq 0` after an arbitrary ScriptBlock—and remains
+a bounded interpretation defect despite the external/runtime caveats.
+
+The final run (`pk2-capture-4`, input commit
+`f53c3564b22d534e15a6c09ca15547032c6b2c79`) added an independent storage-topology predicate and
+exercised both destinations: three wiki drafts plus one skill/reference pair. Only
+`docs/wiki/INDEX.md` changed among tracked files; owner files were byte-unchanged relative to that
+fixture's committed baseline. Direct PS7 execution of the promotion, lease, and topology fixture
+predicates returned exit 0. The output hash is
+`52762C9D9EFB2B545A52D06FB63B8A72597CB47FB2B392FFA27818738059135E`; generated INDEX, lease wiki,
+promotion wiki, topology wiki, skill, and reference hashes are respectively
+`223E18D99B0E6218B3352747D593A2D539A3DCD9165C7A6A1F3BFC83DA6B9DE5`,
+`A35138BBF7CF4AEBDFF51548194704A9AC4F77EDB6B90E234EC9A561CE7BCF5A`,
+`321E12C1B524A6C91E7E28254E0B9F9EE6BF81A6433D059369F6D669B3E2F176`,
+`EC2C6F341350D6A8D07B62E6E166032E250AF3B3133C6E04E06CA1031E6B13E0`,
+`4B5345C1EC2C6537271376A8D613DADE8A632FB0668F5BEF9E704E4C6029D5C8`, and
+`3A3DC38C5B41144A158455B421A39A1342D8101B6A02B2309525810BD99E6CD8`.
+
+The root reviewer independently ran the generated wiki/INDEX through the current wiki check under
+native PS7 and PS5.1; both exited 0 with the existing advisory body-injection warning for the
+storage draft's “overrides” vocabulary, so this was not warning-free. The reviewer also observed
+the topology predicate pass, then fail with `Replica must not accept writes` after setting
+`replicaAcceptsWrites` true, then pass again after restoration. That establishes the declared-source
+oracle's red and green worlds, not a deployed topology.
+
+Run 4 still duplicated package promotion across a wiki recipe and skill, and its SKILL did not
+actually link the created reference although the report claimed that it did. The creation
+instruction was subsequently narrowed to require an explicit relative Markdown link and forbid a
+wiki duplicate of the same operation. At the reviewer's direction, no further run was selected to
+turn this into a favourable-only sample; a fifth run was interrupted and is not evidence. The
+generic skill-creator `quick_validate.py` rejected the required product lifecycle key
+`origin: discovered`; that frontmatter conflict is a validator limitation, not a reason to make the
+draft invisible to the framework's deletion/decline lifecycle. None of these runs exercised a
+confirmed semantic refresh of existing owner content, budget exhaustion, or target-host discovery
+and application; those remain separate obligations.
