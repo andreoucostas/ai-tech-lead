@@ -154,6 +154,13 @@ already there, and so a report can be written against the joins the warehouse ac
      pre-aggregate each independently to their common dimensional grain.
    Do not run this deepening by default or infer either defect from names or keys alone.
 
+   **Bounded discovery exception.** During an explicitly requested `/bootstrap` or `/rebootstrap`
+   repository-knowledge discovery pass, indirect warehouse tracing needed to establish a selected
+   warehouse fact or operation may share that pass's 40-content-file, two-additional-hop budget
+   without a separate request naming a fact. Record it as discovery coverage and retain unresolved
+   edges with their next useful source. This exception does not enable modelling-health deepening in
+   a standalone `/map-warehouse` run, which remains request-only.
+
 5. **Load flow and ordering.** Find the orchestration entry points: master procs that `EXEC` a
    chain, job/schedule scripts, `.dtsx` packages, pipeline JSON, or the dbt DAG. Trace each
    entity staging → warehouse. Record the load order — dimensions before the facts that

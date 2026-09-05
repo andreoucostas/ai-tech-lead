@@ -1,5 +1,5 @@
 ---
-description: "Re-align the framework after drift: refresh conventions, hazards, and mined skills against the current codebase; respects declined-recipe history in LEARNINGS.md. Developer-initiated only."
+description: "Re-align the framework after drift: refresh conventions, hazards, and bounded repository-knowledge discovery against the current codebase; respects declined-recipe history in LEARNINGS.md. Developer-initiated only."
 disable-model-invocation: true
 ---
 
@@ -40,17 +40,20 @@ Before doing anything else:
 
 Run: `git log --since="3 months ago" --stat`
 
-From this output, identify the **actively changed areas** — files and directories that have seen the most edits in the past 3 months. These are the highest-priority areas for re-analysis. List them before proceeding; they focus the analysis passes below.
+From this output, identify actively changed areas—files and directories with the most edits in the past 3 months. List them before proceeding. They prioritize profile re-analysis but do not bound shared A8: it also rechecks retained knowledge's explicit evidence/dependency sources, including quiet callers, and continues from prior uncovered areas.
 
 ---
 
 ## Phase 1 — Re-analysis
 
-Perform only the current `/bootstrap` passes for the re-selected profiles: .NET A1–A7 when .NET is
-present, warehouse-SQL W1–W3 when warehouse evidence is present, and `shared A8` once when at least
-one profile exists. Scope them to the actively changed areas identified above. Never dispatch an
-absent application profile. For unchanged areas, carry forward existing CLAUDE.md content unless
-you spot an obvious contradiction.
+Perform current `/bootstrap` passes for re-selected profiles: .NET A1–A7 when .NET is present,
+warehouse-SQL W1–W3 when warehouse evidence is present, and `shared A8` once when a profile exists.
+Scope profile passes to actively changed areas and never dispatch an absent application profile.
+For unchanged areas, carry forward existing CLAUDE.md content unless you spot an obvious
+contradiction. Shared A8 instead follows its bounded repository-knowledge contract, rechecking
+changed explicit evidence/dependencies (including quiet callers) and continuing from prior uncovered areas.
+Use native worker delegation only when the host exposes it; otherwise run the same finite passes
+sequentially. Do not assume Claude `Task` support in a Copilot host.
 
 ### .NET passes (only when the .NET profile is selected)
 
@@ -81,8 +84,14 @@ Re-run W1–W3 using their current definitions in `/bootstrap`: structure/depend
 semantics/idempotency, and validation/deployment evidence. Do not translate them into application
 layers or commands.
 
-### Shared A8: Project-Specific Skill Discovery
-Re-run the discovery pass (same definition as `bootstrap.md`'s `### A8:`), scoped to the actively changed areas and any new naming clusters that appeared in the git log period. Apply its `framework-ownership.json` boundary before inspecting candidate evidence: no `framework-owned/overwritten` path may establish recurrence, tribal knowledge, or an exemplar. **Before proposing candidates**, check `LEARNINGS.md` for `## Declined recipe:` entries and skip anything that matches — the team removed those deliberately.
+### Shared A8: Bounded Repository-Knowledge Discovery
+Re-run shared A8 using `bootstrap.md`'s bounded contract. Recheck changed explicit
+evidence/dependency sources—including quiet callers—then continue from previously uncovered areas
+rather than mining only recent work or new naming clusters. Apply the `framework-ownership.json`
+boundary before inspecting evidence; no `framework-owned/overwritten` path may establish a finding.
+Keep unavailable, renamed, deleted, external, and unresolved sources visible with their next useful
+source. Read `LEARNINGS.md` and reconsider a declined operation only when changed evidence is named.
+The pass remains read-only: do not capture or route its output here.
 
 ---
 
@@ -134,7 +143,7 @@ Apply accepted changes section by section:
 - **Architecture Decisions**: add new decisions; mark old decisions as superseded if applicable
 - **Common Tasks**: update patterns to reflect current codebase reality. The two changes below are proposed through the **same diff-and-confirm gate** as every other Phase-3 change — show the before/after and wait for the user, do not apply silently:
   - **Exemplar re-pinning**: for any instance-shaped skill (`add-endpoint`, `add-entity`, `register-service`, `add-warehouse-load`, any mined `add-X`) whose pinned exemplar file no longer exists or a clearly cleaner instance now exists — propose updating the exemplar prose line. Confirm the new path resolves (Verification Rule #1).
-  - **New A8 candidates**: if the discovery pass returned new candidates this run, apply the same quality-gate and exemplar-grounding rules from `/bootstrap` Phase 3a, and propose each as a diff.
+  - **A8 discovery output**: preserve scoped facts/operations, actual reads, exclusions, inaccessible sources, unresolved dependencies, and continuation in the report. Do not create or update project skills, wiki entries, maps, conventions, ADRs, hazards, security findings, or debt from this read-only pass; capture/routing has separate write authority.
   - **Resurrection guard** (bookkeeping side-effect, not a diff chunk): if any skill with `origin: discovered` in its frontmatter has been deleted from `.claude/skills/` since the last run, append a declined-recipe block to `LEARNINGS.md` so the discovery pass stops re-proposing it. This append is automatic but **must be listed in the Phase-4 report** (see "Declined recipes recorded"). Use this exact form:
 
     ```

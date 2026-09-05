@@ -285,6 +285,91 @@ function Assert-OnboardingCompletionGates {
     }
 }
 
+function Assert-RepositoryKnowledgeDiscoveryContracts {
+    param([object[]]$DistEntries)
+
+    $carriers = @(
+        @{ Path = '.claude/commands/bootstrap.md'; Required = @(
+            'Bounded Repository-Knowledge Discovery',
+            'A profile label is neither an inventory boundary nor permission to cross an access boundary.',
+            'Never capture secrets.',
+            'Quiet, atypical, unique, helper-derived, and conflicting-scope evidence qualifies; recurrence and naming are leads, not gates.',
+            'Read at most 40 distinct content files and follow at most two additional dependency hops per selected seed.',
+            'Inventory does not consume the content-read budget.',
+            'record actual reads',
+            'bounded continuation',
+            'Do not run provider trials or spend provider credits to validate discovery.',
+            'native worker delegation',
+            'same finite passes sequentially.',
+            'Do not assume Claude `Task`',
+            'Copilot host.'
+        ) }
+        @{ Path = '.claude/commands/rebootstrap.md'; Required = @(
+            'Bounded Repository-Knowledge Discovery',
+            'including quiet callers',
+            'previously uncovered areas',
+            'The pass remains read-only:',
+            'do not capture or route its output here.',
+            'native worker delegation',
+            'same finite passes sequentially.',
+            'Do not assume Claude `Task`',
+            'Copilot host.'
+        ) }
+        @{ Path = '.claude/agents/bootstrap-pass.md'; Required = @(
+            'Bounded Repository-Knowledge Discovery',
+            'at most 40 distinct content files',
+            'at most two additional dependency hops',
+            'Inventory does not consume the content-read budget.',
+            'do not prove intended policy or correctness',
+            'is not independent corroboration',
+            '**Selection reason**',
+            'never capture secrets.',
+            '**Actual content reads**',
+            '**Next bounded continuation**',
+            'do not run provider trials or spend provider credits to validate discovery'
+        ) }
+    )
+    $forbidden = @(
+        'Project-Specific Skill Discovery',
+        'Recurs — the same multi-step operation appears 3+ times',
+        'Read in full only the single cleanest instance',
+        'Low count by design'
+    )
+
+    foreach ($dist in $DistEntries) {
+        foreach ($carrier in $carriers) {
+            $path = Join-Path $dist.Root $carrier.Path
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+                throw "repository-knowledge carrier is missing in $($dist.Name): $($carrier.Path)"
+            }
+            $text = Read-Utf8Text $path
+            foreach ($required in $carrier.Required) {
+                if ($text.IndexOf($required, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+                    throw "repository-knowledge carrier $($dist.Name)/$($carrier.Path) omits '$required'"
+                }
+            }
+            foreach ($oldLimit in $forbidden) {
+                if ($text.IndexOf($oldLimit, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+                    throw "repository-knowledge carrier $($dist.Name)/$($carrier.Path) retains forbidden old limit '$oldLimit'"
+                }
+            }
+        }
+    }
+
+    foreach ($dist in @($DistEntries | Where-Object { $_.Name -in @('dotnet', 'monorepo') })) {
+        $path = Join-Path $dist.Root '.claude/skills/map-warehouse/SKILL.md'
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            throw "warehouse discovery carrier is missing in $($dist.Name): .claude/skills/map-warehouse/SKILL.md"
+        }
+        $text = Read-Utf8Text $path
+        foreach ($required in @('Bounded discovery exception.', '40-content-file, two-additional-hop budget', 'standalone `/map-warehouse` run, which remains request-only.')) {
+            if ($text.IndexOf($required, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+                throw "warehouse discovery carrier $($dist.Name)/.claude/skills/map-warehouse/SKILL.md omits '$required'"
+            }
+        }
+    }
+}
+
 function New-Fixture {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('doc-claims-' + [guid]::NewGuid().ToString('N'))
     [IO.Directory]::CreateDirectory($root) | Out-Null
@@ -385,6 +470,10 @@ It 'adoption screens mature architecture docs in place without re-deriving them'
 
 It 'onboarding and mirror workflows bind completion to deterministic docs sync' {
     Assert-OnboardingCompletionGates -DistEntries $distEntries
+}
+
+It 'repository-knowledge discovery carriers preserve bounded read-only parity' {
+    Assert-RepositoryKnowledgeDiscoveryContracts -DistEntries $distEntries
 }
 
 It 'each supported completion host invocation is independently required' {
