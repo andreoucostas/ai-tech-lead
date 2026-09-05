@@ -7,6 +7,8 @@
 #
 # It lifts Resolve-GateWaiverOutcome out of release.ps1 by AST rather than by copying it or by
 # slicing on comment markers: a copy would drift silently, and a marker slice breaks the moment
+param([switch]$BudgetResetMutant)
+
 # someone renames a comment. If the function is renamed or removed, extraction fails loudly here.
 . (Join-Path $PSScriptRoot '_HookHarness.ps1')
 Reset-Tests
@@ -104,6 +106,8 @@ $gateFn = $null
 $budgetFn = $null
 $budgetCallStatement = $null
 $refusalStatement = $null
+$budgetCallIndex = -1
+$refusalIndex = -1
 if ($null -eq $releaseAst) {
     $budgetExtractError = $extractError
 } else {
@@ -113,34 +117,49 @@ if ($null -eq $releaseAst) {
     $budgetFn = $releaseAst.FindAll({ param($n)
         $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Assert-GateBudget'
     }, $true) | Select-Object -First 1
-    $budgetCallStatements = @($releaseAst.EndBlock.Statements | Where-Object {
-        @($_.FindAll({ param($n)
-            $n -is [System.Management.Automation.Language.CommandAst] -and $n.GetCommandName() -eq 'Assert-GateBudget'
-        }, $true)).Count -gt 0
+    # Select only the direct top-level call. Searching descendants would mistake the function's own
+    # body for its executable caller and would let a conditional wrapper silently disappear from the
+    # boundary fixture.
+    $endStatements = @($releaseAst.EndBlock.Statements)
+    $budgetCallStatements = @($endStatements | Where-Object {
+        $_.Extent.Text.Trim() -match '^Assert-GateBudget\s*$'
     })
     if ($budgetCallStatements.Count -eq 1) { $budgetCallStatement = $budgetCallStatements[0] }
-    $refusalStatements = @($releaseAst.EndBlock.Statements | Where-Object {
+    $refusalStatements = @($endStatements | Where-Object {
         $_.Extent.StartOffset -gt $(if ($budgetCallStatement) { $budgetCallStatement.Extent.EndOffset } else { [int]::MaxValue }) -and
         $_.Extent.Text -match '(?s)\$fatal.*?exit\s+1'
     })
     if ($refusalStatements.Count -eq 1) { $refusalStatement = $refusalStatements[0] }
+    if ($budgetCallStatement) { $budgetCallIndex = [array]::IndexOf($endStatements, $budgetCallStatement) }
+    if ($refusalStatement) { $refusalIndex = [array]::IndexOf($endStatements, $refusalStatement) }
+    $interveningStatements = if ($budgetCallIndex -ge 0 -and $refusalIndex -gt ($budgetCallIndex + 1)) {
+        @($endStatements[($budgetCallIndex + 1)..($refusalIndex - 1)] | Where-Object { $_.Extent.Text.Trim() })
+    } else { @() }
     if ($null -eq $gateFn -or $null -eq $budgetFn -or $null -eq $budgetCallStatement -or $null -eq $refusalStatement) {
         $budgetExtractError = 'release.ps1 AST did not expose exactly one Gate, Assert-GateBudget caller, and downstream fatal refusal statement'
+    } elseif ($interveningStatements.Count -gt 0) {
+        $budgetExtractError = 'release.ps1 AST has unexpected top-level statements between Assert-GateBudget and downstream fatal refusal: ' +
+            (($interveningStatements | ForEach-Object { $_.Extent.Text.Trim() }) -join ' | ')
     }
 }
 
 function New-BudgetBoundaryScript {
-    param([switch]$OverBudget)
+    param(
+        [ValidateSet('within','stage','total')][string]$BudgetCase = 'within',
+        [switch]$ResetFatalAfterBudget
+    )
     Assert ($null -eq $budgetExtractError) "$budgetExtractError"
-    $seconds = if ($OverBudget) { '2.0' } else { '0.5' }
+    $seconds = if ($BudgetCase -eq 'stage') { '2.0' } else { '0.5' }
+    $totalCeiling = if ($BudgetCase -eq 'total') { '0.4' } elseif ($BudgetCase -eq 'stage') { '10.0' } else { '1.0' }
     $lines = @(
         '$ErrorActionPreference = ''Stop''',
-        '$gateBudget = [pscustomobject]@{ ''ceilings-seconds'' = [pscustomobject]@{ probe = 1.0; ''total-local-gates'' = 1.0 } }',
+        ('$gateBudget = [pscustomobject]@{ ''ceilings-seconds'' = [pscustomobject]@{ probe = 1.0; ''total-local-gates'' = ' + $totalCeiling + ' } }'),
         ('$stageTimings = [ordered]@{ probe = ' + $seconds + ' }'),
         '$script:fatal = $false',
         $gateFn.Extent.Text,
         $budgetFn.Extent.Text,
         $budgetCallStatement.Extent.Text,
+        $(if ($ResetFatalAfterBudget) { '$script:fatal = $false' }),
         $refusalStatement.Extent.Text,
         "Write-Output 'BUDGET_BOUNDARY downstream-reached'",
         'exit 0'
@@ -149,23 +168,56 @@ function New-BudgetBoundaryScript {
 }
 
 function Invoke-BudgetBoundary {
-    param([switch]$OverBudget)
+    param(
+        [ValidateSet('within','stage','total')][string]$BudgetCase = 'within',
+        [switch]$ResetFatalAfterBudget
+    )
     $path = Join-Path ([IO.Path]::GetTempPath()) ('release-budget-boundary-' + [guid]::NewGuid().ToString('N') + '.ps1')
     try {
-        [IO.File]::WriteAllText($path, (New-BudgetBoundaryScript -OverBudget:$OverBudget), (New-Object Text.UTF8Encoding($true)))
+        $reset = $ResetFatalAfterBudget -or $BudgetResetMutant
+        [IO.File]::WriteAllText($path, (New-BudgetBoundaryScript -BudgetCase $BudgetCase -ResetFatalAfterBudget:$reset), (New-Object Text.UTF8Encoding($true)))
         return Invoke-RawProcess -FileName (Get-PsExe) -Arguments @('-NoProfile','-ExecutionPolicy','Bypass','-File',$path)
     } finally { Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue }
 }
 
 It 'the actual release budget caller allows clean work and refuses over-budget work downstream' {
-    $clean = Invoke-BudgetBoundary
-    Assert ($clean.Exit -eq 0) "within-budget source boundary did not allow: EXIT=$($clean.Exit); OUT=$($clean.Out); ERR=$($clean.Err)"
-    Assert ($clean.Out -match 'BUDGET_BOUNDARY downstream-reached') 'within-budget boundary did not reach downstream continuation'
+    $within = Invoke-BudgetBoundary -BudgetCase within
+    Assert ($within.Exit -eq 0) "within-budget source boundary did not allow: EXIT=$($within.Exit); OUT=$($within.Out); ERR=$($within.Err)"
+    Assert ($within.Out -match 'BUDGET_BOUNDARY downstream-reached') 'within-budget boundary did not reach downstream continuation'
 
-    $over = Invoke-BudgetBoundary -OverBudget
-    Assert ($over.Exit -eq 1) "over-budget source boundary did not refuse: EXIT=$($over.Exit); OUT=$($over.Out); ERR=$($over.Err)"
-    Assert ($over.Out -match 'Release REFUSED: fix the failing gate') 'over-budget boundary did not execute the release refusal branch'
-    Assert ($over.Out -notmatch 'BUDGET_BOUNDARY downstream-reached') 'over-budget boundary reached downstream success continuation'
+    $stage = Invoke-BudgetBoundary -BudgetCase stage
+    Assert ($stage.Exit -eq 1) "stage-limit boundary did not refuse: EXIT=$($stage.Exit); OUT=$($stage.Out); ERR=$($stage.Err)"
+    Assert ($stage.Out -match 'GATE FAIL: gate budget: probe') 'stage-limit boundary did not execute the stage budget gate'
+    Assert ($stage.Out -match 'Release REFUSED: fix the failing gate') 'stage-limit boundary did not execute the release refusal branch'
+    Assert ($stage.Out -notmatch 'GATE FAIL: gate budget: local gates took') 'stage-limit control unexpectedly failed through the total limit'
+
+    $total = Invoke-BudgetBoundary -BudgetCase total
+    Assert ($total.Exit -eq 1) "total-limit boundary did not refuse: EXIT=$($total.Exit); OUT=$($total.Out); ERR=$($total.Err)"
+    Assert ($total.Out -match 'GATE FAIL: gate budget: local gates took') 'total-limit boundary did not execute the total budget gate'
+    Assert ($total.Out -notmatch 'GATE FAIL: gate budget: probe') 'total-limit control unexpectedly failed through the stage limit'
+    Assert ($total.Out -match 'Release REFUSED: fix the failing gate') 'total-limit boundary did not execute the release refusal branch'
+    Assert ($total.Out -notmatch 'BUDGET_BOUNDARY downstream-reached') 'over-budget boundary reached downstream success continuation'
+}
+
+if (-not $BudgetResetMutant) {
+    It 'the fatal-reset hostile mutant makes the executable budget boundary go red' {
+        # Control first: otherwise a broken probe can make every mutant look caught.
+        $control = Invoke-BudgetBoundary -BudgetCase stage
+        Assert ($control.Exit -eq 1 -and $control.Out -match 'Release REFUSED: fix the failing gate') `
+            "stage-limit control was not red before mutation: EXIT=$($control.Exit); OUT=$($control.Out)"
+
+        # This is an in-memory source mutation: New-BudgetBoundaryScript inserts exactly
+        # `$script:fatal = `$false immediately after the extracted Assert-GateBudget statement.
+        # The child runs the same executable-boundary assertion, so a false-green oracle makes this
+        # child green and the parent self-test fails.
+        $mutant = Invoke-RawProcess -FileName (Get-PsExe) -Arguments @(
+            '-NoProfile','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-BudgetResetMutant'
+        )
+        Assert ($mutant.Exit -ne 0) "fatal-reset mutant suite stayed green: OUT=$($mutant.Out); ERR=$($mutant.Err)"
+        Assert ($mutant.Out -match 'actual release budget caller allows clean work and refuses over-budget work downstream') `
+            'fatal-reset mutant did not exercise the actual budget boundary case'
+        Assert ($mutant.Out -match '1 failed') 'fatal-reset mutant did not produce a failing executable boundary case'
+    }
 }
 
 # --- the runtime budget -------------------------------------------------------------------------

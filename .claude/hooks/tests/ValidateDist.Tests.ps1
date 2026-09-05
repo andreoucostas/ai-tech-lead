@@ -12,7 +12,8 @@
 param(
     [string]$Only,
     [switch]$DriverProbe,
-    [int]$ProbeChildExit = 0
+    [int]$ProbeChildExit = 0,
+    [ValidateSet('valid','missing','zero','ambiguous')][string]$ProbeSummary = 'valid'
 )
 . (Join-Path $PSScriptRoot '_HookHarness.ps1')
 . (Join-Path $PSScriptRoot '_MutationHelper.ps1')
@@ -129,7 +130,7 @@ function Get-RegisteredCaseNames {
 }
 
 function Start-ValidateDistChild {
-    param([string]$Executable, [string[]]$Arguments, [string]$StdOutPath, [string]$StdErrPath)
+    param([string]$Executable, [string[]]$Arguments)
     $startInfo = New-Object System.Diagnostics.ProcessStartInfo
     $startInfo.FileName = $Executable
     # ProcessStartInfo has no ArgumentList on Windows PowerShell 5.1. These arguments are all
@@ -148,7 +149,7 @@ function Start-ValidateDistChild {
     [void]$process.Start()
     $stdoutTask = $process.StandardOutput.ReadToEndAsync()
     $stderrTask = $process.StandardError.ReadToEndAsync()
-    return [pscustomobject]@{ Proc=$process; Out=$StdOutPath; Err=$StdErrPath; StdOutTask=$stdoutTask; StdErrTask=$stderrTask }
+    return [pscustomobject]@{ Proc=$process; StdOutTask=$stdoutTask; StdErrTask=$stderrTask }
 }
 
 # Child-process startup and dist copying dominate the remaining cost. Cap concurrency at eight and
@@ -169,16 +170,24 @@ if (-not $Only) {
         # 7 (the planted process-result defect). This is deliberately a process probe, not copied
         # classification logic, so removing the child-exit authority below turns the second probe
         # green and fails this suite.
-        foreach ($probeExit in @(0, 7)) {
-            $probeOutput = & $exe -NoProfile -ExecutionPolicy Bypass -File $self -DriverProbe -ProbeChildExit $probeExit 2>&1
+        $probes = @(
+            [pscustomobject]@{ Summary='valid'; Exit=0; Expected=0 },
+            [pscustomobject]@{ Summary='valid'; Exit=7; Expected=1 },
+            [pscustomobject]@{ Summary='missing'; Exit=0; Expected=1 },
+            [pscustomobject]@{ Summary='zero'; Exit=0; Expected=1 },
+            [pscustomobject]@{ Summary='ambiguous'; Exit=0; Expected=1 }
+        )
+        foreach ($probe in $probes) {
+            $probeOutput = & $exe -NoProfile -ExecutionPolicy Bypass -File $self -DriverProbe `
+                -ProbeChildExit $probe.Exit -ProbeSummary $probe.Summary 2>&1
             $probeStatus = [int]$LASTEXITCODE
             $probeText = ($probeOutput -join "`n")
-            if ($probeExit -eq 0) {
+            if ($probe.Expected -eq 0) {
                 Assert ($probeStatus -eq 0) "driver boundary exit-0 control was not green: EXIT=$probeStatus; $probeText"
             } else {
-                Assert ($probeStatus -ne 0) "driver boundary nonzero child was accepted as green: EXIT=$probeStatus; $probeText"
-                Assert ($probeText -match 'DRIVER_BOUNDARY child-exit=7 classified=FAIL') `
-                    "driver boundary did not classify child exit 7 as one failed case: $probeText"
+                Assert ($probeStatus -ne 0) "driver boundary $($probe.Summary)/exit-$($probe.Exit) was accepted as green: EXIT=$probeStatus; $probeText"
+                Assert ($probeText -match ("DRIVER_BOUNDARY summary={0} classified=FAIL" -f $probe.Summary)) `
+                    "driver boundary did not classify $($probe.Summary)/exit-$($probe.Exit) as one failed case: $probeText"
             }
         }
     }
@@ -196,14 +205,11 @@ if (-not $Only) {
     while ($queue.Count -gt 0 -or $running.Count -gt 0) {
         while ($queue.Count -gt 0 -and $running.Count -lt $throttle) {
             $name = $queue.Dequeue()
-            $out  = Join-Path ([IO.Path]::GetTempPath()) ('vdcase-' + [guid]::NewGuid().ToString('N') + '.txt')
-            # Every case name contains spaces and colons, and Start-Process joins ArgumentList with
-            # spaces WITHOUT quoting -- unquoted, the name arrived as a dozen separate arguments,
-            # -Only bound to the first word, no case matched, and the suite reported 0 passed /
-            # 0 failed in 8 seconds. It looked like a 50x speedup and was a total loss of coverage.
+            # Every case name contains spaces and colons, so quote it while building the native
+            # ProcessStartInfo command line; otherwise -Only binds to only its first word.
             $childArgs = @('-NoProfile','-ExecutionPolicy','Bypass','-File',$self,'-Only',$name)
-            if ($DriverProbe) { $childArgs += @('-ProbeChildExit', [string]$ProbeChildExit) }
-            $p = Start-ValidateDistChild -Executable $exe -Arguments $childArgs -StdOutPath $out -StdErrPath "$out.err"
+            if ($DriverProbe) { $childArgs += @('-ProbeChildExit', [string]$ProbeChildExit, '-ProbeSummary', $ProbeSummary) }
+            $p = Start-ValidateDistChild -Executable $exe -Arguments $childArgs
             $running += [pscustomobject]@{ Name=$name; Child=$p }
         }
         Start-Sleep -Milliseconds 200
@@ -215,43 +221,46 @@ if (-not $Only) {
     $pass=0; $fail=0; $skip=0
     foreach ($name in $caseNames) {
         $r = $results[$name]
-        $r.Child.Proc.WaitForExit()
-        [IO.File]::WriteAllText($r.Child.Out, $r.Child.StdOutTask.GetAwaiter().GetResult())
-        [IO.File]::WriteAllText($r.Child.Err, $r.Child.StdErrTask.GetAwaiter().GetResult())
-        $text = if (Test-Path $r.Child.Out) { Get-Content $r.Child.Out -Raw } else { '' }
-        $err  = if (Test-Path $r.Child.Err) { Get-Content $r.Child.Err -Raw } else { '' }
-        # Strip the child's own summary line; this driver prints one aggregate summary instead.
-        $lines = @($text -split "`r?`n" | Where-Object { $_ -notmatch '^ValidateDist\.Tests \(B-92\):' })
-        $lines | Where-Object { $_ -ne '' } | ForEach-Object { Write-Host $_ }
-        $summaryMatches = [regex]::Matches($text, '(?m)^ValidateDist\.Tests \(B-92\): (\d+) passed, (\d+) failed, (\d+) skipped\s*$')
-        $r.Child.Proc.Refresh()
-        $childExit = [int]$r.Child.Proc.ExitCode
-        if ($summaryMatches.Count -ne 1) {
-            # Missing or ambiguous summaries cannot establish a verdict. Count one failed case and
-            # retain stderr so a parser/child-start failure remains distinguishable from bad content.
-            Write-Host ("[FAIL] {0} -- child summary count was {1}, expected exactly one (exit {2}). stderr: {3}" -f $name, $summaryMatches.Count, $childExit, $err.Trim())
-            $fail++
-        } else {
-            $match = $summaryMatches[0]
-            $cp = [int]$match.Groups[1].Value; $cf = [int]$match.Groups[2].Value; $cs = [int]$match.Groups[3].Value
-            $verdictCount = $cp + $cf + $cs
-            if ($verdictCount -ne 1) {
-                # Each child is handed exactly one case. A zero or multi-verdict summary is therefore
-                # ambiguous and must not inflate aggregate pass/fail/skip counts.
-                Write-Host ("[FAIL] {0} -- child reported {1} verdicts, expected exactly one (exit {2}). stderr: {3}" -f $name, $verdictCount, $childExit, $err.Trim())
-                $fail++
-            } elseif ($childExit -ne 0) {
-                # Process status is authoritative at this boundary. Replace the child's claimed
-                # verdict with one failure rather than adding a second failure to its counters.
-                Write-Host ("[FAIL] {0} -- child exited {1}; its summary was not accepted" -f $name, $childExit)
-                if ($DriverProbe) { Write-Host ("DRIVER_BOUNDARY child-exit={0} classified=FAIL" -f $childExit) }
+        try {
+            $r.Child.Proc.WaitForExit()
+            $text = $r.Child.StdOutTask.GetAwaiter().GetResult()
+            $err  = $r.Child.StdErrTask.GetAwaiter().GetResult()
+            # Strip the child's own summary line; this driver prints one aggregate summary instead.
+            $lines = @($text -split "`r?`n" | Where-Object { $_ -notmatch '^ValidateDist\.Tests \(B-92\):' })
+            $lines | Where-Object { $_ -ne '' } | ForEach-Object { Write-Host $_ }
+            $summaryMatches = [regex]::Matches($text, '(?m)^ValidateDist\.Tests \(B-92\): (\d+) passed, (\d+) failed, (\d+) skipped\s*$')
+            $r.Child.Proc.Refresh()
+            $childExit = [int]$r.Child.Proc.ExitCode
+            if ($summaryMatches.Count -ne 1) {
+                # Missing or ambiguous summaries cannot establish a verdict. Count one failed case and
+                # retain stderr so a parser/child-start failure remains distinguishable from bad content.
+                Write-Host ("[FAIL] {0} -- child summary count was {1}, expected exactly one (exit {2}). stderr: {3}" -f $name, $summaryMatches.Count, $childExit, $err.Trim())
+                if ($DriverProbe) { Write-Host ("DRIVER_BOUNDARY summary={0} classified=FAIL" -f $ProbeSummary) }
                 $fail++
             } else {
-                $pass += $cp; $fail += $cf; $skip += $cs
-                if ($DriverProbe) { Write-Host ("DRIVER_BOUNDARY child-exit=0 classified=PASS" ) }
+                $match = $summaryMatches[0]
+                $cp = [int]$match.Groups[1].Value; $cf = [int]$match.Groups[2].Value; $cs = [int]$match.Groups[3].Value
+                $verdictCount = $cp + $cf + $cs
+                if ($verdictCount -ne 1) {
+                    # Each child is handed exactly one case. A zero or multi-verdict summary is therefore
+                    # ambiguous and must not inflate aggregate pass/fail/skip counts.
+                    Write-Host ("[FAIL] {0} -- child reported {1} verdicts, expected exactly one (exit {2}). stderr: {3}" -f $name, $verdictCount, $childExit, $err.Trim())
+                    if ($DriverProbe) { Write-Host ("DRIVER_BOUNDARY summary={0} classified=FAIL" -f $ProbeSummary) }
+                    $fail++
+                } elseif ($childExit -ne 0) {
+                    # Process status is authoritative at this boundary. Replace the child's claimed
+                    # verdict with one failure rather than adding a second failure to its counters.
+                    Write-Host ("[FAIL] {0} -- child exited {1}; its summary was not accepted" -f $name, $childExit)
+                    if ($DriverProbe) { Write-Host ("DRIVER_BOUNDARY summary={0} classified=FAIL" -f $ProbeSummary) }
+                    $fail++
+                } else {
+                    $pass += $cp; $fail += $cf; $skip += $cs
+                    if ($DriverProbe) { Write-Host ("DRIVER_BOUNDARY summary={0} classified=PASS" -f $ProbeSummary) }
+                }
             }
+        } finally {
+            $r.Child.Proc.Dispose()
         }
-        Remove-Item -Force -ErrorAction SilentlyContinue $r.Child.Out, $r.Child.Err
     }
     if ($global:AtlEmitCaseCount) { Write-Host ("CASE_COUNT {0}" -f ($pass + $fail)) }
     Write-Host ("ValidateDist.Tests (B-92): {0} passed, {1} failed, {2} skipped" -f $pass, $fail, $skip)
@@ -262,7 +271,15 @@ $__origIt = ${function:It}
 function It { param([string]$Name, [scriptblock]$Body) if ($Name -ne $Only) { return }; & $__origIt $Name $Body }
 
 if ($Only -eq '__driver-boundary-probe__') {
-    Write-Host 'ValidateDist.Tests (B-92): 1 passed, 0 failed, 0 skipped'
+    switch ($ProbeSummary) {
+        'missing' { }
+        'zero' { Write-Host 'ValidateDist.Tests (B-92): 0 passed, 0 failed, 0 skipped' }
+        'ambiguous' {
+            Write-Host 'ValidateDist.Tests (B-92): 1 passed, 0 failed, 0 skipped'
+            Write-Host 'ValidateDist.Tests (B-92): 1 passed, 0 failed, 0 skipped'
+        }
+        default { Write-Host 'ValidateDist.Tests (B-92): 1 passed, 0 failed, 0 skipped' }
+    }
     exit $ProbeChildExit
 }
 
