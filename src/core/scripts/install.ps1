@@ -1,6 +1,5 @@
 ﻿# Install the AI Tech Lead Framework into a target repository.
 # Usage: pwsh -NoProfile -File scripts/install.ps1 [-AllowDirtyTree] [-WhatIf] [-AllowDowngrade] C:\path\to\target-repo
-#        -GitHooks is accepted only as a v0.83 compatibility refusal and never mutates a Git hook.
 #
 # Copies the template's framework files into the target, EXCLUDING the .git directory, the
 # .template-repo marker (which would disable the consumer's CI guardrail), the template repo's own
@@ -17,7 +16,6 @@
 #                .claude/settings.json is backed up, refreshed, and adapted to the host.
 param(
     [Parameter(Mandatory = $true)][string]$Target,
-    [switch]$GitHooks,
     [switch]$AllowDirtyTree,
     [switch]$WhatIf,
     [switch]$AllowDowngrade
@@ -36,11 +34,6 @@ if (-not (Test-Path -LiteralPath $Target -PathType Container)) { Write-Error "Ta
 $src = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $tgt = (Resolve-Path $Target).Path
 if ($tgt -eq $src) { Write-Error "Target is the template repo itself — choose a different target."; exit 2 }
-if ($GitHooks) {
-    [Console]::Error.WriteLine("-GitHooks was retired in v0.83.0. No Git hook was changed. Inspect .git/hooks/pre-commit and remove or replace any AI Tech Lead convenience hook manually, then run $followUpPowerShell scripts/framework-doctor.ps1.")
-    exit 2
-}
-
 # Brownfield archive paths must never traverse a reparse point. Resolving a target path is not
 # enough: a junction/symlink below it can redirect either the collision source or the archive
 # destination outside the consumer repository before Move-Item gets a chance to report anything.

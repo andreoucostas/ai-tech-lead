@@ -89,32 +89,35 @@ foreach ($dist in @('dotnet', 'angular', 'monorepo')) {
     }
 }
 
-It '-GitHooks remains a non-mutating exit-2 compatibility refusal at both PowerShell entrypoints' {
+function Get-B220TreeFingerprint {
+    param([Parameter(Mandatory)][string]$Root)
+    $rootPath = (Resolve-Path -LiteralPath $Root).Path.TrimEnd('\', '/')
+    return (@(Get-ChildItem -LiteralPath $rootPath -Recurse -Force | Sort-Object FullName | ForEach-Object {
+        $relative = $_.FullName.Substring($rootPath.Length).TrimStart('\', '/') -replace '\\', '/'
+        if ($_.PSIsContainer) { "D|$relative" }
+        else { "F|$relative|$((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash)" }
+    }) -join "`n")
+}
+
+It '-GitHooks is rejected by native parameter binding before either entrypoint can mutate' {
     $target = Join-Path ([IO.Path]::GetTempPath()) ('git-hooks-retired-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Force -Path (Join-Path $target '.git/hooks') | Out-Null
     $hook = Join-Path $target '.git/hooks/pre-commit'
     [IO.File]::WriteAllText($hook, "#!/bin/sh`nCONSUMER SENTINEL`n", [Text.UTF8Encoding]::new($false))
-    $before = [Convert]::ToBase64String([IO.File]::ReadAllBytes($hook))
     try {
         foreach ($entrypoint in @(
             [pscustomobject]@{ Name = 'root'; Path = (Join-Path $repoRoot 'install.ps1'); Arguments = @('-GitHooks', $target) },
             [pscustomobject]@{ Name = 'direct'; Path = (Join-Path $repoRoot 'src/core/scripts/install.ps1'); Arguments = @('-Target', $target, '-GitHooks') }
         )) {
+            $before = Get-B220TreeFingerprint -Root $target
             $out = & (Get-PsExe) -NoProfile -File $entrypoint.Path @($entrypoint.Arguments) 2>&1 | Out-String
             $code = $LASTEXITCODE
-            Assert ($code -eq 2) "$($entrypoint.Name) -GitHooks refusal exited $code, expected 2: $out"
-            Assert ($out -match '-GitHooks was retired in v0\.83\.0') "$($entrypoint.Name) refusal lacks retirement guidance"
-            Assert ($out -match 'No Git hook was changed') "$($entrypoint.Name) refusal does not state the mutation boundary"
-            Assert ($out -match 'framework-doctor\.ps1') "$($entrypoint.Name) refusal lacks the diagnostic next step"
-            $expectedDoctor = if ($PSVersionTable.PSVersion.Major -ge 7) {
-                'pwsh -NoProfile -File scripts/framework-doctor.ps1'
-            } else {
-                'powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/framework-doctor.ps1'
-            }
-            $flatOut = ($out -replace '\s+', ' ').Trim()
-            Assert ($flatOut.Contains($expectedDoctor)) "$($entrypoint.Name) refusal did not print the canonical host-specific doctor command: $out"
-            Assert ($out -notmatch 'OPERATION-PLAN|Done') "$($entrypoint.Name) refusal printed plan/completion output"
-            Assert ([Convert]::ToBase64String([IO.File]::ReadAllBytes($hook)) -ceq $before) "$($entrypoint.Name) refusal changed consumer hook bytes"
+            $after = Get-B220TreeFingerprint -Root $target
+            Assert ($code -ne 0) "$($entrypoint.Name) unknown -GitHooks argument unexpectedly succeeded: $out"
+            Assert ($out -match '(?i)(ParameterBindingException|NamedParameterNotFound|parameter cannot be found)' -and $out -match '(?i)GitHooks') "$($entrypoint.Name) did not report a native named-parameter binding error for GitHooks: $out"
+            Assert ($out -notmatch 'was retired in v0\.83\.0|No Git hook was changed') "$($entrypoint.Name) reached the retired compatibility refusal: $out"
+            Assert ($out -notmatch 'OPERATION-PLAN|Done') "$($entrypoint.Name) printed plan/completion output"
+            Assert ($after -ceq $before) "$($entrypoint.Name) binding failure changed the target tree"
         }
     } finally { Remove-Item -Recurse -Force -LiteralPath $target -ErrorAction SilentlyContinue }
 }
