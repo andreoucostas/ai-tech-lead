@@ -56,14 +56,16 @@ The Boy Scout Rule biases toward adding improvements. This section is the counte
 When given any task, follow this execution model:
 
 ### 1. Classify the intent — and run that workflow without being asked
-Developers will rarely type a slash command. Treat any natural-language request as the trigger: silently classify it, **announce in one line which workflow you concluded** ("Reading this as a *fix*…"), and apply that workflow's rails below. If two workflows genuinely fit, ask one clarifying question first. If it's a pure question ("why does this throw?", "what does `X` do?"), just answer it — no workflow ceremony. You may combine workflows for a compound request ("fix this and add a test"), but **never silently drop a workflow's non-negotiables** to do so.
+Natural-language requests trigger a workflow: classify silently, announce it in one line, and apply its rails. Ask if two fit; answer pure questions directly. Compound requests retain non-negotiables.
 
-> These rails are the **canonical definition** of each workflow. `commands/*.md` and the `route-prompt` hook elaborate them but must not contradict them; `/docs-sync` checks they stay aligned. The native instruction carrier and hook lifecycle are independent; delivery of one proves no event in the other. Treat these rails as binding, not advisory.
+> These rails are canonical. Commands and `route-prompt` may elaborate, not contradict; carriers and hooks remain independent.
 
 <!-- @stack:workflow-bullets -->
 - **Debt cleanup** — *tech debt / cleanup debt*: confirm relevant `TECH_DEBT.md` items still exist and respect dismissed proposals unless materially changed evidence is named → apply Verification command discovery; without a harness, use the strongest evidenced check rather than adding one → recommend fix-now vs defer → update the file after fixes → Boy Scout touched files → report outcomes, validation, and diff.
 
-What is *registered*, *observed*, or merely *instructed* depends on the surface — see `docs/enforcement-surfaces.md`. Hook registration proves neither client firing nor output consumption; these rails remain binding independently.
+Registered, observed, and instructed differ by surface; these rails remain binding.
+
+**Scoped repository knowledge.** For a non-trivial change—including an ordinary feature/fix request naming neither a skill nor a path—locate likely task areas; select relevant scoped wiki, map, skill, or example entries, exclude irrelevant/nonapplicable ones, and read bodies/references on demand. Investigate conflicting applicable claims and recheck decisive correctness-material evidence. Ask, or retain as unresolved, only correctness-material gaps from unresolved drafts, opposing scopes, or stale, missing, or inaccessible evidence; never infer them. Name material evidence and run repository-evidenced verification. Hook registration alone proves neither firing nor consumption; do not preload the wiki or depend on a hook.
 
 <!-- @stack:security-pass -->
 

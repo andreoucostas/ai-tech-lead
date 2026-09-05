@@ -42,3 +42,10 @@ recorded as inability to examine, not as a capability failure.
 | Copilot VS Code agent mode | userPromptSubmitted context consumed | No current live run; no interactive VS Code/Copilot seat available | unavailable | not certified — no seat |
 | Copilot VS Code agent mode | postToolUse context consumed | No current live run; no interactive VS Code/Copilot seat available | unavailable | not certified — no seat |
 | Copilot VS Code agent mode | Stop/agentStop firing and Boy Scout delivery | Event spelling, firing, and output consumption have not been observed; no interactive VS Code/Copilot seat available | unavailable | not certified — no seat |
+
+Availability-only inventory on 2026-09-05: `copilot --version` reported CLI 1.0.80;
+`code --version` reported VS Code 1.132.0 x64 at commit
+`df53daabb18cd157bdb08c7f01c34df936cf12f4`; and the invoked default Code profile's
+`--list-extensions --show-versions` command returned two lines with no Copilot match. This does not
+establish another profile or remote environment, an available seat, model routing, instruction
+consumption, or workflow efficacy.
