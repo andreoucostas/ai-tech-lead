@@ -6,8 +6,8 @@ description: >
   harness-evidenced HTTP test coverage.
   USE FOR: a service that does not exist yet — a new HTTP client for a backend resource, a new
   business-logic service.
-  DO NOT USE FOR: adding a method to an existing service (ordinary work — follow CLAUDE.md >
-  Conventions, or `/feature`); a signal-based store for shared state (use `add-signal-store`);
+  DO NOT USE FOR: adding a method to an existing service (ordinary work — follow the CLAUDE.md
+  conventions, or `/feature`); a signal-based store for shared state (use `add-signal-store`);
   changing an existing service's scope or dependencies (use `/refactor`); backfilling tests (use
   `add-tests`).
 ---

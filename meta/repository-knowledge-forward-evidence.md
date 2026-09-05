@@ -111,3 +111,33 @@ generic skill-creator `quick_validate.py` rejected the required product lifecycl
 draft invisible to the framework's deletion/decline lifecycle. None of these runs exercised a
 confirmed semantic refresh of existing owner content, budget exhaustion, or target-host discovery
 and application; those remain separate obligations.
+
+## B-216 operation-authority observation
+
+A single fresh collaboration evaluator received only the revised `register-service` skill (SHA-256
+`691B60E696A5804034953A4BF9421531630248770775085E00E73DB222623DBD`), the raw maintainer Unity
+composition-root fixture (SHA-256
+`CF8F4053344B4C7E44A200CC45C861309452CB3C6C4E4FEC5AF477C6CEC660EF`), and a neutral request to
+register `IEnemySpawner` backed by `WaveEnemySpawner`. It did not receive the expected result. The
+retained unmodified report is `.forward-eval/r1-unity-register-service/evaluator-output.md`
+(SHA-256 `8FB3C1F02856E87F242DC836FE0494BF7BC7BD5A9F318AC4AD6045617E6E446A`).
+
+The report conditionally proposed the fixture's evidenced `RegisterType` mechanism and
+`ContainerControlledLifetimeManager`, introduced no MS.DI mechanism, and withheld an edit pending
+ownership, real composition-root, type/dependency, lifetime, consumption, and verification
+evidence. The delivery lead and independent root reviewer read the supplied inputs and report. This
+is a narrow authoring-agent observation: it proves no source edit, service integration, target
+Copilot/VS Code behavior, or representative efficacy. It did not exercise conflicting or unreadable
+project-pattern references, alternate Angular/.NET mechanisms, or lifecycle promotion.
+
+An earlier retained attempt at `.forward-eval/r1-unity-20260905/evaluator-output.md` was blocked
+before reading its inputs. Its setup also paired the Angular `add-service` instruction with a Unity
+game fixture rather than the accepted .NET `register-service` case, so it supplies no semantic
+evidence. Its claims about provider or billing activity remain evaluator self-report rather than an
+independently observed absence.
+
+The root reviewer also ran the generic skill-creator frontmatter check against all eight operation
+skills and observed 7/8 valid before cleanup. Angular `add-service` failed because its pre-existing
+description contained the literal navigation form `CLAUDE.md > Conventions`; the body was not the
+failure. Rewording that description as “the CLAUDE.md conventions” preserved its meaning, and the
+same narrow check then passed. This is frontmatter portability evidence, not behavioral proof.
