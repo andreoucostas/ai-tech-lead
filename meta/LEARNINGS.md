@@ -2113,3 +2113,24 @@ A binary exception must also be type-aware. Treating every NUL-bearing blob as s
 allowed a BOM-prefixed PowerShell file to evade both strict decoding and the canonical guard. Files
 whose extension carries an executable text contract must fail closed when their bytes contradict
 that contract; only unrelated binary artifacts may be explicitly skipped.
+
+## 2026-09-05 — Discovery coverage, grounded knowledge and use are different obligations
+
+A pass can truthfully enumerate the whole tree while still missing consequential knowledge by
+requiring recurrence, clustering only names and reading one exemplar. Repetition describes a
+pattern's prevalence, not its intended authority; a unique helper-derived rule can matter more
+than many uniform scaffolds. Broad inventory needs bounded semantic exploration, counterexamples
+and explicit continuation, without claiming exhaustive recall.
+
+Persistence also has operational semantics. A newly drafted SKILL.md is discoverable before PR
+review; a never-verified wiki entry cannot honestly receive a real last-verified date; a detailed
+coverage note placed in FRAMEWORK-CONTEXT becomes instructed context on ordinary nontrivial tasks.
+These were verified source constraints in the strategic review, not failures reproduced in a
+consumer session. Design must state draft-use limits, preserve recheck truth and keep detailed
+discovery on demand. A distribution footprint cannot measure generated consumer context.
+
+Finally, correct artifacts, observed access and better task outcomes require separate evidence.
+Neither a historical Claude observation nor a same-host Auto route that changes models can answer
+current Copilot efficacy. User examples should test whether broad discovery finds nonlocal rules,
+not silently become the feature's domain whitelist. WSD-074 records this prospective contract;
+implementation and field outcomes remain open work rather than inferred accomplishments.

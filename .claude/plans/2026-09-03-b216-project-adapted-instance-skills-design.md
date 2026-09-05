@@ -1,5 +1,12 @@
 # B-216 — scoped solution recipes inside instance skills
 
+> **EXECUTION AUTHORITY SUPERSEDED 2026-09-05 by WSD-074.** This document preserves the original
+> problem, prior single-delivery choice, critiques and stopped calibration as historical evidence.
+> Use `.claude/plans/2026-09-05-repository-knowledge-strategy.md` section 6 and the current B-216
+> backlog entry to re-lock before implementation. No mirror/Bash branch, mandatory registry grammar,
+> old budget, or substitute-provider efficacy contract below is current execution authority. No
+> sidecar behavioral trial is claimed to have succeeded. The previous status text follows unchanged.
+
 **Status:** PAUSED FOR B-217 — the pretrial NO-GO remains recorded, but the lifecycle below must be
 re-locked around the single canonical skill tree after the mirror retirement ships.
 **Filed against:** v0.81.0 (2026-09-03)

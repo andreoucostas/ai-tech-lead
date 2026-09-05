@@ -1,399 +1,381 @@
-# Framework backlog — Fable exit audit (2026-07-04, framework v0.25.0)
+# Framework backlog
 
-> **How to use this file.** This is the prioritized work list produced by a full-workspace audit
-> before model handover. Every entry is self-contained: problem, evidence, suggested approach,
-> effort (S ≤ ½ session, M ≈ 1 session, L = multi-session), and which meta-invariants (#1–#7 in
-> the root `CLAUDE.md`) the fix must respect. Before starting any entry, read root `CLAUDE.md`
-> (meta-workflows, definition of done) and `DEVELOPING.md` (command recipes). Ship via
-> `.claude/scripts/release.ps1` when shipped behavior changes [#7]. Work P1s first; within a
-> band, order is the suggested sequence. Complete an entry by moving it intact to
-> `meta/BACKLOG-DONE.md` with its closure date and shipped version when one exists.
->
-> **Audit baseline:** all existing deterministic gates were GREEN at audit time — both repos'
-> `scripts/template-checks.ps1` (exit 0), `.claude/scripts/check-lockstep.ps1` (exit 0), both
-> repos' `tests/hooks/Invoke-HookTests.ps1` (84 and 83 tests, 0 failures), the meta suite
-> `.claude/hooks/tests/Invoke-HookTests.ps1` (7/7), `bash -n` over all 26 `.sh` files, and a
-> PS-parse of all 43 `.ps1` files. Everything below is what the gates *cannot* see, plus known
-> deferred work converted into entries.
->
-> **Working hazards for the executing agent** (cost this audit real time):
-> - The workspace root is a git repo whose `.gitignore` excludes the template repos — a `Grep`
->   from `C:\temp\AIdrivenDev` **silently skips everything under `ai-tech-lead-*/`** (ripgrep
->   honors .gitignore). Search inside a repo path explicitly, or use `grep -r`.
-> - Windows PowerShell 5.1 `Get-Date -UFormat %s` returns a *fractional, local-time* epoch
->   string (observed: `1783162609.9606`); pwsh 7 returns an integer UTC epoch. Never parse it
->   culture-sensitively (see B-02).
+Current work only. Reconciled 2026-09-05 against v0.83.0 and WSD-074. Read root `CLAUDE.md`,
+`DEVELOPING.md` and `meta/decisions-index.md` before implementation. Effort: S <= half a session,
+M about one session, L multiple sessions; live observation time is separate from implementation.
 
----
+Strategic contract: `.claude/plans/2026-09-05-repository-knowledge-strategy.md`. The objective is
+broad discovery of repository-specific knowledge and better ordinary Copilot outcomes, not
+hard-coded reporting or ingestion skills. This file does not authorize provider spend, private-code
+export, production queries, or external participant contact.
 
-## P1 — incorrect behavior or false safety claims on supported configurations
+## Execution order and common delivery contract
 
-**All P1 items (B-01, B-02, B-03) shipped in v0.25.1 (2026-07-04) — see `meta/BACKLOG-DONE.md`.** Two
-follow-ons this band surfaced are folded into existing P2 entries: the Copilot postToolUse leg is
-dead (feeds B-08 matrix rows + B-09 post-write demotion) and the folder-trust prerequisite feeds
-`framework-doctor` (B-16). The B-01 optional guard hardening was deferred by decision (see `meta/BACKLOG-DONE.md`).
-**B-37 (post-ship review of v0.27.0) shipped in v0.27.1 (2026-07-16) — see `meta/BACKLOG-DONE.md`.**
+| Order | Item | Current readiness |
+|---|---|---|
+| 1 | B-222 broad discovery | Ready for implementation-contract critique and offline fixtures |
+| 1 alongside it | B-225 value protocol | Offline protocol/controls ready; live arms need explicit prerequisites |
+| 2 | B-223 capture and refresh | Depends on B-222 output contract; shared-file edits follow B-222 |
+| 3 | B-224 ordinary-task Copilot use | Depends on B-223; live verification needs available seats/model routes |
+| Independent repairs | B-216 instance skills; B-226 review scope; B-227 evidence-based verdicts | B-216 needs carrier re-lock; the others are bounded design/implementation work |
+| Next v0.84+ release | B-220 retired installer argument | Ready; not a prerequisite for discovery |
+| When a participant exists | B-42 independent FS2 | Existing packet ready; independent run outstanding |
+| Deferred | B-49 drill and consumer self-assessment | Old instrument invalid; no execution authority |
 
-### B-220 · Remove the retired `-GitHooks` compatibility parameter in v0.84
-**Filed against:** v0.83.0 (2026-09-04)
-**Priority:** P2 · **Effort:** S · **Invariants:** #1 #6 #7
+B-222–B-224 are one coherent product increment unless an intermediate delivery is useful and
+reachable on its own. They are not three required releases. Do not require every independent repair
+before trying discovery. Sol should assign Terra one named package and immutable baseline at a
+time; do not have simultaneous writers edit the same bootstrap/rebootstrap sources.
 
-**Problem.** v0.83 retains `-GitHooks` only as a breaking-change bridge that refuses with exit 2
-before mutation. Keeping the dead parameter indefinitely would imply a supported feature surface.
+For every shipped item: freeze the concrete contract, obtain nonimplementer critique proportionate
+to risk, edit `src/` only, review stack/monorepo siblings, compose all distributions, keep existing
+static ceilings, demonstrate hostile/red then valid/clean checks on direct PS7 and PS5.1, run all
+existing gates and CI, update all four changelogs, release, and move the completed entry to the
+archive with its RCA. Parser tests do not certify business truth, model behavior or host consumption.
+Report semantic evidence and unexecuted host/model arms separately. Meta-only protocol work does
+not require a product version bump. WSD-016 remains: no new general live-eval release gate.
 
-**Do.** In v0.84 or later, remove `-GitHooks` from both installer entrypoints, usage text, tests,
-and migration documentation while retaining doctor detection for legacy consumer hooks/helpers.
+Original detailed open-entry history is preserved at Git baseline
+`87bfe1942b687a47c0f5d87cdfd992e24579ed22:meta/BACKLOG.md` and linked plans. Superseded commands,
+deadlines and incorrect absence-of-production-use claims are no longer execution instructions.
+B-219 and B-221 — see `meta/BACKLOG-DONE.md`.
 
-**Done when.** Both entrypoints reject `-GitHooks` as an unknown argument, no shipped usage text
-advertises it, durable legacy-hook diagnostics remain, and source/dist tests and changelogs agree.
+## Primary value increment
+
+### B-222 · Discover repository knowledge broadly, not only recurring recipes
+**Filed against:** v0.83.0 (2026-09-05)
+**Priority:** P1 · **Effort:** L · **Invariants:** #1 #2 #3 #6 #7
+**Status:** READY for bounded contract critique and offline implementation. Depends on WSD-074;
+does not depend on B-216's registry proposal or a private warehouse.
+
+**Problem / evidence.** Shared A8 already inventories naming clusters, but requires three recurring
+implementations, reads one cleanest instance and caps proposals at three to five. This excludes
+unique consequential facts and poorly serves helper-derived semantics. These are source
+observations, not a measured recall estimate. The user's examples motivate broader discovery;
+they are not its eligibility filter.
+
+**Implementation surface.** `src/stacks/{dotnet,angular,monorepo}/files/.claude/commands/bootstrap.md`,
+their `rebootstrap.md` and `.claude/agents/bootstrap-pass.md` siblings; related shared-pass/profile
+handoff wording. Reuse existing workers and inspect existing bootstrap/rebootstrap assertions
+before adding narrowly scoped fixtures.
+
+**Do.** Implement plan sections 3–4: broad first-party inventory, quiet/atypical-area selection,
+evidence-led semantic slices, bounded helper tracing, facts plus operations, counterexamples,
+scope, unavailable context and continuation. Inventory is not restricted to recognized nested
+profiles; never invent commands for unsupported ones. Initially budget 40 distinct content files
+and two additional dependency hops per seed; report actual reads and partial coverage, and allow
+another explicitly bounded pass. Continue from prior uncovered areas instead of repeatedly mining
+the same obvious paths. Remove universal recurrence and single-exemplar rules. Three-to-five may
+remain a presentation batch size, not a discovery cap. Preserve declined-recipe intent and classify
+generated/vendor/framework exclusions explicitly. Workers return candidates without writing; the
+parent owns B-223 capture. Amend map-warehouse's request-only tracing boundary only for this bounded
+discovery path; preserve unresolved outcomes and reuse its map.
+
+**Acceptance / hostile cases.** A fixed offline fixture contains a quiet unique rule, a helper-
+dependent rule, repeated but conflicting scoped patterns, a reusable cross-component operation,
+a generated decoy and an inaccessible dependency. These must not all be warehouse examples.
+Candidate/coverage output must represent every case, cite actual sources and distinguish inventory
+from semantic inspection. Conflicts cannot become one global convention. Hardcoded supplied
+answers, invented evidence, “no knowledge exists” from exhausted budget, and exhaustive-coverage
+claims are invalid. Fixtures validate shape/controls; independently inspected model runs provide
+separate behavioral evidence, not something a regex test can establish.
+
+**Done when.** All three stack paths have one consistent contract; finite slices/continuation and
+unsupported-area handling are explicit; old contradictory limits are gone; fixtures have valid and
+targeted invalid worlds; B-223/B-224 consume the contract before the combined feature is claimed
+usable. General shipped checks apply. Record what was not explored.
+
+### B-223 · Capture and refresh grounded knowledge in existing project-owned artifacts
+**Filed against:** v0.83.0 (2026-09-05)
+**Priority:** P1 · **Effort:** L · **Invariants:** #1 #2 #3 #6 #7
+**Status:** DEPENDS on B-222's output contract. No registry, graph service or promotion system.
+
+**Problem / evidence.** Wiki, skills, maps and reconciliation exist, but A8 promotes only recipes.
+Rebootstrap favors recent activity over dependencies of quiet claims and requires confirmation
+before each proposed edit. Wiki checking requires a real last-verified date even for never-checked
+drafts. These existing contracts need explicit, bounded amendments, not invented verification.
+
+**Implementation surface.** All three bootstrap/rebootstrap sources, FRAMEWORK-CONTEXT templates,
+`src/core/docs/wiki/_template.md`, wiki index guidance,
+`src/core/.claude/skills/remember-for-team/SKILL.md`, `src/core/scripts/wiki-check.ps1`, existing
+wiki/session-start/docs-sync tests. Inspect `src/core/scripts/install.ps1` ownership/adoption;
+change policy only if preservation fixtures expose an actual gap.
+
+**Do.** Automatically draft selected findings during requested discovery, deduplicating and routing
+to existing authorities: scoped fact -> wiki; evidenced operation -> project skill; map fact ->
+map/link; convention/ADR/hazard/security/debt -> current triage. Capture scope, source revision/
+paths/symbols, exceptions, known dependencies, observed/inferred distinction, recheck and actual
+result. Keep FRAMEWORK-CONTEXT coverage to at most 12 lines plus an on-demand link. Put detailed
+coverage/continuation in an appropriate existing document or generated `docs/discovery-notes.md`,
+consumer-owned and not required reading on every task. Do not create an event ledger.
+
+Explicitly amend rebootstrap's per-change confirmation only for new, non-overwriting draft capture;
+preserve checkpoints for changing owner content, policy, ADRs, deletion and authority. Normal PR
+review approves drafts; do not add a per-entry approval queue. Draft SKILL.md files are immediately
+discoverable in the working tree, so their loaded bodies must state candidate status, scope and
+unresolved steps. Invocation/indexing cannot approve a recipe. Do not generate abstract procedures
+without evidence or use generated knowledge as independent corroboration. Preserve mature docs.
+
+Keep current statuses; permit `last-verified: never` only for never-checked suspected/unverified
+entries. `verified` requires a real date and actual recheck. Failed/unavailable checks never advance
+dates; preserve an existing actual date when downgrading a previously checked claim. Change the
+existing template/check/tests narrowly. Evidence status is not PR approval; reading source is not
+executing a business test. Unavailable intent remains a question/unresolved outcome.
+
+Rebootstrap compares changed evidence and known dependency sources against retained claims,
+including quiet callers. Renames/deletions, unavailable history, external state and failed checks
+trigger honest recheck-needed/unresolved outcomes. Automation never upgrades warehouse-map status.
+No per-edit rediscovery hook. Unknown dependencies remain a limitation; existence alone is not
+freshness.
+
+**Acceptance / hostile cases.** No fake initial date; `never`+`verified` invalid, completed recheck+
+date valid. A changed helper invalidates reliance on a quiet caller's claim; a path lookup cannot
+refresh it. Duplicates link/update authority rather than fork it; conflicting scopes remain distinct.
+Never overwrite consumer edits. Prove preservation through ordinary update/adopt/disable flows.
+Generated evidence cannot confirm itself. An unresolved unreviewed skill must not become an
+unconditional procedure. Index text cannot label every draft PR-reviewed. Exercise both hosts and
+existing freshness/index consumers, plus installed-project context cost (not only dist footprint).
+
+**Done when.** B-222 output reaches correct durable destinations; refresh/preservation checks pass
+after meaningful red controls; no fake certainty/date/approval; no new registry. B-224 makes knowledge
+reachable before the combined feature is complete. General shipped checks apply.
+
+### B-224 · Make ordinary Copilot tasks consult relevant project knowledge
+**Filed against:** v0.83.0 (2026-09-05)
+**Priority:** P1 · **Effort:** M · **Invariants:** #1 #2 #5 #6 #7
+**Status:** DEPENDS on B-223. Local carrier work then ready; live compatibility requires the specific
+installed CLI/VS Code host and available model route.
+
+**Problem / evidence.** A generated claim or registered skill is not proof of reading/application.
+WSD-032's old Claude observations do not certify current Copilot. Host-certification gaps remain;
+session-start wiki loading has an index-size boundary. Ordinary tasks cannot depend solely on that
+hook or on developers naming skills.
+
+**Implementation surface.** `src/core/.github/instructions/framework-rules.instructions.md` and
+stack snippets; existing wiki/index/skill navigation; applicable `.github/prompts/` and
+`.github/agents/` adapters; session-start wiki tests and `meta/host-certification.md`. Respect one
+update-owned carrier and one `.claude/skills` tree; do not overwrite protected consumer instructions.
+
+**Do.** Replace/shorten loaded text to add one concise task-time rule: find task areas, consult
+relevant scoped knowledge/examples, recheck correctness-critical evidence, retain uncertainty and
+run evidenced verification. Index descriptions give scope cues, not full bodies. Resolve feature-
+only prompts without assuming a path. Conflicting applicable claims require investigation/question,
+not arbitrary precedence. Copilot adapters use actual delegation or sequential fallback, not
+assumed Claude Task support. No no-match hook, global keyword expansion or always-loaded catalog.
+Durable knowledge remains repository-local; model processing still follows the team's Copilot
+configuration. This is not a claim that provider-bound prompts remain on the workstation.
+
+**Acceptance / hostile cases.** Ordinary feature/fix prompts must not name the skill, oracle or
+missing rule. Observe discovery, content access, scoped application and task verification separately
+in each tested host. Include irrelevant claims, opposing scopes, unresolved draft recipes,
+missing/stale evidence, an index above the inline threshold and absent hooks. Positive/negative
+observer controls distinguish absence from a broken instrument. Local Bitbucket must not require
+GitHub PR APIs. Do not infer inline-completion behavior or efficacy from skill registration.
+Measure installed consumer loaded context/skill descriptions before and after discovery; the
+distribution-only footprint gate cannot prove generated-content cost. Detailed discovery stays
+on demand and default task loading must remain selective.
+
+**Done when.** Carrier changes/static budgets pass normal gates; exact host/model observations and
+gaps are recorded. A required unexercised host leaves PARTIALLY DONE status and narrowed claims,
+not inferred parity. B-225 owns outcome comparison; host access does not substitute for it.
+
+### B-225 · Measure broad discovery's marginal value on the actual coding surfaces
+**Filed against:** v0.83.0 (2026-09-05)
+**Priority:** P1 · **Effort:** M protocol, execution depends on tasks/seats · **Invariants:** #3 #6
+**Status:** OFFLINE PROTOCOL/CONTROLS READY. LIVE EXECUTION NOT AUTHORIZED by this entry.
+
+**Problem.** Current source and user reports justify a hypothesis, not a productivity claim. Skill
+count, framework-test success and Claude execution do not establish Copilot task outcomes. B-41's
+executor invokes Claude; do not rename it a Copilot runner. B-42 answers a different whole-product
+question.
+
+**Implementation surface.** Reuse applicable `meta/field-study-kit.md` and existing
+`run-agent-evals.ps1` harness/fixture controls; one meta-only component-protocol/report artifact if
+needed. Do not alter FS2's frozen primary contract or build a second general harness. Add a small
+host adapter only for a named observation current tools cannot make honestly.
+
+**Do first, without live spend.** Detail plan section 7 and offline valid/invalid controls. Freeze
+task selection before discovery; withhold task requests, future solutions and grading keys from
+setup. Discover broadly, not targeted to test answers. Compare current framework vs enhanced
+discovery, paired on the same observed model/host, counterbalanced and isolated from history,
+global instructions, generated artifacts and prior sessions. Permit supported correct alternatives.
+Include quiet, unique, helper-derived, recurring and conflicting-scope decisions across different
+areas. Measure acceptance/severe errors, knowledge application, active human review/rework,
+setup/refresh, elapsed time and observable usage. Small samples remain bounded observations;
+retain nulls/regressions and never tune tasks/thresholds after results.
+
+**Live prerequisites.** Frozen representative snapshot/privacy boundary; independent task oracles
+with observed valid/invalid worlds; independent domain review where needed; exact installed Copilot
+host/model identifiers and calibrated observers; predeclared materiality thresholds and explicit
+model/time/credit authority. Missing stable routing -> NOT RUN/NOT COMPARABLE for that arm. No
+substituting Claude efficacy or averaging changed Auto routes. VS Code may require a manual seat;
+CLI is not its substitute. Request prerequisites when execution is due, not a speculative data dump.
+
+**Done when.** Record protocol delivery separately from live execution. Close the outcome item only
+after the authorized component comparison/decision, or an explicit reviewed premise-retirement
+decision. A win justifies the measured increment, not a platform; a null does not justify more
+machinery. B-42 separately compares framework vs bare AI; do not pool with FS1/FS2/B-49. Report all
+unrun intended host/model arms.
+
+## Bounded correctness and maintenance work
 
 ### B-216 · Project-adapt instance-shaped skills instead of imposing framework defaults
 **Filed against:** v0.81.0 (2026-09-03)
 **Priority:** P1 · **Effort:** L · **Invariants:** #1 #2 #3 #6 #7
+**Status:** RE-LOCK REQUIRED under WSD-074. Original problem and one sidecar delivery remain open;
+obsolete mirror/Bash/registry/pretrial mechanics are not execution instructions.
 
-> **PAUSED; TARGET RETIRED FROM v0.83.0 TO v0.84.0 OR LATER. PRETRIAL NO-GO RECORDED.**
-> Full contract: `.claude/plans/2026-09-03-b216-project-adapted-instance-skills-design.md`.
-> Two independent read-only `claude-opus-5`/`xhigh` critiques returned REVISE; their verified
-> static-budget, generated-mirror, dead-link, ownership, read-observation, exit-domain and gate-cost
-> corrections are folded into the prior plan. B-217 retired its assumed generated mirror and B-219
-> retired its Bash execution branch, so the plan must be re-locked around the PowerShell-only single
-> skill tree before implementation. The user explicitly selected one sidecar delivery
-> rather than splitting the mechanism into a later item. Copilot Free subsequently changed
-> its Auto-resolved model between the positive and negative observer controls, so the fail-closed
-> route-stability gate stopped before all behavioral trials. The replacement contract uses Claude
-> Code for fixed-model efficacy and Copilot Free only for treatment-only compatibility with GitHub's
-> documented skill/resource behavior. B-217 now retires the mirror delivery assumed by that plan;
-> re-lock the single-tree lifecycle after v0.82.0 before restarting any source implementation.
+**Problem / evidence.** `register-service` permits an equivalent DI pattern then prescribes
+IServiceCollection/AddXxxServices/lifetimes. The Unity report describes a different composition
+root. Other recipes prescribe libraries/layers without establishing applicability. The stopped Auto
+calibration produced no sidecar efficacy result.
 
-**Problem.** `register-service` first permits an existing equivalent DI pattern, then prescribes
-`IServiceCollection`, `AddXxxServices` and MS.DI lifetime vocabulary. A reported Unity repository's
-documented composition root is each project's `IoCConfig.Configure(IUnityContainer)`; the concrete
-recipe would create an unsupported parallel container. Other instance-shaped recipes contain fixed
-endpoint, entity or Angular file/layer assumptions even though bootstrap discovers the repository's
-actual pattern and deliberately keeps framework skills byte-stable.
+**Scope.** Eight existing skills: .NET `add-endpoint`, `add-entity`, `register-service`,
+`add-warehouse-load`; Angular `add-component`, `add-service`, `add-lazy-route`, `add-signal-store`.
+Review stack/monorepo sources and rules/adapters overriding their local choice, including literal
+interface-per-injected-service guidance. Reuse `.claude/skills` only.
 
-**Do.** Keep the eight framework bodies update-owned and derive-first, while `/bootstrap` and
-`/rebootstrap` place verified, scope-aware project recipes in consumer-owned sibling references.
-Add an on-demand registry and strict lifecycle validation, preserve installer exemplar carry-forward,
-exclude generated recipes from evidence mining/adoption, repair every carrier that can reintroduce
-the old assumptions, and distinguish invalid content from inability to examine it. Before building
-the subsystem, re-lock after B-217 and run the revised Claude/Copilot A/B; failure stops the item without
-threshold tuning.
+**Do.** Re-lock one delivery: derive-first framework bodies and consumer-owned scoped
+`references/project-pattern.md`. Compare ordinary Markdown/existing ownership flows against the
+old registry/parser; add machinery only for a demonstrated gap. Freeze scope matching, conflicts,
+stale/unreadable evidence, fallback and disable/update. Generic examples cannot override evidenced
+project practice or introduce parallel containers/libraries. Unavailable intent means ask or
+unresolved, not treating the newest/most frequent implementation as policy.
 
-**Done when.** The A/B passes unchanged; all eight skills follow the frozen precedence; the Unity
-oracle adds registration only to the existing Unity composition root with its evidenced lifetime
-manager and produces no MS.DI artifacts; registry/sidecar mutations are red-tested in both twins;
-consumer-owned bytes survive update/disable flows; static and runtime budgets remain within
-their frozen baselines; all dists, installers, suites and CI legs are green; independent immutable-
-range review is complete; RCA, decisions and changelogs are reconciled; v0.83.0 or later is released.
+**Acceptance.** The Unity oracle registers only through the evidenced composition root/lifetime,
+with no MS.DI artifacts. Other recipes accept scoped alternatives and reject unsupported libraries.
+Evidence is first-party implementation, not generated recipes; ownership survives update/adopt/
+disable; conflicts/cannot-examine differ from invalid records. Critique the concrete smaller
+mechanism and hostile/clean fixtures before implementation. Target-host outcomes belong in B-225
+or a separately frozen authorized trial; the old pretrial no-go is not efficacy evidence.
 
-## P2 — gates that lie by omission (drift they were built to catch passes silently)
+**Done when.** Eight operations follow the re-locked authority, all reintroducing rules are
+reconciled, ownership/budgets/general shipped checks pass, and independent review/RCA exist.
+B-222–B-224 do not wait for the registry decision. Historical evidence:
+`.claude/plans/2026-09-03-b216-project-adapted-instance-skills-design.md`.
 
-**All P2 items (B-04…B-09) shipped in v0.25.2 (2026-07-04) — see `meta/BACKLOG-DONE.md`.** The
-check-lockstep union/computed-skills/hooks.json gates + template-checks skills-mirror gate close
-the silent-drift holes; the post-write $tn routing divergence is fixed with twin agreement tests;
-the enforcement matrix gained the three missing capability rows. **B-35 shipped in v0.29.1
-(2026-07-16) — see `meta/BACKLOG-DONE.md`. No open P2 items remain.**
+### B-226 · Give every review participant the same explicit change scope
+**Filed against:** v0.83.0 (2026-09-05)
+**Priority:** P1 · **Effort:** M · **Invariants:** #1 #3 #5 #6 #7
+**Status:** READY for bounded design critique; independent of discovery.
 
----
-## P3 — hygiene, drift, small fixes
+**Problem / evidence.** `/review` promises staged+unstaged; convention/solid snippets use bare
+`git diff --name-only`; others use HEAD; `test-weakening-scan.ps1` defaults to --cached and hides
+Git failures before saying nothing qualifies. File/PR inputs lack one propagated scope. Positive
+results can describe different artifacts or failed examination.
 
-**B-12 was already resolved — see `meta/BACKLOG-DONE.md`.** No open P3 items remain from the audit;
-post-audit P3 item B-29 (haiku adequacy evidence) is under "Known deferred work" (its sibling
-B-30 shipped in v0.25.4). **B-38, B-39 (both phases), B-36, and B-34 all shipped 2026-07-16 — see
-`meta/BACKLOG-DONE.md`. No open P3 items remain from the audit band.** Post-audit entries B-213 and
-B-214 were closed 2026-09-02 after premise and proportionality review; see
-`meta/BACKLOG-DONE.md`.
+**Implementation surface.** `src/core/.claude/commands/review.md`, all auditor scope snippets/
+whole-file agents including conditional security review, Copilot review adapter, test-weakening
+script and `TestWeakeningScan.Tests.ps1`/review contract tests. Inspect every participant. No
+auditor-count or heuristic redesign here.
 
+**Do.** Resolve once and propagate: default union of staged and unstaged tracked changes plus
+untracked nonignored source, retaining each layer's diff even when they cancel in the net worktree;
+file selection restricts that set or requests explicitly labeled whole-file review; supplied
+base/head ranges use immutable revisions. Preserve staged/unstaged visibility,
+deletions and rename identities. Unborn HEAD, missing refs/PR details and unreadable files are
+unavailable-scope outcomes, not empty clean review. Local Bitbucket accepts an evidenced local
+range/patch; never assume GitHub PR APIs or guess the base. Freeze exact arguments and advisory
+exit/output domains before implementation. Keep assertion-count heuristics advisory with limits.
 
-## Strategic backlog — post-Fable horizon (added 2026-07-17, Fable strategic review)
+**Acceptance.** Independently stage/unstage/change the same file, add untracked files, rename/delete,
+use spaces, select files and valid/invalid ranges. Every applicable participant receives the same
+artifact; ignored files do not leak. Git/inaccessible-scope failures cannot yield APPROVE/nothing
+qualifies. Valid empty and no-signal scopes are reachable distinct outcomes. Test both native hosts.
 
-> **Why this section exists.** A strategic review (2026-07-17, framework v0.31.0) asked: what are
-> the framework's structural shortcomings, and what should the work list look like for a
-> maintainer who no longer has Fable-tier review on tap? The audit-band items (P1–P3) are all
-> shipped; the "Known deferred work" below is a feature list. This section is different — it
-> targets the **gaps between the framework and reality**: no behavioral evidence, no field
-> evidence, no legal basis for consumption, one-time host verifications going stale, and a
-> maintenance process calibrated to a frontier-model reviewer.
->
-> **CURRENT PRIORITIES REVALIDATED 2026-09-02 for v0.80.0 — deliberate, not file order.**
-> B-42 and B-49 remain the open strategic items. B-213 and B-214 were closed 2026-09-02 after
-> premise and proportionality review; see `meta/BACKLOG-DONE.md`. B-42 has three non-author issue reporters but
-> still zero balanced, independent FS2 Module A pairs; run one when a participant exists and let that evidence
-> reorder the backlog. B-49 is hard-deferred because WSD-062 invalidated its current instrument;
-> no provider work is authorised until a current target, executable oracles, isolation, canaries,
-> released tag, and explicit spend authority are freshly locked. B-136 is DONE for v0.80.0; see
-> `meta/BACKLOG-DONE.md`. B-212 closed without product change after its
-> bounded audit found coherent adaptive depth and no threshold-attributable material harm; WSD-067
-> records the residual lifecycle mismatch and reopen trigger. B-72, B-112, B-129, B-133, B-159, B-160,
-> and B-174 were individually closed or rejected after premise and proportionality review; their
-> exact residuals and reopen triggers are preserved in `meta/BACKLOG-DONE.md`.
->
-> **REVIEW QUALIFICATION REVALIDATED 2026-08-29.** WSD-057 prospectively supersedes any still-visible
-> rank-only or “Opus only” qualification in open-entry history. Completed Opus findings and their
-> dispositions remain evidence. Future plan critique and implementation review follow the current
-> evidence-bound rule; high-risk surfaces retain the orthogonal-vantage requirement.
+**Done when.** End-to-end propagation and negative controls demonstrate previous omissions;
+diagnostics are honest; advisory semantics remain non-enforcing; general shipped checks pass.
+RCA examines sibling partial-diff consumers, not just the first auditor.
 
-### B-42 · Field pilot — install into ≥1 real production repo and let evidence drive the backlog
+### B-227 · Replace context-free financial verdicts with evidence-based invariant review
+**Filed against:** v0.83.0 (2026-09-05)
+**Priority:** P2 · **Effort:** M · **Invariants:** #1 #6 #7
+**Status:** READY for bounded design critique. No domain engine or new security skill.
+
+**Problem / evidence.** The .NET security auditor treats absent specific transaction/row-lock
+mechanisms and floating-point Amount/Price/Rate names as defects, including unconditional critical
+severity. These are source overclaims, not reproduced production losses. Map-warehouse calls
+reporting views known correct while its confidence table correctly separates usage from correctness.
+
+**Implementation surface.** .NET/monorepo security auditors, financial bootstrap checklists and
+related rule snippets; canonical .NET map-warehouse inherited by monorepo;
+`SecurityReviewContract.Tests.ps1` and related assertions. Confirm all sibling carriers.
+
+**Do.** Establish applicable atomicity/concurrency, numeric precision/rounding and temporal
+invariants; inspect evidenced mechanisms/tests. A lock/isolation level or numeric type is neither
+universally required nor universally safe. Flag demonstrated unsafe outcomes/scoped policy
+violations, with evidence/severity; retain uncertainty where unestablished. Preserve hard security
+controls and financial attention. Remove the map's unsupported certainty without rewriting its
+dimensional model. B-216 owns interface/layer authority, not this item.
+
+**Acceptance.** Pairs include a valid optimistic/atomic strategy and actual lost update, justified
+numerics and actual precision loss, plus an existing but incorrect reporting implementation.
+Behavior claims need executable/domain-grounded valid/invalid oracles. Name matches cannot prove
+critical defects; uncertainty cannot erase demonstrated ones. Inspect evidence, not caveat words.
+
+**Done when.** No categorical mechanism/name-only verdict remains in touched carriers; acceptance
+covers legitimate alternatives and actual defects; general shipped checks pass. Report unavailable
+semantic execution rather than claiming financial safety certification.
+
+### B-220 · Remove the retired `-GitHooks` compatibility parameter in v0.84
+**Filed against:** v0.83.0 (2026-09-04)
+**Priority:** P2 · **Effort:** S · **Invariants:** #1 #6 #7
+**Status:** READY for the next v0.84 or later release; not a discovery dependency.
+
+**Problem.** v0.83 retains `-GitHooks` only as a bridge refusing exit 2 before mutation. Keeping a
+dead parameter indefinitely implies a supported feature.
+
+**Do.** Remove it from root `install.ps1`, `src/core/scripts/install.ps1`, current usage and
+relevant tests/migration instructions. Preserve historical evidence and durable doctor detection of
+legacy consumer hooks/helpers. Do not delete unowned hooks or weaken retained helper closure.
+
+**Done when.** Both entrypoints reject the unknown argument before mutation; current usage does
+not advertise it; legacy diagnostics remain; ordinary install/update and retired-argument hostile
+tests pass on both hosts; normal source/dist/changelog/release checks agree.
+
+## Independent evidence and deferred work
+
+### B-42 · Obtain balanced independent field outcomes using FS2
 **Filed against:** v0.31.0 (2026-07-17)
-**Effort:** M to set up · elapsed weeks to harvest · **Invariants:** #6
+**Priority:** P1 when a participant exists · **Effort:** M setup plus diary time · **Invariants:** #6
+**Status:** PARTIALLY DONE. Production use and maintainer replay exist; the missing outcome is a
+balanced non-author FS2 Module A pair and associated independent friction evidence.
 
-> **PREMISE CORRECTED 2026-08-19 by the maintainer — the original *Why* below is factually wrong and
-> is kept only so the correction is legible.** The framework **is in active production use**: the
-> author uses it on real work, continuously. So "zero live consumer installs" was never true, and
-> "every design decision came from maintainer introspection" understates the evidence base — a
-> maintainer who ships with the tool daily is generating real friction data, not introspecting.
->
-> **What B-42 actually lacks, and all it should now claim:** balanced protocol evidence from a
-> developer who is **not the author**. The author cannot report the onboarding friction of someone
-> who did not write the framework, cannot notice guidance that only reads as obvious to its author,
-> and shares every design blind spot. **The three non-author entries in `meta/field-reports.md` are not
-> a satisfaction sample:** the maintainer recorded actionable defects and did not record the positive
-> feedback that was also received. That issue-only ledger therefore supports defect diagnosis, not a
-> positive or negative adoption claim.
->
-> **Consequences for the *Do* below:** step 2 ("install into at least one real work repo") is
-> **already satisfied** — do not re-do it. WSD-053/WSD-058 fix the success metrics and separate what
-> a maintainer can measure from the independent-user claims they cannot. The ready-to-run FS2 packet is
-> `meta/field-study-kit.md`, with a sanitised response form and balanced result ledger. Remaining:
-> ask a non-author to run it, then re-order the backlog from the returned evidence. The required
-> corrected maintainer replay completed validly on 2026-08-26; see the execution note below.
-> **Nothing here should be read as "the framework is unproven in the field"; the unresolved question
-> is independent, balanced outcome evidence.**
+**Evidence correction.** The author actively uses the framework; three non-author issue reporters
+are recorded. The complaint-selected ledger establishes defects, not sentiment/total adoption.
+The valid 2026-08-26 maintainer replay had byte-identical acceptable fixes and a +1 delta below its
+frozen +2 threshold: no detectable difference on that task, not proof of no value. Older onboarding
+defects are not assumed current. FS1 remains history; WSD-058 starts FS2 for the next independent pair.
 
-**Why (ORIGINAL, SUPERSEDED — see the correction above):** the framework has shipped 31 minor
-versions with — as far as the meta layer records —
-**zero live consumer installs and zero field feedback**. Every design decision to date came from
-maintainer introspection plus adversarial self-critique (excellent, but closed-loop). Several
-standing items explicitly wait on evidence that only field use can produce: B-26's misrouting
-watch, the reviewer-profile verbosity calibration (WSD-017), the B-37 injection-marker
-false-positive observation, token-cost consciousness (B-32's trigger). Without a pilot, the
-backlog can only grow more machinery.
+**Do.** Use `meta/field-study-kit.md`, response template and results ledger under WSD-053/WSD-058.
+Contact participants only when authorized. Select the first eligible change in a frozen historical
+window: 3–8 files, two areas, three independent pre-change-grounded decisions, valid alternatives,
+executable acceptance and targeted invalid controls. Preserve isolation, equal caps, privacy,
+balanced onboarding and consecutive-task diary. Pin the framework/model/host; do not aim discovery
+at hidden task answers. Do not reinstall to satisfy the superseded zero-use premise.
 
-**Do:** (1) define 3–5 success metrics *first* and record them in `meta/workspace-decisions.md`
-(candidates: review rounds per AI-assisted PR, hallucinated-API incidents caught, time-to-useful
-`CLAUDE.md` for a new repo, developer-reported friction per week, % of sessions where a rail or
-skill demonstrably fired). (2) Install into at least one real Bitbucket DC work repo
-(dotnet or monorepo), run `/bootstrap` or `/adopt` for real, and use it for normal work for 2–4
-weeks. (3) Keep `meta/field-reports.md`: date, repo shape, what fired, what misfired, what got
-ignored, hook noise, token pain. (4) Convert findings into backlog entries and *re-order this
-section* against them. If the pilot can include one developer who is not the framework's author,
-their friction reports outweigh the maintainer's.
+**Done when.** Record a valid independent pair and balanced returned evidence, including nulls,
+regressions and cost; reprioritize the backlog from it. Never pool FS1, FS2, B-225 or B-49. An absent
+participant is an external prerequisite, not grounds to call another maintainer replay independent.
 
-**Not:** no new machinery to "prepare" for the pilot — install what v0.31.0 ships, as shipped.
-
-**Field report #1 arrived 2026-07-31:** an Angular developer reported the model using `@Input()`
-everywhere instead of injecting `NgControl` on a custom form control. B-66 is the first defect
-derived from that report.
-
-**`meta/field-reports.md` now exists (created 2026-07-31)** as the improvement-only issue ledger.
-Two corrections it makes to the paragraph above remain visible rather than rewritten: the Angular
-report is **#2**, not #1 (the NUnit report behind B-57 landed earlier); and arrival dates, "what
-fired", hook noise and token pain were not captured for either external report. **Status correction
-2026-08-26:** its complaint-only contents are deliberate selection, not evidence of negative
-sentiment. WSD-053 and `meta/field-study-{kit,response-template,results}.md` now provide the balanced
-measurement path; the pilot execution itself remains open.
-
-> **MAINTAINER PROTOCOL GATE PASSED 2026-08-26; INDEPENDENT PILOT IS NOW THE ONLY B-42 EXECUTION
-> REMAINING.** FS-20260826-RERUN-02 used history-free neutral roots, same-day Sonnet task arms, three
-> R2 checks independent of test discipline/leanness, and green `44/44` baselines. Both arms returned
-> the same acceptable, byte-identical fix and regression test with zero intervention. FRAMEWORK
-> demonstrated the test red first and scored `10/10`; BARE changed production first and scored
-> `9/10`. The `+1` delta is below the frozen `2/10` threshold, so this one valid maintainer replay
-> is **no detectable difference**, not benefit. It does not answer non-author onboarding, team
-> friction, or team value.
->
-> Onboarding was not clean: Opus usage was unavailable, so the developer ran bootstrap on Sonnet;
-> it needed 11 follow-ups across 23.9 minutes and claimed completion while `docs-sync-check` was
-> red. B-177 tracks that product defect. The protocol now records setup model separately, refuses
-> exit-zero test commands that did not execute the expected probe, and forbids force-adding ignored
-> post-build artifacts. The next action is one independent Module A run, not another maintainer
-> replay.
->
-> **PROTOCOL PREMISE REVALIDATED 2026-08-29 — THE NEXT RUN STARTS FS2.** The maintainer clarified
-> that historic decisions should be challenged when current models or evidence change and doing so
-> improves value. RERUN-02 stays valid and unchanged, but its one-line bounded fix exposed a low-
-> discrimination task shape: fabrication, leanness, and most convention behavior had little room to
-> vary, while three convention checks were compressed into two points. WSD-058 prospectively replaces
-> the next paired task with the first objectively eligible convention-rich historical change while
-> traversing a frozen window newest-to-oldest and recording exclusions: 3–8 files, at least two
-> architectural areas, three independent
-> pre-change-grounded decisions, executable acceptance, enforced setup/task isolation, an allowlisted
-> post-setup diff, and one targeted rejecting oracle world per decision. Every pre-change-supported
-> alternative must pass the complete primary oracle stack (executable acceptance plus applicable
-> D1–D3), or an immutable contract must prove none exist. Executable acceptance separately needs observed
-> valid-pass and invalid/pre-change-fail worlds. It remains one two-arm run with equal per-arm caps,
-> preserves the privacy/onboarding/diary controls, and never aggregates FS1 with FS2. The next action
-> is one independent FS2 Module A pair; equal valid outcomes remain an honest null, never a reason to
-> tune and retry.
-
-### B-49 · Quarterly live-fire drill — install into a real OSS repo, verify behavior, measure value-add
+### B-49 · Re-design the live-fire drill and consumer self-assessment when justified
 **Filed against:** v0.31.0 (2026-07-17)
-**Effort:** drill #0 = 1 session (freezes the Appendix) · ~½ session per quarter thereafter ·
-**Invariants:** #5 #6 · maintainer-decided 2026-07-17 · host evidence is separately governed by
-WSD-066; complements (does **not** replace) B-42
+**Priority:** P3 · **Effort:** M redesign, execution separately authorized · **Invariants:** #3 #5 #6
+**Status:** DEFERRED; instrument INVALID under WSD-062. The value outcome remains open. No automatic
+quarterly execution or general host recertification is required by this entry.
 
-> **STATUS REVALIDATED 2026-08-30 — EXECUTION DESIGN INVALIDATED; B-49 REMAINS OPEN.** Two
-> independent audits found that running the current packet would spend provider quota on an
-> instrument that cannot support its claimed verdict. The kit omits required C-rows/canaries and
-> invokes nonexistent convention-check scripts; July's real quota-stopped partial conflicts with
-> later “no drill”/unfrozen-pin records; task oracles and modern-agent isolation are incomplete; and
-> the primary target is archived while no replacement has passed Step 0. WSD-062 supersedes the
-> execution authority of WSD-022/WSD-044 without erasing their history. Do not resume the July run
-> or execute the packet. Re-lock only after a current target, executable valid/invalid oracles,
-> credential-free isolation, ordered canaries, latest released tag, and explicit model/time/credit
-> authority exist. This is a deferral of an invalid instrument, not completion of the value goal.
-> WSD-066 also removes the old instruction to execute a general B-43 recertification cycle here.
-> A replacement may include only host evidence required by its freshly locked objective; it does
-> not inherit a calendar-driven certification packet.
->
-> **HISTORICAL design lock: locked 2026-07-17, re-locked same day after a second adversarial pass — do not
-> re-derive.** Full spec (version-under-test rule, targets, safety + state-hygiene protocol,
-> C1–C8 checklist, frozen A/B rubric with documented biases, recert canaries, report template,
-> degradation order; **18 findings folded across two critique passes**):
-> **`.claude/plans/2026-07-17-b49-live-fire-drill-design.md`**;
-> decision record **WSD-022**. The only outstanding work is execution: **drill #0** (recommended
-> within 2 weeks — runs the full dotnet drill and freezes the plan's Appendix: pinned SHAs, T2
-> mutation patch, T3 planted diff, per-target R2 checks), then quarterly on the reminder
-> (`trig_01EL25XDM2pMDaFkRBSGjF1V`, next fire 2026-10-01). The prose below is the summary; the
-> plan is authoritative where they differ.
+**Evidence.** July had a real quota-stopped partial, not no run; it yields no comparable A/B result.
+Later audits found stale/archived targets, dead script references, missing controls and inadequate
+isolation. The old plan/kit are historical, not instructions to resume. WSD-066 replaces calendar
+host recertification with capability-specific triggers.
 
-**Why:** the deterministic gates validate bytes and B-41's harness validates scripted scenarios —
-but neither ever exercises the product on a codebase nobody curated. A quarterly drill against a
-real open-source repo catches what both miss: bootstrap quality on messy real code, installer
-behavior on repo shapes we didn't design for, host drift since the last drill, and — the half
-nothing else measures — whether the framework demonstrably *adds value* over the same agent bare.
-A fixed cadence was also intended to refresh host evidence; WSD-066 supersedes that use of the
-drill. Host re-certification is now triggered by a claim or decision, contrary evidence, or a
-host-facing mechanism change whose result could alter a decision — not by the calendar alone.
+**Reopen execution only when.** A concrete remaining question is not answered adequately by B-42/
+B-225; current target/release, isolated executable valid/invalid oracles, ordered relevant canaries,
+and explicit model/time/credit authority are freshly locked and independently critiqued. Preserve
+the desired consumer-runnable “is this worthwhile here?” assessment, but design privacy, cost
+disclosure, selection and bare-agent isolation instead of shipping the invalid maintainer kit.
+Do not replace FS2 with the old shared-composite requirement. No scheduler/reminder is changed here.
 
-**Do — build the kit once (M):**
-1. **Pin the drill targets in a WSD** so quarters are comparable: one mid-size real .NET OSS repo
-   and one Angular one (candidates: `dotnet-architecture/eShopOnWeb` or
-   `ardalis/CleanArchitecture`-class for .NET; a mid-size real Angular app, not a toy — criteria:
-   50–500 source files, builds on the maintainer box, real domain logic). Pin the *commit SHA*
-   per drill so reruns are reproducible; bump the SHA each quarter to stay realistic.
-2. **Write the drill checklist** into `DEVELOPING.md` (or `meta/drill-kit.md`): fresh clone →
-   root installer (assert mode detection + agent-handoff contract) → drive a real agent through
-   `/bootstrap` → 2–3 representative tasks (one feature via a skill recipe, one `/fix`, one
-   `/review`) → planted-defect probes (a secret write the guard must block; a convention
-   violation `convention-check` must flag). Score each against fixed pass criteria.
-3. **Value-add evals (the A/B half):** same task prompt, same repo, same model — once with the
-   framework installed, once bare. Score both on a **fixed rubric**: hallucinated APIs referenced,
-   convention adherence, test-written-before-fix, verification evidence shown, review findings
-   caught. Single runs are anecdotes — keep the rubric frozen and track the *delta across
-   quarters*, not absolute scores; a shrinking delta is exactly the B-44 retirement signal.
-4. **Historical only — superseded by WSD-066:** do not run a general host-recertification packet.
-   A re-locked drill may include only the capability evidence needed for its own current claim or
-   decision.
-5. **Record** each drill in `meta/drill-reports.md`: date, host + framework versions, repo SHAs,
-   scores, defects filed. Defects become backlog entries; a failed drill is a P1.
-
-**Per quarter (~½ session):** run the checklist, log the report, file what it finds. API cost is
-real — the drill is maintainer-triggered; the scheduler only *reminds*.
-
-**Not:** don't let the drill replace **B-42** — an OSS clone has no team, so developer friction,
-adoption, and reviewer-profile evidence still come only from the field pilot. Don't tune the
-framework *to* the pinned repos (rotate one target if that risk appears). Don't average away
-failures: one hard checklist failure = a defect entry, regardless of the rubric totals.
-
-> **SCOPE WIDENED 2026-08-19 by the maintainer — the drill must ship, not just exist in `meta/`.**
-> As written, every part of B-49 is maintainer-only: `meta/drill-kit.md` never reaches a consumer, so
-> the one thing the drill measures that nothing else does — *does the framework demonstrably add
-> value over the same agent bare* — is a question only the author can ever ask, about repos only the
-> author picked. A consumer cannot answer it for **their** codebase, which is the only place the
-> answer actually matters to them.
->
-> **Therefore B-49 splits into two deliverables sharing one frozen rubric:**
-> 1. **The meta drill (existing scope)** — quarterly, maintainer-run, against the two pinned OSS
->    targets. Unchanged; `meta/drill-kit.md` stays where it is.
-> 2. **A consumer-runnable self-assessment (NEW)** — a shipped artifact that lets an installed team
->    run the A/B value question on their own repo and their own tasks: same task, same model, once
->    with the framework and once bare, scored on the same frozen rubric. This is the first thing the
->    framework would offer that answers *"is this worth keeping installed?"* in the consumer's own
->    terms rather than the author's.
->
-> **Not yet designed, and it is not a copy-paste of the kit.** At least four things differ and must
-> be decided before implementation: (a) the meta kit pins commit SHAs for cross-quarter
-> comparability — a consumer's own repo has no such pin and does not need one; (b) the meta kit's
-> planted-defect probes assume the author's fixtures; (c) a consumer running "once bare" must be
-> told plainly that this costs real API spend, twice; (d) the rubric must stay **frozen and
-> identical** across both deliverables or the two populations stop being comparable — that shared
-> rubric is the whole reason to treat these as one item rather than two. Needs its own locked design
-> and critique before any code. **Cross-link: B-44** — a consumer-visible shrinking delta is the
-> retirement signal that item exists to watch for, and this is the only instrument that could
-> produce one from outside this box.
->
-> **HISTORICAL STATUS CORRECTION:** the 2026-08-17 statement “no drill run” was false. A real but
-> incomplete July attempt had already executed C1 and parts of C3/C6 before quota stopped it; it is
-> now closed as incomplete and non-comparable, with no A/B or value claim. WSD-044 pins
-> `dotnet-architecture/eShopOnWeb` and `gothinkster/angular-realworld-example-app`, while leaving
-> both commit SHAs and all size/build/domain qualification explicitly to drill #0. The cold-run
-> checklist and frozen A/B rubric are in `meta/drill-kit.md`. RCA: no gate caught the missing kit
-> because this is maintainer process infrastructure, not a malformed shipped artifact. The same
-> exposure applies to the still-unrun host-recertification/report templates; drill #0 must exercise
-> them rather than treating the existence of prose as execution evidence. WSD-062 later invalidated
-> that drill packet, and WSD-066 removed its general host-recertification obligation; this paragraph
-> remains historical evidence, not current execution authority.
->
-> **FIELD-STUDY DESIGN AND META PILOT PACKET DELIVERED 2026-08-26; FIRST DRY RUN COMPLETE BUT VOID.**
-> WSD-053 and `.claude/plans/2026-08-26-b42-field-evidence-study-design.md` lock a controlled
-> historical-fix replay plus a three-consecutive-task diary. `meta/field-study-kit.md` is the
-> execution packet, `meta/field-study-response-template.md` returns sanitised scores only, and
-> `meta/field-study-results.md` records benefit, harm, mixed, no-difference, and void outcomes.
-> This is intentionally meta-only until a dry run and independent run show that the protocol is
-> usable; promoting it into `dist/` still requires an independent design review and a shipped
-> surface decision.
->
-> **Dry-run result 2026-08-26:** the pinned .NET fixture's wrong result was reachable; both arms had
-> the same 44-test green baseline; exact v0.77.0 installed, bootstrapped, and passed docs sync. The
-> installer-command defect was corrected (`/bootstrap`, not the packet's hard-coded `/adopt`). Both
-> Claude Sonnet 5 arms then produced acceptable fixes and passed the same private verifier.
-> FRAMEWORK added a red-first regression test and scored a raw 9/10 in 6.43 minutes with one
-> intervention; BARE added no test and scored 6/10 in 1.23 minutes with none.
->
-> **No value direction is claimed.** The result is void because the planted latest commit exposed
-> its clean parent and exact mutation; BARE read that answer through `git show`. FRAMEWORK also read
-> the exact diagnosis generated by bootstrap—real mechanism reach, but not separable task-time
-> evidence. Two frozen R2 checks additionally duplicated R3 test discipline. The packet now uses
-> history-free neutral snapshots, discloses bootstrap task discovery, and forbids R2/R3/R5 overlap.
-> RCA: a remote-less detached clone was mistaken for history isolation, and plausible rubric rows
-> were reviewed individually rather than for cross-dimension independence. A corrected maintainer
-> replay was the next gate and is now recorded below. The same history flaw affected B-49's frozen
-> planted T2, so `meta/drill-kit.md`, the locked B-49 plan, and WSD-022 now carry the same neutral-
-> snapshot amendment; otherwise the quarterly instrument would knowingly repeat the void run.
->
-> **RCA found while sharing the rubric:** `meta/drill-kit.md` called its table the frozen B-49
-> rubric but omitted the locked design's R5 leanness dimension and substituted review findings.
-> No gate caught it because the same rubric was duplicated in prose and meta process docs have no
-> semantic parity check. `meta/value-rubric.md` is now the one executable copy used by both kits;
-> the review task's planted-findings score remains separate, as the locked design requires. The
-> wider exposure is any supposedly shared prose contract copied between maintainer artifacts.
->
-> **CORRECTED FIELD REPLAY COMPLETE 2026-08-26.** The neutral-history rerun is valid and classified
-> `no detectable difference`: acceptable outcomes `2/2`, rubric `10/9`, active participant time
-> `<1/<1` minutes, interventions `0/0`. Both final code/test files were byte-identical and both
-> independent applicable suites passed `45/45`. FRAMEWORK's observable difference was red-first
-> sequencing and broader verification; the `+1` score is below the frozen material threshold.
-> This clears the protocol gate for an independent participant but does not execute B-49 drill #0.
-> The rerun also proved that exit zero is not enough for a test instrument: Windows Application
-> Control blocked one rebuilt assembly while `dotnet test` said no test matched and exited zero.
-> The drill kit and locked plan now require expected-test execution evidence.
->
-> **WSD-058 SERIES BOUNDARY (2026-08-29).** B-49 retains its frozen longitudinal drill rubric.
-> FS2 preserves R1–R5 only as descriptive continuity data and uses a separate convention-rich
-> primary outcome contract; its results must not be aggregated with FS1 or the B-49 quarterly
-> series. The older requirement that both populations share one composite rubric is therefore
-> superseded for B-42, not silently imposed on the redesigned field pilot.
-
-**B-50 is DONE (2026-08-20) — an isolated three-arm canary confirmed the channel on CLI 1.0.80 and both stale passages are reconciled; see `meta/BACKLOG-DONE.md`.**
-
-**B-44 is DONE (2026-08-20) — the retirement-trigger table is `meta/overlap-watch.md`; see `meta/BACKLOG-DONE.md`.**
-
-## Known deferred work (previously agreed, converted to entries so it survives handover)
-
-**B-14 shipped in v0.25.3 (2026-07-05) — see `meta/BACKLOG-DONE.md`.**
-
-## Completed entries
-
-Completed entries live in meta/BACKLOG-DONE.md.
+**Done when.** The newly justified drill and separately designed consumer self-assessment have
+valid execution/delivery evidence, or a reviewed decision retires their remaining premises.
+A polished protocol alone does not complete the value question.

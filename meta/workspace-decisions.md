@@ -3397,3 +3397,82 @@ hooks; reporting preserved Bash residue as converged; replacing Linux with nomin
 relaunch PS7; deleting whole parity suites without classifying assertions; retaining a Linux-only
 Bitbucket recipe; globally denying consumer Bash; or removing historical `install.sh` from a guard
 whose subject is released history.
+
+## WSD-074: broad repository knowledge discovery and evidence-led value delivery (2026-09-05)
+
+**Context.** The user requested a fundamental value review for very large enterprise repositories,
+primarily banking, with Copilot in VS Code/CLI and local Bitbucket. Their examples of ingestion and
+reporting failures illustrate hidden repository knowledge; they explicitly clarified that the model
+must look more widely, not mine only nominated workflows. These consumer failures are user-reported,
+not reproduced in this authoring tree. Source inspection against v0.83.0 / `87bfe194...` found A8
+already scans broadly by names/paths but admits recurring procedures, requires three instances,
+reads one cleanest exemplar and limits proposals. Existing wiki/maps/skills already supply much of
+the required persistence. Host reach and incremental task benefit remain unmeasured here.
+
+**Decision.** Make broad, bounded repository exploration and selective use of grounded local
+knowledge the next product hypothesis. Extend shared A8 instead of adding a parallel mining
+platform. Inventory available first-party areas, including quiet/atypical ones; explore semantic
+slices and dependencies; admit unique consequential facts as well as procedures; retain exceptions,
+scope, unavailable context and continuation. Initial 40-content-file/two-hop limits are transparent
+provisional cost controls, not claims of completeness or hard runtime enforcement. Continue into
+missed areas on subsequent passes rather than repeatedly selecting easy clusters.
+
+Capture factual claims, procedures and decisions in their appropriate existing project-owned
+carriers. Reuse wiki scope/status/evidence/recheck, project skills, maps and current triage. New
+non-overwriting drafts are produced during requested discovery without individual approval;
+intended policy, edits to owner-authored material, deletion and authority changes retain review
+checkpoints. Normal PR review remains approval; discovered code is observed behavior, not team
+intent. Immediately discoverable draft skills must expose uncertainty in their loaded bodies.
+Generated knowledge never supplies independent corroboration for itself. Do not upgrade warehouse
+status automatically or introduce an evidence/promotion registry.
+
+Two narrow lifecycle amendments are necessary. Allow `last-verified: never` only for never-checked
+suspected/unverified wiki claims; verified claims still require an actual dated recheck, and stale
+previously checked entries retain their historic date. During explicitly requested broad discovery,
+permit bounded helper/CTE tracing without an additional request naming one warehouse fact; standalone
+map work retains its cheap default and unresolved outcomes. Rebootstrap's blanket per-change
+confirmation is amended only for new non-overwriting draft capture. These source constraints are
+explicitly revised, not silently ignored.
+
+Keep at most 12 coverage-summary lines plus a link in FRAMEWORK-CONTEXT. Detailed inventory and
+continuation stay on demand in a suitable existing document or one consumer-owned discovery note.
+Add a concise relevant-knowledge rule to the existing update-owned carrier, replacing/shortening
+loaded text without raising static ceilings. Measure installed generated content too: distribution
+footprint cannot establish consumer context cost. No new always-on/no-match hook, hosted store,
+background discovery or universal skill catalog. Repository-local persistence does not imply local
+model processing; existing Copilot/provider policy still governs prompts.
+
+**Proportionality and alternatives.** (1) Keeping recurrence-only mining and adding specific
+reporting/ingestion recipes would be smaller but would miss the user's explicitly broader goal.
+(2) A registry, semantic graph, background miner and promotion platform could support richer
+automation but have no demonstrated marginal benefit/cost case here. (3) Extending the existing
+discovery/carriers with explicit coverage and task-time use is the selected smaller experiment.
+Existing source contradictions justify separate bounded repairs to instance recipes, review scope
+and context-free financial verdicts; they do not justify deleting all generic rails or fan-out.
+
+**History and supersession.** B-216 remains one derive-first/scoped-reference delivery for eight
+skills, preserving its original problem and single-delivery choice. Prospectively retire its old
+registry grammar, Bash/mirror lifecycle, old budgets and substitute-provider/pretrial execution
+authority; re-lock the smaller carrier choice before implementation. Preserve its critiques and
+stopped calibration as evidence, never as a successful trial. WSD-072/WSD-073 still govern topology.
+B-129/WSD-042's closed reporting experiment is not reopened by raw-model anecdotes, and B-133's
+rejected routine-promotion machinery is not reinstated. WSD-054/WSD-070's grounding and unavailable-
+intent limits remain. B-42 still lacks independent balanced FS2 outcomes, not production use;
+B-49's instrument remains invalid under WSD-062. No scheduler is changed or live spend authorized.
+
+**Evidence contract.** Separately observe artifact grounding, host access/application, and task
+outcomes/human cost. A component current-framework/enhanced-discovery comparison is a new series;
+B-42 FS2 separately compares whole framework/bare agent. Never pool with FS1 or the old drill.
+Freeze snapshots, selection, hidden solutions, independent valid/invalid oracles, isolation,
+available exact model/host, materiality and explicit spend caps before live work. Missing routes,
+seats or domain authority remain not-run gaps. Reuse existing harness controls without claiming its
+Claude executor already runs Copilot. No new general live-eval release gate (WSD-016).
+
+**Review.** A read-only agent in a clean context (`fork_turns=none`) formed a blind-first threat
+model and returned REVISE against the immutable source baseline. A second read of the frozen
+concrete draft returned ACCEPT WITH CONDITIONS. The main agent verified the cited source and
+incorporated corrections for existing A8 limits, warehouse tracing, draft dates/authority,
+loaded coverage, installed context cost, dependency refresh and provider-processing wording.
+This is a design critique, not independent certification of future implementation or Copilot value.
+The full contract and review disposition are
+`.claude/plans/2026-09-05-repository-knowledge-strategy.md`; B-222–B-227 detail the new packages.

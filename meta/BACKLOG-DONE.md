@@ -11783,3 +11783,61 @@ skip accidentally included PowerShell. This exposes every enforcement gate teste
 content or invocation text. The successor controls run the gate on immutable outgoing blobs,
 exercise caller refusal, distinguish `CANT-VERIFY`, and require hostile red plus restored clean
 evidence. Unsafe legacy residue remains visible rather than being deleted merely to report zero Bash.
+
+### B-221 · Strategic re-audit and implementation backlog for repository knowledge
+**Filed against:** v0.83.0 (2026-09-05)
+**Priority:** P1 · **Effort:** L · **Invariants:** #6
+**Status:** DONE 2026-09-05 — authoring strategy/backlog delivery; no shipped behavior or version change.
+
+**Do.** Review current framework and backlog, obtain clean-context adversarial critique, record a
+broad-discovery strategy under WSD-074, and detail implementation packages for Sol/Terra. Preserve
+the four open outcomes and historic evidence; do not implement shipped behavior or run provider
+experiments. User examples ground the objective but do not constrain discovery eligibility.
+
+**Done when.** Plan and current backlog agree, critique corrections are dispositioned, applicable
+authoring checks pass, and the delivery RCA is archived. Commit/push with CI observed.
+
+**Delivered.** `.claude/plans/2026-09-05-repository-knowledge-strategy.md` records the source-based
+assessment, alternatives, broad discovery/capture/use/refresh contract, measured-outcome boundary
+and adversarial disposition. WSD-074 and its index entry make the amendments visible. B-222–B-225
+detail the discovery increment and separate component evidence; B-226/B-227 isolate concrete
+review-scope and context-free-verdict repairs. B-216 keeps its single-delivery outcome but explicitly
+requires a smaller current-topology re-lock; its old plan carries an execution-supersession banner.
+B-220, B-42 and B-49 remain open with original dates and accurate remaining outcomes. Old contradictory
+instructions are recoverable from `87bfe1942b687a47c0f5d87cdfd992e24579ed22:meta/BACKLOG.md`, not
+retained as active commands. No private consumer source, live task, provider trial or model efficacy
+was observed during this delivery.
+
+**Review evidence.** `/root/adversarial_strategy` began with no inherited conversation and a
+blind-first threat model, then inspected immutable baseline source. Its first verdict was REVISE;
+the frozen draft was ACCEPT WITH CONDITIONS. The main agent verified and incorporated its source
+corrections. Final read-only consistency review checked plan SHA-256
+`DC7FA5CEF7796C702307FE0E47BEC872C28CBEED4A9213CAC4314A6018453C02`, backlog
+`FB807CC059CA87F45778B880F1084F2A28E6BFBCE305B3BE8BEA96D20BF44155` (B-221 still open), and
+decision-log `842910D28B67D32D2E79A7078ECE6D615F5A4385EA5DCBDCE733319CE4E16737`, unchanged
+before/after review. It found the four conditions closed and no further document corrections;
+remaining conditions concern future implementation and target-host evidence. The subsequent backlog
+change moves this entry to the archive. This is independent document critique, not orthogonal
+runtime/release-enforcement review or certification of Copilot behavior.
+
+**Local verification.** Explicit native Windows PS7 7.6.5 and PS5.1 5.1.26100.9278 each observed
+BacklogHygiene's missing-filed-stamp hostile control exit 1, then clean BacklogHygiene 10/10 and
+DocTruth 13/13 with zero skips. Repository privacy scan and `git diff --check` passed. The first
+attempt to choose PS5 through the execution tool's shell selector actually reported PS7; it was
+discarded as PS5 evidence and repeated with the explicit native executable, with the host version
+printed. No source, distribution, hook, installer or root instruction change required a release.
+Final authoring checks are rerun after this archive move; push/CI are checked on the actual delivery
+commit rather than inferred from the local results.
+
+**RCA — why no gate caught the gap and what else is exposed.** Existing gates establish artifact
+structure, not whether discovery covers non-obvious repository semantics or whether Copilot uses
+them to improve a task. A nominal whole-tree inventory concealed restrictive recurrence/single-
+exemplar selection. User examples could also have become an accidental feature whitelist without
+the user's correction. The exposed class includes every generated knowledge artifact whose source
+exists but whose scope, intended authority, refresh dependencies or task-time consumption were
+never established. New packages separate these obligations rather than claiming another parser
+gate proves semantic quality. The critique also exposed incompatible draft-date/approval behavior
+and coverage placed on an instructed-loaded carrier; existing carrier semantics must be inspected
+before reusing them. Backlog accumulation had left superseded no-use claims and invalid execution
+commands beside current statuses. A concise current list plus immutable history and explicit
+supersession replaces that ambiguity without falsely completing the four remaining outcomes.
