@@ -15,9 +15,9 @@ If the caller did not specify files, use repository evidence and `git diff --nam
 
 For each added or modified file, evaluate:
 
-**1. Speculative abstraction** (NOTE: where the evidenced profile and source conventions mandate literal SOLID, a single-implementation interface or `abstract class` used as a DI token/seam for an **injected service** is REQUIRED by DIP, not bloat. Do **not** flag those; the `solid-check` agent owns the SOLID lens.)
+**1. Speculative abstraction** (A single-implementation interface or `abstract class` DI seam is not bloat only when first-party project evidence or a correctness need establishes it. `solid-check` evaluates that evidence; this framework does not make it required.)
 
-- **.NET:** New `interface` on a **non-service** type — a DTO, entity, value object, or `Options` record. Services get interfaces; data does not. Flag as `high`. New `abstract class Foo` with zero or one subclass that is **not** used as a DI seam. Flag as `high`. New generic helper class (`*Helper`, `*Util`, `*Utility`, `*Manager`). Flag as `medium` for justification — these are bloat magnets.
+- **.NET:** New `interface` on a **non-service** type — a DTO, entity, value object, or `Options` record. Data gets none. Flag as `high`. New `abstract class Foo` with zero or one subclass that is **not** used as an evidenced DI seam. Flag as `high`. New generic helper class (`*Helper`, `*Util`, `*Utility`, `*Manager`). Flag as `medium` for justification — these are bloat magnets.
 - **Angular:** New `interface`/`abstract class` on a **non-service** type (model, DTO, enum wrapper). Flag as `high`. New `abstract class` with zero or one subclass **not** used as a DI token/seam. Flag as `high`. New generic helper file (`*.helper.ts`, `*.util.ts`, `*.utils.ts`). Flag as `medium`. New `Pipe` with one usage (`Grep` template references for the pipe name — if single use, flag as `medium`). New custom `Directive` with no usages in templates. Flag as `high`.
 
 **2. Shallow wrappers**

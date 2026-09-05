@@ -1,1 +1,1 @@
-- Where the corresponding profile is evidenced, a single-implementation interface (.NET) or `abstract class`/token DI seam (Angular) on an injected service is **required** by DIP — never report it as bloat.
+- Use first-party project architecture and correctness evidence to assess each stack's injected-service seam; this framework does not require an interface, abstraction, or token.

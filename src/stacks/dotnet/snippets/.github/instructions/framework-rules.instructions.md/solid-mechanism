@@ -1,1 +1,1 @@
-**Mechanism**: define `IFoo` beside `Foo`; register `services.AddScoped<IFoo, Foo>()` via the project's DI extension; inject `IFoo`. Implementations may be `sealed`.
+**Mechanism**: when project evidence selects a .NET service seam, follow its established composition root, lifetime, and interface/concrete shape; this framework selects none of them.

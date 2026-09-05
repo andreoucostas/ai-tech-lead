@@ -26,7 +26,7 @@ a browser flag, or another command from this distribution's name.
 ### Architecture
 - Standalone components as default. NgModules only where the codebase hasn't migrated yet.
 - Use `inject()` function for dependency injection in new code. Constructor injection is acceptable in existing code but don't mix both in the same file.
-- **DIP (mandatory — see the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools))**: every injected service is provided through an abstraction — an `abstract class` used as the DI token (`{ provide: Foo, useClass: FooImpl }`), or `interface` + `InjectionToken<T>`. Inject the abstraction, never a concrete service. Data carriers (models, DTOs, enums) are not services and get no abstraction.
+- **DIP (see the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools))**: derive a service seam and registration from first-party project evidence and correctness needs. Do not introduce an abstraction, token, or DI container solely from this default; preserve an evidenced dependency boundary. Data carriers (models, DTOs, enums) are not services and get no abstraction.
 - Feature areas are lazy-loaded routes. Eagerly loaded modules should be justified.
 - Barrel files (`index.ts`) only at feature boundaries — not inside feature folders (causes circular deps).
 

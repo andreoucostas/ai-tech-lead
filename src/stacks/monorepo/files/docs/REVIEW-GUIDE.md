@@ -22,13 +22,13 @@ One file is authored by hand — **`CLAUDE.md`**. Supported clients load it or g
 - **Hook-script input/output fixtures (not host firing):** pipe representative JSON into `pwsh -NoProfile -File .claude/hooks/route-prompt.ps1` and `.claude/hooks/guard.ps1`; confirm `/fix` rails and exit 2 for a prohibited .NET or Angular suppression. These direct commands prove parser and output-shape behavior only; they do not prove that a client fires the event or consumes the output.
 - **`/review` derives and runs applicable repository-evidenced checks itself** (review.md Step 2) —
   it does not trust unverified pass claims, and reports unsupported categories as `not available`.
-- **Behavior is documented as cases:** read `tests/evals/cases.yaml`. e.g. `dotnet-001` requires an interface for an injected service (DIP) and `angular-001` requires a DI abstraction (token) for one; `dotnet-004` / `angular-004` require it **and** forbid a speculative provider factory/layer (the SOLID-vs-future-proofing line).
+- **Behavior is documented as cases:** read `tests/evals/cases.yaml`. e.g. `dotnet-001` / `angular-001` and `dotnet-004` / `angular-004` derive a service seam from named project evidence and reject unsupported interface, token, container, or provider layers.
 
 ## Tradeoffs worth probing (named honestly)
 
-- **SOLID vs Leanness.** Literal SOLID (a seam per injected service — an interface in .NET, an abstraction/token in Angular) is mandated, which deliberately overrides Leanness #2 for services. The line: seams are required at the service boundary; *data* (.NET: DTOs/entities/value objects/options; Angular: models/DTOs/enums) and *speculation* (factories for imagined providers) are still forbidden. Probe: does `solid-check` vs `bloat-radar` ever contradict? (They're scoped not to — services vs data.)
-- **Literal SOLID is heavier in Angular than in .NET.** TS interfaces don't exist at runtime, so DIP on the frontend means an `abstract class` DI token (or `interface` + `InjectionToken`) per service — more ceremony than idiomatic Angular. If the mandate is really backend-only, that side can be relaxed to principled-DIP while the .NET side keeps literal SOLID.
-- **Deterministic DIP backstop isn't wired.** `solid-check` is semantic (an LLM pass). The deterministic dependency-direction enforcement — **NetArchTest** in a test project (.NET) / **dependency-cruiser** or `eslint-plugin-boundaries` (Angular) — is documented but must be added in the consumer repo. Until then, DIP direction isn't build-enforced on either stack.
+- **SOLID vs Leanness.** Project evidence and correctness needs select each stack's service seam; the framework does not mandate an interface, abstraction, token, or container. Preserve evidenced boundaries, while *data* (.NET: DTOs/entities/value objects/options; Angular: models/DTOs/enums) and speculative provider layers remain out of scope. Probe: does `solid-check` distinguish project evidence from speculation?
+- **Angular DI is project-shaped.** TypeScript interfaces are not runtime tokens, but this does not make `abstract class` or `InjectionToken` a framework default; follow the consumer's evidenced mechanism when a seam is needed.
+- **Deterministic DIP backstop isn't wired.** `solid-check` is semantic (an LLM pass). A consumer may choose an evidenced dependency-direction check; until one is wired, report that limitation rather than inventing NetArchTest, dependency-cruiser, or another library.
 - **Bitbucket Data Center.** Only the local Windows layer applies — Copilot coding-agent cloud hook execution is unsupported. Wire the PowerShell CI guardrail into Bamboo/Jenkins on a self-hosted Windows agent and require its build status. See README.
 - **Hooks need a working interpreter and client support.** Dated canaries cover only the capabilities they exercised, not every registered event; Copilot CLI `agentStop` firing and its queue write remain unverified, as do current VS Code Preview-hook lifecycles. VS Code hooks are Preview, off by default, and org-gated; shell writes are outside the editor guard.
 - **Evals are intentionally tiny** — a regression tripwire for the framework's own rules, not test coverage for your app.
@@ -39,7 +39,7 @@ One file is authored by hand — **`CLAUDE.md`**. Supported clients load it or g
 - [ ] Is `CLAUDE.md` genuinely the only hand-authored ruleset, with everything else generated + drift-checked?
 - [ ] Do the workflows force *verification before reference* (anti-hallucination) and *tests before fixes*?
 - [ ] Which hooks and CI jobs are actually live and blocking here, and which controls remain instruction or judgement only?
-- [ ] Does the SOLID/Leanness reconciliation actually hold in the eval cases?
-- [ ] Is Angular's literal-SOLID ceremony worth it for us, or should that side relax to principled-DIP?
+- [ ] Do the eval cases derive each stack's seam from named project evidence rather than a framework default?
+- [ ] Does Angular DI follow its evidenced mechanism without adding token ceremony?
 - [ ] For our platform (Bitbucket DC): is the CI guardrail wired where Actions can't run?
-- [ ] Are the deterministic DIP backstops (NetArchTest for .NET, dependency-cruiser for Angular) actually present in the target repo, or still just documented?
+- [ ] Are evidenced dependency-direction checks present in each target stack, or is that verification unavailable?

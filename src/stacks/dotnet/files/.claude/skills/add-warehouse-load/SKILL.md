@@ -16,6 +16,10 @@ description: >
 Match CLAUDE.md > Conventions > Data Access. The two rules that dominate everything below:
 **follow the existing load pattern exactly, and never load the same data twice.**
 
+## Project-derived pattern authority
+
+Derive this operation's shape from first-party implementation, configuration, tests, and owner documentation. If this skill's consumer-owned `references/project-pattern.md` exists, read it on demand as scoped evidence. Generated recipes are leads only. Exclude irrelevant scope, investigate conflicting applicable evidence, and ask or retain only correctness-material uncertainty. The generic steps below are conditional fallbacks: they never authorize a container, library, layer, interface, or token the project does not evidence.
+
 0. **Confirm this repo is a SQL data warehouse with the shared classifier.** Run
    `pwsh -NoProfile -File scripts/warehouse-map-check.ps1`. The command
    and `scripts/warehouse-signals.tsv` are the authoritative applicability gate used by bootstrap.

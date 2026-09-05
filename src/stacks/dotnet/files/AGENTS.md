@@ -41,7 +41,7 @@ The Boy Scout Rule biases toward adding improvements. This section is the counte
 ### Defaults
 
 1. **Edit existing files; do not create new ones unless required.** A new file is a long-term commitment. If a method fits an existing file, put it there.
-2. **Interfaces are for injected services (SOLID/DIP) and for genuine second implementations — not for data.** Every injected service is depended on through an interface (see [SOLID](#solid)); the implementation may be `sealed`. *Outside* that rule, no interface or abstraction without a real need — data carriers (DTOs, entities, value objects, `Options` records) never get interfaces, and don't invent abstractions for hypothetical variation.
+2. **Project evidence selects service seams; data gets none.** For an injected service, use an interface only when the project's evidenced boundary or correctness need requires one; do not introduce one merely from this framework. Data carriers (DTOs, entities, value objects, `Options` records) never get interfaces, and don't invent abstractions for hypothetical variation.
 3. **No abstract base class with one subclass.** Inline it.
 4. **Wrappers must add behavior.** A method that just delegates is a layer that costs reading time and adds no value. Inline or remove.
 5. **No defensive code for impossible states.** Trust internal callers; validate only at system boundaries (HTTP request body, message bus payload, third-party API response). **Financial domain exception**: for monetary amounts, ledger entries, account balances, regulatory figures, and idempotency keys — treat every state as possible regardless of caller. Use `decimal` (never `double`) for money; guard against negative amounts, duplicate transaction IDs, decimal precision loss, and timestamp ordering violations at every layer even in internal code.
@@ -74,9 +74,9 @@ SOLID is **mandatory** in this codebase. It governs structure; [Leanness](#leann
 2. **Open/Closed** — extend by adding a type, not editing a stable one. When a `switch`/`if` over a type/enum code reaches its **third** arm, replace it with polymorphism. (Do not build the seam speculatively before then — that is future-proofing.)
 3. **Liskov Substitution** — every implementation fulfils its interface's contract completely: no `NotImplementedException`/`NotSupportedException`, no strengthened preconditions, no weakened postconditions. If a type can't honour the contract, it must not implement it.
 4. **Interface Segregation** — small, role-based interfaces over one fat `I*Service`. No implementation is forced to implement members it does not use.
-5. **Dependency Inversion** — **every injected service/behaviour is depended on through an interface**, registered in DI; higher layers never `new` a concrete service or depend on a concrete lower layer. Data carriers (DTOs, entities, value objects, `Options` records, enums) are **not** services — they get no interface.
+5. **Dependency Inversion** — derive an injected service's seam and registration from the project's evidenced architecture and correctness needs; do not require an interface or DI container solely from this framework. Preserve an evidenced dependency boundary; data carriers (DTOs, entities, value objects, `Options` records, enums) get no interface.
 
-**Mechanism**: define `IFoo` beside `Foo`; register `services.AddScoped<IFoo, Foo>()` via the project's DI extension; inject `IFoo`. Implementations may be `sealed`.
+**Mechanism**: when project evidence selects a DI seam, follow its established composition root, lifetime, and registration shape; this framework selects none of those mechanisms.
 
 **Deterministic backstop**: `solid-check` is advisory. NetArchTest is scaffoldable and enforces direction only after the consumer wires it into CI with `enforce-architecture`.
 
@@ -138,7 +138,7 @@ Apply only entries whose technology exists here; the profile proves none.
 9. Add risk-relevant tests only, and only with a harness
 
 **Subtract:**
-10. Inline single-consumer interfaces or abstract bases **that are not DI service seams** (data/internal abstractions only) — per Leanness. Service interfaces are required by SOLID/DIP even with one implementation; never inline those.
+10. Inline single-consumer interfaces or abstract bases that are not an evidenced DI service seam — per Leanness. Preserve an existing project boundary when its evidence or correctness need requires it.
 11. Collapse shallow delegate methods that add no behavior beyond calling another component
 12. Single-use private helpers — inline at the call site
 
@@ -157,7 +157,7 @@ Natural-language requests trigger a workflow: classify silently, announce it in 
 
 > These rails are canonical. Commands and `route-prompt` may elaborate, not contradict; carriers and hooks remain independent.
 
-- **Feature** — *add / implement / create / build new …*: design affected boundaries, failure modes, and the smallest useful tests when a harness exists; never add one incidentally → implement in evidenced subtasks → apply Verification command discovery → Boy Scout touched files → self-review → report delivery and validation. No new interface/abstraction without a second consumer.
+- **Feature** — *add / implement / create / build new …*: design affected boundaries, failure modes, and the smallest useful tests when a harness exists; never add one incidentally → implement in evidenced subtasks → apply Verification command discovery → Boy Scout touched files → self-review → report delivery and validation. Derive any service seam from project evidence; do not add an interface/abstraction solely from this framework.
 - **Bug fix** — *broken / bug / crash / failing / "not working" / "looks off"*: state root cause → with an applicable harness, first write a regression test that fails correctly; otherwise use the strongest evidenced validation, report tests **not available**, and add no foreign harness → make the minimal fix → apply Verification command discovery → Boy Scout the blast radius → report cause, fix, validation, and radius.
 - **Refactor** — *cleanup / extract / rename / simplify / restructure*: establish an evidenced green baseline; add characterization coverage only to an existing applicable harness, otherwise report tests **not available** → refactor incrementally with verification → Boy Scout touched files → prove unchanged behavior → report before/after and net LOC.
 - **Test** — *write / add tests, increase coverage*: match the existing harness → cover the principal behavior plus consequential risks only → assert observable behavior, not internals or mock trivia → see each new behavioral test fail correctly → apply Verification command discovery → report coverage and gaps.

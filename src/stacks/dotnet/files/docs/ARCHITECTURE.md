@@ -97,7 +97,7 @@ Run in isolated context; return a structured findings table to the parent. Model
 |-------|------|-------|
 | `bootstrap-pass` | One selected-profile pass (.NET A1–A7 / warehouse-SQL W1–W3) or shared A8 skill discovery during `/bootstrap` | inherit (strong) |
 | `security-auditor` | OWASP-style scan; feeds `/security-review` | inherit (strong) |
-| `solid-check` | Audits the diff against the five SOLID principles (literal SOLID is mandatory here); feeds `/review` | inherit (strong) |
+| `solid-check` | Audits the diff against the five SOLID principles and first-party project evidence; feeds `/review` | inherit (strong) |
 | `test-critic` | Test-integrity audit — would each test go red if the code under test broke? Catches over-mocking and tautological/weak assertions; feeds `/review` | inherit (strong) |
 | `convention-check` | Diff vs CLAUDE.md > Conventions; feeds `/review` | **haiku** |
 | `bloat-radar` | Over-abstraction counterweight to Boy Scout; feeds `/review` | **haiku** |
@@ -140,7 +140,7 @@ sequenceDiagram
 
 - **Verification Rules** — verify before referencing; never invent APIs; honour version pinning; failures are signals (never silence). Anti-hallucination.
 - **Leanness** — counterweight to Boy Scout's add-bias; no abstraction on data or for speculation. Reconciled with SOLID (#below).
-- **SOLID (mandatory)** — literal classic SOLID: an interface for **every injected service** (DIP) plus SRP/OCP/LSP/ISP. `solid-check` is semantic; NetArchTest is scaffoldable and enforces direction only after the consumer wires it into CI. Data carriers are exempt.
+- **SOLID (mandatory)** — apply SRP/OCP/LSP/ISP and derive any injected-service boundary from project evidence and correctness needs; this framework does not require an interface or DI container. `solid-check` is semantic; a consumer may choose an evidenced direction check. Data carriers are exempt.
 - **Boy Scout Rule** — leave touched files cleaner (symmetric: add missing pieces *and* remove dead weight).
 - **Trojan Horse** — bundle nearby debt cleanup into feature/fix work, so quality compounds without debt sprints.
 - **Financial-domain invariants** — decimal precision, idempotency, TOCTOU/check-then-act, rounding — treated as always-possible states even in internal code.

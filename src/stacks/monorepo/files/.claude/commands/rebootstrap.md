@@ -155,6 +155,8 @@ Wait for the user's response before applying each chunk. If the user says "edit"
 
 For this requested shared A8 discovery only, after the existing provenance/adversarial screens and deduplication, automatically create an eligible **new absent** non-overwriting draft under `/bootstrap` 3a-bis for PR review. This automatic exception does not sit under the diff-and-confirm gate. It retains body provenance, scope, confidence, counterevidence, unresolved dependencies, draft-pending-review state, and semantic refresh trigger/result.
 
+For a finding that matches an existing operation skill (`add-endpoint`, `add-entity`, `register-service`, `add-warehouse-load`, `add-component`, `add-service`, `add-lazy-route`, or `add-signal-store`), this exception may create only that skill's new absent consumer-owned `references/project-pattern.md`. It never creates a competing skill, changes the framework `SKILL.md`, or edits existing owner content; those retain the confirmed ownership path.
+
 Recheck retained knowledge against changed explicit evidence/dependencies, including quiet callers outside recent activity. Renames, deletions, unavailable history, external state, and failed checks remain visible; path existence alone is not a semantic refresh. Any existing wiki entry, skill, map, or owner document changes only through the confirmed diff gate, preserving a historic verification date on downgrade and leaving unavailable rechecks unresolved.
 
 ### 3a: Update CLAUDE.md
@@ -168,7 +170,7 @@ Apply accepted changes section by section:
   against a known target
 - **Architecture Decisions**: add new decisions; mark old decisions as superseded if applicable
 - **Common Tasks**: update patterns to reflect current codebase reality. This existing-content change is proposed through the **same diff-and-confirm gate** as every other Phase-3 change — show the before/after and wait for the user, do not apply silently:
-  - **Exemplar re-pinning**: for any instance-shaped skill (`add-endpoint`, `add-entity`, `register-service`, `add-warehouse-load`, `add-component`, `add-service`, `add-lazy-route`, `add-signal-store`, any mined `add-X`) whose pinned exemplar file no longer exists or a clearly cleaner instance now exists — propose updating the exemplar prose line. Confirm the new path resolves (Verification Rule #1) and cite it from the correct stack.
+  - **Project-pattern re-pinning**: for an operation skill (`add-endpoint`, `add-entity`, `register-service`, `add-warehouse-load`, `add-component`, `add-service`, `add-lazy-route`, `add-signal-store`), recheck its consumer-owned `references/project-pattern.md` against the decisive source/predicate. A new absent reference is the narrow automatic exception above; changing an existing reference or framework skill remains a confirmed diff. Confirm any cited path resolves (Verification Rule #1) and cite it from the correct stack.
   - **Resurrection guard** (bookkeeping side-effect, not a diff chunk): if any skill with `origin: discovered` in its frontmatter has been deleted from `.claude/skills/` since the last run, append a declined-recipe block to `LEARNINGS.md` so the discovery pass stops re-proposing it. This append is automatic but **must be listed in the Phase-4 report** (see "Declined recipes recorded"). Use this exact form:
 
     ```

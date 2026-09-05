@@ -97,7 +97,7 @@ Run in isolated context; return a structured findings table to the parent. Model
 |-------|------|-------|
 | `bootstrap-pass` | One selected-profile analysis pass (.NET A1–A7 / Angular A1–A6 / warehouse-SQL W1–W3) or shared A8 skill discovery during `/bootstrap` | inherit (strong) |
 | `security-auditor` | OWASP-style scan (injection, auth/guards, secrets, XSS/DOM sinks); feeds `/security-review` | inherit (strong) |
-| `solid-check` | Audits the diff against the five SOLID principles (literal SOLID is mandatory here); feeds `/review` | inherit (strong) |
+| `solid-check` | Audits the diff against the five SOLID principles and first-party project evidence; feeds `/review` | inherit (strong) |
 | `test-critic` | Test-integrity audit — would each test go red if the code under test broke? Catches over-mocking and tautological/weak assertions; feeds `/review` | inherit (strong) |
 | `convention-check` | Diff vs CLAUDE.md > Conventions; feeds `/review` | **haiku** |
 | `bloat-radar` | Over-abstraction counterweight to Boy Scout; feeds `/review` | **haiku** |
@@ -142,7 +142,7 @@ sequenceDiagram
 
 - **Verification Rules** — verify before referencing; never invent APIs/selectors; honour version pinning (in Angular, signals, control-flow, `inject()`, `takeUntilDestroyed` are version-gated); failures are signals (never silence — no `#pragma warning disable`, `@ts-ignore`/`as any`, or suppression). Anti-hallucination.
 - **Leanness** — counterweight to Boy Scout's add-bias; no abstraction on data or for speculation. Reconciled with SOLID (#below).
-- **SOLID (mandatory)** — literal classic SOLID: an abstraction for **every injected service** (DIP — .NET: an interface `IFoo` + `Foo`; Angular: an `abstract class` token or `interface` + `InjectionToken`) plus SRP/OCP/LSP/ISP. `solid-check` is semantic; NetArchTest and dependency-cruiser are scaffoldable and enforce direction only after the consumer wires them into CI. Data carriers are exempt.
+- **SOLID (mandatory)** — apply SRP/OCP/LSP/ISP and derive each stack's injected-service boundary from project evidence and correctness needs; this framework does not require an interface, abstraction, token, or DI container. `solid-check` is semantic; a consumer may choose an evidenced direction check. Data carriers are exempt.
 - **Boy Scout Rule** — leave touched files cleaner (symmetric: add missing pieces *and* remove dead weight). `OnPush` is *not* a drive-by cleanup — it's a semantic change applied only as a primary-target, verified edit.
 - **Trojan Horse** — bundle nearby debt cleanup into feature/fix work, so quality compounds without debt sprints.
 - **Financial-domain invariants** — decimal precision, idempotency, TOCTOU/check-then-act, rounding — treated as always-possible states even in internal code (chiefly a backend concern, but the frontend must not undermine them).

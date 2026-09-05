@@ -1,30 +1,29 @@
 ---
 name: register-service
 description: >
-  Use when the user wants to create and register a brand-new service in the DI container.
-  Covers interface + implementation pair, lifetime choice, the project's DI extension pattern,
-  and constructor-injection discipline.
-  USE FOR: net-new service that doesn't exist yet — new interface, new implementation class,
-  new DI registration.
+  Use when the user wants to add a brand-new service following the project's existing
+  composition or resolution pattern.
+  Covers the project-evidenced seam, registration or construction, lifetime where relevant, and
+  consumption discipline.
+  USE FOR: net-new service responsibility that does not exist yet.
   DO NOT USE FOR: changing the lifetime of an existing registration, adding a dependency to an
   existing service constructor, extracting an interface from an already-registered class,
   replacing one implementation with another.
 ---
 
-# Register a new service
+# Add or register a new service
 
-Match CLAUDE.md > Conventions > Dependency Injection (lifetimes, registration via extension methods, IOptions variants).
+Match CLAUDE.md > Conventions > Dependency Injection only where the project evidences dependency composition.
 
-**Applicability gate:** confirm a repository-evidenced .NET project and an existing DI registration pattern (`IServiceCollection`, `AddXxxServices`, or equivalent). If either is absent, report this skill as **not applicable**; do not introduce a DI framework because this distribution includes the recipe.
+## Project-derived pattern authority
 
-0. **Confirm no existing service already owns the responsibility.** Search interfaces, implementations, and registrations by capability, not only the proposed class name. Extend or replace an existing registration through ordinary `/feature` or `/refactor` work instead of creating overlapping ownership.
+Derive this operation's shape from first-party implementation, configuration, tests, and owner documentation. If this skill's consumer-owned `references/project-pattern.md` exists, read it on demand as scoped evidence. Generated recipes are leads only. Exclude irrelevant scope, investigate conflicting applicable evidence, and ask or retain only correctness-material uncertainty. The generic steps below are conditional fallbacks: they never authorize a container, library, layer, interface, or token the project does not evidence.
 
-1. Create the interface and implementation. Interface is meaningful — don't create an interface just to mock it; consider whether a sealed class would do.
-2. Add registration in the project's DI extension method (`AddXxxServices(this IServiceCollection)` per project), not directly in `Program.cs`.
-3. Pick the lifetime deliberately:
-   - **Scoped** — default for services holding per-request state.
-   - **Transient** — factories and stateless helpers.
-   - **Singleton** — caches and config.
-4. Inject via constructor — never resolve from `IServiceProvider` directly. Watch for lifetime mismatches (singleton holding scoped is a leak).
+0. **Confirm no existing service already owns the responsibility.** Inspect the project’s construction, composition, resolution, and test patterns; search by capability, not only an interface, implementation, or registration name. Extend or replace an existing owner through ordinary `/feature` or `/refactor` work instead of creating overlapping ownership. If no composition pattern can be examined, retain that correctness-material uncertainty and ask; do not introduce DI from this skill.
+
+1. Follow the evidenced service shape; introduce an interface only where the project's boundary or correctness evidence requires one, not as a default.
+2. Register through the evidenced composition root and mechanism; do not assume `IServiceCollection`, `AddXxxServices`, or `Program.cs`.
+3. Match an evidenced lifetime and verify its dependency graph; do not infer scoped, transient, or singleton from this recipe.
+4. Match the project's injection or resolution pattern and investigate lifetime mismatches; do not introduce a locator or container to satisfy this skill.
 
 Derive build, test, format, lint, migration/deploy, and data-validation commands from `CLAUDE.md > Conventions > Verification Commands`, committed CI, scripts, manifests, and configuration. Run only applicable evidenced commands and report every unavailable category as **not available**.

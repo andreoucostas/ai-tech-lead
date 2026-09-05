@@ -41,7 +41,7 @@ The Boy Scout Rule biases toward adding improvements. This section is the counte
 ### Defaults
 
 1. **Edit existing files; do not create new ones unless required.** A new file is a long-term commitment. If a method fits an existing service or component, put it there.
-2. **Abstractions are for injected services (SOLID/DIP) and for genuine second implementations — not for data.** Every injected service is provided through an `abstract class`/token (see [SOLID](#solid)). *Outside* that rule, no interface or abstraction without a real need — models/DTOs never get abstractions, and don't invent abstractions for hypothetical variation.
+2. **Project evidence selects service seams; data gets none.** For an injected service, use an abstraction/token only when the project's evidenced boundary or correctness need requires one; do not introduce one merely from this framework. Models/DTOs never get abstractions, and don't invent abstractions for hypothetical variation.
 3. **No abstract base class with one subclass.** Inline it.
 4. **Wrappers must add behavior.** A service whose method just calls `httpClient.get(...)` and returns the observable is a layer that costs reading time and adds no value. Inline or remove.
 5. **No defensive code for impossible states.** Trust internal callers; validate only at system boundaries (form input, HTTP response, route params).
@@ -74,9 +74,9 @@ SOLID is **mandatory** in this codebase. It governs structure; [Leanness](#leann
 2. **Open/Closed** — extend by adding a type/strategy, not editing a stable one. When a `switch`/`if` over a type code reaches its **third** arm, replace it with polymorphism. (Don't build the seam speculatively before then — that is future-proofing.)
 3. **Liskov Substitution** — every implementation fulfils its abstraction's contract: no `throw new Error('not implemented')`, no strengthened preconditions, no weakened postconditions.
 4. **Interface Segregation** — small, role-based interfaces over one fat service contract; no implementation forced to stub members it doesn't use.
-5. **Dependency Inversion** — **every injected service is depended on through an abstraction**: declare an `abstract class` (a runtime-capable DI token) — or an `interface` + `InjectionToken<T>` — and `provide` the concrete implementation; components/services inject the abstraction, never `new` a concrete service. Data carriers (models, DTOs, enums) are not services — they get no abstraction.
+5. **Dependency Inversion** — derive an injected service's seam and registration from the project's evidenced architecture and correctness needs; do not require an abstraction, token, or DI container solely from this framework. Preserve an evidenced dependency boundary; data carriers (models, DTOs, enums) get no abstraction.
 
-**Mechanism**: prefer `abstract class Foo` as the token with `{ provide: Foo, useClass: FooImpl }` (TypeScript `interface`s don't exist at runtime); use `interface` + `InjectionToken<T>` where an abstract class is awkward.
+**Mechanism**: when project evidence selects an Angular DI seam, follow its established token/registration mechanism; this framework does not select `abstract class`, `InjectionToken<T>`, or a provider shape.
 
 **Deterministic backstop**: `solid-check` is advisory. `dependency-cruiser` is scaffoldable and enforces direction only after the consumer wires it into CI with `enforce-architecture`.
 
@@ -139,7 +139,7 @@ Apply only entries whose technology exists here; the profile proves none.
 10. Add `ChangeDetectionStrategy.OnPush` — but only after verifying the component's data flow (immutable inputs, no in-place mutation, no reliance on ambient ticking) and after manual/test verification that the view still updates correctly.
 
 **Subtract:**
-11. Inline single-consumer interfaces or abstract bases **that are not DI service seams** (data/internal abstractions only) — per Leanness. Service abstractions/tokens are required by SOLID/DIP even with one implementation; never inline those.
+11. Inline single-consumer interfaces or abstract bases that are not an evidenced DI service seam — per Leanness. Preserve an existing project boundary when its evidence or correctness need requires it.
 12. Collapse shallow service methods that just delegate to `HttpClient` with no transformation
 13. Single-use pipes or directives — inline at the call site, or convert to a component method
 14. Unused barrel re-exports in `index.ts`
@@ -159,7 +159,7 @@ Natural-language requests trigger a workflow: classify silently, announce it in 
 
 > These rails are canonical. Commands and `route-prompt` may elaborate, not contradict; carriers and hooks remain independent.
 
-- **Feature** — *add / implement / create / build new …*: design affected boundaries, failure modes, and the smallest useful specs when a harness exists; never add one incidentally → implement in evidenced subtasks → apply Verification command discovery → Boy Scout touched files → self-review → report delivery and validation. No new service/abstraction without a second consumer.
+- **Feature** — *add / implement / create / build new …*: design affected boundaries, failure modes, and the smallest useful specs when a harness exists; never add one incidentally → implement in evidenced subtasks → apply Verification command discovery → Boy Scout touched files → self-review → report delivery and validation. Derive any service seam from project evidence; do not add an abstraction/token solely from this framework.
 - **Bug fix** — *broken / bug / crash / failing / "not working" / "looks off"*: state root cause → with an applicable harness, first write a regression spec that fails correctly; otherwise use the strongest evidenced validation, report tests **not available**, and add no foreign harness → make the minimal fix → apply Verification command discovery → Boy Scout the blast radius → report cause, fix, validation, and radius.
 - **Refactor** — *cleanup / extract / rename / simplify / restructure*: establish an evidenced green baseline; add characterization coverage only to an existing applicable harness, otherwise report tests **not available** → refactor incrementally with verification → Boy Scout touched files → prove unchanged behavior → report before/after and net LOC.
 - **Test** — *write / add tests, increase coverage*: match the existing harness → cover the principal behavior plus consequential risks only → assert rendered output, emitted events, or state rather than internals/mock trivia → see each new behavioral spec fail correctly → apply Verification command discovery → report coverage and gaps.

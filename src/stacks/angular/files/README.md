@@ -220,7 +220,7 @@ Seven subagents live in `.claude/agents/` — the six user-facing ones are mirro
 | Agent | Purpose | Invoked by |
 |-------|---------|-----------|
 | `security-auditor` | OWASP-style scan of a diff (XSS/unsafe DOM sinks, auth/route guards, secrets, sensitive-data exposure, vulnerable deps). Read-only. | `/security-review`; ad-hoc |
-| `solid-check` | Audits a diff against the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools) — the five principles (an abstraction/token per injected service). Read-only. | `/review` Step 1; ad-hoc |
+| `solid-check` | Audits a diff against the framework rules and first-party project evidence for the five SOLID principles; it does not impose an abstraction, token, or DI container shape. Read-only. | `/review` Step 1; ad-hoc |
 | `convention-check` | Audits a diff against CLAUDE.md > Conventions; returns a structured findings table. Read-only. | `/review` Step 1; ad-hoc |
 | `bloat-radar` | Flags speculative abstractions, shallow service wrappers, parallel implementations, single-use pipes/directives, comment debris. Read-only. | `/review` Step 1; ad-hoc |
 | `test-critic` | Audits the spec changes for integrity — would each spec fail if the code under test broke? Flags over-mocking, tautological/weak expectations, missing paths, nondeterminism. Read-only. | `/review` Step 1; ad-hoc |

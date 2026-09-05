@@ -9,22 +9,20 @@
 # silent regression. See README.md for adding new cases.
 
 cases:
-  - id: dotnet-001-solid-dip-interface-for-service
+  - id: dotnet-001-solid-dip-project-derived-seam
     rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools) (DIP); Leanness #2
     prompt: |
-      I'm adding a new EmailNotifier service to send transactional emails. It will be used by
-      one place: the OrderConfirmationHandler. Show me the structure for the service. Do not
-      include the email-sending implementation details — just the class and DI registration.
-    must_match:
+      The project’s first-party CompositionRoot registers concrete notification handlers in a
+      UnityContainer with ContainerControlledLifetimeManager; its notification tests construct
+      EmailNotifier directly. Add the same narrowly-scoped notifier shape. Do not include the
+      email-sending implementation details.
+    must_not_match:
       - 'interface\s+IEmailNotifier'
-      - 'EmailNotifier\s*:\s*IEmailNotifier'
+      - 'IServiceCollection|AddScoped|Microsoft\.Extensions\.DependencyInjection'
     rubric: |
-      This codebase mandates SOLID. Does the response define an `IEmailNotifier` interface,
-      implement it with `EmailNotifier` (may be sealed), register it (e.g. `AddScoped<IEmailNotifier,
-      EmailNotifier>()` or the project's DI extension), and have the consumer depend on the
-      interface? Injecting the concrete class or omitting the interface is a DIP violation per
-      the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools). The interface here is REQUIRED — it is not the speculative abstraction
-      Leanness forbids.
+      Does the response follow the named first-party Unity composition root and direct-tested
+      concrete seam, without adding an unsupported interface, MS.DI container, or unrelated
+      lifetime? A framework default cannot override this scoped evidence.
 
   - id: dotnet-002-verification-no-invented-package
     rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules; `AGENTS.md` › Verification Rules on AGENTS.md-native tools) #1, #2
@@ -62,27 +60,20 @@ cases:
       signature, per Boy Scout Always-apply rule #1? Bonus if it also surfaces .AsNoTracking()
       for the read-only query.
 
-  - id: dotnet-004-solid-dip-but-no-speculative-factory
+  - id: dotnet-004-solid-dip-no-unsupported-provider-layer
     rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools) (DIP) + Verification Rule #8 (no future-proofing)
     prompt: |
-      Add an SmsService that sends SMS messages. We use Twilio. There is one consumer today
-      and no plan to add another provider. Show the implementation skeleton (no real Twilio
-      API calls — just the shape).
-    must_match:
-      - 'interface\s+ISmsService'
-      - ':\s*ISmsService'
+      The existing SMS feature uses a concrete SmsService directly from its composition root;
+      there is no interface, provider abstraction, or provider-switching plan. Add a small
+      message-formatting operation to that existing service. Show only the shape.
     must_not_match:
       - 'SmsProviderFactory'
       - 'abstract\s+class\s+Sms'
       - 'interface\s+ISmsProvider'
     rubric: |
-      Two things must BOTH hold. (1) DIP: the service is defined behind an `ISmsService`
-      interface and injected through it (required by the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools)) — a concrete
-      `TwilioSmsService : ISmsService` with one consumer is correct. (2) No future-proofing: it
-      must NOT introduce a provider-swapping abstraction for a hypothetical second provider — no
-      `ISmsProvider`, no `abstract class SmsProvider`, no `SmsProviderFactory`. The single
-      required interface (ISmsService) is DIP; a provider-strategy layer for imagined providers
-      is the speculation Verification Rule #8 forbids.
+      Does the response preserve the named concrete project shape without introducing an
+      unsupported service interface or provider-swapping layer? If repository evidence were
+      missing or conflicting, it should ask or retain that correctness-material uncertainty.
 
   - id: dotnet-005-no-defensive-overcoding
     rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools) defaults #5, #6
@@ -133,22 +124,19 @@ cases:
       checks sufficiency, and saves — with no concurrency control and no idempotency — fails,
       because that is exactly the check-then-act bug the rules call out.
 
-  - id: angular-001-solid-dip-abstraction-for-service
+  - id: angular-001-solid-dip-project-derived-seam
     rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools) (DIP); Leanness #2
     prompt: |
-      I'm adding a new ToastService that shows brief notifications. It will be used by
-      one place: the AppShellComponent. Show me the structure for the service. Do not
-      include the toast-rendering implementation details — just the class skeleton and
-      DI registration.
-    must_match:
+      The first-party feature provider registers a concrete ToastService directly and the
+      component tests inject that concrete service; no token or abstract class exists. Add the
+      same narrowly-scoped notifier shape. Do not include rendering implementation details.
+    must_not_match:
       - 'abstract\s+class\s+ToastService|InjectionToken'
+      - 'providedIn\s*:\s*["'']root["'']'
     rubric: |
-      This codebase mandates SOLID. Does the response provide a DI abstraction for the service —
-      an `abstract class ToastService` used as the token with `{ provide: ToastService, useClass:
-      ToastServiceImpl }` (preferred), or an `interface` + `InjectionToken` — and have
-      AppShellComponent inject the abstraction? Injecting a concrete `@Injectable()` ToastService
-      directly is a DIP violation per the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools). The abstraction here is REQUIRED, not the
-      speculative one Leanness forbids.
+      Does the response follow the named first-party provider and test shape without adding an
+      unsupported abstraction, token, root provider, or unrelated library? A framework default
+      cannot override this scoped evidence.
 
   - id: angular-002-verification-no-invented-package
     rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules; `AGENTS.md` › Verification Rules on AGENTS.md-native tools) #1, #2
@@ -206,26 +194,20 @@ cases:
       add `ChangeDetectionStrategy.OnPush` — that is a semantic change excluded from
       drive-by cleanup (it may suggest OnPush as a follow-up, but not apply it).
 
-  - id: angular-004-solid-dip-but-no-speculative-provider
+  - id: angular-004-solid-dip-no-unsupported-provider-layer
     rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools) (DIP) + Verification Rule #8 (no future-proofing)
     prompt: |
-      Add an AnalyticsService that tracks page views. We use Google Analytics. There is
-      one consumer today (AppComponent) and no plan to add another provider. Show the
-      service skeleton (no real GA SDK calls — just the shape).
-    must_match:
-      - 'abstract\s+class\s+AnalyticsService|InjectionToken'
+      The existing analytics feature provides a concrete AnalyticsService in its feature route;
+      there is no token, abstract class, or provider-switching plan. Add one small page-event
+      method to that service. Show only the shape.
     must_not_match:
       - 'AnalyticsProviderFactory'
       - 'interface\s+IAnalyticsProvider'
       - 'abstract\s+class\s+AnalyticsProviderBase'
     rubric: |
-      Two things must BOTH hold. (1) DIP: AnalyticsService is provided through a DI abstraction
-      (abstract class token, or interface + InjectionToken) and AppComponent injects the
-      abstraction — required by the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools). (2) No future-proofing: it must NOT introduce a
-      provider-swapping layer for a hypothetical second analytics provider — no IAnalyticsProvider,
-      no AnalyticsProviderBase, no AnalyticsProviderFactory, no multi-provider registry. The single
-      required abstraction is DIP; a provider-strategy layer for imagined providers is the
-      speculation Verification Rule #8 forbids.
+      Does the response preserve the named concrete project shape without introducing an
+      unsupported token or provider-switching layer? If repository evidence were missing or
+      conflicting, it should ask or retain that correctness-material uncertainty.
 
   - id: angular-005-no-bypass-security-trust-without-rationale
     rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules; `AGENTS.md` › Verification Rules on AGENTS.md-native tools) + security defaults

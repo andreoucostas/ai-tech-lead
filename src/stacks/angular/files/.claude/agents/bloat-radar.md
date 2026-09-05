@@ -15,8 +15,8 @@ If the caller did not specify files, use repository evidence and `git diff --nam
 
 For each added or modified file, evaluate:
 
-**1. Speculative abstraction** (NOTE: where the evidenced profile and source conventions mandate literal SOLID, an `abstract class`/interface used as a DI token for an **injected service** is REQUIRED by DIP, not bloat. Do **not** flag those; the `solid-check` agent owns the SOLID lens.)
-- New `interface`/`abstract class` on a **non-service** type (model, DTO, enum wrapper). Services get abstractions; data does not. Flag as `high`.
+**1. Speculative abstraction** (An `abstract class`/interface DI seam is not bloat only when first-party project evidence or a correctness need establishes it. `solid-check` evaluates that evidence; this framework does not make it required.)
+- New `interface`/`abstract class` on a **non-service** type (model, DTO, enum wrapper). Data gets none. Flag as `high`.
 - New `abstract class` with zero or one subclass that is **not** used as a DI token/seam. Flag as `high`.
 - New generic helper file (`*.helper.ts`, `*.util.ts`, `*.utils.ts`) introduced. Flag as `medium` for justification.
 - New `Pipe` with one usage. `Grep` template references for the pipe name. If single use, flag as `medium`.

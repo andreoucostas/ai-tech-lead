@@ -11,7 +11,7 @@ Scope gate: this installed file is a delivery-profile superset, not evidence tha
 - Barrel files (`index.ts`) only at feature boundaries, never inside feature folders.
 
 ## SOLID
-- DIP: every injected service depends on an abstraction — `abstract class` token (`{ provide: Foo, useClass: FooImpl }`) or `InjectionToken<T>`; never `new` a concrete service.
+- DIP: preserve an evidenced project service boundary; do not introduce an abstraction, token, or DI container from this summary alone.
 - Data carriers (models, DTOs, enums) get no abstraction.
 - SRP: no god components/services; honour the smart/dumb split.
 - OCP: at the third arm of a switch/if over a type code, replace with polymorphism.

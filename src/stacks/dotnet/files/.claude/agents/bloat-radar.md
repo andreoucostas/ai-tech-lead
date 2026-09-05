@@ -15,8 +15,8 @@ If the caller did not specify files, use repository evidence and `git diff --nam
 
 For each added or modified file, evaluate:
 
-**1. Speculative abstraction** (NOTE: where the evidenced profile and source conventions mandate literal SOLID, a single-implementation interface on an **injected service** is REQUIRED by DIP, not bloat. Do **not** flag those; the `solid-check` agent owns the SOLID lens.)
-- New `interface` on a **non-service** type — a DTO, entity, value object, or `Options` record. Services get interfaces; data does not. Flag as `high`.
+**1. Speculative abstraction** (A single-implementation interface on an injected service is not bloat only when first-party project evidence or a correctness need establishes that boundary. `solid-check` evaluates that evidence; this framework does not make it required.)
+- New `interface` on a **non-service** type — a DTO, entity, value object, or `Options` record. Data gets none. Flag as `high`.
 - New `abstract class Foo` with zero or one subclass that is **not** used as a DI seam. Flag as `high`.
 - New generic helper class (`*Helper`, `*Util`, `*Utility`, `*Manager`) introduced. Flag as `medium` for justification — these are bloat magnets.
 

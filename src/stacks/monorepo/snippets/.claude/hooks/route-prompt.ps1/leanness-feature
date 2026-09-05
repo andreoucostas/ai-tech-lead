@@ -1,2 +1,2 @@
-- No new interface, abstract class, pipe, directive, or generic helper unless a second consumer exists in this change-set. State the second consumer if you add one.
+- Preserve a project-evidenced service seam; otherwise add no interface, abstract class, pipe, directive, or generic helper without a second consumer or correctness need. State the evidence.
 - Wrappers must add behavior. Inline shallow delegates and service methods that just call HttpClient.

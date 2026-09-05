@@ -1,1 +1,1 @@
-- An `abstract class`/token used as a DI seam for an injected service is **required** by DIP — never report it as bloat.
+- Use first-party project architecture and correctness evidence to assess an injected-service seam; this framework does not require an abstraction or token.

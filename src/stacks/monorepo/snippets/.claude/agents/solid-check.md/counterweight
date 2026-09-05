@@ -1,1 +1,1 @@
-**Counterweight note:** a single-implementation interface or `abstract class` used as a DI token for an **injected service is REQUIRED by DIP** — never report it as bloat. `bloat-radar` handles over-abstraction on non-service types; you handle SOLID compliance, including *under*-abstraction (concrete coupling).
+**Counterweight note:** assess a service seam against first-party project architecture and correctness evidence; do not call an evidenced seam bloat or require one from this framework. `bloat-radar` handles over-abstraction on non-service types.

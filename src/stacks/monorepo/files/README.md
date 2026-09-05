@@ -222,7 +222,7 @@ Seven subagents live in `.claude/agents/` — the six user-facing ones are mirro
 | Agent | Purpose | Invoked by |
 |-------|---------|-----------|
 | `security-auditor` | OWASP-style scan of a diff (.NET: injection, auth/authz, secrets, crypto, financial/concurrency; Angular: XSS/unsafe DOM sinks, auth/route guards, secrets, sensitive-data exposure, vulnerable deps). Read-only. | `/security-review`; ad-hoc |
-| `solid-check` | Audits a diff against the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools) — the five principles (.NET: a literal interface per injected service; Angular: an abstraction/token per injected service). Read-only. | `/review` Step 1; ad-hoc |
+| `solid-check` | Audits a diff against the framework rules and first-party project evidence for the five SOLID principles; it does not impose a stack-specific interface, abstraction, token, or DI container shape. Read-only. | `/review` Step 1; ad-hoc |
 | `convention-check` | Audits a diff against CLAUDE.md > Conventions; returns a structured findings table. Read-only. | `/review` Step 1; ad-hoc |
 | `bloat-radar` | Flags speculative abstractions, shallow wrappers, parallel implementations, comment debris, and stack-specific bloat (.NET: trivial tests; Angular: single-use pipes/directives). Read-only. | `/review` Step 1; ad-hoc |
 | `test-critic` | Audits the test/spec changes for integrity — would each test fail if the code under test broke? Flags over-mocking, tautological/weak assertions, missing paths, nondeterminism. Read-only. | `/review` Step 1; ad-hoc |

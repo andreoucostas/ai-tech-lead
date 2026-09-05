@@ -15,6 +15,10 @@ description: >
 
 Match CLAUDE.md > Conventions > State Management. Do not introduce signals if the codebase consistently uses NgRx/NGXS — use the existing pattern unless the user explicitly asks to migrate.
 
+## Project-derived pattern authority
+
+Derive this operation's shape from first-party implementation, configuration, tests, and owner documentation. If this skill's consumer-owned `references/project-pattern.md` exists, read it on demand as scoped evidence. Generated recipes are leads only. Exclude irrelevant scope, investigate conflicting applicable evidence, and ask or retain only correctness-material uncertainty. The generic steps below are conditional fallbacks: they never authorize a container, library, layer, interface, or token the project does not evidence.
+
 **Applicability gate:** confirm a repository-evidenced Angular workspace and that the target
 belongs to it. Also confirm an existing signal-state pattern, or an explicit developer decision to
 use one after comparing the repository's state-management evidence. If either condition is absent,
@@ -23,9 +27,9 @@ establish a signal-store choice.
 
 0. **Confirm the state is not already owned elsewhere.** Search existing stores, services, selectors, and signals by domain concept. Extend the established owner through ordinary `/feature` work instead of creating two writable sources of truth.
 
-1. Create a service with `signal()` for state and `computed()` for derived values.
-2. Expose read-only signals publicly via `asReadonly()`.
-3. Mutations only via explicit methods on the service — no external `.set()` calls; no leaky writable signals.
+1. Create or extend the state owner through the project’s evidenced signal/store/service mechanism; do not introduce `signal()` from this recipe.
+2. Preserve the project’s evidenced read-only public boundary (for example, `asReadonly()` where the project uses it).
+3. Preserve the project’s evidenced mutation discipline; do not expose a writable state boundary without that evidence.
 4. When an applicable test harness is evidenced, add the smallest behavior-focused tests for
    relevant signal state transitions: initial state, mutation methods, and computed derivations.
    Do not create a runner or test configuration incidentally; otherwise report the test category

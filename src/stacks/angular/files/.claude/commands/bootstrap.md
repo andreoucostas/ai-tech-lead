@@ -180,14 +180,22 @@ owner-routed change, but do not alter it.
   confidence (`observed`, `declared`, `inferred`, or `unresolved`), counterevidence/exceptions,
   dependencies/unresolved sources, a meaningful recheck, and body fields for `**Provenance:**`
   plus `**Draft status:** draft pending PR review; not team-approved policy`.
+- An evidenced operation matching `add-component`, `add-service`, `add-lazy-route`, or
+  `add-signal-store` becomes only its new absent consumer-owned `references/project-pattern.md`,
+  using the same scoped evidence, counterevidence, unresolved, provenance, draft-status, and
+  semantic-refresh envelope. Never create a competing skill, edit the framework `SKILL.md`,
+  overwrite an existing reference, or change owner content automatically.
 - An evidenced repeatable operation with grounded steps, integration points, and verification
   becomes a new consumer-owned `.claude/skills/<slug>/SKILL.md` draft only when both the skill and
-  its focused-reference paths are absent. Create both files, never one without the other. Its
+  its focused-reference paths are absent. Create both files, never one without the other. The skill
+  body contains an explicit relative Markdown link to every focused reference; a sibling file's
+  existence is not a link. Do not also create a wiki draft that duplicates the operation; wiki
+  drafts hold independently scoped facts, constraints, gotchas, or failed approaches. Its
   frontmatter contains `name`, a trigger-rich `description`, and
   `origin: discovered` so existing lifecycle handling can find it. Its loaded body identifies candidate
   status, scope, underlying evidence, counterevidence, unresolved steps, body provenance, and
-  draft-pending-review state. It links each focused reference for on-demand reading and records
-  the semantic refresh trigger and actual result in the skill body or linked reference. It remains
+  draft-pending-review state and records the semantic refresh trigger and actual result in the
+  skill body or linked reference. It remains
   immediately discoverable but never self-corroborates, approves itself, or authorizes broader
   reads/writes; do not advertise or activate it as an approved Common Task before review.
 - A warehouse fact links the existing `docs/warehouse-map.md` when present rather than creating a

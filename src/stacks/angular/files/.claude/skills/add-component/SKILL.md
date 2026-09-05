@@ -1,7 +1,8 @@
 ---
 name: add-component
 description: >
-  Use when the user wants to add a new Angular feature component (standalone or module-bound),
+  Use when the user wants to add a new Angular feature component using the project's evidenced
+  standalone/module and provider shape,
   including a custom form control or ControlValueAccessor.
   Covers component scaffold, routing, models, service wiring, state choice, and harness-evidenced
   test coverage.
@@ -15,6 +16,10 @@ description: >
 # Add a new feature component
 
 Match the conventions in CLAUDE.md > Conventions > Component Design before scaffolding. If the codebase uses a state pattern (signals, NgRx, NGXS), match it; do not introduce a new pattern.
+
+## Project-derived pattern authority
+
+Derive this operation's shape from first-party implementation, configuration, tests, and owner documentation. If this skill's consumer-owned `references/project-pattern.md` exists, read it on demand as scoped evidence. Generated recipes are leads only. Exclude irrelevant scope, investigate conflicting applicable evidence, and ask or retain only correctness-material uncertainty. The generic steps below are conditional fallbacks: they never authorize a container, library, layer, interface, or token the project does not evidence.
 
 **Applicability gate:** confirm a repository-evidenced Angular workspace and that the target belongs
 to it. If either is absent, report this skill as **not applicable**; the selected distribution and
@@ -43,10 +48,10 @@ detail when that section exists.
 1. Use a generator only when its exact invocation is evidenced by CLAUDE.md > Conventions >
    Verification Commands, committed scripts, manifests, or workspace configuration. Otherwise
    create the files manually by mirroring an existing component; do not infer `ng generate`.
-2. Add route in the feature's routing config (lazy-loaded).
-3. Create interfaces/models for the feature's data shapes (no `any`).
-4. Create or extend a service for backend communication (typed end-to-end).
-5. Wire up state (signals, store, or service — match existing pattern).
+2. Add or extend a route only when the project’s feature pattern makes the component routable; match its evidenced loading and routing shape.
+3. Add data shapes only in the form the project evidences; do not use `any`.
+4. Create or extend a backend service only where the evidenced component pattern uses one; preserve typed boundaries the project establishes.
+5. Wire state only through the project’s evidenced signals, store, or service pattern.
 6. When an applicable test harness is evidenced, add the smallest behavior-focused test(s) that
    follow its conventions. Do not create spec files, a runner, test configuration, or HTTP testing
    infrastructure incidentally; otherwise report the test category as **not available**.
