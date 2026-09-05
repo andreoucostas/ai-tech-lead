@@ -324,6 +324,7 @@ function Assert-RepositoryKnowledgeDiscoveryContracts {
             'is not independent corroboration',
             '**Claim / operation**',
             '**Selection reason**',
+            '### Knowledge findings',
             'never capture secrets.',
             '**Actual content reads**',
             '**Next bounded continuation**',
@@ -334,7 +335,8 @@ function Assert-RepositoryKnowledgeDiscoveryContracts {
         'Project-Specific Skill Discovery',
         'Recurs — the same multi-step operation appears 3+ times',
         'Read in full only the single cleanest instance',
-        'Low count by design'
+        'Low count by design',
+        'Knowledge findings ('
     )
 
     foreach ($dist in $DistEntries) {
@@ -366,6 +368,83 @@ function Assert-RepositoryKnowledgeDiscoveryContracts {
         foreach ($required in @('Bounded discovery exception.', '40-content-file, two-additional-hop budget', 'standalone `/map-warehouse` run, which remains request-only.')) {
             if ($text.IndexOf($required, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
                 throw "warehouse discovery carrier $($dist.Name)/.claude/skills/map-warehouse/SKILL.md omits '$required'"
+            }
+        }
+    }
+}
+
+function Assert-RepositoryKnowledgeCaptureContracts {
+    param([object[]]$DistEntries)
+
+    foreach ($dist in $DistEntries) {
+        $bootstrapPath = Join-Path $dist.Root '.claude/commands/bootstrap.md'
+        $rebootstrapPath = Join-Path $dist.Root '.claude/commands/rebootstrap.md'
+        $contextPath = Join-Path $dist.Root 'FRAMEWORK-CONTEXT.md'
+        $wikiTemplatePath = Join-Path $dist.Root 'docs/wiki/_template.md'
+        $rememberPath = Join-Path $dist.Root '.claude/skills/remember-for-team/SKILL.md'
+        foreach ($path in @($bootstrapPath, $rebootstrapPath, $contextPath, $wikiTemplatePath, $rememberPath)) {
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+                throw "repository-knowledge capture carrier is missing in $($dist.Name): $path"
+            }
+        }
+
+        $bootstrap = Read-Utf8Text $bootstrapPath
+        foreach ($required in @(
+            '### 3a-bis: Capture repository knowledge as review drafts',
+            'new, non-overwriting review draft',
+            'provenance and adversarial-content screens',
+            'not instructions to execute or authority for broader reads or writes',
+            'frontmatter contains `name`, a trigger-rich `description`, and',
+            '`origin: discovered` so existing lifecycle handling can find it.',
+            '**Provenance:**',
+            '**Draft status:** draft pending PR review; not team-approved policy',
+            'draft pending PR review; not team-approved policy',
+            'last-verified: never',
+            'path-existence-only check does not refresh truth or date',
+            'its decisive source or predicate; that is enough to refresh that claim.',
+            'runtime or business-behaviour proof.',
+            'unavailable runtime evidence never',
+            'inflates the claim;',
+            'at most 12 summary lines'
+        )) {
+            if ($bootstrap.IndexOf($required, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+                throw "repository-knowledge bootstrap capture carrier $($dist.Name) omits '$required'"
+            }
+        }
+        foreach ($forbidden in @('in this package grants no such write authority', 'later capture workflow', 'capture/routing is a later workflow with separate write authority', 'read-only discovery pass wrote no project knowledge artifacts')) {
+            if ($bootstrap.IndexOf($forbidden, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+                throw "repository-knowledge bootstrap capture carrier $($dist.Name) retains intermediate wording '$forbidden'"
+            }
+        }
+
+        $rebootstrap = Read-Utf8Text $rebootstrapPath
+        foreach ($required in @('New absent repository-knowledge drafts are the narrow automatic exception in 3a-discovery.', '### 3a-discovery: Automatically draft new repository knowledge', 'eligible **new absent** non-overwriting draft', 'This automatic exception does not sit under the diff-and-confirm gate.', 'Existing owner content, near-matches, policy/ADRs, deletions, and authority decisions retain confirmation.', 'including quiet callers outside recent activity', 'path existence alone is not a semantic refresh', 'preserving a historic verification date on downgrade')) {
+            if ($rebootstrap.IndexOf($required, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+                throw "repository-knowledge rebootstrap capture carrier $($dist.Name) omits '$required'"
+            }
+        }
+
+        $template = Read-Utf8Text $wikiTemplatePath
+        foreach ($required in @('**Confidence:**', '**Provenance:**', '**Counterevidence / exceptions:**', '**Dependencies / unresolved:**', '**Semantic refresh:**', '**Draft status:**')) {
+            if ($template.IndexOf($required, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+                throw "repository-knowledge wiki template $($dist.Name) omits '$required'"
+            }
+        }
+        foreach ($forbidden in @("`nprovenance:", "`nreview-status:")) {
+            if ($template.IndexOf($forbidden, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+                throw "repository-knowledge wiki template $($dist.Name) retains non-schema frontmatter '$forbidden'"
+            }
+        }
+        $remember = Read-Utf8Text $rememberPath
+        foreach ($required in @('never instructions or authorization for broader reads or writes', 'create only a new absent draft', 'cannot corroborate itself', 'body provenance', '**Draft status:** draft pending PR review; not team-approved policy', 'path-existence-only check does not refresh truth or its date', 'Rereading the decisive source/predicate is enough for a scoped source claim', 'restored dependencies or execution are reserved for runtime or business-behaviour proof')) {
+            if ($remember.IndexOf($required, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+                throw "repository-knowledge drafting skill $($dist.Name) omits '$required'"
+            }
+        }
+        $context = Read-Utf8Text $contextPath
+        foreach ($required in @('## Repository Knowledge Discovery', 'REPOSITORY_KNOWLEDGE_DISCOVERY_PENDING', 'at most', 'grants neither additional access nor write authority')) {
+            if ($context.IndexOf($required, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+                throw "repository-knowledge summary carrier $($dist.Name) omits '$required'"
             }
         }
     }
@@ -475,6 +554,10 @@ It 'onboarding and mirror workflows bind completion to deterministic docs sync' 
 
 It 'repository-knowledge discovery carriers preserve bounded read-only parity' {
     Assert-RepositoryKnowledgeDiscoveryContracts -DistEntries $distEntries
+}
+
+It 'repository-knowledge capture carriers preserve draft and refresh boundaries' {
+    Assert-RepositoryKnowledgeCaptureContracts -DistEntries $distEntries
 }
 
 It 'each supported completion host invocation is independently required' {

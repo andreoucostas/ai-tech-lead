@@ -56,7 +56,7 @@ For W1–W3, report only warehouse evidence. Command findings quote the exact co
 ### Inventory
 - <area/path> — inventory-only | semantically inspected | excluded | inaccessible; <classification and why>
 
-### Knowledge findings (<n>)
+### Knowledge findings
 #### <short fact or operation name>
 - **Kind**: scoped fact | evidenced operation
 - **Claim / operation**: <the actual scoped claim, or ordered evidenced steps; mark unresolved portions explicitly>
@@ -75,7 +75,7 @@ For W1–W3, report only warehouse evidence. Command findings quote the exact co
 - **Next bounded continuation**: <uncovered area and remaining finite budget>
 ```
 
-If no finding is grounded within the budget, return `### Knowledge findings (0)` and explain the actual inventory, reads, unresolved sources, and next bounded continuation. Shared A8 is unconditional, so never use the "no applicable files" reply.
+If no finding is grounded within the budget, return `### Knowledge findings` and explain the actual inventory, reads, unresolved sources, and next bounded continuation. Shared A8 is unconditional, so never use the "no applicable files" reply.
 
 If the profile/pass combination is unknown, reply: `Unknown profile or pass id: <id>. Valid: .NET A1–A7; Angular A1–A6; warehouse-SQL W1–W3; shared A8.`
 

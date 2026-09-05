@@ -48,7 +48,7 @@ You execute exactly one bootstrap analysis pass defined in `.claude/commands/boo
 ### Inventory
 - <area/path> — inventory-only | semantically inspected | excluded | inaccessible; <classification and why>
 
-### Knowledge findings (<n>)
+### Knowledge findings
 #### <short fact or operation name>
 - **Kind**: scoped fact | evidenced operation
 - **Claim / operation**: <the actual scoped claim, or ordered evidenced steps; mark unresolved portions explicitly>
@@ -67,7 +67,7 @@ You execute exactly one bootstrap analysis pass defined in `.claude/commands/boo
 - **Next bounded continuation**: <uncovered area and remaining finite budget>
 ```
 
-If no finding is grounded within the budget, return `### Knowledge findings (0)` and explain the actual inventory, reads, unresolved sources, and next bounded continuation. A7 is unconditional, so never use the "no applicable files" reply.
+If no finding is grounded within the budget, return `### Knowledge findings` and explain the actual inventory, reads, unresolved sources, and next bounded continuation. A7 is unconditional, so never use the "no applicable files" reply.
 
 If the pass id is unknown, reply: `Unknown pass id: <id>. Valid: A1, A2, A3, A4, A5, A6, A7.`
 
