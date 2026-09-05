@@ -224,8 +224,9 @@ unrun intended host/model arms.
 ### B-228 · Repair false-green test oracles and the measured raw-Git hot path
 **Filed against:** v0.83.0 (2026-09-05)
 **Priority:** P1 · **Effort:** M · **Invariants:** #3 #4
-**Status:** IN PROGRESS under the frozen contract in
-`.claude/plans/2026-09-05-b222-b224-implementation-contract.md`.
+**Status:** PARTIALLY DONE under the frozen contract in
+`.claude/plans/2026-09-05-b222-b224-implementation-contract.md`; focused correctness is accepted,
+while full stable-tree aggregate/runtime evidence and release integration remain.
 
 **Problem / evidence.** `ValidateDist.Tests.ps1` trusts a child's printed summary without checking
 its process exit, so an observed child exit 7 plus `1 passed, 0 failed` makes the parent green on
@@ -251,6 +252,15 @@ case counts under direct PowerShell 7 and native 5.1. Preserve BOM, do not raise
 coverage, and obtain immutable-range independent review plus an orthogonal execution vantage for
 the false-green release behavior. A runtime improvement claim additionally requires comparable
 stable-tree aggregate evidence. Close with the required RCA.
+
+**Focused acceptance observed 2026-09-05.** Root independently observed the actual ValidateDist
+driver on native PS7 7.6.5 and PS5.1 5.1.26100.9278: valid exit 0 passed, while a printed-success
+summary with child exit 7, missing summary, zero verdicts and ambiguous summaries each failed.
+Against the actual release source, removing or conditionally wrapping the budget caller and resetting
+`$script:fatal` after it made the corrected suite red on both hosts; subsequent clean runs were 13/0.
+Root also observed B-215's binary/NUL/high-byte and nonzero-stderr fixture plus missing-digest control
+at 8/0 on both hosts. These approve the bounded oracle/raw-reader correctness only; aggregate timing
+and any CI speed claim are still unobserved.
 
 ### B-229 · Remove CI host serialization without weakening parity evidence
 **Filed against:** v0.83.0 (2026-09-05)
