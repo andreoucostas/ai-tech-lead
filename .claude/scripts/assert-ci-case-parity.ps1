@@ -41,6 +41,11 @@ function Get-ManifestBytes {
     }
 
     $filePath = Join-Path $artifactPath $FileName
+    try { $attributes = [IO.File]::GetAttributes($filePath) }
+    catch { Stop-CantVerify "could not inspect '$ArtifactName/$FileName': $($_.Exception.Message)" }
+    if (($attributes -band [IO.FileAttributes]::Directory) -ne 0) {
+        Stop-Wrong "artifact '$ArtifactName' contains a directory where manifest '$FileName' is required"
+    }
     try { $bytes = [IO.File]::ReadAllBytes($filePath) }
     catch { Stop-CantVerify "could not read '$ArtifactName/$FileName': $($_.Exception.Message)" }
     if ($bytes.Length -eq 0) { Stop-Wrong "manifest '$ArtifactName/$FileName' is empty" }
@@ -71,17 +76,24 @@ function Get-ManifestBytes {
     return ,$bytes
 }
 
-try {
-    $artifactRootPath = [IO.Path]::GetFullPath($ArtifactRoot)
-    if (-not [IO.Directory]::Exists($artifactRootPath)) { Stop-Wrong "artifact root '$ArtifactRoot' is missing" }
-    $ArtifactRoot = $artifactRootPath
-    $actualArtifacts = @([IO.Directory]::GetDirectories($ArtifactRoot) | ForEach-Object { [IO.Path]::GetFileName($_) } | Sort-Object)
-} catch {
-    Stop-CantVerify "could not enumerate artifact root '$ArtifactRoot': $($_.Exception.Message)"
-}
+try { $artifactRootPath = [IO.Path]::GetFullPath($ArtifactRoot) }
+catch { Stop-CantVerify "could not resolve artifact root '$ArtifactRoot': $($_.Exception.Message)" }
+$ArtifactRoot = $artifactRootPath
+try { $rootEntries = @([IO.Directory]::GetFileSystemEntries($ArtifactRoot)) }
+catch [IO.DirectoryNotFoundException] { Stop-Wrong "artifact root '$ArtifactRoot' is missing" }
+catch { Stop-CantVerify "could not enumerate artifact root '$ArtifactRoot': $($_.Exception.Message)" }
+$actualArtifacts = @($rootEntries | ForEach-Object { [IO.Path]::GetFileName($_) } | Sort-Object)
 $expectedArtifacts = @($pairs | ForEach-Object { $_.Ps7Artifact; $_.Ps51Artifact } | Sort-Object)
 if (($actualArtifacts -join "`n") -cne ($expectedArtifacts -join "`n")) {
     Stop-Wrong "expected exactly eight case-count artifacts. expected=[$($expectedArtifacts -join ', ')]; actual=[$($actualArtifacts -join ', ')]"
+}
+foreach ($artifact in $expectedArtifacts) {
+    $artifactPath = Join-Path $ArtifactRoot $artifact
+    try { $attributes = [IO.File]::GetAttributes($artifactPath) }
+    catch { Stop-CantVerify "could not inspect artifact '$artifact': $($_.Exception.Message)" }
+    if (($attributes -band [IO.FileAttributes]::Directory) -eq 0) {
+        Stop-Wrong "artifact '$artifact' is not a directory"
+    }
 }
 
 foreach ($pair in $pairs) {

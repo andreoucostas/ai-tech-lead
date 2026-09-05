@@ -49,6 +49,14 @@ It 'a missing artifact is wrong rather than CANT-VERIFY' {
     } finally { Remove-Item -LiteralPath $root -Recurse -Force }
 }
 
+It 'an absent artifact root is reported as missing rather than unreadable' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('absent-ci-case-parity-' + [guid]::NewGuid().ToString('N'))
+    $r = Invoke-Decision $root
+    Assert ($r.Exit -eq 1) "absent root exit $($r.Exit): $($r.Out) $($r.Err)"
+    Assert ($r.Out -match 'artifact root.*is missing') 'absent-root diagnostic did not say missing'
+    Assert ($r.Err -notmatch 'CANT-VERIFY') 'absent root was misclassified as an IO failure'
+}
+
 It 'an extra artifact is rejected' {
     $root = New-ParityFixture
     try {
@@ -99,6 +107,19 @@ It 'a readable empty manifest is wrong' {
         $r = Invoke-Decision $root
         Assert ($r.Exit -eq 1) "empty manifest exit $($r.Exit): $($r.Out) $($r.Err)"
         Assert ($r.Out -match 'is empty') 'empty diagnostic missing'
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force }
+}
+
+It 'a directory occupying the manifest leaf is wrong rather than CANT-VERIFY' {
+    $root = New-ParityFixture
+    $path = Join-Path (Join-Path $root $pairs[3][2]) $pairs[3][3]
+    try {
+        Remove-Item -LiteralPath $path -Force
+        [IO.Directory]::CreateDirectory($path) | Out-Null
+        $r = Invoke-Decision $root
+        Assert ($r.Exit -eq 1) "manifest-directory exit $($r.Exit): $($r.Out) $($r.Err)"
+        Assert ($r.Out -match 'contains a directory where manifest') 'manifest-directory diagnostic omitted the wrong type'
+        Assert ($r.Err -notmatch 'CANT-VERIFY') 'manifest-directory was misclassified as unreadable'
     } finally { Remove-Item -LiteralPath $root -Recurse -Force }
 }
 
