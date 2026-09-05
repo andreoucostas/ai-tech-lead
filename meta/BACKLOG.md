@@ -182,7 +182,9 @@ not inferred parity. B-225 owns outcome comparison; host access does not substit
 ### B-225 · Measure broad discovery's marginal value on the actual coding surfaces
 **Filed against:** v0.83.0 (2026-09-05)
 **Priority:** P1 · **Effort:** M protocol, execution depends on tasks/seats · **Invariants:** #3 #6
-**Status:** OFFLINE PROTOCOL/CONTROLS READY. LIVE EXECUTION NOT AUTHORIZED by this entry.
+**Status:** PARTIALLY DONE. Offline protocol reviewed in
+`meta/repository-knowledge-component-study.md`; its targeted controls are proposed, not observed.
+LIVE EXECUTION NOT AUTHORIZED by this entry.
 
 **Problem.** Current source and user reports justify a hypothesis, not a productivity claim. Skill
 count, framework-test success and Claude execution do not establish Copilot task outcomes. B-41's
@@ -218,6 +220,37 @@ machinery. B-42 separately compares framework vs bare AI; do not pool with FS1/F
 unrun intended host/model arms.
 
 ## Bounded correctness and maintenance work
+
+### B-228 · Repair false-green test oracles and the measured raw-Git hot path
+**Filed against:** v0.83.0 (2026-09-05)
+**Priority:** P1 · **Effort:** M · **Invariants:** #3 #4
+**Status:** IN PROGRESS under the frozen contract in
+`.claude/plans/2026-09-05-b222-b224-implementation-contract.md`.
+
+**Problem / evidence.** `ValidateDist.Tests.ps1` trusts a child's printed summary without checking
+its process exit, so an observed child exit 7 plus `1 passed, 0 failed` makes the parent green on
+both native PowerShell hosts. `ReleaseGateWaiver.Tests.ps1` claims runtime-budget enforcement from
+regex presence; removing the actual caller in memory leaves that oracle green on both hosts. The
+B-215 ownership suite's raw Git helper uses a waited `Start-Process` plus two temporary files for
+every binary read; observed history contains many path observations but only a small set of unique
+blob reads, and direct binary stream capture was materially faster on native Windows PowerShell
+5.1. These observations establish three bounded repairs, not a general test-framework redesign or
+a reopened old runtime-budget breach.
+
+**Do.** Make child nonzero exit authoritative without double-counting or reducing the 43 existing
+ValidateDist registrations. Exercise the actual release budget function, caller and downstream
+refusal boundary for within/over-budget worlds and caller removal/conditional bypass, without an
+external release. Replace only `Invoke-GitBytes` process I/O with binary stdout capture and
+concurrent stderr draining; preserve history selection, OID caching, raw hashes and all existing
+coverage. Keep the CI critical-path redesign as a separately reviewed contract.
+
+**Done when.** Actual process-boundary and caller-bypass controls are red on the unfixed mechanism
+and green after repair; missing/ambiguous summaries and cannot-examine outcomes stay distinct;
+NUL/high-byte stdout plus nonzero stderr/exit survive exactly; focused suites report equal nonzero
+case counts under direct PowerShell 7 and native 5.1. Preserve BOM, do not raise ceilings or delete
+coverage, and obtain immutable-range independent review plus an orthogonal execution vantage for
+the false-green release behavior. A runtime improvement claim additionally requires comparable
+stable-tree aggregate evidence. Close with the required RCA.
 
 ### B-216 · Project-adapt instance-shaped skills instead of imposing framework defaults
 **Filed against:** v0.81.0 (2026-09-03)
