@@ -849,7 +849,7 @@ if ($updateMode) {
         foreach ($skillDir in Get-ChildItem -LiteralPath $activeSkillsRoot -Directory) {
             $skillFile = Join-Path $skillDir.FullName 'SKILL.md'
             if (-not (Test-Path -LiteralPath $skillFile -PathType Leaf)) { continue }
-            $oldText = Get-Content -Raw -LiteralPath $skillFile
+            $oldText = [Text.UTF8Encoding]::new($false, $true).GetString([IO.File]::ReadAllBytes($skillFile))
             if ($oldText -match '(?m)^origin:\s*discovered\s*$') { [void]$discoveredSkillNames.Add($skillDir.Name); continue }
             # An exemplar belongs to a framework skill only when this incoming manifest still
             # carries that skill. Rewriting an unknown consumer skill just to re-append the same
@@ -969,7 +969,7 @@ foreach ($name in $skillExemplars.Keys) {
     $base = if ($disabledSkillNames.Contains($name)) { ".claude/disabled-skills/$name" } else { ".claude/skills/$name" }
     $newFile = Join-Path $tgt "$base/SKILL.md"
     if (Test-Path -LiteralPath $newFile -PathType Leaf) {
-        $newText = Get-Content -LiteralPath $newFile -Raw
+        $newText = [Text.UTF8Encoding]::new($false, $true).GetString([IO.File]::ReadAllBytes($newFile))
         $newText = [regex]::Replace($newText, '(?m)^For a concrete current instance in this repo, see .+\r?\n?', '')
         Set-Content -LiteralPath $newFile -Value ($newText.TrimEnd() + "`n`n" + $skillExemplars[$name] + "`n") -Encoding UTF8
     }
