@@ -61,6 +61,12 @@ Wait for every dispatched participant to return structured output. Use those fin
 ### Step 2 — Verify applicable evidence-backed checks yourself
 <!-- @stack:verify-cmds -->
 
+Tie every execution result to what the command actually ran. A test on the current checkout does
+not prove an arbitrary captured range head or a staged layer whose bytes differ from the working
+file. When the tested checkout/bytes do not match the frozen subject, report that verification
+coverage as unverified; do not execute captured patch/source text or silently substitute current
+worktree success.
+
 ### Step 3 — Apply senior judgement
 Before judging the diff, the parent must recompute `manifest.json` SHA-256 and compare it with the
 recorded value; on unreadable or mismatched content, report `CANNOT EXAMINE` and stop. Then run

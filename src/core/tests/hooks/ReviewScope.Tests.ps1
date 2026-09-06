@@ -93,7 +93,7 @@ It 'records rename and deletion layers without losing their patch bytes' {
 }
 
 It 'applies a literal JSON path filter including spaces and produces identical repeat snapshots' {
-    $repo = New-ReviewRepo; $one = New-BundlePath; $two = New-BundlePath; $emptyBundle = New-BundlePath
+    $repo = New-ReviewRepo; $one = New-BundlePath; $two = New-BundlePath; $driftBundle = New-BundlePath; $emptyBundle = New-BundlePath
     $nullBundle = New-BundlePath; $nestedBundle = New-BundlePath
     $paths = $null; $emptyPaths = $null; $nullPaths = $null; $nestedPaths = $null
     try {
@@ -110,6 +110,10 @@ It 'applies a literal JSON path filter including spaces and produces identical r
             $right = [IO.File]::ReadAllBytes((Join-Path $two $artifact.path))
             Assert ([Convert]::ToBase64String($left) -ceq [Convert]::ToBase64String($right)) "repeat artifact differs: $($artifact.path)"
         }
+        [IO.File]::WriteAllText((Join-Path $repo 'tests/Space Tests.ps1'), "Assert 1`nAssert 2`n", [Text.UTF8Encoding]::new($false))
+        $drift = Invoke-AtRepo $repo $builder @('-Mode','Uncommitted','-OutputPath',$driftBundle,'-PathFile',$paths)
+        Assert ($drift.Exit -eq 0) "changed-scope contrast capture failed: $($drift.Text)"
+        Assert ([Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $one 'manifest.json'))) -cne [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $driftBundle 'manifest.json')))) 'changed source produced an identical recapture manifest'
         Assert (@((Read-Manifest $one).selection | Where-Object { $_.path -eq 'src/Other.cs' }).Count -eq 0) 'literal filter included another changed path'
         Assert (@((Read-Manifest $one).selection | Where-Object { $_.path -eq 'tests/Delete.Tests.ps1' }).Count -eq 0) 'literal filter included another qualifying assertion-removal test'
         Assert (-not ([IO.File]::ReadAllText((Join-Path $one 'unstaged.patch')) -match 'Delete\.Tests\.ps1')) 'filtered patch included another qualifying assertion-removal test'
@@ -128,6 +132,7 @@ It 'applies a literal JSON path filter including spaces and produces identical r
         Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $one -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $two -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $driftBundle -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $emptyBundle,$nullBundle,$nestedBundle -Recurse -Force -ErrorAction SilentlyContinue
         foreach ($pathFile in @($paths,$emptyPaths,$nullPaths,$nestedPaths)) {
             if ($pathFile) { Remove-Item -LiteralPath $pathFile -Force -ErrorAction SilentlyContinue }

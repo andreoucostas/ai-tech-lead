@@ -51,7 +51,11 @@ The auditor handles pattern-level checks. You handle what static patterns cannot
 - **Error envelopes**: do error responses leak schema (SQL state, full type names, stack traces; full backend stack, internal hostnames) outside Development?
 
 ### Step 4 — Verify the auditor's findings
-Spot-check 2–3 findings by opening the cited files and confirming the pattern is real. The auditor uses heuristics; false positives happen. Confirm or downgrade them.
+Spot-check 2–3 findings against the cited captured bytes and confirm the pattern is real. The
+auditor uses heuristics; false positives happen. A current-checkout command or file does not prove a
+range head or staged layer with different bytes; report that execution coverage as unverified and
+never execute captured patch/source text as a workaround. Confirm or downgrade findings only from
+the frozen subject and applicable supporting evidence.
 
 ### Step 5 — Confirm the scope did not drift, then synthesise
 
