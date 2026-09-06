@@ -356,6 +356,16 @@ root observed the actual installer clean, damaged-body red and restored clean un
 hosts. A full green aggregate, candidate CI topology and runtime remain unobserved until the normal
 release.
 
+**Failed candidate CI observed 2026-09-06.** Run `34011587081` completed red in 469 seconds. Both
+root jobs were green, while all six dist-hook jobs reported the same single stale
+`SessionStartWiki` wording assertion at 7/1. The required parity job ran, downloaded the only two
+available root manifests and exited 1 because it expected eight, so missing producer artifacts did
+not become a parity green. The release correctly withheld the tag. Local dist validation checks
+test structure but do not execute every shipped hook suite; the direct native-host CI contexts
+caught that stale consumer test before tagging. The two-phrase expectation repair is frozen at
+`86adad7`; its source and all three recomposed copies reported 8/0 under direct PS7 and PS5.1. This
+failed run is enforcement evidence, not a successful runtime comparison.
+
 ### B-216 · Project-adapt instance-shaped skills instead of imposing framework defaults
 **Filed against:** v0.81.0 (2026-09-03)
 **Priority:** P1 · **Effort:** L · **Invariants:** #1 #2 #3 #6 #7
