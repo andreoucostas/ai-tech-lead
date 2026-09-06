@@ -347,9 +347,10 @@ a focused PS7 7.6.5 rebuild and all three `validate-dist` runs then exited 0, an
 had 84, 1,628 and 878 LF-normalized UTF-8 bytes of .NET, Angular and monorepo headroom.
 
 The next direct-log release made all dist gates, the footprint update, eval self-test and budgets
-green, but its 254.8-second meta suite was red with eight failures. Five were stale test oracles for
-the new hook inventory, prose contracts, parity job and skill body; the repaired files are frozen at
-`15c2fe3`. The body comparison also exposed real Windows PowerShell 5.1 corruption of BOM-less UTF-8
+green, but its 254.8-second meta suite was red with eight failures. All eight came from stale
+expectations across five test files for the new hook inventory, prose contracts, parity job and
+skill body; the repaired files are frozen at `15c2fe3`. The body comparison also exposed real
+Windows PowerShell 5.1 corruption of BOM-less UTF-8
 skill text during exemplar preservation. The two bounded readers were corrected at `c2f5baa`, and
 root observed the actual installer clean, damaged-body red and restored clean under both native
 hosts. A full green aggregate, candidate CI topology and runtime remain unobserved until the normal
