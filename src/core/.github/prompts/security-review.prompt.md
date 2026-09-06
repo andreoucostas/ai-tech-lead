@@ -3,7 +3,7 @@ agent: agent
 <!-- @stack:desc -->
 ---
 
-Read `CLAUDE.md`, `FRAMEWORK-CONTEXT.md`, and `.claude/commands/security-review.md`, then execute the security review workflow defined there for the scope below.
+Read `CLAUDE.md`, `FRAMEWORK-CONTEXT.md`, and `.claude/commands/security-review.md`, then execute the security review workflow defined there for the scope below. Plain files restrict `Uncommitted`; reserve `whole-files:` for explicitly labelled whole-file review, using the one JSON-array `-PathFile` shape. Use its frozen `-ScopePath` bundle and manifest SHA-256 handoff; recompute `manifest.json` SHA-256 and reject mismatch as `CANNOT EXAMINE`. Do not recompute a Git diff or look up a PR. If `Task` is unavailable, invoke the security auditor sequentially; invalid or unreadable capture is `CANNOT EXAMINE`.
 
 <!-- @stack:summary -->
 
@@ -15,4 +15,4 @@ Be direct. Do not praise code for not being insecure — that is the baseline.
 
 ## Scope
 
-${input:scope:Files, PR number, or leave blank to review uncommitted changes}
+${input:scope:Files restrict uncommitted; whole-files: files; explicit A..B or A...B; or leave blank}

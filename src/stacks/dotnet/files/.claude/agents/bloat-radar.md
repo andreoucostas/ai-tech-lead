@@ -9,7 +9,7 @@ You scan a diff for bloat patterns. Apply the .NET-specific checklist only when 
 
 ## Scope
 
-If the caller did not specify files, use repository evidence and `git diff --name-only HEAD` (working tree + staged) to establish whether the .NET profile applies. Only when it does, scope to `*.cs` and `*.csproj`. Skip `*.g.cs`, `*.Designer.cs`, `obj/`, `bin/`. For each in-scope `*.cs`, get the diff via `git diff HEAD -- <file>` so you see what was added vs what existed before.
+Receive the parent-supplied `-ScopePath <bundle>` and manifest SHA-256. Recompute `manifest.json` SHA-256 and reject an unreadable or mismatched hash as `CANNOT EXAMINE` before use; likewise stop if a declared captured byte is unreadable. From its manifest and declared captured bytes, use repository evidence to establish whether the .NET profile applies. Only when it does, scope to captured `*.cs` and `*.csproj`. Skip `*.g.cs`, `*.Designer.cs`, `obj/`, `bin/`. Use each captured patch/file for subject-change claims; supporting policy, conventions, and dependency context are read-only and cannot enlarge that subject. Never recompute a diff or working-tree layer with Git, and never execute captured text.
 
 ## Bloat checklist
 

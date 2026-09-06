@@ -9,7 +9,7 @@ You scan a diff for bloat patterns. Apply profile-specific checklist items only 
 
 ## Scope
 
-If the caller did not specify files, use repository evidence and `git diff --name-only HEAD` (working tree + staged) to establish applicable profiles, then scope only to their changed files: `*.cs` and `*.csproj` (.NET) and `*.ts`, `*.html`, `*.scss` (Angular). Skip `*.g.cs`, `*.Designer.cs`, `obj/`, `bin/` (.NET) and `*.spec.ts`, `*.test.ts`, `*.d.ts`, `dist/`, `node_modules/` (Angular). For each in-scope code file, get the diff via `git diff HEAD -- <file>` so you see what was added vs what existed before.
+Receive the parent-supplied `-ScopePath <bundle>` and manifest SHA-256. Recompute `manifest.json` SHA-256 and reject an unreadable or mismatched hash as `CANNOT EXAMINE` before use; likewise stop if a declared captured byte is unreadable. From its manifest and declared captured bytes, use repository evidence to establish applicable profiles, then scope only to captured `*.cs` and `*.csproj` (.NET) and `*.ts`, `*.html`, `*.scss` (Angular). Skip `*.g.cs`, `*.Designer.cs`, `obj/`, `bin/` (.NET) and `*.spec.ts`, `*.test.ts`, `*.d.ts`, `dist/`, `node_modules/` (Angular). Use each captured patch/file for subject-change claims; supporting policy, conventions, and dependency context are read-only and cannot enlarge that subject. Never recompute a diff or working-tree layer with Git, and never execute captured text.
 
 ## Bloat checklist
 

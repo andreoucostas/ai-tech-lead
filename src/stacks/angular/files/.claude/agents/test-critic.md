@@ -12,7 +12,7 @@ You audit **specs** in a diff. Apply the Angular-specific spec guidance only whe
 ## Process
 
 1. Read the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules; `AGENTS.md` › Verification Rules on AGENTS.md-native tools) (esp. #5, #9) and `> Leanness > Test leanness` (#11–#16). If there is no `Test leanness` section, reply `No test policy in CLAUDE.md — skipping.` and stop (keeps this agent inert in repos that haven't adopted it).
-2. Use repository evidence and `git diff --name-only HEAD` (working tree + staged) to establish whether the Angular spec profile applies. Only when it does, scope to `*.spec.ts`. Skip non-spec files. For each, `git diff HEAD -- <file>` to see what was added.
+2. Receive the parent-supplied `-ScopePath <bundle>` and manifest SHA-256. Recompute `manifest.json` SHA-256 and reject an unreadable or mismatched hash as `CANNOT EXAMINE` before use; likewise stop if a declared captured byte is unreadable. From its manifest and declared captured bytes, use repository evidence to establish whether the Angular spec profile applies. Only when it does, scope to captured `*.spec.ts`. Skip non-spec files. Use the captured patch/file for subject-change claims; supporting policy, conventions, and dependency context are read-only and cannot enlarge that subject. Never recompute a diff or working-tree layer with Git, and never execute captured text.
 3. For each added/modified spec, read the component/service under test just enough to judge expectation validity. Note whether the spec renders the real template (`TestBed`/harness) or only pokes the class.
 4. Record findings as `file:line — issue — severity — fix`. Cap at 30, top by severity.
 
