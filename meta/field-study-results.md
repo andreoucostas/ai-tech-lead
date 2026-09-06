@@ -35,6 +35,9 @@ The user authorized implementation of the reviewed
 [critique provenance](../.claude/plans/2026-09-06-cp1-abp-copilot-critique.md) records the handoff's
 reported ACCEPT WITH CONDITIONS; it is not a new acceptance review. No purchase, Copilot setup,
 task arm, diagnostic, or RK1 live run was performed. There is no comparative outcome to classify.
+Offline guest/application/oracle readiness and the supported setup route precede purchase. Paid
+host calibration and onboarding follow purchase and must pass before the task pair; they are not
+unfunded pre-purchase requirements.
 
 **Observed preparation.** The authoring tree started clean at `87521cdf...`; the requested framework
 release resolves to `a3986c207fe336abc5967652a021625c2a17ed75`. ABP's selection anchor resolves to
@@ -87,6 +90,14 @@ the candidate limit, task criteria, guest requirement or protocol requires renew
 Source links for host provisioning and advertised pricing are retained in WSD-076. The external
 coordinator handoff holds provisioning steps, raw evidence and the cumulative selection ledger;
 it is not an isolated setup/task workspace. B-42 and B-216/B-222–B-225 remain open.
+
+**Record verification.** Independent reviewer `/root/cp1_record_review` accepted immutable range
+`87521cdf...a8aa59c` as a meta-only NOT READY record, with no blocking findings; concrete task/oracle
+review remains outstanding. The critique file preserves scope, limitations and attributed hostile
+evidence. Root ran `BacklogHygiene.Tests.ps1 -RedTest broken-index` (exit 1), then its clean run
+(10 passed / 0 failed), plus `DocTruth.Tests.ps1` (13 passed / 0 failed), directly under PS7 and
+native PS5.1; the latter used code page 437. The distribution bytes match the pinned release.
+These checks verify authoring records, not application or Copilot outcomes.
 
 ## Runs
 

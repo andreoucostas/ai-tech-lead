@@ -57,7 +57,7 @@ for that named campaign; RK1/B-225 stays preparation-only and VS Code is deferre
 `.claude/plans/2026-09-06-cp1-abp-copilot-campaign.md` preserve the prospective contract. Preparation
 stopped **NOT READY**: no usable disposable Windows guest was established, and the first 100
 integrations yielded 84 initial exclusions and 16 unresolved candidates, with no certified task.
-No paid call, setup, application baseline or outcome was run. Sanitized evidence and remaining
+No paid Copilot call, setup, application baseline or outcome was run. Sanitized evidence and remaining
 caps are in `meta/field-study-results.md`; raw records remain outside this repository. All named
 semantic/value entries remain open, including B-42's independent FS2 requirement.
 
