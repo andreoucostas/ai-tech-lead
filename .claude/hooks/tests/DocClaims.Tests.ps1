@@ -17,7 +17,8 @@ $contracts = @(
     [pscustomobject]@{ Claim = 'FRAMEWORK-CONTEXT.md'; Line = '"Known Hazard Areas" is re-confirmed by `/rebootstrap`'; Command = '.claude/commands/rebootstrap.md'; Requires = 'Known Hazard Areas'; RequiresStepCount = $null; Dists = $allDists }
     [pscustomobject]@{ Claim = 'README.md'; Line = '"Detected Framework Packages" is also refreshed by `/docs-sync`'; Command = '.claude/commands/docs-sync.md'; Requires = 'Detected Framework Packages'; RequiresStepCount = $null; Dists = $allDists }
     [pscustomobject]@{ Claim = 'README.md'; Line = '"Known Hazard Areas" by `/rebootstrap`'; Command = '.claude/commands/rebootstrap.md'; Requires = 'Known Hazard Areas'; RequiresStepCount = $null; Dists = $allDists }
-    [pscustomobject]@{ Claim = '.claude/commands/rebootstrap.md'; Line = 'refresh conventions, hazards, and mined skills'; Command = '.claude/commands/rebootstrap.md'; Requires = 'Hazard'; RequiresStepCount = $null; Dists = $allDists }
+    [pscustomobject]@{ Claim = '.claude/commands/rebootstrap.md'; Line = 'Re-run A7 using `bootstrap.md`'; Command = '.claude/commands/rebootstrap.md'; Requires = 'Bounded Repository-Knowledge Discovery'; RequiresStepCount = $null; Dists = @('angular') }
+    [pscustomobject]@{ Claim = '.claude/commands/rebootstrap.md'; Line = 'Re-run shared A8 using `bootstrap.md`'; Command = '.claude/commands/rebootstrap.md'; Requires = 'Bounded Repository-Knowledge Discovery'; RequiresStepCount = $null; Dists = @('dotnet', 'monorepo') }
     [pscustomobject]@{ Claim = '.github/prompts/docs-sync.prompt.md'; Line = 'all six steps'; Command = '.claude/commands/docs-sync.md'; Requires = $null; RequiresStepCount = 6; Dists = $allDists }
 )
 
@@ -224,8 +225,14 @@ function Assert-VerificationOwnershipContracts {
             $path = Join-Path $dist.Root $relative
             if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "verification ownership carrier is missing in $($dist.Name): $relative" }
             $text = Read-Utf8Text $path
-            foreach ($required in @('framework-owned/overwritten', 'framework-retirements.json', 'application-command evidence', 'report framework checks separately')) {
-                if ($text.IndexOf($required, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+            $normalized = [regex]::Replace($text, '\s+', ' ')
+            $requiredOwnership = if ($relative -in @('.github/instructions/framework-rules.instructions.md', 'AGENTS.md')) {
+                @('framework-owned/overwritten', 'framework-retirements.json', 'application-command, evidence', 'report separately from application verification')
+            } else {
+                @('framework-owned/overwritten', 'framework-retirements.json', 'application-command evidence', 'report framework checks separately')
+            }
+            foreach ($required in $requiredOwnership) {
+                if ($normalized.IndexOf($required, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
                     throw "verification ownership carrier $($dist.Name)/$relative omits '$required'"
                 }
             }
@@ -346,8 +353,9 @@ function Assert-RepositoryKnowledgeDiscoveryContracts {
                 throw "repository-knowledge carrier is missing in $($dist.Name): $($carrier.Path)"
             }
             $text = Read-Utf8Text $path
+            $normalized = [regex]::Replace($text, '\s+', ' ')
             foreach ($required in $carrier.Required) {
-                if ($text.IndexOf($required, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+                if ($normalized.IndexOf($required, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
                     throw "repository-knowledge carrier $($dist.Name)/$($carrier.Path) omits '$required'"
                 }
             }

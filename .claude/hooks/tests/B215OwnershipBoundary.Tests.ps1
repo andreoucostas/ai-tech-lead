@@ -55,7 +55,8 @@ It 'all distributions retain the suite but exclude it from consumer ownership' {
     foreach ($stack in @('dotnet','angular','monorepo')) {
         $dist = Join-Path $repoRoot "dist/$stack"
         $suite = @(Get-ChildItem -LiteralPath (Join-Path $dist 'tests/hooks') -File -Recurse)
-        Assert ($suite.Count -eq 22) "$stack dist does not retain all 22 hook-test files"
+        Assert ($suite.Count -eq 23) "$stack dist does not retain all 23 hook-test files"
+        Assert (@($suite | Where-Object { $_.Name -ceq 'ReviewScope.Tests.ps1' }).Count -eq 1) "$stack dist omitted ReviewScope.Tests.ps1 from the retained hook-test inventory"
         $manifest = Get-Content -Raw -LiteralPath (Join-Path $dist 'framework-ownership.json') | ConvertFrom-Json
         $installed = @($manifest.paths | Where-Object { $_.path.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase) })
         Assert ($installed.Count -eq 0) "$stack ownership manifest still installs tests/hooks"

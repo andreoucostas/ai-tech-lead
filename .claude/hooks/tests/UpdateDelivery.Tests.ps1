@@ -70,7 +70,7 @@ Repo-specific conventions the consumer owns. Populated by /bootstrap. DO NOT CLO
     Set-Content (Join-Path $t '.claude/settings.json') "{`n  `"consumerEdit`": `"recover me`"`n}`n" -Encoding utf8
     New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude/skills/add-warehouse-load') | Out-Null
     New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude/skills/add-warehouse-load/references') | Out-Null
-    Set-Content (Join-Path $t '.claude/skills/add-warehouse-load/SKILL.md') "---`nname: add-warehouse-load`n---`n# Old framework body`n`nFor a concrete current instance in this repo, see ``warehouse/LoadSales.sql`` — reproduce its **conventions and structure**, not its contents; CLAUDE.md > Conventions wins on any conflict.`n" -Encoding utf8
+    [IO.File]::WriteAllText((Join-Path $t '.claude/skills/add-warehouse-load/SKILL.md'), "---`nname: add-warehouse-load`n---`n# Old framework body`n`nFor a concrete current instance in this repo, see ``warehouse/LoadSales.sql`` — reproduce its **conventions and structure**, not its contents; CLAUDE.md > Conventions wins on any conflict.`n", [Text.UTF8Encoding]::new($false))
     New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude/skills/local-release') | Out-Null
     Set-Content (Join-Path $t '.claude/skills/local-release/SKILL.md') "---`nname: local-release`norigin: discovered`n---`n# Consumer recipe`n" -Encoding utf8
     [IO.File]::WriteAllBytes((Join-Path $t '.claude/skills/add-warehouse-load/references/project-pattern.md'), [Text.UTF8Encoding]::new($false).GetBytes("# Consumer project pattern`r`ncomposition-root: Unity`r`nlifetime: scoped`r`n"))
@@ -93,6 +93,11 @@ function Assert-BytesEqual {
     param([byte[]]$Expected, [byte[]]$Actual, [string]$Message)
     Assert ($Expected.Length -eq $Actual.Length -and
         [Convert]::ToBase64String($Expected) -ceq [Convert]::ToBase64String($Actual)) $Message
+}
+
+function Normalize-SkillText {
+    param([string]$Text)
+    return ([regex]::Replace($Text, '\r\n?', "`n")).TrimEnd([char]10)
 }
 
 # B-194's three grouped tests deliberately retain every subprocess result before their first
@@ -311,6 +316,8 @@ $powerShellExtension = 'ps1'
     $dist = 'dotnet'
     $target = New-LegacyConsumer -Stack $dist
     $claudePath = Join-Path $target 'CLAUDE.md'
+    $legacySkillPath = Join-Path $target '.claude/skills/add-warehouse-load/SKILL.md'
+    $legacySkillBefore = [IO.File]::ReadAllBytes($legacySkillPath)
     $carrierPath = Join-Path $target $carrierRel
     $adrPath = Join-Path $target 'docs/architecture-decisions.md'
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $adrPath) | Out-Null
@@ -367,8 +374,17 @@ $powerShellExtension = 'ps1'
     }
 
     It "update refreshes framework skills while preserving consumer ownership ($powerShellExtension)" {
-        $warehouse = Get-Content (Join-Path $target '.claude/skills/add-warehouse-load/SKILL.md') -Raw
-        Assert ($warehouse -match 'Bind to the dimensions that already exist') 'the current framework body was not delivered'
+        $warehousePath = Join-Path $target '.claude/skills/add-warehouse-load/SKILL.md'
+        $warehouse = Get-Content $warehousePath -Raw
+        $shippedWarehouse = [IO.File]::ReadAllText((Join-Path $repoRoot "dist/$dist/.claude/skills/add-warehouse-load/SKILL.md"))
+        $consumerExemplar = 'For a concrete current instance in this repo, see `warehouse/LoadSales.sql` — reproduce its **conventions and structure**, not its contents; CLAUDE.md > Conventions wins on any conflict.'
+        $legacyHasBom = $legacySkillBefore.Length -ge 3 -and $legacySkillBefore[0] -eq 0xEF -and $legacySkillBefore[1] -eq 0xBB -and $legacySkillBefore[2] -eq 0xBF
+        $legacySkillText = [Text.UTF8Encoding]::new($false, $true).GetString($legacySkillBefore)
+        Assert (-not $legacyHasBom) 'consumer exemplar fixture unexpectedly has a UTF-8 BOM'
+        Assert ($legacySkillText.Contains([string][char]0x2014)) 'consumer exemplar fixture lost its non-ASCII em dash'
+        $withoutConsumerExemplar = [regex]::Replace($warehouse, '(?m)^' + [regex]::Escape($consumerExemplar) + '\r?\n?', '')
+        Assert ((Normalize-SkillText $withoutConsumerExemplar) -ceq (Normalize-SkillText $shippedWarehouse)) 'installed framework skill body does not exactly match the shipped framework body after removing only the preserved consumer exemplar'
+        Assert ($warehouse.Contains($consumerExemplar)) 'the exact non-ASCII consumer exemplar was not preserved'
         Assert ($warehouse -match 'warehouse/LoadSales.sql') 'the consumer exemplar was lost'
         Assert ((Get-Content (Join-Path $target '.claude/skills/local-release/SKILL.md') -Raw) -match 'Consumer recipe') 'origin: discovered skill was overwritten'
         Assert (-not (Test-Path (Join-Path $target '.claude/skills/perf'))) 'disabled framework skill was reactivated'
