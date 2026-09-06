@@ -32,8 +32,10 @@ evidence while preserving demonstrated security controls.
 
 B-220 removes the retired `-GitHooks` installer argument. B-228 corrects two false-green test
 oracles and the Windows PowerShell raw-Git reader. B-229 removes native-host job serialization while
-retaining all eight Windows contexts and adding a required artifact-parity decision; runtime benefit
-is not claimed until the candidate workflow runs in GitHub Actions.
+retaining all eight Windows contexts and adding a required artifact-parity decision. Release run
+[`34012239352`](https://github.com/andreoucostas/ai-tech-lead/actions/runs/34012239352) passed all
+eight contexts plus parity in 7m30s, 53.7% shorter than the 16m12s v0.83 baseline; this is one hosted
+comparison of the combined v0.84 changes, not isolated causal attribution to any one repair.
 
 ## 0.83.0 — 2026-09-04
 

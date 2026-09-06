@@ -3498,6 +3498,14 @@ no path-based skip. WSD-073's eight-context platform decision remains intact; th
 changes only dependency and evidence-decision topology. Runtime improvement remains unobserved until
 an immutable candidate CI run completes.
 
+**Observed delivery — 2026-09-06.** v0.84.0 GitHub Actions run
+[`34012239352`](https://github.com/andreoucostas/ai-tech-lead/actions/runs/34012239352) passed all eight
+native contexts plus the required comparison in 7m30s. The comparison downloaded eight artifacts,
+and validated four nonempty byte-identical PS7/PS5.1 pairs. The completed workflow was 53.7% shorter
+than the 16m12s v0.83 baseline in this single hosted comparison of the combined delivery. B-229's
+completed record is in `meta/BACKLOG-DONE.md`; this observation does not rewrite the prospective
+decision.
+
 **Review.** Root accepted the bounded contract with conditions that the comparison reject identical
 malformed manifests, distinguish unreadable inputs from wrong content, propagate its actual exit,
 be registered in the explicit meta-suite manifest, and keep watcher/topology hostile controls. The

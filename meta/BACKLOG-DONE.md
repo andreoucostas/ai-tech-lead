@@ -11841,3 +11841,153 @@ and coverage placed on an instructed-loaded carrier; existing carrier semantics 
 before reusing them. Backlog accumulation had left superseded no-use claims and invalid execution
 commands beside current statuses. A concise current list plus immutable history and explicit
 supersession replaces that ambiguity without falsely completing the four remaining outcomes.
+
+## v0.84.0 delivered closures (2026-09-06)
+
+### B-220 · Remove the retired `-GitHooks` compatibility parameter — **DONE v0.84.0 (2026-09-06)**
+**Filed against:** v0.83.0 (2026-09-04) · **Invariants:** #1 #6 #7
+
+**Problem.** v0.83 retained `-GitHooks` only as a bridge refusing exit 2 before mutation. Keeping a
+dead parameter indefinitely implied a supported feature.
+
+**Do.** Remove it from root `install.ps1`, `src/core/scripts/install.ps1`, current usage and relevant
+tests/migration instructions. Preserve historical evidence and durable doctor detection of legacy
+consumer hooks/helpers. Do not delete unowned hooks or weaken retained helper closure.
+
+**Done when.** Both entrypoints reject the unknown argument before mutation; current usage does not
+advertise it; legacy diagnostics remain; ordinary install/update and retired-argument hostile tests
+pass on both hosts; normal source/dist/changelog/release checks agree.
+
+The root and delegated installers no longer accept or advertise the retired argument. Native
+parameter binding rejects it before mutation while the separate doctor/helper diagnostics for
+legacy consumer hooks remain. Root ran the actual binding case for both entrypoints at 1/0 on direct
+PS7 7.6.5 and PS5.1 5.1.26100.9278 with full target-tree fingerprints. Feeding the prior installer
+body to the same oracle made it red on both hosts; restoring the candidate returned 1/0. The final
+v0.84.0 local aggregate and all eight required native CI contexts passed.
+
+**RCA.** This was a scheduled compatibility retirement rather than an escaped defect. The parameter
+intentionally remained for one refusal period; caller/help/test inventory ensured its removal did not
+erase the distinct legacy diagnostics or mutate a consumer before native binding rejected the switch.
+
+### B-227 · Replace context-free financial verdicts with evidence-based invariant review — **DONE v0.84.0 (2026-09-06)**
+**Filed against:** v0.83.0 (2026-09-05) · **Invariants:** #1 #6 #7
+
+**Problem / evidence.** The .NET security auditor treated absent specific transaction/row-lock
+mechanisms and floating-point Amount/Price/Rate names as defects, including unconditional critical
+severity. Those were source overclaims, not reproduced production losses. Map-warehouse called
+reporting views known correct while its confidence table correctly separated usage from correctness.
+
+**Do.** Establish applicable atomicity/concurrency, numeric precision/rounding and temporal
+invariants; inspect evidenced mechanisms/tests. A lock/isolation level or numeric type is neither
+universally required nor universally safe. Flag demonstrated unsafe outcomes/scoped policy
+violations, with evidence/severity; retain uncertainty where unestablished. Preserve hard security
+controls and financial attention. Remove the map's unsupported certainty without rewriting its
+dimensional model.
+
+**Done when.** No categorical mechanism/name-only verdict remains in touched carriers; acceptance
+covers legitimate alternatives and actual defects; general shipped checks pass. Report unavailable
+semantic execution rather than claiming financial safety certification.
+
+The .NET/monorepo financial carriers now require applicable invariants, tolerances, preconditions,
+policy, and source/interleaving/executable evidence instead of inferring severity from a numeric type,
+row lock, transaction mechanism, or symbol name. Root executed all four neutral C# mechanism pairs
+and the carrier contract on both native hosts: candidate clean was 5/0, while substituting the old
+categorical carrier made the same instrument red at 4/1. A fresh `gpt-5.6-luna` authoring review saw
+only the frozen auditor, raw source, and neutral owner brief; its four method-specific findings agreed
+with the independently executed oracle. The final local aggregate and release CI passed. Exact
+inputs, hashes, findings, and limits are retained in `meta/repository-knowledge-forward-evidence.md`.
+This is bounded authoring evidence, not Copilot/SQL efficacy, installed-host validation, financial
+certification, or a general safety claim.
+
+**RCA.** Keyword and named-mechanism heuristics had no executable valid alternative or invalid
+outcome, so representation choices became categorical severity. The warehouse usage rule repeated
+the same unsupported certainty. Active rules, prompts, auditors, test guidance, and eval expectations
+shared the class and were reconciled; the executable pairs keep legitimate alternatives and actual
+defects distinguishable without creating a financial domain engine.
+
+### B-228 · Repair false-green test oracles and the measured raw-Git hot path — **DONE v0.84.0 (2026-09-06)**
+**Filed against:** v0.83.0 (2026-09-05) · **Invariants:** #3 #4
+
+**Problem / evidence.** `ValidateDist.Tests.ps1` trusted a child's printed summary without checking
+its process exit, so an observed child exit 7 plus `1 passed, 0 failed` made the parent green on both
+native PowerShell hosts. `ReleaseGateWaiver.Tests.ps1` claimed runtime-budget enforcement from regex
+presence; removing the actual caller in memory left that oracle green on both hosts. The B-215
+ownership suite's raw Git helper used a waited process plus two temporary files for every binary read.
+
+**Do.** Make child nonzero exit authoritative without double-counting or reducing the 43 existing
+ValidateDist registrations. Exercise the actual release budget function, caller and downstream
+refusal boundary for within/over-budget worlds and caller removal/conditional bypass. Replace only
+`Invoke-GitBytes` process I/O with binary stdout capture and concurrent stderr draining; preserve
+history selection, OID caching, raw hashes and all existing coverage.
+
+**Done when.** Actual process-boundary and caller-bypass controls are red on the unfixed mechanism
+and green after repair; missing/ambiguous summaries and cannot-examine outcomes stay distinct;
+NUL/high-byte stdout plus nonzero stderr/exit survive exactly; direct-host focused suites and general
+release checks pass without raising ceilings or deleting coverage; comparable stable-tree evidence
+grounds any runtime observation.
+
+The ValidateDist driver now treats child exit as authoritative without reducing its 43 registrations;
+the release-budget oracle exercises the actual caller and refusal boundary; and B-215's raw Git helper
+captures binary stdout and concurrent stderr without temporary files while preserving history, hashes,
+NUL/high bytes, nonzero exit, and missing-digest controls. Root observed the process and budget hostile
+cases red on both native hosts, then clean 13/0 release-budget runs and B-215 8/0 runs. The final local
+meta aggregate reported 35 files and zero failures in 241.6s. GitHub release run `34012239352` passed
+both root aggregates and all six distribution contexts. Hosted root/meta times were 433s/388s on PS7
+and 334s/292s on PS5.1, versus baseline `33980347537` at 483s/432s and 484s/442s respectively.
+Component observations were PS7 B-215 30.7s vs 66.4s, InstallerConvergence 130.0s vs 145.6s,
+ValidateDist 95.8s vs 90.5s, UpdateDelivery 120.6s vs 125.0s; PS5.1 B-215 19.4s vs 260.5s,
+InstallerConvergence 75.9s vs 79.8s, ValidateDist 59.5s vs 76.5s, UpdateDelivery 116.5s vs 132.1s.
+These are one hosted before/after observation of the combined release, not isolated causal attribution
+to the raw-reader change, and they do not claim every component became faster.
+
+**RCA.** One harness trusted success-shaped summary text without child exit and another proved only
+that a budget-call AST existed, so failed/inert execution could look green. The raw-Git helper hid
+repeated process/file startup cost. Bounded real-boundary hostile controls now cover those sites; no
+generic checker framework, deleted coverage, or raised budget was introduced.
+
+### B-229 · Remove CI host serialization without weakening parity evidence — **DONE v0.84.0 (2026-09-06)**
+**Filed against:** v0.83.0 (2026-09-05) · **Invariants:** #3 #4
+
+**Problem / evidence.** Baseline GitHub run `33980347537` passed all eight Windows contexts in
+16m12s, while the PS5.1 root and dist definitions were serialized behind PS7 solely to compare case-
+count manifests. The host executions themselves were independent.
+
+**Do / done when.** Preserve all eight direct native-host contexts and exact nonzero per-file case
+coverage. Let them publish independently, then require one same-platform parity decision to inspect
+all eight artifacts and compare four root/dist host pairs. Missing/extra/empty/unequal artifacts,
+missing or skipped parity, and an absent native-host context must not read green. Keep watcher and
+workflow-topology expectations exact. Do not add a provider/platform leg, skip paths, delete tests,
+or raise budgets. Require direct-host hostile/clean evidence, immutable independent review, full
+stable-tree aggregates, and an observed candidate CI run before closure.
+
+All eight direct native-host contexts now run independently and publish exact nonzero per-file case
+manifests. A ninth required Windows decision waits for all producers, validates all eight artifacts,
+and byte-compares four PS7/PS5.1 pairs. Focused direct-host tests covered missing, skipped, failed,
+malformed, empty, unequal, inert-step, conditional-shell, and `continue-on-error` cases. Failed
+candidate run `34011587081` then supplied release-boundary evidence: all six distribution contexts
+failed the same stale assertion, parity downloaded only the two root artifacts and exited 1 rather
+than going green, and the release withheld the tag.
+
+Pre-release integration also retained its reds rather than promoting them as timing evidence. A
+logging-wrapper failure left its upstream release alive until root stopped the exact process tree;
+that run and a concurrent mapped-file failure were discarded. A later direct-log run exposed mirror
+drift, duplicated ordered-list steps, and .NET context overage before interruption. The next full
+local meta run was red in 254.8s with eight stale expectations across five test files. Those findings,
+the subsequent strict-UTF8 installer repair, and the final green local aggregate were resolved before
+the candidate CI runs; none of the interrupted/red timings is used as the release benchmark.
+
+After the bounded test-oracle repair, v0.84.0 run
+[`34012239352`](https://github.com/andreoucostas/ai-tech-lead/actions/runs/34012239352) passed all eight
+contexts plus parity. The decision downloaded eight nonempty valid artifacts and found four byte-
+identical host pairs. It completed in 450s (7m30s), versus baseline run `33980347537` at 972s
+(16m12s): 53.7% shorter in this single hosted comparison of the combined v0.84 changes. This is the
+release benchmark; a later metadata-only CI run is follow-up validation, not a replacement timing.
+
+**RCA.** Pair comparison lived in producer jobs, so `needs` serialized otherwise independent native
+hosts while old topology assertions preserved the delay. The downstream required decision removes
+that dependency without removing a context, test, or budget. The failed candidate also showed why
+the comparison must run after upstream failure and treat missing evidence as red. During integration,
+an incompatible logging pipeline left an upstream release process alive after its wrapper failed;
+root stopped that exact process tree before commit/push/tag, and subsequent release attempts used
+direct file redirection with native exit capture. That orchestration incident and its discarded runs
+are not aggregate or timing evidence.
