@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.84.0 — Unreleased
+## 0.84.0 — 2026-09-06
 
 **Repository-specific knowledge becomes a first-class, reviewable input to ordinary changes.**
 B-222–B-224/WSD-074 broaden bootstrap discovery beyond recurring recipes, route grounded facts and
@@ -22,7 +22,9 @@ and VS Code semantic application and outcome value remain open under B-224/B-225
 
 B-216 re-locks eight instance-shaped operation skills around first-party project evidence and an
 optional consumer-owned `references/project-pattern.md`, removing framework/library/interface
-assumptions that could override a repository's real pattern. B-226 gives every review participant
+assumptions that could override a repository's real pattern. Skill-body refresh now decodes
+BOM-less UTF-8 explicitly so non-ASCII consumer exemplars survive Windows PowerShell 5.1 updates.
+B-226 gives every review participant
 one hashed snapshot of staged, unstaged, untracked, range, or explicit whole-file bytes and refuses
 invalid, unreadable, or drifting scope. B-227 replaces name/type/mechanism-only financial verdicts
 with applicable invariants, tolerances, preconditions, policy and source/interleaving/executable

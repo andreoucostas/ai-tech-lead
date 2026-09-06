@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.84.0 — Unreleased
+## 0.84.0 — 2026-09-06
 
 - Bootstrap and rebootstrap now discover consequential repository facts and operations beyond
   recurring recipes, capture grounded findings as review drafts in the existing wiki/skill/map
@@ -14,7 +14,8 @@
 - The .NET and Angular instance-shaped operation skills now derive their concrete patterns from
   first-party project evidence. Optional consumer-owned `references/project-pattern.md` files can
   record local variants and are preserved across lifecycle operations; the framework ships no
-  placeholders that could overwrite them.
+  placeholders that could overwrite them. Skill refresh decodes BOM-less UTF-8 explicitly so
+  non-ASCII project examples survive Windows PowerShell 5.1 updates.
 - Full reviews now give every auditor and the test-weakening advisory one hashed frozen change
   bundle, distinguish invalid input from inability to examine it, and stop if the subject drifts.
   Financial review now judges applicable invariants, tolerances, preconditions and demonstrated

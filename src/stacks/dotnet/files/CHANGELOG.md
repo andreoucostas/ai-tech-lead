@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.84.0 — Unreleased
+## 0.84.0 — 2026-09-06
 
 - Bootstrap and rebootstrap now discover consequential repository facts and operations beyond
   recurring recipes, capture grounded findings as review drafts in the existing wiki/skill/map
@@ -13,7 +13,8 @@
 - The .NET endpoint, entity, service-registration, and warehouse-load skills now derive their
   concrete pattern from first-party project evidence. An optional consumer-owned
   `references/project-pattern.md` can record the local variant and is preserved across lifecycle
-  operations; the framework ships no placeholder that could overwrite it.
+  operations; the framework ships no placeholder that could overwrite it. Skill refresh decodes
+  BOM-less UTF-8 explicitly so non-ASCII project examples survive Windows PowerShell 5.1 updates.
 - Full reviews now give every auditor and the test-weakening advisory one hashed frozen change
   bundle, distinguish invalid input from inability to examine it, and stop if the subject drifts.
   Financial review now judges applicable invariants, tolerances, preconditions and demonstrated

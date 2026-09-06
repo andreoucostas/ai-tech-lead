@@ -344,8 +344,16 @@ descendants before any commit, push, tag or CI run. A subsequent direct-log run 
 dists, then exposed mirror drift, duplicated ordered-list steps and a .NET context overage before it
 was deliberately interrupted during the meta suite. Repairs are frozen at `40ac225` and `4d8aac5`;
 a focused PS7 7.6.5 rebuild and all three `validate-dist` runs then exited 0, and unchanged ceilings
-had 84, 1,628 and 878 characters of .NET, Angular and monorepo headroom. The full aggregate, updated
-footprint baseline, candidate CI topology and runtime remain unobserved until the normal release.
+had 84, 1,628 and 878 LF-normalized UTF-8 bytes of .NET, Angular and monorepo headroom.
+
+The next direct-log release made all dist gates, the footprint update, eval self-test and budgets
+green, but its 254.8-second meta suite was red with eight failures. Five were stale test oracles for
+the new hook inventory, prose contracts, parity job and skill body; the repaired files are frozen at
+`15c2fe3`. The body comparison also exposed real Windows PowerShell 5.1 corruption of BOM-less UTF-8
+skill text during exemplar preservation. The two bounded readers were corrected at `c2f5baa`, and
+root observed the actual installer clean, damaged-body red and restored clean under both native
+hosts. A full green aggregate, candidate CI topology and runtime remain unobserved until the normal
+release.
 
 ### B-216 · Project-adapt instance-shaped skills instead of imposing framework defaults
 **Filed against:** v0.81.0 (2026-09-03)
@@ -388,6 +396,10 @@ B-222–B-224 do not wait for the registry decision. Historical evidence:
 carriers independently imposed unevidenced libraries, layers, interfaces, and recipes. The defect
 class is conflicting semantic authority across active carriers; the accepted sweep and lifecycle
 fixtures address the named operations, while unrun alternative/conflict worlds remain explicit.
+The update test's old phrase-presence oracle could not detect a corrupted replacement body. Its
+exact body-and-exemplar comparison exposed that two default-encoding reads turned BOM-less UTF-8
+into mojibake on Windows PowerShell 5.1; the owned skill round trip now decodes both inputs explicitly
+as strict UTF-8 and retains a BOM-less, non-ASCII regression.
 
 **Focused acceptance observed 2026-09-05.** Root ran the authoring authority contract at 6/0 on
 both native hosts and selected update/collision lifecycle cases at 1/0 on each. Replacing the

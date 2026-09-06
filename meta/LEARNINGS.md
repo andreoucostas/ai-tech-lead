@@ -2169,3 +2169,9 @@ The later clean run also demonstrated why focused source checks do not replace c
 whole-section mirror drift, duplicated composed list steps and a context-ceiling overage. Repair the
 specific source defects and recompose; do not waive the gate or treat an interrupted aggregate as a
 pass.
+
+A later exact installed-body assertion also caught what the old phrase check could not: PowerShell
+5.1 decoded a BOM-less UTF-8 skill through its ANSI default and re-emitted mojibake while preserving
+the expected phrase. Round-trip tests must compare the authoritative body and non-ASCII consumer
+content, and code that owns a UTF-8 format must decode it explicitly rather than inherit host
+defaults.
