@@ -17,12 +17,15 @@ $script:RepoRoot = $null
 $script:PathFilterSupplied = -not [string]::IsNullOrWhiteSpace($PathFile)
 $script:PerFileLimit = 16MB
 $script:TotalFileLimit = 64MB
+$script:PrivateIndexPath = $null
 
 function Invoke-GitBytes {
     param([string[]]$Arguments)
     $git = @(Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)
     if ($git.Count -ne 1) { throw 'CANNOT EXAMINE: git executable is unavailable.' }
-    $allArguments = @()
+    # These are command-scoped: review capture must neither refresh the repository index nor fetch
+    # a missing promisor object. A Git version that cannot honour them fails as inability to examine.
+    $allArguments = @('--no-optional-locks','--no-lazy-fetch')
     if ($script:RepoRoot) { $allArguments += @('-C', $script:RepoRoot) }
     $allArguments += @('-c','core.quotePath=false')
     $allArguments += $Arguments
@@ -40,6 +43,9 @@ function Invoke-GitBytes {
     $startInfo.CreateNoWindow = $true
     $startInfo.RedirectStandardOutput = $true
     $startInfo.RedirectStandardError = $true
+    $startInfo.EnvironmentVariables['GIT_OPTIONAL_LOCKS'] = '0'
+    $startInfo.EnvironmentVariables['GIT_NO_LAZY_FETCH'] = '1'
+    if ($script:PrivateIndexPath) { $startInfo.EnvironmentVariables['GIT_INDEX_FILE'] = $script:PrivateIndexPath }
     $process = New-Object Diagnostics.Process
     $process.StartInfo = $startInfo
     $stdout = New-Object IO.MemoryStream
@@ -68,7 +74,18 @@ function Get-SelectedPaths {
     if (-not $pathEntry -or $pathEntry.PSIsContainer -or (($pathEntry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) {
         throw "INVALID: path list is not a regular file: '$InputPath'."
     }
-    try { $raw = [IO.File]::ReadAllText((Resolve-Path -LiteralPath $InputPath).Path, [Text.Encoding]::UTF8) }
+    $pathCursor = $pathEntry.FullName
+    while ($pathCursor) {
+        try { $pathAncestor = Get-Item -Force -LiteralPath $pathCursor -ErrorAction Stop }
+        catch { throw "CANNOT EXAMINE: could not inspect path-list ancestry '$InputPath': $($_.Exception.Message)" }
+        if (($pathAncestor.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            throw "INVALID: path list traverses a reparse point: '$InputPath'."
+        }
+        $pathParent = Split-Path -Parent $pathCursor
+        if (-not $pathParent -or $pathParent -eq $pathCursor) { break }
+        $pathCursor = $pathParent
+    }
+    try { $raw = [IO.File]::ReadAllText($pathEntry.FullName, [Text.Encoding]::UTF8) }
     catch { throw "CANNOT EXAMINE: could not read path list '$InputPath': $($_.Exception.Message)" }
     $trimmed = $raw.Trim().TrimStart([char]0xFEFF)
     if (-not $trimmed.StartsWith('[') -or -not $trimmed.EndsWith(']')) {
@@ -121,6 +138,23 @@ function Write-ReviewScopeBundle {
     $emptySelection = $script:PathFilterSupplied -and $SelectedPaths.Count -eq 0
     $initialState = $null
     if ($Mode -eq 'Uncommitted') {
+        $indexResult = Invoke-GitBytes @('rev-parse','--git-path','index')
+        $gitDirResult = Invoke-GitBytes @('rev-parse','--absolute-git-dir')
+        if ($indexResult.Exit -ne 0 -or $gitDirResult.Exit -ne 0) {
+            throw "CANNOT EXAMINE: could not resolve Git index metadata: $($indexResult.Error.Trim()) $($gitDirResult.Error.Trim())"
+        }
+        $indexText = [Text.Encoding]::UTF8.GetString($indexResult.Bytes).Trim()
+        $gitDirText = [Text.Encoding]::UTF8.GetString($gitDirResult.Bytes).Trim()
+        $realIndexPath = if ([IO.Path]::IsPathRooted($indexText)) { [IO.Path]::GetFullPath($indexText) } else { [IO.Path]::GetFullPath((Join-Path $script:RepoRoot $indexText)) }
+        $gitDirPath = [IO.Path]::GetFullPath($gitDirText).TrimEnd('\','/')
+        if (-not ($realIndexPath.StartsWith($gitDirPath + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase))) {
+            throw 'CANNOT EXAMINE: resolved Git index is outside the selected worktree metadata.'
+        }
+        try { $indexBytes = [IO.File]::ReadAllBytes($realIndexPath) }
+        catch { throw "CANNOT EXAMINE: could not read Git index: $($_.Exception.Message)" }
+        $script:PrivateIndexPath = Join-Path $OutputPath '.review-index'
+        try { [IO.File]::WriteAllBytes($script:PrivateIndexPath, $indexBytes) }
+        catch { throw "CANNOT EXAMINE: could not create private review index: $($_.Exception.Message)" }
         $initialState = Invoke-GitBytes @('status','--porcelain=v1','-z','--untracked-files=all')
         if ($initialState.Exit -ne 0) { throw "CANNOT EXAMINE: initial repository-state read failed: $($initialState.Error.Trim())" }
     }
@@ -261,6 +295,8 @@ function Write-ReviewScopeBundle {
         if ([Convert]::ToBase64String([byte[]]@($initialState.Bytes)) -cne [Convert]::ToBase64String([byte[]]@($finalState.Bytes))) {
             throw 'CANNOT EXAMINE: repository changed while capturing the review scope; retry with a fresh scope.'
         }
+        try { [IO.File]::Delete($script:PrivateIndexPath); $script:PrivateIndexPath = $null }
+        catch { throw "CANNOT EXAMINE: could not dispose private review index: $($_.Exception.Message)" }
     }
 
     $manifest = [pscustomobject][ordered]@{

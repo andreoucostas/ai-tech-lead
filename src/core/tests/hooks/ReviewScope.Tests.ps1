@@ -114,6 +114,23 @@ It 'applies a literal JSON path filter including spaces and produces identical r
     }
 }
 
+It 'does not refresh or rewrite the Git index for a timestamp-only worktree observation' {
+    $repo = New-ReviewRepo; $bundle = New-BundlePath
+    try {
+        $tracked = Join-Path $repo 'tests/Foo.Tests.ps1'
+        [IO.File]::SetLastWriteTimeUtc($tracked, [DateTime]::UtcNow.AddMinutes(2))
+        $indexPath = Join-Path $repo '.git/index'
+        $before = [Convert]::ToBase64String([IO.File]::ReadAllBytes($indexPath))
+        $result = Invoke-AtRepo $repo $builder @('-Mode','Uncommitted','-OutputPath',$bundle)
+        $after = [Convert]::ToBase64String([IO.File]::ReadAllBytes($indexPath))
+        Assert ($result.Exit -eq 0) "timestamp-only capture failed: $($result.Text)"
+        Assert ($after -ceq $before) 'review capture refreshed or rewrote the repository index'
+    } finally {
+        Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $bundle -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 It 'freezes two-dot and three-dot endpoint semantics and rejects a bad ref' {
     $repo = New-ReviewRepo; $two = New-BundlePath; $three = New-BundlePath; $bad = New-BundlePath
     try {
@@ -183,12 +200,15 @@ It 'separates unsafe arguments, unborn repositories, and occupied outputs' {
     }
 }
 
-It 'refuses Git-enumerated untracked content through a directory reparse point' {
-    $repo = New-ReviewRepo; $outside = Join-Path ([IO.Path]::GetTempPath()) ('review-outside-' + [guid]::NewGuid().ToString('N')); $bundle = New-BundlePath
+It 'refuses path-list and Git-enumerated content through a directory reparse point' {
+    $repo = New-ReviewRepo; $outside = Join-Path ([IO.Path]::GetTempPath()) ('review-outside-' + [guid]::NewGuid().ToString('N')); $bundle = New-BundlePath; $filteredBundle = New-BundlePath
     try {
         New-Item -ItemType Directory -Path $outside | Out-Null
         [IO.File]::WriteAllText((Join-Path $outside 'External.Tests.ps1'), "Assert 'outside'`n", [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText((Join-Path $outside 'paths.json'), '["tests/Foo.Tests.ps1"]', [Text.UTF8Encoding]::new($false))
         New-Item -ItemType Junction -Path (Join-Path $repo 'linked-tests') -Target $outside -Force | Out-Null
+        $filtered = Invoke-AtRepo $repo $builder @('-Mode','Uncommitted','-OutputPath',$filteredBundle,'-PathFile',(Join-Path $repo 'linked-tests/paths.json'))
+        Assert ($filtered.Exit -eq 2 -and $filtered.Text -match 'INVALID.*path list traverses a reparse point') "path-list ancestor reparse was not invalid input: $($filtered.Exit) $($filtered.Text)"
         $result = Invoke-AtRepo $repo $builder @('-Mode','Uncommitted','-OutputPath',$bundle)
         Assert ($result.Exit -eq 3 -and $result.Text -match 'CANNOT EXAMINE.*(reparse|regular file)') "untracked reparse content was not refused: $($result.Exit) $($result.Text)"
         Assert (-not (Test-Path -LiteralPath (Join-Path $bundle 'untracked/linked-tests/External.Tests.ps1'))) 'builder copied bytes through an untracked directory reparse point'
@@ -198,6 +218,7 @@ It 'refuses Git-enumerated untracked content through a directory reparse point' 
         Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $outside -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $bundle -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $filteredBundle -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
 
