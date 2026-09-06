@@ -127,12 +127,14 @@ It 'passes a literal PathFile through private capture without broadening scope' 
     $pathFile = Join-Path ([IO.Path]::GetTempPath()) ('tw-paths-' + [guid]::NewGuid().ToString('N') + '.json')
     try {
         [IO.File]::WriteAllText((Join-Path $repo 'tests/FooTests.cs'), "public class FooTests {`n  public void A(){`n    Assert.Equal(1,1);`n  }`n}`n")
-        [IO.File]::WriteAllText((Join-Path $repo 'tests/OtherTests.cs'), "public class OtherTests { void B() { Assert.False(false); } }`n")
+        [IO.File]::WriteAllText((Join-Path $repo 'tests/Métric Test.Tests.ps1'), "Assert 1`n")
         & git -C $repo add -A 2>&1 | Out-Null
+        $unfiltered = Invoke-Scan $repo
+        Assert ($unfiltered.Exit -eq 0 -and $unfiltered.Text -match 'Métric Test\.Tests\.ps1') "unfiltered control did not report the other qualifying assertion removal: $($unfiltered.Exit) $($unfiltered.Text)"
         [IO.File]::WriteAllText($pathFile, '["tests/FooTests.cs"]', [Text.UTF8Encoding]::new($false))
         $r = Invoke-Scan $repo @('-PathFile',$pathFile)
         Assert ($r.Exit -eq 0 -and $r.Text -match 'FooTests\.cs') "PathFile scan missed selected test: $($r.Exit) $($r.Text)"
-        Assert ($r.Text -notmatch 'tests/OtherTests\.cs') "PathFile scan broadened into another qualifying assertion-removal test: $($r.Text)"
+        Assert ($r.Text -notmatch 'Métric Test\.Tests\.ps1') "PathFile scan broadened into another qualifying assertion-removal test: $($r.Text)"
     } finally {
         Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $pathFile -Force -ErrorAction SilentlyContinue
