@@ -97,12 +97,12 @@ Run only if the codebase shows financial domain signals (look for: currency/mone
 If no financial signals found, return: `A7: No financial domain signals detected — skipping.`
 
 If signals found, identify and report:
-- **Monetary precision**: are `decimal` types used for money fields? Any `double` or `float` on financial amounts? (flag as Critical)
-- **Negative amount guards**: do deposit/credit/debit operations validate that amounts are positive before writing?
+- **Monetary precision**: establish represented quantity, scale, rounding rule, tolerance, and executable/domain result; a `decimal`, `double`, or `float` name is a lead, not a severity verdict.
+- **Amount-sign rules**: identify the applicable sign precondition per operation (for example debit, credit, deposit, reversal, or correction) and compare its demonstrated result with policy; a negative amount is not inherently invalid across all operations.
 - **Idempotency**: do payment or transaction-creating operations have idempotency keys? Are they enforced at the DB layer (unique index) or only in application code?
-- **Check-then-act races**: are balance reads and subsequent debits/credits within the same database transaction with appropriate isolation level? Flag any pattern that reads a balance then writes without a transaction or with `IsolationLevel.ReadUncommitted`.
+- **Check-then-act races**: identify the actual atomic, optimistic, idempotency, locking, or transaction mechanism and examine the relevant interleaving. Report a defect when source, an executable interleaving, or policy demonstrates a lost update, duplicate effect, or other invariant violation; an absent transaction or named isolation level alone is not a verdict.
 - **Regulatory calculation isolation**: which methods or classes produce figures for regulatory reporting? Are they unit-tested with known inputs/outputs to verify calculation accuracy?
-- **Decimal rounding strategy**: is `MidpointRounding` specified on `Math.Round` calls involving money? Inconsistent rounding is a regulatory audit finding.
+- **Rounding strategy**: compare the evidenced rounding result with the applicable policy/tolerance; absent `MidpointRounding` syntax alone is not a regulatory finding.
 - **Audit trail for financial mutations**: do write operations on financial entities log who made the change, when, and the before/after values?
 
 ### A8: Bounded Repository-Knowledge Discovery
@@ -153,7 +153,7 @@ Before generating any artifact, ask the developer a small number of targeted que
 **Ask about:**
 1. **Convention contradictions** — if two conflicting patterns exist for the same area (e.g. manual DI registration in some files, convention scanning in others): *"Your codebase uses both [A] (e.g. `services.AddScoped<IFoo, Foo>()` in `file`) and [B] (e.g. `services.AddFromAssembly()` in `file`) for service registration. Which is the intended convention?"* Frame as a plain engineering question about the codebase, never about which CLAUDE.md section to use.
 2. **Pattern intent** — if a pattern recurs but is applied inconsistently: *"I see [X] in [N] places but not all. Is this intentional (applied selectively) or drift (should be consistent)?"*
-3. **.NET only — financial domain scope** — if the .NET profile's A7 fired: *"I detected financial-domain signals in [area/file]. Should I apply strict decimal/idempotency rules across the entire [service/module] or only in the flagged files?"*
+3. **.NET only — financial domain scope** — if the .NET profile's A7 fired: *"I detected financial-domain signals in [area/file]. Which invariant, tolerance, and preconditions apply, and where is their policy or executable evidence?"*
 
 **Do not ask** about things determinable from code (naming patterns, framework version, file structure), matters of taste with no right answer, or hazard areas (those get their own confirmation in Phase 3d-bis).
 

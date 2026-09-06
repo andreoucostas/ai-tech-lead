@@ -260,9 +260,10 @@ quietly — producing a number, not an error.
    off a column that merely happens to sit on a table already in the join. A column that is
    declared in DDL but never populated by any load looks identical to a real one in a `SELECT`
    list — and returns `NULL`s or blanks, not an error.
-3. **Copy an existing reporting view's join path before inventing one.** The consumption views
-   are the joins this warehouse is known to answer correctly. If two views disagree, that
-   conflict is in the map's edge list; raise it rather than picking.
+3. **Use an existing reporting view's join path as a usage lead before inventing one.** It shows
+   the path this warehouse uses, not that the result is correct. Freeze the report's applicable
+   grain, temporal predicate, expected result, and tolerances before claiming correctness. If two
+   views disagree, record that conflict in the map's edge list rather than picking one.
 4. **Treat a same-named column on an already-joined table as suspect** until you know which table
    populates it. Same name is not same meaning, and it is not evidence of a relationship.
 5. **Replicating a report from another warehouse: write the source-column → target-concept

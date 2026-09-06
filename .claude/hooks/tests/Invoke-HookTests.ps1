@@ -57,6 +57,7 @@ $expectedTestFiles = @(
     'DocsSyncCheck.Tests.ps1',
     'DocTruth.Tests.ps1',
     'FidelityCheck.Tests.ps1',
+    'FinancialCaseOracles.Tests.ps1',
     'GateBudgetConsistency.Tests.ps1',
     'GuardPatternErrors.Tests.ps1',
     'InstallerContract.Tests.ps1',

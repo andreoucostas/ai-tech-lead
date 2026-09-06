@@ -24,7 +24,7 @@ You audit **tests** in a diff. Apply the .NET-specific test guidance only when r
 - **Missing paths** — `medium`: only the happy path is covered for a method with obvious error/edge/boundary/null branches. Name the uncovered branch.
 - **Implementation-coupled** — `medium`: assertions on private state (reflection), on internal call *order* that isn't part of the contract, or on exact log strings. A behavior-preserving refactor would break it. *(Test leanness #16.)*
 - **Nondeterministic / non-hermetic** — `high` if it will flake, else `medium`: real clock (`DateTime.Now`/`UtcNow`), `Thread.Sleep`/`Task.Delay`, unseeded `Guid.NewGuid()`/`Random`, real HTTP/filesystem/DB, or reliance on test-execution order / shared mutable state. Point at the input to pin (`TimeProvider`, seed, in-memory substitute).
-- **Financial-domain gap** — `high`: the code under test touches money/balances/ledgers/idempotency but the tests omit decimal precision, negative amounts, duplicate transaction IDs, or rounding (`MidpointRounding`). These are the highest-value tests in this codebase — their absence is a finding.
+- **Financial-domain gap** — `high` only when an applicable invariant, tolerance, and preconditions are evidenced by policy, implementation, tests, or executable behavior and the suite omits consequential demonstrated behavior. For money/balances/ledgers/idempotency, investigate negative amounts, duplicate effects, precision/rounding, and temporal behavior where applicable. A numeric type or mechanism name alone neither proves a gap nor determines severity; retain unavailable evidence as uncertainty.
 
 ## Output format
 

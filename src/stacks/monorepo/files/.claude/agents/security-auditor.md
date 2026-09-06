@@ -57,12 +57,10 @@ Apply each profile-labelled item only when repository evidence and files in scop
 - `RSA.Create()` with key size below 2048.
 
 **Financial / concurrency** (.NET)
-- Check-then-act on financial state without a wrapping transaction: pattern is a `SELECT` / `GET` on a balance or position followed by an `UPDATE` / `INSERT` — flag if no `using var tx = db.BeginTransaction(IsolationLevel.Serializable/RepeatableRead)` wraps both operations.
-- `IsolationLevel.ReadUncommitted` on any query that feeds a financial write (dirty-read risk).
-- Balance or position reads used in a subsequent calculation without an explicit row-level lock (`UPDLOCK` hint or EF Core `FromSqlRaw` equivalent) — flag as potential TOCTOU.
-- Duplicate transaction ID not guarded by a unique index: look for INSERT on a payment/transaction entity without a corresponding `HasIndex(...).IsUnique()` in the EF configuration.
-- `double` or `float` fields on entities or DTOs whose name contains `Amount`, `Balance`, `Price`, `Rate`, `Fee`, or `Notional` — financial precision loss (flag as `critical`). This applies to Angular `number` money fields too where they persist or compute money.
-- `Math.Round` without explicit `MidpointRounding` on a value in financial context — inconsistent rounding strategy (flag as `medium`).
+- First freeze the applicable invariant, tolerance, and preconditions from policy, implementation, tests, and executable/domain evidence. A type/name, absent lock, missing transaction, or isolation level is a lead to inspect, never severity by itself.
+- Concurrency: identify the actual atomic/optimistic/idempotency mechanism and examine its relevant interleaving. Flag a lost update, duplicate effect, or scoped policy violation demonstrated by source, an executable interleaving, or domain evidence, with its evidence and severity; otherwise retain unavailable proof as uncertainty.
+- Precision/rounding: identify the represented quantity, scale, rounding rule, and tolerance. Flag a reproduced precision/rounding result outside that tolerance or an evidenced policy violation; `double`, `float`, `decimal`, Angular `number`, or `Math.Round` syntax alone proves neither safety nor loss.
+- Temporal/reporting: inspect the applicable as-of/current-row predicate and compare the report against its frozen expected result. Flag an incorrect result with its oracle; usage, a view name, or a key name is not correctness proof.
 
 **HTTP / transport**
 - **.NET:** `HttpClient` with `ServerCertificateCustomValidationCallback => true` (cert pinning bypass). `requireHttps = false` on auth middleware in non-Development. Cookies without `HttpOnly`, `Secure`, `SameSite` set (when explicitly created — defaults differ by ASP.NET version). CORS policies using `AllowAnyOrigin` together with `AllowCredentials`.

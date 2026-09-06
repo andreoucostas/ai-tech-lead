@@ -76,7 +76,7 @@ Re-examine test coverage, test quality, and gaps. Note what was tested vs what g
 Re-examine async hygiene, null handling, exception handling, logging, NuGet dependencies. Flag outdated packages and any newly introduced anti-patterns.
 
 ### A7: Financial Domain Invariants
-Only if the codebase shows financial-domain signals (see the `### A7:` gate in `bootstrap.md`). Re-examine monetary precision (`decimal` vs `double`/`float`), negative-amount guards, idempotency-key enforcement, check-then-act races on balances, regulatory-calculation isolation, rounding strategy, and audit trails on financial mutations — scoped to the changed areas. If no financial signals, note `A7: skipped — no financial domain signals` and move on.
+Only if the codebase shows financial-domain signals (see the `### A7:` gate in `bootstrap.md`). Re-examine applicable invariants, tolerances, preconditions, policy, and executable/domain evidence for precision, negative amounts, idempotency, concurrency, temporal reporting, rounding, and audit trails — scoped to changed areas. Types and mechanism names are leads, not verdicts; retain unavailable proof as uncertainty. If no financial signals, note `A7: skipped — no financial domain signals` and move on.
 
 ### Warehouse-SQL passes (only when the warehouse-SQL profile is selected)
 
