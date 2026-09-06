@@ -1,6 +1,7 @@
 # Team Wiki Index
 
-PR-reviewed, scoped claims that agents and people should verify against the code before relying on them.
+Scoped claims that agents and people should verify against the code before relying on them. Newly
+created discovery entries are drafts pending PR review; their body states that status explicitly.
 
 | | `LEARNINGS.md` | `docs/wiki/` (here) |
 |---|---|---|

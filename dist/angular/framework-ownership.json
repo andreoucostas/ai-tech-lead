@@ -101,6 +101,7 @@
     { "path": "scripts/framework-doctor.ps1", "ownership": "framework-owned/overwritten" },
     { "path": "scripts/hazard-check.ps1", "ownership": "framework-owned/overwritten" },
     { "path": "scripts/metrics.ps1", "ownership": "framework-owned/overwritten" },
+    { "path": "scripts/review-scope.ps1", "ownership": "framework-owned/overwritten" },
     { "path": "scripts/template-checks.ps1", "ownership": "framework-owned/overwritten" },
     { "path": "scripts/test-weakening-scan.ps1", "ownership": "framework-owned/overwritten" },
     { "path": "scripts/warehouse-map-check.ps1", "ownership": "framework-owned/overwritten" },

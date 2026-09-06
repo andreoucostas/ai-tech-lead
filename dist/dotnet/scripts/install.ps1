@@ -1,6 +1,5 @@
 ﻿# Install the AI Tech Lead Framework into a target repository.
 # Usage: pwsh -NoProfile -File scripts/install.ps1 [-AllowDirtyTree] [-WhatIf] [-AllowDowngrade] C:\path\to\target-repo
-#        -GitHooks is accepted only as a v0.83 compatibility refusal and never mutates a Git hook.
 #
 # Copies the template's framework files into the target, EXCLUDING the .git directory, the
 # .template-repo marker (which would disable the consumer's CI guardrail), the template repo's own
@@ -17,7 +16,6 @@
 #                .claude/settings.json is backed up, refreshed, and adapted to the host.
 param(
     [Parameter(Mandatory = $true)][string]$Target,
-    [switch]$GitHooks,
     [switch]$AllowDirtyTree,
     [switch]$WhatIf,
     [switch]$AllowDowngrade
@@ -36,11 +34,6 @@ if (-not (Test-Path -LiteralPath $Target -PathType Container)) { Write-Error "Ta
 $src = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $tgt = (Resolve-Path $Target).Path
 if ($tgt -eq $src) { Write-Error "Target is the template repo itself — choose a different target."; exit 2 }
-if ($GitHooks) {
-    [Console]::Error.WriteLine("-GitHooks was retired in v0.83.0. No Git hook was changed. Inspect .git/hooks/pre-commit and remove or replace any AI Tech Lead convenience hook manually, then run $followUpPowerShell scripts/framework-doctor.ps1.")
-    exit 2
-}
-
 # Brownfield archive paths must never traverse a reparse point. Resolving a target path is not
 # enough: a junction/symlink below it can redirect either the collision source or the archive
 # destination outside the consumer repository before Move-Item gets a chance to report anything.
@@ -856,7 +849,7 @@ if ($updateMode) {
         foreach ($skillDir in Get-ChildItem -LiteralPath $activeSkillsRoot -Directory) {
             $skillFile = Join-Path $skillDir.FullName 'SKILL.md'
             if (-not (Test-Path -LiteralPath $skillFile -PathType Leaf)) { continue }
-            $oldText = Get-Content -Raw -LiteralPath $skillFile
+            $oldText = [Text.UTF8Encoding]::new($false, $true).GetString([IO.File]::ReadAllBytes($skillFile))
             if ($oldText -match '(?m)^origin:\s*discovered\s*$') { [void]$discoveredSkillNames.Add($skillDir.Name); continue }
             # An exemplar belongs to a framework skill only when this incoming manifest still
             # carries that skill. Rewriting an unknown consumer skill just to re-append the same
@@ -976,7 +969,7 @@ foreach ($name in $skillExemplars.Keys) {
     $base = if ($disabledSkillNames.Contains($name)) { ".claude/disabled-skills/$name" } else { ".claude/skills/$name" }
     $newFile = Join-Path $tgt "$base/SKILL.md"
     if (Test-Path -LiteralPath $newFile -PathType Leaf) {
-        $newText = Get-Content -LiteralPath $newFile -Raw
+        $newText = [Text.UTF8Encoding]::new($false, $true).GetString([IO.File]::ReadAllBytes($newFile))
         $newText = [regex]::Replace($newText, '(?m)^For a concrete current instance in this repo, see .+\r?\n?', '')
         Set-Content -LiteralPath $newFile -Value ($newText.TrimEnd() + "`n`n" + $skillExemplars[$name] + "`n") -Encoding UTF8
     }

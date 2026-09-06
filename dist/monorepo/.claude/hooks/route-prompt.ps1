@@ -39,7 +39,7 @@ $railsFeature = @'
 
 Leanness constraints (the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools)):
 - Prefer editing existing files over creating new ones.
-- No new interface, abstract class, pipe, directive, or generic helper unless a second consumer exists in this change-set. State the second consumer if you add one.
+- Preserve a project-evidenced service seam; otherwise add no interface, abstract class, pipe, directive, or generic helper without a second consumer or correctness need. State the evidence.
 - Wrappers must add behavior. Inline shallow delegates and service methods that just call HttpClient.
 - No defensive code for impossible states; no comments that restate code; no future-proofing.
 '@
@@ -99,8 +99,8 @@ $railsSecurity = @'
 
 This prompt touches a security- or money-sensitive area (auth, payments, balances, ledgers, idempotency, secrets, tokens, session, PII, output sanitisation). DORA's evidence is that AI amplifies existing weaknesses fastest here, so this overlay applies ON TOP OF any workflow rails above. Before presenting the change as complete:
 1. Run /security-review on the diff (or invoke the security-auditor agent) — do not self-certify.
-2. Monetary logic: use decimal (never double); guard negative amounts, duplicate transaction IDs, precision loss, and timestamp ordering; make state-changing operations idempotent.
-3. Check-then-act on balances/state: ensure read-decide-write is atomic/serialised — no TOCTOU race.
+2. Financial logic: establish the applicable invariant, tolerance, and preconditions from policy, implementation, tests, or executable evidence; preserve demonstrated negative-amount, duplicate-effect, precision/rounding, and temporal controls. A type or mechanism name alone is not a verdict.
+3. For state changes, inspect the actual atomic, optimistic, or idempotency mechanism and relevant interleaving; report an unsafe outcome or scoped policy violation demonstrated by source, interleaving, or executable evidence, otherwise retain uncertainty.
 4. Never bypass Angular's sanitisation (bypassSecurityTrust*, direct innerHTML) without an explicit, reviewed reason; rely on the framework's escaping.
 5. Keep tokens/secrets out of localStorage where an httpOnly cookie is viable; never log credentials or PII.
 6. Validate and encode at trust boundaries (route params, HTTP responses, user input); guard against XSS/CSRF.

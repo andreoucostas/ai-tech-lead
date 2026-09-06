@@ -20,7 +20,7 @@ description: >
    test framework if that is not xUnit, and adjust the namespaces to this repository's project graph. Cover at least:
    - Domain has **no** dependency on Application / Infrastructure / API (inward-only).
    - Application does not depend on Infrastructure / API.
-   - (Optional, where detectable) controllers/handlers depend on service **interfaces**, not concretes — supports DIP.
+   - (Optional, where detectable) controllers/handlers preserve the project's evidenced service seam — supports DIP.
 3. **CI**: derive the exact scoped command that runs the new architecture project in this repo
    (for example a targeted `dotnet test` when that is the established runner), record it under
    `CLAUDE.md > Conventions > Verification Commands`, and put that exact command in the required

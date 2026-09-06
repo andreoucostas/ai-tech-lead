@@ -13,7 +13,7 @@ Scope gate: this installed file is a delivery-profile superset, not evidence tha
 - Domain layer has zero external dependencies.
 
 ## SOLID
-- DIP: every injected service is depended on through an interface (`IFoo` + `Foo`); never inject or `new` a concrete service.
+- DIP: preserve an evidenced project service boundary; do not introduce an interface or DI container from this summary alone.
 - Data carriers (DTOs, entities, value objects, Options) get no interface.
 - SRP: one reason to change per class; controllers stay thin and delegate immediately.
 - OCP: at the third arm of a switch/if over a type code, replace with polymorphism.

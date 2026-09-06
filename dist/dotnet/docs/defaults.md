@@ -30,10 +30,10 @@ evidenced command, report `not available (no evidenced command)`; never invent `
 - Files match class names exactly. One public class per file.
 
 ### Dependency Injection
-- **DIP (mandatory — see the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools))**: every injected service is depended on through an interface (`IFoo` + `Foo`, impl may be `sealed`), registered in DI; never inject or `new` a concrete service. Data carriers (DTOs, entities, value objects, `Options`) are not services and get no interface.
-- Services: scoped. Factories and stateless helpers: transient. Caches and config: singleton.
-- Register via extension methods per project, not in Program.cs directly.
-- Use `IOptions<T>` for static config, `IOptionsMonitor<T>` for config that can change at runtime, `IOptionsSnapshot<T>` for scoped config refresh.
+- **DIP (see the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools))**: derive a service seam, registration, and lifetime from first-party project evidence and correctness needs. Do not introduce an interface or DI container solely from this default; preserve an evidenced dependency boundary. Data carriers (DTOs, entities, value objects, `Options`) are not services and get no interface.
+- Where the project already evidences DI, follow its established lifetime and composition-root conventions; this default does not choose scoped, transient, or singleton.
+- Follow the project’s evidenced composition-root location and registration mechanism; do not select extension methods or `Program.cs` from this default.
+- Use an options/configuration mechanism only where the project evidences it; do not select `IOptions<T>`, `IOptionsMonitor<T>`, or `IOptionsSnapshot<T>` solely from this default.
 
 ## Evidence-matched data-access defaults
 
@@ -73,7 +73,7 @@ Data-access defaults are conditional on what the repo evidences in csproj packag
 ## .NET application defaults (continued)
 
 ### API Design
-- Controllers are thin — delegate to services immediately. Minimal APIs are acceptable for simple endpoints if the project uses them.
+- Controllers are thin — delegate at an evidenced project boundary. Minimal APIs are acceptable for simple endpoints if the project uses them.
 - Request/response DTOs are separate from domain entities. Never expose domain models in API contracts.
 - Use FluentValidation for request validation. No validation logic in controllers.
 - Background work uses `BackgroundService` or `IHostedService`. No `Task.Run` fire-and-forget in request handlers.

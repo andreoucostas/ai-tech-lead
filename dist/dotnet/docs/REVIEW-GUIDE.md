@@ -22,12 +22,12 @@ One file is authored by hand — **`CLAUDE.md`**. Supported clients load it or g
 - **Hook-script input/output fixtures (not host firing):** pipe representative JSON into `pwsh -NoProfile -File .claude/hooks/route-prompt.ps1` and `.claude/hooks/guard.ps1`; confirm `/fix` rails and exit 2 for a prohibited suppression. These direct commands prove parser and output-shape behavior only; they do not prove that a client fires the event or consumes the output.
 - **`/review` derives and runs applicable repository-evidenced checks itself** (review.md Step 2) —
   it does not trust unverified pass claims, and reports unsupported categories as `not available`.
-- **Behavior is documented as cases:** read `tests/evals/cases.yaml`. e.g. `dotnet-001` requires an interface for an injected service (DIP); `dotnet-004` requires it **and** forbids a speculative provider factory (the SOLID-vs-future-proofing line).
+- **Behavior is documented as cases:** read `tests/evals/cases.yaml`. e.g. `dotnet-001` and `dotnet-004` derive a service seam from named project evidence and reject an unsupported interface, container, or provider layer.
 
 ## Tradeoffs worth probing (named honestly)
 
-- **SOLID vs Leanness.** Literal SOLID (interface per injected service) is mandated, which deliberately overrides Leanness #2 for services. The line: interfaces are required at the service seam; *data* (DTOs/entities/value objects/options) and *speculation* (factories for imagined providers) are still forbidden. Probe: does `solid-check` vs `bloat-radar` ever contradict? (They're scoped not to — services vs data.)
-- **Deterministic DIP backstop isn't wired.** `solid-check` is semantic (an LLM pass). The deterministic dependency-direction enforcement (**NetArchTest** in a test project) is documented but must be added in the consumer repo. Until then, DIP direction isn't build-enforced.
+- **SOLID vs Leanness.** Project evidence and correctness needs select a service seam; the framework does not mandate an interface or container. Preserve evidenced boundaries, while *data* (DTOs/entities/value objects/options) and speculative factories/layers remain out of scope. Probe: does `solid-check` distinguish project evidence from speculation?
+- **Deterministic DIP backstop isn't wired.** `solid-check` is semantic (an LLM pass). A consumer may choose an evidenced dependency-direction check; until one is wired, report that limitation rather than inventing NetArchTest or another library.
 - **Bitbucket Data Center.** Only the local Windows layer applies — Copilot coding-agent cloud hook execution is unsupported. Wire the PowerShell CI guardrail into Bamboo/Jenkins on a self-hosted Windows agent and require its build status. See README.
 - **Hooks need a working interpreter and client support.** Dated canaries cover only the capabilities they exercised, not every registered event; Copilot CLI `agentStop` firing and its queue write remain unverified, as do current VS Code Preview-hook lifecycles. VS Code hooks are Preview, off by default, and org-gated; shell writes are outside the editor guard.
 - **Evals are intentionally tiny** — a regression tripwire for the framework's own rules, not test coverage for your app.
@@ -40,4 +40,4 @@ One file is authored by hand — **`CLAUDE.md`**. Supported clients load it or g
 - [ ] Which hooks and CI jobs are actually live and blocking here, and which controls remain instruction or judgement only?
 - [ ] Does the SOLID/Leanness reconciliation actually hold in the eval cases?
 - [ ] For our platform (Bitbucket DC): is the CI guardrail wired where Actions can't run?
-- [ ] Is the deterministic DIP backstop (NetArchTest) actually present in the target repo, or still just documented?
+- [ ] Is an evidenced dependency-direction check present in the target repo, or is that verification unavailable?

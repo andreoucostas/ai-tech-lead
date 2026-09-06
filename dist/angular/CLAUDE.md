@@ -1,8 +1,8 @@
 <!--
 ai-tech-lead-framework
   template: angular
-  version: 0.83.0
-  applied: 2026-09-04
+  version: 0.84.0
+  applied: 2026-09-06
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
 # [Project Name]
@@ -112,7 +112,7 @@ Apply only entries whose technology exists here; the profile proves none.
 10. Add `ChangeDetectionStrategy.OnPush` — but only after verifying the component's data flow (immutable inputs, no in-place mutation, no reliance on ambient ticking) and after manual/test verification that the view still updates correctly.
 
 **Subtract:**
-11. Inline single-consumer interfaces or abstract bases **that are not DI service seams** (data/internal abstractions only) — per Leanness. Service abstractions/tokens are required by SOLID/DIP even with one implementation; never inline those.
+11. Inline single-consumer interfaces or abstract bases that are not a project-evidenced DI service seam — per Leanness. Preserve an existing project boundary when its evidence or correctness need requires it.
 12. Collapse shallow service methods that just delegate to `HttpClient` with no transformation
 13. Single-use pipes or directives — inline at the call site, or convert to a component method
 14. Unused barrel re-exports in `index.ts`

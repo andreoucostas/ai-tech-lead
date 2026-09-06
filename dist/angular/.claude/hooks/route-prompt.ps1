@@ -39,7 +39,7 @@ $railsFeature = @'
 
 Leanness constraints (the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools)):
 - Prefer editing existing files over creating new ones.
-- No new interface, abstract class, pipe, or directive unless a second consumer exists in this change-set. State the second consumer if you add one.
+- Preserve a project-evidenced service seam; otherwise add no interface, abstract class, pipe, or directive without a second consumer or correctness need. State the evidence.
 - Wrappers must add behavior. Inline shallow service methods that just call HttpClient.
 - No defensive code for impossible states; no comments that restate code; no future-proofing.
 '@

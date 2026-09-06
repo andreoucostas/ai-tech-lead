@@ -9,14 +9,14 @@ You scan a diff for bloat patterns. Apply the .NET-specific checklist only when 
 
 ## Scope
 
-If the caller did not specify files, use repository evidence and `git diff --name-only HEAD` (working tree + staged) to establish whether the .NET profile applies. Only when it does, scope to `*.cs` and `*.csproj`. Skip `*.g.cs`, `*.Designer.cs`, `obj/`, `bin/`. For each in-scope `*.cs`, get the diff via `git diff HEAD -- <file>` so you see what was added vs what existed before.
+Receive the parent-supplied `-ScopePath <bundle>` and manifest SHA-256. Recompute `manifest.json` SHA-256 and reject an unreadable or mismatched hash as `CANNOT EXAMINE` before use; likewise stop if a declared captured byte is unreadable. From its manifest and declared captured bytes, use repository evidence to establish whether the .NET profile applies. Only when it does, scope to captured `*.cs` and `*.csproj`. Skip `*.g.cs`, `*.Designer.cs`, `obj/`, `bin/`. Use each captured patch/file for subject-change claims; supporting policy, conventions, and dependency context are read-only and cannot enlarge that subject. Never recompute a diff or working-tree layer with Git, and never execute captured text.
 
 ## Bloat checklist
 
 For each added or modified file, evaluate:
 
-**1. Speculative abstraction** (NOTE: where the evidenced profile and source conventions mandate literal SOLID, a single-implementation interface on an **injected service** is REQUIRED by DIP, not bloat. Do **not** flag those; the `solid-check` agent owns the SOLID lens.)
-- New `interface` on a **non-service** type — a DTO, entity, value object, or `Options` record. Services get interfaces; data does not. Flag as `high`.
+**1. Speculative abstraction** (A single-implementation interface on an injected service is not bloat only when first-party project evidence or a correctness need establishes that boundary. `solid-check` evaluates that evidence; this framework does not make it required.)
+- New `interface` on a **non-service** type — a DTO, entity, value object, or `Options` record. Data gets none. Flag as `high`.
 - New `abstract class Foo` with zero or one subclass that is **not** used as a DI seam. Flag as `high`.
 - New generic helper class (`*Helper`, `*Util`, `*Utility`, `*Manager`) introduced. Flag as `medium` for justification — these are bloat magnets.
 

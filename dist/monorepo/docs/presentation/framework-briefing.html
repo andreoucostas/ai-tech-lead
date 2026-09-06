@@ -217,14 +217,14 @@
       <div class="grid two">
         <div class="card good"><h3>Verification</h3><p>Verify before you reference. No invented APIs, types, or packages — read the source or say "unverified."</p></div>
         <div class="card good"><h3>Leanness</h3><p>No bloat, no premature abstraction, no future-proofing. Deletion is a contribution.</p></div>
-        <div class="card good"><h3>SOLID</h3><p>Mandatory and literal — every injected service behind an interface, with a deterministic CI backstop.</p></div>
+        <div class="card good"><h3>SOLID</h3><p>Mandatory principles — derive service boundaries from project evidence and correctness needs; report an unavailable direction check rather than inventing one.</p></div>
         <div class="card good"><h3>Boy Scout Rule</h3><p>Leave every touched file cleaner — symmetric: add what's missing, remove dead weight.</p></div>
       </div>
     </div>
     <aside class="notes">
       <p><b>Goal:</b> these are the standards, encoded. They're the same ones a good tech lead would enforce in review — now they're enforced continuously.</p>
-      <p>SOLID note: the tech lead asked for <i>literal</i> SOLID. Verification + Leanness are reconciled (no bloat, but service seams are required). Mention the CI backstop is deterministic — not just an LLM opinion.</p>
-      <p>If asked "isn't leanness vs SOLID a contradiction?" — no: SOLID governs structure, leanness governs ceremony beyond that structure.</p>
+      <p>SOLID note: project evidence and correctness needs select a service seam; this framework does not select an interface, token, or container. A deterministic direction check exists only when the consumer has evidenced and wired one.</p>
+      <p>If asked "isn't leanness vs SOLID a contradiction?" — no: SOLID governs structure, while leanness rejects ceremony that project evidence does not need.</p>
     </aside>
   </section>
 

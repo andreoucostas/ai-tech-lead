@@ -39,6 +39,7 @@ $expectedTestFiles = @(
     'PostWrite.Tests.ps1',
     'PostWriteRouting.Tests.ps1',
     'PowerShellSemantics.Tests.ps1',
+    'ReviewScope.Tests.ps1',
     'RoutePrompt.Tests.ps1',
     'ScriptBehavior.Tests.ps1',
     'SecurityReviewContract.Tests.ps1',

@@ -1,6 +1,28 @@
 ﻿if (-not (Get-Command Invoke-Hook -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot '_HookHarness.ps1') }
 $hooks = (Resolve-Path (Join-Path $PSScriptRoot '..\..\.claude\hooks')).Path
 $subject = Join-Path $hooks 'session-start.ps1'
+$distRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+
+$ordinaryKnowledgeRequirements = @(
+    'non-trivial change—including an ordinary feature/fix request naming neither a skill nor a path',
+    'locate likely task areas',
+    'select relevant scoped wiki, map, skill, or example entries',
+    'exclude irrelevant/nonapplicable ones',
+    'read bodies/references on demand',
+    'Investigate conflicting applicable claims',
+    'recheck decisive correctness-material evidence.',
+    'only correctness-material gaps from unresolved drafts, opposing scopes, or stale, missing, or inaccessible evidence',
+    'Name material evidence and run repository-evidenced verification.',
+    'Hook registration alone proves neither firing nor consumption',
+    'do not preload the wiki',
+    'depend on a hook.'
+)
+
+function Get-OrdinaryKnowledgeRoutingOmissions([string]$Text) {
+    @($ordinaryKnowledgeRequirements | Where-Object {
+        $Text.IndexOf($_, [StringComparison]::Ordinal) -lt 0
+    })
+}
 
 function Invoke-SessionStartAt($root, $json) {
     Push-Location $root
@@ -57,13 +79,38 @@ It 'small index is inlined' {
     finally { Remove-Item -Recurse -Force $root }
 }
 
-It 'large index is summarized' {
+It 'index above the inline threshold is summarized' {
     $root = New-WikiRoot 31
     try {
         $result = Invoke-SessionStartAt $root $claude
         Assert ($result.Out -match '31 wiki entries — read docs/wiki/INDEX.md') 'summary absent'
         Assert ($result.Out -notmatch 'entry-31') 'large index leaked'
     } finally { Remove-Item -Recurse -Force $root }
+}
+
+It 'ordinary feature/fix knowledge routing remains scoped, on-demand, and hook-independent' {
+    $carriers = @('.github/instructions/framework-rules.instructions.md')
+    $agentsPath = Join-Path $distRoot 'AGENTS.md'
+    if (Test-Path -LiteralPath $agentsPath -PathType Leaf) {
+        $carriers += 'AGENTS.md'
+    } elseif (Test-Path -LiteralPath (Join-Path $distRoot '.claude/framework-version.json') -PathType Leaf) {
+        Assert $false 'composed distribution omits AGENTS.md'
+    }
+    foreach ($relative in $carriers) {
+        $path = Join-Path $distRoot ($relative -replace '/', [IO.Path]::DirectorySeparatorChar)
+        Assert (Test-Path -LiteralPath $path -PathType Leaf) "knowledge carrier missing: $relative"
+        $omissions = @(Get-OrdinaryKnowledgeRoutingOmissions ([IO.File]::ReadAllText($path, [Text.Encoding]::UTF8)))
+        Assert ($omissions.Count -eq 0) "$relative omits: $($omissions -join '; ')"
+    }
+
+    $canonicalPath = Join-Path $distRoot '.github/instructions/framework-rules.instructions.md'
+    $canonical = [IO.File]::ReadAllText($canonicalPath, [Text.Encoding]::UTF8)
+    foreach ($required in $ordinaryKnowledgeRequirements) {
+        $hostile = $canonical.Replace($required, '<removed>')
+        Assert ($hostile -cne $canonical) "hostile mutation did not remove '$required'"
+        $omissions = @(Get-OrdinaryKnowledgeRoutingOmissions $hostile)
+        Assert ($omissions -contains $required) "hostile mutation escaped: $required"
+    }
 }
 
 It 'missing index is silent' {
