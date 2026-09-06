@@ -11844,6 +11844,10 @@ supersession replaces that ambiguity without falsely completing the four remaini
 
 ## v0.84.0 delivered closures (2026-09-06)
 
+The immutable pre-closure contracts, focused evidence, integration reds, and RCA detail remain at
+`a3986c207fe336abc5967652a021625c2a17ed75:meta/BACKLOG.md`; the records below condense their completed
+delivery outcomes without replacing that history.
+
 ### B-220 · Remove the retired `-GitHooks` compatibility parameter — **DONE v0.84.0 (2026-09-06)**
 **Filed against:** v0.83.0 (2026-09-04) · **Invariants:** #1 #6 #7
 
@@ -11923,8 +11927,9 @@ history selection, OID caching, raw hashes and all existing coverage.
 **Done when.** Actual process-boundary and caller-bypass controls are red on the unfixed mechanism
 and green after repair; missing/ambiguous summaries and cannot-examine outcomes stay distinct;
 NUL/high-byte stdout plus nonzero stderr/exit survive exactly; direct-host focused suites and general
-release checks pass without raising ceilings or deleting coverage; comparable stable-tree evidence
-grounds any runtime observation.
+release checks pass without raising ceilings, deleting coverage, or losing mandatory PowerShell BOMs;
+immutable-range independent review and an orthogonal execution vantage cover the false-green release
+behavior; comparable stable-tree evidence grounds any runtime observation.
 
 The ValidateDist driver now treats child exit as authoritative without reducing its 43 registrations;
 the release-budget oracle exercises the actual caller and refusal boundary; and B-215's raw Git helper
@@ -11979,7 +11984,7 @@ the candidate CI runs; none of the interrupted/red timings is used as the releas
 After the bounded test-oracle repair, v0.84.0 run
 [`34012239352`](https://github.com/andreoucostas/ai-tech-lead/actions/runs/34012239352) passed all eight
 contexts plus parity. The decision downloaded eight nonempty valid artifacts and found four byte-
-identical host pairs. It completed in 450s (7m30s), versus baseline run `33980347537` at 972s
+identical host pairs. The workflow completed in 450s (7m30s), versus baseline run `33980347537` at 972s
 (16m12s): 53.7% shorter in this single hosted comparison of the combined v0.84 changes. This is the
 release benchmark; a later metadata-only CI run is follow-up validation, not a replacement timing.
 
