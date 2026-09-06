@@ -61,12 +61,24 @@ No paid Copilot call, setup, application baseline or outcome was run. Sanitized 
 caps are in `meta/field-study-results.md`; raw records remain outside this repository. All named
 semantic/value entries remain open, including B-42's independent FS2 requirement.
 
+**CP1 container follow-up, 2026-09-06.** WSD-077 records the user-authorized, Sol-reviewed
+Hyper-V-isolated Windows-container feasibility alternative. Hyper-V and Containers now report
+Enabled after native UAC execution with restart disabled; Windows requires a manual restart.
+Docker's signed installer is downloaded, but installation/image/application/Copilot execution
+remains NOT RUN. The initial feature helper omitted dependency-delta evidence and ran before
+helper-specific feedback arrived; both facts are retained. The reviewed resume helper and exact
+handoff remain outside authoring Git. This advances host preparation, not a task outcome.
+
 **CP1 preparation RCA.** No shipped defect was reproduced. Parser/release gates did not establish
 Windows guest availability, application buildability, independent oracle reachability or actual
 Copilot use because those are study execution obligations. The same exposure applies to B-216,
 B-222–B-225 and B-42: a reviewed packet or released carrier can be mistaken for observed value.
 The sweep retained those gaps and separate series instead of closing entries or adding a generic
 gate. The bounded response is provisioning and concrete evidence, not more evaluation machinery.
+The container follow-up exposed the same evidence boundary in a one-off provisioning helper:
+root-feature states did not enumerate dependency changes. Sol caught it; the resume helper now
+captures full snapshots and attempts post-state even after failure. The original missing delta
+remains missing. No shipped gate covers external host provisioning, and no new generic gate is added.
 
 Original detailed open-entry history is preserved at Git baseline
 `87bfe1942b687a47c0f5d87cdfd992e24579ed22:meta/BACKLOG.md` and linked plans. Superseded commands,

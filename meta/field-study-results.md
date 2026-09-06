@@ -99,6 +99,59 @@ evidence. Root ran `BacklogHygiene.Tests.ps1 -RedTest broken-index` (exit 1), th
 native PS5.1; the latter used code page 437. The distribution bytes match the pinned release.
 These checks verify authoring records, not application or Copilot outcomes.
 
+### CP1 container follow-up — 2026-09-06 — RESTART REQUIRED / campaign NOT READY
+
+The user proposed Docker as an alternative to manually provisioning a VM and authorized proceeding,
+using Sol or lower models for appropriate work. WSD-077 prospectively permits assessment of a
+Hyper-V-isolated Windows container. The [substitution contract](../.claude/plans/2026-09-06-cp1-windows-container-substitution.md)
+and [independent critique](../.claude/plans/2026-09-06-cp1-windows-container-critique.md) preserve the
+bounded acceptance, corrections and runtime gaps. The original preparation stop above is history.
+
+**Observed host work.** Windows 11 Pro build 26200, PS7 7.6.5, approximately 16 GB total RAM,
+3.84 GiB currently free RAM and 347 GiB free disk were observed before this attempt. Docker's
+command, service and standard all-users binaries were absent. The official Docker Desktop 4.89.0
+installer was downloaded; Authenticode reported Valid with Docker Inc as signer, and its file
+version and SHA256 were retained externally. It was **not launched**.
+
+Native UAC started the fixed feature helper at 09:04:44 UTC. Its 09:04:49 UTC record reports
+`Microsoft-Hyper-V-All` and `Containers` Disabled before, Enabled after, `RestartRequired=true`,
+and no error. The command used `-All -NoRestart`; no automatic restart or Docker installation
+followed. The child process's final exit code was not captured; the feature JSON is the observed
+completion evidence. The initial helper ran before its helper-specific review feedback arrived
+and did not inventory dependency-feature changes. That delta is **not captured**, not inferred
+from the two-root transition. A later full-state inspection cannot reconstruct the missing before.
+
+Sol accepted a separate resume helper after full before/after snapshots, partial-failure capture
+and bounded restart reporting were added. Root observed direct PS7/PS5.1 parse success and the
+non-administrator exit 740; no elevated execution or recovery-path success is claimed for the
+revised helper. It and the verified installer are retained in external coordinator storage with
+an exact restart/resume handoff. A manual reboot and fresh state inspection are the next host steps.
+
+**Prepared, not executed.** Official MCR metadata and the inspected SDK Dockerfile identify the
+candidate Server Core image as .NET SDK 10.0.400, PowerShell 7.6.4 and MinGit 2.55.0.3; its manifest
+digest is frozen externally. Node v24.20.0's downloaded Windows archive matched the official SHA256;
+Copilot 1.0.83 package metadata was retained. No Docker image was built or started, no container
+resource/performance/isolation probe ran, and neither container PowerShell host nor Copilot was
+executed. Component metadata is not runtime compatibility evidence. The original application
+snapshot selection, oracles and discovery sample remain pending; no additional candidate was read.
+
+**Remaining boundary.** The offline smoke must use ContainerUser, explicit Hyper-V isolation,
+`--network none` and no mounts. Paid setup separately requires a reviewed executable egress policy,
+observed allowed/denied probes and disabled/probed server-side retrieval. The proposed L2Bridge/VFP
+and external-proxy approach is unimplemented. There is no new setup, task, diagnostic, purchase or
+Copilot-usage outcome, and no application or framework benefit/harm inference.
+
+**Cumulative budget.** Charge one additional preparation hour conservatively for this follow-up,
+including research, review, downloads, host work and records: **two of eight hours charged, six
+remain**. This is an accounting charge, not measured human effort. One hour remains within the
+container attempt's two-hour checkpoint. The existing first 100 candidates, 84 initial exclusions
+and 16 unresolved entries are unchanged; candidate 101 remains out of scope.
+
+**Record verification.** The external resume helper is BOM-encoded and parsed under both native
+PowerShell hosts. Root observed `BacklogHygiene -RedTest broken-index` exit 1, then clean 10/0 and
+`DocTruth` 13/0 directly under PS7 and native PS5.1 (code page 437). These verify authoring records,
+not container runtime or CP1 readiness; the immutable push/CI result remains delivery evidence.
+
 ## Runs
 
 ## FS-20260826-DRY-01 — 2026-08-26 — maintainer

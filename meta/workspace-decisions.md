@@ -3555,3 +3555,44 @@ requires an enabled host, appropriate privileges, memory/disk and Windows media 
 GitHub's [individual billing documentation](https://docs.github.com/en/copilot/concepts/billing/usage-based-billing-for-individuals)
 advertises Pro+ at $39/month with 7,000 included credits. These vendor documents do not certify this
 machine's feature state, a user's actual bill/entitlement, an isolation boundary or effective caps.
+
+## WSD-077: CP1 may assess a Hyper-V-isolated Windows container (2026-09-06)
+
+**Authority and proportionality.** The user questioned the full-VM requirement, proposed Docker
+and authorized proceeding, with Sol or lower models used for suitable work. A pinned Windows
+container may remove manual guest/media provisioning for repeated CLI sessions. This prospectively
+amends WSD-076's guest requirement; it preserves native Windows execution and the original stop.
+
+**Decision.** Permit a bounded host-installation and generic offline feasibility attempt using
+Windows Server Core, explicit Hyper-V isolation, ContainerUser and no host mounts. Pin the SDK
+image by digest and component versions; verify actual hosts, resources and test execution before
+claiming feasibility. Linux/WSL/process-isolated execution is not this alternative. Native UAC and
+manual restart boundaries remain. No paid setup is authorized by an image or smoke-test success.
+
+The additional feasibility checkpoint is two active hours inside the original eight-hour cap;
+the 100-candidate inventory is unchanged. Paid readiness still requires application/acceptance
+evidence and a separately reviewed, observed selective egress policy, including server-side
+Copilot retrieval controls. Docker's default Hyper-V NAT does not establish that boundary.
+
+**Review.** Separate nonimplementer `/root/cp1_container_sol_review` (`gpt-5.6-sol`, high effort)
+returned REVISE then ACCEPT WITH CONDITIONS for the revised bounded contract. Root narrowed a
+proposed general licensing question to the actual native terms interface and separated the offline
+smoke from future selective-egress implementation. Contract, hashes, corrections and limitations
+are in `.claude/plans/2026-09-06-cp1-windows-container-substitution.md` and its companion critique.
+`gpt-5.6-luna` supplied bounded compatibility research, independently checked by root.
+
+**Observed checkpoint.** Native UAC launched fixed Hyper-V/Containers feature enablement with
+`-All -NoRestart`. Its record shows both roots Disabled to Enabled and restart required; Docker
+installation was not started. The initial helper ran before its helper-specific feedback arrived
+and did not capture dependency-feature deltas. Preserve that gap. The reviewed resume helper
+captures full feature snapshots and partial-failure evidence; it is not retroactive evidence.
+The full preparation status and remaining allowance are in `meta/field-study-results.md`.
+
+**References.** Docker's [Windows installation](https://docs.docker.com/desktop/setup/install/windows-install/)
+and [privilege model](https://docs.docker.com/desktop/setup/install/windows-permission-requirements/)
+describe all-users Windows support and the privileged daemon. Microsoft's
+[network-security documentation](https://learn.microsoft.com/en-us/virtualization/windowscontainers/container-networking/network-isolation-security)
+states the default Hyper-V allowance and NAT/Transparent ACL limitation; a different policy still
+needs actual host evidence. The upstream
+[SDK Dockerfile](https://github.com/dotnet/dotnet-docker/blob/main/src/sdk/10.0/windowsservercore-ltsc2025/amd64/Dockerfile)
+informed component pinning; the external record freezes the observed content and MCR digest.

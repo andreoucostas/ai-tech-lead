@@ -6,6 +6,11 @@
 `2026-09-06-cp1-abp-copilot-critique.md`. Protocol acceptance is not execution evidence.
 Substantive protocol changes require renewed independent review.
 
+**Prospective amendment:** WSD-077 and
+[the reviewed container substitution](2026-09-06-cp1-windows-container-substitution.md) permit
+assessment of a Hyper-V-isolated Windows container. The original guest wording below is retained
+as history; all task-selection, acceptance, setup, scoring and spending conditions remain.
+
 ## Objective, scope and proportionality
 
 Test whether the complete framework improves one complex change in a large unfamiliar repository;
