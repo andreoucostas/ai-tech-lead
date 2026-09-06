@@ -336,6 +336,17 @@ parity decisions. Actual matcher probes rejected an inert step condition, an ine
 and job-level `continue-on-error`, then accepted the clean decision. This is source/topology evidence;
 the redesigned workflow has not yet run in GitHub Actions, so no elapsed-time improvement is claimed.
 
+**Pre-release integration observed 2026-09-06.** An output-logging wrapper failed parameter binding
+after its upstream release process had already started, leaving that release alive while the wrapper
+reported exit 0. A concurrent retry then hit a mapped-file composition error; both attempts are
+discarded as aggregate and timing evidence. Root identified and stopped the exact orphan and its
+descendants before any commit, push, tag or CI run. A subsequent direct-log run composed all three
+dists, then exposed mirror drift, duplicated ordered-list steps and a .NET context overage before it
+was deliberately interrupted during the meta suite. Repairs are frozen at `40ac225` and `4d8aac5`;
+a focused PS7 7.6.5 rebuild and all three `validate-dist` runs then exited 0, and unchanged ceilings
+had 84, 1,628 and 878 characters of .NET, Angular and monorepo headroom. The full aggregate, updated
+footprint baseline, candidate CI topology and runtime remain unobserved until the normal release.
+
 ### B-216 · Project-adapt instance-shaped skills instead of imposing framework defaults
 **Filed against:** v0.81.0 (2026-09-03)
 **Priority:** P1 · **Effort:** L · **Invariants:** #1 #2 #3 #6 #7

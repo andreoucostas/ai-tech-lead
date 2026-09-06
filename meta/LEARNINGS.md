@@ -2154,3 +2154,18 @@ legitimate floating-point calculation or optimistic update from becoming a categ
 while still reporting a demonstrated rounding loss, lost update, duplicate effect or wrong temporal
 selection. Parser/static checks prove delivery of that contract, not model application or domain
 certification.
+
+## 2026-09-06 — Keep a stateful native release out of presentation pipelines
+
+PowerShell began an upstream `release.ps1` process before rejecting an incompatible downstream
+`Tee-Object` parameter set. The wrapper then reported exit 0 while the release remained alive; a
+retry collided with it and produced a mapped-file composition failure. Neither wrapper status nor
+that collision was valid release evidence. Before retrying, inspect and stop the exact owned process
+tree, preserve the generated retry state, and confirm that no commit, push or tag occurred.
+
+Capture a stateful release with direct redirection to a unique external log and record
+`$LASTEXITCODE` immediately after the native process returns. Read or format the log only afterward.
+The later clean run also demonstrated why focused source checks do not replace composition: it found
+whole-section mirror drift, duplicated composed list steps and a context-ceiling overage. Repair the
+specific source defects and recompose; do not waive the gate or treat an interrupted aggregate as a
+pass.
