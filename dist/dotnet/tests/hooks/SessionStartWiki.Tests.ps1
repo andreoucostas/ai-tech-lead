@@ -4,8 +4,8 @@ $subject = Join-Path $hooks 'session-start.ps1'
 $distRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 
 $ordinaryKnowledgeRequirements = @(
-    'non-trivial change—including an ordinary feature/fix request naming neither a skill nor a path',
-    'locate likely task areas',
+    'non-trivial change—including an ordinary feature/fix naming neither a skill nor path',
+    'locate task areas',
     'select relevant scoped wiki, map, skill, or example entries',
     'exclude irrelevant/nonapplicable ones',
     'read bodies/references on demand',
