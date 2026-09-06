@@ -4,6 +4,23 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.84.0 — Unreleased
+
+- Bootstrap and rebootstrap now discover consequential repository facts and operations beyond
+  recurring recipes, capture grounded findings as review drafts in the existing wiki/skill/map
+  locations, and recheck changed evidence without treating generated text as authority. Ordinary
+  changes selectively consult matching project knowledge and retain unresolved scope.
+- The .NET endpoint, entity, service-registration, and warehouse-load skills now derive their
+  concrete pattern from first-party project evidence. An optional consumer-owned
+  `references/project-pattern.md` can record the local variant and is preserved across lifecycle
+  operations; the framework ships no placeholder that could overwrite it.
+- Full reviews now give every auditor and the test-weakening advisory one hashed frozen change
+  bundle, distinguish invalid input from inability to examine it, and stop if the subject drifts.
+  Financial review now judges applicable invariants, tolerances, preconditions and demonstrated
+  outcomes instead of assigning severity from numeric types or named locking mechanisms alone.
+- The retired installer `-GitHooks` argument has been removed. Existing consumer-owned hooks and
+  the framework doctor's historical-helper diagnostics remain unchanged.
+
 ## 0.83.0 — 2026-09-04
 
 - Framework installation, hooks, checks, and supplied CI now use PowerShell on Windows. PowerShell

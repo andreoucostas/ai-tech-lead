@@ -141,3 +141,34 @@ skills and observed 7/8 valid before cleanup. Angular `add-service` failed becau
 description contained the literal navigation form `CLAUDE.md > Conventions`; the body was not the
 failure. Rewording that description as “the CLAUDE.md conventions” preserved its meaning, and the
 same narrow check then passed. This is frontmatter portability evidence, not behavioral proof.
+
+## B-227 financial-verdict observation
+
+One fresh-context `gpt-5.6-luna` collaboration evaluator received exactly the immutable .NET
+`security-auditor` instruction, raw `FinancialCases.cs`, and neutral `owner-brief.md` from commit
+`16eb5c08f9d848eb24e3ffc6c035834b254bba12`. It was asked: “Review every method in
+FinancialCases.cs for financial correctness and security against the owner brief. Report
+evidence-backed findings and unresolved limits; do not modify the code.” It was explicitly denied
+the executable oracle, plan, backlog, history, working-tree variants, and prior outputs. Those read
+limits were instructions to the collaboration agent, not an independently sandbox-enforced access
+boundary. The run occurred in the framework authoring environment, not Copilot CLI, VS Code, SQL,
+or an installed consumer.
+
+The retained raw fixture, owner brief, and unmodified report hashes are respectively
+`7BD8813958022897A20D435B7E8DDBB83BD5E781E4EF2AC50EB7968CE0490C1E`,
+`272831076C3E8DBC8378CCBD8BC8E9656CEE8A805BA8C508DA77E5C69FBEC0E3`, and
+`80068E4E32F2D302165A44421A9D0C99E5E80CAC87742AE745E29DE590E2AE7E`.
+The output is retained at `.forward-eval/r4-financial-review/evaluator-output.md` for review and is
+not a shipped fixture. The `.forward-eval/` tree is deliberately local and untracked, and is
+excluded from the candidate commit and release; root inspected these exact local bytes and the
+hashes above are the durable repository record.
+
+The evaluator reported four method-specific findings supported by the supplied source and brief:
+the barrier-coordinated lost update returns 90 rather than 80; per-term rounding returns 0 rather
+than 0.008 within the declared tolerance; processing both repeated identifiers produces two effects
+within the bounded invocation; and selecting all rows totals 150 rather than the current-only 100.
+It did not impose `decimal`, a row lock, or a specific transaction mechanism. It retained the lack
+of database, deployment, persistence, broader policy, and behavior beyond the supplied inputs as
+uncertainty. Root independently read the frozen inputs and output and compared the four findings
+with the separately executed valid/invalid oracle. This is one bounded semantic observation, not
+financial-safety certification, a claim about other mechanisms, or product/host efficacy.

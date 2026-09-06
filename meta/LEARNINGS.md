@@ -2134,3 +2134,23 @@ Neither a historical Claude observation nor a same-host Auto route that changes 
 current Copilot efficacy. User examples should test whether broad discovery finds nonlocal rules,
 not silently become the feature's domain whitelist. WSD-074 records this prospective contract;
 implementation and field outcomes remain open work rather than inferred accomplishments.
+
+## 2026-09-06 — Freeze the subject before asking several mechanisms to judge it
+
+A review fan-out does not share scope merely because every participant receives the same natural-
+language description. Staged, unstaged, untracked, range and whole-file selectors can yield
+different bytes; recomputation can race, collapse cancelling layers, refresh the Git index, follow
+a conversion driver, or turn inability into an empty result. One bounded bundle must carry the
+actual bytes and hashes, every consumer must verify that identity, and a second identical capture
+must still be constructibly different after source drift. Supporting policy and dependency context
+may remain readable without enlarging the frozen subject. Execution results must likewise name the
+checkout/layer they actually tested.
+
+The same principle applies to verdicts and gates. A numeric type, lock name, repeated reporting
+view, printed success summary, or syntactically present budget call is evidence to investigate, not
+the decision itself. Freeze the applicable invariant, tolerance and preconditions; exercise an
+independent valid and invalid world; and preserve unavailable proof as uncertainty. This keeps a
+legitimate floating-point calculation or optimistic update from becoming a categorical finding
+while still reporting a demonstrated rounding loss, lost update, duplicate effect or wrong temporal
+selection. Parser/static checks prove delivery of that contract, not model application or domain
+certification.

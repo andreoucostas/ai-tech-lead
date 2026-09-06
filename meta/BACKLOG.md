@@ -13,14 +13,26 @@ export, production queries, or external participant contact.
 
 | Order | Item | Current readiness |
 |---|---|---|
-| 1 | B-222 broad discovery | Ready for implementation-contract critique and offline fixtures |
+| 1 | B-222 broad discovery | Source/focused checkpoint accepted; composed release integration remains |
 | 1 alongside it | B-225 value protocol | Offline protocol/controls ready; live arms need explicit prerequisites |
-| 2 | B-223 capture and refresh | Depends on B-222 output contract; shared-file edits follow B-222 |
-| 3 | B-224 ordinary-task Copilot use | Depends on B-223; live verification needs available seats/model routes |
-| Independent repairs | B-216 instance skills; B-226 review scope; B-227 evidence-based verdicts | B-216 needs carrier re-lock; the others are bounded design/implementation work |
-| Next v0.84+ release | B-220 retired installer argument | Ready; not a prerequisite for discovery |
+| 2 | B-223 capture and refresh | Source/focused checkpoint accepted; composed release integration remains |
+| 3 | B-224 ordinary-task Copilot use | Carrier checkpoint accepted; live Copilot/VS Code application remains unobserved |
+| Independent repairs | B-216 instance skills; B-226 review scope; B-227 evidence-based verdicts | All three source/focused checkpoints accepted; aggregate/host gaps remain explicit |
+| Next v0.84+ release | B-220 retired installer argument | Focused source accepted; composed release integration remains |
 | When a participant exists | B-42 independent FS2 | Existing packet ready; independent run outstanding |
 | Deferred | B-49 drill and consumer self-assessment | Old instrument invalid; no execution authority |
+
+Accepted focused source checkpoints for this unreleased delivery are immutable at: B-222 PK-1
+`e9d5f1d58489013ba629906064774f801ce551c6`, B-223 PK-2
+`66a7921c909f71fb4a52a3f720ced17724d69ea6`, B-224 PK-3
+`441c384ae6660c27ee6ff379aff6285bec044c42`, B-228
+`7de3754a1f210b9270889125c63f02eeff38867a`, B-229
+`43cb40d01169a3f9e9fe3a944a23dd90c52badd4`, B-216
+`7ea1788b42dbd0a82047da4425bae3996608ad25`, B-220
+`45b7a28f67510f2b5a3432613e9b4cf5edbc524c`, B-226
+`7957d8734c58efbe281a58ce77612ad27740ff09`, and B-227
+`16eb5c08f9d848eb24e3ffc6c035834b254bba12`. These are review anchors, not aggregate,
+installed-host, CI, release, or outcome verdicts.
 
 B-222–B-224 are one coherent product increment unless an intermediate delivery is useful and
 reachable on its own. They are not three required releases. Do not require every independent repair
@@ -45,8 +57,10 @@ B-219 and B-221 — see `meta/BACKLOG-DONE.md`.
 ### B-222 · Discover repository knowledge broadly, not only recurring recipes
 **Filed against:** v0.83.0 (2026-09-05)
 **Priority:** P1 · **Effort:** L · **Invariants:** #1 #2 #3 #6 #7
-**Status:** READY for bounded contract critique and offline implementation. Depends on WSD-074;
-does not depend on B-216's registry proposal or a private warehouse.
+**Status:** PARTIALLY DONE. The three-stack source/focused checkpoint is accepted; composed release
+integration remains. The retained semantic observation is narrow and did not exercise budget
+exhaustion or representative enterprise/target-host behavior. Does not depend on a registry or a
+private warehouse.
 
 **Problem / evidence.** Shared A8 already inventories naming clusters, but requires three recurring
 implementations, reads one cleanest instance and caps proposals at three to five. This excludes
@@ -85,10 +99,18 @@ unsupported-area handling are explicit; old contradictory limits are gone; fixtu
 targeted invalid worlds; B-223/B-224 consume the contract before the combined feature is claimed
 usable. General shipped checks apply. Record what was not explored.
 
+**Delivery RCA.** Existing checks encoded the old recurring-cluster/output shape but never exercised
+quiet unique facts, helper-derived meaning, scoped conflicts, or bounded continuation, so well-formed
+instructions could omit the knowledge now in scope. The same gap applies to every semantic
+eligibility rule in bootstrap/rebootstrap; parser success cannot establish discovery coverage.
+
 ### B-223 · Capture and refresh grounded knowledge in existing project-owned artifacts
 **Filed against:** v0.83.0 (2026-09-05)
 **Priority:** P1 · **Effort:** L · **Invariants:** #1 #2 #3 #6 #7
-**Status:** DEPENDS on B-222's output contract. No registry, graph service or promotion system.
+**Status:** PARTIALLY DONE. B-222 output is integrated into the three-stack capture/refresh source
+and focused checks; composed release integration remains. Retained forward runs include their
+observed misses and do not establish broad recall or target-host efficacy. No registry, graph
+service or promotion system.
 
 **Problem / evidence.** Wiki, skills, maps and reconciliation exist, but A8 promotes only recipes.
 Rebootstrap favors recent activity over dependencies of quiet claims and requires confirmation
@@ -140,11 +162,19 @@ existing freshness/index consumers, plus installed-project context cost (not onl
 after meaningful red controls; no fake certainty/date/approval; no new registry. B-224 makes knowledge
 reachable before the combined feature is complete. General shipped checks apply.
 
+**Delivery RCA.** Wiki and installer checks validated syntax and ownership mechanics but did not
+exercise automatic draft authority, linked skill references, semantic refresh, or generated-text
+self-corroboration. The retained forward runs exposed missed links and a duplicate destination; this
+class remains relevant to every generated knowledge artifact, not only wiki entries.
+
 ### B-224 · Make ordinary Copilot tasks consult relevant project knowledge
 **Filed against:** v0.83.0 (2026-09-05)
 **Priority:** P1 · **Effort:** M · **Invariants:** #1 #2 #5 #6 #7
-**Status:** DEPENDS on B-223. Local carrier work then ready; live compatibility requires the specific
-installed CLI/VS Code host and available model route.
+**Status:** PARTIALLY DONE. Local carrier/source work is accepted. Actual Copilot CLI and VS Code
+discovery, access, semantic application, and generated-project context cost remain unobserved; host
+inventory alone is not efficacy. No live target-host route, study budget, or private fixture was
+selected or authorized for this study; that is distinct from the authorized Sol/Terra/Luna
+authoring delegation used for this delivery.
 
 **Problem / evidence.** A generated claim or registered skill is not proof of reading/application.
 WSD-032's old Claude observations do not certify current Copilot. Host-certification gaps remain;
@@ -178,6 +208,11 @@ on demand and default task loading must remain selective.
 **Done when.** Carrier changes/static budgets pass normal gates; exact host/model observations and
 gaps are recorded. A required unexercised host leaves PARTIALLY DONE status and narrowed claims,
 not inferred parity. B-225 owns outcome comparison; host access does not substitute for it.
+
+**Delivery RCA.** Carrier parity and footprint checks proved text delivery, not that an ordinary
+feature-only task discovers, reads, and semantically applies the right scoped knowledge. That
+evidence gap applies to every host-specific native instruction/skill route and remains open rather
+than being converted into a parser gate.
 
 ### B-225 · Measure broad discovery's marginal value on the actual coding surfaces
 **Filed against:** v0.83.0 (2026-09-05)
@@ -262,12 +297,19 @@ Root also observed B-215's binary/NUL/high-byte and nonzero-stderr fixture plus 
 at 8/0 on both hosts. These approve the bounded oracle/raw-reader correctness only; aggregate timing
 and any CI speed claim are still unobserved.
 
+**Delivery RCA.** One harness trusted a child's printed summary without its exit code and another
+proved only that a budget-call AST existed, so success-shaped text and inert/extracted code could
+green real failures. The raw-Git helper also hid process/file startup cost at every blob read. The
+same class exposed sibling summary parsers, presence-only release assertions, and repeated native
+process I/O; bounded hostile controls now cover the concrete sites without creating a generic test
+framework.
+
 ### B-229 · Remove CI host serialization without weakening parity evidence
 **Filed against:** v0.83.0 (2026-09-05)
 **Priority:** P1 · **Effort:** M · **Invariants:** #3 #4
-**Status:** DESIGN ACCEPTED; IMPLEMENTATION AUTHORIZED in
-`.claude/plans/2026-09-05-ci-parity-critical-path-contract.md` with the recorded
-manifest-shape, CANT-VERIFY, decision-exit, runner-registration, and topology-documentation conditions.
+**Status:** PARTIALLY DONE. Source and focused hostile/clean checks are independently accepted under
+`.claude/plans/2026-09-05-ci-parity-critical-path-contract.md`; composed aggregate/release checks and
+an actual candidate GitHub Actions critical-path observation remain.
 
 **Problem / evidence.** Baseline GitHub run `33980347537` passed all eight Windows contexts in
 16m12s, while the PS5.1 root and dist definitions were serialized behind their PS7 counterparts so
@@ -283,11 +325,24 @@ workflow-topology expectations exact. Do not add a provider/platform leg, skip p
 or raise budgets. Direct PS7/5.1 hostile and clean evidence, immutable independent review, full
 stable-tree aggregates, and an observed candidate CI run are required before closure.
 
+**Delivery RCA.** Parity comparison lived inside producer jobs, so `needs` serialized otherwise
+independent native hosts; correctness checks asserted the old topology but did not measure its
+critical path. Other producer-owned cross-host comparisons are exposed to the same latency pattern;
+moving this one downstream is not yet a general runtime claim.
+
+**Focused acceptance observed 2026-09-05.** Root ran `CiCaseParity.Tests.ps1` at 10/0 and
+`ReleaseCiWatch.Tests.ps1` at 22/0 on both native hosts, including missing, skipped, failed and clean
+parity decisions. Actual matcher probes rejected an inert step condition, an inert shell wrapper,
+and job-level `continue-on-error`, then accepted the clean decision. This is source/topology evidence;
+the redesigned workflow has not yet run in GitHub Actions, so no elapsed-time improvement is claimed.
+
 ### B-216 · Project-adapt instance-shaped skills instead of imposing framework defaults
 **Filed against:** v0.81.0 (2026-09-03)
 **Priority:** P1 · **Effort:** L · **Invariants:** #1 #2 #3 #6 #7
-**Status:** RE-LOCK REQUIRED under WSD-074. Original problem and one sidecar delivery remain open;
-obsolete mirror/Bash/registry/pretrial mechanics are not execution instructions.
+**Status:** PARTIALLY DONE under the accepted WSD-074 re-lock. Source, lifecycle preservation, and
+one narrow Unity composition-root observation are accepted; alternative .NET/Angular,
+conflicting/unreadable sidecar, composed aggregate, and target-host behavior remain unobserved.
+Obsolete mirror/Bash/registry/pretrial mechanics are not execution instructions.
 
 **Problem / evidence.** `register-service` permits an equivalent DI pattern then prescribes
 IServiceCollection/AddXxxServices/lifetimes. The Unity report describes a different composition
@@ -318,10 +373,26 @@ reconciled, ownership/budgets/general shipped checks pass, and independent revie
 B-222–B-224 do not wait for the registry decision. Historical evidence:
 `.claude/plans/2026-09-03-b216-project-adapted-instance-skills-design.md`.
 
+**Delivery RCA.** Shape/parity checks saw valid Markdown while skills, defaults, rules, and review
+carriers independently imposed unevidenced libraries, layers, interfaces, and recipes. The defect
+class is conflicting semantic authority across active carriers; the accepted sweep and lifecycle
+fixtures address the named operations, while unrun alternative/conflict worlds remain explicit.
+
+**Focused acceptance observed 2026-09-05.** Root ran the authoring authority contract at 6/0 on
+both native hosts and selected update/collision lifecycle cases at 1/0 on each. Replacing the
+consumer sidecar after update made the actual preservation assertion red on both hosts; restored
+bytes returned it to 1/0. One fresh authoring evaluator selected the fixture's Unity registration
+and lifetime without introducing MS.DI, while withholding an edit for missing evidence. Its hashes,
+the earlier mismatched/blocked attempt, quick-validation 7/8 then cleanup result, and unexercised
+alternative/conflict cases are recorded in `meta/repository-knowledge-forward-evidence.md`.
+
 ### B-226 · Give every review participant the same explicit change scope
 **Filed against:** v0.83.0 (2026-09-05)
 **Priority:** P1 · **Effort:** M · **Invariants:** #1 #3 #5 #6 #7
-**Status:** READY for bounded design critique; independent of discovery.
+**Status:** PARTIALLY DONE under the accepted bounded contract. Snapshot/scanner mechanics and all
+39 parent/auditor/adapter carrier changes are independently accepted at the focused source boundary.
+Actual model Task/sequential dispatch, installed-host end-to-end behavior, composed aggregate, and
+release integration remain unobserved. Independent of discovery.
 
 **Problem / evidence.** `/review` promises staged+unstaged; convention/solid snippets use bare
 `git diff --name-only`; others use HEAD; `test-weakening-scan.ps1` defaults to --cached and hides
@@ -351,10 +422,28 @@ qualifies. Valid empty and no-signal scopes are reachable distinct outcomes. Tes
 diagnostics are honest; advisory semantics remain non-enforcing; general shipped checks pass.
 RCA examines sibling partial-diff consumers, not just the first auditor.
 
+**Delivery RCA.** Each reviewer independently selected repository state, and the advisory swallowed
+Git failure, so valid prose could compare different bytes or report no signal after failed
+examination. Every partial-diff consumer was therefore exposed. One hashed captured subject plus a
+pre-synthesis recapture closes the bounded workflow; supporting repository context remains readable
+without enlarging the subject.
+
+**Focused acceptance observed 2026-09-06.** Root independently ran `ReviewScope.Tests.ps1` and
+`TestWeakeningScan.Tests.ps1` at the frozen mechanical checkpoint under native PS7 7.6.5 and PS5.1
+5.1.26100.9278: each reported 9/0 and exit 0. Root also ran the corrected real PathFile case alone
+under PS7 CP65001 and PS5.1 CP437: each reported 1/0 and exit 0 after an unfiltered control proved
+the excluded test was otherwise reportable. An extra PS7 CP437 extraction failed its non-ASCII name
+predicate despite output naming the path; that instrument/encoding gap is unresolved and is not
+reported as a product defect or verified host combination. The 39 carrier review and recapture
+contrast are source/static evidence; no model dispatch or sequential-fallback efficacy was run.
+
 ### B-227 · Replace context-free financial verdicts with evidence-based invariant review
 **Filed against:** v0.83.0 (2026-09-05)
 **Priority:** P2 · **Effort:** M · **Invariants:** #1 #6 #7
-**Status:** READY for bounded design critique. No domain engine or new security skill.
+**Status:** PARTIALLY DONE under the accepted bounded contract. Carrier source, independent
+valid/invalid executable oracles, and one bounded fresh authoring-agent semantic review are accepted;
+composed aggregate and release integration remain. This is not financial certification or target-
+host efficacy. No domain engine or new security skill.
 
 **Problem / evidence.** The .NET security auditor treats absent specific transaction/row-lock
 mechanisms and floating-point Amount/Price/Rate names as defects, including unconditional critical
@@ -381,10 +470,26 @@ critical defects; uncertainty cannot erase demonstrated ones. Inspect evidence, 
 covers legitimate alternatives and actual defects; general shipped checks pass. Report unavailable
 semantic execution rather than claiming financial safety certification.
 
+**Delivery RCA.** Keyword and named-mechanism heuristics had no executable valid alternative or
+invalid outcome, so they converted representation and locking choices directly into severity; the
+warehouse usage rule repeated the same unsupported certainty. Active financial rules, prompts,
+auditors, test guidance, and eval expectations shared the class and were swept together. One bounded
+authoring sample is not domain certification.
+
+**Focused acceptance observed 2026-09-06.** Root ran all four C# mechanism pairs and the carrier
+contract on both native hosts: clean was 5/0, while substituting the old categorical carrier made
+the same instrument red at 4/1. The fresh `gpt-5.6-luna` authoring review received only the frozen
+auditor, raw source and neutral owner brief; its four method-specific findings matched the separate
+oracles without imposing a numeric type, row lock or transaction mechanism. Inputs, hashes,
+findings and limitations are recorded in `meta/repository-knowledge-forward-evidence.md`; it was not
+a Copilot, SQL, installed-host, or broad financial-safety trial.
+
 ### B-220 · Remove the retired `-GitHooks` compatibility parameter in v0.84
 **Filed against:** v0.83.0 (2026-09-04)
 **Priority:** P2 · **Effort:** S · **Invariants:** #1 #6 #7
-**Status:** READY for the next v0.84 or later release; not a discovery dependency.
+**Status:** PARTIALLY DONE. Retired-argument source and direct native-host hostile/clean checks are
+independently accepted; composed aggregate and release integration remain. Not a discovery
+dependency.
 
 **Problem.** v0.83 retains `-GitHooks` only as a bridge refusing exit 2 before mutation. Keeping a
 dead parameter indefinitely implies a supported feature.
@@ -396,6 +501,17 @@ legacy consumer hooks/helpers. Do not delete unowned hooks or weaken retained he
 **Done when.** Both entrypoints reject the unknown argument before mutation; current usage does
 not advertise it; legacy diagnostics remain; ordinary install/update and retired-argument hostile
 tests pass on both hosts; normal source/dist/changelog/release checks agree.
+
+**Delivery RCA.** This is a scheduled compatibility retirement rather than an escaped product
+defect: the parameter intentionally remained for one refusal period, and no gate should have removed
+it early. Caller/help/test inventory was required so retirement did not erase the distinct doctor
+diagnostics or mutate a consumer before native argument binding rejects the old switch.
+
+**Focused acceptance observed 2026-09-05.** Root ran the actual retired-argument binding case for
+both root and delegated entrypoints at 1/0 on native PS7 and PS5.1, including full target-tree
+fingerprints. Feeding the prior installer body to the same oracle made it red at exit 1 on both;
+restoring the candidate returned 1/0. Ordinary composed install/update and aggregate evidence remain
+part of the release boundary rather than this focused check.
 
 ## Independent evidence and deferred work
 

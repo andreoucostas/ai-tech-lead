@@ -1,7 +1,8 @@
 # B-216 / B-226 / B-227 / B-220 implementation contract
 
 Date: 2026-09-05  
-Status: proposed for adversarial critique; no implementation is authorised by this document alone.  
+Status: accepted implementation contract with recorded conditions; source checkpoints are reviewed
+incrementally, while composed-distribution, aggregate, and release acceptance remain pending.
 Authority: the detailed acceptance and non-goals remain in `meta/BACKLOG.md`; this file freezes the
 smaller delivery mechanisms, ownership boundaries, order, and hostile/valid worlds.
 

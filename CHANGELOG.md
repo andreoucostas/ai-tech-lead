@@ -11,6 +11,28 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.84.0 — Unreleased
+
+**Repository-specific knowledge becomes a first-class, reviewable input to ordinary changes.**
+B-222–B-224/WSD-074 broaden bootstrap discovery beyond recurring recipes, route grounded facts and
+operations into the existing wiki/skill/map authorities as review drafts, recheck changed evidence
+and dependencies, and add selective task-time consultation without an always-loaded catalog or new
+registry. Retained authoring evaluations establish bounded source behavior only; actual Copilot CLI
+and VS Code semantic application and outcome value remain open under B-224/B-225.
+
+B-216 re-locks eight instance-shaped operation skills around first-party project evidence and an
+optional consumer-owned `references/project-pattern.md`, removing framework/library/interface
+assumptions that could override a repository's real pattern. B-226 gives every review participant
+one hashed snapshot of staged, unstaged, untracked, range, or explicit whole-file bytes and refuses
+invalid, unreadable, or drifting scope. B-227 replaces name/type/mechanism-only financial verdicts
+with applicable invariants, tolerances, preconditions, policy and source/interleaving/executable
+evidence while preserving demonstrated security controls.
+
+B-220 removes the retired `-GitHooks` installer argument. B-228 corrects two false-green test
+oracles and the Windows PowerShell raw-Git reader. B-229 removes native-host job serialization while
+retaining all eight Windows contexts and adding a required artifact-parity decision; runtime benefit
+is not claimed until the candidate workflow runs in GitHub Actions.
+
 ## 0.83.0 — 2026-09-04
 
 **Framework execution is now Windows- and PowerShell-only.** B-219/WSD-073 retires the active Bash
