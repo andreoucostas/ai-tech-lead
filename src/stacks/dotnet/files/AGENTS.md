@@ -70,13 +70,13 @@ If a change genuinely requires a new abstraction, file, or wrapper, state the se
 
 SOLID is **mandatory** in this codebase. It governs structure; [Leanness](#leanness) governs ceremony *beyond* that structure — the two are reconciled here and in Leanness #2.
 
-1. **Single Responsibility** — one reason to change per class. No god classes; controllers stay thin (delegate to a service immediately). Split a class that mixes orchestration, data access, and presentation. Heuristic: more than ~5 injected collaborators, or a name needing "And"/"Manager", means split.
+1. **Single Responsibility** — one reason to change per class. No god classes; keep controllers thin and delegate at an evidenced project boundary. Split a class that mixes orchestration, data access, and presentation. Heuristic: more than ~5 injected collaborators, or a name needing "And"/"Manager", means split.
 2. **Open/Closed** — extend by adding a type, not editing a stable one. When a `switch`/`if` over a type/enum code reaches its **third** arm, replace it with polymorphism. (Do not build the seam speculatively before then — that is future-proofing.)
 3. **Liskov Substitution** — every implementation fulfils its interface's contract completely: no `NotImplementedException`/`NotSupportedException`, no strengthened preconditions, no weakened postconditions. If a type can't honour the contract, it must not implement it.
 4. **Interface Segregation** — small, role-based interfaces over one fat `I*Service`. No implementation is forced to implement members it does not use.
 5. **Dependency Inversion** — derive an injected service's seam and registration from the project's evidenced architecture and correctness needs; do not require an interface or DI container solely from this framework. Preserve an evidenced dependency boundary; data carriers (DTOs, entities, value objects, `Options` records, enums) get no interface.
 
-**Mechanism**: when project evidence selects a DI seam, follow its established composition root, lifetime, and registration shape; this framework selects none of those mechanisms.
+**Mechanism**: when project evidence selects a .NET service seam, follow its established composition root, lifetime, and interface/concrete shape; this framework selects none of them.
 
 **Deterministic backstop**: `solid-check` is advisory. NetArchTest is scaffoldable and enforces direction only after the consumer wires it into CI with `enforce-architecture`.
 
@@ -138,7 +138,7 @@ Apply only entries whose technology exists here; the profile proves none.
 9. Add risk-relevant tests only, and only with a harness
 
 **Subtract:**
-10. Inline single-consumer interfaces or abstract bases that are not an evidenced DI service seam — per Leanness. Preserve an existing project boundary when its evidence or correctness need requires it.
+10. Inline single-consumer interfaces or abstract bases that are not a project-evidenced DI service seam — per Leanness. Preserve an existing project boundary when its evidence or correctness need requires it.
 11. Collapse shallow delegate methods that add no behavior beyond calling another component
 12. Single-use private helpers — inline at the call site
 
@@ -157,7 +157,7 @@ Natural-language requests trigger a workflow: classify silently, announce it in 
 
 > These rails are canonical. Commands and `route-prompt` may elaborate, not contradict; carriers and hooks remain independent.
 
-- **Feature** — *add / implement / create / build new …*: design affected boundaries, failure modes, and the smallest useful tests when a harness exists; never add one incidentally → implement in evidenced subtasks → apply Verification command discovery → Boy Scout touched files → self-review → report delivery and validation. Derive any service seam from project evidence; do not add an interface/abstraction solely from this framework.
+- **Feature** — *add / implement / create / build new …*: design affected boundaries, failure modes, and the smallest useful tests when a harness exists; never add one incidentally → implement in evidenced subtasks → apply Verification command discovery → Boy Scout touched files → self-review → report delivery and validation. Preserve a project-evidenced service seam; otherwise add no interface/abstraction without a second consumer or correctness need.
 - **Bug fix** — *broken / bug / crash / failing / "not working" / "looks off"*: state root cause → with an applicable harness, first write a regression test that fails correctly; otherwise use the strongest evidenced validation, report tests **not available**, and add no foreign harness → make the minimal fix → apply Verification command discovery → Boy Scout the blast radius → report cause, fix, validation, and radius.
 - **Refactor** — *cleanup / extract / rename / simplify / restructure*: establish an evidenced green baseline; add characterization coverage only to an existing applicable harness, otherwise report tests **not available** → refactor incrementally with verification → Boy Scout touched files → prove unchanged behavior → report before/after and net LOC.
 - **Test** — *write / add tests, increase coverage*: match the existing harness → cover the principal behavior plus consequential risks only → assert observable behavior, not internals or mock trivia → see each new behavioral test fail correctly → apply Verification command discovery → report coverage and gaps.
@@ -166,7 +166,7 @@ Natural-language requests trigger a workflow: classify silently, announce it in 
 
 Registered, observed, and instructed differ by surface; these rails remain binding.
 
-**Scoped repository knowledge.** For a non-trivial change—including an ordinary feature/fix request naming neither a skill nor a path—locate likely task areas; select relevant scoped wiki, map, skill, or example entries, exclude irrelevant/nonapplicable ones, and read bodies/references on demand. Investigate conflicting applicable claims and recheck decisive correctness-material evidence. Ask, or retain as unresolved, only correctness-material gaps from unresolved drafts, opposing scopes, or stale, missing, or inaccessible evidence; never infer them. Name material evidence and run repository-evidenced verification. Hook registration alone proves neither firing nor consumption; do not preload the wiki or depend on a hook.
+**Scoped repository knowledge.** For a non-trivial change—including an ordinary feature/fix naming neither a skill nor path—locate task areas; select relevant scoped wiki, map, skill, or example entries; exclude irrelevant/nonapplicable ones; read bodies/references on demand. Investigate conflicting applicable claims and recheck decisive correctness-material evidence. Ask, or retain unresolved, only correctness-material gaps from unresolved drafts, opposing scopes, or stale, missing, or inaccessible evidence; never infer them. Name material evidence and run repository-evidenced verification. Hook registration alone proves neither firing nor consumption; do not preload the wiki or depend on a hook.
 
 **Security-sensitive surfaces always get a security pass.** If the work touches authentication/authorization, payments, balances, ledgers, transactions, idempotency, or secrets, run `/security-review` on the diff (or the `security-auditor` agent) before presenting it as complete — regardless of which workflow above applies. For prompts matching its bounded security vocabulary, the registered prompt hook emits this reminder when invoked; host firing and output consumption require separate, capability-specific evidence. The rule holds whether or not the hook runs.
 

@@ -75,7 +75,7 @@ Data-access defaults are conditional on what the repo evidences in csproj packag
 ## .NET application defaults (continued)
 
 ### API Design
-- Controllers are thin — delegate to services immediately. Minimal APIs are acceptable for simple endpoints if the project uses them.
+- Controllers are thin — delegate at an evidenced project boundary. Minimal APIs are acceptable for simple endpoints if the project uses them.
 - Request/response DTOs are separate from domain entities. Never expose domain models in API contracts.
 - Use FluentValidation for request validation. No validation logic in controllers.
 - Background work uses `BackgroundService` or `IHostedService`. No `Task.Run` fire-and-forget in request handlers.

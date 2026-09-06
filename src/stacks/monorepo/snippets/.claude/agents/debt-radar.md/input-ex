@@ -1,2 +1,1 @@
-3. Recompute `manifest.json` SHA-256 against the supplied hash; on unreadable or mismatched content, reply `CANNOT EXAMINE` and stop.
-4. Take the frozen bundle's selected paths as the caller input; use a feature-area name only when the parent supplied it alongside that same `-ScopePath`.
+3. Take the frozen bundle's selected paths as the caller input; use a feature-area name only when the parent supplied it alongside that same `-ScopePath`.

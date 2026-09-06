@@ -11,7 +11,7 @@ These apply to every workflow, before any convention-level rule. The difference 
 
 <!-- @stack:verif-rules -->
 
-**Verification command discovery.** For **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation**, use exact applicable commands from repository evidence (`CLAUDE.md`, CI, scripts, manifests, or configuration); mark missing categories **not available**. `framework-owned/overwritten` paths in `framework-ownership.json` and paths in `framework-retirements.json` are framework evidence, not application-command evidence. Run them only when an explicit framework workflow names them or the developer requests framework diagnosis; report framework checks separately from application verification. Do not run a saved Verification Commands row that names one — flag `/rebootstrap`. A delivery profile proves no technology or command. Migration/deploy is **manual/CI-only** unless the exact command is an evidenced non-mutating validation/dry-run or the developer authorizes a known target; otherwise do not run it.
+**Verification command discovery.** For **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation**, use exact applicable repository-evidenced commands (`CLAUDE.md`, CI, scripts, manifests, or configuration); mark missing categories **not available**. `framework-owned/overwritten` paths in `framework-ownership.json` and paths in `framework-retirements.json` are framework, not application-command, evidence. Run them only when named by an explicit framework workflow or requested for framework diagnosis; report separately from application verification. Do not run a saved Verification Commands row naming one — flag `/rebootstrap`. A delivery profile proves no technology or command. Migration/deploy is **manual/CI-only** unless its exact command is an evidenced non-mutating validation/dry-run or developer-authorized known target; otherwise do not run it.
 8. **No future-proofing.** Do not add code for hypothetical requirements. Three similar lines is better than a premature abstraction.
 <!-- @stack:verif-rule9 -->
 
@@ -19,7 +19,7 @@ These apply to every workflow, before any convention-level rule. The difference 
 
 ## Leanness
 
-The Boy Scout Rule biases toward adding improvements. This section is the counterweight: every change should also consider what to remove or what not to introduce. Bloat is not a stylistic preference — it is the highest-cost long-term failure mode of AI-assisted development.
+The Boy Scout Rule biases toward improvements. This counterweight requires every change also consider what to remove or not introduce. Bloat is not style — it is AI-assisted development's highest-cost long-term failure mode.
 
 ### Defaults
 
@@ -65,7 +65,7 @@ Natural-language requests trigger a workflow: classify silently, announce it in 
 
 Registered, observed, and instructed differ by surface; these rails remain binding.
 
-**Scoped repository knowledge.** For a non-trivial change—including an ordinary feature/fix request naming neither a skill nor a path—locate likely task areas; select relevant scoped wiki, map, skill, or example entries, exclude irrelevant/nonapplicable ones, and read bodies/references on demand. Investigate conflicting applicable claims and recheck decisive correctness-material evidence. Ask, or retain as unresolved, only correctness-material gaps from unresolved drafts, opposing scopes, or stale, missing, or inaccessible evidence; never infer them. Name material evidence and run repository-evidenced verification. Hook registration alone proves neither firing nor consumption; do not preload the wiki or depend on a hook.
+**Scoped repository knowledge.** For a non-trivial change—including an ordinary feature/fix naming neither a skill nor path—locate task areas; select relevant scoped wiki, map, skill, or example entries; exclude irrelevant/nonapplicable ones; read bodies/references on demand. Investigate conflicting applicable claims and recheck decisive correctness-material evidence. Ask, or retain unresolved, only correctness-material gaps from unresolved drafts, opposing scopes, or stale, missing, or inaccessible evidence; never infer them. Name material evidence and run repository-evidenced verification. Hook registration alone proves neither firing nor consumption; do not preload the wiki or depend on a hook.
 
 <!-- @stack:security-pass -->
 
@@ -76,7 +76,7 @@ For any non-trivial task, STOP before writing code and post a short plan:
 - Your assumptions, plus **clarifying questions** for anything underspecified (ambiguous scope, unclear acceptance criteria, competing approaches). Do not guess past a material ambiguity to seem helpful — ask.
 - For larger features, persist the plan as a spec to `specs/<slug>.md` (see `/design`) and implement against it
 
-Then **wait for the developer's explicit go-ahead before editing code.** This checkpoint is where a wrong assumption gets caught before it becomes a wrong diff — and where the developer stays engaged with the change instead of rubber-stamping output. Skip the wait only for a trivial, unambiguous change (typo, one-liner), and say that you're skipping it and why.
+Then **wait for the developer's explicit go-ahead before editing code.** This catches wrong assumptions before wrong diffs and keeps the developer engaged rather than rubber-stamping. Skip only a trivial, unambiguous change (typo, one-liner), and say why.
 
 ### 3. Execute in verified subtasks
 For features and complex changes, decompose into ordered subtasks:
@@ -99,6 +99,6 @@ Before presenting work as complete:
 <!-- @stack:verif-conf-line -->
 
 ### 6. Reconcile affected artifacts
-Before finishing, inspect this task's effects on repository truth. Update affected writable canonical artifacts in this task; regenerate derivatives from source. Follow each artifact's ownership, evidence, history, and security rules; never infer human intent. Treat an affected artifact you cannot read or safely update as a blocker, not `none`. End with `Affected artifacts: none`, the reconciled artifacts, or unresolved blockers.
+Before finishing, inspect task effects on repository truth. Update affected writable canonical artifacts; regenerate derivatives from source. Follow their ownership, evidence, history, and security rules; never infer human intent. An affected artifact unreadable or unsafe to update is a blocker, not `none`. End with `Affected artifacts: none`, reconciled artifacts, or unresolved blockers.
 
 ---
