@@ -50,6 +50,24 @@ archive with its RCA. Parser tests do not certify business truth, model behavior
 Report semantic evidence and unexecuted host/model arms separately. Meta-only protocol work does
 not require a product version bump. WSD-016 remains: no new general live-eval release gate.
 
+**CP1 preparation, 2026-09-06.** The user's reviewed ABP / Copilot CLI contract separately
+authorizes a maintainer whole-product pair and bounded diagnostics after readiness, billed-total
+confirmation and calibration. It supersedes earlier absence-of-authority statements below only
+for that named campaign; RK1/B-225 stays preparation-only and VS Code is deferred. WSD-076 and
+`.claude/plans/2026-09-06-cp1-abp-copilot-campaign.md` preserve the prospective contract. Preparation
+stopped **NOT READY**: no usable disposable Windows guest was established, and the first 100
+integrations yielded 84 initial exclusions and 16 unresolved candidates, with no certified task.
+No paid call, setup, application baseline or outcome was run. Sanitized evidence and remaining
+caps are in `meta/field-study-results.md`; raw records remain outside this repository. All named
+semantic/value entries remain open, including B-42's independent FS2 requirement.
+
+**CP1 preparation RCA.** No shipped defect was reproduced. Parser/release gates did not establish
+Windows guest availability, application buildability, independent oracle reachability or actual
+Copilot use because those are study execution obligations. The same exposure applies to B-216,
+B-222–B-225 and B-42: a reviewed packet or released carrier can be mistaken for observed value.
+The sweep retained those gaps and separate series instead of closing entries or adding a generic
+gate. The bounded response is provisioning and concrete evidence, not more evaluation machinery.
+
 Original detailed open-entry history is preserved at Git baseline
 `87bfe1942b687a47c0f5d87cdfd992e24579ed22:meta/BACKLOG.md` and linked plans. Superseded commands,
 deadlines and incorrect absence-of-production-use claims are no longer execution instructions.

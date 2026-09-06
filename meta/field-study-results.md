@@ -25,6 +25,68 @@ details never belong here. Each entry is copied from the sanitised summary in
 7. A protocol failure is a result: record it and fix the packet before inviting another participant.
 8. Preserve each protocol series. FS1 ends with FS-20260826-RERUN-02; FS2 begins prospectively on
    2026-08-29. Never rescore or aggregate outcomes across those measurement contracts.
+9. CP1 is the maintainer ABP / Copilot CLI campaign derived from FS2 with a different setup route.
+   Keep CP1 separate from FS1, FS2 and RK1. Preparation is not a task outcome.
+
+## CP1 preparation — 2026-09-06 — maintainer — NOT READY
+
+The user authorized implementation of the reviewed
+[CP1 contract](../.claude/plans/2026-09-06-cp1-abp-copilot-campaign.md). The
+[critique provenance](../.claude/plans/2026-09-06-cp1-abp-copilot-critique.md) records the handoff's
+reported ACCEPT WITH CONDITIONS; it is not a new acceptance review. No purchase, Copilot setup,
+task arm, diagnostic, or RK1 live run was performed. There is no comparative outcome to classify.
+
+**Observed preparation.** The authoring tree started clean at `87521cdf...`; the requested framework
+release resolves to `a3986c207fe336abc5967652a021625c2a17ed75`. ABP's selection anchor resolves to
+`58d7243319c2b399944357edf51583135df10f1f`, committed 2026-07-27 08:13:41 UTC. Its `git ls-tree -r`
+inventory has 22,227 tracked files, 671 .NET project files and 18 native `.claude/skills/*/SKILL.md`
+files, with no `.github/skills/` paths. These are whole-tree counts, not first-party code or executed
+tests. `global.json` requests SDK 10.0.100 with `latestFeature`; root NuGet configuration lists
+nuget.org. Its CI invokes repository PowerShell build/test scripts on Ubuntu; this is not evidence
+that the CP1 native Windows application slice runs.
+
+The first-parent window is frozen at **2026-04-28 08:13:41 through 2026-07-27 08:13:41 UTC**,
+inclusive. It contains 238 integrations, including direct accepted first-parent commits. Only the
+first 100 were inventoried. Initial screening records 84 exclusions and 16 unresolved candidates;
+the latter include unconfirmed authorship/size, task coherence and independent-decision evidence.
+**No candidate was certified eligible, and no pre-change snapshot was selected.** This is not a
+finding that no eligible ABP change exists. Raw candidate identities, paths, reasons and source
+inspection remain in external coordinator storage; no later candidate was inspected.
+
+**Readiness obstacle.** Native host probes found Windows 11 Pro, PS7 7.6.5, only .NET SDK 8.0.424,
+about 16 GB installed RAM, about 4 GB free RAM and about 344 GiB free disk. The process is not
+elevated. No Hyper-V/VMware/VirtualBox service was returned; known Hyper-V/Sandbox executable paths
+were absent. Both optional-feature probes required elevation, so feature state is **cannot
+examine**, not “disabled.” Hypervisor presence alone does not establish a usable guest. No guest
+or Windows installation image was supplied; the 8 GB / 100 GB guest, its performance and its
+filesystem/network isolation could not be established. No host configuration or reboot occurred.
+
+The v0.84.0 Copilot adoption wrapper and canonical headless workflow were read: the documented
+`copilot -p` route stages proposals for human application and runs embedded bootstrap; legacy
+`.github/skills` discovery preserves its early stop and marker. This is source evidence only.
+Installer dry run at a selected snapshot, actual host routing, developer initiation, human adoption
+completion, allowed-path inspection, marker lifecycle, docs sync and application baselines remain
+**NOT RUN**. Pricing documentation advertises $39 / 7,000 included credits; the user's actual
+billed total, allowance, overage setting and reset date were not examined. Purchase remains pending
+readiness and account-specific confirmation.
+
+**Remaining evidence.** Concrete private task/response cards, D1–D3, supported alternatives,
+severe-error definitions, valid/targeted-invalid execution and independent review; eight hidden
+facts; calibrated route/read/usage observers; sealed arms and tested egress controls; both task
+scores; assertion audit; all four diagnostics; and RK1's four held-out task cards and matched
+immutable variants. VS Code, other-stack operations, independent FS2 and complexity/payback claims
+remain unexercised. No application acceptance or knowledge efficacy is inferred from this stop.
+
+**Budget / resumption.** Charge **one hour conservatively** to the eight-active-hour preparation cap
+for this session, including automated work and record preparation; this is an accounting charge,
+not a measured human-effort outcome. Seven hours remain. The 100-integration inventory is retained;
+do not restart the count or inspect candidate 101 under this contract. Resolve the guest obstacle
+and the unresolved candidates within the existing population/caps before any purchase. Changing
+the candidate limit, task criteria, guest requirement or protocol requires renewed review.
+
+Source links for host provisioning and advertised pricing are retained in WSD-076. The external
+coordinator handoff holds provisioning steps, raw evidence and the cumulative selection ledger;
+it is not an isolated setup/task workspace. B-42 and B-216/B-222–B-225 remain open.
 
 ## Runs
 

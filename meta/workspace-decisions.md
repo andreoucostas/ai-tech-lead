@@ -3510,3 +3510,48 @@ decision.
 malformed manifests, distinguish unreadable inputs from wrong content, propagate its actual exit,
 be registered in the explicit meta-suite manifest, and keep watcher/topology hostile controls. The
 frozen contract is `.claude/plans/2026-09-05-ci-parity-critical-path-contract.md`.
+
+## WSD-076: CP1 is a separate maintainer Copilot campaign; readiness precedes purchase (2026-09-06)
+
+**Context and authority.** The user supplied an independently critiqued plan and requested its
+implementation. The handoff reports ACCEPT WITH CONDITIONS against `87521cdf...`; original
+reviewer transcript/runtime metadata were not supplied. Persisted contract and attributed critique:
+`.claude/plans/2026-09-06-cp1-abp-copilot-campaign.md` and
+`.claude/plans/2026-09-06-cp1-abp-copilot-critique.md`.
+
+**Decision.** CP1 derives its task outcomes from FS2 but uses developer-started Copilot CLI headless
+adoption with human proposal application/local integration, so it starts a separate maintainer
+series. First compare native ABP instructions/skills with the complete pinned v0.84.0 framework.
+Freeze objective historical selection, independent acceptance and hidden discovery facts before
+setup; require a working native Windows guest/application slice, enforced isolation, actual setup
+completion and calibrated routing/accounting before paid tasks. Preserve nulls, regressions and
+unavailable evidence. Substantive changes require renewed review.
+
+Preparation is bounded to eight active hours and 100 candidate integrations. One Pro+ month at the
+advertised $39 price is conditional on readiness and confirmation of actual billed total/allowance,
+with paid overage disabled. The exact budget/scoring contract is in the plan. RK1 component work is
+preparation-only; B-42 still needs independent FS2, VS Code is deferred, and one snapshot does not
+establish a complexity trend or long-term payback. This changes no shipped API, release gate or
+general harness and does not amend FS2/RK1's existing measurement contracts.
+
+**Alternatives / proportionality.** Running a complete component matrix immediately requires at
+least eight task runs and potentially eight setups without a demonstrated first-month fit. Using
+the ordinary host or an assumed successful setup would discard the isolation/readiness conditions.
+The selected smaller path is one whole-product pair plus bounded diagnostics after observed
+prerequisites; record NOT READY when those prerequisites are absent.
+
+**Observed stop.** Initial preparation could not establish the guest. The non-elevated host's
+Hyper-V/Sandbox feature-state probes required elevation; no relevant VM service was found. The
+first 100 integrations were inventoried, with 84 initial exclusions and 16 unresolved candidates,
+not a certified eligible task or proof that none exists. No purchase, paid experiment or independent
+acceptance execution occurred. `meta/field-study-results.md` retains this preparation status and
+the open obligations, separately from executed outcomes.
+
+**Provisioning / price references, checked 2026-09-06.** Microsoft's
+[Hyper-V installation](https://learn.microsoft.com/en-us/windows-server/virtualization/hyper-v/get-started/Install-Hyper-V)
+requires an administrator and may require restart; its
+[VM creation guidance](https://learn.microsoft.com/en-us/windows-server/virtualization/hyper-v/get-started/create-a-virtual-machine-in-hyper-v)
+requires an enabled host, appropriate privileges, memory/disk and Windows media for installation.
+GitHub's [individual billing documentation](https://docs.github.com/en/copilot/concepts/billing/usage-based-billing-for-individuals)
+advertises Pro+ at $39/month with 7,000 included credits. These vendor documents do not certify this
+machine's feature state, a user's actual bill/entitlement, an isolation boundary or effective caps.

@@ -5,6 +5,15 @@
 increment improve outcomes over the current released framework on the same observed Copilot host
 and exact model?
 
+**2026-09-06 prospective relationship:** the separately authorized
+[CP1 campaign](../.claude/plans/2026-09-06-cp1-abp-copilot-campaign.md) compares native Copilot with
+complete v0.84.0 first. RK1 remains preparation-only there: four held-out tasks across four areas,
+independently reviewed immutable variants differing only in discovery/capture/use, and matching
+unrelated repairs. Whole v0.83.0/v0.84.0 releases cannot isolate this treatment. Eight task runs,
+potentially eight setups and calibration are not assumed to fit CP1's first subscription allowance.
+CP1 stopped NOT READY before a task snapshot was selected; those four cards, variant review and
+executable controls remain outstanding. See `meta/field-study-results.md`; never pool CP1 and RK1.
+
 This is the B-225 component experiment, not FS2. FS2 compares the complete framework with a bare
 agent and remains governed by `meta/field-study-kit.md`; never pool RK1 with FS1 or FS2. RK1 reuses
 the field study's privacy, history-free snapshot, filesystem isolation and oracle-reachability
