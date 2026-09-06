@@ -2,9 +2,8 @@
 #
 # Two properties matter here and they pull against each other. It must REPORT when assertion-shaped
 # lines are removed from a test file — an advisory that silently stops advising is worse than none,
-# because nobody notices. And it must ALWAYS exit 0, on every path: the moment it can fail a run, a
-# false positive on a legitimate refactor teaches people to bypass it, and the reason it is advisory
-# in the first place is that a weakened assertion and a refactored one cannot be told apart by rule.
+# because nobody notices. Findings and valid no-signal scans exit 0; malformed input and inability
+# to examine an immutable bundle are nonzero, so a host problem cannot become a false green.
 #
 # The exit-code assertions below are therefore not ceremony. They are the property.
 . (Join-Path $PSScriptRoot '_HookHarness.ps1')
@@ -128,16 +127,42 @@ It 'passes a literal PathFile through private capture without broadening scope' 
     $pathFile = Join-Path ([IO.Path]::GetTempPath()) ('tw-paths-' + [guid]::NewGuid().ToString('N') + '.json')
     try {
         [IO.File]::WriteAllText((Join-Path $repo 'tests/FooTests.cs'), "public class FooTests {`n  public void A(){`n    Assert.Equal(1,1);`n  }`n}`n")
-        [IO.File]::WriteAllText((Join-Path $repo 'src/Foo.cs'), "Assert.False(false);`n")
+        [IO.File]::WriteAllText((Join-Path $repo 'tests/OtherTests.cs'), "public class OtherTests { void B() { Assert.False(false); } }`n")
         & git -C $repo add -A 2>&1 | Out-Null
         [IO.File]::WriteAllText($pathFile, '["tests/FooTests.cs"]', [Text.UTF8Encoding]::new($false))
         $r = Invoke-Scan $repo @('-PathFile',$pathFile)
         Assert ($r.Exit -eq 0 -and $r.Text -match 'FooTests\.cs') "PathFile scan missed selected test: $($r.Exit) $($r.Text)"
-        Assert ($r.Text -notmatch 'src/Foo\.cs') "PathFile scan broadened into unselected source: $($r.Text)"
+        Assert ($r.Text -notmatch 'tests/OtherTests\.cs') "PathFile scan broadened into another qualifying assertion-removal test: $($r.Text)"
     } finally {
         Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $pathFile -Force -ErrorAction SilentlyContinue
     }
+}
+
+It 'requires pathFilter to be a string array and accepts an explicit empty array' {
+    $repo = New-ScanRepo
+    $bundle = Join-Path ([IO.Path]::GetTempPath()) ('tw-path-filter-schema-' + [guid]::NewGuid().ToString('N'))
+    try {
+        $builder = Join-Path (Split-Path -Parent $scan) 'review-scope.ps1'
+        Push-Location $repo
+        try { $buildOut = & (Get-Process -Id $PID).Path -NoProfile -File $builder -Mode Uncommitted -OutputPath $bundle 2>&1 | Out-String; $buildExit = $LASTEXITCODE }
+        finally { Pop-Location }
+        Assert ($buildExit -eq 0) "could not build schema fixture: $buildOut"
+        $manifestPath = Join-Path $bundle 'manifest.json'
+        $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+        $manifest.pathFilter = $null
+        [IO.File]::WriteAllText($manifestPath, (($manifest | ConvertTo-Json -Depth 8 -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
+        $nullFilter = Invoke-Scan $repo @('-ScopePath',$bundle)
+        Assert ($nullFilter.Exit -eq 2 -and $nullFilter.Text -match '(?i)pathFilter|string array') "null pathFilter was not invalid input: $($nullFilter.Exit) $($nullFilter.Text)"
+        $manifest.pathFilter = 'tests/FooTests.cs'
+        [IO.File]::WriteAllText($manifestPath, (($manifest | ConvertTo-Json -Depth 8 -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
+        $scalarFilter = Invoke-Scan $repo @('-ScopePath',$bundle)
+        Assert ($scalarFilter.Exit -eq 2 -and $scalarFilter.Text -match '(?i)pathFilter|string array|incomplete shape') "scalar pathFilter was accepted: $($scalarFilter.Exit) $($scalarFilter.Text)"
+        $manifest.pathFilter = @()
+        [IO.File]::WriteAllText($manifestPath, (($manifest | ConvertTo-Json -Depth 8 -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
+        $emptyFilter = Invoke-Scan $repo @('-ScopePath',$bundle)
+        Assert ($emptyFilter.Exit -eq 0) "explicit empty pathFilter was rejected: $($emptyFilter.Exit) $($emptyFilter.Text)"
+    } finally { Remove-Item -LiteralPath $repo,$bundle -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
 exit (Write-TestSummary 'TestWeakeningScan.Tests (advisory contract)')

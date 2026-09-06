@@ -91,8 +91,13 @@ function Get-SelectedPaths {
     if (-not $trimmed.StartsWith('[') -or -not $trimmed.EndsWith(']')) {
         throw 'INVALID: path list must be a UTF-8 JSON array of repository-relative strings.'
     }
-    try { $parsed = $trimmed | ConvertFrom-Json -ErrorAction Stop }
+    try { $null = $trimmed | ConvertFrom-Json -ErrorAction Stop }
     catch { throw "INVALID: path list is not valid JSON: $($_.Exception.Message)" }
+    $wrapper = ('{"values":' + $trimmed + '}') | ConvertFrom-Json -ErrorAction Stop
+    $parsed = $wrapper.values
+    if ($null -eq $parsed -or $parsed -isnot [System.Array]) {
+        throw 'INVALID: path list must be a JSON array of strings.'
+    }
     $selected = New-Object 'System.Collections.Generic.List[string]'
     $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
     foreach ($value in $parsed) {
@@ -225,8 +230,8 @@ function Write-ReviewScopeBundle {
     }
 
     if ($Mode -eq 'Uncommitted') {
-        & $capturePatch 'staged' (@('diff','--cached','--binary','--full-index','--unified=0','--no-ext-diff','--no-textconv','--no-color','--src-prefix=a/','--dst-prefix=b/','--') + $pathSpecs)
-        & $capturePatch 'unstaged' (@('diff','--binary','--full-index','--unified=0','--no-ext-diff','--no-textconv','--no-color','--src-prefix=a/','--dst-prefix=b/','--') + $pathSpecs)
+        & $capturePatch 'staged' (@('diff','--cached','--binary','--full-index','--unified=0','--find-renames','--no-ext-diff','--no-textconv','--no-color','--src-prefix=a/','--dst-prefix=b/','--') + $pathSpecs)
+        & $capturePatch 'unstaged' (@('diff','--binary','--full-index','--unified=0','--find-renames','--no-ext-diff','--no-textconv','--no-color','--src-prefix=a/','--dst-prefix=b/','--') + $pathSpecs)
         $untrackedArgs = @('ls-files','--others','--exclude-standard','-z','--') + $pathSpecs
         $untracked = @(& $readNames $untrackedArgs | Sort-Object -Unique)
         foreach ($relative in $untracked) {
@@ -256,7 +261,7 @@ function Write-ReviewScopeBundle {
         }
         $layers.Add([pscustomobject][ordered]@{ name = 'untracked'; paths = $untracked }) | Out-Null
     } elseif ($Mode -eq 'Range') {
-        & $capturePatch 'range' (@('diff',$script:RangeExpression,'--binary','--full-index','--unified=0','--no-ext-diff','--no-textconv','--no-color','--src-prefix=a/','--dst-prefix=b/','--') + $pathSpecs)
+        & $capturePatch 'range' (@('diff',$script:RangeExpression,'--binary','--full-index','--unified=0','--find-renames','--no-ext-diff','--no-textconv','--no-color','--src-prefix=a/','--dst-prefix=b/','--') + $pathSpecs)
     } else {
         if (-not $script:PathFilterSupplied -or $SelectedPaths.Count -eq 0) {
             throw 'INVALID: WholeFile mode requires a nonempty -PathFile selection.'

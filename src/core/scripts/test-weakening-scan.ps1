@@ -36,9 +36,18 @@ function Read-ReviewScopeBundle {
     catch { throw "CANNOT EXAMINE: could not read review manifest: $($_.Exception.Message)" }
     try { $manifest = $manifestText.TrimStart([char]0xFEFF) | ConvertFrom-Json -ErrorAction Stop }
     catch { throw "INVALID: review manifest is not valid JSON: $($_.Exception.Message)" }
+    if ($null -eq $manifest.pathFilter -or $manifest.pathFilter -isnot [System.Array]) {
+        throw 'INVALID: review manifest pathFilter must be an array of nonempty strings.'
+    }
     if ($manifest.formatVersion -ne 1 -or $manifest.mode -notin @('Uncommitted','Range','WholeFile') -or
-        $null -eq $manifest.artifacts -or $null -eq $manifest.layers -or $null -eq $manifest.selection) {
+        $null -eq $manifest.artifacts -or
+        $null -eq $manifest.layers -or $null -eq $manifest.selection) {
         throw 'INVALID: review manifest has an unsupported or incomplete shape.'
+    }
+    foreach ($filterPath in @($manifest.pathFilter)) {
+        if ($filterPath -isnot [string] -or [string]::IsNullOrWhiteSpace([string]$filterPath)) {
+            throw 'INVALID: review manifest pathFilter must be an array of nonempty strings.'
+        }
     }
     $artifacts = New-Object 'System.Collections.Generic.List[object]'
     $declared = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)

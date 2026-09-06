@@ -76,6 +76,7 @@ It 'records rename and deletion layers without losing their patch bytes' {
     try {
         & git -C $repo mv -- 'tests/Foo.Tests.ps1' 'tests/Renamed Tests.ps1' 2>&1 | Out-Null
         Remove-Item -LiteralPath (Join-Path $repo 'tests/Delete.Tests.ps1') -Force
+        & git -C $repo config diff.renames false 2>&1 | Out-Null
         & git -C $repo add -A 2>&1 | Out-Null
         $result = Invoke-AtRepo $repo $builder @('-Mode','Uncommitted','-OutputPath',$bundle)
         Assert ($result.Exit -eq 0) "rename/delete capture failed: $($result.Text)"
@@ -83,7 +84,8 @@ It 'records rename and deletion layers without losing their patch bytes' {
         Assert (@($staged.renames).Count -gt 0) 'rename layer was not recorded'
         Assert (@($staged.deletions) -contains 'tests/Delete.Tests.ps1') 'deletion layer was not recorded'
         $patch = [IO.File]::ReadAllText((Join-Path $bundle 'staged.patch'))
-        Assert ($patch.Contains('similarity index') -and $patch.Contains('deleted file mode')) 'rename/delete patch bytes absent'
+        Assert ($patch.Contains('rename from ') -and $patch.Contains('rename to ') -and $patch.Contains('deleted file mode')) 'rename/delete patch bytes absent'
+        Assert ((($patch -match '(?m)^rename from ') -and ($patch -match '(?m)^rename to ')) -eq (@($staged.renames).Count -gt 0)) 'rename metadata disagreed with the patch when diff.renames=false'
     } finally {
         Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $bundle -Recurse -Force -ErrorAction SilentlyContinue
@@ -91,9 +93,12 @@ It 'records rename and deletion layers without losing their patch bytes' {
 }
 
 It 'applies a literal JSON path filter including spaces and produces identical repeat snapshots' {
-    $repo = New-ReviewRepo; $one = New-BundlePath; $two = New-BundlePath; $paths = $null
+    $repo = New-ReviewRepo; $one = New-BundlePath; $two = New-BundlePath; $emptyBundle = New-BundlePath
+    $nullBundle = New-BundlePath; $nestedBundle = New-BundlePath
+    $paths = $null; $emptyPaths = $null; $nullPaths = $null; $nestedPaths = $null
     try {
         [IO.File]::WriteAllText((Join-Path $repo 'tests/Space Tests.ps1'), "Assert 1`n", [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText((Join-Path $repo 'tests/Delete.Tests.ps1'), "", [Text.UTF8Encoding]::new($false))
         [IO.File]::WriteAllText((Join-Path $repo 'src/Other.cs'), "changed`n", [Text.UTF8Encoding]::new($false))
         $paths = New-PathFile @('tests/Space Tests.ps1')
         $r1 = Invoke-AtRepo $repo $builder @('-Mode','Uncommitted','-OutputPath',$one,'-PathFile',$paths)
@@ -106,11 +111,27 @@ It 'applies a literal JSON path filter including spaces and produces identical r
             Assert ([Convert]::ToBase64String($left) -ceq [Convert]::ToBase64String($right)) "repeat artifact differs: $($artifact.path)"
         }
         Assert (@((Read-Manifest $one).selection | Where-Object { $_.path -eq 'src/Other.cs' }).Count -eq 0) 'literal filter included another changed path'
+        Assert (@((Read-Manifest $one).selection | Where-Object { $_.path -eq 'tests/Delete.Tests.ps1' }).Count -eq 0) 'literal filter included another qualifying assertion-removal test'
+        Assert (-not ([IO.File]::ReadAllText((Join-Path $one 'unstaged.patch')) -match 'Delete\.Tests\.ps1')) 'filtered patch included another qualifying assertion-removal test'
+        $emptyPaths = New-PathFile @()
+        $empty = Invoke-AtRepo $repo $builder @('-Mode','Uncommitted','-OutputPath',$emptyBundle,'-PathFile',$emptyPaths)
+        Assert ($empty.Exit -eq 0 -and @(Read-Manifest $emptyBundle).selection.Count -eq 0) "explicit empty path array was not a valid empty selection: $($empty.Exit) $($empty.Text)"
+        $nullPaths = Join-Path ([IO.Path]::GetTempPath()) ('review-scope-null-' + [guid]::NewGuid().ToString('N') + '.json')
+        $nestedPaths = Join-Path ([IO.Path]::GetTempPath()) ('review-scope-nested-' + [guid]::NewGuid().ToString('N') + '.json')
+        [IO.File]::WriteAllText($nullPaths, '[null]', [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText($nestedPaths, '[["tests/Space Tests.ps1"]]', [Text.UTF8Encoding]::new($false))
+        $nullResult = Invoke-AtRepo $repo $builder @('-Mode','Uncommitted','-OutputPath',$nullBundle,'-PathFile',$nullPaths)
+        $nestedResult = Invoke-AtRepo $repo $builder @('-Mode','Uncommitted','-OutputPath',$nestedBundle,'-PathFile',$nestedPaths)
+        Assert ($nullResult.Exit -eq 2 -and $nullResult.Text -match 'INVALID') "null path-list entry was accepted: $($nullResult.Exit) $($nullResult.Text)"
+        Assert ($nestedResult.Exit -eq 2 -and $nestedResult.Text -match 'INVALID') "nested path-list array was accepted: $($nestedResult.Exit) $($nestedResult.Text)"
     } finally {
         Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $one -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $two -Recurse -Force -ErrorAction SilentlyContinue
-        if ($paths) { Remove-Item -LiteralPath $paths -Force -ErrorAction SilentlyContinue }
+        Remove-Item -LiteralPath $emptyBundle,$nullBundle,$nestedBundle -Recurse -Force -ErrorAction SilentlyContinue
+        foreach ($pathFile in @($paths,$emptyPaths,$nullPaths,$nestedPaths)) {
+            if ($pathFile) { Remove-Item -LiteralPath $pathFile -Force -ErrorAction SilentlyContinue }
+        }
     }
 }
 
@@ -131,19 +152,25 @@ It 'does not refresh or rewrite the Git index for a timestamp-only worktree obse
     }
 }
 
-It 'freezes two-dot and three-dot endpoint semantics and rejects a bad ref' {
+It 'freezes two-dot and three-dot endpoint semantics for genuinely divergent branches' {
     $repo = New-ReviewRepo; $two = New-BundlePath; $three = New-BundlePath; $bad = New-BundlePath
     try {
-        [IO.File]::WriteAllText((Join-Path $repo 'tests/Foo.Tests.ps1'), "Assert 1`n", [Text.UTF8Encoding]::new($false))
-        & git -C $repo add -A 2>&1 | Out-Null; & git -C $repo commit -qm head 2>&1 | Out-Null
-        $r2 = Invoke-AtRepo $repo $builder @('-Mode','Range','-RangeKind','TwoDot','-Base','HEAD~1','-Head','HEAD','-OutputPath',$two)
-        $r3 = Invoke-AtRepo $repo $builder @('-Mode','Range','-RangeKind','ThreeDot','-Base','HEAD~1','-Head','HEAD','-OutputPath',$three)
+        $baseBranch = (& git -C $repo branch --show-current).Trim()
+        & git -C $repo checkout -qb r3-feature 2>&1 | Out-Null
+        [IO.File]::WriteAllText((Join-Path $repo 'tests/Feature.Tests.ps1'), "Assert 'feature'`n", [Text.UTF8Encoding]::new($false))
+        & git -C $repo add -A 2>&1 | Out-Null; & git -C $repo commit -qm feature 2>&1 | Out-Null
+        & git -C $repo checkout -q $baseBranch 2>&1 | Out-Null
+        [IO.File]::WriteAllText((Join-Path $repo 'tests/Main.Tests.ps1'), "Assert 'main'`n", [Text.UTF8Encoding]::new($false))
+        & git -C $repo add -A 2>&1 | Out-Null; & git -C $repo commit -qm main 2>&1 | Out-Null
+        $r2 = Invoke-AtRepo $repo $builder @('-Mode','Range','-RangeKind','TwoDot','-Base','r3-feature','-Head',$baseBranch,'-OutputPath',$two)
+        $r3 = Invoke-AtRepo $repo $builder @('-Mode','Range','-RangeKind','ThreeDot','-Base','r3-feature','-Head',$baseBranch,'-OutputPath',$three)
         Assert ($r2.Exit -eq 0 -and $r3.Exit -eq 0) "range captures failed: $($r2.Text) / $($r3.Text)"
         $m2 = Read-Manifest $two; $m3 = Read-Manifest $three
         Assert ($m2.rangeKind -eq 'TwoDot' -and $m3.rangeKind -eq 'ThreeDot') 'range kind not frozen'
         Assert ($m2.resolvedBase -match '^[0-9a-f]{40}$' -and $m2.resolvedHead -match '^[0-9a-f]{40}$') 'resolved endpoints absent'
-        Assert ($m3.effectiveBase -eq $m3.resolvedBase) 'ancestor three-dot merge base is wrong'
-        $invalid = Invoke-AtRepo $repo $builder @('-Mode','Range','-Base','not-a-ref','-Head','HEAD','-OutputPath',$bad)
+        Assert ($m3.effectiveBase -ne $m3.resolvedBase) 'divergent three-dot range failed to record its merge base'
+        Assert ([Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $two 'range.patch'))) -cne [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $three 'range.patch')))) 'two-dot and three-dot divergent ranges captured identical patches'
+        $invalid = Invoke-AtRepo $repo $builder @('-Mode','Range','-Base','not-a-ref','-Head',$baseBranch,'-OutputPath',$bad)
         Assert ($invalid.Exit -eq 3 -and $invalid.Text -match 'CANNOT EXAMINE') "bad ref was not inability: $($invalid.Exit) $($invalid.Text)"
     } finally {
         Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue
