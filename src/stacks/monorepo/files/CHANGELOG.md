@@ -5,6 +5,16 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.85.0 — Unreleased
+
+- `/adopt` now preserves every archived original **byte-for-byte** and proves it. The installer
+  records a raw SHA-256, byte length and Git provenance for each file it moves into
+  `docs/pre-adoption/`, and `/adopt` re-verifies those bytes with `scripts/adoption-archive.ps1
+  -Verify` both before it runs `/bootstrap` and again after the bootstrap documentation check — it
+  will not report adoption complete if an archived file was changed, is missing, or cannot be
+  examined. Screen an installer-archived original at its recorded pre-move revision, not at the
+  post-install commit. Nothing changes for greenfield installs or framework updates.
+
 ## 0.84.0 — 2026-09-06
 
 - Bootstrap and rebootstrap now discover consequential repository facts and operations beyond

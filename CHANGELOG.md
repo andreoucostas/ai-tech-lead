@@ -11,6 +11,23 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.85.0 — Unreleased
+
+**Headless `/adopt` now proves it preserved every archived original byte-for-byte (B-230, WSD-079).**
+The brownfield installer freezes each pre-existing file's raw SHA-256 + byte length + pre-move Git
+revision/provenance *before the first move*, verifies each move immediately, and records a versioned
+`archiveIntegrity` block in `.claude/adoption-pending.json`; legacy `archivedOriginals` now lists
+only verified archive destinations. A new adoption-specific helper `scripts/adoption-archive.ps1`
+(`-Freeze` / `-MoveFrozen` / `-Verify`, with non-mutating `-Capture`) is the single byte/path authority for workflow archive moves
+and for the completion gate: `/adopt` now runs `-Verify` before entering `/bootstrap` and again
+after the bootstrap documentation gate, and refuses to report adoption complete unless both runs
+return `RESULT: PASS` against the frozen inventory. Raw SHA-256 over actual filesystem bytes is the
+preservation oracle, kept strictly separate from the per-path `provenanceRevision` (attribution
+only) and the `baselineRevision` install anchor; an unexaminable archive or a legacy marker without
+pre-move digests reports `CANT-VERIFY`, never a silent re-hash, and an existing archive is never
+rebaselined. Greenfield and update installs are unchanged. **Unreleased — pending independent
+review, the orthogonal byte-comparison vantage, and the release gates.**
+
 ## 0.84.0 — 2026-09-06
 
 **Repository-specific knowledge becomes a first-class, reviewable input to ordinary changes.**

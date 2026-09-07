@@ -18,7 +18,7 @@ export, production queries, or external participant contact.
 | 2 | B-223 capture and refresh | Released in v0.84.0; semantic refresh and retained forward misses remain |
 | 3 | B-224 ordinary-task Copilot use | Released carrier; one bounded CLI access miss/cost observed, ordinary CLI/VS Code acceptance remains open |
 | Independent repairs | B-216 instance skills; B-226 review scope | Released in v0.84.0; named semantic/host gaps remain explicit |
-| Next proposed repair | B-230 headless adoption archive integrity | Observed defect; adversarially reviewed proposal recorded; implementation not started |
+| Next proposed repair | B-230 headless adoption archive integrity | PARTIALLY DONE: installer, helper, `/adopt` workflow, focused reconstruction coverage, and generated dists staged; independent review and release outstanding |
 | Following separate repair | B-231 bug-fix scope and compatibility | Source contradictions verified; bounded proposal recorded |
 | When a participant exists | B-42 independent FS2 | Existing packet ready; independent run outstanding |
 | Deferred | B-49 drill and consumer self-assessment | Old instrument invalid; no execution authority |
@@ -594,10 +594,20 @@ contrast are source/static evidence; no model dispatch or sequential-fallback ef
 ### B-230 · Preserve original bytes and original-path provenance during headless adoption
 **Filed against:** v0.84.0 (2026-09-06)
 **Priority:** P1 · **Effort:** M · **Invariants:** #3 #4 #6 #7
-**Status:** OPEN from an ordinary-use reproduction on 2026-09-07. Premise observed; the requested
-adversarial review and final proposal are recorded in
-`.claude/plans/2026-09-07-abp-experiment-follow-through.md` and WSD-079. Implementation, new runtime
-evidence and release have not started.
+**Status:** PARTIALLY DONE (2026-09-07). Premise observed; adversarial review and final proposal in
+`.claude/plans/2026-09-07-abp-experiment-follow-through.md` and WSD-079.
+**Staged implementation; not shipped.** The byte-preserving archive/verify helper `src/core/scripts/adoption-archive.ps1`
+(`-Freeze`/`-MoveFrozen`/`-Verify`, with non-mutating `-Capture`; raw SHA-256 preservation oracle kept separate from Git
+provenance, CANT-VERIFY distinct from corruption, legacy-marker uncertainty preserved, no
+rebaseline of an existing archive), and `src/core/scripts/install.ps1` brownfield evidence capture
+before any archive mutation + immediate per-move byte verification + a versioned `archiveIntegrity`
+block in `.claude/adoption-pending.json`; legacy `archivedOriginals` now lists only verified archive destinations.
+The three `/adopt` sources and shared Copilot adapter now carry frozen evidence across Phase 7,
+requiring pre-bootstrap and post-gate `adoption-archive.ps1 -Verify` PASS before completion; the
+focused executable suite is registered with the meta runner and generated dists were rebuilt.
+Direct local PS7 and PS5.1 reconstruction evidence covers the frozen acceptance cases, including
+the release-specific SHA-comparison mutation red/clean contrast. Release, independent review, the
+orthogonal byte-comparison vantage, and live-model workflow compliance remain outstanding.
 
 **Observed harm.** A real capped Copilot CLI 1.0.80 / GPT-5.4 medium headless adoption ran against
 ABP Framework tag 10.6.0 in a disposable worktree. Commit `081eb82a` renamed `.cursorrules` to

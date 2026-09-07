@@ -3,6 +3,35 @@
 > Append-only. Lessons about developing the framework itself; per-repo learnings live in each
 > repo's `LEARNINGS.md`. Format: `[YYYY-MM-DD] observation — what worked, what didn't, what changed.`
 
+## 2026-09-07 — B-230 delivery 1: staged mechanical archive guard needs completion-boundary evidence
+
+**RCA (B-230 original defect).** Headless `/adopt` renamed `.cursorrules` to
+`docs/pre-adoption/cursorrules.md` while normalizing 30 source lines to 8, and its report said the
+file was "archived". No gate caught it because the only completion authority the workflow consulted
+was the bootstrap documentation-shape gate (`docs-sync-check`/`template-checks`) — nothing ever
+compared the archived bytes to the pre-move bytes. The same gap covered *every* approved archive
+candidate and every quarantine move, installer-made and workflow-made, not just the two filenames
+in the reproduction. A second miss: installer-archived Copilot instructions were screened at their
+post-install archive path/HEAD, so provenance followed the framework-install commit instead of the
+original's real author.
+
+**Staged implementation; not shipped.** `src/core/scripts/adoption-archive.ps1` (adoption-specific
+freeze/move-frozen/verify, with non-mutating capture; raw SHA-256 over actual filesystem bytes as the preservation oracle, kept
+strictly separate from the recorded Git revision/path; `CANT-VERIFY` distinct from corruption;
+legacy markers without pre-move digests reported `CANT-VERIFY`, never silently re-hashed; refuses to
+rebaseline an existing archive). `src/core/scripts/install.ps1` freezes every brownfield candidate's
+raw digest + byte length + pre-move Git revision/provenance *before the first move*, verifies each
+move immediately (stop + partial-evidence marker + exit 3 on mismatch, no rollback, no re-hash), and
+writes a versioned `archiveIntegrity` block into `.claude/adoption-pending.json`; legacy
+`archivedOriginals` lists only verified archive destinations. The focused reconstruction suite exercised exact copy, zero-byte,
+BOM/non-ASCII/CRLF, corruption, omission, no-rebaseline, legacy, provenance, collision/reparse,
+bootstrap-time mutation, greenfield and update-adjacent paths on directly invoked PS7 and PS5.1.
+
+**Remaining evidence.** The written `/adopt` lifecycle now carries frozen evidence across Phase 7
+and requires both verification results, but deterministic tests cannot prove a live model follows
+that workflow. Delivery 1 remains unreleased pending independent implementation review, an
+orthogonal byte-comparison vantage, and the release gates.
+
 ## 2026-07-17 — onboarding-review hardening: verify paths and host premises before implementation
 
 An implementation-ready plan still carried two stale facts: `postToolUse` consumption had changed

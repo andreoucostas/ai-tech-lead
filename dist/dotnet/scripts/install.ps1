@@ -406,10 +406,110 @@ $legacyGitHookRetiredDependencies = @(
 )
 
 function Get-Sha256Hex {
-    param([Parameter(Mandatory = $true)][byte[]]$Bytes)
+    param([Parameter(Mandatory = $true)][AllowEmptyCollection()][byte[]]$Bytes)
     $sha = [Security.Cryptography.SHA256]::Create()
     try { return ([BitConverter]::ToString($sha.ComputeHash($Bytes))).Replace('-', '').ToLowerInvariant() }
     finally { $sha.Dispose() }
+}
+
+# Bind the complete pre-move inventory independently of mutable per-move progress.  This is kept
+# byte-for-byte compatible with adoption-archive.ps1 so workflow Freeze can extend the installer
+# inventory before any workflow move without accepting a regenerated, reduced marker.
+function ConvertTo-AdoptionIdentitySegment {
+    param([AllowNull()][string]$Value)
+    return [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([string]$Value))
+}
+
+function New-AdoptionInventoryIdentity {
+    param([Parameter(Mandatory = $true)][AllowEmptyCollection()][object[]]$Entries)
+    $lines = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($entry in @($Entries)) {
+        $line = @(
+            ([int]$entry.schemaVersion).ToString([Globalization.CultureInfo]::InvariantCulture)
+            (ConvertTo-AdoptionIdentitySegment -Value ([string]$entry.originalPath))
+            (ConvertTo-AdoptionIdentitySegment -Value ([string]$entry.destination))
+            ([string]$entry.sha256).ToLowerInvariant()
+            ([int64]$entry.byteLength).ToString([Globalization.CultureInfo]::InvariantCulture)
+            (ConvertTo-AdoptionIdentitySegment -Value ([string]$entry.owner))
+            (ConvertTo-AdoptionIdentitySegment -Value ([string]$entry.provenanceRevision))
+            (ConvertTo-AdoptionIdentitySegment -Value ([string]$entry.provenance))
+            (ConvertTo-AdoptionIdentitySegment -Value ([string]$entry.historyDepth))
+            (ConvertTo-AdoptionIdentitySegment -Value ([string]$entry.localModification))
+        ) -join '|'
+        $lines.Add($line)
+    }
+    $lines.Sort([StringComparer]::Ordinal)
+    $payload = "ai-tech-lead/archive-integrity/v1`n" + ($lines -join "`n")
+    return [pscustomobject][ordered]@{
+        schemaVersion = 1
+        algorithm     = 'SHA-256'
+        entryCount    = [int]$lines.Count
+        sha256        = Get-Sha256Hex -Bytes ([Text.Encoding]::UTF8.GetBytes($payload))
+    }
+}
+
+# Brownfield archives must retain their exact pre-move bytes and an examinable original-path
+# provenance record. Raw SHA-256 over the actual filesystem bytes is the preservation oracle; the
+# recorded Git revision/path is historical attribution only and never substitutes for it. Unknown
+# history is a named state ('unavailable'/'untracked'), not a fabricated author or a trust finding.
+function Resolve-AdoptionGit {
+    foreach ($name in @('GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE')) {
+        if (-not [string]::IsNullOrEmpty([Environment]::GetEnvironmentVariable($name, 'Process'))) { return $null }
+    }
+    $command = @(Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)
+    if ($command.Count -eq 0) { return $null }
+    return [string]$command[0].Source
+}
+
+function Get-AdoptionArchiveBaselineRevision {
+    $gitPath = Resolve-AdoptionGit
+    if (-not $gitPath) { return $null }
+    $head = Invoke-GitText -GitPath $gitPath -Arguments @('-C', $tgt, 'rev-parse', 'HEAD')
+    if ($head.Started -and $head.ExitCode -eq 0 -and $head.Output -match '^[0-9a-f]{40}$') { return $head.Output }
+    return $null
+}
+
+function New-AdoptionArchiveEvidence {
+    param(
+        [Parameter(Mandatory = $true)][string]$OriginalRelative,
+        [Parameter(Mandatory = $true)][string]$DestinationRelative
+    )
+    $sourceFull = Get-ContainedTargetPath -Relative $OriginalRelative
+    $bytes = [IO.File]::ReadAllBytes($sourceFull)
+    $revision = $null; $provenance = 'unavailable'; $historyDepth = 'unavailable'; $localModification = 'unknown'
+    $gitPath = Resolve-AdoptionGit
+    if ($gitPath) {
+        $inside = Invoke-GitText -GitPath $gitPath -Arguments @('-C', $tgt, 'rev-parse', '--is-inside-work-tree')
+        if ($inside.Started -and $inside.ExitCode -eq 0 -and $inside.Output -ceq 'true') {
+            $shallow = Invoke-GitText -GitPath $gitPath -Arguments @('-C', $tgt, 'rev-parse', '--is-shallow-repository')
+            if ($shallow.Started -and $shallow.ExitCode -eq 0) { $historyDepth = if ($shallow.Output -ceq 'true') { 'shallow' } else { 'full' } }
+            $tracked = Invoke-GitText -GitPath $gitPath -Arguments @('-C', $tgt, 'ls-files', '--error-unmatch', '--', $OriginalRelative)
+            if ($tracked.Started -and $tracked.ExitCode -eq 0) {
+                $provenance = 'tracked'
+                $log = Invoke-GitText -GitPath $gitPath -Arguments @('-C', $tgt, 'log', '-1', '--format=%H', '--', $OriginalRelative)
+                if ($log.Started -and $log.ExitCode -eq 0 -and $log.Output -match '^[0-9a-f]{40}$') { $revision = $log.Output }
+                $st = Invoke-GitText -GitPath $gitPath -Arguments @('-C', $tgt, 'status', '--porcelain', '--', $OriginalRelative)
+                if ($st.Started -and $st.ExitCode -eq 0) { $localModification = if ($st.RecordCount -gt 0) { 'modified' } else { 'clean' } }
+            } elseif ($tracked.Started -and $tracked.ExitCode -eq 1) {
+                # Only Git's explicit "not in the index" result is untracked. A failed query is
+                # unavailable examination, never a fabricated provenance finding.
+                $provenance = 'untracked'
+            }
+        }
+    }
+    return [ordered]@{
+        schemaVersion      = 1
+        originalPath        = $OriginalRelative
+        destination         = $DestinationRelative
+        sha256              = Get-Sha256Hex -Bytes $bytes
+        byteLength          = [int64]$bytes.LongLength
+        owner               = 'installer'
+        provenanceRevision  = $revision
+        provenance          = $provenance
+        historyDepth        = $historyDepth
+        localModification   = $localModification
+        verified            = $false
+    }
 }
 
 function New-LegacyGitHookInspection {
@@ -794,7 +894,7 @@ if ($adoptMode) {
             if ($parent -eq $tgt) { break }
             $parent = Split-Path -Parent $parent
         }
-        $archivePlan.Add([pscustomobject]@{ Original = $orig; Relative = $rel; Destination = $dest })
+        $archivePlan.Add([pscustomobject]@{ Original = $orig; OriginalRelative = $f; Relative = $rel; Destination = $dest })
     }
 }
 
@@ -929,11 +1029,113 @@ foreach ($category in @(
 }
 if ($WhatIf) { Write-Output 'Dry run complete; target was not modified.'; exit 0 }
 
+# Freeze every brownfield candidate's raw pre-move identity and provenance BEFORE the first move.
+# A read failure here is an examination failure, not an empty inventory: stop before mutating.
+$archiveEvidence = New-Object System.Collections.Generic.List[object]
+$archiveBaselineRevision = $null
+$archiveInventoryIdentity = $null
+$archiveInventoryComplete = $true
+if ($adoptMode) {
+    $archiveBaselineRevision = Get-AdoptionArchiveBaselineRevision
+    foreach ($entry in $archivePlan) {
+        try {
+            $archiveEvidence.Add((New-AdoptionArchiveEvidence -OriginalRelative $entry.OriginalRelative -DestinationRelative $entry.Relative))
+        } catch {
+            [Console]::Error.WriteLine("ERROR: Refusing brownfield install: could not capture pre-move evidence for '$($entry.OriginalRelative)': $($_.Exception.Message)")
+            exit 3
+        }
+    }
+    $archiveInventoryIdentity = New-AdoptionInventoryIdentity -Entries $archiveEvidence.ToArray()
+}
+
+function Write-AdoptionMarker {
+    param([Parameter(Mandatory = $true)][bool]$InventoryComplete)
+    $marker = [ordered]@{
+        installedAt       = (Get-Date).ToString('yyyy-MM-dd')
+        detectedArtifacts = $detected
+        # Legacy readers see only completed moves. The complete frozen inventory lives in
+        # archiveIntegrity.entries from before the first mutation.
+        archivedOriginals = @($archiveEvidence | Where-Object { $_.verified } | ForEach-Object { [string]$_.destination })
+        archiveIntegrity  = [ordered]@{
+            schemaVersion   = 1
+            inventoryStatus = $(if ($InventoryComplete) { 'complete' } else { 'failed' })
+            # baselineRevision is the committed-install HEAD (the pre-install revision) — an
+            # immutable anchor for the whole inventory. Each entry's own provenanceRevision is the
+            # commit that last touched THAT original path, used to attribute its author/history.
+            baselineRevision = $archiveBaselineRevision
+            capturedAt      = (Get-Date).ToString('yyyy-MM-dd')
+            entries         = @($archiveEvidence | ForEach-Object { [pscustomobject]$_ })
+            inventoryIdentity = $archiveInventoryIdentity
+        }
+        nextStep          = '/adopt - a developer types it in a session, OR an agent runs it headless (read .claude/commands/adopt.md and follow its Headless mode, or use .github/prompts/adopt.prompt.md with a --headless directive). Headless prepares an adopt-ai-framework PR branch for human review; it does not auto-merge discovered content.'
+        _comment          = 'Written by the framework installer because pre-existing AI tooling was detected. Consolidate it with /adopt - NOT /bootstrap. /adopt deletes this file in its Phase 3.'
+    }
+    $markerPath = Join-Path $tgt '.claude/adoption-pending.json'
+    $markerParent = Split-Path -Parent $markerPath
+    New-Item -ItemType Directory -Force -Path $markerParent | Out-Null
+    $temporary = Join-Path $markerParent ('.adoption-pending-' + [guid]::NewGuid().ToString('N') + '.tmp')
+    $backup = Join-Path $markerParent ('.adoption-pending-' + [guid]::NewGuid().ToString('N') + '.bak')
+    try {
+        [IO.File]::WriteAllText($temporary, ($marker | ConvertTo-Json -Depth 10), [Text.UTF8Encoding]::new($false))
+        if (Test-Path -LiteralPath $markerPath -PathType Leaf) {
+            [IO.File]::Replace($temporary, $markerPath, $backup)
+        } else {
+            Move-Item -LiteralPath $temporary -Destination $markerPath
+        }
+    } finally {
+        if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue }
+        if (Test-Path -LiteralPath $backup) { Remove-Item -LiteralPath $backup -Force -ErrorAction SilentlyContinue }
+    }
+}
+
+$archiveEvidenceByDest = @{}
+foreach ($ev in $archiveEvidence) { $archiveEvidenceByDest[[string]$ev.destination] = $ev }
+if ($adoptMode) {
+    # Persist the complete frozen inventory before the first source/archive mutation. If this
+    # write cannot happen, do not begin a move whose provenance receipt could be lost.
+    try {
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent (Join-Path $tgt '.claude/adoption-pending.json')) | Out-Null
+        Write-AdoptionMarker -InventoryComplete $true
+    } catch {
+        [Console]::Error.WriteLine("ERROR: Refusing brownfield install: could not persist the complete pre-move archive inventory: $($_.Exception.Message)")
+        exit 3
+    }
+}
 foreach ($entry in $archivePlan) {
-    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $entry.Destination) | Out-Null
-    Move-Item -LiteralPath $entry.Original -Destination $entry.Destination
-    $archived += $entry.Relative
-    Write-Output "  archived: $($entry.Relative.Substring('docs/pre-adoption/'.Length)) -> $($entry.Relative)"
+    try {
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $entry.Destination) | Out-Null
+        Move-Item -LiteralPath $entry.Original -Destination $entry.Destination
+    } catch {
+        $archiveInventoryComplete = $false
+        try { if ($adoptMode) { Write-AdoptionMarker -InventoryComplete $false } } catch { [Console]::Error.WriteLine("ERROR: Could not update the frozen archive inventory after move failure: $($_.Exception.Message)") }
+        [Console]::Error.WriteLine("ERROR: Brownfield archive move failed for '$($entry.OriginalRelative)' -> '$($entry.Relative)': $($_.Exception.Message)")
+        [Console]::Error.WriteLine('  The complete pre-move inventory was written before archive mutation; originals not yet moved are untouched. Recover manually, then re-run.')
+        exit 3
+    }
+    $ev = $archiveEvidenceByDest[[string]$entry.Relative]
+    $movedBytes = $null
+    try { $movedBytes = [IO.File]::ReadAllBytes($entry.Destination) } catch { $movedBytes = $null }
+    $verdict = 'CANT-VERIFY'
+    if ($null -ne $movedBytes) {
+        $verdict = if ([int64]$movedBytes.LongLength -eq [int64]$ev.byteLength -and (Get-Sha256Hex -Bytes $movedBytes) -ceq [string]$ev.sha256) { 'PASS' } else { 'CORRUPTION' }
+    }
+    if ($verdict -eq 'PASS') {
+        $ev.verified = $true
+        $archived += $entry.Relative
+        try { if ($adoptMode) { Write-AdoptionMarker -InventoryComplete $true } } catch {
+            [Console]::Error.WriteLine("ERROR: Archive '$($entry.OriginalRelative)' passed byte verification but progress could not be persisted: $($_.Exception.Message)")
+            [Console]::Error.WriteLine('  The earlier frozen inventory remains on disk with this entry unverified; do not continue or rebaseline it.')
+            exit 3
+        }
+        Write-Output "  archived: $($entry.OriginalRelative) -> $($entry.Relative) (pre/post-move bytes verified)"
+    } else {
+        $archiveInventoryComplete = $false
+        if ($adoptMode) { Write-AdoptionMarker -InventoryComplete $false }
+        [Console]::Error.WriteLine("ERROR: Brownfield archive integrity check failed for '$($entry.OriginalRelative)' -> '$($entry.Relative)': $verdict.")
+        [Console]::Error.WriteLine("  Verified moves before the failure: $(if ($archived.Count) { $archived -join ', ' } else { '(none)' }).")
+        [Console]::Error.WriteLine('  Nothing was rolled back, re-hashed, or overwritten; originals not yet moved are untouched. Recover the archives manually, then re-run.')
+        exit 3
+    }
 }
 foreach ($relative in $deletePlan) {
     Remove-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $relative)
@@ -982,15 +1184,9 @@ if ($updateMode) { Write-Output "  consumer-owned content files left untouched (
 
 if ($adoptMode) {
     # Durable adoption marker: the SessionStart hook warns every new session, and docs-sync-check
-    # fails CI, until /adopt consumes it (deleted in /adopt Phase 3).
-    $marker = [ordered]@{
-        installedAt       = (Get-Date).ToString('yyyy-MM-dd')
-        detectedArtifacts = $detected
-        archivedOriginals = $archived
-        nextStep          = '/adopt - a developer types it in a session, OR an agent runs it headless (read .claude/commands/adopt.md and follow its Headless mode, or use .github/prompts/adopt.prompt.md with a --headless directive). Headless prepares an adopt-ai-framework PR branch for human review; it does not auto-merge discovered content.'
-        _comment          = 'Written by the framework installer because pre-existing AI tooling was detected. Consolidate it with /adopt - NOT /bootstrap. /adopt deletes this file in its Phase 3.'
-    }
-    $marker | ConvertTo-Json | Set-Content -Encoding UTF8 -LiteralPath (Join-Path $tgt '.claude/adoption-pending.json')
+    # fails CI, until /adopt consumes it (deleted in /adopt Phase 3). Its archiveIntegrity block
+    # carries the frozen raw pre-move digests and provenance /adopt re-verifies across Phase 7.
+    Write-AdoptionMarker -InventoryComplete $archiveInventoryComplete
 }
 
 # Claude Code hooks default to pwsh (PowerShell 7). If it isn't installed, fall back to the Windows

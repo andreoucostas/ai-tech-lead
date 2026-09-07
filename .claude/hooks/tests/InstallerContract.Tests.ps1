@@ -83,6 +83,12 @@ foreach ($dist in @('dotnet', 'angular', 'monorepo')) {
                     if ($mode -eq 'greenfield') {
                         Assert (-not ($guidance -match [regex]::Escape($wrongCmd))) "$label : names $wrongCmd, which is the other mode's command"
                     }
+                    if ($mode -eq 'brownfield') {
+                        # Every archived original must be reported as byte-verified against its frozen
+                        # pre-move digest; a mode branch that stops doing this is the B-230 regression.
+                        Assert ($out -match 'archived: .+ -> docs/pre-adoption/.+ \(pre/post-move bytes verified\)') `
+                            "$label : brownfield install did not report a byte-verified archive move"
+                    }
                 }
             }
             finally { Remove-Item -Recurse -Force $target -ErrorAction SilentlyContinue }

@@ -48,6 +48,7 @@ if ($hostProbeExit -ne 0 -or [string]::IsNullOrWhiteSpace($childPsExe) -or
 }
 $files = @(Get-ChildItem -LiteralPath $PSScriptRoot -Filter *.Tests.ps1 | Sort-Object Name)
 $expectedTestFiles = @(
+    'AdoptionArchiveIntegrity.Tests.ps1',
     'B215OwnershipBoundary.Tests.ps1',
     'BacklogHygiene.Tests.ps1',
     'CiCaseParity.Tests.ps1',
