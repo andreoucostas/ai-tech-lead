@@ -16,7 +16,7 @@ export, production queries, or external participant contact.
 | 1 | B-222 broad discovery | Released in v0.84.0; representative semantic coverage remains |
 | 1 alongside it | B-225 value protocol | Offline protocol/controls ready; live arms need explicit prerequisites |
 | 2 | B-223 capture and refresh | Released in v0.84.0; semantic refresh and retained forward misses remain |
-| 3 | B-224 ordinary-task Copilot use | Released carrier; live Copilot/VS Code application remains unobserved |
+| 3 | B-224 ordinary-task Copilot use | Released carrier; one bounded CLI access miss/cost observed, ordinary CLI/VS Code acceptance remains open |
 | Independent repairs | B-216 instance skills; B-226 review scope | Released in v0.84.0; named semantic/host gaps remain explicit |
 | Newly observed repair | B-230 headless adoption archive integrity | v0.84.0 ordinary-use reproduction retained; design/review not started |
 | When a participant exists | B-42 independent FS2 | Existing packet ready; independent run outstanding |
@@ -366,11 +366,11 @@ class remains relevant to every generated knowledge artifact, not only wiki entr
 **Filed against:** v0.83.0 (2026-09-05)
 **Priority:** P1 · **Effort:** M · **Invariants:** #1 #2 #5 #6 #7
 **Status:** PARTIALLY DONE. The carrier/source work shipped in v0.84.0 and aggregate/CI release
-checks passed. Actual Copilot CLI and VS Code
-discovery, access, semantic application, and generated-project context cost remain unobserved; host
-inventory alone is not efficacy. No live target-host route, study budget, or private fixture was
-selected or authorized for this study; that is distinct from the authorized Sol/Terra/Luna
-authoring delegation used for this delivery.
+checks passed. One bounded Copilot CLI application is now observed below, including task cost and a
+negative scoped-knowledge access result. It does not satisfy the ordinary feature-only acceptance:
+the prompt named the installed `CLAUDE.md` workflow and supplied the implementation contract. VS
+Code, calibrated ordinary-prompt discovery, semantic application, and a before/after generated-
+context comparison remain unobserved. Host inventory and one assisted result are not efficacy.
 
 **Problem / evidence.** A generated claim or registered skill is not proof of reading/application.
 WSD-032's old Claude observations do not certify current Copilot. Host-certification gaps remain;
@@ -400,6 +400,38 @@ GitHub PR APIs. Do not infer inline-completion behavior or efficacy from skill r
 Measure installed consumer loaded context/skill descriptions before and after discovery; the
 distribution-only footprint gate cannot prove generated-content cost. Detailed discovery stays
 on demand and default task loading must remain selective.
+
+**Bounded Copilot CLI observation (2026-09-07).** A user-authorized application ran on Windows with
+Copilot CLI 1.0.80, GPT-5.4 at medium reasoning, and a 200-credit cap against an adopted ABP
+Framework 10.6.0 worktree (`efc830c95f0e...`). The single prompt explicitly required the installed
+`CLAUDE.md` bug-fix workflow and supplied the issue contract, so it was not the unnamed ordinary
+feature/fix prompt required above. The trace recorded 21 model calls and 69 tool executions. It
+directly inspected the affected Docs source, Razor page, localization, test fixtures, project file,
+and `global.json`; it issued zero `skill` calls and no direct read of `FRAMEWORK-CONTEXT.md`,
+`docs/wiki/INDEX.md`, an applicable `.claude/skills/*/SKILL.md`, or another generated knowledge map.
+That is an observed access miss, not proof that no custom instruction was delivered: the final
+request's host usage checkpoint reported 17,801 `custom_instructions` tokens, but did not attribute
+them to individual files.
+
+The completed implementation session used 88.84465 AI credits (87,379 uncached input, 1,261,056
+cache-read, and 23,649 output tokens) in 21 requests. Two earlier launcher attempts were stopped and
+emitted no usage checkpoint, so their additional cost is unknown. The completed session wrote the
+regression first and reused the existing fixture/network seam, but the installed SDK could not
+execute the repository's .NET 10 test project; the agent proceeded to production edits and returned
+an unverified six-file result. Maintainer follow-up installed the official SDK in a disposable
+location, used Hyper-V isolation around a host code-integrity block, observed the release-specific
+mutation fail exactly the fallback assertion, repaired the test DI environment and extension seam,
+passed all six application tests plus the Docs web build, and committed the seven-file result as
+`d85e4c597649...`. A separate frozen-bundle Claude Opus 4.7 xhigh review returned APPROVE. These
+later repairs and checks establish the delivered patch, not the task model's independent knowledge
+application.
+
+Local raw evidence at recording time: implementation JSONL SHA-256
+`1716A228A3247D80272C6464557004029715E1293CE6908D8578C7D68C98F3B9`; usage JSON SHA-256
+`6CB1BC719BF5C4C81383BB1A3F2A1A49D4423DD8FA5209CD79BA85729853635D`. No observer
+positive/negative calibration, feature-only prompt, VS Code arm, pre-adoption context measurement,
+or paired treatment ran. B-225 live execution remains NOT RUN; this observation must not be pooled
+into RK1.
 
 **Done when.** Carrier changes/static budgets pass normal gates; exact host/model observations and
 gaps are recorded. A required unexercised host leaves PARTIALLY DONE status and narrowed claims,

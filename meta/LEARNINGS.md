@@ -2175,3 +2175,20 @@ A later exact installed-body assertion also caught what the old phrase check cou
 the expected phrase. Round-trip tests must compare the authoritative body and non-ASCII consumer
 content, and code that owns a UTF-8 format must decode it explicitly rather than inherit host
 defaults.
+
+## 2026-09-07 — Delivered instructions and scoped knowledge access diverge on a real task
+
+A capped Copilot CLI task on an adopted ABP Framework worktree reported 17,801 custom-instruction
+tokens in its final request, yet its inspectable trace contained no skill invocation and no direct
+read of the generated context, wiki index, map, or applicable skill bodies. It still followed parts
+of the bug-fix rails because the task prompt explicitly named `CLAUDE.md` and supplied the behavior,
+test order, scope, and reporting contract. That makes the run useful cost and failure evidence, but
+not evidence that an ordinary feature-only prompt discovered or semantically applied repository
+knowledge.
+
+The distinction matters operationally. A host's aggregate custom-instruction token count proves
+neither which carrier contributed those tokens nor that an on-demand knowledge body was accessed.
+Tool-level discovery and read events need separate observation, and a prompt containing the answer
+cannot grade their effect. Record assisted field work as bounded evidence, preserve the human repair
+needed after the model stops at an environment blocker, and keep paired value claims behind their
+predeclared controls.
