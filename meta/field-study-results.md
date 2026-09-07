@@ -308,6 +308,89 @@ eight hours charged, 3.5 remain**. Stage ceilings also bind to the remaining glo
 mandatory stage or decision may be dropped to fit. This conservative ledger does not measure
 human effort. CP1 remains stopped; the revised CP2 scope still requires explicit approval.
 
+### CP2 authorized execution — 2026-09-07 — STOPPED AT NETWORK PREPARATION
+
+The user approved the revised bounded attempt with "ok go ahead and work through it". The
+approved external plan freeze is SHA256
+`B73359455C81A78DC561961A8ECACB2F8B923B12D90A06AC0594833F9D60B694`. A separate Sonnet 5 session
+accepted the concrete scope before build work, retaining D1/D2 independence as an execution
+obligation. All 21,867 source blobs in the complete first-parent export matched Git object hashes;
+an initial newline-transformed export was detected and retained separately from the corrected one.
+
+The four existing application test projects passed under direct PS7 and PS5.1: Timing 8, JSON 34,
+MVC 326 and Docs 4, totaling **372/372 on each host**. Runs used the pinned .NET 10.0.400 toolchain,
+Hyper-V Windows containers, ContainerUser, no mounts and network none. Dependency preparation used
+the public feed; the runtime plug-in prerequisite restored from the existing local cache only.
+The initial MVC run had 205 fixture-initialization failures because its dynamically loaded plug-in
+was absent. Building that repository-defined fixture made the unchanged full suite pass. This was
+a preparation defect, not 205 application assertion failures. Raw logs and TRX remain external.
+
+A deliberate change to checkout Timing source yielded 8/8 clean, 5/8 under mutation, then 8/8 after
+byte restoration on each native host. Root checked raw TRX, native process identity and matching
+source hashes; the legacy run used code page 437. Baseline success establishes source execution,
+not task acceptance or comparative value. Stage 1 charged 55 minutes, bringing cumulative
+preparation to **325 of 480 minutes**, with 155 remaining. Stage 2 began at 13:19 London, bounded to
+60 minutes including construction and independent review. No network implementation, adoption,
+calibration or paid Copilot study call has run at this checkpoint. Candidate identity, source,
+answers and oracle material remain outside authoring Git and actual study scopes.
+
+Stage 2 passed at 14:15 London after a separate Claude Opus 5 evidence review. The frozen valid
+solution, supported alternative and restored clean state each passed **390/390 tests on both
+native hosts**: the full 372-test baseline plus 18 private checks. Targeted mutations independently
+failed each of the three decisions while the other decision scores remained green; adapter
+preservation failures were reported separately. A supplementary near-boundary-only mutation failed
+its exact target while the other decision checks passed, followed by another full clean run.
+
+The review found a stale native exit in the original routing wrapper. Accepted scoring uses a
+separate corrected control, seeded with a nonzero prior exit and bound to the same source hashes;
+the old field remains diagnostic only. Root verified parent/restored source states against the
+actual Git-verified export. An initially misconstructed control bundle was rejected: the evidence
+summarizer returned cannot-examine on its source mismatch, then accepted the corrected records on
+PS7 and PS5.1 at code page 437. Failed fixture preparations and extraction attempts remain in the
+external evidence. They are not application defects or accepted controls.
+
+Opus accepted Stage 2 with explicit limits: the candidate grader must not run the control-state
+preparation scripts, and a supported but unfamiliar code shape requires a separately reviewed
+binding rather than a decision failure. That non-overwriting candidate path has not been built.
+The reviewer inspected raw records and selected test results but did not independently rerun the
+suites or recompute all hashes. Root checked the complete matrix and source proofs. These results
+establish a tested acceptance instrument for the demonstrated shapes, not framework efficacy.
+
+Stage 2 charged 57 minutes, bringing cumulative preparation to **382 of 480 minutes**, with 98
+remaining. Stage 3 began at 14:16 London, with a 60-minute ceiling and the same global cap. No
+adoption, calibration or paid Copilot study call has run.
+
+Stage 3 stopped at an unmet network prerequisite. Native HNS/switch queries were denied under the
+current token, and the Hyper-V firewall view exposed no addressable creator during an offline live
+container. A separately Opus-reviewed private-network probe then demonstrated a narrower capability:
+Docker delegated creation of the fixed private network and its removal successfully, each with
+native exit zero. That result prevents treating the earlier native-access failures as proof that
+Docker cannot provision a network.
+
+The probe stopped before creating any task or coordinator endpoint. Its raw adapter-difference
+predicate flagged a newly visible **Hyper-V Virtual Switch Extension Adapter**. The pre-existing
+adapter rows and IPv4 routes were unchanged. Root and a further Opus review classified this as an
+overbroad instrument, not an observed host vNIC hazard or a failed isolation boundary. The capture
+did not include per-interface IP addresses, so no-address claims remain unsupported. Cleanup removed
+only the new network; root recomputed matching before/final hashes for the captured Docker-network,
+adapter and IPv4-route views. This does not certify every possible host state.
+
+All peer, direct-IP, alternate-DNS, proxy-bypass, host-service and public-retrieval probes were
+**not run**. No selective proxy, exact model/auth transport allowlist or disabled server-side
+retrieval configuration was established. The saved CLI 1.0.83 help logs show the available controls;
+the helper auto-removed those inspection containers, leaving their exact runtime configuration
+unavailable for independent inspection. Neither help flags nor network creation establish isolation.
+The bounded probe stopped on its predicate, not a time-cap exhaustion. This is offline preparation
+evidence only, with no network-impossibility, application-failure or efficacy finding.
+
+Stage 3 and its adjudication charged **27 minutes**, reaching 409/480. Final records, verification,
+commit/push and CI conservatively charge another **20 minutes**, for **429 of 480 minutes** (7h09m),
+leaving 51 unallocated. These are preparation-accounting charges, not measured human effort. The
+stopped attempt does not automatically resume against that remainder. Stage 4, candidate grading
+preparation, hidden facts, installer dry run, calibration, human adoption and both study arms remain
+**not run**. There were **zero paid Copilot study calls**; the account balance was not rechecked.
+CP1 remains NONE_QUALIFIED_AT_100; B-42/independent FS2 and the other unobserved outcomes remain open.
+All identifying task material and raw evidence remain outside authoring Git and actual study scopes.
 ## Runs
 
 ## FS-20260826-DRY-01 — 2026-08-26 — maintainer

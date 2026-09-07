@@ -3653,3 +3653,34 @@ established, and this review does not change the pending scope-approval status o
 fallback. The existing stages, caps, fail-closed conditions and descriptive claim limits remain.
 Opus's final check accepted the revised frozen proposal at design level; root verified its claims
 against the final text. This acceptance supplies no execution evidence or user scope approval.
+
+**Execution authorization and first checkpoint (2026-09-07).** The user's subsequent "ok go ahead
+and work through it" authorizes the reviewed bounded CP2 attempt. Passed stages advance without
+another routine approval. Independent scope review and the actual application baseline passed:
+372 tests on each direct native PowerShell host, plus a checkout-source mutation observed red and
+restored green. Complete source export hashes were verified; the missing MVC runtime fixture was
+built from unchanged repository source offline. Stage 1 charged 55 minutes, bringing the ledger to
+325 of 480 minutes. Concrete acceptance began at 13:19 London with its existing 60-minute ceiling.
+This establishes neither an accepted oracle nor network, adoption or paid-study readiness. The
+approved frozen plan hash and sanitized execution evidence are in `meta/field-study-results.md`.
+
+**Acceptance checkpoint (2026-09-07).** Stage 2 passed independent Opus 5 review at 14:15 London.
+Valid, supported alternative and restored clean states passed 390/390 tests on each native host;
+targeted controls independently failed the three decisions. Corrected exit evidence is bound to
+actual source hashes; rejected controls and review gaps remain explicit. Candidate grading still
+requires a non-overwriting path and reviewed bindings for unfamiliar supported shapes. Stage 2
+charged 57 minutes, reaching 382 of 480 preparation minutes; the dedicated network stage began at
+14:16 with its original 60-minute ceiling. Passing acceptance does not establish isolation or
+paid-study readiness.
+**Network stop and disposition (2026-09-07).** The bounded private-network candidate stopped
+before any endpoint or egress test. Docker create/remove succeeded under the current token; the
+stop predicate could not distinguish its switch-extension object from a prohibited host vNIC
+change. Root and Opus classified the instrument as overbroad, with no isolation or impossibility
+finding. Captured pre-existing adapters/routes were unchanged and cleanup restored the captured
+views. The required selective proxy, transport and retrieval controls remain unestablished.
+Stage 3 charged 27 minutes; final records, verification and delivery conservatively charge 20,
+reaching 429/480 preparation minutes with 51 unallocated. No stage or prerequisite was waived;
+Stage 4, calibration, human adoption and both task arms remain not run, and no paid Copilot study
+call occurred. This closes the bounded preparation attempt, not B-42 or any efficacy question.
+The stopped attempt has no automatic retry or substitute; retain the tested offline acceptance
+artifacts and the instrument RCA in `meta/BACKLOG.md` for any later protocol decision.

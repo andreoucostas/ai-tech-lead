@@ -152,6 +152,48 @@ corrective follow-up. This exposes any review summary used as execution evidence
 verdict: preserve retractions and require concrete red/green evidence within the existing stages.
 No new generic gate or product change is warranted by this proposal-only checkpoint.
 
+**CP2 authorized execution, 2026-09-07 — STOPPED AT NETWORK PREPARATION.** The user's
+"ok go ahead and work through it" approves the reviewed bounded attempt, including automatic
+progression after passed stages. Independent Sonnet 5 scope review accepted the three-decision
+contract before build work. Root verified the complete pre-change export against all 21,867 Git
+blob hashes and observed actual application tests under Hyper-V isolation, ContainerUser, no mounts
+and network none. Direct PS7 and PS5.1 each passed 372 tests across the four relevant projects.
+The first broader run failed because a repository-defined runtime plug-in had not been built;
+building that existing fixture offline made all 326 MVC tests pass without source edits or filters.
+A temporary checkout-source mutation produced three Timing failures, then restoration returned
+8/8 on both hosts, with matching original/restored source hashes. Stage 1 charged 55 minutes,
+bringing preparation to 325 of 480 minutes. The 60-minute acceptance stage began at 13:19 London;
+no network implementation, adoption or paid Copilot study call has followed this checkpoint.
+
+Stage 2 subsequently passed independent Opus 5 review: the full valid, alternative and restored
+clean states passed 390/390 on each host, and targeted controls separated all three decisions.
+Root checked raw results and parent/restored source hashes. A stale routing exit was excluded from
+scoring in favor of a source-bound corrected control; the summarizer rejected mismatched control
+sources before accepting the corrected records on both hosts. The non-overwriting candidate grader
+and any unfamiliar supported-shape binding remain preparation obligations. Stage 2 charged 57
+minutes, reaching 382 of 480; Stage 3 began at 14:16 London with its existing 60-minute ceiling.
+
+Stage 3 stopped before endpoint/egress testing. The reviewed private-network probe successfully
+created and removed its network through Docker, but an overbroad adapter-difference predicate
+flagged the expected switch-extension class as an unclassified host change. Root and Opus rejected
+that as evidence of a host vNIC hazard or impossible isolation. Pre-existing adapter rows and IPv4
+routes were unchanged; final captured network/adapter/route views match before. Per-interface IP
+addresses were not captured. Selective transport, retrieval controls and all deny probes remain
+unestablished. Stage 3 charged 27 minutes; records/checks/commit/push/CI conservatively charge 20,
+reaching **429/480 minutes** with 51 unallocated. Stage 4, calibration, adoption and both study arms
+remain not run, with zero paid Copilot study calls. No automatic retry, substitute or waiver follows
+this stop; the full evidence limits are in `meta/field-study-results.md`.
+
+**CP2 execution RCA.** Shipped parser gates cannot establish external application preparation or
+network measurement truth. The existing source and red/green obligations exposed newline export,
+a missing runtime fixture, stale native exits and mismatched control-source records; those were
+corrected before acceptance passed. The network critiques then accepted an adapter-delta predicate
+without distinguishing switch-extension objects from host vNICs, so it could stop without measuring
+the intended hazard. Root and the follow-up Opus review caught that interpretation error; the
+bounded candidate ended without endpoint evidence. The same class exposes the route/network-list
+deltas and temporary CLI evidence lifecycle: raw differences and vanished inspect objects cannot
+certify isolation. The sweep retains those gaps, rejected records and unknown-shape grading debt;
+no new general gate, shipped behavior change or efficacy conclusion is warranted.
 **CP1 preparation RCA.** No shipped defect was reproduced. Parser/release gates did not establish
 Windows guest availability, application buildability, independent oracle reachability or actual
 Copilot use because those are study execution obligations. The same exposure applies to B-216,

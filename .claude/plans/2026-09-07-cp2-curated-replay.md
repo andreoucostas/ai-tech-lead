@@ -1,6 +1,6 @@
 # CP2 — one curated exploratory replay
 
-Status: proposed for user approval; no CP2 execution authorized by this document alone. Revised after the user-requested Opus adversarial review at authoring baseline a81a732a18ae9d04f4b1bc0ea3b0ee2a07c263e2; see the companion Opus critique for findings and source corrections. CP1 remains NONE_QUALIFIED_AT_100. Its ledger, caps and stopped outcome are not rewritten.
+Status: the user approved the bounded attempt on 2026-09-07 with "ok go ahead and work through it". The approved external freeze has SHA256 B73359455C81A78DC561961A8ECACB2F8B923B12D90A06AC0594833F9D60B694; the proposal wording below preserves its original decision context. Scope, application baseline and concrete acceptance subsequently passed. The attempt then stopped at network preparation: a private-network probe hit an overbroad adapter classifier before any endpoint or egress test. Creation and cleanup succeeded; isolation remains unexamined. No calibration, adoption or paid Copilot study call ran. Sanitized results and the final 429/480-minute conservative ledger are in meta/field-study-results.md. Revised after the user-requested Opus adversarial review at authoring baseline a81a732a18ae9d04f4b1bc0ea3b0ee2a07c263e2; see the companion Opus critique for findings and source corrections. CP1 remains NONE_QUALIFIED_AT_100. Its ledger, caps and stopped outcome are not rewritten.
 
 ## Decision and proportionality
 
