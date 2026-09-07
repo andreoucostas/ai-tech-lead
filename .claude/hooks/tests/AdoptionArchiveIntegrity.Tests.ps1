@@ -795,9 +795,10 @@ if (-not $env:AA_SKIP_MUTATION) {
             Assert ($clean.Exit -eq 6) "clean verifier failed to reject a same-length corruption: $($clean.Output)"
             $capturedFx = $fx
             $capturedMp = $mp
+            $currentPsExe = Get-PsExe
             $redBlock = {
                 param($scratchTarget, $scratchRoot)
-                $o = & (Get-PsExe) -NoProfile -File $scratchTarget -Verify -RepoRoot $capturedFx -EvidencePath $capturedMp 2>&1 | Out-String
+                $o = & $currentPsExe -NoProfile -File $scratchTarget -Verify -RepoRoot $capturedFx -EvidencePath $capturedMp 2>&1 | Out-String
                 $mutatedExit = [int]$LASTEXITCODE
                 if ($mutatedExit -eq 6) { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 42 }
             }.GetNewClosure()

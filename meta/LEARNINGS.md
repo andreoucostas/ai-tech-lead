@@ -2240,3 +2240,19 @@ Task-required behaviour, compatibility and verification are the relevant boundar
 review and hook messages must agree; merely editing `/fix` leaves the contradiction active.
 Deleted experimental files must also be marked unavailable in the record: a retained hash is an
 identity reference, not a substitute for the source needed to reproduce an observation.
+
+## 2026-09-07 — B-230 CI correction: capture host resolution before closing a mutation block
+
+CI run 34160326448 exposed a test-transport dependency in the case-count route, not in the direct
+`-File` route that had passed locally and in review. `Invoke-HookTests.ps1 -File
+AdoptionArchiveIntegrity.Tests.ps1 -CaseCountPath ...` launches the suite with `-Command
+'$global:AtlEmitCaseCount=$true; & $env:ATL_CASE_TEST_PATH; ...'`. The release-mutation block then
+called `Get-PsExe` after `.GetNewClosure()`, where the dot-sourced harness function was unavailable
+in that child script scope, so it failed before exercising the mutated helper. Resolve the active
+host path before constructing the closure and capture that string in the block instead.
+
+The corrected case-count route ran under PS7 and Windows PowerShell 5.1: each reported 26/0,
+observed the intended mutation red at exit 42, restored byte-identically, and emitted a valid
+26-case manifest.
+For release mutations that use closures, capture host/runtime data before closure creation or pass
+it explicitly; direct `-File` evidence does not establish a distinct runner child-script scope.

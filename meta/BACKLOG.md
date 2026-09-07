@@ -658,7 +658,16 @@ hostile cases, proportional alternatives, native-host evidence, orthogonal revie
 **Delivery RCA.** Existing completion checks could pass with a normalized archive
 because no assertion compared every selected original and final byte identity. The same class
 covers all approved archive and quarantine candidates. Parser checks alone cannot establish that
-a model invokes the final guard; retain that separate behavioural evidence gap.
+a model invokes the final guard; retain that separate behavioural evidence gap. CI run 34160326448
+also exposed a test-only scope error in the CI case-count route: `Invoke-HookTests.ps1 -File
+AdoptionArchiveIntegrity.Tests.ps1 -CaseCountPath ...` launches the suite with `-Command
+'$global:AtlEmitCaseCount=$true; & $env:ATL_CASE_TEST_PATH; ...'`. The release-mutation closure
+resolved `Get-PsExe` after `GetNewClosure()`, where the dot-sourced harness helper was unavailable
+in that child script scope. Earlier direct `-File` runs correctly tested a different boundary but
+did not exercise this one. Capture the current host executable before creating the closure and
+invoke the captured value inside it; corrected case-count runs on PS7 and PS5.1 each reached the
+mutation red exit 42, restored byte-identically, reported 26/0, and emitted a valid 26-case
+manifest. This corrects the test transport, not the archive mechanism.
 
 ### B-231 · Bound bug-fix cleanup by task scope and preserve existing extension contracts
 **Filed against:** v0.84.0 (2026-09-07)
