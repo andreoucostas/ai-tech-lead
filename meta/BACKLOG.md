@@ -595,8 +595,9 @@ contrast are source/static evidence; no model dispatch or sequential-fallback ef
 **Priority:** P2 · **Effort:** M · **Invariants:** #1 #2 #4 #5 #7
 **Status:** IMPLEMENTED; NOT SHIPPED (v0.86.0). Independent review first rejected stale generated
 architecture HTML, then rejected a marker-only freshness gate that allowed body tampering. All three
-views and a full generated-output comparison are corrected. Corrective review and release remain
-outstanding; live-model compliance is unmeasured.
+views and a full generated-output comparison are corrected. Independent gpt-5.5 xhigh review then
+accepted the full candidate through `7797180`; release remains outstanding and live-model compliance
+is unmeasured.
 
 **Evidence.** `/fix` requires a minimal fix and forbids unrelated refactoring, while root template
 Boy Scout text, framework-rules workflow section 4, convention-check and the three Boy Scout hook

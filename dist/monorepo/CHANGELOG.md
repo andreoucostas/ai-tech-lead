@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.86.0 — Unreleased
+## 0.86.0 — 2026-09-07
 
 - Bug fixes now keep cleanup tied to the requested outcome, compatibility, or verification. Existing
   APIs and components do not need cancellation-token, logging, or subscription-cleanup rewrites just

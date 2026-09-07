@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.86.0 — Unreleased
+## 0.86.0 — 2026-09-07
 
 - Bug fixes now keep cleanup tied to the requested outcome, compatibility, or verification. An
   existing async API does not need a cancellation-token or logging rewrite merely because it changed.
