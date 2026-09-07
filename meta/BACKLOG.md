@@ -593,9 +593,10 @@ contrast are source/static evidence; no model dispatch or sequential-fallback ef
 ### B-231 · Bound bug-fix cleanup by task scope and preserve existing extension contracts
 **Filed against:** v0.84.0 (2026-09-07)
 **Priority:** P2 · **Effort:** M · **Invariants:** #1 #2 #4 #5 #7
-**Status:** IMPLEMENTED; NOT SHIPPED (v0.86.0). The first independent review rejected stale
-generated architecture HTML; all three views and a source/hash freshness gate are corrected.
-Corrective review and release remain outstanding; live-model compliance is unmeasured.
+**Status:** IMPLEMENTED; NOT SHIPPED (v0.86.0). Independent review first rejected stale generated
+architecture HTML, then rejected a marker-only freshness gate that allowed body tampering. All three
+views and a full generated-output comparison are corrected. Corrective review and release remain
+outstanding; live-model compliance is unmeasured.
 
 **Evidence.** `/fix` requires a minimal fix and forbids unrelated refactoring, while root template
 Boy Scout text, framework-rules workflow section 4, convention-check and the three Boy Scout hook
@@ -623,10 +624,14 @@ messages repeated the conflict; the repair centralizes update-delivered scope in
 tests both fresh carriers and protected-update delivery. Independent review then found that all three
 committed `architecture.html` derivatives still embedded the old rule: the composer copied those
 already-stale stack files, while no authoring gate compared their `src-sha1` markers with the matching
-Markdown. `DocTruth.Tests.ps1` now checks both the three authoring pairs and the three composed pairs;
-its first valid run failed on all six before regeneration and passed after regeneration. The same
-manual-derivative class was searched under `src/`; architecture HTML is the only current instance.
-Static/executable coverage cannot prove a live model follows the rule.
+Markdown. The first `DocTruth.Tests.ps1` correction checked the three authoring pairs and three
+composed pairs; its first valid run failed on all six before regeneration. Corrective review then
+demonstrated that preserving a truthful marker while changing the body stayed green. The final gate
+runs the actual generator once per stack and compares its complete EOL-normalized output with both
+committed copies, distinguishing generator failure from artifact mismatch. A body-only scratch
+mutation preserving the marker was observed red for the intended mismatch before clean runs on both
+hosts. The same manual-derivative class was searched under `src/`; architecture HTML is the only
+current instance. Static/executable coverage cannot prove a live model follows the rule.
 
 ## Independent evidence and deferred work
 

@@ -243,20 +243,38 @@ function Get-RootDeliveryFactViolations([string]$Readme, [string]$Claude, [strin
 
 function Get-ArchitectureFreshnessViolations {
     $bad = @()
-    foreach ($root in @('src/stacks/dotnet/files', 'src/stacks/angular/files', 'src/stacks/monorepo/files',
-                         'dist/dotnet', 'dist/angular', 'dist/monorepo')) {
-        $markdownPath = Join-Path $repoRoot "$root/docs/ARCHITECTURE.md"
-        $htmlPath = Join-Path $repoRoot "$root/docs/architecture.html"
-        if (-not (Test-Path -LiteralPath $markdownPath) -or -not (Test-Path -LiteralPath $htmlPath)) {
-            $bad += "${root}: architecture source or generated HTML is missing"
+    $generator = Join-Path $repoRoot 'src/core/scripts/build-architecture-html.ps1'
+    $hostPath = (Get-Process -Id $PID).Path
+    foreach ($stack in @('dotnet', 'angular', 'monorepo')) {
+        $sourceRoot = "src/stacks/$stack/files"
+        $markdownPath = Join-Path $repoRoot "$sourceRoot/docs/ARCHITECTURE.md"
+        $tempHtml = Join-Path ([IO.Path]::GetTempPath()) ("atl-architecture-$stack-$([guid]::NewGuid().ToString('N')).html")
+        if (-not (Test-Path -LiteralPath $markdownPath)) {
+            $bad += "${sourceRoot}: architecture source is missing"
             continue
         }
-        $markdown = [IO.File]::ReadAllText($markdownPath, [Text.Encoding]::UTF8) -replace "`r", ''
-        $bytes = [Text.Encoding]::UTF8.GetBytes($markdown)
-        $sha = -join ([Security.Cryptography.SHA1]::Create().ComputeHash($bytes) | ForEach-Object { $_.ToString('x2') })
-        $html = [IO.File]::ReadAllText($htmlPath, [Text.Encoding]::UTF8)
-        if (-not $html.Contains("<!-- src-sha1: $sha -->")) {
-            $bad += "${root}: architecture.html is stale or has no matching src-sha1 marker"
+        try {
+            & $hostPath -NoProfile -ExecutionPolicy Bypass -File $generator $markdownPath $tempHtml *> $null
+            if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $tempHtml)) {
+                $bad += "${sourceRoot}: could not examine architecture freshness because the generator failed"
+                continue
+            }
+            $expected = [IO.File]::ReadAllText($tempHtml, [Text.Encoding]::UTF8) -replace "`r", ''
+            foreach ($root in @($sourceRoot, "dist/$stack")) {
+                $htmlPath = Join-Path $repoRoot "$root/docs/architecture.html"
+                if (-not (Test-Path -LiteralPath $htmlPath)) {
+                    $bad += "${root}: generated architecture HTML is missing"
+                    continue
+                }
+                $actual = [IO.File]::ReadAllText($htmlPath, [Text.Encoding]::UTF8) -replace "`r", ''
+                if ($actual -cne $expected) {
+                    $bad += "${root}: architecture.html does not match the generator output for its Markdown source"
+                }
+            }
+        } catch {
+            $bad += "${sourceRoot}: could not examine architecture freshness: $($_.Exception.Message)"
+        } finally {
+            Remove-Item -LiteralPath $tempHtml -Force -ErrorAction SilentlyContinue
         }
     }
     return $bad
@@ -296,7 +314,7 @@ It 'B-231 keeps one outcome scope across fresh carriers and truthful protected u
     }
 }
 
-It 'every committed architecture HTML is fresh from its matching Markdown source' {
+It 'every committed architecture HTML matches generated output from its Markdown source' {
     $bad = @(Get-ArchitectureFreshnessViolations)
     Assert ($bad.Count -eq 0) ($bad -join '; ')
 }

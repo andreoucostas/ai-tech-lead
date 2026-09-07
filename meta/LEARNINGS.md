@@ -2282,7 +2282,12 @@ the retired touch-based scope even though their `ARCHITECTURE.md` sources had ch
 dists only copied those stale stack-owned HTML files. The shipped consumer `docs-sync-check` could
 diagnose the drift, but the authoring and release suites did not run that consumer check in a shape
 that failed the release. A committed generated artifact needs an authoring-side source-to-derivative
-check at the release boundary. `DocTruth.Tests.ps1` now compares the generator's CR-insensitive SHA-1
-marker for all three source pairs and all three composed pairs. The new test was observed red on all
-six stale files under both native PowerShell hosts before regeneration, then green afterward. A
-search for other manually generated derivatives under `src/` found no second current instance.
+check at the release boundary. A first correction compared the generator's CR-insensitive SHA-1
+marker for all three source pairs and all three composed pairs; it was observed red on all six stale
+files under both native PowerShell hosts before regeneration. Independent review then changed an HTML
+body while preserving the marker and observed a false green. A self-declared digest proves only that
+the declaration names the source, not that the derivative body follows it. The final gate runs the
+actual generator once per stack and compares its complete EOL-normalized output with both committed
+copies. A marker-preserving body mutation then failed for the intended output mismatch, followed by
+clean runs on both hosts. A search for other manually generated derivatives under `src/` found no
+second current instance.

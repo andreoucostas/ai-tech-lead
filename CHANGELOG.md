@@ -19,7 +19,8 @@ verification, while retaining explicitly requested refactoring. `/fix` and `/rev
 unrequested public/protected signature and virtual/override breaks; fresh carriers, declarative
 evals, and advisory hook wording no longer turn a touched file into authority for unrelated cleanup.
 Independent review caught stale generated architecture HTML before release; the regenerated views
-now carry the same rule, and the authoring meta suite checks source/hash freshness for every stack.
+now carry the same rule, and the authoring meta suite compares every committed view with the actual
+generator output for its stack.
 
 ## 0.85.0 — 2026-09-07
 
