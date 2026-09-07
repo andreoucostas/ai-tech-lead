@@ -12075,3 +12075,53 @@ mutation red exit 42, restored byte-identically, reported 26/0, and emitted a va
 manifest. Independent nonimplementer review accepted corrective range `4cee384..9c2dd7a`
 with no findings and repeated the exact PS7 case-count route. Final release CI then exercised
 both native hosts successfully. This corrects the test transport, not the archive mechanism.
+
+### B-231 · Bound bug-fix cleanup by task scope and preserve existing extension contracts — **DONE v0.86.0 (2026-09-07)**
+**Filed against:** v0.84.0 (2026-09-07)
+**Priority:** P2 · **Effort:** M · **Invariants:** #1 #2 #4 #5 #7
+**Released in v0.86.0.** Outcome-based bug-fix scope, compatibility review, corrected generated
+architecture views, and the full generator-output freshness gate shipped in release commit
+`458a298`. Independent gpt-5.5 xhigh review rejected the first candidate for stale HTML, rejected
+the marker-only correction with a demonstrated false green, then accepted full range
+`4ac9494..7797180` after reproducing the final marker-preserving body mutation red on PS7 and
+PS5.1 and clean 16/0 runs. Live-model compliance remains unmeasured.
+
+**Evidence.** `/fix` requires a minimal fix and forbids unrelated refactoring, while root template
+Boy Scout text, framework-rules workflow section 4, convention-check and the three Boy Scout hook
+messages demand cleanup in touched files or TODO comments. The .NET always-apply list includes
+structured logging and cancellation propagation. The retained ABP record reports removed unrelated
+logging edits and a repaired protected virtual extension seam; the deleted raw diff is not newly
+inspectable. Source conflict is observed; causation of the historical model edits is not proved.
+
+**Do.** Use task-required behaviour, compatibility and verification as the scope boundary, allowing
+necessary edits outside the original hunk and explicitly requested cleanup. Reconcile active
+reintroductions and generated mirrors, qualify cancellation propagation, remove mandatory comments
+for deferred unrelated cleanup, and add a short conditional compatibility check to the existing
+fix/review route. Preserve explicit consumer policy and protected-file update ownership. Keep hooks
+advisory and static context ceilings unchanged; no new API analyzer, skill or semantic diff parser.
+
+**Done when.** A minimal bug fix does not demand unrelated cleanup; necessary caller/test setup and
+compatible overrides remain valid; an unrequested extension-contract break is identified; explicit
+refactoring remains allowed. Verify fresh/update carriers, hook shapes on both surfaces and native
+PowerShell hosts, then separate review, standard release checks and changelogs. Static consistency
+does not establish live-model compliance. B-230 was released separately in v0.85.0.
+
+**RCA.** Existing rules used touched-file membership as permission to expand the fix, while the
+minimal-fix route said otherwise. Reviewers, generated carriers, defaults, evals, and advisory hook
+messages repeated the conflict; the repair centralizes update-delivered scope in framework-rules and
+tests both fresh carriers and protected-update delivery. Independent review then found that all three
+committed `architecture.html` derivatives still embedded the old rule: the composer copied those
+already-stale stack files, while no authoring gate compared their `src-sha1` markers with the matching
+Markdown. The first `DocTruth.Tests.ps1` correction checked the three authoring pairs and three
+composed pairs; its first valid run failed on all six before regeneration. Corrective review then
+demonstrated that preserving a truthful marker while changing the body stayed green. The final gate
+runs the actual generator once per stack and compares its complete EOL-normalized output with both
+committed copies, distinguishing generator failure from artifact mismatch. A body-only scratch
+mutation preserving the marker was observed red for the intended mismatch before clean runs on both
+hosts. The same manual-derivative class was searched under `src/`; architecture HTML is the only
+current instance. Static/executable coverage cannot prove a live model follows the rule.
+
+**Release evidence.** Local release gates passed without waivers, including all three dist
+validators, the full root meta suite on both supported hosts, offline eval self-test, and context
+ceilings. GitHub Actions run `34167920703` passed the nine required Windows jobs; tag `v0.86.0`
+was confirmed on origin at release commit `458a298`. Paid live evals were not run.

@@ -1,6 +1,6 @@
 # Framework backlog
 
-Current work only. Reconciled 2026-09-07 after v0.85.0 and WSD-079. Read root `CLAUDE.md`,
+Current work only. Reconciled 2026-09-08 after v0.86.0 and WSD-079. Read root `CLAUDE.md`,
 `DEVELOPING.md` and `meta/decisions-index.md` before implementation. Effort: S <= half a session,
 M about one session, L multiple sessions; live observation time is separate from implementation.
 
@@ -18,7 +18,6 @@ export, production queries, or external participant contact.
 | 2 | B-223 capture and refresh | Released in v0.84.0; semantic refresh and retained forward misses remain |
 | 3 | B-224 ordinary-task Copilot use | Released carrier; one bounded CLI access miss/cost observed, ordinary CLI/VS Code acceptance remains open |
 | Independent repairs | B-216 instance skills; B-226 review scope | Released in v0.84.0; named semantic/host gaps remain explicit |
-| Current delivery | B-231 bug-fix scope and compatibility | Implemented for v0.86.0; release/review pending |
 | When a participant exists | B-42 independent FS2 | Existing packet ready; independent run outstanding |
 | Deferred | B-49 drill and consumer self-assessment | Old instrument invalid; no execution authority |
 
@@ -589,50 +588,6 @@ the excluded test was otherwise reportable. An extra PS7 CP437 extraction failed
 predicate despite output naming the path; that instrument/encoding gap is unresolved and is not
 reported as a product defect or verified host combination. The 39 carrier review and recapture
 contrast are source/static evidence; no model dispatch or sequential-fallback efficacy was run.
-
-### B-231 · Bound bug-fix cleanup by task scope and preserve existing extension contracts
-**Filed against:** v0.84.0 (2026-09-07)
-**Priority:** P2 · **Effort:** M · **Invariants:** #1 #2 #4 #5 #7
-**Status:** IMPLEMENTED; NOT SHIPPED (v0.86.0). Independent review first rejected stale generated
-architecture HTML, then rejected a marker-only freshness gate that allowed body tampering. All three
-views and a full generated-output comparison are corrected. Independent gpt-5.5 xhigh review then
-accepted the full candidate through `7797180`; release remains outstanding and live-model compliance
-is unmeasured.
-
-**Evidence.** `/fix` requires a minimal fix and forbids unrelated refactoring, while root template
-Boy Scout text, framework-rules workflow section 4, convention-check and the three Boy Scout hook
-messages demand cleanup in touched files or TODO comments. The .NET always-apply list includes
-structured logging and cancellation propagation. The retained ABP record reports removed unrelated
-logging edits and a repaired protected virtual extension seam; the deleted raw diff is not newly
-inspectable. Source conflict is observed; causation of the historical model edits is not proved.
-
-**Do.** Use task-required behaviour, compatibility and verification as the scope boundary, allowing
-necessary edits outside the original hunk and explicitly requested cleanup. Reconcile active
-reintroductions and generated mirrors, qualify cancellation propagation, remove mandatory comments
-for deferred unrelated cleanup, and add a short conditional compatibility check to the existing
-fix/review route. Preserve explicit consumer policy and protected-file update ownership. Keep hooks
-advisory and static context ceilings unchanged; no new API analyzer, skill or semantic diff parser.
-
-**Done when.** A minimal bug fix does not demand unrelated cleanup; necessary caller/test setup and
-compatible overrides remain valid; an unrequested extension-contract break is identified; explicit
-refactoring remains allowed. Verify fresh/update carriers, hook shapes on both surfaces and native
-PowerShell hosts, then separate review, standard release checks and changelogs. Static consistency
-does not establish live-model compliance. B-230 was released separately in v0.85.0.
-
-**RCA.** Existing rules used touched-file membership as permission to expand the fix, while the
-minimal-fix route said otherwise. Reviewers, generated carriers, defaults, evals, and advisory hook
-messages repeated the conflict; the repair centralizes update-delivered scope in framework-rules and
-tests both fresh carriers and protected-update delivery. Independent review then found that all three
-committed `architecture.html` derivatives still embedded the old rule: the composer copied those
-already-stale stack files, while no authoring gate compared their `src-sha1` markers with the matching
-Markdown. The first `DocTruth.Tests.ps1` correction checked the three authoring pairs and three
-composed pairs; its first valid run failed on all six before regeneration. Corrective review then
-demonstrated that preserving a truthful marker while changing the body stayed green. The final gate
-runs the actual generator once per stack and compares its complete EOL-normalized output with both
-committed copies, distinguishing generator failure from artifact mismatch. A body-only scratch
-mutation preserving the marker was observed red for the intended mismatch before clean runs on both
-hosts. The same manual-derivative class was searched under `src/`; architecture HTML is the only
-current instance. Static/executable coverage cannot prove a live model follows the rule.
 
 ## Independent evidence and deferred work
 
