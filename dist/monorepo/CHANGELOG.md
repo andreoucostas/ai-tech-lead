@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.85.0 — Unreleased
+## 0.85.0 — 2026-09-07
 
 - `/adopt` now preserves every archived original **byte-for-byte** and proves it. The installer
   records a raw SHA-256, byte length and Git provenance for each file it moves into

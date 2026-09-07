@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.85.0 — Unreleased
+## 0.85.0 — 2026-09-07
 
 **Headless `/adopt` now proves it preserved every archived original byte-for-byte (B-230, WSD-079).**
 The brownfield installer freezes each pre-existing file's raw SHA-256 + byte length + pre-move Git
@@ -25,8 +25,9 @@ return `RESULT: PASS` against the frozen inventory. Raw SHA-256 over actual file
 preservation oracle, kept strictly separate from the per-path `provenanceRevision` (attribution
 only) and the `baselineRevision` install anchor; an unexaminable archive or a legacy marker without
 pre-move digests reports `CANT-VERIFY`, never a silent re-hash, and an existing archive is never
-rebaselined. Greenfield and update installs are unchanged. **Unreleased — pending independent
-review, the orthogonal byte-comparison vantage, and the release gates.**
+rebaselined. Greenfield and update installs are unchanged. **Unreleased — independent review
+accepted the amended immutable range; an orthogonal `fc /b` + `certutil` check matched the
+pre-install oracle, archive and marker digest; release gates remain pending.**
 
 ## 0.84.0 — 2026-09-06
 

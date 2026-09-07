@@ -18,7 +18,7 @@ export, production queries, or external participant contact.
 | 2 | B-223 capture and refresh | Released in v0.84.0; semantic refresh and retained forward misses remain |
 | 3 | B-224 ordinary-task Copilot use | Released carrier; one bounded CLI access miss/cost observed, ordinary CLI/VS Code acceptance remains open |
 | Independent repairs | B-216 instance skills; B-226 review scope | Released in v0.84.0; named semantic/host gaps remain explicit |
-| Next proposed repair | B-230 headless adoption archive integrity | PARTIALLY DONE: installer, helper, `/adopt` workflow, focused reconstruction coverage, and generated dists staged; independent review and release outstanding |
+| Next proposed repair | B-230 headless adoption archive integrity | READY TO RELEASE: implementation and evidence complete; release gates outstanding |
 | Following separate repair | B-231 bug-fix scope and compatibility | Source contradictions verified; bounded proposal recorded |
 | When a participant exists | B-42 independent FS2 | Existing packet ready; independent run outstanding |
 | Deferred | B-49 drill and consumer self-assessment | Old instrument invalid; no execution authority |
@@ -594,9 +594,9 @@ contrast are source/static evidence; no model dispatch or sequential-fallback ef
 ### B-230 · Preserve original bytes and original-path provenance during headless adoption
 **Filed against:** v0.84.0 (2026-09-06)
 **Priority:** P1 · **Effort:** M · **Invariants:** #3 #4 #6 #7
-**Status:** PARTIALLY DONE (2026-09-07). Premise observed; adversarial review and final proposal in
+**Status:** READY TO RELEASE (2026-09-07). Premise observed; adversarial review and final proposal in
 `.claude/plans/2026-09-07-abp-experiment-follow-through.md` and WSD-079.
-**Staged implementation; not shipped.** The byte-preserving archive/verify helper `src/core/scripts/adoption-archive.ps1`
+**Implemented; not shipped.** The byte-preserving archive/verify helper `src/core/scripts/adoption-archive.ps1`
 (`-Freeze`/`-MoveFrozen`/`-Verify`, with non-mutating `-Capture`; raw SHA-256 preservation oracle kept separate from Git
 provenance, CANT-VERIFY distinct from corruption, legacy-marker uncertainty preserved, no
 rebaseline of an existing archive), and `src/core/scripts/install.ps1` brownfield evidence capture
@@ -606,8 +606,15 @@ The three `/adopt` sources and shared Copilot adapter now carry frozen evidence 
 requiring pre-bootstrap and post-gate `adoption-archive.ps1 -Verify` PASS before completion; the
 focused executable suite is registered with the meta runner and generated dists were rebuilt.
 Direct local PS7 and PS5.1 reconstruction evidence covers the frozen acceptance cases, including
-the release-specific SHA-comparison mutation red/clean contrast. Release, independent review, the
-orthogonal byte-comparison vantage, and live-model workflow compliance remain outstanding.
+the release-specific SHA-comparison mutation red/clean contrast. Independent nonimplementer review
+first rejected two stale shipped instructions, then accepted amended range
+`a66e3eb9e38d11e155b687565eff62f1ac1af7ba..b3ed62ab3a2e342d39cedb0f8903bcf811098b80`
+after both were corrected and their static predicates were observed red/clean. The reviewer ran the
+focused suite directly under PS7 and PS5.1 at 26/0 with mutation exit 42, plus a PS7 CP437 run at
+26/0 and InstallerContract red 6/1 then clean 8/0. Root's orthogonal Windows `fc /b` and `certutil`
+execution matched a BOM/CRLF original oracle, the installer's archived file, and the marker SHA;
+the marker entry was verified and its inventory count matched. Release and live-model workflow
+compliance remain outstanding; deterministic evidence does not establish the latter.
 
 **Observed harm.** A real capped Copilot CLI 1.0.80 / GPT-5.4 medium headless adoption ran against
 ABP Framework tag 10.6.0 in a disposable worktree. Commit `081eb82a` renamed `.cursorrules` to
@@ -648,7 +655,7 @@ markers without reconstructible original-byte evidence remain unverified, not re
 bounded helper and existing lifecycle; no new general registry or hook. See the proposal for
 hostile cases, proportional alternatives, native-host evidence, orthogonal review and release scope.
 
-**RCA to close at delivery.** Existing completion checks could pass with a normalized archive
+**Delivery RCA.** Existing completion checks could pass with a normalized archive
 because no assertion compared every selected original and final byte identity. The same class
 covers all approved archive and quarantine candidates. Parser checks alone cannot establish that
 a model invokes the final guard; retain that separate behavioural evidence gap.

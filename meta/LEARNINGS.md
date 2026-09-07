@@ -29,8 +29,10 @@ bootstrap-time mutation, greenfield and update-adjacent paths on directly invoke
 
 **Remaining evidence.** The written `/adopt` lifecycle now carries frozen evidence across Phase 7
 and requires both verification results, but deterministic tests cannot prove a live model follows
-that workflow. Delivery 1 remains unreleased pending independent implementation review, an
-orthogonal byte-comparison vantage, and the release gates.
+that workflow. Independent implementation review accepted the amended immutable range after two
+stale shipped instructions were corrected. An orthogonal Windows `fc /b` + `certutil` execution
+matched the original oracle, archived bytes and marker digest. Delivery 1 remains unreleased
+pending the release gates; live-model workflow compliance remains explicitly unmeasured.
 
 ## 2026-07-17 — onboarding-review hardening: verify paths and host premises before implementation
 
