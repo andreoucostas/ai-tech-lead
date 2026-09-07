@@ -87,6 +87,29 @@ toolchain work and records: **three of eight hours charged, five remain**. The c
 two-hour checkpoint is consumed; additional container engineering needs a newly bounded review.
 Detailed observations and limits are in `meta/field-study-results.md`.
 
+**CP1 account confirmation, 2026-09-07.** The user reports Pro+ purchased at USD 39/month and
+transcribes 0 / 7,000 included credits used, reset 2026-10-01, and additional usage disabled at
+USD 0 / USD 0. The existing campaign ceiling is therefore Q = 7,000, subject to remaining balance
+before calibration; the reported purchase does not establish task or execution readiness. Root
+did not inspect a signed-in dashboard or invoice. No paid Copilot study call was made. The full
+allocation and attribution are in `meta/field-study-results.md`.
+
+**CP1 selection checkpoint, 2026-09-07 — STOPPED AT CANDIDATE CAP.** Terra reviewed the 16
+retained unresolved candidates in their frozen order and excluded all 16. Sol independently
+reviewed the four ambiguous semantic cases from the contract and source, supporting exclusion
+because they lack the required independent nonlocal decisions; absent runtime evidence was not
+the rejection basis. Root checked all 16 commit/first-parent references and the unchanged input
+ledger, re-read the closest file-count case and selected source deltas, and retained the earlier
+84 exclusions. Result: **no qualified task at 100**, not a Copilot or framework task outcome.
+
+One promising code portion sat inside a nine-file integration. Root caught an initial count that
+omitted two authored documents; Terra corrected it before selection. The complete integration
+cannot be trimmed to meet the frozen limit. No candidate 101, task cards, application baseline,
+adoption or paid study call followed. Charge another half-hour conservatively: **3.5 of eight
+preparation hours charged, 4.5 remain**; remaining time does not reopen the candidate cap. Further
+selection needs a separately reviewed prospective sampling contract. Existing semantic/value
+entries remain open; raw evidence and the current external handoff remain outside authoring Git.
+
 **CP1 preparation RCA.** No shipped defect was reproduced. Parser/release gates did not establish
 Windows guest availability, application buildability, independent oracle reachability or actual
 Copilot use because those are study execution obligations. The same exposure applies to B-216,
@@ -104,6 +127,12 @@ establish these runtime facts. Root retained the failures, verified the account 
 native exits 7 and 0 on both hosts, and inspected the final TRX nodes and restored source bytes.
 The same exposure applies to other command-output observers and provisioning helpers; this is
 bounded execution evidence, not a new general gate or a framework defect finding.
+Candidate qualification exposed another instance of the same boundary: a source-file subset was
+mistaken for the whole integration, and test cases or preservation obligations could inflate the
+independent-decision count. Root corrected the count; Sol's source review separated required
+decisions from downstream checks. The sweep covered all retained unresolved entries and the
+earlier over-limit inventories. Parser gates cannot certify task suitability, so the response is
+the frozen stopping rule and retained review evidence, with no generic selection gate added.
 
 Original detailed open-entry history is preserved at Git baseline
 `87bfe1942b687a47c0f5d87cdfd992e24579ed22:meta/BACKLOG.md` and linked plans. Superseded commands,

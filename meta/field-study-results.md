@@ -210,6 +210,59 @@ native authoring hosts, then clean BacklogHygiene 10/0 and DocTruth 13/0 on each
 command reported active code page 437. `git diff --check` passed and source/distribution bytes
 were unchanged. These checks verify the authoring record, not the remaining study outcomes.
 
+### CP1 account confirmation — 2026-09-07 — user-reported / campaign NOT READY
+
+The user reports purchasing GitHub Copilot Pro+ at **USD 39 per month** and transcribes the
+account dashboard: **0 / 7,000 included AI credits used**, reset **2026-10-01**, and additional
+usage **USD 0 / USD 0 budget, Not enabled**. These are attributed account reports; root did not
+inspect an invoice or the signed-in dashboard. Copilot's local billing help was readable, but
+browser discovery returned no available browser. Public plan information is not an account balance.
+
+This sets the campaign ceiling **Q = 7,000 credits** under the existing contract: calibration 350,
+onboarding 1,400, native task 1,750, framework task 1,750, optional diagnostics 700 total / 175 each,
+and unspent reserve 1,050. Recheck remaining allowance before calibration and reserve the full
+second-arm allocation before the first arm. The user purchased independently while preparation
+remained incomplete; preserve the original purchase-after-readiness condition as history rather
+than representing it as observed compliance. No additional purchase or expanded spending cap is
+authorized. Task/oracle, application, setup, selective-egress and paid-calibration readiness remain
+separate obligations. No paid Copilot study call was made during this confirmation.
+
+### CP1 selection checkpoint — 2026-09-07 — STOPPED AT CANDIDATE CAP
+
+Terra (`gpt-5.6-terra`) inspected the 16 retained unresolved candidates against their first parents
+in the original order and reported all 16 excluded. The prior 84 initial exclusions remain
+retained. Sol (`gpt-5.6-sol`), in a separate session starting from the frozen contract and its own
+threat model, reviewed four ambiguous semantic cases without Terra's narrative. All four fail
+the required independent nonlocal-decision threshold; one also fails architectural breadth.
+These are source-based exclusions, not diagnoses inferred from missing executable tests.
+
+Root verified all 16 commit identities and first-parent references against the frozen ledger,
+confirmed that the original ledger hash is unchanged, and re-read selected source deltas and the
+closest file-count case. That integration has seven C# source/test files plus an authored article
+and presentation. Terra initially counted only the code portion; root challenged it and Terra
+corrected the count to nine. Unrelated authored files cannot be removed from the selected unit.
+The correction and the independent review are retained externally. The original 84 exclusions
+were not independently re-audited in full in this checkpoint.
+
+The resulting disposition is **NONE_QUALIFIED_AT_100** under the retained classifications.
+CP1 task selection stops at its frozen cap: no candidate 101 was inspected and no task card,
+oracle, ABP application baseline, onboarding, diagnostic or paid Copilot study call followed.
+This is a preparation outcome and says nothing about comparative Copilot/framework efficacy.
+The generic toolchain remains available; selective egress and actual application/setup readiness
+remain unestablished. A further attempt needs a separately reviewed prospective sampling contract;
+neither purchasing credits nor unused preparation time silently expands the current selection cap.
+
+Charge **0.5 additional preparation hours** conservatively for qualification, account confirmation
+and records: **3.5 of eight hours charged, 4.5 remain**. This is an accounting charge, not measured
+human effort. The separate two-hour container checkpoint remains consumed. RK1 stays preparation-only,
+VS Code deferred and independent FS2 outstanding. No product version changes.
+
+External coordinator records retain the frozen input, qualification, independent report, root
+reference checks, account reports and current handoff. Sol reported an automatic Git packing notice
+during a read-only query; do not claim that every object-store byte remained untouched. No source
+commit, ref, index or worktree change was requested. Raw candidate identities and answers remain
+outside authoring Git and outside all setup/task scopes.
+
 ## Runs
 
 ## FS-20260826-DRY-01 — 2026-08-26 — maintainer
