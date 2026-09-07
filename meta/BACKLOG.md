@@ -18,6 +18,7 @@ export, production queries, or external participant contact.
 | 2 | B-223 capture and refresh | Released in v0.84.0; semantic refresh and retained forward misses remain |
 | 3 | B-224 ordinary-task Copilot use | Released carrier; live Copilot/VS Code application remains unobserved |
 | Independent repairs | B-216 instance skills; B-226 review scope | Released in v0.84.0; named semantic/host gaps remain explicit |
+| Newly observed repair | B-230 headless adoption archive integrity | v0.84.0 ordinary-use reproduction retained; design/review not started |
 | When a participant exists | B-42 independent FS2 | Existing packet ready; independent run outstanding |
 | Deferred | B-49 drill and consumer self-assessment | Old instrument invalid; no execution authority |
 
@@ -556,6 +557,40 @@ the excluded test was otherwise reportable. An extra PS7 CP437 extraction failed
 predicate despite output naming the path; that instrument/encoding gap is unresolved and is not
 reported as a product defect or verified host combination. The 39 carrier review and recapture
 contrast are source/static evidence; no model dispatch or sequential-fallback efficacy was run.
+
+### B-230 · Preserve original bytes and original-path provenance during headless adoption
+**Filed against:** v0.84.0 (2026-09-06)
+**Priority:** P1 · **Effort:** M · **Invariants:** #3 #4 #6 #7
+**Status:** OPEN from an ordinary-use reproduction on 2026-09-07. Premise observed; proportional
+design and independent critique have not started.
+
+**Observed harm.** A real capped Copilot CLI 1.0.80 / GPT-5.4 medium headless adoption ran against
+ABP Framework tag 10.6.0 in a disposable worktree. Commit `081eb82a` renamed `.cursorrules` to
+`docs/pre-adoption/cursorrules.md` at 89% similarity: it replaced 30 source lines with eight
+normalized lines, losing 22 lines from the only live/archive copy while its report said the file
+was archived. This contradicts `/adopt`'s critical no-delete/archive-before-normalize contract.
+The same run falsely quarantined the installer-archived Copilot instructions as a fresh local file
+because provenance followed the archive path. Direct blob comparison proved the archive was exactly
+ABP's original `a754a2b5eabdb364a3aafde4ea1e784697b497fe`, whose original-path history last changed
+under Volosoft Agent on 2026-04-01. Root restored `.cursorrules` to original blob
+`b88c4e158845aa039d9345510a3f969fd4db271a`; both native hosts then passed `docs-sync-check`.
+The external worktree and its corrective commit retain the raw reproduction. No product source,
+remote branch, or pull request was changed.
+
+**Required outcome.** Headless adoption must retain every approved archived candidate byte-for-byte
+while placing normalized proposals only in the review report/diff. Installer-moved candidates must
+be screened as their recorded original paths, with provenance that survives the move and distinguishes
+a real trust finding from inability to examine history. The completion authority must reject an
+archive whose pre-move and post-move identities differ; it must also admit a constructible exact-copy
+success state. Do not solve only the two filenames from this reproduction.
+
+**Before implementation.** Freeze a proportional design after inspecting the installer marker,
+archive phase, completion gate and existing behavioral fixtures. Obtain adversarial critique of
+whether a smaller post-move identity check plus original-path provenance is sufficient. Produce a
+release-specific red case from the unfixed v0.84.0 behavior on both native hosts or state honestly
+which semantic leg requires a live model. Keep normalized proposal quality separate from archive
+integrity. Acceptance includes an exact-copy candidate, a deliberately mutated archive, an
+installer-moved original, missing/unreadable Git history, and an actually untrusted candidate.
 
 ## Independent evidence and deferred work
 
