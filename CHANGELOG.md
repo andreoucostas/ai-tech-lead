@@ -18,6 +18,8 @@ allows only edits needed for requested behaviour, caller/extension compatibility
 verification, while retaining explicitly requested refactoring. `/fix` and `/review` identify
 unrequested public/protected signature and virtual/override breaks; fresh carriers, declarative
 evals, and advisory hook wording no longer turn a touched file into authority for unrelated cleanup.
+Independent review caught stale generated architecture HTML before release; the regenerated views
+now carry the same rule, and the authoring meta suite checks source/hash freshness for every stack.
 
 ## 0.85.0 — 2026-09-07
 

@@ -593,8 +593,9 @@ contrast are source/static evidence; no model dispatch or sequential-fallback ef
 ### B-231 · Bound bug-fix cleanup by task scope and preserve existing extension contracts
 **Filed against:** v0.84.0 (2026-09-07)
 **Priority:** P2 · **Effort:** M · **Invariants:** #1 #2 #4 #5 #7
-**Status:** IMPLEMENTED; NOT SHIPPED (v0.86.0). Source and fresh-carrier changes are staged from
-the locked Delivery 2 contract; release review and live-model compliance remain outstanding.
+**Status:** IMPLEMENTED; NOT SHIPPED (v0.86.0). The first independent review rejected stale
+generated architecture HTML; all three views and a source/hash freshness gate are corrected.
+Corrective review and release remain outstanding; live-model compliance is unmeasured.
 
 **Evidence.** `/fix` requires a minimal fix and forbids unrelated refactoring, while root template
 Boy Scout text, framework-rules workflow section 4, convention-check and the three Boy Scout hook
@@ -619,8 +620,13 @@ does not establish live-model compliance. B-230 was released separately in v0.85
 **RCA.** Existing rules used touched-file membership as permission to expand the fix, while the
 minimal-fix route said otherwise. Reviewers, generated carriers, defaults, evals, and advisory hook
 messages repeated the conflict; the repair centralizes update-delivered scope in framework-rules and
-tests both fresh carriers and protected-update delivery. Static/executable coverage cannot prove a
-live model follows it.
+tests both fresh carriers and protected-update delivery. Independent review then found that all three
+committed `architecture.html` derivatives still embedded the old rule: the composer copied those
+already-stale stack files, while no authoring gate compared their `src-sha1` markers with the matching
+Markdown. `DocTruth.Tests.ps1` now checks both the three authoring pairs and the three composed pairs;
+its first valid run failed on all six before regeneration and passed after regeneration. The same
+manual-derivative class was searched under `src/`; architecture HTML is the only current instance.
+Static/executable coverage cannot prove a live model follows the rule.
 
 ## Independent evidence and deferred work
 

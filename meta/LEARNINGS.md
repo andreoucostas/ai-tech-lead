@@ -2274,3 +2274,15 @@ complete outcome/compatibility/verification rule therefore belongs in the framew
 The update fixture now proves both halves together: protected bytes survive, and the delivered carrier
 contains the scope rule. Declarative evals and a release-specific scratch mutation prove carrier
 presence and detection on the two PowerShell hosts; neither establishes live model compliance.
+
+## 2026-09-07 — Composition cannot repair a stale committed derivative
+
+B-231's first independent review found that all three `docs/architecture.html` files still embedded
+the retired touch-based scope even though their `ARCHITECTURE.md` sources had changed. Rebuilding the
+dists only copied those stale stack-owned HTML files. The shipped consumer `docs-sync-check` could
+diagnose the drift, but the authoring and release suites did not run that consumer check in a shape
+that failed the release. A committed generated artifact needs an authoring-side source-to-derivative
+check at the release boundary. `DocTruth.Tests.ps1` now compares the generator's CR-insensitive SHA-1
+marker for all three source pairs and all three composed pairs. The new test was observed red on all
+six stale files under both native PowerShell hosts before regeneration, then green afterward. A
+search for other manually generated derivatives under `src/` found no second current instance.

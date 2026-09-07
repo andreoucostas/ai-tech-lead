@@ -241,6 +241,27 @@ function Get-RootDeliveryFactViolations([string]$Readme, [string]$Claude, [strin
     return $bad
 }
 
+function Get-ArchitectureFreshnessViolations {
+    $bad = @()
+    foreach ($root in @('src/stacks/dotnet/files', 'src/stacks/angular/files', 'src/stacks/monorepo/files',
+                         'dist/dotnet', 'dist/angular', 'dist/monorepo')) {
+        $markdownPath = Join-Path $repoRoot "$root/docs/ARCHITECTURE.md"
+        $htmlPath = Join-Path $repoRoot "$root/docs/architecture.html"
+        if (-not (Test-Path -LiteralPath $markdownPath) -or -not (Test-Path -LiteralPath $htmlPath)) {
+            $bad += "${root}: architecture source or generated HTML is missing"
+            continue
+        }
+        $markdown = [IO.File]::ReadAllText($markdownPath, [Text.Encoding]::UTF8) -replace "`r", ''
+        $bytes = [Text.Encoding]::UTF8.GetBytes($markdown)
+        $sha = -join ([Security.Cryptography.SHA1]::Create().ComputeHash($bytes) | ForEach-Object { $_.ToString('x2') })
+        $html = [IO.File]::ReadAllText($htmlPath, [Text.Encoding]::UTF8)
+        if (-not $html.Contains("<!-- src-sha1: $sha -->")) {
+            $bad += "${root}: architecture.html is stale or has no matching src-sha1 marker"
+        }
+    }
+    return $bad
+}
+
 It 'root delivery facts defer counts to manifests, ship licence plus notice, and keep status pointers non-numeric' {
     $readme = Get-Content -Raw (Join-Path $repoRoot 'README.md')
     $claude = Get-Content -Raw (Join-Path $repoRoot 'CLAUDE.md')
@@ -273,6 +294,11 @@ It 'B-231 keeps one outcome scope across fresh carriers and truthful protected u
         Assert ($hook.Contains('do not add a TODO for unrelated deferred cleanup')) "$stack hook permits a touched-file TODO rule"
         Assert ($readme.Contains('protected consumer paths') -and $readme.Contains('framework-rules.instructions.md')) "$stack update guidance does not distinguish protected content from the framework-owned carrier"
     }
+}
+
+It 'every committed architecture HTML is fresh from its matching Markdown source' {
+    $bad = @(Get-ArchitectureFreshnessViolations)
+    Assert ($bad.Count -eq 0) ($bad -join '; ')
 }
 
 It 'B-231 scope mutation is reachable and restores its scratch bytes' {
