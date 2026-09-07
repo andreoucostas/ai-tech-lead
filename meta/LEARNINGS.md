@@ -2192,3 +2192,20 @@ Tool-level discovery and read events need separate observation, and a prompt con
 cannot grade their effect. Record assisted field work as bounded evidence, preserve the human repair
 needed after the model stops at an environment blocker, and keep paired value claims behind their
 predeclared controls.
+
+## 2026-09-07 — Preservation checks need an earlier baseline and the real completion boundary
+
+The requested ABP follow-through review exposed two holes in a plausible archive-hashing fix:
+a digest computed after normalization validates the damaged copy, and evidence kept only in the
+pending marker disappears before the existing bootstrap completion check. The proposed repair
+therefore captures actual pre-move bytes and carries frozen evidence explicitly through final
+verification. Git revisions anchor provenance, but blob identities cannot stand in for raw
+worktree bytes under line-ending conversion or filters. These are source-grounded design findings;
+the proposed runtime repair is not yet implemented or observed.
+
+The same review narrowed the cleanup recommendation: restricting edits to an existing hunk can
+forbid necessary callers and verification, while touched-file membership admits unrelated cleanup.
+Task-required behaviour, compatibility and verification are the relevant boundary. Existing rule,
+review and hook messages must agree; merely editing `/fix` leaves the contradiction active.
+Deleted experimental files must also be marked unavailable in the record: a retained hash is an
+identity reference, not a substitute for the source needed to reproduce an observation.

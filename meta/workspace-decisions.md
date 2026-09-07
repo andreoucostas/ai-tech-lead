@@ -3703,3 +3703,51 @@ isolation capability is observed through other work, or a named decision would m
 on the result. Unused time and credits do not trigger reopening. Charge 20 additional preparation
 minutes for the requested review, adjudication, record update and delivery: **449/480 minutes**,
 with 31 unused. No Copilot study credit was spent.
+
+## WSD-079: Narrow the ABP experiment follow-through after adversarial review (2026-09-07)
+
+**Status / authority.** The user requested review of the seven proposed implementation steps,
+an adversarial approach and a final plan. This records a final proposal; implementation and new
+paid observation are not part of the present task. The source baseline is
+`d6625bef4d45168a71a2f16855b442149e59a49d`.
+
+**Decision and proportionality.** Prioritize B-230 as a separate release: raw pre-move byte
+identities, original-path history anchored before the install, and explicit saved evidence across
+the bootstrap completion boundary. Prose-only reminders are insufficient because preservation is
+already required; a general transaction/registry/hook system exceeds the observed harm. Preserve
+legacy-marker uncertainty, collision/containment safeguards, and the separation between integrity,
+examination availability and human trust. A local receipt does not certify resistance to a writer
+who replaces the whole checker and baseline.
+
+B-231 is a separate bounded policy repair: scope bug-fix edits by requested behaviour, compatibility
+and verification, not touched files or pre-existing diff lines. Reconcile the rule, review and
+advisory hook messages, qualify cancellation propagation, and fold compatibility into the existing
+fix/review route. Preserve protected consumer policy; no additional analyzer or skill follows.
+The maintainer launcher/publication/cleanup lessons belong in existing operating guidance.
+
+**Deferred.** Another paid B-224 observation and loaded-context removal are not implementation
+deliverables. The recorded aggregate tokens cannot attribute duplication or efficacy. WSD-074's
+existing carriers/ceilings and WSD-078's fresh-decision condition continue to apply. Neither the
+arbitrary 30–60-credit suggestion nor unused credits authorizes a retry, CP2 restart or B-225 study.
+
+**Review and gaps.** Root inspected actual source and retained records. A separate read-only
+`adversarial_plan_review` agent received the immutable baseline and proposed seven steps and was
+asked to begin with its own threat model. Its verdict was REVISE; root rechecked the claims,
+including the previously omitted hook message. Follow-up source exchange was adjudication, not
+a second blind review. No implementation or runtime experiment was performed by the reviewer.
+The final proposal and acceptance matrix are in
+`.claude/plans/2026-09-07-abp-experiment-follow-through.md`; final delta review is recorded below.
+
+**Evidence retention.** Correct B-230's present-tense claim that the external worktree retains the
+reproduction: later authorized cleanup removed it and raw task files, and the user reports deleting
+the fork. Historical hashes and observed results remain records, not recoverable source. New
+fixtures must explicitly reconstruct the observed failure class. This plan introduces no claim of
+live Copilot compliance, new runtime evidence, usage savings or efficacy.
+
+**Final delta review.** The same reviewer verified proposal SHA-256
+`65AEB2CA30CC68243FAF6032D4AEBE0C9B8BBDEE688AC43FD4E0B6E591BA92B6` and returned ACCEPT as
+the final execution proposal, with no outstanding design correction. Evidence serialization and
+handoff remain implementation choices constrained by the frozen cases. This is follow-up design
+adjudication, not fresh independent implementation review. Root observed BacklogHygiene.Tests at
+10 passed / 0 failed on each directly invoked native PS7 and PS5.1 host; these validate authoring
+records, not the proposed product behaviour. No paid provider CLI call ran in this planning task.

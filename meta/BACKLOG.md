@@ -18,7 +18,8 @@ export, production queries, or external participant contact.
 | 2 | B-223 capture and refresh | Released in v0.84.0; semantic refresh and retained forward misses remain |
 | 3 | B-224 ordinary-task Copilot use | Released carrier; one bounded CLI access miss/cost observed, ordinary CLI/VS Code acceptance remains open |
 | Independent repairs | B-216 instance skills; B-226 review scope | Released in v0.84.0; named semantic/host gaps remain explicit |
-| Newly observed repair | B-230 headless adoption archive integrity | v0.84.0 ordinary-use reproduction retained; design/review not started |
+| Next proposed repair | B-230 headless adoption archive integrity | Observed defect; adversarially reviewed proposal recorded; implementation not started |
+| Following separate repair | B-231 bug-fix scope and compatibility | Source contradictions verified; bounded proposal recorded |
 | When a participant exists | B-42 independent FS2 | Existing packet ready; independent run outstanding |
 | Deferred | B-49 drill and consumer self-assessment | Old instrument invalid; no execution authority |
 
@@ -593,8 +594,10 @@ contrast are source/static evidence; no model dispatch or sequential-fallback ef
 ### B-230 · Preserve original bytes and original-path provenance during headless adoption
 **Filed against:** v0.84.0 (2026-09-06)
 **Priority:** P1 · **Effort:** M · **Invariants:** #3 #4 #6 #7
-**Status:** OPEN from an ordinary-use reproduction on 2026-09-07. Premise observed; proportional
-design and independent critique have not started.
+**Status:** OPEN from an ordinary-use reproduction on 2026-09-07. Premise observed; the requested
+adversarial review and final proposal are recorded in
+`.claude/plans/2026-09-07-abp-experiment-follow-through.md` and WSD-079. Implementation, new runtime
+evidence and release have not started.
 
 **Observed harm.** A real capped Copilot CLI 1.0.80 / GPT-5.4 medium headless adoption ran against
 ABP Framework tag 10.6.0 in a disposable worktree. Commit `081eb82a` renamed `.cursorrules` to
@@ -606,8 +609,12 @@ because provenance followed the archive path. Direct blob comparison proved the 
 ABP's original `a754a2b5eabdb364a3aafde4ea1e784697b497fe`, whose original-path history last changed
 under Volosoft Agent on 2026-04-01. Root restored `.cursorrules` to original blob
 `b88c4e158845aa039d9345510a3f969fd4db271a`; both native hosts then passed `docs-sync-check`.
-The external worktree and its corrective commit retain the raw reproduction. No product source,
-remote branch, or pull request was changed.
+At the time of filing, the external worktree and corrective commit retained the raw reproduction;
+no product source, remote branch or pull request had been changed by that adoption repair.
+**Retention correction (2026-09-07):** the subsequent user-authorized experiment cleanup removed
+the ABP worktrees and raw task files; the user reports deleting the remote fork. The earlier
+identities and observations remain historical records. Fresh fixtures must be labelled as
+reconstructions; the deleted external worktree is not a current evidence source.
 
 **Required outcome.** Headless adoption must retain every approved archived candidate byte-for-byte
 while placing normalized proposals only in the review report/diff. Installer-moved candidates must
@@ -623,6 +630,49 @@ release-specific red case from the unfixed v0.84.0 behavior on both native hosts
 which semantic leg requires a live model. Keep normalized proposal quality separate from archive
 integrity. Acceptance includes an exact-copy candidate, a deliberately mutated archive, an
 installer-moved original, missing/unreadable Git history, and an actually untrusted candidate.
+
+**Reviewed direction (WSD-079).** Capture actual raw bytes before moves; freeze expected identities;
+retain original-path history at the explicit pre-install revision; carry saved evidence through
+Phase 7 and require final archive verification as well as the bootstrap documentation gate. Legacy
+markers without reconstructible original-byte evidence remain unverified, not rebaselined. Use a
+bounded helper and existing lifecycle; no new general registry or hook. See the proposal for
+hostile cases, proportional alternatives, native-host evidence, orthogonal review and release scope.
+
+**RCA to close at delivery.** Existing completion checks could pass with a normalized archive
+because no assertion compared every selected original and final byte identity. The same class
+covers all approved archive and quarantine candidates. Parser checks alone cannot establish that
+a model invokes the final guard; retain that separate behavioural evidence gap.
+
+### B-231 · Bound bug-fix cleanup by task scope and preserve existing extension contracts
+**Filed against:** v0.84.0 (2026-09-07)
+**Priority:** P2 · **Effort:** M · **Invariants:** #1 #2 #4 #5 #7
+**Status:** OPEN. Source contradictions verified during the requested experiment-plan review;
+bounded proposal in `.claude/plans/2026-09-07-abp-experiment-follow-through.md` (WSD-079).
+No product implementation or behavioural observation of revised instructions has run.
+
+**Evidence.** `/fix` requires a minimal fix and forbids unrelated refactoring, while root template
+Boy Scout text, framework-rules workflow section 4, convention-check and the three Boy Scout hook
+messages demand cleanup in touched files or TODO comments. The .NET always-apply list includes
+structured logging and cancellation propagation. The retained ABP record reports removed unrelated
+logging edits and a repaired protected virtual extension seam; the deleted raw diff is not newly
+inspectable. Source conflict is observed; causation of the historical model edits is not proved.
+
+**Do.** Use task-required behaviour, compatibility and verification as the scope boundary, allowing
+necessary edits outside the original hunk and explicitly requested cleanup. Reconcile active
+reintroductions and generated mirrors, qualify cancellation propagation, remove mandatory comments
+for deferred unrelated cleanup, and add a short conditional compatibility check to the existing
+fix/review route. Preserve explicit consumer policy and protected-file update ownership. Keep hooks
+advisory and static context ceilings unchanged; no new API analyzer, skill or semantic diff parser.
+
+**Done when.** A minimal bug fix does not demand unrelated cleanup; necessary caller/test setup and
+compatible overrides remain valid; an unrequested extension-contract break is identified; explicit
+refactoring remains allowed. Verify fresh/update carriers, hook shapes on both surfaces and native
+PowerShell hosts, then separate review, standard release checks and changelogs. Static consistency
+does not establish live-model compliance. This item must not delay the B-230 release.
+
+**RCA to close at delivery.** Existing rules used touched-file membership as permission to expand
+the fix, and reviewers/hooks repeated it despite the minimal-fix rule. The same policy conflict
+applies across workflow, review, generation and advisory messages; reconcile that bounded set.
 
 ## Independent evidence and deferred work
 
