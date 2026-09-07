@@ -126,6 +126,32 @@ proposal/review/record checkpoint: **four of eight preparation hours charged, fo
 No CP2 task, oracle, application build, network change or paid Copilot prompt has run. Plan review
 is not execution readiness; the changed task unit awaits explicit user approval.
 
+**CP2 Opus review, 2026-09-07 — SCOPE APPROVAL STILL PENDING.** At the user's request, Claude
+Opus 5 adversarially reviewed the frozen proposal and external pre/post source packet. Initial
+verdict REVISE; root checked the source and Opus explicitly retracted its offline-impossibility,
+strong decision-overlap and test-count claims. The corrected critique retains useful construction
+obligations: each decision independently red, positive warning-capture control plus behavioral
+assertions, alternative-tolerant grading, and honest limits on retrieval probes. Source-level
+feasibility is not an executed baseline or oracle. The plan incorporates these obligations; it
+does not adopt the suggested two-decision fallback, drop a required stage, or relax network controls.
+See `.claude/plans/2026-09-07-cp2-opus-critique.md` for provenance and adjudication.
+The final Opus check accepted the revised frozen proposal with no remaining correction required
+before approval. A preceding failed packet delivery was correctly classified cannot-examine and
+retained separately; it is not counted as acceptance. Neither verdict supplies execution evidence.
+
+Charge a further **0.5 preparation hours** for this review/source-check/record checkpoint:
+**4.5 of eight hours charged, 3.5 remain**. Each stage is now explicitly bounded by the lesser of
+its original ceiling and the remaining global budget; the four-hour sum of nominal ceilings is
+not an extension or a promised runtime. No CP2 execution or paid Copilot study call followed.
+
+**Opus review RCA.** Earlier design acceptance left instrumentation obligations too implicit;
+it did not establish that the future oracle distinguishes independent decisions, working warning
+capture or supported alternatives. Parser gates cannot establish those behavioral facts. The
+adversarial review also produced confident source errors, caught by direct source checks and a
+corrective follow-up. This exposes any review summary used as execution evidence or an unverified
+verdict: preserve retractions and require concrete red/green evidence within the existing stages.
+No new generic gate or product change is warranted by this proposal-only checkpoint.
+
 **CP1 preparation RCA.** No shipped defect was reproduced. Parser/release gates did not establish
 Windows guest availability, application buildability, independent oracle reachability or actual
 Copilot use because those are study execution obligations. The same exposure applies to B-216,

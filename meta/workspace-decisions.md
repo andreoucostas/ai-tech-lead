@@ -3637,3 +3637,19 @@ does not certify application, oracle, network or Copilot readiness. Model-depend
 probes belong inside capped calibration after external controls are proved and before onboarding
 or tasks. Any eventual CP2 result is descriptive within-case evidence with prior inspection and
 scorer/model familiarity disclosed; keep it separate from CP1/FS1/FS2/RK1 and preserve B-42.
+
+**Requested Opus follow-up (2026-09-07).** The user authorized adversarial review, not CP2
+execution. Opus 5 returned REVISE and then retracted several strong findings after direct source
+counterchecks; the companion `2026-09-07-cp2-opus-critique.md` preserves the adjudication. The
+revised proposal makes independent decision failures, working warning capture, alternative-tolerant
+grading and the application/checker failure distinction explicit. Observable retrieval controls
+remain required; negative probes cannot establish universal provider non-retrieval, and shared
+model/transport does not make residual uncertainty cancel. No required control is waived.
+
+Charge this review/source-check/record half-hour cumulatively: **4.5 of eight preparation hours
+charged, 3.5 remain**. Bind each existing stage to min(its ceiling, remaining global budget).
+Do not drop a required stage or accept only two decisions to fit. No CP2 execution readiness is
+established, and this review does not change the pending scope-approval status or authorize a new
+fallback. The existing stages, caps, fail-closed conditions and descriptive claim limits remain.
+Opus's final check accepted the revised frozen proposal at design level; root verified its claims
+against the final text. This acceptance supplies no execution evidence or user scope approval.

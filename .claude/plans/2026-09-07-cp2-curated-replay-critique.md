@@ -1,6 +1,9 @@
 # CP2 proposal — critique and provenance
 
-**Disposition:** ACCEPT as a proposal for one bounded user approval. User scope approval and all
+**Historical Sonnet disposition:** ACCEPT as a proposal for one bounded user approval. The later
+user-requested Opus review and root's source-verified revisions are recorded in
+`2026-09-07-cp2-opus-critique.md`; this file preserves the earlier review rather than extending its
+acceptance to changed bytes. User scope approval and all
 execution evidence remain pending. This is design critique, not independent release validation or
 proof that an application, oracle, network boundary or Copilot run works.
 
@@ -23,7 +26,8 @@ tool-read chronology. No reviewer executed the proposed study or its instruments
 | Explicit curated task | `CA0B8542BF9C8D43E3392BA1E586E6E409587193E32B29217CA34927F306E693` | ACCEPT as a proposal. The new unit and descriptive claim limits are explicit; CP1 stays stopped; one approval covers named bounded stages with independent reviews and execution stops. Suggested clarifying scope-review timing, credential-free feeds and the meaning of a network timeout. |
 | Final delta check | `7715CC4789A1E349B19657D8A32B2BB39C900BCDA035584FDBD604FA814A0F7C` | ACCEPT, no remaining blocker. Includes the three clarifications and root's separation of pre-calibration network controls from model-driven transport/retrieval probes inside capped calibration. Onboarding/tasks remain blocked until calibration succeeds. |
 
-The final reviewed bytes are the companion `2026-09-07-cp2-curated-replay.md`. Root checked the
+The final Sonnet-reviewed bytes had the hash in the last row; an external frozen copy is retained.
+The companion `2026-09-07-cp2-curated-replay.md` has since been revised after Opus review. Root checked the
 input hashes locally. The original whole-integration proposal was superseded explicitly; it is
 not retrospectively marked accepted. Root also corrected the first review's suggestion that a
 fresh historical sample removes known-answer leakage: it changes selection provenance but still
@@ -33,6 +37,7 @@ observed runtimes.
 
 **Remaining execution gaps.** The curated task and three decisions are not yet qualified; no ABP
 application baseline, valid/invalid acceptance evidence, dedicated network implementation, hidden
-fact freeze, headless adoption or model/credit calibration ran. The four-hour attempt has no
+fact freeze, headless adoption or model/credit calibration ran. At this historical checkpoint,
+four preparation hours remained; the later Opus review charges another half-hour. The attempt has no
 contingency and may stop at any stage. Source images and free disk are prerequisites, not readiness.
 The original paid allocations and disabled overage remain; no Copilot study credit was spent here.

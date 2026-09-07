@@ -287,6 +287,27 @@ and the other semantic/value gaps remain open. The confirmed credit allowance is
 proposal work. Review provenance, frozen hashes and superseded drafts are retained externally and
 summarized in the companion critique file. No product version changes.
 
+### CP2 Opus review — 2026-09-07 — AWAITING SCOPE APPROVAL / NOT RUN
+
+The user requested an adversarial Opus review. The Claude CLI resolved to `claude-opus-5` and
+reviewed the frozen proposal with an external source packet. Initial REVISE findings included
+source errors: root verified them directly, and Opus retracted the asserted offline impossibility,
+strong decision-overlap claim and incorrect test-assertion count. Retained construction obligations
+now explicitly require independent red decisions, working warning capture with behavioral checks,
+supported alternatives, and correct application-versus-checker failure classification. Network
+probes establish bounded observable controls, not universal absence of opaque retrieval; residual
+uncertainty may differ between arms. Required controls are not waived.
+
+The review and root adjudication are in `.claude/plans/2026-09-07-cp2-opus-critique.md`. No CP2
+task, oracle, application baseline, network implementation or paid Copilot study call ran.
+Opus's final check accepted the revised frozen proposal for user approval, without certifying
+readiness. An earlier delta attempt could not examine its input; that delivery failure and the
+corrected successful review are retained separately.
+Charge another **0.5 preparation hours** for review, source verification and records: **4.5 of
+eight hours charged, 3.5 remain**. Stage ceilings also bind to the remaining global budget; no
+mandatory stage or decision may be dropped to fit. This conservative ledger does not measure
+human effort. CP1 remains stopped; the revised CP2 scope still requires explicit approval.
+
 ## Runs
 
 ## FS-20260826-DRY-01 — 2026-08-26 — maintainer
