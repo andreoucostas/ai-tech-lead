@@ -194,6 +194,20 @@ bounded candidate ended without endpoint evidence. The same class exposes the ro
 deltas and temporary CLI evidence lifecycle: raw differences and vanished inspect objects cannot
 certify isolation. The sweep retains those gaps, rejected records and unknown-shape grading debt;
 no new general gate, shipped behavior change or efficacy conclusion is warranted.
+
+**CP2 retirement decision, 2026-09-07 — CLOSED WITHOUT PAID EXECUTION.** At the user's request, a
+fresh read-only Claude Opus 5 xhigh review assessed the stopped attempt and recommended retirement;
+root accepted that conclusion while treating stage ceilings as maxima rather than proof of
+arithmetic impossibility. The user then authorized the closure. A credible network redesign and
+independent control pass is disproportionate to the descriptive value of one curated maintainer
+case, which would close neither B-42 nor B-225. CP2 is retired for low decision value, not network
+impossibility. Preserve its offline application/oracle evidence and explicit grader gaps. No
+network retry, calibration, adoption, paid task arm, product change or efficacy claim follows.
+Reopening requires a fresh decision triggered by an independent participant, an otherwise-observed
+isolation capability, or a named decision that materially depends on the result. Closure work
+brings the conservative preparation ledger to **449/480 minutes**, with 31 unused and zero Copilot
+study credits spent.
+
 **CP1 preparation RCA.** No shipped defect was reproduced. Parser/release gates did not establish
 Windows guest availability, application buildability, independent oracle reachability or actual
 Copilot use because those are study execution obligations. The same exposure applies to B-216,

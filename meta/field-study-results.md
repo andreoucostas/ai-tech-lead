@@ -391,6 +391,31 @@ preparation, hidden facts, installer dry run, calibration, human adoption and bo
 **not run**. There were **zero paid Copilot study calls**; the account balance was not rechecked.
 CP1 remains NONE_QUALIFIED_AT_100; B-42/independent FS2 and the other unobserved outcomes remain open.
 All identifying task material and raw evidence remain outside authoring Git and actual study scopes.
+
+### CP2 closure decision — 2026-09-07 — RETIRED WITHOUT PAID EXECUTION
+
+The user requested an independent recommendation after the network-preparation stop. A fresh,
+read-only Claude CLI session resolved the `opus` alias to `claude-opus-5`, ran at xhigh effort
+against authoring baseline `ad17998171646d68442740aeeb860d55efba34d4`, and recommended retiring
+the paid comparison. The call made no web request or repository change and reported USD 1.519001
+cost. It did not rerun or independently observe the external raw execution evidence; its factual
+assessment of those runs is therefore limited to the sanitized repository record.
+
+Root accepted the recommendation with one correction: the remaining ceilings are maxima, so their
+sum exceeding the remaining allowance is not itself proof that completion is impossible. The
+decision instead rests on proportionality. A fresh network design, independent review and unrun
+deny matrix would consume more preparation to produce one curated maintainer observation that
+could complete neither independent FS2/B-42 nor the B-225 component comparison. The user accepted
+this disposition and authorized the record closure.
+
+CP2 is closed for low decision value, not because isolation was shown impossible. The 372-test
+application baseline, 390-test acceptance matrix, red controls, rejected evidence and unbuilt
+grader bindings remain preparation assets outside the task scopes; none is scored as efficacy.
+The curated candidate does not become a B-42 sample. No network retry, calibration, adoption or
+paid task arm ran. Charge 20 additional preparation minutes for review, adjudication, records and
+delivery, reaching **449/480 minutes**, with 31 unused. Copilot study usage remains zero. Any later
+attempt needs a fresh decision under the triggers recorded in WSD-078.
+
 ## Runs
 
 ## FS-20260826-DRY-01 — 2026-08-26 — maintainer

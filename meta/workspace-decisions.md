@@ -3684,3 +3684,22 @@ Stage 4, calibration, human adoption and both task arms remain not run, and no p
 call occurred. This closes the bounded preparation attempt, not B-42 or any efficacy question.
 The stopped attempt has no automatic retry or substitute; retain the tested offline acceptance
 artifacts and the instrument RCA in `meta/BACKLOG.md` for any later protocol decision.
+
+**Premise-retirement decision (2026-09-07).** After the stop, the user requested a fresh Opus
+recommendation and then accepted the bounded closure. A read-only Claude Opus 5 review at xhigh
+effort, against authoring baseline `ad17998171646d68442740aeeb860d55efba34d4`, recommended retiring
+CP2's paid comparison. Root accepts the conclusion with one qualification: the remaining stage
+ceilings do not prove completion arithmetically impossible because they are maxima, but designing,
+reviewing and exercising the unrun network controls within the remaining allowance is not a
+credible proportionate route to one curated maintainer observation. That result could close
+neither B-42's independent whole-product question nor B-225's component comparison.
+
+CP2 is therefore retired on decision-value grounds, not because network isolation was shown
+impossible. Its application baseline, red-tested acceptance instrument, rejected controls and
+unresolved grader bindings remain reusable preparation evidence; they are not efficacy evidence
+and the curated task is not an eligible B-42 sample. No product change follows. Reconsider live
+work only through a fresh decision when an independent B-42 participant exists, an applicable
+isolation capability is observed through other work, or a named decision would materially change
+on the result. Unused time and credits do not trigger reopening. Charge 20 additional preparation
+minutes for the requested review, adjudication, record update and delivery: **449/480 minutes**,
+with 31 unused. No Copilot study credit was spent.
