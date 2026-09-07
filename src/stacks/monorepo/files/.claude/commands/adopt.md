@@ -199,7 +199,7 @@ Wait for the user to confirm or amend the plan.
 Move only approved legacy files in the discovery inventory (except toolchain config, `.github/skills/**` paths, Screen-in-place wiki candidates, and the clean mature architecture corpus) to `docs/pre-adoption/<original-relative-path>`. Immediately before each move, re-check that its normalized live path is absent from the Phase-0 protected set; if it is protected, STOP and report the inventory error. Never archive, move, or delete current stamp-owned/shipped framework state. Clean wiki and mature architecture candidates stay in place; flagged files from either set must be included at `docs/pre-adoption/quarantine/<original-relative-path>` in the same frozen Phase-3 plan and their broken inbound links remain visible for human repair. **Do not delete anything.** `.github/skills/**` is excluded from this generic archive phase and remains untouched for the person's manual migration.
 
 Examples:
-- `.cursorrules` → `docs/pre-adoption/cursorrules.md` (rename to .md so it renders)
+- `.cursorrules` → `docs/pre-adoption/.cursorrules` (preserve its exact original-relative destination)
 - `.cursor/rules/api.mdc` → `docs/pre-adoption/cursor/rules/api.mdc`
 - `CODEMAP.md` → `docs/pre-adoption/CODEMAP.md`
 - `TODO.md` → `docs/pre-adoption/TODO.md`
@@ -208,7 +208,7 @@ Files the installer already archived (Phase 0 marker) need no further move.
 
 The installer marker `.claude/adoption-pending.json` is required. If it is absent, STOP: do not create a replacement marker from an already moved archive. Before **any** Phase-3 or flagged-quarantine move, write one complete `.claude/adoption-archive-plan.json` containing every selected `{ "originalPath", "destination" }` pair, including quarantine destinations. Run `pwsh -NoProfile -File scripts/adoption-archive.ps1 -Freeze -RepoRoot . -EvidencePath .claude/adoption-pending.json -PlanPath .claude/adoption-archive-plan.json`; it captures every raw pre-move identity and durably appends the complete plan to `archiveIntegrity.entries` before any source mutation. If it fails, STOP with all sources unchanged.
 
-Then move **only** an exact frozen pair with `pwsh -NoProfile -File scripts/adoption-archive.ps1 -MoveFrozen -RepoRoot . -EvidencePath .claude/adoption-pending.json -OriginalPath <original-relative-path> -Destination <exact-frozen-destination>`. It rejects a changed source, path escape, reparse point, collision, missing or reduced marker entry, and writes verified progress back to the marker after its byte comparison. Never use `git mv`, a bare move, or manual JSON append/rewrite. Prefer the exact original-relative destination; for a historically renamed archive (e.g. `.cursorrules` → `docs/pre-adoption/cursorrules.md`) freeze that explicit mapping — never guess a filename, migrate an archive, or re-hash an already archived file. Only after every frozen pair reports `MOVED` (or the narrow exact-digest crash recovery reports `RECOVERED`) may you stage the archive moves. Retain `.claude/adoption-archive-plan.json` through Phase 7; Phase 8's final `git add -A` removes it from the commit after successful cleanup.
+Then move **only** an exact frozen pair with `pwsh -NoProfile -File scripts/adoption-archive.ps1 -MoveFrozen -RepoRoot . -EvidencePath .claude/adoption-pending.json -OriginalPath <original-relative-path> -Destination <exact-frozen-destination>`. It rejects a changed source, path escape, reparse point, collision, missing or reduced marker entry, and writes verified progress back to the marker after its byte comparison. Never use `git mv`, a bare move, or manual JSON append/rewrite. Prefer the exact original-relative destination; honor a renamed destination only when an already-recorded historical mapping explicitly names it — never guess a filename, migrate an archive, or re-hash an already archived file. Only after every frozen pair reports `MOVED` (or the narrow exact-digest crash recovery reports `RECOVERED`) may you stage the archive moves. Retain `.claude/adoption-archive-plan.json` through Phase 7; Phase 8's final `git add -A` removes it from the commit after successful cleanup.
 
 After archive, run `git status` and present the moves to the user.
 
@@ -222,7 +222,7 @@ Merge principles:
 - **Safety gate** — never merge a file still QUARANTINED by the Phase-1 safety screen; resolve its provenance / adversarial-content flags with the user first. Merge normalized rules, never raw prose.
 - **Deduplicate** — if a rule already exists in CLAUDE.md, don't add it again
 - **Normalise voice** — convert do/don't lists, bullet points, or arbitrary prose into our convention format: rule + 1-2 sentence rationale
-- **Preserve attribution** — at the end of each merged section, add a comment: `<!-- Merged from: docs/pre-adoption/cursorrules.md, docs/pre-adoption/CONVENTIONS.md -->`
+- **Preserve attribution** — at the end of each merged section, add a comment: `<!-- Merged from: docs/pre-adoption/.cursorrules, docs/pre-adoption/CONVENTIONS.md -->`
 - **Summarise large content** — if a source file is over 200 lines, summarise key points and add a reference: `See \`docs/pre-adoption/[file]\` for full detail.`
 - **Keep CLAUDE.md scannable** — target under 400 lines total
 

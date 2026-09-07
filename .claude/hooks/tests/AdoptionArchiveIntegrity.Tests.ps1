@@ -199,6 +199,7 @@ It 'every shipped adoption workflow freezes queued quarantines only in Phase 3 a
         $adopt = [IO.File]::ReadAllText((Join-Path $dist '.claude/commands/adopt.md'), [Text.Encoding]::UTF8)
         $prompt = [IO.File]::ReadAllText((Join-Path $dist '.github/prompts/adopt.prompt.md'), [Text.Encoding]::UTF8)
         $ownership = [IO.File]::ReadAllText((Join-Path $dist 'framework-ownership.json'), [Text.Encoding]::UTF8)
+        $installer = [IO.File]::ReadAllText((Join-Path $dist 'scripts/install.ps1'), [Text.Encoding]::UTF8)
         foreach ($needle in @('archiveIntegrity', 'Pre-bootstrap archive verification', 'post-gate archive verification', 'RESULT: PASS', 'frozen complete inventory')) {
             Assert ($adopt.Contains($needle)) "dist/$stack /adopt does not carry archive-completion requirement: $needle"
         }
@@ -208,6 +209,10 @@ It 'every shipped adoption workflow freezes queued quarantines only in Phase 3 a
         $freeze = $adopt.IndexOf('-Freeze -RepoRoot .')
         Assert ($wikiQueue -ge 0 -and $architectureQueue -ge 0 -and $phase3 -gt $wikiQueue -and $phase3 -gt $architectureQueue -and $freeze -gt $phase3) "dist/$stack permits a Phase-1 quarantine move before Phase-3 Freeze"
         Assert ($adopt.Contains('Do not move a quarantined file during Phase 1') -and $adopt.Contains('do not move it during Phase 1')) "dist/$stack does not explicitly prohibit Phase-1 quarantine moves"
+        Assert ($adopt.Contains('- `.cursorrules` → `docs/pre-adoption/.cursorrules`')) "dist/$stack does not preserve the live .cursorrules archive destination"
+        Assert ($adopt -notmatch '(?m)^- `\.cursorrules` → `docs/pre-adoption/cursorrules\.md`') "dist/$stack presents a renamed .cursorrules destination as a new archive move"
+        Assert ($installer -notmatch '(?i)/adopt deletes this file in its Phase 3|deleted in /adopt Phase 3') "dist/$stack installer retains the obsolete Phase-3 marker deletion lifecycle"
+        Assert ($installer.Contains('deletes it only immediately before the Phase-7 bootstrap')) "dist/$stack installer does not state the Phase-7 marker lifecycle"
         foreach ($needle in @('.claude/adoption-archive-recovery.json', 'retain both `.claude/adoption-archive-plan.json`', 'verify both are absent before Phase 8')) {
             Assert ($adopt.Contains($needle)) "dist/$stack does not retain temporary archive evidence on failure and remove it on successful completion: $needle"
         }

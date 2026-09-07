@@ -1068,7 +1068,7 @@ function Write-AdoptionMarker {
             inventoryIdentity = $archiveInventoryIdentity
         }
         nextStep          = '/adopt - a developer types it in a session, OR an agent runs it headless (read .claude/commands/adopt.md and follow its Headless mode, or use .github/prompts/adopt.prompt.md with a --headless directive). Headless prepares an adopt-ai-framework PR branch for human review; it does not auto-merge discovered content.'
-        _comment          = 'Written by the framework installer because pre-existing AI tooling was detected. Consolidate it with /adopt - NOT /bootstrap. /adopt deletes this file in its Phase 3.'
+        _comment          = 'Written by the framework installer because pre-existing AI tooling was detected. Consolidate it with /adopt - NOT /bootstrap. /adopt keeps this marker through archive and merge work, verifies and copies it for recovery, deletes it only immediately before the Phase-7 bootstrap, and restores it if completion fails.'
     }
     $markerPath = Join-Path $tgt '.claude/adoption-pending.json'
     $markerParent = Split-Path -Parent $markerPath
@@ -1184,8 +1184,10 @@ if ($updateMode) { Write-Output "  consumer-owned content files left untouched (
 
 if ($adoptMode) {
     # Durable adoption marker: the SessionStart hook warns every new session, and docs-sync-check
-    # fails CI, until /adopt consumes it (deleted in /adopt Phase 3). Its archiveIntegrity block
-    # carries the frozen raw pre-move digests and provenance /adopt re-verifies across Phase 7.
+    # fails CI, until /adopt completes. It remains through archive and merge work, is verified and
+    # copied for recovery, then is removed only immediately before the Phase-7 bootstrap and
+    # restored if completion fails. Its archiveIntegrity block carries the frozen raw pre-move
+    # digests and provenance /adopt re-verifies across Phase 7.
     Write-AdoptionMarker -InventoryComplete $archiveInventoryComplete
 }
 
