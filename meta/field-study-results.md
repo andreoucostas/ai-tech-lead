@@ -152,6 +152,64 @@ PowerShell hosts. Root observed `BacklogHygiene -RedTest broken-index` exit 1, t
 `DocTruth` 13/0 directly under PS7 and native PS5.1 (code page 437). These verify authoring records,
 not container runtime or CP1 readiness; the immutable push/CI result remains delivery evidence.
 
+### CP1 offline container checkpoint — 2026-09-07 — toolchain observed / campaign NOT READY
+
+Root inspected the retained post-restart records: the reviewed helper's inspection reported no
+changes or pending restart signals, and Docker's native installer logged success at 07:13:49 UTC.
+Current probes independently found Docker Desktop 4.89.0, engine 29.7.2, Windows backend and Hyper-V
+isolation. The earlier missing dependency before-state remains missing; these later observations
+do not reconstruct it.
+
+The frozen SDK base digest from the preceding checkpoint pulled successfully. A fresh allowlisted
+context contained only generic toolchain/smoke files and the verified Node/Copilot archives; no ABP
+history, task answers, credentials or host profiles entered it. Claude Code 2.1.260 reported
+`claude-sonnet-5` for the delegated review/authoring work. Root reviewed and corrected the files and
+executed them; this is not a claim of independent review of the final helper implementation.
+The final local image is
+`sha256:ac3e5084afa2e65a4a3d8b8e61f10eaa7d1278635ea9d094e89270ea327d893e`.
+
+**Observed runtime.** Separate fresh containers ran direct PS7 7.6.4 and native PS5.1
+5.1.26100.33296 as ContainerUser (SID `S-1-5-93-2-2`). Inspect records show `hyperv`, network
+`none`, zero mounts, memory setting 8,589,934,592 bytes and storage option `100G`. CIM reported
+9,125,695,488 physical-memory bytes and logical disk size 107,238,891,520 bytes; these observations
+do not establish a hard allocation ceiling or a full-capacity storage stress test. SDK 10.0.400,
+Git 2.55.0.windows.3, Node v24.20.0 and Copilot CLI 1.0.83 version/help ran successfully. Copilot
+automatic updates were disabled in the image; no prompt, authentication or model call ran in it.
+Docker's future update policy and study model/worker routing remain to be frozen before comparison.
+
+On **each host**, the generic arithmetic project built and executed three xUnit cases: baseline
+3 passed / 0 failed, a compilable addition-to-subtraction mutation 1 passed / 2 failed with native
+test exit 1, then restored source 3 passed / 0 failed with exit 0. The final smoke and evidence-copy
+commands exited 0. Root separately counted the six TRX files' actual result nodes, inspected the
+container configurations and compared copied-back production source hashes to the original bytes.
+PS5.1 was invoked through the command selecting code page 437. This is generic offline toolchain
+evidence, not ABP application acceptance, selective-egress certification or Copilot task efficacy.
+
+**Retained failures.** An unsupported build-only storage flag exited 125; account-name ACL mapping
+failed with native exit 1332 and build exit 1. Root measured the ContainerUser SID before replacing
+the name-based grants. Early smoke attempts stopped on a read-only `PSEdition` assignment, root's
+local shadow of the native exit-code variable, and a matcher rejecting Copilot's trailing sentence
+period. The scope correction also passed explicit native-exit 7 and 0 controls on both authoring
+hosts. These helper/observation failures are preserved alongside the successful runs and are not
+classified as shipped framework defects. Raw logs, manifests, files and the resume packet remain
+outside authoring Git.
+
+**Next and budget.** Certify the first eligible retained ABP candidate in the frozen order, prepare
+and independently review its concrete task/oracles, then execute its application baseline in the
+chosen boundary. No additional candidate was inspected: 84 initial exclusions / 16 unresolved
+remain, with no certified task. Selective egress, adoption/application readiness, account-specific
+purchase confirmation and paid calibration remain outstanding; no Copilot study call or purchase
+occurred. RK1 stays preparation-only, VS Code deferred and independent FS2 outstanding. Charge one
+additional hour conservatively for today's earlier installation follow-up and this toolchain/
+record work: **three of eight preparation hours charged, five remain**. This is an accounting
+charge, not measured human effort. The container attempt's two-hour checkpoint is consumed;
+additional container engineering requires a newly bounded review. No product version changes.
+
+**Record verification.** Root observed `BacklogHygiene -RedTest broken-index` exit 1 on both
+native authoring hosts, then clean BacklogHygiene 10/0 and DocTruth 13/0 on each; the PS5.1 clean
+command reported active code page 437. `git diff --check` passed and source/distribution bytes
+were unchanged. These checks verify the authoring record, not the remaining study outcomes.
+
 ## Runs
 
 ## FS-20260826-DRY-01 — 2026-08-26 — maintainer

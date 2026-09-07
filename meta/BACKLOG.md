@@ -69,6 +69,24 @@ remains NOT RUN. The initial feature helper omitted dependency-delta evidence an
 helper-specific feedback arrived; both facts are retained. The reviewed resume helper and exact
 handoff remain outside authoring Git. This advances host preparation, not a task outcome.
 
+**CP1 offline container checkpoint, 2026-09-07.** Docker Desktop 4.89.0 now responds through its
+Windows engine. The pinned toolchain image built, and root observed separate native PS7 7.6.4
+and PS5.1 5.1.26100.33296 processes running as ContainerUser with Hyper-V isolation, no mounts,
+network none, and requested 8 GiB / 100G resources. Each generic .NET smoke executed three tests:
+3 passed initially, a production-source mutation produced 2 failures / 1 pass and exit 1, then
+byte-exact restoration returned 3 passed and exit 0. Copilot 1.0.83 version/help ran without a
+prompt or authentication. Sonnet 5 authored the disposable files; root reviewed, corrected and
+executed them. Earlier helper/build failures remain in the external evidence. This proves bounded
+offline toolchain feasibility, not ABP acceptance or Copilot task efficacy.
+
+Next: certify the first eligible retained candidate in the original order, freeze/review its
+oracles, and execute its ABP baseline. The 100-candidate inventory remains unchanged. Selective
+egress, supported setup, account-specific purchase confirmation and paid calibration remain
+outstanding. Charge one further preparation hour conservatively for today's installation follow-up,
+toolchain work and records: **three of eight hours charged, five remain**. The container attempt's
+two-hour checkpoint is consumed; additional container engineering needs a newly bounded review.
+Detailed observations and limits are in `meta/field-study-results.md`.
+
 **CP1 preparation RCA.** No shipped defect was reproduced. Parser/release gates did not establish
 Windows guest availability, application buildability, independent oracle reachability or actual
 Copilot use because those are study execution obligations. The same exposure applies to B-216,
@@ -79,6 +97,13 @@ The container follow-up exposed the same evidence boundary in a one-off provisio
 root-feature states did not enumerate dependency changes. Sol caught it; the resume helper now
 captures full snapshots and attempts post-state even after failure. The original missing delta
 remains missing. No shipped gate covers external host provisioning, and no new generic gate is added.
+The resumed smoke also exposed validly parsed observer defects: a read-only PowerShell variable,
+an exit-code scope error introduced during root's correction, and a version matcher rejecting
+sentence punctuation. Native ACL account-name resolution failed separately. Parser gates cannot
+establish these runtime facts. Root retained the failures, verified the account SID, demonstrated
+native exits 7 and 0 on both hosts, and inspected the final TRX nodes and restored source bytes.
+The same exposure applies to other command-output observers and provisioning helpers; this is
+bounded execution evidence, not a new general gate or a framework defect finding.
 
 Original detailed open-entry history is preserved at Git baseline
 `87bfe1942b687a47c0f5d87cdfd992e24579ed22:meta/BACKLOG.md` and linked plans. Superseded commands,
