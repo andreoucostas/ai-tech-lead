@@ -110,6 +110,22 @@ preparation hours charged, 4.5 remain**; remaining time does not reopen the cand
 selection needs a separately reviewed prospective sampling contract. Existing semantic/value
 entries remain open; raw evidence and the current external handoff remain outside authoring Git.
 
+**CP2 proposal, 2026-09-07 — AWAITING SCOPE APPROVAL.** The user's "so now what?" follow-up
+prompted a concrete alternative to restarting selection: one purposively curated application task
+from the known near-miss, preserving the complete pre-change repository. This explicitly changes
+the task unit and question; it does not make the whole nine-file integration eligible or reopen
+CP1. Sol proposed the initial route; Sonnet 5 critiqued it; root replaced the paper-only checkpoint
+and whole-integration replay with the bounded proposal in
+`.claude/plans/2026-09-07-cp2-curated-replay.md`. WSD-078 records the alternatives and limits.
+
+The proposal requests one approval for the staged attempt: 90 minutes for scope/source baseline,
+60 for concrete acceptance, 60 for reviewed network controls, 30 for final preparation, then
+original capped paid work only after all readiness/calibration gates. Passed stages advance without
+another user-approval request; failed prerequisites and timeouts stop. Charge 0.5 hours for this
+proposal/review/record checkpoint: **four of eight preparation hours charged, four remain**.
+No CP2 task, oracle, application build, network change or paid Copilot prompt has run. Plan review
+is not execution readiness; the changed task unit awaits explicit user approval.
+
 **CP1 preparation RCA.** No shipped defect was reproduced. Parser/release gates did not establish
 Windows guest availability, application buildability, independent oracle reachability or actual
 Copilot use because those are study execution obligations. The same exposure applies to B-216,
@@ -133,6 +149,15 @@ independent-decision count. Root corrected the count; Sol's source review separa
 decisions from downstream checks. The sweep covered all retained unresolved entries and the
 earlier over-limit inventories. Parser gates cannot certify task suitability, so the response is
 the frozen stopping rule and retained review evidence, with no generic selection gate added.
+The follow-up proposal exposed a proportionality problem: another paper-only hour or replay of
+unrelated editorial work would consume preparation without establishing an application baseline.
+Independent critique rejected the implied prospective-selection claim and unsupported causal
+language. The revised proposal explicitly changes the task unit, discloses curated selection, and
+puts a short scope check and actual source execution first. The same exposure applies to future
+historical replays; document the chosen unit and claim limits rather than silently trimming it or
+adding another gate. Model-dependent retrieval controls must be exercised during capped calibration,
+with the external policy in place first; requiring a model probe before permitting any calibration
+would create a circular readiness condition.
 
 Original detailed open-entry history is preserved at Git baseline
 `87bfe1942b687a47c0f5d87cdfd992e24579ed22:meta/BACKLOG.md` and linked plans. Superseded commands,

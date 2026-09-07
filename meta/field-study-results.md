@@ -263,6 +263,30 @@ during a read-only query; do not claim that every object-store byte remained unt
 commit, ref, index or worktree change was requested. Raw candidate identities and answers remain
 outside authoring Git and outside all setup/task scopes.
 
+### CP2 proposal — 2026-09-07 — AWAITING SCOPE APPROVAL / NOT RUN
+
+The user's follow-up requested the next step. Sol drafted a bounded alternative and fresh
+`claude-sonnet-5` CLI sessions critiqued it. Root revised the selection unit explicitly: one curated
+application task from the previously inspected near-miss, retaining the complete first-parent
+repository but excluding unrelated editorial deltas from the new task request. This is a proposed
+new exploratory series, not a claim that the original integration qualified or that CP1 resumed.
+The task boundary and its three decisions remain unproved and must pass the short initial review.
+
+The plan in `.claude/plans/2026-09-07-cp2-curated-replay.md` and WSD-078 preserve one bounded
+approval, automatic progression through passed stages, source/oracle/isolation/calibration stops,
+the original credit/time ceilings, and descriptive within-case claim limits. No additional
+candidate, task card, ABP baseline, network implementation or paid Copilot study call was executed.
+Root's read-only check found the previously pinned Windows image still present and ample host disk
+space; neither observation establishes application or study readiness.
+
+Charge another **0.5 preparation hours** for proposal, critique and records: **four of eight hours
+charged, four remain**. This is conservative accounting, not measured human effort. The existing
+two-hour generic-container checkpoint remains consumed; only approval of the new bounded attempt
+would authorize its named additional preparation. CP1 remains stopped at its candidate cap; B-42
+and the other semantic/value gaps remain open. The confirmed credit allowance is unchanged by this
+proposal work. Review provenance, frozen hashes and superseded drafts are retained externally and
+summarized in the companion critique file. No product version changes.
+
 ## Runs
 
 ## FS-20260826-DRY-01 — 2026-08-26 — maintainer

@@ -3596,3 +3596,44 @@ states the default Hyper-V allowance and NAT/Transparent ACL limitation; a diffe
 needs actual host evidence. The upstream
 [SDK Dockerfile](https://github.com/dotnet/dotnet-docker/blob/main/src/sdk/10.0/windowsservercore-ltsc2025/amd64/Dockerfile)
 informed component pinning; the external record freezes the observed content and MCR digest.
+
+## WSD-078: Propose a curated CP2 replay after CP1's selection stop (2026-09-07)
+
+**Status / authority.** Proposal awaiting explicit scope approval. The user's "so now what?"
+follow-up authorizes preparing a concrete recommendation and critique. It does not silently
+replace CP1's frozen selection contract. CP1 remains `NONE_QUALIFIED_AT_100`; its evidence and
+stopping rule remain historical facts. No new candidate search or paid study call occurred here.
+
+**Recommendation and proportionality.** Attempt one purposively curated, source-grounded
+application problem from the already inspected near-miss, preserving the full actual first-parent
+repository in both arms. This explicitly changes the task unit; it neither replays the entire
+nine-file integration nor claims that integration met CP1's criteria. The initial scope review
+must still establish one coherent task with three independently testable nonlocal decisions and
+constructible pass/fail states. Reject invented behavior or scope chosen for expected framework
+advantage. If the fixed problem cannot qualify under its declared scope, stop without substitution.
+
+The observed cost is preparation without an ABP application test. An additional paper-only hour
+does not resolve that gap; unrelated article/presentation deltas do not establish a coherent code
+task. The proposed smaller path puts a short scope review and actual source baseline first.
+Alternatives were a newly anchored prospective search, which may again find no task and still
+requires historical answer inspection, and adoption-only evidence, which cannot answer the
+complex-task question. Neither becomes an automatic fallback if CP2 stops.
+
+**Concrete proposed bounds.** Charge this proposal/review/record half-hour cumulatively: four of
+eight preparation hours charged. A single approval would authorize at most 90 minutes for scope
+and ABP baseline, 60 for concrete acceptance, 60 for independently reviewed CP2 network controls,
+and 30 for hidden facts/final preparation, plus the original capped paid stages only after all
+required evidence. These are attempt ceilings with no contingency; timeout yields the completed
+partial evidence, not proof of impossibility. Ordinary passed stages advance without another
+user-approval request. Changed scope/caps/boundary require a new decision. Existing generic
+container evidence is retained; its consumed two-hour checkpoint is not reset.
+
+**Review and limits.** Sol authored the initial proposal; fresh Sonnet 5 CLI critiques challenged
+its paper-only staging, prospective-selection language and whole-integration coherence. Root
+made the task-unit change explicit, removed causal claims, and bounded actual execution stages.
+The final proposed contract and review provenance are in
+`.claude/plans/2026-09-07-cp2-curated-replay.md` and its companion critique. Acceptance as a proposal
+does not certify application, oracle, network or Copilot readiness. Model-dependent retrieval
+probes belong inside capped calibration after external controls are proved and before onboarding
+or tasks. Any eventual CP2 result is descriptive within-case evidence with prior inspection and
+scorer/model familiarity disclosed; keep it separate from CP1/FS1/FS2/RK1 and preserve B-42.
