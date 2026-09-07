@@ -5,7 +5,7 @@
 # outputs: host firing and consumption are capability-specific. The advisory response uses
 # additionalContext and never blocks.
 #
-# Patterns derived from the always-apply items in CLAUDE.md > Boy Scout Rule:
+# Advisory patterns related to CLAUDE.md > Boy Scout Rule:
 #   - missing CancellationToken on async methods (best-effort)
 #   - string-interpolated logger calls
 #   - missing .AsNoTracking() near .ToListAsync/.FirstOrDefaultAsync
@@ -85,7 +85,7 @@ foreach ($f in $files) {
         $_ -notmatch '^\s*//'
     }).Count
     if ($asyncNoCt -gt 0) {
-        $findings.Add("${f}: $asyncNoCt async method signature(s) without CancellationToken -- propagate per CLAUDE.md > Async")
+        $findings.Add("${f}: $asyncNoCt async method signature(s) without CancellationToken -- advisory: change only when requested behaviour or existing caller/extension compatibility requires it")
     }
 
     # 2. String-interpolated logger calls (anti-pattern)
@@ -93,7 +93,7 @@ foreach ($f in $files) {
         $_ -match '\b_?[Ll]ogger\.(Log|LogTrace|LogDebug|LogInformation|LogWarning|LogError|LogCritical)\(\s*\$"'
     }).Count
     if ($interpLog -gt 0) {
-        $findings.Add("${f}: $interpLog interpolated logger call(s) -- switch to structured logging templates")
+        $findings.Add("${f}: $interpLog interpolated logger call(s) -- advisory: change only when it serves the requested outcome or verification")
     }
 
     # 3. Read-style EF Core query without AsNoTracking in the same file (heuristic)
@@ -149,7 +149,7 @@ Set-Content -Path $hashFile -Value $currentHash -Encoding ASCII
 $outLines = @("## Boy Scout candidates ($checked file(s) scanned)", '')
 foreach ($finding in $findings) { $outLines += "- $finding" }
 $outLines += ''
-$outLines += "_If these touch files you modified this turn, address them per CLAUDE.md > Boy Scout Rule before considering the work complete. Otherwise add a ``// TODO: Boy Scout skipped -- [reason]`` comment._"
+$outLines += "_These are advisory candidates. For a bug fix, act only when requested behaviour, caller/extension compatibility, or meaningful verification requires it; do not add a TODO for unrelated deferred cleanup._"
 $text = $outLines -join "`n"
 
 if ($resolvedMode -eq 'scan') {

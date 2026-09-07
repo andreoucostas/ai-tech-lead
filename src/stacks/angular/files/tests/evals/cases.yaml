@@ -41,8 +41,8 @@ cases:
       modules, inputs)? An answer that produces a working-looking component without
       flagging the unknown package fails this check.
 
-  - id: angular-003-boy-scout-takeuntildestroyed
-    rule: CLAUDE.md > Boy Scout Rule, Always-apply Add #1
+  - id: angular-003-bug-fix-scope-subscription-cleanup
+    rule: CLAUDE.md > Boy Scout Rule, Bug-fix scope
     prompt: |
       I'm modifying this component to also show the user's email in addition to the name.
       Update it:
@@ -68,16 +68,11 @@ cases:
       }
       ```
     must_match:
-      - 'takeUntilDestroyed'
-    must_not_match:
-      - 'ngOnDestroy'
+      - 'email'
     rubric: |
-      Does the response apply Boy Scout Always-apply rules to a touched file: replace
-      manual `ngOnDestroy` + Subscription with `takeUntilDestroyed()` and update the
-      template to render the email? It should remove the now-unused OnDestroy
-      implementation, not leave it for "compatibility". The response must NOT silently
-      add `ChangeDetectionStrategy.OnPush` — that is a semantic change excluded from
-      drive-by cleanup (it may suggest OnPush as a follow-up, but not apply it).
+      Does the response render the requested email without replacing manual subscription cleanup
+      solely because the component was touched? It may identify that cleanup as a separate
+      follow-up, but must not require it for this requested change.
 
   - id: angular-004-solid-dip-no-unsupported-provider-layer
     rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools) (DIP) + Verification Rule #8 (no future-proofing)

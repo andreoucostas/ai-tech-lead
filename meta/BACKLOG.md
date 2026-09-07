@@ -18,7 +18,7 @@ export, production queries, or external participant contact.
 | 2 | B-223 capture and refresh | Released in v0.84.0; semantic refresh and retained forward misses remain |
 | 3 | B-224 ordinary-task Copilot use | Released carrier; one bounded CLI access miss/cost observed, ordinary CLI/VS Code acceptance remains open |
 | Independent repairs | B-216 instance skills; B-226 review scope | Released in v0.84.0; named semantic/host gaps remain explicit |
-| Next proposed repair | B-231 bug-fix scope and compatibility | Source contradictions verified; bounded proposal recorded |
+| Current delivery | B-231 bug-fix scope and compatibility | Implemented for v0.86.0; release/review pending |
 | When a participant exists | B-42 independent FS2 | Existing packet ready; independent run outstanding |
 | Deferred | B-49 drill and consumer self-assessment | Old instrument invalid; no execution authority |
 
@@ -593,9 +593,8 @@ contrast are source/static evidence; no model dispatch or sequential-fallback ef
 ### B-231 · Bound bug-fix cleanup by task scope and preserve existing extension contracts
 **Filed against:** v0.84.0 (2026-09-07)
 **Priority:** P2 · **Effort:** M · **Invariants:** #1 #2 #4 #5 #7
-**Status:** OPEN. Source contradictions verified during the requested experiment-plan review;
-bounded proposal in `.claude/plans/2026-09-07-abp-experiment-follow-through.md` (WSD-079).
-No product implementation or behavioural observation of revised instructions has run.
+**Status:** IMPLEMENTED; NOT SHIPPED (v0.86.0). Source and fresh-carrier changes are staged from
+the locked Delivery 2 contract; release review and live-model compliance remain outstanding.
 
 **Evidence.** `/fix` requires a minimal fix and forbids unrelated refactoring, while root template
 Boy Scout text, framework-rules workflow section 4, convention-check and the three Boy Scout hook
@@ -617,9 +616,11 @@ refactoring remains allowed. Verify fresh/update carriers, hook shapes on both s
 PowerShell hosts, then separate review, standard release checks and changelogs. Static consistency
 does not establish live-model compliance. B-230 was released separately in v0.85.0.
 
-**RCA to close at delivery.** Existing rules used touched-file membership as permission to expand
-the fix, and reviewers/hooks repeated it despite the minimal-fix rule. The same policy conflict
-applies across workflow, review, generation and advisory messages; reconcile that bounded set.
+**RCA.** Existing rules used touched-file membership as permission to expand the fix, while the
+minimal-fix route said otherwise. Reviewers, generated carriers, defaults, evals, and advisory hook
+messages repeated the conflict; the repair centralizes update-delivered scope in framework-rules and
+tests both fresh carriers and protected-update delivery. Static/executable coverage cannot prove a
+live model follows it.
 
 ## Independent evidence and deferred work
 

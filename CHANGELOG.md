@@ -11,6 +11,14 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.86.0 — Unreleased
+
+**B-231 / WSD-079 makes bug-fix scope outcome-based.** The framework-owned workflow carrier now
+allows only edits needed for requested behaviour, caller/extension compatibility, or meaningful
+verification, while retaining explicitly requested refactoring. `/fix` and `/review` identify
+unrequested public/protected signature and virtual/override breaks; fresh carriers, declarative
+evals, and advisory hook wording no longer turn a touched file into authority for unrelated cleanup.
+
 ## 0.85.0 — 2026-09-07
 
 **Headless `/adopt` now proves it preserved every archived original byte-for-byte (B-230, WSD-079).**

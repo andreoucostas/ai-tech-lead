@@ -22,14 +22,15 @@ Before touching production code, derive the repository's applicable test harness
 - When no applicable harness or test command exists, reproduce the bug with the strongest evidenced validation, report tests as **not available**, and do not introduce a foreign harness solely for this fix.
 
 ### Step 3 — Fix
-- Apply the minimal fix that addresses the root cause
-- Do not refactor unrelated code in the same change (that's what `/refactor` is for)
+- Every edit must be necessary for the requested behaviour, compatibility with existing callers or extension points, or meaningful verification. A necessary fix may extend beyond its original hunk.
+- Explicitly requested cleanup/refactoring remains allowed. A touched file alone does not authorize unrelated logging or cleanup, and deferred unrelated work needs no TODO.
+- If public/protected signatures or virtual/override behaviour change, check existing callers and extension compatibility. Identify an unrequested incompatibility; an explicitly requested addition or break remains valid.
 
 ### Step 4 — Verify
 <!-- @stack:verify-cmds -->
 
-### Step 5 — Boy Scout (blast radius only)
-Apply Boy Scout Rule (CLAUDE.md > Boy Scout Rule) to files within the blast radius only. Do not boy-scout unrelated files in a bug fix.
+### Step 5 — Boy Scout (outcome-bound)
+Apply only the Boy Scout work permitted by Step 3. Do not boy-scout unrelated files in a bug fix.
 
 ### Step 6 — Wrap up
 @.claude/workflow.md

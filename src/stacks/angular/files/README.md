@@ -15,7 +15,7 @@ If you are an AI agent reading this repository, start here.
 2. **Commit the copied files** in the target repo — they are team-shared config, not local settings.
 3. **Hand off to the developer.** Populating is done by **`/adopt`** (brownfield — the installer wrote `.claude/adoption-pending.json`) or **`/bootstrap`** (greenfield). Both are **developer-initiated**: the model cannot invoke them, and they only exist inside a Claude Code session started in the target repo — so you cannot run them, and you must not try to replicate them by hand. End your run by telling the developer, verbatim: *"start a Claude Code session in `<target repo>` and type `/adopt`"* (or `/bootstrap`). Until that happens, the SessionStart hook warns every new session and `scripts/docs-sync-check` fails CI — expect that check to fail at this stage; it passes only after the developer has run the command.
 
-**If you were asked to do development work in a repo that already has this installed:** follow the **Agentic Workflow** in `CLAUDE.md` — classify intent, post a plan and wait for go-ahead, execute in verified subtasks using repository-evidenced commands for the changed area, Boy Scout every touched file, self-review with a verification line. Trigger the matching skill in `.claude/skills/` when the task fits one.
+**If you were asked to do development work in a repo that already has this installed:** follow the **Agentic Workflow** in `CLAUDE.md` — classify intent, post a plan and wait for go-ahead, execute in verified subtasks using repository-evidenced commands for the changed area, keep bug-fix cleanup outcome-bound, self-review with a verification line. Trigger the matching skill in `.claude/skills/` when the task fits one.
 
 Architecture: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) · Reviewer's tour: [docs/REVIEW-GUIDE.md](./docs/REVIEW-GUIDE.md) · Full methodology: [docs/playbook.md](./docs/playbook.md).
 
@@ -35,11 +35,11 @@ No marketing. Each item is a concrete mechanism and the effect it produces.
 
 6. **Defined bad editor writes blocked deterministically.** On supported hosts with hooks available, the PreToolUse guard blocks editor/file-write events that add a suppression (`// eslint-disable`, `@ts-ignore`, `@ts-nocheck`) or a hardcoded secret. Shell/terminal writes are outside that event scope.
 
-7. **Natural language routes to the right workflow — no slash commands to memorise.** Typing *"the export button is broken"* auto-injects the `/fix` rails (cause-first diagnosis, an evidenced regression test when a harness exists, blast-radius cleanup). The seven workflows are still available as explicit slash commands when you want deterministic routing.
+7. **Natural language routes to the right workflow — no slash commands to memorise.** Typing *"the export button is broken"* auto-injects the `/fix` rails (cause-first diagnosis, an evidenced regression test when a harness exists, outcome-bound fixes). The seven workflows are still available as explicit slash commands when you want deterministic routing.
 
 8. **Common tasks carry explicit guardrails.** Skills encode repository-grounded recipes (for example, add-component follows the evidenced scaffold, routing, model, service, state, and verification patterns). The agent follows *your* recipe, not a generic one.
 
-9. **Quality improves as a side effect of normal work.** The Boy Scout Rule cleans every file the agent touches — manual `ngOnDestroy` cleanup → `takeUntilDestroyed()`, nested subscribes flattened, `any` replaced with real types; the Trojan Horse principle bundles debt cleanup into feature and fix tickets; a leanness counterweight stops it adding abstraction you don't need. (Semantic changes like switching to `OnPush` are deliberately excluded from drive-by cleanup.) No dedicated debt sprints.
+9. **Quality improves as a side effect of normal work.** Bug-fix cleanup serves the requested outcome, compatibility, or verification; requested refactoring remains allowed. The Trojan Horse principle bundles owned debt work into feature and fix tickets; a leanness counterweight stops needless abstraction. No dedicated debt sprints.
 
 10. **Security is systematic, not heroic.** `/security-review` runs an OWASP-style pass (XSS via unsafe HTML binding, auth/route-guard gaps, secrets in source, sensitive data in logs or responses) on every change; findings land in `SECURITY_FINDINGS.md` with remediation SLAs.
 
@@ -134,6 +134,10 @@ Each consumer repo records the template version it was last synced from. Two loc
 
 To pull template updates, run `pwsh -NoProfile -File scripts/install.ps1 <target-repo-path>` from a fresh template checkout on Windows — it detects the existing `.claude/framework-version.json` and switches to **update mode**. Preserve local edits to framework-owned files before running it, then review the resulting diff before committing. Update treats files in three ownership classes: the protected consumer paths named by the installer (`CLAUDE.md`, `AGENTS.md`, `TECH_DEBT.md`, `SECURITY_FINDINGS.md`, `LEARNINGS.md`, `FRAMEWORK-CONTEXT.md`, `.github/copilot-instructions.md`, `docs/ARCHITECTURE.md`, and `docs/architecture-decisions.md`) are restored; framework-owned machinery (hooks, commands, skills, scripts, and the JSON stamp) is overwritten; mixed-ownership `.claude/settings.json` is first backed up to `.claude/.state/settings.json.pre-update`, then refreshed and adapted to the host. Bump the CLAUDE.md header comment yourself as part of the update commit. CI tooling reads the JSON file to detect drift between your repo and the latest template version. If the version stamps disagree, treat the JSON file as authoritative. The update also refreshes `.github/instructions/framework-rules.instructions.md`. The update proves file arrival, not Copilot host consumption; see `docs/enforcement-surfaces.md` for dated, client-specific consumption evidence. Existing Claude Code consumers must once add `@.github/instructions/framework-rules.instructions.md` to `CLAUDE.md` where the four inline framework sections were, then delete those old sections. Until then, `session-start` provides discovery only. The carrier is framework-owned: update deliberately overwrites consumer edits to it. Boy Scout content remains consumer-owned after bootstrap, so future scaffold changes to it are greenfield-only.
 
+For the new scope default, reconcile any old touched-file mandate in protected `CLAUDE.md`, then run
+`/generate-copilot`; retain an intentional consumer mandate. Update does not silently migrate
+protected `CLAUDE.md`, `AGENTS.md`, or Copilot text.
+
 ## What's in the box
 
 | File | Purpose |
@@ -166,7 +170,7 @@ To pull template updates, run `pwsh -NoProfile -File scripts/install.ps1 <target
 Every workflow command follows the same execution model:
 1. **Plan** before coding (CLAUDE.md is auto-loaded — no need to re-read)
 2. **Execute in verified subtasks** (run only applicable repository-evidenced checks after each; report unavailable categories)
-3. **Boy Scout** every touched file
+3. **Bug-fix scope** — outcome, compatibility, or verification
 4. **Self-review** against conventions (shared `@.claude/workflow.md` tail)
 5. **Flag drift** in documentation
 
@@ -177,9 +181,9 @@ Every workflow command follows the same execution model:
 | `UserPromptSubmit` | Every prompt | Regex-classifies natural-language prompts as `fix`/`feature`/`refactor`/`test`/`design`/`debt`/`review` and injects that workflow's hard rules. Skips explicit `/command` invocations. Copilot CLI ≥ v1.0.65 supports `additionalContext`; single-entry delivery was observed on CLI 1.0.80 (2026-08-18). VS Code Preview hooks register the documented shape, but live `userPromptSubmitted` consumption remains unverified, so `AGENTS.md` self-classification is the fallback there. |
 | `PreToolUse` (Write/Edit) | Supported `.ts` editor/file-write events | Blocks defined suppression and secret patterns when the registered hook and interpreter are live. Shell writes are outside the event scope. |
 | `PostToolUse` (Write/Edit) | Supported `.ts` editor/file-write events | Runs `tsc --noEmit` and appends mutable local telemetry when the hooks are live. |
-| `Stop` / `agentStop` | End of a write turn | Scans modified `.ts` files for the always-apply Boy Scout patterns (manual `ngOnDestroy` + `subscribe`, nested `subscribe`, `any`, commented-out code blocks); soft-warns the model. `OnPush` is intentionally excluded — switching a component to `OnPush` is a semantic change, not a drive-by cleanup. Claude Code uses `Stop`. Copilot CLI documents `agentStop` from 1.0.72 and the framework registers it, but live firing and the resulting queue write remain unverified; only the separate next-prompt delivery leg was observed on CLI 1.0.80. VS Code Preview-hook event spelling, firing, and delivery remain unverified. |
+| `Stop` / `agentStop` | End of a write turn | Scans modified `.ts` files for advisory Boy Scout candidates (manual `ngOnDestroy` + `subscribe`, nested `subscribe`, `any`, commented-out code blocks); it does not require a bug-fix cleanup merely because a file was touched. `OnPush` is intentionally excluded — switching a component to `OnPush` is a semantic change, not a drive-by cleanup. Claude Code uses `Stop`. Copilot CLI documents `agentStop` from 1.0.72 and the framework registers it, but live firing and the resulting queue write remain unverified; only the separate next-prompt delivery leg was observed on CLI 1.0.80. VS Code Preview-hook event spelling, firing, and delivery remain unverified. |
 
-The router is the key piece. **In Claude Code**, a developer who types *"the export button is broken"* gets the `/fix` rails (cause-first diagnosis, an evidenced regression test when a harness exists, blast-radius Boy Scout) auto-injected per-prompt, without typing a slash command. **In Copilot CLI**, the same single-entry injection was observed on 1.0.80; `AGENTS.md` self-classification is the fallback on older or unavailable hooks. VS Code's Preview-hook prompt lifecycle remains unverified. Either way, the seven workflows are also invokable explicitly as slash commands (`/feature`, `/fix`, …) for deterministic routing.
+The router is the key piece. **In Claude Code**, a developer who types *"the export button is broken"* gets the `/fix` rails (cause-first diagnosis, an evidenced regression test when a harness exists, outcome-bound cleanup) auto-injected per-prompt, without typing a slash command. **In Copilot CLI**, the same single-entry injection was observed on 1.0.80; `AGENTS.md` self-classification is the fallback on older or unavailable hooks. VS Code's Preview-hook prompt lifecycle remains unverified. Either way, the seven workflows are also invokable explicitly as slash commands (`/feature`, `/fix`, …) for deterministic routing.
 
 #### Hook compatibility
 
@@ -242,7 +246,7 @@ Create files under `.github/instructions/` with `applyTo:` frontmatter:
 applyTo: "**/*.cs"
 ---
 # C# / .NET rules
-- Propagate CancellationToken through every async call chain.
+- Preserve extension compatibility; propagate CancellationToken only when outcome or compatibility requires it.
 - Use `.AsNoTracking()` for read-only EF Core queries.
 - ...
 ```
@@ -291,7 +295,7 @@ This framework supports local command and hook execution on **Windows** whether 
 
 - When conventions change: update `CLAUDE.md` and ask your agent (or `/generate-copilot`) to refresh `.github/copilot-instructions.md`
 - Quarterly: run `/docs-sync` to find drift, or `/rebootstrap` for a deeper refresh
-- Always: the Boy Scout Rule and Trojan Horse principle mean every change improves the codebase incrementally
+- Always: apply the framework-owned bug-fix scope; separately owned debt can use `/debt`
 
 ## Changelog
 

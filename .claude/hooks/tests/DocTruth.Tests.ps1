@@ -11,7 +11,19 @@
 # Docs that lie to the maintainer are how the NEXT defect gets authored. These are the mechanically
 # checkable subset -- prose claims about CI ("CI runs X") are deliberately not asserted here,
 # because detecting a claim in prose is NLP, not a gate. See meta/LEARNINGS.md, 2026-07-12.
+param([switch]$B231ScopeMutation)
+
+if ($B231ScopeMutation) {
+    $carrier = Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path 'src/core/.github/instructions/framework-rules.instructions.md'
+    if (-not (Get-Content -LiteralPath $carrier -Raw).Contains('Every bug-fix edit must be necessary')) {
+        [Console]::Error.WriteLine('B-231 framework-owned scope is absent')
+        exit 1
+    }
+    exit 0
+}
+
 . (Join-Path $PSScriptRoot '_HookHarness.ps1')
+. (Join-Path $PSScriptRoot '_MutationHelper.ps1')
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $rootDocs = @('README.md', 'CLAUDE.md', 'AGENTS.md', 'DEVELOPING.md')
 
@@ -241,6 +253,37 @@ It 'root delivery facts defer counts to manifests, ship licence plus notice, and
     }
     $bad = @(Get-RootDeliveryFactViolations $readme $claude $agents $manifests $delivered)
     Assert ($bad.Count -eq 0) ($bad -join '; ')
+}
+
+It 'B-231 keeps one outcome scope across fresh carriers and truthful protected updates' {
+    $carrier = Get-Content -Raw (Join-Path $repoRoot 'src/core/.github/instructions/framework-rules.instructions.md')
+    Assert ($carrier.Contains('Every bug-fix edit must be necessary')) 'framework-owned outcome rule is absent'
+    Assert ($carrier.Contains('existing caller/extension compatibility')) 'necessary caller/extension edits are not allowed'
+    Assert ($carrier.Contains('meaningful verification')) 'meaningful verification edits are not allowed'
+    Assert ($carrier.Contains('Requested cleanup/refactoring is allowed')) 'explicitly requested refactoring is not allowed'
+    Assert ($carrier.Contains('public/protected signatures or virtual/override behaviour')) 'unrequested extension-contract breaks are not checked'
+    foreach ($stack in @('dotnet','angular','monorepo')) {
+        $dist = Join-Path $repoRoot "dist/$stack"
+        $copilot = Get-Content -Raw (Join-Path $dist '.github/copilot-instructions.md')
+        $hook = Get-Content -Raw (Join-Path $dist '.claude/hooks/boy-scout-check.ps1')
+        $readme = Get-Content -Raw (Join-Path $dist 'README.md')
+        Assert ($copilot.Contains('Follow framework-rules: edit only for outcome, compatibility, verification, or requested refactoring')) "$stack fresh copilot carrier omits the outcome scope"
+        Assert (-not $copilot.Contains('Boy Scout (apply only to evidenced constructs on touched files)')) "$stack fresh copilot carrier retains touched-file scope"
+        Assert ($hook.Contains('advisory candidates')) "$stack hook no longer identifies its findings as advisory"
+        Assert ($hook.Contains('do not add a TODO for unrelated deferred cleanup')) "$stack hook permits a touched-file TODO rule"
+        Assert ($readme.Contains('protected consumer paths') -and $readme.Contains('framework-rules.instructions.md')) "$stack update guidance does not distinguish protected content from the framework-owned carrier"
+    }
+}
+
+It 'B-231 scope mutation is reachable and restores its scratch bytes' {
+    $hostPath = (Get-Process -Id $PID).Path
+    $target = Join-Path $repoRoot 'src/core/.github/instructions/framework-rules.instructions.md'
+    Invoke-MutationRedTest -TargetFile $target -ScratchSourceRoot $repoRoot `
+        -Find 'Every bug-fix edit must be necessary' -Replacement 'Every bug-fix edit is optional' -ExpectedExit 1 -Command {
+            param($scratchTarget, $scratchRoot)
+            & $hostPath -NoProfile -File (Join-Path $scratchRoot '.claude/hooks/tests/DocTruth.Tests.ps1') -B231ScopeMutation
+            $global:LASTEXITCODE = $LASTEXITCODE
+        } | Out-Null
 }
 
 It 'root delivery fact helper rejects brittle counts, omitted legal paths, and numeric status fixtures' {

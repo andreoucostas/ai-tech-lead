@@ -4,6 +4,13 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.86.0 — Unreleased
+
+- Bug fixes now keep cleanup tied to the requested outcome, compatibility, or verification. An
+  existing async API does not need a cancellation-token or logging rewrite merely because it changed.
+  Reviews call out an unrequested public/protected signature or virtual/override break. Updates keep
+  your `CLAUDE.md`, `AGENTS.md`, and Copilot instructions protected while refreshing framework rules.
+
 ## 0.85.0 — 2026-09-07
 
 - `/adopt` now preserves every archived original **byte-for-byte** and proves it. The installer

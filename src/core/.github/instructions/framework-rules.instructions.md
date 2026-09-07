@@ -61,7 +61,7 @@ Natural-language requests trigger a workflow: classify silently, announce it in 
 > These rails are canonical. Commands and `route-prompt` may elaborate, not contradict; carriers and hooks remain independent.
 
 <!-- @stack:workflow-bullets -->
-- **Debt cleanup** — *tech debt / cleanup debt*: confirm relevant `TECH_DEBT.md` items still exist and respect dismissed proposals unless materially changed evidence is named → apply Verification command discovery; without a harness, use the strongest evidenced check rather than adding one → recommend fix-now vs defer → update the file after fixes → Boy Scout touched files → report outcomes, validation, and diff.
+- **Debt cleanup** — *tech debt / cleanup debt*: confirm relevant `TECH_DEBT.md` items still exist and respect dismissed proposals unless materially changed evidence is named → apply Verification command discovery; without a harness, use the strongest evidenced check rather than adding one → recommend fix-now vs defer → update the file after fixes → report outcomes, validation, and diff.
 
 Registered, observed, and instructed differ by surface; these rails remain binding.
 
@@ -85,8 +85,8 @@ For features and complex changes, decompose into ordered subtasks:
 Each subtask leaves applicable evidenced verification green; never add a foreign harness to manufacture a check.
 <!-- @stack:exec-buildtest -->
 
-### 4. Boy Scout every touched file
-Check the Boy Scout Rule list above. Apply relevant improvements to every file you modify.
+### 4. Bug-fix scope
+Every bug-fix edit must be necessary for requested behaviour, existing caller/extension compatibility, or meaningful verification. Requested cleanup/refactoring is allowed; a touched file alone authorizes neither unrelated cleanup/logging nor a TODO. Necessary fixes may cross hunks. For changed public/protected signatures or virtual/override behaviour, identify any unrequested incompatibility; explicitly requested additions or breaks remain valid.
 
 ### 5. Self-review before presenting
 Before presenting work as complete:

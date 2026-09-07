@@ -34,7 +34,7 @@ $ARGUMENTS
    - **.NET Architecture / SOLID / Dependency Injection / Data Access / API Design / Async / Null Handling / Logging** — only when the .NET profile and each source convention are evidenced/populated
    - **Warehouse schema / migration/deploy / data-validation** — only when the warehouse profile and each source convention are evidenced/populated
    - **Testing** — name the framework evidenced in `CLAUDE.md > Conventions`; if absent, require mirroring the existing suite
-   - **Boy Scout (always-apply items only)** — the numbered list from CLAUDE.md's "Always apply" subsection
+   - **Bug-fix scope** — the framework-owned outcome/compatibility/verification rule plus any applicable numbered items
 
 5. Hard limits:
    - Each rule: one line, max 120 characters
@@ -64,6 +64,7 @@ Copy these sections **verbatim** from `.github/instructions/framework-rules.inst
 - **Conventions** — copy `CLAUDE.md > Conventions` once bootstrapped. Until then, keep the placeholder that points to `docs/defaults.md` and marks CLAUDE.md authoritative.
 - **Boy Scout Rule** — full (Always apply + Apply-only-when-primary + When to skip)
 - **Agentic Workflow** — copy **section 1 ("Classify the intent — and run that workflow without being asked") VERBATIM**: every workflow's inline non-negotiables, the canonical-definition note, the answer-only carve-out, and the security-pass paragraph. This is the canonical file-based routing definition, so it must never be condensed or paraphrased. A registered prompt hook is an independent, capability-specific salience path; its registration and output do not prove host firing or consumption. Sections 2–5 (plan-gate, verified subtasks, Boy Scout, self-review/flag-drift) may be condensed to one line each. `/docs-sync` asserts this mirror's section-1 block still matches `CLAUDE.md` §1.
+- Keep the framework-owned bug-fix scope in the generated workflow; a touched file alone does not authorize unrelated cleanup.
 - **Common Tasks** — the skills list, noting that `.claude/skills/` is the shared canonical location for Claude Code and supported GitHub Copilot skill surfaces
 
 Then keep:

@@ -5,7 +5,7 @@
 # outputs: host firing and consumption are capability-specific. The advisory response uses
 # additionalContext and never blocks.
 #
-# Patterns derived from the always-apply items in CLAUDE.md > Boy Scout Rule:
+# Advisory patterns related to CLAUDE.md > Boy Scout Rule:
 #   - manual ngOnDestroy subscription cleanup
 #   - nested .subscribe()
 #   - explicit `any` / `as any`
@@ -79,13 +79,13 @@ foreach ($f in $files) {
 
     # 1. ngOnDestroy + manual .subscribe -- likely a candidate for takeUntilDestroyed
     if ($content -match 'ngOnDestroy' -and $content -match '\.subscribe\(') {
-        $findings.Add("${f}: manual ngOnDestroy with .subscribe -- consider takeUntilDestroyed()")
+        $findings.Add("${f}: manual ngOnDestroy with .subscribe -- advisory: consider takeUntilDestroyed() only when it serves the requested outcome or verification")
     }
 
     # 2. Multiple .subscribe( calls -- possible nested subscribe
     $subMatches = [regex]::Matches($content, '\.subscribe\(')
     if ($subMatches.Count -ge 3) {
-        $findings.Add("${f}: $($subMatches.Count) .subscribe() calls -- review for nested subscribes (use switchMap/mergeMap/concatMap/exhaustMap)")
+        $findings.Add("${f}: $($subMatches.Count) .subscribe() calls -- advisory: review for nested subscribes only when it serves the requested outcome or verification")
     }
 
     # 3. Explicit `any` (not in comments)
@@ -133,7 +133,7 @@ Set-Content -Path $hashFile -Value $currentHash -Encoding ASCII
 $outLines = @("## Boy Scout candidates ($checked file(s) scanned)", '')
 foreach ($finding in $findings) { $outLines += "- $finding" }
 $outLines += ''
-$outLines += "_If these touch files you modified this turn, address them per CLAUDE.md > Boy Scout Rule before considering the work complete. Otherwise add a ``// TODO: Boy Scout skipped -- [reason]`` comment._"
+$outLines += "_These are advisory candidates. For a bug fix, act only when requested behaviour, caller/extension compatibility, or meaningful verification requires it; do not add a TODO for unrelated deferred cleanup._"
 $text = $outLines -join "`n"
 
 if ($resolvedMode -eq 'scan') {

@@ -81,7 +81,7 @@ Data-access defaults are conditional on what the repo evidences in csproj packag
 - Background work uses `BackgroundService` or `IHostedService`. No `Task.Run` fire-and-forget in request handlers.
 
 ### Async
-- Propagate `CancellationToken` through every async call chain.
+- Preserve extension compatibility; propagate `CancellationToken` only when outcome or compatibility requires it.
 - No `async void`. No sync-over-async. No fire-and-forget without explicit justification.
 
 ### Null Handling

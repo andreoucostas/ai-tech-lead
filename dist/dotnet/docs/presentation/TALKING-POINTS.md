@@ -153,8 +153,9 @@ Mainly keeping CLAUDE.md current as conventions evolve — a few hundred budgete
 checks that flag when mirrors or docs fall behind. The tech lead owns it; it's a first-class artifact.
 
 **"What if someone needs to ship a hotfix right now?"**
-The Boy Scout / cleanup rules have a documented skip for hotfixes and incidents (leave a TODO marker;
-`/debt` cleans up later). The hard blocks (secrets, suppressions) stay on by design.
+The Boy Scout / cleanup rules have a documented skip for hotfixes and incidents; unrelated deferred
+cleanup needs no TODO marker. `/debt` tracks only separately owned debt. The hard blocks (secrets,
+suppressions) stay on by design.
 
 ---
 

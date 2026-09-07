@@ -87,15 +87,13 @@ evidence satisfies the gate:
 
 ## Boy Scout Rule
 
-When touching any file, leave it cleaner than you found it. The rule is symmetric: improvements *add* missing pieces and *remove* dead weight. Deletion is a contribution.
+**Bug-fix scope.** See the framework-owned workflow scope.
 
-### Always apply (low-effort, low-risk — do these on every touched file):
-
-Apply only entries whose technology exists here; the profile proves none.
+### Always apply (low-effort, low-risk — subject to Bug-fix scope above):
 
 **Add:**
-1. Missing `CancellationToken` propagation
-2. Replace string-interpolated log messages with structured logging
+1. `CancellationToken` only when outcome/compatibility requires it
+2. Structured logging only when outcome/verification requires it
 3. Missing null checks at public boundaries
 4. Missing `.AsNoTracking()` on read-only queries
 
@@ -116,8 +114,6 @@ Apply only entries whose technology exists here; the profile proves none.
 12. Single-use private helpers — inline at the call site
 
 Items 8–12 can significantly expand or reshape a diff. Only apply them when the file is what the task is specifically about, not when it's incidentally touched. This keeps PRs focused and reviewable.
-
-**When to skip**: hotfixes, time-sensitive production incidents, and proof-of-concept branches. If skipping, add a comment `// TODO: Boy Scout skipped — [reason]` so it's picked up on the next pass. Use `/debt` to clean up later.
 
 ---
 

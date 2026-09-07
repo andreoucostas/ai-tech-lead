@@ -79,11 +79,9 @@ evidence satisfies the gate:
 
 ## Boy Scout Rule
 
-When touching any file, leave it cleaner than you found it. The rule is symmetric: improvements *add* missing pieces and *remove* dead weight. Deletion is a contribution.
+**Bug-fix scope.** See the framework-owned workflow scope.
 
-### Always apply (low-effort, low-risk — do these on every touched file):
-
-Apply only entries whose technology exists here; the profile proves none.
+### Always apply (low-effort, low-risk — subject to Bug-fix scope above):
 
 **Add:**
 <!-- @stack:bs-add -->
@@ -100,8 +98,6 @@ Apply only entries whose technology exists here; the profile proves none.
 <!-- @stack:bs-primary-subtract -->
 
 <!-- @stack:bs-items-note -->
-
-**When to skip**: hotfixes, time-sensitive production incidents, and proof-of-concept branches. If skipping, add a comment `// TODO: Boy Scout skipped — [reason]` so it's picked up on the next pass. Use `/debt` to clean up later.
 
 ---
 

@@ -2264,3 +2264,13 @@ case-count parity decision after the child-scope correction; `v0.85.0` was then 
 The earlier red run was useful evidence: a direct focused pass did not cover the wrapper scope that
 publishes release case counts. The release boundary supplied that missing execution vantage and
 withheld the tag until it was green. Live-model compliance with `/adopt` remains unmeasured.
+
+## 2026-09-07 — Bug-fix scope must arrive through the update-owned carrier
+
+B-231 found that shortening a protected consumer `CLAUDE.md` reference is insufficient: update
+preserves the consumer's `CLAUDE.md`, `AGENTS.md`, and Copilot instructions byte-for-byte. The
+complete outcome/compatibility/verification rule therefore belongs in the framework-owned
+`framework-rules.instructions.md` carrier, while fresh mirrors may give concise compatible guidance.
+The update fixture now proves both halves together: protected bytes survive, and the delivered carrier
+contains the scope rule. Declarative evals and a release-specific scratch mutation prove carrier
+presence and detection on the two PowerShell hosts; neither establishes live model compliance.

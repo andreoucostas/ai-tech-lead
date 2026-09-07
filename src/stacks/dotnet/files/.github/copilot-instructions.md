@@ -37,7 +37,7 @@ Scope gate: this installed file is a delivery-profile superset, not evidence tha
 - Background work via BackgroundService/IHostedService; no fire-and-forget Task.Run in handlers.
 
 ## Async
-- Propagate CancellationToken through every async call chain.
+- Preserve extension compatibility; propagate CancellationToken only when outcome/compatibility requires it.
 - No `async void`; no sync-over-async; no fire-and-forget without explicit justification.
 
 ## Null Handling
@@ -54,11 +54,6 @@ Scope gate: this installed file is a delivery-profile superset, not evidence tha
 - Test behavior, not implementation; no tautological assertions; no over-mocking; never skip a failing test.
 - Tests are deterministic and hermetic: no real network, clock, randomness, or order dependence.
 
-## Boy Scout (apply only to evidenced constructs on touched files)
-1. Add missing CancellationToken propagation.
-2. Replace string-interpolated log messages with structured logging.
-3. Add missing null checks at public boundaries.
-4. Add missing `.AsNoTracking()` on read-only queries.
-5. Remove unused `using` directives.
-6. Remove commented-out code blocks (more than 1 line).
-7. Remove unreferenced private fields, methods, or locals the compiler flags.
+## Bug-fix scope
+- Follow framework-rules: edit only for outcome, compatibility, verification, or requested refactoring; no touch-only cleanup/TODO.
+- Scope-gated candidates: unused `using` directives, commented-out blocks, and compiler-flagged unreferenced locals.

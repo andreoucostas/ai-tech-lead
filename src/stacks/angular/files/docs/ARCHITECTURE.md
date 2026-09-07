@@ -75,7 +75,7 @@ Same names in Claude Code (`.claude/commands/`) and Copilot Chat (`.github/promp
 | `/bootstrap` | One-time: analyse the codebase (7 parallel passes A1–A7: modules, state, components, RxJS, API, build/test/quality, skill discovery), populate CLAUDE.md + TECH_DEBT.md, generate AGENTS.md + copilot-instructions, and write evidenced project skills under `.claude/skills` |
 | `/adopt` | Ingest existing AI artifacts (Cursor/Copilot/Aider/ADRs) into this layout, then `/bootstrap` the gaps |
 | `/feature` | Implement at repository-evidenced boundaries; checks for a `specs/<slug>.md` first; verified subtasks; Boy Scout; self-review |
-| `/fix` | Cause-first diagnosis; regression test when an evidenced harness exists; minimal fix; blast-radius-only Boy Scout |
+| `/fix` | Cause-first diagnosis; regression test when an evidenced harness exists; outcome-bound fix |
 | `/refactor` | Behavior-preserving; baseline tests when available plus other evidenced checks; reports net LOC delta |
 | `/design` | Design-only; persists a spec to `specs/<slug>.md` (spec-driven development) |
 | `/test` | Smallest risk-relevant tests following project patterns |
@@ -131,7 +131,7 @@ sequenceDiagram
     A->>H: PostToolUse / postToolUse (if the host fires a supported .ts editor/file-write event in src/)
     H-->>A: script emits tsc --noEmit failures and appends mutable local hook telemetry
     A->>H: Stop / agentStop (if the host fires the end-of-turn event)
-    H-->>A: boy-scout-check emits advisory always-apply cleanup findings
+    H-->>A: boy-scout-check emits advisory cleanup candidates
 ```
 
 ---
@@ -141,7 +141,7 @@ sequenceDiagram
 - **Verification Rules** — verify before referencing; never invent APIs/selectors; honour version pinning (signals, control-flow, `inject()`, `takeUntilDestroyed` are version-gated); failures are signals (never `@ts-ignore`/`as any` to silence). Anti-hallucination.
 - **Leanness** — counterweight to Boy Scout's add-bias; no abstraction on data or for speculation. Reconciled with SOLID (#below).
 - **SOLID (mandatory)** — apply SRP/OCP/LSP/ISP and derive any injected-service boundary from project evidence and correctness needs; this framework does not require an abstraction, token, or DI container. `solid-check` is semantic; a consumer may choose an evidenced direction check. Data carriers are exempt.
-- **Boy Scout Rule** — leave touched files cleaner (symmetric: add missing pieces *and* remove dead weight). `OnPush` is *not* a drive-by cleanup — it's a semantic change applied only as a primary-target, verified edit.
+- **Bug-fix scope** — edits serve outcome, compatibility, or verification; requested refactoring remains valid. `OnPush` remains an explicit, verified change.
 - **Trojan Horse** — bundle nearby debt cleanup into feature/fix work, so quality compounds without debt sprints.
 
 ---

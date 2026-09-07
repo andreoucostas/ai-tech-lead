@@ -48,7 +48,8 @@ When the host supports concurrent `Task` dispatch, spawn the applicable auditors
 otherwise invoke every applicable participant sequentially against the same bundle. A missing
 parallel capability is not a reason to omit a reviewer.
 
-- `convention-check` — verifies the diff against CLAUDE.md > Conventions and Boy Scout always-apply items.
+- Give every applicable reviewer the requested behaviour, explicitly requested cleanup/refactoring, and known compatibility constraints as scope context. The captured bundle remains the subject bytes; this context cannot enlarge it.
+- `convention-check` — verifies the diff against CLAUDE.md > Conventions and the outcome-bound Boy Scout rule; do not demand excluded cleanup.
 - `solid-check` — audits the diff against the framework rules and first-party project evidence for the five SOLID principles; it does not impose a framework interface/token/container shape.
 - `debt-radar` — surfaces TECH_DEBT.md entries touching the changed files (debt-trajectory signal).
 - `bloat-radar` — surfaces speculative abstractions, shallow wrappers, parallel implementations, and comment debris in the diff.
@@ -82,6 +83,7 @@ The auditors handle pattern-level checks. You handle:
 - **Security**: injection, data exposure, auth bypass, sensitive data in logs — auditors do not check these.
 - **Test quality**: build on `test-critic`'s findings — confirm the new tests would fail if the code broke, and that error/edge paths are covered. Treat any "would pass against broken code" test as a high-severity issue.
 - **Architecture trajectory**: does this move toward or away from the target architecture in CLAUDE.md > Architecture Decisions?
+- **Bug-fix scope and compatibility**: for a fix, every edit must serve requested behaviour, caller/extension compatibility, or meaningful verification. Do not demand unrelated cleanup because a file was touched. When public/protected signatures or virtual/override behaviour changed, identify an unrequested incompatibility; explicitly requested additions/breaks remain valid.
 - **Spec conformance**: if a `specs/<slug>.md` exists for this change, verify the implementation satisfies its acceptance criteria, that **every Task in its checklist is checked off** (flag any still `- [ ]` as incomplete work), and stays within its declared scope. Flag unmet criteria or scope creep as issues.
 
 ### Step 4 — Confirm the scope did not drift, then synthesise

@@ -13,6 +13,6 @@ Hard rules for `copilot-instructions.md` (enforced by the canonical workflow):
 - One imperative line per rule
 - Total under 80 lines
 - No Common Tasks, no Architecture Decisions, no Codebase Context, no rationale prose
-- Conventions and Boy Scout (always-apply items only)
+- Conventions and Boy Scout (including the framework-owned bug-fix scope)
 
 After writing, run `wc -l .github/copilot-instructions.md`. If over 80, condense further. Verify `AGENTS.md` starts with the `GENERATED FILE` banner and contains the Verification Rules / Leanness / Boy Scout / Agentic Workflow sections.

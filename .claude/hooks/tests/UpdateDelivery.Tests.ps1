@@ -66,6 +66,8 @@ Repo-specific conventions the consumer owns. Populated by /bootstrap. DO NOT CLO
 ### 1. Classify the intent (stale inline copy)
 "@ -Encoding utf8
     Set-Content (Join-Path $t 'AGENTS.md') "# AGENTS`n`nGENERATED FILE`n" -Encoding utf8
+    New-Item -ItemType Directory -Force -Path (Join-Path $t '.github') | Out-Null
+    [IO.File]::WriteAllText((Join-Path $t '.github/copilot-instructions.md'), "# Consumer Copilot rules`r`nconsumer sentinel`r`n", [Text.UTF8Encoding]::new($false))
     Set-Content (Join-Path $t '.claude/framework-version.json') "{`"version`": `"$staleVersion`"}" -Encoding utf8
     Set-Content (Join-Path $t '.claude/settings.json') "{`n  `"consumerEdit`": `"recover me`"`n}`n" -Encoding utf8
     New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude/skills/add-warehouse-load') | Out-Null
@@ -324,6 +326,10 @@ $powerShellExtension = 'ps1'
     [IO.File]::WriteAllText($adrPath, "# Architecture Decisions`n`n## ADR-042: Consumer sentinel`n- **Decision**: preserve these bytes.`n", [Text.UTF8Encoding]::new($false))
 
     $before = Get-Hash $claudePath
+    $agentsPath = Join-Path $target 'AGENTS.md'
+    $agentsBefore = [IO.File]::ReadAllBytes($agentsPath)
+    $copilotPath = Join-Path $target '.github/copilot-instructions.md'
+    $copilotBefore = [IO.File]::ReadAllBytes($copilotPath)
     $adrBefore = [IO.File]::ReadAllBytes($adrPath)
     $learningsPath = Join-Path $target 'LEARNINGS.md'
     $learningsBefore = [IO.File]::ReadAllBytes($learningsPath)
@@ -360,6 +366,8 @@ $powerShellExtension = 'ps1'
     # THE assertions. If either fails, the framework is destroying consumer content.
     It "update leaves protected consumer documents byte-identical ($powerShellExtension)" {
         Assert ((Get-Hash $claudePath) -eq $before) 'update mode modified CLAUDE.md -- the v0.20.0 protection has regressed'
+        Assert-BytesEqual -Expected $agentsBefore -Actual ([IO.File]::ReadAllBytes($agentsPath)) -Message 'update mode modified protected AGENTS.md'
+        Assert-BytesEqual -Expected $copilotBefore -Actual ([IO.File]::ReadAllBytes($copilotPath)) -Message 'update mode modified protected copilot instructions'
         Assert-BytesEqual -Expected $adrBefore -Actual ([IO.File]::ReadAllBytes($adrPath)) -Message 'update mode replaced the consumer append-only ADR log'
         Assert-BytesEqual -Expected $learningsExpectedBytes -Actual $learningsBefore -Message 'disabled-skill fixture was not exact BOM + HT + CRLF input'
         Assert-BytesEqual -Expected $learningsBefore -Actual ([IO.File]::ReadAllBytes($learningsPath)) -Message 'update mode modified the protected disabled-skill ledger'
@@ -371,6 +379,7 @@ $powerShellExtension = 'ps1'
         Assert (Test-Path -LiteralPath $carrierPath) "carrier $carrierRel was not installed"
         $shipped = Get-Hash (Join-Path $repoRoot "dist/$dist/$carrierRel")
         Assert ((Get-Hash $carrierPath) -eq $shipped) 'installed carrier does not match the shipped one'
+        Assert ((Get-Content -LiteralPath $carrierPath -Raw).Contains('Every bug-fix edit must be necessary')) 'installed framework-owned carrier omitted the B-231 scope'
     }
 
     It "update refreshes framework skills while preserving consumer ownership ($powerShellExtension)" {

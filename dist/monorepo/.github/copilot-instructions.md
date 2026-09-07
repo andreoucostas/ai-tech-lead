@@ -28,7 +28,7 @@ Scope gate: this installed file is a delivery-profile superset, not evidence tha
 - Background work via BackgroundService/IHostedService; no fire-and-forget Task.Run in handlers.
 
 ## .NET — Async, Null Handling, Logging
-- Propagate CancellationToken through every async call chain; no `async void`; no sync-over-async.
+- Preserve extension compatibility; propagate CancellationToken only when outcome/compatibility requires it; no `async void` or sync-over-async.
 - Nullable reference types enabled; no `!` suppression without a comment explaining why; guard clauses at public API boundaries only — trust internal code.
 - Structured logging only — never string interpolation in log messages; LoggerMessage source generators on hot paths.
 
@@ -41,7 +41,7 @@ Scope gate: this installed file is a delivery-profile superset, not evidence tha
 ## Angular — State Management & RxJS
 - Local state: signals or simple properties; shared state: the project's store approach — don't mix; no prop drilling past 2 component levels.
 - Server state: handle loading, error, and success explicitly.
-- Prefer `async` pipe over manual `.subscribe()`; cleanup via `takeUntilDestroyed(this.destroyRef)`; no nested subscribes — use switchMap/mergeMap/concatMap/exhaustMap appropriately.
+- Preserve compatibility; use `takeUntilDestroyed(this.destroyRef)` when outcome or verification requires it; avoid nested subscribes with the appropriate operator.
 - Error handling in every stream; `catchError` only to recover, never to silence.
 
 ## Angular — API/HTTP, Typing, Styling
@@ -56,7 +56,5 @@ Scope gate: this installed file is a delivery-profile superset, not evidence tha
 - Test behavior, not implementation; no tautological assertions; no over-mocking; never skip a failing test.
 - Tests are deterministic and hermetic: no real network, clock, randomness, or order dependence; no `fdescribe`/`fit`/`xdescribe`/`xit` committed.
 
-## Boy Scout (apply only to evidenced constructs on touched files)
-- .NET: add missing CancellationToken propagation; structured logging instead of interpolation; null checks at public boundaries; `.AsNoTracking()` on read-only queries; remove unused `using` directives.
-- Angular: replace manual ngOnDestroy cleanup with `takeUntilDestroyed()`; replace nested `.subscribe()` with the appropriate operator; replace `any` with proper types; remove unused imports and unused `@Input`/`@Output` properties.
-- Both: remove commented-out code blocks (more than 1 line) and unreferenced private fields, methods, or locals the compiler/`tsc`/lint flags.
+## Bug-fix scope
+- Follow framework-rules: edit only for outcome, compatibility, verification, or requested refactoring; no touch-only cleanup/TODO.

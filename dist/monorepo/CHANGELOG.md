@@ -5,6 +5,13 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.86.0 — Unreleased
+
+- Bug fixes now keep cleanup tied to the requested outcome, compatibility, or verification. Existing
+  APIs and components do not need cancellation-token, logging, or subscription-cleanup rewrites just
+  because they changed. Updates keep your `CLAUDE.md`, `AGENTS.md`, and Copilot instructions protected
+  while refreshing framework rules.
+
 ## 0.85.0 — 2026-09-07
 
 - `/adopt` now preserves every archived original **byte-for-byte** and proves it. The installer

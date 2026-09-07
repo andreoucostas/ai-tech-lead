@@ -24,9 +24,9 @@ if ([Console]::IsOutputRedirected) {
 $railsFix = @'
 1. Diagnose root cause first; state it before writing any code.
 2. When the repository evidences an applicable test harness, write a failing regression test BEFORE touching production code; otherwise reproduce with the strongest evidenced validation and report tests as not available — never introduce a foreign harness solely for this fix.
-3. Apply the minimal fix; do not refactor unrelated code.
+3. Scope edits to requested behavior, existing caller/extension compatibility, or meaningful verification; requested cleanup/refactoring is allowed. A touched file authorizes no other cleanup/TODO. Check changed public/protected and virtual/override contracts for unrequested breaks.
 4. Derive exact regression and suite commands plus applicable build, test, format, lint, migration/deploy, and data-validation commands from repository evidence; run only safely executable applicable commands under the execution boundary above and report each unsupported category as not available.
-5. Apply Boy Scout to BLAST RADIUS only — never boy-scout unrelated files in a fix.
+5. Apply only Boy Scout work allowed by step 3.
 6. Report root cause, fix, regression-test coverage, blast radius.
 '@
 
@@ -90,7 +90,7 @@ This is a quality gate, not a rubber stamp.
 1. Check correctness and every CLAUDE.md > Conventions item per changed file.
 2. Check test quality — behavior coverage, descriptive names, regression detection.
 3. Derive and run only safely executable build, test, format, lint, migration/deploy, and data-validation commands supported by repository evidence yourself, subject to the execution boundary above; do not trust they pass, and report unsupported categories as not available.
-4. Check architecture/debt trajectory and Boy Scout application.
+4. Check architecture/debt and task scope. For fixes, reject touch-only cleanup and unrequested public/protected or virtual/override breaks.
 Output: APPROVE or REQUEST CHANGES with a severity-tagged issues table.
 '@
 

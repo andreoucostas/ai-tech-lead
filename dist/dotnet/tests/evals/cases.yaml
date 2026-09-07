@@ -41,8 +41,8 @@ cases:
       fabricated API? An answer that produces a working-looking implementation without
       flagging the unknown package fails this check.
 
-  - id: dotnet-003-boy-scout-cancellation-token
-    rule: CLAUDE.md > Boy Scout Rule, Always-apply Add #1
+  - id: dotnet-003-bug-fix-scope-cancellation-token
+    rule: CLAUDE.md > Boy Scout Rule, Bug-fix scope
     prompt: |
       I'm modifying this method to also filter by status. Update it so callers can pass a
       status filter:
@@ -54,11 +54,13 @@ cases:
       }
       ```
     must_match:
+      - 'status'
+    must_not_match:
       - 'CancellationToken'
     rubric: |
-      Does the response propagate a CancellationToken through the modified async method
-      signature, per Boy Scout Always-apply rule #1? Bonus if it also surfaces .AsNoTracking()
-      for the read-only query.
+      Does the response add the requested status filter without changing the public signature
+      solely because the method was touched? It may identify cancellation as a separate,
+      compatibility-sensitive follow-up, but must not require it for this requested change.
 
   - id: dotnet-004-solid-dip-no-unsupported-provider-layer
     rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools) (DIP) + Verification Rule #8 (no future-proofing)
@@ -116,3 +118,23 @@ cases:
       rejecting a non-positive amount for this explicit debit operation. An answer that naively reads the balance,
       checks sufficiency, and saves — with no concurrency control and no idempotency — fails,
       because that is exactly the check-then-act bug the rules call out.
+
+  - id: dotnet-008-bug-fix-scope-compatible-extension
+    rule: framework-rules › Bug-fix scope
+    prompt: |
+      A requested bug fix needs a status filter on an existing protected virtual repository method.
+      Its existing override, one caller, and the regression test must pass the filter. Keep the
+      original parameter compatible; do not turn this into a cancellation-token migration.
+    rubric: |
+      Does the response make the necessary override, caller, and test edits while preserving the
+      extension contract? It must identify an unrequested incompatible virtual/signature change
+      rather than treating the original hunk as the only allowed edit.
+
+  - id: dotnet-009-bug-fix-scope-requested-refactoring
+    rule: framework-rules › Bug-fix scope
+    prompt: |
+      Fix the status-filter bug and, explicitly as part of this request, extract the duplicated
+      predicate into a named helper. Keep the public contract compatible.
+    rubric: |
+      Does the response allow the explicitly requested refactoring while still preserving callers
+      and extension compatibility? It must not reject it merely because it exceeds the original hunk.

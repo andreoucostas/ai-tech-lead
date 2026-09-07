@@ -108,7 +108,7 @@ The Boy Scout Rule is mandatory during normal development. Skip it during:
 - **Time-sensitive incidents**: the priority is resolution, not cleanup
 - **Proof-of-concept branches**: throwaway code doesn't need polishing
 
-When skipping, leave a `// TODO: Boy Scout skipped — [reason]` comment. Use `/debt` to clean up later.
+Do not leave a TODO merely for unrelated deferred cleanup. Use `/debt` only for a real, separately owned debt item.
 
 ---
 

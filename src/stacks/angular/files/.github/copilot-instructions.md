@@ -32,7 +32,7 @@ Scope gate: this installed file is a delivery-profile superset, not evidence tha
 
 ## RxJS
 - Prefer `async` pipe over manual `.subscribe()`; manual subscribes need explicit cleanup.
-- Cleanup via `takeUntilDestroyed(this.destroyRef)`; no manual ngOnDestroy subject patterns.
+- Preserve compatibility; use `takeUntilDestroyed(this.destroyRef)` when outcome or verification requires it.
 - No nested subscribes — use switchMap/mergeMap/concatMap/exhaustMap appropriately.
 - Error handling in every stream; `catchError` only to recover, never to silence.
 
@@ -56,11 +56,6 @@ Scope gate: this installed file is a delivery-profile superset, not evidence tha
 - Test behavior, not implementation; no tautological assertions; no over-mocking.
 - No `fdescribe`/`fit`/`xdescribe`/`xit` committed; tests deterministic and hermetic.
 
-## Boy Scout (apply only to evidenced constructs on touched files)
-1. Replace manual ngOnDestroy subscription cleanup with `takeUntilDestroyed()`.
-2. Replace nested `.subscribe()` with the appropriate RxJS operator.
-3. Replace `any` with proper types.
-4. Remove unused TypeScript and RxJS operator imports.
-5. Remove commented-out code or template blocks (more than 1 line).
-6. Remove unreferenced private fields, methods, or locals that tsc/lint flags.
-7. Remove unused `@Input`/`@Output` properties.
+## Bug-fix scope
+- Follow framework-rules: edit only for outcome, compatibility, verification, or requested refactoring; no touch-only cleanup/TODO.
+- Scope-gated candidates: unused imports, commented-out blocks, lint-flagged locals, and unused `@Input`/`@Output` properties.
