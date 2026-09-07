@@ -25,9 +25,11 @@ return `RESULT: PASS` against the frozen inventory. Raw SHA-256 over actual file
 preservation oracle, kept strictly separate from the per-path `provenanceRevision` (attribution
 only) and the `baselineRevision` install anchor; an unexaminable archive or a legacy marker without
 pre-move digests reports `CANT-VERIFY`, never a silent re-hash, and an existing archive is never
-rebaselined. Greenfield and update installs are unchanged. **Unreleased — independent review
-accepted the amended immutable range; an orthogonal `fc /b` + `certutil` check matched the
-pre-install oracle, archive and marker digest; release gates remain pending.**
+rebaselined. Greenfield and update installs are unchanged. Independent review accepted the amended
+implementation range, and an orthogonal `fc /b` + `certutil` check matched the pre-install oracle,
+archive and marker digest. Initial release CI run `34160326448` exposed a child-scope defect in the
+release-mutation test and correctly withheld the tag; the independently accepted correction then
+passed both native root hosts, all six shipped-hook jobs and case-count parity in run `34162370984`.
 
 ## 0.84.0 — 2026-09-06
 

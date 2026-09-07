@@ -2256,3 +2256,11 @@ observed the intended mutation red at exit 42, restored byte-identically, and em
 26-case manifest.
 For release mutations that use closures, capture host/runtime data before closure creation or pass
 it explicitly; direct `-File` evidence does not establish a distinct runner child-script scope.
+
+## 2026-09-07 — B-230 release closure: final CI must exercise the evidence-carrying route
+
+Release run `34162370984` passed both root meta suites, all six shipped-hook jobs and the downstream
+case-count parity decision after the child-scope correction; `v0.85.0` was then confirmed on origin.
+The earlier red run was useful evidence: a direct focused pass did not cover the wrapper scope that
+publishes release case counts. The release boundary supplied that missing execution vantage and
+withheld the tag until it was green. Live-model compliance with `/adopt` remains unmeasured.

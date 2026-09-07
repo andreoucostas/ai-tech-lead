@@ -1,6 +1,6 @@
 # Framework backlog
 
-Current work only. Reconciled 2026-09-06 after v0.84.0 and WSD-074. Read root `CLAUDE.md`,
+Current work only. Reconciled 2026-09-07 after v0.85.0 and WSD-079. Read root `CLAUDE.md`,
 `DEVELOPING.md` and `meta/decisions-index.md` before implementation. Effort: S <= half a session,
 M about one session, L multiple sessions; live observation time is separate from implementation.
 
@@ -18,8 +18,7 @@ export, production queries, or external participant contact.
 | 2 | B-223 capture and refresh | Released in v0.84.0; semantic refresh and retained forward misses remain |
 | 3 | B-224 ordinary-task Copilot use | Released carrier; one bounded CLI access miss/cost observed, ordinary CLI/VS Code acceptance remains open |
 | Independent repairs | B-216 instance skills; B-226 review scope | Released in v0.84.0; named semantic/host gaps remain explicit |
-| Next proposed repair | B-230 headless adoption archive integrity | READY TO RELEASE: implementation and evidence complete; release gates outstanding |
-| Following separate repair | B-231 bug-fix scope and compatibility | Source contradictions verified; bounded proposal recorded |
+| Next proposed repair | B-231 bug-fix scope and compatibility | Source contradictions verified; bounded proposal recorded |
 | When a participant exists | B-42 independent FS2 | Existing packet ready; independent run outstanding |
 | Deferred | B-49 drill and consumer self-assessment | Old instrument invalid; no execution authority |
 
@@ -591,84 +590,6 @@ predicate despite output naming the path; that instrument/encoding gap is unreso
 reported as a product defect or verified host combination. The 39 carrier review and recapture
 contrast are source/static evidence; no model dispatch or sequential-fallback efficacy was run.
 
-### B-230 · Preserve original bytes and original-path provenance during headless adoption
-**Filed against:** v0.84.0 (2026-09-06)
-**Priority:** P1 · **Effort:** M · **Invariants:** #3 #4 #6 #7
-**Status:** READY TO RELEASE (2026-09-07). Premise observed; adversarial review and final proposal in
-`.claude/plans/2026-09-07-abp-experiment-follow-through.md` and WSD-079.
-**Implemented; not shipped.** The byte-preserving archive/verify helper `src/core/scripts/adoption-archive.ps1`
-(`-Freeze`/`-MoveFrozen`/`-Verify`, with non-mutating `-Capture`; raw SHA-256 preservation oracle kept separate from Git
-provenance, CANT-VERIFY distinct from corruption, legacy-marker uncertainty preserved, no
-rebaseline of an existing archive), and `src/core/scripts/install.ps1` brownfield evidence capture
-before any archive mutation + immediate per-move byte verification + a versioned `archiveIntegrity`
-block in `.claude/adoption-pending.json`; legacy `archivedOriginals` now lists only verified archive destinations.
-The three `/adopt` sources and shared Copilot adapter now carry frozen evidence across Phase 7,
-requiring pre-bootstrap and post-gate `adoption-archive.ps1 -Verify` PASS before completion; the
-focused executable suite is registered with the meta runner and generated dists were rebuilt.
-Direct local PS7 and PS5.1 reconstruction evidence covers the frozen acceptance cases, including
-the release-specific SHA-comparison mutation red/clean contrast. Independent nonimplementer review
-first rejected two stale shipped instructions, then accepted amended range
-`a66e3eb9e38d11e155b687565eff62f1ac1af7ba..b3ed62ab3a2e342d39cedb0f8903bcf811098b80`
-after both were corrected and their static predicates were observed red/clean. The reviewer ran the
-focused suite directly under PS7 and PS5.1 at 26/0 with mutation exit 42, plus a PS7 CP437 run at
-26/0 and InstallerContract red 6/1 then clean 8/0. Root's orthogonal Windows `fc /b` and `certutil`
-execution matched a BOM/CRLF original oracle, the installer's archived file, and the marker SHA;
-the marker entry was verified and its inventory count matched. Release and live-model workflow
-compliance remain outstanding; deterministic evidence does not establish the latter.
-
-**Observed harm.** A real capped Copilot CLI 1.0.80 / GPT-5.4 medium headless adoption ran against
-ABP Framework tag 10.6.0 in a disposable worktree. Commit `081eb82a` renamed `.cursorrules` to
-`docs/pre-adoption/cursorrules.md` at 89% similarity: it replaced 30 source lines with eight
-normalized lines, losing 22 lines from the only live/archive copy while its report said the file
-was archived. This contradicts `/adopt`'s critical no-delete/archive-before-normalize contract.
-The same run falsely quarantined the installer-archived Copilot instructions as a fresh local file
-because provenance followed the archive path. Direct blob comparison proved the archive was exactly
-ABP's original `a754a2b5eabdb364a3aafde4ea1e784697b497fe`, whose original-path history last changed
-under Volosoft Agent on 2026-04-01. Root restored `.cursorrules` to original blob
-`b88c4e158845aa039d9345510a3f969fd4db271a`; both native hosts then passed `docs-sync-check`.
-At the time of filing, the external worktree and corrective commit retained the raw reproduction;
-no product source, remote branch or pull request had been changed by that adoption repair.
-**Retention correction (2026-09-07):** the subsequent user-authorized experiment cleanup removed
-the ABP worktrees and raw task files; the user reports deleting the remote fork. The earlier
-identities and observations remain historical records. Fresh fixtures must be labelled as
-reconstructions; the deleted external worktree is not a current evidence source.
-
-**Required outcome.** Headless adoption must retain every approved archived candidate byte-for-byte
-while placing normalized proposals only in the review report/diff. Installer-moved candidates must
-be screened as their recorded original paths, with provenance that survives the move and distinguishes
-a real trust finding from inability to examine history. The completion authority must reject an
-archive whose pre-move and post-move identities differ; it must also admit a constructible exact-copy
-success state. Do not solve only the two filenames from this reproduction.
-
-**Before implementation.** Freeze a proportional design after inspecting the installer marker,
-archive phase, completion gate and existing behavioral fixtures. Obtain adversarial critique of
-whether a smaller post-move identity check plus original-path provenance is sufficient. Produce a
-release-specific red case from the unfixed v0.84.0 behavior on both native hosts or state honestly
-which semantic leg requires a live model. Keep normalized proposal quality separate from archive
-integrity. Acceptance includes an exact-copy candidate, a deliberately mutated archive, an
-installer-moved original, missing/unreadable Git history, and an actually untrusted candidate.
-
-**Reviewed direction (WSD-079).** Capture actual raw bytes before moves; freeze expected identities;
-retain original-path history at the explicit pre-install revision; carry saved evidence through
-Phase 7 and require final archive verification as well as the bootstrap documentation gate. Legacy
-markers without reconstructible original-byte evidence remain unverified, not rebaselined. Use a
-bounded helper and existing lifecycle; no new general registry or hook. See the proposal for
-hostile cases, proportional alternatives, native-host evidence, orthogonal review and release scope.
-
-**Delivery RCA.** Existing completion checks could pass with a normalized archive
-because no assertion compared every selected original and final byte identity. The same class
-covers all approved archive and quarantine candidates. Parser checks alone cannot establish that
-a model invokes the final guard; retain that separate behavioural evidence gap. CI run 34160326448
-also exposed a test-only scope error in the CI case-count route: `Invoke-HookTests.ps1 -File
-AdoptionArchiveIntegrity.Tests.ps1 -CaseCountPath ...` launches the suite with `-Command
-'$global:AtlEmitCaseCount=$true; & $env:ATL_CASE_TEST_PATH; ...'`. The release-mutation closure
-resolved `Get-PsExe` after `GetNewClosure()`, where the dot-sourced harness helper was unavailable
-in that child script scope. Earlier direct `-File` runs correctly tested a different boundary but
-did not exercise this one. Capture the current host executable before creating the closure and
-invoke the captured value inside it; corrected case-count runs on PS7 and PS5.1 each reached the
-mutation red exit 42, restored byte-identically, reported 26/0, and emitted a valid 26-case
-manifest. This corrects the test transport, not the archive mechanism.
-
 ### B-231 · Bound bug-fix cleanup by task scope and preserve existing extension contracts
 **Filed against:** v0.84.0 (2026-09-07)
 **Priority:** P2 · **Effort:** M · **Invariants:** #1 #2 #4 #5 #7
@@ -694,7 +615,7 @@ advisory and static context ceilings unchanged; no new API analyzer, skill or se
 compatible overrides remain valid; an unrequested extension-contract break is identified; explicit
 refactoring remains allowed. Verify fresh/update carriers, hook shapes on both surfaces and native
 PowerShell hosts, then separate review, standard release checks and changelogs. Static consistency
-does not establish live-model compliance. This item must not delay the B-230 release.
+does not establish live-model compliance. B-230 was released separately in v0.85.0.
 
 **RCA to close at delivery.** Existing rules used touched-file membership as permission to expand
 the fix, and reviewers/hooks repeated it despite the minimal-fix rule. The same policy conflict
