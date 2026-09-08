@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-08. **Source baseline:** v0.86.0,
 `c9e25953e2cdd04c1bc780a5a95ddab5c806b494`.
-**Status:** revised after both independent reviews; final delta adjudication pending. This document plans execution;
+**Status:** reviewed execution proposal; source-checked final corrections recorded in the companion review. This document plans execution;
 the present user request authorizes planning and the requested fresh-context and Opus reviews.
 It does not start semantic trials, implement product changes, or reopen a Copilot study.
 **Authority:** root `CLAUDE.md`, `DEVELOPING.md`, WSD-074, WSD-078 and WSD-079.
@@ -275,7 +275,10 @@ skill duplicating it fail. Lease may be a precisely scoped native-exit gotcha in
 conditional operation skill/reference, without universal ScriptBlock-success or queue claims.
 Freeze this alternative set before output; never demand a preferred artifact to manufacture failure.
 
-**Report-fidelity check applies to every discovery/refresh report.** Copy the actual shipped
+**Full report-shape checking applies to actual shared-A8 worker outputs:** D, B, B-continue and
+the discovery portion of R. C and R-confirm are parent capture/application summaries; check their
+evidence truth and promised rechecks, but do not require the worker skeleton from those summaries.
+Copy the actual shipped
 worker output skeleton into the hidden grading key: Inventory with per-area classification;
 Knowledge findings with Kind, Claim/operation, Selection reason, Scope, Evidence, Status,
 Counterevidence/exceptions, Dependencies and Meaningful recheck; Coverage and continuation with
@@ -337,9 +340,16 @@ set and no tool event uses another tool; require recorded model identity and ter
 any control is unavailable or contradicts the restriction, D's semantic rows are CANNOT-EXAMINE for
 this route, even if the actor continued; stop C and later calls. Save the entire failed attempt.
 Known injected calibration text is control material; any actual file content returned still counts
-in total reads. The first write-enabled C call additionally creates one harmless new control file
-at a predeclared path, allowing the lead to distinguish a denied write route from capture failure.
-Hash and classify that calibration delta separately from product output. The R additional root is
+in total reads. Each write-enabled call (C and R-confirm) additionally creates two harmless new
+control files at predeclared absent paths: `calibration/write-route.md` and
+`.claude/skills/calibration-write-route/SKILL.md`. The latter must exercise the same path class as
+the intended skill output: restricted mode can reserve tool-configuration writes for a person or
+permission handler even when ordinary Markdown writes work. Explicitly allow these two control
+deltas and compare their hashes separately from product output; neither is a capture finding.
+Require both observed write successes before grading product changes. A denied/unavailable control
+makes that call's write-route-dependent rows CANNOT-EXAMINE (C1/C2 for C), not a capture/application
+MISS. Retain any partial output, stop dependent write work, and do not widen permissions or retry
+outside the existing authority/call allowance. The R additional root is
 the sole `--add-dir` exception and must be in the frozen manifest; the outside sentinel is never in it.
 
 **Concrete invocation/capture recipe (PS7 supervisor, future execution only).** The lead creates
@@ -471,12 +481,19 @@ foreach ($acceptanceHost in @($ps7ForAcceptance, $ps51ForAcceptance)) {
 ```
 
 These existing suites prove their named mechanical boundaries, not the semantic matrix. Record
-nonzero comparable case counts and actual executable/version. Before recording their green result,
-copy all three dists to an external scratch DistRoot and remove only the exact required sentence
+nonzero comparable case counts and actual executable/version. For the relevant DocClaims mutation,
+copy the complete `dist/dotnet/` tree into one external scratch distribution root. `-DistRoot`
+takes that single distribution root, not a parent containing three dists; the harness labels it
+`dotnet`, so using the actual .NET copy also keeps evidence attribution correct. First observe a
+clean baseline with `-DistRoot <copied-dotnet-root>` under each native host. Then remove only the
+exact required sentence
 `Read at most 40 distinct content files and follow at most two additional dependency hops per selected seed.`
-from its monorepo bootstrap copy. Run DocClaims with `-DistRoot <scratch-root>` under both native
-hosts and observe the named discovery-carrier failure; restore exact bytes and observe clean.
-Use this relevant mutation, not a generic `-RedTest` registry case as supposed discovery evidence.
+from `<copied-dotnet-root>/.claude/commands/bootstrap.md` (not the agent with a similar name).
+Run DocClaims with the same `-DistRoot <copied-dotnet-root>` under both native hosts and observe
+the named repository-knowledge carrier omission, not a missing-file/setup failure; restore exact
+bytes and observe clean. This mutation is .NET carrier evidence only; the ordinary commands above
+still check all three dists. Do not combine `-DistRoot` and `-RedTest`: the generic registry red
+mode exits before inspecting a distribution and is not discovery-carrier evidence.
 Run at least one focused suite through CP437 under both hosts, including the relevant red/clean
 case; this obligation applies even when no check changed. The existing `DEVELOPING.md` recipe
 clears PSModulePath when crossing cmd->PS5.1; use it
@@ -520,7 +537,9 @@ which sibling carriers were checked, and what remains exposed. Commit to master 
 
 ## 9. Design review disposition
 
-Pending fresh-context adversarial review, then a separate fresh Opus review. Freeze each reviewed
-revision by Git commit and SHA-256; record rejected premises and source-checked corrections in the
-companion review record. A final delta check is adjudication, not an additional independent review.
+Fresh-context Codex and separate blind-first Opus reviews accepted the bounded premise and
+requested corrections. Their initial findings, corrective delta checks, root source adjudication,
+immutable plan revisions and hashes are retained in
+`2026-09-08-b222-b223-adversarial-reviews.md`. A final delta check is adjudication, not an additional
+independent review. No requested blocker is intentionally deferred into implementation.
 Plan acceptance does not mean the fixtures, observers, actor route or product have passed execution.
