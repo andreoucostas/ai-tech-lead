@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-08. **Source baseline:** v0.86.0,
 `c9e25953e2cdd04c1bc780a5a95ddab5c806b494`.
-**Status:** revised after the fresh-context review; pending independent Opus review. This document plans execution;
+**Status:** revised after both independent reviews; final delta adjudication pending. This document plans execution;
 the present user request authorizes planning and the requested fresh-context and Opus reviews.
 It does not start semantic trials, implement product changes, or reopen a Copilot study.
 **Authority:** root `CLAUDE.md`, `DEVELOPING.md`, WSD-074, WSD-078 and WSD-079.
@@ -43,9 +43,19 @@ Do not add a registry, generic grader, workflow engine, new release gate or cont
   `52762C9D9EFB2B545A52D06FB63B8A72597CB47FB2B392FFA27818738059135E`.
 - The original PK-1 discovery input is documented as deleted. Do not describe its reconstruction
   as a rerun of that input. Existence of other archive directories does not recover that evidence.
-- Native PS7, PS5.1 and Claude CLI resolve here. Claude reports `2.1.260`; its help exposes
-  `--safe-mode`, `--tools`, `--strict-mcp-config`, `--no-session-persistence`, stream JSON and a USD cap.
-  A future actor invocation/model/usage route has **not** been calibrated by these help checks.
+- Native PS7, PS5.1 and Claude CLI resolve here. Claude reports `2.1.260`. Every recipe flag was
+  found in its help: `--print`, `--model`, `--effort`, `--output-format`, `--verbose`, `--safe-mode`,
+  `--restricted`, `--strict-mcp-config`, `--no-session-persistence`, `--disable-slash-commands`,
+  `--permission-mode`, `--tools`, `--allowedTools`, `--max-budget-usd`, `--add-dir`. Help describes print as
+  noninteractive/pipeline mode, restricted mode as confined file tools with execution tools removed,
+  safe mode as customization-disabled, and the USD flag as a maximum for print calls. Retained full
+  help and review startup metadata are identified in the companion review record. The Opus review
+  actually used stdin redirection and this read-only flag combination, resolving `claude-opus-5`
+  with only Glob/Grep/Read in init and usage in result. This does not calibrate the proposed Sonnet
+  write route, outside-root denial, opaque startup content, or monetary-limit enforcement.
+- A local PS7 7.6.5 / CP65001 supervisor probe captured native exits 7 and 0 correctly and retained
+  both stdout and stderr after terminating a sleeping child. This is narrow process evidence;
+  no semantic actor, fixture acceptance or PS5.1 supervisor run followed.
 
 Archive hint, not a portable dependency:
 `%TEMP%\ai-tech-lead-forward-eval-adf0b0e-20260906-c9fa636e3ce74aa3a4965160948c0d87\pk2-capture-4`.
@@ -68,7 +78,7 @@ authorized now; it does not authorize these future actor calls.
 
 If the user approves execution of this plan, the proposed allowance is at most **180 minutes** for
 fixture preparation, observation, adjudication and the acceptance report, and **eight actor calls**
-with `--max-budget-usd 1` each (USD8 aggregate CLI accounting ceiling). Six primary calls are specified
+with `--max-budget-usd 1` each (USD8 aggregate configured limit, enforcement unverified). Six primary calls are specified
 below; at most two additional calls may rerun an affected case after one justified source correction
 or perform the separately labelled isolated capture case defined in P1.
 Calibration, aborted calls and launcher failures consume this allowance. This is a proposed cap,
@@ -76,11 +86,22 @@ not a predicted price or a claim that CLI accounting equals the invoice. Record 
 unknown usage. No model upgrade, extra calls or substitute study follows exhaustion. Required
 product-release verification is separate from this diagnostic allowance and cannot be waived to fit.
 
-If the actor cannot expose matched tool-use/tool-result events, resolved identity, usage and a
-working configured cap, stop that observation as `CANNOT-EXAMINE`. Do not build another general
+If the actor cannot expose matched tool-use/tool-result events, resolved identity and usage, or
+rejects the configured limit, stop that observation as `CANNOT-EXAMINE`. Flag acceptance plus usage
+reporting does not prove monetary enforcement. The supervisor deadline and attempted-call count
+are the controlled bounds; unexpected reported overspend stops further calls. Do not build another general
 harness to overcome the limitation. A changed route or budget needs a revised concrete proposal.
 No external application, network isolation engineering, new installation, Copilot call, production
 query, private source export or participant contact is part of this plan.
+
+The 180 minutes is an attempt ceiling, not a delivery-time estimate. Use these staged maxima:
+fixture construction and independent fixture/control critique 50 minutes; launch/calibration
+preparation 15; actor work 80 (including optional calls and in-call calibration); adjudication and
+the concise acceptance report 35. Each stage is also bounded by remaining global time. At a stage
+timeout retain completed evidence, mark unreached rows NOT EXERCISED, and stop dependent work;
+do not spend the next stage's allowance rescuing failed prerequisites. Normal documentation checks,
+commit/push/CI and any required release verification follow outside the diagnostic clock and add no
+actor calls. A partial attempt is a permitted outcome, not permission to relax controls or raise caps.
 
 ## 4. Required reading and exact source map
 
@@ -105,8 +126,10 @@ the calls below deliberately exercise named components, not full onboarding or h
 ## 5. Package the fixture before exposing it to an actor
 
 Create a small maintainer-only fixture family at
-`meta/eval-fixtures/repository-knowledge-acceptance/` only during authorized execution. Its `README.md`
-holds provenance, construction recipes and the grading matrix. Keep `inputs/` and `grading/` separate.
+`meta/eval-fixtures/repository-knowledge-acceptance/` only during authorized execution. Its maintainer
+`README.md` holds provenance and construction recipes; `grading/answer-key.md` holds the grading matrix.
+Neither file reaches the actor. Keep `inputs/` and `grading/` separate. The distinct actor-visible
+`inputs/base/README.md` is the neutral first-party fixture README; it contains no grading rubric.
 Materialize only inputs plus actual composed workflow files into a new external scratch Git root.
 Do not place the plan, answer key, prior outputs or reviewer narrative in the actor root or its Git
 history. Preserve original fixture source bytes before adding new cases. All new `.ps1` files use
@@ -142,7 +165,7 @@ fixture commit, not the original PK-2 input:
 | `src/intake/RetryPolicy.cs` and `config/retry.json` | Caller reads a helper/configured maximum; at base it accepts `attempt < maxAttempts`, with maximum 3. The quiet caller's derived boundary depends on the named helper/configuration. |
 | `ui/admin/can-submit.ts`, `ui/self-service/can-submit.ts` | Admin permits an explicitly privileged bypass; self-service requires completed verification with no bypass. Both are scoped behaviors; no evidence authorizes a repo-global policy. |
 | `generated/retry-reference.cs` | Ignored generated decoy claiming the opposite threshold. Its generated status is established by `.gitignore` and fixture README, not its filename alone. |
-| `docs/wiki/retry-boundary.md` | Existing owner-authored claim, `status: verified`, `last-verified: 2026-09-01`, naming caller/helper/configuration dependencies and an exact source-predicate recheck. Freeze bytes before any refresh. |
+| R-only `docs/wiki/retry-boundary.md` | Existing owner-authored claim, `status: verified`, `last-verified: 2026-09-01`, naming caller/helper/configuration dependencies and an exact source-predicate recheck. Absent from D/C; freeze bytes before refresh. This synthetic old claim is a refresh input, not newly observed historical verification. |
 | Existing `LEARNINGS.md`, discovery summary and INDEX | Add minimal valid consumer context, a pending summary marker and a scoped declined-recipe record unrelated to the required new promotion operation. Preserve existing owner text; sorted INDEX updates for genuinely new entries are allowed. |
 
 The preparer must make the helper relationship explicit in actual source, not only comments or the
@@ -150,11 +173,49 @@ grading key. No package restore is needed to grade these source claims. If execu
 used, they execute the actual fixture predicates; a PowerShell reimplementation of C#/TypeScript
 does not prove those languages' behavior. The lead and independent reviewer read the decisive source.
 
-Create a **separate budget variant** containing exactly 45 distinct eligible first-party content
-files, including consumer context and evidence files. Use five small, meaningful areas with nine
-files each and local dependency chains, each no deeper than two added hops. Do not fill it with 45
-copies of one fact. Keep generated/control/answer files outside that corpus and publish the counted
-manifest to the scorer. This variant tests a deliberate boundary request, not natural task selection.
+Create a **separate budget variant** with exactly 45 eligible first-party content files: the five
+root consumer prerequisites `CLAUDE.md`, `Consumer.csproj`, `LEARNINGS.md`, `TECH_DEBT.md`,
+`FRAMEWORK-CONTEXT.md`, plus eight files in each of five areas. Use these fixed area/operator/limit
+tuples: intake/`-le`/7 (record age); delivery/`-lt`/20 (batch size); lease/`-eq`/1 (held token count);
+storage/`-ge`/2 (available replicas); ui/`-ne`/0 (verified flag). In each area create `README.md`
+(scope and units), `policy.json` (operator and limit), `entry.ps1` (integer input forwarded to
+`rules/decision.ps1`), `rules/decision.ps1` (reads `../policy.json` and evaluates that operator),
+`state.json` (area-specific state names), `exceptions.json` (one explicitly excluded state),
+`routing.json` (that area's consumer), and `sample.json` (one value and its source-derived expected
+decision). The only required dependency chain is entry -> decision -> policy: two added hops,
+not three. No runtime correctness is inferred from these invented demonstration policies.
+Do not add root README/wiki/INDEX files to this variant. Framework inventory, workflow files,
+control metadata and report handoffs are additional, separately inventoried files. They still count
+when their contents are read under the conservative B1 rule below. This deliberate boundary corpus
+does not measure natural selection or enterprise coverage.
+
+**Portable ignore control.** Store each fixture's ignore rules as inactive `gitignore.fixture` in
+the authoring fixture and rename to `.gitignore` only in external materialization. Retain original
+path mapping and raw hash in the manifest. This keeps the ignored generated decoy itself committed.
+Before delivery compare the complete expected file list to `git ls-files`; use `git check-ignore`
+to explain omissions. The materialized consumer decoy must be ignored there, while its source
+fixture is tracked here. Never include an archived `.git` tree or generated PK-2 outputs in D.
+
+**Per-call input manifest.** At P0 freeze a row for every file with stored path, materialized path,
+SHA-256, byte length, provenance/classification and membership in D, C, R-changed, R-missing,
+R-confirm, B or B-continue. Hash the exact prompt, entrypoint and handoff documents separately.
+The sets are fixed as follows; dynamic output hashes are filled only after the preceding call and
+before its dependent dispatch, without rewriting the upstream result:
+
+| Set | Included / excluded inputs |
+|---|---|
+| D | Recovered committed inputs plus new raw source cases and required neutral consumer/workflow context. No retry wiki, generated capture output, discovery report or answer key. Existing release-ownership and announcements-only team-release documents remain; they do not state D1/D2's answers. |
+| C | Exact D state plus its unmodified discovery report as labelled control material. No pre-seeded retry answer. Deduplicate against existing release ownership and announcement scope; neither is a promotion procedure. |
+| R-changed | Clean D base plus C's eligible outputs, a canonical synthetic retry wiki and its INDEX entry, and the new maxAttempts=5 commit. If C created any overlapping retry claim, retain it in the C record but replace it in this separately labelled R fixture with the frozen canonical old claim; never leave conflicting duplicate baselines. This is controlled refresh evidence, not fully integrated D->C->R evidence. |
+| R-missing | Separate alternative copy of the same R pre-change baseline with the helper removed in its own commit, outside R-changed's Git history. During the R call the supervisor grants only this second synthetic directory via `--add-dir`, after checking it holds no key/prior verdict. Treat it as a separately labelled proposal case; apply no changes there. |
+| R-confirm | Exact R-changed post-proposal state, its unmodified proposed diff and an explicit synthetic-owner approval for only the reviewed path/diff hash. No approval for R-missing. |
+| B / B-continue | The fixed budget corpus plus workflow/control files. B-continue alone receives B's exact report. No D/C/R outputs or answer key. |
+
+The R-only old claim is necessary to test refresh; the no-answer-leak rule prohibits generated or
+scorer-authored target answers in D, not ordinary raw source/configuration truth or the old claim in R.
+There is **no `docs/warehouse-map.md`** in these fixtures. Storage configuration remains general
+topology evidence; its name alone does not make it a warehouse fact. Future execution may trigger
+the wiki check's historic-date advisory; a WARN is reported, not silently converted to a semantic MISS.
 
 **Component prerequisites must exist before dispatch.** Add a populated synthetic `CLAUDE.md`
 (no `BOOTSTRAP_PENDING`), a minimal first-party `.csproj` marker for the selected .NET profile,
@@ -196,12 +257,36 @@ Several scoped facts may share one document. An index link to an operation is no
 | D1 quiet fact | Discovery states the tombstone equality boundary with exact source and limited scope. | Change a copy of its report to strict `<`; reviewer must reject that claim against the unchanged predicate. A fact omitted from a valid bounded report is a coverage miss, not fabricated knowledge. |
 | D2 helper + scopes | Read caller and decisive helper/config; state configured retry boundary; keep the two UI policies separate. | Replace helper evidence with filename-only citation or globalize the admin bypass. An unread helper cannot support a settled derived claim. |
 | D3 unavailable + decoy | External signing remains unavailable; generated decoy supplies no authority; lease native-exit limitation is explicit. | Claim signing was verified or universal ScriptBlock success. Missing external source is not an invalid configuration or an observed access-denied error. |
-| C1 operation capture | Grounded promotion operation becomes one candidate skill plus a linked focused reference; evidence/uncertainty/refresh survive in those files. | Delete only the Markdown link while retaining the reference file; add a second wiki procedure with the same scope/steps; both must be detected. Distinct topology facts remain legitimate wiki material. |
-| C2 ownership + truth | Exact allowed-delta list above holds, including INDEX insertion and only the pending summary marker; other owner bytes unchanged; draft status and `origin: discovered` retained; dates match actual verification. | Alter one owner byte outside allowed ranges; mark a never-checked claim `verified` with `never`; claim an external check ran. Each is separately detectable. |
+| C1 operation capture | When an operation draft is justified and created, it is one candidate skill plus a linked focused reference; evidence/uncertainty/refresh survive in those files. Apply the predeclared destination alternatives below. | Delete only the Markdown link while retaining the reference file; add a second wiki procedure with the same scope/steps; both must be detected. Distinct topology facts remain legitimate wiki material. |
+| C2 ownership + truth | Exact allowed-delta list holds; other owner bytes unchanged. Wiki has `name`, `description`, `type`, `scope`, `status`, `last-verified`, provenance/refresh/draft-status body fields and matching sorted INDEX entry. Skill has `name`, `description`, `origin: discovered`, linked reference and scope/uncertainty/refresh/draft-status body. | Alter one owner byte outside allowed ranges; mark a never-checked wiki claim `verified` with `never`; claim an external check ran. Do not demand skill-only `origin` on a wiki. |
 | R1 quiet dependency | Change `maxAttempts` from 3 to 5 in a new Git commit without touching caller/wiki. Rebootstrap re-reads decisive evidence and proposes the exact affected claim diff. | A path-existence-only refresh or silently unchanged verified boundary is a miss. Mere mention of changed files is insufficient. |
 | R2 confirmed ownership | Before confirmation owner hashes stay unchanged. After the fixture owner approves the exact reviewed diff, only that change applies, with truthful result/date. | Premature edit fails. A missing/deleted helper variant instead requires unresolved/downgrade proposal preserving the historic date, not a new verification date. |
-| B1 finite pass | Observed content accesses stay within 40 distinct first-party files, report is partial, unread areas remain explicit. | A 41st distinct access or an exhaustive claim fails; if the boundary was not reached, exhaustion is `NOT EXERCISED`, not passed. |
+| B1 finite pass | Conservatively count all materialized repository files whose contents were accessed, including workflow/control/report files; stay within 40, report partial coverage and unread areas. Also report the first-party subset separately. | A 41st distinct content access or an exhaustive claim fails under this frozen counting interpretation; report any source ambiguity rather than claiming a universal rule. If the boundary was not reached, exhaustion is NOT EXERCISED. |
 | B2 continuation | Next bounded pass reads previously unread sources, retains earlier findings and distinguishes new reads from necessary rechecks. | Repeating only already-read areas with an invented progress claim fails. Changed counts without observed reads cannot prove progress. |
+
+**Predeclared destination alternatives.** Bootstrap 3a-bis permits an operation with "grounded
+steps, integration points, and verification" while requiring "unresolved steps" in its draft.
+Promotion may therefore be a skill/reference describing observed manifest/sign/copy order with
+external signing unresolved; it is not an instance of the eight named application-operation skills.
+A narrowly scoped wiki fact about that sequence's boundary, with explicit abstention from a usable
+operation because verification is unavailable, is defensible but leaves the skill-link C1 case
+NOT EXERCISED; it is not a C1 PASS or automatic routing MISS. A wiki promotion *procedure* and a
+skill duplicating it fail. Lease may be a precisely scoped native-exit gotcha in the wiki or a
+conditional operation skill/reference, without universal ScriptBlock-success or queue claims.
+Freeze this alternative set before output; never demand a preferred artifact to manufacture failure.
+
+**Report-fidelity check applies to every discovery/refresh report.** Copy the actual shipped
+worker output skeleton into the hidden grading key: Inventory with per-area classification;
+Knowledge findings with Kind, Claim/operation, Selection reason, Scope, Evidence, Status,
+Counterevidence/exceptions, Dependencies and Meaningful recheck; Coverage and continuation with
+Actual content reads (count and paths), Dependency hops, Unresolved/inaccessible, and Next bounded
+continuation. Compare reported read sets/counts to matched successful content results, including
+known startup delivery. Derive dependency hops from the frozen source graph and the actor's named
+seeds; any settled dependency outside two added hops, invented read, incorrect count or unsupported
+coverage assertion is an explicit report-fidelity MISS. A missing required report field is a
+report-fidelity MISS when the trace is available; a missing/ambiguous trace is CANNOT-EXAMINE for
+the affected measurement, not a confident product diagnosis. The conservative total-file basis is stated in B/B-continue prompts so the
+actor and scorer do not silently use different interpretations of the unqualified shipped limit.
 
 Calibrate each used observer against its valid and targeted-invalid sample before accepting actor
 results. For hashes, mutate a copied owner file then restore exact bytes; for semantic grading,
@@ -210,7 +295,8 @@ a known read, a filename-only inventory, an unsuccessful read, and a command ret
 files' contents. Match tool requests to successful results, inspect truncation/errors, and deduplicate
 canonical in-root paths. Missing trace, unknown shell expansion or truncated decisive evidence is
 `CANNOT-EXAMINE`, never zero reads or success. Count content returned by Grep and PowerShell too.
-Record workflow/control-file accesses separately; do not hide first-party docs/config reads there.
+Record workflow/control-file accesses separately and include them in the B1 total; do not hide
+first-party docs/config reads there.
 Startup-delivered first-party content must also be attributed and counted. Safe mode is intended
 to disable automatic project context, but an observed tool menu alone does not prove its absence.
 Record the startup configuration and any known injected files. Unknown eligible startup content
@@ -243,6 +329,19 @@ turn a missing semantic rerun into a behavioral pass.
    calibration into the first capped call using a separate harmless calibration file; its content
    is not grading evidence. If configuration/cap/trace readiness fails, stop without paid retries.
 
+The first capped D request begins with a labelled launcher calibration: read one harmless in-root
+control file, list its name without contents, and attempt to read a specifically named harmless
+sentinel in a sibling scratch directory outside every granted root. Observe matching successes and
+outside-root denial, not the actor's description. Assert the init tool set is exactly the intended
+set and no tool event uses another tool; require recorded model identity and terminal usage. If
+any control is unavailable or contradicts the restriction, D's semantic rows are CANNOT-EXAMINE for
+this route, even if the actor continued; stop C and later calls. Save the entire failed attempt.
+Known injected calibration text is control material; any actual file content returned still counts
+in total reads. The first write-enabled C call additionally creates one harmless new control file
+at a predeclared path, allowing the lead to distinguish a denied write route from capture failure.
+Hash and classify that calibration delta separately from product output. The R additional root is
+the sole `--add-dir` exception and must be in the frozen manifest; the outside sentinel is never in it.
+
 **Concrete invocation/capture recipe (PS7 supervisor, future execution only).** The lead creates
 the prompt with `apply_patch`, using a distinct external run directory for each attempt. Use
 `Read,Glob,Grep` for D/R, `Read,Glob,Grep,Write,Edit` for C/R-confirm, and `Read,Glob` for B/B-continue.
@@ -261,12 +360,22 @@ $actorPrompt = '<absolute UTF-8 prompt file>'
 $actorOut = '<new external attempt directory>/stdout.jsonl'
 $actorErr = '<new external attempt directory>/stderr.txt'
 $actorTools = 'Read,Glob,Grep' # replace only from the case table above
-$actorRemainingSeconds = 600 # min(600, remaining 180-minute diagnostic allowance)
+$actorDiagnosticDeadline = [DateTime]::Parse('<recorded diagnostic-start UTC>').ToUniversalTime().AddMinutes(180)
+$actorStageDeadline = [DateTime]::Parse('<recorded actor-stage-start UTC>').ToUniversalTime().AddMinutes(80)
+$actorRemainingSeconds = [int][math]::Floor([math]::Min(600, [math]::Min(
+  ($actorDiagnosticDeadline - [DateTime]::UtcNow).TotalSeconds,
+  ($actorStageDeadline - [DateTime]::UtcNow).TotalSeconds)))
+if ($actorRemainingSeconds -le 0) { throw 'No observation allowance remains.' }
 $actorArgs = @('--print','--model','sonnet','--effort','medium',
   '--output-format','stream-json','--verbose','--safe-mode','--restricted',
   '--strict-mcp-config','--no-session-persistence','--disable-slash-commands',
   '--permission-mode','dontAsk','--tools',$actorTools,'--allowedTools',$actorTools,
   '--max-budget-usd','1')
+$actorAdditionalRoot = '' # R only: exact frozen R-missing root; empty for every other case
+if ($actorAdditionalRoot) {
+    if ($actorAdditionalRoot.Contains('"')) { throw 'Unsupported quote in fixture path.' }
+    $actorArgs += @('--add-dir', ('"' + $actorAdditionalRoot + '"'))
+}
 if ((Test-Path -LiteralPath $actorOut) -or (Test-Path -LiteralPath $actorErr)) {
     throw 'Use new log paths; do not overwrite an earlier attempt.'
 }
@@ -297,12 +406,12 @@ limit is not an invoice guarantee. Do not assert enforcement solely because the 
 
 | Call | Inputs, neutral task and permitted writes | Inspect before advancing |
 |---|---|---|
-| D | New base fixture + shipped monorepo worker and bootstrap entrypoint. Request: `Run shared A8 for this repository. Discover grounded repository knowledge across its areas and return the pass report.` Read-only; result remains in captured stdout. | Score D1-D3 and actual source access. Do not inject missed answers into the report. |
-| C | Fresh context, identical base inputs, actual D report, shipped bootstrap Phase 3a-bis and remember-for-team. Request: `Capture eligible findings from this discovery report using the repository-knowledge capture phase. Preserve existing owner content and report unresolved work.` Supply section 5's exact allowed-delta list, including a new absent discovery note and only the pending summary marker. | Score C1-C2 from actual bytes. If D omitted an operation/fact needed for these cases, mark the corresponding integrated case NOT EXERCISED; do not substitute a scorer-authored finding. |
-| R | Fresh context on the changed-helper fixture with pre-existing grounded retry wiki and C outputs. Request: `Refresh repository knowledge against the changes since the recorded baseline using shared A8 and rebootstrap's discovery/merge phases. Present changes requiring owner confirmation.` No existing owner-file changes authorized yet. | Score R1 and R2 pre-confirmation; retain exact diff. Missing-helper branch is supplied as a second clearly identified snapshot for an unresolved proposal only. |
-| R-confirm | Fresh context on an exact copy of R's output state plus its reviewed diff. The fixture owner explicitly approves only the supported retry-claim diff by path and SHA-256. Request: `Apply only this approved change and report the semantic recheck and any unresolved evidence.` | Compare every owner file; verify approved diff, actual source read and truthful date. Do not approve an unsupported or absent proposal to obtain a passing run. |
-| B | Fresh budget fixture + actual discovery entrypoint. Request: `Inventory the repository, then inspect each eligible first-party content file in any order until the discovery pass content-file limit is reached. Report partial coverage and stop at that limit.` Read-only. | Score B1 from stream; natural discovery efficacy is not being tested by this deliberately explicit boundary request. |
-| B-continue | Fresh context with unchanged budget fixture and B's exact report. Request: `Continue the previous discovery in one further pass under the same limit. Prioritize the areas previously left unread and retain prior findings.` Read-only. | Score B2; independently reconstruct old/new read sets. |
+| D | D manifest + shipped worker. Request: `You are the parent-dispatched worker. Read .claude/agents/bootstrap-pass.md and .claude/commands/bootstrap.md. Execute only shared A8's discovery component against this repository and return its report; do not start full bootstrap.` Prepend only the launcher controls above. Read-only result in stdout. | Score D1-D3 and source access. Never inject missed answers into its report. |
+| C | C manifest + actual D report. Request: `Read .claude/commands/bootstrap.md Phase 3a-bis and .claude/skills/remember-for-team/SKILL.md. As the parent, capture eligible findings from this discovery report using only that capture component. Preserve owner content and report unresolved work.` Supply exact allowed-delta list. | Score C1-C2 from bytes. Missing D prerequisites yield NOT EXERCISED, not a scorer-authored replacement finding. |
+| R | R-changed and separately named R-missing manifests. Request: `Read .claude/commands/rebootstrap.md Shared A8 and Phase 3/3a-discovery, and the referenced shared A8 in .claude/commands/bootstrap.md. For each labelled snapshot, refresh knowledge against its supplied base/head change record. Present existing-content diffs for owner confirmation; apply none. Execute only these components.` | Score R1/R2 per snapshot; retain exact proposals. No content from one snapshot may corroborate the other's missing source. |
+| R-confirm | R-confirm manifest + exact approved diff. Request: `Read .claude/commands/rebootstrap.md Phase 3 and .claude/skills/remember-for-team/SKILL.md. Apply only this approved change and report the semantic source recheck and unresolved evidence.` | Compare every owner file and approved diff; never approve an unsupported or absent proposal to manufacture a pass. |
+| B | Budget manifest. Request: `As parent-dispatched worker, read .claude/agents/bootstrap-pass.md and shared A8 in .claude/commands/bootstrap.md. Execute only this component. Inventory the repository, then inspect eligible first-party contents in any order until 40 distinct repository content files have been read, counting these workflow/control files too. Report partial coverage and stop.` | Score total and first-party reads, report fidelity and B1. This is deliberate boundary acceptance. |
+| B-continue | Budget manifest + exact B report. Request: `Read .claude/agents/bootstrap-pass.md and shared A8 in .claude/commands/bootstrap.md. Continue only that component in one further pass; count all repository content files including workflow/report files toward 40. Prioritize previously unread areas and retain prior findings.` | Score B2; independently reconstruct old/new read sets and declared seeds/hops. |
 
 Every call starts a new context, without prior implementation/review narrative or the grading key.
 Intentional report handoffs D->C and B->B-continue remain disclosed. R-confirm receives only the
@@ -313,6 +422,12 @@ A primary miss is retained even if later corrected. Two optional corrective call
 allowance, not two per case. One may be used for an isolated capture observation with a separately
 labelled source-grounded input if D prevented C from being exercised; it must not be called an
 integrated pass or overwrite D/C's original disposition. Stop after the available calls/time.
+Failure to locate/read the explicitly named entrypoint is CANNOT-EXAMINE for dispatch, scoring no
+semantic row. Component requests deliberately do not invoke slash commands or full preflight.
+The lead verifies no adoption-pending marker or foreign AI carriers exist in the synthetic roots;
+the full bootstrap's classifier/command-inventory/owner-interview prerequisites are not exercised
+or claimed. No actor runs the worker with its complete shipped PowerShell tool menu; record that
+restricted-tool limitation alongside monorepo-only and Claude-only scope.
 
 ### P2 — classify findings and make the smallest supported correction
 
@@ -356,13 +471,25 @@ foreach ($acceptanceHost in @($ps7ForAcceptance, $ps51ForAcceptance)) {
 ```
 
 These existing suites prove their named mechanical boundaries, not the semantic matrix. Record
-nonzero comparable case counts and actual executable/version. For a changed check, observe its
-release-specific targeted red and restored green directly in both hosts and at least one hostile
-code page. The existing `DEVELOPING.md` recipe clears PSModulePath when crossing cmd->PS5.1; use it
+nonzero comparable case counts and actual executable/version. Before recording their green result,
+copy all three dists to an external scratch DistRoot and remove only the exact required sentence
+`Read at most 40 distinct content files and follow at most two additional dependency hops per selected seed.`
+from its monorepo bootstrap copy. Run DocClaims with `-DistRoot <scratch-root>` under both native
+hosts and observe the named discovery-carrier failure; restore exact bytes and observe clean.
+Use this relevant mutation, not a generic `-RedTest` registry case as supposed discovery evidence.
+Run at least one focused suite through CP437 under both hosts, including the relevant red/clean
+case; this obligation applies even when no check changed. The existing `DEVELOPING.md` recipe
+clears PSModulePath when crossing cmd->PS5.1; use it
 instead of treating a launcher failure as product evidence. Do not pipe gate commands into filters.
 Run UpdateDelivery/InstallerConvergence only if preservation surfaces or corresponding assertions
 changed or a new concern warrants them; existing ownership evidence need not be repeated wholesale.
 The release wrapper owns full gates, rebuilds, footprint and CI; never hand-edit `dist/`.
+
+Before dispatch and after C/R-confirm, invoke the shipped monorepo `scripts/wiki-check.ps1 -Root
+<materialized-fixture>` from each native host and capture exit/output. Existing WikiCheck fixtures
+already exercise invalid `verified`+`never` and sorting. Do not relabel a failing schema/index check
+as a semantic miss: retain separate mechanical and semantic dispositions. Old-date/body warnings
+remain disclosed advisories. The budget-only fixture has no wiki and is not a subject of this check.
 
 The resulting report must include baseline and final hashes; fixture origin and changes; exact
 prompt/entrypoint/model/host identities; per-call outcome, elapsed time and usage including aborts;
@@ -370,6 +497,11 @@ unmodified outputs and relevant matched events; per-case semantic source/output 
 before/after hashes; observer valid/invalid evidence; every unrun case; and a repair/no-repair
 decision. Retain a portable synthetic input/concise-output packet; keep bulky raw streams outside
 Git with stable manifest/hash/location, and explicitly record any unavailable raw evidence.
+A PASS means no reproduced defect for this specific case, fixture size and restricted authoring
+tool menu. It does not establish that the carrier caused the behavior or improves a bare model.
+Do not use spare calls for an unplanned comparison with retired instructions; that would change
+the question and still would not guarantee a failing model outcome. Record this attribution limit
+in the backlog alongside unrun stack and target-host coverage.
 
 Update backlog pointers and append the delivery RCA: why existing gates did not catch the class,
 which sibling carriers were checked, and what remains exposed. Commit to master and push through
