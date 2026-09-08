@@ -364,7 +364,9 @@ as unavailable and revise its recipe; do not widen tools while the experiment is
 
 ```powershell
 # Assign these from the frozen case manifest; never use an authoring or home root as actor cwd.
-$actorExe = 'C:\Users\Costas\.local\bin\claude.exe'
+$actorExe = Join-Path $env:USERPROFILE '.local/bin/claude.exe'
+if (-not (Test-Path -LiteralPath $actorExe -PathType Leaf)) { throw 'Claude executable is unavailable; stop and resolve the actor route in P0.' }
+# Record the resolved executable/version in local evidence; do not commit an account-qualified home path.
 $actorRoot = '<absolute external synthetic case root>'
 $actorPrompt = '<absolute UTF-8 prompt file>'
 $actorOut = '<new external attempt directory>/stdout.jsonl'
