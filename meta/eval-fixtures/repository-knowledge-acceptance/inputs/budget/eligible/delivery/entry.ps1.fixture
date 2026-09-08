@@ -1,0 +1,3 @@
+param([int]$BatchSize)
+& "$PSScriptRoot/rules/decision.ps1" -Value $BatchSize
+

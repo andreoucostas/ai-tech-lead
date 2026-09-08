@@ -1,0 +1,6 @@
+{
+  "writeRegion": "uk-south",
+  "replicaRegion": "uk-west",
+  "promotion": "manual",
+  "replicaAcceptsWrites": false
+}

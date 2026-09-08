@@ -2315,3 +2315,22 @@ guard were not substitutes for the omitted privacy scan. Replacing the literal w
 resolution and an explicit unavailable-route stop made the same native-host CP437 scan change from
 the named red to clean. Runtime identity belongs in local evidence; a reusable command should not
 commit the executor's account path. Earlier immutable review revisions were not history-rewritten.
+
+## 2026-09-08 — Semantic evaluation inputs need meaning checks before hash checks
+
+The B-222/B-223 execution review rejected two R refresh fixtures before an actor saw them. The first
+had a stable manifest and matching hash but contained literal `$15` instead of valid JSON with
+`maxAttempts: 5`. The second had semantically equal working files but 16 unequal base Git blobs
+because its two histories used different line-ending normalization. Hash agreement establishes the
+identity of supplied bytes; it does not establish that those bytes construct the intended world.
+Parse decisive inputs, inspect the actual semantic delta, and compare complete base trees when a
+paired-history control claims an identical origin.
+
+The write-route control also paid for itself. Ordinary and `docs/` writes succeeded while the same
+restricted session denied `.claude/skills/.../SKILL.md`; the actor then requested an unavailable
+shell and retried. Keeping path-class calibration inside the frozen call distinguished route
+unavailability from a capture defect and stopped the dependent confirmation call. Typed events then
+showed a second boundary: successful terminal results coexisted with wrong content-read totals,
+miscounted dependency edges and unsupported source claims. When the carrier already states those
+obligations clearly, preserve the compliance miss and route limit rather than adding duplicate
+instructions that have no measured corrective effect.

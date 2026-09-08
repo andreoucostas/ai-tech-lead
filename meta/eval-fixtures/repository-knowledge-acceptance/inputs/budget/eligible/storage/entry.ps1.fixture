@@ -1,0 +1,3 @@
+param([int]$AvailableReplicas)
+& "$PSScriptRoot/rules/decision.ps1" -Value $AvailableReplicas
+

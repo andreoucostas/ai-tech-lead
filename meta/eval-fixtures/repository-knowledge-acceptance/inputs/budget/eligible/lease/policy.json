@@ -1,0 +1,6 @@
+{
+  "operator": "-eq",
+  "limit": 1,
+  "units": "tokens"
+}
+

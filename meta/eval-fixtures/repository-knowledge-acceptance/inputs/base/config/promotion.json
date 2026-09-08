@@ -1,0 +1,6 @@
+{
+  "entrypoint": "ops/promote-package.ps1",
+  "owner": "release-operator",
+  "requiredOutput": "release/drop/<version>/package.zip"
+}
+

@@ -1,0 +1,4 @@
+param([int]$Value)
+$policy = Get-Content -Raw -LiteralPath "$PSScriptRoot/../policy.json" | ConvertFrom-Json
+$Value -ge [int]$policy.limit
+

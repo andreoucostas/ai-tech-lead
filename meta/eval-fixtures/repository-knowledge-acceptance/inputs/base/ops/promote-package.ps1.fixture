@@ -1,0 +1,11 @@
+param([Parameter(Mandatory)][string] $Version)
+
+$ErrorActionPreference = 'Stop'
+& "$PSScriptRoot/../scripts/check-manifest.ps1" -Version $Version
+if ($LASTEXITCODE -ne 0) { throw 'manifest check failed' }
+& "$PSScriptRoot/../external/SignTool/sign.ps1" -Input "$PSScriptRoot/../artifacts/package.zip"
+if ($LASTEXITCODE -ne 0) { throw 'signing failed' }
+$destination = "$PSScriptRoot/../release/drop/$Version"
+[IO.Directory]::CreateDirectory($destination) | Out-Null
+Copy-Item -LiteralPath "$PSScriptRoot/../artifacts/package.zip" -Destination "$destination/package.zip"
+

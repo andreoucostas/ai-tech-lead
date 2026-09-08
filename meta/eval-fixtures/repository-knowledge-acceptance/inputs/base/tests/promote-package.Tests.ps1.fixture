@@ -1,0 +1,4 @@
+$source = Get-Content "$PSScriptRoot/../ops/promote-package.ps1" -Raw
+if ($source.IndexOf('check-manifest.ps1') -gt $source.IndexOf('SignTool/sign.ps1')) { throw 'signing precedes validation' }
+if ($source.IndexOf('SignTool/sign.ps1') -gt $source.IndexOf('Copy-Item')) { throw 'copy precedes signing' }
+

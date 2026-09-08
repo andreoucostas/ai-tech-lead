@@ -1,0 +1,6 @@
+{
+  "operator": "-ge",
+  "limit": 2,
+  "units": "replicas"
+}
+

@@ -1,0 +1,6 @@
+{
+  "value": 7,
+  "expectedDecision": true,
+  "derivedFrom": "policy.json and rules/decision.ps1"
+}
+

@@ -254,8 +254,8 @@ adversarial design reviews, including a new-context review and Opus. The bounded
 `2026-09-08-b222-b223-adversarial-reviews.md` retains review provenance and corrections. It selects
 monorepo component observations for discovery, grounded capture, confirmed dependency refresh,
 and deliberate budget/continuation boundaries. The retained PK-2 input commit and output hash were
-checked; the deleted PK-1 fixture must not be represented as recovered. Execution, proposed actor
-calls/spend and any reproduced-defect correction remain future work; current statuses stay partial.
+checked; the deleted PK-1 fixture must not be represented as recovered. The bounded execution is
+now recorded in `meta/repository-knowledge-semantic-acceptance.md`; current statuses stay partial.
 This does not reopen CP2 or authorize B-224/B-225 live work.
 The proposal uses restricted-tool Claude authoring calls on the monorepo component. A pass would
 show no reproduced defect in that case, not carrier causation, full shipped-worker compliance,
@@ -280,12 +280,33 @@ Replaced the literal with environment-based resolution plus an unavailable-route
 the named privacy red then clean on both native hosts at CP437. Other copied CLI examples and local
 evidence references share the exposure. No gate weakening or published-history rewrite followed.
 
+**B-222/B-223 semantic acceptance execution, 2026-09-08.** Six restricted Sonnet calls used
+USD2.4739664 in reported CLI list-price accounting and completed inside the 80-minute actor-stage
+limit. Corrected D passed the quiet tombstone equality and required helper/config plus scoped-UI
+targets, while retaining semantic, read-count and dependency-hop misses. B reached exactly 40
+successful distinct content reads and B-continue read every previously unread eligible source;
+both retained eligibility/hop reporting errors. C's ordinary/docs writes worked but the required
+`.claude/skills` write control was denied, so C1/C2 and the dependent R-confirm are CANNOT-EXAMINE
+for this route. Read-only R correctly proposed the 3-to-5 owner refresh without applying it; its
+missing-helper case proposed the right downgrade shape but falsely reported the whole caller file
+absent. The full dispositions, hashes, fixture-review corrections and scope limits are in the
+result record. No Copilot, target-host, value or other-stack semantic claim follows.
+
+**Execution RCA.** Parser and document gates establish carrier shape, not semantic model adherence
+or the validity of an ad hoc evaluation world. Independent review caught an unbound D source, an
+invalid `$15` R JSON construction and line-ending-divergent base histories; typed-event and byte
+observers caught model overclaims, incorrect read/hop totals and the destination-specific write
+denial. The current carriers already state the missed obligations, so no louder duplicate product
+instruction or generic gate was added. The same terminal-success-versus-semantic-success exposure
+remains for every prose-directed workflow and is retained as an evidence limit.
+
 ### B-222 · Discover repository knowledge broadly, not only recurring recipes
 **Filed against:** v0.83.0 (2026-09-05)
 **Priority:** P1 · **Effort:** L · **Invariants:** #1 #2 #3 #6 #7
 **Status:** PARTIALLY DONE. The three-stack implementation shipped in v0.84.0 and its aggregate/CI
-release boundary passed. The retained semantic observation is narrow and did not exercise budget
-exhaustion or representative enterprise/target-host behavior. Does not depend on a registry or a
+release boundary passed. The 2026-09-08 synthetic monorepo observation exercised quiet facts,
+exact 40-file exhaustion and continuation, but retained semantic/report-fidelity misses and did not
+exercise representative enterprise/target-host behavior. Does not depend on a registry or a
 private warehouse.
 
 **Problem / evidence.** Shared A8 already inventories naming clusters, but requires three recurring
@@ -334,9 +355,11 @@ eligibility rule in bootstrap/rebootstrap; parser success cannot establish disco
 **Filed against:** v0.83.0 (2026-09-05)
 **Priority:** P1 · **Effort:** L · **Invariants:** #1 #2 #3 #6 #7
 **Status:** PARTIALLY DONE. B-222 output is integrated into the three-stack capture/refresh source
-shipped in v0.84.0, and aggregate/CI release checks passed. Retained forward runs include their
-observed misses and do not establish broad recall or target-host efficacy. No registry, graph
-service or promotion system.
+shipped in v0.84.0, and aggregate/CI release checks passed. The 2026-09-08 restricted route could not
+exercise skill-path capture or confirmed application; read-only refresh preserved owner bytes and
+passed the changed-config proposal but missed the missing-helper source state. Retained forward runs
+include their observed misses and do not establish broad recall or target-host efficacy. No
+registry, graph service or promotion system.
 
 **Problem / evidence.** Wiki, skills, maps and reconciliation exist, but A8 promotes only recipes.
 Rebootstrap favors recent activity over dependencies of quiet claims and requires confirmation

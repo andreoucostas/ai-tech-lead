@@ -1,0 +1,6 @@
+# Preserve fixture payload bytes exactly; materialization depends on recorded raw SHA-256 values.
+inputs/base/** -text whitespace=cr-at-eol,-blank-at-eof
+inputs/budget/** -text whitespace=cr-at-eol,-blank-at-eof
+inputs/refresh/** -text whitespace=cr-at-eol,-blank-at-eof
+manifests/** whitespace=-blank-at-eof
+prompts/** whitespace=-blank-at-eof

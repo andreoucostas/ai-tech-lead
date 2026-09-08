@@ -1,0 +1,10 @@
+$source = Get-Content (Join-Path $PSScriptRoot '..\ops\complete-leased-item.ps1') -Raw
+$lost = $source.IndexOf("if (`$lease.state -ne 'held')")
+$work = $source.IndexOf('& $Work')
+$ack = $source.IndexOf('& queue-cli item acknowledge')
+if ($lost -lt 0 -or $work -lt 0 -or $ack -lt 0 -or $lost -gt $work -or $work -gt $ack) {
+    throw 'Lease-loss guard must precede work and acknowledgement.'
+}
+if ($source -notmatch "leaving the item unacknowledged") {
+    throw 'Lease-loss behavior is no longer explicit.'
+}

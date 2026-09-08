@@ -1,0 +1,16 @@
+param(
+    [Parameter(Mandatory)][string]$LeaseId,
+    [Parameter(Mandatory)][scriptblock]$Work
+)
+
+$ErrorActionPreference = 'Stop'
+$lease = & queue-cli lease show --id $LeaseId | ConvertFrom-Json
+if ($lease.state -ne 'held') {
+    Write-Output 'Lease is no longer held; leaving the item unacknowledged for queue-owned retry.'
+    exit 3
+}
+
+& $Work
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& queue-cli item acknowledge --lease-id $LeaseId
+exit $LASTEXITCODE

@@ -1,0 +1,6 @@
+param([Parameter(Mandatory)][string] $Version)
+
+$manifest = Get-Content -LiteralPath "$PSScriptRoot/../artifacts/manifest.json" -Raw | ConvertFrom-Json
+if ($manifest.version -cne $Version) { [Console]::Error.WriteLine('version mismatch'); exit 1 }
+exit 0
+

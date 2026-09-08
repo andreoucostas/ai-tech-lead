@@ -1,0 +1,4 @@
+{
+  "leaseLoss": "leave-unacknowledged",
+  "retryOwner": "queue-service"
+}

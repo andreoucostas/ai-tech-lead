@@ -1,0 +1,5 @@
+$topology = Get-Content (Join-Path $PSScriptRoot '..\topology\storage.json') -Raw | ConvertFrom-Json
+if ($topology.writeRegion -ne 'uk-south') { throw 'Unexpected write region.' }
+if ($topology.replicaRegion -ne 'uk-west') { throw 'Unexpected replica region.' }
+if ($topology.promotion -ne 'manual') { throw 'Replica promotion must remain manual.' }
+if ($topology.replicaAcceptsWrites) { throw 'Replica must not accept writes.' }

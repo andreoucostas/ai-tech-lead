@@ -194,3 +194,24 @@ They do not prove that current carriers correct the historic misses. The origina
 documented as deleted. Newly constructed inputs will form a new fixture series, and proposed
 scorer controls are not observed red/green worlds until execution. No Copilot observation, CP2
 retry, product efficacy claim or product version bump follows from either design verdict.
+
+## Execution-time fixture and evidence review
+
+The authorized execution used one independent Terra reviewer that did not construct or run the
+fixtures. It inspected the frozen contract, actual materialized bytes, Git histories, raw typed
+events and owner state before each dependent dispatch and again during grading. Its corrections were
+re-verified by root rather than accepted as verdict alone.
+
+The reviewer rejected the initial D2 fixture because the caller did not actually bind the config to
+the helper; root retained that actor output, corrected only the source edge and ran the separately
+labelled optional D case. It later rejected an R-changed fixture whose matching hash covered invalid
+literal `$15` JSON, and a second R pair whose semantic bases had 16 unequal Git blobs from different
+line-ending normalization. Neither rejected R fixture reached an actor. The final R pair had equal
+complete base trees and isolated one-path semantic changes before dispatch.
+
+The same reviewer confirmed the C route's `.claude/skills` write denial made C1/C2 unavailable and
+required stopping R-confirm, then independently graded D, R, B and B-continue from matched events
+rather than terminal summaries. The final dispositions and exact evidence hashes are retained in
+`meta/repository-knowledge-semantic-acceptance.md`. This review establishes evidence integrity for
+the bounded series; it does not turn model misses into product defects or supply the unrun host,
+stack, Copilot or value outcomes.
