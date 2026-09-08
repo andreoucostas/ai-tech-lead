@@ -119,7 +119,7 @@ report-scope clarification. Root checked the actual harness and CLI help before 
   discovery portion of R, not the parent C/R-confirm summaries. Those still require truthful
   evidence and recheck reports; the clarification prevents a false shape failure.
 
-**Final immutable plan:** `892c641dbc342cac36c6351d72b5eae60dcb90da`.
+**Final design revision before CI portability correction:** `892c641dbc342cac36c6351d72b5eae60dcb90da`.
 SHA-256: `9B1022C19C48397FC419F489DF1B52AB1127BE57C40DD614DB4B502FE6251943`.
 The fresh Codex reviewer verified this exact delta and hash and returned **ACCEPT**, explicitly
 without runtime acceptance. Root considers Opus's conditional acceptance satisfied by the
@@ -158,6 +158,34 @@ These controls validate their named mechanical/documentation boundaries, not the
 Both PowerShell examples in the final immutable plan parsed with zero errors under each native
 host (two examples per host). `git diff --check` passed. No source, generated dist, product version
 or release record was changed by this documentation delivery.
+
+## Delivery CI correction and final plan identity
+
+The first documentation push at `f66f1a6bb8db2aa3e118ba31e3911eb71ee263d2` was **red**, not green:
+[CI run 34196083936](https://github.com/andreoucostas/ai-tech-lead/actions/runs/34196083936).
+All six stack hook jobs passed. Each native meta job failed only RepositoryPrivacy.Tests, which
+found one literal account-qualified home path in the plan's launcher example. The parity job then
+failed because the two failed meta jobs did not supply their required case manifests. Expected
+mutation-failure output from passing suites is not counted as another actual suite failure.
+
+Root had omitted the existing privacy scan from local planning checks. The outgoing check calls
+the shipped guard and did not reject this path; it is not the authoring RepositoryPrivacy scan.
+The privacy gate did catch the defect in CI. The minimal correction resolves the executable from
+`USERPROFILE`, verifies that it is a file, stops if unavailable, and keeps account-qualified runtime
+identity in local evidence. No gate, exclusion, allowlist or product behavior was changed.
+
+Root observed the actual unfixed tree's `RepositoryPrivacy.Tests.ps1 -ScanRoot .` fail with the
+named plan location on both native hosts at CP437; after correction the same scan exited 0 and
+reported clean on each. Both hosts' actual executable/version/code page were recorded. Earlier
+immutable review commits still retain the literal account path; this follow-up does **not** rewrite
+published Git history or claim history-wide removal. The original failed CI remains in the record.
+
+**Final delivered plan:** `03cec478235f1b248ef8d49dc0d24d80e1e93974`.
+SHA-256: `2CCF7B78EAE2120E99B67E0AD01F4710569633440FD13AC8C96FA7F7AFB20C12`.
+The fresh Codex reviewer verified the exact portability-only delta and hash and returned ACCEPT;
+it did not rerun the root-observed privacy checks. Opus's reviewed design and conditional verdict
+remain as described above, not a claimed review of these last bytes. The task contract, actor tool
+menu, scoring rules and execution authority did not change.
 
 ## Evidence limits
 

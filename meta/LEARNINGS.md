@@ -2308,3 +2308,10 @@ native exits 7/0 and both stdout/stderr after termination; monetary enforcement 
 behavior remain unobserved. A parser gate does not validate an ad hoc experiment's construct, and a
 review verdict does not supply missing execution evidence. Preserve these distinctions without
 turning a small acceptance task into another general harness or outcome study.
+
+The first planning push then failed the existing RepositoryPrivacy gate: the copied launcher
+example embedded an account-qualified home path. Local hygiene/grammar checks and the outgoing
+guard were not substitutes for the omitted privacy scan. Replacing the literal with environment
+resolution and an explicit unavailable-route stop made the same native-host CP437 scan change from
+the named red to clean. Runtime identity belongs in local evidence; a reusable command should not
+commit the executor's account path. Earlier immutable review revisions were not history-rewritten.

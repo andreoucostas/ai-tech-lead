@@ -273,6 +273,12 @@ calibration. The corrected recipe uses a single .NET copy (observed named red th
 on both native hosts at CP437); write controls include the actual skill path class and classify a
 denied route separately from a product miss. Other restricted configuration writes remain exposed
 to that distinction. Both reviews and final source adjudication are recorded in the companion.
+**Delivery correction.** First CI rejected an account-qualified launcher path in the plan; this
+was root's documentation defect, not a host failure. The existing privacy gate caught it, but the
+local planning checks had omitted that scan, and the outgoing guard is not the same instrument.
+Replaced the literal with environment-based resolution plus an unavailable-route stop; observed
+the named privacy red then clean on both native hosts at CP437. Other copied CLI examples and local
+evidence references share the exposure. No gate weakening or published-history rewrite followed.
 
 ### B-222 · Discover repository knowledge broadly, not only recurring recipes
 **Filed against:** v0.83.0 (2026-09-05)
