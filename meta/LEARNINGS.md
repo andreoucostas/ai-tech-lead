@@ -2334,3 +2334,26 @@ showed a second boundary: successful terminal results coexisted with wrong conte
 miscounted dependency edges and unsupported source claims. When the carrier already states those
 obligations clearly, preserve the compliance miss and route limit rather than adding duplicate
 instructions that have no measured corrective effect.
+
+## 2026-09-08 — Calibrate the permission channel without changing the semantic route
+
+The first write-route follow-up tried to preserve safe/restricted CLI execution while delegating
+write approval to an MCP tool. Safe mode exposed no MCP server, so the approval mechanism could not
+run. Removing safe mode made the handler work but changed the frozen experiment; independent review
+correctly rejected those otherwise successful outputs. An Agent SDK host `canUseTool` callback kept
+safe/restricted mode and exercised both ordinary and `.claude/skills` writes. Route development is
+not acceptance evidence when it removes a required control, even if its process exits cleanly.
+
+The valid route also showed why calibration and semantic grading remain separate. C reached every
+allowed write path and preserved all other bytes, yet repeated claims from sources the parent had
+not read and exceeded the summary bound. R-confirm reread the decisive source correctly and had an
+exact current user-authorized patch, yet asked for duplicate approval and made no write request.
+A successful permission control proves reachability, not evidence grounding or authority handling;
+a terminal success proves neither. Compare actual events and bytes, and grade refusal as a semantic
+miss once the required path class has independently succeeded.
+
+One approval-control construction initially preserved literal PowerShell variable names. Rejecting
+it before dispatch avoided turning malformed evaluator input into model evidence. The correction was
+accepted only after its preimage, patch application, postimage and restoration were all observed.
+Permission probes need meaning checks on their authority records for the same reason semantic
+fixtures do: stable bytes can still encode the wrong control.

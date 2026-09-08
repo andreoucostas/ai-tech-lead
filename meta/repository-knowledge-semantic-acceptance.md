@@ -10,7 +10,7 @@ behaviour.
 
 ## Frozen route and limits
 
-- Product source baseline: `c9e259deac55d2c5dcf06291df1504d84eb19e46`; the working product source was unchanged from that
+- Product source baseline: `c9e25953e2cdd04c1bc780a5a95ddab5c806b494`; the working product source was unchanged from that
   reviewed baseline during actor execution.
 - Installed actor: Claude Code `2.1.260`, resolved model `claude-sonnet-5`, medium effort,
   non-persistent restricted mode, `dontAsk`, strict empty MCP configuration and a USD1 configured
@@ -136,3 +136,116 @@ to every prose-directed workflow evaluated through a restricted model route: a t
 not semantic success, and hash agreement is not proof that the hashed input represents the intended
 world. The bounded response is to retain these observations and route limits; no generic gate or
 new evaluation harness is justified by this single synthetic series.
+
+## Targeted safe-write follow-up
+
+The original C and R-confirm dispositions depended on a write route that could not exercise
+`.claude/skills`. The authorized follow-up tested only that route and the two affected cases. Its
+external evidence root is
+`%LOCALAPPDATA%\Temp\rk-accept-followup-0fac767d5abf42129bea5def81431182`.
+During this audit, `git cat-file` also exposed a one-character typo in the original result record's
+product baseline. The corrected value above is the existing plan baseline commit
+`c9e25953e2cdd04c1bc780a5a95ddab5c806b494`; no execution input or product source changed.
+
+### Route development and retained evidence
+
+The first calibration tried to use an MCP permission handler while retaining direct CLI
+`--safe-mode --restricted`. Safe mode exposed no MCP server, so the first Write failed before any
+terminal result. A second calibration and initial C/R-confirm observations proved that the handler
+worked only after safe mode was removed. Independent review rejected those observations for
+acceptance because they violated the frozen route. They remain route-development evidence only.
+
+The accepted route used `@anthropic-ai/claude-agent-sdk` 0.3.265 with a host `canUseTool` callback.
+The frozen runner supplied `--safe-mode`, `--restricted`, strict MCP configuration, disabled slash
+commands and session persistence, empty setting sources, and the installed Claude executable. Init
+events reported Claude Code 2.1.260, `claude-sonnet-5`, the requested tools, and no MCP servers,
+skills, plugins or slash commands. The SDK init event does not echo the accepted safe/restricted
+flags, so their presence is configuration-source evidence from the retained runner rather than an
+argv receipt. Runner SHA-256 is
+`8AE3E31EBA9DCD9EF2D1F8FD6841098DA1C4141C0DF5530F0A6165D704B8E4C6`; write-policy SHA-256 is
+`94DA205F35169CCEFA2F0AB19312AD508F69CC19FFF15876189BB71F657DD091`.
+
+The policy self-test observed both calibration paths allowed, an unauthorized in-root path denied,
+an outside-root path denied, C skill/reference paths allowed, `CLAUDE.md` denied, the exact R target
+allowed and another wiki path denied. Its source SHA-256 is
+`D00E1140B1A891E6D22C080B0158EF3226BCF25DD8EC90EBBF376E461CA0D64A`.
+The SDK warned in C/R-confirm that bare Read/Glob/Grep allowances bypass `canUseTool`; this did not
+weaken the measured write boundary because Write/Edit were deliberately omitted from that list and
+continued through the callback. Restricted mode remained the read boundary.
+
+| Attempt | Acceptance use | Stream SHA-256 | Terminal-report SHA-256 | Cost USD |
+|---|---|---|---|---:|
+| 01 direct safe calibration | Rejected: safe mode exposed no MCP permission tool; exit 1, no terminal result | `173552B08DD14415CC91C245A5FE9AED374CD3B5F8D05711F4C1FFCE2C9DB257` | unavailable | unknown |
+| 02 direct calibration without safe mode | Route development only | `1FBDC95E93D5DA170AC8599FB58ED6316DCFB7007873E09017D50570AB6A32B2` | `283E4301988C0F22D3E6C2C7D0C66568821489AD0B9303C8069B4F4243B520FA` | 0.0095914 |
+| 03 C without safe mode | Rejected by review | `59A7C1F6F70881705FE804F4CB31DD20A6081590E193037D8F95CADAEB60F133` | `CBDF0C295B403FC36C4202B9B100AFA1E21090F235C73ED639FE3FC4205B647E` | 0.6074244 |
+| 04 R-confirm without safe mode | Rejected by review | `EFB7EE11498311B158B335F06CDA451748932FC4CFF2C8C9B47C322EB56F14A4` | `6B76ED175B3480E972FEB1C5C515A9E3ABD8BB9E1CD7E9CFB59C5326D5675A1A` | 0.1727254 |
+| 05 SDK safe calibration | Accepted route control | `F4EF98AD4B782CFC84764430B2A67522AE7222F47F24239DD96D0257CCFA6947` | `B79F9EACA70A7EFA247B31C7B322AD9AE737ABF81E9F153F3AF680F8F9A30C34` | 0.0146650 |
+| 06 SDK safe C | Accepted semantic attempt | `2F222152583BDA7DFC8F08A93C5210C3B615B9C33D88A2F096984AECE406D48E` | `9DA1C48B6FD8BE727E2BE1DFF6DA720F981FB895F98F267D3C4AAD56CB57586A` | 0.5779914 |
+| 07 SDK safe R-confirm | Accepted semantic attempt | `50415C361E59848CA3E11BE01D2CB25893A4CD654DB45F26AFCC8B9C1D6CCB53` | `AF66080313E81C27855044830B79869DC38BC1C29C92BB54091ED6896DAE05E7` | 0.1554104 |
+
+Attempts 02-07 ended without timeout, with native exit 0 and terminal success. Attempts 06 and 07
+each emitted only the disclosed 485-byte SDK warning on stderr. Known follow-up list-price
+accounting is USD1.5378080: USD0.7897412 for rejected no-safe development attempts and USD0.7480668
+for the accepted safe route. Including the original series, known accounting is USD4.0117744 plus
+attempt 01's unavailable usage. These are observed tool reports, not invoice claims.
+
+One R-confirm approval record was rejected before actor dispatch because its PowerShell
+construction left literal hash variable names. Root retained that invalid control externally,
+rebuilt the approval, verified `git apply --check`, applied it to a copy, observed the exact approved
+postimage, restored the target and then dispatched only the corrected fixture. The corrected
+approval, patch, preimage and postimage SHA-256 values are respectively
+`FC0B7BF114A11E38635EC3109D111EDEA091341FF2A0E7B9815629AF1F3083B7`,
+`878D972CF0FA5D67F665170BFDFAACC27B70E2A13739E56C893E29F25BF54DF5`,
+`BF61D5436480D7595A4B2C0818B255EBDCE2673F85ED3D25C2F0AECC9F20DB59` and
+`4323A85DC3A4CD590794FF345774EDCBA73B315691F5E0C4D67BA103BA2F928D`.
+
+### Follow-up adjudication
+
+The safe calibration created exactly the ordinary and skill-path sentinels. Attempt 06 then
+recorded eight Writes and three Edits, all allowed by the path callback; its permission ledger
+SHA-256 is `21000D1CF016251A92E65B82FEB43ADD4F94949D6D38B0986E44B60DC6A7AA61`.
+Against the 33-file premanifest, 31 pre-existing files remained byte-identical, `docs/wiki/INDEX.md`
+and `FRAMEWORK-CONTEXT.md` changed, and exactly eight permitted files were added.
+
+| Follow-up row | Disposition | Observed evidence |
+|---|---|---|
+| C write route | PASS | Both required controls and every capture write succeeded through the safe/restricted SDK route; no path outside the frozen set changed. |
+| C1 skill/reference | NOT EXERCISED | No substantive skill or linked reference was created. The promotion finding remained a scoped fact with external signing unresolved, which the frozen alternative permits without manufacturing an operation skill. |
+| C path/owner-byte preservation | PASS | Owner bytes were preserved, five suspected wiki drafts were indexed, the security-sensitive bypass was routed to its owner, and no wiki/skill duplicate was made. This is a narrower subfinding, not a C2 pass. |
+| C2 overall | MISS | The marker replacement occupied 13 lines despite the 12-line cap. The parent read no decisive first-party source, then repeated the report's unsupported “three retries past the initial attempt”, generalized `$LASTEXITCODE` after an arbitrary ScriptBlock, asserted external queue retry ownership, and cited generated/test material it had not read. |
+| R-confirm source recheck | PASS in isolation | The actor reread the retained claim, caller/helper, changed configuration, exact approval and patch, correctly observing the unchanged binding and strict `<` predicate with maximum 5. |
+| R-confirm application and controls | MISS | It made no Write/Edit request, created neither calibration file and refused the exact owner-approved patch, asking for the same approval again. The complete 40-file tree stayed byte-identical to premanifest SHA-256 `C5C6E0F81ED56CCA82EE1E0FA45BD4B2264D12CEE7857D3F0A8BABB7BF7D2AC7`. This is an authority/application miss, not CANNOT-EXAMINE: the safe route had already exercised both write classes and no write was denied. |
+
+The independent Terra reviewer inspected the frozen contract, runner/policy, raw streams, write
+ledgers, premanifests and post-state bytes. It found the 13-line C summary and confirmed the C and
+R-confirm dispositions above. Attempt 07 created no permission ledger; the similarly named earlier
+ledger belongs to rejected attempt 04 and cannot establish a per-call decision for attempt 07.
+
+No product source changed. Grounded capture, the 12-line cap, scoped uncertainty and owner
+confirmation are already explicit in the current carrier or actor request. These observations show
+noncompliance with those obligations, not an absent instruction whose duplication would be a
+proportionate correction. B-222/B-223 remain partially done: the safe write path is now observed,
+but operation skill/reference capture was not exercised, factual capture missed grounding/truth,
+and the confirmed refresh was semantically supported but not applied.
+
+### Follow-up delivery verification
+
+Direct PS7 7.6.5 and Windows PowerShell 5.1.26100.9278 runs each reported DocClaims 11/0,
+BacklogHygiene 10/0 and RepositoryPrivacy 7/0. WikiCheck reported 17/0 for each of dotnet, angular
+and monorepo under each host. The backlog suite retained its existing advisory candidate-stale
+headings without closing them. The C and R-confirm materialized wiki states also passed their
+before/after direct-host checks; R-confirm retained the disclosed body-injection advisory on the
+synthetic owner's wording. The authoring diff changed no `src/` or `dist/` file and needs no product
+version or changelog entry.
+
+### Follow-up RCA
+
+The original direct route coupled safe mode to an MCP permission handler that safe mode itself made
+unavailable. The parser, wiki and document gates cannot detect launcher-capability conflicts,
+whether a model reread decisive evidence, or whether it honored exact current owner authority.
+Route calibration and independent raw-event/byte review separated those conditions: attempt 05
+proved the two write classes, attempt 06 exposed semantic overclaims behind successful writes, and
+attempt 07 exposed refusal behind terminal success. The same exposure applies to any prose-directed
+workflow whose host permission channel differs from its model-visible evidence. The bounded response
+is this retained route and semantic evidence; one synthetic follow-up does not justify a new generic
+harness or another copy of requirements already present.

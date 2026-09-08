@@ -2,9 +2,9 @@
 
 **Date:** 2026-09-08. **Source baseline:** v0.86.0,
 `c9e25953e2cdd04c1bc780a5a95ddab5c806b494`.
-**Status:** reviewed execution proposal; source-checked final corrections recorded in the companion review. This document plans execution;
-the present user request authorizes planning and the requested fresh-context and Opus reviews.
-It does not start semantic trials, implement product changes, or reopen a Copilot study.
+**Status:** executed. The frozen design and original disposition are retained below; the targeted
+safe-write follow-up is recorded in section 11 and the companion review. No product change or
+Copilot study followed from these observations.
 **Authority:** root `CLAUDE.md`, `DEVELOPING.md`, WSD-074, WSD-078 and WSD-079.
 **Outcome:** establish exactly which named authoring-workflow cases work on this release, repair
 only reproduced in-scope defects when execution is authorized, and retain every miss and limitation.
@@ -537,10 +537,10 @@ which sibling carriers were checked, and what remains exposed. Commit to master 
 - [x] Baseline, source map and actual fixture/observer controls are frozen and independently read.
 - [x] Original/reconstructed inputs are correctly labelled; hidden scoring material stays outside actor context.
 - [x] D, C, R, R-confirm, B and B-continue each have an honest disposition; no success-only selection.
-- [ ] Refresh confirmation is exercised without granting blanket authority; exact owner bytes are compared. The owner bytes were compared and stayed unchanged, but R-confirm is CANNOT-EXAMINE because the required skill-path write control was denied.
+- [x] Refresh confirmation is exercised without granting blanket authority; exact owner bytes are compared. The safe-route actor supported the semantic change but refused the exact approved application and both write controls, so application is a semantic MISS while every owner byte stayed unchanged.
 - [x] No product fix was made: the retained misses contradict obligations already explicit in the current carrier, so there is no supported corrective delta to review or reconcile.
 - [x] Results distinguish authoring behavior from static mechanics and unrun Copilot/value/stack coverage.
-- [ ] Report, reusable synthetic evidence, backlog/RCA and required review/release records are committed and CI is observed.
+- [x] The original report, reusable synthetic evidence, backlog/RCA and review record were committed at `45e7ca2fb03138bc9ee350a206cb9566a2f3556b`; CI run 34277984871 was observed green. The targeted follow-up is retained in the same result/review records and receives its own normal delivery checks.
 
 ## 9. Design review disposition
 
@@ -564,3 +564,25 @@ passed their read-boundary/continuation targets while retaining eligibility and 
 Independent review rejected and corrected invalid D/R fixture states before relying on their
 subjects. No product correction followed because the current carrier already states the missed
 requirements. B-222/B-223 remain partial under the scope limits named in the result record.
+
+## 11. Targeted safe-write follow-up disposition
+
+The follow-up replaced the incompatible safe-mode/MCP permission experiment with an Agent SDK host
+callback that retained safe mode, restricted mode, the exact tool menu, empty setting sources and
+strict empty MCP configuration. A separate calibration created both the ordinary and skill-path
+sentinels; independent review accepted the route with the explicit limit that SDK init does not echo
+the accepted safe/restricted flags.
+
+On that route, C's write boundary passed: exactly eight allowed files were added, two allowed owner
+surfaces changed and all other pre-existing bytes matched. C1 is NOT EXERCISED because the actor
+defensibly abstained from minting an operation skill/reference with external steps unresolved. C2
+is MISS: the parent did not read decisive first-party sources, repeated unsupported retry, lease and
+generated/test claims, and used 13 lines for the 12-line summary allowance.
+
+R-confirm reread the exact caller/helper/configuration and supported the approved `< 5` refresh, but
+made no Write/Edit request, refused both calibration controls and asked for duplicate conversational
+approval instead of applying the exact user-authorized patch. The route was available and no write
+was denied, so the application/control result is MISS rather than CANNOT-EXAMINE. Exact evidence,
+costs, route-development attempts and the independent Terra review are in
+`meta/repository-knowledge-semantic-acceptance.md` and the companion review record. No product
+change follows; B-222/B-223 remain partial.

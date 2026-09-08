@@ -215,3 +215,38 @@ rather than terminal summaries. The final dispositions and exact evidence hashes
 `meta/repository-knowledge-semantic-acceptance.md`. This review establishes evidence integrity for
 the bounded series; it does not turn model misses into product defects or supply the unrun host,
 stack, Copilot or value outcomes.
+
+## Targeted safe-write follow-up review
+
+The user authorized a bounded follow-up after the original `.claude/skills` write denial. The same
+nonimplementing Terra reviewer independently rejected direct attempts that removed safe mode, then
+read the accepted SDK runner/policy, policy probes, attempts 05-07, raw typed streams, write ledgers,
+premanifests and resulting fixture bytes. It made no workspace edit.
+
+The reviewer returned **ACCEPT for the SDK-safe route and REVISE for the semantic dispositions**.
+Root rechecked each correction against the prompt, source bytes and manifests:
+
+- The retained runner supplies safe/restricted mode, the exact tools, empty settings, strict MCP
+  configuration and no session/slash loading. The SDK init does not serialize those accepted flags,
+  so the runner source is the evidence for them. Calibration exited 0 and created both required
+  write classes. The policy's eight programmatic allow/deny/outside-root probes passed.
+- The SDK warning that bare Read/Glob/Grep entries bypass `canUseTool` is a disclosed route limit.
+  Write/Edit were deliberately absent from that auto-allowed list and all C write events reached the
+  callback. Attempt 06 recorded eight Writes and three Edits, exactly ten changed paths, and 31
+  byte-identical pre-existing files.
+- C1 is NOT EXERCISED because no substantive skill/reference pair was created and the frozen rubric
+  permits a scoped promotion fact with an unresolved signing step. C2 is MISS: the marker replacement
+  is 13 rather than at most 12 lines, and the actor repeated unsupported retry numbering,
+  ScriptBlock/queue behavior and unread generated/test claims without a decisive source reread.
+- R-confirm's semantic source recheck passed in isolation. Its application and controls missed: the
+  actor made no Write/Edit request, refused the exact approved patch and left all 40 files unchanged.
+  This is model authority/refusal behavior, not route unavailability. No safe-attempt permission
+  ledger exists because no write was attempted; the earlier R-confirm ledger belongs to the rejected
+  no-safe attempt.
+
+Root adopted the reviewer's correction from a generic C2 miss to the more precise split between
+passing path/owner-byte preservation and the overall C2 evidence-truth/summary-bound miss. It also
+retained the SDK configuration-receipt gap rather than claiming the init stream proved flags it
+does not echo. Exact
+hashes and costs are in `meta/repository-knowledge-semantic-acceptance.md`. This review covers the
+follow-up evidence and grading only; it does not certify product efficacy or unrun environments.

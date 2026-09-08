@@ -300,14 +300,34 @@ denial. The current carriers already state the missed obligations, so no louder 
 instruction or generic gate was added. The same terminal-success-versus-semantic-success exposure
 remains for every prose-directed workflow and is retained as an evidence limit.
 
+**Targeted safe-write follow-up, 2026-09-08.** A direct MCP permission handler could not coexist
+with the frozen safe-mode route; no-safe calibration/C/R-confirm attempts were retained as route
+development and rejected for acceptance. The official Agent SDK host callback then preserved
+safe/restricted mode and passed both ordinary and `.claude/skills` write controls. On that valid
+route, C changed exactly ten allowed paths and preserved every other byte. C1 remained NOT
+EXERCISED because no defensible operation skill/reference was minted; C2 missed because the parent
+did not re-ground factual output, repeated unsupported retry/lease/generated claims and wrote 13
+summary lines against a cap of 12. R-confirm reread the decisive caller/helper/config sources
+correctly but refused the exact owner-approved patch and both control writes, so confirmed
+application is a semantic MISS rather than CANNOT-EXAMINE. The full hashes, costs and reviewer
+evidence are appended to `meta/repository-knowledge-semantic-acceptance.md`.
+
+**Follow-up RCA.** Static gates could not reveal that safe mode suppressed the proposed MCP
+permission extension, that a terminally successful capture relied on unread evidence, or that the
+actor would ignore current user-level exact approval. A calibrated host write callback plus raw
+event and byte comparison distinguished route availability from semantic adherence. The current
+carrier/request already states grounding, bounded-summary and confirmation obligations, so no
+duplicate product wording or generic evaluation harness was added. Other host permission channels
+and prose workflows remain exposed to the same route-versus-behaviour ambiguity.
+
 ### B-222 · Discover repository knowledge broadly, not only recurring recipes
 **Filed against:** v0.83.0 (2026-09-05)
 **Priority:** P1 · **Effort:** L · **Invariants:** #1 #2 #3 #6 #7
 **Status:** PARTIALLY DONE. The three-stack implementation shipped in v0.84.0 and its aggregate/CI
 release boundary passed. The 2026-09-08 synthetic monorepo observation exercised quiet facts,
-exact 40-file exhaustion and continuation, but retained semantic/report-fidelity misses and did not
-exercise representative enterprise/target-host behavior. Does not depend on a registry or a
-private warehouse.
+exact 40-file exhaustion and continuation. Its safe-write follow-up exercised capture routing but
+retained source-grounding, summary-bound and report-fidelity misses; representative enterprise and
+target-host behavior remain unobserved. Does not depend on a registry or a private warehouse.
 
 **Problem / evidence.** Shared A8 already inventories naming clusters, but requires three recurring
 implementations, reads one cleanest instance and caps proposals at three to five. This excludes
@@ -355,11 +375,12 @@ eligibility rule in bootstrap/rebootstrap; parser success cannot establish disco
 **Filed against:** v0.83.0 (2026-09-05)
 **Priority:** P1 · **Effort:** L · **Invariants:** #1 #2 #3 #6 #7
 **Status:** PARTIALLY DONE. B-222 output is integrated into the three-stack capture/refresh source
-shipped in v0.84.0, and aggregate/CI release checks passed. The 2026-09-08 restricted route could not
-exercise skill-path capture or confirmed application; read-only refresh preserved owner bytes and
-passed the changed-config proposal but missed the missing-helper source state. Retained forward runs
-include their observed misses and do not establish broad recall or target-host efficacy. No
-registry, graph service or promotion system.
+shipped in v0.84.0, and aggregate/CI release checks passed. The 2026-09-08 safe/restricted follow-up
+proved the skill-path write route, but no substantive operation skill/reference was exercised and
+factual capture retained grounding/truth misses. Refresh reread the changed caller/helper/config
+correctly, then refused the exact owner-approved application; the separate missing-helper source
+state also remains missed. Retained forward runs do not establish broad recall or target-host
+efficacy. No registry, graph service or promotion system.
 
 **Problem / evidence.** Wiki, skills, maps and reconciliation exist, but A8 promotes only recipes.
 Rebootstrap favors recent activity over dependencies of quiet claims and requires confirmation
