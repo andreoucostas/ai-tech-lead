@@ -2291,3 +2291,20 @@ actual generator once per stack and compares its complete EOL-normalized output 
 copies. A marker-preserving body mutation then failed for the intended output mismatch, followed by
 clean runs on both hosts. A search for other manually generated derivatives under `src/` found no
 second current instance.
+
+## 2026-09-08 — Review the experiment's inputs and permissions as part of its contract
+
+The B-222/B-223 acceptance-plan critiques found source-level validity gaps before any semantic
+trial: a fixture without the subject's ownership inventory, a write allowance narrower than the
+workflow's permitted discovery-note/summary outputs, and a refresh answer ambiguously present in
+discovery inputs. Root verified those findings against the retained fixture and current carriers.
+The second review also exposed destination-specific grading and ungraded self-reported read counts.
+The plan now separates per-call inputs, owner changes, defensible alternatives and observed report
+fidelity. These are prospective corrections, not measured improvements in model behavior.
+
+Reusing an existing launcher also required reading its failure path: B-41 clears the transcript on
+timeout. The bounded proposal retains partial logs instead. A local PS7 process probe captured
+native exits 7/0 and both stdout/stderr after termination; monetary enforcement and semantic actor
+behavior remain unobserved. A parser gate does not validate an ad hoc experiment's construct, and a
+review verdict does not supply missing execution evidence. Preserve these distinctions without
+turning a small acceptance task into another general harness or outcome study.

@@ -3751,3 +3751,45 @@ handoff remain implementation choices constrained by the frozen cases. This is f
 adjudication, not fresh independent implementation review. Root observed BacklogHygiene.Tests at
 10 passed / 0 failed on each directly invoked native PS7 and PS5.1 host; these validate authoring
 records, not the proposed product behaviour. No paid provider CLI call ran in this planning task.
+
+## WSD-080: bounded authoring acceptance for discovery, capture and refresh (2026-09-08)
+
+**Context and authority.** After v0.86.0 closed B-230/B-231, the user requested a concrete next-work
+plan, adversarial review in a new context, and an additional Opus review. B-222/B-223 shipped in
+v0.84.0 but their retained record contains capture misses and unrun budget/continuation/semantic
+refresh cases. Source baseline: `c9e25953e2cdd04c1bc780a5a95ddab5c806b494`. Current authority covers
+planning, the requested reviews and documentation delivery, not execution of the proposed trials.
+
+**Decision and proportionality.** Prepare one bounded monorepo component acceptance pass using
+retained/reconstructed synthetic fixtures and the actual composed workflow instructions. Separate
+discovery, capture, controlled owner-confirmed refresh and deliberate file-budget continuation.
+Existing parser/ownership checks are necessary but cannot answer those semantic questions. A broad
+benchmark, new general harness, registry, enterprise application setup or CP2 restart would exceed
+the concrete repair/no-repair decision. A current carrier may need evidence only; do not implement
+a fix solely because a historical run missed a case.
+
+**Execution proposal.** The persisted plan fixes per-call input membership, exact entrypoints,
+ownership and allowed changes, valid/invalid/unavailable outcomes, alternative capture destinations,
+observed versus reported read/hop counts, retained partial logs and staged stopping rules. It
+proposes at most 180 diagnostic minutes and eight Sonnet authoring calls with USD1 configured per
+call. These are future execution terms, not current trial authorization or a guaranteed cost/time
+estimate. Monetary enforcement remains unverified; attempted-call count and supervised time are
+the controlled bounds. Normal documentation delivery and any required release gates remain separate.
+
+**Evidence and limits.** Root found the retained PK-2 input commit and rechecked its output hash.
+The deleted PK-1 input is not recovered by that observation. New cases form a new fixture series.
+The actor's reduced tool menu, monorepo-only component scope and Claude host are explicit limits;
+a passing case cannot attribute behavior to the carrier or establish ordinary Copilot application,
+enterprise coverage or marginal value. B-222/B-223 remain partial where full acceptance is unmet;
+B-224/B-225/B-42 and WSD-078/WSD-079 are unchanged. No new generic release gate follows.
+
+**Review.** A fresh Codex context formed a blind-first threat model and requested concrete fixture,
+permission and timeout-evidence corrections; it accepted their disposition. Independent Opus 5
+at xhigh accepted the premise and requested stronger per-call separation, alternative-tolerant
+grading, report fidelity, observer controls and explicit bounds. Root checked the source and
+incorporated those corrections, while declining a new retired-carrier comparison and distinguishing
+component prerequisites from full onboarding. Final delta adjudication is recorded in
+`.claude/plans/2026-09-08-b222-b223-adversarial-reviews.md`; the operational plan is
+`.claude/plans/2026-09-08-b222-b223-semantic-acceptance.md`. These are design reviews, not future
+fixture, implementation, semantic-host or release evidence. No semantic trial or product change
+was performed during this planning delivery.

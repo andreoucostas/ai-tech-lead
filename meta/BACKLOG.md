@@ -248,6 +248,32 @@ B-219 and B-221 — see `meta/BACKLOG-DONE.md`.
 
 ## Primary value increment
 
+**B-222/B-223 acceptance planning, 2026-09-08.** The user requested an executable plan and two
+adversarial design reviews, including a new-context review and Opus. The bounded proposal is
+`.claude/plans/2026-09-08-b222-b223-semantic-acceptance.md`; its companion
+`2026-09-08-b222-b223-adversarial-reviews.md` retains review provenance and corrections. It selects
+monorepo component observations for discovery, grounded capture, confirmed dependency refresh,
+and deliberate budget/continuation boundaries. The retained PK-2 input commit and output hash were
+checked; the deleted PK-1 fixture must not be represented as recovered. Execution, proposed actor
+calls/spend and any reproduced-defect correction remain future work; current statuses stay partial.
+This does not reopen CP2 or authorize B-224/B-225 live work.
+The proposal uses restricted-tool Claude authoring calls on the monorepo component. A pass would
+show no reproduced defect in that case, not carrier causation, full shipped-worker compliance,
+other-stack semantic parity, or Copilot/value evidence. WSD-080 records the bounded decision.
+
+**Planning RCA.** Source review found the draft fixture lacked the ownership inventory required
+by the subject, and the draft write/scoring rules omitted permitted discovery-note/summary writes.
+The existing model launcher also discards partial output on timeout. Parser gates do not evaluate
+an ad hoc experiment's input validity, permissions or evidence retention. The correction names
+complete component prerequisites, one allowed-delta list and retained partial logs; the sibling
+sweep distinguishes Angular A7 from .NET/monorepo A8. Actual fixture/observer calibration remains
+an execution obligation, with no new general gate or product defect claimed from this review.
+Final delta review also caught a wrong `DocClaims -DistRoot` target and ordinary-file-only write
+calibration. The corrected recipe uses a single .NET copy (observed named red then restored clean
+on both native hosts at CP437); write controls include the actual skill path class and classify a
+denied route separately from a product miss. Other restricted configuration writes remain exposed
+to that distinction. Both reviews and final source adjudication are recorded in the companion.
+
 ### B-222 · Discover repository knowledge broadly, not only recurring recipes
 **Filed against:** v0.83.0 (2026-09-05)
 **Priority:** P1 · **Effort:** L · **Invariants:** #1 #2 #3 #6 #7
