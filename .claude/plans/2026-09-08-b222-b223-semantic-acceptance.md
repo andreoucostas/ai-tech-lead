@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-08. **Source baseline:** v0.86.0,
 `c9e25953e2cdd04c1bc780a5a95ddab5c806b494`.
-**Status:** draft for two independent adversarial design reviews. This document plans execution;
+**Status:** revised after the fresh-context review; pending independent Opus review. This document plans execution;
 the present user request authorizes planning and the requested fresh-context and Opus reviews.
 It does not start semantic trials, implement product changes, or reopen a Copilot study.
 **Authority:** root `CLAUDE.md`, `DEVELOPING.md`, WSD-074, WSD-078 and WSD-079.
@@ -69,7 +69,8 @@ authorized now; it does not authorize these future actor calls.
 If the user approves execution of this plan, the proposed allowance is at most **180 minutes** for
 fixture preparation, observation, adjudication and the acceptance report, and **eight actor calls**
 with `--max-budget-usd 1` each (USD8 aggregate CLI accounting ceiling). Six primary calls are specified
-below; at most two additional calls may rerun an affected case after one justified source correction.
+below; at most two additional calls may rerun an affected case after one justified source correction
+or perform the separately labelled isolated capture case defined in P1.
 Calibration, aborted calls and launcher failures consume this allowance. This is a proposed cap,
 not a predicted price or a claim that CLI accounting equals the invoice. Record observed usage and
 unknown usage. No model upgrade, extra calls or substitute study follows exhaustion. Required
@@ -155,6 +156,35 @@ files each and local dependency chains, each no deeper than two added hops. Do n
 copies of one fact. Keep generated/control/answer files outside that corpus and publish the counted
 manifest to the scorer. This variant tests a deliberate boundary request, not natural task selection.
 
+**Component prerequisites must exist before dispatch.** Add a populated synthetic `CLAUDE.md`
+(no `BOOTSTRAP_PENDING`), a minimal first-party `.csproj` marker for the selected .NET profile,
+and `TECH_DEBT.md` with an empty `## Dismissed proposals` section. Supply a root
+`framework-ownership.json` with `"schema-version": 1` and an ordinally sorted `paths` array of
+`{ "path": "relative/path", "ownership": "classification" }` rows for every materialized path.
+Actual workflow/agent/remember-for-team files and the inventory itself are
+`framework-owned/overwritten`; first-party application/configuration/evidence and owner documents
+are `consumer-owned/protected`. The copied wiki template is framework content. Treat this as a
+synthetic component inventory, not a real installer result. Include synthetic
+`framework-retirements.json` as `{ "schema-version": 1, "retirements": [] }`, classified as framework
+content. Freeze and review the complete inventory with the fixture. No fixture inference may use
+framework-owned text as first-party evidence. Count first-party prerequisites within the 45-file
+budget corpus; workflow/control files remain separately enumerated.
+
+The lead supplies an observed base/head revision and path-level change report in an explicitly
+labelled control document, without grading answers. It is a prepared Git observation, not model
+execution evidence. Full profile selection, command inventory, onboarding, hazard/intent interviews,
+installer/adopt and unrelated bootstrap phases are excluded from this component observation.
+The scoped worker and capture/merge ownership prerequisites above are **not** waived.
+
+**One allowed-delta list governs both the C prompt and scorer:** new eligible wiki drafts; a new
+absent skill with its new absent linked reference; new absent `docs/discovery-notes.md` for incomplete
+exploration; correctly sorted new INDEX entries without rewriting existing entries; and replacement
+of only `<!-- REPOSITORY_KNOWLEDGE_DISCOVERY_PENDING -->` in the named FRAMEWORK-CONTEXT section
+with at most 12 summary lines. Freeze the marker's exact range and compare all surrounding bytes.
+Every other pre-existing file must be byte-identical. Missing markers or existing discovery notes
+are owner content, not implicit overwrite permission. New-file authority is distinct from existing
+content confirmation; R-confirm has only its individually approved diff.
+
 ## 6. Freeze valid, invalid and unavailable worlds before model work
 
 Keep the following grading key outside the actor root. Grade semantic content with cited source
@@ -167,7 +197,7 @@ Several scoped facts may share one document. An index link to an operation is no
 | D2 helper + scopes | Read caller and decisive helper/config; state configured retry boundary; keep the two UI policies separate. | Replace helper evidence with filename-only citation or globalize the admin bypass. An unread helper cannot support a settled derived claim. |
 | D3 unavailable + decoy | External signing remains unavailable; generated decoy supplies no authority; lease native-exit limitation is explicit. | Claim signing was verified or universal ScriptBlock success. Missing external source is not an invalid configuration or an observed access-denied error. |
 | C1 operation capture | Grounded promotion operation becomes one candidate skill plus a linked focused reference; evidence/uncertainty/refresh survive in those files. | Delete only the Markdown link while retaining the reference file; add a second wiki procedure with the same scope/steps; both must be detected. Distinct topology facts remain legitimate wiki material. |
-| C2 ownership + truth | Owner bytes unchanged except authorized INDEX insertion; draft status present; `origin: discovered` retained; dates match actual verification. | Alter one owner byte; mark a never-checked claim `verified` with `never`; claim an external check ran. Each is separately detectable. |
+| C2 ownership + truth | Exact allowed-delta list above holds, including INDEX insertion and only the pending summary marker; other owner bytes unchanged; draft status and `origin: discovered` retained; dates match actual verification. | Alter one owner byte outside allowed ranges; mark a never-checked claim `verified` with `never`; claim an external check ran. Each is separately detectable. |
 | R1 quiet dependency | Change `maxAttempts` from 3 to 5 in a new Git commit without touching caller/wiki. Rebootstrap re-reads decisive evidence and proposes the exact affected claim diff. | A path-existence-only refresh or silently unchanged verified boundary is a miss. Mere mention of changed files is insufficient. |
 | R2 confirmed ownership | Before confirmation owner hashes stay unchanged. After the fixture owner approves the exact reviewed diff, only that change applies, with truthful result/date. | Premature edit fails. A missing/deleted helper variant instead requires unresolved/downgrade proposal preserving the historic date, not a new verification date. |
 | B1 finite pass | Observed content accesses stay within 40 distinct first-party files, report is partial, unread areas remain explicit. | A 41st distinct access or an exhaustive claim fails; if the boundary was not reached, exhaustion is `NOT EXERCISED`, not passed. |
@@ -181,6 +211,13 @@ files' contents. Match tool requests to successful results, inspect truncation/e
 canonical in-root paths. Missing trace, unknown shell expansion or truncated decisive evidence is
 `CANNOT-EXAMINE`, never zero reads or success. Count content returned by Grep and PowerShell too.
 Record workflow/control-file accesses separately; do not hide first-party docs/config reads there.
+Startup-delivered first-party content must also be attributed and counted. Safe mode is intended
+to disable automatic project context, but an observed tool menu alone does not prove its absence.
+Record the startup configuration and any known injected files. Unknown eligible startup content
+precludes a total-content-budget PASS; report only the explicit-tool-read result and the gap.
+For B/B-continue expose only Read and Glob: this removes opaque shell/Grep enumeration from the
+specific count experiment. In D/C/R, where Grep is available, unobservable scan inputs prevent a
+total-budget claim but do not erase independently evidenced semantic results.
 
 Synthetic bad-output controls validate the scorer, **not** model behavior and not red evidence of
 a current product defect. A product correction requires a retained current-carrier miss or direct
@@ -198,20 +235,70 @@ turn a missing semantic rerun into a behavioral pass.
    commits, owner hashes and intended writes. Independently critique the actual fixtures and
    scorer controls before actor dispatch; this plan review is not fixture acceptance.
 3. Check the installed Claude version/help and auth readiness without printing credentials.
-   Reuse the process/stream capture approach in the existing B-41 harness, but do not copy its
-   blanket permission bypass. Use safe mode, strict MCP configuration, no session persistence,
-   no fallback and only tools needed for the case. Actor cwd is its synthetic external root.
-   No ancestor authoring checkout or answer-key directory is supplied via `--add-dir`.
+   Use the concrete recipe below. Actor cwd is its synthetic external root. Do not supply the
+   authoring checkout or answer-key directory via `--add-dir`. The actor has no shell tool in
+   this source-semantics observation; prepared Git metadata comes from the lead. This is a
+   deliberately limited tool surface, not full-host or command-execution acceptance.
 4. Freeze the six requests below and the exact resolved model/configuration. Fold the read-stream
    calibration into the first capped call using a separate harmless calibration file; its content
    is not grading evidence. If configuration/cap/trace readiness fails, stop without paid retries.
+
+**Concrete invocation/capture recipe (PS7 supervisor, future execution only).** The lead creates
+the prompt with `apply_patch`, using a distinct external run directory for each attempt. Use
+`Read,Glob,Grep` for D/R, `Read,Glob,Grep,Write,Edit` for C/R-confirm, and `Read,Glob` for B/B-continue.
+The prompt names the allowed-delta list; before/after byte comparison enforces its scoring boundary.
+The tool menu and restricted cwd do not make that narrower per-path permission transactional.
+`--restricted` confines file tools to the fixture; safe mode disables project customization. Record
+these limitations. No shell, network tool, Agent tool, permission bypass or permission prompt is
+exposed. If installed flags conflict or required permitted writes are denied, classify the launch
+as unavailable and revise its recipe; do not widen tools while the experiment is running.
+
+```powershell
+# Assign these from the frozen case manifest; never use an authoring or home root as actor cwd.
+$actorExe = 'C:\Users\Costas\.local\bin\claude.exe'
+$actorRoot = '<absolute external synthetic case root>'
+$actorPrompt = '<absolute UTF-8 prompt file>'
+$actorOut = '<new external attempt directory>/stdout.jsonl'
+$actorErr = '<new external attempt directory>/stderr.txt'
+$actorTools = 'Read,Glob,Grep' # replace only from the case table above
+$actorRemainingSeconds = 600 # min(600, remaining 180-minute diagnostic allowance)
+$actorArgs = @('--print','--model','sonnet','--effort','medium',
+  '--output-format','stream-json','--verbose','--safe-mode','--restricted',
+  '--strict-mcp-config','--no-session-persistence','--disable-slash-commands',
+  '--permission-mode','dontAsk','--tools',$actorTools,'--allowedTools',$actorTools,
+  '--max-budget-usd','1')
+if ((Test-Path -LiteralPath $actorOut) -or (Test-Path -LiteralPath $actorErr)) {
+    throw 'Use new log paths; do not overwrite an earlier attempt.'
+}
+$actorProcess = Start-Process -FilePath $actorExe -ArgumentList $actorArgs -WorkingDirectory $actorRoot `
+  -RedirectStandardInput $actorPrompt -RedirectStandardOutput $actorOut -RedirectStandardError $actorErr `
+  -WindowStyle Hidden -PassThru
+$actorDeadline = [DateTime]::UtcNow.AddSeconds($actorRemainingSeconds)
+while (-not $actorProcess.HasExited -and [DateTime]::UtcNow -lt $actorDeadline) {
+    [void]$actorProcess.WaitForExit(1000)
+    $actorProcess.Refresh()
+    # Supervisor returns control/progress at least every 60 seconds while this loop runs.
+}
+$actorTimedOut = -not $actorProcess.HasExited
+if ($actorTimedOut) { $actorProcess.Kill($true); [void]$actorProcess.WaitForExit(10000) }
+$actorProcess.Refresh()
+$actorExit = if ($actorProcess.HasExited) { $actorProcess.ExitCode } else { $null }
+[pscustomobject]@{ Exit=$actorExit; TimedOut=$actorTimedOut; Stdout=$actorOut; Stderr=$actorErr }
+```
+
+Use a supervised asynchronous terminal session for the loop, continuing user updates while it runs.
+Log native exit and timeout separately. Retain both files even when partial, malformed, empty or
+missing a terminal result. The B-41 timeout branch currently empties its transcript: **do not copy
+that branch**. Parse the actual init/result events for identity and usage after the process ends;
+missing result/usage is UNKNOWN and consumes the attempted-call allowance. The CLI's configured USD
+limit is not an invoice guarantee. Do not assert enforcement solely because the flag was accepted.
 
 ### P1 — six primary calls, in this order
 
 | Call | Inputs, neutral task and permitted writes | Inspect before advancing |
 |---|---|---|
 | D | New base fixture + shipped monorepo worker and bootstrap entrypoint. Request: `Run shared A8 for this repository. Discover grounded repository knowledge across its areas and return the pass report.` Read-only; result remains in captured stdout. | Score D1-D3 and actual source access. Do not inject missed answers into the report. |
-| C | Fresh context, identical base inputs, actual D report, shipped bootstrap Phase 3a-bis and remember-for-team. Request: `Capture eligible findings from this discovery report using the repository-knowledge capture phase. Preserve existing owner content and report unresolved work.` Allow only new wiki/skill/reference files, sorted INDEX insertion and pending summary-marker replacement. | Score C1-C2 from actual bytes. If D omitted an operation/fact needed for these cases, mark the corresponding integrated case NOT EXERCISED; do not substitute a scorer-authored finding. |
+| C | Fresh context, identical base inputs, actual D report, shipped bootstrap Phase 3a-bis and remember-for-team. Request: `Capture eligible findings from this discovery report using the repository-knowledge capture phase. Preserve existing owner content and report unresolved work.` Supply section 5's exact allowed-delta list, including a new absent discovery note and only the pending summary marker. | Score C1-C2 from actual bytes. If D omitted an operation/fact needed for these cases, mark the corresponding integrated case NOT EXERCISED; do not substitute a scorer-authored finding. |
 | R | Fresh context on the changed-helper fixture with pre-existing grounded retry wiki and C outputs. Request: `Refresh repository knowledge against the changes since the recorded baseline using shared A8 and rebootstrap's discovery/merge phases. Present changes requiring owner confirmation.` No existing owner-file changes authorized yet. | Score R1 and R2 pre-confirmation; retain exact diff. Missing-helper branch is supplied as a second clearly identified snapshot for an unresolved proposal only. |
 | R-confirm | Fresh context on an exact copy of R's output state plus its reviewed diff. The fixture owner explicitly approves only the supported retry-claim diff by path and SHA-256. Request: `Apply only this approved change and report the semantic recheck and any unresolved evidence.` | Compare every owner file; verify approved diff, actual source read and truthful date. Do not approve an unsupported or absent proposal to obtain a passing run. |
 | B | Fresh budget fixture + actual discovery entrypoint. Request: `Inventory the repository, then inspect each eligible first-party content file in any order until the discovery pass content-file limit is reached. Report partial coverage and stop at that limit.` Read-only. | Score B1 from stream; natural discovery efficacy is not being tested by this deliberately explicit boundary request. |
@@ -223,7 +310,7 @@ specific approved output, not blanket edit authority. Do not run complete bootst
 unannounced substitute for these components. Record inherited host/system context and its limits.
 
 A primary miss is retained even if later corrected. Two optional corrective calls are the total
-allowance, not two per case. One may be used for a isolated capture observation with a separately
+allowance, not two per case. One may be used for an isolated capture observation with a separately
 labelled source-grounded input if D prevented C from being exercised; it must not be called an
 integrated pass or overwrite D/C's original disposition. Stop after the available calls/time.
 
