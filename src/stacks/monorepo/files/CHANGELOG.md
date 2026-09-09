@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.86.2 — Unreleased
+## 0.86.2 — 2026-09-09
 
 - Adoption guidance now distinguishes keeping the pending marker when verification fails before bootstrap from restoring its saved bytes after removal.
 

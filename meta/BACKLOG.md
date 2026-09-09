@@ -400,14 +400,26 @@ product efficacy or execution evidence. Future justified observations should gra
 complete content independent of read method, make scored questions explicit, and
 provide calibrated citation support. No new run or general harness is authorized.
 
-**Bounded source follow-up.** All three stack adoption overviews say verification
-failure "from either restores the marker"; Phase 7 correctly leaves the existing
-marker present on pre-bootstrap failure and creates its recovery copy only after
-PASS. Clarify that overview to distinguish retaining the existing marker before
-bootstrap from restoring saved bytes after removal. Review the three source siblings
-and existing Phase-7 contract together; keep the helper, guards and frozen inventory
-unchanged. This specific prose inconsistency is independently observable and does
-not depend on proving why the model summarized it poorly. No shipped edit yet.
+**Bounded source follow-up, implemented for v0.86.2.** The user authorized Opus
+adversarial review followed by implementation. Both fresh Opus design and frozen
+implementation reviews returned ACCEPT. All three stack overviews now distinguish
+retaining the existing marker on pre-bootstrap verification failure from restoring
+saved bytes after removal. Root verified every other workflow byte unchanged;
+Phase 7, helpers, guards and frozen inventory are intact. Direct PS7 and PS5.1 at
+CP437 each passed 34 archive-integrity and 8 installer cases, including observed
+negative controls and clean reruns. Frozen range, review identities, hashes and
+limits: `.claude/plans/2026-09-09-b232-marker-wording.md`. Normal release/CI promotion
+is recorded separately; the read-recovery proposal remains deferred.
+
+**Wording delivery RCA.** The overview collapsed two lifecycle states into one
+restore instruction; Phase 7 already handled them correctly. Parser gates and
+helper tests accept both versions because they do not compare the meaning of a
+summary with its detailed steps: the unfixed archive suite passed 34/0. Source
+review exposed the inconsistency, and the bounded sweep found exactly the same
+phrase in the three stack overviews. Other lifecycle summaries share this class
+of exposure, but the inspected Phase-7, installer and adapter contracts supplied
+no additional defect requiring changes. No model-failure causation or new generic
+gate follows from this prose repair.
 
 **Correction RCA.** Reviewers enforced a frozen checklist without adequately checking
 whether its method and answer requirements matched the practical task. Parser gates

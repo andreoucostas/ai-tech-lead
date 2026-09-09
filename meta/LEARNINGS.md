@@ -2485,3 +2485,18 @@ scored questions explicit; distinguish missing summary detail, inaccurate claims
 and observed wrong actions. Independent review needs to challenge that measurement
 premise as well as enforce the frozen checklist. No additional paid run was needed
 to correct our record or identify the separate marker-overview wording inconsistency.
+
+## 2026-09-09 — B-232 marker overview: distinguish retain from restore
+
+The headless overview said either archive verification failure restored the marker,
+although Phase 7 creates the recovery copy only after pre-bootstrap verification
+passes. This was a source inconsistency; no consumer data loss or model execution
+failure was established. Fresh Opus design and implementation reviews accepted the
+three-sentence correction. Root verified all other workflow bytes unchanged and
+observed existing archive/installer controls at 34/0 and 8/0 on both native hosts
+at CP437. The unfixed archive suite also passed: mechanical gates do not compare
+summary meaning with lifecycle detail. Review the concrete before-copy/after-delete
+states when summarizing recovery; use the existing tests for their actual contract,
+not as evidence of model comprehension. The sweep found the same error in exactly
+three stack overviews. Review hashes, receipts and limitations are in
+`.claude/plans/2026-09-09-b232-marker-wording.md`; read recovery stays deferred.
