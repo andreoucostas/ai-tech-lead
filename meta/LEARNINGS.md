@@ -2513,3 +2513,18 @@ input, not factual authority. The same exposure affects task oracles, byte-purit
 readiness summaries; a cheap preliminary audit must keep its result provisional. No generic
 gate, live retry or product change follows. Frozen plan and full adjudication are in
 `.claude/plans/2026-09-09-rk1-resumption-review.md`.
+
+## 2026-09-09 — B-233: upgrade instructions need an installed discovery path
+
+The update contract existed in distribution READMEs, but README and CHANGELOG do not install into
+consumer repositories. Protected local instructions also survive updates, so the refreshed carrier
+does not perform the required manual reconciliation. One shared installed checklist and a literal
+update-completion pointer close that source-observed navigation gap. Native hostile/clean fixtures
+verify delivery and preservation; they do not measure consumer comprehension or productivity.
+
+Pre-publication gates also caught a private temp locator in the review record. Correct both the
+current file and unpublished outgoing history, preserving review objects locally; a later corrective
+commit alone does not remove an earlier outgoing blob. Keep composition sequential with suites that
+read the generated distributions: a concurrent rebuild can remove a script between two invocations.
+The existing gates and a stable targeted rerun were sufficient; no new checker or gate exception was
+needed. Full evidence and review scope remain in the B-233 plan.

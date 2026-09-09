@@ -19,7 +19,7 @@ export, production queries, or external participant contact.
 | 3 | B-224 ordinary-task Copilot use | Released carrier; ordinary CLI navigation/application observed on a nonconforming synthetic wiki, conforming CLI/VS Code acceptance remains open |
 | Independent repairs | B-216 instance skills; B-226 review scope | Released in v0.84.0; named semantic/host gaps remain explicit |
 | Independent product repair | B-232 adoption instruction contracts | Schema fix released in v0.86.1; retrieval succeeded, acceptance overconstrained; paging proposal deferred, marker wording follow-up recorded |
-| Consumer upgrade usability | B-233 actionable upgrade checklist | Implementation frozen for native verification and independent review |
+| Consumer upgrade usability | B-233 actionable upgrade checklist | Implemented and reviewed; publication approval pending |
 | When a participant exists | B-42 independent FS2 | Existing packet ready; independent run outstanding |
 | Deferred | B-49 drill and consumer self-assessment | Old instrument invalid; no execution authority |
 
@@ -326,8 +326,8 @@ and prose workflows remain exposed to the same route-versus-behaviour ambiguity.
 
 **Filed against:** v0.86.2 (2026-09-09).
 **Priority / effort:** P2 / M. **Status:** IMPLEMENTED and independently accepted; native focused
-verification is green. Publication awaits explicit user approval. The pre-stamp local meta suite
-is not green for the reasons recorded below; release gates, CI, tagging, and delivery remain open.
+verification is green. Publication awaits explicit user approval. Both failures from the full local
+meta run have clean targeted reruns; a fresh release aggregate, CI, tagging, and delivery remain open.
 
 **Observed problem.** All three distribution READMEs carried the manual update contract in dense
 versioning paragraphs, while README and CHANGELOG are excluded from consumer installation. Update

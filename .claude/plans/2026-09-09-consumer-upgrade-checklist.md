@@ -305,3 +305,43 @@ distributions were recomposed; no gate or other product file changed. Direct tar
 `DocTruth.Tests.ps1` runs then reported 16 passed, 0 failed, 0 skipped and exit 0 under PS7 7.6.5
 and PS5.1 5.1.26100.9444 with `-ExecutionPolicy Bypass`. Logs:
 `readme-green-final-ps7.log` and `readme-green-final-ps51.log`. Release promotion is still pending.
+
+## Final local checkpoint and publication boundary
+
+The independent nonimplementer `/root/amendment_review` accepted the second immutable amendment
+`9d6f06c..2da4bf3071c49b4130e1b92928674abfd6325cf6` after its prior threat model. It checked
+existing-path preservation versus carrier refresh, missing protected paths, derivative generation,
+and the guide's authority. Root independently verified the six README blobs in matching source/dist
+pairs and the four named ownership entries in every manifest. No installer or gate changed in the
+amendment. This review was source-only; no reviewer execution is claimed. Root also observed full
+distribution validation exit 0 for all three final README variants.
+
+Root's full PS7 local meta run with access to sibling fixtures completed 36 suites and a 379-case
+manifest, aggregate exit 2. The only failing top-level RESULTs were InstallerConvergence and
+RepositoryPrivacy; intentional mutation reds inside passing suites were not counted as failures.
+RootInstallerWarehouse passed 6/0 with fixture access. One dangling-symlink case in UpdateDelivery
+was explicitly skipped because this host could not construct it. The log and case manifest are
+`amended-meta-ps7.log` and `amended-meta-ps7-counts.tsv` in the external packet.
+
+The convergence failure was a PowerShell exit 64 before the installer could execute: its script
+path was temporarily absent. This run overlapped the README recomposition; the composer deletes
+and recreates each dist, which supports a build-race explanation but does not timestamp-prove it.
+After composition stopped, root observed the unchanged InstallerConvergence suite at 20 passed,
+0 failed, 0 skipped, exit 0 (`stable-installer-convergence-ps7.log`). Do not rebuild the shared
+distribution while suites execute against it.
+
+The privacy failure correctly found a concrete private temp path in this plan. Sol replaced it
+with an environment-relative locator. A follow-up commit alone would leave that path in outgoing
+history, so Sol first refreshed the remote and confirmed exactly our three unpublished commits
+above `fd6e40b`, preserved the reviewed tip in local `refs/b233-review/reviewed-tip`, and consolidated
+only that unpublished range as `3f0d7577af04ec06b3c8cdafc8dc55a2274b8491`. The original review objects
+remain resolvable. Root checked that the reviewed and consolidated trees differ only at the plan
+locator; all product bytes remain identical. Root then observed RepositoryPrivacy at 7 passed,
+0 failed, 0 skipped, exit 0 (`sanitized-privacy-ps7.log`). No gate was weakened or edited.
+
+These targeted reruns resolve both observed failures; they are not a claim that the earlier full
+aggregate exited 0. The normal release must still run its fresh aggregate gates, footprint update,
+and eight native Windows CI contexts plus parity before tagging. An unnecessary local shipped-hook
+run was interrupted before a leg completed and supplies no result; current release tooling assigns
+those full distribution/host suites to CI. No release stamp, push, tag, live efficacy trial, or
+consumer model reconciliation has occurred. Publication remains pending explicit user approval.

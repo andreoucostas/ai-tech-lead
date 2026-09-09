@@ -3916,8 +3916,8 @@ or shipped general recovery rule follows from this amendment.
 ## WSD-083: install one bounded manual upgrade guide (2026-09-09)
 
 - **Status:** Implemented and independently accepted. Focused native verification is green;
-  publication is awaiting explicit approval, and the pre-stamp meta suite has unresolved local
-  gate/examination findings recorded in B-233 and the locked plan.
+  both failures from the full local meta run have clean targeted reruns. Publication awaits explicit
+  approval and fresh release gates/CI; evidence and limits are in B-233 and the locked plan.
 - **Decision:** Put the existing consumer update obligations in one shared installed
   `docs/upgrade-checklist.md`. Keep each distribution README to version authority plus a link, and
   add one literal installer update-completion pointer. Reconciliation remains conditional and
