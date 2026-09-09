@@ -4,6 +4,11 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.86.4 — Unreleased
+
+- Quick Start now uses the supported installer from the matching Angular distribution, routes
+  stamped targets to the upgrade checklist, and preserves the commit plus developer bootstrap/adopt handoff.
+
 ## 0.86.3 — 2026-09-09
 
 - Updates now install `docs/upgrade-checklist.md` and point to it after completion. Use it to

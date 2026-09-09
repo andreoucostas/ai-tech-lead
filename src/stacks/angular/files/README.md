@@ -49,29 +49,24 @@ No marketing. Each item is a concrete mechanism and the effect it produces.
 
 ## Quick Start
 
-### 1. Copy into your project
-Copy the following into your existing repository's **Git root**. `angular.json` (or an exact-case Angular token in an Nx/project plugin/executor/generator/schematic/target-default field, or an exact-case `"@angular/core"` key in a `package.json` dependency map) is Angular evidence, not an installation-root requirement; a key/string elsewhere in a manifest is not:
-```
-.claude/                            → Claude Code commands and hooks
-.github/prompts/                    → GitHub Copilot Chat workflows (mirror of .claude/commands/)
-.github/agents/                     → Copilot custom agents wrapping the subagents
-.github/hooks/hooks.json            → registers PowerShell hooks for local Copilot clients on Windows
-.github/workflows/docs-sync-check.yml → CI guardrail (GitHub Actions; Bitbucket uses scripts/)
-.github/PULL_REQUEST_TEMPLATE.md    → PR template with design rationale + Boy Scout checklist
-scripts/                            → Windows PowerShell CI guardrail and framework helpers
-specs/                              → persistent feature specs (spec-driven development)
-AGENTS.md                           → generated rule mirror (Codex + GitHub code review; Cursor reads both)
-CLAUDE.md                           → template, populated by /bootstrap
-FRAMEWORK-CONTEXT.md                → cross-repo context (shared libs, multi-tenancy, dashboard contracts)
-LEARNINGS.md                        → append-only log of what works/doesn't
-TECH_DEBT.md                        → template, populated by /bootstrap
-docs/defaults.md                    → evidence-conditional Angular defaults (used only when Angular is evidenced, until /bootstrap runs)
-docs/playbook.md                    → methodology guide
+### 1. Install into your project
+Target your existing repository's **Git root**. `angular.json` (or an exact-case Angular token in an Nx/project plugin/executor/generator/schematic/target-default field, or an exact-case `"@angular/core"` key in a `package.json` dependency map) is Angular evidence, not an installation-root requirement; a key/string elsewhere in a manifest is not:
+
+If the target already contains `.claude/framework-version.json`, follow the
+[upgrade checklist](docs/upgrade-checklist.md) instead of the initial-install steps below.
+
+From the matching incoming `dist/angular` directory in a fresh framework checkout, use PowerShell 7
+if available; otherwise use Windows PowerShell 5.1. Run one command against the separate target:
+
+```powershell
+pwsh -NoProfile -File scripts/install.ps1 -Target 'C:\path\to\consumer-repo'
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 -Target 'C:\path\to\consumer-repo'
 ```
 
-**Do not copy** `.template-repo` — it's a marker that exists only in this template repository to disable the CI guardrail here.
-
-All of these files should be committed to version control — they're shared team configuration, not local settings.
+Review and commit the installed shared configuration in the target. Then follow the installer's
+printed next steps and step 2: a developer runs `/bootstrap` for greenfield or `/adopt` when
+pre-existing tooling was found. If the installer unexpectedly reports update mode, use the upgrade
+checklist instead of continuing to bootstrap or adopt.
 
 > **Hook prerequisite — Claude Code 2.1.141 or newer and the registered PowerShell interpreter must resolve in the Windows agent host.** PowerShell 7 is primary; native Windows PowerShell 5.1 is the Claude Code fallback. Git Bash, WSL, native Linux, macOS/BSD, and Copilot coding-agent cloud hook execution are unsupported. VS Code agent hooks remain Preview and org-gated. See `docs/enforcement-surfaces.md` and verify with the actual-host canaries.
 > Not sure what is live on your machine? Run `pwsh -NoProfile -File scripts/framework-doctor.ps1` once per developer machine (or use the documented Windows PowerShell 5.1 fallback).
