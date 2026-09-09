@@ -2451,3 +2451,19 @@ passing. An emitted review verdict and a budget-error process exit are distinct
 facts; neither replaces reading the actual evidence. This does not establish
 workflow comprehension or complete adoption, and the read-recovery proposal stays
 deferred rather than accumulating another unmeasured instruction.
+
+### 2026-09-09 — Complete retrieval is not complete comprehension (B-232 B)
+
+The bounded public-document probe received the candidate recovery paragraph in native
+Copilot's initial context, encountered a real tool-success/size-error response, then
+used `forceReadLargeFiles` to retrieve all 395 source lines exactly. This useful native
+alternative did not satisfy the frozen contiguous-range criterion. More decisively,
+the answer omitted material lifecycle/headless conditions and cited wrong lines.
+Independent review confirmed the distinction; no paragraph shipped or paid retry ran.
+
+Critique first repaired an unreachable obligation: "before executing" did not bind a
+read-only question. It also corrected a credit "cap" into the host's post-call threshold.
+Freeze what the task actually requires, preserve unexpected successful mechanisms,
+and grade source-grounded comprehension separately. Existing parser checks and evidence
+rules do not become semantic guarantees by adding another paragraph or counting a
+successful CLI exit. The result remains one observation, not an efficacy comparison.

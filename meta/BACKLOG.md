@@ -18,7 +18,7 @@ export, production queries, or external participant contact.
 | 2 | B-223 capture and refresh | Released in v0.84.0; semantic refresh and retained forward misses remain |
 | 3 | B-224 ordinary-task Copilot use | Released carrier; ordinary CLI navigation/application observed on a nonconforming synthetic wiki, conforming CLI/VS Code acceptance remains open |
 | Independent repairs | B-216 instance skills; B-226 review scope | Released in v0.84.0; named semantic/host gaps remain explicit |
-| Independent product repair | B-232 adoption instruction contracts | Schema fix implemented/reviewed for v0.86.1; read-recovery proposal deferred |
+| Independent product repair | B-232 adoption instruction contracts | Schema fix released in v0.86.1; read-only recovery observation missed frozen acceptance, proposal deferred |
 | When a participant exists | B-42 independent FS2 | Existing packet ready; independent run outstanding |
 | Deferred | B-49 drill and consumer self-assessment | Old instrument invalid; no execution authority |
 
@@ -324,7 +324,7 @@ and prose workflows remain exposed to the same route-versus-behaviour ambiguity.
 ### B-232 · Repair adoption instruction delivery and archive-plan documentation
 
 **Filed against:** v0.86.0 (2026-09-09).
-**Priority / effort:** P2 / M. **Status:** PARTIALLY DONE. Delivery A implemented and reviewed for v0.86.1; normal release/CI is the promotion boundary. Delivery B deferred.
+**Priority / effort:** P2 / M. **Status:** PARTIALLY DONE. Delivery A released in v0.86.1. Delivery B's authorized read-only observation did not pass frozen acceptance; no candidate paragraph shipped, B remains deferred.
 
 **Observed problem.** A standalone ABP preparation attempt produced a bare-array
 archive plan; the actual helper requires an object with an `entries` array and
@@ -351,7 +351,8 @@ hosts; normal source composition, installation, changelogs, release and independ
 implementation review complete. Track the second proposal explicitly as deferred
 or delivered with its own narrow evidence, never infer comprehension from parser
 presence. The subsequent user request authorized implementation and an Opus handoff
-for delivery A; it does not authorize the deferred live probe.
+for delivery A did not authorize the deferred live probe. The later "ok let's do it"
+authorized the separately frozen bounded observation recorded below, with no retries.
 
 **Delivery A evidence.** Frozen implementation `afd3486`; fresh Opus 5 source
 review ACCEPT, with CLI budget-error termination and an inaccurate host-receipt
@@ -368,6 +369,25 @@ byte-integrity PASS do not establish instruction consumption or adoption complet
 Prior launch/receipt mistakes and unmet headless restricted-surface proof remain
 confounders. RK1 and the application bug remain unrun; this item does not close
 B-225 or authorize more model spend.
+
+**Delivery B observation, 2026-09-09.** The subsequently authorized one-session
+read-only probe used public released docs plus the candidate in an isolated local
+fixture. Independent blind-first critique corrected the trigger, credit-threshold
+wording, host configuration and semantic oracle before dispatch. Native Copilot
+1.0.83 / Sonnet 5 medium received the exact candidate before a real oversized read,
+then retrieved the complete 395-line source with `forceReadLargeFiles`, not the
+required contiguous ranges. No fixture bytes changed. The final answer omitted
+material frozen-plan/marker/headless obligations and supplied wrong line references;
+a separate result reviewer confirmed the failed acceptance. Receipt: 13.3659 credits,
+20.034 seconds, no paid retry. No product paragraph or release follows; B remains
+deferred. Full evidence and claim limits: `meta/b232-read-recovery-observation.md`.
+
+**Observation RCA.** Parser gates and tool-success flags cannot establish complete
+instruction delivery or comprehension. Source equality proved full delivery through
+the unexpected native option; frozen criteria caught the missed read method and
+semantic/source-reference defects. Other long prose workflows share this exposure,
+but the existing evidence/uncertainty rules already address it. Retain this bounded
+result rather than adding duplicate prose, a generic gate or another model attempt.
 
 ### B-222 · Discover repository knowledge broadly, not only recurring recipes
 **Filed against:** v0.83.0 (2026-09-05)

@@ -3880,3 +3880,14 @@ remain NOT RUN. No shipped behavior changed.
   See `.claude/plans/2026-09-09-adoption-execution-repair.md` and its review record.
   No implementation or release review is claimed. Existing RK1/WSD-081 remains
   preparation-only and separate from these product repairs.
+
+**Subsequent delivery and observation, 2026-09-09.** A was authorized and released
+as v0.86.1. The user's later "ok let's do it" authorized B's separately frozen
+read-only observation, not adoption or RK1. Independent critique accepted the
+revised task-applicable paragraph and bounded native route. The candidate reached
+initial context; native Copilot recovered the whole source with a full-read option,
+not the required contiguous ranges, and missed material obligations/source references.
+Independent result review confirmed failed acceptance. Keep B deferred, retain the
+existing shipped carrier, and make no paid retry or product release from this result.
+See `meta/b232-read-recovery-observation.md` for the successful full-delivery fact,
+semantic misses, cost and evidence limits. This preserves the earlier decision history.
