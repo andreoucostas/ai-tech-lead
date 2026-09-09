@@ -12183,3 +12183,53 @@ commit.
 
 No consumer human/model rule reconciliation or pwsh-unavailable host-adaptation execution was
 observed. The checks establish framework delivery and consistency, not model comprehension.
+
+### B-234 · Use the supported installer throughout consumer Quick Start — **DONE v0.86.4 (2026-09-09)**
+
+**Filed against:** v0.86.3 (2026-09-09).
+**Priority / effort:** P2 / S.
+
+**Released in v0.86.4.** All three distribution Quick Starts now use the existing matching-dist
+installer, state native PS7 primary/PS5.1 fallback commands and separate target context, route
+stamped targets to the upgrade checklist before initial apply, and retain the commit/developer
+bootstrap/adopt handoff. Only step 1 changed; stack-evidence qualifications and other sections
+remain. No installer behavior, ownership, always-loaded rules or permanent test changed.
+
+**Observed problem.** The READMEs first provided an installer route and then a conflicting
+selective-copy inventory. Literal fixture replay copied every listed whole directory but omitted
+ownership/rules/guides, copied the excluded installer, and displaced brownfield policy without
+archive/marker protection. This is source and fixture evidence; consumer harm or comprehension gain
+was not measured. The settings.windows.json file was already included by the listed .claude directory.
+
+**Plan / review.** `.claude/plans/2026-09-09-consumer-quickstart.md` and its `-review.md` sibling;
+WSD-084. Opus design REVISE led to explicit host selection, consequence-based literal-copy red
+verification and residue disclosure. Root rejected incorrect nested-file omission/permanent-loss
+claims. Sol (gpt-5.6-sol) implemented immutable product range
+`f67eb0312be5838bb17066fa9fdd2847785a812f..108ad0bc681aca2f7f22391f335982f08c28e912`.
+Fresh independent Opus final review accepted the frozen range after blind-first contract/threat
+review, reading the diff and native evidence; it executed no tests.
+
+**Native evidence.** Amendment_review ran baseline fixtures; root inspected those logs and the
+instrument and directly ran the candidates. Each native baseline returned exit 1, 75 checks,
+39 failures and zero cannot-examine outcomes. Each candidate returned exit 0, 102 checks, zero
+failures/cannot-examine and six actual installs (three dists, greenfield/brownfield). Native PS7
+7.6.5 and PS5.1 5.1.26100.9444 ran directly at CP437. A prior mislabeled PS5.1 attempt actually
+ran PS7 and remains excluded; the final instrument rejects host-label/version mismatch.
+
+**Release evidence.** Normal release tooling exited 0 without waivers at
+`685ac40d9a8e0e73cced814022469e8fe6d6e080`. All three builds/validators, unchanged static context,
+the full 36-file meta suite, deterministic eval wrapper and gate budgets passed (meta 336.4s;
+all local gates 437.4s). CI run
+[`34403099107`](https://github.com/andreoucostas/ai-tech-lead/actions/runs/34403099107) passed all
+eight named native Windows execution jobs plus `windows-case-parity`. Root independently read
+those conclusions and origin refs: annotated v0.86.4 object
+`265d9ec58903b315d7f7b54fddd79e9d67d592ff` peeled to the release commit, and master matched it at
+promotion. Consumer comprehension/adoption, automatic pwsh-absent adaptation, runtime update
+reinstallation and actual report migration remain unobserved.
+
+**Delivery RCA.** Parser/path gates and installer-output contracts never selected which README
+route a reader follows. Three inventories drifted independently from installer ownership. The
+source/root-doc sweep found those three concrete partial-copy routes; other copy wording described
+installed state or supported installer/adoption operations and was left unchanged. A permanent
+prose gate or new installer would not be proportionate to this entry-point correction. B-235 is
+separate conditional report-migration discovery and remains open.

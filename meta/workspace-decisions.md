@@ -3958,8 +3958,8 @@ not consumer reconciliation or model comprehension; pwsh-unavailable adaptation 
 
 ## WSD-084: make consumer Quick Start use the existing installer (2026-09-09)
 
-- **Status:** B-234 implemented by Sol; independent Opus final review accepted the frozen range
-  and direct native smoke passed. Normal release/CI/tag remains pending.
+- **Status:** Delivered in v0.86.4 at `685ac40d9a8e0e73cced814022469e8fe6d6e080`; normal local
+  gates and all eight native Windows CI jobs plus parity passed before origin tag promotion.
 - **Decision:** Replace only all three README Quick Start step-1 manual-copy inventories with
   standalone native installation instructions; divert stamped targets to the existing upgrade
   guide before apply. Keep the existing Git-root/profile qualifications and developer handoff.

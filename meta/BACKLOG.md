@@ -912,36 +912,6 @@ Do not replace FS2 with the old shared-composite requirement. No scheduler/remin
 valid execution/delivery evidence, or a reviewed decision retires their remaining premises.
 A polished protocol alone does not complete the value question.
 
-### B-234 · Use the supported installer throughout consumer Quick Start
-
-**Filed against:** v0.86.3 (2026-09-09).
-**Priority / effort:** P2 / S. **Status:** PARTIALLY DONE — Sol implementation and independent
-review complete; native red/green smoke passed. Normal release/CI/tag and closure remain.
-
-**Observed problem.** All three distribution READMEs provide an installer route, then a conflicting
-Quick Start selective-copy inventory omitting framework ownership, rules and installed guides.
-This is source-observed instruction drift; no consumer harm or comprehension gain is measured.
-
-**Plan / review.** `.claude/plans/2026-09-09-consumer-quickstart.md`; WSD-084. Replace only step 1
-with explicit matching-distribution/target context, PS7 primary/PS5.1 fallback install commands,
-pre-apply routing of stamped targets to the upgrade guide, and new-install commit/developer handoff.
-Preserve stack evidence and other sections. Opus returned REVISE; root accepted explicit host
-selection, literal-copy red evidence, and residual-scope disclosure while rejecting incorrect claims
-about directory-contained files and permanent loss of retirement reconciliation.
-
-**Verification / delivery.** `2026-09-09-consumer-quickstart-review.md` beside the plan records
-the immutable range and fresh Opus ACCEPT. Each native baseline returned 75/39/0, exit 1; each
-candidate returned 102/0/0 with six actual installs, exit 0, on direct PS7 and PS5.1 at CP437.
-Demonstrate the literal old copy inventory missing required installed
-paths, then execute README candidate commands against greenfield/brownfield fixtures for all three
-dists on direct PS7 and PS5.1. Record host/cannot-examine limits; independently review a frozen range;
-use normal composition, native release gates and CI before tag. No permanent prose gate.
-
-**RCA / exposed class.** Parser/path gates and installer-output contracts never select which README
-route a reader follows. Three active partial-copy inventories drifted independently from installer
-ownership. Source sweep found other copy wording describes installed state or existing installer/
-adoption operations, not equivalent inventories; leave that adjacent prose unchanged. Close with
-actual release evidence, preserving unobserved consumer comprehension and migration limits.
 ### B-235 · Establish one report's cross-warehouse migration contract before extending guidance
 
 **Filed against:** v0.86.3 (2026-09-09).

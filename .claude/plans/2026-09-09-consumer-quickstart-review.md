@@ -57,3 +57,14 @@ PS7-unavailable automatic adaptation, spaced/UNC/long paths, runtime update rein
 results. The stamped-target guide diversion is inspected prose; the installer is unchanged. The
 normal release must still pass compose/validation/footprint/full meta/selftest/budgets and eight
 native Windows execution jobs plus case parity before tag; no waiver or completed release inferred.
+## Completed delivery
+
+Normal release automation exited 0 without waivers at
+`685ac40d9a8e0e73cced814022469e8fe6d6e080`. All builds/validators/footprint, 36-file meta suite,
+deterministic eval wrapper and budgets passed (336.4s meta; 437.4s total local gates).
+Root independently observed CI
+[`34403099107`](https://github.com/andreoucostas/ai-tech-lead/actions/runs/34403099107), all eight
+required native Windows execution jobs and `windows-case-parity`, completed successfully.
+Origin v0.86.4 annotated object `265d9ec58903b315d7f7b54fddd79e9d67d592ff` peeled to that release
+commit; master matched it at promotion. B-234 is archived with RCA; B-235 remains conditional
+planning. The limits above remain limits: successful framework release is not report correctness.
