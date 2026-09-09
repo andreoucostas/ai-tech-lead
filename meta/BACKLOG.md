@@ -549,8 +549,11 @@ miss does not justify a new generic gate.
 **Filed against:** v0.83.0 (2026-09-05)
 **Priority:** P1 · **Effort:** M protocol, execution depends on tasks/seats · **Invariants:** #3 #6
 **Status:** PARTIALLY DONE. Offline protocol reviewed in
-`meta/repository-knowledge-component-study.md`; its targeted controls are proposed, not observed.
-LIVE EXECUTION NOT AUTHORIZED by this entry.
+`meta/repository-knowledge-component-study.md`. The user authorized revision 1 execution on
+2026-09-09; preparation stopped when Copilot 1.0.83 refused the required native sandbox policy.
+Four provisional source task cards exist; executable eligibility, CONTROL construction and the
+paired study remain unrun. No Copilot model call occurred. Controls are not collectively observed;
+the named campaign, not this backlog entry alone, supplies execution authority.
 
 **Problem.** Current source and user reports justify a hypothesis, not a productivity claim. Skill
 count, framework-test success and Claude execution do not establish Copilot task outcomes. B-41's
@@ -584,6 +587,18 @@ after the authorized component comparison/decision, or an explicit reviewed prem
 decision. A win justifies the measured increment, not a platform; a null does not justify more
 machinery. B-42 separately compares framework vs bare AI; do not pool with FS1/FS2/B-49. Report all
 unrun intended host/model arms.
+
+**Execution checkpoint / RCA (2026-09-09).** Opus 5 xhigh reviewed the prospective v0.86-based
+ablation and campaign (REVISE, then ACCEPT for preparation), reporting USD 0.9840065 combined
+list-price cost. Native capability queries passed, but two offline CLI environments refused the
+required policy; root independently reproduced it through the installed SDK, exit 3. Emitted
+system-volume read access makes removal of the denials unsafe for the study. Actual network
+policy says deny despite a conflicting UI label; no network leak or missing BaseContainer was
+established. Release/capability checks cannot prove policy execution, and picker filtering cannot
+prove file containment. The same class exposes online transport and zero-test discovery; the
+latter is an explicit gap in one provisional card. Required isolation caught this before study
+dispatch. Preserve selection/receipts and resume after a compatible route is demonstrated; no
+generic gate, host reconfiguration or product release followed.
 
 ## Bounded correctness and maintenance work
 

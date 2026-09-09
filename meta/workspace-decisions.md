@@ -3793,3 +3793,30 @@ component prerequisites from full onboarding. Final delta adjudication is record
 `.claude/plans/2026-09-08-b222-b223-semantic-acceptance.md`. These are design reviews, not future
 fixture, implementation, semantic-host or release evidence. No semantic trial or product change
 was performed during this planning delivery.
+
+## WSD-081: RK1 execution measures a matched current-foundation ablation (2026-09-09)
+
+**Authority.** The user requested execution of B-225/RK1, with Claude CLI reviews/implementation
+where useful. `.claude/plans/2026-09-09-rk1-execution.md` freezes the prospective campaign choices;
+`meta/repository-knowledge-component-study.md` retains the actual preparation checkpoint.
+
+**Decision.** ENHANCED is v0.86.0; CONTROL is a proposed experimental source ablation on that same
+foundation, retaining unrelated fixes and existing manual/project-pattern knowledge paths. Measure
+the broad discovery/capture/use increment above that residual. Require separately committed source,
+installed-byte difference review and a targeted unrelated-removal red control before setup. Whole
+release rollback would confound the comparison; a task-use-only ablation would answer less than
+the authorized question. Preserve the original RK1 protocol and prospective revision separately.
+
+**Proportionality and review.** First establish an executable isolation route, then invest in the
+four application pairs. A frozen 100-integration prefix bounds selection; neither the old CP1
+filters nor its result supplies RK1 eligibility. Opus 5 xhigh returned REVISE then ACCEPT for
+bounded preparation after scope, residual-treatment, readiness and stopping-rule corrections.
+Actual variant, task/oracle and host acceptance remain separate obligations.
+
+**Observed stop.** Capability detection succeeded, but the installed native policy refused to
+execute even its allowed canary. Root independently reproduced the installed-SDK refusal, exit 3.
+Removing denials would expose excluded data under the runtime's system-volume read grant. Four
+source task proposals were retained; no CONTROL, baseline/oracle, setup/task or Copilot model call
+followed. This is a host-policy execution blocker, not missing BaseContainer, network leakage,
+campaign retirement or an efficacy result. Resume with demonstrated isolation and model transport,
+preserving the sample and consumed budget. No product change or new general gate follows.

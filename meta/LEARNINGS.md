@@ -2383,3 +2383,19 @@ mechanism unless evidence identifies a missing or conflicting instruction; do no
 for a compliance miss. Stop this fixture campaign and let a preselected independent FS2/B-225 field
 task drive the next strategic decision. Reopen a bounded synthetic evaluation only when its answer
 would change a named adoption or repair choice.
+
+## 2026-09-09 — A supported sandbox platform can reject the required policy
+
+RK1 preparation found positive OS sandbox capability bits and an installed Copilot platform-support
+result, yet its required path-denial policy refused even the allowed canary before execution. A
+second standard Windows environment and root's installed-SDK replay reproduced the refusal. Saved
+empty read-only grants became system-volume read access in the emitted policy, so removing denials
+would expose hidden study material. Conversely, its emitted network policy correctly denied traffic
+despite an allowed label in the UI. Neither missing BaseContainer nor network escape was observed.
+
+Capabilities, effective policy, picker filtering, actual command/content access and model transport
+are separate evidence. Only the complete required route can establish study readiness. The same
+lesson applies to a candidate whose apparent test configuration omits the relevant specs: a command
+name and exit status cannot establish that the intended cases executed. Existing bounded controls
+stopped RK1 before model/task spend. Retain the proposed tasks and exact failures; do not patch the
+framework or weaken the study boundary to manufacture a comparison.

@@ -1,6 +1,10 @@
 # Repository-knowledge component study — offline execution packet
 
-**Series:** RK1. **Status:** offline protocol; no live run has been authorised or performed.
+**Series:** RK1. **Status:** execution authorized on 2026-09-09; preparation stopped at the required
+native sandbox policy before any study setup, task arm or Copilot model calibration. The
+[revision 1 campaign](../.claude/plans/2026-09-09-rk1-execution.md) supplies prospective arm,
+selection, host and budget choices. The original offline protocol below is preserved; its earlier
+absence-of-authority wording is superseded only by that named campaign. See the checkpoint below.
 **Question:** on the same repository tasks, does the enhanced bounded discovery/capture/use
 increment improve outcomes over the current released framework on the same observed Copilot host
 and exact model?
@@ -200,3 +204,75 @@ host-observable actions from independent semantic judgment. Those corrections ar
 above. The review accepted the scope, privacy, preservation, supported-alternative and null-result
 boundaries. It did not execute RK1-C1–C10, authorize a live arm, certify a target host/model, or
 establish product value.
+
+## Authorized execution checkpoint — 2026-09-09 — blocked before study dispatch
+
+The user requested execution, allowing Claude CLI review/implementation where useful. Revision 1
+compares released v0.86.0 with a prospective, separately committed experimental ablation on the
+same foundation. CONTROL retains manual wiki/navigation, project-pattern knowledge and unrelated
+repairs. The question is marginal value above that residual; CONTROL is not a released artifact.
+Exact source/installed-byte purity review and construction remain unrun.
+
+Read-only Opus 5 xhigh critique returned REVISE, then a fresh revision check ACCEPT for preparation.
+Corrections made the contrast, sample stop, readiness predicates, unrelated-ablation red control
+and full four-pair budget explicit. The reviewed proposal hashes were
+`F2BDE3B2AAA9DBCA612B43A4366A4ABA2C9E426A85C859F287D313F838328CEB` and
+`2FDA9BB009A9D4FEC9F0A5ADC3369C6BE087B51F7DDFC61856260FE12382F49A`.
+Reviewers read supplied packets, without host or application execution; they did not certify
+CONTROL purity or task eligibility. The calls reported USD 0.9840065 combined list-price cost.
+
+**Selection.** Missing public history was reacquired. A separate selector screened the frozen
+prefix using RK1's one-nonlocal-decision criterion and retained four provisional source cards
+across four areas plus all earlier exclusions. Root independently matched the 238-entry population
+order and each candidate's parent/path set. Coverage and executable eligibility still need review;
+no restore, build or oracle ran. One Angular candidate's apparent test configuration omits its
+relevant specs, so a working test route remains an explicit obligation. Population/card SHA-256:
+`68B50AFA2A587D376C6B9E97CAE58B97C807B0D942A184331EB7EABD3100C801` and
+`76AB3F2D78C6587CC835F3D844DA7CBBDB8A178D58B53847535A7FB24777D6D8`.
+Source, identities, prompts, proposed oracles and exclusions remain coordinator-only under
+`C:/TEMP/rk1-20260909/tasks`; actors must not receive that directory.
+
+**Host blocker.** Root's direct native PS7 7.6.5 observations on Windows build 26200.9278 returned
+sandbox API capability mask 7 and installed Copilot 1.0.83 platform support true. Thus a published
+build table cannot establish missing capability here. However, the host auditor's two actual
+offline CLI sessions, using minimal and expanded Windows environments, refused the required
+policy before the allowed own-canary command ran. Root separately reproduced the refusal through
+the installed SDK `LocalSession` shell entrypoint: success false, empty command output, exit 3.
+The diagnostic says that the policy cannot be guaranteed with BaseContainer and suggests removing
+denied paths or updating Windows. This is an execution-route refusal, not an application failure
+or proof that every Windows configuration is unusable.
+
+Saved settings disabled bypass/dev-tool grants, supplied no read-only paths and denied five
+excluded storage classes. The emitted policy added system-volume read access. Removing the
+denials would expose coordinator, other-arm, history, oracle and prior-state canaries, so that
+workaround was not used. Emitted network policy denied ingress, egress and host loopback; a
+conflicting UI label does not establish a network leak. Picker filtering accepted the own canary
+and excluded the others, but only proves suggestion filtering. Native file access, shell
+containment, model transport and full observer calibration remain unproved; RK1-C4 did not pass.
+The retained Hyper-V/no-mount container is network-none. Read-only npm and GitHub release checks
+also identified 1.0.83 as latest. No ready connected alternative was established.
+
+Raw host records: `C:/TEMP/rk1-host-20260909/observed-results.md` and `receipt-hashes.json`.
+Root replay stdout SHA-256:
+`D6A670DABEC6A2EC32C5736FE12D281AEF9A86DF5F27EF7CC4932F8F85D39172`.
+The two Opus streams under `C:/TEMP/rk1-20260909` have SHA-256
+`820ADFBBD3D3BB03C845956377475BE27516373F950B74DDF6D25FAD289BC753` and
+`0ABC1DEF1544D2FA1892FC6317BA0AB03B03F3317EDF41496AB85F756DEF8D96`.
+
+**Disposition / RCA.** Preparation stopped before its deadline. No Copilot model call, application
+setup/task, variant construction, paired result or efficacy claim followed. No host setting,
+ACL, subscription or shipped product changed. Release parsers and platform/version detection
+cannot establish execution of a particular containment policy. The same exposure applies to
+native file-tool filtering, online transport and zero-test discovery: inspect actual policy and
+execution/counts at the claimed surface. Existing RK1 controls caught this before provider task
+spend; no new generic gate is justified. Resume with one configuration proving permitted model
+transport plus allowed/excluded access, then finish the retained variant/oracle/coverage/observer
+obligations. Preserve selection and consumed review cost; check time/credit bounds prospectively.
+This is a retained blocker, not B-225 retirement or permission to revive CP2.
+
+**Record verification.** Root matched all nine retained host receipt hashes and the population,
+task-card and review-stream hashes above. Direct native PS7 and PS5.1 runs at code page 437 each
+observed BacklogHygiene's broken-index control exit 1, then 10/0 clean; DocTruth reported 16/0
+including its own restored scratch mutation, and the repository privacy scan passed. These
+checks verify this meta-only record, not a working study execution route. No `src/` or `dist/`
+changes were present.

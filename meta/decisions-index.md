@@ -52,6 +52,7 @@ authoritative.
 - “CP1 is a separate maintainer Copilot campaign; readiness precedes purchase.” — `meta/workspace-decisions.md WSD-076`
 - “CP1 may assess a Hyper-V-isolated Windows container; offline feasibility does not establish paid-run readiness.” — `meta/workspace-decisions.md WSD-077` (prospectively amends WSD-076's guest requirement)
 - “CP2's paid comparison is retired on decision-value grounds; isolation and efficacy remain unknown, and any new attempt requires a fresh decision.” — `meta/workspace-decisions.md WSD-078`
+- “RK1 compares the discovery increment above retained knowledge paths on a matched current foundation; policy execution must be demonstrated before study dispatch.” — `meta/workspace-decisions.md WSD-081`
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`
