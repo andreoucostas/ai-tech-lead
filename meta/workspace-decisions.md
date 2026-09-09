@@ -3955,3 +3955,37 @@ deterministic eval wrapper, and budgets were green. GitHub Actions run
 successfully with all eight required Windows jobs and case parity green before annotated tag
 `v0.86.3` was confirmed on origin at that commit. This establishes delivery and framework checks,
 not consumer reconciliation or model comprehension; pwsh-unavailable adaptation remains unobserved.
+
+## WSD-084: make consumer Quick Start use the existing installer (2026-09-09)
+
+- **Status:** B-234 implemented by Sol; independent Opus final review accepted the frozen range
+  and direct native smoke passed. Normal release/CI/tag remains pending.
+- **Decision:** Replace only all three README Quick Start step-1 manual-copy inventories with
+  standalone native installation instructions; divert stamped targets to the existing upgrade
+  guide before apply. Keep the existing Git-root/profile qualifications and developer handoff.
+- **Alternatives:** An agent-section link is smaller but addresses another actor and lacks upgrade
+  routing; another installer or onboarding guide adds machinery. The short human entry point fits
+  the demonstrated source conflict. Confusion or damage has not been observed in a consumer.
+- **Boundary:** No installer, ownership, workflow, always-loaded rules, or permanent test changes.
+  Use literal old-copy missing-file evidence and real new-command installs on both native hosts;
+  parser success alone is not usability evidence. Preserve adjacent state-describing copy prose.
+- **Review:** Plan records the Opus REVISE, accepted host/test/scope corrections, source-verified
+  rejected claims, and execution gaps. Sol implements; final range review and normal release follow.
+## WSD-085: assess one cross-warehouse report before adding migration guidance (2026-09-09)
+
+- **Status:** Conditional backlog plan filed as B-235 after Opus critique and root adjudication;
+  no product implementation design locked and no consumer migration executed.
+- **Decision:** First use existing report rules and a normal consumer spec for one representative
+  report. A small reference through existing reporting/map guidance is conditional on a concrete
+  reusable omission in paired evidence, authority, mapping or reconciliation. Success with current
+  guidance is a valid reason to close without a framework change.
+- **Reason:** Two warehouse labels alone do not establish a semantic gap. Source already covers
+  grain, SCD/version resolution, cross-warehouse mapping, expected results and join traps. Repository
+  revisions and current maps alone cannot establish comparable data or preserved business meaning.
+- **Alternatives:** Existing carriers first; on-demand reference only if justified; no new report
+  engine, automatic SQL migration, mandatory matrix, always-loaded policy or DW distribution.
+- **Review:** Opus REVISE led to explicit A/B criteria, assisted-input disclosure, actual-retrieval
+  limits and owner-approved history differences. WSD-032's historic map reach does not prove current
+  skill invocation; the plan records that distinction and root's independently checked citations.
+- **Authority:** Backlog planning only. Consumer scope, artifacts, history intent, data/result
+  availability and business owner remain dependencies; execution/publication are not inferred.

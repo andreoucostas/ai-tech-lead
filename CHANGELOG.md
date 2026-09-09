@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.86.4 — Unreleased
+## 0.86.4 — 2026-09-09
 
 B-234 replaces the three selective manual-copy Quick Starts with the supported matching-distribution
 installer route, explicit upgrade diversion, and the existing commit/developer handoff.

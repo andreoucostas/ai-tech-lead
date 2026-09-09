@@ -16,7 +16,8 @@ authoritative.
 - “A stack-specific source change requires reviewing its monorepo sibling.” — `meta/workspace-decisions.md WSD-015`
 - “Evals are not a release gate.” — `meta/workspace-decisions.md WSD-016`
 - “The meta/product boundary is sealed and machine-checked.” — `meta/workspace-decisions.md WSD-019`
-- “Do not add a separate testing skill or data-warehouse distribution.” — `meta/workspace-decisions.md WSD-020`
+- “Do not add a separate testing skill.” — `meta/workspace-decisions.md WSD-020`
+- “Do not add a separate data-warehouse distribution.” — `meta/workspace-decisions.md WSD-021`
 - “The Copilot Boy Scout nudge remains advisory; never block.” — `meta/workspace-decisions.md WSD-024`
 - “Capability probes use the consumer’s vantage point.” — `meta/workspace-decisions.md WSD-026`
 - “Automation never sets or upgrades warehouse-map status.” — `meta/workspace-decisions.md WSD-027`

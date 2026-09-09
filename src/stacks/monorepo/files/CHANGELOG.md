@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.86.4 — Unreleased
+## 0.86.4 — 2026-09-09
 
 - Quick Start now uses the supported installer from the matching monorepo distribution, routes
   stamped targets to the upgrade checklist, and preserves the commit plus developer bootstrap/adopt handoff.

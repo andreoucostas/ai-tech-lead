@@ -911,3 +911,83 @@ Do not replace FS2 with the old shared-composite requirement. No scheduler/remin
 **Done when.** The newly justified drill and separately designed consumer self-assessment have
 valid execution/delivery evidence, or a reviewed decision retires their remaining premises.
 A polished protocol alone does not complete the value question.
+
+### B-234 · Use the supported installer throughout consumer Quick Start
+
+**Filed against:** v0.86.3 (2026-09-09).
+**Priority / effort:** P2 / S. **Status:** PARTIALLY DONE — Sol implementation and independent
+review complete; native red/green smoke passed. Normal release/CI/tag and closure remain.
+
+**Observed problem.** All three distribution READMEs provide an installer route, then a conflicting
+Quick Start selective-copy inventory omitting framework ownership, rules and installed guides.
+This is source-observed instruction drift; no consumer harm or comprehension gain is measured.
+
+**Plan / review.** `.claude/plans/2026-09-09-consumer-quickstart.md`; WSD-084. Replace only step 1
+with explicit matching-distribution/target context, PS7 primary/PS5.1 fallback install commands,
+pre-apply routing of stamped targets to the upgrade guide, and new-install commit/developer handoff.
+Preserve stack evidence and other sections. Opus returned REVISE; root accepted explicit host
+selection, literal-copy red evidence, and residual-scope disclosure while rejecting incorrect claims
+about directory-contained files and permanent loss of retirement reconciliation.
+
+**Verification / delivery.** `2026-09-09-consumer-quickstart-review.md` beside the plan records
+the immutable range and fresh Opus ACCEPT. Each native baseline returned 75/39/0, exit 1; each
+candidate returned 102/0/0 with six actual installs, exit 0, on direct PS7 and PS5.1 at CP437.
+Demonstrate the literal old copy inventory missing required installed
+paths, then execute README candidate commands against greenfield/brownfield fixtures for all three
+dists on direct PS7 and PS5.1. Record host/cannot-examine limits; independently review a frozen range;
+use normal composition, native release gates and CI before tag. No permanent prose gate.
+
+**RCA / exposed class.** Parser/path gates and installer-output contracts never select which README
+route a reader follows. Three active partial-copy inventories drifted independently from installer
+ownership. Source sweep found other copy wording describes installed state or existing installer/
+adoption operations, not equivalent inventories; leave that adjacent prose unchanged. Close with
+actual release evidence, preserving unobserved consumer comprehension and migration limits.
+### B-235 · Establish one report's cross-warehouse migration contract before extending guidance
+
+**Filed against:** v0.86.3 (2026-09-09).
+**Priority / effort:** P3 / M provisional. **Status:** OPEN — conditional discovery; product design
+is not locked. Opus critique and root adjudication completed before filing.
+
+**User-reported need.** A consumer has two framework-installed repositories described as a slowly
+changing fact DW and a slowly changing dimension DW, and intends to migrate reports with AI.
+No consumer schema, report, data, failing outcome or migration direction has been inspected.
+These labels alone establish neither SCD2 nor grain, history selection or compatible results.
+
+**Existing support and hypothesis.** `map-warehouse` already requires report grain, temporal
+resolution, source-to-target concepts, expected results/tolerances and fan/chasm avoidance. The
+plausible addition is a paired evidence/authority handoff with source and target revisions,
+comparable data cuts/parameters, explicit semantic differences and reconciliation. Existing map
+freshness is single-repository timestamp evidence, not business correctness or cross-repo parity.
+
+**Plan / review.** `.claude/plans/2026-09-09-report-migration-backlog.md`; WSD-085. Fresh Opus 5
+returned REVISE. Before filing, root added explicit sufficiency criteria, assisted-input disclosure,
+reachability limits, a bounded handoff hypothesis and owner-approved history differences; verified
+missing source citations and rejected model-study scope inflation and unevidenced frontmatter reach.
+
+**First step / decision rule.** Use one named report with scoped authorized artifacts and existing
+rules plus a consumer-owned spec. Record sources, business-result owner, report grain/measures,
+per-edge history/key mapping, data cuts and actual evidence limits. A is sufficient if this yields
+a reviewable contract without a new reusable obligation. B is justified only by a concrete
+consequential omission current guidance leaves unresolved. Missing access, unclear intent or absent
+target history are not alone framework defects. Supplied mappings are useful assistance, not proof
+of independent discovery. Close without product changes if A suffices; keep discovery open when
+necessary evidence is unavailable.
+
+**Conditional addition.** If justified, add a short on-demand reference and small pointer through
+existing reporting guidance, composing into dotnet and monorepo, using existing specs/wiki/maps.
+No new skill, warehouse-wide matrix, migration engine, always-loaded rule, hook or DW distribution.
+Before locking, define the entry point and how retrieval outcomes will be distinguished. During
+implementation, verify skill/emitted-map links and actual retrieval; existing protected maps do not
+automatically receive updated content.
+
+**Acceptance / dependencies.** Consumer supplies a representative report, both artifact scopes,
+actual technologies/history, intended results and permitted differences/tolerances, and available
+comparable snapshots/results or an explicit cannot-examine limit. Distinguish preserved meaning,
+accepted difference, mismatch, unsupported required history, and unavailable examination. A matching
+grand total alone is insufficient where row errors can cancel. Future product delivery needs a new
+locked minimal design, independent review and normal native verification; no paid study, consumer
+code/data export, query execution, data movement or cutover is authorized by this planning item.
+
+**RCA at closure.** Record the actual guidance omission and other exposed scope, or why the existing
+framework sufficed. Current parser/freshness checks do not certify cross-warehouse report meaning;
+that limitation is not itself a defect. Preserve WSD-021/027/032/033/037/042/057/074 boundaries.

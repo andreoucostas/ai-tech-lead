@@ -2528,3 +2528,15 @@ commit alone does not remove an earlier outgoing blob. Keep composition sequenti
 read the generated distributions: a concurrent rebuild can remove a script between two invocations.
 The existing gates and a stable targeted rerun were sufficient; no new checker or gate exception was
 needed. Full evidence and review scope remain in the B-233 plan.
+
+## 2026-09-09 — entry-point instructions need consequence-based review (B-234)
+
+The three Quick Start copy inventories had drifted from the installer and omitted ownership,
+framework rules and installed guides. Opus asked for a literal-copy consequence check rather than
+only asserting a missing command. The temporary replay copied whole listed directories and exposed
+missing paths and brownfield rule displacement; the new documented installer route passed actual
+install/delivery/preservation checks on direct PS7 and PS5.1. A reviewer incorrectly treated a nested
+.claude settings file as omitted despite the listed whole directory: rechecking corrected that claim.
+This is source/fixture evidence, not measured human comprehension or consumer adoption. A mislabeled
+PS5.1 launch actually ran PS7; its log remains excluded, and corrected evidence records the native
+executable/version. Broad release gates remain separate from this bounded delivery check.
