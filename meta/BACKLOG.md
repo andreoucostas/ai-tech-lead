@@ -743,6 +743,20 @@ examine, not a deny; no relay restart regained a paid slot. Both containers/netw
 and captured host fields matched baseline. Keep this narrow result and the remaining debts in the
 existing packet; no general proxy platform, efficacy claim or product release follows.
 
+**Resumption review / RCA (2026-09-09).** The user requested Opus adversarial review,
+not renewed live execution. Fresh Opus 5 xhigh returned REVISE on the proposed four-hour
+preparation extension: CONTROL construction was unallocated, candidate inspection and executed
+eligibility were blurred, and oracle/transport/review work lacked a credible bounded allocation.
+Root retains these findings, but corrected the review's fixed-body-relay premise, credit-minimum
+interpretation, mandatory intermediate approvals and unsupported shortened-time arithmetic.
+The next proposed step is only a 30-minute read-only retained-candidate/coverage audit; it cannot
+produce READY or automatically launch another workstream. No revised design is locked.
+Parser gates cannot detect omitted construction work or establish time feasibility; the same
+exposure affects oracle review, CONTROL purity and host-readiness summaries. The independent
+critique caught these omissions before execution. Full disposition and receipts:
+`.claude/plans/2026-09-09-rk1-resumption-review.md`. Review reported USD 0.8299065; conservative
+RK1 Claude total USD 7.920006 of USD 10. No Copilot run, container change or product release.
+
 ## Bounded correctness and maintenance work
 
 ### B-216 · Project-adapt instance-shaped skills instead of imposing framework defaults

@@ -3856,6 +3856,15 @@ lifetime and remains cannot-examine. No paid-slot restart followed. The packet r
 independent review, cleanup and remaining access/observer/treatment/oracle debts; RK1 study arms
 remain NOT RUN. No shipped behavior changed.
 
+**Resumption proposal review (2026-09-09).** User-authorized Opus 5 xhigh review returned
+REVISE on a proposed four-hour preparation extension. Root accepted missing CONTROL construction
+and unresolved stage feasibility/funding as blockers, while correcting several reviewer premises
+against the native relay and campaign record. No standing ordering amendment or renewed execution
+authority follows. The next proposed bounded candidate is a read-only card/coverage audit;
+it cannot certify executable eligibility or readiness. Preserve WSD-081 and the original sample.
+See `.claude/plans/2026-09-09-rk1-resumption-review.md` for the frozen proposal, adjudication,
+usage and explicit remaining gaps. B-225 remains open.
+
 ## WSD-082: product-first repair of adoption instruction contracts (2026-09-09)
 
 - **Status:** Reviewed plan, implementation not authorized by this planning request.

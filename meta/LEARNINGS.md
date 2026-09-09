@@ -2500,3 +2500,16 @@ states when summarizing recovery; use the existing tests for their actual contra
 not as evidence of model comprehension. The sweep found the same error in exactly
 three stack overviews. Review hashes, receipts and limitations are in
 `.claude/plans/2026-09-09-b232-marker-wording.md`; read recovery stays deferred.
+
+## 2026-09-09 — RK1 resumption plans must budget construction before review
+
+Opus adversarial review rejected the proposed four-hour continuation as ready to lock:
+it allocated review of CONTROL without its construction, blurred inspected test routes with
+executed eligibility, and bundled unmeasured oracle/transport work under optimistic ceilings.
+Root retained those corrections while checking and rejecting several reviewer claims: the
+native relay already accepted bounded request bodies, a minimum CLI cap is not a minimum charge,
+and rearranging four stage ceilings does not shorten their sum. A review verdict is evidence
+input, not factual authority. The same exposure affects task oracles, byte-purity reviews and
+readiness summaries; a cheap preliminary audit must keep its result provisional. No generic
+gate, live retry or product change follows. Frozen plan and full adjudication are in
+`.claude/plans/2026-09-09-rk1-resumption-review.md`.

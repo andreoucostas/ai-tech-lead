@@ -460,3 +460,21 @@ No new general proxy platform, release gate or shipped behavior change follows.
 broken-index exit 1 then 10/0 clean, DocTruth 16/0 with its applied/restored mutation, and a clean
 repository privacy scan. Root recomputed all 83 frozen manifest entries without mismatch.
 `src/` and `dist/` remained unchanged. These authoring checks do not close the runtime gaps above.
+
+## Resumption design review — 2026-09-09
+
+The user authorized adversarial review of the proposed next work. Fresh Claude Opus 5 xhigh
+returned REVISE: unallocated CONTROL construction, ambiguous inspection/execution boundaries,
+and unresolved stage feasibility and review funding prevent locking the four-hour attempt.
+Root accepted those blockers and corrected the review's older fixed-body-relay premise,
+30-credit cap interpretation, intermediate-approval requirement and shortened-time arithmetic.
+The revised recommendation is only a prospective 30-minute read-only retained-candidate audit;
+its continued-provisional outcome cannot establish task eligibility or READY. No new execution
+authority, model calibration, container mutation, source ablation, oracle or study arm follows.
+
+Frozen proposal, raw receipt hashes and root disposition are in
+`.claude/plans/2026-09-09-rk1-resumption-review.md`. Review reported USD 0.8299065, bringing the
+conservative RK1 Claude total to USD 7.920006 of USD 10 (not an invoice); the outstanding
+30-credit Copilot calibration reservation remains unreconciled. Raw packet:
+`C:/TEMP/rk1-resumption-review-20260909`. The reviewer executed no checks; root inspected the
+retained native relay source to adjudicate the disputed body-policy claim. No efficacy result.
