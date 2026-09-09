@@ -2432,3 +2432,22 @@ restart a spent request slot to repair the record. Inspect compact, explicitly s
 fields: dumping entire native message objects needlessly exposes opaque model state and distracts
 from the nonce, route, usage and exit evidence actually needed. No new framework text or general
 transport platform follows from these calibration findings.
+
+### 2026-09-09 — Test the published input, not a corrected fixture (B-232 A)
+
+The archive helper correctly refused a bare-array plan; the documentation never
+showed its required object wrapper, while tests silently supplied that wrapper
+themselves. The proportionate product repair was an explicit schema sentence and
+labelled example in all three adoption commands, fed unchanged through the real
+helper by the existing suite. Both native hosts observed the missing-example red,
+bare-array rejection without input mutation, and restored exact-byte green.
+
+Independent review still needs adjudication: Opus accepted the source but wrongly
+summarized a PS5.1 receipt as green. Root retained the failed receipts and corrected
+the external launch, not product tests: PS5.1 needed its native module path and
+the suite's normal error preference, not a caller's injected Stop behavior.
+Final code-page-437 runs reached 34 archive and 8 installer cases per host, all
+passing. An emitted review verdict and a budget-error process exit are distinct
+facts; neither replaces reading the actual evidence. This does not establish
+workflow comprehension or complete adoption, and the read-recovery proposal stays
+deferred rather than accumulating another unmeasured instruction.

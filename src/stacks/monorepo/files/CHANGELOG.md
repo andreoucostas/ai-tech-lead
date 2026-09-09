@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.86.1 — Unreleased
+## 0.86.1 — 2026-09-09
 
 - Adoption now shows the complete archive-plan JSON object with its required `entries`
   array before freezing. Include every selected candidate, including quarantines, in

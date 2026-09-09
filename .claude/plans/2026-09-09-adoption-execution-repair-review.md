@@ -85,3 +85,65 @@ RCA: tests constructed the correct wrapper themselves and did not exercise the
 published instructions. A tool error labelled success and an intermediate commit
 were over-read as useful evidence. The archive helper's preservation check worked;
 it should not be loosened to accept an ambiguous alternative format.
+
+## Delivery A implementation review — 2026-09-09
+
+User subsequently authorized implementation and an Opus handoff. A alone is
+implemented for v0.86.1; B remains deferred. Frozen contract SHA-256:
+`0D3ADD75A5E66295F33B9B494FDDDB30023C02645FB1CA2B707942ADAF855F2B`.
+Immutable range: `f29cc39f70c9a719d46020211d8bc702db570732..afd34867f7c2728af1286d923a7eb39e46492f2e`.
+Authored review diff SHA-256: `A9D2783BC6B9598E1B0A8BD8DEBA7EDCEB0C36B9D3CEA89A9ADE3030A87E60F1`.
+
+Fresh Claude CLI 2.1.260 / `claude-opus-5`, Read-only session
+`1a0fbd6a-01cb-44d9-bed6-d443219e8b10`, no implementation participation.
+Reviewer stated a blind-first threat model before reading the diff and receipts.
+Its final text returned **ACCEPT**, no source correctness/contract blockers.
+It confirmed raw example execution, scoped extraction, specific bare-array
+rejection with unchanged inputs, byte comparisons, unchanged helper and lifecycle,
+and proportionality (two new functions in the existing suite, no new runner).
+
+**Do not overstate that result.** The CLI subsequently ended with
+`error_max_budget_usd`, exit 1, reported cost USD 0.680585; ACCEPT is the emitted
+review text, not a successful CLI result. Its receipt summary incorrectly claimed
+both `final-ps*.log` runs were green. Root rejected that claim: the PS5.1 launch
+wrapper had injected Stop preference into tests which inspect native stderr.
+An earlier installer-only background launch also could not resolve Get-FileHash.
+These failed receipts remain retained, not overwritten or counted green.
+
+Root corrected only the external invocation: explicit native PS5.1 module path
+and normal direct-file error preference. No frozen source changed. Root then
+observed `verified-ps7.log` and `verified-ps51.log`: native PS7 7.6.5 and PS5.1
+5.1.26100.9278 respectively, code page 437, **34 archive cases and 8 installer
+cases per host, zero final failures, both process exits 0**. Installer cases
+exercise greenfield/brownfield across all three distributions. Nested intentional
+mutation failures are not final suite failures. Log SHA-256 identities:
+
+- PS7: `B0B647ABD301F8BB9C2B11256FB1E6803C72618289B52DA950E1B7F8AD2ACC85`.
+- PS5.1: `C45DBEFFAF8E3E62B3F2DE4C93A3AFDB34C42113C5B4350BE47BBF089C7E7BD9`.
+
+Earlier direct runs observed 27 PASS / 6 missing-example FAIL on both unfixed
+hosts, then 33 PASS / 0 FAIL after the documentation repair. The frozen version
+adds the unavailable-helper classification case (34 total). Every final run
+executes all three bare-array mutations through actual Freeze exit 3 with the
+missing-entries diagnostic, asserts unchanged marker/source and no destination,
+and then reruns the original document successfully. The existing digest-corruption
+mutation also remains observed red and restored. No ABP files were mutated.
+
+Root adjudication of optional points: retain the lean fixture; its empty prior
+inventory is valid and the existing nonempty-installer extension case remains.
+Missing `verified` cannot make the full case green: actual MoveFrozen/Verify
+still validate the inventory. The unavailable-helper case observes the real
+failure classification; it was added after the initial missing-example red run,
+which is not claimed as its before-state. Root confirmed the matching root
+Unreleased changelog in the frozen commit; it was omitted from the initial review
+packet, not from implementation. All three source changelogs also match.
+
+Evidence packet: `C:/TEMP/b232-implementation-20260909/`, including exact prompt,
+frozen source export, failed and corrected receipts, and selected readable Opus
+output (SHA-256 `D83867875293B0CE803523D3A243F458167198D37ACD2B98B0B9242B78F1047E`).
+Opus did not execute tests; the corrected host results are root-observed, not
+reviewer-executed. Independent source review plus direct native host execution
+are the supplied evidence; neither model rank nor CLI exit certifies quality.
+Release stamping/composition, normal gates and CI are subsequent promotion steps,
+not covered by the frozen source review. No comprehension/adoption-completion or
+deferred B claim follows.

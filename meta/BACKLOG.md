@@ -18,7 +18,7 @@ export, production queries, or external participant contact.
 | 2 | B-223 capture and refresh | Released in v0.84.0; semantic refresh and retained forward misses remain |
 | 3 | B-224 ordinary-task Copilot use | Released carrier; ordinary CLI navigation/application observed on a nonconforming synthetic wiki, conforming CLI/VS Code acceptance remains open |
 | Independent repairs | B-216 instance skills; B-226 review scope | Released in v0.84.0; named semantic/host gaps remain explicit |
-| Independent product repair | B-232 adoption instruction contracts | Opus-critiqued plan; schema fix first, read-recovery proposal evidence-gated |
+| Independent product repair | B-232 adoption instruction contracts | Schema fix implemented/reviewed for v0.86.1; read-recovery proposal deferred |
 | When a participant exists | B-42 independent FS2 | Existing packet ready; independent run outstanding |
 | Deferred | B-49 drill and consumer self-assessment | Old instrument invalid; no execution authority |
 
@@ -324,7 +324,7 @@ and prose workflows remain exposed to the same route-versus-behaviour ambiguity.
 ### B-232 · Repair adoption instruction delivery and archive-plan documentation
 
 **Filed against:** v0.86.0 (2026-09-09).
-**Priority / effort:** P2 / M. **Status:** delivery A implemented; verification and independent implementation review in progress. Delivery B deferred.
+**Priority / effort:** P2 / M. **Status:** PARTIALLY DONE. Delivery A implemented and reviewed for v0.86.1; normal release/CI is the promotion boundary. Delivery B deferred.
 
 **Observed problem.** A standalone ABP preparation attempt produced a bare-array
 archive plan; the actual helper requires an object with an `entries` array and
@@ -352,6 +352,13 @@ implementation review complete. Track the second proposal explicitly as deferred
 or delivered with its own narrow evidence, never infer comprehension from parser
 presence. The subsequent user request authorized implementation and an Opus handoff
 for delivery A; it does not authorize the deferred live probe.
+
+**Delivery A evidence.** Frozen implementation `afd3486`; fresh Opus 5 source
+review ACCEPT, with CLI budget-error termination and an inaccurate host-receipt
+claim explicitly adjudicated in the review record. Root-observed native PS7 and
+PS5.1, code page 437: 34 archive cases and 8 installer cases each, all final PASS.
+Missing-example RED, actual bare-array Freeze exit 3 without mutation, and restored
+GREEN are retained. Source helper unchanged; no further Copilot/ABP run.
 
 **RCA.** Fixture code supplied a correct schema without testing the instructions
 that asked a model to produce it. The bounded source sweep found the same omission
