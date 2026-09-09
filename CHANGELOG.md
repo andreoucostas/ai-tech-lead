@@ -11,6 +11,12 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.86.3 — Unreleased
+
+B-233 adds an installed consumer upgrade checklist covering preview/apply boundaries, ownership,
+protected-rule reconciliation, generated mirrors, and verification. The three distribution
+READMEs now link to it, and successful updates point to the installed guide.
+
 ## 0.86.2 — 2026-09-09
 
 B-232 bounded wording follow-up: clarify all three adoption overviews so a pre-bootstrap archive verification failure retains the existing marker, while failure after removal restores the saved recovery bytes. Phase 7 and the archive helper remain unchanged.

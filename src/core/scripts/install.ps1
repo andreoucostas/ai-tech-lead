@@ -1207,6 +1207,7 @@ Write-Output ""
 Write-Output "Each developer should run  $followUpPowerShell scripts/framework-doctor.ps1  once on their own machine."
 if ($updateMode) {
     Write-Output "Done (update). Framework-owned machinery refreshed; the listed protected paths were left untouched; .claude/settings.json was backed up and refreshed."
+    Write-Output "  Reconcile protected rules and verify the update with docs/upgrade-checklist.md."
     Write-Output "  Next: review the diff, run  $followUpPowerShell scripts/docs-sync-check.ps1 , then commit."
 } elseif ($adoptMode) {
     Write-Output "Done - but this repo is NOT ready for AI-assisted work yet: it has pre-existing AI"

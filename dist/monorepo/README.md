@@ -130,15 +130,14 @@ Or just describe what you want in natural language — `CLAUDE.md` teaches the a
 
 ## Framework versioning
 
-Each consumer repo records the template version it was last synced from. Two locations:
-- A human-readable HTML comment at the top of `CLAUDE.md`
-- A machine-readable `.claude/framework-version.json`
-
-To pull template updates, run `pwsh -NoProfile -File scripts/install.ps1 <target-repo-path>` from a fresh template checkout on Windows — it detects the existing `.claude/framework-version.json` and switches to **update mode**. Preserve local edits to framework-owned files before running it, then review the resulting diff before committing. Update treats files in three ownership classes: the protected consumer paths named by the installer (`CLAUDE.md`, `AGENTS.md`, `TECH_DEBT.md`, `SECURITY_FINDINGS.md`, `LEARNINGS.md`, `FRAMEWORK-CONTEXT.md`, `.github/copilot-instructions.md`, `docs/ARCHITECTURE.md`, and `docs/architecture-decisions.md`) are restored; framework-owned machinery (hooks, commands, skills, scripts, and the JSON stamp) is overwritten; mixed-ownership `.claude/settings.json` is first backed up to `.claude/.state/settings.json.pre-update`, then refreshed and adapted to the host. Bump the CLAUDE.md header comment yourself as part of the update commit. CI tooling reads the JSON file to detect drift between your repo and the latest template version. If the version stamps disagree, treat the JSON file as authoritative. The update also refreshes `.github/instructions/framework-rules.instructions.md`. The update proves file arrival, not Copilot host consumption; see `docs/enforcement-surfaces.md` for dated, client-specific consumption evidence. Existing Claude Code consumers must once add `@.github/instructions/framework-rules.instructions.md` to `CLAUDE.md` where the four inline framework sections were, then delete those old sections. Until then, `session-start` provides discovery only. The carrier is framework-owned: update deliberately overwrites consumer edits to it. Boy Scout content remains consumer-owned after bootstrap, so future scaffold changes to it are greenfield-only.
-
-For the new scope default, reconcile any old touched-file mandate in protected `CLAUDE.md`, then run
-`/generate-copilot`; retain an intentional consumer mandate. Update does not silently migrate
-protected `CLAUDE.md`, `AGENTS.md`, or Copilot text.
+The machine-readable `.claude/framework-version.json` records the installed version and is
+authoritative if the protected `CLAUDE.md` header disagrees. To update from a fresh matching
+distribution, follow the [framework upgrade checklist](docs/upgrade-checklist.md). It covers
+preview and apply, file ownership, protected local-rule reconciliation, generated mirrors, and
+verification before committing.
+Existing `CLAUDE.md`, `AGENTS.md`, and `.github/copilot-instructions.md` are
+protected consumer paths; `.github/instructions/framework-rules.instructions.md` is framework-owned and updates
+automatically.
 
 ## What's in the box
 

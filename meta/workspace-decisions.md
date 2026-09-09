@@ -3912,3 +3912,38 @@ must align explicit questions and citation support with its grading and accept
 equivalent complete-read methods. B-232 records a separate small marker-lifecycle
 wording inconsistency found directly in all three sources. No paid retry, new harness
 or shipped general recovery rule follows from this amendment.
+
+## WSD-083: install one bounded manual upgrade guide (2026-09-09)
+
+- **Status:** Implemented and independently accepted. Focused native verification is green;
+  publication is awaiting explicit approval, and the pre-stamp meta suite has unresolved local
+  gate/examination findings recorded in B-233 and the locked plan.
+- **Decision:** Put the existing consumer update obligations in one shared installed
+  `docs/upgrade-checklist.md`. Keep each distribution README to version authority plus a link, and
+  add one literal installer update-completion pointer. Reconciliation remains conditional and
+  consumer-reviewed: migrate only the four framework headings, retain local `Conventions` and
+  `Boy Scout Rule`, reconcile the old touched-file mandate as a whole, then regenerate derivatives.
+- **Boundary:** Preserve installer ownership and control flow. Add no automatic policy migration,
+  updater command, persistent prose parser, readiness dashboard, or new product workflow. Preview
+  remains an operation plan that skips the apply dirty-tree guard; checks establish framework state,
+  not application correctness or agent-host consumption.
+- **Reason:** The full contract lived in three dense READMEs that are excluded from installation,
+  while the updater preserves the consumer files requiring manual reconciliation. A shared installed
+  guide plus pointer closes that navigation gap with less policy and mechanism than an assistant.
+- **Review:** Opus first returned REVISE; source-backed corrections were adjudicated into the plan,
+  and a fresh review returned ACCEPT. Execution evidence belongs to the later immutable
+  implementation review and release record, not this design decision.
+
+**Promotion checkpoint.** Root observed the release-specific 65-case baseline red and final green
+on direct PS7 and PS5.1 at CP437; separate implementation and locator-amendment reviewers accepted
+the frozen ranges without running tests. Pre-stamp full distribution validation passed three of
+three and the deterministic eval self-test passed. The meta suite exited 7: visible output included
+a stale README-local `DocTruth` assertion and sandbox-denied sibling-directory fixtures, while
+truncation prevents claiming those visible lines exhaust the aggregate. No release stamp, push, CI,
+or tag has occurred, and no gate or product correction is inferred from this incomplete run.
+
+The bounded resolution retained the README pointer design and restored its essential ownership
+fact: all three now name the three protected instruction files and the automatically refreshed
+framework-rules carrier. Root observed the prior assertion red on both hosts; Sol observed the
+unchanged targeted DocTruth suite at 16/0, exit 0 on direct PS7 and PS5.1. The installed guide
+remains the detailed reconciliation authority. This clarification adds no updater or gate behavior.

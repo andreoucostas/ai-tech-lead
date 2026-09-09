@@ -91,6 +91,7 @@
     { "path": "docs/presentation/framework-briefing.html", "ownership": "framework-owned/overwritten" },
     { "path": "docs/presentation/framework-system-map.html", "ownership": "framework-owned/overwritten" },
     { "path": "docs/presentation/framework-technical.html", "ownership": "framework-owned/overwritten" },
+    { "path": "docs/upgrade-checklist.md", "ownership": "framework-owned/overwritten" },
     { "path": "docs/wiki/INDEX.md", "ownership": "consumer-owned/protected" },
     { "path": "docs/wiki/_template.md", "ownership": "framework-owned/overwritten" },
     { "path": "framework-ownership.json", "ownership": "framework-owned/overwritten" },
