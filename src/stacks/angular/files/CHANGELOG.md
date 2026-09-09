@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.86.3 — Unreleased
+## 0.86.3 — 2026-09-09
 
 - Updates now install `docs/upgrade-checklist.md` and point to it after completion. Use it to
   preview file operations, reconcile protected local rules, regenerate derived instructions, and

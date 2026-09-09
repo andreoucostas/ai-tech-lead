@@ -345,3 +345,12 @@ and eight native Windows CI contexts plus parity before tagging. An unnecessary 
 run was interrupted before a leg completed and supplies no result; current release tooling assigns
 those full distribution/host suites to CI. No release stamp, push, tag, live efficacy trial, or
 consumer model reconciliation has occurred. Publication remains pending explicit user approval.
+
+## Publication approval and required testing
+
+The user subsequently approved pushing master and publishing v0.86.3, asking that testing happen
+first. Run the normal release command without gate or CI waivers: it composes before testing,
+requires clean local gates before the push, and waits for all eight native Windows CI contexts
+and their case-count parity decision before publishing the tag. Keep the shared tree stable while
+the suites run. A failure stops promotion for diagnosis; the prior targeted greens do not replace
+this fresh full release run.

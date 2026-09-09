@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.86.3 — Unreleased
+## 0.86.3 — 2026-09-09
 
 B-233 adds an installed consumer upgrade checklist covering preview/apply boundaries, ownership,
 protected-rule reconciliation, generated mirrors, and verification. The three distribution
