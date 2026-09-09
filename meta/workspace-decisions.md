@@ -3820,3 +3820,13 @@ source task proposals were retained; no CONTROL, baseline/oracle, setup/task or 
 followed. This is a host-policy execution blocker, not missing BaseContainer, network leakage,
 campaign retirement or an efficacy result. Resume with demonstrated isolation and model transport,
 preserving the sample and consumed budget. No product change or new general gate follows.
+
+**Outer-container follow-up (2026-09-09).** At the user's request, Sonnet performed bounded
+diagnostics of the existing Hyper-V toolchain image. Offline own-file execution and unauthenticated
+provider-endpoint connectivity succeeded; root checked actual isolation/mount state and reproduced
+connectivity and the execution canary. These observations advance the alternative route without
+establishing selective egress, model authentication or study readiness. Root rejected the next
+unexecuted network draft's unchecked exits and unconditional name-based cleanup. Continue through
+one corrected, reviewed, credential-free network probe, not removal of the study boundary. The
+existing packet records evidence, timeout/cost limits and remaining controls; no sample or budget
+reset, product change or CP2 revival follows.

@@ -276,3 +276,45 @@ observed BacklogHygiene's broken-index control exit 1, then 10/0 clean; DocTruth
 including its own restored scratch mutation, and the repository privacy scan passed. These
 checks verify this meta-only record, not a working study execution route. No `src/` or `dist/`
 changes were present.
+
+## Outer-container follow-up — 2026-09-09
+
+The user challenged treating the native refusal as the end of the route search and requested
+Sonnet for the implementation/diagnostic work. Claude CLI initialization recorded
+`claude-sonnet-5`. Its 15-minute, USD 3-ceiling diagnostic completed offline and existing-NAT
+probes, then timed out before its final proposed report/script write executed. No final cost
+receipt was emitted; USD 3 is an allocation, not an observed charge. This follow-up did not reset
+the campaign's sample, credit budget or preparation deadline.
+
+Sonnet observed synthetic file write/read and PowerShell execution as ContainerUser inside a
+Hyper-V-isolated, network-none container. Root inspected the running container: pinned toolchain
+image, no mounts, and coordinator task storage absent from its namespace. Sonnet then reached the
+provider public endpoint over the existing NAT network: DNS, TCP 443 and unauthenticated HTTPS
+HEAD 404. Root reproduced the connectivity in a fresh ContainerUser/Hyper-V/no-mount container
+and separately propagated the execution canary's expected exit 7. All newly created probe
+containers were removed; existing images/networks were retained. No credentials or study input
+entered the containers, and no Copilot model call occurred.
+
+These are usable offline execution and public-endpoint reachability observations, not a connected
+isolation pass. The diagnostic scripts are collectors, not rejecting gates. Bounded image scans
+do not establish universal absence of answer material or credentials, and a single reachable
+endpoint does not establish universal NAT reachability. Native file-tool/observer calibration,
+selective egress and authenticated model transport remain unrun.
+
+Root rejected the unexecuted network-probe draft: unchecked native exits and unconditional
+name-based cleanup could delete a pre-existing object after failed creation. It also lacks fixed
+subnet/identity preflight, bounded matched connectivity controls and a justified path-sensitive
+transport policy. Next is one corrected, reviewed, credential-free private/internal-network
+probe using owned IDs and the demonstrated NAT positive control, then selective transport if that
+passes. The native sandbox refusal does not retire RK1 or establish that this alternative fails.
+
+Raw records and root adjudication: `C:/TEMP/rk1-container-20260909/root-review.md`. Sonnet stream
+SHA-256 `3E5E6276CFC93CD14D9A906A10787E19B64C886894C39DDFC3979D43F3674D77`;
+root review SHA-256 `005FE762C069337E1CE41C508226CC3A50D89B1D0F4883939607FEC2B35D8E65`.
+RCA: the initial stop bounded one mechanism, not the alternative search. Independent execution
+found a working outer-container route; review caught the next draft's lifecycle/false-green
+hazards before any new network was created. No new generic gate or shipped change follows.
+
+Record checks: direct PS7 and PS5.1 at code page 437 each observed BacklogHygiene's broken-index
+control exit 1 then 10/0 clean, DocTruth 16/0 with its restored mutation, and clean privacy scans.
+These verify the meta record, not a selectively connected study environment.

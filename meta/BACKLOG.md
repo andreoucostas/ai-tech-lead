@@ -554,6 +554,10 @@ miss does not justify a new generic gate.
 Four provisional source task cards exist; executable eligibility, CONTROL construction and the
 paired study remain unrun. No Copilot model call occurred. Controls are not collectively observed;
 the named campaign, not this backlog entry alone, supplies execution authority.
+The user-requested Sonnet follow-up demonstrated offline outer-container execution and provider
+endpoint reachability, independently checked by root. Selective connected isolation remains
+unproved; the next network-probe draft was rejected before execution for unsafe cleanup and
+unchecked exits. See the packet's outer-container checkpoint; RK1 is not retired.
 
 **Problem.** Current source and user reports justify a hypothesis, not a productivity claim. Skill
 count, framework-test success and Claude execution do not establish Copilot task outcomes. B-41's
