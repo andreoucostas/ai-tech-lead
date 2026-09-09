@@ -558,6 +558,10 @@ The user-requested Sonnet follow-up demonstrated offline outer-container executi
 endpoint reachability, independently checked by root. Selective connected isolation remains
 unproved; the next network-probe draft was rejected before execution for unsafe cleanup and
 unchecked exits. See the packet's outer-container checkpoint; RK1 is not retired.
+The subsequently authorized corrected checkpoint demonstrated a private peer path and a fixed,
+credential-free provider relay with allowed/denied requests. Authenticated native Copilot transport
+and comprehensive isolation remain unrun. Its original closed-port-refusal condition was unmet
+and remains recorded separately; no effectiveness claim follows from the successful relay.
 
 **Problem.** Current source and user reports justify a hypothesis, not a productivity claim. Skill
 count, framework-test success and Claude execution do not establish Copilot task outcomes. B-41's
@@ -603,6 +607,16 @@ prove file containment. The same class exposes online transport and zero-test di
 latter is an explicit gap in one provisional card. Required isolation caught this before study
 dispatch. Preserve selection/receipts and resume after a compatible route is demonstrated; no
 generic gate, host reconfiguration or product release followed.
+
+**Network follow-up / RCA (2026-09-09).** Root replaced the unsafe blanket cleanup with checked
+owned-ID operations and obtained Opus contract critique. Peer nonce and fixed-provider relay
+responses succeeded; direct actor/provider TCP timed out while matched controls connected. The
+closed peer port timed out rather than refusing, so the original conjunction was not backfilled
+as green. A separate relay observation records allowed/denied requests and measured forwarding.
+All checkpoint-created containers/networks were removed; captured final host state matched the
+baseline. Mechanism-specific refusals and over-specific control expectations must not become
+universal impossibility claims. The same class affects diagnostic error classification and
+evidence-file handling; no new generic gate or shipped change is justified.
 
 ## Bounded correctness and maintenance work
 

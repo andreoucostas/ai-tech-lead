@@ -3830,3 +3830,15 @@ unexecuted network draft's unchecked exits and unconditional name-based cleanup.
 one corrected, reviewed, credential-free network probe, not removal of the study boundary. The
 existing packet records evidence, timeout/cost limits and remaining controls; no sample or budget
 reset, product change or CP2 revival follows.
+
+**Private/relay checkpoint (2026-09-09).** The user's renewed go-ahead authorizes one prospective
+30-minute mechanism checkpoint after the original preparation deadline, not a study/sample/budget
+reset. Opus reviewed the corrected manual owned-ID lifecycle and a distinct fixed-request relay
+contract. The private peer path worked; the original closed-port-refusal condition remained unmet
+because it timed out. The separately declared relay observation then returned allowed provider
+HEAD responses and denied unsupported requests while the actor stayed private-only and its
+direct provider-IP attempts timed out against matched successful controls. Native PS7/PS5.1
+clients were observed. All created resources were removed and captured host state matched the
+baseline. This advances credential-free network-mechanism feasibility only; native authenticated
+Copilot transport and all remaining RK1 controls precede study dispatch. Preserve both observation
+contracts, not a retroactive pass or a claim of universal isolation. No product change follows.

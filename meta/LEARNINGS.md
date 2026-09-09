@@ -2399,3 +2399,18 @@ lesson applies to a candidate whose apparent test configuration omits the releva
 name and exit status cannot establish that the intended cases executed. Existing bounded controls
 stopped RK1 before model/task spend. Retain the proposed tasks and exact failures; do not patch the
 framework or weaken the study boundary to manufacture a comparison.
+
+## 2026-09-09 — Replace a failed mechanism without widening the conclusion
+
+RK1's native sandbox refusal did not rule out an outer Windows boundary. A corrected private-network
+probe carried a peer nonce, and a separate fixed-request relay returned a provider HEAD response
+while the actor's direct connection to the tested provider IP timed out. Matched controls connected.
+Neither fact establishes universal isolation or native model transport. The original closed peer
+port timed out rather than refusing, so its exact conjunction remained unmet; a prospective,
+separately reviewed relay observation preserved that result instead of rewriting it as a pass.
+
+The smaller lifecycle fix was individually observed Docker operations with captured owned IDs,
+not another general cleanup runner. Both networks and all five created containers were removed;
+captured identity/address/route/firewall fields matched the baseline. Expected Docker/HNS switch
+creation must be distinguished from direct host reconfiguration. Code/exit/log evidence narrows
+what can be claimed; it does not turn a finite probe into a security certification.

@@ -318,3 +318,69 @@ hazards before any new network was created. No new generic gate or shipped chang
 Record checks: direct PS7 and PS5.1 at code page 437 each observed BacklogHygiene's broken-index
 control exit 1 then 10/0 clean, DocTruth 16/0 with its restored mutation, and clean privacy scans.
 These verify the meta record, not a selectively connected study environment.
+
+## Private network and fixed-request relay — 2026-09-09
+
+The user authorized the corrected network checkpoint after the original preparation deadline.
+The prospective `.claude/plans/2026-09-09-rk1-private-network.md` caps mechanism work at 30 minutes
+from 09:47 London; it does not reset the sample, prior spend, original six-hour envelope or study
+prerequisites. Root used individually checked Docker commands and captured owned IDs, avoiding
+the rejected draft's automatic name-based cleanup. Opus critiqued the initial contract (REVISE,
+corrections adopted; reported USD 0.0946025) and accepted the separate relay contract (USD 0.089496).
+
+**Network observation A.** A private-only Hyper-V/ContainerUser actor read the exact synthetic
+nonce from a peer. Its direct TCP attempt to the frozen provider IPv4:443 timed out; a NAT control
+connected to that same literal before and after. The closed peer port also timed out instead of
+the required refusal, while the peer's loopback closed port refused. The full original conjunction
+is therefore **unmet**, not silently reclassified green. These finite facts do not establish
+universal blocked egress, and the actor still had a configured IPv4 default route/DNS server.
+
+**Distinct relay observation B.** A fresh proxy accepted both NAT and private endpoints before
+first start; a fresh actor had only the private network. Both used the pinned toolchain image,
+Hyper-V isolation, ContainerUser and no mounts. A small synthetic listener allowed only one fixed,
+unauthenticated provider-root HEAD request, never a caller-supplied URL, header or body. Redirects,
+cookies, default credentials and ambient proxy use were disabled in that client. HEAD returned the
+expected nonce plus HTTP 404; OTHER returned DENY. Actor direct TCP to the same frozen provider
+literal timed out, bracketed by successful proxy direct connections. Native PS7 and PS5.1 clients
+each observed the allowed and denied responses. Four logged request IDs bind two outbound events
+to the HEAD requests and none to the denied requests. Guest forwarding flags were measured
+disabled before/after; those flags alone do not prove absence of every possible bypass.
+
+All five containers and both networks created in this checkpoint were removed after exact ID/label
+verification. Final captured network/container identities, adapter fields, IPv4/IPv6 addresses and
+routes, and firewall-rule fields matched the initial baseline. The expected temporary switch
+extension adapter was distinguished from a new host-addressed interface; Docker/HNS host-state
+creation is acknowledged. No credentials, task source, answers, model calls or shipped changes
+were involved. This establishes **credential-free relay feasibility**, not native Copilot
+authentication/model transport, complete network isolation, RK1-C1–C10 readiness or efficacy.
+
+Raw scripts/receipts and review streams remain under `C:/TEMP/rk1-private-20260909`. The frozen
+evidence manifest SHA-256 is
+`822EF467C9711B327E13B2DDA7C495FE853E58F97144E7F8B573584BD6D5E314`.
+Next is a reviewed native model/auth transport route and its full access/observer controls; the
+fixed HEAD relay cannot be used as an RK1 model executor. Preserve the selected task cards and
+remaining CONTROL/oracle obligations.
+
+**RCA.** Platform refusal and an over-specific closed-port expectation bounded observations, not
+all implementation alternatives. Small actual probes separated working peer/relay paths from
+unproven security claims. The cleanup hazard was removed by explicit owned-ID operations; no
+general network runner or release gate was needed. A streaming self-hash attempt hit a file-sharing
+error; the retained manifest was rebuilt from an explicit collected list excluding itself. This
+was a cannot-examine bookkeeping error, not an artifact or network failure.
+
+**Post-review.** An explicit Opus 5 read-only code/receipt review returned ACCEPT NARROW
+CODE/RECEIPTS (reported USD 0.1296895). Root retains its limitations: the service log does not
+identify the client's PowerShell host; those identities come from root's invocations. The frozen
+direct-probe IP and relay hostname need not be the same server address. Bracketing controls reduce,
+not eliminate, transient/path uncertainty. A preceding broad review exhausted its requested USD
+0.50 flag without a verdict and reported USD 0.710734; its usage included Opus 4.8 after Opus 5
+initialization. It is not accepted review evidence or proof of a hard cost ceiling. The fresh
+completion prospectively reserved USD 0.30 within the existing campaign USD 10 allocation. Total
+reported checkpoint review cost is USD 1.024522, separate from prior costs and not an invoice.
+
+**Verification.** The four external probe/relay scripts have UTF-8 BOMs and parse under direct
+PS7 and PS5.1; the relay service ran under PS7 only, with both client hosts observed. Root verified
+the frozen evidence hashes. Direct authoring checks on both hosts at code page 437 observed the
+BacklogHygiene broken-index rejection then 10/0 clean, DocTruth 16/0 with restored mutation, and
+clean privacy scans. `src/` and `dist/` remained unchanged. These are separate evidence layers,
+not a claim that parser or CI gates establish network security.
