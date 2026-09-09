@@ -11,6 +11,10 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.86.2 — Unreleased
+
+B-232 bounded wording follow-up: clarify all three adoption overviews so a pre-bootstrap archive verification failure retains the existing marker, while failure after removal restores the saved recovery bytes. Phase 7 and the archive helper remain unchanged.
+
 ## 0.86.1 — 2026-09-09
 
 B-232 delivery A: all three adoption workflows now state the required archive-plan object
