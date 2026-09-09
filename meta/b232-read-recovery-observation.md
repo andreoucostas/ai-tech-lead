@@ -1,10 +1,51 @@
 # B-232 B native read-recovery observation
 
-Date: 2026-09-09. Outcome: **the frozen acceptance did not pass; no product change**.
-The proposed paragraph was loaded and the complete workflow was retrieved, but the
-specified contiguous-range recovery was not used and the answer missed material
-source obligations. Delivery B remains deferred. This is neither adoption execution
-nor a framework-effectiveness comparison.
+Date: 2026-09-09. Current interpretation: **successful complete retrieval, an imperfect
+summary, and an overconstrained acceptance test; no product change**. The historical
+frozen acceptance did not pass. That does not establish failed comprehension or unsafe
+adoption execution. Delivery B remains deferred pending a justified product decision.
+This is neither adoption execution nor a framework-effectiveness comparison.
+
+## Interpretation correction after user challenge
+
+The user asked whether the harness caused the result, then what should change.
+Root re-read the exact dispatch, native tool results and answer. The loader did not
+truncate the recovered document: all source text reached the model. However our
+acceptance contract required one recovery method and a detailed answer checklist
+while the actual task requested a concise summary. The earlier conclusion was too
+strong in treating those omissions as established comprehension defects.
+
+Preserve the frozen scores and reviews below as history, with these qualifications:
+
+- Contiguous ranges were unnecessary to the practical retrieval objective. The native
+  full-read option achieved complete delivery; choosing it is a method mismatch, not
+  a retrieval failure. The candidate's causal contribution remains unmeasured.
+- A concise answer can omit details without misunderstanding them. Checklist omissions
+  remain omissions, but this prompt did not explicitly require every scored subquestion.
+  Do not infer an execution defect from those omissions.
+- The requested numeric references were wrong. The tool supplied raw unnumbered text
+  and the probe exposed only `view`; we did not separately calibrate convenient exact
+  line lookup. This is an instrument limitation and a possible contributor, not proof
+  that the setup caused invented citations. Wrong numbers remain wrong.
+- The answer blurred adoption-branch completion and human merge/default-branch guard
+  release. That is an inaccurate or overbroad explanation; its cause and effect on
+  actual workflow execution were not measured.
+
+The proportionate correction is to the record and future acceptance design. If a
+separate observation later has enough decision value to justify execution, accept any
+supported read whose actual content covers the complete required source, state each
+scored question in the task, and supply verified numbered text or accept section names
+plus exact supporting quotations. Score retrieval, answer accuracy, unavailable evidence
+and actual execution separately. A matched comparison would be needed to attribute an
+improvement to the candidate. This is prospective guidance, not a changed score for the
+old run, a new harness, or authority for another paid attempt.
+
+One independently inspectable source inconsistency remains: all three adoption
+overviews say either archive-verification failure restores the marker, while Phase 7
+first verifies with the marker present and creates the recovery copy only after PASS.
+A small future wording correction should distinguish leaving the existing marker
+untouched before bootstrap from restoring saved bytes after its removal. Record that
+bounded source repair in B-232; it does not justify the proposed general paging rule.
 
 ## Contract, review and route
 
@@ -72,7 +113,7 @@ character to observe equality fail, then restored equality. That post-run compar
 does not rewrite the frozen range measure or claim pre-dispatch calibration for this
 new route.
 
-## Semantic adjudication
+## Original semantic adjudication (qualified above)
 
 The answer correctly described several controls: default interactive versus explicit
 headless mode, staging external merges for people, the three headless denials, the
@@ -104,7 +145,7 @@ missing specified recovery method already prevent acceptance. Do not infer that
 the native full-read option bypassed permissions: it used the same read-only tool,
 and the observed subject was public documentation inside the allowed fixture.
 
-## Decision and RCA
+## Original decision and RCA (qualified above)
 
 A second separate Codex reviewer (`read_probe_result_review`), uninvolved in the
 contract or launcher, read the frozen contract/source and recorded a blind-first

@@ -18,7 +18,7 @@ export, production queries, or external participant contact.
 | 2 | B-223 capture and refresh | Released in v0.84.0; semantic refresh and retained forward misses remain |
 | 3 | B-224 ordinary-task Copilot use | Released carrier; ordinary CLI navigation/application observed on a nonconforming synthetic wiki, conforming CLI/VS Code acceptance remains open |
 | Independent repairs | B-216 instance skills; B-226 review scope | Released in v0.84.0; named semantic/host gaps remain explicit |
-| Independent product repair | B-232 adoption instruction contracts | Schema fix released in v0.86.1; read-only recovery observation missed frozen acceptance, proposal deferred |
+| Independent product repair | B-232 adoption instruction contracts | Schema fix released in v0.86.1; retrieval succeeded, acceptance overconstrained; paging proposal deferred, marker wording follow-up recorded |
 | When a participant exists | B-42 independent FS2 | Existing packet ready; independent run outstanding |
 | Deferred | B-49 drill and consumer self-assessment | Old instrument invalid; no execution authority |
 
@@ -324,7 +324,7 @@ and prose workflows remain exposed to the same route-versus-behaviour ambiguity.
 ### B-232 · Repair adoption instruction delivery and archive-plan documentation
 
 **Filed against:** v0.86.0 (2026-09-09).
-**Priority / effort:** P2 / M. **Status:** PARTIALLY DONE. Delivery A released in v0.86.1. Delivery B's authorized read-only observation did not pass frozen acceptance; no candidate paragraph shipped, B remains deferred.
+**Priority / effort:** P2 / M. **Status:** PARTIALLY DONE. Delivery A released in v0.86.1. Delivery B's read-only observation retrieved the full source but did not pass an overconstrained frozen acceptance test; comprehension/execution failure is not established. No candidate paragraph shipped; B remains deferred.
 
 **Observed problem.** A standalone ABP preparation attempt produced a bare-array
 archive plan; the actual helper requires an object with an `entries` array and
@@ -351,7 +351,7 @@ hosts; normal source composition, installation, changelogs, release and independ
 implementation review complete. Track the second proposal explicitly as deferred
 or delivered with its own narrow evidence, never infer comprehension from parser
 presence. The subsequent user request authorized implementation and an Opus handoff
-for delivery A did not authorize the deferred live probe. The later "ok let's do it"
+for delivery A, but did not authorize the deferred live probe. The later "ok let's do it"
 authorized the separately frozen bounded observation recorded below, with no retries.
 
 **Delivery A evidence.** Frozen implementation `afd3486`; fresh Opus 5 source
@@ -388,6 +388,33 @@ the unexpected native option; frozen criteria caught the missed read method and
 semantic/source-reference defects. Other long prose workflows share this exposure,
 but the existing evidence/uncertainty rules already address it. Retain this bounded
 result rather than adding duplicate prose, a generic gate or another model attempt.
+
+**Interpretation correction, 2026-09-09.** The user's harness challenge exposed an
+overclaim in the preceding adjudication. Native full retrieval met the practical
+objective; the frozen paging method was unnecessarily restrictive. The prompt asked
+for a concise summary, so omissions against a detailed private scoring checklist do
+not establish failed comprehension. Incorrect numeric references and the overbroad
+headless-completion statement remain answer defects; their cause and impact on actual
+execution are unknown. Preserve historical scores/reviews without treating them as
+product efficacy or execution evidence. Future justified observations should grade
+complete content independent of read method, make scored questions explicit, and
+provide calibrated citation support. No new run or general harness is authorized.
+
+**Bounded source follow-up.** All three stack adoption overviews say verification
+failure "from either restores the marker"; Phase 7 correctly leaves the existing
+marker present on pre-bootstrap failure and creates its recovery copy only after
+PASS. Clarify that overview to distinguish retaining the existing marker before
+bootstrap from restoring saved bytes after removal. Review the three source siblings
+and existing Phase-7 contract together; keep the helper, guards and frozen inventory
+unchanged. This specific prose inconsistency is independently observable and does
+not depend on proving why the model summarized it poorly. No shipped edit yet.
+
+**Correction RCA.** Reviewers enforced a frozen checklist without adequately checking
+whether its method and answer requirements matched the practical task. Parser gates
+cannot judge that mismatch. The same exposure applies to other protocol-based model
+observations; assess the measurement premise, accept supported equivalent outcomes,
+and separate omissions from wrong claims and observed actions. The original review
+and receipts remain intact in `meta/b232-read-recovery-observation.md`.
 
 ### B-222 · Discover repository knowledge broadly, not only recurring recipes
 **Filed against:** v0.83.0 (2026-09-05)

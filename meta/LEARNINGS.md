@@ -2467,3 +2467,21 @@ Freeze what the task actually requires, preserve unexpected successful mechanism
 and grade source-grounded comprehension separately. Existing parser checks and evidence
 rules do not become semantic guarantees by adding another paragraph or counting a
 successful CLI exit. The result remains one observation, not an efficacy comparison.
+
+### 2026-09-09 — A frozen contract can still measure the wrong thing (B-232 B correction)
+
+The user's harness challenge exposed overstatement in the preceding interpretation.
+Complete retrieval succeeded through a native full-read option. Requiring paging
+rejected an equivalent outcome, and grading a concise-summary prompt against a
+detailed checklist made omissions look like proven comprehension failures. Wrong
+citations and the overbroad headless-completion claim remain real answer defects;
+their causes and effects on actual execution remain unknown. Raw unnumbered tool
+output and uncalibrated citation support are instrument limitations, not a proven
+causal explanation. The frozen scores and original reviews remain historical facts.
+
+Before relying on an observation, ask whether its requirements match the practical
+objective and the task actually given. Accept supported equivalent outcomes; make
+scored questions explicit; distinguish missing summary detail, inaccurate claims
+and observed wrong actions. Independent review needs to challenge that measurement
+premise as well as enforce the frozen checklist. No additional paid run was needed
+to correct our record or identify the separate marker-overview wording inconsistency.

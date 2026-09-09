@@ -3891,3 +3891,15 @@ Independent result review confirmed failed acceptance. Keep B deferred, retain t
 existing shipped carrier, and make no paid retry or product release from this result.
 See `meta/b232-read-recovery-observation.md` for the successful full-delivery fact,
 semantic misses, cost and evidence limits. This preserves the earlier decision history.
+
+**Interpretation amendment, 2026-09-09.** After the user's harness challenge, root
+re-examined the prompt/result and narrowed that conclusion: complete retrieval
+succeeded through a supported alternative, while the frozen method requirement was
+overconstrained. Omissions in a requested concise summary do not establish failed
+comprehension; numeric citation errors and an overbroad completion claim remain
+answer defects, with execution impact unknown. Keep the original protocol scores
+and reviews as history, not a causal product verdict. Any future justified protocol
+must align explicit questions and citation support with its grading and accept
+equivalent complete-read methods. B-232 records a separate small marker-lifecycle
+wording inconsistency found directly in all three sources. No paid retry, new harness
+or shipped general recovery rule follows from this amendment.
