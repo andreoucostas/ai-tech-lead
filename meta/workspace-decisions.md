@@ -3855,3 +3855,28 @@ Both client hosts observed hostile-request rejects; a post-paid retry control mi
 lifetime and remains cannot-examine. No paid-slot restart followed. The packet retains usage,
 independent review, cleanup and remaining access/observer/treatment/oracle debts; RK1 study arms
 remain NOT RUN. No shipped behavior changed.
+
+## WSD-082: product-first repair of adoption instruction contracts (2026-09-09)
+
+- **Status:** Reviewed plan, implementation not authorized by this planning request.
+- **Decision:** B-232 first corrects the documented archive-plan object shape and
+  tests the exact labelled example through the existing archive helper/suite.
+  A complete-read recovery clarification is a separate evidence-gated product
+  proposal, not an assumed co-delivery. No operator tooling workstream, general
+  phase runner, schema relaxation, or safety/ownership/provenance bypass.
+- **Evidence:** A malformed intermediate plan was rejected by the real helper;
+  a 39.4 KB workflow read returned a size message marked tool-success; later
+  Sonnet archive-byte preservation passed independently on both Windows hosts,
+  but adoption did not complete. Budgets, prompts, permissions and model varied;
+  no causal model or framework-effectiveness claim follows.
+- **Alternatives:** Schema-only fix first is smallest and supported by both Opus
+  critiques. Broad workflow decomposition or new orchestration is not justified
+  before the small contract fixes and their specific observations. Prior native
+  launches did not establish headless restricted-surface requirements; this plan
+  does not silently waive those or resume the live study.
+- **Review / scope:** Two fresh Opus 5 Read-only design sessions returned REVISE;
+  root adjudicated concrete corrections, retained evidence limits, and removed
+  maintainer-execution tooling after the user's product-focus clarification.
+  See `.claude/plans/2026-09-09-adoption-execution-repair.md` and its review record.
+  No implementation or release review is claimed. Existing RK1/WSD-081 remains
+  preparation-only and separate from these product repairs.

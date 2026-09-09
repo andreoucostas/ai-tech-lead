@@ -18,6 +18,7 @@ export, production queries, or external participant contact.
 | 2 | B-223 capture and refresh | Released in v0.84.0; semantic refresh and retained forward misses remain |
 | 3 | B-224 ordinary-task Copilot use | Released carrier; ordinary CLI navigation/application observed on a nonconforming synthetic wiki, conforming CLI/VS Code acceptance remains open |
 | Independent repairs | B-216 instance skills; B-226 review scope | Released in v0.84.0; named semantic/host gaps remain explicit |
+| Independent product repair | B-232 adoption instruction contracts | Opus-critiqued plan; schema fix first, read-recovery proposal evidence-gated |
 | When a participant exists | B-42 independent FS2 | Existing packet ready; independent run outstanding |
 | Deferred | B-49 drill and consumer self-assessment | Old instrument invalid; no execution authority |
 
@@ -319,6 +320,45 @@ event and byte comparison distinguished route availability from semantic adheren
 carrier/request already states grounding, bounded-summary and confirmation obligations, so no
 duplicate product wording or generic evaluation harness was added. Other host permission channels
 and prose workflows remain exposed to the same route-versus-behaviour ambiguity.
+
+### B-232 · Repair adoption instruction delivery and archive-plan documentation
+
+**Filed against:** v0.86.0 (2026-09-09).
+**Priority / effort:** P2 / M. **Status:** design reviewed with revisions; implementation NOT STARTED.
+
+**Observed problem.** A standalone ABP preparation attempt produced a bare-array
+archive plan; the actual helper requires an object with an `entries` array and
+correctly rejected it before movement. All three adoption documents omit that
+explicit wrapper/example; existing tests construct the wrapper themselves.
+Native Copilot also returned a too-large message instead of the 39.4 KB adoption
+workflow, while reporting tool success. Sonnet later corrected the plan and
+preserved archived bytes but did not complete adoption. These observations do
+not establish model superiority, product efficacy, or a conforming headless run.
+
+**Plan / review.** `.claude/plans/2026-09-09-adoption-execution-repair.md` and its
+`-review.md` sibling; WSD-082. Two fresh Read-only Opus 5 sessions returned REVISE.
+Root incorporated concrete schema/test/fixture corrections. First product delivery:
+correct prose plus a labelled executable example in all three stacks, exercised
+through the real helper by the existing integrity suite on PS7 and PS5.1. Keep
+the helper's strict contract. Second proposal: bounded complete-workflow read
+recovery in the existing rules carrier; exact placement and native behavioral
+evidence are required before delivery. No operator tooling workstream or new
+generic parser/runner, and no guard/provenance/ownership relaxation.
+
+**Done when.** The first delivery has observed missing-example RED, valid-example
+GREEN, bare-array rejection RED with unchanged inputs, and restored GREEN on both
+hosts; normal source composition, installation, changelogs, release and independent
+implementation review complete. Track the second proposal explicitly as deferred
+or delivered with its own narrow evidence, never infer comprehension from parser
+presence. Current request authorized planning/review only.
+
+**RCA.** Fixture code supplied a correct schema without testing the instructions
+that asked a model to produce it. The same gap exposes directly analogous archive
+examples; sweep that bounded surface. Tool-result success, checkpoint commits and
+byte-integrity PASS do not establish instruction consumption or adoption completion.
+Prior launch/receipt mistakes and unmet headless restricted-surface proof remain
+confounders. RK1 and the application bug remain unrun; this item does not close
+B-225 or authorize more model spend.
 
 ### B-222 · Discover repository knowledge broadly, not only recurring recipes
 **Filed against:** v0.83.0 (2026-09-05)
