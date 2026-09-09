@@ -16,7 +16,7 @@ export, production queries, or external participant contact.
 | 1 | B-222 broad discovery | Released in v0.84.0; representative semantic coverage remains |
 | 1 alongside it | B-225 value protocol | Offline protocol/controls ready; live arms need explicit prerequisites |
 | 2 | B-223 capture and refresh | Released in v0.84.0; semantic refresh and retained forward misses remain |
-| 3 | B-224 ordinary-task Copilot use | Released carrier; one bounded CLI access miss/cost observed, ordinary CLI/VS Code acceptance remains open |
+| 3 | B-224 ordinary-task Copilot use | Released carrier; ordinary CLI navigation/application observed on a nonconforming synthetic wiki, conforming CLI/VS Code acceptance remains open |
 | Independent repairs | B-216 instance skills; B-226 review scope | Released in v0.84.0; named semantic/host gaps remain explicit |
 | When a participant exists | B-42 independent FS2 | Existing packet ready; independent run outstanding |
 | Deferred | B-49 drill and consumer self-assessment | Old instrument invalid; no execution authority |
@@ -441,11 +441,11 @@ class remains relevant to every generated knowledge artifact, not only wiki entr
 **Filed against:** v0.83.0 (2026-09-05)
 **Priority:** P1 · **Effort:** M · **Invariants:** #1 #2 #5 #6 #7
 **Status:** PARTIALLY DONE. The carrier/source work shipped in v0.84.0 and aggregate/CI release
-checks passed. One bounded Copilot CLI application is now observed below, including task cost and a
-negative scoped-knowledge access result. It does not satisfy the ordinary feature-only acceptance:
-the prompt named the installed `CLAUDE.md` workflow and supplied the implementation contract. VS
-Code, calibrated ordinary-prompt discovery, semantic application, and a before/after generated-
-context comparison remain unobserved. Host inventory and one assisted result are not efficacy.
+checks passed. The 2026-09-07 assisted run recorded cost and no direct scoped-knowledge read. A
+2026-09-09 ordinary CLI run did directly navigate wiki content, read decisive source, implement the
+scoped rule and pass hidden grading, but post-review found its synthetic wiki failed the shipped
+validity check. A conforming ordinary fixture, VS Code, enterprise scale, generated-context growth
+and outcome comparison remain unobserved. Host inventory and synthetic behavior are not efficacy.
 
 **Problem / evidence.** A generated claim or registered skill is not proof of reading/application.
 WSD-032's old Claude observations do not certify current Copilot. Host-certification gaps remain;
@@ -508,6 +508,31 @@ positive/negative calibration, feature-only prompt, VS Code arm, pre-adoption co
 or paired treatment ran. B-225 live execution remains NOT RUN; this observation must not be pooled
 into RK1.
 
+**Ordinary Copilot CLI observation and correction (2026-09-09).** B224-CLI-01 used one feature-only
+prompt with no workflow, skill, path, rule or grader hint. Typed events show direct index, applicable
+wiki-body, decisive retail-policy and opposing admin-policy reads; the actor added a regression,
+observed the expected compile red, delegated to the retail policy, passed 4/0 visible checks and a
+solution build, and its post-state passed the calibrated hidden grader at 7/0. The task reported
+10.9919 AI credits; all three controls plus the task reported 24.9080. It missed the separate
+classification/plan/wait rail. BEFORE/AFTER host totals were both 8,817 custom-instruction and
+26,942 prompt tokens, but both already held the same populated context carrier, so broader
+discovery/capture context growth remains CANNOT-EXAMINE.
+
+Independent Astra xhigh review found the material boundary: AFTER's installed `wiki-check.ps1`
+reports 37 failures because all 31 synthetic index rows are noncanonical and general-notes
+frontmatter is malformed; BEFORE passes. The overlay contains the defects before actor dispatch.
+This is construction failure, not actor/product failure: the direct reads and correct patch remain
+observed, but conforming-framework acceptance is still open. Disabled hooks also mean 31 rows do
+not exercise the 30-entry threshold transition. Exact launch/isolation flags lack a retained argv
+receipt and remain operator reports. The full hashes, adjudication, review and stop guidance are in
+`meta/b224-copilot-ordinary-acceptance.md`.
+
+Do not repair and relabel this historical run or buy another tiny pass merely to replace it. Keep
+the shipped mechanism, retire this fixture as an acceptance instrument, and let the next eligible
+preselected independent FS2/B-225 field task drive strategy. Reopen focused synthetic work only for
+a named decision such as a repeated field failure, missing/conflicting instruction, relevant host
+change or destructive workflow. No product source change follows from this observation.
+
 **Done when.** Carrier changes/static budgets pass normal gates; exact host/model observations and
 gaps are recorded. A required unexercised host leaves PARTIALLY DONE status and narrowed claims,
 not inferred parity. B-225 owns outcome comparison; host access does not substitute for it.
@@ -515,7 +540,10 @@ not inferred parity. B-225 owns outcome comparison; host access does not substit
 **Delivery RCA.** Carrier parity and footprint checks proved text delivery, not that an ordinary
 feature-only task discovers, reads, and semantically applies the right scoped knowledge. That
 evidence gap applies to every host-specific native instruction/skill route and remains open rather
-than being converted into a parser gate.
+than being converted into a parser gate. The B224-CLI-01 helper also calibrated application tests
+but omitted the already-existing wiki check, allowing an invalid synthetic knowledge world to reach
+the actor. Future fixtures must pass existing product validators before dispatch; one construction
+miss does not justify a new generic gate.
 
 ### B-225 · Measure broad discovery's marginal value on the actual coding surfaces
 **Filed against:** v0.83.0 (2026-09-05)

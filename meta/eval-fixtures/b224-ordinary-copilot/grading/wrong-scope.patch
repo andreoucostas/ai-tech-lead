@@ -1,0 +1,21 @@
+diff --git a/src/Dispatch/RetailShipmentService.cs b/src/Dispatch/RetailShipmentService.cs
+index dcfb083..01e4c84 100644
+--- a/src/Dispatch/RetailShipmentService.cs
++++ b/src/Dispatch/RetailShipmentService.cs
+@@ -20,4 +20,16 @@ public sealed class RetailShipmentService
+         shipment.MarkReleased();
+         return true;
+     }
++
++    public bool TryCancel(Shipment shipment)
++    {
++        ArgumentNullException.ThrowIfNull(shipment);
++        var adminPolicy = new AdminTransitionPolicy(new RetailCancellationOptions(2));
++        if (!adminPolicy.CanCancel(shipment))
++        {
++            return false;
++        }
++        shipment.MarkCancelled();
++        return true;
++    }
+ }

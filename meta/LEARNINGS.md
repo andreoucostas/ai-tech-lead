@@ -2357,3 +2357,29 @@ it before dispatch avoided turning malformed evaluator input into model evidence
 accepted only after its preimage, patch application, postimage and restoration were all observed.
 Permission probes need meaning checks on their authority records for the same reason semantic
 fixtures do: stable bytes can still encode the wrong control.
+
+## 2026-09-09 — Product-valid input is part of semantic acceptance
+
+B224-CLI-01 calibrated its visible and hidden application tests, froze tree and stream hashes, and
+then observed direct Copilot reads plus a semantically correct patch. Independent review still found
+that the AFTER root failed the installed wiki check with 37 errors: every synthetic index row used a
+noncanonical shape and one shared entry lacked valid frontmatter. Those bytes predated the actor.
+The model behavior remains observed, but a nonconforming knowledge state cannot certify the shipped
+framework route. Hashes preserve an input; they do not establish that the product accepts its shape.
+Run existing product validators on the materialized world before dispatch, while preserving failed
+experiments rather than repairing their identity after the outcome is known.
+
+The same run separated several tempting aggregates. An unchanged prompt-token total measured adding
+on-demand wiki bytes atop the same populated context carrier; it did not measure discovery/capture
+growth or per-file cost. Thirty-one rows with hooks disabled did not exercise a 30-entry hook branch.
+Direct knowledge reads followed by correct code showed co-occurrence, not causation, especially when
+the source already contained the predicate and delegation pattern. The actor followed knowledge and
+regression rails while missing classification/plan/wait, so prose-framework compliance must stay
+rail-specific rather than collapsing into a terminal-success verdict.
+
+Recent discovery, capture, preservation and scope work has produced useful corrective instruments,
+but repeated synthetic construction and route failures do not answer product value. Keep the shipped
+mechanism unless evidence identifies a missing or conflicting instruction; do not add duplicate text
+for a compliance miss. Stop this fixture campaign and let a preselected independent FS2/B-225 field
+task drive the next strategic decision. Reopen a bounded synthetic evaluation only when its answer
+would change a named adoption or repair choice.
