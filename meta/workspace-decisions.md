@@ -3915,9 +3915,8 @@ or shipped general recovery rule follows from this amendment.
 
 ## WSD-083: install one bounded manual upgrade guide (2026-09-09)
 
-- **Status:** Implemented and independently accepted. Focused native verification is green;
-  both failures from the full local meta run have clean targeted reruns. The user authorized
-  publication after successful testing; fresh release gates/CI remain. Evidence and limits are in
+- **Status:** Delivered in v0.86.3. Normal local release gates and all required Windows CI contexts
+  plus parity passed without waivers before tag promotion. Evidence and limits are preserved in
   B-233 and the locked plan.
 - **Decision:** Put the existing consumer update obligations in one shared installed
   `docs/upgrade-checklist.md`. Keep each distribution README to version authority plus a link, and
@@ -3948,3 +3947,11 @@ fact: all three now name the three protected instruction files and the automatic
 framework-rules carrier. Root observed the prior assertion red on both hosts; Sol observed the
 unchanged targeted DocTruth suite at 16/0, exit 0 on direct PS7 and PS5.1. The installed guide
 remains the detailed reconciliation authority. This clarification adds no updater or gate behavior.
+
+**Delivery.** Normal release tooling exited 0 without waivers at
+`b56174bf1bb5d9e3a5965f67b4aebaf39e67825b`; local compose, validation, footprint, full meta suite,
+deterministic eval wrapper, and budgets were green. GitHub Actions run
+[`34396990887`](https://github.com/andreoucostas/ai-tech-lead/actions/runs/34396990887) completed
+successfully with all eight required Windows jobs and case parity green before annotated tag
+`v0.86.3` was confirmed on origin at that commit. This establishes delivery and framework checks,
+not consumer reconciliation or model comprehension; pwsh-unavailable adaptation remains unobserved.

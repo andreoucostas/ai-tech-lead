@@ -12125,3 +12125,61 @@ current instance. Static/executable coverage cannot prove a live model follows t
 validators, the full root meta suite on both supported hosts, offline eval self-test, and context
 ceilings. GitHub Actions run `34167920703` passed the nine required Windows jobs; tag `v0.86.0`
 was confirmed on origin at release commit `458a298`. Paid live evals were not run.
+
+### B-233 · Add an actionable consumer upgrade checklist — **DONE v0.86.3 (2026-09-09)**
+
+**Filed against:** v0.86.2 (2026-09-09).
+**Priority / effort:** P2 / M.
+
+**Released in v0.86.3.** One shared installed upgrade checklist now carries the manual update
+contract for all three distributions. Each README retains the JSON version authority and links to
+the guide, and the update completion branch points to it. Existing protected instruction files
+remain consumer-owned while the framework-rules carrier refreshes automatically; migration remains
+conditional and reviewable.
+
+**Observed problem.** All three distribution READMEs carried the manual update contract in dense
+versioning paragraphs, while README and CHANGELOG are excluded from consumer installation. Update
+preserves populated consumer rules and derivatives, so framework file arrival alone does not
+reconcile older inline rule copies or the old touched-file cleanup mandate. The installer did not
+point an updating consumer to an installed reconciliation guide.
+
+**Scope.** The release ships one shared `docs/upgrade-checklist.md`, shortens all three README
+versioning sections to the JSON authority and guide link, and adds one literal pointer in the
+existing update-completion branch. The guide documents preview/apply boundaries, ownership and
+settings handling, conditional four-heading migration, complete touched-file-rule reconciliation,
+derivative regeneration, and target-root checks. It adds no updater workflow, policy mutation,
+control-flow change, or persistent test harness. The locked design and review record are in
+`.claude/plans/2026-09-09-consumer-upgrade-checklist.md`; WSD-083 records the decision.
+
+**Delivery RCA.** Existing parser and installer gates verify file shape and update mechanics, but
+none tests whether protected manual migrations are reachable as installed instructions. README-only
+guidance therefore remained outside the installed consumer surface, and the installer completion
+text did not bridge to it. Other manual migrations carried only by excluded overview/release files
+remain exposed; review future migrations for both ownership and an installed discovery path.
+
+**Pre-publication evidence.** Root observed the release-specific baseline and final smoke directly
+under PS7 7.6.5 and PS5.1 5.1.26100.9444 at CP437: each baseline was 65 assertions with 9 expected
+failures and no inability-to-examine outcome; each final run was 65/0/0, exit 0. Independent Opus
+implementation review and two bounded nonimplementer amendment reviews accepted the immutable
+source ranges; reviewers ran no tests. Pre-stamp full distribution validation and the deterministic
+eval self-test passed. An earlier sandboxed meta run exited 7; visible output included the stale
+README ownership assertion and five sibling-fixture creation denials, while truncated capture did
+not establish an exhaustive failure list. A separate full run later isolated two top-level results:
+the private-path violation and an installer launch failure consistent with overlapping composition.
+Root observed clean targeted reruns after the README
+clarification, stable composition, and private-path sanitization. The initial PS5.1 DocTruth launch
+without `-ExecutionPolicy Bypass` was cannot-examine. An unnecessary local shipped-hook run was
+interrupted before a leg completed and supplies no result.
+
+**Release evidence.** Normal release tooling exited 0 without waivers at
+`b56174bf1bb5d9e3a5965f67b4aebaf39e67825b`. It composed and validated all three distributions,
+updated the footprint, ran the full 36-file meta suite with zero failures, ran the deterministic
+eval wrapper, and passed gate budgets (meta 394.3s; all local gates 486.4s). GitHub Actions run
+[`34396990887`](https://github.com/andreoucostas/ai-tech-lead/actions/runs/34396990887) completed
+successfully: root independently observed all eight named Windows jobs and `windows-case-parity`
+succeed before promotion. At promotion, origin reported annotated tag object
+`8e4fbe9a67a0f3a419e62a87d9d3f34245df5918`, peeled to the release commit, and `master` at the same
+commit.
+
+No consumer human/model rule reconciliation or pwsh-unavailable host-adaptation execution was
+observed. The checks establish framework delivery and consistency, not model comprehension.

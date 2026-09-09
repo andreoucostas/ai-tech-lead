@@ -19,7 +19,6 @@ export, production queries, or external participant contact.
 | 3 | B-224 ordinary-task Copilot use | Released carrier; ordinary CLI navigation/application observed on a nonconforming synthetic wiki, conforming CLI/VS Code acceptance remains open |
 | Independent repairs | B-216 instance skills; B-226 review scope | Released in v0.84.0; named semantic/host gaps remain explicit |
 | Independent product repair | B-232 adoption instruction contracts | Schema fix released in v0.86.1; retrieval succeeded, acceptance overconstrained; paging proposal deferred, marker wording follow-up recorded |
-| Consumer upgrade usability | B-233 actionable upgrade checklist | Implemented and reviewed; approved release gates and CI pending |
 | When a participant exists | B-42 independent FS2 | Existing packet ready; independent run outstanding |
 | Deferred | B-49 drill and consumer self-assessment | Old instrument invalid; no execution authority |
 
@@ -321,62 +320,6 @@ event and byte comparison distinguished route availability from semantic adheren
 carrier/request already states grounding, bounded-summary and confirmation obligations, so no
 duplicate product wording or generic evaluation harness was added. Other host permission channels
 and prose workflows remain exposed to the same route-versus-behaviour ambiguity.
-
-### B-233 · Add an actionable consumer upgrade checklist
-
-**Filed against:** v0.86.2 (2026-09-09).
-**Priority / effort:** P2 / M. **Status:** IMPLEMENTED and independently accepted; native focused
-verification is green. The user authorized publication after successful testing. Both failures from
-the earlier full local meta run have clean targeted reruns; a fresh release aggregate, CI, tagging,
-and delivery remain open.
-
-**Observed problem.** All three distribution READMEs carried the manual update contract in dense
-versioning paragraphs, while README and CHANGELOG are excluded from consumer installation. Update
-preserves populated consumer rules and derivatives, so framework file arrival alone does not
-reconcile older inline rule copies or the old touched-file cleanup mandate. The installer did not
-point an updating consumer to an installed reconciliation guide.
-
-**Scope.** Ship one shared `docs/upgrade-checklist.md`, shorten all three README versioning sections
-to the JSON authority and guide link, and add one literal pointer in the existing update-completion
-branch. The guide documents preview/apply boundaries, ownership and settings handling, conditional
-four-heading migration, complete touched-file-rule reconciliation, derivative regeneration, and
-target-root checks. It adds no updater workflow, policy mutation, control-flow change, or persistent
-test harness. Locked design and Opus critique/adjudication are in
-`.claude/plans/2026-09-09-consumer-upgrade-checklist.md`; WSD-083 records the decision.
-
-**Done when.** Root observes the release-specific smoke clean on direct PS7 and PS5.1 after its
-recorded baseline red; an independent nonimplementer reviews the immutable implementation range;
-all normal gates and Windows CI pass; v0.86.3 is released and tagged; this entry moves to
-`BACKLOG-DONE.md` with exact evidence and gaps.
-
-**Delivery RCA.** Existing parser and installer gates verify file shape and update mechanics, but
-none tests whether protected manual migrations are reachable as installed instructions. README-only
-guidance therefore remained outside the installed consumer surface, and the installer completion
-text did not bridge to it. Other manual migrations carried only by excluded overview/release files
-remain exposed; review future migrations for both ownership and an installed discovery path.
-
-**Pre-publication evidence, 2026-09-09.** Root observed the release-specific baseline and final
-smoke directly under PS7 7.6.5 and PS5.1 5.1.26100.9444 at CP437: each baseline was 65 assertions
-with 9 expected failures and no inability-to-examine outcome; each final run was 65/0/0, exit 0.
-Independent Opus implementation review and a bounded nonimplementer amendment review accepted the
-immutable ranges; neither reviewer ran tests. Sol then ran full `validate-dist` for dotnet, angular,
-and monorepo on the pre-stamp tree: all three exited 0. The deterministic eval self-test exited 0.
-The root meta suite exited 7. Visible output included one `DocTruth.Tests.ps1` assertion still
-requiring the protected-update distinction in the README after this delivery moved it to the linked
-installed guide, plus five `RootInstallerWarehouse.Tests.ps1` fixture failures caused by sandbox
-denials creating sibling directories outside the writable workspace. Captured console output was
-truncated, so it does not support claiming those six lines exhaust the exit-7 result. No gate or
-product repair followed. Exact command exits are in the external packet's
-`local-prepublish-exits.txt`; release stamping, commit, push, CI, and tag were not run.
-
-**README clarification checkpoint.** Root then demonstrated the B-231 README assertion red on both
-native hosts: 15 passed, exactly 1 failed, exit 1. The three short versioning pointers now state
-that `CLAUDE.md`, `AGENTS.md`, and `.github/copilot-instructions.md` are protected consumer paths
-while the framework-rules carrier updates automatically; the detailed migration remains in the
-installed guide. With no gate edit, targeted `DocTruth.Tests.ps1` under PS7 7.6.5 and PS5.1
-5.1.26100.9444 (`-ExecutionPolicy Bypass`) each reported 16 passed, 0 failed, exit 0. The first
-PS5.1 baseline invocation without the required execution-policy option was cannot-examine and is
-not counted as red evidence. Release promotion and delivery remain pending.
 
 ### B-232 · Repair adoption instruction delivery and archive-plan documentation
 

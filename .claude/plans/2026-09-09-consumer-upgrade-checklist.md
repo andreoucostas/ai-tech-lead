@@ -354,3 +354,27 @@ requires clean local gates before the push, and waits for all eight native Windo
 and their case-count parity decision before publishing the tag. Keep the shared tree stable while
 the suites run. A failure stops promotion for diagnosis; the prior targeted greens do not replace
 this fresh full release run.
+
+## Release promotion and closure
+
+Root observed the normal release process exit 0 without waivers. Release commit
+`b56174bf1bb5d9e3a5965f67b4aebaf39e67825b` composed and validated all three distributions,
+updated the footprint, ran the full 36-file meta suite with zero failures, ran the deterministic
+eval wrapper, and passed the gate budgets (meta 394.3s; all local gates 486.4s). The approved
+release log SHA-256 is `236BDAB145083DABA0285FDCB5528CE9C0ABF8344698F6EC56805A241001CEA0`.
+
+GitHub Actions run
+[`34396990887`](https://github.com/andreoucostas/ai-tech-lead/actions/runs/34396990887) completed
+successfully. Root independently queried all eight named native Windows jobs plus
+`windows-case-parity`; each concluded success before tagging. Remote `ls-remote` confirmed
+`master` at the release commit and annotated `v0.86.3` tag object
+`8e4fbe9a67a0f3a419e62a87d9d3f34245df5918`, peeled to the same commit. Root also verified guide
+blob `07daa63b6417126770598e9ec073799f6b1c6d48` across source and all three distributions, and
+installer blob `cc8ed6bf1057de0e4702f19ade4ba65066531e39` unchanged from the reviewed implementation.
+
+This promotion establishes shipped files, update delivery mechanics, deterministic framework
+checks, two native PowerShell-host matrices, and parity. It does not establish that a consumer
+human or model performs the reconciliation, that an agent host consumes the rules, or that
+pwsh-unavailable adaptation works on this machine. Reviewers ran no tests. Earlier failed,
+cannot-examine, sandbox-denied, interrupted, and targeted-rerun receipts above remain historical
+evidence and are not replaced or pooled into the clean release aggregate.
