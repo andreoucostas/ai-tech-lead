@@ -11,6 +11,15 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.86.1 — Unreleased
+
+B-232 delivery A: all three adoption workflows now state the required archive-plan object
+with an `entries` array and publish a labelled executable example. The existing archive
+suite consumes each dist example unchanged through Freeze/MoveFrozen/Verify, covers
+bare-array rejection without source/marker mutation, and distinguishes document defects
+from examination failures. The archive helper and all lifecycle guards are unchanged.
+Read-recovery delivery B remains deferred pending its separate native evidence.
+
 ## 0.86.0 — 2026-09-07
 
 **B-231 / WSD-079 makes bug-fix scope outcome-based.** The framework-owned workflow carrier now

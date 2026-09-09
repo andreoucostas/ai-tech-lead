@@ -206,7 +206,21 @@ Examples:
 
 Files the installer already archived (Phase 0 marker) need no further move.
 
-The installer marker `.claude/adoption-pending.json` is required. If it is absent, STOP: do not create a replacement marker from an already moved archive. Before **any** Phase-3 or flagged-quarantine move, write one complete `.claude/adoption-archive-plan.json` containing every selected `{ "originalPath", "destination" }` pair, including quarantine destinations. Run `pwsh -NoProfile -File scripts/adoption-archive.ps1 -Freeze -RepoRoot . -EvidencePath .claude/adoption-pending.json -PlanPath .claude/adoption-archive-plan.json`; it captures every raw pre-move identity and durably appends the complete plan to `archiveIntegrity.entries` before any source mutation. If it fails, STOP with all sources unchanged.
+The installer marker `.claude/adoption-pending.json` is required. If it is absent, STOP: do not create a replacement marker from an already moved archive. Before **any** Phase-3 or flagged-quarantine move, write one complete `.claude/adoption-archive-plan.json` as a **JSON object with an `entries` array**, not a bare array. Include every selected `originalPath`/`destination` pair in that array, including quarantine destinations. For a plan selecting only `.cursorrules`, the complete document is:
+
+<!-- archive-plan-example -->
+```json
+{
+  "entries": [
+    {
+      "originalPath": ".cursorrules",
+      "destination": "docs/pre-adoption/.cursorrules"
+    }
+  ]
+}
+```
+
+Freeze the complete plan once, before any move: run `pwsh -NoProfile -File scripts/adoption-archive.ps1 -Freeze -RepoRoot . -EvidencePath .claude/adoption-pending.json -PlanPath .claude/adoption-archive-plan.json`; it captures every raw pre-move identity and durably appends the complete plan to `archiveIntegrity.entries` before any source mutation. If it fails, STOP with all sources unchanged.
 
 Then move **only** an exact frozen pair with `pwsh -NoProfile -File scripts/adoption-archive.ps1 -MoveFrozen -RepoRoot . -EvidencePath .claude/adoption-pending.json -OriginalPath <original-relative-path> -Destination <exact-frozen-destination>`. It rejects a changed source, path escape, reparse point, collision, missing or reduced marker entry, and writes verified progress back to the marker after its byte comparison. Never use `git mv`, a bare move, or manual JSON append/rewrite. Prefer the exact original-relative destination; honor a renamed destination only when an already-recorded historical mapping explicitly names it — never guess a filename, migrate an archive, or re-hash an already archived file. Only after every frozen pair reports `MOVED` (or the narrow exact-digest crash recovery reports `RECOVERED`) may you stage the archive moves. Retain `.claude/adoption-archive-plan.json` through Phase 7; Phase 8's final `git add -A` removes it from the commit after successful cleanup.
 

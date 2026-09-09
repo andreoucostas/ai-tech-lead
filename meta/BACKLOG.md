@@ -324,7 +324,7 @@ and prose workflows remain exposed to the same route-versus-behaviour ambiguity.
 ### B-232 · Repair adoption instruction delivery and archive-plan documentation
 
 **Filed against:** v0.86.0 (2026-09-09).
-**Priority / effort:** P2 / M. **Status:** design reviewed with revisions; implementation NOT STARTED.
+**Priority / effort:** P2 / M. **Status:** delivery A implemented; verification and independent implementation review in progress. Delivery B deferred.
 
 **Observed problem.** A standalone ABP preparation attempt produced a bare-array
 archive plan; the actual helper requires an object with an `entries` array and
@@ -350,11 +350,13 @@ GREEN, bare-array rejection RED with unchanged inputs, and restored GREEN on bot
 hosts; normal source composition, installation, changelogs, release and independent
 implementation review complete. Track the second proposal explicitly as deferred
 or delivered with its own narrow evidence, never infer comprehension from parser
-presence. Current request authorized planning/review only.
+presence. The subsequent user request authorized implementation and an Opus handoff
+for delivery A; it does not authorize the deferred live probe.
 
 **RCA.** Fixture code supplied a correct schema without testing the instructions
-that asked a model to produce it. The same gap exposes directly analogous archive
-examples; sweep that bounded surface. Tool-result success, checkpoint commits and
+that asked a model to produce it. The bounded source sweep found the same omission
+in exactly the three stack adoption commands; all three are repaired together.
+Tool-result success, checkpoint commits and
 byte-integrity PASS do not establish instruction consumption or adoption completion.
 Prior launch/receipt mistakes and unmet headless restricted-surface proof remain
 confounders. RK1 and the application bug remain unrun; this item does not close

@@ -169,6 +169,64 @@ function New-ArchivePlanFile {
     return $Path
 }
 
+function Read-ArchivePlanExample {
+    param([Parameter(Mandatory)][string]$Path)
+    try { $doc = [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8) }
+    catch { throw "CANT-EXAMINE archive example document '$Path': $($_.Exception.Message)" }
+    $label = '<!-- archive-plan-example -->'
+    if ([regex]::Matches($doc, [regex]::Escape($label)).Count -ne 1) {
+        throw 'DOC-DEFECT archive example: expected exactly one archive-plan-example label'
+    }
+    $block = [regex]::Match($doc, '(?m)^<!-- archive-plan-example -->\r?\n```json\r?\n(?<json>[\s\S]*?)\r?\n```[ \t]*\r?$')
+    if (-not $block.Success) { throw 'DOC-DEFECT archive example: missing labelled JSON fence' }
+    $json = $block.Groups['json'].Value
+    try { $null = ConvertFrom-Json -InputObject $json -ErrorAction Stop }
+    catch { throw "DOC-DEFECT archive example: invalid JSON: $($_.Exception.Message)" }
+    # Return the captured text, never a re-serialized or schema-repaired object.
+    return $json
+}
+
+function Assert-ArchivePlanExample {
+    param([Parameter(Mandatory)][string]$DocPath, [Parameter(Mandatory)][string]$HelperPath)
+    $json = Read-ArchivePlanExample -Path $DocPath
+    $fx = New-FixtureRepo -NoGit
+    try {
+        New-Item -ItemType Directory -Path (Join-Path $fx '.claude') | Out-Null
+        $source = Join-Path $fx '.cursorrules'
+        $destination = Join-Path $fx 'docs/pre-adoption/.cursorrules'
+        $bytes = [byte[]]@(0xEF, 0xBB, 0xBF, 0x61, 0x0D, 0x0A, 0x62, 0x0A, 0x00, 0xFF)
+        [IO.File]::WriteAllBytes($source, $bytes)
+        $marker = New-EvidenceFile -Path (Join-Path $fx '.claude/adoption-pending.json') -Entries @()
+        $before = [Convert]::ToBase64String([IO.File]::ReadAllBytes($marker))
+        $plan = Join-Path $fx '.claude/adoption-archive-plan.json'
+        [IO.File]::WriteAllText($plan, $json, [Text.UTF8Encoding]::new($false))
+        try {
+            if (-not (Test-Path -LiteralPath $HelperPath -PathType Leaf)) { throw "helper unavailable: $HelperPath" }
+            $frozen = Invoke-Aa -HelperPath $HelperPath -AaArgs @('-Freeze', '-RepoRoot', $fx, '-EvidencePath', $marker, '-PlanPath', $plan)
+        } catch { throw "CANT-EXAMINE archive example execution: $($_.Exception.Message)" }
+        if ($frozen.Exit -notin @(0, 3)) { throw "CANT-EXAMINE archive example: unexpected Freeze exit=$($frozen.Exit): $($frozen.Output)" }
+        if ($frozen.Exit -ne 0) {
+            Assert ([Convert]::ToBase64String([IO.File]::ReadAllBytes($source)) -ceq [Convert]::ToBase64String($bytes)) 'failed Freeze changed source bytes'
+            Assert ([Convert]::ToBase64String([IO.File]::ReadAllBytes($marker)) -ceq $before) 'failed Freeze changed marker bytes'
+            Assert (-not (Test-Path -LiteralPath $destination)) 'failed Freeze created destination'
+            throw "EXAMPLE-FREEZE exit=$($frozen.Exit); unchanged source/marker; no destination: $($frozen.Output)"
+        }
+        $inventory = Get-Content -Raw -LiteralPath $marker | ConvertFrom-Json
+        $entries = @($inventory.archiveIntegrity.entries)
+        Assert ($entries.Count -eq 1) 'example did not freeze exactly one candidate'
+        $entry = $entries[0]
+        Assert ($entry.originalPath -ceq '.cursorrules' -and $entry.destination -ceq 'docs/pre-adoption/.cursorrules') 'example froze a different pair'
+        Assert (-not $entry.verified -and $entry.byteLength -eq $bytes.Length -and $inventory.archiveIntegrity.frozenAt) 'example did not capture an unverified pre-move identity'
+        Assert ((Test-Path -LiteralPath $source) -and -not (Test-Path -LiteralPath $destination)) 'Freeze moved source prematurely'
+        $moved = Invoke-Aa -HelperPath $HelperPath -AaArgs @('-MoveFrozen', '-RepoRoot', $fx, '-EvidencePath', $marker, '-OriginalPath', '.cursorrules', '-Destination', 'docs/pre-adoption/.cursorrules')
+        Assert ($moved.Exit -eq 0) "example MoveFrozen failed: $($moved.Output)"
+        $verified = Invoke-Aa -HelperPath $HelperPath -AaArgs @('-Verify', '-RepoRoot', $fx, '-EvidencePath', $marker)
+        Assert ($verified.Exit -eq 0 -and $verified.Output -match 'RESULT: PASS') "example Verify failed: $($verified.Output)"
+        Assert (-not (Test-Path -LiteralPath $source)) 'MoveFrozen left source behind'
+        Assert ([Convert]::ToBase64String([IO.File]::ReadAllBytes($destination)) -ceq [Convert]::ToBase64String($bytes)) 'example archive bytes differ'
+    } finally { Remove-Fixture $fx }
+}
+
 function Write-Lines {
     param([string]$Path, [int]$Count, [string]$Prefix)
     $dir = Split-Path -Parent $Path
@@ -184,6 +242,58 @@ function Remove-Fixture {
 }
 
 Reset-Tests
+
+foreach ($exampleStack in 'dotnet', 'angular', 'monorepo') {
+    It "$exampleStack published archive-plan example freezes, moves and verifies exact bytes" {
+        Assert-ArchivePlanExample -DocPath (Join-Path $script:RepoRoot "dist/$exampleStack/.claude/commands/adopt.md") -HelperPath (Join-Path $script:RepoRoot "dist/$exampleStack/scripts/adoption-archive.ps1")
+    }
+    It "$exampleStack bare-array example mutation makes the same instrument RED without mutation" {
+        $docPath = Join-Path $script:RepoRoot "dist/$exampleStack/.claude/commands/adopt.md"
+        $json = Read-ArchivePlanExample -Path $docPath
+        $fx = New-FixtureRepo -NoGit
+        try {
+            # Mutate only the example in a scratch document; never repair its shape in the test.
+            $doc = [IO.File]::ReadAllText($docPath)
+            $bare = '[{ "originalPath": ".cursorrules", "destination": "docs/pre-adoption/.cursorrules" }]'
+            $mutated = Join-Path $fx 'adopt.md'
+            [IO.File]::WriteAllText($mutated, $doc.Replace($json, $bare))
+            $failure = ''
+            try { Assert-ArchivePlanExample -DocPath $mutated -HelperPath (Join-Path $script:RepoRoot "dist/$exampleStack/scripts/adoption-archive.ps1") }
+            catch { $failure = $_.Exception.Message }
+            Assert ($failure -match 'EXAMPLE-FREEZE exit=3; unchanged source/marker; no destination:' -and $failure -match 'has no entries array') "bare-array example did not cause the expected RED: $failure"
+            Write-Host "OBSERVED RED $exampleStack bare array: Freeze exit=3; missing entries; unchanged source/marker; no destination"
+            Assert-ArchivePlanExample -DocPath $docPath -HelperPath (Join-Path $script:RepoRoot "dist/$exampleStack/scripts/adoption-archive.ps1")
+        } finally { Remove-Fixture $fx }
+    }
+}
+
+It 'archive example extraction distinguishes document defects from inability to examine and ignores unrelated fences' {
+    $fx = New-FixtureRepo -NoGit
+    try {
+        $path = Join-Path $fx 'adopt.md'
+        $labelled = '<!-- archive-plan-example -->' + "`n" + '```json' + "`n{} `n" + '```'
+        foreach ($bad in @('no example', ($labelled + "`n" + $labelled), '<!-- archive-plan-example -->', $labelled.Replace('{}', '{broken'))) {
+            [IO.File]::WriteAllText($path, $bad)
+            $failure = ''
+            try { $null = Read-ArchivePlanExample -Path $path } catch { $failure = $_.Exception.Message }
+            Assert ($failure -like 'DOC-DEFECT*') "malformed example not identified as document defect: $failure"
+        }
+        [IO.File]::WriteAllText($path, ('```json' + "`n[1]`n" + '```' + "`n" + $labelled + "`n" + '```text' + "`nunrelated`n" + '```'))
+        Assert ((Read-ArchivePlanExample -Path $path) -ceq '{} ') 'unrelated fences changed extracted text'
+        foreach ($unreadable in @((Join-Path $fx 'absent.md'), $fx)) {
+            $failure = ''
+            try { $null = Read-ArchivePlanExample -Path $unreadable } catch { $failure = $_.Exception.Message }
+            Assert ($failure -like 'CANT-EXAMINE*') "unreadable document was conflated with bad content: $failure"
+        }
+    } finally { Remove-Fixture $fx }
+}
+
+It 'an unavailable archive helper is an examination failure, not a malformed example' {
+    $failure = ''
+    try { Assert-ArchivePlanExample -DocPath (Join-Path $script:DistRoot '.claude/commands/adopt.md') -HelperPath (Join-Path $script:DistRoot 'scripts/absent-archive-helper.ps1') }
+    catch { $failure = $_.Exception.Message }
+    Assert ($failure -like 'CANT-EXAMINE archive example execution:*helper unavailable:*') "missing helper misdiagnosed: $failure"
+}
 
 It 'the three shipped dist copies of the helper are byte-identical' {
     $dotnet = [IO.File]::ReadAllBytes($script:Helper)
