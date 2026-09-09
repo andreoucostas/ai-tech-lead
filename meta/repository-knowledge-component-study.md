@@ -384,3 +384,79 @@ the frozen evidence hashes. Direct authoring checks on both hosts at code page 4
 BacklogHygiene broken-index rejection then 10/0 clean, DocTruth 16/0 with restored mutation, and
 clean privacy scans. `src/` and `dist/` remained unchanged. These are separate evidence layers,
 not a claim that parser or CI gates establish network security.
+
+## Native HTTP transport checkpoint — 2026-09-09
+
+Renewed user authority bounded mechanism work to 10:32–11:17 London inside the original envelope;
+see `.claude/plans/2026-09-09-rk1-native-transport.md`. The initial preparation deadline, selected
+cards and consumed budgets were not reset. This checkpoint did not authorize study dispatch.
+
+**Failed candidates retained.** Sonnet timed out at 180 seconds without writing the requested
+relay file or a final usage receipt; root implemented the bounded external scripts. Direct API-
+token lookup required `COPILOT_ENABLE_ALT_PROVIDERS=true`; authenticated status then coexisted
+with an empty native model list and the CLI's "No supported model available" refusal. No upstream
+POST followed that candidate. Installed CLI validation also rejected `--max-ai-credits 5`
+(minimum 30), while omitted/empty tool allowlists retained defaults. Actual unpaid preflights
+exposed these conditions; none was repaired by fabricating a model list or switching to BYOK.
+
+**Observed route.** A separately critiqued GitHub-token-shaped bootstrap used explicit GitHub API
+and CAPI URL overrides, with a nonsecret actor placeholder and the real credential injected only
+by the trusted relay. Native metadata requests to fixed `/copilot_internal/user` and `/models`
+returned successfully. The relay also allowed fixed `GET /user`, but it was not needed in the
+observed path; do not mistake this candidate policy for the minimal final study allowlist. Token
+exchange, repository/history routes, arbitrary authorities, redirects and CONNECT were not
+forwarded. Some additional native startup requests were denied without blocking the final reply.
+
+The final native preflight reported CLI 1.0.83, `gpt-5.4`, medium, HTTP `/responses`, non-BYOK and
+non-Auto. An explicit nonmatching tool whitelist produced zero tools. The relay parsed that exact
+shape and denied it while its trusted permit flag was absent. Root then recorded the method,
+path, model, effort, tools and proposed output bound before creating the proxy-local permit.
+At 10:00:38.615 UTC one upstream POST returned HTTP 200 and the complete fresh nonce; native
+exit was 0, with no tool requests or file changes. The relay added `max_output_tokens: 256` and
+recorded pre/post byte lengths and hashes. This proves **one relay-mediated, no-tools, native
+CAPI HTTP-fallback calibration response**, not unmodified/default-auth/WebSocket or ordinary
+study-tool fidelity. No custom model executor or tool bridge was substituted.
+
+**Controls and gaps.** Final-code PS7 and PS5.1 clients each observed ten hostile request rejects
+and metadata HTTP 200. Actual native model enumeration supplies complete-body evidence beyond
+the simple status-only positive helper. Actor direct TCP to the frozen provider literal timed
+out, bracketed by proxy success. These finite probes do not prove universal blocked egress.
+The post-paid second-request probe was attempted after the five-minute service expired: PS7
+printed cannot-examine and exited 1; PS5.1 was not reached. No stdout receipt was created by
+that stderr-only failure. It is **not** an observed second-request rejection, and no relay
+restart regained a slot. Comprehensive transport/access/observer readiness remains unmet.
+
+Both created containers and their private network were removed after exact ID/label checks.
+Captured final network/container identities, adapter/address/route and firewall-rule fields
+matched baseline. Eight external PS scripts parsed with UTF-8 BOM under direct host PS7 and
+PS5.1; the service itself ran PS7 only. The evidence-directory literal-credential comparison
+found zero matches in 82 then-existing files; this is not universal secret-leak certification.
+
+**Review and usage.** Opus design critiques reported USD 0.078257 and USD 0.089203; root adopted
+bounded corrections and rejected unsupported predictions as observed facts. Fresh code/receipt
+review returned ACCEPT NARROW — RECEIPTS, reporting USD 0.214111. Root retains its gaps and does
+not adopt universal "false-green ruled out" or credential-boundary conclusions. The reviewer
+could read the code but not independently execute/recompute its hash; root matched the running
+proxy hash before dispatch. Review reports total USD 0.381571 plus Sonnet's full USD 0.70 timeout
+reservation: conservative campaign total USD 7.0900995 of USD 10, not an invoice. Native usage
+reported one premium request and `totalNanoAiu=1016500000`; rounded shared-account quota changed
+6,487.8 to 6,486.7, with overage false. Keep the operative 30-credit reservation within the
+original 160-credit calibration allocation until reconciled; no purchase/settings change occurred.
+
+Frozen external packet: `C:/TEMP/rk1-transport-20260909`, manifest SHA-256
+`CADA6760F9B9E3A7B4BA7EC23DBF2E018E5CC75D9CD85F64D09F2C91386A4C08`.
+The root adjudication preserves the stderr-only late-control observation and review disposition.
+CONTROL construction/review, task baselines/oracles, ordinary native file/shell/observer controls,
+and all eight setup/task arms remain unrun. No framework efficacy result follows.
+
+**RCA.** Environment names, authentication status, empty tool lists and a CLI budget flag did
+not mean what the proposed experiment assumed; actual native requests separated those conditions
+before spend. The late control demonstrates the same lifecycle problem on the measuring side:
+an expired instrument cannot register the required successful rejection. Integrate follow-up
+controls into the bounded lifetime next time, without resetting a spent slot or backfilling green.
+No new general proxy platform, release gate or shipped behavior change follows.
+
+**Record verification.** Direct PS7 and PS5.1 at code page 437 each observed BacklogHygiene's
+broken-index exit 1 then 10/0 clean, DocTruth 16/0 with its applied/restored mutation, and a clean
+repository privacy scan. Root recomputed all 83 frozen manifest entries without mismatch.
+`src/` and `dist/` remained unchanged. These authoring checks do not close the runtime gaps above.

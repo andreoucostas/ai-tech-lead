@@ -552,16 +552,21 @@ miss does not justify a new generic gate.
 `meta/repository-knowledge-component-study.md`. The user authorized revision 1 execution on
 2026-09-09; preparation stopped when Copilot 1.0.83 refused the required native sandbox policy.
 Four provisional source task cards exist; executable eligibility, CONTROL construction and the
-paired study remain unrun. No Copilot model call occurred. Controls are not collectively observed;
-the named campaign, not this backlog entry alone, supplies execution authority.
+paired study remain unrun. No Copilot model call occurred at that initial stop. Controls are not
+collectively observed; the named campaign, not this backlog entry alone, supplies execution authority.
 The user-requested Sonnet follow-up demonstrated offline outer-container execution and provider
 endpoint reachability, independently checked by root. Selective connected isolation remains
 unproved; the next network-probe draft was rejected before execution for unsafe cleanup and
 unchecked exits. See the packet's outer-container checkpoint; RK1 is not retired.
 The subsequently authorized corrected checkpoint demonstrated a private peer path and a fixed,
 credential-free provider relay with allowed/denied requests. Authenticated native Copilot transport
-and comprehensive isolation remain unrun. Its original closed-port-refusal condition was unmet
+and comprehensive isolation were then unrun. Its original closed-port-refusal condition was unmet
 and remains recorded separately; no effectiveness claim follows from the successful relay.
+The next authorized checkpoint obtained one exact-nonce response from native Copilot 1.0.83,
+gpt-5.4 medium, through relay-mediated auth and HTTP fallback (not BYOK), with a calibration-only
+256-output-token clamp and no tools. Complete transport/access readiness remains unmet: the
+post-paid second-request control missed the relay lifetime, and ordinary tool/observer controls,
+CONTROL and task oracles remain unrun. The paired study is still NOT RUN.
 
 **Problem.** Current source and user reports justify a hypothesis, not a productivity claim. Skill
 count, framework-test success and Claude execution do not establish Copilot task outcomes. B-41's
@@ -617,6 +622,18 @@ All checkpoint-created containers/networks were removed; captured final host sta
 baseline. Mechanism-specific refusals and over-specific control expectations must not become
 universal impossibility claims. The same class affects diagnostic error classification and
 evidence-file handling; no new generic gate or shipped change is justified.
+
+**Native transport / RCA (2026-09-09).** Direct API-token authentication required an alternate-
+provider flag but yielded an empty model list and a native "No supported model available" stop.
+A reviewed normal-token-shaped bootstrap through fixed metadata routes then carried the native
+non-BYOK HTTP request and exact fresh reply; actor direct provider-IP attempts still timed out
+against successful proxy controls. Parser/CLI flags alone missed the minimum credit cap and the
+fact that empty tool lists retain defaults; actual rejected preflights exposed both before spend.
+The same class affects SDK auth status, complete response evidence and lifecycle controls. Ten
+hostile cases plus metadata success ran on both client hosts. The late retry probe was cannot-
+examine, not a deny; no relay restart regained a paid slot. Both containers/network were removed
+and captured host fields matched baseline. Keep this narrow result and the remaining debts in the
+existing packet; no general proxy platform, efficacy claim or product release follows.
 
 ## Bounded correctness and maintenance work
 

@@ -3,9 +3,13 @@
 **Authority:** user request on 2026-09-09 to execute RK1, with Claude CLI Opus review or Sonnet
 implementation where useful. This authorizes preparation and the bounded study below. It does not
 reopen CP1 or CP2. Evidence is a maintainer component comparison; independent FS2 remains separate.
-**State:** preparation stopped at the required native sandbox policy on 2026-09-09; no study
+**Initial stop:** preparation stopped at the required native sandbox policy on 2026-09-09; no study
 task, setup, or Copilot model calibration ran. This is a retained blocker, not campaign retirement.
 The checkpoint and resumption requirements are in `meta/repository-knowledge-component-study.md`.
+**Subsequent state:** user-authorized mechanism checkpoints demonstrated an outer private network
+and one synthetic native Copilot HTTP-fallback response through relay-mediated credentials. The
+second-request, comprehensive access/observer, treatment and oracle obligations remain unproved;
+no setup/task arm has run. The later checkpoint plans preserve the original envelope and budgets.
 
 ## Question, treatment, and decision
 

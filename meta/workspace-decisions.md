@@ -3842,3 +3842,16 @@ clients were observed. All created resources were removed and captured host stat
 baseline. This advances credential-free network-mechanism feasibility only; native authenticated
 Copilot transport and all remaining RK1 controls precede study dispatch. Preserve both observation
 contracts, not a retroactive pass or a claim of universal isolation. No product change follows.
+
+**Native HTTP transport checkpoint (2026-09-09).** Renewed user authority bounded mechanism work
+to 10:32–11:17 London inside the original envelope, not a study/sample/budget reset. Direct API-
+token lookup authenticated only with an alternate-provider flag, but native model discovery and
+dispatch then failed. A separately critiqued token-shaped bootstrap with relay-side credentials
+and fixed metadata paths carried one native Copilot 1.0.83 gpt-5.4 medium HTTP Responses request,
+reported non-BYOK/non-Auto in preflight, and returned the exact fresh nonce with exit 0. This is
+relay-mediated auth under URL overrides and HTTP fallback, with a calibration-only output clamp
+and tool removal, not default-path or full study-tool fidelity. No token exchange was forwarded.
+Both client hosts observed hostile-request rejects; a post-paid retry control missed the service
+lifetime and remains cannot-examine. No paid-slot restart followed. The packet retains usage,
+independent review, cleanup and remaining access/observer/treatment/oracle debts; RK1 study arms
+remain NOT RUN. No shipped behavior changed.

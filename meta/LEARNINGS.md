@@ -2414,3 +2414,21 @@ not another general cleanup runner. Both networks and all five created container
 captured identity/address/route/firewall fields matched the baseline. Expected Docker/HNS switch
 creation must be distinguished from direct host reconfiguration. Code/exit/log evidence narrows
 what can be claimed; it does not turn a finite probe into a security certification.
+
+## 2026-09-09 — Authenticate, route and bound the actual native request separately
+
+RK1's direct API-token environment looked promising, but the required alternate-provider flag
+produced authenticated status with an empty native model list; the CLI then refused before any
+inference request. A bounded relay-mediated GitHub-token-shaped bootstrap worked without exposing
+the real credential to the actor. Actual native preflights also rejected the proposed five-credit
+limit (minimum thirty), and exposed that omitted/empty tool filters retain defaults. An explicit
+nonmatching tool whitelist finally produced the intended zero-tool request. These are installed-
+runtime observations, not claims that environment-variable names or metadata alone prove fidelity.
+
+One native HTTP-fallback request returned its fresh nonce, with a declared output-token clamp.
+But the second-request rejection probe was delayed until the relay expired. Preserve it as
+cannot-examine; a successful response does not close every lifecycle or access control. Do not
+restart a spent request slot to repair the record. Inspect compact, explicitly selected event
+fields: dumping entire native message objects needlessly exposes opaque model state and distracts
+from the nonce, route, usage and exit evidence actually needed. No new framework text or general
+transport platform follows from these calibration findings.
