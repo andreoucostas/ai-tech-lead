@@ -3989,3 +3989,11 @@ not consumer reconciliation or model comprehension; pwsh-unavailable adaptation 
   skill invocation; the plan records that distinction and root's independently checked citations.
 - **Authority:** Backlog planning only. Consumer scope, artifacts, history intent, data/result
   availability and business owner remain dependencies; execution/publication are not inferred.
+
+**Amendment (2026-09-10).** Superseded by the reviewed
+[`B-235` amendment](../.claude/plans/2026-09-10-reporting-knowledge-coverage.md). Existing B-222
+discovery, B-223 capture/refresh, B-224 retrieval and map-warehouse rule 5 own the reusable
+obligations; rule 5 covers source-column to target-concept mapping, not full migration equivalence.
+B-235 is consolidated into those items as one bounded reporting case. No report feature, migration
+contract, consumer-data dependency or model acceptance run is authorized or completed. Any future
+execution must lock its own exact inputs, host and spend authority.

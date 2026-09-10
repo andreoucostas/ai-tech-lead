@@ -1,5 +1,9 @@
 # B-235: report migration between two warehouse repositories
 
+> **Superseded (2026-09-10).** This conditional migration-specific proposal is historical. Its
+> remaining reporting-knowledge coverage is consolidated into B-222/B-223/B-224 by the
+> [reviewed amendment](2026-09-10-reporting-knowledge-coverage.md).
+
 **Filed against:** v0.86.3 (2026-09-09), `f67eb0312be5838bb17066fa9fdd2847785a812f`.
 **Priority / size:** P3 / M provisional; first step is bounded discovery, not implementation.
 **Status:** REVIEWED conditional backlog plan; Opus critique adjudicated before filing.

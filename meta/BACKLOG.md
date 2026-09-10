@@ -437,6 +437,12 @@ exact 40-file exhaustion and continuation. Its safe-write follow-up exercised ca
 retained source-grounding, summary-bound and report-fidelity misses; representative enterprise and
 target-host behavior remain unobserved. Does not depend on a registry or a private warehouse.
 
+**Reporting coverage.** The [B-235 amendment](../.claude/plans/2026-09-10-reporting-knowledge-coverage.md)
+adds one bounded reporting case to the existing A8/A7 discovery pass: trace a checked-in caller,
+wrapper and helper through parameters, state, filters and result grain, while leaving a dynamic or
+external branch honestly unresolved. Retain and address the known generic grounding failures; do
+not rerun them merely under reporting names.
+
 **Problem / evidence.** Shared A8 already inventories naming clusters, but requires three recurring
 implementations, reads one cleanest instance and caps proposals at three to five. This excludes
 unique consequential facts and poorly serves helper-derived semantics. These are source
@@ -489,6 +495,12 @@ factual capture retained grounding/truth misses. Refresh reread the changed call
 correctly, then refused the exact owner-approved application; the separate missing-helper source
 state also remains missed. Retained forward runs do not establish broad recall or target-host
 efficacy. No registry, graph service or promotion system.
+
+**Reporting coverage.** See the
+[B-235 amendment](../.claude/plans/2026-09-10-reporting-knowledge-coverage.md). Reuse existing capture
+and changed/missing-helper checks for report findings through the wiki, owner-document and map routes.
+Refresh must recheck, narrow or conflict a retained claim after its helper predicate changes, without
+overwriting owner content or inventing intent.
 
 **Problem / evidence.** Wiki, skills, maps and reconciliation exist, but A8 promotes only recipes.
 Rebootstrap favors recent activity over dependencies of quiet claims and requires confirmation
@@ -554,6 +566,11 @@ checks passed. The 2026-09-07 assisted run recorded cost and no direct scoped-kn
 scoped rule and pass hidden grading, but post-review found its synthetic wiki failed the shipped
 validity check. A conforming ordinary fixture, VS Code, enterprise scale, generated-context growth
 and outcome comparison remain unobserved. Host inventory and synthetic behavior are not efficacy.
+
+**Reporting coverage.** The [B-235 amendment](../.claude/plans/2026-09-10-reporting-knowledge-coverage.md)
+requires a fresh ordinary report-maintenance question to find a conforming retained artifact,
+inspect decisive source and preserve unresolved intent. Retrieval is observed separately from an
+answer reconstructed from source; an unread or invalid artifact cannot establish knowledge reuse.
 
 **Problem / evidence.** A generated claim or registered skill is not proof of reading/application.
 WSD-032's old Claude observations do not certify current Copilot. Host-certification gaps remain;
@@ -912,52 +929,5 @@ Do not replace FS2 with the old shared-composite requirement. No scheduler/remin
 valid execution/delivery evidence, or a reviewed decision retires their remaining premises.
 A polished protocol alone does not complete the value question.
 
-### B-235 · Establish one report's cross-warehouse migration contract before extending guidance
-
-**Filed against:** v0.86.3 (2026-09-09).
-**Priority / effort:** P3 / M provisional. **Status:** OPEN — conditional discovery; product design
-is not locked. Opus critique and root adjudication completed before filing.
-
-**User-reported need.** A consumer has two framework-installed repositories described as a slowly
-changing fact DW and a slowly changing dimension DW, and intends to migrate reports with AI.
-No consumer schema, report, data, failing outcome or migration direction has been inspected.
-These labels alone establish neither SCD2 nor grain, history selection or compatible results.
-
-**Existing support and hypothesis.** `map-warehouse` already requires report grain, temporal
-resolution, source-to-target concepts, expected results/tolerances and fan/chasm avoidance. The
-plausible addition is a paired evidence/authority handoff with source and target revisions,
-comparable data cuts/parameters, explicit semantic differences and reconciliation. Existing map
-freshness is single-repository timestamp evidence, not business correctness or cross-repo parity.
-
-**Plan / review.** `.claude/plans/2026-09-09-report-migration-backlog.md`; WSD-085. Fresh Opus 5
-returned REVISE. Before filing, root added explicit sufficiency criteria, assisted-input disclosure,
-reachability limits, a bounded handoff hypothesis and owner-approved history differences; verified
-missing source citations and rejected model-study scope inflation and unevidenced frontmatter reach.
-
-**First step / decision rule.** Use one named report with scoped authorized artifacts and existing
-rules plus a consumer-owned spec. Record sources, business-result owner, report grain/measures,
-per-edge history/key mapping, data cuts and actual evidence limits. A is sufficient if this yields
-a reviewable contract without a new reusable obligation. B is justified only by a concrete
-consequential omission current guidance leaves unresolved. Missing access, unclear intent or absent
-target history are not alone framework defects. Supplied mappings are useful assistance, not proof
-of independent discovery. Close without product changes if A suffices; keep discovery open when
-necessary evidence is unavailable.
-
-**Conditional addition.** If justified, add a short on-demand reference and small pointer through
-existing reporting guidance, composing into dotnet and monorepo, using existing specs/wiki/maps.
-No new skill, warehouse-wide matrix, migration engine, always-loaded rule, hook or DW distribution.
-Before locking, define the entry point and how retrieval outcomes will be distinguished. During
-implementation, verify skill/emitted-map links and actual retrieval; existing protected maps do not
-automatically receive updated content.
-
-**Acceptance / dependencies.** Consumer supplies a representative report, both artifact scopes,
-actual technologies/history, intended results and permitted differences/tolerances, and available
-comparable snapshots/results or an explicit cannot-examine limit. Distinguish preserved meaning,
-accepted difference, mismatch, unsupported required history, and unavailable examination. A matching
-grand total alone is insufficient where row errors can cancel. Future product delivery needs a new
-locked minimal design, independent review and normal native verification; no paid study, consumer
-code/data export, query execution, data movement or cutover is authorized by this planning item.
-
-**RCA at closure.** Record the actual guidance omission and other exposed scope, or why the existing
-framework sufficed. Current parser/freshness checks do not certify cross-warehouse report meaning;
-that limitation is not itself a defect. Preserve WSD-021/027/032/033/037/042/057/074 boundaries.
+B-235 — see [`meta/BACKLOG-DONE.md`](BACKLOG-DONE.md). Its remaining reporting acceptance belongs
+to B-222/B-223/B-224.

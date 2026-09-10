@@ -12233,3 +12233,24 @@ source/root-doc sweep found those three concrete partial-copy routes; other copy
 installed state or supported installer/adoption operations and was left unchanged. A permanent
 prose gate or new installer would not be proportionate to this entry-point correction. B-235 is
 separate conditional report-migration discovery and remains open.
+
+### B-235 · Consolidate reporting knowledge coverage into B-222/B-223/B-224 — **SUPERSEDED (2026-09-10)**
+
+**Filed against:** v0.86.3 (2026-09-09). **Priority / effort:** P3 / M provisional.
+
+**Disposition.** The migration-specific proposal is superseded by the reviewed
+[amendment](../.claude/plans/2026-09-10-reporting-knowledge-coverage.md). Existing B-222 discovery,
+B-223 capture/refresh, B-224 retrieval and map-warehouse rule 5 own its reusable obligations; rule 5
+covers source-column to target-concept mapping, not full migration equivalence. One bounded reporting
+case now sits with those items, while their existing failures, priorities and statuses remain.
+
+No report feature or behavioral acceptance was completed. No migration contract, skill, reference,
+consumer-data access or model run was delivered. The
+[original plan](../.claude/plans/2026-09-09-report-migration-backlog.md) remains as superseded history.
+Cross-repository rule application and migration equivalence remain unobserved and task-specific.
+
+**RCA.** Parser and freshness checks cannot reject an over-specific work item or establish semantic
+usefulness. Planning selected a new carrier and private consumer-artifact dependency before showing
+a missing capability. The same error could duplicate discovery, capture, refresh or retrieval work
+for other domains. Attach a discriminating case to existing owners first; add product surface only
+for an evidenced consequential omission.

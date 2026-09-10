@@ -2540,3 +2540,11 @@ install/delivery/preservation checks on direct PS7 and PS5.1. A reviewer incorre
 This is source/fixture evidence, not measured human comprehension or consumer adoption. A mislabeled
 PS5.1 launch actually ran PS7; its log remains excluded, and corrected evidence records the native
 executable/version. Broad release gates remain separate from this bounded delivery check.
+
+## 2026-09-10 — validate the capability gap before selecting an abstraction (B-235)
+
+A suggested reporting migration exposed a planning error rather than a demonstrated product gap:
+the proposal selected a new carrier and depended on private consumer artifacts before checking the
+existing discovery, capture, refresh and retrieval workflow. Attach a bounded discriminating case
+to current owners first. Only an evidenced consequential omission justifies another skill,
+reference or schema; domain-specific inputs need not become framework-verification prerequisites.
