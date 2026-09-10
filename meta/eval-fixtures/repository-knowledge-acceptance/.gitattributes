@@ -2,5 +2,6 @@
 inputs/base/** -text whitespace=cr-at-eol,-blank-at-eof
 inputs/budget/** -text whitespace=cr-at-eol,-blank-at-eof
 inputs/refresh/** -text whitespace=cr-at-eol,-blank-at-eof
+inputs/reporting/** -text whitespace=cr-at-eol,-blank-at-eof
 manifests/** whitespace=-blank-at-eof
 prompts/** whitespace=-blank-at-eof

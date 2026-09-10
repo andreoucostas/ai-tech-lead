@@ -443,6 +443,17 @@ wrapper and helper through parameters, state, filters and result grain, while le
 external branch honestly unresolved. Retain and address the known generic grounding failures; do
 not rerun them merely under reporting names.
 
+**2026-09-10 reporting result.** Sonnet implemented the optional SQL fixture and its prompts;
+Opus reviewed it before execution and a separate Codex reviewer checked the corrected case and
+actual output. The caller/default distinction and invoked calculation were read correctly, but
+capture overclaimed the status comparison and unknown adjustment output. The final report also
+claimed a caller grep absent from the complete trace. See
+[the reporting observation](repository-knowledge-semantic-acceptance.md#reporting-overlay--sonnet-component-observation-2026-09-10).
+This component result leaves the broader status unchanged; no new product rule was justified.
+**RCA:** parser gates cannot judge semantic implication or whether narrated searches occurred.
+The same exposure applies to inferred negative facts and dependency summaries in other discovery
+outputs. Retain the failing case and distinguish observed tool evidence from fluent summaries.
+
 **Problem / evidence.** Shared A8 already inventories naming clusters, but requires three recurring
 implementations, reads one cleanest instance and caps proposals at three to five. This excludes
 unique consequential facts and poorly serves helper-derived semantics. These are source
@@ -501,6 +512,16 @@ efficacy. No registry, graph service or promotion system.
 and changed/missing-helper checks for report findings through the wiki, owner-document and map routes.
 Refresh must recheck, narrow or conflict a retained claim after its helper predicate changes, without
 overwriting owner content or inventing intent.
+
+**2026-09-10 reporting result.** The bounded Sonnet capture produced three indexed wiki drafts,
+preserved 38 of 39 pre-existing files byte-for-byte and retained the original INDEX entry. Native
+PS7/PS5.1 wiki checks passed, but semantic capture failed: durable descriptions exceeded the SQL
+evidence. The drafts were not repaired to obtain a passing retrieval fixture. See
+[the reporting observation](repository-knowledge-semantic-acceptance.md#reporting-overlay--sonnet-component-observation-2026-09-10).
+**RCA:** correct metadata and successful writes do not establish a claim's truth. Wiki entries,
+map summaries and project references share this exposure; existing grounding and unresolved-evidence
+requirements already apply. The retained failure supports review of capture quality, not another
+duplicate instruction or migration-specific artifact. Refresh remains unexercised by this case.
 
 **Problem / evidence.** Wiki, skills, maps and reconciliation exist, but A8 promotes only recipes.
 Rebootstrap favors recent activity over dependencies of quiet claims and requires confirmation
@@ -571,6 +592,15 @@ and outcome comparison remain unobserved. Host inventory and synthetic behavior 
 requires a fresh ordinary report-maintenance question to find a conforming retained artifact,
 inspect decisive source and preserve unresolved intent. Retrieval is observed separately from an
 answer reconstructed from source; an unread or invalid artifact cannot establish knowledge reuse.
+
+**2026-09-10 reporting result.** The neutral fresh-task retrieval prompt is implemented, but its
+dependent actor was **not dispatched** because the preceding capture failed semantic review.
+This follows the frozen stop condition; a format-valid yet overclaiming wiki is not a conforming
+fixture. No ordinary-retrieval, Copilot, VS Code or migration-efficacy result is claimed. See
+[the reporting observation](repository-knowledge-semantic-acceptance.md#reporting-overlay--sonnet-component-observation-2026-09-10).
+**RCA:** carrying a format-only success into a reuse test would make its knowledge baseline
+untrustworthy. The same risk affects any downstream task using generated maps, wiki or references.
+Conforming retained knowledge remains the prerequisite; no silent repair or relabelled retry.
 
 **Problem / evidence.** A generated claim or registered skill is not proof of reading/application.
 WSD-032's old Claude observations do not certify current Copilot. Host-certification gaps remain;

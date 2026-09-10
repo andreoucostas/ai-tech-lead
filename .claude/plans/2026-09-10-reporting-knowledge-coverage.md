@@ -222,3 +222,68 @@ native hosts its existing dangling-pointer control identified missing B-999 with
 subsequent clean rerun again passed 10/10. The existing advisory stale-item list remains advisory;
 partially completed work was not auto-closed. These checks establish metadata consistency, not
 report discovery, knowledge reuse or migration behavior. Normal push/CI observation follows.
+
+## Sonnet implementation and bounded execution amendment
+
+The user's subsequent instruction authorizes Sonnet implementation, with Sol only if Sonnet
+exhausts its usage. This replaces the model selection above for this delivery. Sonnet's source
+audit found no absent reporting obligation; the next implementation is one optional synthetic
+SQL overlay in the existing repository-knowledge acceptance fixture. Historical inputs and
+results remain unchanged. No product change is presumed from a model miss.
+
+The distinct case follows an explicit caller argument overriding a callee default, caller-created
+temporary state, an invoked calculation and a missing external definition. Interpretive comments
+must not supply the answer. This is requested discovery, not a test of unprompted seed selection.
+
+Opus (`claude-opus-5`, separate CLI session `31c01e0a-4796-4909-9358-2fe91063764e`)
+reviewed a frozen copy read-only: exit 0, `is_error: false`, model-reported USD0.7303325.
+Root accepted removal of answer-bearing comments, conditional direct-call semantics, exact
+materialized paths, matched content evidence and paired-event red controls for both source
+grounding and wiki reuse. An independent Codex reviewer also identified header-only Reads,
+inherited filtering and source-absence/deployment-absence conflation. Sonnet applies these
+corrections before execution. The template's fields and current capture rules were directly
+checked by root; Opus had not received those carriers.
+
+Root rejects Opus's assertion that reuse is unreachable while source remains available. A
+constructible success is a successful relevant wiki-body read, faithful use, and decisive source
+checks in a fresh session. That observes use, not incremental benefit or framework causality.
+Removing source or forcing the wiki in the question would change that condition. The status
+predicate's treatment of values such as `Void` is a bounded source implication; an enum-like
+comment establishes neither an exhaustive domain nor business intent and is removed.
+
+Execution is limited to two semantic calls: capture, then a fresh ordinary report-change review
+only if capture is valid. Each uses real Sonnet, a USD3 CLI ceiling and a 600-second process
+deadline. No semantic retry or broader campaign is authorized by this amendment. An actual
+provider quota failure permits the user's Sol fallback, recorded separately. Capture permits
+Read/Glob/Grep/Write/Edit; retrieval permits only Read/Glob/Grep. Both use direct Claude CLI
+safe/restricted mode, `dontAsk`, no session persistence and explicitly supplied unchanged current
+framework guidance. This is a component observation, not automatic instruction loading, full
+bootstrap, Copilot/VSCode behavior, SQL execution or migration equivalence.
+
+Materialize base plus overlay and current monorepo carriers in an external synthetic Git root,
+with valid ownership rows and before/after SHA-256 manifests. Canonical SQL paths are
+`reporting/RunRegionRevenue.sql`, `reporting/RenderRegionRevenue.sql` and
+`reporting/NetLineAmount.sql`. Grading material and prior streams stay outside actor roots.
+Capture calibrates an in-root Read and ordinary Write plus one harmless outside-root denial;
+that control file is the sole additional allowed delta. The restricted root bounds access;
+the narrower wiki/INDEX write scope is assessed from bytes, not claimed mechanically enforced.
+
+Stop on unavailable required access, malformed trace, deadline/budget termination or invalid
+capture. Do not silently repair a wiki to continue. A complete calibrated trace without a
+required action is an observed miss; an unavailable observer is cannot-examine. Validate wiki
+states directly on PS7 and PS5.1. A copied verified/never mismatch must fail, then restored bytes
+pass. On copied complete traces, remove all relevant matched tool-use/result pairs while keeping
+correct prose: source grounding or wiki reuse must become not observed without invalidating the
+ledger. Also mutate the actual caller argument into the callee default and reject that semantic
+claim, then restore it. Independent review grades actual returned content and artifact bytes.
+
+External execution/review packet: `$env:TEMP/ai-tech-lead-report-implementation-20260910`.
+Results belong in `meta/repository-knowledge-semantic-acceptance.md` and the existing B-222,
+B-223 and B-224 entries; this does not close their broader outstanding work.
+
+Execution outcome: Sonnet completed the capture actor without quota exhaustion. Routing, owner
+preservation and native wiki format checks passed; independent semantic review found durable
+overclaims and an unobserved claimed search. The dependent retrieval actor was not dispatched,
+in accordance with the stop rule. No product change or automatic semantic retry followed. The
+fixture implementation and retained result are delivered; broader capture/retrieval acceptance
+remains open in the existing backlog entries.

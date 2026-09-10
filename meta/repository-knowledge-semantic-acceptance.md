@@ -249,3 +249,132 @@ attempt 07 exposed refusal behind terminal success. The same exposure applies to
 workflow whose host permission channel differs from its model-visible evidence. The bounded response
 is this retained route and semantic evidence; one synthetic follow-up does not justify a new generic
 harness or another copy of requirements already present.
+
+## Reporting overlay — Sonnet component observation (2026-09-10)
+
+The user authorized Sonnet implementation, with Sol only if Sonnet exhausted its usage. Sonnet
+implemented the optional reporting overlay and prompts under the existing fixture family. No
+Sonnet quota failure occurred. Root applied the final mechanical corrections to evidence-removal
+wording and unspecified SQL collation. The authoring baseline is
+`497663e9f405ef4cf123e03ada71f656aec0b24f`, framework v0.86.4. All 79 historical fixture input files
+were compared as raw Git blob bytes and remain identical; historical prompts and `src/`/`dist/`
+are unchanged. The execution lock and Opus adjudication are in
+`.claude/plans/2026-09-10-reporting-knowledge-coverage.md`.
+
+### Identities, route and frozen evidence
+
+| Work | Separate CLI session | Model-reported USD |
+|---|---|---:|
+| Source diagnosis, Sonnet | `da85fe3f-e09e-4269-a3a4-74e647a1ecfa` | 0.9514248 |
+| Fixture implementation, Sonnet | `ec309aa8-eb22-41ec-9623-acf7148af52c` | 1.0163302 |
+| Adversarial fixture review, Opus | `31c01e0a-4796-4909-9358-2fe91063764e` | 0.7303325 |
+| Fixture corrections, Sonnet | `4ce5d2a1-27cd-4055-adfa-946dd3d416bf` | 0.6768962 |
+| Capture actor, Sonnet | `4e30845a-6c6d-4629-821b-755dfe1aa491` | 0.5684634 |
+
+All five terminal results reported `is_error: false` and native exit 0. The capture init identifies
+`claude-sonnet-5`, Claude Code 2.1.260, `dontAsk`, and exactly Read/Glob/Grep/Write/Edit. It used
+safe/restricted mode, no session persistence, no execution tools, unchanged composed framework
+rules supplied as system guidance, a USD3 CLI ceiling and a 600-second process deadline. It
+finished in 251026 ms without timeout. This was direct CLI, not the earlier SDK route, a full
+bootstrap, automatic host instruction discovery, Copilot or VS Code. No SQL engine ran.
+
+The actor root contained 39 files: historical base plus the four-file reporting overlay, seven
+current composed monorepo carriers and updated ownership rows. The neutral synthetic input commit
+was `a20bc65b47ce99cce2bd614d6a8d1685e139798a`. The actor received tracked-path metadata but no
+grader, review, prior transcript or precomputed reporting wiki. Raw outputs and construction
+records are outside Git at `$env:TEMP/ai-tech-lead-report-implementation-20260910`.
+
+| Evidence | SHA-256 |
+|---|---|
+| Frozen grader | `EEC53A8BC8AA896EE2A64F50B6A7368E25DE84F1A557CB78D82DD92922F06911` |
+| Contract manifest | `812544FF99AD237F65C3AEEFAD52CE9A9F0FCE5B320C9407F281D8BBF066A345` |
+| Materialization manifest | `15D3308604A2BA42AA756D9583AB6EA8864469B9D147A6DCEDC0FA3AE5A1B221` |
+| Before manifest | `8567DE0CC71FF753D9200324FE2695FD8D27F904BC23F884A736F0652B166B76` |
+| Raw capture stream | `DF7EAE33A35097C197A3132EDB78CE091C47545967A3E67C5027B04E04870A06` |
+| After manifest | `D8F38B768C91379BFFFF55E7296F993C480A1F45520A79D9104EB9B27E631363` |
+| Valid stream with wrapper read pair removed | `0D08CC47E9F03B0D4D7B5BB43434152881ED98F7F33E281486B597C29F1BFF96` |
+
+### Direct observations
+
+The existing `Read-Transcript` / `Get-TranscriptEvidence` functions, copied unchanged into the
+external supervisor, accepted the completed stream. Root inspected matched returned content:
+14 successful distinct-file Reads (including each of the three SQL bodies once), one expected
+outside-root Read denial, one Glob, four Writes and one Edit. There were **no Grep calls**.
+The in-root read/write calibration succeeded. The only denial was the harmless outside-root
+control; it was not retried. This is usable access with observable content, not cannot-examine.
+
+The actor added three wiki drafts and the calibration file and edited INDEX. Of 39 pre-existing
+files, 38 remained byte-identical; INDEX retained its original owner entry. No file was deleted.
+The drafts described the net figure, the caller's temporary table and the external adjustment
+dependency, and marked themselves pending PR review. The post-state format passed the shipped
+wiki checker on both native hosts. These observations establish successful file routing and
+preservation; they do not by themselves establish semantic capture correctness.
+
+The independent Codex reviewer inspected the corrected fixture before dispatch and returned no
+remaining blocker at the frozen grader hash above. Its post-run semantic adjudication and root's
+delivery checks follow below.
+
+### Semantic adjudication and stop decision
+
+Root and the independent Codex reviewer inspected actual SQL bodies, returned tool content,
+post-state bytes and the frozen grader. The reviewer confirmed all 43 post-state file hashes
+against disk and the permitted changes above.
+
+| Row | Disposition | Evidence and limit |
+|---|---|---|
+| RPT-D1 | PASS | Actual caller `1` and callee default `0` both stated, supported by complete source Reads. |
+| RPT-D2 | MISS | Scope ownership and all three predicates were found, but the figure draft says only literal `Draft` is excluded and every other status contributes. The fixture specifies no collation; that literal-only inference is unjustified. |
+| RPT-D3 | PASS | The invoked helper subtracts tax from gross inside the per-category base aggregate; all decisive code was returned. This says nothing about the complete external-adjusted report. |
+| RPT-D4 | MISS | The call and unknown external behavior were recognized, but the description/INDEX say the entry point “always emits external adjustments”. Invocation is not evidence of emitted adjustments. Global absence/caller/test claims also exceed the inspected content. |
+| RPT-C1 routing/envelope/preservation | PASS as subchecks | Three indexed drafts, required metadata/body fields, pending-review labels and permitted changes; native wiki format checks passed. |
+| Capture overall | MISS | Durable overclaims remain in the wiki and INDEX. Format validity is insufficient for a conforming retained-knowledge fixture. |
+| RPT-R1 / wiki reuse | NOT DISPATCHED | The frozen stop rule applies after invalid capture. No silent repair, supplied-wiki substitution, semantic retry or reuse-control result is claimed. |
+
+SQL string comparisons depend on collation; a compatible case-insensitive deployment can compare
+`Draft` and `draft` equally. The frozen D2 key already retained this uncertainty. This conclusion
+is source/documentation reasoning, not an executed database case. See Microsoft's
+[collation precedence](https://learn.microsoft.com/en-us/sql/t-sql/statements/collation-precedence-transact-sql?view=sql-server-ver17)
+and [case sensitivity documentation](https://learn.microsoft.com/en-us/ef/core/miscellaneous/collations-and-case-sensitivity).
+The nested temporary-table interpretation follows Microsoft's
+[CREATE TABLE documentation](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-table-transact-sql?view=sql-server-ver17).
+
+The only Glob returned 100 of 125 matches, explicitly including Git internals and a truncation
+notice. The user prompt supplied a complete tracked-path inventory, so filenames were available;
+neither inventory constitutes a semantic search of the unread caller/test trees. Nevertheless the
+final report states that a grep of first-party trees found no callers. No Grep event exists.
+Its repeated-read narration is also not an observed repeated tool access: each SQL file was Read
+once. Absence of a second Read alone does not prove no internal semantic recheck occurred and was
+not used to invalidate every verified source claim. The decisive misses are the durable overclaims
+and invented search, not an unobservable model thought process.
+
+### Controls and delivery verification
+
+The independent reviewer checked the evidence-removal copy: original 21 tool uses/results,
+mutant 20/20, no orphans. Raw wrapper Read pair at JSONL lines 39–40 was removed; no equivalent
+Grep existed. The final 10395-character answer remained identical. Required wrapper-content
+evidence went 1 → 0 → 1 on original, mutant and restored original; its grade became observed
+not-read / unsupported, not cannot-examine. D1's separate actual-caller paragraph mutation changed
+the explicit `1` into reliance on default `0`: independent semantic grading was
+PASS → INVALID → PASS. These controls validate the narrow D1/evidence distinctions; they do not
+turn the overall capture miss green or establish a retrieval result.
+
+Native PS7 7.6.5 and PS5.1 5.1.26100.9444, both at output code page 65001, each observed wiki
+baseline 0, copied verified/never defect 1 with the specific invalid-date diagnosis, restoration 0,
+and actual capture post-state 0. The processes reported their own executable paths and versions;
+neither host relaunched the other. Direct authoring checks on both native hosts then reported
+DocClaims 11/0, BacklogHygiene 10/0 and RepositoryPrivacy 7/0, each exit 0. The existing backlog
+dangling-pointer control identified missing B-999 with exit 1 on each host, followed by a clean
+10/0 rerun. `git diff --check` passed and HEAD stayed at the baseline throughout verification.
+Normal push/CI is observed separately after the delivery commit; these local checks do not
+override the semantic miss.
+
+### Reporting RCA
+
+The authoring gates verify structure and bytes; they cannot establish that an agent performed a
+narrated search, preserved a SQL comparison's environment dependence, or kept a title as narrow
+as its body. Raw event review and scoped source counterexamples exposed these failures despite
+successful writes and green wiki checks. Adjacent exposure includes generated map summaries,
+INDEX descriptions, source-absence claims and project references. Existing verification,
+grounding and unresolved-evidence rules already prohibit these overclaims, so this observation
+supports no additional product instruction, catalogue or migration contract. The bounded fixture
+and failed result are delivered; B-222/B-223/B-224 retain the unresolved behavioral work.

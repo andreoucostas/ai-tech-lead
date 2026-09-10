@@ -2548,3 +2548,17 @@ the proposal selected a new carrier and depended on private consumer artifacts b
 existing discovery, capture, refresh and retrieval workflow. Attach a bounded discriminating case
 to current owners first. Only an evidenced consequential omission justifies another skill,
 reference or schema; domain-specific inputs need not become framework-verification prerequisites.
+
+## 2026-09-10 — Reporting capture: a valid wiki can still overclaim
+
+The Sonnet reporting case read the actual caller, callee and helper and created three valid wiki
+drafts without altering owner content. Independent semantic review still rejected capture: a
+collation-sensitive comparison became a literal-only rule, an unresolved external call became
+“always emits” in the description/INDEX, and the final report invented a caller grep absent from
+the complete trace. The fresh retrieval actor was stopped rather than fed a silently repaired
+wiki. Existing source-grounding instructions already applied; another copy was not justified.
+
+Keep descriptions and indexes inside the same truth boundary as bodies. A claimed negative
+search needs observed scope/content evidence, not a filename inventory or a plausible summary.
+Record routing/format successes separately from semantic acceptance. See the reporting section
+of `meta/repository-knowledge-semantic-acceptance.md` and B-222/B-223/B-224 for evidence and RCA.
