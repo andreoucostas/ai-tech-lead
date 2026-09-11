@@ -4038,3 +4038,12 @@ No semantic-control packet or capture actor ran, so this is neither observed imp
 product implementation lock. Do not buy a dedicated comparison for this small recommendation;
 retain the prediction for a future independently justified capture observation. The diagnostic is
 complete, B-223 remains partial, and no other campaign or release resumes automatically.
+
+**Small delivery amendment, 2026-09-11.** The user's next-step request authorizes the exact
+section-9 template clarification as an ordinary small documentation delivery. Apply the root
+Markdown/template definition of done, explicitly replacing the diagnostic's stronger pre-shipping
+model-efficacy prerequisite for this one line. No claim that the former prerequisite passed.
+State the summary/body relationship in the shared placeholder, verify source/semantic examples and
+installation, and release normally; no new capture actor or dedicated paid comparison. The benefit
+is an explicit drafting contract; model adherence and consumer outcomes remain unknown. The exact
+scope and verification contract are in plan section 10; broader B-223 gaps stay open.

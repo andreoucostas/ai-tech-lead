@@ -309,3 +309,35 @@ On each host, BacklogHygiene's named dangling-pointer control first returned exi
 `B-999`, followed by the clean suite. Logs and the host-identifying wrapper are retained with the
 review packet. `git diff --check` passed; `src/` and `dist/` have no changes. These checks validate
 this documentation delivery, not capture behavior.
+
+## 10. Small template delivery contract (2026-09-11)
+
+The user requested the next step after the completed diagnostic. Deliver the exact +68-byte
+sentence in section 9 as a small explicit summary-contract clarification, targeting v0.86.5.
+Baseline: `f774af5723aa698875fc21c065968142e3dc8cb6`. This prospectively amends sections 3, 7 and 9:
+their no-implementation boundary and stronger model-behavior prerequisite applied to the diagnostic;
+this delivery uses root `CLAUDE.md`'s Markdown/template definition of done. That prerequisite has
+not been satisfied by the diagnostic or silently relabelled as passing. Model adherence and
+consumer-outcome improvement remain unmeasured; no capture actor or dedicated comparison is added.
+
+Proportionality: the retained description asserted emitted adjustments while the same entry left
+external output unresolved. The template gives no description-specific qualification rule. One
+shared placeholder can state that relationship at drafting time; editing four recipes, adding a
+checker or expanding grounding instructions is unnecessary. A separate Codex source audit supports
+this bounded delivery and found the adjacent concrete adoption repairs already shipped. Keep the
+rest of B-223 open. The exact shipped claim is a clearer drafting instruction, not solved capture.
+
+Only the section-9 template line, four changelog heads, generated distributions/version stamps and
+required maintainer release/evidence records may change. Byte-compare the template against the
+frozen before/after hashes. Use one small manually authored scoped entry and independently altered
+description/INDEX copies for blind semantic review, followed by an exact restored copy; these are
+instruction-contract examples, never model output or efficacy evidence. The valid claim must retain
+caller argument versus default, conditional call and unknown output. The reviewer first sees the
+contract and source, grades neutral copies before the mutation map, then examines the immutable
+implementation range and can reject scope or the evidence amendment.
+
+Run the existing wiki suite and explicit invalid-date/restored-valid control directly on PS7 and
+PS5.1 at CP437. Smoke-install all three dists, then update a disposable installed project on each
+host to show the new template arrives while existing entry/INDEX bytes remain owned by the project.
+Compose and validate all three dists; release through the normal script, complete all eight native
+CI contexts and parity before tagging. No new persistent tests or general semantic checker.

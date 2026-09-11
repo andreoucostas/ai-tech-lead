@@ -1,6 +1,6 @@
 ---
 name: <kebab-slug, = filename stem>
-description: <one line, unquoted>
+description: <one line, unquoted; no broader or more certain than the whole body; same text in INDEX>
 type: gotcha | context | recipe | failed-approach
 scope: <area label or path glob, e.g. src/Payments/**>
 status: verified | suspected | unverified

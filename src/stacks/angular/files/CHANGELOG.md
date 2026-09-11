@@ -4,6 +4,11 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.86.5 — Unreleased
+
+- Wiki drafting guidance now asks descriptions to preserve the whole entry's scope and uncertainty,
+  using the same text in the wiki index.
+
 ## 0.86.4 — 2026-09-09
 
 - Quick Start now uses the supported installer from the matching Angular distribution, routes

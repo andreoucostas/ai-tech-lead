@@ -11,6 +11,12 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.86.5 — Unreleased
+
+B-223 clarifies the shared wiki template's description placeholder: preserve the whole entry's
+scope and certainty, and use the same description in INDEX. This is a drafting-contract
+clarification; capture accuracy and consumer-outcome improvement remain unmeasured.
+
 ## 0.86.4 — 2026-09-09
 
 B-234 replaces the three selective manual-copy Quick Starts with the supported matching-distribution
