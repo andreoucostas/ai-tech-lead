@@ -514,13 +514,27 @@ exact candidate and scoped valid/hostile controls, or choose no product change. 
 REVISE exposed premature four-call evaluation and mixed mechanisms; root withdrew that campaign
 and checked its source/evidence corrections. Corrective Opus review ACCEPTED the narrowed diagnostic
 contract, with directly applied nonblocking corrections. A description repair targets metadata qualification,
-not false bodies or handoff interpretation. Current authority is planning/review only; no new
-capture actor, product change or efficacy result followed. Review disposition is in the companion
+not false bodies or handoff interpretation. At that checkpoint authority covered planning/review
+only; no new capture actor, product change or efficacy result followed. Review disposition is in the companion
 [review record](../.claude/plans/2026-09-11-b223-grounded-capture-review.md).
 **Planning RCA:** parser gates cannot judge claim truth, invented searches or whether a proposed
 intervention is proportionate. INDEX descriptions, bodies, maps and references share the semantic
 exposure. Review of the actual claims caught design overreach; no duplicate evidence rule, generic
 truth gate or automatic resumption of B-224/B-225 follows. B-223 remains PARTIALLY DONE.
+
+**2026-09-11 diagnostic result.** The user authorized proceeding and useful Claude assistance.
+Source/trace inspection plus an independent route audit selected the existing shared wiki template
+as the smaller carrier, triggering the plan's explicit re-scope stop. A focused Opus critique
+improved the exact recommendation to preserve the whole body's limits in description/INDEX
+(one existing placeholder, +68 bytes); see [section 9](../.claude/plans/2026-09-11-b223-grounded-capture-plan.md#9-diagnostic-execution-smaller-carrier-no-product-change-2026-09-11).
+Product source is unchanged. No synthetic semantic controls, capture actors or efficacy result;
+no dedicated paid comparison is selected for this small candidate. Its consumer-value prediction
+remains unproved, and body/handoff/refresh misses remain open.
+**Diagnostic RCA:** parser gates cannot detect strengthening a claim while summarizing it or prove
+an instruction helps. The shared template reaches manual and requested discovery routes; editing
+four separate recipes would duplicate the operation, while protected INDEX introductory text
+would miss existing consumers. The same semantic exposure remains in body claims, maps and
+project references. A small candidate does not justify a larger testing or instruction system.
 
 **Reporting coverage.** See the
 [B-235 amendment](../.claude/plans/2026-09-10-reporting-knowledge-coverage.md). Reuse existing capture

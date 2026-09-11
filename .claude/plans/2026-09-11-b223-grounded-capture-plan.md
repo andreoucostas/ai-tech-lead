@@ -1,6 +1,6 @@
 # B-223: a bounded plan for trustworthy factual capture
 
-Date: 2026-09-11. Status: Opus accepted the diagnostic contract; minor source-checked corrections applied.
+Date: 2026-09-11. Status: diagnostic completed with a template re-scope recommendation; see section 9.
 Authoring baseline: `256ca123a81bbe858434abbc53738b336e1d674a`, framework v0.86.4.
 Review provenance and adjudication: `2026-09-11-b223-grounded-capture-review.md` in this directory.
 
@@ -245,3 +245,67 @@ smallest repair. Independent critique caught that design overreach; source check
 review's overbroad remediation and evidence-status suggestions. Keep no-change reachable and
 mechanize only observable distinctions. B-224 reuse, RK1/B-225, FS2/B-42 and refresh retain their
 existing statuses and authority; none is automatically resumed by this plan.
+
+## 9. Diagnostic execution: smaller carrier, no product change (2026-09-11)
+
+The user's subsequent instruction to proceed authorized the diagnostic; the request to use Claude
+where valuable also authorized one focused read-only critique. Execution baseline was
+`e3f680f52ef3ae8312648853a356aa72e0ed0838`. Root rechecked the two retained trace hashes in section 2,
+matched successful source-content returns, and confirmed the handoff's absent application-source
+reads versus reporting's source-read misses. The proposition table still applies; no historical
+output was repaired.
+
+**Decision: re-scope to the existing shared template, retain the product unchanged.** Root and a
+separate nonimplementing Codex context inspected the manual, bootstrap, rebootstrap and worker
+routes. Manual drafting and all three bootstrap factual routes use `_template.md`; bootstrap does
+not call the skill. Rebootstrap delegates new-absent capture to bootstrap; workers remain read-only.
+All three ownership manifests overwrite the framework template but protect the consumer INDEX,
+which the installer copies only if absent. A skill plus three bootstrap edits would duplicate the
+operation. This triggers section 3's explicit re-scope stop, not a reason to force that larger patch.
+
+The exact recommendation replaces only line 3 of `src/core/docs/wiki/_template.md`:
+
+```diff
+-description: <one line, unquoted>
++description: <one line, unquoted; no broader or more certain than the whole body; same text in INDEX>
+```
+
+The unchanged template is 1,197 bytes, SHA-256
+`61407A33309D748167A5A8BBB14A19D905CA44502CF19F519759EC6EE47D14D5`; the external candidate is
+1,265 bytes (+68), SHA-256 `4A036D85FF80E7EABA06407D642B59B7108A6DD6A25E0E818D5C96CB06C31F37`.
+No field, checker, lifecycle, routing or always-loaded rule changes. The prediction is narrow:
+a body retaining a conditional external call and unknown output should yield description/INDEX
+text retaining those limits, not guaranteed emitted results. Faithful summaries of false bodies
+still fail; no reduction in consumer mistakes, investigation time or rework has been observed.
+
+**Claude adjudication.** A fresh `claude-opus-5` high-effort session read the copied sources and
+failed exhibit before the candidate (confirmed tool order; its pre-candidate threat model is
+self-reported). It recommended replacing the initial +85-byte candidate's "body's scoped claim"
+with "whole body" so confidence, exceptions and unresolved fields participate. Root accepted that
+wording clarification after checking the exhibit; invocation does not itself establish emission.
+Root did not adopt its unmeasured "more frequent" body-risk claim, reader-reach claim, or its advice
+to land the edit without this plan's behavioral evidence. Its ownership/trace statements were
+attributed to the root packet; it did not inspect those originals. The separate Codex route audit
+also found no reason for the larger carrier surface; neither review establishes model efficacy.
+
+The configured review limits were USD2/360 seconds; native exit 0, no timeout, 145.56 seconds,
+reported USD0.5123705, Claude Code 2.1.260, session `32c81657-3744-454d-9f8a-eb8ba41141ea`.
+Read/Glob/Grep only, safe/restricted, dontAsk, strict empty MCP, nonpersistent. Retained packet,
+argv, prompt, raw streams, native receipt, initial and revised candidate bytes:
+`$env:TEMP/b223-diagnostic-20260911-894d4149d7804133a9db01235c38c1f0`.
+Review stream SHA-256: `B32FFA0250F19C07A2B03ED804A9D657A08B5DD768FF23893F153A045E1BA71D`.
+
+**Stop and next-work decision.** Source diagnosis and scope adjudication ended early, within the
+90-minute allowance. No synthetic semantic controls or new capture actors ran: the template
+re-scope stopped the package before those stages. The reviewed sentence is a recommendation,
+not a completed positive candidate/control result or implementation lock. A dedicated paid pair
+is not justified for this one-line recommendation; section 7's conditional pair is not selected.
+Retain its prediction for a future already-justified capture observation, without creating a new
+campaign or monitoring task. B-223 stays PARTIALLY DONE and its body, handoff and refresh gaps remain.
+
+Documentation validation: `BacklogHygiene.Tests.ps1` 10/0, `DocClaims.Tests.ps1` 11/0 and
+`RepositoryPrivacy.Tests.ps1` 7/0 directly on PS7 7.6.5 and PS5.1 5.1.26100.9444 at CP437.
+On each host, BacklogHygiene's named dangling-pointer control first returned exit 1 for missing
+`B-999`, followed by the clean suite. Logs and the host-identifying wrapper are retained with the
+review packet. `git diff --check` passed; `src/` and `dist/` have no changes. These checks validate
+this documentation delivery, not capture behavior.

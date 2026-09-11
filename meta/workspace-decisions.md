@@ -4026,3 +4026,15 @@ no new capture actor, product change, consumer task or Copilot campaign ran. B-2
 Plan and evidence: `.claude/plans/2026-09-11-b223-grounded-capture-plan.md` and
 `.claude/plans/2026-09-11-b223-grounded-capture-review.md`. WSD-074/WSD-080 remain the governing
 product/evidence boundaries; this does not resume B-224, RK1/B-225, FS2/B-42 or confirmed refresh.
+
+**Execution amendment, 2026-09-11.** The user's instruction to proceed authorized the diagnostic
+and useful Claude assistance. Root's source/trace inspection, a separate Codex route audit and one
+focused Opus critique ended in the plan's explicit template re-scope outcome. Retain current product
+source and a one-line shared-template recommendation (+68 bytes) preserving the whole body's limits
+in description and INDEX. Manual and all three bootstrap drafting routes already use that template;
+four local recipe edits are unnecessary duplication, and protected INDEX text is a weaker update
+channel. The exact diff, hashes, evidence limits and review receipt are in plan section 9.
+No semantic-control packet or capture actor ran, so this is neither observed improvement nor a
+product implementation lock. Do not buy a dedicated comparison for this small recommendation;
+retain the prediction for a future independently justified capture observation. The diagnostic is
+complete, B-223 remains partial, and no other campaign or release resumes automatically.
