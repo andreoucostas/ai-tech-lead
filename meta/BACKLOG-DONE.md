@@ -12254,3 +12254,33 @@ usefulness. Planning selected a new carrier and private consumer-artifact depend
 a missing capability. The same error could duplicate discovery, capture, refresh or retrieval work
 for other domains. Attach a discriminating case to existing owners first; add product surface only
 for an evidenced consequential omission.
+
+### B-236 · Repair telemetry defaults and bound generated references and warehouse claims
+**Filed against:** v0.86.5 (2026-09-11)
+**Priority:** P1 · **Effort:** S · **Invariants:** #1 #4 #6 #7
+**Delivery:** Prepared for v0.86.6. Source and focused checks complete; normal release gates and CI are required before promotion.
+
+The user reports a staged mutable audit log, a canonical debt reference without the DEBT-001
+identifier present in its derivatives, and a whole-system absence-of-PK/FK claim based on only
+eight inspected fact tables. Consumer repositories are inaccessible, so the latter artifacts
+remain reported. Shared source confirms the ignore/seed mismatch, bootstrap ordering gap, and
+missing explicit coverage boundary for negative findings.
+
+The [contract](../.claude/plans/2026-09-11-field-telemetry-carriers-warehouse.md) limits delivery to
+ignore/default advice and manual tracked-log migration, canonical specific-debt reconciliation,
+and inspected-object finding/remediation scope. No automatic index mutation, schema changes,
+new gate, or consumer/model outcome is claimed.
+
+**RCA.** Hook checks covered append/redaction and installer checks preserved bytes, but neither
+tested subsequent normal Git staging; the seed actively required committing telemetry. Existing
+.state/ ignores cover the other shared hook-state surface. Rule parity checks omit populated
+convention/debt semantics, and warehouse format checks do not compare claims against coverage.
+The same class exposes generated summaries and proposed remedies that add specificity or certainty
+absent from their source. Preserve existing scope/confidence rules and add explicit reconciliation
+at these authoring points; inaccessible consumer repair and model adherence remain unverified.
+The first release attempt also exposed the controlled upstream-decision eval's reliance on a
+tracked audit seed. Its setup now explicitly stages that single seed in the existing fixture
+branch, preserving the prior grader and hostile assertions. The offline recurrence wrapper
+failed before this adjustment and passed afterward; consumer installation remains unchanged.
+
+**Focused evidence.** Root observed original-ignore RED and repaired-dist clean staging on all three distributions under native PS7 and PS5.1, plus unchanged local bytes after nonforce migration. AuditTrail passed 8/0 in every dist/host; explicit CP437 reruns passed 8/0 on both hosts. The audit agent ran 18 successful installer smokes; root inspected receipts and actual bootstrap delivery hashes. Independent nonimplementer review found no actionable issues and separately observed old/tracked-ignore RED and new/migrated clean native-Git cases, retained history, and bounded semantic examples. The contract records exact identities, range, corrected instruments and gaps.

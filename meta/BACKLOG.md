@@ -957,29 +957,38 @@ contrast are source/static evidence; no model dispatch or sequential-fallback ef
 
 ## Independent evidence and deferred work
 
-### B-236 · Repair telemetry defaults and bound generated references and warehouse claims
+### B-237 · Bind release promotion to the immutable commit whose CI passed
 **Filed against:** v0.86.5 (2026-09-11)
-**Priority:** P1 · **Effort:** S · **Invariants:** #1 #4 #6 #7
-**Status:** Implementation drafted; verification and release pending.
+**Priority:** P1 · **Effort:** M · **Invariants:** #6
+**Status:** Published-tag incident recovered with user approval; release-tool repair remains open.
 
-The user reports a staged mutable audit log, a canonical debt reference without the DEBT-001
-identifier present in its derivatives, and a whole-system absence-of-PK/FK claim based on only
-eight inspected fact tables. Consumer repositories are inaccessible, so the latter artifacts
-remain reported. Shared source confirms the ignore/seed mismatch, bootstrap ordering gap, and
-missing explicit coverage boundary for negative findings.
+**Observed harm.** While the v0.86.5 release process waited on CI for
+`3bbd413ad597da272b8db58fa52f67c8c09ec868`, the field-feedback task committed
+`6af8827dec2f22bfc002ad35d98e58df215ce417` in the same checkout. Step 5c watched the saved
+`releaseCommit`, but step 5d reread HEAD into `releaseSha`. The script then published v0.86.5
+at the untested follow-up while describing it as CI-verified. Root directly inspected the
+release log, remote tag and both commits; the other task independently confirmed the mismatch.
 
-The [contract](../.claude/plans/2026-09-11-field-telemetry-carriers-warehouse.md) limits delivery to
-ignore/default advice and manual tracked-log migration, canonical specific-debt reconciliation,
-and inspected-object finding/remediation scope. No automatic index mutation, schema changes,
-new gate, or consumer/model outcome is claimed.
+**Recovery observed.** The user approved correcting the public tag. A fresh watch of the original
+commit returned all eight native execution jobs and parity green (Actions run `34582373359`).
+Root retained the erroneous object locally, ran the outgoing guard and pushed an annotated
+correction with an exact force-with-lease against object
+`b4855d8284c17b01cdf4c930f2d0d48ba7c0641c`. Remote tag object
+`ce10dfab5e17f758fb4722e3d0280d151e5dd5f6` now peels to `3bbd413`; origin/master stayed at that
+commit during recovery and the field-fix commit/files were preserved. The annotation discloses
+the correction. No release-script code was changed by this delivery.
 
-**RCA.** Hook checks covered append/redaction and installer checks preserved bytes, but neither
-tested subsequent normal Git staging; the seed actively required committing telemetry. Existing
-.state/ ignores cover the other shared hook-state surface. Rule parity checks omit populated
-convention/debt semantics, and warehouse format checks do not compare claims against coverage.
-The same class exposes generated summaries and proposed remedies that add specificity or certainty
-absent from their source. Preserve existing scope/confidence rules and add explicit reconciliation
-at these authoring points; inaccessible consumer repair and model adherence remain unverified.
+**Next, with locked proportional design and independent critique.** Prefer reusing the already
+captured release commit for tag/promotion and its postconditions over a new locking subsystem.
+Audit all post-CI actions for ambient HEAD dependence. Reproduce by advancing checkout HEAD while
+a controlled CI watch is pending: the later commit must never acquire the earlier commit's green
+verdict. Keep an unchanged-HEAD success case and equal direct-host evidence. False-green promotion
+requires an orthogonal review or execution vantage; preserve any remaining gap as review debt.
+
+**RCA.** Existing tests check watch/tag order and tag identity without moving HEAD between those
+phases. Maintainer concurrency guidance was not followed: the field task should have isolated its
+work until the preceding release completed. The same class exposes later outgoing checks,
+post-release persistence and other actions that rediscover state after verifying a saved identity.
 
 ### B-42 · Obtain balanced independent field outcomes using FS2
 **Filed against:** v0.31.0 (2026-07-17)

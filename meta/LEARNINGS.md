@@ -2587,3 +2587,31 @@ format and delivery while preserving owner bytes; independent semantic examples 
 summary/body contract. None establishes better model adherence or consumer outcomes. Keep that
 distinction while applying the ordinary template definition of done, rather than requiring a new
 paid capture campaign for every clarified placeholder.
+
+## 2026-09-11 — Follow mutable telemetry through normal Git staging (B-236)
+
+Append and preservation checks missed the user-reported staging defect because neither reached
+the developer's next `git add -A`. The shared ignore omitted the audit log and its seed still
+instructed committing it. Root observed that failure and a repaired exclusion in disposable repos
+under native PS7 and PS5.1 CP437, with ordinary configuration still staged. A tracked log remains
+trackable despite the new ignore; nonforce index-only migration preserved its local bytes and
+excluded later staging. Existing protected log headers survive updates, so migration guidance
+must explicitly supersede old advice. Carrier and warehouse scope repairs are instruction changes;
+the unavailable consumer artifacts and actual model adherence remain unverified.
+
+The release selftest then exposed an ignore-rule integration boundary: a controlled eval fixture
+had relied on ordinary git add -A to commit its telemetry baseline. Ignoring the seed caused clones
+to omit it and the existing Git-based append oracle to miss wrong-path telemetry. Explicitly stage
+only that seed inside the maintainer fixture's existing neutral-semantics branch; keep consumer
+ignores and all hostile assertions unchanged. The observed recurrence failure and corrected pass
+are evidence of fixture integrity, not a new consumer outcome.
+
+## 2026-09-11 — A saved CI identity cannot be replaced by ambient HEAD at promotion (B-237)
+
+The field task committed while another release waited on CI. That release watched its saved
+commit, then reread HEAD to tag a newer untested commit as v0.86.5. Both tasks observed the mismatch.
+The field task should have isolated work until promotion finished; a clean tree and stable source
+do not make a shared checkout safe for a pending release. User-approved exact-lease tag correction
+restored the original CI-green target while retaining the newer work and disclosing the correction
+in the tag annotation. The release-tool repair remains open: a passed check belongs to the exact
+identity examined, including across waits and post-check mutations.

@@ -141,3 +141,19 @@ the controlled fixture's old baseline for both live and selftest preparation. No
 or ignore is changed; no grader/assertion is weakened, no arbitrary ignored-file scanner is added,
 and no paid live outcome is claimed. The maintainer harness explicitly requires PS7. Re-run its
 offline selftest and have the nonimplementer reviewer examine this separate bounded amendment.
+
+Root focused reruns after relocation/repair: WorkspaceBom passed 4/0 under native PS7 and PS5.1.
+The AgentEvals recurrence wrapper exited 0 under native PS7, including the full offline selftest's
+unchanged upstream-decision hostile/clean controls and its direct PS5.1 minimum-version rejection.
+The integration range is `6af8827dec2f22bfc002ad35d98e58df215ce417` to
+`a250001c77e773ffbac31c06850656e8be498bda`; only the named fixture function changes executable
+behavior. The wrapper result is not a live eval, nor evidence of PS5.1 support for a PS7-only runner.
+
+The same separate nonimplementer reviewed this amendment with a pre-diff threat model (the task
+brief already described the mechanism; this is not blindness to that brief). It found no actionable
+issues and independently exercised the actual immutable helper and grader: the pre-amendment
+helper left the seed untracked and wrongly accepted unrelated appends/rewrites (RED exit 1, two
+control failures); the amendment tracked the seed, accepted the requested append and rejected both
+hostile mutations (clean exit 0). It reported native PS7 7.6.5 CP437. No grader or hostile assertion
+was changed. Root's full recurrence-wrapper rerun provides separate execution evidence, including
+the PS5.1 declared-prerequisite boundary.

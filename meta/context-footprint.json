@@ -252,8 +252,8 @@
         },
         {
           "path": "docs/upgrade-checklist.md",
-          "chars": 5924,
-          "tok": 1481
+          "chars": 6763,
+          "tok": 1691
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -363,8 +363,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 47491,
-          "tok": 11873
+          "chars": 47881,
+          "tok": 11970
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -393,8 +393,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#body",
-          "chars": 7207,
-          "tok": 1802
+          "chars": 7495,
+          "tok": 1874
         },
         {
           "path": ".claude/commands/impact.md#body",
@@ -468,8 +468,8 @@
         },
         {
           "path": ".claude/skills/map-warehouse/SKILL.md#body",
-          "chars": 21078,
-          "tok": 5270
+          "chars": 21739,
+          "tok": 5435
         },
         {
           "path": ".claude/skills/perf/SKILL.md#body",
@@ -721,8 +721,8 @@
         },
         {
           "path": "docs/upgrade-checklist.md",
-          "chars": 5924,
-          "tok": 1481
+          "chars": 6763,
+          "tok": 1691
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -832,8 +832,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 40190,
-          "tok": 10048
+          "chars": 40580,
+          "tok": 10145
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -862,8 +862,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#body",
-          "chars": 7014,
-          "tok": 1754
+          "chars": 7302,
+          "tok": 1826
         },
         {
           "path": ".claude/commands/impact.md#body",
@@ -1210,8 +1210,8 @@
         },
         {
           "path": "docs/upgrade-checklist.md",
-          "chars": 5924,
-          "tok": 1481
+          "chars": 6763,
+          "tok": 1691
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -1321,8 +1321,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 54125,
-          "tok": 13531
+          "chars": 54515,
+          "tok": 13629
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1351,8 +1351,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#body",
-          "chars": 7427,
-          "tok": 1857
+          "chars": 7715,
+          "tok": 1929
         },
         {
           "path": ".claude/commands/impact.md#body",
@@ -1446,8 +1446,8 @@
         },
         {
           "path": ".claude/skills/map-warehouse/SKILL.md#body",
-          "chars": 21078,
-          "tok": 5270
+          "chars": 21739,
+          "tok": 5435
         },
         {
           "path": ".claude/skills/perf/SKILL.md#body",
