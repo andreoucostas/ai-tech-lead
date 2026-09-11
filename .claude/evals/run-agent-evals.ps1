@@ -896,6 +896,10 @@ function Initialize-FactBindingScenario([string]$Path, [switch]$NeutralKeySemant
   </ItemGroup>
 </Project>
 '@ | Set-Content -LiteralPath (Join-Path $Path 'warehouse.sqlproj') -Encoding utf8NoBOM
+        # B-99's committed eval fixture tracks telemetry so unrelated appends/rewrites remain
+        # observable to its Git-based oracle. This exception is not consumer install policy.
+        git -C $Path add --force -- .claude/ai-audit.log
+        if ($LASTEXITCODE -ne 0) { throw 'Cannot prepare the tracked audit baseline for the upstream-decision fixture.' }
     }
     git -C $Path add -A
     git -C $Path commit --quiet -m 'fact-binding scenario setup'

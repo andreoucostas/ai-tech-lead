@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.86.6 — Unreleased
+## 0.86.6 — 2026-09-11
 
 B-236 addresses field-reported telemetry staging, debt-reference drift and warehouse overclaims.
 Ignore mutable audit logs, correct their seed advice and document safe migration of tracked logs.
@@ -19,6 +19,8 @@ Reconcile canonical debt references before carrier generation. Bind warehouse ne
 and remediation to inspected objects, retaining unresolved coverage outside that evidence.
 The reported consumer repositories are unavailable; this release changes framework guidance and
 defaults, without claiming their existing artifacts were repaired or model adherence was measured.
+The maintainer upstream-decision fixture explicitly tracks its audit seed to preserve its existing
+append/rewrite oracle under the new consumer ignore default; the grader and assertions are unchanged.
 
 ## 0.86.5 — 2026-09-11
 

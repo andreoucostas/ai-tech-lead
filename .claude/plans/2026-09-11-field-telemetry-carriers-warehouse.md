@@ -66,3 +66,78 @@ surface for further mutable outputs. Carrier parser gates compare selected rule 
 than populated convention/debt semantics; warehouse checks do not prove claims against coverage.
 The existing scoped-evidence and canonical-generation workflow needs the bounded instructions
 above, with consumer/model outcomes explicitly left unverified.
+
+## Focused evidence at implementation checkpoint
+
+Immutable range: `3bbd413ad597da272b8db58fa52f67c8c09ec868` to
+`6af8827dec2f22bfc002ad35d98e58df215ce417`. The contract file at that checkpoint has SHA256
+`BC9EE6963EFE0B593A6D0294FC999E71182309B07A17919F92BBEF61FFD5DF8F`.
+
+Root inspected and corrected the temporary Git probe before executing it: migration exclusion
+must be asserted on the delivered candidate too, not only when a candidate switch is supplied.
+On direct native PS7 7.6.5 CP65001 and PS5.1 5.1.26100.9444 CP437, all three original dists
+produced expected RED exit 1 and all three rebuilt dists clean exit 0. Each ran real Claude and
+Copilot hook payloads (two appends), excluded .state/, retained ordinary config staging, proved
+ignore alone insufficient for a tracked log, and preserved local SHA256 through nonforce index
+removal. The existing AuditTrail suite separately passed 8/0 on each dist under both native hosts.
+
+The audit_ignore agent ran 18 real installer smokes: three dists, greenfield/brownfield/update,
+native PS7 and PS5.1, all exit 0. Root inspected the receipts, verified their hashes and all nine
+records per host, then compared the actual installed bootstrap files with dist hashes across all
+targets. Initial probe scaffolding errors (dirty brownfield setup and a warehouse-file expectation
+for Angular) were corrected and rerun, not counted as product failures. Agent evidence covers
+fresh seed delivery, existing binary audit-byte preservation, normal Git staging and documented
+tracked-log migration before normal update preflight. It does not prove agent-host consumption.
+
+During review, a concurrent release incorrectly tagged this checkpoint as v0.86.5 after testing
+its parent. The user approved an exact-lease correction to the tested parent; remote verification
+confirmed the repaired tag and preserved field-fix commit. Full incident and open tool repair are
+recorded as B-237. There are no release-script changes in this field-fix contract.
+
+## Independent review and release boundary
+
+Separate nonimplementer `/root/independent_review` read the frozen contract/range and sent its
+hostile threat model before implementation inspection or root test evidence. It found no
+actionable P0-P3 findings. It independently executed native PS7 and PS5.1 at explicit output
+encoding 437: old-ignore and tracked-ignore cases each RED exit 1; new-ignore and migrated cases
+each clean exit 0. Local migration bytes matched and the prior committed log remained readable.
+It also reviewed seven adverse/valid examples covering generic versus specific debt references,
+ambiguous IDs, preserved scope, eight inspected facts versus whole-database absence/remediation,
+and unresolved candidate edges. These are manual semantic checks, not observed model behavior.
+
+Root read the complete review, including the reviewer's corrected source/dist comparison scope
+(the existing stack marker makes full hook blobs differ); executable tokens were unchanged in
+all four hook paths. The reviewer reported a GPT-6-based Codex role but no exposed exact runtime
+model ID; no different-model review is claimed. Its direct Git byte/history checks are a separate
+execution vantage for the manual migration. It did not run installer/hook-event/full gates.
+
+Root additionally reran the dotnet AuditTrail suite at explicit code page 437 in both native
+hosts: 8/0 each, exit 0. An earlier cmd-interposed PS5.1 launch failed before five cases could
+spawn because its environment contained conflicting Path/PATH entries; a direct native launch
+resolved the examination failure without product changes. No such run is recorded as product red.
+
+Subsequent changes are release stamps/generated output and evidence/RCA records only. Ordinary
+release gates and the eight native Windows CI contexts plus parity must pass before v0.86.6
+promotion. Consumer artifact repair and model adherence remain unobserved.
+
+## Release integration amendment
+
+The first release attempt refused with WorkspaceBom and offline eval-selftest failures; nothing
+was committed by that attempt. The UTF-8 sweep included this task's ignored disposable binary
+audit fixtures and its live output log. After the process ended, root moved that evidence tree
+outside the authoring repository, preserving receipts/bytes and a relocation note. No sweep was
+weakened and no product encoding defect was inferred from the fixture failure.
+
+The eval selftest exposed a real setup dependency: Initialize-FactBindingScenario used git add -A,
+so the newly ignored seed vanished from its committed baseline and downstream clones. The frozen
+B-99 contract requires unrelated audit appends and rewrites to fail, while permitting the requested
+hook append. The grader only evaluates that exception when the audit path is tracked. The original
+unrelated-append assertion now failed with treeExact=True and auditAppendExact=True (exit 1).
+
+Separate preimplementation critique by /root/carrier_scope inspected both callers and the frozen
+contract. Root accepted the smaller repair: explicitly force-stage only the audit seed inside the
+existing NeutralKeySemantics fixture branch, checking the Git exit immediately. This preserves
+the controlled fixture's old baseline for both live and selftest preparation. No consumer installer
+or ignore is changed; no grader/assertion is weakened, no arbitrary ignored-file scanner is added,
+and no paid live outcome is claimed. The maintainer harness explicitly requires PS7. Re-run its
+offline selftest and have the nonimplementer reviewer examine this separate bounded amendment.
