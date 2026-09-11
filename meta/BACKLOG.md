@@ -507,6 +507,20 @@ correctly, then refused the exact owner-approved application; the separate missi
 state also remains missed. Retained forward runs do not establish broad recall or target-host
 efficacy. No registry, graph service or promotion system.
 
+**Small template clarification, implemented for v0.86.5.** The next-step request authorized the
+exact shared-template sentence recorded in plan sections 9–10. Descriptions are instructed to be
+no broader or more certain than the whole body and to use the same text in INDEX. The diagnostic's
+stronger pre-shipping model-evidence bar is explicitly amended for this small documentation fix;
+it is not reported as satisfied. Direct PS7/PS5.1 wiki checks passed 17/0 each, invalid-date/restored
+controls returned 0/1/0, and all three fresh-install/update smokes per host delivered the template
+while preserving existing entry/INDEX hashes. Independent review and release evidence are retained
+in the plan; broader body, handoff, refresh and consumer-outcome gaps remain open.
+**Clarification RCA:** the description placeholder specified format without stating how its
+meaning relates to body qualifications. Format checks pass both scoped and strengthened summaries.
+Manual and requested discovery share this template, so one authored change reaches both. Existing
+entry bodies, map summaries and project references retain the same semantic exposure; no generic
+checker or measured behavioral improvement follows from this clarification.
+
 **2026-09-11 capture-quality planning.** The user requested a plan and adversarial Opus review.
 The [revised plan](../.claude/plans/2026-09-11-b223-grounded-capture-plan.md) proposes one 90-minute
 offline diagnostic attempt: compare actual false assertions against smaller repairs, produce an

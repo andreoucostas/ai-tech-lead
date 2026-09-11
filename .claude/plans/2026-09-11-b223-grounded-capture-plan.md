@@ -341,3 +341,47 @@ PS5.1 at CP437. Smoke-install all three dists, then update a disposable installe
 host to show the new template arrives while existing entry/INDEX bytes remain owned by the project.
 Compose and validate all three dists; release through the normal script, complete all eight native
 CI contexts and parity before tagging. No new persistent tests or general semantic checker.
+
+### Implementation review and verification
+
+Frozen implementation: `f774af5723aa698875fc21c065968142e3dc8cb6..ea72178c361c9e6155b97f87b1cf43e264244529`.
+Full review diff SHA-256: `3F74B1FDAFD7DAE5AE64BE2400BF9B556478C00EF66CADCD0765B48CD2A22545`;
+review contract SHA-256: `7011C6A8B20337BBAF6407ABD746E9692E5EFE26811B158F9CC0CBA7A5D38475`.
+Root verified the exact section-9 candidate hash in source and all three dists; reversing only
+the replacement reproduced every original template character. The range contains no other
+product instruction change: four changelog heads and generated copies, plus the scope amendment.
+
+Fresh Claude Code 2.1.260 / `claude-opus-5`, high effort, session
+`d08cd4e9-924c-491e-a853-ef4bb07a2f82` returned ACCEPT without blockers. Read/Glob/Grep only,
+safe/restricted, dontAsk, strict empty MCP, nonpersistent; no implementation participation.
+Native exit 0, no timeout, 169.79 seconds, reported USD0.8449575 against USD2/360-second configured
+limits. It emitted its threat model before candidate/diff reads. It read the neutral cases before
+the candidate, but its claim that it also emitted their grades beforehand is not supported by the
+stream: the grades appeared only in the final verdict. Do not credit that stronger blind claim.
+
+To close that recording gap without another paid model call, a fresh Codex context
+`/root/blind_summary_check` received only the four reporting inputs, eight neutral case files and
+source-level predicate. It returned amber/quartz VALID and linden/osprey INVALID before receiving
+the construction map or candidate. Exact model identifier was not exposed. Root then revealed the
+map: linden strengthened only description; osprey strengthened only INDEX; quartz restores the
+original valid bytes. Root verified both restored file hashes. These are independently graded
+semantic-contract RED/clean examples, not a successful capture observation.
+
+Root accepted Opus's scope and proportionality conclusion, not its suggested comparison checker:
+matching false descriptions and INDEX text would still pass such a check. Only the root changelog
+explicitly says outcomes are unmeasured; consumer notes describe the guidance without an efficacy
+claim. The review's unconditional-execution phrasing is not adopted, and the exhibit's scoped
+"unconditional ... on that branch" wording is not itself evidence of an unconditional runtime call.
+Existing-entry refresh and false bodies remain outside this small delivery. Opus executed no tests;
+its native results and ownership conclusions came from copied logs, source and root receipts.
+
+Direct PS7 7.6.5 and PS5.1 5.1.26100.9444 at CP437 each passed the existing wiki suite 17/0,
+explicit valid/invalid-date/restored-valid checks at exits 0/1/0, and all four format-only examples
+at exit 0. Each host performed three fresh installs and three updates (12 installer invocations
+total), with root-observed candidate hashes and unchanged consumer entry/INDEX hashes. The format
+checker accepts both semantically invalid examples; no truth enforcement is claimed. Full native
+logs, controls, construction map, packet manifest, prompt, argv and raw review are retained at
+`$env:TEMP/b223-template-delivery-20260911-8548023b93d94f60964944436740409b`.
+Raw review SHA-256: `2C9C36A1D040EC40E5009F1F5160A8A06665CB0D38F658EC79415A98F621E39C`.
+Normal release stamping, aggregate gates and all eight CI contexts plus parity remain the final
+promotion steps. No waiver, additional capture actor or dedicated comparison is selected.

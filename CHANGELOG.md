@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.86.5 — Unreleased
+## 0.86.5 — 2026-09-11
 
 B-223 clarifies the shared wiki template's description placeholder: preserve the whole entry's
 scope and certainty, and use the same description in INDEX. This is a drafting-contract

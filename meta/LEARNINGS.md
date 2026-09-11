@@ -2577,3 +2577,13 @@ behavioral improvement. A complete calibrated trace with no required read is obs
 whereas unavailable access or observation is cannot-examine. Preserve that distinction and do not
 require an extra Read solely to infer an internal semantic recheck. The plan/review record retains
 both accepted critique and root's corrections; no new actor or product change was run.
+
+## 2026-09-11 — Match a small prose delivery to the claim it can support (B-223)
+
+The subsequent next-step request turned the reviewed template recommendation into a bounded
+documentation delivery. The earlier diagnostic's stronger model-evidence prerequisite was amended
+explicitly, not recorded as passed. Existing native checks and install/update smokes establish
+format and delivery while preserving owner bytes; independent semantic examples assess the
+summary/body contract. None establishes better model adherence or consumer outcomes. Keep that
+distinction while applying the ordinary template definition of done, rather than requiring a new
+paid capture campaign for every clarified placeholder.

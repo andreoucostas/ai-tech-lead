@@ -1,8 +1,8 @@
 <!--
 ai-tech-lead-framework
   template: angular
-  version: 0.86.4
-  applied: 2026-09-09
+  version: 0.86.5
+  applied: 2026-09-11
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->
 # [Project Name]
