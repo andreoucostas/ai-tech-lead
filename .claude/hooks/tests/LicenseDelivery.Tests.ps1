@@ -97,6 +97,7 @@ Reset-Tests
                             Assert (Test-Path -LiteralPath (Join-Path $t '.claude/adoption-pending.json')) "$ending fixture did not exercise adoption mode"
                         } else {
                             Assert ((Get-LfText (Join-Path $t '.claude/framework-version.json')) -ceq (Get-LfText (Join-Path $repoRoot "dist/$dist/.claude/framework-version.json"))) "$ending update did not install the current framework stamp"
+                            Assert ($r.Out -notmatch ('left untouched[^\r\n]*' + [regex]::Escape($licenseRel))) "$ending update falsely reported the migrated licence as untouched"
                         }
                     } finally { Remove-Item -Recurse -Force -LiteralPath $t -ErrorAction SilentlyContinue }
                 }

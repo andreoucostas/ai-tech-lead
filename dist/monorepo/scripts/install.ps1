@@ -238,9 +238,9 @@ if ($updateMode) {
     }
 }
 
-# These legal files are neither protected nor ordinary framework files. Protection would freeze a
-# stale framework-owned notice; bulk copying would silently clobber consumer files. Preflight their
-# explicit ownership policy before this installer mutates the target, then copy them after the bulk.
+# Legal files need their own preservation decision: generic protection would freeze an explicitly
+# recognised prior licence; bulk copying would clobber consumer collisions. Preflight their policy
+# before mutation and use the licence decision when planning writes below.
 $legalLicense = 'LICENSES/ai-tech-lead-MIT.txt'
 $legalNotice = 'NOTICE-ai-tech-lead.md'
 $sourceLicense = Join-Path $src $legalLicense
@@ -1009,7 +1009,7 @@ foreach ($relative in $incomingPaths) {
     $exists = $null -ne (Get-Item -Force -LiteralPath $destination -ErrorAction SilentlyContinue)
     $preserveDiscovered = $claudeSkill.Success -and $discoveredSkillNames.Contains($claudeSkill.Groups[1].Value)
     $preserve = $exists -and ($relative -in $copyIfAbsent -or
-        ($updateMode -and $relative -in $protected) -or
+        ($updateMode -and $relative -in $protected -and $relative -ne $legalLicense) -or
         ($relative -eq $legalLicense -and -not $copyLegalLicense) -or $preserveDiscovered)
     if ($preserve) { [void]$preservePlan.Add($relative); continue }
     [void](Add-PlannedWrite -Relative $relative -ForceCreate:$archiveSources.Contains($relative))
@@ -1189,7 +1189,10 @@ foreach ($relative in $skillDeletePlan) {
     $path = Get-ContainedTargetPath -Relative $relative
     if (Test-Path -LiteralPath $path) { Remove-Item -Recurse -Force -LiteralPath $path }
 }
-if ($updateMode) { Write-Output "  consumer-owned content files left untouched ($($protected -join ', '))." }
+if ($updateMode) {
+    $untouchedContent = @($protected | Where-Object { $_ -ne $legalLicense -or -not $copyLegalLicense })
+    Write-Output "  consumer-owned content files left untouched ($($untouchedContent -join ', '))."
+}
 
 if ($adoptMode) {
     # Durable adoption marker: the SessionStart hook warns every new session, and docs-sync-check
