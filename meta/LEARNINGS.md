@@ -2562,3 +2562,18 @@ Keep descriptions and indexes inside the same truth boundary as bodies. A claime
 search needs observed scope/content evidence, not a filename inventory or a plausible summary.
 Record routing/format successes separately from semantic acceptance. See the reporting section
 of `meta/repository-knowledge-semantic-acceptance.md` and B-222/B-223/B-224 for evidence and RCA.
+
+## 2026-09-11 — Compare remedies per assertion before buying a capture study (B-223)
+
+The first capture-quality plan paired handoff grounding with same-session inference and allocated
+four model calls before scoring smaller remedies against the actual false claims. Independent Opus
+critique caught the proportionality gap. Root narrowed the proposed next work to a bounded offline
+diagnosis, exact candidate and scoped controls, retaining no-change as a useful result.
+
+Review remedies need the same source discipline as product claims. Two unsupported absence claims
+were in wiki bodies, so a description/INDEX repair would not fix them; an additional absence rule
+would repeat an existing obligation. Unmeasured cost fractions and static rule edits cannot show
+behavioral improvement. A complete calibrated trace with no required read is observable non-reading,
+whereas unavailable access or observation is cannot-examine. Preserve that distinction and do not
+require an extra Read solely to infer an internal semantic recheck. The plan/review record retains
+both accepted critique and root's corrections; no new actor or product change was run.

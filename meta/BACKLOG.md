@@ -507,6 +507,21 @@ correctly, then refused the exact owner-approved application; the separate missi
 state also remains missed. Retained forward runs do not establish broad recall or target-host
 efficacy. No registry, graph service or promotion system.
 
+**2026-09-11 capture-quality planning.** The user requested a plan and adversarial Opus review.
+The [revised plan](../.claude/plans/2026-09-11-b223-grounded-capture-plan.md) proposes one 90-minute
+offline diagnostic attempt: compare actual false assertions against smaller repairs, produce an
+exact candidate and scoped valid/hostile controls, or choose no product change. Opus's initial
+REVISE exposed premature four-call evaluation and mixed mechanisms; root withdrew that campaign
+and checked its source/evidence corrections. Corrective Opus review ACCEPTED the narrowed diagnostic
+contract, with directly applied nonblocking corrections. A description repair targets metadata qualification,
+not false bodies or handoff interpretation. Current authority is planning/review only; no new
+capture actor, product change or efficacy result followed. Review disposition is in the companion
+[review record](../.claude/plans/2026-09-11-b223-grounded-capture-review.md).
+**Planning RCA:** parser gates cannot judge claim truth, invented searches or whether a proposed
+intervention is proportionate. INDEX descriptions, bodies, maps and references share the semantic
+exposure. Review of the actual claims caught design overreach; no duplicate evidence rule, generic
+truth gate or automatic resumption of B-224/B-225 follows. B-223 remains PARTIALLY DONE.
+
 **Reporting coverage.** See the
 [B-235 amendment](../.claude/plans/2026-09-10-reporting-knowledge-coverage.md). Reuse existing capture
 and changed/missing-helper checks for report findings through the wiki, owner-document and map routes.

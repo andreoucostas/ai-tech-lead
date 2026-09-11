@@ -3997,3 +3997,32 @@ obligations; rule 5 covers source-column to target-concept mapping, not full mig
 B-235 is consolidated into those items as one bounded reporting case. No report feature, migration
 contract, consumer-data dependency or model acceptance run is authorized or completed. Any future
 execution must lock its own exact inputs, host and spend authority.
+
+## WSD-086: diagnose capture claims before expanding the intervention (2026-09-11)
+
+**Context.** Retained September 8 capture repeated worker errors without decisive source reads;
+September 10 reporting read the source but overclaimed in bodies and metadata. The user requested
+a next-work plan and Opus critique. Existing rules already demand factual grounding, so repeated
+misses establish a problem but do not identify a missing instruction.
+
+**Decision.** The proposed next package is a 90-minute offline diagnostic attempt: a per-assertion
+comparison of smaller alternatives, one exact candidate if justified, scoped valid/hostile controls
+and independent adjudication. No-change is a valid outcome. The initial four-call study is withdrawn;
+a future reporting pair needs its own concrete lock and execution authority. A description/INDEX
+repair may address lost qualification but cannot claim to repair body inference or worker handoff.
+No product implementation design or shipping decision is locked by textual diagnosis.
+
+**Alternatives and review.** Retain current rules; examine the smallest metadata operation; consider
+broader proposition construction only for a named additional mechanism. No new registry, general
+harness, truth checker or automatic reviewer is justified. Initial independent Opus returned REVISE
+on proportionality, joined mechanisms and unallocated controls. Root source-checking accepted the
+concrete gaps but rejected unsupported cost/effect estimates, a duplicate absence rule, and treating
+observed non-reading as inability to examine. Corrective Opus review accepted the diagnostic contract
+and withdrew the unsupported estimates/classification. The companion records direct minor corrections
+and the explicit absence of implementation, actor or release evidence.
+
+**Authority and limits.** This delivery is the user-requested plan/review and repository metadata;
+no new capture actor, product change, consumer task or Copilot campaign ran. B-223 remains partial.
+Plan and evidence: `.claude/plans/2026-09-11-b223-grounded-capture-plan.md` and
+`.claude/plans/2026-09-11-b223-grounded-capture-review.md`. WSD-074/WSD-080 remain the governing
+product/evidence boundaries; this does not resume B-224, RK1/B-225, FS2/B-42 or confirmed refresh.
