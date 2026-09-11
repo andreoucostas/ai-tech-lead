@@ -5,6 +5,12 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.86.7 — Unreleased
+
+- The MIT licence now credits `ai-tech-lead contributors`. Updates replace the exact previous
+  framework licence automatically; locally modified licence files still require manual resolution.
+  The MIT terms are unchanged.
+
 ## 0.86.6 — 2026-09-11
 
 - Mutable `.claude/ai-audit.log` telemetry is now ignored. For an already tracked log, follow the

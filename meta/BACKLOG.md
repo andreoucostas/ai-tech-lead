@@ -957,6 +957,22 @@ contrast are source/static evidence; no model dispatch or sequential-fallback ef
 
 ## Independent evidence and deferred work
 
+### B-238 · Remove personal attribution from the current MIT licence
+**Filed against:** v0.86.6 (2026-09-11)
+**Priority:** P3 · **Effort:** S · **Invariants:** #1 #4 #7
+**Status:** Implementing the copyright holder's requested attribution change for v0.86.7.
+
+The [contract](../.claude/plans/2026-09-11-licence-attribution.md) replaces the personal holder name
+with the project contributors in the root, README and shared licence source. Recognise the exact
+prior notice in the installer so existing installations can update; reject all edited notices.
+
+**RCA.** The prior attribution was intentional; the user's preference has changed. The scope sweep
+found the root notice, README and shared notice composed into all three distributions. Existing
+licence-parity and collision gates correctly enforce their contracts, but text-only replacement
+would make the old framework notice appear to be a consumer collision. A fixed prior-content hash
+handles this one migration without ignoring holder or permission text. Historical records remain
+historical; future licence revisions require equally explicit compatibility review.
+
 ### B-237 · Bind release promotion to the immutable commit whose CI passed
 **Filed against:** v0.86.5 (2026-09-11)
 **Priority:** P1 · **Effort:** M · **Invariants:** #6

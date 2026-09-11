@@ -11,6 +11,13 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.86.7 — Unreleased
+
+B-238 replaces personal MIT licence attribution with `ai-tech-lead contributors` in the root
+licence, README and all distributions. The installer recognises only the exact previous framework
+licence by normalized-content SHA256, allowing its attribution to update without accepting locally
+modified licence files. MIT terms and year are unchanged.
+
 ## 0.86.6 — 2026-09-11
 
 B-236 addresses field-reported telemetry staging, debt-reference drift and warehouse overclaims.

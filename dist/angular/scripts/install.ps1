@@ -250,11 +250,20 @@ $copyLegalLicense = $true
 if (Test-Path -LiteralPath $targetLicense -PathType Leaf) {
     $sourceText = [IO.File]::ReadAllText($sourceLicense) -replace "`r`n", "`n" -replace "`r", "`n"
     $targetText = [IO.File]::ReadAllText($targetLicense) -replace "`r`n", "`n" -replace "`r", "`n"
-    if ($sourceText -cne $targetText) {
-        [Console]::Error.WriteLine("ERROR: Refusing to overwrite '$legalLicense': the existing file is not identical to the framework licence.")
-        exit 3
+    if ($sourceText -ceq $targetText) {
+        $copyLegalLicense = $false
+    } else {
+        # Only the exact prior framework notice may migrate to the contributors attribution.
+        # Hash the whole normalized text so changed holders or MIT terms still refuse.
+        $licenseSha = [Security.Cryptography.SHA256]::Create()
+        try {
+            $targetLicenseHash = [BitConverter]::ToString($licenseSha.ComputeHash([Text.Encoding]::UTF8.GetBytes($targetText))).Replace('-', '').ToLowerInvariant()
+        } finally { $licenseSha.Dispose() }
+        if ($targetLicenseHash -cne '14d518c3282ed071127059700be0498802c3a89ddeca37e42150445f93a04e17') {
+            [Console]::Error.WriteLine("ERROR: Refusing to overwrite '$legalLicense': the existing file is not identical to the framework licence.")
+            exit 3
+        }
     }
-    $copyLegalLicense = $false
 }
 if ((Test-Path -LiteralPath $targetNotice -PathType Leaf) -and
     -not ([IO.File]::ReadAllText($targetNotice).Contains('FRAMEWORK-OWNED'))) {

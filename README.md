@@ -154,6 +154,6 @@ archived and read-only, frozen at v0.25.5.
 
 ## Licence
 
-[MIT](./LICENSE) — copyright (c) 2026 Costas Andreou. Every dist also ships
+[MIT](./LICENSE) — copyright (c) 2026 ai-tech-lead contributors. Every dist also ships
 `LICENSES/ai-tech-lead-MIT.txt` and `NOTICE-ai-tech-lead.md`, so the licence and notice travel with
 the installed framework files.
