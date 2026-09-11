@@ -209,7 +209,9 @@ already there, and so a report can be written against the joins the warehouse ac
       |--------|--------------------|-----------------|------------------|-----|--------------|
 
    4. **Dimensional semantics** from step 4, and the views/marts each entity feeds.
-   5. **Coverage** — state plainly what you could not read (`.dtsx` binaries, dynamic SQL,
+   5. **Coverage** — name the inspected tables with their database/schema scope and source evidence;
+      distinguish them from inventory-only or unread groups, whose uninspected key/relationship
+      properties remain unresolved. State plainly what you could not read (`.dtsx` binaries, dynamic SQL,
       externally-held pipelines, procs not in this repo), how many facts carry `UNRESOLVED` edges,
       and which. A map that is silent about its own blind spots is what lets a naming guess look
       like knowledge.
@@ -230,7 +232,12 @@ already there, and so a report can be written against the joins the warehouse ac
       **significant** where a report author would be misled without totals necessarily being wrong,
       and **advisory** for a convention preference with no demonstrated numeric consequence.
       Always cite the concrete file/table/column or conflicting paths, state the consequence, and
-      suggest the smallest remediation. If remediation changes schema, say that impact analysis is
+      suggest the smallest remediation. Scope negative findings and their remediation to the
+      explicitly inspected objects: absence of PK/FK declarations in inspected source for a subset
+      of tables does not establish absence across a database or its live deployment. Inventory-only
+      objects are not evidence of absence. Missing declarations alone do not establish a defect
+      or justify adding constraints; cite the violated convention or demonstrated consequence.
+      If remediation changes schema, say that impact analysis is
       required first; do not invent migration cost or downstream consumers. If `CLAUDE.md` >
       Conventions > Data Access or `docs/defaults.md` explicitly and coherently permits the pattern,
       record the convention instead of calling it a defect. Do not emit an empty placeholder row.

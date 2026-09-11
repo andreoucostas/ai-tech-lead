@@ -9,9 +9,18 @@ framework checkout; that directory is the incoming framework root, and
    `.claude/framework-version.json`; it is authoritative if the protected `CLAUDE.md` header
    disagrees. Read the incoming distribution's `CHANGELOG.md` from the fresh framework checkout.
 
-2. **Preserve local work.** Commit or otherwise preserve target changes, including customizations
-   to files the framework owns and will replace. The real update enforces its normal Git-state
-   preflight; do not bypass it.
+2. **Preserve local work.** Keep mutable `.claude/ai-audit.log` telemetry locally; do not commit it
+   just to satisfy update preflight. From the target root, run `git ls-files -- .claude/ai-audit.log`.
+   A nonzero exit means tracking could not be examined; resolve it first. If the successful command
+   prints the path, add `ai-audit.log` to `.claude/.gitignore`, then run
+   `git rm --cached -- .claude/ai-audit.log`. This keeps the local file. If Git refuses, inspect the
+   staged and working copies rather than forcing removal. Review and commit the ignore change and
+   staged removal together with intended work. This prevents future telemetry commits; it does not
+   remove prior history. Existing log headers may still say to retain the file in version control
+   because updates preserve its bytes; this guidance supersedes that old instruction.
+   Commit or otherwise preserve other target changes, including customizations to files the
+   framework owns and will replace. The real update enforces its normal Git-state preflight;
+   do not bypass it.
 
 3. **Preview from the incoming distribution root.** Use either native Windows host:
 

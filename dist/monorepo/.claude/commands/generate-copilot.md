@@ -7,6 +7,10 @@ Read `CLAUDE.md` and the framework-generated `.github/instructions/framework-rul
 1. `.github/copilot-instructions.md` — a terse rule digest for **inline editor completions**.
 2. `AGENTS.md` — a **full mirror of CLAUDE.md's portable rules** for Codex and GitHub code review; Cursor also reads it.
 
+Preserve canonical debt identifiers and scope qualifications in both outputs. Do not add a more
+specific debt reference only in a derivative. If a specific reference is missing or ambiguous in
+`CLAUDE.md`, report the source gap for reconciliation before regeneration; never guess an ID.
+
 ## Input
 $ARGUMENTS
 

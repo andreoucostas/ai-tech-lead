@@ -957,6 +957,30 @@ contrast are source/static evidence; no model dispatch or sequential-fallback ef
 
 ## Independent evidence and deferred work
 
+### B-236 · Repair telemetry defaults and bound generated references and warehouse claims
+**Filed against:** v0.86.5 (2026-09-11)
+**Priority:** P1 · **Effort:** S · **Invariants:** #1 #4 #6 #7
+**Status:** Implementation drafted; verification and release pending.
+
+The user reports a staged mutable audit log, a canonical debt reference without the DEBT-001
+identifier present in its derivatives, and a whole-system absence-of-PK/FK claim based on only
+eight inspected fact tables. Consumer repositories are inaccessible, so the latter artifacts
+remain reported. Shared source confirms the ignore/seed mismatch, bootstrap ordering gap, and
+missing explicit coverage boundary for negative findings.
+
+The [contract](../.claude/plans/2026-09-11-field-telemetry-carriers-warehouse.md) limits delivery to
+ignore/default advice and manual tracked-log migration, canonical specific-debt reconciliation,
+and inspected-object finding/remediation scope. No automatic index mutation, schema changes,
+new gate, or consumer/model outcome is claimed.
+
+**RCA.** Hook checks covered append/redaction and installer checks preserved bytes, but neither
+tested subsequent normal Git staging; the seed actively required committing telemetry. Existing
+.state/ ignores cover the other shared hook-state surface. Rule parity checks omit populated
+convention/debt semantics, and warehouse format checks do not compare claims against coverage.
+The same class exposes generated summaries and proposed remedies that add specificity or certainty
+absent from their source. Preserve existing scope/confidence rules and add explicit reconciliation
+at these authoring points; inaccessible consumer repair and model adherence remain unverified.
+
 ### B-42 · Obtain balanced independent field outcomes using FS2
 **Filed against:** v0.31.0 (2026-07-17)
 **Priority:** P1 when a participant exists · **Effort:** M setup plus diary time · **Invariants:** #6

@@ -5,6 +5,16 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.86.6 — Unreleased
+
+- Mutable `.claude/ai-audit.log` telemetry is now ignored. For an already tracked log, follow the
+  upgrade checklist to stop tracking it while keeping the local file; prior Git history remains.
+- Bootstrap reconciles specific debt references in `CLAUDE.md` before generating `AGENTS.md` and
+  Copilot instructions. Generated references retain the canonical identifier and qualifications.
+- Warehouse findings and proposed remedies must stay within explicitly inspected tables and
+  source evidence. Inventory-only objects remain unresolved; missing declarations alone do not
+  justify schema changes. Refresh existing maps to apply this guidance.
+
 ## 0.86.5 — 2026-09-11
 
 - Wiki drafting guidance now asks descriptions to preserve the whole entry's scope and uncertainty,

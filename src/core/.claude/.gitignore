@@ -1,2 +1,4 @@
 # Hook state — runtime stamps used for throttling and dedup.
 .state/
+# Mutable local hook telemetry (existing tracked copies need explicit untracking).
+ai-audit.log

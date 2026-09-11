@@ -289,6 +289,11 @@ Effort: S (< 1hr) / M (half day) / L (1-2 days) / XL (needs spike)
 
 Sort by severity then effort. One `## DEBT-NNN` block per item.
 
+Before generating rule carriers, reconcile `CLAUDE.md` references to specific debt items with the
+IDs actually assigned in `TECH_DEBT.md`. Update the canonical reference first, then derive both
+`AGENTS.md` and `.github/copilot-instructions.md` from it. Preserve established IDs; report any
+ambiguous match instead of guessing or renumbering. Generic links to the register need no item ID.
+
 Before replacing the register, preserve every existing `## Dismissed proposals` row byte-for-byte. Derive `<area>::<claim-slug>` from the stable subsystem and problem, not severity or remedy. Suppress a candidate with the same key, or the same problem and consequence over overlapping paths/symbols. Reopen only for materially changed evidence; keep the dismissal and add `Reopens dismissal: <key>` plus `Evidence delta: <specific change>` to the new active block.
 
 Use only selected-profile paths and categories in the register: a warehouse-only repo uses SQL/load/orchestration paths and warehouse validation/deployment categories, not the `.cs` examples above. If the .NET profile's A5 found no test projects, write one Severity-High Testing entry whose recommended fix explicitly names the `add-tests` skill's suite-bootstrap mode. If W3 found no warehouse test or validation assets, write a warehouse Testing entry based on that finding, without naming a .NET tool. Surface applicable entries in the top 3 quick wins.

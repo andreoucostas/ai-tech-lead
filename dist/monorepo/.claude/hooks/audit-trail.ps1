@@ -58,7 +58,7 @@ if (-not $branch) { $branch = 'unknown' }
 
 $timestamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
 
-# Normalise to a repo-relative path so the committed log stays portable and does not leak
+# Normalise to a repo-relative path so the local log stays portable and does not leak
 # local absolute paths (usernames, drive layout). The hook's cwd is the repo root.
 # Note: $ErrorActionPreference is SilentlyContinue, under which Resolve-Path on a missing
 # path returns $null *without throwing* — force a terminating error and guard the result
