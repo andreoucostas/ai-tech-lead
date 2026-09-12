@@ -957,54 +957,6 @@ contrast are source/static evidence; no model dispatch or sequential-fallback ef
 
 ## Independent evidence and deferred work
 
-### B-238 · Remove personal attribution from the current MIT licence
-**Filed against:** v0.86.6 (2026-09-11)
-**Priority:** P3 · **Effort:** S · **Invariants:** #1 #4 #7
-**Status:** PARTIALLY DONE: source and focused review complete for v0.86.7; publication needs an uninterrupted normal release run.
-
-The [contract](../.claude/plans/2026-09-11-licence-attribution.md) replaces the personal holder name
-with the project contributors in the root, README and shared licence source. Recognise the exact
-prior notice in the installer so existing installations can update; reject all edited notices.
-
-**RCA.** The prior attribution was intentional; the user's preference has changed. The scope sweep
-found the root notice, README and shared notice composed into all three distributions. Existing
-licence-parity and collision gates correctly enforce their contracts, but text-only replacement
-would make the old framework notice appear to be a consumer collision. A fixed prior-content hash
-handles this one migration without ignoring holder or permission text. Historical records remain
-historical; future licence revisions require equally explicit compatibility review.
-
-**Focused evidence.** Frozen implementation range
-`b03233ad8ddf9e83ab5571f834aa15024ae93150..4f8c8e44a81f93bfe623e0a8b2cb886f4af61107`.
-Root directly observed LicenseDelivery 29/0 and LicenseDrift 1/0 on native PS7 7.6.5 and PS5.1
-5.1.26100.9444, each explicitly reporting CP437. Before the preflight fix, both hosts reported
-six failed migrations; the intermediate candidate exposed three update-preservation failures.
-The final implementation fixes legal-path preservation precedence and its completion summary.
-The root licence differs from the baseline only in its holder text; year and MIT terms match.
-
-**Independent review.** Separate nonimplementing `/root/license_scope` recorded its threat model
-before the diff and found no remaining issues in the final range. Its isolated PS5.1 CP437
-mutation disabled only the dotnet prior-hash rejection: 24 passed, 5 failed, exit 5, with the four
-new hostile attribution/terms cases and existing generic collision case catching the unsafe
-acceptance. Exact-byte restoration gave 29 passed, zero failures/skips, exit 0. Root inspected
-the report, red/clean logs, exit receipts and restored installer hash. This is a separate isolated
-legacy-host execution vantage; exact runtime model id was unavailable (GPT-6 family context),
-and no different-family or physical-host review is claimed. The reviewer did not run PS7, full
-release gates or CI; those are separate release evidence. Earlier incorrectly configured review
-runs are excluded. Historical records and Git history remain outside this attribution change.
-
-### 2026-09-12 release retry
-
-The initial release run passed all 36 meta-suite files and the offline eval recurrence, then
-refused only elapsed-time budgets (meta 3197.3s; eval recurrence 60442.9s). Windows System events
-recorded repeated Modern Standby intervals during that run; the eval stage spanned overnight.
-Retry the unchanged implementation through the normal release process while a temporary runner
-requests system availability. No repository gate or permanent power setting is changed.
-
-The retry also recorded Modern Standby entries (08:20:29, 08:21:07 and 08:36:56) despite the
-temporary system-execution request. It was stopped after exceeding the meta-stage timing ceiling.
-The release process and temporary request ended; no release push or tag occurred. Keep the PC awake
-through the normal release retry. Do not waive gates or claim publication from these local results.
-
 ### B-237 · Bind release promotion to the immutable commit whose CI passed
 **Filed against:** v0.86.5 (2026-09-11)
 **Priority:** P1 · **Effort:** M · **Invariants:** #6

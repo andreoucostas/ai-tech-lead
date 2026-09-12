@@ -12284,3 +12284,64 @@ branch, preserving the prior grader and hostile assertions. The offline recurren
 failed before this adjustment and passed afterward; consumer installation remains unchanged.
 
 **Focused evidence.** Root observed original-ignore RED and repaired-dist clean staging on all three distributions under native PS7 and PS5.1, plus unchanged local bytes after nonforce migration. AuditTrail passed 8/0 in every dist/host; explicit CP437 reruns passed 8/0 on both hosts. The audit agent ran 18 successful installer smokes; root inspected receipts and actual bootstrap delivery hashes. Independent nonimplementer review found no actionable issues and separately observed old/tracked-ignore RED and new/migrated clean native-Git cases, retained history, and bounded semantic examples. The contract records exact identities, range, corrected instruments and gaps.
+
+### B-238 · Remove personal attribution from the current MIT licence — **DONE v0.86.7 (2026-09-12)**
+**Filed against:** v0.86.6 (2026-09-11)
+**Priority:** P3 · **Effort:** S · **Invariants:** #1 #4 #7
+**Status:** DONE: released in v0.86.7 (2026-09-12).
+
+The [contract](../.claude/plans/2026-09-11-licence-attribution.md) replaces the personal holder name
+with the project contributors in the root, README and shared licence source. Recognise the exact
+prior notice in the installer so existing installations can update; reject all edited notices.
+
+**RCA.** The prior attribution was intentional; the user's preference has changed. The scope sweep
+found the root notice, README and shared notice composed into all three distributions. Existing
+licence-parity and collision gates correctly enforce their contracts, but text-only replacement
+would make the old framework notice appear to be a consumer collision. A fixed prior-content hash
+handles this one migration without ignoring holder or permission text. Historical records remain
+historical; future licence revisions require equally explicit compatibility review.
+
+**Focused evidence.** Frozen implementation range
+`b03233ad8ddf9e83ab5571f834aa15024ae93150..4f8c8e44a81f93bfe623e0a8b2cb886f4af61107`.
+Root directly observed LicenseDelivery 29/0 and LicenseDrift 1/0 on native PS7 7.6.5 and PS5.1
+5.1.26100.9444, each explicitly reporting CP437. Before the preflight fix, both hosts reported
+six failed migrations; the intermediate candidate exposed three update-preservation failures.
+The final implementation fixes legal-path preservation precedence and its completion summary.
+The root licence differs from the baseline only in its holder text; year and MIT terms match.
+
+**Independent review.** Separate nonimplementing `/root/license_scope` recorded its threat model
+before the diff and found no remaining issues in the final range. Its isolated PS5.1 CP437
+mutation disabled only the dotnet prior-hash rejection: 24 passed, 5 failed, exit 5, with the four
+new hostile attribution/terms cases and existing generic collision case catching the unsafe
+acceptance. Exact-byte restoration gave 29 passed, zero failures/skips, exit 0. Root inspected
+the report, red/clean logs, exit receipts and restored installer hash. This is a separate isolated
+legacy-host execution vantage; exact runtime model id was unavailable (GPT-6 family context),
+and no different-family or physical-host review is claimed. The reviewer did not run PS7, full
+release gates or CI; those are separate release evidence. Earlier incorrectly configured review
+runs are excluded. Historical records and Git history remain outside this attribution change.
+
+#### Historical release retries (2026-09-12)
+
+The following records pre-publication attempts and the guidance issued then; the successful
+release below supersedes that retry guidance.
+
+The initial release run passed all 36 meta-suite files and the offline eval recurrence, then
+refused only elapsed-time budgets (meta 3197.3s; eval recurrence 60442.9s). Windows System events
+recorded repeated Modern Standby intervals during that run; the eval stage spanned overnight.
+Retry the unchanged implementation through the normal release process while a temporary runner
+requests system availability. No repository gate or permanent power setting is changed.
+
+The retry also recorded Modern Standby entries (08:20:29, 08:21:07 and 08:36:56) despite the
+temporary system-execution request. It was stopped after exceeding the meta-stage timing ceiling.
+The release process and temporary request ended; no release push or tag occurred. Keep the PC awake
+through the normal release retry. Do not waive gates or claim publication from these local results.
+
+**Release evidence.** Root directly observed normal release tooling exit 0 and all local gates
+pass: composition 10.7s, distribution gates 29.3s, the full 36-file meta suite 596.6s with zero
+failures, and offline eval 54.1s; total 690.7s, within every timing limit. The temporary system
+availability request was cleared after completion. GitHub Actions run
+[`34682108481`](https://github.com/andreoucostas/ai-tech-lead/actions/runs/34682108481) completed
+successfully with all eight Windows execution jobs and `windows-case-parity` green. Root directly
+verified origin refs: `master` at release and CI head
+`6a8297dd2ab9dfbdd704036c5cc591617e2e4dbf`, and annotated `v0.86.7` object
+`df69a80a9b76b6ec4d74dde47214cbf2142699aa` peeled to that exact same commit.
