@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.86.7 — Unreleased
+## 0.86.7 — 2026-09-11
 
 - The MIT licence now credits `ai-tech-lead contributors`. Updates replace the exact previous
   framework licence automatically; locally modified licence files still require manual resolution.

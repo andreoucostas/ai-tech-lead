@@ -2615,3 +2615,18 @@ do not make a shared checkout safe for a pending release. User-approved exact-le
 restored the original CI-green target while retaining the newer work and disclosing the correction
 in the tag annotation. The release-tool repair remains open: a passed check belongs to the exact
 identity examined, including across waits and post-check mutations.
+
+## 2026-09-11 — Licence attribution changes also exercise update preservation (B-238)
+
+A user-requested copyright attribution edit reached both the root and composed licence notices.
+The existing exact-text preflight then refused prior releases, as observed on direct PS7 and
+PS5.1: the new licence suite reported six failed migration cases before compatibility handling.
+Allowing only the frozen whole-notice hash removed the refusal but exposed a second decision:
+update-mode generic protection still preserved the old licence. Both hosts reported three failed
+update migrations until the legal preflight decision took precedence in the write plan. The
+completion message also had to stop claiming the migrated licence was untouched.
+
+The final focused runs explicitly reported CP437 and the native host versions, with 29 licence
+cases and one root/source parity case passing on each host. Recognize exact released content at
+its existing legal path; never normalize away copyright holders or MIT terms to permit an update.
+Earlier chcp-only commands are not claimed as proof of the effective .NET console encodings.
