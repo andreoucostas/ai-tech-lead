@@ -852,38 +852,6 @@ RK1 Claude total USD 7.920006 of USD 10. No Copilot run, container change or pro
 
 ## Bounded correctness and maintenance work
 
-### B-241 · Refresh the maintainer instruction layer: canonical AGENTS.md, change classes, wiring gates
-**Filed against:** v0.86.7 (2026-09-16)
-**Priority:** P1 · **Effort:** M · **Invariants:** #2 #4 #6
-**Status:** IN PROGRESS on branch `worktree-b241-maintainer-layer`. Locked design:
-`.claude/plans/2026-09-16-maintainer-instruction-layer-refresh.md`; decision WSD-089. Meta-only —
-no product version bump, no release. Independent review (claude-opus-5, fresh read-only session)
-returned REVISE with nine findings; all are dispositioned in
-`.claude/plans/2026-09-16-b241-review-record.md` and the revision is re-tested. One observation is
-owed after landing: the `plansDirectory` inbox write in an interactive plan-mode session.
-
-**Problem / evidence.** Root `CLAUDE.md` was 330 lines, about 40% incident narrative, against the host
-vendor's "under 200 lines" guidance; the hand-condensed `AGENTS.md` mirror was gated only by heading
-topology (B-82, blind to body deletion by its own header), and Codex — the primary implementer per
-the review ledger — read the condensed copy while Claude read the full one; 32 of 35 `CLAUDE.md`
-commits since 2026-07-01 needed a hand mirror edit. Plan-mode drafts landed outside the repo (no
-`plansDirectory`); auto-memory was on by default against the file's own self-sufficiency claim;
-`DEVELOPING.md` still described a corrupted `PATH` that no longer exists. Ceremony was uniform: 93
-release tags in ten weeks, ~25 min of gates and CI per shipped change, ~1,700-character evidence
-cells, across 85 S / 34 M / 4 L closed items. The user's words: "impossible to do anything quickly".
-
-**Do.** Invert the root mirror (`AGENTS.md` canonical, `CLAUDE.md` = `@AGENTS.md` + Claude Code
-specifics), certified by the import canary on the current host; trim to ≤200 lines keeping every
-binding clause and the 1–7 numbering; add the change-class ladder and anti-accretion rules;
-`plansDirectory` → `.claude/plans/inbox`, `autoMemoryEnabled: false`, deny rules for `dist/` edits and
-bare `git push`, hook `timeout`; DocTruth import/ceiling gates and MetaHooks settings/skill validators
-(fixture-driven, both hosts); refresh `DEVELOPING.md`; three `meta-*` skills as conveniences.
-
-**Done when.** Canary row recorded in `meta/host-certification.md`; DocTruth and MetaHooks observed
-RED on planted fixtures then GREEN under PS7, PS5.1 and CP437; full meta suite green on both hosts;
-an independent fresh-session review re-observes the planted REDs; CI green on all eight contexts and
-parity; entry archived with its RCA.
-
 ### B-239 · Resolve architecture viewer exposure and evaluate runtime retirement
 **Filed against:** v0.86.7 (2026-09-16)
 **Priority:** P2 · **Effort:** M · **Invariants:** #1, #3, #7
@@ -1243,6 +1211,10 @@ running only compose/freshness/validate-dist plus the `Release*` and `DocTruth` 
 **Status:** Open stub from B-241 (class: mechanism). `.claude/evals/tests/AgentEvals.Tests.ps1` is
 not in the meta-suite manifest and never runs in CI, so it is a gate only seen at release time.
 Decide whether it joins the manifest (with its `TIMING` line) or stays release-only by decision.
+
+B-241 — see [`meta/BACKLOG-DONE.md`](BACKLOG-DONE.md). The stubs B-242 to B-246 above are its
+follow-ups; one interactive observation (the `plansDirectory` inbox write) is owed and named in
+`.claude/plans/2026-09-16-maintainer-instruction-layer-refresh.md`.
 
 B-235 — see [`meta/BACKLOG-DONE.md`](BACKLOG-DONE.md). Its remaining reporting acceptance belongs
 to B-222/B-223/B-224.

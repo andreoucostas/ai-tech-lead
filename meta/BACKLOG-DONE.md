@@ -12345,3 +12345,47 @@ successfully with all eight Windows execution jobs and `windows-case-parity` gre
 verified origin refs: `master` at release and CI head
 `6a8297dd2ab9dfbdd704036c5cc591617e2e4dbf`, and annotated `v0.86.7` object
 `df69a80a9b76b6ec4d74dde47214cbf2142699aa` peeled to that exact same commit.
+
+### B-241 · Refresh the maintainer instruction layer: canonical AGENTS.md, change classes, wiring gates — **DONE (2026-09-16, meta-only; no release)**
+**Filed against:** v0.86.7 (2026-09-16)
+**Priority:** P1 · **Effort:** M · **Invariants:** #2 #4 #6
+**Status:** DONE: landed on `master` as `4e7167e5` + `18455d32` (fast-forward from
+`worktree-b241-maintainer-layer`); CI run 35122855215 green on all eight Windows contexts plus the
+parity decision. Locked design `.claude/plans/2026-09-16-maintainer-instruction-layer-refresh.md`;
+decision WSD-089; review record `.claude/plans/2026-09-16-b241-review-record.md`. Class: mechanism.
+
+**What landed (maintainer layer only).** Root `AGENTS.md` is the canonical maintainer instruction
+file (196/200 lines, 16,554/19,500 bytes); root `CLAUDE.md` is a 23-line entry point importing it.
+The change-class ladder (records / prose / mechanism / critical) and five anti-accretion rules head
+the file. `.claude/settings.json`: `plansDirectory` → gitignored inbox, `autoMemoryEnabled: false`,
+deny rules `Edit(/dist/**)`, `Bash(git push *)`, `PowerShell(git push *)`, hook `timeout`. Gates:
+DocTruth `Get-RootInstructionTopologyViolations` (live import exactly once, ceilings, banner, stray
+tokens, Codex cap) replaces the B-82 heading-topology mapping; MetaHooks
+`Get-SettingsWiringViolations` (hook targets resolve, plans directory exists, boolean
+`autoMemoryEnabled`, deny list present and no inert `Write(...)` rule) and `Get-SkillFileViolations`.
+Three `meta-*` skills. `DEVELOPING.md` loses its stale corrupted-`PATH` section. Canary gains
+`-ImportTarget` and `-OmitImport`; two host-certification rows.
+
+**Evidence.** Canary treatment POSITIVE and negative control `NOT-IN-CONTEXT` (Claude Code 2.1.260,
+haiku, zero tool use). Old DocTruth against the new files: 3 natural REDs including a real
+`scripts/release.ps1` path defect. Two live plants observed RED and restored byte-identical. DocTruth
+18/0 and MetaHooks 14/0 on `pwsh`, native `powershell.exe` and the CP437 leg. Full meta suite
+`0 failure(s) across 36 file(s)` on both hosts, twice (before and after the review revision),
+`TOTAL 407`, manifests byte-identical. Live deny probe: a fresh session with the Edit tool allowed
+was refused on `dist/dotnet/README.md`. Independent review: claude-opus-5, fresh read-only session,
+REVISE with nine findings, all dispositioned and re-tested; the reviewer executed no tests (gap
+disclosed in the record).
+
+**RCA.** *Why did no gate catch it?* Nothing measured the maintainer's own always-loaded context
+(`context-footprint` measures `dist/` only); nothing compared the root mirror's bodies (B-82's gate
+checked headings by explicit decision); and no instrument could see a session-start warning about an
+inert permission rule, because none of the suites launches a Claude Code session. The process-weight
+findings were visible only in aggregate (tags per week, evidence-cell length, effort mix), and no
+gate reads aggregates. *What else is exposed to the same class?* (1) Any settings key whose effect is
+observable only from a live session — `plansDirectory` is still owed one interactive observation,
+named in the plan's landing conditions. (2) Any trim of an instruction file: the review found three
+binding clauses shed by a "cut illustration, keep clauses" rewrite; the removed side of the diff
+needs a clause-by-clause check, which no gate performs and the ceilings do not replace. (3) The
+`release.ps1` refusal text and the ledger preamble still describe evidence as "the reviewer's" —
+B-242. (4) The class is recomputable but not refused mechanically — B-243. Follow-ups B-242…B-246
+are open in `meta/BACKLOG.md`.

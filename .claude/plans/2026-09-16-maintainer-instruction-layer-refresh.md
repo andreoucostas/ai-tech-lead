@@ -102,6 +102,12 @@ when master CI is green and no `watch-ci` is pending; push via `.claude/scripts/
 first CI run green on all eight contexts plus parity; then B-241 moves to `BACKLOG-DONE.md` with its
 RCA.
 
+**Landed 2026-09-16.** Master fast-forwarded `b30d2073` → `18455d32` (two commits, guard: 2
+commits / 33 blobs clean); pushed via `.claude/scripts/push-and-check.ps1`; CI run 35122855215
+**GREEN** — `windows`, three `windows-hooks`, `windows-ps51`, three `windows-hooks-ps51`, and
+`windows-case-parity` all success (watch 585 s). B-241 archived with its RCA in `meta/BACKLOG-DONE.md`;
+follow-ups B-242…B-246 remain open. The branch `worktree-b241-maintainer-layer` is on origin.
+
 **Open observation owed after landing (named):** the `plansDirectory` inbox write can only be
 observed in an interactive plan-mode session. The first interactive Claude Code session the
 maintainer opens in this repo after landing should enter plan mode once, confirm the draft lands in
