@@ -1,5 +1,11 @@
 # Handoff — live-eval session (cheap-model arm)
 
+> **Historical — closed 2026-09-16.** Every item this handoff was written to unblock (B-129, B-134,
+> B-159, B-160) is in `meta/BACKLOG-DONE.md`. The failure modes and standing constraints below are
+> preserved as a record; do not resume the "Start here" recipe without re-locking it. The one clause
+> still cited live is the Codex concurrency hazard ("do not run anything else in PowerShell while a
+> codex round is live").
+
 **Goal:** run the live agent evals on a cheaper model to unblock work that has stalled on spend,
 and to prove the harness runs end to end. Remote access enabled so the run survives without a
 babysitter.

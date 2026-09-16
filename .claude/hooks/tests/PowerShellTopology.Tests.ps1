@@ -49,7 +49,7 @@ function Get-TopologyFindings {
 
 function Get-ActiveFrameworkFiles {
     $files = New-Object System.Collections.Generic.List[IO.FileInfo]
-    foreach ($root in @('scripts','src','dist','.claude/hooks','.claude/scripts','.claude/git-hooks','.github/workflows','.github/hooks')) {
+    foreach ($root in @('scripts','src','dist','.claude/hooks','.claude/scripts','.github/workflows','.github/hooks')) {
         $absolute = Join-Path $repoRoot $root
         if (-not (Test-Path -LiteralPath $absolute -PathType Container)) { continue }
         foreach ($file in @(Get-ChildItem -LiteralPath $absolute -Recurse -File -Force -ErrorAction Stop)) {

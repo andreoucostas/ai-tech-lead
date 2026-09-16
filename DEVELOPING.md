@@ -1,7 +1,8 @@
 # DEVELOPING — operational runbook
 
-Commands, not philosophy. The rules and the meta-invariant list live in `CLAUDE.md`; this file
-**references** them by number and never restates them. Paths assume cwd = the repo root.
+Commands, not philosophy. The rules, the change classes and the meta-invariant list live in
+`AGENTS.md` (the canonical maintainer file, imported by `CLAUDE.md`); this file **references** them by
+number and never restates them. Paths assume cwd = the repo root.
 
 ## Repo map
 
@@ -19,6 +20,8 @@ Commands, not philosophy. The rules and the meta-invariant list live in `CLAUDE.
 | `.claude/scripts/watch-ci.ps1` | watches GitHub Actions for a commit; 0 green / 1 red / 3 cannot-verify | used by `release.ps1` step 5c, runnable by hand |
 | `.claude/scripts/_ci-decision.ps1` | the publish decision table (tag / exit code) as a callable function | dot-sourced by `release.ps1` and by its tests |
 | `.claude/plans/` | plans [Conventions] | includes the locked B-21/B-22/B-27 design specs |
+| `.claude/plans/inbox/` | plan-mode drafts (gitignored; `plansDirectory`) | promote a plan you keep by renaming it to `.claude/plans/YYYY-MM-DD-<slug>.md` |
+| `.claude/skills/meta-*/` | maintainer conveniences: `/meta-gates <class>`, `/meta-review-handoff`, `/meta-release` | required by no rule; they run the commands this file documents |
 | `meta/` | `BACKLOG.md`, `workspace-decisions.md`, `LEARNINGS.md`, `ci-handover.md`, `changelogs/legacy-*.md` | maintainer layer; never ships. No root `docs/` — that name is the consumer's |
 | `scripts/meta-denylist.txt` | the `no-meta-leak` patterns [#6] | one authority, read by `validate-dist.ps1` |
 
@@ -32,8 +35,10 @@ pwsh -NoProfile -File .claude/scripts/push-and-check.ps1
 ```
 
 The guard exits 3 if it cannot enumerate the destination remote; it never treats CANT-VERIFY as a
-policy failure or success. A direct `git push` remains mechanically possible, so the wrapper is the
-maintainer contract rather than server-side enforcement.
+policy failure or success. A direct `git push` remains mechanically possible for a human, so the
+wrapper is the maintainer contract rather than server-side enforcement. Claude Code sessions are
+additionally denied a bare `git push` by `.claude/settings.json` (the wrapper is unaffected: the rule
+matches the tool-call text, not child processes). If the user approves a direct push, the user runs it.
 
 ### Verify reviewer-side probes before recording green
 
@@ -150,8 +155,8 @@ a `DENY` when a legitimate consumer-facing word trips the check.
 Strict EOL-normalized byte-compare of `dist/{dotnet,angular}` against the Phase-0 freeze tags
 (materialized from history — needs full clone depth). **Retired from CI at the v0.26.0 release**,
 which deliberately changed shipped content; the freeze tags are no longer a live baseline. The
-script remains for a manual re-audit against the `pre-restructure` tag (see CLAUDE.md → Migration
-status note). `dist/monorepo` never had a baseline (new capability).
+script remains for a manual re-audit against the `pre-restructure` tag (see `AGENTS.md` → Status).
+`dist/monorepo` never had a baseline (new capability).
 
 ```powershell
 pwsh -NoProfile -File scripts/fidelity-check.ps1 dotnet
@@ -184,7 +189,7 @@ parser gates (v0.26.3). These two cover what a parser cannot. Drop a new `*.Test
 | Gate | What it drives | The defect class it exists to catch |
 |------|----------------|--------------------------------------|
 | `InstallerContract.Tests.ps1` | **Runs the shipped PowerShell installer** for all three dists in greenfield and brownfield modes and asserts its **stdout** states the whole agent contract (commit the files; task NOT complete until handoff; don't hand-replicate `/bootstrap`\|`/adopt`; `docs-sync-check` is red by design). | A mode branch that quietly stops printing part of the contract. Greenfield had drifted weaker than brownfield and a real agent duly copied files and walked away without committing them. |
-| `DocTruth.Tests.ps1` | The **authoring** docs vs the repo that exists: one version stamp everywhere, README's claimed version == what's shipped, no phantom marker syntax, every `scripts/…` path in a root doc resolves, every script `ci.yml` invokes exists. | Docs that lie to the *maintainer* — which is how the next defect gets authored. A marker syntax that the composer has never implemented was documented in four files at once. |
+| `DocTruth.Tests.ps1` | The **authoring** docs vs the repo that exists: one version stamp everywhere, README's claimed version == what's shipped, no phantom marker syntax, every `scripts/…` path in a root doc resolves, every script `ci.yml` invokes exists, root `CLAUDE.md` carries a live `@AGENTS.md` import and both root files stay under their line/byte ceilings (B-241). `MetaHooks.Tests.ps1` guards the wiring beside it: every `settings.json` hook target resolves, `plansDirectory` exists, auto-memory is off, each `meta-*` skill's frontmatter names its directory. | Docs that lie to the *maintainer* — which is how the next defect gets authored. A marker syntax that the composer has never implemented was documented in four files at once. |
 
 Red-test them the same way as any gate — plant the defect, watch it fail, restore:
 
@@ -209,56 +214,41 @@ not automatic, and its results are a trend log, not a pass/fail release conditio
   `pwsh` 7 and `powershell.exe` 5.1; each child prints and asserts its major version and the two
   runs must report equal, non-zero case counts.
 
-### Agent-host paths on this box — none of them resolve by bare name
+### Host resolution and the legacy-host hostile-code-page leg
 
-The session `PATH` contains three entries and the third is the **literal unexpanded string
-`${PATH}`**, so every agent host is invisible to a bare command name. This is a session artifact —
-the registry is fine, and "fixing" it is a known dead end. Use absolute paths, or prepend the
-directory for the child process.
-
-> **Repair `PATH` before running any gate suite, or you are measuring a machine that does not
-> exist.** `C:\Windows\System32` is *also* absent, so even `powershell` does not resolve
-> (`(Get-Command powershell).Source` returns nothing). The shipped `framework-doctor.ps1` spawns a
-> bare `powershell` when it runs under 5.1; with this `PATH` that spawn fails and the doctor reports
-> mirror drift that does not exist, failing a **dist** hook suite — which `release.ps1` cannot waive
-> by design. Measured on one unmodified tree, same command, only `PATH` changed:
-> `29 passed, 1 failed, 1 skipped` → `31 passed, 0 failed, 0 skipped`. Note the skip: a broken
-> `PATH` silently *removes* coverage as well as adding false failures. Prepend this first:
-> `$env:PATH = "C:\Windows\System32;C:\Windows;C:\Windows\System32\WindowsPowerShell\v1.0;" + $env:PATH`
-> Corollary: treat any 5.1-only failure here as `PATH`-suspect **before** diagnosing it as an
-> encoding bug (see B-130 — that was its original hypothesis, and it was wrong for this case).
->
-> **When PowerShell 7 launches Windows PowerShell 5.1 through an intermediate `cmd.exe`, remove
-> `PSModulePath` from that child environment.** PowerShell 7 corrects module paths when it starts
-> `powershell.exe` directly, but the intermediate process inherits and forwards PowerShell 7's
-> module roots. Windows PowerShell can then select incompatible modules and report built-in commands
-> such as `Get-FileHash` as missing. This is a broken launcher, not product or test evidence.
-> Microsoft documents the boundary and remedy in
-> [`about_PSModulePath`](https://learn.microsoft.com/powershell/module/microsoft.powershell.core/about/about_psmodulepath).
-> For the required legacy-host hostile-code-page run, use this shape (substitute the focused suite):
->
-> ```powershell
-> cmd.exe /d /c "set PSModulePath=&& chcp 437 >nul && powershell.exe -NoProfile -ExecutionPolicy Bypass -File .claude\hooks\tests\<Suite>.Tests.ps1"
-> ```
->
-> Do not “fix” a resulting false red by hardening one command inside the subject. An unnormalised
-> process can break any module-backed cmdlet and would leave the rest of that run untrustworthy.
+Every agent host on this box resolves by bare name (`pwsh`, `powershell`, `claude`, `codex`, `gh`,
+`node`; verified 2026-09-16 — the corrupted `${PATH}` session artifact recorded here in 2026-07 is
+gone). If a bare name stops resolving, suspect the session `PATH` **before** diagnosing an encoding
+bug: B-130's first hypothesis was encoding and it was wrong. A failed bare `powershell` spawn makes the
+shipped `framework-doctor.ps1` report mirror drift that does not exist, and a broken `PATH` silently
+*removes* coverage (a skip) as well as adding false failures. `copilot` is an npm shim that shells out
+to `node`, so `'node' is not recognized` means the nodejs directory is missing, not Copilot. Absolute
+paths, for scripts that must not depend on `PATH`:
 
 | Tool | Absolute path |
 |---|---|
 | Claude Code | `$env:USERPROFILE\.local\bin\claude.exe` |
+| Codex CLI | `$env:LOCALAPPDATA\Programs\OpenAI\Codex\bin\codex.exe` |
 | Copilot CLI | `$env:APPDATA\npm\copilot.cmd` |
 | GitHub CLI | `C:\Program Files\GitHub CLI\gh.exe` |
 | pwsh 7 | `C:\Program Files\PowerShell\7\pwsh.exe` |
 | node | `C:\Program Files\nodejs\node.exe` |
 
-Each fails differently and none of the errors names `PATH`, which is why this table exists:
+**When PowerShell 7 launches Windows PowerShell 5.1 through an intermediate `cmd.exe`, remove
+`PSModulePath` from that child environment.** PowerShell 7 corrects module paths when it starts
+`powershell.exe` directly, but the intermediate process inherits and forwards PowerShell 7's module
+roots. Windows PowerShell can then select incompatible modules and report built-in commands such as
+`Get-FileHash` as missing. This is a broken launcher, not product or test evidence. Microsoft documents
+the boundary and remedy in
+[`about_PSModulePath`](https://learn.microsoft.com/powershell/module/microsoft.powershell.core/about/about_psmodulepath).
+For the required legacy-host hostile-code-page run, use this shape (substitute the focused suite):
 
-- `claude` → the harness's own `claude CLI is not installed or not on PATH` (accurate, but reads as
-  "install it").
-- **`copilot` → `'"node"' is not recognized`** — the npm shim shells out to `node`, so Copilot looks
-  broken when the real gap is `C:\Program Files\nodejs`. Prepend **both** the nodejs directory and
-  the npm directory before invoking Copilot.
+```powershell
+cmd.exe /d /c "set PSModulePath=&& chcp 437 >nul && powershell.exe -NoProfile -ExecutionPolicy Bypass -File .claude\hooks\tests\<Suite>.Tests.ps1"
+```
+
+Do not “fix” a resulting false red by hardening one command inside the subject. An unnormalised
+process can break any module-backed cmdlet and would leave the rest of that run untrustworthy.
 
 ### The live agent-behavior harness (B-41 — maintainer-triggered, spends budget, not a gate)
 
@@ -331,8 +321,9 @@ Get-ChildItem -Recurse -Filter *.ps1 -Path src,dist,scripts,.claude | ForEach-Ob
 snippet or stack whole-file that has a monorepo sibling does NOT reach `dist/monorepo` — review
 and update the sibling in the same task.** Core edits, one-sided snippets, and the 5
 concat-derived markers flow to all three dists automatically.
-Also sweep agent-authored artifacts for tool-syntax leakage before committing:
-`rg -n '</content>|</invoke>' src`.
+Also sweep agent-authored artifacts for tool-syntax leakage before committing (`rg` is not on this
+box's `PATH`; Claude's Grep tool bundles its own ripgrep, the shell does not):
+`Get-ChildItem -Recurse -File src | Select-String -Pattern '</content>|</invoke>'`.
 
 ## Install smoke test [Definition of done]
 
@@ -379,7 +370,7 @@ stamp drift twice:
 2. Have a reviewer who did not participate in implementation use a **separate session**. Starting
    from the frozen contract and immutable range before the implementation narrative, record their
    model/agent, blind-first threat model, one release-specific hostile case or mutation observed
-   red, the clean rerun, environment, and gaps (CLAUDE.md → Maintenance model #2/#3). Add an
+   red, the clean rerun, environment, and gaps (`AGENTS.md` → Maintenance model #2/#3). Add an
    orthogonal reviewer or execution vantage for data-loss, security-bypass, or false-green changes.
 3. From PowerShell 7, run `pwsh -NoProfile -File .claude/scripts/release.ps1 -Version <v> -Summary "<one line>"
    -ReviewEvidence "contract <path/hash>; range <commits>; reviewer <agent/model>; independence
@@ -420,9 +411,8 @@ command. Step 5 no longer exits when there is nothing new to stage — it falls 
 push → watch → tag, and every one of those steps is idempotent.
 
 **Prerequisites and escape hatch.** Needs the GitHub CLI, authenticated. `gh` is resolved from `PATH`
-and then from the well-known install locations, because on this box `PATH` is the corrupted one and
-`Get-Command gh` fails while `gh.exe` is installed — a `PATH` problem and an absent tool are reported
-as the different facts they are. `-AllowUnverifiedCi` waives the check and tags anyway; it is a
+and then from the well-known install locations, so a `PATH` problem and an absent tool are reported as
+the different facts they are. `-AllowUnverifiedCi` waives the check and tags anyway; it is a
 *waiver*, not a CANT-VERIFY, and it is recorded in the tag's own annotation.
 
 For ordinary non-release work, push through the wrapper so the command itself reports CI's verdict:
@@ -467,10 +457,14 @@ these scripts by absolute path, capture the exit code before filtering (`$LASTEX
 the output to a variable and filter afterwards), and treat "the command printed a usage/help dump"
 as the signature of a path that did not resolve.
 
-**Launching an implementer session.** The maintenance model requires implementer and reviewer to be
-different sessions. The recipe used to date is the `codex` CLI on Windows, with three traps worth
-knowing: the session `PATH` can arrive with a literal unexpanded `${PATH}` (so invoke interpreters
-by absolute path), the sandbox `PATH` differs from the real environment — which is why a
-self-reported before/after has produced a false pass twice (Maintenance model #3) — and its own
-"tests now pass" must be re-run by you rather than believed.
-**Not re-verified since 2026-07; confirm it still works before relying on it.**
+**Implementer and reviewer sessions.** The maintenance model requires them to be different sessions.
+Current practice (`meta/review-ledger.md`, v0.86.x rows): a Codex CLI session or a Claude Code session
+implements; a *fresh* session — Claude Code (`claude-opus-5`, read-only) or Codex — reviews from the
+frozen contract and immutable range before it reads any implementation narrative.
+`/meta-review-handoff <contract> <base>..<head>` assembles that packet (contract SHA256, range,
+blind-first prompt, `-ReviewEvidence` skeleton); paste it into the reviewer session. Traps that still
+apply: a sandboxed session's `PATH` can differ from the real environment, which is why a
+self-reported before/after has produced a false pass twice (Maintenance model #3) — re-run its "tests
+now pass" yourself; and do not run other PowerShell work while a Codex round is live, because Codex
+has stopped processes it never started (`meta/eval-session-handoff.md`). Codex CLI 0.153.4 and Claude
+Code 2.1.260 observed 2026-09-16.

@@ -1,8 +1,11 @@
 # Framework backlog
 
-Current work only. Reconciled 2026-09-08 after v0.86.0 and WSD-079. Read root `CLAUDE.md`,
-`DEVELOPING.md` and `meta/decisions-index.md` before implementation. Effort: S <= half a session,
-M about one session, L multiple sessions; live observation time is separate from implementation.
+Current work only. Reconciled 2026-09-08 after v0.86.0 and WSD-079. Read root `AGENTS.md` (the
+canonical maintainer instructions; `CLAUDE.md` imports it), `DEVELOPING.md` and
+`meta/decisions-index.md` before implementation. Effort: S <= half a session, M about one session,
+L multiple sessions; live observation time is separate from implementation. Effort is not the change
+class: the ceremony an item needs follows its **class** (records / prose / mechanism / critical),
+decided from the changed paths per `AGENTS.md`.
 
 Strategic contract: `.claude/plans/2026-09-05-repository-knowledge-strategy.md`. The objective is
 broad discovery of repository-specific knowledge and better ordinary Copilot outcomes, not
@@ -849,6 +852,35 @@ RK1 Claude total USD 7.920006 of USD 10. No Copilot run, container change or pro
 
 ## Bounded correctness and maintenance work
 
+### B-241 · Refresh the maintainer instruction layer: canonical AGENTS.md, change classes, wiring gates
+**Filed against:** v0.86.7 (2026-09-16)
+**Priority:** P1 · **Effort:** M · **Invariants:** #2 #4 #6
+**Status:** IN PROGRESS on branch `worktree-b241-maintainer-layer`. Locked design:
+`.claude/plans/2026-09-16-maintainer-instruction-layer-refresh.md`; decision WSD-089. Meta-only —
+no product version bump, no release.
+
+**Problem / evidence.** Root `CLAUDE.md` was 330 lines, about 40% incident narrative, against the host
+vendor's "under 200 lines" guidance; the hand-condensed `AGENTS.md` mirror was gated only by heading
+topology (B-82, blind to body deletion by its own header), and Codex — the primary implementer per
+the review ledger — read the condensed copy while Claude read the full one; 32 of 35 `CLAUDE.md`
+commits since 2026-07-01 needed a hand mirror edit. Plan-mode drafts landed outside the repo (no
+`plansDirectory`); auto-memory was on by default against the file's own self-sufficiency claim;
+`DEVELOPING.md` still described a corrupted `PATH` that no longer exists. Ceremony was uniform: 93
+release tags in ten weeks, ~25 min of gates and CI per shipped change, ~1,700-character evidence
+cells, across 85 S / 34 M / 4 L closed items. The user's words: "impossible to do anything quickly".
+
+**Do.** Invert the root mirror (`AGENTS.md` canonical, `CLAUDE.md` = `@AGENTS.md` + Claude Code
+specifics), certified by the import canary on the current host; trim to ≤200 lines keeping every
+binding clause and the 1–7 numbering; add the change-class ladder and anti-accretion rules;
+`plansDirectory` → `.claude/plans/inbox`, `autoMemoryEnabled: false`, deny rules for `dist/` edits and
+bare `git push`, hook `timeout`; DocTruth import/ceiling gates and MetaHooks settings/skill validators
+(fixture-driven, both hosts); refresh `DEVELOPING.md`; three `meta-*` skills as conveniences.
+
+**Done when.** Canary row recorded in `meta/host-certification.md`; DocTruth and MetaHooks observed
+RED on planted fixtures then GREEN under PS7, PS5.1 and CP437; full meta suite green on both hosts;
+an independent fresh-session review re-observes the planted REDs; CI green on all eight contexts and
+parity; entry archived with its RCA.
+
 ### B-239 · Resolve architecture viewer exposure and evaluate runtime retirement
 **Filed against:** v0.86.7 (2026-09-16)
 **Priority:** P2 · **Effort:** M · **Invariants:** #1, #3, #7
@@ -1171,6 +1203,43 @@ Do not replace FS2 with the old shared-composite requirement. No scheduler/remin
 **Done when.** The newly justified drill and separately designed consumer self-assessment have
 valid execution/delivery evidence, or a reviewed decision retires their remaining premises.
 A polished protocol alone does not complete the value question.
+
+### B-242 · Amend release.ps1 refusal text and the ledger preamble for disclosed non-review cells
+**Filed against:** v0.86.7 (2026-09-16)
+**Priority:** P3 · **Effort:** S · **Invariants:** #6
+**Status:** Open stub from B-241 (class: mechanism). WSD-089 lets a prose-class release supply
+`class prose per WSD-089; reviewer …` as its evidence cell; `release.ps1`'s FATAL text and the ledger
+preamble it writes still describe evidence only as "the reviewer's". Two strings; no gate change.
+
+### B-243 · Refuse a claimed change class that a changed path exceeds
+**Filed against:** v0.86.7 (2026-09-16)
+**Priority:** P3 · **Effort:** M · **Invariants:** #6
+**Status:** Open stub from B-241 (class: critical — it edits `check-outgoing-commits.ps1`). The
+class is recomputable from `git show --stat` by anyone; the guard already inspects every outgoing
+blob and could refuse a `class prose:` subject whose paths match a higher kind. File-level policy
+only; not a gate on the ladder's adoption.
+
+### B-244 · Decide whether consumers clone at a tag or master is declared a pre-release channel
+**Filed against:** v0.86.7 (2026-09-16)
+**Priority:** P3 · **Effort:** S · **Invariants:** #6 #7
+**Status:** Open stub from B-241 (class: records/prose). `README.md` tells consumers to `git clone`
+master; master already carries unreleased content stamped with the previous version and nothing
+detects a clone-of-master install differing from the tag. Batching prose changes widens that window;
+decide `git clone --branch v<X>` in the README or an explicit pre-release statement.
+
+### B-245 · release.ps1 fast path: run the full meta suite only in CI before the tag
+**Filed against:** v0.86.7 (2026-09-16)
+**Priority:** P3 · **Effort:** M · **Invariants:** #6 #7
+**Status:** Open stub from B-241 (class: critical). Local release gates take 11–16 minutes and CI
+re-runs the same suite for another ~9 before the tag; the tag already waits on CI (WSD-029). Weigh
+running only compose/freshness/validate-dist plus the `Release*` and `DocTruth` subset locally.
+
+### B-246 · AgentEvals.Tests.ps1 runs only inside release.ps1
+**Filed against:** v0.86.7 (2026-09-16)
+**Priority:** P3 · **Effort:** S · **Invariants:** #3
+**Status:** Open stub from B-241 (class: mechanism). `.claude/evals/tests/AgentEvals.Tests.ps1` is
+not in the meta-suite manifest and never runs in CI, so it is a gate only seen at release time.
+Decide whether it joins the manifest (with its `TIMING` line) or stays release-only by decision.
 
 B-235 — see [`meta/BACKLOG-DONE.md`](BACKLOG-DONE.md). Its remaining reporting acceptance belongs
 to B-222/B-223/B-224.

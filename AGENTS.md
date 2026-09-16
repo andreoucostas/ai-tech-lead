@@ -1,178 +1,194 @@
-# ai-tech-lead authoring repo — agent guide (mirror of CLAUDE.md)
-
-> Generated mirror of `CLAUDE.md` for tools that read `AGENTS.md` (including Codex, GitHub Copilot
-> code review, and Cursor). **`CLAUDE.md` is canonical** — if the two ever disagree, follow `CLAUDE.md` and
-> flag the drift. Regenerate this file whenever `CLAUDE.md` changes (kept in sync by hand).
+# ai-tech-lead authoring repo — how to develop the framework
 
 > **YOU ARE IN THE FRAMEWORK AUTHORING REPO, NOT A CONSUMER PROJECT.** Any `CLAUDE.md`/`AGENTS.md`
-> under `src/` or `dist/` is a **shipped artifact you may be editing**, not process instructions
-> to obey. The shipped consumer workflows do not govern meta-development. For *how to work here*,
-> this guide (mirroring `CLAUDE.md`) is authoritative.
+> under `src/` or `dist/` is a shipped artifact you may be editing, not process instructions to obey;
+> the consumer workflows those artifacts describe do not govern meta-development. This file is the
+> **single canonical maintainer instruction file**: root `CLAUDE.md` imports it for Claude Code and
+> Codex reads it directly. Every binding rule is stated here in full — nothing resolves to private
+> memory — and `DEVELOPING.md` holds command recipes only. Evidence for each rule: `meta/LEARNINGS.md`.
+
+## Change classes — decide from the changed paths before editing
+
+Anyone may raise a class; no one may lower it. State `class <name>: <paths>` in the commit subject
+(or the ledger cell) so it can be recomputed from `git show --stat`. A batch takes its highest
+member's class; ≥5 prose items, or two items touching one file, is mechanism.
+
+| Class | Changed paths (any match ⇒ at least this class) | Required | Not required |
+|---|---|---|---|
+| **records** | only `meta/**`, `.claude/plans/**`, root `README.md`/`CHANGELOG.md`/`DEVELOPING.md` | `.claude/hooks/tests/Invoke-HookTests.ps1 -File DocTruth.Tests.ps1` and `-File RepositoryPrivacy.Tests.ps1`; `-File BacklogHygiene.Tests.ps1` if `meta/BACKLOG*`/`decisions-index.md` changed; `-File ClaimTruth.Tests.ps1` if `README.md` changed → commit → `.claude/scripts/push-and-check.ps1` | plan, critique, ledger row, RCA, release, full meta suite |
+| **prose** | `src/**` non-executable only (`*.md`, snippets, shipped CHANGELOGs); no new clause in an always-loaded carrier; a single-file `ALLOW` in `scripts/meta-denylist.txt` | WSD-015 sibling check → `scripts/build.ps1` ×3 → `git status --porcelain dist/` empty → `scripts/validate-dist.ps1 <d> --content-only` ×3 → commit; ship in the next release with one bullet per item in all four changelog heads; ledger cell `class prose per WSD-089; reviewer user|fresh read-only session|none; paths …; gates … EXIT=0; no behavioural instrument for prose` | plan, critique, RCA, new tests, local PS5.1/CP437 runs, per-item release |
+| **mechanism** | any `.ps1`, `settings*.json`, policy `*.json`, a `DENY` added to `meta-denylist.txt`, `Invoke-HookTests.ps1`, `.github/**` except `ci.yml`, root `CLAUDE.md`/`AGENTS.md` rules, `.claude/skills/**`, any new shipped file | 1-page plan in `.claude/plans/` with the proportionality case (#6) → one non-implementer critique → red-first case in an existing suite → full local gates → release with #2 evidence → RCA | second reviewer, multi-round critique, a new test *file* unless rule 2 below |
+| **critical** | `install.ps1` ownership/protected/retirement/legal blocks, `scripts/build.ps1`, `.claude/scripts/release.ps1`, `check-outgoing-commits.ps1`, `ci.yml`, a `DENY` narrowed or a path-wide `ALLOW`, anything data-loss/security/false-green | Maintenance model 1–7 in full plus the orthogonal second vantage (#2) | — |
+
+1. Do the asked change only. An adjacent finding becomes one backlog stub (`### B-n · title`,
+   `**Filed against:**`, one sentence), not an edit.
+2. A new test *case* needs new behaviour it specifies red-first, or a named defect that occurred. A
+   new test *file* additionally shows its `$expectedTestFiles` manifest diff and quotes its `TIMING`
+   line from the runner.
+3. This file has a line ceiling (DocTruth). Adding a clause means retiring one.
+4. No commit to `master` while a release is between push and tag (B-237).
+5. Maintenance model #5 applies to mechanism and critical, and to any class in which a defect escaped.
 
 ## What this repo is
 
-The merged monorepo (B-25-EXEC, WSD-012) replacing `ai-tech-lead-dotnet` + `ai-tech-lead-angular`.
-Shared content is authored **once** in `src/`; the composer emits three installable dists.
-The framework's "code" is mostly Markdown (skills, commands, agents, the `CLAUDE.md` templates) +
-PowerShell hooks and installer scripts. There is no app to compile — the "build" is the composer.
+Shared content is authored **once** in `src/`; a deterministic composer emits three installable
+distributions in `dist/`. The "code" is Markdown (skills, commands, agents, `CLAUDE.md` templates)
+plus PowerShell hooks, gates and installers; the "build" is the composer.
 
-- `src/core/` — single-source shared content (`<!-- @stack:NAME -->` markers where stacks diverge).
-- `src/stacks/{dotnet,angular,monorepo}/` — per-dist `snippets/` + `files/` (overrides, stack-only).
-- `dist/{dotnet,angular,monorepo}/` — **generated** golden output, committed, never hand-edited.
-- `scripts/` — PowerShell composer + gates (`build`, `validate-dist`, `context-footprint`), plus the
-  manual historical re-audit tool `fidelity-check.ps1`.
-- `install.ps1` — thin root installer; auto-detects the target stack (mixed → monorepo).
-- `meta/` — maintainer layer: `BACKLOG.md`, `workspace-decisions.md` (ADR log), `LEARNINGS.md`
-  (meta-dev log), `ci-handover.md`, `changelogs/legacy-*.md`. Never ships.
-- `.claude/` — maintainer Claude Code config (bom-fix hook, meta tests, `release.ps1`, plans). Never ships.
+| Path | What it is |
+|---|---|
+| `src/core/` | single-source shared content; `<!-- @stack:NAME -->` markers where stacks diverge |
+| `src/stacks/{dotnet,angular,monorepo}/` | per-dist `snippets/` (marker content) and `files/` (whole-file overrides, stack-only files) |
+| `dist/{dotnet,angular,monorepo}/` | **generated** golden output, committed, `linguist-generated` — never hand-edited |
+| `scripts/` | composer and gates: `build`, `validate-dist`, `context-footprint`; `fidelity-check.ps1` is a manual historical re-audit |
+| `install.ps1` | root installer: detects the target stack (mixed → monorepo) and delegates to the dist installer |
+| `meta/` | maintainer records: `BACKLOG.md`, `BACKLOG-DONE.md`, `workspace-decisions.md`, `decisions-index.md`, `LEARNINGS.md`, `review-ledger.md`. Never ships |
+| `.claude/` | maintainer Claude Code config: `settings.json`, the `bom-fix` hook, the meta test suite, `.claude/scripts/release.ps1`, `plans/`, `skills/meta-*`. Never ships |
 
-There is deliberately **no root `docs/`** — that name belongs to the consumer (`dist/*/docs/`).
-Root `CLAUDE.md`/`AGENTS.md` still collide by name with their shipped counterparts because Claude
-Code must load them from the root; the banner above is the tie-breaker.
+There is no root `docs/` — that name belongs to the consumer (`dist/*/docs/`).
 
-## Meta-invariants (canonical definitions live in CLAUDE.md — same numbering)
+## Meta-invariants (canonical list, stable numbering)
 
-1. **Single-source composition.** Author changes once under `src/`; never edit `dist/` by hand
-   (CI rebuild+diff fails it). Editing a stack snippet/whole-file with a `src/stacks/monorepo/`
-   sibling requires reviewing the sibling in the same task (WSD-015). Stack-specific changes are
-   allowed — say so explicitly.
-2. **`CLAUDE.md` ↔ `AGENTS.md` mirror parity (per dist).** Fix drift in the source, rebuild;
-   gate = each dist's `template-checks` via `validate-dist`. This root file mirrors the root
-   `CLAUDE.md` by hand.
-3. **PowerShell-only execution topology.** Framework executable/registration surfaces run on native
-   Windows: PS7 primary, PS5.1 fallback. Four `meta/canaries` shell files and textual history are
-   inert exceptions; consumer-owned files may still use Bash.
-4. **UTF-8 BOM mandatory in every `.ps1`** (PS 5.1 mis-parses BOM-less UTF-8). Auto-fixed by the
-   `bom-fix` hook; swept by the meta suite and `template-checks`.
-5. **Hook output semantics differ per surface.** Claude Code: `exit 2`+stderr blocks / stdout JSON
-   nudges. Copilot: stdout JSON `permissionDecision: deny`. Enforcing on both surfaces needs both
-   shapes; always test both. Copilot CLI `postToolUse` context consumption is version-dependent: it
-   was absent in 1.0.68 and observed in 1.0.80, so tests must not assume it universally.
-6. **Don't-ship boundary — a machine check, not a promise.** Only `dist/` contents reach consumers
-   via the installers; the rest of the repo is authoring-only and must never collide with a template
-   file. Enforced by `validate-dist` check 6 (`no-meta-leak`): each composed dist is scanned against
-   `scripts/meta-denylist.txt`, so our development vocabulary (tracking ids `B-nn`/`WSD-nnn`,
-   "lockstep", the two-repo past, maintainer-only tooling) cannot appear in a shipped file. One
-   denylist file, read by the validator. If a legitimate consumer word trips it, add a narrow `ALLOW` —
-   never weaken a `DENY`. Check 6 guards what shipped docs must not *say*; **check 7
-   (`no-dead-instruction`)** guards that the commands they *give* actually resolve — every script a
-   shipped doc tells someone to run must exist, resolved from the dist root; **check 8
-   (`hook-registration`)** requires exactly 18 PowerShell registrations per dist (six Claude PS7,
-   six Claude PS5.1, six Copilot), case-exact targets, and the PowerShell tool/shell settings. It
-   deliberately accepts bare interpreter names; runtime resolution belongs to `Hook liveness`.
-7. **Versioning.** Shipped behavior change ⇒ root `CHANGELOG.md` entry **and** a matching
-   `## <version> — Unreleased` head in all three `src/stacks/*/files/CHANGELOG.md` (mandatory,
-   not optional — `release.ps1` refuses to release without all four, B-54), then release via
-   `.claude/scripts/release.ps1` (stamps `src/`, rebuilds `dist/`, stamps all four changelog dates,
-   runs every gate, refuses on failure). `meta/LEARNINGS.md` is append-only. Write the **shipped**
-   changelog in the consumer's voice; tracking ids and maintainer asides belong in the root
-   `CHANGELOG.md`, which is *our* log.
+1. **Single-source composition.** Author once under `src/`; never edit `dist/` by hand (CI rebuilds and
+   diffs). A stack snippet or whole-file with a `src/stacks/monorepo/` sibling does not reach
+   `dist/monorepo` — review the sibling in the same task (WSD-015). Stack-specific changes live under
+   that stack's `files/` or one-sided snippets; say so explicitly.
+2. **`CLAUDE.md` ↔ `AGENTS.md` parity.** Per dist: the shipped `CLAUDE.md` is canonical and `AGENTS.md`
+   its composed mirror; fix drift in `src/`, gate = each dist's `template-checks` via `validate-dist`.
+   At the root: this file is canonical and `CLAUDE.md` imports it (`@AGENTS.md`); gate = DocTruth
+   (import present, both files under their ceilings).
+3. **PowerShell-only execution topology.** Framework-owned executable and hook-registration surfaces
+   are PowerShell on native Windows: PowerShell 7 primary, Windows PowerShell 5.1 fallback. The four
+   `meta/canaries/` shell files are inert history; consumer-owned files may use Bash; active `src/`,
+   `dist/`, root scripts, settings and CI may not.
+4. **UTF-8 BOM in every `.ps1`** — 5.1 mis-parses BOM-less UTF-8. The `bom-fix` hook adds it to files
+   written through the Write/Edit tools; add it by hand otherwise. Swept by the meta suite and by
+   each dist's `template-checks`.
+5. **Hook output semantics differ per surface.** Claude Code: `exit 2` + stderr blocks; stdout JSON
+   `hookSpecificOutput.additionalContext` nudges; `{decision:block,reason}` on Stop. Copilot: stdout
+   JSON `permissionDecision: deny`. A hook that enforces on both surfaces emits both shapes; test
+   both. Copilot CLI `postToolUse` context consumption is version-dependent (absent 1.0.68, observed
+   1.0.80); tests must not assume it.
+6. **The don't-ship boundary is a machine check.** Only `dist/` reaches consumers, via the dist
+   installers (`.template-repo` disables consumer CI for the template itself). `validate-dist` check 6
+   (`no-meta-leak`) scans each dist against `scripts/meta-denylist.txt`: tracking ids, the two-repo
+   past and maintainer tooling must not appear in a shipped file. Add a narrow `ALLOW`; never weaken
+   a `DENY`.
+7. **Versioning.** A shipped behaviour change needs a root `CHANGELOG.md` entry and a
+   `## <version> — Unreleased` head in all three `src/stacks/*/files/CHANGELOG.md` (`release.ps1`
+   requires all four, B-54). Release only via `.claude/scripts/release.ps1`: it stamps, rebuilds,
+   runs every gate, refuses to commit on failure, pushes, waits for CI, tags. Shipped changelogs are
+   written in the consumer's voice; tracking ids and maintainer asides stay in the root changelog.
+   `meta/LEARNINGS.md` is append-only.
 
-## Workflows, done-ness, verification
+## Maintenance model (who implements, who reviews, what "green" means)
 
-Meta-workflows (artifact change, hook bug, large change, investigation), the per-artifact
-Definition of done, and the evidence-based verification commands are defined in `CLAUDE.md` and
-`DEVELOPING.md` — follow them there. Core loop: edit `src/` (+ monorepo sibling) → rebuild
-all three dists → `git status --porcelain dist/` empty → `validate-dist` ×3 → hook suites ×3 +
-meta suite → CHANGELOG/version if shipped behavior changed → commit + push `master`.
+`release.ps1` exposes supplied review evidence or its absence; it cannot judge independence, quality
+or truth (WSD-028). Those remain evidence obligations on the people and sessions involved.
 
-Every gate above is a *parser* gate — it proves the artifacts are well-formed, not that they
-work. The product is prose aimed at a model, so two gates in the meta suite cover the behavioral
-surface instead: **`InstallerContract`** runs the shipped installer (both modes × all
-three dists) and asserts its stdout states the whole agent-handoff contract, and **`DocTruth`**
-asserts the authoring docs describe the repo that actually exists. Both were written after three
-defects shipped straight through the parser gates — see `meta/LEARNINGS.md`.
+1. **Locked design + adversarial critique before implementing a mechanism or critical change.** The
+   critique may reject the premise, not merely tighten the approach, and must state the
+   proportionality case (#6). Re-validate the premise of any entry filed more than ~5 minor versions
+   ago (`**Filed against:** vN (date)` says how much history to check). A reviewer's corrections are
+   input, not verdict — re-verify them. Historic decisions are evidence-bearing defaults, not
+   doctrine: a material change in models, hosts, tools, cost or outcomes licenses a recorded
+   re-audit; preserve the record, supersede explicitly, start a new result series when the
+   measurement contract changes; "models are better now" is a reason to re-test, not evidence.
+2. **Independent review is evidence-bound, not rank-bound** (WSD-057; prose is exempt per WSD-089).
+   The reviewer uses a separate session, did not participate in implementation, starts from the
+   frozen contract and immutable range before reading the implementer's narrative, forms an
+   independent threat model, and records model/agent, environment, one release-specific hostile case
+   or applied mutation observed red, a clean rerun, and coverage gaps. Prefer another model family,
+   host or toolchain; rank alone neither qualifies nor disqualifies. Data-loss, security-bypass and
+   false-green changes need a second orthogonal reviewer or execution vantage, else record the gap as
+   review debt. Review scope too: every changed function is required by the contract, or justified.
+   Windows is the sole platform leg; direct PS7 and PS5.1 runs are separate required legs and neither
+   may relaunch the other.
+3. **Nothing enters the record as observed unless you observed it** — self-reports, a spec's layout
+   claims, a plan's assumptions, any number you quote. Verify in the environment that matters (a
+   sandbox whose `PATH` differed produced a false pass twice) or attribute the claim.
+4. **A green result counts only from an instrument you have seen go red** on the unfixed tree, in the
+   host and code page that matter; record the red observation next to the check. Name the
+   constructible state in which the measure would register success — if none exists the measure is
+   unreachable and the experiment is void. Inspect the four inertness shapes: a literal or
+   syntactically inert assertion; an exit-domain collision; empty/absent conflated with inability to
+   examine; a normalization or comparison that stops comparing. Release-specific red evidence is the
+   proportionate control; do not build a generic mutation framework.
+5. **Close mechanism and critical deliveries — and any escaped defect — with an RCA** in the backlog
+   entry: why did no gate catch it, and what else is exposed to the same class. The sweep produces
+   backlog stubs, not edits (class rule 1).
+6. **State the proportionality case before rule 1 locks a design.** Name the concrete, already-observed
+   harm and check whether a materially smaller fix removes most of it. Two sentences inside the
+   critique suffice; do not let the check need its own check (B-108).
+7. **A gate must distinguish "the artifact is wrong" from "I could not examine it."** A non-zero exit
+   must say which happened, whatever the mechanism (interpreter unresolved, `grep` exit 2, a file
+   lock). The symmetry holds: a content fact reported as a host problem is the same defect inverted.
+   Mechanise only what tooling can honestly distinguish; keep unjudgeable quality an explicit
+   evidence obligation. Meta gates are hermetic: they derive decisions from repository content and
+   explicit lifecycle inputs, never from ambient release state.
 
-Do not answer a host-execution gap with a generic extra CI leg. WSD-061 permits one focused provider
-leg only when neither required Windows host can execute a shipped compatibility contract; that
-provider never replaces direct PS7 and PS5.1 evidence.
+## Definition of done per artifact type
 
-The **Verification Rules**, **Leanness**, **SOLID**, **Boy Scout Rule**, and self-review
-disciplines in `src/core/CLAUDE.md` bind meta-work too.
+- **Hook / PowerShell script:** parses under PS7 and PS5.1; behaviour shown by piping a JSON fixture
+  and observing `EXIT=` + output on both agent surfaces (#5); tested against the **dist** copy.
+- **Skill / command / agent / template:** renders the intended instruction in every dist that carries
+  it (check `dist/monorepo` when a sibling was involved); `validate-dist` ×3 green; install smoke run.
+- **Installer / sync script:** greenfield and brownfield smoke installs into temp dirs succeed with the
+  expected layout; the root installer on all three detection paths.
+- **Composer / gate script:** red-tested — plant the defect class it exists to catch, show the non-zero
+  exit, then the clean pass.
+- **Any new or modified test:** demonstrated running on every CI context that executes it (PS7 and
+  native PS5.1); not done until its first CI run is green; a runner reports its executable and a
+  non-zero case count; a nominal 5.1 job that relaunches under 7 is a false green.
 
-## Maintenance model
+## Verification — name the command, show the result
 
-Canonical definitions live in `CLAUDE.md` > Maintenance model — same seven rules, condensed here.
-For rules 2–4, `release.ps1` exposes supplied evidence or its absence; it cannot judge review
-independence, quality, or truth.
+Never claim "it works"; show the command and its observed output. Standard commands
+(`DEVELOPING.md` has the recipes; `/meta-gates <class>` runs the ladder for a class):
 
-1. **Locked design + adversarial critique before implementing any M+ item.** The critique may
-   reject the item's *premise*, not just its approach. A reviewer's corrections are input, not
-   verdict — re-verify them. **Re-validate the premise of any entry filed more than ~5 minor
-   versions ago** — every open entry carries a `**Filed against:** vN (date)` stamp saying how much
-   history to check. Premise rot is real and measured: B-79, B-138 and B-130 were all refuted or
-   stale when finally read. Historic decisions are evidence-bearing defaults, not doctrine: changed
-   models, hosts, tools, cost, or outcomes license a recorded re-audit when the change could alter
-   the outcome and expected decision value exceeds audit cost—not silent history rewriting.
-2. **Independent review is evidence-bound, not rank-bound.** Use a separate session whose reviewer
-   did not participate in implementation, a frozen contract and immutable range, a blind-first
-   threat model, a release-specific hostile case or applied mutation observed red, a clean rerun,
-   and explicit environment/gaps. Prefer another
-   model family, host, or toolchain, but rank alone neither qualifies nor disqualifies. Data-loss,
-   security-bypass, and false-green release/enforcement changes also require an orthogonal reviewer
-   or execution vantage; otherwise file the remaining debt. Review scope too: every changed function
-   must be required by the frozen contract; justify or revert extra surface. Windows is the sole
-   platform leg; direct PS7 and PS5.1 runs are both required and may not relaunch one another.
-3. **Nothing enters the record as observed unless you observed it** — self-reports, a spec's
-   file-layout claims, a plan's assumptions, any number you quote. Verify in the environment that
-   matters, or attribute the claim rather than asserting it.
-4. **A green result counts only from an instrument you have seen go red** on the unfixed tree, in
-   the host and code page that matter. **And the other direction: name the constructible state in
-   which the measure would register success.** If none can be named the measure is unreachable and
-   the experiment is void before it runs — "shown to fail" is satisfied trivially by a measure that
-   always fails (B-112). Check four semantic-inertness shapes: literal or syntactically inert
-   assertions, exit-domain collisions, empty/absent conflated with cannot-examine, and
-   normalization/comparison that stops comparing. Use release-specific red evidence; do not infer a
-   generic mutation framework.
-5. **Close every delivery with an RCA** in `meta/BACKLOG.md`: why did no gate catch it, and what
-   else is exposed to the same class?
-6. **Before rule 1 locks a design, state the proportionality case, not just the correctness case.**
-   Name the concrete, already-observed harm and check whether a materially smaller fix would remove
-   most of it before locking the larger one — rules 1–5 all assume the fix's *scope* is already
-   right and only test whether it's *verified* right. B-108 is the caught example: the defect class
-   was real (B-104, P1) but the first locked design never asked whether its bespoke lexical parser
-   was proportionate to seven low-churn files when cheaper machinery (B-109's DENY-pattern gate)
-   might close most of the same gap. Lives inside rule 1's critique, not a second pass.
+- Compose + freshness: `pwsh -NoProfile -File scripts/build.ps1 <dist>` ×3; `git status --porcelain dist/` empty.
+- Dist validity: `pwsh -NoProfile -File scripts/validate-dist.ps1 <dist>` ×3 (markers, JSON, topology,
+  PS-AST, `template-checks`, `no-meta-leak`, `no-dead-instruction`, `hook-registration` = exactly 18
+  PowerShell registrations per dist with bare interpreter names accepted, `step-references`).
+- Suites: `pwsh -NoProfile -File dist/<d>/tests/hooks/Invoke-HookTests.ps1` ×3 and
+  `.claude/hooks/tests/Invoke-HookTests.ps1` (meta suite; exit = failing-test count), under `pwsh`
+  **and** `powershell.exe` with equal non-zero `CASE_COUNT`, plus one hostile code-page leg (CP437).
+- Hook behaviour: pipe a fixture JSON event to the hook; assert `EXIT=` + output.
+- Install smoke: `install.ps1` into temp greenfield + brownfield dirs under both hosts.
 
-7. **A gate must distinguish "the artifact is wrong" from "I could not examine the artifact",
-   whatever the mechanism.** Reporting the second as the first hands a confident, false, actionable
-   diagnosis to whoever is least able to dismiss it. Four entries each fixed one mechanism without
-   stating the principle — B-85 (unresolvable interpreter reported as a dist defect), B-130 (a bare
-   interpreter name producing a false *"CLAUDE.md and AGENTS.md have drifted"*), B-155 (`grep -q`
-   conflating "absent" with "could not run"), B-156 (the same conflation in extractors, where the
-   swallowed path was also the passing one) — and a fifth instance then refused v0.67.0 through a
-   **file lock** on `context-footprint.ps1`'s own output, a mechanism none of them enumerated.
-   Enumerating sites has not converged, so the obligation sits on the gate author: a non-zero exit
-   must be able to say which of the two things happened. The symmetry matters too — `grep` exits 2
-   for a *missing file* as well as a failure to run, so a content fact reported as a host problem is
-   the same defect inverted. B-164 established that this remains guidance backed by bounded advisory
-   triage, not an enforced gate; per WSD-028/WSD-057, mechanise only what tooling can honestly
-   distinguish and keep unjudgeable quality as an explicit evidence obligation. Meta gates derive
-   decisions from repository content and explicit lifecycle inputs, never ambient release-state
-   discovery. This is guidance because generic tooling cannot honestly distinguish every deliberate
-   lifecycle input from ambient discovery.
+Never pipe a gate, release or push command into a filter and then read its exit code; capture
+`$LASTEXITCODE` first. Do not run gate suites while another session is editing the tree.
 
-`release.ps1` refuses to release without either `-ReviewEvidence` (the supplied range, hostile/red
-and clean evidence, environment/gaps, and identities) or `-NoIndependentReview`, which is allowed
-but records `review evidence: none supplied` in `meta/review-ledger.md` and files the post-ship
-review item automatically. The switch retains its legacy name; the script exposes supplied-evidence
-presence or absence and does not infer whether a review occurred or certify the claim.
+## Inherited disciplines
+
+The Verification Rules, Leanness (#1: create no file unless required), SOLID, Boy Scout Rule and the
+evidence-based self-review in `src/core/CLAUDE.md` bind meta-work too; read them there, do not
+duplicate them. State uncertainty rather than smoothing it over.
+
+## Commit & push policy
+
+When a task is done, commit to `master` and push; never leave changes uncommitted. Generated `dist/`
+changes go in the same commit as the `src/` change that caused them. Push via
+`.claude/scripts/push-and-check.ps1` and release via `.claude/scripts/release.ps1`; both inspect
+every outgoing commit first. Records- and prose-class work needs no release; batch prose into the
+next one.
 
 ## Conventions
 
-Plans → `.claude/plans/` · decisions → `meta/workspace-decisions.md` · meta learnings →
-`meta/LEARNINGS.md` · review ledger → `meta/review-ledger.md`.
-**Work list → `meta/BACKLOG.md` (open only); finished entries → `meta/BACKLOG-DONE.md`. An entry
-is in exactly one of the two, never both; `PARTIALLY DONE` is a legitimate OPEN state.**
-**Standing constraints → `meta/decisions-index.md` — read it before locking any design**, because
-decisions get made inside individual backlog entries and are invisible to anyone not reading them.
-Commit to `master` and push when done — never leave changes uncommitted.
+- Plans → `.claude/plans/YYYY-MM-DD-<slug>.md`; plan-mode drafts land in `.claude/plans/inbox/`
+  (gitignored) and are promoted by renaming. A locked plan is cited by path and SHA256.
+- Decisions → `meta/workspace-decisions.md` (`## WSD-nnn:` entries); standing constraints are indexed
+  in `meta/decisions-index.md` — **read it before locking any design**; cite ids, never line numbers.
+- Meta learnings → `meta/LEARNINGS.md` (append-only; distinct from the shipped `src/core/LEARNINGS.md`
+  template).
+- Work list → `meta/BACKLOG.md`, open work only; finished entries move to `meta/BACKLOG-DONE.md`. An
+  entry is in exactly one file; `PARTIALLY DONE` is an open state.
+- Maintainer skills (`.claude/skills/meta-*`): `/meta-gates <class>`, `/meta-review-handoff`,
+  `/meta-release` (user-invoked only). Conveniences — the commands above are what is required.
 
 ## Status
 
 Version authority is the machine-readable `dist/*/.claude/framework-version.json` stamps; release
-history is `CHANGELOG.md` plus tags. Read `meta/BACKLOG.md` for current work rather than a status
-summary here.
-
-Gotcha: `scripts/fidelity-check.ps1` still exists but is **no longer wired to CI** — it is a manual
+history is `CHANGELOG.md` plus tags. The current work list is `meta/BACKLOG.md`, not a summary here.
+Gotcha: `scripts/fidelity-check.ps1` still exists but is no longer wired to CI — it is a manual
 re-audit tool against the `pre-restructure` tag, not a gate.

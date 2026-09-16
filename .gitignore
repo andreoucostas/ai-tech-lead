@@ -5,3 +5,12 @@
 # content: release.ps1 does `git add -A`, which swept one into each of v0.42.0 and v0.43.0 as a
 # stray 160000 entry pointing at a directory that no longer exists once the worktree is removed.
 .claude/worktrees/
+
+# Plan-mode drafts (`plansDirectory` in .claude/settings.json). Random-slug drafts never reach a
+# tracked directory; promote a plan you keep by renaming it to .claude/plans/YYYY-MM-DD-<slug>.md.
+.claude/plans/inbox/*
+!.claude/plans/inbox/.gitkeep
+
+# Personal, per-machine Claude Code overrides. Loaded alongside the tracked files; never team config.
+CLAUDE.local.md
+.claude/settings.local.json

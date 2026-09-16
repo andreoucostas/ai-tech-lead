@@ -5,8 +5,10 @@ describes. It records supplied review evidence or its explicit absence—never w
 occurred, was independent, or was good, which no gate here can judge. New releases without supplied
 evidence use `review evidence: none supplied` and file a post-ship review item in `meta/BACKLOG.md`.
 Legacy `reviewer: none` rows retain their historical wording; they likewise mean that qualifying
-evidence was not supplied, not that the ledger proved no review occurred. See root `CLAUDE.md` >
-Maintenance model.
+evidence was not supplied, not that the ledger proved no review occurred. See root `AGENTS.md`
+(imported by `CLAUDE.md`) > Maintenance model. Since WSD-089 a prose-class release may carry a
+disclosed non-review cell (`class prose per WSD-089; reviewer …; paths …; gates … EXIT=0; no
+behavioural instrument for prose`); it is recorded verbatim like any other supplied text.
 
 | version | date | evidence |
 |---------|------|----------|

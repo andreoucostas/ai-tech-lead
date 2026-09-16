@@ -17,6 +17,10 @@
 #>
 [CmdletBinding()]
 param(
+    # Relative path of the imported file; the fixture's root CLAUDE.md carries `@<ImportTarget>`.
+    # Default is the B-97 shape. B-241 runs it with 'AGENTS.md' to certify the root-mirror import
+    # (CLAUDE.md = @AGENTS.md) on the current host before relying on it.
+    [string]$ImportTarget = '.claude/framework-rules.md',
     [string]$Model = 'haiku',
     [int]$TimeoutSeconds = 180
 )
@@ -24,28 +28,29 @@ $ErrorActionPreference = 'Stop'
 
 $sentinel = 'ZORBLAX-7Q4M'
 $root = Join-Path ([IO.Path]::GetTempPath()) ("b97-canary1-" + [IO.Path]::GetRandomFileName())
-New-Item -ItemType Directory -Path (Join-Path $root '.claude') -Force | Out-Null
+$importDir = Split-Path -Parent (Join-Path $root $ImportTarget)
+New-Item -ItemType Directory -Path $importDir -Force | Out-Null
 
 # The sentinel appears ONLY here.
 @"
 # Framework rules (imported)
 
 The project codeword is $sentinel. It designates the imported-rules delivery path.
-"@ | Set-Content -Path (Join-Path $root '.claude/framework-rules.md') -Encoding utf8NoBOM
+"@ | Set-Content -Path (Join-Path $root $ImportTarget) -Encoding utf8NoBOM
 
 # Root CLAUDE.md carries the import and NOT the sentinel.
-@'
+@"
 # Canary project
 
 This file is the project instruction file.
 
-@.claude/framework-rules.md
+@$ImportTarget
 
 End of instructions.
-'@ | Set-Content -Path (Join-Path $root 'CLAUDE.md') -Encoding utf8NoBOM
+"@ | Set-Content -Path (Join-Path $root 'CLAUDE.md') -Encoding utf8NoBOM
 
 Write-Host "Fixture: $root"
-Write-Host "Sentinel '$sentinel' present only in .claude/framework-rules.md"
+Write-Host "Sentinel '$sentinel' present only in $ImportTarget"
 Write-Host "Control: sentinel occurrences in CLAUDE.md = $((Select-String -Path (Join-Path $root 'CLAUDE.md') -Pattern $sentinel -AllMatches).Count)"
 
 $prompt = @"

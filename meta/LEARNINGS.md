@@ -2670,3 +2670,34 @@ Finally, one compose attempt failed with `WriteAllBytes ... a file with a user-m
 on a dist hook script and succeeded unchanged on retry. That is the lock shape invariant #7 already
 records. A compose or gate failure that names a lock is an environment condition; retry before
 reporting it as a defect in the tree.
+
+## 2026-09-16 — Instructions that were history, and a mirror that was a copy (B-241)
+
+The always-loaded maintainer file had reached 330 lines, about 40% of it incident narrative that
+belongs in this log, and the rule it most needed — when *not* to add a test — appeared nowhere while
+rule #5's "what else is exposed" sat in every session. Measured from git: 93 release tags in ten
+weeks, 25 meta test files added in one month, 85 of 123 closed items marked small yet carrying the
+same ceremony as installer changes. Three of the last four "Effort: S" items had touched installer,
+hook or gate policy, so the effort letter was never blast radius; the change classes now key on the
+changed paths and the letters were dropped to stop the two meanings colliding.
+
+The root `AGENTS.md` had been kept as a hand-condensed mirror of `CLAUDE.md` while Claude Code reads
+only `CLAUDE.md` and Codex reads only `AGENTS.md`: the implementer and the reviewer worked from
+different rule books, and 32 of 35 rule edits since July needed a second hand edit. The host vendor
+documents the inverse shape, and the repo already trusted `@` imports in shipped files (validate-dist
+check 11, B-97 canary 1), yet the canary for a *root* file importing `AGENTS.md` had never been run
+on the current host. It took one script parameter and one haiku call — POSITIVE, zero tool use —
+and would have been the single point of total, silent failure had it been skipped.
+
+Two things the gates caught on the first run against the new files: `AGENTS.md` named
+`scripts/release.ps1` without its `.claude/` prefix (DocTruth's script-path check exists for exactly
+this) and the old heading-topology mapping failed on the new `CLAUDE.md` — the natural red that
+licensed deleting it. `DEVELOPING.md` had carried a 50-line account of a corrupted session `PATH` for
+two months after the condition disappeared, self-flagged "not re-verified"; every agent host resolved
+by bare name the day it was checked. A stale hazard note costs every reader the workaround and
+teaches the next session to distrust the instrument.
+
+Worktree-session mechanics worth knowing: the Bash tool's worktree guard refuses any command it
+cannot prove is not git, including a plain `pwsh -File`, so PowerShell runs go through the PowerShell
+tool with absolute paths; and a `-File` invocation does not split `a,b,c` into an array — pass arrays
+through the call operator instead.

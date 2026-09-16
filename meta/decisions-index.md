@@ -55,6 +55,8 @@ authoritative.
 - “CP2's paid comparison is retired on decision-value grounds; isolation and efficacy remain unknown, and any new attempt requires a fresh decision.” — `meta/workspace-decisions.md WSD-078`
 - “RK1 compares the discovery increment above retained knowledge paths on a matched current foundation; policy execution must be demonstrated before study dispatch.” — `meta/workspace-decisions.md WSD-081`
 - “Ordinary overwrite and ledger retirement are different contracts; a path can never be both.” — `meta/workspace-decisions.md WSD-088`
+- “Root `AGENTS.md` is the canonical maintainer instruction file, imported by `CLAUDE.md`; both sit under recorded ceilings.” — `meta/workspace-decisions.md WSD-089`
+- “Ceremony follows the change class decided from the changed paths; prose ships batched with a disclosed non-review cell.” — `meta/workspace-decisions.md WSD-089` (amends WSD-028/WSD-057 scope for records and prose)
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`

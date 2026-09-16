@@ -11,6 +11,8 @@
 # Docs that lie to the maintainer are how the NEXT defect gets authored. These are the mechanically
 # checkable subset -- prose claims about CI ("CI runs X") are deliberately not asserted here,
 # because detecting a claim in prose is NLP, not a gate. See meta/LEARNINGS.md, 2026-07-12.
+# Since B-241 (WSD-089) it also guards the root instruction topology: AGENTS.md is the canonical
+# maintainer file, CLAUDE.md imports it with one live `@AGENTS.md` line, and both sit under ceilings.
 param([switch]$B231ScopeMutation)
 
 if ($B231ScopeMutation) {
@@ -180,49 +182,95 @@ It 'every live backlog item has a unique id' {
     Assert $true 'clean'
 }
 
-# This checks heading topology, not whether the mirrors tell the same truth. For example, deleting
-# Maintenance model rule 6 from AGENTS.md while leaving its heading intact remains green. Likewise,
-# four CLAUDE.md sections deliberately map to one AGENTS.md heading, which could retain only one of
-# those concepts and still pass. This test catches one event: a section appears on either side
-# without a mirror decision. A future content-truth gap needs a content measure, not more topology.
-It 'root CLAUDE.md and AGENTS.md headings have an explicit mirror mapping' {
-    $table = @(
-        [pscustomobject]@{ Claude = 'What this repo is'; Agents = 'What this repo is' }
-        [pscustomobject]@{ Claude = 'Meta-invariants (canonical list — referenced everywhere, restated nowhere)'; Agents = 'Meta-invariants (canonical definitions live in CLAUDE.md — same numbering)' }
-        [pscustomobject]@{ Claude = 'How to approach a change (meta-workflows)'; Agents = 'Workflows, done-ness, verification' }
-        [pscustomobject]@{ Claude = 'Maintenance model (who implements, who reviews, what "green" means)'; Agents = 'Maintenance model' }
-        [pscustomobject]@{ Claude = 'Definition of done per artifact type'; Agents = 'Workflows, done-ness, verification' }
-        [pscustomobject]@{ Claude = 'Verification (evidence-based — name the command, show the result)'; Agents = 'Workflows, done-ness, verification' }
-        [pscustomobject]@{ Claude = 'Inherited disciplines (they apply to meta-work too)'; Agents = 'Workflows, done-ness, verification' }
-        [pscustomobject]@{ Claude = 'Commit & push policy (stated in full — not by reference)'; Agents = 'Conventions' }
-        [pscustomobject]@{ Claude = 'Conventions'; Agents = 'Conventions' }
-        [pscustomobject]@{ Claude = 'Status'; Agents = 'Status' }
+# --- 6. root instruction topology: one canonical file, one import, ceilings (B-241 / WSD-089) ------
+# Root AGENTS.md is the canonical maintainer instruction file; root CLAUDE.md imports it with one live
+# `@AGENTS.md` line and adds Claude-specific notes. This replaced B-82's heading-topology mapping,
+# which its own header admitted was blind to body deletion: with one canonical file there is nothing
+# to mirror. The ceilings are budgets in the WSD-055 sense, applied to the maintainer file: AGENTS.md
+# <= 200 lines (the host vendor's adherence guidance) and <= 19,500 LF bytes (1.2x the 16,043 measured
+# at adoption, 2026-09-16); CLAUDE.md <= 40 lines; AGENTS.md plus a fixed allowance for the parent
+# container's ~1 KB stub stays under Codex's 32 KiB project-document cap (Codex concatenates root ->
+# cwd and silently stops adding files at the cap). Hermetic: the allowance is a constant, not a read
+# of a file outside this repository. Raising a ceiling is a recorded WSD-089 amendment.
+$rootInstructionCeilings = @{ ClaudeMaxLines = 40; AgentsMaxLines = 200; AgentsMaxBytes = 19500; ParentStubAllowanceBytes = 4096; CodexCapBytes = 32768 }
+
+function Get-RootInstructionTopologyViolations {
+    param(
+        [AllowEmptyString()][string]$Claude,
+        [AllowEmptyString()][string]$Agents,
+        [Parameter(Mandatory)][hashtable]$Ceilings
     )
-    Assert (@($table).Count -gt 0) 'heading mirror mapping table is empty -- this gate is blind'
-
-    $claudeHeadings = @([IO.File]::ReadAllLines((Join-Path $repoRoot 'CLAUDE.md'), [Text.Encoding]::UTF8) | ForEach-Object {
-        if ($_ -match '^## (.+)$') { $Matches[1] }
-    })
-    $agentsHeadings = @([IO.File]::ReadAllLines((Join-Path $repoRoot 'AGENTS.md'), [Text.Encoding]::UTF8) | ForEach-Object {
-        if ($_ -match '^## (.+)$') { $Matches[1] }
-    })
-    Assert ($claudeHeadings.Count -gt 0) 'CLAUDE.md yielded zero ## headings -- the heading grammar changed and this gate is blind'
-    Assert ($agentsHeadings.Count -gt 0) 'AGENTS.md yielded zero ## headings -- the heading grammar changed and this gate is blind'
-
-    foreach ($heading in $claudeHeadings) {
-        Assert (@($table | Where-Object { $_.Claude -ceq $heading }).Count -gt 0) "CLAUDE.md heading '$heading' has no mapping -- decide its mirror target and add it to the table"
+    $bad = @()
+    if ([string]::IsNullOrWhiteSpace($Claude)) { $bad += 'could not examine root CLAUDE.md: empty or unreadable' }
+    if ([string]::IsNullOrWhiteSpace($Agents)) { $bad += 'could not examine root AGENTS.md: empty or unreadable' }
+    if ($bad.Count -gt 0) { return $bad }
+    $claudeLf = $Claude.Replace("`r`n", "`n")
+    $agentsLf = $Agents.Replace("`r`n", "`n")
+    # A live import is a line that is exactly `@AGENTS.md`, outside fenced code. A backticked mention
+    # is prose (the host skips code spans), so it must not satisfy this check.
+    $inFence = $false; $liveImport = 0
+    foreach ($line in ($claudeLf -split "`n")) {
+        if ($line.TrimStart() -match '^(?:```|~~~)') { $inFence = -not $inFence; continue }
+        if (-not $inFence -and $line.Trim() -ceq '@AGENTS.md') { $liveImport++ }
     }
-    foreach ($mapping in $table) {
-        Assert (@($agentsHeadings | Where-Object { $_ -ceq $mapping.Agents }).Count -gt 0) "mapped AGENTS.md target '$($mapping.Agents)' for CLAUDE.md heading '$($mapping.Claude)' does not exist"
+    if ($liveImport -ne 1) { $bad += "root CLAUDE.md must carry exactly one live '@AGENTS.md' import line outside code; found $liveImport" }
+    $claudeLines = @($claudeLf.TrimEnd("`n") -split "`n").Count
+    if ($claudeLines -gt $Ceilings.ClaudeMaxLines) { $bad += "root CLAUDE.md is $claudeLines lines; ceiling $($Ceilings.ClaudeMaxLines) -- Claude-specific notes only; everything else belongs in AGENTS.md" }
+    $agentsLines = @($agentsLf.TrimEnd("`n") -split "`n").Count
+    if ($agentsLines -gt $Ceilings.AgentsMaxLines) { $bad += "root AGENTS.md is $agentsLines lines; ceiling $($Ceilings.AgentsMaxLines) -- adding a clause means retiring one (WSD-089)" }
+    $agentsBytes = [Text.Encoding]::UTF8.GetByteCount($agentsLf)
+    if ($agentsBytes -gt $Ceilings.AgentsMaxBytes) { $bad += "root AGENTS.md is $agentsBytes LF bytes; ceiling $($Ceilings.AgentsMaxBytes) (WSD-089)" }
+    if (($agentsBytes + $Ceilings.ParentStubAllowanceBytes) -ge $Ceilings.CodexCapBytes) { $bad += "root AGENTS.md ($agentsBytes bytes) plus the $($Ceilings.ParentStubAllowanceBytes)-byte parent-stub allowance reaches Codex's $($Ceilings.CodexCapBytes)-byte project-document cap" }
+    if ($agentsLf -notmatch '(?m)^> \*\*YOU ARE IN THE FRAMEWORK AUTHORING REPO') { $bad += 'root AGENTS.md does not open with the authoring-repo banner -- Codex concatenates it ahead of the shipped AGENTS.md copies under src/ and dist/' }
+    # AGENTS.md is read by Codex, which performs no imports: a bare import token there is dead text
+    # for Codex and a second import for Claude. Backticked or inline mentions are fine.
+    $inFence = $false
+    foreach ($line in ($agentsLf -split "`n")) {
+        if ($line.TrimStart() -match '^(?:```|~~~)') { $inFence = -not $inFence; continue }
+        if (-not $inFence -and $line -match '^\s*@[A-Za-z0-9_./~-]+\s*$') { $bad += "root AGENTS.md carries a stray import token: $($line.Trim())" }
     }
-    foreach ($heading in $agentsHeadings) {
-        Assert (@($table | Where-Object { $_.Agents -ceq $heading }).Count -gt 0) "AGENTS.md heading '$heading' is not the target of any CLAUDE.md heading mapping"
-    }
-    Assert $true 'clean'
+    return $bad
 }
 
-# --- 6. root delivery facts ---------------------------------------------------------------
-function Get-RootDeliveryFactViolations([string]$Readme, [string]$Claude, [string]$Agents, [hashtable]$ManifestPaths, [hashtable]$DeliveredLegalPaths) {
+It 'root CLAUDE.md imports AGENTS.md exactly once, both stay under their ceilings, and the banner leads' {
+    $claude = Get-Content -Raw (Join-Path $repoRoot 'CLAUDE.md')
+    $agents = Get-Content -Raw (Join-Path $repoRoot 'AGENTS.md')
+    $bad = @(Get-RootInstructionTopologyViolations -Claude $claude -Agents $agents -Ceilings $rootInstructionCeilings)
+    Assert ($bad.Count -eq 0) ($bad -join '; ')
+}
+
+It 'root topology helper rejects a missing or backticked import, oversize files, a missing banner, stray tokens, and empty input' {
+    $c = $rootInstructionCeilings
+    $goodClaude = "# entry`n`n> see AGENTS.md`n`n@AGENTS.md`n`n## Claude Code specifics`n- note`n"
+    $goodAgents = "# canonical`n`n> **YOU ARE IN THE FRAMEWORK AUTHORING REPO, NOT A CONSUMER PROJECT.** banner`n`n## Status`nCLAUDE.md imports this file (``@AGENTS.md``).`n"
+    Assert (@(Get-RootInstructionTopologyViolations -Claude $goodClaude -Agents $goodAgents -Ceilings $c).Count -eq 0) 'clean fixture was rejected'
+    $bad = @(Get-RootInstructionTopologyViolations -Claude ($goodClaude.Replace("`n@AGENTS.md`n", "`n``@AGENTS.md```n")) -Agents $goodAgents -Ceilings $c)
+    Assert ($bad.Count -eq 1 -and $bad[0] -match 'exactly one live.*found 0') "a backticked import must not count as live: $($bad -join '; ')"
+    $bad = @(Get-RootInstructionTopologyViolations -Claude ($goodClaude + "@AGENTS.md`n") -Agents $goodAgents -Ceilings $c)
+    Assert ($bad.Count -eq 1 -and $bad[0] -match 'found 2') "a duplicated import must be reported: $($bad -join '; ')"
+    $bad = @(Get-RootInstructionTopologyViolations -Claude ($goodClaude + ("- padding`n" * $c.ClaudeMaxLines)) -Agents $goodAgents -Ceilings $c)
+    Assert ($bad.Count -eq 1 -and $bad[0] -match 'CLAUDE\.md is \d+ lines; ceiling') "an oversize CLAUDE.md must be reported: $($bad -join '; ')"
+    $bad = @(Get-RootInstructionTopologyViolations -Claude $goodClaude -Agents ($goodAgents + ("- padding`n" * $c.AgentsMaxLines)) -Ceilings $c)
+    Assert ($bad.Count -eq 1 -and $bad[0] -match 'AGENTS\.md is \d+ lines; ceiling') "an oversize AGENTS.md must be reported: $($bad -join '; ')"
+    $bad = @(Get-RootInstructionTopologyViolations -Claude $goodClaude -Agents ($goodAgents + ('x' * $c.AgentsMaxBytes) + "`n") -Ceilings $c)
+    Assert ($bad.Count -eq 1 -and $bad[0] -match 'LF bytes; ceiling') "an over-budget AGENTS.md must be reported: $($bad -join '; ')"
+    $tight = @{} + $c; $tight.ParentStubAllowanceBytes = $c.CodexCapBytes
+    $bad = @(Get-RootInstructionTopologyViolations -Claude $goodClaude -Agents $goodAgents -Ceilings $tight)
+    Assert ($bad.Count -eq 1 -and $bad[0] -match 'project-document cap') "the Codex cap must be reported when the allowance consumes it: $($bad -join '; ')"
+    $bad = @(Get-RootInstructionTopologyViolations -Claude $goodClaude -Agents ($goodAgents.Replace('> **YOU ARE IN THE FRAMEWORK AUTHORING REPO', '> **you are somewhere')) -Ceilings $c)
+    Assert ($bad.Count -eq 1 -and $bad[0] -match 'authoring-repo banner') "a missing banner must be reported: $($bad -join '; ')"
+    $bad = @(Get-RootInstructionTopologyViolations -Claude $goodClaude -Agents ($goodAgents + "@meta/BACKLOG.md`n") -Ceilings $c)
+    Assert ($bad.Count -eq 1 -and $bad[0] -match 'stray import token: @meta/BACKLOG\.md') "a stray import token must be reported: $($bad -join '; ')"
+    $bad = @(Get-RootInstructionTopologyViolations -Claude '' -Agents $goodAgents -Ceilings $c)
+    Assert ($bad.Count -eq 1 -and $bad[0] -match 'could not examine root CLAUDE\.md') 'an empty CLAUDE.md must be unexaminable, not clean'
+    $bad = @(Get-RootInstructionTopologyViolations -Claude $goodClaude -Agents '' -Ceilings $c)
+    Assert ($bad.Count -eq 1 -and $bad[0] -match 'could not examine root AGENTS\.md') 'an empty AGENTS.md must be unexaminable, not clean'
+}
+
+# --- 7. root delivery facts ---------------------------------------------------------------
+# Root AGENTS.md is the canonical maintainer file (WSD-089); CLAUDE.md imports it and carries no Status
+# section of its own, so the pointer checks target AGENTS.md alone.
+function Get-RootDeliveryFactViolations([string]$Readme, [string]$Agents, [hashtable]$ManifestPaths, [hashtable]$DeliveredLegalPaths) {
     $bad = @()
     if ($Readme -match '(?is)\binstall(?:ing|ed)?\b.{0,80}\b[0-9,]+\s+files\b') { $bad += 'README has a brittle installed-file count' }
     if ($Readme -notmatch 'framework-ownership\.json.{0,100}(?i:authoritative)') { $bad += 'README does not name framework-ownership.json as authoritative' }
@@ -233,11 +281,9 @@ function Get-RootDeliveryFactViolations([string]$Readme, [string]$Claude, [strin
         $delivered = @($DeliveredLegalPaths[$stack])
         if ($delivered -notcontains 'LICENSES/ai-tech-lead-MIT.txt' -or $delivered -notcontains 'NOTICE-ai-tech-lead.md') { $bad += "$stack dist omits licence or notice" }
     }
-    foreach ($doc in @(@{ Name='CLAUDE.md'; Text=$Claude }, @{ Name='AGENTS.md'; Text=$Agents })) {
-        if ($doc.Text -notmatch '(?ms)^## Status\s*(?<status>.*?)(?=^## |\z)') { $bad += "$($doc.Name) omits its Status section" }
-        elseif ($Matches.status -match '(?i)current shipped version|\bv?\d+\.\d+\.\d+\b|\bB-\d+\b|\b20\d{2}-\d{2}-\d{2}\b') { $bad += "$($doc.Name) retains a numeric status summary" }
-        foreach ($required in @('dist/*/.claude/framework-version.json','CHANGELOG.md','tags','meta/BACKLOG.md')) { if (-not $doc.Text.Contains($required)) { $bad += "$($doc.Name) omits $required pointer" } }
-    }
+    if ($Agents -notmatch '(?ms)^## Status\s*(?<status>.*?)(?=^## |\z)') { $bad += 'AGENTS.md omits its Status section' }
+    elseif ($Matches.status -match '(?i)current shipped version|\bv?\d+\.\d+\.\d+\b|\bB-\d+\b|\b20\d{2}-\d{2}-\d{2}\b') { $bad += 'AGENTS.md retains a numeric status summary' }
+    foreach ($required in @('dist/*/.claude/framework-version.json','CHANGELOG.md','tags','meta/BACKLOG.md')) { if (-not $Agents.Contains($required)) { $bad += "AGENTS.md omits $required pointer" } }
     return $bad
 }
 
@@ -313,7 +359,6 @@ function Get-ArchitectureStubViolations {
 
 It 'root delivery facts defer counts to manifests, ship licence plus notice, and keep status pointers non-numeric' {
     $readme = Get-Content -Raw (Join-Path $repoRoot 'README.md')
-    $claude = Get-Content -Raw (Join-Path $repoRoot 'CLAUDE.md')
     $agents = Get-Content -Raw (Join-Path $repoRoot 'AGENTS.md')
     $manifests = @{}
     $delivered = @{}
@@ -321,7 +366,7 @@ It 'root delivery facts defer counts to manifests, ship licence plus notice, and
         $manifests[$stack] = @((Get-Content -Raw (Join-Path $repoRoot "dist/$stack/framework-ownership.json") | ConvertFrom-Json).paths | ForEach-Object path)
         $delivered[$stack] = @('LICENSES/ai-tech-lead-MIT.txt','NOTICE-ai-tech-lead.md') | Where-Object { Test-Path -LiteralPath (Join-Path $repoRoot "dist/$stack/$_") }
     }
-    $bad = @(Get-RootDeliveryFactViolations $readme $claude $agents $manifests $delivered)
+    $bad = @(Get-RootDeliveryFactViolations $readme $agents $manifests $delivered)
     Assert ($bad.Count -eq 0) ($bad -join '; ')
 }
 
@@ -413,12 +458,13 @@ It 'root delivery fact helper rejects brittle counts, omitted legal paths, and n
     $pointers = "## Status`nVersion authority is dist/*/.claude/framework-version.json. Release history: CHANGELOG.md and tags. Work: meta/BACKLOG.md."
     foreach ($fixture in @('Installing lands 166 files', 'framework-ownership.json is informative', 'LICENSES/ai-tech-lead-MIT.txt', 'NOTICE-ai-tech-lead.md')) {
         $readme = if ($fixture -eq 'framework-ownership.json is informative') { $fixture + ' LICENSES/ai-tech-lead-MIT.txt NOTICE-ai-tech-lead.md' } elseif ($fixture -match 'LICENSE|NOTICE') { 'framework-ownership.json is authoritative. ' + $fixture } else { $good + ' ' + $fixture }
-        Assert (@(Get-RootDeliveryFactViolations $readme $pointers $pointers $paths $paths).Count -gt 0) "red fixture was accepted: $fixture"
+        Assert (@(Get-RootDeliveryFactViolations $readme $pointers $paths $paths).Count -gt 0) "red fixture was accepted: $fixture"
     }
-    Assert (@(Get-RootDeliveryFactViolations $good ($pointers + "`nCurrent shipped version: v1.2.3") $pointers $paths $paths).Count -gt 0) 'numeric CLAUDE status fixture was accepted'
-    Assert (@(Get-RootDeliveryFactViolations $good $pointers ($pointers + "`nB-123 is current") $paths $paths).Count -gt 0) 'numeric AGENTS status fixture was accepted'
+    Assert (@(Get-RootDeliveryFactViolations $good ($pointers + "`nB-123 is current") $paths $paths).Count -gt 0) 'numeric AGENTS status fixture was accepted'
+    Assert (@(Get-RootDeliveryFactViolations $good ($pointers + "`nCurrent shipped version: v1.2.3") $paths $paths).Count -gt 0) 'version-numbered AGENTS status fixture was accepted'
+    Assert (@(Get-RootDeliveryFactViolations $good ($pointers.Replace('meta/BACKLOG.md', 'the backlog')) $paths $paths).Count -gt 0) 'AGENTS fixture missing a required pointer was accepted'
     $missingDelivery = @{} + $paths; $missingDelivery.dotnet = @('NOTICE-ai-tech-lead.md')
-    Assert (@(Get-RootDeliveryFactViolations $good $pointers $pointers $paths $missingDelivery).Count -gt 0) 'missing physical licence fixture was accepted'
+    Assert (@(Get-RootDeliveryFactViolations $good $pointers $paths $missingDelivery).Count -gt 0) 'missing physical licence fixture was accepted'
 }
 
 # CI and the aggregate runner invoke this complete suite directly under both supported hosts. Keep

@@ -117,7 +117,7 @@ getting the framework itself into a repo.
 | `install.ps1` | Root installer — detects the target's stack (or reads `-Stack`) and delegates to the matching dist installer. |
 | `meta/` | **The maintainer layer, kept out of the product's way:** `BACKLOG.md` (work list), `workspace-decisions.md` (ADR log), `LEARNINGS.md` (meta-dev log), `ci-handover.md`, `changelogs/` (frozen pre-merge history). Never ships. |
 | `.github/workflows/ci.yml` | The CI gate — see below. |
-| `CLAUDE.md` / `AGENTS.md` | Governance for developing *this* repo (maintainer instructions — not shipped; distinct from the `CLAUDE.md` templates inside each `dist/`). They must sit at the repo root for Claude Code to load them, so they keep an explicit "you are in the authoring repo" banner as the tie-breaker. |
+| `AGENTS.md` / `CLAUDE.md` | Governance for developing *this* repo (maintainer instructions — not shipped; distinct from the `CLAUDE.md`/`AGENTS.md` templates inside each `dist/`). `AGENTS.md` is the single canonical file; `CLAUDE.md` imports it (`@AGENTS.md`) and adds Claude Code specifics. They sit at the repo root because Claude Code and Codex load them from there, so `AGENTS.md` opens with an explicit "you are in the authoring repo" banner as the tie-breaker. |
 | `DEVELOPING.md` | Operational runbook: the exact commands behind every gate below. |
 | `.claude/` | Maintainer-only Claude Code config (hooks, release automation, plans). Never ships. |
 

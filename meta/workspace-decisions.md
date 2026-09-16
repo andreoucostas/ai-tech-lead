@@ -4141,3 +4141,89 @@ Ownership manifests are generated from the composed tree and are never hand-edit
 digests are enumerated across released tags rather than recalled; where a consumer's bytes cannot
 be in that set — here, installs predating the repository merge — the file is preserved and the
 gap is disclosed rather than closed by guesswork.
+
+---
+
+## WSD-089: the root maintainer instruction file is AGENTS.md, imported by CLAUDE.md; ceremony follows change class (2026-09-16)
+
+**Context.** B-241. Root `CLAUDE.md` had grown to 330 lines, about 40% incident narrative, and the
+hand-condensed `AGENTS.md` mirror was gated only by heading topology (B-82's gate, blind to body
+deletion by its own header; the critic's DROP recommendation was overruled then and is honoured
+now). Claude Code reads only `CLAUDE.md`; Codex, the primary implementer per the review ledger, read
+the condensed copy. 32 of 35 `CLAUDE.md` commits since 2026-07-01 needed a hand mirror edit. The host
+vendor documents the inverse shape (`CLAUDE.md` = `@AGENTS.md` plus Claude specifics) and a
+sub-200-line adherence target. Separately, the maintenance model applied one ceremony to every
+shipped change: 93 release tags in ten weeks, roughly 25 minutes of local gates plus CI per shipped
+change, roughly 1,700-character evidence cells, across 85 S / 34 M / 4 L closed items; three of the
+last four "Effort: S" items had touched installer, hook or gate policy, so effort was never blast
+radius. The maintainer's stated problem: "impossible to do anything quickly… adding random tests".
+
+**Decision.**
+1. Root `AGENTS.md` is the single canonical maintainer instruction file. Root `CLAUDE.md` is an entry
+   point of at most 40 lines: banner, exactly one live `@AGENTS.md` import, Claude-specific notes.
+   Import resolution from a root `CLAUDE.md` on the current host was certified before adoption
+   (B-97 canary 1 with `-ImportTarget AGENTS.md`, POSITIVE with zero tool use on Claude Code
+   2.1.260; row in `meta/host-certification.md`).
+2. Ceilings, gated by DocTruth and treated as budgets in the WSD-055 sense: `AGENTS.md` at most 200
+   lines and 19,500 LF-normalised UTF-8 bytes (1.2× the 16,043 measured at adoption); `CLAUDE.md` at
+   most 40 lines; `AGENTS.md` plus a fixed 4,096-byte allowance for the parent container's stub stays
+   under Codex's 32 KiB project-document cap. Raising a ceiling is an amendment to this decision
+   naming the measured value and the displacement considered, never a silent edit.
+3. Ceremony follows the change class decided from the changed paths — records, prose, mechanism,
+   critical — as tabulated in `AGENTS.md`. Anyone may raise a class, no one may lower it; a batch takes
+   its highest member's class; five or more prose items, or two items touching one file, is
+   mechanism. Records and prose ship without plan, critique, RCA or per-item release; prose batches
+   into the next release and may carry a disclosed non-review ledger cell (`class prose per WSD-089;
+   reviewer user|fresh read-only session|none; paths …; gates … EXIT=0; no behavioural instrument for
+   prose`), recorded verbatim. Mechanism keeps one independent review; critical keeps the full model
+   with the orthogonal second vantage.
+4. Anti-accretion: do the asked change only, adjacent findings become backlog stubs; a new test
+   case needs red-first new behaviour or a named defect that occurred, and a new test file
+   additionally shows its manifest diff and `TIMING` line; the canonical file's line ceiling is the
+   displacement rule; no commit to `master` while a release is between push and tag (B-237).
+5. Maintainer Claude Code wiring: `plansDirectory` → `.claude/plans/inbox` (gitignored; promoted by
+   renaming into the dated convention), `autoMemoryEnabled: false`, deny rules for `Edit`/`Write`
+   under `dist/` and for a bare `git push` (disclosed as speed bumps, not enforcement), a hook
+   `timeout`; all guarded by `MetaHooks.Tests.ps1`.
+
+**Amends / supersedes.** WSD-028: Maintenance model #5 (RCA) now applies to mechanism and critical
+and to any escaped defect; a ledger cell may carry a disclosed non-review. WSD-057: "ordinary work
+still needs one independent review" no longer applies to records and prose; mechanism keeps one and
+critical the orthogonal second vantage; "Rejected: same-session self-review" is narrowed to mechanism
+and critical. WSD-034: proportionality-in-critique is inapplicable to records and prose because no
+critique is required there. WSD-055: extended, not amended — the displacement rule now also governs
+the root maintainer file through its line ceiling. B-82: the heading-topology mapping is retired
+explicitly; with one canonical file there is nothing to mirror. The "common delivery contract"
+paragraph in `meta/BACKLOG.md`'s Execution order section is superseded for records and prose.
+Unchanged: WSD-015 (now an explicit prose prerequisite), WSD-029 (a tag may cover a batch; the range
+goes in the cell), WSD-054 (no Codex-side skills or executors; `AGENTS.md` names the Claude skills
+so Codex reads them as documents), WSD-073, B-54.
+
+**Proportionality.** The observed harm is the uniform ceremony above applied to one-sentence prose
+edits (v0.86.2) and installer deletion authority (v0.83.0) alike, plus a mirror that cost a second
+hand edit on 32 of 35 rule changes; the smaller fix keys ceremony to the artifact kind that already
+determines blast radius, uses only commands that exist, removes no gate from any executable path,
+and adds no mechanism beyond two pure validators inside existing suites.
+
+**Rejected.** `.claude/rules/` path-scoped files (WSD-045: locality, not coverage; invisible to
+Codex; the natural globs are near-always-on here). A SessionStart brief hook (uncertified channel,
+no observed harm). Codex-side skills (WSD-054). A reviewer subagent standing in for the independent
+review (not a separate session). Reusing the S/M/L letters for classes (they already mean effort in
+the backlog). Line count as the class axis (one-line edits to `$protected`, retirements or a
+path-wide `ALLOW` are the most dangerous changes in the tree). Citing an existing gate's red-test as
+a prose change's "instrument seen red" (the costume rule 4 warns about). A byte ceiling derived from
+the Codex cap rather than from measurement.
+
+**Success measure (read on 2026-09-30, from git and the ledger).** Green: three or more releases
+whose ledger cell begins `class prose` and is at most 300 characters with no plan file for their
+items; zero new `*.Tests.ps1` files, or each added file's commit quotes its `TIMING` line and
+manifest diff; src-touching commits per tag at four or more for prose batches (two to three measured
+v0.86.1..v0.86.7); no backlog entry names a prose-class change as an escaped cause; `AGENTS.md` under
+its ceilings throughout. Red: a prose cell over 600 characters or citing a plan; an escaped defect
+attributed to a prose-class change (that path kind moves up a row, recorded as an amendment here); a
+new test file without manifest diff and `TIMING`; tags per week unchanged at eight or nine with
+unchanged commits per tag.
+
+**Follow-ups filed.** B-242 (`release.ps1` refusal text and ledger preamble for disclosed non-review
+cells), B-243 (path-kind refusal in the outgoing guard), B-244 (README clone-at-tag versus a declared
+pre-release `master`), B-245 (`release.ps1` fast path), B-246 (`AgentEvals` outside CI).
