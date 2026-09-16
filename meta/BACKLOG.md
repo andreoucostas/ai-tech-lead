@@ -849,6 +849,33 @@ RK1 Claude total USD 7.920006 of USD 10. No Copilot run, container change or pro
 
 ## Bounded correctness and maintenance work
 
+### B-239 · Pin architecture viewer dependencies and verify browser enforcement
+**Filed against:** v0.86.7 (2026-09-16)
+**Priority:** P2 · **Effort:** M · **Invariants:** #1, #3, #7
+**Status:** Field finding confirmed by source inspection; Opus returned REVISE on the proposal.
+
+The shared architecture generator emits floating `marked@12` and `mermaid@10` CDN scripts without
+SRI or CSP into all three stack source HTMLs and all three distributions. This exposes browser
+script execution to substituted runtime bytes; no actual compromise or browser exploit was observed.
+The original proposal and Opus review/root adjudication are in
+`.claude/plans/2026-09-16-architecture-cdn-plan.md` and
+`.claude/plans/2026-09-16-architecture-cdn-opus-review.md`; WSD-087 records the outcome.
+
+**Next:** concretize exact independently cross-checked package/file/hash tuples, CSP and lossless
+embedding, plus a genuine/modified/genuine browser control with unchanged integrity. Fix the shared
+generator and focused tests, add target-root regeneration to the upgrade checklist, regenerate all
+six pages and compose all dists. Preserve current consumer ownership. Direct PS7/PS5.1 source-output
+checks and separate browser rendering/enforcement evidence are required; complete ordinary review,
+version/changelog and release obligations. No product implementation is authorized by this review.
+
+**Investigation RCA:** current output tests cover encoding/shapes; DocTruth faithfully replays the
+generator, while consumer freshness examines only the Markdown hash and is advisory. None checks
+asset trust or browser enforcement. A bounded source sweep found runtime external script tags only
+in this generator and its architecture derivatives. The same page also interpolates raw Markdown
+and title; lossless embedding and rendered-HTML policy need separate checks. Consumer updates
+preserve Markdown but overwrite HTML, and the upgrade checklist omits architecture regeneration.
+These are source findings, not executed consumer or browser evidence; implementation remains open.
+
 ### B-216 · Project-adapt instance-shaped skills instead of imposing framework defaults
 **Filed against:** v0.81.0 (2026-09-03)
 **Priority:** P1 · **Effort:** L · **Invariants:** #1 #2 #3 #6 #7

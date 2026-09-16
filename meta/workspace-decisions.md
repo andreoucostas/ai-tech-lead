@@ -4047,3 +4047,26 @@ State the summary/body relationship in the shared placeholder, verify source/sem
 installation, and release normally; no new capture actor or dedicated paid comparison. The benefit
 is an explicit drafting contract; model adherence and consumer outcomes remain unknown. The exact
 scope and verification contract are in plan section 10; broader B-223 gaps stay open.
+
+## WSD-087: narrow the architecture CDN repair after adversarial review (2026-09-16)
+
+The user requested an assessment/plan and an Opus adversarial review of floating runtime scripts
+in the architecture viewer. Source inspection confirmed the finding in the shared generator and
+all three distributions. A fresh read-only `claude-opus-5` session returned REVISE; root accepted
+provenance, concrete policy, effective browser controls and consumer-regeneration requirements,
+while correcting its broad-CDN-permission and lossy Markdown-escaping suggestions.
+
+Prefer exact file/version pins plus SRI and bounded CSP over vendoring or pre-rendering for this
+repair. The smaller pin/SRI control closes future byte substitution; CSP and lossless embedding
+address explicitly identified boundaries in the same viewer, subject to demonstrated compatibility.
+No asset-size or cost estimate, general XSS guarantee, offline requirement, browser result or
+product implementation is inferred. Keep PowerShell output checks separate from observed browser
+enforcement and add the regeneration instruction to the existing consumer upgrade path.
+
+The original proposal and complete review/root dispositions are in
+`.claude/plans/2026-09-16-architecture-cdn-plan.md` and
+`.claude/plans/2026-09-16-architecture-cdn-opus-review.md`. B-239 tracks the remaining product work
+and investigation RCA. Actual dependency bytes, exact CSP, lossless serialization and an executable
+browser verification contract still require concretization before implementation lock; this is a
+review outcome, not release approval. Existing composition, host, independent-review and release
+obligations remain in force.
