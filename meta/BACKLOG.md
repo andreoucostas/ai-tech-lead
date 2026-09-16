@@ -853,8 +853,9 @@ RK1 Claude total USD 7.920006 of USD 10. No Copilot run, container change or pro
 **Filed against:** v0.86.7 (2026-09-16)
 **Priority:** P2 · **Effort:** M · **Invariants:** #1, #3, #7
 **Status:** DELIVERED in v0.87.0 (unreleased). Retirement implemented, composed and verified on
-direct PS7 and native Windows PowerShell 5.1. Awaiting independent review; no release approval is
-claimed here and CI has not yet run on this commit.
+direct PS7 and native Windows PowerShell 5.1, and green on CI run 35113529270 — all eight required
+native Windows execution jobs plus the parity decision. Awaiting independent review; no release
+approval is claimed here.
 
 The shared architecture generator emits floating `marked@12` and `mermaid@10` CDN scripts without
 SRI or CSP into all three stack source HTMLs and all three distributions. This exposes browser
@@ -904,7 +905,9 @@ two red jobs. The check was then reproduced red locally, the baseline regenerate
 and the check observed green; every delta is a reduction across the nine measured entries this
 change trimmed. Choosing the local gate set by hand remains a named risk here, not a solved one:
 compose, validate-dist, the hook suites, the meta suite and install smoke were all run, and the one
-gate omitted was the one that failed.
+gate omitted was the one that failed. The follow-up commit is green on CI run 35113529270, where
+`windows-case-parity` passed with no change made to it — confirming it had gone red only because the
+failed footprint step skipped the publish steps that feed it.
 
 **Boundaries.** No browser evidence is produced or needed; the page's inertness is a byte fact. No
 claim that Mermaid renders on any particular consumer host. Pre-merge legacy-repo generator bytes
