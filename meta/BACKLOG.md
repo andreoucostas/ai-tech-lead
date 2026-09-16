@@ -897,6 +897,15 @@ Windows PowerShell 5.1 (5.1.26100.9444). Install smoke greenfield and brownfield
 scripts parse under 5.1 with BOMs intact and no BOM-less `.ps1` repo-wide. Both retirement ledgers
 are byte-identical.
 
+That local set was incomplete. `scripts/context-footprint.ps1 -Check` was never run before the first
+push, and CI failed on it on both hosts (run 35111478865); because that step failed, the
+case-cardinality publish steps were skipped and the parity job went down with them — one root cause,
+two red jobs. The check was then reproduced red locally, the baseline regenerated with `-Update`,
+and the check observed green; every delta is a reduction across the nine measured entries this
+change trimmed. Choosing the local gate set by hand remains a named risk here, not a solved one:
+compose, validate-dist, the hook suites, the meta suite and install smoke were all run, and the one
+gate omitted was the one that failed.
+
 **Boundaries.** No browser evidence is produced or needed; the page's inertness is a byte fact. No
 claim that Mermaid renders on any particular consumer host. Pre-merge legacy-repo generator bytes
 are unrecoverable here, so those copies are preserved rather than deleted. Brownfield collisions are

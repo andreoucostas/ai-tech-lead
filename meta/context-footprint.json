@@ -212,13 +212,13 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 12625,
-          "tok": 3156
+          "chars": 12251,
+          "tok": 3063
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 5436,
-          "tok": 1359
+          "chars": 5348,
+          "tok": 1337
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -398,8 +398,8 @@
         },
         {
           "path": ".claude/commands/impact.md#body",
-          "chars": 1607,
-          "tok": 402
+          "chars": 1523,
+          "tok": 381
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
@@ -681,13 +681,13 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 12572,
-          "tok": 3143
+          "chars": 12198,
+          "tok": 3050
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 5656,
-          "tok": 1414
+          "chars": 5568,
+          "tok": 1392
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -867,8 +867,8 @@
         },
         {
           "path": ".claude/commands/impact.md#body",
-          "chars": 1607,
-          "tok": 402
+          "chars": 1523,
+          "tok": 381
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
@@ -1170,13 +1170,13 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 13405,
-          "tok": 3351
+          "chars": 13031,
+          "tok": 3258
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 5930,
-          "tok": 1482
+          "chars": 5842,
+          "tok": 1460
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -1356,8 +1356,8 @@
         },
         {
           "path": ".claude/commands/impact.md#body",
-          "chars": 1607,
-          "tok": 402
+          "chars": 1523,
+          "tok": 381
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
