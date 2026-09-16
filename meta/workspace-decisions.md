@@ -4087,3 +4087,24 @@ existing freshness/test obligations. If a concrete essential direct-browser flow
 the earlier hardening direction remains available. No product change follows from this review.
 The complete report and checked disposition are in
 `.claude/plans/2026-09-16-architecture-cdn-astra-review.md`; B-239 remains open.
+
+**Opus retirement-review amendment, 2026-09-16.** A fresh `claude-opus-5` review, explicitly
+authorized to receive the necessary repository data, agrees with the retirement premise and
+returns REVISE on transition scope. Prefer one common inert compatibility page, ordinary installed
+HTML overwrite, separately content-qualified generator retirement and preserved canonical Markdown.
+The reason is reduced ongoing runtime/input-handling responsibility, not proof that presentation
+has no value or that the supported PowerShell hosts prohibit browser evidence.
+
+Make warnings cumulative for both the PS1 generator and its already-retired SH predecessor; neither
+should recommend the other after retirement. Update live callers and narrowly replace the former
+freshness contract. A fixed reviewed literal page contract is appropriate; Opus's token deny list
+is not a complete no-fetch oracle. Keep the page while direct legacy upgrades are supported:
+knowing future stub hashes does not make skipped-release upgrades safe. Disclose preserved archived
+and custom reports rather than claiming complete cleanup. Existing migration machinery suffices
+with bounded data/diagnostic changes; no general parser, new review campaign or installer redesign.
+
+Root corrected README delivery, test-scope, lifecycle and evidence overstatements and recorded the
+complete original report and receipt in
+`.claude/plans/2026-09-16-architecture-retirement-opus-review.md`. The next step is a bounded
+implementation contract and its normal verification/release process; this review implements
+nothing and grants no release approval. B-239 remains open.

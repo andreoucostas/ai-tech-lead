@@ -852,7 +852,7 @@ RK1 Claude total USD 7.920006 of USD 10. No Copilot run, container change or pro
 ### B-239 · Resolve architecture viewer exposure and evaluate runtime retirement
 **Filed against:** v0.86.7 (2026-09-16)
 **Priority:** P2 · **Effort:** M · **Invariants:** #1, #3, #7
-**Status:** Finding confirmed; Opus requested stronger controls, then Astra reopened the viewer's necessity. Retirement/transition is the preferred proposal; no implementation lock.
+**Status:** Finding confirmed; Astra and a fresh Opus review support retirement/transition, with migration and verification corrections. No product implementation yet.
 
 The shared architecture generator emits floating `marked@12` and `mermaid@10` CDN scripts without
 SRI or CSP into all three stack source HTMLs and all three distributions. This exposes browser
@@ -866,12 +866,21 @@ user-requested broader assessment. The HTML supplies browser-viewing convenience
 overview, with no separate knowledge. This is not proof of non-use; no inspected contract requires
 that runtime. The original proposal assumed preservation before comparing retirement.
 
+**Opus retirement review:** `.claude/plans/2026-09-16-architecture-retirement-opus-review.md`
+records the fresh, explicitly authorized review. Opus agrees with the product direction and finds
+installed migration gaps. Root confirms narrow cumulative diagnostics for both generator extensions,
+ordinary HTML overwrite and common source; corrects its incomplete inertness scan, premature stub
+removal condition, test scope and claim that PS-only evidence topology decides retirement.
+
 **Next:** re-lock a proportionate retirement/transition design before implementing. Prefer preserved
 canonical Markdown, an inert HTML compatibility page through ordinary overwrite, and separate
 generator retirement. Account for the optional `/impact` caller, consumer-generated reports,
 unknown hashes, missing manifests and protected stale references; never equate source deletion
-with complete installed cleanup. Update live documentation and tests/freshness contracts. If an
-essential direct-browser use case instead justifies retention, concretize the prior plan's byte
+with complete installed cleanup. Retain the compatibility page for direct legacy upgrades; disclose
+archived/custom-page residue. Verify the fixed page against an independently reviewed literal
+contract, and warn on both retired generator paths on later updates. Update live documentation and
+tests/freshness contracts. If an essential direct-browser use case instead justifies retention,
+concretize the prior plan's byte
 provenance, CSP, lossless embedding and genuine/modified/genuine browser controls. Either direction
 requires source-first composition, direct PS7/PS5.1 checks, appropriate separate browser evidence,
 review and normal release records. No product implementation is authorized by these reviews.
@@ -885,6 +894,9 @@ preserve Markdown but overwrite HTML, and the upgrade checklist omits architectu
 The optional `/impact` generator use also exposes non-default report outputs. The first review
 assumed the renderer should survive, so its proportionality comparison omitted retirement. These
 are source/design findings, not executed consumer or browser evidence; implementation remains open.
+The next review found that current retirement warnings enumerate prior categories and omit this
+PS1 path; under the proposal, SH guidance would recommend a retired replacement. Other retirement
+plans share that exposure.
 
 ### B-216 · Project-adapt instance-shaped skills instead of imposing framework defaults
 **Filed against:** v0.81.0 (2026-09-03)
