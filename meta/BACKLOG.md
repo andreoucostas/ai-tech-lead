@@ -852,7 +852,9 @@ RK1 Claude total USD 7.920006 of USD 10. No Copilot run, container change or pro
 ### B-239 · Resolve architecture viewer exposure and evaluate runtime retirement
 **Filed against:** v0.86.7 (2026-09-16)
 **Priority:** P2 · **Effort:** M · **Invariants:** #1, #3, #7
-**Status:** Finding confirmed; Astra and a fresh Opus review support retirement/transition, with migration and verification corrections. No product implementation yet.
+**Status:** DELIVERED in v0.87.0 (unreleased). Retirement implemented, composed and verified on
+direct PS7 and native Windows PowerShell 5.1. Awaiting independent review; no release approval is
+claimed here and CI has not yet run on this commit.
 
 The shared architecture generator emits floating `marked@12` and `mermaid@10` CDN scripts without
 SRI or CSP into all three stack source HTMLs and all three distributions. This exposes browser
@@ -872,18 +874,33 @@ installed migration gaps. Root confirms narrow cumulative diagnostics for both g
 ordinary HTML overwrite and common source; corrects its incomplete inertness scan, premature stub
 removal condition, test scope and claim that PS-only evidence topology decides retirement.
 
-**Next:** re-lock a proportionate retirement/transition design before implementing. Prefer preserved
-canonical Markdown, an inert HTML compatibility page through ordinary overwrite, and separate
-generator retirement. Account for the optional `/impact` caller, consumer-generated reports,
-unknown hashes, missing manifests and protected stale references; never equate source deletion
-with complete installed cleanup. Retain the compatibility page for direct legacy upgrades; disclose
-archived/custom-page residue. Verify the fixed page against an independently reviewed literal
-contract, and warn on both retired generator paths on later updates. Update live documentation and
-tests/freshness contracts. If an essential direct-browser use case instead justifies retention,
-concretize the prior plan's byte
-provenance, CSP, lossless embedding and genuine/modified/genuine browser controls. Either direction
-requires source-first composition, direct PS7/PS5.1 checks, appropriate separate browser evidence,
-review and normal release records. No product implementation is authorized by these reviews.
+**Delivered.** The re-locked design is
+`.claude/plans/2026-09-16-architecture-retirement-implementation.md`; WSD-088 records the decision.
+Two mechanisms, deliberately separate: `docs/architecture.html` stays in the ownership manifest and
+is replaced by ordinary overwrite (ledger deletion is hash-gated and would have preserved exactly
+the consumer-regenerated pages carrying the exposure), while `scripts/build-architecture-html.ps1`
+goes to the retirement ledger with the four digests this repo ever shipped, enumerated across all
+93 release tags. The generator, its test and the three stack page overrides are deleted; one inert
+page is authored at `src/core/docs/architecture.html` and composed to all three dists. Three
+installer diagnostics were corrected, including one regression none of the three prior reviews
+found: `$retiredReferenceReplacements` built the `.sh` twin's migration entry only while its `.ps1`
+remained in the incoming manifest, so retiring the `.ps1` would have silently dropped a message
+consumers already relied on.
+
+**Verification (observed).** Compose ×3 exit 0 and a confirming rebuild left `dist/` unchanged;
+`validate-dist` ×3 exit 0; `no-dead-instruction` red-tested — a planted
+`pwsh -NoProfile -File scripts/build-architecture-html.ps1` produced `FAIL ... 1` naming file and
+line at exit 1, the clean control `OK` at exit 0. Sequential meta suite 0 failures across 36 files.
+Shipped hook suites 0 failures across 19 files in each dist under PS7, and the same under native
+Windows PowerShell 5.1 (5.1.26100.9444). Install smoke greenfield and brownfield across three dists
+6/6 on each host, brownfield archiving the pre-existing page to `docs/pre-adoption/`. All 30 changed
+scripts parse under 5.1 with BOMs intact and no BOM-less `.ps1` repo-wide. Both retirement ledgers
+are byte-identical.
+
+**Boundaries.** No browser evidence is produced or needed; the page's inertness is a byte fact. No
+claim that Mermaid renders on any particular consumer host. Pre-merge legacy-repo generator bytes
+are unrecoverable here, so those copies are preserved rather than deleted. Brownfield collisions are
+relocated, not removed. `/impact` custom outputs are never installed and are untouched.
 
 **Investigation RCA:** current output tests cover encoding/shapes; DocTruth faithfully replays the
 generator, while consumer freshness examines only the Markdown hash and is advisory. None checks
@@ -897,6 +914,65 @@ are source/design findings, not executed consumer or browser evidence; implement
 The next review found that current retirement warnings enumerate prior categories and omit this
 PS1 path; under the proposal, SH guidance would recommend a retired replacement. Other retirement
 plans share that exposure.
+
+**Delivery RCA.** *Why did no gate catch the original exposure?* Output tests covered encoding and
+shape, and DocTruth faithfully replayed the generator — so a gate could reproduce an insecure
+template forever and stay green. Consumer freshness compared only the Markdown hash and was
+advisory. Nothing checked asset trust.
+
+*Why did no gate catch the delivery?* Two did, and that is the more actionable finding: the
+implementation broke `ClaimTruth` and `B215OwnershipBoundary`, both on the first full run. Both are
+the same class — a **curated inventory that names deleted artifacts indirectly**: ClaimTruth pins a
+list of authored claim-carrier *paths*, B215 pins the retained hook-test *count* as a bare integer.
+The change surface was built by searching for references to the generator, which finds prose and
+commands but neither a path inside a test's data array nor an integer. The research map did flag
+ClaimTruth; it was dismissed because its rules concern claims unrelated to the CDN, when the binding
+property was simply that the files must exist. Fixed by replacing rather than shrinking: the stub
+inherits the carrier slot, and B215's live count moved 23→22 while the frozen historical 23 it sits
+beside was left alone.
+
+*What else is exposed to the same class?* Six curated inventories now govern deletions of shipped
+files: ClaimTruth's carrier list, B215's retained count, the shipped runner's `$expectedTestFiles`
+manifest, `framework-doctor`'s residue list, `UpdateDelivery`'s 18-path v0.83 fixture and
+`FrameworkDoctor`'s matching 18-path list. All six were touched or re-verified here. Any future
+deletion of a shipped file must check all six, because none of them is reachable by grepping for the
+deleted file's name. Separately, a measured sweep of the retirement ledger found two paths whose
+diagnostics are already absent for the reason B-239 fixed here — filed as **B-240**.
+
+### B-240 · Retirements whose twin is also retired lose their consumer diagnostics
+**Filed against:** v0.86.7 (2026-09-16)
+**Priority:** P2 · **Effort:** S · **Invariants:** #1, #3
+**Status:** Open. Found by the B-239 delivery sweep (Maintenance model #5). Source analysis only;
+no installer fixture was executed against these paths, so the behaviour below is read from the
+predicates, not observed.
+
+`install.ps1` gives a retired path two independent consumer diagnostics: a residual `CANT-VERIFY`
+on later updates, and a `$retiredReferenceReplacements` entry that drives the protected-carrier
+`MIGRATION:` scan. Both can be silently absent when a path's opposite-extension twin is *also*
+retired, because the generic arm resolves a `.sh` to its `.ps1` only while that `.ps1` is still in
+the incoming ownership manifest. B-239 fixed this for the architecture generator by naming both
+twins explicitly; the same shape remains elsewhere.
+
+Enumerating the ledger against `install.ps1` at the B-239 baseline found four `.sh` entries whose
+`.ps1` twin is also retired. Two are covered by explicit branches (`setup-git-hooks`, and the
+architecture generator as of 0.87.0). The remaining two are not:
+
+- `scripts/impact-run.ps1` and `scripts/impact-run.sh` (retired-in 0.76.0) appear nowhere in
+  `install.ps1`. They miss the residual predicate, which admits only GitHub skills, the named sync
+  scripts, git-hook helpers, `retired-in == 0.83.0` and the architecture generator; and they get no
+  replacement entry because `impact-run.ps1` is itself retired. A consumer still holding either file
+  appears to receive neither diagnostic.
+- `scripts/sync-agent-files.ps1` and `scripts/sync-agent-files.sh` are admitted to the residual loop
+  by name, so they are reported as residue, but they have no replacement entry — a protected carrier
+  naming them gets no `MIGRATION:` guidance.
+
+The broader question this raises, and the reason the entry is not simply "add two more branches":
+whether the generic twin-resolution arm should depend on incoming-manifest membership at all, given
+that the condition is false exactly when both twins are retired. Decide per path whether a
+diagnostic is warranted before adding entries; several 0.76/0.82-era retirements may be old enough
+that silence is the intended outcome. Any change here is diagnostic only and must grant no new
+deletion authority. Confirming the impact-run behaviour needs an installer fixture, which this
+entry does not have. See `meta/workspace-decisions.md WSD-088` and B-239 for the fixed instance.
 
 ### B-216 · Project-adapt instance-shaped skills instead of imposing framework defaults
 **Filed against:** v0.81.0 (2026-09-03)

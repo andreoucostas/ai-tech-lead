@@ -154,7 +154,7 @@ automatically.
 | `TECH_DEBT.md` | **Generated** by `/bootstrap` — prioritised debt register with Trojan Horse opportunities. |
 | `LEARNINGS.md` | Append-only log of what worked / what didn't / what rule changed. Read on non-trivial work. |
 | `docs/playbook.md` | Methodology guide (the "why" behind the framework). |
-| `docs/ARCHITECTURE.md` (+ `architecture.html`) | Canonical architecture map with Mermaid diagrams; HTML is the generated, drift-checked view for reviewers. |
+| `docs/ARCHITECTURE.md` | Canonical architecture map with Mermaid diagrams. |
 | `docs/REVIEW-GUIDE.md` | A senior reviewer's annotated tour — reading order, what each piece guarantees, how to verify, and the tradeoffs. |
 | `docs/presentation/` | Self-contained offline presentations: the persuasive `framework-briefing.html` + `TALKING-POINTS.md`, the implementation-level `framework-technical.html`, and the printable one-page `framework-system-map.html`. |
 

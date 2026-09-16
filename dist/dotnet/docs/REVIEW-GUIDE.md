@@ -9,7 +9,7 @@ One file is authored by hand — **`CLAUDE.md`**. Supported clients load it or g
 ## Reading order (≈45 min)
 
 1. **`CLAUDE.md`** — the authored framework-rule source. Read Verification Rules, Leanness, SOLID, Boy Scout; verify the client carrier and host support before relying on delivery.
-2. **`docs/ARCHITECTURE.md`** + open **`docs/architecture.html`** — how the pieces connect (diagrams).
+2. **`docs/ARCHITECTURE.md`** — how the pieces connect (diagrams).
 3. **`.claude/commands/`** — the workflows. Read `feature.md`, `fix.md`, `review.md`, `bootstrap.md`. *Guarantees:* a repeatable execution model (plan → verified subtasks → Boy Scout → self-review).
 4. **`.claude/agents/`** — `solid-check`, `convention-check`, `bloat-radar`, `security-auditor`, `debt-radar`. *Guarantees:* `/review` is backed by specialist passes, not one model's vibe.
 5. **`.claude/hooks/`** — `guard` (PreToolUse), `post-write`, `route-prompt`, `boy-scout-check`. *Guarantees only when live:* deterministic actions on the supported events; shell writes and unavailable hooks remain outside that scope.
@@ -18,7 +18,7 @@ One file is authored by hand — **`CLAUDE.md`**. Supported clients load it or g
 
 ## How to verify the claims (don't take them on faith)
 
-- **Single source + no drift:** run `pwsh -NoProfile -File scripts/docs-sync-check.ps1` (it self-skips in the template repo via `.template-repo`; run it in a bootstrapped consumer repo). It checks CLAUDE.md is bootstrapped and within budget, AGENTS.md/copilot-instructions are current, project skills live only under `.claude/skills`, and `architecture.html` is fresh.
+- **Single source + no drift:** run `pwsh -NoProfile -File scripts/docs-sync-check.ps1` (it self-skips in the template repo via `.template-repo`; run it in a bootstrapped consumer repo). It checks CLAUDE.md is bootstrapped and within budget, AGENTS.md/copilot-instructions are current, and project skills live only under `.claude/skills`.
 - **Hook-script input/output fixtures (not host firing):** pipe representative JSON into `pwsh -NoProfile -File .claude/hooks/route-prompt.ps1` and `.claude/hooks/guard.ps1`; confirm `/fix` rails and exit 2 for a prohibited suppression. These direct commands prove parser and output-shape behavior only; they do not prove that a client fires the event or consumes the output.
 - **`/review` derives and runs applicable repository-evidenced checks itself** (review.md Step 2) —
   it does not trust unverified pass claims, and reports unsupported categories as `not available`.
@@ -31,7 +31,7 @@ One file is authored by hand — **`CLAUDE.md`**. Supported clients load it or g
 - **Bitbucket Data Center.** Only the local Windows layer applies — Copilot coding-agent cloud hook execution is unsupported. Wire the PowerShell CI guardrail into Bamboo/Jenkins on a self-hosted Windows agent and require its build status. See README.
 - **Hooks need a working interpreter and client support.** Dated canaries cover only the capabilities they exercised, not every registered event; Copilot CLI `agentStop` firing and its queue write remain unverified, as do current VS Code Preview-hook lifecycles. VS Code hooks are Preview, off by default, and org-gated; shell writes are outside the editor guard.
 - **Evals are intentionally tiny** — a regression tripwire for the framework's own rules, not test coverage for your app.
-- **Generated files will lag if not regenerated.** `AGENTS.md`, `copilot-instructions.md`, and `architecture.html` are generated; review `CLAUDE.md`/`ARCHITECTURE.md`, and let `docs-sync` / CI catch staleness. Project skills are canonical under `.claude/skills`; a legacy `.github/skills` tree is a migration failure because it can shadow them.
+- **Generated files will lag if not regenerated.** `AGENTS.md` and `copilot-instructions.md` are generated; review `CLAUDE.md`/`ARCHITECTURE.md`, and let `docs-sync` / CI catch staleness. Project skills are canonical under `.claude/skills`; a legacy `.github/skills` tree is a migration failure because it can shadow them.
 
 ## Probing checklist
 

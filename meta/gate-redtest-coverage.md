@@ -64,7 +64,6 @@ reaches every row; that is reachability, not automatically a planted adverse-sta
 | wiki-check — `src/core/scripts/wiki-check.{ps1,sh}` | `WikiCheck.Tests.ps1` negative matrix and B-75 reached-set mutation | Yes — this delivery's B-75 report | ps1 + sh | COVERED |
 | warehouse-map-check — `src/core/scripts/warehouse-map-check.{ps1,sh}` | `WarehouseMapCheck.Tests.ps1` invalid-map fixtures | Seen adverse exits when suite runs; no earlier standalone record located | ps1 + sh | COVERED |
 | docs-sync-check — `src/core/scripts/docs-sync-check.{ps1,sh}` | `DocsSyncCheck.Tests.ps1` plants a skills-mirror drift and asserts both twins exit 1 | Yes — executable B-149 mutation; `2026-08-18-b149-implementation.md` | ps1 + sh | COVERED |
-| build-architecture-html — `src/core/scripts/build-architecture-html.{ps1,sh}` | `BuildArchitectureHtml.Tests.ps1` fixture-removal reached-set mutation | Yes — this delivery's B-75 report | ps1 + sh | COVERED |
 | composer — `scripts/build.{ps1,sh}` | `Composer.Tests.ps1` plants a malformed marker and an unapproved whole-file collision against both twins. Missing snippets are intentionally removed, not rejected. | Yes — executable B-149 mutations; `2026-08-18-b149-implementation.md` | ps1 + sh | COVERED |
 
 ## Maintainer meta suites
@@ -75,7 +74,7 @@ One row follows for every `*.Tests.ps1` under `.claude/hooks/tests/` on the inve
 |---|---|---|---|---|
 | `BacklogHygiene.Tests.ps1` | `-RedTest` named mutations, including vacuity mutations | Yes — executable arms; strongest reference named by B-64 | n/a (PS-only meta) | COVERED |
 | `DocClaims.Tests.ps1` | `-RedTest` named claim/registry mutations | Yes — `2026-08-18-b76-implementation.md` | n/a | COVERED |
-| `DocTruth.Tests.ps1` | Static live-tree assertions; external planted-heading replay | Yes — `meta/review-ledger.md` v0.53.0 | n/a | COVERED |
+| `DocTruth.Tests.ps1` | Static live-tree assertions; external planted-heading replay; in-suite architecture-stub arms (planted script, unlisted `<img>` resource, missing file, throwing reader, empty target list) | Yes — `meta/review-ledger.md` v0.53.0; stub arms executed at v0.87.0 | n/a | COVERED |
 | `VendorClaims.Tests.ps1` | nine `-RedTest` arms (3 planted claims, section-skipper, 4 vacuity/parse, unproved-pattern), plus a permanent in-suite provenance proof per pattern | Yes — all nine observed red, and the gate caught all four genuine instances in the real `dist/dotnet` at `3ea42f8^`; `meta/BACKLOG-DONE.md` B-55 | n/a (PS-only meta) | COVERED |
 | `Composer.Tests.ps1` | malformed-marker and unapproved-overlay-collision mutations | Yes — `2026-08-18-b149-implementation.md` | composer ps1 + sh | COVERED |
 | `DocsSyncCheck.Tests.ps1` | planted `.claude/skills` versus `.github/skills` drift | Yes — `2026-08-18-b149-implementation.md` | docs-sync-check ps1 + sh | COVERED |

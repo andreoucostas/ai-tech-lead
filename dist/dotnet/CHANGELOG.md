@@ -4,6 +4,20 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.87.0 — Unreleased
+
+- **The generated `docs/architecture.html` view is retired.** It rendered its diagrams by loading
+  third-party script from a content delivery network every time you opened it, with no integrity
+  checking. `docs/ARCHITECTURE.md` is unchanged and remains the canonical architecture map — read it
+  in your editor or your Git host, which render the Mermaid diagrams that page used to draw.
+- On update, `docs/architecture.html` is replaced by a short placeholder pointing at the Markdown, so
+  existing links and bookmarks keep working. The placeholder is safe to delete.
+- `scripts/build-architecture-html.ps1` is removed. An unmodified copy is deleted on update; a copy
+  you have edited is preserved and reported so you can review it before removing it yourself.
+- HTML you generated with that script previously — including any `/impact` report — is left exactly
+  as it is. This release does not repair or delete those files; regenerate or remove them yourself.
+- `scripts/docs-sync-check.ps1` no longer checks `architecture.html` freshness.
+
 ## 0.86.7 — 2026-09-11
 
 - The MIT licence now credits `ai-tech-lead contributors`. Updates replace the exact previous

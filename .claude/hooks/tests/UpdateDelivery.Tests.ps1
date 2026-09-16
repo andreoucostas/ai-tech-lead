@@ -1003,7 +1003,11 @@ It 'later updates report and preserve every v0.83 retired executable or sample r
             Assert (Test-B194BytesEqual $sentinels[$relative] ([IO.File]::ReadAllBytes($path))) "later update changed retired residue $relative"
             Assert ($out -match [regex]::Escape("'$relative'")) "later update made retired residue invisible: $relative"
         }
-        Assert (@([regex]::Matches($out, "CANT-VERIFY: retained retired (?:framework path|sample|Git-hook helper) '")).Count -ge 18) 'retired residue diagnostics were unexpectedly empty or incomplete'
+        # 'generator' joined this set when the architecture viewer retired: build-architecture-html.sh
+        # is one of the 18 planted paths and now gets a message naming its canonical Markdown
+        # replacement instead of the generic one. The >= 18 floor is unchanged -- every planted
+        # residue must still be diagnosed.
+        Assert (@([regex]::Matches($out, "CANT-VERIFY: retained retired (?:framework path|sample|Git-hook helper|generator) '")).Count -ge 18) 'retired residue diagnostics were unexpectedly empty or incomplete'
     } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
@@ -1058,6 +1062,106 @@ It 'wrong-case previous ownership cannot authorize canonical retirement deletion
         Assert (Test-B194BytesEqual $historicalBytes ([IO.File]::ReadAllBytes($canonical))) 'wrong-case retirement changed canonical bytes'
         Assert ($out -notmatch '(?m)^PLAN delete scripts/wiki-check\.sh\r?$') "wrong-case entry entered the retirement delete plan: $out"
         Assert ($out -match "CANT-VERIFY: retained retired framework path 'scripts/wiki-check\.sh'") "preserved canonical residue was not diagnosed: $out"
+    } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+# --- B-239: architecture viewer retirement -------------------------------------------------------
+# Two different mechanisms, deliberately: docs/architecture.html is an ORDINARY overwrite (ledger
+# deletion is hash-gated and would preserve exactly the consumer-regenerated pages that carry the
+# exposure), while the generator is a LEDGER retirement. These are kept separate from the v0.83
+# residue fixture above, whose 18-path cardinality contract is about a different release.
+
+It 'update replaces the retired architecture view and preserves the protected Markdown' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('arch-retire-replace-' + [guid]::NewGuid())
+    try {
+        New-Item -ItemType Directory -Force -Path $t | Out-Null
+        $first = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "greenfield calibration failed: $first"
+        $legacyPage = Get-GitBlobBytes -Spec 'v0.86.7:dist/dotnet/docs/architecture.html'
+        Assert ($legacyPage.Count -gt 0) 'legacy architecture page fixture is empty'
+        [IO.File]::WriteAllBytes((Join-Path $t 'docs/architecture.html'), $legacyPage)
+        $markdownPath = Join-Path $t 'docs/ARCHITECTURE.md'
+        [IO.File]::WriteAllText($markdownPath, "# Consumer architecture`n`nlocally edited`n", [Text.UTF8Encoding]::new($false))
+        $markdownBefore = [IO.File]::ReadAllBytes($markdownPath)
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "retirement update failed: $out"
+        Assert ($out -match '(?m)^PLAN replace docs/architecture\.html\r?$') "the retired view was not classified as an ordinary replacement: $out"
+        $shipped = [IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/docs/architecture.html'))
+        Assert (Test-B194BytesEqual $shipped ([IO.File]::ReadAllBytes((Join-Path $t 'docs/architecture.html')))) 'installed architecture page is not the shipped inert page'
+        Assert (Test-B194BytesEqual $markdownBefore ([IO.File]::ReadAllBytes($markdownPath))) 'update modified the protected architecture Markdown'
+    } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+function New-ArchGeneratorTarget {
+    param([Parameter(Mandatory)][string]$Target)
+    New-Item -ItemType Directory -Force -Path (Join-Path $Target '.claude') | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $Target 'scripts') | Out-Null
+    [IO.File]::WriteAllText((Join-Path $Target '.claude/framework-version.json'), '{"version":"0.86.7"}', [Text.UTF8Encoding]::new($false))
+}
+
+It 'a known retired generator is deleted and a consumer-modified one is preserved and diagnosed' {
+    foreach ($modified in @($false, $true)) {
+        $label = if ($modified) { 'modified' } else { 'known' }
+        $t = Join-Path ([IO.Path]::GetTempPath()) ("arch-retire-gen-$label-" + [guid]::NewGuid())
+        try {
+            New-ArchGeneratorTarget -Target $t
+            $manifestBytes = Get-GitBlobBytes -Spec 'v0.86.7:dist/dotnet/framework-ownership.json'
+            Assert ($manifestBytes.Count -gt 0) 'the v0.86.7 ownership manifest fixture is empty'
+            [IO.File]::WriteAllBytes((Join-Path $t 'framework-ownership.json'), $manifestBytes)
+            $generator = Join-Path $t 'scripts/build-architecture-html.ps1'
+            $bytes = Get-GitBlobBytes -Spec 'v0.86.7:dist/dotnet/scripts/build-architecture-html.ps1'
+            Assert ($bytes.Count -gt 0) 'historical generator fixture is empty'
+            if ($modified) { $bytes = $bytes + [Text.UTF8Encoding]::new($false).GetBytes("# locally edited`n") }
+            [IO.File]::WriteAllBytes($generator, $bytes)
+            $out = Invoke-Installer -Dist 'dotnet' -Target $t
+            Assert ($LASTEXITCODE -eq 0) "$label generator update failed: $out"
+            if ($modified) {
+                Assert (Test-Path -LiteralPath $generator -PathType Leaf) 'a consumer-modified generator was deleted'
+                Assert (Test-B194BytesEqual $bytes ([IO.File]::ReadAllBytes($generator))) 'a preserved generator changed bytes'
+                Assert ($out -match "CANT-VERIFY: retired path 'scripts/build-architecture-html\.ps1' has consumer-modified or unknown content") "modified generator was not diagnosed: $out"
+            } else {
+                Assert (-not (Test-Path -LiteralPath $generator)) 'a known retired generator survived the update'
+                Assert ($out -match '(?m)^PLAN delete scripts/build-architecture-html\.ps1\r?$') "known generator deletion was not planned: $out"
+            }
+        } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
+
+It 'a missing previous ownership manifest never authorizes generator deletion' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('arch-retire-nomanifest-' + [guid]::NewGuid())
+    try {
+        New-ArchGeneratorTarget -Target $t
+        $generator = Join-Path $t 'scripts/build-architecture-html.ps1'
+        $bytes = Get-GitBlobBytes -Spec 'v0.86.7:dist/dotnet/scripts/build-architecture-html.ps1'
+        [IO.File]::WriteAllBytes($generator, $bytes)
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "missing-manifest update failed: $out"
+        Assert (Test-Path -LiteralPath $generator -PathType Leaf) 'deletion occurred without previous ownership authority'
+        Assert (Test-B194BytesEqual $bytes ([IO.File]::ReadAllBytes($generator))) 'preserved generator changed bytes'
+        Assert ($out -match 'CANT-VERIFY: previous framework-ownership\.json is missing') "missing previous manifest was not disclosed: $out"
+    } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+# Regression guard. install.ps1 built the .sh twin's replacement only when the matching .ps1 was
+# still in the incoming manifest, and the generic residual arm mapped any .sh to its .ps1. Retiring
+# the .ps1 would therefore have silently dropped the .sh twin's migration message and, where one
+# still appeared, aimed it at a file that is itself retired. Neither twin may name the other.
+It 'neither retired generator twin is ever told to migrate to the other' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('arch-retire-twins-' + [guid]::NewGuid())
+    try {
+        New-ArchGeneratorTarget -Target $t
+        foreach ($leaf in @('build-architecture-html.ps1', 'build-architecture-html.sh')) {
+            [IO.File]::WriteAllText((Join-Path $t "scripts/$leaf"), "# consumer copy`n", [Text.UTF8Encoding]::new($false))
+        }
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "twin diagnostic update failed: $out"
+        foreach ($leaf in @('build-architecture-html.ps1', 'build-architecture-html.sh')) {
+            Assert (Test-Path -LiteralPath (Join-Path $t "scripts/$leaf") -PathType Leaf) "unknown $leaf bytes were deleted"
+            Assert ($out -match "CANT-VERIFY: retained retired generator 'scripts/$([regex]::Escape($leaf))' remains") "retained $leaf was not diagnosed: $out"
+        }
+        Assert ($out -match 'read docs/ARCHITECTURE\.md directly') "no diagnostic named the canonical Markdown replacement: $out"
+        Assert ($out -notmatch "migrate references to 'scripts/build-architecture-html\.ps1'") "a diagnostic directed the reader at the retired generator: $out"
+        Assert ($out -notmatch "migrate references to 'the supported PowerShell surface'.*build-architecture") "a retired generator got the generic no-successor message: $out"
     } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
 }
 

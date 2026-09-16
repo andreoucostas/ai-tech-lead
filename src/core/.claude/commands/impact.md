@@ -35,5 +35,3 @@ plain-language qualification:
 > The former pre/post experiment is invalid because its supposed pre-adoption reference was captured
 > after installation. This report is descriptive only: it is not an A/B comparison and does not show
 > that adoption caused a change.
-
-If HTML is useful, render the markdown with `scripts/build-architecture-html.ps1`.

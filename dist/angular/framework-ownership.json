@@ -95,7 +95,6 @@
     { "path": "framework-ownership.json", "ownership": "framework-owned/overwritten" },
     { "path": "framework-retirements.json", "ownership": "framework-owned/overwritten" },
     { "path": "scripts/adoption-archive.ps1", "ownership": "framework-owned/overwritten" },
-    { "path": "scripts/build-architecture-html.ps1", "ownership": "framework-owned/overwritten" },
     { "path": "scripts/ci/bamboo-spec.example.yaml", "ownership": "framework-owned/overwritten" },
     { "path": "scripts/ci/dependency-cruiser.sample.js", "ownership": "framework-owned/overwritten" },
     { "path": "scripts/ci/eslint-standards.sample.mjs", "ownership": "framework-owned/overwritten" },

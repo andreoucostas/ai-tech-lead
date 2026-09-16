@@ -1,8 +1,7 @@
 # AI Tech Lead Framework (.NET) — Architecture
 
 > **Audience.** This is the canonical, human-readable map of what this repo does and how the pieces fit. A senior reviewer should start here, then use [REVIEW-GUIDE.md](./REVIEW-GUIDE.md).
-> **AI agents do not read this file** — they read `README.md` → `CLAUDE.md` / `AGENTS.md` and run the workflow commands. This doc and its generated `architecture.html` are for people.
-> **Generated view.** `docs/architecture.html` is generated from this file by `scripts/build-architecture-html.ps1` (renders the Mermaid diagrams). Edit *this* file; never hand-edit the HTML.
+> **AI agents do not read this file** — they read `README.md` → `CLAUDE.md` / `AGENTS.md` and run the workflow commands. This doc is for people.
 
 ---
 
@@ -62,7 +61,7 @@ flowchart LR
 | `.github/copilot-instructions.md` | Generated (slim) | Copilot inline completions |
 | `.claude/skills/` | **Authored** (canonical project skills) | Claude Code and supported Copilot skill surfaces |
 | `.github/agents/*.agent.md` | Wrappers over `.claude/agents/` | Copilot custom agents |
-| `docs/architecture.html` | Generated from this file | Humans |
+| `docs/architecture.html` | Retired placeholder; points back to this file | Humans |
 
 ---
 
@@ -165,7 +164,7 @@ The local files do not depend on the Git remote, but their client delivery does 
 
 ## 10. Quality gates & drift control
 
-- **CI guardrail** — `scripts/docs-sync-check.ps1` on Windows: CLAUDE.md bootstrapped + size budget; AGENTS.md is a current mirror; copilot-instructions ≤80 lines; project skills exist only at the canonical `.claude/skills` location; FRAMEWORK-CONTEXT populated; architecture.html fresh. Wrapped by the GitHub Windows workflow or wired into Bamboo/Jenkins on a self-hosted Windows agent.
+- **CI guardrail** — `scripts/docs-sync-check.ps1` on Windows: CLAUDE.md bootstrapped + size budget; AGENTS.md is a current mirror; copilot-instructions ≤80 lines; project skills exist only at the canonical `.claude/skills` location; FRAMEWORK-CONTEXT populated. Wrapped by the GitHub Windows workflow or wired into Bamboo/Jenkins on a self-hosted Windows agent.
 - **Eval cases** — read `tests/evals/cases.yaml` as a declarative spec of intended framework behavior (Verification, Leanness, SOLID/DIP, Boy Scout, no-defensive-overcoding). It records example response patterns and plain-English review rubrics.
 - **Version stamp** — `.claude/framework-version.json` + the HTML comment atop `CLAUDE.md`; `CHANGELOG.md` records evolution.
 
@@ -187,13 +186,9 @@ LEARNINGS.md                  append-only lessons
 .claude/settings*.json        PowerShell hook registration (PS7 primary, PS5.1 fallback)
 .github/prompts|agents|hooks|instructions   distinct Copilot adapters and carriers
 .github/workflows/            GitHub Actions (GitHub-only)
-scripts/                      docs-sync-check, install, build-architecture-html, metrics, ci/
+scripts/                      docs-sync-check, install, metrics, ci/
 specs/                        persistent feature specs (spec-driven development)
 docs/impact/                  optional descriptive output
 docs/                         playbook, defaults, ARCHITECTURE (this), REVIEW-GUIDE, architecture-decisions
 tests/evals/                  framework behavior eval suite
 ```
-
----
-
-_Regenerate the HTML after editing this file: `pwsh -NoProfile -File scripts/build-architecture-html.ps1`._

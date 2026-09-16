@@ -11,6 +11,28 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.87.0 — Unreleased
+
+B-239 retires the architecture viewer instead of hardening it. The generator
+`scripts/build-architecture-html.ps1` emitted floating `marked@12` and `mermaid@10` CDN script tags
+with no SRI or CSP into six committed pages across all three dists. Exact pins plus SRI would close
+the byte-substitution gap, but retention creates a standing obligation to re-earn browser evidence
+on every dependency bump in a repo with no browser leg, while retirement costs one migration and one
+inert file (WSD-088).
+
+Two mechanisms, deliberately separate. `docs/architecture.html` stays in the ownership manifest and
+is replaced through ordinary overwrite, because ledger deletion is hash-gated and would preserve
+exactly the consumer-regenerated pages that carry the exposure. The generator goes to the retirement
+ledger with the four digests this repo ever shipped; pre-merge legacy-repo bytes are unrecoverable
+here, so those copies are preserved rather than deleted.
+
+Three installer diagnostics were corrected. The residual predicate now admits the generator, so a
+consumer-modified copy stays visible after the first update. Both generator twins get an accurate
+message instead of one naming a retired replacement. And `$retiredReferenceReplacements` gains
+explicit entries: the generic `.sh` arm was conditioned on the `.ps1` still being in the incoming
+manifest, so retiring the `.ps1` would have silently dropped the `.sh` twin's existing MIGRATION
+message — a regression none of the three prior reviews identified.
+
 ## 0.86.7 — 2026-09-11
 
 B-238 replaces personal MIT licence attribution with `ai-tech-lead contributors` in the root

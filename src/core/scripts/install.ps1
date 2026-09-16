@@ -671,7 +671,11 @@ if ($updateMode) {
         $isRetiredSyncScript = $retiredPath -in @('scripts/sync-agent-files.ps1', 'scripts/sync-agent-files.sh')
         $isRetiredGitHookHelper = $retiredPath -in $legacyGitHookRetiredDependencies
         $isV083Retirement = $retirementLedger[$retiredPath].Version -eq '0.83.0'
-        if ((-not $isGitHubSkill -and -not $isRetiredSyncScript -and -not $isRetiredGitHookHelper -and -not $isV083Retirement) -or $deletePlan.Contains($retiredPath)) { continue }
+        # A consumer-modified generator preserved above would otherwise be diagnosed on the first
+        # update only, then go silent while still producing pages that load third-party script at
+        # view time. The .sh twin is already admitted by the v0.83 arm.
+        $isRetiredArchitectureGenerator = $retiredPath -eq 'scripts/build-architecture-html.ps1'
+        if ((-not $isGitHubSkill -and -not $isRetiredSyncScript -and -not $isRetiredGitHookHelper -and -not $isV083Retirement -and -not $isRetiredArchitectureGenerator) -or $deletePlan.Contains($retiredPath)) { continue }
         $candidate = Get-ContainedTargetPath -Relative $retiredPath
         try { $entry = Get-Item -Force -LiteralPath $candidate -ErrorAction Stop }
         catch [Management.Automation.ItemNotFoundException] { continue }
@@ -692,6 +696,8 @@ if ($updateMode) {
             $reconciliationMessages.Add("CANT-VERIFY: retained retired Git-hook helper '$retiredPath' remains. Remove it only after confirming no consumer-owned hook depends on it; run $followUpPowerShell scripts/framework-doctor.ps1 for the current classification.")
         } elseif ($retiredPath -eq 'scripts/ci/bitbucket-pipelines.example.yml') {
             $reconciliationMessages.Add("CANT-VERIFY: retained retired sample '$retiredPath' remains. It targets an unsupported Linux container; remove it after review and use a Windows/PowerShell CI example instead.")
+        } elseif ($retiredPath -in @('scripts/build-architecture-html.ps1', 'scripts/build-architecture-html.sh')) {
+            $reconciliationMessages.Add("CANT-VERIFY: retained retired generator '$retiredPath' remains. The generated architecture view is retired and has no replacement command; its output loaded third-party script from the network each time it was opened. Read docs/ARCHITECTURE.md directly, then remove this generator and any page it produced after review.")
         } else {
             $replacement = if ($retiredPath.EndsWith('.sh', [StringComparison]::OrdinalIgnoreCase)) {
                 $retiredPath.Substring(0, $retiredPath.Length - 3) + '.ps1'
@@ -716,6 +722,11 @@ foreach ($retiredPath in $(if ($updateMode) { @($retirementLedger.Keys) } else {
         $retiredReferenceReplacements[$retiredPath] = "the setup feature is retired; inspect .git/hooks/pre-commit, remove or replace the old convenience hook manually, then run $followUpPowerShell scripts/framework-doctor.ps1"
     } elseif ($retiredPath -eq 'scripts/ci/bitbucket-pipelines.example.yml') {
         $retiredReferenceReplacements[$retiredPath] = "the Linux container sample is retired; use a Windows runner with $followUpPowerShell scripts/docs-sync-check.ps1"
+    } elseif ($retiredPath -in @('scripts/build-architecture-html.ps1', 'scripts/build-architecture-html.sh')) {
+        # Both twins retire with no successor command. The generic .sh arm below would name a .ps1
+        # that is itself retired, and would stop emitting entirely once that .ps1 left the incoming
+        # manifest -- silently dropping a migration message the consumer already relied on.
+        $retiredReferenceReplacements[$retiredPath] = 'the generated architecture view is retired; read docs/ARCHITECTURE.md directly'
     } elseif ($retiredPath.EndsWith('.sh', [StringComparison]::OrdinalIgnoreCase)) {
         $powerShellPath = $retiredPath.Substring(0, $retiredPath.Length - 3) + '.ps1'
         if ($incoming.ByPath.ContainsKey($powerShellPath)) {

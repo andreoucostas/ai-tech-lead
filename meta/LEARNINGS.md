@@ -2630,3 +2630,43 @@ The final focused runs explicitly reported CP437 and the native host versions, w
 cases and one root/source parity case passing on each host. Recognize exact released content at
 its existing legal path; never normalize away copyright holders or MIT terms to permit an update.
 Earlier chcp-only commands are not claimed as proof of the effective .NET console encodings.
+
+## 2026-09-16 — Retiring one path silently rewired the diagnostics of its siblings (B-239)
+
+Retiring `scripts/build-architecture-html.ps1` changed two existing diagnostics for its already
+retired `.sh` twin, in opposite directions and both invisibly. `install.ps1` built the `.sh`
+replacement entry only when the matching `.ps1` was still in the incoming ownership manifest, so
+retiring the `.ps1` would have dropped the `.sh` twin's migration message entirely; and the generic
+residual arm mapped any `.sh` to its `.ps1`, which would have aimed the surviving message at a file
+that was itself now retired. Three prior adversarial reviews of this change — two Opus, one Astra —
+identified neither. Both were found by reading the installer at the implementation baseline rather
+than working from the review narratives. When retiring a path, inspect every branch keyed on that
+path's siblings or its extension, not just the branches that name it.
+
+The same delivery showed how a message-shape change reaches fixtures that have nothing to do with
+the feature. The v0.83 residue test counts diagnostics by message vocabulary
+(`framework path|sample|Git-hook helper`), and `build-architecture-html.sh` is one of its 18 planted
+paths, so giving that path a more accurate `generator` message dropped the observed count to 17 and
+failed the test. The failure was correct and wanted; the lesson is that vocabulary-counting
+assertions couple every future message edit to unrelated fixtures. The fix extended the alternation
+and left the `>= 18` floor alone — a lowered floor would have removed the very coverage that caught
+this.
+
+A gate that looks like a safety net covered only part of the surface. `no-dead-instruction`'s
+extractor requires a leading `pwsh|bash|powershell` token, so it caught the `ARCHITECTURE.md`
+footer's `pwsh -NoProfile -File ...` reference and was red-tested doing exactly that, but it never
+sees `impact.md`'s prose reference or the repo-map line. Read the extractor before claiming a gate
+covers a change; here the uncovered references had to be found and fixed by inspection.
+
+Two confident claims from a supporting research agent were wrong and would have produced wasted or
+misdirected edits: a `src/core/framework-ownership.json` that does not exist (the manifest is
+generated from the composed tree), and architecture references attributed to
+`docs/upgrade-checklist.md` that actually live in `docs/REVIEW-GUIDE.md`. A third claim — that the
+shipped `BuildArchitectureHtml.Tests.ps1` installs into consumers — contradicted the composer, which
+excludes `tests/hooks/**` from every ownership manifest. Delegated maps are leads; verify each file
+fact before designing against it.
+
+Finally, one compose attempt failed with `WriteAllBytes ... a file with a user-mapped section open`
+on a dist hook script and succeeded unchanged on retry. That is the lock shape invariant #7 already
+records. A compose or gate failure that names a lock is an environment condition; retry before
+reporting it as a defect in the tree.

@@ -24,7 +24,7 @@ $activePaths = @(
     'src/stacks/angular/snippets/.github/instructions/framework-rules.instructions.md/solid-backstop',
     'src/stacks/monorepo/snippets/.github/instructions/framework-rules.instructions.md/solid-backstop',
     'src/stacks/dotnet/files/docs/ARCHITECTURE.md', 'src/stacks/angular/files/docs/ARCHITECTURE.md', 'src/stacks/monorepo/files/docs/ARCHITECTURE.md',
-    'src/stacks/dotnet/files/docs/architecture.html', 'src/stacks/angular/files/docs/architecture.html', 'src/stacks/monorepo/files/docs/architecture.html',
+    'src/core/docs/architecture.html',
     'src/stacks/dotnet/files/docs/REVIEW-GUIDE.md', 'src/stacks/angular/files/docs/REVIEW-GUIDE.md', 'src/stacks/monorepo/files/docs/REVIEW-GUIDE.md',
     'src/stacks/dotnet/files/scripts/metrics.ps1',
     'src/stacks/angular/files/scripts/metrics.ps1',

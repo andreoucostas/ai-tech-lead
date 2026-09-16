@@ -206,6 +206,7 @@ function Get-RetiredFrameworkResidueResult {
         '.claude/hooks/post-write.sh',
         '.claude/hooks/route-prompt.sh',
         '.claude/hooks/session-start.sh',
+        'scripts/build-architecture-html.ps1',
         'scripts/build-architecture-html.sh',
         'scripts/ci/bitbucket-pipelines.example.yml',
         'scripts/docs-sync-check.sh',

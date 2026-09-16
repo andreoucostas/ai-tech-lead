@@ -241,40 +241,71 @@ function Get-RootDeliveryFactViolations([string]$Readme, [string]$Claude, [strin
     return $bad
 }
 
-function Get-ArchitectureFreshnessViolations {
+# B-239 (2026-09-16 plan, S4.1/S6.2): the generator (`build-architecture-html.ps1`) and the three
+# `src/stacks/*/files/docs/architecture.html` whole-file overrides are retired. Nothing produces
+# `docs/architecture.html` anymore -- it is a single static, inert compatibility stub authored
+# once at `src/core/docs/architecture.html` and composed byte-for-byte into all three dists. A
+# token deny-list (e.g. "contains no `<script") is deliberately NOT used: it is not a complete
+# no-fetch oracle -- `<img src="relative.png">` contains none of the denied tokens and still
+# specifies a fetchable resource. Exact bytes are the oracle. Comparing source to copies alone is
+# also rejected: it would accept a uniformly unsafe change where all four committed copies drifted
+# identically wrong. So the expected bytes are pinned HERE, independent of every file under test --
+# never read from src/core/docs/architecture.html or any dist copy.
+$expectedArchitectureStubBytes = [Text.Encoding]::UTF8.GetBytes(((@(
+    '<!doctype html>'
+    '<html lang="en">'
+    '<head>'
+    '<meta charset="utf-8">'
+    '<meta name="viewport" content="width=device-width, initial-scale=1">'
+    '<title>Architecture — see docs/ARCHITECTURE.md</title>'
+    '<style>'
+    '  body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;'
+    '         line-height: 1.6; max-width: 42rem; margin: 0 auto; padding: 2rem 1.25rem; }'
+    '  code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }'
+    '</style>'
+    '</head>'
+    '<body>'
+    '<h1>This generated view is retired</h1>'
+    '<p>This page is no longer generated. It used to load its Markdown and diagram renderers from a'
+    'third-party content delivery network each time it was opened, which this framework no longer'
+    'ships.</p>'
+    '<p><strong>Read <code>docs/ARCHITECTURE.md</code> instead.</strong> It is the canonical source and'
+    'is unchanged. Open it in your editor or your Git host, which display the Mermaid diagrams this page'
+    'used to render.</p>'
+    '<p><a href="ARCHITECTURE.md">docs/ARCHITECTURE.md</a></p>'
+    '<p>This file remains only so existing links and bookmarks do not break, and is safe to delete.</p>'
+    '</body>'
+    '</html>'
+) -join "`n") + "`n"))
+
+function Get-ArchitectureStubViolations {
+    param(
+        [Parameter(Mandatory)][byte[]]$ExpectedBytes,
+        [Parameter(Mandatory)][AllowEmptyCollection()][object[]]$Targets,
+        [Parameter(Mandatory)][int]$ExpectedCount,
+        [Parameter(Mandatory)][scriptblock]$ReadBytes
+    )
     $bad = @()
-    $generator = Join-Path $repoRoot 'src/core/scripts/build-architecture-html.ps1'
-    $hostPath = (Get-Process -Id $PID).Path
-    foreach ($stack in @('dotnet', 'angular', 'monorepo')) {
-        $sourceRoot = "src/stacks/$stack/files"
-        $markdownPath = Join-Path $repoRoot "$sourceRoot/docs/ARCHITECTURE.md"
-        $tempHtml = Join-Path ([IO.Path]::GetTempPath()) ("atl-architecture-$stack-$([guid]::NewGuid().ToString('N')).html")
-        if (-not (Test-Path -LiteralPath $markdownPath)) {
-            $bad += "${sourceRoot}: architecture source is missing"
+    # A target list that is empty, short, or long must fail loudly -- a check that ends up
+    # scanning zero files would otherwise report zero violations and pass silently, which is
+    # indistinguishable from a genuinely clean result.
+    if (@($Targets).Count -ne $ExpectedCount) {
+        $bad += "architecture stub target list is malformed: expected $ExpectedCount committed copies, found $(@($Targets).Count) -- refusing to pass on an empty or incomplete scan"
+        return $bad
+    }
+    foreach ($t in $Targets) {
+        try {
+            $actual = & $ReadBytes $t.Path
+        } catch {
+            $bad += "$($t.Label): could not examine architecture stub: $($_.Exception.Message)"
             continue
         }
-        try {
-            & $hostPath -NoProfile -ExecutionPolicy Bypass -File $generator $markdownPath $tempHtml *> $null
-            if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $tempHtml)) {
-                $bad += "${sourceRoot}: could not examine architecture freshness because the generator failed"
-                continue
-            }
-            $expected = [IO.File]::ReadAllText($tempHtml, [Text.Encoding]::UTF8) -replace "`r", ''
-            foreach ($root in @($sourceRoot, "dist/$stack")) {
-                $htmlPath = Join-Path $repoRoot "$root/docs/architecture.html"
-                if (-not (Test-Path -LiteralPath $htmlPath)) {
-                    $bad += "${root}: generated architecture HTML is missing"
-                    continue
-                }
-                $actual = [IO.File]::ReadAllText($htmlPath, [Text.Encoding]::UTF8) -replace "`r", ''
-                if ($actual -cne $expected) {
-                    $bad += "${root}: architecture.html does not match the generator output for its Markdown source"
-                }
-            }
-        } catch {
-            $bad += "${sourceRoot}: could not examine architecture freshness: $($_.Exception.Message)"
-        } finally {
-            Remove-Item -LiteralPath $tempHtml -Force -ErrorAction SilentlyContinue
+        if ($null -eq $actual) {
+            $bad += "$($t.Label): could not examine architecture stub: file is missing"
+            continue
+        }
+        if ([Convert]::ToBase64String($actual) -cne [Convert]::ToBase64String($ExpectedBytes)) {
+            $bad += "$($t.Label): architecture.html is not byte-identical to the pinned retirement stub"
         }
     }
     return $bad
@@ -314,9 +345,55 @@ It 'B-231 keeps one outcome scope across fresh carriers and truthful protected u
     }
 }
 
-It 'every committed architecture HTML matches generated output from its Markdown source' {
-    $bad = @(Get-ArchitectureFreshnessViolations)
+It 'every committed architecture HTML is the pinned, byte-identical retirement stub' {
+    $targets = @(
+        @{ Label = 'src/core/docs/architecture.html'; Path = (Join-Path $repoRoot 'src/core/docs/architecture.html') }
+        @{ Label = 'dist/dotnet/docs/architecture.html'; Path = (Join-Path $repoRoot 'dist/dotnet/docs/architecture.html') }
+        @{ Label = 'dist/angular/docs/architecture.html'; Path = (Join-Path $repoRoot 'dist/angular/docs/architecture.html') }
+        @{ Label = 'dist/monorepo/docs/architecture.html'; Path = (Join-Path $repoRoot 'dist/monorepo/docs/architecture.html') }
+    )
+    $readBytes = {
+        param($path)
+        if (-not (Test-Path -LiteralPath $path)) { return $null }
+        [IO.File]::ReadAllBytes($path)
+    }
+    $bad = @(Get-ArchitectureStubViolations -ExpectedBytes $expectedArchitectureStubBytes -Targets $targets -ExpectedCount 4 -ReadBytes $readBytes)
     Assert ($bad.Count -eq 0) ($bad -join '; ')
+}
+
+It 'the architecture stub helper separates a wrong byte from an unexaminable file and refuses an empty scan' {
+    $expected = [Text.Encoding]::UTF8.GetBytes("<html></html>`n")
+    $one = @(@{ Label = 'fixture'; Path = 'n/a' })
+
+    # "is wrong": a byte mismatch, including a resource a token deny-list would miss entirely --
+    # an <img src> carries none of the tokens such a scan would deny, yet still fetches something.
+    foreach ($mutant in @(
+            [Text.Encoding]::UTF8.GetBytes("<html><script>1</script></html>`n"),
+            [Text.Encoding]::UTF8.GetBytes(('<html><img src="relative.png"></html>' + "`n"))
+        )) {
+        $bad = @(Get-ArchitectureStubViolations -ExpectedBytes $expected -Targets $one -ExpectedCount 1 -ReadBytes { param($p) $mutant })
+        Assert ($bad.Count -eq 1) 'a byte-mismatched copy must be reported'
+        Assert ($bad[0] -match 'is not byte-identical') "a content mismatch must be reported as wrong, not as unexaminable: $($bad[0])"
+    }
+
+    # "could not examine": missing file
+    $bad = @(Get-ArchitectureStubViolations -ExpectedBytes $expected -Targets $one -ExpectedCount 1 -ReadBytes { param($p) $null })
+    Assert ($bad.Count -eq 1) 'a missing copy must be reported'
+    Assert ($bad[0] -match 'could not examine.*missing') "a missing file must be reported as unexaminable, not as wrong content: $($bad[0])"
+
+    # "could not examine": a read failure (e.g. a locked handle) -- never conflated with "is wrong"
+    $bad = @(Get-ArchitectureStubViolations -ExpectedBytes $expected -Targets $one -ExpectedCount 1 -ReadBytes { param($p) throw 'access denied' })
+    Assert ($bad.Count -eq 1) 'an unreadable copy must be reported'
+    Assert ($bad[0] -match 'could not examine.*access denied') "a read failure must be reported as unexaminable, not as wrong content: $($bad[0])"
+
+    # a check that would scan zero (or the wrong number of) files must fail, not pass vacuously
+    $bad = @(Get-ArchitectureStubViolations -ExpectedBytes $expected -Targets @() -ExpectedCount 4 -ReadBytes { param($p) $expected })
+    Assert ($bad.Count -eq 1) 'an empty target list must be reported, not silently pass as zero violations'
+    Assert ($bad[0] -match 'expected 4') "the malformed-target-list message must be distinguishable from a content or read failure: $($bad[0])"
+
+    # clean pass
+    $bad = @(Get-ArchitectureStubViolations -ExpectedBytes $expected -Targets $one -ExpectedCount 1 -ReadBytes { param($p) $expected })
+    Assert ($bad.Count -eq 0) 'a byte-identical copy must not be reported'
 }
 
 It 'B-231 scope mutation is reachable and restores its scratch bytes' {
