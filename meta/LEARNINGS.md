@@ -2701,3 +2701,15 @@ Worktree-session mechanics worth knowing: the Bash tool's worktree guard refuses
 cannot prove is not git, including a plain `pwsh -File`, so PowerShell runs go through the PowerShell
 tool with absolute paths; and a `-File` invocation does not split `a,b,c` into an array — pass arrays
 through the call operator instead.
+
+The independent review earned its cost twice over. First, it read the *removed* side of the diff
+against the new file and found three binding clauses that "cut illustration, keep every clause" had
+shed anyway — the investigation/design workflow, the re-open cost test, the no-host-no-evidence
+proviso. A trim needs a clause-by-clause check of the `-` lines, not a re-read of the `+` lines.
+Second, its fresh session surfaced a host startup warning nobody in the implementing session could
+see: `Write(/dist/**)` "is not matched by file permission checks — only Edit(path) rules are". A
+permission rule that never fires is the inert-assertion shape of rule #4 wearing a settings file; the
+validator now refuses it, and the surviving rule was then observed live — a fresh session with the
+Edit tool allowed was refused on a `dist/` file. Finally, the reviewer was right that a canary with a
+new import target needs its negative control re-run: without the import line the sentinel was
+`NOT-IN-CONTEXT`, which is what makes the positive attributable to the import at all.

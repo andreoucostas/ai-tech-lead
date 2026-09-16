@@ -96,9 +96,17 @@ reviewer subagent.
 ## 6. Landing conditions
 
 Full meta suite under `pwsh` and `powershell.exe` with equal non-zero `CASE_COUNT`; one independent
-fresh-session review re-observing the planted REDs (mechanism class); merge to `master` only when
-master CI is green and no `watch-ci` is pending; push via `.claude/scripts/push-and-check.ps1`; first
-CI run green on all eight contexts plus parity; then B-241 moves to `BACKLOG-DONE.md` with its RCA.
+fresh-session review (mechanism class) — done, verdict REVISE, all findings dispositioned in
+`.claude/plans/2026-09-16-b241-review-record.md` and the revision re-tested; merge to `master` only
+when master CI is green and no `watch-ci` is pending; push via `.claude/scripts/push-and-check.ps1`;
+first CI run green on all eight contexts plus parity; then B-241 moves to `BACKLOG-DONE.md` with its
+RCA.
+
+**Open observation owed after landing (named):** the `plansDirectory` inbox write can only be
+observed in an interactive plan-mode session. The first interactive Claude Code session the
+maintainer opens in this repo after landing should enter plan mode once, confirm the draft lands in
+`.claude/plans/inbox/`, and append the observation to §7 (a records-class edit). Until then that
+setting is asserted by `MetaHooks` (directory exists, key present) but not observed to be honoured.
 
 ## 7. Run log (implementer-observed, 2026-09-16, worktree `worktree-b241-maintainer-layer`)
 
@@ -114,4 +122,16 @@ CI run green on all eight contexts plus parity; then B-241 moves to `BACKLOG-DON
 | MetaHooks | `pwsh` / `powershell.exe` direct / CP437 leg | `14 passed, 0 failed` on all three, `EXIT=0` (fixture REDs exercised inside the helper cases) |
 | Adjacent suites (`pwsh`) | BacklogHygiene 10/0 · RepositoryPrivacy 7/0 · ClaimTruth 3/0 · WorkspaceBom 4/0 · PowerShellTopology 3/0 | all `EXIT=0` |
 | Full meta suite | `Invoke-HookTests.ps1 -CaseCountPath …` under `pwsh`, then under `powershell.exe` | `0 failure(s) across 36 file(s)` both; 288 s / 220 s; manifests `TOTAL 407` both, byte-identical `True` |
-| Not observed in this session | `plansDirectory` inbox write, deny-rule refusals, `/context` memory list | settings load at session start; to be observed in the next fresh session in the repo and recorded here |
+| Not observed in this session | `plansDirectory` inbox write, `/context` memory list | settings load at session start; owed by the first interactive session after landing (§6) |
+
+### 7b. After the independent review (REVISE → revision applied; see the review record)
+
+| Step | Command | Observed |
+|---|---|---|
+| Host startup warning (reviewer's session) | — | `Write(/dist/**) is not matched by file permission checks — only Edit(path) rules are` → rule removed; `MetaHooks` now refuses the shape |
+| Canary negative control | `canary-import-resolution.ps1 -ImportTarget AGENTS.md -OmitImport -Model haiku` | `sentinel echoed : False` · `NOT-IN-CONTEXT : True` · `file tool used : False` · `CONTROL VALID` · `EXIT=0` |
+| Deny-rule live probe | fresh `claude -p` (haiku, `--allowedTools Read,Edit`) asked to Edit `dist/dotnet/README.md` | `Denied. Exact message: "File is in a directory that is denied by your permission settings."` · file byte-identical · `git status --porcelain dist/` empty |
+| Re-measure | `AGENTS.md` after restoring three clauses and widening the prose trigger | 196 lines / 16,554 B (ceilings 200 / 19,500); `CLAUDE.md` 23 lines |
+| MetaHooks (revised validators) | pwsh / powershell.exe direct / CP437 | `14 passed, 0 failed` ×3, `EXIT=0` |
+| DocTruth (revised `AGENTS.md`) | pwsh | `18 passed, 0 failed`, `EXIT=0` |
+| Full meta suite, both hosts, post-revision | `Invoke-HookTests.ps1 -CaseCountPath …` ×2 | `0 failure(s) across 36 file(s)` under `pwsh` (279 s) and `powershell.exe` (227 s); `TOTAL 407` both; manifests byte-identical `True` |

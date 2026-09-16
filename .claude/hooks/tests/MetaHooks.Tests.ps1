@@ -39,7 +39,24 @@ function Get-SettingsWiringViolations {
     if ($settings.plansDirectory) {
         if (-not (& $PathExists $settings.plansDirectory)) { $bad += "plansDirectory does not exist in the repo: $($settings.plansDirectory)" }
     } else { $bad += 'settings.json has no plansDirectory -- plan-mode drafts would land outside the repo' }
-    if ($settings.autoMemoryEnabled -ne $false) { $bad += 'autoMemoryEnabled is not false -- private memory contradicts the root instruction file standing on its own' }
+    # A JSON string "false" or a 0 would compare equal to $false under PowerShell coercion; only the
+    # boolean is the setting the host honours.
+    if (-not ($settings.autoMemoryEnabled -is [bool]) -or $settings.autoMemoryEnabled) { $bad += 'autoMemoryEnabled is not the boolean false -- private memory contradicts the root instruction file standing on its own' }
+    # Deny rules: the host matches file edits with Edit(...) rules only and reports a Write(...) deny
+    # rule as unmatched at session start (observed 2026-09-16) -- that shape is inert and refused here.
+    $deny = @()
+    if ($settings.permissions -and $settings.permissions.deny) { $deny = @($settings.permissions.deny) }
+    if ($deny.Count -eq 0) {
+        $bad += 'permissions.deny is missing or empty -- the dist/ and git push speed bumps are gone'
+    } else {
+        foreach ($rule in $deny) {
+            if ($rule -match '^Write\(') { $bad += "inert deny rule $rule -- the host matches file edits with Edit(...) rules only; a Write(...) rule never fires" }
+        }
+        if (-not ($deny -match '^Edit\(/dist/\*\*\)$')) { $bad += 'permissions.deny lacks Edit(/dist/**) -- the invariant #1 speed bump is missing' }
+        foreach ($tool in 'Bash', 'PowerShell') {
+            if (-not ($deny -match ('^' + $tool + '\(git push \*\)$'))) { $bad += "permissions.deny lacks $tool(git push *) -- the push-wrapper speed bump is missing for that tool" }
+        }
+    }
     return $bad
 }
 
@@ -177,13 +194,15 @@ exit (Write-TestSummary 'skip-only fixture')
     }
 
     # --- maintainer Claude Code wiring (B-241) ---------------------------------------------------
-    It 'settings.json: every hook -File target resolves, plansDirectory exists, auto-memory is off' {
+    It 'settings.json: hook -File targets resolve, plansDirectory exists, auto-memory is boolean false, deny rules present and none inert' {
         $json = Get-Content -Raw (Join-Path $repoRoot '.claude/settings.json')
         $bad = @(Get-SettingsWiringViolations -Json $json -PathExists { param($p) Test-Path -LiteralPath (Join-Path $repoRoot $p) })
         Assert ($bad.Count -eq 0) ($bad -join '; ')
     }
     It 'settings wiring helper separates unparseable JSON from wrong wiring and refuses vacuous shapes' {
-        $good = '{"plansDirectory":".claude/plans/inbox","autoMemoryEnabled":false,"hooks":{"PostToolUse":[{"matcher":"Write|Edit","hooks":[{"type":"command","command":"pwsh -NoProfile -File .claude/hooks/bom-fix.ps1"}]}]}}'
+        $denyJson = '"permissions":{"deny":["Edit(/dist/**)","Bash(git push *)","PowerShell(git push *)"]}'
+        $hooksJson = '"hooks":{"PostToolUse":[{"matcher":"Write|Edit","hooks":[{"type":"command","command":"pwsh -NoProfile -File .claude/hooks/bom-fix.ps1"}]}]}'
+        $good = '{"plansDirectory":".claude/plans/inbox","autoMemoryEnabled":false,' + $denyJson + ',' + $hooksJson + '}'
         $exists = { param($p) @('.claude/plans/inbox', '.claude/hooks/bom-fix.ps1') -contains $p }
         Assert (@(Get-SettingsWiringViolations -Json $good -PathExists $exists).Count -eq 0) 'clean fixture was rejected'
         $bad = @(Get-SettingsWiringViolations -Json '{ not json' -PathExists $exists)
@@ -194,8 +213,16 @@ exit (Write-TestSummary 'skip-only fixture')
         Assert ($bad.Count -eq 1 -and $bad[0] -match 'plansDirectory does not exist') "a missing plans directory must be named: $($bad -join '; ')"
         $bad = @(Get-SettingsWiringViolations -Json ($good.Replace('"autoMemoryEnabled":false,', '')) -PathExists $exists)
         Assert ($bad.Count -eq 1 -and $bad[0] -match 'autoMemoryEnabled') "a missing autoMemoryEnabled must be reported: $($bad -join '; ')"
-        $bad = @(Get-SettingsWiringViolations -Json '{"plansDirectory":".claude/plans/inbox","autoMemoryEnabled":false,"hooks":{}}' -PathExists $exists)
+        $bad = @(Get-SettingsWiringViolations -Json ($good.Replace('"autoMemoryEnabled":false,', '"autoMemoryEnabled":"false",')) -PathExists $exists)
+        Assert ($bad.Count -eq 1 -and $bad[0] -match 'boolean false') "a string ""false"" must not pass as the boolean: $($bad -join '; ')"
+        $bad = @(Get-SettingsWiringViolations -Json ('{"plansDirectory":".claude/plans/inbox","autoMemoryEnabled":false,' + $denyJson + ',"hooks":{}}') -PathExists $exists)
         Assert ($bad.Count -eq 1 -and $bad[0] -match 'zero command hooks') "a hookless settings file must not pass vacuously: $($bad -join '; ')"
+        $bad = @(Get-SettingsWiringViolations -Json ($good.Replace('"Edit(/dist/**)",', '"Write(/dist/**)","Edit(/dist/**)",')) -PathExists $exists)
+        Assert ($bad.Count -eq 1 -and $bad[0] -match 'inert deny rule Write') "a Write(...) deny rule must be refused as inert: $($bad -join '; ')"
+        $bad = @(Get-SettingsWiringViolations -Json ($good.Replace($denyJson + ',', '')) -PathExists $exists)
+        Assert ($bad.Count -eq 1 -and $bad[0] -match 'missing or empty') "an absent deny list must be reported once, not as four gaps: $($bad -join '; ')"
+        $bad = @(Get-SettingsWiringViolations -Json ($good.Replace('"PowerShell(git push *)"', '"PowerShell(Remove-Item *)"')) -PathExists $exists)
+        Assert ($bad.Count -eq 1 -and $bad[0] -match 'lacks PowerShell\(git push') "a dropped push speed bump must be named per tool: $($bad -join '; ')"
         $bad = @(Get-SettingsWiringViolations -Json '' -PathExists $exists)
         Assert ($bad.Count -eq 1 -and $bad[0] -match 'could not examine') 'empty input must be unexaminable, not clean'
     }

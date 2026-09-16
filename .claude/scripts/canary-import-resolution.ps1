@@ -21,6 +21,10 @@ param(
     # Default is the B-97 shape. B-241 runs it with 'AGENTS.md' to certify the root-mirror import
     # (CLAUDE.md = @AGENTS.md) on the current host before relying on it.
     [string]$ImportTarget = '.claude/framework-rules.md',
+    # Negative control: write the fixture CLAUDE.md WITHOUT the import line. The sentinel must then be
+    # NOT-IN-CONTEXT; if it still echoes, the target reaches the model by another route (for example
+    # native loading of the target file) and a treatment positive is not attributable to `@import`.
+    [switch]$OmitImport,
     [string]$Model = 'haiku',
     [int]$TimeoutSeconds = 180
 )
@@ -38,18 +42,21 @@ New-Item -ItemType Directory -Path $importDir -Force | Out-Null
 The project codeword is $sentinel. It designates the imported-rules delivery path.
 "@ | Set-Content -Path (Join-Path $root $ImportTarget) -Encoding utf8NoBOM
 
-# Root CLAUDE.md carries the import and NOT the sentinel.
+# Root CLAUDE.md carries the import (treatment) or no import at all (negative control) and NOT the
+# sentinel either way.
+$importLine = if ($OmitImport) { '(negative control: no import line)' } else { "@$ImportTarget" }
 @"
 # Canary project
 
 This file is the project instruction file.
 
-@$ImportTarget
+$importLine
 
 End of instructions.
 "@ | Set-Content -Path (Join-Path $root 'CLAUDE.md') -Encoding utf8NoBOM
 
 Write-Host "Fixture: $root"
+Write-Host ("Mode: " + $(if ($OmitImport) { 'NEGATIVE CONTROL (no import line)' } else { "TREATMENT (@$ImportTarget)" }))
 Write-Host "Sentinel '$sentinel' present only in $ImportTarget"
 Write-Host "Control: sentinel occurrences in CLAUDE.md = $((Select-String -Path (Join-Path $root 'CLAUDE.md') -Pattern $sentinel -AllMatches).Count)"
 
@@ -82,7 +89,18 @@ Write-Host "  sentinel echoed : $sawSentinel"
 Write-Host "  NOT-IN-CONTEXT  : $sawNotInCtx"
 Write-Host "  file tool used  : $sawFileRead"
 Write-Host ''
-if ($sawFileRead -and $sawSentinel) {
+if ($OmitImport) {
+    if ($sawSentinel) {
+        Write-Host 'CONTROL INVALID - the sentinel reached the model WITHOUT an import line: the target is loaded by another route, so a treatment positive is not attributable to @import.'
+        $code = 1
+    } elseif ($sawNotInCtx) {
+        Write-Host 'CONTROL VALID - without the import line the sentinel is NOT-IN-CONTEXT; a treatment positive is attributable to @import.'
+        $code = 0
+    } else {
+        Write-Host 'CONTROL INCONCLUSIVE - neither the sentinel nor the refusal token appeared.'
+        $code = 2
+    }
+} elseif ($sawFileRead -and $sawSentinel) {
     Write-Host 'VERDICT: INCONCLUSIVE - model reached the sentinel via a file tool; import not proven.'
     $code = 2
 } elseif ($sawSentinel) {

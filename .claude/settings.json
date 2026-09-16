@@ -1,6 +1,6 @@
 {
   "_comment": "Maintainer meta layer for the ai-tech-lead authoring repo -- NOT part of the shipped templates (invariant #6). One hook: a PostToolUse auto-fixer that adds the UTF-8 BOM to any BOM-less .ps1 written under this repo through the Write/Edit tools (deterministic, silent, non-blocking -- invariant #4; a .ps1 created through the shell needs its BOM added by hand). The former Stop review-nudge apparatus was retired: a blocking Stop hook is the wrong cadence and re-fires. The -File path is RELATIVE so the tracked file works in any clone or worktree; the hook scopes itself to ai-tech-lead/ paths as a second guard.",
-  "_comment_keys": "plansDirectory: plan-mode drafts land in .claude/plans/inbox (gitignored) so random-slug drafts never reach a tracked directory that release.ps1 stages with git add -A; promote a kept plan by renaming it to .claude/plans/YYYY-MM-DD-<slug>.md. autoMemoryEnabled false: the root instruction file stands on its own and nothing may resolve to private ~/.claude memory (meta/LEARNINGS.md recorded the handover harm when a rule lived only there); durable facts go to meta/LEARNINGS.md or meta/workspace-decisions.md. permissions.deny: dist/ is generated (invariant #1; rebuild with scripts/build.ps1) and pushes go through .claude/scripts/push-and-check.ps1 -- the deny matches the tool-call text, so the wrapper's own git push is unaffected. These denies are speed bumps for agent sessions, not enforcement: `& git push` or `git -C . push` bypass them, and an approved direct push is run by the user.",
+  "_comment_keys": "plansDirectory: plan-mode drafts land in .claude/plans/inbox (gitignored) so random-slug drafts never reach a tracked directory that release.ps1 stages with git add -A; promote a kept plan by renaming it to .claude/plans/YYYY-MM-DD-<slug>.md. autoMemoryEnabled false: the root instruction file stands on its own and nothing may resolve to private ~/.claude memory (meta/LEARNINGS.md recorded the handover harm when a rule lived only there); durable facts go to meta/LEARNINGS.md or meta/workspace-decisions.md. permissions.deny: dist/ is generated (invariant #1; rebuild with scripts/build.ps1) -- one Edit rule covers every file-editing tool, and the host reports a Write(...) deny rule as unmatched (observed at session start, 2026-09-16), so there is deliberately none -- and pushes go through .claude/scripts/push-and-check.ps1; the deny matches the tool-call text, so the wrapper's own git push is unaffected. These denies are speed bumps for agent sessions, not enforcement: `& git push` or `git -C . push` bypass them, and an approved direct push is run by the user. MetaHooks.Tests.ps1 guards this file's wiring.",
   "env": { "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1" },
   "defaultShell": "powershell",
   "plansDirectory": ".claude/plans/inbox",
@@ -8,7 +8,6 @@
   "permissions": {
     "deny": [
       "Edit(/dist/**)",
-      "Write(/dist/**)",
       "Bash(git push *)",
       "PowerShell(git push *)"
     ]

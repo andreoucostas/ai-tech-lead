@@ -16,7 +16,7 @@ member's class; ≥5 prose items, or two items touching one file, is mechanism.
 | Class | Changed paths (any match ⇒ at least this class) | Required | Not required |
 |---|---|---|---|
 | **records** | only `meta/**`, `.claude/plans/**`, root `README.md`/`CHANGELOG.md`/`DEVELOPING.md` | `.claude/hooks/tests/Invoke-HookTests.ps1 -File DocTruth.Tests.ps1` and `-File RepositoryPrivacy.Tests.ps1`; `-File BacklogHygiene.Tests.ps1` if `meta/BACKLOG*`/`decisions-index.md` changed; `-File ClaimTruth.Tests.ps1` if `README.md` changed → commit → `.claude/scripts/push-and-check.ps1` | plan, critique, ledger row, RCA, release, full meta suite |
-| **prose** | `src/**` non-executable only (`*.md`, snippets, shipped CHANGELOGs); no new clause in an always-loaded carrier; a single-file `ALLOW` in `scripts/meta-denylist.txt` | WSD-015 sibling check → `scripts/build.ps1` ×3 → `git status --porcelain dist/` empty → `scripts/validate-dist.ps1 <d> --content-only` ×3 → commit; ship in the next release with one bullet per item in all four changelog heads; ledger cell `class prose per WSD-089; reviewer user|fresh read-only session|none; paths …; gates … EXIT=0; no behavioural instrument for prose` | plan, critique, RCA, new tests, local PS5.1/CP437 runs, per-item release |
+| **prose** | `src/**` non-executable only (`*.md`, snippets, shipped CHANGELOGs); no added, deleted or reworded clause in an always-loaded carrier (shipped `CLAUDE.md`/`AGENTS.md`, the framework-rules carrier); a single-file `ALLOW` in `scripts/meta-denylist.txt` | WSD-015 sibling check → `scripts/build.ps1` ×3 → `git status --porcelain dist/` empty → `scripts/validate-dist.ps1 <d> --content-only` ×3 → commit; ship in the next release with one bullet per item in all four changelog heads; ledger cell `class prose per WSD-089; reviewer user|fresh read-only session|none; paths …; gates … EXIT=0; no behavioural instrument for prose` | plan, critique, RCA, new tests, local PS5.1/CP437 runs, per-item release |
 | **mechanism** | any `.ps1`, `settings*.json`, policy `*.json`, a `DENY` added to `meta-denylist.txt`, `Invoke-HookTests.ps1`, `.github/**` except `ci.yml`, root `CLAUDE.md`/`AGENTS.md` rules, `.claude/skills/**`, any new shipped file | 1-page plan in `.claude/plans/` with the proportionality case (#6) → one non-implementer critique → red-first case in an existing suite → full local gates → release with #2 evidence → RCA | second reviewer, multi-round critique, a new test *file* unless rule 2 below |
 | **critical** | `install.ps1` ownership/protected/retirement/legal blocks, `scripts/build.ps1`, `.claude/scripts/release.ps1`, `check-outgoing-commits.ps1`, `ci.yml`, a `DENY` narrowed or a path-wide `ALLOW`, anything data-loss/security/false-green | Maintenance model 1–7 in full plus the orthogonal second vantage (#2) | — |
 
@@ -92,7 +92,8 @@ or truth (WSD-028). Those remain evidence obligations on the people and sessions
    ago (`**Filed against:** vN (date)` says how much history to check). A reviewer's corrections are
    input, not verdict — re-verify them. Historic decisions are evidence-bearing defaults, not
    doctrine: a material change in models, hosts, tools, cost or outcomes licenses a recorded
-   re-audit; preserve the record, supersede explicitly, start a new result series when the
+   re-audit — re-open only when the change could alter the outcome and the decision value exceeds
+   the audit cost; preserve the record, supersede explicitly, start a new result series when the
    measurement contract changes; "models are better now" is a reason to re-test, not evidence.
 2. **Independent review is evidence-bound, not rank-bound** (WSD-057; prose is exempt per WSD-089).
    The reviewer uses a separate session, did not participate in implementation, starts from the
@@ -139,7 +140,9 @@ or truth (WSD-028). Those remain evidence obligations on the people and sessions
   exit, then the clean pass.
 - **Any new or modified test:** demonstrated running on every CI context that executes it (PS7 and
   native PS5.1); not done until its first CI run is green; a runner reports its executable and a
-  non-zero case count; a nominal 5.1 job that relaunches under 7 is a false green.
+  non-zero case count; a nominal 5.1 job that relaunches under 7 is a false green. A host that
+  cannot execute has no evidence; one focused provider leg is permitted only under WSD-061, when
+  neither required host can execute a shipped compatibility contract.
 
 ## Verification — name the command, show the result
 
@@ -159,12 +162,6 @@ Never claim "it works"; show the command and its observed output. Standard comma
 Never pipe a gate, release or push command into a filter and then read its exit code; capture
 `$LASTEXITCODE` first. Do not run gate suites while another session is editing the tree.
 
-## Inherited disciplines
-
-The Verification Rules, Leanness (#1: create no file unless required), SOLID, Boy Scout Rule and the
-evidence-based self-review in `src/core/CLAUDE.md` bind meta-work too; read them there, do not
-duplicate them. State uncertainty rather than smoothing it over.
-
 ## Commit & push policy
 
 When a task is done, commit to `master` and push; never leave changes uncommitted. Generated `dist/`
@@ -179,6 +176,11 @@ next one.
   (gitignored) and are promoted by renaming. A locked plan is cited by path and SHA256.
 - Decisions → `meta/workspace-decisions.md` (`## WSD-nnn:` entries); standing constraints are indexed
   in `meta/decisions-index.md` — **read it before locking any design**; cite ids, never line numbers.
+  An investigation or design task writes no code, weighs at least two approaches with trade-offs,
+  and records the outcome as a WSD.
+- Inherited disciplines: the Verification Rules, Leanness (#1: create no file unless required), SOLID,
+  Boy Scout Rule and evidence-based self-review in `src/core/CLAUDE.md` bind meta-work too; read them
+  there, do not duplicate them. State uncertainty rather than smoothing it over.
 - Meta learnings → `meta/LEARNINGS.md` (append-only; distinct from the shipped `src/core/LEARNINGS.md`
   template).
 - Work list → `meta/BACKLOG.md`, open work only; finished entries move to `meta/BACKLOG-DONE.md`. An

@@ -857,7 +857,10 @@ RK1 Claude total USD 7.920006 of USD 10. No Copilot run, container change or pro
 **Priority:** P1 · **Effort:** M · **Invariants:** #2 #4 #6
 **Status:** IN PROGRESS on branch `worktree-b241-maintainer-layer`. Locked design:
 `.claude/plans/2026-09-16-maintainer-instruction-layer-refresh.md`; decision WSD-089. Meta-only —
-no product version bump, no release.
+no product version bump, no release. Independent review (claude-opus-5, fresh read-only session)
+returned REVISE with nine findings; all are dispositioned in
+`.claude/plans/2026-09-16-b241-review-record.md` and the revision is re-tested. One observation is
+owed after landing: the `plansDirectory` inbox write in an interactive plan-mode session.
 
 **Problem / evidence.** Root `CLAUDE.md` was 330 lines, about 40% incident narrative, against the host
 vendor's "under 200 lines" guidance; the hand-condensed `AGENTS.md` mirror was gated only by heading
