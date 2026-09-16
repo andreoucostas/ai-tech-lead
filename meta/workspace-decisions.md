@@ -4070,3 +4070,20 @@ and investigation RCA. Actual dependency bytes, exact CSP, lossless serializatio
 browser verification contract still require concretization before implementation lock; this is a
 review outcome, not release approval. Existing composition, host, independent-review and release
 obligations remain in force.
+
+**Astra value-review amendment, 2026-09-16.** The user explicitly expanded the review to whether
+the HTML artifact adds enough value to be needed. A separate `gpt-6-astra` reviewer assessed source
+and value before the prior proposals, confirmed the security finding and challenged the assumed
+preservation requirement. Root's source checks support its distinction: the HTML adds rendering
+convenience; the Markdown contains the knowledge and the inspected execution contracts do not need
+the viewer. This is not evidence of non-use or universal replacement-viewer parity.
+
+Reopen the preference above prospectively: prioritize a retirement/transition proposal consisting
+of preserved Markdown, an inert page at the old HTML path and separate generator retirement. Define
+the upgrade and residual-copy behavior before locking implementation. Ordinary overwrite and ledger
+retirement are different contracts; do not delete arbitrary consumer Markdown or reports. Include
+the optional `/impact` caller, unknown content, missing manifests, protected references and the
+existing freshness/test obligations. If a concrete essential direct-browser flow is established,
+the earlier hardening direction remains available. No product change follows from this review.
+The complete report and checked disposition are in
+`.claude/plans/2026-09-16-architecture-cdn-astra-review.md`; B-239 remains open.
