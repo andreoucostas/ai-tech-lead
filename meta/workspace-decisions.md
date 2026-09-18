@@ -4316,3 +4316,56 @@ maintainer's production use is admissible evidence when recorded as a dated obse
 **Basis.** The recommendation came from the session that performed the review
 (`.claude/plans/2026-09-18-framework-review.md`), not from an independent reviewer; the user is the
 decider. Class: records. B-254 is archived with this entry.
+
+## WSD-092: red evidence is mechanical, the user's review counts, and ceremony follows path and size (2026-09-18)
+
+**Context.** B-237 was a five-line fix in `release.ps1`. As class critical it produced a plan, a
+critique session, about 100 lines of tests, full suites on two hosts, two CI waits, an RCA, a stub
+and an archive entry — and still deferred the one step the ceremony exists for, someone other than
+the author observing the new cases fail on the unfixed tree, parking it as review debt inside the
+unrelated B-239. The 2026-09-18 review (WSD-090) found the same pattern across the records:
+executable checks catch defects; review paperwork, which an agent produces for free, mostly has not.
+Changing the rules under the rules then took over two hours, about forty minutes of it local
+full-suite runs that CI repeats on every push.
+
+**Approaches weighed.** Wording only, no checker: deletes the one checkable part of the old rule.
+Checker only, no rule change: nothing requires it, so it is skipped under pressure as B-237's step
+was. Both, with the cuts keyed to path and size: chosen. Dropping the second orthogonal vantage
+everywhere was the coordinator's proposal; the non-implementer critique (Opus, read-only, verdict
+REVISE) showed WSD-057 had rejected exactly that for destructive changes and that the new evidence
+concerned a tiny fix, so one path-keyed residue stays.
+
+**Decision (user, 2026-09-18: "approved", and item 3 by explicit selection).**
+1. `.claude/scripts/assert-red-first.ps1` runs a commit's declared cases (`Red-first:` trailers, or
+   `-Case`) against temporary clones of the parent and of the commit. `RED_FIRST PASS` is red
+   evidence; it prints each parent-side failure message so the reason is visible, requires a
+   passing control case in the same file, and separates WRONG (exit 1) from CANNOT_EXAMINE (exit 2).
+2. The user reading and approving a diff is an independent review, for mechanism as well as prose,
+   only where the user said so in their own words; no agent records it for them.
+3. A fix of at most 10 insertions+deletions to `scripts/build.ps1`, `.claude/scripts/release.ps1`
+   or `check-outgoing-commits.ps1` takes the mechanism row when the checker exits 0. The bound is
+   10, not the critic's 5, because B-237's fix was five lines including its explanatory comment and
+   a bound of 5 would reward deleting comments.
+4. An RCA is owed only where a defect escaped, in any class. Review-debt tracking is dropped. The
+   second orthogonal reviewer or execution vantage remains only for `install.ps1`
+   ownership/protected/retirement/legal blocks.
+5. Mechanism changes run the touched test files locally on both hosts (CP437 when a `.ps1`
+   changed); CI is the full-suite run. Critical changes keep the full local suites.
+
+**Amends.** WSD-057 (who may supply red evidence; scope of the orthogonal vantage), WSD-089 (the
+mechanism and critical rows, class rules 5 and 6, maintenance model #2 and #5), WSD-028 unchanged.
+WSD-089's success measure is still read on 2026-09-30, but against the rules in force at each
+release's own time; releases after this entry start a new result series (WSD-057).
+
+**Evidence.** Plan, critique dispositions and red observations:
+`.claude/plans/2026-09-18-mechanical-red-first-check.md`. The critique found two defects before any
+code existed (case names containing ` -- ` would have been truncated; the shipped hook-suite
+runners have no `-File`), and dogfooding found a third (the trailer scanner refused its own commit
+subject). B-237's owed observation is discharged: against `651be294` the two hostile cases report
+`RED_FIRST PASS declared=2 red_on_parent=2 green_on_commit=2`, and the control case reports WRONG,
+observed by the implementer under both hosts and by the coordinating session under PowerShell 7.
+
+**Known limits.** A message-text-only edit to a critical `.ps1` can never satisfy the checker, so
+the safest edits to those files stay critical. `AGENTS.md` sits at 199 of 200 lines. Wording that
+still names the dropped obligations is B-242 (`release.ps1`) and B-268 (maintainer skills); a
+parameter-binding failure of the checker exits in the WRONG domain (B-269).

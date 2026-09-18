@@ -203,6 +203,27 @@ try {
 } finally { [IO.File]::WriteAllBytes($p, $before) }
 ```
 
+### Mechanical red-first check (`assert-red-first.ps1`) — manual, not wired into any gate
+
+Maintenance model #2 (`AGENTS.md`) lets a mechanical `RED_FIRST PASS` line stand in for a reviewer
+personally re-running a hostile case. Declare cases either with commit-message `Red-first:` trailers
+(one `<repo-relative test file>::<exact case name>` per line) or retroactively with repeatable
+`-Case`. It clones the repo into an isolated temp dir (so tests that themselves shell out to `git`,
+e.g. `RepositoryPrivacy.Tests.ps1`, still see a real `.git`), checks out the parent, overlays each
+declared file's directory with the commit's version of it, runs the declared file directly, then
+checks out the commit and runs it again — never touching this checkout's own tree, index or
+worktree list.
+
+```powershell
+pwsh -NoProfile -File .claude/scripts/assert-red-first.ps1 [-Commit <rev>] [-RepoRoot <path>] [-Case '<file>::<name>' ...]
+```
+
+Exit 0 = `RED_FIRST PASS` (every declared case failed on the parent, passed on the commit); exit 1 =
+`RED_FIRST WRONG` (examinable, but at least one case was inert on the parent or still fails on the
+commit); exit 2 = `RED_FIRST CANNOT_EXAMINE` (no trailers/`-Case`, no parent, a case not found or
+skipped, or the file's other cases show no live `[ok]` on the parent — see `AssertRedFirst.Tests.ps1`
+for the full case list and `.claude/plans/2026-09-18-mechanical-red-first-check.md` for the design).
+
 **What is still not covered by a gate:** whether the prose actually *steers* a model — that needs a
 real agent driven end-to-end and API/subscription spend, so it is deliberately not wired into any
 of the suites above. B-41's live harness below closes the evidence gap for the Claude host (not

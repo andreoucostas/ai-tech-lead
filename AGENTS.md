@@ -17,8 +17,8 @@ member's class; ≥5 prose items, or two items touching one file, is mechanism.
 |---|---|---|---|
 | **records** | only `meta/**`, `.claude/plans/**`, root `README.md`/`CHANGELOG.md`/`DEVELOPING.md` | `.claude/hooks/tests/Invoke-HookTests.ps1 -File DocTruth.Tests.ps1` and `-File RepositoryPrivacy.Tests.ps1`; `-File BacklogHygiene.Tests.ps1` if `meta/BACKLOG*`/`decisions-index.md` changed; `-File ClaimTruth.Tests.ps1` if `README.md` changed → commit → `.claude/scripts/push-and-check.ps1` | plan, critique, ledger row, RCA, release, full meta suite |
 | **prose** | `src/**` non-executable only (`*.md`, snippets, shipped CHANGELOGs); no added, deleted or reworded clause in an always-loaded carrier (shipped `CLAUDE.md`/`AGENTS.md`, the framework-rules carrier); a single-file `ALLOW` in `scripts/meta-denylist.txt` | WSD-015 sibling check → `scripts/build.ps1` ×3 → `git status --porcelain dist/` empty → `scripts/validate-dist.ps1 <d> --content-only` ×3 → commit; ship in the next release with one bullet per item in all four changelog heads; ledger cell `class prose per WSD-089; reviewer user|fresh read-only session|none; paths …; gates … EXIT=0; no behavioural instrument for prose` | plan, critique, RCA, new tests, local PS5.1/CP437 runs, per-item release |
-| **mechanism** | any `.ps1`, `settings*.json`, policy `*.json`, a `DENY` added to `meta-denylist.txt`, `Invoke-HookTests.ps1`, `.github/**` except `ci.yml`, root `CLAUDE.md`/`AGENTS.md` rules, `.claude/skills/**`, any new shipped file | 1-page plan in `.claude/plans/` with the proportionality case (#6) → one non-implementer critique → red-first case in an existing suite → full local gates → release with #2 evidence → RCA | second reviewer, multi-round critique, a new test *file* unless rule 2 below |
-| **critical** | `install.ps1` ownership/protected/retirement/legal blocks, `scripts/build.ps1`, `.claude/scripts/release.ps1`, `check-outgoing-commits.ps1`, `ci.yml`, a `DENY` narrowed or a path-wide `ALLOW`, anything data-loss/security/false-green | Maintenance model 1–7 in full plus the orthogonal second vantage (#2) | — |
+| **mechanism** | any `.ps1`, `settings*.json`, policy `*.json`, a `DENY` added to `meta-denylist.txt`, `Invoke-HookTests.ps1`, `.github/**` except `ci.yml`, root `CLAUDE.md`/`AGENTS.md` rules, `.claude/skills/**`, any new shipped file | 1-page plan in `.claude/plans/` with the proportionality case (#6) → one non-implementer critique → red-first case in an existing suite → the touched test files on both hosts (CP437 too when a `.ps1` changed); CI runs every suite on both hosts → release with #2 evidence | second reviewer, multi-round critique, local full-suite runs, RCA unless a defect escaped, a new test *file* unless rule 2 below |
+| **critical** | `install.ps1` ownership/protected/retirement/legal blocks, `scripts/build.ps1`, `.claude/scripts/release.ps1`, `check-outgoing-commits.ps1`, `ci.yml`, a `DENY` narrowed or a path-wide `ALLOW`, anything data-loss/security/false-green | Maintenance model 1–7 in full, with the full suites run locally on both hosts plus CP437; `install.ps1` ownership/protected/retirement/legal blocks additionally need a second orthogonal reviewer or execution vantage | — |
 
 1. Do the asked change only. An adjacent finding becomes one backlog stub (`### B-n · title`,
    `**Filed against:**`, one sentence), not an edit.
@@ -27,7 +27,11 @@ member's class; ≥5 prose items, or two items touching one file, is mechanism.
    line from the runner.
 3. This file has a line ceiling (DocTruth). Adding a clause means retiring one.
 4. No commit to `master` while a release is between push and tag (B-237).
-5. Maintenance model #5 applies to mechanism and critical, and to any class in which a defect escaped.
+5. Maintenance model #5 (RCA) applies only where a defect escaped, in any class.
+6. A fix of at most 10 insertions+deletions (`git show --stat`; its tests do not count) to
+   `scripts/build.ps1`, `.claude/scripts/release.ps1` or `check-outgoing-commits.ps1` takes the
+   mechanism row when `assert-red-first.ps1` exits 0 against the commit. No other critical path
+   qualifies.
 
 ## What this repo is
 
@@ -89,20 +93,19 @@ or truth (WSD-028). Those remain evidence obligations on the people and sessions
 1. **Locked design + adversarial critique before implementing a mechanism or critical change.** The
    critique may reject the premise, not merely tighten the approach, and must state the
    proportionality case (#6). Re-validate the premise of any entry filed more than ~5 minor versions
-   ago (`**Filed against:** vN (date)` says how much history to check). A reviewer's corrections are
+   ago (`**Filed against:** vN (date)` says how much history to check); a reviewer's corrections are
    input, not verdict — re-verify them. Historic decisions are evidence-bearing defaults, not
-   doctrine: a material change in models, hosts, tools, cost or outcomes licenses a recorded
-   re-audit — re-open only when the change could alter the outcome and the decision value exceeds
-   the audit cost; preserve the record, supersede explicitly, start a new result series when the
-   measurement contract changes; "models are better now" is a reason to re-test, not evidence.
-2. **Independent review is evidence-bound, not rank-bound** (WSD-057; prose is exempt per WSD-089).
-   The reviewer uses a separate session, did not participate in implementation, starts from the
-   frozen contract and immutable range before reading the implementer's narrative, forms an
-   independent threat model, and records model/agent, environment, one release-specific hostile case
-   or applied mutation observed red, a clean rerun, and coverage gaps. Prefer another model family,
-   host or toolchain; rank alone neither qualifies nor disqualifies. Data-loss, security-bypass and
-   false-green changes need a second orthogonal reviewer or execution vantage, else record the gap as
-   review debt. Review scope too: every changed function is required by the contract, or justified.
+   doctrine, and re-audit only when a materially changed condition could alter the outcome (WSD-057).
+2. **Independent review is evidence-bound, not rank-bound** (WSD-057; records and prose are exempt per
+   WSD-089). The reviewer uses a separate session, did not implement the change, starts from the
+   frozen contract and immutable range before reading the implementer's narrative, and forms an
+   independent threat model. A change carrying a commit `Red-first:` trailer records
+   `assert-red-first.ps1`'s `RED_FIRST PASS` line as its hostile-case evidence; otherwise the reviewer
+   personally records one release-specific hostile case or applied mutation observed red, plus a
+   clean rerun, model/agent, environment and coverage gaps. Prefer another model family, host or
+   toolchain; rank alone neither qualifies nor disqualifies. The user reading and approving the diff
+   also qualifies, for mechanism as well as prose, only where the user said so in their own words —
+   no agent records it for them. Every changed function is required by the contract, or justified.
    Windows is the sole platform leg; direct PS7 and PS5.1 runs are separate required legs and neither
    may relaunch the other.
 3. **Nothing enters the record as observed unless you observed it** — self-reports, a spec's layout
@@ -115,9 +118,9 @@ or truth (WSD-028). Those remain evidence obligations on the people and sessions
    syntactically inert assertion; an exit-domain collision; empty/absent conflated with inability to
    examine; a normalization or comparison that stops comparing. Release-specific red evidence is the
    proportionate control; do not build a generic mutation framework.
-5. **Close mechanism and critical deliveries — and any escaped defect — with an RCA** in the backlog
-   entry: why did no gate catch it, and what else is exposed to the same class. The sweep produces
-   backlog stubs, not edits (class rule 1).
+5. **Close an escaped defect, in any class, with an RCA** in the backlog entry: why did no gate catch
+   it, and what else is exposed to the same class. The sweep produces backlog stubs, not edits
+   (class rule 1).
 6. **State the proportionality case before rule 1 locks a design.** Name the concrete, already-observed
    harm and check whether a materially smaller fix removes most of it. Two sentences inside the
    critique suffice; do not let the check need its own check (B-108).

@@ -12510,7 +12510,7 @@ everything already shipped, and leaves B-42 and B-49 unchanged. Class: records; 
 ### B-237 · Bind release promotion to the immutable commit whose CI passed — **DONE (2026-09-18, meta-only; no release)**
 **Filed against:** v0.86.5 (2026-09-11)
 **Priority:** P1 · **Effort:** M · **Invariants:** #6
-**Status:** DONE 2026-09-18: landed on `master` as `651be294`; CI run 35373189458 green on all eight Windows contexts plus the parity decision. Class: critical. The orthogonal execution-vantage review was not supplied and is carried as review debt by B-239 (maintenance model #2).
+**Status:** DONE 2026-09-18: landed on `master` as `651be294`; CI run 35373189458 green on all eight Windows contexts plus the parity decision. Class: critical. The orthogonal execution-vantage review was not supplied and was at first carried as review debt by B-239. **Discharged 2026-09-18 (WSD-092):** `assert-red-first.ps1 -Commit 651be294` on the two hostile cases reports `RED_FIRST PASS declared=2 red_on_parent=2 green_on_commit=2`, each parent-side failure naming the unwatched HEAD, and reports WRONG for the control case — observed by that script's implementer under both hosts and by a separate session under PowerShell 7. The note in B-239 is removed.
 
 **Observed harm.** While the v0.86.5 release process waited on CI for
 `3bbd413ad597da272b8db58fa52f67c8c09ec868`, the field-feedback task committed

@@ -796,11 +796,6 @@ direct PS7 and native Windows PowerShell 5.1, and green on CI run 35113529270 �
 native Windows execution jobs plus the parity decision. Awaiting independent review; no release
 approval is claimed here.
 
-**Review debt carried from B-237 (2026-09-18).** The same independent review must also cover the
-B-237 release-tool fix at `651be294` (step 5d tags `$releaseCommit`, not a re-read HEAD) from an
-orthogonal execution vantage: run the three B-237 cases in `ReleaseCiWatch.Tests.ps1` and observe
-them red against the parent tree. Its plan is `.claude/plans/2026-09-18-b237-tag-the-watched-commit.md`.
-
 The shared architecture generator emits floating `marked@12` and `mermaid@10` CDN scripts without
 SRI or CSP into all three stack source HTMLs and all three distributions. This exposes browser
 script execution to substituted runtime bytes; no actual compromise or browser exploit was observed.
@@ -1089,6 +1084,10 @@ A polished protocol alone does not complete the value question.
 **Status:** Open stub from B-241 (class: mechanism). WSD-089 lets a prose-class release supply
 `class prose per WSD-089; reviewer …` as its evidence cell; `release.ps1`'s FATAL text and the ledger
 preamble it writes still describe evidence only as "the reviewer's". Two strings; no gate change.
+WSD-092 (2026-09-18) adds two more stale strings in the same file: the refusal text's "High-risk
+changes also need an orthogonal reviewer or execution vantage", and the stub `-NoIndependentReview`
+writes into this backlog asking for one — both now true only for the installer's destructive blocks.
+Text-only edits cannot satisfy the red-first checker, so this stays critical by path.
 
 ### B-243 · Refuse a claimed change class that a changed path exceeds
 **Filed against:** v0.86.7 (2026-09-16)
@@ -1129,6 +1128,22 @@ to B-222/B-223/B-224.
 
 B-225 and B-254 — see `meta/BACKLOG-DONE.md`. WSD-091 closed the first as scoped and is the
 decision the second asked for.
+
+### B-268 · Maintainer skills still instruct obligations WSD-092 dropped
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P3 · **Effort:** S · **Invariants:** —
+**Status:** Open stub from WSD-092 (class: mechanism — `.claude/skills/**`). `meta-release` still
+names an orthogonal second reviewer for every critical change, `meta-review-handoff`'s reviewer
+prompt does not mention `assert-red-first.ps1` or the user's own review, and `meta-gates` still runs
+the full ladder for a mechanism change. Conveniences only — `AGENTS.md` governs — but stale.
+
+### B-269 · assert-red-first.ps1: a parameter-binding failure exits in the WRONG domain
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P3 · **Effort:** S · **Invariants:** —
+**Status:** Open stub from WSD-092 (class: mechanism). Invoked with `-File` and a repeated `-Case`,
+the host fails binding and exits 1 without a `RED_FIRST` line — the same code as WRONG (maintenance
+model #7). Observed 2026-09-18. Callers must require the `RED_FIRST` line; decide whether the script
+should also accept repeated `-Case` or a delimiter so `-File` invocation works.
 
 ## Framework review 2026-09-18 — stubs
 

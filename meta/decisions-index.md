@@ -37,7 +37,7 @@ authoritative.
 - “Onboarding preserves evidence and project ownership; repeated samples describe stability, not truth.” — `meta/workspace-decisions.md WSD-054`
 - “Reject permanent Codex integration unless repeated artifact-only work exposes concrete ad-hoc cost or defects and supplies an immutable final-state oracle that can be red-tested.” — `meta/workspace-decisions.md WSD-054`
 - “Historic decisions are evidence-bearing defaults, not doctrine.” — `meta/workspace-decisions.md WSD-057`
-- “Independent review is evidence-bound, not rank-bound.” — `meta/workspace-decisions.md WSD-057`
+- “Independent review is evidence-bound, not rank-bound.” — `meta/workspace-decisions.md WSD-057` (WSD-092 amends who supplies red evidence and narrows the orthogonal vantage to the installer's destructive blocks)
 - “The next independent paired replay begins FS2 and is never aggregated with FS1.” — `meta/workspace-decisions.md WSD-058`
 - “A unique supported-provider claim can justify one focused provider leg.” — `meta/workspace-decisions.md WSD-061` (WSD-073 supersedes its multi-platform topology)
 - “Host evidence is capability-specific and recertification is evidence-triggered.” — `meta/workspace-decisions.md WSD-066`
@@ -58,6 +58,7 @@ authoritative.
 - “Root `AGENTS.md` is the canonical maintainer instruction file, imported by `CLAUDE.md`; both sit under recorded ceilings.” — `meta/workspace-decisions.md WSD-089`
 - “Ceremony follows the change class decided from the changed paths; prose ships batched with a disclosed non-review cell.” — `meta/workspace-decisions.md WSD-089` (amends WSD-028/WSD-057 scope for records and prose)
 - “Knowledge-increment expansion is paused until the with/without-framework eval first reports; CP1 and RK1 are closed as scoped, and any new attempt requires a fresh decision.” — `meta/workspace-decisions.md WSD-091`
+- “Red evidence is mechanical (`assert-red-first.ps1`); the user's review counts only in the user's own words; mechanism changes run touched tests locally and CI runs every suite; an RCA is owed only for an escaped defect.” — `meta/workspace-decisions.md WSD-092` (amends WSD-057 and WSD-089)
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`
