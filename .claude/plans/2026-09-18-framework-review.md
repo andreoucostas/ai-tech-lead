@@ -152,5 +152,6 @@ The authoritative, item-by-item ranking is the "Pick-up order" table at the head
 4. Investigations → WSDs: B-257, B-258; then B-259 and B-261.
 5. Adoption: B-42 once B-262 lowers the barrier.
 
-Recommended pause until step 2 reports (not yet decided by the user — B-254): B-222 to B-225
-expansion, Copilot VS Code investment, new meta gates.
+Recommended pause until step 2 reports: B-222 to B-225 expansion, Copilot VS Code investment, new
+meta gates. **Decided the same day (WSD-091):** B-222 to B-224 expansion is paused until B-253's
+first report, CP1 and RK1 are closed as scoped, and B-225 and B-254 are archived.

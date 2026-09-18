@@ -11,9 +11,10 @@ decided from the changed paths per `AGENTS.md`.
 Strategic contract: `.claude/plans/2026-09-05-repository-knowledge-strategy.md`. The objective is
 broad discovery of repository-specific knowledge and better ordinary Copilot outcomes, not
 hard-coded reporting or ingestion skills. This file does not authorize provider spend, private-code
-export, production queries, or external participant contact.
+export, production queries, or external participant contact. WSD-091 (2026-09-18) pauses expansion
+under this contract until B-253's first report; what has shipped stays.
 
-## Pick-up order — ranked 2026-09-18 (WSD-090)
+## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091)
 
 Take the first row that is not blocked; one item per fresh session, under the class its entry
 names (raise it if the change grows). Rank is the order of work; an entry's `Priority` field is its
@@ -28,32 +29,32 @@ severity as filed. Reasons and evidence: `.claude/plans/2026-09-18-framework-rev
 | 5 | B-249 orphaned `.sh` snippets | prose floor | Small deletion; invariant #3 residue |
 | 6 | B-250 `/impact` | mechanism | Small retirement; misleading shipped command |
 | 7 | B-240 retired-twin diagnostics | per entry | Small; consumer-facing installer diagnostic gap |
-| 8 | B-239 independent review, then release v0.87.0 | per entry | Already delivered on master; batch ranks 2–7 into this one release instead of tagging each |
-| 9 | B-254 campaign and knowledge-increment decision | records | **User decision** — a session prepares the options, the user decides. Blocks nothing above; decides when the held rows below resume |
-| 10 | B-260 `/security-review` shadowing | records | One live observation; if the built-in wins, a shipped security workflow never runs |
-| 11 | B-246 `AgentEvals.Tests.ps1` wiring | mechanism | Smallest first step toward rank 12 |
-| 12 | B-253 with/without-framework eval | mechanism | Gives every later product decision an instrument; WSD-016 and B-98 constrain it |
-| 13 | B-245 `release.ps1` fast path | critical | Removes 11–16 minutes from every release; same file as rank 1, so after it |
-| 14 | B-255 instruction-text de-duplication | mechanism | Largest always-loaded saving; measure with rank 12 |
-| 15 | B-262 consumer README | prose | Precondition for independent adopters (B-42) |
-| 16 | B-264 process diet | records / mechanism | Judge against WSD-089's success measure, read on 2026-09-30 |
-| 17 | B-257 commands as skills, routing, scoped rules | investigation → WSD | Host facts must be verified first; WSD-045 must be answered |
-| 18 | B-258 distribution re-audit | investigation → WSD | One-to-two-day spike; decides the shape of rank 19 |
-| 19 | B-259 installer lifecycle basics | critical | After rank 18 so nothing is built twice |
-| 20 | B-261 Stop-time verification | mechanism | After rank 3 settles hook latency |
-| Held | B-222, B-223, B-224, B-225, B-216, B-226, B-232 | per entry | Shipped; what remains is live host observation, provider spend or target-host acceptance that a session cannot authorize for itself. Order among them is the table below; rank 9 decides whether they resume before or after rank 12 |
-| Blocked | B-42 independent FS2 pair | — | Needs a participant; rank 15 lowers the barrier |
-| Low | B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265 | per entry | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 waits for rank 12 |
+| 8 | B-239 independent review, then release v0.87.0 | per entry | Already delivered on master; batch B-247, B-248, B-244, B-249, B-250 and B-240 into this one release instead of tagging each |
+| 9 | B-260 `/security-review` shadowing | records | One live observation; if the built-in wins, a shipped security workflow never runs |
+| 10 | B-246 `AgentEvals.Tests.ps1` wiring | mechanism | Smallest first step toward B-253 |
+| 11 | B-253 with/without-framework eval | mechanism | Gives every later product decision an instrument, and its first report is WSD-091's condition for resuming the paused rows; WSD-016 and B-98 constrain it |
+| 12 | B-245 `release.ps1` fast path | critical | Removes 11–16 minutes from every release; same file as B-237, so after it |
+| 13 | B-255 instruction-text de-duplication | mechanism | Largest always-loaded saving; measure with B-253 |
+| 14 | B-262 consumer README | prose | Precondition for independent adopters (B-42) |
+| 15 | B-264 process diet | records / mechanism | Judge against WSD-089's success measure, read on 2026-09-30 |
+| 16 | B-257 commands as skills, routing, scoped rules | investigation → WSD | Host facts must be verified first; WSD-045 must be answered |
+| 17 | B-258 distribution re-audit | investigation → WSD | One-to-two-day spike; decides the shape of B-259 |
+| 18 | B-259 installer lifecycle basics | critical | After B-258 so nothing is built twice |
+| 19 | B-261 Stop-time verification | mechanism | After B-248 settles hook latency |
+| Paused | B-222, B-223, B-224 | per entry | WSD-091 (user, 2026-09-18): no new work until B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
+| Held | B-216, B-226, B-232 | per entry | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
+| Blocked | B-42 independent FS2 pair | — | Needs a participant; B-262 lowers the barrier |
+| Low | B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265 | per entry | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 waits for B-253 |
 | Deferred | B-49 drill redesign | — | Instrument invalid under WSD-062; no execution authority |
 
 ## Execution order and common delivery contract
 
-This table orders the held knowledge increment only; the pick-up order above governs everything else.
+This table orders the knowledge increment only; the pick-up order above governs everything else.
+WSD-091 (2026-09-18) pauses its B-222 to B-224 rows until B-253's first report and closes B-225.
 
 | Order | Item | Current readiness |
 |---|---|---|
 | 1 | B-222 broad discovery | Released in v0.84.0; representative semantic coverage remains |
-| 1 alongside it | B-225 value protocol | Offline protocol/controls ready; live arms need explicit prerequisites |
 | 2 | B-223 capture and refresh | Released in v0.84.0; semantic refresh and retained forward misses remain |
 | 3 | B-224 ordinary-task Copilot use | Released carrier; ordinary CLI navigation/application observed on a nonconforming synthetic wiki, conforming CLI/VS Code acceptance remains open |
 | Independent repairs | B-216 instance skills; B-226 review scope | Released in v0.84.0; named semantic/host gaps remain explicit |
@@ -89,6 +90,10 @@ existing gates and CI, update all four changelogs, release, and move the complet
 archive with its RCA. Parser tests do not certify business truth, model behavior or host consumption.
 Report semantic evidence and unexecuted host/model arms separately. Meta-only protocol work does
 not require a product version bump. WSD-016 remains: no new general live-eval release gate.
+
+**Closed as scoped, 2026-09-18 (WSD-091).** CP1 and RK1 are closed without a task trial; any new
+attempt requires a fresh decision. The campaign paragraphs from here to the end of this section are
+history and grant no execution authority; trimming them is B-264.
 
 **CP1 preparation, 2026-09-06.** The user's reviewed ABP / Copilot CLI contract separately
 authorizes a maintainer whole-product pair and bounded diagnostics after readiness, billed-total
@@ -782,110 +787,6 @@ but omitted the already-existing wiki check, allowing an invalid synthetic knowl
 the actor. Future fixtures must pass existing product validators before dispatch; one construction
 miss does not justify a new generic gate.
 
-### B-225 · Measure broad discovery's marginal value on the actual coding surfaces
-**Filed against:** v0.83.0 (2026-09-05)
-**Priority:** P1 · **Effort:** M protocol, execution depends on tasks/seats · **Invariants:** #3 #6
-**Status:** PARTIALLY DONE. Offline protocol reviewed in
-`meta/repository-knowledge-component-study.md`. The user authorized revision 1 execution on
-2026-09-09; preparation stopped when Copilot 1.0.83 refused the required native sandbox policy.
-Four provisional source task cards exist; executable eligibility, CONTROL construction and the
-paired study remain unrun. No Copilot model call occurred at that initial stop. Controls are not
-collectively observed; the named campaign, not this backlog entry alone, supplies execution authority.
-The user-requested Sonnet follow-up demonstrated offline outer-container execution and provider
-endpoint reachability, independently checked by root. Selective connected isolation remains
-unproved; the next network-probe draft was rejected before execution for unsafe cleanup and
-unchecked exits. See the packet's outer-container checkpoint; RK1 is not retired.
-The subsequently authorized corrected checkpoint demonstrated a private peer path and a fixed,
-credential-free provider relay with allowed/denied requests. Authenticated native Copilot transport
-and comprehensive isolation were then unrun. Its original closed-port-refusal condition was unmet
-and remains recorded separately; no effectiveness claim follows from the successful relay.
-The next authorized checkpoint obtained one exact-nonce response from native Copilot 1.0.83,
-gpt-5.4 medium, through relay-mediated auth and HTTP fallback (not BYOK), with a calibration-only
-256-output-token clamp and no tools. Complete transport/access readiness remains unmet: the
-post-paid second-request control missed the relay lifetime, and ordinary tool/observer controls,
-CONTROL and task oracles remain unrun. The paired study is still NOT RUN.
-
-**Problem.** Current source and user reports justify a hypothesis, not a productivity claim. Skill
-count, framework-test success and Claude execution do not establish Copilot task outcomes. B-41's
-executor invokes Claude; do not rename it a Copilot runner. B-42 answers a different whole-product
-question.
-
-**Implementation surface.** Reuse applicable `meta/field-study-kit.md` and existing
-`run-agent-evals.ps1` harness/fixture controls; one meta-only component-protocol/report artifact if
-needed. Do not alter FS2's frozen primary contract or build a second general harness. Add a small
-host adapter only for a named observation current tools cannot make honestly.
-
-**Do first, without live spend.** Detail plan section 7 and offline valid/invalid controls. Freeze
-task selection before discovery; withhold task requests, future solutions and grading keys from
-setup. Discover broadly, not targeted to test answers. Compare current framework vs enhanced
-discovery, paired on the same observed model/host, counterbalanced and isolated from history,
-global instructions, generated artifacts and prior sessions. Permit supported correct alternatives.
-Include quiet, unique, helper-derived, recurring and conflicting-scope decisions across different
-areas. Measure acceptance/severe errors, knowledge application, active human review/rework,
-setup/refresh, elapsed time and observable usage. Small samples remain bounded observations;
-retain nulls/regressions and never tune tasks/thresholds after results.
-
-**Live prerequisites.** Frozen representative snapshot/privacy boundary; independent task oracles
-with observed valid/invalid worlds; independent domain review where needed; exact installed Copilot
-host/model identifiers and calibrated observers; predeclared materiality thresholds and explicit
-model/time/credit authority. Missing stable routing -> NOT RUN/NOT COMPARABLE for that arm. No
-substituting Claude efficacy or averaging changed Auto routes. VS Code may require a manual seat;
-CLI is not its substitute. Request prerequisites when execution is due, not a speculative data dump.
-
-**Done when.** Record protocol delivery separately from live execution. Close the outcome item only
-after the authorized component comparison/decision, or an explicit reviewed premise-retirement
-decision. A win justifies the measured increment, not a platform; a null does not justify more
-machinery. B-42 separately compares framework vs bare AI; do not pool with FS1/FS2/B-49. Report all
-unrun intended host/model arms.
-
-**Execution checkpoint / RCA (2026-09-09).** Opus 5 xhigh reviewed the prospective v0.86-based
-ablation and campaign (REVISE, then ACCEPT for preparation), reporting USD 0.9840065 combined
-list-price cost. Native capability queries passed, but two offline CLI environments refused the
-required policy; root independently reproduced it through the installed SDK, exit 3. Emitted
-system-volume read access makes removal of the denials unsafe for the study. Actual network
-policy says deny despite a conflicting UI label; no network leak or missing BaseContainer was
-established. Release/capability checks cannot prove policy execution, and picker filtering cannot
-prove file containment. The same class exposes online transport and zero-test discovery; the
-latter is an explicit gap in one provisional card. Required isolation caught this before study
-dispatch. Preserve selection/receipts and resume after a compatible route is demonstrated; no
-generic gate, host reconfiguration or product release followed.
-
-**Network follow-up / RCA (2026-09-09).** Root replaced the unsafe blanket cleanup with checked
-owned-ID operations and obtained Opus contract critique. Peer nonce and fixed-provider relay
-responses succeeded; direct actor/provider TCP timed out while matched controls connected. The
-closed peer port timed out rather than refusing, so the original conjunction was not backfilled
-as green. A separate relay observation records allowed/denied requests and measured forwarding.
-All checkpoint-created containers/networks were removed; captured final host state matched the
-baseline. Mechanism-specific refusals and over-specific control expectations must not become
-universal impossibility claims. The same class affects diagnostic error classification and
-evidence-file handling; no new generic gate or shipped change is justified.
-
-**Native transport / RCA (2026-09-09).** Direct API-token authentication required an alternate-
-provider flag but yielded an empty model list and a native "No supported model available" stop.
-A reviewed normal-token-shaped bootstrap through fixed metadata routes then carried the native
-non-BYOK HTTP request and exact fresh reply; actor direct provider-IP attempts still timed out
-against successful proxy controls. Parser/CLI flags alone missed the minimum credit cap and the
-fact that empty tool lists retain defaults; actual rejected preflights exposed both before spend.
-The same class affects SDK auth status, complete response evidence and lifecycle controls. Ten
-hostile cases plus metadata success ran on both client hosts. The late retry probe was cannot-
-examine, not a deny; no relay restart regained a paid slot. Both containers/network were removed
-and captured host fields matched baseline. Keep this narrow result and the remaining debts in the
-existing packet; no general proxy platform, efficacy claim or product release follows.
-
-**Resumption review / RCA (2026-09-09).** The user requested Opus adversarial review,
-not renewed live execution. Fresh Opus 5 xhigh returned REVISE on the proposed four-hour
-preparation extension: CONTROL construction was unallocated, candidate inspection and executed
-eligibility were blurred, and oracle/transport/review work lacked a credible bounded allocation.
-Root retains these findings, but corrected the review's fixed-body-relay premise, credit-minimum
-interpretation, mandatory intermediate approvals and unsupported shortened-time arithmetic.
-The next proposed step is only a 30-minute read-only retained-candidate/coverage audit; it cannot
-produce READY or automatically launch another workstream. No revised design is locked.
-Parser gates cannot detect omitted construction work or establish time feasibility; the same
-exposure affects oracle review, CONTROL purity and host-readiness summaries. The independent
-critique caught these omissions before execution. Full disposition and receipts:
-`.claude/plans/2026-09-09-rk1-resumption-review.md`. Review reported USD 0.8299065; conservative
-RK1 Claude total USD 7.920006 of USD 10. No Copilot run, container change or product release.
-
 ## Bounded correctness and maintenance work
 
 ### B-239 · Resolve architecture viewer exposure and evaluate runtime retirement
@@ -1255,6 +1156,9 @@ follow-ups; one interactive observation (the `plansDirectory` inbox write) is ow
 B-235 — see [`meta/BACKLOG-DONE.md`](BACKLOG-DONE.md). Its remaining reporting acceptance belongs
 to B-222/B-223/B-224.
 
+B-225 and B-254 — see `meta/BACKLOG-DONE.md`. WSD-091 closed the first as scoped and is the
+decision the second asked for.
+
 ## Framework review 2026-09-18 — stubs
 
 Evidence, verification marks and the weighed approaches for every stub below are in
@@ -1315,14 +1219,6 @@ reachable (see B-262) and link the deck instead.
 Three to five existing typed-event scenarios, framework versus none, n≥6, budget-capped, reported per
 release candidate; first use is ablating always-loaded rules. WSD-016 stands (not a release gate) and
 B-98 stands (reuse the B-41 harness); drop the scenario its own file marks saturated.
-
-### B-254 · Decide whether to close or re-scope the CP1/RK1 campaign and pause B-222 to B-224 expansion
-**Filed against:** v0.86.7 (2026-09-18)
-**Priority:** P1 · **Effort:** S · **Invariants:** —
-**Status:** Open stub from the 2026-09-18 review (class: records — a user decision, recorded as a
-WSD). The campaign consumed its diagnostic budget and tracked hours without reaching a task trial
-(CP2 already retired, WSD-078); the review recommends pausing knowledge-machinery expansion until
-B-253 reports, which would amend WSD-074's order of work. Touches B-225, B-42 and B-49.
 
 ### B-255 · De-duplicate the shipped instruction text and remove maintainer-epistemic disclaimers
 **Filed against:** v0.86.7 (2026-09-18)

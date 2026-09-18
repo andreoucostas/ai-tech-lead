@@ -12389,3 +12389,120 @@ needs a clause-by-clause check, which no gate performs and the ceilings do not r
 `release.ps1` refusal text and the ledger preamble still describe evidence as "the reviewer's" —
 B-242. (4) The class is recomputable but not refused mechanically — B-243. Follow-ups B-242…B-246
 are open in `meta/BACKLOG.md`.
+
+### B-225 · Measure broad discovery's marginal value on the actual coding surfaces — **CLOSED AS SCOPED (2026-09-18, WSD-091; records, no release)**
+**Filed against:** v0.83.0 (2026-09-05)
+**Priority:** P1 · **Effort:** M protocol, execution depends on tasks/seats · **Invariants:** #3 #6
+**Status:** CLOSED AS SCOPED by user decision WSD-091 (2026-09-18), following the 2026-09-18 framework
+review. The RK1 live campaign is retired on decision-value grounds, in the form WSD-078 used for CP2:
+by this entry's own resumption review it had used USD 7.92 of its USD 10 diagnostic allowance without
+reaching a Copilot task trial. Isolation and efficacy on the Copilot surfaces remain unknown, and any
+new attempt requires a fresh decision. The protocol below stays available as history. The
+Claude-surface value question passes to B-253; B-42 is unchanged. Status at closure follows verbatim.
+PARTIALLY DONE. Offline protocol reviewed in
+`meta/repository-knowledge-component-study.md`. The user authorized revision 1 execution on
+2026-09-09; preparation stopped when Copilot 1.0.83 refused the required native sandbox policy.
+Four provisional source task cards exist; executable eligibility, CONTROL construction and the
+paired study remain unrun. No Copilot model call occurred at that initial stop. Controls are not
+collectively observed; the named campaign, not this backlog entry alone, supplies execution authority.
+The user-requested Sonnet follow-up demonstrated offline outer-container execution and provider
+endpoint reachability, independently checked by root. Selective connected isolation remains
+unproved; the next network-probe draft was rejected before execution for unsafe cleanup and
+unchecked exits. See the packet's outer-container checkpoint; RK1 is not retired.
+The subsequently authorized corrected checkpoint demonstrated a private peer path and a fixed,
+credential-free provider relay with allowed/denied requests. Authenticated native Copilot transport
+and comprehensive isolation were then unrun. Its original closed-port-refusal condition was unmet
+and remains recorded separately; no effectiveness claim follows from the successful relay.
+The next authorized checkpoint obtained one exact-nonce response from native Copilot 1.0.83,
+gpt-5.4 medium, through relay-mediated auth and HTTP fallback (not BYOK), with a calibration-only
+256-output-token clamp and no tools. Complete transport/access readiness remains unmet: the
+post-paid second-request control missed the relay lifetime, and ordinary tool/observer controls,
+CONTROL and task oracles remain unrun. The paired study is still NOT RUN.
+
+**Problem.** Current source and user reports justify a hypothesis, not a productivity claim. Skill
+count, framework-test success and Claude execution do not establish Copilot task outcomes. B-41's
+executor invokes Claude; do not rename it a Copilot runner. B-42 answers a different whole-product
+question.
+
+**Implementation surface.** Reuse applicable `meta/field-study-kit.md` and existing
+`run-agent-evals.ps1` harness/fixture controls; one meta-only component-protocol/report artifact if
+needed. Do not alter FS2's frozen primary contract or build a second general harness. Add a small
+host adapter only for a named observation current tools cannot make honestly.
+
+**Do first, without live spend.** Detail plan section 7 and offline valid/invalid controls. Freeze
+task selection before discovery; withhold task requests, future solutions and grading keys from
+setup. Discover broadly, not targeted to test answers. Compare current framework vs enhanced
+discovery, paired on the same observed model/host, counterbalanced and isolated from history,
+global instructions, generated artifacts and prior sessions. Permit supported correct alternatives.
+Include quiet, unique, helper-derived, recurring and conflicting-scope decisions across different
+areas. Measure acceptance/severe errors, knowledge application, active human review/rework,
+setup/refresh, elapsed time and observable usage. Small samples remain bounded observations;
+retain nulls/regressions and never tune tasks/thresholds after results.
+
+**Live prerequisites.** Frozen representative snapshot/privacy boundary; independent task oracles
+with observed valid/invalid worlds; independent domain review where needed; exact installed Copilot
+host/model identifiers and calibrated observers; predeclared materiality thresholds and explicit
+model/time/credit authority. Missing stable routing -> NOT RUN/NOT COMPARABLE for that arm. No
+substituting Claude efficacy or averaging changed Auto routes. VS Code may require a manual seat;
+CLI is not its substitute. Request prerequisites when execution is due, not a speculative data dump.
+
+**Done when.** Record protocol delivery separately from live execution. Close the outcome item only
+after the authorized component comparison/decision, or an explicit reviewed premise-retirement
+decision. A win justifies the measured increment, not a platform; a null does not justify more
+machinery. B-42 separately compares framework vs bare AI; do not pool with FS1/FS2/B-49. Report all
+unrun intended host/model arms.
+
+**Execution checkpoint / RCA (2026-09-09).** Opus 5 xhigh reviewed the prospective v0.86-based
+ablation and campaign (REVISE, then ACCEPT for preparation), reporting USD 0.9840065 combined
+list-price cost. Native capability queries passed, but two offline CLI environments refused the
+required policy; root independently reproduced it through the installed SDK, exit 3. Emitted
+system-volume read access makes removal of the denials unsafe for the study. Actual network
+policy says deny despite a conflicting UI label; no network leak or missing BaseContainer was
+established. Release/capability checks cannot prove policy execution, and picker filtering cannot
+prove file containment. The same class exposes online transport and zero-test discovery; the
+latter is an explicit gap in one provisional card. Required isolation caught this before study
+dispatch. Preserve selection/receipts and resume after a compatible route is demonstrated; no
+generic gate, host reconfiguration or product release followed.
+
+**Network follow-up / RCA (2026-09-09).** Root replaced the unsafe blanket cleanup with checked
+owned-ID operations and obtained Opus contract critique. Peer nonce and fixed-provider relay
+responses succeeded; direct actor/provider TCP timed out while matched controls connected. The
+closed peer port timed out rather than refusing, so the original conjunction was not backfilled
+as green. A separate relay observation records allowed/denied requests and measured forwarding.
+All checkpoint-created containers/networks were removed; captured final host state matched the
+baseline. Mechanism-specific refusals and over-specific control expectations must not become
+universal impossibility claims. The same class affects diagnostic error classification and
+evidence-file handling; no new generic gate or shipped change is justified.
+
+**Native transport / RCA (2026-09-09).** Direct API-token authentication required an alternate-
+provider flag but yielded an empty model list and a native "No supported model available" stop.
+A reviewed normal-token-shaped bootstrap through fixed metadata routes then carried the native
+non-BYOK HTTP request and exact fresh reply; actor direct provider-IP attempts still timed out
+against successful proxy controls. Parser/CLI flags alone missed the minimum credit cap and the
+fact that empty tool lists retain defaults; actual rejected preflights exposed both before spend.
+The same class affects SDK auth status, complete response evidence and lifecycle controls. Ten
+hostile cases plus metadata success ran on both client hosts. The late retry probe was cannot-
+examine, not a deny; no relay restart regained a paid slot. Both containers/network were removed
+and captured host fields matched baseline. Keep this narrow result and the remaining debts in the
+existing packet; no general proxy platform, efficacy claim or product release follows.
+
+**Resumption review / RCA (2026-09-09).** The user requested Opus adversarial review,
+not renewed live execution. Fresh Opus 5 xhigh returned REVISE on the proposed four-hour
+preparation extension: CONTROL construction was unallocated, candidate inspection and executed
+eligibility were blurred, and oracle/transport/review work lacked a credible bounded allocation.
+Root retains these findings, but corrected the review's fixed-body-relay premise, credit-minimum
+interpretation, mandatory intermediate approvals and unsupported shortened-time arithmetic.
+The next proposed step is only a 30-minute read-only retained-candidate/coverage audit; it cannot
+produce READY or automatically launch another workstream. No revised design is locked.
+Parser gates cannot detect omitted construction work or establish time feasibility; the same
+exposure affects oracle review, CONTROL purity and host-readiness summaries. The independent
+critique caught these omissions before execution. Full disposition and receipts:
+`.claude/plans/2026-09-09-rk1-resumption-review.md`. Review reported USD 0.8299065; conservative
+RK1 Claude total USD 7.920006 of USD 10. No Copilot run, container change or product release.
+
+### B-254 · Decide whether to close or re-scope the CP1/RK1 campaign and pause B-222 to B-224 expansion — **DONE (2026-09-18, records; WSD-091)**
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P1 · **Effort:** S · **Invariants:** —
+**Status:** DONE: the user decided the same day the stub was filed. WSD-091 pauses expansion of B-222
+to B-224 until B-253's first report, closes CP1 and RK1 as scoped (B-225 archived above), keeps
+everything already shipped, and leaves B-42 and B-49 unchanged. Class: records; no release.

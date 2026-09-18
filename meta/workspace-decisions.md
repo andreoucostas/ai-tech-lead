@@ -4275,3 +4275,44 @@ stands.
 keys and newer events, `claude plugin eval`, Copilot reading `AGENTS.md` and `.claude/skills`) come
 from a documentation-research sub-agent and were not re-checked; B-257, B-258 and B-260 must verify
 them on the host before relying on them (WSD-026, WSD-066).
+
+## WSD-091: pause knowledge-increment expansion until the with/without-framework eval first reports; close CP1 and RK1 as scoped (2026-09-18)
+
+**Context.** WSD-090 left one decision to the user, filed as B-254. What the records show: CP1
+stopped NOT READY at its candidate cap — 84 exclusions and 16 unresolved candidates from the first
+100 integrations, no certified task, no paid Copilot call. RK1 (B-225) had, by its own resumption
+review, used USD 7.92 of a USD 10 diagnostic allowance on sandbox, network and transport routes
+without reaching a Copilot task trial. CP2 was already retired (WSD-078). The one ordinary-Copilot
+run under B-224 that navigated the wiki and passed hidden grading was set aside after review because
+its synthetic wiki failed the shipped wiki check. What remains open on B-222 to B-224 is refinement —
+representative semantic coverage, refresh misses, conforming-wiki acceptance — of an increment whose
+effect on outcomes is unmeasured. Against that, B-98 is real evidence that knowledge placed on the
+agent's path changes what it reads.
+
+**Approaches weighed.** (A) Keep WSD-074's order and continue the campaigns: preserves momentum and
+the Copilot-surface question, but the binding constraint has been host and sandbox friction, not
+budget, and each further checkpoint has bought diagnostics rather than trials. (B) Pause expansion,
+close the campaigns as scoped, and measure first where runs complete — B-253 on the existing Claude
+Code harness: cheap, reuses B-41/B-98, gives later decisions an instrument; costs a pause and leaves
+the Copilot-surface question unanswered. (C) Retire the knowledge increment: rejected — B-98 is
+positive, nothing shipped has shown harm, and absence of measurement is not evidence of no value.
+
+**Decision (user, 2026-09-18: "record it").**
+1. Expansion of B-222, B-223 and B-224 is paused until B-253's first report. Everything already
+   shipped stays. A defect in shipped behaviour may still be fixed as its own item.
+2. CP1 and RK1 are closed as scoped on decision-value grounds, in the form WSD-078 used for CP2:
+   isolation and efficacy on the Copilot surfaces remain unknown, and any new attempt requires a
+   fresh decision. B-225 is archived; its protocol, packets and receipts are retained as history.
+3. B-42 and B-49 are unchanged. WSD-016 stands: B-253 reports, it does not gate a release.
+4. This amends WSD-074's order of work and resolves WSD-090's "Not decided" paragraph.
+
+**What this does not claim.** It does not say the knowledge system lacks value, and it does not let
+a Claude Code result stand in for Copilot: B-253 measures the surface it runs on and must say so.
+
+**Resumption.** On B-253's first report the user decides whether the paused items resume, are
+re-scoped or are retired; in B-225's own words, a null does not justify more machinery. The
+maintainer's production use is admissible evidence when recorded as a dated observation.
+
+**Basis.** The recommendation came from the session that performed the review
+(`.claude/plans/2026-09-18-framework-review.md`), not from an independent reviewer; the user is the
+decider. Class: records. B-254 is archived with this entry.

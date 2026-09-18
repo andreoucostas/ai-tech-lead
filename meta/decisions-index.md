@@ -48,15 +48,16 @@ authoritative.
 - “Framework-maintainer tests stay in distributions but do not install into consumers or evidence application verification.” — `meta/workspace-decisions.md WSD-071`
 - “Project skills ship once under `.claude/skills`; retire only content-qualified GitHub mirrors.” — `meta/workspace-decisions.md WSD-072` (WSD-073 supersedes its Bash-adapter retention)
 - “Supported framework execution is native Windows and PowerShell only.” — `meta/workspace-decisions.md WSD-073`
-- “Discover repository knowledge broadly; capture grounded drafts in existing carriers and measure ordinary Copilot outcomes before expanding machinery.” — `meta/workspace-decisions.md WSD-074`
+- “Discover repository knowledge broadly; capture grounded drafts in existing carriers and measure ordinary Copilot outcomes before expanding machinery.” — `meta/workspace-decisions.md WSD-074` (WSD-091 pauses its expansion until B-253 reports)
 - “Run eight native Windows execution contexts independently, then require one same-platform case-count parity decision.” — `meta/workspace-decisions.md WSD-075`
-- “CP1 is a separate maintainer Copilot campaign; readiness precedes purchase.” — `meta/workspace-decisions.md WSD-076`
-- “CP1 may assess a Hyper-V-isolated Windows container; offline feasibility does not establish paid-run readiness.” — `meta/workspace-decisions.md WSD-077` (prospectively amends WSD-076's guest requirement)
+- “CP1 is a separate maintainer Copilot campaign; readiness precedes purchase.” — `meta/workspace-decisions.md WSD-076` (WSD-091 closes CP1 as scoped)
+- “CP1 may assess a Hyper-V-isolated Windows container; offline feasibility does not establish paid-run readiness.” — `meta/workspace-decisions.md WSD-077` (prospectively amends WSD-076's guest requirement; WSD-091 closes CP1 as scoped)
 - “CP2's paid comparison is retired on decision-value grounds; isolation and efficacy remain unknown, and any new attempt requires a fresh decision.” — `meta/workspace-decisions.md WSD-078`
-- “RK1 compares the discovery increment above retained knowledge paths on a matched current foundation; policy execution must be demonstrated before study dispatch.” — `meta/workspace-decisions.md WSD-081`
+- “RK1 compares the discovery increment above retained knowledge paths on a matched current foundation; policy execution must be demonstrated before study dispatch.” — `meta/workspace-decisions.md WSD-081` (WSD-091 closes RK1 as scoped)
 - “Ordinary overwrite and ledger retirement are different contracts; a path can never be both.” — `meta/workspace-decisions.md WSD-088`
 - “Root `AGENTS.md` is the canonical maintainer instruction file, imported by `CLAUDE.md`; both sit under recorded ceilings.” — `meta/workspace-decisions.md WSD-089`
 - “Ceremony follows the change class decided from the changed paths; prose ships batched with a disclosed non-review cell.” — `meta/workspace-decisions.md WSD-089` (amends WSD-028/WSD-057 scope for records and prose)
+- “Knowledge-increment expansion is paused until the with/without-framework eval first reports; CP1 and RK1 are closed as scoped, and any new attempt requires a fresh decision.” — `meta/workspace-decisions.md WSD-091`
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`
