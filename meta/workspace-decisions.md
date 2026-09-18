@@ -4227,3 +4227,43 @@ unchanged commits per tag.
 **Follow-ups filed.** B-242 (`release.ps1` refusal text and ledger preamble for disclosed non-review
 cells), B-243 (path-kind refusal in the outgoing guard), B-244 (README clone-at-tag versus a declared
 pre-release `master`), B-245 (`release.ps1` fast path), B-246 (`AgentEvals` outside CI).
+
+## WSD-090: whole-framework review — findings recorded, stubs filed, work proceeds one item per fresh session (2026-09-18)
+
+**Context.** The user asked for an in-depth review to identify what to improve, remove, add, what
+would add most value and what comes next, using cheaper models for reads. Nine read-only area
+reviews (seven Sonnet, two Haiku) were synthesised in one main session; the synthesising session
+re-checked the claims it relies on at the source and marks them in the record. No file was changed
+and no gate suite was run during the review. Record:
+`.claude/plans/2026-09-18-framework-review.md`.
+
+**Finding.** The maintainer process is much larger than the shipped product and its rigor is aimed
+at gate correctness rather than product efficacy. The only valid with/without-framework replay
+(`FS-20260826-RERUN-02`, maintainer) reads "no detectable difference"; no independent pair exists;
+every Claude Code and Copilot VS Code hook capability in `meta/host-certification.md` is uncertified;
+and B-237 shows the release ceremony did not prevent the defect class it exists for. Concrete
+product defects were confirmed in `guard.ps1` (substring path exemption) and `post-write.ps1`
+(unbounded synchronous build).
+
+**Approaches weighed for what comes next.** (A) Continue the repository-knowledge strategy in
+WSD-074's order: keeps momentum on the largest open increment, but adds machinery whose value the
+project cannot yet measure, and the measurement campaign has not reached a task trial. (B) Fix the
+confirmed defects, then build a scheduled, non-gating with/without-framework eval on the existing
+harness and let its results drive pruning and further investment: smaller, reuses what exists
+(B-98), respects WSD-016, and gives every later decision an instrument; costs a pause in the
+knowledge increment. For distribution, a Claude Code plugin and a simplified file-copy installer are
+weighed in the record and left to B-258.
+
+**Decision (user, 2026-09-18).** Save the findings and file the backlog items; implement in fresh
+sessions, one item per session under its own change class. Stubs B-247 to B-266 are filed; B-237 and
+B-244 rise in urgency; B-240, B-245, B-246 and B-42 stay as filed.
+
+**Not decided.** Approach (B)'s pause of B-222 to B-224 expansion and the closure or re-scoping of
+the CP1/RK1 campaign are recommendations only; they are B-254, a user decision that would amend
+WSD-074's order of work. Until then the strategic contract named at the head of `meta/BACKLOG.md`
+stands.
+
+**Attribution.** Platform capability statements in the record (plugins, hook `shell`/`timeout`
+keys and newer events, `claude plugin eval`, Copilot reading `AGENTS.md` and `.claude/skills`) come
+from a documentation-research sub-agent and were not re-checked; B-257, B-258 and B-260 must verify
+them on the host before relying on them (WSD-026, WSD-066).

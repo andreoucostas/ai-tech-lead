@@ -1218,3 +1218,162 @@ follow-ups; one interactive observation (the `plansDirectory` inbox write) is ow
 
 B-235 — see [`meta/BACKLOG-DONE.md`](BACKLOG-DONE.md). Its remaining reporting acceptance belongs
 to B-222/B-223/B-224.
+
+## Framework review 2026-09-18 — stubs
+
+Evidence, verification marks and the weighed approaches for every stub below are in
+`.claude/plans/2026-09-18-framework-review.md` (WSD-090). Each stub is one item for one fresh
+session; the class named is a floor computed from the expected paths — raise it if the change
+grows. The review also raises the urgency of existing B-237 and B-244 and leaves B-240, B-245,
+B-246 and B-42 as filed. Recommended order: B-237, B-247, B-248, B-244, B-249 to B-251; then B-254
+and B-253; then B-255; then B-260, B-257, B-258; then B-262, B-259.
+
+### B-247 · guard.ps1 skips the credential-literal check for any path containing "test", "spec", "mock"…
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P1 · **Effort:** S · **Invariants:** #3 #5
+**Status:** Open stub from the 2026-09-18 review (class: critical — security false negative). The
+path exemption is an unanchored substring match, so `LatestRatesClient.cs`, `Specification.cs` and
+`Inspector.cs` are exempt; no Azure secret shapes (`AccountKey=`, SAS `sig=`) are covered; the guard
+sees only the current edit's text. Read WSD-046 and WSD-047 first and answer each by kind.
+
+### B-248 · post-write.ps1 runs an unbounded synchronous solution build; shipped hook registrations carry no timeout
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P1 · **Effort:** S · **Invariants:** #3 #5
+**Status:** Open stub from the 2026-09-18 review (class: mechanism — `.ps1` and `settings*.json`).
+`dotnet build $target --no-restore` blocks the agent turn for as long as the solution takes once the
+60-second throttle lapses; bound it in the script and weigh the host's per-hook `timeout` key. No
+test asserts the throttle skips a second write inside the window.
+
+### B-249 · Delete the orphaned `.sh` snippet directories under `src/stacks/*/snippets/.claude/hooks/`
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P2 · **Effort:** S · **Invariants:** #1 #3
+**Status:** Open stub from the 2026-09-18 review (class: prose floor — non-executable fragments;
+`git status --porcelain dist/` must stay empty after build ×3, else raise). Nineteen files in five
+`audit-trail.sh/` and `route-prompt.sh/` directories survive the v0.83 Bash retirement (WSD-073);
+`scripts/build.ps1` never references them.
+
+### B-250 · Retire or rename the shipped `/impact` command
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P2 · **Effort:** S · **Invariants:** #1 #7
+**Status:** Open stub from the 2026-09-18 review (class: mechanism — shipped-file retirement, WSD-088
+contract). The command is the residue of a retired adoption experiment under a name consumers read as
+blast-radius analysis; decide retire versus rename, including its Copilot prompt twin.
+
+### B-251 · Retire `scripts/fidelity-check.ps1` and `FidelityCheck.Tests.ps1`
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P3 · **Effort:** S · **Invariants:** —
+**Status:** Open stub from the 2026-09-18 review (class: mechanism — `.ps1`, test manifest, root
+`AGENTS.md`/`README.md` mentions). A manual re-audit tool for the finished two-repo migration, out of
+CI since v0.26.0, still carried and tested.
+
+### B-252 · Stop copying the presentation deck into every consumer repository
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P3 · **Effort:** S · **Invariants:** #1 #7
+**Status:** Open stub from the 2026-09-18 review (class: mechanism — shipped-file retirement). Four
+files, about 97 KB, under `docs/presentation/` install into each consumer tree; keep the FAQ content
+reachable (see B-262) and link the deck instead.
+
+### B-253 · Scheduled, non-gating with/without-framework behavioural eval on the existing harness
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P1 · **Effort:** M · **Invariants:** #6
+**Status:** Open stub from the 2026-09-18 review (class: mechanism; critical if `ci.yml` changes).
+Three to five existing typed-event scenarios, framework versus none, n≥6, budget-capped, reported per
+release candidate; first use is ablating always-loaded rules. WSD-016 stands (not a release gate) and
+B-98 stands (reuse the B-41 harness); drop the scenario its own file marks saturated.
+
+### B-254 · Decide whether to close or re-scope the CP1/RK1 campaign and pause B-222 to B-224 expansion
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P1 · **Effort:** S · **Invariants:** —
+**Status:** Open stub from the 2026-09-18 review (class: records — a user decision, recorded as a
+WSD). The campaign consumed its diagnostic budget and tracked hours without reaching a task trial
+(CP2 already retired, WSD-078); the review recommends pausing knowledge-machinery expansion until
+B-253 reports, which would amend WSD-074's order of work. Touches B-225, B-42 and B-49.
+
+### B-255 · De-duplicate the shipped instruction text and remove maintainer-epistemic disclaimers
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P2 · **Effort:** M · **Invariants:** #1 #2
+**Status:** Open stub from the 2026-09-18 review (class: mechanism — rewords clauses in the
+always-loaded carrier). The frozen-bundle paragraph appears 15 times across eight files, the
+derive-don't-assume and financial-domain hedges four to five times each, and the workflow rails are
+hand-mirrored in three places; several carrier sentences state what hooks prove rather than what the
+agent should do. Measure with B-253 where reachable.
+
+### B-256 · List the warehouse skills only where repository evidence selects them
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P3 · **Effort:** M · **Invariants:** #1
+**Status:** Open stub from the 2026-09-18 review (class: mechanism). `map-warehouse` and
+`add-warehouse-load` are the two largest .NET skills and appear in every .NET consumer's Common
+Tasks; WSD-021 forbids a separate warehouse distribution, not an evidence-selected listing inside one.
+
+### B-257 · Investigate workflow commands as skills, retiring regex prompt routing, and path-scoped rules
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P2 · **Effort:** M · **Invariants:** #2 #5
+**Status:** Open stub from the 2026-09-18 review (investigation — no code, outcome is a WSD).
+`route-prompt.ps1` spawns on every prompt and carries a third copy of the rails; B-98 already
+records "no always-on router or no-match hook" as the direction. Weigh model-invoked skills and
+`.claude/rules/` with `paths:` against Copilot parity, WSD-031/WSD-032, and WSD-045, which already
+judged scoped instructions to buy locality rather than coverage.
+
+### B-258 · Distribution re-audit: Claude Code plugin prototype versus a simplified file-copy installer
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P2 · **Effort:** M · **Invariants:** #1 #6
+**Status:** Open stub from the 2026-09-18 review (investigation — no product code, outcome is a WSD
+re-auditing WSD-012/WSD-043 under WSD-057). A one-to-two-day plugin spike of the Claude surface
+against a manifest-only copy/delete installer; the review record lists each option's gains and what
+a plugin cannot deliver (project `CLAUDE.md`, registers, `.github/`, permission rules).
+
+### B-259 · Installer lifecycle basics: uninstall, `-WhatIf` parity, structured output, a real update check
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P2 · **Effort:** L · **Invariants:** #6 #7
+**Status:** Open stub from the 2026-09-18 review (class: critical — installer ownership blocks).
+No uninstall or rollback exists; `-WhatIf` skips the dirty-tree guard the real update applies;
+conflicts surface as unstructured text; the version stamp still promises a "future /framework-update
+command" while discovery is a weekly link. Sequence after B-258 so nothing is built twice.
+
+### B-260 · Observe whether the host's built-in `/security-review` shadows the shipped command
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P2 · **Effort:** S · **Invariants:** #5
+**Status:** Open stub from the 2026-09-18 review (class: records — one live observation per WSD-066).
+Claude Code ships a built-in of the same name and the vendor docs state no precedence; if the
+built-in wins, the shipped security workflow never runs.
+
+### B-261 · Stop-time verification on Claude Code: run the evidenced build or tests before work is presented as complete
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P2 · **Effort:** M · **Invariants:** #5
+**Status:** Open stub from the 2026-09-18 review (class: mechanism — new hook behaviour). The
+product's verification promise rests on the agent's self-report; the only Stop hook is an advisory
+style scan. WSD-024 keeps the Copilot nudge advisory and is not reopened; settle latency with B-248.
+
+### B-262 · Restructure the consumer README for a human evaluator
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P2 · **Effort:** M · **Invariants:** #1
+**Status:** Open stub from the 2026-09-18 review (class: prose). Section 1 addresses LLMs before any
+human value statement; host caveats repeat three to four times; there is no installed-file tree, no
+uninstall guide, no linked FAQ, and no single table saying which register a finding belongs in.
+
+### B-263 · State the Copilot VS Code surface as best-effort until a capability is certified
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P3 · **Effort:** S · **Invariants:** #5
+**Status:** Open stub from the 2026-09-18 review (class: prose floor; mechanism if an always-loaded
+carrier clause changes). Every Copilot VS Code row in `meta/host-certification.md` reads "not
+certified — no seat" while shipped text says "supported".
+
+### B-264 · Process diet: release batching, one-in-one-out for meta tests, backlog narrative trim
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P2 · **Effort:** M · **Invariants:** #7
+**Status:** Open stub from the 2026-09-18 review (class: records for the trim; mechanism for any
+test removal). About a third of the 10,417-line meta suite tests process or records; candidates
+include `GateBudgetConsistency.Tests.ps1`. Open entries above repeat CP1/RK1 hour accounting that
+`meta/field-study-results.md` holds. Judge against WSD-089's success/red criteria, with B-245.
+
+### B-265 · Missing consumer workflows: PR description, read-only codebase explanation, major-version upgrade, Angular perf/accessibility
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P3 · **Effort:** M · **Invariants:** #1
+**Status:** Open stub from the 2026-09-18 review (class: mechanism — new shipped files). Hold until
+B-253 can show whether a new workflow changes outcomes; split into one item per workflow when taken.
+
+### B-266 · Add a PSScriptAnalyzer leg for framework PowerShell
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P3 · **Effort:** S · **Invariants:** #3 #4
+**Status:** Open stub from the 2026-09-18 review (class: critical — `ci.yml`). The only static check
+is the AST parse in `validate-dist`; a maintainer-side CI lint adds no consumer dependency.
