@@ -141,11 +141,16 @@ built-in `/security-review` shadows the shipped command of the same name (B-260)
 
 ## 6. Recommended order
 
-1. Known defects: B-237, B-247, B-248, B-244; deletions B-249, B-250, B-251.
-2. Evidence loop: B-254 (user decision), then B-253; publish the first result whatever it shows.
-3. Instruction text: B-255, measured by step 2.
-4. B-260 observation, B-257 and B-258 investigations → WSDs.
-5. Adoption: B-262, B-259, then B-42.
+The authoritative, item-by-item ranking is the "Pick-up order" table at the head of
+`meta/BACKLOG.md`. Its shape:
+
+1. Known defects: B-237, B-247, B-248, B-244; small deletions B-249, B-250; B-240; then one
+   v0.87.0 release batch with the already-delivered B-239.
+2. Evidence loop: B-254 (user decision), B-260 observation, B-246, then B-253; publish the first
+   result whatever it shows.
+3. Turnaround and text: B-245, B-255 (measured by step 2), B-262, B-264.
+4. Investigations → WSDs: B-257, B-258; then B-259 and B-261.
+5. Adoption: B-42 once B-262 lowers the barrier.
 
 Recommended pause until step 2 reports (not yet decided by the user — B-254): B-222 to B-225
 expansion, Copilot VS Code investment, new meta gates.

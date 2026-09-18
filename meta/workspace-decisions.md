@@ -4258,6 +4258,14 @@ weighed in the record and left to B-258.
 sessions, one item per session under its own change class. Stubs B-247 to B-266 are filed; B-237 and
 B-244 rise in urgency; B-240, B-245, B-246 and B-42 stay as filed.
 
+**Ranking (user request, 2026-09-18).** The user asked for the open backlog to be ordered by
+importance so that a fresh session knows what to pick up next. `meta/BACKLOG.md` now opens with a
+"Pick-up order" table ranking every open item: confirmed defects, then one batched v0.87.0 release,
+then the evidence loop, turnaround and instruction text, investigations, and installer work. The
+knowledge-increment items are listed as held because their remaining work needs live host
+observation, provider spend or target-host acceptance that a session cannot authorize for itself —
+a readiness fact, not the B-254 decision.
+
 **Not decided.** Approach (B)'s pause of B-222 to B-224 expansion and the closure or re-scoping of
 the CP1/RK1 campaign are recommendations only; they are B-254, a user decision that would amend
 WSD-074's order of work. Until then the strategic contract named at the head of `meta/BACKLOG.md`

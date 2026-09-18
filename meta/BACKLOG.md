@@ -1,6 +1,7 @@
 # Framework backlog
 
-Current work only. Reconciled 2026-09-08 after v0.86.0 and WSD-079. Read root `AGENTS.md` (the
+Current work only. Reconciled 2026-09-08 after v0.86.0 and WSD-079; ranked 2026-09-18 (WSD-090) —
+**start at "Pick-up order" below.** Read root `AGENTS.md` (the
 canonical maintainer instructions; `CLAUDE.md` imports it), `DEVELOPING.md` and
 `meta/decisions-index.md` before implementation. Effort: S <= half a session, M about one session,
 L multiple sessions; live observation time is separate from implementation. Effort is not the change
@@ -12,7 +13,42 @@ broad discovery of repository-specific knowledge and better ordinary Copilot out
 hard-coded reporting or ingestion skills. This file does not authorize provider spend, private-code
 export, production queries, or external participant contact.
 
+## Pick-up order — ranked 2026-09-18 (WSD-090)
+
+Take the first row that is not blocked; one item per fresh session, under the class its entry
+names (raise it if the change grows). Rank is the order of work; an entry's `Priority` field is its
+severity as filed. Reasons and evidence: `.claude/plans/2026-09-18-framework-review.md`.
+
+| Rank | Item | Class floor | Why here |
+|---|---|---|---|
+| 1 | B-237 tag the CI-verified commit | critical | The defect already published one wrong tag; fix before the next release. Maintainer tooling — no product release needed |
+| 2 | B-247 guard credential-check path exemption | critical | Confirmed security false negative in a shipped control |
+| 3 | B-248 unbounded post-write build, no hook timeouts | mechanism | Confirmed; can stall a consumer's agent turn for the length of a solution build |
+| 4 | B-244 Quick Start installs `master` | records/prose | Small; every new consumer installs unreleased content until fixed |
+| 5 | B-249 orphaned `.sh` snippets | prose floor | Small deletion; invariant #3 residue |
+| 6 | B-250 `/impact` | mechanism | Small retirement; misleading shipped command |
+| 7 | B-240 retired-twin diagnostics | per entry | Small; consumer-facing installer diagnostic gap |
+| 8 | B-239 independent review, then release v0.87.0 | per entry | Already delivered on master; batch ranks 2–7 into this one release instead of tagging each |
+| 9 | B-254 campaign and knowledge-increment decision | records | **User decision** — a session prepares the options, the user decides. Blocks nothing above; decides when the held rows below resume |
+| 10 | B-260 `/security-review` shadowing | records | One live observation; if the built-in wins, a shipped security workflow never runs |
+| 11 | B-246 `AgentEvals.Tests.ps1` wiring | mechanism | Smallest first step toward rank 12 |
+| 12 | B-253 with/without-framework eval | mechanism | Gives every later product decision an instrument; WSD-016 and B-98 constrain it |
+| 13 | B-245 `release.ps1` fast path | critical | Removes 11–16 minutes from every release; same file as rank 1, so after it |
+| 14 | B-255 instruction-text de-duplication | mechanism | Largest always-loaded saving; measure with rank 12 |
+| 15 | B-262 consumer README | prose | Precondition for independent adopters (B-42) |
+| 16 | B-264 process diet | records / mechanism | Judge against WSD-089's success measure, read on 2026-09-30 |
+| 17 | B-257 commands as skills, routing, scoped rules | investigation → WSD | Host facts must be verified first; WSD-045 must be answered |
+| 18 | B-258 distribution re-audit | investigation → WSD | One-to-two-day spike; decides the shape of rank 19 |
+| 19 | B-259 installer lifecycle basics | critical | After rank 18 so nothing is built twice |
+| 20 | B-261 Stop-time verification | mechanism | After rank 3 settles hook latency |
+| Held | B-222, B-223, B-224, B-225, B-216, B-226, B-232 | per entry | Shipped; what remains is live host observation, provider spend or target-host acceptance that a session cannot authorize for itself. Order among them is the table below; rank 9 decides whether they resume before or after rank 12 |
+| Blocked | B-42 independent FS2 pair | — | Needs a participant; rank 15 lowers the barrier |
+| Low | B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265 | per entry | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 waits for rank 12 |
+| Deferred | B-49 drill redesign | — | Instrument invalid under WSD-062; no execution authority |
+
 ## Execution order and common delivery contract
+
+This table orders the held knowledge increment only; the pick-up order above governs everything else.
 
 | Order | Item | Current readiness |
 |---|---|---|
@@ -1192,7 +1228,7 @@ only; not a gate on the ladder's adoption.
 
 ### B-244 · Decide whether consumers clone at a tag or master is declared a pre-release channel
 **Filed against:** v0.86.7 (2026-09-16)
-**Priority:** P3 · **Effort:** S · **Invariants:** #6 #7
+**Priority:** P2 (raised from P3 by WSD-090) · **Effort:** S · **Invariants:** #6 #7
 **Status:** Open stub from B-241 (class: records/prose). `README.md` tells consumers to `git clone`
 master; master already carries unreleased content stamped with the previous version and nothing
 detects a clone-of-master install differing from the tag. Batching prose changes widens that window;
@@ -1224,9 +1260,8 @@ to B-222/B-223/B-224.
 Evidence, verification marks and the weighed approaches for every stub below are in
 `.claude/plans/2026-09-18-framework-review.md` (WSD-090). Each stub is one item for one fresh
 session; the class named is a floor computed from the expected paths — raise it if the change
-grows. The review also raises the urgency of existing B-237 and B-244 and leaves B-240, B-245,
-B-246 and B-42 as filed. Recommended order: B-237, B-247, B-248, B-244, B-249 to B-251; then B-254
-and B-253; then B-255; then B-260, B-257, B-258; then B-262, B-259.
+grows. The review also raises the urgency of existing B-237 and B-244. The order of work is the
+"Pick-up order" table at the head of this file, not the id order here.
 
 ### B-247 · guard.ps1 skips the credential-literal check for any path containing "test", "spec", "mock"…
 **Filed against:** v0.86.7 (2026-09-18)
