@@ -22,7 +22,6 @@ severity as filed. Reasons and evidence: `.claude/plans/2026-09-18-framework-rev
 
 | Rank | Item | Class floor | Why here |
 |---|---|---|---|
-| 1 | B-237 tag the CI-verified commit | critical | Fix delivered 2026-09-18; open only for CI on the fix commit and the execution-vantage review, which B-239's review covers |
 | 2 | B-247 guard credential-check path exemption | critical | Confirmed security false negative in a shipped control |
 | 3 | B-248 unbounded post-write build, no hook timeouts | mechanism | Confirmed; can stall a consumer's agent turn for the length of a solution build |
 | 4 | B-244 Quick Start installs `master` | records/prose | Small; every new consumer installs unreleased content until fixed |
@@ -33,7 +32,7 @@ severity as filed. Reasons and evidence: `.claude/plans/2026-09-18-framework-rev
 | 9 | B-260 `/security-review` shadowing | records | One live observation; if the built-in wins, a shipped security workflow never runs |
 | 10 | B-246 `AgentEvals.Tests.ps1` wiring | mechanism | Smallest first step toward B-253 |
 | 11 | B-253 with/without-framework eval | mechanism | Gives every later product decision an instrument, and its first report is WSD-091's condition for resuming the paused rows; WSD-016 and B-98 constrain it |
-| 12 | B-245 `release.ps1` fast path | critical | Removes 11–16 minutes from every release; same file as B-237, so after it |
+| 12 | B-245 `release.ps1` fast path | critical | Removes 11–16 minutes from every release; same file as B-237 (done), and must keep its tagged-commit binding |
 | 13 | B-255 instruction-text de-duplication | mechanism | Largest always-loaded saving; measure with B-253 |
 | 14 | B-262 consumer README | prose | Precondition for independent adopters (B-42) |
 | 15 | B-264 process diet | records / mechanism | Judge against WSD-089's success measure, read on 2026-09-30 |
@@ -797,6 +796,11 @@ direct PS7 and native Windows PowerShell 5.1, and green on CI run 35113529270 �
 native Windows execution jobs plus the parity decision. Awaiting independent review; no release
 approval is claimed here.
 
+**Review debt carried from B-237 (2026-09-18).** The same independent review must also cover the
+B-237 release-tool fix at `651be294` (step 5d tags `$releaseCommit`, not a re-read HEAD) from an
+orthogonal execution vantage: run the three B-237 cases in `ReleaseCiWatch.Tests.ps1` and observe
+them red against the parent tree. Its plan is `.claude/plans/2026-09-18-b237-tag-the-watched-commit.md`.
+
 The shared architecture generator emits floating `marked@12` and `mermaid@10` CDN scripts without
 SRI or CSP into all three stack source HTMLs and all three distributions. This exposes browser
 script execution to substituted runtime bytes; no actual compromise or browser exploit was observed.
@@ -1033,62 +1037,6 @@ reported as a product defect or verified host combination. The 39 carrier review
 contrast are source/static evidence; no model dispatch or sequential-fallback efficacy was run.
 
 ## Independent evidence and deferred work
-
-### B-237 · Bind release promotion to the immutable commit whose CI passed
-**Filed against:** v0.86.5 (2026-09-11)
-**Priority:** P1 · **Effort:** M · **Invariants:** #6
-**Status:** PARTIALLY DONE 2026-09-18: release-tool fix delivered, local gates green on PS7 and PS5.1. Open: CI run on the fix commit and the orthogonal execution-vantage review (review debt, below).
-
-**Observed harm.** While the v0.86.5 release process waited on CI for
-`3bbd413ad597da272b8db58fa52f67c8c09ec868`, the field-feedback task committed
-`6af8827dec2f22bfc002ad35d98e58df215ce417` in the same checkout. Step 5c watched the saved
-`releaseCommit`, but step 5d reread HEAD into `releaseSha`. The script then published v0.86.5
-at the untested follow-up while describing it as CI-verified. Root directly inspected the
-release log, remote tag and both commits; the other task independently confirmed the mismatch.
-
-**Recovery observed.** The user approved correcting the public tag. A fresh watch of the original
-commit returned all eight native execution jobs and parity green (Actions run `34582373359`).
-Root retained the erroneous object locally, ran the outgoing guard and pushed an annotated
-correction with an exact force-with-lease against object
-`b4855d8284c17b01cdf4c930f2d0d48ba7c0641c`. Remote tag object
-`ce10dfab5e17f758fb4722e3d0280d151e5dd5f6` now peels to `3bbd413`; origin/master stayed at that
-commit during recovery and the field-fix commit/files were preserved. The annotation discloses
-the correction. No release-script code was changed by this delivery.
-
-**Next, with locked proportional design and independent critique.** Prefer reusing the already
-captured release commit for tag/promotion and its postconditions over a new locking subsystem.
-Audit all post-CI actions for ambient HEAD dependence. Reproduce by advancing checkout HEAD while
-a controlled CI watch is pending: the later commit must never acquire the earlier commit's green
-verdict. Keep an unchanged-HEAD success case and equal direct-host evidence. False-green promotion
-requires an orthogonal review or execution vantage; preserve any remaining gap as review debt.
-
-**RCA.** Existing tests check watch/tag order and tag identity without moving HEAD between those
-phases. Maintainer concurrency guidance was not followed: the field task should have isolated its
-work until the preceding release completed. The same class exposes later outgoing checks,
-post-release persistence and other actions that rediscover state after verifying a saved identity.
-**Delivered 2026-09-18 (class critical: `.claude/scripts/release.ps1`, `ReleaseCiWatch.Tests.ps1`).**
-Plan: `.claude/plans/2026-09-18-b237-tag-the-watched-commit.md`. Step 5d now binds
-`$releaseSha = $releaseCommit`, the sha step 5c watched, so the existing-tag check, tag creation,
-tag-push outgoing check and messages all refer to the verified commit. Critique: a separate read-only
-Claude Sonnet session found the defect real and the fix complete. It confirmed that no other
-post-CI action reads ambient HEAD except the eval-evidence commit (filed as B-267). Its three
-required points were already met. Red-first: three new cases in `ReleaseCiWatch.Tests.ps1` extract
-step 5d verbatim and run it in a child host against a scratch repo. On the unfixed tree under PS7
-7.6.6 and PS5.1 5.1.26100 the control case (HEAD unchanged) passed and two cases failed. With HEAD
-advanced after the watch, the tag peeled to the unwatched follow-up. On a retry after HEAD advanced,
-a correct existing tag was refused with `Tag FAILED ... Refusing to move` (EXIT=1). After the fix the
-full meta suite reported `0 failure(s) across 36 file(s)` on both hosts, with 482 passed cases on
-each. The CP437 leg of `ReleaseCiWatch.Tests` reported 26 passed, 0 failed. **Review debt:** the
-critic could not execute code, so no orthogonal execution vantage was supplied for this false-green
-class. The fix is therefore unreviewed by #2's standard. Fold it into B-239's independent review
-before v0.87.0.
-
-**RCA (delivery).** *Why no gate caught it:* the only release test asserted watch-before-tag ordering
-as text. No instrument ran step 5d, so nothing bound the tagged sha to the watched sha. That is an
-ordering check standing in for an identity check, the literal-assertion shape of #4. *Exposed to the
-same class:* the eval-evidence commit after the tag commits on whatever HEAD is and pushes it to
-master (B-267). B-245's planned fast path touches the same file and must keep
-`$releaseSha = $releaseCommit`; the new cases will fail if it does not.
 
 ### B-42 · Obtain balanced independent field outcomes using FS2
 **Filed against:** v0.31.0 (2026-07-17)

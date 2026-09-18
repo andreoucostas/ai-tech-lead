@@ -12506,3 +12506,59 @@ RK1 Claude total USD 7.920006 of USD 10. No Copilot run, container change or pro
 **Status:** DONE: the user decided the same day the stub was filed. WSD-091 pauses expansion of B-222
 to B-224 until B-253's first report, closes CP1 and RK1 as scoped (B-225 archived above), keeps
 everything already shipped, and leaves B-42 and B-49 unchanged. Class: records; no release.
+
+### B-237 · Bind release promotion to the immutable commit whose CI passed — **DONE (2026-09-18, meta-only; no release)**
+**Filed against:** v0.86.5 (2026-09-11)
+**Priority:** P1 · **Effort:** M · **Invariants:** #6
+**Status:** DONE 2026-09-18: landed on `master` as `651be294`; CI run 35373189458 green on all eight Windows contexts plus the parity decision. Class: critical. The orthogonal execution-vantage review was not supplied and is carried as review debt by B-239 (maintenance model #2).
+
+**Observed harm.** While the v0.86.5 release process waited on CI for
+`3bbd413ad597da272b8db58fa52f67c8c09ec868`, the field-feedback task committed
+`6af8827dec2f22bfc002ad35d98e58df215ce417` in the same checkout. Step 5c watched the saved
+`releaseCommit`, but step 5d reread HEAD into `releaseSha`. The script then published v0.86.5
+at the untested follow-up while describing it as CI-verified. Root directly inspected the
+release log, remote tag and both commits; the other task independently confirmed the mismatch.
+
+**Recovery observed.** The user approved correcting the public tag. A fresh watch of the original
+commit returned all eight native execution jobs and parity green (Actions run `34582373359`).
+Root retained the erroneous object locally, ran the outgoing guard and pushed an annotated
+correction with an exact force-with-lease against object
+`b4855d8284c17b01cdf4c930f2d0d48ba7c0641c`. Remote tag object
+`ce10dfab5e17f758fb4722e3d0280d151e5dd5f6` now peels to `3bbd413`; origin/master stayed at that
+commit during recovery and the field-fix commit/files were preserved. The annotation discloses
+the correction. No release-script code was changed by this delivery.
+
+**Next, with locked proportional design and independent critique.** Prefer reusing the already
+captured release commit for tag/promotion and its postconditions over a new locking subsystem.
+Audit all post-CI actions for ambient HEAD dependence. Reproduce by advancing checkout HEAD while
+a controlled CI watch is pending: the later commit must never acquire the earlier commit's green
+verdict. Keep an unchanged-HEAD success case and equal direct-host evidence. False-green promotion
+requires an orthogonal review or execution vantage; preserve any remaining gap as review debt.
+
+**RCA.** Existing tests check watch/tag order and tag identity without moving HEAD between those
+phases. Maintainer concurrency guidance was not followed: the field task should have isolated its
+work until the preceding release completed. The same class exposes later outgoing checks,
+post-release persistence and other actions that rediscover state after verifying a saved identity.
+**Delivered 2026-09-18 (class critical: `.claude/scripts/release.ps1`, `ReleaseCiWatch.Tests.ps1`).**
+Plan: `.claude/plans/2026-09-18-b237-tag-the-watched-commit.md`. Step 5d now binds
+`$releaseSha = $releaseCommit`, the sha step 5c watched, so the existing-tag check, tag creation,
+tag-push outgoing check and messages all refer to the verified commit. Critique: a separate read-only
+Claude Sonnet session found the defect real and the fix complete. It confirmed that no other
+post-CI action reads ambient HEAD except the eval-evidence commit (filed as B-267). Its three
+required points were already met. Red-first: three new cases in `ReleaseCiWatch.Tests.ps1` extract
+step 5d verbatim and run it in a child host against a scratch repo. On the unfixed tree under PS7
+7.6.6 and PS5.1 5.1.26100 the control case (HEAD unchanged) passed and two cases failed. With HEAD
+advanced after the watch, the tag peeled to the unwatched follow-up. On a retry after HEAD advanced,
+a correct existing tag was refused with `Tag FAILED ... Refusing to move` (EXIT=1). After the fix the
+full meta suite reported `0 failure(s) across 36 file(s)` on both hosts, with 482 passed cases on
+each. The CP437 leg of `ReleaseCiWatch.Tests` reported 26 passed, 0 failed. **Review debt:** the
+critic could not execute code, so no orthogonal execution vantage was supplied for this false-green
+class. The fix is therefore unreviewed by #2's standard. Fold it into B-239's independent review
+before v0.87.0.
+
+**RCA (delivery).** *Why no gate caught it:* the only release test asserted watch-before-tag ordering
+as text. No instrument ran step 5d, so nothing bound the tagged sha to the watched sha. That is an
+ordering check standing in for an identity check, the literal-assertion shape of #4. *Exposed to the
+same class:* the eval-evidence commit after the tag commits on whatever HEAD is and pushes it to
+master (B-267). B-245's planned fast path touches the same file and must keep
+`$releaseSha = $releaseCommit`; the new cases will fail if it does not.
