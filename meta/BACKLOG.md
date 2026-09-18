@@ -22,7 +22,7 @@ severity as filed. Reasons and evidence: `.claude/plans/2026-09-18-framework-rev
 
 | Rank | Item | Class floor | Why here |
 |---|---|---|---|
-| 1 | B-237 tag the CI-verified commit | critical | The defect already published one wrong tag; fix before the next release. Maintainer tooling — no product release needed |
+| 1 | B-237 tag the CI-verified commit | critical | Fix delivered 2026-09-18; open only for CI on the fix commit and the execution-vantage review, which B-239's review covers |
 | 2 | B-247 guard credential-check path exemption | critical | Confirmed security false negative in a shipped control |
 | 3 | B-248 unbounded post-write build, no hook timeouts | mechanism | Confirmed; can stall a consumer's agent turn for the length of a solution build |
 | 4 | B-244 Quick Start installs `master` | records/prose | Small; every new consumer installs unreleased content until fixed |
@@ -44,7 +44,7 @@ severity as filed. Reasons and evidence: `.claude/plans/2026-09-18-framework-rev
 | Paused | B-222, B-223, B-224 | per entry | WSD-091 (user, 2026-09-18): no new work until B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | per entry | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | — | Needs a participant; B-262 lowers the barrier |
-| Low | B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265 | per entry | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 waits for B-253 |
+| Low | B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267 | per entry | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 waits for B-253 |
 | Deferred | B-49 drill redesign | — | Instrument invalid under WSD-062; no execution authority |
 
 ## Execution order and common delivery contract
@@ -1037,7 +1037,7 @@ contrast are source/static evidence; no model dispatch or sequential-fallback ef
 ### B-237 · Bind release promotion to the immutable commit whose CI passed
 **Filed against:** v0.86.5 (2026-09-11)
 **Priority:** P1 · **Effort:** M · **Invariants:** #6
-**Status:** Published-tag incident recovered with user approval; release-tool repair remains open.
+**Status:** PARTIALLY DONE 2026-09-18: release-tool fix delivered, local gates green on PS7 and PS5.1. Open: CI run on the fix commit and the orthogonal execution-vantage review (review debt, below).
 
 **Observed harm.** While the v0.86.5 release process waited on CI for
 `3bbd413ad597da272b8db58fa52f67c8c09ec868`, the field-feedback task committed
@@ -1066,6 +1066,29 @@ requires an orthogonal review or execution vantage; preserve any remaining gap a
 phases. Maintainer concurrency guidance was not followed: the field task should have isolated its
 work until the preceding release completed. The same class exposes later outgoing checks,
 post-release persistence and other actions that rediscover state after verifying a saved identity.
+**Delivered 2026-09-18 (class critical: `.claude/scripts/release.ps1`, `ReleaseCiWatch.Tests.ps1`).**
+Plan: `.claude/plans/2026-09-18-b237-tag-the-watched-commit.md`. Step 5d now binds
+`$releaseSha = $releaseCommit`, the sha step 5c watched, so the existing-tag check, tag creation,
+tag-push outgoing check and messages all refer to the verified commit. Critique: a separate read-only
+Claude Sonnet session found the defect real and the fix complete. It confirmed that no other
+post-CI action reads ambient HEAD except the eval-evidence commit (filed as B-267). Its three
+required points were already met. Red-first: three new cases in `ReleaseCiWatch.Tests.ps1` extract
+step 5d verbatim and run it in a child host against a scratch repo. On the unfixed tree under PS7
+7.6.6 and PS5.1 5.1.26100 the control case (HEAD unchanged) passed and two cases failed. With HEAD
+advanced after the watch, the tag peeled to the unwatched follow-up. On a retry after HEAD advanced,
+a correct existing tag was refused with `Tag FAILED ... Refusing to move` (EXIT=1). After the fix the
+full meta suite reported `0 failure(s) across 36 file(s)` on both hosts, with 482 passed cases on
+each. The CP437 leg of `ReleaseCiWatch.Tests` reported 26 passed, 0 failed. **Review debt:** the
+critic could not execute code, so no orthogonal execution vantage was supplied for this false-green
+class. The fix is therefore unreviewed by #2's standard. Fold it into B-239's independent review
+before v0.87.0.
+
+**RCA (delivery).** *Why no gate caught it:* the only release test asserted watch-before-tag ordering
+as text. No instrument ran step 5d, so nothing bound the tagged sha to the watched sha. That is an
+ordering check standing in for an identity check, the literal-assertion shape of #4. *Exposed to the
+same class:* the eval-evidence commit after the tag commits on whatever HEAD is and pushes it to
+master (B-267). B-245's planned fast path touches the same file and must keep
+`$releaseSha = $releaseCommit`; the new cases will fail if it does not.
 
 ### B-42 · Obtain balanced independent field outcomes using FS2
 **Filed against:** v0.31.0 (2026-07-17)
@@ -1308,3 +1331,10 @@ B-253 can show whether a new workflow changes outcomes; split into one item per 
 **Priority:** P3 · **Effort:** S · **Invariants:** #3 #4
 **Status:** Open stub from the 2026-09-18 review (class: critical — `ci.yml`). The only static check
 is the AST parse in `validate-dist`; a maintainer-side CI lint adds no consumer dependency.
+
+### B-267 · The optional eval-evidence commit lands on ambient HEAD
+**Filed against:** v0.86.7 (2026-09-18)
+**Priority:** P3 · **Effort:** S · **Invariants:** #6
+**Status:** Open stub from the B-237 audit (class: critical — `release.ps1`). After the tag,
+`release.ps1` commits eval results on whatever HEAD is and pushes it to master, so a commit made
+during the watch would be published beneath it; attended-console only, and it cannot move the tag.

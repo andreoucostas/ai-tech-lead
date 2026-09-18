@@ -890,7 +890,10 @@ if (-not $ciDecision.Tag) {
 # Idempotent by design: a re-run after a partial failure must not fail on an existing correct tag,
 # but a tag pointing somewhere else is a real conflict and is never silently moved.
 $tagName     = "v$Version"
-$releaseSha  = (git -C $repo rev-parse HEAD).Trim()
+# The commit step 5c watched, never a re-read of HEAD (B-237). The watch takes minutes and the
+# checkout is shared: at v0.86.5 another task committed during it, HEAD moved, and the unwatched
+# follow-up was published as the CI-verified release.
+$releaseSha  = $releaseCommit
 # NOTE the ^{commit} peel: for an ANNOTATED tag, `rev-parse refs/tags/x` returns the tag OBJECT's
 # sha, not the commit's. Without peeling, the equality below never matches, every retry takes the
 # "tag exists elsewhere" branch, and a re-run after an interrupted release is refused outright --

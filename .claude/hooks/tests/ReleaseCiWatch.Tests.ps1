@@ -394,6 +394,106 @@ try {
         Assert ($t -match '(?m)^\s*if \(-not \$nothingToCommit\) \{') 'the commit is not guarded on the resume path -- it would try to commit nothing'
     }
 
+    # ---- the tag lands on the commit CI verified (B-237) -------------------------------------------
+    # v0.86.5: while step 5c watched one commit, another task committed in the same checkout, and
+    # step 5d re-read HEAD and tagged the UNWATCHED commit as CI-verified. These cases extract step
+    # 5d VERBATIM (the ReleaseStagingGuard pattern: a retyped copy would prove something about the
+    # copy) and run it in a child host against a scratch repo, with HEAD moved after the "watch".
+    $releaseText = [IO.File]::ReadAllText($release)
+    $tagStart  = $releaseText.IndexOf('# ---- 5d.')
+    $tagEnd    = $releaseText.IndexOf('# B-41 behavioral evals')
+    $tagRegion = if ($tagStart -ge 0 -and $tagEnd -gt $tagStart) { $releaseText.Substring($tagStart, $tagEnd - $tagStart) } else { $null }
+
+    function New-TagScratchRepo {
+        $dir = Join-Path ([IO.Path]::GetTempPath()) ("reltag-" + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $dir -Force | Out-Null
+        $script:scratch += $dir
+        git -C $dir init -q
+        git -C $dir config user.email 'test@example.invalid'
+        git -C $dir config user.name  'test'
+        git -C $dir config commit.gpgsign false
+        git -C $dir config tag.gpgsign false
+        Set-Content -LiteralPath (Join-Path $dir 'f.txt') -Value 'release'
+        git -C $dir add -A; git -C $dir commit -qm 'release commit (watched)'
+        return $dir
+    }
+    function Add-FollowUpCommit {
+        param([string]$Repo)
+        Set-Content -LiteralPath (Join-Path $Repo 'f.txt') -Value 'follow-up committed during the CI watch'
+        git -C $Repo commit -qam 'unwatched follow-up'
+        return (git -C $Repo rev-parse HEAD).Trim()
+    }
+    # Binds exactly what step 5d reads from earlier steps. -NoPush keeps the region local: the tag
+    # push and its outgoing check would otherwise reach for an origin the scratch repo does not have.
+    function Invoke-TagStep {
+        param([string]$Repo, [string]$ReleaseCommit)
+        $body = @"
+`$ErrorActionPreference = 'Stop'
+`$repo = '$Repo'
+`$Version = '9.9.9'
+`$NoPush = `$true
+`$releaseCommit = '$ReleaseCommit'
+`$waiversApplied = @()
+`$ciDecision = [pscustomobject]@{ Status = 'GREEN'; Tag = `$true; ReleaseExit = 0; TagNote = ' — CI verified green (test stub)' }
+$tagRegion
+exit 0
+"@
+        $f = Join-Path ([IO.Path]::GetTempPath()) ("reltag-run-" + [guid]::NewGuid().ToString('N') + '.ps1')
+        [IO.File]::WriteAllText($f, $body, [Text.UTF8Encoding]::new($true))   # BOM: invariant #4
+        try {
+            $out  = & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File $f 2>&1
+            $code = $LASTEXITCODE
+            return [pscustomobject]@{ Exit = $code; Out = ($out | Out-String) }
+        } finally { Remove-Item -LiteralPath $f -Force -ErrorAction SilentlyContinue }
+    }
+    function Get-TagCommit {
+        param([string]$Repo)
+        $sha = git -C $Repo rev-parse -q --verify 'refs/tags/v9.9.9^{commit}'
+        if ($LASTEXITCODE -ne 0 -or -not $sha) { return $null }
+        return "$sha".Trim()
+    }
+
+    It 'the tag step can be extracted from release.ps1, and is neither too small nor too large' {
+        Assert ($null -ne $tagRegion) 'cannot bound step 5d between "# ---- 5d." and "# B-41 behavioral evals"'
+        foreach ($needle in @('git -C $repo tag -a', 'refs/tags/$tagName^{commit}', 'Refusing to move an existing release tag')) {
+            Assert ($tagRegion.Contains($needle)) "extracted tag step is missing '$needle' -- would test nothing"
+        }
+        foreach ($forbidden in @('watch-ci.ps1', 'Read-Host', 'git -C $repo commit')) {
+            Assert (-not $tagRegion.Contains($forbidden)) "extracted tag step wrongly includes '$forbidden'"
+        }
+    }
+
+    It 'control: with HEAD unchanged since the watch, the tag lands on the release commit' {
+        $d = New-TagScratchRepo
+        $a = (git -C $d rev-parse HEAD).Trim()
+        $r = Invoke-TagStep -Repo $d -ReleaseCommit $a
+        Assert ($r.Exit -eq 0) "expected EXIT=0, got $($r.Exit): $($r.Out)"
+        $t = Get-TagCommit $d
+        Assert ($t -eq $a) "tag peels to '$t', expected the release commit $a"
+    }
+
+    It 'a commit landing during the CI watch does not receive the release tag' {
+        $d = New-TagScratchRepo
+        $a = (git -C $d rev-parse HEAD).Trim()
+        $b = Add-FollowUpCommit $d
+        Assert ($a -ne $b) 'fixture did not advance HEAD -- the case would not distinguish watched from re-read'
+        $r = Invoke-TagStep -Repo $d -ReleaseCommit $a
+        Assert ($r.Exit -eq 0) "expected EXIT=0, got $($r.Exit): $($r.Out)"
+        $t = Get-TagCommit $d
+        Assert ($t -eq $a) "tag peels to '$t' -- the watched commit is $a, the unwatched HEAD is $b"
+    }
+
+    It 'a retry after HEAD advanced accepts the existing tag on the watched commit' {
+        $d = New-TagScratchRepo
+        $a = (git -C $d rev-parse HEAD).Trim()
+        git -C $d tag -a v9.9.9 -m 'from the interrupted run' $a
+        $b = Add-FollowUpCommit $d
+        $r = Invoke-TagStep -Repo $d -ReleaseCommit $a
+        Assert ($r.Exit -eq 0) "a correct existing tag was refused after HEAD moved to $b (EXIT=$($r.Exit)): $($r.Out)"
+        Assert ($r.Out -match 'already present at the release commit') "retry not recognised: $($r.Out)"
+        Assert ((Get-TagCommit $d) -eq $a) 'the existing tag moved'
+    }
+
     # ---- the mutation harness --------------------------------------------------------------------
     # Recorded defects, kept as executable text rather than as a comment claiming a red-test happened.
     $mutations = @(
