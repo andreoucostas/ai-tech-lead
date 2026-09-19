@@ -12562,3 +12562,7 @@ ordering check standing in for an identity check, the literal-assertion shape of
 same class:* the eval-evidence commit after the tag commits on whatever HEAD is and pushes it to
 master (B-267). B-245's planned fast path touches the same file and must keep
 `$releaseSha = $releaseCommit`; the new cases will fail if it does not.
+
+- **WP2** (lean reset plan, section 5) — DONE **2026-09-19** in `887048f7`: a push touching only
+  top-level `meta/*.md` (except `eval-results.md` and `review-ledger.md`) or `.claude/plans/**` runs
+  no CI, and `push-and-check.ps1` skips its watch.

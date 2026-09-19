@@ -11,7 +11,6 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Rank | Item | Why here |
 |---|---|---|
 | WP1 | Lean maintainer reset: rules and records (text only) | `.claude/plans/2026-09-19-lean-maintainer-reset.md` section 4; lands with WSD-093 |
-| WP2 | Top-level records pushes stop paying for CI | Same plan, section 5; a `meta/*.md`-only push runs every CI job today |
 | WP3 | B-245 `release.ps1` fast path | Same plan, section 6; removes 11–16 minutes from every release and must keep its tagged-commit binding |
 | 2 | B-247 guard credential-check path exemption | Confirmed security false negative in a shipped control |
 | 3 | B-248 unbounded post-write build, no hook timeouts | Confirmed; can stall a consumer's agent turn for the length of a solution build |
