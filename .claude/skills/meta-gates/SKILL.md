@@ -1,56 +1,63 @@
 ---
 name: meta-gates
-description: Run exactly the gate commands a maintainer change class requires (records, prose, or full), capturing every stage's exit code, and print the class computed from the changed paths for the commit subject. Use before committing a change in this authoring repo.
-argument-hint: records|prose|full
-allowed-tools: PowerShell(git *) PowerShell(Test-Path *) PowerShell(Start-Sleep *) PowerShell(pwsh -NoProfile -File scripts/*) PowerShell(pwsh -NoProfile -File .claude/hooks/tests/*)
+description: Run exactly the verification recipes root AGENTS.md requires for the changed paths, capturing every stage's exit code, and print the tier (guarded or ordinary) computed from those paths for the commit subject. Use before committing a change in this authoring repo.
+argument-hint: guarded|ordinary
+allowed-tools: PowerShell(git *) PowerShell(Test-Path *) PowerShell(Start-Sleep *) PowerShell(pwsh -NoProfile -File scripts/*) PowerShell(pwsh -NoProfile -File .claude/hooks/tests/*) PowerShell(powershell.exe -NoProfile -File .claude/hooks/tests/*) PowerShell(pwsh -NoProfile -File dist/*/tests/hooks/*) PowerShell(powershell.exe -NoProfile -File dist/*/tests/hooks/*)
 ---
 
 # Gate ladder
 
-Thin by design: this runs the commands root `AGENTS.md` already requires for the class, one stage at
-a time, and records `$LASTEXITCODE` immediately after each. Never pipe a gate into a filter
-(`DEVELOPING.md`, "Do not pipe a gate…"). Do not run while another session is editing this tree.
+Thin by design: this runs the recipes root `AGENTS.md` ("Verification") already requires for the
+changed paths, one stage at a time, and records `$LASTEXITCODE` immediately after each. Never pipe a
+gate into a filter before capturing its exit code. Do not run while another session is editing this
+tree.
 
-## 0. Compute the class (observed, not asserted)
+## 0. Compute the tier (observed, not asserted)
 
 ```powershell
 git status --porcelain
 git diff --name-only HEAD          # unstaged + staged vs HEAD
 git diff --name-only --cached      # staged only
 ```
-Apply the "Change classes" table in root `AGENTS.md` to the union of paths; the class is the
-**highest** kind any path matches. Print `class <name>: <paths>` — that line goes into the commit
-subject. If `$ARGUMENTS` names a lower class than computed, say so and run the computed one; a class
-may be raised, never lowered.
+Apply the "Two tiers" list in root `AGENTS.md` to the union of paths: any guarded path makes the
+change **guarded**, otherwise it is **ordinary**. Print `<tier>: <paths>` — that line starts the
+commit subject. If `$ARGUMENTS` names a lower tier than computed, say so and use the computed one; a
+tier may be raised, never lowered.
 
 ## 1. Tree stillness
 
 `git rev-parse HEAD`, `Start-Sleep 3`, `git rev-parse HEAD` — both must match, or stop.
 
-## 2. Stages by class
+## 2. Stages by changed path (run every row that matches)
 
-**records**
+**Top-level `meta/*.md`, `.claude/plans/**`**
 1. `pwsh -NoProfile -File .claude/hooks/tests/Invoke-HookTests.ps1 -File DocTruth.Tests.ps1`
 2. `pwsh -NoProfile -File .claude/hooks/tests/Invoke-HookTests.ps1 -File RepositoryPrivacy.Tests.ps1`
-3. if `meta/BACKLOG*` or `meta/decisions-index.md` changed: `… -File BacklogHygiene.Tests.ps1`
-4. if `README.md` changed: `… -File ClaimTruth.Tests.ps1`
-5. if any `.claude/settings.json` or `.claude/skills/**` changed: `… -File MetaHooks.Tests.ps1`
+3. `pwsh -NoProfile -File .claude/hooks/tests/Invoke-HookTests.ps1 -File BacklogHygiene.Tests.ps1`
 
-**prose**
-1. WSD-015 sibling check: for every changed `src/stacks/<stack>/<rel>` path, `Test-Path
+**`src/**`**
+1. Monorepo sibling check: for every changed `src/stacks/<stack>/<rel>` path, `Test-Path
    src/stacks/monorepo/<rel>`; report each sibling that exists and whether it was also changed.
 2. `pwsh -NoProfile -File scripts/build.ps1 dotnet` · `angular` · `monorepo`
-3. `git status --porcelain dist/` — must print nothing; otherwise the dist change belongs in the commit
-4. `pwsh -NoProfile -File scripts/validate-dist.ps1 <dist> --content-only` for each dist
+3. `git status --porcelain dist/` — the resulting `dist/` change belongs in the same commit.
+4. `pwsh -NoProfile -File scripts/validate-dist.ps1 <dist>` for each dist.
 
-**full** (mechanism / critical; the same ladder `release.ps1` runs locally)
-1. stages 2–3 of prose, then `pwsh -NoProfile -File scripts/validate-dist.ps1 <dist>` (no narrowing) ×3
-2. `pwsh -NoProfile -File .claude/hooks/tests/Invoke-HookTests.ps1` (full meta suite, 3–15 min)
-3. Shipped dist hook suites are **not** run locally (WSD-049); CI runs them on both hosts before a tag.
+**A hook or script**
+1. Its test file, as separate direct runs under `pwsh` and under `powershell.exe`
+   (`… Invoke-HookTests.ps1 -File <Name>.Tests.ps1`; for a shipped hook, the **dist** copy's runner).
+2. When the change is guarded and a `.ps1` changed: one CP437 leg of the same test file.
+3. Report the red observation (a `Red-first:` trailer's `RED_FIRST PASS` line, or the failing line)
+   unless the edit is text-only; then say it has no behaviour to show red.
+
+**An installer**
+1. Greenfield and brownfield smoke installs into temp directories (`DEVELOPING.md`, "Install smoke
+   test").
+
+CI runs every other suite on both hosts after the push.
 
 ## 3. Report
 
-A table `stage | command | EXIT` in run order, then the `class <name>: <paths>` line. Stop at the
-first non-zero exit but still print the table. A non-zero exit is reported with the gate's own
-message: say whether it reported the artifact as *wrong* or as *could not be examined* (Maintenance
-model #7); do not translate one into the other.
+A table `stage | command | EXIT` in run order, then the `<tier>: <paths>` line. Stop at the first
+non-zero exit but still print the table. A non-zero exit is reported with the gate's own message: say
+whether it reported the artifact as *wrong* or as *could not be examined*; do not translate one into
+the other.

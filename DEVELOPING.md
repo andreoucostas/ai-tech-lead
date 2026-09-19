@@ -21,7 +21,7 @@ number and never restates them. Paths assume cwd = the repo root.
 | `.claude/scripts/_ci-decision.ps1` | the publish decision table (tag / exit code) as a callable function | dot-sourced by `release.ps1` and by its tests |
 | `.claude/plans/` | plans [Conventions] | includes the locked B-21/B-22/B-27 design specs |
 | `.claude/plans/inbox/` | plan-mode drafts (gitignored; `plansDirectory`) | promote a plan you keep by renaming it to `.claude/plans/YYYY-MM-DD-<slug>.md` |
-| `.claude/skills/meta-*/` | maintainer conveniences: `/meta-gates <class>`, `/meta-review-handoff`, `/meta-release` | required by no rule; they run the commands this file documents |
+| `.claude/skills/meta-gates/` | maintainer convenience: `/meta-gates <tier>` | required by no rule; it runs the commands this file documents |
 | `meta/` | `BACKLOG.md`, `workspace-decisions.md`, `LEARNINGS.md`, `ci-handover.md`, `changelogs/legacy-*.md` | maintainer layer; never ships. No root `docs/` — that name is the consumer's |
 | `scripts/meta-denylist.txt` | the `no-meta-leak` patterns [#6] | one authority, read by `validate-dist.ps1` |
 
@@ -39,14 +39,6 @@ policy failure or success. A direct `git push` remains mechanically possible for
 wrapper is the maintainer contract rather than server-side enforcement. Claude Code sessions are
 additionally denied a bare `git push` by `.claude/settings.json` (the wrapper is unaffected: the rule
 matches the tool-call text, not child processes). If the user approves a direct push, the user runs it.
-
-### Verify reviewer-side probes before recording green
-
-For an ad hoc review check, use the subject process exit to decide pass/fail and capture it before a
-filter or following command can replace it; zero matching `FAIL` lines is not a pass oracle. Prove
-every detection filter against both a known positive and a known negative. When the claim is
-equality, compare bytes or hashes rather than rendered console text. These are review disciplines,
-not authorization to build a checker-of-checkers.
 
 ## Compose the dists + freshness [#1]
 
@@ -205,8 +197,8 @@ try {
 
 ### Mechanical red-first check (`assert-red-first.ps1`) — manual, not wired into any gate
 
-Maintenance model #2 (`AGENTS.md`) lets a mechanical `RED_FIRST PASS` line stand in for a reviewer
-personally re-running a hostile case. Declare cases either with commit-message `Red-first:` trailers
+A guarded change's red evidence (`AGENTS.md`, "Two tiers", step 2) may be a mechanical
+`RED_FIRST PASS` line instead of a pasted failing line. Declare cases either with commit-message `Red-first:` trailers
 (one `<repo-relative test file>::<exact case name>` per line) or retroactively with repeatable
 `-Case`. It clones the repo into an isolated temp dir (so tests that themselves shell out to `git`,
 e.g. `RepositoryPrivacy.Tests.ps1`, still see a real `.git`), checks out the parent, overlays each
@@ -359,27 +351,6 @@ pwsh -NoProfile -File dist/dotnet/scripts/install.ps1 $target     # or invoke a 
 # or Angular Nx/project evidence), or combine Angular evidence with >=2 warehouse signal categories
 ```
 
-## Hazard: reviewing a branch that is still moving
-
-When implementation runs concurrently with review (e.g. codex authoring on a branch while a
-separate session reviews it), a clean `git status --porcelain` plus an existing commit is **not**
-evidence the branch is settled — it can still be mid-amend or mid-rebase between two of your own
-commands, and a full gate run started at that instant reads a half-rewritten working tree and
-reports spurious failures. Caught three times in one sitting (2026-08-08): a merge that grabbed a
-commit already superseded by a concurrent reset, a `grep` that read already-edited files and
-concluded a real defect didn't exist, and a `validate-dist` run that failed mid-rebase for reasons
-that had nothing to do with the change. **Before starting an expensive verification pass, confirm
-the branch tip is unchanged across a short gap, not merely clean at one instant** — check the HEAD
-hash, wait briefly, check it again. **Before the merge itself, re-read the branch tip one more
-time** regardless of how long ago verification finished. Prefer verifying against a fixed commit
-(`git show <hash>:<path>`, `git diff <a>..<b>`) over the live working tree whenever the two could
-disagree. And for a shipped-behavior change specifically, prefer letting `release.ps1` below run the
-authoritative full gate suite over re-running it all by hand first — it refuses to commit on
-failure, so a manual pre-pass mostly duplicates it while being more exposed to this exact race. The
-independent reviewer still records the frozen contract/range, reviewer model, no implementation
-participation, blind-first threat model, one release-specific hostile case or mutation observed red,
-the clean rerun, environment, and gaps for `-ReviewEvidence`.
-
 ## Release process
 
 When shipped behavior changed [#7] — **automated**; the manual checklist this replaces shipped
@@ -388,15 +359,8 @@ stamp drift twice:
 1. Author the release: make the change in `src/` (+ monorepo siblings [#1]), write a
    `## <version>` entry in the **root** `CHANGELOG.md` (update the shipped changelog content in
    `src/` too if the notes should reach consumers).
-2. Have a reviewer who did not participate in implementation use a **separate session**. Starting
-   from the frozen contract and immutable range before the implementation narrative, record their
-   model/agent, blind-first threat model, one release-specific hostile case or mutation observed
-   red, the clean rerun, environment, and gaps (`AGENTS.md` → Maintenance model #2/#3). Add an
-   orthogonal reviewer or execution vantage for data-loss, security-bypass, or false-green changes.
-3. From PowerShell 7, run `pwsh -NoProfile -File .claude/scripts/release.ps1 -Version <v> -Summary "<one line>"
-   -ReviewEvidence "contract <path/hash>; range <commits>; reviewer <agent/model>; independence
-   <no implementation participation; blind-first>; hostile <case> RED; clean <command> EXIT=0;
-   environment/gaps <facts>; implementer <who>"`.
+2. From PowerShell 7, run `pwsh -NoProfile -File .claude/scripts/release.ps1 -Version <v> -Summary "<one line>"
+   -ReviewEvidence "<tier>; reviewer user|fresh session|none; <range>"`.
    It stamps `src/core/CLAUDE.md` + the three `framework-version.json` files, rebuilds all three
     dists, runs local gates (freshness, validate-dist ×3 plus the footprint update, and the full
     root meta suite on its default throttled runner), **refuses to commit on any failure**, appends
@@ -410,7 +374,7 @@ stamp drift twice:
    `review evidence: none supplied` in the ledger and auto-files a post-ship review item in
    `meta/BACKLOG.md`. The switch keeps its legacy name; absence of supplied evidence does not prove
    that no review occurred.
-4. Append to `LEARNINGS.md` if there's a lesson, and file the RCA (Maintenance model #5).
+3. Append to `LEARNINGS.md` if there's a lesson.
 
 ### The CI watch — a tag means CI-verified green (B-88, WSD-028)
 
@@ -477,15 +441,3 @@ cwd, and this box routinely has several worktrees plus the parent container repo
 these scripts by absolute path, capture the exit code before filtering (`$LASTEXITCODE`, or assign
 the output to a variable and filter afterwards), and treat "the command printed a usage/help dump"
 as the signature of a path that did not resolve.
-
-**Implementer and reviewer sessions.** The maintenance model requires them to be different sessions.
-Current practice (`meta/review-ledger.md`, v0.86.x rows): a Codex CLI session or a Claude Code session
-implements; a *fresh* session — Claude Code (`claude-opus-5`, read-only) or Codex — reviews from the
-frozen contract and immutable range before it reads any implementation narrative.
-`/meta-review-handoff <contract> <base>..<head>` assembles that packet (contract SHA256, range,
-blind-first prompt, `-ReviewEvidence` skeleton); paste it into the reviewer session. Traps that still
-apply: a sandboxed session's `PATH` can differ from the real environment, which is why a
-self-reported before/after has produced a false pass twice (Maintenance model #3) — re-run its "tests
-now pass" yourself; and do not run other PowerShell work while a Codex round is live, because Codex
-has stopped processes it never started (`meta/eval-session-handoff.md`). Codex CLI 0.153.4 and Claude
-Code 2.1.260 observed 2026-09-16.

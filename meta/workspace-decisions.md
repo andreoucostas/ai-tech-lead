@@ -4369,3 +4369,26 @@ observed by the implementer under both hosts and by the coordinating session und
 the safest edits to those files stay critical. `AGENTS.md` sits at 199 of 200 lines. Wording that
 still names the dropped obligations is B-242 (`release.ps1`) and B-268 (maintainer skills); a
 parameter-binding failure of the checker exits in the WRONG domain (B-269).
+
+## WSD-093: lean maintainer reset — two tiers, capped records (2026-09-19)
+
+**Context.** At v0.86.7 process bytes are 2.5x product bytes (0.1x at v0.26.0); 75 of the last 120
+commits were process-only; a session starting on the backlog read about 40k tokens before any work.
+Plan: `.claude/plans/2026-09-19-lean-maintainer-reset.md` (adversarial and cold-read reviews in §9).
+
+**Approaches weighed.** (a) Bin the maintainer layer and rebuild from a clean slate: least ceremony,
+but it discards installer tests that encode real data-loss incidents and rests on unverified host
+facts. (b) Replace the rules and records now (text only) and transition the machinery in ordered
+work packages: keeps every gate green, but carries the old machinery for several more sessions.
+
+**Decision.** (b). Root `AGENTS.md` becomes a rulebook under 120 lines with two path-keyed tiers,
+guarded and ordinary; review is required only on the destructive guarded subset; `meta/BACKLOG.md` is
+capped at 40 compact entries; `/meta-review-handoff` and `/meta-release` are removed.
+
+**Supersedes.** WSD-089's change classes and its 2026-09-30 success measure; WSD-092 items 3–5;
+WSD-028/WSD-057 ledger and review scope outside the guarded list.
+
+**New measure.** Escaped defects per release over the next five releases, and minutes from "change
+ready" to pushed.
+
+From this entry on, a decision entry is at most ten lines.

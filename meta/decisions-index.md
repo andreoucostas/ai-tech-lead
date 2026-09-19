@@ -59,6 +59,7 @@ authoritative.
 - “Ceremony follows the change class decided from the changed paths; prose ships batched with a disclosed non-review cell.” — `meta/workspace-decisions.md WSD-089` (amends WSD-028/WSD-057 scope for records and prose)
 - “Knowledge-increment expansion is paused until the with/without-framework eval first reports; CP1 and RK1 are closed as scoped, and any new attempt requires a fresh decision.” — `meta/workspace-decisions.md WSD-091`
 - “Red evidence is mechanical (`assert-red-first.ps1`); the user's review counts only in the user's own words; mechanism changes run touched tests locally and CI runs every suite; an RCA is owed only for an escaped defect.” — `meta/workspace-decisions.md WSD-092` (amends WSD-057 and WSD-089)
+- “Two path-keyed tiers, guarded and ordinary; review only on the destructive guarded subset; the backlog is capped at 40 compact entries and a decision entry at ten lines.” — `meta/workspace-decisions.md WSD-093` (supersedes WSD-089's classes and success measure and WSD-092 items 3–5)
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`
