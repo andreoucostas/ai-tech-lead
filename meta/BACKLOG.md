@@ -21,6 +21,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 10 | B-246 `AgentEvals.Tests.ps1` wiring | Smallest first step toward B-253 |
 | 11 | B-253 with/without-framework eval | Gives every later product decision an instrument, and its first report is WSD-091's condition for resuming the paused rows; WSD-016 and B-98 constrain it |
 | 13 | B-255 instruction-text de-duplication | Largest always-loaded saving; measure with B-253 |
+| 13a | B-272 `AGENTS.md` as the one instruction file | Same always-loaded text as B-255; removes the mirror and its drift gate. Rank provisional, set by the filing session |
 | 14 | B-262 consumer README | Precondition for independent adopters (B-42) |
 | 15 | B-264 process diet | WP5 of the lean reset plan (section 7); WSD-093 replaces WSD-089's success measure |
 | 16 | B-257 commands as skills, routing, scoped rules | Host facts must be verified first; WSD-045 must be answered |
@@ -277,6 +278,13 @@ absent from this file, so the stub filing already degrades to a WARNING; the new
 **Priority:** P3 · **Effort:** S · **Invariants:** #6
 **Status:** Open. With nothing to stage, `release.ps1` tags HEAD; a light HEAD (WP2) gets no CI run, so
 the watch exits 3 and nothing is tagged. Fails closed; WP3 edits the same file.
+
+### B-272 · Make `AGENTS.md` the one instruction file, shipped and in this repo
+**Filed against:** v0.86.7 (2026-09-19)
+**Priority:** P2 · **Effort:** L · **Invariants:** #2 (rewrites it) #1 #6 #7
+**Status:** Open; user-requested. Claude Code v2.1.277+ reads `AGENTS.md` only when no `CLAUDE.md` or
+`CLAUDE.local.md` exists; not on Bedrock, telemetry-off or `allowManagedHooksOnly` sessions. Decide
+no file versus a one-line `@AGENTS.md` stub, plus the upgrade path for populated consumer `CLAUDE.md`.
 
 ## Archived
 
