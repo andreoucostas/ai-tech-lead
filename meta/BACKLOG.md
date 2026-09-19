@@ -11,7 +11,6 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Rank | Item | Why here |
 |---|---|---|
 | WP1 | Lean maintainer reset: rules and records (text only) | `.claude/plans/2026-09-19-lean-maintainer-reset.md` section 4; lands with WSD-093 |
-| WP3 | B-245 `release.ps1` fast path | Same plan, section 6; removes 11–16 minutes from every release and must keep its tagged-commit binding |
 | 2 | B-247 guard credential-check path exemption | Confirmed security false negative in a shipped control |
 | 3 | B-248 unbounded post-write build, no hook timeouts | Confirmed; can stall a consumer's agent turn for the length of a solution build |
 | 4 | B-244 Quick Start installs `master` | Small; every new consumer installs unreleased content until fixed |
@@ -123,12 +122,6 @@ commit subject whose tier is lower than its paths require. File-level policy onl
 **Priority:** P2 (raised from P3 by WSD-090) · **Effort:** S · **Invariants:** #6 #7
 **Status:** Open. `README.md` tells consumers to `git clone` master, which carries unreleased content
 stamped with the previous version. Decide `git clone --branch v<X>` or an explicit pre-release note.
-
-### B-245 · release.ps1 fast path: run the full meta suite only in CI before the tag
-**Filed against:** v0.86.7 (2026-09-16)
-**Priority:** P3 · **Effort:** M · **Invariants:** #6 #7
-**Status:** Open; WP3 of `.claude/plans/2026-09-19-lean-maintainer-reset.md`. Local release gates
-take 11–16 minutes and CI re-runs the same suite before the tag, which already waits on CI.
 
 ### B-246 · AgentEvals.Tests.ps1 runs only inside release.ps1
 **Filed against:** v0.86.7 (2026-09-16)

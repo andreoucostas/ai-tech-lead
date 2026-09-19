@@ -25,7 +25,6 @@ $ciPath = Join-Path $repoRoot '.github/workflows/ci.yml'
 $text = [IO.File]::ReadAllText($release)
 $ci = [IO.File]::ReadAllText($ciPath)
 $ciNewline = if ($ci.Contains("`r`n")) { "`r`n" } else { "`n" }
-$metaRunner = [IO.File]::ReadAllText((Join-Path $repoRoot '.claude/hooks/tests/Invoke-HookTests.ps1'))
 
 Reset-Tests
 
@@ -125,13 +124,22 @@ It 'local dist-gates validate all three dists but invoke zero shipped hook suite
     Assert ($stage -notmatch 'TIMING \{0\}/hook-suite ') 'dist-gates still attributes a retired local hook-suite run'
 }
 
-It 'the full root meta suite remains on its existing default throttled runner with RESULT and waiver parsing' {
+It 'the local meta-suite stage runs exactly the four release-subject files, one -File run each, with RESULT and waiver parsing' {
     Assert ($metaStage -ne '') 'could not extract the meta-suite stage from release.ps1'
-    Assert ($metaStage -match 'Invoke-HookTests\.ps1''\) \*> \$metaLog') 'the root meta suite no longer receives its default invocation'
-    Assert ($metaStage -notmatch "Invoke-HookTests\.ps1'\) -Sequential") 'release.ps1 forces the root meta suite into sequential mode'
-    Assert ($metaRunner -match '\$outerLanes\s*=') 'the root meta runner no longer contains its measured throttled default branch'
-    Assert ($metaStage -match 'Resolve-GateWaiverOutcome') 'the default meta invocation bypassed waiver parsing'
-    Assert ($metaStage.Contains('(?m)^RESULT\s+(\S+)\s+(\d+)\s*$')) 'the default meta invocation no longer parses per-file RESULT lines'
+    $list = [regex]::Match($metaStage, '(?s)\$localMetaFiles\s*=\s*@\((?<body>[^)]*)\)')
+    Assert $list.Success 'the meta-suite stage no longer declares its $localMetaFiles subset'
+    $names = @([regex]::Matches($list.Groups['body'].Value, "'([^']+)'") | ForEach-Object { $_.Groups[1].Value } | Sort-Object)
+    $expected = @('DocTruth.Tests.ps1', 'GateBudgetConsistency.Tests.ps1', 'ReleaseChangelogStamp.Tests.ps1', 'WorkspaceBom.Tests.ps1')
+    Assert (($names -join ',') -ceq ($expected -join ',')) "local meta subset is [$($names -join ', ')], expected [$($expected -join ', ')]"
+    foreach ($name in $names) { Assert (Test-Path -LiteralPath (Join-Path $PSScriptRoot $name)) "local meta subset names '$name', which is not a meta test file" }
+    $runs = @([regex]::Matches($metaStage, 'Invoke-HookTests\.ps1'))
+    Assert ($runs.Count -eq 1) "expected one runner invocation inside the subset loop, found $($runs.Count)"
+    Assert ($metaStage -match 'foreach\s*\(\$metaFile\s+in\s+\$localMetaFiles\)') 'the runner is no longer looped over the local subset'
+    Assert ($metaStage -match 'Invoke-HookTests\.ps1''\) -File \$metaFile \*> \$metaLog') 'the runner no longer receives one -File per subset file'
+    Assert ($metaStage -match '\$metaText\s*\+=') 'per-file runner output is no longer concatenated into one $metaText'
+    Assert ($metaStage -match 'Resolve-GateWaiverOutcome') 'the local meta runs bypassed waiver parsing'
+    Assert ($metaStage -match '-ManifestFiles') 'the waiver decision no longer receives the manifest, so a CI-only file reads as a typo'
+    Assert ($metaStage.Contains('(?m)^RESULT\s+(\S+)\s+(\d+)\s*$')) 'the local meta runs no longer parse per-file RESULT lines'
 }
 
 It 'CI exposes eight independent native-host contexts plus one required parity decision before a normal tag' {

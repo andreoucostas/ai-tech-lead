@@ -359,11 +359,15 @@ stamp drift twice:
 1. Author the release: make the change in `src/` (+ monorepo siblings [#1]), write a
    `## <version>` entry in the **root** `CHANGELOG.md` (update the shipped changelog content in
    `src/` too if the notes should reach consumers).
-2. From PowerShell 7, run `pwsh -NoProfile -File .claude/scripts/release.ps1 -Version <v> -Summary "<one line>"
+2. Confirm the latest `master` CI run is green: `gh run list --branch master --limit 1`. The local
+   gates run only the release-subject meta files, so that run is the full-suite evidence for the
+   pre-release tree.
+3. From PowerShell 7, run `pwsh -NoProfile -File .claude/scripts/release.ps1 -Version <v> -Summary "<one line>"
    -ReviewEvidence "<tier>; reviewer user|fresh session|none; <range>"`.
    It stamps `src/core/CLAUDE.md` + the three `framework-version.json` files, rebuilds all three
-    dists, runs local gates (freshness, validate-dist ×3 plus the footprint update, and the full
-    root meta suite on its default throttled runner), **refuses to commit on any failure**, appends
+    dists, runs local gates (freshness, validate-dist ×3 plus the footprint update, and the four
+    release-subject meta files: `DocTruth`, `ReleaseChangelogStamp`, `GateBudgetConsistency`,
+    `WorkspaceBom`), **refuses to commit on any failure**, appends
     the review row to `meta/review-ledger.md`, then commits to `master`, pushes, **waits for CI**,
     and tags. A normal tag requires all eight Windows execution contexts, including direct
     PowerShell 7 and Windows PowerShell 5.1 runs, plus their downstream case-count parity decision.
@@ -374,7 +378,7 @@ stamp drift twice:
    `review evidence: none supplied` in the ledger and auto-files a post-ship review item in
    `meta/BACKLOG.md`. The switch keeps its legacy name; absence of supplied evidence does not prove
    that no review occurred.
-3. Append to `LEARNINGS.md` if there's a lesson.
+4. Append to `LEARNINGS.md` if there's a lesson.
 
 ### The CI watch — a tag means CI-verified green (B-88, WSD-028)
 

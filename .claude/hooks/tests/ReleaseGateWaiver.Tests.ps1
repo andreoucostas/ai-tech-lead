@@ -81,9 +81,17 @@ It 'a waiver naming a file that PASSED is refused as stale' {
 }
 
 It 'a waiver naming a file that did not run is refused' {
-    $r = Resolve-GateWaiverOutcome -FileResults @{ 'A.Tests.ps1' = 0 } -Waivers @{ 'Typo.Tests.ps1' = 'B-113' }
+    $r = Resolve-GateWaiverOutcome -FileResults @{ 'A.Tests.ps1' = 0 } -Waivers @{ 'Typo.Tests.ps1' = 'B-113' } -ManifestFiles @('A.Tests.ps1')
     Assert ($r.Refused) 'a waiver for a file that never ran must be refused, not ignored'
     Assert ((($r.Messages -join "`n")) -match 'did not run') 'the refusal must say why'
+    Assert ((($r.Messages -join "`n")) -notmatch 'runs in CI only') 'a name outside the manifest is a typo, not a CI-only file'
+}
+
+It 'a waiver naming a manifest file outside the local subset is refused as runs in CI only' {
+    $r = Resolve-GateWaiverOutcome -FileResults @{ 'A.Tests.ps1' = 0 } -Waivers @{ 'Ci.Tests.ps1' = 'B-113' } -ManifestFiles @('A.Tests.ps1', 'Ci.Tests.ps1')
+    Assert ($r.Refused) 'a waiver for a file release.ps1 does not run locally must be refused'
+    Assert ((($r.Messages -join "`n")) -match 'runs in CI only') "the refusal must say the file runs in CI only: $($r.Messages -join ' | ')"
+    Assert ($r.BlockingFailures -eq 0) "the refusal must not invent failures; got $($r.BlockingFailures)"
 }
 
 It 'with NO per-file results, a waiver is refused rather than applied to the total' {

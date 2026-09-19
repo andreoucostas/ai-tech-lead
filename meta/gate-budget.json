@@ -7,11 +7,27 @@
   "ceilings-seconds": {
     "compose": 60,
     "dist-gates": 700,
-    "meta-suite": 1200,
+    "meta-suite": 30,
     "eval-selftest": 120,
-    "total-local-gates": 2080
+    "total-local-gates": 910
   },
   "ceiling-revisions": [
+    {
+      "date": "2026-09-19",
+      "stage": "meta-suite",
+      "from": 1200,
+      "to": 30,
+      "why": "B-245: the local stage now runs only the four release-subject files (DocTruth, ReleaseChangelogStamp, GateBudgetConsistency, WorkspaceBom), one -File run each; CI runs the full suite on the release commit before the tag. Measured serially under pwsh on the maintainer box: 8.9 + 1.5 + 1.1 + 1.6 = 13.2s. Set to about twice that. The first real release after this quotes its TIME lines and re-records the measurement.",
+      "measured": 13.2
+    },
+    {
+      "date": "2026-09-19",
+      "stage": "total-local-gates",
+      "from": 2080,
+      "to": 910,
+      "why": "Recomputed to the literal sum after the B-245 meta-suite revision: compose 60 + dist-gates 700 + meta-suite 30 + eval-selftest 120 = 910. Bookkeeping, not a separate allowance.",
+      "measured": null
+    },
     {
       "date": "2026-09-04",
       "stage": "meta-suite",
@@ -77,6 +93,6 @@
     "eval-selftest": 12.0,
     "total-local-gates": 640.8
   },
-  "next-target": "The pre-v0.74 local dist-gates shape ran three per-dist suites in parallel, each spawning ~234 fresh pwsh/bash processes (122 ps1 + 112 sh, measured on dotnet). Process creation, not CPU, is the bound. A 2026-08-22 audit found all 20 current dist hook test files byte-identical across dotnet, angular, and monorepo (not the stale historical '4 of 12' statement), but that does not make their executions equivalent. B-170 tried one sequential monorepo suite: it was functionally green (20 files, 0 failures) but took 924.1s and made dist-gates 1004.0s, so local release now runs zero shipped dist hook suites. It retains validate-dist x3 plus the full default-throttled root meta suite; CI still requires all three dists on both hosts before tag. No final speedup or budget change is recorded here.",
+  "next-target": "The pre-v0.74 local dist-gates shape ran three per-dist suites in parallel, each spawning ~234 fresh pwsh/bash processes (122 ps1 + 112 sh, measured on dotnet). Process creation, not CPU, is the bound. A 2026-08-22 audit found all 20 current dist hook test files byte-identical across dotnet, angular, and monorepo (not the stale historical '4 of 12' statement), but that does not make their executions equivalent. B-170 tried one sequential monorepo suite: it was functionally green (20 files, 0 failures) but took 924.1s and made dist-gates 1004.0s, so local release now runs zero shipped dist hook suites. It retains validate-dist x3 plus, since B-245, only the four release-subject meta files; CI still requires all three dists on both hosts before tag. No final speedup or budget change is recorded here.",
   "the-trap-worth-remembering": "The first cut of the parallel meta runner launched all ten files at once and came in at 1,335s against a 399s serial baseline -- 3.3x SLOWER, not faster. These suites are bound by process creation, not CPU, and ValidateDist.Tests parallelises its own cases, so unthrottled outer concurrency multiplied into hundreds of competing children. Throttling the outer loop and handing each file an inner lane budget is what turned it into a 2.7x win. Measure a parallelism change; do not assume it."
 }

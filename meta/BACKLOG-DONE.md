@@ -12566,3 +12566,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **WP2** (lean reset plan, section 5) — DONE **2026-09-19** in `887048f7`: a push touching only
   top-level `meta/*.md` (except `eval-results.md` and `review-ledger.md`) or `.claude/plans/**` runs
   no CI, and `push-and-check.ps1` skips its watch.
+- **B-245 / WP3** (lean reset plan, section 6) — DONE **2026-09-19**: `release.ps1` runs locally only
+  `DocTruth`, `ReleaseChangelogStamp`, `GateBudgetConsistency` and `WorkspaceBom` (13.2 s serial);
+  a waiver for a CI-only file is refused; the tag still waits for CI on the release commit.
