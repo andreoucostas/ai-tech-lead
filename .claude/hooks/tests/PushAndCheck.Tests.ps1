@@ -3,7 +3,9 @@
 # Subject: .claude/scripts/push-and-check.ps1.
 # Proved here: failed pushes preserve git's exit and never start the watcher; unwatched pushes skip
 # cleanly; watched pushes propagate watch-ci.ps1's 0/1/3 contract; omitted -Branch is resolved by
-# git; and an invalid -GitPath is reported distinctly. Every push is handled by a generated fake
+# git; an invalid -GitPath is reported distinctly; a records-only outgoing range skips the watch
+# while any other or unclassifiable range is watched; and the light-path rule matches ci.yml's
+# push `paths:` filter. Every push is handled by a generated fake
 # git process. NOT proved here: that a real remote accepts a push or that GitHub Actions runs.
 #
 # The fake executables have no param block deliberately. Declared parameters would bind native-tool
@@ -18,7 +20,10 @@ $SHA = 'a41ab8d090bc7d2927290cf99a8f6c0cab1810b6'
 $scratch = @()
 
 function New-GitStub {
-    param([int]$PushExit = 0, [string]$CurrentBranch = 'master', [switch]$BadOutgoingSubject)
+    # -Commits: one entry per outgoing commit, each a string of '|'-separated changed paths. Absent,
+    # the range is empty -- the shape every case before WP2 relies on.
+    param([int]$PushExit = 0, [string]$CurrentBranch = 'master', [switch]$BadOutgoingSubject,
+        [string[]]$Commits = @(), [switch]$DiffTreeFails)
     $dir = Join-Path ([IO.Path]::GetTempPath()) ('pushcheck-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     $script:scratch += $dir
@@ -29,6 +34,7 @@ Add-Content -LiteralPath (Join-Path $dir 'git-calls.log') -Value $cmd
 if ($cmd -like '* rev-parse --abbrev-ref HEAD') { Write-Output '__BRANCH__'; exit 0 }
 if ($cmd -like '* rev-parse --verify *^{commit}') { Write-Output '__SHA__'; exit 0 }
 if ($cmd -like '* fetch --quiet --prune --no-tags origin') { exit 0 }
+__OUTGOING__
 if ($cmd -like '* rev-list --reverse --topo-order *') { if (__BADOUTGOING__) { Write-Output '__SHA__' }; exit 0 }
 if ($cmd -like '* show -s --format=%s __SHA__') { Write-Output '@'; exit 0 }
 if ($cmd -like '* rev-list --parents -n 1 __SHA__') { Write-Output '__SHA__'; exit 0 }
@@ -42,6 +48,20 @@ if ($cmd -like '* push origin *') {
 [Console]::Error.WriteLine("unexpected git call: $cmd")
 exit 91
 '@
+    $outgoing = New-Object System.Collections.Generic.List[string]
+    $shas = @()
+    for ($i = 0; $i -lt $Commits.Count; $i++) {
+        $c = ('{0:x}' -f ($i + 1)) * 40
+        $shas += $c
+        $lines = if ($DiffTreeFails) { "[Console]::Error.WriteLine('fatal: bad object'); exit 128" } else {
+            (@($Commits[$i] -split '\|' | Where-Object { $_ } | ForEach-Object { "Write-Output '$_'" }) + 'exit 0') -join '; ' }
+        $outgoing.Add("if (`$cmd -like '* diff-tree --root --no-commit-id --name-only -r -m $c') { $lines }")
+    }
+    if ($shas.Count -gt 0) {
+        $outgoing.Insert(0, "if (`$cmd -like '* rev-list --reverse --topo-order master --not --remotes=origin') { " +
+            ((@($shas | ForEach-Object { "Write-Output '$_'" }) + 'exit 0') -join '; ') + ' }')
+    }
+    $body = $body.Replace('__OUTGOING__', ($outgoing -join "`n"))
     $body = $body.Replace('__DIR__', $dir).Replace('__BRANCH__', $CurrentBranch).Replace('__SHA__', $SHA).Replace('__PUSHEXIT__', "$PushExit").Replace('__BADOUTGOING__', $(if ($BadOutgoingSubject) { '$true' } else { '$false' }))
     $path = Join-Path $dir 'git-stub.ps1'
     [IO.File]::WriteAllText($path, $body, [Text.UTF8Encoding]::new($true))
@@ -127,6 +147,80 @@ try {
         $g=New-GitStub; $r=Invoke-Subject $g $null -GitPath (Join-Path $g.Dir 'missing-git.exe')
         Assert ($r.Exit -ne 0) 'invalid GitPath exited 0'
         Assert ($r.Out -match '(?s)git IS installed at|No Git found at any well-known location') "distinguishing git error missing: $($r.Out)"
+    }
+    $skipLine = 'CI_WATCH SKIPPED records-only'
+    It 'WP2 (a): a records-only outgoing range pushes and skips the CI watch' {
+        $g=New-GitStub -Commits @('meta/BACKLOG.md|.claude/plans/2026-09-19-x.md', 'meta/BACKLOG-DONE.md'); $h=New-GhStub absent; $r=Invoke-Subject $g $h
+        Assert ($r.Exit -eq 0) "expected 0: $($r.Out)"
+        Assert ($r.Out -match [regex]::Escape($skipLine)) "skip line missing: $($r.Out)"
+        Assert (@(Get-Content $g.Log | Where-Object { $_ -like '* push origin master' }).Count -eq 1) 'records-only range was not pushed'
+        Assert (-not (Test-Path -LiteralPath $h.Log)) 'watch-ci ran for a records-only range'
+    }
+    It 'WP2 (b): a mixed outgoing range is watched' {
+        $g=New-GitStub -Commits @('meta/BACKLOG.md', '.claude/scripts/push-and-check.ps1'); $h=New-GhStub green; $r=Invoke-Subject $g $h
+        Assert ($r.Exit -eq 0) "expected 0: $($r.Out)"
+        Assert ($r.Out -notmatch [regex]::Escape($skipLine)) "mixed range was classified records-only: $($r.Out)"
+        Assert (Test-Path -LiteralPath $h.Log) 'watch-ci did not run for a mixed range'
+    }
+    foreach ($heavy in 'meta/eval-results.md', 'meta/review-ledger.md', 'meta/gate-budget.json', 'meta/eval-fixtures/x/README.md') {
+        It "WP2 (c): a range touching $heavy is watched" {
+            $g=New-GitStub -Commits @("meta/BACKLOG.md|$heavy"); $h=New-GhStub green; $r=Invoke-Subject $g $h
+            Assert ($r.Out -notmatch [regex]::Escape($skipLine)) "$heavy was classified records-only: $($r.Out)"
+            Assert (Test-Path -LiteralPath $h.Log) "watch-ci did not run for $heavy"
+        }
+    }
+    It 'WP2 (e): an unreadable path list is watched, never records-only' {
+        $g=New-GitStub -Commits @('meta/BACKLOG.md') -DiffTreeFails; $h=New-GhStub green; $r=Invoke-Subject $g $h
+        Assert ($r.Out -notmatch [regex]::Escape($skipLine)) "unreadable paths were classified records-only: $($r.Out)"
+        Assert (Test-Path -LiteralPath $h.Log) 'watch-ci did not run when the path list was unreadable'
+    }
+    It 'WP2 (e): an empty outgoing range is watched' {
+        $g=New-GitStub; $h=New-GhStub green; $r=Invoke-Subject $g $h
+        Assert ($r.Out -notmatch [regex]::Escape($skipLine)) "an empty range was classified records-only: $($r.Out)"
+        Assert (Test-Path -LiteralPath $h.Log) 'watch-ci did not run for an empty range'
+    }
+
+    # (d) Drift guard. Test-LightChangePath is lifted out of the subject by AST and compared, path by
+    # path, with an evaluator of ci.yml's push `paths:` list written from GitHub's documented rules:
+    # `*` stops at `/`, `**` crosses it, patterns apply in order and the last match wins.
+    $lightError = $null
+    $subjectAst = [System.Management.Automation.Language.Parser]::ParseFile($subject, [ref]$null, [ref]$null)
+    $lightFn = $subjectAst.FindAll({ param($n)
+        $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Test-LightChangePath'
+    }, $true) | Select-Object -First 1
+    if ($null -eq $lightFn) { $lightError = 'push-and-check.ps1 no longer defines Test-LightChangePath' }
+    else { . ([scriptblock]::Create($lightFn.Extent.Text)) }
+    $ciText = [IO.File]::ReadAllText((Join-Path $repoRoot '.github/workflows/ci.yml'))
+    $pathsBlock = [regex]::Match($ciText, '(?m)^  push:\r?\n(?:    .*\r?\n)*?    paths:\r?\n((?:      - .*\r?\n)+)')
+    $patterns = @([regex]::Matches($pathsBlock.Groups[1].Value, "(?m)^      - '([^']+)'") | ForEach-Object { $_.Groups[1].Value })
+    function Test-CiIncludes([string]$Path) {
+        $included = $false
+        foreach ($p in $patterns) {
+            $neg = $p.StartsWith('!')
+            $glob = if ($neg) { $p.Substring(1) } else { $p }
+            $rx = '^' + (([regex]::Escape($glob) -replace '\\\*\\\*', '.*' -replace '\\\*', '[^/]*')) + '$'
+            if ($Path -cmatch $rx) { $included = -not $neg }
+        }
+        return $included
+    }
+    It 'WP2 (d): ci.yml push paths and Test-LightChangePath classify every probe path alike' {
+        Assert ($null -eq $lightError) $lightError
+        Assert ($patterns.Count -ge 2 -and $patterns[0] -eq '**') "ci.yml push paths not parsed or not led by '**': [$($patterns -join ', ')]"
+        Assert ($ciText -match '(?m)^  pull_request:\r?\n  push:') 'pull_request trigger is no longer bare (unfiltered)'
+        $probes = @('meta/BACKLOG.md', 'meta/eval-results.md', 'meta/review-ledger.md', 'meta/gate-budget.json',
+            'meta/eval-fixtures/x/README.md', 'meta/a/b.md', '.claude/plans/x.md', '.claude/plans/inbox/y.md',
+            '.claude/scripts/push-and-check.ps1', '.github/workflows/ci.yml', 'README.md', 'AGENTS.md',
+            'CHANGELOG.md', 'src/core/CLAUDE.md', 'dist/dotnet/CLAUDE.md', 'meta.md', 'xmeta/a.md')
+        foreach ($p in $patterns) {
+            $g = $p.TrimStart('!')
+            $probes += ($g -replace '\*\*', 'a/b' -replace '\*', 'x')
+            $probes += ($g -replace '\*\*', 'q' -replace '\*', 'x')
+        }
+        foreach ($probe in ($probes | Select-Object -Unique)) {
+            $ci = Test-CiIncludes $probe
+            $light = Test-LightChangePath $probe
+            Assert ($ci -ne $light) "drift on '$probe': ci.yml includes=$ci, Test-LightChangePath=$light"
+        }
     }
 } finally { foreach ($p in $scratch) { Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue } }
 

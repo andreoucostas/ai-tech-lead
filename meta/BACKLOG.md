@@ -33,7 +33,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Paused | B-222, B-223, B-224 | WSD-091 (user, 2026-09-18): no new work until B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
-| Low | B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 waits for B-253 |
+| Low | B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 waits for B-253 |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
 ## Open entries
@@ -280,6 +280,12 @@ it, so a commit made during the watch would be published beneath it; it cannot m
 **Status:** Open. The "Known deferred work" level-2 heading that `release.ps1:669` anchors on is
 absent from this file, so the stub filing already degrades to a WARNING; the new rules use
 `-ReviewEvidence` only.
+
+### B-271 · A release resumed on a records-only HEAD stalls its CI watch
+**Filed against:** v0.86.7 (2026-09-19)
+**Priority:** P3 · **Effort:** S · **Invariants:** #6
+**Status:** Open. With nothing to stage, `release.ps1` tags HEAD; a light HEAD (WP2) gets no CI run, so
+the watch exits 3 and nothing is tagged. Fails closed; WP3 edits the same file.
 
 ## Archived
 

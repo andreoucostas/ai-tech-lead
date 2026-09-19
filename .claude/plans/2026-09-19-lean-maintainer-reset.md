@@ -181,15 +181,18 @@ user has not approved the diff.
 ## 5. WP2 — top-level records pushes stop paying for CI
 
 **Goal.** A push whose every changed path is a top-level `meta/*.md` file (except
-`meta/eval-results.md`) or under `.claude/plans/**` triggers no CI run, and `push-and-check.ps1`
-does not wait for one. Every other push behaves exactly as today.
+`meta/eval-results.md` and `meta/review-ledger.md`) or under `.claude/plans/**` triggers no CI
+run, and `push-and-check.ps1` does not wait for one. Every other push behaves exactly as today.
 
 **Why this narrow.** `meta/` also holds gate inputs — `gate-budget.json`, `context-footprint.json`,
 `framework-retirements-baseline.json`, `block-manifest.json`, `eval-fixtures/**` — that CI must
 keep seeing. And `release.ps1:949-989` commits `meta/eval-results.md` after a tag and calls
 `watch-ci.ps1 -Sha` on it directly; if that push produced no run, `watch-ci.ps1` would stall for
-`AppearSeconds` (180 s) and exit 3 "no push run appeared". Keeping that one file heavy leaves
-`release.ps1` untouched.
+`AppearSeconds` (180 s) and exit 3 "no push run appeared". Every fresh release commit carries a
+new `meta/review-ledger.md` row (`release.ps1:634-660`), and it can be the commit's only change
+when the version stamps were committed earlier. Keeping those two files heavy leaves `release.ps1`
+untouched. (Amended 2026-09-19 by the executing session: the ledger was found under the stop
+condition; the user chose to re-include it.)
 
 **Design (chosen).** In `.github/workflows/ci.yml`, on the `push` trigger only:
 ```yaml
@@ -198,10 +201,13 @@ keep seeing. And `release.ps1:949-989` commits `meta/eval-results.md` after a ta
       - '!meta/*.md'
       - '!.claude/plans/**'
       - 'meta/eval-results.md'
+      - 'meta/review-ledger.md'
 ```
 (`*` does not cross `/`, so `meta/eval-fixtures/**/*.md` stays heavy; later patterns override
-earlier ones; a push runs if any changed file remains included — confirm all three statements
-against GitHub's workflow-syntax documentation before editing, and by the acceptance pushes.)
+earlier ones; a push runs if any changed file remains included — all three confirmed 2026-09-19
+from the `github/docs` source: the file-path cheat sheet, and the `triggering-a-workflow-paths1`
+to `paths5` reusables. Not documented: whether `'**'` matches dot-directories. The code push,
+all of whose paths sit under `.claude/` or `.github/`, is the observation.)
 `pull_request:` is a separate key and stays unfiltered; `paths:` goes under `push:` as a sibling of
 `branches:` (`ci.yml:9-11`, four-space indent).
 In `push-and-check.ps1` (it computes no range today — it shells out to the outgoing check at about
@@ -211,32 +217,36 @@ In `push-and-check.ps1` (it computes no range today — it shells out to the out
 paths with `git diff-tree --root --no-commit-id --name-only -r -m <sha>` (`-m` so a merge commit
 lists the paths of every parent diff; union them all). Classify with a pure function,
 `Test-LightChangePath([string]$Path)`, that returns true only for `^meta/[^/]+\.md$` other than
-`meta/eval-results.md`, or `^\.claude/plans/`. The push is light only when the path list is
-non-empty and every path is light. After the existing `$WatchedBranches` check (about `:120-123`),
-when light, skip the `watch-ci.ps1` call and print `CI_WATCH SKIPPED records-only`. Update the
-"keep in sync" comment near `:10`.
+`meta/eval-results.md` and `meta/review-ledger.md`, or `^\.claude/plans/`. The push is light only
+when the path list is non-empty and every path is light. After the existing `$WatchedBranches`
+check (about `:120-123`), when light, skip the `watch-ci.ps1` call and print
+`CI_WATCH SKIPPED records-only`. Update the "keep in sync" comment near `:10`.
 **Rejected.** `paths-ignore: meta/**` (hides gate inputs; breaks the eval-evidence watch). A
 `changes` job with per-job `if:` (`watch-ci.ps1` requires all nine job names to conclude success,
 so skipped jobs need new decision logic). Root `README.md`/`CHANGELOG.md`/`AGENTS.md` stay heavy on
 purpose: `DocTruth` and `ClaimTruth` police them.
 **Known cost.** `DocTruth`/`BacklogHygiene`/`RepositoryPrivacy` no longer run in CI for a light
-push; they run locally (Appendix A recipe) and in CI on the next heavy push.
+push; they run locally (Appendix A recipe) and in CI on the next heavy push. The script unions
+per-commit paths while GitHub diffs the net range. A heavy change reverted inside one push is
+therefore watched, but it may produce no run: the watch exits 3 after 180 s, which fails closed.
+A release resumed with nothing to stage tags HEAD. If HEAD is a light commit, no run appears and
+nothing is tagged (fails closed; B-271, same file as WP3).
 
 **Files.** `.github/workflows/ci.yml`, `.claude/scripts/push-and-check.ps1`,
 `.claude/hooks/tests/PushAndCheck.Tests.ps1` (cases added to the existing file; no new file).
 No test pins `ci.yml`'s `on:` block (`ReleaseDistGateTiming`'s `Get-CiJob` scans only under `jobs:`).
 **Red-first cases** (existing fake-git harness): (a) light-only range → `watch-ci` not invoked and
 the skip line printed; (b) mixed range → invoked; (c) a range touching `meta/eval-results.md`,
-`meta/gate-budget.json` or `meta/eval-fixtures/x/README.md` → invoked; (d) the light rules in
-`push-and-check.ps1` equal the negated patterns parsed from `ci.yml` (drift guard); (e) an empty
-or unreadable path list → the watch RUNS (inability to classify is never "records-only").
+`meta/review-ledger.md`, `meta/gate-budget.json` or `meta/eval-fixtures/x/README.md` → invoked;
+(d) the light rules in `push-and-check.ps1` equal the negated patterns parsed from `ci.yml` (drift
+guard); (e) an empty or unreadable path list → the watch RUNS (inability to classify is never "records-only").
 **Harness notes.** `New-GitStub` (`PushAndCheck.Tests.ps1`, about `:32-35`) answers `rev-list` and
 `diff-tree` with empty output today, so the six existing cases fall into (e) and stay green
 unchanged — confirm that first. Cases (a)–(c) need a new `-ChangedPaths` substitution on the stub.
 Case (d) cannot use the fake-git harness: lift `Test-LightChangePath` out of `push-and-check.ps1`
 by AST, as `ReleaseGateWaiver.Tests.ps1:32-40` lifts its function, and parse the `paths:` list from
 the real `ci.yml` by regex (there is no YAML module on this machine); assert that the negated
-patterns and the re-included file equal what the function encodes.
+patterns and the re-included files equal what the function encodes.
 **Steps.** Read the three files and `watch-ci.ps1` first. Write the cases, see them red, make the
 change. Run `PushAndCheck.Tests.ps1`, `ReleaseCiWatch.Tests.ps1`, `ReleaseDistGateTiming.Tests.ps1`
 and `CiCaseParity.Tests.ps1` under `pwsh` and `powershell.exe`, plus one CP437 leg

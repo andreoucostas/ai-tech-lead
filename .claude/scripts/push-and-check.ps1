@@ -7,7 +7,8 @@
 param(
     # Defaults to the checked-out branch, resolved through git after -GitPath is resolved.
     [string]$Branch,
-    # Keep this default in sync with the branches under `on: push:` in .github/workflows/ci.yml.
+    # Keep this default in sync with the branches under `on: push:` in .github/workflows/ci.yml, and
+    # Test-LightChangePath below with that trigger's `paths:` list (PushAndCheck.Tests.ps1 case d).
     [string[]]$WatchedBranches = @('master'),
     [int]$TimeoutSeconds = 1200,
     [int]$AppearSeconds = 180,
@@ -109,6 +110,32 @@ if ($outgoingExit -ne 0) {
     exit $outgoingExit
 }
 
+# A path ci.yml's push `paths:` filter excludes: top-level meta/*.md records and .claude/plans/**,
+# minus the two records release.ps1 watches CI for.
+function Test-LightChangePath {
+    param([string]$Path)
+    if ($Path -ceq 'meta/eval-results.md' -or $Path -ceq 'meta/review-ledger.md') { return $false }
+    return ($Path -cmatch '^meta/[^/]+\.md$' -or $Path -cmatch '^\.claude/plans/')
+}
+
+# Classify before the push, while --remotes=origin still marks what is outgoing. The push is
+# records-only only when every path is light and the list is known and non-empty; anything that
+# cannot be read is watched.
+$recordsOnly = $false
+$range = Invoke-GitCaptured -GitArgs @('-C', $RepoRoot, 'rev-list', '--reverse', '--topo-order', $Branch, '--not', '--remotes=origin')
+if ($range.Exit -eq 0 -and $range.Out) {
+    $changed = @()
+    $readable = $true
+    foreach ($commit in @($range.Out -split "`r?`n" | Where-Object { $_ })) {
+        # -m lists every parent diff of a merge commit; the union is classified.
+        $tree = Invoke-GitCaptured -GitArgs @('-C', $RepoRoot, 'diff-tree', '--root', '--no-commit-id', '--name-only', '-r', '-m', $commit)
+        if ($tree.Exit -ne 0) { $readable = $false; break }
+        $changed += @($tree.Out -split "`r?`n" | Where-Object { $_ })
+    }
+    $recordsOnly = $readable -and $changed.Count -gt 0 -and
+        @($changed | Where-Object { -not (Test-LightChangePath $_) }).Count -eq 0
+}
+
 $push = Invoke-GitCaptured -GitArgs @('-C', $RepoRoot, 'push', 'origin', $Branch) -Live
 if ($push.Exit -ne 0) {
     Write-Line "PUSH FAILED (git exit $($push.Exit))."
@@ -122,7 +149,12 @@ if ($WatchedBranches -notcontains $Branch) {
     exit 0
 }
 
-$head = Invoke-GitCaptured -GitArgs @('-C', $RepoRoot, 'rev-parse', 'HEAD')
+if ($recordsOnly) {
+    Write-Line 'CI_WATCH SKIPPED records-only'
+    exit 0
+}
+
+$head =Invoke-GitCaptured -GitArgs @('-C', $RepoRoot, 'rev-parse', 'HEAD')
 if ($head.Exit -ne 0 -or -not $head.Out) {
     Write-Line 'PUSH FAILED: push succeeded, but the pushed commit SHA could not be resolved.'
     if ($head.Err) { [Console]::Error.Write($head.Err) }

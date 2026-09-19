@@ -9,6 +9,15 @@ on:
   push:
     branches:
       - master
+    # A push touching only top-level meta/*.md records or .claude/plans/** runs nothing. Order
+    # matters (last match wins); the re-included files are read by release.ps1's CI watch.
+    # push-and-check.ps1's Test-LightChangePath mirrors this list (PushAndCheck.Tests.ps1 case d).
+    paths:
+      - '**'
+      - '!meta/*.md'
+      - '!.claude/plans/**'
+      - 'meta/eval-results.md'
+      - 'meta/review-ledger.md'
 
 jobs:
   windows:
