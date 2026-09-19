@@ -11,7 +11,6 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Rank | Item | Why here |
 |---|---|---|
 | 2 | B-247 guard sees only the current edit | Last of three guard gaps; the exemption and Azure shapes are fixed |
-| 3 | B-248 unbounded post-write build, no hook timeouts | Confirmed; can stall a consumer's agent turn for the length of a solution build |
 | 4 | B-244 Quick Start installs `master` | Small; every new consumer installs unreleased content until fixed |
 | 5 | B-249 orphaned `.sh` snippets | Small deletion; invariant #3 residue |
 | 6 | B-250 `/impact` | Small retirement; misleading shipped command |
@@ -27,7 +26,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 16 | B-257 commands as skills, routing, scoped rules | Host facts must be verified first; WSD-045 must be answered |
 | 17 | B-258 distribution re-audit | One-to-two-day spike; decides the shape of B-259 |
 | 18 | B-259 installer lifecycle basics | After B-258 so nothing is built twice |
-| 19 | B-261 Stop-time verification | After B-248 settles hook latency |
+| 19 | B-261 Stop-time verification | B-248 bounded post-write at 45 s; settle Stop-hook latency against that |
 | Paused | B-222, B-223, B-224 | WSD-091 (user, 2026-09-18): no new work until B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
@@ -148,13 +147,6 @@ without a `RED_FIRST` line, the same code as WRONG. Decide whether to accept rep
 SAS shapes are hardened (2026-09-19). Answer this one by kind under WSD-047 (likely DOCUMENT: the
 edit's result is reconstructed differently on each surface's edit shape).
 
-### B-248 · post-write.ps1 runs an unbounded synchronous solution build; shipped hook registrations carry no timeout
-**Filed against:** v0.86.7 (2026-09-18)
-**Priority:** P1 · **Effort:** S · **Invariants:** #3 #5
-**Status:** Open. `dotnet build $target --no-restore` blocks the agent turn once the 60-second
-throttle lapses; bound it in the script and weigh the host's per-hook `timeout` key. No test asserts
-the throttle skips a second write inside the window.
-
 ### B-249 · Delete the orphaned `.sh` snippet directories under `src/stacks/*/snippets/.claude/hooks/`
 **Filed against:** v0.86.7 (2026-09-18)
 **Priority:** P2 · **Effort:** S · **Invariants:** #1 #3
@@ -228,7 +220,7 @@ the vendor docs state no precedence; if the built-in wins, the shipped security 
 **Filed against:** v0.86.7 (2026-09-18)
 **Priority:** P2 · **Effort:** M · **Invariants:** #5
 **Status:** Open. The verification promise rests on the agent's self-report; the only Stop hook is
-an advisory style scan. WSD-024 keeps the Copilot nudge advisory; settle latency with B-248.
+an advisory style scan. WSD-024 keeps the Copilot nudge advisory; post-write is bounded at 45 s (B-248).
 
 ### B-262 · Restructure the consumer README for a human evaluator
 **Filed against:** v0.86.7 (2026-09-18)

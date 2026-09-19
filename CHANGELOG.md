@@ -13,6 +13,14 @@
 
 ## 0.87.0 — Unreleased
 
+B-248 bounds the post-write build. `post-write.ps1` ran `dotnet build` (and `npx tsc --noEmit`)
+synchronously, and Claude Code's default hook timeout is 600 s, so a cold or large solution build
+could hold a consumer's agent turn for ten minutes; a host kill would not reap the build tree. The
+tool now runs as a child process with a 45 s budget (`ATL_POSTWRITE_BUDGET_SEC`, 1-600). On expiry
+`taskkill /T` stops the tree, the hook reports nothing, and the throttle backs off for 300 s. The
+Claude registrations gain `"timeout": 90` as a backstop; Copilot's `timeoutSec: 120` stands. New
+`PostWriteRouting` cases pin the budget, per tool branch, and the throttle skip.
+
 B-247 anchors `guard.ps1`'s test/sample path exemption. It was an unanchored substring match, so
 `LatestRatesClient.cs` ("test") and `Specification.cs` ("spec") skipped the hardcoded-credential
 check. A path segment is now exempt only when the marker is a whole token delimited by `.`, `_`, `-`

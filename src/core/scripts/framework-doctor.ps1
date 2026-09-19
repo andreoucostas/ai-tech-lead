@@ -4,7 +4,7 @@ $root = Split-Path -Parent $PSScriptRoot
 $script:missing = 0
 $script:missingRows = 0
 $script:ok = 0
-$script:stackCanary = 'through the actual agent, make and then revert a harmless deliberate compile/type error in a real build-relevant file after the post-write throttle has elapsed; pass = the hook output starts with "## dotnet build failed" or "## tsc --noEmit failed". Model diagnosis or a direct terminal build is not a pass.'
+$script:stackCanary = 'through the actual agent, make and then revert a harmless deliberate compile/type error in a real build-relevant file after the post-write throttle has elapsed, in a build or type-check that finishes inside the 45-second post-write budget; pass = the hook output starts with "## dotnet build failed" or "## tsc --noEmit failed". Model diagnosis or a direct terminal build is not a pass.'
 
 function Row($State, $Name, $Detail) {
     Write-Output ("[{0}] {1} - {2}" -f $State, $Name, $Detail)
@@ -532,9 +532,9 @@ else {
     } else {
         $toolchainLabel = if ($needsDotnet -and $needsAngular) { '.NET and Angular' } elseif ($needsDotnet) { '.NET' } else { 'Angular' }
         Row OK 'Stack toolchain' ("required repository-evidenced {0} toolchain commands are available in this doctor process environment; this does not prove the agent host's post-write environment." -f $toolchainLabel)
-        if ($needsDotnet -and $needsAngular) { $script:stackCanary = 'through the actual agent, make and then revert a harmless deliberate compile/type error in one selected real build-relevant .NET or Angular file after the post-write throttle has elapsed; pass = the hook output starts with "## dotnet build failed" or "## tsc --noEmit failed". Model diagnosis or a direct terminal build is not a pass.' }
-        elseif ($needsDotnet) { $script:stackCanary = 'through the actual agent, make and then revert a harmless deliberate compile/type error in a selected real build-relevant .NET file after the post-write throttle has elapsed; pass = the hook output starts with "## dotnet build failed". Model diagnosis or a direct terminal build is not a pass.' }
-        else { $script:stackCanary = 'through the actual agent, make and then revert a harmless deliberate type error in a selected real build-relevant Angular file after the post-write throttle has elapsed; pass = the hook output starts with "## tsc --noEmit failed". Model diagnosis or a direct terminal build is not a pass.' }
+        if ($needsDotnet -and $needsAngular) { $script:stackCanary = 'through the actual agent, make and then revert a harmless deliberate compile/type error in one selected real build-relevant .NET or Angular file after the post-write throttle has elapsed, in a build or type-check that finishes inside the 45-second post-write budget; pass = the hook output starts with "## dotnet build failed" or "## tsc --noEmit failed". Model diagnosis or a direct terminal build is not a pass.' }
+        elseif ($needsDotnet) { $script:stackCanary = 'through the actual agent, make and then revert a harmless deliberate compile/type error in a selected real build-relevant .NET file after the post-write throttle has elapsed, in a build or type-check that finishes inside the 45-second post-write budget; pass = the hook output starts with "## dotnet build failed". Model diagnosis or a direct terminal build is not a pass.' }
+        else { $script:stackCanary = 'through the actual agent, make and then revert a harmless deliberate type error in a selected real build-relevant Angular file after the post-write throttle has elapsed, in a build or type-check that finishes inside the 45-second post-write budget; pass = the hook output starts with "## tsc --noEmit failed". Model diagnosis or a direct terminal build is not a pass.' }
     }
 }
 

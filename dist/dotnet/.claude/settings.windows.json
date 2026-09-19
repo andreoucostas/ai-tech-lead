@@ -31,7 +31,7 @@
       {
         "matcher": "Write|Edit",
         "hooks": [
-          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/post-write.ps1", "shell": "powershell" },
+          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/post-write.ps1", "shell": "powershell", "timeout": 90 },
           { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/audit-trail.ps1", "shell": "powershell" }
         ]
       }

@@ -8,6 +8,55 @@
 
 $ErrorActionPreference = 'SilentlyContinue'
 
+# Bounded build/type-check. The agent host waits for this hook (Claude Code's default hook timeout is
+# 600 s), so the tool runs as a child process for at most the budget: 45 s, or
+# ATL_POSTWRITE_BUDGET_SEC (whole seconds, 1-600) when set in the hook's environment. On expiry the
+# whole process tree is killed. Returns $null when the result is unknown -- no launchable tool, a
+# failed launch, or an exceeded budget -- so an unverified build is never reported as broken.
+function Invoke-BoundedTool([string]$Name, [string[]]$Arguments, [string]$WorkDir) {
+    $budget = 45
+    $requested = 0
+    if ([int]::TryParse([string]$env:ATL_POSTWRITE_BUDGET_SEC, [ref]$requested) -and $requested -ge 1 -and $requested -le 600) {
+        $budget = $requested
+    }
+    $deadline = [DateTime]::UtcNow.AddSeconds($budget)
+    # Only files CreateProcess starts directly: `npx` also resolves to an extensionless shell script
+    # and to npx.ps1, neither of which Process.Start can launch.
+    $exe = @(Get-Command $Name -CommandType Application -ErrorAction SilentlyContinue |
+        Where-Object { $_.Source -match '\.(exe|cmd|bat)$' } | Select-Object -First 1)
+    if ($exe.Count -eq 0) { return $null }
+    try {
+        $psi = New-Object System.Diagnostics.ProcessStartInfo
+        $psi.FileName = $exe[0].Source
+        $psi.Arguments = (($Arguments | ForEach-Object { '"' + $_ + '"' }) -join ' ')
+        $psi.WorkingDirectory = $WorkDir
+        $psi.UseShellExecute = $false
+        $psi.CreateNoWindow = $true
+        $psi.RedirectStandardInput = $true
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError = $true
+        $proc = [System.Diagnostics.Process]::Start($psi)
+        $proc.StandardInput.Close()
+        $stdout = $proc.StandardOutput.ReadToEndAsync()
+        $stderr = $proc.StandardError.ReadToEndAsync()
+    } catch { return $null }
+    # The stream reads share the deadline: a tool that exits while a server it spawned still holds
+    # the output pipe must not stall the turn either.
+    $done = $proc.WaitForExit([int][Math]::Max(0, ($deadline - [DateTime]::UtcNow).TotalMilliseconds))
+    if ($done) {
+        $done = [System.Threading.Tasks.Task]::WaitAll([System.Threading.Tasks.Task[]]@($stdout, $stderr),
+            [int][Math]::Max(0, ($deadline - [DateTime]::UtcNow).TotalMilliseconds))
+    }
+    if (-not $done) {
+        & taskkill.exe /T /F /PID $proc.Id *> $null
+        return $null
+    }
+    # The compiler reports its errors on stdout; keep its tail, then a short stderr tail.
+    $outLines = @($stdout.Result -split "\r?\n" | Where-Object { $_ -ne '' } | Select-Object -Last 20)
+    $errLines = @($stderr.Result -split "\r?\n" | Where-Object { $_ -ne '' } | Select-Object -Last 5)
+    return [pscustomobject]@{ Code = $proc.ExitCode; Lines = @($outLines + $errLines) }
+}
+
 $null = New-Item -ItemType Directory -Path .claude\.state -Force
 
 $inputJson = [Console]::In.ReadToEnd()
@@ -124,13 +173,19 @@ if ($branch -eq 'dotnet') {
     Set-Content -Path $stamp -Value $now -Encoding ASCII
 
     # Only surface output on failure -- emitting the build summary every successful write wastes context tokens.
-    $out = dotnet build $target --no-restore --verbosity quiet 2>&1
-    if ($LASTEXITCODE -eq 0) { exit 0 }
+    $run = Invoke-BoundedTool 'dotnet' @('build', $target, '--no-restore', '--verbosity', 'quiet') (Get-Location).Path
+    if ($null -eq $run) {
+        # Not verified (budget exceeded or no launch): back off for 300 s so a build that cannot
+        # finish inside the budget does not cost the agent another full budget on the next write.
+        Set-Content -Path $stamp -Value ($now + 300 - 60) -Encoding ASCII
+        exit 0
+    }
+    if ($run.Code -eq 0) { exit 0 }
 
     # Clear the throttle stamp so the next write rebuilds instead of skipping a known-broken build.
     Remove-Item $stamp -Force
 
-    $msg = "## dotnet build failed -- fix before continuing:`n" + (($out | Select-Object -Last 20 | ForEach-Object { "$_" }) -join "`n")
+    $msg = "## dotnet build failed -- fix before continuing:`n" + ($run.Lines -join "`n")
 }
 else {
     # Discover the workspace root: walk up from the written file to the nearest ancestor holding
@@ -197,20 +252,20 @@ else {
 
     # Only surface output on failure -- emitting type-check output every successful write wastes context tokens.
     # Run from the workspace dir (npx resolves tsc by walking up to the monorepo node_modules);
-    # the tsBuildInfoFile is an absolute repo-root path so it is unaffected by the Push-Location.
-    Push-Location $workspace
-    try {
-        $out = npx --no-install tsc --noEmit -p $project --incremental --tsBuildInfoFile $buildInfo 2>&1
-        $code = $LASTEXITCODE
-    } finally {
-        Pop-Location
+    # the tsBuildInfoFile is an absolute repo-root path so it is unaffected by the working directory.
+    $run = Invoke-BoundedTool 'npx' @('--no-install', 'tsc', '--noEmit', '-p', $project, '--incremental', '--tsBuildInfoFile', $buildInfo) $workspace
+    if ($null -eq $run) {
+        # Not verified (budget exceeded or no launch): back off for 300 s so a type-check that cannot
+        # finish inside the budget does not cost the agent another full budget on the next write.
+        Set-Content -Path $stamp -Value ($now + 300 - 5) -Encoding ASCII
+        exit 0
     }
-    if ($code -eq 0) { exit 0 }
+    if ($run.Code -eq 0) { exit 0 }
 
     # Clear the throttle stamp so the next write re-checks instead of skipping a known-broken type-check.
     Remove-Item $stamp -Force
 
-    $msg = "## tsc --noEmit failed -- fix before continuing:`n" + (($out | Select-Object -Last 20 | ForEach-Object { "$_" }) -join "`n")
+    $msg = "## tsc --noEmit failed -- fix before continuing:`n" + ($run.Lines -join "`n")
 }
 
 # Surface per surface, discriminating by tool-name casing (mirror guard.ps1). Claude Code is the

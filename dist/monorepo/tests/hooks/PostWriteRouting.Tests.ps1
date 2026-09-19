@@ -73,6 +73,65 @@ try {
             }
         } finally { $env:PATH=$oldPath; $env:POSTWRITE_DOTNET_SENTINEL=$oldSentinel }
     }
+
+    # Build-tool worlds for the throttle and budget cases: each tool branch the hook carries (dotnet
+    # build, tsc --noEmit via npx; the monorepo hook carries both) runs against a shim on PATH.
+    $hookText = [IO.File]::ReadAllText($postWrite)
+    $worlds = @()
+    if ($hookText -match 'dotnet build') { $worlds += @{ Name = 'dotnet'; Shim = 'dotnet.cmd'; Probe = 'Probe.cs' } }
+    if ($hookText -match 'tsc --noEmit') { $worlds += @{ Name = 'tsc'; Shim = 'npx.cmd'; Probe = 'tsconfig.json' } }
+    Assert ($worlds.Count -gt 0) 'post-write carries neither a dotnet build nor a tsc --noEmit branch'
+    function Reset-BuildWorld($World, [string]$ShimBody) {
+        foreach ($artifact in 'Warehouse.sln','warehouse','bin','shim','.claude','App.csproj','Probe.cs','tsconfig.json','node_modules') {
+            Remove-Item -LiteralPath (Join-Path $tmp $artifact) -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        New-Item -ItemType Directory -Path (Join-Path $tmp 'shim') -Force | Out-Null
+        if ($World.Name -eq 'dotnet') {
+            [IO.File]::WriteAllText((Join-Path $tmp 'App.csproj'), '<Project Sdk="Microsoft.NET.Sdk" />')
+        } else {
+            New-Item -ItemType Directory -Path (Join-Path $tmp 'node_modules') -Force | Out-Null
+        }
+        [IO.File]::WriteAllText((Join-Path $tmp $World.Probe), 'probe')
+        [IO.File]::WriteAllText((Join-Path $tmp "shim/$($World.Shim)"), $ShimBody)
+        return '{"tool_name":"Write","tool_input":{"file_path":"' + $World.Probe + '","content":"probe"}}'
+    }
+
+    It 'a second write inside the throttle window does not start another build' {
+        foreach ($world in $worlds) {
+            $counter = Join-Path $tmp 'build-count'
+            Remove-Item -LiteralPath $counter -Force -ErrorAction SilentlyContinue
+            $writeEvent = Reset-BuildWorld $world "@echo run>> `"%POSTWRITE_COUNTER%`"`r`n@exit /b 0`r`n"
+            $oldPath = $env:PATH; $oldCounter = $env:POSTWRITE_COUNTER
+            try {
+                $env:PATH = (Join-Path $tmp 'shim') + [IO.Path]::PathSeparator + $oldPath
+                $env:POSTWRITE_COUNTER = $counter
+                foreach ($attempt in 1, 2) {
+                    Assert ((Get-Decision (Invoke-Hook $postWrite $writeEvent)) -eq 'ALLOW') "$($world.Name): write $attempt was not allowed"
+                }
+                $runs = if (Test-Path -LiteralPath $counter) { @(Get-Content -LiteralPath $counter).Count } else { 0 }
+                Assert ($runs -eq 1) "$($world.Name): expected exactly one run across two writes inside the window, got $runs"
+            } finally { $env:PATH = $oldPath; $env:POSTWRITE_COUNTER = $oldCounter }
+        }
+    }
+
+    # The harness waits for every process holding the hook's output pipe, so the elapsed bound also
+    # proves the tool's process tree was killed rather than orphaned.
+    It 'a build that outlives its budget is killed with its process tree and never blocks' {
+        foreach ($world in $worlds) {
+            # Sleeps about 30 s, then reports a failure the hook must never see.
+            $writeEvent = Reset-BuildWorld $world "@ping -n 31 127.0.0.1 >nul`r`n@echo simulated build failure 1>&2`r`n@exit /b 1`r`n"
+            $oldPath = $env:PATH; $oldBudget = $env:ATL_POSTWRITE_BUDGET_SEC
+            try {
+                $env:PATH = (Join-Path $tmp 'shim') + [IO.Path]::PathSeparator + $oldPath
+                $env:ATL_POSTWRITE_BUDGET_SEC = '2'
+                $clock = [Diagnostics.Stopwatch]::StartNew()
+                $decision = Get-Decision (Invoke-Hook $postWrite $writeEvent)
+                $elapsed = $clock.Elapsed.TotalSeconds
+                Assert ($elapsed -lt 15) ("{0}: hook returned after {1:n1}s; the 2 s budget did not bound the run" -f $world.Name, $elapsed)
+                Assert ($decision -eq 'ALLOW') "$($world.Name): a timed-out run must not block, got $decision"
+            } finally { $env:PATH = $oldPath; $env:ATL_POSTWRITE_BUDGET_SEC = $oldBudget }
+        }
+    }
 } finally {
     Pop-Location
     Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue

@@ -7,6 +7,11 @@
 
 ## 0.87.0 — Unreleased
 
+- **The post-write `dotnet build` or `tsc --noEmit` type-check can no longer hold up the agent for minutes.** It now gets 45
+  seconds. A run that takes longer is stopped, along with every process it started, and reports
+  nothing; the next check then waits five minutes. To give a large solution more time, set
+  `ATL_POSTWRITE_BUDGET_SEC` (whole seconds, up to 600) in the environment the agent runs in. The
+  Claude Code hook registration also carries a 90-second timeout as a backstop.
 - **The write guard now blocks two Azure secret shapes in every file, test files included**: a
   storage account key (`AccountKey=` followed by an 88-character key) and a SAS token signature
   (`sv=<date>` together with `sig=`). The Azurite emulator's published development key is still

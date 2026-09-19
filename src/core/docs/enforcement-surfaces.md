@@ -24,7 +24,9 @@ do not pin one developer's absolute path. Use the doctor's `Hook liveness` row a
 canaries. Stack-toolchain and Copilot CLI visibility likewise describe the doctor process, not the
 later agent-host process. The write-guard canary proves the actual host's enforcement path. For build feedback, make and immediately revert a harmless compile
 or type error through the actual agent after the post-write throttle has elapsed; only hook output
-starting `## dotnet build failed` or `## tsc --noEmit failed` proves that host path.
+starting `## dotnet build failed` or `## tsc --noEmit failed` proves that host path. The hook gives
+the build or type-check 45 seconds (`ATL_POSTWRITE_BUDGET_SEC`, 1-600, overrides it); a run that
+exceeds the budget is stopped and reports nothing, and the next one waits five minutes.
 
 ## Matrix
 

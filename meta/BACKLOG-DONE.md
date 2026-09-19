@@ -12569,3 +12569,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-245 / WP3** (lean reset plan, section 6) — DONE **2026-09-19**: `release.ps1` runs locally only
   `DocTruth`, `ReleaseChangelogStamp`, `GateBudgetConsistency` and `WorkspaceBom` (13.2 s serial);
   a waiver for a CI-only file is refused; the tag still waits for CI on the release commit.
+- **B-248** — DONE **2026-09-19**: `post-write.ps1` runs `dotnet build` / `npx tsc` as a child with a
+  45 s budget (`ATL_POSTWRITE_BUDGET_SEC`), kills the tree on expiry and backs off 300 s; Claude
+  registrations carry `"timeout": 90`; `PostWriteRouting` pins the budget and the throttle skip.
