@@ -10,8 +10,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
 | Rank | Item | Why here |
 |---|---|---|
-| WP1 | Lean maintainer reset: rules and records (text only) | `.claude/plans/2026-09-19-lean-maintainer-reset.md` section 4; lands with WSD-093 |
-| 2 | B-247 guard credential-check path exemption | Confirmed security false negative in a shipped control |
+| 2 | B-247 guard sees only the current edit | Last of three guard gaps; the exemption and Azure shapes are fixed |
 | 3 | B-248 unbounded post-write build, no hook timeouts | Confirmed; can stall a consumer's agent turn for the length of a solution build |
 | 4 | B-244 Quick Start installs `master` | Small; every new consumer installs unreleased content until fixed |
 | 5 | B-249 orphaned `.sh` snippets | Small deletion; invariant #3 residue |
@@ -141,12 +140,12 @@ rewrites `meta-gates` to the two tiers; confirm no stale obligation remains, the
 **Status:** Open; observed 2026-09-18. With `-File` and a repeated `-Case`, binding fails and exits 1
 without a `RED_FIRST` line, the same code as WRONG. Decide whether to accept repeated `-Case`.
 
-### B-247 · guard.ps1 skips the credential-literal check for any path containing "test", "spec", "mock"…
+### B-247 · guard.ps1 sees only the current edit's text, never the resulting file
 **Filed against:** v0.86.7 (2026-09-18)
-**Priority:** P1 · **Effort:** S · **Invariants:** #3 #5
-**Status:** Open; security false negative. The path exemption is an unanchored substring match, no
-Azure secret shapes (`AccountKey=`, SAS `sig=`) are covered, and the guard sees only the current
-edit's text. Read WSD-046 and WSD-047 first and answer each by kind.
+**Priority:** P2 · **Effort:** S · **Invariants:** #3 #5
+**Status:** Open; last of three gaps. The path exemption is anchored and the Azure `AccountKey=` and
+SAS shapes are hardened (2026-09-19). Answer this one by kind under WSD-047 (likely DOCUMENT: the
+edit's result is reconstructed differently on each surface's edit shape).
 
 ### B-248 · post-write.ps1 runs an unbounded synchronous solution build; shipped hook registrations carry no timeout
 **Filed against:** v0.86.7 (2026-09-18)

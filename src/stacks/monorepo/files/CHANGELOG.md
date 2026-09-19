@@ -7,6 +7,17 @@
 
 ## 0.87.0 — Unreleased
 
+- **The write guard now blocks two Azure secret shapes in every file, test files included**: a
+  storage account key (`AccountKey=` followed by an 88-character key) and a SAS token signature
+  (`sv=<date>` together with `sig=`). The Azurite emulator's published development key is still
+  allowed.
+- **Hardcoded credentials are now blocked in files whose names merely contain "test", "spec" or
+  "mock".** Before this release, any path containing one of those letter sequences skipped the
+  check, for example `LatestRatesClient.cs` or `Specification.cs`. Test, spec, mock, fixture,
+  sample, example and `Development` files are still exempt when the word is a separate part of the
+  file or folder name: `AuthServiceTests.cs`, `Api.UnitTests/`, `app.spec.ts`, `__mocks__/`,
+  `appsettings.Development.json`, `.env.example`. If a write is now refused, move the value to
+  user-secrets, environment variables or a vault.
 - **The generated `docs/architecture.html` view is retired.** It rendered its diagrams by loading
   third-party script from a content delivery network every time you opened it, with no integrity
   checking. `docs/ARCHITECTURE.md` is unchanged and remains the canonical architecture map — read it

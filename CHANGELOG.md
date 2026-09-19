@@ -13,6 +13,15 @@
 
 ## 0.87.0 — Unreleased
 
+B-247 anchors `guard.ps1`'s test/sample path exemption. It was an unanchored substring match, so
+`LatestRatesClient.cs` ("test") and `Specification.cs` ("spec") skipped the hardcoded-credential
+check. A path segment is now exempt only when the marker is a whole token delimited by `.`, `_`, `-`
+or the segment edge (folded), or a case-sensitive PascalCase affix (`AuthServiceTests`,
+`Api.UnitTests`). Both Azure shapes get HARDEN under WSD-047 because each has a canonical form. A
+storage `AccountKey=` (88-char base64) and a SAS `sv=<date>` with `sig=` join the path-independent,
+fail-closed high-confidence set. The Azurite emulator's published key is excluded. The entry's third
+gap, that the guard sees only the current edit's text, is unchanged and stays open.
+
 B-239 retires the architecture viewer instead of hardening it. The generator
 `scripts/build-architecture-html.ps1` emitted floating `marked@12` and `mermaid@10` CDN script tags
 with no SRI or CSP into six committed pages across all three dists. Exact pins plus SRI would close

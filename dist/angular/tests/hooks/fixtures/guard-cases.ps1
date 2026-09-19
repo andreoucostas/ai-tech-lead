@@ -1,6 +1,7 @@
 ﻿# Shared guard fixture library. Each case is content-only; the harness's New-ClaudeEvent /
 # New-CopilotEvent wrap it into each surface's field names, so both supported surfaces receive
 # identical logical input.
+$azureKey = 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8' + 'gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+Pw' + '=='
 $GuardCases = @(
     @{ n='cs #pragma warning disable';         f='src/Foo.cs';                c='#pragma warning disable CS8602';                       block=$true; policy='test-defeat/suppression' }
     @{ n='cs [Fact(Skip=...)]';                f='tests/FooTests.cs';         c='[Fact(Skip="flaky")] public void T(){}';               block=$true }
@@ -39,6 +40,16 @@ $GuardCases = @(
     @{ n='hardcoded credential literal';       f='src/AuthService.cs';        c='var password = "hunter2hunter2";';                     block=$true }
     @{ n='connection string Password';         f='src/AuthService.cs';        c='var connectionString = "Server=db;User Id=sa;Password=hunter2;Database=app";'; block=$true }
     @{ n='connection string URI userinfo';     f='src/AuthService.cs';        c='var connectionString = "postgres://user:hunter2@host/db";'; block=$true }
+    # The test/sample exemption is anchored to whole path tokens: "test" inside Latest and "spec"
+    # inside Specification no longer exempt production code from the credential check.
+    # $azureKey is assembled from two halves at load time: a literal 88-character key in the
+    # committed bytes is rejected by GitHub push protection as an Azure Storage account key
+    # (observed 2026-09-20), the same reason the OutgoingCommits fixture builds its token at runtime.
+    @{ n='credential in LatestRatesClient.cs'; f='src/LatestRatesClient.cs';  c='var password = "hunter2hunter2";';                     block=$true }
+    @{ n='credential in Specification.cs';     f='src/Specification.cs';      c='var password = "hunter2hunter2";';                     block=$true }
+    @{ n='Azure storage AccountKey';           f='src/Storage.cs';            c="var cs = `"DefaultEndpointsProtocol=https;AccountName=acct;AccountKey=$azureKey;EndpointSuffix=core.windows.net`";"; block=$true }
+    @{ n='Azure AccountKey in a test path';    f='tests/StorageTests.cs';     c="var cs = `"AccountName=acct;AccountKey=$azureKey`";"; block=$true }
+    @{ n='Azure SAS token sig=';               f='src/Storage.cs';            c='var url = "https://acct.blob.core.windows.net/c/b?sv=2022-11-02&ss=b&srt=o&sp=r&se=2026-01-01T00:00:00Z&sig=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8%3D";'; block=$true }
 
     @{ n='clean .cs (allow)';                  f='src/Foo.cs';                c='public int Add(int a, int b) => a + b;';               block=$false }
     @{ n='clean .spec.ts real assertion';      f='src/app.spec.ts';           c="it('adds', () => { expect(add(1,2)).toBe(3); });";     block=$false }
@@ -48,7 +59,12 @@ $GuardCases = @(
     @{ n='cs lowercase ignore arg (allow)';    f='src/Handler.cs';            c='Handle(evt, ignore, ctx);';                            block=$false }
     @{ n='cs NUnit [Explicit] (allow by design)'; f='tests/FooTests.cs';      c='[Test, Explicit] public void T(){}';                   block=$false }
     @{ n='credential in *Tests* file (allow)'; f='tests/AuthServiceTests.cs'; c='var password = "hunter2hunter2";';                     block=$false }
-    @{ n='passwordless connection string';     f='src/AuthService.cs';        c='var connectionString = "Server=localhost;Trusted_Connection=True";'; block=$false }
+    @{ n='credential in Api.UnitTests dir (allow)'; f='src/Api.UnitTests/AuthClient.cs'; c='var password = "hunter2hunter2";';           block=$false }
+    @{ n='credential in __mocks__ (allow)';    f='src/__mocks__/auth.ts';     c="const password = 'hunter2hunter2';";                   block=$false }
+    @{ n='credential in appsettings.Development.json (allow)'; f='src/Api/appsettings.Development.json'; c='"Password": "hunter2hunter2"'; block=$false }
+    @{ n='Azurite well-known dev key (allow)'; f='src/Storage.cs';            c='var cs = "AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";'; block=$false }
+    @{ n='SAS sig= without a token (allow)';   f='src/Storage.cs';            c='var q = "?sv=2022-11-02&sig=";';                        block=$false }
+    @{ n='passwordless connection string';     f='src/AuthService.cs';       c='var connectionString = "Server=localhost;Trusted_Connection=True";'; block=$false }
     @{ n='near-miss fine-grained PAT';         f='src/deploy.cs';             c='var t = "github_pat_too_short";';                       block=$false }
     # Tagged `secret` so the invalid-regex red test observes both fail-closed directions: the
     # private-key case must still block, while this near-miss must turn red if every secret probe

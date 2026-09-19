@@ -62,17 +62,36 @@ if ($fp -cmatch '(?i)\.spec\.(ts|tsx|js|jsx|mts|cts)$') {
     if ((Test-GuardPattern 'expect\(\s*true\s*\)\.toBe\(\s*true\s*\)' 'test-defeat/suppression') -or (Test-GuardPattern 'expect\(\s*false\s*\)\.toBe\(\s*false\s*\)' 'test-defeat/suppression')) { $reasons += "adds a tautological assertion (expect(true).toBe(true)) — assert observable behaviour, not a constant (Test leanness #15)" }
 }
 
-$secret = $null
-if     (Test-GuardPattern '-----BEGIN [A-Z ]*PRIVATE KEY-----' 'secret')   { $secret = 'a private key block' }
-elseif (Test-GuardPattern 'AKIA[0-9A-Z]{16}' 'secret')                     { $secret = 'an AWS access key id (AKIA…)' }
-elseif (Test-GuardPattern 'gh[oprsu]_[A-Za-z0-9]{36}' 'secret')            { $secret = 'a classic GitHub token (gh*_…)' }
-elseif (Test-GuardPattern 'github_pat_[0-9A-Za-z]{22}_[0-9A-Za-z]{59,}' 'secret') { $secret = 'a fine-grained GitHub token (github_pat_…)' }
-elseif (Test-GuardPattern 'xox[baprs]-[A-Za-z0-9-]{10,}' 'secret')         { $secret = 'a Slack token (xox…)' }
-elseif (Test-GuardPattern 'sk-[A-Za-z0-9_-]{20,}' 'secret')                { $secret = 'an API secret key (sk-…)' }
-elseif (Test-GuardPattern 'AIza[0-9A-Za-z_-]{35}' 'secret')               { $secret = 'a Google API key (AIza…)' }
-if ($secret) { $reasons += "contains $secret — secrets must not be committed; use user-secrets / env vars / a vault" }
+$secretKind = $null
+if     (Test-GuardPattern '-----BEGIN [A-Z ]*PRIVATE KEY-----' 'secret')   { $secretKind = 'a private key block' }
+elseif (Test-GuardPattern 'AKIA[0-9A-Z]{16}' 'secret')                     { $secretKind = 'an AWS access key id (AKIA…)' }
+elseif (Test-GuardPattern 'gh[oprsu]_[A-Za-z0-9]{36}' 'secret')            { $secretKind = 'a classic GitHub token (gh*_…)' }
+elseif (Test-GuardPattern 'github_pat_[0-9A-Za-z]{22}_[0-9A-Za-z]{59,}' 'secret') { $secretKind = 'a fine-grained GitHub token (github_pat_…)' }
+elseif (Test-GuardPattern 'xox[baprs]-[A-Za-z0-9-]{10,}' 'secret')         { $secretKind = 'a Slack token (xox…)' }
+elseif (Test-GuardPattern 'sk-[A-Za-z0-9_-]{20,}' 'secret')                { $secretKind = 'an API secret key (sk-…)' }
+elseif (Test-GuardPattern 'AIza[0-9A-Za-z_-]{35}' 'secret')               { $secretKind = 'a Google API key (AIza…)' }
+# The Azurite emulator's published development key is excluded: it is not a secret.
+elseif (Test-GuardPattern 'AccountKey=(?!Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==)[A-Za-z0-9+/]{86}==' 'secret') { $secretKind = 'an Azure storage account key (AccountKey=…)' }
+elseif (Test-GuardPattern '\bsv=\d{4}-\d{2}-\d{2}&[^\s"'']*?\bsig=[A-Za-z0-9%+/]{40,}|\bsig=[A-Za-z0-9%+/]{40,}[^\s"'']*?&sv=\d{4}-\d{2}-\d{2}' 'secret') { $secretKind = 'an Azure SAS token signature (sv=…&sig=…)' }
+if ($secretKind) { $reasons += "contains $secretKind — secrets must not be committed; use user-secrets / env vars / a vault" }
 
-if ($fp -notmatch '(?i)(test|spec|Development|example|sample|mock|fixture)') {
+# Test and sample paths are exempt from the credential heuristic only when a path segment carries
+# the marker as a whole token: delimited by . _ - or the segment edge (folded, like the routing
+# predicates), or as a PascalCase affix (case-sensitive: the capital is the only word boundary, so
+# Latest and Specification do not qualify but AuthServiceTests and Api.UnitTests do).
+$credentialExempt = $false
+if ($fp) {
+    $segments = @($fp -split '[\\/]' | Where-Object { $_ })
+    for ($i = 0; $i -lt $segments.Count; $i++) {
+        $segment = $segments[$i]
+        $stem = if ($i -eq $segments.Count - 1) { $segment -replace '\.[^.]*$', '' } else { $segment }
+        if ($segment -match '(?i)(^|[._-])(tests?|specs?|mocks?|fixtures?|examples?|samples?|development)([._-]|$)' -or
+            $stem -cmatch '(^|[a-z0-9])(Tests?|Specs?|Mocks?|Fixtures?)$|^(Tests?|Specs?|Mocks?|Fixtures?)[A-Z]') {
+            $credentialExempt = $true; break
+        }
+    }
+}
+if (-not $credentialExempt) {
     $m = [regex]::Match($content, '(?i)(password|passwd|pwd|secret|api[_-]?key|access[_-]?key|client[_-]?secret)["'' ]*[:=]\s*["''][^"'']{8,}["'']|connectionstring["'' ]*[:=]\s*["''][^"'']*(?:password|pwd)\s*=\s*[^;"'']{4,}[^"'']*["'']|connectionstring["'' ]*[:=]\s*["''][^"'']*://[^/\s:@]+:[^/\s@]+@[^"'']*["'']')
     if ($m.Success -and $m.Value -notmatch '(?i)(changeme|placeholder|your[_-]|example|dummy|<[^>]+>|\$\{|process\.env|%[A-Z_]+%)') {
         $reasons += "assigns a hardcoded credential literal — move it to user-secrets / env vars / a vault"
