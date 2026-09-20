@@ -1805,3 +1805,21 @@ Host: Claude Code 2.1.260 (Claude Code) · arm: none · scratch: retained=True
 - **PASS warehouse-route-p1** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.157129 tokensIn=12 tokensOut=2630; arm=none outcome=True category=NEITHER channels= usedDeadColumn=False joinedDimension=True readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
 - **SUMMARY warehouse-route-p1** arm=none outcome=2/2 excluded=0
 
+
+## 2026-09-20 19:23:18 +01:00 — framework v0.88.0 (8fbe668a1e86a1bb5047d1443ea4e93db26e4c6d)
+
+Host: Claude Code 2.1.260 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS warehouse-bind-sql** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.8726024 tokensIn=32 tokensOut=23128; arm=framework outcome=True category=SKILL_READ channels=C2,C3 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **PASS warehouse-bind-sql** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.923164 tokensIn=40 tokensOut=26687; arm=framework outcome=True category=SKILL_READ channels=C2,C3 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **SUMMARY warehouse-bind-sql** arm=framework outcome=2/2 excluded=0
+
+
+## 2026-09-20 19:32:51 +01:00 — framework v0.88.0 (8fbe668a1e86a1bb5047d1443ea4e93db26e4c6d)
+
+Host: Claude Code 2.1.260 (Claude Code) · arm: none · scratch: retained=True
+
+- **FAIL warehouse-bind-sql** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.797156 tokensIn=32 tokensOut=33476; arm=none outcome=False category=MAP_DISCOVERED channels=C2 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=True naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **FAIL warehouse-bind-sql** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.560674 tokensIn=20 tokensOut=24911; arm=none outcome=False category=MAP_DISCOVERED channels=C2 reachedAddEntity=False factWritten=True boundCustomer=False boundProduct=False boundDate=True resolvedCustomer=False resolvedProduct=False resolvedDate=True regionOnFact=True naturalKeyOnFact=True degenerateOnFact=True newDimTables=
+- **SUMMARY warehouse-bind-sql** arm=none outcome=0/2 excluded=0
+
