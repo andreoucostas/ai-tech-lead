@@ -84,7 +84,6 @@ Same names in Claude Code (`.claude/commands/`) and Copilot Chat (`.github/promp
 | `/docs-sync` | Cross-check docs vs code and the generated mirrors for drift |
 | `/rebootstrap` | Deeper periodic re-alignment |
 | `/generate-copilot` | Regenerate copilot-instructions.md + AGENTS.md from CLAUDE.md |
-| `/impact` | Descriptive current-state metrics only; retired A/B execution is unavailable and `/adopt` does not auto-run it. |
 
 ---
 
@@ -187,7 +186,7 @@ LEARNINGS.md                  append-only lessons
 .github/workflows/            GitHub Actions (GitHub-only)
 scripts/                      docs-sync-check, install, metrics, ci/
 specs/                        persistent feature specs (spec-driven development)
-docs/impact/                  optional descriptive output
+docs/impact/                  retired; any existing output is left as-is
 docs/                         playbook, defaults, ARCHITECTURE (this), REVIEW-GUIDE, architecture-decisions
 tests/evals/                  framework behavior eval suite
 ```

@@ -11,6 +11,26 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.88.0 — Unreleased
+
+B-249 deletes 19 files in five `snippets/.claude/hooks/*.sh/` directories — dead source for the
+twins WSD-073 retired. A rebuild of all three dists after the deletion left `dist/` byte-identical,
+which is the evidence they composed nothing. `FinancialCaseOracles.Tests.ps1` did read two of them,
+so its carrier list drops those rows; the `route-prompt.ps1` twins still carry the assertion.
+
+B-250 retires `/impact` rather than renaming it. Its runner (`scripts/impact-run.ps1|.sh`) and test
+fixtures were already retired in 0.83.0, so the command was the last residue of an experiment whose
+baseline was invalid — under a name developers read as blast-radius analysis, which it never was.
+Rename was rejected because it costs the same ledger work as retirement (consumers have the old
+path installed either way) while keeping a command whose whole remaining function is to run
+`scripts/metrics.ps1` and write the result to a file.
+
+Both `.claude/commands/impact.md` (5 digests) and `.github/prompts/impact.prompt.md` (2) join the
+retirement ledger, enumerated across all 93 release tags. The digest method was validated first by
+recomputing `scripts/build-architecture-html.ps1` and matching the 4 digests B-239 recorded by hand.
+Pre-merge legacy-repo bytes are unrecoverable here, so those copies are preserved, not deleted —
+the same disclosure B-239 made. `docs/impact/` output is left untouched in consumer repos.
+
 ## 0.87.0 — 2026-09-20
 
 B-248 bounds the post-write build. `post-write.ps1` ran `dotnet build` (and `npx tsc --noEmit`)

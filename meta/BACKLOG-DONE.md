@@ -12591,3 +12591,11 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   filing said only `build.ps1` ignored them; `FinancialCaseOracles.Tests.ps1` did read two, so its
   carrier list drops those rows — the `.ps1` twins still carry the assertion. The retirement ledger
   entries for the installed `.sh` paths are untouched; consumers still get their removal diagnostics.
+- **B-250** — DONE **2026-09-20**. `/impact` is retired, not renamed: its runner and fixtures went
+  in 0.83.0, so the command was the last residue of an experiment with an invalid baseline, under a
+  name developers read as blast-radius analysis. Rename costs the same ledger work as retirement,
+  because consumers hold the old path either way, and would keep a command whose only remaining job
+  is to run `scripts/metrics.ps1` into a file. Both installed paths join the ledger with 5 and 2
+  digests enumerated across 93 tags; the digest method was validated by reproducing B-239's four
+  hand-recorded digests first. Pre-merge legacy bytes are unrecoverable, so those copies are
+  preserved, not deleted. Freed 207 chars of dotnet always-loaded headroom (191 -> 398).

@@ -389,7 +389,6 @@ Adoption is complete only when **all** of these exist and you have reported them
 - Both `adoption-archive.ps1 -Verify` runs (pre-bootstrap and post-gate) reported `RESULT: PASS` against the frozen complete inventory
 - The Phase-8 commit
 
-After adoption, a developer may run `/impact` to create a descriptive inventory/capability comparison
-and current repository scorecard. The former pre/post experiment is invalid because its supposed
-pre-adoption reference was captured after installation; do not describe the optional record as an
-A/B result or as proof that adoption caused a change.
+After adoption, `scripts/metrics.ps1` reports a descriptive current-state scorecard for the
+repository. It is a snapshot of the code as it stands, not a before/after measurement: nothing it
+reports shows that adoption caused a change.

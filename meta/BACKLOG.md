@@ -10,8 +10,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
 | Rank | Item | Why here |
 |---|---|---|
-| 6 | B-250 `/impact` | Small retirement; misleading shipped command. Batch B-250 and B-240 into one release rather than tagging each |
-| 7 | B-240 retired-twin diagnostics | Small; consumer-facing installer diagnostic gap |
+| 7 | B-240 retired-twin diagnostics | Small; consumer-facing installer diagnostic gap. Last of the batch for the next release |
 | 9 | B-260 `/security-review` shadowing | One live observation; if the built-in wins, a shipped security workflow never runs |
 | 10 | B-246 `AgentEvals.Tests.ps1` wiring | Smallest first step toward B-253 |
 | 11 | B-253 with/without-framework eval | Gives every later product decision an instrument, and its first report is WSD-091's condition for resuming the paused rows; WSD-016 and B-98 constrain it |
@@ -123,12 +122,6 @@ rewrites `meta-gates` to the two tiers; confirm no stale obligation remains, the
 **Status:** Open; observed 2026-09-18. With `-File` and a repeated `-Case`, binding fails and exits 1
 without a `RED_FIRST` line, the same code as WRONG. Decide whether to accept repeated `-Case`.
 
-
-### B-250 · Retire or rename the shipped `/impact` command
-**Filed against:** v0.86.7 (2026-09-18)
-**Priority:** P2 · **Effort:** S · **Invariants:** #1 #7
-**Status:** Open. Residue of a retired adoption experiment under a name consumers read as
-blast-radius analysis; decide retire versus rename, including its Copilot prompt twin (WSD-088).
 
 ### B-251 · Retire `scripts/fidelity-check.ps1` and `FidelityCheck.Tests.ps1`
 **Filed against:** v0.86.7 (2026-09-18)

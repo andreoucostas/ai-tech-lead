@@ -4,6 +4,17 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.88.0 — Unreleased
+
+- **The `/impact` command is retired.** Its A/B runner was removed in 0.83.0, so what remained was
+  a descriptive report under a name most developers read as "what does this change affect?" — which
+  it never did. On update, an unmodified `.claude/commands/impact.md` and `.github/prompts/impact.
+  prompt.md` are deleted; a copy you edited is preserved and reported so you can remove it yourself.
+- **For the same numbers, run `scripts/metrics.ps1` directly.** It is unchanged and still reports a
+  current-state scorecard. It is a snapshot, not a before/after measurement.
+- Anything already written to `docs/impact/` is left exactly as it is. Nothing writes there now, and
+  the directory is safe to delete.
+
 ## 0.87.0 — 2026-09-20
 
 - **The post-write `tsc --noEmit` type-check can no longer hold up the agent for minutes.** It now gets 45

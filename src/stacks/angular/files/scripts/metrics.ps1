@@ -1,4 +1,5 @@
-﻿# Descriptive current-state codebase scorecard for /impact. Emits JSON to stdout.
+﻿# Descriptive current-state codebase scorecard. Emits JSON to stdout. It is a snapshot, not a
+# before/after measurement, and shows nothing about what caused a value to be what it is.
 # Usage: pwsh -NoProfile -File scripts/metrics.ps1 [path ...]  (default: whole repo)
 $ErrorActionPreference = 'SilentlyContinue'
 $root = (git rev-parse --show-toplevel 2>$null); if (-not $root) { $root = (Get-Location).Path }
@@ -27,7 +28,7 @@ $m = [ordered]@{
     tautological_expect                = (Count 'expect\(\s*(true|false)\s*\)\.toBe\(\s*(true|false)\s*\)')
 }
 
-# --- Readiness signals: capability disclosure for /impact, NOT a gate ---
+# --- Readiness signals: capability disclosure, NOT a gate ---
 $ciPresent = (Test-Path 'bitbucket-pipelines.yml') -or (Test-Path 'bitbucket-pipelines.yaml') -or (Test-Path '.github/workflows') -or (Test-Path 'azure-pipelines.yml')
 $covPct = $null
 $covFile = Get-ChildItem -Path . -Recurse -File -Filter 'cobertura-coverage.xml' -ErrorAction SilentlyContinue |

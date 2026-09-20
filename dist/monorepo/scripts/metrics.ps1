@@ -1,4 +1,5 @@
-﻿# Descriptive current-state codebase scorecard for /impact. Emits JSON to stdout.
+﻿# Descriptive current-state codebase scorecard. Emits JSON to stdout. It is a snapshot, not a
+# before/after measurement, and shows nothing about what caused a value to be what it is.
 # Monorepo variant: counts both stacks' anti-patterns (.NET over
 # *.cs, Angular over *.ts/*.html) in one flat metrics object; the three shared-name counters are
 # the sum of both stacks' counts. Usage: pwsh -NoProfile -File scripts/metrics.ps1 [path ...]
@@ -50,7 +51,7 @@ $m = [ordered]@{
     concrete_service_instantiation_dip = ((CountCs 'new\s+[A-Za-z0-9_]+(Service|Repository|Handler|Manager)\(') + (CountNg 'new\s+[A-Za-z0-9_]+(Service|Store|Facade)\('))
 }
 
-# --- Readiness signals: capability disclosure for /impact, NOT a gate ---
+# --- Readiness signals: capability disclosure, NOT a gate ---
 $ciPresent = (Test-Path 'bitbucket-pipelines.yml') -or (Test-Path 'bitbucket-pipelines.yaml') -or (Test-Path '.github/workflows') -or (Test-Path 'azure-pipelines.yml')
 $covPct = $null
 $covFile = Get-ChildItem -Path . -Recurse -File -Filter 'coverage.cobertura.xml' -ErrorAction SilentlyContinue |

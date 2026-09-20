@@ -25,8 +25,8 @@ You're presenting to two audiences. Use the **same deck**, but change emphasis a
 
 1. **Run a pilot adoption** on one real repo and inspect the archive plus generated project context.
 2. **Run the doctor and actual-host canaries.** Record which instruction, hook, and CI surfaces are live.
-3. Optionally run `/impact` for descriptive current-state metrics. Do **not** present them as an
-   adoption baseline, before/after, or behavioral A/B.
+3. Optionally run `scripts/metrics.ps1` for a descriptive current-state scorecard. Do **not**
+   present it as an adoption baseline, before/after, or behavioral A/B.
 4. Have the repo open in VS Code in case someone wants to see CLAUDE.md or run a command live.
 5. Decide your concrete ask (slide 14): which repo, which sprint, who champions it.
 
@@ -88,9 +88,8 @@ These mirror the in-deck speaker notes (press **N**), collected here for printin
   escape hatch for genuine hotfixes.
 
 ### 10 · Measurable impact  *(the differentiator)*
-- `/impact` can record descriptive current-state metrics on the codebase when explicitly requested.
-- `/impact` records descriptive current-state metrics only. The retired runner cannot support a
-  before/after or behavioral A/B claim.
+- `scripts/metrics.ps1` reports a descriptive current-state scorecard of the codebase on request.
+- It is a snapshot only. There is no before/after arm and no behavioral A/B to claim from it.
 - Be honest about **stochasticity**: read distributions, not single runs.
 - **Do not turn current-state counts into an adoption-impact claim.**
 
@@ -145,8 +144,8 @@ Yes — on supported Windows hosts. CI uses Bamboo/Jenkins Windows agents plus B
 Insights. Copilot coding-agent cloud hook execution is unsupported.
 
 **"How do we know it actually helps?"**
-`/impact` can record current-state metrics for discussion. `/adopt` does not run it automatically,
-and the retained compatibility tombstone makes no comparative claim.
+`scripts/metrics.ps1` reports current-state metrics for discussion. `/adopt` does not run it
+automatically, and nothing in the output supports a comparative claim.
 
 **"What's the maintenance burden?"**
 Mainly keeping CLAUDE.md current as conventions evolve — a few hundred budgeted lines, with drift

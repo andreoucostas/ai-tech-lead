@@ -114,7 +114,6 @@ Both Claude Code and Copilot Chat use the same slash-command names:
 /docs-sync                 — check documentation for drift
 /adopt                     — ingest existing AI-framework artifacts into this layout
 /generate-copilot          — regenerate the slim copilot-instructions.md (for inline completions)
-/impact                    — descriptive current-state metrics; not auto-run by /adopt and makes no A/B claim
 ```
 
 In **Claude Code**, these are loaded from `.claude/commands/`. In **Copilot Chat**, the same names are loaded from `.github/prompts/` — those files are thin wrappers that delegate to the canonical `.claude/commands/*.md` files, so there's a single source of truth per workflow.
@@ -151,7 +150,7 @@ automatically.
 | `.github/agents/` | Copilot custom-agent wrappers around the canonical `.claude/agents/` definitions; retained because the cloud-agent contract is distinct from skill discovery. |
 | `scripts/` | Windows PowerShell helpers include `metrics.ps1`; `ci/` contains dependency-cruiser scaffolding to wire in consumer CI. |
 | `specs/` | Persistent feature specs (spec-driven development). `/design` writes one, `/feature` implements against it, `/review` verifies. See `specs/README.md`. |
-| `docs/impact/` | Optional descriptive metrics; no executable A/B harness or comparative report. |
+| `docs/impact/` | Output of the retired `/impact` command. Nothing writes here any more; anything already there is left untouched and is safe to delete. |
 | `TECH_DEBT.md` | **Generated** by `/bootstrap` — prioritised debt register with Trojan Horse opportunities. |
 | `LEARNINGS.md` | Append-only log of what worked / what didn't / what rule changed. Read on non-trivial work. |
 | `docs/playbook.md` | Methodology guide (the "why" behind the framework). |

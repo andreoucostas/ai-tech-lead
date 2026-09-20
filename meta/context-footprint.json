@@ -87,11 +87,6 @@
           "tok": 37
         },
         {
-          "path": ".claude/commands/impact.md#frontmatter",
-          "chars": 207,
-          "tok": 52
-        },
-        {
           "path": ".claude/commands/rebootstrap.md#frontmatter",
           "chars": 269,
           "tok": 67
@@ -212,8 +207,8 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 12251,
-          "tok": 3063
+          "chars": 12138,
+          "tok": 3034
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
@@ -247,8 +242,8 @@
         },
         {
           "path": "docs/presentation/TALKING-POINTS.md",
-          "chars": 9094,
-          "tok": 2274
+          "chars": 9060,
+          "tok": 2265
         },
         {
           "path": "docs/upgrade-checklist.md",
@@ -358,8 +353,8 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 40092,
-          "tok": 10023
+          "chars": 39976,
+          "tok": 9994
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
@@ -395,11 +390,6 @@
           "path": ".claude/commands/generate-copilot.md#body",
           "chars": 7495,
           "tok": 1874
-        },
-        {
-          "path": ".claude/commands/impact.md#body",
-          "chars": 1523,
-          "tok": 381
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
@@ -566,11 +556,6 @@
           "tok": 37
         },
         {
-          "path": ".claude/commands/impact.md#frontmatter",
-          "chars": 207,
-          "tok": 52
-        },
-        {
           "path": ".claude/commands/rebootstrap.md#frontmatter",
           "chars": 269,
           "tok": 67
@@ -681,8 +666,8 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 12198,
-          "tok": 3050
+          "chars": 12085,
+          "tok": 3021
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
@@ -716,8 +701,8 @@
         },
         {
           "path": "docs/presentation/TALKING-POINTS.md",
-          "chars": 9094,
-          "tok": 2274
+          "chars": 9060,
+          "tok": 2265
         },
         {
           "path": "docs/upgrade-checklist.md",
@@ -827,8 +812,8 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 39601,
-          "tok": 9900
+          "chars": 39485,
+          "tok": 9871
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
@@ -864,11 +849,6 @@
           "path": ".claude/commands/generate-copilot.md#body",
           "chars": 7302,
           "tok": 1826
-        },
-        {
-          "path": ".claude/commands/impact.md#body",
-          "chars": 1523,
-          "tok": 381
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
@@ -1025,11 +1005,6 @@
           "tok": 37
         },
         {
-          "path": ".claude/commands/impact.md#frontmatter",
-          "chars": 207,
-          "tok": 52
-        },
-        {
           "path": ".claude/commands/rebootstrap.md#frontmatter",
           "chars": 269,
           "tok": 67
@@ -1170,8 +1145,8 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 13031,
-          "tok": 3258
+          "chars": 12918,
+          "tok": 3230
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
@@ -1205,8 +1180,8 @@
         },
         {
           "path": "docs/presentation/TALKING-POINTS.md",
-          "chars": 9094,
-          "tok": 2274
+          "chars": 9060,
+          "tok": 2265
         },
         {
           "path": "docs/upgrade-checklist.md",
@@ -1316,8 +1291,8 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 40580,
-          "tok": 10145
+          "chars": 40464,
+          "tok": 10116
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
@@ -1353,11 +1328,6 @@
           "path": ".claude/commands/generate-copilot.md#body",
           "chars": 7715,
           "tok": 1929
-        },
-        {
-          "path": ".claude/commands/impact.md#body",
-          "chars": 1523,
-          "tok": 381
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
@@ -1469,30 +1439,30 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 39809,
-      "static.claude.tok": 9952,
+      "static.claude.chars": 39602,
+      "static.claude.tok": 9900,
       "static.copilot.chars": 44987,
       "static.copilot.tok": 11247,
       "prompt.max.chars": 3463,
       "prompt.max.tok": 866
     },
     "angular": {
-      "static.claude.chars": 38244,
-      "static.claude.tok": 9561,
+      "static.claude.chars": 38037,
+      "static.claude.tok": 9509,
       "static.copilot.chars": 45464,
       "static.copilot.tok": 11366,
       "prompt.max.chars": 3266,
       "prompt.max.tok": 816
     },
     "monorepo": {
-      "static.claude.chars": 47015,
-      "static.claude.tok": 11754,
+      "static.claude.chars": 46808,
+      "static.claude.tok": 11702,
       "static.copilot.chars": 51560,
       "static.copilot.tok": 12890,
       "prompt.max.chars": 3878,
       "prompt.max.tok": 970
     },
-    "monorepo-claude-ratio-permille": 1181
+    "monorepo-claude-ratio-permille": 1182
   },
   "_notes": [
     "Claude frontmatter is a stable over-approximation of harness injection.",
