@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.87.0 — Unreleased
+## 0.87.0 — 2026-09-20
 
 - **The post-write `dotnet build` or `tsc --noEmit` type-check can no longer hold up the agent for minutes.** It now gets 45
   seconds. A run that takes longer is stopped, along with every process it started, and reports

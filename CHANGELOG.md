@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.87.0 — Unreleased
+## 0.87.0 — 2026-09-20
 
 B-248 bounds the post-write build. `post-write.ps1` ran `dotnet build` (and `npx tsc --noEmit`)
 synchronously, and Claude Code's default hook timeout is 600 s, so a cold or large solution build

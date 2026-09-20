@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.87.0 — Unreleased
+## 0.87.0 — 2026-09-20
 
 - **The post-write `dotnet build` can no longer hold up the agent for minutes.** It now gets 45
   seconds. A run that takes longer is stopped, along with every process it started, and reports
