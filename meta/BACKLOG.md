@@ -122,9 +122,9 @@ tree; keep the FAQ content reachable (see B-262) and link the deck instead.
 ### B-253 · Scheduled, non-gating with/without-framework behavioural eval on the existing harness
 **Filed against:** v0.86.7 (2026-09-18)
 **Priority:** P1 · **Effort:** M · **Invariants:** #6
-**Status:** Open. Three to five existing typed-event scenarios, framework versus none, n≥6,
-budget-capped, reported per release candidate; first use is ablating always-loaded rules. WSD-016
-(not a release gate) and B-98 (reuse the B-41 harness) stand.
+**Status:** PARTIALLY DONE 2026-09-20. The runner has `-Arm framework|none`, `-Trials` and an
+arm-neutral `Outcome` on four scenarios (recipe: `DEVELOPING.md`); self-test green, no live run yet.
+Remaining: the first n=6 report (caps sum to 57 USD; needs the user's go), then rule ablation.
 
 ### B-255 · De-duplicate the shipped instruction text and remove maintainer-epistemic disclaimers
 **Filed against:** v0.86.7 (2026-09-18)

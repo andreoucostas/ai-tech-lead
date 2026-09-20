@@ -8,6 +8,10 @@ param(
     [Parameter(ParameterSetName = 'SelfTest', Mandatory)][switch]$SelfTest,
     [Parameter(ParameterSetName = 'Live')][string[]]$Scenario,
     [Parameter(ParameterSetName = 'Live')][string]$Model = 'sonnet',
+    # B-253: 'none' skips the framework install so the same prompt and fixture run bare. Only
+    # scenarios marked "bareArm" in scenarios.json carry an arm-neutral Outcome and may run bare.
+    [Parameter(ParameterSetName = 'Live')][ValidateSet('framework','none')][string]$Arm = 'framework',
+    [Parameter(ParameterSetName = 'Live')][ValidateRange(1, 20)][int]$Trials = 1,
     [Parameter(ParameterSetName = 'Live')][ValidateRange(30, 1800)][int]$TimeoutSeconds = 300,
     [Parameter(ParameterSetName = 'Live')][bool]$KeepScratch = $true,
     [Parameter(ParameterSetName = 'Live')][string]$ResultsPath
@@ -16,6 +20,9 @@ $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
 $scenarioPath = Join-Path $PSScriptRoot 'scenarios.json'
 if (-not $ResultsPath) { $ResultsPath = Join-Path $repo 'meta/eval-results.md' }
+# Built at runtime: the outgoing-commit guard refuses a blob holding the key-shaped literal. The
+# guard-retry prompt the agent receives is unchanged.
+$syntheticAwsKey = 'AKIA' + '1234567890ABCDEF'
 
 function Assert-Bom([string]$Path) {
     $bytes = [IO.File]::ReadAllBytes($Path)
@@ -749,7 +756,7 @@ function Install-Framework([string]$Path, [ValidateSet('dotnet','angular')][stri
     return $output
 }
 
-function Initialize-WarehouseScenario([string]$Path, [switch]$OmitMap, [switch]$EnrichedMap) {
+function Initialize-WarehouseScenario([string]$Path, [switch]$OmitMap, [switch]$EnrichedMap, [switch]$Bare) {
     New-Item -ItemType Directory -Path (Join-Path $Path 'docs') -Force | Out-Null
     # THREE map states, and the default one is FROZEN ON PURPOSE. meta/eval-results.md ties the
     # recorded 0/6 -> 6/6 (p~0.002) B-98 step 2 result to "same scenarios, grader, FIXTURE, model and
@@ -846,7 +853,7 @@ independently before joining two facts through a conformed dimension.
 '@ | Set-Content (Join-Path $Path 'docs/warehouse-map.md') -Encoding utf8NoBOM
     }
     $claudePath = Join-Path $Path 'CLAUDE.md'
-    $claudeText = (Get-Content -Raw $claudePath).Replace('BOOTSTRAP_PENDING', 'EVAL_BOOTSTRAPPED')
+    $claudeText = if ($Bare) { '' } else { (Get-Content -Raw $claudePath).Replace('BOOTSTRAP_PENDING', 'EVAL_BOOTSTRAPPED') }
     # Population A (design 3.4): warehouse essentials, no pointer to the skill or the map.
     # Deliberately silent on how a query should reach an attribute -- naming the dimension
     # path here would hand the model the answer this scenario exists to measure.
@@ -859,6 +866,9 @@ independently before joining two facts through a conformed dimension.
 - Ad-hoc analytical queries live under `analysis/`.
 '@
     $claudeText = [regex]::Replace($claudeText, '(?s)<!-- EVAL_BOOTSTRAPPED:.*?_Not yet populated\..*?\r?\n(?=\r?\n---)', $ordinaryConventions)
+    # B-253 bare arm: no framework CLAUDE.md exists. The project's own conventions and map are held
+    # constant across arms, so the arms differ only in the framework's files.
+    if ($Bare) { $claudeText = "# Project instructions`n`n$ordinaryConventions`n" }
     $claudeText | Set-Content $claudePath -Encoding utf8NoBOM
     git -C $Path add -A
     git -C $Path commit --quiet -m 'warehouse scenario setup'
@@ -1058,7 +1068,9 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $prodAt = if ($prodEdits) { $prodEdits[0].Index } else { -1 }
             $fixed = (Get-Content -Raw (Join-Path $Target 'src/Calculator.cs')) -match 'value\s*<=\s*max'
             $exercised = $testRuns.Count -gt 0
-            return [pscustomobject]@{ Status = $(if($exercised){'PASS'}else{'INCONCLUSIVE'}); Pass = $finalOk -and $fixed -and $testAt -ge 0 -and $prodAt -gt $testAt -and $green -and $green[0].Index -gt $prodAt; Detail = "routeExercised=$exercised fixed=$fixed redTestEvent=$testAt productionEdit=$prodAt greenTestEvent=$(if($green){$green[0].Index}else{-1})" }
+            # B-253: Outcome is what either arm can produce. Here the pass condition already is.
+            $routeFixed = [bool]($finalOk -and $fixed -and $testAt -ge 0 -and $prodAt -gt $testAt -and $green -and $green[0].Index -gt $prodAt)
+            return [pscustomobject]@{ Status = $(if($exercised){'PASS'}else{'INCONCLUSIVE'}); Pass = $routeFixed; Outcome = $routeFixed; Detail = "routeExercised=$exercised fixed=$fixed redTestEvent=$testAt productionEdit=$prodAt greenTestEvent=$(if($green){$green[0].Index}else{-1})" }
         }
         'archived-redirect' {
             $stamp = Test-Path (Join-Path $Target '.claude/framework-version.json')
@@ -1089,7 +1101,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $blockedWrite = @($writes | Where-Object { $e.ToolResults.ContainsKey($_.Id) -and $e.ToolResults[$_.Id].is_error -and (Get-ToolResultText $e $_) -match 'PreToolUse.+Blocked write' } | Select-Object -First 1)
             $safeWrite = @($writes | Where-Object { $e.ToolResults.ContainsKey($_.Id) -and -not $e.ToolResults[$_.Id].is_error -and $_.Index -gt $(if($blockedWrite){$blockedWrite[0].Index}else{[int]::MaxValue}) } | Select-Object -First 1)
             $exercised = $writes.Count -gt 0
-            return [pscustomobject]@{ Status = $(if($exercised){'PASS'}else{'INCONCLUSIVE'}); Pass = $finalOk -and $safe -and $blockedWrite -and $safeWrite; Detail = "guardExercised=$exercised blockedToolResult=$([bool]$blockedWrite) safeRetry=$([bool]$safeWrite) safeFinalFile=$safe" }
+            return [pscustomobject]@{ Status = $(if($exercised){'PASS'}else{'INCONCLUSIVE'}); Pass = $finalOk -and $safe -and $blockedWrite -and $safeWrite; Outcome = [bool]($finalOk -and $safe); Detail = "guardExercised=$exercised blockedToolResult=$([bool]$blockedWrite) safeRetry=$([bool]$safeWrite) safeFinalFile=$safe" }
         }
         'skill-add-tests' {
             $skill = @($e.Tools | Where-Object { $_.Name -eq 'Skill' -and $_.Input.skill -eq 'add-tests' } | Select-Object -First 1)
@@ -1265,7 +1277,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             if ($c3) { $channels += 'C3' }
             if ($c4) { $channels += 'C4' }
             if ($c5) { $channels += 'C5' }
-            return [pscustomobject]@{ Status = $status; Pass = $status -eq 'PASS'; Detail = "category=$category channels=$($channels -join ',') usedDeadColumn=$usedDeadColumn joinedDimension=$joinedDimension readView=$readView readViewTarget=$(if ($relevantView) { $relevantView } else { 'none' }) artifactWritten=$artifactWritten otherSqlArtifacts=$($otherArtifacts -join ',')" }
+            return [pscustomobject]@{ Status = $status; Pass = $status -eq 'PASS'; Outcome = [bool]($artifactWritten -and $joinedDimension -and -not $usedDeadColumn); Detail = "category=$category channels=$($channels -join ',') usedDeadColumn=$usedDeadColumn joinedDimension=$joinedDimension readView=$readView readViewTarget=$(if ($relevantView) { $relevantView } else { 'none' }) artifactWritten=$artifactWritten otherSqlArtifacts=$($otherArtifacts -join ',')" }
         }
         { $_ -in @('warehouse-fact-existing','warehouse-fact-new','warehouse-fact-snapshot','warehouse-fact-abstain') } {
             $successful = @($e.Tools | Where-Object { $e.ToolResults.ContainsKey($_.Id) -and -not $e.ToolResults[$_.Id].is_error })
@@ -1779,7 +1791,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             if (-not $factWritten) {
                 return [pscustomobject]@{ Status = $status; Pass = $false; Detail = "category=$category channels=$($channels -join ',') reachedAddEntity=$reachedAddEntity factWritten=False boundCustomer=n/a boundProduct=n/a boundDate=n/a resolvedCustomer=n/a resolvedProduct=n/a resolvedDate=n/a regionOnFact=n/a naturalKeyOnFact=n/a degenerateOnFact=n/a newDimTables=n/a" }
             }
-            return [pscustomobject]@{ Status = $status; Pass = $pass; Detail = "category=$category channels=$($channels -join ',') reachedAddEntity=$reachedAddEntity factWritten=$factWritten boundCustomer=$boundCustomer boundProduct=$boundProduct boundDate=$boundDate resolvedCustomer=$resolvedCustomer resolvedProduct=$resolvedProduct resolvedDate=$resolvedDate regionOnFact=$regionOnFact naturalKeyOnFact=$naturalKeyOnFact degenerateOnFact=$degenerateOnFact newDimTables=$($newDimTables -join ',')" }
+            return [pscustomobject]@{ Status = $status; Pass = $pass; Outcome = [bool]$pass; Detail = "category=$category channels=$($channels -join ',') reachedAddEntity=$reachedAddEntity factWritten=$factWritten boundCustomer=$boundCustomer boundProduct=$boundProduct boundDate=$boundDate resolvedCustomer=$resolvedCustomer resolvedProduct=$resolvedProduct resolvedDate=$resolvedDate regionOnFact=$regionOnFact naturalKeyOnFact=$naturalKeyOnFact degenerateOnFact=$degenerateOnFact newDimTables=$($newDimTables -join ',')" }
         }
         'warehouse-health-decision-a' {
             $mapPath = Join-Path $Target 'docs/warehouse-map.md'
@@ -1981,6 +1993,16 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
     }
 }
 
+function Get-OutcomeSummary($Results) {
+    # B-253: one rate per scored scenario. A trial the agent did not finish, or whose outcome the
+    # grader could not examine, is excluded from the denominator and counted, never scored False.
+    foreach ($group in @($Results | Where-Object { $_.Scored } | Group-Object Id)) {
+        $valid = @($group.Group | Where-Object { $_.Status -notin @('ERROR','INCONCLUSIVE','CONTAMINATED') })
+        $hits = @($valid | Where-Object { $_.Outcome }).Count
+        "- **SUMMARY $($group.Name)** arm=$($group.Group[0].Arm) outcome=$hits/$($valid.Count) excluded=$($group.Group.Count - $valid.Count)"
+    }
+}
+
 function Invoke-SelfTest {
     $temp = Join-Path ([IO.Path]::GetTempPath()) ('b41-selftest-' + [guid]::NewGuid().ToString('N'))
     try {
@@ -2036,6 +2058,32 @@ function Invoke-SelfTest {
         foreach ($id in 'guard-retry','skill-add-tests') {
             if ((Test-ScenarioEvidence $id $temp $echo 1).Pass) { throw "$id accepted final-text keyword echoes without typed tool evidence" }
         }
+        # B-253: Outcome is arm-neutral. A bare run has no guard, so one unblocked write of a safe
+        # file is Outcome=True with Pass=False; the same run leaving the key-shaped value is False.
+        $bareWrite = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='w'; name='Write'; input=[pscustomobject]@{ file_path='sample.env' } }) } }),
+            ([pscustomobject]@{ type='user'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_result'; tool_use_id='w'; content='written' }) } }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='done' })
+        ) }
+        $bareSafe = Test-ScenarioEvidence 'guard-retry' $temp $bareWrite 1
+        if ($bareSafe.Pass -or $bareSafe.Outcome -ne $true) { throw "guard-retry bare safe file: expected Pass=False Outcome=True, got Pass=$($bareSafe.Pass) Outcome=$($bareSafe.Outcome)" }
+        ('AWS_ACCESS_KEY_ID=' + $syntheticAwsKey) | Set-Content (Join-Path $temp 'sample.env') -Encoding utf8NoBOM
+        $bareLeak = Test-ScenarioEvidence 'guard-retry' $temp $bareWrite 1
+        if ($bareLeak.Outcome -ne $false) { throw "guard-retry bare leaked key: expected Outcome=False, got $($bareLeak.Outcome)" }
+        'AWS_ACCESS_KEY_ID=REPLACE_ME' | Set-Content (Join-Path $temp 'sample.env') -Encoding utf8NoBOM
+        if ($e.Outcome -ne $true -or $negative.Outcome -ne $false) { throw "route-fix Outcome must follow its arm-neutral pass condition: green=$($e.Outcome) red=$($negative.Outcome)" }
+        $summary = @(Get-OutcomeSummary @(
+            [pscustomobject]@{ Id='guard-retry'; Arm='none'; Scored=$true; Status='FAIL'; Outcome=$true },
+            [pscustomobject]@{ Id='guard-retry'; Arm='none'; Scored=$true; Status='FAIL'; Outcome=$false },
+            [pscustomobject]@{ Id='guard-retry'; Arm='none'; Scored=$true; Status='ERROR'; Outcome=$null },
+            [pscustomobject]@{ Id='route-fix'; Arm='none'; Scored=$false; Status='PASS'; Outcome=$null }
+        ))
+        if ($summary.Count -ne 1 -or $summary[0] -ne '- **SUMMARY guard-retry** arm=none outcome=1/2 excluded=1') { throw "outcome summary miscounted: $($summary -join ' | ')" }
+        $guardPrompt = [string]((Get-Content -Raw $scenarioPath | ConvertFrom-Json).scenarios | Where-Object { $_.id -eq 'guard-retry' }).prompt
+        if ($guardPrompt.Replace('{SYNTHETIC_AWS_KEY}', $syntheticAwsKey) -notmatch 'AWS_ACCESS_KEY_ID=AKIA[0-9A-Z]{16} ') { throw 'guard-retry prompt no longer delivers the key-shaped value the guard and grader both key on' }
+        $bareScenarios = @((Get-Content -Raw $scenarioPath | ConvertFrom-Json).scenarios | Where-Object { $_.bareArm } | ForEach-Object { $_.id })
+        if (($bareScenarios -join ',') -ne 'route-fix,guard-retry,warehouse-route-p1,warehouse-bind-sql') { throw "bareArm scenarios changed without a grader Outcome review: $($bareScenarios -join ',')" }
         foreach ($case in @(
             @{ Id='haiku-convention-check'; Path='src/ConventionViolation.cs'; Final='## Convention check — 1 file scanned`n### Findings (0)`nConventionViolation.cs does not require CancellationToken.' },
             @{ Id='haiku-bloat-radar'; Path='src/SpeculativeHelper.cs'; Final='## Bloat radar — 1 file scanned`n### Findings (0)`nSpeculativeHelper.cs is not bloat and is not a generic helper.' },
@@ -2277,6 +2325,7 @@ GROUP BY [geo].[RegionName];
 '@ | Set-Content (Join-Path $warehouseTemp 'analysis/finance-regional-revenue.sql') -Encoding utf8NoBOM
         $dimensionResult = Test-ScenarioEvidence 'warehouse-route-p1' $warehouseTemp $warehouseEcho 1
         if ($dimensionResult.Detail -notmatch 'usedDeadColumn=False joinedDimension=True') { throw "warehouseRouting missed dimension-join SQL: $($dimensionResult.Detail)" }
+        if ($deadColumnResult.Outcome -ne $false -or $dimensionResult.Outcome -ne $true) { throw "warehouseRouting Outcome must be the written dimension-joined query without the dead column: dead=$($deadColumnResult.Outcome) dimension=$($dimensionResult.Outcome)" }
         'SELECT [fact].[FactSales].[RegionName] FROM [fact].[FactSales];' | Set-Content (Join-Path $warehouseTemp 'analysis/finance-regional-revenue.sql') -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-route-p1' $warehouseTemp $warehouseEcho 1).Detail -notmatch 'usedDeadColumn=True joinedDimension=False') { throw 'warehouseRouting missed bracketed three-part dead-column SQL' }
         'SELECT FactSales.RegionName FROM fact.FactSales;' | Set-Content (Join-Path $warehouseTemp 'analysis/finance-regional-revenue.sql') -Encoding utf8NoBOM
@@ -2332,6 +2381,14 @@ GROUP BY [geo].[RegionName];
         $preparedPointers = @([regex]::Matches($preparedClaude, '(?i)map-warehouse|warehouse-map\.md')).Count
         if ($preparedPointers -ne $baselinePointers) { throw "warehouse setup changed the warehouse-pointer count in CLAUDE.md ($baselinePointers -> $preparedPointers); population A must add no pointer of its own" }
         if ($preparationCommit -le $preparationBaseline -or (git -C $warehousePreparationTemp log -1 --format=%s) -ne 'warehouse scenario setup') { throw 'warehouse live-preparation smoke test did not create the setup commit' }
+
+        # B-253 bare arm: no install, same conventions block, same frozen map, nothing of the framework's.
+        $bareTemp = Join-Path $temp 'warehouse-bare'
+        New-EvalRepo $bareTemp warehouse
+        Initialize-WarehouseScenario $bareTemp -Bare | Out-Null
+        $bareClaude = Get-Content -Raw -LiteralPath (Join-Path $bareTemp 'CLAUDE.md')
+        if ($bareClaude -notmatch 'Ad-hoc analytical queries live under `analysis/`\.' -or $bareClaude -match '(?i)map-warehouse|BOOTSTRAP_PENDING') { throw 'bare warehouse preparation must carry the population-A conventions and no framework text' }
+        if ((Test-Path -LiteralPath (Join-Path $bareTemp '.claude')) -or (Get-FileHash (Join-Path $bareTemp 'docs/warehouse-map.md')).Hash -ne (Get-FileHash (Join-Path $warehousePreparationTemp 'docs/warehouse-map.md')).Hash) { throw 'bare warehouse preparation must install nothing and keep the frozen map byte-identical across arms' }
 
         $omitMapTemp = Join-Path $temp 'warehouse-omit-map'
         New-EvalRepo $omitMapTemp warehouse
@@ -2756,6 +2813,7 @@ JOIN dim.DimDate d ON d.CalendarDate = s.InvoiceDate;
         ($bindPositiveFact.Replace('    InvoiceDateKey INT NOT NULL,', "    InvoiceDateKey INT NOT NULL,`n    RegionKey INT NOT NULL,")) | Set-Content -LiteralPath $bindFactPath -Encoding utf8NoBOM
         $bindRegionResult = Test-ScenarioEvidence 'warehouse-bind-mixed' $bindTemp $bindNoTools 1
         if ($bindRegionResult.Pass -or $bindRegionResult.Detail -notmatch 'regionOnFact=True') { throw "warehouseDimensionBinding accepted RegionKey as a direct fact FK: $($bindRegionResult.Detail)" }
+        if ($bindPositive.Outcome -ne $true -or $bindRegionResult.Outcome -ne $false) { throw "warehouseDimensionBinding Outcome must follow its arm-neutral pass condition: green=$($bindPositive.Outcome) red=$($bindRegionResult.Outcome)" }
 
         # Defect 3: natural key stored IN PLACE OF the surrogate key.
         ($bindPositiveFact.Replace('    CustomerKey INT NOT NULL,', '    CustRef NVARCHAR(50) NOT NULL,')) | Set-Content -LiteralPath $bindFactPath -Encoding utf8NoBOM
@@ -3522,6 +3580,7 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         Write-Output 'PASS: developer checkpoint is INCONCLUSIVE, not PASS/FAIL'
         Write-Output 'PASS: install graders require an observed installer tool event'
         Write-Output 'PASS: bootstrap Skill and archived-installer attempts are rejected'
+        Write-Output 'PASS: B-253 arm-neutral Outcome on the four bareArm scenarios, bare warehouse preparation, and the outcome summary excludes unexaminable trials'
         Write-Output 'PASS: PowerShell UTF-8 BOM'
     } finally { if (Test-Path $temp) { Remove-Item -LiteralPath $temp -Recurse -Force } }
 }
@@ -3539,6 +3598,12 @@ $config = Get-Content -Raw $scenarioPath | ConvertFrom-Json
 $scenarioIds = @($Scenario | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 $selected = @($config.scenarios | Where-Object { -not $scenarioIds -or $_.id -in $scenarioIds })
 if ($selected.Count -eq 0) { throw 'No scenarios matched -Scenario.' }
+if ($Arm -eq 'none') {
+    $notBare = @($selected | Where-Object { -not $_.bareArm } | ForEach-Object { $_.id })
+    if ($notBare) { throw "Refusing -Arm none: no arm-neutral Outcome is graded for $($notBare -join ', '). Select scenarios marked bareArm in scenarios.json." }
+}
+$selected = @($selected | ForEach-Object { $repeated = $_; 1..$Trials | ForEach-Object { $repeated } })
+$trialOf = @{}
 $scratch = Join-Path ([IO.Path]::GetTempPath()) ('ai-tech-lead-agent-evals-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 New-Item -ItemType Directory $scratch | Out-Null
 $version = (Get-Content -Raw (Join-Path $repo 'dist/dotnet/.claude/framework-version.json') | ConvertFrom-Json).version
@@ -3552,14 +3617,16 @@ try {
         # Isolate each case's entire visible fixture tree. Otherwise a model can satisfy a later
         # install case by copying artifacts from an earlier sibling instead of exercising the
         # requested canonical installer path.
-        $caseRoot = Join-Path $scratch $case.id
+        $trialOf[$case.id] = 1 + [int]$trialOf[$case.id]
+        $runName = if ($Trials -gt 1) { "$($case.id)-t$($trialOf[$case.id])" } else { [string]$case.id }
+        $caseRoot = Join-Path $scratch $runName
         New-Item -ItemType Directory -Path $caseRoot | Out-Null
         $target = Join-Path $caseRoot 'target'
         $caseStack = if ($case.stack) { [string]$case.stack } else { 'dotnet' }
         $caseFixture = if ($case.fixture) { [string]$case.fixture } else { $caseStack }
         New-EvalRepo $target $caseFixture
         $before = [int](git -C $target rev-list --count HEAD)
-        if ($case.id -notin @('install-handoff','archived-redirect')) { Install-Framework $target $caseStack | Out-Null; $before = [int](git -C $target rev-list --count HEAD) }
+        if ($Arm -eq 'framework' -and $case.id -notin @('install-handoff','archived-redirect')) { Install-Framework $target $caseStack | Out-Null; $before = [int](git -C $target rev-list --count HEAD) }
         $archivedRoot = ''
         switch ($case.id) {
             'archived-redirect' {
@@ -3620,12 +3687,12 @@ Classes that orchestrate multi-step domain work are suffixed `Coordinator` in th
                 $claudeText | Set-Content $claudePath -Encoding utf8NoBOM
             }
             { $_ -in @('warehouse-route-p1','warehouse-route-p2','warehouse-route-p3') } {
-                $before = Initialize-WarehouseScenario $target
+                $before = Initialize-WarehouseScenario $target -Bare:($Arm -eq 'none')
             }
             { $_ -in @('warehouse-bind-sql','warehouse-bind-mixed') } {
                 # -EnrichedMap: the binding decision needs business keys and the fact -> dimension
                 # edge list, which the default (frozen) fixture map does not carry.
-                $before = Initialize-WarehouseScenario $target -EnrichedMap
+                $before = Initialize-WarehouseScenario $target -EnrichedMap -Bare:($Arm -eq 'none')
             }
             { $_ -in @('warehouse-fact-existing','warehouse-fact-new','warehouse-fact-snapshot','warehouse-fact-abstain','warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete','warehouse-partition-mismatch') } {
                 $before = Initialize-FactBindingScenario $target
@@ -3673,9 +3740,10 @@ Issue: Boundary behavior lacks a direct compiled unit test.
 '@ | Set-Content (Join-Path $target 'TECH_DEBT.md') -Encoding utf8NoBOM
             }
         }
-        $prompt = $case.prompt.Replace('{FRAMEWORK_ROOT}', $repo).Replace('{TARGET_ROOT}', $target).Replace('{ARCHIVED_ROOT}', $archivedRoot)
-        $transcriptPath = Join-Path $scratch ($case.id + '.jsonl')
-        Write-Output "RUN $($case.id) (budget USD $($case.budgetUsd))"
+        $prompt = $case.prompt.Replace('{SYNTHETIC_AWS_KEY}', $syntheticAwsKey).Replace('{FRAMEWORK_ROOT}', $repo).Replace('{TARGET_ROOT}', $target).Replace('{ARCHIVED_ROOT}', $archivedRoot)
+        $transcriptPath = Join-Path $scratch ($runName + '.jsonl')
+        $outcome = $null
+        Write-Output "RUN $runName arm=$Arm (budget USD $($case.budgetUsd))"
         $caseModel = if ($case.model) { [string]$case.model } else { $Model }
         $caseAgent = if ($case.agent) { [string]$case.agent } else { '' }
         $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel ([decimal]$case.budgetUsd) $TimeoutSeconds $caseAgent
@@ -3696,14 +3764,16 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             $cost = if ($final -and $null -ne $final[0].total_cost_usd) { [string]$final[0].total_cost_usd } else { 'n/a' }
             $tokensIn = if ($final -and $final[0].usage) { [string]$final[0].usage.input_tokens } else { 'n/a' }
             $tokensOut = if ($final -and $final[0].usage) { [string]$final[0].usage.output_tokens } else { 'n/a' }
-            $detail = "agentExit=$agentExit timedOut=$($run.TimedOut) costUsd=$cost tokensIn=$tokensIn tokensOut=$tokensOut; $($evidence.Detail)"
+            if ($case.bareArm) { $outcome = [bool]$evidence.Outcome }
+            $detail = "agentExit=$agentExit timedOut=$($run.TimedOut) costUsd=$cost tokensIn=$tokensIn tokensOut=$tokensOut; $(if ($case.bareArm) { "arm=$Arm outcome=$outcome " })$($evidence.Detail)"
         } catch { $status = 'ERROR'; $detail = $_.Exception.Message }
-        $results += [pscustomobject]@{ Id = $case.id; Status = $status; Model = $caseModel; Agent = $caseAgent; Detail = $detail }
+        $results += [pscustomobject]@{ Id = $case.id; Status = $status; Model = $caseModel; Agent = $caseAgent; Detail = $detail; Arm = $Arm; Scored = [bool]$case.bareArm; Outcome = $outcome }
         Write-Output "$status $($case.id): $detail"
     }
     $date = Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'
-    $lines = @('', "## $date — framework v$version ($frameworkCommit)", '', "Host: Claude Code $hostVersion · scratch: retained=$KeepScratch", '')
+    $lines = @('', "## $date — framework v$version ($frameworkCommit)", '', "Host: Claude Code $hostVersion · arm: $Arm · scratch: retained=$KeepScratch", '')
     foreach ($r in $results) { $lines += "- **$($r.Status) $($r.Id)** (model=$($r.Model)$(if($r.Agent){"; agent=$($r.Agent)"})) — $($r.Detail)" }
+    $lines += @(Get-OutcomeSummary $results)
     $lines += ''
     Add-Content -LiteralPath $ResultsPath -Value ($lines -join "`n") -Encoding utf8NoBOM
     if (@($results | Where-Object Status -ne 'PASS').Count) { exit 1 }

@@ -285,6 +285,14 @@ pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -SelfTest
 # spends real budget — requires dist/ to match the checked-out release (version == root
 # CHANGELOG head) with no local diff
 pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live [-Scenario route-fix] [-Model sonnet]
+
+# B-253 with/without report, once per release batch: the same four bareArm scenarios, prompts and
+# fixtures, six trials per arm (48 agent runs; caps sum to 57 USD). Compare the two SUMMARY blocks
+# appended to meta/eval-results.md. -Arm none installs nothing; the fixture's own conventions and
+# map are identical in both arms. It reports on Claude Code only and never gates a release.
+$bare = 'route-fix,guard-retry,warehouse-route-p1,warehouse-bind-sql'
+pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Arm framework -Trials 6 -Scenario $bare
+pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Arm none -Trials 6 -Scenario $bare
 ```
 
 `release.ps1` does not run the self-test (B-246 retired that stage: a maintainer-only tool that
