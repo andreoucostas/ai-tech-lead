@@ -4392,3 +4392,16 @@ WSD-028/WSD-057 ledger and review scope outside the guarded list.
 ready" to pushed.
 
 From this entry on, a decision entry is at most ten lines.
+
+## WSD-094: the write guard's edit-scope gap is DOCUMENT, not HARDEN (2026-09-20)
+
+**Context.** Third of the guard's known gaps: on an edit it scans the replacement text, never the
+resulting file. Reproduced on the shipped hook: a credential whose key sits in the surrounding line
+with only the value replaced passes, and an AWS key split across two edits passes both times; each
+written as one payload is blocked.
+
+**Decision.** DOCUMENT, per WSD-047. Scanning the pre-edit file together with the new text was
+measured and refuses the edit that *removes* a leaked key — WSD-047's own failure mode and B-94's
+bypass cost. Reconstruction is sound but needs each host's edit semantics, which the hook cannot
+know for tools it accepts by shape alone. Stated in `guard.ps1`'s header and shipped
+`docs/enforcement-surfaces.md`; the gap is dominated by the shell-write gap already answered DOCUMENT.

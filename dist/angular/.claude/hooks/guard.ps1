@@ -4,6 +4,12 @@
 # Copilot-compatible permissionDecision JSON deny on stdout (exit 0). Whether a client fires this
 # hook or honors its output is capability-specific; see docs/enforcement-surfaces.md.
 # Allow = exit 0. Degrades safe on parse failure (except high-confidence secrets, which fail closed).
+# Scope: the scanned text is the write payload -- a whole file's content, or an edit's replacement
+# text -- never the file that edit produces. A value whose key sits in the surrounding line, and a
+# secret split across two edits, are therefore not seen. Stated as a limit in
+# docs/enforcement-surfaces.md rather than fixed: scanning the pre-edit file alongside the new text
+# refuses the edit that REMOVES a leaked key, and reconstructing the post-edit file needs edit
+# semantics this hook cannot know for the file-write tools it accepts by shape alone.
 $ErrorActionPreference = 'SilentlyContinue'
 
 $raw = [Console]::In.ReadToEnd()

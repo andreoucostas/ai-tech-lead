@@ -60,6 +60,7 @@ authoritative.
 - “Knowledge-increment expansion is paused until the with/without-framework eval first reports; CP1 and RK1 are closed as scoped, and any new attempt requires a fresh decision.” — `meta/workspace-decisions.md WSD-091`
 - “Red evidence is mechanical (`assert-red-first.ps1`); the user's review counts only in the user's own words; mechanism changes run touched tests locally and CI runs every suite; an RCA is owed only for an escaped defect.” — `meta/workspace-decisions.md WSD-092` (amends WSD-057 and WSD-089)
 - “Two path-keyed tiers, guarded and ordinary; review only on the destructive guarded subset; the backlog is capped at 40 compact entries and a decision entry at ten lines.” — `meta/workspace-decisions.md WSD-093` (supersedes WSD-089's classes and success measure and WSD-092 items 3–5)
+- “The write guard's edit-scope gap is documented, not hardened: scanning the pre-edit file with the new text refuses the edit that removes a leaked key.” — `meta/workspace-decisions.md WSD-094` (applies WSD-047)
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`

@@ -10,12 +10,11 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
 | Rank | Item | Why here |
 |---|---|---|
-| 2 | B-247 guard sees only the current edit | Last of three guard gaps; the exemption and Azure shapes are fixed |
 | 4 | B-244 Quick Start installs `master` | Small; every new consumer installs unreleased content until fixed |
 | 5 | B-249 orphaned `.sh` snippets | Small deletion; invariant #3 residue |
 | 6 | B-250 `/impact` | Small retirement; misleading shipped command |
 | 7 | B-240 retired-twin diagnostics | Small; consumer-facing installer diagnostic gap |
-| 8 | B-239 independent review, then release v0.87.0 | Already delivered on master; batch B-247, B-248, B-244, B-249, B-250 and B-240 into this one release instead of tagging each |
+| 8 | B-239 independent review, then release v0.87.0 | Already delivered on master; batch B-244, B-249, B-250 and B-240 into this one release instead of tagging each |
 | 9 | B-260 `/security-review` shadowing | One live observation; if the built-in wins, a shipped security workflow never runs |
 | 10 | B-246 `AgentEvals.Tests.ps1` wiring | Smallest first step toward B-253 |
 | 11 | B-253 with/without-framework eval | Gives every later product decision an instrument, and its first report is WSD-091's condition for resuming the paused rows; WSD-016 and B-98 constrain it |
@@ -30,7 +29,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Paused | B-222, B-223, B-224 | WSD-091 (user, 2026-09-18): no new work until B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
-| Low | B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 waits for B-253 |
+| Low | B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 waits for B-253 |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
 ## Open entries
@@ -140,12 +139,6 @@ rewrites `meta-gates` to the two tiers; confirm no stale obligation remains, the
 **Status:** Open; observed 2026-09-18. With `-File` and a repeated `-Case`, binding fails and exits 1
 without a `RED_FIRST` line, the same code as WRONG. Decide whether to accept repeated `-Case`.
 
-### B-247 · guard.ps1 sees only the current edit's text, never the resulting file
-**Filed against:** v0.86.7 (2026-09-18)
-**Priority:** P2 · **Effort:** S · **Invariants:** #3 #5
-**Status:** Open; last of three gaps. The path exemption is anchored and the Azure `AccountKey=` and
-SAS shapes are hardened (2026-09-19). Answer this one by kind under WSD-047 (likely DOCUMENT: the
-edit's result is reconstructed differently on each surface's edit shape).
 
 ### B-249 · Delete the orphaned `.sh` snippet directories under `src/stacks/*/snippets/.claude/hooks/`
 **Filed against:** v0.86.7 (2026-09-18)
@@ -270,6 +263,20 @@ absent from this file, so the stub filing already degrades to a WARNING; the new
 **Priority:** P3 · **Effort:** S · **Invariants:** #6
 **Status:** Open. With nothing to stage, `release.ps1` tags HEAD; a light HEAD (WP2) gets no CI run, so
 the watch exits 3 and nothing is tagged. Fails closed; WP3 edits the same file.
+
+### B-273 · `assert-red-first.ps1` cannot examine a red case in a driver-style suite
+**Filed against:** v0.86.7 (2026-09-20)
+**Priority:** P3 · **Effort:** S · **Invariants:** —
+**Status:** Open; observed 2026-09-20 on `ValidateDist.Tests.ps1`. A failing case there prints two
+`[FAIL] <name>` lines — the child's own summary and the driver's "child exited" line — so
+`Resolve-Mark` finds two matches and exits CANNOT_EXAMINE for every red case in that suite.
+
+### B-274 · `guard.ps1`'s block-shape comment misdescribes the empty-tool-name case
+**Filed against:** v0.86.7 (2026-09-20)
+**Priority:** P3 · **Effort:** S · **Invariants:** #5
+**Status:** Open; observed 2026-09-20 by the fresh-session review of B-247, pre-existing and
+unchanged by it. The header says an empty tool name emits the Claude signal, but `if (-not $tool)`
+turns `''` into `$null`, so `tool_name: ""` alone takes the Copilot JSON path at exit 0.
 
 ### B-272 · Make `AGENTS.md` the one instruction file, shipped and in this repo
 **Filed against:** v0.86.7 (2026-09-19)

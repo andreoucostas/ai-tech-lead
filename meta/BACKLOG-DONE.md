@@ -12572,3 +12572,8 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-248** — DONE **2026-09-19**: `post-write.ps1` runs `dotnet build` / `npx tsc` as a child with a
   45 s budget (`ATL_POSTWRITE_BUDGET_SEC`), kills the tree on expiry and backs off 300 s; Claude
   registrations carry `"timeout": 90`; `PostWriteRouting` pins the budget and the throttle skip.
+- **B-247** — DONE **2026-09-20**, targeted for **v0.87.0**. Answered DOCUMENT under WSD-047
+  (WSD-094): on an edit the guard scans the replacement text, never the resulting file. Scanning the
+  pre-edit file together with the new text was measured and refuses the edit that *removes* a leaked
+  key; reconstruction needs edit semantics the hook cannot know for tools it accepts by shape alone.
+  The limit is stated in `guard.ps1`'s header and the shipped `docs/enforcement-surfaces.md`.

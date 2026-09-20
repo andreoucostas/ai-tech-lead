@@ -345,6 +345,18 @@ try {
             } $fixture.Pattern 'no-meta-leak'
         }
     }
+    It 'case 38: tracking ids wider than two digits fail check 6' {
+        # The denied range was \bB-[0-9]{2}[a-z]?\b, which stops at 99. Ids passed 99 long ago, so a
+        # three-digit id shipped inside dist/*/scripts/template-checks.ps1 with no-meta-leak green on
+        # it. The range is open-ended now; these fixtures pin three, four and five digits. The
+        # assertion names the finding's path prefix, not the pattern text, so a later legitimate
+        # change to the pattern does not fail this case with a spurious "target finding" message.
+        foreach ($suffix in '152', '1521', '15210') {
+            Assert-Case ('tracking-id-' + $suffix) {
+                param($d) [IO.File]::AppendAllText((Join-Path $d 'README.md'), "`nTracking id fixture: " + 'B-' + $suffix + "`n")
+            } '[no-meta-leak] README.md' 'no-meta-leak'
+        }
+    }
     It 'case 12: clean PowerShell topology and registrations stay green together' {
         Assert-Case 'clean-powershell-contract' { param($d) } 'exactly 18 PowerShell hook registrations resolve' 'powershell-topology,hook-registration' -Green -PowerShellOnly -AlsoPattern 'PowerShell-only topology: \d+ files scanned'
     }

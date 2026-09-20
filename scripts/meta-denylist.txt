@@ -14,12 +14,15 @@
 # legitimately gives a consumer team.
 
 # --- Internal tracking IDs -----------------------------------------------------------------------
-# Backlog item ids (B-01..B-99) and workspace-decision ids (WSD-001..). Meaningless to a consumer.
+# Backlog item ids (B-01..) and workspace-decision ids (WSD-001..). Meaningless to a consumer.
 # NOTE: the bare word "backlog" is deliberately NOT denied — the product legitimately reads the
 # CONSUMER's own BACKLOG.md (adopt.md, the installers' adoption_signals). Denying the ID form only
 # is what keeps the allowlist near-empty.
-DENY \bB-[0-9]{2}[a-z]?\b
-DENY \bWSD-[0-9]{3}\b
+# Both are open-ended in the digit count on purpose: a fixed width silently stops denying once the
+# ids outgrow it, which is how B-152 shipped. The cost is that a consumer-shaped token such as a
+# CSS variable --b-1024 or a base64url run would now be refused; use a narrow ALLOW for that file.
+DENY \bB-[0-9]{2,}[a-z]?\b
+DENY \bWSD-[0-9]{3,}\b
 
 # --- Internal codenames --------------------------------------------------------------------------
 # "Fable" is the codename of the framework's own review/audit process.

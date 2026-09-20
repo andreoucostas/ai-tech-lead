@@ -28,7 +28,18 @@ or the segment edge (folded), or a case-sensitive PascalCase affix (`AuthService
 `Api.UnitTests`). Both Azure shapes get HARDEN under WSD-047 because each has a canonical form. A
 storage `AccountKey=` (88-char base64) and a SAS `sv=<date>` with `sig=` join the path-independent,
 fail-closed high-confidence set. The Azurite emulator's published key is excluded. The entry's third
-gap, that the guard sees only the current edit's text, is unchanged and stays open.
+gap, that the guard sees only the current edit's text, is answered DOCUMENT under WSD-047 (WSD-094)
+and closed. On an edit the guard scans the replacement text, never the resulting file: a credential
+whose key sits in the surrounding line with only its value replaced passes, and an AWS key split
+across two edits passes both times. Scanning the pre-edit file together with the new text was
+measured and refuses the edit that *removes* a leaked key; reconstructing the post-edit file is
+sound but needs edit semantics the hook cannot know for the tools it accepts by shape alone. The
+limit is now stated in guard.ps1's header and in the shipped docs/enforcement-surfaces.md.
+
+The `no-meta-leak` denylist denied tracking ids only to two digits, so `B-152` shipped inside
+`dist/*/scripts/template-checks.ps1` with the gate green on it across every release since the id
+range passed 99. The pattern now runs to four digits, the comment is reworded, and ValidateDist
+case 38 pins both widths.
 
 B-239 retires the architecture viewer instead of hardening it. The generator
 `scripts/build-architecture-html.ps1` emitted floating `marked@12` and `mermaid@10` CDN script tags

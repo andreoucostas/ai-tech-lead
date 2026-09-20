@@ -52,6 +52,19 @@ exceeds the budget is stopped and reports nothing, and the next one waits five m
 > retention, regulatory, or compliance evidence. Wherever an agent can run shell commands, the
 > `CLAUDE.md`/`AGENTS.md` rules remain the binding instruction for that path.
 
+> **Scope caveat — on an edit, the guard reads the replacement text, not the resulting file.** A
+> whole-file write carries the finished content, so the secrets floor sees all of it. An **edit**
+> carries only the new text, and `guard.ps1` never reads the file that edit produces. Two misses
+> follow, both reproduced against the shipped hook on **2026-09-20**: a credential whose key sits in
+> the surrounding line, with only the value replaced, is not matched; and a key split across two
+> edits passes both times, because neither fragment matches on its own. **This is a stated limit,
+> not a control.** Scanning the pre-edit file together with the new text is not the fix — that
+> refuses the edit which *removes* a leaked key, and a scanner that blocks the cleanup is worse than
+> the gap it closes. Reconstructing the post-edit file is sound, but it needs each host's edit
+> semantics, and this hook deliberately accepts file-write tools it cannot enumerate (the "file path
+> + content" rule above). So the floor catches a secret written as one payload; `/security-review`,
+> code review, and your own platform's secret scanning remain the net for the rest.
+
 ## Why the differences (the load-bearing facts)
 - **Claude Code** consumes `UserPromptSubmit` stdout and honours `PreToolUse` `exit 2`. `route-prompt` detects this surface (Claude events carry `hook_event_name`) and emits plain stdout there.
 - **Copilot CLI** added `userPromptSubmitted` `additionalContext` injection in **v1.0.65** and hardened it in **v1.0.76**. On **CLI 1.0.80 (observed 2026-08-18)** only the last `userPromptSubmitted` entry is delivered, so the framework registers one `route-prompt` entry and composes routing, plan-gate, security-pass, and queued Boy Scout text inside it; `session-start` emits the same model-facing shape on its separate event. Older versions ignore it as a harmless no-op, so routing then rests entirely on `AGENTS.md`. The vendor documents `agentStop` from **v1.0.72** and the framework registers it, but its live firing has not been observed here. `preToolUse` deny was honoured on **CLI 1.0.70, 2026-07-17**.

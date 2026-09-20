@@ -83,8 +83,8 @@ if ($isTemplateRepo -and $vJson) {
     # Restores coverage that reading only the FIRST '## ' line used to provide. That read had to go,
     # because the intended pre-stamp state puts the next version's Unreleased head on top -- but it
     # was also the only thing rejecting a DATED head for a version above the stamped one, which is
-    # B-152's defect one notch over. There is no legitimate case for it: after a release the top
-    # dated head IS the stamped version, and during authoring the top head is Unreleased.
+    # the stale-Unreleased-head defect one notch over. There is no legitimate case for it: after a
+    # release the top dated head IS the stamped version, and during authoring the top head is Unreleased.
     foreach ($headEntry in @($changelogHeads | Where-Object { $_.Suffix -cmatch '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' })) {
         if ([version]$headEntry.Version -gt [version]$vJson) {
             Fail "CHANGELOG.md has a dated heading for version $($headEntry.Version), which is above the stamped version $vJson -- a release that was dated but never stamped, or a stray head."

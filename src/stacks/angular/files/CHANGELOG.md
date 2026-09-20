@@ -33,6 +33,12 @@
 - HTML you generated with that script previously — including any `/impact` report — is left exactly
   as it is. This release does not repair or delete those files; regenerate or remove them yourself.
 - `scripts/docs-sync-check.ps1` no longer checks `architecture.html` freshness.
+- **`docs/enforcement-surfaces.md` now states what the write guard does not see.** The guard checks
+  the text of a write: a whole file's content, or the replacement text of an edit — never the file
+  that edit produces. So a credential whose key sits in the surrounding line, with only its value
+  replaced, and a secret split across two edits, are not caught. This is a stated limit, not a change
+  in behaviour: nothing that was refused before is allowed now. Keep `/security-review`, code review
+  and your own platform's secret scanning in place for the rest.
 
 ## 0.86.7 — 2026-09-11
 
