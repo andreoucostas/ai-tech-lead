@@ -1,3 +1,0 @@
-2. Financial logic: establish the applicable invariant, tolerance, and preconditions from policy, implementation, tests, or executable evidence; preserve demonstrated negative-amount, duplicate-effect, precision/rounding, and temporal controls. A type or mechanism name alone is not a verdict.
-3. For state changes, inspect the actual atomic, optimistic, or idempotency mechanism and relevant interleaving; report an unsafe outcome or scoped policy violation demonstrated by source, interleaving, or executable evidence, otherwise retain uncertainty.
-4. Record anything you could not fully verify in SECURITY_FINDINGS.md.

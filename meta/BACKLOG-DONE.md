@@ -12585,3 +12585,9 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   `master`, and states that `master` is the pre-release channel whose content is still stamped with
   the previous version. No version literal, so it needs no edit between releases. Verified against
   the real remote at `fabd8302`, where `master` carried v0.87.0 content stamped 0.86.7.
+- **B-249** — DONE **2026-09-20**. Deleted 19 files in five `snippets/.claude/hooks/*.sh/` directories,
+  dead source for the twins retired by WSD-073. `build.ps1` never read them and a rebuild of all
+  three dists after the deletion produced no change, which is the proof they composed nothing. The
+  filing said only `build.ps1` ignored them; `FinancialCaseOracles.Tests.ps1` did read two, so its
+  carrier list drops those rows — the `.ps1` twins still carry the assertion. The retirement ledger
+  entries for the installed `.sh` paths are untouched; consumers still get their removal diagnostics.

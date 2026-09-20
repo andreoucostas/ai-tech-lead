@@ -10,8 +10,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
 | Rank | Item | Why here |
 |---|---|---|
-| 5 | B-249 orphaned `.sh` snippets | Small deletion; invariant #3 residue. Batch B-249, B-250 and B-240 into one release rather than tagging each |
-| 6 | B-250 `/impact` | Small retirement; misleading shipped command |
+| 6 | B-250 `/impact` | Small retirement; misleading shipped command. Batch B-250 and B-240 into one release rather than tagging each |
 | 7 | B-240 retired-twin diagnostics | Small; consumer-facing installer diagnostic gap |
 | 9 | B-260 `/security-review` shadowing | One live observation; if the built-in wins, a shipped security workflow never runs |
 | 10 | B-246 `AgentEvals.Tests.ps1` wiring | Smallest first step toward B-253 |
@@ -124,12 +123,6 @@ rewrites `meta-gates` to the two tiers; confirm no stale obligation remains, the
 **Status:** Open; observed 2026-09-18. With `-File` and a repeated `-Case`, binding fails and exits 1
 without a `RED_FIRST` line, the same code as WRONG. Decide whether to accept repeated `-Case`.
 
-
-### B-249 · Delete the orphaned `.sh` snippet directories under `src/stacks/*/snippets/.claude/hooks/`
-**Filed against:** v0.86.7 (2026-09-18)
-**Priority:** P2 · **Effort:** S · **Invariants:** #1 #3
-**Status:** Open. Nineteen files in five `audit-trail.sh/` and `route-prompt.sh/` directories survive
-the Bash retirement (WSD-073); `scripts/build.ps1` never references them.
 
 ### B-250 · Retire or rename the shipped `/impact` command
 **Filed against:** v0.86.7 (2026-09-18)

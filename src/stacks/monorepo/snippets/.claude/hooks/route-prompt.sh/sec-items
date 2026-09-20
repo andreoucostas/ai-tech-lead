@@ -1,6 +1,0 @@
-2. Financial logic: establish the applicable invariant, tolerance, and preconditions from policy, implementation, tests, or executable evidence; preserve demonstrated negative-amount, duplicate-effect, precision/rounding, and temporal controls. A type or mechanism name alone is not a verdict.
-3. For state changes, inspect the actual atomic, optimistic, or idempotency mechanism and relevant interleaving; report an unsafe outcome or scoped policy violation demonstrated by source, interleaving, or executable evidence, otherwise retain uncertainty.
-4. Never bypass Angular's sanitisation (bypassSecurityTrust*, direct innerHTML) without an explicit, reviewed reason; rely on the framework's escaping.
-5. Keep tokens/secrets out of localStorage where an httpOnly cookie is viable; never log credentials or PII.
-6. Validate and encode at trust boundaries (route params, HTTP responses, user input); guard against XSS/CSRF.
-7. Record anything you could not fully verify in SECURITY_FINDINGS.md.

@@ -65,8 +65,6 @@ It 'active financial carriers do not make type or mechanism names verdicts' {
         'src/stacks/monorepo/snippets/.github/instructions/framework-rules.instructions.md/lean-4-8',
         'src/stacks/dotnet/snippets/.claude/hooks/route-prompt.ps1/sec-items',
         'src/stacks/monorepo/snippets/.claude/hooks/route-prompt.ps1/sec-items',
-        'src/stacks/dotnet/snippets/.claude/hooks/route-prompt.sh/sec-items',
-        'src/stacks/monorepo/snippets/.claude/hooks/route-prompt.sh/sec-items',
         'src/stacks/dotnet/files/tests/evals/cases.yaml',
         'src/stacks/monorepo/files/tests/evals/cases.yaml'
     )
