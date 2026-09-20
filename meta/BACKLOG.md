@@ -10,7 +10,6 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
 | Rank | Item | Why here |
 |---|---|---|
-| 7 | B-240 retired-twin diagnostics | Small; consumer-facing installer diagnostic gap. Last of the batch for the next release |
 | 9 | B-260 `/security-review` shadowing | One live observation; if the built-in wins, a shipped security workflow never runs |
 | 10 | B-246 `AgentEvals.Tests.ps1` wiring | Smallest first step toward B-253 |
 | 11 | B-253 with/without-framework eval | Gives every later product decision an instrument, and its first report is WSD-091's condition for resuming the paused rows; WSD-016 and B-98 constrain it |
@@ -57,13 +56,6 @@ application. Broad recall and target-host efficacy are not established.
 **Status:** PARTIALLY DONE; paused by WSD-091. Shipped in v0.84.0; one ordinary CLI run read scoped
 knowledge and passed hidden grading, but its fixture failed the shipped validity check. A conforming
 fixture, VS Code, enterprise scale and outcome comparison remain unobserved.
-
-### B-240 · Retirements whose twin is also retired lose their consumer diagnostics
-**Filed against:** v0.86.7 (2026-09-16)
-**Priority:** P2 · **Effort:** S · **Invariants:** #1, #3
-**Status:** Open; read from the predicates, not observed. A retired path whose opposite-extension
-twin is also retired can silently lose both consumer diagnostics in `install.ps1`: the residual
-`CANT-VERIFY` and the `$retiredReferenceReplacements` entry that drives the `MIGRATION:` scan.
 
 ### B-216 · Project-adapt instance-shaped skills instead of imposing framework defaults
 **Filed against:** v0.81.0 (2026-09-03)

@@ -8,10 +8,18 @@
 
 - **The `/impact` command is retired.** Its A/B runner was removed in 0.83.0, so what remained was
   a descriptive report under a name most developers read as "what does this change affect?" — which
-  it never did. On update, an unmodified `.claude/commands/impact.md` and `.github/prompts/impact.
-  prompt.md` are deleted; a copy you edited is preserved and reported so you can remove it yourself.
+  it never did. On update, an unmodified `.claude/commands/impact.md` and its Copilot twin
+  `.github/prompts/impact.prompt.md` are deleted; a copy you edited is preserved and reported so
+  you can remove it yourself.
 - **For the same numbers, run `scripts/metrics.ps1` directly.** It is unchanged and still reports a
   current-state scorecard. It is a snapshot, not a before/after measurement.
+- **Updates now report every retired framework file you still have.** Previously only a few
+  categories were mentioned, so a file retired in a later release could sit in your repo with no
+  notice. Your files are not deleted by this: a copy you edited is still preserved, now with a line
+  saying it is retired and what to do about it.
+- **Retired files with no successor no longer point you at another retired file.** Where a `.sh` and
+  its `.ps1` twin were retired together, the message either named the dead twin or was missing
+  entirely; it now says plainly that there is no replacement command.
 - Anything already written to `docs/impact/` is left exactly as it is. Nothing writes there now, and
   the directory is safe to delete.
 

@@ -31,6 +31,16 @@ recomputing `scripts/build-architecture-html.ps1` and matching the 4 digests B-2
 Pre-merge legacy-repo bytes are unrecoverable here, so those copies are preserved, not deleted —
 the same disclosure B-239 made. `docs/impact/` output is left untouched in consumer repos.
 
+B-240 repairs three retirement diagnostics in the installer. The residual gate admitted five
+hand-listed categories, so a path retired in any later release was preserved in silence and each new
+retirement had to remember to add itself — the same shape of defect the list was added to fix. It
+now reports every retained retired path. The generic residual arm named the `.ps1` twin as the
+replacement even when that twin was itself retired, pointing the reader at another dead path. And
+the `MIGRATION:` arm built its entry only while the twin was still in the incoming manifest, so a
+pair retired together emitted nothing; that is live today for `scripts/impact-run.sh` and
+`scripts/sync-agent-files.sh`. Retiring `/impact` in this same release created two more instances of
+the residual gap, which is how it was found.
+
 ## 0.87.0 — 2026-09-20
 
 B-248 bounds the post-write build. `post-write.ps1` ran `dotnet build` (and `npx tsc --noEmit`)

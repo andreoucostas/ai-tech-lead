@@ -1165,6 +1165,45 @@ It 'neither retired generator twin is ever told to migrate to the other' {
     } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
+It 'a retired path outside the hand-listed categories is still preserved and diagnosed' {
+    # The residual gate used to admit only five categories, so anything retired later was preserved
+    # in silence and each new retirement had to remember to add itself (B-240). A retired command is
+    # none of those five: not a .github skill, sync script, Git-hook helper, v0.83 or the generator.
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('retired-uncategorised-' + [guid]::NewGuid())
+    try {
+        New-ArchGeneratorTarget -Target $t
+        New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude/commands') | Out-Null
+        $retained = Join-Path $t '.claude/commands/impact.md'
+        [IO.File]::WriteAllText($retained, "# my edited copy`n", [Text.UTF8Encoding]::new($false))
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "uncategorised retirement update failed: $out"
+        Assert (Test-Path -LiteralPath $retained -PathType Leaf) 'consumer-modified retired command was deleted'
+        Assert ($out -match "CANT-VERIFY: retained retired framework path '\.claude/commands/impact\.md' remains") "retained retired command was not diagnosed: $out"
+        Assert ($out -match 'retired with no replacement command') "diagnostic did not say there is no successor: $out"
+    } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'a retired .sh whose .ps1 twin is also retired still gets a migration replacement' {
+    # The generic .sh arm built its entry only while the twin was still in the incoming manifest, so
+    # a pair retired together produced no MIGRATION text at all. Drive the installer: asserting on
+    # the ledger alone is inert, because the filter that picks the pair also guarantees the claim.
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('retired-twin-migration-' + [guid]::NewGuid())
+    try {
+        New-ArchGeneratorTarget -Target $t
+        # CLAUDE.md is consumer-owned/protected: it is not overwritten, so a stale command inside it
+        # is exactly what the MIGRATION diagnostic exists to report.
+        [IO.File]::WriteAllText((Join-Path $t 'CLAUDE.md'),
+            "# Project`n`nRun ``bash scripts/impact-run.sh`` and ``bash scripts/sync-agent-files.sh`` nightly.`n",
+            [Text.UTF8Encoding]::new($false))
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "retired-twin migration update failed: $out"
+        foreach ($sh in @('scripts/impact-run.sh', 'scripts/sync-agent-files.sh')) {
+            Assert ($out -match "MIGRATION: protected consumer carrier 'CLAUDE\.md' names retired framework path '$([regex]::Escape($sh))'") "no MIGRATION line for $sh : $out"
+        }
+        Assert ($out -match 'that feature is retired and has no replacement command; remove the reference') "the no-successor replacement text was not emitted: $out"
+        Assert ($out -notmatch "replace that reference with: .*scripts/impact-run\.ps1") "a diagnostic directed the reader at the retired .ps1 twin: $out"
+    } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+}
 $danglingLinkProbeRoot = Join-Path ([IO.Path]::GetTempPath()) ('retired-link-probe-' + [guid]::NewGuid())
 $danglingFileLinksAvailable = $false
 try {

@@ -12599,3 +12599,11 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   digests enumerated across 93 tags; the digest method was validated by reproducing B-239's four
   hand-recorded digests first. Pre-merge legacy bytes are unrecoverable, so those copies are
   preserved, not deleted. Freed 207 chars of dotnet always-loaded headroom (191 -> 398).
+- **B-240** — DONE **2026-09-20**. Three retirement diagnostics in `src/core/scripts/install.ps1`.
+  The residual gate admitted five hand-listed categories, so anything retired later was preserved in
+  silence and every new retirement had to remember to add itself; it now reports every retained
+  retired path. The generic residual arm named the `.ps1` twin as the replacement even when that
+  twin was itself retired, sending the reader to another dead path. And the `MIGRATION:` arm emitted
+  only while the twin was still in the incoming manifest, so a pair retired together produced no
+  text at all — live for `scripts/impact-run.sh` and `scripts/sync-agent-files.sh`. Two cases added
+  to `UpdateDelivery.Tests.ps1`.

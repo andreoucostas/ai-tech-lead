@@ -670,12 +670,11 @@ if ($updateMode) {
         $slug = if ($isGitHubSkill) { $Matches[1] } else { $null }
         $isRetiredSyncScript = $retiredPath -in @('scripts/sync-agent-files.ps1', 'scripts/sync-agent-files.sh')
         $isRetiredGitHookHelper = $retiredPath -in $legacyGitHookRetiredDependencies
-        $isV083Retirement = $retirementLedger[$retiredPath].Version -eq '0.83.0'
-        # A consumer-modified generator preserved above would otherwise be diagnosed on the first
-        # update only, then go silent while still producing pages that load third-party script at
-        # view time. The .sh twin is already admitted by the v0.83 arm.
-        $isRetiredArchitectureGenerator = $retiredPath -eq 'scripts/build-architecture-html.ps1'
-        if ((-not $isGitHubSkill -and -not $isRetiredSyncScript -and -not $isRetiredGitHookHelper -and -not $isV083Retirement -and -not $isRetiredArchitectureGenerator) -or $deletePlan.Contains($retiredPath)) { continue }
+        # Every retained retired path is reported. This was an allow-list of five categories, so a
+        # path retired in any later release was preserved in silence -- and each new retirement had
+        # to remember to add itself, which is the same shape of defect the list was added to fix.
+        # Specific advice below still wins where it exists; the generic arm covers the rest.
+        if ($deletePlan.Contains($retiredPath)) { continue }
         $candidate = Get-ContainedTargetPath -Relative $retiredPath
         try { $entry = Get-Item -Force -LiteralPath $candidate -ErrorAction Stop }
         catch [Management.Automation.ItemNotFoundException] { continue }
@@ -699,10 +698,15 @@ if ($updateMode) {
         } elseif ($retiredPath -in @('scripts/build-architecture-html.ps1', 'scripts/build-architecture-html.sh')) {
             $reconciliationMessages.Add("CANT-VERIFY: retained retired generator '$retiredPath' remains. The generated architecture view is retired and has no replacement command; its output loaded third-party script from the network each time it was opened. Read docs/ARCHITECTURE.md directly, then remove this generator and any page it produced after review.")
         } else {
-            $replacement = if ($retiredPath.EndsWith('.sh', [StringComparison]::OrdinalIgnoreCase)) {
+            $twin = if ($retiredPath.EndsWith('.sh', [StringComparison]::OrdinalIgnoreCase)) {
                 $retiredPath.Substring(0, $retiredPath.Length - 3) + '.ps1'
-            } else { 'the supported PowerShell surface' }
-            $reconciliationMessages.Add("CANT-VERIFY: retained retired framework path '$retiredPath' remains. Do not execute it; migrate references to '$replacement' and remove the retired file after review.")
+            } else { $null }
+            # Naming a twin that is itself retired sends the consumer to another dead path.
+            if ($twin -and -not $retirementLedger.ContainsKey($twin)) {
+                $reconciliationMessages.Add("CANT-VERIFY: retained retired framework path '$retiredPath' remains. Do not execute it; migrate references to '$twin' and remove the retired file after review.")
+            } else {
+                $reconciliationMessages.Add("CANT-VERIFY: retained retired framework path '$retiredPath' remains. It is retired with no replacement command; remove the file and any reference to it after review.")
+            }
         }
     }
 }
@@ -731,6 +735,10 @@ foreach ($retiredPath in $(if ($updateMode) { @($retirementLedger.Keys) } else {
         $powerShellPath = $retiredPath.Substring(0, $retiredPath.Length - 3) + '.ps1'
         if ($incoming.ByPath.ContainsKey($powerShellPath)) {
             $retiredReferenceReplacements[$retiredPath] = "$followUpPowerShell $powerShellPath"
+        } else {
+            # The twin is retired or gone, so there is no successor to name. Emitting nothing here
+            # is how a stale reference survives with no diagnostic at all.
+            $retiredReferenceReplacements[$retiredPath] = 'that feature is retired and has no replacement command; remove the reference'
         }
     }
 }
