@@ -12607,3 +12607,12 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   only while the twin was still in the incoming manifest, so a pair retired together produced no
   text at all — live for `scripts/impact-run.sh` and `scripts/sync-agent-files.sh`. Two cases added
   to `UpdateDelivery.Tests.ps1`.
+- **B-260** — DONE **2026-09-20**. Observation only; nothing shipped changed. Claude Code 2.1.260 on
+  Windows 11, three headless `claude -p` runs: a scratch project whose only content was
+  `.claude/commands/security-review.md` answered `/security-review` with that file's marker token; a
+  sibling directory without the file got the built-in's own git-repository precondition text; and a
+  session asked to enumerate every entry of that name reported exactly one, from the project command
+  file, explicitly "not a built-in skill, not a plugin". So the project command replaces the built-in
+  rather than being shadowed by it, and the shipped security gate runs. The converse — the built-in
+  is unreachable in an installed project — is accepted, since the shipped command is the intended
+  gate. Recorded as WSD-095, bounded to that capability, date and version by WSD-066.

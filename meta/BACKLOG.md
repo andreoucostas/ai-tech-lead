@@ -10,7 +10,6 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
 | Rank | Item | Why here |
 |---|---|---|
-| 9 | B-260 `/security-review` shadowing | One live observation; if the built-in wins, a shipped security workflow never runs |
 | 10 | B-246 `AgentEvals.Tests.ps1` wiring | Smallest first step toward B-253 |
 | 11 | B-253 with/without-framework eval | Gives every later product decision an instrument, and its first report is WSD-091's condition for resuming the paused rows; WSD-016 and B-98 constrain it |
 | 13 | B-255 instruction-text de-duplication | Largest always-loaded saving; measure with B-253 |
@@ -165,12 +164,6 @@ registers, `.github/` or permission rules.
 **Priority:** P2 · **Effort:** L · **Invariants:** #6 #7
 **Status:** Open. No uninstall or rollback; `-WhatIf` skips the dirty-tree guard; conflicts surface
 as unstructured text; the version stamp promises a future update command. Sequence after B-258.
-
-### B-260 · Observe whether the host's built-in `/security-review` shadows the shipped command
-**Filed against:** v0.86.7 (2026-09-18)
-**Priority:** P2 · **Effort:** S · **Invariants:** #5
-**Status:** Open; one live observation (WSD-066). Claude Code ships a built-in of the same name and
-the vendor docs state no precedence; if the built-in wins, the shipped security workflow never runs.
 
 ### B-261 · Stop-time verification on Claude Code: run the evidenced build or tests before work is presented as complete
 **Filed against:** v0.86.7 (2026-09-18)

@@ -4405,3 +4405,17 @@ measured and refuses the edit that *removes* a leaked key — WSD-047's own fail
 bypass cost. Reconstruction is sound but needs each host's edit semantics, which the hook cannot
 know for tools it accepts by shape alone. Stated in `guard.ps1`'s header and shipped
 `docs/enforcement-surfaces.md`; the gap is dominated by the shell-write gap already answered DOCUMENT.
+
+## WSD-095: a project command file replaces the host built-in of the same name (2026-09-20)
+
+**Context.** B-260: if Claude Code's built-in `/security-review` shadowed the shipped command of that
+name, a consumer's security gate would never run, and vendor docs state no precedence. Observed
+2026-09-20, Claude Code 2.1.260 on Windows 11, `claude -p`: a scratch project holding only
+`.claude/commands/security-review.md` answered `/security-review` with that file's marker token; a
+sibling directory without the file got the built-in's own git-repository precondition text; asked to
+enumerate every entry of that name, the session reported exactly one, sourced from the project file.
+
+**Decision.** The project command wins and the built-in is replaced, not merged or ranked. Shipped
+commands may reuse a vendor name unguarded; the built-in becomes unreachable in an installed
+project, accepted because the shipped command is the intended gate. Per WSD-066 this holds for that
+capability, date and version only — re-observe before relying on it on another host.
