@@ -42,7 +42,7 @@ $timingPattern = '^TIMING \S+ \d+\.\d$'
 $start = $text.IndexOf("Measure-Stage 'dist-gates'")
 $end = $text.IndexOf("Measure-Stage 'meta-suite'", $start)
 $stage = if ($start -ge 0 -and $end -gt $start) { $text.Substring($start, $end - $start) } else { '' }
-$metaEnd = $text.IndexOf("Measure-Stage 'eval-selftest'", $end)
+$metaEnd = $text.IndexOf("Assert-GateBudget", $end)
 $metaStage = if ($end -ge 0 -and $metaEnd -gt $end) { $text.Substring($end, $metaEnd - $end) } else { '' }
 
 function Get-CiJob([string]$Name) {

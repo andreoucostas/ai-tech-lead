@@ -10,7 +10,6 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
 | Rank | Item | Why here |
 |---|---|---|
-| 10 | B-246 `AgentEvals.Tests.ps1` wiring | Smallest first step toward B-253 |
 | 11 | B-253 with/without-framework eval | Gives every later product decision an instrument, and its first report is WSD-091's condition for resuming the paused rows; WSD-016 and B-98 constrain it |
 | 13 | B-255 instruction-text de-duplication | Largest always-loaded saving; measure with B-253 |
 | 13a | B-272 `AGENTS.md` as the one instruction file | Same always-loaded text as B-255; removes the mirror and its drift gate. Rank provisional, set by the filing session |
@@ -94,12 +93,6 @@ reviewer's", and still ask for an orthogonal reviewer for high-risk changes; the
 **Priority:** P3 · **Effort:** M · **Invariants:** #6
 **Status:** Open. The outgoing-commit guard already inspects every outgoing blob and could refuse a
 commit subject whose tier is lower than its paths require. File-level policy only.
-
-### B-246 · AgentEvals.Tests.ps1 runs only inside release.ps1
-**Filed against:** v0.86.7 (2026-09-16)
-**Priority:** P3 · **Effort:** S · **Invariants:** #3
-**Status:** Open. `.claude/evals/tests/AgentEvals.Tests.ps1` is not in the meta-suite manifest and
-never runs in CI. Decide whether it joins the manifest (with its `TIMING` line) or stays release-only.
 
 ### B-268 · Maintainer skills still instruct obligations WSD-092 dropped
 **Filed against:** v0.86.7 (2026-09-18)

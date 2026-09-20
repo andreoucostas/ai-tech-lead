@@ -8,10 +8,17 @@
     "compose": 60,
     "dist-gates": 700,
     "meta-suite": 30,
-    "eval-selftest": 120,
-    "total-local-gates": 910
+    "total-local-gates": 790
   },
   "ceiling-revisions": [
+    {
+      "date": "2026-09-20",
+      "stage": "eval-selftest",
+      "from": 120,
+      "to": null,
+      "why": "B-246: the stage is retired, not re-timed. The agent-eval self-test proves a maintainer-only tool that ships nothing, so gating consumer releases on it is wrong in kind -- a grader regression would refuse a consumer fix with no ceiling involved. It now runs by recipe (DEVELOPING.md) after any change to the runner and before every -Live run. The trend corroborates rather than carries the decision: 12.0s recorded 2026-08-07, 53s and 90s measured 2026-09-20 on a loaded box, against this 120s ceiling, with B-253 about to add graders. total-local-gates recomputed to the literal sum 60+700+30.",
+      "measured": 53
+    },
     {
       "date": "2026-09-19",
       "stage": "meta-suite",

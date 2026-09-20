@@ -303,7 +303,7 @@ if ($branch -ne 'master') {
 # is not a useful local gate. Since B-245 the local meta suite is the four release-subject files
 # (13.2s serial, 2026-09-19); CI owns the full meta suite and all shipped-hook coverage on the
 # release commit before the tag. Re-measure before changing the budget or this banner.
-Write-Host "Releasing $Version. Local gates: compose x3 -> validate-dist x3 + context footprint -> release-subject meta files (DocTruth, ReleaseChangelogStamp, GateBudgetConsistency, WorkspaceBom) -> eval self-test."
+Write-Host "Releasing $Version. Local gates: compose x3 -> validate-dist x3 + context footprint -> release-subject meta files (DocTruth, ReleaseChangelogStamp, GateBudgetConsistency, WorkspaceBom)."
 Write-Host "Before a normal tag, CI must pass all eight Windows contexts: root plus three shipped-hook matrices under PowerShell 7 and Windows PowerShell 5.1."
 # The interruption promise used to be "nothing has been committed", full stop. After the push that is
 # simply false, and B-88 makes the window longer by adding a multi-minute wait to it. State the three
@@ -631,10 +631,6 @@ try {
 } finally {
     Remove-Item -LiteralPath $metaLog -Force -ErrorAction SilentlyContinue
 }
-}
-Measure-Stage 'eval-selftest' {
-    & pwsh -NoProfile -File (Join-Path $repo '.claude/evals/tests/AgentEvals.Tests.ps1')
-    Gate ($LASTEXITCODE -eq 0) 'agent-eval harness recurrence wrapper (no network)'
 }
 Assert-GateBudget
 

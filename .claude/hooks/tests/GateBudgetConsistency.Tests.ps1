@@ -1,13 +1,15 @@
 ﻿# Gate for meta/gate-budget.json's internal consistency. Does NOT ship.
-# Policy: total-local-gates must be at least the sum of all four per-stage ceilings, with zero
-# margin required. Every ceilings-seconds value must also be present, numeric, and positive.
+# Policy: total-local-gates must be at least the sum of all three per-stage ceilings, with zero
+# margin required. Every ceilings-seconds value must also be present, numeric, and positive, and no
+# ceiling may name a stage release.ps1 does not time -- Assert-GateBudget skips untimed stages, so
+# such a key is a budget nobody enforces (B-246 retired 'eval-selftest' this way).
 . (Join-Path $PSScriptRoot '_HookHarness.ps1')
 Reset-Tests
 
 $repoRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
 $realBudget = Join-Path $repoRoot 'meta/gate-budget.json'
-$requiredCeilings = @('compose', 'dist-gates', 'meta-suite', 'eval-selftest', 'total-local-gates')
-$stageCeilings = @('compose', 'dist-gates', 'meta-suite', 'eval-selftest')
+$requiredCeilings = @('compose', 'dist-gates', 'meta-suite', 'total-local-gates')
+$stageCeilings = @('compose', 'dist-gates', 'meta-suite')
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ('gate-budget-consistency-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $tmp -Force | Out-Null
 
@@ -35,6 +37,11 @@ function Test-GateBudgetConsistency {
                    $value -is [single] -or $value -is [double] -or $value -is [decimal]
         if (-not $numeric -or $value -le 0) {
             return [pscustomobject]@{ Ok = $false; Message = "MALFORMED: ceilings-seconds '$name' must be a positive number; got '$value'" }
+        }
+    }
+    foreach ($property in $ceilings.PSObject.Properties) {
+        if ($property.Name -notin $requiredCeilings) {
+            return [pscustomobject]@{ Ok = $false; Message = "MALFORMED: ceilings-seconds key '$($property.Name)' names no stage release.ps1 times" }
         }
     }
     $sum = 0.0

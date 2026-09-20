@@ -271,27 +271,27 @@ events, git state, file bytes — never transcript prose alone. It never runs in
 a release; see the locked design in `.claude/plans/2026-07-17-b41-agent-behavior-harness-design.md`
 and results in `meta/eval-results.md`.
 
-The agent-eval harness requires PowerShell 7. The repository-level obligation to run a
-representative suite under both PowerShell hosts and a hostile code page still applies; use
-`.claude/hooks/tests/ReleaseCiWatch.Tests.ps1 -SelfTest` for that cross-host leg. The canonical
-agent-eval recurrence wrapper below also verifies that Windows PowerShell 5.1 fails immediately at
-the declared version boundary rather than later at an unsupported encoding operation.
+The runner requires PowerShell 7 and declares it; Windows PowerShell 5.1 refuses at `#Requires`.
+The repository-level obligation to run a representative suite under both PowerShell hosts and a
+hostile code page still applies; use `.claude/hooks/tests/ReleaseCiWatch.Tests.ps1 -SelfTest` for
+that cross-host leg.
 
 ```powershell
 # free, no network — proves the harness's own typed-evidence grading on synthetic/adversarial
 # fixtures (malformed streams, keyword echoes, developer checkpoints, inverted tool-result
-# semantics, ...). Evals are deliberately a separate suite from hooks, so run their canonical
-# recurrence wrapper (release.ps1 runs this same command):
-pwsh -NoProfile -File .claude/evals/tests/AgentEvals.Tests.ps1
+# semantics, ...). It signals by exception, so check EXIT -- do not grep for FAIL lines:
+pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -SelfTest
 
 # spends real budget — requires dist/ to match the checked-out release (version == root
 # CHANGELOG head) with no local diff
 pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live [-Scenario route-fix] [-Model sonnet]
 ```
 
-`release.ps1` runs `-SelfTest` as a deterministic gate and, only after a successful release commit
-(and push), offers an interactive prompt for an optional `-Live` run — never a hard fail — and
-persists its evidence in a follow-up commit.
+`release.ps1` does not run the self-test (B-246 retired that stage: a maintainer-only tool that
+ships nothing must not be able to refuse a consumer release). Run `-SelfTest` yourself after any
+change to the runner and before every `-Live` run. After a successful release commit and push,
+`release.ps1` still offers the interactive prompt for an optional `-Live` run — never a hard fail —
+and persists its evidence in a follow-up commit.
 - **Speed:** slow by design — a process is spawned per hook invocation; a full dist suite takes
   ~1–2 min. Expected, not a hang.
 

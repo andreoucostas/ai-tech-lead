@@ -12616,3 +12616,14 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   rather than being shadowed by it, and the shipped security gate runs. The converse — the built-in
   is unreachable in an installed project — is accepted, since the shipped command is the intended
   gate. Recorded as WSD-095, bounded to that capability, date and version by WSD-066.
+- **B-246** — DONE **2026-09-20**. Closed by deletion, not by wiring. The wrapper and the
+  `eval-selftest` release stage are gone; the offline self-test now runs by recipe, after any change
+  to `run-agent-evals.ps1` and before every `-Live` run. The coupling was wrong in kind: a self-test
+  of a maintainer-only tool that ships nothing sat inside the hard gate for consumer releases, so a
+  grader regression would refuse a consumer fix with no ceiling involved. The timing trend
+  corroborates rather than carries it — 12.0s recorded 2026-08-07, 53s and 90s measured today
+  against a 120s ceiling, with B-253 about to add graders. Wiring it into the manifest was rejected:
+  B-132 recorded the wrapper's dual-host relaunch as an exception that holds only while it stays out
+  of a host-leg suite, and joining as-is would make it a real invariant #3 conflict in `windows-ps51`.
+  The runner, `scenarios.json` and `-SelfTest` are kept — B-98's "do not build a second one" stands
+  and B-253 needs the instrument. Design: `.claude/plans/inbox/2026-09-20-b246-eval-harness-disposition.md`.

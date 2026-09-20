@@ -4419,3 +4419,18 @@ enumerate every entry of that name, the session reported exactly one, sourced fr
 commands may reuse a vendor name unguarded; the built-in becomes unreachable in an installed
 project, accepted because the shipped command is the intended gate. Per WSD-066 this holds for that
 capability, date and version only — re-observe before relying on it on another host.
+
+## WSD-096: the agent-eval self-test is a recipe, not a release gate and not CI (2026-09-20)
+
+**Context.** B-246 asked whether `AgentEvals.Tests.ps1` should join the meta-suite manifest or stay
+release-only. Both answers keep a coupling that is wrong in kind: the self-test proves a
+maintainer-only tool that ships nothing, yet it sat inside `release.ps1`'s hard gate, so a grader
+regression would refuse a consumer fix with no ceiling involved. The trend corroborates — 12.0s
+recorded 2026-08-07, 53s and 90s measured 2026-09-20 against a 120s ceiling, B-253 adding graders.
+
+**Decision.** Delete the wrapper and the `eval-selftest` stage; keep the runner, `scenarios.json`
+and `-SelfTest`. Its trigger is a recipe in `DEVELOPING.md`: after any change to the runner, and
+before every `-Live` run. Exposure if the recipe is skipped is bounded and reaches no consumer —
+maintainer budget on a run scored by a broken grader. Wiring into the manifest was rejected: B-132's
+dual-host exception holds only while the wrapper stays out of a host-leg suite. B-98's "do not build
+a second one" stands; revisit only on B-253's first report.

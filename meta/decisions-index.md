@@ -62,6 +62,7 @@ authoritative.
 - “Two path-keyed tiers, guarded and ordinary; review only on the destructive guarded subset; the backlog is capped at 40 compact entries and a decision entry at ten lines.” — `meta/workspace-decisions.md WSD-093` (supersedes WSD-089's classes and success measure and WSD-092 items 3–5)
 - “The write guard's edit-scope gap is documented, not hardened: scanning the pre-edit file with the new text refuses the edit that removes a leaked key.” — `meta/workspace-decisions.md WSD-094` (applies WSD-047)
 - “A project `.claude/commands/<name>.md` replaces the host's built-in of the same name; the shipped `/security-review` runs.” — `meta/workspace-decisions.md WSD-095`
+- “The agent-eval self-test is a recipe (after a runner change, before a live run), not a release gate and not CI; the runner is kept for B-253.” — `meta/workspace-decisions.md WSD-096`
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`
