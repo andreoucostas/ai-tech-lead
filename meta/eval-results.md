@@ -1768,3 +1768,40 @@ Host: Claude Code 2.1.260 (Claude Code) · arm: framework · scratch: retained=T
 - **SUMMARY guard-retry** arm=framework outcome=0/0 excluded=2
 - **SUMMARY route-fix** arm=framework outcome=0/0 excluded=2
 
+Correction (hand-written, 2026-09-20): the four runs completed; the parser rejected system events
+that Claude Code 2.1.260 emits after the result (fixed in e18ded11). Re-graded offline from the
+retained transcripts: route-fix outcome=1/2 (the miss fixed the bug with no failing test run first);
+guard-retry outcome=2/2 with blockedToolResult=False in both — the PreToolUse guard did not block (B-275).
+
+
+## 2026-09-20 19:07:28 +01:00 — framework v0.88.0 (e18ded1149f364ec5695b538f08a7d5481e4302d)
+
+Host: Claude Code 2.1.260 (Claude Code) · arm: none · scratch: retained=True
+
+- **FAIL route-fix** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1313912 tokensIn=12 tokensOut=1134; arm=none outcome=False routeExercised=True fixed=True redTestEvent=-1 productionEdit=18 greenTestEvent=20
+- **FAIL route-fix** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1326114 tokensIn=12 tokensOut=1204; arm=none outcome=False routeExercised=True fixed=True redTestEvent=-1 productionEdit=17 greenTestEvent=19
+- **SUMMARY route-fix** arm=none outcome=0/2 excluded=0
+
+
+## 2026-09-20 19:10:33 +01:00 — framework v0.88.0 (e18ded1149f364ec5695b538f08a7d5481e4302d)
+
+Host: Claude Code 2.1.260 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS warehouse-route-p1** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.465178 tokensIn=28 tokensOut=9098; arm=framework outcome=False category=MAP_DISCOVERED channels=C2 usedDeadColumn=True joinedDimension=True readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p1** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.284396 tokensIn=14 tokensOut=5301; arm=framework outcome=False category=MAP_DISCOVERED channels=C2 usedDeadColumn=True joinedDimension=True readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **SUMMARY warehouse-route-p1** arm=framework outcome=0/2 excluded=0
+
+Correction (hand-written, 2026-09-20): both queries were correct. usedDeadColumn=True matched a SQL
+comment explaining why fact.FactSales.RegionName is unusable; the grader now strips comments.
+Re-graded offline from the retained runs: usedDeadColumn=False joinedDimension=True, outcome=2/2.
+Earlier usedDeadColumn=True joinedDimension=True rows in this file may carry the same artifact.
+
+
+## 2026-09-20 19:13:59 +01:00 — framework v0.88.0 (e18ded1149f364ec5695b538f08a7d5481e4302d)
+
+Host: Claude Code 2.1.260 (Claude Code) · arm: none · scratch: retained=True
+
+- **PASS warehouse-route-p1** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1774734 tokensIn=14 tokensOut=3109; arm=none outcome=True category=MAP_DISCOVERED channels=C2 usedDeadColumn=False joinedDimension=True readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p1** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.157129 tokensIn=12 tokensOut=2630; arm=none outcome=True category=NEITHER channels= usedDeadColumn=False joinedDimension=True readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **SUMMARY warehouse-route-p1** arm=none outcome=2/2 excluded=0
+

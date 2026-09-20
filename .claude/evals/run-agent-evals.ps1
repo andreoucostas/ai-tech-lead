@@ -1230,6 +1230,9 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
                 @(Get-ChildItem -LiteralPath $analysisPath -Filter '*.sql' -File | Where-Object { $_.Name -ne $requestedArtifact } | ForEach-Object { $_.Name })
             } else { @() }
             $sql = if ($artifactWritten) { Get-Content -Raw -LiteralPath $artifactPath } else { '' }
+            # Grade the executable SQL only. A comment explaining why fact.FactSales.RegionName is
+            # unusable scored usedDeadColumn=True on two correct live queries (B-253, 2026-09-20).
+            $sql = [regex]::Replace([regex]::Replace($sql, '(?s)/\*.*?\*/', ''), '(?m)--.*$', '')
             $attribute = switch ($Id) {
                 'warehouse-route-p1' { 'RegionName' }
                 'warehouse-route-p2' { 'CategoryName' }
@@ -2332,6 +2335,16 @@ GROUP BY [geo].[RegionName];
         $dimensionResult = Test-ScenarioEvidence 'warehouse-route-p1' $warehouseTemp $warehouseEcho 1
         if ($dimensionResult.Detail -notmatch 'usedDeadColumn=False joinedDimension=True') { throw "warehouseRouting missed dimension-join SQL: $($dimensionResult.Detail)" }
         if ($deadColumnResult.Outcome -ne $false -or $dimensionResult.Outcome -ne $true) { throw "warehouseRouting Outcome must be the written dimension-joined query without the dead column: dead=$($deadColumnResult.Outcome) dimension=$($dimensionResult.Outcome)" }
+        @'
+-- region is resolved via dim.DimRegion (fact.FactSales.RegionName is never populated) /* f.RegionName */
+SELECT r.RegionName, SUM(f.NetAmount) AS Revenue
+FROM fact.FactSales f
+JOIN dim.DimCustomer c ON c.CustomerKey = f.CustomerKey
+JOIN dim.DimRegion r ON r.RegionKey = c.RegionKey
+GROUP BY r.RegionName;
+'@ | Set-Content (Join-Path $warehouseTemp 'analysis/finance-regional-revenue.sql') -Encoding utf8NoBOM
+        $commentedResult = Test-ScenarioEvidence 'warehouse-route-p1' $warehouseTemp $warehouseEcho 1
+        if ($commentedResult.Detail -notmatch 'usedDeadColumn=False joinedDimension=True' -or $commentedResult.Outcome -ne $true) { throw "warehouseRouting scored a SQL comment naming the dead column as a use of it: $($commentedResult.Detail)" }
         'SELECT [fact].[FactSales].[RegionName] FROM [fact].[FactSales];' | Set-Content (Join-Path $warehouseTemp 'analysis/finance-regional-revenue.sql') -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-route-p1' $warehouseTemp $warehouseEcho 1).Detail -notmatch 'usedDeadColumn=True joinedDimension=False') { throw 'warehouseRouting missed bracketed three-part dead-column SQL' }
         'SELECT FactSales.RegionName FROM fact.FactSales;' | Set-Content (Join-Path $warehouseTemp 'analysis/finance-regional-revenue.sql') -Encoding utf8NoBOM
