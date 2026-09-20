@@ -940,7 +940,10 @@ function Read-Transcript([string]$Path) {
         if ($preInit.type -ne 'system' -and $preInit.type -ne 'rate_limit_event') { throw 'Only system hook/rate-limit events may precede system/init.' }
     }
     $terminal = @($events | Where-Object { $_.type -eq 'result' })
-    if ($terminal.Count -ne 1 -or $events[$events.Count - 1].type -ne 'result') { throw 'Stream JSON must end with exactly one terminal result event.' }
+    # Claude Code 2.1.x appends system bookkeeping (post_turn_summary, task_summary) after the
+    # result. Agent activity after the result is still a malformed stream.
+    $afterResult = @(if ($terminal.Count -eq 1) { $events | Select-Object -Skip ($events.IndexOf($terminal[0]) + 1) })
+    if ($terminal.Count -ne 1 -or @($afterResult | Where-Object { $_.type -ne 'system' }).Count) { throw 'Stream JSON must end with exactly one terminal result event.' }
     $toolIds = @{}
     $resultIds = @{}
     foreach ($event in $events) {
@@ -2039,6 +2042,9 @@ function Invoke-SelfTest {
             @('{"type":"assistant","message":{"content":[]}}','{"type":"system","subtype":"init"}','{"type":"result","is_error":false,"result":"done"}'),
             @('{"type":"system","subtype":"init"}','{"type":"assistant","message":{"content":[{"type":"tool_use","id":"once","name":"Read","input":{}}]}}','{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"once","content":"first"},{"type":"tool_result","tool_use_id":"once","content":"second"}]}}','{"type":"result","is_error":false,"result":"done"}')
         )
+        $trailingSystemPath = Join-Path $temp 'trailing-system.jsonl'
+        @('{"type":"system","subtype":"init"}','{"type":"result","is_error":false,"result":"done"}','{"type":"system","subtype":"post_turn_summary"}','{"type":"system","subtype":"task_summary"}') | Set-Content $trailingSystemPath -Encoding utf8NoBOM
+        if ((Get-TranscriptEvidence (Read-Transcript $trailingSystemPath)).Final.result -ne 'done') { throw 'system bookkeeping after the terminal result was not accepted' }
         $malformedIndex = 0
         foreach ($lines in $malformedCases) {
             $malformedIndex++

@@ -10,6 +10,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
 | Rank | Item | Why here |
 |---|---|---|
+| 10 | B-275 write guard did not block on Claude Code 2.1.260 | A shipped secret guard that does not fire is the guarded-tier harm; B-253's `guard-retry` numbers mean nothing until it is understood |
 | 11 | B-253 with/without-framework eval | Gives every later product decision an instrument, and its first report is WSD-091's condition for resuming the paused rows; WSD-016 and B-98 constrain it |
 | 13 | B-255 instruction-text de-duplication | Largest always-loaded saving; measure with B-253 |
 | 13a | B-272 `AGENTS.md` as the one instruction file | Same always-loaded text as B-255; removes the mirror and its drift gate. Rank provisional, set by the filing session |
@@ -125,6 +126,13 @@ tree; keep the FAQ content reachable (see B-262) and link the deck instead.
 **Status:** PARTIALLY DONE 2026-09-20. The runner has `-Arm framework|none`, `-Trials` and an
 arm-neutral `Outcome` on four scenarios (recipe: `DEVELOPING.md`); self-test green, no live run yet.
 Remaining: the first n=6 report (caps sum to 57 USD; needs the user's go), then rule ablation.
+
+### B-275 · The PreToolUse write guard did not block a key-shaped `Write` on Claude Code 2.1.260
+**Filed against:** v0.88.0 (2026-09-20)
+**Priority:** P1 · **Effort:** S to diagnose · **Invariants:** #5
+**Status:** Open; observed 2026-09-20 in B-253's first batch (headless `claude -p`, bypassPermissions).
+A key-shaped `Write` to `sample.env` succeeded though SessionStart and the PostToolUse audit hook fired
+and the same event piped to the installed `guard.ps1` exits 2. Last recorded live block: 2.1.212.
 
 ### B-255 · De-duplicate the shipped instruction text and remove maintainer-epistemic disclaimers
 **Filed against:** v0.86.7 (2026-09-18)

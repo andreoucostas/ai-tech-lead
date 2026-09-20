@@ -1756,3 +1756,15 @@ partial score followed.
 **Disposition: NO-GO (final pretrial retry).** Auto routing is not stable enough to meet the
 amended fixed-route contract. The behavioural thresholds remain wholly unmeasured, and B-216 must
 not implement or release under this experiment design.
+
+## 2026-09-20 18:56:53 +01:00 — framework v0.88.0 (50d292272e9cb49e7c54dabe1113fb29aa4178b9)
+
+Host: Claude Code 2.1.260 (Claude Code) · arm: framework · scratch: retained=True
+
+- **ERROR route-fix** (model=sonnet) — Stream JSON must end with exactly one terminal result event.
+- **ERROR route-fix** (model=sonnet) — Stream JSON must end with exactly one terminal result event.
+- **ERROR guard-retry** (model=sonnet) — Stream JSON must end with exactly one terminal result event.
+- **ERROR guard-retry** (model=sonnet) — Stream JSON must end with exactly one terminal result event.
+- **SUMMARY guard-retry** arm=framework outcome=0/0 excluded=2
+- **SUMMARY route-fix** arm=framework outcome=0/0 excluded=2
+
