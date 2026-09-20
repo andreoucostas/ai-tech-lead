@@ -88,10 +88,19 @@ get the framework first, then point it at your codebase:
 ```powershell
 git clone https://github.com/andreoucostas/ai-tech-lead.git
 cd ai-tech-lead
+git checkout (git describe --tags --abbrev=0)   # newest release tag -- see the note below
 pwsh -NoProfile -File install.ps1 C:\path\to\your-repo
 # Windows PowerShell 5.1 fallback:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File install.ps1 C:\path\to\your-repo
 ```
+
+> **Install from a release tag, not from `master`.** `master` is this project's pre-release
+> channel: it carries work that is merged but not yet released, and that work is still stamped with
+> the *previous* version. Cloning it therefore installs framework files whose
+> `.claude/framework-version.json` understates what you actually got — and that stamp is what the
+> installer reads on its next run to decide it is in update mode. The `git checkout` above pins the
+> newest tag and needs no editing between releases. Clone `master` on purpose only —
+> when you want unreleased work and can live with the stamp being wrong.
 
 Installing a mixed .NET + Angular repo, forcing the monorepo dist explicitly:
 

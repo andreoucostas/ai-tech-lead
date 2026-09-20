@@ -12577,3 +12577,11 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   pre-edit file together with the new text was measured and refuses the edit that *removes* a leaked
   key; reconstruction needs edit semantics the hook cannot know for tools it accepts by shape alone.
   The limit is stated in `guard.ps1`'s header and the shipped `docs/enforcement-surfaces.md`.
+- **B-239** — DONE **2026-09-20**, shipped in **v0.87.0**. The generated `docs/architecture.html`
+  viewer is retired rather than hardened: it loaded floating `marked`/`mermaid` CDN script with no
+  SRI or CSP. The generator goes to the retirement ledger; the page is replaced by a placeholder.
+- **B-244** — DONE **2026-09-20**. The root README's Quick start now checks out the newest release
+  tag (`git checkout (git describe --tags --abbrev=0)`) instead of installing whatever is on
+  `master`, and states that `master` is the pre-release channel whose content is still stamped with
+  the previous version. No version literal, so it needs no edit between releases. Verified against
+  the real remote at `fabd8302`, where `master` carried v0.87.0 content stamped 0.86.7.

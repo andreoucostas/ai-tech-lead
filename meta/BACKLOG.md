@@ -10,11 +10,9 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
 | Rank | Item | Why here |
 |---|---|---|
-| 4 | B-244 Quick Start installs `master` | Small; every new consumer installs unreleased content until fixed |
-| 5 | B-249 orphaned `.sh` snippets | Small deletion; invariant #3 residue |
+| 5 | B-249 orphaned `.sh` snippets | Small deletion; invariant #3 residue. Batch B-249, B-250 and B-240 into one release rather than tagging each |
 | 6 | B-250 `/impact` | Small retirement; misleading shipped command |
 | 7 | B-240 retired-twin diagnostics | Small; consumer-facing installer diagnostic gap |
-| 8 | B-239 independent review, then release v0.87.0 | Already delivered on master; batch B-244, B-249, B-250 and B-240 into this one release instead of tagging each |
 | 9 | B-260 `/security-review` shadowing | One live observation; if the built-in wins, a shipped security workflow never runs |
 | 10 | B-246 `AgentEvals.Tests.ps1` wiring | Smallest first step toward B-253 |
 | 11 | B-253 with/without-framework eval | Gives every later product decision an instrument, and its first report is WSD-091's condition for resuming the paused rows; WSD-016 and B-98 constrain it |
@@ -62,13 +60,6 @@ application. Broad recall and target-host efficacy are not established.
 knowledge and passed hidden grading, but its fixture failed the shipped validity check. A conforming
 fixture, VS Code, enterprise scale and outcome comparison remain unobserved.
 
-### B-239 · Resolve architecture viewer exposure and evaluate runtime retirement
-**Filed against:** v0.86.7 (2026-09-16)
-**Priority:** P2 · **Effort:** M · **Invariants:** #1, #3, #7
-**Status:** Delivered on master for v0.87.0 (unreleased): retirement composed and verified on direct
-PS7 and native 5.1, green on CI run 35113529270. Awaiting review under the new tiers, then the
-batched v0.87.0 release; no release approval is claimed here.
-
 ### B-240 · Retirements whose twin is also retired lose their consumer diagnostics
 **Filed against:** v0.86.7 (2026-09-16)
 **Priority:** P2 · **Effort:** S · **Invariants:** #1, #3
@@ -114,12 +105,6 @@ reviewer's", and still ask for an orthogonal reviewer for high-risk changes; the
 **Priority:** P3 · **Effort:** M · **Invariants:** #6
 **Status:** Open. The outgoing-commit guard already inspects every outgoing blob and could refuse a
 commit subject whose tier is lower than its paths require. File-level policy only.
-
-### B-244 · Decide whether consumers clone at a tag or master is declared a pre-release channel
-**Filed against:** v0.86.7 (2026-09-16)
-**Priority:** P2 (raised from P3 by WSD-090) · **Effort:** S · **Invariants:** #6 #7
-**Status:** Open. `README.md` tells consumers to `git clone` master, which carries unreleased content
-stamped with the previous version. Decide `git clone --branch v<X>` or an explicit pre-release note.
 
 ### B-246 · AgentEvals.Tests.ps1 runs only inside release.ps1
 **Filed against:** v0.86.7 (2026-09-16)
