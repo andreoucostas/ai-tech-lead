@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.88.0 — Unreleased
+## 0.88.0 — 2026-09-20
 
 - **The `/impact` command is retired.** Its A/B runner was removed in 0.83.0, so what remained was
   a descriptive report under a name most developers read as "what does this change affect?" — which

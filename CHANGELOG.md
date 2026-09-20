@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.88.0 — Unreleased
+## 0.88.0 — 2026-09-20
 
 B-249 deletes 19 files in five `snippets/.claude/hooks/*.sh/` directories — dead source for the
 twins WSD-073 retired. A rebuild of all three dists after the deletion left `dist/` byte-identical,
