@@ -4434,3 +4434,15 @@ before every `-Live` run. Exposure if the recipe is skipped is bounded and reach
 maintainer budget on a run scored by a broken grader. Wiring into the manifest was rejected: B-132's
 dual-host exception holds only while the wrapper stays out of a host-leg suite. B-98's "do not build
 a second one" stands; revisit only on B-253's first report.
+
+## WSD-097: after B-253's first report — knowledge rows held; a Copilot eval spike is approved (2026-09-21)
+
+**Context.** WSD-091 left resumption to the user on B-253's first report (`meta/eval-results.md`,
+2026-09-21): route-fix and warehouse-bind-sql 4/6 versus 0/6, warehouse-route-p1 6/6 in both arms,
+Claude Code only. v0.84.0's effect on outcomes is still unmeasured; no valid Copilot trial exists.
+
+**Decision (user, 2026-09-21: "hold b-* yes", "approve copilot feasibility: yes").** B-222, B-223
+and B-224 are held; everything shipped stays. One timeboxed spike (B-277) adds a Copilot executor
+inside `run-agent-evals.ps1` (B-98 stands) for the four bareArm scenarios. For that spike only,
+WSD-076/077's isolation, RK1's relay and CP1's candidate contract do not apply: the fixtures are
+disposable temp repos and the Claude Code sweep ran unisolated. It reports; it never gates (WSD-016).

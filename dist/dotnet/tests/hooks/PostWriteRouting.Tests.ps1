@@ -132,6 +132,38 @@ try {
             } finally { $env:PATH = $oldPath; $env:ATL_POSTWRITE_BUDGET_SEC = $oldBudget }
         }
     }
+
+    # Every case above invokes post-write.ps1 directly. The agent host does not: the registration
+    # carries "shell": "powershell", so the whole command STRING runs inside an outer PowerShell, and
+    # `-Command` collapses a failing native command's exit code to 1 -- the build failure is then a
+    # non-blocking hook error and never reaches the agent. Read the command registered for THIS host
+    # and launch it as the host does, over a fixture repo holding the shipped hook and a failing
+    # build tool. The registered path is repo-root-relative, so the fixture carries the hook.
+    $registrationRelative = if ($PSVersionTable.PSVersion.Major -ge 6) { '.claude/settings.json' } else { '.claude/settings.windows.json' }
+    $expectedInterpreter = if ($PSVersionTable.PSVersion.Major -ge 6) { 'pwsh' } else { 'powershell' }
+    It "registered post-write command reports a build failure with exit 2 through the host's outer -Command shell ($registrationRelative)" {
+        $registrationPath = Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path $registrationRelative
+        Assert (Test-Path -LiteralPath $registrationPath -PathType Leaf) "registration file not found: $registrationRelative"
+        $registration = [IO.File]::ReadAllText($registrationPath) | ConvertFrom-Json
+        $registered = @(foreach ($group in @($registration.hooks.PostToolUse)) {
+            foreach ($entry in @($group.hooks)) { if ([string]$entry.command -match 'post-write\.ps1') { [string]$entry.command } }
+        })
+        Assert ($registered.Count -eq 1) "expected exactly one registered post-write command in $registrationRelative, found $($registered.Count)"
+        $command = $registered[0]
+        Assert ((($command -split '\s+')[0]) -ceq $expectedInterpreter) "$registrationRelative registers '$((($command -split '\s+')[0]))', not '$expectedInterpreter'; this leg would relaunch the other PowerShell host"
+        foreach ($world in $worlds) {
+            $writeEvent = Reset-BuildWorld $world "@echo simulated build failure 1>&2`r`n@exit /b 1`r`n"
+            New-Item -ItemType Directory -Path (Join-Path $tmp '.claude/hooks') -Force | Out-Null
+            Copy-Item -LiteralPath $postWrite -Destination (Join-Path $tmp '.claude/hooks/post-write.ps1') -Force
+            $oldPath = $env:PATH
+            try {
+                $env:PATH = (Join-Path $tmp 'shim') + [IO.Path]::PathSeparator + $oldPath
+                $result = Invoke-RawProcess -FileName (Get-PsExe) -Arguments @('-NoProfile', '-Command', $command) -Stdin $writeEvent
+                Assert ($result.Exit -eq 2) "$($world.Name): failing build exited $($result.Exit) through the outer -Command shell, not 2; the host reads anything but 2 as a non-blocking error and the agent is never told. stderr: $($result.Err.Trim())"
+                Assert ($result.Err -match 'fix before continuing') "$($world.Name): the outer -Command shell lost the failure report on stderr: $($result.Err.Trim())"
+            } finally { $env:PATH = $oldPath }
+        }
+    }
 } finally {
     Pop-Location
     Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue

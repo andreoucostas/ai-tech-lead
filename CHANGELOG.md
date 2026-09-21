@@ -11,6 +11,29 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.89.0 — Unreleased
+
+B-275 restores the block signal of the two hooks that use one. v0.83.0 (2026-09-04) added
+`"shell": "powershell"` to every hook registration, which makes the agent host run the command
+**string** inside an outer PowerShell; `-Command` rewrites a failing native command's exit code to
+1, and `guard.ps1` and `post-write.ps1` both signal with exit 2. Claude Code 2.1.260 therefore
+logged `Hook PreToolUse:Write (PreToolUse) error: Blocked write to …sample.env: it contains an AWS
+access key id` and wrote the file 7 ms later. Observed live in a freshly installed fixture during
+B-253's `guard-retry` arm; the same event piped straight into `guard.ps1` still exits 2, which is
+exactly why every existing test was green — all of them bypass the registration.
+
+The fix appends ` ; exit $LASTEXITCODE` to the `guard.ps1` and `post-write.ps1` commands in the four
+registration files. The leading space is load-bearing: `validate-dist` check 8 and
+`framework-doctor`'s hook-path scan both read the `-File` token up to whitespace, so `guard.ps1;`
+would read as a non-PowerShell hook target and a dead registration. The other four hooks always exit
+0, so their exit code carries no decision and they are left unchanged; `.github/hooks/hooks.json` is
+untouched because that surface decides from stdout JSON [#5].
+
+`Guard.Tests.ps1` and `PostWriteRouting.Tests.ps1` each gain one case that reads the command string
+from the registration file belonging to the running host — `.claude/settings.json` under PowerShell
+7, `.claude/settings.windows.json` under 5.1 [#3] — and launches it through an outer `-Command`
+shell with a real event on stdin. Both were red on the unfixed tree on both hosts.
+
 ## 0.88.0 — 2026-09-20
 
 B-249 deletes 19 files in five `snippets/.claude/hooks/*.sh/` directories — dead source for the

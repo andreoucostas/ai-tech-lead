@@ -10,8 +10,8 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
 | Rank | Item | Why here |
 |---|---|---|
-| 10 | B-275 write guard did not block on Claude Code 2.1.260 | A shipped secret guard that does not fire is the guarded-tier harm; B-253's `guard-retry` numbers mean nothing until it is understood |
 | 11 | B-253 with/without-framework eval | Gives every later product decision an instrument, and its first report is WSD-091's condition for resuming the paused rows; WSD-016 and B-98 constrain it |
+| 12 | B-277 Copilot executor spike | WSD-097: the only surface with no valid trial; one session, stop after 8 runs without a scored trial |
 | 13 | B-255 instruction-text de-duplication | Largest always-loaded saving; measure with B-253 |
 | 13a | B-272 `AGENTS.md` as the one instruction file | Same always-loaded text as B-255; removes the mirror and its drift gate. Rank provisional, set by the filing session |
 | 14 | B-262 consumer README | Precondition for independent adopters (B-42) |
@@ -20,7 +20,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 17 | B-258 distribution re-audit | One-to-two-day spike; decides the shape of B-259 |
 | 18 | B-259 installer lifecycle basics | After B-258 so nothing is built twice |
 | 19 | B-261 Stop-time verification | B-248 bounded post-write at 45 s; settle Stop-hook latency against that |
-| Paused | B-222, B-223, B-224 | WSD-091 (user, 2026-09-18): no new work until B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
+| Held | B-222, B-223, B-224 | WSD-097 (user, 2026-09-21): held after B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
 | Low | B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 waits for B-253 |
@@ -38,21 +38,21 @@ established. No candidate paragraph shipped; B remains deferred.
 ### B-222 · Discover repository knowledge broadly, not only recurring recipes
 **Filed against:** v0.83.0 (2026-09-05)
 **Priority:** P1 · **Effort:** L · **Invariants:** #1 #2 #3 #6 #7
-**Status:** PARTIALLY DONE; paused by WSD-091. Shipped in v0.84.0; synthetic observations exercised
+**Status:** PARTIALLY DONE; held by WSD-097. Shipped in v0.84.0; synthetic observations exercised
 quiet facts, 40-file exhaustion and capture routing but retained source-grounding and report-fidelity
 misses. Representative enterprise and target-host behaviour remain unobserved.
 
 ### B-223 · Capture and refresh grounded knowledge in existing project-owned artifacts
 **Filed against:** v0.83.0 (2026-09-05)
 **Priority:** P1 · **Effort:** L · **Invariants:** #1 #2 #3 #6 #7
-**Status:** PARTIALLY DONE; paused by WSD-091. Shipped in v0.84.0; the skill-path write route is
+**Status:** PARTIALLY DONE; held by WSD-097. Shipped in v0.84.0; the skill-path write route is
 proven, but factual capture retained grounding misses and refresh refused an owner-approved
 application. Broad recall and target-host efficacy are not established.
 
 ### B-224 · Make ordinary Copilot tasks consult relevant project knowledge
 **Filed against:** v0.83.0 (2026-09-05)
 **Priority:** P1 · **Effort:** M · **Invariants:** #1 #2 #5 #6 #7
-**Status:** PARTIALLY DONE; paused by WSD-091. Shipped in v0.84.0; one ordinary CLI run read scoped
+**Status:** PARTIALLY DONE; held by WSD-097. Shipped in v0.84.0; one ordinary CLI run read scoped
 knowledge and passed hidden grading, but its fixture failed the shipped validity check. A conforming
 fixture, VS Code, enterprise scale and outcome comparison remain unobserved.
 
@@ -125,14 +125,21 @@ tree; keep the FAQ content reachable (see B-262) and link the deck instead.
 **Priority:** P1 · **Effort:** M · **Invariants:** #6
 **Status:** PARTIALLY DONE 2026-09-21. First n=6 report is in `meta/eval-results.md`: route-fix and
 warehouse-bind-sql 4/6 versus 0/6, warehouse-route-p1 6/6 both arms, guard-retry unscored (B-275).
-Remaining: the user's WSD-091 resumption decision, a guard-retry run after B-275, then rule ablation.
+Remaining: a guard-retry confirmation run on the release carrying B-275's fix, then rule ablation.
 
-### B-275 · The PreToolUse write guard did not block a key-shaped `Write` on Claude Code 2.1.260
-**Filed against:** v0.88.0 (2026-09-20)
-**Priority:** P1 · **Effort:** S to diagnose · **Invariants:** #5
-**Status:** Open; diagnosed 2026-09-20, host launch inferred. A key-shaped `Write` succeeded live. The
-hook command exits 2 directly but 1 under `powershell|pwsh -Command` (what `"shell": "powershell"`,
-added 2026-09-04, implies); `; exit $LASTEXITCODE` restores 2. Guarded fix; check every blocking hook.
+### B-276 · A missing hook interpreter is now silent on Claude Code
+**Filed against:** v0.88.0 (2026-09-21)
+**Priority:** P2 · **Effort:** S · **Invariants:** #5
+**Status:** Open; measured by B-275's fresh-session review. With `pwsh` off `PATH` the registered guard
+command exited 1 (a visible hook error) before B-275's suffix and exits 0 after it. A branch in the
+command string stalls every write under a bash carrier; detect in the doctor or installer instead.
+
+### B-277 · Copilot executor spike for the with/without eval
+**Filed against:** v0.88.0 (2026-09-21)
+**Priority:** P1 · **Effort:** M · **Invariants:** #5 #6
+**Status:** Open; approved by WSD-097. `Invoke-CopilotProcess` plus an events-to-transcript converter
+inside the runner; first trial warehouse-bind-sql, bare arm; stop after 8 runs without a scored trial.
+Known risks: folder trust for hooks, no `.github/skills/` carrier, undocumented `events.jsonl`.
 
 ### B-255 · De-duplicate the shipped instruction text and remove maintainer-epistemic disclaimers
 **Filed against:** v0.86.7 (2026-09-18)

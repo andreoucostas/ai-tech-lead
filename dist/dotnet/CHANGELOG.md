@@ -4,6 +4,23 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.89.0 — Unreleased
+
+- **The write guard now really stops the write on Claude Code for Windows.** Since 0.83.0
+  (2026-09-04) the hook registrations have asked Claude Code to run each hook through an outer
+  PowerShell, and that shell reports any failing command as exit code 1. The guard blocks with exit
+  code 2 — so Claude Code saw a non-blocking hook *error* rather than a block: it printed the reason
+  ("Blocked write to …") and then performed the write anyway. A hardcoded secret, an
+  `// eslint-disable`, or a weakened test could reach disk with the block message sitting right
+  there in the transcript. This release restores the block.
+- **The post-write `dotnet build` check was being dropped the same way.** A build that failed after
+  a write printed its errors but was never fed back to the agent, which then carried on over a
+  broken build. It now reaches the agent again.
+- **To get the fix, update this repo.** The installer refreshes `.claude/settings.json` and saves
+  your current copy to `.claude/.state/settings.json.pre-update` first: if your team added its own
+  hooks or settings to that file, re-apply them from that backup afterwards.
+  `.claude/settings.windows.json`, the Windows PowerShell 5.1 fallback, carries the same fix.
+
 ## 0.88.0 — 2026-09-20
 
 - **The `/impact` command is retired.** Its A/B runner was removed in 0.83.0, so what remained was

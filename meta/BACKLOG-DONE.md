@@ -12627,3 +12627,14 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   of a host-leg suite, and joining as-is would make it a real invariant #3 conflict in `windows-ps51`.
   The runner, `scenarios.json` and `-SelfTest` are kept — B-98's "do not build a second one" stands
   and B-253 needs the instrument. Design: `.claude/plans/inbox/2026-09-20-b246-eval-harness-disposition.md`.
+- **B-275** — DONE **2026-09-21**. The PreToolUse write guard reported a block and the write happened
+  anyway on Claude Code 2.1.260. Cause: v0.83.0 (2026-09-04) added `"shell": "powershell"` to every
+  hook registration, so the host runs the command *string* through an outer PowerShell, and
+  `-Command` rewrites a failing native command's exit code to 1 — the host then reads a non-blocking
+  hook error. Measured: the same event piped straight into `guard.ps1` EXIT=2, through
+  `pwsh|powershell -Command` EXIT=1, through `cmd /d /c` EXIT=2. Fix: ` ; exit $LASTEXITCODE`
+  appended to the `guard.ps1` and `post-write.ps1` commands in all four registration files — the two
+  hooks whose exit code carries a decision; the leading space keeps `validate-dist` check 8 and
+  `framework-doctor` able to read the `-File` token. No gate caught it because every hook test piped
+  events straight into the script; `Guard.Tests.ps1` and `PostWriteRouting.Tests.ps1` now each launch
+  the registered command string for the running host through an outer `-Command` shell.
