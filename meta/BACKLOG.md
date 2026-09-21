@@ -123,16 +123,16 @@ tree; keep the FAQ content reachable (see B-262) and link the deck instead.
 ### B-253 · Scheduled, non-gating with/without-framework behavioural eval on the existing harness
 **Filed against:** v0.86.7 (2026-09-18)
 **Priority:** P1 · **Effort:** M · **Invariants:** #6
-**Status:** PARTIALLY DONE 2026-09-20. The runner has `-Arm framework|none`, `-Trials` and an
-arm-neutral `Outcome` on four scenarios (recipe: `DEVELOPING.md`); self-test green, no live run yet.
-Remaining: the first n=6 report (caps sum to 57 USD; needs the user's go), then rule ablation.
+**Status:** PARTIALLY DONE 2026-09-21. First n=6 report is in `meta/eval-results.md`: route-fix and
+warehouse-bind-sql 4/6 versus 0/6, warehouse-route-p1 6/6 both arms, guard-retry unscored (B-275).
+Remaining: the user's WSD-091 resumption decision, a guard-retry run after B-275, then rule ablation.
 
 ### B-275 · The PreToolUse write guard did not block a key-shaped `Write` on Claude Code 2.1.260
 **Filed against:** v0.88.0 (2026-09-20)
 **Priority:** P1 · **Effort:** S to diagnose · **Invariants:** #5
-**Status:** Open; observed 2026-09-20 in B-253's first batch (headless `claude -p`, bypassPermissions).
-A key-shaped `Write` to `sample.env` succeeded though SessionStart and the PostToolUse audit hook fired
-and the same event piped to the installed `guard.ps1` exits 2. Last recorded live block: 2.1.212.
+**Status:** Open; diagnosed 2026-09-20, host launch inferred. A key-shaped `Write` succeeded live. The
+hook command exits 2 directly but 1 under `powershell|pwsh -Command` (what `"shell": "powershell"`,
+added 2026-09-04, implies); `; exit $LASTEXITCODE` restores 2. Guarded fix; check every blocking hook.
 
 ### B-255 · De-duplicate the shipped instruction text and remove maintainer-epistemic disclaimers
 **Filed against:** v0.86.7 (2026-09-18)

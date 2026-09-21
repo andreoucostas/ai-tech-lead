@@ -1823,3 +1823,106 @@ Host: Claude Code 2.1.260 (Claude Code) · arm: none · scratch: retained=True
 - **FAIL warehouse-bind-sql** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.560674 tokensIn=20 tokensOut=24911; arm=none outcome=False category=MAP_DISCOVERED channels=C2 reachedAddEntity=False factWritten=True boundCustomer=False boundProduct=False boundDate=True resolvedCustomer=False resolvedProduct=False resolvedDate=True regionOnFact=True naturalKeyOnFact=True degenerateOnFact=True newDimTables=
 - **SUMMARY warehouse-bind-sql** arm=none outcome=0/2 excluded=0
 
+
+## 2026-09-20 21:41:15 +01:00 — framework v0.88.0 (4e948d047868a092fb1a90b37a98ee4c913d7865)
+
+Host: Claude Code 2.1.260 (Claude Code) · arm: framework · scratch: retained=True
+
+- **FAIL route-fix** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.377852 tokensIn=16 tokensOut=3069; arm=framework outcome=False routeExercised=True fixed=True redTestEvent=-1 productionEdit=28 greenTestEvent=32
+- **PASS route-fix** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.428823 tokensIn=18 tokensOut=3301; arm=framework outcome=True routeExercised=True fixed=True redTestEvent=20 productionEdit=23 greenTestEvent=25
+- **PASS route-fix** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2102492 tokensIn=12 tokensOut=1783; arm=framework outcome=True routeExercised=True fixed=True redTestEvent=21 productionEdit=24 greenTestEvent=27
+- **PASS route-fix** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.256223 tokensIn=16 tokensOut=2571; arm=framework outcome=True routeExercised=True fixed=True redTestEvent=19 productionEdit=22 greenTestEvent=24
+- **SUMMARY route-fix** arm=framework outcome=3/4 excluded=0
+
+
+## 2026-09-20 21:42:56 +01:00 — framework v0.88.0 (4e948d047868a092fb1a90b37a98ee4c913d7865)
+
+Host: Claude Code 2.1.260 (Claude Code) · arm: none · scratch: retained=True
+
+- **FAIL route-fix** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.132085 tokensIn=12 tokensOut=1171; arm=none outcome=False routeExercised=True fixed=True redTestEvent=-1 productionEdit=19 greenTestEvent=22
+- **FAIL route-fix** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1321328 tokensIn=12 tokensOut=1196; arm=none outcome=False routeExercised=True fixed=True redTestEvent=-1 productionEdit=18 greenTestEvent=20
+- **FAIL route-fix** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1312428 tokensIn=12 tokensOut=1130; arm=none outcome=False routeExercised=True fixed=True redTestEvent=-1 productionEdit=16 greenTestEvent=18
+- **FAIL route-fix** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1303302 tokensIn=12 tokensOut=1059; arm=none outcome=False routeExercised=True fixed=True redTestEvent=-1 productionEdit=18 greenTestEvent=20
+- **SUMMARY route-fix** arm=none outcome=0/4 excluded=0
+
+
+## 2026-09-20 21:48:18 +01:00 — framework v0.88.0 (4e948d047868a092fb1a90b37a98ee4c913d7865)
+
+Host: Claude Code 2.1.260 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS warehouse-route-p1** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3459184 tokensIn=18 tokensOut=7335; arm=framework outcome=True category=MAP_DISCOVERED channels=C2 usedDeadColumn=False joinedDimension=True readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p1** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2732628 tokensIn=12 tokensOut=5614; arm=framework outcome=False category=MAP_DISCOVERED channels=C2 usedDeadColumn=False joinedDimension=False readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p1** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3240254 tokensIn=18 tokensOut=6198; arm=framework outcome=True category=MAP_DISCOVERED channels=C2 usedDeadColumn=False joinedDimension=True readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p1** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2722006 tokensIn=14 tokensOut=4598; arm=framework outcome=True category=MAP_DISCOVERED channels=C2 usedDeadColumn=False joinedDimension=True readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **SUMMARY warehouse-route-p1** arm=framework outcome=3/4 excluded=0
+
+Correction (hand-written, 2026-09-20): the outcome=False run selected RegionName, NetAmount and
+CalendarDate from rpt.vwFinanceExtract, which already joins FactSales -> DimCustomer -> DimRegion;
+the query is correct. Outcome now also accepts the scenario's consumption view. Corrected: 4/4.
+
+
+## 2026-09-20 21:54:39 +01:00 — framework v0.88.0 (4e948d047868a092fb1a90b37a98ee4c913d7865)
+
+Host: Claude Code 2.1.260 (Claude Code) · arm: none · scratch: retained=True
+
+- **PASS warehouse-route-p1** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1763234 tokensIn=12 tokensOut=3832; arm=none outcome=True category=MAP_DISCOVERED channels=C2 usedDeadColumn=False joinedDimension=True readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p1** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1934866 tokensIn=16 tokensOut=3393; arm=none outcome=True category=MAP_DISCOVERED channels=C2 usedDeadColumn=False joinedDimension=True readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p1** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1665952 tokensIn=12 tokensOut=3174; arm=none outcome=True category=NEITHER channels= usedDeadColumn=False joinedDimension=True readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p1** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1654574 tokensIn=12 tokensOut=3121; arm=none outcome=True category=NEITHER channels= usedDeadColumn=False joinedDimension=True readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **SUMMARY warehouse-route-p1** arm=none outcome=4/4 excluded=0
+
+
+## 2026-09-21 07:29:44 +01:00 — framework v0.88.0 (4e948d047868a092fb1a90b37a98ee4c913d7865)
+
+Host: Claude Code 2.1.260 (Claude Code) · arm: framework · scratch: retained=True
+
+- **FAIL warehouse-bind-sql** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.9377774 tokensIn=36 tokensOut=30685; arm=framework outcome=False category=SKILL_READ channels=C2,C3 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=True naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **FAIL warehouse-bind-sql** (model=sonnet) — agentExit=0 timedOut=False costUsd=1.1442354 tokensIn=48 tokensOut=35003; arm=framework outcome=False category=SKILL_READ channels=C2,C3 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=True naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **PASS warehouse-bind-sql** (model=sonnet) — agentExit=0 timedOut=False costUsd=1.2762432 tokensIn=40 tokensOut=26696; arm=framework outcome=True category=BOTH channels=C1,C2 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **PASS warehouse-bind-sql** (model=sonnet) — agentExit=0 timedOut=False costUsd=1.0482168 tokensIn=34 tokensOut=30394; arm=framework outcome=True category=BOTH channels=C1,C2 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **SUMMARY warehouse-bind-sql** arm=framework outcome=2/4 excluded=0
+
+
+## 2026-09-21 08:28:19 +01:00 — framework v0.88.0 (4e948d047868a092fb1a90b37a98ee4c913d7865)
+
+Host: Claude Code 2.1.260 (Claude Code) · arm: none · scratch: retained=True
+
+- **FAIL warehouse-bind-sql** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.538569 tokensIn=24 tokensOut=20777; arm=none outcome=False category=MAP_DISCOVERED channels=C2 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=True naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **FAIL warehouse-bind-sql** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.4655378 tokensIn=14 tokensOut=6727; arm=none outcome=False category=MAP_DISCOVERED channels=C2 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=True naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **FAIL warehouse-bind-sql** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.6763276 tokensIn=22 tokensOut=9357; arm=none outcome=False category=MAP_DISCOVERED channels=C2 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=True naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **PASS warehouse-bind-sql** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.5867674 tokensIn=30 tokensOut=23201; arm=none outcome=True category=MAP_DISCOVERED channels=C2 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **SUMMARY warehouse-bind-sql** arm=none outcome=1/4 excluded=0
+
+Correction (hand-written, 2026-09-21): the outcome=True run put `InvoiceRegionKey` on the fact, loaded
+from dim.DimRegion.RegionKey: the same direct fact -> DimRegion path under a role-prefixed name, which
+`\bRegionKey\b` missed. The grader now tolerates a role prefix. Corrected: 0/4. All twelve
+warehouse-bind-sql runs were re-graded with the fixed grader; no other row changed.
+
+## B-253 first with/without-framework report — 2026-09-21 (hand-written summary of the blocks above)
+
+Claude Code 2.1.260, model sonnet, framework v0.88.0, n=6 per arm per scenario, same prompts and
+fixtures in both arms; the bare arm installs nothing and keeps the fixture's conventions and map.
+Rates are after the dated corrections above; every outcome=False was checked against the written files.
+
+| scenario | what Outcome means | framework | none | mean cost per run, framework / none |
+|---|---|---|---|---|
+| route-fix | failing test seen, then the fix, then green | 4/6 | 0/6 | 0.35 / 0.13 USD |
+| warehouse-route-p1 | attribute reached through its dimension or the view that does | 6/6 | 6/6 | 0.33 / 0.17 USD |
+| warehouse-bind-sql | new fact bound to existing dimensions, no region key on the fact | 4/6 | 0/6 | 1.03 / 0.60 USD |
+| guard-retry | final file holds no key-shaped value | not scored | not run | see B-275 |
+
+- route-fix and warehouse-bind-sql: Fisher's exact on 4/6 versus 0/6 is p = 0.06 two-sided (0.03
+  one-sided). Suggestive at this n, not established. In route-fix every run in both arms fixed the
+  bug; the difference is reproducing it first.
+- warehouse-route-p1 shows no outcome difference. B-98's 0/6 -> 6/6 measured reach of the skill and
+  map, not the written query; on this model the bare agent reads the reporting view and joins correctly.
+- The framework arm costs 1.7 to 2.7 times as much per run.
+- guard-retry is not scored: the PreToolUse guard did not block the key-shaped Write (B-275), so the
+  two framework runs ended safe only because the agent ran guard.ps1 itself.
+- Instrument: four grader or parser defects surfaced and were fixed during this sweep (events after
+  the result; a SQL comment read as a column use; a correct query over the consumption view; a
+  role-prefixed region key). Three scored a correct answer wrong and one scored a wrong answer right.
+  Older rows in this file were not re-examined and deserve less trust than their labels suggest.
+- Scope: Claude Code only; nothing here speaks for Copilot (WSD-091). The child process loads the
+  maintainer's user-level Claude Code configuration in both arms. Total spend about 16 USD, 38 runs.
+

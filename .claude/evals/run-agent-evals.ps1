@@ -1283,7 +1283,10 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             if ($c3) { $channels += 'C3' }
             if ($c4) { $channels += 'C4' }
             if ($c5) { $channels += 'C5' }
-            return [pscustomobject]@{ Status = $status; Pass = $status -eq 'PASS'; Outcome = [bool]($artifactWritten -and $joinedDimension -and -not $usedDeadColumn); Detail = "category=$category channels=$($channels -join ',') usedDeadColumn=$usedDeadColumn joinedDimension=$joinedDimension readView=$readView readViewTarget=$(if ($relevantView) { $relevantView } else { 'none' }) artifactWritten=$artifactWritten otherSqlArtifacts=$($otherArtifacts -join ',')" }
+            # Selecting from the consumption view that already joins the owning dimension is a correct
+            # answer too (a live framework-arm query over rpt.vwFinanceExtract scored False, 2026-09-20).
+            $viaView = [bool]($relevantView -and $sql -match "(?i)\b(?:FROM|JOIN)\s+(?:\[?rpt\]?\s*\.\s*)?\[?$relevantView\]?(?![A-Za-z0-9_])")
+            return [pscustomobject]@{ Status = $status; Pass = $status -eq 'PASS'; Outcome = [bool]($artifactWritten -and ($joinedDimension -or $viaView) -and -not $usedDeadColumn); Detail = "category=$category channels=$($channels -join ',') usedDeadColumn=$usedDeadColumn joinedDimension=$joinedDimension readView=$readView readViewTarget=$(if ($relevantView) { $relevantView } else { 'none' }) artifactWritten=$artifactWritten otherSqlArtifacts=$($otherArtifacts -join ',')" }
         }
         { $_ -in @('warehouse-fact-existing','warehouse-fact-new','warehouse-fact-snapshot','warehouse-fact-abstain') } {
             $successful = @($e.Tools | Where-Object { $e.ToolResults.ContainsKey($_.Id) -and -not $e.ToolResults[$_.Id].is_error })
@@ -1757,7 +1760,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             # The snowflake violation. Region is reached through DimCustomer.RegionKey in this
             # warehouse -- rpt.vwFinanceExtract is the proof -- so a RegionKey on the new fact is a
             # second, contradictory path to the same dimension.
-            $regionOnFact  = $factBody -match '(?i)\bRegionKey\b'
+            $regionOnFact  = $factBody -match '(?i)\b[A-Za-z]*RegionKey\b'
             # Narrow on purpose: natural key IN PLACE OF the surrogate. Carrying both is a defensible
             # traceability choice and must not be scored as the defect.
             #
@@ -2345,6 +2348,10 @@ GROUP BY r.RegionName;
 '@ | Set-Content (Join-Path $warehouseTemp 'analysis/finance-regional-revenue.sql') -Encoding utf8NoBOM
         $commentedResult = Test-ScenarioEvidence 'warehouse-route-p1' $warehouseTemp $warehouseEcho 1
         if ($commentedResult.Detail -notmatch 'usedDeadColumn=False joinedDimension=True' -or $commentedResult.Outcome -ne $true) { throw "warehouseRouting scored a SQL comment naming the dead column as a use of it: $($commentedResult.Detail)" }
+        "SELECT RegionName, SUM(NetAmount) AS Revenue FROM rpt.vwFinanceExtract WHERE CalendarDate >= '2026-01-01' GROUP BY RegionName;" | Set-Content (Join-Path $warehouseTemp 'analysis/finance-regional-revenue.sql') -Encoding utf8NoBOM
+        if ((Test-ScenarioEvidence 'warehouse-route-p1' $warehouseTemp $warehouseEcho 1).Outcome -ne $true) { throw 'warehouseRouting Outcome rejected a query over the consumption view that already joins the owning dimension' }
+        'SELECT RegionName, SUM(NetAmount) AS Revenue FROM rpt.vwFinanceExtractOld GROUP BY RegionName;' | Set-Content (Join-Path $warehouseTemp 'analysis/finance-regional-revenue.sql') -Encoding utf8NoBOM
+        if ((Test-ScenarioEvidence 'warehouse-route-p1' $warehouseTemp $warehouseEcho 1).Outcome -ne $false) { throw 'warehouseRouting Outcome accepted a query over a different view' }
         'SELECT [fact].[FactSales].[RegionName] FROM [fact].[FactSales];' | Set-Content (Join-Path $warehouseTemp 'analysis/finance-regional-revenue.sql') -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'warehouse-route-p1' $warehouseTemp $warehouseEcho 1).Detail -notmatch 'usedDeadColumn=True joinedDimension=False') { throw 'warehouseRouting missed bracketed three-part dead-column SQL' }
         'SELECT FactSales.RegionName FROM fact.FactSales;' | Set-Content (Join-Path $warehouseTemp 'analysis/finance-regional-revenue.sql') -Encoding utf8NoBOM
@@ -2833,6 +2840,10 @@ JOIN dim.DimDate d ON d.CalendarDate = s.InvoiceDate;
         $bindRegionResult = Test-ScenarioEvidence 'warehouse-bind-mixed' $bindTemp $bindNoTools 1
         if ($bindRegionResult.Pass -or $bindRegionResult.Detail -notmatch 'regionOnFact=True') { throw "warehouseDimensionBinding accepted RegionKey as a direct fact FK: $($bindRegionResult.Detail)" }
         if ($bindPositive.Outcome -ne $true -or $bindRegionResult.Outcome -ne $false) { throw "warehouseDimensionBinding Outcome must follow its arm-neutral pass condition: green=$($bindPositive.Outcome) red=$($bindRegionResult.Outcome)" }
+        # A role-prefixed region key is the same direct fact -> DimRegion path (live bare-arm run, 2026-09-21).
+        ($bindPositiveFact.Replace('    InvoiceDateKey INT NOT NULL,', "    InvoiceDateKey INT NOT NULL,`n    InvoiceRegionKey INT NOT NULL,")) | Set-Content -LiteralPath $bindFactPath -Encoding utf8NoBOM
+        $bindRoleRegionResult = Test-ScenarioEvidence 'warehouse-bind-mixed' $bindTemp $bindNoTools 1
+        if ($bindRoleRegionResult.Pass -or $bindRoleRegionResult.Detail -notmatch 'regionOnFact=True') { throw "warehouseDimensionBinding accepted a role-prefixed RegionKey as a direct fact FK: $($bindRoleRegionResult.Detail)" }
 
         # Defect 3: natural key stored IN PLACE OF the surrogate key.
         ($bindPositiveFact.Replace('    CustomerKey INT NOT NULL,', '    CustRef NVARCHAR(50) NOT NULL,')) | Set-Content -LiteralPath $bindFactPath -Encoding utf8NoBOM
