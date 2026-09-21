@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.89.1 — Unreleased
+## 0.89.1 — 2026-09-21
 
 - **Your agent is now told to use a matching skill, not only shown the list.** On GitHub Copilot CLI
   the skills under `.claude/skills/` were loaded and listed to the agent, but in our test runs it

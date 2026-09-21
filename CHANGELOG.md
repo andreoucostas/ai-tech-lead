@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.89.1 — Unreleased
+## 0.89.1 — 2026-09-21
 
 B-278. B-277's nine framework-arm runs on Copilot CLI 1.0.83 never touched a skill. The carrier was
 not the cause: the retained `events.jsonl` system prompts list all 24 project skills from

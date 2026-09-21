@@ -1,7 +1,7 @@
 <!--
 ai-tech-lead-framework
 <!-- @stack:stamp -->
-  version: 0.89.0
+  version: 0.89.1
   applied: 2026-09-21
   When you sync template updates, bump these fields and update .claude/framework-version.json.
 -->

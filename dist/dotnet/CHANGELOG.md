@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.89.1 — Unreleased
+## 0.89.1 — 2026-09-21
 
 - **Your agent is now told to use a matching skill, not only shown the list.** On GitHub Copilot CLI
   the skills under `.claude/skills/` were loaded and listed to the agent, but in our test runs it
