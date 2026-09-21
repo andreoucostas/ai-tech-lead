@@ -12638,3 +12638,9 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   `framework-doctor` able to read the `-File` token. No gate caught it because every hook test piped
   events straight into the script; `Guard.Tests.ps1` and `PostWriteRouting.Tests.ps1` now each launch
   the registered command string for the running host through an outer `-Command` shell.
+
+- **B-277** — DONE **2026-09-21** (WSD-097). `run-agent-evals.ps1` gained `-Executor copilot`
+  (`Invoke-CopilotProcess`, `ConvertFrom-CopilotEvents`): Copilot CLI's per-session `events.jsonl` is
+  converted to the Claude-shaped transcript, so fixtures, graders and `Outcome` are shared and there is
+  no second rig. First live trial scored; 17 runs, one premium request each; hooks loaded and the guard
+  blocked on Copilot. Summary in `meta/eval-results.md`; the skill-reach finding is B-278.

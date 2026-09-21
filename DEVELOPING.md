@@ -293,7 +293,21 @@ pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live [-Scenario route-f
 $bare = 'route-fix,guard-retry,warehouse-route-p1,warehouse-bind-sql'
 pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Arm framework -Trials 6 -Scenario $bare
 pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Arm none -Trials 6 -Scenario $bare
+
+# B-277 (WSD-097) Copilot CLI executor — same runner, fixtures and graders; one premium request per
+# run, capped by -CopilotMaxAiCredits (default 30). -CopilotModel is always explicit ('auto' is
+# refused: it resolves to a different vendor per run). Copilot and Claude Code numbers are never
+# compared with each other; the header, every row and the SUMMARY carry executor=copilot. Start here:
+pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Executor copilot -Arm none -Trials 1 -Scenario warehouse-bind-sql -TimeoutSeconds 600
 ```
+
+Under `-Executor copilot` the runner reads `~/.copilot/session-state/<session-id>/events.jsonl` for
+the session id it passed and converts it into the Claude-shaped transcript the graders already read.
+A missing, empty, truncated or unterminated log scores **ERROR** (could not examine), never FAIL.
+Copilot defers repository hooks in `-p` mode unless the folder is trusted, so the framework arm sets
+the CLI's own `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true` opt-in rather than writing to
+`~/.copilot/config.json`; each row reports `hooksLoaded=`, and `hooksLoaded=False` in the framework
+arm means the enforcement surface was absent and that trial says nothing about the framework.
 
 `release.ps1` does not run the self-test (B-246 retired that stage: a maintainer-only tool that
 ships nothing must not be able to refuse a consumer release). Run `-SelfTest` yourself after any

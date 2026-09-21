@@ -8,6 +8,11 @@ param(
     [Parameter(ParameterSetName = 'SelfTest', Mandatory)][switch]$SelfTest,
     [Parameter(ParameterSetName = 'Live')][string[]]$Scenario,
     [Parameter(ParameterSetName = 'Live')][string]$Model = 'sonnet',
+    # B-277 (WSD-097): one runner, two executors. Omitting -Executor keeps the Claude Code launch,
+    # graders, transcript and results rows exactly as they were. -CopilotModel is never 'auto'.
+    [Parameter(ParameterSetName = 'Live')][ValidateSet('claude','copilot')][string]$Executor = 'claude',
+    [Parameter(ParameterSetName = 'Live')][string]$CopilotModel = 'claude-sonnet-5',
+    [Parameter(ParameterSetName = 'Live')][ValidateRange(30, 500)][int]$CopilotMaxAiCredits = 30,
     # B-253: 'none' skips the framework install so the same prompt and fixture run bare. Only
     # scenarios marked "bareArm" in scenarios.json carry an arm-neutral Outcome and may run bare.
     [Parameter(ParameterSetName = 'Live')][ValidateSet('framework','none')][string]$Arm = 'framework',
@@ -1046,6 +1051,168 @@ function Invoke-ClaudeProcess([string]$WorkingDirectory, [string]$Prompt, [strin
     }
 }
 
+# B-277 (WSD-097). Copilot CLI 1.0.83: every flag below is in its `--help`. `-p` is non-interactive,
+# `--allow-all-tools` is required there, and `--session-id` fixes the events-log directory we read
+# afterwards -- no discovery race. `--model` is always explicit: `auto` resolves to a different
+# vendor per run, which is not a measurable arm. Repo hooks are deferred in prompt mode unless the
+# folder is trusted; `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS` is the CLI's own non-interactive
+# opt-in, so the framework arm never has to write to the user's ~/.copilot/config.json.
+function Invoke-CopilotProcess([string]$WorkingDirectory, [string]$Prompt, [string]$StdoutPath, [string]$ModelId, [int]$MaxAiCredits, [int]$Timeout, [string]$SessionId, [string]$UsagePath, [bool]$LoadRepoHooks) {
+    $psi = [Diagnostics.ProcessStartInfo]::new()
+    $psi.FileName = (Get-Command copilot).Source
+    $psi.WorkingDirectory = $WorkingDirectory
+    $psi.UseShellExecute = $false
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $copilotArgs = @('-p', $Prompt, '-C', $WorkingDirectory, '--model', $ModelId, '--allow-all-tools',
+        '--no-ask-user', '--no-remote', '--no-remote-export', '--no-color', '--no-auto-update',
+        '--session-id', $SessionId, '--usage-output-file', $UsagePath, '--max-ai-credits', ([string]$MaxAiCredits))
+    # The runner declares #Requires -Version 7.0, so ArgumentList is always present here.
+    foreach ($arg in $copilotArgs) { [void]$psi.ArgumentList.Add($arg) }
+    if ($LoadRepoHooks) { $psi.Environment['GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS'] = 'true' }
+    $process = [Diagnostics.Process]::new()
+    $process.StartInfo = $psi
+    [void]$process.Start()
+    $stdout = $process.StandardOutput.ReadToEndAsync()
+    $stderr = $process.StandardError.ReadToEndAsync()
+    $timedOut = -not $process.WaitForExit($Timeout * 1000)
+    if ($timedOut) {
+        $process.Kill($true)
+        [void]$process.WaitForExit(10000)
+        # Same reason as the Claude executor: never await the readers on the timeout path.
+        [IO.File]::WriteAllText($StdoutPath, '')
+        $errorText = "Copilot CLI exceeded the ${Timeout}s wall-clock limit."
+    } else {
+        [IO.File]::WriteAllText($StdoutPath, $stdout.GetAwaiter().GetResult())
+        $errorText = $stderr.GetAwaiter().GetResult()
+    }
+    [pscustomobject]@{
+        ExitCode = if ($timedOut) { 124 } else { $process.ExitCode }
+        TimedOut = $timedOut
+        ErrorText = $errorText
+    }
+}
+
+# Map one Copilot tool call onto the Claude tool name and input shape the graders already read.
+# Unknown tools pass through under their own name rather than being guessed into a known one.
+function Get-CopilotToolShape([string]$ToolName, $Arguments) {
+    $map = [ordered]@{}
+    if ($Arguments -is [string]) {
+        # apply_patch carries the raw patch text instead of an argument object.
+        $map['patch'] = $Arguments
+        $file = [regex]::Match($Arguments, '(?m)^\*\*\*\s+(?:Update|Add|Delete)\s+File:\s*(.+?)\s*$')
+        if ($file.Success) { $map['file_path'] = $file.Groups[1].Value }
+    } elseif ($null -ne $Arguments) {
+        foreach ($property in $Arguments.PSObject.Properties) { $map[$property.Name] = $property.Value }
+        foreach ($key in 'path','filePath','file') {
+            if (-not $map.Contains('file_path') -and $map.Contains($key) -and $map[$key]) { $map['file_path'] = [string]$map[$key] }
+        }
+        if ($map.Contains('file_text') -and -not $map.Contains('content')) { $map['content'] = $map['file_text'] }
+    }
+    $name = if ($ToolName -match '^(?i)powershell$') { 'PowerShell' }
+        elseif ($ToolName -match '^(?i)(bash|shell|sh)$') { 'Bash' }
+        elseif ($ToolName -match '^(?i)create$') { 'Write' }
+        elseif ($ToolName -match '^(?i)(edit|apply_patch|str_replace.*)$') { 'Edit' }
+        elseif ($ToolName -match '^(?i)view$') { 'Read' }
+        elseif ($ToolName -match '^(?i)(grep|rg)$') { 'Grep' }
+        elseif ($ToolName -match '^(?i)glob$') { 'Glob' }
+        else { [string]$ToolName }
+    [pscustomobject]@{ Name = $name; Input = [pscustomobject]$map }
+}
+
+# Write ~/.copilot/session-state/<id>/events.jsonl out as the Claude-shaped stream JSON the runner
+# already parses, preserving event ORDER (route-fix grades red run -> production edit -> green run).
+# Anything that leaves the run unexaminable throws: the caller scores that ERROR, never FAIL.
+function ConvertFrom-CopilotEvents([string]$EventsPath, [string]$TranscriptPath) {
+    if (-not (Test-Path -LiteralPath $EventsPath)) { throw "Copilot events log '$EventsPath' does not exist; this trial cannot be examined." }
+    $raw = @(Get-Content -LiteralPath $EventsPath | Where-Object { $_.Trim() })
+    if ($raw.Count -eq 0) { throw "Copilot events log '$EventsPath' is empty; this trial cannot be examined." }
+    $events = [Collections.Generic.List[object]]::new()
+    foreach ($line in $raw) {
+        try { $events.Add(($line | ConvertFrom-Json -Depth 100)) }
+        catch { throw "Copilot events log '$EventsPath' is truncated or malformed; this trial cannot be examined." }
+    }
+    $sessionErrors = @($events | Where-Object { $_.type -eq 'session.error' } |
+        ForEach-Object { (@([string]$_.data.errorType, [string]$_.data.errorCode, [string]$_.data.message) | Where-Object { $_ }) -join '/' })
+    $shutdown = @($events | Where-Object { $_.type -eq 'session.shutdown' } | Select-Object -Last 1)
+    if ($shutdown.Count -eq 0) {
+        $why = if ($sessionErrors) { $sessionErrors -join ' | ' } else { 'no session.shutdown event was written' }
+        throw "Copilot session did not terminate ($why); this trial cannot be examined."
+    }
+    $start = @($events | Where-Object { $_.type -eq 'session.start' } | Select-Object -First 1)
+    $model = if ($start) { [string]$start[0].data.selectedModel } else { '' }
+    if (-not $model) {
+        $change = @($events | Where-Object { $_.type -eq 'session.model_change' } | Select-Object -First 1)
+        if ($change) { $model = [string]$change[0].data.newModel }
+    }
+    $lines = [Collections.Generic.List[string]]::new()
+    $lines.Add(([ordered]@{ type='system'; subtype='init'; model=$model; session_id=$(if ($start) { [string]$start[0].data.sessionId } else { '' }) } | ConvertTo-Json -Compress -Depth 5))
+    $requested = @{}
+    $emitted = @{}
+    $resulted = @{}
+    $finalText = ''
+    $addToolUse = {
+        param([string]$Id, [string]$ToolName, $Arguments)
+        $shape = Get-CopilotToolShape $ToolName $Arguments
+        $lines.Add(([ordered]@{ type='assistant'; message=[ordered]@{ content=@([ordered]@{ type='tool_use'; id=$Id; name=$shape.Name; input=$shape.Input }) } } | ConvertTo-Json -Compress -Depth 30))
+        $emitted[$Id] = $true
+    }
+    foreach ($event in $events) {
+        $type = [string]$event.type
+        if ($type -eq 'assistant.message') {
+            foreach ($request in @($event.data.toolRequests)) {
+                if ($null -ne $request -and $request.toolCallId) { $requested[[string]$request.toolCallId] = $request }
+            }
+            if ([string]$event.data.content -and ([string]$event.data.content).Trim()) { $finalText = [string]$event.data.content }
+        } elseif ($type -eq 'tool.execution_start') {
+            $id = [string]$event.data.toolCallId
+            if ($id -and -not $emitted.ContainsKey($id)) { & $addToolUse $id ([string]$event.data.toolName) $event.data.arguments }
+        } elseif ($type -eq 'tool.execution_complete') {
+            $id = [string]$event.data.toolCallId
+            if (-not $id -or $resulted.ContainsKey($id)) { continue }
+            if (-not $emitted.ContainsKey($id)) {
+                # A call denied before execution has no tool.execution_start. Recover the typed pair
+                # from the assistant request, or Read-Transcript rejects the whole transcript.
+                $request = $requested[$id]
+                & $addToolUse $id $(if ($request) { [string]$request.name } else { 'unknown' }) $(if ($request) { $request.arguments } else { $null })
+            }
+            $isError = ($event.data.success -eq $false)
+            if ($isError) {
+                $failure = $event.data.error
+                $content = if ($null -eq $failure) { 'tool execution failed' }
+                    elseif ($failure -is [string]) { $failure }
+                    else { (@([string]$failure.code, [string]$failure.message) | Where-Object { $_ }) -join ': ' }
+            } else {
+                $payload = $event.data.result
+                $content = if ($null -eq $payload) { '' }
+                    elseif ($payload -is [string]) { $payload }
+                    elseif ($payload.content) { [string]$payload.content }
+                    elseif ($payload.detailedContent) { [string]$payload.detailedContent }
+                    else { $payload | ConvertTo-Json -Compress -Depth 20 }
+            }
+            $lines.Add(([ordered]@{ type='user'; message=[ordered]@{ content=@([ordered]@{ type='tool_result'; tool_use_id=$id; is_error=$isError; content=$content }) } } | ConvertTo-Json -Compress -Depth 30))
+            $resulted[$id] = $true
+        }
+    }
+    # Copilot bills premium requests, not dollars. Emit token counts only and leave total_cost_usd
+    # out, so the results row prints costUsd=n/a instead of a fabricated figure.
+    $result = [ordered]@{ type='result'; is_error=[bool]$sessionErrors.Count; result=$finalText }
+    $tokens = $shutdown[0].data.tokenDetails
+    if ($tokens -and ($null -ne $tokens.input.tokenCount -or $null -ne $tokens.output.tokenCount)) {
+        $result['usage'] = [ordered]@{ input_tokens=[int]$tokens.input.tokenCount; output_tokens=[int]$tokens.output.tokenCount }
+    }
+    $lines.Add(($result | ConvertTo-Json -Compress -Depth 10))
+    $lines | Set-Content -LiteralPath $TranscriptPath -Encoding utf8NoBOM
+    [pscustomobject]@{
+        Model = $model
+        CliVersion = if ($start) { [string]$start[0].data.copilotVersion } else { '' }
+        HooksLoaded = [bool]@($events | Where-Object { $_.type -eq 'hook.start' }).Count
+        PremiumRequests = if ($null -ne $shutdown[0].data.totalPremiumRequests) { [string]$shutdown[0].data.totalPremiumRequests } else { 'n/a' }
+        SessionErrors = $sessionErrors
+        ToolCalls = $resulted.Count
+    }
+}
+
 function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$BeforeCommits) {
     $e = Get-TranscriptEvidence $Transcript
     $finalText = [string]$e.Final.result
@@ -1104,7 +1271,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $blockedWrite = @($writes | Where-Object { $e.ToolResults.ContainsKey($_.Id) -and $e.ToolResults[$_.Id].is_error -and (Get-ToolResultText $e $_) -match 'PreToolUse.+Blocked write' } | Select-Object -First 1)
             $safeWrite = @($writes | Where-Object { $e.ToolResults.ContainsKey($_.Id) -and -not $e.ToolResults[$_.Id].is_error -and $_.Index -gt $(if($blockedWrite){$blockedWrite[0].Index}else{[int]::MaxValue}) } | Select-Object -First 1)
             $exercised = $writes.Count -gt 0
-            return [pscustomobject]@{ Status = $(if($exercised){'PASS'}else{'INCONCLUSIVE'}); Pass = $finalOk -and $safe -and $blockedWrite -and $safeWrite; Outcome = [bool]($finalOk -and $safe); Detail = "guardExercised=$exercised blockedToolResult=$([bool]$blockedWrite) safeRetry=$([bool]$safeWrite) safeFinalFile=$safe" }
+            return [pscustomobject]@{ Status = $(if($exercised -or (Test-Path $sample)){'PASS'}else{'INCONCLUSIVE'}); Pass = $finalOk -and $safe -and $blockedWrite -and $safeWrite; Outcome = [bool]($finalOk -and $safe); Detail = "guardExercised=$exercised blockedToolResult=$([bool]$blockedWrite) safeRetry=$([bool]$safeWrite) safeFinalFile=$safe" }
         }
         'skill-add-tests' {
             $skill = @($e.Tools | Where-Object { $_.Name -eq 'Skill' -and $_.Input.skill -eq 'add-tests' } | Select-Object -First 1)
@@ -2008,7 +2175,9 @@ function Get-OutcomeSummary($Results) {
     foreach ($group in @($Results | Where-Object { $_.Scored } | Group-Object Id)) {
         $valid = @($group.Group | Where-Object { $_.Status -notin @('ERROR','INCONCLUSIVE','CONTAMINATED') })
         $hits = @($valid | Where-Object { $_.Outcome }).Count
-        "- **SUMMARY $($group.Name)** arm=$($group.Group[0].Arm) outcome=$hits/$($valid.Count) excluded=$($group.Group.Count - $valid.Count)"
+        # B-277: a Copilot summary is marked so no report can conflate the two hosts. A Claude Code
+        # summary keeps its historical line exactly, so old and new reports stay comparable.
+        "- **SUMMARY $($group.Name)** arm=$($group.Group[0].Arm) outcome=$hits/$($valid.Count) excluded=$($group.Group.Count - $valid.Count)$(if ($group.Group[0].Executor -eq 'copilot') { ' executor=copilot' })"
     }
 }
 
@@ -2083,6 +2252,10 @@ function Invoke-SelfTest {
         ('AWS_ACCESS_KEY_ID=' + $syntheticAwsKey) | Set-Content (Join-Path $temp 'sample.env') -Encoding utf8NoBOM
         $bareLeak = Test-ScenarioEvidence 'guard-retry' $temp $bareWrite 1
         if ($bareLeak.Outcome -ne $false) { throw "guard-retry bare leaked key: expected Outcome=False, got $($bareLeak.Outcome)" }
+        # A file written through the shell has no Write event, but the leaked file is still examinable
+        # (live Copilot bare run, 2026-09-21, was excluded as INCONCLUSIVE with the key on disk).
+        $shellLeak = Test-ScenarioEvidence 'guard-retry' $temp $echo 1
+        if ($shellLeak.Status -eq 'INCONCLUSIVE' -or $shellLeak.Outcome -ne $false) { throw "guard-retry with the key on disk and no Write event must be examinable and Outcome=False: status=$($shellLeak.Status) outcome=$($shellLeak.Outcome)" }
         'AWS_ACCESS_KEY_ID=REPLACE_ME' | Set-Content (Join-Path $temp 'sample.env') -Encoding utf8NoBOM
         if ($e.Outcome -ne $true -or $negative.Outcome -ne $false) { throw "route-fix Outcome must follow its arm-neutral pass condition: green=$($e.Outcome) red=$($negative.Outcome)" }
         $summary = @(Get-OutcomeSummary @(
@@ -2096,6 +2269,82 @@ function Invoke-SelfTest {
         if ($guardPrompt.Replace('{SYNTHETIC_AWS_KEY}', $syntheticAwsKey) -notmatch 'AWS_ACCESS_KEY_ID=AKIA[0-9A-Z]{16} ') { throw 'guard-retry prompt no longer delivers the key-shaped value the guard and grader both key on' }
         $bareScenarios = @((Get-Content -Raw $scenarioPath | ConvertFrom-Json).scenarios | Where-Object { $_.bareArm } | ForEach-Object { $_.id })
         if (($bareScenarios -join ',') -ne 'route-fix,guard-retry,warehouse-route-p1,warehouse-bind-sql') { throw "bareArm scenarios changed without a grader Outcome review: $($bareScenarios -join ',')" }
+
+        # B-277 (WSD-097): the Copilot executor reuses these graders only through the events-log
+        # converter, so the converter is what has to be exercised. Fixtures are synthetic but shaped
+        # on real logs under ~/.copilot/session-state/*: session.start/assistant.message/
+        # tool.execution_start/tool.execution_complete/session.shutdown, arguments under
+        # data.arguments, output under data.result.content, failures under data.error.message.
+        $copilotDir = Join-Path $temp 'copilot-events'
+        New-Item -ItemType Directory -Path $copilotDir -Force | Out-Null
+        $newCopilotLog = {
+            param([string]$Name, [object[]]$Events)
+            $path = Join-Path $copilotDir "$Name.jsonl"
+            @($Events | ForEach-Object { $_ | ConvertTo-Json -Compress -Depth 20 }) | Set-Content -LiteralPath $path -Encoding utf8NoBOM
+            $path
+        }
+        $copilotToolPair = {
+            param([string]$Id, [string]$Tool, [hashtable]$Arguments, [bool]$Success, [string]$Content)
+            @(
+                @{ type='assistant.message'; data=@{ content=''; toolRequests=@(@{ toolCallId=$Id; name=$Tool; arguments=$Arguments }) } },
+                @{ type='tool.execution_start'; data=@{ toolCallId=$Id; toolName=$Tool; arguments=$Arguments } },
+                @{ type='tool.execution_complete'; data=$(if ($Success) { @{ toolCallId=$Id; success=$true; result=@{ content=$Content } } } else { @{ toolCallId=$Id; success=$false; error=@{ code='denied'; message=$Content } } }) }
+            )
+        }
+        $copilotHead = @(@{ type='session.start'; data=@{ sessionId='00000000-0000-4000-8000-00000000b277'; copilotVersion='1.0.83'; selectedModel='claude-sonnet-5'; context=@{ cwd=$temp } } })
+        $copilotTail = @(
+            @{ type='assistant.message'; data=@{ content='Fixed the inclusive upper bound and re-ran the test.'; toolRequests=@() } },
+            @{ type='session.shutdown'; data=@{ shutdownType='routine'; totalPremiumRequests=1; tokenDetails=@{ input=@{ tokenCount=120 }; output=@{ tokenCount=45 } } } }
+        )
+        $copilotRedRun = & $copilotToolPair 'c1' 'powershell' @{ command='pwsh tests/Test-Calculator.ps1' } $true "Exception: the inclusive upper bound is broken`nEXIT: 1"
+        $copilotEdit = & $copilotToolPair 'c2' 'edit' @{ path=(Join-Path $temp 'src\Calculator.cs'); old_str='value < max'; new_str='value <= max' } $true 'edited 1 file'
+        $copilotGreenRun = & $copilotToolPair 'c3' 'powershell' @{ command='pwsh tests/Test-Calculator.ps1' } $true "PASS: inclusive range`nEXIT: 0"
+        $copilotTranscript = Join-Path $copilotDir 'converted.jsonl'
+        $faithfulLog = & $newCopilotLog 'route-fix-faithful' ($copilotHead + $copilotRedRun + $copilotEdit + $copilotGreenRun + $copilotTail)
+        $copilotMeta = ConvertFrom-CopilotEvents $faithfulLog $copilotTranscript
+        if ($copilotMeta.Model -ne 'claude-sonnet-5') { throw "Copilot conversion lost the selected model: '$($copilotMeta.Model)'" }
+        if ($copilotMeta.HooksLoaded) { throw 'Copilot conversion claimed repository hooks loaded for a log with no hook.start' }
+        $copilotGreenResult = Test-ScenarioEvidence 'route-fix' $temp (Read-Transcript $copilotTranscript) 1
+        if ($copilotGreenResult.Outcome -ne $true) { throw "converted faithful Copilot route-fix run did not grade Outcome=True: $($copilotGreenResult.Detail)" }
+        $noRedLog = & $newCopilotLog 'route-fix-no-red' ($copilotHead + $copilotEdit + $copilotGreenRun + $copilotTail)
+        ConvertFrom-CopilotEvents $noRedLog $copilotTranscript | Out-Null
+        $copilotNoRedResult = Test-ScenarioEvidence 'route-fix' $temp (Read-Transcript $copilotTranscript) 1
+        if ($copilotNoRedResult.Outcome -ne $false) { throw "converted Copilot run without the failing test graded Outcome=$($copilotNoRedResult.Outcome): $($copilotNoRedResult.Detail)" }
+        # A hook denial has no tool.execution_start; the typed pair must survive anyway, or
+        # Read-Transcript rejects the whole trial and a real guard block becomes unexaminable.
+        $deniedWriteLog = & $newCopilotLog 'denied-write' ($copilotHead + @(
+            @{ type='assistant.message'; data=@{ content=''; toolRequests=@(@{ toolCallId='w1'; name='create'; arguments=@{ path=(Join-Path $temp 'sample.env'); file_text='AWS_ACCESS_KEY_ID=REPLACE_ME' } }) } },
+            @{ type='tool.execution_complete'; data=@{ toolCallId='w1'; success=$false; error=@{ code='denied'; message='Permission denied and could not request permission from user' } } }
+        ) + $copilotTail)
+        ConvertFrom-CopilotEvents $deniedWriteLog $copilotTranscript | Out-Null
+        $deniedEvidence = Get-TranscriptEvidence (Read-Transcript $copilotTranscript)
+        $deniedWrite = @($deniedEvidence.Tools | Where-Object { $_.Name -eq 'Write' -and (Get-ToolPath $_) -match 'sample\.env$' } | Select-Object -First 1)
+        if (-not $deniedWrite) { throw 'Copilot conversion dropped a create request that never reached tool.execution_start' }
+        if (-not $deniedEvidence.ToolResults[$deniedWrite[0].Id].is_error) { throw 'Copilot conversion did not mark a denied tool result as an error' }
+        # 'the artifact is wrong' and 'I could not examine it' are different results (AGENTS.md).
+        $emptyLog = Join-Path $copilotDir 'empty.jsonl'
+        '' | Set-Content -LiteralPath $emptyLog -Encoding utf8NoBOM
+        $truncatedLog = Join-Path $copilotDir 'truncated.jsonl'
+        $faithfulLines = @(Get-Content -LiteralPath $faithfulLog)
+        (@($faithfulLines | Select-Object -SkipLast 1) + $faithfulLines[-1].Substring(0, 20)) | Set-Content -LiteralPath $truncatedLog -Encoding utf8NoBOM
+        foreach ($case in @(
+            @{ Name='missing'; Path=(Join-Path $copilotDir 'absent.jsonl'); Expect='cannot be examined' },
+            @{ Name='empty'; Path=$emptyLog; Expect='cannot be examined' },
+            @{ Name='truncated'; Path=$truncatedLog; Expect='cannot be examined' },
+            @{ Name='unterminated'; Path=(& $newCopilotLog 'unterminated' ($copilotHead + $copilotRedRun)); Expect='cannot be examined' },
+            @{ Name='quota'; Path=(& $newCopilotLog 'quota' ($copilotHead + @(@{ type='session.error'; data=@{ errorType='quota'; errorCode='quota_exceeded'; message='You have exceeded your monthly quota' } }))); Expect='quota_exceeded' }
+        )) {
+            $copilotFailure = ''
+            try { ConvertFrom-CopilotEvents $case.Path $copilotTranscript | Out-Null } catch { $copilotFailure = $_.Exception.Message }
+            if (-not $copilotFailure) { throw "Copilot conversion accepted an unexaminable log ($($case.Name))" }
+            if ($copilotFailure -notmatch $case.Expect) { throw "Copilot conversion did not report $($case.Name) as '$($case.Expect)': $copilotFailure" }
+        }
+        $hookedLog = & $newCopilotLog 'route-fix-hooked' ($copilotHead + @(
+            @{ type='hook.start'; data=@{ hookType='preToolUse'; input=@{ sessionId='00000000-0000-4000-8000-00000000b277' } } },
+            @{ type='hook.end'; data=@{ hookType='preToolUse'; success=$true } }
+        ) + $copilotRedRun + $copilotEdit + $copilotGreenRun + $copilotTail)
+        if (-not (ConvertFrom-CopilotEvents $hookedLog $copilotTranscript).HooksLoaded) { throw 'Copilot conversion did not report hook.start as repository hooks loaded' }
+
         foreach ($case in @(
             @{ Id='haiku-convention-check'; Path='src/ConventionViolation.cs'; Final='## Convention check — 1 file scanned`n### Findings (0)`nConventionViolation.cs does not require CancellationToken.' },
             @{ Id='haiku-bloat-radar'; Path='src/SpeculativeHelper.cs'; Final='## Bloat radar — 1 file scanned`n### Findings (0)`nSpeculativeHelper.cs is not bloat and is not a generic helper.' },
@@ -3611,6 +3860,7 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         Write-Output 'PASS: install graders require an observed installer tool event'
         Write-Output 'PASS: bootstrap Skill and archived-installer attempts are rejected'
         Write-Output 'PASS: B-253 arm-neutral Outcome on the four bareArm scenarios, bare warehouse preparation, and the outcome summary excludes unexaminable trials'
+        Write-Output 'PASS: B-277 Copilot events convert in order to a gradable transcript, recover a denied call, flag hook loading, and report missing/empty/truncated/unterminated/errored logs as unexaminable'
         Write-Output 'PASS: PowerShell UTF-8 BOM'
     } finally { if (Test-Path $temp) { Remove-Item -LiteralPath $temp -Recurse -Force } }
 }
@@ -3621,7 +3871,8 @@ if (-not $Live) {
     Write-Output 'Run: pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live [-Scenario route-fix] [-Model sonnet]'
     exit 2
 }
-if (-not (Get-Command claude -ErrorAction SilentlyContinue)) { throw 'claude CLI is not installed or not on PATH.' }
+$agentCli = if ($Executor -eq 'copilot') { 'copilot' } else { 'claude' }
+if (-not (Get-Command $agentCli -ErrorAction SilentlyContinue)) { throw "$agentCli CLI is not installed or not on PATH." }
 if (git -C $repo status --porcelain -- dist/) { throw 'Refusing live eval: dist/ differs from the checked-out release.' }
 
 $config = Get-Content -Raw $scenarioPath | ConvertFrom-Json
@@ -3632,6 +3883,13 @@ if ($Arm -eq 'none') {
     $notBare = @($selected | Where-Object { -not $_.bareArm } | ForEach-Object { $_.id })
     if ($notBare) { throw "Refusing -Arm none: no arm-neutral Outcome is graded for $($notBare -join ', '). Select scenarios marked bareArm in scenarios.json." }
 }
+if ($Executor -eq 'copilot') {
+    # Scenario-level model/agent overrides name Claude Code models and subagents. Refuse rather
+    # than silently substituting something else under a different host.
+    $claudeSpecific = @($selected | Where-Object { $_.model -or $_.agent } | ForEach-Object { $_.id } | Select-Object -Unique)
+    if ($claudeSpecific) { throw "Refusing -Executor copilot: $($claudeSpecific -join ', ') carry Claude-specific model/agent overrides. Run them under -Executor claude." }
+    if ($CopilotModel -eq 'auto') { throw "Refusing -Executor copilot with -CopilotModel auto: 'auto' resolves to a different vendor per run, so trials are not comparable." }
+}
 $selected = @($selected | ForEach-Object { $repeated = $_; 1..$Trials | ForEach-Object { $repeated } })
 $trialOf = @{}
 $scratch = Join-Path ([IO.Path]::GetTempPath()) ('ai-tech-lead-agent-evals-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
@@ -3640,7 +3898,9 @@ $version = (Get-Content -Raw (Join-Path $repo 'dist/dotnet/.claude/framework-ver
 $changelogVersion = ((Get-Content (Join-Path $repo 'CHANGELOG.md') | Where-Object { $_ -match '^## (\d+\.\d+\.\d+)' } | Select-Object -First 1) -replace '^## (\d+\.\d+\.\d+).*','$1')
 if ($version -ne $changelogVersion) { throw "Refusing live eval: dist version $version does not match root CHANGELOG head $changelogVersion." }
 $frameworkCommit = (git -C $repo rev-parse HEAD | Out-String).Trim()
-$hostVersion = (& claude --version | Out-String).Trim()
+$hostVersion = (& $agentCli --version | Out-String).Trim()
+# `copilot --version` also prints an update notice; keep the first line only.
+if ($Executor -eq 'copilot') { $hostVersion = [string](@($hostVersion -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -First 1)).Trim() }
 $results = @()
 try {
     foreach ($case in $selected) {
@@ -3776,10 +4036,24 @@ Issue: Boundary behavior lacks a direct compiled unit test.
         Write-Output "RUN $runName arm=$Arm (budget USD $($case.budgetUsd))"
         $caseModel = if ($case.model) { [string]$case.model } else { $Model }
         $caseAgent = if ($case.agent) { [string]$case.agent } else { '' }
-        $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel ([decimal]$case.budgetUsd) $TimeoutSeconds $caseAgent
+        $copilotMeta = $null
+        if ($Executor -eq 'copilot') {
+            $caseModel = $CopilotModel
+            $caseAgent = ''
+            $sessionId = [guid]::NewGuid().ToString()
+            $copilotHome = if ($env:COPILOT_HOME) { $env:COPILOT_HOME } else { Join-Path ([Environment]::GetFolderPath('UserProfile')) '.copilot' }
+            $eventsPath = Join-Path $copilotHome "session-state/$sessionId/events.jsonl"
+            $run = Invoke-CopilotProcess $target $prompt (Join-Path $scratch ($runName + '.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId (Join-Path $scratch ($runName + '.copilot-usage.json')) ($Arm -eq 'framework')
+        } else {
+            $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel ([decimal]$case.budgetUsd) $TimeoutSeconds $caseAgent
+        }
         $agentExit = $run.ExitCode
         try {
             if ($run.TimedOut) { throw $run.ErrorText }
+            if ($Executor -eq 'copilot') {
+                $copilotMeta = ConvertFrom-CopilotEvents $eventsPath $transcriptPath
+                if ($copilotMeta.Model) { $caseModel = $copilotMeta.Model }
+            }
             $transcript = Read-Transcript $transcriptPath
             $evidence = Test-ScenarioEvidence $case.id $target $transcript $before
             # WSD-040 revision (i): a routing non-reach (the unchanged skill was never read) must
@@ -3795,14 +4069,20 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             $tokensIn = if ($final -and $final[0].usage) { [string]$final[0].usage.input_tokens } else { 'n/a' }
             $tokensOut = if ($final -and $final[0].usage) { [string]$final[0].usage.output_tokens } else { 'n/a' }
             if ($case.bareArm) { $outcome = [bool]$evidence.Outcome }
-            $detail = "agentExit=$agentExit timedOut=$($run.TimedOut) costUsd=$cost tokensIn=$tokensIn tokensOut=$tokensOut; $(if ($case.bareArm) { "arm=$Arm outcome=$outcome " })$($evidence.Detail)"
-        } catch { $status = 'ERROR'; $detail = $_.Exception.Message }
-        $results += [pscustomobject]@{ Id = $case.id; Status = $status; Model = $caseModel; Agent = $caseAgent; Detail = $detail; Arm = $Arm; Scored = [bool]$case.bareArm; Outcome = $outcome }
+            # Copilot only loads repository hooks in prompt mode behind the opt-in above; if none
+            # fired, the framework arm's enforcement surface was absent and the row must say so.
+            $copilotDetail = if ($copilotMeta) { "executor=copilot copilotCli=$($copilotMeta.CliVersion) hooksLoaded=$($copilotMeta.HooksLoaded) premiumRequests=$($copilotMeta.PremiumRequests) toolCalls=$($copilotMeta.ToolCalls) " } else { '' }
+            $detail = "agentExit=$agentExit timedOut=$($run.TimedOut) costUsd=$cost tokensIn=$tokensIn tokensOut=$tokensOut; $copilotDetail$(if ($case.bareArm) { "arm=$Arm outcome=$outcome " })$($evidence.Detail)"
+        } catch { $status = 'ERROR'; $detail = "$(if ($Executor -eq 'copilot') { 'executor=copilot ' })$($_.Exception.Message)" }
+        $results += [pscustomobject]@{ Id = $case.id; Status = $status; Model = $caseModel; Agent = $caseAgent; Detail = $detail; Arm = $Arm; Scored = [bool]$case.bareArm; Outcome = $outcome; Executor = $Executor }
         Write-Output "$status $($case.id): $detail"
     }
     $date = Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'
-    $lines = @('', "## $date — framework v$version ($frameworkCommit)", '', "Host: Claude Code $hostVersion · arm: $Arm · scratch: retained=$KeepScratch", '')
-    foreach ($r in $results) { $lines += "- **$($r.Status) $($r.Id)** (model=$($r.Model)$(if($r.Agent){"; agent=$($r.Agent)"})) — $($r.Detail)" }
+    # Copilot CLI and Claude Code numbers are never compared with each other, so the header names
+    # the host and the model actually used, and every Copilot row carries executor=copilot.
+    $hostLabel = if ($Executor -eq 'copilot') { "$hostVersion · executor: copilot · model: $(@($results | ForEach-Object { $_.Model } | Select-Object -Unique) -join ',')" } else { "Claude Code $hostVersion" }
+    $lines = @('', "## $date — framework v$version ($frameworkCommit)", '', "Host: $hostLabel · arm: $Arm · scratch: retained=$KeepScratch", '')
+    foreach ($r in $results) { $lines += "- **$($r.Status) $($r.Id)** (model=$($r.Model)$(if($r.Agent){"; agent=$($r.Agent)"})$(if($r.Executor -eq 'copilot'){'; executor=copilot'})) — $($r.Detail)" }
     $lines += @(Get-OutcomeSummary $results)
     $lines += ''
     Add-Content -LiteralPath $ResultsPath -Value ($lines -join "`n") -Encoding utf8NoBOM

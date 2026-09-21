@@ -11,7 +11,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Rank | Item | Why here |
 |---|---|---|
 | 11 | B-253 with/without-framework eval | Gives every later product decision an instrument, and its first report is WSD-091's condition for resuming the paused rows; WSD-016 and B-98 constrain it |
-| 12 | B-277 Copilot executor spike | WSD-097: the only surface with no valid trial; one session, stop after 8 runs without a scored trial |
+| 12 | B-278 no skill reaches the agent on Copilot CLI | B-277 made the surface measurable; its first result is that the framework's procedures never arrived there |
 | 13 | B-255 instruction-text de-duplication | Largest always-loaded saving; measure with B-253 |
 | 13a | B-272 `AGENTS.md` as the one instruction file | Same always-loaded text as B-255; removes the mirror and its drift gate. Rank provisional, set by the filing session |
 | 14 | B-262 consumer README | Precondition for independent adopters (B-42) |
@@ -125,7 +125,7 @@ tree; keep the FAQ content reachable (see B-262) and link the deck instead.
 **Priority:** P1 · **Effort:** M · **Invariants:** #6
 **Status:** PARTIALLY DONE 2026-09-21. First n=6 report is in `meta/eval-results.md`: route-fix and
 warehouse-bind-sql 4/6 versus 0/6, warehouse-route-p1 6/6 both arms. On v0.89.0 guard-retry blocked
-live 2/2 (B-275 confirmed). Remaining: rule ablation (B-255), and the Copilot surface (B-277).
+live 2/2 (B-275 confirmed). `-Executor copilot` exists (B-277). Remaining: rule ablation (B-255).
 
 ### B-276 · A missing hook interpreter is now silent on Claude Code
 **Filed against:** v0.88.0 (2026-09-21)
@@ -134,12 +134,12 @@ live 2/2 (B-275 confirmed). Remaining: rule ablation (B-255), and the Copilot su
 command exited 1 (a visible hook error) before B-275's suffix and exits 0 after it. A branch in the
 command string stalls every write under a bash carrier; detect in the doctor or installer instead.
 
-### B-277 · Copilot executor spike for the with/without eval
-**Filed against:** v0.88.0 (2026-09-21)
-**Priority:** P1 · **Effort:** M · **Invariants:** #5 #6
-**Status:** Open; approved by WSD-097. `Invoke-CopilotProcess` plus an events-to-transcript converter
-inside the runner; first trial warehouse-bind-sql, bare arm; stop after 8 runs without a scored trial.
-Known risks: folder trust for hooks, no `.github/skills/` carrier, undocumented `events.jsonl`.
+### B-278 · On Copilot CLI no framework skill reached the agent
+**Filed against:** v0.89.0 (2026-09-21)
+**Priority:** P1 · **Effort:** S to diagnose · **Invariants:** #2 #5
+**Status:** Open; observed in B-277: nine framework-arm runs on Copilot CLI 1.0.83, no tool call touched
+a `skills/` path, and the framework arm did no better than bare (n=2). Establish whether Copilot loads
+`.claude/skills/` at all (shipped text and WSD-072 say it does) before changing any carrier; then n=6.
 
 ### B-255 · De-duplicate the shipped instruction text and remove maintainer-epistemic disclaimers
 **Filed against:** v0.86.7 (2026-09-18)
