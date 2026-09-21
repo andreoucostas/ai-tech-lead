@@ -293,6 +293,7 @@ pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live [-Scenario route-f
 $bare = 'route-fix,guard-retry,warehouse-route-p1,warehouse-bind-sql'
 pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Arm framework -Trials 6 -Scenario $bare
 pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Arm none -Trials 6 -Scenario $bare
+# B-280: -WarehouseMap omit|enriched swaps the warehouse-route scenarios' frozen map (route scenarios only).
 
 # B-277 (WSD-097) Copilot CLI executor — same runner, fixtures and graders; one premium request per
 # run, capped by -CopilotMaxAiCredits (default 30). -CopilotModel is always explicit ('auto' is

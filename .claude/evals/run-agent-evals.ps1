@@ -16,6 +16,9 @@ param(
     # B-253: 'none' skips the framework install so the same prompt and fixture run bare. Only
     # scenarios marked "bareArm" in scenarios.json carry an arm-neutral Outcome and may run bare.
     [Parameter(ParameterSetName = 'Live')][ValidateSet('framework','none')][string]$Arm = 'framework',
+    # B-280: which docs/warehouse-map.md the warehouse-route scenarios run against. 'frozen' is the
+    # B-98 fixture; 'omit' and 'enriched' separate the map's effect from the framework's.
+    [Parameter(ParameterSetName = 'Live')][ValidateSet('frozen','omit','enriched')][string]$WarehouseMap = 'frozen',
     [Parameter(ParameterSetName = 'Live')][ValidateRange(1, 20)][int]$Trials = 1,
     [Parameter(ParameterSetName = 'Live')][ValidateRange(30, 1800)][int]$TimeoutSeconds = 300,
     [Parameter(ParameterSetName = 'Live')][bool]$KeepScratch = $true,
@@ -878,6 +881,15 @@ independently before joining two facts through a conformed dimension.
     git -C $Path add -A
     git -C $Path commit --quiet -m 'warehouse scenario setup'
     return [int](git -C $Path rev-list --count HEAD)
+}
+
+function Get-WarehouseMapSwitch([string]$Variant) {
+    switch ($Variant) {
+        'frozen' { return @{} }
+        'omit' { return @{ OmitMap = $true } }
+        'enriched' { return @{ EnrichedMap = $true } }
+        default { throw "Unknown -WarehouseMap '$Variant'." }
+    }
 }
 
 function Initialize-FactBindingScenario([string]$Path, [switch]$NeutralKeySemantics) {
@@ -2709,6 +2721,9 @@ GROUP BY r.RegionName;
             if ($enrichedMapText -match [regex]::Escape($tell)) { throw "-EnrichedMap map states the conclusion the binding grader tests for ('$tell') -- it must carry evidence only" }
         }
 
+        # B-280: -WarehouseMap selects the route scenarios' map; 'frozen' must stay the no-switch path.
+        if ((Get-WarehouseMapSwitch 'frozen').Count -ne 0 -or -not (Get-WarehouseMapSwitch 'omit').OmitMap -or -not (Get-WarehouseMapSwitch 'enriched').EnrichedMap) { throw '-WarehouseMap does not select the frozen/omit/enriched map preparation' }
+
         $mixedTemp = Join-Path $temp 'warehouse-mixed-fixture'
         New-EvalRepo $mixedTemp warehouse-mixed
         foreach ($mixedRequired in @('SupplierPortal.sln','src/SupplierPortal.Api/SupplierPortal.Api.csproj','src/SupplierPortal.Api/Data/AppDbContext.cs','src/SupplierPortal.Api/Data/Configurations/SupplierConfiguration.cs','Tables/fact.FactSales.sql')) {
@@ -3889,6 +3904,10 @@ if ($Arm -eq 'none') {
     $notBare = @($selected | Where-Object { -not $_.bareArm } | ForEach-Object { $_.id })
     if ($notBare) { throw "Refusing -Arm none: no arm-neutral Outcome is graded for $($notBare -join ', '). Select scenarios marked bareArm in scenarios.json." }
 }
+if ($WarehouseMap -ne 'frozen') {
+    $notRoute = @($selected | Where-Object { $_.id -notlike 'warehouse-route-p*' } | ForEach-Object { $_.id })
+    if ($notRoute) { throw "Refusing -WarehouseMap ${WarehouseMap}: it only applies to the warehouse-route scenarios, not $($notRoute -join ', ')." }
+}
 if ($Executor -eq 'copilot') {
     # Scenario-level model/agent overrides name Claude Code models and subagents. Refuse rather
     # than silently substituting something else under a different host.
@@ -3983,7 +4002,8 @@ Classes that orchestrate multi-step domain work are suffixed `Coordinator` in th
                 $claudeText | Set-Content $claudePath -Encoding utf8NoBOM
             }
             { $_ -in @('warehouse-route-p1','warehouse-route-p2','warehouse-route-p3') } {
-                $before = Initialize-WarehouseScenario $target -Bare:($Arm -eq 'none')
+                $mapSwitch = Get-WarehouseMapSwitch $WarehouseMap
+                $before = Initialize-WarehouseScenario $target -Bare:($Arm -eq 'none') @mapSwitch
             }
             { $_ -in @('warehouse-bind-sql','warehouse-bind-mixed') } {
                 # -EnrichedMap: the binding decision needs business keys and the fact -> dimension
@@ -4087,7 +4107,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
     # Copilot CLI and Claude Code numbers are never compared with each other, so the header names
     # the host and the model actually used, and every Copilot row carries executor=copilot.
     $hostLabel = if ($Executor -eq 'copilot') { "$hostVersion · executor: copilot · model: $(@($results | ForEach-Object { $_.Model } | Select-Object -Unique) -join ',')" } else { "Claude Code $hostVersion" }
-    $lines = @('', "## $date — framework v$version ($frameworkCommit)", '', "Host: $hostLabel · arm: $Arm · scratch: retained=$KeepScratch", '')
+    $lines = @('', "## $date — framework v$version ($frameworkCommit)", '', "Host: $hostLabel · arm: $Arm$(if ($WarehouseMap -ne 'frozen') { " · warehouseMap: $WarehouseMap" }) · scratch: retained=$KeepScratch", '')
     foreach ($r in $results) { $lines += "- **$($r.Status) $($r.Id)** (model=$($r.Model)$(if($r.Agent){"; agent=$($r.Agent)"})$(if($r.Executor -eq 'copilot'){'; executor=copilot'})) — $($r.Detail)" }
     $lines += @(Get-OutcomeSummary $results)
     $lines += ''

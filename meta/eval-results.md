@@ -2088,3 +2088,46 @@ baseline), claude-sonnet-5, 24 runs, one premium request each, none excluded. n=
   `fact.FactSales.RegionName` is never loaded; the framework arm lost to bare there on Claude Code too
   (0/2 and 3/4 against 2/2 and 4/4 above). Filed as B-280; `map-warehouse` as a generator is B-279.
 - Not measured: a repository whose map came from a real `/map-warehouse` run; Claude Code at v0.89.1.
+
+## 2026-09-21 14:34:35 +01:00 — framework v0.89.1 (cc26f694e2028360dfa8427a48ae801750128329)
+
+Host: GitHub Copilot CLI 1.0.86. · executor: copilot · model: claude-sonnet-5 · arm: framework · warehouseMap: omit · scratch: retained=True
+
+- **PASS warehouse-route-p1** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=415 tokensOut=2065; executor=copilot copilotCli=1.0.86 hooksLoaded=True premiumRequests=1 toolCalls=7 arm=framework outcome=True category=NEITHER channels= usedDeadColumn=False joinedDimension=True readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p1** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=331 tokensOut=1690; executor=copilot copilotCli=1.0.86 hooksLoaded=True premiumRequests=1 toolCalls=6 arm=framework outcome=False category=NEITHER channels= usedDeadColumn=True joinedDimension=False readView=False readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p1** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=331 tokensOut=2226; executor=copilot copilotCli=1.0.86 hooksLoaded=True premiumRequests=1 toolCalls=7 arm=framework outcome=True category=NEITHER channels= usedDeadColumn=False joinedDimension=True readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p1** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=331 tokensOut=1872; executor=copilot copilotCli=1.0.86 hooksLoaded=True premiumRequests=1 toolCalls=5 arm=framework outcome=True category=NEITHER channels= usedDeadColumn=False joinedDimension=True readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p1** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=331 tokensOut=1827; executor=copilot copilotCli=1.0.86 hooksLoaded=True premiumRequests=1 toolCalls=6 arm=framework outcome=False category=NEITHER channels= usedDeadColumn=True joinedDimension=False readView=False readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p1** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=415 tokensOut=1979; executor=copilot copilotCli=1.0.86 hooksLoaded=True premiumRequests=1 toolCalls=8 arm=framework outcome=False category=NEITHER channels= usedDeadColumn=True joinedDimension=False readView=False readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **SUMMARY warehouse-route-p1** arm=framework outcome=3/6 excluded=0 executor=copilot
+
+
+## 2026-09-21 14:40:23 +01:00 — framework v0.89.1 (cc26f694e2028360dfa8427a48ae801750128329)
+
+Host: GitHub Copilot CLI 1.0.86. · executor: copilot · model: claude-sonnet-5 · arm: framework · warehouseMap: enriched · scratch: retained=True
+
+- **PASS warehouse-route-p1** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=499 tokensOut=2235; executor=copilot copilotCli=1.0.86 hooksLoaded=True premiumRequests=1 toolCalls=8 arm=framework outcome=False category=NEITHER channels= usedDeadColumn=True joinedDimension=False readView=False readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p1** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=331 tokensOut=1932; executor=copilot copilotCli=1.0.86 hooksLoaded=True premiumRequests=1 toolCalls=6 arm=framework outcome=False category=MAP_DISCOVERED channels=C5 usedDeadColumn=True joinedDimension=False readView=False readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p1** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=415 tokensOut=1960; executor=copilot copilotCli=1.0.86 hooksLoaded=True premiumRequests=1 toolCalls=6 arm=framework outcome=True category=NEITHER channels= usedDeadColumn=False joinedDimension=True readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p1** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=331 tokensOut=2130; executor=copilot copilotCli=1.0.86 hooksLoaded=True premiumRequests=1 toolCalls=5 arm=framework outcome=False category=NEITHER channels= usedDeadColumn=True joinedDimension=False readView=False readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p1** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=415 tokensOut=1875; executor=copilot copilotCli=1.0.86 hooksLoaded=True premiumRequests=1 toolCalls=8 arm=framework outcome=False category=NEITHER channels= usedDeadColumn=True joinedDimension=False readView=False readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p1** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=415 tokensOut=2076; executor=copilot copilotCli=1.0.86 hooksLoaded=True premiumRequests=1 toolCalls=8 arm=framework outcome=False category=NEITHER channels= usedDeadColumn=True joinedDimension=False readView=False readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **SUMMARY warehouse-route-p1** arm=framework outcome=1/6 excluded=0 executor=copilot
+
+## B-280 map ablation on Copilot CLI — 2026-09-21 (hand-written summary of the two `warehouseMap:` blocks above)
+
+Same host, model and commit as the B-278 n=6 blocks; framework arm only; 12 runs, none excluded. n=6: large effects only.
+
+| warehouse-route-p1 | frozen map (B-278 block) | `-WarehouseMap omit` | `-WarehouseMap enriched` | bare, frozen map |
+|---|---|---|---|---|
+| outcome | 2/6 | 3/6 | 1/6 | 6/6 |
+| read `rpt.vwFinanceExtract` | 2/6 | 3/6 | 1/6 | 6/6 |
+| opened `docs/warehouse-map.md` | 4/6 | n/a | 0/6 | 0/6 |
+
+- The thin frozen map is not the cause: removing it leaves the framework arm at 3/6, and the full B-96 map, which
+  names the dead column, was opened in 0/6 runs and scored 1/6. It is a framework effect.
+- Across all 24 runs the outcome equals "read `rpt.vwFinanceExtract`": 12/12 passes read it, 0/12 misses did.
+- All six bare runs listed the root, then `Tables/` and `Views/`. Framework runs mostly opened with `Tables` globs;
+  the six that did list the 22-entry root still skipped `Views/` and all six missed.
+- Not isolated: which shipped text or file produces this. Rule 11 ("check `docs/` … read that file first") explains
+  the frozen-map runs reading the map, but not the no-map and full-map misses. Claude Code was not re-run.

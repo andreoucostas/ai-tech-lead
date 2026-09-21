@@ -145,9 +145,9 @@ Tasks list it as a recipe, and route-p1's grader counts invoking it as success. 
 ### B-280 · On warehouse-route-p1 the framework arm does worse than the bare repo, on both hosts
 **Filed against:** v0.89.1 (2026-09-21)
 **Priority:** P1 · **Effort:** S to diagnose · **Invariants:** #1
-**Status:** Open. Copilot n=6: framework 2/6, none 6/6; Claude Code (B-253): 0/2 and 3/4 against 2/2 and 4/4. Every bare
-run listed `Views/` and read `rpt.vwFinanceExtract`; framework runs globbed past it and read the 3-row frozen map; only the
-two that opened the view passed. Separate fixture effect (thin map, B-279) from framework effect (root clutter, rails) first.
+**Status:** Open; a framework effect, not the thin map. Copilot n=6, framework arm: frozen map 2/6, no map 3/6, full map 1/6
+(opened 0/6); bare 6/6. All 12 passes read `rpt.vwFinanceExtract`, no miss did; framework runs skip `Views/` even after listing
+the root (0/6). Cause not isolated. Next: ablate rule 11, the workflow rails and root file count on `-WarehouseMap omit`.
 
 ### B-255 · De-duplicate the shipped instruction text and remove maintainer-epistemic disclaimers
 **Filed against:** v0.86.7 (2026-09-18)
