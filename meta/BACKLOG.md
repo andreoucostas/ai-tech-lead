@@ -124,8 +124,8 @@ tree; keep the FAQ content reachable (see B-262) and link the deck instead.
 **Filed against:** v0.86.7 (2026-09-18)
 **Priority:** P1 · **Effort:** M · **Invariants:** #6
 **Status:** PARTIALLY DONE 2026-09-21. First n=6 report is in `meta/eval-results.md`: route-fix and
-warehouse-bind-sql 4/6 versus 0/6, warehouse-route-p1 6/6 both arms, guard-retry unscored (B-275).
-Remaining: a guard-retry confirmation run on the release carrying B-275's fix, then rule ablation.
+warehouse-bind-sql 4/6 versus 0/6, warehouse-route-p1 6/6 both arms. On v0.89.0 guard-retry blocked
+live 2/2 (B-275 confirmed). Remaining: rule ablation (B-255), and the Copilot surface (B-277).
 
 ### B-276 · A missing hook interpreter is now silent on Claude Code
 **Filed against:** v0.88.0 (2026-09-21)
