@@ -11,10 +11,11 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Rank | Item | Why here |
 |---|---|---|
 | 11 | B-253 with/without-framework eval | Gives every later product decision an instrument, and its first report is WSD-091's condition for resuming the paused rows; WSD-016 and B-98 constrain it |
-| 12 | B-278 no skill reaches the agent on Copilot CLI | Diagnosed and a routing sentence shipped in 0.89.1; the n=6 Copilot measurement waits for that release |
+| 12 | B-280 the framework arm loses to bare on warehouse-route-p1 | Same direction on both hosts: installing the framework made this outcome worse |
+| 12a | B-262 consumer README as the consumer journey | User, 2026-09-21: B-278 showed a session has nowhere to learn what a consumer does or who triggers what |
+| 12b | B-279 generators are not task-time recipes | `map-warehouse` is listed and graded as a recipe; decide with B-257 |
 | 13 | B-255 instruction-text de-duplication | Largest always-loaded saving; measure with B-253 |
 | 13a | B-272 `AGENTS.md` as the one instruction file | Same always-loaded text as B-255; removes the mirror and its drift gate. Rank provisional, set by the filing session |
-| 14 | B-262 consumer README | Precondition for independent adopters (B-42) |
 | 15 | B-264 process diet | WP5 of the lean reset plan (section 7); WSD-093 replaces WSD-089's success measure |
 | 16 | B-257 commands as skills, routing, scoped rules | Host facts must be verified first; WSD-045 must be answered |
 | 17 | B-258 distribution re-audit | One-to-two-day spike; decides the shape of B-259 |
@@ -134,12 +135,19 @@ live 2/2 (B-275 confirmed). `-Executor copilot` exists (B-277). Remaining: rule 
 command exited 1 (a visible hook error) before B-275's suffix and exits 0 after it. A branch in the
 command string stalls every write under a bash carrier; detect in the doctor or installer instead.
 
-### B-278 · On Copilot CLI no framework skill reached the agent
-**Filed against:** v0.89.0 (2026-09-21)
-**Priority:** P1 · **Effort:** S to diagnose · **Invariants:** #2 #5
-**Status:** Open; diagnosed 2026-09-21: Copilot lists all 24 `.claude/skills/` skills (carrier works) but
-never called its `skill` tool; one routing sentence in Common Tasks (0.89.1) gave 2/2 invocations in a scratch
-probe, outcome unmeasured. Remaining: once 0.89.1 is released, n=6 framework vs none on Copilot (runner measures releases only).
+### B-279 · Developer-triggered generators are listed and graded as task-time recipes
+**Filed against:** v0.89.1 (2026-09-21)
+**Priority:** P2 · **Effort:** M · **Invariants:** #1 #2
+**Status:** Open; decide with B-257. `map-warehouse` is a re-runnable documentation pass (`bootstrap.md` says so) but
+ships as a skill whose description and 0.89.1's routing sentence invite it mid-task; README, ARCHITECTURE and Common
+Tasks list it as a recipe, and route-p1's grader counts invoking it as success. No eval runs the real `/map-warehouse`.
+
+### B-280 · On warehouse-route-p1 the framework arm does worse than the bare repo, on both hosts
+**Filed against:** v0.89.1 (2026-09-21)
+**Priority:** P1 · **Effort:** S to diagnose · **Invariants:** #1
+**Status:** Open. Copilot n=6: framework 2/6, none 6/6; Claude Code (B-253): 0/2 and 3/4 against 2/2 and 4/4. Every bare
+run listed `Views/` and read `rpt.vwFinanceExtract`; framework runs globbed past it and read the 3-row frozen map; only the
+two that opened the view passed. Separate fixture effect (thin map, B-279) from framework effect (root clutter, rails) first.
 
 ### B-255 · De-duplicate the shipped instruction text and remove maintainer-epistemic disclaimers
 **Filed against:** v0.86.7 (2026-09-18)
@@ -185,6 +193,7 @@ an advisory style scan. WSD-024 keeps the Copilot nudge advisory; post-write is 
 **Priority:** P2 · **Effort:** M · **Invariants:** #1
 **Status:** Open. Section 1 addresses LLMs before any human value statement; host caveats repeat;
 there is no installed-file tree, uninstall guide, linked FAQ, or register-choice table.
+Write it as the journey (install, `/bootstrap`, `/map-warehouse`, daily work): what each step produces and who triggers it.
 
 ### B-263 · State the Copilot VS Code surface as best-effort until a capability is certified
 **Filed against:** v0.86.7 (2026-09-18)

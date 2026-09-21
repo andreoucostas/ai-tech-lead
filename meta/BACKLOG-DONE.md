@@ -12644,3 +12644,8 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   converted to the Claude-shaped transcript, so fixtures, graders and `Outcome` are shared and there is
   no second rig. First live trial scored; 17 runs, one premium request each; hooks loaded and the guard
   blocked on Copilot. Summary in `meta/eval-results.md`; the skill-reach finding is B-278.
+
+- **B-278** — DONE **2026-09-21**. Copilot CLI lists every `.claude/skills/` skill (WSD-072 stands) but was never
+  routed to one; 0.89.1 adds one sentence to Common Tasks and the converter maps Copilot's `skill` tool. n=6 on
+  Copilot 1.0.86: warehouse-bind-sql framework 4/6 (skill invoked in exactly the four passes) against none 2/6;
+  warehouse-route-p1 framework 2/6 against none 6/6, filed as B-280. Generator-versus-recipe is B-279.
