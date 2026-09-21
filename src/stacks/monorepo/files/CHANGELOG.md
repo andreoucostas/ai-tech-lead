@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.89.0 — Unreleased
+## 0.89.0 — 2026-09-21
 
 - **The write guard now really stops the write on Claude Code for Windows.** Since 0.83.0
   (2026-09-04) the hook registrations have asked Claude Code to run each hook through an outer

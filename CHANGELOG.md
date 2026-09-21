@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.89.0 — Unreleased
+## 0.89.0 — 2026-09-21
 
 B-275 restores the block signal of the two hooks that use one. v0.83.0 (2026-09-04) added
 `"shell": "powershell"` to every hook registration, which makes the agent host run the command
