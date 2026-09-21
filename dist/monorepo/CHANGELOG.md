@@ -5,6 +5,15 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.89.1 — Unreleased
+
+- **Your agent is now told to use a matching skill, not only shown the list.** On GitHub Copilot CLI
+  the skills under `.claude/skills/` were loaded and listed to the agent, but in our test runs it
+  never opened one: it planned and edited from the general rules alone, so recipes such as
+  `add-warehouse-load` never reached the work. `CLAUDE.md > Common Tasks` and `AGENTS.md` now say to
+  invoke the matching skill before planning or editing. In our runs Claude Code already opened the
+  matching skill without being told. Nothing for you to do.
+
 ## 0.89.0 — 2026-09-21
 
 - **The write guard now really stops the write on Claude Code for Windows.** Since 0.83.0

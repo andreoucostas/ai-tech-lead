@@ -93,6 +93,8 @@ _Project conventions are populated by `/bootstrap` into `CLAUDE.md > Conventions
 
 ## Common Tasks
 
+When a task matches a skill below, invoke that skill with your skill tool before planning or editing.
+
 Skills are a delivery-profile superset, not evidence that they apply. Use only when repository evidence satisfies the gate:
 
 - `add-component` — add a new Angular feature component end-to-end

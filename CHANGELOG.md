@@ -11,6 +11,22 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.89.1 — Unreleased
+
+B-278. B-277's nine framework-arm runs on Copilot CLI 1.0.83 never touched a skill. The carrier was
+not the cause: the retained `events.jsonl` system prompts list all 24 project skills from
+`.claude/skills/` with `<location>project</location>` (the bare arm lists Copilot's two built-ins),
+and a prompt that names a skill invokes it (`tool.execution_start` `toolName: skill`,
+`arguments: {skill: <name>}`, then `skill.invoked`). WSD-072 stands. What was missing is routing:
+nothing in the shipped text tells the agent to use its skill tool, and Copilot's harness, unlike
+Claude Code's, does not supply that push itself. `CLAUDE.md > Common Tasks` and the three `AGENTS.md`
+mirrors gain one sentence saying to invoke a matching skill before planning or editing; the
+repository-evidence gate sentence after it is unchanged.
+
+The eval converter mapped no Copilot tool onto `Skill`, so a skill invocation on that surface would
+have been invisible to every grader's skill channel; `Get-CopilotToolShape` now maps `skill`, with a
+`-SelfTest` case seen red first.
+
 ## 0.89.0 — 2026-09-21
 
 B-275 restores the block signal of the two hooks that use one. v0.83.0 (2026-09-04) added

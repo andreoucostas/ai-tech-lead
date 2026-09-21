@@ -11,7 +11,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Rank | Item | Why here |
 |---|---|---|
 | 11 | B-253 with/without-framework eval | Gives every later product decision an instrument, and its first report is WSD-091's condition for resuming the paused rows; WSD-016 and B-98 constrain it |
-| 12 | B-278 no skill reaches the agent on Copilot CLI | B-277 made the surface measurable; its first result is that the framework's procedures never arrived there |
+| 12 | B-278 no skill reaches the agent on Copilot CLI | Diagnosed and a routing sentence shipped in 0.89.1; the n=6 Copilot measurement waits for that release |
 | 13 | B-255 instruction-text de-duplication | Largest always-loaded saving; measure with B-253 |
 | 13a | B-272 `AGENTS.md` as the one instruction file | Same always-loaded text as B-255; removes the mirror and its drift gate. Rank provisional, set by the filing session |
 | 14 | B-262 consumer README | Precondition for independent adopters (B-42) |
@@ -137,15 +137,16 @@ command string stalls every write under a bash carrier; detect in the doctor or 
 ### B-278 · On Copilot CLI no framework skill reached the agent
 **Filed against:** v0.89.0 (2026-09-21)
 **Priority:** P1 · **Effort:** S to diagnose · **Invariants:** #2 #5
-**Status:** Open; observed in B-277: nine framework-arm runs on Copilot CLI 1.0.83, no tool call touched
-a `skills/` path, and the framework arm did no better than bare (n=2). Establish whether Copilot loads
-`.claude/skills/` at all (shipped text and WSD-072 say it does) before changing any carrier; then n=6.
+**Status:** Open; diagnosed 2026-09-21: Copilot lists all 24 `.claude/skills/` skills (carrier works) but
+never called its `skill` tool; one routing sentence in Common Tasks (0.89.1) gave 2/2 invocations in a scratch
+probe, outcome unmeasured. Remaining: once 0.89.1 is released, n=6 framework vs none on Copilot (runner measures releases only).
 
 ### B-255 · De-duplicate the shipped instruction text and remove maintainer-epistemic disclaimers
 **Filed against:** v0.86.7 (2026-09-18)
 **Priority:** P2 · **Effort:** M · **Invariants:** #1 #2
 **Status:** Open. The frozen-bundle paragraph appears 15 times across eight files, several hedges four
 to five times, and the workflow rails are hand-mirrored in three places. Measure with B-253.
+Copilot CLI loads `copilot-instructions.md`, `AGENTS.md` and `CLAUDE.md` together (~111K-char system prompt, B-278).
 
 ### B-256 · List the warehouse skills only where repository evidence selects them
 **Filed against:** v0.86.7 (2026-09-18)

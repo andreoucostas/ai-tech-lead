@@ -63,6 +63,8 @@ A one-line index of significant decisions (including accidental ones that became
 
 ## Common Tasks
 
+When a task matches a skill below, invoke that skill with your skill tool before planning or editing.
+
 Skills are a delivery-profile superset, not evidence that they apply. Use only when repository
 evidence satisfies the gate:
 

@@ -1116,6 +1116,7 @@ function Get-CopilotToolShape([string]$ToolName, $Arguments) {
         elseif ($ToolName -match '^(?i)view$') { 'Read' }
         elseif ($ToolName -match '^(?i)(grep|rg)$') { 'Grep' }
         elseif ($ToolName -match '^(?i)glob$') { 'Glob' }
+        elseif ($ToolName -match '^(?i)skill$') { 'Skill' }
         else { [string]$ToolName }
     [pscustomobject]@{ Name = $name; Input = [pscustomobject]$map }
 }
@@ -2344,6 +2345,11 @@ function Invoke-SelfTest {
             @{ type='hook.end'; data=@{ hookType='preToolUse'; success=$true } }
         ) + $copilotRedRun + $copilotEdit + $copilotGreenRun + $copilotTail)
         if (-not (ConvertFrom-CopilotEvents $hookedLog $copilotTranscript).HooksLoaded) { throw 'Copilot conversion did not report hook.start as repository hooks loaded' }
+        # B-278: Copilot's skill tool is lower-case `skill` with arguments {skill: <name>} (observed
+        # live on CLI 1.0.83); every grader's skill channel reads Name 'Skill' and Input.skill.
+        $skillLog = & $newCopilotLog 'skill-invoked' ($copilotHead + (& $copilotToolPair 's1' 'skill' @{ skill='add-warehouse-load' } $true 'Skill "add-warehouse-load" loaded successfully.') + $copilotTail)
+        ConvertFrom-CopilotEvents $skillLog $copilotTranscript | Out-Null
+        if (-not @((Get-TranscriptEvidence (Read-Transcript $copilotTranscript)).Tools | Where-Object { $_.Name -ceq 'Skill' -and $_.Input.skill -eq 'add-warehouse-load' })) { throw 'Copilot conversion did not present a skill invocation as the Skill tool the graders read' }
 
         foreach ($case in @(
             @{ Id='haiku-convention-check'; Path='src/ConventionViolation.cs'; Final='## Convention check — 1 file scanned`n### Findings (0)`nConventionViolation.cs does not require CancellationToken.' },

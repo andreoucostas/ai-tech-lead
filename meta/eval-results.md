@@ -2017,3 +2017,19 @@ These numbers are never compared with the Claude Code numbers above; the harness
   bare guard-retry run INCONCLUSIVE because the file was written through the shell with no Write
   event; the key is on disk, so it counts as a miss above, and the grader now examines the file.
 
+## B-278 skill reach on Copilot CLI — 2026-09-21 (hand-written; no runner rows)
+
+Read from the retained B-277 `events.jsonl` logs, Copilot CLI 1.0.83, claude-sonnet-5:
+
+- All nine framework-arm system prompts list the 24 project skills from `.claude/skills/`
+  (`<location>project</location>`); the bare arm lists Copilot's two built-ins. No run contains a
+  `skill` tool call. The carrier works; the agent was never routed to it.
+- Positive control (1 premium request): a prompt naming `add-warehouse-load` produced
+  `tool.execution_start` `toolName: skill`, `arguments: {skill: add-warehouse-load}` and `skill.invoked`.
+- Scratch probe (2 premium requests): the B-277 framework fixture plus one sentence in
+  `CLAUDE.md`/`AGENTS.md` > Common Tasks, warehouse-bind-sql prompt: `skill add-warehouse-load` invoked in
+  2/2 (first tool call in one). Nothing else is claimed from these two runs: they were launched by hand,
+  the flags after the prompt did not take effect (every write `denied-no-approval-rule…`), and nothing
+  was graded.
+- The sentence ships in 0.89.1. The runner refused to measure it before release (`dist/` dirty, then
+  dist stamp 0.89.0 vs changelog head 0.89.1), so outcome with the sentence is unmeasured.
