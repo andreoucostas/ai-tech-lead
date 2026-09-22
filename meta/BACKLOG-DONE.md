@@ -12649,3 +12649,8 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   routed to one; 0.89.1 adds one sentence to Common Tasks and the converter maps Copilot's `skill` tool. n=6 on
   Copilot 1.0.86: warehouse-bind-sql framework 4/6 (skill invoked in exactly the four passes) against none 2/6;
   warehouse-route-p1 framework 2/6 against none 6/6, filed as B-280. Generator-versus-recipe is B-279.
+
+- **B-280** — DONE **2026-09-22**. The route-p1 loss to bare was an artifact of the eval's simulated `/bootstrap`
+  (marker string-replace, hand-written map, no index line), not of the framework a consumer runs. With the real
+  `/bootstrap` then `/map-warehouse` output frozen as `-WarehouseMap generated`, the framework arm scored 6/6 on
+  Copilot (bare 6/6); the map was opened 0/6, which is B-279's evidence. Summary in `meta/eval-results.md`.

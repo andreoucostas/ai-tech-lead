@@ -17,8 +17,10 @@ param(
     # scenarios marked "bareArm" in scenarios.json carry an arm-neutral Outcome and may run bare.
     [Parameter(ParameterSetName = 'Live')][ValidateSet('framework','none')][string]$Arm = 'framework',
     # B-280: which docs/warehouse-map.md the warehouse-route scenarios run against. 'frozen' is the
-    # B-98 fixture; 'omit' and 'enriched' separate the map's effect from the framework's.
-    [Parameter(ParameterSetName = 'Live')][ValidateSet('frozen','omit','enriched')][string]$WarehouseMap = 'frozen',
+    # B-98 fixture; 'omit' and 'enriched' separate the map's effect from the framework's. 'generated'
+    # is the consumer journey: the files a real /bootstrap then /map-warehouse wrote, frozen under
+    # meta/eval-fixtures/warehouse-generated/, replace the simulated bootstrap and the hand-written map.
+    [Parameter(ParameterSetName = 'Live')][ValidateSet('frozen','omit','enriched','generated')][string]$WarehouseMap = 'frozen',
     [Parameter(ParameterSetName = 'Live')][ValidateRange(1, 20)][int]$Trials = 1,
     [Parameter(ParameterSetName = 'Live')][ValidateRange(30, 1800)][int]$TimeoutSeconds = 300,
     [Parameter(ParameterSetName = 'Live')][bool]$KeepScratch = $true,
@@ -764,8 +766,27 @@ function Install-Framework([string]$Path, [ValidateSet('dotnet','angular')][stri
     return $output
 }
 
-function Initialize-WarehouseScenario([string]$Path, [switch]$OmitMap, [switch]$EnrichedMap, [switch]$Bare) {
+function Initialize-WarehouseScenario([string]$Path, [switch]$OmitMap, [switch]$EnrichedMap, [switch]$GeneratedMap, [switch]$Bare) {
     New-Item -ItemType Directory -Path (Join-Path $Path 'docs') -Force | Out-Null
+    if ($GeneratedMap) {
+        # B-280: the generators' real output, not a simulation. The overlay is what /bootstrap and
+        # /map-warehouse changed relative to a fresh install, so it is only valid for the framework
+        # version it was generated on; a stale overlay would silently mix two versions' instructions.
+        $generatedRoot = Join-Path $repo 'meta/eval-fixtures/warehouse-generated'
+        $provenancePath = Join-Path $generatedRoot 'provenance.json'
+        if (-not (Test-Path -LiteralPath $provenancePath)) { throw "-WarehouseMap generated: $provenancePath is missing. Generate the fixture first (DEVELOPING.md, agent evals)." }
+        $generatedVersion = [string](Get-Content -Raw -LiteralPath $provenancePath | ConvertFrom-Json).frameworkVersion
+        $distVersion = [string](Get-Content -Raw (Join-Path $repo 'dist/dotnet/.claude/framework-version.json') | ConvertFrom-Json).version
+        if ($generatedVersion -ne $distVersion) { throw "-WarehouseMap generated: the fixture was generated on v$generatedVersion but dist is v$distVersion. Regenerate it." }
+        if (-not $Bare) {
+            Copy-Item -Path (Join-Path $generatedRoot 'files/*') -Destination $Path -Recurse -Force
+            git -C $Path add -A
+            git -C $Path commit --quiet -m 'warehouse scenario setup'
+            return [int](git -C $Path rev-list --count HEAD)
+        }
+        # Bare arm: the project's own map is held constant across arms; nothing else is the project's.
+        Copy-Item -LiteralPath (Join-Path $generatedRoot 'files/docs/warehouse-map.md') -Destination (Join-Path $Path 'docs/warehouse-map.md') -Force
+    }
     # THREE map states, and the default one is FROZEN ON PURPOSE. meta/eval-results.md ties the
     # recorded 0/6 -> 6/6 (p~0.002) B-98 step 2 result to "same scenarios, grader, FIXTURE, model and
     # host; only the rule differs". Regenerating the default map into the B-96 shape would silently
@@ -849,7 +870,7 @@ Fan trap: aggregate at the fact's own grain. Chasm trap: aggregate each fact to 
 independently before joining two facts through a conformed dimension.
 '@ | Set-Content (Join-Path $Path 'docs/warehouse-map.md') -Encoding utf8NoBOM
     }
-    elseif (-not $OmitMap) {
+    elseif (-not $OmitMap -and -not $GeneratedMap) {
         @'
 # Warehouse map
 
@@ -888,6 +909,7 @@ function Get-WarehouseMapSwitch([string]$Variant) {
         'frozen' { return @{} }
         'omit' { return @{ OmitMap = $true } }
         'enriched' { return @{ EnrichedMap = $true } }
+        'generated' { return @{ GeneratedMap = $true } }
         default { throw "Unknown -WarehouseMap '$Variant'." }
     }
 }
@@ -2722,7 +2744,21 @@ GROUP BY r.RegionName;
         }
 
         # B-280: -WarehouseMap selects the route scenarios' map; 'frozen' must stay the no-switch path.
-        if ((Get-WarehouseMapSwitch 'frozen').Count -ne 0 -or -not (Get-WarehouseMapSwitch 'omit').OmitMap -or -not (Get-WarehouseMapSwitch 'enriched').EnrichedMap) { throw '-WarehouseMap does not select the frozen/omit/enriched map preparation' }
+        if ((Get-WarehouseMapSwitch 'frozen').Count -ne 0 -or -not (Get-WarehouseMapSwitch 'omit').OmitMap -or -not (Get-WarehouseMapSwitch 'enriched').EnrichedMap -or -not (Get-WarehouseMapSwitch 'generated').GeneratedMap) { throw '-WarehouseMap does not select the frozen/omit/enriched/generated map preparation' }
+        # 'generated' must be the generators' output, never the simulation: no eval marker, the
+        # index line a real /bootstrap writes, and a map that is not the frozen three-row fixture.
+        $generatedTemp = Join-Path $temp 'warehouse-generated'
+        New-EvalRepo $generatedTemp warehouse
+        Install-Framework $generatedTemp dotnet | Out-Null
+        Initialize-WarehouseScenario $generatedTemp -GeneratedMap | Out-Null
+        $generatedClaude = Get-Content -Raw -LiteralPath (Join-Path $generatedTemp 'CLAUDE.md')
+        if ($generatedClaude -match 'BOOTSTRAP_PENDING|EVAL_BOOTSTRAPPED') { throw '-WarehouseMap generated left a bootstrap marker or the simulated conventions in CLAUDE.md' }
+        if (@([regex]::Matches($generatedClaude, '(?i)warehouse-map\.md')).Count -lt 1) { throw '-WarehouseMap generated: CLAUDE.md carries no docs/warehouse-map.md index line, so it is not a real /bootstrap result on a warehouse repository' }
+        if ((Get-FileHash (Join-Path $generatedTemp 'docs/warehouse-map.md')).Hash -eq (Get-FileHash (Join-Path $withMapTemp 'docs/warehouse-map.md')).Hash) { throw '-WarehouseMap generated wrote the frozen fixture map' }
+        $generatedBareTemp = Join-Path $temp 'warehouse-generated-bare'
+        New-EvalRepo $generatedBareTemp warehouse
+        Initialize-WarehouseScenario $generatedBareTemp -GeneratedMap -Bare | Out-Null
+        if ((Test-Path -LiteralPath (Join-Path $generatedBareTemp '.claude')) -or (Get-FileHash (Join-Path $generatedBareTemp 'docs/warehouse-map.md')).Hash -ne (Get-FileHash (Join-Path $generatedTemp 'docs/warehouse-map.md')).Hash) { throw 'bare -WarehouseMap generated must install nothing and keep the generated map byte-identical across arms' }
 
         $mixedTemp = Join-Path $temp 'warehouse-mixed-fixture'
         New-EvalRepo $mixedTemp warehouse-mixed

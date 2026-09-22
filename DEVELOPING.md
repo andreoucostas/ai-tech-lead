@@ -294,6 +294,11 @@ $bare = 'route-fix,guard-retry,warehouse-route-p1,warehouse-bind-sql'
 pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Arm framework -Trials 6 -Scenario $bare
 pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Arm none -Trials 6 -Scenario $bare
 # B-280: -WarehouseMap omit|enriched swaps the warehouse-route scenarios' frozen map (route scenarios only).
+# -WarehouseMap generated is the consumer journey instead of the simulation: it overlays
+# meta/eval-fixtures/warehouse-generated/files/. Regenerate that per framework version (the runner
+# refuses a stale one): install dist/dotnet into the 'warehouse' fixture and commit; in that repo a
+# person types /bootstrap, then /map-warehouse and accepts docs/warehouse-map.md; copy every path
+# `git status --porcelain` lists into files/ unedited; record version, host and model in provenance.json.
 
 # B-277 (WSD-097) Copilot CLI executor — same runner, fixtures and graders; one premium request per
 # run, capped by -CopilotMaxAiCredits (default 30). -CopilotModel is always explicit ('auto' is

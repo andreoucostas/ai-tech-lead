@@ -1,0 +1,10 @@
+{
+  "frameworkVersion": "0.89.1",
+  "generatedOn": "2026-09-22",
+  "host": "Claude Code 2.1.260",
+  "model": "sonnet (claude-sonnet-5) as launched with `claude --model sonnet`; typed by the maintainer, not headless",
+  "fixture": "New-EvalRepo 'warehouse' baseline, then install.ps1 -Stack dotnet (dist/dotnet v0.89.1) committed",
+  "steps": "/bootstrap (Phase 2b: proceed; Phase 3d-bis: skip all - mark as unverified), then /map-warehouse accepting docs/warehouse-map.md",
+  "files": "every path `git status --porcelain` listed afterwards, copied unedited",
+  "backlog": "B-280 / B-279"
+}

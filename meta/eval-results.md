@@ -2131,3 +2131,40 @@ Same host, model and commit as the B-278 n=6 blocks; framework arm only; 12 runs
   the six that did list the 22-entry root still skipped `Views/` and all six missed.
 - Not isolated: which shipped text or file produces this. Rule 11 ("check `docs/` … read that file first") explains
   the frozen-map runs reading the map, but not the no-map and full-map misses. Claude Code was not re-run.
+
+## 2026-09-22 21:54:16 +01:00 — framework v0.89.1 (5bd7e493d45ae15e3eb541a13918359c3bc005fb)
+
+Host: GitHub Copilot CLI 1.0.86. · executor: copilot · model: claude-sonnet-5 · arm: framework · warehouseMap: generated · scratch: retained=True
+
+- **PASS warehouse-route-p1** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=331 tokensOut=1616; executor=copilot copilotCli=1.0.86 hooksLoaded=True premiumRequests=1 toolCalls=4 arm=framework outcome=True category=NEITHER channels= usedDeadColumn=False joinedDimension=True readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p1** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=247 tokensOut=1585; executor=copilot copilotCli=1.0.86 hooksLoaded=True premiumRequests=1 toolCalls=3 arm=framework outcome=True category=NEITHER channels= usedDeadColumn=False joinedDimension=False readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p1** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=331 tokensOut=1932; executor=copilot copilotCli=1.0.86 hooksLoaded=True premiumRequests=1 toolCalls=6 arm=framework outcome=True category=NEITHER channels= usedDeadColumn=False joinedDimension=False readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p1** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=331 tokensOut=1942; executor=copilot copilotCli=1.0.86 hooksLoaded=True premiumRequests=1 toolCalls=5 arm=framework outcome=True category=NEITHER channels= usedDeadColumn=False joinedDimension=True readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p1** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=247 tokensOut=1984; executor=copilot copilotCli=1.0.86 hooksLoaded=True premiumRequests=1 toolCalls=5 arm=framework outcome=True category=NEITHER channels= usedDeadColumn=False joinedDimension=True readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p1** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=247 tokensOut=1871; executor=copilot copilotCli=1.0.86 hooksLoaded=True premiumRequests=1 toolCalls=6 arm=framework outcome=True category=NEITHER channels= usedDeadColumn=False joinedDimension=True readView=True readViewTarget=vwFinanceExtract artifactWritten=True otherSqlArtifacts=
+- **SUMMARY warehouse-route-p1** arm=framework outcome=6/6 excluded=0 executor=copilot
+
+
+## B-280 consumer-journey arm on Copilot CLI — 2026-09-22 (hand-written summary of the `warehouseMap: generated` block above)
+
+The three earlier arms simulated `/bootstrap` (a string-replaced marker plus four hand-written convention
+bullets, deliberately without the map index line) and hand-wrote the map. This arm is the journey a consumer
+follows: install v0.89.1, the maintainer types `/bootstrap` (Phase 2b "proceed", 3d-bis "skip all") and then
+`/map-warehouse` in Claude Code 2.1.260 / sonnet, and the eight files they changed are frozen unedited under
+`meta/eval-fixtures/warehouse-generated/` (`provenance.json`). Same host, model and grader as the B-278 blocks;
+framework arm, 6 runs, none excluded. n=6: large effects only.
+
+| warehouse-route-p1 | simulated bootstrap, frozen map | simulated, no map | simulated, full map | **real `/bootstrap` + `/map-warehouse`** | bare, frozen map |
+|---|---|---|---|---|---|
+| outcome | 2/6 | 3/6 | 1/6 | **6/6** | 6/6 |
+| read `rpt.vwFinanceExtract` | 2/6 | 3/6 | 1/6 | 6/6 | 6/6 |
+| opened `docs/warehouse-map.md` | 4/6 | n/a | 0/6 | 0/6 | 0/6 |
+
+- The loss was an artifact of the simulated bootstrap, not of the framework a consumer runs. Every run opened
+  the view within its first three tool calls (3-6 calls per run, against 5-8 in the simulated arms).
+- The generated `CLAUDE.md` file tree lists `rpt.vwFinanceExtract.sql` as "re-derives RegionName via join rather
+  than reading FactSales.RegionName", so the always-loaded context named the trap; the map, though pointed to by
+  the index line `/bootstrap` wrote, was not opened in any run. The value reached the agent through the bootstrap's
+  analysis, not through the map (B-279).
+- Not measured: Claude Code on this arm; whether the bare arm with the generated map also stays 6/6 (it carried
+  the generated map, not the generated `CLAUDE.md`); a route task the `CLAUDE.md` tree does not already answer.

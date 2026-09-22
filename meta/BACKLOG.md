@@ -11,7 +11,6 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Rank | Item | Why here |
 |---|---|---|
 | 11 | B-253 with/without-framework eval | Gives every later product decision an instrument, and its first report is WSD-091's condition for resuming the paused rows; WSD-016 and B-98 constrain it |
-| 12 | B-280 the framework arm loses to bare on warehouse-route-p1 | Same direction on both hosts: installing the framework made this outcome worse |
 | 12a | B-262 consumer README as the consumer journey | User, 2026-09-21: B-278 showed a session has nowhere to learn what a consumer does or who triggers what |
 | 12b | B-279 generators are not task-time recipes | `map-warehouse` is listed and graded as a recipe; decide with B-257 |
 | 13 | B-255 instruction-text de-duplication | Largest always-loaded saving; measure with B-253 |
@@ -126,8 +125,9 @@ tree; keep the FAQ content reachable (see B-262) and link the deck instead.
 **Filed against:** v0.86.7 (2026-09-18)
 **Priority:** P1 · **Effort:** M · **Invariants:** #6
 **Status:** PARTIALLY DONE 2026-09-21. First n=6 report is in `meta/eval-results.md`: route-fix and
-warehouse-bind-sql 4/6 versus 0/6, warehouse-route-p1 6/6 both arms. On v0.89.0 guard-retry blocked
-live 2/2 (B-275 confirmed). `-Executor copilot` exists (B-277). Remaining: rule ablation (B-255).
+warehouse-bind-sql 4/6 versus 0/6, warehouse-route-p1 6/6 both arms. `-Executor copilot` exists (B-277). The
+route scenarios' default simulates `/bootstrap` and lost to bare (B-280); run them `-WarehouseMap generated`
+(6/6, 2026-09-22) and regenerate that fixture per version. Remaining: rule ablation (B-255).
 
 ### B-276 · A missing hook interpreter is now silent on Claude Code
 **Filed against:** v0.88.0 (2026-09-21)
@@ -141,14 +141,8 @@ command string stalls every write under a bash carrier; detect in the doctor or 
 **Priority:** P2 · **Effort:** M · **Invariants:** #1 #2
 **Status:** Open; decide with B-257. `map-warehouse` is a re-runnable documentation pass (`bootstrap.md` says so) but
 ships as a skill whose description and 0.89.1's routing sentence invite it mid-task; README, ARCHITECTURE and Common
-Tasks list it as a recipe, and route-p1's grader counts invoking it as success. No eval runs the real `/map-warehouse`.
-
-### B-280 · On warehouse-route-p1 the framework arm does worse than the bare repo, on both hosts
-**Filed against:** v0.89.1 (2026-09-21)
-**Priority:** P1 · **Effort:** S to diagnose · **Invariants:** #1
-**Status:** Open; a framework effect, not the thin map. Copilot n=6, framework arm: frozen map 2/6, no map 3/6, full map 1/6
-(opened 0/6); bare 6/6. All 12 passes read `rpt.vwFinanceExtract`, no miss did; framework runs skip `Views/` even after listing
-the root (0/6). Cause not isolated. Next: ablate rule 11, the workflow rails and root file count on `-WarehouseMap omit`.
+Tasks list it as a recipe. B-280's journey arm (2026-09-22): the real map, pointed to by `CLAUDE.md`, was opened 0/6;
+the value reached the agent through `/bootstrap`'s file-tree note on the view, so the map's task-time role is unproven.
 
 ### B-255 · De-duplicate the shipped instruction text and remove maintainer-epistemic disclaimers
 **Filed against:** v0.86.7 (2026-09-18)
