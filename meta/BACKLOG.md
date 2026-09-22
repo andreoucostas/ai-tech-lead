@@ -16,6 +16,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 12b | B-279 generators are not task-time recipes | `map-warehouse` is listed and graded as a recipe; decide with B-257 |
 | 13 | B-255 instruction-text de-duplication | Largest always-loaded saving; measure with B-253 |
 | 13a | B-272 `AGENTS.md` as the one instruction file | Same always-loaded text as B-255; removes the mirror and its drift gate. Rank provisional, set by the filing session |
+| 13b | B-281 retire `.github/copilot-instructions.md` | Third copy of the same rules now that every host reads `AGENTS.md`; do it with or after B-272 |
 | 15 | B-264 process diet | WP5 of the lean reset plan (section 7); WSD-093 replaces WSD-089's success measure |
 | 16 | B-257 commands as skills, routing, scoped rules | Host facts must be verified first; WSD-045 must be answered |
 | 17 | B-258 distribution re-audit | One-to-two-day spike; decides the shape of B-259 |
@@ -258,6 +259,13 @@ turns `''` into `$null`, so `tool_name: ""` alone takes the Copilot JSON path at
 **Status:** Open; user-requested. Claude Code v2.1.277+ reads `AGENTS.md` only when no `CLAUDE.md` or
 `CLAUDE.local.md` exists; not on Bedrock, telemetry-off or `allowManagedHooksOnly` sessions. Decide
 no file versus a one-line `@AGENTS.md` stub, plus the upgrade path for populated consumer `CLAUDE.md`.
+
+### B-281 · Retire the generated `.github/copilot-instructions.md`
+**Filed against:** v0.89.1 (2026-09-22)
+**Priority:** P2 · **Effort:** M · **Invariants:** #1 #2 #7
+**Status:** Open; user-requested 2026-09-22 — every host reads `AGENTS.md` now, so the terse generated
+ruleset is a third copy. Removal also retires `/generate-copilot` and its prompt, the canary, the
+`docs-sync-check`/`template-checks` legs and the manifest entry; confirm VS Code inline completion first.
 
 ## Archived
 
