@@ -102,8 +102,8 @@ Anyone may raise a tier; no one lowers one. A batch takes its highest member.
 ## Ship
 
 Commit to `master` and push with `.claude/scripts/push-and-check.ps1` when the task is done; never
-leave work uncommitted. One push per session: records ride in the work commit, and there is no
-separate commit to record a CI run or close an item. Releases are batched, roughly weekly, only via
+leave work uncommitted. One push per session unless the user asks for another; records ride in the
+work commit, never in a commit or push of their own to record a CI run or close an item. Releases are batched, roughly weekly, only via
 `.claude/scripts/release.ps1 -ReviewEvidence "<tier>; reviewer user|fresh session|none; <range>"`.
 No commit to `master` while a release is between push and tag.
 

@@ -265,7 +265,8 @@ calls it the "human + AI-agent entrypoint", but `install.ps1` excludes `README.m
 **Priority:** P1 before the next release · **Effort:** S · **Invariants:** #3
 **Status:** Open. `e22e74a8` is on `claude/backlog-executive-summary-7qw72y`, not `master`: merge it first. A Linux cloud
 session ran pwsh 7 only; still owed: the touched suites under `powershell.exe` 5.1, RepositoryPrivacy on Windows (its
-canary-host case cannot pass on Linux), and an `install-handoff` eval, since the agent install section moved below Quick Start.
+canary-host case cannot pass on Linux), an `install-handoff` eval (the agent install section moved below Quick Start), and
+the root-doc suites under 5.1 for the `AGENTS.md` push-rule edit.
 
 ## Archived
 
